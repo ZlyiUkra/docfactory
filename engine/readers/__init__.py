@@ -7,11 +7,14 @@
 багатосторінкового джерела (`toc`) і сторінки з розділами (`page`) складають
 перелік одразу, бо для цього треба прочитати зміст; тіло глав тягнеться в `make`.
 
-Новий домен додає своїх читачів окремим модулем із `@register("ім'я")`; ядро при
-цьому не змінюється. Тут зареєстровані шість, потрібних для ECMAScript.
+Новий домен додає своїх читачів окремим модулем у цій теці з `@register("ім'я")`;
+ядро при цьому не змінюється — модулі теки імпортуються самі, поіменно їх ніде не
+вписують. Модуль з іменем на «_» — спільні помічники читачів, не читач.
 """
 
 import collections
+import importlib
+import pkgutil
 
 Item = collections.namedtuple("Item", "id file make")
 
@@ -32,5 +35,9 @@ def get(name: str):
     return REGISTRY[name]
 
 
-# Імпорт наповнює REGISTRY — кожен модуль реєструє свої читачі.
-from engine.readers import ecmarkup, pdf, references  # noqa: E402,F401
+# Імпорт наповнює REGISTRY — кожен модуль реєструє свої читачі. Перелік модулів
+# береться з самої теки: раніше його вписували сюди руками, і новий читач
+# вимагав правки ядра.
+for _module in pkgutil.iter_modules(__path__):
+    if not _module.name.startswith("_"):
+        importlib.import_module(f"{__name__}.{_module.name}")

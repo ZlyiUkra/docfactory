@@ -1,0 +1,169 @@
+# React Blog: React v16.6.0: lazy, memo and contextType (2018-10-23)
+# джерело: https://legacy.reactjs.org/blog/2018/10/23/react-v-16-6.html
+# отримано: 2026-09-15
+
+2018-10-23, by Sebastian Markbåge
+
+Today we’re releasing React 16.6 with a few new convenient features. A form of PureComponent/shouldComponentUpdate for function components, a way to do code splitting using Suspense and an easier way to consume Context from class components.
+
+Check out the full changelog below.
+
+## `React.memo`
+
+Class components can bail out from rendering when their input props are the same using `PureComponent` or `shouldComponentUpdate`. Now you can do the same with function components by wrapping them in `React.memo`.
+
+```jsx
+const MyComponent = React.memo(function MyComponent(props) {
+  /* only rerenders if props change */
+});
+```
+
+## `React.lazy`: Code-Splitting with `Suspense`
+
+You may have seen Dan’s talk about React Suspense at JSConf Iceland. Now you can use the Suspense component to do code-splitting by wrapping a dynamic import in a call to `React.lazy()`.
+
+```jsx
+import React, {lazy, Suspense} from 'react';
+const OtherComponent = lazy(() => import('./OtherComponent'));
+
+function MyComponent() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <OtherComponent />
+    </Suspense>
+  );
+}
+```
+
+The Suspense component will also allow library authors to start building data fetching with Suspense support in the future.
+
+Note: This feature is not yet available for server-side rendering. Suspense support will be added in a later release.
+
+## `static contextType`
+
+In React 16.3 we introduced the official Context API as a replacement to the previous Legacy Context API.
+
+```jsx
+const MyContext = React.createContext();
+```
+
+We’ve heard feedback that adopting the new render prop API can be difficult in class components. So we’ve added a convenience API to consume a context value from within a class component.
+
+```jsx
+class MyClass extends React.Component {
+  static contextType = MyContext;
+  componentDidMount() {
+    let value = this.context;
+    /* perform a side-effect at mount using the value of MyContext */
+  }
+  componentDidUpdate() {
+    let value = this.context;
+    /* ... */
+  }
+  componentWillUnmount() {
+    let value = this.context;
+    /* ... */
+  }
+  render() {
+    let value = this.context;
+    /* render something based on the value of MyContext */
+  }
+}
+```
+
+## `static getDerivedStateFromError()`
+
+React 16 introduced Error Boundaries for handling errors thrown in React renders. We already had the `componentDidCatch` lifecycle method which gets fired after an error has already happened. It’s great for logging errors to the server. It also lets you show a different UI to the user by calling `setState`.
+
+Before that is fired, we render `null` in place of the tree that threw an error. This sometimes breaks parent components that don’t expect their refs to be empty. It also doesn’t work to recover from errors on the server since the `Did` lifecycle methods don’t fire during server-side rendering.
+
+We’re adding another error method that lets you render the fallback UI before the render completes. See the docs for `getDerivedStateFromError()`.
+
+Note: `getDerivedStateFromError()` is not yet available for server-side rendering. It is designed to work with server-side rendering in a future release. We’re releasing it early so that you can start preparing to use it.
+
+## Deprecations in StrictMode
+
+In 16.3 we introduced the `StrictMode` component. It lets you opt-in to early warnings for patterns that might cause problems in the future.
+
+We’ve added two more APIs to the list of deprecated APIs in `StrictMode`. If you don’t use `StrictMode` you don’t have to worry; these warning won’t fire for you.
+
+- ReactDOM.findDOMNode() - This API is often misunderstood and most uses of it are unnecessary. It can also be surprisingly slow in React 16. See the docs for possible upgrade paths.
+
+- Legacy Context using contextTypes and getChildContext - Legacy context makes React slightly slower and bigger than it needs to be. That’s why we strongly want to encourage upgrading to the new context API. Hopefully the addition of the `contextType` API makes this a bit easier.
+
+If you’re having trouble upgrading, we’d like to hear your feedback.
+
+## Installation
+
+React v16.6.0 is available on the npm registry.
+
+To install React 16 with Yarn, run:
+
+```bash
+yarn add react@^16.6.0 react-dom@^16.6.0
+```
+
+To install React 16 with npm, run:
+
+```bash
+npm install --save react@^16.6.0 react-dom@^16.6.0
+```
+
+We also provide UMD builds of React via a CDN:
+
+```html
+<script crossorigin src="https://unpkg.com/react@16/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@16/umd/react-dom.production.min.js"></script>
+```
+
+Refer to the documentation for detailed installation instructions.
+
+## Changelog
+
+### React
+
+- Add `React.memo()` as an alternative to `PureComponent` for functions. (@acdlite in #13748)
+
+- Add `React.lazy()` for code splitting components. (@acdlite in #13885)
+
+- `React.StrictMode` now warns about legacy context API. (@bvaughn in #13760)
+
+- `React.StrictMode` now warns about `findDOMNode`. (@sebmarkbage in #13841)
+
+- Rename `unstable_AsyncMode` to `unstable_ConcurrentMode`. (@trueadm in #13732)
+
+- Rename `unstable_Placeholder` to `Suspense`, and `delayMs` to `maxDuration`. (@gaearon in #13799 and @sebmarkbage in #13922)
+
+### React DOM
+
+- Add `contextType` as a more ergonomic way to subscribe to context from a class. (@bvaughn in #13728)
+
+- Add `getDerivedStateFromError` lifecycle method for catching errors in a future asynchronous server-side renderer. (@bvaughn in #13746)
+
+- Warn when `<Context>` is used instead of `<Context.Consumer>`. (@trueadm in #13829)
+
+- Fix gray overlay on iOS Safari. (@philipp-spiess in #13778)
+
+- Fix a bug caused by overwriting `window.event` in development. (@sergei-startsev in #13697)
+
+### React DOM Server
+
+- Add support for `React.memo()`. (@alexmckenley in #13855)
+
+- Add support for `contextType`. (@alexmckenley and @sebmarkbage in #13889)
+
+### Scheduler (Experimental)
+
+- Rename the package to `scheduler`. (@gaearon in #13683)
+
+- Support priority levels, continuations, and wrapped callbacks. (@acdlite in #13720 and #13842)
+
+- Improve the fallback mechanism in non-DOM environments. (@acdlite in #13740)
+
+- Schedule `requestAnimationFrame` earlier. (@acdlite in #13785)
+
+- Fix the DOM detection to be more thorough. (@trueadm in #13731)
+
+- Fix bugs with interaction tracing. (@bvaughn in #13590)
+
+- Add the `envify` transform to the package. (@mridgway in #13766)

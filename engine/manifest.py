@@ -36,11 +36,13 @@ NAME = "index.json"
 
 _SOURCE = "джерело:"
 _FETCHED = "отримано:"
+_VERSION = "версія:"
 
 
 def header(path: pathlib.Path) -> dict:
-    """Назва, адреса і дата з трирядкової шапки документа."""
-    out = {"title": "", "url": "", "fetched": ""}
+    """Назва, адреса і дата з шапки документа, і версія — коли документ описує
+    одну версію продукту."""
+    out = {"title": "", "url": "", "fetched": "", "version": ""}
     with path.open(encoding="utf-8") as fh:
         for line in fh:
             if not line.startswith("#"):
@@ -50,6 +52,8 @@ def header(path: pathlib.Path) -> dict:
                 out["url"] = value[len(_SOURCE):].strip()
             elif value.startswith(_FETCHED):
                 out["fetched"] = value[len(_FETCHED):].strip()
+            elif value.startswith(_VERSION):
+                out["version"] = value[len(_VERSION):].strip()
             elif not out["title"]:
                 out["title"] = value
     return out
@@ -88,6 +92,8 @@ def entry(path: pathlib.Path, doc_id: str, **extra) -> dict:
     record = {"file": path.name, "id": doc_id, "title": head["title"],
               "url": head["url"], "fetched": head["fetched"],
               "chars": len(text), "sha256": digest(text)}
+    if head["version"]:
+        record["version"] = head["version"]
     record.update({k: v for k, v in extra.items() if v})
     return record
 
@@ -135,6 +141,11 @@ def classify(name: str, sources: list) -> tuple[str, str]:
     (engine/readers/ecmarkup.py), інакше refresh за id не знайде документа.
     """
     stem = name[:-4] if name.endswith(".txt") else name
+    # Читачі сайтів документації називають файл «джерело--ім'я»: власник
+    # упізнається з оголошення без жодного знання про формат.
+    owner, sep, tail = stem.partition("--")
+    if sep and tail and any(s["id"] == owner for s in sources):
+        return f"{owner}/{tail}", owner
     singles = {f"{s['id']}.txt": s["id"] for s in sources
                if s["reader"] in ("pdf", "rfc", "report", "ldml")}
     if name in singles:

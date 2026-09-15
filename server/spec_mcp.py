@@ -1,15 +1,17 @@
-"""ПРАКТИКА М5 · MCP-сервер над пошуком по специфікації ECMAScript.
+"""ПРАКТИКА М5 · MCP-сервер над пошуком по корпусу документів примірника.
 
-Своє API тут — шар пошуку з практик модулів 2–4: розділи специфікації, поділені
-на фрагменти, і пошук по словах BM25 над ними. Агент курсу возить цей пошук
-усередині свого процесу; тут той самий пошук виставлений назовні двома
-інструментами, і його бачить будь-який MCP-клієнт — Inspector, Claude Code,
-Cursor.
+Своє API тут — шар пошуку з практик модулів 2–4: документи, поділені на фрагменти,
+і пошук по словах BM25 над ними. Агент курсу возить цей пошук усередині свого
+процесу; тут той самий пошук виставлений назовні двома інструментами, і його бачить
+будь-який MCP-клієнт — Inspector, Claude Code, Cursor.
 
-Завантажується весь корпус: уся ECMA-262 плюс ECMA-402, ECMA-404, ECMA-414 і
-вільні документи, на які спирається 402, — сімдесят два файли, 4162 фрагменти.
-Що саме завантажено, сервер пише в stderr на старті і дописує окремим реченням
-до опису обох інструментів.
+Завантажується весь корпус примірника: у ecmascript — уся ECMA-262 плюс ECMA-402,
+ECMA-404, ECMA-414 і вільні документи, на які спирається 402, у react — документація
+React усіх версій. Що саме завантажено, сервер пише в stderr на старті і дописує
+окремим реченням до опису обох інструментів. Самі описи, ім'я сервера й імена
+інструментів — дані домену: лежать у теці примірника (prompts/, config.json) і
+читаються через common/profile.py, бо слова, якими сервер говорить з моделлю, у
+кожного домену свої.
 
 Шукає сервер двома способами. По словах — завжди: індекс BM25 будується з тих
 самих файлів при завантаженні модуля і нічого більше не потребує. За змістом —
@@ -48,7 +50,6 @@ import os
 import pathlib
 import re
 import sys
-import textwrap
 import threading
 
 # Сервер запускають файлом («python server/spec_mcp.py»), і клієнт (Mode A,
@@ -71,7 +72,9 @@ except ImportError:
 
 from common import instance
 from common import nform
-from common.corpus import DOC_SET, Passage, section_map
+from common import profile
+from common.corpus import (DOC_SET, Passage, section_map, version_key, version_line,
+                           version_within)
 from common.idmap import assign_ids
 from common import mode
 from common.lexical import LexicalIndex, tokenize
@@ -89,6 +92,10 @@ PREVIEW_CHARS = 600
 # Межі k. Менше одного — безглуздо, більше десяти — це вже добрих кілька тисяч
 # слів в одній відповіді, і клієнт платить за них своїми токенами.
 K_MIN, K_MAX = 1, 10
+
+# Найдовший рядок версії, який пошук приймає: «16.0.0-alpha.4» — чотирнадцять
+# символів, а довше за сорок — уже не версія, а текст не в тому полі.
+VERSION_MAX = 40
 
 # Індекс будується один раз при завантаженні модуля, а не на кожен виклик:
 # уся ECMA-262 читається з файлів і індексується приблизно за секунду, але
@@ -113,26 +120,20 @@ if not _BY_ID:
 _COUNT = len(_INDEX.passages)
 _DOCS = len({p.doc_id for p in _INDEX.passages})
 
+# Версії, які несуть документи, від найновішої. Порожньо — корпус версій не має.
+_VERSIONS = sorted({v for p in _INDEX.passages for v in p.versions},
+                   key=version_key, reverse=True)
+_LINES = sorted({version_line(v) for v in _VERSIONS}, key=version_key, reverse=True)
+
 # Що саме зараз завантажено — одним реченням для моделі. Це не можна написати в
-# докстрінгу наперед: набір обирає той, хто запускає сервер, і лише сам сервер
-# знає, що з цього вийшло. Модель, яка не знає меж того, що їй доступно, вигадує
-# відповіді про розділи, яких тут немає.
-_LOADED = {
-    "core": (f"Loaded right now: only the {_DOCS} sections around the Object type "
-             f"({_COUNT} excerpts) -- the object type itself, ordinary and exotic "
-             f"objects, and the Object, Array, String, Number, Boolean, Symbol and "
-             f"Proxy chapters. The rest of the language is not here."),
-    "full": (f"Loaded right now: the whole of ECMA-262, {_COUNT} excerpts from "
-             f"{_DOCS} sections -- syntax, semantics, every built-in object. Other "
-             f"standards are not here: no ECMA-402 (Intl), no ECMA-404 (JSON)."),
-    "suite": (f"Loaded right now: the whole of ECMA-262 together with ECMA-402 "
-              f"(Intl), ECMA-404 (JSON), ECMA-414 and the free documents the Intl "
-              f"specification builds on -- RFC 4647 and the Unicode reports UAX #29, "
-              f"UTS #10 and UTS #35. {_COUNT} excerpts from {_DOCS} documents. This "
-              f"is the widest set the server has; if something about JavaScript or "
-              f"its internationalization is not found here, it is unlikely to be "
-              f"anywhere in these standards."),
-}[DOC_SET]
+# описі наперед: набір обирає той, хто запускає сервер, і лише сам сервер знає,
+# що з цього вийшло. Модель, яка не знає меж того, що їй доступно, вигадує
+# відповіді про розділи, яких тут немає. Речення — у prompts/loaded.txt
+# примірника; числа й лінії версій підставляє сервер.
+_LOADED = (profile.text("loaded")
+           .replace("{excerpts}", str(_COUNT))
+           .replace("{documents}", str(_DOCS))
+           .replace("{versions}", ", ".join(_LINES)))
 
 # Рядок діагностики — у stderr. У stdout не можна нічого: там ходять кадри
 # JSON-RPC, і будь-який print ламає клієнтові розбір відповіді.
@@ -148,7 +149,7 @@ print(f"spec_mcp: набір «{DOC_SET}», проіндексовано {_COUNT
 # кожному старті, поруч із рештою чисел.
 _SECTIONS = section_map()
 _WITH_TEXT = {s for s, has in _SECTIONS.items() if has}
-_LOST = _WITH_TEXT - {p.section for p in _INDEX.passages if p.section}
+_LOST = _WITH_TEXT - {p.anchor for p in _INDEX.passages if p.section}
 if _LOST:
     print(f"spec_mcp: УВАГА: {len(_LOST)} "
           f"{nform(len(_LOST), 'розділ', 'розділи', 'розділів')} із власним "
@@ -278,7 +279,7 @@ def _log(tool: str, request: str, outcome: str) -> None:
         print(f"spec_mcp: журнал не записався ({exc})", file=sys.stderr)
 
 
-mcp = _Server("ecma-spec")
+mcp = _Server(profile.SERVER_NAME)
 
 
 def _preview(text: str) -> str:
@@ -323,7 +324,10 @@ def _format_hits(passages: list[Passage], how: str) -> dict:
     Поле `search` каже моделі, як саме знайдено: «words» — лише по словах,
     «meaning+words» — обидва способи разом. Це не прикраса: коли пошук за змістом
     лежить, порожня відповідь означає інше, ніж коли він працює, і модель має
-    змогу це врахувати."""
+    змогу це врахувати.
+
+    Поле `versions` є лише в корпусі з версіями: усі версії, в документах яких
+    цей текст стоїть дослівно, від найновішої."""
     if not passages:
         return {"found": 0, "search": how,
                 "note": "Nothing in the available excerpts matches this query."}
@@ -332,9 +336,12 @@ def _format_hits(passages: list[Passage], how: str) -> dict:
         clean, flagged = _sanitize(p)
         if flagged:
             _log("sanitize", f"id={_UID[p]}",
-                 "фрагмент вилучено з видачі search_spec: розтяжка санітара")
-        items.append({"id": _UID[p], "section": p.label,
-                      "document": p.doc_title, "text": _preview(clean)})
+                 f"фрагмент вилучено з видачі {profile.SEARCH_TOOL}: розтяжка санітара")
+        item = {"id": _UID[p], "section": p.label,
+                "document": p.doc_title, "text": _preview(clean)}
+        if p.versions:
+            item["versions"] = list(p.versions)
+        items.append(item)
     return {"found": len(passages), "search": how, "passages": items}
 
 
@@ -354,15 +361,22 @@ def _rrf(rankings: list[list[Passage]], k: int, const: int = 60) -> list[Passage
     return sorted(score, key=lambda p: -score[p])[:k]
 
 
-def _find(query: str, k: int) -> tuple[list[Passage], str]:
-    """Пошук по словах, а якщо готовий — разом із пошуком за змістом."""
-    words = _INDEX.retrieve(query, k)
+def _find(query: str, k: int, keep=None) -> tuple[list[Passage], str]:
+    """Пошук по словах, а якщо готовий — разом із пошуком за змістом.
+
+    `keep` — фільтр версії. Qdrant його не знає (версії фрагмента дописуються при
+    злитті повторів і в payload точки могли б застаріти), тож за змістом береться
+    ширший список, а відбір робиться тут, по фрагментах поточного корпусу."""
+    words = _INDEX.retrieve(query, k, keep)
     if not _VECTORS_READY:
         return words, "words"
     try:
         from common import embed, vectorstore
-        hits = vectorstore.search(embed.embed_query(query), k)
+        limit = k if keep is None else max(50, k * 10)
+        hits = vectorstore.search(embed.embed_query(query), limit)
         meaning = [_BY_ID[h["uid"]] for h in hits if h.get("uid") in _BY_ID]
+        if keep is not None:
+            meaning = [p for p in meaning if keep(p)][:k]
     except Exception as exc:                      # noqa: BLE001 - причина в stderr
         print(f"spec_mcp: пошук за змістом не відповів ({exc}); "
               f"віддаю знайдене по словах", file=sys.stderr)
@@ -372,49 +386,35 @@ def _find(query: str, k: int) -> tuple[list[Passage], str]:
     return _rrf([words, meaning], k), "meaning+words"
 
 
-def search_spec(query: str, k: int = 3) -> dict:
-    """Search the text of the ECMAScript language specification (ECMA-262) and
-    return the matching excerpts with their section numbers.
-
-    Call this when a question is about how something is defined or behaves in
-    JavaScript itself -- an operator, an abstract operation, a built-in method or
-    property of Object, Array, String, Number, Boolean, Symbol, Proxy or
-    TypedArray -- and the answer should cite where the specification says it.
-    Example query: "Object.prototype.toString tag".
-
-    Do not call this for questions about browsers, the DOM, Node.js, npm
-    packages, TypeScript or any library: none of that is in the specification and
-    the search will return unrelated sections with confident-looking numbers.
-
-    Write the query in English, using the identifiers the specification itself
-    uses. Everything here is English -- the excerpts, the word index and the
-    meaning index alike -- and the word index keeps only latin letters and digits,
-    so a query written in Ukrainian, Russian or any other non-latin script matches
-    nothing at all and comes back with `found: 0`. When the user asks in another
-    language, translate the question into specification terms first, then search.
-
-    The `search` field of the result says how the excerpts were found: "words"
-    means the words of the query had to appear in the text, so a query phrased in
-    other words than the specification uses may miss; "meaning+words" means a
-    second, meaning-based index answered as well, and a paraphrase had a chance.
-
-    Answer in the language the user wrote in. When that language is Ukrainian,
-    write as a Ukrainian engineer writes, not as a translation from English:
-    plain technical prose, and the Ukrainian word wherever one exists -- "розділ",
-    not "секція"; "уривок", not "ексерпт"; "вбудований метод", not "білт-ін".
-    Never call this set of sections "корпус" -- say "розділи специфікації".
-    Identifiers, method names and section titles stay in English, spelled exactly
-    as the specification spells them. Name the section by its number, and build
-    the answer out of the steps that came back, not out of memory: if the excerpt
-    was cut, read the whole of it before describing what it says.
-
-    Arguments: `query` is free text; `k` is how many excerpts to return, 1 to 10,
-    default 3. Excerpt text is cut at 600 characters -- pass the `id` of an
-    excerpt to `read_section` to get the whole thing.
-    """
+def _search(query: str, k: int, version: str | None = None) -> dict:
+    """Пошук, спільний для обох форм інструмента. Опис для моделі — не тут, а в
+    prompts/search.txt примірника: що шукати і коли не кликати, у кожного домену
+    своє."""
+    tool = profile.SEARCH_TOOL
+    tail = f" version={version!r}" if version else ""
     if not isinstance(k, int) or k < K_MIN or k > K_MAX:
-        _log("search_spec", f"query={query!r} k={k!r}", "помилка: k поза межами")
+        _log(tool, f"query={query!r} k={k!r}{tail}", "помилка: k поза межами")
         return {"error": f"k має бути від {K_MIN} до {K_MAX}"}
+
+    keep = None
+    if version is not None:
+        if not isinstance(version, str) or len(version) > VERSION_MAX:
+            _log(tool, f"query={query!r} k={k}{tail}", "помилка: версія не рядок чи задовга")
+            return {"error": f"version має бути рядком до {VERSION_MAX} символів, "
+                             f"напр. \"18\" або \"16.8\""}
+        want = version.strip().removeprefix("v")
+        if want:
+            if not any(version_within(v, want) for v in _VERSIONS):
+                _log(tool, f"query={query!r} k={k}{tail}", "такої версії немає")
+                return {"found": 0, "search": "words",
+                        "note": f"Nothing here is marked with version {want!r}. "
+                                f"Release lines held here: {', '.join(_LINES)}. Pass one "
+                                f"of them or a longer version within it (\"18\" matches "
+                                f"every 18.x, \"16.8\" every 16.8.x), or leave version "
+                                f"empty to search everything."}
+
+            def keep(p: Passage) -> bool:
+                return any(version_within(v, want) for v in p.versions)
 
     # Запит без жодного латинського слова далі не йде — ані в пошук по словах,
     # ані в пошук за змістом. По словах він і так дав би нуль: токенізатор бачить
@@ -424,39 +424,32 @@ def search_spec(query: str, k: int = 3) -> dict:
     # три впевнені номери розділів навмання — саме та помилка, проти якої написано
     # абзац «коли не кликати». Тому тут відповідь чесна: шукати не було чого.
     if not tokenize(query):
-        _log("search_spec", f"query={query!r} k={k}",
-             "нуль латинських слів у запиті")
+        _log(tool, f"query={query!r} k={k}{tail}", "нуль латинських слів у запиті")
         return {"found": 0, "search": "words",
                 "note": "The query has no latin words, and everything held here "
                         "is English -- both the word index and the meaning index. "
                         "Translate the question into the terms the specification "
                         "uses, then search again."}
 
-    hits, how = _find(query, k)
-    _log("search_spec", f"query={query!r} k={k}",
-         f"знайдено {len(hits)} ({how})")
+    hits, how = _find(query, k, keep)
+    _log(tool, f"query={query!r} k={k}{tail}", f"знайдено {len(hits)} ({how})")
     return _format_hits(hits, how)
 
 
+def search_spec(query: str, k: int = 3) -> dict:
+    """Пошук без фільтра версії — для корпусу, де документи версій не мають."""
+    return _search(query, k)
+
+
+def search_versioned(query: str, k: int = 3, version: str = "") -> dict:
+    """Пошук з фільтром версії: "18" лишає 18.x, "0.14" — 0.14.x, порожньо — усе."""
+    return _search(query, k, version)
+
+
 def read_section(id: str) -> dict:
-    """Return the full text of one specification excerpt by its identifier,
-    together with the section number, the URL it was taken from and the date the
-    text was fetched from that URL -- so a quotation can be checked against the
-    source even a year later.
-
-    Call this after `search_spec` when the excerpt you need came back cut at 600
-    characters, or when the exact wording of a step in an abstract operation
-    matters -- a definition quoted half-way is how a wrong answer starts.
-
-    Do not guess identifiers: they are not section numbers and cannot be
-    assembled by hand. Every identifier this tool accepts comes from the `id`
-    field of a `search_spec` result.
-
-    The text comes back in English, as the specification is written. Answer the
-    user in their own language, and follow the same rules as for `search_spec`:
-    keep identifiers and section titles in English, use Ukrainian words for
-    Ukrainian prose, and cite the section number you read.
-    """
+    """Повний текст одного фрагмента за ідентифікатором з видачі пошуку. Опис для
+    моделі — prompts/read.txt примірника."""
+    tool = profile.READ_TOOL
     passage = _BY_ID.get(id)
     if passage is None:
         # Голий номер розділу — найчастіша вгадка моделі. Якщо документи такий
@@ -465,61 +458,70 @@ def read_section(id: str) -> dict:
         # і мовчати про неї означає вчити модель гадати номери далі.
         sec = id.strip()
         if sec in _SECTIONS and not _SECTIONS[sec]:
-            _log("read_section", f"id={id!r}", "рубрика без власного тексту")
+            _log(tool, f"id={id!r}", "рубрика без власного тексту")
             return {"error": f"розділ {sec} існує, але власного тексту не має — "
                              f"його вміст лежить у підрозділах",
-                    "hint": "знайдіть підрозділи через search_spec і читайте їх "
-                            "за id з видачі"}
+                    "hint": f"знайдіть підрозділи через {profile.SEARCH_TOOL} і читайте "
+                            f"їх за id з видачі"}
         if sec in _SECTIONS:
-            _log("read_section", f"id={id!r}", "номер розділу замість id")
+            _log(tool, f"id={id!r}", "номер розділу замість id")
             return {"error": f"розділ {sec} в індексі є, але читається він за "
                              f"повним id, а не голим номером",
-                    "hint": f"id береться з поля id у відповіді search_spec, "
+                    "hint": f"id береться з поля id у відповіді {profile.SEARCH_TOOL}, "
                             f'напр. "{_EXAMPLE_ID}"'}
-        _log("read_section", f"id={id!r}", "помилка: такого id немає")
+        _log(tool, f"id={id!r}", "помилка: такого id немає")
         return {"error": "фрагмента з таким id немає",
-                "hint": "id береться з поля id у відповіді search_spec"}
+                "hint": f"id береться з поля id у відповіді {profile.SEARCH_TOOL}"}
     clean, flagged = _sanitize(passage)
     if flagged:
-        _log("read_section", f"id={id!r}",
-             "фрагмент вилучено з відповіді: розтяжка санітара")
+        _log(tool, f"id={id!r}", "фрагмент вилучено з відповіді: розтяжка санітара")
     else:
-        _log("read_section", f"id={id!r}", f"{len(passage.text)} символів")
-    return {"id": _UID[passage],
-            "section": passage.label,
-            "document": passage.doc_title,
-            "url": passage.url,
-            "fetched": passage.fetched,
-            "text": clean}
+        _log(tool, f"id={id!r}", f"{len(passage.text)} символів")
+    answer = {"id": _UID[passage],
+              "section": passage.label,
+              "document": passage.doc_title,
+              "url": passage.url,
+              "fetched": passage.fetched,
+              "text": clean}
+    if passage.versions:
+        answer["versions"] = list(passage.versions)
+    return answer
 
 
 # Реєстрація. Обидва інструменти могли б висіти на звичайному @mcp.tool(), і тоді
 # описом ставав би самий докстрінг — так зроблено в курсовому tracking_mcp.py.
-# Тут описом стає докстрінг ПЛЮС рядок про завантажений набір: інакше модель не
-# знає, де межа того, що їй доступно, а докстрінг цієї межі знати не може, бо її
-# обирають при запуску.
+# Тут описом стає текст із prompts/ примірника ПЛЮС рядок про завантажений набір:
+# інакше модель не знає, де межа того, що їй доступно, а заготовлений текст цієї
+# межі знати не може, бо її обирають при запуску.
 #
-# Так само дописується приклад ідентифікатора для read_section. У докстрінгу його
+# Так само дописується приклад ідентифікатора для read_section. У заготовці його
 # теж не напишеш наперед: ідентифікатор починається з імені файла, а те саме
 # місце специфікації лежить у різних наборах у файлах із різними іменами —
 # «14-object-objects#20.1.3.6/2» у наборі core і «20-fundamental-objects#20.1.3.6/2»
 # у full та suite. Приклад модель копіює дослівно, тож він мусить бути з того
 # індексу, який справді завантажений.
 _EXAMPLE_ID = next(
-    (uid for uid, p in _BY_ID.items() if "Object.prototype.toString" in p.label),
+    (uid for uid, p in _BY_ID.items()
+     if profile.EXAMPLE_LABEL and profile.EXAMPLE_LABEL in p.label),
     next(iter(_BY_ID)))
 
+# Форма пошуку — з фільтром версії чи без — задана профілем: схема інструмента
+# без поля version для корпусу, де версій немає, не пропонує моделі аргумент,
+# якого сервер не зміг би виконати.
+SEARCH = search_versioned if profile.VERSIONS else search_spec
+READ = read_section
+
 _EXTRA = {
-    "search_spec": _LOADED,
-    "read_section": f'Example identifier: "{_EXAMPLE_ID}".\n\n{_LOADED}',
+    "search": _LOADED,
+    "read": f'Example identifier: "{_EXAMPLE_ID}".\n\n{_LOADED}',
 }
 
 TOOL_DESCRIPTIONS: dict[str, str] = {}
 
-for _fn in (search_spec, read_section):
-    TOOL_DESCRIPTIONS[_fn.__name__] = (
-        textwrap.dedent(_fn.__doc__).strip() + "\n\n" + _EXTRA[_fn.__name__])
-    mcp.tool(description=TOOL_DESCRIPTIONS[_fn.__name__])(_fn)
+for _name, _fn, _key in ((profile.SEARCH_TOOL, SEARCH, "search"),
+                         (profile.READ_TOOL, READ, "read")):
+    TOOL_DESCRIPTIONS[_name] = profile.text(_key) + "\n\n" + _EXTRA[_key]
+    mcp.tool(name=_name, description=TOOL_DESCRIPTIONS[_name])(_fn)
 
 
 def _serve_port() -> int:

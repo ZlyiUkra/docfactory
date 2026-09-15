@@ -304,14 +304,16 @@ def _fill(todo: list) -> int:
                                  batch_size=embed.BATCH)
     for offset, vector in enumerate(stream):
         p, uid, sid, digest = todo[offset]
-        batch.append({
-            "id": sid,
-            "vector": vector.tolist(),
-            "payload": {"uid": uid, "digest": digest, "pid": p.pid,
-                        "doc_id": p.doc_id, "doc_title": p.doc_title,
-                        "section": p.section, "label": p.label,
-                        "url": p.url, "text": p.text},
-        })
+        payload = {"uid": uid, "digest": digest, "pid": p.pid,
+                   "doc_id": p.doc_id, "doc_title": p.doc_title,
+                   "section": p.section, "label": p.label,
+                   "url": p.url, "text": p.text}
+        # Версії — довідково: пошук фільтрує за версіями поточного корпусу, а
+        # не за payload, бо злиття повторів дописує версії без зміни тексту, і
+        # сума точки (а з нею й перерахунок) про це не дізнається.
+        if p.versions:
+            payload["versions"] = list(p.versions)
+        batch.append({"id": sid, "vector": vector.tolist(), "payload": payload})
         if len(batch) == vectorstore.BATCH:
             sent += vectorstore.upsert(batch)
             batch = []

@@ -27,6 +27,9 @@ ENV = "DF_INSTANCE_DIR"
 # дані, але дані, що потрапляють в адресу REST-запиту до Qdrant і в назви — тож
 # межа тут не «що завгодно», а звичайне ім'я без роздільників шляхів і пробілів.
 _NAME_OK = re.compile(r"^[A-Za-z0-9._-]+$")
+# Ім'я інструмента MCP і домен у переліку дозволених посилань.
+_TOOL_OK = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
+_HOST_OK = re.compile(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$")
 
 _config: dict | None = None
 
@@ -53,13 +56,31 @@ def config() -> dict:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
         raise SystemExit(f"{path}: не читається ({exc})")
-    for field in ("collection", "embed_model"):
+    for field in ("collection", "embed_model", "server_name", "doc_set"):
         value = data.get(field)
         if value is not None and (not isinstance(value, str)
                                   or not _NAME_OK.match(value)):
             raise SystemExit(
                 f"{path}: поле {field} мусить бути іменем з літер, цифр, "
                 f"«._-», а не {value!r}")
+    tools = data.get("tools")
+    if tools is not None and (
+            not isinstance(tools, dict) or set(tools) - {"search", "read"}
+            or any(not isinstance(v, str) or not _TOOL_OK.match(v)
+                   for v in tools.values())):
+        raise SystemExit(f"{path}: поле tools — це {{\"search\": …, \"read\": …}} з "
+                         f"іменами з малих латинських літер, цифр і «_», а не {tools!r}")
+    if data.get("sections") not in (None, "numbered", "markdown"):
+        raise SystemExit(f"{path}: поле sections — \"numbered\" або \"markdown\", "
+                         f"а не {data.get('sections')!r}")
+    if "versions" in data and not isinstance(data["versions"], bool):
+        raise SystemExit(f"{path}: поле versions — true або false")
+    hosts = data.get("answer_hosts")
+    if hosts is not None and (not isinstance(hosts, list) or any(
+            not isinstance(h, str) or not _HOST_OK.match(h) for h in hosts)):
+        raise SystemExit(f"{path}: поле answer_hosts — список доменів, а не {hosts!r}")
+    if not isinstance(data.get("example_label", ""), str):
+        raise SystemExit(f"{path}: поле example_label мусить бути рядком")
     port = data.get("port")
     if port is not None and (not isinstance(port, int)
                              or not 1 <= port <= 65535):

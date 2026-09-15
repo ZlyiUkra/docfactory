@@ -2,12 +2,15 @@
 
     .venv/bin/python -m engine --instance <назва> --sources [--why]
     .venv/bin/python -m engine --instance <назва> --list
-    .venv/bin/python -m engine --instance <назва> --refresh [id...]
+    .venv/bin/python -m engine --instance <назва> --status [--deep] [id...]
+    .venv/bin/python -m engine --instance <назва> --refresh [--missing] [id...]
 
 `--sources` друкує оголошення джерел і білий список, що з нього виводиться;
-`--list` показує, що завантажилося б, нічого не пишучи; `--refresh` завантажує
-корпус у `instances/<назва>/corpus/`, тягнучи лише дозволене. Без імен `--refresh`
-оновлює все, з іменами — лише названі документи чи джерела.
+`--list` показує, що завантажилося б, нічого не пишучи; `--status` звіряє корпус із
+джерелами (з іменами — лише названі джерела); `--refresh` завантажує корпус у
+`instances/<назва>/corpus/`, тягнучи лише дозволене. Без імен `--refresh` оновлює
+все, крім заморожених джерел, з іменами — лише названі документи чи джерела;
+`--missing` докачує тільки відсутні файли й наявних не перезаписує.
 
 Кличеться з теки `docfactory/` (щоб `engine` був видимий як пакет), venv-ом самого
 примірника (щоб залежності читачів були на місці).
@@ -48,6 +51,7 @@ def main(argv: list[str]) -> int:
     name_idx = argv.index("--instance") + 1
     name = argv[name_idx]
     instance_dir = _instance_dir(name)
+    targets = {a for i, a in enumerate(argv) if not a.startswith("-") and i != name_idx}
 
     if "--manifest" in argv:
         import time
@@ -61,14 +65,12 @@ def main(argv: list[str]) -> int:
 
     if "--status" in argv:
         from engine import status as ST
-        return ST.status(instance_dir, deep="--deep" in argv)
+        return ST.status(instance_dir, deep="--deep" in argv, targets=frozenset(targets))
 
     if "--refresh" in argv or "--list" in argv:
         from engine import refresh as R
-        targets = {a for i, a in enumerate(argv)
-                   if not a.startswith("-") and i != name_idx}
-        return R.refresh(instance_dir, targets,
-                         do_refresh="--refresh" in argv, listing="--list" in argv)
+        return R.refresh(instance_dir, targets, do_refresh="--refresh" in argv,
+                         listing="--list" in argv, missing="--missing" in argv)
 
     data = S.load(instance_dir)
     if "--sources" in argv:

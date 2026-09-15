@@ -67,11 +67,15 @@ class LexicalIndex:
         # близько нуля, але не від'ємну — звідси +1 під логарифмом.
         self.idf = {w: math.log(1 + (n - c + 0.5) / (c + 0.5)) for w, c in df.items()}
 
-    def scores(self, query: str, k: int = 3) -> list[tuple[float, Passage]]:
-        """Перші k фрагментів з оцінками, від більшої до меншої."""
+    def scores(self, query: str, k: int = 3, keep=None) -> list[tuple[float, Passage]]:
+        """Перші k фрагментів з оцінками, від більшої до меншої. `keep` — відбір
+        фрагментів до ранжування (фільтр версії): відбирати після перших k
+        означало б віддати менше k, хоча потрібних фрагментів вистачає."""
         terms = tokenize(query)
         out = []
         for i, counts in enumerate(self.tf):
+            if keep is not None and not keep(self.passages[i]):
+                continue
             norm = K1 * (1 - B + B * self.lengths[i] / (self.avg_len or 1))
             s = 0.0
             for t in terms:
@@ -84,6 +88,6 @@ class LexicalIndex:
         out.sort(key=lambda x: -x[0])
         return out[:k]
 
-    def retrieve(self, query: str, k: int = 3) -> list[Passage]:
+    def retrieve(self, query: str, k: int = 3, keep=None) -> list[Passage]:
         """Тільки фрагменти. Порожній список означає, що жодне слово запиту не збіглося."""
-        return [p for _, p in self.scores(query, k)]
+        return [p for _, p in self.scores(query, k, keep)]

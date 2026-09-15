@@ -30,6 +30,12 @@ PROTOCOL_VERSION = "2025-06-18"
 
 CUT = 400
 
+# Ім'я інструмента пошуку і запит — з профілю й checks.json примірника.
+_CODE_ROOT = pathlib.Path(__file__).resolve().parents[1]
+if str(_CODE_ROOT) not in sys.path:
+    sys.path.insert(0, str(_CODE_ROOT))
+from common import profile  # noqa: E402
+
 FRAMES = [
     {"jsonrpc": "2.0", "id": 1, "method": "initialize",
      "params": {"protocolVersion": PROTOCOL_VERSION,
@@ -38,8 +44,8 @@ FRAMES = [
     {"jsonrpc": "2.0", "method": "notifications/initialized"},
     {"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
     {"jsonrpc": "2.0", "id": 3, "method": "tools/call",
-     "params": {"name": "search_spec",
-                "arguments": {"query": "Object.prototype.toString tag", "k": 1}}},
+     "params": {"name": profile.SEARCH_TOOL,
+                "arguments": {"query": profile.checks()["find"]["query"], "k": 1}}},
 ]
 
 

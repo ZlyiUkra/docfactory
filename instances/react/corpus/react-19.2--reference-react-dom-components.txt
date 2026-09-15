@@ -1,0 +1,373 @@
+# React DOM Components
+# джерело: https://github.com/reactjs/react.dev/blob/f9fd07ca599b3c910528a97399bad851a6870474/src/content/reference/react-dom/components/index.md
+# отримано: 2026-09-15
+# версія: 19.2.0
+
+React supports all of the browser built-in HTML and SVG components.
+
+---
+
+## Common components
+
+All of the built-in browser components support some props and events.
+
+* Common components (e.g. `<div>`)
+
+This includes React-specific props like `ref` and `dangerouslySetInnerHTML`.
+
+---
+
+## Form components
+
+These built-in browser components accept user input:
+
+* `<input>`
+* `<select>`
+* `<textarea>`
+
+They are special in React because passing the `value` prop to them makes them *controlled.*
+
+---
+
+## Resource and Metadata Components
+
+These built-in browser components let you load external resources or annotate the document with metadata:
+
+* `<link>`
+* `<meta>`
+* `<script>`
+* `<style>`
+* `<title>`
+
+They are special in React because React can render them into the document head, suspend while resources are loading, and enact other behaviors that are described on the reference page for each specific component.
+
+---
+
+## All HTML components
+
+React supports all built-in browser HTML components. This includes:
+
+* `<aside>`
+* `<audio>`
+* `<b>`
+* `<base>`
+* `<bdi>`
+* `<bdo>`
+* `<blockquote>`
+* `<body>`
+* `<br>`
+* `<button>`
+* `<canvas>`
+* `<caption>`
+* `<cite>`
+* `<code>`
+* `<col>`
+* `<colgroup>`
+* `<data>`
+* `<datalist>`
+* `<dd>`
+* `<del>`
+* `<details>`
+* `<dfn>`
+* `<dialog>`
+* `<div>`
+* `<dl>`
+* `<dt>`
+* `<em>`
+* `<embed>`
+* `<fieldset>`
+* `<figcaption>`
+* `<figure>`
+* `<footer>`
+* `<form>`
+* `<h1>`
+* `<head>`
+* `<header>`
+* `<hgroup>`
+* `<hr>`
+* `<html>`
+* `<i>`
+* `<iframe>`
+* `<img>`
+* `<input>`
+* `<ins>`
+* `<kbd>`
+* `<label>`
+* `<legend>`
+* `<li>`
+* `<link>`
+* `<main>`
+* `<map>`
+* `<mark>`
+* `<menu>`
+* `<meta>`
+* `<meter>`
+* `<nav>`
+* `<noscript>`
+* `<object>`
+* `<ol>`
+* `<optgroup>`
+* `<option>`
+* `<output>`
+* `<p>`
+* `<picture>`
+* `<pre>`
+* `<progress>`
+* `<q>`
+* `<rp>`
+* `<rt>`
+* `<ruby>`
+* `<s>`
+* `<samp>`
+* `<script>`
+* `<section>`
+* `<select>`
+* `<slot>`
+* `<small>`
+* `<source>`
+* `<span>`
+* `<strong>`
+* `<style>`
+* `<sub>`
+* `<summary>`
+* `<sup>`
+* `<table>`
+* `<tbody>`
+* `<td>`
+* `<template>`
+* `<textarea>`
+* `<tfoot>`
+* `<th>`
+* `<thead>`
+* `<time>`
+* `<title>`
+* `<tr>`
+* `<track>`
+* `<u>`
+* `<ul>`
+* `<var>`
+* `<video>`
+* `<wbr>`
+
+Note:
+
+Similar to the DOM standard, React uses a `camelCase` convention for prop names. For example, you'll write `tabIndex` instead of `tabindex`. You can convert existing HTML to JSX with an online converter.
+
+---
+
+### Custom HTML elements
+
+If you render a tag with a dash, like `<my-element>`, React will assume you want to render a custom HTML element.
+
+If you render a built-in browser HTML element with an `is` attribute, it will also be treated as a custom element.
+
+#### Setting values on custom elements
+
+Custom elements have two methods of passing data into them:
+
+1) Attributes: Which are displayed in markup and can only be set to string values
+2) Properties: Which are not displayed in markup and can be set to arbitrary JavaScript values
+
+By default, React will pass values bound in JSX as attributes:
+
+```jsx
+<my-element value="Hello, world!"></my-element>
+```
+
+Non-string JavaScript values passed to custom elements will be serialized by default:
+
+```jsx
+// Will be passed as `"1,2,3"` as the output of `[1,2,3].toString()`
+<my-element value={[1,2,3]}></my-element>
+```
+
+React will, however, recognize an custom element's property as one that it may pass arbitrary values to if the property name shows up on the class during construction:
+
+```js
+import {MyElement} from './MyElement.js';
+import { createRoot } from 'react-dom/client';
+import {App} from "./App.js";
+
+customElements.define('my-element', MyElement);
+
+const root = createRoot(document.getElementById('root'))
+root.render(<App />);
+```
+
+```js
+export class MyElement extends HTMLElement {
+  constructor() {
+    super();
+    // The value here will be overwritten by React
+    // when initialized as an element
+    this.value = undefined;
+  }
+
+  connectedCallback() {
+    this.innerHTML = this.value.join(", ");
+  }
+}
+```
+
+```js
+export function App() {
+  return <my-element value={[1,2,3]}></my-element>
+}
+```
+
+#### Listening for events on custom elements
+
+A common pattern when using custom elements is that they may dispatch `CustomEvent`s rather than accept a function to call when an event occur. You can listen for these events using an `on` prefix when binding to the event via JSX.
+
+```js
+import {MyElement} from './MyElement.js';
+import { createRoot } from 'react-dom/client';
+import {App} from "./App.js";
+
+customElements.define('my-element', MyElement);
+
+const root = createRoot(document.getElementById('root'))
+root.render(<App />);
+```
+
+```javascript
+export class MyElement extends HTMLElement {
+  constructor() {
+    super();
+    this.test = undefined;
+    this.emitEvent = this._emitEvent.bind(this);
+  }
+
+  _emitEvent() {
+    const event = new CustomEvent('speak', {
+      detail: {
+        message: 'Hello, world!',
+      },
+    });
+    this.dispatchEvent(event);
+  }
+
+  connectedCallback() {
+    this.el = document.createElement('button');
+    this.el.innerText = 'Say hi';
+    this.el.addEventListener('click', this.emitEvent);
+    this.appendChild(this.el);
+  }
+
+  disconnectedCallback() {
+    this.el.removeEventListener('click', this.emitEvent);
+  }
+}
+```
+
+```jsx
+export function App() {
+  return (
+    <my-element
+      onspeak={e => console.log(e.detail.message)}
+    ></my-element>
+  )
+}
+```
+
+Note:
+
+Events are case-sensitive and support dashes (`-`). Preserve the casing of the event and include all dashes when listening for custom element's events:
+
+```jsx
+// Listens for `say-hi` events
+<my-element onsay-hi={console.log}></my-element>
+// Listens for `sayHi` events
+<my-element onsayHi={console.log}></my-element>
+```
+
+---
+
+## All SVG components
+
+React supports all built-in browser SVG components. This includes:
+
+* `<a>`
+* `<animate>`
+* `<animateMotion>`
+* `<animateTransform>`
+* `<circle>`
+* `<clipPath>`
+* `<defs>`
+* `<desc>`
+* `<discard>`
+* `<ellipse>`
+* `<feBlend>`
+* `<feColorMatrix>`
+* `<feComponentTransfer>`
+* `<feComposite>`
+* `<feConvolveMatrix>`
+* `<feDiffuseLighting>`
+* `<feDisplacementMap>`
+* `<feDistantLight>`
+* `<feDropShadow>`
+* `<feFlood>`
+* `<feFuncA>`
+* `<feFuncB>`
+* `<feFuncG>`
+* `<feFuncR>`
+* `<feGaussianBlur>`
+* `<feImage>`
+* `<feMerge>`
+* `<feMergeNode>`
+* `<feMorphology>`
+* `<feOffset>`
+* `<fePointLight>`
+* `<feSpecularLighting>`
+* `<feSpotLight>`
+* `<feTile>`
+* `<feTurbulence>`
+* `<filter>`
+* `<foreignObject>`
+* `<g>`
+* `<hatch>`
+* `<hatchpath>`
+* `<image>`
+* `<line>`
+* `<linearGradient>`
+* `<marker>`
+* `<mask>`
+* `<metadata>`
+* `<mpath>`
+* `<path>`
+* `<pattern>`
+* `<polygon>`
+* `<polyline>`
+* `<radialGradient>`
+* `<rect>`
+* `<script>`
+* `<set>`
+* `<stop>`
+* `<style>`
+* `<svg>`
+* `<switch>`
+* `<symbol>`
+* `<text>`
+* `<textPath>`
+* `<title>`
+* `<tspan>`
+* `<use>`
+* `<view>`
+
+Note:
+
+Similar to the DOM standard, React uses a `camelCase` convention for prop names. For example, you'll write `tabIndex` instead of `tabindex`. You can convert existing SVG to JSX with an online converter.
+
+Namespaced attributes also have to be written without the colon:
+
+* `xlink:actuate` becomes `xlinkActuate`.
+* `xlink:arcrole` becomes `xlinkArcrole`.
+* `xlink:href` becomes `xlinkHref`.
+* `xlink:role` becomes `xlinkRole`.
+* `xlink:show` becomes `xlinkShow`.
+* `xlink:title` becomes `xlinkTitle`.
+* `xlink:type` becomes `xlinkType`.
+* `xml:base` becomes `xmlBase`.
+* `xml:lang` becomes `xmlLang`.
+* `xml:space` becomes `xmlSpace`.
+* `xmlns:xlink` becomes `xmlnsXlink`.

@@ -4,10 +4,11 @@
 full story see [README.md](README.md) (architecture, protection layers, roadmap) and [UPDATE.md](UPDATE.md) (how
 to keep the corpus current).*
 
-One engine, many isolated servers. Each server answers questions about one body of documentation — today the
-ECMAScript specification (ECMA-262, ECMA-402 and the Unicode, IETF and Ecma documents they build on), tomorrow the
-docs of a JavaScript framework — over MCP: search over a local corpus plus four protection layers. Domains never
-mix: the code is shared, everything else belongs to one *instance* under `instances/<domain>/`.
+One engine, many isolated servers. Each server answers questions about one body of documentation — the ECMAScript
+specification (ECMA-262, ECMA-402 and the Unicode, IETF and Ecma documents they build on) and the React
+documentation of every version, from 0.3 to 19.3, with its blog, changelog and release notes — over MCP: search
+over a local corpus plus four protection layers. Domains never mix: the code is shared, everything else belongs to
+one *instance* under `instances/<domain>/`.
 
 ## What it is for
 
@@ -32,11 +33,15 @@ One boundary worth naming: the corpus says what the standard *requires*, not wha
 docfactory/
   engine/       shared: sources schema and whitelist, readers, corpus builder, passport, updater
   server/       shared: MCP server (HTTP and stdio), four protection layers, the project's own agent
-  common/       shared: word search (BM25), meaning search (fastembed + Qdrant), instance config
+  common/       shared: word search (BM25), meaning search (fastembed + Qdrant), instance config and profile
   instances/
-    ecmascript/ one instance: sources.json, corpus/, config.json, .env, .mcp.json — data only, no code
+    ecmascript/ one instance: sources.json, corpus/, config.json, prompts/, checks.json, .env, .mcp.json — data only
+    react/      the same layout; every document carries the React version it describes
   df            launcher: ./df <instance> <step>, always from this directory
 ```
+
+What makes one domain differ from another — the server name, the tool names and descriptions, the agent prompt,
+the checks of the corpus — lives in the instance (`config.json`, `prompts/`, `checks.json`), not in the code.
 
 ## Setup
 
@@ -59,11 +64,15 @@ Never activate the venv: `df` calls the right instance's `.venv/bin/python` itse
 ```
 ./df ecmascript serve                                                  # separate terminal, keep it running
 claude mcp add --transport http ecma-spec http://127.0.0.1:8760/mcp    # once; port comes from config.json
+
+./df react serve
+claude mcp add --transport http react-docs http://127.0.0.1:8761/mcp
 ```
 
-In a Claude Code session `/mcp` should list the server with two tools, `search_spec` and `read_section`. The
-server itself never talks to a model: when the client is Claude Code, Claude Code is the model and pays with its
-own tokens.
+In a Claude Code session `/mcp` should list each server with two tools: `search_spec` and `read_section` for
+ecmascript, `search_docs` and `read_section` for react (whose search also takes an optional `version`, such as
+"18" or "0.14"). The server itself never talks to a model: when the client is Claude Code, Claude Code is the model
+and pays with its own tokens.
 
 ## Steps and what they cost
 
@@ -79,4 +88,5 @@ by step in [UPDATE.md](UPDATE.md).
 
 ## License
 
-MIT — see [LICENSE](LICENSE). The corpus texts keep the licenses of their publishers (Ecma, IETF Trust, Unicode).
+MIT — see [LICENSE](LICENSE). The corpus texts keep the licenses of their publishers (Ecma, IETF Trust, Unicode,
+Meta Platforms for the React documentation).

@@ -27,7 +27,11 @@ try:
 except ImportError:
     raise SystemExit("Потрібно:  pip install 'mcp[cli]'")
 
-EXPECTED_TOOLS = ["search_spec", "read_section"]
+from common import profile  # noqa: E402
+
+EXPECTED_TOOLS = [profile.SEARCH_TOOL, profile.READ_TOOL]
+# Запит і вигаданий id — з checks.json примірника: що знаходиться, знає корпус.
+CHECKS = profile.checks()
 
 
 def payload(result) -> dict:
@@ -55,15 +59,16 @@ async def main() -> int:
                 print(f"\nОчікувались {EXPECTED_TOOLS}, а сервер віддав {names}")
                 return 1
 
-            query = "Object.prototype.toString tag"
-            hits = payload(await session.call_tool("search_spec",
+            query = CHECKS["find"]["query"]
+            search_tool, read_tool = EXPECTED_TOOLS
+            hits = payload(await session.call_tool(search_tool,
                                                    {"query": query, "k": 2}))
             # Поле search друкується поруч із found навмисне: сервер піднімає
             # пошук за змістом у фоні вже після того, як відповів на initialize,
             # тож перші виклики цілком законно приходять із «words». Без цього
             # рядка різницю між «вектори ще гріються» і «вектори не працюють»
             # з виводу не видно.
-            print(f"\nsearch_spec({query!r}, k=2) → found={hits.get('found')}, "
+            print(f"\n{search_tool}({query!r}, k=2) → found={hits.get('found')}, "
                   f"search={hits.get('search')}")
             for p in hits.get("passages", []):
                 print(f"  [{p['id']}] {p['section']}")
@@ -74,13 +79,14 @@ async def main() -> int:
                 return 1
 
             pid = hits["passages"][0]["id"]
-            full = payload(await session.call_tool("read_section", {"id": pid}))
-            print(f"\nread_section({pid!r}) → {len(full.get('text', ''))} символів")
+            full = payload(await session.call_tool(read_tool, {"id": pid}))
+            print(f"\n{read_tool}({pid!r}) → {len(full.get('text', ''))} символів")
             print(f"  розділ: {full.get('section')}")
             print(f"  джерело: {full.get('url')}")
 
-            bad = payload(await session.call_tool("read_section", {"id": "22.1.3.19"}))
-            print(f"\nread_section('22.1.3.19') → {bad.get('error')}")
+            bad_id = CHECKS["bad_id"]
+            bad = payload(await session.call_tool(read_tool, {"id": bad_id}))
+            print(f"\n{read_tool}({bad_id!r}) → {bad.get('error')}")
             print(f"  підказка: {bad.get('hint')}")
 
             print("\nСервер відповів на всі виклики. Протокол живий.")

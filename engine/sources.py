@@ -3,13 +3,17 @@
 `sources.json` лежить у теці примірника й описує кожен ендпоінт, з якого
 будується корпус. Той самий файл обмежує оновлювач: звертатися можна лише за
 адресою, яку тут задекларовано. Дозвіл рахується з оголошення — точний збіг
-адреси або, для джерела з `expand: chapters`, дочірня адреса тієї самої теки на
-тому самому хості (так тягнуться глави багатосторінкового видання). Усе інше
-відхиляється, хоч би звідки надійшла вказівка це завантажити.
+адреси, для джерела з `expand: chapters` дочірня адреса тієї самої теки на тому
+самому хості (так тягнуться глави багатосторінкового видання), а для джерела з
+полем `within` — адреси, які це поле називає поіменно. Усе інше відхиляється,
+хоч би звідки надійшла вказівка це завантажити.
 
 Один запис — одне джерело. Поля: `id` (стабільний ключ), `url`, `reader` (як
 читати відповідь), `title`, `added`, `note` (навіщо це в корпусі), для змісту —
-`expand: chapters`.
+`expand: chapters`, для сайту з багатьма сторінками — `within`, для документації
+однієї версії продукту — `version`, для знімка на закріпленому тезі чи коміті —
+`frozen: true`: такий вміст змінитися не може, тож звірка й оновлення джерела не
+питають, доки його не назвуть на ім'я.
 """
 
 import json
@@ -18,9 +22,13 @@ from urllib.parse import unquote, urlsplit
 
 NAME = "sources.json"
 
-# Читачі, яких знає ядро. Новий домен додає своїх; тоді цей набір розширюється
-# разом із реєстром читачів.
-READERS = {"toc", "page", "pdf", "rfc", "report", "ldml"}
+
+def _readers() -> set:
+    """Читачі, яких знає ядро, — рівно ті, що зареєстровані. Імпорт тут, а не
+    нагорі модуля: реєстр наповнюють модулі читачів, і розширюється він разом
+    із теками engine/readers/, а не редагуванням цього файла."""
+    from engine.readers import REGISTRY
+    return set(REGISTRY)
 
 
 def load(instance_dir) -> dict:
@@ -32,6 +40,7 @@ def load(instance_dir) -> dict:
     src = data.get("sources")
     if not isinstance(src, list) or not src:
         raise SystemExit(f"{path}: очікував непорожній список `sources`.")
+    known = _readers()
     seen = set()
     for s in src:
         for field in ("id", "url", "reader"):
@@ -42,9 +51,17 @@ def load(instance_dir) -> dict:
         seen.add(s["id"])
         if urlsplit(s["url"]).scheme != "https":
             raise SystemExit(f"{path}: адреса не https: {s['url']}")
-        if s["reader"] not in READERS:
+        if s["reader"] not in known:
             raise SystemExit(f"{path}: невідомий читач `{s['reader']}` у `{s['id']}`. "
-                             f"Відомі: {', '.join(sorted(READERS))}")
+                             f"Відомі: {', '.join(sorted(known))}")
+        within = s.get("within", [])
+        if not isinstance(within, list) or any(
+                not isinstance(w, str) or urlsplit(w).scheme != "https"
+                or not urlsplit(w).hostname for w in within):
+            raise SystemExit(f"{path}: поле `within` у `{s['id']}` мусить бути "
+                             f"списком https-адрес.")
+        if not isinstance(s.get("frozen", False), bool):
+            raise SystemExit(f"{path}: поле `frozen` у `{s['id']}` мусить бути true або false.")
     return data
 
 
@@ -74,7 +91,10 @@ def allowed(url: str, sources) -> bool:
     Дозвіл рахується з оголошення: тільки https і або точний збіг задекларованої
     адреси, або — для джерела з `expand: chapters` — адреса того самого хоста,
     що лежить усередині оголошеної теки (шляхи порівнюються нормалізованими,
-    див. _within). Усе поза цим — ні, незалежно від того, хто попросив
+    див. _within), або адреса з поля `within` того самого хоста. Запис `within`,
+    що закінчується косою рискою, — тека, і дозволяє все всередині неї; без
+    риски — рівно одна сторінка, з будь-яким рядком запиту (так гортаються
+    сторінки API). Усе поза цим — ні, незалежно від того, хто попросив
     завантажити.
     """
     p = urlsplit(url)
@@ -86,5 +106,14 @@ def allowed(url: str, sources) -> bool:
         if s.get("expand") == "chapters":
             b = urlsplit(s["url"])
             if p.hostname == b.hostname and b.path and _within(p.path, b.path):
+                return True
+        for w in s.get("within", ()):
+            b = urlsplit(w)
+            if p.hostname != b.hostname or not b.path:
+                continue
+            if w.endswith("/"):
+                if _within(p.path, b.path):
+                    return True
+            elif posixpath.normpath(unquote(p.path) or "/") == b.path:
                 return True
     return False

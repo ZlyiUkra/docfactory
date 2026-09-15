@@ -23,7 +23,7 @@ from engine import manifest as M
 from engine import net
 from engine import readers
 from engine import sources as S
-from engine.refresh import Ctx
+from engine.refresh import Ctx, pause_of
 
 _P402 = re.compile(r"^402-\d+-")
 _POS = re.compile(r"^\d+-")
@@ -51,23 +51,41 @@ def _changed(path, fresh_text, base) -> bool:
     return M.digest(M.body_of(fresh_text)) != _base_sha(path, base)
 
 
-def status(instance_dir, deep: bool) -> int:
+def status(instance_dir, deep: bool, targets: frozenset = frozenset()) -> int:
     data = S.load(instance_dir)
     src = data["sources"]
+    strangers = sorted(set(targets) - {s["id"] for s in src})
+    if strangers:
+        raise SystemExit(f"Невідомі джерела: {', '.join(strangers)}. Звірка приймає id "
+                         f"джерел із sources.json.")
     corpus = instance_dir / "corpus"
-    ctx = Ctx(src, time.strftime("%Y-%m-%d"))
+    ctx = Ctx(src, time.strftime("%Y-%m-%d"), pause_of(instance_dir))
     allow = lambda u: S.allowed(u, src)  # noqa: E731
     base = M.by_file(M.load(corpus))
     print(f"── Звірка «{data.get('instance', '?')}» "
           f"({'за паспортом index.json' if base else 'за файлами corpus/'}) ──")
 
+    # Непитані джерела: з іменами — усі неназвані, без імен — заморожені (знімок на
+    # закріпленому тезі чи коміті змінитися не може, а перелік коштує звернення до
+    # чужого API). Про свої файли вони цього разу думки не мають: ні сиріт, ні
+    # «невідомо», лише число в підсумку.
+    if targets:
+        unasked = {s["id"] for s in src if s["id"] not in targets}
+        print(f"── Звіряю лише названі: {', '.join(sorted(targets))} ──")
+    else:
+        unasked = {s["id"] for s in src if s.get("frozen")}
+        if unasked:
+            print(f"── Заморожених джерел не питаю: {len(unasked)} (назвіть id, щоб звірити) ──")
+
     on_disk = sorted(p.name for p in corpus.glob("*.txt"))
     expected: set = set()
     failed_sources: set = set()
     new_files: list = []
-    new = changed = same = unch_262 = failed = 0
+    new = changed = same = unch_262 = unch_deep = failed = 0
 
     for source in src:
+        if source["id"] in unasked:
+            continue
         rn = source["reader"]
         print(f"── {source['id']} ({rn}) · {source['url']} ──")
         try:
@@ -102,6 +120,18 @@ def status(instance_dir, deep: bool) -> int:
                     else:
                         same += 1
                     time.sleep(net.PAUSE_SEC)
+                elif rn not in ("pdf", "rfc", "report", "ldml"):
+                    # Сайти з багатьма сторінками: умовний запит тут нічого не
+                    # каже — одна адреса джерела не описує сотні документів, —
+                    # тож чесний сигнал той самий, що в 262: сума тексту.
+                    if not deep:
+                        unch_deep += 1
+                        continue
+                    if _changed(path, it.make(), base):
+                        print(f"  ~ змінився: {it.file}")
+                        changed += 1
+                    else:
+                        same += 1
                 else:                                    # pdf/rfc/report/ldml
                     since = base.get(it.file, {}).get("fetched") or M.header(path)["fetched"]
                     code, _ = net.fetch(source["url"], allow, since=since)
@@ -131,10 +161,14 @@ def status(instance_dir, deep: bool) -> int:
     # за поганим списком читач видалив би здорові документи, а другої копії
     # корпус не тримає. Кому належить файл, каже manifest.classify.
     orphans, unknown = [], []
+    not_asked = 0
     for n in on_disk:
         if n in expected:
             continue
         _, owner = M.classify(n, src)
+        if owner in unasked or (not owner and unasked):
+            not_asked += 1
+            continue
         if owner in failed_sources or (not owner and failed_sources):
             unknown.append(n)
         else:
@@ -156,6 +190,10 @@ def status(instance_dir, deep: bool) -> int:
         print("  нічого не видалено — що з ними робити, вирішувати вам")
 
     tail = f", 262 без глибокої звірки {unch_262}" if unch_262 else ""
+    if unch_deep:
+        tail += f", без глибокої звірки {unch_deep} (звірити: --deep)"
+    if not_asked:
+        tail += f", не звірялося файлів {not_asked} (заморожені чи неназвані джерела)"
     summary = (f"── Без змін {same}, змінилося {changed}, нових {new}, "
                f"сиріт {len(orphans)}")
     if unknown:

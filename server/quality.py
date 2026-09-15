@@ -34,21 +34,12 @@
 import sys
 import time
 
-# (запит, номер розділу, який має знайтися)
-CASES = [
-    # Перефразування без жодного слова з потрібного розділу.
-    ("how to find out the type of a value", "20.1.3.6"),
-    ("make an object impossible to change", "20.1.2.6"),
-    ("check whether two values are the same", "7.2.9"),
-    ("round a number down to a whole number", "21.3.2.29"),
-    ("hide a property so loops do not list it", "6.1.7.1"),
-    # Питання словами специфікації, але не її ідентифікаторами.
-    ("what does the spread operator do to an array", "13.2.4"),
-    ("how are template literals evaluated", "13.3.11"),
-    ("rules for comparing a string with a number", "7.2.13"),
-    ("what a getter returns when the property is missing", "10.1.8"),
-    ("how a locale identifier is canonicalized", "9.2.1"),
-]
+from common import profile
+
+# (запит, розділ, який має знайтися) — з checks.json примірника, поле quality. У
+# специфікації розділ — номер («20.1.3.6»), у документації markdown — ім'я
+# документа й шлях заголовків («reference-react-usestate#reference»).
+CASES = [tuple(case) for case in profile.checks()["quality"]]
 
 K = 5
 WARMUP_SEC = 90
@@ -62,9 +53,10 @@ def within(section: str, want: str) -> bool:
     startswith зараховував їх за влучання — шість чужих розділів на одну з
     десяти цілей, і стовпці заміру могли розійтися на відповіді, якої спосіб
     не давав. Той самий вираз доречний усюди, де номер розділу порівнюють
-    як префікс.
+    як префікс. Шлях заголовків markdown ділиться «/», і межа там та сама.
     """
-    return section == want or section.startswith(want + ".")
+    return (section == want or section.startswith(want + ".")
+            or section.startswith(want + "/"))
 
 
 def wait_for_vectors(spec_mcp) -> bool:
@@ -126,13 +118,13 @@ def main(argv: list[str]) -> int:
 
         marks = []
         for way in ways:
-            hit = any(within(p.section, want) for p in found[way])
+            hit = any(within(p.anchor, want) for p in found[way])
             score[way] += hit
             marks.append(f"{way} {'+' if hit else '-'}")
         print(f"· {query}\n    треба {want:<11} {'   '.join(marks)}")
         if show:
             for way in ways:
-                names = ", ".join(p.section for p in found[way])
+                names = ", ".join(p.anchor for p in found[way])
                 print(f"      {way:<11} {names}")
 
     n = len(CASES)

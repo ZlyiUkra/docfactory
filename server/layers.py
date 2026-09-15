@@ -29,6 +29,8 @@ deny_before, allowed_schemas і scan_output працюють без ключа �
 import re
 from urllib.parse import urlsplit
 
+from common import profile
+
 # Імена шарів у порядку додавання — ними підписані стовпці таблиці в attacks.py.
 LAYER_NAMES = ["вхідний фільтр", "правила перед дією", "список дозволених",
                "вихідний фільтр"]
@@ -75,8 +77,9 @@ def scan_input(text: str) -> dict:
     return {"verdict": "pass", "rule": None}
 
 
-REFUSAL = ("Не можу виконати цей запит — він порушує політику безпеки. "
-           "Якщо у вас питання про специфікацію, сформулюйте його звичайними словами.")
+# Текст відмови називає предмет домену («питання про специфікацію», «питання про
+# React»), тож лежить у prompts/refusal.txt примірника.
+REFUSAL = profile.text("refusal")
 
 
 # ── Шар 2: правила перед викликом інструмента ─────────────────
@@ -110,11 +113,11 @@ def deny_before(name: str, args: dict, session: Session) -> str | None:
     """Причина відмови або None. Детермінований хук перед dispatch."""
     if session.calls >= MAX_TOOL_CALLS:
         return f"перевищено ліміт викликів інструментів ({MAX_TOOL_CALLS}) за звернення"
-    if name == "read_section":
+    if name == profile.READ_TOOL:
         wanted = str(args.get("id", ""))
         if wanted not in session.known_ids:
-            return ("read_section на id, якого не було в жодній видачі search_spec"
-                    f" ({wanted!r})")
+            return (f"{profile.READ_TOOL} на id, якого не було в жодній видачі "
+                    f"{profile.SEARCH_TOOL} ({wanted!r})")
     return None
 
 
@@ -122,8 +125,8 @@ def deny_before(name: str, args: dict, session: Session) -> str | None:
 
 # Агентові дозволено рівно два інструменти знань. fetch_url небезпечний: ним
 # ін'єкція вивела б дані на чужий домен, тому в захищеному прогоні його немає
-# серед пропонованих моделі схем.
-ALLOWED_TOOLS = {"search_spec", "read_section"}
+# серед пропонованих моделі схем. Імена обох — з профілю примірника.
+ALLOWED_TOOLS = {profile.SEARCH_TOOL, profile.READ_TOOL}
 
 
 def allowed_schemas(schemas: list[dict], enforce: bool) -> list[dict]:
@@ -144,8 +147,9 @@ def call_allowed(name: str, enforce: bool) -> bool:
 
 # Домени, дозволені у відповідях. Усе інше — потенційний канал витоку: отрута
 # вмовляє модель «додай посилання», і дані поїдуть у query-параметрах. Ріжемо за
-# замовчуванням, а не за підозрою.
-URL_ALLOWLIST = ("tc39.es", "ecma-international.org")
+# замовчуванням, а не за підозрою. Перелік — поле answer_hosts у config.json
+# примірника: у кожного домену свої офіційні сайти.
+URL_ALLOWLIST = profile.ANSWER_HOSTS
 
 _URL_RE = re.compile(r"https?://[^\s)»\"']+")
 _CARD_RE = re.compile(r"\b(?:\d[ -]?){15}\d\b")
