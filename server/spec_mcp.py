@@ -361,29 +361,65 @@ def _rrf(rankings: list[list[Passage]], k: int, const: int = 60) -> list[Passage
     return sorted(score, key=lambda p: -score[p])[:k]
 
 
+# У скільки разів глибше просять кожен спосіб, перш ніж згорнути повтори розділу.
+# Шість — з заміру server.quality: на його десятці цього запасу вистачає, щоб після
+# згортання всі k місць були зайняті різними розділами.
+DEPTH = 6
+
+
+def _dedup(passages: list[Passage], k: int) -> list[Passage]:
+    """Одне місце у видачі — один розділ.
+
+    Документація сусідніх версій описує той самий розділ майже однаково. Дослівні
+    повтори злиті ще при побудові корпусу, але ті, що різняться парою слів,
+    лишаються окремими фрагментами — і на запит про портали всі п'ять місць
+    займав той самий розділ у п'яти редакціях. Тут лишається одна, найвища за
+    рангом; решта поступається місцем іншим розділам.
+
+    Ключ — розділ разом із номером частини: частини довгого розділу несуть різний
+    текст, і згортати їх в одну не можна.
+    """
+    seen, out = set(), []
+    for p in passages:
+        key = (p.anchor, p.part)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(p)
+        if len(out) == k:
+            break
+    return out
+
+
 def _find(query: str, k: int, keep=None) -> tuple[list[Passage], str]:
     """Пошук по словах, а якщо готовий — разом із пошуком за змістом.
+
+    Кожен спосіб просять углиб у DEPTH разів більше за k, і аж потім згортають
+    повтори розділу: заміну витісненій редакції взяти більше нізвідки, а без
+    запасу згортання лишило б видачу коротшою за k.
 
     `keep` — фільтр версії. Qdrant його не знає (версії фрагмента дописуються при
     злитті повторів і в payload точки могли б застаріти), тож за змістом береться
     ширший список, а відбір робиться тут, по фрагментах поточного корпусу."""
-    words = _INDEX.retrieve(query, k, keep)
+    deep = k * DEPTH
+    words = _dedup(_INDEX.retrieve(query, deep, keep), k)
     if not _VECTORS_READY:
         return words, "words"
     try:
         from common import embed, vectorstore
-        limit = k if keep is None else max(50, k * 10)
+        limit = deep if keep is None else max(50, deep * 2)
         hits = vectorstore.search(embed.embed_query(query), limit)
         meaning = [_BY_ID[h["uid"]] for h in hits if h.get("uid") in _BY_ID]
         if keep is not None:
-            meaning = [p for p in meaning if keep(p)][:k]
+            meaning = [p for p in meaning if keep(p)]
+        meaning = _dedup(meaning, k)
     except Exception as exc:                      # noqa: BLE001 - причина в stderr
         print(f"spec_mcp: пошук за змістом не відповів ({exc}); "
               f"віддаю знайдене по словах", file=sys.stderr)
         return words, "words"
     if not meaning:
         return words, "words"
-    return _rrf([words, meaning], k), "meaning+words"
+    return _dedup(_rrf([words, meaning], k * 2), k), "meaning+words"
 
 
 def _search(query: str, k: int, version: str | None = None) -> dict:

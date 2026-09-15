@@ -12,6 +12,10 @@
 самим пошуком за змістом і їхнім злиттям, тим самим, яким користується сервер, —
 і рахується, чи потрапив потрібний розділ у перші k.
 
+Просять і згортають повтори розділу так само, як це робить сам сервер (DEPTH і
+`_dedup` беруться з `spec_mcp`): замір, що міряв би не те, що віддає сервер, був би
+гіршим за відсутній.
+
 ЩО ЦЕ ЧИСЛО ОЗНАЧАЄ І ЧОГО НЕ ОЗНАЧАЄ
 
 Запити й очікувані розділи дібрані руками, тож «4 з 10» саме по собі не є оцінкою
@@ -102,19 +106,20 @@ def main(argv: list[str]) -> int:
     t_words = t_meaning = 0.0
 
     for query, want in CASES:
+        deep = K * spec_mcp.DEPTH
         t0 = time.perf_counter()
-        words = spec_mcp._INDEX.retrieve(query, K)
+        words = spec_mcp._dedup(spec_mcp._INDEX.retrieve(query, deep), K)
         t_words += time.perf_counter() - t0
         found = {"по словах": words}
 
         if ready:
             t0 = time.perf_counter()
-            hits = vectorstore.search(embed.embed_query(query), K)
+            hits = vectorstore.search(embed.embed_query(query), deep)
             t_meaning += time.perf_counter() - t0
-            meaning = [spec_mcp._BY_ID[h["uid"]] for h in hits
-                       if h.get("uid") in spec_mcp._BY_ID]
+            meaning = spec_mcp._dedup([spec_mcp._BY_ID[h["uid"]] for h in hits
+                                       if h.get("uid") in spec_mcp._BY_ID], K)
             found["за змістом"] = meaning
-            found["разом"] = spec_mcp._rrf([words, meaning], K)
+            found["разом"] = spec_mcp._dedup(spec_mcp._rrf([words, meaning], K * 2), K)
 
         marks = []
         for way in ways:
