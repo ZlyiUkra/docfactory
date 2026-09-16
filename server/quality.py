@@ -40,10 +40,16 @@ import time
 
 from common import profile
 
-# (запит, розділ, який має знайтися) — з checks.json примірника, поле quality. У
-# специфікації розділ — номер («20.1.3.6»), у документації markdown — ім'я
-# документа й шлях заголовків («reference-react-usestate#reference»).
-CASES = [tuple(case) for case in profile.checks()["quality"]]
+# (запит, розділи, з яких будь-який зараховується) — з checks.json примірника,
+# поле quality. У специфікації розділ — номер («20.1.3.6»), у документації
+# markdown — ім'я документа й шлях заголовків («reference-react-usestate#reference»)
+# або саме ім'я документа, коли відповідь — документ цілком. Ціль — рядок або
+# список рядків: усі сторінки, які знаюча людина прийняла б як відповідь.
+# Добирається вона з документації, а не з видачі: ціль, дописана під те, що
+# пошук знайшов, робить замір зеленим і порожнім. Якщо правильних сторінок
+# виходить пʼять, розмите питання — переписують запит, а не розширюють ціль.
+CASES = [(q, [w] if isinstance(w, str) else list(w))
+         for q, w in profile.checks()["quality"]]
 
 K = 5
 WARMUP_SEC = 90
@@ -59,6 +65,11 @@ def within(section: str, want: str) -> bool:
     не давав. Той самий вираз доречний усюди, де номер розділу порівнюють
     як префікс. Шлях заголовків markdown ділиться «/», і межа там та сама.
     """
+    # Ціль без «#» у режимі markdown — цілий документ: будь-який його розділ.
+    # Так називають лише документ, що весь про це питання, — довідка useEffect
+    # про запуск і прибирання від першого розділу до останнього.
+    if "#" not in want and "#" in section:
+        return section.split("#", 1)[0] == want
     return (section == want or section.startswith(want + ".")
             or section.startswith(want + "/"))
 
@@ -105,7 +116,7 @@ def main(argv: list[str]) -> int:
     score = dict.fromkeys(ways, 0)
     t_words = t_meaning = 0.0
 
-    for query, want in CASES:
+    for query, wants in CASES:
         deep = K * spec_mcp.DEPTH
         t0 = time.perf_counter()
         words = spec_mcp._dedup(spec_mcp._INDEX.retrieve(query, deep), K)
@@ -123,9 +134,10 @@ def main(argv: list[str]) -> int:
 
         marks = []
         for way in ways:
-            hit = any(within(p.anchor, want) for p in found[way])
+            hit = any(within(p.anchor, w) for p in found[way] for w in wants)
             score[way] += hit
             marks.append(f"{way} {'+' if hit else '-'}")
+        want = " | ".join(wants)
         print(f"· {query}\n    треба {want:<11} {'   '.join(marks)}")
         if show:
             for way in ways:

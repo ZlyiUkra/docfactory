@@ -381,7 +381,9 @@ def main(argv: list[str]) -> int:
 
     check("замір якості: підрозділ зараховується, сусід зі спільним префіксом — ні",
           within("9.2.1", "9.2.1") and within("9.2.1.2", "9.2.1")
-          and not within("9.2.10", "9.2.1") and not within("9.2.15", "9.2.1"))
+          and not within("9.2.10", "9.2.1") and not within("9.2.15", "9.2.1")
+          and within("learn-refs#a/b", "learn-refs") and within("learn-refs#", "learn-refs")
+          and not within("learn-refs-2#a", "learn-refs"))
     # Цілі заміру — розділи, а номери в ECMA-262 між редакціями зсуваються, як і
     # заголовки документації між версіями сайту. Ціль, якої в корпусі немає, не
     # влучає жодним способом, і замір мовчки міряє дев'ять запитів, а каже про
@@ -390,7 +392,15 @@ def main(argv: list[str]) -> int:
     # тексту пошук не поверне.
     from server.quality import CASES
 
-    missing = [want for _, want in CASES if want not in with_text]
+    def known(want: str) -> bool:
+        """Ціль-документ (без «#», лише в режимі markdown) існує, коли в корпусі є
+        хоч один її розділ із текстом; помилка в одній цілі списку не сховається
+        за влучанням у сусідню."""
+        if "#" in want or not any("#" in a for a in with_text):
+            return want in with_text
+        return any(a.startswith(want + "#") for a in with_text)
+
+    missing = [w for _, wants in CASES for w in wants if not known(w)]
     check("замір якості: кожна ціль існує в корпусі як розділ із текстом",
           not missing, f"цілей {len(CASES)}"
           + (f", немає: {', '.join(missing)}" if missing else ""))
