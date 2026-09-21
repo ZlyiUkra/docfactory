@@ -1,0 +1,195 @@
+# Resolvers Map
+# джерело: https://github.com/nestjs/docs.nestjs.com/blob/dacbef74628f43d20544b75c1fb3b3e7fa33a18d/src/app/homepage/pages/graphql/resolvers-map/resolvers-map.component.html
+# отримано: 2026-09-21
+# версія: 4
+
+When using `graphql-tools`, you have to create a resolvers map manually. The following example is copied & pasted from the Apollo documentation where you can read more about it:
+
+```typescript
+import { find, filter } from 'lodash';
+
+// example data
+const authors = [
+  { id: 1, firstName: 'Tom', lastName: 'Coleman' },
+  { id: 2, firstName: 'Sashko', lastName: 'Stubailo' },
+  { id: 3, firstName: 'Mikhail', lastName: 'Novikov' },
+];
+const posts = [
+  { id: 1, authorId: 1, title: 'Introduction to GraphQL', votes: 2 },
+  { id: 2, authorId: 2, title: 'Welcome to Meteor', votes: 3 },
+  { id: 3, authorId: 2, title: 'Advanced GraphQL', votes: 1 },
+  { id: 4, authorId: 3, title: 'Launchpad is Cool', votes: 7 },
+];
+
+const resolverMap = {
+  Query: {
+    author(obj, args, context, info) {
+      return find(authors, { id: args.id });
+    },
+  },
+  Author: {
+    posts(author) {
+      return filter(posts, { authorId: author.id });
+    },
+  },
+};
+```
+
+With the `@nestjs/graphql` package, the resolvers map is generated automatically using the metadata. Let's rewrite the above example with the equivalent Nest-way code.
+
+```typescript
+import { Query, Resolver, ResolveProperty } from '@nestjs/graphql';
+import { find, filter } from 'lodash';
+
+// example data
+const authors = [
+  { id: 1, firstName: 'Tom', lastName: 'Coleman' },
+  { id: 2, firstName: 'Sashko', lastName: 'Stubailo' },
+  { id: 3, firstName: 'Mikhail', lastName: 'Novikov' },
+];
+const posts = [
+  { id: 1, authorId: 1, title: 'Introduction to GraphQL', votes: 2 },
+  { id: 2, authorId: 2, title: 'Welcome to Meteor', votes: 3 },
+  { id: 3, authorId: 2, title: 'Advanced GraphQL', votes: 1 },
+  { id: 4, authorId: 3, title: 'Launchpad is Cool', votes: 7 },
+];
+
+@Resolver('Author')
+export class AuthorResolver {
+  @Query()
+  author(obj, args, context, info) {
+    return find(authors, { id: args.id });
+  }
+
+  @ResolveProperty()
+  posts(author) {
+    return filter(posts, { authorId: author.id });
+  }
+}
+```
+
+The `@Resolver()` decorator doesn't affect either queries and mutations. It only tells Nest that each `@ResolveProperty()` has a parent, which is an `Author` in this case.
+
+Hint If we are using the `@Resolver()` decorator, we don't have to mark a class as a `@Component()`, otherwise, it's necessary.
+
+Normally, we would use something like a `getAuthor()` or `getPosts()` as a method names. We can do that easily as well:
+
+```typescript
+import { Query, Resolver, ResolveProperty } from '@nestjs/graphql';
+import { find, filter } from 'lodash';
+
+// example data
+const authors = [
+  { id: 1, firstName: 'Tom', lastName: 'Coleman' },
+  { id: 2, firstName: 'Sashko', lastName: 'Stubailo' },
+  { id: 3, firstName: 'Mikhail', lastName: 'Novikov' },
+];
+const posts = [
+  { id: 1, authorId: 1, title: 'Introduction to GraphQL', votes: 2 },
+  { id: 2, authorId: 2, title: 'Welcome to Meteor', votes: 3 },
+  { id: 3, authorId: 2, title: 'Advanced GraphQL', votes: 1 },
+  { id: 4, authorId: 3, title: 'Launchpad is Cool', votes: 7 },
+];
+
+@Resolver('Author')
+export class AuthorResolver {
+  @Query('author')
+  getAuthor(obj, args, context, info) {
+    return find(authors, { id: args.id });
+  }
+
+  @ResolveProperty('posts')
+  getPosts(author) {
+    return filter(posts, { authorId: author.id });
+  }
+}
+```
+
+Hint The `@Resolver()` decorator can be used at the method-level as well.
+
+#### Refactor
+
+The idea behind the above code is to show the differences between the Apollo and the Nest-way, to allow for a simple transition of your code. Right now, we're gonna do a small refactor to take advantages of the Nest architecture, to make it a real-world example.
+
+```typescript
+@Resolver('Author')
+export class AuthorResolver {
+  constructor(
+    private readonly authorsService: AuthorsService,
+    private readonly postsService: PostsService,
+  ) {}
+
+  @Query('author')
+  async getAuthor(obj, args, context, info) {
+    const { id } = args;
+    return await this.authorsService.findOneById(id);
+  }
+
+  @ResolveProperty('posts')
+  async getPosts(author) {
+    const { id } = author;
+    return await this.postsService.findAll({ authorId: id });
+  }
+}
+@@switch
+@Resolver('Author')
+@Dependencies(AuthorsService, PostsService)
+export class AuthorResolver {
+  constructor(authorsService, postsService) {
+    this.authorsService = authorsService;
+    this.postsService = postsService;
+  }
+
+  @Query('author')
+  async getAuthor(obj, args, context, info) {
+    const { id } = args;
+    return await this.authorsService.findOneById(id);
+  }
+
+  @ResolveProperty('posts')
+  async getPosts(author) {
+    const { id } = author;
+    return await this.postsService.findAll({ authorId: id });
+  }
+}
+```
+
+Now we have to register the `AuthorResolver` somewhere, for example inside the newly created `AuthorsModule`.
+
+```typescript
+@Module({
+  imports: [PostsModule],
+  components: [AuthorsService, AuthorResolver],
+})
+export class AuthorsModule {}
+```
+
+The `GraphQLModule` will take care of reflecting the metadata and transforming class into the correct resolvers map automatically. The only thing you have to do is to import this module somewhere, therefore Nest will know that `AuthorsModule` exists.
+
+#### Type definitions
+
+The last missing piece is a type definitions (read more) file. Let's create it near to the resolver class.
+
+```java
+@@filename(author-types.graphql)
+type Author {
+  id: Int!
+  firstName: String
+  lastName: String
+  posts: [Post]
+}
+
+type Post {
+  id: Int!
+  title: String
+  votes: Int
+}
+
+type Query {
+  author(id: Int!): Author
+}
+```
+
+That's all. We created a single `author(id: Int!)` query.
+
+Hint Learn more about GraphQL queries here.

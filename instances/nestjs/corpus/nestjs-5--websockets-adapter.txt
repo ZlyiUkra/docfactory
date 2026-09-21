@@ -1,0 +1,126 @@
+# Adapters
+# джерело: https://github.com/nestjs/docs.nestjs.com/blob/8729a48188b1097a4f7d7bb8dc8a3d525297ce7e/src/app/homepage/pages/websockets/adapter/adapter.component.html
+# отримано: 2026-09-21
+# версія: 5
+
+The Nest web sockets module is based on socket.io package, but you can bring your own library (or even a native implementation), by making use of `WebSocketAdapter` interface. This interface forces to implement few methods described in the following table:
+
+| `create` | Creates a socket instance based on passed arguments
+
+| `bindClientConnect` | Binds the client connection event
+
+| `bindClientDisconnect` | Binds the client disconnection event (optional*)
+
+| `bindMessageHandlers` | Binds the incoming message to the corresponding message handler
+
+| `close` | Terminates a server instance
+
+For demonstration purposes, we are going to integrate the ws library. In fact, the adapter for this library is already created and is exposed from the `@nestjs/websockets` package as a `WsAdapter` class. Here is how the simplified implementation looks like:
+
+```typescript
+@@filename(ws-adapter)
+import * as WebSocket from 'ws';
+import { WebSocketAdapter, MessageMappingProperties } from '@nestjs/common';
+import { Observable, fromEvent, empty } from 'rxjs';
+import { mergeMap, filter, tap } from 'rxjs/operators';
+
+export class WsAdapter implements WebSocketAdapter {
+  constructor(private readonly httpServer) {}
+
+  create(port: number, options: any = {}): any {
+    return new ws.Server({ port, ...options });
+  }
+
+  bindClientConnect(server, callback: (...args) => void) {
+    server.on('connection', callback);
+  }
+
+  bindMessageHandlers(
+    client: WebSocket,
+    handlers: MessageMappingProperties[],
+    process: (data: any) => Observable<any>,
+  ) {
+    fromEvent(client, 'message')
+      .pipe(
+        mergeMap(data => this.bindMessageHandler(data, handlers, process)),
+        filter(result => !!result),
+      )
+      .subscribe(response => client.send(JSON.stringify(response)));
+  }
+
+  bindMessageHandler(
+    buffer,
+    handlers: MessageMappingProperties[],
+    process: (data: any) => Observable<any>,
+  ): Observable<any> {
+    const message = JSON.parse(buffer.data);
+    const messageHandler = handlers.find(
+      handler => handler.message === message.event,
+    );
+    if (!messageHandler) {
+      return empty;
+    }
+    return process(messageHandler.callback(message.data));
+  }
+
+  close(server) {
+    server.close();
+  }
+}
+@@switch
+import * as WebSocket from 'ws';
+import { mergeMap, filter, tap } from 'rxjs/operators';
+import { fromEvent, empty } from 'rxjs';
+
+export class WsAdapter {
+  constructor(httpServer) {
+    this.httpServer = httpServer;
+  }
+
+  create(port, options = {}) {
+    return new ws.Server({ port, ...options });
+  }
+
+  bindClientConnect(server, callback) {
+    server.on('connection', callback);
+  }
+
+  bindMessageHandlers(client, handlers, process) {
+    fromEvent(client, 'message')
+      .pipe(
+        mergeMap(data => this.bindMessageHandler(data, handlers, process)),
+        filter(result => !!result),
+      )
+      .subscribe(response => client.send(JSON.stringify(response)));
+  }
+
+  bindMessageHandler(buffer, handlers, process) {
+    const message = JSON.parse(buffer.data);
+    const messageHandler = handlers.find(
+      handler => handler.message === message.event,
+    );
+    if (!messageHandler) {
+      return empty;
+    }
+    return process(messageHandler.callback(message.data));
+  }
+
+  close(server) {
+    server.close();
+  }
+}
+```
+
+Hint When you want to take advantage of ws library, use built-in `WsAdapter` instead of creating your own one.
+
+Then, we can set up a custom adapter using `useWebSocketAdapter()` method:
+
+```typescript
+@@filename(main)
+const app = await NestFactory.create(ApplicationModule);
+app.useWebSocketAdapter(new WsAdapter());
+```
+
+Hint A full source code that makes use of `WsAdapter` is available here.
+
+A working example that uses `WsAdapter` is available here.

@@ -1,0 +1,231 @@
+# Interceptors
+# джерело: https://github.com/nestjs/docs.nestjs.com/blob/dacbef74628f43d20544b75c1fb3b3e7fa33a18d/src/app/homepage/pages/interceptors/interceptors.component.html
+# отримано: 2026-09-21
+# версія: 4
+
+An interceptor is a class with the `@Interceptor()` decorator. The interceptor should implement the `NestInterceptor` interface.
+
+Interceptors have a set of useful capabilities, which are inspired by the Aspect-Oriented Programming (AOP) technique. They make it possible to:
+
+- bind extra logic before / after method execution
+
+- transform the result returned from a function
+
+- transform the exception thrown from a function
+
+- completely override a function depending on the chosen conditions (e.g. caching purposes)
+
+#### Basics
+
+Each interceptor has the `intercept()` method. This function takes 3 arguments. First one is `dataOrRequest`. This value depends on where you actually have used the interceptor. When it's a HTTP request, this variable is a native expressjs request object, otherwise, it's the data passed to the micro service / or web socket. The second argument is a `context`, which is exactly the same as in Guards. This object fulfils the `ExecutionContext` interface and contains 2 members - `parent` and `handler`. The `parent` holds the type of the `Controller` class, which the `handler` belongs to. The `handler` is a reference to the route handler function. The last one `stream$` is an `Observable`. If you'd not return this stream, the function won't be evaluated.
+
+#### Before / After
+
+The first use case is using the interceptor to provide extra logic before or after the function execution. It's useful when we're gonna log interaction with the application, e.g. storing user calls, or calculating the timestamp.
+
+Let's create a simple `LoggingInterceptor`.
+
+```typescript
+@@filename(logging.interceptor)
+import { Interceptor, NestInterceptor, ExecutionContext } from '@nestjs/common';
+import { Observable } from 'rxjs/Observable';
+import 'rxjs/add/operator/do';
+
+@Interceptor()
+export class LoggingInterceptor implements NestInterceptor {
+  intercept(dataOrRequest, context: ExecutionContext, stream$: Observable<any>): Observable<any> {
+    console.log('Before...');
+    const now = Date.now();
+
+    return stream$.do(
+      () => console.log(`After... \${Date.now() - now}ms`),
+    );
+  }
+}
+@@switch
+import { Interceptor } from '@nestjs/common';
+import 'rxjs/add/operator/do';
+
+@Interceptor()
+export class LoggingInterceptor {
+  intercept(dataOrRequest, context, stream$) {
+    console.log('Before...');
+    const now = Date.now();
+
+    return stream$.do(
+      () => console.log(`After... \${Date.now() - now}ms`),
+    );
+  }
+}
+```
+
+Notice Interceptors act the same as controllers, components, guards and middleware they can inject dependencies through the constructor.
+
+Since `stream$` is a RxJS `Observable`, we have a lot of various operators which we can use to manipulate the stream. In the example above, I've used the `do()` operator, which invokes the function upon graceful or exceptional termination of the observable sequence.
+
+To set up the interceptor, we're using the `@UseInterceptors()` decorator imported from the `@nestjs/common` package. Same as guards, interceptors can be controller-scoped, method-scoped and global-scoped.
+
+```typescript
+@@filename(cats.controller)
+@UseInterceptors(LoggingInterceptor)
+export class CatsController {}
+```
+
+Now every route handler within `CatsController` is using `LoggingInterceptor`. When someone would call the GET `/cats` endpoint, you'll see similar output in your console window:
+
+```typescript
+Before...
+After... 1ms
+```
+
+To bind the global interceptor, we're using the `useGlobalInterceptors()` method of the Nest application instance:
+
+```typescript
+const app = await NestFactory.create(ApplicationModule);
+app.useGlobalInterceptors(new LoggingInterceptor());
+```
+
+#### Response mapping
+
+The `stream$` is an `Observable`. This object contains the returned value of the route handler, so we can easily mutate it using the `map()` operator.
+
+Notice The response mapping doesn't work with the express response strategy (using the `@Res()` object directly is not possible).
+
+Let's create the `TransformInterceptor` which will pack the response and assign it to the `data` property.
+
+```typescript
+@@filename(transform.interceptor)
+import { Interceptor, NestInterceptor, ExecutionContext } from '@nestjs/common';
+import { Observable } from 'rxjs/Observable';
+import 'rxjs/add/operator/map';
+
+@Interceptor()
+export class TransformInterceptor implements NestInterceptor {
+  intercept(dataOrRequest, context: ExecutionContext, stream$: Observable<any>): Observable<any> {
+    return stream$.map((data) => ({ data }));
+  }
+}
+@@switch
+import { Interceptor } from '@nestjs/common';
+import 'rxjs/add/operator/map';
+
+@Interceptor()
+export class TransformInterceptor {
+  intercept(dataOrRequest, context, stream$) {
+    return stream$.map((data) => ({ data }));
+  }
+}
+```
+
+Hint The `intercept()` method can be `async`.
+
+Now, the response of the GET `/cats` request would look something like this:
+
+```typescript
+{
+    "data": []
+}
+```
+
+#### Exception mapping
+
+Since `stream$` is an `Observable`, we can use the `catch()` operator to override the thrown exception with a new stream:
+
+```typescript
+@@filename(exception.interceptor)
+import { Interceptor, NestInterceptor, ExecutionContext, HttpStatus } from '@nestjs/common';
+import { HttpException } from '@nestjs/common';
+import { Observable } from 'rxjs/Observable';
+import 'rxjs/add/operator/catch';
+import 'rxjs/add/observable/throw';
+
+@Interceptor()
+export class ExceptionInterceptor implements NestInterceptor {
+  intercept(dataOrRequest, context: ExecutionContext, stream$: Observable<any>): Observable<any> {
+    return stream$.catch((err) => Observable.throw(
+      new HttpException('Exception interceptor message', HttpStatus.BAD_GATEWAY),
+    ));
+  }
+}
+@@switch
+import { Interceptor, HttpStatus } from '@nestjs/common';
+import { HttpException } from '@nestjs/common';
+import { Observable } from 'rxjs/Observable';
+import 'rxjs/add/operator/catch';
+import 'rxjs/add/observable/throw';
+
+@Interceptor()
+export class ExceptionInterceptor {
+  intercept(dataOrRequest, context, stream$) {
+    return stream$.catch((err) => Observable.throw(
+      new HttpException('Exception interceptor message', HttpStatus.BAD_GATEWAY),
+    ));
+  }
+}
+```
+
+#### Stream overriding
+
+Sometimes we might want to completely prevent calling the handler and return a different value instead. An excellent example of this is a cache interceptor, which would store the cached responses with some time.
+
+```typescript
+@@filename(cache.interceptor)
+import { Interceptor, NestInterceptor, ExecutionContext } from '@nestjs/common';
+import { Observable } from 'rxjs/Observable';
+import 'rxjs/add/observable/of';
+
+@Interceptor()
+export class CacheInterceptor implements NestInterceptor {
+  intercept(dataOrRequest, context: ExecutionContext, stream$: Observable<any>): Observable<any> {
+    const isCached = true;
+    if (isCached) {
+      return Observable.of([]);
+    }
+    return stream$;
+  }
+}
+@@switch
+import { Interceptor } from '@nestjs/common';
+import { Observable } from 'rxjs/Observable';
+import 'rxjs/add/observable/of';
+
+@Interceptor()
+export class CacheInterceptor {
+  intercept(dataOrRequest, context, stream$) {
+    const isCached = true;
+    if (isCached) {
+      return Observable.of([]);
+    }
+    return stream$;
+  }
+}
+```
+
+Here's a `CacheInterceptor` with a hardcoded `isCached` variable and the cached response `[]`. Since we're returning a new stream created through the `of` operator, the route handler won't be called. To create a generic solution, you can use the `Reflector` and create a custom decorator. It's well described in the guards article. That's everything.
+
+Hint Exceptions thrown within interceptors can be caught by exception filters.
+
+#### Global interceptors
+
+Global interceptors don't belong to any scope. They live outside modules, thus as a result - they can't inject dependencies. We need to create an instance immediately. But quite often, global interceptors depend on other objects, for example, we'd love to dispatch an asynchronous event on each request using `EventsService`, but this service is a part of the `EventsModule`. How do we solve this?
+
+The solution is pretty easy. Each Nest application instance is in fact, a created Nest context. The Nest context is a wrapper around the Nest container, which holds all instantiated classes. We can grab any existing instance from within any imported module directly using the application object.
+
+Let's assume that we have a `EventsInterceptor` registered in the `EventsModule`. This `EventsModule` is imported into the root module. We can pick the `EventsInterceptor` instance using the following syntax:
+
+```typescript
+const app = await NestFactory.create(ApplicationModule);
+const eventsInterceptor = app
+  .select(EventsModule)
+  .get(EventsInterceptor);
+
+app.useGlobalInterceptors(eventsInterceptor);
+```
+
+To grab `EventsInterceptor` instance we have used 2 methods, well-described in the table below:
+
+| `get()` | Makes it possible to retrieve the instance of the component or controller available inside the processed module.
+
+| `select()` | Allows you to navigate through the module tree, for example, to pull out a specific instance from the selected module.
+
+Hint The root module is selected by default. To select any other module, you need to go through the entire modules stack (step by step).

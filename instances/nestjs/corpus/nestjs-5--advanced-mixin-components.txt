@@ -1,0 +1,56 @@
+# Mixin Class
+# джерело: https://github.com/nestjs/docs.nestjs.com/blob/8729a48188b1097a4f7d7bb8dc8a3d525297ce7e/src/app/homepage/pages/advanced/mixin-components/mixin-components.component.html
+# отримано: 2026-09-21
+# версія: 5
+
+##### This chapter applies only to TypeScript
+
+TypeScript 2.2 adds support for the ECMAScript 2015 mixin class pattern. This pattern's quite useful since it's not easy to pass custom arguments to some Nest application building blocks, such as interceptors or guards. The mixin classes have much more applications, but here we're gonna focus on this single use-case.
+
+For demonstration purposes, let's rewrite the `CacheInterceptor` which we've built in the interceptors section and extract the `isCached` condition.
+
+```typescript
+@@filename(cache.interceptor.ts)
+import { Interceptor, NestInterceptor, ExecutionContext } from '@nestjs/common';
+import { Observable } from 'rxjs/Observable';
+import 'rxjs/add/observable/of';
+
+@Interceptor()
+export abstract class CacheInterceptor implements NestInterceptor {
+  protected abstract readonly isCached: () => boolean;
+
+  intercept(dataOrRequest, context: ExecutionContext, stream$: Observable<any>): Observable<any> {
+    if (this.isCached()) {
+      return Observable.of([]);
+    }
+    return stream$;
+  }
+}
+```
+
+Now the `CacheInterceptor` is abstract and contains the single abstract member - the `isCached` function. Based on this class, we're gonna create the `mixinCacheInterceptor` function.
+
+```typescript
+@@filename(mixin-cache.interceptor.ts)
+import { mixin } from '@nestjs/common';
+import { CacheInterceptor } from './cache.interceptor';
+
+export function mixinCacheInterceptor(isCached: () => boolean) {
+  return mixin(class extends CacheInterceptor {
+    protected readonly isCached = isCached;
+  });
+}
+```
+
+Notice The `mixin()` is a helper function. Use it whenever you wanna create a mixin class.
+
+This function takes the `isCached()` predicate as an argument and assigns it to the mixin class. The last step is to set up the interceptor:
+
+```typescript
+@UseInterceptors(mixinCacheInterceptor(() => true))
+async findAll(): Promise<Cat[]> {
+  return this.catsService.findAll();
+}
+```
+
+The `mixin()` function returns the class, so you can use it in the same manner as a plain, self-created classes.

@@ -1,0 +1,54 @@
+# Exception Filters
+# джерело: https://github.com/nestjs/docs.nestjs.com/blob/dacbef74628f43d20544b75c1fb3b3e7fa33a18d/src/app/homepage/pages/microservices/exception-filters/exception-filters.component.html
+# отримано: 2026-09-21
+# версія: 4
+
+The websockets exceptions layer works exact same as the prime layer. The only difference is that instead of throwing `HttpException`, you should throw `RpcException`.
+
+```typescript
+throw new RpcException('Invalid credentials.');
+```
+
+Notice The `RpcException` class is imported from the `@nestjs/microservices` package.
+
+Nest would handle this exception and emits the `exception` message with the following data:
+
+```typescript
+{
+  status: 'error',
+  message: 'Invalid credentials.'
+}
+```
+
+#### Exception Filters
+
+The Exception Filters are also really similar, and works exactly in the same way as the primary ones. The only difference is that `catch()` method should returns an `Observable`.
+
+```typescript
+@@filename(rpc-exception.filter)
+import { Catch, RpcExceptionFilter } from '@nestjs/common';
+import { Observable } from 'rxjs/Observable';
+import { RpcException } from '@nestjs/microservices';
+import 'rxjs/add/observable/throw';
+
+@Catch(RpcException)
+export class ExceptionFilter implements RpcExceptionFilter {
+  catch(exception: RpcException): Observable<any> {
+    return Observable.throw(exception.getError());
+  }
+}
+@@switch
+import { Catch } from '@nestjs/common';
+import { Observable } from 'rxjs/Observable';
+import { RpcException } from '@nestjs/microservices';
+import 'rxjs/add/observable/throw';
+
+@Catch(RpcException)
+export class ExceptionFilter {
+  catch(exception) {
+    return Observable.throw(exception.getError());
+  }
+}
+```
+
+Notice It's impossible to set up the microservices exception filters globally.

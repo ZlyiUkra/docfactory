@@ -1,0 +1,100 @@
+# Dependency Injection
+# джерело: https://github.com/nestjs/docs.nestjs.com/blob/dacbef74628f43d20544b75c1fb3b3e7fa33a18d/src/app/homepage/pages/fundamentals/dependency-injection/dependency-injection.component.html
+# отримано: 2026-09-21
+# версія: 4
+
+There's a lot of scenarios when you'd wanna bind something directly to the Nest container. The only thing you should know is that Nest is injecting dependencies by tokens. Usually, the token is just a type. If you wanna provide custom component, you'd need to create a token. Mostly, the custom tokens are plain strings. Following best practices, you should hold this token in the separated file, for example, `constants.ts`.
+
+Let's go through the available options:
+
+#### Use Value
+
+```typescript
+const connectionProvider = { provide: 'ConnectionToken', useValue: null };
+
+@Module({
+  components: [connectionProvider],
+})
+```
+
+Hint It's a good practice to keep custom providers inside separated file, for example `cats.providers.ts`.
+
+Use cases:
+
+- bind specific value to the container, for example 3rd party library
+
+#### Use Factory
+
+```typescript
+const connectionFactory = {
+  provide: 'ConnectionToken',
+  useFactory: (optionsProvider: OptionsProvider) => {
+    const options = optionsProvider.get();
+    return new DatabaseConnection(options);
+  },
+  inject: [OptionsProvider],
+};
+
+@Module({
+  components: [connectionFactory],
+})
+@@switch
+const connectionFactory = {
+  provide: 'ConnectionToken',
+  useFactory: (optionsProvider) => {
+    const options = optionsProvider.get();
+    return new DatabaseConnection(options);
+  },
+  inject: [OptionsProvider],
+};
+
+@Module({
+  components: [connectionFactory],
+})
+```
+
+Notice If you wanna use components from module, you have to pass them inside `inject` array. Nest will pass instances as an arguments of the function in the same order.
+
+Use cases:
+
+- provide a value, which has to be calculated using other components (or custom packages features)
+
+- provide a deffered value, for example database connection (read more about async components)
+
+#### Use Class
+
+```typescript
+const configServiceProvider = {
+  provide: ConfigService,
+  useClass: DevelopmentConfigService,
+};
+
+@Module({
+  components: [configServiceProvider],
+})
+```
+
+Notice Instead of a custom token, we have used the `ConfigService` class, so in fact, we have overrided the default implementation.
+
+Use cases:
+
+- override default class implementation
+
+#### Injection
+
+To inject custom component through constructor, we're using the `@Inject()` decorator. This decorator takes 1 argument - the token.
+
+```typescript
+@Component()
+class CatsRepository {
+  constructor(@Inject('ConnectionToken') connection: Connection) {}
+}
+@@switch
+@Component()
+@Dependencies('ConnectionToken')
+class CatsRepository {
+  constructor(connection) {}
+}
+```
+
+Notice The `@Inject()` decorator is imported from `@nestjs/common` package.

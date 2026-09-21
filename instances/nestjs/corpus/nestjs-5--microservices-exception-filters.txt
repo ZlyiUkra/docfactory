@@ -1,0 +1,61 @@
+# Exception filters
+# джерело: https://github.com/nestjs/docs.nestjs.com/blob/8729a48188b1097a4f7d7bb8dc8a3d525297ce7e/src/app/homepage/pages/microservices/exception-filters/exception-filters.component.html
+# отримано: 2026-09-21
+# версія: 5
+
+The only difference between HTTP exception filter layer and corresponding microservices layer is that instead of throwing `HttpException`, you should rather use `RpcException`.
+
+```typescript
+throw new RpcException('Invalid credentials.');
+```
+
+Hint The `RpcException` class is imported from the `@nestjs/microservices` package.
+
+Nest will handle thrown exception and as a result, returns the `error` object with the following structure:
+
+```typescript
+{
+  status: 'error',
+  message: 'Invalid credentials.'
+}
+```
+
+#### Filters
+
+The exception filters work in the same fashion as the primary ones, with a one, small difference. The `catch()` method has to return an `Observable`.
+
+```typescript
+@@filename(rpc-exception.filter)
+import { Catch, RpcExceptionFilter, ArgumentsHost } from '@nestjs/common';
+import { Observable, throwError } from 'rxjs';
+import { RpcException } from '@nestjs/microservices';
+
+@Catch(RpcException)
+export class ExceptionFilter implements RpcExceptionFilter {
+  catch(exception: RpcException, host: ArgumentsHost): Observable<any> {
+    return throwError(exception.getError());
+  }
+}
+@@switch
+import { Catch, } from '@nestjs/common';
+import { throwError } from 'rxjs';
+
+@Catch(RpcException)
+export class ExceptionFilter {
+  catch(exception, host) {
+    return throwError(exception.getError());
+  }
+}
+```
+
+Warning That is impossible to set up the microservices exception filters globally.
+
+Here is an example that makes use of a manually instantiated method-scoped filter (class-scoped works either):
+
+```typescript
+@UseFilters(new ExceptionFilter())
+@MessagePattern({ cmd: 'sum' })
+sum(data: number[]): number {
+  return (data || []).reduce((a, b) => a + b);
+}
+```

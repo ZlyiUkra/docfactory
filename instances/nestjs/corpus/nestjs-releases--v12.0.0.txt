@@ -1,0 +1,211 @@
+# NestJS release: v12.0.0
+# джерело: https://github.com/nestjs/nest/releases/tag/v12.0.0
+# отримано: 2026-09-21
+# версія: 12.0.0
+
+Tag v12.0.0, published 2026-08-27.
+
+## NestJS v12.0.0
+
+NestJS 12 is centered around **ESM-ready packages**, **first-class Standard Schema support** for validation and serialization, a **rebuilt CLI**, and **native observability** through the new `@nestjs/observe` SDK.
+
+Existing CommonJS applications keep working — migrating your own code to ESM is entirely optional.
+
+📖 Full migration guide
+
+---
+
+## Upgrading
+
+Upgrade the CLI first, since the upgrade command ships with it:
+
+```bash
+npm i -g @nestjs/cli@latest
+```
+
+Then, from the root of your project:
+
+```bash
+nest upgrade
+```
+
+`nest upgrade` moves every `@nestjs/*` package to its v12-compatible major at once and applies the mechanical parts of the migration for you — `nest-cli.json` webpack options, the GraphQL `playground` → `graphiql` rename and subscriptions transport swap, the NATS package replacement, `@nestjs/config` validation options, Jest and Joi bumps — then prints a report of everything it changed and everything you still need to review by hand. Run it with `--dry-run` first to see that report without touching your files.
+
+It deliberately does **not** migrate your project to ESM, Vitest, or oxlint. Those are the defaults for newly generated projects; existing projects adopt them on their own schedule.
+
+**Node.js:** v12 requires **Node.js v20.19+ or v22.12+**. Both `require(esm)` and the ESM packages depend on it; the upgrade command refuses to run on older releases (including the 21.x line). The latest active LTS is recommended.
+
+---
+
+## Highlights
+
+### ESM packages
+
+All core Nest packages now ship as ESM. Thanks to `require(esm)` in modern Node.js, most existing CommonJS applications continue to work without a rewrite. Review custom bootstrapping scripts, build tooling, and test runners if they assume CommonJS-only packages.
+
+`nest new` now asks whether to scaffold a **CommonJS** or an **ESM** project.
+
+### Standard Schema validation
+
+Route parameter decorators — `@Body()`, `@Query()`, `@Param()`, `@RawBody()` — accept a new `schema` option, designed for Standard Schema compatible libraries such as Zod, Valibot, and ArkType:
+
+```ts
+@Post()
+create(@Body({ schema: createUserSchema }) body: CreateUserDto) {
+  return this.usersService.create(body);
+}
+
+@Get(':id')
+findOne(@Param('id', { schema: z.coerce.number().int().positive() }) id: number) {
+  return this.usersService.findOne(id);
+}
+```
+
+The decorator only attaches metadata; register the new `StandardSchemaValidationPipe` to validate against it:
+
+```ts
+app.useGlobalPipes(new StandardSchemaValidationPipe());
+```
+
+The same schemas feed OpenAPI generation. The decorator-based `class-validator` workflow remains fully supported, with no plan to remove it.
+
+### Standard Schema serialization
+
+`StandardSchemaSerializerInterceptor` validates and transforms outgoing responses with the same ecosystem:
+
+```ts
+@UseInterceptors(StandardSchemaSerializerInterceptor)
+@SerializeOptions({ schema: userResponseSchema })
+@Get(':id')
+findOne(@Param('id') id: string) {
+  return this.usersService.findOne(id);
+}
+```
+
+Pick per use case: `ValidationPipe` / `ClassSerializerInterceptor` for class-based DTOs, the Standard Schema variants when your schemas already exist.
+
+### Native observability — `@nestjs/observe`
+
+The official NestJS Observe SDK plugs into Nest's own request lifecycle through the `instrument` application option, rather than patching the HTTP server like a generic APM agent. Requests, jobs, errors, and traces are reported in terms of your controllers, providers, resolvers, and queue consumers:
+
+```ts
+export const { ObserveModule, ObserveInstrument } = createObserveModule();
+
+const app = await NestFactory.create(AppModule, {
+  instrument: ObserveInstrument,
+});
+```
+
+Auto-instrumentation covers HTTP, GraphQL, gRPC, and microservice transports, plus queue consumers and cron runs — no manual span wiring and no collector to run. Opt-in and new; nothing to migrate. `nest new` and `nest upgrade` can wire it up for you (`--observe`). See the Observability chapter.
+
+### Config module on Standard Schema
+
+`@nestjs/config` moves from Joi-specific validation to Standard Schema. `validationSchema` now accepts any compatible schema:
+
+```ts
+ConfigModule.forRoot({
+  validationSchema: z.object({
+    NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+    PORT: z.coerce.number().default(3000),
+  }),
+});
+```
+
+Existing Joi schemas still work with two caveats: upgrade to **Joi v18+** (the first release implementing Standard Schema), and move library-specific settings under `validationOptions.libraryOptions`.
+
+### Route conflict diagnostics
+
+Routes are registered in declaration order, so on order-sensitive adapters `@Get(':id')` can silently shadow a `@Get('me')` declared after it. Two **opt-in** options surface this:
+
+```ts
+const app = await NestFactory.create(AppModule, {
+  routeConflictPolicy: { duplicate: 'error', shadow: 'warn' },
+  routeResolutionStrategy: 'specificity',
+});
+```
+
+Both default to the previous behavior, so nothing changes unless you set them.
+
+### Machine-readable error codes
+
+`HttpExceptionOptions` accepts an `errorCode` that is serialized into the response body, so clients branch on a stable identifier instead of parsing message strings:
+
+```ts
+throw new BadRequestException('Password is too weak', { errorCode: 'WEAK_PASSWORD' });
+```
+
+### Structured logging params
+
+`ConsoleLogger` now treats plain objects passed after the message as structured params of the same log entry instead of separate records:
+
+```ts
+logger.log('User created', { userId: 1, email: 'foo@bar.com' });
+```
+
+In JSON mode they nest under `params`, or spread into the root with `flattenParams`. On by default; set `structuredParams: false` to restore the old behavior.
+
+---
+
+## CLI (`@nestjs/cli` v12)
+
+The CLI was rebuilt in nestjs/nest-cli#3280: the entire source migrated to ESM, tests moved from Jest to Vitest, e2e tests were added for every command, and command classes were refactored to take typed context objects instead of untyped inputs and option arrays.
+
+**New commands**
+
+- **`nest upgrade`** (alias `update`) — upgrades a v11 project to v12 and applies the migration steps described above.
+- **`nest deploy`** — deploys your application to the cloud via Mau, installing `@nestjs/mau` on first use and forwarding every argument straight through.
+
+**Defaults and tooling**
+
+- **Rspack** is the new default bundler for monorepos. The `--webpack` / `--webpackPath` flags (and their `webpack` / `webpackConfigPath` counterparts in `nest-cli.json`) are **deprecated** in favor of `--builder rspack`.
+- **oxlint** replaces ESLint in generated projects.
+- **Vitest** is the default test runner for ESM projects; CommonJS projects continue with Jest.
+- **bun** is now a supported package manager, alongside npm, yarn, and pnpm.
+- The `decorator` schematic generates decorators using the preferred `Reflector.createDecorator()` form. The `angular` schematic has been **removed**.
+
+**New options**
+
+- `nest build` / `nest start`: `--rspackPath [path]`, `--emit-declarations` (SWC), `--no-type-check`, `--silent`
+- `nest build`: `--parallel [concurrency]`, for building monorepo projects in parallel with `--all`
+- `nest-cli.json`: `includeLibraryAssets`, for copying library assets into an application build
+
+---
+
+## Breaking changes
+
+| Change | What to do |
+| --- | --- |
+| Packages ship as **ESM** | Usually nothing — `require(esm)` keeps CommonJS apps working. Review custom bootstrapping, bundler, and test-runner config. |
+| **Node.js v20.19+ / v22.12+** required | Upgrade Node; the 21.x line is not supported. |
+| **Lifecycle hooks** are now invoked by component hierarchy level | Review ordering assumptions between related providers/modules in init, teardown, and tests. |
+| **NATS v3** — the `nats` package is replaced by `@nats-io/transport-node` | `npm uninstall nats && npm install @nats-io/transport-node`; update direct imports. Packets are now serialized as JSON strings and custom deserializers receive the full NATS message — read payloads with `msg.json()`. |
+| **GraphQL subscriptions** — `subscriptions-transport-ws` support removed | Switch to `graphql-ws`; the protocols are wire-incompatible, so clients must be updated. Review `onConnect` callbacks. |
+| **GraphiQL** is the default GraphQL IDE | Replace `playground` with `graphiql`; pass an options object to customize. |
+| **`@nestjs/config`** validates through Standard Schema | Keep Joi by upgrading to v18+ and moving library settings under `validationOptions.libraryOptions`. |
+| **Pipe transform signatures** refined; `ArgumentMetadata` is now generic | Adjust hand-written custom pipe signatures if the compiler complains. |
+| **`ConsoleLogger` structured params** on by default | Set `structuredParams: false` to restore the previous output. |
+| **Webpack CLI workflows** deprecated | Migrate to `--builder rspack`. |
+| **`angular` schematic** removed | — |
+
+Most of these are handled automatically by `nest upgrade`.
+
+---
+
+## Also in this release
+
+- **`ValidationPipe` error format** — a new option controls the shape of validation error responses.
+- **gRPC exception filter** — `GrpcExceptionFilter` and status-specific exceptions map errors to proper gRPC status codes instead of `UNKNOWN`.
+- **Regex Kafka patterns** — `@MessagePattern()` and `@EventPattern()` accept a `RegExp` on the Kafka transport.
+- **Request-scoped WebSocket gateways** — gateways support request-scoped providers, with the socket injectable via the `REQUEST` token.
+- **WebSocket disconnect reason** — `handleDisconnect` can receive the reason for the disconnection.
+- **Microservices pre-request hook** — a new hook runs before a message handler is invoked.
+- **Express graceful shutdown** — the Express adapter drains in-flight requests on shutdown.
+- **HTTP adapter error mapping** — reworked across core, Express, and Fastify adapters.
+
+---
+
+## Thanks
+
+Thank you to everyone who contributed code, issues, reproductions, and reviews to this release. 💛
+
+If NestJS helps you build your products, consider supporting the project.

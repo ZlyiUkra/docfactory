@@ -1,0 +1,97 @@
+# Circular Dependency
+# джерело: https://github.com/nestjs/docs.nestjs.com/blob/dacbef74628f43d20544b75c1fb3b3e7fa33a18d/src/app/homepage/pages/fundamentals/circular-dependency/circular-dependency.component.html
+# отримано: 2026-09-21
+# версія: 4
+
+The circular dependency means that class A needs class B, and class B needs class A. Nest permits to create circular dependencies between both components and modules, but we advise you not to use it too much. Sometimes it's really difficult to avoid these types of the relationships, that's why we provided some ways to deal with this issue.
+
+#### Forward reference
+
+The forward reference allows Nest refer to references which are not yet defined. When `CatsService` and `CommonService` depend on each other, both sides of the relationship need to use `@Inject()` and the `forwardRef()` utility, otherwise Nest won't create your components instances because all of the essential metadata would be not available. Let's see the following snippet:
+
+```typescript
+@@filename(cats.service)
+@Component()
+export class CatsService {
+  constructor(
+    @Inject(forwardRef(() => CommonService))
+    private readonly commonService: CommonService,
+  ) {}
+}
+@@switch
+@Component()
+@Dependencies(forwardRef(() => CommonService))
+export class CatsService {
+  constructor(commonService) {
+    this.commonService = commonService;
+  }
+}
+```
+
+Notice The `forwardRef()` function is imported from the `@nestjs/common` package.
+
+Here's the first side of the relationship. Now let's do the same with the `CommonService`:
+
+```typescript
+@@filename(common.service)
+@Component()
+export class CommonService {
+  constructor(
+    @Inject(forwardRef(() => CatsService))
+    private readonly catsService: CatsService,
+  ) {}
+}
+@@switch
+@Component()
+@Dependencies(forwardRef(() => CatsService))
+export class CommonService {
+  constructor(catsService) {
+    this.catsService = catsService;
+  }
+}
+```
+
+Hint You never know which constructor will be called first.
+
+To create circular dependencies between modules you have to use the same `forwardRef()` utility on the both parts of the modules association:
+
+```typescript
+@@filename(common.module)
+@Module({
+  imports: [forwardRef(() => CatsModule)],
+})
+export class CommonModule {}
+```
+
+#### Module reference
+
+Nest provides the `ModuleRef` class, which might be simply injected into each component.
+
+```typescript
+@@filename(cats.service)
+@Component()
+export class CatsService implements OnModuleInit {
+  private service: Service;
+  constructor(private readonly moduleRef: ModuleRef) {}
+
+  onModuleInit() {
+    this.service = this.moduleRef.get<Service>(Service);
+  }
+}
+@@switch
+@Component()
+@Dependencies(ModuleRef)
+export class CatsService {
+  constructor(moduleRef) {
+    this.moduleRef = moduleRef;
+  }
+
+  onModuleInit() {
+    this.service = this.moduleRef.get(Service);
+  }
+}
+```
+
+Notice The `ModuleRef` class is imported from the `@nestjs/core` package.
+
+The module reference has a `get()` method, which allows to retrieve any component available in the current module.

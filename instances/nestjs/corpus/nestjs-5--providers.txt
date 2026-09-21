@@ -1,0 +1,156 @@
+# Providers
+# джерело: https://github.com/nestjs/docs.nestjs.com/blob/8729a48188b1097a4f7d7bb8dc8a3d525297ce7e/src/app/homepage/pages/components/components.component.html
+# отримано: 2026-09-21
+# версія: 5
+
+Almost everything can be considered as a provider – service, repository, factory, helper, and so on. All of them can inject dependencies through `constructor`, meaning, they can create various relationships with each other. But in fact, a provider is nothing else than just a simple class annotated with a `@Injectable()` decorator.
+
+In the previous chapter, we have built a simple `CatsController`.
+
+The controllers shall handle HTTP requests and delegate more complex tasks to the services. The providers are plain JavaScript classes with a `@Injectable()` decorator on top of them.
+
+Hint Since Nest enables the possibility to design and organize the dependencies in a more OO-way, we strongly recommend following the SOLID principles.
+
+Let's create a simple `CatsService` provider:
+
+```typescript
+@@filename(cats.service)
+import { Injectable } from '@nestjs/common';
+import { Cat } from './interfaces/cat.interface';
+
+@Injectable()
+export class CatsService {
+  private readonly cats: Cat[] = [];
+
+  create(cat: Cat) {
+    this.cats.push(cat);
+  }
+
+  findAll(): Cat[] {
+    return this.cats;
+  }
+}
+@@switch
+import { Injectable } from '@nestjs/common';
+
+@Injectable()
+export class CatsService {
+  constructor() {
+    this.cats = [];
+  }
+
+  create(cat) {
+    this.cats.push(cat);
+  }
+
+  findAll() {
+    return this.cats;
+  }
+}
+```
+
+Here's a `CatsService`, a basic class with one property and two methods. The only new trait is that it uses the `@Injectable()` decorator. The `@Injectable()` attaches the metadata, thereby Nest knows that this class is a Nest provider.
+
+Notice There's a `Cat` interface used above. We didn't mention it because the schema is exactly same as in the `CreateCatDto` class which we have created in the previous chapter.
+
+Since we have the service class already done, let's use it inside the `CatsController`:
+
+```typescript
+@@filename(cats.controller)
+import { Controller, Get, Post, Body } from '@nestjs/common';
+import { CreateCatDto } from './dto/create-cat.dto';
+import { CatsService } from './cats.service';
+import { Cat } from './interfaces/cat.interface';
+
+@Controller('cats')
+export class CatsController {
+  constructor(private readonly catsService: CatsService) {}
+
+  @Post()
+  async create(@Body() createCatDto: CreateCatDto) {
+    this.catsService.create(createCatDto);
+  }
+
+  @Get()
+  async findAll(): Promise<Cat[]> {
+    return this.catsService.findAll();
+  }
+}
+@@switch
+import { Controller, Get, Post, Body, Bind, Dependencies } from '@nestjs/common';
+import { CatsService } from './cats.service';
+
+@Controller('cats')
+@Dependencies(CatsService)
+export class CatsController {
+  constructor(catsService) {
+    this.catsService = catsService;
+  }
+
+  @Post()
+  @Bind(Body())
+  async create(createCatDto) {
+    this.catsService.create(createCatDto);
+  }
+
+  @Get()
+  async findAll() {
+    return this.catsService.findAll();
+  }
+}
+```
+
+The `CatsService` is injected through the class constructor. Don't be afraid of the `private readonly` shortened syntax. It means that we've created and initialized the `catsService` member immedietely in the same location.
+
+#### Dependency injection
+
+Nest is built around the strong design pattern commonly known as Dependency injection. We recommend to read a great article about this concept in the official Angular documentation.
+
+In Nest, thanks to the TypeScript capabilities, it's extremely easy to manage dependencies because they will be resolved just by type and afterward, passed to your controller's constructor:
+
+```typescript
+constructor(private readonly catsService: CatsService) {}
+```
+
+#### Custom providers
+
+An inversion of control container, that Nest makes use of to resolve relationships between providers, is far more powerful than described above. The `@Injectable()` decorator is only a tip of an iceberg, not strictly required to define providers. Instead, you can use plain values, classes, either asynchronous or synchronous factories. Look here to find more examples.
+
+#### Last step
+
+The last thing is to tell the module that something called `CatsService` truly exists. We do this by editing our module file - `app.module.ts`, and put the service into the `providers` array of the `@Module()` decorator.
+
+```typescript
+@@filename(app.module)
+import { Module } from '@nestjs/common';
+import { CatsController } from './cats/cats.controller';
+import { CatsService } from './cats/cats.service';
+
+@Module({
+  controllers: [CatsController],
+  providers: [CatsService],
+})
+export class ApplicationModule {}
+```
+
+Thanks to that, Nest will be able to resolve the dependencies of the `CatsController` class. This is how our directory structure looks right now:
+
+src
+
+cats
+
+dto
+
+create-cat.dto.ts
+
+interfaces
+
+cat.interface.ts
+
+cats.service.ts
+
+cats.controller.ts
+
+app.module.ts
+
+main.ts

@@ -1,0 +1,109 @@
+# Schema Stitching
+# джерело: https://github.com/nestjs/docs.nestjs.com/blob/dacbef74628f43d20544b75c1fb3b3e7fa33a18d/src/app/homepage/pages/graphql/schema-stitching/schema-stitching.component.html
+# отримано: 2026-09-21
+# версія: 4
+
+The schema stitching is a feature that allows creating a single GraphQL schema from multiple underlying GraphQL APIs. You can read more about it here.
+
+#### Proxying
+
+To add the ability to proxy fields between schemas, you need to create additional resolvers between them. Let's have a look on the example from the Apollo documentation:
+
+```typescript
+mergeInfo => ({
+  User: {
+    chirps: {
+      fragment: `fragment UserFragment on User { id }`,
+      resolve(parent, args, context, info) {
+        const authorId = parent.id;
+        return mergeInfo.delegate(
+          'query',
+          'chirpsByAuthorId',
+          {
+            authorId,
+          },
+          context,
+          info,
+        );
+      },
+    },
+  }
+})
+```
+
+Here we delegate `chirps` property of `User` to another GraphQL API. To achieve the same result in Nest-way, we use `@DelegateProperty()` decorator.
+
+```typescript
+@Resolver('User')
+@DelegateProperty('chirps')
+findChirpsByUserId() {
+  return (mergeInfo: MergeInfo) => ({
+    fragment: `fragment UserFragment on User { id }`,
+    resolve(parent, args, context, info) {
+      const authorId = parent.id;
+      return mergeInfo.delegate(
+        'query',
+        'chirpsByAuthorId',
+        {
+          authorId,
+        },
+        context,
+        info,
+      );
+    },
+  });
+}
+```
+
+Hint The `@Resolver()` decorator is used here at the method-level, but you can use it at top (class) level as well.
+
+Now let's take a step back to the `graphqlExpress` middleware. We need to merge our schemas and add delegates between them. To create delegates we use `createDelegates()` method of `GraphQLFactory` class.
+
+```typescript
+@@filename(app.module)
+configure(consumer) {
+  const typeDefs = this.graphQLFactory.mergeTypesByPaths('./**/*.graphql');
+  const localSchema = this.graphQLFactory.createSchema({ typeDefs });
+  const delegates = this.graphQLFactory.createDelegates();
+  const schema = mergeSchemas({
+    schemas: [localSchema, chirpSchema, linkTypeDefs],
+    resolvers: delegates,
+  });
+
+  consumer
+    .apply(graphqlExpress(req => ({ schema, rootValue: req })))
+    .forRoutes({ path: '/graphql', method: RequestMethod.ALL });
+}
+```
+
+In order to merge schemas, we have used `mergeSchemas()` function (read more). Moreover, there're `chirpsSchema` and `linkTypeDefs` variables. They're copied & pasted directly from the Apollo documentation.
+
+```typescript
+import { makeExecutableSchema } from 'graphql-tools';
+
+const chirpSchema = makeExecutableSchema({
+  typeDefs: `
+    type Chirp {
+      id: ID!
+      text: String
+      authorId: ID!
+    }
+
+    type Query {
+      chirpById(id: ID!): Chirp
+      chirpsByAuthorId(authorId: ID!): [Chirp]
+    }
+  `
+});
+const linkTypeDefs = `
+  extend type User {
+    chirps: [Chirp]
+  }
+
+  extend type Chirp {
+    author: User
+  }
+`;
+```
+
+That's all.

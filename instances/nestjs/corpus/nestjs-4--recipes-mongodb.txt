@@ -1,0 +1,179 @@
+# MongoDB (Mongoose)
+# джерело: https://github.com/nestjs/docs.nestjs.com/blob/dacbef74628f43d20544b75c1fb3b3e7fa33a18d/src/app/homepage/pages/recipes/mongodb/mongodb.component.html
+# отримано: 2026-09-21
+# версія: 4
+
+Warning In this article, you'll learn how to create a `DatabaseModule` based on the Mongoose package from scratch using custom components. As a consequence, this solution contains a lot of overhead that you can omit using ready to use and available out-of-the-box dedicated `@nestjs/mongoose` package. To learn more, see here.
+
+Mongoose is the most popular MongoDB object modeling tool. To start the adventure with this library we have to install all of the required dependencies:
+
+```typescript
+$ npm install --save mongoose
+$ npm install --save-dev @types/mongoose
+@@switch
+$ npm install --save mongoose
+```
+
+The first step we need to do is to establish the connection with our database using `connect()` function. The `connect()` function returns the `MongooseThenable` by default, but we can simply override it with the native `global.Promise` to avoid deprecation warnings. In fact, we're creating an async component here.
+
+```typescript
+@@filename(database.providers)
+import * as mongoose from 'mongoose';
+
+export const databaseProviders = [
+  {
+    provide: 'DbConnectionToken',
+    useFactory: async () => {
+      (mongoose as any).Promise = global.Promise;
+      return await mongoose.connect('mongodb://localhost/nest', {
+        useMongoClient: true,
+      });
+    },
+  },
+];
+```
+
+Hint Following best practices, we've declared the custom component in the separated file which has a `*.providers.ts` suffix.
+
+Then we need to export these providers to make them accessible for the rest part of the application.
+
+```typescript
+@@filename(database.module)
+import { Module } from '@nestjs/common';
+import { databaseProviders } from './database.providers';
+
+@Module({
+  components: [...databaseProviders],
+  exports: [...databaseProviders],
+})
+export class DatabaseModule {}
+```
+
+It's everything. Now we can inject the `Connection` object using `@Inject()` decorator. Each component which would depend on the `Connection` async component will wait until the `Promise` would be resolved.
+
+#### Model injection
+
+With Mongoose, everything is derived from a Schema. Let's define the `CatSchema`:
+
+```typescript
+@@filename(cats/schemas/cat.schema)
+import * as mongoose from 'mongoose';
+
+export const CatSchema = new mongoose.Schema({
+  name: String,
+  age: Number,
+  breed: String,
+});
+```
+
+The `CatsSchema` belongs to the `cats` directory. This directory represents the `CatsModule`. It's your decision where you gonna keep your schema files. From my point of view, the best way's to hold them nearly their domain, in the appropriate module directory.
+
+Now it's time to create a Model component:
+
+```typescript
+@@filename(cats.providers)
+import { Connection } from 'mongoose';
+import { CatSchema } from './schemas/cat.schema';
+
+export const catsProviders = [
+  {
+    provide: 'CatModelToken',
+    useFactory: (connection: Connection) => connection.model('Cat', CatSchema),
+    inject: ['DbConnectionToken'],
+  },
+];
+@@switch
+import { CatSchema } from './schemas/cat.schema';
+
+export const catsProviders = [
+  {
+    provide: 'CatModelToken',
+    useFactory: (connection) => connection.model('Cat', CatSchema),
+    inject: ['DbConnectionToken'],
+  },
+];
+```
+
+Notice In the real-world applications you should avoid magic strings at all. Both `CatModelToken` and `DbConnectionToken` should be kept in the separated `constants.ts` file.
+
+Now we can inject the `CatModelToken` to the `CatsService` using the `@Inject()` decorator:
+
+```typescript
+@@filename(cats.service)
+import { Model } from 'mongoose';
+import { Component, Inject } from '@nestjs/common';
+import { Cat } from './interfaces/cat.interface';
+import { CreateCatDto } from './dto/create-cat.dto';
+
+@Component()
+export class CatsService {
+  constructor(
+    @Inject('CatModelToken') private readonly catModel: Model<Cat>) {}
+
+  async create(createCatDto: CreateCatDto): Promise<Cat> {
+    const createdCat = new this.catModel(createCatDto);
+    return await createdCat.save();
+  }
+
+  async findAll(): Promise<Cat[]> {
+    return await this.catModel.find().exec();
+  }
+}
+@@switch
+import { Component, Dependencies } from '@nestjs/common';
+
+@Component()
+@Dependencies('CatModelToken')
+export class CatsService {
+  constructor(catModel) {
+    this.catModel = catModel;
+  }
+
+  async create(createCatDto) {
+    const createdCat = new this.catModel(createCatDto);
+    return await createdCat.save();
+  }
+
+  async findAll() {
+    return await this.catModel.find().exec();
+  }
+}
+```
+
+In the above example I've used the `Cat` interface. This interface extends the `Document` from the mongoose package:
+
+```typescript
+@@filename(cat.interface.ts)
+import { Document } from 'mongoose';
+
+export interface Cat extends Document {
+  readonly name: string;
+  readonly age: number;
+  readonly breed: string;
+}
+```
+
+The database connection's asynchronous, but Nest makes this process's completely invisible for the end-user. The `CatModel` component's waiting for the db connection, and the `CatsService` is delayed until model would be ready to use. The entire application can start when each component is instantiated.
+
+Here's a final `CatsModule`:
+
+```typescript
+@@filename(cats.module)
+import { Module } from '@nestjs/common';
+import { CatsController } from './cats.controller';
+import { CatsService } from './cats.service';
+import { catsProviders } from './cats.providers';
+import { DatabaseModule } from '../database/database.module';
+
+@Module({
+  imports: [DatabaseModule],
+  controllers: [CatsController],
+  components: [
+    CatsService,
+    ...catsProviders,
+  ],
+})
+export class CatsModule {}
+```
+
+Hint Don't forget to import the `CatsModule` into the root `ApplicationModule`.

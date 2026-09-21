@@ -1,0 +1,115 @@
+# Gateways
+# джерело: https://github.com/nestjs/docs.nestjs.com/blob/8729a48188b1097a4f7d7bb8dc8a3d525297ce7e/src/app/homepage/pages/websockets/gateways/gateways.component.html
+# отримано: 2026-09-21
+# версія: 5
+
+A gateway is a class annotated with `@WebSocketGateway()` decorator. The gateway, by default, makes use of socket.io package under the hood, but also, provides compatibility with a wide range of other libraries, including native web sockets implementation as well (read more).
+
+Hint Gateway behaves same as a simple provider, therefore it can effortlessly inject dependencies through constructor. Also, gateway might be injected by other classes (providers and controllers) as well.
+
+#### Installation
+
+Firstly, we need to install the required package:
+
+```
+
+$ npm i --save @nestjs/websockets
+```
+
+#### Basics
+
+In general, each gateway is listening to the same port as HTTP server is running on, unless your app is not a web application, or you have changed the port manually. We can change this behavior by passing an argument to the `@WebSocketGateway(81)` decorator where `81` is a chosen port number. Additionally, you can set a namespace used by this gateway with the following construction:
+
+```typescript
+@WebSocketGateway(81, { namespace: 'events' })
+```
+
+Warning The gateway won't start until you put it inside the `providers` array.
+
+The `namespace` is not a sole available option. You can pass any other property that is mentioned here. Those properties will be passed to the socket constructor during the instantiation process. Alright, the gateway is listening now, but we are not subscribing to the incoming messages so far. Let's create a handler that will subscribe to the `events` messages and respond to the user with the exact same data.
+
+```typescript
+@@filename(events.gateway)
+@SubscribeMessage('events')
+onEvent(client, data: any): WsResponse<any> {
+  const event = 'events';
+  return { event, data };
+}
+@@switch
+@SubscribeMessage('events')
+onEvent(client, data) {
+  const event = 'events';
+  return { event, data };
+}
+```
+
+Hint Both `WsResponse` interface and `@SubscribeMessage()` decorator are imported from `@nestjs/common` package.
+
+The `onEvent()` function takes 2 arguments. First one is a library-specific socket instance and the second one is the data received from the client. An object returned from the function has to have 2 properties. The `event` which is a name of the emitted event and the `data` that has to be forwarded to the client. Also, it is possible to emit messages using a library-specific approach, for example, by making use of `client.emit()` method. However, in this case, you aren't able to use interceptors. If you don't want to respond to the user, just don't return anything (or explicitly return "falsy" value, for example, `undefined`).
+
+Now when the client emits a message in the following manner:
+
+```typescript
+socket.emit('events', { name: 'Nest' });
+```
+
+The `onEvent()` method will be executed. Also, in order to listen for messages emitted from within above handler, the client has to attach a corresponding listener:
+
+```typescript
+socket.on('events', (data) => console.log(data));
+```
+
+#### Asynchronous responses
+
+Each message handler can be either synchronous or asynchronous (`async`), and thereby you're able to return the `Promise`. Moreover, you can return the RxJS `Observable`, which means that you can return multiple values (they will be emitted until the stream is completed).
+
+```typescript
+@@filename(events.gateway)
+@SubscribeMessage('events')
+onEvent(client, data: any: Observable<WsResponse<number>> {
+  const event = 'events';
+  const response = [1, 2, 3];
+
+  return from(response).pipe(
+    map(data => ({ event, data })),
+  );
+}
+@@switch
+@SubscribeMessage('events')
+onEvent(client, data) {
+  const event = 'events';
+  const response = [1, 2, 3];
+
+  return from(response).pipe(
+    map(data => ({ event, data })),
+  );
+}
+```
+
+The above message handler will respond 3 times (sequentially, with each item from the `response` array).
+
+#### Lifecycle hooks
+
+There are 3 useful lifecycle hooks. All of them have corresponding interfaces and are described in the following table:
+
+| `OnGatewayInit` | Forces to implement the `afterInit()` method. Takes library-specific server instance as an argument.
+
+| `OnGatewayConnection` | Forces to implement the `handleConnection()` method. Takes library-specific client socket instance as an argument.
+
+| `OnGatewayDisconnect` | Forces to implement the `handleDisconnect()` method. Takes library-specific client socket instance as an argument.
+
+Hint Each lifecycle interface is exposed from `@nestjs/websockets` package.
+
+#### Library-specific server instance
+
+Occasionally, you may want to have a direct access to the native, library-specific server instance. The reference to this object is passed as an argument to the `afterInit()` method (`OnGatewayInit` interface). The second approach is to make use of `@WebSocketServer()` decorator.
+
+```typescript
+@WebSocketServer() server;
+```
+
+Notice The `@WebSocketServer()` decorator is imported from the `@nestjs/websockets` package.
+
+Nest will automatically assign the server instance to this property when it's ready to use.
+
+A working example is available here.

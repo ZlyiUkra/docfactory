@@ -1,0 +1,62 @@
+# IDE
+# джерело: https://github.com/nestjs/docs.nestjs.com/blob/8729a48188b1097a4f7d7bb8dc8a3d525297ce7e/src/app/homepage/pages/graphql/ide/ide.component.html
+# отримано: 2026-09-21
+# версія: 5
+
+One of the most popular GraphQL in-browser IDE is called GraphiQL. In order to use a GraphiQL with your application, you need to set up a middleware. This particular middleware comes with `apollo-server-express` package that we had to install a while ago. Its name is a `graphiqlExpress()`.
+
+In order to set up a middleware, we need to open an `app.module.ts` file once again:
+
+```typescript
+@@filename(app.module)
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
+import { graphqlExpress, graphiqlExpress } from 'apollo-server-express';
+import { GraphQLModule, GraphQLFactory } from '@nestjs/graphql';
+
+@Module({
+  imports: [GraphQLModule],
+})
+export class ApplicationModule implements NestModule {
+  constructor(private readonly graphQLFactory: GraphQLFactory) {}
+
+  configure(consumer: MiddlewareConsumer) {
+    const typeDefs = this.graphQLFactory.mergeTypesByPaths('./**/*.graphql');
+    const schema = this.graphQLFactory.createSchema({ typeDefs });
+
+    consumer
+      .apply(graphiqlExpress({ endpointURL: '/graphql' }))
+      .forRoutes('/graphiql')
+      .apply(graphqlExpress(req => ({ schema, rootValue: req })))
+      .forRoutes('/graphql');
+  }
+}
+@@switch
+import { Module } from '@nestjs/common';
+import { graphqlExpress, graphiqlExpress } from 'apollo-server-express';
+import { GraphQLModule, GraphQLFactory } from '@nestjs/graphql';
+
+@Dependencies(GraphQLFactory)
+@Module({
+  imports: [GraphQLModule],
+})
+export class ApplicationModule {
+  constructor(graphQLFactory) {
+    this.graphQLFactory = graphQLFactory;
+  }
+
+  configure(consumer) {
+    const typeDefs = this.graphQLFactory.mergeTypesByPaths('./**/*.graphql');
+    const schema = this.graphQLFactory.createSchema({ typeDefs });
+
+    consumer
+      .apply(graphiqlExpress({ endpointURL: '/graphql' }))
+      .forRoutes('/graphiql')
+      .apply(graphqlExpress(req => ({ schema, rootValue: req })))
+      .forRoutes('/graphql');
+  }
+}
+```
+
+Hint The `graphiqlExpress()` offers few other options, read more about them here.
+
+Afterward, when you navigate to the `http://localhost:PORT/graphiql` you should see a graphical interactive GraphiQL IDE.

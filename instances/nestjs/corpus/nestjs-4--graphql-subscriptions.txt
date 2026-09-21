@@ -1,0 +1,101 @@
+# Subscriptions
+# джерело: https://github.com/nestjs/docs.nestjs.com/blob/dacbef74628f43d20544b75c1fb3b3e7fa33a18d/src/app/homepage/pages/graphql/subscriptions/subscriptions.component.html
+# отримано: 2026-09-21
+# версія: 4
+
+Subscription is just another GraphQL operation type like Query and Mutation. It allows creating real-time subscriptions over a bidirectional transport layer, mainly over websockets. Read more about the subscriptions here.
+
+Below is a `commentAdded` subscription example, copied & pasted directly from the official Apollo documentation:
+
+```typescript
+Subscription: {
+  commentAdded: {
+    subscribe: () => pubsub.asyncIterator('commentAdded')
+  }
+}
+```
+
+Notice The `pubsub` is an instance of `PubSub` class. Read more about it here.
+
+In order to create an equivalent subscription in Nest-way, we'll make use of the `@Subscription()` decorator. Let's extend our `AuthorResolver` used in the resolvers map section.
+
+```typescript
+import { Query, Resolver, Subscription, ResolveProperty } from '@nestjs/graphql';
+import { find, filter } from 'lodash';
+import { PubSub } from 'graphql-subscriptions';
+
+// example data
+const authors = [
+  { id: 1, firstName: 'Tom', lastName: 'Coleman' },
+  { id: 2, firstName: 'Sashko', lastName: 'Stubailo' },
+  { id: 3, firstName: 'Mikhail', lastName: 'Novikov' },
+];
+const posts = [
+  { id: 1, authorId: 1, title: 'Introduction to GraphQL', votes: 2 },
+  { id: 2, authorId: 2, title: 'Welcome to Meteor', votes: 3 },
+  { id: 3, authorId: 2, title: 'Advanced GraphQL', votes: 1 },
+  { id: 4, authorId: 3, title: 'Launchpad is Cool', votes: 7 },
+];
+
+// example pubsub
+const pubsub = new PubSub();
+
+@Resolver('Author')
+export class AuthorResolver {
+  @Query('author')
+  getAuthor(obj, args, context, info) {
+    return find(authors, { id: args.id });
+  }
+
+  @Subscription()
+  commentAdded() {
+    return {
+      subscribe: () => pubsub.asyncIterator('commentAdded'),
+    };
+  }
+
+  @ResolveProperty('posts')
+  getPosts(author) {
+    return filter(posts, { authorId: author.id });
+  }
+}
+```
+
+#### Refactor
+
+We have used a local `PubSub` instance here. Instead, we should define `PubSub` as a component, inject it through the constructor (using `@Inject()` decorator), and reuse it across the entire application. You can read more about Nest custom components here.
+
+#### Type definitions
+
+The last step is to update type definitions (read more) file.
+
+```java
+@@filename(author-types.graphql)
+type Author {
+  id: Int!
+  firstName: String
+  lastName: String
+  posts: [Post]
+}
+
+type Post {
+  id: Int!
+  title: String
+  votes: Int
+}
+
+type Query {
+  author(id: Int!): Author
+}
+
+type Comment {
+  id: String
+  content: String
+}
+
+type Subscription {
+  commentAdded(repoFullName: String!): Comment
+}
+```
+
+That's all. We created a single `commentAdded(repoFullName: String!): Comment` subscription.

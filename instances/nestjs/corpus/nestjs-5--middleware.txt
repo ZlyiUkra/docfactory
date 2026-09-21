@@ -1,0 +1,327 @@
+# Middleware
+# джерело: https://github.com/nestjs/docs.nestjs.com/blob/8729a48188b1097a4f7d7bb8dc8a3d525297ce7e/src/app/homepage/pages/middlewares/middlewares.component.html
+# отримано: 2026-09-21
+# версія: 5
+
+The middleware is a function which is called before the route handler. Middleware functions have access to the request and response objects, and the `next` middleware function in the application’s request-response cycle. The next middleware function is commonly denoted by a variable named `next`.
+
+The Nest middleware, by default, are equal to express middleware. Here's a great list of the middleware capabilities copied from the official express documentation:
+
+Middleware functions can perform the following tasks:
+
+- execute any code.
+
+- make changes to the request and the response objects.
+
+- end the request-response cycle.
+
+- call the next middleware function in the stack.
+
+- if the current middleware function does not end the request-response cycle, it must call `next()` to pass control to the next middleware function. Otherwise, the request will be left hanging.
+
+The Nest middleware is either a function, or a class with a `@Injectable()` decorator. The class should implement the `NestMiddleware` interface, while function does not have any special requirements. Let's start from the `LoggerMiddleware` example.
+
+```typescript
+@@filename(logger.middleware)
+import { Injectable, NestMiddleware, MiddlewareFunction } from '@nestjs/common';
+
+@Injectable()
+export class LoggerMiddleware implements NestMiddleware {
+  resolve(...args: any[]): MiddlewareFunction {
+    return (req, res, next) => {
+      console.log('Request...');
+      next();
+    };
+  }
+}
+@@switch
+import { Injectable } from '@nestjs/common';
+
+@Injectable()
+export class LoggerMiddleware {
+  resolve(...args) {
+    return (req, res, next) => {
+      console.log('Request...');
+      next();
+    };
+  }
+}
+```
+
+The `resolve()` method has to return a regular library-specific middleware `(req, res, next) => any`.
+
+#### Dependency injection
+
+There's no exception when it comes to the middleware. Same as providers and controllers, they are able to inject dependencies that belongs to the same module (through the `constructor`).
+
+#### How to apply a middleware?
+
+There's no place for middleware in the `@Module()` decorator. We have to set them up using the `configure()` method of the module class. Modules that include middleware have to implement the `NestModule` interface. Let's set up the `LoggerMiddleware` at the `ApplicationModule` level.
+
+```typescript
+@@filename(app.module)
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
+import { LoggerMiddleware } from './common/middlewares/logger.middleware';
+import { CatsModule } from './cats/cats.module';
+
+@Module({
+  imports: [CatsModule],
+})
+export class ApplicationModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(LoggerMiddleware)
+      .forRoutes('/cats');
+  }
+}
+@@switch
+import { Module } from '@nestjs/common';
+import { LoggerMiddleware } from './common/middlewares/logger.middleware';
+import { CatsModule } from './cats/cats.module';
+
+@Module({
+  imports: [CatsModule],
+})
+export class ApplicationModule {
+  configure(consumer) {
+    consumer
+      .apply(LoggerMiddleware)
+      .forRoutes('/cats');
+  }
+}
+```
+
+In the above example we have set up the `LoggerMiddleware` for `/cats` route handlers that we have previously defined inside the `CatsController`. The `MiddlewareConsumer` is a helper class. It provides several built-in methods to manage middleware. All of them can be simply chained. Let's go over them.
+
+The `forRoutes()` can take a single string, multiple string, a controller class and even multiple controller classes. In most cases you'll probably just pass the controllers and separate them by a comma. Below is an example with a single controller:
+
+```typescript
+@@filename(app.module)
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
+import { LoggerMiddleware } from './common/middlewares/logger.middleware';
+import { CatsModule } from './cats/cats.module';
+
+@Module({
+  imports: [CatsModule],
+})
+export class ApplicationModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer
+      .apply(LoggerMiddleware)
+      .forRoutes(CatsController);
+  }
+}
+@@switch
+import { Module } from '@nestjs/common';
+import { LoggerMiddleware } from './common/middlewares/logger.middleware';
+import { CatsModule } from './cats/cats.module';
+
+@Module({
+  imports: [CatsModule],
+})
+export class ApplicationModule {
+  configure(consumer) {
+    consumer
+      .apply(LoggerMiddleware)
+      .forRoutes(CatsController);
+  }
+}
+```
+
+Hint The `apply()` method can either take a single middleware, or an array of middleware.
+
+#### Configurable middleware
+
+Sometimes the behaviour of the middleware depends on the custom values e.g. an array of user roles, options object, and so on. We can apply additional arguments to the `resolve()` using the `with()` method. See an example below:
+
+```typescript
+@@filename(app.module)
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
+import { LoggerMiddleware } from './common/middlewares/logger.middleware';
+import { CatsModule } from './cats/cats.module';
+import { CatsController } from './cats/cats.controller';
+
+@Module({
+  imports: [CatsModule],
+})
+export class ApplicationModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer
+      .apply(LoggerMiddleware)
+      .with('ApplicationModule')
+      .forRoutes(CatsController);
+  }
+}
+@@switch
+import { Module } from '@nestjs/common';
+import { LoggerMiddleware } from './common/middlewares/logger.middleware';
+import { CatsModule } from './cats/cats.module';
+import { CatsController } from './cats/cats.controller';
+
+@Module({
+  imports: [CatsModule],
+})
+export class ApplicationModule {
+  configure(consumer) {
+    consumer
+      .apply(LoggerMiddleware)
+      .with('ApplicationModule')
+      .forRoutes(CatsController);
+  }
+}
+```
+
+We have passed a plain string - `ApplicationModule` to the `with()` method. Thereafter, we have to adjust the `resolve()` method of the `LoggerMiddleware`.
+
+```typescript
+@@filename(logger.middleware)
+import { Injectable, NestMiddleware, MiddlewareFunction } from '@nestjs/common';
+
+@Injectable()
+export class LoggerMiddleware implements NestMiddleware {
+  resolve(name: string): MiddlewareFunction {
+    return (req, res, next) => {
+      console.log(`[\${name}\] Request...`); // [ApplicationModule] Request...
+      next();
+    };
+ }
+}
+@@switch
+import { Injectable } from '@nestjs/common';
+
+@Injectable()
+export class LoggerMiddleware {
+  resolve(name) {
+    return (req, res, next) => {
+      console.log(`[\${name}\] Request...`); // [ApplicationModule] Request...
+      next();
+    };
+ }
+}
+```
+
+In this case, the value of the `name` property will be `'ApplicationModule'`.
+
+#### Asynchronous middleware
+
+There are no contraindications that would prevent us from returning the `async` function within the `resolve()` method. Also, it's possible to make the `resolve()` method `async` as well. This common pattern is called deffered middleware.
+
+```typescript
+@@filename(logger.middleware)
+import { Injectable, NestMiddleware, MiddlewareFunction } from '@nestjs/common';
+
+@Injectable()
+export class LoggerMiddleware implements NestMiddleware {
+  async resolve(name: string): Promise<MiddlewareFunction> {
+    await someAsyncJob();
+
+    return async (req, res, next) => {
+      await someAsyncJob();
+      console.log(`[\${name}\] Request...`); // [ApplicationModule] Request...
+      next();
+    };
+ }
+}
+@@switch
+import { Injectable } from '@nestjs/common';
+
+@Injectable()
+export class LoggerMiddleware {
+  async resolve(name) {
+    await someAsyncJob();
+
+    return async (req, res, next) => {
+      await someAsyncJob();
+      console.log(`[\${name}\] Request...`); // [ApplicationModule] Request...
+      next();
+    };
+  }
+}
+```
+
+#### Functional middleware
+
+The `LoggerMiddleware` is quite short. It has no members, no additional methods, no dependencies. Why can't we just use a simple function? It's a good question, cause in fact - we can. This type of the middleware is called functional middleware. Let's transform the logger into a function.
+
+```typescript
+@@filename(logger.middleware)
+export function logger(req, res, next) {
+  console.log(`Request...`);
+  next();
+};
+```
+
+And use it within the `ApplicationModule`:
+
+```typescript
+@@filename(app.module)
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
+import { logger } from './common/middlewares/logger.middleware';
+import { CatsModule } from './cats/cats.module';
+import { CatsController } from './cats/cats.controller';
+
+@Module({
+  imports: [CatsModule],
+})
+export class ApplicationModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(logger)
+      .forRoutes(CatsController);
+  }
+}
+@@switch
+import { Module } from '@nestjs/common';
+import { logger } from './common/middlewares/logger.middleware';
+import { CatsModule } from './cats/cats.module';
+import { CatsController } from './cats/cats.controller';
+
+@Module({
+  imports: [CatsModule],
+})
+export class ApplicationModule {
+  configure(consumer) {
+    consumer
+      .apply(logger)
+      .forRoutes(CatsController);
+  }
+}
+```
+
+Hint Let's consider using functional middleware every time when your middleware doesn't need any dependencies.
+
+#### Multiple middleware
+
+As mentioned before, in order to bind multiple middleware that are executed sequentially, we can separate them by a comma inside the `apply()` method.
+
+```typescript
+export class ApplicationModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(cors(), helmet(), logger)
+      .forRoutes(CatsController);
+  }
+}
+@@switch
+@Module({
+  imports: [CatsModule],
+})
+export class ApplicationModule {
+  configure(consumer) {
+      consumer
+        .apply(cors(), helmet(), logger)
+        .forRoutes(CatsController);
+    }
+  }
+```
+
+#### Global middleware
+
+In order to tie a middleware to each registered route at once, we can take advantage of `use()` method that is supplied by the `INestApplication` instance:
+
+```
+
+const app = await NestFactory.create(ApplicationModule);
+app.use(logger);
+await app.listen(3000);
+```

@@ -1,0 +1,287 @@
+# Controllers
+# джерело: https://github.com/nestjs/docs.nestjs.com/blob/dacbef74628f43d20544b75c1fb3b3e7fa33a18d/src/app/homepage/pages/controllers/controllers.component.html
+# отримано: 2026-09-21
+# версія: 4
+
+The controllers layer is responsible for handling incoming requests and returning a response to the client.
+
+To create a basic controller you have to attach the metadata to the class. Thanks to the metadata Nest knows how to map your controller to the appropriate routes. To attach the metadata we're using the decorators (in this case `@Controller('cats')`).
+
+```typescript
+@@filename(cats.controller)
+import { Controller, Get } from '@nestjs/common';
+
+@Controller('cats')
+export class CatsController {
+  @Get()
+  findAll() {
+    return [];
+  }
+}
+```
+
+#### Metadata
+
+We're using the `@Controller('cats')` decorator, which is obligatory. The `cats` is an optional prefix for each route registered in the class. Using a prefix allows you to avoid repeating yourself when all your routes share a common prefix.
+
+The `@Get()` decorator on the `findAll()` method tells Nest to create an endpoint for this route path and map every corresponding request to this handler. Since we declared a prefix for every route (`cats`), Nest will map every `/cats` GET request to this method.
+
+When a GET request is made to this endpoint, Nest will return a 200 status code and the parsed JSON, in this case just an empty array. How is that possible?
+
+There're two possible approaches to manipulate the response:
+
+| Standard (recommended) | When we return a JavaScript object or array, it'll be automatically parsed to JSON. When we return a string, Nest will send just a string without trying to parse it to JSON.
+
+Furthermore, the response's status code is always 200 by default, except for POST requests, which uses 201. We can easily change this behaviour by adding the `@HttpCode(...)` decorator at a handler-level.
+
+| Express | We can use the express response object, which we can inject using `@Res()` decorator in the function signature, for example `findAll(@Res() response)`.
+
+Notice! It's forbidden to use both approaches at the same time. Nest detects whether the handler is using `@Res()` or `@Next()`, if that's the case - the standard way is disabled for this single route.
+
+#### Request object
+
+A lot of endpoints need an access to the client request details. In fact, Nest is using express request object. We can force Nest to inject the request object into handler using `@Req()` decorator.
+
+Hint There's a `@types/express` package and we strongly recommend to use it (`Request` has its own typings).
+
+```typescript
+@@filename(cats.controller)
+import { Controller, Get, Req } from '@nestjs/common';
+
+@Controller('cats')
+export class CatsController {
+  @Get()
+  findAll(@Req() request) {
+    return [];
+  }
+}
+@@switch
+import { Controller, Bind, Get, Req } from '@nestjs/common';
+
+@Controller('cats')
+export class CatsController {
+  @Get()
+  @Bind(Req())
+  findAll(request) {
+    return [];
+  }
+}
+```
+
+The request object represents the HTTP request and has properties for the request query string, parameters, HTTP headers, and e.g. body (read more here), but in most cases, it's not necessary to grab them manually. We can use dedicated decorators instead, such as `@Body()` or `@Query()`, which are available out of the box. Below is a comparison of the decorators with the plain express objects.
+
+| `@Request()` | `req`
+
+| `@Response()` | `res`
+
+| `@Next()` | `next`
+
+| `@Session()` | `req.session`
+
+| `@Param(param?: string)` | `req.params` / `req.params[param]`
+
+| `@Body(param?: string)` | `req.body` / `req.body[param]`
+
+| `@Query(param?: string)` | `req.query` / `req.query[param]`
+
+| `@Headers(param?: string)` | `req.headers` / `req.headers[param]`
+
+#### More endpoints
+
+We have already created an endpoint to fetch the data (GET route). It'd be great to provide a way of creating the new records too. Let's create the POST handler:
+
+```typescript
+@@filename(cats.controller)
+import { Controller, Get, Post } from '@nestjs/common';
+
+@Controller('cats')
+export class CatsController {
+  @Post()
+  create() {
+    // TODO: Add some logic here
+  }
+
+  @Get()
+  findAll() {
+    return [];
+  }
+}
+```
+
+It's really easy. Nest provides the rest of those endpoints decorators in the same fashion - `@Put()`, `@Delete()`, `@Patch()`, `@Options()`, `@Head()`, and `@All()`.
+
+#### Status code manipulation
+
+As mentioned, the response status code is always 200 by default, except POST requests, when it's 201. We can easily change this behaviour by adding the `@HttpCode(...)` decorator at a handler-level.
+
+```typescript
+@@filename(cats.controller)
+import { Controller, Get, Post, HttpCode } from '@nestjs/common';
+
+@Controller('cats')
+export class CatsController {
+  @HttpCode(204)
+  @Post()
+  create() {
+    // TODO: Add some logic here
+  }
+
+  @Get()
+  findAll() {
+    return [];
+  }
+}
+```
+
+#### Route parameters
+
+Routes with static paths can't help when you need to accept dynamic data as part of the URL. To define routes with parameters, simply specify the route parameters in the path of the route as shown below.
+
+```typescript
+@Get(':id')
+findOne(@Param() params) {
+  console.log(params.id);
+  return {};
+}
+```
+
+#### Async / await
+
+We love modern JavaScript, and we know that the data extraction is mostly asynchronous. That's why Nest supports `async` functions and works pretty well with them.
+
+Hint Learn more about `async / await` here!
+
+Every async function has to return a `Promise`. It means that you can return deferred value and Nest will resolve it by itself. Let's have a look at the example below:
+
+```typescript
+@@filename(cats.controller)
+@Get()
+async findAll(): Promise<any[]> {
+  return [];
+}
+@@switch
+@Get()
+async findAll() {
+  return [];
+}
+```
+
+It's fully valid.
+
+Furthermore, Nest route handlers are even more powerful. They can return RxJS observable streams. It makes the migration between a simple web application and the Nest microservice much easier.
+
+```typescript
+@@filename(cats.controller)
+@Get()
+findAll(): Observable<any[]> {
+  return Observable.of([]);
+}
+@@switch
+@Get()
+findAll() {
+  return Observable.of([]);
+}
+```
+
+There's no recommended way. You can use whatever you want.
+
+#### POST handler
+
+Our previous example of POST route handler doesn't accept any client params. Let's fix this by adding the `@Body()` argument here.
+
+Firstly, we need to establish the DTO (Data Transfer Object) schema. A DTO is an object that defines how the data will be sent over the network. We could do this by using TypeScript interfaces, or by simple classes. What may be surprising, we recommend using classes here. Why? Classes are part of the JavaScript ES6 standard, so they're just plain functions. On the other hand, TypeScript interfaces are removed during the transpilation, Nest can't refer to them. It's important because features such as Pipes enable additional possibilities when they have access to the metatype of the variable.
+
+Let's create the `CreateCatDto`:
+
+```typescript
+@@filename(dto/create-cat.dto)
+export class CreateCatDto {
+  readonly name: string;
+  readonly age: number;
+  readonly breed: string;
+}
+```
+
+It has only three basic properties. All of them are marked as `readonly`, because we should always try to make our functions as pure as possible.
+
+Now we can use the schema inside the `CatsController`:
+
+```typescript
+@@filename(cats.controller)
+@Post()
+async create(@Body() createCatDto: CreateCatDto) {
+  // TODO: Add some logic here
+}
+@@switch
+@Post()
+@Bind(Body())
+async create(createCatDto) {
+// TODO: Add some logic here
+}
+```
+
+#### Handling errors
+
+There's a separate chapter about working with the exceptions here.
+
+#### Last step
+
+The controller is prepared, and ready to use, but Nest doesn't know that `CatsController` exists yet, so it won't create an instance of this class. We need to tell Nest about it.
+
+The controller always belongs to the module, that's why we hold the `controllers` array within the `@Module()` decorator. Since we don't have any other modules except the root `ApplicationModule`, let's use it for now:
+
+```typescript
+@@filename(app.module)
+import { Module } from '@nestjs/common';
+import { CatsController } from './cats/cats.controller';
+
+@Module({
+    controllers: [CatsController],
+})
+export class ApplicationModule {}
+```
+
+Tada! We attached the metadata to the module class, so now Nest can easily reflect which controllers have to be mounted.
+
+#### Express approach
+
+So far we've discussed the Nest standard way of manipulating responses. The second way of manipulating the response is to use express the response object. It was the only available option until Nest 4. To inject the response object, we need to use `@Res()` decorator. To show the differences, let's rewrite the `CatsController`:
+
+```typescript
+import { Controller, Get, Post, Res, Body, HttpStatus } from '@nestjs/common';
+import { CreateCatDto } from './dto/create-cat.dto';
+
+@Controller('cats')
+export class CatsController {
+  @Post()
+  create(@Res() res, @Body() createCatDto: CreateCatDto) {
+    // TODO: Add some logic here
+    res.status(HttpStatus.CREATED).send();
+  }
+
+  @Get()
+  findAll(@Res() res) {
+     res.status(HttpStatus.OK).json([]);
+  }
+}
+@@switch
+import { Controller, Get, Post, Bind, Res, Body, HttpStatus } from '@nestjs/common';
+
+@Controller('cats')
+export class CatsController {
+  @Post()
+  @Bind(Res(), Body())
+  create(res, createCatDto) {
+    // TODO: Add some logic here
+    res.status(HttpStatus.CREATED).send();
+  }
+
+  @Get()
+  @Bind(Res())
+  findAll(res) {
+     res.status(HttpStatus.OK).json([]);
+  }
+}
+```
+
+This manner is much less clear from my point of view. I definitely prefer the first approach, but to make the Nest backward compatible with the previous versions, this method is still available. Also, the response object gives more flexibility - you have full control of the express response object.

@@ -1,0 +1,108 @@
+# Migration guide
+# джерело: https://github.com/nestjs/docs.nestjs.com/blob/bb77f88ca69e8f740279d8336a5d3e81ab634852/content/migration.md
+# отримано: 2026-09-21
+# версія: 10
+
+This article provides a set of guidelines for migrating from Nest version 8 to version 9.
+To learn more about the new features we've added in v9, check out this link.
+
+#### Redis strategy (microservices)
+
+Redis strategy uses the ioredis driver instead of `redis` now.
+
+```typescript
+// Before
+const app = await NestFactory.createMicroservice<MicroserviceOptions>(
+  AppModule,
+  {
+    transport: Transport.REDIS,
+    options: {
+      url: 'redis://localhost:6379',
+    },
+  },
+);
+
+// Now
+const app = await NestFactory.createMicroservice<MicroserviceOptions>(
+  AppModule,
+  {
+    transport: Transport.REDIS,
+    options: {
+      host: 'localhost',
+      port: 6379,
+    },
+  },
+);
+```
+
+Also, make sure to install the `ioredis` package:
+
+```bash
+$ npm i ioredis
+```
+
+#### gRPC client interceptors
+
+In the previous version, the `interceptors` configuration property was exposed in the wrong location. In v9, make sure to pass `interceptors` as part of the `channelOptions` object, see example here.
+
+#### Testing module
+
+Previously, if you wanted to supply the configuration object to the `TestingModule#createNestApplication` method, and if you were using the default HTTP driver (express), you had to do this as follows:
+
+```typescript
+app = moduleFixture.createNestApplication<NestExpressApplication>(undefined, {
+  rawBody: true,
+});
+```
+
+In v9, you can skip the first argument (`undefined`):
+
+```typescript
+app = moduleFixture.createNestApplication<NestExpressApplication>({
+  rawBody: true,
+});
+```
+
+#### Kafka message/event handlers
+
+Previously, Kafka message and event handlers were receiving payloads as wrapped Kafka messages with `key`, `value`, `headers`, and a few other properties. In v9, those payloads are automatically unwrapped and your handlers will only receive the `value` attribute's value. To retrieve the original Kafka message, you can use the `KafkaContext` object (read more here).
+
+```typescript
+// Before
+@MessagePattern('hero.kill.dragon')
+killDragon(@Payload() message: KillDragonMessage, @Ctx() context: KafkaContext) {
+  console.log(`Dragon ID: ${message.value.dragonId}`);
+}
+
+// Now
+@MessagePattern('hero.kill.dragon')
+killDragon(@Payload() message: KillDragonMessage, @Ctx() context: KafkaContext) {
+  console.log(`Dragon ID: ${message.dragonId}`);
+  // Original message: "context.getMessage()"
+}
+```
+
+#### Kafka retriable errors
+
+In v9, we introduced the **Retriable exceptions** feature. Note: for event handlers (**event-based communication**) all unhandled exceptions become "retriable exceptions" by default, and so they will be auto-delivered.
+
+#### Fastify
+
+Fastify has been upgraded to v4. Also, all of the core Fastify plugins that were prefixed with `fastify-` are now renamed and published under the `@fastify` scope (for example, `fastify-cookie` becomes `@fastify/cookie`, `fastify-helmet` becomes `@fastify/helmet`, etc.). Read more here.
+
+#### `@nestjs/swagger` package
+
+There are a few minor breaking changes in the `@nestjs/swagger` package (`swagger-ui-express` and `fastify-swagger` packages are no longer required). See this PR for more details.
+
+#### Deprecations
+
+All deprecated methods & modules have been removed (e.g., the deprecated `listenAsync()` method).
+
+#### Node.js
+
+This release drops support for Node v10. We strongly recommend using the latest LTS version.
+
+#### CLI
+
+Due to stability issues, the command `update` was removed in the v9 of `@nestjs/cli`.
+You can use dedicated tools like `ncu`, `npm update`, `yarn upgrade-interactive`, etc., if you want to upgrade your dependencies.

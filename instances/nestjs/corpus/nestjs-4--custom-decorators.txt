@@ -1,0 +1,107 @@
+# Custom Route Param Decorators
+# джерело: https://github.com/nestjs/docs.nestjs.com/blob/dacbef74628f43d20544b75c1fb3b3e7fa33a18d/src/app/homepage/pages/custom-decorators/custom-decorators.component.html
+# отримано: 2026-09-21
+# версія: 4
+
+Nest is built around a language feature called decorators. It's a well-known concept in a lot of commonly used programming languages, but in the JavaScript world, it's still relatively new. To better understand how the decorators work, you should take a look at this article. Here's a simple definition:
+
+An ES2016 decorator is an expression which returns a function and can take a target, name and property descriptor as arguments. You apply it by prefixing the decorator with an `@` character and placing this at the very top of what you are trying to decorate. Decorators can be defined for either a class or a property.
+
+Nest provides a set of useful param decorators, which you can use together with the HTTP route handlers. Below is a comparison of the decorators with the plain express objects.
+
+| `@Request()` | `req`
+
+| `@Response()` | `res`
+
+| `@Next()` | `next`
+
+| `@Session()` | `req.session`
+
+| `@Param(param?: string)` | `req.params` / `req.params[param]`
+
+| `@Body(param?: string)` | `req.body` / `req.body[param]`
+
+| `@Query(param?: string)` | `req.query` / `req.query[param]`
+
+| `@Headers(param?: string)` | `req.headers` / `req.headers[param]`
+
+Additionally, you can create your own, custom decorator. Why it's useful?
+
+In the node.js world, it's a common practice to attach properties to the request object. Then you have to grab them manually every time in the route handlers, for example, using following construction:
+
+```
+
+const user = req.user;
+```
+
+In order to do this more readable and transparent, we can create the `@User()` decorator and reuse it across all of the controllers.
+
+```typescript
+@@filename(user.decorator)
+import { createRouteParamDecorator } from '@nestjs/common';
+
+export const User = createRouteParamDecorator((data, req) => {
+  return req.user;
+});
+```
+
+Now you can simply use it wherever you want to.
+
+```typescript
+@Get()
+async findOne(@User() user: UserEntity) {
+  console.log(user);
+}
+@@switch
+@Get()
+@Bind(User())
+async findOne(user) {
+  console.log(user);
+}
+```
+
+#### Passing data
+
+When the behaviour of your decorator depends on some conditions, you may use the `data` param to pass an argument to the decorator factory function. For example, the construction below:
+
+```typescript
+@Get()
+async findOne(@User('test') user: UserEntity) {
+  console.log(user);
+}
+@@switch
+@Get()
+@Bind(User('test'))
+async findOne(user) {
+  console.log(user);
+}
+```
+
+Will making it possible to access the `test` string via the `data` param:
+
+```typescript
+@@filename(user.decorator)
+import { createRouteParamDecorator } from '@nestjs/common';
+
+export const User = createRouteParamDecorator((data, req) => {
+  console.log(data); // test
+  return req.user;
+});
+```
+
+#### Pipes
+
+Nest treats a custom route param decorator the same way as the built-in ones (`@Body()`, `@Param()` and `@Query()`). It means that pipes are executed also for the custom annotated parameters (in this case, for the `user` argument). Moreover, you can apply the pipe directly to the custom decorator:
+
+```typescript
+@Get()
+async findOne(@User(new ValidationPipe()) user: UserEntity) {
+  console.log(user);
+}
+@@switch
+@Get()
+@Bind(User(new ValidationPipe()))
+async findOne(user) {
+  console.log(user);
+}
+```

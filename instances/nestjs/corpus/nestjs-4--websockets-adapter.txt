@@ -1,0 +1,104 @@
+# Adapter
+# джерело: https://github.com/nestjs/docs.nestjs.com/blob/dacbef74628f43d20544b75c1fb3b3e7fa33a18d/src/app/homepage/pages/websockets/adapter/adapter.component.html
+# отримано: 2026-09-21
+# версія: 4
+
+The Nest websockets module is based on socket.io, but you can bring your own library, by making use of `WebSocketAdapter` interface. This interface forces to implement few methods described in the following table:
+
+| `create` | Attaches the socket instance to the specified port
+
+| `bindClientConnect` | Binds the client connection
+
+| `bindMessageHandlers` | Binds the incoming message to the appropriate message handlers
+
+Also, there're 2 optional methods:
+
+| `createWithNamespace` | Attaches the socket instance to the specified port and namespace (if your library supports rooms)
+
+| `bindClientDisconnect` | Binds the client disconnection event
+
+For demonstration purposes, we're going to integrate ws library with the Nest application.
+
+```typescript
+@@filename(ws-adapter)
+import * as WebSocket from 'ws';
+import { WebSocketAdapter } from '@nestjs/common';
+import { MessageMappingProperties } from '@nestjs/websockets';
+import { Observable } from 'rxjs/Observable';
+import 'rxjs/add/observable/fromEvent';
+import 'rxjs/add/observable/empty';
+import 'rxjs/add/operator/switchMap';
+import 'rxjs/add/operator/filter';
+
+export class WsAdapter implements WebSocketAdapter {
+  create(port: number) {
+    return new WebSocket.Server({ port });
+  }
+
+  bindClientConnect(server, callback: (...args: any[]) => void) {
+    server.on('connection', callback);
+  }
+
+  bindMessageHandlers(client: WebSocket, handlers: MessageMappingProperties[], process: (data) => Observable<any>) {
+    Observable.fromEvent(client, 'message')
+      .switchMap((buffer) => this.bindMessageHandler(buffer, handlers, process))
+      .filter((result) => !!result)
+      .subscribe((response) => client.send(JSON.stringify(response)));
+  }
+
+  bindMessageHandler(buffer, handlers: MessageMappingProperties[], process: (data) => Observable<any>): Observable<any> {
+    const data = JSON.parse(buffer.data);
+    const messageHandler = handlers.find((handler) => handler.message === data.type);
+    if (!messageHandler) {
+      return Observable.empty();
+    }
+    const { callback } = messageHandler;
+    return process(callback(data));
+  }
+}
+@@switch
+import * as WebSocket from 'ws';
+import { MessageMappingProperties } from '@nestjs/websockets';
+import { Observable } from 'rxjs/Observable';
+import 'rxjs/add/observable/fromEvent';
+import 'rxjs/add/observable/empty';
+import 'rxjs/add/operator/switchMap';
+import 'rxjs/add/operator/filter';
+
+export class WsAdapter {
+  create(port) {
+    return new WebSocket.Server({ port });
+  }
+
+  bindClientConnect(server, callback) {
+    server.on('connection', callback);
+  }
+
+  bindMessageHandlers(client, handlers, process) {
+    Observable.fromEvent(client, 'message')
+      .switchMap((buffer) => this.bindMessageHandler(buffer, handlers, process))
+      .filter((result) => !!result)
+      .subscribe((response) => client.send(JSON.stringify(response)));
+  }
+
+  bindMessageHandler(buffer, handlers, process) {
+    const data = JSON.parse(buffer.data);
+    const messageHandler = handlers.find((handler) => handler.message === data.type);
+    if (!messageHandler) {
+      return Observable.empty();
+    }
+    const { callback } = messageHandler;
+    return process(callback(data));
+  }
+}
+```
+
+Since `WsAdapter` class is ready to use, we can setup the adapter using `useWebSocketAdapter()` method:
+
+```typescript
+@@filename(main)
+const app = await NestFactory.create(ApplicationModule);
+app.useWebSocketAdapter(new WsAdapter());
+```
+
+Now Nest will make use of our `WsAdapter` instead of the default one.

@@ -1,0 +1,151 @@
+# SQL (TypeORM)
+# джерело: https://github.com/nestjs/docs.nestjs.com/blob/dacbef74628f43d20544b75c1fb3b3e7fa33a18d/src/app/homepage/pages/recipes/sql-typeorm/sql-typeorm.component.html
+# отримано: 2026-09-21
+# версія: 4
+
+##### This chapter applies only to TypeScript
+
+Warning In this article, you'll learn how to create a `DatabaseModule` based on the TypeORM package from scratch using custom components. As a consequence, this solution contains a lot of overhead that you can omit using ready to use and available out-of-the-box dedicated `@nestjs/typeorm` package. To learn more, see here.
+
+TypeORM is definitely the most mature Object Relational Mapper (ORM) available in the node.js world. Since it's written in TypeScript, it works pretty well with the Nest framework. To start the adventure with this library we have to install all of the required dependencies:
+
+```typescript
+$ npm install --save typeorm mysql
+```
+
+The first step we need to do is to establish the connection with our database using `createConnection()` function imported from the `typeorm` package. The `createConnection()` function returns the `Promise`, so it's necessary to create an async component.
+
+```typescript
+@@filename(database.providers.ts)
+import { createConnection } from 'typeorm';
+
+export const databaseProviders = [
+  {
+    provide: 'DbConnectionToken',
+    useFactory: async () => await createConnection({
+      type: 'mysql',
+      host: 'localhost',
+      port: 3306,
+      username: 'root',
+      password: 'root',
+      database: 'test',
+      entities: [
+          __dirname + '/../**/*.entity{.ts,.js}',
+      ],
+      autoSchemaSync: true,
+    }),
+  },
+];
+```
+
+Hint Following best practices, we've declared the custom component in the separated file which has a `*.providers.ts` suffix.
+
+Then we need to export these providers to make them accessible for the rest part of the application.
+
+```typescript
+@@filename(database.module.ts)
+import { Module } from '@nestjs/common';
+import { databaseProviders } from './database.providers';
+
+@Module({
+  components: [...databaseProviders],
+  exports: [...databaseProviders],
+})
+export class DatabaseModule {}
+```
+
+It's everything. Now we can inject the `Connection` object using `@Inject()` decorator. Each component which would depend on the `Connection` async component will wait until the `Promise` would be resolved.
+
+#### Repository pattern
+
+The TypeORM supports the repository design pattern, so each entity has its own Repository. These repositories can be obtained from the database connection.
+
+Firstly, we need at least one entity. We're gonna reuse the `Photo` entity from the offical documentation.
+
+```typescript
+@@filename(photo/photo.entity.ts)
+import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+
+@Entity()
+export class Photo {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column({ length: 500 })
+  name: string;
+
+  @Column('text')
+  description: string;
+
+  @Column()
+  filename: string;
+
+  @Column('int')
+  views: number;
+
+  @Column()
+  isPublished: boolean;
+}
+```
+
+The `Photo` entity belongs to the `photo` directory. This directory represents the `PhotoModule`. It's your decision where you gonna keep your model files. From my point of view, the best way's to hold them nearly their domain, in the appropriate module directory.
+
+Let's create a Repository component:
+
+```typescript
+@@filename(photo.providers.ts)
+import { Connection, Repository } from 'typeorm';
+import { Photo } from './photo.entity';
+
+export const photoProviders = [
+  {
+    provide: 'PhotoRepositoryToken',
+    useFactory: (connection: Connection) => connection.getRepository(Photo),
+    inject: ['DbConnectionToken'],
+  },
+];
+```
+
+Notice In the real-world applications you should avoid magic strings at all. Both `PhotoRepositoryToken` and `DbConnectionToken` should be kept in the separated `constants.ts` file.
+
+Now we can inject the `PhotoRepository` to the `PhotoService` using the `@Inject()` decorator:
+
+```typescript
+@@filename(photo.service.ts)
+import { Component, Inject } from '@nestjs/common';
+import { Repository } from 'typeorm';
+import { Photo } from './photo.entity';
+
+@Component()
+export class PhotoService {
+  constructor(
+    @Inject('PhotoRepositoryToken') private readonly photoRepository: Repository<Photo>) {}
+
+  async findAll(): Promise<Photo[]> {
+    return await this.photoRepository.find();
+  }
+}
+```
+
+The database connection's asynchronous, but Nest makes this process's completely invisible for the end-user. The `PhotoRepository` component's waiting for the db connection, and the `PhotoService` is delayed until repository would be ready to use. The entire application can start when each component is instantiated.
+
+Here's a final `PhotoModule`:
+
+```typescript
+@@filename(photo.module.ts)
+import { Module } from '@nestjs/common';
+import { DatabaseModule } from '../database/database.module';
+import { photoProviders } from './photo.providers';
+import { PhotoService } from './photo.service';
+
+@Module({
+  imports: [DatabaseModule],
+  components: [
+    ...photoProviders,
+    PhotoService,
+  ],
+})
+export class PhotoModule {}
+```
+
+Hint Don't forget to import the `PhotoModule` into the root `ApplicationModule`.

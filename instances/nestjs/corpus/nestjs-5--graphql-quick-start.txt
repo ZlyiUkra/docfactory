@@ -1,0 +1,114 @@
+# Quick start
+# джерело: https://github.com/nestjs/docs.nestjs.com/blob/8729a48188b1097a4f7d7bb8dc8a3d525297ce7e/src/app/homepage/pages/graphql/quick-start/quick-start.component.html
+# отримано: 2026-09-21
+# версія: 5
+
+GraphQL is a new way of thinking about the APIs. Here's a great comparison between GraphQL and REST. In this set of articles, we're not going to explain what the GraphQL is, but rather show how to work with the dedicated `@nestjs/graphql` module.
+
+The `GraphQLModule` is nothing more than a wrapper around the Apollo server. We don't reinvent the wheel but provide a ready to use a module instead, that brings a clean way to play with the GraphQL and Nest together.
+
+#### Installation
+
+Firstly, we need to install the required packages:
+
+```
+
+$ npm i --save @nestjs/graphql apollo-server-express graphql-tools graphql
+```
+
+#### Apollo middleware
+
+Once the packages are installed, we can apply the GraphQL middleware provided by the `apollo-server-express` package:
+
+```typescript
+@@filename(app.module)
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
+import { graphqlExpress } from 'apollo-server-express';
+import { GraphQLModule } from '@nestjs/graphql';
+
+@Module({
+  imports: [GraphQLModule],
+})
+export class ApplicationModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(graphqlExpress(req => ({ schema: {}, rootValue: req })))
+      .forRoutes('/graphql');
+  }
+}
+@@switch
+import { Module } from '@nestjs/common';
+import { graphqlExpress } from 'apollo-server-express';
+import { GraphQLModule } from '@nestjs/graphql';
+
+@Module({
+  imports: [GraphQLModule],
+})
+export class ApplicationModule {
+  configure(consumer) {
+    consumer
+      .apply(graphqlExpress(req => ({ schema: {}, rootValue: req })))
+      .forRoutes('/graphql');
+  }
+}
+```
+
+We passed an empty object as a GraphQL `schema` and `req` (request object) as a `rootValue` for now. Additionally, there're a few other available `graphqlExpress` options and you can read about them here.
+
+#### Schema
+
+In order to generate a schema, we are using `GraphQLFactory` which is a part of the `@nestjs/graphql` package. This component provides a `createSchema()` method that accepts the same object as a `makeExecutableSchema()` function, well-described here.
+
+The schema options object demand at least `resolvers` and the `typeDefs` property. You can pass type definitions manually, or use a utility `mergeTypesByPaths()` method of the `GraphQLFactory`. Let's have a look on the following example:
+
+```typescript
+@@filename(app.module)
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
+import { graphqlExpress } from 'apollo-server-express';
+import { GraphQLModule, GraphQLFactory } from '@nestjs/graphql';
+
+@Module({
+  imports: [GraphQLModule],
+})
+export class ApplicationModule implements NestModule {
+  constructor(private readonly graphQLFactory: GraphQLFactory) {}
+
+  configure(consumer: MiddlewareConsumer) {
+    const typeDefs = this.graphQLFactory.mergeTypesByPaths('./**/*.graphql');
+    const schema = this.graphQLFactory.createSchema({ typeDefs });
+
+    consumer
+      .apply(graphqlExpress(req => ({ schema, rootValue: req })))
+      .forRoutes('/graphql');
+  }
+}
+@@switch
+import { Module } from '@nestjs/common';
+import { graphqlExpress } from 'apollo-server-express';
+import { GraphQLModule, GraphQLFactory } from '@nestjs/graphql';
+
+@Dependencies(GraphQLFactory)
+@Module({
+  imports: [GraphQLModule],
+})
+export class ApplicationModule {
+  constructor(graphQLFactory) {
+    this.graphQLFactory = graphQLFactory;
+  }
+
+  configure(consumer) {
+    const typeDefs = this.graphQLFactory.mergeTypesByPaths('./**/*.graphql');
+    const schema = this.graphQLFactory.createSchema({ typeDefs });
+
+    consumer
+      .apply(graphqlExpress(req => ({ schema, rootValue: req })))
+      .forRoutes('/graphql');
+  }
+}
+```
+
+Hint Learn more about GraphQL schema here.
+
+In this case, the `GraphQLFactory` will go through each directory, and merge files that have a `.graphql` extension. Afterward, we can create a schema using these particular type definitions. The `resolvers` will be reflected automatically.
+
+Here you can read more about what the resolvers map actually is.

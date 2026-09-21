@@ -1,0 +1,251 @@
+# Pipes
+# джерело: https://github.com/nestjs/docs.nestjs.com/blob/dacbef74628f43d20544b75c1fb3b3e7fa33a18d/src/app/homepage/pages/pipes/pipes.component.html
+# отримано: 2026-09-21
+# версія: 4
+
+A pipe is a class with `@Pipe()` decorator. The pipe should implements the `PipeTransform` interface.
+
+A pipe transforms the input data to the desired output. Also, it could take care of the validation, since it's possible to throw an exception when the data is incorrect.
+
+Hint The pipe runs inside the exceptions zone. This means that when exceptions are thrown they are handled by the core exceptions handler and exceptions filters are applied to the current context.
+
+#### Built-in pipes
+
+Nest comes with two pipes available right out-of-the-box, `ValidationPipe` and `ParseIntPipe`. They're exported from the `@nestjs/common` package. To better understand how they work, we're gonna built them from scratch.
+
+#### What does it look like?
+
+Let's start with the `ValidationPipe`. Now it only takes a value and returns the same value.
+
+```typescript
+@@filename(validation.pipe.ts)
+import { PipeTransform, Pipe, ArgumentMetadata } from '@nestjs/common';
+
+@Pipe()
+export class ValidationPipe implements PipeTransform<any> {
+  transform(value: any, metadata: ArgumentMetadata) {
+    return value;
+  }
+}
+```
+
+Notice The `ValidationPipe` only works with TypeScript. If you are using plain JavaScript, I'd recommend using the Joi library.
+
+Every pipe has to provide the `transform()` method. This method takes two arguments:
+
+- `value`
+
+- `metadata`
+
+The `value` is the current processed parameter, while `metadata` is its metadata. The metadata object holds a few properties:
+
+```typescript
+export interface ArgumentMetadata {
+    type: 'body' | 'query' | 'param' | 'custom';
+    metatype?: new (...args) => any;
+    data?: string;
+}
+```
+
+These properties describe the parameter.
+
+| `type` | Tells us whether the property is a body `@Body()`, query `@Query()`, param `@Param()`, or custom parameter (read more here).
+
+| `metatype` | The metatype of the property, for example `String`. It's `undefined` if you would omit the type declaration in the function signature.
+
+| `data` | The string passed to the decorator, for example `@Body('string')`. It's `undefined` if you would leave the brackets empty.
+
+Notice The TypeScript interfaces disappear during the transpilation, so if you'd use an interface instead of a class, the `metatype` value will be an `Object`.
+
+#### How does it work?
+
+Let's focus on the `create()` method of the `CatsController`:
+
+```typescript
+@@filename(cats.controler.ts)
+@Post()
+async create(@Body() createCatDto: CreateCatDto) {
+  this.catsService.create(createCatDto);
+}
+```
+
+There's a `CreateCatDto` body parameter.
+
+```typescript
+@@filename(create-cat.dto.ts)
+export class CreateCatDto {
+  readonly name: string;
+  readonly age: number;
+  readonly breed: string;
+}
+```
+
+This object always has to be correct, thus we have to validate these three members. We could do this inside the route handler method, but we'd break the single responsibility rule (SRP). The second idea is to create a validator class and delegate the task there, but we'll have to use this validator every time at the beginning of the method. So what about the validation middleware? It's a good idea, but it's not possible to create a generic middleware, which could be used across the entire application.
+
+That's the first use-case, when you should consider to use a Pipe.
+
+#### Class validator
+
+##### This section applies only to TypeScript.
+
+Nest works well with the class-validator, this amazing library allows you to use decorator-based validation. Decorator based validation is really powerful with the pipe capabilities since we have access to the `metatype` of the processed property. Let's add a few decorators to the `CreateCatDto`.
+
+```typescript
+@@filename(create-cat.dto.ts)
+import { IsString, IsInt } from 'class-validator';
+
+export class CreateCatDto {
+  @IsString()
+  readonly name: string;
+
+  @IsInt()
+  readonly age: number;
+
+  @IsString()
+  readonly breed: string;
+}
+```
+
+Now it's time to finish the `ValidationPipe` class.
+
+```typescript
+@@filename(validation.pipe.ts)
+import { PipeTransform, Pipe, ArgumentMetadata, BadRequestException } from '@nestjs/common';
+import { validate } from 'class-validator';
+import { plainToClass } from 'class-transformer';
+
+@Pipe()
+export class ValidationPipe implements PipeTransform<any> {
+    async transform(value, metadata: ArgumentMetadata) {
+      const { metatype } = metadata;
+      if (!metatype || !this.toValidate(metatype)) {
+          return value;
+      }
+      const object = plainToClass(metatype, value);
+      const errors = await validate(object);
+      if (errors.length > 0) {
+          throw new BadRequestException('Validation failed');
+      }
+      return value;
+    }
+
+    private toValidate(metatype): boolean {
+      const types = [String, Boolean, Number, Array, Object];
+      return !types.find((type) => metatype === type);
+    }
+}
+```
+
+Notice I've used the class-transformer library. It's made by the same author as the class-validator library, so they play well together.
+
+Let's go through this code. Firstly, note that the `transform()` function is `async`. It's possible because Nest supports both synchronous and asynchronous pipes. Also, there's a helper function - `toValidate()`. It's responsible to exclude the native JavaScript types from the validation process. The last important thing is that we have to return the same value. This pipe is a validation specific pipe, so we need to return the exact same property to avoid overriding.
+
+The last step is to set up the `ValidationPipe`. Pipes, same as exception filters they can be method-scoped, controller-scoped and global-scoped. Additionally, a pipe may be param-scoped. We can directly bind the pipe instance to the route param decorator, for example `@Body()`. Let's have a look at the below example:
+
+```typescript
+@@filename(cats.controler.ts)
+@Post()
+async create(@Body(new ValidationPipe()) createCatDto: CreateCatDto) {
+  this.catsService.create(createCatDto);
+}
+```
+
+The param-scoped pipes are useful when the validation logic concerns only one, specified parameter. To set up a pipe at a method level, you'll need the `UsePipes()` decorator.
+
+```typescript
+@@filename(cats.controler.ts)
+@Post()
+@UsePipes(new ValidationPipe())
+async create(@Body() createCatDto: CreateCatDto) {
+  this.catsService.create(createCatDto);
+}
+```
+
+Notice The `@UsePipes()` decorator is imported from the `@nestjs/common` package.
+
+Since the `ValidationPipe` was created to be as generic as possible, we're gonna set it up as a global-scoped pipe, for every route handler across the entire application.
+
+```typescript
+@@filename(main.ts)
+async function bootstrap() {
+  const app = await NestFactory.create(ApplicationModule);
+  app.useGlobalPipes(new ValidationPipe());
+  await app.listen(3000);
+}
+bootstrap();
+```
+
+Notice The `useGlobalPipes()` method doesn't setup pipes for gateways and micro services.
+
+#### Transformer Pipe
+
+Validation isn't the sole use case. At the beginning of this chapter, I've mentioned that a pipe can also transform the input data to the desired output. It's true because the value returned from the `transform` function completely overrides the previous value of the argument. Sometimes the data passed from the client needs to undergo some changes. Also, some parts could be missed, so we must apply the default values. The transformer pipes fill the gap between the request of the client and the request handler.
+
+```typescript
+@@filename(parse-int.pipe)
+import { PipeTransform, Pipe, ArgumentMetadata, HttpStatus, BadRequestException } from '@nestjs/common';
+
+@Pipe()
+export class ParseIntPipe implements PipeTransform<string> {
+  async transform(value: string, metadata: ArgumentMetadata) {
+    const val = parseInt(value, 10);
+    if (isNaN(val)) {
+      throw new BadRequestException('Validation failed');
+    }
+    return val;
+  }
+}
+@@switch
+import { Pipe, HttpStatus, BadRequestException} from '@nestjs/common';
+
+@Pipe()
+export class ParseIntPipe {
+  async transform(value, metadata) {
+    const val = parseInt(value, 10);
+    if (isNaN(val)) {
+      throw new BadRequestException('Validation failed');
+    }
+    return val;
+  }
+}
+```
+
+Here's a `ParseIntPipe` which is responsible to parse a string into an integer value. Now let's bind the pipe to the selected param:
+
+```typescript
+@Get(':id')
+async findOne(@Param('id', new ParseIntPipe()) id) {
+  return await this.catsService.findOne(id);
+}
+@@switch
+@Get(':id')
+@Bind(Param('id', new ParseIntPipe()))
+async findOne(id) {
+  return await this.catsService.findOne(id);
+}
+```
+
+#### Global pipes
+
+The global pipes don't belong to any scope. They live outside modules, thus as a result - they can't inject dependencies. We need to create an instance immediately. But sometimes, global pipes depend on other objects. How do we solve this?
+
+The solution is pretty easy. Each Nest application instance is in fact, a created Nest context. The Nest context is a wrapper around the Nest container, which holds all instantiated classes. We can grab any existing instance from within any imported module directly using the application object.
+
+Let's assume that we have a `ValidationPipe` registered in the `SharedModule`. This `SharedModule` is imported into the root module. We can pick the `ValidationPipe` instance using following syntax:
+
+```typescript
+const app = await NestFactory.create(ApplicationModule);
+const validationPipe = app
+  .select(SharedModule)
+  .get(ValidationPipe);
+
+app.useGlobalPipes(validationPipe);
+```
+
+To grab the `ValidationPipe` instance we have to use 2 methods, well-described in the table below:
+
+| `get()` | Makes it possible to retrieve the instance of the component or controller available inside the processed module.
+
+| `select()` | Allows you to navigate through the module tree, for example, to pull out a specific instance from the selected module.
+
+Hint The root module is selected by default. To select any other module, you need to go through the entire modules stack (step by step).

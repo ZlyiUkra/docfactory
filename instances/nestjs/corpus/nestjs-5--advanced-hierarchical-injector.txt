@@ -1,0 +1,72 @@
+# Hierarchical Injector
+# джерело: https://github.com/nestjs/docs.nestjs.com/blob/8729a48188b1097a4f7d7bb8dc8a3d525297ce7e/src/app/homepage/pages/advanced/hierarchical-injector/hierarchical-injector.component.html
+# отримано: 2026-09-21
+# версія: 5
+
+The Nest injector is hierarchical. To understand this useful treat, you first have to get acquainted with the process of creating the class instance. When any class depends on the other class, the injector's trying to find the appropriate instance in the current scope. The current scope isn't always the module to which the class belongs to.
+
+Let's consider an example. We've a `CoreModule`:
+
+```typescript
+@@filename(core.module)
+@Module({
+  imports: [CommonModule],
+  components: [CoreService, ContextService],
+})
+export class CoreModule {}
+```
+
+This module imports the `CommonModule` and contains 2 components, successively `CoreService` and `ContextService`. The `CommonModule` contains single component, the `CommonService`. This component is exported, so it's available within `CoreModule` as well.
+
+```typescript
+@@filename(common.module)
+@Module({
+  components: [CommonService],
+  exports: [CommonService],
+})
+export class CommonModule {}
+```
+
+Let's take a look at `ContextService` now:
+
+```typescript
+@@filename(core/context.service)
+@Component()
+export class ContextService {
+  constructor(private readonly commonService: CommonService) {}
+}
+@@switch
+@Component()
+@Dependencies(CommonService)
+export class ContextService {
+  constructor(commonService) {
+    this.commonService = commonService;
+  }
+}
+```
+
+This class depends on the `CommonService`. This service's imported from the child module (`CommonModule`), so it's a typical situation. Now something that may turn out to be surprising, the `CommonService`:
+
+```typescript
+@@filename(common/common.service)
+@Component()
+export class CommonService {
+  constructor(private readonly coreService: CoreService) {}
+}
+@@switch
+@Component()
+@Dependencies(CoreService)
+export class CommonService {
+  constructor(coreService) {
+    this.coreService = coreService;
+  }
+}
+```
+
+The `CommonService` depends on the `CoreService`. It's possible, because the `CommonService` instance was resolved within the `CoreModule` context (was injected by the component, which belongs to the parent module).
+
+#### Motivation
+
+This technique makes possible to create reusable modules using boundless abstraction. Moreover, it allows overriding every component from the imported module using custom components feature. For example, you can create a default implementation of the class inside the feature module, but then overload it inside the currently processed context.
+
+Notice This technique is powerful, but also very dangerous. Be careful whenever you're gonna use this feature, and make sure that you exactly know what you're doing.

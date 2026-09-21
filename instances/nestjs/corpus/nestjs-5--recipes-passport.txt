@@ -1,0 +1,178 @@
+# Authentication (Passport)
+# джерело: https://github.com/nestjs/docs.nestjs.com/blob/8729a48188b1097a4f7d7bb8dc8a3d525297ce7e/src/app/homepage/pages/recipes/passport/passport.component.html
+# отримано: 2026-09-21
+# версія: 5
+
+Passport is the most popular authentication library, probably well-known by almost every node.js developer in the world, and successively used in many production applications. It's really simple to integrate this tool with Nest framework. For demonstration purposes, I'll set up the passport-jwt strategy.
+
+To start the adventure with this library we have to install all of the required dependencies:
+
+```typescript
+$ npm install --save passport passport-jwt jsonwebtoken
+```
+
+Firstly, we're gonna create the `AuthService`. This class will contain 2 methods, (1) to create a token using fake user, and (2) to validate the signed user from the decoded JWT (hardcoded `true`).
+
+```typescript
+@@filename(auth.service)
+import * as jwt from 'jsonwebtoken';
+import { Component } from '@nestjs/common';
+
+@Component()
+export class AuthService {
+  async createToken() {
+    const expiresIn = 60 * 60, secretOrKey = 'secret';
+    const user = { email: 'thisis@example.com' };
+    const token = jwt.sign(user, secretOrKey, { expiresIn });
+    return {
+      expires_in: expiresIn,
+      access_token: token,
+    };
+  }
+
+  async validateUser(signedUser): Promise<boolean> {
+    // put some validation logic here
+    // for example query user by id / email / username
+    return true;
+  }
+}
+@@switch
+import * as jwt from 'jsonwebtoken';
+import { Component } from '@nestjs/common';
+
+@Component()
+export class AuthService {
+  async createToken() {
+    const expiresIn = 60 * 60, secretOrKey = 'secret';
+    const user = { email: 'thisis@example.com' };
+    const token = jwt.sign(user, secretOrKey, { expiresIn });
+    return {
+      expires_in: expiresIn,
+      access_token: token,
+    };
+  }
+
+  async validateUser(signedUser) {
+    // put some validation logic here
+    // for example query user by id / email / username
+    return true;
+  }
+}
+```
+
+Hint In a best-case scenario the `jwt` object and token configuration (secret key and expiration time) should be provided as a custom components and injected through constructor.
+
+Passport uses the concept of strategies to authenticate requests. In this chapter, we're gonna extend the strategy provided by the passport-jwt package, the `JwtStrategy`:
+
+```typescript
+@@filename(jwt.strategy)
+import * as passport from 'passport';
+import { ExtractJwt, Strategy } from 'passport-jwt';
+import { Component, Inject, UnauthorizedException } from '@nestjs/common';
+import { AuthService } from '../auth.service';
+
+@Component()
+export class JwtStrategy extends Strategy {
+  constructor(private readonly authService: AuthService) {
+    super(
+      {
+        jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+        passReqToCallback: true,
+        secretOrKey: 'secret',
+      },
+      async (req, payload, next) => await this.verify(req, payload, next)
+    );
+    passport.use(this);
+  }
+
+  public async verify(req, payload, done) {
+    const isValid = await this.authService.validateUser(payload);
+    if (!isValid) {
+      return done(new UnauthorizedException(), false);
+    }
+    done(null, payload);
+  }
+}
+@@switch
+import * as passport from 'passport';
+import { ExtractJwt, Strategy } from 'passport-jwt';
+import { Component, Dependencies } from '@nestjs/common';
+import { AuthService } from '../auth.service';
+
+@Component()
+@Dependencies(AuthService)
+export class JwtStrategy extends Strategy {
+  constructor(authService) {
+    super(
+      {
+        jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+        passReqToCallback: true,
+        secretOrKey: 'secret',
+      },
+      async (req, payload, next) => await this.verify(req, payload, next)
+    );
+    this.authService = authService;
+    passport.use(this);
+  }
+
+  async verify(req, payload, done) {
+    const isValid = await this.authService.validateUser(payload);
+    if (!isValid) {
+      return done('Unauthorized', false);
+    }
+    done(null, payload);
+  }
+}
+```
+
+The `JwtStrategy` uses `AuthService` to validate the payload (signed user). When the payload is valid, the request may be handled by the route handler. Otherwise, the user would receive `401 Unauthorized` response.
+
+The last step is to create an `AuthModule`:
+
+```typescript
+@@filename(auth.module)
+import * as passport from 'passport';
+import {
+  Module,
+  NestModule,
+  MiddlewareConsumer,
+  RequestMethod,
+} from '@nestjs/common';
+import { AuthService } from './auth.service';
+import { JwtStrategy } from './passport/jwt.strategy';
+import { AuthController } from './auth.controller';
+
+@Module({
+  components: [AuthService, JwtStrategy],
+  controllers: [AuthController],
+})
+export class AuthModule implements NestModule {
+  public configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(passport.authenticate('jwt', { session: false }))
+      .forRoutes({ path: '/auth/authorized', method: RequestMethod.ALL });
+  }
+}
+@@switch
+import * as passport from 'passport';
+import { Module, RequestMethod } from '@nestjs/common';
+import { AuthService } from './auth.service';
+import { JwtStrategy } from './passport/jwt.strategy';
+import { AuthController } from './auth.controller';
+
+@Module({
+  components: [AuthService, JwtStrategy],
+  controllers: [AuthController],
+})
+export class AuthModule {
+  public configure(consumer) {
+    consumer
+      .apply(passport.authenticate('jwt', { session: false }))
+      .forRoutes({ path: '/auth/authorized', method: RequestMethod.ALL });
+  }
+}
+```
+
+The trick's to provide a `JwtStrategy` as a component, and set up the strategy immediately after instance creation (inside the `constructor`). Also, we're binding the functional middleware to the single `/auth/authorized` route (just for testing purposes). It's everything.
+
+The full source code's available here.
