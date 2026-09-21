@@ -592,8 +592,16 @@ def main(argv: list[str]) -> int:
         nope = search(probe["query"], 3, "999")
         check("невідома версія — found=0 з переліком наявних ліній",
               nope.get("found") == 0 and probe["version"] in nope.get("note", ""))
-        check("пошук без версії бачить і документи без версії (блог)",
-              any(not p.versions for p in spec_mcp._INDEX.passages))
+        # Не в кожному домені є документи без версії. У react це блог, у nestjs
+        # версію несе кожен документ — і сайт, і знімки, і нотатки релізів. Тому
+        # очікування оголошується примірником; змовчання — «є», як було до появи
+        # поля, тож перевірка в react лишається тією самою.
+        if C.get("expect_unversioned", True):
+            check("пошук без версії бачить і документи без версії (блог)",
+                  any(not p.versions for p in spec_mcp._INDEX.passages))
+        else:
+            check("усі документи несуть версію, як оголошено примірником",
+                  all(p.versions for p in spec_mcp._INDEX.passages))
 
     # 9. Пошук за змістом. Перевіряється насамперед те, що він нікого не тримає в
     # заручниках: без Qdrant сервер мусить відповідати по словах, а не падати й не
