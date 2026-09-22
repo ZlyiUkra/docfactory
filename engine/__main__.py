@@ -58,6 +58,16 @@ def main(argv: list[str]) -> int:
         from engine import manifest as M
         data = S.load(instance_dir)
         corpus = instance_dir / "corpus"
+        # Паспорт складається з того, що лежить у corpus/. Порожня тека дала б
+        # паспорт без жодного документа — і затерла б справжній, який доти
+        # описував тисячі. Найімовірніша причина порожньої теки не аварія, а
+        # архівний режим (див. README примірника), тож тут не мовчазний нуль, а
+        # відмова: перезаписувати чужу роботу порожнечею крок не має права.
+        if not any(corpus.glob("*.txt")) and M.load(corpus):
+            print(f"── Паспорт не чіпаю: у {corpus} немає жодного .txt, "
+                  f"а паспорт уже є ──")
+            print("   Схоже, корпус винесено в архів. Поверніть тексти й повторіть.")
+            return 1
         m = M.build_corpus(corpus, data["sources"], time.strftime("%Y-%m-%d"))
         path = M.save(corpus, m)
         print(f"── Паспорт {path.name}: {len(m['documents'])} документів ──")

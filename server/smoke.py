@@ -346,14 +346,24 @@ def main(argv: list[str]) -> int:
     # індексу. Втрата вже траплялася і була мовчазною: відбір за довжиною
     # прибирав 368 коротких розділів, і пошук відповідав за них сусідніми
     # номерами — для інструмента цитування це найгірша з відмов.
-    from common.corpus import section_map
+    from common.corpus import corpus_archived, section_map
 
-    with_text = {s for s, has in section_map().items() if has}
-    indexed = {p.anchor for p in spec_mcp._INDEX.passages if p.section}
-    lost = with_text - indexed
-    check("кожен розділ із власним текстом є в індексі", not lost,
-          f"розділів {len(with_text)}, втрачених {len(lost)}"
-          + (": " + ", ".join(sorted(lost)[:5]) if lost else ""))
+    # Уся ця звірка тримається на самих документах. В архівному режимі їх у
+    # теці немає, а взяти «розділи з текстом» з індексу означало б звіряти
+    # індекс із самим собою: перевірка стала б завжди-ok і перестала б ловити
+    # саме те, заради чого написана. Тому — чесне «пропущено».
+    archived = corpus_archived()
+    if archived:
+        skip("кожен розділ із власним текстом є в індексі",
+             "корпус в архіві — звіряти нема з чим")
+        with_text = {p.anchor for p in spec_mcp._INDEX.passages if p.section}
+    else:
+        with_text = {s for s, has in section_map().items() if has}
+        indexed = {p.anchor for p in spec_mcp._INDEX.passages if p.section}
+        lost = with_text - indexed
+        check("кожен розділ із власним текстом є в індексі", not lost,
+              f"розділів {len(with_text)}, втрачених {len(lost)}"
+              + (": " + ", ".join(sorted(lost)[:5]) if lost else ""))
 
     # 1b. Паспорт корпусу: ідентифікатор — справді ключ. Обидва видання
     # відкриваються главами Scope і Conformance, тож без префікса джерела
@@ -363,14 +373,18 @@ def main(argv: list[str]) -> int:
     from engine import manifest as M
 
     corpus_dir = instance.root() / "corpus"
-    passport_docs = (M.load(corpus_dir) or {}).get("documents", [])
-    passport_ids = {d["id"] for d in passport_docs}
-    txt_files = list(corpus_dir.glob("*.txt"))
-    check("паспорт: ідентифікатор документа — ключ без колізій",
-          bool(passport_docs)
-          and len(passport_ids) == len(passport_docs) == len(txt_files),
-          f"файлів {len(txt_files)}, записів {len(passport_docs)}, "
-          f"різних id {len(passport_ids)}")
+    if archived:
+        skip("паспорт: ідентифікатор документа — ключ без колізій",
+             "корпус в архіві — файлів для звірки немає")
+    else:
+        passport_docs = (M.load(corpus_dir) or {}).get("documents", [])
+        passport_ids = {d["id"] for d in passport_docs}
+        txt_files = list(corpus_dir.glob("*.txt"))
+        check("паспорт: ідентифікатор документа — ключ без колізій",
+              bool(passport_docs)
+              and len(passport_ids) == len(passport_docs) == len(txt_files),
+              f"файлів {len(txt_files)}, записів {len(passport_docs)}, "
+              f"різних id {len(passport_ids)}")
 
     # 1c. Замір якості (server/quality.py) рахує влучання по межі сегмента
     # номера, а не як префікс рядка: «9.2.1» — префікс для «9.2.10»…«9.2.15»,

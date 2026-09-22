@@ -73,8 +73,8 @@ except ImportError:
 from common import instance
 from common import nform
 from common import profile
-from common.corpus import (DOC_SET, Passage, section_map, used_cache,
-                           version_key, version_line, version_within)
+from common.corpus import (DOC_SET, Passage, corpus_archived, section_map,
+                           used_cache, version_key, version_line, version_within)
 from common.idmap import assign_ids
 from common import mode
 from common.lexical import LexicalIndex, tokenize
@@ -148,19 +148,32 @@ print(f"spec_mcp: набір «{DOC_SET}», проіндексовано {_COUNT
 # прибирав 368 коротких розділів, і пошук відповідав за них сусідніми номерами.
 # Тепер втрата — не тихий мінус у числі фрагментів, а рядок з іменами при
 # кожному старті, поруч із рештою чисел.
-_SECTIONS = section_map()
-_WITH_TEXT = {s for s, has in _SECTIONS.items() if has}
-_LOST = _WITH_TEXT - {p.anchor for p in _INDEX.passages if p.section}
-if _LOST:
-    print(f"spec_mcp: УВАГА: {len(_LOST)} "
-          f"{nform(len(_LOST), 'розділ', 'розділи', 'розділів')} із власним "
-          f"текстом немає в індексі: {', '.join(sorted(_LOST)[:5])}"
-          f"{'…' if len(_LOST) > 5 else ''} — пошук відповідатиме сусідніми",
+# В архівному режимі звіряти індекс нема з чим: документів у теці немає, і
+# єдине джерело — той самий кеш, з якого індекс і зібрано. Мовчазного «усі
+# розділи на місці» тут бути не повинно, тому сказано прямо.
+if corpus_archived():
+    # Перелік рубрик без власного тексту дають самі документи, тож в архіві
+    # його нізвідки взяти: рубрика тим і відрізняється, що в індексі її немає.
+    # read_section тоді на голий номер розділу відповість звичайним «такого id
+    # немає» замість докладнішого «це рубрика, дивіться підрозділи».
+    _SECTIONS: dict[str, bool] = {}
+    print("spec_mcp: корпус в архіві — індекс із кешу, звірка з документами "
+          "пропущена; щоб оновлювати корпус, поверніть тексти в corpus/",
           file=sys.stderr)
 else:
-    print(f"spec_mcp: усі {len(_WITH_TEXT)} розділів із власним текстом в "
-          f"індексі; рубрик без тексту {len(_SECTIONS) - len(_WITH_TEXT)}",
-          file=sys.stderr)
+    _SECTIONS = section_map()
+    _WITH_TEXT = {s for s, has in _SECTIONS.items() if has}
+    _LOST = _WITH_TEXT - {p.anchor for p in _INDEX.passages if p.section}
+    if _LOST:
+        print(f"spec_mcp: УВАГА: {len(_LOST)} "
+              f"{nform(len(_LOST), 'розділ', 'розділи', 'розділів')} із власним "
+              f"текстом немає в індексі: {', '.join(sorted(_LOST)[:5])}"
+              f"{'…' if len(_LOST) > 5 else ''} — пошук відповідатиме сусідніми",
+              file=sys.stderr)
+    else:
+        print(f"spec_mcp: усі {len(_WITH_TEXT)} розділів із власним текстом в "
+              f"індексі; рубрик без тексту {len(_SECTIONS) - len(_WITH_TEXT)}",
+              file=sys.stderr)
 
 # Пошук за змістом: чи його просили, і чи він уже готовий.
 #

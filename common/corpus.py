@@ -59,6 +59,7 @@ import json
 import os
 import pathlib
 import re
+import sys
 
 from . import instance
 
@@ -266,8 +267,10 @@ def load_documents() -> list[Document]:
         files = sorted(folder.glob("*.txt"))
         if not files:
             raise SystemExit(
-                f"У {folder} немає жодного .txt. Корпус лежить у репозиторії практики; "
-                "якщо теки немає — відновіть її з корпусу практики.")
+                f"У {folder} немає жодного .txt, і кешу фрагментів "
+                f"({cache_path().name}) теж немає — працювати нема з чим.\n"
+                "  Корпус виносили в архів? Розпакуйте його назад у corpus/.\n"
+                "  Примірник новий? Зберіть корпус: ./df <домен> refresh.")
         docs.extend(Document(p) for p in files)
     return docs
 
@@ -491,19 +494,24 @@ class _Head:
         self.version = ",".join(record["versions"])
 
 
-def _cache_read(stamp: str) -> list[Passage] | None:
+def _cache_read(stamp: str | None) -> list[Passage] | None:
     """Фрагменти з кешу — або None, якщо його немає, він чужий чи не читається.
+
+    `stamp` None означає «відбиток не звіряти»: так кеш читається в архівному
+    режимі, де корпусу вже немає і звіряти його склад нема з чим.
 
     Жодна поломка кешу не має права стати поломкою пошуку, тому тут немає
     жодного підняття помилки: будь-яка несподіванка означає «кешу немає».
     """
-    if not stamp:
+    if stamp is not None and not stamp:
         return None
     try:
         data = json.loads(cache_path().read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
-    if not isinstance(data, dict) or data.get("stamp") != stamp:
+    if not isinstance(data, dict):
+        return None
+    if stamp is not None and data.get("stamp") != stamp:
         return None
     records = data.get("passages")
     if not isinstance(records, list):
@@ -549,6 +557,61 @@ def _cache_write(stamp: str, passages: list[Passage]) -> None:
             pass
 
 
+def _corpus_short() -> tuple[int, int] | None:
+    """(скільки файлів, скільки має бути) — якщо корпус коротший за паспорт.
+
+    Паспорт `corpus/index.json` пише крок `manifest`, і він перелічує кожен
+    документ корпусу. Тобто в самій теці лежить незалежна відповідь на питання
+    «скільки тут має бути файлів», і зайве читання одного файла коштує чверть
+    секунди проти ста на саме збирання. Немає паспорта — немає й судження:
+    повертається None, і все працює як раніше.
+    """
+    try:
+        data = json.loads((DOCS_DIR / "index.json").read_text(encoding="utf-8"))
+        want = len(data["documents"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    if not want:
+        return None
+    have = 0
+    for folder in DOCS_DIRS:
+        try:
+            with os.scandir(folder) as entries:
+                have += sum(1 for e in entries if e.name.endswith(".txt"))
+        except OSError:
+            continue
+    return (have, want) if have < want else None
+
+
+def corpus_archived() -> bool:
+    """Чи винесено корпус в архів: текстів немає, а кеш фрагментів є.
+
+    Режим свідомий, не аварійний. Корпус astro — 22 733 файли, і поки вони
+    лежать у теці, кожне звернення git до дерева обходить їх усі, а сам корпус
+    важить 120 МБ проти 20 у кеші. Коли документацію не оновлюють, тексти в
+    теці не потрібні нікому: пошук по словах бере їх із кешу, пошук за змістом —
+    із Qdrant, а `read_section` віддає той самий текст, що й раніше.
+
+    Відрізнити архів від свіжого примірника, де корпусу ще немає, просто: у
+    свіжого немає й кешу, і там мовчки працювати ні з чим — помилка. Тому
+    ознака саме подвійна.
+
+    Чого в архівному режимі не буде: оновлення корпусу (`refresh`, `manifest`,
+    `check` читають файли) і звірки індексу з документами — звіряти нема з чим.
+    Щоб повернутися, досить розпакувати архів назад у corpus/.
+    """
+    if not cache_path().exists():
+        return False
+    for folder in DOCS_DIRS:
+        try:
+            with os.scandir(folder) as entries:
+                if any(e.name.endswith(".txt") for e in entries):
+                    return False
+        except OSError:
+            continue
+    return True
+
+
 def load_passages() -> list[Passage]:
     """Фрагменти корпусу — з кешу, якщо корпус не змінився, інакше з файлів.
 
@@ -557,13 +620,34 @@ def load_passages() -> list[Passage]:
     полів — збираємо з корпусу, як і раніше.
     """
     global _from_cache
+    if corpus_archived():
+        kept = _cache_read(None)
+        if kept is None:
+            raise SystemExit(
+                f"Корпус у {DOCS_DIR} порожній, а кеш фрагментів "
+                f"({cache_path()}) не читається — працювати нема з чим.\n"
+                "  Поверніть тексти в corpus/ (розпакуйте архів або візьміть з git) "
+                "і підніміть крок знову.")
+        _from_cache = True
+        return kept
     stamp = _corpus_stamp()
     kept = _cache_read(stamp)
     _from_cache = kept is not None
     if kept is not None:
         return kept
     passages = _split_all()
-    _cache_write(stamp, passages)
+    short = _corpus_short()
+    if short:
+        # Корпус коротший за власний паспорт — найімовірніше його саме
+        # розпаковують із архіву, і розпакування ще не скінчилося. Індекс із
+        # половини корпусу — не помилка коду, а неповна відповідь на кожне
+        # питання, тому про це кажуть уголос. І кеш у цьому стані не пишеться:
+        # інакше неповний зліпок затер би повний, і повертатися було б нікуди.
+        print(f"common.corpus: УВАГА: у corpus/ {short[0]} документів, а паспорт "
+              f"описує {short[1]} — індекс неповний, кеш не оновлюю",
+              file=sys.stderr)
+    else:
+        _cache_write(stamp, passages)
     return passages
 
 
