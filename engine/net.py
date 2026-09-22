@@ -12,13 +12,54 @@
 
 import datetime
 import email.utils
+import os
+import pathlib
 import urllib.error
+import urllib.parse
 import urllib.request
 
 MAX_BYTES = 20_000_000
 TIMEOUT_SEC = 60
 PAUSE_SEC = 1.0
 _UA = "agent0826-docfactory/1.0"
+# Хост, і тільки він, отримує заголовок авторизації (див. _github_token).
+_TOKEN_HOST = "api.github.com"
+
+
+def _github_token() -> str:
+    """Токен GitHub із `.env` того примірника, з яким іде цей запуск, або порожньо.
+
+    Навіщо. Анонімний GitHub API дає 60 звернень на годину, а домен, що збирає
+    документацію з вісімдесяти знімків репозиторію, витрачає одне звернення на
+    кожен знімок і ще десятки на гортання релізів монорепозиторію. З токеном
+    ліміт 5000, і збирання йде одним прогоном замість розкладу по годинних вікнах.
+
+    Чому саме так, а не зі змінної оточення. Токен належить одному примірникові,
+    і жоден інший не має права ним скористатися навіть випадково. Тому:
+
+    - читається лише файл `.env` теки примірника, яку назвав `df` через
+      DF_INSTANCE_DIR; оточення процесу не дивиться взагалі, тож глобальний
+      GITHUB_TOKEN, якщо він колись зʼявиться в системі, нікуди не потрапить;
+    - заголовок додається лише зверненням до api.github.com; на
+      raw.githubusercontent.com, astro.build чи будь-який інший хост він не йде;
+    - немає файла, немає рядка, немає теки примірника — немає й заголовка, і
+      поведінка та сама до байта, що й до появи цієї функції. Примірники, у чиїх
+      `.env` цього рядка немає, працюють рівно як раніше.
+
+    Значення нікуди не друкується: ні в журнал, ні у звіт, ні в повідомлення збою.
+    """
+    root = os.environ.get("DF_INSTANCE_DIR", "")
+    if not root:
+        return ""
+    try:
+        text = (pathlib.Path(root) / ".env").read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    for line in text.splitlines():
+        key, sep, value = line.partition("=")
+        if sep and key.strip() == "GITHUB_TOKEN":
+            return value.strip().strip('"').strip("'")
+    return ""
 
 
 class Refused(Exception):
@@ -60,6 +101,9 @@ def fetch(url: str, allow, *, since: str = "") -> tuple[str, bytes]:
     if not allow(url):
         raise Refused(f"адреса поза оголошенням примірника: {url}")
     headers = {"User-Agent": _UA}
+    token = _github_token()
+    if token and urllib.parse.urlsplit(url).hostname == _TOKEN_HOST:
+        headers["Authorization"] = f"Bearer {token}"
     if since:
         try:
             headers["If-Modified-Since"] = since_header(since)
