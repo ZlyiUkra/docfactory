@@ -1,0 +1,117 @@
+# Headless Statamic & Astro
+# джерело: https://github.com/withastro/docs/blob/604156c9326238429df3b8b46380713bc17ac1a2/src/content/docs/en/guides/cms/statamic.mdx
+# отримано: 2026-09-21
+# версія: 5.7
+
+Statamic is a modern, flat-file CMS. It allows developers to easily create dynamic websites and applications while offering content editors an intuitive and user-friendly interface for managing content.
+
+## Integrating with Astro
+
+Statamic comes with a built-in REST API and GraphQL API to connect your data to Astro.
+
+### Prerequisites
+
+To get started, you will need to have the following:
+
+1. REST API and GraphQL API are only available in a pro version of Statamic. You can try the Pro version free on your local machine.
+2. **An Astro project** - If you still need an Astro project, our Installation guide will get you up and running quickly.
+3. **A Statamic site** - If you need a Statamic website, this guide will help you get started.
+Remember to enable REST API or GraphQL API by adding `STATAMIC_API_ENABLED=true` or `STATAMIC_GRAPHQL_ENABLED=true` in the `.env` file and enable required resources in the API configuration file.
+
+Caution:
+
+All the examples assume that your website has a collection called `posts`, that has a blueprint called `post`, and this blueprint has a title field (fieldtype text) and content (fieldtype markdown).
+
+### Fetching Data
+
+Caution:
+
+If you are using Statamic and Astro on your local machine remember to use `127.0.0.1` instead of `localhost` when fetching the API.
+
+When requesting from the Astro server `localhost` doesn't resolve correctly like it does in the browser, and any fetch to either API will fail.
+
+#### REST API
+
+Fetch your Statamic data from your site's REST API URL. By default, it's `https://[YOUR-SITE]/api/`. Then, you can render your data properties using Astro's `set:html={}` directive.
+
+For example, to display a list of titles and their content from a selected collection:
+
+```astro
+---
+const res = await fetch("https://[YOUR-SITE]/api/collections/posts/entries?sort=-date")
+const posts = await res.json()
+---
+<h1>Astro + Statamic 🚀</h1>
+{
+  posts.map((post) => (
+      <h2 set:html={post.title} />
+      <p set:html={post.content} />
+  ))
+}
+```
+
+#### GraphQL
+
+Fetch your Statamic data with your site's GraphQL API URL. By default, it's `https://[YOUR-SITE]/graphql/`. Then, you can render your data properties using Astro's `set:html={}` directive.
+
+For example, to display a list of titles and their content from a selected collection:
+
+```astro
+---
+const graphqlQuery = {
+  query: `
+    query Entries($page: Int, $locale: String) {
+      entries(
+        collection: "posts"
+        sort: "date asc"
+        limit: 20
+        page: $page
+        filter: { locale: $locale }
+      ) {
+        current_page
+        has_more_pages
+        data {
+          title
+          ... on Entry_Posts_Post {
+              content
+            }
+        }
+      }
+    }
+  `,
+  variables: {
+    page: page,
+    locale: locale,
+  },
+};
+
+const res = await fetch("https://[YOUR-SITE]/graphql", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(graphqlQuery),
+})
+
+const { data } = await res.json();
+const entries = data?.entries;
+---
+<h1>Astro + Statamic 🚀</h1>
+{
+  entries.data.map((post) => (
+      <h2 set:html={post.title} />
+      <p set:html={post.content} />
+  ))
+}
+```
+
+### Publishing your site
+
+To deploy your Astro site visit our deployment guides and follow the instructions for your preferred hosting provider.
+
+## Community Resources
+
+- How to build a static site using Statamic as headless CMS
+- Implementing Astro live previews in headless Statamic
+
+## Themes
+
+Creek
