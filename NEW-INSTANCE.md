@@ -295,6 +295,11 @@ Write the instance `README.md` and `UPDATE.md`, then add the domain to the insta
 `UPDATE.md` matters more than it looks: it is where you record how to take a snapshot before a version bump, and
 what must never be deleted.
 
+The instance `README.md` must spell out how to raise this very server — that is the point of the whole instance,
+and it is the first thing looked up: the venv, `./df <domain> serve` with its port, both ways of registering it
+in Claude Code (`.mcp.json` of this folder, or `claude mcp add --transport http --scope user`), the `/mcp` check,
+and what a taken port and a failed connection look like. A domain list in the root README does not replace it.
+
 ## Final checklist
 
 ```
@@ -307,6 +312,7 @@ what must never be deleted.
 [ ] prompts/: all five, none carrying another domain's words
 [ ] checks.json: real numbers, targets chosen from documentation
 [ ] smoke, protocol, raw, tools all green
+[ ] README.md says how to raise the server and register it in Claude Code
 [ ] README.md and UPDATE.md written; root README lists the domain
 ```
 
@@ -597,6 +603,12 @@ claude mcp add --transport http --scope user <server_name> http://127.0.0.1:<п�
 `UPDATE.md` важливіший, ніж здається: саме там записується, як зробити знімок перед підняттям версії і що не можна
 видаляти ніколи.
 
+У `README.md` примірника **обов'язково** має бути, як підняти саме цей сервер: заради нього примірник і робиться,
+і шукають це першим. Тобто venv, `./df <домен> serve` із номером порту, обидва способи запису в Claude Code
+(`.mcp.json` цієї теки або `claude mcp add --transport http --scope user`), перевірка через `/mcp` і те, який
+вигляд має зайнятий порт і невдале під'єднання. Перелік доменів у кореневому README цього не замінює: там опис
+фабрики, а не інструкція.
+
 ## Підсумковий список
 
 ```
@@ -609,6 +621,7 @@ claude mcp add --transport http --scope user <server_name> http://127.0.0.1:<п�
 [ ] prompts/: усі п'ять, у жодному немає слів чужого домену
 [ ] checks.json: справжні числа, цілі дібрані з документації
 [ ] smoke, protocol, raw, tools зелені
+[ ] README.md каже, як підняти сервер і записати його в Claude Code
 [ ] README.md і UPDATE.md написані; кореневий README називає домен
 ```
 
@@ -902,6 +915,12 @@ Escreva o `README.md` e o `UPDATE.md` da instância e acrescente o domínio à l
 raiz. O `UPDATE.md` importa mais do que parece: é nele que se registra como tirar um instantâneo antes de subir uma
 versão e o que nunca deve ser apagado.
 
+O `README.md` da instância precisa dizer como subir este servidor — é para isso que a instância existe, e é a
+primeira coisa que se procura: o venv, `./df <domínio> serve` com a porta, as duas formas de registrá-lo no Claude
+Code (o `.mcp.json` desta pasta ou `claude mcp add --transport http --scope user`), a conferência pelo `/mcp` e o
+que aparece quando a porta está ocupada ou a conexão falha. A lista de domínios no README da raiz não substitui
+isso.
+
 ## Lista final de conferência
 
 ```
@@ -914,5 +933,6 @@ versão e o que nunca deve ser apagado.
 [ ] prompts/: todos os cinco, nenhum com palavras de outro domínio
 [ ] checks.json: números reais, alvos escolhidos a partir da documentação
 [ ] smoke, protocol, raw, tools todos verdes
+[ ] README.md diz como subir o servidor e registrá-lo no Claude Code
 [ ] README.md e UPDATE.md escritos; o README da raiz cita o domínio
 ```
