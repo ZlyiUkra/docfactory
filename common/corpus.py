@@ -54,7 +54,9 @@ markdown «## Назва», який читачі рушія ставлять о
 документація казала саме це.
 """
 
+import hashlib
 import json
+import os
 import pathlib
 import re
 
@@ -403,8 +405,170 @@ def same_text(text: str) -> str:
     return re.sub(r"\s+", " ", text.translate(_TYPOGRAPHY)).strip()
 
 
+# Кеш готових фрагментів. Версія формату піднімається, коли міняється склад
+# полів Passage або правила поділу: старий файл тоді не збігається відбитком і
+# перезбирається сам.
+CACHE_VERSION = 1
+
+# Поля, з яких фрагмент відновлюється, — рівно вони, не менше й не більше.
+# Якщо у Passage з'явиться нове поле, а цей перелік про нього не знатиме, кеш
+# не пишеться зовсім (див. _cache_write): повільний старт кращий за тихо
+# загублене поле.
+CACHE_FIELDS = ("doc_id", "doc_title", "url", "fetched", "section", "heading",
+                "text", "part", "parts", "slug", "versions")
+
+_from_cache = False
+
+
+def used_cache() -> bool:
+    """Чи взято фрагменти з кешу останнім load_passages(). Для діагностики."""
+    return _from_cache
+
+
+def cache_path() -> pathlib.Path:
+    """Файл кешу — в out/ примірника: тека службова і в git не потрапляє."""
+    return instance.root() / "out" / "passages.json"
+
+
+def _corpus_stamp() -> str:
+    """Відбиток корпусу: склад теки, дата теки й сума паспорта.
+
+    Головна вимога до відбитка — дешевизна: він береться при кожному старті, і
+    якщо коштуватиме як саме читання, кеш не матиме сенсу. Обійти теку з
+    розміром і датою кожного файла — найнадійніше, але на 22 733 файлах через
+    межу WSL це 19 секунд проти 0,1 на самі імена: `stat` там коштує майже як
+    відкриття. Тому беруться три дешеві ознаки, і разом вони ловлять усе, що
+    робить із корпусом сама фабрика:
+
+    - перелік імен — доданий, прибраний чи перейменований документ;
+    - дата теки corpus/ — оновлювач пише кожен документ через тимчасовий файл
+      із перейменуванням (engine/refresh.py), а перейменування в теку міняє її
+      дату завжди, навіть коли текст той самий;
+    - сума index.json — паспорт корпусу, у якому лежить контрольна сума тексту
+      кожного документа; `manifest` переписує його після кожного оновлення.
+
+    Лишається один випадок, якого ці ознаки не бачать: хтось переписав документ
+    поверх, не через перейменування, і не оновив паспорт. Тоді кеш лишиться
+    старим — але таким самим лишиться й паспорт, тобто корпус уже розійдеться
+    сам із собою, і `smoke` скаже про це раніше за пошук. Способу зловити це
+    дешево немає: він і є той самий обхід із `stat`.
+
+    Порожній рядок означає «відбитка немає»: кеш тоді не читається і не
+    пишеться, а все працює як до його появи.
+    """
+    parts: list = [CACHE_VERSION, SECTIONS, MAX_CHARS, MIN_CHARS]
+    for folder in DOCS_DIRS:
+        try:
+            with os.scandir(folder) as entries:
+                names = sorted(e.name for e in entries if e.name.endswith(".txt"))
+            parts.append([names, os.stat(folder).st_mtime_ns])
+        except OSError:
+            return ""
+        try:
+            passport = hashlib.sha256((folder / "index.json").read_bytes()).hexdigest()
+        except OSError:
+            passport = ""          # паспорта ще немає — свіжий примірник
+        parts.append(passport)
+    return hashlib.sha256(json.dumps(parts).encode("utf-8")).hexdigest()
+
+
+class _Head:
+    """Шапка документа, зведена до полів, які з неї бере Passage.
+
+    Потрібна лише кешеві: відновити фрагмент — це покликати той самий
+    конструктор Passage, а не розкладати його поля повз нього."""
+
+    __slots__ = ("doc_id", "title", "url", "fetched", "slug", "version")
+
+    def __init__(self, record: dict):
+        self.doc_id = record["doc_id"]
+        self.title = record["doc_title"]
+        self.url = record["url"]
+        self.fetched = record["fetched"]
+        self.slug = record["slug"]
+        # Версії зберігаються списком, а конструктор чекає рядок шапки — той
+        # самий, що в документі: кілька версій через кому.
+        self.version = ",".join(record["versions"])
+
+
+def _cache_read(stamp: str) -> list[Passage] | None:
+    """Фрагменти з кешу — або None, якщо його немає, він чужий чи не читається.
+
+    Жодна поломка кешу не має права стати поломкою пошуку, тому тут немає
+    жодного підняття помилки: будь-яка несподіванка означає «кешу немає».
+    """
+    if not stamp:
+        return None
+    try:
+        data = json.loads(cache_path().read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(data, dict) or data.get("stamp") != stamp:
+        return None
+    records = data.get("passages")
+    if not isinstance(records, list):
+        return None
+    want = set(CACHE_FIELDS)
+    out = []
+    try:
+        for record in records:
+            if not isinstance(record, dict) or set(record) != want:
+                return None
+            out.append(Passage(_Head(record), record["section"], record["heading"],
+                               record["text"], record["part"], record["parts"]))
+    except (TypeError, KeyError, ValueError):
+        return None
+    return out
+
+
+def _cache_write(stamp: str, passages: list[Passage]) -> None:
+    """Записати кеш у out/ примірника. Невдача нічого не ламає: наступний
+    запуск збере фрагменти з файлів, як робив до появи кешу.
+
+    Запис через тимчасовий файл і os.replace: обірваний на середині запуск не
+    лишає недописаного кешу, який довелося б відрізняти від цілого. Корпус ця
+    функція не чіпає взагалі — вона пише один файл і більше нічого.
+    """
+    if not stamp:
+        return
+    want = set(CACHE_FIELDS)
+    if any(set(vars(p)) != want for p in passages):
+        return
+    records = [{field: getattr(p, field) for field in CACHE_FIELDS} for p in passages]
+    path = cache_path()
+    tmp = path.with_name(path.name + ".tmp")
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp.write_text(json.dumps({"stamp": stamp, "passages": records},
+                                  ensure_ascii=False), encoding="utf-8")
+        os.replace(tmp, path)
+    except OSError:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+
+
 def load_passages() -> list[Passage]:
-    """Усі документи, поділені на фрагменти. Це вхід і лексичного, і векторного пошуку.
+    """Фрагменти корпусу — з кешу, якщо корпус не змінився, інакше з файлів.
+
+    Саме збирання — нижче, у _split_all(); тут лише кеш. Він нічого не заміняє
+    й нічого не видаляє: не збігся відбиток, не читається файл, не той склад
+    полів — збираємо з корпусу, як і раніше.
+    """
+    global _from_cache
+    stamp = _corpus_stamp()
+    kept = _cache_read(stamp)
+    _from_cache = kept is not None
+    if kept is not None:
+        return kept
+    passages = _split_all()
+    _cache_write(stamp, passages)
+    return passages
+
+
+def _split_all() -> list[Passage]:
+    """Зібрати фрагменти з файлів корпусу — вхід і лексичного, і векторного пошуку.
 
     Однакові тексти зливаються в один фрагмент. Потреба в цьому не теоретична:
     розділ 6.1.7 The Object Type містить підрозділи 6.1.7.1–6.1.7.4, а вони

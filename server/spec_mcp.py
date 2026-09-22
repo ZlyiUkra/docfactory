@@ -73,8 +73,8 @@ except ImportError:
 from common import instance
 from common import nform
 from common import profile
-from common.corpus import (DOC_SET, Passage, section_map, version_key, version_line,
-                           version_within)
+from common.corpus import (DOC_SET, Passage, section_map, used_cache,
+                           version_key, version_line, version_within)
 from common.idmap import assign_ids
 from common import mode
 from common.lexical import LexicalIndex, tokenize
@@ -139,7 +139,8 @@ _LOADED = (profile.text("loaded")
 # JSON-RPC, і будь-який print ламає клієнтові розбір відповіді.
 print(f"spec_mcp: набір «{DOC_SET}», проіндексовано {_COUNT} "
       f"{nform(_COUNT, 'фрагмент', 'фрагменти', 'фрагментів')} "
-      f"з {_DOCS} {nform(_DOCS, 'розділу', 'розділів', 'розділів')}",
+      f"з {_DOCS} {nform(_DOCS, 'розділу', 'розділів', 'розділів')}"
+      f"{' (з кешу)' if used_cache() else ''}",
       file=sys.stderr)
 
 # Звірка з документами: кожен розділ, у якого є власний текст, мусить бути в
