@@ -179,10 +179,31 @@ def status() -> int:
     from common import embed, nform, vectorstore
     from common.corpus import DOC_SET
 
+    from common.corpus import DOCS_DIR, cache_path, corpus_archived
+
     mode = read_mode()
     print(f"Файл рішення : {MODE_PATH}")
     print(f"Вирішено     : {mode.get('search')} (від {mode.get('decided', '—')})")
     print(f"Набір        : {DOC_SET}")
+
+    # Стан самих даних. Без цих трьох рядків «status» відповідав лише про
+    # вектори, і питання «чому сервер не підіймається» лишалося без відповіді:
+    # немає текстів і немає кешу — це видно тільки тут.
+    texts = sum(1 for _ in DOCS_DIR.glob("*.txt"))
+    if corpus_archived():
+        print("Корпус       : в архіві — текстів немає, індекс береться з кешу")
+    else:
+        print(f"Корпус       : {texts} "
+              f"{nform(texts, 'документ', 'документи', 'документів')} у corpus/")
+    cache = cache_path()
+    if cache.exists():
+        print(f"Кеш          : {cache.stat().st_size / 1024 / 1024:.1f} МБ, "
+              f"{cache.parent.name}/{cache.name}")
+    elif corpus_archived():
+        print("Кеш          : НЕМАЄ — і текстів теж немає, сервер не підійметься")
+    else:
+        print("Кеш          : немає, збереться при першому читанні корпусу")
+    print(f"Docker       : {'відповідає' if vectorstore.docker_available() else 'не відповідає — пошук за змістом не підійметься'}")
     print(f"Модель       : {embed.MODEL_NAME}, {embed.DIM} "
           f"{nform(embed.DIM, 'вимір', 'виміри', 'вимірів')}")
     print(f"Колекція     : {vectorstore.COLLECTION}")

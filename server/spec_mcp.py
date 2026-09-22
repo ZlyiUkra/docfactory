@@ -331,6 +331,24 @@ def _sanitize(passage: Passage) -> tuple[str, bool]:
     return passage.text, False
 
 
+def _degraded() -> str:
+    """Чому видача врізана, англійською для моделі — або порожньо, коли все гаразд.
+
+    Кричати в stderr мало: його бачить тільки той, хто сам підняв serve у своєму
+    терміналі. Клієнт, що прийшов по HTTP, досі мав єдиний натяк — поле `search`
+    зі значенням «words», — і відрізнити «документація мовчить» від «половина
+    пошуку лежить» не міг. Тепер причина їде у відповіді.
+    """
+    if not _VECTORS_ASKED or _VECTORS_READY:
+        return ""
+    # Порожня причина означає, що нитка прогріву ще не дійшла до висновку:
+    # перші секунди після старту сервер працює по словах не через поломку.
+    why = _VECTORS_WHY or "still warming up, ask again in a few seconds"
+    return (f"Meaning search is not available for this query ({why}), so this is a "
+            f"word search only: a miss may mean the wording differs, not that the "
+            f"documentation is silent.")
+
+
 def _format_hits(passages: list[Passage], how: str) -> dict:
     """Відповідь пошуку. Формат той самий, що в common/search.py практики модуля 4,
     плюс поле `search` і обрізаний текст.
@@ -342,9 +360,11 @@ def _format_hits(passages: list[Passage], how: str) -> dict:
 
     Поле `versions` є лише в корпусі з версіями: усі версії, в документах яких
     цей текст стоїть дослівно, від найновішої."""
+    why = _degraded()
     if not passages:
+        note = "Nothing in the available excerpts matches this query."
         return {"found": 0, "search": how,
-                "note": "Nothing in the available excerpts matches this query."}
+                "note": f"{note} {why}".strip()}
     items = []
     for p in passages:
         clean, flagged = _sanitize(p)
@@ -356,7 +376,10 @@ def _format_hits(passages: list[Passage], how: str) -> dict:
         if p.versions:
             item["versions"] = list(p.versions)
         items.append(item)
-    return {"found": len(passages), "search": how, "passages": items}
+    out = {"found": len(passages), "search": how, "passages": items}
+    if why:
+        out["note"] = why
+    return out
 
 
 def _rrf(rankings: list[list[Passage]], k: int, const: int = 60) -> list[Passage]:
