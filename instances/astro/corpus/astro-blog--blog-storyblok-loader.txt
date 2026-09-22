@@ -1,0 +1,61 @@
+# Astro x Storyblok: Content Loader
+# джерело: https://github.com/withastro/astro.build/blob/main/src/content/blog/storyblok-loader.mdx
+# отримано: 2026-09-21
+
+We are thrilled to announce that Storyblok is a launch partner for the Astro Content Layer API, our new approach to bring remote and CMS data into content collections. Storyblok is a pioneer in headless CMS, featuring a built-in visual editor. It enables collaboration with marketers without hindering development teams from adopting emerging front-end technologies.
+
+With the content layer you can now combine content from CMSes like Storyblok, alongside your local git-backed Markdown and MDX. With the Storyblok loader, you can sync your remote data in dev and get automatic refreshes as it changes.
+
+## Using the Storyblok loader
+
+To use the new loader (in alpha), first install the `@storyblok/astro` package:
+
+```shell
+npm install @storyblok/astro@alpha
+```
+
+Then import and use the loader inside of your `src/content/config.ts` configuration file:
+
+```ts
+
+const storyblokCollection = defineCollection({
+  loader: storyblokLoader({
+    accessToken: import.meta.env.STORYBLOK_TOKEN,
+    version: "published",
+  }),
+})
+
+export const collections = {
+  storyblok: storyblokCollection,
+}
+```
+
+And that's it, from here you can query and use collections the same way you would for local collections. Storyblok comes with a `StoryblokComponent` that renders blocks for you. Here's an example of how you might use it in a spread route.
+
+```astro
+---
+
+export async function getStaticPaths() {
+  const stories = await getCollection("storyblok");
+
+  return stories.map(({ data }: { data: ISbStoryData }) => {
+    return {
+      params: { slug: data.full_slug },
+      props: { story: data },
+    };
+  });
+}
+
+interface Props {
+  story: ISbStoryData;
+}
+
+const { story } = Astro.props;
+---
+
+<BaseLayout>
+  <StoryblokComponent blok={story.content} />
+</BaseLayout>
+```
+
+See the Astro docs on content collections to learn more. Also check out yesterday's deep dive on the Content Layer API to learn how loaders work, and how you can build your own, and the in alpha Storyblok's loader GitHub repo to report issues and contribute.

@@ -1,0 +1,151 @@
+# Astro 5.12
+# джерело: https://github.com/withastro/astro.build/blob/main/src/content/blog/astro-5120.mdx
+# отримано: 2026-09-21
+
+**⚽ Astro 5.12 knocks it into the back of the net, with an upgraded Netlify dev experience, TOML support in content loaders, and more!**
+
+The starting lineup includes:
+
+- **TOML support for content loaders**
+- **New Netlify dev experience**
+- **Experimental raw environment values**
+
+To upgrade an existing project, use the automated `@astrojs/upgrade` CLI tool. Alternatively, upgrade manually by running the upgrade command for your package manager:
+
+```sh
+# Recommended:
+npx @astrojs/upgrade
+
+# Manual:
+npm install astro@latest
+pnpm upgrade astro --latest
+yarn upgrade astro --latest
+```
+
+## TOML support for content loaders
+
+Astro 5.12 brings native support for TOML files in content collections. Astro's `file()` and `glob()` content loaders have had you covered for Markdown, JSON, and YAML files, and now you can use TOML files as well.
+
+There's no configuration needed to enable TOML support: just add `.toml` files to a collection using a built-in loader. For example, if you have a directory of TOML files like this:
+
+```toml
+name = "Apollo"
+launch_date = "1969-07-16"
+crew = ["Neil Armstrong", "Buzz Aldrin", "Michael Collins"]
+```
+
+You can then create a content collection that includes the TOML files:
+
+```ts
+
+const spacecraft = defineCollection({
+	loader: glob({ pattern: '*.toml', base: './src/content/spacecraft' }),
+	schema: z.object({
+		name: z.string(),
+		launch_date: z.coerce().date(),
+		crew: z.array(z.string()),
+	}),
+});
+export const collections = { spacecraft };
+```
+
+You can then access the TOML content in your Astro components:
+
+```astro
+---
+
+const spacecraft = await getCollection('spacecraft');
+---
+
+<ul>
+	{
+		spacecraft.map((item) => (
+			<li>
+				<h2>{item.name}</h2>
+				<p>Launch Date: {item.launch_date.toLocaleDateString()}</p>
+				<p>Crew: {item.crew.join(', ')}</p>
+			</li>
+		))
+	}
+</ul>
+```
+
+## New Netlify dev experience
+
+The Netlify adapter is now powered by Netlify's very own Vite plugin during development, bringing Netlify's entire platform and primitives to your local dev environment!
+
+### The power of Netlify on localhost
+
+Until now, using Netlify primitives with Astro during local development required running your project through the Netlify CLI. The new adapter embeds these capabilities directly into Astro's dev server instead.
+
+After upgrading to the latest version of the adapter, running `astro dev` will provide:
+
+- A local Netlify Image CDN server. This is used for images by default
+- A local Netlify Blobs server. This is used for sessions by default
+- Redirects, rewrites and headers from your Netlify config
+- The Netlify Edge Context in on-demand pages
+- Environment variables populated from your linked Netlify site
+
+### Configuring dev features
+
+Along with these features comes a way to configure them. The Netlify adapter now accepts a `devFeatures` option in its configuration to customize which features are enabled during development. Currently, the features you can configure are:
+
+- `images`: Enables the local Netlify Image CDN for Astro images during dev. Defaults to `true`.
+- `environmentVariables`: Automatically populates your development server with environment variables from your linked Netlify site. Defaults to `false`.
+
+You pass this as an option to the Netlify adapter in your Astro configuration file:
+
+```js
+
+export default defineConfig({
+  adapter: netlify({
+    devFeatures: {
+      environmentVariables: true,
+      images: false,
+    },
+  })
+})
+```
+
+Now you can enjoy the rich Netlify flavor in your own home!
+
+Thanks to Eduardo Bouças and chee rabbits from Netlify who contributed this feature. Extra thanks to chee who contributed to this post too.
+
+## Experimental raw environment values
+
+A new experimental configuration option allows you to opt out of Astro's automatic type coercion for environment variable values in `import.meta.env`. By default, Astro converts string values like `"true"`, `"false"`, `"1"`, and `"0"` to their respective types, but this can be unexpected since environment variables are generally expected to be strings.
+
+This aligns Astro's behavior with Vite's handling of environment variables, and is likely to become the default in a future major release.
+
+To enable this feature, add the `rawEnvValues` flag to your Astro configuration:
+
+```js
+export default defineConfig({
+	experimental: {
+		rawEnvValues: true,
+	},
+});
+```
+
+This experimental option only affects the `import.meta.env` object and doesn't impact the `astro:env` module that powers Astro's type-safe environment variables.
+
+Thanks to Adam Langbert who contributed this feature.
+
+## Bug fixes
+
+As always, we've been working hard on fixing issues since the 5.11 release. See the changelog for all the details.
+
+## Community
+
+The Astro core team is:
+
+, , ,
+, , ,
+, , ,
+, , ,
+, , ,
+, and
+
+Thanks to all the other contributors who helped make Astro 5.12 possible with code and docs additions and improvements, including:
+
+Adam Langbert, Adam Matthiesen, Adit Sachde, Anmoti, Armand Philippot, chee, coderfee, Dixon Sean Low Yan Feng, Eduardo Bouças, Farhad, Junseong Park, Kenichi Nakamura, knj, liruifengv, Martin Trapp, Matthew Justice, Nin3, Paul Valladares, Philippe Serhal, Reuben Tier, Rezix, Robbie Wagner, ryu, Surya Kencana Putra, Thomas Bonnet, and Toby Nguyen
