@@ -1,0 +1,269 @@
+# Content Collections API Reference
+# джерело: https://github.com/withastro/docs/blob/00d85d2f049885e27bfde44688190161b4d11308/src/content/docs/en/reference/modules/astro-content.mdx
+# отримано: 2026-09-21
+# версія: 5.10
+
+Content collections offer APIs to configure and query your Markdown or MDX documents in `src/content/`. For features and usage examples, see our content collections guide.
+
+## Imports from `astro:content`
+
+```js
+import {
+  z,
+  defineCollection,
+  getCollection,
+  getEntry,
+  getEntries,
+  reference,
+  render
+ } from 'astro:content';
+```
+
+### `defineCollection()`
+
+**Type:** `(input: CollectionConfig) => CollectionConfig`
+
+`defineCollection()` is a utility to configure a collection in a `src/content.config.*` file.
+
+```ts
+
+const blog = defineCollection({
+  loader: glob({ pattern: '**/*.md', base: './src/data/blog' }),
+  schema: z.object({
+    title: z.string(),
+    permalink: z.string().optional(),
+  }),
+});
+
+// Expose your defined collection to Astro
+// with the `collections` export
+export const collections = { blog };
+```
+
+This function accepts the following properties:
+
+#### `loader`
+
+**Type:** () => Promise<Array<\{ id: string, [key: string]: any }> | Record<string, Record<string, any>>> | Loader
+
+A `loader` is either an object or a function that allows you to load data from any source, local or remote, into content collections.
+
+See the `Content Collection` guide for example usage.
+
+#### `schema`
+
+**Type:** ZodType | (context: SchemaContext) => ZodType
+
+`schema` is an optional Zod object to configure the type and shape of document frontmatter for a collection. Each value must use a Zod validator.
+
+See the `Content Collection` guide for example usage.
+
+### `reference()`
+
+**Type:** `(collection: string) => ZodEffects<ZodString, { collection, id: string }>`
+
+The `reference()` function is used in the content config to define a relationship, or "reference," from one collection to another. This accepts a collection name and transforms the reference into an object containing the collection name and the reference id.
+
+This example defines references from a blog author to the `authors` collection and an array of related posts to the same `blog` collection:
+
+```ts
+
+const blog = defineCollection({
+  loader: glob({ pattern: '**/*.md', base: './src/data/blog' }),
+  schema: z.object({
+    // Reference a single author from the `authors` collection by `id`
+    author: reference('authors'),
+    // Reference an array of related posts from the `blog` collection by `slug`
+    relatedPosts: z.array(reference('blog')),
+  })
+});
+
+const authors = defineCollection({
+  loader: file("src/data/authors.json"),
+  schema: z.object({ /* ... */ })
+});
+
+export const collections = { blog, authors };
+```
+Validation of referenced entries happens at runtime when using `getEntry()` or `getEntries()`:
+
+```astro
+// if a referenced entry is invalid, this will return undefined.
+const relatedPosts = await getEntries(blogPost.data.relatedPosts);
+```
+
+See the `Content Collection` guide for example usage.
+
+### `getCollection()`
+
+**Type:** `(collection: string, filter?: (entry: CollectionEntry<collection>) => boolean) => CollectionEntry<collection>[]`
+
+`getCollection()` is a function that retrieves a list of content collection entries by collection name.
+
+It returns all items in the collection by default, and accepts an optional `filter` function to narrow by entry properties. This allows you to query for only some items in a collection based on `id` or frontmatter values via the `data` object.
+
+```astro
+---
+
+// Get all `src/content/blog/` entries
+const allBlogPosts = await getCollection('blog');
+
+// Only return posts with `draft: true` in the frontmatter
+const draftBlogPosts = await getCollection('blog', ({ data }) => {
+  return data.draft === true;
+});
+---
+```
+
+See the `Content Collection` guide for example usage.
+
+### `getEntry()`
+
+**Types:**
+* `(collection: string, id: string) => Promise<CollectionEntry<collection> | undefined>`
+* `({ collection: string, id: string }) => Promise<CollectionEntry<collection> | undefined>`
+
+`getEntry()` is a function that retrieves a single collection entry by collection name and the entry `id`. `getEntry()` can also be used to get referenced entries to access the `data` or `body` properties:
+
+```astro
+---
+
+// Get `src/content/blog/enterprise.md`
+const enterprisePost = await getEntry('blog', 'enterprise');
+
+// Get `src/content/captains/picard.json`
+const picardProfile = await getEntry('captains', 'picard');
+
+// Get the profile referenced by `data.captain`
+const enterpriseCaptainProfile = await getEntry(enterprisePost.data.captain);
+---
+```
+
+See the `Content Collections` guide for examples of querying collection entries.
+
+### `getEntries()`
+
+**Type:** `(Array<{ collection: string, id: string }>) => Array<CollectionEntry<collection>>`
+
+`getEntries()` is a function that retrieves multiple collection entries from the same collection. This is useful for returning an array of referenced entries to access their associated `data` and `body` properties.
+
+```astro
+---
+
+const enterprisePost = await getEntry('blog', 'enterprise');
+
+// Get related posts referenced by `data.relatedPosts`
+const enterpriseRelatedPosts = await getEntries(enterprisePost.data.relatedPosts);
+---
+```
+
+### `render()`
+
+**Type:** `(entry: CollectionEntry) => Promise<RenderedEntry>`
+
+A function to compile a given entry for rendering. This returns the following properties:
+
+- `<Content />` - A component used to render the document's contents in an Astro file.
+- `headings` - A generated list of headings, mirroring Astro's `getHeadings()` utility on Markdown and MDX imports.
+- `remarkPluginFrontmatter ` - The modified frontmatter object after any remark or rehype plugins have been applied. Set to type `any`.
+
+```astro
+---
+const entry = await getEntry('blog', 'entry-1');
+
+if (!entry) {
+   // Handle Error, for example:
+  throw new Error('Could not find blog post 1');
+}
+const { Content, headings, remarkPluginFrontmatter } = await render(entry);
+---
+```
+
+See the `Content Collection` guide for example usage.
+
+## `astro:content` types
+
+```ts
+import type {
+  CollectionEntry,
+  CollectionKey,
+  ContentCollectionKey,
+  DataCollectionKey,
+  SchemaContext,
+ } from 'astro:content';
+```
+
+### `CollectionEntry`
+
+Query functions including `getCollection()`, `getEntry()`, and `getEntries()` each return entries with the `CollectionEntry` type. This type is available as a utility from `astro:content`:
+
+```ts
+```
+
+`CollectionEntry` is a generic type. Use it with the name of the collection you're querying.
+For example, an entry in your `blog` collection would have the type `CollectionEntry<'blog'>`.
+
+Each `CollectionEntry` is an object with the following values:
+
+#### `id`
+
+**Type:** `string`
+
+A unique ID. Note that all IDs from Astro's built-in `glob()` loader are slugified.
+
+#### `collection`
+
+**Example Type:** `'blog' | 'authors' | ...`
+
+The name of a collection in which entries are located. This is the name used to reference the collection in your schema, and in querying functions.
+
+#### `data`
+
+**Type:** `CollectionSchema<TCollectionName>`
+
+An object of frontmatter properties inferred from your collection schema (see `defineCollection()` reference). Defaults to `any` if no schema is configured.
+
+#### `body`
+
+**Type:** `string`
+
+A string containing the raw, uncompiled body of the Markdown or MDX document.
+
+### `CollectionKey`
+
+A string union of all collection names defined in your `src/content.config.*` file. This type can be useful when defining a generic function wrapping the built-in `getCollection()`.
+
+```ts
+
+async function queryCollection(collection: CollectionKey) {
+  return getCollection(collection, ({ data }) => {
+    return data.draft !== true;
+  });
+}
+```
+
+### `SchemaContext`
+
+The `context` object that `defineCollection` uses for the function shape of `schema`. This type can be useful when building reusable schemas for multiple collections.
+
+This includes the following property:
+
+- `image` - The `image()` schema helper that allows you to use local images in Content Collections
+
+```ts
+
+export const imageSchema = ({ image }: SchemaContext) =>
+    z.object({
+        image: image(),
+        description: z.string().optional(),
+    });
+
+const blog = defineCollection({
+  loader: /* ... */,
+  schema: ({ image }) => z.object({
+    title: z.string(),
+    permalink: z.string().optional(),
+    image: imageSchema({ image })
+  }),
+});
+```

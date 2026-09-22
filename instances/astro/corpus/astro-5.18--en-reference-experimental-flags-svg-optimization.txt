@@ -1,0 +1,169 @@
+# Experimental SVG optimization
+# джерело: https://github.com/withastro/docs/blob/89393ea9cc50debb17cea1fabe75f37d35610d7a/src/content/docs/en/reference/experimental-flags/svg-optimization.mdx
+# отримано: 2026-09-21
+# версія: 5.18
+
+**Type:** `boolean | object`
+**Default:** `false`
+
+This experimental feature enables automatic optimization of your SVG components using SVGO during build time.
+
+When enabled, your imported SVG files used as components will be optimized for smaller file sizes and better performance while maintaining visual quality. This can significantly reduce the size of your SVG assets by removing unnecessary metadata, comments, and redundant code.
+
+To enable this feature with default settings, set it to `true` in your Astro config:
+
+```js
+
+export default defineConfig({
+  experimental: {
+    svgo: true
+  }
+})
+```
+
+## Usage
+
+No change to using SVG components is required to take advantage of this feature. With experimental `svgo` enabled, all your SVG component import files will be automatically optimized:
+
+```astro
+---
+---
+
+<Logo />
+```
+
+The SVG will be optimized during the build process, resulting in smaller file sizes in your production build.
+
+Note that this optimization applies to every SVG component import in your project. It is not possible to opt out on a per-component basis.
+
+## Configuration
+
+You can pass a SVGO configuration object to customize optimization behavior:
+
+```js
+export default defineConfig({
+  experimental: {
+    svgo: {
+      plugins: [
+        'preset-default',
+        {
+          name: 'removeViewBox',
+          active: false
+        }
+      ]
+    }
+  }
+})
+```
+
+### `plugins`
+
+**Type:** `Array<string | PluginConfig>`
+**Default:** `[]`
+
+An array of SVGO plugins that will be used to optimize your SVG component imports.
+
+This can include any plugins by ID name, including SVGO's `preset-default` collection of plugins. A plugin can optionally be passed as an object including both its `name` and `active` status, to enable or disable as necessary.
+
+```js
+export default defineConfig({
+  experimental: {
+    svgo: {
+      plugins: [
+        'preset-default',
+        {
+          name: 'removeViewBox',
+          active: false
+        }
+      ]
+    }
+  }
+})
+```
+
+### Other configuration options
+
+You can also pass other SVGO configuration options, such as `floatPrecision` and `multipass`, directly to your config object:
+
+```js
+export default defineConfig({
+  experimental: {
+    svgo: {
+      floatPrecision: 2,
+      multipass: true
+    }
+  }
+})
+```
+
+## Common use cases
+
+SVGO provides an extensive default plugin list with opinionated optimizations that is more convenient than adding each plugin individually. However, you may need to customize it further for your needs. For example, it may remove items or clean up too aggressively for your situation.
+
+### Preserve specific attributes
+
+You may want to preserve certain SVG attributes, such as the `viewBox`, that SVGO removes by default:
+
+```js
+export default defineConfig({
+  experimental: {
+    svgo: {
+      plugins: [
+        'preset-default',
+        {
+          name: 'removeViewBox',
+          active: false // Preserve viewBox attribute
+        }
+      ]
+    }
+  }
+})
+```
+
+### Remove specific elements
+
+You can configure plugins to remove specific unwanted elements like metadata or hidden layers. Note that many plugins are already included in `preset-default`, so you typically only need to configure their behavior:
+
+```js
+export default defineConfig({
+  experimental: {
+    svgo: {
+      plugins: [
+        'preset-default',
+        {
+          name: 'removeMetadata',
+          active: true
+        }
+      ]
+    }
+  }
+})
+```
+
+### Custom precision
+
+Control the precision of numeric values in path data:
+
+```js
+export default defineConfig({
+  experimental: {
+    svgo: {
+      floatPrecision: 2
+    }
+  }
+})
+```
+
+## How it works
+
+SVG optimization happens during the build process, not at runtime:
+
+- In **development mode**, SVG files are not optimized to ensure faster rebuild times and a smoother development experience.
+- In **production builds**, all imported SVG files are optimized once during the build process, resulting in smaller file sizes.
+- There is **no runtime overhead** - optimized SVGs are served as pre-processed static assets.
+
+While the optimization process may slightly increase your build times, the result is smaller file sizes and faster page loads for your users.
+
+## Further reading
+
+- SVGO documentation
