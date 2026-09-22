@@ -1,0 +1,175 @@
+# Astro release: astro@4.12.0
+# джерело: https://github.com/withastro/astro/releases/tag/astro%404.12.0
+# отримано: 2026-09-21
+# версія: 4.12.0
+
+Tag astro@4.12.0, published 2024-07-18.
+
+### Minor Changes
+
+-   #11341 `49b5145` Thanks @madcampos! - Adds support for Shiki's `defaultColor` option.
+
+    This option allows you to override the values of a theme's inline style, adding only CSS variables to give you more flexibility in applying multiple color themes.
+
+    Configure `defaultColor: false` in your Shiki config to apply throughout your site, or pass to Astro's built-in `<Code>` component to style an individual code block.
+
+```js
+    import { defineConfig } from 'astro/config';
+    export default defineConfig({
+      markdown: {
+        shikiConfig: {
+          themes: {
+            light: 'github-light',
+            dark: 'github-dark',
+          },
+          defaultColor: false,
+        },
+      },
+    });
+```
+
+```astro
+    ---
+    import { Code } from 'astro:components';
+    ---
+
+    <Code code={`const useMyColors = true`} lang="js" defaultColor={false} />
+```
+
+-   #11304 `2e70741` Thanks @Fryuni! - Refactors the type for integration hooks so that integration authors writing custom integration hooks can now allow runtime interactions between their integration and other integrations.
+
+    This internal change should not break existing code for integration authors.
+
+    To declare your own hooks for your integration, extend the `Astro.IntegrationHooks` interface:
+
+```ts
+    // your-integration/types.ts
+    declare global {
+      namespace Astro {
+        interface IntegrationHooks {
+          'myLib:eventHappened': (your: string, parameters: number) => Promise<void>;
+        }
+      }
+    }
+```
+
+    Call your hooks on all other integrations installed in a project at the appropriate time. For example, you can call your hook on initialization before either the Vite or Astro config have resolved:
+
+```ts
+    // your-integration/index.ts
+    import './types.ts';
+
+    export default (): AstroIntegration => {
+      return {
+        name: 'your-integration',
+        hooks: {
+          'astro:config:setup': async ({ config }) => {
+            for (const integration of config.integrations) {
+              await integration.hooks['myLib:eventHappened'].?('your values', 123);
+            }
+          },
+        }
+      }
+    }
+```
+
+    Other integrations can also now declare your hooks:
+
+```ts
+    // other-integration/index.ts
+    import 'your-integration/types.ts';
+
+    export default (): AstroIntegration => {
+      return {
+        name: 'other-integration',
+        hooks: {
+          'myLib:eventHappened': async (your, values) => {
+            // ...
+          },
+        },
+      };
+    };
+```
+
+-   #11305 `d495df5` Thanks @matthewp! - Experimental Server Islands
+
+    Server Islands allow you to specify components that should run on the server, allowing the rest of the page to be more aggressively cached, or even generated statically. Turn any `.astro` component into a server island by adding the `server:defer` directive and optionally, fallback placeholder content:
+
+```astro
+    ---
+    import Avatar from '../components/Avatar.astro';
+    import GenericUser from '../components/GenericUser.astro';
+    ---
+
+    <header>
+      <h1>Page Title</h1>
+      <div class="header-right">
+        <Avatar server:defer>
+          <GenericUser slot="fallback" />
+        </Avatar>
+      </div>
+    </header>
+```
+
+    The `server:defer` directive can be used on any Astro component in a project using `hybrid` or `server` mode with an adapter. There are no special APIs needed inside of the island.
+
+    Enable server islands by adding the experimental flag to your Astro config with an appropriate `output` mode and adatper:
+
+```js
+    import { defineConfig } from 'astro/config';
+    import netlify from '@astrojs/netlify';
+
+    export default defineConfig({
+      output: 'hybrid',
+      adapter: netlify(),
+      experimental {
+        serverIslands: true,
+      },
+    });
+```
+
+    For more information, see the server islands documentation.
+
+-   #11482 `7c9ed71` Thanks @Princesseuh! - Adds a `--noSync` parameter to the `astro check` command to skip the type-gen step. This can be useful when running `astro check` inside packages that have Astro components, but are not Astro projects
+
+-   #11098 `36e30a3` Thanks @itsmatteomanf! - Adds a new `inferRemoteSize()` function that can be used to infer the dimensions of a remote image.
+
+    Previously, the ability to infer these values was only available by adding the [`inferSize`] attribute to the `<Image>` and `<Picture>` components or `getImage()`. Now, you can also access this data outside of these components.
+
+    This is useful for when you need to know the dimensions of an image for styling purposes or to calculate different densities for responsive images.
+
+```astro
+    ---
+    import { inferRemoteSize, Image } from 'astro:assets';
+
+    const imageUrl = 'https://...';
+    const { width, height } = await inferRemoteSize(imageUrl);
+    ---
+
+    <Image src={imageUrl} width={width / 2} height={height} densities={[1.5, 2]} />
+```
+
+-   #11391 `6f9b527` Thanks @ARipeAppleByYoursTruly! - Adds Shiki's `defaultColor` option to the `<Code />` component, giving you more control in applying multiple themes
+
+-   #11176 `a751458` Thanks @tsawada! - Adds two new values to the pagination `page` prop: `page.first` and `page.last` for accessing the URLs of the first and last pages.
+
+### Patch Changes
+
+-   #11477 `7e9c4a1` Thanks @ematipico! - Fixes an issue where the development server was emitting a 404 status code when the user uses a rewrite that emits a 200 status code.
+
+-   #11479 `ca969d5` Thanks @florian-lefebvre! - Fixes a case where invalid `astro:env` variables at runtime would not throw correctly
+
+-   #11489 `061f1f4` Thanks @ematipico! - Move root inside the manifest and make serialisable
+
+-   #11415 `e9334d0` Thanks @florian-lefebvre! - Refactors how `sync` works and when it's called. Fixes an issue with `astro:env` types in dev not being generated
+
+-   #11478 `3161b67` Thanks @bluwy! - Supports importing Astro components with Vite queries, like `?url`, `?raw`, and `?direct`
+
+-   #11491 `fe3afeb` Thanks @matthewp! - Fix for Server Islands in Vercel adapter
+
+    Vercel, and probably other adapters only allow pre-defined routes. This makes it so that the `astro:build:done` hook includes the `_server-islands/` route as part of the route data, which is used to configure available routes.
+
+-   #11483 `34f9c25` Thanks @Princesseuh! - Fixes Astro not working on low versions of Node 18 and 20
+
+-   Updated dependencies \[`49b5145`]:
+    -   @astrojs/markdown-remark@5.2.0

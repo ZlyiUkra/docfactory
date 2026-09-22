@@ -1,0 +1,362 @@
+# Astro release: astro@2.0.0
+# джерело: https://github.com/withastro/astro/releases/tag/astro%402.0.0
+# отримано: 2026-09-21
+# версія: 2.0.0
+
+Tag astro@2.0.0, published 2023-01-24.
+
+> **Note**
+> This is a detailed changelog of all changes in Astro v2.
+> See our upgrade guide for an overview of steps needed to upgrade an existing project.
+
+### Major Changes
+
+-   #5687 `e2019be6f` Thanks @bholmesdev! - Give remark and rehype plugins access to user frontmatter via frontmatter injection. This means `data.astro.frontmatter` is now the _complete_ Markdown or MDX document's frontmatter, rather than an empty object.
+
+    This allows plugin authors to modify existing frontmatter, or compute new properties based on other properties. For example, say you want to compute a full image URL based on an `imageSrc` slug in your document frontmatter:
+
+```ts
+    export function remarkInjectSocialImagePlugin() {
+      return function (tree, file) {
+        const { frontmatter } = file.data.astro;
+        frontmatter.socialImageSrc = new URL(frontmatter.imageSrc, 'https://my-blog.com/').pathname;
+      };
+    }
+```
+
+    When using Content Collections, you can access this modified frontmatter using the `remarkPluginFrontmatter` property returned when rendering an entry.
+
+    **Migration instructions**
+
+    Plugin authors should now **check for user frontmatter when applying defaults.**
+
+    For example, say a remark plugin wants to apply a default `title` if none is present. Add a conditional to check if the property is present, and update if none exists:
+
+```diff
+    export function remarkInjectTitlePlugin() {
+      return function (tree, file) {
+        const { frontmatter } = file.data.astro;
+    +    if (!frontmatter.title) {
+          frontmatter.title = 'Default title';
+    +    }
+      }
+    }
+```
+
+    This differs from previous behavior, where a Markdown file's frontmatter would _always_ override frontmatter injected via remark or reype.
+
+-   #5891 `05caf445d` Thanks @bholmesdev! - Remove deprecated Markdown APIs from Astro v0.X. This includes `getHeaders()`, the `.astro` property for layouts, and the `rawContent()` and `compiledContent()` error messages for MDX.
+
+-   #5778 `49ab4f231` Thanks @bluwy! - Remove proload to load the Astro config. It will now use NodeJS and Vite to load the config only.
+
+-   #5728 `8fb28648f` Thanks @natemoo-re! - The previously experimental features `--experimental-error-overlay` and `--experimental-prerender`, both added in v1.7.0, are now the default.
+
+    You'll notice that the error overlay during `astro dev` has a refreshed visual design and provides more context for your errors.
+
+    The `prerender` feature is now enabled by default when using `output: 'server'`. To prerender a particular page, add `export const prerender = true` to your frontmatter.
+
+    > **Warning**
+    > Integration authors that previously relied on the exact structure of Astro's v1.0 build output may notice some changes to our output file structure. Please test your integrations to ensure compatability.
+    > Users that have configured a custom `vite.build.rollupOptions.output.chunkFileNames` should ensure that their Astro project is configured as an ESM Node project. Either include `"type": "module"` in your root `package.json` file or use the `.mjs` extension for `chunkFileNames`.
+
+-   #5782 `1f92d64ea` Thanks @Princesseuh! - Remove support for Node 14. Minimum supported Node version is now >=16.12.0
+
+-   #5771 `259a539d7` Thanks @matthewp! - Removes support for astroFlavoredMarkdown
+
+    In 1.0 Astro moved the old Astro Flavored Markdown (also sometimes called Components in Markdown) to a legacy feature. This change removes the `legacy.astroFlavoredMarkdown` option completely.
+
+    In 2.0 this feature will not be available in Astro at all. We recommend migration to MDX for those were still using this feature in 1.x.
+
+-   #5941 `304823811` Thanks @bholmesdev! - Content collections: Introduce a new `slug` frontmatter field for overriding the generated slug. This replaces the previous `slug()` collection config option from Astro 1.X and the 2.0 beta.
+
+    When present in a Markdown or MDX file, this will override the generated slug for that entry.
+
+```diff
+    # src/content/blog/post-1.md
+    ---
+    title: Post 1
+    + slug: post-1-custom-slug
+    ---
+```
+
+    Astro will respect this slug in the generated `slug` type and when using the `getEntryBySlug()` utility:
+
+```astro
+    ---
+    import { getEntryBySlug } from 'astro:content';
+
+    // Retrieve `src/content/blog/post-1.md` by slug with type safety
+    const post = await getEntryBySlug('blog', 'post-1-custom-slug');
+    ---
+```
+
+    **Migration**
+
+    If you relied on the `slug()` config option, you will need to move all custom slugs to `slug` frontmatter properties in each collection entry.
+
+    Additionally, Astro no longer allows `slug` as a collection schema property. This ensures Astro can manage the `slug` property for type generation and performance. Remove this property from your schema and any relevant `slug()` configuration:
+
+```diff
+    const blog = defineCollection({
+      schema: z.object({
+    -   slug: z.string().optional(),
+      }),
+    - slug({ defaultSlug, data }) {
+    -   return data.slug ?? defaultSlug;
+    - },
+    })
+```
+
+-   #5753 `302e0ef8f` Thanks @bluwy! - Default preview host to `localhost` instead of `127.0.0.1`. This allows the static server and integration preview servers to serve under ipv6.
+
+-   #5716 `dd56c1941` Thanks @bluwy! - Remove MDX Fragment hack. This was used by `@astrojs/mdx` to access the `Fragment` component, but isn't required anymore since `@astrojs/mdx` v0.12.1.
+
+-   #5584 `9963c6e4d` & #5842 `c4b0cb8bf` Thanks @wulinsheng123 and @natemoo-re! - **Breaking Change**: client assets are built to an `_astro` directory in the build output directory. Previously these were built to various locations, including `assets/`, `chunks/` and the root of build output.
+
+    You can control this location with the new `build` configuration option named `assets`.
+
+-   #5893 `be901dc98` Thanks @matthewp! - Rename `getEntry` to `getEntryBySlug`
+
+    This change moves `getEntry` to `getEntryBySlug` and accepts a slug rather than an id.
+
+    In order to improve support in `[id].astro` routes, particularly in SSR where you do not know what the id of a collection is. Using `getEntryBySlug` instead allows you to map the `[id]` param in your route to the entry. You can use it like this:
+
+```astro
+    ---
+    import { getEntryBySlug } from 'astro:content';
+
+    const entry = await getEntryBySlug('docs', Astro.params.id);
+
+    if (!entry) {
+      return new Response(null, {
+        status: 404,
+      });
+    }
+    ---
+
+    <!-- You have an entry! Use it! -->
+```
+
+-   #5685 `f6cf92b48` Thanks @bluwy! - Upgrade to Vite 4. Please see its migration guide for more information.
+
+-   #5724 `16c7d0bfd` Thanks @bluwy! - Remove outdated Vue info log. Remove `toString` support for `RenderTemplateResult`.
+
+-   #5684 `a9c292026` & #5769 `93e633922` Thanks @bholmesdev! - Refine Markdown and MDX configuration options for ease-of-use.
+
+    -   **Markdown**
+
+        -   **Replace the `extendDefaultPlugins` option** with a `gfm` boolean and a `smartypants` boolean. These are enabled by default, and can be disabled to remove GitHub-Flavored Markdown and SmartyPants.
+
+        -   Ensure GitHub-Flavored Markdown and SmartyPants are applied whether or not custom `remarkPlugins` or `rehypePlugins` are configured. If you want to apply custom plugins _and_ remove Astro's default plugins, manually set `gfm: false` and `smartypants: false` in your config.
+
+    -   **Migrate `extendDefaultPlugins` to `gfm` and `smartypants`**
+
+          You may have disabled Astro's built-in plugins (GitHub-Flavored Markdown and Smartypants) with the `extendDefaultPlugins` option. This has now been split into 2 flags to disable each plugin individually:
+
+        -   `markdown.gfm` to disable GitHub-Flavored Markdown
+        -   `markdown.smartypants` to disable SmartyPants
+
+```diff
+            // astro.config.mjs
+            import { defineConfig } from 'astro/config';
+
+            export default defineConfig({
+              markdown: {
+```
+        -   extendDefaultPlugins: false,
+
+        -   smartypants: false,
+        -   gfm: false,
+              }
+            });
+
+```
+
+            Additionally, applying remark and rehype plugins **no longer disables** `gfm` and `smartypants`. You will need to opt-out manually by setting `gfm` and `smartypants` to `false`.
+```
+
+    -   **MDX**
+
+        -   Support _all_ Markdown configuration options (except `drafts`) from your MDX integration config. This includes `syntaxHighlighting` and `shikiConfig` options to further customize the MDX renderer.
+
+        -   Simplify `extendPlugins` to an `extendMarkdownConfig` option. MDX options will default to their equivalent in your Markdown config. By setting `extendMarkdownConfig` to false, you can "eject" to set your own syntax highlighting, plugins, and more.
+
+    -   **Migrate MDX's `extendPlugins` to `extendMarkdownConfig`**
+
+          You may have used the `extendPlugins` option to manage plugin defaults in MDX. This has been replaced by 3 flags:
+
+        -   `extendMarkdownConfig` (`true` by default) to toggle Markdown config inheritance. This replaces the `extendPlugins: 'markdown'` option.
+        -   `gfm` (`true` by default) and `smartypants` (`true` by default) to toggle GitHub-Flavored Markdown and SmartyPants in MDX. This replaces the `extendPlugins: 'defaults'` option.
+
+-   #5717 `a3a7fc929` Thanks @bluwy! - Remove `style.postcss` Astro config. Refactor tailwind integration to configure through `vite` instead. Also disables `autoprefixer` in dev.
+
+-   #5825 `52209ca2a` Thanks @bholmesdev! - Baseline the experimental `contentCollections` flag. You're free to remove this from your astro config!
+
+```diff
+    import { defineConfig } from 'astro/config';
+
+    export default defineConfig({
+    - experimental: { contentCollections: true }
+    })
+
+```
+
+-   #5707 `5eba34fcc` Thanks @bluwy! - Remove deprecated `Astro` global APIs, including `Astro.resolve`, `Astro.fetchContent`, and `Astro.canonicalURL`.
+
+    -   **`Astro.resolve`**
+
+          You can resolve asset paths using `import` instead. For example:
+
+```astro
+        ---
+        import 'style.css';
+        import imageUrl from './image.png';
+        ---
+
+        <img src={imageUrl} />
+```
+
+          See the v0.25 migration guide for more information.
+
+    -   **`Astro.fetchContent`**
+
+          Use `Astro.glob` instead to fetch markdown files, or migrate to the Content Collections feature.
+
+```js
+        let allPosts = await Astro.glob('./posts/*.md');
+```
+
+    -   **`Astro.canonicalURL`**
+
+          Use `Astro.url` instead to construct the canonical URL.
+
+```js
+        const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+```
+
+-   #5608 `899214298` Thanks @konojunya! - A trailing slash will not be automatically appended to `import.meta.env.SITE`. Instead, it will be the value of the `site` config as is. This may affect usages of `${import.meta.env.SITE}image.png`, which will need to be updated accordingly.
+
+-   #5707 `5eba34fcc` Thanks @bluwy! - Remove `buildConfig` option parameter from integration `astro:build:start` hook in favour of the `build.config` option in the `astro:config:setup` hook.
+
+```js
+    export default function myIntegration() {
+      return {
+        name: 'my-integration',
+        hooks: {
+          'astro:config:setup': ({ updateConfig }) => {
+            updateConfig({
+              build: {
+                client: '...',
+                server: '...',
+                serverEntry: '...',
+              },
+            });
+          },
+        },
+      };
+    }
+```
+
+-   #5862 `1ca81c16b` Thanks @bluwy! - Remove unused exports
+
+### Minor Changes
+
+-   #5901 `a342a486c` Thanks @bluwy! - The fallback Svelte preprocessor will only be applied if a custom `preprocess` option is not passed to the `svelte()` integration option, or in the `svelte.config.js` file.
+
+    To support IDE autocompletion, or if you're migrating from `@astrojs/svelte` v1, you can create a `svelte.config.js` file with:
+
+```js
+    import { vitePreprocess } from '@astrojs/svelte';
+
+    export default {
+      preprocess: vitePreprocess(),
+    };
+```
+
+    This file will also be generated by `astro add svelte` by default.
+
+-   #5786 `c2180746b` Thanks @bholmesdev! - Move generated content collection types to a `.astro` directory. This replaces the previously generated `src/content/types.generated.d.ts` file.
+
+    If you're using Git for version control, we recommend ignoring this generated directory by adding `.astro` to your .gitignore.
+
+    Astro will also generate the TypeScript reference path to include `.astro` types in your project. This will update your project's `src/env.d.ts` file, or write one if none exists.
+
+-   #5826 `840412128` Thanks @bholmesdev! - Allow Zod objects, unions, discriminated unions, intersections, and transform results as content collection schemas.
+
+    #### Migration
+
+    Astro requires a `z.object(...)` wrapper on all content collection schemas. Update your content collections config like so:
+
+```diff
+    // src/content/config.ts
+    import { z, defineCollection } from 'astro:content';
+
+    const blog = defineCollection({
+    - schema: {
+    + schema: z.object({
+      ...
+    })
+```
+
+-   #5823 `1f49cddf9` Thanks @delucis! - Generate content types when running `astro check`
+
+-   #5832 `2303f9514` Thanks @HiDeoo! - Add support for serving well-known URIs with the @astrojs/node SSR adapter
+
+### Patch Changes
+
+-   #5855 `16dc36a87` Thanks @natemoo-re! - Remove legacy compiler error handling
+
+-   #5822 `01f3f463b` Thanks @natemoo-re! - Fix edge case with bundle generation by emitting a single chunk for pages
+
+-   #5803 `ae8a012a7` Thanks @bluwy! - Upgrade compiler and handle breaking changes
+
+-   #5840 `cf2de5422` Thanks @chenxsan! - Persist CLI flags when restarting the dev server
+
+-   #5884 `ce5c5dbd4` Thanks @MoustaphaDev! - Add a theme toggle button to the error overlay
+
+-   #5811 `ec09bb664` Thanks @bluwy! - Simplify HMR handling
+
+-   #5824 `665a2c222` Thanks @bholmesdev! - Better handle content type generation failures:
+
+    -   Generate types when content directory is empty
+    -   Log helpful error when running `astro sync` without a content directory
+    -   Avoid swallowing `config.ts` syntax errors from Vite
+
+-   #5791 `f7aa1ec25` Thanks @ba55ie! - Fix Lit slotted content
+
+-   #5499 `4987d6f44` Thanks @bluwy! - Handle custom injected entry files during build
+
+-   #5734 `55cea0a9d` Thanks @natemoo-re! - Fix `prerender` when used with `getStaticPaths`
+
+-   #5845 `e818cc046` Thanks @bluwy! - Fix importing client-side components with alias
+
+-   #5849 `8c100a6fe` Thanks @bluwy! - Handle server restart from Vite plugins
+
+-   #5756 `116d8835c` Thanks @matthewp! - Fix for hoisted scripts in project with spaces in the file path
+
+-   #5917 `7325df412` Thanks @natemoo-re! - Fix duplicate CSS in dev mode when `vite.css.devSourcemap` is provided
+
+-   #5743 `2a5786419` Thanks @Princesseuh! - Add error location during build for user-generated errors
+
+-   #5773 `4a1cabfe6` Thanks @bluwy! - Cleanup dependencies
+
+-   #5905 `a8d3e7924` Thanks @bluwy! - Fix CLI node version check
+
+-   #5761 `fa8c131f8` Thanks @bholmesdev! - Add helpful error message when the MDX integration is missing.
+
+-   #5896 `64b8082e7` Thanks @natemoo-re! - Update `@astrojs/compiler` to `v1.0.0`
+
+-   #5829 `23dc9ea96` Thanks @giuseppelt! - Fix `Code.astro` shiki css class replace logic
+
+-   #5836 `63a6ceb38` Thanks @natemoo-re! - Fix route matching when path includes special characters
+
+-   #5909 `5fd9208d4` Thanks @jasikpark! - Update compiler to 1.0.1
+
+-   #5852 `3a00ecb3e` Thanks @rishi-raj-jain! - Respect `vite.envPrefix` if provided
+
+-   #5872 `b66d7195c` Thanks @bluwy! - Enable `skipLibCheck` by default
+
+-   Updated dependencies \[`93e633922`, `e2019be6f`, `1f92d64ea`, `12f65a4d5`, `46ecd5de3`, `16107b6a1`, `c55fbcb8e`, `a9c292026`, `1f92d64ea`, `52209ca2a`, `7572f7402`]:
+    -   @astrojs/markdown-remark@2.0.0
+    -   @astrojs/telemetry@2.0.0
+    -   @astrojs/webapi@2.0.0

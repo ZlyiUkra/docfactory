@@ -1,0 +1,75 @@
+# Astro release: astro@4.10.3
+# джерело: https://github.com/withastro/astro/releases/tag/astro%404.10.3
+# отримано: 2026-09-21
+# версія: 4.10.3
+
+Tag astro@4.10.3, published 2024-06-17.
+
+### Patch Changes
+
+-   #11213 `94ac7ef` Thanks @florian-lefebvre! - Removes the `PUBLIC_` prefix constraint for `astro:env` public variables
+
+-   #11213 `94ac7ef` Thanks @florian-lefebvre! - **BREAKING CHANGE to the experimental `astro:env` feature only**
+
+    Server secrets specified in the schema must now be imported from `astro:env/server`. Using `getSecret()` is no longer required to use these environment variables in your schema:
+
+```diff
+    - import { getSecret } from 'astro:env/server'
+    - const API_SECRET = getSecret("API_SECRET")
+    + import { API_SECRET } from 'astro:env/server'
+```
+
+    Note that using `getSecret()` with these keys is still possible, but no longer involves any special handling and the raw value will be returned, just like retrieving secrets not specified in your schema.
+
+-   #11234 `4385bf7` Thanks @ematipico! - Adds a new function called `addServerRenderer` to the Container API. Use this function to manually store renderers inside the instance of your container.
+
+    This new function should be preferred when using the Container API in environments like on-demand pages:
+
+```ts
+    import type { APIRoute } from 'astro';
+    import { experimental_AstroContainer } from 'astro/container';
+    import reactRenderer from '@astrojs/react/server.js';
+    import vueRenderer from '@astrojs/vue/server.js';
+    import ReactComponent from '../components/button.jsx';
+    import VueComponent from '../components/button.vue';
+
+    // MDX runtime is contained inside the Astro core
+    import mdxRenderer from 'astro/jsx/server.js';
+
+    // In case you need to import a custom renderer
+    import customRenderer from '../renderers/customRenderer.js';
+
+    export const GET: APIRoute = async (ctx) => {
+      const container = await experimental_AstroContainer.create();
+      container.addServerRenderer({ renderer: reactRenderer });
+      container.addServerRenderer({ renderer: vueRenderer });
+      container.addServerRenderer({ renderer: customRenderer });
+      // You can pass a custom name too
+      container.addServerRenderer({
+        name: 'customRenderer',
+        renderer: customRenderer,
+      });
+      const vueComponent = await container.renderToString(VueComponent);
+      return await container.renderToResponse(Component);
+    };
+```
+
+-   #11249 `de60c69` Thanks @markgaze! - Fixes a performance issue with JSON schema generation
+
+-   #11242 `e4fc2a0` Thanks @ematipico! - Fixes a case where the virtual module `astro:container` wasn't resolved
+
+-   #11236 `39bc3a5` Thanks @ascorbic! - Fixes a case where symlinked content collection directories were not correctly resolved
+
+-   #11258 `d996db6` Thanks @ascorbic! - Adds a new error `RewriteWithBodyUsed` that throws when `Astro.rewrite` is used after the request body has already been read.
+
+-   #11243 `ba2b14c` Thanks @V3RON! - Fixes a prerendering issue for libraries in `node_modules` when a folder with an underscore is in the path.
+
+-   #11244 `d07d2f7` Thanks @ematipico! - Improves the developer experience of the custom `500.astro` page in development mode.
+
+    Before, in development, an error thrown during the rendering phase would display the default error overlay, even when users had the `500.astro` page.
+
+    Now, the development server will display the `500.astro` and the original error is logged in the console.
+
+-   #11240 `2851b0a` Thanks @ascorbic! - Ignores query strings in module identifiers when matching ".astro" file extensions in Vite plugin
+
+-   #11245 `e22be22` Thanks @bluwy! - Refactors prerendering chunk handling to correctly remove unused code during the SSR runtime
