@@ -1,0 +1,654 @@
+# Astro Font Provider API
+# джерело: https://github.com/withastro/docs/blob/f7d838fef3488f2c5b141b13d1da697ef9ffade9/src/content/docs/en/reference/font-provider-reference.mdx
+# отримано: 2026-09-21
+# версія: 6.1
+
+The Fonts API allows you to access fonts in a unified way. Each family requires the use of an Astro Font Provider, which either downloads font files from a remote service or loads local font files from disk.
+
+## Built-in providers
+
+Astro exports built-in font providers from `astro/config`:
+
+```js
+```
+
+To use a built-in font provider, set `provider` with the appropriate value for your chosen font provider:
+
+- Adobe
+- Bunny
+- Fontshare
+- Fontsource
+- Google
+- Google Icons
+- Local
+- NPM
+
+### Adobe
+
+Retrieves fonts from Adobe:
+
+```js
+provider: fontProviders.adobe({ id: "your-id" })
+```
+
+Pass the Adobe font provider an ID loaded as an environment variable in your Astro config file.
+
+### Bunny
+
+Retrieves fonts from Bunny:
+
+```js
+provider: fontProviders.bunny()
+```
+
+### Fontshare
+
+Retrieves fonts from Fontshare:
+
+```js
+provider: fontProviders.fontshare()
+```
+
+### Fontsource
+
+Retrieves fonts from Fontsource:
+
+```js
+provider: fontProviders.fontsource()
+```
+
+### Google
+
+Retrieves fonts from Google:
+
+```js
+provider: fontProviders.google()
+```
+
+The provider comes with the following family-specific options that can be added in the `font.options` object.
+
+#### `experimental.glyphs`
+
+**Type:** `string[]`
+
+Allows specifying a list of glyphs to be included in the font for each font family. This can reduce the size of the font file:
+
+```js
+{
+  // ...
+  provider: fontProviders.google(),
+  options: {
+    experimental: {
+      glyphs: ["a"]
+    }
+  }
+}
+```
+
+#### `experimental.variableAxis`
+
+**Type:** `Partial<Record<VariableAxis, ([string, string] | string)[]>>`
+
+Allows setting variable axis configuration:
+
+```js
+{
+  // ...
+  provider: fontProviders.google(),
+  options: {
+    experimental: {
+      variableAxis: {
+        slnt: [["-15", "0"]],
+        CASL: [["0", "1"]],
+        CRSV: ["1"],
+        MONO: [["0", "1"]],
+      }
+    }
+  }
+}
+```
+
+### Google Icons
+
+Retrieves fonts from Google Icons:
+
+```js
+provider: fontProviders.googleicons()
+```
+
+The provider comes with the following family-specific options that can be added in the `font.options` object.
+
+#### `experimental.glyphs`
+
+**Type:** `string[]`
+
+When resolving the new Material Symbols icons, allows specifying a list of glyphs to be included in the font for each font family. This can reduce the size of the font file:
+
+```js
+{
+  // ...
+  provider: fontProviders.googleicons(),
+  options: {
+    experimental: {
+      glyphs: ["a"]
+    }
+  }
+}
+```
+
+### Local
+
+Retrieves fonts from disk:
+
+```js
+provider: fontProviders.local()
+```
+
+The provider requires that `variants` be defined in the `font.options` object.
+
+#### `variants`
+
+**Type:** `LocalFontFamily["variants"]`
+
+The `options.variants` property is required. Each variant represents a `@font-face` declaration and requires a `src`.
+
+Additionally, some other properties may be specified within each variant.
+
+```js
+
+export default defineConfig({
+  fonts: [{
+    provider: fontProviders.local(),
+    name: "Custom",
+    cssVariable: "--font-custom",
+    options: {
+      variants: [
+        {
+          weight: 400,
+          style: "normal",
+          src: ["./src/assets/fonts/custom-400.woff2"]
+        },
+        {
+          weight: 700,
+          style: "normal",
+          src: ["./src/assets/fonts/custom-700.woff2"]
+        }
+        // ...
+      ]
+    }
+  }]
+});
+```
+
+##### `weight`
+
+**Type:** `number | string`
+**Default:** `undefined`
+
+A font weight:
+
+```js
+weight: 200
+```
+
+If the associated font is a variable font, you can specify a range of weights:
+
+```js
+weight: "100 900"
+```
+
+When the value is not set, by default Astro will try to infer the value based on the first `source`.
+
+##### `style`
+
+**Type:** `"normal" | "italic" | "oblique"`
+**Default:** `undefined`
+
+A font style:
+
+```js
+style: "normal"
+```
+
+When the value is not set, by default Astro will try to infer the value based on the first `source`.
+
+##### `src`
+
+**Type:** `(string | URL | { url: string | URL; tech?: string })[]`
+
+Font sources. It can be a path relative to the root, a package import or a URL. URLs are particularly useful if you inject local fonts through an integration:
+
+```js
+src: ["./src/assets/fonts/MyFont.woff2", "./src/assets/fonts/MyFont.woff"]
+```
+
+```js
+src: [new URL("./custom.ttf", import.meta.url)]
+```
+
+```js
+src: ["my-package/SomeFont.ttf"]
+```
+
+Caution:
+
+We recommend not putting your font files in the `public/` directory. Since Astro will copy these files into that folder at build time, this will result in duplicated files in your build output. Instead, store them somewhere else in your project, such as in `src/`.
+
+You can also specify a tech by providing objects:
+
+```js
+src: [{ url:"./src/assets/fonts/MyFont.woff2", tech: "color-COLRv1" }]
+```
+
+##### Other properties
+
+The following options from font families are also available for local font families within variants:
+
+- display
+- unicodeRange
+- stretch
+- featureSettings
+- variationSettings
+
+```js
+
+export default defineConfig({
+  fonts: [{
+    provider: fontProviders.local(),
+    name: "Custom",
+    cssVariable: "--font-custom",
+    options: {
+      variants: [
+        {
+          weight: 400,
+          style: "normal",
+          src: ["./src/assets/fonts/custom-400.woff2"],
+          display: "block"
+        }
+      ]
+    }
+  }]
+});
+```
+
+### NPM
+
+Retrieves fonts from NPM packages, either from locally installed packages in `node_modules` or from a CDN:
+
+```js
+provider: fontProviders.npm()
+```
+
+The provider automatically detects fonts from your `package.json` dependencies and can resolve fonts from packages like `@fontsource/*`, `@fontsource-variable/*`, and other known font packages.
+
+#### Provider options
+
+The NPM provider accepts the following configuration options:
+
+##### `cdn`
+
+**Type:** `string`
+**Default:** `'https://cdn.jsdelivr.net/npm'`
+
+CDN to use for fetching npm packages remotely:
+
+```js
+provider: fontProviders.npm({ cdn: 'https://esm.sh' })
+```
+
+##### `remote`
+
+**Type:** `boolean`
+**Default:** `true`
+
+Whether to fall back to fetching from the CDN when local resolution fails. Set to `false` to only resolve from locally installed packages:
+
+```js
+provider: fontProviders.npm({ remote: false })
+```
+
+#### Family options
+
+The provider comes with the following family-specific options that can be added in the `font.options` object.
+
+##### `package`
+
+**Type:** `string`
+**Default:** Auto-detected or inferred from family name
+
+The NPM package name. When not specified, the provider will try to find the font family in known font package patterns or infer based on Fontsource conventions:
+
+```js
+{
+  // ...
+  provider: fontProviders.npm(),
+  options: {
+    package: '@fontsource/roboto'
+  }
+}
+```
+
+##### `version`
+
+**Type:** `string`
+**Default:** `'latest'`
+
+The version of the package (used for CDN resolution only):
+
+```js
+{
+  // ...
+  provider: fontProviders.npm(),
+  options: {
+    version: '5.0.0'
+  }
+}
+```
+
+##### `file`
+
+**Type:** `string`
+**Default:** `'index.css'`
+
+The entry CSS file to parse from the package:
+
+```js
+{
+  // ...
+  provider: fontProviders.npm(),
+  options: {
+    file: 'latin.css'
+  }
+}
+```
+
+## Building a font provider
+
+If you do not wish to use one of the built-in providers (e.g. you want to use a 3rd-party unifont provider or build something for a private registry), you can build your own.
+
+The preferred method for implementing a custom font provider is to export a function that returns the `FontProvider` object and takes the configuration as a parameter.
+
+### The font provider object
+
+A `FontProvider` is an object containing required `name` and `resolveFont()` properties. It also has optional `config`, `init()` and `listFonts()` properties available.
+
+The `FontProvider` type accepts a generic for family options.
+
+#### `name`
+
+**Type:** `string`
+
+A unique name for the provider, used in logs and for identification.
+
+#### `resolveFont()`
+
+**Type:** `(options: ResolveFontOptions) => Awaitable<{ fonts: FontFaceData[] } | undefined>`
+
+Used to retrieve and return font face data based on the given options.
+
+#### `config`
+
+**Type:** `Record<string, any>`
+**Default:** `undefined`
+
+A serializable object, used for identification.
+
+#### `init()`
+
+**Type:** `(context: FontProviderInitContext) => Awaitable<void>`
+**Default:** `undefined`
+
+Optional callback, used to perform any initialization logic.
+
+##### `context.storage`
+
+**Type:** `Storage`
+
+Useful for caching.
+
+##### `context.root`
+
+**Type:** `URL`
+
+The project root, useful for resolving local files paths.
+
+#### `listFonts()`
+
+**Type:** `() => Awaitable<string[] | undefined>`
+**Default:** `undefined`
+
+Optional callback, used to return the list of available font names.
+
+### Supporting a private registry
+
+The following example defines a font provider for a private registry:
+
+```ts
+import { retrieveFonts, type Fonts } from "./utils.js",
+
+export function registryFontProvider(): FontProvider {
+  let data: Fonts = {}
+
+  return {
+    name: "registry",
+    init: async () => {
+      data = await retrieveFonts(token);
+    },
+    listFonts: () => {
+      return Object.keys(data);
+    },
+    resolveFont: ({ familyName, ...rest }) => {
+      const fonts = data[familyName];
+      if (fonts) {
+        return { fonts };
+      }
+      return undefined;
+    },
+  };
+}
+```
+
+```ts
+import { retrieveFonts, type Fonts } from "./utils.js",
+
+interface Config {
+  token: string;
+}
+
+export function registryFontProvider(config: Config): FontProvider {
+  let data: Fonts = {}
+
+  return {
+    name: "registry",
+    config,
+    init: async () => {
+      data = await retrieveFonts(token);
+    },
+    listFonts: () => {
+      return Object.keys(data);
+    },
+    resolveFont: ({ familyName, ...rest }) => {
+      const fonts = data[familyName];
+      if (fonts) {
+        return { fonts };
+      }
+      return undefined;
+    },
+  };
+}
+```
+
+```ts
+import { retrieveFonts, type Fonts } from "./utils.js",
+
+interface FamilyOptions {
+  minimal?: boolean;
+}
+
+export function registryFontProvider(): FontProvider<FamilyOptions | undefined> {
+  let data: Fonts = {}
+
+  return {
+    name: "registry",
+    init: async () => {
+      data = await retrieveFonts(token);
+    },
+    listFonts: () => {
+      return Object.keys(data);
+    },
+    // options is typed as FamilyOptions | undefined
+    resolveFont: ({ familyName, options, ...rest }) => {
+      const fonts = data[familyName];
+      if (fonts) {
+        return { fonts };
+      }
+      return undefined;
+    },
+  };
+}
+```
+
+You can then register this font provider in the Astro config:
+
+```ts
+
+export default defineConfig({
+  fonts: [{
+    provider: registryFontProvider(),
+    name: "Custom",
+    cssVariable: "--font-custom"
+  }]
+});
+```
+
+```ts
+
+export default defineConfig({
+  fonts: [{
+    provider: registryFontProvider({
+      token: "..."
+    }),
+    name: "Custom",
+    cssVariable: "--font-custom"
+  }]
+});
+```
+
+```ts
+
+export default defineConfig({
+  fonts: [{
+    provider: registryFontProvider(),
+    options: {
+      minimal: true
+    },
+    name: "Custom",
+    cssVariable: "--font-custom"
+  }]
+});
+```
+
+### Supporting a 3rd-party unifont provider
+
+You can define an Astro font provider using a unifont provider under the hood:
+
+```ts
+
+export function acmeFontProvider(): FontProvider {
+	const provider = acmeProvider();
+	let initializedProvider: InitializedProvider | undefined;
+	return {
+		name: provider._name,
+		async init(context) {
+			initializedProvider = await provider(context);
+		},
+		async resolveFont({ familyName, ...rest }) {
+			return await initializedProvider?.resolveFont(familyName, rest);
+		},
+		async listFonts() {
+			return await initializedProvider?.listFonts?.();
+		},
+	};
+}
+```
+
+```ts
+
+export function acmeFontProvider(config?: AcmeOptions): FontProvider {
+	const provider = acmeProvider(config);
+	let initializedProvider: InitializedProvider | undefined;
+	return {
+		name: provider._name,
+		config,
+		async init(context) {
+			initializedProvider = await provider(context);
+		},
+		async resolveFont({ familyName, ...rest }) {
+			return await initializedProvider?.resolveFont(familyName, rest);
+		},
+		async listFonts() {
+			return await initializedProvider?.listFonts?.();
+		},
+	};
+}
+```
+
+```ts
+
+export function acmeFontProvider(): FontProvider<AcmeFamilyOptions | undefined> {
+	const provider = acmeProvider();
+	let initializedProvider: InitializedProvider<AcmeFamilyOptions> | undefined;
+	return {
+		name: provider._name,
+		async init(context) {
+			initializedProvider = await provider(context);
+		},
+		async resolveFont({ familyName, ...rest }) {
+			return await initializedProvider?.resolveFont(familyName, rest);
+		},
+		async listFonts() {
+			return await initializedProvider?.listFonts?.();
+		},
+	};
+}
+```
+
+You can then register this font provider in the Astro config:
+
+```ts
+
+export default defineConfig({
+  fonts: [{
+    provider: acmeFontProvider(),
+    name: "Custom",
+    cssVariable: "--font-custom"
+  }]
+});
+```
+
+```ts
+
+export default defineConfig({
+  fonts: [{
+    provider: acmeFontProvider({
+      token: "..."
+    }),
+    name: "Custom",
+    cssVariable: "--font-custom"
+  }]
+});
+```
+
+```ts
+
+export default defineConfig({
+  fonts: [{
+    provider: acmeFontProvider(),
+    options: {
+      minimal: true
+    },
+    name: "Custom",
+    cssVariable: "--font-custom"
+  }]
+});
+```

@@ -1,0 +1,432 @@
+# @astrojs/vercel
+# джерело: https://github.com/withastro/docs/blob/f7d838fef3488f2c5b141b13d1da697ef9ffade9/src/content/docs/en/guides/integrations-guide/vercel.mdx
+# отримано: 2026-09-21
+# версія: 6.1
+
+This adapter allows Astro to deploy your on-demand rendered routes and features to Vercel, including server islands, actions, and sessions.
+
+If you're using Astro as a static site builder, you only need this adapter if you are using additional Vercel services (e.g. Vercel Web Analytics, Vercel Image Optimization). Otherwise, you do not need an adapter to deploy your static site.
+
+Learn how to deploy your Astro site in our Vercel deployment guide.
+
+## Why Astro Vercel?
+
+Vercel is a deployment platform that allows you to host your site by connecting directly to your GitHub repository. This adapter enhances the Astro build process to prepare your project for deployment through Vercel.
+
+## Installation
+
+Astro includes an `astro add` command to automate the setup of official integrations. If you prefer, you can install integrations manually instead.
+
+Add the Vercel adapter to enable on-demand rendering in your Astro project with the following `astro add` command. This will install `@astrojs/vercel` and make the appropriate changes to your `astro.config.mjs` file in one step.
+
+```sh
+  npx astro add vercel
+```
+
+```sh
+  pnpm astro add vercel
+```
+
+```sh
+  yarn astro add vercel
+```
+
+Now, you can enable on-demand rendering per page, or set your build output configuration to `output: 'server'` to server-render all your pages by default.
+
+### Manual Install
+
+First, add the `@astrojs/vercel` adapter to your project’s dependencies using your preferred package manager:
+
+```sh
+  npm install @astrojs/vercel
+```
+
+```sh
+  pnpm add @astrojs/vercel
+```
+
+```sh
+  yarn add @astrojs/vercel
+```
+
+Then, add the adapter to your `astro.config.*` file:
+
+```js
+
+export default defineConfig({
+  // ...
+  adapter: vercel(),
+});
+```
+
+## Usage
+
+Find out more about deploying your project to Vercel.
+
+You can deploy by CLI (`vercel deploy`) or by connecting your new repo in the Vercel Dashboard. Alternatively, you can create a production build locally:
+
+```sh
+astro build
+vercel deploy --prebuilt
+```
+
+## Configuration
+
+To configure this adapter, pass an object to the `vercel()` function call in `astro.config.mjs`:
+
+### `webAnalytics`
+
+**Type:** `VercelWebAnalyticsConfig`
+**Available for:** Serverless, Static
+
+With `@vercel/analytics@1.3.x` or earlier, you can set `webAnalytics: { enabled: true }` in your Astro config to inject Vercel’s tracking scripts into all of your pages.
+
+For `@vercel/analytics@1.4.0` and later, use Vercel's Analytics component to enable Vercel Web Analytics instead.
+
+```js
+
+export default defineConfig({
+  // ...
+  adapter: vercel({
+    webAnalytics: {
+      enabled: true,
+    },
+  }),
+});
+```
+
+### `imagesConfig`
+
+**Type:** `VercelImageConfig`
+**Available for:** Serverless, Static
+
+Configuration options for Vercel's Image Optimization API. See Vercel's image configuration documentation for a complete list of supported parameters.
+
+The `domains` and `remotePatterns` properties will automatically be filled using the Astro corresponding `image` settings.
+
+```js
+
+export default defineConfig({
+  // ...
+  output: 'static',
+  adapter: vercel({
+    imagesConfig: {
+      sizes: [320, 640, 1280],
+    },
+  }),
+});
+```
+
+### `imageService`
+
+**Type:** `boolean`
+**Available for:** Serverless, Static
+
+When enabled, an Image Service powered by the Vercel Image Optimization API will be automatically configured and used in production. In development, the image service specified by `devImageService` will be used instead.
+
+```js
+
+export default defineConfig({
+  // ...
+  output: 'static',
+  adapter: vercel({
+    imageService: true,
+  }),
+});
+```
+
+```astro
+---
+---
+
+<!-- This component -->
+<Image src={astroLogo} alt="My super logo!" />
+
+<!-- will become the following HTML -->
+<img
+  src="/_vercel/image?url=_astro/logo.hash.png&w=...&q=..."
+  alt="My super logo!"
+  loading="lazy"
+  decoding="async"
+  width="..."
+  height="..."
+/>
+```
+
+### `devImageService`
+
+**Type:** `'sharp' | string`
+**Default:** `sharp`
+**Available for:** Serverless, Static
+
+Allows you to configure which image service to use in development when imageService is enabled. This can be useful if you cannot install Sharp's dependencies on your development machine, but using another image service like Squoosh would allow you to preview images in your dev environment. Build is unaffected and will always use Vercel's Image Optimization.
+
+It can also be set to any arbitrary value in order to use a custom image service instead of Astro's built-in ones.
+
+```js
+
+export default defineConfig({
+  // ...
+  adapter: vercel({
+    imageService: true,
+    devImageService: 'sharp',
+  }),
+});
+```
+
+### `isr`
+
+**Type:** `boolean | VercelISRConfig`
+**Default:** `false`
+**Available for:** Serverless
+
+Allows your project to be deployed as an ISR (Incremental Static Regeneration) function, which caches your on-demand rendered pages in the same way as prerendered pages after first request.
+
+To enable this feature, set `isr` to true in your Vercel adapter configuration in `astro.config.mjs`:
+
+```js
+
+export default defineConfig({
+  // ...
+  adapter: vercel({
+    isr: true,
+  }),
+});
+```
+
+Note that ISR function requests do not include search params, similar to requests in static mode.
+
+#### ISR cache invalidation
+
+By default, an ISR function caches for the duration of your deployment. You can further control caching by setting an expiration time, or by excluding particular routes from caching entirely.
+
+##### Time-based invalidation
+
+By default, when ISR is enabled, routes use Vercel's cache shielding and any Cache-Control headers are ignored. Configuring an `expiration` value (in seconds) allows you to control how long routes are cached. This means Cache-Control directives set by your application are also respected.
+
+The following example defines `expiration` to cache all pages on first request and save them for 1 day:
+
+```js
+
+export default defineConfig({
+  // ...
+  adapter: vercel({
+    isr: {
+      expiration: 60 * 60 * 24,
+    },
+  }),
+});
+```
+
+##### On-demand invalidation
+
+To programmatically invalidate cached pages, create a bypass token and provide it to the `isr` config:
+```js
+
+export default defineConfig({
+    adapter: vercel({
+        isr: {
+            // A secret random string that you create.
+            bypassToken: "005556d774a8",
+        }
+    })
+})
+```
+
+You can then invalidate a cached page by sending a HEAD or GET request to the page URL with the `x-prerender-revalidate` header set to your bypass token. See Vercel's on-demand ISR documentation for details.
+
+##### Draft mode
+
+To bypass the ISR cache and render fresh content (e.g., for previewing unpublished CMS content), use Vercel's Draft mode. This requires defining a `bypassToken` in your configuration and reusing its value in your pages to set a cookie named `__prerender_bypass`.
+
+##### Excluding paths from caching
+
+Use the `exclude` option to prevent specific routes from being cached by ISR. These paths will always be rendered fresh on each request:
+```js
+
+export default defineConfig({
+    adapter: vercel({
+        isr: {
+            // Paths that will always be served fresh.
+            exclude: [
+                '/preview',
+                '/auth/[page]',
+                /^\/api\/.+/ // Regular expressions supported since @astrojs/vercel@v8.1.0
+            ]
+        }
+    })
+})
+```
+
+### `includeFiles`
+
+**Type:** `string[]`
+**Available for:** Serverless
+
+Use this property to force files to be bundled with your function. This is helpful when you notice missing files.
+
+```js
+
+export default defineConfig({
+  // ...
+  adapter: vercel({
+    includeFiles: ['./my-data.json'],
+  }),
+});
+```
+
+### `excludeFiles`
+
+**Type:** `string[]`
+**Available for:** Serverless
+
+Use this property to exclude any files from the bundling process that would otherwise be included.
+
+```js
+
+export default defineConfig({
+  // ...
+  adapter: vercel({
+    excludeFiles: ['./src/some_big_file.jpg'],
+  }),
+});
+```
+
+### `maxDuration`
+
+**Type:** `number`
+**Available for:** Serverless
+
+Use this property to extend or limit the maximum duration (in seconds) that Serverless Functions can run before timing out. See the Vercel documentation for the default and maximum limit for your account plan.
+
+```js
+
+export default defineConfig({
+// ...
+  adapter: vercel({
+    maxDuration: 60
+  }),
+});
+```
+
+### `skewProtection`
+
+**Type:** `boolean`
+**Available for:** Serverless
+
+Use this property to enable Vercel Skew protection (available with Vercel Pro and Enterprise accounts).
+
+```js
+
+export default defineConfig({
+// ...
+  adapter: vercel({
+    skewProtection: true
+  }),
+});
+```
+
+### `staticHeaders`
+
+**Type:** `boolean`
+**Default:** `false`
+**Available for:** Serverless
+
+Enables specifying custom headers for prerendered pages in Vercel's configuration.
+
+If enabled, the adapter will save static headers in the Vercel `vercel.json` file when provided by Astro features, such as Content Security Policy.
+
+For example, when Content Security Policy is enabled, `staticHeaders` can be used to add the CSP `headers` to your Vercel configuration, instead of creating a `<meta>` element:
+
+```js
+
+export default defineConfig({
+  security: {
+    csp: true
+  },
+  adapter: vercel({
+    staticHeaders: true
+  })
+});
+```
+
+### Running Astro middleware on Vercel Edge Functions
+
+The `@astrojs/vercel` adapter can create an edge function from an Astro middleware in your code base. When `middlewareMode` is set to `'edge'`, an edge function will execute your middleware code for all requests, including static assets, prerendered pages, and on-demand rendered pages.
+
+For on-demand rendered pages, the `context.locals` object is serialized using JSON and sent in a header for the serverless function, which performs the rendering. As a security measure, the serverless function will refuse to serve requests with a `403 Forbidden` response unless they come from the generated edge function.
+
+This is an opt-in feature. To enable it, set `middlewareMode` to `'edge'`:
+
+```js
+
+export default defineConfig({
+  // ...
+  adapter: vercel({
+    middlewareMode: 'edge',
+  }),
+});
+```
+
+The edge middleware has access to Vercel's `RequestContext` as `ctx.locals.vercel.edge`. If you’re using TypeScript, you can get proper typings by updating `src/env.d.ts` to use `EdgeLocals`:
+
+```ts
+type EdgeLocals = import('@astrojs/vercel').EdgeLocals
+
+declare namespace App {
+  interface Locals extends EdgeLocals {
+    // ...
+  }
+}
+```
+
+### Sessions
+
+The Astro Sessions API allows you to easily store user data between requests. This can be used for things like user data and preferences, shopping carts, and authentication credentials. Unlike cookie storage, there are no size limits on the data, and it can be restored on different devices.
+
+When using sessions on Vercel, you need to configure a driver for session storage. You can install a storage provider from the Vercel marketplace.
+
+For example, if you have installed a Redis integration and linked a database to your site:
+
+1. Install the `ioredis` package:
+
+```sh
+     npm install ioredis
+```
+
+```sh
+     pnpm install ioredis
+```
+
+```sh
+     yarn add ioredis
+```
+
+2. Use the Vercel CLI to load your environment variables:
+```sh
+   vercel env pull .env.local
+```
+   This will create a `.env.local` file in your project root with the environment variables needed to connect to your Redis database when developing locally.
+
+3. Configure the session driver:
+
+```js
+
+    export default defineConfig({
+      adapter: vercel(),
+      session: {
+        driver: 'redis',
+        options: {
+          url: process.env.REDIS_URL,
+        },
+      },
+    });
+```
+
+## Node.js Version Support
+
+The `@astrojs/vercel` adapter supports specific Node.js versions for deploying your Astro project on Vercel. To view the supported Node.js versions on Vercel, click on the settings tab for a project and scroll down to "Node.js Version" section.
+
+Check out the Vercel documentation to learn more.
+
+[astro-integration]: /en/guides/integrations/
