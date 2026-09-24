@@ -108,6 +108,7 @@ Trim `requirements.txt` to what the domain actually needs. `pypdf` belongs there
 | `tools` | the two tool names the model sees | `search_spec`, `read_section` |
 | `answer_hosts` | hosts whose links layer 4 leaves intact in an answer | empty |
 | `example_label` | a word from a section name, used to build the example identifier | — |
+| `passage_context` | `true`: vectors and the word index also see the document title and the heading path, not only the excerpt text; for documentation cut into small sections whose text never names its topic. Changing it means rebuilding the vectors | `false` |
 
 **Ports in use today:** 8760 `ecmascript`, 8761 `react`. Take the next free one.
 
@@ -418,6 +419,7 @@ cd ../..
 | `tools` | два імені інструментів, які бачить модель | `search_spec`, `read_section` |
 | `answer_hosts` | домени, посилання на які шар 4 лишає у відповіді | порожньо |
 | `example_label` | слово з назви розділу, з якого будується приклад ідентифікатора | — |
+| `passage_context` | `true`: вектори й індекс по словах бачать не лише текст уривка, а й назву документа та шлях заголовків; для документації, порізаної на дрібні розділи, чий текст не називає своєї теми. Зміна поля — це перерахунок векторів | `false` |
 
 **Зайняті порти:** 8760 `ecmascript`, 8761 `react`. Беріть наступний вільний.
 
@@ -727,6 +729,7 @@ você quiser busca por significado.
 | `tools` | os dois nomes de ferramentas que o modelo vê | `search_spec`, `read_section` |
 | `answer_hosts` | domínios cujos links a camada 4 mantém na resposta | vazio |
 | `example_label` | palavra do nome de uma seção, usada para montar o identificador de exemplo | — |
+| `passage_context` | `true`: os vetores e o índice por palavras veem também o título do documento e o caminho de títulos, não só o texto do trecho; para documentação cortada em seções pequenas cujo texto não nomeia o tema. Mudar o campo exige recalcular os vetores | `false` |
 
 **Portas já usadas:** 8760 `ecmascript`, 8761 `react`. Pegue a próxima livre.
 
