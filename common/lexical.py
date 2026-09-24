@@ -32,7 +32,7 @@ import math
 import re
 from collections import Counter
 
-from .corpus import Passage, load_passages
+from .corpus import PASSAGE_CONTEXT, Passage, context_text, load_passages
 
 # BM25, класичні значення з літератури: k1 — наскільки швидко насичується
 # повторення слова, b — наскільки сильно карається довжина фрагмента.
@@ -53,7 +53,10 @@ class LexicalIndex:
         self.passages = passages if passages is not None else load_passages()
         # Заголовок підрозділу входить в індекс разом із текстом: назва
         # «String.prototype.replace» — найточніше слово, яким цей фрагмент можна знайти.
-        docs = [tokenize(f"{p.heading}\n{p.text}") for p in self.passages]
+        # З полем passage_context у config.json примірника до них додається ще й
+        # назва документа (corpus.context_text); без нього рядок той самий, що був.
+        docs = [tokenize(context_text(p) if PASSAGE_CONTEXT else f"{p.heading}\n{p.text}")
+                for p in self.passages]
 
         self.tf = [Counter(d) for d in docs]
         self.lengths = [len(d) for d in docs]

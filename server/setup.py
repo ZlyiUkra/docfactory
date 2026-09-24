@@ -255,6 +255,16 @@ def _digest(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def _embed_text(p) -> str:
+    """Текст, з якого рахується вектор фрагмента. Типово — сам текст; з полем
+    passage_context у config.json примірника — ще й назва документа й заголовок
+    (corpus.context_text). Сума точки береться з цього ж рядка, тож перейменований
+    документ перерахується, а примірник без поля не помітить нічого."""
+    from common import corpus
+
+    return corpus.context_text(p) if corpus.PASSAGE_CONTEXT else p.text
+
+
 def _plan(passages, uid_of):
     """Розкладає фрагменти на три купи, не рахуючи жодного вектора: нові (номера
     немає в базі), змінені (номер є, сума інша) і незмінні (номер є, сума та
@@ -269,7 +279,8 @@ def _plan(passages, uid_of):
     """
     from common import vectorstore
 
-    want = [(p, uid_of[p], _stable_id(uid_of[p]), _digest(p.text)) for p in passages]
+    want = [(p, uid_of[p], _stable_id(uid_of[p]), _digest(_embed_text(p)))
+            for p in passages]
     want_ids = {sid for _, _, sid, _ in want}
     ids = [sid for _, _, sid, _ in want]
     stored: dict = {}
@@ -321,7 +332,7 @@ def _fill(todo: list) -> int:
 
     # embed() віддає вектори по одному, у порядку тексту, тож накопичуємо пачку
     # і відправляємо її, не чекаючи, поки порахується весь набір.
-    stream = embed.model().embed([p.text for p, _, _, _ in todo],
+    stream = embed.model().embed([_embed_text(p) for p, _, _, _ in todo],
                                  batch_size=embed.BATCH)
     for offset, vector in enumerate(stream):
         p, uid, sid, digest = todo[offset]

@@ -75,6 +75,14 @@ DOC_SET = instance.config().get("doc_set") or "suite"
 # будь-який профіль, бо поділ — основа і пошуку, і векторів.
 SECTIONS = instance.config().get("sections") or "numbered"
 
+# Чи бачать пошук по словах і вектори назву документа й заголовок розділу поруч із
+# текстом фрагмента. Типово — ні, і для примірника без цього поля в config.json
+# поведінка та сама, що й до його появи. Вмикає його примірник, чиї розділи ріжуть
+# документ так дрібно, що фрагмент уже не каже, про що він: «Enforce rules for MFA
+# logins» не містить слів «Multi-Factor Authentication» — вони лише в назві
+# документа. Сам фрагмент, його id і кеш від поля не залежать.
+PASSAGE_CONTEXT = bool(instance.config().get("passage_context"))
+
 # Тека документів — у примірнику, з яким працює цей запуск (див. instance.py):
 # код тепер спільний на всі домени, а corpus/ у кожного домену свій.
 DOCS_DIRS = [instance.root() / "corpus"]
@@ -397,6 +405,13 @@ _TYPOGRAPHY = str.maketrans({
     "\u201c": '"', "\u201d": '"', "\u2018": "'", "\u2019": "'",
     "\u2013": "-", "\u2014": "-", "\u00a0": " ", "\u2026": "...",
 })
+
+
+def context_text(passage: "Passage") -> str:
+    """Текст, за яким шукають фрагмент при ввімкненому PASSAGE_CONTEXT: назва
+    документа, шлях заголовків і сам текст. Кличуть його лише під цим полем —
+    без нього індекс по словах і вектори будуються з того самого, що й завжди."""
+    return f"{passage.doc_title}\n{passage.heading}\n{passage.text}"
 
 
 def same_text(text: str) -> str:
