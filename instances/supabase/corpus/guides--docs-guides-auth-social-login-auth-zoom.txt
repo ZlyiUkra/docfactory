@@ -1,0 +1,471 @@
+# Sign in with Zoom
+# джерело: https://supabase.com/docs/guides/auth/social-login/auth-zoom
+# отримано: 2026-09-24
+
+Add Zoom OAuth to your Supabase project
+
+To enable Zoom Auth for your project, you need to set up a Zoom OAuth application and add the application credentials to your Supabase Dashboard.
+
+## Overview
+
+Setting up Zoom sign-in for your application consists of 3 parts:
+
+- Create and configure a Zoom OAuth App on Zoom App Marketplace
+- Add your Zoom OAuth keys to your Supabase Project
+- Add the sign-in code to your Supabase JS Client App
+
+## Access your Zoom Developer account
+
+- Go to marketplace.zoom.us.
+- Click on `Sign In` at the top right to sign in.
+
+Zoom Developer Portal.
+
+## Find your callback URL
+
+The next step requires a callback URL, which looks like this: `https://<project-ref>.supabase.co/auth/v1/callback`
+
+- Go to your Supabase Project Dashboard
+- Click on the `Authentication` icon in the left sidebar
+- Click on `Sign In / Providers` under the Configuration section
+- Click on **Zoom** from the accordion list to expand and you'll find your **Callback URL**, you can click `Copy` to copy it to the clipboard
+
+### Local development
+
+When testing OAuth locally with the Supabase CLI, ensure your OAuth provider
+is configured with the local Supabase Auth callback URL:
+
+http://localhost:54321/auth/v1/callback
+
+If this callback URL is missing or misconfigured, OAuth sign-in may fail or not redirect correctly during local development.
+
+See the local development docs for more details.
+
+For testing OAuth locally with the Supabase CLI see the local development docs.
+
+## Create a Zoom OAuth app
+
+- Go to marketplace.zoom.us.
+- Click on `Sign In` at the top right to sign in.
+- Click `Build App` (from the dropdown Develop)
+- In the OAuth card, click `Create`
+- Type the name of your app
+- Choose app type
+- Click `Create`
+
+Under `App credentials`
+
+- Copy and save your `Client ID`.
+- Copy and save your `Client secret`.
+- Add your `Callback URL` in the OAuth allow list.
+
+Under `Redirect URL for OAuth`
+
+- Paste your `Callback URL`
+
+Under `Scopes`
+
+- Click on `Add scopes`
+- Click on `User`
+- Choose `user:read`
+- Click `Done`
+- Click `Continue`
+
+## Enter your Zoom credentials into your Supabase project
+
+- Go to your Supabase Project Dashboard
+- In the left sidebar, click the `Authentication` icon (near the top)
+- Click on `Providers` under the Configuration section
+- Click on **Zoom** from the accordion list to expand and turn **Zoom Enabled** to ON
+- Enter your **Zoom Client ID** and **Zoom Client Secret** saved in the previous step
+- Click `Save`
+
+You can also configure the Zoom auth provider using the Management API:
+
+```bash
+# Get your access token from https://supabase.com/dashboard/account/tokens
+export SUPABASE_ACCESS_TOKEN="your-access-token"
+export PROJECT_REF="your-project-ref"
+
+# Configure Zoom auth provider
+curl -X PATCH "https://api.supabase.com/v1/projects/$PROJECT_REF/config/auth" \
+  -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "external_zoom_enabled": true,
+    "external_zoom_client_id": "your-zoom-client-id",
+    "external_zoom_secret": "your-zoom-client-secret"
+  }'
+```
+
+## Add sign-in code to your client app
+
+**JavaScript**
+
+Note: Make sure you're using the right `supabase` client in the following code.
+
+If you're not using Server-Side Rendering or cookie-based Auth, you can directly use the `createClient` from `@supabase/supabase-js`. If you're using Server-Side Rendering, see the Server-Side Auth guide for instructions on creating your Supabase client.
+
+When your user signs in, call `signInWithOAuth()` with `zoom` as the `provider`:
+
+```js
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient('https://your-project-id.supabase.co', 'sb_publishable_...')
+
+// ---cut---
+async function signInWithZoom() {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'zoom',
+  })
+}
+```
+
+**Flutter**
+
+When your user signs in, call `signInWithOAuth()` with `zoom` as the `provider`:
+
+```dart
+Future<void> signInWithZoom() async {
+  await supabase.auth.signInWithOAuth(
+    OAuthProvider.zoom,
+    redirectTo: kIsWeb ? null : 'my.scheme://my-host', // Optionally set the redirect link to bring back the user via deeplink.
+    authScreenLaunchMode:
+        kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication, // Launch the auth screen in a new webview on mobile.
+  );
+}
+```
+
+**Kotlin**
+
+When your user signs in, call signInWith(Provider) with `Zoom` as the `Provider`:
+
+```kotlin
+suspend fun signInWithZoom() {
+	supabase.auth.signInWith(Zoom)
+}
+```
+
+**C#**
+
+When your user signs in, call `SignIn()` with `Provider.Zoom` as the provider:
+
+```c#
+var state = await supabase.Auth.SignIn(Provider.Zoom);
+var signInUrl = state.Uri;
+```
+
+For a PKCE flow, for example in Server-Side Auth, you need an extra step to handle the code exchange. When calling `signInWithOAuth`, provide a `redirectTo` URL which points to a callback route. This redirect URL should be added to your redirect allow list.
+
+**Client**
+
+In the browser, `signInWithOAuth` automatically redirects to the OAuth provider's authentication endpoint, which then redirects to your endpoint.
+
+```js
+import { createClient, type Provider } from '@supabase/supabase-js';
+const supabase = createClient('https://your-project-id.supabase.co', 'sb_publishable_...')
+const provider = 'provider' as Provider
+
+// ---cut---
+await supabase.auth.signInWithOAuth({
+  provider,
+  options: {
+    redirectTo: `http://example.com/auth/callback`,
+  },
+})
+```
+
+**Server**
+
+In the server, you need to handle the redirect to the OAuth provider's authentication endpoint. The `signInWithOAuth` method returns the endpoint URL, which you can redirect to.
+
+Caution: Use a server client from `@supabase/ssr`, and send its cookies with the redirect. `signInWithOAuth` stores the PKCE code verifier in a cookie. When that `Set-Cookie` header doesn't reach the browser, the callback can't exchange the code for a session.
+
+```ts
+import { createServerClient, parseCookieHeader, serializeCookieHeader } from '@supabase/ssr'
+import type { Provider } from '@supabase/supabase-js'
+
+// A route handler that receives the incoming Request
+async function handler(request: Request) {
+  const headers = new Headers()
+  const provider = 'provider' as Provider
+
+  const supabase = createServerClient('https://your-project-id.supabase.co', 'sb_publishable_...', {
+    cookies: {
+      getAll() {
+        return parseCookieHeader(request.headers.get('Cookie') ?? '') as {
+          name: string
+          value: string
+        }[]
+      },
+      setAll(cookiesToSet, cacheHeaders) {
+        cookiesToSet.forEach(({ name, value, options }) =>
+          headers.append('Set-Cookie', serializeCookieHeader(name, value, options))
+        )
+        Object.entries(cacheHeaders).forEach(([key, value]) => headers.set(key, value))
+      },
+    },
+  })
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: {
+      redirectTo: 'http://example.com/auth/callback',
+    },
+  })
+
+  if (error) {
+    throw error
+  }
+
+  // Redirect with `headers` so the browser stores the code verifier cookie.
+  // Frameworks usually wrap this, for example `redirect(data.url, { headers })` in Remix.
+  headers.set('Location', data.url)
+  return new Response(null, { status: 303, headers })
+}
+```
+
+When your framework sets cookies on the response for you, such as `cookies()` in Next.js or `event.cookies` in SvelteKit, write to that API in `setAll` instead. The cookie is then already on the response, and the redirect needs no extra headers.
+
+At the callback endpoint, handle the code exchange to save the user session.
+
+**Next.js**
+
+Create a new file at `app/auth/callback/route.ts` and populate with the following:
+
+```ts
+import { NextResponse } from 'next/server'
+
+// The client you created from the Server-Side Auth instructions
+import { createClient } from '@/utils/supabase/server'
+
+export async function GET(request: Request) {
+  const { searchParams, origin } = new URL(request.url)
+  const code = searchParams.get('code')
+  // if "next" is in param, use it as the redirect URL
+  let next = searchParams.get('next') ?? '/'
+  if (!next.startsWith('/')) {
+    // if "next" is not a relative URL, use the default
+    next = '/'
+  }
+
+  if (code) {
+    const supabase = await createClient()
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    if (!error) {
+      const forwardedHost = request.headers.get('x-forwarded-host') // original origin before load balancer
+      const isLocalEnv = process.env.NODE_ENV === 'development'
+      if (isLocalEnv) {
+        // we can be sure that there is no load balancer in between, so no need to watch for X-Forwarded-Host
+        return NextResponse.redirect(`${origin}${next}`)
+      } else if (forwardedHost) {
+        return NextResponse.redirect(`https://${forwardedHost}${next}`)
+      } else {
+        return NextResponse.redirect(`${origin}${next}`)
+      }
+    }
+  }
+
+  // return the user to an error page with instructions
+  return NextResponse.redirect(`${origin}/auth/auth-code-error`)
+}
+```
+
+**SvelteKit**
+
+Create a new file at `src/routes/auth/callback/+server.js` and populate with the following:
+
+```js
+import { redirect } from '@sveltejs/kit'
+
+export const GET = async (event) => {
+  const {
+    url,
+    locals: { supabase },
+  } = event
+  const code = url.searchParams.get('code')
+  const next = url.searchParams.get('next') ?? '/'
+
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    if (!error) {
+      redirect(303, `/${next.slice(1)}`)
+    }
+  }
+
+  // return the user to an error page with instructions
+  redirect(303, '/auth/auth-code-error')
+}
+```
+
+**Astro**
+
+Create a new file at `src/pages/auth/callback.ts` and populate with the following:
+
+```ts
+import { createServerClient, parseCookieHeader } from '@supabase/ssr'
+import { type APIRoute } from 'astro'
+
+export const GET: APIRoute = async ({ request, cookies, redirect }) => {
+  const requestUrl = new URL(request.url)
+  const code = requestUrl.searchParams.get('code')
+  const next = requestUrl.searchParams.get('next') || '/'
+
+  if (code) {
+    const supabase = createServerClient(
+      import.meta.env.PUBLIC_SUPABASE_URL,
+      import.meta.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+      {
+        cookies: {
+          getAll() {
+            return parseCookieHeader(Astro.request.headers.get('Cookie') ?? '')
+          },
+          setAll(cookiesToSet, _headers) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              Astro.cookies.set(name, value, options)
+            )
+          },
+        },
+      }
+    )
+
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
+
+    if (!error) {
+      return redirect(next)
+    }
+  }
+
+  // return the user to an error page with instructions
+  return redirect('/auth/auth-code-error')
+}
+```
+
+**Remix**
+
+Create a new file at `app/routes/auth.callback.tsx` and populate with the following:
+
+```ts
+import { redirect, type LoaderFunctionArgs } from '@remix-run/node'
+import { createServerClient, parseCookieHeader, serializeCookieHeader } from '@supabase/ssr'
+
+export async function loader({ request }: LoaderFunctionArgs) {
+  const requestUrl = new URL(request.url)
+  const code = requestUrl.searchParams.get('code')
+  const next = requestUrl.searchParams.get('next') || '/'
+  const responseHeaders = new Headers()
+
+  if (code) {
+    const supabase = createServerClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_PUBLISHABLE_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return parseCookieHeader(request.headers.get('Cookie') ?? '')
+          },
+          setAll(cookiesToSet, cacheHeaders) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              responseHeaders.append('Set-Cookie', serializeCookieHeader(name, value, options))
+            )
+            Object.entries(cacheHeaders).forEach(([key, value]) => responseHeaders.set(key, value))
+          },
+        },
+      }
+    )
+
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
+
+    if (!error) {
+      return redirect(next, { headers: responseHeaders })
+    }
+  }
+
+  // return the user to an error page with instructions
+  return redirect('/auth/auth-code-error', { headers: responseHeaders })
+}
+```
+
+**Express**
+
+Create a new route in your express app and populate with the following:
+
+```js
+...
+app.get("/auth/callback", async function (req, res) {
+  const code = req.query.code
+  const next = req.query.next ?? "/"
+
+  if (code) {
+    const supabase = createServerClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_PUBLISHABLE_KEY, {
+    cookies: {
+      getAll() {
+        return parseCookieHeader(req.headers.cookie ?? '')
+      },
+      setAll(cookiesToSet, headers) {
+        cookiesToSet.forEach(({ name, value, options }) =>
+          res.appendHeader('Set-Cookie', serializeCookieHeader(name, value, options))
+        )
+        Object.entries(headers).forEach(([key, value]) =>
+          res.setHeader(key, value)
+        )
+      },
+    },
+  })
+    await supabase.auth.exchangeCodeForSession(code)
+  }
+
+  res.redirect(303, `/${next.slice(1)}`)
+})
+```
+
+**JavaScript**
+
+When your user signs out, call signOut() to remove them from the browser session and any objects from localStorage:
+
+```js
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient('https://your-project-id.supabase.co', 'sb_publishable_...')
+
+// ---cut---
+async function signOut() {
+  const { error } = await supabase.auth.signOut()
+}
+```
+
+**Flutter**
+
+When your user signs out, call signOut() to remove them from the browser session and any objects from localStorage:
+
+```dart
+Future<void> signOut() async {
+  await supabase.auth.signOut();
+}
+```
+
+**Kotlin**
+
+When your user signs out, call signOut() to remove them from the browser session and any objects from localStorage:
+
+```kotlin
+suspend fun signOut() {
+	supabase.auth.signOut()
+}
+```
+
+**C#**
+
+When your user signs out, call SignOut() to remove them from the browser session and any objects from local storage:
+
+```c#
+await supabase.Auth.SignOut();
+```
+
+## Resources
+
+- Supabase - Get started for free
+- Supabase JS Client
+- Zoom App Marketplace

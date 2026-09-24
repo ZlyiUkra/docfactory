@@ -1,0 +1,229 @@
+# Use Supabase with TanStack Start
+# джерело: https://supabase.com/docs/guides/getting-started/quickstarts/tanstack
+# отримано: 2026-09-24
+
+Learn how to create a Supabase project, add some sample data to your database, and query the data from a TanStack Start app.
+
+## 1. Create a Supabase project
+
+To start, you need a Supabase project.
+
+Create a new Supabase project from the Dashboard of any organization you belong to.
+
+Note: Use the Management API or ask the MCP server to create a new Supabase project.
+
+## 2. Set up your database
+
+When your Supabase project is up and running, create an `instruments` table with some sample data. Then set only the privileges each Postgres role needs, add Row Level Security (RLS) for enhanced security for database data by default, and create an RLS policy to make the data in the table publicly readable.
+
+Do these steps within your project's dashboard by copying and running the snippet in your project's SQL Editor.
+
+Note: Save some steps by clicking here to prefill the SQL in the SQL Editor, and then clicking **Run**.
+
+Note: You can use the Management API or ask the MCP server to execute SQL queries.
+
+```sql
+-- Create the table
+create table instruments (
+  id bigint primary key generated always as identity,
+  name text not null
+);
+
+-- Insert sample data into the table
+insert into instruments (name)
+values
+  ('violin'),
+  ('viola'),
+  ('cello');
+
+-- Grant the privileges the role needs, which is read access
+grant select on public.instruments to anon;
+
+-- Enable row level security for the table
+alter table instruments enable row level security;
+
+-- Create a policy to allow the anon role to read from the instruments table
+create policy "public can read instruments"
+on public.instruments
+for select to anon
+using (true);
+```
+
+Note: If you disabled the Data API during project setup, enable it in the **Integrations > Data API** section of the Dashboard and expose the specific tables or functions you want to access. To automatically grant access for new tables and functions in `public`, enable **Automatically expose new tables**.
+
+## 3. Create a TanStack Start app
+
+Create a TanStack Start app using the official CLI.
+
+```bash
+npx @tanstack/cli@latest create my-app
+```
+
+## 4. Set up AI tooling (optional)
+
+Supabase provides two ways to give AI tools context about your project: Agent Skills, which give your AI coding agent procedural knowledge, and the MCP server, which connects AI assistants to your Supabase project directly.
+
+### Agent Skills
+
+Agent Skills is a curated set of instructions that give your AI agent procedural knowledge about working with Supabase.
+
+Install them so your AI coding agent can produce more accurate, reliable code using current Supabase patterns, such as authentication, server-side rendering, and database migrations, rather than relying solely on training data.
+
+#### Installing Agent Skills
+
+To install, run the following command in the root of your project:
+
+```bash
+npx skills add supabase/agent-skills
+```
+
+### Supabase MCP server
+
+The Supabase MCP server connects AI assistants to Supabase, so they can inspect your schema and act on your projects on your behalf. Find out how to add it to your client in the MCP docs.
+
+## 5. Install the Supabase client libraries
+
+Navigate to the TanStack Start app and install `supabase-js` and `@supabase/ssr`, the helper package that manages cookie-based sessions for server-side rendering.
+
+```bash
+cd my-app && npm install @supabase/supabase-js @supabase/ssr
+```
+
+## 6. Declare Supabase environment variables
+
+Create a `.env.local` file in the root of your project and populate it with your Supabase connection variables. Get the values from the helper below, or from the project **Connect** panel.
+
+Open Connect panel
+
+```text
+VITE_SUPABASE_URL=<SUBSTITUTE_SUPABASE_URL>
+VITE_SUPABASE_PUBLISHABLE_KEY=<SUBSTITUTE_SUPABASE_PUBLISHABLE_KEY>
+```
+
+### Get API details
+
+To interact with data in database tables, you use the client libraries that wrap the auto-generated Data API endpoints, authenticating using the Project URL and key from the project **Connect** dialog.
+
+Note: See API keys for a full explanation of all key types, their uses, and where to find them.
+
+## 7. Create Supabase client utilities
+
+TanStack Start needs two Supabase clients: a browser client for components that run in the browser, and a server client for loaders and server functions. Create a `src/lib/supabase` folder with a file for each client.
+
+Both clients read the same two variables, through the API available in each environment. The browser client uses `import.meta.env`, which Vite replaces at build time. The server client uses `process.env`, which the server runtime populates from your `.env.local` file.
+
+```ts
+/// <reference types="vite/client" />
+import { createBrowserClient } from '@supabase/ssr'
+
+export function createClient() {
+  return createBrowserClient(
+    import.meta.env.VITE_SUPABASE_URL!,
+    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY!
+  )
+}
+```
+
+```ts
+import { createServerClient } from '@supabase/ssr'
+import { getCookies, setCookie, setResponseHeader } from '@tanstack/react-start/server'
+
+export function createClient() {
+  return createServerClient(
+    process.env.VITE_SUPABASE_URL!,
+    process.env.VITE_SUPABASE_PUBLISHABLE_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return Object.entries(getCookies()).map(([name, value]) => ({ name, value }))
+        },
+        setAll(cookies, headers) {
+          cookies.forEach(({ name, value, options }) => {
+            setCookie(name, value, options)
+          })
+
+          Object.entries(headers).forEach(([name, value]) => {
+            setResponseHeader(name, value)
+          })
+        },
+      },
+    }
+  )
+}
+```
+
+## 8. Query Supabase data from TanStack Start
+
+Create a server function that queries the `instruments` table through the server client. TanStack Start's import protection blocks direct server imports in route files, so wrap the Supabase call in `createServerFn`.
+
+```ts
+import { createServerFn } from '@tanstack/react-start'
+
+import { createClient } from '@/lib/supabase/server'
+
+export const fetchInstruments = createServerFn({ method: 'GET' }).handler(async () => {
+  const supabase = createClient()
+  const { data: instruments, error } = await supabase.from('instruments').select()
+
+  if (error) {
+    console.error(error)
+    return { instruments: [], error: error.message }
+  }
+
+  return { instruments, error: null }
+})
+```
+
+Replace the contents of `src/routes/index.tsx` with the following to call the server function from a route loader. The loader runs on the server, so the data is part of the initial server-rendered response.
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+
+import { fetchInstruments } from '@/lib/supabase/fetch-instruments-server-fn'
+
+export const Route = createFileRoute('/')({
+  loader: async () => fetchInstruments(),
+  component: Home,
+})
+
+function Home() {
+  const { instruments, error } = Route.useLoaderData()
+
+  if (error) {
+    return <p>Error loading instruments: {error}</p>
+  }
+
+  return (
+    <ul>
+      {instruments?.map((instrument) => (
+        <li key={instrument.id}>{instrument.name}</li>
+      ))}
+    </ul>
+  )
+}
+```
+
+## 9. Start the app
+
+Run the development server, go to http://localhost:3000 in a browser and you should see the list of instruments.
+
+```bash
+npm run dev
+```
+
+## Production requirements
+
+The quickstart procedure in this guide optimizes for getting you to a working app, not for production.
+
+Before you deploy:
+
+- If your app reads or writes through the Data API, review your Row Level Security policies. Any policy you added here is scoped to this quickstart's sample data, not to real user data.
+- Set your Supabase credentials as environment variables on whatever platform you deploy to, rather than committing them to source control.
+- Configure a custom domain for your Supabase project once you're ready to go live.
+
+## Next steps
+
+- Learn how to protect routes and check sessions with the server client, or drop in a complete sign-in and sign-up flow from Supabase Library
+- Insert more data into your database
+- Upload and serve static files using Storage
+- Explore drop-in UI components for your Supabase app

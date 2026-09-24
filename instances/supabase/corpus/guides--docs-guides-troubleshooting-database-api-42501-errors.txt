@@ -1,0 +1,71 @@
+# Database API 42501 errors
+# джерело: https://supabase.com/docs/guides/troubleshooting/database-api-42501-errors
+# отримано: 2026-09-24
+
+Postgres 42501 errors, often reported by clients as 401 or 403 errors, imply the request lacked adequate privileges. They can be viewed in the SQL Editor by running:
+
+```sql
+select
+  timestamp,
+  event_message,
+  log_attributes['parsed.error_severity'] as error_severity,
+  log_attributes['parsed.user_name'] as user_name,
+  log_attributes['parsed.query'] as query,
+  log_attributes['parsed.detail'] as detail,
+  log_attributes['parsed.hint'] as hint
+from logs
+where
+  source = 'postgres_logs'
+  and log_attributes['parsed.error_severity'] in ('ERROR', 'FATAL', 'PANIC')
+  and log_attributes['parsed.sql_state_code'] = '42501'
+order by timestamp desc
+limit 100;
+```
+
+They tend to be caused by one of the following factors.
+
+## Attempted to access a forbidden schema
+
+API roles cannot access certain schemas, most notably `auth` and `vault`. This restriction extends to Foreign Data Wrappers relying on `vault`. While you can bypass it using a security definer function, these schemas are intentionally restricted for security reasons.
+
+## Attempted to access a custom schema
+
+If you created a custom schema, you will have to give the Database API permission to query it. Follow our Using Custom Schemas guide for more directions.
+
+## Missing table-level privileges
+
+If you see an error like `permission denied for table your_table`, the querying role may not have the required privilege for the operation.
+
+By default, tables in the `public` schema are granted `SELECT`, `INSERT`, `UPDATE`, and `DELETE` to the `anon` and `authenticated` roles. However, you can change these privileges in the **Integrations > Data API** section of the Dashboard or via SQL.
+
+To check the current privileges on a table:
+
+```sql
+select grantee, privilege_type
+from information_schema.role_table_grants
+where table_name = 'your_table';
+```
+
+To grant a specific privilege to a role:
+
+```sql
+grant select on table public.your_table to anon;
+```
+
+To grant all privileges:
+
+```sql
+grant select, insert, update, delete on table public.your_table to anon, authenticated;
+```
+
+Note: Granting privileges allows access to your table through the Data API, so you should ensure you enable RLS and write appropriate policies to protect your data.
+
+For more information, see Securing your API.
+
+## Configured column-level restrictions
+
+If you've set column-based access in the Dashboard or via SQL, queries will fail with a `42501` error when accessing restricted columns. This includes using `select *`, as it expands to include forbidden columns.
+
+## RLS:
+
+If the anon or authenticated roles attempt to UPDATE or INSERT values without the necessary RLS permissions, Postgres will return a 42501 error.

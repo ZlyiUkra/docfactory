@@ -1,0 +1,140 @@
+# Use Supabase with Laravel
+# джерело: https://supabase.com/docs/guides/getting-started/quickstarts/laravel
+# отримано: 2026-09-24
+
+Learn how to create a PHP Laravel project, connect it to your Supabase Postgres database, and configure user authentication.
+
+## 1. Create a Supabase project
+
+To start, you need a Supabase project.
+
+Create a new Supabase project from the Dashboard of any organization you belong to.
+
+Note: Use the Management API or ask the MCP server to create a new Supabase project.
+
+Save your database password securely. You need it for the connection string.
+
+Note: This guide uses Laravel's own database tables (via Breeze and Eloquent), not the shared `instruments` sample table used by other quickstarts.
+
+## 2. Create a Laravel project
+
+Make sure your PHP and Composer versions are up to date, then use `composer create-project` to scaffold a new Laravel project.
+
+See the Laravel docs for more details.
+
+```bash
+composer create-project laravel/laravel example-app
+```
+
+## 3. Set up AI tooling (optional)
+
+Supabase provides two ways to give AI tools context about your project: Agent Skills, which give your AI coding agent procedural knowledge, and the MCP server, which connects AI assistants to your Supabase project directly.
+
+### Agent Skills
+
+Agent Skills is a curated set of instructions that give your AI agent procedural knowledge about working with Supabase.
+
+Install them so your AI coding agent can produce more accurate, reliable code using current Supabase patterns, such as authentication, server-side rendering, and database migrations, rather than relying solely on training data.
+
+#### Installing Agent Skills
+
+To install, run the following command in the root of your project:
+
+```bash
+npx skills add supabase/agent-skills
+```
+
+### Supabase MCP server
+
+The Supabase MCP server connects AI assistants to Supabase, so they can inspect your schema and act on your projects on your behalf. Find out how to add it to your client in the MCP docs.
+
+## 4. Install the authentication template
+
+Install Laravel Breeze, a basic implementation of all of Laravel's authentication features. It ships the migrations that the next step runs against your Supabase database.
+
+```bash
+composer require laravel/breeze --dev
+php artisan breeze:install blade
+```
+
+Pass a stack name such as `blade`, `react`, or `vue` when prompted. The example above uses Blade templates.
+
+## 5. Set up the Postgres connection details
+
+1. Navigate to your project dashboard and click on Connect.
+
+   Caution: Don't use the Transaction pooler (port `6543`) as your app's main data source. Most ORMs rely on server-side prepared statements, which the Transaction pooler doesn't support. Use the Session pooler (port `5432`), or the direct connection string if you're in an IPv6 environment or have the IPv4 Add-On.
+
+2. Look for the **Session pooler** connection string and copy it. Replace the password placeholder with your saved database password, and percent-encode any reserved characters it contains, such as `&`, `#`, `?`, or a space. If you don't have your database password, you can reset it in your Database Settings.
+
+3. Set `sslmode=require` either on the connection string itself or as an explicit config option if your framework sets it separately. Most drivers default to `prefer`, which falls back to sending your data in plaintext if the encrypted attempt fails. You can also enforce SSL on the database side.
+
+The connection strings below show the format only. Take the host, port, and username from the string you copied rather than typing the bracketed placeholders literally.
+
+```bash
+DB_CONNECTION=pgsql
+DB_URL=postgres://postgres.[PROJECT-REF]:[YOUR-PASSWORD]@[POOLER-HOST]:5432/postgres
+```
+
+Laravel sets `sslmode` as an explicit `config/database.php` option rather than a URL parameter. The next step covers this.
+
+## 6. Change the default schema
+
+By default Laravel uses the `public` schema. We recommend changing this as Supabase exposes the `public` schema as a data API.
+
+You can change the schema of your Laravel application by modifying the `search_path` variable in `config/database.php`.
+
+The schema you specify in `search_path` has to exist on Supabase. You can create a new schema from the Table Editor.
+
+```php
+'pgsql' => [
+    'driver' => 'pgsql',
+    'url' => env('DB_URL'),
+    'host' => env('DB_HOST', '127.0.0.1'),
+    'port' => env('DB_PORT', '5432'),
+    'database' => env('DB_DATABASE', 'laravel'),
+    'username' => env('DB_USERNAME', 'root'),
+    'password' => env('DB_PASSWORD', ''),
+    'charset' => env('DB_CHARSET', 'utf8'),
+    'prefix' => '',
+    'prefix_indexes' => true,
+    'search_path' => 'laravel',
+    'sslmode' => 'require',
+],
+```
+
+Laravel ships with `sslmode` set to `prefer`, which sends your data in plaintext if the encrypted attempt fails. Set it to `require` so the connection fails instead. You can also enforce SSL on the database side.
+
+## 7. Run the database migrations
+
+Laravel ships with database migration files that set up the required tables for Laravel Authentication and User Management.
+
+Note: Laravel implements its own authentication system rather than using Supabase Auth. Your users are stored in Laravel's `users` table, not in Supabase Auth.
+
+```bash
+php artisan migrate
+```
+
+## 8. Start the app
+
+Run the development server. Go to http://127.0.0.1:8000 in a browser to see your application. You can also navigate to http://127.0.0.1:8000/register and http://127.0.0.1:8000/login to register and sign in users.
+
+```bash
+php artisan serve
+```
+
+## Production requirements
+
+The quickstart procedure in this guide optimizes for getting you to a working app, not for production.
+
+Before you deploy:
+
+- If your app reads or writes through the Data API, review your Row Level Security policies. Any policy you added here is scoped to this quickstart's sample data, not to real user data.
+- Set your Supabase credentials as environment variables on whatever platform you deploy to, rather than committing them to source control.
+- Configure a custom domain for your Supabase project once you're ready to go live.
+
+## Next steps
+
+- Learn more about Supabase Auth if you want to replace Laravel's built-in authentication
+- Insert more data into your database
+- Upload and serve static files using Storage

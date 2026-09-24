@@ -1,0 +1,199 @@
+# Build a User Management App with Angular
+# джерело: https://supabase.com/docs/guides/getting-started/tutorials/with-angular
+# отримано: 2026-09-24
+
+Learn how to use Supabase in your Angular App.
+
+This tutorial demonstrates how to build a basic user management app. The app authenticates and identifies the user, stores their profile information in the database, and allows the user to log in, update their profile details, and upload a profile photo. The app uses:
+
+- Supabase Database - a Postgres database for storing your user data and Row Level Security so data is protected and users can only access their own information.
+- Supabase Auth - allow users to sign up and log in.
+- Supabase Storage - allow users to upload a profile photo.
+
+Supabase User Management example
+
+Note: If you get stuck while working through this guide, you can find the full example on GitHub.
+
+## Project setup
+
+Before you start building you need to set up the Database and API. You can do this by starting a new Project in Supabase and then creating a "schema" inside the database.
+
+### Create a project
+
+1. Create a new project in the Supabase Dashboard.
+2. Enter your project details.
+3. Wait for the new database to launch.
+
+### Set up the database schema
+
+Now set up the database schema. You can use the "User Management Starter" quickstart in the SQL Editor, or you can copy/paste the SQL from below and run it.
+
+**Dashboard**
+
+1. Go to the SQL Editor page in the Dashboard.
+2. Click **User Management Starter** under the **Reference > Examples** tab.
+3. Click **Run**.
+
+Note: You can pull the database schema down to your local project by running the `db pull` command. Read the local development docs for detailed instructions.
+
+```bash
+supabase link --project-ref <project-id>
+# You can get <project-id> from your project's dashboard URL: https://supabase.com/dashboard/project/<project-id>
+supabase db pull
+```
+
+**SQL**
+
+Note: When working locally you can run the following command to create a new migration file:
+
+```bash
+supabase migration new user_management_starter
+```
+
+```sql
+-- Create a table for public profiles
+create table profiles (
+  id uuid references auth.users not null primary key,
+  updated_at timestamp with time zone,
+  username text unique,
+  full_name text,
+  avatar_url text,
+  website text,
+
+  constraint username_length check (char_length(username) >= 3)
+);
+
+-- Grant the privileges roles need
+GRANT SELECT ON public.profiles TO anon;
+GRANT SELECT, INSERT, UPDATE ON public.profiles TO authenticated;
+
+-- Set up Row Level Security (RLS)
+-- See https://supabase.com/docs/guides/database/postgres/row-level-security for more details.
+alter table profiles
+  enable row level security;
+
+create policy "Public profiles are viewable by everyone." on profiles
+  for select using (true);
+
+create policy "Users can insert their own profile." on profiles
+  for insert with check ((select auth.uid()) = id);
+
+create policy "Users can update own profile." on profiles
+  for update using ((select auth.uid()) = id);
+
+-- This trigger automatically creates a profile entry when a new user signs up via Supabase Auth.
+-- See https://supabase.com/docs/guides/auth/managing-user-data#using-triggers for more details.
+create function public.handle_new_user()
+returns trigger
+set search_path = ''
+as $$
+begin
+  insert into public.profiles (id, full_name, avatar_url)
+  values (new.id, new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'avatar_url');
+  return new;
+end;
+$$ language plpgsql security definer;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+
+-- Set up Storage!
+insert into storage.buckets (id, name)
+  values ('avatars', 'avatars');
+
+-- Set up access controls for storage. Allows downloading object with public key
+-- See https://supabase.com/docs/guides/storage/security/access-control#policy-examples for more details.
+create policy "Avatar images are publicly accessible." on storage.objects
+  for select using (bucket_id = 'avatars' and storage.allow_any_operation(array['object.get_authenticated_info', 'object.get_authenticated']));
+
+create policy "Anyone can upload an avatar." on storage.objects
+  for insert with check (bucket_id = 'avatars');
+
+create policy "Anyone can update their own avatar." on storage.objects
+  for update using ((select auth.uid()) = owner) with check (bucket_id = 'avatars');
+```
+
+### Get API details
+
+To interact with data in database tables, you use the client libraries that wrap the auto-generated Data API endpoints, authenticating using the Project URL and key from the project **Connect** dialog.
+
+Note: See API keys for a full explanation of all key types, their uses, and where to find them.
+
+## Building the app
+
+Start with building the Angular app from scratch.
+
+### Initialize an Angular app
+
+Use the Angular CLI to initialize an app called `supabase-angular` setting some defaults that you can change to suit your needs:
+
+```bash
+npx ng new supabase-angular --routing false --style css --standalone false --ssr false
+cd supabase-angular
+```
+
+Install supabase-js:
+
+```bash
+npm install @supabase/supabase-js
+```
+
+Create a `src/environments` directory and save API URL and key that you copied earlier as environment variables in a new `src/environments/environment.ts` file.
+
+The application exposes these variables in the browser, and that's fine as Supabase enables Row Level Security by default on all tables.
+
+With the API credentials in place, create a `SupabaseService` with `ng g s supabase` and add the following code to initialize the Supabase client and implement functions to communicate with the Supabase API.
+
+Optionally, update `src/styles.css` to style the app. You can find the full contents of this file in the example repository.
+
+### Set up a sign-in component
+
+You need an Angular component to manage sign-ins and sign-ups. The component uses Magic Links, so users can sign in with their email without using passwords.
+
+Note: You can customize other emails sent out to new users, including the email's looks, content, and query parameters from the **Authentication > Email** section of the Dashboard.
+
+Create an `AuthComponent` with the `ng g c auth` Angular CLI command and add the following code.
+
+### Account page
+
+Users also need a way to edit their profile details and manage their accounts after signing in. Create an `AccountComponent` with the `ng g c account` Angular CLI command and add the following code.
+
+## Profile photos
+
+Add a way for users to upload a profile photo. Supabase configures every project with Storage for managing large files like photos and videos.
+
+### Create an upload widget
+
+Create an `AvatarComponent` with the `ng g c avatar` Angular CLI command and add the following code.
+
+### Update the Account component
+
+With the Avatar component created, update `AccountComponent` to include it:
+
+You also need to change `app.module.ts` to include the `ReactiveFormsModule` from the `@angular/forms` package.
+
+### Launch!
+
+With all the components in place, change the contents of `AppComponent` to include the new components and Auth logic:
+
+The Supabase Auth SDK contains three different functions for authenticating user access to applications:
+
+### Summary of the methods
+
+- Use `getClaims` to protect pages and user data. It reads the access token from storage and verifies it. Locally via the WebCrypto API and a cached JWKS endpoint when the project uses asymmetric signing keys (the default for new projects), or by calling `getUser` solely to validate when symmetric keys are in use. The returned claims always come from decoding the JWT, not from a user lookup. When the access token is close to expiring, `getClaims` refreshes the session before it verifies, which is how a server-rendered session stays alive.
+- `getUser` makes a network call to the project's Auth instance to get the user record, which includes the most up-to-date information about the user at the cost of a network call.
+- `getSession` when you need the raw session (the access token, refresh token, and expiry). For example to forward the access token to another service. The session is loaded directly from local storage and isn't re-validated against the Auth server, so the embedded user object shouldn't be trusted on its own when storage is shared with the client (cookies, request headers). To verify identity, validate the access token with `getClaims`, or call `getUser` for a fresh, server-confirmed user record.
+
+**In summary**: use `getClaims` to verify identity (typically for protecting pages and data), `getUser` when you need an up-to-date user record from the Auth server, and `getSession` when you need the access or refresh token directly, but don't rely on the user object it returns for authorization decisions.
+
+Now run the application in a terminal:
+
+```bash
+npm run start
+```
+
+Open the browser to localhost:4200 and you should see the completed app.
+
+Screenshot of the Supabase Angular application running in a browser
+
+At this stage you have a fully functional application!

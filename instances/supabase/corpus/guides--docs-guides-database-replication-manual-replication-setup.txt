@@ -1,0 +1,79 @@
+# Set up manual replication
+# джерело: https://supabase.com/docs/guides/database/replication/manual-replication-setup
+# отримано: 2026-09-24
+
+Set up replication with Airbyte, Estuary, Fivetran, and other tools.
+
+Configure your own replication using external tools and Postgres logical replication.
+
+This guide covers setting up **manual logical replication** using your own tools. If you prefer a managed solution, read Set up Pipelines instead.
+
+Note: For deploying read-only databases across multiple regions, see read replicas.
+
+## Prerequisites
+
+To set up replication, the following is recommended:
+
+- Instance size of XL or greater
+- IPv4 add-on enabled
+
+Note: If you are running Postgres 17 or higher, you can create a new user and grant them replication permissions with the `postgres` user. For versions below 17, you will need to use the `postgres` user.
+
+## Choose your replication tool
+
+Follow your tool's setup guide, using the Supabase-specific notes below. If you are building your own consumer, follow the logical replication example to create a publication and replication slot.
+
+**Airbyte**
+
+Follow the Airbyte Postgres source guide for its cloud or self-hosted service.
+
+Apply these Supabase-specific settings:
+
+1. Use the `postgres` user
+2. Select `logical replication` as the replication method (`xmin` is possible, but not recommended)
+
+**Estuary**
+
+Follow the Estuary Supabase source guide.
+
+**Fivetran**
+
+Follow the Fivetran Postgres setup guide.
+
+Apply these Supabase-specific settings:
+
+1. In Step 2, choose `logical replication` as the sync mechanism
+2. In Step 3, do not create a user and use the existing `postgres` user for replication
+3. In Step 5, don't copy generic WAL settings without sizing them for your database. Supabase supports logical replication, but you still need to size `max_slot_wal_keep_size` for your write rate and expected replication lag, then monitor the slot.
+
+**Materialize**
+
+Follow the Materialize Postgres source guide.
+
+Use the logical replication example for the Supabase publication and replication slot setup.
+
+**Stitch**
+
+Follow the Stitch Postgres extraction guide.
+
+Apply these Supabase-specific settings:
+
+1. Use the `postgres` user for replication
+2. Skip step 3
+
+**AWS DMS**
+
+Follow the AWS DMS documentation to configure Postgres as a source.
+
+DMS is notably useful if you have infrastructure running in AWS and/or you have custom networking. An additional benefit is that DMS is able to replicate schema changes.
+
+Apply these Supabase-specific settings:
+
+1. Use the `postgres` user for replication (or create a new user with replication permissions: `ALTER USER <user> WITH REPLICATION;`)
+2. Set `pluginname` to `test-decoding`
+3. Depending on your databases the pre-assessment may fail. It is not required.
+4. Increase `wal_sender_timeout` and other settings (`max_wal_size`) using the Supabase CLI
+
+## Monitor replication
+
+After starting your consumer, monitor replication slots, WAL retention, and progress.

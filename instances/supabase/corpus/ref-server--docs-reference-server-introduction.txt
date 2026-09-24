@@ -1,0 +1,1360 @@
+# Supabase Server SDK Reference
+# джерело: https://supabase.com/docs/reference/server/introduction
+# отримано: 2026-09-24
+
+## Introduction
+
+`@supabase/server` is a framework-agnostic library for authenticating requests in server-side JavaScript environments. It verifies JWTs, resolves Supabase API keys, and creates pre-configured Supabase clients — exposing everything through a single `SupabaseContext` that is identical regardless of which adapter or primitive produced it.
+
+Adapters for Hono, H3, Elysia, and NestJS are included. You can also compose the lower-level primitives directly for custom frameworks or edge runtimes.
+
+Not sure this is the right package? See which package to use — for cookie-based sessions in SSR frameworks, use `@supabase/ssr` instead.
+
+## Installing
+
+### Install as a package
+
+Install `@supabase/server` via your package manager.
+
+```sh
+npm install @supabase/server
+```
+
+```sh
+yarn add @supabase/server
+```
+
+```sh
+pnpm add @supabase/server
+```
+
+### Use via JSR (Deno / Bun)
+
+`@supabase/server` is also published to JSR for Deno and Bun environments.
+
+```sh
+deno add jsr:@supabase/server
+```
+
+```sh
+bunx jsr add @supabase/server
+```
+
+### Optional peer dependencies on Deno
+
+Some entry points rely on optional peer dependencies. `@supabase/server/middleware/postgres` and `@supabase/server/middleware/postgres-admin` need `pg`. Deno resolves an optional peer only when your own code imports it. A pin in `deno.json` alone is not enough: `deno check` passes and the function fails at startup with `Could not find package 'pg'`.
+
+Add a bare import once, at the top of your entry module — no separate `deno add npm:pg` or `package.json` entry is needed. `deno info` lists `npm:/pg@...` once the package is in the module graph.
+
+Deno 2.9 and later apply a minimum dependency age to npm packages. To use a release published the same day, pass `--minimum-dependency-age 0` to `deno check`.
+
+```ts
+import 'pg'
+import { withPostgresClient } from '@supabase/server/middleware/postgres'
+```
+
+```sh
+deno info index.ts | grep "npm:/pg@"
+```
+
+## Middleware
+
+## createSupabaseContext
+
+Creates a SupabaseContext directly from a request.
+
+Use this when you need the context without the full withSupabase wrapper —
+e.g., inside framework route handlers or custom middleware. Returns a result tuple
+instead of producing a `Response`.
+
+### Examples
+
+#### User auth
+
+```ts
+const { data: ctx, error } = await createSupabaseContext(request, { auth: 'user' })
+if (error) {
+  // `toJSON()` yields { source, code, message, hint, docs, details }
+  return Response.json(error.toJSON(), { status: error.status })
+}
+const { data } = await ctx.supabase.rpc('get_my_items')
+```
+
+## fromSupabaseUrl
+
+**Alpha.** Points `authorizationServer` at a Supabase project's Auth
+issuer.
+
+Use this off Supabase Edge Functions, where the app's own origin is unrelated
+to the Supabase project's, so the issuer cannot be derived from the request.
+
+### Examples
+
+#### Example 1
+
+```ts
+import { withOAuthProtectedResource, fromSupabaseUrl } from '@supabase/server'
+
+withOAuthProtectedResource(
+  {
+    resourceServer: (req) => new URL(req.url).origin + '/api/mcp',
+    authorizationServer: fromSupabaseUrl('https://abc123.supabase.co'),
+  },
+  handler,
+)
+```
+
+## ident
+
+Quote a Postgres identifier — a table, column, or role name — for safe
+interpolation into SQL text.
+
+Bind parameters cover *values* and nothing else: `order by $1` sorts every
+row by the constant string `$1`, and `select $1 from t` selects a literal,
+not a column. Identifiers therefore have to reach the server as SQL text,
+which is the one place string-building is unavoidable. This makes that step
+safe by quoting the name and doubling any embedded quote, so the result is
+always exactly one identifier no matter what it contains.
+
+**It is not an allowlist.** Quoting a caller-supplied name yields a valid
+identifier, not a permitted one — `ident(req.query.sort)` cannot inject SQL
+but can still read a column the caller was never meant to see. Check the
+name against a fixed set you control first, then quote it.
+
+### Examples
+
+#### Example 1
+
+```ts
+const SORTABLE = new Set(['created_at', 'title'])
+if (!SORTABLE.has(column)) throw new Error('unsupported sort column')
+const rows = await ctx.postgres.queryRaw(
+  `select id, title from posts order by ${ident(column)} desc`,
+)
+```
+
+## PostgresApi
+
+The shape of `ctx.postgres` and `ctx.postgresAdmin`.
+
+Both halves expose the same surface — they differ in what runs around the
+query, not in how you call it. `withPostgresClient` wraps every query in a
+transaction that injects the caller's claims and drops to their role;
+`withPostgresAdminClient` runs it as-is, as the connection-string role.
+
+## PostgresPoolOptions
+
+**Alpha.** Pool sizing for `withPostgresClient` and
+`withPostgresAdminClient`. Two entries on the same connection string share
+a pool only when their options resolve to the same values.
+
+The composable middleware surface tracks `@supabase/middleware` 0.x — entry
+shapes, context keys, and config options may change between 0.x releases.
+
+## RequestClaims
+
+**Alpha.** Minimal claims shape withPostgresClient needs on the
+upstream context.
+
+Satisfied both by `withSupabase`'s JWKS-verified `ctx.jwtClaims` and by the
+standalone `withClaims` middleware — `withPostgresClient` only reads `role`
+and serializes the whole object into `request.jwt.claims`.
+
+The composable middleware surface tracks `@supabase/middleware` 0.x — entry
+shapes, context keys, and config options may change between 0.x releases.
+
+## resourceMetadataResponse
+
+**Alpha.** RFC 9728 OAuth Protected Resource Metadata response.
+Advertises the authorization server, resource URI, and bearer methods supported.
+URLs default to the Edge Functions derivation and throw off platform; pass
+`resource` / `authorizationServers` to override.
+
+The OAuth Protected Resource surface is alpha — the config shape, the
+contributed context key, and the metadata route may change in a minor
+release.
+
+## unauthorizedResponse
+
+**Alpha.** `401` response with a
+`WWW-Authenticate: Bearer resource_metadata="..."` header (RFC 9728).
+The metadata URL defaults to the Edge Functions derivation and throws off
+platform; pass `resourceMetadataUrl` to override for custom setups.
+
+The OAuth Protected Resource surface is alpha — the config shape, the
+contributed context key, and the metadata route may change in a minor
+release.
+
+## withClaims
+
+**Alpha.** Contributes `ctx.jwtClaims` by verifying the caller's Bearer
+token against the project JWKS — the same verification core `withSupabase`
+uses for its `user` auth mode.
+
+Use this when composing a standalone `pipeline([...], handler)` that is
+**not** wrapped by `withSupabase` — for example a Supabase-agnostic Edge
+Function that still wants the caller's verified claims available to a
+downstream middleware such as `withPostgresClient`. Inside `withSupabase`, the
+context already carries `jwtClaims`, so `withClaims` is unnecessary.
+
+Behavior:
+
+- No `Authorization: Bearer` token (or an `sb_*` API key in that position)
+  → contributes `null`; the request proceeds as anonymous.
+- Token present but invalid → short-circuits with a 401 JSON response
+  (`{ message, code }`, matching `withSupabase`'s error shape).
+- Token present but no JWKS configured → short-circuits with a 500 —
+  verification is not optional; there is no decode-only mode.
+
+`withClaims` is not an auth gate. It never rejects a request that has no
+token. A pipeline like `[withClaims(), withSupabaseClient()]` accepts
+anonymous callers and is not the composable form of
+`withSupabase({ auth: 'user' })`, which rejects token-less requests with
+a 401. To require an authenticated caller, compose `withRequiredClaims`
+from `@supabase/server/middleware/required-claims` instead. The two entries
+share the `jwtClaims` key, so a pipeline picks "claims if present" or
+"claims required"; composing both is a compile-time conflict.
+
+### Examples
+
+#### Standalone pipeline
+
+```ts
+import { pipeline } from '@supabase/middleware'
+import { withClaims } from '@supabase/server/middleware/claims'
+import { withPostgresClient } from '@supabase/server/middleware/postgres'
+
+export default {
+  fetch: pipeline([withClaims(), withPostgresClient()], async (req, ctx) => {
+    const rows = await ctx.postgres.query`select id, title from posts`
+    return Response.json({ rows, caller: ctx.jwtClaims?.sub ?? 'anon' })
+  }),
+}
+```
+
+The composable middleware surface tracks `@supabase/middleware` 0.x — entry
+shapes, context keys, and config options may change between 0.x releases.
+
+## WithClaimsConfig
+
+**Alpha.** Configuration for withClaims.
+
+The composable middleware surface tracks `@supabase/middleware` 0.x — entry
+shapes, context keys, and config options may change between 0.x releases.
+
+## withOAuthProtectedResource
+
+**Alpha.** Wraps a request handler with OAuth 2.1 Protected Resource
+behavior (RFC 9728).
+
+- Serves OAuth Protected Resource Metadata at `GET {resource}/oauth-protected-resource`
+  (with permissive CORS, including the `OPTIONS` preflight, so browser-based clients can read it)
+- Enriches a `401` from the inner handler with `WWW-Authenticate: Bearer resource_metadata="..."`,
+  unless the handler already set a `WWW-Authenticate` header (its value wins)
+- Passes any other path through to the inner handler unchanged (composition,
+  not routing, decides what happens to it)
+- Answers a default URL it cannot derive with the JSON error response
+  `withSupabase` returns for its own configuration failures (`500`,
+  `x-supabase-server-error`); a throw from a configured `resourceServer` or
+  `authorizationServer` function is the caller's and propagates
+
+The metadata route is matched on the path *suffix*, so **any** `GET` or
+`OPTIONS` ending in `/oauth-protected-resource` is answered here and never
+reaches the inner handler, at any depth. Other methods pass through.
+
+Zero-config on Supabase Edge Functions. Elsewhere
+OAuthProtectedResourceConfig.resourceServer is required and
+OAuthProtectedResourceConfig.authorizationServer falls back to
+`SUPABASE_URL`; one that cannot be resolved is reported as
+`MISSING_RESOURCE_SERVER` / `MISSING_AUTHORIZATION_SERVER`.
+
+Contributes `ctx.oauthProtectedResource` (the resolved metadata URL) to the
+downstream context. Nested under `withSupabase`, the key is typed on the
+handler's `ctx` when the outermost call is anchored with
+`satisfies FetchHandler` — see `withSupabase`'s type note. Placed directly
+after `withSupabase` with an auth mode that requires credentials, the
+composition is refused when the stack is built, since the gate would
+answer discovery and preflight before this middleware runs.
+
+The OAuth Protected Resource surface is alpha — the config shape, the
+contributed context key, and the metadata route may change in a minor
+release.
+
+### Examples
+
+#### Supabase Edge Functions — zero config
+
+```ts
+import { withOAuthProtectedResource, withSupabase } from '@supabase/server'
+
+Deno.serve(
+  withOAuthProtectedResource(
+    withSupabase({ auth: 'user' }, async (_req, { supabase }) => {
+      const { data, error } = await supabase.from('items').select('*')
+      if (error) throw error
+      return Response.json(data)
+    }),
+  ),
+)
+```
+
+#### Any other backend
+
+```ts
+import { withOAuthProtectedResource, fromSupabaseUrl } from '@supabase/server'
+
+export default {
+  fetch: withOAuthProtectedResource(
+    {
+      resourceServer: (req) => new URL(req.url).origin + '/api/mcp',
+      authorizationServer: fromSupabaseUrl('https://abc123.supabase.co'),
+    },
+    handler,
+  ),
+}
+```
+
+#### A non-Supabase authorization server
+
+```ts
+withOAuthProtectedResource(
+  {
+    resourceServer: 'https://api.example.com/mcp',
+    authorizationServer: 'https://example.clerk.accounts.dev',
+  },
+  handler,
+)
+```
+
+## withPostgresAdminClient
+
+**Alpha.** Contributes `ctx.postgresAdmin` — a `pg` client that **bypasses
+RLS**, for full-table access. The direct-connection counterpart to
+`withSupabaseAdminClient`, and the deliberate opt-out from the guardrails
+`withPostgresClient` (`@supabase/server/middleware/postgres`) enforces.
+
+Queries run as-is, as the role in the connection string: no claim injection,
+no role switching, no wrapping transaction. Whatever that role may read, the
+caller may read.
+
+Unlike `withPostgresClient` this declares **no upstream prerequisite** — it
+never looks at `ctx.jwtClaims`, so it composes in any auth mode, including
+`auth: 'secret'` and `auth: 'none'`:
+
+```ts
+import { pipeline } from '@supabase/middleware'
+import { withSupabase } from '@supabase/server'
+import { withPostgresAdminClient } from '@supabase/server/middleware/postgres-admin'
+
+pipeline([withSupabase({ auth: 'secret' }), withPostgresAdminClient()], handler)
+```
+
+Compose both halves when a handler needs each in turn — they share one pool,
+and `ctx.postgres` stays RLS-scoped regardless:
+
+```ts
+pipeline([withSupabase({ auth: 'user' }), withPostgresClient(), withPostgresAdminClient()], handler)
+```
+
+> **Authorization is yours now.** RLS is not consulted, so any per-user
+> scoping has to be a `where` clause you write. Reach for
+> `withPostgresClient` unless you specifically need to cross user
+> boundaries.
+
+> **Runtime note.** `pg` needs raw TCP, so this runs on Node/Deno (including
+> the Supabase Edge runtime), **not** on Workers-style isolates.
+
+The composable middleware surface tracks `@supabase/middleware` 0.x — entry
+shapes, context keys, and config options may change between 0.x releases.
+
+## WithPostgresAdminClientConfig
+
+**Alpha.** Configuration for withPostgresAdminClient.
+
+The composable middleware surface tracks `@supabase/middleware` 0.x — entry
+shapes, context keys, and config options may change between 0.x releases.
+
+## withPostgresClient
+
+**Alpha.** Contributes `ctx.postgres` — an RLS-scoped `pg` client, the safe
+version of "authenticate, then query as the user". This is the
+direct-connection counterpart to `withSupabaseClient`, and its service-role
+companion is `withPostgresAdminClient`
+(`@supabase/server/middleware/postgres-admin`).
+
+Every query runs in its own short transaction that injects the caller's
+claims and drops to their role, exactly like PostgREST:
+
+```sql
+begin;
+select set_config('request.jwt.claims', $claims, true);  -- auth.uid() resolves
+set local role "authenticated";                          -- RLS now enforces
+<your query>
+commit;
+```
+
+Everything is transaction-local, so nothing leaks onto the pooled connection.
+
+Only `authenticated` and `anon` are assumed. A token naming any other role —
+including `service_role` — is **refused** with a 500 and
+`code: 'UNSUPPORTED_ROLE'`, never silently downgraded to `anon`: running the
+query as the wrong identity would return zero rows and leave nothing to
+debug. Bypassing RLS is a separate, explicit opt-in: compose
+`withPostgresAdminClient`.
+
+> **Custom roles.** Supabase supports custom Postgres roles via the `role`
+> claim, and RLS still applies to them. They are not supported here yet, so
+> such a token is refused rather than downgraded.
+
+Reads the caller's claims from `ctx.jwtClaims`, which `withSupabase`
+populates (JWKS-verified) — so after `withSupabase` in a pipeline it composes
+directly:
+
+```ts
+pipeline([withSupabase({ auth: 'user' }), withPostgresClient()], handler)
+```
+
+Standalone (no `withSupabase`), pair it with `withClaims` so `ctx.jwtClaims`
+is present before it runs.
+
+> **Table grants.** Queries run as `authenticated` or `anon`, so those
+> roles need explicit table privileges (e.g. \`grant select, insert on
+>
+>  to authenticated`) in addition to RLS policies. A missing grant
+> fails with `permission denied` (SQLSTATE 42501) before RLS is consulted.
+
+> **Runtime note.** `pg` needs raw TCP, so this runs on Node/Deno (including
+> the Supabase Edge runtime), **not** on Workers-style isolates.
+
+The composable middleware surface tracks `@supabase/middleware` 0.x — entry
+shapes, context keys, and config options may change between 0.x releases.
+
+## WithPostgresClientConfig
+
+**Alpha.** Configuration for withPostgresClient.
+
+The composable middleware surface tracks `@supabase/middleware` 0.x — entry
+shapes, context keys, and config options may change between 0.x releases.
+
+## withRequiredClaims
+
+**Alpha.** The user-mode auth gate: requires a valid user JWT and
+contributes **non-null** `ctx.jwtClaims`. Verification runs against the
+project JWKS, the same core `withSupabase` uses for its `user` auth mode.
+
+This is the required-caller counterpart to `withClaims`, which contributes
+claims when a token is present and lets token-less requests proceed as
+anonymous. A pipeline picks one or the other, "claims required" or "claims
+if present"; composing both is a compile-time conflict on the `jwtClaims`
+key.
+
+Behavior — every short-circuit uses the standard error payload, with the same
+code `withSupabase({ auth: 'user' })` returns for an identical request:
+
+- No `Authorization: Bearer` token → 401 `MISSING_CREDENTIALS`. The handler
+  never runs.
+- An `sb_*` API key in that position → 401 `UNUSABLE_CREDENTIAL`: a
+  credential arrived, just not a user JWT.
+- Token present but invalid → 401 `INVALID_JWT`, naming the specific reason.
+- Token present but no JWKS configured → 500 `JWKS_NOT_CONFIGURED`;
+  verification is not optional and there is no decode-only mode.
+
+Because the contribution is non-null, gated handlers read `ctx.jwtClaims`
+directly, with no `?.sub ?? 'anon'` fallbacks. Downstream entries declaring
+a `jwtClaims` prerequisite, such as `withPostgresClient`, compose with no
+further verification.
+
+The 401 and 500 short-circuits carry no CORS headers, and a bare pipeline
+answers no `OPTIONS` preflight. For browser callers, compose `withCors`
+(`@supabase/middleware/cors`) ahead of the gate: it answers preflight before
+the gate runs and stamps `Access-Control-*` headers on the short-circuit
+responses.
+
+After `withSupabase` in a pipeline the context already carries verified
+`jwtClaims`, so this gate is unnecessary there and placing it after
+`withSupabase` is a compile-time conflict. Use `withSupabase({ auth: 'user' })`
+to gate that path.
+
+### Examples
+
+#### Gated standalone pipeline
+
+```ts
+import { pipeline } from '@supabase/middleware'
+import { withRequiredClaims } from '@supabase/server/middleware/required-claims'
+import { withPostgresClient } from '@supabase/server/middleware/postgres'
+
+export default {
+  fetch: pipeline([withRequiredClaims(), withPostgresClient()], async (req, ctx) => {
+    const rows = await ctx.postgres.query`select id, title from posts`
+    return Response.json({ rows, caller: ctx.jwtClaims.sub })
+  }),
+}
+```
+
+The composable middleware surface tracks `@supabase/middleware` 0.x — entry
+shapes, context keys, and config options may change between 0.x releases.
+
+## WithRequiredClaimsConfig
+
+**Alpha.** Configuration for withRequiredClaims.
+
+The composable middleware surface tracks `@supabase/middleware` 0.x — entry
+shapes, context keys, and config options may change between 0.x releases.
+
+## withSupabase
+
+Wraps a request handler with Supabase auth, client creation, and CORS handling.
+
+Built for the Web API `Request`/`Response` standard that all modern runtimes
+implement natively. Handles CORS preflight, credential verification,
+context creation, and error responses. Your handler only runs on successful auth.
+
+### Examples
+
+#### Basic usage
+
+```ts
+import { withSupabase } from '@supabase/server'
+
+export default {
+  fetch: withSupabase({ auth: 'user' }, async (req, ctx) => {
+    const { data } = await ctx.supabase.rpc('get_my_profile')
+    return Response.json(data)
+  }),
+}
+```
+
+## withSupabaseAdminClient
+
+**Alpha.** Contributes `ctx.supabaseAdmin` — an admin Supabase client that
+bypasses Row-Level Security, authenticated with a secret key. This is the
+same middleware `withSupabase` composes internally to build its context.
+
+The client is constructed on the first property access of
+`ctx.supabaseAdmin` and memoized for the request. A handler that never
+accesses it requires no secret key.
+
+### Examples
+
+#### Standalone pipeline
+
+```ts
+import { pipeline } from '@supabase/middleware'
+import { withSupabaseAdminClient } from '@supabase/server/middleware/admin-client'
+
+export default {
+  fetch: pipeline([withSupabaseAdminClient()], async (req, ctx) => {
+    await ctx.supabaseAdmin.from('audit_log').insert({ action: 'ping' })
+    return Response.json({ ok: true })
+  }),
+}
+```
+
+The composable middleware surface tracks `@supabase/middleware` 0.x — entry
+shapes, context keys, and config options may change between 0.x releases.
+
+## WithSupabaseAdminClientConfig
+
+**Alpha.** Configuration for withSupabaseAdminClient — the same
+environment and client options `createAdminClient` accepts, minus the
+per-request auth identity (which is read from the upstream context).
+
+The composable middleware surface tracks `@supabase/middleware` 0.x — entry
+shapes, context keys, and config options may change between 0.x releases.
+
+## withSupabaseClient
+
+**Alpha.** Contributes `ctx.supabase` — a Supabase client scoped to the
+caller's identity, so Row-Level Security policies apply. This is the same
+middleware `withSupabase` composes internally to build its context.
+
+Standalone, the caller's Bearer token (when present) is attached unverified —
+PostgREST verifies it on every query. Compose middleware/claims!withClaims
+upstream when the pipeline itself needs verified claims.
+
+### Examples
+
+#### Standalone pipeline
+
+```ts
+import { pipeline } from '@supabase/middleware'
+import { withSupabaseClient } from '@supabase/server/middleware/client'
+
+export default {
+  fetch: pipeline([withSupabaseClient()], async (req, ctx) => {
+    const { data } = await ctx.supabase.from('posts').select('id, title')
+    return Response.json(data)
+  }),
+}
+```
+
+The composable middleware surface tracks `@supabase/middleware` 0.x — entry
+shapes, context keys, and config options may change between 0.x releases.
+
+## WithSupabaseClientConfig
+
+**Alpha.** Configuration for withSupabaseClient — the same
+environment and client options `createContextClient` accepts, minus the
+per-request auth identity (which is read from the request and the upstream
+context).
+
+The composable middleware surface tracks `@supabase/middleware` 0.x — entry
+shapes, context keys, and config options may change between 0.x releases.
+
+## Primitives
+
+## createAdminClient
+
+Creates an admin Supabase client that bypasses Row-Level Security.
+
+Uses a secret key for authentication, giving full access to all data.
+Stateless — one client per request.
+
+## Which key is used
+
+With `auth.keyName` set, that named key from `SUPABASE_SECRET_KEYS` is used —
+and it throws if the key doesn't exist. With `keyName` omitted, the `default`
+key is used, falling back to the first key in the set when no `default` exists.
+
+Note this differs from the `"secret"` auth mode, which matches the `default`
+key only and never falls back — see index.AuthModeWithKey.
+
+### Examples
+
+#### Basic usage
+
+```ts
+// Uses the `default` secret key (or the first key if no `default` exists)
+const supabaseAdmin = createAdminClient()
+const { data } = await supabaseAdmin.from('audit_log').insert({ action: 'user_login' })
+```
+
+#### Specific named key
+
+```ts
+const supabaseAdmin = createAdminClient({ auth: { keyName: 'internal' } })
+```
+
+## createContextClient
+
+Creates a Supabase client scoped to the caller's context.
+
+Configured with a publishable key and (optionally) the caller's JWT,
+so Row-Level Security policies apply. Stateless — one client per request.
+
+## Which key is used
+
+With `auth.keyName` set, that named key from `SUPABASE_PUBLISHABLE_KEYS` is
+used — and it throws if the key doesn't exist. With `keyName` omitted, the
+`default` key is used, falling back to the first key in the set when no
+`default` exists.
+
+Note this differs from the `"publishable"` auth mode, which matches the
+`default` key only and never falls back — see index.AuthModeWithKey.
+
+### Examples
+
+#### With verified auth
+
+```ts
+const { data: auth } = await verifyAuth(request, { auth: 'user' })
+const supabase = createContextClient({
+  auth: { token: auth.token, keyName: auth.keyName },
+})
+const { data } = await supabase.rpc('get_my_items')
+```
+
+## extractCredentials
+
+Extracts authentication credentials from an incoming HTTP request.
+
+Reads two headers:
+
+- `Authorization: Bearer <token>` → extracted as `token`
+- `apikey: <key>` → extracted as `apikey`
+
+This is a pure extraction step — no validation or verification is performed.
+Pass the result to verifyCredentials to validate against allowed auth modes.
+
+### Examples
+
+#### Basic usage
+
+```ts
+import { extractCredentials } from '@supabase/server/core'
+
+const creds = extractCredentials(request)
+console.log(creds.token)  // "eyJhbGci..." or null
+console.log(creds.apikey) // "sb-abc123-publishable-..." or null
+```
+
+## resolveEnv
+
+Resolves Supabase environment configuration from runtime environment variables.
+
+Reads `SUPABASE_URL`, keys (`SUPABASE_PUBLISHABLE_KEYS` / `SUPABASE_SECRET_KEYS`),
+and the JWKS source (`SUPABASE_JWKS` for inline keys, `SUPABASE_JWKS_URL`
+for a remote endpoint, or the well-known endpoint derived from
+`SUPABASE_PUBLIC_URL` / the resolved `url`). Works across Deno, Node.js,
+and Bun. For Cloudflare Workers, use `overrides` or enable node-compat.
+
+### Examples
+
+#### Reading and overriding env vars
+
+```ts
+const { data: env, error } = resolveEnv()
+if (error) throw error
+
+// Override for tests
+const { data: env } = resolveEnv({ url: 'http://localhost:54321' })
+```
+
+## verifyAuth
+
+Extracts credentials from a request and verifies them in a single step.
+
+This is a convenience function that combines extractCredentials and
+verifyCredentials. Use it when you want the full auth flow without
+needing to inspect the raw credentials.
+
+### Examples
+
+#### User auth
+
+```ts
+import { verifyAuth } from '@supabase/server/core'
+
+const { data: auth, error } = await verifyAuth(request, {
+  auth: 'user',
+})
+
+if (error) {
+  return Response.json({ message: error.message }, { status: error.status })
+}
+
+console.log(auth.userClaims!.id) // "d0f1a2b3-..."
+```
+
+## VerifyAuthOptions
+
+Options for verifyAuth.
+
+## verifyCredentials
+
+Verifies pre-extracted credentials against one or more allowed auth modes.
+
+Tries each mode in order — first match wins. A mode is only tried when its
+credential is present; a JWT that is present but fails verification
+short-circuits the chain with InvalidJwtError instead of falling
+through to the next mode. Use verifyAuth to extract and verify in a
+single call.
+
+When every mode falls through, the returned error names the actual cause
+rather than a generic failure — MissingCredentialsError when the
+request carried nothing, InvalidApiKeyError when an `apikey` matched
+no configured key, or a `500` (JwksNotConfiguredError,
+NoKeysConfiguredError) when the server is configured such that no
+request could ever have succeeded. Every error carries `hint`, `docs`, and
+non-sensitive `details`.
+
+A misconfiguration `500` is only reported once nothing has matched, so an
+allowed mode that does match the request's credentials still wins — e.g.
+`['user', 'secret']` with no JWKS but a valid apikey authenticates as
+`secret`. `sb_*` values in the Authorization slot are API keys, not user
+tokens, and stay a caller error.
+
+### Examples
+
+#### Multiple auth modes
+
+```ts
+const credentials = extractCredentials(request)
+const { data: auth, error } = await verifyCredentials(credentials, {
+  auth: ['user', 'publishable'],
+})
+if (error) {
+  console.error(error.code, error.message, error.hint)
+  return Response.json(error.toJSON(), { status: error.status })
+}
+```
+
+## VerifyCredentialsOptions
+
+Options for verifyCredentials.
+
+## Adapters
+
+## SupabaseError
+
+Wraps an AuthError as an Elysia-compatible error.
+
+Discriminate in `onError` via `code === 'SupabaseError'`. The original
+`AuthError` is available as the typed `.cause`.
+
+## withSupabase
+
+Elysia plugin that creates a SupabaseContext and makes it available in route handlers.
+
+Skips if a previous plugin already set the context, enabling route-level overrides.
+Throws a `SupabaseError` on auth failure. `.status` is on the error directly; the original
+`AuthError` is available as the typed `.cause`. Discriminate in `onError` via `code === 'SupabaseError'`.
+
+### Examples
+
+#### App-wide auth via .use()
+
+```ts
+import { Elysia } from 'elysia'
+import { withSupabase } from '@supabase/server/adapters/elysia'
+
+const app = new Elysia()
+  .use(withSupabase({ auth: 'user' }))
+  .get('/games', async ({ supabaseContext }) => {
+    const { data } = await supabaseContext.supabase.from('favorite_games').select()
+    return data
+  })
+
+app.listen(3000)
+```
+
+#### Per-route auth via scoped .use()
+
+```ts
+import { Elysia } from 'elysia'
+import { withSupabase } from '@supabase/server/adapters/elysia'
+
+const app = new Elysia()
+  .get('/health', () => ({ status: 'ok' }))
+  .group('/api', (app) =>
+    app
+      .use(withSupabase({ auth: 'user' }))
+      .get('/profile', async ({ supabaseContext }) => {
+        return supabaseContext.userClaims
+      })
+  )
+
+app.listen(3000)
+```
+
+## Errors
+
+## ApiKeyFormat
+
+How an `apikey` header value was classified by its public prefix. Used in
+diagnostics so a format mismatch can be reported without echoing the key.
+
+## AuthError
+
+Thrown when authentication or authorization fails.
+
+Carries an HTTP `status` code suitable for returning directly in a response
+(`401` when the request's credentials are at fault, `500` when the server is
+misconfigured and could not have authenticated anyone).
+
+### Examples
+
+#### Catching an AuthError
+
+```ts
+import { createSupabaseContext } from '@supabase/server'
+
+const { data: ctx, error } = await createSupabaseContext(request, { auth: 'user' })
+if (error) {
+  // error is an AuthError — `toJSON()` includes source, code, message, hint, docs, details
+  return Response.json(error.toJSON(), { status: error.status })
+}
+```
+
+## AuthFailureContext
+
+Everything the auth pipeline knows about a failed attempt, minus anything
+secret. Used to build messages, hints, and `details`.
+
+## AuthGenericError
+
+Generic authentication error code.
+
+## CreateSupabaseClientError
+
+Failed to create a Supabase client after auth succeeded.
+
+## EnvError
+
+Thrown when a required environment variable is missing or malformed.
+
+Always has `status: 500` — environment errors are server-side configuration issues.
+
+### Examples
+
+#### Catching an EnvError
+
+```ts
+import { EnvError } from '@supabase/server'
+
+try {
+  const client = createAdminClient()
+} catch (e) {
+  if (e instanceof EnvError) {
+    console.error(`[${e.code}] ${e.message}\n${e.hint}`)
+    // → "[MISSING_SUPABASE_URL] [@supabase/server] SUPABASE_URL is required but not set."
+    //   "Set SUPABASE_URL to your project URL (https://<project-ref>.supabase.co), …"
+  }
+}
+```
+
+## EnvGenericError
+
+Generic environment error code.
+
+## ErrorCodeHeader
+
+Response header withSupabase sets on every error response, carrying
+the error SupabaseServerError.code.
+
+## ErrorPayload
+
+Serializable form of a SupabaseServerError — the exact JSON body
+withSupabase returns on failure.
+
+## Errors
+
+Factory map for all error types. Keyed by error code constant, each entry
+returns a pre-configured EnvError, AuthError, or
+PostgresPoolError complete with `hint`, `docs`, and `details`.
+
+### Examples
+
+#### Throwing typed errors
+
+```ts
+throw Errors[MissingSupabaseURLError]()
+throw Errors[MissingPublishableKeyError]('mobile', ['default', 'web'])
+```
+
+## ErrorSource
+
+Package identifier stamped on every error this library produces.
+
+Present as `source` on each error instance, as the `source` field of the JSON
+body withSupabase returns, and as a `[@supabase/server]` prefix on
+every `message` — so an error is traceable back here from a log line, a
+response body, or a response header alone.
+
+## InvalidApiKeyError
+
+An `apikey` header was present but matched none of the keys configured for
+the accepted auth modes.
+
+## InvalidCredentialsError
+
+Generic credential failure. Retained as the fallback code for cases that
+don't match a more specific one.
+
+Prior to v1.5 this was the only code withSupabase ever
+returned for a failed request. Prefer matching on the specific codes —
+MissingCredentialsError, InvalidApiKeyError,
+InvalidJwtError — which now cover nearly every real failure.
+
+## InvalidJwtError
+
+A JWT was present in the `Authorization` header but failed verification.
+`details.jwt` and the message carry the specific reason (expired, bad
+signature, unknown `kid`, malformed token or claim, no `sub`, mismatched or
+missing `aud` / `iss`, `nbf` in the future).
+
+## JwksFetchFailedError
+
+The remote JWKS endpoint could not be fetched or returned something
+unusable. Server-side / upstream failure (`status: 500`), not a bad request.
+
+## JwksNotConfiguredError
+
+Auth mode `"user"` was requested and a JWT was supplied, but no JWKS is
+configured — so the token cannot be verified. Server misconfiguration
+(`status: 500`), not a bad request.
+
+## MinimalErrorPayload
+
+Reduced error body produced when `errors: { detailed: false }` is set.
+
+`message` keeps its `[@supabase/server]` prefix, so the error is still
+traceable back here even without the `source` field.
+
+## MissingAuthorizationServerError
+
+`withOAuthProtectedResource` has no `authorizationServer` and cannot derive one.
+
+## MissingConnectionStringError
+
+No Postgres connection string is configured, so the `withPostgresClient` /
+`withPostgresAdminClient` middleware cannot connect.
+
+## MissingCredentialsError
+
+The request carried no credentials at all — neither an `apikey` header nor
+an `Authorization: Bearer` token — and no accepted auth mode allows that.
+
+## MissingDefaultPublishableKeyError
+
+No default publishable key found.
+
+## MissingDefaultSecretKeyError
+
+No default secret key found.
+
+## MissingPublishableKeyError
+
+Named publishable key not found in `SUPABASE_PUBLISHABLE_KEYS`.
+
+## MissingResourceServerError
+
+`withOAuthProtectedResource` has no `resourceServer` and cannot derive one.
+
+## MissingSecretKeyError
+
+Named secret key not found in `SUPABASE_SECRET_KEYS`.
+
+## MissingSupabaseURLError
+
+`SUPABASE_URL` is not set.
+
+## NoKeysConfiguredError
+
+An `"publishable"` or `"secret"` auth mode was requested but no keys of that
+kind are configured, so the mode could never match. Server
+misconfiguration (`status: 500`).
+
+## PostgresConnectPausedError
+
+A connection attempt failed and the pool is pausing new attempts, so a query
+that needed a new connection was refused without trying. `cause` is the
+failure and `details.retryAfterMs` the time left in the pause.
+
+## PostgresPoolBusyError
+
+Every pooled connection stayed busy for the whole checkout wait, so the
+query could not get one. `details.max` is the pool size and
+`details.waitedMs` the wait.
+
+## PostgresPoolError
+
+Thrown when the Postgres pool cannot hand a query a connection: every pooled
+connection stayed busy for the whole checkout wait, or new connection
+attempts are paused after one failed.
+
+Always has `status: 503`. Both conditions are transient, so the request can
+be retried. `details.retryAfterMs` gives the time left when a pause is
+running.
+
+`ctx.postgres` and `ctx.postgresAdmin` throw this from the query call. The
+middleware do not turn it into a response; the handler or the host's error
+handler decides how the request answers.
+
+### Examples
+
+#### Answering 503 with a Retry-After header
+
+```ts
+import { PostgresPoolError } from '@supabase/server'
+
+try {
+  return Response.json(await ctx.postgres.query`select * from notes`)
+} catch (e) {
+  if (e instanceof PostgresPoolError) {
+    const retryAfterMs = Number(e.details?.retryAfterMs ?? 1000)
+    return Response.json(e.toJSON(), {
+      status: e.status,
+      headers: { 'Retry-After': String(Math.ceil(retryAfterMs / 1000)) },
+    })
+  }
+  throw e
+}
+```
+
+## ReceivedCredentials
+
+Non-sensitive summary of the credentials a request carried.
+
+## SupabaseServerError
+
+Base class for every error `@supabase/server` produces.
+
+Catch this to handle anything originating from this library, regardless of
+whether it's an EnvError or an AuthError:
+
+### Examples
+
+#### Catching any library error
+
+```ts
+import { SupabaseServerError } from '@supabase/server'
+
+try {
+  const supabase = createAdminClient()
+} catch (e) {
+  if (e instanceof SupabaseServerError) {
+    console.error(e.code, e.message, e.hint, e.docs)
+    return Response.json(e.toJSON(), { status: e.status })
+  }
+  throw e
+}
+```
+
+## SupabaseServerErrorOptions
+
+Optional diagnostics attached to a SupabaseServerError.
+
+## UnsupportedRoleError
+
+The caller's verified `role` claim names a Postgres role the middleware
+will not assume — either one that would bypass RLS, or one it does not
+support yet. Returned by `withPostgresClient` instead of silently running
+the query as `anon`.
+
+## UnusableCredentialError
+
+A credential *did* arrive, but not one any accepted auth mode can use — an
+`sb_*` API key in the `Authorization` header, or a header this library cannot
+read a bearer token out of (wrong scheme, wrong casing, bare value, empty
+token).
+
+Distinct from MissingCredentialsError on purpose. The two
+partition the "nothing authenticated" space exactly — nothing arrived vs.
+something arrived that could not be used — so the code stays true on its own
+when `errors: { detailed: false }` strips `hint` and `details`.
+
+## Types
+
+## Allow
+
+**Deprecated.** Use AuthMode instead. Will be removed in a future major release.
+
+## AllowWithKey
+
+**Deprecated.** Use AuthModeWithKey instead. Will be removed in a future major release.
+
+## AuthConfig
+
+Accepted shape of the `auth` option: one mode, or an ordered list of modes
+tried left to right.
+
+`"none"` accepts every request, so it only carries meaning as the last
+entry of a list — the modes before it are the ones that can produce an
+identity, and anything after it is unreachable. On its own in a list
+(`["none"]`) it says nothing that a bare `auth: 'none'` doesn't. So the
+type accepts `"none"` alone or in final position behind at least one
+credentialed mode, and nowhere else.
+
+A single mode needs no wrapping array — `"user"` and `["user"]` are the
+same configuration, and the unwrapped form is the one the union names
+first, so it is what shows up in editor completions.
+
+### Examples
+
+#### Every accepted form
+
+```ts
+withSupabase({ auth: 'user' }, handler)              // one mode
+withSupabase({ auth: ['secret', 'user'] }, handler)  // first match wins
+withSupabase({ auth: ['user', 'none'] }, handler)    // optional user
+withSupabase({ auth: 'none' }, handler)              // no credentials required
+```
+
+## AuthMode
+
+Authentication mode that determines what credentials a request must provide.
+
+- `"none"` — No credentials required. Every request is accepted.
+- `"publishable"` — Requires a valid publishable key in the `apikey` header. Matches only the `default` key.
+- `"secret"` — Requires a valid secret key in the `apikey` header (timing-safe comparison). Matches only the `default` key.
+- `"user"` — Requires a valid JWT in the `Authorization: Bearer <token>` header.
+
+Bare `"publishable"` / `"secret"` resolve the `default` key from
+`SUPABASE_PUBLISHABLE_KEYS` / `SUPABASE_SECRET_KEYS`. To target another key or
+accept any key, see AuthModeWithKey.
+
+### Examples
+
+#### Single mode
+
+```ts
+// Single mode
+withSupabase({ auth: 'user' }, handler)
+
+// Multiple modes — the first match wins.
+// A mode is tried only when its credential is present; a JWT that is
+// present but fails verification rejects immediately rather than falling
+// through to the next mode.
+withSupabase({ auth: ['user', 'publishable'] }, handler)
+```
+
+## AuthModeWithKey
+
+Extended auth mode that supports targeting a specific named key.
+
+Use the colon syntax (`"publishable:web_app"`) to require a specific named key
+from the `SUPABASE_PUBLISHABLE_KEYS` or `SUPABASE_SECRET_KEYS` JSON object.
+Use `"publishable:*"` or `"secret:*"` to accept any key in the set. The bare
+form without a colon (`"publishable"` / `"secret"`) matches only the `default` key.
+
+### Examples
+
+#### Named key
+
+```ts
+// Accept only the "mobile" publishable key
+withSupabase({ auth: 'publishable:mobile' }, handler)
+
+// Accept any secret key
+withSupabase({ auth: 'secret:*' }, handler)
+
+// Mix named keys with other modes
+withSupabase({ auth: ['user', 'publishable:web_app'] }, handler)
+```
+
+## AuthResult
+
+Result of credential verification.
+
+Contains the resolved auth mode, the verified token (for `"user"` mode),
+decoded JWT claims, and the matched key name (for `"publishable"` / `"secret"` modes).
+
+## ClientAuth
+
+Auth identity for client creation functions.
+
+## CreateAdminClientOptions
+
+Options for core.createAdminClient.
+
+## CreateContextClientOptions
+
+Options for core.createContextClient.
+
+## CredentialedAuthMode
+
+An auth mode that requires a credential — every AuthModeWithKey
+except `"none"`, keyed forms included.
+
+## Credentials
+
+Raw credentials extracted from an incoming HTTP request.
+
+Produced by core.extractCredentials from the `Authorization` and `apikey` headers.
+
+## ErrorResponseConfig
+
+Controls how much of an error goes in the response body. Accepted as
+`errors` by withSupabase and by every middleware that answers a
+request directly: `withClaims`, `withRequiredClaims`, `withPostgresClient`,
+`withPostgresAdminClient` and `withOAuthProtectedResource`.
+
+### Examples
+
+#### Trimming the response
+
+```ts
+// Full payload: source, code, message, hint, docs, details
+withSupabase({ auth: 'user' }, handler)
+
+// Trimmed: code and message only
+withSupabase({ auth: 'user', errors: { detailed: false } }, handler)
+```
+
+## JWTClaims
+
+Standard JWT claims as defined by RFC 7519, extended with Supabase-specific fields.
+
+This is the raw JWT payload — use UserClaims for a normalized, camelCase view.
+
+## OAuthProtectedResourceConfig
+
+**Alpha.** Configuration for withOAuthProtectedResource.
+
+Both options accept a fixed string or a function of the request. Both default
+to values derived from the request as it arrives through the Supabase Edge
+Functions proxy, so no configuration is needed there.
+
+The OAuth Protected Resource surface is alpha — the config shape, the
+contributed context key, and the metadata route may change in a minor
+release.
+
+## ResourceMetadataOptions
+
+**Alpha.** Options for resourceMetadataResponse.
+
+The OAuth Protected Resource surface is alpha — the config shape, the
+contributed context key, and the metadata route may change in a minor
+release.
+
+## ShortCircuitConfig
+
+The option shared by every middleware that answers a request itself:
+`withSupabase`, `withClaims`, `withRequiredClaims`, `withPostgresClient`,
+`withPostgresAdminClient` and `withOAuthProtectedResource`. Each applies
+`errors` to its own responses.
+
+## SupabaseContext
+
+The Supabase context created for each authenticated request.
+
+Contains pre-configured Supabase clients and the caller's identity.
+Identical regardless of which layer or adapter produced it.
+
+## SupabaseEnv
+
+Resolved Supabase environment configuration.
+
+Holds the project URL, API keys, and JWKS needed by every other primitive.
+Typically resolved automatically from environment variables by core.resolveEnv,
+but can be passed explicitly via the `env` option.
+
+## UnauthorizedResponseOptions
+
+**Alpha.** Options for unauthorizedResponse.
+
+The OAuth Protected Resource surface is alpha — the config shape, the
+contributed context key, and the metadata route may change in a minor
+release.
+
+## UrlOption
+
+**Alpha.** A configured URL: either a fixed value, or derived per request.
+
+The OAuth Protected Resource surface is alpha — the config shape, the
+contributed context key, and the metadata route may change in a minor
+release.
+
+## UserClaims
+
+Normalized, camelCase view of the authenticated user's identity.
+
+Derived from JWTClaims. For the full Supabase `User` object
+(including email confirmation status, providers, etc.), call
+`supabase.auth.getUser()` using the context client.
+
+## WithSupabaseConfig
+
+Configuration for withSupabase and createSupabaseContext.
+
+Controls which auth modes are accepted, environment overrides, and CORS behavior.
+
+### Examples
+
+#### Basic usage
+
+```ts
+// Require authenticated users, auto-CORS enabled (default)
+const config: WithSupabaseConfig = { auth: 'user' }
+
+// Accept users or service-to-service calls, custom CORS headers
+const config: WithSupabaseConfig = {
+  auth: ['user', 'secret'],
+  cors: { 'Access-Control-Allow-Origin': 'https://myapp.com' },
+}
+
+// No auth required, CORS disabled
+const config: WithSupabaseConfig = { auth: 'none', cors: 'disabled' }
+```

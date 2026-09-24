@@ -1,0 +1,308 @@
+# Build a User Management App with Refine
+# джерело: https://supabase.com/docs/guides/getting-started/tutorials/with-refine
+# отримано: 2026-09-24
+
+Learn how to use Supabase in your Refine App.
+
+This tutorial demonstrates how to build a basic user management app. The app authenticates and identifies the user, stores their profile information in the database, and allows the user to log in, update their profile details, and upload a profile photo. The app uses:
+
+- Supabase Database - a Postgres database for storing your user data and Row Level Security so data is protected and users can only access their own information.
+- Supabase Auth - allow users to sign up and log in.
+- Supabase Storage - allow users to upload a profile photo.
+
+Supabase User Management example
+
+Note: If you get stuck while working through this guide, you can find the full example on GitHub.
+
+## About Refine
+
+Refine is a React-based framework used to rapidly build data-heavy applications like admin panels, dashboards, storefronts and any type of CRUD apps. It separates app concerns into individual layers, each backed by a React context and respective provider object. For example, the auth layer represents a context served by a specific set of `authProvider` methods that carry out authentication and authorization actions such as signing in, signing out, getting roles data, etc. Similarly, the data layer offers another level of abstraction equipped with `dataProvider` methods to handle CRUD operations at appropriate backend API endpoints.
+
+Refine provides hassle-free integration with a Supabase backend with its supplementary `@refinedev/supabase` package. It generates `authProvider` and `dataProvider` methods at project initialization, so you don't need to spend much effort defining them yourself, choose Supabase as the backend service while creating the app with `create refine-app`.
+
+## Project setup
+
+Before you start building you need to set up the Database and API. You can do this by starting a new Project in Supabase and then creating a "schema" inside the database.
+
+### Create a project
+
+1. Create a new project in the Supabase Dashboard.
+2. Enter your project details.
+3. Wait for the new database to launch.
+
+### Set up the database schema
+
+Now set up the database schema. You can use the "User Management Starter" quickstart in the SQL Editor, or you can copy/paste the SQL from below and run it.
+
+**Dashboard**
+
+1. Go to the SQL Editor page in the Dashboard.
+2. Click **User Management Starter** under the **Reference > Examples** tab.
+3. Click **Run**.
+
+Note: You can pull the database schema down to your local project by running the `db pull` command. Read the local development docs for detailed instructions.
+
+```bash
+supabase link --project-ref <project-id>
+# You can get <project-id> from your project's dashboard URL: https://supabase.com/dashboard/project/<project-id>
+supabase db pull
+```
+
+**SQL**
+
+Note: When working locally you can run the following command to create a new migration file:
+
+```bash
+supabase migration new user_management_starter
+```
+
+```sql
+-- Create a table for public profiles
+create table profiles (
+  id uuid references auth.users not null primary key,
+  updated_at timestamp with time zone,
+  username text unique,
+  full_name text,
+  avatar_url text,
+  website text,
+
+  constraint username_length check (char_length(username) >= 3)
+);
+
+-- Grant the privileges roles need
+GRANT SELECT ON public.profiles TO anon;
+GRANT SELECT, INSERT, UPDATE ON public.profiles TO authenticated;
+
+-- Set up Row Level Security (RLS)
+-- See https://supabase.com/docs/guides/database/postgres/row-level-security for more details.
+alter table profiles
+  enable row level security;
+
+create policy "Public profiles are viewable by everyone." on profiles
+  for select using (true);
+
+create policy "Users can insert their own profile." on profiles
+  for insert with check ((select auth.uid()) = id);
+
+create policy "Users can update own profile." on profiles
+  for update using ((select auth.uid()) = id);
+
+-- This trigger automatically creates a profile entry when a new user signs up via Supabase Auth.
+-- See https://supabase.com/docs/guides/auth/managing-user-data#using-triggers for more details.
+create function public.handle_new_user()
+returns trigger
+set search_path = ''
+as $$
+begin
+  insert into public.profiles (id, full_name, avatar_url)
+  values (new.id, new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'avatar_url');
+  return new;
+end;
+$$ language plpgsql security definer;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+
+-- Set up Storage!
+insert into storage.buckets (id, name)
+  values ('avatars', 'avatars');
+
+-- Set up access controls for storage. Allows downloading object with public key
+-- See https://supabase.com/docs/guides/storage/security/access-control#policy-examples for more details.
+create policy "Avatar images are publicly accessible." on storage.objects
+  for select using (bucket_id = 'avatars' and storage.allow_any_operation(array['object.get_authenticated_info', 'object.get_authenticated']));
+
+create policy "Anyone can upload an avatar." on storage.objects
+  for insert with check (bucket_id = 'avatars');
+
+create policy "Anyone can update their own avatar." on storage.objects
+  for update using ((select auth.uid()) = owner) with check (bucket_id = 'avatars');
+```
+
+### Get API details
+
+To interact with data in database tables, you use the client libraries that wrap the auto-generated Data API endpoints, authenticating using the Project URL and key from the project **Connect** dialog.
+
+Note: See API keys for a full explanation of all key types, their uses, and where to find them.
+
+## Building the app
+
+Start building the Refine app from scratch.
+
+### Initialize a Refine app
+
+Use create refine-app command to initialize
+an app. Run the following in the terminal:
+
+```bash
+npm create refine-app@latest -- --preset refine-supabase
+```
+
+The command above uses the `refine-supabase` preset which chooses the Supabase supplementary package for the app. There's no UI framework, so the app has a headless UI with plain React and CSS styling.
+
+The `refine-supabase` preset installs the `@refinedev/supabase` package which out-of-the-box includes the Supabase dependency: supabase-js.
+
+Install the `@refinedev/react-hook-form` and `react-hook-form` packages that to use React Hook Form inside Refine apps. Run:
+
+```bash
+npm install @refinedev/react-hook-form react-hook-form
+```
+
+### Refine `supabaseClient`
+
+The `create refine-app` generated a Supabase client in the `src/utility/supabaseClient.ts` file. It has two constants: `SUPABASE_URL` and `SUPABASE_KEY`. Replace them as `supabaseUrl` and `supabasePublishableKey` respectively and assign them your Supabase server's values.
+
+Update it with environment variables managed by Vite:
+
+Save the environment variables in a `.env.local` file. All you need are the API URL and the key that you copied earlier.
+
+```bash
+VITE_SUPABASE_URL=YOUR_SUPABASE_URL
+VITE_SUPABASE_PUBLISHABLE_KEY=YOUR_SUPABASE_PUBLISHABLE_KEY
+```
+
+The `supabaseClient` fetches calls to Supabase endpoints from the app. The client is instrumental in implementing authentication using Refine's auth provider methods and CRUD actions with appropriate data provider methods.
+
+### App styling (optional)
+
+An optional step is to update the CSS file `src/App.css` to make the app look better.
+You can find the full contents of this file in the example repository.
+
+### The `<Refine />` component
+
+In order to add sign-in and user profile pages in this App, tweak the `<Refine />` component inside `App.tsx`.
+
+The `App.tsx` file initially looks like this:
+
+```tsx
+import { Refine, WelcomePage } from '@refinedev/core'
+import { RefineKbar, RefineKbarProvider } from '@refinedev/kbar'
+import routerProvider, {
+  DocumentTitleHandler,
+  UnsavedChangesNotifier,
+} from '@refinedev/react-router'
+import { dataProvider, liveProvider } from '@refinedev/supabase'
+import { BrowserRouter, Route, Routes } from 'react-router'
+
+import './App.css'
+
+import authProvider from './authProvider'
+import { supabaseClient } from './utility'
+
+function App() {
+  return (
+    <BrowserRouter>
+      <RefineKbarProvider>
+        <Refine
+          dataProvider={dataProvider(supabaseClient)}
+          liveProvider={liveProvider(supabaseClient)}
+          authProvider={authProvider}
+          routerProvider={routerProvider}
+          options={{
+            syncWithLocation: true,
+            warnWhenUnsavedChanges: true,
+          }}
+        >
+          <Routes>
+            <Route index element={<WelcomePage />} />
+          </Routes>
+          <RefineKbar />
+          <UnsavedChangesNotifier />
+          <DocumentTitleHandler />
+        </Refine>
+      </RefineKbarProvider>
+    </BrowserRouter>
+  )
+}
+
+export default App
+```
+
+Focus on the `<Refine />` component, which comes with props passed to it. Notice the `dataProvider` prop. It uses a `dataProvider()` function with `supabaseClient` passed as argument to generate the data provider object. The `authProvider` object also uses `supabaseClient` in implementing its methods. You can look it up in `src/authProvider.ts` file.
+
+### Customize `authProvider`
+
+If you examine the `authProvider` object you can notice that it has a `login` method that implements an OAuth and Email / Password strategy for authentication. This tutorial instead removes them and use Magic Links to allow users sign in with their email without using passwords.
+
+Use `supabaseClient` auth's `signInWithOtp` method inside `authProvider.login` method:
+
+```ts
+login: async ({ email }) => {
+  try {
+    const { error } = await supabaseClient.auth.signInWithOtp({ email });
+
+    if (!error) {
+      alert("Check your email for the login link!");
+      return {
+        success: true,
+      };
+    };
+
+    throw error;
+  } catch (e: any) {
+    alert(e.message);
+    return {
+      success: false,
+      e,
+    };
+  }
+},
+```
+
+Remove `register`, `updatePassword`, `forgotPassword` and `getPermissions` properties, which are optional type members and also not necessary for the app. The final `authProvider` object looks like this:
+
+### Set up a sign-in component
+
+As the app uses the headless Refine core package that comes with no supported UI framework set up a plain React component to manage sign-ins and sign-ups.
+
+Create and edit `src/components/auth.tsx`:
+
+The `useLogin()` Refine auth hook to grab the `mutate: login` method to use inside `handleLogin()` function and `isLoading` state for the form submission. The `useLogin()` hook conveniently offers access to `authProvider.login` method for authenticating the user with OTP.
+
+### Account page
+
+After a user is signed in, allow them to edit their profile details and manage their account.
+
+Create a new component for that in `src/components/account.tsx`.
+
+This uses three Refine hooks, namely the `useGetIdentity()`, `useLogOut()` and `useForm()` hooks.
+
+`useGetIdentity()` is a auth hook that gets the identity of the authenticated user. It grabs the current user by invoking the `authProvider.getIdentity` method under the hood.
+
+`useLogOut()` is also an auth hook. It calls the `authProvider.logout` method to end the session.
+
+`useForm()`, in contrast, is a data hook that exposes a series of useful objects that serve the edit form. For example, grabbing the `onFinish` function to submit the form with the `handleSubmit` event handler. It also uses `formLoading` property to present state changes of the submitted form.
+
+The `useForm()` hook is a higher-level hook built on top of Refine's `useForm()` core hook. It fully supports form state management, field validation and submission using React Hook Form. Behind the scenes, it invokes the `dataProvider.getOne` method to get the user profile data from the Supabase `/profiles` endpoint and also invokes `dataProvider.update` method when `onFinish()` is called.
+
+## Profile photos
+
+Next, add a way for users to upload a profile photo. Supabase configures every project with Storage for managing large files like photos and videos.
+
+### Create an upload widget
+
+Add a new component:
+
+Create and edit `src/components/avatar.tsx`:
+
+### Update the Account component
+
+With the Avatar component created, update `src/components/account.tsx` to include it:
+
+### Launch!
+
+With all the components in place, define the routes for the pages in which they should be rendered.
+
+Add the routes for `/login` with the `<Auth />` component and the routes for `index` path with the `<Account />` component. So, the final `App.tsx`:
+
+Test the App by running the server again:
+
+```bash
+npm run dev
+```
+
+And then open the browser to localhost:5173 and you should see the completed app.
+
+Supabase Refine
+
+At this stage, you have a fully functional application!

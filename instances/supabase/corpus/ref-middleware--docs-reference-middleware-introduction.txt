@@ -1,0 +1,732 @@
+# Supabase Middleware SDK Reference
+# джерело: https://supabase.com/docs/reference/middleware/introduction
+# отримано: 2026-09-24
+
+## Introduction
+
+`@supabase/middleware` is a framework-agnostic engine for composing server-side request middleware. You write small units with `defineMiddleware`, compose them with `pipeline`, and run the result as a standard Fetch handler on Node, Deno, Bun, and Cloudflare Workers.
+
+Each middleware can guard the request, edit the response, or contribute typed values to a shared context that later middleware and your handler read. TypeScript checks the composition: a middleware that needs a value from an earlier middleware will not compile unless that middleware runs first.
+
+`@supabase/middleware` is in alpha. APIs may change between 0.x releases.
+
+This package contains the engine and the framework-neutral middleware: `withCors` and `withFeatureFlag`. Supabase-specific middleware such as `withClaims`, `withSupabaseClient`, `withSupabaseAdminClient`, `withPostgresClient`, and `withPostgresAdminClient` ships in `@supabase/server`.
+
+### Trust model
+
+A middleware in your pipeline runs with the same access as your own handler code. It sees the full request, everything earlier middleware put on the context, and every response on the way out. Nothing sandboxes it. Only compose middleware you trust as much as your own code.
+
+Ordering is your permission boundary. A middleware can only read context values that earlier entries contributed, so place third-party middleware as early as possible and sensitive contributions as late as possible.
+
+### Environment access
+
+Middleware reads configuration through `getEnv` instead of `process.env`. On Node, Deno, and Bun, `getEnv` reads the process environment. Cloudflare Workers pass env bindings per request instead of exposing a global environment; the pipeline seeds each request's bindings, and `getEnv` reads the ones for the current request.
+
+## Installing
+
+### Install as a package
+
+Install `@supabase/middleware` via your package manager.
+
+```sh
+npm install @supabase/middleware
+```
+
+```sh
+yarn add @supabase/middleware
+```
+
+```sh
+pnpm add @supabase/middleware
+```
+
+### Use via JSR (Deno / Bun)
+
+`@supabase/middleware` is also published to JSR for Deno and Bun environments.
+
+```sh
+deno add jsr:@supabase/middleware
+```
+
+```sh
+bunx jsr add @supabase/middleware
+```
+
+## Usage examples
+
+Each example builds one Fetch handler with `pipeline`. Entries run in array order on the request. The handler runs last and reads what the entries contributed to `ctx`.
+
+### Gate a route behind CORS and a feature flag
+
+`withCors` runs first. It answers the CORS preflight (an `OPTIONS` request carrying `Access-Control-Request-Method`) with `204` before anything else runs. On the way out, it stamps `Access-Control-*` headers onto the response when the request's `Origin` is allowed.
+
+`withFeatureFlag` runs second. `evaluate` receives the request and decides: `true` admits it, `false` rejects it. It can be async, and it can return a verdict object instead of a boolean. A rejected request gets a `404` and never reaches the handler. An admitted request reaches the handler with `ctx.featureFlag` set.
+
+Both middleware ship in `@supabase/middleware`. The handler is plain Fetch, so the same stack runs on Node, Deno, Bun, and Cloudflare Workers; only the host entry point differs.
+
+```ts
+import { pipeline } from '@supabase/middleware'
+import { withCors } from '@supabase/middleware/cors'
+import { withFeatureFlag } from '@supabase/middleware/feature-flag'
+
+export default {
+  fetch: pipeline(
+    [
+      withCors({ origin: ['https://app.example.com'], credentials: true }),
+      withFeatureFlag({
+        name: 'beta-checkout',
+        evaluate: (req) => req.headers.get('x-beta') === '1',
+      }),
+    ],
+    async (_req, ctx) => Response.json({ feature: ctx.featureFlag.name }),
+  ),
+}
+```
+
+### Roll out an authenticated endpoint behind a flag
+
+Middleware from `@supabase/server` drop into the same array. `withCors` runs first, so the preflight is answered before the auth gate. `withSupabase` runs second with `cors: 'disabled'`, because `withCors` owns CORS here. It verifies the caller's JWT and puts an RLS-scoped client on `ctx.supabase`. A request without valid credentials gets a `401` and never reaches the flag or the handler.
+
+The flag runs last. `evaluate` reads an environment variable through `getEnv`, so the endpoint returns `404` to every signed-in caller until `BETA_CHECKOUT` is set to `on`. Flip the variable to roll the endpoint out.
+
+Without `withCors`, `withSupabase` answers every `OPTIONS` request itself with `204` and wildcard CORS headers (`Access-Control-Allow-Origin: *`). That is enough when you do not need an origin allowlist. A layer that owns CORS must sit before `withSupabase` in the array. Placed after it, the preflight reaches the auth gate and gets a `401`.
+
+The entry form of `withSupabase` is alpha. It needs `@supabase/server` 1.6.0 or later.
+
+```ts
+import { getEnv, pipeline } from '@supabase/middleware'
+import { withCors } from '@supabase/middleware/cors'
+import { withFeatureFlag } from '@supabase/middleware/feature-flag'
+import { withSupabase } from '@supabase/server'
+
+export default {
+  fetch: pipeline(
+    [
+      withCors({ origin: ['https://app.example.com'] }),
+      withSupabase({ auth: 'user', cors: 'disabled' }),
+      withFeatureFlag({
+        name: 'beta-checkout',
+        evaluate: () => getEnv('BETA_CHECKOUT') === 'on',
+      }),
+    ],
+    async (_req, ctx) => {
+      const { data, error } = await ctx.supabase.from('carts').select()
+      if (error) return Response.json({ error: 'query_failed' }, { status: 500 })
+      return Response.json(data)
+    },
+  ),
+}
+```
+
+## Build your own middleware
+
+A middleware is a `withFoo` function built with `defineMiddleware`. It owns one key on `ctx` and runs before the handler on every request. A generator `run` can also act on the response on the way out; the guide calls that the response seam. This page covers the shape. The authoring guide in the repo covers tests, packaging, and the variants: requiring an upstream key, a config callback that reads upstream context, a hand-written signature, wrapping a vendor SDK, the response seam, and bundling several middleware into one.
+
+### Define it
+
+`defineMiddleware` takes four type arguments and a spec object. The last two have defaults, but pass all four: without the fourth, the contribution lands on `ctx` as `unknown`.
+
+The type arguments are the key, the config type, the upstream context the middleware needs, and the contribution type. `void` config means the middleware takes no options. `Record<never, never>` means it needs nothing from earlier middleware.
+
+`run` receives the config when the stack is built and returns the per-request function. That function receives the request and the upstream `ctx`. It contributes by returning an object with the key, or short-circuits by returning a `Response`. Read `getEnv` inside the per-request function, not in the outer stage: on Cloudflare Workers the environment arrives with each request.
+
+```ts
+import { defineMiddleware } from '@supabase/middleware'
+
+export const withRequestId = defineMiddleware<
+  'requestId',
+  void,
+  Record<never, never>,
+  string
+>({
+  key: 'requestId',
+  run: () => async (req) => ({
+    requestId: req.headers.get('x-request-id') ?? crypto.randomUUID(),
+  }),
+})
+```
+
+### Compose it
+
+Your middleware drops into the same `pipeline` array as the built-in ones. The handler reads `ctx.requestId` as a `string`, inferred from the entries.
+
+`pipeline` checks the array at compile time. Two entries that contribute the same key fail with an error naming the key. An entry whose prerequisite no earlier entry supplies fails the same way. If you nest calls instead of using `pipeline`, keep `satisfies FetchHandler` on the outermost call; without that anchor, a nested stack with a duplicate key or a missing prerequisite compiles. `pipeline` already returns a `FetchHandler`, so the anchor adds nothing there.
+
+```ts
+import { pipeline } from '@supabase/middleware'
+import { withCors } from '@supabase/middleware/cors'
+import { withRequestId } from './with-request-id'
+
+export default {
+  fetch: pipeline(
+    [withCors({}), withRequestId()],
+    async (_req, ctx) =>
+      Response.json({ ok: true }, { headers: { 'x-request-id': ctx.requestId } }),
+  ),
+}
+```
+
+## Composition
+
+## bufferRequest
+
+Wrap a `Request` so its body can be read more than once.
+
+A Fetch `Request` body is a single-use stream — the first reader of
+`req.text()` / `req.json()` / … locks out every later one. This returns a
+proxy that reads the underlying body **at most once** and caches the bytes, so
+a body-verifying middleware (e.g. a webhook signature check) and the handler can each read it, in
+any form:
+
+- `arrayBuffer` / `bytes` / `blob` / `text` / `json` / **`formData`** all read
+  from the one cached read (`formData` is parsed from the cached bytes using
+  the request's `content-type`).
+- **`clone()`** returns another handle over the same cache — reading either
+  yields the same body; `headers` / `url` / `method` / `signal` / … forward to
+  the real request, and `proxy instanceof Request` stays true.
+
+The proxy is created once at the entry call and flows down the stack, so the
+cache is shared across every layer.
+
+**One deliberate limit:** reading the raw `req.body` *stream* (e.g. handing the
+request to `fetch()` to forward it) bypasses the cache. By design this is a
+*buffering* model, not a streaming one — to forward the body, reconstruct it,
+e.g. `new Request(req.url, { method: req.method, headers: req.headers, body:
+await req.arrayBuffer() })`.
+
+Applied automatically by defineMiddleware at the entry call, so a
+normal stack never calls this directly. It is public for the same reason
+seedContext and isContext are: a host embedding the engine
+(e.g. `@supabase/server`) can be the entry point itself, and an entry that
+seeds a context without buffering hands the whole stack below it a single-use
+body — the first reader silently locks out every later one. Buffer alongside
+seeding:
+
+```ts
+const upstream = isContext(arg) ? arg : seedContext(arg)
+const request = isContext(arg) || !req.body ? req : bufferRequest(req)
+```
+
+## defineComposite
+
+Bundles a series of middleware into a single middleware.
+
+`build` receives the composite's config and returns the parts, outermost
+first — the same order `pipeline` takes. The composite's contributions are
+derived from the parts', so it publishes exactly the union of what they
+contribute. There is no argument for declaring a key, so a composite
+**cannot over-declare** — and `internal` may only name a key some part
+actually contributes. Prerequisites are derived the same way — a part's `In` that an
+earlier part contributes is discharged internally, and anything outstanding
+becomes the composite's own `In`.
+
+At runtime the parts fold exactly as `pipeline` folds them, each merging its
+own single key. A part that short-circuits therefore does so from *inside* the
+fold, where an enclosing middleware's response seam observes its response.
+
+### Examples
+
+#### A composite with private plumbing
+
+```ts
+import { defineComposite } from '@supabase/middleware'
+
+// `withGate` contributes the whole auth result at `ctx.auth`; the projections
+// republish the individual keys the public contract promises. `auth` itself is
+// an implementation detail, so it is marked internal.
+export const withAuth = defineComposite({
+  build: (config: { mode: 'user' | 'none' }) =>
+    [withGate(config), withMode(), withClaims()] as const,
+  internal: ['auth'],
+})
+
+// Nested, or flat — one declaration serves both.
+export default {
+  fetch: pipeline([withAuth({ mode: 'user' }), withPostgres()], async (req, ctx) => {
+    ctx.authMode   // from withMode
+    ctx.jwtClaims  // from withClaims
+    ctx.postgres   // reads ctx.jwtClaims as its own `In`
+    return Response.json({ ok: true })
+  }),
+}
+```
+
+## defineMiddleware
+
+Defines a middleware.
+
+`run` sees the inbound `Request` and the upstream context. It either
+short-circuits with a `Response`, or contributes a value by returning
+`{ [key]: contribution }`; the framework merges `result[key]` into the
+context and calls the inner handler.
+
+`run` is **request-side by default**: it runs before the handler and
+never observes the handler's `Response`. Response-shaped concerns (CORS,
+envelopes) belong in the handler or a `.then()` on the stack instead.
+
+**Response seam.** When a middleware needs to see the way out (stamp
+headers, time the request, run `finally` cleanup), write `run` as an
+`async function*` instead of `async`. Code before `yield` is the request
+phase; yielding hands back the contribution, and the `yield` expression
+resolves to the downstream `Response` for the response phase, the only
+place a middleware observes the handler's response. Short-circuit the same
+way as the request-side path, with a plain `return new Response(...)`, and
+yield at most once.
+
+**Composition.** `withFoo(config, handler)` produces a single
+`(req, ctx) => Response` function. Middleware nest directly, and the
+outermost one is used as the runtime's `fetch` handler with no wrapper:
+`export default { fetch: withFoo(config, handler) }`. The host's second
+argument is a platform value (a Workers `env`, a Deno `ServeHandlerInfo`),
+not an upstream context. isContext detects this and seeds a fresh
+context instead of merging it, so platform arguments never leak into `ctx`.
+They are only captured as the module-scoped platform env behind `getEnv`.
+
+Extra keys on the returned object are ignored at runtime and not caught at
+compile time, since `run`'s return is contextually typed against a
+`Response | { [key]: … }` union via a generic mapped type, a position
+where TypeScript suppresses excess-property checks. The `contributionOf`
+guard is the runtime backstop: it throws only when the key is missing
+entirely (e.g. a computed or typo'd key the types could not see). Annotate
+`run`'s inner return type explicitly to catch excess keys at compile time
+instead.
+
+Typing:
+
+- **Prerequisite-free middleware can be the `fetch` export on their own.**
+  Their produced handler has an optional `ctx`, so it satisfies a bare
+  `(req) => Response` export and self-seeds a fresh context.
+- **Middleware with `In` prerequisites require `ctx`.** They can only nest
+  inside a wrapper (not necessarily the immediate one) that supplies those
+  keys, never as the bare `fetch` export, since that would make the
+  prerequisite a lie. An unmet prerequisite propagates outward until
+  something supplies it; if nothing does, the stack keeps a required
+  `ctx`, which fails only where it is checked against FetchHandler.
+  Annotate the outermost call to catch this at build time; an untyped
+  `export default { fetch: … }` will not catch it.
+- **Accumulation needs no annotation.** The innermost handler sees every
+  upstream key ambiently at any nesting depth: an unannotated outermost
+  call has no contextual return type, so `Base` resolves to its
+  constraint (the empty upstream, same as `satisfies FetchHandler` would
+  seed), and the cascade proceeds inward.
+- **Collision detection does need one.** Composing where the upstream
+  already has the key resolves the handler parameter to a Conflict
+  sentinel (see NoConflict), but only under `satisfies
+  FetchHandler` on the outermost call: the produced type records what a
+  stack requires, not what it contributes, so an unannotated call has
+  nothing to check a duplicate key against, and it compiles silently. One
+  annotation covers any depth. pipeline has no such gap, since it
+  validates from its entries array; a stack that cannot carry the
+  annotation is better written flat.
+
+### Examples
+
+#### Example 1
+
+```ts
+import { defineMiddleware } from '@supabase/middleware'
+
+export const withFeatureFlag = defineMiddleware<
+  'featureFlag',
+  { name: string; evaluate: (req: Request) => boolean },
+  {},
+  { name: string; enabled: true }
+>({
+  key: 'featureFlag',
+  run: (config) => async (req) => {
+    if (!config.evaluate(req)) {
+      return Response.json({ error: 'feature_disabled' }, { status: 404 })
+    }
+    return { featureFlag: { name: config.name, enabled: true } }
+  },
+})
+```
+
+## isContext
+
+Distinguish an upstream context (passed by a parent middleware) from a
+host-supplied platform argument (an `env` / connection-info object the runtime
+puts in the same positional slot). The symbol marker set by seedContext
+flows by reference through every `{ ...upstream }` merge (spread copies
+enumerable own symbols), so checking for it is reliable across the stack.
+
+Public so a host embedding the engine (e.g. `@supabase/server`) can make the
+same distinction before calling seedContext: reseeding with an
+upstream context would stash it as the platform env, clobbering the real
+bindings captured earlier.
+
+## pipeline
+
+Compose a flat list of middleware entries around a handler (first = outermost,
+runs first on the request). Returns a FetchHandler ready for
+`export default { fetch: … }`.
+
+The handler's `ctx` is inferred as BaseContext plus every entry's
+contribution — no manual annotation. Ordering and collision errors surface on
+the **handler** argument so they don't break tuple inference on `entries`.
+
+Under the hood, `pipeline` folds the array into the same nested calls as
+nested handlers — there is no new runtime behavior.
+
+### Examples
+
+#### Example 1
+
+```ts
+import { pipeline } from '@supabase/middleware'
+import { withCors } from '@supabase/middleware/cors'
+import { withFeatureFlag } from '@supabase/middleware/feature-flag'
+
+export default {
+  fetch: pipeline(
+    [
+      withCors({}),
+      withFeatureFlag({ name: 'beta', evaluate: (req) => req.headers.has('x-beta') }),
+    ],
+    async (req, ctx) => Response.json({ flag: ctx.featureFlag.name }),
+  ),
+}
+```
+
+## seedContext
+
+Seed a fresh base context for an entry call, capturing the host's second
+`fetch` argument (a Workers `env`, a Deno `ServeHandlerInfo`, …) as the
+module-scoped platform env for getEnv. The platform value itself is
+never merged into `ctx`.
+
+Public so a host embedding the engine (e.g. `@supabase/server`) can mint a
+valid upstream context and spread its own keys onto it.
+
+## Middleware
+
+## CorsContribution
+
+Shape contributed at `ctx.cors`.
+
+## CorsOrigin
+
+Decides the `Access-Control-Allow-Origin` value for a request.
+
+## FeatureFlagContribution
+
+Shape contributed at `ctx.featureFlag` after a successful evaluation.
+
+`enabled: true` is encoded in the type — the handler only ever sees this
+shape when the flag admitted, so `if (!ctx.featureFlag.enabled)` is a dead
+branch by construction. The contribution shape is the contract this
+middleware offers downstream handlers.
+
+## FeatureFlagVerdict
+
+Richer return shape `evaluate` may produce, in place of a plain boolean,
+when an A/B variant or provider payload is worth carrying through to the
+handler.
+
+## withCors
+
+CORS middleware.
+
+### Examples
+
+#### Example 1
+
+```ts
+import { withCors } from '@supabase/middleware/cors'
+
+export default {
+  fetch: withCors(
+    { origin: ['https://app.example.com'], credentials: true },
+    async () => Response.json({ ok: true }),
+  ),
+}
+```
+
+## WithCorsConfig
+
+Per-instance configuration for withCors.
+
+## withFeatureFlag
+
+Feature-flag middleware.
+
+### Examples
+
+#### Example 1
+
+```ts
+import { withFeatureFlag } from '@supabase/middleware/feature-flag'
+
+export default {
+  fetch: withFeatureFlag(
+    {
+      name: 'beta-checkout',
+      evaluate: (req) => req.headers.get('x-beta') === '1',
+    },
+    async (_req, ctx) => Response.json({ feature: ctx.featureFlag.name }),
+  ),
+}
+```
+
+Pluggable providers — use whatever you like in `evaluate`:
+
+```ts
+withFeatureFlag({
+  name: 'beta-checkout',
+  evaluate: async (req) => {
+    const userId = req.headers.get('x-user-id') ?? 'anon'
+    return await posthog.isFeatureEnabled('beta-checkout', userId)
+  },
+})
+```
+
+Placed after an auth entry, `evaluate` reads the caller it verified:
+
+```ts
+pipeline(
+  [
+    withUser(),
+    withFeatureFlag({
+      name: 'beta-checkout',
+      evaluate: (_req, ctx) => {
+        const { user } = ctx as { user?: { id: string } }
+        return user !== undefined && betaTesters.has(user.id)
+      },
+    }),
+  ],
+  handler,
+)
+```
+
+## WithFeatureFlagConfig
+
+Per-instance configuration the consumer passes to `withFeatureFlag(config, handler)`.
+
+Keep this surface small — every field becomes part of the public API.
+
+## Environment
+
+## getEnv
+
+Resolve an environment value the same way regardless of host, so middleware
+never branch on `Deno` vs `process` vs a Workers bindings object.
+
+Resolution order:
+
+1. the platform object captured at the entry call (Workers bindings),
+2. `process.env` where a `process` global exists (Node, Bun, Deno 2,
+   Workers with `nodejs_compat`), via `std-env`,
+3. `Deno.env.get` on Deno hosts without a populated `process.env`.
+
+On Workers, bindings are per-request, so this returns `undefined` at module
+top level until the first request has been handled.
+
+## runtimeName
+
+The host's detected runtime name, re-exported from `std-env` (WinterCG
+Runtime Keys: `'node' | 'deno' | 'bun' | 'workerd' | 'edge-light' | …`, or
+`''` when unknown). Detected once at module load.
+
+## Types
+
+## BaseContext
+
+The lower bound of every context. Structurally empty — the framework reserves
+no keys; every property on `ctx` is a middleware contribution. (At runtime a
+seeded context carries a symbol marker so the entry call can distinguish it
+from a platform argument; the marker is invisible to `Object.keys` iteration
+of string keys and to the type.)
+
+## Composite
+
+The shape of a composite produced by defineComposite.
+
+The same three call signatures as Middleware, so a composite is
+usable everywhere a middleware is — nested (`wsup(config, handler)`) or flat
+(`pipeline([wsup(config)], handler)`) — from one declaration. The only
+difference is that `Contributes` is a record rather than a single key.
+
+## Conflict
+
+Sentinel type used to surface a key collision with the upstream context as a
+TypeScript error at the call site. Both composition paths put it in the
+*handler parameter* position — `pipeline` via `ValidateEntries`, nesting via
+`NoConflict` — because that is the position TypeScript prints:
+
+    Argument of type '(req, ctx) => …' is not assignable to parameter of type
+    "middleware-conflict: key 'alpha' is already present on the upstream context"
+
+The alternative siting — the sentinel in a failed `Base` constraint — is
+substituted silently. The stack still fails to compile either way, but on that
+path the reported error is an overload mismatch on the *enclosing* call, in
+which the inner handler's `ctx` has collapsed to `never` (printed as
+`ctx?: undefined`); the collision is never named, and the colliding key may
+not appear at all. Keep the sentinel on a parameter.
+
+The two paths differ only in how much surrounds the message, and that is
+decided by how many signatures at the call site can take a handler. One
+handler-taking signature (`pipeline`, or a hand-written signature with a
+single handler form) reports a one-line TS2345 with the sentinel on that
+line. Two or more (`Middleware`, whose cascade and propagation forms both
+take a handler) reports TS2769, with the sentinel inside the indented
+per-overload breakdown. A test that checks a collision should match the
+sentinel text rather than the code, and fold continuation lines when it
+parses `tsc` output.
+
+## Entry
+
+A middleware with its config pre-applied, ready to be passed to pipeline.
+
+Carries its contributions as a **record** phantom — key-to-type for every key
+it puts on `ctx` — so `pipeline` can accumulate them onto the handler's `ctx`
+with no manual annotation. A middleware authored with defineMiddleware
+contributes a single key and so has a single-entry record; a composite built
+with defineComposite carries one entry per part.
+
+SingleKeyEntry spells the one-key case without the braces.
+
+`__contributes` is an optional phantom — it never exists as a value, so it
+cannot be required — which means **any** `(handler) => handler` structurally
+satisfies any `Entry`. Annotate a function with a record it does not produce
+and it compiles, with the keys typed as present and `undefined` at runtime.
+
+So the no-over-declaring guarantee belongs to defineComposite, which
+derives contributions from its parts, not to this type. Build multi-key
+contributions with that; reach for a bare `Entry` annotation only to describe
+a function you did not write, and treat it as an assertion you own.
+
+## FetchHandler
+
+The type of a composed stack handed to the host — the `fetch` export,
+`Deno.serve(app)`, and so on.
+
+Annotating the outermost handler with this (`… satisfies FetchHandler`) is
+optional and adds no runtime code. It does two things:
+
+- **Asserts the stack can be the `fetch` export.** Prerequisites are enforced
+  between layers with no annotation. What is left over is the case where *no*
+  layer supplies a declared `In` key: the requirement is republished all the
+  way out, so the stack has a **required** `ctx`. That alone is not an error —
+  a required `ctx` is only wrong where the stack is handed to the host, and
+  this type is what makes that position explicit (its `ctx` is optional, and a
+  required one is not assignable to it). An untyped
+  `export default { fetch: app }` checks nothing, so without the annotation
+  the stack compiles, ships, and reads `undefined` off `ctx` on the first
+  request. Any `FetchHandler`-typed position does the same job.
+- **Turns on collision detection.** Two middleware contributing the same key
+  are only caught under this annotation; see the `Middleware` overload set.
+  One annotation on the outermost call covers any nesting depth.
+
+It is **not** needed for accumulation: an unannotated outermost call resolves
+`Base` to its constraint — the empty upstream, the same context an annotation
+would seed — so the cascade reaches the innermost handler at any depth either
+way. Nor for `In` prerequisites (those travel outward), nor for
+pipeline (which accumulates and validates from its entries array).
+
+## Handler
+
+A composed handler: request + an accumulated context `>= BaseContext`.
+
+## IsAny
+
+True when `T` is exactly `any` — the conflict check is skipped for `any` Base
+(common in tests via `vi.fn` inference), since `keyof any` would false-positive
+every key.
+
+## Middleware
+
+The shape of a middleware produced by defineMiddleware.
+
+Three call signatures:
+
+- **Handler (cascade)** — `mw(config, handler)` (or `mw(handler)`) returns the
+  produced fetch handler, with `Base` pushed *inward* from the contextual type
+  of the call's return. `Base` is constrained to `In & BaseContext` for
+  prerequisite enforcement, and the handler parameter is wrapped in
+  NoConflict for collision detection — both surface at the call site.
+- **Handler (propagation)** — the same call when the wrapped handler declares
+  prerequisites this layer cannot meet from the inward push alone. `Ctx` is
+  read *outward* off that handler and re-published as this layer's own
+  requirement, minus the key it contributes.
+- **Config-only** — `mw(config)` (or `mw()` for config-less) returns an
+  Entry for use in a pipeline array.
+
+The two directions cannot share one signature: the cascade needs the handler
+argument to be a dead inference site, and the propagation needs it to be the
+live one. Splitting them into ordered overloads lets each keep what it needs.
+
+## NoConflict
+
+The collision check Middleware applies: resolves to `Handler` when
+every contributed key is free on `Base`, and otherwise to a Conflict
+sentinel naming the colliding key — a union of them where several collide.
+
+Accepts either a single literal key (`NoConflict<'flag', Base, H>`) or a
+contributions record (`NoConflict<{ flag: boolean }, Base, H>`), so the same
+type serves Middleware and Composite.
+
+**Site it on the handler parameter, not the `Base` constraint.** TypeScript
+substitutes a failed constraint silently but prints a failed parameter
+verbatim, so on the parameter the sentinel's text reaches the reader and the
+error is reported on the offending call rather than the one enclosing it.
+pipeline has always taken this route (see `ValidateEntries`); the
+Middleware overloads are the nesting equivalent.
+
+Reuse it in a middleware with a bespoke generic signature (e.g. one that adds
+a `Payload` type parameter) by wrapping the handler parameter and leaving the
+`Base` constraint to `In & BaseContext`:
+
+```ts
+<Base extends In & BaseContext>(
+  handler: NoConflict<Key, Base, (req: Request, ctx: Base & …) => Promise<Response>>,
+): Produced<Base, In>
+```
+
+Every overload that can accept the handler needs the wrap. One left unguarded
+will accept the call the guarded one rejected, resolve its own `Base` to
+something unusable, and push the error back out to the enclosing call — which
+is the failure mode this type exists to remove.
+
+## SingleKeyEntry
+
+An Entry contributing exactly one key — what defineMiddleware
+produces.
+
+`SingleKeyEntry<'supabase', {}, SupabaseClient>` is the one-key record
+`Entry<{ supabase: SupabaseClient }>`, spelled without the braces.
+
+Use it wherever you name an entry type — most often a wrapper's return type,
+threading a generic through a middleware, which is the usual reason to write
+the type out at all:
+
+```ts
+function withThing<Database = unknown>(
+  config?: WithThingConfig,
+): SingleKeyEntry<'thing', Record<never, never>, Client<Database>>
+```
+
+An entry declared this way composes normally, defineComposite
+included: the mapped type resolves as soon as `Key` is a literal, which it is
+at every call site.
+
+## ValidateEntries
+
+Validate a tuple of entries in order against a seed context. Each entry's
+prerequisites (`In`) must be present on the context accumulated so far, and
+its key must not already be there. Resolves to `true` when the whole chain
+is valid, or to a descriptive error-string type naming the offending key.
+
+pipeline applies it seeded with BaseContext. A composing
+wrapper that puts its own keys on the context before the entries run should
+seed it with that context instead. Entries can then declare prerequisites on
+the wrapper's keys, and a collision with one of them fails to compile.
+
+Site it on the **handler** parameter, never on the entries tuple, so it does
+not disrupt `const Entries` tuple inference. Conflict documents why
+the parameter position is the one TypeScript prints:
+
+```ts
+handler: [ValidateEntries<Entries, Seed>] extends [true]
+  ? (req: Request, ctx: Accumulated) => Promise<Response>
+  : ValidateEntries<Entries, Seed>
+```

@@ -1,0 +1,194 @@
+# Build a User Management App with Svelte
+# джерело: https://supabase.com/docs/guides/getting-started/tutorials/with-svelte
+# отримано: 2026-09-24
+
+Learn how to use Supabase in your Svelte App.
+
+This tutorial demonstrates how to build a basic user management app. The app authenticates and identifies the user, stores their profile information in the database, and allows the user to log in, update their profile details, and upload a profile photo. The app uses:
+
+- Supabase Database - a Postgres database for storing your user data and Row Level Security so data is protected and users can only access their own information.
+- Supabase Auth - allow users to sign up and log in.
+- Supabase Storage - allow users to upload a profile photo.
+
+Supabase User Management example
+
+Note: If you get stuck while working through this guide, you can find the full example on GitHub.
+
+## Project setup
+
+Before you start building you need to set up the Database and API. You can do this by starting a new Project in Supabase and then creating a "schema" inside the database.
+
+### Create a project
+
+1. Create a new project in the Supabase Dashboard.
+2. Enter your project details.
+3. Wait for the new database to launch.
+
+### Set up the database schema
+
+Now set up the database schema. You can use the "User Management Starter" quickstart in the SQL Editor, or you can copy/paste the SQL from below and run it.
+
+**Dashboard**
+
+1. Go to the SQL Editor page in the Dashboard.
+2. Click **User Management Starter** under the **Reference > Examples** tab.
+3. Click **Run**.
+
+Note: You can pull the database schema down to your local project by running the `db pull` command. Read the local development docs for detailed instructions.
+
+```bash
+supabase link --project-ref <project-id>
+# You can get <project-id> from your project's dashboard URL: https://supabase.com/dashboard/project/<project-id>
+supabase db pull
+```
+
+**SQL**
+
+Note: When working locally you can run the following command to create a new migration file:
+
+```bash
+supabase migration new user_management_starter
+```
+
+```sql
+-- Create a table for public profiles
+create table profiles (
+  id uuid references auth.users not null primary key,
+  updated_at timestamp with time zone,
+  username text unique,
+  full_name text,
+  avatar_url text,
+  website text,
+
+  constraint username_length check (char_length(username) >= 3)
+);
+
+-- Grant the privileges roles need
+GRANT SELECT ON public.profiles TO anon;
+GRANT SELECT, INSERT, UPDATE ON public.profiles TO authenticated;
+
+-- Set up Row Level Security (RLS)
+-- See https://supabase.com/docs/guides/database/postgres/row-level-security for more details.
+alter table profiles
+  enable row level security;
+
+create policy "Public profiles are viewable by everyone." on profiles
+  for select using (true);
+
+create policy "Users can insert their own profile." on profiles
+  for insert with check ((select auth.uid()) = id);
+
+create policy "Users can update own profile." on profiles
+  for update using ((select auth.uid()) = id);
+
+-- This trigger automatically creates a profile entry when a new user signs up via Supabase Auth.
+-- See https://supabase.com/docs/guides/auth/managing-user-data#using-triggers for more details.
+create function public.handle_new_user()
+returns trigger
+set search_path = ''
+as $$
+begin
+  insert into public.profiles (id, full_name, avatar_url)
+  values (new.id, new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'avatar_url');
+  return new;
+end;
+$$ language plpgsql security definer;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+
+-- Set up Storage!
+insert into storage.buckets (id, name)
+  values ('avatars', 'avatars');
+
+-- Set up access controls for storage. Allows downloading object with public key
+-- See https://supabase.com/docs/guides/storage/security/access-control#policy-examples for more details.
+create policy "Avatar images are publicly accessible." on storage.objects
+  for select using (bucket_id = 'avatars' and storage.allow_any_operation(array['object.get_authenticated_info', 'object.get_authenticated']));
+
+create policy "Anyone can upload an avatar." on storage.objects
+  for insert with check (bucket_id = 'avatars');
+
+create policy "Anyone can update their own avatar." on storage.objects
+  for update using ((select auth.uid()) = owner) with check (bucket_id = 'avatars');
+```
+
+### Get API details
+
+To interact with data in database tables, you use the client libraries that wrap the auto-generated Data API endpoints, authenticating using the Project URL and key from the project **Connect** dialog.
+
+Note: See API keys for a full explanation of all key types, their uses, and where to find them.
+
+## Building the app
+
+Start building the Svelte app from scratch.
+
+### Initialize a Svelte app
+
+You can use the Vite Svelte TypeScript Template to initialize an app called `supabase-svelte`:
+
+```bash
+npm create vite@latest supabase-svelte -- --template svelte-ts
+cd supabase-svelte
+npm install
+```
+
+Install the only additional dependency: supabase-js
+
+```bash
+npm install @supabase/supabase-js
+```
+
+Finally, save the environment variables in a `.env`.
+All you need are the API URL and the key that you copied earlier.
+
+```bash
+VITE_SUPABASE_URL=YOUR_SUPABASE_URL
+VITE_SUPABASE_PUBLISHABLE_KEY=YOUR_SUPABASE_PUBLISHABLE_KEY
+```
+
+Now you have the API credentials in place, create a helper file to initialize the Supabase client. These variables will be exposed on the browser, and that's fine since you have Row Level Security enabled on the Database.
+
+### App styling (optional)
+
+Optionally, update the CSS file `src/app.css` to make the app look better.
+You can find the full contents of this file in the example repository.
+
+### Set up a sign-in component
+
+Set up a Svelte component to manage sign-ins and sign-ups. It uses Magic Links, so users can sign in with their email without using passwords.
+
+### Account page
+
+After a user is signed in, allow them to edit their profile details and manage their account.
+Create a new component for that called `Account.svelte`.
+
+## Profile photos
+
+Next, add a way for users to upload a profile photo. Supabase configures every project with Storage for managing large files like photos and videos.
+
+### Create an upload widget
+
+Start by creating a new component:
+
+### Update the account component
+
+With the Avatar component created, update `src/lib/Account.svelte` to include it:
+
+### Launch!
+
+With all the components in place, update `App.svelte`:
+
+Once that's done, run this in a terminal window:
+
+```bash
+npm run dev
+```
+
+And then open the browser to localhost:5173 and you should see the completed app.
+
+Note: Svelte uses Vite and the default port is `5173`, Supabase uses `port 3000`. To change the redirection port for Supabase go to: **Authentication > URL Configuration** and change the **Site URL** to `http://localhost:5173/`
+
+Supabase Svelte
+
+At this stage you have a fully functional application!

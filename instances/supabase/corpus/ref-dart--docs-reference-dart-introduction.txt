@@ -1,0 +1,4767 @@
+# Dart Client Library Reference
+# джерело: https://supabase.com/docs/reference/dart/introduction
+# отримано: 2026-09-24
+
+## Introduction
+
+This reference documents every object and method available in Supabase's Flutter library, supabase-flutter. You can use supabase-flutter to interact with your Postgres database, listen to database changes, invoke Deno Edge Functions, build login and user management functionality, and manage large files.
+
+We also provide a supabase package for non-Flutter projects.
+
+## Installing
+
+### Install from pub.dev
+
+You can install Supabase package from pub.dev
+
+```sh
+flutter pub add supabase_flutter
+```
+
+```sh
+dart pub add supabase
+```
+
+### Enable Data API access
+
+supabase\_flutter uses the Data API to query and mutate your Postgres data. You first need to grant Data API roles permissions to access your tables and functions.
+
+In Data API integrations settings, expose the specific tables and functions you want to access. To automatically grant access for new tables and functions in `public`, enable **Default privileges for new entities**.
+
+Alternatively, use SQL to grant the required permissions:
+
+```sql
+-- Before granting access to client roles, make sure RLS is enabled
+-- and create the policies required for each role's allowed operations.
+alter table public.your_table enable row level security;
+-- create policy ... on public.your_table ...;
+
+-- Grant least-privilege access to tables after RLS and policies are in place
+grant select on public.your_table to anon;
+grant select, insert, update, delete on public.your_table to authenticated;
+grant all on public.your_table to service_role;
+
+-- Grant execute on functions after verifying any table access they rely on
+grant execute on function public.your_function to authenticated, service_role;
+```
+
+## Initializing
+
+You can initialize Supabase with the static `initialize()` method of the `Supabase` class.
+
+The Supabase client is your entrypoint to the rest of the Supabase functionality
+and is the easiest way to interact with everything we offer within the Supabase ecosystem.
+
+### Examples
+
+#### For Flutter
+
+```dart
+Future<void> main() async {
+  await Supabase.initialize(
+    url: 'https://xyzcompany.supabase.co',
+    publishableKey: 'your-publishable-key',
+  );
+
+  runApp(MyApp());
+}
+
+// Get a reference your Supabase client
+final supabase = Supabase.instance.client;
+```
+
+#### For other Dart projects
+
+```dart
+final supabase = SupabaseClient(
+  'https://xyzcompany.supabase.co',
+  'your-secret-key', // use your secret key for server-side usage
+);
+```
+
+## Upgrade to supabase\_flutter v2
+
+Although `supabase_flutter` v2 brings a few breaking changes, for the most part the public API should be the same with a few minor exceptions.
+We have brought numerous updates behind the scenes to make the SDK work more intuitively for Flutter and Dart developers.
+
+## Upgrade the client library
+
+Make sure you are using v2 of the client library in your `pubspec.yaml` file.
+
+```yaml
+supabase_flutter: ^2.0.0
+```
+
+*Optionally* passing custom configuration to `Supabase.initialize()` is now organized into separate objects:
+
+```dart
+await Supabase.initialize(
+  url: supabaseUrl,
+  publishableKey: publishableKey,
+  authFlowType: AuthFlowType.pkce,
+  storageRetryAttempts: 10,
+  realtimeClientOptions: const RealtimeClientOptions(
+    logLevel: RealtimeLogLevel.info,
+  ),
+);
+```
+
+```dart
+await Supabase.initialize(
+  url: 'SUPABASE_URL',
+  publishableKey: 'SUPABASE_PUBLISHABLE_KEY',
+  authOptions: const FlutterAuthClientOptions(
+    authFlowType: AuthFlowType.pkce,
+  ),
+  realtimeClientOptions: const RealtimeClientOptions(
+    logLevel: RealtimeLogLevel.info,
+  ),
+  storageOptions: const StorageClientOptions(
+    retryAttempts: 10,
+  ),
+);
+```
+
+### Auth updates
+
+#### Renaming Provider to OAuthProvider
+
+`Provider` enum is renamed to `OAuthProvider`.
+Previously the `Provider` symbol often collided with classes in the provider package and developers needed to add import prefixes to avoid collisions.
+With the new update, developers can use Supabase and Provider in the same codebase without any import prefixes.
+
+```dart
+await supabase.auth.signInWithOAuth(
+  Provider.google,
+);
+```
+
+```dart
+await supabase.auth.signInWithOAuth(
+  OAuthProvider.google,
+);
+```
+
+#### Sign in with Apple method deprecated
+
+We have removed the sign\_in\_with\_apple dependency in v2.
+This is because not every developer needs to sign in with Apple, and we want to reduce the number of dependencies in the library.
+
+With v2, you can import sign\_in\_with\_apple as a separate dependency if you need to sign in with Apple.
+We have also added `auth.generateRawNonce()` method to easily generate a secure nonce.
+
+```dart
+await supabase.auth.signInWithApple();
+```
+
+```dart
+Future<AuthResponse> signInWithApple() async {
+  final rawNonce = supabase.auth.generateRawNonce();
+  final hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
+
+  final credential = await SignInWithApple.getAppleIDCredential(
+    scopes: [
+      AppleIDAuthorizationScopes.email,
+      AppleIDAuthorizationScopes.fullName,
+    ],
+    nonce: hashedNonce,
+  );
+
+  final idToken = credential.identityToken;
+  if (idToken == null) {
+    throw const AuthException(
+        'Could not find ID Token from generated credential.',
+    );
+  }
+
+  return signInWithIdToken(
+    provider: OAuthProvider.apple,
+    idToken: idToken,
+    nonce: rawNonce,
+  );
+}
+```
+
+#### Initialization does not await for session refresh
+
+In v1, `Supabase.initialize()` would await for the session to be refreshed before returning.
+This caused delays in the app's launch time, especially when the app is opened in a poor network environment.
+
+In v2, `Supabase.initialize()` returns immediately after obtaining the session from the local storage, which makes the app launch faster.
+Because of this, there is no guarantee that the session is valid when the app starts.
+
+If you need to make sure the session is valid, you can access the `isExpired` getter to check if the session is valid.
+If the session is expired, you can listen to the `onAuthStateChange` event and wait for a new `tokenRefreshed` event to be fired.
+
+```dart
+// Session is valid, no check required
+final session = supabase.auth.currentSession;
+```
+
+```dart
+final session = supabase.auth.currentSession;
+
+// Check if the session is valid.
+final isSessionExpired = session?.isExpired;
+```
+
+#### Removing Flutter Webview dependency for OAuth sign in
+
+In v1, on iOS you could pass a `BuildContext` to the `signInWithOAuth()` method to launch the OAuth flow in a Flutter Webview.
+
+In v2, we have dropped the webview\_flutter dependency in v2 to allow you to have full control over the UI of the OAuth flow.
+We now have native support for Google and Apple sign in, so opening an external browser is no longer needed on iOS.
+
+Because of this update, we no longer need the `context` parameter, so we have removed the `context` parameter from the `signInWithOAuth()` method.
+
+```dart
+// Opens a webview on iOS.
+await supabase.auth.signInWithOAuth(
+  Provider.github,
+  authScreenLaunchMode: LaunchMode.inAppWebView,
+  context: context,
+);
+```
+
+```dart
+// Opens in app webview on iOS.
+await supabase.auth.signInWithOAuth(
+  OAuthProvider.github,
+  authScreenLaunchMode: LaunchMode.inAppWebView,
+);
+```
+
+#### PKCE is the default auth flow type
+
+PKCE flow, which is a more secure method for obtaining sessions from deep links, is now the default auth flow for any authentication involving deep links.
+
+```dart
+await Supabase.initialize(
+  url: 'SUPABASE_URL',
+  publishableKey: 'SUPABASE_PUBLISHABLE_KEY',
+  authFlowType: AuthFlowType.implicit, // set to implicit by default
+);
+```
+
+```dart
+await Supabase.initialize(
+  url: 'SUPABASE_URL',
+  publishableKey: 'SUPABASE_PUBLISHABLE_KEY',
+  authOptions: FlutterAuthClientOptions(
+    authFlowType: AuthFlowType.pkce, // set to pkce by default
+  )
+);
+```
+
+#### Auth callback host name parameter removed
+
+`Supabase.initialize()` no longer has the `authCallbackUrlHostname` parameter.
+The `supabase_flutter` SDK will automatically detect auth callback URLs and handle them internally.
+
+```dart
+await Supabase.initialize(
+  url: 'SUPABASE_URL',
+  publishableKey: 'SUPABASE_PUBLISHABLE_KEY',
+  authCallbackUrlHostname: 'auth-callback',
+);
+```
+
+```dart
+await Supabase.initialize(
+  url: 'SUPABASE_URL',
+  publishableKey: 'SUPABASE_PUBLISHABLE_KEY',
+);
+```
+
+#### SupabaseAuth class removed
+
+The `SupabaseAuth` had an `initialSession` member, which was used to obtain the initial session upon app start.
+This is now removed, and `currentSession` should be used to access the session at any time.
+
+```dart
+// Use `initialSession` to obtain the initial session when the app starts.
+final initialSession = await SupabaseAuth.initialSession;
+```
+
+```dart
+// Use `currentSession` to access the session at any time.
+final initialSession = await supabase.auth.currentSession;
+```
+
+### Data methods
+
+#### Insert and return data
+
+We made the query builder immutable, which means you can reuse the same query object to chain multiple filters and get the expected outcome.
+
+```dart
+// If you declare a query and chain filters on it
+final myQuery = supabase.from('my_table').select();
+
+final foo = await myQuery.eq('some_col', 'foo');
+
+// The `eq` filter above is applied in addition to the following filter
+final bar = await myQuery.eq('another_col', 'bar');
+```
+
+```dart
+// Now you can declare a query and reuse it.
+final myQuery = supabase.from('my_table').select();
+
+final foo = await myQuery.eq('some_col', 'foo');
+
+// The `eq` filter above is not applied to the following result
+final bar = await myQuery.eq('another_col', 'bar');
+```
+
+#### Renaming is and in filter
+
+Because `is` and `in` are reserved keywords in Dart, v1 used `is_` and `in_` as query filter names.
+Users found the underscore confusing, so the query filters are now renamed to `isFilter` and `inFilter`.
+
+```dart
+final data = await supabase
+  .from('users')
+  .select()
+  .is_('status', null);
+
+final data = await supabase
+  .from('users')
+  .select()
+  .in_('status', ['ONLINE', 'OFFLINE']);
+```
+
+```dart
+final data = await supabase
+  .from('users')
+  .select()
+  .isFilter('status', null);
+
+final data = await supabase
+  .from('users')
+  .select()
+  .inFilter('status', ['ONLINE', 'OFFLINE']);
+```
+
+#### Deprecate FetchOption in favor of `count()` and `head()` methods
+
+`FetchOption()` on `.select()` is now deprecated, and new `.count()` and `head()` methods are added to the query builder.
+
+`count()` on `.select()` performs the select while also getting the count value, and `.count()` directly on `.from()` performs a head request resulting in only fetching the count value.
+
+```dart
+// Request with count option
+final res = await supabase.from('cities').select(
+      'name',
+      const FetchOptions(
+        count: CountOption.exact,
+      ),
+    );
+
+final data = res.data;
+final count = res.count;
+
+// Request with count and head option
+// obtains the count value without fetching the data.
+final res = await supabase.from('cities').select(
+      'name',
+      const FetchOptions(
+        count: CountOption.exact,
+        head: true,
+      ),
+    );
+
+final count = res.count;
+```
+
+```dart
+// Request with count option
+final res = await supabase
+    .from('cities')
+    .select('name')
+    .count(); // CountOption.exact is the default value
+
+final data = res.data;
+final int count = res.count;
+
+// `.count()` directly on `.from()` performs a head request,
+// obtaining the count value without fetching the data.
+final int count = await supabase
+    .from('cities')
+    .count(); // CountOption.exact is the default value
+```
+
+#### PostgREST error codes
+
+The `PostgrestException` instance thrown by the API methods has a `code` property. In v1, the `code` property contained the http status code.
+
+In v2, the `code` property contains the PostgREST error code, which is more useful for debugging.
+
+```dart
+try {
+  await supabase.from('countries').select();
+} on PostgrestException catch (error) {
+  error.code; // Contains http status code
+}
+```
+
+```dart
+try {
+  await supabase.from('countries').select();
+} on PostgrestException catch (error) {
+  error.code; // Contains PostgREST error code
+}
+```
+
+### Realtime methods
+
+Realtime methods contains the biggest breaking changes. Most of these changes are to make the interface more type safe.
+
+We have removed the `.on()` method and replaced it with `.onPostgresChanges()`, `.onBroadcast()`, and three different presence methods.
+
+#### Postgres Changes
+
+Use the new `.onPostgresChanges()` method to listen to realtime changes in the database.
+
+In v1, filters were not strongly typed because they took a `String` type. In v2, `filter` takes an object. Its properties are strictly typed to catch type errors.
+
+The payload of the callback is now typed as well. In `v1`, the payload was returned as `dynamic`. It is now returned as a `PostgresChangePayload` object. The object contains the `oldRecord` and `newRecord` properties for accessing the data before and after the change.
+
+```dart
+supabase.channel('my_channel').on(
+  RealtimeListenTypes.postgresChanges,
+  ChannelFilter(
+    event: '*',
+    schema: 'public',
+    table: 'messages',
+    filter: 'room_id=eq.200',
+  ),
+  (dynamic payload, [ref]) {
+    final Map<String, dynamic> newRecord = payload['new'];
+    final Map<String, dynamic> oldRecord = payload['old'];
+  },
+).subscribe();
+```
+
+```dart
+supabase.channel('my_channel')
+  .onPostgresChanges(
+    event: PostgresChangeEvent.all,
+    schema: 'public',
+    table: 'messages',
+    filter: PostgresChangeFilter(
+      type: PostgresChangeFilterType.eq,
+      column: 'room_id',
+      value: 200,
+    ),
+    callback: (PostgresChangePayload payload) {
+      final Map<String, dynamic> newRecord = payload.newRecord;
+      final Map<String, dynamic> oldRecord = payload.oldRecord;
+    })
+  .subscribe();
+```
+
+#### Broadcast
+
+Broadcast now uses the dedicated `.onBroadcast()` method, rather than the generic `.on()` method.
+Because the method is specific to broadcast, it takes fewer properties.
+
+```dart
+supabase.channel('my_channel').on(
+  RealtimeListenTypes.broadcast,
+  ChannelFilter(
+    event: 'position',
+  ),
+  (dynamic payload, [ref]) {
+    print(payload);
+  },
+).subscribe();
+```
+
+```dart
+supabase
+  .channel('my_channel')
+  .onBroadcast(
+    event: 'position',
+    callback: (Map<String, dynamic> payload) {
+      print(payload);
+    })
+  .subscribe();
+```
+
+#### Presence
+
+Realtime Presence gets three different methods for listening to three different presence events: `sync`, `join`, and `leave`.
+This allows the callback to be strictly typed.
+
+```dart
+final channel = supabase.channel('room1');
+
+channel.on(
+  RealtimeListenTypes.presence,
+  ChannelFilter(event: 'sync'),
+  (payload, [ref]) {
+    print('Synced presence state: ${channel.presenceState()}');
+  },
+).on(
+  RealtimeListenTypes.presence,
+  ChannelFilter(event: 'join'),
+  (payload, [ref]) {
+    print('Newly joined presences $payload');
+  },
+).on(
+  RealtimeListenTypes.presence,
+  ChannelFilter(event: 'leave'),
+  (payload, [ref]) {
+    print('Newly left presences: $payload');
+  },
+).subscribe(
+  (status, [error]) async {
+    if (status == 'SUBSCRIBED') {
+      await channel.track({'online_at': DateTime.now().toIso8601String()});
+    }
+  },
+);
+```
+
+```dart
+final channel = supabase.channel('room1');
+
+channel.onPresenceSync(
+  (payload) {
+    print('Synced presence state: ${channel.presenceState()}');
+  },
+).onPresenceJoin(
+  (payload) {
+    print('Newly joined presences $payload');
+  },
+).onPresenceLeave(
+  (payload) {
+    print('Newly left presences: $payload');
+  },
+).subscribe(
+  (status, error) async {
+    if (status == RealtimeSubscribeStatus.subscribed) {
+      await channel
+          .track({'online_at': DateTime.now().toIso8601String()});
+    }
+  },
+);
+```
+
+## Database
+
+## delete
+
+Perform a DELETE on the table or view.
+
+- `delete()` should always be combined with Filters to target the item(s) you wish to delete.
+- If you use `delete()` with filters and you have RLS enabled, only rows visible through `SELECT` policies are deleted. Note that by default no rows are visible, so you need at least one `SELECT`/`ALL` policy that makes the rows visible.
+
+### Examples
+
+#### Delete records
+
+```dart
+await supabase
+  .from('countries')
+  .delete()
+  .eq('id', 1);
+```
+
+#### Delete multiple records
+
+```dart
+await supabase
+  .from('countries')
+  .delete()
+  .inFilter('id', [1, 2, 3])
+```
+
+#### Fetch deleted records
+
+```dart
+final List<Map<String,dynamic>> data = await supabase
+  .from('cities')
+  .delete()
+  .match({ 'id': 666 })
+  .select();
+```
+
+## insert
+
+Perform an INSERT into the table or view.
+
+### Examples
+
+#### Create a record
+
+```dart
+await supabase
+    .from('cities')
+    .insert({'name': 'The Shire', 'country_id': 554});
+```
+
+#### Fetch inserted record
+
+```dart
+final List<Map<String, dynamic>> data =
+        await supabase.from('cities').insert([
+      {'name': 'The Shire', 'country_id': 554},
+      {'name': 'Rohan', 'country_id': 555},
+    ]).select();
+```
+
+#### Bulk create
+
+```dart
+await supabase.from('cities').insert([
+  {'name': 'The Shire', 'country_id': 554},
+  {'name': 'Rohan', 'country_id': 555},
+]);
+```
+
+## rpc
+
+Perform a function call.
+
+You can call Postgres functions as Remote Procedure Calls, logic in your database that you can execute from anywhere.
+Functions are useful when the logic rarely changes—like for password resets and updates.
+
+### Examples
+
+#### Call a Postgres function without arguments
+
+```dart
+final data = await supabase
+  .rpc('hello_world');
+```
+
+#### Call a Postgres function with arguments
+
+```dart
+final data = await supabase
+  .rpc('echo_city', params: { 'say': '👋' });
+```
+
+#### Bulk processing
+
+```dart
+final data = await supabase
+  .rpc('add_one_each', params: { arr: [1, 2, 3] });
+```
+
+#### Call a Postgres function with filters
+
+```dart
+final data = await supabase
+  .rpc('list_stored_countries')
+  .eq('id', 1)
+  .single();
+```
+
+## select
+
+Perform a SELECT query on the table or view.
+
+- By default, Supabase projects will return a maximum of 1,000 rows. This setting can be changed in Project API Settings. It's recommended that you keep it low to limit the payload size of accidental or malicious requests. You can use `range()` queries to paginate through your data.
+- `select()` can be combined with Filters
+- `select()` can be combined with Modifiers
+- `apikey` is a reserved keyword if you're using the Supabase Platform and should be avoided as a column name.
+
+### Examples
+
+#### Getting your data
+
+```dart
+final data = await supabase
+  .from('instruments')
+  .select();
+```
+
+#### Selecting specific columns
+
+```dart
+final data = await supabase
+  .from('instruments')
+  .select('''
+    name
+  ''');
+```
+
+#### Query referenced tables
+
+```dart
+final data = await supabase
+  .from('orchestral_sections')
+  .select('''
+    name,
+    instruments ( name )
+  ''');
+```
+
+#### Query referenced tables through a join table
+
+```dart
+final data = await supabase
+  .from('users')
+  .select('''
+    name,
+    teams (
+      name
+    )
+  ''');
+```
+
+#### Query the same referenced table multiple times
+
+```dart
+final data = await supabase
+  .from('messages')
+  .select('''
+    content,
+    from:sender_id(name),
+    to:receiver_id(name)
+  ''');
+```
+
+#### Filtering through referenced tables
+
+```dart
+final data = await supabase
+  .from('instruments')
+  .select('name, orchestral_sections(*)')
+  .eq('orchestral_sections.name', 'percussion');
+```
+
+#### Querying with count option
+
+```dart
+final res = await supabase
+    .from('instruments')
+    .select('name')
+    .count(CountOption.exact);
+
+final data = res.data;
+final count = res.count;
+```
+
+#### Querying JSON data
+
+```dart
+final data = await supabase
+  .from('users')
+  .select('''
+    id, name,
+    address->city
+  ''');
+```
+
+#### Querying referenced table with inner join
+
+```dart
+final data = await supabase
+  .from('orchestral_sections')
+  .select('name, instruments!inner(name)')
+  .eq('orchestral_sections.name', 'strings')
+  .limit(1);
+```
+
+#### Switching schemas per query
+
+```dart
+final data = await supabase
+  .schema('myschema')
+  .from('mytable')
+  .select();
+```
+
+## update
+
+Perform an UPDATE on the table or view.
+
+- `update()` should always be combined with Filters to target the item(s) you wish to update.
+
+### Examples
+
+#### Update your data
+
+```dart
+await supabase
+  .from('instruments')
+  .update({ 'name': 'piano' })
+  .eq('id', 1);
+```
+
+#### Update a record and return it
+
+```dart
+final data = await supabase
+  .from('instruments')
+  .update({ 'name': 'piano' })
+  .eq('id', 1)
+  .select();
+```
+
+#### Update JSON data
+
+```dart
+await supabase
+  .from('users')
+  .update({
+    'address': {
+      'street': 'Melrose Place',
+      'postcode': 90210
+    }
+  })
+  .eq('address->postcode', 90210);
+```
+
+## upsert
+
+Perform an UPSERT on the table or view. Depending on the column(s) passed to `onConflict`, `.upsert()` allows you to perform the equivalent of `.insert()` if a row with the corresponding `onConflict` columns doesn't exist, or if it does exist, perform an alternative action depending on `ignoreDuplicates`.
+
+- Primary keys must be included in `values` to use upsert.
+
+### Examples
+
+#### Upsert your data
+
+```dart
+final data = await supabase
+  .from('instruments')
+  .upsert({ 'id': 1, 'name': 'piano' })
+  .select();
+```
+
+#### Bulk Upsert your data
+
+```dart
+final data = await supabase
+  .from('instruments')
+  .upsert([
+    { 'id': 1, 'name': 'piano' },
+    { 'id': 2, 'name': 'harp' },
+  ])
+  .select();
+```
+
+#### Upserting into tables with constraints
+
+```dart
+final data = await supabase
+  .from('users')
+  .upsert({ 'id': 42, 'handle': 'saoirse', 'display_name': 'Saoirse' }, { onConflict: 'handle' })
+  .select();
+```
+
+## Using filters
+
+Filters allow you to only return rows that match certain conditions.
+
+Filters can be used on `select()`, `update()`, `upsert()`, and `delete()` queries.
+
+If a Database function returns a table response, you can also apply filters.
+
+### Examples
+
+#### Applying Filters
+
+```dart
+final data = await supabase
+  .from('cities')
+  .select('name, country_id')
+  .eq('name', 'The Shire');  // Correct
+
+final data = await supabase
+  .from('cities')
+  .eq('name', 'The Shire')  // Incorrect
+  .select('name, country_id');
+```
+
+#### Chaining Filters
+
+```dart
+final data = await supabase
+  .from('cities')
+  .select('name, country_id')
+  .gte('population', 1000)
+  .lt('population', 10000)
+```
+
+#### Conditional Chaining
+
+```dart
+final filterByName = null;
+final filterPopLow = 1000;
+final filterPopHigh = 10000;
+
+var query = supabase
+  .from('cities')
+  .select('name, country_id');
+
+if (filterByName != null) query = query.eq('name', filterByName);
+if (filterPopLow != null) query = query.gte('population', filterPopLow);
+if (filterPopHigh != null) query = query.lt('population', filterPopHigh);
+
+final data = await query;
+```
+
+#### Filter by values within a JSON column
+
+```dart
+final data = await supabase
+  .from('users')
+  .select()
+  .eq('address->postcode', 90210);
+```
+
+#### Filter Referenced Tables
+
+```dart
+final data = await supabase
+  .from('orchestral_sections')
+  .select('''
+    name,
+    instruments!inner (
+      name
+    )
+  ''')
+  .eq('instruments.name', 'flute');
+```
+
+## Using filters
+
+Filters allow you to only return rows that match certain conditions.
+
+Filters can be used on `select()`, `update()`, `upsert()`, and `delete()` queries.
+
+If a Database function returns a table response, you can also apply filters.
+
+### Examples
+
+#### Applying Filters
+
+```dart
+final data = await supabase
+  .from('cities')
+  .select('name, country_id')
+  .eq('name', 'The Shire');  // Correct
+
+final data = await supabase
+  .from('cities')
+  .eq('name', 'The Shire')  // Incorrect
+  .select('name, country_id');
+```
+
+#### Chaining Filters
+
+```dart
+final data = await supabase
+  .from('cities')
+  .select('name, country_id')
+  .gte('population', 1000)
+  .lt('population', 10000)
+```
+
+#### Conditional Chaining
+
+```dart
+final filterByName = null;
+final filterPopLow = 1000;
+final filterPopHigh = 10000;
+
+var query = supabase
+  .from('cities')
+  .select('name, country_id');
+
+if (filterByName != null) query = query.eq('name', filterByName);
+if (filterPopLow != null) query = query.gte('population', filterPopLow);
+if (filterPopHigh != null) query = query.lt('population', filterPopHigh);
+
+final data = await query;
+```
+
+#### Filter by values within a JSON column
+
+```dart
+final data = await supabase
+  .from('users')
+  .select()
+  .eq('address->postcode', 90210);
+```
+
+#### Filter Referenced Tables
+
+```dart
+final data = await supabase
+  .from('orchestral_sections')
+  .select('''
+    name,
+    instruments!inner (
+      name
+    )
+  ''')
+  .eq('instruments.name', 'flute');
+```
+
+## containedBy
+
+Only relevant for jsonb, array, and range columns. Match only rows where every element appearing in `column` is contained by `value`.
+
+### Examples
+
+#### On array columns
+
+```dart
+final data = await supabase
+  .from('classes')
+  .select('name')
+  .containedBy('days', ['monday', 'tuesday', 'wednesday', 'friday']);
+```
+
+#### On range columns
+
+```dart
+final data = await supabase
+  .from('reservations')
+  .select()
+  .containedBy('during', '[2000-01-01 00:00, 2000-01-01 23:59)');
+```
+
+#### On `jsonb` columns
+
+```dart
+final data = await supabase
+  .from('users')
+  .select('name')
+  .containedBy('address', {'postcode': 90210});
+```
+
+## contains
+
+Only relevant for jsonb, array, and range columns. Match only rows where `column` contains every element appearing in `value`.
+
+### Examples
+
+#### On array columns
+
+```dart
+final data = await supabase
+  .from('issues')
+  .select()
+  .contains('tags', ['is:open', 'priority:low']);
+```
+
+#### On range columns
+
+```dart
+final data = await supabase
+  .from('reservations')
+  .select()
+  .contains('during', '[2000-01-01 13:00, 2000-01-01 13:30)');
+```
+
+#### On `jsonb` columns
+
+```dart
+final data = await supabase
+  .from('users')
+  .select('name')
+  .contains('address', { 'street': 'Melrose Place' });
+```
+
+## eq
+
+Match only rows where `column` is equal to `value`.
+
+### Examples
+
+#### With select()
+
+```dart
+final data = await supabase
+  .from('instruments')
+  .select()
+  .eq('name', 'viola');
+```
+
+## filter
+
+Match only rows which satisfy the filter. This is an escape hatch - you should use the specific filter methods wherever possible.
+
+`.filter()` expects you to use the raw PostgREST syntax for the filter names and values, so it should only be used as an escape hatch in case other filters don't work.
+
+```dart
+.filter('arraycol','cs','{"a","b"}') // Use Postgres array {} and 'cs' for contains.
+.filter('rangecol','cs','(1,2]') // Use Postgres range syntax for range column.
+.filter('id','in','(6,7)')  // Use Postgres list () and 'in' for in_ filter.
+.filter('id','cs','{${mylist.join(',')}}')  // You can insert a Dart array list.
+```
+
+### Examples
+
+#### With select()
+
+```dart
+final data = await supabase
+  .from('characters')
+  .select()
+  .filter('name', 'in', '("Ron","Dumbledore")')
+```
+
+#### With update()
+
+```dart
+final data = await supabase
+  .from('instruments')
+  .update({ 'name': 'piano' })
+  .filter('name', 'in', '("harpsichord","clavichord")');
+```
+
+#### With delete()
+
+```dart
+final data = await supabase
+  .from('countries')
+  .delete()
+  .filter('name', 'in', '("Rohan","Mordor")');
+```
+
+#### With rpc()
+
+```dart
+// Only valid if the database function returns a table type.
+final data = await supabase
+  .rpc('echo_all_countries')
+  .filter('name', 'in', '("Rohan","Mordor")');
+```
+
+#### On a referenced table
+
+```dart
+final data = await supabase
+  .from('orchestral_sections')
+  .select('''
+    name,
+    instruments!inner (
+      name
+    )
+  ''')
+  .filter('characters.name', 'eq', 'flute')
+```
+
+## gt
+
+Finds all rows whose value on the stated `column` is greater than the specified `value`.
+
+### Examples
+
+#### With select()
+
+```dart
+final data = await supabase
+  .from('countries')
+  .select()
+  .gt('id', 2);
+```
+
+## gte
+
+Finds all rows whose value on the stated `column` is greater than or equal to the specified `value`.
+
+### Examples
+
+#### With select()
+
+```dart
+final data = await supabase
+  .from('countries')
+  .select()
+  .gte('id', 2);
+```
+
+## ilike
+
+Finds all rows whose value in the stated `column` matches the supplied `pattern` (case insensitive).
+
+### Examples
+
+#### With select()
+
+```dart
+final data = await supabase
+  .from('planets')
+  .select()
+  .ilike('name', '%ea%');
+```
+
+## inFilter
+
+Finds all rows whose value on the stated `column` is found on the specified `values`.
+
+### Examples
+
+#### With select()
+
+```dart
+final data = await supabase
+  .from('characters')
+  .select()
+  .inFilter('name', ['Luke', 'Leia']);
+```
+
+## isFilter
+
+A check for exact equality (null, true, false), finds all rows whose value on the stated `column` exactly match the specified `value`.
+
+### Examples
+
+#### Checking for nullness, true or false
+
+```dart
+final data = await supabase
+  .from('countries')
+  .select()
+  .isFilter('name', null);
+```
+
+## like
+
+Finds all rows whose value in the stated `column` matches the supplied `pattern` (case sensitive).
+
+### Examples
+
+#### With select()
+
+```dart
+final data = await supabase
+  .from('planets')
+  .select()
+  .like('name', '%Ea%');
+```
+
+## lt
+
+Finds all rows whose value on the stated `column` is less than the specified `value`.
+
+### Examples
+
+#### With select()
+
+```dart
+final data = await supabase
+  .from('countries')
+  .select()
+  .lt('id', 2);
+```
+
+## lte
+
+Finds all rows whose value on the stated `column` is less than or equal to the specified `value`.
+
+### Examples
+
+#### With select()
+
+```dart
+final data = await supabase
+  .from('countries')
+  .select()
+  .lte('id', 2);
+```
+
+## match
+
+Finds all rows whose columns match the specified `query` object.
+
+### Examples
+
+#### With select()
+
+```dart
+final data = await supabase
+  .from('instruments')
+  .select()
+  .match({ 'id': 2, 'name': 'viola' });
+```
+
+## neq
+
+Finds all rows whose value on the stated `column` doesn't match the specified `value`.
+
+### Examples
+
+#### With select()
+
+```dart
+final data = await supabase
+  .from('instruments')
+  .select('id, name')
+  .neq('name', 'viola');
+```
+
+## not
+
+Finds all rows which doesn't satisfy the filter.
+
+- `.not()` expects you to use the raw PostgREST syntax for the filter names and values.
+
+```dart
+  .not('name','eq','violin')
+  .not('arraycol','cs','{"a","b"}') // Use Postgres array {} for array column and 'cs' for contains.
+  .not('rangecol','cs','(1,2]') // Use Postgres range syntax for range column.
+  .not('id','in','(6,7)')  // Use Postgres list () and 'in' instead of `inFilter`.
+  .not('id','in','(${mylist.join(',')})')  // You can insert a Dart list array.
+```
+
+### Examples
+
+#### With select()
+
+```dart
+final data = await supabase
+  .from('countries')
+  .select()
+  .not('name', 'is', null)
+```
+
+#### With update()
+
+```dart
+final data = await supabase
+  .from('cities')
+  .update({ 'name': 'Mordor' })
+  .not('name', 'eq', 'Rohan');
+```
+
+#### With delete()
+
+```dart
+final data = await supabase
+  .from('cities')
+  .delete()
+  .not('name', 'eq', 'Mordor');
+```
+
+#### With rpc()
+
+```dart
+// Only valid if the database function returns a table type.
+final data = await supabase
+  .rpc('echo_all_cities')
+  .not('name', 'eq', 'Mordor');
+```
+
+## or
+
+Finds all rows satisfying at least one of the filters.
+
+- `.or()` expects you to use the raw PostgREST syntax for the filter names and values.
+
+```dart
+  .or('id.in.(6,7),arraycol.cs.{"a","b"}')  // Use Postgres list () and 'in' instead of `inFilter`. Array {} and 'cs' for contains.
+  .or('id.in.(${mylist.join(',')}),arraycol.cs.{${mylistArray.join(',')}}')	// You can insert a Dart list for list or array column.
+  .or('id.in.(${mylist.join(',')}),rangecol.cs.(${mylistRange.join(',')}]')	// You can insert a Dart list for list or range column.
+```
+
+### Examples
+
+#### With select()
+
+```dart
+final data = await supabase
+  .from('instruments')
+  .select('name')
+  .or('id.eq.2,name.eq.cello');
+```
+
+#### Use `or` with `and`
+
+```dart
+final data = await supabase
+  .from('instruments')
+  .select('name')
+  .or('id.gt.3,and(id.eq.1,name.eq.violin)');
+```
+
+#### Use `or` on referenced tables
+
+```dart
+final data = await supabase
+  .from('orchestral_sections')
+  .select('''
+    name,
+    instruments!inner (
+      name
+    )
+  ''')
+  .or('section_id.eq.1,name.eq.guzheng', referencedTable: 'instruments' );
+```
+
+## overlaps
+
+Only relevant for array and range columns. Match only rows where `column` and `value` have an element in common.
+
+### Examples
+
+#### On array columns
+
+```dart
+final data = await supabase
+  .from('issues')
+  .select('title')
+  .overlaps('tags', ['is:closed', 'severity:high']);
+```
+
+#### On range columns
+
+```dart
+final data = await supabase
+  .from('reservations')
+  .select()
+  .overlaps('during', '[2000-01-01 12:45, 2000-01-01 13:15)');
+```
+
+## rangeAdjacent
+
+Only relevant for range columns. Match only rows where `column` is mutually exclusive to `range` and there can be no element between the two ranges.
+
+### Examples
+
+#### With select()
+
+```dart
+final data = await supabase
+  .from('reservations')
+  .select()
+  .rangeAdjacent('during', '[2000-01-01 12:00, 2000-01-01 13:00)');
+```
+
+## rangeGt
+
+Only relevant for range columns. Match only rows where every element in `column` is greater than any element in `range`.
+
+### Examples
+
+#### With select()
+
+```dart
+final data = await supabase
+  .from('reservations')
+  .select()
+  .rangeGt('during', '[2000-01-02 08:00, 2000-01-02 09:00)');
+```
+
+## rangeGte
+
+Only relevant for range columns. Match only rows where every element in `column` is either contained in `range` or greater than any element in `range`.
+
+### Examples
+
+#### With select()
+
+```dart
+final data = await supabase
+  .from('reservations')
+  .select()
+  .rangeGte('during', '[2000-01-02 08:30, 2000-01-02 09:30)');
+```
+
+## rangeLt
+
+Only relevant for range columns. Match only rows where every element in `column` is less than any element in `range`.
+
+### Examples
+
+#### With select()
+
+```dart
+final data = await supabase
+  .from('reservations')
+  .select()
+  .rangeLt('during', '[2000-01-01 15:00, 2000-01-01 16:00)');
+```
+
+## rangeLte
+
+Only relevant for range columns. Match only rows where every element in `column` is either contained in `range` or less than any element in `range`.
+
+### Examples
+
+#### With select()
+
+```dart
+final data = await supabase
+  .from('reservations')
+  .select()
+  .rangeLte('during', '[2000-01-01 15:00, 2000-01-01 16:00)');
+```
+
+## textSearch
+
+Finds all rows whose tsvector value on the stated `column` matches to\_tsquery(query).
+
+### Examples
+
+#### Text search
+
+```dart
+final data = await supabase
+  .from('quotes')
+  .select('catchphrase')
+  .textSearch('content', "'eggs' & 'ham'",
+    config: 'english'
+  );
+```
+
+#### Basic normalization
+
+```dart
+final data = await supabase
+  .from('quotes')
+  .select('catchphrase')
+  .textSearch('catchphrase', "'fat' & 'cat'",
+    type: TextSearchType.plain,
+    config: 'english'
+  );
+```
+
+#### Full normalization
+
+```dart
+final data = await supabase
+  .from('quotes')
+  .select('catchphrase')
+  .textSearch('catchphrase', "'fat' & 'cat'",
+    type: TextSearchType.phrase,
+    config: 'english'
+  );
+```
+
+#### Websearch
+
+```dart
+final data = await supabase
+  .from('quotes')
+  .select('catchphrase')
+  .textSearch('catchphrase', "'fat or cat'",
+    type: TextSearchType.websearch,
+    config: 'english'
+  );
+```
+
+## Using modifiers
+
+Filters work on the row level. That is, they allow you to return rows that
+only match certain conditions without changing the shape of the rows.
+Modifiers are everything that don't fit that definition—allowing you to
+change the format of the response (e.g., returning a CSV string).
+
+Modifiers must be specified after filters. Some modifiers only apply for
+queries that return rows (e.g., `select()` or `rpc()` on a function that
+returns a table response).
+
+## Using modifiers
+
+Filters work on the row level. That is, they allow you to return rows that
+only match certain conditions without changing the shape of the rows.
+Modifiers are everything that don't fit that definition—allowing you to
+change the format of the response (e.g., returning a CSV string).
+
+Modifiers must be specified after filters. Some modifiers only apply for
+queries that return rows (e.g., `select()` or `rpc()` on a function that
+returns a table response).
+
+## csv
+
+### Examples
+
+#### Return data as CSV
+
+```dart
+final data = await supabase
+  .from('instruments')
+  .select()
+  .csv();
+```
+
+## explain
+
+For debugging slow queries, you can get the Postgres `EXPLAIN` execution plan of a query
+using the `explain()` method. This works on any query, even for `rpc()` or writes.
+
+Explain is not enabled by default as it can reveal sensitive information about your database.
+It's best to only enable this for testing environments but if you wish to enable it for production you can provide additional protection by using a `pre-request` function.
+
+Follow the Performance Debugging Guide to enable the functionality on your project.
+
+### Examples
+
+#### Get the execution plan
+
+```dart
+final data = await supabase
+  .from('instruments')
+  .select()
+  .explain();
+```
+
+#### Get the execution plan with analyze and verbose
+
+```dart
+final data = await supabase
+  .from('instruments')
+  .select()
+  .explain(analyze:true, verbose:true);
+```
+
+## limit
+
+Limits the result with the specified count.
+
+### Examples
+
+#### With select()
+
+```dart
+final data = await supabase
+  .from('instruments')
+  .select('name')
+  .limit(1);
+```
+
+#### On a referenced table
+
+```dart
+final data = await supabase
+  .from('orchestral_sections')
+  .select('''
+    name,
+    instruments (
+      name
+    )
+  ''')
+  .limit(1, referencedTable: 'instruments');
+```
+
+## maxAffected
+
+Sets the maximum number of rows that can be affected by the query. Only effective with PATCH and DELETE operations. Requires PostgREST v13 or higher.
+
+When the limit is exceeded, the query will fail with an error. This provides a safety mechanism to prevent accidentally affecting more rows than intended.
+
+- This method is only effective with UPDATE and DELETE operations.
+- Requires PostgREST v13 or higher on your Supabase instance.
+- If the number of affected rows exceeds the limit, the query will fail and no rows will be modified.
+
+### Examples
+
+#### With update()
+
+```dart
+await supabase
+  .from('users')
+  .update({'active': false})
+  .eq('status', 'inactive')
+  .maxAffected(5);
+```
+
+#### With delete()
+
+```dart
+await supabase
+  .from('users')
+  .delete()
+  .eq('active', false)
+  .maxAffected(10);
+```
+
+#### With select()
+
+```dart
+final data = await supabase
+  .from('users')
+  .update({'status': 'INACTIVE'})
+  .eq('id', 1)
+  .maxAffected(1)
+  .select();
+```
+
+## maybeSingle
+
+### Examples
+
+#### With `select()`
+
+```dart
+final data = await supabase
+  .from('instruments')
+  .select()
+  .eq('name', 'guzheng')
+  .maybeSingle();
+```
+
+## order
+
+Orders the result with the specified column.
+
+### Examples
+
+#### With select()
+
+```dart
+final data = await supabase
+  .from('instruments')
+  .select('id, name')
+  .order('id', ascending: false);
+```
+
+#### On a referenced table
+
+```dart
+final data = await supabase
+    .from('orchestral_sections')
+    .select('''
+      name,
+      instruments (
+        name
+      )
+    ''')
+    .order('name', referencedTable: 'instruments', ascending: false);
+```
+
+#### Order parent table by a referenced table
+
+```dart
+final data = await supabase
+    .from('instruments')
+    .select('''
+      name,
+      section:orchestral_sections (
+        name
+      )
+    ''')
+    .order('section(name)', ascending: true)
+```
+
+## range
+
+Limits the result to rows within the specified range, inclusive.
+
+### Examples
+
+#### With select()
+
+```dart
+final data = await supabase
+  .from('instruments')
+  .select('name')
+  .range(0, 1);
+```
+
+## select
+
+### Examples
+
+#### With `upsert()`
+
+```dart
+final data = await supabase
+  .from('instruments')
+  .upsert({ 'id': 1, 'name': 'piano' })
+  .select();
+```
+
+## single
+
+Retrieves only one row from the result. Result must be one row (e.g. using limit), otherwise this will result in an error.
+
+### Examples
+
+#### With select()
+
+```dart
+final data = await supabase
+  .from('instruments')
+  .select('name')
+  .limit(1)
+  .single();
+```
+
+## stripNulls
+
+Omits `null`-valued properties from the response objects.
+
+- This uses the `nulls=stripped` variant of the `Accept` header and requires PostgREST 11.2 or higher.
+
+### Examples
+
+#### Strip null values from the response
+
+```dart
+final data = await supabase
+  .from('users')
+  .select()
+  .stripNulls();
+```
+
+## Auth
+
+## currentSession
+
+Returns the session data, if there is an active session.
+
+- `currentSession` is a synchronous getter that returns whatever session is stored, even one whose access token has already expired.
+- `getSession()` is an asynchronous alternative that guarantees a valid access token when it resolves: a still-valid session is returned as-is, while an expired one is refreshed on demand first. It returns `null` when there is no session and throws an `AuthException` when an expired session cannot be refreshed.
+
+### Examples
+
+#### Get the session data
+
+```dart
+final Session? session = supabase.auth.currentSession;
+```
+
+#### Get the session data, refreshing if needed
+
+```dart
+final session = await supabase.auth.getSession();
+```
+
+## currentUser
+
+Returns the user data, if there is a signed-in user.
+
+### Examples
+
+#### Get the signed-in user
+
+```dart
+final User? user = supabase.auth.currentUser;
+```
+
+## getUserIdentities
+
+Gets all the identities linked to a user.
+
+- The user needs to be signed in to call `getUserIdentities()`.
+
+### Examples
+
+#### Returns a list of identities linked to the user
+
+```dart
+final identities = await supabase.auth.getUserIdentities();
+```
+
+## linkIdentity
+
+Links an oauth identity to an existing user. This method supports the PKCE flow.
+
+- The **Enable Manual Linking** option must be enabled from your project's authentication settings.
+- The user needs to be signed in to call `linkIdentity()`.
+- If the candidate identity is already linked to the existing user or another user, `linkIdentity()` will fail.
+
+### Examples
+
+#### Link an identity to a user
+
+```dart
+await supabase.auth.linkIdentity(OAuthProvider.google);
+```
+
+## linkIdentityWithIdToken
+
+Links an identity to an existing user using an ID token obtained from a third-party OAuth provider. This allows linking identities using native OAuth flows (Google, Apple, Facebook, etc.) similar to `signInWithIdToken()` but for linking rather than signing in.
+
+- The **Enable Manual Linking** option must be enabled from your project's authentication settings.
+- The user needs to be signed in to call `linkIdentityWithIdToken()`.
+- Supports the same OAuth providers as `signInWithIdToken()`: Google, Apple, Facebook, Kakao, and Keycloak.
+- If the candidate identity is already linked to another user, the operation will fail.
+
+### Examples
+
+#### Link Google identity
+
+```dart
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+const webClientId = '<web client ID>';
+const iosClientId = '<iOS client ID>';
+
+final GoogleSignIn googleSignIn = GoogleSignIn(
+  clientId: iosClientId,
+  serverClientId: webClientId,
+);
+final googleUser = await googleSignIn.signIn();
+final googleAuth = await googleUser!.authentication;
+final accessToken = googleAuth.accessToken;
+final idToken = googleAuth.idToken;
+
+if (accessToken == null) {
+  throw 'No Access Token found.';
+}
+if (idToken == null) {
+  throw 'No ID Token found.';
+}
+
+final response = await supabase.auth.linkIdentityWithIdToken(
+  provider: OAuthProvider.google,
+  idToken: idToken,
+  accessToken: accessToken,
+);
+```
+
+#### Link Apple identity
+
+```dart
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:crypto/crypto.dart';
+
+final rawNonce = supabase.auth.generateRawNonce();
+final hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
+
+final credential = await SignInWithApple.getAppleIDCredential(
+  scopes: [
+    AppleIDAuthorizationScopes.email,
+    AppleIDAuthorizationScopes.fullName,
+  ],
+  nonce: hashedNonce,
+);
+
+final idToken = credential.identityToken;
+if (idToken == null) {
+  throw const AuthException(
+    'Could not find ID Token from generated credential.',
+  );
+}
+
+final response = await supabase.auth.linkIdentityWithIdToken(
+  provider: OAuthProvider.apple,
+  idToken: idToken,
+  nonce: rawNonce,
+);
+```
+
+## onAuthStateChange
+
+Receive a notification every time an auth event happens.
+
+- **You must provide an `onError` handler.** Network errors (e.g. an offline token refresh) are emitted as stream errors. If no `onError` is provided, Dart rethrows them as unhandled zone exceptions, crashing the app.
+- Auth event types: `initialSession`, `signedIn`, `signedOut`, `passwordRecovery`, `tokenRefreshed`, `userUpdated`, `userDeleted`, `mfaChallengeVerified`
+
+### Examples
+
+#### Listen to auth changes
+
+```dart
+final authSubscription = supabase.auth.onAuthStateChange.listen(
+  (data) {
+    final AuthChangeEvent event = data.event;
+    final Session? session = data.session;
+    // handle event
+  },
+  onError: (error, stackTrace) {
+    // Network errors (e.g. offline) are emitted here.
+    // Handle or log them to avoid an unhandled exception crash.
+  },
+);
+```
+
+#### Listen to a specific event
+
+```dart
+final authSubscription = supabase.auth.onAuthStateChange.listen(
+  (data) {
+    final AuthChangeEvent event = data.event;
+    if (event == AuthChangeEvent.signedIn) {
+      // handle signIn
+    }
+  },
+  onError: (error, stackTrace) {
+    // Handle or log network / auth errors here.
+  },
+);
+```
+
+#### Unsubscribe from auth subscription
+
+```dart
+final authSubscription = supabase.auth.onAuthStateChange.listen(
+  (data) {},
+  onError: (error, stackTrace) {},
+);
+
+authSubscription.cancel();
+```
+
+## reauthenticate
+
+- This method is used together with `updateUser()` when a user's password needs to be updated.
+- This method sends a nonce to the user's email. If the user doesn't have a confirmed email address, the method sends the nonce to the user's confirmed phone number instead.
+
+### Examples
+
+#### Send reauthentication nonce
+
+```dart
+await supabase.auth.reauthenticate();
+```
+
+## refreshSession
+
+- This method will refresh and return a new session whether the current one is expired or not.
+
+### Examples
+
+#### Refresh session using the current session
+
+```dart
+final AuthResponse res = await supabase.auth.refreshSession();
+final session = res.session;
+```
+
+## registerPasskey
+
+Registers a new passkey (WebAuthn credential) for the signed-in user.
+
+- Available on `supabase_flutter` 2.15.0 and later as an extension on `GoTrueClient`.
+- Drives the full WebAuthn ceremony end to end: starts the registration with the Supabase server, calls the `authenticator` you supply to create a credential on the device, and verifies it with the server.
+- Requires a signed in (non-anonymous) user. If the user has verified MFA factors, the session has to be at `aal2` to manage passkeys.
+- `supabase_flutter` does not depend on a passkey plugin directly. Pass an implementation of `PasskeyAuthenticatorInterface`, such as the `passkeys` plugin's `PasskeyAuthenticator` (since `passkeys` `2.21.0`).
+- For native flows or custom UI, use the lower-level `auth.passkey` namespace instead.
+- Passkeys are a BETA feature and must be enabled for your project in the Supabase Dashboard under Authentication > Configuration > Passkeys.
+
+### Examples
+
+#### Register a passkey for the current user
+
+```dart
+import 'package:passkeys/authenticator.dart';
+
+final authenticator = PasskeyAuthenticator();
+
+final Passkey passkey = await supabase.auth.registerPasskey(
+  authenticator,
+  friendlyName: 'Work laptop',
+);
+```
+
+## resend
+
+- Resends a signup confirmation, email change, or phone change email to the user.
+- Passwordless sign-ins can be resent by calling the `signInWithOtp()` method again.
+- Password recovery emails can be resent by calling the `resetPasswordForEmail()` method again.
+- This method only resend an email or phone OTP to the user if an initial signup, email change, or phone change request was made.
+
+### Examples
+
+#### Resend an email signup confirmation
+
+```dart
+final ResendResponse res = await supabase.auth.resend(
+  type: OtpType.signup,
+  email: 'email@example.com',
+);
+```
+
+## resetPasswordForEmail
+
+Sends a reset request to an email address.
+
+Sends a password reset request to an email address. When the user clicks the reset link in the email they are redirected back to your application. Prompt the user for a new password and call auth.updateUser():
+
+```dart
+await supabase.auth.resetPasswordForEmail(
+  'sample@email.com',
+  redirectTo: kIsWeb ? null : 'io.supabase.flutter://reset-callback/',
+);
+```
+
+### Examples
+
+#### Reset password for Flutter
+
+`redirectTo` is used to open the app via deeplink when user opens the password reset email.
+
+```dart
+await supabase.auth.resetPasswordForEmail(
+  'sample@email.com',
+  redirectTo: kIsWeb ? null : 'io.supabase.flutter://reset-callback/',
+);
+```
+
+## setSession
+
+- `setSession()` takes in a refresh token and uses it to get a new session.
+- The refresh token can only be used once to obtain a new session.
+- Refresh token rotation is enabled by default on all projects to guard against replay attacks.
+- You can configure the `REFRESH_TOKEN_REUSE_INTERVAL` which provides a short window in which the same refresh token can be used multiple times in the event of concurrency or offline issues.
+
+### Examples
+
+#### Refresh the session
+
+```dart
+final refreshToken = supabase.currentSession?.refreshToken ?? '';
+final AuthResponse response = await supabase.auth.setSession(refreshToken);
+
+final session = res.session;
+```
+
+#### Set session with access token
+
+```dart
+final AuthResponse response = await supabase.auth.setSession(
+  refreshToken,
+  accessToken: accessToken,
+);
+```
+
+## signInAnonymously
+
+Creates an anonymous user.
+
+- Returns an anonymous user
+- It is recommended to set up captcha for anonymous sign-ins to prevent abuse. You can pass in the captcha token in the `options` param.
+
+### Examples
+
+#### Create an anonymous user
+
+```dart
+await supabase.auth.signInAnonymously();
+```
+
+#### Create an anonymous user with custom user metadata
+
+```dart
+await supabase.auth.signInAnonymously(
+  data: {'hello': 'world'},
+);
+```
+
+## signInWithIdToken
+
+Allows you to perform native Google, Apple, and Facebook sign in by combining it with google\_sign\_in, sign\_in\_with\_apple, or flutter\_facebook\_auth packages.
+
+### Examples
+
+#### Native Google sign in
+
+```dart
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+const webClientId = '<web client ID that you registered on Google Cloud, for example my-web.apps.googleusercontent.com>';
+
+const iosClientId = '<iOS client ID that you registered on Google Cloud, for example my-ios.apps.googleusercontent.com';
+
+final GoogleSignIn googleSignIn = GoogleSignIn(
+  clientId: iosClientId,
+  serverClientId: webClientId,
+);
+final googleUser = await googleSignIn.signIn();
+final googleAuth = await googleUser!.authentication;
+final accessToken = googleAuth.accessToken;
+final idToken = googleAuth.idToken;
+
+if (accessToken == null) {
+  throw 'No Access Token found.';
+}
+if (idToken == null) {
+  throw 'No ID Token found.';
+}
+
+final response = await supabase.auth.signInWithIdToken(
+  provider: OAuthProvider.google,
+  idToken: idToken,
+  accessToken: accessToken,
+);
+```
+
+#### Native Apple Sign in
+
+```dart
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:crypto/crypto.dart';
+
+/// Performs Apple sign in on iOS or macOS
+final rawNonce = supabase.auth.generateRawNonce();
+final hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
+
+final credential = await SignInWithApple.getAppleIDCredential(
+  scopes: [
+    AppleIDAuthorizationScopes.email,
+    AppleIDAuthorizationScopes.fullName,
+  ],
+  nonce: hashedNonce,
+);
+
+final idToken = credential.identityToken;
+if (idToken == null) {
+  throw const AuthException(
+    'Could not find ID Token from generated credential.',
+  );
+}
+
+final response = await supabase.auth.signInWithIdToken(
+  provider: OAuthProvider.apple,
+  idToken: idToken,
+  nonce: rawNonce,
+);
+```
+
+#### Native Facebook Sign in
+
+```dart
+import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+Future<void> signInWithFacebook() async {
+  final LoginResult result = await FacebookAuth.instance.login(
+    permissions: ['public_profile', 'email'],
+  );
+
+  if (result.status == LoginStatus.success) {
+    final accessToken = result.accessToken!.tokenString;
+
+    final response = await supabase.auth.signInWithIdToken(
+      provider: OAuthProvider.facebook,
+      idToken: accessToken,
+    );
+  } else {
+    throw const AuthException(
+      'Facebook login failed: ${result.status}',
+    );
+  }
+}
+```
+
+## signInWithOAuth
+
+Signs the user in using third-party OAuth providers.
+
+- This method is used for signing in using a third-party provider.
+- Supabase supports many different third-party providers.
+
+### Examples
+
+#### Sign in using a third-party provider
+
+```dart
+await supabase.auth.signInWithOAuth(
+  OAuthProvider.github,
+  redirectTo: kIsWeb ? null : 'my.scheme://my-host', // Optionally set the redirect link to bring back the user via deeplink.
+  authScreenLaunchMode:
+      kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication, // Launch the auth screen in a new webview on mobile.
+);
+```
+
+#### Sign in with a custom OIDC provider
+
+```dart
+await supabase.auth.signInWithOAuth(
+  OAuthProvider('custom:my-oidc-provider'),
+  redirectTo: kIsWeb ? null : 'my.scheme://my-host',
+);
+```
+
+#### With `redirectTo`
+
+```dart
+await supabase.auth.signInWithOAuth(
+  OAuthProvider.github,
+  redirectTo: kIsWeb ? null : 'io.supabase.flutter://reset-callback/',
+);
+```
+
+#### With scopes
+
+```dart
+await supabase.auth.signInWithOAuth(
+  OAuthProvider.github,
+  scopes: 'repo gist notifications'
+);
+...
+// after user comes back from signin flow
+
+final Session? session = supabase.auth.currentSession;
+final String? oAuthToken = session?.providerToken;
+```
+
+## signInWithOtp
+
+- Requires either an email or phone number.
+- This method is used for passwordless sign-ins where an OTP is sent to the user's email or phone number.
+- If you're using an email, you can configure whether you want the user to receive a magiclink or an OTP.
+- If you're using phone, you can configure whether you want the user to receive an OTP.
+- The magic link's destination URL is determined by the `SITE_URL`. You can modify the `SITE_URL` or add additional redirect urls in your project.
+
+### Examples
+
+#### Sign in with email.
+
+```dart
+await supabase.auth.signInWithOtp(
+  email: 'example@email.com',
+  emailRedirectTo: kIsWeb ? null : 'io.supabase.flutter://signin-callback/',
+);
+```
+
+#### Sign in with SMS OTP.
+
+```dart
+await supabase.auth.signInWithOtp(
+  phone: '+13334445555',
+);
+```
+
+#### Sign in with WhatsApp OTP
+
+```dart
+await supabase.auth.signInWithOtp(
+  phone: '+13334445555',
+  channel: OtpChannel.whatsapp,
+);
+```
+
+## signInWithPasskey
+
+Signs the user in with a passkey (WebAuthn).
+
+- Available on `supabase_flutter` 2.15.0 and later as an extension on `GoTrueClient`.
+- Drives the full WebAuthn ceremony end to end: starts the challenge with the Supabase server, calls the `authenticator` you supply to prompt the user for biometrics or a security key, and verifies the credential with the server.
+- Does not require an existing session. On success the session is persisted and an `AuthChangeEvent.signedIn` event is fired.
+- `supabase_flutter` does not depend on a passkey plugin directly. Pass an implementation of `PasskeyAuthenticatorInterface`, such as the `passkeys` plugin's `PasskeyAuthenticator` (since `passkeys` `2.21.0`).
+- For native flows or custom UI, use the lower-level `auth.passkey` namespace instead.
+- Passkeys are a BETA feature and must be enabled for your project in the Supabase Dashboard under Authentication > Configuration > Passkeys.
+- Platform setup the library cannot perform (Associated Domains on iOS/macOS, Digital Asset Links on Android, the `passkeys` web SDK on web) is documented in the `supabase_flutter` package README.
+
+### Examples
+
+#### Sign in with a passkey
+
+```dart
+import 'package:passkeys/authenticator.dart';
+
+final authenticator = PasskeyAuthenticator();
+
+final AuthResponse res = await supabase.auth.signInWithPasskey(authenticator);
+final Session? session = res.session;
+final User? user = res.user;
+```
+
+## signInWithPassword
+
+Sign in an existing user using email or phone number with password.
+
+- Requires either an email and password or a phone number and password.
+
+### Examples
+
+#### Sign in with email and password
+
+```dart
+final AuthResponse res = await supabase.auth.signInWithPassword(
+  email: 'example@email.com',
+  password: 'example-password',
+);
+final Session? session = res.session;
+final User? user = res.user;
+```
+
+#### Sign in with phone and password
+
+```dart
+final AuthResponse res = await supabase.auth.signInWithPassword(
+  phone: '+13334445555',
+  password: 'example-password',
+);
+final Session? session = res.session;
+final User? user = res.user;
+```
+
+## signInWithSSO
+
+- Before you can call this method you need to establish a connection to an identity provider. Use the CLI commands to do this.
+- If you've associated an email domain to the identity provider, you can use the `domain` property to start a sign-in flow.
+- In case you need to use a different way to start the authentication flow with an identity provider, you can use the `providerId` property. For example:
+  - Mapping specific user email addresses with an identity provider.
+  - Using different hints to identify the correct identity provider, like a company-specific page, IP address or other tracking information.
+
+### Examples
+
+#### Sign in with email domain
+
+```dart
+await supabase.auth.signInWithSSO(
+  domain: 'company.com',
+);
+```
+
+#### Sign in with provider UUID
+
+```dart
+await supabase.auth.signInWithSSO(
+  providerId: '21648a9d-8d5a-4555-a9d1-d6375dc14e92',
+);
+```
+
+## signInWithWeb3
+
+Signs in a user by verifying a message signed with their Web3 wallet.
+
+- Supports Ethereum (Sign-In with Ethereum) and Solana (Sign-In with Solana), both of which derive from the EIP-4361 standard.
+- Handle the wallet interaction and message signing yourself with the wallet library of your choice, then provide the signed `message` together with its `signature`.
+- For `Web3Chain.ethereum` the signature is a hex encoded string. For `Web3Chain.solana` it is a base64url encoded string.
+- On success, it signs the user in and returns a session. On failure, it throws an `AuthException`.
+
+### Examples
+
+#### Sign in with an Ethereum wallet
+
+```dart
+final response = await supabase.auth.signInWithWeb3(
+  chain: Web3Chain.ethereum,
+  message: message, // The EIP-4361 message signed by the wallet.
+  signature: signature, // Hex encoded signature.
+);
+final session = response.session;
+```
+
+#### Sign in with a Solana wallet
+
+```dart
+final response = await supabase.auth.signInWithWeb3(
+  chain: Web3Chain.solana,
+  message: message, // The message signed by the wallet.
+  signature: signature, // base64url encoded signature.
+);
+final session = response.session;
+```
+
+## signOut
+
+Signs out the current user, if there is a signed-in user.
+
+- In order to use the `signOut()` method, the user needs to be signed in first.
+
+### Examples
+
+#### Sign out
+
+```dart
+await supabase.auth.signOut();
+```
+
+## signUp
+
+Creates a new user.
+
+- By default, the user needs to verify their email address before signing in. To turn this off, disable **Confirm email** in your project.
+- **Confirm email** determines if users need to confirm their email address after signing up.
+  - If **Confirm email** is enabled, a `user` is returned but `session` is null.
+  - If **Confirm email** is disabled, both a `user` and a `session` are returned.
+- When the user confirms their email address, they are redirected to the `SITE_URL` by default. You can modify your `SITE_URL` or add additional redirect URLs in your project.
+- If signUp() is called for an existing confirmed user:
+  - When both **Confirm email** and **Confirm phone** (even when phone provider is disabled) are enabled in your project, an obfuscated/fake user object is returned.
+  - When either **Confirm email** or **Confirm phone** (even when phone provider is disabled) is disabled, the error message, `User already registered` is returned.
+
+### Examples
+
+#### Sign up with an email and password
+
+```dart
+final AuthResponse res = await supabase.auth.signUp(
+  email: 'example@email.com',
+  password: 'example-password',
+);
+final Session? session = res.session;
+final User? user = res.user;
+```
+
+#### Sign up with a phone number and password (SMS)
+
+```dart
+final AuthResponse res = await supabase.auth.signUp(
+  phone: '123456789',
+  password: 'example-password',
+  channel: OtpChannel.sms,
+);
+```
+
+#### Sign up with additional metadata
+
+```dart
+final AuthResponse res = await supabase.auth.signUp(
+  email: 'example@email.com',
+  password: 'example-password',
+  data: {'username': 'my_user_name'},
+);
+final Session? session = res.session;
+final User? user = res.user;
+```
+
+#### Sign up with redirect URL
+
+```dart
+final AuthResponse res = await supabase.auth.signUp(
+  email: 'example@email.com',
+  password: 'example-password',
+  emailRedirectTo: 'com.supabase.myapp://callback',
+);
+final Session? session = res.session;
+final User? user = res.user;
+```
+
+## unlinkIdentity
+
+Unlinks an identity from a user by deleting it. The user will no longer be able to sign in with that identity once it's unlinked.
+
+- The **Enable Manual Linking** option must be enabled from your project's authentication settings.
+- The user needs to be signed in to call `unlinkIdentity()`.
+- The user must have at least 2 identities in order to unlink an identity.
+- The identity to be unlinked must belong to the user.
+
+### Examples
+
+#### Unlink an identity
+
+```dart
+// retrieve all identities linked to a user
+final identities = await supabase.auth.getUserIdentities();
+
+// find the google identity
+final googleIdentity = identities.firstWhere(
+  (element) => element.provider == 'google',
+);
+
+// unlink the google identity
+await supabase.auth.unlinkIdentity(googleIdentity);
+```
+
+## updateUser
+
+Updates user data for a signed-in user.
+
+- In order to use the `updateUser()` method, the user needs to be signed in first.
+- By default, email updates sends a confirmation link to both the user's current and new email.
+  To only send a confirmation link to the user's new email, disable **Secure email change** in your project's email auth provider settings.
+
+### Examples
+
+#### Update the email for an authenticated user
+
+```dart
+final UserResponse res = await supabase.auth.updateUser(
+  UserAttributes(
+    email: 'example@email.com',
+  ),
+);
+final User? updatedUser = res.user;
+```
+
+#### Update the password for an authenticated user
+
+```dart
+final UserResponse res = await supabase.auth.updateUser(
+  UserAttributes(
+    password: 'new password',
+  ),
+);
+final User? updatedUser = res.user;
+```
+
+#### Update the password with the current password
+
+```dart
+final UserResponse res = await supabase.auth.updateUser(
+  UserAttributes(
+    password: 'new password',
+    currentPassword: 'current password',
+  ),
+);
+final User? updatedUser = res.user;
+```
+
+#### Update the user's metadata
+
+```dart
+final UserResponse res = await supabase.auth.updateUser(
+  UserAttributes(
+    data: { 'hello': 'world' },
+  ),
+);
+final User? updatedUser = res.user;
+```
+
+#### Update the user's password with a nonce
+
+```dart
+supabase.auth.updateUser(UserAttributes(
+  email: 'example@email.com',
+  nonce: '123456',
+));
+```
+
+## verifyOtp
+
+- The `verifyOtp` method takes in different verification types. If a phone number is used, the type can either be `sms` or `phone_change`. If an email address is used, the type can be one of the following: `email`, `recovery`, `invite` or `email_change` (`signup` and `magiclink` types are deprecated).
+- The verification type used should be determined based on the corresponding auth method called before `verifyOtp` to sign up or sign in a user.
+
+### Examples
+
+#### Verify Signup One-Time Password (OTP)
+
+```dart
+final AuthResponse res = await supabase.auth.verifyOTP(
+  type: OtpType.signup,
+  token: token,
+  phone: '+13334445555',
+);
+final Session? session = res.session;
+final User? user = res.user;
+```
+
+#### Verify SMS One-Time Password (OTP)
+
+```dart
+final AuthResponse res = await supabase.auth.verifyOTP(
+  type: OtpType.sms,
+  token: '111111',
+  phone: '+13334445555',
+);
+final Session? session = res.session;
+final User? user = res.user;
+```
+
+## Auth Admin
+
+- Any method under the `supabase.auth.admin` namespace requires a `secret` key.
+- These methods are considered admin methods and should be called on a trusted server. Never expose your `secret` key in the Flutter app.
+
+### Examples
+
+#### Create server-side auth client
+
+```dart
+final supabase = SupabaseClient(supabaseUrl, secretKey);
+```
+
+## Auth Admin
+
+- Any method under the `supabase.auth.admin` namespace requires a `secret` key.
+- These methods are considered admin methods and should be called on a trusted server. Never expose your `secret` key in the Flutter app.
+
+### Examples
+
+#### Create server-side auth client
+
+```dart
+final supabase = SupabaseClient(supabaseUrl, secretKey);
+```
+
+## createUser
+
+Creates a new user.
+
+- To confirm the user's email address or phone number, set `email_confirm` or `phone_confirm` to true. Both arguments default to false.
+- `createUser()` will not send a confirmation email to the user. You can use `inviteUserByEmail()` if you want to send them an email invite instead.
+- If you are sure that the created user's email or phone number is legitimate and verified, you can set the `email_confirm` or `phone_confirm` param to `true`.
+
+### Examples
+
+#### With custom user metadata
+
+```dart
+final res = await supabase.auth.admin.createUser(AdminUserAttributes(
+  email: 'user@email.com',
+  password: 'password',
+  userMetadata: {'name': 'Yoda'},
+));
+```
+
+#### Auto-confirm the user's email
+
+```dart
+final res = await supabase.auth.admin.createUser(AdminUserAttributes(
+  email: 'user@email.com',
+  emailConfirm: true,
+));
+```
+
+#### Auto-confirm the user's phone number
+
+```dart
+final res = await supabase.auth.admin.createUser(AdminUserAttributes(
+  phone: '1234567890',
+  phoneConfirm: true,
+));
+```
+
+## deleteUser
+
+Delete a user.
+
+- The `deleteUser()` method requires the user's ID, which maps to the `auth.users.id` column.
+- When `shouldSoftDelete` is `true`, the user is soft-deleted: their record and associated data are retained but the user is marked as deleted. Defaults to `false`, which permanently removes the user.
+
+### Examples
+
+#### Removes a user
+
+```dart
+await supabase.auth.admin
+    .deleteUser('715ed5db-f090-4b8c-a067-640ecee36aa0');
+```
+
+#### Soft-delete a user
+
+```dart
+await supabase.auth.admin
+    .deleteUser(
+      '715ed5db-f090-4b8c-a067-640ecee36aa0',
+      shouldSoftDelete: true,
+    );
+```
+
+## generateLink
+
+Generates email links and OTPs. This will not send links or OTPs to the end user. This function is for custom admin functionality.
+
+- The following types can be passed into `generateLink()`: `signup`, `magiclink`, `invite`, `recovery`, `emailChangeCurrent`, `emailChangeNew`, `phoneChange`.
+- `generateLink()` only generates the email link for `email_change_email` if the "Secure email change" setting is enabled under the "Email" provider in your Supabase project.
+- `generateLink()` handles the creation of the user for `signup`, `invite` and `magiclink`.
+
+### Examples
+
+#### Generate a signup link
+
+```dart
+final res = await supabase.auth.admin.generateLink(
+  type: GenerateLinkType.signup,
+  email: 'email@example.com',
+  password: 'secret',
+);
+final actionLink = res.properties.actionLink;
+```
+
+## getUserById
+
+Get user by id.
+
+- Fetches the user object from the database based on the user's id.
+- The `getUserById()` method requires the user's id which maps to the `auth.users.id` column.
+
+### Examples
+
+#### Fetch the user object using the access\_token jwt
+
+```dart
+final res = await supabase.auth.admin.getUserById(userId);
+final user = res.user;
+```
+
+## inviteUserByEmail
+
+Sends an invite link to the user's email address.
+
+### Examples
+
+#### Invite a user
+
+```dart
+final UserResponse res = await supabase.auth.admin
+    .inviteUserByEmail('email@example.com');
+final User? user = res.user;
+```
+
+## listUsers
+
+Get a list of users.
+
+- Defaults to return 50 users per page.
+
+### Examples
+
+#### Get a page of users
+
+```dart
+// Returns the first 50 users.
+final List<User> users = await supabase.auth.admin.listUsers();
+```
+
+#### Paginated list of users
+
+```dart
+// Returns the 101th - 200th users.
+final List<User> res = await supabase.auth.admin.listUsers(
+  page: 2,
+  perPage: 100,
+);
+```
+
+## updateUserById
+
+### Examples
+
+#### Updates a user's email
+
+```dart
+await supabase.auth.admin.updateUserById(
+  '6aa5d0d4-2a9f-4483-b6c8-0cf4c6c98ac4',
+  attributes: AdminUserAttributes(
+    email: 'new@email.com',
+  ),
+);
+```
+
+## Auth MFA
+
+This section contains methods commonly used for Multi-Factor Authentication (MFA) and are invoked behind the `supabase.auth.mfa` namespace.
+
+Currently, Supabase supports time-based one-time password (TOTP) and phone verification code as the 2nd factor. Recovery codes are not supported but users can enroll multiple factors, with an upper limit of 10..
+
+Having a 2nd factor for recovery frees the user of the burden of having to store their recovery codes somewhere. It also reduces the attack surface since multiple recovery codes are usually generated compared to just having 1 backup factor.
+
+Learn more about implementing MFA on your application on our guide here.
+
+## Auth MFA
+
+This section contains methods commonly used for Multi-Factor Authentication (MFA) and are invoked behind the `supabase.auth.mfa` namespace.
+
+Currently, Supabase supports time-based one-time password (TOTP) and phone verification code as the 2nd factor. Recovery codes are not supported but users can enroll multiple factors, with an upper limit of 10..
+
+Having a 2nd factor for recovery frees the user of the burden of having to store their recovery codes somewhere. It also reduces the attack surface since multiple recovery codes are usually generated compared to just having 1 backup factor.
+
+Learn more about implementing MFA on your application on our guide here.
+
+## challenge
+
+Prepares a challenge used to verify that a user has access to a MFA factor.
+
+- An enrolled factor is required before creating a challenge.
+- To verify a challenge, see `mfa.verify()`.
+
+### Examples
+
+#### Create a challenge for a factor
+
+```dart
+final res = await supabase.auth.mfa.challenge(
+  factorId: '34e770dd-9ff9-416c-87fa-43b31d7ef225',
+);
+```
+
+#### Create a challenge for a phone factor over WhatsApp
+
+```dart
+final res = await supabase.auth.mfa.challenge(
+  factorId: '34e770dd-9ff9-416c-87fa-43b31d7ef225',
+  channel: OtpChannel.whatsapp,
+);
+```
+
+## challengeAndVerify
+
+Helper method which creates a challenge and immediately uses the given code to verify against it thereafter. The verification code is provided by the user by entering a code seen in their authenticator app.
+
+- An enrolled factor is required before invoking `challengeAndVerify()`.
+- Executes `mfa.challenge()` and `mfa.verify()` in a single step.
+
+### Examples
+
+#### Create and verify a challenge for a factor
+
+```dart
+final res = await supabase.auth.mfa.challengeAndVerify(
+  factorId: '34e770dd-9ff9-416c-87fa-43b31d7ef225',
+  code: '123456',
+);
+```
+
+## enroll
+
+Starts the enrollment process for a new Multi-Factor Authentication (MFA) factor. This method creates a new `unverified` factor.
+To verify a factor, present the QR code or secret to the user and ask them to add it to their authenticator app.
+The user has to enter the code from their authenticator app to verify it.
+
+- Use `totp` or `phone` as the `factorType` and the returned `id` to create a challenge.
+- To create a challenge, see `mfa.challenge()`.
+- To verify a challenge, see `mfa.verify()`.
+- To create and verify a challenge in a single step, see `mfa.challengeAndVerify()`.
+
+### Examples
+
+#### Enroll a time-based, one-time password (TOTP) factor
+
+```dart
+final res = await supabase.auth.mfa.enroll(factorType: FactorType.totp);
+
+final qrCodeUrl = res.totp.qrCode;
+```
+
+#### Enroll a Phone Factor
+
+```dart
+final res = await supabase.auth.mfa.enroll(factorType: FactorType.phone, phone: '+1234567890');
+
+final phone = res.phone;
+```
+
+## getAuthenticatorAssuranceLevel
+
+Returns the Authenticator Assurance Level (AAL) for the active session.
+
+- Authenticator Assurance Level (AAL) is the measure of the strength of an authentication mechanism.
+- In Supabase, having an AAL of `aal1` means the user has signed in with their first factor, such as email, password, or OAuth sign-in. An AAL of `aal2` means the user has also signed in with their second factor, such as a time-based, one-time-password (TOTP).
+- If the user has a verified factor, the `nextLevel` field returns `aal2`. Otherwise, it returns `aal1`.
+
+### Examples
+
+#### Get the AAL details of a session
+
+```dart
+final res = supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+final currentLevel = res.currentLevel;
+final nextLevel = res.nextLevel;
+final currentAuthenticationMethods = res.currentAuthenticationMethods;
+```
+
+## unenroll
+
+Unenroll removes a MFA factor.
+A user has to have an `aal2` authenticator level in order to unenroll a `verified` factor.
+
+### Examples
+
+#### Unenroll a factor
+
+```dart
+final res = await supabase.auth.mfa.unenroll(
+  '34e770dd-9ff9-416c-87fa-43b31d7ef225',
+);
+```
+
+## verify
+
+Verifies a code against a challenge. The verification code is provided by the user by entering a code seen in their authenticator app.
+
+- To verify a challenge, please create a challenge first.
+
+### Examples
+
+#### Verify a challenge for a factor
+
+```dart
+final res = await supabase.auth.mfa.verify(
+  factorId: '34e770dd-9ff9-416c-87fa-43b31d7ef225',
+  challengeId: '4034ae6f-a8ce-4fb5-8ee5-69a5863a7c15',
+  code: '123456',
+);
+```
+
+## Auth Passkey
+
+This section contains methods for WebAuthn passkey registration, authentication, and management. Methods are invoked behind the `supabase.auth.passkey` namespace.
+
+These methods expose the server side of the WebAuthn ceremony. The client side (the FaceID/TouchID/security key prompt) has to be performed with a platform passkey API: `navigator.credentials.create()`/`get()` on web, or a passkey plugin on iOS/Android/macOS. Options and credentials are exchanged as `Map<String, dynamic>` in the W3C WebAuthn Level 3 JSON format.
+
+For a one-call alternative that runs the full ceremony, see `signInWithPasskey()` and `registerPasskey()` on `supabase_flutter`.
+
+Passkey support is a BETA feature and must be enabled for your project in the Supabase Dashboard under Authentication > Configuration > Passkeys.
+
+## Auth Passkey
+
+This section contains methods for WebAuthn passkey registration, authentication, and management. Methods are invoked behind the `supabase.auth.passkey` namespace.
+
+These methods expose the server side of the WebAuthn ceremony. The client side (the FaceID/TouchID/security key prompt) has to be performed with a platform passkey API: `navigator.credentials.create()`/`get()` on web, or a passkey plugin on iOS/Android/macOS. Options and credentials are exchanged as `Map<String, dynamic>` in the W3C WebAuthn Level 3 JSON format.
+
+For a one-call alternative that runs the full ceremony, see `signInWithPasskey()` and `registerPasskey()` on `supabase_flutter`.
+
+Passkey support is a BETA feature and must be enabled for your project in the Supabase Dashboard under Authentication > Configuration > Passkeys.
+
+## delete
+
+Deletes a passkey from the signed-in user.
+
+- If the user has verified MFA factors, the session has to be at `aal2` to manage passkeys.
+
+### Examples
+
+#### Delete a passkey
+
+```dart
+await supabase.auth.passkey.delete(
+  passkeyId: '34e770dd-9ff9-416c-87fa-43b31d7ef225',
+);
+```
+
+## list
+
+Returns the list of passkeys registered to the signed-in user.
+
+### Examples
+
+#### List the current user's passkeys
+
+```dart
+final List<Passkey> passkeys = await supabase.auth.passkey.list();
+```
+
+## startAuthentication
+
+Starts a passkey sign in.
+
+- Does not require an existing session.
+- Pass the returned `options` to the platform's passkey API to obtain an assertion, then call `passkey.verifyAuthentication()` with the result.
+
+### Examples
+
+#### Start a passkey sign in
+
+```dart
+final PasskeyAuthenticationOptionsResponse authentication =
+    await supabase.auth.passkey.startAuthentication();
+
+// Hand authentication.options to the platform passkey API.
+```
+
+## startRegistration
+
+Starts the registration of a new passkey for the signed-in user.
+
+- Requires a signed in (non-anonymous) user.
+- Pass the returned `options` to the platform's passkey API to create the credential, then call `passkey.verifyRegistration()` with the result.
+- When the server omits `user.name`/`displayName` in the registration options, they are backfilled with `friendlyName` (or a generic `Passkey` default) before the platform ceremony.
+
+### Examples
+
+#### Start a passkey registration
+
+```dart
+final PasskeyRegistrationOptionsResponse registration =
+    await supabase.auth.passkey.startRegistration(
+  friendlyName: 'Work laptop',
+);
+
+// Hand registration.options to the platform passkey API.
+```
+
+## update
+
+Updates the friendly name of a passkey.
+
+### Examples
+
+#### Rename a passkey
+
+```dart
+final Passkey passkey = await supabase.auth.passkey.update(
+  passkeyId: '34e770dd-9ff9-416c-87fa-43b31d7ef225',
+  friendlyName: 'Work laptop',
+);
+```
+
+## verifyAuthentication
+
+Completes a passkey sign in and returns the new session.
+
+- On success the session is persisted and an `AuthChangeEvent.signedIn` event is fired.
+
+### Examples
+
+#### Verify a passkey sign in
+
+```dart
+final AuthResponse res = await supabase.auth.passkey.verifyAuthentication(
+  challengeId: authentication.challengeId,
+  credential: credential,
+);
+final Session? session = res.session;
+final User? user = res.user;
+```
+
+## verifyRegistration
+
+Completes the registration of a new passkey and returns the stored `Passkey`.
+
+### Examples
+
+#### Verify a passkey registration
+
+```dart
+final Passkey passkey = await supabase.auth.passkey.verifyRegistration(
+  challengeId: registration.challengeId,
+  credential: credential,
+);
+```
+
+## Custom Provider Admin
+
+- Methods under the `supabase.auth.admin.customProviders` namespace manage custom OIDC/OAuth providers programmatically. Requires a `secret` key.
+- These are admin methods and should be called on a trusted server. Never expose your `secret` key in the Flutter app.
+- Custom providers are referenced with a `custom:` prefix when signing in (for example `custom:mycompany`), and are distinct from the OAuth 2.1 server clients managed through `supabase.auth.admin.oauth`.
+
+## Custom Provider Admin
+
+- Methods under the `supabase.auth.admin.customProviders` namespace manage custom OIDC/OAuth providers programmatically. Requires a `secret` key.
+- These are admin methods and should be called on a trusted server. Never expose your `secret` key in the Flutter app.
+- Custom providers are referenced with a `custom:` prefix when signing in (for example `custom:mycompany`), and are distinct from the OAuth 2.1 server clients managed through `supabase.auth.admin.oauth`.
+
+## createProvider
+
+Creates a new custom OIDC/OAuth provider. For OIDC providers, the server fetches and validates the discovery document at creation time and throws an `AuthException` with code `validation_failed` if it is unreachable or invalid.
+
+### Examples
+
+#### Create a custom provider
+
+```dart
+final CustomOAuthProvider provider =
+    await supabase.auth.admin.customProviders.createProvider(
+  CreateCustomProviderParams(
+    providerType: CustomProviderType.oidc,
+    identifier: 'custom:mycompany',
+    name: 'My Company',
+    clientId: 'client-id',
+    clientSecret: 'client-secret',
+    issuer: 'https://auth.mycompany.com',
+    customClaimsAllowlist: ['groups', 'org_id'],
+  ),
+);
+```
+
+## deleteProvider
+
+Deletes a custom provider by its identifier.
+
+### Examples
+
+#### Delete a custom provider
+
+```dart
+await supabase.auth.admin.customProviders.deleteProvider('custom:mycompany');
+```
+
+## getProvider
+
+Gets details of a specific custom provider by its identifier.
+
+### Examples
+
+#### Get a custom provider
+
+```dart
+final CustomOAuthProvider provider =
+    await supabase.auth.admin.customProviders.getProvider('custom:mycompany');
+```
+
+## listProviders
+
+Lists all custom providers, optionally filtered by provider type.
+
+### Examples
+
+#### List custom providers
+
+```dart
+final List<CustomOAuthProvider> providers =
+    await supabase.auth.admin.customProviders.listProviders();
+```
+
+## updateProvider
+
+Updates an existing custom provider. When `issuer` or `discoveryUrl` changes on an OIDC provider, the server re-fetches and validates the discovery document before persisting.
+
+### Examples
+
+#### Update a custom provider
+
+```dart
+final CustomOAuthProvider provider =
+    await supabase.auth.admin.customProviders.updateProvider(
+  'custom:mycompany',
+  UpdateCustomProviderParams(
+    customClaimsAllowlist: ['groups', 'org_id', 'mail'],
+  ),
+);
+```
+
+## OAuth Server
+
+Methods under the `supabase.auth.oauth` namespace are used when your Supabase project acts as an OAuth 2.1 server. They drive the user-facing consent flow, let users manage the grants they have issued to third-party clients, and require a signed-in user. The OAuth 2.1 server feature must be enabled in your Supabase Auth configuration.
+
+## OAuth Server
+
+Methods under the `supabase.auth.oauth` namespace are used when your Supabase project acts as an OAuth 2.1 server. They drive the user-facing consent flow, let users manage the grants they have issued to third-party clients, and require a signed-in user. The OAuth 2.1 server feature must be enabled in your Supabase Auth configuration.
+
+## approveAuthorization
+
+Approves a pending OAuth authorization request on behalf of the signed-in user. The response contains the redirect URL the user should be sent to.
+
+### Examples
+
+#### Approve authorization
+
+```dart
+final consent =
+    await supabase.auth.oauth.approveAuthorization(authorizationId);
+// Redirect the user to consent.redirectUrl
+```
+
+## denyAuthorization
+
+Denies a pending OAuth authorization request on behalf of the signed-in user. The response contains the redirect URL the user should be sent to.
+
+### Examples
+
+#### Deny authorization
+
+```dart
+final consent =
+    await supabase.auth.oauth.denyAuthorization(authorizationId);
+// Redirect the user to consent.redirectUrl
+```
+
+## getAuthorizationDetails
+
+Retrieves details about a pending OAuth authorization request so you can render a consent screen. The `authorizationId` is provided as a query parameter on the redirect URL that starts the flow.
+
+- Returns a sealed `OAuthAuthorizationResponse`. Handle both variants: `OAuthAuthorizationDetailsResponse` carries the requesting `client` and requested `scope` for the consent screen, while `OAuthAuthorizationRedirectResponse` is returned when the user has already granted consent and only carries a `redirectUrl` to forward to.
+
+### Examples
+
+#### Get authorization details
+
+```dart
+final authorizationId =
+    Uri.parse(currentUrl).queryParameters['authorization_id']!;
+
+final response =
+    await supabase.auth.oauth.getAuthorizationDetails(authorizationId);
+
+switch (response) {
+  case OAuthAuthorizationRedirectResponse(:final redirectUrl):
+    // The user already consented; forward them without a consent screen.
+    break;
+  case OAuthAuthorizationDetailsResponse(:final client, :final scope):
+    // Render a consent screen for `client` requesting `scope`.
+    break;
+}
+```
+
+## listGrants
+
+Lists the OAuth grants the signed-in user has issued to third-party OAuth clients.
+
+- Requires an authenticated user. Returns the grants issued by the current user.
+
+### Examples
+
+#### List OAuth grants
+
+```dart
+final List<OAuthGrant> grants = await supabase.auth.oauth.listGrants();
+
+for (final grant in grants) {
+  print('${grant.client.clientId}: ${grant.scopes}');
+}
+```
+
+## revokeGrant
+
+Revokes a grant the signed-in user previously issued to a third-party OAuth client.
+
+### Examples
+
+#### Revoke an OAuth grant
+
+```dart
+await supabase.auth.oauth.revokeGrant('client-id');
+```
+
+## Passkey Admin
+
+Contains passkey administration methods, accessed under the `supabase.auth.admin.passkey` namespace. Requires a `secret` key.
+
+Passkey support is a BETA feature and must be enabled for your project in the Supabase Dashboard under Authentication > Configuration > Passkeys.
+
+## Passkey Admin
+
+Contains passkey administration methods, accessed under the `supabase.auth.admin.passkey` namespace. Requires a `secret` key.
+
+Passkey support is a BETA feature and must be enabled for your project in the Supabase Dashboard under Authentication > Configuration > Passkeys.
+
+## deletePasskey
+
+Deletes a passkey from a user.
+
+### Examples
+
+#### Delete a user's passkey
+
+```dart
+await supabase.auth.admin.passkey.deletePasskey(
+  userId: '11111111-1111-1111-1111-111111111111',
+  passkeyId: '34e770dd-9ff9-416c-87fa-43b31d7ef225',
+);
+```
+
+## listPasskeys
+
+Returns the list of passkeys registered to the user with the given ID.
+
+### Examples
+
+#### List a user's passkeys
+
+```dart
+final List<Passkey> passkeys = await supabase.auth.admin.passkey.listPasskeys(
+  userId: '11111111-1111-1111-1111-111111111111',
+);
+```
+
+## Edge Functions
+
+## invoke
+
+Invokes a Supabase Function. See the guide for details on writing Functions.
+
+- Requires an Authorization header.
+- Invoke params generally match the Fetch API spec.
+
+### Examples
+
+#### Basic invocation.
+
+```dart
+final res = await supabase.functions.invoke('hello', body: {'foo': 'baa'});
+final data = res.data;
+```
+
+#### Parsing custom headers.
+
+```dart
+final res = await supabase.functions.invoke(
+  'hello',
+  body: {'foo': 'baa'},
+  headers: {
+    'Authorization': 'Bearer ${supabase.auth.currentSession?.accessToken}'
+  },
+);
+```
+
+#### Aborting a request
+
+```dart
+import 'package:http/http.dart' as http;
+
+try {
+  final res = await supabase.functions.invoke(
+    'hello',
+    body: {'foo': 'baa'},
+    abortSignal: Future.delayed(const Duration(seconds: 5)),
+  );
+  final data = res.data;
+} on http.RequestAbortedException catch (error) {
+  print('Request was aborted: $error');
+}
+```
+
+## Realtime
+
+## getChannels
+
+Returns all Realtime channels.
+
+### Examples
+
+#### Get all channels
+
+```dart
+final channels = supabase.getChannels();
+```
+
+## onHeartbeat
+
+A `Stream` that emits a status every time the Realtime client sends a heartbeat, receives an acknowledgement, or when a heartbeat goes unanswered.
+
+- Each event is a `RealtimeHeartbeatStatus`: `sent` when a heartbeat is pushed, `ok` or `error` when the server acknowledges it, and `timeout` when a prior heartbeat is not answered in time.
+- Useful for observing connection health, for example to surface a reconnecting indicator in your UI.
+
+### Examples
+
+#### Listen to heartbeat status
+
+```dart
+final subscription = supabase.realtime.onHeartbeat.listen((status) {
+  print('Heartbeat status: $status');
+});
+```
+
+## removeAllChannels
+
+Unsubscribes and removes all Realtime channels from Realtime client.
+
+- Removing channels is a great way to maintain the performance of your project's Realtime service as well as your database if you're listening to Postgres changes. Supabase will automatically handle cleanup 30 seconds after a client is disconnected, but unused channels may cause degradation as more clients are simultaneously subscribed.
+
+### Examples
+
+#### Remove all channels
+
+```dart
+final statuses = await supabase.removeAllChannels();
+```
+
+## removeChannel
+
+Unsubscribes and removes Realtime channel from Realtime client.
+
+- Removing a channel is a great way to maintain the performance of your project's Realtime service as well as your database if you're listening to Postgres changes. Supabase will automatically handle cleanup 30 seconds after a client is disconnected, but unused channels may cause degradation as more clients are simultaneously subscribed.
+
+### Examples
+
+#### Remove a channel
+
+```dart
+final status = await supabase.removeChannel(channel);
+```
+
+## stream
+
+Returns real-time data from your table as a `Stream`.
+
+- Realtime is disabled by default for new tables. You can turn it on by managing replication.
+- `stream()` will emit the initial data as well as any further change on the database as `Stream<List<Map<String, dynamic>>>` by combining Postgrest and Realtime.
+- Takes a list of primary key column names that will be used to update and delete the proper records within the SDK.
+- To use a private Realtime channel, pass `channelOptions: const RealtimeChannelConfig(private: true)` to the `stream()` call.
+- The following filters are available
+  - `.eq('column', value)` listens to rows where the column equals the value
+  - `.neq('column', value)` listens to rows where the column does not equal the value
+  - `.gt('column', value)` listens to rows where the column is greater than the value
+  - `.gte('column', value)` listens to rows where the column is greater than or equal to the value
+  - `.lt('column', value)` listens to rows where the column is less than the value
+  - `.lte('column', value)` listens to rows where the column is less than or equal to the value
+  - `.inFilter('column', [val1, val2, val3])` listens to rows where the column is one of the values
+  - `.like('column', pattern)` listens to rows where the column matches the given `LIKE` pattern
+  - `.ilike('column', pattern)` listens to rows where the column matches the given case-insensitive `LIKE` pattern
+  - `.matchRegex('column', pattern)` listens to rows where the column matches the given PostgreSQL regular expression, case-sensitive
+  - `.imatchRegex('column', pattern)` listens to rows where the column matches the given PostgreSQL regular expression, case-insensitive
+  - `.isFilter('column', value)` listens to rows where the column `IS` the given value (e.g. `null`, `true`, `false`)
+  - `.isDistinct('column', value)` listens to rows where the column `IS DISTINCT FROM` the given value
+- Multiple filters can be chained together on the same `stream()` call, and they are combined with `AND` both when fetching the initial data and when filtering realtime changes.
+- For `UPDATE` events, a filter such as `.eq()` is only re-evaluated against the new row. If a row stops matching the filter after an update, it is not removed from the stream and will remain in its last known state until it is deleted or the stream is restarted.
+- `DELETE` events only include the primary key columns of the deleted row by default, not the full previous row.
+
+### Examples
+
+#### Listen to a table
+
+```dart
+supabase.from('countries')
+  .stream(primaryKey: ['id'])
+  .listen((List<Map<String, dynamic>> data) {
+  // Do something awesome with the data
+});
+```
+
+#### With filter, order and limit
+
+```dart
+supabase.from('countries')
+  .stream(primaryKey: ['id'])
+  .eq('id', 120)
+  .order('name')
+  .limit(10);
+```
+
+#### With an IN filter
+
+```dart
+supabase.from('countries')
+  .stream(primaryKey: ['id'])
+  .inFilter('id', [1, 2, 3])
+  .order('name')
+  .limit(10);
+```
+
+#### With multiple filters
+
+```dart
+supabase.from('countries')
+  .stream(primaryKey: ['id'])
+  .eq('continent', 'Asia')
+  .like('name', '%Republic%')
+  .order('name')
+  .limit(10);
+```
+
+#### Using `stream()` with `StreamBuilder`
+
+```dart
+final supabase = Supabase.instance.client;
+
+class MyWidget extends StatefulWidget {
+  const MyWidget({Key? key}) : super(key: key);
+
+  @override
+  State<MyWidget> createState() => _MyWidgetState();
+}
+
+class _MyWidgetState extends State<MyWidget> {
+  // Persist the stream in a local variable to prevent refetching upon rebuilds
+  final _stream = supabase.from('countries').stream(primaryKey: ['id']);
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder(
+      stream: _stream,
+      builder: (context, snapshot) {
+        // Return your widget with the data from the snapshot
+      },
+    );
+  }
+}
+```
+
+## subscribe
+
+Subscribe to realtime changes in your database.
+
+- Realtime is disabled by default for new tables. You can turn it on by managing replication.
+- If you want to receive the "previous" data for updates and deletes, you will need to set `REPLICA IDENTITY` to `FULL`, like this: `ALTER TABLE your_table REPLICA IDENTITY FULL;`
+
+### Examples
+
+#### Listen to database changes
+
+```dart
+supabase
+    .channel('public:countries')
+    .onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'countries',
+        callback: (payload) {
+          print('Change received: ${payload.toString()}');
+        })
+    .subscribe();
+```
+
+#### Listen to inserts
+
+```dart
+supabase
+    .channel('public:countries')
+    .onPostgresChanges(
+        event: PostgresChangeEvent.insert,
+        schema: 'public',
+        table: 'countries',
+        callback: (payload) {
+          print('Change received: ${payload.toString()}');
+        })
+    .subscribe();
+```
+
+#### Listen to updates
+
+```dart
+supabase
+    .channel('public:countries')
+    .onPostgresChanges(
+        event: PostgresChangeEvent.update,
+        schema: 'public',
+        table: 'countries',
+        callback: (payload) {
+          print('Change received: ${payload.toString()}');
+        })
+    .subscribe();
+```
+
+#### Listen to deletes
+
+```dart
+supabase
+    .channel('public:countries')
+    .onPostgresChanges(
+        event: PostgresChangeEvent.delete,
+        schema: 'public',
+        table: 'countries',
+        callback: (payload) {
+          print('Change received: ${payload.toString()}');
+        })
+    .subscribe();
+```
+
+#### Listen to multiple events
+
+```dart
+supabase
+    .channel('public:countries')
+    .onPostgresChanges(
+        event: PostgresChangeEvent.insert,
+        schema: 'public',
+        table: 'countries',
+        callback: (payload) {
+          print('Insert event received: ${payload.toString()}');
+        })
+    .onPostgresChanges(
+        event: PostgresChangeEvent.delete,
+        schema: 'public',
+        table: 'countries',
+        callback: (payload) {
+          print('Delete event received: ${payload.toString()}');
+        })
+    .subscribe();
+```
+
+#### Listen to row level changes
+
+```dart
+supabase
+    .channel('public:countries:id=eq.200')
+    .onPostgresChanges(
+        event: PostgresChangeEvent.delete,
+        schema: 'public',
+        table: 'countries',
+        filter: PostgresChangeFilter(
+          type: PostgresChangeFilterType.eq,
+          column: 'id',
+          value: 200,
+        ),
+        callback: (payload) {
+          print('Change received: ${payload.toString()}');
+        })
+    .subscribe();
+```
+
+#### Listen with pattern and negated filters
+
+```dart
+supabase
+    .channel('public:countries')
+    .onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'countries',
+        filter: PostgresChangeFilter(
+          type: PostgresChangeFilterType.ilike,
+          column: 'name',
+          value: '%land%',
+          negate: true,
+        ),
+        callback: (payload) {
+          print('Change received: ${payload.toString()}');
+        })
+    .subscribe();
+```
+
+#### Listen with multiple filters
+
+```dart
+supabase
+    .channel('public:countries')
+    .onPostgresChanges(
+        event: PostgresChangeEvent.update,
+        schema: 'public',
+        table: 'countries',
+        filters: [
+          PostgresChangeFilter(
+            type: PostgresChangeFilterType.gte,
+            column: 'population',
+            value: 1000000,
+          ),
+          PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'continent',
+            value: 'Europe',
+          ),
+        ],
+        select: ['id', 'name', 'population'],
+        callback: (payload) {
+          print('Change received: ${payload.toString()}');
+        })
+    .subscribe();
+```
+
+#### Listen to broadcast messages
+
+```dart
+supabase
+    .channel('room1')
+    .onBroadcast(
+        event: 'cursor-pos',
+        callback: (payload) {
+          print('Cursor position received!: $payload');
+        })
+    .subscribe();
+```
+
+#### Listen to presence events
+
+```dart
+final channel = supabase.channel('room1');
+
+channel.onPresenceSync((payload) {
+  print('Synced presence state: ${channel.presenceState()}');
+}).onPresenceJoin((payload) {
+  print('Newly joined presences $payload');
+}).onPresenceLeave((payload) {
+  print('Newly left presences: $payload');
+}).subscribe((status, error) async {
+  if (status == RealtimeSubscribeStatus.subscribed) {
+    await channel.track({'online_at': DateTime.now().toIso8601String()});
+  }
+});
+```
+
+## Storage
+
+## Analytics Buckets
+
+This section contains methods for working with analytics buckets backed by Apache Iceberg.
+
+## Analytics Buckets
+
+This section contains methods for working with analytics buckets backed by Apache Iceberg.
+
+## analyticsCatalog
+
+Returns an Iceberg REST Catalog client for an analytics bucket, used to manage the namespaces and tables (the warehouse) inside it.
+
+- Analytics buckets are backed by the Apache Iceberg table format.
+- `analyticsCatalog()` returns an `IcebergRestCatalog` scoped to a single analytics bucket. Use it to create and manage namespaces and tables within that bucket.
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Get an analytics catalog client
+
+```dart
+final catalog = supabase
+  .storage
+  .analyticsCatalog('my-analytics-bucket');
+
+await catalog.createNamespace(['analytics']);
+```
+
+## createAnalyticsBucket
+
+Creates a new analytics bucket backed by the Apache Iceberg table format.
+
+- Policy permissions required:
+  - `buckets` permissions: `insert`
+  - `objects` permissions: none
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Create analytics bucket
+
+```dart
+final AnalyticsBucket bucket = await supabase
+  .storage
+  .createAnalyticsBucket('warehouse');
+```
+
+## deleteAnalyticsBucket
+
+Deletes an existing analytics bucket. A bucket can't be deleted while it still contains namespaces or tables.
+
+- Policy permissions required:
+  - `buckets` permissions: `select` and `delete`
+  - `objects` permissions: none
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Delete analytics bucket
+
+```dart
+final String res = await supabase
+  .storage
+  .deleteAnalyticsBucket('warehouse');
+```
+
+## listAnalyticsBuckets
+
+Retrieves the details of all analytics buckets within an existing project.
+
+- Calling `listAnalyticsBuckets()` without any options returns all analytics buckets.
+- Policy permissions required:
+  - `buckets` permissions: `select`
+  - `objects` permissions: none
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### List analytics buckets
+
+```dart
+final List<AnalyticsBucket> buckets = await supabase
+  .storage
+  .listAnalyticsBuckets();
+```
+
+#### With filter, sort and pagination
+
+```dart
+final List<AnalyticsBucket> buckets = await supabase
+  .storage
+  .listAnalyticsBuckets(
+    const ListBucketsOptions(
+      limit: 10,
+      offset: 0,
+      search: 'ware',
+      sortColumn: BucketSortColumn.createdAt,
+      sortOrder: BucketSortOrder.descending,
+    ),
+  );
+```
+
+## File Buckets
+
+This section contains methods for working with File Buckets.
+
+## File Buckets
+
+This section contains methods for working with File Buckets.
+
+## createBucket
+
+Creates a new Storage bucket
+
+- Policy permissions required:
+  - `buckets` permissions: `insert`
+  - `objects` permissions: none
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Create bucket
+
+```dart
+final String bucketId = await supabase
+  .storage
+  .createBucket('avatars');
+```
+
+## createSignedUploadUrl
+
+Creates a signed upload URL. Signed upload URLs can be used to upload files to a bucket without further authentication. They are valid for 2 hours.
+
+- Policy permissions required:
+  - `buckets` permissions: none
+  - `objects` permissions: `insert`
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Create signed upload URL
+
+```dart
+final response = await supabase
+  .storage
+  .from('avatars')
+  .createSignedUploadUrl('folder/avatar1.png');
+```
+
+#### With upsert
+
+```dart
+final response = await supabase
+  .storage
+  .from('avatars')
+  .createSignedUploadUrl(
+    'folder/avatar1.png',
+    upsert: true,
+  );
+```
+
+## createSignedUrl
+
+Create signed url to download file without requiring permissions. This URL can be valid for a set number of seconds.
+
+- Policy permissions required:
+  - `buckets` permissions: none
+  - `objects` permissions: `select`
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Create Signed URL
+
+```dart
+final String signedUrl = await supabase
+  .storage
+  .from('avatars')
+  .createSignedUrl('avatar1.png', 60);
+```
+
+#### With transform
+
+```dart
+final String signedUrl = await supabase
+  .storage
+  .from('avatars')
+  .createSignedUrl(
+    'avatar1.png',
+    60,
+    transform: TransformOptions(
+      width: 200,
+      height: 200,
+    ),
+  );
+```
+
+#### With download
+
+```dart
+final String signedUrl = await supabase
+  .storage
+  .from('avatars')
+  .createSignedUrl(
+    'avatar1.png',
+    60,
+    download: DownloadBehavior.withOriginalName,
+  );
+```
+
+#### Bypass the CDN cache
+
+```dart
+final String signedUrl = await supabase
+  .storage
+  .from('avatars')
+  .createSignedUrl(
+    'avatar1.png',
+    60,
+    cacheNonce: 'v2',
+  );
+```
+
+## deleteBucket
+
+Deletes an existing bucket. A bucket can't be deleted with existing objects inside it. You must first `empty()` the bucket.
+
+- Policy permissions required:
+  - `buckets` permissions: `select` and `delete`
+  - `objects` permissions: none
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Delete bucket
+
+```dart
+final String res = await supabase
+  .storage
+  .deleteBucket('avatars');
+```
+
+## download
+
+Downloads a file.
+
+- Policy permissions required:
+  - `buckets` permissions: none
+  - `objects` permissions: `select`
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Download file
+
+```dart
+final Uint8List file = await supabase
+  .storage
+  .from('avatars')
+  .download('avatar1.png');
+```
+
+#### With transform
+
+```dart
+final Uint8List file = await supabase
+  .storage
+  .from('avatars')
+  .download(
+    'avatar1.png',
+    transform: TransformOptions(
+      width: 200,
+      height: 200,
+    ),
+  );
+```
+
+#### Bypass the CDN cache
+
+```dart
+final Uint8List file = await supabase
+  .storage
+  .from('avatars')
+  .download(
+    'avatar1.png',
+    cacheNonce: 'v2',
+  );
+```
+
+## downloadStream
+
+Downloads a file as a lazy `Stream<Uint8List>`, streaming the bytes instead of buffering the whole file into memory like `download()`.
+
+- The request is sent when the stream is listened to. A non-success response surfaces as a `StorageException` on the stream before any bytes are emitted.
+- Prefer this over `download()` for large files to keep memory usage low.
+- Policy permissions required:
+  - `buckets` permissions: none
+  - `objects` permissions: `select`
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Download a file as a stream
+
+```dart
+final Stream<Uint8List> stream = supabase
+  .storage
+  .from('avatars')
+  .downloadStream('avatar1.png');
+
+await for (final chunk in stream) {
+  // Handle each chunk of bytes as it arrives
+}
+```
+
+## emptyBucket
+
+Removes all objects inside a single bucket.
+
+- Policy permissions required:
+  - `buckets` permissions: `select`
+  - `objects` permissions: `select` and `delete`
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Empty bucket
+
+```dart
+final String res = await supabase
+  .storage
+  .emptyBucket('avatars');
+```
+
+## getBucket
+
+Retrieves the details of an existing Storage bucket.
+
+- Policy permissions required:
+  - `buckets` permissions: `select`
+  - `objects` permissions: none
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Get bucket
+
+```dart
+final Bucket bucket = await supabase
+  .storage
+  .getBucket('avatars');
+```
+
+## getPublicUrl
+
+Retrieve URLs for assets in public buckets
+
+- The bucket needs to be set to public, either via updateBucket() or by going to Storage on supabase.com/dashboard, clicking the overflow menu on a bucket and choosing "Make public"
+- Policy permissions required:
+  - `buckets` permissions: none
+  - `objects` permissions: none
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Returns the URL for an asset in a public bucket
+
+```dart
+final String publicUrl = supabase
+  .storage
+  .from('public-bucket')
+  .getPublicUrl('avatar1.png');
+```
+
+#### With transform
+
+```dart
+final String publicUrl = await supabase
+  .storage
+  .from('public-bucket')
+  .getPublicUrl(
+    'avatar1.png',
+    transform: TransformOptions(
+      width: 200,
+      height: 200,
+    ),
+  );
+```
+
+#### Trigger download
+
+```dart
+final String publicUrl = supabase
+  .storage
+  .from('public-bucket')
+  .getPublicUrl(
+    'avatar1.png',
+    download: DownloadBehavior.withOriginalName,
+  );
+```
+
+#### Bypass the CDN cache
+
+```dart
+final String publicUrl = supabase
+  .storage
+  .from('public-bucket')
+  .getPublicUrl(
+    'avatar1.png',
+    cacheNonce: 'v2',
+  );
+```
+
+## list
+
+Lists all the files within a bucket.
+
+- Policy permissions required:
+  - `buckets` permissions: none
+  - `objects` permissions: `select`
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### List files in a bucket
+
+```dart
+final List<FileObject> objects = await supabase
+  .storage
+  .from('avatars')
+  .list();
+```
+
+## listBuckets
+
+Retrieves the details of all Storage buckets within an existing product.
+
+- Policy permissions required:
+  - `buckets` permissions: `select`
+  - `objects` permissions: none
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### List buckets
+
+```dart
+final List<Bucket> buckets = await supabase
+  .storage
+  .listBuckets();
+```
+
+#### With filter, sort and pagination
+
+```dart
+final List<Bucket> buckets = await supabase
+  .storage
+  .listBuckets(
+    const ListBucketsOptions(
+      limit: 10,
+      offset: 0,
+      search: 'avatar',
+      sortColumn: BucketSortColumn.createdAt,
+      sortOrder: BucketSortOrder.descending,
+    ),
+  );
+```
+
+## listPaginated
+
+Lists files and folders within a bucket with cursor-based pagination and hierarchical (delimiter) listing.
+
+- Folder entries in `PaginatedListResult.folders` only contain a name (and optionally a key). Full metadata is only available on the file entries in `PaginatedListResult.objects`.
+- To fetch the next page, pass the `PaginatedListResult.nextCursor` value from the previous request as `PaginatedSearchOptions.cursor`. Use `PaginatedListResult.hasNext` to check whether more results are available.
+- Policy permissions required:
+  - `buckets` permissions: none
+  - `objects` permissions: `select`
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### List files with pagination
+
+```dart
+final PaginatedListResult result = await supabase
+  .storage
+  .from('avatars')
+  .listPaginated(
+    options: const PaginatedSearchOptions(
+      prefix: 'folder/',
+      limit: 100,
+      withDelimiter: true,
+      sortBy: FileSort(
+        column: FileSortColumn.createdAt,
+        order: FileSortOrder.descending,
+      ),
+    ),
+  );
+
+for (final folder in result.folders) {
+  // Handle each folder
+}
+for (final object in result.objects) {
+  // Handle each file
+}
+```
+
+#### Fetch the next page
+
+```dart
+var result = await supabase
+  .storage
+  .from('avatars')
+  .listPaginated();
+
+while (result.hasNext) {
+  result = await supabase
+    .storage
+    .from('avatars')
+    .listPaginated(
+      options: PaginatedSearchOptions(cursor: result.nextCursor),
+    );
+}
+```
+
+## move
+
+Moves an existing file, optionally renaming it at the same time.
+
+- Policy permissions required:
+  - `buckets` permissions: none
+  - `objects` permissions: `update` and `select`
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Move file
+
+```dart
+final String result = await supabase
+  .storage
+  .from('avatars')
+  .move('public/avatar1.png', 'private/avatar2.png');
+```
+
+## purgeBucketCache
+
+Invalidates the CDN cache for every object in a bucket.
+
+- Requires the `secret` key and the `purgeCache` feature enabled for your project on the storage server.
+- When `transformations` is `true`, only the resized/formatted variants are purged, leaving the original cached objects intact. Otherwise the bucket's object cache is purged.
+- Policy permissions required:
+  - `buckets` permissions: `select`
+  - `objects` permissions: none
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Purge the CDN cache for a bucket
+
+```dart
+final String res = await supabase
+  .storage
+  .purgeBucketCache('avatars');
+```
+
+## purgeCache
+
+Invalidates the CDN cache for a single object in a bucket.
+
+- Requires the `secret` key and the `purgeCache` feature enabled for your project on the storage server.
+- When `transformations` is `true`, only the resized/formatted variants are purged, leaving the original cached object intact. Otherwise the object's cache is purged.
+- Policy permissions required:
+  - `buckets` permissions: none
+  - `objects` permissions: `select`
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Purge the CDN cache for an object
+
+```dart
+final String res = await supabase
+  .storage
+  .from('avatars')
+  .purgeCache('avatar1.png');
+```
+
+#### Purge only the transformed variants
+
+```dart
+final String res = await supabase
+  .storage
+  .from('avatars')
+  .purgeCache('avatar1.png', transformations: true);
+```
+
+## remove
+
+Deletes files within the same bucket
+
+- Policy permissions required:
+  - `buckets` permissions: none
+  - `objects` permissions: `delete` and `select`
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Delete file
+
+```dart
+final List<FileObject> objects = await supabase
+  .storage
+  .from('avatars')
+  .remove(['avatar1.png']);
+```
+
+## update
+
+Replaces an existing file at the specified path with a new one.
+
+- Policy permissions required:
+  - `buckets` permissions: none
+  - `objects` permissions: `update` and `select`
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Update file
+
+```dart
+final avatarFile = File('path/to/local/file');
+final String path = await supabase.storage.from('avatars').update(
+      'public/avatar1.png',
+      avatarFile,
+      fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
+    );
+```
+
+#### Update file on web
+
+```dart
+final Uint8List avatarFile = file.bytes;
+final String path = await supabase.storage.from('avatars').updateBinary(
+      'public/avatar1.png',
+      avatarFile,
+      fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
+    );
+```
+
+## updateBucket
+
+Updates a new Storage bucket
+
+- Policy permissions required:
+  - `buckets` permissions: `update`
+  - `objects` permissions: none
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Update bucket
+
+```dart
+final String res = await supabase
+  .storage
+  .updateBucket('avatars', const BucketOptions(public: false));
+```
+
+## upload
+
+Uploads a file to an existing bucket.
+
+- Policy permissions required:
+  - `buckets` permissions: none
+  - `objects` permissions: `insert`
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Upload file
+
+```dart
+final avatarFile = File('path/to/file');
+final String fullPath = await supabase.storage.from('avatars').upload(
+      'public/avatar1.png',
+      avatarFile,
+      fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
+    );
+```
+
+#### Upload file on web
+
+```dart
+final Uint8List avatarFile = file.bytes;
+final String fullPath = await supabase.storage.from('avatars').uploadBinary(
+      'public/avatar1.png',
+      avatarFile,
+      fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
+    );
+```
+
+## Vector Buckets
+
+This section contains methods for working with Vector Buckets, invoked behind the `supabase.storage.vectors` namespace.
+
+## Vector Buckets
+
+This section contains methods for working with Vector Buckets, invoked behind the `supabase.storage.vectors` namespace.
+
+## createBucket
+
+Creates a new vector bucket. Access the vectors client through `supabase.storage.vectors`.
+
+### Examples
+
+#### Create a vector bucket
+
+```dart
+final vectors = supabase.storage.vectors;
+
+await vectors.createBucket('embeddings');
+```
+
+## createIndex
+
+Creates a new vector index in the scoped bucket. `dimension` is the length of the vectors the index will store and `distanceMetric` is the metric used for similarity queries. Keys listed in `nonFilterableMetadataKeys` can be stored on vectors but not used in query filters. `dataType` defaults to `VectorDataType.float32`.
+
+### Examples
+
+#### Create an index
+
+```dart
+final bucket = supabase.storage.vectors.from('embeddings');
+
+await bucket.createIndex(
+  name: 'documents',
+  dimension: 3,
+  distanceMetric: DistanceMetric.cosine,
+);
+```
+
+#### Create an index with non-filterable metadata
+
+```dart
+final bucket = supabase.storage.vectors.from('embeddings');
+
+await bucket.createIndex(
+  name: 'documents',
+  dimension: 3,
+  distanceMetric: DistanceMetric.euclidean,
+  nonFilterableMetadataKeys: ['rawText'],
+);
+```
+
+## deleteBucket
+
+Deletes a vector bucket. The bucket must have no indexes before it can be deleted.
+
+### Examples
+
+#### Delete a vector bucket
+
+```dart
+final vectors = supabase.storage.vectors;
+
+await vectors.deleteBucket('embeddings');
+```
+
+## deleteIndex
+
+Deletes an index and all of its vectors from the scoped bucket.
+
+### Examples
+
+#### Delete an index
+
+```dart
+final bucket = supabase.storage.vectors.from('embeddings');
+
+await bucket.deleteIndex('documents');
+```
+
+## deleteVectors
+
+Deletes vectors by their keys. The batch must contain between 1 and 500 keys.
+
+### Examples
+
+#### Delete vectors
+
+```dart
+final index = supabase.storage.vectors
+    .from('embeddings')
+    .index('documents');
+
+await index.deleteVectors(['doc-1', 'doc-2']);
+```
+
+## from
+
+Scopes index operations to a single vector bucket. Returns a `StorageVectorBucketApi`.
+
+### Examples
+
+#### Scope operations to a bucket
+
+```dart
+final bucket = supabase.storage.vectors.from('embeddings');
+
+await bucket.createIndex(
+  name: 'documents',
+  dimension: 3,
+  distanceMetric: DistanceMetric.cosine,
+);
+```
+
+## getBucket
+
+Retrieves the metadata of an existing vector bucket.
+
+### Examples
+
+#### Get a vector bucket
+
+```dart
+final vectors = supabase.storage.vectors;
+
+final VectorBucket bucket = await vectors.getBucket('embeddings');
+```
+
+## getIndex
+
+Retrieves the metadata of an index in the scoped bucket.
+
+### Examples
+
+#### Get an index
+
+```dart
+final bucket = supabase.storage.vectors.from('embeddings');
+
+final VectorIndex index = await bucket.getIndex('documents');
+
+print(index.dimension);
+print(index.distanceMetric);
+```
+
+## getVectors
+
+Retrieves vectors by their keys. Set `returnData` and `returnMetadata` to include the embeddings and metadata in the result. Keys that do not exist are omitted from the returned list.
+
+### Examples
+
+#### Get vectors by key
+
+```dart
+final index = supabase.storage.vectors
+    .from('embeddings')
+    .index('documents');
+
+final List<VectorMatch> vectors = await index.getVectors(
+  keys: ['doc-1', 'doc-2'],
+  returnData: true,
+  returnMetadata: true,
+);
+
+for (final vector in vectors) {
+  print('${vector.key}: ${vector.metadata}');
+}
+```
+
+## index
+
+Scopes vector data operations to a single index within a bucket. Returns a `StorageVectorIndexApi`.
+
+### Examples
+
+#### Scope operations to an index
+
+```dart
+final bucket = supabase.storage.vectors.from('embeddings');
+
+final index = bucket.index('documents');
+
+await index.putVectors([
+  Vector(key: 'doc-1', data: [0.1, 0.2, 0.3]),
+]);
+```
+
+## listBuckets
+
+Lists vector buckets. Use `prefix` to filter by name and `maxResults` / `nextToken` to paginate.
+
+### Examples
+
+#### List vector buckets
+
+```dart
+final vectors = supabase.storage.vectors;
+
+final VectorBucketList result = await vectors.listBuckets();
+
+for (final bucket in result.buckets) {
+  print(bucket.name);
+}
+```
+
+#### Paginate and filter buckets
+
+```dart
+final vectors = supabase.storage.vectors;
+
+final result = await vectors.listBuckets(
+  prefix: 'prod-',
+  maxResults: 50,
+);
+
+final nextToken = result.nextToken;
+```
+
+## listIndexes
+
+Lists indexes in the scoped bucket. Use `prefix` to filter by name and `maxResults` / `nextToken` to paginate.
+
+### Examples
+
+#### List indexes
+
+```dart
+final bucket = supabase.storage.vectors.from('embeddings');
+
+final VectorIndexList result = await bucket.listIndexes();
+
+for (final index in result.indexes) {
+  print(index.name);
+}
+```
+
+## listVectors
+
+Lists vectors in the scoped index with pagination. A full-index scan can be distributed across multiple workers by giving each worker a different `segmentIndex` (0 to `segmentCount - 1`) for the same `segmentCount` (1 to 16).
+
+### Examples
+
+#### List vectors
+
+```dart
+final index = supabase.storage.vectors
+    .from('embeddings')
+    .index('documents');
+
+final VectorList result = await index.listVectors(
+  maxResults: 100,
+  returnMetadata: true,
+);
+
+for (final vector in result.vectors) {
+  print(vector.key);
+}
+```
+
+#### Parallel scan with segments
+
+```dart
+final index = supabase.storage.vectors
+    .from('embeddings')
+    .index('documents');
+
+// Worker 2 of a 4-way parallel scan.
+final result = await index.listVectors(
+  segmentCount: 4,
+  segmentIndex: 2,
+);
+```
+
+## putVectors
+
+Inserts or updates a batch of vectors in the scoped index. The batch must contain between 1 and 500 vectors, and each vector's `data` length must match the index dimension.
+
+### Examples
+
+#### Put vectors
+
+```dart
+final index = supabase.storage.vectors
+    .from('embeddings')
+    .index('documents');
+
+await index.putVectors([
+  Vector(
+    key: 'doc-1',
+    data: [0.1, 0.2, 0.3],
+    metadata: {'title': 'Intro'},
+  ),
+  Vector(
+    key: 'doc-2',
+    data: [0.4, 0.5, 0.6],
+    metadata: {'title': 'Guide'},
+  ),
+]);
+```
+
+## queryVectors
+
+Searches the scoped index for the vectors most similar to `queryVector`. `topK` limits the number of matches returned. `filter` restricts the search to vectors whose metadata matches the given expression. Set `returnDistance` and `returnMetadata` to include the distance scores and metadata in the result.
+
+### Examples
+
+#### Query vectors
+
+```dart
+final index = supabase.storage.vectors
+    .from('embeddings')
+    .index('documents');
+
+final VectorQueryResult result = await index.queryVectors(
+  queryVector: [0.1, 0.2, 0.3],
+  topK: 5,
+  returnDistance: true,
+  returnMetadata: true,
+);
+
+for (final match in result.matches) {
+  print('${match.key}: ${match.distance}');
+}
+```
+
+#### Query with a metadata filter
+
+```dart
+final index = supabase.storage.vectors
+    .from('embeddings')
+    .index('documents');
+
+final result = await index.queryVectors(
+  queryVector: [0.1, 0.2, 0.3],
+  topK: 10,
+  filter: {'category': 'docs'},
+  returnMetadata: true,
+);
+```

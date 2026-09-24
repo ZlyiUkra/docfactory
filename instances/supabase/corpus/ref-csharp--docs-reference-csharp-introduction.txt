@@ -1,0 +1,1690 @@
+# C# Client Library Reference
+# джерело: https://supabase.com/docs/reference/csharp/introduction
+# отримано: 2026-09-24
+
+## Introduction
+
+This reference documents every object and method available in Supabase's C# library, supabase. You can use `Supabase` to interact with your Postgres database, listen to database changes, invoke Deno Edge Functions, build login and user management functionality, and manage large files.
+
+The C# client library is created and maintained by the Supabase community, and is not an official library. Please be tolerant of areas where the library is still being developed, and — as with all the libraries — feel free to contribute wherever you find issues.
+
+Huge thanks to official maintainer, Joseph Schultz. As well as Will Iverson, Ben Randall, and Rhuan Barros for their help.
+
+## Installing & Initialization
+
+### Install from NuGet
+
+You can install Supabase package from nuget.org
+
+```sh
+dotnet add package supabase
+```
+
+### Enable Data API access
+
+supabase-csharp uses the Data API to query and mutate your Postgres data. You first need to grant Data API roles permissions to access your tables and functions.
+
+In the **Integrations > Data API** section of the Dashboard, expose the specific tables and functions you want to access. To automatically grant access for new tables and functions in `public`, enable **Default privileges for new entities**.
+
+Alternatively, use SQL to grant the required permissions:
+
+```sql
+-- Before granting access to client roles, make sure RLS is enabled
+-- and create the policies required for each role's allowed operations.
+alter table public.your_table enable row level security;
+-- create policy ... on public.your_table ...;
+
+-- Grant least-privilege access to tables after RLS and policies are in place
+grant select on public.your_table to anon;
+grant select, insert, update, delete on public.your_table to authenticated;
+grant all on public.your_table to service_role;
+
+-- Grant execute on functions after verifying any table access they rely on
+grant execute on function public.your_function to authenticated, service_role;
+```
+
+## Initializing
+
+Initializing a new client is pretty straightforward. Find your project url and public key from the
+admin panel and pass it into your client initialization function.
+
+`Supabase` is heavily dependent on Models deriving from `BaseModel`. To interact with the API, one must have the associated model (see example) specified.
+
+Leverage `Table`, `PrimaryKey`, and `Column` attributes to specify names of classes/properties that are different from their C# Versions.
+
+### Examples
+
+#### Standard
+
+```c#
+var url = Environment.GetEnvironmentVariable("SUPABASE_URL");
+var key = Environment.GetEnvironmentVariable("SUPABASE_KEY");
+
+var options = new Supabase.SupabaseOptions
+{
+    AutoConnectRealtime = true
+};
+
+var supabase = new Supabase.Client(url, key, options);
+await supabase.InitializeAsync();
+```
+
+#### Dependency Injection (Maui-like)
+
+```c#
+public static MauiApp CreateMauiApp()
+{
+      // ...
+      var builder = MauiApp.CreateBuilder();
+
+      var url = Environment.GetEnvironmentVariable("SUPABASE_URL");
+      var key = Environment.GetEnvironmentVariable("SUPABASE_KEY");
+      var options = new SupabaseOptions
+      {
+        AutoRefreshToken = true,
+        AutoConnectRealtime = true,
+        // SessionHandler = new SupabaseSessionHandler() <-- This must be implemented by the developer
+      };
+
+      // Note the creation as a singleton.
+      builder.Services.AddSingleton(provider => new Supabase.Client(url, key, options));
+}
+```
+
+#### With Models Example
+
+```c#
+// Given the following Model representing the Supabase Database (Message.cs)
+[Table("messages")]
+public class Message : BaseModel
+{
+    [PrimaryKey("id")]
+    public int Id { get; set; }
+
+    [Column("username")]
+    public string UserName { get; set; }
+
+    [Column("channel_id")]
+    public int ChannelId { get; set; }
+
+    public override bool Equals(object obj)
+    {
+        return obj is Message message &&
+                Id == message.Id;
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Id);
+    }
+}
+
+void Initialize()
+{
+    // Get All Messages
+    var response = await client.Table<Message>().Get();
+    List<Message> models = response.Models;
+
+    // Insert
+    var newMessage = new Message { UserName = "acupofjose", ChannelId = 1 };
+    await client.Table<Message>().Insert();
+
+    // Update
+    var model = response.Models.First();
+    model.UserName = "elrhomariyounes";
+    await model.Update();
+
+    // Delete
+    await response.Models.Last().Delete();
+
+    // etc.
+}
+```
+
+## Database
+
+## Fetch data: Select()
+
+Performs vertical filtering with SELECT.
+
+- **LINQ expressions do not currently support parsing embedded resource columns. For these cases, `string` will need to be used.**
+- **When using string Column Names to select, they must match names in database, not names specified on model properties.**
+- Additional information on modeling + querying Joins and Inner Joins can be found in the `postgrest-csharp README`
+- By default, Supabase projects will return a maximum of 1,000 rows. This setting can be changed in Project API Settings. It's recommended that you keep it low to limit the payload size of accidental or malicious requests. You can use `range()` queries to paginate through your data.
+- `From()` can be combined with Modifiers
+- `From()` can be combined with Filters
+- If using the Supabase hosted platform `apikey` is technically a reserved keyword, since the API gateway will pluck it out for authentication. It should be avoided as a column name.
+
+### Examples
+
+#### Getting your data
+
+```c#
+// Given the following Model (City.cs)
+[Table("cities")]
+class City : BaseModel
+{
+    [PrimaryKey("id")]
+    public int Id { get; set; }
+
+    [Column("name")]
+    public string Name { get; set; }
+
+    [Column("country_id")]
+    public int CountryId { get; set; }
+
+    //... etc.
+}
+
+// A result can be fetched like so.
+var result = await supabase.From<City>().Get();
+var cities = result.Models
+```
+
+#### Selecting specific columns
+
+```c#
+// Given the following Model (Movie.cs)
+[Table("movies")]
+class Movie : BaseModel
+{
+    [PrimaryKey("id")]
+    public int Id { get; set; }
+
+    [Column("name")]
+    public string Name { get; set; }
+
+    [Column("created_at")]
+    public DateTime CreatedAt { get; set; }
+
+    //... etc.
+}
+
+// A result can be fetched like so.
+var result = await supabase
+  .From<Movie>()
+  .Select(x => new object[] {x.Name, x.CreatedAt})
+  .Get();
+```
+
+#### Query foreign tables
+
+```c#
+var data = await supabase
+  .From<Transactions>()
+  .Select("id, supplier:supplier_id(name), purchaser:purchaser_id(name)")
+  .Get();
+```
+
+#### Filtering with inner joins
+
+```c#
+var result = await supabase
+  .From<Movie>()
+  .Select("*, users!inner(*)")
+  .Filter("user.username", Operator.Equals, "Jane")
+  .Get();
+```
+
+#### Querying with count option
+
+```c#
+var count = await supabase
+  .From<Movie>()
+  .Select(x => new object[] { x.Name })
+  .Count(CountType.Exact);
+```
+
+#### Querying JSON data
+
+```c#
+ var result = await supabase
+  .From<Users>()
+  .Select("id, name, address->street")
+  .Filter("address->postcode", Operator.Equals, 90210)
+  .Get();
+```
+
+## Create data: Insert()
+
+Performs an INSERT into the table.
+
+### Examples
+
+#### Create a record
+
+```c#
+[Table("cities")]
+class City : BaseModel
+{
+    [PrimaryKey("id", false)]
+    public int Id { get; set; }
+
+    [Column("name")]
+    public string Name { get; set; }
+
+    [Column("country_id")]
+    public int CountryId { get; set; }
+}
+
+var model = new City
+{
+  Name = "The Shire",
+  CountryId = 554
+};
+
+await supabase.From<City>().Insert(model);
+```
+
+#### Bulk create
+
+```c#
+[Table("cities")]
+class City : BaseModel
+{
+    [PrimaryKey("id", false)]
+    public int Id { get; set; }
+
+    [Column("name")]
+    public string Name { get; set; }
+
+    [Column("country_id")]
+    public int CountryId { get; set; }
+}
+
+var models = new List<City>
+{
+  new City { Name = "The Shire", CountryId = 554 },
+  new City { Name = "Rohan", CountryId = 553 },
+};
+
+await supabase.From<City>().Insert(models);
+```
+
+#### Fetch inserted record
+
+```c#
+var result = await supabase
+  .From<City>()
+  .Insert(models, new QueryOptions { Returning = ReturnType.Representation });
+```
+
+## Modify data: Update()
+
+Performs an UPDATE on the table.
+
+- `Update()` is typically called using a model as an argument or from a hydrated model.
+
+### Examples
+
+#### Update your data using Filter
+
+```c#
+var update = await supabase
+  .From<City>()
+  .Where(x => x.Name == "Auckland")
+  .Set(x => x.Name, "Middle Earth")
+  .Update();
+```
+
+#### Update your data
+
+```c#
+var model = await supabase
+  .From<City>()
+  .Where(x => x.Name == "Auckland")
+  .Single();
+
+model.Name = "Middle Earth";
+
+await model.Update<City>();
+```
+
+## Upsert data: Upsert()
+
+Performs an UPSERT into the table.
+
+- Primary keys should be included in the data payload in order for an update to work correctly.
+- Primary keys must be natural, not surrogate. There are however, workarounds for surrogate primary keys.
+
+### Examples
+
+#### Upsert your data
+
+```c#
+var model = new City
+{
+  Id = 554,
+  Name = "Middle Earth"
+};
+
+await supabase.From<City>().Upsert(model);
+```
+
+#### Upserting into tables with constraints
+
+```c#
+var model = new City
+{
+  Id = 554,
+  Name = "Middle Earth"
+};
+
+await supabase
+  .From<City>()
+  .OnConflict(x => x.Name)
+  .Upsert(model);
+```
+
+#### Return the exact number of rows
+
+```c#
+var model = new City
+{
+  Id = 554,
+  Name = "Middle Earth"
+};
+
+await supabase
+  .From<City>()
+  .Upsert(model, new QueryOptions { Count = QueryOptions.CountType.Exact });
+```
+
+## Delete data: Delete()
+
+Performs a DELETE on the table.
+
+- `Delete()` should always be combined with Filters to target the item(s) you wish to delete.
+
+### Examples
+
+#### Delete records
+
+```c#
+await supabase
+  .From<City>()
+  .Where(x => x.Id == 342)
+  .Delete();
+```
+
+## Database Functions: Rpc()
+
+You can call functions as a "Remote Procedure Call".
+
+That's a fancy way of saying that you can put some logic into your database then call it from anywhere.
+It's especially useful when the logic rarely changes - like password resets and updates.
+
+### Examples
+
+#### Call a database function
+
+```c#
+await supabase.Rpc("hello_world", null);
+```
+
+#### With Parameters
+
+```c#
+await supabase.Rpc("hello_world", new Dictionary<string, object> { { "foo", "bar"} });
+```
+
+## Using Filters
+
+Filters allow you to only return rows that match certain conditions.
+
+Filters can be used on `Select()`, `Update()`, and `Delete()` queries.
+
+**Note: LINQ expressions do not currently support parsing embedded resource columns. For these cases, `string` will need to be used.**
+
+### Examples
+
+#### Applying Filters
+
+```c#
+var result = await supabase.From<City>()
+      .Select(x => new object[] { x.Name, x.CountryId })
+      .Where(x => x.Name == "The Shire")
+      .Single();
+```
+
+#### Filter by values within a JSON column
+
+```c#
+var result = await supabase.From<City>()
+  .Filter("address->postcode", Operator.Equals, 90210)
+  .Get();
+```
+
+#### Filter Foreign Tables
+
+```c#
+var results = await supabase.From<Country>()
+  .Select("name, cities!inner(name)")
+  .Filter("cities.name", Operator.Equals, "Bali")
+  .Get();
+```
+
+## Operator.Equals
+
+Finds all rows whose value on the stated `column` exactly matches the specified `value`.
+
+### Examples
+
+#### With `Select()`
+
+```c#
+var result = await supabase.From<City>()
+  .Where(x => x.Name == "Bali")
+  .Get();
+```
+
+## Operator.NotEqual
+
+Finds all rows whose value on the stated `column` doesn't match the specified `value`.
+
+### Examples
+
+#### With `Select()`
+
+```c#
+var result = await supabase.From<City>()
+  .Select(x => new object[] { x.Name, x.CountryId })
+  .Where(x => x.Name != "Bali")
+  .Get();
+```
+
+## Operator.GreaterThan
+
+Finds all rows whose value on the stated `column` is greater than the specified `value`.
+
+### Examples
+
+#### With `Select()`
+
+```c#
+var result = await supabase.From<City>()
+  .Select(x => new object[] { x.Name, x.CountryId })
+  .Where(x => x.CountryId > 250)
+  .Get();
+```
+
+## Operator.GreaterThanOrEqual
+
+Finds all rows whose value on the stated `column` is greater than or equal to the specified `value`.
+
+### Examples
+
+#### With `Select()`
+
+```c#
+var result = await supabase.From<City>()
+  .Select(x => new object[] { x.Name, x.CountryId })
+  .Where(x => x.CountryId >= 250)
+  .Get();
+```
+
+## Operator.LessThan
+
+Finds all rows whose value on the stated `column` is less than the specified `value`.
+
+### Examples
+
+#### With `Select()`
+
+```c#
+var result = await supabase.From<City>()
+  .Select("name, country_id")
+  .Where(x => x.CountryId < 250)
+  .Get();
+```
+
+## Operator.LessThanOrEqual
+
+Finds all rows whose value on the stated `column` is less than or equal to the specified `value`.
+
+### Examples
+
+#### With `Select()`
+
+```c#
+var result = await supabase.From<City>()
+  .Where(x => x.CountryId <= 250)
+  .Get();
+```
+
+## Operator.Like
+
+Finds all rows whose value in the stated `column` matches the supplied `pattern` (case sensitive).
+
+### Examples
+
+#### With `Select()`
+
+```c#
+var result = await supabase.From<City>()
+  .Filter(x => x.Name, Operator.Like, "%la%")
+  .Get();
+```
+
+## Operator.ILike
+
+Finds all rows whose value in the stated `column` matches the supplied `pattern` (case insensitive).
+
+### Examples
+
+#### With `Select()`
+
+```c#
+await supabase.From<City>()
+  .Filter(x => x.Name, Operator.ILike, "%la%")
+  .Get();
+```
+
+## Operator.Is
+
+A check for exact equality (null, true, false), finds all rows whose value on the stated `column` exactly match the specified `value`.
+
+### Examples
+
+#### With `Select()`
+
+```c#
+var result = await supabase.From<City>()
+  .Where(x => x.Name == null
+  .Get();
+```
+
+## Operator.In
+
+Finds all rows whose value on the stated `column` is found on the specified `values`.
+
+### Examples
+
+#### With `Select()`
+
+```c#
+var result = await supabase.From<City>()
+  .Filter(x => x.Name, Operator.In, new List<object> { "Rio de Janiero", "San Francisco" })
+  .Get();
+```
+
+## Operator.Contains
+
+### Examples
+
+#### With `Select()`
+
+```c#
+var result = await supabase.From<City>()
+  .Filter(x => x.MainExports, Operator.Contains, new List<object> { "oil", "fish" })
+  .Get();
+```
+
+## Operator.ContainedIn
+
+### Examples
+
+#### With `Select()`
+
+```c#
+var result = await supabase.From<City>()
+  .Filter(x => x.MainExports, Operator.ContainedIn, new List<object> { "oil", "fish" })
+  .Get();
+```
+
+## Operator.\[FTS,PLFTS,PHFTS,WFTS] (Full Text Search)
+
+Finds all rows whose tsvector value on the stated `column` matches to\_tsquery(query).
+
+### Examples
+
+#### Text search
+
+```c#
+var result = await supabase.From<Quote>()
+  .Select(x => x.Catchphrase)
+  .Filter(x => x.Catchphrase, Operator.FTS, new FullTextSearchConfig("'fat' & 'cat", "english"))
+  .Get();
+```
+
+#### Basic normalization
+
+```c#
+var result = await supabase.From<Quote>()
+  .Select(x => x.Catchphrase)
+  .Filter(x => x.Catchphrase, Operator.PLFTS, new FullTextSearchConfig("'fat' & 'cat", "english"))
+  .Get();
+```
+
+#### Full normalization
+
+```c#
+var result = await supabase.From<Quote>()
+  .Select(x => x.Catchphrase)
+  .Filter(x => x.Catchphrase, Operator.PHFTS, new FullTextSearchConfig("'fat' & 'cat", "english"))
+  .Get();
+```
+
+#### Websearch
+
+```c#
+var result = await supabase.From<Quote>()
+  .Select(x => x.Catchphrase)
+  .Filter(x => x.Catchphrase, Operator.WFTS, new FullTextSearchConfig("'fat' & 'cat", "english"))
+  .Get();
+```
+
+## Match()
+
+- Finds a model given a class (useful when hydrating models and correlating with database)
+- Finds all rows whose columns match the specified `Dictionary<string, string>` object.
+
+### Examples
+
+#### With Model
+
+```c#
+var city = new City
+{
+    Id = 224,
+    Name = "Atlanta"
+};
+
+var model = supabase.From<City>().Match(city).Single();
+```
+
+#### With Dictionary
+
+```c#
+var opts = new Dictionary<string, string>
+{
+    {"name","Beijing"},
+    {"country_id", "156"}
+};
+
+var model = supabase.From<City>().Match(opts).Single();
+```
+
+## Not()
+
+Finds all rows which doesn't satisfy the filter.
+
+### Examples
+
+#### With `Select()`
+
+```c#
+var result = await supabase.From<Country>()
+  .Select(x => new object[] { x.Name, x.CountryId })
+  .Where(x => x.Name != "Paris")
+  .Get();
+```
+
+## Or()
+
+Finds all rows satisfying at least one of the filters.
+
+### Examples
+
+#### With `Select()`
+
+```c#
+var result = await supabase.From<Country>()
+  .Where(x => x.Id == 20 || x.Id == 30)
+  .Get();
+```
+
+#### Use `or` with `and`
+
+```c#
+var result = await supabase.From<Country>()
+  .Where(x => x.Population > 300000 || x.BirthRate < 0.6)
+  .Where(x => x.Name != "Mordor")
+  .Get();
+```
+
+## Using Modifiers
+
+Filters work on the row level—they allow you to return rows that
+only match certain conditions without changing the shape of the rows.
+Modifiers are everything that don't fit that definition—allowing you to
+change the format of the response (e.g., setting a limit or offset).
+
+## Order()
+
+Orders the result with the specified column.
+
+### Examples
+
+#### With `Select()`
+
+```c#
+var result = await supabase.From<City>()
+  .Select(x => new object[] { x.Name, x.CountryId })
+  .Order(x => x.Id, Ordering.Descending)
+  .Get();
+```
+
+#### With embedded resources
+
+```c#
+ var result = await supabase.From<Country>()
+  .Select("name, cities(name)")
+  .Filter(x => x.Name == "United States")
+  .Order("cities", "name", Ordering.Descending)
+  .Get();
+```
+
+## Limit()
+
+Limits the result with the specified count.
+
+### Examples
+
+#### With `Select()`
+
+```c#
+var result = await supabase.From<City>()
+  .Select(x => new object[] { x.Name, x.CountryId })
+  .Limit(10)
+  .Get();
+```
+
+#### With embedded resources
+
+```c#
+var result = await supabase.From<Country>()
+  .Select("name, cities(name)")
+  .Filter("name", Operator.Equals, "United States")
+  .Limit(10, "cities")
+  .Get();
+```
+
+## Range()
+
+Limits the result to rows within the specified range, inclusive.
+
+### Examples
+
+#### With `Select()`
+
+```c#
+var result = await supabase.From<City>()
+  .Select("name, country_id")
+  .Range(0, 3)
+  .Get();
+```
+
+## Single()
+
+Retrieves only one row from the result. Result must be one row (e.g. using limit), otherwise this will result in an error.
+
+### Examples
+
+#### With `Select()`
+
+```c#
+var result = await supabase.From<City>()
+  .Select(x => new object[] { x.Name, x.CountryId })
+  .Single();
+```
+
+## Auth
+
+## SignUp()
+
+Creates a new user.
+
+- By default, the user needs to verify their email address before signing in. To turn this off, disable **Confirm email** in your project.
+- **Confirm email** determines if users need to confirm their email address after signing up.
+  - If **Confirm email** is enabled, a `user` is returned but `session` is null.
+  - If **Confirm email** is disabled, both a `user` and a `session` are returned.
+- When the user confirms their email address, they are redirected to the `SITE_URL` by default. You can modify your `SITE_URL` or add additional redirect URLs in your project.
+- If SignUp() is called for an existing confirmed user:
+  - When both **Confirm email** and **Confirm phone** (even when phone provider is disabled) are enabled in your project, an obfuscated/fake user object is returned.
+  - When either **Confirm email** or **Confirm phone** (even when phone provider is disabled) is disabled, the error message, `User already registered` is returned.
+
+### Examples
+
+#### Sign up.
+
+```c#
+var session = await supabase.Auth.SignUp(email, password);
+```
+
+## StateChanged
+
+Receive a notification every time an auth event happens.
+
+- Types of auth events: `AuthState.SignedIn`, `AuthState.SignedOut`, `AuthState.UserUpdated`, `AuthState.PasswordRecovery`, `AuthState.TokenRefreshed`
+
+### Examples
+
+#### Listen to auth changes
+
+```c#
+supabase.Auth.AddStateChangedListener((sender, changed) =>
+{
+    switch (changed)
+    {
+        case AuthState.SignedIn:
+            break;
+        case AuthState.SignedOut:
+            break;
+        case AuthState.UserUpdated:
+            break;
+        case AuthState.PasswordRecovery:
+            break;
+        case AuthState.TokenRefreshed:
+            break;
+    }
+});
+```
+
+## SignIn(email, password)
+
+Sign in an existing user using email or phone number with password.
+
+- Requires either an email and password or a phone number and password.
+
+### Examples
+
+#### Sign in with email and password
+
+```c#
+var session = await supabase.Auth.SignIn(email, password);
+```
+
+#### Sign in with phone and password
+
+```c#
+var session = await supabase.Auth.SignIn(SignInType.Phone, phoneNumber, password);
+```
+
+## SendMagicLink() and SignIn(SignInType, Phone)
+
+- Requires either an email or phone number.
+- This method is used for passwordless sign-ins where a OTP is sent to the user's email or phone number.
+- If you're using an email, you can configure whether you want the user to receive a magiclink or a OTP.
+- If you're using phone, you can configure whether you want the user to receive a OTP.
+- The magic link's destination URL is determined by the `SITE_URL`. You can modify the `SITE_URL` or add additional redirect urls in your project.
+
+### Examples
+
+#### Send Magic Link.
+
+```c#
+var options = new SignInOptions { RedirectTo = "http://myredirect.example" };
+var didSendMagicLink = await supabase.Auth.SendMagicLink("joseph@supabase.io", options);
+```
+
+#### Sign in with SMS OTP.
+
+```c#
+await supabase.Auth.SignIn(SignInType.Phone, "+13334445555");
+
+// Paired with `VerifyOTP` to get a session
+var session = await supabase.Auth.VerifyOTP("+13334445555", TOKEN, MobileOtpType.SMS);
+```
+
+## SignIn(Provider)
+
+Signs the user in using third party OAuth providers.
+
+- This method is used for signing in using a third-party provider.
+- Supabase supports many different third-party providers.
+
+### Examples
+
+#### Sign in using a third-party provider
+
+```c#
+var signInUrl = supabase.Auth.SignIn(Provider.Github);
+```
+
+#### With scopes
+
+```c#
+var signInUrl = supabase.Auth.SignIn(Provider.Github, 'repo gist notifications');
+
+// after user comes back from signin flow
+var session = supabase.Auth.GetSessionFromUrl(REDIRECTED_URI);
+```
+
+## SignOut()
+
+Signs out the current user, if there is a signed-in user.
+
+- In order to use the `SignOut()` method, the user needs to be signed in first.
+
+### Examples
+
+#### Sign out
+
+```c#
+await supabase.Auth.SignOut();
+```
+
+## VerifyOtp()
+
+- The `VerifyOtp` method takes in different verification types. If a phone number is used, the type can either be `sms` or `phone_change`. If an email address is used, the type can be one of the following: `signup`, `magiclink`, `recovery`, `invite` or `email_change`.
+- The verification type used should be determined based on the corresponding auth method called before `VerifyOtp` to sign up / sign-in a user.
+
+### Examples
+
+#### Verify Sms One-Time Password (OTP)
+
+```c#
+var session = await supabase.Auth.VerifyOTP("+13334445555", TOKEN, MobileOtpType.SMS);
+```
+
+## CurrentSession
+
+Returns the session data, if there is an active session.
+
+### Examples
+
+#### Get the session data
+
+```c#
+var session = supabase.Auth.CurrentSession;
+```
+
+## CurrentUser
+
+Returns the user data, if there is a signed-in user.
+
+### Examples
+
+#### Get the signed-in user
+
+```c#
+var user = supabase.Auth.CurrentUser;
+```
+
+## UpdateUser()
+
+Updates user data, if there is a signed-in user.
+
+- In order to use the `UpdateUser()` method, the user needs to be signed in first.
+- By Default, email updates sends a confirmation link to both the user's current and new email.
+  To only send a confirmation link to the user's new email, disable **Secure email change** in your project's email auth provider settings.
+
+### Examples
+
+#### Update the email for an authenticated user
+
+```c#
+var attrs = new UserAttributes { Email = "new-email@example.com" };
+var response = await supabase.Auth.Update(attrs);
+```
+
+#### Update the password for an authenticated user
+
+```c#
+var attrs = new UserAttributes { Password = "***********" };
+var response = await supabase.Auth.Update(attrs);
+```
+
+#### Update the user's metadata
+
+```c#
+var attrs = new UserAttributes
+{
+  Data = new Dictionary<string, string> { {"example", "data" } }
+};
+var response = await supabase.Auth.Update(attrs);
+```
+
+## Edge Functions
+
+## invoke()
+
+Invokes a Supabase Function. See the guide for details on writing Functions.
+
+- Requires an Authorization header.
+- Invoke params generally match the Fetch API spec.
+
+### Examples
+
+#### Basic invocation.
+
+```c#
+var options = new InvokeFunctionOptions
+{
+    Headers = new Dictionary<string, string> {{ "Authorization", "Bearer 1234" }},
+    Body = new Dictionary<string, object> { { "foo", "bar" } }
+};
+
+await supabase.Functions.Invoke("hello", options: options);
+```
+
+#### Modeled invocation
+
+```c#
+class HelloResponse
+{
+    [JsonProperty("name")]
+    public string Name { get; set; }
+}
+
+await supabase.Functions.Invoke<HelloResponse>("hello");
+```
+
+## Realtime
+
+## Realtime.Channel
+
+Subscribe to realtime changes in your database.
+
+- Realtime is disabled by default for new Projects for better database performance and security. You can turn it on by managing replication.
+- If you want to receive the "previous" data for updates and deletes, you will need to set `REPLICA IDENTITY` to `FULL`, like this: `ALTER TABLE your_table REPLICA IDENTITY FULL;`
+
+### Examples
+
+#### Listen to broadcast messages
+
+```c#
+class CursorBroadcast : BaseBroadcast
+{
+    [JsonProperty("cursorX")]
+    public int CursorX {get; set;}
+
+    [JsonProperty("cursorY")]
+    public int CursorY {get; set;}
+}
+
+var channel = supabase.Realtime.Channel("any");
+var broadcast = channel.Register<CursorBroadcast>();
+broadcast.AddBroadcastEventHandler((sender, baseBroadcast) =>
+{
+    var response = broadcast.Current();
+});
+
+await channel.Subscribe();
+
+// Send a broadcast
+await broadcast.Send("cursor", new CursorBroadcast { CursorX = 123, CursorY = 456 });
+```
+
+#### Listen to presence sync
+
+```c#
+  class UserPresence : BasePresence
+  {
+      [JsonProperty("cursorX")]
+      public bool IsTyping {get; set;}
+
+      [JsonProperty("onlineAt")]
+      public DateTime OnlineAt {get; set;}
+  }
+
+  var channel = supabase.Realtime.Channel("any");
+  var presenceKey = Guid.NewGuid().ToString();
+  var presence = channel.Register<UserPresence>(presenceKey);
+  presence.AddPresenceEventHandler(EventType.Sync, (sender, type) =>
+  {
+      Debug.WriteLine($"The Event Type: {type}");
+      var state = presence.CurrentState;
+  });
+
+  await channel.Subscribe();
+
+  // Send a presence update
+  await presence.Track(new UserPresence { IsTyping = false, OnlineAt = DateTime.Now });
+```
+
+#### Listening to a specific table
+
+```c#
+await supabase.From<City>().On(ListenType.All, (sender, change) =>
+{
+    Debug.WriteLine(change.Payload.Data);
+});
+```
+
+#### Listen to all database changes
+
+```c#
+var channel = supabase.Realtime.Channel("realtime", "public", "*");
+
+channel.AddPostgresChangeHandler(ListenType.All, (sender, change) =>
+{
+    // The event type
+    Debug.WriteLine(change.Event);
+    // The changed record
+    Debug.WriteLine(change.Payload);
+});
+
+await channel.Subscribe();
+```
+
+#### Listening to inserts
+
+```c#
+await supabase.From<City>().On(ListenType.Inserts, (sender, change) =>
+{
+    Debug.WriteLine(change.Payload.Data);
+});
+```
+
+#### Listening to updates
+
+```c#
+await supabase.From<City>().On(ListenType.Updates, (sender, change) =>
+{
+    Debug.WriteLine(change.Payload.Data);
+});
+```
+
+#### Listening to deletes
+
+```c#
+await supabase.From<City>().On(ListenType.Deletes, (sender, change) =>
+{
+    Debug.WriteLine(change.Payload.Data);
+});
+```
+
+#### Listening to row level changes
+
+```c#
+var channel = supabase.Realtime.Channel("realtime", "public", "countries", "id", "id=eq.200");
+
+channel.AddPostgresChangeHandler(ListenType.All, (sender, change) =>
+{
+    // The event type
+    Debug.WriteLine(change.Event);
+    // The changed record
+    Debug.WriteLine(change.Payload);
+});
+
+await channel.Subscribe();
+```
+
+## Unsubscribe()
+
+Unsubscribes and removes Realtime channel from Realtime client.
+
+- Removing a channel is a great way to maintain the performance of your project's Realtime service as well as your database if you're listening to Postgres changes. Supabase will automatically handle cleanup 30 seconds after a client is disconnected, but unused channels may cause degradation as more clients are simultaneously subscribed.
+
+### Examples
+
+#### Remove a channel
+
+```c#
+var channel = await supabase.From<City>().On(ChannelEventType.All, (sender, change) => { });
+channel.Unsubscribe();
+
+// OR
+
+var channel = supabase.Realtime.Channel("realtime", "public", "*");
+channel.Unsubscribe()
+```
+
+## Subscriptions
+
+Returns all Realtime channels.
+
+### Examples
+
+#### Get all channels
+
+```c#
+var channels = supabase.Realtime.Subscriptions;
+```
+
+## Storage
+
+## Overview
+
+This section contains methods for working with File Buckets.
+
+## ListBuckets()
+
+Retrieves the details of all Storage buckets within an existing product.
+
+- Policy permissions required:
+  - `buckets` permissions: `select`
+  - `objects` permissions: none
+
+### Examples
+
+#### List buckets
+
+```c#
+var buckets = await supabase.Storage.ListBuckets();
+```
+
+## GetBucket()
+
+Retrieves the details of an existing Storage bucket.
+
+- Policy permissions required:
+  - `buckets` permissions: `select`
+  - `objects` permissions: none
+
+### Examples
+
+#### Get bucket
+
+```c#
+var bucket = await supabase.Storage.GetBucket("avatars");
+```
+
+## CreateBucket()
+
+Creates a new Storage bucket
+
+- Policy permissions required:
+  - `buckets` permissions: `insert`
+  - `objects` permissions: none
+
+### Examples
+
+#### Create bucket
+
+```c#
+var bucket = await supabase.Storage.CreateBucket("avatars");
+```
+
+## EmptyBucket()
+
+Removes all objects inside a single bucket.
+
+- Policy permissions required:
+  - `buckets` permissions: `select`
+  - `objects` permissions: `select` and `delete`
+
+### Examples
+
+#### Empty bucket
+
+```c#
+var bucket = await supabase.Storage.EmptyBucket("avatars");
+```
+
+## UpdateBucket()
+
+Updates a new Storage bucket
+
+- Policy permissions required:
+  - `buckets` permissions: `update`
+  - `objects` permissions: none
+
+### Examples
+
+#### Update bucket
+
+```c#
+var bucket = await supabase.Storage.UpdateBucket("avatars", new BucketUpsertOptions { Public = false });
+```
+
+## DeleteBucket()
+
+Deletes an existing bucket. A bucket can't be deleted with existing objects inside it. You must first `empty()` the bucket.
+
+- Policy permissions required:
+  - `buckets` permissions: `select` and `delete`
+  - `objects` permissions: none
+
+### Examples
+
+#### Delete bucket
+
+```dart
+var result = await supabase.Storage.DeleteBucket("avatars");
+```
+
+## From().Upload()
+
+Uploads a file to an existing bucket.
+
+- Policy permissions required:
+  - `buckets` permissions: none
+  - `objects` permissions: `insert`
+
+### Examples
+
+#### Upload file
+
+```c#
+var imagePath = Path.Combine("Assets", "fancy-avatar.png");
+
+await supabase.Storage
+  .From("avatars")
+  .Upload(imagePath, "fancy-avatar.png", new FileOptions { CacheControl = "3600", Upsert = false });
+```
+
+#### Upload file with Progress
+
+```c#
+var imagePath = Path.Combine("Assets", "fancy-avatar.png");
+
+await supabase.Storage
+  .From("avatars")
+  .Upload(imagePath, "fancy-avatar.png", onProgress: (sender, progress) => Debug.WriteLine($"{progress}%"));
+```
+
+## From().update()
+
+Replaces an existing file at the specified path with a new one.
+
+- Policy permissions required:
+  - `buckets` permissions: none
+  - `objects` permissions: `update` and `select`
+
+### Examples
+
+#### Update file
+
+```c#
+var imagePath = Path.Combine("Assets", "fancy-avatar.png");
+await supabase.Storage.From("avatars").Update(imagePath, "fancy-avatar.png");
+```
+
+## From().Move()
+
+Moves an existing file, optionally renaming it at the same time.
+
+- Policy permissions required:
+  - `buckets` permissions: none
+  - `objects` permissions: `update` and `select`
+
+### Examples
+
+#### Move file
+
+```c#
+await supabase.Storage.From("avatars")
+  .Move("public/fancy-avatar.png", "private/fancy-avatar.png");
+```
+
+## From().CreateSignedUrl()
+
+Create signed url to download file without requiring permissions. This URL can be valid for a set number of seconds.
+
+- Policy permissions required:
+  - `buckets` permissions: none
+  - `objects` permissions: `select`
+
+### Examples
+
+#### Create Signed URL
+
+```c#
+var url = await supabase.Storage.From("avatars").CreateSignedUrl("public/fancy-avatar.png", 60);
+```
+
+## from.getPublicUrl()
+
+Retrieve URLs for assets in public buckets
+
+- The bucket needs to be set to public, either via UpdateBucket() or by going to Storage on supabase.com/dashboard, clicking the overflow menu on a bucket and choosing "Make public"
+- Policy permissions required:
+  - `buckets` permissions: none
+  - `objects` permissions: none
+
+### Examples
+
+#### Returns the URL for an asset in a public bucket
+
+```c#
+var publicUrl = supabase.Storage.From("avatars").GetPublicUrl("public/fancy-avatar.png");
+```
+
+## From().Download()
+
+Downloads a file.
+
+- Policy permissions required:
+  - `buckets` permissions: none
+  - `objects` permissions: `select`
+
+### Examples
+
+#### Download file
+
+```c#
+var bytes = await supabase.Storage.From("avatars").Download("public/fancy-avatar.png");
+```
+
+#### Download file with Progress
+
+```c#
+var bytes = await supabase.Storage
+  .From("avatars")
+  .Download("public/fancy-avatar.png", (sender, progress) => Debug.WriteLine($"{progress}%"));
+```
+
+## From().Remove()
+
+Deletes files within the same bucket
+
+- Policy permissions required:
+  - `buckets` permissions: none
+  - `objects` permissions: `delete` and `select`
+
+### Examples
+
+#### Delete file
+
+```c#
+await supabase.Storage.From("avatars").Remove(new List<string> { "public/fancy-avatar.png" });
+```
+
+## From().list()
+
+Lists all the files within a bucket.
+
+- Policy permissions required:
+  - `buckets` permissions: none
+  - `objects` permissions: `select`
+
+### Examples
+
+#### List files in a bucket
+
+```c#
+var objects = await supabase.Storage.From("avatars").List();
+```
+
+## Misc
+
+## Release Notes
+
+## 8.1.0 - 2026-09-07
+
+- Stream Edge Function responses (#417).
+- Realtime: add an `enabled` flag to opt into the initial presence sync (#407).
+- Fix: keep `!` and unary `-` attached to their values in `Where` filter expressions (#414).
+- Fix: write integer arrays as JSON arrays and reject invalid literals with a `JsonException` (#408).
+
+## 8.0.0 - 2026-09-03
+
+Major release. All `Supabase.*` packages are versioned in lockstep. See the migration guide for upgrade steps.
+
+**Breaking changes**
+
+- Migrate from `Newtonsoft.Json` to `System.Text.Json` across every package. Custom models with `[JsonProperty]` should move to `[JsonPropertyName]`; direct `JsonConvert` calls should move to `JsonSerializer` (#360).
+- Retarget every package to `netstandard2.1` (from `netstandard2.0`). .NET Framework and pre-`netstandard2.1` runtimes (Mono < 6.4, older Xamarin/Unity) are no longer supported — move to a `netstandard2.1`-capable target (.NET Core 3.0+/.NET 5+).
+- Postgrest: parameterless `Table.Delete()` now returns `Task<ModeledResponse>` (the deleted rows) instead of `Task` (#342).
+- Postgrest: `Single()` now throws a `PostgrestException` (status `406`) when more than one row matches, instead of returning `null` (#346).
+- Realtime: registering a `postgres_changes` listener after `Subscribe()` now throws a `RealtimeException` (#385).
+- Gotrue: stop sending the OAuth `state` parameter to `/authorize`; `SignInOptions.State` and `ProviderAuthState.State` are removed (#388).
+- Gotrue: rename `NetworkStatus.PingCheck` to `PingCheckAsync`.
+
+**Features**
+
+- Add the `Supabase.Extensions.DependencyInjection` package for DI registration (#387).
+- Add retry/backoff and injectable `HttpClient` support across all services (#383).
+- Support publishable and secret API keys (#397).
+- Gotrue: support async session persistence (#399) and soft-delete on admin `DeleteUser` (#402).
+- Storage: expose the service error code (#380).
+
+**Fixes**
+
+- Gotrue: a failed token refresh no longer signs the user out — only a server-reported invalid refresh token does (#394).
+- Postgrest: drop the `.` before nested `and`/`or` groups (#389).
+- Storage: percent-encode the object key in CDN purge URLs (#384).
+
+## 1.6.0 - 2026-08-07
+
+- Bump Supabase dependencies (#301).
+- Fix: match auth header names case-insensitively, enabling developer overrides (#295).
+
+## 1.5.0 - 2026-07-30
+
+- Update dependency: `Supabase.Realtime@7.3.1`
+- Fix `channel.Send()` hanging on unacknowledged broadcast pushes (#72).
+- Update dependency: `Supabase.Storage@2.6.0`
+- Add a `CancellationToken` to the `Download` methods (#49).
+- Implement cache purge (#50).
+- Non-JSON Storage errors now throw a `SupabaseStorageException` (#46).
+- Fix a trailing `?` being left on `CreateSignedUrl` results (#51).
+
+## 1.4.0 - 2026-07-23
+
+This is the observability release: every child library now emits diagnostics through `System.Diagnostics`, making the SDK compatible with OpenTelemetry.
+
+- Expose aggregated telemetry source names for OpenTelemetry (#285).
+- Update dependency: `Supabase.Core@1.2.0`
+- Add OpenTelemetry-compatible diagnostics primitives (#6).
+- Update dependency: `Supabase.Gotrue@6.2.0`
+- Emit observability via `System.Diagnostics` and deprecate the debug callback (#140).
+- Update dependency: `Supabase.Postgrest@4.4.0`
+- Emit observability via `System.Diagnostics` and deprecate the debug callback (#136).
+- Update dependency: `Supabase.Storage@2.5.0`
+- Emit observability via `System.Diagnostics` (#43).
+- Update dependency: `Supabase.Functions@2.2.0`
+- Emit observability via `System.Diagnostics` (#15).
+
+## 1.3.0 - 2026-07-20
+
+- Wire Realtime's Postgrest client automatically so models received from `postgres_changes` support `Update()` and `Delete()` (#282).
+- Update dependency: `Supabase.Postgrest@4.3.0`
+- Add `Client.Attach()` to populate a model's client context for `Update`/`Delete` (#135).
+- Add `ClientOptions.SerializeEnumsAsStrings` to opt into string enum serialization (#134).
+- Fix: exclude reference columns from update and delete select queries (#132).
+- Update dependency: `Supabase.Realtime@7.3.0`
+- Attach the Postgrest client context to models returned by `PostgresChangesResponse` (#70).
+
+## 1.2.0 - 2026-07-16
+
+- Lower the `Newtonsoft.Json` minimum version to `13.0.2` across all packages to ease dependency resolution (#275).
+- Update dependency: `Supabase.Gotrue@6.1.0`
+- Add an option for setting `redirect_url` on MagicLink sign-in.
+- Add `state` parameter support to OAuth provider sign-in.
+- Expose `RefreshToken(accessToken, refreshToken)` on `IGotrueClient`.
+- Fix: correct the PKCE verifier/challenge swap in `SignInWithOtp` and `ResetPasswordForEmail`.
+- Fix: classify refresh-token rejections coming from current gotrue.
+- Update dependency: `Supabase.Postgrest@4.2.0`
+- Fix: null-reference crash when a `Where` predicate null-checks a captured value (#122).
+- Fix: preserve `DateTime` kind, precision, and wall-clock across read and write (#123).
+- Update dependency: `Supabase.Storage@2.4.2`
+- Add resumable uploads (#29).
+- Add `CancellationToken` support to upload methods (#30).
+- In-memory caching for resumable uploads (#35).
+- Update dependency: `Supabase.Core@1.1.0`
+- Add structured `X-Client-Info` header metadata (#2).
+- Update dependencies: `Supabase.Realtime@7.2.1`, `Supabase.Functions@2.1.1` (maintenance).
+
+## 1.1.2 - 2025-07-07
+
+- Update dependency: `Supabase.Realtime@7.2.0`
+- Implement Postgres change filters (#55).
+- Fix: `SerializerSettings` were not being passed to `PostgresChangesResponse`.
+- Fix: use a compatible websocket library for Blazor WASM.
+- Update dependency: `Supabase.Postgrest@4.1.0`
+- Add `count` to `ModeledResponse` (#103).
+- Add support for `long`, `DateTime`, and `DateTimeOffset` criteria in filter expressions (#101).
+
+## 1.1.1 - 2024-07-27
+
+- Support for passing Headers specified in `ClientOptions` to the `Supabase.Realtime` Client.
+- Update dependency: `Supabase.Gotrue@6.0.3`
+- Add admin calls for MFA (#105). Big thanks to @michaelschattgen.
+- Update dependency: `Supabase.Realtime@7.0.2`
+- Updates dependency: `Websocket.Client@5.1.2`.
+- Updates dependency: `Supabase.Postgrest@4.0.3`.
+- Adds support for specifying `GetHeaders` on the `RealtimeClient`, which are included on the initial request to establish the websocket connection (#167).
+
+## 1.1.0 - 2024-07-25
+
+- Supports passing Headers specified in `ClientOptions` to child APIs.
+- Drop support for `netstandard2.0` — `Supabase` now targets `netstandard2.1`.
+- Update dependency: `Supabase.Gotrue@6.0.2`
+- Add support for MFA signup and login flows (#103). Huge thanks to @michaelschattgen.
+- Add `ExchangeCodeForSession` to `StatelessClient` (#102). Thanks @alexbakker.
+- Major: change target framework to `netstandard2.1`; use a CSPRNG to generate the code verifier (#99). Thanks @alexbakker.
+- Ban user functionality (#101). Thanks @celestebyte.
+
+## 1.0.5 - 2024-06-29
+
+- Update dependency: `Supabase.Storage@2.0.2`
+- Update dependency: `Supabase.Gotrue@5.0.6`
+- Introduces `VerifyTokenHash` to support the PKCE flow for email signup (#98). Thanks @alexbakker.
+
+## 1.0.4 - 2024-06-11
+
+- Update dependency: `Supabase.Gotrue@5.0.5`
+- Allow for scoped `SignOut`. Thanks @AndrewKahr.
+- Various minor SSO fixes. Thanks @Rycko1.
+- Implement `SignInWithSSO`. Huge thank you to @Rycko1.
+- Update dependency: `Supabase.Postgrest@4.0.3`
+- Fix set null value on string property (#97). Thanks @alustrement-bob.
+
+## 1.0.3 - 2024-05-22
+
+- Update dependency: `Supabase.Gotrue@5.0.2`
+- Add missing properties (`ProviderRefreshToken` and `ProviderToken`) to the `Session` object to reflect the current state of `auth-js`.
+- Update dependency: `Supabase.Realtime@7.0.1`
+- Return a `Task` from the `Track` and `Untrack` methods (#47).
+
+## 1.0.2 - 2024-05-16
+
+- Update dependency: `Supabase.Postgrest@4.0.2`
+- Set `ConfigureAwait(false)` on the response to prevent deadlocking applications (#96). Thanks @pur3extreme.
+- Update dependency: `Supabase.Gotrue@5.0.1`
+- Set `ConfigureAwait(false)` on the response to prevent deadlocking applications.
+- Update dependency: `Supabase.Storage@2.0.1`
+- Fix `CreateSignedUrl` with `TransformOptions` (#15, #16). Thanks @alustrement-bob.
+
+## 1.0.1 - 2024-05-07
+
+- Update dependency: `Supabase.Postgrest@4.0.1`
+- Changes the `IPostgrestTable<>` contract to return the interface rather than a concrete type (#92).
+
+## 1.0.0 - 2024-04-21
+
+- Assembly Name has been changed to `Supabase.dll`
+- Update dependency: `postgrest-csharp@5.0.0`
+- \[MAJOR] Moves namespaces from `Postgrest` to `Supabase.Postgrest`
+- Re: #135 Update nuget package
+  name `postgrest-csharp` to `Supabase.Postgrest`
+- Update dependency: `gotrue-csharp@5.0.0`
+- Re: #135 Update nuget package name `gotrue-csharp` to `Supabase.Gotrue`
+- Re: #89, Only add `access_token` to request body
+  when it is explicitly declared.
+- \[MINOR] Re: #89 Update signature
+  for `SignInWithIdToken` which adds an optional `accessToken` parameter, update doc comments, and
+  call `DestroySession` in method
+- Re: #88, Add `IsAnonymous` property to `User`
+- Re: #90 Implement `LinkIdentity`
+  and `UnlinkIdentity`
+- Update dependency: `realtime-csharp@7.0.0`
+- Merges #45 - Updating
+  the `Websocket.Client@5.1.1`
+- Re: #135 Update nuget package
+  name `realtime-csharp` to `Supabase.Realtime`
+- Update dependency: `storage-csharp@2.0.0`
+- Re: #135 Update nuget package
+  name `storage-csharp` to `Supabase.Storage`
+- Update dependency: `functions-csharp@2.0.0`
+- Re: #135 Update nuget package
+  name `functions-csharp` to `Supabase.Functions`
+- Update dependency: `core-csharp@1.0.0`
+- Re: #135 Update nuget package
+  name `supabase-core`
+  to `Supabase.Core`
+- Adds comments to the remaining undocumented code.

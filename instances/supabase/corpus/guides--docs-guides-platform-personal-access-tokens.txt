@@ -1,0 +1,336 @@
+# Personal Access Tokens
+# джерело: https://supabase.com/docs/guides/platform/personal-access-tokens
+# отримано: 2026-09-24
+
+Scope personal access tokens to specific organizations, projects, and permissions
+
+Caution: Scoped personal access tokens are in **public alpha** and rolling out gradually. If you don't see the option to choose permissions when creating a token, your account doesn't have access yet. File a support ticket to get early access.
+
+Personal access tokens (PATs) authenticate you to the Management API and the tools built on it, like the Supabase CLI and the MCP server. They come in two flavors:
+
+- **Classic tokens** carry your account's full access. That means every permission, on every organization and every project you belong to today, and on every one you create or join in the future. A classic token created a year ago can touch a project you created today.
+- **Scoped tokens** carry only the organizations, projects, and permissions you choose. For example: read one project's database and view its logs, with no access to billing or organization settings.
+
+Note: We recommend scoped tokens for everything, especially AI agents, automation scripts, and CI environments. If a token leaks, the blast radius stays small.
+
+To use scoped personal access tokens you need a Supabase account with a role on the organization or project you want the token to reach. A scoped personal access token's permissions only ever narrow what your account can already do. They never grant more. If your role doesn't include a permission (see Access Control), granting that permission to a token has no effect: the token still can't do it.
+
+You create scoped tokens the same way as classic tokens, from your access tokens settings. Choose which permissions to grant during creation instead of leaving the token with full access.
+
+## Create and use a scoped personal access token
+
+This example creates a token that can only read one project's settings, then calls an endpoint outside that scope. Both calls are reads available to every organization role, including Read-Only, so anyone can run it.
+
+1. Go to your access tokens settings and generate a new token.
+2. While creating it, scope the token to one project and grant only the **Project Settings** permission with **Read** access.
+3. Copy the token (scoped personal access tokens start with `sbp_fc`) and use it against the Management API, replacing `your-project-ref` with the project's ref:
+
+```bash
+export SUPABASE_ACCESS_TOKEN="sbp_fc..."
+
+# Allowed: Project Settings Read unlocks this endpoint
+curl "https://api.supabase.com/v1/projects/your-project-ref" \
+  -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN"
+# Returns the project's details
+
+# Denied: this endpoint needs the Database permission, which the token lacks
+curl -i "https://api.supabase.com/v1/projects/your-project-ref/types/typescript" \
+  -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN"
+# Returns HTTP 403
+```
+
+The tables below list which permission unlocks which endpoints, and which permission each MCP tool requires, so you can grant exactly what a workflow needs.
+
+## Permission scopes
+
+Each permission controls read or read-write access to one resource, for example **Database**, **Edge Functions**, or **Production Branches**. The permissions and names below match those shown when creating a scoped personal access token. Permissions that currently unlock neither a public Management API endpoint nor an MCP tool are omitted. A few endpoints need more than one permission. The footnotes call these out.
+
+| Permission                       | Access required | Management API endpoint                                                                                                                 |
+| -------------------------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **Project**                      |                 |                                                                                                                                         |
+| Project Settings                 | Read            | Get JIT access config                                               |
+|                                  |                 | Get postgres upgrade eligibility[^1]                     |
+|                                  |                 | Get postgres upgrade status[^1]                               |
+|                                  |                 | Get project                                                                   |
+|                                  |                 | Get services health                                                   |
+|                                  |                 | List available restore versions                           |
+|                                  |                 | List private link associations                             |
+|                                  |                 | Preview a project transfer                                     |
+|                                  | Read-write      | Cancel a project restoration                                 |
+|                                  |                 | Create private link association                           |
+|                                  |                 | Delete a project                                                         |
+|                                  |                 | Delete private link association                           |
+|                                  |                 | Delete private link association for database |
+|                                  |                 | Get pgsodium config                                                   |
+|                                  |                 | OAuth authorize project claim[^2]                           |
+|                                  |                 | Pause a project                                                           |
+|                                  |                 | Restart a project                                                       |
+|                                  |                 | Restore a project                                                       |
+|                                  |                 | Update a project                                                         |
+|                                  |                 | Update auth service config[^3]                                 |
+|                                  |                 | Update JIT access config                                         |
+|                                  |                 | Update pgsodium config                                             |
+|                                  |                 | Upgrade postgres version[^4]                                     |
+| Action Runs                      | Read            | Count action runs                                                       |
+|                                  |                 | Get action run                                                             |
+|                                  |                 | Get action run logs                                                   |
+|                                  |                 | List action runs                                                         |
+|                                  | Read-write      | Update action run status                                         |
+| Advisors                         | Read            | Get performance advisors                                         |
+|                                  |                 | Get security advisors                                               |
+|                                  |                 | Run project advisors                                                 |
+| Analytics Config                 | Read            | List log drains                                                           |
+|                                  | Read-write      | Create log drain                                                         |
+|                                  |                 | Delete log drain                                                         |
+|                                  |                 | Update log drain                                                         |
+| Logs                             | Read            | Get project logs                                                         |
+|                                  |                 | Get project logs all                                                 |
+|                                  |                 | Scrape project metrics                                             |
+| Usage Analytics                  | Read            | Get project function combined stats                   |
+|                                  |                 | Get project usage API count                                   |
+|                                  |                 | Get project usage request count                           |
+| Platform Webhooks                | Read            | Get delivery                                      |
+|                                  |                 | Get endpoint                                       |
+|                                  |                 | List deliveries                         |
+|                                  |                 | List endpoints                                        |
+|                                  | Read-write      | Create endpoint                                      |
+|                                  |                 | Delete all endpoints                               |
+|                                  |                 | Delete endpoint                                 |
+|                                  |                 | Retry delivery                             |
+|                                  |                 | Send test event                              |
+|                                  |                 | Update endpoint                                  |
+| **Database**                     |                 |                                                                                                                                         |
+| Backups                          | Read            | Get backup schedule                                                   |
+|                                  |                 | List all backups                                                         |
+|                                  | Read-write      | Restore PITR backup                                                   |
+|                                  |                 | Update backup schedule                                             |
+| Database                         | Read            | Generate typescript types                                       |
+|                                  |                 | Get database metadata                                               |
+|                                  |                 | Get database openapi                                                 |
+|                                  |                 | Get postgres upgrade eligibility[^1]                     |
+|                                  |                 | Get postgres upgrade status[^1]                               |
+|                                  |                 | Get project config[^5]                                                 |
+|                                  |                 | Get project PgBouncer config                                 |
+|                                  |                 | Read only query                                                           |
+|                                  |                 | Run a query                                                                   |
+|                                  | Read-write      | Create login role                                                       |
+|                                  |                 | Delete login roles                                                     |
+|                                  |                 | Run a query                                                                   |
+|                                  |                 | Upgrade postgres version[^4]                                     |
+| Database Config                  | Read            | Get postgres config                                                   |
+|                                  |                 | Get project config[^5]                                                 |
+|                                  | Read-write      | Update database password                                         |
+|                                  |                 | Update postgres config                                             |
+| Database JIT                     | Read            | Authorize JIT access                                                 |
+|                                  |                 | Get JIT access                                                             |
+|                                  | Read-write      | Delete invite external JIT access                       |
+|                                  |                 | Delete JIT access                                                       |
+|                                  |                 | Invite external JIT access                                     |
+|                                  |                 | List JIT access                                                           |
+|                                  |                 | Update JIT access                                                       |
+| Network Bans                     | Read            | List all network bans                                               |
+|                                  |                 | List all network bans enriched                             |
+|                                  | Read-write      | Delete network bans                                                   |
+| Network Restrictions             | Read            | Get network restrictions                                         |
+|                                  |                 | Get project config[^5]                                                 |
+|                                  | Read-write      | Patch network restrictions                                     |
+|                                  |                 | Update network restrictions                                   |
+| Migrations                       | Read            | Get a migration                                                           |
+|                                  |                 | List migration history                                             |
+|                                  | Read-write      | Apply a migration                                                       |
+|                                  |                 | Patch a migration                                                       |
+|                                  |                 | Rollback migrations                                                   |
+|                                  |                 | Upsert a migration                                                     |
+| Connection Pooling               | Read            | Get pooler config                                                       |
+|                                  | Read-write      | Update pooler config                                                 |
+| Read-only Mode                   | Read            | Get read-only mode status                                        |
+|                                  | Read-write      | Disable read-only mode temporarily                      |
+| SSL Enforcement                  | Read            | Get project config[^5]                                                 |
+|                                  |                 | Get SSL enforcement config                                     |
+|                                  | Read-write      | Update SSL enforcement config                               |
+| Database Webhooks                | Read-write      | Enable database webhook                                           |
+| **Application services**         |                 |                                                                                                                                         |
+| API Keys                         | Read            | Get project API key                                                   |
+|                                  |                 | Get project API keys                                                 |
+|                                  |                 | Get project legacy API keys                                   |
+|                                  | Read-write      | Create project API key                                             |
+|                                  |                 | Delete project API key                                             |
+|                                  |                 | Update project API key                                             |
+|                                  |                 | Update project legacy API keys                             |
+| API Key Secrets                  | Read            | Get project API key[^6]                                               |
+|                                  |                 | Get project API keys[^6]                                             |
+| Auth Config                      | Read            | Get a SSO provider                                                     |
+|                                  |                 | Get auth service config                                           |
+|                                  |                 | Get project config[^5]                                                 |
+|                                  |                 | Get project TPA integration                                   |
+|                                  |                 | List all SSO provider                                               |
+|                                  |                 | List project TPA integrations                               |
+|                                  | Read-write      | Create a SSO provider                                               |
+|                                  |                 | Create project TPA integration                             |
+|                                  |                 | Delete a SSO provider                                               |
+|                                  |                 | Delete project TPA integration                             |
+|                                  |                 | Update a SSO provider                                               |
+|                                  |                 | Update auth service config[^3]                                 |
+| Auth Signing Keys                | Read            | Get legacy signing key                                             |
+|                                  |                 | Get project signing key                                           |
+|                                  |                 | Get project signing keys                                         |
+|                                  | Read-write      | Create legacy signing key                                       |
+|                                  |                 | Create project signing key                                     |
+|                                  |                 | Remove project signing key                                     |
+|                                  |                 | Update project signing key                                     |
+| Data API Config                  | Read            | Get PostgREST service config                                 |
+|                                  |                 | Get project config[^5]                                                 |
+|                                  | Read-write      | Update PostgREST service config                           |
+| Data API JWT Secret              | Read            | Get PostgREST service config[^7]                             |
+| Edge Functions                   | Read            | Get a function                                                             |
+|                                  |                 | Get a function body                                                   |
+|                                  |                 | List all functions                                                     |
+|                                  | Read-write      | Bulk update functions                                               |
+|                                  |                 | Create a function                                                       |
+|                                  |                 | Delete a function                                                       |
+|                                  |                 | Deploy a function                                                       |
+|                                  |                 | Update a function                                                       |
+| Edge Function Secrets            | Read            | List all secrets                                                         |
+|                                  | Read-write      | Bulk create secrets                                                   |
+|                                  |                 | Bulk delete secrets                                                   |
+| Realtime Config                  | Read            | Get project config[^5]                                                 |
+|                                  |                 | Get realtime config                                                   |
+|                                  | Read-write      | Shutdown realtime                                                       |
+|                                  |                 | Update realtime config                                             |
+| Storage                          | Read            | List all buckets                                                         |
+| Storage Config                   | Read            | Get project config[^5]                                                 |
+|                                  |                 | Get storage config                                                     |
+|                                  | Read-write      | Update storage config                                               |
+| Compute                          | Read            | Get a worker                                                                 |
+|                                  |                 | List all workers                                                         |
+|                                  | Read-write      | Create worker upload                                                 |
+|                                  |                 | Delete a worker                                                           |
+|                                  |                 | Deploy a worker                                                           |
+| **Infrastructure and delivery**  |                 |                                                                                                                                         |
+| Development Branches             | Read            | Get a branch                                                                 |
+|                                  |                 | Get a branch config                                                   |
+|                                  |                 | List all branches                                                       |
+|                                  | Read-write      | Create a branch                                                           |
+|                                  |                 | Create a branch                                                           |
+|                                  |                 | Delete a branch                                                           |
+|                                  |                 | Diff a branch                                                               |
+|                                  |                 | Merge a branch                                                             |
+|                                  |                 | Push a branch                                                               |
+|                                  |                 | Reset a branch                                                             |
+|                                  |                 | Restore a branch                                                         |
+|                                  |                 | Update a branch config                                             |
+| Production Branches              | Read            | Get a branch                                                                 |
+|                                  |                 | Get a branch config                                                   |
+|                                  |                 | List all branches                                                       |
+|                                  | Read-write      | Create a branch                                                           |
+|                                  |                 | Create a branch                                                           |
+|                                  |                 | Delete a branch                                                           |
+|                                  |                 | Diff a branch                                                               |
+|                                  |                 | Disable preview branching                                       |
+|                                  |                 | Merge a branch                                                             |
+|                                  |                 | Push a branch                                                               |
+|                                  |                 | Reset a branch                                                             |
+|                                  |                 | Restore a branch                                                         |
+|                                  |                 | Update a branch config                                             |
+| Custom Domains                   | Read            | Get hostname config                                                   |
+|                                  | Read-write      | Activate custom hostname                                         |
+|                                  |                 | Delete hostname config                                                                                                                  |
+|                                  |                 | Update hostname config                                             |
+|                                  |                 | Verify DNS config                                                       |
+| Add-ons                          | Read            | List project add-ons                                                  |
+|                                  | Read-write      | Apply project add-on                                                  |
+|                                  |                 | Remove project add-on                                                |
+| Disk Config                      | Read            | Get database disk                                                       |
+|                                  |                 | Get disk utilization                                                 |
+|                                  |                 | Get project disk auto-scaling config                    |
+|                                  | Read-write      | Modify database disk                                                 |
+| Read Replicas                    | Read-write      | Remove a read replica                                               |
+|                                  |                 | Setup a read replica                                                 |
+| Vanity Subdomain                 | Read            | Get vanity subdomain config                                   |
+|                                  | Read-write      | Activate vanity subdomain config                         |
+|                                  |                 | Check vanity subdomain availability                   |
+|                                  |                 | Deactivate vanity subdomain config                     |
+| **Account and organization**     |                 |                                                                                                                                         |
+| Organizations                    | Read            | List all organizations                                             |
+|                                  | Read-write      | Create an organization                                             |
+| Projects (account-wide)          | Read            | List all projects                                                       |
+| SQL Snippets (account-wide)      | Read            | Get a snippet                                                               |
+|                                  |                 | List all snippets                                                       |
+| Organization Settings            | Read            | Get an organization                                                   |
+|                                  |                 | Get organization entitlements                               |
+|                                  | Read-write      | Assign organization member role                           |
+|                                  |                 | OAuth authorize project claim[^2]                           |
+|                                  |                 | Transfer a project                                                     |
+| Organization Members             | Read            | List organization members                                       |
+|                                  |                 | List organization members                                       |
+|                                  |                 | List organization roles                                           |
+|                                  | Read-write      | Create organization invitations                           |
+|                                  |                 | Delete organization invitations                           |
+| Organization Projects            | Read            | Get all projects for organization                       |
+|                                  |                 | List organization GitHub connections                 |
+|                                  |                 | List organization projects                                     |
+|                                  | Read-write      | Create a project                                                         |
+| Platform Webhooks (organization) | Read            | Get delivery                                |
+|                                  |                 | Get endpoint                                 |
+|                                  |                 | List deliveries                   |
+|                                  |                 | List endpoints                                  |
+|                                  | Read-write      | Create endpoint                                |
+|                                  |                 | Delete all endpoints                         |
+|                                  |                 | Delete endpoint                           |
+|                                  |                 | Retry delivery                       |
+|                                  |                 | Send test event                        |
+|                                  |                 | Update endpoint                            |
+
+[^1]: Requires **Project Settings** (Read) and **Database** (Read).
+
+[^2]: Requires **Organization Settings** (Read-write) and **Project Settings** (Read-write).
+
+[^3]: Requires **Auth Config** (Read-write) and **Project Settings** (Read-write).
+
+[^4]: Requires **Project Settings** (Read-write) and **Database** (Read-write).
+
+[^5]: Requires **Database Config** (Read), **Database** (Read), **SSL Enforcement** (Read), **Network Restrictions** (Read), **Auth Config** (Read), **Data API Config** (Read), **Realtime Config** (Read), and **Storage Config** (Read).
+
+[^6]: Requires **API Keys** (Read) and **API Key Secrets** (Read).
+
+[^7]: Requires **Data API Config** (Read) and **Data API JWT Secret** (Read).
+
+## MCP tools
+
+A scoped personal access token used to authenticate the MCP server can only call the tools its granted permissions unlock. See Available tools for what each tool does.
+
+| MCP tool                    | Required permission                                                           |
+| --------------------------- | ----------------------------------------------------------------------------- |
+| `apply_migration`           | **Migrations** (Read-write)                                                   |
+| `confirm_cost`              | None (always available)                                                       |
+| `create_branch`             | **Development Branches** (Read-write) or **Production Branches** (Read-write) |
+| `create_project`            | **Organization Projects** (Read-write)                                        |
+| `delete_branch`             | **Production Branches** (Read-write) or **Development Branches** (Read-write) |
+| `deploy_edge_function`      | **Edge Functions** (Read-write)                                               |
+| `execute_sql`               | **Database** (Read)                                                           |
+| `generate_typescript_types` | **Database** (Read)                                                           |
+| `get_advisors`              | **Advisors** (Read)                                                           |
+| `get_cost`                  | **Organization Settings** (Read) and **Projects (account-wide)** (Read)       |
+| `get_edge_function`         | **Edge Functions** (Read)                                                     |
+| `get_logs`                  | **Logs** (Read)                                                               |
+| `get_organization`          | **Organization Settings** (Read)                                              |
+| `get_project`               | **Project Settings** (Read)                                                   |
+| `get_project_url`           | **Project Settings** (Read)                                                   |
+| `get_publishable_keys`      | **API Keys** (Read)                                                           |
+| `get_storage_config`        | **Storage Config** (Read)                                                     |
+| `list_branches`             | **Development Branches** (Read) or **Production Branches** (Read)             |
+| `list_edge_functions`       | **Edge Functions** (Read)                                                     |
+| `list_extensions`           | **Database** (Read)                                                           |
+| `list_migrations`           | **Migrations** (Read)                                                         |
+| `list_organizations`        | **Organizations** (Read)                                                      |
+| `list_projects`             | **Projects (account-wide)** (Read)                                            |
+| `list_storage_buckets`      | **Storage** (Read)                                                            |
+| `list_tables`               | **Database** (Read)                                                           |
+| `merge_branch`              | **Production Branches** (Read-write) or **Development Branches** (Read-write) |
+| `pause_project`             | **Project Settings** (Read-write)                                             |
+| `query_logs`                | **Logs** (Read)                                                               |
+| `rebase_branch`             | **Production Branches** (Read-write) or **Development Branches** (Read-write) |
+| `reset_branch`              | **Production Branches** (Read-write) or **Development Branches** (Read-write) |
+| `restore_project`           | **Project Settings** (Read-write)                                             |
+| `search_docs`               | None (always available)                                                       |
+| `update_storage_config`     | **Storage Config** (Read-write)                                               |

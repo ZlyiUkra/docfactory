@@ -1,0 +1,265 @@
+# Use Supabase with Refine
+# джерело: https://supabase.com/docs/guides/getting-started/quickstarts/refine
+# отримано: 2026-09-24
+
+Learn how to create a Supabase project, add some sample data to your database, and query the data from a Refine app.
+
+## 1. Create a Supabase project
+
+To start, you need a Supabase project.
+
+Create a new Supabase project from the Dashboard of any organization you belong to.
+
+Note: Use the Management API or ask the MCP server to create a new Supabase project.
+
+## 2. Set up your database
+
+When your Supabase project is up and running, create an `instruments` table with some sample data. Then set only the privileges each Postgres role needs, add Row Level Security (RLS) for enhanced security for database data by default, and create an RLS policy to make the data in the table publicly readable.
+
+Do these steps within your project's dashboard by copying and running the snippet in your project's SQL Editor.
+
+Note: Save some steps by clicking here to prefill the SQL in the SQL Editor, and then clicking **Run**.
+
+Note: You can use the Management API or ask the MCP server to execute SQL queries.
+
+```sql
+-- Create the table
+create table instruments (
+  id bigint primary key generated always as identity,
+  name text not null
+);
+
+-- Insert sample data into the table
+insert into instruments (name)
+values
+  ('violin'),
+  ('viola'),
+  ('cello');
+
+-- Grant the privileges the role needs, which is read access
+grant select on public.instruments to anon;
+
+-- Enable row level security for the table
+alter table instruments enable row level security;
+
+-- Create a policy to allow the anon role to read from the instruments table
+create policy "public can read instruments"
+on public.instruments
+for select to anon
+using (true);
+```
+
+Note: If you disabled the Data API during project setup, enable it in the **Integrations > Data API** section of the Dashboard and expose the specific tables or functions you want to access. To automatically grant access for new tables and functions in `public`, enable **Automatically expose new tables**.
+
+## 3. Create a Refine app
+
+Create a Refine app using the create refine-app.
+
+The `refine-supabase` preset adds `@refinedev/supabase` supplementary package that supports Supabase in a Refine app. `@refinedev/supabase` out-of-the-box includes the Supabase dependency: supabase-js.
+
+```bash
+npm create refine-app@latest -- --preset refine-supabase my-app
+```
+
+Note: The CLI may prompt for an email address. The `refine-supabase` preset also ships with demo Supabase credentials. Replace them in step 5 with your own project.
+
+To skip the email prompt in a non-interactive shell, pipe a blank line:
+
+```bash
+printf '\n' | npm create refine-app@latest -- --preset refine-supabase my-app
+```
+
+## 4. Set up AI tooling (optional)
+
+Supabase provides two ways to give AI tools context about your project: Agent Skills, which give your AI coding agent procedural knowledge, and the MCP server, which connects AI assistants to your Supabase project directly.
+
+### Agent Skills
+
+Agent Skills is a curated set of instructions that give your AI agent procedural knowledge about working with Supabase.
+
+Install them so your AI coding agent can produce more accurate, reliable code using current Supabase patterns, such as authentication, server-side rendering, and database migrations, rather than relying solely on training data.
+
+#### Installing Agent Skills
+
+To install, run the following command in the root of your project:
+
+```bash
+npx skills add supabase/agent-skills
+```
+
+### Supabase MCP server
+
+The Supabase MCP server connects AI assistants to Supabase, so they can inspect your schema and act on your projects on your behalf. Find out how to add it to your client in the MCP docs.
+
+## 5. Update `supabaseClient` with environment variables
+
+Create a `.env` file and populate it with your Supabase URL and publishable key, which you can get from the helper below, or from the project **Connect** panel.
+
+Open Connect panel
+
+```text
+VITE_SUPABASE_URL=<SUBSTITUTE_SUPABASE_URL>
+VITE_SUPABASE_PUBLISHABLE_KEY=<SUBSTITUTE_SUPABASE_PUBLISHABLE_KEY>
+```
+
+The `refine-supabase` preset hardcodes Refine's own demo Supabase project in `src/providers/constants.ts`, and initializes the client from it in `src/providers/supabase-client.ts`. Replace the hardcoded values so the client reads your project credentials from the environment variables above instead:
+
+```ts
+export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+export const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+```
+
+The `supabaseClient` is used by the auth and data providers to connect your Refine app to Supabase.
+
+### Get API details
+
+To interact with data in database tables, you use the client libraries that wrap the auto-generated Data API endpoints, authenticating using the Project URL and key from the project **Connect** dialog.
+
+Note: See API keys for a full explanation of all key types, their uses, and where to find them.
+
+## 6. Add instruments resource and pages
+
+Use the following code to automatically add resources and generate code for the pages to show the `instruments` data using Refine Inferencer.
+
+This defines pages for `list`, `create`, `show` and `edit` actions inside the `src/pages/instruments/` directory with a `<HeadlessInferencer />` component.
+
+The `<HeadlessInferencer />` component depends on `@refinedev/react-table`, `@refinedev/react-hook-form`, and `react-live` packages. To avoid errors, install them as dependencies:
+
+```bash
+npm install @refinedev/react-table @refinedev/react-hook-form react-live
+```
+
+Note: The `<HeadlessInferencer />` is a Refine Inferencer component that automatically generates necessary code for the `list`, `create`, `show` and `edit` pages.
+
+Read more on how the Inferencer works is in the Refine docs.
+
+```bash
+npm run refine create-resource instruments
+```
+
+## 7. Add routes for instruments pages
+
+Add routes for the `list`, `create`, `show`, and `edit` pages.
+
+Note: Remove the `index` route for the Welcome page presented with the `<Welcome />` component.
+
+```tsx
+import { Refine } from '@refinedev/core'
+import { RefineKbar, RefineKbarProvider } from '@refinedev/kbar'
+import routerProvider, {
+  DocumentTitleHandler,
+  NavigateToResource,
+  UnsavedChangesNotifier,
+} from '@refinedev/react-router'
+import { liveProvider } from '@refinedev/supabase'
+import { BrowserRouter, Route, Routes } from 'react-router'
+
+import './App.css'
+
+import {
+  InstrumentsCreate,
+  InstrumentsEdit,
+  InstrumentsList,
+  InstrumentsShow,
+} from './pages/instruments'
+import authProvider from './providers/auth'
+import { dataProvider } from './providers/data'
+import { supabaseClient } from './providers/supabase-client'
+
+function App() {
+  return (
+    <BrowserRouter>
+      <RefineKbarProvider>
+        <Refine
+          dataProvider={dataProvider}
+          liveProvider={liveProvider(supabaseClient)}
+          authProvider={authProvider}
+          routerProvider={routerProvider}
+          options={{
+            syncWithLocation: true,
+            warnWhenUnsavedChanges: true,
+          }}
+          resources={[
+            {
+              name: 'instruments',
+              list: '/instruments',
+              create: '/instruments/create',
+              edit: '/instruments/edit/:id',
+              show: '/instruments/show/:id',
+            },
+          ]}
+        >
+          <Routes>
+            <Route index element={<NavigateToResource resource="instruments" />} />
+            <Route path="/instruments">
+              <Route index element={<InstrumentsList />} />
+              <Route path="create" element={<InstrumentsCreate />} />
+              <Route path="edit/:id" element={<InstrumentsEdit />} />
+              <Route path="show/:id" element={<InstrumentsShow />} />
+            </Route>
+          </Routes>
+          <RefineKbar />
+          <UnsavedChangesNotifier />
+          <DocumentTitleHandler />
+        </Refine>
+      </RefineKbarProvider>
+    </BrowserRouter>
+  )
+}
+
+export default App
+```
+
+## 8. Allow writes to the instruments table
+
+The scaffolded pages create and edit instruments, but the database setup in step 2 grants read access only. Without write privileges and matching policies, the create and edit pages fail with `permission denied for table instruments`.
+
+Run the following in the SQL Editor to grant the privileges and add the policies:
+
+```sql
+grant insert, update, delete on public.instruments to anon;
+
+create policy "public can insert instruments"
+on public.instruments
+for insert to anon
+with check (true);
+
+create policy "public can update instruments"
+on public.instruments
+for update to anon
+using (true)
+with check (true);
+
+create policy "public can delete instruments"
+on public.instruments
+for delete to anon
+using (true);
+```
+
+Caution: These policies let anyone with your publishable key modify the `instruments` table. They exist so you can try the scaffolded UI against sample data. Scope writes to authenticated users before you put real data in this table.
+
+## 9. Start the app
+
+Run the development server, then open `/instruments` in your browser (Vite defaults to http://localhost:5173). You should see the instruments pages along the `/instruments` routes. You can edit and add new instruments using the Inferencer-generated UI.
+
+```bash
+npm run dev
+```
+
+The Inferencer auto-generated code gives you a good starting point on which to keep building your `list`, `create`, `show` and `edit` pages. You can get these by clicking the `Show the auto-generated code` buttons in their respective pages.
+
+## Production requirements
+
+The quickstart procedure in this guide optimizes for getting you to a working app, not for production.
+
+Before you deploy:
+
+- If your app reads or writes through the Data API, review your Row Level Security policies. Any policy you added here is scoped to this quickstart's sample data, not to real user data.
+- Set your Supabase credentials as environment variables on whatever platform you deploy to, rather than committing them to source control.
+- Configure a custom domain for your Supabase project once you're ready to go live.
+
+## Next steps
+
+- Set up Auth for your app
+- Insert more data into your database
+- Upload and serve static files using Storage

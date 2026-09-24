@@ -1,0 +1,429 @@
+# Log sources and fields
+# джерело: https://supabase.com/docs/guides/observability/log-field-reference
+# отримано: 2026-09-24
+
+Log sources, ClickHouse fields, and event capture limits
+
+Each event is a row in the ClickHouse `logs` table. Filter the `source` column to select a service. The tables below list its fields; a field is not necessarily populated on every event.
+
+`id`, `timestamp`, `event_message`, `severity_text`, and `source` are top-level columns. Service fields are string values in `log_attributes`, even when the original event contains a number or boolean. Use the **ClickHouse query field** column directly. See Query logs with SQL for casting and field discovery.
+
+## Sources
+
+| `source`             | Events                                                            |
+| -------------------- | ----------------------------------------------------------------- |
+| `edge_logs`          | HTTP requests through the API gateway, including REST and GraphQL |
+| `postgres_logs`      | Database activity, statements, and errors                         |
+| `postgrest_logs`     | PostgREST server logs                                             |
+| `auth_logs`          | Auth server: login, JWT, OAuth, email                             |
+| `auth_audit_logs`    | Auth audit events                                                 |
+| `storage_logs`       | Storage API: uploads and object access                            |
+| `realtime_logs`      | Realtime server: channels, presence, broadcast                    |
+| `function_edge_logs` | HTTP request and response for an Edge Function invocation         |
+| `function_logs`      | `console` output from inside an Edge Function                     |
+| `supavisor_logs`     | Shared pooler: pooling and timeouts                               |
+| `pgbouncer_logs`     | Dedicated pooler                                                  |
+| `pg_upgrade_logs`    | Database version upgrade                                          |
+
+For `postgres_logs`, statement text and error details can appear in `event_message`. A missing structured field does not mean the event has no detail.
+
+## Captured HTTP headers
+
+API Gateway logs capture only the headers below. Other headers still reach the application and client but are omitted from these logs.
+
+Request headers:
+
+- `accept`
+- `cf-connecting-ip`
+- `cf-ipcountry`
+- `host`
+- `user-agent`
+- `x-forwarded-proto`
+- `referer`
+- `content-length`
+- `x-real-ip`
+- `x-client-info`
+- `x-forwarded-user-agent`
+- `range`
+- `prefer`
+
+Response headers:
+
+- `cf-cache-status`
+- `cf-ray`
+- `content-location`
+- `content-range`
+- `content-type`
+- `content-length`
+- `date`
+- `transfer-encoding`
+- `x-kong-proxy-latency`
+- `x-kong-upstream-latency`
+- `sb-gateway-mode`
+- `sb-gateway-version`
+
+## Capture limits
+
+- Hosted Postgres events longer than 100,000 characters and Edge Function log messages longer than 10,000 characters are truncated.
+- Internal Supabase service connection events are not recorded in hosted Postgres logs.
+- An Edge Function invocation uses `function_edge_logs`; its console output uses `function_logs`.
+- For API Load Balancer traffic, `log_attributes['load_balancer_redirect_identifier']` identifies the upstream database.
+
+## Fields by source
+
+### API Gateway
+
+Source: `edge_logs`
+
+| Schema path | ClickHouse query field | Source type | Query value type |
+| --- | --- | --- | --- |
+| `event_message` | `event_message` | `string` | `String` |
+| `id` | `id` | `string` | `String` |
+| `identifier` | `log_attributes['identifier']` | `string` | `String` |
+| `metadata.load_balancer_redirect_identifier` | `log_attributes['load_balancer_redirect_identifier']` | `string` | `String` |
+| `metadata.request.cf.asn` | `log_attributes['request.cf.asn']` | `number` | `String` |
+| `metadata.request.cf.asOrganization` | `log_attributes['request.cf.asOrganization']` | `string` | `String` |
+| `metadata.request.cf.botManagement.corporateProxy` | `log_attributes['request.cf.botManagement.corporateProxy']` | `boolean` | `String` |
+| `metadata.request.cf.botManagement.detectionIds` | `log_attributes['request.cf.botManagement.detectionIds']` | `number[]` | `String` |
+| `metadata.request.cf.botManagement.ja3Hash` | `log_attributes['request.cf.botManagement.ja3Hash']` | `string` | `String` |
+| `metadata.request.cf.botManagement.score` | `log_attributes['request.cf.botManagement.score']` | `number` | `String` |
+| `metadata.request.cf.botManagement.staticResource` | `log_attributes['request.cf.botManagement.staticResource']` | `boolean` | `String` |
+| `metadata.request.cf.botManagement.verifiedBot` | `log_attributes['request.cf.botManagement.verifiedBot']` | `boolean` | `String` |
+| `metadata.request.cf.city` | `log_attributes['request.cf.city']` | `string` | `String` |
+| `metadata.request.cf.clientTcpRtt` | `log_attributes['request.cf.clientTcpRtt']` | `number` | `String` |
+| `metadata.request.cf.clientTrustScore` | `log_attributes['request.cf.clientTrustScore']` | `number` | `String` |
+| `metadata.request.cf.colo` | `log_attributes['request.cf.colo']` | `string` | `String` |
+| `metadata.request.cf.continent` | `log_attributes['request.cf.continent']` | `string` | `String` |
+| `metadata.request.cf.country` | `log_attributes['request.cf.country']` | `string` | `String` |
+| `metadata.request.cf.edgeRequestKeepAliveStatus` | `log_attributes['request.cf.edgeRequestKeepAliveStatus']` | `number` | `String` |
+| `metadata.request.cf.httpProtocol` | `log_attributes['request.cf.httpProtocol']` | `string` | `String` |
+| `metadata.request.cf.latitude` | `log_attributes['request.cf.latitude']` | `string` | `String` |
+| `metadata.request.cf.longitude` | `log_attributes['request.cf.longitude']` | `string` | `String` |
+| `metadata.request.cf.metroCode` | `log_attributes['request.cf.metroCode']` | `string` | `String` |
+| `metadata.request.cf.postalCode` | `log_attributes['request.cf.postalCode']` | `string` | `String` |
+| `metadata.request.cf.region` | `log_attributes['request.cf.region']` | `string` | `String` |
+| `metadata.request.cf.timezone` | `log_attributes['request.cf.timezone']` | `string` | `String` |
+| `metadata.request.cf.tlsCipher` | `log_attributes['request.cf.tlsCipher']` | `string` | `String` |
+| `metadata.request.cf.tlsClientAuth.certPresented` | `log_attributes['request.cf.tlsClientAuth.certPresented']` | `string` | `String` |
+| `metadata.request.cf.tlsClientAuth.certRevoked` | `log_attributes['request.cf.tlsClientAuth.certRevoked']` | `string` | `String` |
+| `metadata.request.cf.tlsClientAuth.certVerified` | `log_attributes['request.cf.tlsClientAuth.certVerified']` | `string` | `String` |
+| `metadata.request.cf.tlsExportedAuthenticator.clientFinished` | `log_attributes['request.cf.tlsExportedAuthenticator.clientFinished']` | `string` | `String` |
+| `metadata.request.cf.tlsExportedAuthenticator.clientHandshake` | `log_attributes['request.cf.tlsExportedAuthenticator.clientHandshake']` | `string` | `String` |
+| `metadata.request.cf.tlsExportedAuthenticator.serverFinished` | `log_attributes['request.cf.tlsExportedAuthenticator.serverFinished']` | `string` | `String` |
+| `metadata.request.cf.tlsExportedAuthenticator.serverHandshake` | `log_attributes['request.cf.tlsExportedAuthenticator.serverHandshake']` | `string` | `String` |
+| `metadata.request.cf.tlsVersion` | `log_attributes['request.cf.tlsVersion']` | `string` | `String` |
+| `metadata.request.headers.cf_connecting_ip` | `log_attributes['request.headers.cf_connecting_ip']` | `string` | `String` |
+| `metadata.request.headers.cf_ipcountry` | `log_attributes['request.headers.cf_ipcountry']` | `string` | `String` |
+| `metadata.request.headers.cf_ray` | `log_attributes['request.headers.cf_ray']` | `string` | `String` |
+| `metadata.request.headers.host` | `log_attributes['request.headers.host']` | `string` | `String` |
+| `metadata.request.headers.referer` | `log_attributes['request.headers.referer']` | `string` | `String` |
+| `metadata.request.headers.x_client_info` | `log_attributes['request.headers.x_client_info']` | `string` | `String` |
+| `metadata.request.headers.x_forwarded_proto` | `log_attributes['request.headers.x_forwarded_proto']` | `string` | `String` |
+| `metadata.request.headers.x_real_ip` | `log_attributes['request.headers.x_real_ip']` | `string` | `String` |
+| `metadata.request.host` | `log_attributes['request.host']` | `string` | `String` |
+| `metadata.request.method` | `log_attributes['request.method']` | `string` | `String` |
+| `metadata.request.path` | `log_attributes['request.path']` | `string` | `String` |
+| `metadata.request.protocol` | `log_attributes['request.protocol']` | `string` | `String` |
+| `metadata.request.search` | `log_attributes['request.search']` | `string` | `String` |
+| `metadata.request.url` | `log_attributes['request.url']` | `string` | `String` |
+| `metadata.response.headers.cf_cache_status` | `log_attributes['response.headers.cf_cache_status']` | `string` | `String` |
+| `metadata.response.headers.cf_ray` | `log_attributes['response.headers.cf_ray']` | `string` | `String` |
+| `metadata.response.headers.content_location` | `log_attributes['response.headers.content_location']` | `string` | `String` |
+| `metadata.response.headers.content_range` | `log_attributes['response.headers.content_range']` | `string` | `String` |
+| `metadata.response.headers.content_type` | `log_attributes['response.headers.content_type']` | `string` | `String` |
+| `metadata.response.headers.date` | `log_attributes['response.headers.date']` | `string` | `String` |
+| `metadata.response.headers.sb_gateway_version` | `log_attributes['response.headers.sb_gateway_version']` | `string` | `String` |
+| `metadata.response.headers.transfer_encoding` | `log_attributes['response.headers.transfer_encoding']` | `string` | `String` |
+| `metadata.response.headers.x_kong_proxy_latency` | `log_attributes['response.headers.x_kong_proxy_latency']` | `string` | `String` |
+| `metadata.response.origin_time` | `log_attributes['response.origin_time']` | `number` | `String` |
+| `metadata.response.status_code` | `log_attributes['response.status_code']` | `number` | `String` |
+| `severity_text` | `severity_text` | `String` | `String` |
+| `source` | `source` | `String` | `String` |
+| `timestamp` | `timestamp` | `datetime` | `DateTime64` |
+
+### Auth
+
+Source: `auth_logs`
+
+| Schema path | ClickHouse query field | Source type | Query value type |
+| --- | --- | --- | --- |
+| `event_message` | `event_message` | `string` | `String` |
+| `id` | `id` | `string` | `String` |
+| `metadata.auth_event.action` | `log_attributes['auth_event.action']` | `string` | `String` |
+| `metadata.auth_event.actor_id` | `log_attributes['auth_event.actor_id']` | `string` | `String` |
+| `metadata.auth_event.actor_username` | `log_attributes['auth_event.actor_username']` | `string` | `String` |
+| `metadata.auth_event.actor_via_sso` | `log_attributes['auth_event.actor_via_sso']` | `boolean` | `String` |
+| `metadata.auth_event.log_type` | `log_attributes['auth_event.log_type']` | `string` | `String` |
+| `metadata.auth_event.traits.provider` | `log_attributes['auth_event.traits.provider']` | `string` | `String` |
+| `metadata.auth_event.traits.user_email` | `log_attributes['auth_event.traits.user_email']` | `string` | `String` |
+| `metadata.auth_event.traits.user_id` | `log_attributes['auth_event.traits.user_id']` | `string` | `String` |
+| `metadata.auth_event.traits.user_phone` | `log_attributes['auth_event.traits.user_phone']` | `string` | `String` |
+| `metadata.component` | `log_attributes['component']` | `string` | `String` |
+| `metadata.duration` | `log_attributes['duration']` | `number` | `String` |
+| `metadata.host` | `log_attributes['host']` | `string` | `String` |
+| `metadata.level` | `log_attributes['level']` | `string` | `String` |
+| `metadata.method` | `log_attributes['method']` | `string` | `String` |
+| `metadata.msg` | `log_attributes['msg']` | `string` | `String` |
+| `metadata.path` | `log_attributes['path']` | `string` | `String` |
+| `metadata.referer` | `log_attributes['referer']` | `string` | `String` |
+| `metadata.remote_addr` | `log_attributes['remote_addr']` | `string` | `String` |
+| `metadata.status` | `log_attributes['status']` | `number` | `String` |
+| `metadata.timestamp` | `log_attributes['timestamp']` | `string` | `String` |
+| `severity_text` | `severity_text` | `String` | `String` |
+| `source` | `source` | `String` | `String` |
+| `timestamp` | `timestamp` | `datetime` | `DateTime64` |
+
+### Auth Audit Logs
+
+Source: `auth_audit_logs`
+
+| Schema path | ClickHouse query field | Source type | Query value type |
+| --- | --- | --- | --- |
+| `event_message` | `event_message` | `string` | `String` |
+| `id` | `id` | `string` | `String` |
+| `identifier` | `log_attributes['identifier']` | `string` | `String` |
+| `metadata.auth_audit_event.action` | `log_attributes['auth_audit_event.action']` | `string` | `String` |
+| `metadata.auth_audit_event.actor_id` | `log_attributes['auth_audit_event.actor_id']` | `string` | `String` |
+| `metadata.auth_audit_event.actor_name` | `log_attributes['auth_audit_event.actor_name']` | `string` | `String` |
+| `metadata.auth_audit_event.actor_username` | `log_attributes['auth_audit_event.actor_username']` | `string` | `String` |
+| `metadata.auth_audit_event.actor_via_sso` | `log_attributes['auth_audit_event.actor_via_sso']` | `boolean` | `String` |
+| `metadata.auth_audit_event.audit_log_id` | `log_attributes['auth_audit_event.audit_log_id']` | `string` | `String` |
+| `metadata.auth_audit_event.created_at` | `log_attributes['auth_audit_event.created_at']` | `string` | `String` |
+| `metadata.auth_audit_event.log_type` | `log_attributes['auth_audit_event.log_type']` | `string` | `String` |
+| `metadata.auth_audit_event.request_id` | `log_attributes['auth_audit_event.request_id']` | `string` | `String` |
+| `metadata.auth_audit_event.user_agent` | `log_attributes['auth_audit_event.user_agent']` | `string` | `String` |
+| `metadata.host` | `log_attributes['host']` | `string` | `String` |
+| `metadata.level` | `log_attributes['level']` | `string` | `String` |
+| `metadata.msg` | `log_attributes['msg']` | `string` | `String` |
+| `severity_text` | `severity_text` | `String` | `String` |
+| `source` | `source` | `String` | `String` |
+| `timestamp` | `timestamp` | `datetime` | `DateTime64` |
+
+### Storage
+
+Source: `storage_logs`
+
+| Schema path | ClickHouse query field | Source type | Query value type |
+| --- | --- | --- | --- |
+| `event_message` | `event_message` | `string` | `String` |
+| `id` | `id` | `string` | `String` |
+| `metadata.context.host` | `log_attributes['context.host']` | `string` | `String` |
+| `metadata.context.pid` | `log_attributes['context.pid']` | `number` | `String` |
+| `metadata.level` | `log_attributes['level']` | `string` | `String` |
+| `metadata.project` | `log_attributes['project']` | `string` | `String` |
+| `metadata.rawError` | `log_attributes['rawError']` | `string` | `String` |
+| `metadata.req.headers.accept` | `log_attributes['req.headers.accept']` | `string` | `String` |
+| `metadata.req.headers.cf_connecting_ip` | `log_attributes['req.headers.cf_connecting_ip']` | `string` | `String` |
+| `metadata.req.headers.cf_ray` | `log_attributes['req.headers.cf_ray']` | `string` | `String` |
+| `metadata.req.headers.content_length` | `log_attributes['req.headers.content_length']` | `string` | `String` |
+| `metadata.req.headers.content_type` | `log_attributes['req.headers.content_type']` | `string` | `String` |
+| `metadata.req.headers.host` | `log_attributes['req.headers.host']` | `string` | `String` |
+| `metadata.req.headers.referer` | `log_attributes['req.headers.referer']` | `string` | `String` |
+| `metadata.req.headers.user_agent` | `log_attributes['req.headers.user_agent']` | `string` | `String` |
+| `metadata.req.headers.x_client_info` | `log_attributes['req.headers.x_client_info']` | `string` | `String` |
+| `metadata.req.headers.x_forwarded_proto` | `log_attributes['req.headers.x_forwarded_proto']` | `string` | `String` |
+| `metadata.req.hostname` | `log_attributes['req.hostname']` | `string` | `String` |
+| `metadata.req.method` | `log_attributes['req.method']` | `string` | `String` |
+| `metadata.req.remoteAddress` | `log_attributes['req.remoteAddress']` | `string` | `String` |
+| `metadata.req.remotePort` | `log_attributes['req.remotePort']` | `number` | `String` |
+| `metadata.req.url` | `log_attributes['req.url']` | `string` | `String` |
+| `metadata.reqId` | `log_attributes['reqId']` | `string` | `String` |
+| `metadata.res.headers.content_length` | `log_attributes['res.headers.content_length']` | `number` | `String` |
+| `metadata.res.headers.content_type` | `log_attributes['res.headers.content_type']` | `string` | `String` |
+| `metadata.res.statusCode` | `log_attributes['res.statusCode']` | `number` | `String` |
+| `metadata.responseTime` | `log_attributes['responseTime']` | `number` | `String` |
+| `metadata.tenantId` | `log_attributes['tenantId']` | `string` | `String` |
+| `severity_text` | `severity_text` | `String` | `String` |
+| `source` | `source` | `String` | `String` |
+| `timestamp` | `timestamp` | `datetime` | `DateTime64` |
+
+### Function Edge
+
+Source: `function_edge_logs`
+
+| Schema path | ClickHouse query field | Source type | Query value type |
+| --- | --- | --- | --- |
+| `event_message` | `event_message` | `string` | `String` |
+| `id` | `id` | `string` | `String` |
+| `metadata.deployment_id` | `log_attributes['deployment_id']` | `string` | `String` |
+| `metadata.execution_time_ms` | `log_attributes['execution_time_ms']` | `number` | `String` |
+| `metadata.function_id` | `log_attributes['function_id']` | `string` | `String` |
+| `metadata.project_ref` | `log_attributes['project_ref']` | `string` | `String` |
+| `metadata.request.headers.accept` | `log_attributes['request.headers.accept']` | `string` | `String` |
+| `metadata.request.headers.content_length` | `log_attributes['request.headers.content_length']` | `string` | `String` |
+| `metadata.request.headers.host` | `log_attributes['request.headers.host']` | `string` | `String` |
+| `metadata.request.headers.user_agent` | `log_attributes['request.headers.user_agent']` | `string` | `String` |
+| `metadata.request.host` | `log_attributes['request.host']` | `string` | `String` |
+| `metadata.request.method` | `log_attributes['request.method']` | `string` | `String` |
+| `metadata.request.pathname` | `log_attributes['request.pathname']` | `string` | `String` |
+| `metadata.request.protocol` | `log_attributes['request.protocol']` | `string` | `String` |
+| `metadata.request.url` | `log_attributes['request.url']` | `string` | `String` |
+| `metadata.response.headers.content_length` | `log_attributes['response.headers.content_length']` | `string` | `String` |
+| `metadata.response.headers.content_type` | `log_attributes['response.headers.content_type']` | `string` | `String` |
+| `metadata.response.headers.date` | `log_attributes['response.headers.date']` | `string` | `String` |
+| `metadata.response.headers.server` | `log_attributes['response.headers.server']` | `string` | `String` |
+| `metadata.response.headers.vary` | `log_attributes['response.headers.vary']` | `string` | `String` |
+| `metadata.response.status_code` | `log_attributes['response.status_code']` | `number` | `String` |
+| `metadata.version` | `log_attributes['version']` | `string` | `String` |
+| `severity_text` | `severity_text` | `String` | `String` |
+| `source` | `source` | `String` | `String` |
+| `timestamp` | `timestamp` | `datetime` | `DateTime64` |
+
+### Function Runtime
+
+Source: `function_logs`
+
+| Schema path | ClickHouse query field | Source type | Query value type |
+| --- | --- | --- | --- |
+| `event_message` | `event_message` | `string` | `String` |
+| `id` | `id` | `string` | `String` |
+| `metadata.deployment_id` | `log_attributes['deployment_id']` | `string` | `String` |
+| `metadata.event_type` | `log_attributes['event_type']` | `string` | `String` |
+| `metadata.execution_id` | `log_attributes['execution_id']` | `string` | `String` |
+| `metadata.function_id` | `log_attributes['function_id']` | `string` | `String` |
+| `metadata.level` | `log_attributes['level']` | `string` | `String` |
+| `metadata.project_ref` | `log_attributes['project_ref']` | `string` | `String` |
+| `metadata.region` | `log_attributes['region']` | `string` | `String` |
+| `metadata.timestamp` | `log_attributes['timestamp']` | `string` | `String` |
+| `metadata.version` | `log_attributes['version']` | `string` | `String` |
+| `severity_text` | `severity_text` | `String` | `String` |
+| `source` | `source` | `String` | `String` |
+| `timestamp` | `timestamp` | `datetime` | `DateTime64` |
+
+### Postgres
+
+Source: `postgres_logs`
+
+| Schema path | ClickHouse query field | Source type | Query value type |
+| --- | --- | --- | --- |
+| `event_message` | `event_message` | `string` | `String` |
+| `id` | `id` | `string` | `String` |
+| `identifier` | `log_attributes['identifier']` | `string` | `String` |
+| `metadata.host` | `log_attributes['host']` | `string` | `String` |
+| `metadata.parsed.backend_type` | `log_attributes['parsed.backend_type']` | `string` | `String` |
+| `metadata.parsed.command_tag` | `log_attributes['parsed.command_tag']` | `string` | `String` |
+| `metadata.parsed.connection_from` | `log_attributes['parsed.connection_from']` | `string` | `String` |
+| `metadata.parsed.database_name` | `log_attributes['parsed.database_name']` | `string` | `String` |
+| `metadata.parsed.error_severity` | `log_attributes['parsed.error_severity']` | `string` | `String` |
+| `metadata.parsed.process_id` | `log_attributes['parsed.process_id']` | `number` | `String` |
+| `metadata.parsed.query_id` | `log_attributes['parsed.query_id']` | `number` | `String` |
+| `metadata.parsed.session_id` | `log_attributes['parsed.session_id']` | `string` | `String` |
+| `metadata.parsed.session_line_num` | `log_attributes['parsed.session_line_num']` | `number` | `String` |
+| `metadata.parsed.session_start_time` | `log_attributes['parsed.session_start_time']` | `string` | `String` |
+| `metadata.parsed.sql_state_code` | `log_attributes['parsed.sql_state_code']` | `string` | `String` |
+| `metadata.parsed.timestamp` | `log_attributes['parsed.timestamp']` | `string` | `String` |
+| `metadata.parsed.transaction_id` | `log_attributes['parsed.transaction_id']` | `number` | `String` |
+| `metadata.parsed.user_name` | `log_attributes['parsed.user_name']` | `string` | `String` |
+| `metadata.parsed.virtual_transaction_id` | `log_attributes['parsed.virtual_transaction_id']` | `string` | `String` |
+| `severity_text` | `severity_text` | `String` | `String` |
+| `source` | `source` | `String` | `String` |
+| `timestamp` | `timestamp` | `datetime` | `DateTime64` |
+
+### Realtime
+
+Source: `realtime_logs`
+
+| Schema path | ClickHouse query field | Source type | Query value type |
+| --- | --- | --- | --- |
+| `event_message` | `event_message` | `string` | `String` |
+| `id` | `id` | `string` | `String` |
+| `metadata.external_id` | `log_attributes['external_id']` | `string` | `String` |
+| `metadata.level` | `log_attributes['level']` | `string` | `String` |
+| `metadata.measurements.connected` | `log_attributes['measurements.connected']` | `number` | `String` |
+| `metadata.measurements.connected_cluster` | `log_attributes['measurements.connected_cluster']` | `number` | `String` |
+| `metadata.measurements.limit` | `log_attributes['measurements.limit']` | `number` | `String` |
+| `metadata.measurements.sum` | `log_attributes['measurements.sum']` | `number` | `String` |
+| `severity_text` | `severity_text` | `String` | `String` |
+| `source` | `source` | `String` | `String` |
+| `timestamp` | `timestamp` | `datetime` | `DateTime64` |
+
+### PostgREST
+
+Source: `postgrest_logs`
+
+| Schema path | ClickHouse query field | Source type | Query value type |
+| --- | --- | --- | --- |
+| `event_message` | `event_message` | `string` | `String` |
+| `id` | `id` | `string` | `String` |
+| `identifier` | `log_attributes['identifier']` | `string` | `String` |
+| `metadata.host` | `log_attributes['host']` | `string` | `String` |
+| `severity_text` | `severity_text` | `String` | `String` |
+| `source` | `source` | `String` | `String` |
+| `timestamp` | `timestamp` | `datetime` | `DateTime64` |
+
+### Supavisor (Shared Pooler)
+
+Source: `supavisor_logs`
+
+| Schema path | ClickHouse query field | Source type | Query value type |
+| --- | --- | --- | --- |
+| `event_message` | `event_message` | `string` | `String` |
+| `id` | `id` | `string` | `String` |
+| `metadata.context.application` | `log_attributes['context.application']` | `string` | `String` |
+| `metadata.context.domain` | `log_attributes['context.domain']` | `string[]` | `String` |
+| `metadata.context.file` | `log_attributes['context.file']` | `string` | `String` |
+| `metadata.context.function` | `log_attributes['context.function']` | `string` | `String` |
+| `metadata.context.gl` | `log_attributes['context.gl']` | `string` | `String` |
+| `metadata.context.line` | `log_attributes['context.line']` | `number` | `String` |
+| `metadata.context.mfa` | `log_attributes['context.mfa']` | `string[]` | `String` |
+| `metadata.context.module` | `log_attributes['context.module']` | `string` | `String` |
+| `metadata.context.pid` | `log_attributes['context.pid']` | `string` | `String` |
+| `metadata.context.time` | `log_attributes['context.time']` | `number` | `String` |
+| `metadata.context.vm.node` | `log_attributes['context.vm.node']` | `string` | `String` |
+| `metadata.db_name` | `log_attributes['db_name']` | `string` | `String` |
+| `metadata.instance_id` | `log_attributes['instance_id']` | `string` | `String` |
+| `metadata.level` | `log_attributes['level']` | `string` | `String` |
+| `metadata.project` | `log_attributes['project']` | `string` | `String` |
+| `metadata.region` | `log_attributes['region']` | `string` | `String` |
+| `metadata.type` | `log_attributes['type']` | `string` | `String` |
+| `metadata.user` | `log_attributes['user']` | `string` | `String` |
+| `severity_text` | `severity_text` | `String` | `String` |
+| `source` | `source` | `String` | `String` |
+| `timestamp` | `timestamp` | `datetime` | `DateTime64` |
+
+### PgBouncer (Dedicated Pooler)
+
+Source: `pgbouncer_logs`
+
+| Schema path | ClickHouse query field | Source type | Query value type |
+| --- | --- | --- | --- |
+| `event_message` | `event_message` | `string` | `String` |
+| `file` | `log_attributes['file']` | `string` | `String` |
+| `id` | `id` | `string` | `String` |
+| `metadata.host` | `log_attributes['host']` | `string` | `String` |
+| `project` | `log_attributes['project']` | `string` | `String` |
+| `severity_text` | `severity_text` | `String` | `String` |
+| `source` | `source` | `String` | `String` |
+| `timestamp` | `timestamp` | `datetime` | `DateTime64` |
+
+### Database Version Upgrade
+
+Source: `pg_upgrade_logs`
+
+| Schema path | ClickHouse query field | Source type | Query value type |
+| --- | --- | --- | --- |
+| `event_message` | `event_message` | `string` | `String` |
+| `id` | `id` | `string` | `String` |
+| `severity_text` | `severity_text` | `String` | `String` |
+| `source` | `source` | `String` | `String` |
+| `timestamp` | `timestamp` | `datetime` | `DateTime64` |
+
+### Multigres
+
+Source: `multigres_logs`
+
+| Schema path | ClickHouse query field | Source type | Query value type |
+| --- | --- | --- | --- |
+| `cluster` | `log_attributes['cluster']` | `string` | `String` |
+| `component` | `log_attributes['component']` | `string` | `String` |
+| `event_message` | `event_message` | `string` | `String` |
+| `id` | `id` | `string` | `String` |
+| `namespace` | `log_attributes['namespace']` | `string` | `String` |
+| `node_name` | `log_attributes['node_name']` | `string` | `String` |
+| `pod_name` | `log_attributes['pod_name']` | `string` | `String` |
+| `project` | `log_attributes['project']` | `string` | `String` |
+| `region` | `log_attributes['region']` | `string` | `String` |
+| `severity_text` | `severity_text` | `String` | `String` |
+| `source` | `source` | `String` | `String` |
+| `stack` | `log_attributes['stack']` | `string` | `String` |
+| `timestamp` | `timestamp` | `datetime` | `DateTime64` |

@@ -1,0 +1,6078 @@
+# JavaScript Client Library Reference
+# джерело: https://supabase.com/docs/reference/javascript/introduction
+# отримано: 2026-09-24
+
+This reference documents every object and method available in Supabase's isomorphic JavaScript library, `supabase-js`. You can use `supabase-js` to interact with your Postgres database, listen to database changes, invoke Deno Edge Functions, build login and user management functionality, and manage large files.
+
+To convert SQL queries to `supabase-js` calls, use the SQL to REST API translator.
+
+Using `supabase-js` on the server? See which package to use to decide between `supabase-js`, `@supabase/ssr`, and `@supabase/server`.
+
+## Installing
+
+### Install as package
+
+You can install @supabase/supabase-js via the terminal.
+
+```sh
+npm install @supabase/supabase-js
+```
+
+```sh
+yarn add @supabase/supabase-js
+```
+
+```sh
+pnpm add @supabase/supabase-js
+```
+
+### Install via CDN
+
+You can install @supabase/supabase-js via CDN links.
+
+```js
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+//or
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+```
+
+### Use at runtime in Deno
+
+You can use supabase-js in the Deno runtime via JSR:
+
+```ts
+import { createClient } from 'npm:@supabase/supabase-js@2'
+```
+
+### Enable Data API access
+
+supabase-js uses the Data API to query and mutate your Postgres data. You first need to grant Data API roles permissions to access your tables and functions.
+
+In Data API integrations settings, expose the specific tables and functions you want to access. To automatically grant access for new tables and functions in `public`, enable **Default privileges for new entities**.
+
+Alternatively, use SQL to grant the required permissions:
+
+```sql
+-- Before granting access to client roles, make sure RLS is enabled
+-- and create the policies required for each role's allowed operations.
+alter table public.your_table enable row level security;
+-- create policy ... on public.your_table ...;
+
+-- Grant least-privilege access to tables after RLS and policies are in place
+grant select on public.your_table to anon;
+grant select, insert, update, delete on public.your_table to authenticated;
+grant all on public.your_table to service_role;
+
+-- Grant execute on functions after verifying any table access they rely on
+grant execute on function public.your_function to authenticated, service_role;
+```
+
+## Initializing
+
+Create a new client for use in the browser.
+
+### Examples
+
+#### Creating a client
+
+```js
+import { createClient } from '@supabase/supabase-js'
+
+// Create a single supabase client for interacting with your database
+const supabase = createClient('https://xyzcompany.supabase.co', 'your-publishable-key')
+```
+
+#### With a custom domain
+
+```js
+import { createClient } from '@supabase/supabase-js'
+
+// Use a custom domain as the supabase URL
+const supabase = createClient('https://my-custom-domain.com', 'your-publishable-key')
+```
+
+#### With additional parameters
+
+```js
+import { createClient } from '@supabase/supabase-js'
+
+const options = {
+  db: {
+    schema: 'public',
+  },
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
+  },
+  global: {
+    headers: { 'x-my-custom-header': 'my-app-name' },
+  },
+}
+const supabase = createClient("https://xyzcompany.supabase.co", "your-publishable-key", options)
+```
+
+#### With custom schemas
+
+```js
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient('https://xyzcompany.supabase.co', 'your-publishable-key', {
+  // Provide a custom schema. Defaults to "public".
+  db: { schema: 'other_schema' }
+})
+```
+
+#### Custom fetch implementation
+
+```js
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient('https://xyzcompany.supabase.co', 'your-publishable-key', {
+  global: { fetch: fetch.bind(globalThis) }
+})
+```
+
+#### React Native options with AsyncStorage
+
+```js
+import 'react-native-url-polyfill/auto'
+import { createClient } from '@supabase/supabase-js'
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const supabase = createClient("https://xyzcompany.supabase.co", "your-publishable-key", {
+  auth: {
+    storage: AsyncStorage,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false,
+  },
+});
+```
+
+#### React Native options with Expo SecureStore
+
+```ts
+import 'react-native-url-polyfill/auto'
+import { createClient } from '@supabase/supabase-js'
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
+import * as aesjs from 'aes-js';
+import 'react-native-get-random-values';
+
+// As Expo's SecureStore does not support values larger than 2048
+// bytes, an AES-256 key is generated and stored in SecureStore, while
+// it is used to encrypt/decrypt values stored in AsyncStorage.
+class LargeSecureStore {
+  private async _encrypt(key: string, value: string) {
+    const encryptionKey = crypto.getRandomValues(new Uint8Array(256 / 8));
+
+    const cipher = new aesjs.ModeOfOperation.ctr(encryptionKey, new aesjs.Counter(1));
+    const encryptedBytes = cipher.encrypt(aesjs.utils.utf8.toBytes(value));
+
+    await SecureStore.setItemAsync(key, aesjs.utils.hex.fromBytes(encryptionKey));
+
+    return aesjs.utils.hex.fromBytes(encryptedBytes);
+  }
+
+  private async _decrypt(key: string, value: string) {
+    const encryptionKeyHex = await SecureStore.getItemAsync(key);
+    if (!encryptionKeyHex) {
+      return encryptionKeyHex;
+    }
+
+    const cipher = new aesjs.ModeOfOperation.ctr(aesjs.utils.hex.toBytes(encryptionKeyHex), new aesjs.Counter(1));
+    const decryptedBytes = cipher.decrypt(aesjs.utils.hex.toBytes(value));
+
+    return aesjs.utils.utf8.fromBytes(decryptedBytes);
+  }
+
+  async getItem(key: string) {
+    const encrypted = await AsyncStorage.getItem(key);
+    if (!encrypted) { return encrypted; }
+
+    return await this._decrypt(key, encrypted);
+  }
+
+  async removeItem(key: string) {
+    await AsyncStorage.removeItem(key);
+    await SecureStore.deleteItemAsync(key);
+  }
+
+  async setItem(key: string, value: string) {
+    const encrypted = await this._encrypt(key, value);
+
+    await AsyncStorage.setItem(key, encrypted);
+  }
+}
+
+const supabase = createClient("https://xyzcompany.supabase.co", "your-publishable-key", {
+  auth: {
+    storage: new LargeSecureStore(),
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false,
+  },
+});
+```
+
+#### With a database query
+
+```ts
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient('https://xyzcompany.supabase.co', 'your-publishable-key')
+
+const { data } = await supabase.from('profiles').select('*')
+```
+
+#### With OpenTelemetry tracing
+
+```ts
+import '@supabase/supabase-js/tracing'
+import { createClient } from '@supabase/supabase-js'
+import { trace } from '@opentelemetry/api'
+
+const supabase = createClient('https://xyzcompany.supabase.co', 'your-publishable-key', {
+  tracePropagation: true,
+})
+
+const tracer = trace.getTracer('my-app')
+
+await tracer.startActiveSpan('fetch-users', async (span) => {
+  // Outgoing request carries the active trace context.
+  const { data, error } = await supabase.from('users').select('*')
+  span.end()
+})
+```
+
+## TypeScript support
+
+`supabase-js` has TypeScript support for type inference, autocompletion, type-safe queries, and more.
+
+With TypeScript, `supabase-js` detects things like `not null` constraints and generated columns. Nullable columns are typed as `T | null` when you select the column. Generated columns will show a type error when you insert to it.
+
+`supabase-js` also detects relationships between tables. A referenced table with one-to-many relationship is typed as `T[]`. Likewise, a referenced table with many-to-one relationship is typed as `T | null`.
+
+## Generating TypeScript Types
+
+You can use the Supabase CLI to generate the types. You can also generate the types from the dashboard.
+
+```bash
+supabase gen types typescript --project-id abcdefghijklmnopqrst > database.types.ts
+```
+
+These types are generated from your database schema. Given a table `public.movies`, the generated types will look like:
+
+```sql
+create table public.movies (
+  id bigint generated always as identity primary key,
+  name text not null,
+  data jsonb null
+);
+```
+
+```ts
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+
+export interface Database {
+  public: {
+    Tables: {
+      movies: {
+        Row: {               // the data expected from .select()
+          id: number
+          name: string
+          data: Json | null
+        }
+        Insert: {            // the data to be passed to .insert()
+          id?: never         // generated columns must not be supplied
+          name: string       // `not null` columns with no default must be supplied
+          data?: Json | null // nullable columns can be omitted
+        }
+        Update: {            // the data to be passed to .update()
+          id?: never
+          name?: string      // `not null` columns are optional on .update()
+          data?: Json | null
+        }
+      }
+    }
+  }
+}
+```
+
+## Using TypeScript type definitions
+
+You can supply the type definitions to `supabase-js` like so:
+
+```ts
+import { createClient } from '@supabase/supabase-js'
+import { Database } from './database.types'
+
+const supabase = createClient<Database>(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_PUBLISHABLE_KEY
+)
+```
+
+## Helper types for Tables and Joins
+
+You can use the following helper types to make the generated TypeScript types easier to use.
+
+Sometimes the generated types are not what you expect. For example, a view's column may show up as nullable when you expect it to be `not null`. Using type-fest, you can override the types like so:
+
+```ts
+export type Json = // ...
+
+export interface Database {
+  // ...
+}
+```
+
+```ts
+import { MergeDeep } from 'type-fest'
+import { Database as DatabaseGenerated } from './database-generated.types'
+export { Json } from './database-generated.types'
+
+// Override the type for a specific column in a view:
+export type Database = MergeDeep<
+  DatabaseGenerated,
+  {
+    public: {
+      Views: {
+        movies_view: {
+          Row: {
+            // id is a primary key in public.movies, so it must be `not null`
+            id: number
+          }
+        }
+      }
+    }
+  }
+>
+```
+
+You can also override the type of an individual successful response if needed:
+
+```ts
+// Partial type override allows you to only override some of the properties in your results
+const { data } = await supabase.from('countries').select().overrideTypes<Array<{ id: string }>>()
+// For a full replacement of the original return type use the `{ merge: false }` property as second argument
+const { data } = await supabase
+  .from('countries')
+  .select()
+  .overrideTypes<Array<{ id: string }>, { merge: false }>()
+// Use it with `maybeSingle` or `single`
+const { data } = await supabase.from('countries').select().single().overrideTypes<{ id: string }>()
+```
+
+The generated types provide shorthands for accessing tables and enums.
+
+```ts
+import { Database, Tables, Enums } from "./database.types.ts";
+
+// Before 😕
+let movie: Database['public']['Tables']['movies']['Row'] = // ...
+
+// After 😍
+let movie: Tables<'movies'>
+```
+
+### Response types for complex queries
+
+`supabase-js` always returns a `data` object (for success), and an `error` object (for unsuccessful requests).
+
+These helper types provide the result types from any query, including nested types for database joins.
+
+Given the following schema with a relation between cities and countries, we can get the nested `CountriesWithCities` type:
+
+```sql
+create table countries (
+  "id" serial primary key,
+  "name" text
+);
+
+create table cities (
+  "id" serial primary key,
+  "name" text,
+  "country_id" int references "countries"
+);
+```
+
+```ts
+import { QueryResult, QueryData, QueryError } from '@supabase/supabase-js'
+
+const countriesWithCitiesQuery = supabase
+  .from("countries")
+  .select(`
+    id,
+    name,
+    cities (
+      id,
+      name
+    )
+  `);
+type CountriesWithCities = QueryData<typeof countriesWithCitiesQuery>;
+
+const { data, error } = await countriesWithCitiesQuery;
+if (error) throw error;
+const countriesWithCities: CountriesWithCities = data;
+```
+
+## Database
+
+## delete
+
+Perform a DELETE on the table or view.
+
+By default, deleted rows are not returned. To return it, chain the call
+with `.select()` after filters.
+
+- `delete()` should always be combined with filters to target the item(s) you wish to delete.
+- If you use `delete()` with filters and you have
+  RLS enabled, only
+  rows visible through `SELECT` policies are deleted. Note that by default
+  no rows are visible, so you need at least one `SELECT`/`ALL` policy that
+  makes the rows visible.
+- When using `delete().in()`, specify an array of values to target multiple rows with a single query. This is particularly useful for batch deleting entries that share common criteria, such as deleting users by their IDs. Ensure that the array you provide accurately represents all records you intend to delete to avoid unintended data removal.
+
+### Examples
+
+#### Delete a single record
+
+```ts
+const response = await supabase
+  .from('countries')
+  .delete()
+  .eq('id', 1)
+```
+
+#### Handling errors
+
+```js
+const { error } = await supabase.from('countries').delete().eq('id', 1)
+if (error) console.error(error)
+```
+
+#### Delete a record and return it
+
+```ts
+const { data, error } = await supabase
+  .from('countries')
+  .delete()
+  .eq('id', 1)
+  .select()
+```
+
+#### Delete multiple records
+
+```ts
+const response = await supabase
+  .from('countries')
+  .delete()
+  .in('id', [1, 2, 3])
+```
+
+## from
+
+Perform a query on a table or a view.
+
+## getOpenApiSpec
+
+Fetch the OpenAPI description PostgREST publishes for this client's schema.
+
+The document lists only the tables, views and functions the caller's role
+holds privileges on; PostgREST applies that filtering server-side. The
+schema is the one this client was created with, so call `.schema()` first
+to describe a different one. Transient failures are retried according to
+the client's `retry` option, like any other idempotent request.
+
+### Examples
+
+#### Example 1
+
+```ts
+const { data, error } = await supabase.getOpenApiSpec()
+```
+
+#### Describe a schema other than the client default
+
+```ts
+const { data, error } = await supabase.schema('billing').getOpenApiSpec()
+```
+
+## insert
+
+Perform an INSERT into the table or view.
+
+By default, inserted rows are not returned. To return it, chain the call
+with `.select()`.
+
+### Examples
+
+#### Create a record
+
+```ts
+const { error } = await supabase
+  .from('countries')
+  .insert({ id: 1, name: 'Mordor' })
+```
+
+#### Handling errors
+
+```js
+const { error } = await supabase.from('countries').insert({ id: 1, name: 'Mordor' })
+if (error) console.error(error)
+```
+
+#### Create a record and return it
+
+```ts
+const { data, error } = await supabase
+  .from('countries')
+  .insert({ id: 1, name: 'Mordor' })
+  .select()
+```
+
+#### Bulk create
+
+```ts
+const { error } = await supabase
+  .from('countries')
+  .insert([
+    { id: 1, name: 'Mordor' },
+    { id: 1, name: 'The Shire' },
+  ])
+```
+
+## rpc
+
+Perform a function call.
+
+### Examples
+
+#### Example 1
+
+```ts
+// For cross-schema functions where type inference fails, use overrideTypes:
+const { data } = await supabase
+  .schema('schema_b')
+  .rpc('function_a', {})
+  .overrideTypes<{ id: string; user_id: string }[]>()
+```
+
+#### Call a Postgres function without arguments
+
+```ts
+const { data, error } = await supabase.rpc('hello_world')
+```
+
+#### Call a Postgres function with arguments
+
+```ts
+const { data, error } = await supabase.rpc('echo', { say: '👋' })
+```
+
+#### Bulk processing
+
+```ts
+const { data, error } = await supabase.rpc('add_one_each', { arr: [1, 2, 3] })
+```
+
+#### Call a Postgres function with filters
+
+```ts
+const { data, error } = await supabase
+  .rpc('list_stored_countries')
+  .eq('id', 1)
+  .single()
+```
+
+#### Call a read-only Postgres function
+
+```ts
+const { data, error } = await supabase.rpc('hello_world', undefined, { get: true })
+```
+
+## schema
+
+Select a schema to query or perform an function (rpc) call.
+
+The schema needs to be on the list of exposed schemas inside Supabase.
+
+## select
+
+Perform a SELECT query on the table or view.
+
+When using `count` with `.range()` or `.limit()`, the returned `count` is the total number of rows
+that match your filters, not the number of rows in the current page. Use this to build pagination UI.
+
+- By default, Supabase projects return a maximum of 1,000 rows. This setting can be changed in your project's API settings. It's recommended that you keep it low to limit the payload size of accidental or malicious requests. You can use `range()` queries to paginate through your data.
+- `select()` can be combined with Filters
+- `select()` can be combined with Modifiers
+- `apikey` is a reserved keyword if you're using the Supabase Platform and should be avoided as a column name. \*
+
+### Examples
+
+#### Getting your data
+
+```js
+const { data, error } = await supabase
+  .from('characters')
+  .select()
+```
+
+#### Handling errors
+
+```js
+const { data, error } = await supabase.from('characters').select()
+if (error) {
+  // Logs the full error: message, code, details, and hint.
+  console.error(error)
+  return
+}
+```
+
+#### Selecting specific columns
+
+```js
+const { data, error } = await supabase
+  .from('characters')
+  .select('name')
+```
+
+#### Query referenced tables
+
+```js
+const { data, error } = await supabase
+  .from('orchestral_sections')
+  .select(`
+    name,
+    instruments (
+      name
+    )
+  `)
+```
+
+#### Query referenced tables with spaces in their names
+
+```js
+const { data, error } = await supabase
+  .from('orchestral sections')
+  .select(`
+    name,
+    "musical instruments" (
+      name
+    )
+  `)
+```
+
+#### Query referenced tables through a join table
+
+```ts
+const { data, error } = await supabase
+  .from('users')
+  .select(`
+    name,
+    teams (
+      name
+    )
+  `)
+
+```
+
+#### Query the same referenced table multiple times
+
+```ts
+const { data, error } = await supabase
+  .from('messages')
+  .select(`
+    content,
+    from:sender_id(name),
+    to:receiver_id(name)
+  `)
+
+// To infer types, use the name of the table (in this case `users`) and
+// the name of the foreign key constraint.
+const { data, error } = await supabase
+  .from('messages')
+  .select(`
+    content,
+    from:users!messages_sender_id_fkey(name),
+    to:users!messages_receiver_id_fkey(name)
+  `)
+```
+
+#### Filtering through referenced tables
+
+```ts
+const { data, error } = await supabase
+  .from('instruments')
+  .select('name, orchestral_sections(*)')
+  .eq('orchestral_sections.name', 'percussion')
+```
+
+#### Querying referenced table with count
+
+```ts
+const { data, error } = await supabase
+  .from('orchestral_sections')
+  .select(`*, instruments(count)`)
+```
+
+#### Querying with count option
+
+```ts
+const { count, error } = await supabase
+  .from('characters')
+  .select('*', { count: 'exact', head: true })
+```
+
+#### Querying JSON data
+
+```ts
+const { data, error } = await supabase
+  .from('users')
+  .select(`
+    id, name,
+    address->city
+  `)
+```
+
+#### Querying referenced table with inner join
+
+```ts
+const { data, error } = await supabase
+  .from('instruments')
+  .select('name, orchestral_sections!inner(name)')
+  .eq('orchestral_sections.name', 'woodwinds')
+  .limit(1)
+```
+
+#### Switching schemas per query
+
+```ts
+const { data, error } = await supabase
+  .schema('myschema')
+  .from('mytable')
+  .select()
+```
+
+## update
+
+Perform an UPDATE on the table or view.
+
+By default, updated rows are not returned. To return it, chain the call
+with `.select()` after filters.
+
+- `update()` should always be combined with Filters to target the item(s) you wish to update.
+
+### Examples
+
+#### Updating your data
+
+```ts
+const { error } = await supabase
+  .from('instruments')
+  .update({ name: 'piano' })
+  .eq('id', 1)
+```
+
+#### Handling errors
+
+```js
+const { error } = await supabase.from('instruments').update({ name: 'piano' }).eq('id', 1)
+if (error) console.error(error)
+```
+
+#### Update a record and return it
+
+```ts
+const { data, error } = await supabase
+  .from('instruments')
+  .update({ name: 'piano' })
+  .eq('id', 1)
+  .select()
+```
+
+#### Updating JSON data
+
+```ts
+const { data, error } = await supabase
+  .from('users')
+  .update({
+    address: {
+      street: 'Melrose Place',
+      postcode: 90210
+    }
+  })
+  .eq('address->postcode', 90210)
+  .select()
+```
+
+## upsert
+
+Perform an UPSERT on the table or view. Depending on the column(s) passed
+to `onConflict`, `.upsert()` allows you to perform the equivalent of
+`.insert()` if a row with the corresponding `onConflict` columns doesn't
+exist, or if it does exist, perform an alternative action depending on
+`ignoreDuplicates`.
+
+By default, upserted rows are not returned. To return it, chain the call
+with `.select()`.
+
+- Primary keys must be included in `values` to use upsert.
+
+### Examples
+
+#### Upsert a single row using a unique key
+
+```ts
+// Upserting a single row, overwriting based on the 'username' unique column
+const { data, error } = await supabase
+  .from('users')
+  .upsert({ username: 'supabot' }, { onConflict: 'username' })
+
+// Example response:
+// {
+//   data: [
+//     { id: 4, message: 'bar', username: 'supabot' }
+//   ],
+//   error: null
+// }
+```
+
+#### Upsert with conflict resolution and exact row counting
+
+```ts
+// Upserting and returning exact count
+const { data, error, count } = await supabase
+  .from('users')
+  .upsert(
+    {
+      id: 3,
+      message: 'foo',
+      username: 'supabot'
+    },
+    {
+      onConflict: 'username',
+      count: 'exact'
+    }
+  )
+
+// Example response:
+// {
+//   data: [
+//     {
+//       id: 42,
+//       handle: "saoirse",
+//       display_name: "Saoirse"
+//     }
+//   ],
+//   count: 1,
+//   error: null
+// }
+```
+
+#### Upsert your data
+
+```ts
+const { data, error } = await supabase
+  .from('instruments')
+  .upsert({ id: 1, name: 'piano' })
+  .select()
+```
+
+#### Handling errors
+
+```js
+const { data, error } = await supabase.from('instruments').upsert({ id: 1, name: 'piano' }).select()
+if (error) console.error(error)
+```
+
+#### Bulk Upsert your data
+
+```ts
+const { data, error } = await supabase
+  .from('instruments')
+  .upsert([
+    { id: 1, name: 'piano' },
+    { id: 2, name: 'harp' },
+  ])
+  .select()
+```
+
+#### Upserting into tables with constraints
+
+```ts
+const { data, error } = await supabase
+  .from('users')
+  .upsert({ id: 42, handle: 'saoirse', display_name: 'Saoirse' })
+  .select()
+```
+
+## Using Filters
+
+Filters allow you to only return rows that match certain conditions.
+
+Filters can be used on `select()`, `update()`, `upsert()`, and `delete()` queries.
+
+If a Postgres function returns a table response, you can also apply filters.
+
+### Examples
+
+#### Applying Filters
+
+```ts
+const { data, error } = await supabase
+  .from('instruments')
+  .select('name, section_id')
+  .eq('name', 'violin')    // Correct
+
+const { data, error } = await supabase
+  .from('instruments')
+  .eq('name', 'violin')    // Incorrect
+  .select('name, section_id')
+```
+
+#### Chaining
+
+```ts
+const { data, error } = await supabase
+  .from('cities')
+  .select('name, country_id')
+  .gte('population', 1000)
+  .lt('population', 10000)
+```
+
+#### Conditional Chaining
+
+```ts
+const filterByName = null
+const filterPopLow = 1000
+const filterPopHigh = 10000
+
+let query = supabase
+  .from('cities')
+  .select('name, country_id')
+
+if (filterByName)  { query = query.eq('name', filterByName) }
+if (filterPopLow)  { query = query.gte('population', filterPopLow) }
+if (filterPopHigh) { query = query.lt('population', filterPopHigh) }
+
+const { data, error } = await query
+```
+
+#### Filter by values within a JSON column
+
+```ts
+const { data, error } = await supabase
+  .from('users')
+  .select()
+  .eq('address->postcode', 90210)
+```
+
+#### Filter referenced tables
+
+```ts
+const { data, error } = await supabase
+  .from('orchestral_sections')
+  .select(`
+    name,
+    instruments!inner (
+      name
+    )
+  `)
+  .eq('instruments.name', 'flute')
+```
+
+## Using Filters
+
+Filters allow you to only return rows that match certain conditions.
+
+Filters can be used on `select()`, `update()`, `upsert()`, and `delete()` queries.
+
+If a Postgres function returns a table response, you can also apply filters.
+
+### Examples
+
+#### Applying Filters
+
+```ts
+const { data, error } = await supabase
+  .from('instruments')
+  .select('name, section_id')
+  .eq('name', 'violin')    // Correct
+
+const { data, error } = await supabase
+  .from('instruments')
+  .eq('name', 'violin')    // Incorrect
+  .select('name, section_id')
+```
+
+#### Chaining
+
+```ts
+const { data, error } = await supabase
+  .from('cities')
+  .select('name, country_id')
+  .gte('population', 1000)
+  .lt('population', 10000)
+```
+
+#### Conditional Chaining
+
+```ts
+const filterByName = null
+const filterPopLow = 1000
+const filterPopHigh = 10000
+
+let query = supabase
+  .from('cities')
+  .select('name, country_id')
+
+if (filterByName)  { query = query.eq('name', filterByName) }
+if (filterPopLow)  { query = query.gte('population', filterPopLow) }
+if (filterPopHigh) { query = query.lt('population', filterPopHigh) }
+
+const { data, error } = await query
+```
+
+#### Filter by values within a JSON column
+
+```ts
+const { data, error } = await supabase
+  .from('users')
+  .select()
+  .eq('address->postcode', 90210)
+```
+
+#### Filter referenced tables
+
+```ts
+const { data, error } = await supabase
+  .from('orchestral_sections')
+  .select(`
+    name,
+    instruments!inner (
+      name
+    )
+  `)
+  .eq('instruments.name', 'flute')
+```
+
+## containedBy
+
+Only relevant for jsonb, array, and range columns. Match only rows where
+every element appearing in `column` is contained by `value`.
+
+### Examples
+
+#### On array columns
+
+```ts
+const { data, error } = await supabase
+  .from('classes')
+  .select('name')
+  .containedBy('days', ['monday', 'tuesday', 'wednesday', 'friday'])
+```
+
+#### On range columns
+
+```ts
+const { data, error } = await supabase
+  .from('reservations')
+  .select()
+  .containedBy('during', '[2000-01-01 00:00, 2000-01-01 23:59)')
+```
+
+#### On `jsonb` columns
+
+```ts
+const { data, error } = await supabase
+  .from('users')
+  .select('name')
+  .containedBy('address', {})
+```
+
+## contains
+
+Only relevant for jsonb, array, and range columns. Match only rows where
+`column` contains every element appearing in `value`.
+
+### Examples
+
+#### On array columns
+
+```ts
+const { data, error } = await supabase
+  .from('issues')
+  .select()
+  .contains('tags', ['is:open', 'priority:low'])
+```
+
+#### On range columns
+
+```ts
+const { data, error } = await supabase
+  .from('reservations')
+  .select()
+  .contains('during', '[2000-01-01 13:00, 2000-01-01 13:30)')
+```
+
+#### On `jsonb` columns
+
+```ts
+const { data, error } = await supabase
+  .from('users')
+  .select('name')
+  .contains('address', { postcode: 90210 })
+```
+
+## eq
+
+Match only rows where `column` is equal to `value`.
+
+To check if the value of `column` is NULL, you should use `.is()` instead.
+
+### Examples
+
+#### With `select()`
+
+```ts
+const { data, error } = await supabase
+  .from('characters')
+  .select()
+  .eq('name', 'Leia')
+```
+
+## filter
+
+Match only rows which satisfy the filter. This is an escape hatch - you
+should use the specific filter methods wherever possible.
+
+Unlike most filters, `opearator` and `value` are used as-is and need to
+follow [PostgREST
+syntax](https://postgrest.org/en/stable/api.html#operators). You also need
+to make sure they are properly sanitized.
+
+filter() expects you to use the raw PostgREST syntax for the filter values.
+
+```ts
+.filter('id', 'in', '(5,6,7)')  // Use `()` for `in` filter
+.filter('arraycol', 'cs', '{"a","b"}')  // Use `cs` for `contains()`, `{}` for array values
+```
+
+### Examples
+
+#### With `select()`
+
+```ts
+const { data, error } = await supabase
+  .from('characters')
+  .select()
+  .filter('name', 'in', '("Han","Yoda")')
+```
+
+#### On a referenced table
+
+```ts
+const { data, error } = await supabase
+  .from('orchestral_sections')
+  .select(`
+    name,
+    instruments!inner (
+      name
+    )
+  `)
+  .filter('instruments.name', 'eq', 'flute')
+```
+
+## gt
+
+Match only rows where `column` is greater than `value`.
+
+### Examples
+
+#### With `select()`
+
+```ts
+const { data, error } = await supabase
+  .from('characters')
+  .select()
+  .gt('id', 2)
+```
+
+## gte
+
+Match only rows where `column` is greater than or equal to `value`.
+
+### Examples
+
+#### With `select()`
+
+```ts
+const { data, error } = await supabase
+  .from('characters')
+  .select()
+  .gte('id', 2)
+```
+
+## ilike
+
+Match only rows where `column` matches `pattern` case-insensitively.
+
+### Examples
+
+#### With `select()`
+
+```ts
+const { data, error } = await supabase
+  .from('characters')
+  .select()
+  .ilike('name', '%lu%')
+```
+
+## ilikeAllOf
+
+Match only rows where `column` matches all of `patterns` case-insensitively.
+
+## ilikeAnyOf
+
+Match only rows where `column` matches any of `patterns` case-insensitively.
+
+## in
+
+Match only rows where `column` is included in the `values` array.
+
+### Examples
+
+#### With `select()`
+
+```ts
+const { data, error } = await supabase
+  .from('characters')
+  .select()
+  .in('name', ['Leia', 'Han'])
+```
+
+## is
+
+Match only rows where `column` IS `value`.
+
+For non-boolean columns, this is only relevant for checking if the value of
+`column` is NULL by setting `value` to `null`.
+
+For boolean columns, you can also set `value` to `true` or `false` and it
+will behave the same way as `.eq()`.
+
+### Examples
+
+#### Checking for nullness, true or false
+
+```ts
+const { data, error } = await supabase
+  .from('countries')
+  .select()
+  .is('name', null)
+```
+
+## like
+
+Match only rows where `column` matches `pattern` case-sensitively.
+
+### Examples
+
+#### With `select()`
+
+```ts
+const { data, error } = await supabase
+  .from('characters')
+  .select()
+  .like('name', '%Lu%')
+```
+
+## likeAllOf
+
+Match only rows where `column` matches all of `patterns` case-sensitively.
+
+## likeAnyOf
+
+Match only rows where `column` matches any of `patterns` case-sensitively.
+
+## lt
+
+Match only rows where `column` is less than `value`.
+
+### Examples
+
+#### With `select()`
+
+```ts
+const { data, error } = await supabase
+  .from('characters')
+  .select()
+  .lt('id', 2)
+```
+
+## lte
+
+Match only rows where `column` is less than or equal to `value`.
+
+### Examples
+
+#### With `select()`
+
+```ts
+const { data, error } = await supabase
+  .from('characters')
+  .select()
+  .lte('id', 2)
+```
+
+## match
+
+Match only rows where each column in `query` keys is equal to its
+associated value. Shorthand for multiple `.eq()`s.
+
+### Examples
+
+#### With `select()`
+
+```ts
+const { data, error } = await supabase
+  .from('characters')
+  .select('name')
+  .match({ id: 2, name: 'Leia' })
+```
+
+## neq
+
+Match only rows where `column` is not equal to `value`.
+
+This filter does not include rows where `column` is `NULL`. To match null
+values, use `.is(column, null)` instead.
+
+### Examples
+
+#### With `select()`
+
+```ts
+const { data, error } = await supabase
+  .from('characters')
+  .select()
+  .neq('name', 'Leia')
+```
+
+## not
+
+Match only rows which doesn't satisfy the filter.
+
+Unlike most filters, `opearator` and `value` are used as-is and need to
+follow [PostgREST
+syntax](https://postgrest.org/en/stable/api.html#operators). You also need
+to make sure they are properly sanitized.
+
+not() expects you to use the raw PostgREST syntax for the filter values.
+
+```ts
+.not('id', 'in', '(5,6,7)')  // Use `()` for `in` filter
+.not('arraycol', 'cs', '{"a","b"}')  // Use `cs` for `contains()`, `{}` for array values
+```
+
+### Examples
+
+#### With `select()`
+
+```ts
+const { data, error } = await supabase
+  .from('countries')
+  .select()
+  .not('name', 'is', null)
+```
+
+## or
+
+Match only rows which satisfy at least one of the filters.
+
+Unlike most filters, `filters` is used as-is and needs to follow [PostgREST
+syntax](https://postgrest.org/en/stable/api.html#operators). You also need
+to make sure it's properly sanitized.
+
+It's currently not possible to do an `.or()` filter across multiple tables.
+
+or() expects you to use the raw PostgREST syntax for the filter names and values.
+
+```ts
+.or('id.in.(5,6,7), arraycol.cs.{"a","b"}')  // Use `()` for `in` filter, `{}` for array values and `cs` for `contains()`.
+.or('id.in.(5,6,7), arraycol.cd.{"a","b"}')  // Use `cd` for `containedBy()`
+```
+
+### Examples
+
+#### With `select()`
+
+```ts
+const { data, error } = await supabase
+  .from('characters')
+  .select('name')
+  .or('id.eq.2,name.eq.Han')
+```
+
+#### Use `or` with `and`
+
+```ts
+const { data, error } = await supabase
+  .from('characters')
+  .select('name')
+  .or('id.gt.3,and(id.eq.1,name.eq.Luke)')
+```
+
+#### Use `or` on referenced tables
+
+```ts
+const { data, error } = await supabase
+  .from('orchestral_sections')
+  .select(`
+    name,
+    instruments!inner (
+      name
+    )
+  `)
+  .or('section_id.eq.1,name.eq.guzheng', { referencedTable: 'instruments' })
+```
+
+## overlaps
+
+Only relevant for array and range columns. Match only rows where
+`column` and `value` have an element in common.
+
+### Examples
+
+#### On array columns
+
+```ts
+const { data, error } = await supabase
+  .from('issues')
+  .select('title')
+  .overlaps('tags', ['is:closed', 'severity:high'])
+```
+
+#### On range columns
+
+```ts
+const { data, error } = await supabase
+  .from('reservations')
+  .select()
+  .overlaps('during', '[2000-01-01 12:45, 2000-01-01 13:15)')
+```
+
+## rangeAdjacent
+
+Only relevant for range columns. Match only rows where `column` is
+mutually exclusive to `range` and there can be no element between the two
+ranges.
+
+### Examples
+
+#### With `select()`
+
+```ts
+const { data, error } = await supabase
+  .from('reservations')
+  .select()
+  .rangeAdjacent('during', '[2000-01-01 12:00, 2000-01-01 13:00)')
+```
+
+## rangeGt
+
+Only relevant for range columns. Match only rows where every element in
+`column` is greater than any element in `range`.
+
+### Examples
+
+#### With `select()`
+
+```ts
+const { data, error } = await supabase
+  .from('reservations')
+  .select()
+  .rangeGt('during', '[2000-01-02 08:00, 2000-01-02 09:00)')
+```
+
+## rangeGte
+
+Only relevant for range columns. Match only rows where every element in
+`column` is either contained in `range` or greater than any element in
+`range`.
+
+### Examples
+
+#### With `select()`
+
+```ts
+const { data, error } = await supabase
+  .from('reservations')
+  .select()
+  .rangeGte('during', '[2000-01-02 08:30, 2000-01-02 09:30)')
+```
+
+## rangeLt
+
+Only relevant for range columns. Match only rows where every element in
+`column` is less than any element in `range`.
+
+### Examples
+
+#### With `select()`
+
+```ts
+const { data, error } = await supabase
+  .from('reservations')
+  .select()
+  .rangeLt('during', '[2000-01-01 15:00, 2000-01-01 16:00)')
+```
+
+## rangeLte
+
+Only relevant for range columns. Match only rows where every element in
+`column` is either contained in `range` or less than any element in
+`range`.
+
+### Examples
+
+#### With `select()`
+
+```ts
+const { data, error } = await supabase
+  .from('reservations')
+  .select()
+  .rangeLte('during', '[2000-01-01 14:00, 2000-01-01 16:00)')
+```
+
+## textSearch
+
+Only relevant for text and tsvector columns. Match only rows where
+`column` matches the query string in `query`.
+
+- For more information, see Postgres full text search.
+
+### Examples
+
+#### Text search
+
+```ts
+const result = await supabase
+  .from("texts")
+  .select("content")
+  .textSearch("content", `'eggs' & 'ham'`, {
+    config: "english",
+  });
+```
+
+#### Basic normalization
+
+```ts
+const { data, error } = await supabase
+  .from('quotes')
+  .select('catchphrase')
+  .textSearch('catchphrase', `'fat' & 'cat'`, {
+    type: 'plain',
+    config: 'english'
+  })
+```
+
+#### Full normalization
+
+```ts
+const { data, error } = await supabase
+  .from('quotes')
+  .select('catchphrase')
+  .textSearch('catchphrase', `'fat' & 'cat'`, {
+    type: 'phrase',
+    config: 'english'
+  })
+```
+
+#### Websearch
+
+```ts
+const { data, error } = await supabase
+  .from('quotes')
+  .select('catchphrase')
+  .textSearch('catchphrase', `'fat or cat'`, {
+    type: 'websearch',
+    config: 'english'
+  })
+```
+
+## Using modifiers
+
+Filters work on the row level—they allow you to return rows that only match certain conditions without changing the shape of the rows. Modifiers are everything that don't fit that definition—allowing you to change the format of the response (e.g., returning a CSV string).
+
+Modifiers must be specified after filters. Some modifiers only apply for queries that return rows (e.g., `select()` or `rpc()` on a function that returns a table response).
+
+## Using modifiers
+
+Filters work on the row level—they allow you to return rows that only match certain conditions without changing the shape of the rows. Modifiers are everything that don't fit that definition—allowing you to change the format of the response (e.g., returning a CSV string).
+
+Modifiers must be specified after filters. Some modifiers only apply for queries that return rows (e.g., `select()` or `rpc()` on a function that returns a table response).
+
+## abortSignal
+
+Set the AbortSignal for the fetch request.
+
+You can use this to set a timeout for the request.
+
+### Examples
+
+#### Aborting requests in-flight
+
+```ts
+const ac = new AbortController()
+
+const { data, error } = await supabase
+  .from('very_big_table')
+  .select()
+  .abortSignal(ac.signal)
+
+// Abort the request after 100 ms
+setTimeout(() => ac.abort(), 100)
+```
+
+#### Set a timeout
+
+```ts
+const { data, error } = await supabase
+  .from('very_big_table')
+  .select()
+  .abortSignal(AbortSignal.timeout(1000 /* ms */))
+```
+
+## csv
+
+Return `data` as a string in CSV format.
+
+### Examples
+
+#### Return data as CSV
+
+```ts
+const { data, error } = await supabase
+  .from('characters')
+  .select()
+  .csv()
+```
+
+## explain
+
+Return `data` as the EXPLAIN plan for the query.
+
+You need to enable the
+db\_plan\_enabled
+setting before using this method.
+
+### Examples
+
+#### Get the execution plan
+
+```ts
+const { data, error } = await supabase
+  .from('characters')
+  .select()
+  .explain()
+```
+
+#### Get the execution plan with analyze and verbose
+
+```ts
+const { data, error } = await supabase
+  .from('characters')
+  .select()
+  .explain({analyze:true,verbose:true})
+```
+
+## geojson
+
+Return `data` as an object in GeoJSON format.
+
+## limit
+
+Limit the query result by `rows`.
+
+### Examples
+
+#### With `select()`
+
+```ts
+const { data, error } = await supabase
+  .from('characters')
+  .select('name')
+  .limit(1)
+```
+
+#### On a referenced table
+
+```ts
+const { data, error } = await supabase
+  .from('orchestral_sections')
+  .select(`
+    name,
+    instruments (
+      name
+    )
+  `)
+  .limit(1, { referencedTable: 'instruments' })
+```
+
+## maxAffected
+
+Set the maximum number of rows that can be affected by the query.
+Only available in PostgREST v13+ and only works with PATCH and DELETE methods.
+
+## maybeSingle
+
+Return `data` as a single object instead of an array of objects.
+
+Query result must be zero or one row (e.g. using `.limit(1)`), otherwise
+this returns an error.
+
+### Examples
+
+#### With `select()`
+
+```ts
+const { data, error } = await supabase
+  .from('characters')
+  .select()
+  .eq('name', 'Katniss')
+  .maybeSingle()
+```
+
+## order
+
+Order the query result by `column`.
+
+You can call this method multiple times to order by multiple columns.
+
+You can order referenced tables, but it only affects the ordering of the
+parent table if you use `!inner` in the query.
+
+### Examples
+
+#### With `select()`
+
+```ts
+const { data, error } = await supabase
+  .from('characters')
+  .select('id, name')
+  .order('id', { ascending: false })
+```
+
+#### On a referenced table
+
+```ts
+  const { data, error } = await supabase
+    .from('orchestral_sections')
+    .select(`
+      name,
+      instruments (
+        name
+      )
+    `)
+    .order('name', { referencedTable: 'instruments', ascending: false })
+
+```
+
+#### Order parent table by a referenced table
+
+```ts
+  const { data, error } = await supabase
+    .from('instruments')
+    .select(`
+      name,
+      section:orchestral_sections (
+        name
+      )
+    `)
+    .order('section(name)', { ascending: true })
+
+```
+
+## overrideTypes
+
+Override the type of the returned `data` field in the response.
+
+### Examples
+
+#### Example 1
+
+```typescript
+// Merge with existing types (default behavior)
+const query = supabase
+  .from('users')
+  .select()
+  .overrideTypes<{ custom_field: string }>()
+
+// Replace existing types completely
+const replaceQuery = supabase
+  .from('users')
+  .select()
+  .overrideTypes<{ id: number; name: string }, { merge: false }>()
+```
+
+#### Complete Override type of successful response
+
+```ts
+const { data } = await supabase
+  .from('countries')
+  .select()
+  .overrideTypes<Array<MyType>, { merge: false }>()
+```
+
+#### Complete Override type of object response
+
+```ts
+const { data } = await supabase
+  .from('countries')
+  .select()
+  .maybeSingle()
+  .overrideTypes<MyType, { merge: false }>()
+```
+
+#### Partial Override type of successful response
+
+```ts
+const { data } = await supabase
+  .from('countries')
+  .select()
+  .overrideTypes<Array<{ status: "A" | "B" }>>()
+```
+
+#### Partial Override type of object response
+
+```ts
+const { data } = await supabase
+  .from('countries')
+  .select()
+  .maybeSingle()
+  .overrideTypes<{ status: "A" | "B" }>()
+```
+
+#### Merge vs replace existing types
+
+```typescript
+// Merge with existing types (default behavior)
+const query = supabase
+  .from('users')
+  .select()
+  .overrideTypes<{ custom_field: string }>()
+
+// Replace existing types completely
+const replaceQuery = supabase
+  .from('users')
+  .select()
+  .overrideTypes<{ id: number; name: string }, { merge: false }>()
+```
+
+## range
+
+Limit the query result by starting at an offset `from` and ending at the offset `to`.
+Only records within this range are returned.
+This respects the query order and if there is no order clause the range could behave unexpectedly.
+The `from` and `to` values are 0-based and inclusive: `range(1, 3)` will include the second, third
+and fourth rows of the query.
+
+### Examples
+
+#### With `select()`
+
+```ts
+const { data, error } = await supabase
+  .from('characters')
+  .select('name')
+  .range(0, 1)
+```
+
+## retry
+
+### Examples
+
+#### Example 1
+
+```ts
+// Disable retries for a specific query
+const { data, error } = await supabase
+  .from('users')
+  .select()
+  .retry(false)
+```
+
+## returns
+
+Override the type of the returned `data`.
+
+**Deprecated.** Use overrideTypes\<yourType, { merge: false }>() method at the end of your call chain instead
+
+## rollback
+
+Dry-run this request: execute the query but discard the changes.
+
+Server-side, PostgREST runs the query inside a transaction and rolls it back
+instead of committing. The response still contains the data that *would* have
+been returned — `RETURNING` clauses execute and RLS, triggers, and constraints
+are all evaluated — but no row is actually inserted, updated, or deleted.
+
+This affects only the single request it is chained to. The JS caller has no
+handle on the transaction: supabase-js does not group multiple queries into
+one transaction. For multi-statement transactional logic, use a database
+function (`supabase.rpc(...)`).
+
+Sets the `Prefer: tx=rollback` header. See PostgREST's docs on transaction
+preferences for the underlying mechanism.
+
+### Examples
+
+#### Validate an insert without persisting
+
+```ts
+const { data, error } = await supabase
+  .from('countries')
+  .insert({ name: 'France' })
+  .select()
+  .rollback()
+// `data` shows what would have been inserted; nothing is saved.
+```
+
+## select
+
+Perform a SELECT on the query result.
+
+By default, `.insert()`, `.update()`, `.upsert()`, and `.delete()` do not
+return modified rows. By calling this method, modified rows are returned in
+`data`.
+
+### Examples
+
+#### With `upsert()`
+
+```ts
+const { data, error } = await supabase
+  .from('characters')
+  .upsert({ id: 1, name: 'Han Solo' })
+  .select()
+```
+
+## setHeader
+
+Set an HTTP header on this single PostgREST request, overriding any header
+with the same name set on the client.
+
+This is an advanced escape hatch for one-off needs (passing a custom
+`Authorization` for a single query, attaching a tracing header, etc.).
+Most callers do not need it: configure client-wide headers via the
+`headers` option when constructing the client, and authentication via
+Supabase Auth.
+
+## single
+
+Return `data` as a single object instead of an array of objects.
+
+Query result must be one row (e.g. using `.limit(1)`), otherwise this
+returns an error.
+
+### Examples
+
+#### With `select()`
+
+```ts
+const { data, error } = await supabase
+  .from('characters')
+  .select('name')
+  .limit(1)
+  .single()
+```
+
+## stripNulls
+
+Strip null values from the response data. Properties with `null` values
+will be omitted from the returned JSON objects.
+
+Requires PostgREST 11.2.0+.
+
+<https://docs.postgrest.org/en/stable/references/api/resource_representation.html#stripped-nulls>
+
+### Examples
+
+#### With `select()`
+
+```ts
+const { data, error } = await supabase
+  .from('characters')
+  .select()
+  .stripNulls()
+```
+
+## throwOnError
+
+If there's an error with the query, throwOnError will reject the promise by
+throwing the error instead of returning it as part of a successful response.
+
+<https://github.com/supabase/supabase-js/issues/92>
+
+## Auth
+
+## Overview
+
+- The auth methods can be accessed via the `supabase.auth` namespace.
+- By default, the supabase client sets `persistSession` to true and attempts to store the session in local storage. When using the supabase client in an environment that doesn't support local storage, you might notice the following warning message being logged:
+
+  > No storage option exists to persist the session, which may result in unexpected behavior when using auth. If you want to set `persistSession` to true, please provide a storage option or you may set `persistSession` to false to disable this warning.
+
+  This warning message can be safely ignored if you're not using auth on the server-side. If you are using auth and you want to set `persistSession` to true, you will need to provide a custom storage implementation that follows this interface.
+- Any email links and one-time passwords (OTPs) sent have a default expiry of 24 hours. We have the following rate limits in place to guard against brute force attacks.
+- The expiry of an access token can be set in the "JWT expiry limit" field in your project's auth settings. A refresh token never expires and can only be used once.
+
+### Examples
+
+#### Create auth client
+
+```js
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(supabase_url, publishable_key)
+```
+
+#### Create auth client (server-side)
+
+```js
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(supabase_url, publishable_key, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+    detectSessionInUrl: false
+  }
+})
+```
+
+## dispose
+
+Tears down the client's background work: stops the auto-refresh interval,
+removes the `visibilitychange` listener, closes the cross-tab
+`BroadcastChannel`, and clears registered `onAuthStateChange` subscribers.
+
+Call this from cleanup hooks when the client is being replaced before
+its JS realm is destroyed. React Strict Mode and HMR are the common
+cases. Any in-flight `fetch` calls continue to completion and may still
+write to storage; dispose doesn't abort them or erase storage.
+
+Lifecycle caveat: because in-flight refreshes are not aborted, a
+disposed instance can still persist a rotated session to storage after
+`dispose()` returns. A subsequent `createClient` against the same
+`storageKey` will pick up that session on its next read. If you need
+strict isolation between client lifecycles, await any pending auth
+operation before calling `dispose()` (or change the `storageKey` for
+the replacement client).
+
+Safe to call repeatedly.
+
+### Examples
+
+#### Cleanup on React unmount
+
+```ts
+useEffect(() => {
+  const client = createClient(...)
+  return () => { client.auth.dispose() }
+}, [])
+```
+
+## exchangeCodeForSession
+
+Log in an existing user by exchanging an Auth Code issued during the PKCE flow.
+
+- Used when `flowType` is set to `pkce` in client options.
+- When several PKCE flows are in flight at once, pass `options.flowId` so
+  the code is exchanged with the verifier created by that specific flow.
+  The flow id is returned by `signInWithOAuth`, and with
+  `experimental.appendPkceFlowIdToRedirects` enabled it also arrives on
+  your callback URL as the reserved `sb_flow_id` query parameter (read
+  automatically in a browser).
+- When a flow id is present but its stored verifier is gone (evicted,
+  already used, or from another device), the call fails with a verifier
+  missing error instead of trying another flow's verifier — a mismatched
+  verifier would consume the single-use code. Without any flow id the
+  most recently stored verifier is used, as before.
+
+### Examples
+
+#### Exchange Auth Code
+
+```js
+supabase.auth.exchangeCodeForSession('34e770dd-9ff9-416c-87fa-43b31d7ef225')
+```
+
+#### Exchange Auth Code for a specific flow (e.g. in a server-side callback handler)
+
+```js
+const flowId = requestUrl.searchParams.get('sb_flow_id')
+supabase.auth.exchangeCodeForSession(code, flowId ? { flowId } : undefined)
+```
+
+## getClaims
+
+Extracts the JWT claims present in the access token by first verifying the
+JWT against the server's JSON Web Key Set endpoint
+`/.well-known/jwks.json` which is often cached, resulting in significantly
+faster responses. Prefer this method over GoTrueClient.getUser which always
+sends a request to the Auth server for each JWT.
+
+If the project is not using an asymmetric JWT signing key (like ECC or
+RSA) it always sends a request to the Auth server (similar to
+GoTrueClient.getUser) to verify the JWT.
+
+- Parses the user's access token as a JSON Web Token (JWT) and returns its components if valid and not expired.
+- If your project is using asymmetric JWT signing keys, then the verification is done locally usually without a network request using the WebCrypto API.
+- A network request is sent to your project's JWT signing key discovery endpoint `https://project-id.supabase.co/auth/v1/.well-known/jwks.json`, which is cached locally. If your environment is ephemeral, such as a Lambda function that is destroyed after every request, a network request will be sent for each new invocation. Supabase provides a network-edge cache providing fast responses for these situations.
+- If the user's access token is about to expire when calling this function, the user's session will first be refreshed before validating the JWT.
+- If your project is using a symmetric secret to sign the JWT, it always sends a request similar to `getUser()` to validate the JWT at the server before returning the decoded token. This is also used if the WebCrypto API is not available in the environment. Make sure you polyfill it in such situations.
+- The returned claims can be customized per project using the Custom Access Token Hook.
+
+### Examples
+
+#### Get JWT claims, header and signature
+
+```js
+const { data, error } = await supabase.auth.getClaims()
+```
+
+## getSession
+
+Returns the session, refreshing it if necessary.
+
+The session returned can be null if the session is not detected which can happen in the event a user is not signed-in or has logged out.
+
+**IMPORTANT:** This method loads values directly from the storage attached
+to the client. If that storage is based on request cookies for example,
+the values in it may not be authentic and therefore it's strongly advised
+against using this method and its results in such circumstances. A warning
+will be emitted if this is detected. Use GoTrueClient.getUser instead.
+
+- Since the introduction of asymmetric JWT signing keys, this method is considered low-level and we encourage you to use `getClaims()` or `getUser()` instead.
+- Retrieves the current user session from the storage medium (local storage, cookies).
+- The session contains an access token (signed JWT), a refresh token and the user object.
+- If the session's access token is expired or is about to expire, this method will use the refresh token to refresh the session.
+- When using in a browser, or you've called `startAutoRefresh()` in your environment (React Native, etc.) this function always returns a valid access token without refreshing the session itself, as this is done in the background. This function returns very fast.
+- **IMPORTANT SECURITY NOTICE:** If using an insecure storage medium, such as cookies or request headers, the user object returned by this function **must not be trusted**. Always verify the JWT using `getClaims()` or your own JWT verification library to securely establish the user's identity and access. You can also use `getUser()` to fetch the user object directly from the Auth server for this purpose.
+- Cross-tab refresh races are handled by the GoTrue server (the rotated token from the first tab is returned to subsequent tabs via the parent-of-active mechanism), so no client-side serialization is needed.
+
+### Examples
+
+#### Get the session data
+
+```js
+const { data, error } = await supabase.auth.getSession()
+```
+
+## getUser
+
+Gets the current user details if there is an existing session. This method
+performs a network request to the Supabase Auth server, so the returned
+value is authentic and can be used to base authorization rules on.
+
+- This method fetches the user object from the database instead of local session.
+- This method is useful for checking if the user is authorized because it validates the user's access token JWT on the server.
+- Should always be used when checking for user authorization on the server. On the client, you can instead use `getSession().session.user` for faster results. `getSession` is insecure on the server.
+
+### Examples
+
+#### Get the logged in user with the current existing session
+
+```js
+const { data: { user } } = await supabase.auth.getUser()
+```
+
+#### Get the logged in user with a custom access token jwt
+
+```js
+const { data: { user } } = await supabase.auth.getUser(jwt)
+```
+
+## getUserIdentities
+
+Gets all the identities linked to a user.
+
+- The user needs to be signed in to call `getUserIdentities()`.
+
+### Examples
+
+#### Returns a list of identities linked to the user
+
+```js
+const { data, error } = await supabase.auth.getUserIdentities()
+```
+
+## initialize
+
+Initialize the auth client by loading the session from storage or
+detecting it from the URL after an OAuth, magic-link, or password-recovery
+redirect.
+
+**Most callers do not need to invoke this directly.** The client calls it
+automatically during construction, and to react to sign-in events (including
+post-redirect events) you should subscribe to `onAuthStateChange` rather
+than awaiting `initialize()`.
+
+You only need to call it manually when you have opted out of the automatic
+call by passing `skipAutoInitialize: true` — for example, in an SSR context
+where you need to control initialization timing. In that case, awaiting
+`initialize()` returns the resolved session result (or any error encountered
+while detecting it from the URL).
+
+## linkIdentity
+
+Links an oauth identity to an existing user.
+This method supports the PKCE flow.
+
+- The **Enable Manual Linking** option must be enabled from your project's authentication settings.
+- The user needs to be signed in to call `linkIdentity()`.
+- If the candidate identity is already linked to the existing user or another user, `linkIdentity()` will fail.
+- If `linkIdentity` is run in the browser, the user is automatically redirected to the returned URL. On the server, you should handle the redirect.
+
+### Examples
+
+#### Link an identity to a user
+
+```js
+const { data, error } = await supabase.auth.linkIdentity({
+  provider: 'github'
+})
+```
+
+## onAuthStateChange
+
+Receive a notification every time an auth event happens.
+Safe to use without an async function as callback.
+
+- Subscribes to important events occurring on the user's session.
+- Use on the frontend/client. It is less useful on the server.
+- Events are emitted across tabs to keep your application's UI up-to-date. Some events can fire very frequently, based on the number of tabs open. Use a quick and efficient callback function, and defer or debounce as many operations as you can to be performed outside of the callback.
+- Callbacks can be `async` and can safely call other Supabase auth methods (`getUser`, `setSession`, etc.) from inside the callback.
+- Keep callbacks quick. Events are awaited in order, so a slow callback delays subsequent events to subscribers in this tab.
+- Emitted events:
+  - `INITIAL_SESSION`
+    - Emitted right after the Supabase client is constructed and the initial session from storage is loaded.
+  - `SIGNED_IN`
+    - Emitted each time a user session is confirmed or re-established, including on user sign in and when refocusing a tab.
+    - Avoid making assumptions as to when this event is fired, this may occur even when the user is already signed in. Instead, check the user object attached to the event to see if a new user has signed in and update your application's UI.
+    - This event can fire very frequently depending on the number of tabs open in your application.
+  - `SIGNED_OUT`
+    - Emitted when the user signs out. This can be after:
+      - A call to `supabase.auth.signOut()`.
+      - After the user's session has expired for any reason:
+        - User has signed out on another device.
+        - The session has reached its timebox limit or inactivity timeout.
+        - User has signed in on another device with single session per user enabled.
+        - Check the User Sessions docs for more information.
+    - Use this to clean up any local storage your application has associated with the user.
+  - `TOKEN_REFRESHED`
+    - Emitted each time a new access and refresh token are fetched for the signed in user.
+    - It's best practice and highly recommended to extract the access token (JWT) and store it in memory for further use in your application.
+      - Avoid frequent calls to `supabase.auth.getSession()` for the same purpose.
+    - There is a background process that keeps track of when the session should be refreshed so you will always receive valid tokens by listening to this event.
+    - The frequency of this event is related to the JWT expiry limit configured on your project.
+  - `USER_UPDATED`
+    - Emitted each time the `supabase.auth.updateUser()` method finishes successfully. Listen to it to update your application's UI based on new profile information.
+  - `PASSWORD_RECOVERY`
+    - Emitted instead of the `SIGNED_IN` event when the user lands on a page that includes a password recovery link in the URL.
+    - Use it to show a UI to the user where they can reset their password.
+
+### Examples
+
+#### Listen to auth changes
+
+```js
+const { data } = supabase.auth.onAuthStateChange((event, session) => {
+  console.log(event, session)
+
+  if (event === 'INITIAL_SESSION') {
+    // handle initial session
+  } else if (event === 'SIGNED_IN') {
+    // handle sign in event
+  } else if (event === 'SIGNED_OUT') {
+    // handle sign out event
+  } else if (event === 'PASSWORD_RECOVERY') {
+    // handle password recovery event
+  } else if (event === 'TOKEN_REFRESHED') {
+    // handle token refreshed event
+  } else if (event === 'USER_UPDATED') {
+    // handle user updated event
+  }
+})
+
+// call unsubscribe to remove the callback
+data.subscription.unsubscribe()
+```
+
+#### Listen to sign out
+
+```js
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_OUT') {
+    console.log('SIGNED_OUT', session)
+
+    // clear local and session storage
+    [
+      window.localStorage,
+      window.sessionStorage,
+    ].forEach((storage) => {
+      Object.entries(storage)
+        .forEach(([key]) => {
+          storage.removeItem(key)
+        })
+    })
+  }
+})
+```
+
+#### Store OAuth provider tokens on sign in
+
+```js
+// Register this immediately after calling createClient!
+// Because signInWithOAuth causes a redirect, you need to fetch the
+// provider tokens from the callback.
+supabase.auth.onAuthStateChange((event, session) => {
+  if (session && session.provider_token) {
+    window.localStorage.setItem('oauth_provider_token', session.provider_token)
+  }
+
+  if (session && session.provider_refresh_token) {
+    window.localStorage.setItem('oauth_provider_refresh_token', session.provider_refresh_token)
+  }
+
+  if (event === 'SIGNED_OUT') {
+    window.localStorage.removeItem('oauth_provider_token')
+    window.localStorage.removeItem('oauth_provider_refresh_token')
+  }
+})
+```
+
+#### Use React Context for the User's session
+
+```js
+const SessionContext = React.createContext(null)
+
+function main() {
+  const [session, setSession] = React.useState(null)
+
+  React.useEffect(() => {
+    const {data: { subscription }} = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === 'SIGNED_OUT') {
+          setSession(null)
+        } else if (session) {
+          setSession(session)
+        }
+      })
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [])
+
+  return (
+    <SessionContext.Provider value={session}>
+      <App />
+    </SessionContext.Provider>
+  )
+}
+```
+
+#### Listen to password recovery events
+
+```js
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'PASSWORD_RECOVERY') {
+    console.log('PASSWORD_RECOVERY', session)
+    // show screen to update user's password
+    showPasswordResetScreen(true)
+  }
+})
+```
+
+#### Listen to sign in
+
+```js
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_IN') console.log('SIGNED_IN', session)
+})
+```
+
+#### Listen to token refresh
+
+```js
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'TOKEN_REFRESHED') console.log('TOKEN_REFRESHED', session)
+})
+```
+
+#### Listen to user updates
+
+```js
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'USER_UPDATED') console.log('USER_UPDATED', session)
+})
+```
+
+## reauthenticate
+
+Sends a reauthentication OTP to the user's email or phone number.
+Requires the user to be signed-in.
+
+- This method is used together with `updateUser()` when a user's password needs to be updated.
+- If you require your user to reauthenticate before updating their password, you need to enable the **Secure password change** option in your project's email provider settings.
+- A user is only require to reauthenticate before updating their password if **Secure password change** is enabled and the user **hasn't recently signed in**. A user is deemed recently signed in if the session was created in the last 24 hours.
+- This method will send a nonce to the user's email. If the user doesn't have a confirmed email address, the method will send the nonce to the user's confirmed phone number instead.
+- After receiving the OTP, include it as the `nonce` in your `updateUser()` call to finalize the password change.
+
+### Examples
+
+#### Send reauthentication nonce
+
+```js
+const { error } = await supabase.auth.reauthenticate()
+```
+
+## refreshSession
+
+Returns a new session, regardless of expiry status.
+Takes in an optional current session. If not passed in, then refreshSession() will attempt to retrieve it from getSession().
+If the current session's refresh token is invalid, an error will be thrown.
+
+- This method will refresh and return a new session whether the current one is expired or not.
+
+### Examples
+
+#### Refresh session using the current session
+
+```js
+const { data, error } = await supabase.auth.refreshSession()
+const { session, user } = data
+```
+
+#### Refresh session using a refresh token
+
+```js
+const { data, error } = await supabase.auth.refreshSession({ refresh_token })
+const { session, user } = data
+```
+
+## registerPasskey
+
+Register a passkey for the current authenticated user. Handles the full WebAuthn ceremony:
+
+1. Fetches registration challenge from server
+2. Prompts user via navigator.credentials.create()
+3. Verifies credential with server
+
+Requires an active session.
+
+## resend
+
+Resends an existing signup confirmation email, email change email, SMS OTP or phone change OTP.
+
+- Resends a signup confirmation, email change or phone change email to the user.
+- Passwordless sign-ins can be resent by calling the `signInWithOtp()` method again.
+- Password recovery emails can be resent by calling the `resetPasswordForEmail()` method again.
+- This method will only resend an email or phone OTP to the user if there was an initial signup, email change or phone change request being made(note: For existing users signing in with OTP, you should use `signInWithOtp()` again to resend the OTP).
+- You can specify a redirect url when you resend an email link using the `emailRedirectTo` option.
+
+### Examples
+
+#### Resend an email signup confirmation
+
+```js
+const { error } = await supabase.auth.resend({
+  type: 'signup',
+  email: 'email@example.com',
+  options: {
+    emailRedirectTo: 'https://example.com/welcome'
+  }
+})
+```
+
+#### Resend a phone signup confirmation
+
+```js
+const { error } = await supabase.auth.resend({
+  type: 'sms',
+  phone: '1234567890'
+})
+```
+
+#### Resend email change email
+
+```js
+const { error } = await supabase.auth.resend({
+  type: 'email_change',
+  email: 'email@example.com'
+})
+```
+
+#### Resend phone change OTP
+
+```js
+const { error } = await supabase.auth.resend({
+  type: 'phone_change',
+  phone: '1234567890'
+})
+```
+
+## resetPasswordForEmail
+
+Sends a password reset request to an email address. This method supports the PKCE flow.
+
+- The password reset flow consist of 2 broad steps: (i) Allow the user to login via the password reset link; (ii) Update the user's password.
+- The `resetPasswordForEmail()` only sends a password reset link to the user's email.
+  To update the user's password, see `updateUser()`.
+- A `PASSWORD_RECOVERY` event will be emitted when the password recovery link is clicked.
+  You can use `onAuthStateChange()` to listen and invoke a callback function on these events.
+- When the user clicks the reset link in the email they are redirected back to your application.
+  You can configure the URL that the user is redirected to with the `redirectTo` parameter.
+  See redirect URLs and wildcards to add additional redirect URLs to your project.
+- After the user has been redirected successfully, prompt them for a new password and call `updateUser()`:
+
+```js
+const { data, error } = await supabase.auth.updateUser({
+  password: new_password
+})
+```
+
+### Examples
+
+#### Reset password
+
+```js
+const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+  redirectTo: 'https://example.com/update-password',
+})
+```
+
+#### Reset password (React)
+
+```js
+/**
+ * Step 1: Send the user an email to get a password reset token.
+ * This email contains a link which sends the user back to your application.
+ */
+const { data, error } = await supabase.auth
+  .resetPasswordForEmail('user@email.com')
+
+/**
+ * Step 2: Once the user is redirected back to your application,
+ * ask the user to reset their password.
+ */
+ useEffect(() => {
+   supabase.auth.onAuthStateChange(async (event, session) => {
+     if (event == "PASSWORD_RECOVERY") {
+       const newPassword = prompt("What would you like your new password to be?");
+       const { data, error } = await supabase.auth
+         .updateUser({ password: newPassword })
+
+       if (data) alert("Password updated successfully!")
+       if (error) alert("There was an error updating your password.")
+     }
+   })
+ }, [])
+```
+
+## setSession
+
+Sets the session data from the current session. If the current session is expired, setSession will take care of refreshing it to obtain a new session.
+If the refresh token or access token in the current session is invalid, an error will be thrown.
+
+- This method sets the session using an `access_token` and `refresh_token`.
+- If successful, a `SIGNED_IN` event is emitted.
+
+### Examples
+
+#### Set the session
+
+```js
+  const { data, error } = await supabase.auth.setSession({
+    access_token,
+    refresh_token
+  })
+```
+
+## signInAnonymously
+
+Creates a new anonymous user.
+
+- Returns an anonymous user
+- It is recommended to set up captcha for anonymous sign-ins to prevent abuse. You can pass in the captcha token in the `options` param.
+
+### Examples
+
+#### Create an anonymous user
+
+```js
+const { data, error } = await supabase.auth.signInAnonymously({
+  options: {
+    captchaToken
+  }
+});
+```
+
+#### Create an anonymous user with custom user metadata
+
+```js
+const { data, error } = await supabase.auth.signInAnonymously({
+  options: {
+    data
+  }
+})
+```
+
+## signInWithIdToken
+
+Allows signing in with an OIDC ID token. The authentication provider used
+should be enabled and configured.
+
+- Use an ID token to sign in.
+- Especially useful when implementing sign in using native platform dialogs in mobile or desktop apps using Sign in with Apple or Sign in with Google on iOS and Android.
+- You can also use Google's One Tap and Automatic sign-in via this API.
+
+### Examples
+
+#### Sign In using ID Token
+
+```js
+const { data, error } = await supabase.auth.signInWithIdToken({
+  provider: 'google',
+  token: 'your-id-token'
+})
+```
+
+## signInWithOAuth
+
+Log in an existing user via a third-party provider.
+This method supports the PKCE flow.
+
+- This method is used for signing in using Social Login (OAuth) providers.
+- It works by redirecting your application to the provider's authorization screen, before bringing back the user to your app.
+
+### Examples
+
+#### Sign in using a third-party provider
+
+```js
+const { data, error } = await supabase.auth.signInWithOAuth({
+  provider: 'github'
+})
+```
+
+#### Sign in using a third-party provider with redirect
+
+```js
+const { data, error } = await supabase.auth.signInWithOAuth({
+  provider: 'github',
+  options: {
+    redirectTo: 'https://example.com/welcome'
+  }
+})
+```
+
+#### Sign in with scopes and access provider tokens
+
+```js
+// Register this immediately after calling createClient!
+// Because signInWithOAuth causes a redirect, you need to fetch the
+// provider tokens from the callback.
+supabase.auth.onAuthStateChange((event, session) => {
+  if (session && session.provider_token) {
+    window.localStorage.setItem('oauth_provider_token', session.provider_token)
+  }
+
+  if (session && session.provider_refresh_token) {
+    window.localStorage.setItem('oauth_provider_refresh_token', session.provider_refresh_token)
+  }
+
+  if (event === 'SIGNED_OUT') {
+    window.localStorage.removeItem('oauth_provider_token')
+    window.localStorage.removeItem('oauth_provider_refresh_token')
+  }
+})
+
+// Call this on your Sign in with GitHub button to initiate OAuth
+// with GitHub with the requested elevated scopes.
+await supabase.auth.signInWithOAuth({
+  provider: 'github',
+  options: {
+    scopes: 'repo gist notifications'
+  }
+})
+```
+
+## signInWithOtp
+
+Log in a user using magiclink or a one-time password (OTP).
+
+If the `{{ .ConfirmationURL }}` variable is specified in the email template, a magiclink will be sent.
+If the `{{ .Token }}` variable is specified in the email template, an OTP will be sent.
+If you're using phone sign-ins, only an OTP will be sent. You won't be able to send a magiclink for phone sign-ins.
+
+Be aware that you may get back an error message that will not distinguish
+between the cases where the account does not exist or, that the account
+can only be accessed via social login.
+
+Do note that you will need to configure a Whatsapp sender on Twilio
+if you are using phone sign in with the 'whatsapp' channel. The whatsapp
+channel is not supported on other providers
+at this time.
+This method supports PKCE when an email is passed.
+
+- Requires either an email or phone number.
+- This method is used for passwordless sign-ins where a OTP is sent to the user's email or phone number.
+- If the user doesn't exist, `signInWithOtp()` will signup the user instead. To restrict this behavior, you can set `shouldCreateUser` in `SignInWithPasswordlessCredentials.options` to `false`.
+- If you're using an email, you can configure whether you want the user to receive a magiclink or a OTP.
+- If you're using phone, you can configure whether you want the user to receive a OTP.
+- The magic link's destination URL is determined by the `SITE_URL`.
+- See redirect URLs and wildcards to add additional redirect URLs to your project.
+- Magic links and OTPs share the same implementation. To send users a one-time code instead of a magic link, modify the magic link email template to include `{{ .Token }}` instead of `{{ .ConfirmationURL }}`.
+- See our Twilio Phone Auth Guide for details about configuring WhatsApp sign in.
+
+### Examples
+
+#### Sign in with email
+
+```js
+const { data, error } = await supabase.auth.signInWithOtp({
+  email: 'example@email.com',
+  options: {
+    emailRedirectTo: 'https://example.com/welcome'
+  }
+})
+```
+
+#### Sign in with SMS OTP
+
+```js
+const { data, error } = await supabase.auth.signInWithOtp({
+  phone: '+13334445555',
+})
+```
+
+#### Sign in with WhatsApp OTP
+
+```js
+const { data, error } = await supabase.auth.signInWithOtp({
+  phone: '+13334445555',
+  options: {
+    channel:'whatsapp',
+  }
+})
+```
+
+## signInWithPasskey
+
+Sign in with a passkey. Handles the full WebAuthn ceremony:
+
+1. Fetches authentication challenge from server
+2. Prompts user via navigator.credentials.get()
+3. Verifies credential with server and creates session
+
+Pass `options.mediation: 'conditional'` to use WebAuthn Conditional UI
+(passkey autofill) instead of the modal picker; the value is forwarded to
+`navigator.credentials.get()` unchanged.
+
+The challenge fetched in step 1 expires after the server's
+GOTRUE\_WEBAUTHN\_CHALLENGE\_EXPIRY\_DURATION (5 minutes by default). With
+`mediation: 'conditional'` the autofill prompt can stay pending for longer
+than that: the browser ceremony then still succeeds, but verification fails
+with `error_code: "webauthn_challenge_expired"`. Recover by calling
+`signInWithPasskey()` again. It fetches a fresh challenge and, unless you
+passed your own `options.signal`, cancels the pending ceremony first, so
+the browser never sees two concurrent WebAuthn requests; the earlier call
+resolves with a `WebAuthnError` whose code is `ERROR_CEREMONY_ABORTED`. If
+you pass your own `signal`, abort it before retrying.
+
+### Examples
+
+#### Sign in with Conditional UI (passkey autofill)
+
+```js
+// <input autocomplete="username webauthn" /> somewhere on the page
+const { data, error } = await supabase.auth.signInWithPasskey({
+  options: {
+    mediation: 'conditional'
+  }
+});
+```
+
+## signInWithPassword
+
+Log in an existing user with an email and password or phone and password.
+
+Be aware that you may get back an error message that will not distinguish
+between the cases where the account does not exist or that the
+email/phone and password combination is wrong or that the account can only
+be accessed via social login.
+
+- Requires either an email and password or a phone number and password.
+
+### Examples
+
+#### Sign in with email and password
+
+```js
+const { data, error } = await supabase.auth.signInWithPassword({
+  email: 'example@email.com',
+  password: 'example-password',
+})
+```
+
+#### Sign in with phone and password
+
+```js
+const { data, error } = await supabase.auth.signInWithPassword({
+  phone: '+13334445555',
+  password: 'some-password',
+})
+```
+
+#### Handling errors
+
+```js
+const { data, error } = await supabase.auth.signInWithPassword({
+  email: 'example@email.com',
+  password: 'example-password',
+})
+if (error) {
+  console.error(error)
+  return
+}
+```
+
+## signInWithSSO
+
+Attempts a single-sign on using an enterprise Identity Provider. A
+successful SSO attempt will redirect the current page to the identity
+provider authorization page. The redirect URL is implementation and SSO
+protocol specific.
+
+You can use it by providing a SSO domain. Typically you can extract this
+domain by asking users for their email address. If this domain is
+registered on the Auth instance the redirect will use that organization's
+currently active SSO Identity Provider for the login.
+
+If you have built an organization-specific login page, you can use the
+organization's SSO Identity Provider UUID directly instead.
+
+- Before you can call this method you need to establish a connection to an identity provider. Use the CLI commands to do this.
+- If you've associated an email domain to the identity provider, you can use the `domain` property to start a sign-in flow.
+- In case you need to use a different way to start the authentication flow with an identity provider, you can use the `providerId` property. For example:
+  - Mapping specific user email addresses with an identity provider.
+  - Using different hints to identity the identity provider to be used by the user, like a company-specific page, IP address or other tracking information.
+
+### Examples
+
+#### Sign in with email domain
+
+```js
+  // You can extract the user's email domain and use it to trigger the
+  // authentication flow with the correct identity provider.
+
+  const { data, error } = await supabase.auth.signInWithSSO({
+    domain: 'company.com'
+  })
+
+  if (data?.url) {
+    // redirect the user to the identity provider's authentication flow
+    window.location.href = data.url
+  }
+```
+
+#### Sign in with provider UUID
+
+```js
+  // Useful when you need to map a user's sign in request according
+  // to different rules that can't use email domains.
+
+  const { data, error } = await supabase.auth.signInWithSSO({
+    providerId: '21648a9d-8d5a-4555-a9d1-d6375dc14e92'
+  })
+
+  if (data?.url) {
+    // redirect the user to the identity provider's authentication flow
+    window.location.href = data.url
+  }
+```
+
+## signInWithWeb3
+
+Signs in a user by verifying a message signed by the user's private key.
+Supports Ethereum (via Sign-In-With-Ethereum) & Solana (Sign-In-With-Solana) standards,
+both of which derive from the EIP-4361 standard
+With slight variation on Solana's side.
+
+- Uses a Web3 (Ethereum, Solana) wallet to sign a user in.
+- Read up on the potential for abuse before using it.
+
+### Examples
+
+#### Sign in with Solana or Ethereum (Window API)
+
+```js
+  // uses window.ethereum for the wallet
+  const { data, error } = await supabase.auth.signInWithWeb3({
+    chain: 'ethereum',
+    statement: 'I accept the Terms of Service at https://example.com/tos'
+  })
+
+  // uses window.solana for the wallet
+  const { data, error } = await supabase.auth.signInWithWeb3({
+    chain: 'solana',
+    statement: 'I accept the Terms of Service at https://example.com/tos'
+  })
+```
+
+#### Sign in with Ethereum (Message and Signature)
+
+```js
+  const { data, error } = await supabase.auth.signInWithWeb3({
+    chain: 'ethereum',
+    message: '<sign in with ethereum message>',
+    signature: '<hex of the ethereum signature over the message>',
+  })
+```
+
+#### Sign in with Solana (Brave)
+
+```js
+  const { data, error } = await supabase.auth.signInWithWeb3({
+    chain: 'solana',
+    statement: 'I accept the Terms of Service at https://example.com/tos',
+    wallet: window.braveSolana
+  })
+```
+
+#### Sign in with Solana (Wallet Adapter)
+
+```jsx
+  function SignInButton() {
+  const wallet = useWallet()
+
+  return (
+    <>
+      {wallet.connected ? (
+        <button
+          onClick={() => {
+            supabase.auth.signInWithWeb3({
+              chain: 'solana',
+              statement: 'I accept the Terms of Service at https://example.com/tos',
+              wallet,
+            })
+          }}
+        >
+          Sign in with Solana
+        </button>
+      ) : (
+        <WalletMultiButton />
+      )}
+    </>
+  )
+}
+
+function App() {
+  const endpoint = clusterApiUrl('devnet')
+  const wallets = useMemo(() => [], [])
+
+  return (
+    <ConnectionProvider endpoint={endpoint}>
+      <WalletProvider wallets={wallets}>
+        <WalletModalProvider>
+          <SignInButton />
+        </WalletModalProvider>
+      </WalletProvider>
+    </ConnectionProvider>
+  )
+}
+```
+
+## signOut
+
+Inside a browser context, `signOut()` will remove the logged in user from the browser session and log them out - removing all items from localstorage and then trigger a `"SIGNED_OUT"` event.
+
+For server-side management, you can revoke all refresh tokens for a user by passing a user's JWT through to `auth.api.signOut(JWT: string)`.
+There is no way to revoke a user's access token jwt until it expires. It is recommended to set a shorter expiry on the jwt for this reason.
+
+If using `others` scope, no `SIGNED_OUT` event is fired!
+
+**Warning:** the default `scope` is `'global'`. This signs the user out of
+**every device they are currently signed in on**, not just the current
+tab/session. If you only want to sign the user out of the current session
+(the behavior most other auth libraries default to), pass
+`{ scope: 'local' }` explicitly.
+
+- In order to use the `signOut()` method, the user needs to be signed in first.
+- By default, `signOut()` uses the **global** scope, which signs out the user
+  on every device they are signed in on (not just the current one). Pass
+  `{ scope: 'local' }` to only sign out the current session. This is
+  usually what apps want on a "Sign out" button, especially when users
+  sign in from multiple devices and do not expect signing out of one to
+  terminate the others.
+- Since Supabase Auth uses JWTs for authentication, the access token JWT will be valid until it's expired. When the user signs out, Supabase revokes the refresh token and deletes the JWT from the client-side. This does not revoke the JWT and it will still be valid until it expires.
+
+### Examples
+
+#### Sign out of every device (global – default)
+
+```js
+const { error } = await supabase.auth.signOut()
+```
+
+#### Sign out only the current session (recommended for most apps)
+
+```js
+const { error } = await supabase.auth.signOut({ scope: 'local' })
+```
+
+#### Sign out of all other sessions, keep the current one
+
+```js
+const { error } = await supabase.auth.signOut({ scope: 'others' })
+```
+
+## signUp
+
+Creates a new user.
+
+Be aware that if a user account exists in the system you may get back an
+error message that attempts to hide this information from the user.
+This method has support for PKCE via email signups. The PKCE flow cannot be used when autoconfirm is enabled.
+
+- By default, the user needs to verify their email address before logging in. To turn this off, disable **Confirm email** in your project.
+- **Confirm email** determines if users need to confirm their email address after signing up.
+  - If **Confirm email** is enabled, a `user` is returned but `session` is null.
+  - If **Confirm email** is disabled, both a `user` and a `session` are returned.
+- When the user confirms their email address, they are redirected to the `SITE_URL` by default. You can modify your `SITE_URL` or add additional redirect URLs in your project.
+- If signUp() is called for an existing confirmed user:
+  - When both **Confirm email** and **Confirm phone** (even when phone provider is disabled) are enabled in your project, an obfuscated/fake user object is returned.
+  - When either **Confirm email** or **Confirm phone** (even when phone provider is disabled) is disabled, the error message, `User already registered` is returned.
+- To fetch the currently logged-in user, refer to `getUser()`.
+
+### Examples
+
+#### Sign up with an email and password
+
+```js
+const { data, error } = await supabase.auth.signUp({
+  email: 'example@email.com',
+  password: 'example-password',
+})
+```
+
+#### Sign up with a phone number and password (SMS)
+
+```js
+const { data, error } = await supabase.auth.signUp({
+  phone: '123456789',
+  password: 'example-password',
+  options: {
+    channel: 'sms'
+  }
+})
+```
+
+#### Sign up with a phone number and password (whatsapp)
+
+```js
+const { data, error } = await supabase.auth.signUp({
+  phone: '123456789',
+  password: 'example-password',
+  options: {
+    channel: 'whatsapp'
+  }
+})
+```
+
+#### Sign up with additional user metadata
+
+```js
+const { data, error } = await supabase.auth.signUp(
+  {
+    email: 'example@email.com',
+    password: 'example-password',
+    options: {
+      data: {
+        first_name: 'John',
+        age: 27,
+      }
+    }
+  }
+)
+```
+
+#### Sign up with a redirect URL
+
+```js
+const { data, error } = await supabase.auth.signUp(
+  {
+    email: 'example@email.com',
+    password: 'example-password',
+    options: {
+      emailRedirectTo: 'https://example.com/welcome'
+    }
+  }
+)
+```
+
+## startAutoRefresh
+
+Starts an auto-refresh process in the background. The session is checked
+every few seconds. Close to the time of expiration a process is started to
+refresh the session. If refreshing fails it will be retried for as long as
+necessary.
+
+If you set the GoTrueClientOptions#autoRefreshToken you don't need
+to call this function, it will be called for you.
+
+On browsers the refresh process works only when the tab/window is in the
+foreground to conserve resources as well as prevent race conditions and
+flooding auth with requests. If you call this method any managed
+visibility change callback will be removed and you must manage visibility
+changes on your own.
+
+On non-browser platforms the refresh process works *continuously* in the
+background, which may not be desirable. You should hook into your
+platform's foreground indication mechanism and call these methods
+appropriately to conserve resources.
+
+GoTrueClient.stopAutoRefresh
+
+- Only useful in non-browser environments such as React Native or Electron.
+- The Supabase Auth library automatically starts and stops proactively refreshing the session when a tab is focused or not.
+- On non-browser platforms, such as mobile or desktop apps built with web technologies, the library is not able to effectively determine whether the application is *focused* or not.
+- To give this hint to the application, you should be calling this method when the app is in focus and calling `supabase.auth.stopAutoRefresh()` when it's out of focus.
+
+### Examples
+
+#### Start and stop auto refresh in React Native
+
+```js
+import { AppState } from 'react-native'
+
+// make sure you register this only once!
+AppState.addEventListener('change', (state) => {
+  if (state === 'active') {
+    supabase.auth.startAutoRefresh()
+  } else {
+    supabase.auth.stopAutoRefresh()
+  }
+})
+```
+
+## stopAutoRefresh
+
+Stops an active auto refresh process running in the background (if any).
+
+If you call this method any managed visibility change callback will be
+removed and you must manage visibility changes on your own.
+
+See GoTrueClient.startAutoRefresh for more details.
+
+- Only useful in non-browser environments such as React Native or Electron.
+- The Supabase Auth library automatically starts and stops proactively refreshing the session when a tab is focused or not.
+- On non-browser platforms, such as mobile or desktop apps built with web technologies, the library is not able to effectively determine whether the application is *focused* or not.
+- When your application goes in the background or out of focus, call this method to stop the proactive refreshing of the session.
+
+### Examples
+
+#### Start and stop auto refresh in React Native
+
+```js
+import { AppState } from 'react-native'
+
+// make sure you register this only once!
+AppState.addEventListener('change', (state) => {
+  if (state === 'active') {
+    supabase.auth.startAutoRefresh()
+  } else {
+    supabase.auth.stopAutoRefresh()
+  }
+})
+```
+
+## unlinkIdentity
+
+Unlinks an identity from a user by deleting it. The user will no longer be able to sign in with that identity once it's unlinked.
+
+- The **Enable Manual Linking** option must be enabled from your project's authentication settings.
+- The user needs to be signed in to call `unlinkIdentity()`.
+- The user must have at least 2 identities in order to unlink an identity.
+- The identity to be unlinked must belong to the user.
+
+### Examples
+
+#### Unlink an identity
+
+```js
+// retrieve all identities linked to a user
+const identities = await supabase.auth.getUserIdentities()
+
+// find the google identity
+const googleIdentity = identities.find(
+  identity => identity.provider === 'google'
+)
+
+// unlink the google identity
+const { error } = await supabase.auth.unlinkIdentity(googleIdentity)
+```
+
+## updateUser
+
+Updates user data for a logged in user.
+
+- In order to use the `updateUser()` method, the user needs to be signed in first.
+- By default, email updates sends a confirmation link to both the user's current and new email.
+  To only send a confirmation link to the user's new email, disable **Secure email change** in your project's email auth provider settings.
+
+### Examples
+
+#### Update the email for an authenticated user
+
+```js
+const { data, error } = await supabase.auth.updateUser({
+  email: 'new@email.com'
+})
+```
+
+#### Update the phone number for an authenticated user
+
+```js
+const { data, error } = await supabase.auth.updateUser({
+  phone: '123456789'
+})
+```
+
+#### Update the password for an authenticated user
+
+```js
+const { data, error } = await supabase.auth.updateUser({
+  password: 'new password'
+})
+```
+
+#### Update the user's metadata
+
+```js
+const { data, error } = await supabase.auth.updateUser({
+  data: { hello: 'world' }
+})
+```
+
+#### Update the user's password with a nonce
+
+```js
+const { data, error } = await supabase.auth.updateUser({
+  password: 'new password',
+  nonce: '123456'
+})
+```
+
+## verifyOtp
+
+Log in a user given a User supplied OTP or TokenHash received through mobile or email.
+
+- The `verifyOtp` method takes in different verification types.
+- If a phone number is used, the type can either be:
+  1. `sms` – Used when verifying a one-time password (OTP) sent via SMS during sign-up or sign-in.
+  2. `phone_change` – Used when verifying an OTP sent to a new phone number during a phone number update process.
+- If an email address is used, the type can be one of the following (note: `signup` and `magiclink` types are deprecated):
+  1. `email` – Used when verifying an OTP sent to the user's email during sign-up or sign-in.
+  2. `recovery` – Used when verifying an OTP sent for account recovery, typically after a password reset request.
+  3. `invite` – Used when verifying an OTP sent as part of an invitation to join a project or organization.
+  4. `email_change` – Used when verifying an OTP sent to a new email address during an email update process.
+- The verification type used should be determined based on the corresponding auth method called before `verifyOtp` to sign up / sign-in a user.
+- The `TokenHash` is contained in the email templates and can be used to sign in.  You may wish to use the hash for the PKCE flow for Server Side Auth. Read the Password-based Auth guide for more details.
+
+### Examples
+
+#### Verify Signup One-Time Password (OTP)
+
+```js
+const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'email'})
+```
+
+#### Verify SMS One-Time Password (OTP)
+
+```js
+const { data, error } = await supabase.auth.verifyOtp({ phone, token, type: 'sms'})
+```
+
+#### Verify Email Auth (Token Hash)
+
+```js
+const { data, error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'email'})
+```
+
+## Overview
+
+- Any method under the `supabase.auth.admin` namespace requires a `secret` key.
+- These methods are considered admin methods and should be called on a trusted server. Never expose your `secret` key in the browser.
+
+### Examples
+
+#### Create server-side auth client
+
+```js
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(supabase_url, secret_key, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+})
+
+// Access auth admin api
+const adminAuthClient = supabase.auth.admin
+```
+
+## Overview
+
+- Any method under the `supabase.auth.admin` namespace requires a `secret` key.
+- These methods are considered admin methods and should be called on a trusted server. Never expose your `secret` key in the browser.
+
+### Examples
+
+#### Create server-side auth client
+
+```js
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(supabase_url, secret_key, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+})
+
+// Access auth admin api
+const adminAuthClient = supabase.auth.admin
+```
+
+## createProvider
+
+Creates a new custom OIDC/OAuth provider.
+
+For OIDC providers, the server fetches and validates the OpenID Connect discovery document
+from the issuer's well-known endpoint (or the provided `discovery_url`) at creation time.
+This may return a validation error (`error_code: "validation_failed"`) if the discovery
+document is unreachable, not valid JSON, missing required fields, or if the issuer
+in the document does not match the expected issuer.
+
+This function should only be called on a server. Never expose your `service_role` key in the browser.
+
+## createUser
+
+Creates a new user.
+This function should only be called on a server. Never expose your `service_role` key in the browser.
+
+- To confirm the user's email address or phone number, set `email_confirm` or `phone_confirm` to true. Both arguments default to false.
+- `createUser()` will not send a confirmation email to the user. You can use `inviteUserByEmail()` if you want to send them an email invite instead.
+- If you are sure that the created user's email or phone number is legitimate and verified, you can set the `email_confirm` or `phone_confirm` param to `true`.
+
+### Examples
+
+#### With custom user metadata
+
+```js
+const { data, error } = await supabase.auth.admin.createUser({
+  email: 'user@email.com',
+  password: 'password',
+  user_metadata: { name: 'Yoda' }
+})
+```
+
+#### Auto-confirm the user's email
+
+```js
+const { data, error } = await supabase.auth.admin.createUser({
+  email: 'user@email.com',
+  email_confirm: true
+})
+```
+
+#### Auto-confirm the user's phone number
+
+```js
+const { data, error } = await supabase.auth.admin.createUser({
+  phone: '1234567890',
+  phone_confirm: true
+})
+```
+
+## deleteFactor
+
+Deletes a factor on a user. This will log the user out of all active
+sessions if the deleted factor was verified.
+
+### Examples
+
+#### Delete a factor for a user
+
+```js
+const { data, error } = await supabase.auth.admin.mfa.deleteFactor({
+  id: '34e770dd-9ff9-416c-87fa-43b31d7ef225',
+  userId: 'a89baba7-b1b7-440f-b4bb-91026967f66b',
+})
+```
+
+## deleteProvider
+
+Deletes a custom provider.
+
+This function should only be called on a server. Never expose your `service_role` key in the browser.
+
+## deleteUser
+
+Delete a user. Requires a `service_role` key.
+
+- The `deleteUser()` method requires the user's ID, which maps to the `auth.users.id` column.
+
+### Examples
+
+#### Removes a user
+
+```js
+const { data, error } = await supabase.auth.admin.deleteUser(
+  '715ed5db-f090-4b8c-a067-640ecee36aa0'
+)
+```
+
+## generateLink
+
+Generates email links and OTPs to be sent via a custom email provider.
+
+- The following types can be passed into `generateLink()`: `signup`, `magiclink`, `invite`, `recovery`, `email_change_current`, `email_change_new`, `phone_change`.
+- `generateLink()` only generates the email link for `email_change_email` if the **Secure email change** is enabled in your project's email auth provider settings.
+- `generateLink()` handles the creation of the user for `signup`, `invite` and `magiclink`.
+
+### Examples
+
+#### Generate a signup link
+
+```js
+const { data, error } = await supabase.auth.admin.generateLink({
+  type: 'signup',
+  email: 'email@example.com',
+  password: 'secret'
+})
+```
+
+#### Generate an invite link
+
+```js
+const { data, error } = await supabase.auth.admin.generateLink({
+  type: 'invite',
+  email: 'email@example.com'
+})
+```
+
+#### Generate a magic link
+
+```js
+const { data, error } = await supabase.auth.admin.generateLink({
+  type: 'magiclink',
+  email: 'email@example.com'
+})
+```
+
+#### Generate a recovery link
+
+```js
+const { data, error } = await supabase.auth.admin.generateLink({
+  type: 'recovery',
+  email: 'email@example.com'
+})
+```
+
+#### Generate links to change current email address
+
+```js
+// generate an email change link to be sent to the current email address
+const { data, error } = await supabase.auth.admin.generateLink({
+  type: 'email_change_current',
+  email: 'current.email@example.com',
+  newEmail: 'new.email@example.com'
+})
+
+// generate an email change link to be sent to the new email address
+const { data, error } = await supabase.auth.admin.generateLink({
+  type: 'email_change_new',
+  email: 'current.email@example.com',
+  newEmail: 'new.email@example.com'
+})
+```
+
+## getProvider
+
+Gets details of a specific custom provider by identifier.
+
+This function should only be called on a server. Never expose your `service_role` key in the browser.
+
+## getUserById
+
+Get user by id.
+
+- Fetches the user object from the database based on the user's id.
+- The `getUserById()` method requires the user's id which maps to the `auth.users.id` column.
+
+### Examples
+
+#### Fetch the user object using the access\_token jwt
+
+```js
+const { data, error } = await supabase.auth.admin.getUserById(1)
+```
+
+## inviteUserByEmail
+
+Sends an invite link to an email address.
+
+- Sends an invite link to the user's email address.
+- The `inviteUserByEmail()` method is typically used by administrators to invite users to join the application.
+- Note that PKCE is not supported when using `inviteUserByEmail`. This is because the browser initiating the invite is often different from the browser accepting the invite which makes it difficult to provide the security guarantees required of the PKCE flow.
+
+### Examples
+
+#### Invite a user
+
+```js
+const { data, error } = await supabase.auth.admin.inviteUserByEmail('email@example.com')
+```
+
+## listFactors
+
+Lists all factors associated to a user.
+
+### Examples
+
+#### List all factors for a user
+
+```js
+const { data, error } = await supabase.auth.admin.mfa.listFactors()
+```
+
+## listProviders
+
+Lists all custom providers with optional type filter.
+
+This function should only be called on a server. Never expose your `service_role` key in the browser.
+
+## listUsers
+
+Get a list of users.
+
+This function should only be called on a server. Never expose your `service_role` key in the browser.
+
+- Defaults to return 50 users per page.
+
+### Examples
+
+#### Get a page of users
+
+```js
+const { data: { users }, error } = await supabase.auth.admin.listUsers()
+```
+
+#### Paginated list of users
+
+```js
+const { data: { users }, error } = await supabase.auth.admin.listUsers({
+  page: 1,
+  perPage: 1000
+})
+```
+
+## signOut
+
+Removes a logged-in session.
+
+## updateProvider
+
+Updates an existing custom provider.
+
+When `issuer` or `discovery_url` is changed on an OIDC provider, the server re-fetches and
+validates the discovery document before persisting. This may return a validation error
+(`error_code: "validation_failed"`) if the discovery document is unreachable, invalid, or
+the issuer does not match.
+
+This function should only be called on a server. Never expose your `service_role` key in the browser.
+
+## updateUserById
+
+Updates the user data. Changes are applied directly without confirmation flows.
+
+**Important:** This is a server-side operation and does **not** trigger client-side
+`onAuthStateChange` listeners. The admin API has no connection to client state.
+
+To sync changes to the client after calling this method:
+
+1. On the client, call `supabase.auth.refreshSession()` to fetch the updated user data
+2. This will trigger the `TOKEN_REFRESHED` event and notify all listeners
+
+### Examples
+
+#### Example 1
+
+```typescript
+// Server-side (Edge Function)
+const { data, error } = await supabase.auth.admin.updateUserById(
+  userId,
+  { user_metadata: { preferences: { theme: 'dark' } } }
+)
+
+// Client-side (to sync the changes)
+const { data, error } = await supabase.auth.refreshSession()
+// onAuthStateChange listeners will now be notified with updated user
+```
+
+#### Updates a user's email
+
+```js
+const { data: user, error } = await supabase.auth.admin.updateUserById(
+  '11111111-1111-1111-1111-111111111111',
+  { email: 'new@email.com' }
+)
+```
+
+#### Updates a user's password
+
+```js
+const { data: user, error } = await supabase.auth.admin.updateUserById(
+  '6aa5d0d4-2a9f-4483-b6c8-0cf4c6c98ac4',
+  { password: 'new_password' }
+)
+```
+
+#### Updates a user's metadata
+
+```js
+const { data: user, error } = await supabase.auth.admin.updateUserById(
+  '6aa5d0d4-2a9f-4483-b6c8-0cf4c6c98ac4',
+  { user_metadata: { hello: 'world' } }
+)
+```
+
+#### Updates a user's app\_metadata
+
+```js
+const { data: user, error } = await supabase.auth.admin.updateUserById(
+  '6aa5d0d4-2a9f-4483-b6c8-0cf4c6c98ac4',
+  { app_metadata: { plan: 'trial' } }
+)
+```
+
+#### Confirms a user's email address
+
+```js
+const { data: user, error } = await supabase.auth.admin.updateUserById(
+  '6aa5d0d4-2a9f-4483-b6c8-0cf4c6c98ac4',
+  { email_confirm: true }
+)
+```
+
+#### Confirms a user's phone number
+
+```js
+const { data: user, error } = await supabase.auth.admin.updateUserById(
+  '6aa5d0d4-2a9f-4483-b6c8-0cf4c6c98ac4',
+  { phone_confirm: true }
+)
+```
+
+#### Ban a user for 100 years
+
+```js
+const { data: user, error } = await supabase.auth.admin.updateUserById(
+  '6aa5d0d4-2a9f-4483-b6c8-0cf4c6c98ac4',
+  { ban_duration: '876000h' }
+)
+```
+
+## Auth MFA
+
+This section contains methods commonly used for Multi-Factor Authentication (MFA) and are invoked behind the `supabase.auth.mfa` namespace.
+
+Currently, there is support for time-based one-time password (TOTP) and phone verification code as the 2nd factor. Recovery codes are not supported but users can enroll multiple factors, with an upper limit of 10.
+
+Having a 2nd factor for recovery frees the user of the burden of having to store their recovery codes somewhere. It also reduces the attack surface since multiple recovery codes are usually generated compared to just having 1 backup factor.
+
+Learn more about implementing MFA in your application in the MFA guide.
+
+## Auth MFA
+
+This section contains methods commonly used for Multi-Factor Authentication (MFA) and are invoked behind the `supabase.auth.mfa` namespace.
+
+Currently, there is support for time-based one-time password (TOTP) and phone verification code as the 2nd factor. Recovery codes are not supported but users can enroll multiple factors, with an upper limit of 10.
+
+Having a 2nd factor for recovery frees the user of the burden of having to store their recovery codes somewhere. It also reduces the attack surface since multiple recovery codes are usually generated compared to just having 1 backup factor.
+
+Learn more about implementing MFA in your application in the MFA guide.
+
+## challenge
+
+Prepares a challenge used to verify that a user has access to a MFA
+factor.
+
+- An enrolled factor is required before creating a challenge.
+- To verify a challenge, see `mfa.verify()`.
+- A phone factor sends a code to the user upon challenge. The channel defaults to `sms` unless otherwise specified.
+
+### Examples
+
+#### Create a challenge for a factor
+
+```js
+const { data, error } = await supabase.auth.mfa.challenge({
+  factorId: '34e770dd-9ff9-416c-87fa-43b31d7ef225'
+})
+```
+
+#### Create a challenge for a phone factor
+
+```js
+const { data, error } = await supabase.auth.mfa.challenge({
+  factorId: '34e770dd-9ff9-416c-87fa-43b31d7ef225',
+})
+```
+
+#### Create a challenge for a phone factor (WhatsApp)
+
+```js
+const { data, error } = await supabase.auth.mfa.challenge({
+  factorId: '34e770dd-9ff9-416c-87fa-43b31d7ef225',
+  channel: 'whatsapp',
+})
+```
+
+## challengeAndVerify
+
+Helper method which creates a challenge and immediately uses the given code to verify against it thereafter. The verification code is
+provided by the user by entering a code seen in their authenticator app.
+
+- Intended for use with only TOTP factors.
+- An enrolled factor is required before invoking `challengeAndVerify()`.
+- Executes `mfa.challenge()` and `mfa.verify()` in a single step.
+
+### Examples
+
+#### Create and verify a challenge for a factor
+
+```js
+const { data, error } = await supabase.auth.mfa.challengeAndVerify({
+  factorId: '34e770dd-9ff9-416c-87fa-43b31d7ef225',
+  code: '123456'
+})
+```
+
+## enroll
+
+Starts the enrollment process for a new Multi-Factor Authentication (MFA)
+factor. This method creates a new `unverified` factor.
+To verify a factor, present the QR code or secret to the user and ask them to add it to their
+authenticator app.
+The user has to enter the code from their authenticator app to verify it.
+
+Upon verifying a factor, all other sessions are logged out and the current session's authenticator level is promoted to `aal2`.
+
+- Use `totp` or `phone` as the `factorType` and use the returned `id` to create a challenge.
+- To create a challenge, see `mfa.challenge()`.
+- To verify a challenge, see `mfa.verify()`.
+- To create and verify a TOTP challenge in a single step, see `mfa.challengeAndVerify()`.
+- To generate a QR code for the `totp` secret in Next.js, you can do the following:
+
+```html
+<Image src={data.totp.qr_code} alt={data.totp.uri} layout="fill"></Image>
+```
+
+- The `challenge` and `verify` steps are separated when using Phone factors as the user will need time to receive and input the code obtained from the SMS in challenge.
+
+### Examples
+
+#### Enroll a time-based, one-time password (TOTP) factor
+
+```js
+const { data, error } = await supabase.auth.mfa.enroll({
+  factorType: 'totp',
+  friendlyName: 'your_friendly_name'
+})
+
+// Use the id to create a challenge.
+// The challenge can be verified by entering the code generated from the authenticator app.
+// The code will be generated upon scanning the qr_code or entering the secret into the authenticator app.
+const { id, type, totp: { qr_code, secret, uri }, friendly_name } = data
+const challenge = await supabase.auth.mfa.challenge({ factorId: id });
+```
+
+#### Enroll a Phone Factor
+
+```js
+const { data, error } = await supabase.auth.mfa.enroll({
+  factorType: 'phone',
+  friendlyName: 'your_friendly_name',
+  phone: '+12345678',
+})
+
+// Use the id to create a challenge and send an SMS with a code to the user.
+const { id, type, friendly_name, phone } = data
+
+const challenge = await supabase.auth.mfa.challenge({ factorId: id });
+```
+
+## getAuthenticatorAssuranceLevel
+
+Returns the Authenticator Assurance Level (AAL) for the active session.
+
+- `aal1` (or `null`) means that the user's identity has been verified only
+  with a conventional login (email+password, OTP, magic link, social login,
+  etc.).
+- `aal2` means that the user's identity has been verified both with a conventional login and at least one MFA factor.
+
+When called without a JWT parameter, this method is fairly quick (microseconds)
+and rarely uses the network. When a JWT is provided (useful in server-side
+environments like Edge Functions where no session is stored), this method
+will make a network request to validate the user and fetch their MFA factors.
+
+- Authenticator Assurance Level (AAL) is the measure of the strength of an authentication mechanism.
+- In Supabase, having an AAL of `aal1` refers to having the 1st factor of authentication such as an email and password or OAuth sign-in while `aal2` refers to the 2nd factor of authentication such as a time-based, one-time-password (TOTP) or Phone factor.
+- If the user has a verified factor, the `nextLevel` field will return `aal2`, else, it will return `aal1`.
+- An optional `jwt` parameter can be passed to check the AAL level of a specific JWT instead of the current session.
+
+### Examples
+
+#### Get the AAL details of a session
+
+```js
+const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+const { currentLevel, nextLevel, currentAuthenticationMethods } = data
+```
+
+#### Get the AAL details for a specific JWT
+
+```js
+const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel(jwt)
+```
+
+## listFactors
+
+Returns the list of MFA factors enabled for this user.
+
+## unenroll
+
+Unenroll removes a MFA factor.
+A user has to have an `aal2` authenticator level in order to unenroll a `verified` factor.
+
+### Examples
+
+#### Unenroll a factor
+
+```js
+const { data, error } = await supabase.auth.mfa.unenroll({
+  factorId: '34e770dd-9ff9-416c-87fa-43b31d7ef225',
+})
+```
+
+## verify
+
+Verifies a code against a challenge. The verification code is
+provided by the user by entering a code seen in their authenticator app.
+
+- To verify a challenge, please create a challenge first.
+
+### Examples
+
+#### Verify a challenge for a factor
+
+```js
+const { data, error } = await supabase.auth.mfa.verify({
+  factorId: '34e770dd-9ff9-416c-87fa-43b31d7ef225',
+  challengeId: '4034ae6f-a8ce-4fb5-8ee5-69a5863a7c15',
+  code: '123456'
+})
+```
+
+## generate
+
+Generates the user's set of recovery codes. The plaintext codes are
+returned exactly once in the response and cannot be retrieved again, so
+show them to the user and ask them to store the codes safely.
+
+Requires `auth.experimental.recoveryCodes: true`.
+
+- The session must be at `aal2` (verify another factor first), otherwise an error with code `insufficient_aal` is returned.
+- The user must already have another verified factor (for example a TOTP factor): recovery codes can never be the only factor. Otherwise an error with code `mfa_recovery_codes_sole_factor` is returned.
+- A user can only have one set of recovery codes. If one already exists, an error with code `mfa_verified_factor_exists` is returned; use `mfa.recoveryCodes.regenerate()` to replace it.
+- The codes are returned in canonical form (lowercase, no separators). For display you can group them, for example in blocks of four characters. Avoid logging them to the console.
+- Returns an error with code `mfa_recovery_codes_enroll_not_enabled` when recovery codes are disabled on the server.
+
+### Examples
+
+#### Generate recovery codes
+
+```js
+const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: { experimental: { recoveryCodes: true } },
+})
+
+const { data, error } = await supabase.auth.mfa.recoveryCodes.generate({
+  friendlyName: 'Backup codes',
+})
+
+// Show the codes once, for example grouped in blocks of four characters
+const formatted = data.codes.map((code) => code.match(/.{1,4}/g).join('-'))
+```
+
+## getStatus
+
+Returns the enrollment status of the user's recovery codes: the total
+number of codes in the current set and how many are still unused. Never
+returns the codes themselves.
+
+Requires `auth.experimental.recoveryCodes: true`.
+
+- Works at any authenticator assurance level (`aal1` or `aal2`).
+- Returns an error with code `mfa_factor_not_found` when the user has not generated recovery codes yet.
+- `remaining` can be `0` once every code has been used; prompt the user to call `mfa.recoveryCodes.regenerate()`.
+
+### Examples
+
+#### Get the recovery codes status
+
+```js
+const { data, error } = await supabase.auth.mfa.recoveryCodes.getStatus()
+```
+
+## regenerate
+
+Replaces the user's recovery codes with a brand new set. All remaining
+codes from the previous set stop working immediately. The new plaintext
+codes are returned exactly once.
+
+Requires `auth.experimental.recoveryCodes: true`.
+
+- The session must be at `aal2`, otherwise an error with code `insufficient_aal` is returned.
+- The factor `id` and `friendly_name` are preserved; only the codes change.
+- Also clears any verification lockout on the recovery codes.
+- Returns an error with code `mfa_factor_not_found` when the user has no recovery codes to regenerate; use `mfa.recoveryCodes.generate()` instead.
+- Returns an error with code `mfa_recovery_codes_enroll_not_enabled` when recovery codes are disabled on the server.
+
+### Examples
+
+#### Regenerate recovery codes
+
+```js
+const { data, error } = await supabase.auth.mfa.recoveryCodes.regenerate()
+```
+
+## unenroll
+
+Removes the user's recovery codes factor together with all of its codes.
+
+Requires `auth.experimental.recoveryCodes: true`.
+
+- The session must be at `aal2`, otherwise an error with code `insufficient_aal` is returned.
+- Returns an error with code `mfa_factor_not_found` when the user has no recovery codes.
+
+### Examples
+
+#### Unenroll recovery codes
+
+```js
+const { data, error } = await supabase.auth.mfa.recoveryCodes.unenroll()
+```
+
+## verify
+
+Verifies one of the user's recovery codes and upgrades the current
+session to `aal2`. Each code can be used only once.
+
+Requires `auth.experimental.recoveryCodes: true`.
+
+- On success the current session is upgraded to `aal2` in place and persisted, and the `MFA_CHALLENGE_VERIFIED` event is emitted. The user's other `aal1` sessions are signed out.
+- The new access token includes `mfa/recovery_code` in its `amr` claim.
+- The code can be passed exactly as the user typed it: letter case, whitespace and `-` separators are ignored.
+- A wrong, already used, or missing code returns an error with code `mfa_verification_failed`.
+- After too many failed attempts, verification is locked for a period and an error with code `mfa_recovery_codes_locked` (status `429`) is returned. Ask the user to wait or to use another factor.
+- Returns an error with code `mfa_recovery_codes_verify_not_enabled` when recovery code verification is disabled on the server.
+
+### Examples
+
+#### Verify a recovery code
+
+```js
+const { data, error } = await supabase.auth.mfa.recoveryCodes.verify({
+  code: 'K4M9-X7QP-2AB8-HT3Z',
+})
+```
+
+## Auth Passkey
+
+This section contains methods for WebAuthn passkey registration, authentication, and management. Methods are invoked behind the `supabase.auth.passkey` namespace.
+
+Passkey support is an experimental feature. Enable it when creating the client:
+
+## Auth Passkey
+
+This section contains methods for WebAuthn passkey registration, authentication, and management. Methods are invoked behind the `supabase.auth.passkey` namespace.
+
+Passkey support is an experimental feature. Enable it when creating the client:
+
+## delete
+
+Deletes a passkey for the currently signed-in user.
+
+## list
+
+Lists all passkeys registered for the currently signed-in user.
+
+## startAuthentication
+
+Starts the passkey authentication ceremony. Fetches an authentication
+challenge and credential request options from the server. Used as the
+first step of a two-step sign-in flow when the caller wants to handle
+`navigator.credentials.get()` themselves.
+
+## startRegistration
+
+Starts the passkey registration ceremony. Fetches a registration challenge
+and credential creation options from the server. Used as the first step of
+a two-step registration flow when the caller wants to handle
+`navigator.credentials.create()` themselves.
+
+## update
+
+Updates a passkey's friendly name.
+
+## verifyAuthentication
+
+Verifies a passkey authentication credential against a previously issued
+challenge. Used as the second step of a two-step sign-in flow.
+
+## verifyRegistration
+
+Verifies a passkey registration credential against a previously issued
+challenge. Used as the second step of a two-step registration flow.
+
+## OAuth Admin
+
+The OAuth Admin API allows you to manage OAuth clients programmatically. Only relevant when the OAuth 2.1 server is enabled in Supabase Auth. These functions should only be called on a server. Never expose your `secret` key in the browser.
+
+## OAuth Admin
+
+The OAuth Admin API allows you to manage OAuth clients programmatically. Only relevant when the OAuth 2.1 server is enabled in Supabase Auth. These functions should only be called on a server. Never expose your `secret` key in the browser.
+
+## createClient
+
+Creates a new OAuth client.
+Only relevant when the OAuth 2.1 server is enabled in Supabase Auth.
+
+This function should only be called on a server. Never expose your `service_role` key in the browser.
+
+## deleteClient
+
+Deletes an OAuth client.
+Only relevant when the OAuth 2.1 server is enabled in Supabase Auth.
+
+This function should only be called on a server. Never expose your `service_role` key in the browser.
+
+## getClient
+
+Gets details of a specific OAuth client.
+Only relevant when the OAuth 2.1 server is enabled in Supabase Auth.
+
+This function should only be called on a server. Never expose your `service_role` key in the browser.
+
+## listClients
+
+Lists all OAuth clients with optional pagination.
+Only relevant when the OAuth 2.1 server is enabled in Supabase Auth.
+
+This function should only be called on a server. Never expose your `service_role` key in the browser.
+
+## regenerateClientSecret
+
+Regenerates the secret for an OAuth client.
+Only relevant when the OAuth 2.1 server is enabled in Supabase Auth.
+
+This function should only be called on a server. Never expose your `service_role` key in the browser.
+
+## updateClient
+
+Updates an existing OAuth client.
+Only relevant when the OAuth 2.1 server is enabled in Supabase Auth.
+
+This function should only be called on a server. Never expose your `service_role` key in the browser.
+
+## OAuth Server
+
+The OAuth Server API allows you to build custom OAuth consent screens for your application. Only relevant when the OAuth 2.1 server is enabled in Supabase Auth.
+
+## OAuth Server
+
+The OAuth Server API allows you to build custom OAuth consent screens for your application. Only relevant when the OAuth 2.1 server is enabled in Supabase Auth.
+
+## approveAuthorization
+
+Approves an OAuth authorization request.
+Only relevant when the OAuth 2.1 server is enabled in Supabase Auth.
+
+After approval, the user's consent is stored and an authorization code is generated.
+The response contains a complete redirect URL with the authorization code and state.
+
+## denyAuthorization
+
+Denies an OAuth authorization request.
+Only relevant when the OAuth 2.1 server is enabled in Supabase Auth.
+
+After denial, the response contains a redirect URL with an OAuth error
+(access\_denied) to inform the OAuth client that the user rejected the request.
+
+## getAuthorizationDetails
+
+Retrieves details about an OAuth authorization request.
+Used to display consent information to the user.
+Only relevant when the OAuth 2.1 server is enabled in Supabase Auth.
+
+This method returns one of two response types:
+
+- `OAuthAuthorizationDetails`: User needs to consent - show consent page with client info
+- `OAuthRedirect`: User already consented - redirect immediately to the OAuth client
+
+Use type narrowing to distinguish between the responses:
+
+```typescript
+if ('authorization_id' in data) {
+  // Show consent page
+} else {
+  // Redirect to data.redirect_url
+}
+```
+
+## listGrants
+
+Lists all OAuth grants that the authenticated user has authorized.
+Only relevant when the OAuth 2.1 server is enabled in Supabase Auth.
+
+## revokeGrant
+
+Revokes a user's OAuth grant for a specific client.
+Only relevant when the OAuth 2.1 server is enabled in Supabase Auth.
+
+Revocation marks consent as revoked, deletes active sessions for that OAuth client,
+and invalidates associated refresh tokens.
+
+## Passkey admin
+
+Contains passkey administration methods. Requires a secret key.
+
+## Passkey admin
+
+Contains passkey administration methods. Requires a secret key.
+
+## deletePasskey
+
+Deletes a specific passkey for a specific user.
+
+This function should only be called on a server. Never expose your `service_role` key in the browser.
+
+## listPasskeys
+
+Lists all passkeys registered for a specific user.
+
+This function should only be called on a server. Never expose your `service_role` key in the browser.
+
+## Edge Functions
+
+## corsHeaders
+
+Default CORS headers for Supabase Edge Functions.
+
+Includes all headers sent by Supabase client libraries and allows all standard HTTP methods.
+Use this for simple CORS configurations with wildcard origin.
+
+### Examples
+
+#### Basic usage
+
+```typescript
+import { corsHeaders } from '@supabase/supabase-js/cors'
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  return new Response(
+    JSON.stringify({ data: 'Hello' }),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  )
+})
+```
+
+## invoke
+
+Invokes a function
+
+- The API key is sent in the `apikey` header. The `Authorization` header is reserved
+  for the signed-in user's JWT (or a custom auth token) — when there is no session, a
+  new-format API key (`sb_publishable_…` / `sb_secret_…`) is not sent as a Bearer token.
+- Invoke params generally match the Fetch API spec.
+- When you pass in a body to your function, we automatically attach the Content-Type header for `Blob`, `ArrayBuffer`, `File`, `FormData` and `String`. If it doesn't match any of these types we assume the payload is `json`, serialize it and attach the `Content-Type` header as `application/json`. You can override this behavior by passing in a `Content-Type` header of your own.
+- Responses are automatically parsed as `json`, `blob` and `form-data` depending on the `Content-Type` header sent by your function. Responses are parsed as `text` by default.
+
+### Examples
+
+#### Example 1
+
+```ts
+const { data, error } = await functions.invoke('hello-world', {
+  body: { name: 'Ada' },
+})
+```
+
+#### Basic invocation
+
+```js
+const { data, error } = await supabase.functions.invoke('hello', {
+  body: { foo: 'bar' }
+})
+```
+
+#### Error handling
+
+```js
+import { FunctionsHttpError, FunctionsRelayError, FunctionsFetchError } from "@supabase/supabase-js";
+
+const { data, error } = await supabase.functions.invoke('hello', {
+  headers: {
+    "my-custom-header": 'my-custom-header-value'
+  },
+  body: { foo: 'bar' }
+})
+
+if (error instanceof FunctionsHttpError) {
+  const errorMessage = await error.context.json()
+  console.error('Function returned an error', errorMessage)
+} else if (error instanceof FunctionsRelayError) {
+  console.error('Relay error:', error)
+} else if (error instanceof FunctionsFetchError) {
+  console.error('Fetch error:', error)
+}
+```
+
+#### Passing custom headers
+
+```js
+const { data, error } = await supabase.functions.invoke('hello', {
+  headers: {
+    "my-custom-header": 'my-custom-header-value'
+  },
+  body: { foo: 'bar' }
+})
+```
+
+#### Calling with DELETE HTTP verb
+
+```js
+const { data, error } = await supabase.functions.invoke('hello', {
+  headers: {
+    "my-custom-header": 'my-custom-header-value'
+  },
+  body: { foo: 'bar' },
+  method: 'DELETE'
+})
+```
+
+#### Invoking a Function in the UsEast1 region
+
+```js
+import { createClient, FunctionRegion } from '@supabase/supabase-js'
+
+const { data, error } = await supabase.functions.invoke('hello', {
+  body: { foo: 'bar' },
+  region: FunctionRegion.UsEast1
+})
+```
+
+#### Calling with GET HTTP verb
+
+```js
+const { data, error } = await supabase.functions.invoke('hello', {
+  headers: {
+    "my-custom-header": 'my-custom-header-value'
+  },
+  method: 'GET'
+})
+```
+
+#### Standalone client invoke
+
+```ts
+const { data, error } = await functions.invoke('hello-world', {
+  body: { name: 'Ada' },
+})
+```
+
+## setAuth
+
+Updates the authorization header
+
+### Examples
+
+#### Setting the authorization header
+
+```ts
+functions.setAuth(session.access_token)
+```
+
+## Realtime
+
+## channel
+
+Creates (or reuses) a RealtimeChannel for the provided topic.
+
+Topics are automatically prefixed with `realtime:` to match the Realtime service.
+If a channel with the same topic already exists it will be returned instead of creating
+a duplicate connection.
+
+## connect
+
+Connects the socket, unless already connected.
+
+## connectionState
+
+Returns the current state of the socket.
+
+## disconnect
+
+Disconnects the socket.
+
+## endpointURL
+
+Returns the URL of the websocket.
+
+## getChannels
+
+Returns all created channels
+
+## getWebSocketConstructor
+
+Returns the best available WebSocket constructor for the current runtime.
+
+### Examples
+
+#### Example with error handling
+
+```ts
+try {
+  const WS = WebSocketFactory.getWebSocketConstructor()
+  const socket = new WS('wss://example.com/socket')
+} catch (error) {
+  console.error('WebSocket not available in this environment.', error)
+}
+```
+
+## hasLogger
+
+Returns true if a custom `logger` has been configured on this client.
+
+## httpSend
+
+Sends a broadcast message explicitly via REST API.
+
+This method always uses the REST API endpoint regardless of WebSocket connection state.
+Useful when you want to guarantee REST delivery or when gradually migrating from implicit REST fallback.
+
+Payloads that are `ArrayBuffer` or `ArrayBufferView` (e.g. `Uint8Array`) are sent as
+`application/octet-stream`; all other payloads are JSON-encoded.
+
+## isConnected
+
+Returns `true` is the connection is open.
+
+## isConnecting
+
+Returns `true` if the connection is currently connecting.
+
+## isDisconnecting
+
+Returns `true` if the connection is currently disconnecting.
+
+## isWebSocketSupported
+
+Detects whether the runtime can establish WebSocket connections.
+
+### Examples
+
+#### Example in a Node.js script
+
+```ts
+if (!WebSocketFactory.isWebSocketSupported()) {
+  console.error('WebSockets are required for this script.')
+  process.exitCode = 1
+}
+```
+
+## log
+
+Logs the message.
+
+For customized logging, `this.logger` can be overridden in Client constructor.
+
+## on
+
+Listen for presence events on this channel — when peers join, leave, or
+sync presence state.
+
+- By default, Broadcast and Presence are enabled for all projects.
+- By default, listening to database changes is disabled for new projects due to database performance and security concerns. You can turn it on by managing Realtime's replication.
+- You can receive the "previous" data for updates and deletes by setting the table's `REPLICA IDENTITY` to `FULL` (e.g., `ALTER TABLE your_table REPLICA IDENTITY FULL;`).
+- Row level security is not applied to delete statements. When RLS is enabled and replica identity is set to full, only the primary key is sent to clients.
+
+### Examples
+
+#### Listen to broadcast messages
+
+```js
+const channel = supabase.channel("room1")
+
+channel.on("broadcast", { event: "cursor-pos" }, (payload) => {
+  console.log("Cursor position received!", payload);
+}).subscribe((status) => {
+  if (status === "SUBSCRIBED") {
+    channel.send({
+      type: "broadcast",
+      event: "cursor-pos",
+      payload: { x: Math.random(), y: Math.random() },
+    });
+  }
+});
+```
+
+#### Listen to presence sync
+
+```js
+const channel = supabase.channel('room1')
+channel
+  .on('presence', { event: 'sync' }, () => {
+    console.log('Synced presence state: ', channel.presenceState())
+  })
+  .subscribe(async (status) => {
+    if (status === 'SUBSCRIBED') {
+      await channel.track({ online_at: new Date().toISOString() })
+    }
+  })
+```
+
+#### Listen to presence join
+
+```js
+const channel = supabase.channel('room1')
+channel
+  .on('presence', { event: 'join' }, ({ newPresences }) => {
+    console.log('Newly joined presences: ', newPresences)
+  })
+  .subscribe(async (status) => {
+    if (status === 'SUBSCRIBED') {
+      await channel.track({ online_at: new Date().toISOString() })
+    }
+  })
+```
+
+#### Listen to presence leave
+
+```js
+const channel = supabase.channel('room1')
+channel
+  .on('presence', { event: 'leave' }, ({ leftPresences }) => {
+    console.log('Newly left presences: ', leftPresences)
+  })
+  .subscribe(async (status) => {
+    if (status === 'SUBSCRIBED') {
+      await channel.track({ online_at: new Date().toISOString() })
+      await channel.untrack()
+    }
+  })
+```
+
+Registering the same `postgres_changes` filter more than once on a channel is a no-op: the
+duplicate is ignored and an error is logged, since the server only ever creates one
+subscription per distinct filter.
+
+#### Listen to all database changes
+
+```js
+supabase
+  .channel('room1')
+  .on('postgres_changes', { event: '*', schema: '*' }, payload => {
+    console.log('Change received!', payload)
+  })
+  .subscribe()
+```
+
+#### Listen to a specific table
+
+```js
+supabase
+  .channel('room1')
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'countries' }, payload => {
+    console.log('Change received!', payload)
+  })
+  .subscribe()
+```
+
+#### Listen to inserts
+
+```js
+supabase
+  .channel('room1')
+  .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'countries' }, payload => {
+    console.log('Change received!', payload)
+  })
+  .subscribe()
+```
+
+#### Listen to updates
+
+```js
+supabase
+  .channel('room1')
+  .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'countries' }, payload => {
+    console.log('Change received!', payload)
+  })
+  .subscribe()
+```
+
+#### Listen to deletes
+
+```js
+supabase
+  .channel('room1')
+  .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'countries' }, payload => {
+    console.log('Change received!', payload)
+  })
+  .subscribe()
+```
+
+#### Listen to multiple events
+
+```js
+supabase
+  .channel('room1')
+  .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'countries' }, handleRecordInserted)
+  .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'countries' }, handleRecordDeleted)
+  .subscribe()
+```
+
+#### Listen to row level changes
+
+```js
+supabase
+  .channel('room1')
+  .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'countries', filter: 'id=eq.200' }, handleRecordUpdated)
+  .subscribe()
+```
+
+## onHeartbeat
+
+Sets a callback that receives lifecycle events for internal heartbeat messages.
+Useful for instrumenting connection health (e.g. sent/ok/timeout).
+
+## presenceState
+
+Returns the current presence state for this channel.
+
+The shape is a map keyed by presence key (for example a user id) where each entry contains the
+tracked metadata for that user.
+
+## push
+
+Push out a message if the socket is connected.
+
+If the socket is not connected, the message gets enqueued within a local buffer, and sent out when a connection is next established.
+
+## removeAllChannels
+
+Unsubscribes, removes and tears down all channels
+
+## removeChannel
+
+Unsubscribes, removes and tears down a single channel
+
+## send
+
+Sends a message into the channel.
+
+- When using REST you don't need to subscribe to the channel
+- REST calls are only available from 2.37.0 onwards
+- If you create a channel only to send a REST broadcast, remove it from
+  the client when the send completes
+
+### Examples
+
+#### Send a message via websocket
+
+```js
+const channel = supabase.channel('room1')
+
+channel.subscribe((status) => {
+  if (status === 'SUBSCRIBED') {
+    channel.send({
+      type: 'broadcast',
+      event: 'cursor-pos',
+      payload: { x: Math.random(), y: Math.random() },
+    })
+  }
+})
+```
+
+#### Send a message via REST
+
+```js
+const channel = supabase.channel('room1')
+
+try {
+  await channel.httpSend('cursor-pos', { x: Math.random(), y: Math.random() })
+} finally {
+  await supabase.removeChannel(channel)
+}
+```
+
+## sendHeartbeat
+
+Sends a heartbeat message if the socket is connected.
+
+## setAuth
+
+Sets the JWT access token used for channel subscription authorization and Realtime RLS.
+
+If param is null it will use the `accessToken` callback function or the token set on the client.
+
+On callback used, it will set the value of the token internal to the client.
+
+When a token is explicitly provided AND no `accessToken` callback is configured,
+it will be preserved across channel operations (including removeChannel and
+resubscribe) and the client stays in manual-token mode.
+
+When an `accessToken` callback IS configured, the callback is the source of truth:
+the client remains in callback mode and continues to refresh from it on heartbeat,
+even after a bootstrap/override `setAuth(token)` call.
+
+The callback is called on connect and on every heartbeat (`heartbeatIntervalMs`,
+default 25000ms). Its token must stay valid past the next call, or the server closes
+the channel at expiry with no automatic resubscribe.
+
+### Examples
+
+#### Example 1
+
+```ts
+Setting the authorization header
+// Use a manual token (preserved across resubscribes when no accessToken callback is set)
+client.realtime.setAuth('my-custom-jwt')
+
+// Switch back to using the accessToken callback
+client.realtime.setAuth()
+```
+
+## subscribe
+
+Subscribe registers your client with the server.
+
+The optional `callback` receives a `status` and, on failure, an `err` argument.
+Log the full `err` so its `cause`, `name`, and any structured fields aren't hidden
+behind `err.message`.
+
+### Examples
+
+#### Handling errors
+
+```js
+supabase.channel('room1').subscribe((status, err) => {
+  if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+    // Log the full error: its `cause` often holds the underlying reason.
+    console.error(status, err)
+  }
+})
+```
+
+## teardown
+
+Destroys and stops related timers.
+
+## track
+
+Sends the supplied payload to the presence tracker so other subscribers can see that this
+client is online. Use `untrack` to stop broadcasting presence for the same key.
+
+Tracking makes this client visible to other subscribers immediately, regardless of this
+channel's `config.presence.enabled` setting or whether it has a `presence` listener — that
+flag only affects whether *this* client receives presence updates from others (and, on
+RLS-protected channels, whether it's authorized to do so).
+
+## unsubscribe
+
+Leaves the channel.
+
+Unsubscribes from server events, and instructs channel to terminate on server.
+Triggers onClose() hooks.
+
+To receive leave acknowledgements, use the a `receive` hook to bind to the server ack, ie:
+channel.unsubscribe().receive("ok", () => alert("left!") )
+
+## untrack
+
+Removes the current presence state for this client.
+
+## updateJoinPayload
+
+Updates the payload that will be sent the next time the channel joins (reconnects).
+Useful for rotating access tokens or updating config without re-creating the channel.
+
+## Storage
+
+## Analytics Buckets
+
+This section contains methods for working with Analytics Buckets.
+
+## Analytics Buckets
+
+This section contains methods for working with Analytics Buckets.
+
+## createBucket
+
+Creates a new analytics bucket using Iceberg tables
+Analytics buckets are optimized for analytical queries and data processing
+
+**Public alpha:** This API is part of a public alpha release and may not be available to your account type.
+
+- Creates a new analytics bucket using Iceberg tables
+- Analytics buckets are optimized for analytical queries and data processing
+
+### Examples
+
+#### Create analytics bucket
+
+```js
+const { data, error } = await supabase
+  .storage
+  .analytics
+  .createBucket('analytics-data')
+```
+
+## deleteBucket
+
+Deletes an existing analytics bucket
+A bucket can't be deleted with existing objects inside it
+You must first empty the bucket before deletion
+
+**Public alpha:** This API is part of a public alpha release and may not be available to your account type.
+
+- Deletes an analytics bucket
+
+### Examples
+
+#### Delete analytics bucket
+
+```js
+const { data, error } = await supabase
+  .storage
+  .analytics
+  .deleteBucket('analytics-data')
+```
+
+## from
+
+Get an Iceberg REST Catalog client configured for a specific analytics bucket
+Use this to perform advanced table and namespace operations within the bucket
+The returned client provides full access to the Apache Iceberg REST Catalog API
+with the Supabase `{ data, error }` pattern for consistent error handling on all operations.
+
+**Public alpha:** This API is part of a public alpha release and may not be available to your account type.
+
+This method provides a bridge between Supabase's bucket management and the standard
+Apache Iceberg REST Catalog API. The bucket name maps to the Iceberg warehouse parameter.
+All authentication and configuration is handled automatically using your Supabase credentials.
+
+**Error Handling**: Invalid bucket names throw immediately. All catalog
+operations return `{ data, error }` where errors are `IcebergError` instances from iceberg-js.
+Use helper methods like `error.isNotFound()` or check `error.status` for specific error handling.
+Use `.throwOnError()` on the analytics client if you prefer exceptions for catalog operations.
+
+**Cleanup Operations**: When using `dropTable`, the `purge: true` option permanently
+deletes all table data. Without it, the table is marked as deleted but data remains.
+
+**Library Dependency**: The returned catalog wraps `IcebergRestCatalog` from iceberg-js.
+For complete API documentation and advanced usage, refer to the
+iceberg-js documentation.
+
+### Examples
+
+#### Get catalog and create table
+
+```js
+// First, create an analytics bucket
+const { data: bucket, error: bucketError } = await supabase
+  .storage
+  .analytics
+  .createBucket('analytics-data')
+
+// Get the Iceberg catalog for that bucket
+const catalog = supabase.storage.analytics.from('analytics-data')
+
+// Create a namespace
+const { error: nsError } = await catalog.createNamespace({ namespace: ['default'] })
+
+// Create a table with schema
+const { data: tableMetadata, error: tableError } = await catalog.createTable(
+  { namespace: ['default'] },
+  {
+    name: 'events',
+    schema: {
+      type: 'struct',
+      fields: [
+        { id: 1, name: 'id', type: 'long', required: true },
+        { id: 2, name: 'timestamp', type: 'timestamp', required: true },
+        { id: 3, name: 'user_id', type: 'string', required: false }
+      ],
+      'schema-id': 0,
+      'identifier-field-ids': [1]
+    },
+    'partition-spec': {
+      'spec-id': 0,
+      fields: []
+    },
+    'write-order': {
+      'order-id': 0,
+      fields: []
+    },
+    properties: {
+      'write.format.default': 'parquet'
+    }
+  }
+)
+```
+
+#### List tables in namespace
+
+```js
+const catalog = supabase.storage.analytics.from('analytics-data')
+
+// List all tables in the default namespace
+const { data: tables, error: listError } = await catalog.listTables({ namespace: ['default'] })
+if (listError) {
+  if (listError.isNotFound()) {
+    console.log('Namespace not found')
+  }
+  return
+}
+console.log(tables) // [{ namespace: ['default'], name: 'events' }]
+```
+
+#### Working with namespaces
+
+```js
+const catalog = supabase.storage.analytics.from('analytics-data')
+
+// List all namespaces
+const { data: namespaces } = await catalog.listNamespaces()
+
+// Create namespace with properties
+await catalog.createNamespace(
+  { namespace: ['production'] },
+  { properties: { owner: 'data-team', env: 'prod' } }
+)
+```
+
+#### Cleanup operations
+
+```js
+const catalog = supabase.storage.analytics.from('analytics-data')
+
+// Drop table with purge option (removes all data)
+const { error: dropError } = await catalog.dropTable(
+  { namespace: ['default'], name: 'events' },
+  { purge: true }
+)
+
+if (dropError?.isNotFound()) {
+  console.log('Table does not exist')
+}
+
+// Drop namespace (must be empty)
+await catalog.dropNamespace({ namespace: ['default'] })
+```
+
+## listBuckets
+
+Retrieves the details of all Analytics Storage buckets within an existing project
+Only returns buckets of type 'ANALYTICS'
+
+**Public alpha:** This API is part of a public alpha release and may not be available to your account type.
+
+- Retrieves the details of all Analytics Storage buckets within an existing project
+- Only returns buckets of type 'ANALYTICS'
+
+### Examples
+
+#### List analytics buckets
+
+```js
+const { data, error } = await supabase
+  .storage
+  .analytics
+  .listBuckets({
+    limit: 10,
+    offset: 0,
+    sortColumn: 'created_at',
+    sortOrder: 'desc'
+  })
+```
+
+## File Buckets
+
+This section contains methods for working with File Buckets.
+
+## File Buckets
+
+This section contains methods for working with File Buckets.
+
+## copy
+
+Copies an existing file to a new path in the same bucket.
+
+- RLS policy permissions required:
+  - `buckets` table permissions: none
+  - `objects` table permissions: `insert` and `select`
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Copy file
+
+```js
+const { data, error } = await supabase
+  .storage
+  .from('avatars')
+  .copy('public/avatar1.png', 'private/avatar2.png')
+```
+
+## createBucket
+
+Creates a new Storage bucket
+
+- RLS policy permissions required:
+  - `buckets` table permissions: `insert`
+  - `objects` table permissions: none
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Create bucket
+
+```js
+const { data, error } = await supabase
+  .storage
+  .createBucket('avatars', {
+    public: false,
+    allowedMimeTypes: ['image/png'],
+    fileSizeLimit: 1024
+  })
+```
+
+## createSignedUploadUrl
+
+Creates a signed upload URL.
+Signed upload URLs can be used to upload files to the bucket without further authentication.
+They are valid for 2 hours.
+
+- RLS policy permissions required:
+  - `buckets` table permissions: none
+  - `objects` table permissions: `insert`
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Create Signed Upload URL
+
+```js
+const { data, error } = await supabase
+  .storage
+  .from('avatars')
+  .createSignedUploadUrl('folder/cat.jpg')
+```
+
+## createSignedUrl
+
+Creates a signed URL. Use a signed URL to share a file for a fixed amount of time.
+
+- RLS policy permissions required:
+  - `buckets` table permissions: none
+  - `objects` table permissions: `select`
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Create Signed URL
+
+```js
+const { data, error } = await supabase
+  .storage
+  .from('avatars')
+  .createSignedUrl('folder/avatar1.png', 60)
+```
+
+#### Create a signed URL for an asset with transformations
+
+```js
+const { data } = await supabase
+  .storage
+  .from('avatars')
+  .createSignedUrl('folder/avatar1.png', 60, {
+    transform: {
+      width: 100,
+      height: 100,
+    }
+  })
+```
+
+#### Create a signed URL which triggers the download of the asset
+
+```js
+const { data } = await supabase
+  .storage
+  .from('avatars')
+  .createSignedUrl('folder/avatar1.png', 60, {
+    download: true,
+  })
+```
+
+## createSignedUrls
+
+Creates multiple signed URLs. Use a signed URL to share a file for a fixed amount of time.
+
+- RLS policy permissions required:
+  - `buckets` table permissions: none
+  - `objects` table permissions: `select`
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Create Signed URLs
+
+```js
+const { data, error } = await supabase
+  .storage
+  .from('avatars')
+  .createSignedUrls(['folder/avatar1.png', 'folder/avatar2.png'], 60)
+```
+
+## deleteBucket
+
+Deletes an existing bucket. A bucket can't be deleted with existing objects inside it.
+You must first `empty()` the bucket.
+
+- RLS policy permissions required:
+  - `buckets` table permissions: `select` and `delete`
+  - `objects` table permissions: none
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Delete bucket
+
+```js
+const { data, error } = await supabase
+  .storage
+  .deleteBucket('avatars')
+```
+
+## deleteBucketLifecycle
+
+Removes the lifecycle policy from a bucket.
+
+Safe to call when no policy is stored. The response is still success.
+Standard buckets only. Returns `FeatureNotEnabled` if lifecycle is off
+for the project.
+
+- RLS policy permissions required:
+  - `buckets` table permissions: `select` and `update`
+  - `objects` table permissions: none
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Delete lifecycle configuration
+
+```js
+const { data, error } = await supabase
+  .storage
+  .deleteBucketLifecycle('avatars')
+```
+
+## download
+
+Downloads a file from a private bucket. For public buckets, make a request to the URL returned from `getPublicUrl` instead.
+
+- RLS policy permissions required:
+  - `buckets` table permissions: none
+  - `objects` table permissions: `select`
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Download file
+
+```js
+const { data, error } = await supabase
+  .storage
+  .from('avatars')
+  .download('folder/avatar1.png')
+```
+
+#### Download file with transformations
+
+```js
+const { data, error } = await supabase
+  .storage
+  .from('avatars')
+  .download('folder/avatar1.png', {
+    transform: {
+      width: 100,
+      height: 100,
+      quality: 80
+    }
+  })
+```
+
+#### Download with cache control (useful in Edge Functions)
+
+```js
+const { data, error } = await supabase
+  .storage
+  .from('avatars')
+  .download('folder/avatar1.png', {}, { cache: 'no-store' })
+```
+
+#### Download with abort signal
+
+```js
+const controller = new AbortController()
+setTimeout(() => controller.abort(), 5000)
+
+const { data, error } = await supabase
+  .storage
+  .from('avatars')
+  .download('folder/avatar1.png', {}, { signal: controller.signal })
+```
+
+## emptyBucket
+
+Removes all objects inside a single bucket.
+
+- RLS policy permissions required:
+  - `buckets` table permissions: `select`
+  - `objects` table permissions: `select` and `delete`
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Empty bucket
+
+```js
+const { data, error } = await supabase
+  .storage
+  .emptyBucket('avatars')
+```
+
+## exists
+
+Checks the existence of a file.
+
+### Examples
+
+#### Check file existence
+
+```js
+const { data, error } = await supabase
+  .storage
+  .from('avatars')
+  .exists('folder/avatar1.png')
+```
+
+## from
+
+Perform file operation in a bucket.
+
+### Examples
+
+#### Accessing a bucket
+
+```typescript
+const avatars = supabase.storage.from('avatars')
+```
+
+## getBucket
+
+Retrieves the details of an existing Storage bucket.
+
+- RLS policy permissions required:
+  - `buckets` table permissions: `select`
+  - `objects` table permissions: none
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Get bucket
+
+```js
+const { data, error } = await supabase
+  .storage
+  .getBucket('avatars')
+```
+
+## getBucketLifecycle
+
+Returns the lifecycle policy stored on a bucket.
+
+Fails with `NoSuchLifecycleConfiguration` when the bucket has no policy.
+
+These rules expire previous versions of objects, not the current one.
+Turn versioning on or there is nothing for the policy to act on.
+Standard buckets only. Returns `FeatureNotEnabled` if lifecycle is off
+for the project.
+
+- RLS policy permissions required:
+  - `buckets` table permissions: `select`
+  - `objects` table permissions: none
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Get lifecycle configuration
+
+```js
+const { data, error } = await supabase
+  .storage
+  .getBucketLifecycle('avatars')
+```
+
+## getPublicUrl
+
+A simple convenience function to get the URL for an asset in a public bucket. If you do not want to use this function, you can construct the public URL by concatenating the bucket URL with the path to the asset.
+This function does not verify if the bucket is public. If a public URL is created for a bucket which is not public, you will not be able to download the asset.
+
+- The bucket needs to be set to public, either via updateBucket() or by going to Storage on supabase.com/dashboard, clicking the overflow menu on a bucket and choosing "Make public"
+- RLS policy permissions required:
+  - `buckets` table permissions: none
+  - `objects` table permissions: none
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Returns the URL for an asset in a public bucket
+
+```js
+const { data } = supabase
+  .storage
+  .from('public-bucket')
+  .getPublicUrl('folder/avatar1.png')
+```
+
+#### Returns the URL for an asset in a public bucket with transformations
+
+```js
+const { data } = supabase
+  .storage
+  .from('public-bucket')
+  .getPublicUrl('folder/avatar1.png', {
+    transform: {
+      width: 100,
+      height: 100,
+    }
+  })
+```
+
+#### Returns the URL which triggers the download of an asset in a public bucket
+
+```js
+const { data } = supabase
+  .storage
+  .from('public-bucket')
+  .getPublicUrl('folder/avatar1.png', {
+    download: true,
+  })
+```
+
+## info
+
+Retrieves the details of an existing file.
+
+Returns detailed file metadata including size, content type, and timestamps.
+Note: The API returns `last_modified` field, not `updated_at`.
+
+### Examples
+
+#### Get file info
+
+```js
+const { data, error } = await supabase
+  .storage
+  .from('avatars')
+  .info('folder/avatar1.png')
+
+if (data) {
+  console.log('Last modified:', data.lastModified)
+  console.log('Size:', data.size)
+}
+```
+
+## list
+
+Lists all the files and folders within a path of the bucket.
+
+**Important:** For folder entries, fields like `id`, `updated_at`, `created_at`,
+`last_accessed_at`, and `metadata` will be `null`. Only files have these fields populated.
+Additionally, deprecated fields like `bucket_id`, `owner`, and `buckets` are NOT returned
+by this method.
+
+- RLS policy permissions required:
+  - `buckets` table permissions: none
+  - `objects` table permissions: `select`
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### List files in a bucket
+
+```js
+const { data, error } = await supabase
+  .storage
+  .from('avatars')
+  .list('folder', {
+    limit: 100,
+    offset: 0,
+    sortBy: { column: 'name', order: 'asc' },
+  })
+
+// Handle files vs folders
+data?.forEach(item => {
+  if (item.id !== null) {
+    // It's a file
+    console.log('File:', item.name, 'Size:', item.metadata?.size)
+  } else {
+    // It's a folder
+    console.log('Folder:', item.name)
+  }
+})
+```
+
+#### Search files in a bucket
+
+```js
+const { data, error } = await supabase
+  .storage
+  .from('avatars')
+  .list('folder', {
+    limit: 100,
+    offset: 0,
+    sortBy: { column: 'name', order: 'asc' },
+    search: 'jon'
+  })
+```
+
+## listBuckets
+
+Retrieves the details of all Storage buckets within an existing project.
+
+- RLS policy permissions required:
+  - `buckets` table permissions: `select`
+  - `objects` table permissions: none
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### List buckets
+
+```js
+const { data, error } = await supabase
+  .storage
+  .listBuckets()
+```
+
+#### List buckets with options
+
+```js
+const { data, error } = await supabase
+  .storage
+  .listBuckets({
+    limit: 10,
+    offset: 0,
+    sortColumn: 'created_at',
+    sortOrder: 'desc',
+    search: 'prod'
+  })
+```
+
+## listV2
+
+Lists all the files and folders within a bucket using the V2 API with pagination support.
+
+**Important:** Folder entries in the `folders` array only contain `name` and optionally `key` —
+they have no `id`, timestamps, or `metadata` fields. Full file metadata is only available
+on entries in the `objects` array.
+
+this method signature might change in the future
+
+### Examples
+
+#### List files with pagination
+
+```js
+const { data, error } = await supabase
+  .storage
+  .from('avatars')
+  .listV2({
+    prefix: 'folder/',
+    limit: 100,
+  })
+
+// Handle pagination
+if (data?.hasNext) {
+  const nextPage = await supabase
+    .storage
+    .from('avatars')
+    .listV2({
+      prefix: 'folder/',
+      cursor: data.nextCursor,
+    })
+}
+
+// Handle files vs folders
+data?.objects.forEach(file => {
+  if (file.id !== null) {
+    console.log('File:', file.name, 'Size:', file.metadata?.size)
+  }
+})
+data?.folders.forEach(folder => {
+  console.log('Folder:', folder.name)
+})
+```
+
+## move
+
+Moves an existing file to a new path in the same bucket.
+
+- RLS policy permissions required:
+  - `buckets` table permissions: none
+  - `objects` table permissions: `update` and `select`
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Move file
+
+```js
+const { data, error } = await supabase
+  .storage
+  .from('avatars')
+  .move('public/avatar1.png', 'private/avatar2.png')
+```
+
+## purgeBucketCache
+
+Purges the CDN cache for an entire bucket.
+
+Maps to `DELETE /cdn/{bucket}` on the Storage API. The server
+issues a CDN invalidation for the bucket and returns `{ message: 'success' }`.
+
+**Requires the `service_role` key.** The underlying endpoint enforces
+`service_role` JWT — calls made with the anon key or a user JWT will be
+rejected by the server.
+
+**Hosted CDN feature.** On self-hosted Supabase, the Storage service must
+have `CDN_PURGE_ENDPOINT_URL` configured and the `purgeCache` tenant
+feature enabled, otherwise the server returns an error.
+
+### Examples
+
+#### Purge cache for an entire bucket
+
+```js
+const { data, error } = await supabase
+  .storage
+  .purgeBucketCache('avatars')
+```
+
+#### Purge only transformations for an entire bucket
+
+```js
+const { data, error } = await supabase
+  .storage
+  .purgeBucketCache('avatars', { transformations: true })
+```
+
+## purgeCache
+
+Purges the CDN cache for a single object in this bucket.
+
+Maps to `DELETE /cdn/{bucket}/{path}` on the Storage API. The server
+issues a CDN invalidation for the object and returns `{ message: 'success' }`.
+
+**Requires the `service_role` key.** The underlying endpoint enforces
+`service_role` JWT — calls made with the anon key or a user JWT will be
+rejected by the server.
+
+**Hosted CDN feature.** On self-hosted Supabase, the Storage service must
+have `CDN_PURGE_ENDPOINT_URL` configured and the `purgeCache` tenant
+feature enabled, otherwise the server returns an error.
+
+Operates on a single object path. There is no wildcard or recursion: pass
+the exact path of the object you want invalidated.
+
+### Examples
+
+#### Purge a single cached object
+
+```js
+const { data, error } = await supabase
+  .storage
+  .from('avatars')
+  .purgeCache('folder/avatar1.png')
+```
+
+#### Purge only transformations for a single object
+
+```js
+const { data, error } = await supabase
+  .storage
+  .from('avatars')
+  .purgeCache('folder/avatar1.png', { transformations: true })
+```
+
+## remove
+
+Deletes files within the same bucket
+
+Returns an array of FileObject entries for the deleted files. Note that deprecated
+fields like `bucket_id` may or may not be present in the response - do not rely on them.
+
+- RLS policy permissions required:
+  - `buckets` table permissions: none
+  - `objects` table permissions: `delete` and `select`
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Delete file
+
+```js
+const { data, error } = await supabase
+  .storage
+  .from('avatars')
+  .remove(['folder/avatar1.png'])
+```
+
+#### Delete a specific object version
+
+```js
+const { data, error } = await supabase
+  .storage
+  .from('avatars')
+  .remove([{ path: 'folder/avatar1.png', versionId: 'noncurrent-version-id' }])
+```
+
+## update
+
+Replaces an existing file at the specified path with a new one.
+
+- RLS policy permissions required:
+  - `buckets` table permissions: none
+  - `objects` table permissions: `update` and `select`
+- `update()` always replaces the file at the given path regardless of the `upsert` option.
+- Refer to the Storage guide on how access control works
+- For React Native, using either `Blob`, `File` or `FormData` does not work as intended. Update file using `ArrayBuffer` from base64 file data instead, see example below.
+
+### Examples
+
+#### Update file
+
+```js
+const avatarFile = event.target.files[0]
+const { data, error } = await supabase
+  .storage
+  .from('avatars')
+  .update('public/avatar1.png', avatarFile, {
+    cacheControl: '3600'
+  })
+```
+
+#### Update file using `ArrayBuffer` from base64 file data
+
+```js
+import {decode} from 'base64-arraybuffer'
+
+const { data, error } = await supabase
+  .storage
+  .from('avatars')
+  .update('public/avatar1.png', decode('base64FileData'), {
+    contentType: 'image/png'
+  })
+```
+
+## updateBucket
+
+Updates a Storage bucket
+
+- RLS policy permissions required:
+  - `buckets` table permissions: `select` and `update`
+  - `objects` table permissions: none
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Update bucket
+
+```js
+const { data, error } = await supabase
+  .storage
+  .updateBucket('avatars', {
+    public: false,
+    allowedMimeTypes: ['image/png'],
+    fileSizeLimit: 1024
+  })
+```
+
+## updateBucketLifecycle
+
+Replaces the lifecycle policy on a bucket.
+
+The `rules` array you send is the whole policy. Anything previously stored
+is overwritten. Send at least one rule. Call deleteBucketLifecycle
+to remove the policy.
+
+Each rule currently supports only `noncurrentVersionExpiration`. `filter`
+is required and must be `{}`. Prefix filters, tag filters, and current-object
+expiration are rejected. Rule IDs must be unique. Omit `id` and the
+server generates one.
+
+Standard buckets only. Returns `FeatureNotEnabled` if lifecycle is off
+for the project.
+
+- RLS policy permissions required:
+  - `buckets` table permissions: `select` and `update`
+  - `objects` table permissions: none
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Replace lifecycle configuration
+
+```js
+const { data, error } = await supabase
+  .storage
+  .updateBucketLifecycle('avatars', {
+    rules: [
+      {
+        id: 'expire-history',
+        status: 'Enabled',
+        filter: {},
+        noncurrentVersionExpiration: {
+          noncurrentDays: 30,
+          newerNoncurrentVersions: 2,
+        },
+      },
+    ],
+  })
+```
+
+## upload
+
+Uploads a file to an existing bucket.
+
+- RLS policy permissions required:
+  - `buckets` table permissions: none
+  - `objects` table permissions: only `insert` when you are uploading new files and `select`, `insert` and `update` when you are upserting files
+- Refer to the Storage guide on how access control works
+- For React Native, using either `Blob`, `File` or `FormData` does not work as intended. Upload file using `ArrayBuffer` from base64 file data instead, see example below.
+
+### Examples
+
+#### Upload file
+
+```js
+const avatarFile = event.target.files[0]
+const { data, error } = await supabase
+  .storage
+  .from('avatars')
+  .upload('public/avatar1.png', avatarFile, {
+    cacheControl: '3600',
+    upsert: false
+  })
+```
+
+#### Upload file using `ArrayBuffer` from base64 file data
+
+```js
+import { decode } from 'base64-arraybuffer'
+
+const { data, error } = await supabase
+  .storage
+  .from('avatars')
+  .upload('public/avatar1.png', decode('base64FileData'), {
+    contentType: 'image/png'
+  })
+```
+
+#### Handling errors
+
+```js
+const { data, error } = await supabase
+  .storage
+  .from('avatars')
+  .upload('public/avatar1.png', avatarFile)
+
+if (error) {
+  // Log the full error so fields like `statusCode` and `error` (the
+  // Storage error name, e.g. "Duplicate") aren't hidden behind `error.message`.
+  console.error(error)
+  return
+}
+```
+
+## uploadToSignedUrl
+
+Upload a file with a token generated from `createSignedUploadUrl`.
+
+- RLS policy permissions required:
+  - `buckets` table permissions: none
+  - `objects` table permissions: none
+- Refer to the Storage guide on how access control works
+
+### Examples
+
+#### Upload to a signed URL
+
+```js
+const { data, error } = await supabase
+  .storage
+  .from('avatars')
+  .uploadToSignedUrl('folder/cat.jpg', 'token-from-createSignedUploadUrl', file)
+```
+
+## Vector Buckets
+
+This section contains methods for working with Vector Buckets.
+
+## Vector Buckets
+
+This section contains methods for working with Vector Buckets.
+
+## createBucket
+
+Creates a new vector bucket
+Vector buckets are containers for vector indexes and their data
+
+**Public alpha:** This API is part of a public alpha release and may not be available to your account type.
+
+### Examples
+
+#### Creating a vector bucket
+
+```typescript
+const { data, error } = await supabase
+  .storage
+  .vectors
+  .createBucket('embeddings-prod')
+```
+
+## createIndex
+
+Creates a new vector index in this bucket
+Convenience method that automatically includes the bucket name
+
+**Public alpha:** This API is part of a public alpha release and may not be available to your account type.
+
+### Examples
+
+#### Creating a vector index
+
+```typescript
+const bucket = supabase.storage.vectors.from('embeddings-prod')
+await bucket.createIndex({
+  indexName: 'documents-openai',
+  dataType: 'float32',
+  dimension: 1536,
+  distanceMetric: 'cosine',
+  metadataConfiguration: {
+    nonFilterableMetadataKeys: ['raw_text']
+  }
+})
+```
+
+## deleteBucket
+
+Deletes a vector bucket (bucket must be empty)
+All indexes must be deleted before deleting the bucket
+
+**Public alpha:** This API is part of a public alpha release and may not be available to your account type.
+
+### Examples
+
+#### Delete a vector bucket
+
+```typescript
+const { data, error } = await supabase
+  .storage
+  .vectors
+  .deleteBucket('embeddings-old')
+```
+
+## deleteIndex
+
+Deletes an index from this bucket
+Convenience method that automatically includes the bucket name
+
+**Public alpha:** This API is part of a public alpha release and may not be available to your account type.
+
+### Examples
+
+#### Delete an index
+
+```typescript
+const bucket = supabase.storage.vectors.from('embeddings-prod')
+await bucket.deleteIndex('old-index')
+```
+
+## deleteVectors
+
+Deletes vectors by keys from this index
+Convenience method that automatically includes bucket and index names
+
+**Public alpha:** This API is part of a public alpha release and may not be available to your account type.
+
+### Examples
+
+#### Delete vectors by keys
+
+```typescript
+const index = supabase.storage.vectors.from('embeddings-prod').index('documents-openai')
+await index.deleteVectors({
+  keys: ['doc-1', 'doc-2', 'doc-3']
+})
+```
+
+## from
+
+Access operations for a specific vector bucket
+Returns a scoped client for index and vector operations within the bucket
+
+**Public alpha:** This API is part of a public alpha release and may not be available to your account type.
+
+### Examples
+
+#### Accessing a vector bucket
+
+```typescript
+const bucket = supabase.storage.vectors.from('embeddings-prod')
+```
+
+## getBucket
+
+Retrieves metadata for a specific vector bucket
+
+**Public alpha:** This API is part of a public alpha release and may not be available to your account type.
+
+### Examples
+
+#### Get bucket metadata
+
+```typescript
+const { data, error } = await supabase
+  .storage
+  .vectors
+  .getBucket('embeddings-prod')
+
+console.log('Bucket created:', data?.vectorBucket.creationTime)
+```
+
+## getIndex
+
+Retrieves metadata for a specific index in this bucket
+Convenience method that automatically includes the bucket name
+
+**Public alpha:** This API is part of a public alpha release and may not be available to your account type.
+
+### Examples
+
+#### Get index metadata
+
+```typescript
+const bucket = supabase.storage.vectors.from('embeddings-prod')
+const { data } = await bucket.getIndex('documents-openai')
+console.log('Dimension:', data?.index.dimension)
+```
+
+## getVectors
+
+Retrieves vectors by keys from this index
+Convenience method that automatically includes bucket and index names
+
+**Public alpha:** This API is part of a public alpha release and may not be available to your account type.
+
+### Examples
+
+#### Get vectors by keys
+
+```typescript
+const index = supabase.storage.vectors.from('embeddings-prod').index('documents-openai')
+const { data } = await index.getVectors({
+  keys: ['doc-1', 'doc-2'],
+  returnMetadata: true
+})
+```
+
+## index
+
+Access operations for a specific index within this bucket
+Returns a scoped client for vector data operations
+
+**Public alpha:** This API is part of a public alpha release and may not be available to your account type.
+
+### Examples
+
+#### Accessing an index
+
+```typescript
+const index = supabase.storage.vectors.from('embeddings-prod').index('documents-openai')
+
+// Insert vectors
+await index.putVectors({
+  vectors: [
+    { key: 'doc-1', data: { float32: [...] }, metadata: { title: 'Intro' } }
+  ]
+})
+
+// Query similar vectors
+const { data } = await index.queryVectors({
+  queryVector: { float32: [...] },
+  topK: 5
+})
+```
+
+## listBuckets
+
+Lists all vector buckets with optional filtering and pagination
+
+**Public alpha:** This API is part of a public alpha release and may not be available to your account type.
+
+### Examples
+
+#### List vector buckets
+
+```typescript
+const { data, error } = await supabase
+  .storage
+  .vectors
+  .listBuckets({ prefix: 'embeddings-' })
+
+data?.vectorBuckets.forEach(bucket => {
+  console.log(bucket.vectorBucketName)
+})
+```
+
+## listIndexes
+
+Lists indexes in this bucket
+Convenience method that automatically includes the bucket name
+
+**Public alpha:** This API is part of a public alpha release and may not be available to your account type.
+
+### Examples
+
+#### List indexes
+
+```typescript
+const bucket = supabase.storage.vectors.from('embeddings-prod')
+const { data } = await bucket.listIndexes({ prefix: 'documents-' })
+```
+
+## listVectors
+
+Lists vectors in this index with pagination
+Convenience method that automatically includes bucket and index names
+
+**Public alpha:** This API is part of a public alpha release and may not be available to your account type.
+
+### Examples
+
+#### List vectors with pagination
+
+```typescript
+const index = supabase.storage.vectors.from('embeddings-prod').index('documents-openai')
+const { data } = await index.listVectors({
+  maxResults: 500,
+  returnMetadata: true
+})
+```
+
+## putVectors
+
+Inserts or updates vectors in this index
+Convenience method that automatically includes bucket and index names
+
+**Public alpha:** This API is part of a public alpha release and may not be available to your account type.
+
+### Examples
+
+#### Insert vectors into an index
+
+```typescript
+const index = supabase.storage.vectors.from('embeddings-prod').index('documents-openai')
+await index.putVectors({
+  vectors: [
+    {
+      key: 'doc-1',
+      data: { float32: [0.1, 0.2, ...] },
+      metadata: { title: 'Introduction', page: 1 }
+    }
+  ]
+})
+```
+
+## queryVectors
+
+Queries for similar vectors in this index
+Convenience method that automatically includes bucket and index names
+
+**Public alpha:** This API is part of a public alpha release and may not be available to your account type.
+
+### Examples
+
+#### Query similar vectors
+
+```typescript
+const index = supabase.storage.vectors.from('embeddings-prod').index('documents-openai')
+const { data } = await index.queryVectors({
+  queryVector: { float32: [0.1, 0.2, ...] },
+  topK: 5,
+  filter: { category: 'technical' },
+  returnDistance: true,
+  returnMetadata: true
+})
+```
