@@ -1,0 +1,281 @@
+# Auth API: user
+# джерело: https://supabase.com/docs/reference/self-hosting-auth/introduction
+# отримано: 2026-09-24
+
+APIs used by a user to manage their account.
+
+## GET /user
+
+Fetch the latest user account information.
+
+Security: APIKeyAuth, UserAuth
+
+Responses:
+
+- `200`: User's account information.
+
+## PUT /user
+
+Update certain properties of the current user account.
+
+Security: APIKeyAuth, UserAuth
+
+Request body (application/json):
+
+- `email` `string`
+- `phone` `string`
+- `password` `string`
+- `nonce` `string`
+- `data` `object`
+- `app_metadata` `object`
+- `channel` `string, one of sms, whatsapp`
+
+Responses:
+
+- `200`: User's updated account information.
+- `400`: HTTP Bad Request response. Can occur if the passed in JSON cannot be unmarshalled properly or when CAPTCHA verification was not successful. In certain cases can also occur when features are disabled on the server (e.g. sign ups). It may also mean that the operation failed due to some constraint not being met (such a user already exists for example).
+- `429`: HTTP Too Many Requests response, when a rate limiter has been breached.
+
+## GET /user/identities/authorize
+
+Links an OAuth identity to an existing user. Redirects to an external OAuth provider.
+
+Security: APIKeyAuth, UserAuth
+
+Parameters:
+
+- `provider` (query, required) `string`: Name of the OAuth provider.
+- `scopes` (query, required) `string`: Space separated list of OAuth scopes to pass on to `provider`.
+- `redirect_to` (query) `string`: (Optional) URL to redirect back into the app on after OAuth sign-in completes successfully or not. If not specified will use the "Site URL" configuration option. If not allowed per the allow list it will use the "Site URL" configuration option.
+- `code_challenge_method` (query) `string, one of plain, s256`: (Optional) Method used to encrypt the verifier. Can be `plain` (no transformation) or `s256` (where SHA-256 is used). It is always recommended that `s256` is used.
+
+Responses:
+
+- `302`: HTTP Redirect to the OAuth identity provider's authorization URL.
+
+## DELETE /user/identities/{identityId}
+
+Unlinks an identity from the current user.
+
+Security: APIKeyAuth, UserAuth
+
+Parameters:
+
+- `identityId` (path, required) `string`
+
+Responses:
+
+- `200`: User's account data.
+- `401`: The user is not authenticated.
+- `403`: Forbidden error
+- `404`: Not found error
+- `422`: Unprocessable entity
+
+## GET /user/oauth/grants
+
+List OAuth grants
+
+Retrieves a list of all OAuth grants that the authenticated user has authorized. Only available when OAuth server is enabled.
+
+Security: APIKeyAuth, UserAuth
+
+Responses:
+
+- `200`: List of user's OAuth grants
+- `401`: HTTP Unauthorized response.
+- `403`: HTTP Forbidden response.
+
+## DELETE /user/oauth/grants
+
+Revoke OAuth grant
+
+Revokes the user's OAuth grant for a specific client. This will: - Mark the consent as revoked - Delete all active sessions associated with this OAuth client - Invalidate all refresh tokens for those sessions
+Only available when OAuth server is enabled.
+
+Security: APIKeyAuth, UserAuth
+
+Parameters:
+
+- `client_id` (query, required) `string`: The OAuth client identifier
+
+Responses:
+
+- `204`: Grant successfully revoked
+- `400`: Missing or invalid client_id parameter
+- `401`: HTTP Unauthorized response.
+- `403`: HTTP Forbidden response.
+- `404`: No active grant found for this client
+
+## POST /reauthenticate
+
+Reauthenticates the possession of an email or phone number for the purpose of password change.
+
+For a password to be changed on a user account, the user's email or phone number needs to be confirmed before they are allowed to set a new password. This requirement is configurable. This API sends a confirmation email or SMS message. A nonce in this message can be provided in `PUT /user` to change the password on the account.
+
+Security: APIKeyAuth, UserAuth
+
+Responses:
+
+- `200`: A One-Time Password was sent to the user's email or phone.
+- `400`: HTTP Bad Request response. Can occur if the passed in JSON cannot be unmarshalled properly or when CAPTCHA verification was not successful. In certain cases can also occur when features are disabled on the server (e.g. sign ups). It may also mean that the operation failed due to some constraint not being met (such a user already exists for example).
+- `429`: HTTP Too Many Requests response, when a rate limiter has been breached.
+
+## POST /factors
+
+Begin enrolling a new factor for MFA.
+
+Starts enrollment of a `totp`, `phone` or `webauthn` factor. Recovery codes are not enrolled through this endpoint; use `POST /factors/recovery-codes` instead.
+
+Security: APIKeyAuth, UserAuth
+
+Request body (application/json):
+
+- `factor_type` `string, one of totp, phone, webauthn`, required
+- `friendly_name` `string`
+- `issuer` `string`
+- `phone` `string`
+
+Responses:
+
+- `200`: A new factor was created in the unverified state. Call `POST /factors/{factorId}/verify' to verify it.
+- `400`: HTTP Bad Request response. Can occur if the passed in JSON cannot be unmarshalled properly or when CAPTCHA verification was not successful. In certain cases can also occur when features are disabled on the server (e.g. sign ups). It may also mean that the operation failed due to some constraint not being met (such a user already exists for example).
+
+## POST /factors/{factorId}/challenge
+
+Create a new challenge for a MFA factor.
+
+Security: APIKeyAuth, UserAuth
+
+Parameters:
+
+- `factorId` (path, required) `string`
+
+Request body (application/json):
+
+- `channel` `string, one of sms, whatsapp`
+
+Responses:
+
+- `200`: A new challenge was generated for the factor. Use `POST /factors/{factorId}/verify` to verify the challenge.
+- `400`: HTTP Bad Request response. Can occur if the passed in JSON cannot be unmarshalled properly or when CAPTCHA verification was not successful. In certain cases can also occur when features are disabled on the server (e.g. sign ups). It may also mean that the operation failed due to some constraint not being met (such a user already exists for example).
+- `429`: HTTP Too Many Requests response, when a rate limiter has been breached.
+
+## POST /factors/{factorId}/verify
+
+Verify a challenge on a factor.
+
+Security: APIKeyAuth, UserAuth
+
+Parameters:
+
+- `factorId` (path, required) `string`
+
+Request body (application/json):
+
+- `challenge_id` `string`, required
+- `code` `string`
+- `webauthn` `object`
+
+Responses:
+
+- `200`: This challenge has been verified. Client libraries should replace their stored access and refresh tokens with the ones provided in this response. These new credentials have an increased Authenticator Assurance Level (AAL).
+- `400`: HTTP Bad Request response. Can occur if the passed in JSON cannot be unmarshalled properly or when CAPTCHA verification was not successful. In certain cases can also occur when features are disabled on the server (e.g. sign ups). It may also mean that the operation failed due to some constraint not being met (such a user already exists for example).
+- `429`: HTTP Too Many Requests response, when a rate limiter has been breached.
+
+## DELETE /factors/{factorId}
+
+Remove a MFA factor from a user.
+
+Security: APIKeyAuth, UserAuth
+
+Parameters:
+
+- `factorId` (path, required) `string`
+
+Responses:
+
+- `200`: This MFA factor is removed (unenrolled) and cannot be used for increasing the AAL level of user's sessions. Client libraries should use the `POST /token?grant_type=refresh_token` endpoint to get a new access and refresh token with a decreased AAL.
+- `400`: HTTP Bad Request response. Can occur if the passed in JSON cannot be unmarshalled properly or when CAPTCHA verification was not successful. In certain cases can also occur when features are disabled on the server (e.g. sign ups). It may also mean that the operation failed due to some constraint not being met (such a user already exists for example).
+- `422`: Unprocessable entity. Returned when the factor is a recovery-code factor (use `DELETE /factors/recovery-codes` instead), when unenrolling the user's last verified second factor would leave recovery codes as the only second factor, or when the session does not have the required AAL.
+
+## GET /factors/recovery-codes
+
+Get the status of the user's MFA recovery codes.
+
+Returns the recovery-code factor ID together with the total number of codes and how many are still unused. Code values are never returned after generation. Works regardless of whether recovery-code enrollment or verification is enabled on the server.
+
+Security: APIKeyAuth, UserAuth
+
+Responses:
+
+- `200`: The user's recovery-code status.
+- `403`: Forbidden error. Anonymous users cannot use recovery codes.
+- `404`: The user has not enrolled recovery codes.
+
+## POST /factors/recovery-codes
+
+Generate the user's one-time set of MFA recovery codes.
+
+Creates a verified `recovery_code` factor together with a set of single-use codes. The plaintext codes are returned exactly once, in canonical form. Requires an AAL2 session and at least one other verified factor, because recovery codes can never be the user's only second factor. Use `POST /factors/recovery-codes/regenerate` to rotate an existing set.
+
+Security: APIKeyAuth, UserAuth
+
+Request body (application/json):
+
+- `friendly_name` `string`: Name shown in the user's factor list. Subject to the same per-user uniqueness rule as any other factor. Defaults to `Recovery codes` when omitted or blank.
+
+Responses:
+
+- `200`: Recovery codes were generated. Show the `codes` to the user now; they cannot be retrieved again.
+- `400`: HTTP Bad Request response. Can occur if the passed in JSON cannot be unmarshalled properly or when CAPTCHA verification was not successful. In certain cases can also occur when features are disabled on the server (e.g. sign ups). It may also mean that the operation failed due to some constraint not being met (such a user already exists for example).
+- `403`: Forbidden error. Requires an AAL2 session; anonymous users cannot use recovery codes.
+- `422`: Unprocessable entity. Recovery-code enrollment is disabled on the server, the user has no other verified factor, recovery codes are already enrolled (use `POST /factors/recovery-codes/regenerate`), the friendly name is already used by another factor, or the user has reached the maximum number of enrolled or verified factors.
+
+## DELETE /factors/recovery-codes
+
+Revoke the user's MFA recovery codes.
+
+Removes the recovery-code factor and all of its codes. Sessions that reached AAL2 with a recovery code are downgraded to AAL1. Requires an AAL2 session. Works regardless of whether recovery-code enrollment or verification is enabled on the server.
+
+Security: APIKeyAuth, UserAuth
+
+Responses:
+
+- `200`: The recovery-code factor was removed.
+- `403`: Forbidden error. Requires an AAL2 session; anonymous users cannot use recovery codes.
+- `404`: The user has not enrolled recovery codes.
+
+## POST /factors/recovery-codes/verify
+
+Verify a recovery code and upgrade the session to AAL2.
+
+Redeems one single-use recovery code from an AAL1 session. The submitted code is normalized before comparison: whitespace and `-` separators are removed and letters are lowercased, so `K4M9-X7QP-2AB8-HT3Z` and `k4m9x7qp2ab8ht3z` are equivalent. A matched code is consumed and cannot be used again.
+
+Security: APIKeyAuth, UserAuth
+
+Request body (application/json):
+
+- `code` `string`, required: The recovery code to redeem. Separators, whitespace and letter case are ignored.
+
+Responses:
+
+- `200`: The recovery code was accepted and consumed. These new credentials have an increased Authenticator Assurance Level (AAL) and an `amr` claim that includes `mfa/recovery_code`.
+- `400`: Bad request. The body could not be parsed or `code` is missing or empty.
+- `403`: Forbidden error. The MFA verification attempt hook rejected the attempt or the user is anonymous.
+- `422`: Unprocessable entity. `mfa_verification_failed` is returned for a wrong code, an already-used code and when no recovery codes are enrolled. `mfa_recovery_codes_verify_not_enabled` is returned when recovery-code verification is disabled on the server.
+- `429`: Too many requests. Either the IP-based rate limit was breached (`over_request_rate_limit`), or the per-user lockout is active after too many consecutive failed attempts (`mfa_recovery_codes_locked`). Regenerating the codes from an AAL2 session clears the lock.
+
+## POST /factors/recovery-codes/regenerate
+
+Replace the user's MFA recovery codes with a new set.
+
+Atomically invalidates all existing codes, issues a fresh set and clears any active verification lockout. The new plaintext codes are returned exactly once. Requires an AAL2 session.
+
+Security: APIKeyAuth, UserAuth
+
+Responses:
+
+- `200`: Recovery codes were regenerated. Show the `codes` to the user now; they cannot be retrieved again and the previous codes no longer work.
+- `403`: Forbidden error. Requires an AAL2 session; anonymous users cannot use recovery codes.
+- `404`: The user has not enrolled recovery codes.
+- `422`: Unprocessable entity. Recovery-code enrollment is disabled on the server.

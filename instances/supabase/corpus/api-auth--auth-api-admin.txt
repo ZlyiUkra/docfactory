@@ -1,0 +1,581 @@
+# Auth API: admin
+# джерело: https://supabase.com/docs/reference/self-hosting-auth/introduction
+# отримано: 2026-09-24
+
+Administration APIs requiring elevated access.
+
+## POST /invite
+
+Invite a user by email.
+
+Sends an invitation email which contains a link that allows the user to sign-in.
+
+Security: APIKeyAuth
+
+Request body (application/json):
+
+- `email` `string`, required
+- `data` `object`
+
+Responses:
+
+- `200`: An invitation has been sent to the user.
+- `400`: HTTP Bad Request response. Can occur if the passed in JSON cannot be unmarshalled properly or when CAPTCHA verification was not successful. In certain cases can also occur when features are disabled on the server (e.g. sign ups). It may also mean that the operation failed due to some constraint not being met (such a user already exists for example).
+- `422`: User already exists and has confirmed their address.
+
+## POST /admin/generate_link
+
+Generate a link to send in an email message.
+
+Security: APIKeyAuth, AdminAuth
+
+Request body (application/json):
+
+- `type` `string, one of magiclink, signup, recovery, email_change_current, email_change_new`, required
+- `email` `string`, required
+- `new_email` `string`
+- `password` `string`
+- `data` `object`
+- `redirect_to` `string`
+
+Responses:
+
+- `200`: User profile and generated link information.
+- `400`: HTTP Bad Request response. Can occur if the passed in JSON cannot be unmarshalled properly or when CAPTCHA verification was not successful. In certain cases can also occur when features are disabled on the server (e.g. sign ups). It may also mean that the operation failed due to some constraint not being met (such a user already exists for example).
+- `401`: HTTP Unauthorized response.
+- `403`: HTTP Forbidden response.
+- `404`: There is no such user.
+- `422`: Has multiple meanings: - User already exists - Provided password does not meet minimum criteria - Secure email change not enabled
+
+## GET /admin/audit
+
+Fetch audit log events.
+
+Security: APIKeyAuth, AdminAuth
+
+Parameters:
+
+- `page` (query) `integer`
+- `per_page` (query) `integer`
+
+Responses:
+
+- `200`: List of audit logs.
+- `401`: HTTP Unauthorized response.
+- `403`: HTTP Forbidden response.
+
+## GET /admin/users
+
+Fetch a listing of users.
+
+Security: APIKeyAuth, AdminAuth
+
+Parameters:
+
+- `page` (query) `integer`
+- `per_page` (query) `integer`
+
+Responses:
+
+- `200`: A page of users.
+- `401`: HTTP Unauthorized response.
+- `403`: HTTP Forbidden response.
+
+## GET /admin/users/{userId}
+
+Fetch user account data for a user.
+
+Security: APIKeyAuth, AdminAuth
+
+Parameters:
+
+- `userId` (path, required) `string`
+
+Responses:
+
+- `200`: User's account data.
+- `401`: HTTP Unauthorized response.
+- `403`: HTTP Forbidden response.
+- `404`: There is no such user.
+
+## PUT /admin/users/{userId}
+
+Update user's account data.
+
+Security: APIKeyAuth, AdminAuth
+
+Parameters:
+
+- `userId` (path, required) `string`
+
+Request body (application/json):
+
+- `id` `string`
+- `aud` `string`
+- `role` `string`
+- `email` `string`: User's primary contact email. In most cases you can uniquely identify a user by their email address, but not in all cases.
+- `email_confirmed_at` `string`
+- `phone` `string`: User's primary contact phone number. In most cases you can uniquely identify a user by their phone number, but not in all cases.
+- `phone_confirmed_at` `string`
+- `confirmation_sent_at` `string`
+- `confirmed_at` `string`
+- `recovery_sent_at` `string`
+- `new_email` `string`
+- `email_change_sent_at` `string`
+- `new_phone` `string`
+- `phone_change_sent_at` `string`
+- `reauthentication_sent_at` `string`
+- `last_sign_in_at` `string`
+- `app_metadata` `object`
+- `user_metadata` `object`
+- `factors` `array of object`
+- `identities` `array of object`
+- `banned_until` `string`
+- `created_at` `string`
+- `updated_at` `string`
+- `deleted_at` `string`
+- `is_anonymous` `boolean`
+
+Responses:
+
+- `200`: User's account data was updated.
+- `401`: HTTP Unauthorized response.
+- `403`: HTTP Forbidden response.
+- `404`: There is no such user.
+
+## DELETE /admin/users/{userId}
+
+Delete a user.
+
+Security: APIKeyAuth, AdminAuth
+
+Parameters:
+
+- `userId` (path, required) `string`
+
+Responses:
+
+- `200`: User's account data.
+- `401`: HTTP Unauthorized response.
+- `403`: HTTP Forbidden response.
+- `404`: There is no such user.
+
+## GET /admin/users/{userId}/factors
+
+List all of the MFA factors for a user.
+
+Security: APIKeyAuth, AdminAuth
+
+Parameters:
+
+- `userId` (path, required) `string`
+
+Responses:
+
+- `200`: User's MFA factors.
+- `401`: HTTP Unauthorized response.
+- `403`: HTTP Forbidden response.
+- `404`: There is no such user.
+
+## PUT /admin/users/{userId}/factors/{factorId}
+
+Update a user's MFA factor.
+
+Security: APIKeyAuth, AdminAuth
+
+Parameters:
+
+- `userId` (path, required) `string`
+- `factorId` (path, required) `string`
+
+Request body (application/json):
+
+- (no fields listed)
+
+Responses:
+
+- `200`: User's MFA factor.
+- `401`: HTTP Unauthorized response.
+- `403`: HTTP Forbidden response.
+- `404`: There is no such user and/or factor.
+
+## DELETE /admin/users/{userId}/factors/{factorId}
+
+Remove a user's MFA factor.
+
+Security: APIKeyAuth, AdminAuth
+
+Parameters:
+
+- `userId` (path, required) `string`
+- `factorId` (path, required) `string`
+
+Responses:
+
+- `200`: User's MFA factor.
+- `401`: HTTP Unauthorized response.
+- `403`: HTTP Forbidden response.
+- `404`: There is no such user and/or factor.
+
+## GET /admin/sso/providers
+
+Fetch a list of all registered SSO providers.
+
+Security: APIKeyAuth, AdminAuth
+
+Responses:
+
+- `200`: A list of all providers.
+
+## POST /admin/sso/providers
+
+Register a new SSO provider.
+
+Security: APIKeyAuth, AdminAuth
+
+Request body (application/json):
+
+- `type` `string, one of saml`, required
+- `metadata_url` `string`
+- `metadata_xml` `string`
+- `domains` `array of string`
+- `attribute_mapping` `object`
+
+Responses:
+
+- `200`: SSO provider was created.
+- `400`: HTTP Bad Request response. Can occur if the passed in JSON cannot be unmarshalled properly or when CAPTCHA verification was not successful. In certain cases can also occur when features are disabled on the server (e.g. sign ups). It may also mean that the operation failed due to some constraint not being met (such a user already exists for example).
+- `401`: HTTP Unauthorized response.
+- `403`: HTTP Forbidden response.
+
+## GET /admin/sso/providers/{ssoProviderId}
+
+Fetch SSO provider details.
+
+Security: APIKeyAuth, AdminAuth
+
+Parameters:
+
+- `ssoProviderId` (path, required) `string`
+
+Responses:
+
+- `200`: SSO provider exists with these details.
+- `401`: HTTP Unauthorized response.
+- `403`: HTTP Forbidden response.
+- `404`: A provider with this UUID does not exist.
+
+## PUT /admin/sso/providers/{ssoProviderId}
+
+Update details about a SSO provider.
+
+You can only update only one of `metadata_url` or `metadata_xml` at once. The SAML Metadata represented by these updates must advertize the same Identity Provider EntityID. Do not include the `domains` or `attribute_mapping` property to keep the existing database values.
+
+Security: APIKeyAuth, AdminAuth
+
+Parameters:
+
+- `ssoProviderId` (path, required) `string`
+
+Request body (application/json):
+
+- `metadata_url` `string`
+- `metadata_xml` `string`
+- `domains` `array of string`
+- `attribute_mapping` `object`
+
+Responses:
+
+- `200`: SSO provider details were updated.
+- `400`: HTTP Bad Request response. Can occur if the passed in JSON cannot be unmarshalled properly or when CAPTCHA verification was not successful. In certain cases can also occur when features are disabled on the server (e.g. sign ups). It may also mean that the operation failed due to some constraint not being met (such a user already exists for example).
+- `401`: HTTP Unauthorized response.
+- `403`: HTTP Forbidden response.
+- `404`: A provider with this UUID does not exist.
+
+## DELETE /admin/sso/providers/{ssoProviderId}
+
+Remove an SSO provider.
+
+Security: APIKeyAuth, AdminAuth
+
+Parameters:
+
+- `ssoProviderId` (path, required) `string`
+
+Responses:
+
+- `200`: SSO provider was removed.
+- `401`: HTTP Unauthorized response.
+- `403`: HTTP Forbidden response.
+- `404`: A provider with this UUID does not exist.
+
+## GET /admin/oauth/clients
+
+List OAuth clients (admin)
+
+Retrieves a list of all registered OAuth clients. Only available when OAuth server is enabled.
+
+Security: APIKeyAuth, AdminAuth
+
+Parameters:
+
+- `page` (query) `integer`
+- `per_page` (query) `integer`
+
+Responses:
+
+- `200`: List of OAuth clients
+- `401`: HTTP Unauthorized response.
+- `403`: HTTP Forbidden response.
+
+## POST /admin/oauth/clients
+
+Register OAuth client (admin)
+
+Manually register a new OAuth client (admin endpoint). Only available when OAuth server is enabled.
+
+Security: APIKeyAuth, AdminAuth
+
+Request body (application/json):
+
+- `client_name` `string`, required: Human-readable name of the client application
+- `client_uri` `string`: URL of the client application's homepage
+- `logo_uri` `string`: URL of the client application's logo
+- `redirect_uris` `array of string`, required: Array of redirect URIs used by the client (maximum 10)
+- `client_type` `string, one of public, confidential`: Type of the client. Optional. If not provided, will be inferred from token_endpoint_auth_method or defaults to 'confidential'. Public clients are used for applications that cannot securely store credentials (e.g., SPAs, mobile apps). Confidential clients can securely store credentials (e.g., server-side applications).
+- `token_endpoint_auth_method` `string, one of none, client_secret_basic, client_secret_post`: Authentication method for the token endpoint. Optional. 'none' is for public clients, 'client_secret_basic' and 'client_secret_post' are for confidential clients. If provided, must be consistent with client_type. If not provided, will be inferred from client_type.
+- `grant_types` `array of string, one of authorization_code, refresh_token`: OAuth grant types the client will use (defaults to both if not specified)
+- `response_types` `array of string, one of code`: OAuth response types the client can use
+- `scope` `string`: Space-separated list of scope values
+
+Responses:
+
+- `201`: OAuth client created
+- `400`: HTTP Bad Request response. Can occur if the passed in JSON cannot be unmarshalled properly or when CAPTCHA verification was not successful. In certain cases can also occur when features are disabled on the server (e.g. sign ups). It may also mean that the operation failed due to some constraint not being met (such a user already exists for example).
+- `401`: HTTP Unauthorized response.
+- `403`: HTTP Forbidden response.
+
+## GET /admin/oauth/clients/{client_id}
+
+Get OAuth client details (admin)
+
+Retrieves details of a specific OAuth client. Only available when OAuth server is enabled.
+
+Security: APIKeyAuth, AdminAuth
+
+Parameters:
+
+- `client_id` (path, required) `string`
+
+Responses:
+
+- `200`: OAuth client details
+- `404`: OAuth client not found
+- `401`: HTTP Unauthorized response.
+- `403`: HTTP Forbidden response.
+
+## PUT /admin/oauth/clients/{client_id}
+
+Update OAuth client (admin)
+
+Updates an existing OAuth client registration. Only the provided fields will be updated. Only available when OAuth server is enabled.
+
+Security: APIKeyAuth, AdminAuth
+
+Parameters:
+
+- `client_id` (path, required) `string`
+
+Request body (application/json):
+
+- `client_name` `string`: Human-readable name of the client application
+- `client_uri` `string`: URL of the client application's homepage
+- `logo_uri` `string`: URL of the client application's logo
+- `redirect_uris` `array of string`: Array of redirect URIs used by the client
+- `grant_types` `array of string, one of authorization_code, refresh_token`: OAuth grant types the client is authorized to use
+- `token_endpoint_auth_method` `string, one of none, client_secret_basic, client_secret_post`: Authentication method for the token endpoint. Must be compatible with the client's current client_type. Confidential clients can use 'client_secret_basic' or 'client_secret_post'. Public clients can only use 'none'.
+
+Responses:
+
+- `200`: OAuth client updated successfully
+- `400`: Bad request - validation failed or no fields provided for update
+- `404`: OAuth client not found
+- `401`: HTTP Unauthorized response.
+- `403`: HTTP Forbidden response.
+
+## DELETE /admin/oauth/clients/{client_id}
+
+Delete OAuth client (admin)
+
+Removes an OAuth client registration. Only available when OAuth server is enabled.
+
+Security: APIKeyAuth, AdminAuth
+
+Parameters:
+
+- `client_id` (path, required) `string`
+
+Responses:
+
+- `204`: OAuth client deleted
+- `404`: OAuth client not found
+- `401`: HTTP Unauthorized response.
+- `403`: HTTP Forbidden response.
+
+## POST /admin/oauth/clients/{client_id}/regenerate_secret
+
+Regenerate OAuth client secret (admin)
+
+Regenerates the client secret for a confidential OAuth client. Only available when OAuth server is enabled. This endpoint can only be used for confidential clients, not public clients.
+
+Security: APIKeyAuth, AdminAuth
+
+Parameters:
+
+- `client_id` (path, required) `string`
+
+Responses:
+
+- `200`: OAuth client secret regenerated successfully
+- `400`: Bad request - cannot regenerate secret for public client
+- `404`: OAuth client not found
+- `401`: HTTP Unauthorized response.
+- `403`: HTTP Forbidden response.
+
+## GET /admin/custom-providers
+
+List all custom OIDC/OAuth providers
+
+Retrieves a list of all custom OAuth 2.0 and OIDC provider configurations. Optionally filter by provider type. Only available when custom OIDC/OAuth providers are enabled (set `GOTRUE_CUSTOM_OAUTH_ENABLED=true` for self-hosted or enable in Supabase Dashboard).
+
+Security: APIKeyAuth, AdminAuth
+
+Parameters:
+
+- `type` (query) `string, one of oauth2, oidc`: Filter by provider type
+
+Responses:
+
+- `200`: List of custom OIDC/OAuth providers
+- `400`: Invalid type parameter
+- `401`: HTTP Unauthorized response.
+- `403`: HTTP Forbidden response.
+
+## POST /admin/custom-providers
+
+Create a new custom OIDC/OAuth provider
+
+Creates a new custom OAuth 2.0 or OIDC provider configuration. Required fields differ based on provider_type. Only available when custom OIDC/OAuth providers are enabled. For OIDC providers, the server fetches and validates the OpenID Connect discovery document from the issuer's well-known endpoint (or the provided discovery_url) at creation time. This ensures the issuer is reachable and correctly configured before the provider is stored.
+
+Security: APIKeyAuth, AdminAuth
+
+Request body (application/json):
+
+- `provider_type` `string, one of oauth2, oidc`, required: Type of OAuth provider
+- `identifier` `string`, required: Unique identifier (will be prefixed with 'custom:' automatically). Cannot use reserved provider names.
+- `name` `string`, required: Human-readable display name
+- `client_id` `string`, required: OAuth client ID from the provider
+- `client_secret` `string`, required: OAuth client secret (will be encrypted at rest)
+- `acceptable_client_ids` `array of string`: Additional acceptable client IDs for token validation
+- `scopes` `array of string`: OAuth scopes to request (OIDC providers will automatically include 'openid')
+- `pkce_enabled` `boolean`: Enable PKCE (Proof Key for Code Exchange)
+- `attribute_mapping` `object`: Map provider claims to user attributes (cannot map to protected system fields)
+- `custom_claims_allowlist` `array of string`: Raw IdP claim keys to copy verbatim into the user's custom_claims (e.g. groups, org_id). For OIDC providers these are read from the ID token claims (falling back to the userinfo response when no ID token is returned); for OAuth2 providers they are read from the userinfo response. Empty preserves no non-standard claims.
+- `authorization_params` `object`: Additional authorization request parameters as string key-value pairs (cannot override reserved OAuth parameters)
+- `enabled` `boolean`: Whether the provider is enabled
+- `email_optional` `boolean`: Whether email is optional for users from this provider
+- `issuer` `string`: OIDC issuer URL (required for provider_type: oidc)
+- `discovery_url` `string`: OIDC discovery URL (optional for OIDC, defaults to {issuer}/.well-known/openid-configuration)
+- `skip_nonce_check` `boolean`: Skip nonce validation for OIDC (not recommended for production)
+- `authorization_url` `string`: OAuth 2.0 authorization endpoint (required for provider_type: oauth2)
+- `token_url` `string`: OAuth 2.0 token endpoint (required for provider_type: oauth2)
+- `userinfo_url` `string`: OAuth 2.0 userinfo endpoint (required for provider_type: oauth2)
+- `jwks_uri` `string`: JWKS URI for token validation (optional for OAuth2)
+
+Responses:
+
+- `201`: Custom OIDC/OAuth provider created successfully
+- `400`: Bad request - validation failed, provider exists, or quota exceeded
+- `401`: HTTP Unauthorized response.
+- `403`: HTTP Forbidden response.
+
+## GET /admin/custom-providers/{identifier}
+
+Get custom OIDC/OAuth provider details
+
+Retrieves details of a specific custom OIDC/OAuth provider. Only available when custom OIDC/OAuth providers are enabled.
+
+Security: APIKeyAuth, AdminAuth
+
+Parameters:
+
+- `identifier` (path, required) `string`: Provider identifier (must start with 'custom:' prefix)
+
+Responses:
+
+- `200`: Custom OIDC/OAuth provider details
+- `400`: Invalid identifier format
+- `401`: HTTP Unauthorized response.
+- `403`: HTTP Forbidden response.
+- `404`: Provider not found
+
+## PUT /admin/custom-providers/{identifier}
+
+Update custom OIDC/OAuth provider
+
+Updates an existing custom OIDC/OAuth provider. All fields are optional. Only provided fields will be updated. Only available when custom OIDC/OAuth providers are enabled. When `issuer` or `discovery_url` is changed on an OIDC provider, the server re-fetches and validates the discovery document before persisting.
+
+Security: APIKeyAuth, AdminAuth
+
+Parameters:
+
+- `identifier` (path, required) `string`: Provider identifier (must start with 'custom:' prefix)
+
+Request body (application/json):
+
+- `name` `string`: Human-readable display name
+- `client_id` `string`: OAuth client ID
+- `client_secret` `string`: OAuth client secret (only provide if changing, will be encrypted)
+- `acceptable_client_ids` `array of string`: Additional acceptable client IDs
+- `scopes` `array of string`: OAuth scopes to request
+- `pkce_enabled` `boolean`: Enable PKCE
+- `attribute_mapping` `object`: Map provider claims to user attributes
+- `custom_claims_allowlist` `array of string`: Raw IdP claim keys to copy verbatim into the user's custom_claims (e.g. groups, org_id). For OIDC providers these are read from the ID token claims (falling back to the userinfo response when no ID token is returned); for OAuth2 providers they are read from the userinfo response. Empty preserves no non-standard claims.
+- `authorization_params` `object`: Additional authorization request parameters as string key-value pairs
+- `enabled` `boolean`: Whether the provider is enabled
+- `email_optional` `boolean`: Whether email is optional
+- `issuer` `string`: OIDC issuer URL (for OIDC providers)
+- `discovery_url` `string`: OIDC discovery URL (for OIDC providers)
+- `skip_nonce_check` `boolean`: Skip nonce validation for OIDC
+- `authorization_url` `string`: OAuth 2.0 authorization endpoint (for OAuth2 providers)
+- `token_url` `string`: OAuth 2.0 token endpoint (for OAuth2 providers)
+- `userinfo_url` `string`: OAuth 2.0 userinfo endpoint (for OAuth2 providers)
+- `jwks_uri` `string`: JWKS URI for token validation (for OAuth2 providers)
+
+Responses:
+
+- `200`: Custom OIDC/OAuth provider updated successfully
+- `400`: Invalid identifier, validation failed, or OIDC discovery validation failed
+- `401`: HTTP Unauthorized response.
+- `403`: HTTP Forbidden response.
+- `404`: Provider not found
+
+## DELETE /admin/custom-providers/{identifier}
+
+Delete custom OIDC/OAuth provider
+
+Permanently removes a custom OIDC/OAuth provider configuration. Only available when custom OIDC/OAuth providers are enabled.
+
+Security: APIKeyAuth, AdminAuth
+
+Parameters:
+
+- `identifier` (path, required) `string`: Provider identifier (must start with 'custom:' prefix)
+
+Responses:
+
+- `204`: Custom OIDC/OAuth provider deleted successfully (no content)
+- `400`: Invalid identifier format
+- `401`: HTTP Unauthorized response.
+- `403`: HTTP Forbidden response.
+- `404`: Provider not found

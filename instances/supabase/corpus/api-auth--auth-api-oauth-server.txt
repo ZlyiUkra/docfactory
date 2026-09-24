@@ -1,0 +1,112 @@
+# Auth API: oauth-server
+# джерело: https://supabase.com/docs/reference/self-hosting-auth/introduction
+# отримано: 2026-09-24
+
+APIs for OAuth 2.1 flows where this service acts as an OAuth provider/server for other applications. Requires `GOTRUE_OAUTH_SERVER_ENABLED=true` for self-hosted or enable in Supabase Dashboard. (Experimental.)
+
+## POST /oauth/clients/register
+
+Register a new OAuth client dynamically (public endpoint).
+
+Allows applications to register as OAuth clients with this server dynamically. This follows the OAuth 2.0 Dynamic Client Registration Protocol. Only available when OAuth server is enabled and dynamic registration is allowed (set `GOTRUE_OAUTH_SERVER_ENABLED=true` and `GOTRUE_OAUTH_SERVER_ALLOW_DYNAMIC_REGISTRATION=true` for self-hosted or enable both settings in Supabase Dashboard).
+
+Request body (application/json):
+
+- `client_name` `string`, required: Human-readable name of the client application
+- `client_uri` `string`: URL of the client application's homepage
+- `logo_uri` `string`: URL of the client application's logo
+- `redirect_uris` `array of string`, required: Array of redirect URIs used by the client (maximum 10)
+- `client_type` `string, one of public, confidential`: Type of the client. Optional. If not provided, will be inferred from token_endpoint_auth_method or defaults to 'confidential'. Public clients are used for applications that cannot securely store credentials (e.g., SPAs, mobile apps). Confidential clients can securely store credentials (e.g., server-side applications).
+- `token_endpoint_auth_method` `string, one of none, client_secret_basic, client_secret_post`: Authentication method for the token endpoint. Optional. 'none' is for public clients, 'client_secret_basic' and 'client_secret_post' are for confidential clients. If provided, must be consistent with client_type. If not provided, will be inferred from client_type.
+- `grant_types` `array of string, one of authorization_code, refresh_token`: OAuth grant types the client will use (defaults to both if not specified)
+- `response_types` `array of string, one of code`: OAuth response types the client will use
+- `scope` `string`: Space-separated list of scope values
+
+Responses:
+
+- `201`: OAuth client registered successfully
+- `400`: HTTP Bad Request response. Can occur if the passed in JSON cannot be unmarshalled properly or when CAPTCHA verification was not successful. In certain cases can also occur when features are disabled on the server (e.g. sign ups). It may also mean that the operation failed due to some constraint not being met (such a user already exists for example).
+- `429`: HTTP Too Many Requests response, when a rate limiter has been breached.
+
+## POST /oauth/token
+
+OAuth 2.1 Token endpoint
+
+Issues access tokens in exchange for authorization codes or refresh tokens. Supports authorization_code and refresh_token grant types. Only available when OAuth server is enabled (set `GOTRUE_OAUTH_SERVER_ENABLED=true` for self-hosted or enable in Supabase Dashboard).
+
+Request body (application/x-www-form-urlencoded):
+
+- `grant_type` `string, one of authorization_code, refresh_token`, required: The grant type being used
+- `code` `string`: Authorization code (required for authorization_code grant)
+- `redirect_uri` `string`: Redirect URI (required for authorization_code grant)
+- `code_verifier` `string`: PKCE code verifier (required for authorization_code grant)
+- `refresh_token` `string`: Refresh token (required for refresh_token grant)
+- `client_id` `string`: OAuth client identifier
+- `client_secret` `string`: OAuth client secret (for confidential clients)
+
+Responses:
+
+- `200`: Access token issued successfully
+- `400`: HTTP Bad Request response. Can occur if the passed in JSON cannot be unmarshalled properly or when CAPTCHA verification was not successful. In certain cases can also occur when features are disabled on the server (e.g. sign ups). It may also mean that the operation failed due to some constraint not being met (such a user already exists for example).
+- `401`: HTTP Unauthorized response.
+
+## GET /oauth/authorize
+
+OAuth 2.1 Authorization endpoint
+
+Initiates the OAuth authorization code flow. Redirects users to login and authorize the requesting application. Only available when OAuth server is enabled (set `GOTRUE_OAUTH_SERVER_ENABLED=true` for self-hosted or enable in Supabase Dashboard).
+
+Parameters:
+
+- `response_type` (query, required) `string, one of code`
+- `client_id` (query, required) `string`: The client identifier
+- `redirect_uri` (query, required) `string`: Client's redirect URI
+- `scope` (query) `string`: Requested access scope
+- `state` (query) `string`: State parameter for CSRF protection
+- `code_challenge` (query, required) `string`: PKCE code challenge
+- `code_challenge_method` (query, required) `string, one of S256`: PKCE code challenge method
+
+Responses:
+
+- `302`: Redirect to login or authorization page
+- `400`: HTTP Bad Request response. Can occur if the passed in JSON cannot be unmarshalled properly or when CAPTCHA verification was not successful. In certain cases can also occur when features are disabled on the server (e.g. sign ups). It may also mean that the operation failed due to some constraint not being met (such a user already exists for example).
+
+## GET /oauth/authorizations/{authorization_id}
+
+Get OAuth authorization details
+
+Retrieves details about a pending OAuth authorization request. Only available when OAuth server is enabled (set `GOTRUE_OAUTH_SERVER_ENABLED=true` for self-hosted or enable in Supabase Dashboard).
+
+Security: APIKeyAuth, UserAuth
+
+Parameters:
+
+- `authorization_id` (path, required) `string`
+
+Responses:
+
+- `200`: Authorization details
+- `404`: Authorization not found
+- `401`: HTTP Unauthorized response.
+
+## POST /oauth/authorizations/{authorization_id}/consent
+
+Approve or deny OAuth authorization
+
+User approves or denies authorization to the OAuth client. Only available when OAuth server is enabled (set `GOTRUE_OAUTH_SERVER_ENABLED=true` for self-hosted or enable in Supabase Dashboard).
+
+Security: APIKeyAuth, UserAuth
+
+Parameters:
+
+- `authorization_id` (path, required) `string`
+
+Request body (application/json):
+
+- `action` `string, one of approve, deny`, required: Whether to approve or deny the authorization
+
+Responses:
+
+- `200`: Authorization consent processed
+- `400`: HTTP Bad Request response. Can occur if the passed in JSON cannot be unmarshalled properly or when CAPTCHA verification was not successful. In certain cases can also occur when features are disabled on the server (e.g. sign ups). It may also mean that the operation failed due to some constraint not being met (such a user already exists for example).
+- `401`: HTTP Unauthorized response.

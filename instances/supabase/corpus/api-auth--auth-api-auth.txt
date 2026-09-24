@@ -1,0 +1,208 @@
+# Auth API: auth
+# джерело: https://supabase.com/docs/reference/self-hosting-auth/introduction
+# отримано: 2026-09-24
+
+APIs for authentication and authorization.
+
+## POST /token
+
+Issues access and refresh tokens based on grant type.
+
+Security: APIKeyAuth
+
+Parameters:
+
+- `grant_type` (query, required) `string, one of password, refresh_token, id_token, pkce, web3`: - What grant type should be used to issue an access and refresh token. Note: `id_token` is only offered in experimental mode. - CAPTCHA protection does not apply on the `refresh_token` grant flow. - Using `password` is akin to a user signing in. - `pkce` is used for exchanging the authorization code for a pair of access and refresh tokens.
+
+Request body (application/json):
+
+- `refresh_token` `string`
+- `password` `string`
+- `email` `string`
+- `phone` `string`
+- `id_token` `string`
+- `access_token` `string`: Provide only when `grant_type` is `id_token` and the provided ID token requires the presence of an access token to be accepted (usually by having an `at_hash` claim).
+- `nonce` `string`
+- `provider` `string, one of google, apple, azure, facebook, keycloak`
+- `client_id` `string`
+- `issuer` `string`: If `provider` is `azure` then you can specify any Azure OIDC issuer string here, which will be used for verification.
+- `gotrue_meta_security` `object`: Use this property to pass a CAPTCHA token only if you have enabled CAPTCHA protection.
+- `auth_code` `string`
+- `code_verifier` `string`
+- `message` `string`: Signed message for Web3 authentication following the Sign in with Solana (SIWS) or Sign in with Ethereum (SIWE) standard. Must include: `Issued At`, `URI`, `Version`.
+- `signature` `string`: The signature of the message for Web3 authentication. For Solana: Base64 or Base64-URL encoded. For Ethereum: hexadecimal string with 0x prefix.
+- `chain` `string, one of solana, ethereum`: What blockchain is the Web3 message and signature for.
+
+Responses:
+
+- `200`: An access and refresh token have been successfully issued.
+- `400`: HTTP Bad Request response. Can occur if the passed in JSON cannot be unmarshalled properly or when CAPTCHA verification was not successful. In certain cases can also occur when features are disabled on the server (e.g. sign ups). It may also mean that the operation failed due to some constraint not being met (such a user already exists for example).
+- `401`: HTTP Forbidden response.
+- `403`: HTTP Unauthorized response.
+- `500`: HTTP Internal Server Error.
+- `429`: HTTP Too Many Requests response, when a rate limiter has been breached.
+
+## POST /logout
+
+Logs out a user.
+
+Security: APIKeyAuth, UserAuth
+
+Parameters:
+
+- `scope` (query) `string, one of global, local, others`: (Optional.) Determines how the user should be logged out. When `global` is used, the user is logged out from all active sessions. When `local` is used, the user is logged out from the current session. When `others` is used, the user is logged out from all other sessions except the current one. Clients should remove stored access and refresh tokens except when `others` is used.
+
+Responses:
+
+- `204`: No content returned on successful logout.
+- `401`: HTTP Unauthorized response.
+
+## GET /verify
+
+Authenticate by verifying the possession of a one-time token. Usually for use as clickable links.
+
+Security: APIKeyAuth
+
+Parameters:
+
+- `token` (query, required) `string`
+- `type` (query, required) `string, one of signup, invite, recovery, magiclink, email_change`
+- `redirect_to` (query) `string`: (Optional) URL to redirect back into the app on after verification completes successfully. If not specified will use the "Site URL" configuration option. If not allowed per the allow list it will use the "Site URL" configuration option.
+
+Responses:
+
+- `302`: HTTP See Other redirect response where `Location` is a specially formatted URL that includes an `access_token`, `refresh_token`, `expires_in` as URL query encoded values in the URL fragment (anything after `#`). These values are encoded in the fragment as this value is only visible to the browser handling the redirect and is not sent to the server.
+
+## POST /verify
+
+Authenticate by verifying the possession of a one-time token.
+
+Security: APIKeyAuth
+
+Request body (application/json):
+
+- `type` `string, one of signup, recovery, invite, magiclink, email_change, sms, phone_change`
+- `token` `string`
+- `token_hash` `string`: The hashed value of token. Applicable only if used with `type` and nothing else.
+- `email` `string`: Applicable only if `type` is with regards to an email address.
+- `phone` `string`: Applicable only if `type` is with regards to an phone number.
+- `redirect_to` `string`: (Optional) URL to redirect back into the app on after verification completes successfully. If not specified will use the "Site URL" configuration option. If not allowed per the allow list it will use the "Site URL" configuration option.
+
+Responses:
+
+- `200`: An access and refresh token.
+- `429`: HTTP Too Many Requests response, when a rate limiter has been breached.
+
+## POST /signup
+
+Signs a user up.
+
+Creates a new user.
+
+Security: APIKeyAuth
+
+Request body (application/json):
+
+- `email` `string`
+- `phone` `string`
+- `channel` `string, one of sms, whatsapp`
+- `password` `string`
+- `data` `object`
+- `code_challenge` `string`
+- `code_challenge_method` `string, one of plain, s256`
+- `gotrue_meta_security` `object`: Use this property to pass a CAPTCHA token only if you have enabled CAPTCHA protection.
+
+Responses:
+
+- `200`: A user already exists and is not confirmed (in which case a user object is returned). A user did not exist and is signed up. If email or phone confirmation is enabled, returns a user object. If confirmation is disabled, returns an access token and refresh token response.
+- `400`: HTTP Bad Request response. Can occur if the passed in JSON cannot be unmarshalled properly or when CAPTCHA verification was not successful. In certain cases can also occur when features are disabled on the server (e.g. sign ups). It may also mean that the operation failed due to some constraint not being met (such a user already exists for example).
+- `429`: HTTP Too Many Requests response, when a rate limiter has been breached.
+
+## POST /recover
+
+Request password recovery.
+
+Users that have forgotten their password can have it reset with this API.
+
+Security: APIKeyAuth
+
+Request body (application/json):
+
+- `email` `string`, required
+- `code_challenge` `string`
+- `code_challenge_method` `string, one of plain, s256`
+- `gotrue_meta_security` `object`: Use this property to pass a CAPTCHA token only if you have enabled CAPTCHA protection.
+
+Responses:
+
+- `200`: A recovery email has been sent to the address. An empty JSON object is returned. To obfuscate whether such an email address already exists in the system this response is sent regardless whether the address exists or not.
+- `400`: HTTP Bad Request response. Can occur if the passed in JSON cannot be unmarshalled properly or when CAPTCHA verification was not successful. In certain cases can also occur when features are disabled on the server (e.g. sign ups). It may also mean that the operation failed due to some constraint not being met (such a user already exists for example).
+- `422`: Returned when unable to validate the email address.
+- `429`: HTTP Too Many Requests response, when a rate limiter has been breached.
+
+## POST /resend
+
+Resends a one-time password (OTP) through email or SMS.
+
+Allows a user to resend an existing signup, sms, email_change or phone_change OTP.
+
+Security: APIKeyAuth
+
+Request body (application/json):
+
+- `email` `string`: Applicable only if `type` is with regards to an email address.
+- `phone` `string`: Applicable only if `type` is with regards to an phone number.
+- `type` `string, one of signup, email_change, sms, phone_change`
+- `gotrue_meta_security` `object`: Use this property to pass a CAPTCHA token only if you have enabled CAPTCHA protection.
+
+Responses:
+
+- `200`: A One-Time Password was sent to the email or phone. To obfuscate whether such an address or number already exists in the system this response is sent in both cases.
+- `400`: HTTP Bad Request response. Can occur if the passed in JSON cannot be unmarshalled properly or when CAPTCHA verification was not successful. In certain cases can also occur when features are disabled on the server (e.g. sign ups). It may also mean that the operation failed due to some constraint not being met (such a user already exists for example).
+- `422`: Returned when unable to validate the email address or phone number.
+- `429`: HTTP Too Many Requests response, when a rate limiter has been breached.
+
+## POST /magiclink
+
+Authenticate a user by sending them a magic link.
+
+A magic link is a special type of URL that includes a One-Time Password. When a user visits this link in a browser they are immediately authenticated.
+
+Security: APIKeyAuth
+
+Request body (application/json):
+
+- `email` `string`, required
+- `data` `object`
+- `gotrue_meta_security` `object`: Use this property to pass a CAPTCHA token only if you have enabled CAPTCHA protection.
+
+Responses:
+
+- `200`: A recovery email has been sent to the address. An empty JSON object is returned. To obfuscate whether such an email address already exists in the system this response is sent regardless whether the address exists or not.
+- `400`: HTTP Bad Request response. Can occur if the passed in JSON cannot be unmarshalled properly or when CAPTCHA verification was not successful. In certain cases can also occur when features are disabled on the server (e.g. sign ups). It may also mean that the operation failed due to some constraint not being met (such a user already exists for example).
+- `422`: Returned when unable to validate the email address.
+- `429`: HTTP Too Many Requests response, when a rate limiter has been breached.
+
+## POST /otp
+
+Authenticate a user by sending them a One-Time Password over email or SMS.
+
+Security: APIKeyAuth
+
+Request body (application/json):
+
+- `email` `string`
+- `phone` `string`
+- `channel` `string, one of sms, whatsapp`
+- `create_user` `boolean`
+- `data` `object`
+- `code_challenge_method` `string, one of s256, plain`
+- `code_challenge` `string`
+- `gotrue_meta_security` `object`: Use this property to pass a CAPTCHA token only if you have enabled CAPTCHA protection.
+
+Responses:
+
+- `200`: A One-Time Password was sent to the email or phone. To obfuscate whether such an address or number already exists in the system this response is sent in both cases.
+- `400`: HTTP Bad Request response. Can occur if the passed in JSON cannot be unmarshalled properly or when CAPTCHA verification was not successful. In certain cases can also occur when features are disabled on the server (e.g. sign ups). It may also mean that the operation failed due to some constraint not being met (such a user already exists for example).
+- `422`: Returned when unable to validate the email or phone number.
+- `429`: HTTP Too Many Requests response, when a rate limiter has been breached.

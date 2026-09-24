@@ -1,0 +1,39 @@
+# Auth API: saml
+# джерело: https://supabase.com/docs/reference/self-hosting-auth/introduction
+# отримано: 2026-09-24
+
+SAML 2.0 Endpoints. (Experimental.)
+
+## GET /saml/metadata
+
+Returns the SAML 2.0 Metadata XML.
+
+The metadata XML can be downloaded or used for the SAML 2.0 Metadata URL discovery mechanism. This URL is the SAML 2.0 EntityID of the Service Provider implemented by this server.
+
+Security: APIKeyAuth
+
+Parameters:
+
+- `download` (query) `boolean`: If set to `true` will add a `Content-Disposition` header to the response which will trigger a download dialog on the browser.
+
+Responses:
+
+- `200`: A valid SAML 2.0 Metadata XML document. Should be cached according to the `Cache-Control` header and/or caching data specified in the document itself.
+
+## POST /saml/acs
+
+SAML 2.0 Assertion Consumer Service (ACS) endpoint.
+
+Implements the SAML 2.0 Assertion Consumer Service (ACS) endpoint supporting the POST and Artifact bindings.
+
+Parameters:
+
+- `RelayState` (query)
+- `SAMLArt` (query) `string`: See the SAML 2.0 ACS specification. Cannot be used without a UUID `RelayState` parameter.
+- `SAMLResponse` (query) `string`: See the SAML 2.0 ACS specification. Must be present unless `SAMLArt` is specified. If `RelayState` is not a UUID, the SAML Response is unpacked and the identity provider is identified from the response.
+
+Responses:
+
+- `302`: HTTP See Other redirect response where `Location` is a specially formatted URL that includes an `access_token`, `refresh_token`, `expires_in` as URL query encoded values in the URL fragment (anything after `#`). These values are encoded in the fragment as this value is only visible to the browser handling the redirect and is not sent to the server.
+- `400`: HTTP Bad Request response. Can occur if the passed in JSON cannot be unmarshalled properly or when CAPTCHA verification was not successful. In certain cases can also occur when features are disabled on the server (e.g. sign ups). It may also mean that the operation failed due to some constraint not being met (such a user already exists for example).
+- `429`: HTTP Too Many Requests response, when a rate limiter has been breached.
