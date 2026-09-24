@@ -88,6 +88,11 @@ def config_spec(source: dict, ctx) -> list[Item]:
         tid = (p.get("tags") or ["general"])[0]
         groups.setdefault(tid, []).append(p)
 
+    # Ім'я документа несе мітку специфікації, а не лише групу. Корпус зводить
+    # документи за ім'ям без джерела: «general» і «overview» є в кожній
+    # специфікації self-hosting, і під спільним ім'ям пошук лишав би у видачі лише
+    # один з них, а однакові вступи груп зливалися б в один уривок.
+    prefix = _markup.slug(label)
     items = []
     overview = _text(info.get("description"))
     if overview:
@@ -95,15 +100,15 @@ def config_spec(source: dict, ctx) -> list[Item]:
             body = _markup.markdown_body(overview)
             return _markup.document(f"{label}: overview", page, ctx.stamp, body, version)
 
-        items.append(Item(id=f"{source['id']}/overview",
-                          file=f"{source['id']}--overview.txt", make=make_overview))
+        items.append(Item(id=f"{source['id']}/{prefix}-overview",
+                          file=f"{source['id']}--{prefix}-overview.txt", make=make_overview))
 
     for tid, params in groups.items():
         if not params:
             continue
         tag = tags.get(tid, {})
         title = f"{label}: {_text(tag.get('title')) or tid}"
-        name = _markup.slug(tid)
+        name = f"{prefix}-{_markup.slug(tid)}"
 
         def make(title=title, tag=tag, params=params):
             intro = _text(tag.get("description"))
