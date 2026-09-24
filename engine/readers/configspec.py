@@ -7,7 +7,11 @@
                 з описом, значенням за замовчуванням, обов'язковістю, прикладом і
                 посиланнями. Опис самої специфікації — окремий документ «огляд».
                 Поле `label` — префікс назв документів (типово — `info.title`),
-                поле `page` — людська адреса сторінки, що рендерить цю специфікацію.
+                поле `page` — людська адреса сторінки, що рендерить цю специфікацію,
+                поле `kind` — що це за налаштування («key of supabase/config.toml»,
+                «environment variable of the self-hosted Auth server»): рядок
+                «Setting:» при кожному ключі, щоб запит словами «environment
+                variable» чи «config.toml» знаходив ключ, а не лише його опис.
 
 Навіщо. Supabase тримає довідники налаштувань — `supabase/config.toml` і змінні
 оточення self-hosted Auth, Storage, Realtime, Analytics, Functions — лише як YAML у
@@ -22,6 +26,8 @@
 імпортує всі модулі читачів у кожному примірнику, а PyYAML стоїть лише у venv
 тих, кому цей читач потрібен; імпорт нагорі зламав би решту примірників.
 """
+
+import re
 
 from engine.readers import Item, _markup, register
 
@@ -45,10 +51,19 @@ def _text(value) -> str:
     return "" if value is None else str(value).strip()
 
 
-def _parameter(p: dict) -> str:
+def _parameter(p: dict, kind: str = "") -> str:
     title = _text(p.get("title")) or _text(p.get("id"))
     lines = [f"## {title}", ""]
     facts = []
+    if kind:
+        facts.append(f"- Setting: {kind}")
+    # Назва ключа словами. Пошук по словах ріже текст на [a-z0-9_]+, тож
+    # `GOTRUE_SITE_URL` для нього одне слово, і запит «site url» до цього ключа не
+    # дістає ніколи. Той самий ключ, розкладений на частини, — єдиний шлях знайти
+    # налаштування, коли людина знає, що воно робить, але не знає, як зветься.
+    words = " ".join(w for w in re.split(r"[^a-z0-9]+", title.lower()) if w)
+    if words and words != title.lower():
+        facts.append(f"- In words: {words}")
     if "required" in p:
         facts.append(f"- Required: {'yes' if p.get('required') else 'no'}")
     if _text(p.get("type")):
@@ -112,7 +127,9 @@ def config_spec(source: dict, ctx) -> list[Item]:
 
         def make(title=title, tag=tag, params=params):
             intro = _text(tag.get("description"))
-            md = "\n".join(([intro, ""] if intro else []) + [_parameter(p) for p in params])
+            kind = source.get("kind", "")
+            md = "\n".join(([intro, ""] if intro else [])
+                           + [_parameter(p, kind) for p in params])
             body = _markup.markdown_body(md)
             _markup.require(title, body, source["url"], min_chars=1)
             return _markup.document(title, page, ctx.stamp, body, version)
