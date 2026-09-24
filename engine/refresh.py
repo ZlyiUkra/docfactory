@@ -17,6 +17,7 @@ import urllib.error
 
 from engine import net
 from engine import readers
+from engine import redact as R
 from engine import sources as S
 
 # Скільки чекати перед повтором, коли сервер каже «забагато» (429) чи «тимчасово
@@ -110,6 +111,7 @@ def refresh(instance_dir, targets: set, do_refresh: bool, listing: bool,
     if not listing:
         corpus.mkdir(exist_ok=True)
     ctx = Ctx(src, time.strftime("%Y-%m-%d"), pause_of(instance_dir))
+    rules = R.rules(instance_dir)
     written = skipped = failed = 0
 
     asleep = {s["id"] for s in src if s.get("frozen") and not named(s, targets)}
@@ -140,7 +142,7 @@ def refresh(instance_dir, targets: set, do_refresh: bool, listing: bool,
                 skipped += 1
                 continue
             try:
-                text = it.make()
+                text = R.apply(it.make(), rules)
             except (net.Refused, SystemExit, urllib.error.URLError) as e:
                 print(f"  {it.file}  збій: {e}")
                 failed += 1

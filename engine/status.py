@@ -22,6 +22,7 @@ import urllib.error
 from engine import manifest as M
 from engine import net
 from engine import readers
+from engine import redact as R
 from engine import sources as S
 from engine.refresh import Ctx, pause_of
 
@@ -60,6 +61,9 @@ def status(instance_dir, deep: bool, targets: frozenset = frozenset()) -> int:
                          f"джерел із sources.json.")
     corpus = instance_dir / "corpus"
     ctx = Ctx(src, time.strftime("%Y-%m-%d"), pause_of(instance_dir))
+    # Свіжий текст маскується тими самими правилами, що й при записі: інакше
+    # кожен документ із заглушкою токена звірка вважала б зміненим.
+    rules = R.rules(instance_dir)
     allow = lambda u: S.allowed(u, src)  # noqa: E731
     base = M.by_file(M.load(corpus))
     print(f"── Звірка «{data.get('instance', '?')}» "
@@ -105,7 +109,7 @@ def status(instance_dir, deep: bool, targets: frozenset = frozenset()) -> int:
                 continue
             try:
                 if rn == "page":                         # 402: зміст уже в руках
-                    if _changed(path, it.make(), base):
+                    if _changed(path, R.apply(it.make(), rules), base):
                         print(f"  ~ змінився: {it.file}")
                         changed += 1
                     else:
@@ -114,7 +118,7 @@ def status(instance_dir, deep: bool, targets: frozenset = frozenset()) -> int:
                     if not deep:
                         unch_262 += 1
                         continue
-                    if _changed(path, it.make(), base):
+                    if _changed(path, R.apply(it.make(), rules), base):
                         print(f"  ~ змінився: {it.file}")
                         changed += 1
                     else:
@@ -127,7 +131,7 @@ def status(instance_dir, deep: bool, targets: frozenset = frozenset()) -> int:
                     if not deep:
                         unch_deep += 1
                         continue
-                    if _changed(path, it.make(), base):
+                    if _changed(path, R.apply(it.make(), rules), base):
                         print(f"  ~ змінився: {it.file}")
                         changed += 1
                     else:
@@ -138,7 +142,7 @@ def status(instance_dir, deep: bool, targets: frozenset = frozenset()) -> int:
                     if code == "304":
                         same += 1
                     elif code == "200":
-                        if deep and _changed(path, it.make(), base):
+                        if deep and _changed(path, R.apply(it.make(), rules), base):
                             print(f"  ~ змінився: {it.file}")
                             changed += 1
                         elif deep:

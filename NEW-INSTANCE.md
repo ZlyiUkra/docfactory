@@ -101,6 +101,7 @@ Trim `requirements.txt` to what the domain actually needs. `pypdf` belongs there
 | `collection` | Qdrant collection name | — |
 | `embed_model` | embedding model key | — |
 | `pause_sec` | seconds between requests to the same site while fetching | — |
+| `redact` | list of `{"pattern": regex, "with": text}`: matches are replaced in every document before it is written, and `check` compares the same text. For placeholder tokens the documentation shows in the format of a real one: GitHub push protection blocks them | none |
 | `server_name` | the name the MCP client shows | `<folder>-docs` |
 | `doc_set` | set label in diagnostics and in the Qdrant collection name | `suite` |
 | `sections` | `numbered` for documents with section numbers, `markdown` for `## Heading` sites | `numbered` |
@@ -413,6 +414,7 @@ cd ../..
 | `collection` | ім'я колекції Qdrant | — |
 | `embed_model` | ключ моделі векторів | — |
 | `pause_sec` | пауза в секундах між зверненнями до того самого сайту | — |
+| `redact` | перелік `{"pattern": вираз, "with": текст}`: збіги замінюються в кожному документі перед записом, а `check` порівнює той самий текст. Для заглушок токенів, які документація показує у форматі справжнього: GitHub блокує їхній push | немає |
 | `server_name` | ім'я, яке бачить MCP-клієнт | `<тека>-docs` |
 | `doc_set` | мітка набору в діагностиці й в імені колекції | `suite` |
 | `sections` | `numbered` для документів із номерами розділів, `markdown` для сайтів із `## Заголовок` | `numbered` |
@@ -724,6 +726,7 @@ você quiser busca por significado.
 | `collection` | nome da coleção no Qdrant | — |
 | `embed_model` | chave do modelo de vetores | — |
 | `pause_sec` | pausa em segundos entre requisições ao mesmo site | — |
+| `redact` | lista de `{"pattern": regex, "with": texto}`: as ocorrências são substituídas em cada documento antes de gravar, e `check` compara o mesmo texto. Para tokens de exemplo que a documentação mostra no formato de um real: a proteção de push do GitHub os bloqueia | nenhum |
 | `server_name` | nome que o cliente MCP exibe | `<pasta>-docs` |
 | `doc_set` | rótulo do conjunto no diagnóstico e no nome da coleção | `suite` |
 | `sections` | `numbered` para documentos com seções numeradas, `markdown` para sites com `## Título` | `numbered` |
