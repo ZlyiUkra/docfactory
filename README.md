@@ -179,10 +179,10 @@ cd ../..                        # назад у корінь: усі кроки 
 ./df <домен> serve
 ```
 
-Порт береться з `config.json` примірника (у ecmascript — `8760`, адреса `http://127.0.0.1:8760/mcp`; у react —
-`8761`; у nestjs — `8762`; у astro — `8763`). Від запуску до першої відповіді — секунди: стільки збирається індекс
-по словах. Виняток — astro: його корпус утричі більший за інші разом, і холодний старт із диска Windows триває
-близько трьох хвилин, поки термінал мовчить. Готовим сервер стає тоді, коли надрукував рядок з адресою.
+Порт береться з `config.json` примірника (у ecmascript — `8760`, адреса `http://127.0.0.1:8760/mcp`; у react — `8761`;
+у nestjs — `8762`; у astro — `8763`; у supabase — `8764`). Від запуску до першої відповіді — секунди: стільки
+збирається індекс по словах. Виняток — astro: його корпус утричі більший за інші разом, і холодний старт із диска
+Windows триває близько трьох хвилин, поки термінал мовчить. Готовим сервер стає тоді, коли надрукував рядок з адресою.
 Найперший `serve` у живому терміналі може спитати, чи піднімати Qdrant; відповідь `n` безпечна — нічого не
 встановлюється, сервер шукає по словах.
 
@@ -196,10 +196,10 @@ cd ../..                        # назад у корінь: усі кроки 
 
 Це робиться один раз — запис лишається, і надалі досить самого кроку 1.
 
-**3. Перевірити під'єднання.** У сесії Claude Code — команда `/mcp`: має бути сервер і два інструменти — в
-ecmascript `search_spec` та `read_section`, у react, nestjs і astro `search_docs` та `read_section` (імена задає
-`config.json` примірника). Поза сесією той самий перелік дає `claude mcp list`. Однакові імена інструментів у
-різних примірниках не заважають тримати всі чотири сервери під'єднаними одночасно: Claude Code розводить їх сам.
+**3. Перевірити під'єднання.** У сесії Claude Code — команда `/mcp`: має бути сервер і два інструменти — в ecmascript
+`search_spec` та `read_section`, у react, nestjs, astro і supabase `search_docs` та `read_section` (імена задає
+`config.json` примірника). Поза сесією той самий перелік дає `claude mcp list`. Однакові імена інструментів у різних
+примірниках не заважають тримати всі п'ять серверів під'єднаними одночасно: Claude Code розводить їх сам.
 
 
 **Той самий сервер з іншого місця.** Клієнтів у сервера може бути скільки завгодно одночасно: друге вікно
@@ -228,7 +228,8 @@ WSL2 прокидає порти linux-сторони на Windows-івськи�
 
 Покрокова інструкція для кожного домену — у README його примірника, розділ «Спосіб Б»:
 [ecmascript](instances/ecmascript/README.md), [react](instances/react/README.md),
-[nestjs](instances/nestjs/README.md), [astro](instances/astro/README.md).
+[nestjs](instances/nestjs/README.md), [astro](instances/astro/README.md),
+[supabase](instances/supabase/README.md).
 
 ## Оновлення корпусу
 
@@ -336,6 +337,26 @@ ecma-international.org, unicode.org і rfc-editor.org). Оригінали на 
   changed?"`;
 - докладніше — у [instances/astro/README.md](instances/astro/README.md).
 
+### supabase
+
+Документація Supabase — як його налаштувати й як ним користуватися: 678 гайдів supabase.com/docs, каталог 79 функцій
+supabase.com/features, референс шести клієнтських бібліотек (JavaScript, Dart, Swift, Kotlin, Python, C#), Server SDK,
+CLI й Management API, а також довідники налаштувань — усі ключі `supabase/config.toml` і змінні оточення self-hosted
+Auth, Storage, Realtime, Analytics і Functions. Версій немає: платформа оновлюється безперервно, і документація в неї
+одна, поточна.
+
+- порт `8764`; запис у Claude Code — `supabase-docs`, адреса `http://127.0.0.1:8764/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-supabase`, модель векторів — `bge-small`;
+- `llms.txt` Supabase називає лише двадцять сторінок розділів, тож гайди бере новий читач `sitemap-md`: перелік — із
+  `sitemap.xml`, текст — markdown-двійник кожної сторінки; референс — `mdfile`, по файлу `llms/<мова>.txt` на мову;
+- каталог функцій бере `supabase-features` — з `__NEXT_DATA__` кожної сторінки `/features/*`: стадія функції і
+  чи є вона в self-hosted;
+- довідники налаштувань існують лише як YAML-специфікації в репозиторії документації, і читач `config-spec` робить
+  із кожного ключа окремий уривок; для цього в venv примірника стоїть PyYAML — єдина залежність, якої немає в інших;
+- приклад питання агентові: `./df supabase ask "How do I set up server-side auth with @supabase/ssr in Astro?"`;
+- докладніше — у [instances/supabase/README.md](instances/supabase/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
@@ -365,9 +386,9 @@ Gatsby з `page-data.json`), `ghdocs` (markdown-документація на т
 
 ## Стан і дорожня карта
 
-Живуть чотири примірники — `ecmascript` (переїхав із `final/`), `react`, `nestjs` і `astro` — і всі містять самі
-дані домену: корпус, `sources.json`, `config.json`, `prompts/`, `checks.json`, `.env`, `.mcp.json`. Увесь код
-спільний — `engine/` (як будувати корпус), `server/` (MCP-сервер, чотири шари, власний агент), `common/` (пошук по
+Живуть п'ять примірників — `ecmascript` (переїхав із `final/`), `react`, `nestjs`, `astro` і `supabase` — і всі
+містять самі дані домену: корпус, `sources.json`, `config.json`, `prompts/`, `checks.json`, `.env`, `.mcp.json`. Увесь
+код спільний — `engine/` (як будувати корпус), `server/` (MCP-сервер, чотири шари, власний агент), `common/` (пошук по
 словах і за змістом, профіль домену). Пошук іде і по словах (BM25), і за змістом (fastembed + Qdrant); сервер
 відповідає і на stdio, і на HTTP. Лишилося тільки scaffold нових доменів.
 
