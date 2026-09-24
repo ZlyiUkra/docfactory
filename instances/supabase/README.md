@@ -1,8 +1,10 @@
 # supabase — примірник фабрики docfactory
 
 П'ятий примірник фабрики: захищений MCP-сервер, що відповідає на питання про Supabase — як його налаштувати й як ним
-користуватися — за офіційною документацією: гайдами, референсом клієнтських бібліотек, CLI й Management API, а також
-довідниками налаштувань `config.toml` і змінних оточення self-hosting. Код спільний і лежить у `../../engine/`
+користуватися — за офіційною документацією: гайдами й статтями troubleshooting, референсом клієнтських бібліотек
+(поточним і старими мажорними версіями), CLI, Management API і REST API серверів, довідниками налаштувань
+`config.toml` і змінних оточення self-hosting, а також каталогом функцій, журналом змін, Supabase Library, блогом і
+кейсами. Код спільний і лежить у `../../engine/`
 (завантаження корпусу), `../../server/` (сервер, агент, шари) та `../../common/` (пошук); ця тека тримає самі дані
 домену. Загальний устрій фабрики — у [../../README.md](../../README.md).
 
@@ -22,14 +24,21 @@
 
 | Шар | Документів | Звідки |
 |-----|-----------:|--------|
-| Гайди: Auth, Database і RLS, Storage, Edge Functions, Realtime, локальна розробка, self-hosting, платформа, troubleshooting | 678 | supabase.com/docs |
+| Гайди: Auth, Database і RLS, Storage, Edge Functions, Realtime, локальна розробка, self-hosting, платформа | 678 | supabase.com/docs |
+| Статті troubleshooting: реальні помилки й розв'язки (51 з них є і серед гайдів, текст зливається) | 218 | supabase.com/docs |
 | Каталог функцій: що робить кожна, її стадія (GA, Beta…), чи є в self-hosted, де її гайд | 79 | supabase.com/features |
 | Референс: JavaScript, Dart, Swift, Kotlin, Python, C#, Server SDK, middleware, CLI, Management API | 10 | supabase.com/llms |
 | Довідник `config.toml`: огляд і 12 груп, 160 ключів | 13 | репозиторій supabase/supabase |
 | Змінні оточення self-hosted Auth, Storage, Realtime, Analytics, Functions | 12 | репозиторій supabase/supabase |
 | README сервера Auth (GoTrue): повний перелік його змінних | 1 | репозиторій supabase/auth |
+| Старі мажорні версії референсу: supabase-js v1, Kotlin v1 і v2, Dart v1, Swift v1, C# v0 і v1 (legacy) | 7 | репозиторій supabase/supabase |
+| REST API серверів Auth (46 шляхів), Storage і Analytics: огляд і група ендпоінтів на тег | 20 | репозиторії supabase/auth і supabase/supabase |
+| Журнал змін: індекс з датованим підсумком кожного запису і повні записи | 151 | supabase.com/changelog |
+| Supabase Library: компоненти й блоки для auth, завантажень, realtime | 73 | supabase.com/library |
+| Блог: анонси, launch weeks, розбори; дата — у назві | 412 | supabase.com/blog |
+| Кейси: як компанії будували на Supabase | 44 | supabase.com/customers |
 
-Разом 792 документи; скільки з них вийшло уривків, записано в `checks.json` (`expected_passages`).
+Разом 1717 документів; скільки з них вийшло уривків, записано в `checks.json` (`expected_passages`).
 
 ## Що в цій теці
 
@@ -54,12 +63,19 @@
 | референс | `supabase.com/llms/<мова>.txt` — один markdown-файл на мову, розділ `##` на кожен метод чи команду | `mdfile` |
 | налаштування | YAML-специфікації `apps/docs/spec/*_config.yaml` у `supabase/supabase` | `config-spec` |
 | змінні Auth | `README.md` репозиторію `supabase/auth` | `mdfile` |
+| troubleshooting | перелік — посилання з `supabase.com/docs/guides/troubleshooting.md`, текст — `.md` кожної статті | `mdlinks` |
+| журнал змін | індекс — `supabase.com/changelog.md`; записи — `sitemap_www.xml` у межах `/changelog/` | `mdfile`, `sitemap-md` |
+| Library | `supabase.com/library/llms.txt` | `llms-heading` |
+| блог, кейси | `sitemap_www.xml` у межах `/blog/` і `/customers/`, назва й дата — з шапки YAML | `sitemap-md` |
+| старі SDK | YAML-специфікації openref `apps/docs/spec/supabase_*_v*.yml` | `sdk-spec` |
+| REST API | `openapi.yaml` репозиторію `supabase/auth`; `storage_v0_openapi.json`, `analytics_v0_openapi.json` | `openapi` |
 
-Усі чотири читачі додано разом із цим примірником, окремими модулями (`engine/readers/sitemap.py`,
-`engine/readers/configspec.py`, `engine/readers/sbfeatures.py`). Чинні читачі не змінено жодним рядком: примірники
+Сім читачів додано разом із цим примірником, окремими модулями (`engine/readers/sitemap.py`,
+`engine/readers/configspec.py`, `engine/readers/sbfeatures.py`, `engine/readers/sdkspec.py`,
+`engine/readers/openapi.py`). Чинні читачі не змінено жодним рядком: примірники
 `ecmascript`, `react`, `nestjs` і `astro` зібрані й звірені, і ніяка правка не має права їх зачепити.
 
-Шість особливостей, які варто знати:
+Вісім особливостей, які варто знати:
 
 - **`llms.txt` тут не перелік сторінок.** Він називає лише двадцять верхніх сторінок розділів, тож читач `llms`
   узяв би 3% документації. Повний перелік — тільки в `sitemap.xml`. Сайтмап несе й адреси референсу, але
@@ -79,8 +95,18 @@
 - **Шість мов SDK поруч.** `signInWithPassword` чи `from().select()` є в кожній клієнтській бібліотеці, тож опис
   інструмента велить моделі вписувати мову в запит і звіряти назву документа («JavaScript Client Library
   Reference»…). Мова за замовчуванням — JavaScript.
-- **Старих мажорних версій SDK немає.** `llms/<мова>.txt` несе лише поточний референс; сайт показує ще, скажімо,
-  `supabase-js` v1, але тільки HTML-ом. Про давню версію сервер скаже, що її тут немає.
+- **Старі мажорні версії SDK — окремими документами з позначкою legacy.** `llms/<мова>.txt` несе лише поточний
+  референс; старі версії сайт показує тільки HTML-ом, а першоджерело — YAML-специфікації openref. Частина функцій
+  там без опису: замість нього стоїть посилання на згенеровану з коду довідку TypeScript, яку тут не тягнуто. Назва,
+  нотатки й приклади лишаються — для старого коду саме приклади важать найбільше. Промпти велять брати legacy лише
+  тоді, коли код користувача на тій версії.
+- **Troubleshooting — з окремого переліку.** Сайтмап документації називає 51 статтю, а сторінка-перелік — 218.
+  Спільні 51 лежать і в `guides`, і в `troubleshooting` під тим самим іменем, тож однаковий текст зливається в один
+  уривок і двічі у видачі не з'являється.
+- **REST API Auth — з репозиторію самого сервера.** Копія в репозиторії документації — стара Swagger 2.0 ще від
+  netlify/gotrue на 21 ендпоінт; чинна специфікація `supabase/auth` — на 46 шляхів. `functions_v0_openapi.json`
+  побайтно дублює специфікацію Analytics, тому окремо не оголошена. Одинадцять записів блогу (давні кейси, що
+  переїхали в `/customers/`) сайт у markdown не віддає — вони лишаються збоями, а кейси бере своє джерело.
 - **Сайт екранує підкреслення в прозі** (`pg\_net`). Пошуку це не шкодить — індекс бере лише літери й цифри, — а
   в цитаті зворотна риска просто видна.
 
@@ -112,7 +138,7 @@ cd ../..                      # назад у корінь фабрики: ус�
 ```
 ./df supabase sources --why   # перелік джерел і білий список
 ./df supabase list            # що завантажилося б, без запису
-./df supabase refresh         # завантажити все задеклароване (~35 хвилин: пауза 2 с між зверненнями)
+./df supabase refresh         # завантажити все задеклароване (~70 хвилин: пауза 2 с між зверненнями)
 ./df supabase manifest        # оновити паспорт
 ./df supabase setup           # Qdrant чи пошук лише по словах
 ./df supabase vectors         # залити корпус у docs-supabase

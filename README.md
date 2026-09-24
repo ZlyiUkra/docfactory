@@ -339,11 +339,13 @@ ecma-international.org, unicode.org і rfc-editor.org). Оригінали на 
 
 ### supabase
 
-Документація Supabase — як його налаштувати й як ним користуватися: 678 гайдів supabase.com/docs, каталог 79 функцій
-supabase.com/features, референс шести клієнтських бібліотек (JavaScript, Dart, Swift, Kotlin, Python, C#), Server SDK,
-CLI й Management API, а також довідники налаштувань — усі ключі `supabase/config.toml` і змінні оточення self-hosted
-Auth, Storage, Realtime, Analytics і Functions. Версій немає: платформа оновлюється безперервно, і документація в неї
-одна, поточна.
+Документація Supabase — як його налаштувати й як ним користуватися: 678 гайдів і 218 статей troubleshooting
+supabase.com/docs, каталог 79 функцій, референс шести клієнтських бібліотек (JavaScript, Dart, Swift, Kotlin, Python,
+C#) разом зі старими мажорними версіями, Server SDK, CLI, Management API і REST API серверів Auth, Storage й
+Analytics, довідники налаштувань — усі ключі `supabase/config.toml` і змінні оточення self-hosted Auth, Storage,
+Realtime, Analytics і Functions, — а також журнал змін, Supabase Library, блог і кейси. 1717 документів. Версій немає:
+платформа оновлюється безперервно, і документація в неї одна, поточна; старі версії SDK — окремі документи з позначкою
+legacy.
 
 - порт `8764`; запис у Claude Code — `supabase-docs`, адреса `http://127.0.0.1:8764/mcp`; інструменти `search_docs` і
   `read_section`;
@@ -352,6 +354,8 @@ Auth, Storage, Realtime, Analytics і Functions. Версій немає: пла
   `sitemap.xml`, текст — markdown-двійник кожної сторінки; референс — `mdfile`, по файлу `llms/<мова>.txt` на мову;
 - каталог функцій бере `supabase-features` — з `__NEXT_DATA__` кожної сторінки `/features/*`: стадія функції і
   чи є вона в self-hosted;
+- troubleshooting бере `mdlinks` — зі сторінки-переліку на 218 статей, бо сайтмап називає лише 51; старі
+  версії SDK — `sdk-spec` з YAML-специфікацій openref; REST API — `openapi`;
 - довідники налаштувань існують лише як YAML-специфікації в репозиторії документації, і читач `config-spec` робить
   із кожного ключа окремий уривок; для цього в venv примірника стоїть PyYAML — єдина залежність, якої немає в інших;
 - приклад питання агентові: `./df supabase ask "How do I set up server-side auth with @supabase/ssr in Astro?"`;
