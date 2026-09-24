@@ -437,11 +437,17 @@ def _find(query: str, k: int, keep=None) -> tuple[list[Passage], str]:
 
     `keep` — фільтр версії. Qdrant його не знає (версії фрагмента дописуються при
     злитті повторів і в payload точки могли б застаріти), тож за змістом береться
-    ширший список, а відбір робиться тут, по фрагментах поточного корпусу."""
-    deep = k * DEPTH
-    words = _dedup(_INDEX.retrieve(query, deep, keep), k)
+    ширший список, а відбір робиться тут, по фрагментах поточного корпусу.
+
+    Злиття бачить по `fuse` місць кожного способу. Без поля `fusion_depth` у
+    config.json це k — і тоді розділ, п'ятий по словах і четвертий за змістом, зі
+    злиття по п'ять місць випадає, хоч обидва способи його знайшли. Примірник, якому
+    це важливо, задає глибину сам; решта дістає рівно ту видачу, що й раніше."""
+    fuse = profile.FUSION_DEPTH or k
+    deep = max(k * DEPTH, fuse)
+    words = _dedup(_INDEX.retrieve(query, deep, keep), fuse)
     if not _VECTORS_READY:
-        return words, "words"
+        return words[:k], "words"
     try:
         from common import embed, vectorstore
         limit = deep if keep is None else max(50, deep * 2)
@@ -449,13 +455,13 @@ def _find(query: str, k: int, keep=None) -> tuple[list[Passage], str]:
         meaning = [_BY_ID[h["uid"]] for h in hits if h.get("uid") in _BY_ID]
         if keep is not None:
             meaning = [p for p in meaning if keep(p)]
-        meaning = _dedup(meaning, k)
+        meaning = _dedup(meaning, fuse)
     except Exception as exc:                      # noqa: BLE001 - причина в stderr
         print(f"spec_mcp: пошук за змістом не відповів ({exc}); "
               f"віддаю знайдене по словах", file=sys.stderr)
-        return words, "words"
+        return words[:k], "words"
     if not meaning:
-        return words, "words"
+        return words[:k], "words"
     return _dedup(_rrf([words, meaning], k * 2), k), "meaning+words"
 
 

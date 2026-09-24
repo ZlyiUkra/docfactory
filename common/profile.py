@@ -14,7 +14,9 @@
                 tools         {"search": …, "read": …} — імена двох інструментів
                 answer_hosts  домени, посилання на які шар 4 лишає у відповіді
                 example_label слово з назви розділу, з якого береться приклад id
-  prompts/      search.txt, read.txt — описи інструментів; loaded.txt — що
+                fusion_depth  скільки місць кожного способу бачить злиття пошуку по
+                              словах і за змістом; без поля — k виклику, як і було
+  prompts/     search.txt, read.txt — описи інструментів; loaded.txt — що
                 завантажено ({excerpts}, {documents}, {versions} підставляє
                 сервер); agent.txt — системний промпт Mode A; refusal.txt — відмова
   checks.json   запити й очікування, якими smoke, check, raw і quality перевіряють
@@ -39,6 +41,11 @@ SEARCH_TOOL = _TOOLS.get("search") or "search_spec"
 READ_TOOL = _TOOLS.get("read") or "read_section"
 ANSWER_HOSTS = tuple(_CONF.get("answer_hosts") or ())
 EXAMPLE_LABEL = _CONF.get("example_label") or ""
+# 0 означає «глибина = k», тобто поведінку до появи поля. Число вибирають за
+# виміром quality примірника: у supabase плато 8–10 дає влучання і при k=5, і при
+# k=3, а від 12 злиття вже губить розділ, перший в одному зі способів, — його
+# перемагають сторінки, що є в обох списках хоч і далеко.
+FUSION_DEPTH = int(_CONF.get("fusion_depth") or 0)
 
 
 def text(name: str) -> str:

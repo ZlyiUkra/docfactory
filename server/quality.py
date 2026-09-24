@@ -12,9 +12,10 @@
 самим пошуком за змістом і їхнім злиттям, тим самим, яким користується сервер, —
 і рахується, чи потрапив потрібний розділ у перші k.
 
-Просять і згортають повтори розділу так само, як це робить сам сервер (DEPTH і
-`_dedup` беруться з `spec_mcp`): замір, що міряв би не те, що віддає сервер, був би
-гіршим за відсутній.
+Просять, згортають повтори розділу і зливають на ту саму глибину, що й сам сервер
+(DEPTH і `_dedup` беруться з `spec_mcp`, глибина злиття — з поля fusion_depth у
+config.json примірника): замір, що міряв би не те, що віддає сервер, був би гіршим
+за відсутній.
 
 ЩО ЦЕ ЧИСЛО ОЗНАЧАЄ І ЧОГО НЕ ОЗНАЧАЄ
 
@@ -116,20 +117,23 @@ def main(argv: list[str]) -> int:
     score = dict.fromkeys(ways, 0)
     t_words = t_meaning = 0.0
 
+    # Глибина злиття — та сама, що в сервері (spec_mcp._find): без поля fusion_depth
+    # у config.json це K, і кожен спосіб окремо міряється своїми першими K місцями.
+    fuse = profile.FUSION_DEPTH or K
     for query, wants in CASES:
-        deep = K * spec_mcp.DEPTH
+        deep = max(K * spec_mcp.DEPTH, fuse)
         t0 = time.perf_counter()
-        words = spec_mcp._dedup(spec_mcp._INDEX.retrieve(query, deep), K)
+        words = spec_mcp._dedup(spec_mcp._INDEX.retrieve(query, deep), fuse)
         t_words += time.perf_counter() - t0
-        found = {"по словах": words}
+        found = {"по словах": words[:K]}
 
         if ready:
             t0 = time.perf_counter()
             hits = vectorstore.search(embed.embed_query(query), deep)
             t_meaning += time.perf_counter() - t0
             meaning = spec_mcp._dedup([spec_mcp._BY_ID[h["uid"]] for h in hits
-                                       if h.get("uid") in spec_mcp._BY_ID], K)
-            found["за змістом"] = meaning
+                                       if h.get("uid") in spec_mcp._BY_ID], fuse)
+            found["за змістом"] = meaning[:K]
             found["разом"] = spec_mcp._dedup(spec_mcp._rrf([words, meaning], K * 2), K)
 
         marks = []
