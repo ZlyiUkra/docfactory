@@ -1,0 +1,4684 @@
+# Kotlin Client Library Reference v2 (legacy)
+# джерело: https://supabase.com/docs/reference/kotlin/v2/introduction
+# отримано: 2026-09-24
+
+## Initializing
+
+### Create Supabase Client
+
+Independently of which Supabase module you are using, you will need to initialize the main client first and install the module.
+
+To create a new client, you can use the `createSupabaseClient` function.
+
+When installing a module, you can pass a block to configure it.
+
+### OAuth and OTP link verification
+
+supabase-kt provides several platform implementations for OAuth and OTP link verification.
+
+**On Desktop platforms (JVM, MacOS\*, Linux)**, it uses a HTTP Callback Server to receive the session data from a successful OAuth sign-in. The success page can be customized via `AuthConfig#httpCallbackConfig` \
+\* If no deeplinks are being used.
+
+*Note: OTP link verification such as sign ups are not supported on JVM. You may have to send a verification token rather than a url in your email. To send the token, rather than a redirect url, change `{{ .ConfirmationURL }}` in your sign up email to `{{ .Token }}`*
+
+**On Android, iOS & MacOS**, OAuth and OTP verification use deeplinks. Refer to the guide below on how to setup deeplinks. Alternatively you can use Native Google Auth. \
+**On JS**, it uses the website origin as the callback url. Session importing gets handled automatically. \
+**Windows, tvOS, watchOS & Linux** currently have no default implementation. Feel free to create a PR.
+
+You always make your own implementation and use `auth.parseSessionFromFragment(fragment)` or `auth.parseSessionFromUrl(url)` to let supabase-kt handle the parsing after receiving a callback.
+Then you can simply use `auth.importSession(session)`.
+
+### Configure deeplink callbacks for Authentication
+
+Deeplinks are supported on Android, iOS and MacOS.
+1. **Set up a deeplink** \
+On Android, set up a deeplink in your Android manifest. \
+On iOS and MacOS, set up a url scheme.
+2. **Add your deeplink to the redirect URLs** \
+**Pattern**: scheme://host
+3. **Configure the Auth plugin**
+Set the `host` and `scheme` in the Auth config:
+```kotlin
+    install(Auth) {
+       host = "deeplink host" // this can be anything, eg. your package name or app/company url (not your Supabase url)
+       scheme = "deeplink scheme"
+
+       // On Android only, you can set OAuth and SSO logins to open in a custom tab, rather than an external browser:
+       defaultExternalAuthAction = ExternalAuthAction.CustomTabs() //defaults to ExternalAuthAction.ExternalBrowser
+    }
+```
+4. **Call platform specific function on startup** \
+On Android: `supabase.handleDeeplinks(intent)` \
+If you don't want a separate activity, just call this function at the top of your `onCreate` function in your MainActivity. \
+On iOS/MacOS: `supabase.handleDeeplinks(url)`
+
+Then you can sign in using OAuth:
+```kotlin
+supabase.auth.signInWith(Google)
+```
+Or open OTP links directly in your app.
+
+### PKCE Authentication flow
+
+supabase-kt supports the PKCE authentication flow.
+To use it, change the `flowType` in the Auth configuration:
+```kotlin
+install(Auth) {
+  flowType = FlowType.PKCE
+}
+```
+That's it! If you already implemented deeplinks to handle OTPs and OAuth you don't have to change anything!
+
+Parameters:
+
+- `supabaseUrl` `String`: The unique Supabase URL which is supplied when you create a new project in your project dashboard.
+- `supabaseKey` `String`: The unique Supabase Key which is supplied when you create a new project in your project dashboard.
+- `builder` `SupabaseClientBuilder.() -> Unit`, optional: Apply additional configuration and install plugins.
+  - `useHTTPS` `Boolean`, optional: Whether to use HTTPS for network requests. Will be set automatically depending on your Supabase url, but can be changed manually.
+  - `httpEngine` `HttpClientEngine?`, optional: Custom Ktor Client engine. Shouldn't be set manually as Ktor uses an engine from your dependencies, but can be set to a MockEngine for tests.
+  - `ignoreModulesInUrl` `Boolean`, optional: Whether to ignore if [supabaseUrl] contains modules like 'realtime' or 'auth'. If false, an exception will be thrown. Defaults to false.
+  - `requestTimeout` `Duration`, optional: Timeout after network requests throw a `HttpRequestTimeoutException`. Defaults to 10 seconds.
+  - `defaultLogLevel` `LogLevel`, optional: The default log level used for plugins. Can be overridden per plugin. Defaults to `LogLevel.INFO`.
+  - `defaultSerializer` `SupabaseSerializer`, optional: The default serializer used to serialize and deserialize custom data types. Defaults to `KotlinXSerializer`.
+
+### Example: Initialize Client
+
+```kotlin
+val supabase = createSupabaseClient(
+    supabaseUrl = "https://xyzcompany.supabase.co",
+    supabaseKey = "your-publishable-key"
+) {
+    install(Auth)
+    install(Postgrest)
+    //install other modules
+}
+```
+
+### Example: Configure Auth module
+
+**Common:**
+
+`alwaysAutoRefresh` - whether the Auth plugin should always auto refresh expired sessions automatically. Default: `true`
+
+`autoLoadFromStorage` - whether the Auth plugin should automatically load the session from the session manager. Default: `true`
+
+`autoSaveToStorage` - whether the Auth plugin should automatically save the session to the session manager. Default: `true`
+
+`flowType` - Which authentication flow to use. Currently available: FlowType.PKCE and FlowType.IMPLICIT. Default: `FlowType.IMPLICIT`
+
+`codeVerifierCache` - Interface for saving and loading codes for the PKCE authentication flow. Default: `SettingsCodeVerifierCache`
+
+`customUrl` - Custom url for the Auth API. Can be safely ignored when using Supabase. Default: `null`
+
+`jwtToken` - Plugin specific JWT Token. Can be ignored when using the Auth plugin. Default: `null`
+
+`retryDelay` - Duration after which the Auth plugin should retry a failed session refresh. Default: `10.seconds`
+
+`sessionManager` - Interface for saving and loading the user session. Default: `SettingsSessionManager`
+
+**Android & iOS:**
+
+`scheme` - The scheme for the redirect url, when using deep linking. Default: `supabase`
+
+`host` - The host for the redirect url, when using deep linking. Default: `login`
+
+**Android:**
+
+`enableLifecycleCallbacks` - Whether to stop auto-refresh on focus loss, and resume it on focus again. Default: `true`
+
+**Desktop:**
+
+`httpPort`: The port the web server is running on, when signing in with OAuth. Default: `0` (random port).
+
+`timeout`: The timeout for the web server, when signing in with OAuth. Default: `1.minutes`.
+
+`htmlTitle`: The title of the redirect page, when signing in with OAuth. Default: `"Supabase Auth"`.
+
+`htmlText`: The text of the redirect page, when signing in with OAuth. Default: `"Logged in. You may continue in your app."`.
+
+`htmlIconUrl`: The icon of the redirect page, when signing in with OAuth. Default: `"https://supabase.com/brand-assets/supabase-logo-icon.png"`.
+
+```kotlin
+val supabase = createSupabaseClient(
+    supabaseUrl = "https://xyzcompany.supabase.co",
+    supabaseKey = "your-publishable-key"
+) {
+    install(Auth) {
+        alwaysAutoRefresh = false // default: true
+        autoLoadFromStorage = false // default: true
+        //and more...
+    }
+}
+```
+
+### Example: Configure PostgREST module
+
+`propertyConversionMethod` - The method to use to convert the property names to the column names when applying filters and using the update method. Default: `PropertyConversionMethod.CAMEL_CASE_TO_SNAKE_CASE`
+
+`defaultSchema` - The default schema to use for database requests. Default: `public`
+
+`customUrl` - Custom url for the PostgREST API. Can be safely ignored when using Supabase. Default: `null`
+
+`jwtToken` - Plugin specific JWT Token. Can be ignored when using the Auth plugin. Default: `null`
+
+```kotlin
+val supabase = createSupabaseClient(
+    supabaseUrl = "https://xyzcompany.supabase.co",
+    supabaseKey = "your-publishable-key"
+) {
+    install(Postgrest) {
+        defaultSchema = "schema" // default: "public"
+        propertyConversionMethod = PropertyConversionMethod.SERIAL_NAME // default: PropertyConversionMethod.CAMEL_CASE_TO_SNAKE_CASE
+    }
+}
+```
+
+### Example: Configure Storage module
+
+`transferTimeout` - the timeout for uploading and downloading files. Default: `120.seconds`
+
+`resumable.cache` - Interface for storing resumable upload urls. Default: `SettingsResumableCache`
+
+`resumable.defaultChunkSize` - The default chunk size for resumable uploads. Supabase currently only supports a chunk size of 6MB, so be careful when changing this value. Default: `6MB`
+
+`resumable.retryTimeout` - the timeout for retrying resumable uploads when uploading a chunk fails. Default: `5.seconds`
+
+`resumable.onlyUpdateStateAfterChunk` - whether the upload state should only be updated after a chunk was uploaded successfully or also when the chunk is currently being uploaded. Default: `false`
+
+`customUrl` - Custom url for the Storage API. Can be safely ignored when using Supabase. Default: `null`
+
+`jwtToken` - Plugin specific JWT Token. Can be ignored when using the Auth plugin. Default: `null`
+
+```kotlin
+val supabase = createSupabaseClient(
+    supabaseUrl = "https://xyzcompany.supabase.co",
+    supabaseKey = "your-publishable-key"
+) {
+    install(Storage) {
+        transferTimeout = 90.seconds // Default: 120 seconds
+    }
+}
+```
+
+### Example: Configure Realtime module
+
+`reconnectDelay` - The delay between reconnect attempts. Default: `7.seconds`
+
+`heartbeatInterval` - The interval between heartbeat messages. Default: `15.seconds`
+
+`disconnectOnSessionLoss` - Whether to disconnect from the websocket when the session is lost. Default: `true`
+
+`secure` - Whether to use wss or ws. Defaults to [SupabaseClient.useHTTPS] when null
+
+`websocketConfig` - Custom Ktor websocket config
+
+`customUrl` - Custom url for the Realtime websocket. Can be safely ignored when using Supabase. Default: `null`
+
+`jwtToken` - Plugin specific JWT Token. Can be ignored when using the Auth plugin. Default: `null`
+
+```kotlin
+val supabase = createSupabaseClient(
+    supabaseUrl = "https://xyzcompany.supabase.co",
+    supabaseKey = "your-publishable-key"
+) {
+    install(Realtime) {
+        reconnectDelay = 5.seconds // Default: 7 seconds
+    }
+}
+```
+
+### Example: Configure Functions plugin
+
+`customUrl` - Custom url for the Functions API. Can be safely ignored when using Supabase. Default: `null`
+
+`jwtToken` - Plugin specific JWT Token. Can be ignored when using the Auth plugin. Default: `null`
+
+```kotlin
+val supabase = createSupabaseClient(
+    supabaseUrl = "https://xyzcompany.supabase.co",
+    supabaseKey = "your-publishable-key"
+) {
+    install(Functions) {
+        //no custom settings
+    }
+}
+```
+
+### Example: Configure GraphQL plugin
+
+`apolloConfiguration` - Custom configuration for the ApolloClient
+
+`customUrl` - Custom url for the GraphQL API. Can be safely ignored when using Supabase. Default: `null`
+
+`jwtToken` - Plugin specific JWT Token. Can be ignored when using the Auth plugin. Default: `null`
+
+**You can access the created ApolloClient via `supabase.graphql.apolloClient`, which automatically adds the required headers depending on your session.**
+
+```kotlin
+val supabase = createSupabaseClient(
+    supabaseUrl = "https://xyzcompany.supabase.co",
+    supabaseKey = "your-publishable-key"
+) {
+    install(GraphQL) {
+        apolloConfiguration {
+          //custom configuration
+        }
+    }
+}
+```
+
+## Fetch data: select()
+
+Perform a SELECT query on the table or view.
+- When calling a `decode` method, you have to provide a serializable class as the type parameter.
+- You can provide a `Columns` object to select specific columns.
+- You can provide a filter block to filter the results
+
+Parameters:
+
+- `columns` `Columns`, optional: The columns to retrieve, defaults to `Columns.ALL`. You can also use `Columns.list`, `Columns.type` or `Columns.raw` to specify the columns.
+- `head` `Boolean`, optional: If true, select will delete the selected data.
+- `request` `PostgrestRequestBuilder.() -> Unit`, optional: Additional configuration & filtering for the request.
+
+### Example: Getting your data
+
+```kotlin
+val city = supabase.from("cities").select().decodeSingle<City>()
+```
+
+### Example: Selecting specific columns
+
+You can select specific fields from your tables.
+
+```kotlin
+val city = supabase.from("cities").select(columns = Columns.list("id, name")).decodeSingle<City>()
+```
+
+### Example: Query foreign tables
+
+If your database has foreign key relationships, you can query related tables too.
+
+What about join tables
+If your tables are **NOT** directly related, but instead are joined by a _join table_,
+you can still use the `select()` method to query the related data. The PostgREST engine detects the relationship automatically.
+For more details, follow the link.
+
+```kotlin
+val columns = Columns.raw("""
+    id,
+    name,
+    cities (
+      id,
+      name
+    )
+""".trimIndent())
+val country = supabase.from("countries")
+  .select(
+    columns = columns
+  )
+  .decodeSingle<Country>()
+```
+
+### Example: Query the same foreign table multiple times
+
+Sometimes you will need to query the same foreign table twice.
+In this case, you can use the name of the joined column to identify
+which join you intend to use. For convenience, you can also give an
+alias for each column.
+
+```kotlin
+val columns = Columns.raw("""
+    content,
+    from: sender_id(name),
+    to: receiver_id(name)
+""".trimIndent())
+val message = supabase.from("messages")
+    .select(columns = columns)
+    .decodeSingle<Message>()
+```
+
+### Example: Querying with count option
+
+You can get the number of rows by using the count option.
+Allowed values for count option are Count.EXACT, Count.PLANNED and Count.ESTIMATED.
+
+```kotlin
+val count = supabase.from("countries")
+    .select {
+        count(Count.EXACT)
+    }
+    .count()!!
+```
+
+### Example: Querying JSON data
+
+If you have data inside of a JSONB column, you can apply select
+and query filters to the data values. Postgres offers a
+number of operators
+for querying JSON data. Also see
+PostgREST docs for more details.
+
+```kotlin
+val columns = Columns.raw("""
+    id, name
+    address->city
+""".trimIndent())
+val user = supabase.from("users")
+    .select(columns = columns)
+    .decodeSingle<User>()
+```
+
+## Create data: insert()
+
+Perform an INSERT into the table or view.
+- When calling an `insert` method, you have to provide a serializable value.
+- By default, `insert` will not return the inserted data. If you want to return the inserted data, you can use the `select()` method inside the request.
+
+Parameters:
+
+- `value` `T or List<T>`: The value(s) you want to insert. `T` can be any serializable type.
+- `request` `PostgrestRequestBuilder.() -> Unit`, optional: Additional configuration & filtering for the request.
+
+### Example: Create a record
+
+```kotlin
+val city = City(name = "The Shire", countryId = 554)
+supabase.from("cities").insert(city)
+```
+
+### Example: Create a record and return it
+
+```kotlin
+val city = City(name = "The Shire", countryId = 554)
+val result = supabase.from("cities").insert(city) {
+    select()
+}.decodeSingle<City>()
+```
+
+### Example: Bulk create
+
+When running a bulk create, the operation is handled in a single transaction. If any of the inserts fail, all other operations are
+rolled back.
+
+```kotlin
+val theShire = City(name = "The Shire", countryId = 554)
+val rohan = City(name = "Rohan", countryId = 554)
+supabase.from("cities").insert(listOf(theShire, rohan))
+```
+
+## Modify data: update()
+
+Perform an UPDATE on the table or view.
+- `update()` should always be combined with a filter block to avoid updating all records.
+- When calling `insert` or `update`, you have to provide a serializable value in the function parameter.
+- By default, `update` will not return the inserted data. If you want to return the inserted data, you can use the `select()` method inside the request.
+
+Parameters:
+
+- `value` `T or PostgrestUpdate.() -> Unit = {}`: The new value, can be either a serializable value or PostgrestUpdate DSL where you can set new values per column.
+- `request` `PostgrestRequestBuilder.() -> Unit`, optional: Additional configuration & filtering for the request.
+
+### Example: Updating your data
+
+```kotlin
+supabase.from("characters").update(
+    {
+       Character::name setTo "Harry"
+       //or
+       set("name", "Harry")
+    }
+) {
+    filter {
+        Character::id eq 1
+        //or
+        eq("id", 1)
+    }
+}
+```
+
+### Example: Update a record and return it
+
+Data source:
+
+```sql
+create table
+  instruments (id int8 primary key, name text);
+
+insert into
+  instruments (id, name)
+values
+  (1, 'harpsichord');
+```
+
+```kotlin
+val newInstrument = supabase.from("instruments").update(
+    {
+       Instrument::name setTo "piano"
+       //or
+       set("name", "piano")
+    }
+) {
+    select()
+    filter {
+        Instrument::id eq 1
+        //or
+        eq("id", 1)
+    }
+}.decodeSingle<Instrument>()
+```
+
+Response:
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "name": "harpsichord"
+    }
+  ],
+  "status": 200,
+  "statusText": "OK"
+}
+```
+
+### Example: Updating JSON data
+
+Postgres offers a
+number of operators
+for working with JSON data. Right now it is only possible to update an entire JSON document,
+but we are working on ideas for updating individual keys.
+
+```kotlin
+val address = Address(street = "Melrose Place", postcode = 90210)
+supabase.from("users").update(
+    {
+       User::address setTo address
+    }
+) {
+    filter {
+        eq("address->postcode", 90210)
+    }
+}
+```
+
+## Upsert data: upsert()
+
+Perform an UPSERT on the table or view. Depending on the column(s) passed to `onConflict`, `.upsert()` allows you to perform the equivalent of `.insert()` if a row with the corresponding `onConflict` columns doesn't exist, or if it does exist, perform an alternative action depending on `ignoreDuplicates`.
+- Primary keys should be included in the data payload in order for an update to work correctly.
+- Primary keys  must be natural, not surrogate. There are however, workarounds for surrogate primary keys.
+- If you need to insert new data and update existing data at the same time, use Postgres triggers.
+- When calling `insert` or `update`, you have to provide a serializable value in the function parameter.
+- By default, `upsert` will not return the inserted data. If you want to return the inserted data, you can use the `select()` method inside the request.
+
+Parameters:
+
+- `value` `T or List<T>`: The value(s) you want to insert. `T` can be any serializable type.
+- `onConflict` `String?`, optional: Comma-separated UNIQUE column(s) to specify how duplicate rows are determined. Two rows are duplicates if all the `onConflict` columns are equal.
+- `defaultToNull` `Boolean`, optional: Make missing fields default to `null`. Otherwise, use the default value for the column. This only applies when inserting new rows, not when merging with existing rows under
+- `ignoreDuplicates` `Boolean`, optional: If `true`, duplicate rows are ignored. If `false`, duplicate rows are merged with existing rows.
+- `request` `PostgrestRequestBuilder.() -> Unit`, optional: Additional configuration & filtering for the request.
+
+### Example: Upsert your data
+
+```kotlin
+val toUpsert = Message(id = 3, message = "foo", username = "supabot")
+supabase.from("messages").upsert(toUpsert)
+```
+
+### Example: Upsert your data and return it
+
+```kotlin
+val toUpsert = Message(id = 3, message = "foo", username = "supabot")
+val message = supabase.from("messages").upsert(toUpsert) {
+    select()
+}.decodeSingle<Message>()
+```
+
+### Example: Upserting into tables with constraints
+
+Running the following will cause Supabase to upsert data into the `users` table.
+If the username 'supabot' already exists, the `onConflict` argument tells Supabase to overwrite that row
+based on the column passed into `onConflict`.
+
+```kotlin
+val toUpsert = User(username = "supabot")
+supabase.from("users").upsert(toUpsert, onConflict = "username")
+```
+
+### Example: Return the exact number of rows
+
+```kotlin
+val toUpsert = User(username = "supabot")
+val count = supabase.from("users").upsert(toUpsert, onConflict = "username") {
+    count(Count.EXACT)
+}.count()
+```
+
+## Delete data: delete()
+
+Perform a DELETE on the table or view.
+- `delete()` should always be combined with a filter block to target the item(s) you wish to delete.
+- If you use `delete()` with filters and you have
+  RLS enabled, only
+  rows visible through `SELECT` policies are deleted. Note that by default
+  no rows are visible, so you need at least one `SELECT`/`ALL` policy that
+  makes the rows visible.
+- By default, `delete` will not return the deleted data. If you want to return the deleted data, you can use the `select()` method inside the request.
+
+Parameters:
+
+- `request` `PostgrestRequestBuilder.() -> Unit`, optional: Additional configuration & filtering for the request.
+
+### Example: Delete records
+
+```kotlin
+supabase.from("cities").delete {
+    filter {
+        City::id eq 666
+        //or
+        eq("id", 666)
+    }
+}
+```
+
+### Example: Fetch deleted records
+
+```kotlin
+val deletedCity = supabase.from("cities").delete {
+    select()
+    filter {
+        City::id eq 666
+        //or
+        eq("id", 666)
+    }
+}.decodeSingle<City>()
+```
+
+## Database Functions: rpc()
+
+You can call functions as a "Remote Procedure Call".
+
+That's a fancy way of saying that you can put some logic into your database then call it from anywhere.
+It's especially useful when the logic rarely changes - like password resets and updates.
+
+- When calling `rpc` with parameters, you have to provide a serializable value in the function parameter.
+
+Parameters:
+
+- `function` `String`: The name of the function
+- `parameters` `T`, optional: Parameters to pass to the function. T can be any serializable type.
+- `method` `RpcMethod`, optional: The HTTP method to use. Defaults to `RpcMethod.POST`
+- `request` `PostgrestRequestBuilder.() -> Unit`, optional: Additional configuration & filtering for the request.
+
+### Example: Call a database function
+
+This is an example invoking a database function.
+
+```kotlin
+supabase.postgrest.rpc("hello_world")
+```
+
+### Example: With Parameters
+
+```kotlin
+val rpcParams = City(name = "The Shire")
+supabase.postgrest.rpc("echo_city", rpcParams)
+```
+
+## Using Filters
+
+Filters allow you to only return rows that match certain conditions.
+
+Filters can be used on `select()`, `update()`, and `delete()` queries.
+
+You can use two different types for applying filters:
+```kotlin
+eq("country_id", 1)
+```
+And using a class property:
+```kotlin
+City::countryId eq 1
+```
+
+As you can see on the property syntax:
+the name of the `countryId` gets converted to `country_id`.
+
+By default, this is done by converting camel case to snake case, but you can customize this by changing the `propertyConversionMethod` in the Postgrest Config
+
+If a database function returns a table response, you can also apply filters.
+
+### Example: Applying a filter block
+
+Filters can be applied on any of these functions: `select()`, `update()`, `upsert()`,
+`delete()`, and `rpc()`
+
+```kotlin
+supabase.from("cities").select(columns = Columns.list("name", "country_id")) {
+    filter {
+        City::name eq "The Shire"
+        //or
+        eq("name", "The Shire")
+    }
+}
+```
+
+### Example: Multiple filters on one column
+
+Filters can be applied on any of these functions: `select()`, `update()`, `upsert()`,
+`delete()`, and `rpc()`
+
+```kotlin
+supabase.from("cities").select(columns = Columns.list("name, country_id")) {
+    filter {
+        and { //when both are true
+           City::population gt 40000
+           City::population lt 700000
+        }
+        or { //when either one of the filters are true
+           City::name eq "Hobbiton"
+           City::name eq "Edoras"
+        }
+    }
+}
+```
+
+### Example: Filter by values within a JSON column
+
+Filters can be built up one step at a time and then executed. For example:
+
+Data source:
+
+```sql
+create table
+  users (
+    id int8 primary key,
+    name text,
+    address jsonb
+  );
+
+insert into
+  users (id, name, address)
+values
+  (1, 'Michael', '{ "postcode": 90210 }'),
+  (2, 'Jane', null);
+```
+
+```kotlin
+supabase.from("users").select {
+    filter {
+        eq("address->postcode", 90210)
+    }
+}
+```
+
+Response:
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "name": "Michael",
+      "address": {
+        "postcode": 90210
+      }
+    }
+  ],
+  "status": 200,
+  "statusText": "OK"
+}
+```
+
+### Example: Filter Foreign Tables
+
+Data source:
+
+```sql
+create table
+  countries (id int8 primary key, name text);
+create table
+  cities (
+    id int8 primary key,
+    country_id int8 not null references countries,
+    name text
+  );
+
+insert into
+  countries (id, name)
+values
+  (1, 'Gondor'),
+  (2, 'The Shire');
+insert into
+  cities (id, country_id, name)
+values
+  (1, 2, 'Hobbiton'),
+  (2, 1, 'Minas Tirith');
+```
+
+```kotlin
+val columns = Columns.raw("""
+    name,
+    cities!inner (
+        name
+    )
+""".trimIndent())
+supabase.from("countries").select(
+      columns = columns
+) {
+    filter {
+        eq("cities.name", "Hobbiton")
+    }
+}
+```
+
+## or()
+
+Finds all rows satisfying at least one of the filters.
+
+Parameters:
+
+- `negate` `Boolean`, optional: If true, negate the entire block.
+- `block` `PostgrestFilterBuilder.() -> Unit`: The block to apply the `or` filter to.
+
+### Example: With select()
+
+```kotlin
+supabase.from("countries").select(columns = Columns.list("name")) {
+    filter {
+        or {
+            Country::id eq 2
+            Country::name eq "The Shire"
+            //or
+            eq("id", 2)
+            eq("name", "The Shire")
+        }
+    }
+}
+```
+
+### Example: Use `or` with `and`
+
+```kotlin
+supabase.from("countries").select(columns = Columns.list("name")) {
+    filter {
+        or {
+            Country::id gt 3
+            and {
+               Country::id eq 1
+               Country::name eq "The Shire"
+            }
+        }
+    }
+}
+```
+
+## filterNot()
+
+Finds all rows that don't satisfy the filter.
+
+- `.filterNot()` expects you to use the raw PostgREST syntax for the filter names and values.
+
+Parameters:
+
+- `column` `String`: The column to filter on.
+- `operator` `FilterOperator`: The operator to use for the filter.
+- `value` `Any`: The value to filter with.
+
+### Example: With select()
+
+```kotlin
+supabase.from("countries").select {
+    filter {
+        filterNot("name", FilterOperation.IS, "")
+    }
+}
+```
+
+## eq()
+
+Finds all rows whose value on the stated `column` exactly matches the specified `value`.
+
+Parameters:
+
+- `column` `String`: The column to filter on.
+- `value` `Any`: The value to filter with.
+
+### Example: With select()
+
+```kotlin
+supabase.from("cities").select(columns = Columns.list("name", "country_id")) {
+    filter {
+        City::name eq "The Shire"
+        //or
+        eq("name", "The Shire")
+    }
+}
+```
+
+### Example: With update()
+
+```kotlin
+val toUpdate = City(name = "Mordor")
+supabase.from("cities").update(toUpdate) {
+    filter {
+        City::name eq "Hobbiton"
+        //or
+        eq("name", "Hobbiton")
+    }
+}
+```
+
+### Example: With delete()
+
+```kotlin
+supabase.from("cities").delete {
+    filter {
+        City::name eq "Mordor"
+        //or
+        eq("name", "Mordor")
+    }
+}
+```
+
+### Example: With rpc()
+
+```kotlin
+supabase.postgrest.rpc("function") {
+    filter {
+        City::name eq "Mordor"
+        //or
+        eq("name", "Mordor")
+    }
+}
+```
+
+## neq()
+
+Finds all rows whose value on the stated `column` doesn't match the specified `value`.
+
+Parameters:
+
+- `column` `String`: The column to filter on.
+- `value` `Any`: The value to filter with.
+
+### Example: With select()
+
+```kotlin
+supabase.from("cities").select(columns = Columns.list("name", "country_id")) {
+    filter {
+        City::name neq "The Shire"
+        //or
+        neq("name", "The Shire")
+    }
+}
+```
+
+### Example: With update()
+
+```kotlin
+val toUpdate = City(name = "Mordor")
+supabase.from("cities").update(toUpdate) {
+    filter {
+        City::name neq "The Shire"
+        //or
+        neq("name", "The Shire")
+    }
+}
+```
+
+### Example: With delete()
+
+```kotlin
+supabase.from("cities").delete {
+    filter {
+        City::name neq "The Shire"
+        //or
+        neq("name", "The Shire")
+    }
+}
+```
+
+### Example: With rpc()
+
+```kotlin
+supabase.rpc("echo_all_cities") {
+    filter {
+        neq("address->postcode", 90210)
+    }
+}
+```
+
+## gt()
+
+Finds all rows whose value on the stated `column` is greater than the specified `value`.
+
+Parameters:
+
+- `column` `String`: The column to filter on.
+- `value` `Any`: The value to filter with.
+
+### Example: With select()
+
+```kotlin
+supabase.from("cities").select(columns = Columns.list("name")) {
+    filter {
+       City::countryId gt 300
+       //or
+       gt("country_id", 300)
+    }
+}
+```
+
+### Example: With update()
+
+```kotlin
+val toUpdate = City(name = "Mordor")
+supabase.from("cities").update(toUpdate) {
+    filter {
+       City::countryId gt 300
+       //or
+       gt("country_id", 300)
+    }
+}
+```
+
+### Example: With delete()
+
+```kotlin
+supabase.from("cities").delete {
+    filter {
+       City::countryId gt 300
+       //or
+       gt("country_id", 300)
+    }
+}
+```
+
+### Example: With rpc()
+
+```kotlin
+supabase.postgrest.rpc("echo_all_cities") {
+    filter {
+       City::countryId gt 300
+       //or
+       gt("country_id", 300)
+    }
+}
+```
+
+## gte()
+
+Finds all rows whose value on the stated `column` is greater than or equal to the specified `value`.
+
+Parameters:
+
+- `column` `String`: The column to filter on.
+- `value` `Any`: The value to filter with.
+
+### Example: With select()
+
+```kotlin
+supabase.from("cities").select(columns = Columns.list("name")) {
+    filter {
+       City::countryId gte 300
+       //or
+       gte("country_id", 300)
+    }
+}
+```
+
+### Example: With update()
+
+```kotlin
+val toUpdate = City(name = "Mordor")
+supabase.from("cities").update(toUpdate) {
+    filter {
+       City::countryId gte 300
+       //or
+       gte("country_id", 300)
+    }
+}
+```
+
+### Example: With delete()
+
+```kotlin
+supabase.from("cities").delete {
+    filter {
+       City::countryId gte 300
+       //or
+       gte("country_id", 300)
+    }
+}
+```
+
+### Example: With rpc()
+
+```kotlin
+supabase.postgrest.rpc("echo_all_cities") {
+    filter {
+       City::countryId gte 300
+       //or
+       gte("country_id", 300)
+    }
+}
+```
+
+## lt()
+
+Finds all rows whose value on the stated `column` is less than the specified `value`.
+
+Parameters:
+
+- `column` `String`: The column to filter on.
+- `value` `Any`: The value to filter with.
+
+### Example: With select()
+
+```kotlin
+supabase.from("cities").select(columns = Columns.list("name")) {
+    filter {
+       City::countryId lt 300
+       //or
+       lt("country_id", 300)
+    }
+}
+```
+
+### Example: With update()
+
+```kotlin
+val toUpdate = City(name = "Mordor")
+supabase.from("cities").update(toUpdate) {
+    filter {
+       City::countryId lt 300
+       //or
+       lt("country_id", 300)
+    }
+}
+```
+
+### Example: With delete()
+
+```kotlin
+supabase.from("cities").delete {
+    filter {
+       City::countryId lt 300
+       //or
+       lt("country_id", 300)
+    }
+}
+```
+
+### Example: With rpc()
+
+```kotlin
+supabase.postgrest.rpc("echo_all_cities") {
+    filter {
+       City::countryId lt 300
+       //or
+       lt("country_id", 300)
+    }
+}
+```
+
+## lte()
+
+Finds all rows whose value on the stated `column` is less than or equal to the specified `value`.
+
+Parameters:
+
+- `column` `String`: The column to filter on.
+- `value` `Any`: The value to filter with.
+
+### Example: With select()
+
+```kotlin
+supabase.from("cities").select(columns = Columns.list("name")) {
+    filter {
+       City::countryId lte 300
+       //or
+       lte("country_id", 300)
+    }
+}
+```
+
+### Example: With update()
+
+```kotlin
+val toUpdate = City(name = "Mordor")
+supabase.from("cities").update(toUpdate) {
+    filter {
+       City::countryId lte 300
+       //or
+       lte("country_id", 300)
+    }
+}
+```
+
+### Example: With delete()
+
+```kotlin
+supabase.from("cities").delete {
+    filter {
+       City::countryId lte 300
+       //or
+       lte("country_id", 300)
+    }
+}
+```
+
+### Example: With rpc()
+
+```kotlin
+supabase.postgrest.rpc("echo_all_cities") {
+    filter {
+       City::countryId lte 300
+       //or
+       lte("country_id", 300)
+    }
+}
+```
+
+## like()
+
+Finds all rows whose value in the stated `column` matches the supplied `pattern` (case sensitive).
+
+Parameters:
+
+- `column` `String`: The column to filter on.
+- `pattern` `String`: The pattern to match with.
+
+### Example: With select()
+
+```kotlin
+supabase.from("cities").select(columns = Columns.list("name")) {
+    filter {
+       City::name like "%la%"
+       //or
+       like("name", "%la%")
+    }
+}
+```
+
+### Example: With update()
+
+```kotlin
+val toUpdate = City(name = "Mordor")
+supabase.from("cities").update(toUpdate) {
+    filter {
+       City::name like "%la%"
+       //or
+       like("name", "%la%")
+    }
+}
+```
+
+### Example: With delete()
+
+```kotlin
+supabase.from("cities").delete {
+    filter {
+       City::name like "%la%"
+       //or
+       like("name", "%la%")
+    }
+}
+```
+
+### Example: With rpc()
+
+```kotlin
+supabase.postgrest.rpc("echo_all_cities") {
+    filter {
+       City::name like "%la%"
+       //or
+       like("name", "%la%")
+    }
+}
+```
+
+## ilike()
+
+Finds all rows whose value in the stated `column` matches the supplied `pattern` (case insensitive).
+
+Parameters:
+
+- `column` `String`: The column to filter on.
+- `pattern` `String`: The pattern to match with.
+
+### Example: With select()
+
+```kotlin
+supabase.from("cities").select(columns = Columns.list("name")) {
+    filter {
+       City::name ilike "%la%"
+       //or
+       ilike("name", "%la%")
+    }
+}
+```
+
+### Example: With update()
+
+```kotlin
+val toUpdate = City(name = "Mordor")
+supabase.from("cities").update(toUpdate) {
+    filter {
+       City::name ilike "%la%"
+       //or
+       ilike("name", "%la%")
+    }
+}
+```
+
+### Example: With delete()
+
+```kotlin
+supabase.from("cities").delete {
+    filter {
+       City::name ilike "%la%"
+       //or
+       ilike("name", "%la%")
+    }
+}
+```
+
+### Example: With rpc()
+
+```kotlin
+supabase.postgrest.rpc("echo_all_cities") {
+    filter {
+       City::name ilike "%la%"
+       //or
+       ilike("name", "%la%")
+    }
+}
+```
+
+## is_()
+
+A check for exact equality (null, true, false), finds all rows whose value on the stated `column` exactly match the specified `value`.
+
+`is_` and `in_` filter methods are suffixed with `_` to avoid collisions with reserved keywords.
+
+Parameters:
+
+- `column` `String`: The column to filter on.
+- `value` `Boolean?`: The value to filter with.
+
+### Example: With select()
+
+```kotlin
+supabase.from("cities").select(columns = Columns.list("name")) {
+    filter {
+       City::name isExact null
+       //or
+       exact("name", null)
+    }
+}
+```
+
+### Example: With update()
+
+```kotlin
+val toUpdate = City(name = "Mordor")
+supabase.from("cities").update(toUpdate) {
+    filter {
+       City::name isExact null
+       //or
+       exact("name", null)
+    }
+}
+```
+
+### Example: With delete()
+
+```kotlin
+supabase.from("cities").delete {
+    filter {
+       City::name isExact null
+       //or
+       exact("name", null)
+    }
+}
+```
+
+### Example: With rpc()
+
+```kotlin
+supabase.postgrest.rpc("echo_all_cities") {
+    filter {
+       City::name isExact null
+       //or
+       exact("name", null)
+    }
+}
+```
+
+## in_()
+
+Finds all rows whose value on the stated `column` is found on the specified `values`.
+
+Parameters:
+
+- `column` `String`: The column to filter on.
+- `values` `List<Any>`: The values to filter with.
+
+### Example: With select()
+
+```kotlin
+supabase.from("cities").select(columns = Columns.list("name")) {
+    filter {
+       City::name isIn listOf("Hobbiton", "Edoras")
+       //or
+       isIn("name", listOf("Hobbiton", "Edoras"))
+    }
+}
+```
+
+### Example: With update()
+
+```kotlin
+val toUpdate = City(name = "Mordor")
+supabase.from("cities").update(toUpdate) {
+    filter {
+       City::name isIn listOf("Hobbiton", "Edoras")
+       //or
+       isIn("name", listOf("Hobbiton", "Edoras"))
+    }
+}
+```
+
+### Example: With delete()
+
+```kotlin
+supabase.from("cities").delete {
+    filter {
+       City::name isIn listOf("Hobbiton", "Edoras")
+       //or
+       isIn("name", listOf("Hobbiton", "Edoras"))
+    }
+}
+```
+
+### Example: With rpc()
+
+```kotlin
+supabase.postgrest.rpc("echo_all_cities") {
+    filter {
+       City::name isIn listOf("Hobbiton", "Edoras")
+       //or
+       isIn("name", listOf("Hobbiton", "Edoras"))
+    }
+}
+```
+
+## contains()
+
+Only relevant for jsonb, array, and range columns. Match only rows where `column` contains every element appearing in `value`.
+
+Parameters:
+
+- `column` `String`: The jsonb, array, or range column to filter on
+- `value` `List<Any>`: The jsonb, array, or range value to filter with
+
+### Example: With select()
+
+```kotlin
+supabase.from("cities").select(columns = Columns.list("name")) {
+    filter {
+       City::mainExports contains listOf("oil")
+       //or
+       contains("main_exports", listOf("oil"))
+    }
+}
+```
+
+### Example: With update()
+
+```kotlin
+val toUpdate = City(name = "Mordor")
+supabase.from("cities").update(toUpdate) {
+    filter {
+       City::mainExports contains listOf("oil")
+       //or
+       contains("main_exports", listOf("oil"))
+    }
+}
+```
+
+### Example: With delete()
+
+```kotlin
+supabase.from("cities").delete {
+    filter {
+       City::mainExports contains listOf("oil")
+       //or
+       contains("main_exports", listOf("oil"))
+    }
+}
+```
+
+### Example: With rpc()
+
+```kotlin
+supabase.postgrest.rpc("echo_all_cities") {
+    filter {
+       City::mainExports contains listOf("oil")
+       //or
+       contains("main_exports", listOf("oil"))
+    }
+}
+```
+
+## rangeLt()
+
+Only relevant for range columns. Match only rows where every element in column is less than any element in range.
+
+Parameters:
+
+- `column` `String`: The column to filter on.
+- `values` `Pair<Any, Any>`: The values to filter with.
+
+### Example: With select()
+
+Postgres supports a number of [range
+types](https://www.postgresql.org/docs/current/rangetypes.html). You
+can filter on range columns using the string representation of range
+values.
+
+Data source:
+
+```sql
+create table
+  reservations (
+    id int8 primary key,
+    room_name text,
+    during tsrange
+  );
+
+insert into
+  reservations (id, room_name, during)
+values
+  (1, 'Emerald', '[2000-01-01 13:00, 2000-01-01 15:00)'),
+  (2, 'Topaz', '[2000-01-02 09:00, 2000-01-02 10:00)');
+```
+
+```kotlin
+  supabase.from("reservations").select {
+      filter {
+         Reservation::during rangeLt ("2000-01-02 08:30" to "2000-01-02 09:30")
+         //or
+         rangeLt("during", "2000-01-02 08:30" to "2000-01-02 09:30")
+      }
+  }
+```
+
+Response:
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "room_name": "Emerald",
+      "during": "[\"2000-01-01 13:00:00\",\"2000-01-01 15:00:00\")"
+    }
+  ],
+  "status": 200,
+  "statusText": "OK"
+}
+```
+
+## rangeGt()
+
+Only relevant for range columns. Match only rows where every element in column is greater than any element in range.
+
+Parameters:
+
+- `column` `String`: The column to filter on.
+- `values` `Pair<Any, Any>`: The values to filter with.
+
+### Example: With select()
+
+Postgres supports a number of [range
+types](https://www.postgresql.org/docs/current/rangetypes.html). You
+can filter on range columns using the string representation of range
+values.
+
+Data source:
+
+```sql
+create table
+  reservations (
+    id int8 primary key,
+    room_name text,
+    during tsrange
+  );
+
+insert into
+  reservations (id, room_name, during)
+values
+  (1, 'Emerald', '[2000-01-01 13:00, 2000-01-01 15:00)'),
+  (2, 'Topaz', '[2000-01-02 09:00, 2000-01-02 10:00)');
+```
+
+```kotlin
+  supabase.from("reservations").select {
+      filter {
+         Reservation::during rangeGt ("2000-01-02 08:30" to "2000-01-02 09:30")
+         //or
+         rangeGt("during", "2000-01-02 08:30" to "2000-01-02 09:30")
+      }
+  }
+```
+
+Response:
+
+```json
+  {
+    "data": [
+      {
+        "id": 2,
+        "room_name": "Topaz",
+        "during": "[\"2000-01-02 09:00:00\",\"2000-01-02 10:00:00\")"
+      }
+    ],
+    "status": 200,
+    "statusText": "OK"
+  }
+```
+
+## rangeGte()
+
+Only relevant for range columns. Match only rows where every element in column is either contained in range or greater than any element in range.
+
+Parameters:
+
+- `column` `String`: The column to filter on.
+- `values` `Pair<Any, Any>`: The values to filter with.
+
+### Example: With select()
+
+Postgres supports a number of [range
+types](https://www.postgresql.org/docs/current/rangetypes.html). You
+can filter on range columns using the string representation of range
+values.
+
+Data source:
+
+```sql
+create table
+  reservations (
+    id int8 primary key,
+    room_name text,
+    during tsrange
+  );
+
+insert into
+  reservations (id, room_name, during)
+values
+  (1, 'Emerald', '[2000-01-01 13:00, 2000-01-01 15:00)'),
+  (2, 'Topaz', '[2000-01-02 09:00, 2000-01-02 10:00)');
+```
+
+```kotlin
+  supabase.from("reservations").select {
+      filter {
+         Reservation::during rangeGte ("2000-01-02 08:30" to "2000-01-02 09:30")
+         //or
+         rangeGte("during", "2000-01-02 08:30" to "2000-01-02 09:30")
+      }
+  }
+```
+
+Response:
+
+```json
+  {
+    "data": [
+      {
+        "id": 2,
+        "room_name": "Topaz",
+        "during": "[\"2000-01-02 09:00:00\",\"2000-01-02 10:00:00\")"
+      }
+    ],
+    "status": 200,
+    "statusText": "OK"
+  }
+```
+
+## rangeLte()
+
+Only relevant for range columns. Match only rows where every element in column is either contained in range or less than any element in range.
+
+Parameters:
+
+- `column` `String`: The column to filter on.
+- `values` `Pair<Any, Any>`: The values to filter with.
+
+### Example: With select()
+
+Postgres supports a number of [range
+types](https://www.postgresql.org/docs/current/rangetypes.html). You
+can filter on range columns using the string representation of range
+values.
+
+Data source:
+
+```sql
+create table
+  reservations (
+    id int8 primary key,
+    room_name text,
+    during tsrange
+  );
+
+insert into
+  reservations (id, room_name, during)
+values
+  (1, 'Emerald', '[2000-01-01 13:00, 2000-01-01 15:00)'),
+  (2, 'Topaz', '[2000-01-02 09:00, 2000-01-02 10:00)');
+```
+
+```kotlin
+  supabase.from("reservations").select {
+      filter {
+         Reservation::during rangeLte ("2000-01-02 08:30" to "2000-01-02 09:30")
+         //or
+         rangeLte("during", "2000-01-02 08:30" to "2000-01-02 09:30")
+      }
+  }
+```
+
+Response:
+
+```json
+  {
+    "data": [
+      {
+        "id": 1,
+        "room_name": "Emerald",
+        "during": "[\"2000-01-01 13:00:00\",\"2000-01-01 15:00:00\")"
+      }
+    ],
+    "status": 200,
+    "statusText": "OK"
+  }
+```
+
+## rangeAdjacent()
+
+Only relevant for range columns. Match only rows where column is mutually exclusive to range and there can be no element between the two ranges.
+
+Parameters:
+
+- `column` `String`: The column to filter on.
+- `values` `Pair<Any, Any>`: The values to filter with.
+
+### Example: With select()
+
+Data source:
+
+```sql
+create table
+  reservations (
+    id int8 primary key,
+    room_name text,
+    during tsrange
+  );
+
+insert into
+  reservations (id, room_name, during)
+values
+  (1, 'Emerald', '[2000-01-01 13:00, 2000-01-01 15:00)'),
+  (2, 'Topaz', '[2000-01-02 09:00, 2000-01-02 10:00)');
+```
+
+```kotlin
+  supabase.from("reservations").select {
+      filter {
+         Reservation::during adjacent ("2000-01-02 08:30" to "2000-01-02 09:30")
+         //or
+         adjacent("during", "2000-01-02 08:30" to "2000-01-02 09:30")
+      }
+  }
+```
+
+Response:
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "room_name": "Emerald",
+      "during": "[\"2000-01-01 13:00:00\",\"2000-01-01 15:00:00\")"
+    }
+  ],
+  "status": 200,
+  "statusText": "OK"
+}
+```
+
+## overlaps()
+
+Only relevant for array and range columns. Match only rows where column and value have an element in common.
+
+Parameters:
+
+- `column` `String`: The column to filter on.
+- `values` `List<Any>`: The values to filter with.
+
+### Example: On array columns
+
+Data source:
+
+```sql
+create table
+  issues (
+    id int8 primary key,
+    title text,
+    tags text[]
+  );
+
+insert into
+  issues (id, title, tags)
+values
+  (1, 'Cache invalidation is not working', array['is:open', 'severity:high', 'priority:low']),
+  (2, 'Use better names', array['is:open', 'severity:low', 'priority:medium']);
+```
+
+```kotlin
+supabase.from("issues").select(columns = Columns.list("title")) {
+    filter {
+       Issue::tags overlaps listOf("is:closed", "severity:high")
+       //or
+       overlaps("tags", listOf("is:closed", "severity:high"))
+    }
+}
+```
+
+Response:
+
+```json
+{
+  "data": [
+    {
+      "title": "Cache invalidation is not working"
+    }
+  ],
+  "status": 200,
+  "statusText": "OK"
+}
+```
+
+### Example: On range columns
+
+Postgres supports a number of [range
+types](https://www.postgresql.org/docs/current/rangetypes.html). You
+can filter on range columns using the string representation of range
+values.
+
+Data source:
+
+```sql
+create table
+  reservations (
+    id int8 primary key,
+    room_name text,
+    during tsrange
+  );
+
+insert into
+  reservations (id, room_name, during)
+values
+  (1, 'Emerald', '[2000-01-01 13:00, 2000-01-01 15:00)'),
+  (2, 'Topaz', '[2000-01-02 09:00, 2000-01-02 10:00)');
+```
+
+```kotlin
+supabase.from("issues").select(columns = Columns.list("title")) {
+    filter {
+       Issue::during overlaps listOf("2000-01-01 12:45", "2000-01-01 13:15")
+       //or
+       overlaps("during", listOf("2000-01-01 12:45", "2000-01-01 13:15"))
+    }
+}
+```
+
+Response:
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "room_name": "Emerald",
+      "during": "[\"2000-01-01 13:00:00\",\"2000-01-01 15:00:00\")"
+    }
+  ],
+  "status": 200,
+  "statusText": "OK"
+}
+```
+
+## textSearch()
+
+Only relevant for text and tsvector columns. Match only rows where `column` matches the query string in `query`.
+
+For more information, see Postgres full text search.
+
+Parameters:
+
+- `column` `String`: The text or tsvector column to filter on
+- `query` `String`: The query text to match with
+- `textSearchType` `TextSearchType`, optional: The type of text search to use. Defaults to `TextSearchType.NONE`.
+- `config` `String`, optional: The text search configuration to use.
+
+### Example: Text search
+
+```kotlin
+supabase.from("quotes").select(columns = Columns.list("catchphrase")) {
+    filter {
+       textSearch(column = "catchphrase", query = "'fat' & 'cat'", config = "english", type = TextSearchType.YOUR_TYPE)
+    }
+}
+```
+
+### Example: Search multiple columns
+
+```kotlin
+supabase.from("quotes").select(columns = Columns.list("catchphrase")) {
+    filter {
+      or {
+        textSearch(column = "catchphrase", query = "'fat' & 'cat'", config = "english", type = TextSearchType.YOUR_TYPE)
+        textSearch(column = "author", query = "'fat' & 'cat'", config = "english", type = TextSearchType.YOUR_TYPE)
+      }
+    }
+}
+```
+
+### Example: Basic normalization
+
+Uses PostgreSQL's `plainto_tsquery` function.
+
+```kotlin
+supabase.from("quotes").select(columns = Columns.list("catchphrase")) {
+    filter {
+       textSearch(column = "catchphrase", query = "'fat' & 'cat'", config = "english", type = TextSearchType.PLAINTO)
+    }
+}
+```
+
+### Example: Full normalization
+
+Uses PostgreSQL's `phraseto_tsquery` function.
+
+```kotlin
+supabase.from("quotes").select(columns = Columns.list("catchphrase")) {
+    filter {
+       textSearch(column = "catchphrase", query = "'fat' & 'cat'", config = "english", type = TextSearchType.PHRASETO)
+    }
+}
+```
+
+### Example: Websearch
+
+Uses PostgreSQL's `websearch_to_tsquery` function.
+This function will never raise syntax errors, which makes it possible to use raw user-supplied input for search, and can be used
+with advanced operators.
+
+- `unquoted text`: text not inside quote marks will be converted to terms separated by & operators, as if processed by plainto_tsquery.
+- `"quoted text"`: text inside quote marks will be converted to terms separated by `<->` operators, as if processed by phraseto_tsquery.
+- `OR`: the word “or” will be converted to the | operator.
+- `-`: a dash will be converted to the ! operator.
+
+```kotlin
+supabase.from("quotes").select(columns = Columns.list("catchphrase")) {
+    filter {
+       textSearch(column = "catchphrase", query = "'fat' & 'cat'", config = "english", type = TextSearchType.WEBSEARCH)
+    }
+}
+```
+
+## filter()
+
+filter() expects you to use the raw PostgREST syntax for the filter values.
+
+Parameters:
+
+- `column` `String`: The column to filter on.
+- `operator` `FilterOperator`: The operator to use for the filter.
+- `value` `Any`: The value to filter with.
+
+### Example: With select()
+
+Data source:
+
+```sql
+create table
+  characters (id int8 primary key, name text);
+
+insert into
+  characters (id, name)
+values
+  (1, 'Luke'),
+  (2, 'Leia'),
+  (3, 'Han');
+```
+
+```kotlin
+supabase.from("characters").select {
+    filter {
+       filter(column = "name", operator = FilterOperator.IN, value = "('Han', 'Katniss')")
+    }
+}
+```
+
+Response:
+
+```json
+{
+  "data": [
+    {
+      "id": 3,
+      "name": "Han"
+    }
+  ],
+  "status": 200,
+  "statusText": "OK"
+}
+```
+
+### Example: On a foreign table
+
+Data source:
+
+```sql
+create table
+  orchestral_sections (id int8 primary key, name text);
+create table
+  instruments (
+    id int8 primary key,
+    section_id int8 not null references orchestral_sections,
+    name text
+  );
+
+insert into
+  orchestral_sections (id, name)
+values
+  (1, 'strings'),
+  (2, 'woodwinds');
+insert into
+  instruments (id, section_id, name)
+values
+  (1, 2, 'flute'),
+  (2, 1, 'violin');
+```
+
+```kotlin
+val columns = Columns.raw("""
+    name,
+    instruments!inner (
+        name
+    )
+""".trimIndent())
+supabase.from("orchestral_sections").select(
+   columns = columns
+) {
+    filter {
+        filter(column = "instruments.name", operator = FilterOperator.EQ, value = "flute")
+    }
+}
+```
+
+Response:
+
+```json
+{
+  "data": [
+    {
+      "name": "woodwinds",
+      "instruments": [
+        {
+          "name": "flute"
+        }
+      ]
+    }
+  ],
+  "status": 200,
+  "statusText": "OK"
+}
+```
+
+## Using Modifiers
+
+Filters work on the row level—they allow you to return rows that
+only match certain conditions without changing the shape of the rows.
+Modifiers are everything that don't fit that definition—allowing you to
+change the format of the response (e.g., returning a CSV string).
+
+Modifiers are be specified next to the filter block. Some modifiers only apply for
+queries that return rows (e.g., `select()` or `rpc()` on a function that
+returns a table response).
+
+## select()
+
+Parameters:
+
+- `columns` `Columns`, optional: The columns to select.
+
+### Example: With upsert()
+
+Data source:
+
+```sql
+create table
+  characters (id int8 primary key, name text);
+
+insert into
+  characters (id, name)
+values
+  (1, 'Luke');
+```
+
+```kotlin
+val toUpsert = Character(id = 2, name = "Leia")
+val count = supabase.from("characters").upsert(toUpsert) {
+    select()
+}.decodeSingle<Character>()
+```
+
+Response:
+
+```json
+{
+  "data": [
+    {
+      "id": 2,
+      "name": "Leia"
+    }
+  ],
+  "status": 201,
+  "statusText": "Created"
+}
+```
+
+## order()
+
+Order the query result by column.
+
+Parameters:
+
+- `column` `String`: The column to order by.
+- `order` `Order`: The order to use.
+- `nullsFirst` `Boolean`, optional: Whether to order nulls first.
+- `referencedTable` `String`, optional: The foreign table to order by.
+
+### Example: With select()
+
+Data source:
+
+```sql
+create table
+  characters (id int8 primary key, name text);
+
+insert into
+  characters (id, name)
+values
+  (1, 'Luke'),
+  (2, 'Leia'),
+  (3, 'Han');
+```
+
+```kotlin
+supabase.from("characters").select(columns = Columns.list("id", "name")) {
+   order(column = "id", order = Order.DESCENDING)
+}
+```
+
+Response:
+
+```json
+{
+  "data": [
+    {
+      "id": 3,
+      "name": "Han"
+    },
+    {
+      "id": 2,
+      "name": "Leia"
+    },
+    {
+      "id": 1,
+      "name": "Luke"
+    }
+  ],
+  "status": 200,
+  "statusText": "OK"
+}
+```
+
+### Example: On a foreign table
+
+Ordering on foreign tables doesn't affect the ordering of
+the parent table.
+
+Data source:
+
+```sql
+create table
+  orchestral_sections (id int8 primary key, name text);
+create table
+  instruments (
+    id int8 primary key,
+    section_id int8 not null references orchestral_sections,
+    name text
+  );
+
+insert into
+  orchestral_sections (id, name)
+values
+  (1, 'strings'),
+  (2, 'woodwinds');
+insert into
+  instruments (id, section_id, name)
+values
+  (1, 1, 'harp'),
+  (2, 1, 'violin');
+```
+
+```kotlin
+val columns = Columns.raw("""
+    name,
+    instruments (
+        name
+    )
+""".trimIndent())
+supabase.from("orchestral_sections").select(
+    columns = columns
+) {
+    order(column = "id", order = Order.DESCENDING, referencedTable = "instruments")
+}
+```
+
+Response:
+
+```json
+{
+  "data": [
+    {
+      "name": "strings",
+      "instruments": [
+        {
+          "name": "violin"
+        },
+        {
+          "name": "harp"
+        }
+      ]
+    },
+    {
+      "name": "woodwinds",
+      "instruments": []
+    }
+  ],
+  "status": 200,
+  "statusText": "OK"
+}
+```
+
+## limit()
+
+Limit the query result by count.
+
+Parameters:
+
+- `count` `Long`: The number of rows to limit the result to.
+- `referencedTable` `String`, optional: The foreign table to limit by.
+
+### Example: With select()
+
+Data source:
+
+```sql
+create table
+  characters (id int8 primary key, name text);
+
+insert into
+  characters (id, name)
+values
+  (1, 'Luke'),
+  (2, 'Leia'),
+  (3, 'Han');
+```
+
+```kotlin
+supabase.from("countries").select {
+    limit(count = 1)
+}
+```
+
+Response:
+
+```json
+{
+  "data": [
+    {
+      "name": "Luke"
+    }
+  ],
+  "status": 200,
+  "statusText": "OK"
+}
+```
+
+### Example: On a foreign table
+
+Data source:
+
+```sql
+create table
+  orchestral_sections (id int8 primary key, name text);
+create table
+  instruments (
+    id int8 primary key,
+    section_id int8 not null references orchestral_sections,
+    name text
+  );
+
+insert into
+  orchestral_sections (id, name)
+values
+  (1, 'strings');
+insert into
+  instruments (id, section_id, name)
+values
+  (1, 1, 'harp'),
+  (2, 1, 'violin');
+```
+
+```kotlin
+val columns = Columns.raw("""
+    name,
+    instruments (
+        name
+    )
+""")
+supabase.from("orchestral_sections").select(
+    columns = columns
+) {
+    limit(count = 1, referencedTable = "instruments")
+}
+```
+
+Response:
+
+```json
+{
+  "data": [
+    {
+      "name": "strings",
+      "cities": [
+        {
+          "name": "harp"
+        }
+      ]
+    }
+  ],
+  "status": 200,
+  "statusText": "OK"
+}
+```
+
+## range()
+
+Limit the query result by from and to inclusively.
+
+Parameters:
+
+- `from` `Long`: The start of the range.
+- `to` `Long`: The end of the range.
+- `referencedTable` `String`, optional: The foreign table to limit by.
+
+### Example: With select()
+
+Data source:
+
+```sql
+create table
+  characters (id int8 primary key, name text);
+
+insert into
+  characters (id, name)
+values
+  (1, 'Luke'),
+  (2, 'Leia'),
+  (3, 'Han');
+```
+
+```kotlin
+supabase.from("characters").select {
+    range(1L..5L)
+}
+```
+
+Response:
+
+```json
+{
+  "data": [
+    {
+      "name": "Luke"
+    },
+    {
+      "name": "Leia"
+    }
+  ],
+  "status": 200,
+  "statusText": "OK"
+}
+```
+
+## single()
+
+### Example: With select()
+
+Data source:
+
+```sql
+create table
+  characters (id int8 primary key, name text);
+
+insert into
+  characters (id, name)
+values
+  (1, 'Luke'),
+  (2, 'Leia'),
+  (3, 'Han');
+```
+
+```kotlin
+val result = supabase.from("characters").select(Columns.list("name")) {
+    limit(1)
+    single()
+}
+```
+
+Response:
+
+```json
+{
+  "data": {
+    "name": "Luke"
+  },
+  "status": 200,
+  "statusText": "OK"
+}
+```
+
+## csv()
+
+### Example: Return data as CSV
+
+By default, the data is returned in JSON format, but can also be returned as Comma Separated Values.
+
+Data source:
+
+```sql
+create table
+  characters (id int8 primary key, name text);
+
+insert into
+  characters (id, name)
+values
+  (1, 'Luke'),
+  (2, 'Leia'),
+  (3, 'Han');
+```
+
+```kotlin
+val (csvData, _) = supabase.from("characters").select {
+    csv()
+}
+```
+
+Response:
+
+```json
+{
+  "data": "id,name\n1,Luke\n2,Leia\n3,Han",
+  "status": 200,
+  "statusText": "OK"
+}
+```
+
+## Using Explain
+
+For debugging slow queries, you can get the Postgres `EXPLAIN` execution plan of a query
+using the `explain()` method. This works on any query, even for `rpc()` or writes.
+
+Explain is not enabled by default as it can reveal sensitive information about your database.
+It's best to only enable this for testing environments but if you wish to enable it for production you can provide additional protection by using a `pre-request` function.
+
+Follow the Performance Debugging Guide to enable the functionality on your project.
+
+Parameters:
+
+- `analyze` `Boolean`, optional: If `true`, the query will be executed and the actual run time will be returned
+- `verbose` `Boolean`, optional: If `true`, the query identifier will be returned and `data` will include the output columns of the query
+- `settings` `Boolean`, optional: If `true`, include information on configuration parameters that affect query planning
+- `buffers` `Boolean`, optional: If `true`, include information on buffer usage
+- `wal` `Boolean`, optional: If `true`, include information on WAL record generation
+- `format` `String`, optional: The format of the output, can be `"text"` (default) or `"json"`
+
+### Example: Get the execution plan
+
+By default, the data is returned in TEXT format, but can also be returned as JSON by using the `format` parameter.
+
+Data source:
+
+```sql
+create table
+  characters (id int8 primary key, name text);
+
+insert into
+  characters (id, name)
+values
+  (1, 'Luke'),
+  (2, 'Leia'),
+  (3, 'Han');
+```
+
+```kotlin
+val result = supabase.from("characters").select {
+    explain()
+}
+```
+
+Response:
+
+```
+Aggregate  (cost=33.34..33.36 rows=1 width=112)
+  ->  Limit  (cost=0.00..18.33 rows=1000 width=40)
+        ->  Seq Scan on characters  (cost=0.00..22.00 rows=1200 width=40)
+```
+
+## Overview
+
+- The auth methods can be accessed via the Supabase Auth client.
+
+### Example: Create auth client
+
+```kotlin
+val supabase = createSupabaseClient(supabaseUrl = "https://xyzcompany.supabase.co", supabaseKey = "your-publishable-key") { ... }
+val auth = supabase.auth
+```
+
+## signUp()
+
+Creates a new user.
+- By default, the user needs to verify their email address before signing in. To turn this off, disable **Confirm email** in your project.
+- **Confirm email** determines if users need to confirm their email address after signing up.
+  - If **Confirm email** is enabled, the return value is the user and you won't be signed in automatically.
+  - If **Confirm email** is disabled, the return value is null and you will be signed in instead.
+- When the user confirms their email address, they are redirected to the `SITE_URL` by default. You can modify your `SITE_URL` or add additional redirect URLs in your project.
+- To learn how to handle OTP links & OAuth refer to initializing
+- If signUpWith() is called for an existing confirmed user:
+  - When both **Confirm email** and **Confirm phone** (even when phone provider is disabled) are enabled in your project, an obfuscated/fake user object is returned.
+  - When either **Confirm email** or **Confirm phone** (even when phone provider is disabled) is disabled, the error message, `User already registered` is returned.
+
+Parameters:
+
+- `provider` `Email or Phone`: The provider to use for the user's authentication. In this case `Email` or `Phone`.
+- `redirectUrl` `String?`, optional: The redirect url to use. If you don't specify this, the platform specific will be used, like deeplinks on android.
+- `config` `Email.Config.() -> Unit or Phone.Config.() -> Unit`, optional: The configuration for signing in with `Email` or `Phone`.
+  - `password` `String`: The user's password
+  - `email/phone` `String`: The user's email or phone.
+  - `captchaToken` `String?`, optional: The captcha token when having captcha enabled.
+  - `data` `JsonObject?`, optional: Extra user data to pass in.
+
+### Example: Sign up with email
+
+```kotlin
+val user = supabase.auth.signUpWith(Email) {
+    email = "example@email.com"
+    password = "example-password"
+}
+```
+
+### Example: Sign up with a phone number and password (whatsapp)
+
+```kotlin
+val user = supabase.auth.signUpWith(Phone) {
+    phone = "+4912345679"
+    password = "example-password"
+    channel = Phone.Channel.WHATSAPP
+}
+```
+
+### Example: Sign up with a phone number and password (sms)
+
+```kotlin
+val user = supabase.auth.signUpWith(Phone) {
+    phone = "+4912345679"
+    password = "example-password"
+}
+```
+
+### Example: Sign up with additional user metadata
+
+```kotlin
+val user = supabase.auth.signUpWith(Email) {
+    email = "example@email.com"
+    password = "example-password"
+    data = buildJsonObject {
+       put("first_name", "John")
+       put("age", 24)
+    }
+}
+```
+
+### Example: Sign up with a redirect URL
+
+- See redirect URLs and wildcards to add additional redirect URLs to your project.
+
+```kotlin
+val user = supabase.auth.signUpWith(Email, redirectUrl = "https://example.com") {
+    email = "example@email.com"
+    password = "example-password"
+}
+```
+
+## signInAnonymously()
+
+- Creates an anonymous user.
+- The user can be retrieved by calling `supabase.auth.currentUserOrNull()`.
+- It is recommended to set up captcha for anonymous sign-ins to prevent abuse. You can pass in the captcha token in the `options` param.
+
+Parameters:
+
+- `captchaToken` `String?`, optional: The captcha token when having captcha enabled.
+- `data` `JsonObject? or T`, optional: Extra user data to pass in.
+
+### Example: Create an anonymous user
+
+```kotlin
+supabase.auth.signInAnonymously(captchaToken = "token")
+```
+
+### Example: Create an anonymous user with custom user metadata
+
+```kotlin
+supabase.auth.signInAnonymously(data = customUserData)
+```
+
+## signInWith()
+
+Logs in an existing user.
+- Requires either an email and password or a phone number and password.
+
+Parameters:
+
+- `provider` `Email or Phone`: The provider to use for the user's authentication, in this case `Email` or `Phone`.
+- `redirectUrl` `String?`, optional: The redirect url to use. If you don't specify this, the platform specific will be used, like deeplinks on android.
+- `config` `Email.Config.() -> Unit or Phone.Config.() -> Unit`, optional: The configuration for signing in with `Email` or `Phone`.
+  - `password` `String`: The user's password
+  - `email/phone` `String`: The user's email or phone.
+  - `captchaToken` `String?`, optional: The captcha token when having captcha enabled.
+
+### Example: Sign in with email and password
+
+```kotlin
+supabase.auth.signInWith(Email) {
+    email = "example@email.com"
+    password = "example-password"
+}
+```
+
+### Example: Sign in with phone and password
+
+```kotlin
+supabase.auth.signInWith(Phone) {
+    phone = "+4912345679"
+    password = "example-password"
+}
+```
+
+## signInWithIdToken
+
+Parameters:
+
+- `provider` `IDToken`: The provider to use for the user's authentication. For this method it will be `IDToken`.
+- `redirectUrl` `String?`, optional: The redirect url to use. If you don't specify this, the platform specific will be used, like deeplinks on android.
+- `config` `IDToken.Config.() -> Unit`, optional: The configuration for signing in with an id token.
+  - `idToken` `String`: OIDC ID token issued by the specified provider. The `iss` claim in the ID token must match the supplied provider. Some ID tokens contain an `at_hash` which require that you provide an `access_token` value to be accepted properly. If the token contains a `nonce` claim you must supply the nonce used to obtain the ID token.
+  - `provider` `IDTokenProvider`: The provider of the id token. Only `Apple`, `Google`, `Facebook` and `Azure` are supported.
+  - `accessToken` `String?`, optional: If the ID token contains an `at_hash` claim, then the hash of this value is compared to the value in the ID token.
+  - `nonce` `String?`, optional: If the ID token contains a `nonce` claim, then the hash of this value is compared to the value in the ID token.
+  - `captchaToken` `String?`, optional: The captcha token when having captcha enabled.
+
+### Example: Sign In using ID Token
+
+```kotlin
+supabase.auth.signInWith(IDToken) {
+    idToken = "token"
+    provider = Google //Also supported: Apple, Azure and Facebook
+    //optional:
+    nonce = "nonce"
+    data = buildJsonObject {
+        //...
+    }
+}
+```
+
+## signInWith(OTP)
+
+Sends a OTP to the user's email or phone number.
+- Requires either an email or phone number.
+- This method is used for passwordless sign-ins where a OTP is sent to the user's email or phone number.
+- If the user doesn't exist, `signInWith(OTP)` will signup the user instead. To restrict this behavior, you can set `createUser` to `false`.
+- The method `signUpWith(OTP)` does the exact same thing as `signInWith(OTP)`, so it doesn't matter which one you use.
+- If you're using an email, you can configure whether you want the user to receive a magiclink or a OTP.
+- If you're using phone, you can configure whether you want the user to receive a OTP.
+- The magic link's destination URL is determined by the `SITE_URL`.
+- See redirect URLs and wildcards to add additional redirect URLs to your project.
+- To learn how to handle OTP links & OAuth refer to initializing
+- Magic links and OTPs share the same implementation. To send users a one-time code instead of a magic link, modify the magic link email template to include `{{ .Token }}` instead of `{{ .ConfirmationURL }}`.
+
+Parameters:
+
+- `provider` `OTP`: The provider to use for the user's authentication, in this case `OTP`.
+- `redirectUrl` `String?`, optional: The redirect url to use. If you don't specify this, the platform specific will be used, like deeplinks on android.
+- `config` `OTP.Config.() -> Unit`, optional: The configuration for signing in with `OTP`.
+  - `email/phone` `String`: The user's email or phone.
+  - `captchaToken` `String?`, optional: The captcha token when having captcha enabled.
+
+### Example: Sign in with email
+
+The user will be sent an email which contains either a magiclink or a OTP or both. By default, a given user can only request a OTP once every 60 seconds.
+
+```kotlin
+supabase.auth.signInWith(OTP) {
+    email = "example@email.com"
+}
+```
+
+### Example: Sign in with SMS OTP
+
+The user will be sent a SMS which contains a OTP. By default, a given user can only request a OTP once every 60 seconds.
+
+```kotlin
+supabase.auth.signInWith(OTP) {
+    phone = "+4912345679"
+}
+```
+
+## signInWith(OAuthProvider)
+
+- This method is used for signing in using a third-party provider.
+- Supabase supports many different third-party providers.
+- To learn how to handle OTP links & OAuth refer to initializing
+
+Parameters:
+
+- `provider` `OAuthProvider`: The OAuth provider to use for the user's authentication, for example `Google` or `GitHub`.
+- `redirectUrl` `String?`, optional: The redirect url to use. If you don't specify this, the platform specific will be used, like deeplinks on android.
+- `config` `ExternalAuthConfig.() -> Unit`, optional: The configuration for signing in with an OAuth provider.
+  - `scopes` `MutableList<String>`, optional: The scopes to request from the OAuth provider.
+  - `queryParams` `MutableMap<String, String>`, optional: Additional query parameters to use.
+
+### Example: Sign in using a third-party provider
+
+```kotlin
+supabase.auth.signInWith(Github)
+```
+
+### Example: Sign in using a third-party provider with scopes
+
+```kotlin
+supabase.auth.signInWith(Github) {
+    scopes.add("email")
+}
+```
+
+### Example: Create a custom url
+
+- When the third-party provider successfully authenticates the user, the provider redirects the user to the URL specified in the `redirectUrl` parameter. This parameter defaults to the `SITE_URL`. It does not redirect the user immediately after invoking this method.
+- See redirect URLs and wildcards to add additional redirect URLs to your project.
+- getOAuthUrl() provides the URL which needs to be opened in a browser.
+- The redirectTo URL needs to be setup correctly in your project under Authentication -> URL Configuration -> Redirect URLs.
+- To see how you can use a custom in-app browser on Android, check our demo on GitHub.
+
+```kotlin
+val url = supabase.auth.getOAuthUrl(Github, redirectUrl = "https://example.com")
+```
+
+### Example: Create a custom url with scopes
+
+If you need additional data from an OAuth provider, you can include a space-separated list of scopes in your request to get back an OAuth provider token.
+You may also need to specify the scopes in the provider's OAuth app settings, depending on the provider. The list of scopes will be documented by the third-party provider you are using and specifying scopes will enable you to use the OAuth provider token to call additional APIs supported by the third-party provider to get more information.
+
+```kotlin
+val url = supabase.auth.getOAuthUrl(Github, redirectUrl = "https://example.com") {
+    scopes.add("email")
+}
+```
+
+## signInWithSSO()
+
+- Before you can call this method you need to establish a connection to an identity provider. Use the CLI commands to do this.
+- If you've associated an email domain to the identity provider, you can change the `domain` property in the `signInWith(SSO)` method to start a sign-in flow.
+- In case you need to use a different way to start the authentication flow with an identity provider, you can change the `providerId` property. For example:
+    - Mapping specific user email addresses with an identity provider.
+    - Using different hints to identity the identity provider to be used by the user, like a company-specific page, IP address or other tracking information.
+- To learn how to handle OTP links & OAuth refer to initializing
+
+Parameters:
+
+- `provider` `SSO`: The OAuth provider to use for the user's authentication, in this case `SSO`.
+- `redirectUrl` `String?`, optional: The redirect url to use. If you don't specify this, the platform specific will be used, like deeplinks on android.
+- `config` `ExternalAuthConfig.() -> Unit`, optional: The configuration for signing in with an OAuth provider.
+  - `providerId/domain` `String`: The providerId or domain.
+  - `captchaToken` `String?`, optional: The captcha token when having captcha enabled.
+
+### Example: Sign in with email domain
+
+```kotlin
+  // You can extract the user's email domain and use it to trigger the
+  // authentication flow with the correct identity provider.
+
+  supabase.auth.signInWith(SSO) {
+      domain = "company.com"
+  }
+
+  //the url was opened automatically, if you don't want that, provide a custom redirect url
+```
+
+### Example: Sign in with provider UUID
+
+```kotlin
+  // Useful when you need to map a user's sign in request according
+  // to different rules that can't use email domains.
+
+  supabase.auth.signInWith(SSO) {
+      providerId = "21648a9d-8d5a-4555-a9d1-d6375dc14e92"
+  }
+
+  //the url was opened automatically, if you don't want that, provide a custom redirect url
+```
+
+## signOut()
+
+Logs out the current user.
+- In order to use the `signOut()` method, the user needs to be signed in first.
+
+Parameters:
+
+- `scope` `SignOutScope`, optional: The scope of the sign-out.
+
+### Example: Sign out
+
+```kotlin
+supabase.auth.signOut()
+```
+
+### Example: Sign out all sessions
+
+```kotlin
+supabase.auth.signOut(SignOutScope.GLOBAL)
+```
+
+### Example: Sign out all sessions except the current
+
+```kotlin
+supabase.auth.signOut(SignOutScope.OTHERS)
+```
+
+## Verify OTPs
+
+- Verifying an OTP is done through either `verifyPhoneOtp` or `verifyEmailOtp`.
+- The verification type used should be determined based on the corresponding auth method called before using `verifyPhoneOtp`/`verifyEmailOtp` to sign up / sign-in a user.
+
+Parameters:
+
+- `type` `OtpType.Email or OtpType.Phone`: The OTP type. Depending on the type, an email or phone has to be specified as parameter.
+- `email/phone` `String`: The email or phone number, depending on which type you specified.
+- `token` `String`: The token to verify.
+- `captchaToken` `String?`, optional: The captcha token when having captcha enabled.
+
+### Example: Verify an Email OTP
+
+Available types are:
+  - `OtpType.Email.MAGIC_LINK` (deprecated)
+  - `OtpType.Email.SIGNUP` (deprecated)
+  - `OtpType.Email.INVITE`
+  - `OtpType.Email.RECOVERY`
+  - `OtpType.Email.EMAIL_CHANGE`
+  - `OtpType.Email.EMAIL`
+
+```kotlin
+supabase.auth.verifyEmailOtp(type = OtpType.Email.EMAIL, email = "example@email.com", token = "token")
+```
+
+### Example: Verify an Phone OTP
+
+Available types are:
+  - `OtpType.Phone.SMS`
+  - `OtpType.Phone.PHONE_CHANGE`
+
+```kotlin
+supabase.auth.verifyPhoneOtp(type = OtpType.Phone.SMS, phone = "+491234567", token = "token")
+```
+
+## reauthenticate()
+
+- This method is used together with `updateUser()` when a user's password needs to be updated.
+- This method will send a nonce to the user's email. If the user doesn't have a confirmed email address, the method will send the nonce to the user's confirmed phone number instead.
+
+### Example: Send reauthentication nonce
+
+Sends a reauthentication nonce to the user's email or phone number.
+
+```kotlin
+supabase.auth.reauthenticate()
+```
+
+## resend()
+
+- Resends a signup confirmation, email change or phone change email to the user.
+- Passwordless sign-ins can be resent by calling the `signInWith(OTP)` method again.
+- Password recovery emails can be resent by calling the `resetPasswordForEmail()` method again.
+- This method will only resend an email or phone OTP to the user if there was an initial signup, email change or phone change request being made.
+
+Parameters:
+
+- `type` `OtpType.Email or OtpType.Phone`: The OTP type. Depending on the type, an email or phone has to be specified as parameter.
+- `email/phone` `String`: The email or phone number, depending on which type you specified.
+- `captchaToken` `String?`, optional: The captcha token when having captcha enabled.
+
+### Example: Resend an email signup confirmation
+
+Resends the email signup confirmation to the user
+
+```kotlin
+supabase.auth.resendEmail(OtpType.Email.SIGNUP, "example@email.com")
+```
+
+### Example: Resend a phone signup confirmation
+
+Resends the phone signup confirmation email to the user
+
+```kotlin
+supabase.auth.resendPhone(OtpType.Phone.SMS, "1234567890")
+```
+
+### Example: Resend email change email
+
+Resends the email change email to the user
+
+```kotlin
+supabase.auth.resendEmail(OtpType.Email.EMAIL_CHANGE, "example@email.com")
+```
+
+### Example: Resend phone change OTP
+
+Resends the phone change OTP to the user
+
+```kotlin
+supabase.auth.resendPhone(OtpType.Phone.PHONE_CHANGE, "1234567890")
+```
+
+## Get current session
+
+Returns the current session, or `null` if there is none.
+
+### Example: Get the session data
+
+```kotlin
+val session = supabase.auth.currentSessionOrNull()
+```
+
+## getUser()
+
+- This method gets the user object from the current session.
+- Fetches the user object from the database instead of local session.
+- Should be used only when you require the most current user data. For faster results, `getCurrentSessionOrNull()?.user` is recommended.
+
+Parameters:
+
+- `jwt` `String`: The JWT token.
+
+### Example: Get the signed-in user with the current session
+
+`updateSession` updates the local session with the new user
+
+```kotlin
+val user = supabase.auth.retrieveUserForCurrentSession(updateSession = true)
+```
+
+### Example: Get a user based on their access token
+
+```kotlin
+val user = supabase.auth.retrieveUser("JWT")
+```
+
+## updateUser()
+
+Modifies the user data.
+- In order to use the `updateUser()` method, the user needs to be signed in first.
+- By default, email updates sends a confirmation link to both the user's current and new email.
+To only send a confirmation link to the user's new email, disable **Secure email change** in your project's email auth provider settings.
+
+Parameters:
+
+- `updateCurrentUser` `Boolean`, optional: Whether to update the local session with the new user. Defaults to `true`.
+- `redirectUrl` `String?`, optional: The redirect url to use. If you don't specify this, the platform specific will be used, like deeplinks on android.
+- `config` `UserUpdateBuilder.() -> Unit`
+  - `email` `String?`, optional: The new email.
+  - `password` `String?`, optional: The new password.
+  - `phone` `String?`, optional: The new phone number.
+  - `nonce` `String?`, optional: The nonce sent for reauthentication if the user's password is to be updated.
+  - `data` `JsonObject`, optional: The new user data.
+
+### Example: Update the email for an authenticated user
+
+Sends a "Confirm Email Change" email to the new email address.
+
+```kotlin
+val user = supabase.auth.updateUser {
+   email = "newEmail@email.com"
+}
+```
+
+### Example: Update the password for an authenticated user
+
+```kotlin
+val user = supabase.auth.updateUser {
+   password = "secretPassword"
+}
+```
+
+### Example: Update the user's metadata
+
+```kotlin
+val user = supabase.auth.updateUser {
+   data {
+      put("name", "John")
+   }
+}
+```
+
+## currentIdentitiesOrNull()
+
+- The user needs to be signed in to call `currentIdentitiesOrNull()`.
+
+### Example: Returns a list of identities linked to the user
+
+```kotlin
+//get the identities from the current user
+val identities = supabase.auth.currentIdentitiesOrNull()
+//Or retrieve them
+val identities = supabase.auth.retrieveUserForCurrentSession().identities
+```
+
+## linkIdentity()
+
+- The **Enable Manual Linking** option must be enabled from your project's authentication settings.
+- The user needs to be signed in to call `linkIdentity()`.
+- If the candidate identity is already linked to the existing user or another user, `linkIdentity()` will fail.
+- This method works similarly to `signInWith()` using an OAuthProvider. To learn how to handle OTP links & OAuth refer to initializing
+
+Parameters:
+
+- `provider` `OAuthProvider`: The OAuth provider you want to link the user with.
+- `redirectUrl` `String?`, optional: The redirect url to use. If you don't specify this, the platform specific will be used, like deeplinks on android.
+- `config` `ExternalAuthConfigDefaults.() -> Unit`, optional: Extra configuration.
+  - `scopes` `MutableList<String>`, optional: The scopes to request from the OAuth provider.
+  - `queryParams` `MutableMap<String, String>`, optional: Additional query parameters to use.
+
+### Example: Link an identity to a user
+
+```kotlin
+supabase.auth.linkIdentity(OAuthProvider)
+
+//Example:
+supabase.auth.linkIdentity(Google)
+```
+
+## unlinkIdentity()
+
+- The **Enable Manual Linking** option must be enabled from your project's authentication settings.
+- The user needs to be signed in to call `unlinkIdentity()`.
+- The user must have at least 2 identities in order to unlink an identity.
+- The identity to be unlinked must belong to the user.
+
+Parameters:
+
+- `identityId` `String`: The id of the OAuth identity
+- `updateLocalUser` `Boolean`, optional: Whether to delete the identity from the local user or not. Defaults to `true`.
+
+### Example: Unlink an identity
+
+```kotlin
+//get all identities linked to a user
+val identities = supabase.auth.currentIdentitiesOrNull() ?: emptyList()
+
+//find the google identity linked to the user
+val googleIdentity = identities.first { it.provider == "google" }
+
+//unlink the google identity from the user
+supabase.auth.unlinkIdentity(googleIdentity.identityId!!)
+```
+
+## importSession()
+
+Changes the local session.
+- `importSession()` takes in a UserSession.
+- Refresh token rotation is enabled by default on all projects to guard against replay attacks.
+- You can configure the `REFRESH_TOKEN_REUSE_INTERVAL` which provides a short window in which the same refresh token can be used multiple times in the event of concurrency or offline issues.
+
+Parameters:
+
+- `session` `UserSession`: The session to set.
+
+### Example: Set local session
+
+Sets the local session from refresh_token and returns current session or an error if the refresh_token is invalid.
+
+```kotlin
+supabase.auth.importSession(UserSession(accessToken = "token", refreshToken = "refresh", expiresIn = 2000, tokenType = "Bearer", user = null))
+```
+
+## refreshSession()
+
+This method will refresh the session whether the current one is expired or not.
+
+- This is done automatically, but can be disabled in the Auth config.
+
+Parameters:
+
+- `refreshToken` `String`: The refresh token to use.
+
+### Example: Refresh current session
+
+```kotlin
+val session = supabase.auth.refreshCurrentSession()
+```
+
+### Example: Refresh session using the refresh token
+
+```kotlin
+val session = supabase.auth.refreshSession(refreshToken = "refreshToken")
+```
+
+## sessionStatus
+
+Listen to session changes.
+
+### Example: Listen to auth changes
+
+Types of statuses:
+- `NotAuthenticated(isSignOut)`,
+- `LoadingFromStorage`,
+- `NetworkError`,
+- `Authenticated(session, source)`
+
+```kotlin
+supabase.auth.sessionStatus.collect {
+    when(it) {
+        is SessionStatus.Authenticated -> {
+            println("Received new authenticated session.")
+            when(it.source) { //Check the source of the session
+                SessionSource.External -> TODO()
+                is SessionSource.Refresh -> TODO()
+                is SessionSource.SignIn -> TODO()
+                is SessionSource.SignUp -> TODO()
+                SessionSource.Storage -> TODO()
+                SessionSource.Unknown -> TODO()
+                is SessionSource.UserChanged -> TODO()
+                is SessionSource.UserIdentitiesChanged -> TODO()
+            }
+        }
+        SessionStatus.LoadingFromStorage -> println("Loading from storage")
+        SessionStatus.NetworkError -> println("Network error")
+        is SessionStatus.NotAuthenticated -> {
+            if(it.isSignOut) {
+                println("User signed out")
+            } else {
+                println("User not signed in")
+            }
+        }
+    }
+}
+```
+
+## Send a password reset request
+
+Sends a password reset request to the given email address.
+- The password reset flow consists of 2 broad steps: (i) Allow the user to sign in via the password reset link; (ii) Update the user's password.
+- The `resetPasswordForEmail()` only sends a password reset link to the user's email.
+To update the user's password, see `updateUser()`.
+- The user gets redirected back to your app, assuming you setup OTP handling
+- After the user has been redirected successfully, prompt them for a new password and call `updateUser()`:
+```kotlin
+  supabase.auth.updateUser {
+      password = "1234567"
+  }
+```
+
+Parameters:
+
+- `email` `String`: The email to send the password reset email to.
+- `redirectUrl` `String?`, optional: The redirect url to use. If you don't specify this, the platform specific will be used, like deeplinks on android.
+- `captchaToken` `String?`, optional: The captcha token when having captcha enabled.
+
+### Example: Send password reset email
+
+```kotlin
+supabase.auth.resetPasswordForEmail(email = "example@email.com")
+```
+
+## exchangeCodeForSession()
+
+- Used when `flowType` is set to `FlowType.PKCE` in the Auth configuration.
+
+Parameters:
+
+- `code` `String`: The code to exchange.
+- `saveSession` `Boolean`, optional: Whether to save the session. Defaults to true.
+
+### Example: Exchange Auth Code
+
+```kotlin
+supabase.auth.exchangeCodeForSession("34e770dd-9ff9-416c-87fa-43b31d7ef225")
+```
+
+## Overview
+
+This section contains methods commonly used for Multi-Factor Authentication (MFA) and are invoked behind the `supabase.auth.mfa` namespace.
+
+Currently, we only support time-based one-time password (TOTP) as the 2nd factor. We don't support recovery codes but we allow users to enroll more than 1 TOTP factor, with an upper limit of 10.
+
+Having a 2nd TOTP factor for recovery frees the user of the burden of having to store their recovery codes somewhere. It also reduces the attack surface since multiple recovery codes are usually generated compared to just having 1 backup TOTP factor.
+
+## Enroll a factor
+
+Enrolls a new factor.
+- Use `FactorType.TOTP` or `FactorType.Phone` as the factorType and use the returned id to create a challenge.
+- To create a challenge, see `mfa.createChallenge()`.
+- To verify a challenge, see `mfa.verifyChallenge()`.
+- To create and verify a challenge in a single step, see `mfa.createChallengeAndVerify()`.
+
+Parameters:
+
+- `factorType` `FactorType<C, R>`: The type of MFA factor to enroll. Currently supports `FactorType.TOTP` and `FactorType.Phone`.
+- `issuer` `String?`, optional: Domain which the user is enrolling with.
+- `config` `Config.() -> Unit`, optional: Factor type specific configuration.
+
+### Example: Enroll a time-based, one-time password (TOTP) factor
+
+```kotlin
+val factor = supabase.auth.mfa.enroll(factorType = FactorType.TOTP, friendlyName = "Your friendly Name") {
+      // Optional
+      issuer = "example.com"
+}
+
+// Use the id to create a challenge.
+// The challenge can be verified by entering the code generated from the authenticator app.
+// The code will be generated upon scanning the qr_code or entering the secret into the authenticator app.
+val (id, type, qrCode) = factor.data //qrCode is a svg as a string
+val (factorId, factorType, _) = factor
+val challenge = supabase.auth.mfa.createChallenge(factor.id)
+```
+
+### Example: Enroll a Phone Factor
+
+```kotlin
+val factor = supabase.auth.mfa.enroll(factorType = FactorType.Phone, friendlyName = "Your friendly Name") {
+      phone = "+123456789"
+}
+
+// Use the id to create a challenge and send an SMS with a code to the user.
+val (phone) = factor.data
+val (factorId, factorType, _) = factor
+val challenge = supabase.auth.mfa.createChallenge(factor.id)
+```
+
+### Example: Check the local user for verified factors
+
+```kotlin
+val verifiedFactors = supabase.auth.mfa.verifiedFactors
+```
+
+### Example: Retrieve verified factors
+
+```kotlin
+val verifiedFactors = supabase.auth.mfa.retrieveFactorsForCurrentUser()
+```
+
+## mfa.challenge()
+
+Creates a challenge for a factor.
+- An enrolled factor is required before creating a challenge.
+- To verify a challenge, see `mfa.verifyChallenge()`.
+- A phone factor sends a code to the user upon challenge. The channel defaults to `Phone.Channel.SMS` unless otherwise specified.
+
+Parameters:
+
+- `factorId` `String`: The id of the MFA factor you want to create a challenge for.
+- `channel` `Phone.Channel?`, optional: The channel to send the challenge to. Defaults to `Phone.Channel.SMS`.
+
+### Example: Create a challenge for a factor
+
+```kotlin
+val challenge = supabase.auth.mfa.createChallenge(factorId = "34e770dd-9ff9-416c-87fa-43b31d7ef225")
+```
+
+## mfa.verify()
+
+Verifies a challenge for a factor.
+- To verify a challenge, please create a challenge first.
+
+Parameters:
+
+- `factorId` `String`: The id of the MFA factor to verify.
+- `challengeId` `String`: The id of the challenge to verify.
+- `code` `String`: The code used to verify.
+- `saveSession` `Boolean`, optional: Whether to save the session. Defaults to true.
+
+### Example: Verify a challenge for a factor
+
+```kotlin
+supabase.auth.mfa.verifyChallenge(
+    factorId = "34e770dd-9ff9-416c-87fa-43b31d7ef225",
+    challengeId = "4034ae6f-a8ce-4fb5-8ee5-69a5863a7c15",
+    code = "123456",
+    saveSession = true // this is set to true by default, but you can set it to false if you want to handle the session yourself
+)
+```
+
+## mfa.challengeAndVerify()
+
+Creates and verifies a challenge for a factor.
+- Creating and verifying a challenge in a single step is not supported by the `Phone` factor type.
+- An enrolled factor is required before invoking `createChallengeAndVerify()`.
+- Executes `mfa.createChallenge()` and `mfa.verifyChallenge()` in a single step.
+
+Parameters:
+
+- `factorId` `String`: The id of the MFA factor to verify.
+- `code` `String`: The code used to verify.
+- `saveSession` `Boolean`, optional: Whether to save the session. Defaults to true.
+
+### Example: Create and verify a challenge for a factor
+
+```kotlin
+supabase.auth.mfa.createChallengeAndVerify(
+    factorId = "34e770dd-9ff9-416c-87fa-43b31d7ef225",
+    code = "123456",
+    saveSession = true // this is set to true by default, but you can set it to false if you want to handle the session yourself
+)
+```
+
+## mfa.unenroll()
+
+Unenroll removes a MFA factor. A user has to have an `AAL2` authentication level in order to unenroll a verified factor.
+
+Parameters:
+
+- `factorId` `String`: The id of the factor you want to unenroll.
+
+### Example: Unenroll a factor
+
+```kotlin
+supabase.auth.mfa.unenroll(factorId = "34e770dd-9ff9-416c-87fa-43b31d7ef225")
+```
+
+## mfa.getAuthenticatorAssuranceLevel()
+
+- Authenticator Assurance Level (AAL) is the measure of the strength of an authentication mechanism.
+- In Supabase, having an AAL of `aal1` refers to having the 1st factor of authentication such as an email and password or OAuth sign-in while `aal2` refers to the 2nd factor of authentication such as a time-based, one-time-password (TOTP).
+- If the user has a verified factor, the `next` field will return `AuthenticatorAssuranceLevel.AAL2`, else, it will return `AuthenticatorAssuranceLevel.AAL1`.
+
+### Example: Get the AAL details of the current session
+
+```kotlin
+val (current, next) = supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+```
+
+### Example: Check whether the user has at least one verified factor
+
+```kotlin
+val (enabled, _) = supabase.auth.mfa.status
+//flow variant, automatically emitting new values on session changes
+val statusFlow = supabase.auth.mfa.statusFlow
+```
+
+### Example: Check whether the user is signed in using AAL2
+
+```kotlin
+val (_, active) = supabase.auth.mfa.status
+//flow variant, automatically emitting new values on session changes
+val statusFlow = supabase.auth.mfa.statusFlow
+```
+
+## Overview
+
+- Any method under the `supabase.auth.admin` namespace requires a `secret` key.
+- These methods are considered admin methods and should be called on a trusted server. Never expose your `secret` key in the browser.
+
+### Example: Create server-side auth client
+
+```kotlin
+val supabase = createSupabaseClient(
+    supabaseUrl = "https://id.supabase.co",
+    supabaseKey = "supabaseKey"
+) {
+    install(Auth) {
+        minimalSettings() //disables session saving and auto-refreshing
+    }
+    // install other plugins (these will use the secret key)
+}
+supabase.auth.importAuthToken("your-secret-key")
+
+// Access auth admin api
+val adminAuthClient = supabase.auth.admin
+```
+
+## getUserById()
+
+Fetches the user object from the database based on the user's id.
+- The `retrieveUserById()` method requires the user's id which maps to the `auth.users.id` column.
+
+Parameters:
+
+- `uid` `String`: The id of the user you want to retrieve.
+
+### Example: Fetch the user object using the access_token jwt
+
+```kotlin
+val user = supabase.auth.admin.retrieveUserById(uid = "f2a0b0a0-6b1a-4b7a-8f1a-4b7a6b1a8f1a")
+```
+
+## listUsers()
+
+Retrieves a list of users.
+- Defaults to return 50 users per page.
+
+Parameters:
+
+- `page` `Int`, optional: The page number to retrieve.
+- `perPage` `Int`, optional: The number of users to retrieve per page.
+
+### Example: Get a page of users
+
+```kotlin
+val users = supabase.auth.admin.retrieveUsers()
+```
+
+### Example: Paginated list of users
+
+```kotlin
+val users = supabase.auth.admin.retrieveUsers(
+    page = 1,
+    perPage = 100
+)
+```
+
+## createUser()
+
+Creates a new user.
+- To confirm the user's email address or phone number, set `autoConfirm` to true. Both arguments default to false.
+
+Parameters:
+
+- `builder` `AdminUserBuilder.Email.() -> Unit or AdminUserBuilder.Phone.() -> Unit`: The builder to create a new user.
+  - `email/phone` `String`, optional: The new user's email or phone.
+  - `password` `String`: The user's password.
+  - `autoConfirm` `Boolean`, optional: Whether to auto-confirm the user's email or phone number.
+  - `userMetadata` `JsonObject?`, optional: Custom user metadata.
+  - `appMetadata` `JsonObject?`, optional: Custom app metadata.
+
+### Example: Create user with email
+
+```kotlin
+val userWithEmail = supabase.auth.admin.createUserWithEmail {
+    email = "example@email.com"
+    password = "secretpassword"
+    userMetadata {
+        put("name", "John")
+    }
+}
+```
+
+### Example: Create user with phone
+
+```kotlin
+val userWithPhone = supabase.auth.admin.createUserWithPhone {
+    phone = "+49123456789"
+    password = "secretpassword"
+    userMetadata {
+        put("name", "John")
+    }
+}
+```
+
+### Example: Auto-confirm the user's email
+
+```kotlin
+val userWithEmail = supabase.auth.admin.createUserWithEmail {
+    email = "example@email.com"
+    password = "secretpassword"
+    autoConfirm = true
+}
+```
+
+### Example: Auto-confirm the user's phone number
+
+```kotlin
+val userWithPhone = supabase.auth.admin.createUserWithPhone {
+    phone = "+49123456789"
+    password = "secretpassword"
+    autoConfirm = true
+}
+```
+
+## deleteUser()
+
+Deletes a user from the database.
+- The `deleteUser()` method requires the user's ID, which maps to the `auth.users.id` column.
+
+Parameters:
+
+- `uid` `String`: The id of the user you want to delete.
+
+### Example: Removes a user
+
+```kotlin
+supabase.auth.admin.deleteUser(uid = "uid")
+```
+
+## inviteUserByEmail()
+
+Sends an invite link to the user's email address.
+
+Parameters:
+
+- `email` `String`: The email to send the invite to.
+- `redirectTo` `String`, optional: The redirect url to use. If you don't specify this, the platform specific will be used, like deeplinks on android.
+- `data` `JsonObject`, optional: Custom data to create the user with.
+
+### Example: Invite a user
+
+```kotlin
+supabase.auth.admin.inviteUserByEmail(
+    email = "example@email.com",
+    //optional:
+    redirectTo = "https://example.com/redirect",
+    data = buildJsonObject {
+        put("custom", "value")
+    }
+)
+```
+
+## generateLink()
+
+Generates email links and OTPs. This will not send links or OTPs to the end user. This function is for custom admin functionality.
+
+Parameters:
+
+- `type` `LinkType<C>`: The type of link to generate, e.g. `LinkType.Signup`.
+- `redirectTo` `String`, optional: The redirect url to use. If you don't specify this, the platform specific will be used, like deeplinks on android.
+- `config` `C.() -> Unit`, optional: The builder to create a new link.
+
+### Example: Generate a signup link
+
+```kotlin
+val (url, user) = supabase.auth.admin.generateLinkFor(LinkType.Signup) {
+    email = "example@email.com"
+    password = "secretpassword"
+}
+```
+
+### Example: Generate an invite link
+
+```kotlin
+val (url, user) = supabase.auth.admin.generateLinkFor(LinkType.Invite) {
+    email = "example@email.com"
+}
+```
+
+### Example: Generate a magic link
+
+```kotlin
+val (url, user) = supabase.auth.admin.generateLinkFor(LinkType.MagicLink) {
+    email = "example@email.com"
+}
+```
+
+### Example: Generate a recovery link
+
+```kotlin
+val (url, user) = supabase.auth.admin.generateLinkFor(LinkType.Recovery) {
+    email = "example@email.com"
+}
+```
+
+### Example: Generate links to change current email address
+
+```kotlin
+// generate an email change link to be sent to the current email address
+val (url, user) = supabase.auth.admin.generateLinkFor(LinkType.EmailChangeCurrent) {
+    email = "example@email.com"
+    newEmail = "newEmail@email.com"
+}
+
+// generate an email change link to be sent to the new email address
+val (url, user) = supabase.auth.admin.generateLinkFor(LinkType.EmailChangeNew) {
+    email = "example@email.com"
+    newEmail = "newEmail@email.com"
+}
+```
+
+## updateUserById()
+
+Updates the user data.
+
+Parameters:
+
+- `uid` `String`: The id of the user you want to update.
+- `builder` `AdminUserUpdateBuilder.() -> Unit`: The builder to update the user.
+  - `email` `String`, optional: The new email.
+  - `phone` `String`, optional: The new phone number.
+  - `password` `String`, optional: The new password.
+  - `userMetadata` `JsonObject?`, optional: Custom user metadata.
+  - `appMetadata` `JsonObject?`, optional: Custom app metadata.
+  - `emailConfirm` `Boolean`, optional: Whether to confirm the user's email.
+  - `phoneConfirm` `Boolean`, optional: Whether to confirm the user's phone number.
+  - `banDuration` `String`, optional: The format for the ban duration follows a strict sequence of decimal numbers with a unit suffix. Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h".
+  - `role` `String`, optional: The `role` claim set in the user's access token JWT. When a user signs up, this role is set to `authenticated` by default. You should only modify the `role` if you need to provision several levels of admin access that have different permissions on individual columns in your database.
+
+### Example: Updates a user's email
+
+```kotlin
+supabase.auth.admin.updateUserById(uid = "id") {
+    email = "example@email.com"
+}
+```
+
+### Example: Updates a user's password
+
+```js
+supabase.auth.admin.updateUserById(uid = "id") {
+    password = "password"
+}
+```
+
+### Example: Updates a user's metadata
+
+```kotlin
+supabase.auth.admin.updateUserById(uid = "id") {
+    userMetadata = buildJsonObject {
+        put("key", "value")
+    }
+}
+```
+
+### Example: Updates a user's app_metadata
+
+```kotlin
+supabase.auth.admin.updateUserById(uid = "id") {
+    appMetadata = buildJsonObject {
+        put("key", "value")
+    }
+}
+```
+
+### Example: Confirms a user's email address
+
+```kotlin
+supabase.auth.admin.updateUserById(uid = "id") {
+    emailConfirm = true
+}
+```
+
+### Example: Confirms a user's phone number
+
+```kotlin
+supabase.auth.admin.updateUserById(uid = "id") {
+    phoneConfirm = true
+}
+```
+
+## mfa.listFactors()
+
+Lists all factors associated to a user.
+
+Parameters:
+
+- `uid` `String`: The id of the user you want to list factors for.
+
+### Example: List all factors for a user
+
+```kotlin
+const factors = supabase.auth.admin.retrieveFactors(uid = "id")
+```
+
+## mfa.deleteFactor()
+
+Deletes a factor on a user. This will log the user out of all active sessions if the deleted factor was verified.
+
+Parameters:
+
+- `uid` `String`: The id of the user you want to delete a factor for.
+- `factorId` `String`: The id of the factor you want to delete.
+
+### Example: Delete a factor for a user
+
+```kotlin
+supabase.auth.admin.deleteFactor(uid = "id", factorId = "factor_id")
+```
+
+## invoke()
+
+Invokes a Supabase Function. See the guide for details on writing Functions.
+- When invoking a function with parameters, you have to provide a serializable value in the function parameter.
+
+- Requires an Authorization header.
+
+Parameters:
+
+- `function` `String`: The name of the function to invoke.
+- `body` `T`, optional: The body to send with the request. T can be any serializable type.
+- `region` `FunctionRegion`, optional: The region where the function is invoked. Defaults to `Functions.Config#defaultRegion`.
+- `headers` `Headers`, optional: The headers to send with the request.
+
+### Example: Basic invocation
+
+```kotlin
+val response = supabase.functions.invoke("function_name")
+
+// Decode the response body to a serializable class
+val data = response.body<FunctionResponse>()
+```
+
+### Example: Basic invocation with body
+
+The return type of the invoking methods is an `HttpResponse`. You can access the response body via `response.body<T>()`, where `T` can be any serializable type.
+
+```kotlin
+supabase.functions.invoke(
+  function = "function_name",
+  body = buildJsonObject {
+      put("foo", "bar")
+  },
+  headers = Headers.build {
+      append(HttpHeaders.ContentType, "application/json")
+  }
+)
+```
+
+### Example: Reuse function by saving it to a variable
+
+```kotlin
+val function = supabase.functions.buildEdgeFunction(
+  function = "function",
+  headers = Headers.build {
+      /*Default headers*/
+      //when you are sending a body you may want to add this header:
+      append(HttpHeaders.ContentType, "application/json")
+    }
+  )
+//invoke it:
+function()
+//invoke it with a body:
+function(body)
+//invoke it with custom request options:
+function(body) {
+    header("Header", "Value")
+    parameter("Key", "Value") //url parameter
+}
+```
+
+## stream()
+
+Return real-time data from your table as a Flow.
+- Realtime is disabled by default for new tables. You can turn it on by managing replication.
+- `selectAsFlow` and `selectSingleValueAsFlow` will emit the initial data and then listen for changes.
+- Takes in a `filter` parameter to filter the data and a `primaryKey` parameter to cache the data by the primary key.
+- This method requires both the `Realtime` and `Postgrest` plugins to be installed.
+- The type parameter `T` must be a serializable class.
+- If you want more control over the realtime updates, you can use the `Realtime` plugin directly.
+
+Parameters:
+
+- `primaryKey` `KProperty1<Data, Value> or PrimaryKey<Data>`: The primary key to cache the data by. Can be a property reference or a custom primary key.
+- `channelName` `String`, optional: The name of the channel to use for the realtime updates. If null, a channel name following the format "schema:table:id" will be used
+- `filter` `PostgrestFilterBuilder.() -> Unit or FilterOperation`, optional: The filter to apply to the data.
+
+### Example: Listen for changes in multiple rows
+
+```kotlin
+val flow: Flow<List<Country>> = supabase.from("countries").selectAsFlow(Country::id)
+flow.collect {
+    for (country in it) {
+        println(country.name)
+    }
+}
+```
+
+### Example: Listen for changes in multiple rows with a filter
+
+```kotlin
+val flow: Flow<List<Country>> = supabase.from("countries").selectAsFlow(
+    Country::id,
+    filter = FilterOperation("name", FilterOperator.ILIKE, "a%")
+)
+flow.collect {
+    for (country in it) {
+        println(country.name)
+    }
+}
+```
+
+### Example: Listen for changes in a single row
+
+The flow will end if the row is deleted.
+
+```kotlin
+val flow: Flow<Country> = supabase.from("countries").selectSingleValueAsFlow(Country::id) {
+    //You can use the same filter methods as in the `select` method, but the result is limited to a single row
+    Country::id eq 1
+    //or
+    eq("id", 1)
+}
+flow.collect {
+    println("My country is $it")
+}
+```
+
+## on().subscribe()
+
+Subscribe to realtime changes in your database.
+
+- Realtime is disabled by default for new Projects for better database performance and security. You can turn it on by managing replication.
+- If you want to receive the "previous" data for updates and deletes, you will need to set `REPLICA IDENTITY` to `FULL`, like this: `ALTER TABLE your_table REPLICA IDENTITY FULL;`
+- When using a method with a generic type like `track`, `broadcast` or `broadcastFlow`, you have to provide a serializable class as the type parameter.
+- Presence, Broadcast and Database updates are sent through a Flow
+
+### Example: Listen to broadcasts
+
+```kotlin
+@Serializable
+data class Message(val content: String, val sender: String)
+
+val channel = supabase.channel("channelId") {
+    // optional config
+}
+
+val broadcastFlow = channel.broadcastFlow<Message>(event = "message")
+
+// Collect the flow
+broadcastFlow.onEach { // it: Message
+    println(it)
+}.launchIn(coroutineScope) // launch a new coroutine to collect the flow
+
+channel.subscribe(blockUntilSubscribed = true)
+
+channel.broadcast(event = "message", Message("I joined!", "John"))
+```
+
+### Example: Listen to presence updates
+
+You have two methods you can use to listen for presence updates:
+- `presenceDataFlow` takes care of caching presences based on their id and automatically emits the updated list.
+- `presenceChangeFlow` emits the raw data received by realtime. Can be used if more control is required.
+
+```kotlin
+@Serializable
+data class PresenceState(val username: String)
+
+val channel = supabase.channel("channelId") {
+    //optional config
+}
+
+//if you want more control and want to receive the raw data, use the `presenceChangeFlow` method
+val presenceFlow = channel.presenceDataFlow<PresenceState>()
+
+//Collect the flow
+presenceFlow.onEach {
+    for (presence in it) {
+        println(presence.username)
+    }
+}.launchIn(coroutineScope) // launch a new coroutine to collect the flow
+
+channel.subscribe(blockUntilSubscribed = true)
+//send your own state
+channel.track(PresenceState(username = "John"))
+
+### Example: Listen to all database changes
+
+```kotlin
+val channel = supabase.channel("channelId") {
+    //optional config
+}
+val changeFlow = channel.postgresChangeFlow<PostgresAction>(schema = "public")
+
+//Collect the flow
+changeFlow.onEach {
+    when(it) {
+        is PostgresAction.Delete -> println("Deleted: ${it.oldRecord}")
+        is PostgresAction.Insert -> println("Inserted: ${it.record}")
+        is PostgresAction.Select -> println("Selected: ${it.record}")
+        is PostgresAction.Update -> println("Updated: ${it.oldRecord} with ${it.record}")
+    }
+}.launchIn(coroutineScope) // launch a new coroutine to collect the flow
+
+channel.subscribe()
+```
+
+
+### Example: Listen to a specific table
+
+
+You have two methods you can use if you want to listen for database updates on a specific table:
+- `postgresListDataFlow` fetches the initial data of all database entries matching your filter (or all entries if you didn't specify one) and then caches the data based on their primary key. Inserts, Updates and Deletes are handled automatically and you will get the updated list through the flow.
+- `postgresChangeFlow` emits the raw data received by realtime. Events can be filtered by specifying a `PostgresAction` type parameter (see examples), or all by specifying only `PostgresAction`. Can be used if more control is required.
+
+```kotlin
+val channel = supabase.channel("channelId") {
+    //optional config
+}
+
+//This flow will automatically emit the initial data of all messages (which can be restricted by specifying a filter) and then listens for updates.
+//The data is cached automatically by the primary key you specify
+val users: Flow<List<User>> = channel.postgresListDataFlow(schema = "public", table = "users", primaryKey = User::id)
+
+//If you want more control and want to receive the raw data use the `postgresChangeFlow` method:
+val changeFlow = channel.postgresChangeFlow<PostgresAction>(schema = "public") {
+    table = "users"
+}
+
+//Collect the flow
+changeFlow.onEach {
+    when(it) {
+        is PostgresAction.Delete -> println("Deleted: ${it.oldRecord}")
+        is PostgresAction.Insert -> println("Inserted: ${it.record}")
+        is PostgresAction.Select -> println("Selected: ${it.record}")
+        is PostgresAction.Update -> println("Updated: ${it.oldRecord} with ${it.record}")
+    }
+}.launchIn(coroutineScope) // launch a new coroutine to collect the flow
+
+channel.subscribe()
+```
+
+
+### Example: Listen to inserts
+
+
+```kotlin
+val channel = supabase.channel("channelId") {
+    //optional config
+}
+val changeFlow = channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
+    table = "users"
+}
+
+//Collect the flow
+changeFlow.onEach {
+    println(it.record)
+}.launchIn(coroutineScope) // launch a new coroutine to collect the flow
+
+channel.subscribe()
+```
+
+
+### Example: Listen to updates
+
+
+By default, Supabase will send only the updated record. If you want to receive the previous values as well you can
+enable full replication for the table you are listening too:
+
+```sql
+alter table "your_table" replica identity full;
+```
+
+```kotlin
+val channel = supabase.channel("channelId") {
+    //optional config
+}
+
+val changeFlow = channel.postgresChangeFlow<PostgresAction.Update>(schema = "public") {
+    table = "users"
+}
+
+//Collect the flow
+changeFlow.onEach {
+    println(it.record)
+    println(it.oldRecord)
+}.launchIn(coroutineScope) // launch a new coroutine to collect the flow
+
+channel.subscribe()
+```
+
+
+### Example: Listen to deletes
+
+
+By default, Supabase does not send deleted records. If you want to receive the deleted record you can
+enable full replication for the table you are listening too:
+
+```sql
+alter table "your_table" replica identity full;
+```
+
+```kotlin
+val channel = supabase.channel("channelId") {
+    //optional config
+}
+
+val changeFlow = channel.postgresChangeFlow<PostgresAction.Delete>(schema = "public") {
+    table = "users"
+}
+
+//Collect the flow
+changeFlow.onEach {
+    println(it.oldRecord)
+}.launchIn(coroutineScope) // launch a new coroutine to collect the flow
+
+channel.subscribe()
+```
+
+
+### Example: Listen to row level changes
+
+
+You have two methods you can use if you want to listen for updates on a specific database row:
+- `postgresSingleDataFlow` fetches the initial data matching the filter and then emits updates based on realtime events.
+- `postgresChangeFlow` emits the raw data received by realtime. To filter the realtime queries, use the `filter` method.
+
+```kotlin
+val channel = supabase.channel("channelId") {
+   //optional config
+}
+
+//This flow will automatically emit the user's initial data and then emits new values on update. The flow ends on deletion
+val user: Flow<User> = channel.postgresSingleDataFlow(schema = "public", table = "users", primaryKey = User::id) {
+    //This is the same filter as used in postgrest, so you could use complex queries, but only one entry is fetched
+    eq("id", 1)
+}
+
+//If you want more control, use the `postgresChangeFlow` method which works the same as the other examples
+val changeFlow = channel.postgresChangeFlow<PostgresAction.Delete>(schema = "public") {
+    table = "users"
+    filter("id", FilterOperator.EQ, 1)
+}
+
+//Collect the flow
+changeFlow.onEach {
+    println(it.oldRecord)
+}.launchIn(coroutineScope) // launch a new coroutine to collect the flow
+
+channel.subscribe()
+```
+
+
+## removeChannel()
+
+
+Unsubscribes and removes Realtime channel from Realtime client.
+
+- Removing a channel is a great way to maintain the performance of your project's Realtime service as well as your database if you're listening to Postgres changes.
+- Supabase will automatically handle cleanup 30 seconds after a client is disconnected, but unused channels may cause degradation as more clients are simultaneously subscribed.
+- If you removed all channels, the client automatically disconnects from the Realtime websocket. This can be disabled in the Realtime config by setting `disconnectOnNoSubscriptions` to false.
+
+
+### Example: Remove a channel
+
+
+```kotlin
+val channel = supabase.channel("channelId") {
+    //optional config
+}
+//...
+supabase.realtime.removeChannel(channel)
+```
+
+
+### Example: Unsubscribe from a channel
+
+
+```kotlin
+val channel = supabase.channel("channelId") {
+    //optional config
+}
+//...
+channel.unsubscribe()
+```
+
+
+## removeAllChannels()
+
+
+Unsubscribes and removes all Realtime channels from Realtime client.
+- Removing channels is a great way to maintain the performance of your project's Realtime service as well as your database if you're listening to Postgres changes. Supabase will automatically handle cleanup 30 seconds after a client is disconnected, but unused channels may cause degradation as more clients are simultaneously subscribed.
+- If you removed all channels, the client automatically disconnects from the Realtime websocket. This can be disabled in the Realtime config by setting `disconnectOnNoSubscriptions` to false.
+
+
+### Example: Remove all channels
+
+
+```kotlin
+supabase.realtime.removeAllChannels()
+```
+
+
+## getChannels()
+
+
+Returns all Realtime channels.
+
+
+### Example: Get all channels
+
+
+```kotlin
+val channels = supabase.realtime.subscriptions.entries
+```
+
+
+## Overview
+
+
+This section contains methods for working with File Buckets.
+
+
+## listBuckets()
+
+
+- RLS policy permissions required:
+  - `buckets` table permissions: `select`
+  - `objects` table permissions: none
+- Refer to the Storage guide on how access control works
+
+
+### Example: List buckets
+
+
+```kotlin
+val buckets = supabase.storage.retrieveBuckets()
+```
+
+
+## getBucket()
+
+
+- RLS policy permissions required:
+  - `buckets` table permissions: `select`
+  - `objects` table permissions: none
+- Refer to the Storage guide on how access control works
+
+
+### Example: Get bucket
+
+
+```kotlin
+val bucket = supabase.storage.retrieveBucketById(bucketId = "avatars")
+```
+
+
+## createBucket()
+
+
+- RLS policy permissions required:
+  - `buckets` table permissions: `insert`
+  - `objects` table permissions: none
+- Refer to the Storage guide on how access control works
+
+Parameters:
+
+- `id` `String`: The id of the bucket you want to create.
+- `builder` `BucketBuilder.() -> Unit`, optional: The builder to create a new bucket.
+  - `public` `Boolean`, optional: Whether the bucket is public or not.
+  - `fileSizeLimit` `FileSizeLimit`, optional: The maximum file size.
+
+
+### Example: Create bucket
+
+
+```kotlin
+supabase.storage.createBucket(id = "icons") {
+    public = true
+    fileSizeLimit = 5.megabytes
+}
+```
+
+
+## updateBucket()
+
+
+- RLS policy permissions required:
+  - `buckets` table permissions: `select` and `update`
+  - `objects` table permissions: none
+- Refer to the Storage guide on how access control works
+
+Parameters:
+
+- `id` `String`: The id of the bucket you want to create.
+- `builder` `BucketBuilder.() -> Unit`, optional: The builder to create a new bucket.
+  - `public` `Boolean`, optional: Whether the bucket is public or not.
+  - `fileSizeLimit` `FileSizeLimit`, optional: The maximum file size.
+
+
+### Example: Update bucket
+
+
+```kotlin
+supabase.storage.updateBucket("cards") {
+    public = false
+    fileSizeLimit = 20.megabytes
+    allowedMimeTypes(ContentType.Image.PNG, ContentType.Image.JPEG)
+}
+```
+
+
+## emptyBucket()
+
+
+- RLS policy permissions required:
+  - `buckets` table permissions: `select`
+  - `objects` table permissions: `select` and `delete`
+- Refer to the Storage guide on how access control works
+
+Parameters:
+
+- `bucketId` `String`: The id of the bucket you want to empty.
+
+
+### Example: Empty bucket
+
+
+```kotlin
+supabase.storage.emptyBucket(bucketId = "icons")
+```
+
+
+## deleteBucket()
+
+
+- RLS policy permissions required:
+  - `buckets` table permissions: `select` and `delete`
+  - `objects` table permissions: none
+- Refer to the Storage guide on how access control works
+
+Parameters:
+
+- `bucketId` `String`: The id of the bucket you want to delete.
+
+
+### Example: Delete bucket
+
+
+```kotlin
+supabase.storage.deleteBucket(bucketId = "icons")
+```
+
+
+## from.upload()
+
+
+- RLS policy permissions required:
+  - `buckets` table permissions: none
+  - `objects` table permissions: `insert`
+- Refer to the Storage guide on how access control works
+- Resumable uploads use a `Disk` cache by default to store the upload urls. You can customize that in the Auth config by changing the `resumable.cache` property.
+
+Parameters:
+
+- `path` `String`: The path of the file you want to upload.
+- `data` `ByteArray`: The data of the file you want to upload.
+- `upsert` `Boolean`, optional: Whether to overwrite the file if it already exists.
+
+
+### Example: Upload file
+
+
+```kotlin
+val bucket = supabase.storage.from("avatars")
+bucket.upload("myIcon.png", byteArray, upsert = false)
+//on JVM you can use java.io.File
+bucket.upload("myIcon.png", file, upsert = false)
+```
+
+
+### Example: Upload file with progress
+
+
+```kotlin
+val bucket = supabase.storage.from("avatars")
+bucket.uploadAsFlow("test.png", byteArrayOf()).collect {
+    when(it) {
+        is UploadStatus.Progress -> println("Progress: ${it.totalBytesSend.toFloat() / it.contentLength * 100}%")
+        is UploadStatus.Success -> println("Success")
+    }
+}
+```
+
+
+### Example: Create resumable upload
+
+
+```kotlin
+val bucket = supabase.storage.from("avatars")
+//JVM/Android:
+val upload = bucket.resumable.createOrContinueUpload("icon.png", File("icon.png"))
+//Other platforms:
+val upload = bucket.resumable.createOrContinueUpload(data = byteArray, source = "this is for continuing previous uploads later", path = "icon.png")
+val upload = bucket.resumable.createOrContinueUpload( //Probably better to write an extension function
+    channel = { offset -> /* create ByteReadChannel and seek to offset */ },
+    source = "this is for continuing previous uploads later",
+    size = dataSize,
+    path = "icon.png"
+)
+```
+
+
+### Example: Start and resumable upload
+
+
+```kotlin
+upload.startOrResumeUploading()
+```
+
+
+### Example: Pause resumable upload
+
+
+```kotlin
+upload.pause()
+```
+
+
+### Example: Cancel resumable upload
+
+
+This will also remove the upload url from the cache
+
+```kotlin
+upload.cancel()
+```
+
+
+### Example: Listen to the resumable upload state
+
+
+```kotlin
+upload.stateFlow.collect {
+    println("Progress: ${it.progress * 100}%")
+    println("Paused: ${it.paused}")
+    println("Is done: ${it.isDone}")
+}
+```
+
+
+### Example: Continue previous uploads
+
+
+```kotlin
+val bucket = supabase.storage.from("avatars")
+
+//only on JVM/Android:
+bucket.resumable.continuePreviousFileUploads()
+    .map { it.await() } //await all uploads. This just makes sure the uploads have an update-to-date url. You can also do this in parallel
+    .forEach { upload ->
+        upload.startOrResumeUploading()
+    }
+
+//on other platforms you may have to continue uploads from the source (Probably better to write an extension function):
+bucket.resumable.continuePreviousUploads { source, offset ->
+    //create ByteReadChannel from source and seek to offset
+}
+    .map { it.await() } //await all uploads. This just makes sure the uploads have an update-to-date url. You can also do this in parallel
+    .forEach { upload ->
+        upload.startOrResumeUploading()
+    }
+```
+
+
+## from.update()
+
+
+- RLS policy permissions required:
+  - `buckets` table permissions: none
+  - `objects` table permissions: `update` and `select`
+- Refer to the Storage guide on how access control works
+
+Parameters:
+
+- `path` `String`: The path of the file you want to upload.
+- `data` `ByteArray`: The data of the file you want to upload.
+- `upsert` `Boolean`, optional: Whether to overwrite the file if it already exists.
+
+
+### Example: Update file
+
+
+```kotlin
+val bucket = supabase.storage.from("avatars")
+bucket.update("myIcon.png", byteArray, upsert = false)
+//on JVM you can use java.io.File
+bucket.update("myIcon.png", file, upsert = false)
+```
+
+
+## from.move()
+
+
+- RLS policy permissions required:
+  - `buckets` table permissions: none
+  - `objects` table permissions: `update` and `select`
+- Refer to the Storage guide on how access control works
+
+Parameters:
+
+- `from` `String`: The path of the file you want to move.
+- `to` `String`: The new path of the file.
+- `destinationBucket` `String`, optional: The destination bucket of the file.
+
+
+### Example: Move file
+
+
+```kotlin
+val bucket = supabase.storage.from("avatars")
+bucket.move("icon1.png", "icon2.png")
+```
+
+
+## from.copy()
+
+
+- RLS policy permissions required:
+  - `buckets` table permissions: none
+  - `objects` table permissions: `insert` and `select`
+- Refer to the Storage guide on how access control works
+
+Parameters:
+
+- `from` `String`: The path of the file you want to copy.
+- `to` `String`: The new path of the file.
+- `destinationBucket` `String`, optional: The destination bucket of the file.
+
+
+### Example: Copy file
+
+
+```kotlin
+supabase.storage.from("test").copy(from = "avatar.png", to = "avatar2.png")
+```
+
+
+## from.createSignedUrl()
+
+
+- RLS policy permissions required:
+  - `buckets` table permissions: none
+  - `objects` table permissions: `select`
+- Refer to the Storage guide on how access control works
+
+Parameters:
+
+- `path` `String`: The path of the file you want to create a signed url for.
+- `expiresIn` `Duration`: The duration the signed url should be valid for.
+- `builder` `ImageTransformation.() -> Unit`, optional: The transformation to apply to the image.
+  - `width` `Int`, optional: The width of the image.
+  - `height` `Int`, optional: The height of the image.
+  - `resize` `Resize`, optional: The resize mode of the image.
+  - `quality` `Int`, optional: The quality of the image. (Percentage 1-100, defaults to 80)
+  - `format` `String`, optional: Specify in which format you want the image to receive. (Defaults to 'origin', which means the original format)
+
+
+### Example: Create Signed URL
+
+
+```kotlin
+val bucket = supabase.storage.from("avatars")
+val url = bucket.createSignedUrl(path = "icon.png", expiresIn = 3.minutes)
+```
+
+
+### Example: Create Signed URL with transformation
+
+
+```kotlin
+val bucket = supabase.storage.from("avatars")
+val url = bucket.createSignedUrl(path = "icon.png", expiresIn = 3.minutes) {
+    size(100, 100)
+    fill()
+    quality = 80
+}
+```
+
+
+## from.createSignedUrls()
+
+
+- RLS policy permissions required:
+  - `buckets` table permissions: none
+  - `objects` table permissions: `select`
+- Refer to the Storage guide on how access control works
+
+Parameters:
+
+- `expiresIn` `Duration`: The duration the signed url should be valid for.
+- `paths` `vararg String`: The paths of the files you want to create signed urls for.
+
+
+### Example: Create Signed URLs
+
+
+```kotlin
+val urls = supabase.storage.from("avatars").createSignedUrls(20.minutes, "avata1.jpg", "avatar2.jpg")
+```
+
+
+## from.createSignedUploadUrl()
+
+
+- RLS policy permissions required:
+  - `buckets` table permissions: none
+  - `objects` table permissions: `insert`
+- Refer to the Storage guide on how access control works
+
+Parameters:
+
+- `path` `String`: The path of the file you want to upload.
+
+
+### Example: Create Signed Upload URL
+
+
+```kotlin
+val url = supabase.storage.from("avatars").createSignedUploadUrl("avatar.png")
+```
+
+
+## from.uploadToSignedUrl()
+
+
+- RLS policy permissions required:
+  - `buckets` table permissions: none
+  - `objects` table permissions: none
+- Refer to the Storage guide on how access control works
+
+Parameters:
+
+- `path` `String`: The path of the file you want to upload.
+- `token` `String`: The token you received from `createSignedUploadUrl`.
+- `data` `ByteArray`, optional: The data of the file you want to upload.
+
+
+### Example: Upload to a signed URL
+
+
+```kotlin
+supabase.storage.from("avatars").uploadToSignedUrl(path = "avatar.jpg", token = "token-from-createSignedUploadUrl", data = bytes)
+//or on JVM:
+supabase.storage.from("avatars").uploadToSignedUrl(path = "avatar.jpg", token = "token-from-createSignedUploadUrl", file = File("avatar.jpg"))
+```
+
+
+## from.getPublicUrl()
+
+
+- The bucket needs to be set to public, either via updateBucket() or by going to Storage on supabase.com/dashboard, clicking the overflow menu on a bucket and choosing "Make public"
+- RLS policy permissions required:
+  - `buckets` table permissions: none
+  - `objects` table permissions: none
+- Refer to the Storage guide on how access control works
+
+Parameters:
+
+- `path` `String`: The path of the file you want to get the public url for.
+
+
+### Example: Returns the URL for an asset in a public bucket
+
+
+```kotlin
+val url = supabase.storage.from("public-bucket").publicUrl("folder/avatar1.png")
+```
+
+
+### Example: Returns the URL for an asset in a public bucket with transformations
+
+
+```kotlin
+val url = supabase.storage.from("public-bucket").publicRenderUrl("folder/avatar1.png") {
+    size(100, 100)
+}
+```
+
+
+## from.download()
+
+
+- RLS policy permissions required:
+  - `buckets` table permissions: none
+  - `objects` table permissions: `select`
+- Refer to the Storage guide on how access control works
+
+Parameters:
+
+- `path` `String`: The path of the file you want to download.
+
+
+### Example: Download file from non-public bucket
+
+
+```kotlin
+val bucket = supabase.storage.from("avatars")
+val bytes = bucket.downloadAuthenticated("test.png")
+//or on JVM:
+bucket.downloadAuthenticatedTo("test.png", File("test.png"))
+```
+
+
+### Example: Download file from public bucket
+
+
+```kotlin
+val bucket = supabase.storage.from("avatars")
+val bytes = bucket.downloadPublic("test.png")
+//or on JVM:
+bucket.downloadPublicTo("test.png", File("test.png"))
+```
+
+
+### Example: Download file with transformation
+
+
+```kotlin
+val bucket = supabase.storage.from("avatars")
+val bytes = bucket.downloadPublic("test.png") {
+    size(100, 100)
+    fill()
+    quality = 100
+}
+//or on JVM:
+bucket.downloadPublicTo("test.png", File("test.png")) {
+    size(100, 100)
+    fill()
+    quality = 100
+}
+```
+
+
+### Example: Download file with progress
+
+
+```kotlin
+val bucket = supabase.storage.from("avatars")
+bucket.downloadAuthenticatedAsFlow("icon.png").collect {
+    when(it) {
+        is DownloadStatus.ByteData -> println("Downloaded ${it.data.size} bytes")
+        is DownloadStatus.Progress -> println("Downloaded ${it.totalBytesReceived.toFloat() / it.contentLength * 100}%")
+        DownloadStatus.Success -> println("Downloaded successfully")
+    }
+}
+//or on JVM:
+bucket.downloadAuthenticatedToAsFlow("icon.png", File("icon.png")).collect {
+    when(it) {
+        is DownloadStatus.Progress -> println("Downloaded ${it.totalBytesReceived.toFloat() / it.contentLength * 100}%")
+        DownloadStatus.Success -> println("Downloaded successfully")
+        else -> {} //The ByteData status will never occur as we are writing directly to a file
+    }
+}
+```
+
+
+## from.remove()
+
+
+- RLS policy permissions required:
+  - `buckets` table permissions: none
+  - `objects` table permissions: `delete` and `select`
+- Refer to the Storage guide on how access control works
+
+Parameters:
+
+- `paths` `vararg String`: The paths of the files you want to remove.
+
+
+### Example: Delete file
+
+
+```kotlin
+val bucket = supabase.storage.from("avatars")
+bucket.delete("test.png", "test2.png")
+```
+
+
+## from.list()
+
+
+- RLS policy permissions required:
+  - `buckets` table permissions: none
+  - `objects` table permissions: `select`
+- Refer to the Storage guide on how access control works
+
+
+### Example: List files in a bucket
+
+
+```kotlin
+val bucket = supabase.storage.from("avatars")
+val files = bucket.list()
+```
+
+```
