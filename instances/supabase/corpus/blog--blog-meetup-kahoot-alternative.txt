@@ -1,0 +1,62 @@
+# Blog: The open source Kahoot alternative (2024-05-09)
+# джерело: https://supabase.com/blog/meetup-kahoot-alternative
+# отримано: 2026-09-24
+
+Recently as part of our GA Week and with the help of our amazing community leaders we had meetups at over 30 different locations worldwide! Seeing all the fun pictures and videos of the community meetups was amazing!To make the meetups more engaging, we prepared an interactive quiz game that everyone could play. We were initially going to use Kahoot for this. Still, we thought it would be an excellent opportunity to showcase the power of Supabase and open source, so we built an open-source version of Kahoot with some pre-filled Supabase / tech questions for everyone to play at the meetup.## What we built for the meetupKahoot alternative host pageThe Kahoot alternative that we built is a simplified version of Kahoot. Mainly having fewer features on the admin side of things, but as an individual player participating, the experience should be similar to the actual Kahoot.The game has two screens: the host screen and the player screen. The host can start a game by choosing one of the available quiz sets. Because we had meetups from around the globe, we created the same 10-question quiz sets in 4 different languages.DashboardOnce the host clicks the button to start a game, a lobby screen with a QR code appears. The players can scan the QR codes with their phones, name themselves, and enter the game.The host can start the quiz game once everyone in the room has entered the lobby. The players are shown the question first and then the choices five seconds later for each question. They answer the quiz on their phones, and the sooner they answer, the more points they get.Once all the questions are answered, the points are summed up, and the leaderboard is shown on the screen.Actual leaderboard from the Tokyo meetup.Leaderboard from Tokyo## Building the Kahoot alternative appI will not go into every implementation detail, as it would be long, but you can find the GitHub repository with the full code here. The app is a Next.js app without using any server-side rendering, and it utilizes three core Supabase features: auth, database, and realtime.### AuthFor authentication, we used the brand new anonymous sign-in feature to sign in the players automatically in the background. This way, players don’t feel the friction after scanning the QR code and can get started with the game quickly. It also allows us to set a row-level security policy to ensure players have limited read and write permissions in the game.When a user registers for a game, we check if the user is already signed in, and if not, the app signs them in.```typescript
+const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+
+let userId: string | null = null
+
+if (sessionData.session) {
+  userId = sessionData.session?.user.id ?? null
+} else {
+  const { data, error } = await supabase.auth.signInAnonymously()
+  userId = data?.user?.id ?? null
+}
+```###
+supabase
+  .channel('game')
+  .on(
+    'postgres_changes',
+    {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'participants',
+      filter: `game_id=eq.${gameId}`,
+    },
+    (payload) => {
+      setParticipants((currentParticipants) => {
+        return [...currentParticipants, payload.new as Participant]
+      })
+    }
+  )
+  .on(
+    'postgres_changes',
+    {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'games',
+      filter: `id=eq.${gameId}`,
+    },
+    (payload) => {
+      const game = payload.new as Game
+      setCurrentQuestionSequence(game.current_question_sequence)
+      setCurrentScreen(game.phase as AdminScreens)
+    }
+  )
+  .subscribe()
+```## The ResultsThrough this open-source app created using Next.js and Supabase, we brought everyone together during meetups worldwide by providing an engaging experience.Thanks to everyone who participated. I hope you enjoyed it, and a massive thank you to everyone who hosted the meetups.I’m proud of my second place showing at the Salt Lake City
+[@supabase](https://twitter.com/supabase?ref_src=twsrc%5Etfw) meetup hosted by
+[@KyleRummens](https://twitter.com/KyleRummens?ref_src=twsrc%5Etfw).
+[pic.twitter.com/Uzk4q3aJyy](https://t.co/Uzk4q3aJyy)— Tristan Rhodes (@tristanbob)[April 19, 2024](https://twitter.com/tristanbob/status/1781340495899406511?ref_src=twsrc%5Etfw)Yesterday's evening, I attended
+[@supabase](https://twitter.com/supabase?ref_src=twsrc%5Etfw) first Meetup in
+Nigeria. Learnt about Supabase and why I should consider using it. I also won a cash price
+for being the first position in the Kahoot game . Shout-out to the organizers
+[@GeekyAdams](https://twitter.com/GeekyAdams?ref_src=twsrc%5Etfw) .
+[pic.twitter.com/OtXUaXvB5o](https://t.co/OtXUaXvB5o)— Dherrbie (@Debbyiecodes)[April 20, 2024](https://twitter.com/Debbyiecodes/status/1781626949552525323?ref_src=twsrc%5Etfw)## Contributing to open sourceKahoot is a complex app with many features, and many of those features are missing from this alternative app. Especially on the host dashboard, there are a lot of things that could/ should be added, like adding/ editing quz sets or looking back on past game results. Again, the GitHub repo can be found [here](https://github.com/supabase-community/kahoot-alternative), and we are always welcome to receive pull requests. If you want to get into Open source, a casual project like this is a great starting point. Any kind of PR is welcome. Adding/ editing docs/ readme is greatly appreciated, as well. If unsure where to start, ping us about the issue, and we can help you.## Resources* [Kahoot alternative GitHub repo](https://github.com/supabase-community/kahoot-alternative)
+* [Anonymous Sign-in guide](https://supabase.com/docs/guides/auth/auth-anonymous)
+* [Realtime Postgres changes guide](https://supabase.com/docs/guides/realtime/postgres-changes)
+* [Supabase Next.js quick starter guide](https://supabase.com/docs/guides/getting-started/quickstarts/nextjs)
+
+```
+```

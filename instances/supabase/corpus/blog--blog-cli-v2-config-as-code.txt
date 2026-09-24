@@ -1,0 +1,161 @@
+# Blog: Supabase CLI v2: Config as Code (2024-12-04)
+# джерело: https://supabase.com/blog/cli-v2-config-as-code
+# отримано: 2026-09-24
+
+We have released Supabase CLI v2 today, adding support for Configuration as Code.
+
+This means you can commit the configuration for all of your Projects and Branches into version control (like git) for reproducible environments for your entire team.
+
+## Using the CLI in CI/CD pipelines
+
+The Supabase CLI started as a way to bootstrap the entire Supabase stack on your local machine. It uses exactly the same infra as our hosted platform, giving you unlimited Supabase projects for local testing and offline usage.
+
+In the last 2 years, the CLI has grown to more than 180,000 weekly installs. Nearly 85% of these come from Continuous Integration/Deployment environments like GitHub Actions. Some of the popular CI/CD use cases include migrating production databases, deploying functions, and running pgTAP tests. With this in mind, we started focusing on the CLI as a deployment tool for the v2 release.
+
+## Configuration as Code using the Supabase CLI
+
+> **What is Configuration as Code?**
+>
+> **Configuration as Code** is a practice where infrastructure configuration is managed and versioned in source control using code or declarative files. It allows for automation, consistency, and repeatability. Some examples include Terraform and Docker Compose. It offers several key features:
+>
+> - **Version Control**: Configurations are stored in repositories like Git, enabling collaboration and history tracking.
+> - **Reproducibility**: You can recreate environments from code, avoiding manual drift.
+> - **Automation**: Tools apply configurations automatically, reducing human error.
+
+Our CLI’s Configuration as Code feature is an opinionated setup using a human readable `config.toml` file.
+
+You can make deployments consistent and repeatable by promoting Edge Functions, Storage objects, and other services from preview environments to staging and production.
+
+To demonstrate this workflow, let’s use the `supabase.com` website as an example. It’s hosted on Vercel with Supabase Branching enabled for development. If you are not using Branching, a similar setup can be achieved using GitHub Actions.
+
+> **NOTE**
+>
+> Before changing any project configuration, it’s a good idea to verify that your remote config has not drifted.
+>
+> This can be done by running `supabase link` command locally which diffs your entire local `config.toml` with your remote project settings.
+
+### Managing Auth Config
+
+We use Vercel Previews for our frontend. To configure the Auth service of Supabase branches to support login for any Vercel preview URL, we declare a wildcard for the `additional_redirect_urls` in auth config:
+
+```toml
+[auth]
+additional_redirect_urls = [
+  "https://*-supabase.vercel.app/*/*",
+  "https://supabase.com/*/*",
+  "http://localhost:3000/*/*",
+]
+```
+
+View the Auth config docs.
+
+### Managing Edge Functions
+
+The Supabase website uses several Edge Functions for AI docs, search embeddings, and image generation for launch week tickets. To configure automatic deployment of `search-embeddings` function, we add the following block to `config.toml`:
+
+```toml
+[functions.search-embeddings]
+verify_jwt = false
+```
+
+If you are using a monorepo (like the @supabase/supabase GitHub repository), you may also want to customize the paths to your function’s entrypoint and import map files. This is especially useful for code sharing between your frontend application and Edge Functions.
+
+> **NOTE**
+>
+> Edge Function secrets must be manually added to branches as of this release. We plan to support setting Function secrets at deploy time in the near future.
+
+View the Edge Functions config docs.
+
+### Managing Storage Objects
+
+The images and fonts for all launch week tickets are stored in Supabase Storage. These assets are distributed to CDNs around the world to improve latency for visitors to our website.
+
+When developing locally, we can add a `[storage.buckets]` block to `config.toml` so that files in `supabase/assets` directory are automatically uploaded to Supabase Storage.
+
+```toml
+[storage.buckets.assets]
+objects_path = "./assets"
+```
+
+In our case, the assets are small enough (\< 1MB) to be committed and tracked in git. This allows branching to automatically seed these objects to Supabase Storage for preview. Larger files like videos are best uploaded to Supabase Storage via AWS S3 CLI.
+
+View the Storage config docs.
+
+### Managing Database Settings and Webhooks
+
+While Supabase manages the Postgres default settings based on your database compute size, sometimes you need to tweak these settings yourself. Using the `config.toml` file, we can easily update and keep track of database settings.
+
+```toml
+[db.settings]
+track_commit_timestamp = true
+```
+
+Our Management API automatically figures out if one or more parameters require restarting the database. If not, the config will be applied by simply sending `SIGUP` to Postgres process.
+
+Moreover, you can now enable database webhooks using `[experimental]` config block. This feature allows your database to call HTTP endpoints directly from Postgres functions.
+
+```toml
+[experimental.webhooks]
+enabled = true
+```
+
+To create a webhook, simply add a new schema migration file with the before or after triggers for the tables you want to listen on.
+
+View the Database config docs.
+
+## Managing Branches and multiple “remotes”
+
+If you have Branching enabled in your project, your settings in `config.toml` are automatically synced to all your ephemeral branches. This works because we maintain a one-to-one mapping between your git branch and Supabase branch.
+
+To make a config change to your Supabase branch, simply update config.toml and push to GitHub. Our runner will pick up the diff and apply it to the corresponding Supabase branch.
+
+If you need to configure specific settings for a single persistent branch, you can declare them using `[remotes]` block of your config by providing its project ID. For example, the following config declares a separate seed script just for your staging environment.
+
+```toml
+[remotes.staging]
+project_id = "your-project-ref"
+
+[remotes.staging.db.seed]
+sql_paths = ["./seeds/staging.sql"]
+```
+
+Since the `project_id` field must refer to an existing branch, you won’t be able to provision and configure a persistent branch in the same commit. Instead, always provision a persistent branch first using the CLI command so you can add the project ID returned to `config.toml`.
+
+```bash
+$ supabase --experimental branches create --persistent
+Do you want to create a branch named develop? [Y/n]
+```
+
+When merging a PR to any persistent branch, our runner checks and logs any configuration changes before applying them to the target remote. If you didn’t declare any remotes or provided the wrong project ID, the whole configuration step would be skipped.
+
+All other config options are also available in the remotes block.
+
+## Getting started
+
+To start using configuration as code, you may follow our guide to connect a GitHub repository to your Supabase project and enable Supabase Branching.
+
+Alternatively, you can get started with the Supabase CLI today: `supabase config push`
+
+### Installing
+
+Install the Supabase CLI: docs.
+
+### Upgrading
+
+Upgrade your CLI: docs.
+
+### Breaking changes
+
+There are no breaking changes in v2.
+
+### Contributors
+
+The CLI Team: Qiao, Andrew
+
+The Supabase Team: Bobbie, Lakshan, Joel, Filipe, TzeYiing, Div, Ant, Thor, Wen Bo, Kangming, Ivan, Kevin, Long, Stojan, Kamil, Inian, Greg, Fabrizio, Chris, Julien, Terry, Egor, Joshen, Steve, Guilherme, Crispy, Bo, Rodrigo, Beng, Copple
+
+With contributions from: @nyannyacha, @grschafer, @osaxma, @theo-m, @kandros, @silentworks, @Ananya2001-an, @Wakeful-Cloud, @snorremd, @S96EA, @wilhuff, @djhi, @FelixZY, @dagingaa, @ibilalkayy, @akoenig, @mclean25, @pvanliefland, @zlepper, @ruggi99, @ryankazokas, @yahsan2, @kinolaev, @simbas, @SoraKumo001, @oxcabe, @PaulRosset, @paolodesa, @eifr, @NixBiks, @nrayburn-tech, @mosnicholas, @NatoNathan, @Myzel394, @mikelhamer, @zaerald, @tiniscule, @samuba, @rhnaxifg4y, @redraskal, @madx, @kouwasi, @etzelc, @arvalaan, @arika0093, @zachblume, @yashas-hm, @vbaluch, @dshukertjr, @tmountain, @tobowers, @tim-dianahr, @StanGirard, @chreck, @chaoky, @carlobeltrame, @bhaan, @bastiaanv, @code-withAshish, @ashtable, @n0tank3sh, @asevich, @aloisklink, @alinjie, @codesnik, @alexanderl19, @alex-ketch, @adrientiburce, @abeisleem, @AaronDewes, @beeme1mr, @isaif, @maxkostow, @Marviel, @xmliszt, @LautaroJayat, @everzet, @kartikk-k, @j1philli, @disjukr, @jibin2706, @felixgabler, @eleijonmarck, @activenode, @jibsaramnim, @byudaniel, @clarkevandenhoven
+
+## Conclusion
+
+Managing your project environments often go beyond schema migrations when your entire backend runs on Supabase. With Supabase CLI v2, you can easily manage these development environments using a configuration file to ensure a consistent development experience between all services in staging and production.

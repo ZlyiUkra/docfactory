@@ -1,0 +1,61 @@
+# Blog: Supabase Auth now supports Anonymous Sign-ins (2024-04-17)
+# джерело: https://supabase.com/blog/anonymous-sign-ins
+# отримано: 2026-09-24
+
+Supabase Auth now supports anonymous sign-ins, one of our most-requested features by the community.Anonymous sign-ins can be used to create **temporary users** who haven’t signed up for your application yet. This lowers the friction for new users to try out your product since they don’t have to provide any signup credentials.## Enabling Anonymous sign-insYou can enable anonymous sign-ins for your project today from the dashboard:For local development, upgrade your Supabase CLI and add the config to the `config.toml` file:```toml
+[auth]
+enable_anonymous_sign_ins = true
+```You
+const { data, error } = await supabase
+  .auth
+  .signInAnonymously()
+```## TerminologyProfiles created with anonymous sign-ins are also `authenticated`!Once you call `.signInAnonymously()` you have moved the user into an authentication flow, and we treat them like a signed in user:## Restricting access for anonymous usersLike a permanent user, anonymous users are persisted in the `auth.users` table:| id                                   | role          | email                                         | is\_anonymous |
+| ------------------------------------ | ------------- | --------------------------------------------- | ------------- |
+| e053e470-afa1-4625-8963-37adb862fd11 | authenticated | NULL                                          | true          |
+| 5563108e-ac81-4063-9288-4f3db068efa1 | authenticated | [luke@starwars.com](mailto:luke@starwars.com) | false         |An anonymous user can be identified by the `is_anonymous` claim returned in the user’s JWT, which is accessible from your Row Level Security policies (RLS). This is helpful if you want to limit access to certain features in your application.For example, let’s say that we have an online forum where users can create and read posts.Given this table to store the posts:```sql
+create table public.posts (
+  id serial primary key,
+  name text not null,
+  description text
+);
+```If we only want to allow permanent users to create posts, we can check if the user is anonymous by inspecting the JWT `select auth.jwt() ->> 'is_anonymous'`.Using this function in an RLS policy:```sql
+create policy "Only permanent users can create posts"
+on public.posts
+for insert
+to authenticated -- Note: user is still authenticated
+with check (
+  (select auth.jwt() ->> 'is_anonymous')::boolean is false
+);
+```RLS gives us full flexibility to create a variety of rules.For example, to allow read access for permanent users for all posts and limit anonymous users to posts created today:```sql
+create policy "Limit access to anonymous users"
+on public.posts
+for select
+to authenticated -- Note: user is still authenticated
+using (
+  case
+    when (select (auth.jwt() ->> 'is_anonymous'))::boolean is true
+    then (created_at >= current_date)
+  else
+    true
+  end
+);
+```## Convert an anonymous user to a permanent userAt some point, an anonymous user may decide they want to create a post. This is where we prompt them to sign up for an account which converts them to a permanent user.> **NOTE**
+>
+> After they have been converted, the user id remains the same, which means that any data associated with the user’s id would be carried over.Supabase Auth provides 2 ways to achieve this:1) Link an email or phone identity
+1) Link an OAuth identity### Link an email or phone identityTo link an email or phone identity:```jsx
+const { data, error } = await supabase
+  .auth
+  .updateUser({ email })
+```### Link an OAuth identityTo link an OAuth identity to an anonymous user, you need to [enable manual linking](/dashboard/project/_/auth/providers) for your project. Learn about how [identity linking](/docs/guides/auth/auth-identity-linking) works with Supabase Auth.Once enabled, you can call the `linkIdentity()` method:```jsx
+const { data, error } = await supabase
+  .auth
+  .linkIdentity({ provider: 'google' })
+```## Impersonating an anonymous userWhen creating RLS policies to differentiate access for an anonymous user, you can leverage the [user impersonation feature](/blog/studio-introducing-assistant) in the SQL editor to test out your policies:The [user management screen](/dashboard/project/_/auth/users) provides an option to filter by anonymous users, which can help to know how many anonymous users have been created.## What’s nextManaging anonymous users can be tricky, especially when you have a lot of visitors to your site. We’re working on an “automatic clean-up” option to delete anonymous users that have been inactive for more than 30 days. In the meantime, since anonymous users are stored in the auth schema in your database, you can clean up orphaned anonymous users by running the following query:```sql
+-- deletes anonymous users created more than 30 days ago
+delete from auth.users
+where is_anonymous is true and created_at < now() - interval '30 days';
+```We are also working on a [linter](https://github.com/supabase/splinter/pull/28) to check your RLS policies and highlight those that allow anonymous users access - stay tuned for updates later this month!## Getting started* Docs: [Anonymous sign-ins](/docs/guides/auth/auth-anonymous)
+* API method references: [Javascript](/docs/reference/javascript/auth-signinanonymously), [Flutter](/docs/reference/dart/auth-signinanonymously), [Swift](/docs/reference/swift/auth-signinanonymously)
+
+```
+```
