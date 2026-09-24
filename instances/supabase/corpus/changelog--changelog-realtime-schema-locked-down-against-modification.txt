@@ -1,0 +1,36 @@
+# Changelog: Realtime schema is now fully locked down against modifications (2026-07-14)
+# джерело: https://supabase.com/changelog/realtime-schema-locked-down-against-modification
+# отримано: 2026-09-24
+
+## What changed
+
+Supabase now fully restricts modification of the `realtime` schema, shipped in Realtime v2.112.7. Previously, even though Realtime owns objects like `realtime.messages`, `realtime.subscription`, and their supporting functions and triggers, connections using the `postgres` role, including queries run from the Dashboard's SQL Editor, could still run destructive SQL against them, for example:
+
+- `ALTER TABLE realtime.messages DROP COLUMN topic`
+- `DROP TABLE realtime.messages`
+- `DROP FUNCTION realtime.topic()`
+- `DROP TRIGGER tr_check_filters ON realtime.subscription`
+- `INSERT` or `DELETE` directly on `realtime.schema_migrations`
+- `CREATE TABLE realtime.audit_log (...)` or any other new object created directly in the schema
+
+Any of these now fail with `permission denied for schema realtime`, except creating and modifying Row Level Security policies on `realtime.messages`, needed for Realtime Authorization that is still allowed.
+
+## Why we made this change
+
+Modifying or dropping objects that Realtime depends on broke Realtime features, and in some cases broke projects entirely. Creating new objects in the schema was just as risky: if a project already had, for example, a `realtime.audit_log` table, and a future Realtime migration also needed to create an object with that name, the migration would fail and Realtime would stop working for that project. The team doesn't inspect project data without prior authorization, so checking every project for name conflicts before shipping a migration isn't realistic. Every new migration carried the risk of breaking projects the team had no way to check in advance. Locking down the schema removes that risk and lets Realtime ship schema changes safely.
+
+## Who is affected
+
+Projects with custom SQL, migrations, or CI steps that create, alter, or drop objects inside the `realtime` schema. This applies to hosted Supabase projects and to self-hosted Supabase deployments, which run the same restriction.
+
+## What happens if you take no action
+
+If nothing in your project modifies the `realtime` schema directly, nothing changes for you.
+
+## Migration steps
+
+1. Search your migrations, scripts, and CI jobs for statements that create, alter, or drop objects in the `realtime` schema (for example anything touching `realtime.messages`, `realtime.subscription`, `realtime.schema_migrations`, or Realtime's functions and triggers).
+2. Remove or relocate that logic. It will now fail with `permission denied for schema realtime`.
+3. Leave RLS policy statements on `realtime.messages` as is; they're unaffected.
+
+If your project has a case that doesn't fit these steps, please reach out to Supabase Support.

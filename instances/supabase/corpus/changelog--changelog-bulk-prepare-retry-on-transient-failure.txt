@@ -1,0 +1,7 @@
+# Changelog: Fixed daily backups occasionally skipped due to a scheduling timeout (2026-08-12)
+# джерело: https://supabase.com/changelog/bulk-prepare-retry-on-transient-failure
+# отримано: 2026-09-24
+
+The job that schedules daily backups checks which projects are due on a strict time budget. Under database replica lag, that check could exceed its budget, and with no retry in place the whole 10-minute scheduling window was silently dropped fleet-wide — any project due in that window missed its backup for the day.
+
+Backup scheduling now retries on failure, anchored to its original scheduled window so a retry can't skip or re-scan the wrong projects, reads eligibility from the primary database instead of a replica to avoid the lag that triggered the timeout, and no longer lets a project in an unroutable region crash the whole scheduling run. A companion fix (supabase/platform#36499) addresses the underlying slow query.

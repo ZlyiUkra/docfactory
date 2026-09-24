@@ -1,0 +1,92 @@
+# Changelog: Passkeys for Supabase Auth (Beta) (2026-05-28)
+# джерело: https://supabase.com/changelog/46458-passkeys-for-supabase-auth-beta
+# отримано: 2026-09-24
+
+We're excited to announce the **beta release of Passkeys** for Supabase Auth — a passwordless, phishing-resistant credential built on the WebAuthn standard.
+
+With passkeys, users sign in with biometrics (Face ID, Touch ID, Windows Hello), a device PIN, or a hardware security key. Supabase Auth stores the public key needed for verification; private key material remains managed by the user’s authenticator or credential provider.
+
+## How does it work?
+
+Each passkey enrollment or sign-in is a WebAuthn ceremony with three steps:
+
+1. **Options**: the client requests a challenge from Supabase Auth.
+2. **Ceremony**: the browser invokes `navigator.credentials.create()` (register) or `navigator.credentials.get()` (sign in), prompting the user to approve with biometrics or a security key.
+3. **Verify**: the signed response is sent back to Supabase Auth, which validates the challenge and either stores the new credential or issues a session.
+
+Supabase Auth uses discoverable credentials, so users don't need to type an email or username — the authenticator resolves the account from the credential it already stores.
+
+## Enable passkeys in the Dashboard
+
+Open **Authentication → Passkeys** in the Dashboard, toggle on **Enable Passkey authentication**, and fill in your WebAuthn relying party details:
+
+- **Relying Party Display Name**: human-readable name shown during the passkey prompt (e.g. "My App").
+- **Relying Party ID**: your bare domain (e.g. `example.com`). No scheme, port, or path.
+- **Relying Party Origins**: up to 5 allowed origins (e.g. `https://example.com,https://app.example.com`).
+
+The Dashboard pre-fills these from your project's Site URL and project name.
+
+Passkeys can also be configured via the CLI and the Management API.
+
+## Use it from your app
+
+> [!NOTE]
+> The Passkeys API is currently experimental and requires an explicit opt-in as the API may change without notice during the beta phase.
+
+Opt in to the experimental API when creating the client:
+
+```ts
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(supabaseUrl, supabasePublishableKey, {
+  auth: {
+    experimental: { passkey: true },
+  },
+})
+```
+
+**Register a passkey** for an authenticated user — typically from a security settings page or right after sign-up:
+
+```ts
+const { data, error } = await supabase.auth.registerPasskey()
+// data: { id, friendly_name, created_at }
+```
+
+**Sign in with a passkey** — no email or phone needed upfront; the authenticator picks the account:
+
+```ts
+const { data, error } = await supabase.auth.signInWithPasskey()
+// data.session and data.user are set; a SIGNED_IN event is dispatched
+```
+
+**Manage passkeys** — list, rename, and delete from the current user's account:
+
+```ts
+const { data: passkeys } = await supabase.auth.passkey.list()
+
+await supabase.auth.passkey.update({
+  passkeyId: passkeys[0].id,
+  friendlyName: 'Work laptop',
+})
+
+await supabase.auth.passkey.delete({ passkeyId: passkeys[0].id })
+```
+
+## What we'd like to know from you
+
+- Any bugs or rough edges you hit during passkey registration or sign-in flows.
+- Friction when configuring the relying-party settings in the Dashboard, CLI, or Management API.
+- Feedback on integrating passkeys in native or mobile flows.
+- Suggestions for improving the API ergonomics or documentation.
+
+Drop your feedback in this thread or open an issue.
+
+## Related links
+
+- Documentation: Passkey authentication
+- Dashboard: Authentication → Passkeys
+- JavaScript reference:
+  - `auth.registerPasskey`
+  - `auth.signInWithPasskey`
+  - `auth.passkey` (two-step API)
+  - `auth.admin.passkey` (server-side)
