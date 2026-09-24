@@ -1,0 +1,59 @@
+# Disabling Prepared statements
+# джерело: https://supabase.com/docs/guides/troubleshooting/disabling-prepared-statements-qL8lEL
+# отримано: 2026-09-24
+
+## It is important to note that although the direct connections and Supavisor in session mode support prepared statements, Supavisor in transaction mode does not.
+
+## How to disable prepared statements for Supavisor in transaction mode
+
+Each ORM or library configures prepared statements differently. Here are settings for some common ones. If you don't see yours, make a comment
+
+## Prisma:
+
+add ?pgbouncer=true to end of connection string:
+
+```
+postgres://[db-user].[project-ref]:[db-password]@aws-0-[aws-region].pooler.supabase.com:6543/[db-name]?pgbouncer=true
+```
+
+## Drizzle:
+
+Add a prepared false flag to the client:
+
+```ts
+export const client = postgres(connectionString, { prepare: false })
+```
+
+## Node Postgres
+
+Omit the "name" value in a query definition:
+
+```ts
+const query = {
+  name: 'fetch-user', // <--------- DO NOT INCLUDE
+  text: 'SELECT * FROM user WHERE id = $1',
+  values: [1],
+}
+```
+
+## Psycopg
+
+set the prepare\_threshold to `None`.
+
+## asyncpg
+
+Follow the recommendation in the asyncpg docs
+
+> disable automatic use of prepared statements by passing `statement_cache_size=0` to asyncpg.connect() and asyncpg.create\_pool() (and, obviously, avoid the use of Connection.prepare());
+
+## JDBC
+
+Set `prepareThreshold` to `0`:
+
+```
+jdbc:postgresql://[POOLER-HOST]:6543/postgres?prepareThreshold=0
+```
+
+## Rust's Deadpool or `tokio-postgres`:
+
+- Check GitHub Discussion
