@@ -1,0 +1,306 @@
+# Create Your Own Custom User Menu with Radix
+# джерело: https://clerk.com/blog/create-custom-user-menu-radix
+# отримано: 2026-09-25
+
+> `<UserButton />` might be more flexible than you think! As of August 2024, you can now customize the component with custom menu items. Should you need even more customization, this post and part 2 are still here to help you build the experience you desire from scratch.
+
+Clerk’s components were created with you in mind. Components do most of the functional work for you, allowing you to get your auth flows working in minutes, and support customization to fit your app’s style. That said, sometimes a component like the `<UserButton />` doesn’t suit the needs of your application. The good news? Clerk provides hooks and functions that make building your custom UI components easy. Let’s take a quick look at how to create your custom user menu.
+
+Code samples are from @clerk/nextjs 4.27.2 and @radix-ui/react-dropdown-menu 2.0.6
+
+## Getting Started
+
+The hardest part of building a custom user menu is often the dropdown menu itself. You need the button to trigger the menu opening, a way to close it, a way to track open/closed states, a way to handle ‘click off’ to close, logic to close if the user hits the `Esc` button, a way to handle keyboard input, and the list goes on. We’re going to save ourselves some time and use a great library while doing so. Radix provides world-class, accessible, unstyled primitives that you can use to quickly and efficiently build your UI. Let’s start by installing the primitive we need — the dropdown menu.
+
+```bash
+pnpm install @radix-ui/react-dropdown-menu
+```
+
+Once the installation finishes, let’s create the scaffolding for our new component. The following will be the foundation of the menu. The trigger will hold the User button that will open the menu, and each item will hold one of the menu entries. Remember that Radix Primitives are unstyled and there is no content so this will be blank.
+
+```tsx
+'use client'
+
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
+
+export const UserButton = () => {
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger></DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content>
+          <DropdownMenu.Label />
+          <DropdownMenu.Group>
+            <DropdownMenu.Item></DropdownMenu.Item>
+            <DropdownMenu.Item></DropdownMenu.Item>
+          </DropdownMenu.Group>
+          <DropdownMenu.Separator />
+          <DropdownMenu.Item></DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  )
+}
+```
+
+## Create the User Button
+
+The first content we will add is the User button. This will show that the user is logged in, and will be the trigger to open the menu. For the sake of this post we will assume that you have marked email as required in the Clerk Dashboard, in the User & Authentication → Email, Password, Username → Email section to ensure every user has an email. You could change this to a first name or username easily enough. Just make sure that whatever option you choose is something that will exist for all users, for the sake of rendering. You could also conditionally render different information depending on what the user has provided — show the first name if available; if not, show the email.
+
+To build the button we will leverage the `useUser()` hook. This gives us access to information about the user, such as profile image, email, name, and more. We will also make sure that Clerk and the user have loaded, and that there is valid user data, before rendering the User button.
+
+```tsx
+'use client'
+
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
+// Import useUser()
+import { useUser } from '@clerk/nextjs'
+// Import the Image element
+import Image from 'next/image'
+
+export const UserButton = () => {
+  // Grab the `isLoaded` and `user` from useUser()
+  const { isLoaded, user } = useUser()
+
+  // Make sure that the useUser() hook has loaded
+  if (!isLoaded) return null
+  // Make sure there is valid user data
+  if (!user?.id) return null
+
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild>
+        {/* Render a button using the image and email from `user` */}
+        <button>
+          <Image
+            alt={user?.primaryEmailAddress?.emailAddress!}
+            src={user?.imageUrl}
+            width={30}
+            height={30}
+          />
+          {user?.username ? user.username : user?.primaryEmailAddress?.emailAddress!}
+        </button>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content>
+          <DropdownMenu.Label />
+          <DropdownMenu.Group>
+            <DropdownMenu.Item></DropdownMenu.Item>
+            <DropdownMenu.Item></DropdownMenu.Item>
+          </DropdownMenu.Group>
+          <DropdownMenu.Separator />
+          <DropdownMenu.Item></DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  )
+}
+```
+
+## Add the Sign-Out and Manage Account Buttons
+
+With the User button in place, we can now add Sign Out and Manage Account buttons. The `useClerk()` hook provides the two methods we will need for this — the `signOut()` method and the `openUserProfile()` method. The User Profile will open as a modal. You could, instead, mount the `<UserProfile />` component to its own route, and then link it to the route. For the Sign Out button, we will also need to use the Next.js router to handle the redirect.
+
+```tsx
+'use client'
+
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
+// Import useClerk()
+import { useUser, useClerk } from '@clerk/nextjs'
+// Import the Next.js router
+import { useRouter } from 'next/navigation'
+import Image from 'next/image'
+
+export const UserButton = () => {
+  const { isLoaded, user } = useUser()
+  // Grab the signOut and openUserProfile methods
+  const { signOut, openUserProfile } = useClerk()
+  // Get access to the Next.js router
+  const router = useRouter()
+
+  if (!isLoaded) return null
+  if (!user?.id) return null
+
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild>
+        <button>
+          <Image
+            alt={user?.primaryEmailAddress?.emailAddress!}
+            src={user?.imageUrl}
+            width={30}
+            height={30}
+          />
+          {user?.username ? user.username : user?.primaryEmailAddress?.emailAddress!}
+        </button>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content>
+          <DropdownMenu.Label />
+          <DropdownMenu.Group>
+            <DropdownMenu.Item asChild>
+              {/* Create a button with an onClick to open the User Profile modal */}
+              <button onClick={() => openUserProfile()}>Profile</button>
+            </DropdownMenu.Item>
+            <DropdownMenu.Item></DropdownMenu.Item>
+          </DropdownMenu.Group>
+          <DropdownMenu.Separator />
+          <DropdownMenu.Item asChild>
+            {/* Create a Sign Out button -- signOut() takes a call back where the user is redirected */}
+            <button onClick={() => signOut(() => router.push('/'))}>Sign Out </button>
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  )
+}
+```
+
+## Extending the Custom User Menu
+
+The custom button has now replicated the behavior of the `<UserButton />`, though it is very much still unstyled. We’re going to do one more thing — add one more menu entry to mimic expanding the menu. This will use the `<Link />` component from Next.js to link to a fictional `/subscriptions` route.
+
+```tsx
+'use client'
+
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
+import { useUser, useClerk } from '@clerk/nextjs'
+import { useRouter } from 'next/navigation'
+import Image from 'next/image'
+// Import Link to add more buttons to the menu
+import Link from 'next/link'
+
+export const UserButton = () => {
+  const { isLoaded, user } = useUser()
+  const { signOut, openUserProfile } = useClerk()
+  const router = useRouter()
+
+  if (!isLoaded) return null
+  if (!user?.id) return null
+
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild>
+        <button>
+          <Image
+            alt={user?.primaryEmailAddress?.emailAddress!}
+            src={user?.imageUrl}
+            width={30}
+            height={30}
+          />
+          {user?.username ? user.username : user?.primaryEmailAddress?.emailAddress!}
+        </button>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content className="border border-gray-200 bg-white text-black drop-shadow-md">
+          <DropdownMenu.Label />
+          <DropdownMenu.Group>
+            <DropdownMenu.Item asChild>
+              <button onClick={() => openUserProfile()}>Profile</button>
+            </DropdownMenu.Item>
+            <DropdownMenu.Item asChild>
+              {/* Create a fictional link to /subscriptions */}
+              <Link href="/subscriptions">Subscription</Link>
+            </DropdownMenu.Item>
+          </DropdownMenu.Group>
+          <DropdownMenu.Separator />
+          <DropdownMenu.Item asChild>
+            <button onClick={() => signOut(() => router.push('/'))}>Sign Out </button>
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  )
+}
+```
+
+## The Last Step!
+
+Your new component is almost ready — it just needs some styling. Let’s add a little bit to get started. The code below is ready to drop right into your app, and then you can import the new `<UserButton />` into your header.
+
+### The Custom User Menu
+
+Create Custom User Menu Radix tutorial illustration
+
+### Final code
+
+```tsx
+'use client'
+
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
+// Import useUser() and useClerk()
+import { useUser, useClerk } from '@clerk/nextjs'
+// Import Next's router
+import { useRouter } from 'next/navigation'
+// Import the Image element
+import Image from 'next/image'
+// Import Link to add more buttons to the menu
+import Link from 'next/link'
+
+export const UserButton = () => {
+  // Grab the `isLoaded` and `user` from useUser()
+  const { isLoaded, user } = useUser()
+  // Grab the signOut and openUserProfile methods
+  const { signOut, openUserProfile } = useClerk()
+  // Get access to Next's router
+  const router = useRouter()
+
+  // Make sure that the useUser() hook has loaded
+  if (!isLoaded) return null
+  // Make sure there is valid user data
+  if (!user?.id) return null
+
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild>
+        {/* Render a button using the image and email from `user` */}
+        <button className="flex flex-row rounded-xl border border-gray-200 bg-white px-4 py-3 text-black drop-shadow-md">
+          <Image
+            alt={user?.primaryEmailAddress?.emailAddress!}
+            src={user?.imageUrl}
+            width={30}
+            height={30}
+            className="mr-2 rounded-full border border-gray-200 drop-shadow-sm"
+          />
+          {user?.username ? user.username : user?.primaryEmailAddress?.emailAddress!}
+        </button>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content className="mt-4 w-52 rounded-xl border border-gray-200 bg-white px-6 py-4 text-black drop-shadow-2xl">
+          <DropdownMenu.Label />
+          <DropdownMenu.Group className="py-3">
+            <DropdownMenu.Item asChild>
+              {/* Create a button with an onClick to open the User Profile modal */}
+              <button onClick={() => openUserProfile()} className="pb-3">
+                Profile
+              </button>
+            </DropdownMenu.Item>
+            <DropdownMenu.Item asChild>
+              {/* Create a fictional link to /subscriptions */}
+              <Link href="/subscriptions" passHref className="py-3">
+                Subscription
+              </Link>
+            </DropdownMenu.Item>
+          </DropdownMenu.Group>
+          <DropdownMenu.Separator className="my-1 h-px bg-gray-500" />
+          <DropdownMenu.Item asChild>
+            {/* Create a Sign Out button -- signOut() takes a call back where the user is redirected */}
+            <button onClick={() => signOut(() => router.push('/'))} className="py-3">
+              Sign Out{' '}
+            </button>
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  )
+}
+```
+
+Example repository:
+https://github.com/royanger/clerk-custom-user-menu
+
+## Explore the Powerful Customization Options Clerk Offers!
+
+Take a look at our Custom Flows documentation to explore more ways to customize your application using the many hooks and methods Clerks provides.
+
+For more in-depth technical inquiries or to engage with our community, feel free to join our Discord. Stay in the loop with the latest Clerk features, enhancements, and sneak peeks by following our X account, @clerk. Your journey to seamless user management starts here!

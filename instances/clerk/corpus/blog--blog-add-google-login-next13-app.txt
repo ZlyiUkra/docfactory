@@ -1,0 +1,556 @@
+# Adding Google Login to Your Next.js 13 Application
+# джерело: https://clerk.com/blog/add-google-login-next13-app
+# отримано: 2026-09-25
+
+External identity providers offer several benefits, such as adding a visibly trusted sign-in option, enabling sign-in without usernames and passwords, and getting additional information about users from the identity provider if they consent to it.
+
+A well-known identity provider seen on many websites is Google login. Users can choose to log in with their Google account on a website, which lets Google authenticate them and return their details to your application.
+
+In this article, you'll learn how to integrate Google login in your Next.js app. First, you'll see how to use a library like NextAuth.js to manually add a Google login to your website. Then, you'll learn how to use a third-party authentication provider like Clerk to quickly add a Google login to your website. Lastly, this article compares the two methods.
+
+You'll find the code for this article in this GitHub repository.
+
+## Prerequisites
+
+To follow along with this tutorial, you'll need the latest versions of Node.js, which, at the time of writing, is 18.12.1, and npm, which, at the time of writing, is 9.1.3.
+
+## The Base Project
+
+You can find the base project for this article here. The project is a Next.js 13 application that imitates a news website with a user paywall preventing users from reading articles without being logged in. Tailwind CSS is used to style the different pages and components in the project.
+
+If you browse through the files, you'll notice that the authentication logic is incomplete. The `<LoginButton />` component shows a **Sign In** or **Sign Out** button depending on whether the user is authenticated. However, if you open the **components/LoginButton.jsx** file, you'll see there's no logic to check if the user is authenticated, and the `loggedIn` variable is always `false`. Similarly, the **page/index.jsx** file should display a banner prompting the user to log in if they're unauthenticated and the article if the user is authenticated. However, the logic is also missing, and `loggedIn` is always `false`. You'll add this functionality as part of the tutorial.
+
+## Adding Google Login Using NextAuth.js
+
+The first demonstration below shows you how to use the NextAuth.js library to add a Google Login to your website.
+
+To get started, create a new Next.js app using the base project above as a template. Open a new terminal window and execute the following `npx` command.
+
+```bash
+npx create-next-app gotham-newspaper-website-nextauth -e https://github.com/ivankahl/nextjs-gotham-newspaper/tree/master/nextjs-gotham-newspaper-base
+```
+
+The command will create a new Next.js application in the `gotham-newspaper-website-nextauth` folder and clone the base project from the GitHub repository.
+
+### Register Your Website in Google Cloud
+
+Before you can add a Google login to your website using NextAuth.js, you must register your website in Google Cloud to get OAuth keys for your application.
+
+Navigate to Google Cloud in your browser. If you have a Google account already, you can click on **Sign in**. Otherwise, click on **Start free** to create a new account.
+
+A screenshot of the Google Cloud home page with the Sign in and Start free button highlighted
+
+Once you're logged in, click the **Select a project** dropdown in the top menu. In the dialog box that appears, click **New Project** in the top right of the dialog.
+
+A screenshot of the dialog box that appears when clicking on the Select a project dropdown
+
+Give your project a descriptive name and click **Create**.
+
+A screenshot of the Google Cloud interface prompting for a project name and location
+
+Wait for Google Cloud to finish creating the project, then select the project from the **Select a project** dropdown menu in the top menu. A menu will appear on the left side of the page. Find and hover over the **APIs and services** menu item. In the submenu that appears, click **OAuth consent screen**.
+
+A screenshot of the menu in Google Cloud with the OAuth consent screen menu item highlighted
+
+Google Cloud will prompt you for **User Type**. Since your application will let anyone log in using Google, select the **External** user type and click on **Create**.
+
+A screenshot of the Google Cloud console with External User Type selected when configuring the project's OAuth consent screen
+
+In the next screen, provide your website's information, such as the app name and user support email. You can skip the **App domain** section and click the **Save and Continue** button at the bottom of the page.
+
+A screenshot of Google Cloud showing the fields you need to populate for your app
+
+Now you'll need to configure the OAuth scopes your website will need. Click on **Add or Remove Scopes**. A window should slide out from the right where you can select which scopes your application will need. In this case, since you're using only Google to authenticate the user, select the following scopes:
+
+- ../auth/userinfo.email
+- ../auth/userinfo.profile
+- openid
+
+Click on the **Update** button and continue using the **Save and Continue** button.
+
+A screenshot of the Google Cloud console showing the scopes you need to add to your app
+
+The screen will prompt you to specify test users for your application while it's still in development. Click **Add Users** and add your Google email address to log in to your website. You can add up to one hundred test users. Then, when you're ready to release your application, you can change it so that anyone can log in.
+
+Once you've added the users, click on **Save and Continue** to continue to the Summary screen.
+
+A screenshot of Google Cloud showing a screen where you can add test users to your website
+
+Now that you've configured your website in Google Cloud, you need to retrieve your Client Key and Client Secret, which you'll use to configure NextAuth.js.
+
+First, click on **Credentials** in the left menu and then on **Create Credentials** at the top of the screen. In the menu that appears, select **OAuth client ID**.
+
+A screenshot of Google Cloud with the Create Credentials menu open and OAuth client ID highlighted
+
+Select `Web application` in the **Application type** field and give your application a name. Then, in **Authorised JavaScript origins**, add `http://localhost:3000` as an origin. In **Authorised redirect URIs**, add `http://localhost:3000/api/auth/callback/google` as a callback URL. Finally, click **Create** at the bottom of the page.
+
+A screenshot of the Google Cloud console showing the configuration options for a web application using OAuth
+
+A dialog should appear with your Client ID and Client Secret. Copy both values and keep them somewhere safe as you'll need them when configuring **NextAuth.js**.
+
+A screenshot of the dialog box that appears in Google Cloud with the OAuth Client ID and Client Secret for your app
+
+### Install NextAuth.js
+
+Open a terminal instance and navigate to your project directory. Then, run the following command to install the NextAuth.js package in your Next.js app:
+
+```bash
+npm install next-auth
+```
+
+### Add Google Login to NextAuth.js
+
+Once the package is installed, you need to create an auth endpoint in your Next.js app for NextAuth.js. Create a new subfolder called `auth` in the `pages/api`. Then, create a new file in the folder called **[...nextauth].js** and paste the following code in it:
+
+```js
+import NextAuth from 'next-auth'
+import GoogleProvider from 'next-auth/providers/google'
+
+export const authOptions = {
+  providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_ID,
+      clientSecret: process.env.GOOGLE_SECRET,
+    }),
+  ],
+}
+
+export default NextAuth(authOptions)
+```
+
+The code snippet above declares an `authOptions` variable containing configuration settings for your website's Google login.
+
+Inside the `authOptions` object, notice how you access the Google ID and Secret as environment variables. To set these environment variables, create a **.env.local** file in the root directory of your project and paste the code below. Replace `<GOOGLE_ID>` and `<GOOGLE_SECRET>` with the Google ID and Secret you retrieved in the previous section when setting up your application in Google Cloud:
+
+```plaintext
+GOOGLE_ID=<GOOGLE_ID>
+GOOGLE_SECRET=<GOOGLE_SECRET>
+```
+
+Lastly, you must set up `SessionProvider` in your Next.js app. This provider will let you use hooks such as the `useSession` hook and manage client sessions across browsers and windows. To do this, open your **pages/\_app.jsx** file and paste the following code:
+
+```jsx
+import '../styles/globals.css'
+import { SessionProvider } from 'next-auth/react'
+
+const App = ({ Component, pageProps: { session, ...pageProps } }) => (
+  <SessionProvider session={session}>
+    <Component {...pageProps} />
+  </SessionProvider>
+)
+
+export default App
+```
+
+### Create Sign In with Google Button
+
+Now that you can access the user's session inside your components, create a **Sign In with Google** button, which you'll display on your login page. In your `components` folder, create a new file called **GoogleButton.jsx** and paste the following code.
+
+```jsx
+import { signIn } from 'next-auth/react'
+
+const GoogleButton = () => {
+  return (
+    <button
+      className="flex w-full justify-center gap-5 rounded bg-white px-4 py-4 text-sm font-bold drop-shadow-md hover:bg-gray-50"
+      onClick={() => signIn('google')}
+    >
+      <GoogleLogo />
+      <div>Sign in with Google</div>
+    </button>
+  )
+}
+
+export default GoogleButton
+
+const GoogleLogo = (props) => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 775 794"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M775 405.797C775 373.248 772.362 349.496 766.653 324.865H395.408V471.773H613.32C608.929 508.282 585.204 563.264 532.482 600.209L531.743 605.127L649.124 696.166L657.256 696.979C731.943 627.921 775 526.315 775 405.797"
+      fill="#4285F4"
+    />
+    <path
+      d="M395.408 792.866C502.167 792.866 591.792 757.676 657.256 696.979L532.482 600.209C499.093 623.521 454.279 639.796 395.408 639.796C290.845 639.796 202.099 570.741 170.463 475.294L165.826 475.688L43.772 570.256L42.1759 574.698C107.198 704.013 240.758 792.866 395.408 792.866Z"
+      fill="#34A853"
+    />
+    <path
+      d="M170.463 475.294C162.116 450.662 157.285 424.269 157.285 397C157.285 369.728 162.116 343.338 170.024 318.706L169.803 313.46L46.2193 217.373L42.1759 219.299C15.3772 272.961 0 333.222 0 397C0 460.778 15.3772 521.036 42.1759 574.698L170.463 475.294"
+      fill="#FBBC05"
+    />
+    <path
+      d="M395.408 154.201C469.656 154.201 519.74 186.31 548.298 213.143L659.891 104.059C591.356 40.2812 502.167 1.13428 395.408 1.13428C240.758 1.13428 107.198 89.9835 42.1759 219.299L170.024 318.706C202.099 223.259 290.845 154.201 395.408 154.201"
+      fill="#EB4335"
+    />
+  </svg>
+)
+```
+
+The button itself is relatively simple. First, you created a button that contains the Google logo and the text "Sign In with Google". Then, you called the `signIn` method included in NextAuth.js and specified that you want to sign in using Google.
+
+### Update the Login Page and Related Components
+
+Once you've created the Google Button, add the button to your login page. Open the **pages/login.jsx** file and replace the comment `/*Place login form here*/` with the Google button.
+
+You'll also want to prevent logged-in users from accessing the login page. To do this, you can use the `useSession` hook and check the user's authentication status before returning the page. See the changes in the file below:
+
+```jsx
+import Link from 'next/link'
+import { useRouter } from 'next/router'
+import { useSession } from 'next-auth/react'
+
+import GoogleButton from '../components/GoogleButton'
+import BrandLogo from '../components/Logo'
+
+const Login = () => {
+  // Retrieve the session and router so that we can navigate
+  // the user back home if they are already authenticated
+  const { status } = useSession()
+  const router = useRouter()
+
+  // If the user is authenticated, redirect them to the home
+  // page
+  if (status === 'authenticated') {
+    router.replace('/')
+  }
+
+  return (
+    <div className="grid h-screen grid-cols-8 overflow-hidden">
+      <div
+        className="col-span-5 overflow-hidden"
+        style={{
+          backgroundImage: "url('https://placeimg.com/1000/1000/nature/grayscale')",
+          backgroundSize: 'cover',
+        }}
+      ></div>
+
+      <div className="col-span-3 px-12 py-12">
+        <BrandLogo className="mx-auto w-96" />
+        <p className="mt-2 text-center">
+          Gain immediate access to thousands of news articles from around the world.
+        </p>
+        <h2 className="mt-12 mb-8 text-2xl font-bold">Sign In</h2>
+        <div className="mb-8">
+          <GoogleButton />
+        </div>
+        <Link href="/" className="block text-center text-sm text-gray-500 underline">
+          Go Back Home
+        </Link>
+      </div>
+    </div>
+  )
+}
+
+export default Login
+```
+
+You can test your app by running it using the following command in your terminal.
+
+```bash
+npm run dev
+```
+
+Click on the **Sign In** button on the home page and try to log in using the **Sign In with Google** button. You should be able to select your Google account and be redirected back to your website's home page. However, you'll still see the `LoginBanner` prompting you to sign in.
+
+To fix this, update your `index.jsx` page and your `LoginButton.jsx` component. First, open the **pages/index.jsx** file and paste the code below, which will display the `<Article />` component to logged-in users and the `<LoginBanner />` tag to unauthenticated users:
+
+```jsx
+import { useSession } from 'next-auth/react'
+
+import PageHeader from '../components/PageHeader'
+import Article from '../components/Article'
+import LoginBanner from '../components/LoginBanner'
+
+const Home = () => {
+  const { status } = useSession()
+
+  return (
+    <div>
+      <PageHeader />
+      {status === 'authenticated' ? <Article /> : <LoginBanner />}
+    </div>
+  )
+}
+
+export default Home
+```
+
+Next, open your **components/LoginButton.jsx** file and paste the following code, which will show authenticated users the **Sign Out** rather than the **Sign In** button:
+
+```jsx
+import Link from 'next/link'
+import { useSession, signOut } from 'next-auth/react'
+
+const LoginButton = ({ size, signInOnly }) => {
+  // Get the user session so you can see if they are authenticated
+  // or not.
+  const { status } = useSession()
+
+  const padding = size === 'large' ? 'py-2 px-4' : 'py-1 px-2'
+
+  if (status === 'authenticated') {
+    return !signInOnly ? (
+      <button
+        className={`${padding} rounded bg-red-600 text-sm font-bold text-white`}
+        onClick={() => signOut()}
+      >
+        Sign Out
+      </button>
+    ) : null
+  }
+
+  return (
+    <Link
+      className={`${padding} my-1 rounded bg-red-600 text-sm font-bold text-white`}
+      href="/login"
+    >
+      Sign In
+    </Link>
+  )
+}
+
+export default LoginButton
+```
+
+### Test the Google Login
+
+Run your application using the `npm run dev` command.
+
+Once you're authenticated, you can now see the article and a **Sign Out** button. Try logging out and in again to see how the website behaves as a logged-in and logged-out user.
+
+Congratulations! You've implemented a Google login on your website using NextAuth.js.
+
+However, remember that this is only the first piece of the puzzle. You must still develop additional authentication logic, like creating a database to store your registered users. For this, NextAuth.js provides adapters that let you store user details in different databases or backend systems. You'll also have to add logic and screens for registering users and, if users can sign in with a password, a "forgot password" screen.
+
+So, while you have a simple website with authentication, some work is still needed to get it production-ready.
+
+## Adding Google Login Using Clerk.com
+
+Clerk.com is an authentication and user management service that lets you integrate authentication in your Next.js application with minimal effort. It also offers integrations with many third-party identity providers, such as Google.
+
+Create a new project using the same base project mentioned previously. Execute the following `npx` command in a new terminal window.
+
+```bash
+npx create-next-app gotham-newspaper-website-clerkdev -e https://github.com/ivankahl/nextjs-gotham-newspaper/tree/master/nextjs-gotham-newspaper-base
+```
+
+### Register with Clerk.com
+
+Before you can integrate Clerk.com in your Next.js app, you'll need to sign up for an account and create an application.
+
+A screenshot of the signup page in Clerk.com
+
+Sign up for a Clerk.com account. Once you've verified your email address and phone number (if you specified one), you'll land on the Dashboard page, where you can create a new application.
+
+### Create an Application in Clerk.com
+
+On your Clerk.com Dashboard, click on **Add application** to create an application in Clerk.com for your Next.js app.
+
+A screenshot of the Clerk.com Dashboard with no applications
+
+Clerk.com will prompt you for your application's name. You'll also need to select which methods of authentication you want for your application. After naming your application, switch on **Email** in the **Standard Authentication** section and **Google** under the **Social Connections** header in the **Connected accounts** section.
+
+A screenshot of Clerk.com showing the interface where you configure sign in for your app
+
+Click **Finish** to continue to your application screen.
+
+When configuring Clerk.com in your Next.js app, you'll need to specify some environment variables for Clerk.com. You can access these environment variables by clicking on **API Keys** in the left menu.
+
+A screenshot of the Clerk.com dashboard showing the API Keys for your app
+
+Copy your **Frontend API key** somewhere as you'll need it in the next section. You can also click the **Show key** in the **Backend API keys** section and copy that. Finally, copy the **JWT verification key** and store it somewhere handy.
+
+### Install the Clerk.com Package
+
+Clerk.com has created an npm package that simplifies adding Clerk.com authentication to your Next.js application. Install it in your app using the following command:
+
+```bash
+npm install @clerk/nextjs
+```
+
+### Configure Clerk.com in the Next.js App
+
+Once the package has finished installing, set up the environment variables needed for Clerk.com. In your project's root directory, create a new file called **.env.local** and paste the following code, but replace `<CLERK_FRONTEND_API>`, `<CLERK_API_KEY>`, and `<CLERK_JWT_KEY>` with the API Keys you retrieved in the Clerk.com Dashboard:
+
+```plaintext
+NEXT_PUBLIC_CLERK_FRONTEND_API=<CLERK_FRONTEND_API>
+CLERK_API_KEY=<CLERK_API_KEY>
+CLERK_JWT_KEY=<CLERK_JWT_KEY>
+```
+
+You'll notice that the code snippet prefixes the Clerk Frontend API key with `NEXT_PUBLIC_` so that it can be accessed on the client side in your Next.js application.
+
+Now, surround your application in the `<ClerkProvider />` component so your app can check if the user is authenticated and use other features in Clerk.com. To do so, open your **pages/\_app.jsx** file and surround your `<Component />` component with a `<ClerkProvider />` element. The sample below shows the final result:
+
+```jsx
+import '../styles/globals.css'
+import { ClerkProvider } from '@clerk/nextjs'
+
+const App = ({ Component, pageProps }) => (
+  <ClerkProvider {...pageProps}>
+    <Component {...pageProps} />
+  </ClerkProvider>
+)
+
+export default App
+```
+
+That's all that's needed to get Clerk.com to work in your Next.js app.
+
+One thing to note is that if you're using Next.js API routes or server-side rendering that relies on authentication, you'll need to configure the Clerk.com middleware as well. However, you can skip this step since this demonstration uses neither of these features.
+
+### Update the Login Page and Related Components
+
+Now that Clerk.com is set up, you can add the `<SignIn />` component to your login page. This component will render the login form, which prompts users to log in with Google login or to use an email address. The page should also redirect authenticated users to the home page.
+
+Open the **pages/login.jsx** file and replace the code there with the following code sample:
+
+```jsx
+import { SignIn, useUser } from '@clerk/nextjs'
+import Link from 'next/link'
+import { useRouter } from 'next/router'
+import colors from 'tailwindcss/colors'
+
+import BrandLogo from '../components/Logo'
+
+const Login = () => {
+  const { isLoaded, isSignedIn } = useUser()
+  const router = useRouter()
+
+  // Redirect the user if they are already authenticated
+  if (isLoaded && isSignedIn) router.replace('/')
+
+  return (
+    <div className="grid h-screen grid-cols-8 overflow-hidden">
+      <div
+        className="col-span-5 overflow-hidden"
+        style={{
+          backgroundImage: "url('https://placeimg.com/1000/1000/nature/grayscale')",
+          backgroundSize: 'cover',
+        }}
+      ></div>
+
+      <div className="col-span-3 px-12 py-12">
+        <BrandLogo className="mx-auto w-96" />
+        <p className="mt-2 text-center">
+          Gain immediate access to thousands of news articles from around the world.
+        </p>
+        <h2 className="mt-12 mb-8 text-2xl font-bold">Sign In</h2>
+        <div className="mb-8">
+          <SignIn
+            appearance={{
+              variables: { colorPrimary: colors.red[600] },
+              elements: { rootBox: 'mx-auto' },
+            }}
+          />
+        </div>
+        <Link href="/" className="block text-center text-sm text-gray-500 underline">
+          Go Back Home
+        </Link>
+      </div>
+    </div>
+  )
+}
+
+export default Login
+```
+
+The `<SignIn />` component offers customization options that let you customize the component's appearance. In this case, the code sets the primary color to the website's primary color and the sign-in form is centered using the `mx-auto` TailwindCSS class.
+
+Run your app using the `npm run dev` command and navigate to your website in a browser. When you click on **Sign In** and are taken to the login page, you'll notice the Clerk.com sign-in component.
+
+A screenshot of your Gotham website login screen containing the Clerk.com sign-in component
+
+Test your authentication by clicking on **Continue with Google**. Once you're authenticated, the app should redirect you to the home page.
+
+However, you'll still see the `<LoginBanner />` component instead of the article. Fix this by opening the **pages/index.jsx** file and replacing the code there with the following code sample, which will check whether the user is authenticated and show the appropriate component:
+
+```jsx
+import PageHeader from '../components/PageHeader'
+import Article from '../components/Article'
+import LoginBanner from '../components/LoginBanner'
+import { SignedIn, SignedOut } from '@clerk/nextjs'
+
+const Home = () => (
+  <div>
+    <PageHeader />
+    <SignedIn>
+      <Article />
+    </SignedIn>
+    <SignedOut>
+      <LoginBanner />
+    </SignedOut>
+  </div>
+)
+
+export default Home
+```
+
+The code sample uses the `<SignedIn />` and `<SignedOut />` components from Clerk.com. The `<SignedIn />` component will display its contents to logged-in users while the `<SignedOut />` component displays its contents to unauthenticated users.
+
+You must also update the `<LoginButton />` component to show authenticated users the **Sign Out** button. Do this by opening the **components/LoginButton.jsx** file and replacing the contents with the following.
+
+```jsx
+import Link from 'next/link'
+import { useAuth } from '@clerk/nextjs'
+
+const LoginButton = ({ size, signInOnly }) => {
+  const { isLoaded, isSignedIn, signOut } = useAuth()
+
+  const padding = size === 'large' ? 'py-2 px-4' : 'py-1 px-2'
+
+  if (isLoaded && isSignedIn && !signInOnly) {
+    return (
+      <button
+        className={`${padding} rounded bg-red-600 text-sm font-bold text-white`}
+        onClick={() => signOut()}
+      >
+        Sign Out
+      </button>
+    )
+  }
+
+  return (
+    <Link
+      className={`${padding} my-1 rounded bg-red-600 text-sm font-bold text-white`}
+      href="/login"
+    >
+      Sign In
+    </Link>
+  )
+}
+
+export default LoginButton
+```
+
+Notice how the code sample above uses the `useAuth` hook instead of the `useUser` hook. The `useAuth` hook is similar to the `useUser` hook. However, it also returns a `signOut` method used in the **Sign Out** button's `onClick` handler to sign the user out.
+
+Rerun your application using the `npm run dev` command. Next, test authenticating and logging out of your Google account. The website should display the article and **Sign Out** button when logged in and the login banner and **Sign In** button when logged out.
+
+## NextAuth.js vs. Clerk.com
+
+As is clear from this tutorial, Clerk.com is easier to implement with fewer and simpler steps than NextAuth.js. It also has some added benefits.
+
+Clerk.com manages the OAuth Keys required to make Google authentication work and lets you add other social logins such as Facebook, Twitter, GitHub, and more by simply toggling it in your dashboard.
+
+With NextAuth.js, the security burden falls on you as the developer. You're responsible for transporting and saving user credentials. You also need to develop additional functionality like the "forgot password" flow and, where applicable, ensure you're GDPR and CCPA compliant.
+
+Clerk.com simplifies user management and authentication by managing the authentication process and storing your user's credentials securely. It provides standard functionality like "forgot password" out of the box. It also lets you view all the users who have signed up to your website, enable/disable them, and more without any additional development on your part.
+
+Clerk.com is also already GDPR and CCPA compliant. They are regularly audited by third parties and conduct pen testing to ensure their infrastructure and services are secure.
+
+If you want to provide additional security for your users using OTP codes using NextAuth.js, you'll have to develop this logic manually. Clerk.com provides out-of-the-box support for OTP codes using both SMS and email.
+
+With Web3 gaining traction, you might want to support logging in with Web3. While NextAuth.js's Credentials provider lets you use Web3, it does require significant development. Adding Web3 authentication to your app with Clerk.com is pretty effortless. Simply enable your application's authentication with Metamask and use it alongside other authentication providers such as Google login and with other Clerk.com features such as OTP codes.
+
+## Conclusion
+
+This article showed you how to integrate Google login manually with NextAuth.js as well as how to do it with Clerk.com's user management service. The code for both methods is in this GitHub repository.If you enjoyed this article, you might also like our guide to implementing session-based authentication with React and Express.
+
+Compared to using NextAuth.js, Clerk.com is easier and provides additional benefits like out-of-the-box "forgot password", OTP, and Web3 authentication functionality as well as user management features. It's also GDPR and CCPA compliant.

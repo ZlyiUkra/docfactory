@@ -1,0 +1,519 @@
+# How to implement per-user OAuth scopes with Clerk
+# джерело: https://clerk.com/blog/implement-per-user-oauth-with-clerk
+# отримано: 2026-09-25
+
+When developing a SaaS application that relies on third-party data, it's important to recognize that not all users will want to grant access to their data unless it's essential for the application's functionality.
+
+In a recent article, I covered how you can use Clerk Single Sign On (SSO) connections to access Google Calendar data on behalf of the user. When configuring SSO, scopes are used to inform the service provider (SP) what kind of access is required for the connection that is being established. It’s important to specify only the scopes that are required and no more, a variation of the least privilege access principle, however, some users might require more access than others.
+
+In this article, you’ll learn about the concept of least privilege access, and how to customize OAuth scopes on a per-user basis.
+
+## What is least privilege access?
+
+Least privilege access is a security principle where users are given the minimum levels of access or permissions needed.
+
+This approach limits potential damage from system breaches by restricting each user's ability to interact with systems, networks, and data beyond their essential requirements. By granting only the precise access rights necessary for a user's role, organizations can significantly reduce their overall cybersecurity risk and potential attack surface.
+
+Typically least privilege access is used in the context of users accessing a system, however, the same principle can be applied when services are accessing user data in another system.
+
+OAuth scopes allow the user to make an educated decision about what data the system should be able to access. A system that only asks for the minimum access required can not only help ease the user's concern about the data being accessed, but it could also protect the developer in situations where attackers gain access to areas of the system they shouldn’t.
+
+For example, if you build a system that only requires access to Google Calendar data, but you simply ask for access to ALL the user's data, you could be held liable if someone deleted the user's Google Docs!
+
+## Implementing user-specific OAuth scopes with Clerk
+
+To demonstrate how applications can be configured to only request access to the necessary permissions, we’ll use BookMate as a demo.
+
+BookMate is a lightweight clone of popular scheduling tools like Cal.com or Calendly. Users can link their Google Calendar so visitors can request a meeting with them using a public profile. When a visitor requests a meeting, Bookmate will send both parties a calendar invite via email.
+
+To accommodate this functionality, BookMate uses the following OAuth scopes from Google:
+
+- `https://www.googleapis.com/auth/calendar.readonly`
+- `https://www.googleapis.com/auth/calendar.events.readonly`
+
+These scopes are defined in the Clerk dashboard under the Google SSO settings and automatically apply to all users who sign into the app.
+
+Let’s add a feature that also allows the calendar entry to be added directly to the user’s calendar instead of just sending an invite, further streamlining the process. To accommodate this, we’ll also need the following scope to be added to the login process:
+
+- `https://www.googleapis.com/auth/calendar.events`
+
+This feature will be optional and we wouldn't want to apply this scope to all users since it allows BookMate to directly modify the user's calendar. Therefore we cannot simply add it to the list of scopes in the Clerk dashboard.
+
+To accomplish this new functionality, we’ll take the following steps:
+
+1. Add a toggle to the settings that allows BookMate to add events to the user's calendar. When the toggle is enabled, check the existing scopes on the Google access token for the current user.
+2. If the access token does not have that scope, initiate a reauthorization that requires the user to allow access to their calendar, adding the scope to the token.
+3. Storing the user-specific scopes with the user’s public metadata in Clerk.
+4. Add a global provider that will automatically handle reauthorization if the scope is required.
+
+The source code for this article is available on GitHub. The following sections will cover the functionality of the code at a high level, I encourage you to check the repository to see more specifically how the code works together!
+
+### Adding the toggle to check the user's scopes
+
+The first step is to add a new checkbox that informs the application that the additional scope is required. This checkbox will also render a dropdown for the user to select the calendar they want to add the event to. If the external account does not have the proper scopes, the application will trigger a reauthorization process with Google SSO to gain access to the proper scopes before saving the preferences to the database.
+
+The following snippet is for the `CalendarSelector` component which contains the logic described above, with notable lines commented:
+
+```tsx
+'use client'
+
+import { useState, useEffect } from 'react'
+import { Calendar, Loader2 } from 'lucide-react'
+import { getGoogleToken } from '../actions'
+import { useUser } from '@clerk/nextjs'
+import { useToast } from '@/hooks/use-toast'
+import { saveCalendars } from '../_actions/save-calendars'
+import { getCalendars } from '../_actions/get-calendars'
+import { saveCalendarPreferences } from '../_actions/save-calendar-preferences'
+import { getCalendarPreferences } from '../_actions/get-calendar-preferences'
+import { RefreshButton } from './refresh-button'
+import { CalendarItem } from './calendar-item'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+
+interface GoogleCalendar {
+  id: string
+  summary: string
+  primary: boolean
+  selected: boolean
+}
+
+export function CalendarSelector() {
+  const [isLoading, setIsLoading] = useState(false)
+  const [calendars, setCalendars] = useState<GoogleCalendar[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [directBooking, setDirectBooking] = useState(false)
+  const [selectedCalendarId, setSelectedCalendarId] = useState<string>('')
+  const { user } = useUser()
+  const { toast } = useToast()
+
+  // If direct booking is disabled, clear the selected calendar
+  useEffect(() => {
+    if (!directBooking) {
+      setSelectedCalendarId('')
+    }
+  }, [directBooking])
+
+  // Fetch the user's calendars and calendar preferences when the component mounts
+  useEffect(() => {
+    async function loadCalendars() {
+      try {
+        const [savedSelections, savedPreferences] = await Promise.all([
+          getCalendars(),
+          getCalendarPreferences(),
+        ])
+        await fetchCalendars(savedSelections)
+        setDirectBooking(savedPreferences.directBookingEnabled)
+        setSelectedCalendarId(savedPreferences.directBookingCalendarId || '')
+      } catch (error) {
+        console.error('Error loading calendar settings:', error)
+        // If getting saved selections fails, still try to load calendars
+        await fetchCalendars()
+      }
+    }
+    void loadCalendars()
+  }, [user])
+
+  // Fetch the user's calendars from the Google Calendar API
+  const fetchCalendars = async (savedSelections?: { id: string; name: string }[]) => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const getGoogleTokenResponse = await getGoogleToken()
+      if (!getGoogleTokenResponse?.token) {
+        await reauthAccount(['https://www.googleapis.com/auth/calendar.readonly'])
+        return
+      }
+
+      const response = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
+        headers: {
+          Authorization: `Bearer ${getGoogleTokenResponse.token}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch calendars')
+      }
+
+      const data = await response.json()
+      const formattedCalendars = data.items.map((calendar: any) => ({
+        id: calendar.id,
+        summary: calendar.summary,
+        primary: calendar.primary || false,
+        selected: savedSelections?.some((sel) => sel.id === calendar.id) || false,
+      }))
+      setCalendars(formattedCalendars)
+    } catch (err) {
+      console.error('Error fetching calendars:', err)
+      setError(err instanceof Error ? err.message : 'Failed to fetch calendars')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // This function initiates a reauthorization flow for the user with the proper scopes
+  async function reauthAccount(scopes: string[]) {
+    if (user) {
+      const googleAccount = user.externalAccounts.find((ea) => ea.provider === 'google')
+
+      const reauth = await googleAccount?.reauthorize({
+        redirectUrl: window.location.href,
+        additionalScopes: scopes,
+      })
+
+      if (reauth?.verification?.externalVerificationRedirectURL) {
+        window.location.href = reauth?.verification?.externalVerificationRedirectURL.href
+      }
+    }
+  }
+
+  // This function checks if the user has the required scopes and returns true if they do
+  const checkScopes = () => {
+    const googleAccount = user?.externalAccounts.find((ea) => ea.provider === 'google')
+    if (!googleAccount) return false
+
+    const requiredScopes = [
+      'https://www.googleapis.com/auth/calendar.readonly',
+      'https://www.googleapis.com/auth/calendar.events',
+    ]
+    const approvedScopes = googleAccount.approvedScopes?.split(' ')
+    return requiredScopes.every((scope) => approvedScopes?.includes(scope))
+  }
+
+  // Save the calendars and calendar preferences to the database
+  const handleSave = async () => {
+    setIsLoading(true)
+    setError(null)
+
+    // Check if we need additional scopes for direct booking, and reauthorize if needed
+    if (directBooking && !checkScopes()) {
+      await reauthAccount([
+        'https://www.googleapis.com/auth/calendar.readonly',
+        'https://www.googleapis.com/auth/calendar.events',
+      ])
+      return
+    }
+
+    try {
+      // Save the calendars and calendar preferences to the database
+      await saveCalendars(calendars)
+      await saveCalendarPreferences(directBooking, directBooking ? selectedCalendarId : null)
+      toast({
+        title: 'Success',
+        description: 'Calendar settings have been saved.',
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save calendar settings')
+      toast({
+        title: 'Error',
+        description: 'Failed to save calendar settings. Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // When a calendar is toggled, update the state
+  const handleToggleCalendar = (calendarId: string) => {
+    setCalendars((prevCalendars) =>
+      prevCalendars.map((cal) =>
+        cal.id === calendarId ? { ...cal, selected: !cal.selected } : cal,
+      ),
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-5 w-5" />
+          <h2 className="text-lg font-semibold">Google Calendar Selection</h2>
+        </div>
+        <RefreshButton onClick={() => fetchCalendars()} isLoading={isLoading} />
+      </div>
+
+      {/* If there's an error, show it */}
+      {error && (
+        <div className="rounded-md bg-red-50 p-4">
+          <p className="text-sm text-red-600">{error}</p>
+        </div>
+      )}
+
+      <div className="rounded-lg border p-4">
+        {/* If loading, show a loading indicator */}
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+          </div>
+        ) : calendars.length === 0 ? (
+          // If there are no calendars, show a message
+          <div className="flex justify-center py-8 text-sm text-gray-600">
+            No calendars found. Click refresh to try again.
+          </div>
+        ) : (
+          // Render a list of the user's calendars which can be toggled
+          <div className="space-y-4">
+            <div className="space-y-2">
+              {calendars.map((calendar) => (
+                <CalendarItem
+                  key={calendar.id}
+                  id={calendar.id}
+                  summary={calendar.summary}
+                  primary={calendar.primary}
+                  selected={calendar.selected}
+                  onToggle={handleToggleCalendar}
+                />
+              ))}
+            </div>
+
+            <div className="space-y-4 border-t pt-4">
+              {/* This checkbox allows the user to toggle direct booking */}
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={directBooking}
+                    onChange={(e) => setDirectBooking(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <span className="text-sm font-medium">Add bookings directly to calendar</span>
+                </label>
+              </div>
+
+              {/* If direct booking is enabled, show a dropdown to select a calendar to book with */}
+              {directBooking && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Select value={selectedCalendarId} onValueChange={setSelectedCalendarId}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a calendar" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {calendars.map((calendar) => (
+                          <SelectItem key={calendar.id} value={calendar.id}>
+                            {calendar.summary}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {directBooking && !selectedCalendarId && (
+                    <p className="text-sm text-red-500">
+                      Please select a calendar for direct bookings
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-4">
+              <button
+                onClick={handleSave}
+                disabled={isLoading || (directBooking && !selectedCalendarId)}
+                className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+```
+
+### Initiate a reauthorization by Clerk
+
+Clerk has a helper function attached to every `ExternalAccount` object to trigger the reauthorization if needed. The `additionalScopes` can contain an array of scopes that will be added to the OAuth URL along with the global scopes set in the Clerk dashboard. This function will craft the required URL that the user needs to be directed to confirm access to the necessary resources:
+
+```tsx
+async function reauthAccount(scopes: string[]) {
+  if (user) {
+    const googleAccount = user.externalAccounts.find((ea) => ea.provider === 'google')
+
+    const reauth = await googleAccount?.reauthorize({
+      redirectUrl: window.location.href,
+      additionalScopes: scopes,
+    })
+
+    if (reauth?.verification?.externalVerificationRedirectURL) {
+      window.location.href = reauth?.verification?.externalVerificationRedirectURL.href
+    }
+  }
+}
+```
+
+To prevent the user from having to reauthorize manually every time they sign in, we can store these required scopes with the Clerk User object in the `publicMetadata` and use that data for the following steps.
+
+The following snippet is in the server action that handles saving the calendar preferences for the user, with `enabled` being the parameter for the function if `directBooking` is set:
+
+```tsx
+const user = await currentUser()
+const client = await clerkClient()
+const includesAdditionalScopes = user?.publicMetadata.additionalScopes?.includes(
+  'https://www.googleapis.com/auth/calendar.events',
+)
+
+// Set public metadata
+if (enabled && !includesAdditionalScopes) {
+  await client.users.updateUserMetadata(userId, {
+    publicMetadata: {
+      additionalScopes: ['https://www.googleapis.com/auth/calendar.events'],
+    },
+  })
+} else if (!enabled && includesAdditionalScopes) {
+  await client.users.updateUserMetadata(userId, {
+    publicMetadata: {
+      additionalScopes: [],
+    },
+  })
+}
+```
+
+### Add `publicMetadata` to the session claims
+
+When a user authenticates with Clerk, they receive a JWT used to verify their identity on any subsequent requests to the server. The claims in this JWT can be modified to include the `publicMetadata` which includes the additional scopes required. This saves an extra trip to the Clerk API to check for this data, making the application more performant.
+
+The session claims can be customized in the Clerk Dashboard under **Configure** > **Sessions** > **Customize session token**.
+
+Customize session claims in the Clerk dashboard
+
+### Automatically handle reauthorization if additional scopes are present
+
+Since the claims are available to both the client and server and include the additional scopes, they can be checked on login to automatically handle reauthorization. Since the user has already approved the scopes, this appears as a simple redirect to Google and then back to the application with no user interaction required.
+
+The following code outlines a `ReauthProvider` component that can wrap the application to handle all of this logic automatically, storing a flag in the browser’s `localStorage` to prevent it from occurring too frequently:
+
+```tsx
+'use client'
+import { useUser } from '@clerk/nextjs'
+import React, { useEffect, useState } from 'react'
+
+const LOCAL_STORAGE_KEY = 'bookmate_isScopeCheckComplete'
+
+interface Props {
+  children: React.ReactNode
+}
+
+function ReauthProvider({ children }: Props) {
+  const [isReauthStarted, setIsReauthStarted] = useState(false)
+  const [isLoaded, setIsLoaded] = useState(false)
+  const { isSignedIn, user } = useUser()
+
+  useEffect(() => {
+    if (isReauthStarted) {
+      return
+    }
+    const isScopeCheckComplete = localStorage.getItem(LOCAL_STORAGE_KEY)
+
+    // If the user is not signed in, remove the localStorage key
+    // This should also trigger on logout
+    if (!isSignedIn) {
+      localStorage.removeItem(LOCAL_STORAGE_KEY)
+      return
+    }
+
+    // If the flag is set, the scope check has already been completed
+    if (isScopeCheckComplete) {
+      setIsLoaded(true)
+      return
+    }
+
+    // Check if additional scopes are required per the user metadata
+    const requiredScopes = user?.publicMetadata?.additionalScopes
+    if (!requiredScopes) {
+      localStorage.setItem(LOCAL_STORAGE_KEY, 'true')
+      setIsLoaded(true)
+      return
+    }
+
+    // If the user is signed in and the scope check has not been completed, check the scopes
+    const googleAccount = user?.externalAccounts.find((ea) => ea.provider === 'google')
+    const approvedScopes = googleAccount?.approvedScopes?.split(' ')
+    const hasAllRequiredScopes = requiredScopes?.every((scope) => approvedScopes?.includes(scope))
+
+    // If the user does not have all required scopes, trigger reauth
+    if (!hasAllRequiredScopes) {
+      void reauthAcct(requiredScopes)
+    } else {
+      localStorage.setItem(LOCAL_STORAGE_KEY, 'true')
+      setIsLoaded(true)
+    }
+  }, [user])
+
+  async function reauthAcct(scopes: string[]) {
+    setIsReauthStarted(true)
+
+    if (user) {
+      const googleAccount = user.externalAccounts.find((ea) => ea.provider === 'google')
+
+      const reauth = await googleAccount?.reauthorize({
+        redirectUrl: window.location.href,
+        additionalScopes: scopes,
+      })
+
+      if (reauth?.verification?.externalVerificationRedirectURL) {
+        window.location.href = reauth?.verification?.externalVerificationRedirectURL.href
+      }
+    }
+  }
+
+  if (!isSignedIn) {
+    return children
+  }
+
+  if (!isLoaded) {
+    return null
+  }
+
+  return <>{children}</>
+}
+
+export default ReauthProvider
+```
+
+The provider simply wraps the children in the root layout:
+
+```tsx
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode
+}>) {
+  return (
+    <html lang="en">
+      <ClerkProvider>
+        <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+          <main className="min-h-screen bg-gradient-to-br from-blue-50 via-pink-50 to-yellow-50 text-gray-800">
+            <ReauthProvider>{children}</ReauthProvider>
+          </main>
+          <Toaster />
+        </body>
+      </ClerkProvider>
+    </html>
+  )
+}
+```
+
+From this point forward, the application will now have the proper rights to add events directly to the user's calendar if needed.
+
+## Why is reauthorization required on every login?
+
+When a user is using OAuth to sign into an application, a special URL is crafted that contains information about the application and the permissions it requires. If you are using a standard set of scopes for all users, those are configured in the Clerk dashboard and are included with the OAuth URL.
+
+Set default claims in the Clerk dashboard
+
+The access token stored with Clerk includes the scopes from the most recent authentication attempt. So when users who require additional scopes sign in via Clerk, their scopes will be reset to what’s defined for the entire application.
+
+The reauthorization keeps the proper set of scopes configured at all times.
+
+## Conclusion
+
+You now understand how to implement least privilege access in a SaaS application using Clerk's SSO. You've also learned how unique scopes per user can be stored and automatically reused throughout the application lifecycle. The approach provides granular access control and flexible permission management while minimizing potential security risks.

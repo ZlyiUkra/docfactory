@@ -1,0 +1,143 @@
+# Unicorn or Chameleon? Two strategies for exporting customizable React components
+# джерело: https://clerk.com/blog/exporting-customizable-react-components
+# отримано: 2026-09-25
+
+Clerk's React library exports `<SignUp/>`, `<SignIn/>`, and `<UserProfile/>` components. They come styled and fully-featured so developers can focus on building their application:
+
+Exporting Customizable React Components guide illustration
+
+Unsurprisingly, this leads to the question: _How can I customize the components to match my brand?_
+
+Whitelabeling software is a famously hard and unsolved problem - it's extremely common to find widgets or portions of websites that have completely different styling.
+
+One example is this chat widget from Alaska Airlines, which shows different form field styling (rounded vs square), different buttons (huge text, not capitalized), and a different font (Arial vs Circular).
+
+Exporting Customizable React Components guide illustration
+
+This quarter at Clerk, we're revisiting our customization strategy. We want to truly solve this problem with perfect matching styles instead of just "close enough" styles. Internally, we say we're switching from a "unicorn" strategy to a "chameleon" strategy.
+
+While we haven't finalized the chameleon strategy yet, we do have a proof of concept running and are excited about the developer experience it produces.
+
+## Unicorn strategy
+
+Exporting Customizable React Components guide illustration
+
+Our initial approach to theming is a "unicorn" strategy because we came up with the system ourselves – developers have to learn our specific way of applying styles.
+
+We drew inspiration from others, so you've probably seen something like it before. Developers simply pass a `theme` prop to `<ClerkProvider>` to customize aspects of the design:
+
+```json
+{
+  "general": {
+    "color": "#f1f1f1",
+    "backgroundColor": "#f2f2f2",
+    "fontColor": "#f3f3f3",
+    "fontFamily": "Inter, sans serif",
+    "labelFontWeight": "500",
+    "padding": "1em",
+    "borderRadius": "20px",
+    "boxShadow": "0 2px 8px rgba(0, 0, 0, 0.2)"
+  },
+  "buttons": {
+    "fontColor": "#f4f4f4",
+    "fontFamily": "Inter, sans serif",
+    "fontWeight": "300"
+  }
+}
+```
+
+While this system is great for quickly getting close styles, it suffers in the last mile. There simply aren't enough options to provide developers with the complete customization capabilities they desire.
+
+## Chameleon strategy
+
+Exporting Customizable React Components guide illustration
+
+Our next iteration approaches customization with a new mindset. Instead of asking developers to learn our strategy, we will integrate with any strategy they already use.
+
+If you've been around the frontend ecosystem for a while, you know there are _several, very popular_ styling systems that all work _completely differently._ Because they're so diverse and we want to blend in with all of them, we call this a "chameleon" strategy.
+
+Let's work through an example to explain how it works.
+
+Consider that one of our components has a "primary button." By default, that button renders to this HTML:
+
+```html
+<button class="clerk-button-primary">Action</button>
+```
+
+_Note: in this post, we're only focused on styles. We'll discuss customizing the "Action" string in the future._
+
+To change the style of this button, developers will still pass a `theme` prop, but now the selector will be for this specific element:
+
+```jsx
+<SignIn
+  theme={{
+    primaryButton: customButton,
+  }}
+/>
+```
+
+In this snippet, `customButton` can have one of three values:
+
+1. A string with one or many class names. If passed, the value will replace the default `clerk-button-primary` class.
+2. A React component that renders a `<button>` and forwards all props (including children). If passed, the default element will not be rendered at all, and instead the passed component will be rendered.
+3. A dictionary that adheres to the `CSSStyleInterface` type. This is for completeness more than anything else. If passed, the value will be forwarded to the `style` prop, and the the default `clerk-button-primary` class will be omitted.
+
+Now, let's see how it works for different styling libraries.
+
+### Tailwind
+
+Simply pass in Tailwind classes as a string:
+
+```jsx
+<SignIn
+  theme={{
+    primaryButton: 'p-4 rounded',
+  }}
+/>
+```
+
+### CSS modules
+
+When a CSS module is imported, the object automatically returns class names. Simply pass it in:
+
+```jsx
+import styles from './Styles.css'
+;<SignIn
+  theme={{
+    primaryButton: styles.customButton,
+  }}
+/>
+```
+
+### styled-components
+
+styled-components works by returning a React component that automatically forwards props to a `<button>` element – exactly as specified by Clerk:
+
+```jsx
+const CustomButton = styled.button`
+  border-radius: 1rem;
+  padding: 1rem;
+`
+
+<SignIn
+  theme={{
+    primaryButton: CustomButton
+  }}
+/>
+```
+
+### Chakra
+
+Chakra also provides React components, but they are modified with props, which makes the setup slightly more complex, but still quite simple:
+
+```jsx
+<SignIn
+  theme={{
+    primaryButton: (props) => <Button size="lg" {...props} />,
+  }}
+/>
+```
+
+Since the chameleon strategy ultimately hooks into HTML and React primitives, we're confident that we can make _every_ styling library work with this strategy, not just the four we've listed above.
+
+Thoughts, comments, questions? We're eager for your feedback! Please reach out to @clerk on X or contact support.

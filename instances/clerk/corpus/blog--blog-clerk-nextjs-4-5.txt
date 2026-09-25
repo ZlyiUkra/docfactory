@@ -1,0 +1,120 @@
+# @clerk/nextjs v4.5
+# джерело: https://clerk.com/blog/clerk-nextjs-4-5
+# отримано: 2026-09-25
+
+Version 4.5 of **@clerk/nextjs** brings sweeping improvements to server-side authentication in Next.js.
+
+Get started with `npm i @clerk/nextjs@latest`
+
+## Authentication moves to middleware
+
+Going forward, developers will authenticate requests once in Next.js middleware, then simply read the authentication state in endpoints (API routes and getServerSideProps).
+
+**middleware.js example:**
+
+```javascript
+import { withClerkMiddleware } from '@clerk/nextjs/server'
+
+export default withClerkMiddleware((req) => {
+  // Your own middleware
+})
+```
+
+**API routes example:**
+
+```javascript
+import { getAuth } from '@clerk/nextjs/server'
+
+export default function handler(req, res) {
+  const { userId } = getAuth(req)
+  // ...
+}
+```
+
+**getServerSideProps example:**
+
+```javascript
+import { getAuth } from '@clerk/nextjs/server'
+
+export const getServerSideProps = ({ req }) => {
+  const { userId } = getAuth(req)
+  // ...
+}
+```
+
+With this change, authentication in Next.js will finally feel familiar for developers who have worked with frameworks like Express or Ruby on Rails, where authentication is normally handled within middleware.
+
+## Switchable runtime support
+
+Next.js 12.2 brought a switchable runtime, so developers could choose between a node runtime or an edge runtime for each of their API routes and server-rendered pages.
+
+Our new **getAuth()** helper is isomorphic, so it works regardless of the runtime you choose.
+
+## Improved developer experience
+
+If you've used Clerk in the past, you'll notice three small but delightful improvements to our developer experience:
+
+1. All server-side imports are now from **@clerk/nextjs/server** instead of having import paths specific to the endpoint-type
+2. Wrapper functions are no longer required inside endpoints, only once in middleware
+3. **getAuth(req)** works everywhere there's a request object
+
+```javascript
+// pages/api/foo.js
+import { getAuth } from '@clerk/nextjs/server'
+
+export default function handler(req, res) {
+  const { userId } = getAuth(req)
+  // ...
+}
+
+
+// pages/bar.js
+import { getAuth } from '@clerk/nextjs/server'
+
+export const getServerSideProps = ({ req }) => {
+  const { userId } = getAuth(req)
+  // ...
+}
+
+
+// middleware.js
+import { withClerkMiddleware, getAuth } from '@clerk/nextjs/server'
+
+export default withClerkMiddleware((req) => {
+  const { userId } = getAuth(req)
+  // ...
+})
+```
+
+```javascript
+// pages/api/foo.js
+import { withAuth } from '@clerk/nextjs/api'
+
+export default withAuth((req, res) => {
+  const { userId } = req.auth
+  // ...
+})
+
+// pages/bar.js
+import { withServerSideAuth } from '@clerk/nextjs/ssr'
+
+export const getServerSideProps = withServerSideAuth(({ req }) => {
+  const { userId } = req.auth
+  // ...
+})
+
+// middleware.js
+// Clerk hasn't supported Next.js 12.2+ middleware until today
+```
+
+## Preparation for Layouts
+
+Our team has been watching the Next.js Layouts RFC closely, and we designed the new helpers in anticipation of layouts support.
+
+We expect that by computing the authentication state in middleware, we'll be able to share it with each of your parallel-loading layout files.
+
+## Get started
+
+Get started right away with our guide to Next.js authentication, or join our community Discord to discuss with our team.
+
+Thanks to the contributors: Mark Pitsilos, Nikos Douvlis

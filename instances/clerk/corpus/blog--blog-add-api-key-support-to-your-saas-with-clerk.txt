@@ -1,0 +1,321 @@
+# Add API Key support to your SaaS in minutes
+# джерело: https://clerk.com/blog/add-api-key-support-to-your-saas-with-clerk
+# отримано: 2026-09-25
+
+As your SaaS grows, your customers may want to connect your product with the rest of their tools, whether that's running scheduled jobs, syncing data, triggering workflows, or building private internal tools. These integrations all require the same foundational capability: A secure, reliable way to programmatically access your API.
+
+API keys remain the simplest and most familiar way for customers to integrate with SaaS products. From a customer's perspective, API Keys should be easy to manage and use. But implementing API Keys correctly in a multi-tenant application takes real work:
+
+- Where do you store keys? How do you rotate or revoke them?
+- How do you ensure keys are scoped to the correct user or organization?
+- How do you build a secure UI for users or organization members to manage their keys?
+
+Most teams eventually take on the work of building and maintaining their own approach to key management, which often turns into a complex, error-prone, and time-consuming effort.
+
+**Clerk removes that entire burden.**
+
+With Clerk API Keys, you can securely expose your application's functionality through an API for individual users or entire organizations, without having to build the underlying infrastructure yourself.
+In this guide, we'll introduce you to Clerk's new API Keys feature and show you how to integrate it into your SaaS product.
+
+> API Keys are now available for use in public beta. Learn more in the announcement on our changelog.
+
+## Follow along
+
+To make this tutorial practical and easy to apply, we'll be working with the AgentOps demo app — an open-source, multi-tenant Next.js application that showcases how to integrate **Clerk's new API Keys** system into a real SaaS product.
+
+This demo includes a simple "Agents" concept (AI assistants) and uses organization-scoped API Keys to ensure that only authorized members of organizations can access resources.
+
+The app features:
+
+- Minimalistic dashboard UI using shadcn
+- Combined "Sign-In" and "Sign-Up" flow page powered by Clerk
+- An "Organization Settings" page that exposes Clerk's managed `<APIKeys/>` component
+- Protected Next.js API CRUD routes to demonstrate organization-scoped token verification
+
+You'll need the following before you get started:
+
+- A Clerk account
+- Node and any package manager installed locally (e.g. npm, pnpm, yarn, bun)
+- Familiarity with Next.js
+
+If you want to follow along, clone the API Keys Demo repository on GitHub and navigate to the directory:
+
+filename: terminal
+```bash
+git clone https://github.com/clerk/demo-api-keys
+cd demo-api-keys
+```
+
+Then, run the following commands to install the dependencies and start the development server:
+
+```npm
+npm install
+npm run dev
+```
+
+## Enabling API Keys in Clerk
+
+To follow along with the demo project, you'll need to enable a few features in your app instance.
+But before turning on API Key support, you'll need to decide how keys should be scoped.
+
+Clerk supports two types of keys:
+
+- **User API Keys** - Keys tied to an individual user. Ideal for personal scripts, CLI tools, or user-initiated automations.
+- **Organization API Keys** - Keys tied to an organization. Better suited for multi-tenant SaaS apps where members of organizations (or workspaces) need keys to access shared data.
+
+This tutorial will focus on **Organization API Keys**. Before you can use API Keys, you'll need to enable Organizations first.
+
+### Enable Organizations and Roles
+
+To get started, open your app instance in the Clerk dashboard and navigate to **Organizations** > **Settings** from the sidebar on the left.
+Toggle **Enable organizations** on if the feature is not already enabled. From here, make sure personal accounts are disabled.
+
+Next, switch to the **Roles & Permissions** tab and grant the following system permissions to your test user:
+
+- `org:sys_api_keys:read`
+- `org:sys_api_keys:manage`
+
+These permissions determine who can view, generate, and revoke API Keys within your organization.
+In the following sections, you'll integrate API Keys into your application and start protecting your backend routes using Clerk's token verification layer.
+
+Finally, navigate to **Configure** > **Developer** > **API Keys**.
+Toggle the **Organization API keys** option to enable it and click **Save**. Make sure to leave the **User API keys** option disabled.
+
+## Adding API Key management to your SaaS dashboard
+
+Once API Keys are enabled in your Clerk instance, the next step is to expose a place in your product where your users can view, create, and manage their own API Keys. In our **AgentOps example**, this component is integrated directly into the existing shadcn dashboard layout.
+
+### Using `<OrganizationProfile/>` component
+
+If your application already includes an `<OrganizationProfile/>` or `<OrganizationSwitcher/>` component, Clerk automatically adds an **API Keys** tab when the minimum permissions (`org:sys_api_keys:read`) are present. These permissions are not set by default, so you'll need to apply them to both admin and member roles in the Clerk dashboard.
+
+In the demo app, you can try this by:
+
+1. Switching to an organization using the `<OrganizationSwitcher/>` in the dashboard header
+2. Clicking **Manage Organization**
+3. Opening the **API Keys** tab
+
+From here, organization members with `org:sys_api_keys:read` can view all active Organization API Keys, and members with `org:sys_api_keys:manage` can create new keys with one click, revoke any key immediately, and copy keys securely for external usage.
+
+Here's the header layout used in the demo:
+
+filename: app/dashboard/layout.tsx
+```tsx
+import { OrganizationSwitcher, UserButton } from '@clerk/nextjs'
+
+export default function DashboardLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode
+}>) {
+  return (
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset className="overflow-hidden">
+        <header className="flex h-16 shrink-0 items-center gap-2">
+          <div className="flex w-full items-center justify-between gap-2 px-4">
+            <OrganizationSwitcher />
+            <UserButton />
+          </div>
+        </header>
+        {children}
+      </SidebarInset>
+    </SidebarProvider>
+  )
+}
+```
+
+When you click **Manage Organization** in the `<OrganizationSwitcher/>` component, you'll see the **API Keys** tab appear automatically if permissions are configured correctly.
+
+### Using the `<APIKeys/>` component
+
+If you'd prefer to have more control over where API Keys appear in your application, Clerk also provides a dedicated `<APIKeys/>` component that you can use.
+
+Our demo app shows how to embed API Key management directly inside your own dashboard pages, which is useful if you want a dedicated “Developer Settings” or “Integrations” section.
+
+Here's the example from the demo:
+
+filename: app/dashboard/settings/api-keys/page.tsx
+```tsx
+import { APIKeys } from '@clerk/nextjs'
+import { RequestTester } from '@/components/request-tester'
+
+export default function SettingsPage() {
+  return (
+    <div className="flex flex-col gap-4 p-8 pt-6">
+      <h1 className="text-lg font-semibold">API keys</h1>
+      {/* Clerk-managed API Keys UI component */}
+      <APIKeys />
+      <RequestTester />
+    </div>
+  )
+}
+```
+
+This version gives you full control over where API Keys appear in your dashboard while Clerk handles security and key management.
+
+## Creating protected backend routes
+
+With key generation enabled, the next step is to allow your API to accept API Keys alongside normal user session tokens. Clerk makes this extremely simple with a single configuration change.
+
+### Using multi-token verification
+
+In server-side functions and API routes, Clerk's `auth()` helper can accept more than one token type.
+In our demo app, we've configured our `/api/agents/route.ts` file to accept both session tokens and API Keys.
+Below is a simplified example:
+
+filename: app/api/agents/route.ts
+```tsx
+import { auth } from '@clerk/nextjs'
+
+export async function GET() {
+  // Needs to have the `acceptsToken: 'api_key'` or it will only accept session tokens
+  const res = await auth({
+    acceptsToken: ['session_token', 'api_key'],
+  })
+
+  if (!res.isAuthenticated) {
+    return new Response('Unauthorized', { status: 401 })
+  }
+  if (!res.orgId) {
+    return new Response('Unauthorized: please use a valid org key', { status: 401 })
+  }
+  // Continue handling request...
+}
+```
+
+This line tells Clerk to accept:
+
+- Browser-based user sessions (_from logged-in users_)
+- API Keys (_passed as a Bearer token in request headers_)
+
+```tsx
+acceptsToken: ['session_token', 'api_key']
+```
+
+Clerk automatically extracts and verifies the token, determines the organization, and ensures the key has not been revoked.
+
+### Rejecting unauthenticated or cross-org access
+
+Because Clerk includes `orgId` directly in the token, your backend logic becomes extremely straightforward:
+
+- If no `orgId` → reject
+- If `orgId` does not match the requested resource → reject
+- Otherwise → process the request
+
+This ensures strong multi-tenant isolation and prevents customers from ever accessing resources outside their organization.
+
+## Testing your API Keys
+
+Now that API Keys are enabled and visible in your application’s dashboard, it’s time to test them against real API endpoints in the demo app.
+You can use cURL or tools like Insomnia or Postman to test your API Keys.
+
+Go ahead and create an API Key on the `/dashboard/settings/api-keys` page using the `<APIKeys/>` component from the previous section.
+
+> After you've generated a key, copy it and store it somewhere safe — **it will only be shown once.**
+
+With your key in hand, you can start making real requests.
+
+### Creating an agent
+
+Let's start by creating a new agent using the `POST /api/agents` endpoint. This endpoint requires a valid **Organization API Key**.
+
+filename: terminal
+```bash
+curl http://localhost:3000/api/agents \
+ -X POST \
+ -H "Authorization: Bearer <ORG_API_KEY>" \
+ -H "Content-Type: application/json" \
+ -d '{"name": "Support Assistant", "description": "Handles inbound support tickets.", "model": "gpt-5.1"}'
+```
+
+If successful, you'll see the newly created agent returned in the response.
+
+```json
+{
+  "id": "agent_tURoMlenCly4sL2cJXiUN",
+  "name": "Support Assistant",
+  "description": "Handles inbound support tickets.",
+  "model": "gpt-5.1"
+}
+```
+
+Since every request is tied to your Organization ID, the new agent is automatically scoped to your organization.
+
+Now, try to create an agent with an invalid API Key.
+If the key is invalid (or revoked / expired), the request will be rejected with a `401 Unauthorized` response.
+
+You can test the same functionality from a logged-in user context by creating an agent on the `/dashboard` page.
+
+### Listing agents
+
+Next, fetch all agents that belong to your organization.
+
+filename: terminal
+```bash
+curl http://localhost:3000/api/agents \
+  -H "Authorization: Bearer <ORG_API_KEY>"
+```
+
+You should get a response with an array containing the recently created agent:
+
+```json
+[
+  {
+    "id": "agent_tURoMlenCly4sL2cJXiUN",
+    "name": "Support Assistant",
+    "description": "Handles inbound support tickets.",
+    "model": "gpt-5.1"
+  }
+]
+```
+
+### Deleting an agent
+
+Finally, delete an existing agent by using the `DELETE /api/agents` endpoint and sending its `agentId` in the request body:
+
+filename: terminal
+```bash
+curl http://localhost:3000/api/agents \
+  -X DELETE \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <ORG_API_KEY>" \
+  -d '{"agentId": "<AGENT_ID>"}'
+```
+
+Clerk validates the API Key, resolves the organization it belongs to, and ensures the deletion request only affects resources owned by that org.
+
+You can test the same functionality from a logged-in user context by deleting an agent on the `/dashboard` page.
+
+### What you've verified
+
+By this point, you've tested that:
+
+- Organization API Keys work alongside user session tokens for backend access
+- All requests are scoped to the correct organization
+- Requests are rejected if the API Key is invalid
+
+Your platform can support external integrations and every API request passes through Clerk's verification. This mirrors how your real users will interact with your API.
+
+## Conclusion
+
+Adding API Key support to a SaaS product is often a significant engineering effort, especially in a multi-tenant environment where every request must be scoped to the correct organization. Clerk removes that complexity by managing key creation, access controls, token validation, and providing ready-made UI components for your customers.
+
+In just a few steps, you've put all the essential pieces in place:
+
+- Enabling API Keys in your Clerk app instance
+- Adding managed UI to your application
+- Protecting backend routes with multi-token verification
+- Enforcing organization-level data isolation
+- Testing endpoints with organization-scoped keys
+
+Taken together, these steps give you a fast, secure foundation for customer-facing integrations—one that you can adapt to your product's needs. With this setup in place, your customers can connect your SaaS to the rest of their workflow with ease.
+
+To explore the complete setup for this guide, check out the **AgentOps API Keys Demo**.
+For more advanced use cases, check out the examples in this repository.
+
+Other resources:
+
+- API keys guide — Complete walkthrough of enabling and using API keys
+- Backend SDK reference — Full API for creating, listing, verifying, and revoking keys
+- Dashboard — Enable API keys for your application

@@ -1,0 +1,646 @@
+# Comparing Authentication in React.js vs. Next.js
+# джерело: https://clerk.com/blog/comparing-authentication-react-nextjs
+# отримано: 2026-09-25
+
+Authentication in React and Next.js is a critical topic. This tutorial will compare authentication in React.js, known for dynamic interfaces, and Next.js, a framework that optimizes React for production. We'll cover the importance of authentication for securing user data and access to protected components, and dive into the practical differences between using React and Next.js for this purpose.
+
+Additionally, we'll discuss how Clerk can simplify the authentication process with framework-specific solutions for both React and Next.js. For practical experience, we've provided a code repository on GitHub with examples to deepen your understanding of authentication in React and Next.js.
+
+Let's get started.
+
+## Core Differences between React and Next.js
+
+Let's delve into the real differences between React and Next.js when it comes to authentication and how they affect our decision-making process.
+
+### Server-side rendering vs client-side rendering
+
+React.js is a library for creating user interfaces on web and native platforms, as described in its official documentation. It's primarily a client-side tool for developing UI applications, where UI refers to the interface on the user's device or browser for interacting with websites or applications.
+
+React.js doesn't have built-in server-side rendering capabilities, limiting its function to client-side rendering. However, future updates, such as React Server Component, aim to improve server-side support, though this involves complex nuances.
+
+On the other hand, Next.js is a React framework that enhances React.js with additional features and capabilities. Next.js is a full-stack framework with features including:
+
+- Server-side Rendering (SSR): Where pages are generated on the server and sent to the client.
+- React Server Component support (RSC)
+- Routing: A Built-in routing system.
+- Static Export (SSG): Pre-rendering pages at build time to serve static HTML.
+- Automatic Build Size Optimization: Optimizes build sizes automatically.
+- Incremental Static Regeneration: Re-rendering static pages on-demand without rebuilding the entire site.
+
+Even when utilizing Next.js, which facilitates server-side rendering with React, developers encounter restrictions on certain authentication operations. We'll expand deeper into these limitations as we examine the actual code examples.
+
+### React Routing capabilities
+
+React.js does not handle page routing for you. It’s up to the developer to choose how to navigate through pages or redirects in a concise manner. That's why developers opt-in to use a third party tool like React-router or TanStack Router to satisfy their needs.
+
+Next.js on the other hand has routing and it’s fixed or built-in with no option to override it at least on the server side. As a matter of fact, Next.js currently supports two routing methods:
+
+**Pages** creates routes within the pages folder.
+
+**App Router** organizes routes within the app folder.
+
+Although both routing options can be used together, they fundamentally work differently so they are not compatible with each other without certain modifications.
+
+## Example: How to Implement Authentication in React
+
+We now take a closer look on how to Implement Authentication in React from scratch. You can work your way through this section of the tutorial with the code examples as located in the react-auth folder.
+
+### Overview of client-side authentication
+
+Focusing on React as a client-side library, our overview will center on creating authentication components like login and logout forms and managing the visibility of sensitive information.
+
+Client-side authentication primarily involves showing or hiding content based on a user's authentication status. Unauthenticated users are redirected to a login page to enter credentials for accessing protected routes. This common approach in applications is standard and typically trouble-free.
+
+However, it involves intricate technicalities that are not apparent to the end user. Developers must handle authentication securely and efficiently on the client side, including in React applications. We will outline key considerations for client-side authentication before diving into coding specifics.
+
+### Considerations for client-side authentication
+
+When adopting authentication solutions for your client-side app, the first step is defining criteria for identifying users. Additionally, you need to consider the following:
+
+**Security Concerns**
+
+To ensure security, it's essential to manage the generation, storage, and retrieval of Personally Identifiable Information (PII), session identifiers, or tokens that could be misused for user impersonation. Given that sensitive information is handled client-side, it's critical to mitigate potential security risks effectively.
+
+**State Management**
+
+If you store session keys in the user's device or browser, you must establish how to manage them in the application's state. This involves determining the appropriate data structure for storing authentication tokens or session information, implementing mechanisms to synchronize state changes across components, and handling authentication-related events such as login and logout actions.
+
+In many cases, React should be used as a thin client aiming to retain minimal data. The responsibility for managing session revalidation or token updates, in accordance with the security protocols of the organization, is typically delegated to the server, which instructs the client accordingly.
+
+Considering the above parameters, let's explore in practice how to implement these considerations in React and how easy it is to miss important details. The code for the whole tutorial section is located in the `react-auth` folder of the repo.
+
+### Example of setting up authentication in React
+
+Let’s show now how to set up authentication in React. We first initiate a new React Project using Vite since `create-react-app` is deprecated:
+
+```bash
+$ npm init @vitejs/app react-auth --template react-ts
+$ cd react-auth
+```
+
+#### Step 1: Setup the main App Router page
+
+We'll use React Router to manage navigation within our application. If you haven't already installed React Router, you can do so using npm:
+
+```bash
+$ npm install react-router-dom
+```
+
+Next, let's define the main application router in our `App.tsx` file:
+
+```tsx
+import React from 'react'
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom'
+import Login from './Login'
+import Profile from './Profile'
+import AuthProvider from './providers/AuthProvider'
+import Protected from './components/Protected'
+
+function App() {
+  return (
+    <div className="App">
+      <Router>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route element={<Protected />}>
+              <Route path="/profile" element={<Profile />} />
+            </Route>
+          </Routes>
+        </AuthProvider>
+      </Router>
+    </div>
+  )
+}
+export default App
+```
+
+Inside the `<AuthProvider />` component, we define routes for the login page (`/login`) and the user profile page (`/profile`). The `<Protected/>` component ensures that the `/profile` route is only accessible to authenticated users. If a user tries to access the profile page without authentication, they will be redirected to the login page.
+
+Since we haven’t defined what the `AuthProvider`, `Protected` or `Login` components do yet let's proceed to explore the client side components next.
+
+#### Step 2: Define the Login Component
+
+Let's examine the structure and style of the login page component, which includes a form for users to input their credentials for authentication.:
+
+```tsx
+import React, { useState } from 'react'
+import { useAuth } from './hooks/useAuth'
+import './Login.css'
+const Login: React.FC = () => {
+  const [credentials, setCredentials] = useState({ username: '', password: '' })
+  const auth = useAuth()
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (formValid(credentials)) {
+      await auth.loginAction(credentials)
+    }
+  }
+
+  const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setCredentials((prev) => ({
+      ...prev,
+      [name]: value,
+    }))
+  }
+
+  const formValid = (state: typeof credentials) => {
+    return state.username && state.password
+  }
+
+  return (
+    <div className="login-container">
+      <form onSubmit={handleLogin} className="login-form">
+        <input
+          type="text"
+          placeholder="Username"
+          name="username"
+          value={credentials.username}
+          onChange={handleInput}
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          name="password"
+          value={credentials.password}
+          onChange={handleInput}
+        />
+        <button className="login-button" type="submit">
+          Login
+        </button>
+      </form>
+    </div>
+  )
+}
+export default Login
+```
+
+In the Login Page, we use  the `useState` hook to manage the state of the input fields (credentials). The `handleLogin` function is called when the form is submitted, and it triggers the login action by calling the `loginAction` function from the `useAuth` hook. The `handleInput` function updates the state as the user types in the input fields.
+
+#### Step 3: Define the AuthProvider and Custom Hooks
+
+Now that we have our login page component ready, let's implement the authentication logic using the `AuthProvider` and custom hooks. The `AuthProvider` component will manage the authentication state and provide authentication-related functions to its child components using React context:
+
+```tsx
+import React, { createContext, PropsWithChildren, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import useToken from '../hooks/useToken'
+import appConfig from '../app.config'
+
+interface UserData {
+  username: string
+}
+
+export interface Credentials {
+  username: string
+  password: string
+}
+
+interface LoginData {
+  token: string
+  user: UserData
+}
+
+interface AuthContextType {
+  token: string | null
+  user: UserData | null
+  loginAction: (data: Credentials) => void
+  logoutAction: () => void
+}
+
+export const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
+  const [user, setUser] = useState<UserData | null>(null)
+  const { token, setToken } = useToken()
+  const navigate = useNavigate()
+
+  const loginAction = async (credentials: Credentials) => {
+    try {
+      // Mocking authentication request
+      const response = await fetch(`${appConfig.AUTH_API_URL}/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(credentials),
+      })
+      if (!response.ok) {
+        throw new Error('Invalid credentials')
+      }
+      const data: LoginData = await response.json()
+      setUser(data.user)
+      setToken(data.token)
+      navigate('/profile')
+    } catch (error) {
+      console.error('Login error:', error)
+    }
+  }
+
+  const logoutAction = () => {
+    setUser(null)
+    setToken(null)
+    navigate('/login')
+  }
+
+  const authContextValue: AuthContextType = {
+    token,
+    user,
+    loginAction,
+    logoutAction,
+  }
+
+  return <AuthContext.Provider value={authContextValue}>{children}</AuthContext.Provider>
+}
+export default AuthProvider
+```
+
+Here the `loginAction` function handles user authentication by sending a POST request to the server with the user's credentials. Upon successful authentication, it updates the user state with the authenticated user data and stores the authentication token in local storage. It then navigates the user to the profile page.
+
+The `logoutAction` function clears the user state and removes the authentication token from local storage, effectively logging out the user and redirecting them to the login page.
+
+The `useAuth` and `useToken` hooks are  shown next:
+
+```tsx
+import { useContext } from 'react'
+import { AuthContext } from '../providers/AuthProvider'
+
+export const useAuth = () => {
+  const authContext = useContext(AuthContext)
+  if (!authContext) {
+    throw new Error(
+      'useAuth hook was called outside of context, make sure your app is wrapped with AuthProvider',
+    )
+  }
+  return authContext
+}
+```
+
+The `useAuth` hook allows components to access the authentication context provided by the AuthProvider.
+
+Next, let's define the `useToken` hook:
+
+```tsx
+import { useState } from 'react'
+
+const ACCESS_TOKEN_KEY = 'access_token'
+export default function useToken() {
+  const getToken = () => {
+    const token = localStorage.getItem(ACCESS_TOKEN_KEY)
+    return token
+  }
+
+  const [token, setToken] = useState<string | null>(getToken())
+
+  const saveToken = (data: string | null) => {
+    if (!data) {
+      localStorage.removeItem(ACCESS_TOKEN_KEY)
+    } else {
+      localStorage.setItem(ACCESS_TOKEN_KEY, data)
+      setToken(data)
+    }
+  }
+
+  return {
+    token,
+    setToken: saveToken,
+  }
+}
+```
+
+The `useToken` hook provides a simple interface for managing token storage and retrieval using local storage.
+
+Tokens facilitate authenticated server requests, but relying solely on token authentication has limitations and security risks. Simple token systems often lack secure methods to refresh or revoke tokens, exposing applications to unauthorized access if tokens are compromised. Moreover, storing tokens in local storage makes them vulnerable to cross-site scripting (XSS) attacks, where malicious scripts could steal tokens, risking security breaches.
+
+Serving this API should be done over HTTPS to ensure there are no Man In The Middle attacks (MitM) that could compromise the token value.
+
+Setting those arguments aside, the last component is the `Protected` component that ensures certain routes are only accessible to authenticated users. This component will act as a guard, preventing unauthorized access to protected routes by redirecting unauthenticated users to the login page:
+
+```tsx
+import React from 'react'
+import { Navigate, Outlet } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
+
+const Protected: React.FC = () => {
+  const { token } = useAuth()
+
+  // If the user is not authenticated, redirect to the login page
+  if (!token) {
+    return <Navigate to="/login" />
+  }
+
+  // If the user is authenticated, render the child routes
+  return <Outlet />
+}
+export default Protected
+```
+
+The `Protected` component utilizes the `useAuth` hook to tap into the authentication context and obtain the authentication token. If authentication is confirmed (indicated by the presence of the token), the Protected component displays the child routes. This setup permits the rendering of nested routes within protected areas for authenticated users.
+
+#### Step 4: Implementing authentication endpoints on the server
+
+Nevertheless you still need to have a server to handle client-side authentication with React. In our case, since we are building things from scratch we will have to consider the simplest option.
+
+Here is what the server code looks like:
+
+```tsx
+import express from 'express'
+import bodyParser from 'body-parser'
+const app = express()
+const PORT = 5000
+// Middleware to parse JSON request bodies
+app.use(bodyParser.json())
+
+// Mock user data
+const users = [
+  { username: 'theo', password: 'password1', user: 'Theo' },
+  { username: 'alex123', password: 'password2', user: 'Alex' },
+]
+// Authentication endpoint: POST /auth/login
+app.post('/auth/login', (req, res) => {
+  const { username, password } = req.body
+  const user = users.find((u) => u.username === username && u.password === password)
+  if (!user) {
+    return res.status(401).json({ message: 'Invalid username or password' })
+  }
+  // Generate authentication token
+  const token = generateToken(user)
+  res.json({ token, user: user.user })
+})
+function generateToken(user) {
+  return `generated-token-for-${user.username}`
+}
+
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`)
+})
+```
+
+This server sets up a route : `/auth/login` for user authentication. It uses a simple array of user objects as a mock user database and a fake token generator for generating an access token.
+
+Once you have our server set up, we can proceed in testing the whole authentication workflow.
+
+#### Step 5: Running the Development Environment
+
+To locally test our authentication setup, we must run the Vite development server for the React application alongside the mock auth server. This can be done by inserting a custom script into our `package.json` file.
+
+First, let's install the required dependencies:
+
+```bash
+$ npm install --save-dev concurrently
+```
+
+Next, let's update our `package.json` file with a script that starts both the Vite development server and the mock authentication server:
+
+```json
+"scripts": {
+  "start": "concurrently \"vite\" \"node auth-server.js\""
+}
+```
+
+Running `npm start` will simultaneously initiate the Vite development server and the authentication server, enabling local testing of our authentication setup as if it were on a live server.
+
+That required significant effort! We've merely begun with a basic setup that doesn't cover user sessions or storing user information in a database—both crucial for production-level authentication.
+
+Next, we'll explore how to enhance our approach with a Next.js implementation.
+
+## Example: How to Implement Authentication in Next.js
+
+In this part, we'll delve into how to incorporate authentication in a Next.js application using NextAuth.js. This package simplifies adding authentication to Next.js projects by providing ready-made support for well-known providers such as Google, GitHub, and Facebook, reducing the manual configuration often seen in React authentication.
+
+Next.js's API routes feature further streamlines this process, allowing us to manage authentication logic directly within our project without a separate server. This enhances our solution's maintainability. The complete code for this tutorial can be found in the `nextjs-auth` folder of the repository.
+
+#### Step 1: Install NextAuth.js
+
+First, let's install Next with NextAuth.js and its dependencies:
+
+```bash
+$ npx create-next-app@latest nextjs-auth
+$ cd nextjs-auth
+$ npm install next-auth@beta @auth/core
+```
+
+#### Step 2: Configure NextAuth.js
+
+Next, create a new file named `auth.ts` somewhere in your application. This file will handle authentication requests and configurations. In this tutorial, we are using GitHub as the authentication provider so you need to make sure you register a new GitHub App to get the provider credentials. Also make sure to set up the correct callback URL. Here is mine for reference:
+
+NextAuth GitHub configuration
+
+_Setting up a new GitHub App_
+
+```tsx
+import NextAuth from 'next-auth'
+import Github from '@auth/core/providers/github'
+export const {
+  handlers: { GET, POST },
+  auth,
+  signIn,
+  signOut,
+  unstable_update,
+} = NextAuth({
+  debug: process.env.NODE_ENV === 'development',
+  secret: process.env.NEXTAUTH_SECRET,
+  session: {
+    strategy: 'jwt',
+  },
+  providers: [
+    GitHub({
+      clientId: process.env.GITHUB_ID || '',
+      clientSecret: process.env.GITHUB_SECRET || '',
+    }),
+  ],
+})
+```
+
+Then export the auth handlers to the  `app/api/auth/[...nextauth]/route.ts` as well. This will handle all the API requests for the `next-auth` package and any configured OAuth callbacks.
+
+```tsx
+export { GET, POST } from '@/lib/auth'
+```
+
+#### Step 3: Use the provided auth functions to enforce authentication
+
+The `auth` function effectively fetches the current user session. If the user is unauthenticated, it returns null, allowing us to check and redirect as necessary.
+
+Below is an example of implementing protected routes using this approach:
+
+```tsx
+import { auth } from '@/lib/auth'
+export default auth((req) => {
+  if (req.auth) {
+    return Response.json({ data: 'Success' })
+  }
+  return Response.json({ message: 'Not authenticated' }, { status: 401 })
+})
+```
+
+And here is how to protect pages:
+
+```tsx
+import { redirect } from 'next/navigation'
+import { authOptions } from '@/lib/auth'
+export default async function Page() {
+  const session = await auth()
+  if (!session) {
+    redirect('/login')
+  }
+  return <pre>{JSON.stringify(session, null, 2)}</pre>
+}
+```
+
+#### Step 4: Setup the Login page
+
+To log in using GitHub or any other configured provider, utilize the `signIn` function exported from `auth.ts`.
+
+```tsx
+import { Login } from '@/components/Login'
+import { auth } from '@/lib/auth'
+import { redirect } from 'next/navigation'
+
+export default async function LoginPage() {
+  const session = await auth()
+  if (!session?.user) return <Login provider="github" />
+  redirect('/profile')
+}
+```
+
+The `Login` component interacts with server actions as follows:
+
+```tsx
+import { signIn } from '@/lib/auth'
+export function Login({ provider, ...props }: { provider?: string }) {
+  return (
+    <form
+      action={async () => {
+        'use server'
+        await signIn(provider)
+      }}
+    >
+      <button {...props}>Login</button>
+    </form>
+  )
+}
+```
+
+#### Step 5: Testing the login with GitHub flow
+
+The final step involves testing the entire authentication process with GitHub. Start by navigating to the `/login` page to view the main `Login` button. Upon clicking the `Login` Button, you'll be redirected to GitHub, where you can complete the authentication login process.
+
+Integrating authentication with Next.js and the NextAuth package marked a substantial improvement over the React example. Yet, configuring it revealed certain complexities.
+
+Primarily, the NextAuth documentation focuses on authentication setup for the pages router, necessitating a visit to the beta documentation for `app` folder insights, leading to discrepancies in examples.
+
+Moreover, not configuring the `secret` and `session` strategy for the GitHub provider in the NextAuth configuration led to difficult-to-diagnose 500 errors. This indicates that developers must still dedicate significant effort to achieve a smooth authentication process with Next.js. The final part of this tutorial will explore whether a more streamlined approach exists.
+
+## How do React and Next.js Authentication differ from each other?
+
+This guide highlights that both React and Next.js offer flexibility in authentication options without enforcing a specific approach, leaving the decision to developers. However, implementing client-side authentication with React still requires a server.
+
+Below is a table illustrating the key differences between authentication in React and Next.js:
+
+| Aspect                   | React.js      | Next.js                                                                                 |
+| ------------------------ | ------------- | --------------------------------------------------------------------------------------- |
+| Authentication Libraries | External Only | External Only                                                                           |
+| Session Management       | No            | Yes               |
+| Server Side Code         | No            | Yes                                                                                     |
+| Middleware support       | No            | Yes |
+
+While Next.js offers somewhat better support for authentication compared to React, leveraging external solutions for authentication and authorization remains essential. These solutions must be compatible with Next.js's newest features, like the App router, for smooth integration and to fully utilize the framework's capabilities.
+
+Considering the effort involved, would you prefer a more straightforward approach? Explore how Clerk simplifies authentication challenges for both React and Next.js.
+
+## Simplifying Authentication with Clerk
+
+This part of the tutorial is brief, thanks to Clerk's streamlined solution for handling authentication in React and Next.js, app-router support included.
+
+You just need to follow these four simple steps to set it up!
+
+### Clerk with React
+
+Clerk offers a dedicated library for this purpose, and you can easily follow the steps outlined in their quickstart guide to get started.
+
+### Clerk with Next.js
+
+**Step 1: Install Clerk**
+
+```bash
+npm install @clerk/nextjs
+```
+
+**Step 2: Setup Clerk Secret Keys**
+
+```env
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=<CLERK_PUBLISHABLE_KEY>
+CLERK_SECRET_KEY=<CLERK_SECRET_KEY>
+```
+
+**Step 3: Setup the ClerkProvider on the root component**
+
+Add the `<ClerkProvider/>` on the root layout component:
+
+```tsx
+import { ClerkProvider } from '@clerk/nextjs'
+import './globals.css'
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <ClerkProvider>
+      <html lang="en">
+        <body>{children}</body>
+      </html>
+    </ClerkProvider>
+  )
+}
+```
+
+Then configure the `authMiddleware` to protect routes:
+
+```tsx
+import { authMiddleware } from '@clerk/nextjs'
+export default authMiddleware({
+  publicRoutes: ['/'],
+})
+export const config = {
+  matcher: ['/((?!.+\\.[\\w]+$|_next).*)', '/', '/(api)(.*)'],
+}
+```
+
+**Step 4: Utilize the relevant Authentication components where you see fit**
+
+Here is a full example of using `<UserButton />` which allows users to manage their account information and log out:
+
+```tsx
+import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/nextjs'
+function Header() {
+  return (
+    <header
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        padding: '10px',
+      }}
+    >
+      <h1>My App</h1>
+      <SignedIn>
+        <UserButton afterSignOutUrl="/" />
+      </SignedIn>
+      <SignedOut>
+        <SignInButton />
+      </SignedOut>
+    </header>
+  )
+}
+export default function Home() {
+  return (
+    <main>
+      <Header />
+    </main>
+  )
+}
+```
+
+We didn't encounter any difficulties implementing essential user authentication features like login and logout with Clerk. Clerk simplifies the management of authentication state and sessions, making it straightforward and efficient.
+
+This concise tutorial demonstrated Clerk's ability to effortlessly manage authentication in both React.js and Next.js, positioning it as the ideal solution for authentication requirements.
+
+If Clerk's features have caught your attention, we recommend trying it as your primary authentication solution. For additional tutorials and resources, check out our docs. Sign up for the free plan to explore everything Clerk provides.

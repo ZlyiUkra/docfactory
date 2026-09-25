@@ -1,0 +1,1157 @@
+# Clerk and Create T3 Turbo
+# джерело: https://clerk.com/blog/clerk-t3-turbo
+# отримано: 2026-09-25
+
+T3-Turbo is one of the easiest ways to get both Type safety while using Next.js and Expo. The biggest missing feature is the ability to share authentication between your applications.
+
+This guide shows you how to integrate Clerk into T3-Turbo so you can have user management for everyone.
+
+> For comprehensive Expo authentication without the T3 stack, learn more about our Expo support.
+
+If you don’t want to do this manually, use the starter repo. It is
+open source and free.
+
+## Assumptions
+
+There are a few assumptions here when working through this guide.
+
+- You understand TRPC and its functionality.
+- You are familiar with Expo.
+- You have a working knowledge of Turborepo
+
+## Setup
+
+### Create your free Clerk account
+
+You need a free Clerk account to use everything in this guide, so head to https://dashboard.clerk.com and sign up for your free account.
+
+### Create a new application in the dashboard
+
+You will need to create a new application, name it and select Discord as a social sign-in.
+
+If you change any setting here, you may need to update your Expo code to handle any requirements you change.
+
+Clerk T3 Turbo guide illustration
+
+###
+
+Clerk T3 Turbo guide illustration
+
+### Update .env to use your keys
+
+Under the dashboard, you will need your API keys and create a copy of the `.env.example` as `.env`
+
+Clerk T3 Turbo guide illustration
+
+## Adding global env to Turbo
+
+We want to have our env available in many parts of our application. You can add the following to our `turbo.json` .
+
+```json
+"globalEnv": [
+  "DATABASE_URL",
+  "NEXT_PUBLIC_CLERK_FRONTEND_API",
+  "CLERK_API_KEY",
+  "CLERK_JWT_KEY"
+]
+```
+
+###
+
+Update Next.js package.json
+
+We need to be able to access the .env when working in development, so replace the dev script with the following:
+
+```json
+"with-env": "dotenv -e ../../.env --",
+"dev": "pnpm with-env next dev",
+```
+
+##
+
+## Updating our Next.js application
+
+First, we will work on our Next.js application, whose only change is adding Clerk, so we have powerful user authentication.
+
+### Install
+
+```bash
+pnpm install @clerk/nextjs --filter @acme/nextjs
+```
+
+Now that the Clerk package has been installed in our Next.js application, we need to wrap our application in the `<ClerkProvider>`, which gives us access to the authentication state throughout our application.
+
+Open up your `_app.tsx` file and modify the code.
+
+```tsx
+import '../styles/globals.css'
+import type { AppType } from 'next/app'
+import { ClerkProvider } from '@clerk/nextjs'
+import { trpc } from '../utils/trpc'
+
+const MyApp: AppType = ({ Component, pageProps: { ...pageProps } }) => {
+  return (
+    <ClerkProvider {...pageProps}>
+      <Component {...pageProps} />
+    </ClerkProvider>
+  )
+}
+
+export default trpc.withTRPC(MyApp)
+```
+
+## Add Middleware.ts
+
+Clerk uses Next.js middleware to allow your application to keep track of authentication behind the scenes.
+
+```tsx
+import { withClerkMiddleware } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+
+export default withClerkMiddleware((_req: NextRequest) => {
+  return NextResponse.next()
+})
+
+// Stop Middleware running on static files
+export const config = {
+  matcher: [
+    /*
+     * Match request paths except for the ones starting with:
+     * - _next
+     * - static (static files)
+     * - favicon.ico (favicon file)
+     *
+     * This includes images, and requests from TRPC.
+     */
+    '/(.*?trpc.*?|(?!static|.*\\..*|_next|favicon.ico).*)',
+  ],
+}
+```
+
+You will notice the matcher at the bottom, which ensures that middleware doesn’t run on every request. This will scope it to TRPC + API routes leaving your images and static files alone.
+
+## Embedding our UI components
+
+Clerk provides highly customizable components from Sign-up to Organization management. They require zero form creation or state management, making them easy to implement. Each component will use the Next.js optional catch all route. This allows you to redirect the user inside your application using OAuth providers.
+
+### Sign in
+
+```jsx
+import { SignIn } from '@clerk/nextjs'
+
+const SignInPage = () => (
+  <main className="flex h-screen flex-col items-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
+    <div className="flex flex-col items-center justify-center gap-4">
+      <div className="container flex flex-col items-center justify-center gap-12 px-4 py-8">
+        <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">Sign In</h1>
+        <SignIn path="/sign-in" routing="path" signUpUrl="/sign-up" />
+      </div>
+    </div>
+  </main>
+)
+
+export default SignInPage
+```
+
+### Sign up
+
+```jsx
+import { SignUp } from '@clerk/nextjs'
+
+const SignUpPage = () => (
+  <main className="flex h-screen flex-col items-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
+    <div className="flex flex-col items-center justify-center gap-4">
+      <div className="container flex flex-col items-center justify-center gap-12 px-4 py-8">
+        <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">Sign In</h1>
+        <SignUp path="/sign-up" routing="path" signInUrl="/sign-in" />
+      </div>
+    </div>
+  </main>
+)
+
+export default SignUpPage
+```
+
+### Updating index.tsx
+
+The final step for Next.js is to update our `index.tsx` to use Clerk. Once we update this page, users will have a way to sign in, sign out and see data from TRPC in the future.
+
+We need to import a prebuilt component from Clerk and a hook that allow us to access the current auth state.
+
+`import { useAuth, UserButton } from "@clerk/nextjs";`
+
+### What is useAuth?
+
+The `useAuth` hook is a convenient way to access the current auth state. This hook provides the minimal information needed for data-loading, such as the user id and helper methods to manage the current active session.
+
+### What is UserButton?
+
+Initially popularized by Google, users have come to expect that little photo of themselves in the top-right of the page – it’s the access point to manage their account, switch accounts, or sign out.
+
+The `<UserButton/>` component renders this familiar user button UI. It renders a clickable user avatar - when clicked, the full UI opens as a popup. Here is an example
+
+Clerk T3 Turbo guide illustration
+
+### Updating AuthShowcase
+
+The `AuthShowCase` component in the `index.tsx` file needs to be updated to use the `useAuth()` hook, allow the user to sign in, and show our UserButton if the user is signed in.
+
+```tsx
+const AuthShowcase: React.FC = () => {
+  const { isSignedIn } = useAuth()
+```
+
+Now we can update our secret message from `{ enabled: !!session?.user }` to `{ enabled: isSignedIn }`
+
+```tsx
+const AuthShowcase: React.FC = () => {
+  const { isSignedIn } = useAuth()
+  const { data: secretMessage } = trpc.auth.getSecretMessage.useQuery(
+    undefined,
+    { enabled: isSignedIn },
+  )
+```
+
+Now the final change is to use `isSignedIn` in our return statement to conditionally show the secret message and UserButton component or show a sign-in link. We can do that by replacing `{session?.user && (` with `isSignedIn` and underneath, providing the false statement using `!isSignedIn` this is where we can place a Link to our mounted `/sign-in page`.
+
+```jsx
+{
+  isSignedIn && (
+    <>
+      <p className="text-center text-2xl text-white">
+        {secretMessage && (
+          <span>
+            {' '}
+            {secretMessage} click the user button!
+            <br />
+          </span>
+        )}
+      </p>
+      <div className="flex items-center justify-center">
+        <UserButton
+          appearance={{
+            elements: {
+              userButtonAvatarBox: {
+                width: '3rem',
+                height: '3rem',
+              },
+            },
+          }}
+        />
+      </div>
+    </>
+  )
+}
+```
+
+The `UserButton` component allows users to manage their accounts, including signing out or updating their profile and password or linking a new account through OAuth providers. I added some customization to make the UserButton larger.
+
+To learn more about customization, go to our documentation where we explain how to use the [appearance
+prop](https://clerk.com/docs/component-customization/appearance-prop.md)
+
+The final step is to add a login text that pushes the user to the mounted sign-in page.
+
+```jsx
+{
+  !isSignedIn && (
+    <p className="text-center text-2xl text-white">
+      <Link href="/sign-in">Sign In</Link>
+    </p>
+  )
+}
+```
+
+Below is the final AuthShowcase.
+
+```tsx
+const AuthShowcase: React.FC = () => {
+  const { isSignedIn } = useAuth()
+  const { data: secretMessage } = trpc.auth.getSecretMessage.useQuery(undefined, {
+    enabled: !!isSignedIn,
+  })
+
+  return (
+    <div className="flex flex-col items-center justify-center gap-4">
+      {isSignedIn && (
+        <>
+          <p className="text-center text-2xl text-white">
+            {secretMessage && (
+              <span>
+                {' '}
+                {secretMessage} click the user button!
+                <br />
+              </span>
+            )}
+          </p>
+          <div className="flex items-center justify-center">
+            <UserButton
+              appearance={{
+                elements: {
+                  userButtonAvatarBox: {
+                    width: '3rem',
+                    height: '3rem',
+                  },
+                },
+              }}
+            />
+          </div>
+        </>
+      )}
+      {!isSignedIn && (
+        <p className="text-center text-2xl text-white">
+          <Link href="/sign-in">Sign In</Link>
+        </p>
+      )}
+    </div>
+  )
+}
+```
+
+Now that the Next.js work is done, we should update our TRPC API to use Clerk instead of NextAuth, so we can test this work and get ready to update Expo.
+
+## Updating API package to use Clerk
+
+Currently, the API package has TRPC context, and middleware uses Auth.js (previously NextAuth). We can replace this with Clerk so we can use it both with Expo and Next.js.
+
+You can delete the Auth package in the packages folder completely and update the Prisma schema to remove the user
+data. None of this is needed to use Clerk makes sure you remove any references if you do this
+
+### Updating TRPC context
+
+The context is found at `packages/api/src/context.ts`. In this package, we will add the ability to detect the user being signed in and retrieve the full User object. First, we must remove the auth package import and add `getAuth` , `clerkClient`, `SignedInAuthObject` and `SignedOutAuthObject` as a type.
+
+```tsx
+import { getServerSession, type Session } from '@acme/auth'
+import { getAuth } from '@clerk/nextjs/server'
+import type { SignedInAuthObject, SignedOutAuthObject } from '@clerk/nextjs/api'
+```
+
+### What is `getAuth` ?
+
+The `getAuth()` helper retrieves the authentication state and can be used anywhere within a next.js server. It provides information needed for data-loading, such as the user id and can be used to protect your API routes.
+
+### Updating `createContext` function
+
+For the `createContext` function, we want to pass around the user object anywhere in our application. For this, we can create an async function called `getUser` that retrieves the `userId` and subsequently retrieves the user data.
+
+```tsx
+export const createContext = async (opts: CreateNextContextOptions) => {
+  return await createContextInner({ auth: getAuth(opts.req) })
+}
+```
+
+Now we can retrieve a user, and if not, we will return `null` we can pass this to our `createContextInner` in case you need it for testing without a request object.
+
+```tsx
+type AuthContextProps = {
+  auth: SignedInAuthObject | SignedOutAuthObject
+}
+/** Use this helper for:
+ *  - testing, where we dont have to Mock Next.js' req/res
+ *  - trpc's `createSSGHelpers` where we don't have req/res
+ * @see https://beta.create.t3.gg/en/usage/trpc#-servertrpccontextts
+ */
+export const createContextInner = async ({ auth }: AuthContextProps) => {
+  return {
+    auth,
+    prisma,
+  }
+}
+```
+
+## Updating TRPC middleware
+
+The TRPC middleware found in `/packages/api/src/trpc.ts` needs a small update to the `isAuthed` function. The if statement becomes `!ctx.auth.userId`, and the return becomes `auth: ctx.auth`
+
+```tsx
+import { initTRPC, TRPCError } from '@trpc/server'
+import { type Context } from './context'
+import superjson from 'superjson'
+
+const t = initTRPC.context<Context>().create({
+  transformer: superjson,
+  errorFormatter({ shape }) {
+    return shape
+  },
+})
+
+const isAuthed = t.middleware(({ next, ctx }) => {
+  if (!ctx.auth.userId) {
+    throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' })
+  }
+  return next({
+    ctx: {
+      auth: ctx.auth,
+    },
+  })
+})
+
+export const router = t.router
+export const publicProcedure = t.procedure
+export const protectedProcedure = t.procedure.use(isAuthed)
+```
+
+Our Next.js application can be tested with TRPC, including the secret message that uses protected routes. Give it a test.
+
+## Updating our Expo application
+
+The Expo application currently doesn’t support authentication; the good news is Clerk supports Expo with our `@clerk/expo` package.
+
+### Install `@clerk/expo` package and secure-store
+
+`pnpm install @clerk/clerk-expo expo-secure-store --filter @acme/expo`
+
+### Create a Token Cache
+
+We need a token cache here, which is why we installed `expo-secure-store` that allows you to store key pair values on the device. Create a new file under `/src/utils/` named `cache.ts` and paste in the following code:
+
+```tsx
+import * as SecureStore from 'expo-secure-store'
+import { Platform } from 'react-native'
+
+export async function saveToken(key: string, value: string) {
+  // console.log("Save token", key, value);
+  await SecureStore.setItemAsync(key, value)
+}
+
+export async function getToken(key: string) {
+  const value = await SecureStore.getItemAsync(key)
+  return value
+}
+
+// SecureStore is not supported on the web
+// https://github.com/expo/expo/issues/7744#issuecomment-611093485
+export const tokenCache =
+  Platform.OS !== 'web'
+    ? {
+        getToken,
+        saveToken,
+      }
+    : undefined
+```
+
+I won’t explain this code above as it’s an expo-specific package, but this allows us to store the JWT securely and not in memory.
+
+### Add `<ClerkProvider>`
+
+Similar to our Next.js application, we need to wrap up our `_app.tsx` in the `<ClerkProvider>` to allow access to auth state anywhere in the application. What is different here is we need use our newly created `TokenCache`, and we need to provide the Clerk frontend API directly to the `<ClerkProvider />`
+
+```jsx
+import { StatusBar } from 'expo-status-bar'
+import React from 'react'
+import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { TRPCProvider } from './utils/trpc'
+
+import { HomeScreen } from './screens/home'
+import { ClerkProvider } from '@clerk/clerk-expo'
+import { tokenCache } from './utils/cache'
+
+// Find this in your Dashboard.
+const clerk_frontend_api = 'FRONT_END_API'
+
+export const App = () => {
+  return (
+    <ClerkProvider frontendApi={clerk_frontend_api} tokenCache={tokenCache}>
+      <TRPCProvider>
+        <SafeAreaProvider>
+          <HomeScreen />
+          <StatusBar />
+        </SafeAreaProvider>
+      </TRPCProvider>
+    </ClerkProvider>
+  )
+}
+```
+
+### Protecting pages
+
+Our Expo package provides an easy way to gate content using `SignedIn` and `SignedOut`, which will gate the content depending on the user's current state.
+
+```jsx
+import { StatusBar } from 'expo-status-bar'
+import React from 'react'
+import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { TRPCProvider } from './utils/trpc'
+
+import { HomeScreen } from './screens/home'
+import { ClerkProvider, SignedIn, SignedOut } from '@clerk/clerk-expo'
+import { tokenCache } from './utils/cache'
+
+// Find this in your Dashboard.
+const clerk_frontend_api = 'FRONT_END_API'
+
+export const App = () => {
+  return (
+    <ClerkProvider frontendApi={clerk_frontend_api} tokenCache={tokenCache}>
+      <SignedIn>
+        <TRPCProvider>
+          <SafeAreaProvider>
+            <HomeScreen />
+            <StatusBar />
+          </SafeAreaProvider>
+        </TRPCProvider>
+      </SignedIn>
+      <SignedOut></SignedOut>
+    </ClerkProvider>
+  )
+}
+```
+
+## Implementing a way to sign in.
+
+With Clerk Expo, you must implement your pages to sign in or sign up as a user. We will use Discord, but you can use any social or standard sign-in you want. First, we need to install `expo-auth-session` to handle sessions.
+
+`pnpm install expo-auth-sessions --filter @acme/expo`
+
+### Creating a Sign In component
+
+Create a folder called `components` and then create a file called `SignInWithOAuth.tsx`. This will be our component that you can easily extend to use more providers or swap out Discord for something else.
+
+```jsx
+import { useSignIn } from '@clerk/clerk-expo'
+import React from 'react'
+import { Button, View } from 'react-native'
+import * as AuthSession from 'expo-auth-session'
+
+const SignInWithOAuth = () => {
+  const { isLoaded, signIn, setSession } = useSignIn()
+}
+```
+
+Here we are using another helper, which allows you to sign in as a user and set the session after the fact. We need to make sure Clerk is fully loaded before we attempt a sign in so we can use the `isLoaded` as part of the `useSignIn` helper.
+
+```jsx
+import { useSignIn } from '@clerk/clerk-expo'
+import React from 'react'
+import { Button, View } from 'react-native'
+
+import * as AuthSession from 'expo-auth-session'
+
+const SignInWithOAuth = () => {
+  const { isLoaded, signIn, setSession } = useSignIn()
+
+  if (!isLoaded) return null
+}
+```
+
+Now we need to create our function that will run when a user taps the button to sign in:
+
+```jsx
+import { useSignIn } from '@clerk/clerk-expo'
+import React from 'react'
+import { Button, View } from 'react-native'
+
+import * as AuthSession from 'expo-auth-session'
+
+const SignInWithOAuth = () => {
+  const { isLoaded, signIn, setSession } = useSignIn()
+
+  if (!isLoaded) return null
+
+  const handleSignInWithDiscordPress = async () => {
+    try {
+```
+
+Next we need to tell where to redirect to after a successful or unsuccessful login attempt via Discord,`expo-auth-session` provides a helper to make a redirect, which is called `makeRedirectUri`, and set it to `/oauth-native-callback`
+
+```jsx
+import { useSignIn } from '@clerk/clerk-expo'
+import React from 'react'
+import { Button, View } from 'react-native'
+
+import * as AuthSession from 'expo-auth-session'
+
+const SignInWithOAuth = () => {
+  const { isLoaded, signIn, setSession } = useSignIn()
+
+  if (!isLoaded) return null
+
+  const handleSignInWithDiscordPress = async () => {
+    try {
+      const redirectUrl = AuthSession.makeRedirectUri({
+        path: '/oauth-native-callback',
+      })
+```
+
+At this point, we can start our sign in attempt using `signIn.create` passing in our strategy, which is `oauth_discord`, and our newly created `redirectUrl`
+
+```jsx
+import { useSignIn } from '@clerk/clerk-expo'
+import React from 'react'
+import { Button, View } from 'react-native'
+
+import * as AuthSession from 'expo-auth-session'
+
+const SignInWithOAuth = () => {
+  const { isLoaded, signIn, setSession } = useSignIn()
+
+  if (!isLoaded) return null
+
+  const handleSignInWithDiscordPress = async () => {
+    try {
+      const redirectUrl = AuthSession.makeRedirectUri({
+        path: '/oauth-native-callback',
+      })
+
+      await signIn.create({
+        strategy: 'oauth_discord',
+        redirectUrl,
+      })
+```
+
+The `SignIn` object holds all the state of the current sign in and provides helper methods to navigate and complete the sign in process. You can read about this in our documentation, as you may want to use the different sign in methods in the future.
+
+The next part of the sign in is to retrieve the external redirect URL and use AuthSession. This will give us the ability to know if the OAuth was successful or not.
+
+```jsx
+import { useSignIn } from '@clerk/clerk-expo'
+import React from 'react'
+import { Button, View } from 'react-native'
+
+import * as AuthSession from 'expo-auth-session'
+
+const SignInWithOAuth = () => {
+  const { isLoaded, signIn, setSession } = useSignIn()
+
+  if (!isLoaded) return null
+
+  const handleSignInWithDiscordPress = async () => {
+    try {
+      const redirectUrl = AuthSession.makeRedirectUri({
+        path: '/oauth-native-callback',
+      })
+
+      await signIn.create({
+        strategy: 'oauth_discord',
+        redirectUrl,
+      })
+
+      const {
+        firstFactorVerification: { externalVerificationRedirectURL },
+      } = signIn
+
+      const result = await AuthSession.startAsync({
+        authUrl: externalVerificationRedirectURL?.toString() || '',
+        returnUrl: redirectUrl,
+      })
+
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      const { type, params } = result || {}
+      if (type !== 'success') {
+        throw 'Something went wrong during the OAuth flow. Try again.'
+      }
+```
+
+You may notice that we have an eslint to disable the checks on the next line. There is an assumption in this example that it will always be successful, but you can use the following AuthSession documentation to implement anything you may want to handle.
+
+We now need to retrieve `rotatingTokenNonce` and reload our `signIn` object. This will allow us to get the `sessionId` and sign the user in.
+
+```jsx
+import { useSignIn } from '@clerk/clerk-expo'
+import React from 'react'
+import { Button, View } from 'react-native'
+
+import * as AuthSession from 'expo-auth-session'
+
+const SignInWithOAuth = () => {
+  const { isLoaded, signIn, setSession } = useSignIn()
+
+  if (!isLoaded) return null
+
+  const handleSignInWithDiscordPress = async () => {
+    try {
+      const redirectUrl = AuthSession.makeRedirectUri({
+        path: '/oauth-native-callback',
+      })
+
+      await signIn.create({
+        strategy: 'oauth_discord',
+        redirectUrl,
+      })
+
+      const {
+        firstFactorVerification: { externalVerificationRedirectURL },
+      } = signIn
+
+      const result = await AuthSession.startAsync({
+        authUrl: externalVerificationRedirectURL.toString(),
+        returnUrl: redirectUrl,
+      })
+
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      const { type, params } = result || {}
+      console.log
+      if (type !== 'success') {
+        throw 'Something went wrong during the OAuth flow. Try again.'
+      }
+
+      // Get the rotatingTokenNonce from the redirect URL parameters
+      const { rotating_token_nonce: rotatingTokenNonce } = params
+
+      await signIn.reload({ rotatingTokenNonce })
+```
+
+Finally we can retrieve the `createdSessionId` from the `signIn` object and set that to our current session. This will let us know that the user is signed in with a valid session.
+
+```jsx
+import { useSignIn } from '@clerk/clerk-expo'
+import React from 'react'
+import { Button, View } from 'react-native'
+
+import * as AuthSession from 'expo-auth-session'
+
+const SignInWithOAuth = () => {
+  const { isLoaded, signIn, setSession } = useSignIn()
+
+  if (!isLoaded) return null
+
+  const handleSignInWithDiscordPress = async () => {
+    try {
+      const redirectUrl = AuthSession.makeRedirectUri({
+        path: '/oauth-native-callback',
+      })
+
+      await signIn.create({
+        strategy: 'oauth_discord',
+        redirectUrl,
+      })
+
+      const {
+        firstFactorVerification: { externalVerificationRedirectURL },
+      } = signIn
+
+      const result = await AuthSession.startAsync({
+        authUrl: externalVerificationRedirectURL?.toString() || '',
+        returnUrl: redirectUrl,
+      })
+
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      const { type, params } = result || {}
+      if (type !== 'success') {
+        throw 'Something went wrong during the OAuth flow. Try again.'
+      }
+
+      // Get the rotatingTokenNonce from the redirect URL parameters
+      const { rotating_token_nonce: rotatingTokenNonce } = params
+
+      await signIn.reload({ rotatingTokenNonce })
+
+      const { createdSessionId } = signIn
+
+      if (!createdSessionId) {
+        throw 'Something went wrong during the Sign in OAuth flow. Please ensure that all sign in requirements are met.'
+      }
+
+      await setSession(createdSessionId)
+      return
+    }
+```
+
+Finally we can add a catch for anything that might go wrong that we aren’t handling and return the error.
+
+```jsx
+import { useSignIn } from '@clerk/clerk-expo'
+import React from 'react'
+import { Button, View } from 'react-native'
+
+import * as AuthSession from 'expo-auth-session'
+
+const SignInWithOAuth = () => {
+  const { isLoaded, signIn, setSession } = useSignIn()
+
+  if (!isLoaded) return null
+
+  const handleSignInWithDiscordPress = async () => {
+    try {
+      const redirectUrl = AuthSession.makeRedirectUri({
+        path: '/oauth-native-callback',
+      })
+
+      await signIn.create({
+        strategy: 'oauth_discord',
+        redirectUrl,
+      })
+
+      const {
+        firstFactorVerification: { externalVerificationRedirectURL },
+      } = signIn
+
+      const result = await AuthSession.startAsync({
+        authUrl: externalVerificationRedirectURL?.toString() || '',
+        returnUrl: redirectUrl,
+      })
+
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      const { type, params } = result || {}
+      if (type !== 'success') {
+        throw 'Something went wrong during the OAuth flow. Try again.'
+      }
+
+      // Get the rotatingTokenNonce from the redirect URL parameters
+      const { rotating_token_nonce: rotatingTokenNonce } = params
+
+      await signIn.reload({ rotatingTokenNonce })
+
+      const { createdSessionId } = signIn
+
+      if (!createdSessionId) {
+        throw 'Something went wrong during the Sign in OAuth flow. Please ensure that all sign in requirements are met.'
+      }
+
+      await setSession(createdSessionId)
+      return
+    } catch (err) {
+      console.log(JSON.stringify(err, null, 2))
+      console.log('error signing in', err)
+    }
+  }
+```
+
+Our sign in method is now complete, so we can create a simple UI that, on touch, will attempt a sign in.
+
+```jsx
+return (
+  <View className="rounded-lg border-2 border-gray-500 p-4">
+    <Button title="Sign in with Discord" onPress={handleSignInWithDiscordPress} />
+  </View>
+)
+```
+
+Our Sign In component is now complete below is the full code. We will use this for a Sign Up component for anyone who doesn’t have an account yet for our application.
+
+```jsx
+import { useSignIn } from '@clerk/clerk-expo'
+import React from 'react'
+import { Button, View } from 'react-native'
+
+import * as AuthSession from 'expo-auth-session'
+
+const SignInWithOAuth = () => {
+  const { isLoaded, signIn, setSession } = useSignIn()
+
+  if (!isLoaded) return null
+
+  const handleSignInWithDiscordPress = async () => {
+    try {
+      const redirectUrl = AuthSession.makeRedirectUri({
+        path: '/oauth-native-callback',
+      })
+
+      await signIn.create({
+        strategy: 'oauth_discord',
+        redirectUrl,
+      })
+
+      const {
+        firstFactorVerification: { externalVerificationRedirectURL },
+      } = signIn
+
+      const result = await AuthSession.startAsync({
+        authUrl: externalVerificationRedirectURL.toString(),
+        returnUrl: redirectUrl,
+      })
+
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      const { type, params } = result || {}
+      console.log
+      if (type !== 'success') {
+        throw 'Something went wrong during the OAuth flow. Try again.'
+      }
+
+      // Get the rotatingTokenNonce from the redirect URL parameters
+      const { rotating_token_nonce: rotatingTokenNonce } = params
+
+      await signIn.reload({ rotatingTokenNonce })
+
+      const { createdSessionId } = signIn
+
+      if (!createdSessionId) {
+        throw 'Something went wrong during the Sign in OAuth flow. Please ensure that all sign in requirements are met.'
+      }
+
+      await setSession(createdSessionId)
+
+      return
+    } catch (err) {
+      console.log(JSON.stringify(err, null, 2))
+      console.log('error signing in', err)
+    }
+  }
+
+  return (
+    <View className="rounded-lg border-2 border-gray-500 p-4">
+      <Button title="Sign in with Discord" onPress={handleSignInWithDiscordPress} />
+    </View>
+  )
+}
+
+export default SignInWithOAuth
+```
+
+## Create a Sign Up component
+
+The good news is that the sign in component and the sign up component is very similar and 99% of the code we created can be reused and swapped for `useSignUp` hook. To save you from reading more content, here is the code.
+
+```tsx
+import { useSignUp } from '@clerk/clerk-expo'
+import React from 'react'
+import { Button, View } from 'react-native'
+
+import * as AuthSession from 'expo-auth-session'
+
+const SignUpWithOAuth = () => {
+  const { isLoaded, signUp, setSession } = useSignUp()
+
+  if (!isLoaded) return null
+
+  const handleSignUpWithDiscordPress = async () => {
+    try {
+      const redirectUrl = AuthSession.makeRedirectUri({
+        path: '/oauth-native-callback',
+      })
+
+      await signUp.create({
+        strategy: 'oauth_discord',
+        redirectUrl,
+      })
+
+      const {
+        verifications: {
+          externalAccount: { externalVerificationRedirectURL },
+        },
+      } = signUp
+
+      const result = await AuthSession.startAsync({
+        authUrl: externalVerificationRedirectURL!.toString(),
+        returnUrl: redirectUrl,
+      })
+      console.log(result)
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      const { type, params } = result || {}
+      console.log
+      if (type !== 'success') {
+        throw 'Something went wrong during the OAuth flow. Try again.'
+      }
+
+      // Get the rotatingTokenNonce from the redirect URL parameters
+      const { rotating_token_nonce: rotatingTokenNonce } = params
+
+      await signUp.reload({ rotatingTokenNonce })
+      const { createdSessionId } = signUp
+
+      if (!createdSessionId) {
+        throw 'Something went wrong during the Sign up OAuth flow. Please ensure that all sign in requirements are met.'
+      }
+
+      await setSession(createdSessionId)
+
+      return
+    } catch (err) {
+      console.log(JSON.stringify(err, null, 2))
+      console.log('error signing up', err)
+    }
+  }
+
+  return (
+    <View className="my-8 rounded-lg border-2 border-gray-500 p-4">
+      <Button title="Sign Up with Discord" onPress={handleSignUpWithDiscordPress} />
+    </View>
+  )
+}
+
+export default SignUpWithOAuth
+```
+
+### Creating a Sign in, Sign Up screen
+
+We now need to use our components in our application. Under the screens folder, create a new file called `signInSignUp.tsx` and paste the following code. We are displaying the components we created so the code below is generic React Native code.
+
+```jsx
+import React from 'react'
+
+import { View, SafeAreaView } from 'react-native'
+
+import SignInWithOAuth from '../components/SignInWithOAuth'
+import SignUpWithOAuth from '../components/SignUpWithOAuth'
+
+export const SignInSignUpScreen = () => {
+  return (
+    <SafeAreaView className="bg-[#2e026d] bg-gradient-to-b from-[#2e026d] to-[#15162c]">
+      <View className="h-full w-full p-4">
+        <SignUpWithOAuth />
+        <SignInWithOAuth />
+      </View>
+    </SafeAreaView>
+  )
+}
+```
+
+### Updating \_app.tsx
+
+We can now update our `SignedOut` control component to use the `SignInSignUpScreen` so if a user doesn’t have a valid session and is not signed in, they will be able to sign in.
+
+```jsx
+import { StatusBar } from 'expo-status-bar'
+import React from 'react'
+import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { TRPCProvider } from './utils/trpc'
+
+import { HomeScreen } from './screens/home'
+import { SignInSignUpScreen } from './screens/signInSignUp'
+import { ClerkProvider, SignedIn, SignedOut } from '@clerk/clerk-expo'
+import { tokenCache } from './utils/cache'
+
+// Find this in your Dashboard.
+const clerk_frontend_api = 'YOUR_API_KEY'
+
+export const App = () => {
+  return (
+    <ClerkProvider frontendApi={clerk_frontend_api} tokenCache={tokenCache}>
+      <SignedIn>
+        <TRPCProvider>
+          <SafeAreaProvider>
+            <HomeScreen />
+            <StatusBar />
+          </SafeAreaProvider>
+        </TRPCProvider>
+      </SignedIn>
+      <SignedOut>
+        <SignInSignUpScreen />
+      </SignedOut>
+    </ClerkProvider>
+  )
+}
+```
+
+### Updating TRPC client
+
+The TRPC client found under `utils/trpc` needs a very small update. As part of TRPC, you can provide headers as part of `httpBatchLink` . We can get the JWT token by using `getToken`, which is part of the `useAuth` hook.
+
+First, add the import `import { useAuth } from "@clerk/clerk-expo";` , then, inside our TRPCProvider, add the `getToken` code before the client.
+
+```tsx
+export const TRPCProvider: React.FC<{
+  children: React.ReactNode
+}> = ({ children }) => {
+  const { getToken } = useAuth()
+  const [queryClient] = React.useState(() => new QueryClient())
+......
+
+```
+
+Then finally, add the Authorization header to our `httpBatchLink`
+
+```jsx
+async headers() {
+  const authToken = await getToken()
+  return {
+    Authorization: authToken,
+  }
+},
+```
+
+This will allow you to send a valid token with your requests to the TRPC backend. Below is the full code:
+
+```tsx
+import { createTRPCReact } from '@trpc/react-query'
+import type { AppRouter } from '@acme/api'
+/**
+ * Extend this function when going to production by
+ * setting the baseUrl to your production API URL.
+ */
+import Constants from 'expo-constants'
+/**
+ * A wrapper for your app that provides the TRPC context.
+ * Use only in _app.tsx
+ */
+import React from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { httpBatchLink } from '@trpc/client'
+import { transformer } from '@acme/api/transformer'
+import { useAuth } from '@clerk/clerk-expo'
+
+/**
+ * A set of typesafe hooks for consuming your API.
+ */
+export const trpc = createTRPCReact<AppRouter>()
+
+const getBaseUrl = () => {
+  /**
+   * Gets the IP address of your host-machine. If it cannot automatically find it,
+   * you'll have to manually set it. NOTE: Port 3000 should work for most but confirm
+   * you don't have anything else running on it, or you'd have to change it.
+   */
+  const localhost = Constants.manifest?.debuggerHost?.split(':')[0]
+  if (!localhost) throw new Error('failed to get localhost, configure it manually')
+  return `http://${localhost}:3000`
+}
+
+export const TRPCProvider: React.FC<{
+  children: React.ReactNode
+}> = ({ children }) => {
+  const { getToken } = useAuth()
+  const [queryClient] = React.useState(() => new QueryClient())
+  const [trpcClient] = React.useState(() =>
+    trpc.createClient({
+      transformer,
+      links: [
+        httpBatchLink({
+          async headers() {
+            const authToken = await getToken()
+            return {
+              Authorization: authToken,
+            }
+          },
+          url: `${getBaseUrl()}/api/trpc`,
+        }),
+      ],
+    }),
+  )
+
+  return (
+    <trpc.Provider client={trpcClient} queryClient={queryClient}>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    </trpc.Provider>
+  )
+}
+```
+
+Go ahead and test everything. At this point, you have a working application that uses TRPC
+
+## Final Updates to our TRPC API
+
+The final update here is to update the `post` router to use a `protectedProcedure` for creation so that when a user uses the Expo application, they will need to be logged in to create a new post. Open the `post.ts` under `/packages/api/src/router` and update the `create` to use `protectedProcedure` .
+
+```jsx
+import { router, publicProcedure, protectedProcedure } from '../trpc'
+import { z } from 'zod'
+
+export const postRouter = router({
+  all: publicProcedure.query(({ ctx }) => {
+    return ctx.prisma.post.findMany()
+  }),
+  byId: publicProcedure.input(z.string()).query(({ ctx, input }) => {
+    return ctx.prisma.post.findFirst({ where: { id: input } })
+  }),
+  create: protectedProcedure
+    .input(z.object({ title: z.string(), content: z.string() }))
+    .mutation(({ ctx, input }) => {
+      return ctx.prisma.post.create({ data: input })
+    }),
+})
+```
+
+## Next Steps
+
+Now you have a working T3 Turbo application that has authentication both in Next.js and Expo with protected routes. Here are some next steps you might want to implement:
+
+- Additional login methods for Expo ( more social logins or email and password screen)
+- Use one of our integrations to use a database, such as Neon, Supabase, or Firebase.
+- Join our Discord

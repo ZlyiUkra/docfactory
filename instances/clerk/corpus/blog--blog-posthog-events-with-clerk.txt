@@ -1,0 +1,243 @@
+# How to enrich PostHog events with Clerk user data
+# джерело: https://clerk.com/blog/posthog-events-with-clerk
+# отримано: 2026-09-25
+
+Data-driven decisions are critical for teams building SaaS products due to their ability to optimize processes, improve customer satisfaction, and drive growth. Attributing those data points to individual users can significantly enhance this process by providing more targeted insights about user groups and behaviors.
+
+In this article, you’ll learn how events gathered by PostHog can be directly associated to individual users in applications using Clerk.
+
+> This is the third article in the Kozi series, which walks you through building a project/knowledge management SaaS from the ground up using Clerk, Neon, Next.js, and more.
+>
+> Learn more
+
+## What is PostHog?
+
+PostHog is an open-source product analytics platform that allows developers to gain a deeper understanding of how their product is used with tools like event tracking, session replay, feature flags, and more. Using one of the PostHog SDKs, web applications can be configured to automatically collect data and transmit it to the platform. This data can fuel dashboards to help you make data-driven decisions on how to optimize their product.
+
+When configured properly, the event data in PostHog can be attributed directly to your  users and identify which features they're utilizing.
+
+The PostHog dashboard with a list of events from a user
+
+## Enriching event data with user information
+
+The PostHog SDK provides the `identify` function as a means to attribute a session to a specific user. This function also supports including arbitrary data about the current user to further enrich the data sent back to its platform. Furthermore, PostHog will proactively enrich past events once a session has been associated with a user so that you have the most accurate view of how your product is being used.
+
+Clerk SDKs provide helper functions to easily gather information about the user currently using your product. The following snippet demonstrates how the current Clerk user data can be used with `identify` to enrich the event data sent to PostHog within a Next.js application:
+
+```tsx
+// The `useUser` hook returns information about the current user.
+const { user } = useUser()
+
+// That information can be used with the `posthog.identify` function to associate the data with the user.
+posthog.identify(userId, {
+  email: user.primaryEmailAddress?.emailAddress,
+  username: user.username,
+})
+```
+
+Read on to see how this code is implemented.
+
+> If you want to learn more about integrating PostHog with Clerk, let us know in our feedback portal.
+
+## How to configure PostHog to use Clerk user data in Next.js
+
+Let’s explore how to implement this in a real-world scenario by configuring this integration into Kozi. Kozi is an open-source project/knowledge management web application built with Next.js, Neon, and Clerk.
+
+If you want to follow along on your computer, clone the `article-2ph-start` branch of the Kozi repository and run the follow the instructions in the `README` to configure the project before proceeding.
+
+### Configure the **`PostHogPageView.tsx`** component
+
+The following client-side component has two `useEffects` that perform the following operations:
+
+- The first will use the `posthog.capture` function with the `$pageview` event passing in the current URL.
+- The second will run the `posthog.identify` function if the user is not already identified, passing in information from the `useAuth` and `useUser` Clerk hooks.
+  - This function will also clear the user information from PostHog in the current session if user is no longer logged in using the `isSignedIn` boolean from the `useAuth` Clerk hook.
+
+filename: src/app/PostHogPageView\.tsx
+```tsx
+'use client'
+
+import { usePathname, useSearchParams } from 'next/navigation'
+import { useEffect } from 'react'
+import { usePostHog } from 'posthog-js/react'
+
+// 👉 Import the necessary Clerk hooks
+import { useAuth, useUser } from '@clerk/nextjs'
+
+export default function PostHogPageView(): null {
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const posthog = usePostHog()
+
+  // 👉 Add the hooks into the component
+  const { isSignedIn, userId } = useAuth()
+  const { user } = useUser()
+
+  // Track pageviews
+  useEffect(() => {
+    if (pathname && posthog) {
+      let url = window.origin + pathname
+      if (searchParams.toString()) {
+        url = url + `?${searchParams.toString()}`
+      }
+      posthog.capture('$pageview', {
+        $current_url: url,
+      })
+    }
+  }, [pathname, searchParams, posthog])
+
+  useEffect(() => {
+    // 👉 Check the sign in status and user info,
+    //    and identify the user if they aren't already
+    if (isSignedIn && userId && user && !posthog._isIdentified()) {
+      // 👉 Identify the user
+      posthog.identify(userId, {
+        email: user.primaryEmailAddress?.emailAddress,
+        username: user.username,
+      })
+    }
+
+    // 👉 Reset the user if they sign out
+    if (!isSignedIn && posthog._isIdentified()) {
+      posthog.reset()
+    }
+  }, [posthog, user])
+
+  return null
+}
+```
+
+This component is then added to the root layout file within the `<PostHogProvider>` tags:
+
+filename: src/app/layout.tsx
+```tsx
+import type { Metadata } from 'next'
+import { Geist, Geist_Mono } from 'next/font/google'
+import './globals.css'
+import { ClerkProvider } from '@clerk/nextjs'
+import { PostHogProvider } from './providers'
+import PostHogPageView from './PostHogPageView'
+
+const geistSans = Geist({
+  variable: '--font-geist-sans',
+  subsets: ['latin'],
+})
+
+const geistMono = Geist_Mono({
+  variable: '--font-geist-mono',
+  subsets: ['latin'],
+})
+
+export const metadata: Metadata = {
+  title: 'Create Next App',
+  description: 'Generated by create next app',
+}
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode
+}>) {
+  return (
+    <ClerkProvider>
+      <html lang="en">
+        <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+          <PostHogProvider>
+            {children}
+            <PostHogPageView />
+          </PostHogProvider>
+        </body>
+      </html>
+    </ClerkProvider>
+  )
+}
+```
+
+### Configure user interaction event tracking
+
+While the above component will automatically capture pageviews using a default event name, PostHog can also capture custom events associated to your users:
+
+```sql
+posthog.capture('task_created');
+```
+
+> The `posthog.capture` function only works in the browser, so make sure to use it only in client components, otherwise the function will silently fail.
+
+The `CreateTaskInput.tsx` is what renders the input at the bottom of a task list:
+
+The CreateTaskInput component
+
+To instrument this component, you only need to add the `usePostHog` hook and insert a line in the function that hands the form submission:
+
+filename: src/app/app/components/CreateTaskInput.tsx
+```tsx
+'use client'
+
+import { useState } from 'react'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { createTask } from '@/app/app/actions'
+import { PlusIcon } from 'lucide-react'
+import { usePostHog } from 'posthog-js/react'
+
+interface CreateTaskInputProps {
+  projectId?: string
+}
+
+export default function CreateTaskInput({ projectId }: CreateTaskInputProps) {
+  const [title, setTitle] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const posthog = usePostHog()
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!title.trim()) return
+
+    posthog.capture('create_task')
+
+    try {
+      setIsSubmitting(true)
+      const formData = new FormData()
+      formData.append('title', title)
+      if (projectId) {
+        formData.append('project_id', projectId)
+      }
+      await createTask(formData)
+      setTitle('')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="w-full rounded-lg bg-white p-2 shadow dark:bg-gray-800">
+      <form onSubmit={handleSubmit} className="flex w-full items-center gap-2">
+        <Input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Add a task..."
+          className="w-full border-0 bg-transparent text-gray-900 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 dark:text-gray-100"
+        />
+        <Button
+          type="submit"
+          size="icon"
+          disabled={isSubmitting || !title.trim()}
+          className="rounded"
+        >
+          <PlusIcon className="h-4 w-4" />
+        </Button>
+      </form>
+    </div>
+  )
+}
+```
+
+From that point forward, any time a user creates a task, PostHog will have an event logged that can be used for product analytics:
+
+The PostHog dashboard with a list of events showing the create\_task event
+
+## Conclusion
+
+Using PostHog with Clerk can unlock powerful user engagement insights that drive your product's growth. Tracking standard events like page views and custom events tailored to your application, you can identify usage trends that might otherwise go unnoticed, allowing you to confidently iterate on your product.

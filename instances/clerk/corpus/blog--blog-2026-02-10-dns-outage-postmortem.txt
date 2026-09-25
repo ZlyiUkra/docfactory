@@ -1,0 +1,43 @@
+# Postmortem: DNS Provider Outage (February 10, 2026)
+# джерело: https://clerk.com/blog/2026-02-10-dns-outage-postmortem
+# отримано: 2026-09-25
+
+On February 10, 2026 at 17:06 UTC, Clerk experienced an outage caused by a failure at our DNS provider. During this period, authoritative DNS resolution for Clerk's APIs was unavailable, which prevented some traffic from reaching our infrastructure despite our underlying services remaining healthy.
+
+Although authoritative DNS resolution was unavailable for 2 hours and 32 minutes, successful request volume to our APIs remained above 95% of the expected volume during this period. This was due to a combination of DNS caching, fallback DNS servers, and the emergency guidance issued to customers.
+
+## Impact
+
+- For applications and end users that were unable to resolve our APIs, the Clerk service faced a complete outage.
+- For Clerk customers that were unable to resolve our clerk.com, our Dashboard was inaccessible.
+- For mail clients that were unable to resolve DKIM and SPF records, authentication emails were undelivered or went to spam.
+
+## Planned remediations
+
+### Failover preparation
+
+Unfortunately, Clerk did not have a failover prepared for the event of a complete outage at our DNS provider. Although DNS provider redundancy had been planned for 2026, it sits behind other infrastructure improvements that we believed were higher risk to the service. At present, we are working to add redundancy to delivery of authentication emails.
+
+We determined DNS to be low risk based on the inherent resilience of DNS's design (e.g. multiple nameservers and long TTLs), and based on our provider's stated approach to resiliency. They operate 4 nameservers across 2 ASNs, with different architectures on each ASN. They hadn't faced a meaningful incident in Clerk's lifetime until Tuesday.
+
+Although we are glad our assessment was accurate about the DNS system design (which we believe was the primary reason this outage impacted less than 5% of our expected traffic), we were disappointed that our provider's strategy for resilience failed. We were aware that their architecture could readily lead to 2/4 nameservers failing, but it was unexpected that all 4 would fail at once.
+
+Immediately following the incident, we began preparing a truly independent DNS provider for failover, which we expect to be complete within a few weeks.
+
+### Decoupling DNS provider and domain registrar
+
+Our DNS provider also offers domain registrar services, and Clerk has registered several domains with them over the years. During the incident, we discovered that one of our critical domains uses this registrar, and that meant that we could not make emergency adjustments to its nameservers.
+
+Going forward, we will ensure that our DNS provider is completely decoupled from our registrar, so that our ability to perform emergency nameserver changes will be unimpacted by an outage at our DNS provider.
+
+### Improved alerting
+
+We were not alerted to this incident promptly because our alerting tools do not explicitly check the uptime of our authoritative nameservers. We believe our uptime checks during the incident were failing to find an issue because they benefited from the long TTLs of DNS records.
+
+For the future, we are improving our alerts to explicitly check the health of our authoritative nameservers. This will allow us to initiate failover processes more quickly.
+
+## Closing
+
+We are deeply sorry for the disruption this incident caused to you and your users. We understand that you depend on Clerk to be available, and we failed to meet that expectation. While we are fortunate the impact was limited in this case, we know that a partial outage erodes the trust you place in us.
+
+We are committed to earning back that trust through action, not words. The remediations outlined above are already underway, and we will continue to invest in making Clerk's infrastructure more resilient. Thank you for your patience and continued partnership.

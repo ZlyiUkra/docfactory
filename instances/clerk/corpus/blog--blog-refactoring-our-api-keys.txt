@@ -1,0 +1,60 @@
+# Refactoring our frontend API key: Familiar DX is the best DX
+# джерело: https://clerk.com/blog/refactoring-our-api-keys
+# отримано: 2026-09-25
+
+Like most other developer tools, Clerk's SDKs are configured with two "keys," one for the backend and one for the frontend.
+
+And we share the same core requirements:
+
+- The backend key must have significantly random so it cannot be guessed
+- The frontend key is public, so it only needs to be a unique identifier
+
+Although there's no security benefit in doing so, many tools have their frontend key mirror the format and length of their backend key. Take Stripe, for example:
+
+![Although there's no security benefit in doing so, many tools have their frontend key mirror the format and length of their backend key. Take Stripe, for example: screenshot]\(./995856b7b27f199531ec648ab53d2866eaeae372-814x332.png '(Don't worry, the secret key has been rolled.)
+
+But as an authentication company, Clerk has an extra requirement for our frontend key, and it meant that mirroring our secret key would cause _performance_ issues.
+
+Wait, what? How could a key cause performance issues?
+
+The purpose of a frontend key is to be a unique identifier when interacting with a frontend-facing API. Here's an example of how Stripe's SDK uses the publishable key:
+
+The purpose of a frontend key is to be a unique identifier when interacting with a frontend-facing API. Here's an example of how Stripe's SDK uses the publishable key: screenshot
+
+Notice how this request is being sent to a **stripe.com** domain? Stripe SDKs always make requests to **stripe.com**, even if you're embedding their elements into your own website.
+
+But since Clerk runs an authentication API and since we're responsible for maintaining sessions, we can't securely do the same. We need to set HttpOnly cookies from a first-party context, which means our API needs to be accessible through our customers' domains. _(Developers configure this by setting a CNAME in their DNS records.)_
+
+When we launched, our frontend key was simply the hostname where our frontend API is hosted. Developers configured it like this in their React apps:
+
+```jsx
+<ClerkProvider frontendApi="clerk.example.com">
+```
+
+By passing the API hostname directly, we avoided making an extra, waterfalled API request to exchange a traditional random key with the hostname. This led to faster overall loading speeds.
+
+But we hit an unexpected problem with this strategy: it _really_ confused developers. It was a common complaint in friction logs, and when we watched developers integrate Clerk we could see the confusion wash over their face.
+
+A hostname as a frontend key is completely unfamiliar, and no matter what we tried with design and naming, we couldn't get over the hurdle.
+
+So this week, we finally threw in the towel. Our new frontend API keys look just like Stripes:
+
+So this week, we finally threw in the towel. Our new frontend API keys look just like Stripes: screenshot
+
+But we refuse to exchange developer experience for performance, so there's a not-so-secret subtlety to our new publishable key. Take a closer look:
+
+`pk_test_Y2xlcmsuZXhhbXBsZS5jb20k`
+
+Now, base64-decode the part after `pk_test_`:
+
+`clerk.example.com$`
+
+Indeed, we just base64-encoded the old value and started calling it a publishable key. We added a $ as a simple stop character so we can detect when keys are malformed.
+
+As a final step, we changed the prop name for React:
+
+```jsx
+<ClerkProvider publishableKey="pk_test_Y2xlcmsuZXhhbXBsZS5jb20k">
+```
+
+Quick, dirty, and a little silly – but it works! We haven't sacrificed performance and our new publishable key feels much more familiar. Developers have stopped raising their eyebrows and breeze through initial setup.

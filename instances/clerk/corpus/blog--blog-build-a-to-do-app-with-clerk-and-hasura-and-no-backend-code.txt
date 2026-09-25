@@ -1,0 +1,555 @@
+# Build a to-do app with Clerk and Hasura— and no backend code
+# джерело: https://clerk.com/blog/build-a-to-do-app-with-clerk-and-hasura-and-no-backend-code
+# отримано: 2026-09-25
+
+This guide is outdated. For a more up-to-date tutorial, check out [Build a Cookie Clicker App with Clerk and
+Hasura](https://clerk.com/tutorials/build-a-cookie-clicker-app-with-clerk-and-hasura).
+
+## Introduction
+
+While traditional applications require both frontend and backend developers, new technologies like Clerk and Hasura are making it possible to build robust backends without writing backend code.
+
+In this tutorial, we'll leverage these new technologies to build a simple to-do list application without writing any backend code. The primary tools we'll use are:
+
+- Hasura Cloud, for creating a frontend-accessible GraphQL API
+- Heroku Postgres, for storing to-do list data
+- Clerk, for authentication
+- Next.js, for frontend development
+- Tailwind CSS, for styling
+
+Before we get started, you can see the final result here:
+
+- Demo of the to-do app
+- Completed codebase
+
+Let's begin!
+
+### Create a Hasura project
+
+Start by signing up for Hasura Cloud.
+
+If you already have a Hasura Cloud account, you will need to manually create a New Project. If this is your first time, a new project will automatically be created for you.
+
+After your project initializes, you will see something like this (with a different name), go ahead and click the cog wheel to go to the project settings:
+
+Build A To Do App With Clerk And Hasura And No Backend Code guide illustration
+
+From here, you will need our project's GraphQL API URL. Please copy it, you will need it in a second:
+
+Build A To Do App With Clerk And Hasura And No Backend Code guide illustration
+
+### Deploy the starter project
+
+We prepared a starter project for this tutorial, the easiest way to get started is with the following "Deploy" button. The button will prompt you through cloning the repo, initializing Clerk, and deploying the app live on Vercel. The starter project uses Next.js, Tailwind CSS and Clerk. It's already setup with some styles using Next.js and Tailwind CSS but you don't have to be proficient in either of these to follow the tutorial.
+
+This button will first prompt you to create a Vercel account if you do not have one. When signing up, Vercel may ask you to grant access to all of your repositories or just selected ones - feel free to choose either option.
+
+Build A To Do App With Clerk And Hasura And No Backend Code guide illustration
+
+The Next step will prompt you to integrate Clerk into your project, click **Install.**
+
+If you do not have a Clerk account already, you will be asked to create one now.
+
+Next, you will be asked to select an application name and a brand color. Then, click **"Create application"**:
+
+Build A To Do App With Clerk And Hasura And No Backend Code guide illustration
+
+After the window closes, click Continue and you will be prompted to pick a Git provider. In this tutorial, we will use **GitHub:**
+
+Build A To Do App With Clerk And Hasura And No Backend Code guide illustration
+
+Build A To Do App With Clerk And Hasura And No Backend Code guide illustration
+
+This is where you will use Hasura Cloud's **GraphQL API** URL you copied earlier. Add it below and click **Deploy**.
+
+Build A To Do App With Clerk And Hasura And No Backend Code guide illustration
+
+While you wait for Vercel to deploy our project, you can move to GitHub, where Vercel has created a new repository on your behalf. Go ahead and clone it locally.
+
+Build A To Do App With Clerk And Hasura And No Backend Code guide illustration
+
+To clone, go to your desired folder, open a terminal and paste:
+
+```bat
+git clone <repository-url>
+```
+
+Then, go inside the project folder and run:
+
+```bat
+yarn
+// or
+npm install
+```
+
+This will install the necessary dependencies.
+
+After this, go ahead and launch your project:
+
+```bat
+yarn dev
+// or
+npm run dev
+```
+
+If you haven’t previously used Vercel on your computer, you will be asked to sign in when you launch the project.
+
+You will be prompted to set up link this local project with the Vercel project. Respond \***\*Y\*\*** to each prompt.
+
+Build A To Do App With Clerk And Hasura And No Backend Code guide illustration
+
+Then, you will see your project running on http://localhost:3000.
+
+### File structure
+
+```bat
+├── components
+│   ├── AddTodo.js (Form to Add todo)
+│   ├── Header.js (Header of our app with UserButton)
+│   ├── Layout.js
+│   ├── SingleTodo.js (One todo with toggle/delete methods)
+│   └── TodoList.js (List to render all todos with get method)
+├── lib
+│   └── apolloClient.js (Apollo configuration wrapper)
+├── pages
+│   ├── sign-in (Clerk-powered sign in page)
+│   │   └── [[...index]].js
+│   ├── sign-up (Clerk-powered sign up page)
+│   │   └── [[...index]].js
+│   ├── user (Clerk-powered user profile page)
+│   │   └── [[...index]].js
+│   ├── _app.js (where Clerk is configured)
+│   ├── index.js (first page you see)
+│   └── todos.js (page we will work on)
+├── public (images)
+├── styles (all css styles for our app)
+│   ├── globals.css
+│   ├── Header.module.css
+│   └── Home.module.css
+├── .env.local (environmental variables pulled from Vercel)
+├── postcss.config.js (postcss config, needed for Tailwind)
+├── package.json (where your packages live)
+├── README.md
+├── tailwind.config.js
+└── yarn.lock
+```
+
+### Activate Hasura integration
+
+Hasura is one of the integrations that Clerk offers, with many more coming the future. To use it, you need to enable it. Go to your Clerk dashboard, click on your application -> Development -> Integrations and activate Hasura.
+
+Build A To Do App With Clerk And Hasura And No Backend Code guide illustration
+
+Before leaving the dashboard, go to Home and copy your Frontend API, you'll need to to create the link between Clerk and Hasura.
+
+Build A To Do App With Clerk And Hasura And No Backend Code guide illustration
+
+With your project already running, it's time to go back to Hasura and start setting up the database.
+
+## Set up Hasura Cloud
+
+Go back to Hasura, click the cog wheel, click **"Env vars"** and then **"New Env Var"**.
+
+Build A To Do App With Clerk And Hasura And No Backend Code guide illustration
+
+Pick HASURA\_GRAPHQL\_JWT\_SECRET from the list and then add this, replacing **%FRONTEND\_API%** with the Frontend API you copied from Clerk.
+
+```bat
+{"jwk_url":"https://%FRONTEND_API%/v1/.well-known/jwks.json"}
+```
+
+Build A To Do App With Clerk And Hasura And No Backend Code guide illustration
+
+Click "Add" and then, click "Launch Console".
+
+Build A To Do App With Clerk And Hasura And No Backend Code guide illustration
+
+This will bring us to GraphiQL. GraphiQL is the GraphQL integrated development environment (IDE). It's a powerful tool you can use to interact with the API.
+
+After GraphiQL opens, the first thing you need to do is to create a table. Start by clicking Data on the top navbar:
+
+Build A To Do App With Clerk And Hasura And No Backend Code guide illustration
+
+For this tutorial, we recommend creating a Heroku database for free:
+
+Build A To Do App With Clerk And Hasura And No Backend Code guide illustration
+
+If you don't have a Heroku account, now is the time to create one.
+
+Follow the steps and the database will automatically be created and linked for you.
+
+After the database is created, click **"Public"** and then **"Create Table"**
+
+Build A To Do App With Clerk And Hasura And No Backend Code guide illustration
+
+Fill the table like this and **"Add Table"**.
+
+Build A To Do App With Clerk And Hasura And No Backend Code guide illustration
+
+This not only creates our table, but also triggers Hasura to create a GraphQL backend.
+
+After creating the table, the next step is to restrict who can access the data. By default, Hasura is configured for all fields to be public. You need to set permissions and fix that.
+
+### Set table permissions
+
+Build A To Do App With Clerk And Hasura And No Backend Code guide illustration
+
+You need to create a new role called "user" and edit each of the four possible permissions they have. If you are familiar with **CRUD** (Create, Read, Update, Delete), this is basically the same thing.
+
+### Insert (Create)
+
+Build A To Do App With Clerk And Hasura And No Backend Code guide illustration
+
+For **Insert** permissions, choose that the user can only set the `title` of a to-do when a new one is created. There others all have default values:
+
+- `id` is autogenerated (set during table creation)
+- `completed` starts as `false`
+- `created_at` is autogenerated to `now()` (set during table creation)
+- `user_id` is set to the requesting user's ID
+
+Since the `user_id` is dependent on the particular request, it must be configured as a "Column preset."Set it to `X-Hasura-User-Id` from the "session variable."
+
+When you use Clerk's Hasura integration, `X-Hasura-User-ID` is automatically set in the session variable that gets sent to Hasura. The code to retrieve the session variable and send it to Hasura is in `lib/apolloClient.js`.
+
+### Select (Read)
+
+For **Select** permissions, you want to configure Hasura so users can only read their own to-dos. You can verify this by "checking" if the to-do's `user_id` is the same as the `X-Hasura-User-Id` you receive from the session variable.
+
+If the user ID's match, you can grant read permissions to every column. The exact configuration required is below:
+
+Build A To Do App With Clerk And Hasura And No Backend Code guide illustration
+
+### Update
+
+For **Update** permissions, you want to include the same "check" as **Select**, to ensure that a user can only update their own to-dos.
+
+However, if the check is valid, you don't want the user to have permission to update every column. Instead, only grant permission to update the `completed` column.
+
+Build A To Do App With Clerk And Hasura And No Backend Code guide illustration
+
+### Delete
+
+For **Delete** permissions, you want to include the same "check" as **Select**, to ensure that a user can only delete their own to-dos.
+
+Build A To Do App With Clerk And Hasura And No Backend Code guide illustration
+
+That's all of the permissions we need to set! Now, let's work on the frontend.
+
+## Connect Hasura to the Frontend
+
+Go to http://localhost:3000 and create an account on your app. Then, click **"Start saving your todos"** and you will see this:
+
+Build A To Do App With Clerk And Hasura And No Backend Code guide illustration
+
+These is sample data and is still static. In the next steps of the tutorial, we will connect this list to Hasura and your database, so users can create and manage their own to-dos.
+
+### Create a to-do
+
+The first step is giving users the ability to create a to-do. We will do this from `components/AddTodo.js`.
+
+If you look at the `onSubmit` function, you will see that nothing will currently happen when the user clicks add. You must create a GraphQL "mutation" to update the database when add is clicked.
+
+Replace the top of your file (everything above the return statement) with this code:
+
+```jsx
+import { gql, useMutation } from '@apollo/client'
+import { useState } from 'react'
+
+const ADD_TODO = gql`
+  mutation AddTodo($title: String!) {
+    insert_todos_one(object: { title: $title }) {
+      id
+      title
+    }
+  }
+`;
+
+const AddTodo = () => {
+  const [title, setTitle] = useState("");
+  const [addTodo] = useMutation(ADD_TODO, {
+    onCompleted: () => setTitle(""),
+  });
+
+  const onSubmit = (e) => {
+    e.preventDefault();
+    addTodo({
+      variables: { title },
+    });
+  };
+
+  return (...
+```
+
+This mutation accepts a title and passes it to the `insert_todos_one` method that Hasura has created for us.
+
+Now, let's go back to our frontend and try adding a todo.
+
+Build A To Do App With Clerk And Hasura And No Backend Code guide illustration
+
+You'll see notice that nothing happens on the frontend, and that's expected because we're still reading static to-dos. But, let's check the database to see if the mutation succeeded. Go back to the Hasura Cloud Console, copy and paste the following query and click the play button:
+
+```graphql
+query GetTodos {
+  todos {
+    id
+    title
+    user_id
+    created_at
+    completed
+  }
+}
+```
+
+You should see your todo was created successfully:
+
+Build A To Do App With Clerk And Hasura And No Backend Code guide illustration
+
+### Fetch to-dos
+
+Now, we will update the frontend to read the user's to-dos from Hasura. You can do this from `components/TodoList.js`.
+
+The file starts by showing static data. Update the component to instead run a GraphQL "query":
+
+```jsx
+import { gql, useQuery } from '@apollo/client'
+
+import SingleTodo from '../components/SingleTodo'
+
+export const GET_TODOS = gql`
+  query GetTodos {
+    todos(order_by: { created_at: desc }) {
+      id
+      title
+      completed
+    }
+  }
+`
+
+const TodoList = () => {
+  const { loading, error, data } = useQuery(GET_TODOS)
+
+  if (loading) return 'Loading...'
+
+  if (error) return <>{console.log(error)}</>
+
+  return (
+    <div className="overflow-hidden rounded-md bg-white shadow">
+      <ul className="divide-y divide-gray-200">
+        {data?.todos.map((todo) => (
+          <SingleTodo key={todo.id} todo={todo} />
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+export default TodoList
+```
+
+First, we created a query that gets all to-dos (remember, the user can only see the ones attached to their own `user_id`). We set the query to return `id`, `title`, and `completed`. We order the to-dos by `created_at` descending, so the newest are first in the list.
+
+`useQuery` returns an object so you can render different things depending on if the data is loading, if there's an error, or if the data has been retrieved.
+
+We've configured an early return while the data is loading or if there's an error, then render the list if that is available. After saving, you should see something like this:
+
+Build A To Do App With Clerk And Hasura And No Backend Code guide illustration
+
+Let's try adding a new todo.
+
+Build A To Do App With Clerk And Hasura And No Backend Code guide illustration
+
+You should see that the form clears after clicking "Add", but the list below doesn't automatically update. However, if you manually refresh the page, you will see new to-do.
+
+That's not the best experience and we will fix this later by implementing a cache, so your can keep your database and your frontend in sync.
+
+Before that, let's implement toggle and delete mutations.
+
+### Delete Todo
+
+Open `components/SingleTodo.js`, which is the component the renders for each individual to-do.
+
+Update the code to add a delete mutation when the delete button is clicked:
+
+```jsx
+import { gql, useMutation } from '@apollo/client'
+import { GET_TODOS } from './TodoList'
+
+const DELETE_TODO = gql`
+  mutation DeleteTodo($id: uuid!) {
+    delete_todos_by_pk(id: $id) {
+      id
+      title
+    }
+  }
+`
+
+const SingleTodo = ({ todo }) => {
+  const [deleteTodoMutation] = useMutation(DELETE_TODO)
+
+  const deleteTodo = () => {
+    deleteTodoMutation({
+      variables: { id: todo.id },
+    })
+  }
+
+  // rest of the code
+```
+
+Now, try deleting a todo. It works, but you get same experience as inserting. You need to refresh the page to see it.
+
+We will fix this shortly, but first let's add toggle functionality.
+
+### Toggle Todo
+
+Still inside `components/SingleTodo.js`, now you can add a new toggle mutation. Here is the updated component with both delete and toggle functionality:
+
+```jsx
+import { gql, useMutation } from '@apollo/client'
+import { TrashIcon } from '@heroicons/react/solid'
+import { GET_TODOS } from './TodoList'
+
+const DELETE_TODO = gql`
+  mutation DeleteTodo($id: uuid!) {
+    delete_todos_by_pk(id: $id) {
+      id
+      title
+    }
+  }
+`
+
+const TOGGLE_TODO = gql`
+  mutation ToggleTodo($id: uuid!, $completed: Boolean!) {
+    update_todos_by_pk(pk_columns: { id: $id }, _set: { completed: $completed }) {
+      id
+      completed
+    }
+  }
+`
+
+const SingleTodo = ({ todo }) => {
+  const [deleteTodoMutation] = useMutation(DELETE_TODO)
+  const [toggleTodoMutation] = useMutation(TOGGLE_TODO)
+
+  const deleteTodo = () => {
+    deleteTodoMutation({
+      variables: { id: todo.id },
+    })
+  }
+  const toggleTodo = () => {
+    toggleTodoMutation({
+      variables: { id: todo.id, completed: !todo.completed },
+    })
+  }
+
+  return (
+    <li key={todo.id} className="flex justify-between px-6 py-4">
+      <div>
+        <input
+          id={todo.id}
+          name="completed"
+          type="checkbox"
+          checked={todo.completed}
+          onChange={toggleTodo}
+          className="mr-3 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+        />
+        <label htmlFor={todo.id} className={todo.completed ? 'text-gray-400 line-through' : ''}>
+          {todo.title}
+        </label>
+      </div>
+      <TrashIcon className="h-5 w-5 cursor-pointer text-gray-500" onClick={deleteTodo} />
+    </li>
+  )
+}
+
+export default SingleTodo
+```
+
+Now, every CRUD operation works. But you need still need to refresh the page to see changes. Let's fix that.
+
+Notice we are importing `GET_TODOS`, we'll need it for the next step.
+
+### Using Apollo Cache
+
+The GraphQL library this tutorial uses, Apollo, implements a dynamic, local cache. Instead of reloading the full list of updates after each mutation, you can run the mutations against your local cache. Then, the to-do list on your frontend will automatically be updated.
+
+One great feature of this cache is called the `optimisticResponse`. With this, you can assume that your GraphQL mutations will succeed and reflect the change in your frontend right away, instead of waiting for the success message from Hasura. The `optimisticResponse` is preferred for your to-do app since you're not anticipating any errors, and it results in a faster-feeling user experience.
+
+To use the cache, you need to add the `cache` and `optimisticResponse` parameters to your mutation functions.
+
+In your `deleteTodo` function:
+
+```jsx
+const deleteTodo = () => {
+  deleteTodoMutation({
+    variables: { id: todo.id },
+    optimisticResponse: true,
+    update: (cache) => {
+      const data = cache.readQuery({ query: GET_TODOS })
+      const todos = data.todos.filter(({ id }) => id !== todo.id)
+      cache.writeQuery({
+        query: GET_TODOS,
+        data: { todos },
+      })
+    },
+  })
+}
+```
+
+In your `toggleTodo` function:
+
+```jsx
+const toggleTodo = () => {
+  toggleTodoMutation({
+    variables: { id: todo.id, completed: !todo.completed },
+    optimisticResponse: true,
+    update: (cache) => {
+      const data = cache.readQuery({ query: GET_TODOS })
+      const todos = data.todos.map((t) => {
+        if (t.id === todo.id) {
+          return { ...t, completed: !todo.completed }
+        }
+        return t
+      })
+
+      cache.writeQuery({
+        query: GET_TODOS,
+        data: { todos },
+      })
+    },
+  })
+}
+```
+
+Finally, we must leverage the cache in `components/AddTodo.js`:
+
+At the top of the file, add:
+
+```jsx
+import { GET_TODOS } from './TodoList'
+```
+
+And update your `onSubmit` as follows:
+
+```jsx
+const onSubmit = (e) => {
+  e.preventDefault()
+  addTodo({
+    variables: { title },
+    update: (cache, { data }) => {
+      const existingTodos = cache.readQuery({
+        query: GET_TODOS,
+      })
+      cache.writeQuery({
+        query: GET_TODOS,
+        data: { todos: [data.insert_todos_one, ...existingTodos.todos] },
+      })
+    },
+  })
+}
+```
+
+## Final thoughts
+
+That's it! You now have a complete to-do list using Clerk, Hasura, and Next.js - and you didn't write any backend code. It's powerful, easy to configure, and easy to scale.
+
+If you have enjoyed this tutorial or have questions or concerns, please check our support page. If you prefer Twitter, feel free to contact me (@nachoiacovino) or Clerk (@clerk) directly.

@@ -1,0 +1,161 @@
+# Build a premium recipes app with Clerk and Firebase
+# джерело: https://clerk.com/blog/build-a-premium-recipes-app-clerk-firebase
+# отримано: 2026-09-25
+
+Firebase is among the top Platform-as-a-Service (_PaaS_) providers for web and mobile applications. It packs tons of powerful and well designed features for developers to spin up a fully fledged application with minimal effort, like storage, analytics, and authentication.
+
+Clerk integrates directly with Firebase, so developers can easily add our beautiful Sign Up, Sign In, and User Profile UIs to their Firebase application. The integration allows developers to use all the full feature set of Firebase without compromising on user management.
+
+In this post, we are going to show you a full example integrating Clerk with Firebase, to make a "premium" recipe showcase application. The recipe data is going to be stored in Firebase Firestore and will only be available to authenticated users.
+
+Premium recipes app hero UI with Clerk and Firebase
+
+The full code for this guide is available in the clerk-firebase-starter repository, and includes instructions for how to set up Firebase and connect it to Clerk. The application demo is live at https://fir-clerk.web.app/.
+
+If you would like to read the documentation before getting started, please refer to our Firebase integration documentation.
+
+## Setting up the Firebase project
+
+To start off, we need a Firebase Web project. Go to the Firebase Console and create a new project:
+
+Create Firebase project in Firebase Console screenshot
+
+After giving it a valid name and confirming, you will find yourself in the Firebase dashboard.
+
+## Enabling Firestore and adding recipes
+
+From the Firebase dashboard, you can go ahead and create a new Firestore Database for our example project. The Firestore instance will serve as our database where we will store and retrieve our recipes. If you want to learn more about Firestore, you can take a look at the starter documentation.
+
+View video
+
+During the database instance creation, you should choose the storage location somewhere close to your users. Also keep in mind that by selecting the production mode ruleset, by default you have disabled any reads/writes to your database from outside the platform. We are gonna change that right after!
+
+If you are not familiar with Firebase Security Rules, they are basically a Domain-specific language to limit the access to important data in Firebase storage solutions. As we mentioned previously, since these are premium recipes, only authenticated users will be allowed to view them.
+
+To allow authenticated users to read any database but not write, you can use the security rule shown below:
+
+```text
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read: if request.auth != null;
+    }
+  }
+}
+```
+
+## Adding recipes
+
+To add a few recipes, go ahead and create a `recipes` collection with recipes of your liking, but please conform to the same attribute schema shown below:
+
+Firestore recipes collection document schema screenshot
+
+If it's helpful, here is the TypeScript type for each recipe document:
+
+```typescript
+type Recipe = {
+  /** The recipe description */
+  description: string
+
+  /** The amount of guilty you should feel */
+  calories: number
+
+  /** Cooking time in minutes */
+  cookingTimeMin: number
+
+  /** Publicly accessible image full URL */
+  imageUrl: string
+
+  /** Number of ingredients needed */
+  ingredientsNum: number
+
+  /** The title of the recipe */
+  title: string
+}
+```
+
+After adding a few recipes, you are all set from the data side.
+
+## Enabling Firebase Authentication
+
+Since this is a new project, you will need to enable the Authentication feature. No further action is needed, since Clerk will handle the rest.
+
+Enable Firebase Authentication feature screenshot
+
+## Enabling the Firebase integration on Clerk
+
+If you are new to Clerk you will need to create an account on our platform, then follow the steps to create a new application.
+
+After you create an account and a new application for this example, you can follow these instructions to enable the Firebase integration on Clerk for your application instance.
+
+With that done, you are now able to authenticate Clerk users in your Firebase application.
+
+## Show me the code
+
+To run the full example locally, you will need to follow a few small steps. First, go ahead and clone our Firebase starter application.
+
+```sh
+git clone git@github.com:clerkinc/clerk-firebase-starter.git
+```
+
+Go inside your project folder and copy the .env.example file into a .env.local file.
+
+```sh
+cp .env.example .env.local
+```
+
+Take the Frontend API value which can be found on your application dashboard and add it as the `NEXT_PUBLIC_CLERK_FRONTEND_API` value. Your .env.local file should look something like:
+
+```text
+NEXT_PUBLIC_CLERK_FRONTEND_API=clerk.sample.api.lcl.dev
+```
+
+The final configuration step is to replace the firebase.web.ts config file with one from your own Firebase project. You can find a specification for the config object in Firebase's documentation.
+
+After you create new Firebase Web project, you will be able to find the required values under Project settings ➜ General.
+
+Firebase web app configuration settings screenshot
+
+Now you are ready to install the dependencies and run your project in development mode. Go to the root directory of the project and run:
+
+```sh
+yarn install
+```
+
+and after completion
+
+```sh
+yarn dev
+```
+
+Your application is now running in your local environment and you can experience the same functionality as the live demo.
+
+## Where the magic happens
+
+If you take away the application setup, the integration is seamless and works out of the box with just a few _copy & paste_ steps across Clerk and Firebase. Here's how it works:
+
+Let us go over the way the integration works in your web application code and what are the actions you need to authenticate a Firebase user with Clerk.
+
+The `firebase` application object houses the `.auth()` namespace which includes methods to authenticate a user. One of those methods is `signInWithCustomToken`, which allows third-party providers like Clerk to pass authenticated user data to Firebase.
+
+_Where does this "custom token" come from ?_
+
+After setting up Firebase integration on Clerk, you can retrieve the necessary "custom token" by calling the `getToken` method on the Clerk User object.
+
+Combined, it's just two lines of code:
+
+```typescript
+const firebaseToken = await clerkUser.getToken('firebase')
+await firebase.auth().signInWithCustomToken(firebaseToken)
+```
+
+From that point on, your user is authenticated and can complete all the actions that require privileges of an identified Firebase user.
+
+You can see this in action in our useRecipes hook implementation. If you remove these two lines, the request will fail since the Clerk user will not also be authenticated in Firebase. (_Remember, we set a Security Rule - `allow read: if request.auth != null;` - which restricts access to authenticated users.)_
+
+## Moving forward
+
+This end to end example showed how you can use Clerk and Firebase together for a new web project. Firebase is an exceptional development platform and we are really excited to see what you build with this integration.
+
+If you have any feedback, and running into trouble, or just want to share what you've built - we'd love to hear from you! Reach out to us on X @clerk, on our Discord community, or through any of our support channels.

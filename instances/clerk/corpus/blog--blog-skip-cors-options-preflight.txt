@@ -1,0 +1,81 @@
+# How to skip CORS preflights and speed up your API with polyfills
+# джерело: https://clerk.com/blog/skip-cors-options-preflight
+# отримано: 2026-09-25
+
+At Clerk, we have an API that is directly accessible from the frontend (we call it the Frontend API). It exclusively handles cross-origin requests, but none of those requests trigger a CORS preflight.
+
+This is by design. CORS preflights do not add security for modern applications and they add an extra network round-trip, so we made sure that every API request is considered a "simple request."
+
+## What do you mean CORS preflights do not add security?
+
+It's a common misconception that CORS preflight requests add security to modern applications. Why else would they exist?
+
+Surprisingly, CORS preflights exist to protect old applications, not new ones.
+
+Specifically, the CORS designers were concerned about old applications that incorrectly assumed that browsers would never allow request methods besides GET or POST, or would never allow custom HTTP headers.
+
+When browsers added the capability to send alternative request methods and custom headers via `fetch` (and its older sibling, `XMLHttpRequest`), suddenly applications that made this assumption were at risk.
+
+To mitigate the risk to old applications, an extra "preflight" request was added to requests with PATCH, PUT, DELETE methods, and to requests with custom headers. The idea is that, if those applications fail to respond to the preflight in a very specific way, then the actual request will never be dispatched.
+
+It's dirty and it adds latency, but it works.
+
+The annoying part is: modern applications that anticipate PATCH, PUT, DELETE requests and custom headers don't gain any security from CORS preflights, it's just extra latency they need to incur to protect legacy applications. In 2022, it's like robbing Peter to pay an exceptionally stubborn Paul who won't update their decades old codebase, but we digress...
+
+## How can CORS preflights be skipped?
+
+Certain cross-origin requests are classified as "simple requests" and do not require a successful preflight before being dispatched.
+
+Based on the section above, it might be easy to guess which requests qualify as simple: GET or POST requests without custom headers. _(Note: This is a slight simplification, the full details are available on MDN.)_
+
+To build an API that doesn't trigger preflights, we need to design polyfills for modern request methods and custom headers.
+
+### One critical point first
+
+The polyfills below assume you have configured your CORS middleware to outright reject requests that should not be processed.
+
+As an example, consider CORS middleware running on `api.example.com` that is configured to allow the Origin of `https://www.example.com`.
+
+Now, consider a request comes in with the Origin of `https://randomattacker.com`
+
+Does your CORS middleware reject this request, or does it allow the request to be processed?
+
+**It depends on your middleware.**
+
+Some middleware might simply add an access-control header (below), then allow the request to continue:
+
+```text
+Access-Control-Allow-Origin: https://www.example.com
+```
+
+This header doesn't stop the request from being processed, but it does stop the browser from reading your server's response.
+
+**This is not the behavior you want.**
+
+Instead, you want your middleware compare the received Origin to the allowed Origin, and immediately cancel the request if they don't match.
+
+**The only way to confirm your middleware's behavior is to write your own tests.** Clerk needed to write our own middleware to reject requests with undesirable CORS options (origin, credentials, etc).
+
+### Polyfilling request methods
+
+Polyfilling the request method is trivial - and we were fortunate to have inspiration from Ruby on Rails. Every mutation request to our frontend API is dispatched as a POST, but the method can be overridden using a query string like `?_method=PATCH`. In our backend, we run middleware to ensure that the request is treated as a PATCH when this query string is present.
+
+### Polyfilling custom headers
+
+Custom headers can be more challenging to polyfill. It really depends on what type of content you're putting in the header:
+
+- If the header _does not_ contain sensitive information, the polyfill can use the same query string approach used above for request methods
+- If the header _does_ contain sensitive information, the polyfill should be handled within the the request body
+
+Typically, developers want to customize two headers:
+
+1. **Content-Type:** To set it to **application/json**. This is not sensitive and can be polyfilled using the query string.
+2. **Authorization:** To include an access token. This is sensitive and should not be polyfilled using the query string.
+
+It's important that sensitive information is not added to the query string because the request path is often logged to tools like bug trackers and analytics software. To obscure this information from those tools, it's better to add the field to the request body. In the case of the Authorization header, an extra form value or JSON attribute will suffice.
+
+## That's everything!
+
+These simple changes will eliminate CORS preflight requests from a frontend talking to a frontend API. In the process, it eliminates a round trip, which can easily take over 100ms if your user is geographically far from your server. Even in the best case of edge computing, this strategy will likely shave off \~20ms from your overall response time.
+
+For the modern web, every millisecond counts!

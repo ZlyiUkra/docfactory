@@ -1,0 +1,120 @@
+# Introducing has(), protect(), and <Protect>
+# джерело: https://clerk.com/blog/introducing-authorization
+# отримано: 2026-09-25
+
+Clerk is best-known for our dead-simple _authentication_ with `<SignIn/>` and `<SignUp/>` components. But since launching Organizations for onboarding business customers, our top feature request has become better _authorization_ capabilities: not just helping developers determine _who_ a user is, but also what permissions they have within their organization.
+
+Today we’ve launched two new features to make robust authorization easy:
+
+1. Custom roles and permissions
+2. `has()`, `protect()`, and `<Protect>` – our new authorization helpers
+
+## Custom roles and permissions
+
+In Clerk’s dashboard, developers can now define custom roles, which their business customers can assign to their employees. Previously, roles were restricted to just “admin” and “member.”
+
+In addition, fine-grained permissions can now be defined and mapped to roles. When used properly, this extra layer of abstraction allows developers to create additional roles as-needed, without making any changes to their codebase.
+
+Each role and permission defined in Clerk’s dashboard has a corresponding key, like `org:admin` or `org:widgets:create`.
+
+Custom roles and permissions screenshot
+
+## has(), protect(), and
+
+To make it easy to leverage permissions for authorization checks, we’ve introduced three new helpers in our SDKs.
+
+### 1. has()
+
+Developers can use the `has()` function on both the frontend and the backend to determine if the active user “has” a particular role or permission.
+
+`has()` can be used anywhere that Clerk returns an “auth” object:
+
+- `auth()` in Next.js App Router
+- `useAuth()` in client components, including during SSR
+- `getAuth(request)` in server contexts outside of the App Router (Remix Loaders, Node, Express, Fastify, etc)
+
+```typescript
+// Within a server component, server action, or route handler
+const CreateWidget = () => {
+  const { has } = auth()
+  if (!has({ permission: 'org:widgets:create' })) {
+    return null
+  }
+  // ...
+}
+
+// Within a client component
+export const AdminsOnly = () => {
+  const { has } = useAuth()
+  if (!has({ role: 'org:admin' })) {
+    return null
+  }
+  // ...
+}
+
+// Within an Express API route
+app.post('/api/widgets', (req, res) => {
+  const { has } = getAuth(req)
+  if (!has({ permission: 'org:widgets:create' })) {
+    return null
+  }
+  // ...
+})
+```
+
+### 2. protect()
+
+The `protect()` function is a declarative extension of `has()`, which takes definitive action to block further processing, instead of allowing developers to manually handle the unauthorized case. It is intended to be used in cases where unauthorized users are assumed to be attackers.
+
+```typescript
+export const POST = () => {
+  const { userId, orgId } = auth().protect({ permission: 'org:widgets:create' })
+
+  // Protect would throw an error if the user is unauthorized
+  // If this point is reached, it is guaranteed that userId and ordId exist,
+  // and that userId has the "org:widgets:create" permission in orgId
+
+  // Bonus: TypeScript knows that userId and orgId exist!
+  // ...
+}
+```
+
+Consider an endpoint that your product would never issue a request to unless the current user is authorized. For example, you may have a page with a button that can issue requests to that endpoint, but the page is only accessible to authorized users. That is the perfect place to use `protect()` – you don't need a precisely-written error, just confidence that an attacker's requests will fail.
+
+Note: `protect()` has launched in Next.js only, though we will extend the helper to other frameworks in the future. Please use feedback.clerk.com to request the feature for your framework.
+
+### 3.
+
+Similar to the `protect()` function, the `<Protect>` component is intended to block further processing. It only renders children for authorized users, and optionally renders a `fallback` for unauthorized users.
+
+`<Protect>` can be used across all React frameworks, in CSR, SSR, and RSC contexts.
+
+```tsx
+export const Navigation = () => {
+  return (
+    <nav>
+      <Link href="/">Home</Link>
+      <Link href="/widgets">Widgets</Link>
+      <Protect role="org:admin">
+        <Link href="/admin">Admin Panel</Link>
+      </Protect>
+    </nav>
+  )
+}
+```
+
+## Documentation
+
+For full details and usage information, please see our updated Organization documentation, including:
+
+- Roles and Permissions overview
+- Create Roles and assign Permissions
+- Verify the active user’s permissions
+
+## Authorization is now a core feature of Clerk
+
+With today’s launch, authorization has become a core feature of Clerk, and you will see significant, continued investment in the future.
+
+In 2024, we will extend our authorization helpers to support entitlements, so Clerk can be used to gate features based on the subscription plan a customer selected.
+
+Further, you likely noticed above that every role and permission is namespaced with the `org:` prefix, which relates to the Organization resource. We recognize this is limiting, and in the future we will be extending our authorization helpers to work with other resources.

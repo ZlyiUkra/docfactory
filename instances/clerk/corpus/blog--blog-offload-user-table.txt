@@ -1,0 +1,21 @@
+# Consider dropping your users table
+# джерело: https://clerk.com/blog/offload-user-table
+# отримано: 2026-09-25
+
+In 2021, all of the computers are on a cloud and developer experience matters at least as much as database internals. We can choose more and more of our tech stacks omakase, and use the right tools for the right jobs. At phonetoroam we combine ruby on rails and a postgres database with user management as a service from Clerk. This gives us the power of ruby and rails to create a well-tested, flexible API to receive and process messages, while harnessing experts to deal with user management. Using a dedicated service for all of our user management has a few benefits:
+
+- We don't have to store sensitive user data in the same severs as your messages now. The same way we would rather let Stripe handle your credit card, we'll let Clerk handle your phone numbers, emails and sessions. Clerk spends spends all day thinking about how to securely store user credentials, and will continue to keep them secure over time.
+- Our user experience for adding and verifying phone numbers is now better. In the same way that Stripe is really good at making forms to handle credit cards, Clerk is really good at making user management forms.
+- Our user management is domain wide now. We can now launch serverless Jamstack sites with full user authentication on any subdomain.
+
+Thoughtful orchestration of cloud infrastructure allows us to center our code around the problems we're seeking to solve, and delete the rest.
+
+We recently refactored our rails app to use Clerk for user management, and have a few tips to share:
+
+- This type of refactor will get more complex over time — the complexity of a User object is likely super-linear because it cuts horizontally through (an increasing number of) other models — so get buy in as quickly as possible
+- If you have a hodgepodge of user analytics code, clean it up before this refactor. You will likely move most of your signup related analytics to a webhook receiver. If you are using ruby/rails, one service object to wrap your analytics provider (mixpanel or segment work well) should do the job. If that service is well tested, it is relatively easy to move it around.
+- The end goal of the refactor will be to delete your User model and drop your users table, so a good first step is to make your User model as small and condition-less as possible. This will make the surface area of your refactor smaller.
+- The refactor will still be relatively large (our small rails app was about +1500/-2500 lines over \~50 files), so you need the code confidence and engineering maturity to make such a change. We recommend high unit test coverage, some level of integration tests, and/or a well thought-out, strongly-typed system.
+- The migration itself will comprise of replacing most references to a user with a `clerk_id`, and wrapping some API calls to Clerk in a service object. Clerk provides a writable JSON object they call `private_metadata`, which can be used as a key/value store for state about a user.
+
+_This article has been republished. You can find the original post on the phonetoroam website._

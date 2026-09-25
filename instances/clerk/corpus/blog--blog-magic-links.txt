@@ -1,0 +1,446 @@
+# Ultimate Guide to Magic Link Authentication
+# джерело: https://clerk.com/blog/magic-links
+# отримано: 2026-09-25
+
+Data breaches and password overload have made companies and their users wary of using a traditional username/password authentication system. Companies know that handling user passwords is both technically challenging **_and_** costly, as it requires stringent security measures, robust infrastructure for storage, and continuous monitoring to prevent unauthorized access. Users find it cumbersome to manage multiple complex passwords for various accounts, especially with the prevalence of methods like SSO, and often end up reusing passwords across different platforms, as a matter of convenience; this not only leaves the individual vulnerable, but also makes companies jobs of securing data that much harder, highlighting the critical requirements for improved security measures.
+
+Luckily, email magic links have emerged as an elegant solution to secure user sessions in a passwordless context. Their rising popularity is underpinned by their dual advantages:
+
+- An augmented security posture through the minimization of phishing opportunities and password theft.
+- An optimized user experience devoid of the need to memorize and manage many login credentials.
+
+## What are Magic Links?
+
+Magic links are a token-based authentication (TBA) strategy that uses a unique, time-sensitive URL, which leverages a securely-generated token to serve as a credential for user authentication.
+
+The links are sent directly to the user's registered email or phone number, providing a straightforward, secure authentication method. When a user clicks on a magic link, the embedded token is validated against the server to authenticate the user's identity. This process, by design, eliminates the traditional risks associated with password-based systems and simplifies the login experience for the user.
+
+In this guide, we will show you why you should consider authentication with magic links and how they work at a high level, before going through a Next.js App Router implementation to show how you can add magic links to your application.
+
+## The Benefits of Magic Links
+
+Magic links bolster the security architecture of authentication systems by adopting a token-based, stateless interaction model. Each link is cryptographically unique and typically accompanied by an expiration timestamp, making it resilient against replay attacks. Given their ephemeral nature, even if a magic link were to be intercepted or exposed, its short-lived validity constrains the window of opportunity for malicious exploitation.
+
+But there are a few other benefits to magic links for companies and users:
+
+- **Streamlined user experience**. Authentication with magic links eliminate the cognitive burden of remembering and managing many complex passwords, by providing a single-click authentication pathway. This frictionless access modality can enhance user engagement and satisfaction, reducing abandonment rates during the sign-in or sign-up processes.
+- **Compliance and data protection**. By using magic links to minimize passwords, organizations can reduce the risk of breaches involving personal data and avoid the consequences of compromised credentials, which can include heavy fines and reputational damage.
+- **Reduction in credential exposure**. With magic links, the threat of credential stuffing attacks—where compromised credentials are used to gain unauthorized access to multiple user accounts—is mitigated. Since magic links do not rely on reusable passwords, the standard vector of credential exposure is eliminated, enhancing overall system security.
+- **Improved accessibility**. For users with disabilities or those less familiar with technology, magic links offer a more accessible authentication mode. The simplification of the login process—replacing typing and memory demands with a single action—can be particularly advantageous for individuals facing physical or cognitive challenges.
+
+## How Magic Links Work
+
+A magic link is structurally composed of two critical elements: the URL, which provides the link for the user's web interaction, and the embedded token, a cryptographically-generated string serving as the temporary credential.
+
+In essence, a typical magic link may resemble the following structure:
+
+`https://example.com/authenticate?token=a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6`
+
+In this example, the `token` query parameter carries the weight of authentication, substantiating the user's claim without revealing identity until verified by the server.
+
+Here’s an example of how the process works:
+
+Example Magic Link Authentication Process
+
+### Token Validity
+
+Magic links are designed to become invalid under certain conditions for security purposes:
+
+- **Expiration**: The token embedded in the link has a short lifespan and is often configurable based on application security requirements.
+- **Usage Limitation**: Once a magic link is used, it becomes invalid, preventing multiple uses, which could lead to unauthorized access.
+- **Revocation**: The system can programmatically revoke a token, thus invalidating the magic link in response to specific triggers or anomalies.
+
+### Token Generation
+
+The lifecycle of a magic link commences with the generation of a unique token. This process employs cryptographic algorithms to ensure each token is a random, high-entropy string, making it virtually impossible to predict or reproduce through brute force or other cryptographic attacks. Typically, the token generation utilizes HMAC or AES combined with a CSPRNG to guarantee the robustness of the token against collision and preimage attacks.
+
+Once generated, the token is stored on the server along with metadata that includes the user's identifier, the token's expiration time, and any other relevant session data. The magic link is then composed by appending the token to a predetermined URL structure, forming a complete, ready-to-use hyperlink.
+
+This link is dispatched to the user's email address or phone number via SMTP or SMS protocols. The communication channel must be secure, leveraging TLS for email and similarly secure protocols for SMS to safeguard the link during transit.
+
+### User Interaction and Verification
+
+A user typically interacts with the magic link by clicking on it, which initiates a secure request to the service's endpoint. The service extracts the token from the URL and verifies it against the stored data. This verification process involves several checks:
+
+- **Authenticity**: Validates that the token matches a recently generated and stored token.
+- **Integrity**: Ensures the token has not been tampered with during transit.
+- **Timeliness**: Confirms the token has not expired based on the predefined validity period.
+- **Non-reuse**: Ensures the token has not been used before, adhering to the principle of one-time use.
+
+The server considers the authentication request legitimate if the token passes these checks.
+
+### Session Initialization
+
+Post-verification, the server establishes a session for the user. This session is typically stateless, with a new session token or cookie generated to maintain the user's authenticated state in the application. This session token is separate from the magic link token. It has its own security considerations, such as being HttpOnly and Secure, to prevent access via client-side scripts and ensure transmission over HTTPS only.
+
+## Building a Magic Link System
+
+Let’s create our own email with magic link authentication. In this example, we’ll use Next.js 13 with the App Router. We’ll also use Supabase for our backend database to store users and tokens.
+
+First, let’s create a new Next.js project:
+
+```sh
+npx create-next-app@latest
+```
+
+Follow the prompts to select how you want to configure your app, but be sure to select “Yes” for “Would you like to
+use App Router? (recommended)”.
+
+Once you have created and configured your project, `cd` into the created directory and run `npm run dev` to start it. You’ll see just the default Next.js homepage when you load `localhost:3000`.
+
+Before we start building out our project, we need to install a few dependencies that we’ll use. Install them using:
+
+```sh
+npm install nodemailer jsonwebtoken @supabase/supabase-js
+```
+
+What do these do?
+
+- nodemailer: A library that allows for easy email sending.
+- jsonwebtoken: A library to implement JSON Web Tokens for secure data transmission.
+- @supabase/supabase-js: The Supabase client library for Javascript.
+
+With those installed, let’s open up the project in an IDE. In total, we’re going to have two pages, two API routes, and two helper libraries:
+
+- `page.js` will be our homepage. It will have a simple email field, and will call our `requestMagicLink` API reroute.
+- `requestMagicLink.js` will be the API route that will create our magic link, send it to the email address passed from `page.js`, and save the token on our Supabase database.
+- `verify.js` will be the API route called when the user clicks on the magic link in their email. It will verify the token and redirect the user to the protected dashboard page.
+- `dashboard/page.js` will be a simple mock “protected page” (that would require the user to be logged in to view it).
+- `lib/database.js` will be a number of database helper functions to save, load, and delete Supabase data.
+- `lib/supabaseClient.js` will set up our Supabase client.
+
+### page.js
+
+Let’s start with what the user will see, `page.js`:
+
+```jsx
+// app/page.js
+'use client'
+import { useState } from 'react'
+
+export default function RequestMagicLink() {
+  const [email, setEmail] = useState('')
+  const [message, setMessage] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    setIsLoading(true)
+    setMessage('')
+
+    try {
+      const response = await fetch('/api/auth/requestMagicLink', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setMessage('Magic link sent! Check your email to log in.')
+      } else {
+        setMessage(data.error || 'An error occurred. Please try again.')
+      }
+    } catch (error) {
+      setMessage('An error occurred. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="Enter your email"
+        required
+      />
+      <button type="submit" disabled={isLoading}>
+        {isLoading ? 'Sending...' : 'Send Magic Link'}
+      </button>
+      {message && <p>{message}</p>}
+    </form>
+  )
+}
+```
+
+In the code example above, we are requesting the `RequestMagicLink` component, which is responsible for handling the functionality of requesting a magic link via an email address. This component provides a UI for users to request a magic link. Users enter their email and submit the form, triggering a request to the server. Feedback is given to the user through messages and button state changes during the process.
+
+First, we set up the state variables for the page. In the Next.js App Router, you can only use `useState` in client-side components. As all components default to server-side, we have to use the `“use client”` directive at the top of the file to show this page has to be rendered on the client. We have three state variables:
+
+- `email`: Stores the user's email address. It's updated every time the user types into the email input field.
+- `message`: Used to display messages to the user, like confirmation or error messages.
+- `isLoading`: Indicates whether the request is being processed. It's used to disable the submit button and change the button text while the request is in progress.
+
+After that, we have the `handleSubmit` function. This is triggered when the form is submitted, and initially prevents the default form submission action with `event.preventDefault()`. It then sets `isLoading` to `true` to indicate the start of an asynchronous operation and clears any previous messages stored in `message`.
+
+Then, comes the core part of the component. We make an async `POST` request to the `/api/auth/requestMagicLink` endpoint with the user's email in the request body. We then update the `message` state based on the success or failure of the request:
+
+- If the request is successful (`response.ok` is true), it sets a success message.
+- If the request fails, it displays an error message, either from the response or a generic error message.
+
+We have some basic error catching, and then set `isLoading` to `false`.
+
+The actual form presented to the user is basic, with just an email input field that updates the `email` state variable on change and a submit button that is disabled and changes its text based on the `isLoading` state. We have an `onSubmit` event handler linked to `handleSubmit` to send the form details and a paragraph that displays any messages stored in the `message` state.
+
+This `page.js` file calls `requestMagicLink.js`; let’s dig into that, next.
+
+### requestMagicLink.js
+
+```javascript
+// app/api/auth/requestMagicLink.js
+import jwt from 'jsonwebtoken'
+import nodemailer from 'nodemailer'
+import { headers } from 'next/headers'
+
+import { saveToken, getUserByEmail } from '../../../../lib/database'
+
+export async function POST(req, res) {
+  const { email } = await req.json()
+
+  const user = await getUserByEmail(email)
+
+  if (!user) {
+    return Response.json({ message: 'User note found' })
+  }
+
+  // Create a magic link token
+  const token = jwt.sign({ email }, process.env.JWT_SECRET, {
+    expiresIn: '1h',
+  })
+  const headersList = headers()
+  const host = headersList.get('host')
+  const magicLink = `http://${host}/api/auth/verify?token=${token}`
+
+  // Save token in your database with an expiration time
+  await saveToken(user.id, token)
+
+  // Set up email transporter and send the magic link
+  const transporter = nodemailer.createTransport({
+    host: '<email-host>',
+    port: 587,
+    secure: false, // upgrade later with STARTTLS
+    auth: {
+      user: '<email-username>',
+      pass: '<email-password>',
+    },
+  })
+
+  await transporter.sendMail({
+    from: '<from-address>',
+    to: email,
+    subject: 'Your Magic Link',
+    text: `Click here to log in: ${magicLink}`,
+  })
+
+  return Response.json({ message: 'Magic link sent!' })
+}
+```
+
+This example code handles the API requests related to generating and sending the magic link for user authentication. Let's go through the major components and functions of the code.
+
+The function takes `req` (request) and `res` (response) objects as parameters, and then extracts the `email` from the request's JSON body. We then use `getUserByEmail` from `lib/database.js` to search for a user in the database using the provided email. If the user doesn’t exist we send a JSON response indicating the user was not found.
+
+The function then creates the token using `jsonwebtoken` to create a JWT with the user's email, signing it with a secret from environment variables and setting an expiration of 1 hour. With that token we can create our magic link. We retrieve the host from the request headers and construct a URL with the generated token as a query parameter.
+
+The generated token is then saved in the database with an associated user ID using `saveToken`.
+
+After that, we configure a `nodemailer` transporter with SMTP settings (host, port, security, and authentication credentials) and send an email to the user with the magic link authentication.
+
+Finally, we send back a JSON response indicating that the magic link was sent.
+
+Here, we using one of our helper libraries, `database.js`. Let’s go through that next.
+
+### database.js
+
+```javascript
+// lib/database.js
+
+import { supabase } from './supabaseClient'
+
+export const saveToken = async (userId, token) => {
+  const { data, error } = await supabase.from('magic_tokens').insert([
+    {
+      user_id: userId,
+      token: token,
+      expires_at: new Date(Date.now() + 3600000),
+    }, // expires in 1 hour
+  ])
+
+  if (error) throw new Error(error.message)
+  return data
+}
+
+export const getUserByEmail = async (email) => {
+  const { data, error } = await supabase.from('users').select('*').eq('email', email).single()
+
+  console.log(data)
+  if (error) throw new Error(error.message)
+  return data
+}
+
+export const getTokenData = async (token) => {
+  const { data, error } = await supabase
+    .from('magic_tokens')
+    .select('*')
+    .eq('token', token)
+    .single()
+
+  if (error) throw new Error(error.message)
+  if (new Date(data.expires_at) < new Date()) {
+    throw new Error('Token expired')
+  }
+  return data
+}
+
+export const deleteUserToken = async (token) => {
+  const { data, error } = await supabase.from('magic_tokens').delete().match({ token: token })
+
+  if (error) throw new Error(error.message)
+  return data
+}
+```
+
+This is a collection of utility functions designed to interact with Supabase. Each function is designed to interact with specific tables in a Supabase database, which each handle different aspects like token generation, user lookup, token validation, and cleanup. Let's break down each function:
+
+### saveToken
+
+- **Purpose**: To save a newly generated token in the database, fulfilling the requirements for secure token management.
+- **Parameters**: Accepts `userId` (the user's ID) and `token` (the magic link token).
+- **Functionality**:
+  - Inserts a new record into the `magic_tokens` table in Supabase with the user's ID, the token, and an expiration time (set to 1 hour ahead of the current time).
+  - If an error occurs during the database operation, it throws an error with the message received from Supabase.
+  - Returns the data received from Supabase if the operation is successful.
+
+### getUserByEmail
+
+- **Purpose**: To fetch a user's data from the database using their email address.
+- **Parameters**: Accepts `email`, which is the email address of the user.
+- **Functionality**:
+  - Queries the `users` table in Supabase for a record matching the provided email address.
+  - Logs the email and the data received for debugging purposes.
+  - If an error occurs, it throws an error with the message from Supabase.
+  - Returns the user data if a matching record is found.
+
+### getTokenData
+
+- **Purpose**: To retrieve token data from the database.
+- **Parameters**: Accepts `token`, the magic link token.
+- **Functionality**:
+  - Queries the `magic_tokens` table for a record with a token matching the provided one.
+  - Checks if the token has expired by comparing the `expires_at` field with the current time. If the token is expired, it throws an error.
+  - If an error occurs during the query, it throws an error with the message from Supabase.
+  - Returns the token data if a matching and non-expired token is found.
+
+### deleteUserToken
+
+- **Purpose**: To delete a token from the database, complying with the requirements for token lifecycle management.
+- **Parameters**: Accepts `token`, the magic link token to be deleted.
+- **Functionality**:
+  - Deletes the record from the `magic_tokens` table that matches the provided token.
+  - If an error occurs during this operation, it throws an error with the message from Supabase.
+  - Returns the data received from Supabase upon successful deletion.
+
+This file, in turn, is calling on the other helper library `supabaseClient.js`.
+
+### supabaseClient.js
+
+```javascript
+// lib/supabaseClient.js
+
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.SUPABASE_URL
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+```
+
+This is a straightforward setup for initializing a client instance of Supabase in a Javascript application.
+
+`export const supabase = createClient(supabaseUrl, supabaseAnonKey);`creates and exports an instance of the Supabase client, which is used to interact with your Supabase project. The `createClient` function takes the Supabase URL and the anonymous key as arguments and returns the initialized client.
+
+`SUPABASE_URL` and `SUPABASE_ANON_KEY` (along with `JWT_SECRET`) are pulled from our environment variables file, `.env.local`.
+
+### .env.local
+
+```sh
+SUPABASE_URL=<supabase-url>
+SUPABASE_ANON_KEY=<supabase-anon-key>
+JWT_SECRET=<jwt-secret>
+```
+
+You get `SUPABASE_URL` and `SUPABASE_ANON_KEY` from your Supabase dashboard.
+
+You’ll see from above, we also need to set up two tables in Supabase. We need a `users` table with an `email` field, and a `magic_tokens` table with these fields:
+
+- `user_id`, which comes from the users table.
+- `token`, which is the generated token.
+- `expires_at`, to add an expiry time to the token.
+
+Let’s get back to the main code. If we fill out the email field on the homepage and click “Send Magic Link,” `requestMagicLink` will be called and an email sent to the entered email address. Clicking on that link calls the `verify.js` endpoint.
+
+### verify.js
+
+```javascript
+// app/api/auth/verify.js
+import jwt from 'jsonwebtoken'
+
+import { getTokenData, deleteUserToken } from '../../../../lib/database'
+
+export async function GET(req) {
+  const token = req.url.split('=')[1]
+
+  console.log(token) // Logs the token value
+  const tokenData = await getTokenData(token)
+
+  if (!tokenData) {
+    return Response.json({ error: 'Invalid or expired token' })
+  }
+
+  const { email } = jwt.verify(token, process.env.JWT_SECRET)
+
+  // Delete or invalidate the token
+  await deleteUserToken(token)
+
+  return Response.redirect('/dashboard') // Or wherever you want to redirect the user after login
+}
+```
+
+This defines the API route for verifying the magic link token as part of an authentication process.
+
+The code is designed to:
+
+- Extract a token from the request URL.
+- Verify the token's validity.
+- Perform actions based on the token's validity (such as user redirection or error response).
+
+The code retrieves the token from the URL query string by splitting the URL at the `=` character and taking the second part (`req.url.split("=")[1]`).
+
+The `getTokenData` function is called to fetch the token data from the database. If no data is found (implying the token is invalid or expired), it returns a JSON response with an error message. Using `jwt.verify`, we validate the token against the secret key stored in `process.env.JWT_SECRET`. This also extracts the payload (`email`) from the token.
+
+We then call `deleteUserToken` to remove the token from the database, ensuring it cannot be reused. Finally, it redirects the user to the `/dashboard` route upon successful token verification.
+
+### dashboard/page.js
+
+There isn’t much to `dashboard/page.js`:
+
+```javascript
+// app/dashboard/page.js
+'use client'
+
+export default function Dashboard() {
+  return <h1>A verified page</h1>
+}
+```
+
+In a production application, this is the page you would build out in your application.
+
+## Final Thoughts
+
+There is a lot to think about with email magic links. The above example doesn’t go into robust authentication checking with the user, nor does it add rate-limiting or have significant error handling. An unfortunate truth of authentication is that there is no silver bullet. While magic links take away the headache of managing user credentials, you still have to manage token generation, storage and expiry. Plus, you are still managing and storing user data.
+
+Any good developer is going to take the time to understand, at least, the basic strategies leveraged by the tools they use to speed up their processes (good work understanding magic links!). With that being said, a simpler and more secure alternative to all the code above is to use Clerk. We built Clerk to make it quick and easy to add advanced authentication techniques into your application. To learn more about magic links, visit our documentation or this article on implementing magic links with Next.js and Clerk.

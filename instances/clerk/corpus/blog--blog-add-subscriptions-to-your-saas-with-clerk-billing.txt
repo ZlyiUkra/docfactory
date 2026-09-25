@@ -1,0 +1,245 @@
+# Add subscriptions to your SaaS with Clerk Billing
+# джерело: https://clerk.com/blog/add-subscriptions-to-your-saas-with-clerk-billing
+# отримано: 2026-09-25
+
+Monetizing your application is often the next logical step after building something users love.
+
+Subscription plans are a common strategy to build sustainable revenue into your SaaS, enabling premium features for individual users or teams with active plans. However, implementing subscriptions from scratch can be time-consuming and error-prone due to the complexity of the underlying infrastructure and logic.
+
+**That's why we built Billing**.
+
+Just as Clerk streamlines authentication and user management, it now does the same for subscriptions. You get a polished UI that allows your users to easily select and manage their preferred plan, as well as helper functions to easily gate access to premium features, all without writing custom billing logic from scratch.
+
+In this article, you'll learn what Clerk Billing is, how it works, and how to implement it in a real-world application.
+
+## What Is Clerk Billing?
+
+**Clerk Billing** is our latest offering that brings subscription management directly into your existing authentication stack. With just a few clicks in the Dashboard, you can define subscription plans and their associated features, which are displayed in your application with the drop-in `<PricingTable />` component.
+
+Clerk integrates directly with your Stripe account, letting Stripe handle the actual payment processing while Clerk handles the user interface and entitlement logic. During development, you can even work in a sandbox environment without requiring a Stripe account. This mirrors the way Clerk handles SSO, where development instances use shared credentials until you're ready to go live.
+
+## How Billing Works
+
+You'll start in the Clerk dashboard, where you define your **plans** and add **features** to them.
+
+**Features** are essentially flags that indicate what a user has access to. For example, if your “Pro” plan includes advanced analytics, you'd create an “Analytics” feature and assign it to the plan. Features can be shared across multiple plans, allowing you to build a pricing structure thats increases access to your application as the selected plan increases.
+
+You can configure your plans to be billed monthly or offer discounts for annual subscribers. Once your plans are created, you're ready to display them in your app.
+
+### The `<PricingTable />` component
+
+The core UI component used with Billing is the `<PricingTable />`. It's a single-line component that renders a fully functional plan selector and payment form inside your app.
+
+The PricingTable component
+
+When a user selects a plan, a modal drawer will open to collect their payment details. It's a smooth and familiar experience for users and requires no custom form building on your part.
+
+Users can also subscribe to new plans and manage existing subscriptions directly through the `<UserProfile />` component. The new Billing tab also includes invoice history and linked payment sources. This centralizes authentication, profile management, and billing into one cohesive experience.
+
+### Verifying the User's access
+
+One of the most powerful features in Clerk is the `has()` helper. Originally built to power B2B access controls, it checks whether a user has a specific role or permission. With Billing, it now supports checking a user's plan or feature (entitlement) access.
+
+```tsx
+const { has } = await auth()
+
+const hasPremiumPlan = has({ plan: 'gold' })
+const hasWidgets = has({ feature: 'widgets' })
+```
+
+This makes it incredibly easy to gate access to premium content or features with a single, readable function call.
+
+### Managing Subscriptions
+
+Once users are subscribed, you can manage their subscriptions directly from the Clerk dashboard. There's a new **Subscriptions** tab where you can search for users, view their subscription status, and even cancel plans if needed.
+
+Cancelled plans won't immediately remove access, they'll simply stop renewing, giving your users access until the current billing cycle ends. You can also view a user's plan details at a glance, which is especially useful for support and admin workflows.
+
+## Implementing Billing in Quillmate
+
+To demonstrate how easy it is to implement Billing into an application, I'm going to add subscriptions to **Quillmate**, a web-based writing platform built with Next.js, Clerk, and Supabase. The Pro plan for Quillmate offers an AI assistant that users can access while writing new articles. If the user is not a subscriber, they will be prompted to subscribe when they attempt to access the chat assistant.
+
+> You can access the completed version of the project on GitHub.
+
+### Creating the plans
+
+I'll start in the Clerk dashboard and navigate to **Configure > Subscription Plans**, then click **Add User Plan**.
+
+The Subscription Plans configurate page with a red arrow pointing to the "Add User Plan" button
+
+In the next screen I'll name the plan (which will auto-populate the slug), add a description, and set the monthly price.
+
+The plan configuration page
+
+Before saving I'll scroll down a bit to create the feature that's associated with the plan by click **Add Feature**. I'll name the feature “AI Assistant” and provide a description before saving. Take note of the slug as it will be used in the code to check if the user can access this feature.
+
+The plan configuration page with a red arrow pointing to the "Add Feature" button
+
+### Add the pricing table
+
+Now that my plan and feature are created, I can start updating the code. The first thing I'm going to do is create a new page that shows the available subscriptions. This will be a page that users can access at `/subscribe`. The page itself contains some promo text, but the main thing to note is the `<PricingTable />` component which is all I need to render the available plans and features:
+
+filename: src/app/subscribe/page.tsx
+```tsx
+import { PricingTable } from '@clerk/nextjs'
+import React from 'react'
+import Link from 'next/link'
+
+function SubscribePage() {
+  return (
+    <>
+      {/* Navigation Bar */}
+      <nav className="fixed top-0 left-0 z-20 flex w-full items-center justify-between border-b border-gray-200 bg-white/70 px-4 py-3 backdrop-blur-md dark:border-gray-800 dark:bg-gray-950/70">
+        <Link
+          href="/"
+          className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-lg font-semibold text-transparent transition-opacity hover:opacity-80"
+        >
+          ← Back to Home
+        </Link>
+      </nav>
+      {/* Main Content */}
+      <div className="flex min-h-svh items-center justify-center bg-gradient-to-b from-white to-gray-50 pt-20 dark:from-gray-950 dark:to-gray-900">
+        <div className="flex w-full max-w-2xl flex-col items-center gap-8 p-8 text-center">
+          <h1 className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-4xl font-bold text-transparent">
+            Unlock AI Superpowers
+          </h1>
+          <p className="text-xl text-gray-600 dark:text-gray-300">
+            Become a member to access exclusive AI features, priority support, and early access to
+            new tools. Join our growing community and take your productivity to the next level!
+          </p>
+          <ul className="mx-auto mb-4 w-full max-w-md text-left text-base text-gray-700 dark:text-gray-200">
+            <li className="mb-2 flex items-center gap-2">
+              ✅ <span>Unlimited AI queries and content generation</span>
+            </li>
+            <li className="mb-2 flex items-center gap-2">
+              ✅ <span>Early access to new AI-powered features</span>
+            </li>
+            <li className="mb-2 flex items-center gap-2">
+              ✅ <span>Priority email & chat support</span>
+            </li>
+            <li className="flex items-center gap-2">
+              ✅ <span>Member-only resources and tutorials</span>
+            </li>
+          </ul>
+          <div className="mb-4">
+            <span className="text-lg font-semibold text-blue-600 dark:text-blue-400">
+              Ready to get started? Choose your plan below:
+            </span>
+          </div>
+          <div className="flex w-full justify-center">
+            <PricingTable />
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
+export default SubscribePage
+```
+
+This page shows a list of available plans and features for Quillmate users:
+
+The Quillmate subscribe page
+
+Selecting **Get Started** under the plan will simply open a drawer where I can enter my payment information to be processed by Stripe!
+
+The subscribe page with the checkout drawer open
+
+### Protecting the AI Chat feature
+
+For each article, Quillmate has a floating action button in the lower right that users can click to access the assistant. This feature should only be available to users who subscribe to the Pro plan, or more specifically, a plan with the “AI Assistant” feature.
+
+View video
+
+The code for the floating action button has a simple check that uses the `has` helper from the Clerk SDK to check if the current user has a plan that includes the `ai_assistant` feature, which is the slug of the feature created earlier in this guide:
+
+filename: app/(protected)/components/ChatFAB.tsx
+```tsx
+'use client'
+import { useState } from 'react'
+import { ChatBubbleOvalLeftEllipsisIcon } from '@heroicons/react/24/outline'
+import { useAuth } from '@clerk/nextjs'
+import SubscriptionModal from './SubscriptionModal'
+import ChatInterface from './ChatInterface'
+
+interface ChatFABProps {
+  articleId: string
+  articleContent: string
+}
+
+export default function ChatFAB({ articleId, articleContent }: ChatFABProps) {
+  const { has } = useAuth()
+  const [open, setOpen] = useState(false)
+
+  const canUseAi = has?.({ feature: 'ai_assistant' })
+
+  return (
+    <>
+      {/* FAB */}
+      <button
+        onClick={() => setOpen(true)}
+        className="fixed right-4 bottom-12 z-50 rounded-full bg-blue-600 p-4 text-white shadow-lg hover:bg-blue-700 focus:outline-none"
+        style={{ display: open ? 'none' : 'block' }}
+        aria-label="Open Chat"
+      >
+        <ChatBubbleOvalLeftEllipsisIcon className="h-7 w-7" />
+      </button>
+
+      {/* Subscription Modal */}
+      {open && !canUseAi && <SubscriptionModal onClose={() => setOpen(false)} />}
+
+      {/* Chatbox */}
+      {open && canUseAi && (
+        <ChatInterface
+          onClose={() => setOpen(false)}
+          articleId={articleId}
+          articleContent={articleContent}
+        />
+      )}
+    </>
+  )
+}
+```
+
+As a best practice, we also want to protect any backend API calls that are used by the chat feature. The `has` function can also be used on server-side code as well:
+
+filename: src/app/api/chat/route.ts
+```ts
+import { CoreMessage, generateText } from 'ai'
+import { openai } from '@ai-sdk/openai'
+import { auth } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server'
+
+export async function POST(req: Request) {
+  const { has } = await auth()
+
+  if (!has({ feature: 'ai_assistant' })) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  }
+
+  const { messages }: { messages: CoreMessage[] } = await req.json()
+
+  const { response } = await generateText({
+    model: openai('gpt-4'),
+    system: 'You are a helpful assistant. Format all responses as markdown.',
+    messages,
+  })
+
+  return NextResponse.json({ messages: response.messages })
+}
+```
+
+When a user is subscribed, they are then able to access the AI chat:
+
+View video
+
+Users can also manage their plan directly from the `<UserButton />` component in the new Billing tab:
+
+The UserButton component with the Billing tab open
+
+## Conclusion
+
+Clerk Billing takes all the usual friction out of implementing subscriptions—no need to wire up your own Stripe forms, manage customer data, or create custom logic for checking user plans. It's fully integrated into your authentication layer, shares the same DX principles as the rest of Clerk, and gets you from “idea” to “monetized” in record time.
+
+Whether you're just validating a pricing model or launching a full-featured SaaS product, Clerk Billing is built to get you there faster, with fewer moving parts.

@@ -1,0 +1,256 @@
+# How to secure API Gateway using JWT and Lambda Authorizers with Clerk
+# джерело: https://clerk.com/blog/how-to-secure-api-gateway-using-jwt-and-lambda-authorizers-with-clerk
+# отримано: 2026-09-25
+
+One of the common ways to access AWS services over HTTP is through API Gateway.
+
+API Gateway acts as a centralized entry point for many of the services offered through AWS. For example, you can configure serverless Lambda functions that are capable of accepting HTTP events from API Gateway for processing, enabling you to build a completely serverless backend for your application or service. Allowing any traffic into an AWS account should be done securely, otherwise, you run the risk of services being taken advantage and causing issues such as data exfiltration or a surprise AWS bill. Luckily, API Gateway offers a feature called _authorizers_ that can be used to secure your endpoints before traffic ever reaches the service on the other side.
+
+In this article, you'll learn what API Gateway authorizers are, how they work, and how to use them with Clerk.
+
+## What are API Gateway Authorizers?
+
+API Gateway authorizers are a feature of API Gateway that allows you to lock down your API endpoints so that only authorized requests are permitted.
+
+API Gateway is compatible with a wide array of AWS services, allowing you to mix and match multiple services behind a single domain to precisely craft the service that your users need. While services such as Lambda or EC2 can have built-in logic to verify the request, something like DynamoDB does not have that capability. When an authorizer is attached to an endpoint, API Gateway will first use the authorizer to verify that the request being sent in is by an authorized party before passing it through to the service, or denying the request if it's unauthorized.
+
+To better explain how an authorizer works, I'll use the example of the serverless API in the introduction of this article.
+
+## How Authorizers Work
+
+Let's assume you have a simple serverless API that combines API Gateway and a series of Lambda functions.
+
+When a request comes into the API, the request will be proxied to one of the associated Lambda functions for processing before sending a response back to the caller. Without authorizers, the request is sent directly to the Lambda function, regardless of who sent it or where it comes from. This means that the code for each Lambda would need to individually verify that the request is valid.
+
+A diagram showing API Gateway passing through a request
+
+Now let's look at the same example with an authorizer attached to each endpoint. When a request comes into an endpoint that is protected with an authorizer, API Gateway will first send the request to the authorizer to verify and deny the request depending on if the it passes the checks defined by the authorizer.
+
+A diagram showing API Gateway using an authorizer
+
+Authorizers enable you to centralize your authorization logic, protect services that would otherwise be difficult to protect, and utilise caching to reduce your AWS bill.
+
+## Understanding JWT and Lambda Authorizers
+
+There are several types of authorizers available depending on the type of API Gateway configuration you have, but we're going to focus on the two that are compatible with Clerk: JWT and Lambda authorizers
+
+### JWT Authorizers
+
+A JWT authorizer uses an OpenID Connect Discovery endpoint to validate tokens based on the included JSON Web Key Set (JWKS).
+
+The OpenID Connect Discovery endpoint contains information about the identity provider (also known as the IdP) that can be used when configuring services to support authenticating with the IdP. This endpoint contains information such as who is issuing the JWT (or token), what authorization scopes are supported, what information is included in the tokens, etc.
+
+One of the things that is often included in the Discovery endpoint is the URI of the JWKS, a collection of public keys that can be used to verify the signature on a token. If the signature of a token is valid, the information about the user that is included within it can be considered trustworthy. When a request comes in that is protected by a JWT authorizer, AWS will use the publically available JWKS, along with an audience (`aud`) value in the claims, to validate the token and pass the request on if it's valid.
+
+JWT Authorizers are a simple way of verifying requests using the JWKS but are only available on the HTTP-type of API Gateway instances.
+
+### Lambda Authorizers
+
+Lambda authorizers allow you to create a custom Lambda function using the language of your choice to validate inbound requests.
+
+They offer the most flexibility but are also relatively complex when compared to JWT authorizers. When a Lambda authorizer is executed, the configured authorization header is passed along to a Lambda function in the event parameter, but it's up to you to write the code that validates the event and responds with an IAM policy. However, because you are essentially writing code, you can even parse the claims and conditionally permit the request based on more than just an audience value, something we'll explore later in this article.
+
+Lambda authorizers are compatible with both REST and HTTP API Gateway types.
+
+## Using Clerk with API Gateway Authorizers
+
+Clerk's use of JWTs makes our service compatible with API Gateway authorizers when configured as explained in this article.
+
+When a user signs into an application with Clerk, a short-lived token is created and stored in the browser cookies. Clerk's libraries allow you to easily extract this token and use it however you need, including adding it to the authorization header of an HTTP request:
+
+```jsx
+'use client'
+import { useSession } from '@clerk/nextjs'
+
+export default function Home() {
+  const { session } = useSession()
+
+  async function callApi() {
+    const token = await session?.getToken()
+    await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+  }
+
+  // Code removed for brevity...
+}
+```
+
+Now let's take a look at how to configure both a JWT and Lambda authorizer to work with Clerk.
+
+### Prerequisites
+
+To follow along with this portion of the article, you'll need the following configured:
+
+- An AWS account, and familiarity with Lambda and API Gateway
+- A Clerk account
+- Node and NPM installed on your computer
+
+> While everything discussed attempts to be covered as part of the AWS free tier, be aware that we will be creating resources that may cost real money.
+
+### Using Clerk with JWT Authorizers
+
+As mentioned earlier, JWT Authorizers require you to know the OpenID Connect Discovery endpoint, as well as an `aud` value in the claims of the token being checked, so let's start by gathering this info.
+
+In the Clerk Dashboard, select **"API Keys"** from the navigation, then click **"Show API URLs"**. This will show you URLs for the Frontend and Backend API. Take note of the value value in the **Frontend API URL** field, this will be used as the OpenID Connect Discovery endpoint as Clerk automatically sets up this endpoint for each application created in your account.
+
+Next, you'll need to configure the `aud` claim value since Clerk tokens do not contain this by default. The value can be any arbitrary string, it just needs to match what's specified in the authorizer configuration, which we'll do in the next step. This example uses "ClerkJwtAuthorizer" as the value, but you're free to use something else.
+
+To add a static value to all tokens, select **"Sessions"** from the navigation, then the **"Edit"** button under **Customize session token**. In the modal that appears, modify the **Claims** to include an `aud` value. If you don't have any other custom claims defined, it should look like this:
+
+```json
+{
+  "aud": "ClerkJwtAuthorizer"
+}
+```
+
+In an HTTP-type API Gateway instance in AWS, you can create an authorizer by selecting **"Authorization"** in the left navigation, then the **"Manage authorizers"**, and finally the **"Create"** button.
+
+Create an HTTP JWT authorizer
+
+JWT Authorizer is selected by default, but you'll need to populate the following values:
+
+- **Name** - A friendly name for the authorizer.
+- **Identity source** - Where the token should be referenced in the request. This can be left with the default value of “_$request.header.Authorization_” which will use the `Authorization` header of the inbound request.
+- **Issuer URL** - This should be set to the Frontend API URL value from earlier.
+- **Audience** - The value set earlier in the `aud` field of the session claims (you may have to click **"Add Audience"** for this input to appear).
+
+The settings view when creating an HTTP JWT authorizer
+
+Once you click **"Create"**, you'll be returned to the previous screen. From here, select the **"Attach authorizers to routes"** tab. This will display a list of the routes configured in your API. Choose a route from the list, then use the **"Select existing authorizer dropdown"** to select the authorizer you created earlier, then **"Attach authorizer"**.
+
+A screenshot of the AWS UI showing how to attach an authorizer to a route
+
+Repeat this process for every route you want to protect, and any request that are executed against these routes will automatically be protected using the user's Clerk session token.
+
+> One caveat to using JWT authorizers is that they are incompatible with the `ANY` method available in AWS if the API will be called from the browser. This is due to the fact that CORS preflight requests will not include the Authorization header, which will cause the authorizer to deny the preflight request.
+
+### Using a Lambda Authorizer with Clerk
+
+While Lambda authorizers are compatible with HTTP-type API Gateways, they are more common in REST types, so this section of the guide will move over to a REST API. Since Lambda authorizers are limited to a short execution window, we'll be using Clerk networkless verification to make sure the request is authorized. Essentially we'll be embedding the public key of the key set into the code to eliminate unnecessary network requests, making the code as efficient as possible.
+
+Start in the Clerk dashboard and navigate back to the **"API Keys"** section. Now select **"Show JWT public key."** From the modal, copy the block of text under **PEM Public Key** for later use.
+
+Now let's create a Lambda function in AWS that will serve as the authorizer. As stated earlier, you can use any supported language, but I'll be using JavaScript for this demo. Start a terminal session on your workstation and run the following commands to initialize a new Node project and install the `jsonwebtoken` library.
+
+```bash
+# Initialize a new NPM project
+npm init -y
+
+# Install the `jsonwebtoken` dependency
+npm install jsonwebtoken
+```
+
+In the root of the project, create an `index.js` file and populate it with the following code, replacing the contents of the `publicKey` variable with the **PEM Public Key** string from earlier (it should be a multiline string in the code). Notice how we're also checking the user's metadata included in the claims to make sure they have the role of “admin”, something that is not possible with JWT authorizers.
+
+```jsx
+import jwt from 'jsonwebtoken'
+
+const publicKey = `{PASTE YOUR PEM KEY HERE}`
+
+export async function handler(event, context, callback) {
+  // Extract the token from the Authorization header
+  const token = event.authorizationToken.split(' ')[1]
+
+  // Verifies and decodes the JWT
+  const claims = jwt.verify(token, publicKey)
+
+  // Check if the user is an admin
+  if (claims.metadata.role === 'admin') {
+    callback(null, generatePolicy(claims.metadata, claims.sub, 'Allow', event.methodArn))
+  } else {
+    callback(null, generatePolicy(null, claims.sub, 'Deny', event.methodArn))
+  }
+}
+
+function generatePolicy(metadata, principalId, effect, resource) {
+  const authResponse = {
+    principalId: principalId,
+    policyDocument: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Action: 'execute-api:Invoke',
+          Effect: effect,
+          Resource: resource,
+        },
+      ],
+    },
+  }
+  if (metadata) {
+    authResponse.context = metadata
+  }
+  return authResponse
+}
+```
+
+> The above code is a modified version of the sample provided in the AWS docs.
+
+Now create a zip folder that contains the following files and folders:
+
+- The entire `node_modules` folder.
+- `package.json`
+- `index.js`
+
+Now we can upload this zip folder into a new AWS Lambda function. Navigate to the Lambda section of AWS and create a new Lambda with the following settings:
+
+- **Name**: ClerkLambdaAuthorizer
+- **Runtime**: Node.js 20.x
+
+The rest of the values can be left at their defaults. Scroll to the bottom and click **"Create function"**. After the function is created, scroll down to the **Code source section** and click the **"Upload from"** button, then **".zip file"**. Select the zip file you created and upload it to Lambda.
+
+The view of AWS Lambda that shows where to upload a .zip file to Lambda
+
+Now navigate to a REST-type API Gateway instance. Authorizers can be created by selecting the **"Authorizers"** item from the left navigation, then clicking **"Create an authorizer"**.
+
+A screenshot of the AWS dashboard showing where where to create an authorizer for a REST API
+
+Give the authorizer a name and select the Lambda function that was created in the previous section.
+
+The configuration view with in AWS when creating a Lambda authorizer
+
+Scroll down a bit and enter “_Authorization_” in the **"Token source field"** then click **"Create authorizer"**.
+
+Where the Authorization header is configured for a Lambda authorizer
+
+To attach the authorizer to a request, click **"Resources"** in the navigation, select the route and method you want to add the authorizer to, then scroll down and click **"Edit"** in the Method request settings section.
+
+The AWS UI showing where to edit a route to attach an authorizer
+
+Use the dropdown under **"Authorization"** to select the authorizer you just created, then click **"Save"** at the bottom of the screen.
+
+The AWS UI showing where to attach a Lambda authorizer to a route
+
+At this point, the authorizer is configured, however, API Gateway will still deny the request if the Clerk session token hasn't been customized to include the user metadata. To do this, go to the Clerk dashboard and select **"Sessions"** from the left navigation. Then click **"Edit"** in the **Customize session token** and update the Claims text input to match the following:
+
+```json
+{
+  "metadata": "{{user.public_metadata}}"
+}
+```
+
+Now every user that has `"role": "admin"` in their public metadata will be allowed to make requests to endpoints secured with the authorizer we created. When this role is set in the public metadata, AWS will follow a flow that matches the original depiction of an authorizer:
+
+A diagram showing the Lambda authorizer allowing a request after checking a role
+
+1. A request is made to the API Gateway endpoint.
+2. The token is sent to the Lambda authorizer first.
+3. The Lambda authorizer checks the role of the user.
+4. If the role is "admin", the request is allowed to pass through to the backend Lambda function.
+
+Conversely, if the role is not "admin", the request will be denied:
+
+A diagram showing the Lambda authorizer denying a request after checking a role
+
+1. A request is made to the API Gateway endpoint.
+2. The token is sent to the Lambda authorizer first.
+3. The Lambda authorizer checks the role of the user.
+4. If the role is "admin", the request is allowed to pass through to the backend Lambda function.
+
+## Conclusion
+
+Authorizers act as a first line of defense for API Gateway endpoints. Thankfully, Clerk supports this approach to securing your API Gateway with a few simple steps. With the flexibilty of modifying session tokens in the platform, you can easily add additional claims and fine-tune the access control of your API Gateway endpoints.
+
+In this guide, we covered how to use JWT Authorizers to protect endpoints using the public keys of a Clerk instance, as well as Lambda Authorizers for more fine-grained control of who can access your API Gateway endpoints.

@@ -1,0 +1,323 @@
+# Empower Your Support Team With User Impersonation
+# джерело: https://clerk.com/blog/empower-support-team-user-impersonation
+# отримано: 2026-09-25
+
+Unfortunately, no product is perfect. Once in a while, a user will have a problem with your application and need some help from the support team.
+
+But if the problem is specific to the user–something about their data or their permissions within the product–how can customer support help? They could screenshare with the user, but that requires a lot of setup. They could just get the user to describe their problem and then walk them through the steps to fix it, but that is open to all kinds of errors. They could share their credentials with the support team, but that is a huge security risk!
+
+The answer is to implement **user impersonation** in the product.
+
+User impersonation is an admin feature that allows one user, usually an admin or the support team, to take on the identity of another user without knowing their password or other authentication credentials.
+
+It is one of those features that gets missed in an initial roadmap but is critical to the product's long-term success. Without it, your success team flies blind when trying to help customers. Let’s explain why it’s important and how you can implement user impersonation in your application.
+
+## The Importance of User Impersonation
+
+The core reason to use user impersonation is troubleshooting and support. If a user reports an issue specific to their account, admins or the support team can impersonate the user to experience the application exactly as the user does. This helps in identifying and resolving the issue more efficiently.
+
+But user impersonation can go beyond just straightforward support. User impersonation can be important for:
+
+- **User Experience Testing**: Developers can use impersonation to see how the application or platform appears to users with different roles or permissions. This can be particularly useful for platforms with different user tiers, allowing for testing the user experience at each level.
+- **Training and Onboarding**: In some cases, particularly within enterprise applications, user impersonation can be helpful for training. A trainer can impersonate a user role to guide new users through specific functionalities of the platform.
+- **Data Access and Recovery**: If a user cannot access specific data or files, a support team member might use impersonation to access and recover that data on the user's behalf.
+- **Auditing and Compliance**: In certain regulated industries, there might be a need to audit user actions or verify data accuracy. Impersonation can allow an auditor to access the system as a specific user to ensure compliance with regulations.
+
+Of course, impersonating users is fraught with risks. Impersonation can easily lead to privacy breaches if not handled carefully. Admins and support can see personal or sensitive information. Also, if not implemented securely, impersonation features can be a potential attack vector for malicious actors. Ensuring that only authorized personnel can use impersonation and that all impersonation activities are logged for auditing is essential.
+
+Because of these concerns, any system implementing user impersonation should have stringent security controls, logging, and auditing. It's also essential to have clear policies about when and why impersonation is used.
+
+## Implementing User Impersonation
+
+Implementing user impersonation is tricky. Literally, you are tricking your application into thinking that you are someone else. Here are the steps to consider through as you add user impersonation to your product:
+
+1. **Ensure Strong Permissions and Auditing**: Only certain roles, such as admins and the support team, should be allowed to impersonate. As we said above, you should log every impersonation attempt, including the user doing the impersonation, the impersonated user, and the timestamp.
+2. **Authentication & Authorization**: Established libraries, like Clerk, have user impersonation built in. Use these wherever possible to lessen the likelihood of mistakes–get this wrong, and you can have serious privacy breaches. You should store roles in JWT or sessions to check user permissions.
+3. **Impersonation**: When an authorized user requests to impersonate another user, you should store the original user's ID somewhere safe (e.g., in their session or another token), then update the user session/token to reflect the impersonated user's ID. When the user finishes impersonation, you must restore their session/token using the stored original user ID.
+4. **UI Indication**: To avoid confusion, the UI should indicate when impersonation is active. A simple banner or color change can be used to show that the admin is in impersonation mode.
+
+Let’s show how this would work with a basic JavaScript application. We’re going to set up two core components to this:
+
+1. A backend Express server that will handle the actual impersonation.
+2. A frontend React application that will provide the UI for the support team to use.
+
+### The backend server
+
+The backend is where we will incorporate the logic for our impersonation.
+
+```javascript
+const express = require('express')
+const cors = require('cors')
+
+const PORT = 3000
+
+const app = express()
+app.use(express.json()) // Middleware to parse JSON requests
+
+const users = [
+  { id: 1, username: 'admin', password: 'pass', roles: ['admin'] },
+  // ... other users
+]
+
+// Use the cors middleware and set the frontend origin
+app.use(
+  cors({
+    origin: '<http://localhost:3001>',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  }),
+)
+
+function ensureAdmin(req, res, next) {
+  const roles = req.body.roles
+  if (roles && roles.includes('admin')) {
+    return next()
+  } else {
+    return res.status(403).json({ message: 'Access forbidden.' })
+  }
+}
+
+app.post('/impersonate/:userId', ensureAdmin, (req, res) => {
+  console.log(req)
+  const userIdToImpersonate = req.params.userId
+  const user = users.find((u) => u.id == userIdToImpersonate)
+  if (!user) {
+    return res.status(404).json({ message: 'User not found.' })
+  }
+  res.json({ message: 'Impersonation started.' })
+})
+
+app.post('/stop-impersonation', ensureAdmin, (req, res) => {
+  res.json({ message: 'Impersonation stopped.' })
+})
+
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`)
+})
+```
+
+We start by importing the two modules needed:
+
+- Express for the web server.
+- cors for Cross-Origin Resource Sharing (useful when the frontend and backend are on different origins).
+
+We then set up the Express server. We want to use the built-in `express.json()` middleware, enabling the server to parse incoming JSON payloads in requests.
+
+After that, we set up a user array. This array simulates a database of users. Here, you would call your database to check users and roles. We then have to set up some CORS middleware. Without this, our server wouldn’t want to receive requests from our separate frontend.
+
+ensureAdmin is the integral function of the server. This middleware checks if the user role includes "admin." If so, it allows the request to proceed. Otherwise, it sends back a forbidden status. This ensures the user is an admin before allowing them to impersonate another user.
+
+We then have our two API Endpoints:
+
+- `/impersonate/:userId`: An admin can attempt to impersonate another user by providing their ID.
+- `/stop-impersonation`: An admin can stop the impersonation.
+
+Finally, we start our server. Save this as `app.js` and you can run it with
+
+```sh
+node app.js
+```
+
+With that up and running, we can set up the frontend.
+
+### The frontend application
+
+The frontend will mimic the version of the application that an admin would see. When an admin chooses to impersonate, it makes a request to the `/impersonate/:userId` endpoint. It then updates the UI based on the response to show that impersonation is active. To stop impersonation, it makes a request to `/stop-impersonation`.
+
+```jsx
+import React, { useState } from 'react'
+import './App.css'
+
+function App() {
+  const [isImpersonating, setIsImpersonating] = useState(false)
+  const [message, setMessage] = useState('')
+
+  const handleImpersonate = async (userId) => {
+    try {
+      const response = await fetch(`/impersonate/${userId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ roles: ['admin'] }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      setIsImpersonating(true)
+      setMessage(data.message)
+    } catch (err) {
+      console.error('Impersonation failed:', err)
+      setMessage('Impersonation failed. Check console for details.')
+    }
+  }
+
+  const handleStopImpersonating = async () => {
+    try {
+      const response = await fetch('/stop-impersonation>', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ roles: ['admin'] }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      setIsImpersonating(false)
+      setMessage(data.message)
+    } catch (err) {
+      console.error('Failed to stop impersonation:', err)
+      setMessage('Failed to stop impersonation. Check console for details.')
+    }
+  }
+
+  return (
+    <div className="App">
+      {isImpersonating ? (
+        <div className="impersonation-banner">You are impersonating another user!</div>
+      ) : null}
+      <button onClick={() => handleImpersonate(1)}>Impersonate User with ID 1 (admin)</button>
+      {isImpersonating ? (
+        <button onClick={handleStopImpersonating}>Stop Impersonating</button>
+      ) : null}
+      <p>{message}</p>
+    </div>
+  )
+}
+
+export default App
+```
+
+After importing React and our CSS, the core App function starts by declaring two state variables:
+
+- `isImpersonating`: A boolean state that tracks whether the admin is currently impersonating another user.
+- `message`: A string state to store and display messages from server responses or errors.
+
+We then have our impersonation functions. `handleImpersonate` is an async function to impersonate a user by sending a POST request to `/impersonate/:userId`. If successful, it sets the state `isImpersonating` to `true` and displays a message from the server.
+
+`handleStopImpersonating` is also an async function, this time to stop impersonation by sending a POST request to `/stop-impersonation`. If successful, it sets the state `isImpersonating` to false and displays a message from the server.
+
+We then render our component. A button allows the admin to impersonate a user with ID 1 , and then a banner is displayed when the admin is impersonating another user. If the admin is impersonating, another button appears to stop the impersonation.
+
+So when an admin logs in initially, they see this:
+
+Empower Support Team User Impersonation guide illustration
+
+Once they press the button, they start the impersonation:
+
+Empower Support Team User Impersonation guide illustration
+
+Then, they can stop the impersonation again:
+
+Empower Support Team User Impersonation guide illustration
+
+## Using Clerk for User Impersonation
+
+What are the problems with the solution above? They are myriad.
+
+First, we don’t have any authentication. This not only means the whole system is insecure, but it also means the impersonation is insecure. We’re just sending a plain text ‘admin’ message to the backend to tell them we can impersonate a user. The correct way to do this is using JWT. The token would contain the role information and be authenticated by the backend.
+
+We also don’t have the logic incorporated to actually do anything with the impersonation. Neither do we have all the security checks in place to securely audit and log any impersonation.
+
+We’re missing all this because impersonation is difficult to get right. You are coding an entirely different way to access your application, and you have to do it perfectly to avoid any security or privacy issues.
+
+This is where using a platform like Clerk becomes essential. User impersonation is incorporated directly into Clerk. All you have to do is call our backend API with your user ID (`user_id`) and the user ID of the user to impersonate (`sub`):
+
+```javascript
+const url = 'https://api.clerk.com/v1/actor_tokens'
+
+const data = {
+  user_id: 'user_1o4qfak5AdI2qlXSXENGL05iei6',
+  expires_in_seconds: 600,
+  actor: {
+    sub: 'user_21Ufcy98STcA11s3QckIwtwHIES',
+  },
+}
+
+async function postData() {
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`)
+    }
+
+    const responseData = await response.json()
+    console.log(responseData)
+  } catch (error) {
+    console.log('There was a problem with the fetch operation:', error.message)
+  }
+}
+
+// Invoke the function to execute the fetch operation
+postData()
+```
+
+This returns a token you can then use to impersonate the user for 10 minutes:
+
+```json
+{
+  "sub": "user_1o4qfak5AdI2qlXSXENGL05iei6",
+  "act": {
+    "sub": "user_21Ufcy98STcA11s3QckIwtwHIES"
+  }
+}
+```
+
+You can then use this with the Clerk SDK for impersonation:
+
+```javascript
+import express from 'express'
+import { ClerkExpressWithAuth } from '@clerk/clerk-sdk-node'
+
+const app = express()
+
+// Apply the Clerk express middleware
+app.get(
+  '/protected-endpoint',
+  ClerkExpressWithAuth({
+    // ...options
+  }),
+  (req, res) => {
+    // The request object is augmented with the
+    // Clerk authentication context.
+    const { userId, actor } = req.auth
+
+    res.json({ userId, actor })
+  },
+)
+
+app.listen(3000, () => {
+  console.log('Booted.')
+})
+```
+
+There is an even easier way to use Clerk to impersonate a user–through your dashboard. Go to Users in your dashboard:
+
+Empower Support Team User Impersonation guide illustration
+
+Then click to open the menu for the user you want to impersonate and choose "Impersonate user":
+
+Empower Support Team User Impersonation guide illustration
+
+Then, your support team is ready to impersonate a user straight away.
+
+## More Support for Your Support Team
+
+Adding user impersonation is a must for a well-functioning support team. It gives them to the tools they need to help your customers with their support needs without sacrificing privacy and security.
+
+Getting it right in your application is a big challenge. Using an authentication solution such as Clerk with user impersonation built-in means you can easily have this embedded in your app, and you don’t have to worry about incorporating errors that lead to security issues. Check out the Clerk user impersonation docs to learn more about setting this up quickly with Clerk.

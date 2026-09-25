@@ -1,0 +1,96 @@
+# Serverless authentication with Clerk and Firebase
+# джерело: https://clerk.com/blog/serverless-auth-with-clerk-and-firebase
+# отримано: 2026-09-25
+
+As modern ventures have a need for architectures and infrastructure that support constant innovation and dynamism, development agility and convenience must be at their core. One of the computing categories that support this paradigm and has solidified its place on our engineering efforts is _Function as a service_ (FaaS).
+
+A leading product in this space is Firebase and its Cloud Functions solution. Cloud Functions give you all the power of a serverless framework with both callable and event-driven architectural capabilities.
+
+In this article we are going to show you how to secure your Cloud Functions in an easy and seamless way using Clerk, making sure only authenticated Firebase user clients can access the results of your serverless functions. To do that, we are going to be using the Firebase web SDK and the latest Firebase Callable Functions.
+
+The Clerk-Firebase integration is **natively** authenticating a user as a Firebase authenticated user, recognized by both systems. This fact provides tremendous flexibility without going through any backend code or calling _yet another API_ to continuously verify with both platforms. You as a web developer do not have to do **anything** additional for authentication to work the same way as it would with a standard Firebase authentication provider.
+
+## Prerequisites
+
+This article assumes that you have already:
+
+1. Set up a Firebase Web project with the ability to use Cloud Functions
+2. Correctly set up the Firebase integration on your Clerk account
+
+If you need a refresher with an example of the whole process, you can check out our showcase of how to integrate Firebase with Clerk.
+
+## Creating and Securing your Function
+
+For the sake of the example, we are going to create a function which receives a message from the Firebase web SDK and returns the message with the user identifier attached. A pretty trivial example but it showcases how to configure your Functions to only be accessible by your authenticated users.
+
+```typescript
+import * as functions from 'firebase-functions'
+
+export const returnAuthenticatedMessage = functions.https.onCall((data, context) => {
+  /** Prevent unauthenticated Firebase users from receiving the result. */
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      'unauthenticated',
+      'The function must be called while authenticated',
+    )
+  }
+
+  /** Any kind of data parameter sent from the web client. */
+  const text = data.text
+
+  /** Authentication / user information is automatically added to the request through context. */
+  const clerkFirebaseUserId = context.auth?.uid
+
+  return {
+    message: `Authenticated message '${text}' from user ${clerkFirebaseUserId}.`,
+  }
+})
+```
+
+What this function does is first of all check if the request is coming from an authenticated user, _Firebase callable functions store this information in the context argument_, and if the user is not authenticated, a self-explanatory error is returned. If all goes well, the message is returned, along with the user identifier.
+
+As you can see, there are no external calls on any Clerk related API. The user is **automatically recognized** as being authenticated and also shares the same user identifier in both Clerk and Firebase.
+
+## Invoking the Function from the client
+
+The second part of the equation is to call the function from your client application using the Firebase web SDK.
+
+In your application, after you successfully sign in using the Clerk-Firebase integration, you can normally call the Cloud Function from your client code.
+
+```typescript
+try {
+  const returnAuthenticatedMessage = firebase
+    .functions()
+    .httpsCallable('returnAuthenticatedMessage')
+
+  const response = await returnAuthenticatedMessage({
+    text: 'some message',
+  })
+
+  /**  Read the result of the Firebase Function. */
+  const authenticatedMessage = response.data.text
+  // ...
+} catch (error) {
+  /**  Get the Error details. */
+  const code = error.code
+  const message = error.message
+  const details = error.details
+  /** Handle the error in any way you want. */
+}
+```
+
+That's it! Using the Clerk-Firebase integration, user authentication works native to Firebase, while also providing consistency between user identifiers.
+
+## How does this work ?
+
+The way Clerk integrates with Firebase, authentication is ensured through a token representing a valid Firebase user. This token is retrieved through the Clerk JavaScript library and then handled internally by the Firebase web SDK.
+
+The SDK then automatically attaches the required authentication token on the _HTTP Authorization_ header. From there the Firebase platform can provide any user credentials on the `context` object in the callable Firebase Function.
+
+How does this work ? screenshot
+
+## Parting Words
+
+This brief example showed how you can authenticate your Firebase serverless Functions while using Clerk for authentication. There are no extra steps compared to using Firebase's standard authentication system, but you get all of the benefits of Clerk's best-in-class user management system, including beautiful UIs and a complete user profile page.
+
+We would love to hear your feedback and use cases for integrating Clerk and Firebase. If you have questions or ideas for improvement, reach out to us on X @clerk, or through any of our support channels. We also have a Discord server and we would love to see you there. Cheers!

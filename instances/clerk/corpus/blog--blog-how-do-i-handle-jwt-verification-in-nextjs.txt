@@ -1,0 +1,225 @@
+# How do I handle JWT verification in Next.js?
+# джерело: https://clerk.com/blog/how-do-i-handle-jwt-verification-in-nextjs
+# отримано: 2026-09-25
+
+In this article, you’ll learn what JWTs are and how to verify them in a Next.js application. Code samples are also provided to demonstrate how to access the JWTs transmitted through a cookie or a request header.
+
+**Summary:**
+
+- JWTs are specially crafted, cryptographically signed tokens that are used to identify users or systems making requests.
+- JWTs can be signed using symmetric or asymmetric cryptography, with the latter being more secure while supporting distributed systems.
+- They are verified by extracting the value from the request and checking the signature using a shared secret or public key, which allows the receiving server to trust the encoded claims.
+
+## What Is a JWT?
+
+A JSON Web Token (JWT) is a compact, specially crafted string used to represent a user, session, or other principal. JWTs are cryptographically signed, and that signature is used to confidently identify the party making a request.
+
+A JWT is structured into three distinct segments, each separated by a period to indicate where one part ends and another begins. Each segment is base64 encoded before being joined to create the final token. The following diagram shows what a JWT looks like, along with each segment being color-coded:
+
+Color-coded diagram showing the different segments of a JWT.
+
+### Header
+
+The header contains information to help the receiving system understand the token's purpose. This includes the type (typically set to `jwt`) and the algorithm used to generate the signature.
+
+### Claims
+
+The claims are the primary payload of the JWT and contain information about the party for which the JWT was created. The following list outlines claims that are standard across most JWTs:
+
+- **Subject** (`sub`) - Identifies who the JWT was created for. Often this is the username or user ID.
+- **Issuer** (`iss`) - Who created the JWT
+- **Expiration** (`exp`) - The epoch timestamp for when the JWT expires
+- **Issued at** (`iat`) - The timestamp for when the JWT was created
+- **Not before** (`nbf`) - A timestamp to restrict use of the JWT before a specific moment
+- **Audience** (`aud`) - The designated audience for the JWT
+
+Not all of these claims are required. The following snippet shows the claims from the Clerk token shown in the image above:
+
+```json
+{
+  "azp": "https://quillmate.ink",
+  "exp": 1759338857,
+  "fva": [0, -1],
+  "iat": 1759338797,
+  "iss": "https://clerk.quillmate.ink",
+  "jti": "890f222a3f2a4ce5f782",
+  "nbf": 1759338787,
+  "sid": "sess_33TQq7sI3bxADiC3KgBVJlASViA",
+  "sts": "active",
+  "sub": "user_2urxDrHRFn0g7jbmVH88oTLuME6",
+  "v": 2
+}
+```
+
+You can also add any arbitrary JSON-compliant data to a JWT. Say, for example, you are using `sub` as the user ID but also want to encode the username, you can create a `username` claim and simply store it the JWT claims before signing.
+
+### Signature
+
+The signature is the result of combining the base64 encoded versions of the header and claims, and using the specified algorithm to generate a cryptographic signature. This signature is used to ensure that the JWT has not been tampered with, which is how the receiving system can be confident in the JWT's authenticity.
+
+## How JWT verification uses cryptography
+
+There are two cryptographic methods by which JWTs are created: symmetric and asymmetric.
+
+When symmetric encryption is used, the server uses a shared secret for encrypting and decrypting the token. When a JWT is received by the server, it uses that secret to verify that the signature of the JWT is valid. If either the header or claims have been tampered with, then the signature verification will fail. When using symmetric encryption, any server that needs to verify JWTs would need a copy of the secret.
+
+Asymmetric encryption uses public key cryptography which involves two keys: a public key that can be shared with anyone and a private key that should be secured as you would secure a password. The private key is capable of creating and verifying signatures, whereas the public key is only capable of verifying signatures against a pre-existing payload. With both keys, the signature is verified with the same logic as described in the previous section.
+
+With asymmetric encryption, only the public key is used to verify the signature. All servers would need a copy of this key, but since the public key can only verify signatures and not create signatures, it is a much more secure method of verifying signatures.
+
+> A deep dive into cryptography used for JWT signing is beyond the scope of this article, but you can check the RFC if you are interested in learning more.
+
+## How are JWTs created?
+
+In a typical web application, users will start by submitting their credentials (e.g., username and password). When the server receives these credentials, it will verify them with the database to ensure the user record is found and the provided information matches what's stored. The server will then create a JWT and send it back to the client, often by setting it in a cookie but the server can also provide it in a response body and leave it up to the client to store for later use.
+
+The following sequence diagram demonstrates this flow visually:
+
+1. The client sends the user's credentials to the server
+2. The server checks the credentials with the database
+3. The database responds to the server to confirm the user record exists and credentials match
+4. The server uses the private key to create a JWT and sends it back to the client
+
+JWT authorization sequence diagram.
+
+> If you want to explore this in practice, we have a guide that covers how to build JWT authentication into a Next.js application from scratch.
+
+## Verifying JWTs in a Next.js app
+
+JWTs are verified on each request to a server. When the server receives a request and the accompanying JWT, it will use the public key to verify the signature of the JWT. The verification also checks various claims encoded within the JWT such as the `iat`, `nbf`, and `exp` values to ensure the token is not being used outside of its designated window. If the server is able to verify the signature, it can trust the data encoded within the JWT.
+
+Since the public key can be cached on the receiving server, communicating with additional auth servers or databases is not required.
+
+The following snippets demonstrate how to verify a JWT using the `jose` library in a Next.js application. In these scenarios, the public key is stored in the `JWT_PUBLIC_KEY` environment variable. Here is an example of that key:
+
+```text
+-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyGJjKFz2TB66CY3O3J8E
+Q1HbMhg0IE/zK6rxOWx4wuMLXsWhFzEOgqQhEPXAC2IzoIQ5JiV8MKe/xI5NQPr6
+sBsPNvf50VBEu/4LAo2fJLFFaqfLpV6p0kLU93EgmklrYaGhU+qhYWdqJQGlafTZ
+bNG07VM3mO4qX6iGGn2uhF+KCwGRA06wIJHkprWlSjxM0HjpHCBJ5Vd44D2D5nRT
+jQ6W+SEQBiU8CerIPLlEHlCMxVarwq9Pa385vi1PPoDcCB9j/qY6FupDB1e3q27x
++bubo+ZtAmF4mOIPHH/xdg3AhoDYYJcCarCUzfFAEbXM5b6vQx4kCTxTvlN6bRJ2
+NwIDAQAB
+-----END PUBLIC KEY-----
+```
+
+### Cookies
+
+Cookies are small bits of data stored in a web browser that are automatically transmitted to servers that match the domain for which they were created when a request is sent. This snippet shows how to parse and verify the JWT from the `token` cookie:
+
+```tsx
+import React from 'react'
+// Read cookies on the server in the App Router
+import { cookies } from 'next/headers'
+// Jose is used for standards-compliant JWT crypto/validation
+import * as jose from 'jose'
+
+// RS256 public key (PEM/SPKI). Keep this in env, not in code.
+const publicKeyPem = process.env.JWT_PUBLIC_KEY as string
+
+async function getPublicKey() {
+  // Convert PEM string to a CryptoKey usable by jose.jwtVerify
+  return jose.importSPKI(publicKeyPem, 'RS256')
+}
+
+async function Page() {
+  // Access the cookie store on the server
+  const cookieStore = await cookies()
+  // JWT expected to be set as a 'token' cookie
+  const tokenCookie = await cookieStore.get('token')
+  // Use a placeholder for the token claims
+  let claims: jose.JWTPayload | null = null
+
+  if (tokenCookie) {
+    try {
+      const publicKey = await getPublicKey()
+      // Verify signature, exp/nbf, and decode claims (throws on failure)
+      const { payload } = await jose.jwtVerify(tokenCookie?.value, publicKey)
+      claims = payload
+    } catch (err) {
+      // Treat any verification/parsing error as unauthorized
+      console.error('Error parsing token', err)
+    }
+  }
+
+  if (claims) {
+    // Authorized view when token is valid
+    return <div>Authorized content</div>
+  } else {
+    // Fallback when missing/invalid token
+    return <div>Unauthorized content</div>
+  }
+}
+
+export default Page
+```
+
+> You can learn more about how `jose.jwtVerify` works in the `jose` docs on GitHub.
+
+Cookies are often considered the most secure method since you can restrict JavaScript from accessing the value of cookies, limiting what can potentially exfiltrate a user's token for impersonation.
+
+### Headers
+
+Request headers are a popular way to transmit JWTs and can be used across domains; however, since the client needs to manually add the header to each request, JavaScript needs to be able to access the value of the JWT. The most common header to transmit a JWT with is the `Authorization` header with a value formatted as `Bearer {TOKEN}`.
+
+Using `fetch` to make a request to an API route would be similar to the following:
+
+```ts
+await fetch('/api/data', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${token}`,
+  },
+})
+```
+
+The JWT in the header would be verified in the route handler like so:
+
+```ts
+import * as jose from 'jose'
+
+const publicKeyPem = process.env.JWT_PUBLIC_KEY as string
+
+async function getPublicKey() {
+  return jose.importSPKI(publicKeyPem, 'RS256')
+}
+
+export async function POST(req: Request) {
+  // Placeholder for verified JWT claims
+  let claims: jose.JWTPayload | null = null
+
+  // Read the Authorization header in a case-insensitive way since header casing can vary by clients/proxies.
+  const auth = req.headers.get('authorization') || req.headers.get('Authorization')
+  // Ensure the header exists and uses the expected "Bearer <token>" scheme.
+  if (!auth || !auth.startsWith('Bearer ')) {
+    return new Response(null, { status: 401 })
+  }
+  // Extract the raw JWT by removing the leading "Bearer " prefix and trimming whitespace.
+  const token = auth.slice(7).trim()
+
+  try {
+    const publicKey = await getPublicKey()
+    const { payload } = await jose.jwtVerify(token, publicKey)
+    claims = payload
+  } catch (err) {
+    console.error('Error parsing token', err)
+  }
+
+  if (claims) {
+    return new Response(null, { status: 200 })
+  } else {
+    return new Response(null, { status: 401 })
+  }
+}
+```
+
+Using the `Authorization` header is common practice but you can transmit a JWT in any header that makes sense for your application.
+
+### Other methods
+
+The methods above are the most common and secure methods of transmitting a JWT, but ultimately, any way that the token can be transmitted from a client to the server will work, provided the server expects it. Alternate methods you may encounter are as a path or query parameter in a URL, however, these approaches are typically not recommended as they pose potential security risks by exposing tokens via logging platforms or in the browser history.
+
+## Conclusion
+
+This article covered what JWTs are, how they are created, and how to verify them in a Next.js application. Clerk handles this entire process for you in only a few lines of code, while going beyond simple JWT verification by providing a full user management suite. This includes social sign-in with popular providers, multi-tenancy with RBAC, and even a billing solution for SaaS platforms that need to provide subscriptions.

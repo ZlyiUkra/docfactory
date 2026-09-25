@@ -1,0 +1,167 @@
+# Automate Neon schema changes with Drizzle and GitHub Actions
+# джерело: https://clerk.com/blog/automate-neon-schema-changes-with-drizzle-and-github-actions
+# отримано: 2026-09-25
+
+While it’s relatively straightforward to deploy updated code to different environments, applying the same techniques to a relational database can be disastrous.
+
+Application code is stateless, meaning you can rebuild the code to recreate the application at any time. In fact, when deploying updated code to platforms like Vercel, the tooling will simply build and ship the latest version of the application, overwriting the previous one.
+
+However, databases are stateful since the value is in the data contained within them. Applying the same deployment methodology to a database (removing and replacing it with a new version) would be detrimental to your users or business.
+
+In this article, you’ll learn what schema migrations are, how they can be used to safely make database changes, and how to automate those changes to a Neon database using Drizzle and GitHub Actions.
+
+## What is a schema migration?
+
+Schema migrations are a way to apply changes to the schema of a database in a controlled way.
+
+Typically each schema migration is a SQL script that is applied to the database to update the schema to the latest version. The migration files can stored in version control so the state of the schema can be tracked over time.
+
+Schema migrations are used for updating the database schema as changes are required, but can also be used to create new environments. To recreate the database up to a specific point in time, the migrations can applied in the same order they were generated.
+
+### Schema migrations and deployments
+
+When building an application that uses a relational database, you’ll often have a different database per environment. Each database is isolated from one another so modifying the schema in one database environment does not affect the others.
+
+Let's say you have two environments, a dev environment for building new features, and a production environment that your users are actively using.
+
+When a feature is complete, merging your code from the `dev` branch to `main` is relatively straightforward. Once the newest version of the application is built, the artifacts of that build are deployed into the production environment, replacing the previous version.
+
+The latest schema migrations are also applied to the database, updating the schema to support the latest version of the application. If done properly, all of the data within the database will remain intact.
+
+## How to generate and apply schema migrations with Drizzle
+
+Now that you understand what schema migrations are and how they are used when deploying new versions of your database, let’s explore a practical example using Drizzle.
+
+Drizzle is a type-safe ORM for applications built with TypeScript. The team also built Drizzle Kit for managing the schema of the database. Drizzle Kit can be used to analyze your TypeScript models, generate schema migrations from the models, and apply them to the database.
+
+### The demo application
+
+The remainder of this article uses a sample to-do app to demonstrate how to use schema migrations to apply database changes. The application uses a Postgres database hosted by Neon, with a relatively simple schema.
+
+I’ll be showing the process of adding a single column to the `tasks` table (shown below) so that each task can have a description stored with it.
+
+A database table showing columns named "name", "is\_done", "owner\_id", "created\_on", and "created\_by\_id"
+
+To simulate multiple environments, the Neon database has a `main` branch that contains the production data and a `dev` branch that is an isolated environment used for adding and testing new features.
+
+> All of the code shown in this article is available on GitHub.
+
+### Updating the development environment
+
+I’ll start by updating the code on the `dev` branch to support a “description” field of the `tasks` model:
+
+filename: src/db/schema.ts
+```ts
+export const tasks = pgTable('tasks', {
+  id: serial('id').primaryKey(),
+  name: text('name'),
+  is_done: boolean('is_done'),
+  owner_id: text('owner_id'),
+  created_in: timestamp('created_on'),
+  created_by_id: text('created_by_id'),
+  description: text('description'),
+})
+```
+
+The application has the following `drizzle.config.ts` which Drizzle Kit uses to locate the schema files in the project, generate and store migrations, and connect to the database:
+
+filename: drizzle.config.ts
+```ts
+import type { Config } from 'drizzle-kit'
+
+export default {
+  schema: './src/db/schema.ts',
+  out: './drizzle',
+  dialect: 'postgresql',
+  dbCredentials: {
+    url: process.env.DATABASE_URL as string,
+  },
+  verbose: true,
+  strict: true,
+} satisfies Config
+```
+
+Next, I’ll run the following command which will generate a new schema migration file. I’m also setting the `DATABASE_URL` environment variable used by `drizzle.config.ts`:
+
+```bash
+export DATABASE_URL=postgresql://teamtodo_owner:mydbpass@ep-weathered-wildflower-a5okjpjr.us-east-2.aws.neon.tech/teamtodo?sslmode=require
+drizzle-kit generate
+```
+
+A new file is automatically generated and placed in the `drizzle` folder with the necessary SQL to apply:
+
+filename: drizzle/0001\_loose\_mojo.sql
+```sql
+ALTER TABLE "tasks" ADD COLUMN "description" text;
+```
+
+Next, I’ll run the following command to update the database schema in Neon, adding the `description` column:
+
+```bash
+export DATABASE_URL=postgresql://teamtodo_owner:mydbpass@ep-weathered-wildflower-a5okjpjr.us-east-2.aws.neon.tech/teamtodo?sslmode=require
+drizzle-kit migrate
+```
+
+Once the migration is applied, the new column is added to the database and is ready to test. The schema will now look like this:
+
+A database table showing columns named "name", "is\_done", "owner\_id", "created\_on", "created\_by\_id", and "description"
+
+### Updating the production environment
+
+When I’m ready to move the code to production, I can apply the migrations to the `main` database branch by passing in that branch's connection string:
+
+```bash
+export DATABASE_URL=postgresql://teamtodo_owner:mydbpass@ep-frosty-tree-a54nb30r.us-east-2.aws.neon.tech/teamtodo?sslmode=require
+drizzle-kit migrate
+```
+
+Once the migrations are applied to the `main` database branch, I can deploy the production version of my application. Platforms like Vercel (which I am using to host this application) will commonly monitor the `main` branch of a repository for changes and kick off the deploy process when a change is detected. Merging my code changes into `main` will trigger Vercel’s CI tools to deploy the newest version of the code.
+
+I can deploy my application to Vercel by merging the changes into the `main` code branch and letting Vercel’s CI tools deploy the newest version of the code.
+
+While this example makes a single change, multiple schema migrations can be generated and applied between deployments for more complex schema changes. The files will be applied in the order they were created, ensuring that the state of the production database matches the development environment.
+
+### Automating migrations with GitHub Actions
+
+Using Drizzle Kit to apply schema migrations helps to ensure that your schema is safely updated between deployments, but manually performing this operation introduces a point of failure in the process. If you forget to apply the migrations, and your schema doesn't match what the application expects, you could inadvertently take your service down.
+
+GitHub Actions, a platform built into GitHub, provides a way for developers to define workflows that execute automatically when specific events (such as making changes to a repository branch) occur on GitHub. Let’s look at how GitHub Actions can automatically apply migrations when the code on the `main` branch changes.
+
+First, I’ll need to securely store the connection string for my database in GitHub in a way that the GitHub Actions service can access it. This is done by adding a repository secret in **"Settings"** under **"Secrets and variables"**, then **"Actions"**.
+
+GitHub repository settings, adding the "DATABASE\_URL" secret.
+
+The following GitHub Actions workflow can be used to execute `drizzle-kit migrate` each time a change is performed on the `main` branch in GitHub:
+
+```yaml
+name: Apply schema migrations
+
+# 👉 Only run this workflow when a change is made to the main branch
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  apply_migrations:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Install dependencies & tooling
+        run: |
+          npm install
+          npm install -g drizzle-orm drizzle-kit pg
+      - name: Apply migrations
+        run: drizzle-kit migrate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+```
+
+Since Vercel triggers a deployment when changes are made on the `main` repository branch, the Actions workflow will trigger simultaneously with the deployment, ensuring that your code and schema versions always stay in sync.
+
+## Conclusion
+
+Properly applying changes to a database when new features are added to an application is important to retaining the data within the database, as well as maintaining the uptime of your application.
+
+After reading this article, you now understand what schema migrations are and how they’re used in the development lifecycle of a database. You should also know how to use Drizzle to generate and apply migrations, and how to automate this process using GitHub Actions.

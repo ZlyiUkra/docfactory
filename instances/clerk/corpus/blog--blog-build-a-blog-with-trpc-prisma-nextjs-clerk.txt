@@ -1,0 +1,1052 @@
+# Build a blog with tRPC, Prisma, Next.js and Clerk
+# джерело: https://clerk.com/blog/build-a-blog-with-trpc-prisma-nextjs-clerk
+# отримано: 2026-09-25
+
+In this tutorial, you'll build a blog app from scratch using many modern and popular technologies such as Next.js, Clerk, tRPC, Prisma, and more. After reading this guide, you'll have a simple blog application that allows users to create and read posts.
+
+Let's explore the various technologies used in the article:
+
+- Next.js is the React framework used throughout this guide, specifically using the App Router.
+- Clerk is used for user management and authentication.
+- Prisma will be the ORM used to connect to the database.
+- Vercel is used for hosting and automated deployments.
+- Neon is a serverless Postgres database, and you'll actually use Vercel to automate deployment of the database as well.
+- Tanstack Query simplifies the process of fetching and caching data.
+- tRPC provides a type-safe API endpoint wrapper around Tanstack Query.
+- Zod is used for schema validation.
+- Tailwind provides a simple and modern way to style your app with CSS.
+
+You'll start by creating a Next.js app and integrating Clerk into it for authentication. Then you'll deploy the application to Vercel, where you will also create a Neon database that will be used by Prisma to access and manipulate data within that database. At this point the application will be fully functional, however the rest of the tutorial further enhances the type-safety of your app by adding Tanstack Query, tRPC, and zod. Finally, you'll learn how to create protected procedures using Clerk's authentication context.
+
+To follow along, you should have Node.js installed on your computer and a Vercel account. Familarity with React and Next.js is recommended as well.
+
+> Check out the finished product in Clerk's demo repository:
+> https://github.com/clerk/clerk-nextjs-trpc-prisma
+
+## Setting up a Next.js application with Clerk
+
+Start by opening your terminal and running the following command to create a new Next.js application. When prompted for the various configuration options, use the options specified below:
+
+```bash
+npx create-next-app@latest
+
+# Use the following configuration
+✔ Would you like to use TypeScript? … Yes
+✔ Would you like to use ESLint? … No
+✔ Would you like to use Tailwind CSS? … Yes
+✔ Would you like your code inside a `src/` directory? … No
+✔ Would you like to use App Router? (recommended) … Yes
+✔ Would you like to use Turbopack for `next dev`? … Yes
+✔ Would you like to customize the import alias (`@/*` by default)? … No
+```
+
+Once the application has been created, follow the quickstart in the docs to add Clerk to it.
+
+Alternatively, you can clone the Clerk Next.js quickstart repository. This repository contains a preconfigured Next.js app with Clerk already added.
+
+```bash
+git clone https://github.com/clerk/clerk-nextjs-app-quickstart
+```
+
+### Initialize Clerk
+
+From your project directory, run the Clerk CLI:
+
+```bash
+npx -y clerk@latest init --accountless
+```
+
+You don't need a Clerk account to get started. The `--accountless` flag provisions an accountless application, writes development keys to `.env.local`, and configures the SDK. Before deploying to production, run `npx -y clerk@latest auth login` to claim the application, then run `npx -y clerk@latest deploy` to configure its production instance.
+
+The Clerk Dashboard is where you, as the application owner, can manage your application's settings, users, and organizations. For example, if you want to enable phone number authentication, multi-factor authentication, social providers like Google, delete users, or create organizations, you can do all of this and more in the Clerk Dashboard.
+
+## Install dependencies and test your app
+
+While developing, it's best practice to keep your project running so that you can test your changes as you work. So, let's make sure the app is working as expected.
+
+1. Run the following commands to install the dependencies and start the development server:
+```bash
+   npm install
+   npm run dev
+```
+2. Open your browser and navigate to the URL displayed in your terminal. The default is `http://localhost:3000` and will be used through the remainder of the tutorial. It should render a new Next.js app, but with a "Sign in" and "Sign up" button in the top right corner.
+   The development instance running.
+3. Select the "Sign in" button. You should be redirected to your Clerk Account Portal sign-in page, which renders Clerk's `<SignIn />` component. The `<SignIn />` component will look different depending on the configuration of your Clerk instance.
+   A Clerk Account Portal sign-in page.
+4. Sign in to your Clerk application.
+5. You should be redirected back to your app, where you should see Clerk's `<UserButton />` component in the top right corner.
+
+## Install Prisma ORM
+
+Run the following command to install Prisma:
+
+```bash
+npm install prisma --save-dev
+```
+
+Then run `npx prisma init` to initialize Prisma in your project.
+
+```bash
+npx prisma init
+```
+
+This will create a new `prisma` directory in your project, with a `schema.prisma` file inside of it. The `schema.prisma` file is where you will define your database models.
+
+The `prisma init` command will also update your `.env` file to include a `DATABASE_URL` environment variable, which is used to store your database connection string. If you have a database already, great! If not, let's spin one up using Vercel.
+
+## Deploy to Vercel
+
+Before you can create a database using Vercel, you first need to deploy your app to Vercel.
+
+1. Create a repository on GitHub for your app. If you're not sure how to do this, follow the GitHub docs.
+2. Go to Vercel and add a new project. While going through the process, select the **Environment Variables** dropdown, and add your Clerk Publishable and Secret Keys.
+   Vercel dashboard showing where to input environment variables
+3. Select **Deploy** to deploy your app to Vercel.
+4. Select the **Settings** tab.
+5. In the left sidenav, select **Functions**.
+6. Under **Function Region**, there should be a tag next to one of the continents. Select the continent where the tag is, and the dropdown will reveal what regions on Vercel's network that your Vercel Functions will execute in. Take note of the region. Keep the Vercel dashboard open.
+   Vercel dashboard with an arrow pointing to a tag that says "iad1", and an arrow pointing to a highlighted element that says "Washington, D.C., USA (EAST) - us-east-1 - iad1"
+
+## Spin up a database
+
+1. While still in Vercel's dashboard, select the **Storage** tab.
+2. Select **Create Database**.
+3. Select **Neon** as the database provider and select **Continue**.
+4. Select the **Region** dropdown and select the region you noted earlier. You want your database's region to match your Vercel Functions region for optimal performance.
+5. Select **Continue**.
+6. Copy the environment variables and add them to your `.env` file. They should look something like this:
+
+```env
+# Recommended for most uses
+DATABASE_URL=***
+
+# For uses requiring a connection without pgbouncer
+DATABASE_URL_UNPOOLED=***
+
+# Parameters for constructing your own connection string
+PGHOST=***
+PGHOST_UNPOOLED=***
+PGUSER=***
+PGDATABASE=***
+PGPASSWORD=***
+
+# Parameters for Vercel Postgres Templates
+POSTGRES_URL=***
+POSTGRES_URL_NON_POOLING=***
+POSTGRES_USER=***
+POSTGRES_HOST=***
+POSTGRES_PASSWORD=***
+POSTGRES_DATABASE=***
+POSTGRES_URL_NO_SSL=***
+POSTGRES_PRISMA_URL=***
+```
+
+## Create a database model
+
+Now that your database is created and connected to your app, it's time to create a database model. The main entity of the application is a `Post` that represents each entry in the blog app, so add the following `Post` model to your `schema.prisma` file:
+
+```prisma
+model Post {
+  id        Int     @id @default(autoincrement())
+  title     String
+  content   String?
+  published Boolean @default(false)
+  authorId  String
+}
+```
+
+## Update your database schema
+
+Run the following command to apply your schema to your database:
+
+```bash
+npx prisma migrate dev --name init
+```
+
+This creates an initial migration creating the `Post` table and applies that migration to your database.
+
+## Set up Prisma Client
+
+Now it's time to set up the Prisma Client and connect it to your database. You'll want to create a single client and bind it to the `global` object so that only one instance of the client is created in your application. This helps resolve issues with hot reloading that can occur when using Prisma with Next.js in development mode.
+
+Create the `lib/prisma.ts` file and add the following code to it:
+
+filename: lib/prisma.ts
+```ts
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
+
+const globalForPrisma = global as unknown as { prisma: typeof prisma }
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+
+export default prisma
+```
+
+### Query your database
+
+Now that all of the set up is complete, it's time to start building out your app!
+
+Let's start with your homepage. Replace the contents of `app/page.tsx` with the following code:
+
+filename: app/page.tsx
+```tsx
+import Link from 'next/link'
+import prisma from '@/lib/prisma'
+
+export default async function Page() {
+  const posts = await prisma.post.findMany() // Query the `Post` model for all posts
+
+  return (
+    <div className="mx-auto mt-8 flex min-h-screen max-w-2xl flex-col">
+      <h1 className="mb-8 text-4xl font-bold">Posts</h1>
+
+      <div className="mb-8 flex max-w-2xl flex-col space-y-4">
+        {posts.map((post) => (
+          <Link
+            key={post.id}
+            href={`/posts/${post.id}`}
+            className="flex flex-col rounded-lg px-2 py-4 transition-all hover:bg-neutral-100 hover:underline dark:hover:bg-neutral-800"
+          >
+            <span className="text-lg font-semibold">{post.title}</span>
+            <span className="text-sm">by {post.authorId}</span>
+          </Link>
+        ))}
+      </div>
+
+      <Link
+        href="/posts/create"
+        className="inline-block rounded-lg border-2 border-current px-4 py-2 text-current transition-all hover:scale-[0.98]"
+      >
+        Create New Post
+      </Link>
+    </div>
+  )
+}
+```
+
+This code fetches all posts from your database and displays them on the homepage, showing the title and author ID for each post. It uses the `prisma.post.findMany()` method, which is a Prisma Client method that retrieves all records from the database.
+
+That shows how to query for all records, but how do you query for a single record?
+
+### Query a single record
+
+Let's add a page that displays a single post. This page uses the URL parameters to get the post's ID, and then fetches it from your database and displays it on the page, showing the title, author ID, and content. It uses the `prisma.post.findUnique()` method, which is a Prisma Client method that retrieves a single record from the database.
+
+Create the `app/posts/[id]/page.tsx` file and paste the following code in it:
+
+filename: app/posts/[id]/page.tsx
+```tsx
+import prisma from '@/lib/prisma'
+
+export default async function Post({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const post = await prisma.post.findUnique({
+    where: { id: parseInt(id) },
+  })
+
+  if (!post) {
+    return (
+      <div className="mx-auto mt-8 flex min-h-screen max-w-2xl flex-col">
+        <div>No post found.</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mx-auto mt-8 flex min-h-screen max-w-2xl flex-col">
+      {post && (
+        <article className="w-full max-w-2xl">
+          <h1 className="mb-2 text-2xl font-bold sm:text-3xl md:text-4xl">{post.title}</h1>
+          <p className="text-sm sm:text-base">by {post.authorId}</p>
+          <div className="prose prose-gray prose-sm sm:prose-base lg:prose-lg mt-4 sm:mt-8">
+            {post.content || 'No content available.'}
+          </div>
+        </article>
+      )}
+    </div>
+  )
+}
+```
+
+Test the page by navigating to a post's URL. For example, `http://localhost:3000/posts/1`. For now, it should show a "No post found" message because you haven't created any posts yet. Let's add a way to create posts.
+
+### Create a new post
+
+Next you'll create a page that allows users to create new posts. This page uses Clerk's `auth()` helper to get the user's ID. It is a helper that is specific to Next.js App Router, and it provides authentication information on the server side.
+
+- If there is no user ID, the user is not signed in, so a sign in button is displayed.
+- If the user is signed in, the "Create New Post" form is displayed. When the form is submitted, the `createPost()` function is called. This function creates a new post in the database using the `prisma.post.create()` method, which is a Prisma Client method that creates a new record in the database.
+
+Create the `app/posts/create/page.tsx` file and paste in the following code:
+
+filename: app/posts/create/page.tsx
+```tsx
+import Form from 'next/form'
+import prisma from '@/lib/prisma'
+import { redirect } from 'next/navigation'
+import { SignInButton, useAuth } from '@clerk/nextjs'
+import { revalidatePath } from 'next/cache'
+import { auth } from '@clerk/nextjs/server'
+
+export default async function NewPost() {
+  const { userId } = await auth()
+
+  // Protect this page from unauthenticated users
+  if (!userId) {
+    return (
+      <div className="flex h-[calc(100vh-4rem)] flex-col items-center justify-center space-y-4">
+        <p>You must be signed in to create a post.</p>
+        <SignInButton>
+          <button
+            type="submit"
+            className="inline-block cursor-pointer rounded-lg border-2 border-current px-4 py-2 text-current transition-all hover:scale-[0.98]"
+          >
+            Sign in
+          </button>
+        </SignInButton>
+      </div>
+    )
+  }
+
+  async function createPost(formData: FormData) {
+    'use server'
+
+    // Type check
+    if (!userId) return
+
+    const title = formData.get('title') as string
+    const content = formData.get('content') as string
+
+    await prisma.post.create({
+      data: {
+        title,
+        content,
+        authorId: userId,
+      },
+    })
+
+    revalidatePath('/')
+    redirect('/')
+  }
+
+  return (
+    <div className="mx-auto max-w-2xl p-4">
+      <h1 className="mb-6 text-2xl font-bold">Create New Post</h1>
+      <Form action={createPost} className="space-y-6">
+        <div>
+          <label htmlFor="title" className="mb-2 block text-lg">
+            Title
+          </label>
+          <input
+            type="text"
+            id="title"
+            name="title"
+            placeholder="Enter your post title"
+            className="w-full rounded-lg border px-4 py-2"
+          />
+        </div>
+        <div>
+          <label htmlFor="content" className="mb-2 block text-lg">
+            Content
+          </label>
+          <textarea
+            id="content"
+            name="content"
+            placeholder="Write your post content here..."
+            rows={6}
+            className="w-full rounded-lg border px-4 py-2"
+          />
+        </div>
+        <button
+          type="submit"
+          className="inline-block w-full rounded-lg border-2 border-current px-4 py-2 text-current transition-all hover:scale-[0.98]"
+        >
+          Create Post
+        </button>
+      </Form>
+    </div>
+  )
+}
+```
+
+Test the page by navigating to the `/posts/create` page (ex: `http://localhost:3000/posts/create`) and create a new post. You should be redirected to the homepage, where you should see the new post.
+
+## Configure tRPC, `@tanstack/react-query`, and `zod`
+
+Now, you've got a Next.js, Clerk, and Prisma app that can create and display posts. You could stop here and have a perfectly functional app. But let's take it a step further and add tRPC to your app for type-safe API endpoints.
+
+### Install the dependencies
+
+Let's start by installing the following dependencies:
+
+- `trpc` is a wrapper around your API endpoints to make them type-safe and easier to use.
+- `zod` is a schema validation library, also used to enhance your app's type safety.
+- `@tanstack/react-query` is a library for data fetching and caching.
+
+Run the following command to install the packages:
+
+```bash
+npm i @trpc/server @trpc/client @trpc/react-query @tanstack/react-query zod --force
+```
+
+> At the time of writing, `clerk-next-app` includes React 19 as a peer dependency, but `@tanstack/react-query` does not. So, you'll need to use the `--force` flag when running the command above. You may not need the `--force` flag in the future.
+
+## Create a tRPC server
+
+Now, you'll configure tRPC for your app. You'll start by initializing a tRPC server that creates a `router` and `publicProcedure` that you can use to create your API endpoints.
+
+Create the `app/server/trpc.ts` file and paste in the following code
+
+filename: app/server/trpc.ts
+```ts
+import { initTRPC } from '@trpc/server'
+
+const t = initTRPC.create()
+
+export const router = t.router
+export const publicProcedure = t.procedure
+```
+
+### Create a tRPC endpoint
+
+Now, you'll create a router that's going to have your procedures on it. The following code creates a router with a `getPosts` procedure that uses the tRPC `publicProcedure` you created in the previous step to make a query using tRPC's `query()` method. The query then uses Prisma to query the `Post` model in your database. That part should look familiar, because you've used `prisma.post.findMany()` in your app earlier!
+
+Create the `app/server/routers/posts.ts` file and paste in the code below:
+
+filename: app/server/routers/posts.ts
+```ts
+import { publicProcedure, router } from '../trpc'
+import prisma from '@/lib/prisma'
+
+export const postRouter = router({
+  getPosts: publicProcedure.query(async () => {
+    return await prisma.post.findMany()
+  }),
+})
+
+export type PostRouter = typeof postRouter
+```
+
+This is the file where you'll add all of your queries and mutations, so you'll probably update this file frequently as you build out your app.
+
+### Connect the tRPC router to your App Router
+
+Now you need to connect the tRPC router to your App Router. You'll use a Route Handler that uses tRPC's `fetchRequestHandler()` method to pass requests from Next.js to the tRPC router.
+
+Create the `app/api/trpc/[trpc]/route.ts` file and paste in the code below:
+
+filename: app/api/trpc/[trpc]/route.ts
+```ts
+import { fetchRequestHandler } from '@trpc/server/adapters/fetch'
+import { postRouter } from '@/app/server/routers/posts'
+
+const handler = (req: Request) =>
+  fetchRequestHandler({
+    endpoint: '/api/trpc',
+    req,
+    router: postRouter,
+    createContext: () => ({}),
+  })
+
+export { handler as GET, handler as POST }
+```
+
+At this point, your API endpoint should be working. You can test it by navigating to `http://localhost:3000/api/trpc/getPosts`. You should see a JSON response with the posts from your database.
+
+## Create a tRPC client
+
+So far, your app is entirely server-side and static. You need a way to mutate data, which is where `@tanstack/react-query` comes in. But to use tRPC with `@tanstack/react-query`, you need to create a tRPC client.
+
+Create the `app/_trpc/client.ts` file and paste in the code below:
+
+filename: app/\_trpc/client.ts
+```ts
+'use client'
+
+import { createTRPCReact } from '@trpc/react-query'
+
+import type { PostRouter } from '@/app/server/routers/posts'
+
+export const trpc = createTRPCReact<PostRouter>({})
+```
+
+## Create a Tanstack Query + tRPC provider
+
+To use Tanstack Query and tRPC together, you need to create a provider using the React Context API. This provider will make both the Tanstack Query client and the tRPC client available to your app using the `trpc.Provider` and `QueryClientProvider` components.
+
+Create the `app/_trpc/Provider.tsx` file and paste in the code below:
+
+filename: app/\_trpc/Provider.tsx
+```tsx
+'use client'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { httpBatchLink } from '@trpc/client'
+import React, { useState } from 'react'
+
+import { trpc } from './client'
+
+export default function Provider({ children }: { children: React.ReactNode }) {
+  // Create a Tanstack Query client
+  const [queryClient] = useState(() => new QueryClient({}))
+  // Create a tRPC client
+  const [trpcClient] = useState(() =>
+    trpc.createClient({
+      links: [
+        httpBatchLink({
+          url: 'http://localhost:3000/api/trpc',
+        }),
+      ],
+    }),
+  )
+  return (
+    <trpc.Provider client={trpcClient} queryClient={queryClient}>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    </trpc.Provider>
+  )
+}
+```
+
+Now, wrap your app in the provider. Update the main layout to import the provider as `TRPCProvider` and wrap your app in it. It's very important that `<ClerkProvider>` is wrapped around `<TRPCProvider>`, and not the other way around, because the `<TRPCProvider>` needs to have access to the Clerk authentication context.
+
+In `app/layout.tsx`, add the following code:
+
+filename: app/layout.tsx
+```tsx
+import type { Metadata } from 'next'
+import {
+  ClerkProvider,
+  SignInButton,
+  SignUpButton,
+  SignedIn,
+  SignedOut,
+  UserButton,
+} from '@clerk/nextjs'
+import { Geist, Geist_Mono } from 'next/font/google'
+import './globals.css'
+import TRPCProvider from '@/app/_trpc/Provider'
+
+const geistSans = Geist({
+  variable: '--font-geist-sans',
+  subsets: ['latin'],
+})
+
+const geistMono = Geist_Mono({
+  variable: '--font-geist-mono',
+  subsets: ['latin'],
+})
+
+export const metadata: Metadata = {
+  title: 'Clerk Next.js Quickstart',
+  description: 'Generated by create next app',
+}
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode
+}>) {
+  return (
+    <ClerkProvider>
+      <TRPCProvider>
+        <html lang="en">
+          <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+            <header className="flex h-16 items-center justify-end gap-4 p-4">
+              <SignedOut>
+                <SignInButton />
+                <SignUpButton />
+              </SignedOut>
+              <SignedIn>
+                <UserButton />
+              </SignedIn>
+            </header>
+            {children}
+          </body>
+        </html>
+      </TRPCProvider>
+    </ClerkProvider>
+  )
+}
+```
+
+Now, you can use the `trpc` client to fetch and mutate data in your app! Let's update the functionality of your app to use the `trpc` client.
+
+## Use the tRPC client to fetch and mutate data
+
+Let's start by updating the homepage where the list of posts is rendered. Since the page is still rendered server-side, you'll create a client component that uses the `trpc` client to fetch posts.
+
+Create the `app/components/Posts.tsx` file and paste in the following code:
+
+filename: app/components/Posts.tsx
+```tsx
+'use client'
+
+import Link from 'next/link'
+import { trpc } from '../_trpc/client'
+
+export default function Posts() {
+  // Use the `getPosts` query from the TRPC client
+  const getPosts = trpc.getPosts.useQuery()
+  const { isLoading, data } = getPosts
+
+  return (
+    <div className="mb-8 flex max-w-2xl flex-col space-y-4">
+      {isLoading && <div>Loading...</div>}
+      {data?.map((post) => (
+        <Link
+          key={post.id}
+          href={`/posts/${post.id}`}
+          className="flex flex-col rounded-lg px-2 py-4 transition-all hover:bg-neutral-100 hover:underline dark:hover:bg-neutral-800"
+        >
+          <span className="text-lg font-semibold">{post.title}</span>
+          <span className="text-sm">by {post.authorId}</span>
+        </Link>
+      ))}
+    </div>
+  )
+}
+```
+
+Then, update the homepage to use the `<Posts />` component:
+
+filename: app/page.tsx
+```tsx
+import Link from 'next/link'
+import prisma from '@/lib/prisma'
+import Posts from './components/Posts'
+
+export default async function Page() {
+  return (
+    <div className="-mt-16 flex min-h-screen flex-col items-center justify-center">
+      <h1 className="mb-8 text-4xl font-bold">Posts</h1>
+
+      <div className="mb-8 flex max-w-2xl flex-col space-y-4">
+        {posts.map((post) => (
+          <Link
+            key={post.id}
+            href={`/posts/${post.id}`}
+            className="flex flex-col rounded-lg px-2 py-4 transition-all hover:bg-neutral-100 hover:underline dark:hover:bg-neutral-800"
+          >
+            <span className="text-lg font-semibold">{post.title}</span>
+            <span className="text-sm">by {post.authorId}</span>
+          </Link>
+        ))}
+      </div>
+
+      <Posts />
+
+      <Link
+        href="/posts/create"
+        className="inline-block rounded-lg border-2 border-current px-4 py-2 text-current transition-all hover:scale-[0.98]"
+      >
+        Create New Post
+      </Link>
+    </div>
+  )
+}
+```
+
+Notice that the `prisma.post.findMany()` function is no longer used. Instead, your app is using `trpc.getPosts.useQuery()` in the `<Posts />` component to fetch the posts, because remember, you created a tRPC `postRouter` with a `getPosts` procedure that uses `prisma.post.findMany()`. So now, you don't need to use Prisma directly, you can use tRPC in order to have type safety and a better developer experience. Let's update the rest of your app to use tRPC.
+
+Of course, let's test and make sure the new logic is working. Navigate to the homepage and make sure you can see the posts.
+
+Once you've verified everything's working, let's go back to your `postRouter` and create more procedures to handle your other queries.
+
+### Use tRPC to fetch a single post
+
+In `app/server/routers/posts.ts`, update the code to match the following:
+
+filename: app/server/routers/posts.ts
+```ts
+import { publicProcedure, router } from '../trpc'
+import prisma from '@/lib/prisma'
+import { z } from 'zod'
+
+export const postRouter = router({
+  getPost: publicProcedure.input(z.object({ id: z.string() })).query(async ({ input }) => {
+    return await prisma.post.findUnique({
+      where: { id: parseInt(input.id) },
+    })
+  }),
+  getPosts: publicProcedure.query(async () => {
+    return await prisma.post.findMany()
+  }),
+})
+
+export type PostRouter = typeof postRouter
+```
+
+This adds a `getPost` procedure to fetch a single post by ID.
+
+In `app/posts/[id]/page.tsx`, update the code to match the following:
+
+filename: app/posts/[id]/page.tsx
+```tsx
+import prisma from '@/lib/prisma'
+
+export default async function Post({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const post = await prisma.post.findUnique({
+    where: { id: parseInt(id) },
+  })
+
+  if(!post) {
+    return (
+      <div className="flex min-h-screen flex-col max-w-2xl mx-auto mt-8">
+        <div>No post found.</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex min-h-screen flex-col max-w-2xl mx-auto mt-8">
+      {post && (
+        <article className="w-full max-w-2xl">
+          <h1 className="mb-2 text-2xl font-bold sm:text-3xl md:text-4xl">{post.title}</h1>
+          <p className="text-sm sm:text-base">by {post.authorId}</p>
+          <div className="prose prose-gray prose-sm sm:prose-base lg:prose-lg mt-4 sm:mt-8">
+            {post.content || 'No content available.'}
+          </div>
+        </article>
+      )}
+    </div>
+  )
+}
+
+'use client'
+import { trpc } from '@/app/_trpc/client'
+import { use } from 'react'
+export default function Post({ params }: { params: Promise<{ id: string }> }) {
+  // Params are wrapped in a promise, so we need to unwrap them using React's `use()` hook
+  const { id } = use(params)
+  // Use the `getPost` query from the TRPC client
+  const { data: post, isLoading } = trpc.getPost.useQuery({ id })
+
+  return (
+    <div className="flex min-h-screen flex-col max-w-2xl mx-auto mt-8">
+      {isLoading && <p>Loading...</p>}
+      {!isLoading && !post && <p>No post found.</p>}
+      {!isLoading && post && (
+        <article className="w-full max-w-2xl">
+          <h1 className="mb-2 text-2xl font-bold sm:text-3xl md:text-4xl">{post.title}</h1>
+          <p className="text-sm sm:text-base">by {post.authorId}</p>
+          <div className="prose prose-gray prose-sm sm:prose-base lg:prose-lg mt-4 sm:mt-8">
+            {post.content || 'No content available.'}
+          </div>
+        </article>
+      )}
+    </div>
+  )
+}
+```
+
+This replaces `prisma.post.findUnique()` with `trpc.getPost.useQuery()`. Because tRPC is using Tanstack Query to fetch the data, the query result includes the data and other states, such as loading and error. You can learn more about in the Tanstack Query docs.
+
+And before you go any further, test to make sure the new logic is working. Navigate to a post's URL, such as `http://localhost:3000/posts/1`, and make sure you can see the post.
+
+If that's working, let's go back to your `postRouter` and add the last procedure you need to handle your create post functionality.
+
+### Use tRPC to create a new post
+
+In `app/server/routers/posts.ts`, add the following code:
+
+filename: app/server/routers/posts.ts
+```ts
+import { publicProcedure, router } from '../trpc'
+import prisma from '@/lib/prisma'
+import { z } from 'zod'
+
+const postSchema = z.object({
+  title: z.string(),
+  content: z.string(),
+  authorId: z.string(),
+})
+
+export const postRouter = router({
+  getPost: publicProcedure.input(z.object({ id: z.string() })).query(async ({ input }) => {
+    return await prisma.post.findUnique({
+      where: { id: parseInt(input.id) },
+    })
+  }),
+  getPosts: publicProcedure.query(async () => {
+    return await prisma.post.findMany()
+  }),
+  // Protected procedure that requires a user to be signed in
+  createPosts: publicProcedure.input(postSchema).mutation(async ({ input }) => {
+    return await prisma.post.create({
+      data: {
+        title: input.title,
+        content: input.content,
+        authorId: input.authorId,
+      },
+    })
+  }),
+})
+
+export type PostRouter = typeof postRouter
+```
+
+This adds a `createPosts` procedure that creates a new post.
+
+In `app/posts/create/page.tsx`, replace the existing code with the following:
+
+filename: app/posts/create/page.tsx
+```tsx
+'use client'
+
+import Form from 'next/form'
+import prisma from '@/lib/prisma'
+import { redirect } from 'next/navigation'
+import { SignInButton, useAuth } from '@clerk/nextjs'
+import { revalidatePath } from 'next/cache'
+import { auth } from '@clerk/nextjs/server'
+
+import { redirect } from 'next/navigation'
+import { trpc } from '@/app/_trpc/client'
+import { useState } from 'react'
+
+export default async function NewPost() {
+  const { userId } = await auth()
+export default function NewPost() {
+  const [title, setTitle] = useState('')
+  const [content, setContent] = useState('')
+  // Use Clerk's `useAuth()` hook to get the user's ID
+  const { userId, isLoaded } = useAuth()
+  // Use the `createPosts` mutation from the TRPC client
+  const createPostMutation = trpc.createPosts.useMutation()
+
+  // Check if Clerk is loaded
+  if (!isLoaded) {
+    return (
+      <div className="flex h-[calc(100vh-4rem)] flex-col items-center justify-center space-y-4">
+        <div>Loading...</div>
+      </div>
+    )
+  }
+
+  // Protect this page from unauthenticated users
+  if (!userId) {
+    return (
+      <div className="flex h-[calc(100vh-4rem)] flex-col items-center justify-center space-y-4">
+        <p>You must be signed in to create a post.</p>
+        <SignInButton>
+          <button
+            type="submit"
+            className="inline-block cursor-pointer rounded-lg border-2 border-current px-4 py-2 text-current transition-all hover:scale-[0.98]"
+          >
+            Sign in
+          </button>
+        </SignInButton>
+      </div>
+    )
+  }
+
+  async function createPost(formData: FormData) {
+    'use server'
+
+    // Type check
+    if (!userId) return
+
+    const title = formData.get('title') as string
+    const content = formData.get('content') as string
+
+    await prisma.post.create({
+      data: {
+        title,
+        content,
+        authorId: userId,
+      },
+    })
+
+    revalidatePath('/')
+    redirect('/')
+  }
+
+  // Handle form submission
+  async function createPost(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+
+    createPostMutation.mutate({
+      title,
+      content,
+      authorId: userId as string,
+    })
+
+    redirect('/')
+  }
+
+  return (
+    <div className="mx-auto max-w-2xl p-4">
+      <h1 className="mb-6 text-2xl font-bold">Create New Post</h1>
+      <Form action={createPost} className="space-y-6">
+      <form onSubmit={createPost} className="space-y-6">
+        <div>
+          <label htmlFor="title" className="mb-2 block text-lg">
+            Title
+          </label>
+          <input
+            type="text"
+            id="title"
+            name="title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Enter your post title"
+            className="w-full rounded-lg border px-4 py-2"
+          />
+        </div>
+        <div>
+          <label htmlFor="content" className="mb-2 block text-lg">
+            Content
+          </label>
+          <textarea
+            id="content"
+            name="content"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Write your post content here..."
+            rows={6}
+            className="w-full rounded-lg border px-4 py-2"
+          />
+        </div>
+        <button
+          type="submit"
+          className="inline-block w-full rounded-lg border-2 border-current px-4 py-2 text-current transition-all hover:scale-[0.98]"
+        >
+          Create Post
+        </button>
+      </form>
+      </Form>
+    </div>
+  )
+}
+```
+
+This updates a few things. First, it turns this page into a client component, because Tanstack Query and the tRPC client are client-side. So now, the Server Action that you created before can no longer be used. Instead, the form data is handled using state. When the form is submitted, the `createPost()` function no longer uses `prisma.post.create()`, but instead uses `trpc.createPosts.useMutation()` from the tRPC client. Also, because the page is now a client component, Clerk's `auth()` helper no longer works, so it's replaced with Clerk's `useAuth()` hook. This introduces the benefit of having access to Clerk's loading state, so a loading UI is added.
+
+And don't forget, test your changes. Navigate to the create post page, such as `http://localhost:3000/posts/create`, and make sure you can create a new post.
+
+Once you've confirmed everything's working, you're almost done...
+
+## Create protected procedures
+
+In many applications, it's essential to restrict access to certain routes based on user authentication status. This ensures that sensitive data and functionality are only accessible to authorized users.
+
+The benefit of using Clerk with tRPC is that you can create protected procedures using Clerk's authentication context. Clerk's `Auth` object includes important authentication information like the current user's session ID, user ID, and organization ID. It also contains methods to check for the current user's permissions and to retrieve their session token. You can use the `Auth` object to access the user's authentication information in your tRPC queries.
+
+### Create the tRPC context
+
+In your `server` directory, create a `context.ts` file with the following code:
+
+filename: app/server/context.ts
+```ts
+import { auth } from '@clerk/nextjs/server'
+
+export const createContext = async () => {
+  return { auth: await auth() }
+}
+
+export type Context = Awaited<ReturnType<typeof createContext>>
+```
+
+This creates a context that will be used to create the context for every tRPC query sent to the server. The context will use the `auth()` helper from Clerk to access the user's `Auth` object.
+
+### Pass the context to the tRPC server
+
+Then, in your tRPC server (`app/api/trpc/[trpc]/route.ts`), pass the context:
+
+filename: app/api/trpc/[trpc]/route.ts
+```ts
+import { fetchRequestHandler } from '@trpc/server/adapters/fetch'
+import { appRouter } from '@/app/server/routers/posts'
+import { createContext } from '@/app/server/context'
+
+const handler = (req: Request) =>
+  fetchRequestHandler({
+    endpoint: '/api/trpc',
+    req,
+    router: appRouter,
+    createContext: () => ({}),
+    createContext,
+  })
+
+export { handler as GET, handler as POST }
+```
+
+### Access the context data in your procedures
+
+The tRPC context, or `ctx`, should now have access to the Clerk `Auth` object.
+
+In your `server/trpc.ts` file, create a protected procedure:
+
+filename: app/server/trpc.ts
+```ts
+import { initTRPC } from '@trpc/server'
+import { initTRPC, TRPCError } from '@trpc/server'
+import { Context } from './context'
+
+const t = initTRPC.create()
+const t = initTRPC.context<Context>().create()
+
+// Check if the user is signed in
+// Otherwise, throw an UNAUTHORIZED code
+const isAuthed = t.middleware(({ next, ctx }) => {
+  if (!ctx.auth.userId) {
+    throw new TRPCError({ code: 'UNAUTHORIZED' })
+  }
+  return next({
+    ctx: {
+      auth: ctx.auth,
+    },
+  })
+})
+
+export const router = t.router
+export const publicProcedure = t.procedure
+export const protectedProcedure = t.procedure.use(isAuthed)
+```
+
+### Use your protected procedure
+
+Once you have created your procedure, you can use it in any router. In this case, you don't want unauthenticated users to be able to create posts, so let's update the `createPosts` mutation to be protected by swapping the `publicProcedure` with the `protectedProcedure`:
+
+filename: app/server/routers/posts.ts
+```ts
+import { publicProcedure, router } from '../trpc'
+import { protectedProcedure, publicProcedure, router } from '../trpc'
+import prisma from '@/lib/prisma'
+import { z } from 'zod'
+
+const postSchema = z.object({
+  title: z.string(),
+  content: z.string(),
+  authorId: z.string(),
+})
+
+export const postRouter = router({
+  getPost: publicProcedure.input(z.object({ id: z.string() })).query(async ({ input }) => {
+    return await prisma.post.findUnique({
+      where: { id: parseInt(input.id) },
+    })
+  }),
+  getPosts: publicProcedure.query(async () => {
+    return await prisma.post.findMany()
+  }),
+  createPosts: publicProcedure.input(postSchema).mutation(async ({ input }) => {
+  createPosts: protectedProcedure.input(postSchema).mutation(async ({ input }) => {
+    return await prisma.post.create({
+      data: {
+        title: input.title,
+        content: input.content,
+        authorId: input.authorId,
+      },
+    })
+  }),
+})
+
+export type PostRouter = typeof postRouter
+```
+
+## Finished!
+
+At this point, you've got a fully functional app for creating and displaying posts. You can now add more features to your app, such as updating and deleting posts, adding comments, storing more author information from the Clerk `User` object, and more.

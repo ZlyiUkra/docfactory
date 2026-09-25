@@ -1,0 +1,438 @@
+# Secure Authentication in Next.js with Email Magic Links
+# джерело: https://clerk.com/blog/secure-authentication-nextjs-email-magic-links
+# отримано: 2026-09-25
+
+Traditional username and password systems are ubiquitous but mostly suck. Every user needs a complicated random 8-20 character password that they can’t possibly remember for every site. Password managers make this easier, but they are ultimately just papering over the cracks.
+
+Added to this cognitive load for users is the cognitive load for developers, who have to implement these systems securely or constantly worry about their sites becoming targets for malicious activity.
+
+Imagine if you could simplify the user experience, decrease your system’s attack surface, and reduce your workload when it comes to user authentication. This is the promise of magic links, a powerful approach to passwordless authentication that is rapidly gaining popularity in the world of web development.
+
+Here we want to show you not just the benefits of magic links but how exactly they work, going through an implementation process in Next.js. We’ll also show you why, like most authentication patterns, you don’t want to do this all yourself and how Clerk can help you, just like magic!
+
+## Magical magic links
+
+So, why use magic links? Magic links can greatly improve user experience in several ways:
+
+1. **Ease of use**: Magic links simplify the login process, as users just need to click a link sent to their email to authenticate themselves. They don’t have to remember any usernames or passwords.
+2. **Security**: Since there are no passwords to guess, magic links can increase security. This can be especially beneficial for users who often reuse passwords or use weak passwords.
+3. **Speed**: Magic links streamline the registration and login process. Rather than having to fill out forms, users just need to enter their email address, then check their inbox and click a link.
+4. **Reduced friction**: Magic links eliminate the common frustration of forgotten passwords and the need for password reset processes. 5.**Mobile-friendly**: Typing passwords on mobile devices can be challenging, especially for complex or long passwords. With magic links, users simply click a link in their email, which is much easier on a mobile device.
+5. **Trust**: When used properly, magic links can build trust, as they demonstrate a commitment to both user convenience and security.
+
+There are downsides. For one, the user obviously needs to have access to their email. Plus, there is the slight friction element of the user having to leap from the app to their email and back again. In theory, if the user’s email is compromised, an attacker can gain easy access to the app (you can get past this by using two-factor authentication in your authentication flow).
+
+Creating and validating time-sensitive tokens, like those used in magic links, typically involves the following steps:
+
+1. **User Identification**: When the user requests a magic link, your application should first ensure that the email provided is valid and linked to a user account in your system. If the account exists, the server generates a unique, temporary token.
+2. **Token Generation**: Generate a unique token using a secure method. This might involve using a secure random number generator or a library or function designed for generating secure tokens, such as JWT (JSON Web Tokens). The token should be associated with the user’s account in your database, along with a timestamp indicating when it was created.
+3. **Time-Sensitive Mechanism**: Attach an expiry time to the token. This could be a specific expiry date/time or a duration after which the token will expire. This is usually stored along with the token in the database.
+4. **Email Delivery**: Send an email to the user containing the magic link. The link should point to your website or app and include the token as a parameter.
+5. **Token Validation**: When the user clicks the magic link, your application should validate the token. This involves checking that the token exists in your database, is linked to a user, and has not expired. If all these checks pass, the user is authenticated.
+6. **Token Deletion/Invalidation**: Once a magic link has been used or has expired, it’s important to invalidate it so that it cannot be used again. This can be done by deleting the token from your database or marking it as invalid.
+
+OK, so that’s magic links at a high level. How do you implement them in an application? Let’s go through two ways to do this. Firstly, we’ll show how you can do this with minimal additional libraries in Next.js to show what is required to generate, send, and validate time-sensitive tokens such as magic links. Then we’ll go through how you can implement them quicker and more securely with Clerk.
+
+## Build your own magic links in Next.js
+
+We need to expand the high-level flow above into more granular detail for what we need from our application:
+
+1. **The user enters their email**: The user will enter their email address, which you’ll send to your backend.
+2. **Generate a unique token**: On your server, generate a unique token tied to the user’s email. This can be a JWT, a UUID, or some other kind of unique identifier.
+3. **Send an email with the magic link**: Include the unique token in the magic link and email it to the user.
+4. **User clicks the link**: The user will click the link, which sends the token back to your server.
+5. **Verify the token**: On your server, verify that the token is valid and matches the user’s email.
+6. **Create a session**: If the token is valid, create a new session for the user and send it back to the client.
+7. **Store the session on the client**: On the client, store the session (usually in a cookie or local storage) so that the user remains logged in.
+8. **Authorize the user**: Whenever the user makes a request, check that they have a valid session.
+
+So beyond Next.js, for this to work, we need:
+
+- A way to generate and verify our tokens. In this instance, we’re going to use JWT for our tokens and use `jsonwebtoken` to generate and verify them.
+- A way to send emails. We’ll use `nodemailer`. You’ll also need SMTP information for your email provider.
+- A way to create cookies to store session data. We’ll use the `cookie` library here.
+
+That’s all you need. Let’s first spin up a Next.js app called ‘magic-links’ as the bare bones of what we’ll create:
+
+```bash
+npx create-next-app@latest magic-links
+```
+
+You’ll be asked a bunch of questions. Here we’re not using TypeScript and neither are we using the App directory (which is the new, better way of using Next.js that we’ll use later. But it doesn’t play as nicely with some of the API routes we’re creating here).
+
+After that we’ll install the necessary packages:
+
+```bash
+npm install jsonwebtoken nodemailer cookie
+```
+
+You can then run npm run dev to start the development server. At the moment all you’ll get at http://localhost:3000 is the regular Next.js start page:
+
+image1.png
+
+Obviously we need a login component as the first step. We’ll create a /components directory and add a login.js file:
+
+```jsx
+// components/login.js
+
+import { useState } from 'react'
+
+function Login() {
+  const [email, setEmail] = useState('')
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    })
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+      <button type="submit">Send Magic Link</button>
+    </form>
+  )
+}
+
+export default Login
+```
+
+So there are two main parts to this component. At the bottom we have the actual form a user will fill in with their email address. As they type their email in, the state of the `email` variable will change to contain their email address.
+
+When the press ‘Send Magic Link,’ The `handleSubmit` function will be called. This function will call a backend api route, `/api/login`. We’re going to send a POST request to this endpoint with the email address in the body.
+
+Let’s add this to our index page. Delete all the boilerplate code within that file and replace it with:
+
+```jsx
+// pages/index.js
+
+import { Inter } from 'next/font/google'
+import Login from '../components/login'
+
+const inter = Inter({ subsets: ['latin'] })
+
+export default function Home() {
+  return (
+    <main
+      className={`flex min-h-screen flex-col items-center justify-between p-24 ${inter.className}`}
+    >
+      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
+        <Login />
+      </div>
+    </main>
+  )
+}
+```
+
+We’re importing the `Login` component and adding it to this page. Now a user will see this at http://localhost:3000:
+
+image8.png
+
+If they were to add their email into that field and press ‘Send Magic Link,’ guess what would happen?
+
+Absolutely nothing! Let’s make something happen. What we need is that `/api/login` the Login component calls. We’ll create a `login.js` file in the api directory. Though this is within the `pages` directory, it won’t be treated as a page by Next.js, it will act like an API endpoint:
+
+```jsx
+// pages/api/login.js
+
+import jwt from 'jsonwebtoken'
+import nodemailer from 'nodemailer'
+
+export default async function handler(req, res) {
+  const { email } = req.body
+
+  // Create a magic link token
+  const token = jwt.sign({ email }, process.env.JWT_SECRET, {
+    expiresIn: '15m',
+  })
+
+  const transporter = nodemailer.createTransport({
+    host: 'mail.example.com',
+    port: 587,
+    secure: false,
+    auth: {
+      user: 'username',
+      pass: 'password',
+    },
+  })
+
+  // Generate magic link
+  const magicLink = `${req.headers.origin}/api/verify?token=${token}`
+
+  await transporter.sendMail({
+    from: '"Your Name" <your-email@example.com>', // sender address
+    to: email, // list of receivers
+    subject: 'Your Magic Link', // Subject line
+    text: `Click on this link to log in: ${magicLink}`, // plain text body
+  })
+
+  res.status(200).json({ success: true })
+}
+```
+
+This is where the first part of the magic of magic links happens. Let’s step through this to see what’s happening:
+
+- First we’re importing the libraries we need, `jsonwebtoken` and `nodemailer`.
+- Within our `handler` function, we’ll get the `email` from the body of the request.
+- With that email as the payload, we’ll use the sign method from `jsonwebtoken` to create our token. There are two extra parameters we need to pass to sign:
+  - A `JWT_SECRET`. You can create a secret (for these purposes, not for production) by running `openssl rand -base64 32` in the terminal to generate a key. You then store that key in a .env file in the root of the project for the project to read.
+  - An expiresIn time. Here, we’ve set this to 15 minutes.
+- Now we have our token, we need to send it to the user’s email address. Here we’re using the `createTransport` method from `nodemailer` to create an object called a `transporter` that contains all our (i.e. the sender) SMTP email information.
+- We’ll then create the actual magic link, which will be the origin URL (our URL) with the token appended as a query.
+- Then we’ll call `sendMail` on the `transporter` object to send the email to the recipient
+
+Now if the user presses ‘Send Magic Link,’ they should get an email like this:
+
+image5.png
+
+Now if they click on that guess what would happen?
+
+Absolutely nothing!
+
+We need an endpoint to verify the token and set a cookie on the client with the user's email. First, let’s create another file in the api directory, this one called `verify.js`:
+
+```jsx
+// pages/api/verify.js
+
+import jwt from 'jsonwebtoken'
+import { serialize } from 'cookie'
+
+export default async function handler(req, res) {
+  const { token } = req.query
+
+  try {
+    // Verify the token - this throws if the token is invalid
+    const { email } = jwt.verify(token, process.env.JWT_SECRET)
+
+    // The token is valid, so we create a session
+    const sessionToken = jwt.sign({ email }, process.env.JWT_SECRET, {
+      expiresIn: '1h',
+    })
+
+    res.setHeader(
+      'Set-Cookie',
+      serialize('auth', sessionToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV !== 'development', // Use secure cookies in production
+        sameSite: 'strict',
+        maxAge: 3600, // Expires after 1 hour
+        path: '/',
+      }),
+    )
+
+    // Redirect the user to the homepage
+    res.writeHead(302, { Location: '/secrets' })
+    res.end()
+  } catch (err) {
+    // The token was invalid, return an error
+    res.status(401).json({ error: 'Invalid token' })
+  }
+}
+```
+
+The top part of this is similar to the API route, but let’s step through the entire thing for clarity:
+
+- First we’re importing the libraries we need, `jsonwebtoken` again and cookie for session management.
+- Within our `handler` function, we’ll get the token from the query of the request.
+- With that token as the payload, we’ll use the verify method from `jsonwebtoken` to verify our token. This again uses our `JWT_SECRET` that we signed it with to verify.
+- If that’s a valid token, we’ll then create a session for the user, again using the `sign` method from `jsonwebtoken`. We set an expiresIn time of an hour. After that, our user will be logged out.
+- We add the token to our cookie using `serialize` from the `cookie` library, then add the cookie to the headers of our result.
+- We’ll then redirect the user to a logged-in-only page
+
+That page, `/secrets` doesn’t yet exist. Let’s create it in the `/pages` directory:
+
+```jsx
+// pages/secrets.js
+
+import { useEffect, useState } from 'react'
+import { Inter } from 'next/font/google'
+
+const inter = Inter({ subsets: ['latin'] })
+
+export default function Secrets() {
+  const [data, setData] = useState(null)
+
+  useEffect(() => {
+    // Fetch data from our API route
+    fetch('/api/secure-endpoint')
+      .then((res) => {
+        // If the response was not ok, throw an error
+        if (!res.ok) {
+          throw new Error('Failed to fetch')
+        }
+        return res.json()
+      })
+      .then((data) => {
+        setData(data)
+      })
+      .catch((err) => {
+        console.error('An error occurred: ', err.message)
+      })
+  }, [])
+
+  // Render data or loading message
+  return (
+    <main
+      className={`flex min-h-screen flex-col items-center justify-between p-24 ${inter.className}`}
+    >
+      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
+        {data ? (
+          <>
+            <h1>{data.secret}</h1>
+            <h2>{data.email}</h2>
+          </>
+        ) : (
+          <p>This isn&apos;t a secret </p>
+        )}
+      </div>
+    </main>
+  )
+}
+```
+
+This will conditionally render either a data object with the fields `secret` and `email` if the user is authenticated, or the text ‘This isn’t a secret’ if they aren’t. The data object comes from a call to our final api endpoint that we need to create, `secure-endpoint.js`:
+
+```jsx
+// pages/api/secure-endpoint.js
+
+import jwt from 'jsonwebtoken'
+
+export default function handler(req, res) {
+  const { auth } = req.cookies
+
+  if (!auth) {
+    return res.status(401).json({ message: 'Unauthorized' })
+  }
+
+  try {
+    const { email } = jwt.verify(auth, process.env.JWT_SECRET)
+
+    // Now you have the authenticated user's email
+    // Do your secure stuff here...
+
+    res.json({ secret: 'This is a secret!', email })
+  } catch (error) {
+    res.status(401).json({ message: 'Unauthorized' })
+  }
+}
+```
+
+This authorizes the user by verifying with `verify` from `jsonwebtoken` the session token and, if the user is authenticated, passing back an object with a `secret` (‘This is a secret!’) and an `email`. Now if a user fills in their email and clicks on the link, they’ll be sent to the secret page with the `secret` and their `email` showing:
+
+image4.png
+
+That's it! With these routes, you now have a basic magic link authentication system.
+
+## Using Clerk for your magic links
+
+The above code works. It’s also a terrible idea.
+
+We aren’t doing any error handling. We aren’t checking for any edge cases. We’re not overly protective of our JWT token. If an attacker learns your JWT secret, they can create valid tokens and impersonate any user. There’s no rate limiting. The cookie storage isn’t ideal.
+
+Plus we have to have our own email server that is configured to send out a lot of transactional emails (which regular email providers don’t really like as they get punished for spam). And, yeah, we know, our login and authenticated pages aren’t exactly winning any design awards.
+
+Basically, there are a number of issues with rolling your own magic links.
+
+That’s why services like Clerk’s Next.js authentication exist – to deal with all of the above and make it much easier for developers to implement strong authentication frameworks such as magic links.
+
+We’ll spin up a new Next.js app:
+
+```bash
+npx create-next-app@latest magic-links
+```
+
+Again, you’ll get the questions. Clerk is written for the latest developments in Next.js, so you can use the App Router.
+
+After that all we need to install is Clerk:
+
+```bash
+npm install @clerk/nextjs
+```
+
+If we npm run dev now and go to http://localhost:3000 we again get a regular Next.js start page:
+
+image3.png
+
+Before we get to the code, we’ll also want to do some other set up. First, we’ll need our NEXT\_PUBLIC\_CLERK\_PUBLISHABLE\_KEY and our CLERK\_SECRET\_KEY. You can get both of these from your Dashboard.
+
+Add these to an .env file in the root of your project:
+
+```sh
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = pk_test_xxxx;
+CLERK_SECRET_KEY = sk_test_xxxx;
+```
+
+We’ll also want to configure our Clerk set up to use magic links. We need to change two settings from the defaults in our dashboard. The first is to choose Email verification link as the authentication factor. To do that, go to **User & Authentication > Email, Phone, Username** in your dashboard:
+
+CleanShot 2023-06-05 at 15.57.39@2x.png
+
+Then go to **Contact information** in that subsection and toggle on **Email address** and check **Email Verification Link**:
+
+CleanShot 2023-06-05 at 15.56.18 2@2x.png
+
+Now we can start with the code. The first step is to wrap our entire Next.js application in the `<ClerkProvider>`:
+
+```tsx
+// app/layout.tsx
+import './globals.css'
+import { Inter } from 'next/font/google'
+import { ClerkProvider } from '@clerk/nextjs'
+
+const inter = Inter({ subsets: ['latin'] })
+
+export const metadata = {
+  title: 'Create Next App',
+  description: 'Generated by create next app',
+}
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <ClerkProvider>
+      <html lang="en">
+        <body className={inter.className}>{children}</body>
+      </html>
+    </ClerkProvider>
+  )
+}
+```
+
+This is going to provide all we need to pass session and user information to Clerk for the authentication logic. This step is the same for any authentication pattern you are going to use with Clerk in Next.js.
+
+The next step is to use Clerk to protect pages within our application. To do this, we’ll create a file in the `/src` directory. This will use regular expressions to pattern match against the pages you want to protect. Here, we’re going to protect all our pages:
+
+```javascript
+//middleware.ts
+
+import { authMiddleware } from '@clerk/nextjs'
+export default authMiddleware()
+export const config = {
+  matcher: ['/((?!.*\\..*|_next).*)', '/', '/(api|trpc)(.*)'],
+}
+```
+
+Now if you load up http://localhost:3000, you’ll be redirected to a login/signup page:
+
+image9.png
+
+A user enters their email address here and gets sent a link to click:
+
+image7.png
+
+Clicking on that link sends them back to http://localhost:3000, but now they can access the site again:
+
+image3.png
+
+Much easier (and much better looking signup pages and emails as well!)
+
+## Better security and a user experience with magic links
+
+Magic links can really help you streamline your sign up and sign in processes. They lessen the burden on your users while providing strong security for them and your application.
+
+But implementing them manually puts the burden on your developers. Managing creation and validation of the tokens, sending emails (and maintaining the system to do so), then coding up the right modals, pages, error states, and edge cases is a huge hassle.
+
+It’s worth developers going through and trying this manually just to see how magic links are implemented. But if you are looking for a production-ready option that you can incorporate into your app today, you can use Clerk.

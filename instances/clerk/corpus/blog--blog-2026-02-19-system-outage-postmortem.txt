@@ -1,0 +1,72 @@
+# Postmortem: Clerk System Outage (February 19, 2026)
+# джерело: https://clerk.com/blog/2026-02-19-system-outage-postmortem
+# отримано: 2026-09-25
+
+On February 19, 2026 at 8:11 AM PST, Clerk experienced a service outage caused by an inefficient query plan. A routine auto analyze led to a query plan flip, which immediately reduced database performance. Slow database queries led to queuing in our request handlers, and ultimately over 95% of traffic returning 429 without being handled. The small portion of requests that reached our database returned 200, but extremely slowly.
+
+Service was restored approximately 90 minutes later when the `ANALYZE` command was re-run manually, and the query returned to its prior plan. Shortly after, the database performance returned to normal levels.
+
+## Recovery timeline
+
+- **16:15 UTC** — Incident reported and escalated internally. Our team initiated a group call and began working to identify the root cause.
+- **16:32 UTC** — We identified a customer with an anomalous traffic spike coincident with the outage, and we believed the increased load may have triggered widespread database issues.
+- **16:35 UTC** - We added manual blocks for this customer's traffic in an attempt to relieve pressure on the database.
+- **16:37 UTC** - Manual blocks failed to restore the system and we continued investigation.
+- **16:50 UTC** - We determined that the suspected customer had an overly aggressive retry mechanism that triggered their anomalous spike, but the initial failures that required retry were within Clerk's infrastructure.
+- **16:55 UTC** - We determined that our automatic failover for our Session API failed to trigger because the database was technically still online, just degraded. We began investigating alternative failover approaches.
+- **17:08 UTC** - A new failover mechanism was enabled to handle session token generation outside of the core Session API, reducing backend load. This mechanism was built and tested over the last few months, but hadn't been instrumented with triggers in production yet.
+- **17:10 UTC** — The failover succeeded and allowed many users to access customer applications again, while sign in and account management APIs remained inaccessible.
+- **17:25 UTC** - We determined the root cause to be an automatic `ANALYZE` that resulted in an inefficient query plan flip.
+- **17:27 UTC** — We manually re-executed `ANALYZE` on the affected table and the query returned to its prior plan. The database began to recover.
+- **17:43 UTC** — We observed systems stabilizing and the database back to healthy levels. The failover mechanism was disabled.
+- **18:06 UTC** — Stable performance confirmed across the entire system. Incident moved to monitoring status.
+
+## Root cause analysis
+
+In short, the root cause was Postgres' automatic analyze function triggering a "query plan flip."
+
+For more context, before running a particular query, Postgres relies on a system called a query planner to decide how it will efficiently find the requested data. Postgres' query planner is dynamic, so as more data is inserted, it regularly re-analyzes the database to ensure its query plans are still optimal.
+
+For the impacted query, the planner was leveraging an unreliable statistic. Specifically, the planner was trying to determine the percent of values in a column that were NULL. For this column, the true answer was very high (99.9996%).
+
+However, to avoid re-reading all database rows repeatedly, the planner uses a sampling system to estimate data distribution.
+
+When the automatic analyze function ran, the planner's sample size was too low and it only found NULL values, which led it to erroneously conclude that 100% of the values were NULL. It then planned the query assuming that part of it would return zero non-nulls, when in fact it returned over 17,000. This new plan is considered the "query plan flip."
+
+The impacted query is run frequently enough that the unexpected traversal of 17,000 rows caused nearly all database resources to go toward this query. The reduced performance ultimately led to significant queueing, and shedding the majority of requests with status 429.
+
+## Planned remediations
+
+### Alerting improvements
+
+We are adding dedicated alerting for database query plan flips. This class of issue can cause sudden, severe degradation, and we need to detect it immediately rather than relying on downstream symptoms.
+
+This would have helped us avoid the mistake of believing a customer's traffic pattern caused the issue.
+
+### Hardening session token failover
+
+Our previous Session API failover mechanism was designed to trigger during Postgres outages, while the new failover is designed to trigger during any type of failure at origin.
+
+This extra resilience will ensure users stay signed in for a wider variety of failures.
+
+While this new failover proved to be ready during this incident, our reliability team had not yet been fully trained how to enable it, and we have not yet instrumented automatic triggers to enable it. We expect this work to be completed within the next few weeks so it can be used confidently during any future incidents.
+
+### Query plan stability
+
+Immediately following the incident, we increased the statistics target on the relevant table so the query planner can track a larger, more accurate sample. Later that evening, we refactored the query so the planner could take a deterministic approach in query planning.
+
+Now, we are auditing all of our queries to determine if others are at risk for inefficient planning from unstable statistics.
+
+### Incident communication
+
+We heard clearly from our customers that our communication during this incident was not good enough. Status page updates were too infrequent, the initial severity label did not accurately reflect the impact many customers were experiencing, and too much time passed before the first update was posted. We take this feedback seriously.
+
+We are formalizing our incident communication process. This includes designating a dedicated communications lead during incidents, committing to status page updates at a regular cadence even when the situation is unchanged, and ensuring that severity labels on the status page accurately reflect customer impact. We are also improving our incident tooling so that updates are cross-posted to social channels to reach customers faster.
+
+## Closing
+
+We are deeply sorry for the disruption this incident caused to your team, your business, and your users. We understand that you depend on Clerk to be available, and we failed to meet that expectation yesterday, and too many times in recent months.
+
+This is unacceptable, and we will be bringing increased attention to proactively adding monitors, redundancies, and failovers to our overall system. While we've added many throughout the past year, recent events have made it clear that we are not moving fast enough.
+
+Thank you for your patience and continued partnership.

@@ -1,0 +1,99 @@
+# Combining the benefits of session tokens and JWTs
+# джерело: https://clerk.com/blog/combining-the-benefits-of-session-tokens-and-jwts
+# отримано: 2026-09-25
+
+Neither session tokens nor JWTs alone are sufficient as an optimal authentication strategy.
+
+Session token authentication has been in use for decades and is still widely implemented in modern applications, but can become a bottleneck when scaling an application. JWT authentication enables fast request validation, making it suitable for scaling distributed applications, yet struggles with session invalidation. While both approaches have their tradeoffs, the two methods can be combined to amplify their benefits and cancel out their drawbacks.
+
+Let's explore these two authentication strategies, and discuss how rethinking the approach to JWTs can result in the best of both worlds.
+
+## Session token authentication
+
+Session token authentication functions by tracking the state of a signed-in user on the server using the concept of a “session”.
+
+When a user signs into a system, the server will check their provided credentials against a database to validate the information. If correct, the server will create a session with a unique identifier along with information about the session such as the user's ID, the creation time, expiration time, session status, etc. These details will be tracked in persistent storage, such as a database, and the session identifier will be sent back to the client to be used with future requests.
+
+View video
+
+The client will often store these session identifiers in browser cookies, which are small pieces of information that are automatically sent with every request that matches the domain for which they were created. When a web server receives a request that contains a cookie with a session identifier, the server will look up the session among the list of tracked sessions, ensure its validity, and tie the request to the user associated with the session.
+
+This allows the server to identify _who_ is making the request.
+
+View video
+
+Because sessions are stored on the server, they can be easily invalidated as needed, resulting in subsequent requests being denied.
+
+While traditionally not an issue with most small to moderately-sized applications, the latency associated with checking sessions on each request can become a problem as the application grows. Geographically distributed services are especially impacted based on the additional latency between parts of the system, more so than when utilizing a single database.
+
+## JSON Web Token (JWT) authentication
+
+JWT authentication is an alternative to session tokens that largely solves the latency issue by embedding session details directly into the object sent back to the client, instead of only an identifier.
+
+### What are JWTs?
+
+A JWT itself is an encoded version of a JavaScript object with a cryptographic signature attached to it to prevent tampering.
+
+JWTs are composed of three parts: the header, the payload, and the signature. The **header** contains general information about the token type and the algorithm used for the signature. The **payload** is simply a JavaScript object that contains all of the information you need to transmit. The **signature** is the result of combining the header, payload, and a secret (typically the private key of an asymmetrical key pair) being hashed using the algorithm specified in the header.
+
+Each of these three sections is base64 encoded and joined with a period (.) to obtain the final result.
+
+Combining The Benefits Of Session Tokens And Jwts guide illustration
+
+Any modification to the JWT will make the signature invalid, allowing recipients of a valid JWT to trust the authenticity of the data it contains.
+
+### How are JWTs used in authentication?
+
+When a user signs into a system using JWT authentication, the server still needs to validate the credentials as with session token authentication. Instead of a session being created and tracked on the server, much of the information typically associated with a session (user ID, creation time, expiration time, etc.) is added to the payload of a JWT and sent back to the client.
+
+View video
+
+When a request is received by the server, it will verify the signature of the JWT instead of querying a database for session information. If the signature is valid, the server can trust the details embedded into the JWT such as the user ID and expiration date.
+
+View video
+
+JWT authentication solves the latency issues in distributed applications by removing the overhead associated with querying a database on each request, however, the system that creates the JWT has little control over it once it leaves the server. If a JWT is obtained by an unauthorized party after it's been created, that JWT can be used to impersonate the party for whom it was created with no way to invalidate it since the server trusts the combination of the payload and signature.
+
+This is especially problematic considering most implementations of JWT authentication set the expiration value of JWTs as they would sessions. This results in JWTs created with long lifetimes, sometimes days or even weeks.
+
+Ultimately, JWT authentication provides faster request validation with the tradeoff of being able to easily revoke JWTs. This shifts part of the trust associated with the authentication system away from the server since you need to trust that the client will not allow the JWT to leak.
+
+## Using a hybrid approach for optimal results
+
+So the big question now is how to get the speed of JWT authentication while still enabling the revocation ability of session token authentication.
+
+The first step is to create JWTs with extremely short lifetimes that will be used to authenticate requests. While leaked JWTs can still be used for impersonation, the window of opportunity to utilize the JWT is so short that it is extremely unlikely that any meaningful action can be taken by attackers.
+
+This change means that JWTs used for authentication will need to be created more frequently to keep the user signed in. At first glance, this may seem like a downside, but it creates an opportunity for the system to decide whether or not it _should_ create a new JWT for that user.
+
+To make that decision, the system creates sessions upon user sign-in that will be managed and tracked on the server. This part of the hybrid model follows the same approach as with session token authentication, but instead of using sessions to validate each request, the system will only use them to mint new JWTs prior to their expiration.
+
+The state of the session (valid, expired, revoked, etc.) would be used to determine if the new JWT should be created or not. If a session is no longer valid, the request to renew the JWT will be denied, which allows the server to retain control over the user's ability to access the service.
+
+### Implementing the hybrid model
+
+Using this model, the client would receive a session identifier (as defined with session token authentication) as well as a JWT upon sign-in.
+
+View video
+
+As requests are made to the server, the JWT is used to authenticate the request and grant the user access to that resource.
+
+View video
+
+Before the JWT's short expiration window elapses, the session identifier is used to renew the authentication JWT before it expires to maintain access to the system. This renewal process would occur as a background task, outside of the typical interaction between the application and the server.
+
+Clerk SDKs perform this operation in the browser by setting an interval that executes every minute to request a new JWT. This operation is performed in the background without any user interaction.
+
+View video
+
+If a session is expired or invalidated on the server, the authentication system will no longer create a JWT, effectively signing the user out of the system.
+
+View video
+
+By decoupling the session lifetime from the JWT used to authenticate requests and instead tracking it elsewhere, you can have a hybrid approach to authentication that combines the best of both JWT authentication and session token authentication.
+
+## Conclusion
+
+Both JWT and session token authentication have their tradeoffs. While it is common to debate between using one over the other, this assumes that the benefits of each are exclusive to their respective method.
+
+By instead combining the perks of each approach, we can provide fast responses from JWTs while enabling developers and users to invalidate sessions.

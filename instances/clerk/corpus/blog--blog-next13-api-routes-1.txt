@@ -1,0 +1,495 @@
+# Next.js 13 Routes Part 1: Getting Started with Next.js API Routes
+# джерело: https://clerk.com/blog/next13-api-routes-1
+# отримано: 2026-09-25
+
+An API route creates a server-side bundle separate from the client-side bundle. As is usual for Next.js pages, file-based routing is used to create API routes, where files inside `pages/api` are mapped to `/api/*` routes.
+
+Apart from building the backend logic, you can use API routes to run logic that depends on a secret you don't want to expose to the client—for example, connecting to a database through a database URL string. Since API routes are server-side only, you don't have to worry about exposing the database credentials to the client.
+
+You can also use API routes to mask external service URLs. For example, if you call `https://some-service/foo`, you can route it through an API route such as `/api/foo` to hide the actual URL used.
+
+In this article, you'll get hands-on experience in building API routes while learning about different types of API routes in Next.js.
+
+## Implementing API Routes in Next.js
+
+To follow this tutorial, make sure you have Node.js 14.6.0 or newer. This article uses Yarn as the package manager, but you can also use npm. If you'd like to see the code of the finished application, you can find it in this GitHub repo.
+
+First, create a Next.js app:
+
+```sh
+yarn create next-app
+```
+
+Once you're prompted, choose a name for your app—for example, `api-routes-demo`. Select **No** when asked if you want to use TypeScript. You can keep the default answers to all the other questions. After the app is created, move into the app directory. You can delete the **pages/api/hello.js** file that was created by default.
+
+To work with the app, you'll need some sample data. To keep things simple, you'll use a static data set, but in a real-world app, you'll likely use a database.
+
+Create the file **data.js** in the project root:
+
+```jsx
+export const users = [
+  {
+    id: 1,
+    username: 'bob',
+    name: 'Bob',
+    location: 'USA',
+  },
+  {
+    id: 2,
+    username: 'alice',
+    name: 'Alice',
+    location: 'Sweden',
+  },
+  {
+    id: 3,
+    username: 'john',
+    name: 'John',
+    location: 'France',
+  },
+]
+
+export const posts = [
+  {
+    id: 1,
+    userId: 1,
+    text: 'Hello, World!',
+  },
+  {
+    id: 2,
+    userId: 2,
+    text: 'Hello, NextJS',
+  },
+  {
+    id: 3,
+    userId: 1,
+    text: 'Lorem ipsum dolor sit amet. ',
+  },
+  {
+    id: 4,
+    userId: 3,
+    text: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur ut rhoncus neque. Sed lacinia magna a mi tincidunt, ac interdum.',
+  },
+]
+
+export const comments = [
+  {
+    id: 1,
+    postId: 1,
+    userId: 2,
+    text: 'Hi there!',
+  },
+  {
+    id: 2,
+    postId: 1,
+    userId: 3,
+    text: 'Lorem ipsum',
+  },
+  {
+    id: 3,
+    postId: 2,
+    userId: 1,
+    text: 'Nulla bibendum risus sed vestibulum lobortis. Fusce.',
+  },
+  {
+    id: 4,
+    postId: 2,
+    userId: 1,
+    text: 'In ut nulla vitae dolor scelerisque lacinia. ',
+  },
+  {
+    id: 5,
+    postId: 2,
+    userId: 1,
+    text: 'Praesent semper enim eu ligula rutrum finibus.',
+  },
+]
+```
+
+## Basics of API Routes
+
+The heart of the API routes is the pages/api directory. Any file in this directory is mapped to a route of the form `/api/*`. So, the file `pages/api/foo.js` will get mapped to `/api/foo`. To make the API route work, you'll need to export a default function from the file, as shown below:
+
+```jsx
+export default function handler(req, res) {}
+```
+
+The function receives two arguments:
+
+- `req`: An instance of http.IncomingMessage, with some pre-built middleware
+- `res`: An instance of http.ServerResponse, with some helper functions
+
+Before proceeding, keep these two things in mind:
+
+1. Next.js 13 introduced a new app directory that offers an improved routing system over the traditional `pages` directory. However, _API routes should still be defined in the pages/api directory_. As this article is being written, the Next.js team hasn't decided yet how API routes will look like in the `app` directory. So this article will use the usual `pages/api` directory structure, but keep in mind it may change in the future.
+2. Next.js offers a beta version of Edge API routes, which use the Edge Runtime. These API routes are often faster than their Node.js runtime counterparts but come with limitations such as not having access to native Node.js APIs. This article will not discuss Edge API routes and will only deal with standard API routes.
+
+### Static Routes
+
+A static route is a fixed, predefined route that matches a single path verbatim. Next.js offers two equivalent ways of creating static routes. If you want a static route `/api/foo`, you can do one of the following:
+
+1. Create the file **foo.js** in `pages/api`, or
+2. Create the file **index.js** in a directory named `foo` in `pages/api`
+
+Even though both approaches are equivalent, the second approach is much easier to work with if you have nested or dynamic routes under that particular route, as you'll see later.
+
+Let's create two static routes—`/api/users` and `/api/posts`—and see both approaches in action. First, create a `users` directory in `pages/api` and create an **index.js** file in this directory with the following code:
+
+```jsx
+import { users } from '../../../data'
+
+export default function handler(req, res) {
+  res.status(200).json(users)
+}
+```
+
+As you can see, the `handler` function returns the list of users with a `200` status. You can test this route by sending a GET request to `localhost:3000/api/users`:
+
+```sh
+$ curl <http://localhost:3000/api/users>
+[{"id":1,"username":"bob","name":"Bob","location":"USA"},{"id":2,"username":"alice","name":"Alice","location":"Sweden"},{"id":3,"username":"john","name":"John","location":"France"}]
+
+```
+
+You'll take the second approach for the `/api/posts` route. Create the file `posts.js` in `pages/api`:
+
+```jsx
+import { posts } from '../../data'
+
+export default function handler(req, res) {
+  res.status(200).json(posts)
+}
+```
+
+Similar to the previous route, this one returns the list of all posts. A similar `GET` request can be used to test this route:
+
+```sh
+$ curl <http://localhost:3000/api/posts>
+[{"id":1,"userId":1,"text":"Hello, World!"},{"id":2,"userId":2,"text":"Hello, NextJS"},{"id":3,"userId":1,"text":"Lorem ipsum dolor sit amet. "},{"id":4,"userId":3,"text":"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur ut rhoncus neque. Sed lacinia magna a mi tincidunt, ac interdum."}]
+
+```
+
+It's possible to pass query parameters to routes such as `/api/foo?bar=baz`. These query parameters can be accessed in the handler function through the `req.query` object. Let's see this by passing a `limit` query parameter to the `/api/posts` route. Modify `posts.js` with the following code:
+
+```jsx
+import { posts } from '../../data'
+
+export default function handler(req, res) {
+  const { limit } = req.query
+  res.status(200).json(posts.slice(0, limit))
+}
+```
+
+Now you can pass the `limit` parameter to limit the number of results:
+
+```sh
+$ curl "<http://localhost:3000/api/posts?limit=2>"
+[{"id":1,"userId":1,"text":"Hello, World!"},{"id":2,"userId":2,"text":"Hello, NextJS"}]
+
+```
+
+### Dynamic Routes
+
+Fixed static routes may not be always enough for complex routing needs. For example, if you have multiple users, it's not convenient to set up individual static routes for each user, such as `/api/users/1`, `/api/users/2`, and so on. To solve this, you need to use dynamic routes, where one or more segments work as parameters that the user can pass.
+
+For example, a route like `/api/users/[id]` can match `/api/users/xxx`, where `xxx` can be any valid URL component. The actual parameter passed through the URL can be accessed by the name assigned in the route (`id` in this example), and the appropriate record can be fetched from the database.
+
+To create a dynamic segment, you need to add square brackets (`[ ]`) around the name of the file. For example, **pages/api/users/[id].js** will be mapped to the route `/api/users/[id]`. Just like in the case of static routes, you can also create a directory named `[id]` and create **index.js** inside it. Both approaches are precisely equivalent. The parameter `id` can be accessed in the handler function through the `req.query` object:
+
+```jsx
+const { id } = req.query
+```
+
+It's possible to have multiple dynamic segments by using a nested directory structure. For example, `pages/api/users/[id]/[postId].js` will be mapped to `/api/users/[id]/[postId]`, and both id and postId can be accessed via `req.query`:
+
+```json
+{ "id": "1", "param": "foo" }
+```
+
+Remember that a route parameter will override a query parameter with the same name. So in the route `/api/users/1?id=foo`, `req.query.id` will be `1` and not `foo`.
+
+Create a directory `[id]` in `pages/api/users` and create `index.js` inside it, which will map to the `/api/users/[id]` route. Write the following code in `index.js`:
+
+```jsx
+import { users } from '../../../../data'
+
+export default function handler(req, res) {
+  const { id } = req.query
+  const user = users.find((user) => {
+    return user.id == id
+  })
+  if (typeof user !== 'undefined') return res.status(200).json(user)
+  res.status(404).json({ error: 'Not found' })
+}
+```
+
+This function finds the appropriate user from the array and returns it. If no user with the specified ID is found, a "Not found" error is returned instead. Test the route with the following request:
+
+```sh
+$ curl <http://localhost:3000/api/users/3>
+{"id":3,"username":"john","name":"John","location":"France"}
+
+```
+
+### Nested Routes
+
+It's possible to create nested routes in Next.js by simply nesting directories. A directory structure like `pages/api/foo/bar.js` or `pages/api/foo/bar/index.js` will be mapped to `/api/foo/bar`. Let's create a `posts` route under `/api/users/[id]`, which will return all posts by the specified user.
+
+Create the file `posts.js` in `pages/api/users/[id]` with the following code:
+
+```jsx
+import { users, posts } from '../../../../data'
+
+export default function handler(req, res) {
+  const { id } = req.query
+  const user = users.find((user) => {
+    return user.id == id
+  })
+  if (typeof user === 'undefined') return res.status(404).json({ error: 'Not found' })
+
+  const userPosts = posts.filter((post) => {
+    return post.userId == id
+  })
+
+  res.status(200).json(userPosts)
+}
+```
+
+This function first finds the appropriate user and then filters the posts array to find posts with the particular `userId`. Test that it works correctly:
+
+```sh
+$ curl <http://localhost:3000/api/users/1/posts>
+[{"id":1,"userId":1,"text":"Hello, World!"},{"id":3,"userId":1,"text":"Lorem ipsum dolor sit amet. "}]
+```
+
+### Catch-All Routes
+
+Catch-all routes are similar to dynamic routes, but whereas in a dynamic route, the dynamic segment matches only that particular part of the route, in a catch-all route, it matches all paths under that route. This can be created by adding three dots (`...`) inside the square brackets. So, a route like `/api/foo/[...bar]` will match `/api/foo/a`, `/api/foo/a/b`, `/api/foo/a/b/c`, and so on. However, it won't match `/api/foo`—i. e. , the path parameter cannot be omitted.
+
+If you'd like the path parameter to be optional, you can convert it to an optional catch-all route by using two square brackets (`[[ ]]`). So, `/api/foo/[[...bar]]` matches `/api/foo/a`, `/api/foo/a/b`, `/api/foo/a/b/c`, and so on, as well as `/api/foo`. The path parameters can be accessed through `req.query` as before, but in this case, it will be an array of one or more elements if parameters are passed or an empty object if the parameter is omitted.
+
+Let's create an optional catch-all route `/api/comments/[[...ids]]`, which will do the following:
+
+- Return all comments if no parameter is passed
+- Return all comments under post `xx` for a route like `/api/comments/xx`
+- Return all comments by user `yy` under post `xx` for a route like `/api/comments/xx/yy`
+
+Create the directory `comments` in `pages/api` and create the file **[[...ids]].js** inside:
+
+```jsx
+import { users, posts, comments } from '../../../data'
+
+export default function handler(req, res) {
+  const { ids } = req.query
+  if (Array.isArray(ids)) {
+    if (ids.length > 2) {
+      return res.status(400).json({ error: 'There cannot be more than two parameters ' })
+    }
+    if (ids.length === 1) {
+      const postId = ids[0]
+      const postComments = comments.filter((comment) => {
+        return comment.postId == postId
+      })
+      return res.status(200).json(postComments)
+    }
+    if (ids.length === 2) {
+      const [postId, userId] = ids
+      const postUserComments = comments.filter((comment) => {
+        return comment.postId == postId && comment.userId == userId
+      })
+      return res.status(200).json(postUserComments)
+    }
+  }
+  return res.status(200).json(comments)
+}
+```
+
+You can test this route with zero or more parameters:
+
+```sh
+$ curl <http://localhost:3000/api/comments> # Returns all comments
+[{"id":1,"postId":1,"userId":2,"text":"Hi there!"},{"id":2,"postId":1,"userId":3,"text":"Lorem ipsum"},{"id":3,"postId":2,"userId":1,"text":"Nulla bibendum risus sed vestibulum lobortis. Fusce."},{"id":4,"postId":2,"userId":1,"text":"In ut nulla vitae dolor scelerisque lacinia. "},{"id":5,"postId":2,"userId":1,"text":"Praesent semper enim eu ligula rutrum finibus."}]
+
+$ curl <http://localhost:3000/api/comments/1> # All comments of post 1
+[{"id":1,"postId":1,"userId":2,"text":"Hi there!"},{"id":2,"postId":1,"userId":3,"text":"Lorem ipsum"}]
+
+$ curl <http://localhost:3000/api/comments/1/2> # All comments of post 1 and user 2
+[{"id":1,"postId":1,"userId":2,"text":"Hi there!"}]
+
+```
+
+## Adding JWT Authentication
+
+If you're working on a project where your API routes should be kept private, you'll need to protect them from unauthorized access. JWT authentication is one of the most commonly used authentication mechanisms for securing APIs. You'll now add JWT authentication to the `/api/users` route so that the users need to log in before accessing that route.
+
+First, stop the server if it's running. Install the required dependencies with `yarn add bcryptjs jsonwebtoken`. The `bcrypt` library is used to hash and compare the passwords, and the `jsonwebtoken` library is used to create and verify the JWT. Create an ENV file with the following content:
+
+```sh
+JWT_SECRET_KEY = mysecret
+```
+
+This key will be used to sign the JWT, so in an actual application, this should be a random string and kept secret.
+
+Next, open `data.js` and add a `password` key to all the users. For simplicity, add the same password to all the users:
+
+```
+password: '$2y$10$mj1OMFvVmGAR4gEEXZGtA.R5wYWBZTis72hSXzpxEs.QoXT3ifKSq' // Add this key to all users
+```
+
+The value in quotes is the hashed version of the string "password".
+
+Next, create `auth.js` inside `pages/api`. This file will log the user in and generate the token. Start with the necessary imports:
+
+```jsx
+import { users } from '../../data'
+import bcrypt from 'bcryptjs'
+import jwt from 'jsonwebtoken'
+
+const JWT_KEY = process.env.JWT_SECRET_KEY
+```
+
+Ensure that only the `POST` method is allowed:
+
+```jsx
+// ...
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+}
+```
+
+The next step is to extract the username and password from the body and ensure that a user with the username exists:
+
+```jsx
+const { username, password } = req.body
+
+if (!username || !password)
+  return res.status(400).json({ error: 'Username and password are required' })
+
+const user = users.find((user) => {
+  return user.username === username
+})
+
+if (!user) return res.status(404).json({ error: 'User not found ' })
+```
+
+Then, use `bcrypt` to compare the password in the request with the actual password:
+
+```jsx
+const { password: userPassword, id, location, name } = user
+const match = await bcrypt.compare(password, userPassword)
+if (!match) return res.status(401).json({ error: 'Wrong password' })
+```
+
+If the passwords are a match, sign and send the JWT:
+
+```jsx
+const payload = { userId: id, location, name }
+
+jwt.sign(payload, JWT_KEY, { expiresIn: 24 * 3600 }, (err, token) => {
+  res.status(200).json({ token })
+})
+```
+
+The entire file should look like this:
+
+```jsx
+import { users } from '../../data'
+import bcrypt from 'bcryptjs'
+import jwt from 'jsonwebtoken'
+
+const JWT_KEY = process.env.JWT_SECRET_KEY
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+
+  const { username, password } = req.body
+  if (!username || !password)
+    return res.status(400).json({ error: 'Username and password are required' })
+
+  const user = users.find((user) => {
+    return user.username === username
+  })
+
+  if (!user) return res.status(404).json({ error: 'User not found ' })
+
+  const { password: userPassword, id, location, name } = user
+  const match = await bcrypt.compare(password, userPassword)
+  if (!match) return res.status(401).json({ error: 'Wrong password' })
+
+  const payload = { userId: id, location, name }
+  jwt.sign(payload, JWT_KEY, { expiresIn: 24 * 3600 }, (err, token) => {
+    res.status(200).json({ token })
+  })
+}
+```
+
+Let's test this route. Start the server with yarn dev and send a request to `localhost:3000/api/auth`:
+
+```sh
+$ curl -X POST "<http://localhost:3000/api/auth>" -d '{"username": "bob", "password": "password"}' -H 'Content-Type: application/json'
+{"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImxvY2F0aW9uIjoiVVNBIiwibmFtZSI6IkJvYiIsImlhdCI6MTY2OTEwMDI3OCwiZXhwIjoxNjY5MTg2Njc4fQ.0EFxEtqR2-rZij-PqD66bWatC_kiMl6QDpNlaqyjaLQ"}
+
+```
+
+Note that you'll likely get a different token.
+
+You can now use this token to check the authenticity of the user. Let's protect the `/api/users` route with JWT. Replace the content in **pages/api/users/index.js** with the following:
+
+```jsx
+import { users } from '../../../data'
+import jwt from 'jsonwebtoken'
+
+const JWT_KEY = process.env.JWT_SECRET_KEY
+
+export default function handler(req, res) {
+  const { authorization } = req.headers
+
+  if (!authorization) return res.status(401).json({ error: 'The authorization header is required' })
+  const token = authorization.split(' ')[1]
+
+  jwt.verify(token, JWT_KEY, (err, payload) => {
+    if (err) return res.status(401).json({ error: 'Unauthorized' })
+    return res.status(200).json(
+      users.map((user) => {
+        return { ...user, password: '' }
+      }),
+    )
+  })
+}
+```
+
+The above code checks the `Authorization` header for the JWT. If a token is passed, the `jwt.verify` function is invoked to check the token's authenticity. Once authenticated, the data is returned (with the password field stripped from the users—you wouldn't want to expose the passwords, would you?).
+
+Test this route by passing the `Authorization` header to the request:
+
+```sh
+$ curl <http://localhost:3000/api/users> -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImxvY2F0aW9uIjoiVVNBIiwibmFtZSI6IkJvYiIsImlhdCI6MTY2OTEwMDI3OCwiZXhwIjoxNjY5MTg2Njc4fQ.0EFxEtqR2-rZij-PqD66bWatC_kiMl6QDpNlaqyjaLQ" # Replace with your token
+[{"id":1,"username":"bob","name":"Bob","location":"USA","password":""},{"id":2,"username":"alice","name":"Alice","location":"Sweden","password":""},{"id":3,"username":"john","name":"John","location":"France","password":""}]
+
+```
+
+An invalid token will raise the following error:
+
+```sh
+$ curl <http://localhost:3000/api/users> -H "Authorization: Bearer: invalid"
+{"error":"Unauthorized"}
+```
+
+As you can see, adding JWT authentication to API routes is an involved process that can be complicated. Using something like Clerk’s Next.js authentication solution makes the process much easier since it does the heavy lifting of authentication, taking the task off your plate.
+
+With Clerk, authentication is as simple as importing the `getAuth` function:
+
+```jsx
+import { getAuth } from '@clerk/nextjs/server'
+```
+
+Calling it inside the handler function is also easy, which will automatically authenticate the user and return the user ID:
+
+```jsx
+const { userId } = getAuth(req)
+```
+
+You'll learn more about authentication with Clerk in part two of this series.
+
+## Conclusion
+
+Next.js API routes offer extreme flexibility in keeping your server-side logic close to the frontend and creating an API application. With the many different types of API routes available, it's critical to implement proper authentication to protect the routes from bad actors. However, adding authentication can be a complex and daunting task. This is why solutions like Clerk exist to make it as easy and seamless as possible.

@@ -1,0 +1,341 @@
+# Implementing multi-tenancy into a Supabase app with Clerk
+# джерело: https://clerk.com/blog/multitenancy-clerk-supabase-b2b
+# отримано: 2026-09-25
+
+Collaborative software is on track to become a nearly $53 billion\* industry by 2032. Needless to say, adding collaborative, multitenant features into your application will position you to capture a piece of that revenue.
+
+In recent articles, we’ve covered how Supabase’s architecture relies on Postgres RLS to secure data within the database. While team-based features can be complex to implement, Clerk’s B2B tools integrate seamlessly with Supabase, enabling multi-tenancy with minimal configuration changes. In this article, you'll learn exactly how the integration works.
+
+To follow along, you should have a general understanding of Supabase and ideally have built an application with Clerk and Supabase. If you want to learn more about the integration, we have an article explaining how Supabase Auth works and how Clerk can be used with Supabase.
+
+## Clerk Organizations
+
+Clerk simplifies authentication and user management implementation, including team structures and granular permissions.
+
+By enabling the Organizations feature in the Clerk dashboard, you empower your users to create teams where they can invite other team members to collaborate. Admin users can also manage roles and permissions at the individual user level, ensuring each user has the proper level of access.
+
+Clerk applies its signature component-driven design to organizations management, offering pre-built UI elements that streamline team permission workflows.
+
+One such component is the `<OrganizationSwitcher />`. By adding a single line to your codebase, you get a beautiful drop-down that allows users to create and manage their organizations associated members (if they have the administrator role).
+
+Organization Switcher
+
+## Using organizations with Supabase
+
+Supabase identifies the party making a request by parsing the claims of the incoming JWT.
+
+For example, the following JSON represents the claims of a Clerk user making a request to Supabase, with the `sub` value representing the user ID:
+
+```json
+{
+  "azp": "http://localhost:3000",
+  "exp": 1748881855,
+  "fea": "u:ai_assistant",
+  "fva": [7142, -1],
+  "iat": 1748881795,
+  "iss": "https://modest-hog-24.clerk.accounts.dev",
+  "jti": "27bb27d6f16174d6a556",
+  "nbf": 1748881785,
+  "pla": "u:pro",
+  "role": "authenticated",
+  "sid": "sess_2xjZ6z85O9Uu2mHhE73Z2JVkh1i",
+  "sub": "user_2s2XJgQ2iQDUAsTBpem9QTu8Zf7",
+  "v": 2
+}
+```
+
+By setting an active organization for that user (using the `<OrganizationSwitcher />` or any other method), that user’s claims are modified to include information about the active organization in the `o` object, including the organization ID. The below claims represent a user with an active organization to compare how it differs from the above claims:
+
+```json
+{
+  "azp": "http://localhost:3000",
+  "exp": 1748881940,
+  "fea": "o:articles",
+  "fva": [7143, -1],
+  "iat": 1748881880,
+  "iss": "https://modest-hog-24.clerk.accounts.dev",
+  "jti": "fb41714162af8da77347",
+  "nbf": 1748881870,
+  "o": {
+    "id": "org_2rxR3osThxAoZXaE7mWeSj065IB",
+    "rol": "admin",
+    "slg": "echoes"
+  },
+  "pla": "o:free_org",
+  "role": "authenticated",
+  "sid": "sess_2xjZ6z85O9Uu2mHhE73Z2JVkh1i",
+  "sub": "user_2s2XJgQ2iQDUAsTBpem9QTu8Zf7",
+  "v": 2
+}
+```
+
+## Parsing the Organization ID value
+
+Our Supabase integration guide walks you through using the `auth.jwt()` function to extract the `sub` value from the JWT claims of the user making the request. This same function can be used to access the `id` value of the `o` object as well.
+
+Consider the following RLS policy that restricts users to accessing their own records in the `articles` table:
+
+```sql
+create policy "Users can view their own articles"
+	on public.articles
+	for select
+using((auth.jwt() ->> 'sub'::text) = user_id);
+```
+
+Updating the `using` statement as follows will reference both the `sub` and `o`.`id` values.  When combined with `coalesce`, the policy will first check the `o`.`id` claim and fail back to the `sub` claim if `o` is unavailable (indicating that the user doesn’t have an active organization selected):
+
+```sql
+create policy "Users can view their own articles"
+	on public.articles
+	for select
+using(
+	coalesce(
+    (auth.jwt() -> 'o'::text) ->> 'id'::text,
+    (auth.jwt() ->> 'sub'::text)
+	) = owner_id
+);
+```
+
+### Using a dedicated function
+
+If you need to create a number of RLS policies, constantly duplicating code to check for both the `sub` and `o`.`id` values can leave some room for human error. An alternate approach to simplify your policies would be to create a dedicated function that checks both values, returning the first available value.
+
+The following snippet can be pasted in the Supabase SQL Editor to create that function:
+
+```sql
+-- Add requesting_owner_id function
+create or replace function requesting_owner_id()
+returns text as $$
+    select coalesce(
+        (auth.jwt() -> 'o'::text) ->> 'id'::text,
+        (auth.jwt() ->> 'sub'::text)
+    )::text;
+$$ language sql stable;
+```
+
+Once created, the function can be used in your RLS policies like so:
+
+```sql
+create policy "Users can view their own articles"
+  on public.articles
+  for select
+	using (requesting_owner_id() = user_id);
+```
+
+> If you are using the legacy method of integrating Clerk with Supabase, update the `requesting_user_id()` function body to achieve the same results.
+
+You are welcome to modify the name of the function and relevant column names (I’m partial to `owner_id`) but this small change allows Supabase to automatically use the active organization, if set, with no further changes to the database while falling back to the user ID.
+
+## A practical example
+
+To demonstrate, let’s walk through an example using Quillmate, an open-source writing tool built with Next.js, Clerk, and Supabase. If you want to follow along, clone the `article-add-orgs` branch from GitHub and step through the readme to get the project running on your computer. Otherwise, feel free to continue reading.
+
+### Enabling Organizations in the dashboard
+
+Start by enabling organizations within the Clerk Dashboard by heading to **Configure** > **Settings**, then toggling **Enable organizations**. This simple toggle that enables the use of the organization components with this application.
+
+Enabling organizations in the Clerk dashboard
+
+### Add the `<OrganizationSwitcher />` to the sidebar
+
+Next, add the `<OrganizationSwitcher />` to the sidebar near the bottom. This example also includes the `showOrgSwitcher` flag to the component props to indicate that the sidebar is used within a route for organizations. This will allow the sidebar to be used with URL-based organization switching, which is a method of setting the active organization by using the organization slug directly within the URL.
+
+> Interested in a guide dedicated to switching organizations based on the slug? Let us know in our feedback portal.
+
+Update the `src/app/(protected)/components/sidebar.tsx` file to match the following:
+
+filename: src/app/(protected)/components/sidebar.tsx
+```tsx
+'use client'
+
+import { Button } from "@/components/ui/button"
+import { type Article } from '@/lib/models'
+import { UserButton, useUser } from '@clerk/nextjs'
+import { OrganizationSwitcher, useOrganization, UserButton, useUser } from '@clerk/nextjs'
+import Link from "next/link"
+import { useSupabase } from "@/lib/supabase-provider"
+import { toast } from "sonner"
+import { useRouter } from "next/navigation"
+import { useArticleStore } from "../store"
+
+interface SidebarProps {
+  showOrgSwitcher?: boolean
+}
+
+type NewArticle = Pick<Article, 'title' | 'content' | 'owner_id'>
+
+export function Sidebar({ showOrgSwitcher = true }: SidebarProps) {
+  const { user } = useUser()
+  const { organization } = useOrganization()
+  const { supabase } = useSupabase()
+  const router = useRouter()
+  const { articles, isLoadingaddArticle, addArticle } = useArticleStore()
+
+  async function onNewArticleClicked() {
+    if (!supabase || !user) return
+
+    const newArticle: NewArticle = {
+      title: 'New Article',
+      content: '',
+      owner_id: user.id
+      owner_id: organization.id ?? user.id
+    }
+
+    const { error, data } = await supabase
+      .from('articles')
+      .insert(newArticle)
+      .select()
+      .single<Article>()
+
+    if (error) {
+      toast.error('Failed to create new article')
+		} else {
+      router.push(`/me/${data.id}`)
+      router.push(`${organization ? `/orgs/${organization.slug}` : '/me'}/${data.id}`)
+      addArticle(data)
+    }
+  }
+
+  return (
+    <div className="w-64 border-r p-4 flex flex-col">
+      <div className="flex items-center gap-2 pb-2">
+        <UserButton showName />
+      </div>
+      <Button onClick={onNewArticleClicked} className="mb-4">
+        New Article
+      </Button>
+      <div className="overflow-y-auto flex-1 flex flex-col">
+        {isLoading ? (
+          <div className="text-center text-gray-500">Loading articles...</div>
+        ) : (
+          articles.map((article) => (
+            <Link
+              key={article.id}
+              href={`/me/${article.id}`}
+              href={`${organization ? `/orgs/${organization.slug}` : '/me'}/${article.id}`}
+              className="px-3 py-2 rounded-md cursor-pointer hover:bg-gray-100"
+            >
+              <h3 className="font-medium">{article.title || 'Untitled'}</h3>
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <span>{new Date(article.updated_at).toLocaleDateString()}</span>
+              </div>
+            </Link>
+          ))
+        )}
+      </div>
+      {showOrgSwitcher && (
+        <OrganizationSwitcher
+          hideSlug={false}
+          hidePersonal={false}
+          afterCreateOrganizationUrl="/orgs/:slug"
+          afterSelectOrganizationUrl="/orgs/:slug"
+          afterSelectPersonalUrl="/me"
+        />
+      )}
+    </div>
+  )
+}
+
+```
+
+Within the application, I now have this new dropdown where I can create an organization and invite others to it:
+
+Organization switcher open in Quillmate
+
+### Update the RLS policies
+
+Next, create a migration to add the `requesting_owner_id` function to the database and replace the existing RLS policies to use the function.
+
+Run the following command in the terminal to create the migration file:
+
+```bash
+pnpm supabase migration new support_clerk_orgs
+```
+
+This will create a file in the `supabase/migrations` directory with the `support_clerk_orgs` prefix. Add the following SQL to that file:
+
+```sql
+-- Create the requesting_owner_id function
+create or replace function requesting_owner_id()
+returns text
+language sql
+stable
+as $$
+  select
+    coalesce(
+      (auth.jwt() -> 'o'::text) ->> 'id'::text,
+      (auth.jwt() ->> 'sub'::text)
+    );
+$$;
+
+-- Update the policies to use requesting_owner_id()
+drop policy if exists "Users can view their own articles" on articles;
+drop policy if exists "Users can insert their own articles" on articles;
+drop policy if exists "Users can update their own articles" on articles;
+drop policy if exists "Users can delete their own articles" on articles;
+
+create policy "Users can view their own articles"
+on articles for select
+using (owner_id = requesting_owner_id());
+
+create policy "Users can insert their own articles"
+on articles for insert
+with check (owner_id = requesting_owner_id());
+
+create policy "Users can update their own articles"
+on articles for update
+using (owner_id = requesting_owner_id())
+with check (owner_id = requesting_owner_id());
+
+create policy "Users can delete their own articles"
+on articles for delete
+using (owner_id = requesting_owner_id());
+```
+
+Finally, apply the migration to the database by executing the following command in your terminal:
+
+```bash
+pnpm supabase db push
+```
+
+### Testing the changes
+
+With the above changes in place, it's time to test by creating an “article” (which is the main entity of Quillmate) in your personal account and an organization.
+
+Start the project by running the following command:
+
+```bash
+pnpm dev
+```
+
+Open the application in your browser using the URL displayed in your terminal. Note how the `<OrganizationSwitcher />` displays “Personal account” to indicate that you do not have an active organization selected.
+
+Click the **New Article** button in the sidebar to create an article while in the personal account to populate the database with some data. The editor supports markdown syntax and setting an H1 will automatically set the name of the article in the sidebar.
+
+In my environment, I have a single article named “Hello world” in this tenant:
+
+Hello world article in personal account
+
+Use the `<OrganizationSwitcher />` to create an organization and switch to it. Your list of articles should be blank - create another article here as well.
+
+In my environment, I have a test organization named “D2 Frontiers”, where I have a completely different article. This is because Supabase is returning all records with an `owner_id` that matches the value of the `o`.`id` value in the claims:
+
+Article in an active organization
+
+Next, access the organization settings by opening the `<OrganizationSwitcher />` and selecting **Manage** in the header. Navigate to **Members** and invite another user so they can access the application as well. I recommend using an alternate email address if you have one.
+
+As an example, I’ve switched to a completely different user account that also has access to the “D2 Frontiers” organization and can access the same article!
+
+Article in an active organization as another user
+
+Back in the database, the values in the `owner_id` column are different depending on the owner type.
+
+Note that the article created with my personal account starts has an `owner_id` starting with `user_` and the one created with the organization active starts with `org_`:
+
+Owner ID values in the database
+
+## Conclusion
+
+Using Clerk with Supabase unlocks multi-tenancy and team-based functionality in your application in a matter of minutes with just a few small changes to the code. This empowers your users to create their own groups where individuals can be invited to collaborate within your application.
+
+\* https://www.rocket.chat/blog/collaboration-software

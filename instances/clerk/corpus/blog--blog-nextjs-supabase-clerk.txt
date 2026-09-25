@@ -1,0 +1,520 @@
+# Build a task manager with Next.js, Supabase, and Clerk
+# джерело: https://clerk.com/blog/nextjs-supabase-clerk
+# отримано: 2026-09-25
+
+Supabase is an open-source backend-as-a-service platform that provides Postgres databases, authentication, instant APIs, realtime data subscriptions, and more to help developers quickly build scalable applications.
+
+Integrating Supabase with Clerk gives you the benefits of using a Supabase database while leveraging Clerk's Next.js authentication, prebuilt components, and webhooks.
+
+To get the most out of Supabase with Clerk, you must implement custom Row Level Security (RLS) policies. RLS works by validating database queries according to the restrictions defined in the RLS policies applied to the table. This guide will show you how to create RLS policies that restrict access to data based on the user's Clerk ID. This way, users can only access data that belongs to them. To set this up, you will:
+
+- Create a function in Supabase to parse the Clerk user ID from the authentication token.
+- Create a `user_id` column that defaults to the Clerk user's ID when new records are created.
+- Create policies to restrict what data can be read, inserted, updated, and deleted.
+- Use the Clerk Supabase integration helper in your code to authenticate with Supabase and execute queries.
+
+This guide will have you create a new table in your Supabase project, but once you've learned the concepts and the process, you can apply them to any existing table.
+
+The source code for the final version can be found here.
+
+> This guide is now outdated. For the latest information, see our Supabase integration guide in the docs.
+
+## Project setup
+
+### Clone the Clerk Next.js quickstart
+
+To get started, clone the Clerk Next.js quickstart and install the dependencies:
+
+```sh
+git clone https://github.com/clerk/clerk-nextjs-app-quickstart
+cd clerk-nextjs-app-quickstart
+npm install
+```
+
+If you're wondering how this project was created, check out the Next.js quickstart.
+
+### Set up a Clerk project
+
+If you do not have a Clerk account, create one before proceeding. If you already have an account, create a new project for this guide.
+
+Once you create an application, you'll be presented with the quickstarts. For this guide, follow the Next.js quickstart and only complete step 2, which instructs you to create the `.env.local` file and populate it with the necessary environment variables. The remaining steps are already completed as part of the quickstart repository that you cloned in the previous step.
+
+Run your project with the following command:
+
+```sh
+npm run dev
+```
+
+Visit your app's homepage at `http://localhost:3000`. Sign up to create your first user and test everything works as expected.
+
+### Set up a Supabase project
+
+If you do not have a Supabase account, create one before proceeding. If you already have an account, create a new project in the Supabase dashboard.
+
+## Create a SQL query that checks the user's Clerk ID
+
+Now that you've set up your project, it's time to get to work.
+
+Create a function named `requesting_user_id()` that will parse the Clerk user ID from the authentication token. This function will be used to set the default value of `user_id` in a table and in the RLS policies to ensure the user can only access their data.
+
+1. In the sidebar of your Supabase dashboard, navigate to **SQL Editor**. This is where you will run all your SQL queries for the rest of this guide. Paste the following into the editor:
+```sql
+   CREATE OR REPLACE FUNCTION requesting_user_id()
+   RETURNS TEXT AS $$
+       SELECT NULLIF(
+           current_setting('request.jwt.claims', true)::json->>'sub',
+           ''
+       )::text;
+   $$ LANGUAGE SQL STABLE;
+```
+2. To execute the query and create the `requesting_user_id()` function, select **Run**. The results will be displayed in the **Results** tab, and should say "Success. No rows returned". Throughout this guide, keep an eye on this tab when running queries as it will display any errors that occur.
+
+## Create a table and enable RLS on it
+
+Next, you'll create a `"tasks"` table and enable RLS on that table. The `"tasks"` table will also contain a `user_id` column that will use the `requesting_user_id()` function you just created as its default value. **This column will be used in the RLS policies to only return or modify records scoped to the user's account.**
+
+To create the `"tasks"` table and enable RLS on it, you'll run the following two queries. The first query creates the table and the second query enables RLS on the table.
+
+Paste the following in the **SQL Editor** and select **Run**:
+
+```sql
+-- Create a "tasks" table
+create table tasks(
+  id serial primary key,
+  name text not null,
+  user_id text not null default requesting_user_id()
+);
+
+-- Enable RLS on the table
+alter table "tasks" enable row level security;
+```
+
+If you want to see the table you just created, in the sidebar, select **Table Editor** and select the `"tasks"` table. You should see three empty columns: `id`, `name`, and `user_id`.
+
+## Create ID-based RLS policies
+
+Now, you need to create RLS policies that permit users to read, insert, update, and delete content associated with their user IDs only.
+
+Paste the following in the **SQL Editor** and select **Run**:
+
+```sql
+-- This policy will enforce that only tasks where the `user_id` matches the Clerk user ID are returned.
+CREATE POLICY "Select tasks policy" ON "public"."tasks" AS PERMISSIVE FOR
+SELECT
+  TO authenticated USING (requesting_user_id () = user_id);
+
+-- This policy will enforce the user_id field on INSERT statements matches the Clerk user ID.
+CREATE POLICY "Insert tasks policy" ON "public"."tasks" AS PERMISSIVE FOR INSERT TO authenticated
+WITH
+  CHECK (requesting_user_id () = user_id);
+
+-- This policy will enforce that only tasks where the `user_id` matches the Clerk user ID can be updated.
+CREATE POLICY "Update tasks policy" ON "public"."tasks" AS PERMISSIVE
+FOR UPDATE
+  TO authenticated USING (requesting_user_id () = user_id);
+
+-- This policy will enforce that only tasks where the `user_id` matches the Clerk user ID can be deleted.
+CREATE POLICY "Delete tasks policy" ON "public"."tasks" AS PERMISSIVE FOR DELETE TO authenticated USING (requesting_user_id () = user_id);
+```
+
+## Get your Supabase JWT secret key
+
+Now that your table is set up and ready to be populated with data, it's time to set up your Clerk application and get Supabase integrated.
+
+Get your Supabase JWT secret key:
+
+1. In the sidebar, navigate to **Project Settings > API**.
+2. Under the **JWT Settings** section, save the value in the **JWT Secret** field somewhere secure. This value will be used in the next step.
+
+## Create a Supabase JWT template
+
+When sending requests to Supabase, Supabase needs to verify that the user is who they say they are. Because you're using Clerk to authenticate your users, you need Clerk to tell Supabase who the user is. This is where JWTs come in. For each authenticated user, Clerk issues JWTs that contain information about the user, like their ID. You're going to create a custom template for a JWT that Supabase can use.
+
+To create a JWT template for Supabase:
+
+1. Navigate to the Clerk Dashboard.
+2. In the navigation sidebar, select **JWT Templates**.
+3. Select the **New template** button, then select **Supabase** from the list of options.
+4. Configure your template:
+   - The value of the **Name** field will be required when using the template in your code. For this tutorial, name it `supabase`.
+   - **Signing algorithm** will be `HS256` by default. This algorithm is required to use JWTs with Supabase. Learn more in their docs.
+   - Under **Signing key**, add the value of your Supabase **JWT secret key** from the previous step.
+   - You can leave all other fields at their default settings or customize them to your needs. See the JWT template guide to learn more about these settings.
+   - Select **Save** from the notification bubble to complete setup.
+
+## Install the Supabase client library
+
+Add the Supabase client library to your project by running the following command in your terminal:
+
+filename: terminal
+```bash
+npm i @supabase/supabase-js
+```
+
+## Set up your environment variables
+
+Add the Supabase project URL and key to your `.env.local` file.
+
+1. In the sidebar of the Supabase dashboard, select **Settings** > **API**.
+2. Add the **Project URL** to your `.env.local` file as `SUPABASE_URL`.
+3. In the **Project API keys** section, add the value beside `anon` `public` to your `.env.local` file as `SUPABASE_KEY`.
+
+> If you are using Next.js, the `NEXT_PUBLIC_` prefix is required for environment variables that are used in the client-side code.
+
+## Fetch Supabase data in your code
+
+Let's get to coding!
+
+You want to load a list of tasks for the user and allow the user to add new tasks, mark tasks as complete, and delete tasks. You can do this either on the client-side or server-side.
+
+### Client-side rendering (CSR)
+
+The following example demonstrates how to fetch data from Supabase in a client-side rendered page.
+
+The `createClerkSupabaseClient()` function uses Supabase's `createClient()` method to initialize a new Supabase client, but modifies it to inject the Clerk token you created with the Supabase JWT template into the request headers sent to Supabase. The `requesting_user_id()` function that was created in the Supabase dashboard will parse the user ID from the Clerk token and use it when querying data from the `tasks` table.
+
+Paste the following code into the `app/page.tsx` file:
+
+filename: app/page.tsx
+```tsx
+'use client'
+import { useEffect, useState } from 'react'
+import { useSession, useUser } from '@clerk/nextjs'
+import { createClient } from '@supabase/supabase-js'
+
+export default function Home() {
+  const [tasks, setTasks] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [name, setName] = useState('')
+  // The `useUser()` hook will be used to ensure that Clerk has loaded data about the logged in user
+  const { user } = useUser()
+  // The `useSession()` hook will be used to get the Clerk session object
+  const { session } = useSession()
+
+  // Create a custom supabase client that injects the Clerk Supabase token into the request headers
+  function createClerkSupabaseClient() {
+    return createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_KEY!,
+      {
+        global: {
+          // Get the custom Supabase token from Clerk
+          fetch: async (url, options = {}) => {
+            const clerkToken = await session?.getToken({
+              template: 'supabase',
+            })
+
+            // Insert the Clerk Supabase token into the headers
+            const headers = new Headers(options?.headers)
+            headers.set('Authorization', `Bearer ${clerkToken}`)
+
+            // Now call the default fetch
+            return fetch(url, {
+              ...options,
+              headers,
+            })
+          },
+        },
+      },
+    )
+  }
+
+  // Create a `client` object for accessing Supabase data using the Clerk token
+  const client = createClerkSupabaseClient()
+
+  // This `useEffect` will wait for the User object to be loaded before requesting
+  // the tasks for the signed in user
+  useEffect(() => {
+    if (!user) return
+
+    async function loadTasks() {
+      setLoading(true)
+      const { data, error } = await client.from('tasks').select()
+      if (!error) setTasks(data)
+      setLoading(false)
+    }
+
+    loadTasks()
+  }, [user])
+
+  // Add a task into the "tasks" database
+  async function createTask(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    await client.from('tasks').insert({
+      name,
+    })
+    window.location.reload()
+  }
+
+  // Update a task when its completed
+  async function onCheckClicked(taskId: number, isDone: boolean) {
+    await client
+      .from('tasks')
+      .update({
+        is_done: isDone,
+      })
+      .eq('id', taskId)
+    window.location.reload()
+  }
+
+  // Delete a task from the database
+  async function deleteTask(taskId: number) {
+    await client.from('tasks').delete().eq('id', taskId)
+    window.location.reload()
+  }
+
+  return (
+    <div>
+      <h1>Tasks</h1>
+
+      {loading && <p>Loading...</p>}
+
+      {!loading &&
+        tasks.length > 0 &&
+        tasks.map((task: any) => (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <input
+              type="checkbox"
+              checked={task.is_done}
+              onChange={(e) => onCheckClicked(task.id, e.target.checked)}
+            />
+            <p>{task.name}</p>
+            <button onClick={() => deleteTask(task.id)}>Delete</button>
+          </div>
+        ))}
+
+      {!loading && tasks.length === 0 && <p>No tasks found</p>}
+
+      <form onSubmit={createTask}>
+        <input
+          autoFocus
+          type="text"
+          name="name"
+          placeholder="Enter new task"
+          onChange={(e) => setName(e.target.value)}
+          value={name}
+        />
+        <button type="submit">Add</button>
+      </form>
+    </div>
+  )
+}
+```
+
+## Server-side rendering (SSR)
+
+The following example demonstrates how to fetch data from Supabase in a server-side rendered page. It requires creating multiple files as you will use Server Actions to handle adding, deleting, and updating tasks.
+
+The `createClerkSupabaseClientSsr()` function uses Supabase's `createClient()` method to initialize a new Supabase client, but modifies it to inject the Clerk token you created with the Supabase JWT template into the request headers sent to Supabase. The `requesting_user_id()` function that was created in the Supabase dashboard will parse the user ID from the Clerk token and use it when querying data from the `tasks` table.
+
+It is stored in a separate file so that it can be reused in multiple places, such as in both your `page.tsx` and your Server Action file.
+
+Create the `src/app/ssr/client.ts` file and paste the following code into it:
+
+filename: src/app/ssr/client.ts
+```ts
+import { auth } from '@clerk/nextjs/server'
+import { createClient } from '@supabase/supabase-js'
+
+export function createClerkSupabaseClientSsr() {
+  // The `useAuth()` hook is used to access the `getToken()` method
+  const { getToken } = auth()
+
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_KEY!,
+    {
+      global: {
+        // Get the custom Supabase token from Clerk
+        fetch: async (url, options = {}) => {
+          const clerkToken = await getToken({
+            template: 'supabase',
+          })
+
+          // Insert the Clerk Supabase token into the headers
+          const headers = new Headers(options?.headers)
+          headers.set('Authorization', `Bearer ${clerkToken}`)
+
+          // Now call the default fetch
+          return fetch(url, {
+            ...options,
+            headers,
+          })
+        },
+      },
+    },
+  )
+}
+```
+
+Create the `src/app/ssr/page.tsx` file and paste the following code into it:
+
+filename: src/app/ssr/page.tsx
+```tsx
+import AddTaskForm from './AddTaskForm'
+import { createClerkSupabaseClientSsr } from './client'
+import TaskRow from './TaskRow'
+
+export default async function Home() {
+  // Use the custom Supabase client you created
+  const client = createClerkSupabaseClientSsr()
+
+  // Query the 'tasks' table to render the list of tasks
+  const { data, error } = await client.from('tasks').select()
+  if (error) {
+    throw error
+  }
+  const tasks = data
+
+  return (
+    <div>
+      <h1>Tasks</h1>
+
+      <div>
+        {tasks?.map((task: any) => (
+          <TaskRow key={task.id} task={task} />
+        ))}
+      </div>
+
+      <AddTaskForm />
+    </div>
+  )
+}
+```
+
+Create a `src/app/ssr/actions.ts` file which will include Server Actions for adding, deleting, and updating tasks. Paste the following code into that file:
+
+filename: src/app/ssr/actions.ts
+```ts
+'use server'
+
+import { createClerkSupabaseClientSsr } from './client'
+
+const client = createClerkSupabaseClientSsr()
+
+export async function addTask(name: string) {
+  try {
+    const response = await client.from('tasks').insert({
+      name,
+    })
+    console.log('Task successfully added!', response)
+  } catch (error: any) {
+    console.error('Error adding task:', error.message)
+    throw new Error('Failed to add task')
+  }
+}
+
+export async function deleteTask(taskId: number) {
+  try {
+    const response = await client.from('tasks').delete().eq('id', taskId)
+    console.log('Task successfully deleted!', response)
+  } catch (error: any) {
+    console.error('Error deleting task:', error.message)
+    throw new Error('Failed to delete task')
+  }
+}
+
+export async function setTaskState(taskId: number, isDone: boolean) {
+  try {
+    const response = await await client
+      .from('tasks')
+      .update({
+        is_done: isDone,
+      })
+      .eq('id', taskId)
+    console.log('Task successfully updated!', response)
+  } catch (error: any) {
+    console.error('Error updating task:', error.message)
+    throw new Error('Failed to update task')
+  }
+}
+```
+
+Your form for adding tasks will use the `addTask()` Server Action that you created in the previous file. The form is in a separate file than your `page.tsx` file because it must be a client component. Create the `src/app/ssr/AddTaskForm.tsx` file and paste the following code into it:
+
+filename: src/app/ssr/AddTaskForm.tsx
+```ts
+'use client'
+import React, { useState } from 'react'
+import { addTask } from './actions'
+import { useRouter } from 'next/navigation'
+
+function AddTaskForm() {
+  const [taskName, setTaskName] = useState('')
+  const router = useRouter()
+
+  async function onSubmit() {
+    await addTask(taskName)
+    setTaskName('')
+    router.refresh()
+  }
+
+  return (
+    <form action={onSubmit}>
+      <input
+        autoFocus
+        type="text"
+        name="name"
+        placeholder="Enter new task"
+        onChange={(e) => setTaskName(e.target.value)}
+        value={taskName}
+      />
+      <button type="submit">Add</button>
+    </form>
+  )
+}
+export default AddTaskForm
+```
+
+Create the `src/app/ssr/TaskRow.tsx` file which will display the tasks in your list. It's a separate file from your `page.tsx` because it uses the `useRouter()` hook, so it must be a client component. Paste the following code into that file:
+
+filename: src/app/ssr/TaskRow\.tsx
+```ts
+// This must be a separate file because useRouter() can't be used in server components
+'use client'
+
+import { useRouter } from 'next/navigation'
+import { deleteTask, setTaskState } from './actions'
+
+export default function TaskRow({ task }: { task: any }) {
+  const router = useRouter()
+
+  async function onCheckClicked(taskId: number, isDone: boolean) {
+    // Update a task when its completed
+    await setTaskState(taskId, isDone)
+    router.refresh()
+  }
+
+  async function onDeleteClicked(taskId: number) {
+    // Delete a task from the database
+    await deleteTask(taskId)
+    router.refresh()
+  }
+
+  return (
+    <div key={task.id}>
+      <p>{task.name}</p>
+      <input
+        type="checkbox"
+        checked={task.is_done}
+        onChange={(e) => onCheckClicked(task.id, e.target.checked)}
+      />
+      <button onClick={() => onDeleteClicked(task.id)}>Delete</button>
+    </div>
+  )
+}
+```
+
+### Test your integration
+
+Now it's time to test your code.
+
+Run your project with the following command:
+
+```sh
+npm run dev
+```
+
+Sign in and test viewing, creating, updating, and deleting tasks. Sign out and sign in as a different user, and repeat.
+
+If you have the same tasks across multiple accounts, double-check that RLS is enabled, or that the RLS policies were properly created. Check the table in the Supabase dashboard. You should see all the tasks between both users but with differing values in the `user_id` column.

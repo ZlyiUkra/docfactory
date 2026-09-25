@@ -1,0 +1,37 @@
+# Postmortem: August 28, 2025 - elevated API latency and errors
+# джерело: https://clerk.com/blog/postmortem-aug-28-2025-elevated-latency-errors
+# отримано: 2026-09-25
+
+On August 28, two short periods of a distributed credential stuffing attack to our authentication endpoints of a specific tenant, led to elevated latency across the Frontend and Backend APIs and elevated errors in the Backend API.
+
+Services remained partially available while we mitigated load and stabilized the underlying infrastructure. Importantly, our mitigation controls kept session token issuance operating normally throughout the incident.
+
+- **Impact window #1:** 14:53–15:15 UTC (≈22 minutes)
+- **Impact window #2:** 17:04–17:16 UTC (≈12 minutes)
+
+### Timeline (UTC)
+
+- **14:53** — Alert triggered for high CPU utilization in the storage layer; elevated API latency observed.
+- **15:00** — Incident declared; mitigation initiated.
+- **15:15** — Metrics returned to baseline.
+- **17:04** — Second spike in CPU and API latency detected.
+- **17:16** — Metrics returned to baseline.
+
+### Root Cause Analysis
+
+Investigation points to several compounding contributors in the authentication and data-write path:
+
+1. **Automated traffic targeting authentication flows** generated an unusually high volume of sign-in and sign-up attempts.
+2. **Write-intensive activity** from those attempts increased contention on hot authentication-related tables.
+3. **A recently introduced CDC consumer** (used for near real-time consumption of auth events) lagged under burst conditions, amplifying contention within a segment of the storage tier.
+
+**Observed error rates during the incident windows:** 2.52% of Backend API requests and 0.14% of Frontend API requests returned errors.
+
+There was **no data loss or corruption**. The impact was limited to increased latency and errors.
+
+### Remediations
+
+- We disabled the lagging change-stream processor pending adjustments.
+- We are strengthening adaptive protections at the edge and auth layer (rate limiting, anomaly detection, and upstream filtering).
+- We are performing schema and query-path improvements on authentication workloads to reduce contention under spikes.
+- We will be further strengthening per-customer isolation to contain issues to the originating application and minimize blast radius.

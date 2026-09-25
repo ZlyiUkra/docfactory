@@ -1,0 +1,79 @@
+# Resilience in Practice: Regional Failover at Clerk
+# джерело: https://clerk.com/blog/resilience-in-practice-regional-failover
+# отримано: 2026-09-25
+
+On Monday, August 4th, we shared that Clerk had implemented automatic regional failover
+for critical parts of our infrastructure, a major upgrade to protect against large-scale, regional-level outages.
+
+A few days later, that system was put to the test.
+
+## The August 6th incident
+
+On August 6th, between 02:30 UTC and 04:11 UTC, our primary cloud region experienced intermittent issues.
+Outages came in short intervals of 5-10 minutes. During each disruption, our health checks detected failures and
+automatically rerouted traffic to our failover region.
+
+From a customer perspective, there was no noticeable disruption. Aside from a few early errors, which were
+automatically retried by our SDKs, the only potential impact was a brief increase in API latency during some
+failover periods.
+
+### The timeline
+
+_2:55 UTC_: We experienced a sudden spike of `429` responses.
+
+Graph of 429 response spike
+
+_2:58 UTC_: Our team was alerted about downtime on our services.
+
+Screenshot of internal alert
+
+_2:59 UTC_: Investigation began. We noticed that our failover region had already picked up traffic and scaled up its
+available containers, explaining why no customers had reported issues.
+
+Screenshot of request throughput and container count in failover region
+
+_3:35 UTC_: Google confirmed their internal incident.
+
+Screenshot of Google confirming incident
+
+_3:50 UTC_: Another switchover to our failover region occurred.
+
+_4:11 UTC_: Google's network stabilized and traffic returned to our primary region.
+
+## Why resilience matters so much to Clerk
+
+As an authentication provider, Clerk sits in front of every application that uses our platform.
+This means that if our services experience an outage, the impact is immediate and visible within our customers'
+applications.
+Even brief interruptions can affect sign-ins, sign-ups, and session management, critical flows for end users.
+
+High resilience isn't just a nice-to-have for us. It's fundamental to ensuring our customers' apps remain
+reliable and trusted.
+
+## How our regional failover works
+
+We've always run our services across multiple availability zones to handle localized failures.
+But the June 26th service outage highlighted a gap: a single-region
+architecture, even with AZ redundancy, is still vulnerable to full regional outages.
+
+Our new setup adds a continuously running failover region:
+
+- **Always-on failover region:** The failover region continuously handles live production traffic to ensure it stays warm, healthy, and ready at all times.
+- **Fast detection & switchover:** Health checks trigger an immediate reroute when issues are detected in the primary region.
+- **Bidirectional failover:** If the failover region experiences issues, traffic switches back to the primary.
+- **Local storage in failover:** Data is replicated to a dedicated storage layer in the failover region, minimizing latency during switchover.
+
+Regional failover high-level architecture
+
+## What's next
+
+This failover system is an important milestone but not the end of our reliability journey.
+
+We're actively working on:
+
+- Increasing the resilience of our stateful systems
+- Exploring multi-cloud redundancy to remove single-provider dependencies
+- Further automating recovery playbooks to reduce operational response times even more
+
+Last week's event validated our regional failover strategy, showing early positive ROI as we continue expanding our
+resilience capabilities.

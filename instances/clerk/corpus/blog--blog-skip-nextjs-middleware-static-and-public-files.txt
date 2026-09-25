@@ -1,0 +1,91 @@
+# How to skip Next.js middleware for static and public files
+# джерело: https://clerk.com/blog/skip-nextjs-middleware-static-and-public-files
+# отримано: 2026-09-25
+
+Next.js middleware is incredibly powerful, but by default it runs on more requests than is normally necessary. To see this in action, you can add a simple logger:
+
+```javascript
+export default function middleware(req) {
+  console.log(req.url)
+}
+```
+
+Here's the log for loading http://localhost:3000/ on a brand new Next.js application:
+
+```text
+http://localhost:3000/
+http://localhost:3000/_next/static/chunks/webpack.js?ts=1665116452838
+http://localhost:3000/_next/static/chunks/main.js?ts=1665116452838
+http://localhost:3000/_next/static/chunks/react-refresh.js?ts=1665116452838
+http://localhost:3000/_next/static/chunks/pages/_app.js?ts=1665116452838
+http://localhost:3000/_next/static/development/_buildManifest.js?ts=1665116452838
+http://localhost:3000/_next/static/development/_ssgManifest.js?ts=1665116452838
+http://localhost:3000/_next/static/chunks/pages/index.js?ts=1665116452838
+http://localhost:3000/favicon.ico
+http://localhost:3000/_next/static/development/_devMiddlewareManifest.json
+http://localhost:3000/_next/static/development/_devPagesManifest.json
+http://localhost:3000/vercel.svg
+```
+
+The log shows several static assets that you probably don't want to process in your middleware, and doing so could break your application. To solve this, you can configure a matcher, which tells your middleware to only run on requests that match a certain pattern.
+
+To prevent middleware from running on static files, you can leverage a simple trick: static files have a **`.`** in the path, while dynamic files do not.
+
+With a regular expression, you can configure middleware to run on every file that does not contain a **`.`**:
+
+```javascript
+export default function middleware(req) {
+  console.log(req.url)
+}
+
+export const config = { matcher: '/((?!.*\\.).*)' }
+```
+
+With this matcher, the log only shows one request:
+
+```text
+http://localhost:3000/
+```
+
+This matcher is a great starting point that minimizes middleware invocation. As your application grows, though, you may need to tweak it. Below are the two most common revisions.
+
+### Including _some_ static assets
+
+The easiest way to include some static assets in middleware is to retain the exclusionary regular expression, but define an _additional_ matcher. Here's a sample that excludes all static assets from middleware except `favicon.ico`:
+
+```javascript
+export const config = {
+  matcher: ['/((?!.*\\.).*)', '/favicon.ico'],
+}
+```
+
+### Excluding more paths from middleware
+
+Sometimes you will want to filter more than just static files. This can be done in two ways:
+
+#### 1. Expanding the regular expression
+
+Expanding the regular expression prevents additional middleware invocations, but regular expressions are also harder to read and write. Here's an example that excludes API routes in addition to static assets:
+
+```javascript
+export const config = { matcher: '/((?!.*\\.|api\\).*)' }
+```
+
+#### 2. Adding a conditional statement
+
+A more readable approach is to create a conditional statement, but this will waste compute resources since your middleware will be unnecessarily invoked. Here's an example:
+
+```javascript
+import { NextResponse } from 'next/server'
+
+export default function middleware(req) {
+  if (req.nextUrl.pathname.startsWith('/api/')) {
+    return NextResponse.next()
+  }
+  // ... your middleware
+}
+
+export const config = { matcher: '/((?!.*\\.).*)' }
+```
+
+This should be everything you need to get started on the right foot with middleware!

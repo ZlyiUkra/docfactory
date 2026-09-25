@@ -1,0 +1,237 @@
+# Exploring Clerk Metadata with Stripe Webhooks
+# джерело: https://clerk.com/blog/exploring-clerk-metadata-stripe-webhooks
+# отримано: 2026-09-25
+
+## Introduction to User Metadata
+
+By putting Clerk’s user metadata types to work, developers can proficiently handle user data, making their SaaS integrations run smoother, and work harder. It's like adding a turbocharger to your product's engine, enhancing functionality and improving the user experience, for a more comprehensive, customizable, and synchronizing systems ready to build any SaaS product out there.
+
+A great feature in the wild world of SaaS product development to power integrations powering integrations with other powerful products. We're talking about a sturdy, malleable means for handling user data.
+
+You've got three types of User Metadata – public, private, and unsafe. Each one has its own unique access level and use case.
+
+- **Public**: It’s an accessible from both the frontend and backend. It's like the town bulletin board where you post things everyone can see but can't change. Think membership levels, user roles, stuff like that.
+- **Private**: It’s like the secret stash of user data only reachable from the backend. Perfect for things like account identifiers or subscription details, you know, the stuff you don't want out in the open.
+- **Unsafe**: It might sound a bit ominous, but it is super flexible; treat it like form data and validate any user inputs. It can be modified and accessed from both frontend and backend. Great for things like user preferences, setting or just any of the nitty-gritty details that make a user's experience unique.
+
+## User Metadata Meets Stripe Webhooks
+
+Harnessing the power of User Metadata in tandem with Stripe’s webhooks offers significant advantages in SaaS product development. Clerk Metadata's flexible user data management paired with Stripe webhooks' real-time transaction updates creates a robust, efficient system. This combination ensures both comprehensive user data handling and prompt responsiveness to transaction events. Utilizing Clerk Metadata alongside Stripe’s webhooks lends itself well for streamlined and user-friendly SaaS development.
+
+Utilizing Clerk's public User Metadata offers significant advantages for managing user data and transactions in your SaaS product. It allows for real-time updates, such as including a "paid" field after a transaction, offering a clear snapshot of payment statuses. This use of public metadata improves transparency, boosts data management efficiency, and enhances the overall user experience.
+
+## Tutorial: Implementing Stripe Webhook with Clerk User Metadata
+
+The first step will be setting up accounts at Clerk & Stripe. Once you have those accounts you will follow the well documented Clerk’s Next.js Quickstart Guide. To have access to the correct data from the Clerk session you will need to access the custom session data on the Dashboard, we will edit the session data to look like this:
+
+```json
+{
+  "publicMetadata": "{{user.public_metadata}}"
+}
+```
+
+The last part will be setting up from the Stripe quickstart, the basic Stripe webhook. We will modify it later for our own needs, and there will also be a repo for you to grab afterwards! By the end of the quickstarts, you should have something in your **.env.local** that looks like this.
+
+```bash
+# CLERK
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_***
+CLERK_SECRET_KEY=sk_test_***
+
+# STRIPE
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_***
+STRIPE_SECRET_KEY=sk_test_***
+STRIPE_WEBHOOK_SECRET=whsec_***
+```
+
+## Auth Middleware Setup
+
+Once we have everything installed we are going to jump into a very basic app, with one private route **/members**, and the homepage route will serve as our public route where all the fun stuff will happen. Our Middleware is going to be handling the access.
+
+```typescript
+export default authMiddleware({
+  // Making sure homepage route and API, especially the webhook, are both public!
+  publicRoutes: ['/', '/api/(.*)'],
+  afterAuth: async (auth, req) => {
+    // Nice try, you need to sign-in
+    if (!auth.userId && !auth.isPublicRoute) {
+      return redirectToSignIn({ returnBackUrl: req.url })
+    }
+    // Hey! Members is for members 😆
+    if (
+      auth.userId &&
+      req.nextUrl.pathname === '/members' &&
+      auth.sessionClaims.publicMetadata?.stripe?.payment !== 'paid'
+    ) {
+      return NextResponse.redirect(new URL('/', req.url))
+    }
+    // Welcome paid member! 👋
+    if (
+      auth.userId &&
+      req.nextUrl.pathname === '/members' &&
+      // How we get payment value "paid" is next, in the webhook section!
+      auth.sessionClaims.publicMetadata?.stripe?.payment === 'paid'
+    ) {
+      return NextResponse.next()
+    }
+    // If we add more public routes, signed-in people can access them
+    if (auth.userId && req.nextUrl.pathname !== '/members') {
+      return NextResponse.next()
+    }
+    // Fallthrough last-ditch to allow access to a public route explicitly
+    if (auth.isPublicRoute) {
+      return NextResponse.next()
+    }
+  },
+})
+```
+
+We can simplify the Middleware access logic for this app, but this explicit example can show how you can have far more complex access handling. Where do we get **paid** from!? That is coming up next.
+
+### Webhook Endpoint
+
+Since this app is our SaaS with member access, we need to provide a way for the user to pay and gain access. Let’s start with setting up the tokens for Clerk & instantiating Stripe.
+
+```typescript
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
+  apiVersion: '2023-10-16',
+})
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET as string
+```
+
+After we have the credentials, the rest of the code should look very similar to the Stripe default logic for webhooks.
+
+```typescript
+export async function POST(req: NextRequest) {
+  if (req === null) throw new Error(`Missing userId or request`, { cause: { req } })
+  // Stripe sends this for us 🎉
+  const stripeSignature = req.headers.get('stripe-signature')
+  // If we don't get it, we can't do anything else!
+  if (stripeSignature === null) throw new Error('stripeSignature is null')
+
+  let event
+  try {
+    event = stripe.webhooks.constructEvent(await req.text(), stripeSignature, webhookSecret)
+  } catch (error) {
+    if (error instanceof Error)
+      return NextResponse.json(
+        {
+          error: error.message,
+        },
+        {
+          status: 400,
+        },
+      )
+  }
+  // If we dont have the event, we can't do anything again
+  if (event === undefined) throw new Error(`event is undefined`)
+  switch (event.type) {
+    case 'checkout.session.completed':
+      const session = event.data.object
+      console.log(`Payment successful for session ID: ${session.id}`)
+      break
+    default:
+      console.warn(`Unhandled event type: ${event.type}`)
+  }
+
+  return NextResponse.json({ status: 200, message: 'success' })
+}
+```
+
+So what is next!? We need a way to know when a Clerk User has "paid." Well, let's extract that switch statement and add the secret sauce. That'll make this all work when we are done!
+
+```typescript
+switch (event.type) {
+  case 'checkout.session.completed':
+    const session = event.data.object
+    console.log(`Payment successful for session ID: ${session.id}`)
+    // That's it? Yep, that's it. We love UX 🎉
+    clerkClient.users.updateUserMetadata(event.data.object.metadata?.userId as string, {
+      publicMetadata: {
+        stripe: {
+          status: session.status,
+          // This is where we get "paid"
+          payment: session.payment_status,
+        },
+      },
+    })
+    break
+  default:
+    console.warn(`Unhandled event type: ${event.type}`)
+}
+```
+
+Some of you may have noticed **event.data.object.metadata?.userId** (where did that come from!?). We will get to that one too. The reason for this is that we can’t access Clerk’s session in the webhook, so we will get a little creative.
+
+### Session Endpoint
+
+We will now need to create an endpoint that will generate our Stripe session that will be used to make our payment and turn our Clerk User into a paid **Member**. This is where the **userId** in the webhook will also be coming from! Instantiate **stripe** the same as before, it will again be a Next.js POST endpoint.
+
+```typescript
+// This is our Clerk function for session User
+const { userId } = auth()
+// We are receiving this from the Client request, thats next!
+const { unit_amount, quantity } = await req.json()
+
+try {
+  const session = await stripe.checkout.sessions.create({
+    payment_method_types: ['card'],
+    line_items: [
+      {
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: 'Membership',
+          },
+          unit_amount,
+        },
+        quantity,
+      },
+    ],
+    // This is where "event.data.object.metadata?.userId" is defined!
+    metadata: {
+      userId,
+    },
+    mode: 'payment',
+    success_url: `${req.headers.get('origin')}/members`,
+    cancel_url: `${req.headers.get('origin')}/`,
+  })
+
+  return NextResponse.json({ session }, { status: 200 })
+} catch (error) {
+  // ...
+}
+```
+
+We have now laid the groundwork for a SaaS leveraging Clerk’s User Metadata to manage User specific data! So, to really focus on the versatility and potential of this feature, the UI portion has been kept really simple. We have the Homepage with a button to navigate to **/members** page and to become a paid member, let’s take a look at the homepage.
+
+```tsx
+export default function Home() {
+  const { isSignedIn } = useAuth()
+
+  return (
+    <main>
+      {!isSignedIn ? (
+        <div className="...">
+          <SignIn redirectUrl="/" />
+        </div>
+      ) : (
+        <div>
+          <div className="...">You are signed in!</div>
+          <div className="...">
+            <CheckoutButton />
+            <a className="..." href="/members">
+              Go to members page
+            </a>
+          </div>
+        </div>
+      )}
+    </main>
+  )
+}
+```
+
+## Wrap up!
+
+This pattern can be used with any other transactions or user specific data you would like to handle in the backend and then utilize in the client. This keeps your User Management pragmatic & versatile, offloading the burden across multiple systems. This is only the beginning with what we can do with Clerk’s toolset, this time we only leveraged User Metadata! What should we do next? Let us know in the Discord and on X(Twitter)!
+
+Not forgetting, you will want the complete codebase to check out, and learn from!

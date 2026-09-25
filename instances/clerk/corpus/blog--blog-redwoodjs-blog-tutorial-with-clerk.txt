@@ -1,0 +1,178 @@
+# RedwoodJS Blog Tutorial with Clerk
+# джерело: https://clerk.com/blog/redwoodjs-blog-tutorial-with-clerk
+# отримано: 2026-09-25
+
+> As of April 4, 2025, RedwoodJS is no longer actively developed. Learn more.
+
+Branching off from the excellent (and mighty) Redwood tutorial, the guide will lead you through setting up Clerk as the authentication provider. You can think of Clerk as the ranger of the forest, only allowing verified users pass through the secluded parts of your app. (Be prepared for tree puns ahead — you’ve been warned! 🌲)
+
+## Assumptions
+
+This tutorial makes the following assumptions:
+
+- Basic command line usage
+- Node.js installed with both `npm` and `yarn` (required by Redwood)
+- Experience with React components and hooks
+- Have gone through the first part of the Redwood tutorial
+- Clerk account already set up (if you haven’t done so, do it now\... we’ll wait)
+
+> If you would like to skip ahead and see the completed codebase, browse to the repo here.
+
+## Getting started
+
+This journey begins with cloning the example repo that Redwood has set up.
+
+```bash
+git clone https://github.com/redwoodjs/redwood-tutorial.git redwood-tutorial-with-clerk
+```
+
+Follow their instructions to run the following commands:
+
+```bash
+cd redwood-tutorial-with-clerk/
+yarn install
+yarn rw prisma migrate dev
+yarn rw dev
+```
+
+**Note**: If the `rw` (short for `redwood`) command isn’t working, make sure you have the proper versions of Node.js and Yarn installed.
+
+If all went well, you should be looking at the most beautiful blog you’ve ever seen...
+
+Redwood blog
+
+If you try to navigate to http://localhost:8910/admin/posts you will be redirected back to the homepage. This is due to the `<Private unauthenticated="home">` wrapper around the admin routes that was already set up.
+
+## Set up Clerk authentication
+
+As part of the Authentication chapter of the Redwood tutorial, they went through the setup of their built-in database-backed authentication system called dbAuth. (Can’t blame them for planting those seeds.)
+
+To transplant Clerk as the new authentication provider, first, navigate to your Clerk dashboard and create a new application. Give your application any name you’d like, leave the default authentication strategy selected, and then choose a social login provider if you would like. (Google OAuth is pretty fast and doesn’t make you create a new password.)
+
+Redwoodjs Blog Tutorial With Clerk guide illustration
+
+Once the application has been created and the confetti clears, scroll down to the **Connect your application** section to grab your API keys.
+
+Back in the codebase, create a new `.env` file in the project directory and set the following environment variables to the respective values from your Clerk dashboard:
+
+```bash
+CLERK_API_KEY=<YOUR_BACKEND_API_KEY>
+CLERK_FRONTEND_API_URL=<YOUR_FRONTEND_API_KEY>
+```
+
+Once you have the environment variables set, the next step is to root out the existing auth logic. The quickest way to do this is to run:
+
+```bash
+yarn rw setup auth clerk --force
+```
+
+Note: If you’re into the more labor-intensive, manual way of doing things, here are the instructions for you. (Chainsaws not required.)
+
+You should see terminal output similar to the following:
+
+```bash
+✔ Overwrite existing /api/src/lib/auth.[jt]s? … yes
+  ✔ Generating auth lib...
+    ✔ Successfully wrote file `./api/src/lib/auth.js`
+  ✔ Adding auth config to web...
+  ✔ Adding auth config to GraphQL API...
+  ✔ Adding required web packages...
+  ✔ Adding required api packages...
+  ✔ Installing packages...
+  ✔ One more thing...
+
+You will need to add two environment variables with your Clerk URL and API key.
+Check out web/src/App.{js,tsx} for the variables you need to add.
+See also: https://redwoodjs.com/docs/authentication#clerk
+```
+
+If you already followed the instructions to add your environment variables, great job! If you didn’t, please add them now.
+
+In your code editor of choice, open up `web/src/App.js`
+
+Wrap the Redwood `<AuthProvider />` component with `<ClerkAuthProvider />` and replace the prop `type="dbAuth"` with `type="clerk"`:
+
+```jsx
+const App = () => (
+  <FatalErrorBoundary page={FatalErrorPage}>
+    <RedwoodProvider titleTemplate="%PageTitle | %AppTitle">
+      <ClerkAuthProvider>
+        <AuthProvider type="clerk">
+          <RedwoodApolloProvider>
+            <Routes />
+          </RedwoodApolloProvider>
+        </AuthProvider>
+      </ClerkAuthProvider>
+    </RedwoodProvider>
+  </FatalErrorBoundary>
+)
+```
+
+## Add Clerk components
+
+Now that Clerk is set up, restart the dev server with `yarn rw dev`. If you had the dev server running, it needs to be restarted to read the newly added environment variables.
+
+Open the `web/src/layouts/BlogLayout/BlogLayout.js` component in your code editor and add the following imports:
+
+```jsx
+import { SignInButton, UserButton } from '@clerk/clerk-react'
+```
+
+While the `login` and `logOut` methods from the Redwood `useAuth()` hook will work, Clerk provides nice UI components to accomplish the same thing. Remove the `logIn` and `logOut` methods and replace the last navigation list item with the following code:
+
+```jsx
+<li className={isAuthenticated ? 'ml-2' : null}>
+  {isAuthenticated ? (
+    <UserButton afterSignOutAll={window.location.href} />
+  ) : (
+    <SignInButton mode="modal">
+      <button className="rounded px-4 py-2 transition duration-100 hover:bg-blue-600">
+        Log in
+      </button>
+    </SignInButton>
+  )}
+</li>
+```
+
+**Note**: The `afterSignOutAll` prop needs to be set to the current URL when using Clerk Hosted Pages to redirect back to your app.
+
+Making use of the `isAuthenticated` property checks if there is an active user session. If there isn’t one, the Clerk `<SignInButton />` component renders a custom button element matching the blog styles. Clicking “Log in”, opens a modal window allowing you to sign in with Google or sign up with an email and password.
+
+Clerk sign in modal
+
+After signing in, you should see the `<UserProfile />` component with an avatar.
+
+If you look in the code right underneath the navigation, there is a conditionally rendered text block for `currentUser.email`. This doesn’t render anything because the Clerk user object is structured a little differently. To display the current user’s email address, make the following tweaks:
+
+```jsx
+{
+  isAuthenticated && (
+    <div className="text-right text-xs text-blue-300">
+      {currentUser?.emailAddresses[0]?.emailAddress}
+    </div>
+  )
+}
+```
+
+This reads the primary email address property and removes the absolute positioning styles.
+
+The navigation header should now look similar to:
+
+Navigation header
+
+(Displaying your own account of course.)
+
+Clerk makes it super easy to add in these authentication components. There are more options for customization available as well.
+
+Now that you have an authenticated user, you should be able to safely navigate to http://localhost:8910/admin/posts and manage the blog posts.
+
+That’s really all there is to it.
+
+## Going deeper
+
+If you’d like to go deeper into the forest (really stretching this metaphor here), you could try your hand at the following:
+
+- Update the Login and Sign Up pages with mounted Clerk components
+- Add `roles: ['admin']` to the user public metadata to implement role-based access control
+- Go outside and visit the Redwood National and State Parks to see these majestic trees in person
+- Connect with other developers or say hi in our Discord community 👋

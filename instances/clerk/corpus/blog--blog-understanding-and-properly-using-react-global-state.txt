@@ -1,0 +1,468 @@
+# Understanding and Properly Using React Global State
+# джерело: https://clerk.com/blog/understanding-and-properly-using-react-global-state
+# отримано: 2026-09-25
+
+React global state refers to the data or state that all components in a React application share. This data is typically stored in a global object, such as a state manager like Redux or the React context API, and it can be accessed by any component in the application that needs it.
+
+By using global state, React components can communicate with each other and share data even if they're not directly connected in the component hierarchy. This allows data in a React application to be better organized and managed.
+
+This article starts by explaining the benefits of using global state in React and when it's best to use it. It then shows you how to implement global state in React using two methods: a custom implementation of a React context using the context API and an implementation of the Clerk React context API component. Lastly, it considers when each of these methods is most useful.
+
+> For comprehensive React authentication with built-in state management, learn more about our React support.
+
+The code for the tutorial can be found in this GitHub repository.
+
+## Why Use React Global State
+
+As mentioned, using global state in a React application can help to make your code more organized, manageable, and performant.
+
+Global state makes managing shared data easier. Storing all of an application's state in a global object makes it easier to manage from a single location rather than having to pass data down through the component hierarchy. It can make code easier to understand and maintain.
+
+It also enables communication between components that are not directly connected. Any component in an application can access and update the shared data even if it's not directly connected to the component that initially stored the data. This can be useful for triggering updates or changes in other parts of the application.
+
+Lastly, using global state improves performance. Because the global state is stored in a centralized location, components that need the same data can access it from the global state as opposed to each component having to fetch the data separately. This can improve the performance of an application by reducing the amount of data that needs to be fetched and processed.
+
+## When to Use React Global State
+
+Using React global state is not a must, but it can be a useful tool in certain situations.
+
+It's most useful when data is needed by multiple components in an application because it ensures that these components all have access to the latest and most up-to-date version of the data. For example, for a login form that's used by multiple components, the global state could be used to store the user's authentication status and other information, which could then be accessed by any component that needs it.
+
+Another common use case for React global state is to allow components to update the data in the global state. For example, a shopping cart application could use the global state to store a list of items in the cart and then allow any component that displays the cart items to update the list when a user adds or removes an item. It allows any component that displays the cart items to always have the latest version of the data.
+
+## Prerequisites
+
+To follow along with this tutorial, you'll need the following prerequisites installed on your system:
+
+- Node.js and npm: Vite is built on top of Node.js and npm, so you must have these installed to use the npm create command.
+- TypeScript: Vite supports TypeScript out of the box, but you must have TypeScript installed to create a React TypeScript project with Vite.
+
+## Method 1: Using the React Context API to Implement Global State
+
+In this section, you'll learn the basic structure for creating a globally managed state object using a context provider to get and update information without creating a dependency chain of properties.
+
+### Cloning and Setting Up the Project
+
+Clone the project from GitHub.
+
+Below is a directory tree of the cloned project. Make sure that you are on the `main` branch but running `git checkout main` in the project root.
+
+```bash
+|..
+├── index.html
+├── package.json
+├── README.md
+├── src                                     # Main application source code
+|  ├── app-context                          # Application context
+|  |   └── user-context.tsx                 # Main application user context
+|  |   └── user-context-provider.tsx        # Application context provider
+|  ├── components                           # UI Components
+|  |   └── AdminPage                        # Admin page locked by a user object
+|  |       └── index.tsx
+|  |   └── LoginStatus                      # Login status display component
+|  |       └── index.tsx
+|  |   └── SignInSignOut                    # Log in and log out buttons
+|  |       └── index.tsx
+|  |   └── WelcomePage                      # Landing page
+|  |       └── index.tsx
+|  ├── App.tsx
+|  ├── assets
+|  ├── main.tsx
+|  └── vite-env.d.ts                        # ViteJs env type declarations
+├── tsconfig.json
+├── tsconfig.node.json
+└── vite.config.ts                          # ViteJs configuration
+```
+
+Once the project has been cloned, you need to install the project's node modules using `npm i` or `npm install`. To test the React app, use `npm run dev` to start the server at http://localhost:5173.
+
+Once the server is running, the following should appear in the terminal window to indicate that the server is running correctly:
+
+```bash
+VITE v4.0.3  ready in 3140 ms
+
+➜  Local:   http://localhost:5173/
+➜  Network: use --host to expose
+➜  press h to show help
+```
+
+If your web browser does not open automatically, open the browser and enter the following URL in the address bar: `http://localhost:5173/welcome`. Here is what will be visible in the browser:
+
+Basic welcome page with sign-in button
+
+### Declaring the Context API and Setting the Initial Application
+
+Let's have a look how this first example is configured in `~./src/app-context`. This directory has two files. The first is **user-context.tsx**, which is where the React context state is first declared, then initialized with default values, and lastly exported for global use when the context provider wraps the global application node:
+
+```typescript
+// FILE - ./src/app-context/user-context.tsx
+// ----------------------------------
+
+import React from 'react'
+
+export interface UserContract {
+  id?: number
+  username?: string
+  firstName?: string
+  email?: string
+}
+
+// The dummy user object used for this example
+export const DummyUser: UserContract = {
+  id: 1,
+  username: 'MyUserName',
+  firstName: 'John',
+  email: 'john@doe.com',
+}
+
+/**
+ * Application state interface
+ */
+export interface AppState {
+  user?: UserContract
+  updateState: (newState: Partial<AppState>) => void
+}
+
+/**
+ * Default application state
+ */
+const defaultState: AppState = {
+  user: {},
+  updateState: (newState?: Partial<AppState>) => {},
+}
+
+/**
+ * Creating the Application state context for the provider
+ */
+export const UserContext = React.createContext<AppState>(defaultState)
+```
+
+First, the `AppState` interface is declared containing the `user` object type and `updateState` function. Included on the `AppState` interface is the `updateState` method, which will accept a partial state object that allows specific sections of the user object to be updated.
+
+After the interface has been declared, the default state is created and set to the type of the `AppState` and then defaulted. In this case, it's an empty object.
+
+Finally, the React context is created and exported as `UserContext` with the React.createContext SDK API.
+
+### Adding React Global State Using the Context Provider
+
+Inside **./src/app-context/user-context-provider.tsx** is `UserContextProvider`. This is where the global state and provider methods like `updateState` get assigned.
+
+```typescript
+// FILE - ./src/app-context/user-context-provider.tsx
+// ----------------------------------
+
+import React, { useState } from 'react'
+import { AppState, UserContext } from './user-context'
+
+interface Props {
+  children: React.ReactNode
+}
+
+/**
+ * The main context provider
+ */
+export const UserContextProvider: React.FunctionComponent<Props> = (props: Props): JSX.Element => {
+  /**
+   * Using react hooks, set the default state
+   */
+  const [state, setState] = useState({})
+
+  /**
+   * Declare the update state method that will handle the state values
+   */
+  const updateState = (newState: Partial<AppState>) => {
+    setState({ ...state, ...newState })
+  }
+
+  /**
+   * Context wrapper that will provider the state values to all its children nodes
+   */
+  return (
+    <UserContext.Provider value={{ ...state, updateState }}>{props.children}</UserContext.Provider>
+  )
+}
+```
+
+To make the global state available to the entire application, you need to provide it as the main parent wrapper to all the child nodes. This is done by setting the `<App />` component as the child node of `UserContextProvider`:
+
+```typescript
+// FILE - ./src/main.tsx
+// ----------------------------------
+
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App'
+import { UserContextProvider } from './app-context/user-context-provider'
+
+ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
+  <React.StrictMode>
+    // Context provider wrapper
+    <UserContextProvider>
+      // Every child node will have access to the UserContext state.
+      <App />
+    </UserContextProvider>
+  </React.StrictMode>,
+)
+```
+
+### Making Use of the Global State Using the Context API
+
+At this stage, the context can be included in the component using the useContext React hook whenever it needs to be used:
+
+```typescript
+// FILE - ./src/App.tsx
+// ----------------------------------
+
+const App: React.FunctionComponent = (): JSX.Element => {
+  /*
+   * Using react's useContext to tell the component which context to use,
+   * the relevant state properties can be extracted. In the example below,
+   * the user object, clerk object and the updateState method is made available.
+   */
+  const { user, clerk, updateState } = useContext(UserContext)
+
+  /* Application logic ... */
+
+  return (
+    <Container maxWidth="sm">
+      <BrowserRouter>{/* Application components */}</BrowserRouter>
+    </Container>
+  )
+}
+```
+
+## Method 2: Using Clerk's Global State Manager to Implement Global State
+
+Now, let's consider another method that you can use to achieve global state. Clerk offers its own context provider called ClerkProvider. It provides a wrapper for a ReactJS application that handles the user session and state as well as a list of child components and hooks for use in your application.
+
+### Setting Up Clerk
+
+First, you need to create a Clerk application.
+
+Clerk handles authentication requests when users sign in. For Clerk to know which sign-in session belongs to which client account, there needs to be a unique reference between the React application and the Clerk API. This is achieved by setting up an application on the Clerk platform to get a unique application key against which the sign in will occur.
+
+1. Sign up for a free trial account.
+
+Sign up for a Clerk account
+
+2. Create a Clerk application from the dashboard.
+
+Create a Clerk application
+
+3. On the application settings page, go to **API Keys** and select the **React** framework from the dropdown list.
+
+Select React from the dropdown list
+
+4. Copy the API key shown on the page as this will be used in the project.
+
+Copy the API key from the key field listed on the page
+
+### Clone the Repo
+
+Now, return to the repository you cloned for the previous example and check out the Clerk branch by running the following commands:
+
+1. `~/$: cd ./clerk-dev-global-state-with-context`
+2. `~/clerk-dev-global-state-with-context/$: git checkout feat/main-clerk_devi`
+
+Here's the file structure for the project once the `main-clerk_dev` branch has been checked out:
+
+```bash
+.
+├── index.html
+├── package.json
+├── README.md
+├── src                 # Main application source code
+|  ├── App.tsx          # Application main component
+|  ├── components       # Application components
+|  |  ├── AdminPage     # Admin page requires login session
+|  |  ├── common        # Holds the application routes
+|  |  ├── LoginStatus   # Uses ClerkProvider context to show login status
+|  |  └── WelcomePage   # Welcome page that incorporates login status component
+|  ├── main.tsx         # Application render component
+|  └── vite-env.d.ts    # ViteJs env type declarations
+├── tsconfig.json
+├── tsconfig.node.json
+└── vite.config.ts      # ViteJs configuration
+```
+
+## Implement Clerk React
+
+In this section, you'll implement the Clerk context provider as well as the Clerk React components. These components help make it simple to manage content based on login status. Wrapping elements with the node list `<SingedIn />` means that they will only show when the user is signed in, and conversely, wrapping them with `<SignedOut />` will only display child nodes and components when the user is out.
+
+First, you need to open the **main.tsx** file and wrap the `<App />` component with the `<ClerkProvider />`, as shown below:
+
+```typescript
+// FILE - ./src/main.tsx
+// ----------------------------------
+
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App'
+import { ClerkProvider } from '@clerk/clerk-react'
+
+const clerkApiKey = import.meta.env.VITE_CLERK_API_URI
+
+ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
+  <React.StrictMode>
+    // The clerk provider wrapper for React Applications.
+    <ClerkProvider frontendApi={clerkApiKey}>
+      <App />
+    </ClerkProvider>
+  </React.StrictMode>,
+)
+```
+
+In the code sample above, the `VITE_CLERK_API_URI` environment variable is assigned to the `clerkApiKey`, which is the key that you got in the section on setting up Clerk. You then add it to the Clerk provider context wrapper (`<ClerkProvider frontendApi={clerkApiKey}>`) used by the Clerk React components.
+
+The code block below shows the `main.tsx` component, which is where you would have the main entry into your applications via the `<App />` component. Using the ClerkProvider React component, wrap your app component with it. This will set the application component as a child element. Next, add the `clerkApiKey` to the `ClerkProvider component using the `publishableKey\` property.
+
+Now with the application component as the child of the Clerk provider component, all the user components will be passed down into each child component.
+
+```typescript
+// FILE - ./src/main.tsx
+
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App'
+import { ClerkProvider } from '@clerk/clerk-react'
+import { BrowserRouter } from 'react-router-dom'
+
+const clerkApiKey = import.meta.env.VITE_CLERK_API_URI
+console.log(clerkApiKey)
+
+ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
+  <React.StrictMode>
+    <BrowserRouter>
+      <ClerkProvider publishableKey={clerkApiKey}>
+        <App />
+      </ClerkProvider>
+    </BrowserRouter>
+  </React.StrictMode>,
+)
+```
+
+## Clerk React Components and Hooks
+
+Clerk has numerous components and functions that can be used inside child components of the `<ClerkProvider />` context provider component, allowing for simple implementation and secure authentication for React applications.
+
+As long as all the components that utilize the Clerk hooks and components are child nodes of the `<ClerkProvider />`, those components and hooks will interact with the user session and state.
+
+### Clerk useUser Hook
+
+You can use the Clerk `useUser()` hook to get the current user state in the form of an object `{ isLoaded, isSignedIn, user }`. The `isLoaded` property checks to see if Clerk has finished requesting the user session, `isSignedIn` determines if the current user has signed in, and `user` contains the user info for the current user session.
+
+```typescript
+// FILE - ./src/components/LoginStatus/index.tsx
+
+import React from 'react'
+import { Typography } from '@mui/material'
+import { useUser } from '@clerk/clerk-react'
+
+export const LoginStatus: React.FunctionComponent = (): JSX.Element => {
+  const { user } = useUser() // << Implementation
+  return (
+    <React.Fragment>
+      <Typography variant="body1">
+        Login status: // Get the user's first name
+        {user ? `Signed in as ${user.firstName}` : 'You are signed out'}
+      </Typography>
+    </React.Fragment>
+  )
+}
+```
+
+### Clerk SignIn, SignedIn, and SignedOut Components
+
+The routes file below shows the use of three Clerk react components. `SignIn`, `SignedIn`, and `SignedOut`:
+
+```tsx
+// FILE - ./src/components/common/routes.tsx
+
+import { Route, Routes } from 'react-router-dom'
+// ...
+
+export const MainRoutes: React.FunctionComponent = (): JSX.Element => {
+  //...
+  <Route
+    path="/admin"
+    element={
+      <React.Fragment>
+        <SignedIn>
+          <AdminPage />
+        </SignedIn>
+        <SignedOut>
+          <SignIn afterSignInUrl="/admin" />
+        </SignedOut>
+      </React.Fragment>
+    }
+  />
+  // ...
+}
+```
+
+The Clerk components are placed as children to the ClerkProvider to allow you to determine which content to show based on login status.
+
+When the `SignIn` component (`<SignIn afterSignInUrl="/admin" />`) is rendered, it displays the Clerk user sign-in modal on the React application. The optional parameter `afterSignInUrl` means the application will update the URL of the page once login is successful.
+
+Clerk sign in modal rendered
+
+`<SignedIn>` and `<SignedOut>` act as conditional wrappers. The current sign-in status will determine whether child components will or will not render. So if a component is wrapped with `<SignedOut> {... Child Components} </SignedOut>`, those components will only show if the user is signed out. The same applies to the `SignedIn` component.
+
+### Clerk User Metadata
+
+Clerk lets you store and manage user metadata in a central location. This data can include information such as user preferences, settings, and usage statistics. Using Clerk lets you easily access and update this information as needed without constantly having to ask users for it, resulting in a better user experience.
+
+By having all of this information in one place, developers can tailor their app or website to individual users' needs and preferences. This can help increase engagement and retention as users are more likely to use a personalized app or website.
+
+Three types of user metadata can be configured: private, public, and unsafe.
+
+Private metadata is set and configured on the backend. It's not accessible via the ClerkJS frontend API to ensure that no sensitive information is visible on the client side of the application that could potentially compromise personal information. If any private data needs to be accessible from the frontend API, the user to whom the data belongs must give consent.
+
+Public metadata is also set on the backend but is visible in the ClerkJS frontend API as read-only properties for use on the client side. None of these values can be changed directly from the client side though. The only way to change these values is to update the metadata using the `users.updateUsers` method.
+
+Unsafe metadata is set by both the frontend and backend APIs. For example, when a user signs up via the frontend API, custom fields can be set and saved to the user object on the backend, and the same can be done the other way around. These attributes and values can also be set after the user has signed in to the application and then be persisted on the user object with `users.updateUsers`.
+
+See a code sample of this below:
+
+```javascript
+// Source: https://clerk.com/docs/users/user-metadata#unsafe-metadata
+
+import { useUser } from '@clerk/nextjs'
+
+const updateMetadata = async () => {
+  const { user } = useUser()
+  const data = 'Data to store unsafely'
+
+  try {
+    const response = await user.update({
+      unsafeMetadata: { data },
+    })
+    if (response) {
+      console.log('res', response)
+    }
+  } catch (err) {
+    console.error('error', err)
+  }
+}
+```
+
+## React Context API vs. Clerk Context Provider
+
+You've seen how to use both methods to handle global state in React, so how do they compare?
+
+Clerk's state management solution is more suited for larger, more complex applications that need a more powerful and flexible state management solution, while the React Context API is better for smaller applications that don't need as much state management functionality.
+
+So, use the React Context API if:
+
+- you need to share a small amount of state between a few components;
+- you don't need to manage complex state dependencies or updates; or
+- you want a lightweight solution for state management that doesn't add too much overhead to an application.
+
+In contrast, use Clerk if:
+
+- you need a centralized store for the application's state;
+- you need to handle complex state management scenarios that involve nested data structures or multiple dependencies;
+- you want to easily manage state updates and subscriptions across different components in an application; or
+- you want a simple, intuitive API for state management that's easy to understand and use.
+
+Are you interested in trying Clerk? You can sign up for a free tier for POCs as well as individual and private use, or you could look into the paid solutions for large-scale client bases and enterprise-level tools.

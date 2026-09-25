@@ -1,0 +1,83 @@
+# How we use End To End tests to bulletproof our authentication flows across browsers
+# джерело: https://clerk.com/blog/how-we-use-end-to-end-tests-to-bulletproof-our-authentication-flows-across-browsers
+# отримано: 2026-09-25
+
+At Clerk, we use End To End testing to create bulletproof authentication flows across browsers.
+
+## The 10,000 ft view of the End To End landscape
+
+In the past, End To End testing was almost exclusively considered a Quality Assurance Engineering topic. For one reason or another, the development of test automation pipelines and application workflow validation tests were not so popular with software engineers. That view has gradually become dated and replaced with the growing popularity of tools like Cypress, Puppeteer, Playwright, and even the latest version of Selenium.
+
+How We Use End To End Tests To Bulletproof Our Authentication Flows Across Browsers guide illustration
+
+The growth of those tools should not be seen as a simple technical advancement, but instead as an immediate answer to the growing need to efficiently and effectively validate fast moving development cycles of agile teams. At Clerk we deploy multiple times per day, and without these tools it would be impossible to ensure reliability.
+
+## The high bar for reliability at Clerk
+
+As a solution for authentication and user management, Clerk must maintain exceptionally high reliability, even as our product and team expands rapidly around our core offering. It is critical that end-users can always access their accounts quickly, even through edge cases like originally signing up with Google, then trying to sign in with email instead.We also take great pride in our developer experience, and often jump through hoops to ensure that Clerk works consistently across development, staging, and production environments and across all browsers.To keep reliability high across our myriad of flows - and importantly, to give our own development team confidence that our product won't break with new deploys - it became clear the most pragmatic solution was to develop an End To End test suite.
+
+## Laying out our needs
+
+These were our initial needs exactly as voiced by our team:
+
+- **Cross-browser**: The suite needs to cover all major browsers with as little external service interaction as possible.
+- **Happy to code in**: Meaning TypeScript. Most probably Frontend Engineers should be able to write and maintain the tests for the suite (_with as much joy as possible_).
+- **Support containerized deployment**: The suite needs to be portable enough to run on a GitHub Action workflow.
+
+## Choosing a platform
+
+After investigating Selenium, Puppeteer, WebDriverIO, Cypress, and Playwright and weighing each platform against our needs, we decided to go with Playwright.
+
+Although it felt less hyped, as a team we felt really confident in the architecture behind Playwright, its stellar documentation and tooling, and the excellent community backing the effort.
+
+We will describe our exact selection process in a later post, but most critically, we appreciate the ability to execute our workflows across Chromium, WebKit and Firefox with so much ease and fine grained control.
+
+How We Use End To End Tests To Bulletproof Our Authentication Flows Across Browsers guide illustration
+
+## How the suite is orchestrated
+
+Our End to End test suite is a separate system from our main codebase as we have seen this pattern working really well for most applications.
+
+Its main components as a Node.js application written in TypeScript are:- **Playwright** as the browser automation framework.
+
+- **Jest** as the test suite runner.
+- jest-playwright to connect Jest and Playwright as it makes our lives so much easier.
+- Faker.js to create API fixtures that fit our needs for the sign-up and sign-in processes fixtures.
+- Page Objects as the main pattern representing the interaction facade with our application views in code.
+
+These components have proved to work together seamlessly while staying welcoming to our frontend engineering team. One of our main goals was to ensure that new teammates could understand the system quickly and create new tests, and so far this structure has exceeded our expectations.
+
+## Delivery of the suite on our day to day efforts
+
+To keep us safe from accidental regressions, the test suite must run (and pass!) before any merge to production. To automate this process, integration with our Continuous Integration (CI) tooling was essential.
+
+We run our CI through GitHub Actions, and fortunately, the Playwright team has created GitHub Action tools to simplify triggering the test suite. Paired with Vercel preview deployments, which is where most of our CI tasks take place, both Actions fit the spot quite nicely for End to End suite scenarios. The Playwright team has also created a GitHub action to quickly bootstrap Playwright tests.
+
+The final action file that triggers our End to End suite on every pull request looks something like this:
+
+```bat
+jobs:
+  e2e:
+    if: github.event.deployment_status.state == 'success'
+    name: End to End
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [14.x]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: microsoft/playwright-github-action@74fbf9d1a7c5d8735dab59804da3fdd367a98020
+      - uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Run Playwright tests
+        run: cd e2e && npm install && npm run test
+```
+
+If the action succeeds, we are good to go!
+
+## Parting words
+
+This was a really brief overview of how we went about designing our End to End test suite at Clerk. As Clerk and our customers' needs continue to evolve, we will continue to share our experiences with Playwright and any new tools we adopt.
+
+_**P. S.** We have open sourced a template for starting up your own End To End suite using Playwright, so feel free to try it out! https://github.com/clerkinc/playwright-e2e-template_

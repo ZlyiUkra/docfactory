@@ -1,0 +1,809 @@
+# How do I add authentication to a Next.js app?
+# джерело: https://clerk.com/blog/how-to-add-authentication-to-a-nextjs-application
+# отримано: 2026-09-25
+
+Authentication is core to building any multi-user product, and it's important to get it right from the start.
+
+There are a number of methods you can use when adding authentication into a product, and Next.js has its own paradigms to consider. Understanding the Next.js authentication overview is key to choosing the right strategy for your application, and properly implementing it is the next challenge.
+
+In this article you'll learn about the most common authentication strategies, as well as how to add JWT authentication to a Next.js application.
+
+## Next.js authentication strategies: Choosing the right approach
+
+There are many strategies to select from when planning your approach to authentication. The most common approaches are session token authentication, JWT-based authentication, and OAuth. Let's touch on how each of these compare.
+
+### Session tokens
+
+Session token authentication is the oldest on this list but is still widely used today. When a user signs into an application using session token authentication, the backend service will verify the user's credentials against the database and, assuming they are valid, create an entity called a "session". Each session has some commonly tracked attributes stored such as the user it's associated with, when it was created, when it expires, and its status (valid, expired, etc). The session identifier is sent back to the user's device to be used with subsequent network requests.
+
+The most common method of storing the session ID client-side is in a browser cookie so the ID is sent with future network requests automatically. When received by the server, the session is cross-referenced with the user for which it was created so that the server knows who is making the request and can apply security appropriately.
+
+> To learn more about session management in detail, check out our comprehensive guide on what is session management and how it works in modern applications.
+
+### JWT
+
+JSON Web Tokens (JWTs) are specially formatted strings that contain embedded information about a particular user or session and are cryptographically signed by the server. When a user signs in, the server will validate the user's credentials just like with session token authentication but instead of creating a session record (commonly in a database table), the details are encoded into a JWT and signed before being sent back to the client. The JWT is also sent with each request but since it contains the user and/or session details, the server does not have to look up those in the database. The server can simply verify the JWT signature is valid and can trust the encoded details if it is.
+
+This has some benefits and drawbacks. One of the primary benefits is the speed by which requests are validated as no datastore lookups are required. Since verification is mostly performed on the receiving server, this also makes JWT authentication more scalable than session token authentication. As long as a server has a cached version of the signing secret (or public key in asymmetric signing configurations), that server can verify the JWTs authenticity.
+
+The primary drawback is the lack of control if a JWT is leaked to an unauthorized party. Since all of the session information is embedded with the token and the verification process does not require any additional checks with a central datastore, there is no standard way to invalidate tokens once they've been signed and sent out.
+
+> Learn more about how Clerk overcomes this drawback with a hybrid authentication strategy.
+
+### OAuth
+
+OAuth is a standard that allows a user to authenticate with one system and access multiple services using a single account. If you've ever signed into a web application with a Google or Apple account, you've used OAuth. In a typical configuration, the service provider (SP) will redirect users attempting to sign in to an identity provider (IdP) to supply their credentials and create a session. Once authenticated, the user's device will receive a code that can be provided to the SP, which will communicate with the IdP to verify the code, create the JWT, and send it back to the user.
+
+This flow (known as the "Authorization Code Grant") describes how the SP and IdP work together to create the session and is only one of many flows that are part of the OAuth spec.
+
+> A full explanation of OAuth is beyond the scope of this article, but we have another on our blog that covers OAuth and its implementation in detail.
+
+## How to implement Next.js authentication with JWT tokens
+
+Now that you have a solid understanding of some common authentication strategies, let's learn how to manually implement Next.js authentication using JWT tokens. To do this, you'll step through the following:
+
+- Configure a SQLite database to store user records
+- Set up public/private keys to sign and validate JWTs in a helper
+- Create sign-up and sign-in pages
+- Configure a **Sign out** button
+- Show claims from the JWT within a server-rendered page
+
+> This guide is meant to act as an introduction to JWT authentication by demonstrating a minimal implementation, however a robust and scalable solution involves significantly more than what's covered. Considerations for a complete user management solution are discussed after the tutorial.
+
+To follow along, you'll need the following:
+
+- A general understanding of React, and ideally experience with Next.js
+- Node.js installed on your workstation
+
+You'll use the supplied starter repository that is a Next.js application preconfigured with SQLite, a few shadcn/ui components, and a dashboard page with some dummy data. Through this guide, you'll create the sign-up page, sign-in page, sign-out button, and you'll configure the middleware to enforce authentication on the `/dashboard` route.
+
+Upon signing in, the middleware will parse the JWT (stored as a cookie) to determine the user's authentication status. Server actions will be used throughout the various authentication functions.
+
+The following dependencies are also pre-installed:
+
+- `bcrypt` to salt and hash user passwords before storing them in the database.
+- `jose` to create and validate JWTs
+
+> Hashing is a process that lets you obfuscate data with an irreversible cryptographic method so it is not stored in plain text, which should never be done with passwords in a database.
+
+Before moving on, clone the `start` branch of this repository: clerk/nextjs-jwt-auth-demo. Once cloned, open the project in your code editor of choice and run `pnpm install` to install the dependencies.
+
+### Creating the SQLite and JWT helpers
+
+You'll start by creating a helper file that lets the application interact with the SQLite database. The helper will create the connection, create the `users` table if it does not yet exist, and return a connection object to the caller. The table needed to support user authentication contains only three columns:
+
+- `id` is the unique identifier for the user
+- `username` is their username
+- `password_hash` is the salted and hashed representation of their password
+
+Create the `src/lib/db.ts` and populate it with the following:
+
+filename: src/lib/db.ts
+```ts
+import sqlite3 from 'sqlite3'
+import path from 'path'
+
+sqlite3.verbose()
+
+const db = new sqlite3.Database(path.join(process.cwd(), 'sqlite.db'), (err) => {
+  if (err) {
+    console.error(err.message)
+  } else {
+    console.log('Connected to the SQLite database.')
+  }
+})
+
+db.serialize(() => {
+  db.run(
+    'CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, password_hash TEXT)',
+  )
+})
+
+export { db }
+```
+
+Next, you'll create the JWT helper file that contains the configuration for `jose` as well as the `createToken` function to generate a new JWT for the user and `parseToken` which verifies the token's validity and returns the claims (the data encoded within JWTs) to the caller if it is.
+
+Create the `src/lib/jwt.ts` file and add the following:
+
+filename: src/lib/jwt.ts
+```ts
+import * as jose from 'jose'
+
+const privateKeyPem = process.env.JWT_PRIVATE_KEY as string
+const publicKeyPem = process.env.JWT_PUBLIC_KEY as string
+
+const jwtConfig = {
+  protectedHeader: { alg: 'RS256', typ: 'JWT' },
+}
+
+interface CustomJWTPayload extends jose.JWTPayload {
+  username?: string
+}
+
+export async function parseToken(token: string): Promise<CustomJWTPayload | null> {
+  if (!token) return null
+
+  try {
+    // Import the public key
+    const publicKey = await jose.importSPKI(publicKeyPem, 'RS256')
+    const { payload } = await jose.jwtVerify(token, publicKey)
+    return payload
+  } catch (err) {
+    console.error('Error parsing token', err)
+    return null
+  }
+}
+
+export async function createToken(sub: string, username: string): Promise<string> {
+  try {
+    // Import the private key
+    const privateKey = await jose.importPKCS8(privateKeyPem, 'RS256')
+    return await new jose.SignJWT({ sub, username })
+      .setProtectedHeader(jwtConfig.protectedHeader)
+      .setIssuedAt()
+      .setExpirationTime('1h')
+      .sign(privateKey)
+  } catch (err) {
+    console.error('Error creating token', err)
+    throw err
+  }
+}
+```
+
+Notice in the above code that the `JWT_PRIVATE_KEY` and `JWT_PUBLIC_KEY` are being referenced from the environment variables. To set this up, run the following command in your terminal to generate a key pair and set them in the `.env.local` file:
+
+```bash
+npm run generate-keys
+```
+
+Inspecting the `.env.local` file will look similar to the following (albeit with a larger value for each variable):
+
+```
+JWT_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkq..."
+JWT_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvAIBAD..."
+```
+
+> Make sure to protect the `JWT_PRIVATE_KEY` as anyone with it can generate tokens on behalf of any user of your application!
+
+### Building the sign-up flow
+
+Before users can sign-in and use the application, they'll need a way to sign-up first. Create the `src/app/actions.ts` file to store the server actions required to sign-up. This configuration will check if a record with that username exists (responding with an error if found), creates the JWT and stores it as a cookie, and redirects the user to the `/dashboard` route.
+
+filename: src/app/actions.ts
+```ts
+'use server'
+
+import bcrypt from 'bcrypt'
+import { db } from '@/lib/db'
+import { RunResult } from 'sqlite3'
+import { cookies } from 'next/headers'
+import { createToken } from '@/lib/jwt'
+
+const SALT_ROUNDS = 10
+
+// Hashes the password for storing it
+async function hashPassword(password: string) {
+  const salt = await bcrypt.genSalt(SALT_ROUNDS)
+  const hash = await bcrypt.hash(password, salt)
+  return { hash, salt }
+}
+
+// Creates the user record in the database
+async function createUserRecord(username: string, hash: string): Promise<number> {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'INSERT INTO users (username, password_hash) VALUES (?, ?)',
+      [username, hash],
+      function (err: Error, results: RunResult) {
+        if (err) {
+          reject(err)
+        }
+        resolve(results?.lastID)
+      },
+    )
+  })
+}
+
+interface CheckCountResult extends RunResult {
+  count: number
+}
+
+async function checkDoesUserExist(username: string): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    db.get(
+      'select count(*) as count from users where username=?',
+      [username],
+      (err: Error, results: CheckCountResult) => {
+        if (err) {
+          reject(err)
+        }
+        resolve(results.count !== 0)
+      },
+    )
+  })
+}
+
+// The action used in the sign-up route
+export async function registerUser(username: string, password: string) {
+  try {
+    const userExists = await checkDoesUserExist(username)
+    if (userExists) {
+      throw new Error('User with this name already exists')
+    }
+
+    // Hash the password
+    const { hash } = await hashPassword(password)
+
+    // Create the user record
+    const userId = await createUserRecord(username, hash)
+
+    // Create the token and set it in a cookie
+    const token = await createToken(userId?.toString(), username as string)
+    const cookieStore = await cookies()
+    cookieStore.set('token', token, {
+      path: '/',
+      httpOnly: true,
+      maxAge: 3600, // 1 hour in seconds
+    })
+  } catch (err) {
+    throw err
+  }
+}
+```
+
+Now create the `src/app/sign-up/page.tsx` file to store the sign-up form used to create an account:
+
+filename: src/app/sign-up/page.tsx
+```tsx
+'use client'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { useState } from 'react'
+import { registerUser } from '../actions'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { useRouter } from 'next/navigation'
+
+function SignUpPage() {
+  const router = useRouter()
+  const [username, setUsername] = useState<string>('')
+  const [pass, setPass] = useState<string>('')
+  const [confPass, setConfPass] = useState<string>('')
+  const [err, setErr] = useState<string>()
+
+  async function register() {
+    if (!username) {
+      setErr('Must specify a username')
+      return
+    }
+    if (pass !== confPass) {
+      setErr('Passwords do not match')
+      return
+    }
+    try {
+      await registerUser(username as string, pass as string)
+      router.push('/dashboard')
+    } catch (err) {
+      setErr((err as Error).message)
+    }
+  }
+
+  return (
+    <div className="align-center flex flex-col items-center justify-center p-8">
+      <Card className="flex w-[400px] flex-col gap-2 p-4">
+        <h1>Sign up</h1>
+        <Label>Username</Label>
+        <Input value={username} onChange={(e) => setUsername(e.target.value)} />
+        <Label>Password</Label>
+        <Input type="password" value={pass} onChange={(e) => setPass(e.target.value)} />
+        <Label>Confirm password</Label>
+        <Input type="password" value={confPass} onChange={(e) => setConfPass(e.target.value)} />
+        <Button onClick={register}>Sign up</Button>
+        {err && (
+          <Alert variant="destructive">
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{err}</AlertDescription>
+          </Alert>
+        )}
+      </Card>
+    </div>
+  )
+}
+
+export default SignUpPage
+```
+
+You can now start the application with `npm run dev`, access it using the provided URL, and navigate to the `/sign-up` route to create a user. After creating a user, you'll be redirected to the `/dashboard` route.
+
+### Configure sign-out
+
+Since the JWT is stored in a cookie with the `httpOnly` flag, client-side JavaScript will not be able to access it, so you'll need to configure a server action to clear the cookie. Update the `actions.ts` file and append the `signOut` function as shown below:
+
+filename: src/app/actions.ts
+```ts
+'use server'
+
+import bcrypt from 'bcrypt'
+import { db } from '@/lib/db'
+import { RunResult } from 'sqlite3'
+import { cookies } from 'next/headers'
+import { createToken } from '@/lib/jwt'
+
+const SALT_ROUNDS = 10
+
+// Hashes the password for storing it
+async function hashPassword(password: string) {
+  const salt = await bcrypt.genSalt(SALT_ROUNDS)
+  const hash = await bcrypt.hash(password, salt)
+  return { hash, salt }
+}
+
+// Creates the user record in the database
+async function createUserRecord(username: string, hash: string): Promise<number> {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'INSERT INTO users (username, password_hash) VALUES (?, ?)',
+      [username, hash],
+      function (err: Error, results: RunResult) {
+        if (err) {
+          reject(err)
+        }
+        resolve(results?.lastID)
+      },
+    )
+  })
+}
+
+interface CheckCountResult extends RunResult {
+  count: number
+}
+
+async function checkDoesUserExist(username: string): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    db.get(
+      'select count(*) as count from users where username=?',
+      [username],
+      (err: Error, results: CheckCountResult) => {
+        if (err) {
+          reject(err)
+        }
+        resolve(results.count !== 0)
+      },
+    )
+  })
+}
+
+// The action used in the sign-up route
+export async function registerUser(username: string, password: string) {
+  try {
+    const userExists = await checkDoesUserExist(username)
+    if (userExists) {
+      throw new Error('User with this name already exists')
+    }
+
+    // Hash the password
+    const { hash } = await hashPassword(password)
+
+    // Create the user record
+    const userId = await createUserRecord(username, hash)
+
+    // Create the token and set it in a cookie
+    const token = await createToken(userId?.toString(), username as string)
+    const cookieStore = await cookies()
+    cookieStore.set('token', token, {
+      path: '/',
+      httpOnly: true,
+      maxAge: 3600, // 1 hour in seconds
+    })
+  } catch (err) {
+    throw err
+  }
+}
+
+export async function signOut() {
+  const cookieStore = await cookies()
+  cookieStore.delete('token')
+}
+```
+
+Next, create a Sign Out button component at `src/components/SignOutButton.tsx` and paste in the following:
+
+filename: src/components/SignOutButton.tsx
+```tsx
+'use client'
+
+import { Button } from '@/components/ui/button'
+import React from 'react'
+import { signOut } from '../app/actions'
+
+function SignOutButton() {
+  async function onClick() {
+    await signOut()
+    window.location.pathname = '/'
+  }
+
+  return <Button onClick={onClick}>Sign out</Button>
+}
+
+export default SignOutButton
+```
+
+Then you'll need to update the Navigation component to check if the user is logged in and render the button if they are. Since it is a server-rendered component, you can use the `next/headers` package to access the request cookies and the `parseToken` function to verify the user is signed in.
+
+Update the `src/components/Navigation.tsx` file as follows:
+
+filename: src/components/Navigation.tsx
+```tsx
+import { cookies } from 'next/headers'
+import { parseToken } from '@/lib/jwt'
+import SignOutButton from './SignOutButton'
+import Link from 'next/link'
+import Logo from './Logo'
+
+async function Navigation() {
+  const cookieStore = await cookies()
+  const tokenCookie = await cookieStore.get('token')
+  const user = await parseToken(tokenCookie?.value as string)
+
+  return (
+    <nav className="flex flex-row items-center justify-between border-b-1 border-b-neutral-200 p-6">
+      <Link href="/" className="flex flex-row items-center gap-2">
+        <Logo />
+        Next.js JWT Auth Demo
+      </Link>
+
+      {user ? (
+        <SignOutButton />
+      ) : (
+        <div className="flex flex-row gap-2">
+          <Link href="/sign-in">Sign in</Link>
+          <Link href="/sign-up">Sign up</Link>
+        </div>
+      )}
+      <div className="flex flex-row gap-2">
+        <Link href="/sign-in">Sign in</Link>
+        <Link href="/sign-up">Sign up</Link>
+      </div>
+    </nav>
+  )
+}
+
+export default Navigation
+```
+
+Now access the application in your browser once again and click the **Sign out** button in the navigation. You'll be redirected if you are on the `/dashboard` page and the navigation bar will update to show the **Sign in** and **Sign up** links.
+
+### Configure the sign-in page and actions
+
+Now that sign-up and sign-out are working, you'll need a way for existing users to sign-in. Update the `actions.ts` file once again and append the following actions:
+
+filename: src/app/actions.ts
+```ts
+'use server'
+
+import bcrypt from 'bcrypt'
+import { db } from '@/lib/db'
+import { RunResult } from 'sqlite3'
+import { cookies } from 'next/headers'
+import { createToken } from '@/lib/jwt'
+
+const SALT_ROUNDS = 10
+
+// Hashes the password for storing it
+async function hashPassword(password: string) {
+  const salt = await bcrypt.genSalt(SALT_ROUNDS)
+  const hash = await bcrypt.hash(password, salt)
+  return { hash, salt }
+}
+
+// Creates the user record in the database
+async function createUserRecord(username: string, hash: string): Promise<number> {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'INSERT INTO users (username, password_hash) VALUES (?, ?)',
+      [username, hash],
+      function (err: Error, results: RunResult) {
+        if (err) {
+          reject(err)
+        }
+        resolve(results?.lastID)
+      },
+    )
+  })
+}
+
+interface CheckCountResult extends RunResult {
+  count: number
+}
+
+async function checkDoesUserExist(username: string): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    db.get(
+      'select count(*) as count from users where username=?',
+      [username],
+      (err: Error, results: CheckCountResult) => {
+        if (err) {
+          reject(err)
+        }
+        resolve(results.count !== 0)
+      },
+    )
+  })
+}
+
+// The action used in the sign-up route
+export async function registerUser(username: string, password: string) {
+  try {
+    const userExists = await checkDoesUserExist(username)
+    if (userExists) {
+      throw new Error('User with this name already exists')
+    }
+
+    // Hash the password
+    const { hash } = await hashPassword(password)
+
+    // Create the user record
+    const userId = await createUserRecord(username, hash)
+
+    // Create the token and set it in a cookie
+    const token = await createToken(userId?.toString(), username as string)
+    const cookieStore = await cookies()
+    cookieStore.set('token', token, {
+      path: '/',
+      httpOnly: true,
+      maxAge: 3600, // 1 hour in seconds
+    })
+  } catch (err) {
+    throw err
+  }
+}
+
+export async function signOut() {
+  const cookieStore = await cookies()
+  cookieStore.delete('token')
+}
+
+export async function signinUser(username: string, password: string) {
+  try {
+    // Get the user record and verify the provided password matches what's stored
+    const user = await fetchUserFromDb(username)
+
+    // Compare the provided password with what's stored in the database
+    // and make sure they match.
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash)
+    if (!isPasswordValid) {
+      throw new Error('Username and/or password is incorrect')
+    }
+
+    if (!user.id || !user.username) {
+      console.error('Error parsing user details', user)
+      throw new Error('Unknown error')
+    }
+
+    // Create the token and set it in a cookie
+    const token = await createToken(user.id?.toString(), user.username as string)
+    const cookieStore = await cookies()
+    cookieStore.set('token', token, {
+      path: '/',
+      httpOnly: true,
+      maxAge: 3600, // 1 hour in seconds
+    })
+  } catch (err) {
+    throw err
+  }
+}
+
+interface FetchUserResult extends RunResult {
+  id?: number
+  username?: string
+  password_hash?: string
+}
+
+// Fetches the user record from the database using the provided username
+async function fetchUserFromDb(username: string): Promise<FetchUserResult> {
+  return new Promise((resolve, reject) => {
+    db.get('select * from users where username=?', [username], (err, results: FetchUserResult) => {
+      if (err) {
+        reject(err)
+      }
+      if (!results.id) {
+        reject('User not found')
+      }
+      resolve(results)
+    })
+  })
+}
+```
+
+Then create the `src/app/sign-in/page.tsx` file to display the sign-in form:
+
+filename: src/app/sign-in/page.tsx
+```tsx
+'use client'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { useState } from 'react'
+import { signinUser } from '../actions'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { useRouter } from 'next/navigation'
+
+function SignInPage() {
+  const router = useRouter()
+  const [username, setUsername] = useState<string>('')
+  const [pass, setPass] = useState<string>('')
+  const [err, setErr] = useState<string>()
+
+  async function onSignInClicked() {
+    if (!username || !pass) {
+      setErr('Must specify username and password')
+      return
+    }
+    try {
+      await signinUser(username as string, pass as string)
+      router.push('/dashboard')
+    } catch (err) {
+      setErr((err as Error).message)
+    }
+  }
+
+  return (
+    <div className="align-center flex flex-col items-center justify-center p-8">
+      <Card className="flex w-[400px] flex-col gap-2 p-4">
+        <h1>Sign in</h1>
+        <Label>Username</Label>
+        <Input value={username} onChange={(e) => setUsername(e.target.value)} />
+        <Label>Password</Label>
+        <Input type="password" value={pass} onChange={(e) => setPass(e.target.value)} />
+        <Button onClick={onSignInClicked}>Sign in</Button>
+        {err && (
+          <Alert variant="destructive">
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{err}</AlertDescription>
+          </Alert>
+        )}
+      </Card>
+    </div>
+  )
+}
+
+export default SignInPage
+```
+
+In the application, navigate to the `/sign-in` route and use the credentials you created earlier to sign-in and access the `/dashboard` route once again.
+
+### Protecting routes with Next.js authentication middleware
+
+As of now, even unauthenticated users can access `/dashboard` if they enter the path in their browser. Next.js authentication middleware can be configured to intercept inbound requests and check the cookies to ensure a user is signed-in before allowing them to access protected routes. Furthermore, the middleware can also be configured to redirect unauthenticated users to `/sign-in` if they attempt to access `/dashboard`.
+
+Create the `src/middleware.ts` file and populate it like so to achieve this protection:
+
+filename: src/middleware.ts
+```ts
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+import { parseToken } from './lib/jwt'
+
+export async function middleware(request: NextRequest) {
+  // Create a variable to hold user details
+  let user
+  const token = request.cookies.get('token')?.value
+  if (token) {
+    // Use the `parseToken` helper function to extract the claims into `user`
+    user = await parseToken(token)
+  }
+
+  // Get the pathname of the requested URL
+  const { pathname } = request.nextUrl
+
+  // If there is no user info and the request is to /dashboard, redirect to /sign-in
+  if (pathname.includes('/dashboard') && !user) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/sign-in'
+    return NextResponse.redirect(url)
+  }
+
+  // If the user is signed in and trying to access the auth routes, redirect them to the home page
+  if ((pathname.includes('/sign-in') || pathname.includes('/sign-up')) && user) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/'
+    return NextResponse.redirect(url)
+  }
+}
+
+export const config = {
+  matcher: '/(.*)',
+}
+```
+
+> While this approach does protect accessing routes and pages with `/dashboard` in the pathname, it may not necessarily protect server actions stored within the `/dashboard` folder since Next.js uses the browser's current URL to call server actions.
+
+> If you want to learn more about Next.js middleware, we have an in-depth guide in our blog that dives deep into the topic.
+
+### Display user information on the Dashboard page (optional)
+
+Since the `/dashboard` route is protected by our Next.js authentication system, any users that can access it will have already signed in, meaning the information in the JWT can be trusted. The `next/headers` package can be used in page content just like in the `Navigation.tsx` component to parse details about the authenticated user and render the details on the page.
+
+To do this, update `src/app/dashboard/page.tsx` as follows to display the user's username in the page header:
+
+filename: src/app/dashboard/page.tsx
+```tsx
+import { Card } from '@/components/ui/card'
+import React from 'react'
+import { cookies } from 'next/headers'
+import { parseToken } from '@/lib/jwt'
+
+async function DashboardPage() {
+  const cookieStore = await cookies()
+  const tokenCookie = await cookieStore.get('token')
+  const user = await parseToken(tokenCookie?.value as string)
+
+  return (
+    <div className="max-w-800px flex flex-col gap-4 p-8">
+      <div className="flex flex-row justify-between">
+        <h1>Welcome!</h1>
+        <h1>Welcome {user?.username}!</h1>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <Card>
+          <div className="p-4">
+            <div className="text-lg font-semibold">Users</div>
+            <div className="text-2xl font-bold">1,234</div>
+            <div className="text-sm text-gray-500">Active this month</div>
+          </div>
+        </Card>
+        <Card>
+          <div className="p-4">
+            <div className="text-lg font-semibold">Revenue</div>
+            <div className="text-2xl font-bold">$12,345</div>
+            <div className="text-sm text-gray-500">This month</div>
+          </div>
+        </Card>
+        <Card>
+          <div className="p-4">
+            <div className="text-lg font-semibold">New Signups</div>
+            <div className="text-2xl font-bold">321</div>
+            <div className="text-sm text-gray-500">Past 7 days</div>
+          </div>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+export default DashboardPage
+```
+
+Accessing the `/dashboard` page will now show the username in the welcome message!
+
+## Now what?
+
+You now have a functional system that allows users to sign up and sign in to this demo app, however there are a number of missing, critical user management features:
+
+- Email address verification
+- Password reset functionality
+- Advanced attack protection and rate limiting
+- Session management and refresh tokens
+- Multi-factor authentication
+- Social login providers
+
+These are just to name a few of the gaps. Production-ready authentication in Next.js goes well beyond basic JWT implementation. Explore Clerk's Next.js authentication solution to see how Clerk addresses these needs.
+
+### Why choose Clerk for Next.js authentication?
+
+Clerk is a complete user management platform that allows developers to add enterprise-grade Next.js authentication into their applications as quickly as possible. With Next.js applications, this can be done in just a few lines of code.
+
+Once implemented, you'll automatically gain all of the features listed above along with many more such as:
+
+- One-click social authentication (Google, GitHub, Apple, etc.)
+- Simple multi-tenancy for B2B applications (including custom RBAC)
+- Subscription management with Clerk Billing
+- Advanced security features that protect against bots, brute force attacks, and abuse
+- Pre-built UI components that can be configured to match your application's design
+
+### Get started with production-ready Next.js authentication
+
+If you're ready to implement a robust Next.js authentication solution for your Next.js application, check out our Next.js quickstart guide to learn how to get authentication added to your application in as little as 2 minutes. You'll have a complete, secure, and scalable authentication system without the complexity of building and maintaining it yourself.

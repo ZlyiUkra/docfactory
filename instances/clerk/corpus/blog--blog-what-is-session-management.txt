@@ -1,0 +1,104 @@
+# Session management: What it is and why your security depends on its controls
+# джерело: https://clerk.com/blog/what-is-session-management
+# отримано: 2026-09-25
+
+Session management controls what happens after a user signs in: how an application recognizes the user, how long access lasts, how sessions behave across browsers and devices, and how access ends.
+
+Session management is more than issuing a cookie or token. It should let you set session lifetimes, inspect a user's active sessions, revoke a compromised session, respond to unfamiliar devices, and audit session events.
+
+_Updated September 22, 2026: This article now reflects Clerk's current session lifetime, revocation, Device Trust, Application Logs, and session-token behavior._
+
+## What session management includes
+
+A session represents a user's authenticated state for a client, such as a browser or native application. It starts after authentication and ends when the user signs out, the session expires, or the application revokes it.
+
+Five controls carry most of that work:
+
+1. **Lifetime controls:** Set a maximum lifetime and an inactivity timeout.
+2. **Session visibility:** List a user's sessions and inspect recent activity such as the browser, device type, location, and last-active time when available.
+3. **Revocation:** End one session without waiting for its configured lifetime to expire.
+4. **Device protection:** Require additional verification when a password sign-in comes from an unfamiliar device and the user hasn't enabled MFA.
+5. **Auditability:** Record when sessions are created, ended, and revoked, and when session tokens are issued, and retain those records long enough to investigate an incident.
+
+The storage mechanism is only one part of the system. A JSON Web Token (JWT) is a token format, not a complete session-management strategy, and it does not imply that the token should live in browser local storage. How the application stores and validates credentials, refreshes short-lived tokens, and revokes access all matter.
+
+## How sessions are stored, and the attacks that follow
+
+Every session needs an identifier the client presents on each request. That identifier is either an opaque session ID the server looks up, or a signed token such as a JWT that carries its own claims. Either way, the credential travels in a cookie or an `Authorization` header, and whoever holds it is treated as the user until it expires or is revoked. The two differ on how quickly revocation takes effect: the server checks an opaque ID on every request, so revoking one stops it immediately, while a JWT verified locally keeps working until it expires unless you also check current session state. That is what turns storage and lifetime decisions into security decisions.
+
+Three failure modes account for most session compromises.
+
+### Session hijacking
+
+Session hijacking is the theft, interception, or prediction of a valid session credential. An attacker who obtains it never needs the password. Cross-site scripting is the common delivery route, which is why OWASP recommends keeping session identifiers in cookies marked `HttpOnly`, `Secure`, and `SameSite` rather than in browser storage that page scripts can read (OWASP Session Management Cheat Sheet). Those cookie attributes are defined in RFC 6265. Short credential lifetimes shrink the window further: a stolen credential is only useful while it is still valid.
+
+### Session fixation
+
+Session fixation inverts hijacking. Instead of stealing an identifier, the attacker supplies one, often through a URL parameter or an injected cookie, then waits for the victim to authenticate with it. The defense is to issue a fresh session identifier at every privilege change, above all at sign-in, so the value the attacker planted is never the value that ends up authenticated (OWASP Session Management Cheat Sheet).
+
+### Expiry left unset or set too long
+
+A session with no timeout persists until something external clears it, which leaves an account reachable by anyone who later gets the device. A maximum lifetime measured in months has the same effect more slowly. Pairing a maximum lifetime with an inactivity timeout bounds both cases, and revocation covers the rest: it ends a specific session immediately rather than waiting for a clock to run out.
+
+## Session security controls in Clerk
+
+Clerk provides session lifecycle, activity, revocation, device, and audit controls through its Dashboard, SDKs, and Backend API.
+
+| Security need                       | Clerk capability                                                                                          | First-party reference                                                                                            |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Set session duration                | Configure maximum lifetime and inactivity timeout.                                                        | Session options                                       |
+| Find a user's sessions              | List sessions by user and status from the Backend API.                                                    | `getSessionList()`                      |
+| Inspect recent activity             | Read last-active time plus browser, device, IP address, and location data when available.                 | `SessionActivity`                  |
+| Revoke one session                  | Revoke a session by its ID. An already-issued JWT can remain valid until it expires.                      | `revokeSession()`                         |
+| Protect unfamiliar devices          | Require additional verification for password sign-ins from a new device when the user hasn't enabled MFA. | Device Trust                                             |
+| Audit session events                | Review session creation, end, revocation, and token issuance events.                                      | Application Logs              |
+| Support multiple signed-in accounts | Let several accounts remain signed in on the same browser and switch between them.                        | Multi-session applications |
+
+Multi-session support and multi-device visibility solve different problems. Multi-session support lets several accounts remain signed in on one browser. Session listing and activity data let your application review one user's sessions across clients and revoke a specific session when needed. On the client, the same activity data is exposed through `SessionWithActivities`, which a user-facing "active sessions" screen can read directly. Treat all of it as session context rather than device identity: the browser, device type, and location fields describe where a session was last used, not which physical machine holds it.
+
+Device Trust is narrower than a generic new-device check, and the boundary matters. It triggers only when all three conditions hold: the user enters a valid password, the account has no multi-factor authentication enrolled, and the sign-in comes from a new device. A user who already has MFA is challenged with their existing factor instead, so Device Trust never fires for them. It also requires password sign-in to be enabled and the user to have a verified email address or phone number. Applications created after November 14, 2025 have it enabled by default; older applications turn it on from the **Rules** page under **Protect** in the Clerk Dashboard.
+
+Application Logs retention depends on your plan: 1 day on Hobby, 7 days on Pro, and 30 days on Business, with custom retention on Enterprise. The same window applies to production and development instances, so choose a plan whose retention covers the period you would realistically need to reconstruct (Logs overview).
+
+Two of these controls are plan-dependent in production. Every instance gets the default 7-day maximum lifetime at no cost, but setting a custom lifetime or enabling the inactivity timeout requires a paid plan on production instances. Both are free to configure in development, so you can tune the values before committing (Session options).
+
+Clerk's session JWTs expire after 60 seconds, and Clerk's frontend SDKs refresh them about every 50 seconds while a client is active. Revoking the session prevents new tokens from being issued for it, but a JWT that was already issued can pass local verification until its expiration. If an action requires an immediate session-state check, do not rely on an already-issued JWT alone; consult the current session state with `getSession()`. For the mechanics, see how Clerk's session tokens work, the design reasoning in combining the benefits of session tokens and JWTs, and a worked code example in how do I handle JWT verification in Next.js?.
+
+## What to evaluate in a session-management provider
+
+Use these questions when you compare authentication platforms:
+
+- Can the platform list a user's sessions, including their status and expiration?
+- Is last-active time and device context available for each session?
+- Can your backend revoke one session by ID? How quickly does that change take effect for already-issued tokens?
+- Can a user revoke their own other sessions?
+- Can you set both a maximum lifetime and an inactivity timeout?
+- Does the platform record session-created, session-ended, and session-revoked events, and how long does it retain them?
+- How does it handle unfamiliar devices and compromised credentials?
+- Does it support the web and native SDKs your application uses?
+
+## Summary
+
+A session that never expires still works for whoever stole it, and if the logs aged out last week, you cannot find out when. Set lifetimes you can defend, see which sessions are live, and revoke the ones you do not recognize.
+
+## Common questions
+
+Short answers to what teams and the AI agents researching on their behalf ask most about session management in Clerk.
+
+## FAQ
+
+### Can Clerk invalidate an individual session?
+
+Yes. Backends call `revokeSession()` with a session ID. Users revoke their own other sessions with `SessionWithActivities.revoke()`; it is rejected outright if the target is their currently active session. A successful revocation applies immediately, but a JWT already issued to that client stays locally verifiable until it expires, up to 60 seconds later.
+
+### What session events does Clerk record, and how long are they kept?
+
+Application Logs record `session.created`, `session.ended`, `session.revoked`, and `session.token.created`. `device.verified`, `user.trusted_device.created`, and `user.trusted_device.revoked` sit under device events. Retention is 1 day on Hobby, 7 on Pro, 30 on Business, custom on Enterprise (Logs overview).
+
+### How does Clerk control session expiration?
+
+Set a maximum lifetime, an inactivity timeout, or both on the **Sessions** page of the Clerk Dashboard; at least one must stay enabled. New instances default to a 7-day maximum lifetime. Browser cookie behavior can sign users out earlier.
+
+### Why do Clerk session tokens expire after 60 seconds?
+
+Short lifetimes cap how long a stolen or revoked token stays usable. Clerk verifies tokens statelessly for speed, so revocation is not instant; 60 seconds bounds that gap, and frontend SDKs refresh before users notice. See how we built Clerk's session architecture.

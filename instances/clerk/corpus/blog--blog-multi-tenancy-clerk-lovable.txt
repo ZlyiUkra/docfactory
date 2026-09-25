@@ -1,0 +1,82 @@
+# Add multi-tenancy to an app built with Clerk, Lovable, and Supabase
+# джерело: https://clerk.com/blog/multi-tenancy-clerk-lovable
+# отримано: 2026-09-25
+
+Adding multi-tenancy to a B2B is foundational if you're building for teams or organizations. You want separate data contexts, scoped permissions, and a seamless experience switching between personal and org-owned content.
+
+In this article, you'll learn how to use **Lovable**, **Clerk**, and **Supabase** to implement multi-tenancy in a React app without manually handling JWT parsing or user scopes. This guide builds on a previous project and layers in organization support with just a few key updates.
+
+> Since coding with AI is non-deterministic, your results of the final app may differ from whats shown in this article, although the functionality will be similar.
+
+## Project Recap: Lovable Vibes
+
+In a recent guide, we walked through building a full-stack app with Lovable that stores AI coding rules in Supabase. We scaffolded the application without actually touching the code and instead leveraged Lovable's AI chat. Upon logging into the application, users can create new entries to store their vibe coding rules, giving them a name, optionally specifying a project, and tagging them using a number of preconfigured frameworks and languages.
+
+Lovable Vibes
+
+> If you want to follow along with this guide, complete the steps in the previous article.
+
+## Add Multi-tenancy with Clerk Organizations
+
+Now, we’re going to extend that same project to support multi-tenancy using Clerk organizations. You’ll add the drop-in `<OrganizationSwitcher />` component (shown below) which will allow your users to self-manage the teams they create within the application, including inviting others and managing their permissions.
+
+The OrganizationSwitcher component
+
+### Enable Clerk Organizations
+
+Start in the Clerk Dashboard. Access your Clerk application, head to **Configure** > **Settings** (under **Organization management**), and toggle on **Organizations**. A new list of settings will appear, allowing you to fine-tune the way that organizations work with your app. The defaults can be left as-is for this guide.
+
+> Learn about the full capabilities of Clerk Organizations in the Clerk documentation.
+
+### Adding the `<OrganizationSwitcher />` to the project
+
+Open your project in Lovable and run the following prompt to add the `<OrganizationSwitcher />` to the app:
+
+```
+Add the `<OrganizationSwitcher />` from Clerk to the nav bar.
+```
+
+Once Lovable is finished, your app should update to include a new element in the header that says “Personal account”. Clicking this will open a menu allowing you to create an organization. Go ahead and create an organization, providing it a name and inviting another user (which could be a secondary email address you might have).
+
+The OrganizationSwitcher component in the header
+
+### Updating the RLS policies
+
+After the organization is created, the switcher will update to show the name of the active organization, but you might notice that the list of rules in the app hasn’t changed. That's because when the project was initially created, the RLS policies (which ensures that users can only access data they are authorized to) were configured to use the user’s ID from the token.
+
+The policies will need to be changed to use the organization ID if present, and fall back to the user ID if not. This will configure the database such that if a user has an active organization, the records belonging to that organization will be returned.
+
+Run the following prompt in Lovable to create a database function to parse the correct ID from the request and update the policies accordingly:
+
+```
+Run the following script in Supabase to create the requesting_owner_id function:
+
+-- Add requesting_owner_id function
+create or replace function requesting_owner_id()
+returns text as $$
+select coalesce(
+  (auth.jwt() -> 'o'::text) ->> 'id'::text,
+  (auth.jwt() ->> 'sub'::text)
+)::text;
+$$ language sql stable;
+
+Update all of the RLS policies and change the using statement to check requesting_user_id() = owner_id
+```
+
+You’ll also need to make sure that the app uses the correct ID when creating records. Run the following prompt to make those changes:
+
+```
+When creating rule sets, if the user has an active organization, use that as the `owner_id`, otherwise use the user ID
+```
+
+### Test it out
+
+With an organization active, try adding a rule to ensure it properly saves. Now use the organization switcher to access your “Personal account” (which means the current user has no active organization) and you’ll see any entries you added before implementing multi-tenancy.
+
+If you invited an alternate email address, try signing into the app with that account and the organization switcher will have a bubble on it indicating that you’ve been invited to an organization. Accepting the invitation and switching to that organization will show you the same rule set that was added to your first user account!
+
+## Conclusion
+
+With just a few changes to your Supabase policies and some UI wiring via Clerk, you’ve now turned a single-user app into a multi-tenant experience. Users can switch between personal and team workspaces, and all rule data is securely scoped to the appropriate context.
+
+This setup scales well for small teams and early-stage B2B products using robust developer platforms designed for this purpose. Clerk handles the complexity of authentication and team management, Supabase enforces data isolation with RLS, and Lovable helps you stitch everything together quickly.

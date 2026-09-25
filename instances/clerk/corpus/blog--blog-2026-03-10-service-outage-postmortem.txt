@@ -1,0 +1,93 @@
+# Postmortem: Clerk System Outage (March 10, 2026)
+# джерело: https://clerk.com/blog/2026-03-10-service-outage-postmortem
+# отримано: 2026-09-25
+
+_Clerk has faced several incidents recently and frustration is rightfully mounting. We have failed at our commitment to customers and we are deeply sorry._
+
+_In turn, this week we have shifted the majority of our engineering team to reliability-focused projects, and our top priority for the foreseeable future is restoring the reliability of our systems. We apologize for the delay in new product features that will result._
+
+## Incident timeline
+
+- **15:57 UTC:** Our alerting systems notified us of increased latency and elevated 5xx errors across our APIs. This is when the incident was declared internally.
+  - Our monitoring showed increased lock contention in the database, which had started about a minute earlier.
+  - The team began investigating the cause, but there was no clear smoking gun.
+  - As a mitigation step, we attempted to move all reads to the replicas to reduce pressure on the primary database. This did not help.
+  - During this time, the database itself remained operational (CPU usage was within normal limits). However, queries and transactions were taking significantly longer to complete, which saturated our compute resources. With compute capacity exhausted, incoming requests began returning 429 responses.
+  - Session outage resiliency was automatically triggered at origin, allowing us to continue serving incoming session token requests. However, because compute resources were already saturated and requests were taking too long to process, most session token requests also returned 429 responses.
+- **16:10 UTC:** After failing to identify a clear root cause, we enabled Origin Outage Mode to keep session management operational. This worked as expected and sessions were again operational.
+  - During the investigation we also observed something unusual: elevated IO wait on reads, without a corresponding increase in writes. At that point we suspected a potential infra issue and opened a ticket with GCP.
+- **16:23 UTC:** The issue resolved on its own.
+  - After confirming that the system had stabilized, we disabled Origin Outage Mode shortly afterward.
+  - GCP informed us of the root cause (detailed below).
+
+## Root cause analysis
+
+The outage was triggered by a failure within our database provider. Though we generally prefer not to name our vendors, we are doing so today because the operation that failed is unique to their offering.
+
+Specifically, the outage was triggered by a failed live migration of our Google Cloud SQL virtual machine. These are not documented within Cloud SQL, but are similar to live migrations for Google Compute Engine.
+
+Google Cloud SQL performs live migrations on a routine basis, and Clerk does not receive advance notice of when they will occur. When they work as intended, they do not impact database availability or workload.
+
+In this case, the live migration did not work as expected. Our database was subject to significantly increased disk latency, which in turn resulted in increased lock contention, and ultimately led to a complete service outage. When the operation completed, our database returned to normal:
+
+Disk latency spike during the incident
+
+Database metrics showing recovery after migration completed
+
+## Our philosophy on infrastructure choices
+
+At Clerk, we take responsibility when failures in our upstream providers cause incidents. We understand that customers have an uptime dependency on Clerk, and so it's unacceptable to simply point fingers if our vendors trigger incidents. For every incident we face, we must have a clear line-of-sight towards mitigating that incident in the future.
+
+As a result, our infrastructure choices tend to be very conservative. We prefer battle-tested solutions, and steer away from new or exotic technologies. This approach allows us to migrate and add redundancies to our workloads more readily.
+
+## Additional background on Google Cloud SQL
+
+We chose Google Cloud SQL in 2021 under this framework. We use the Enterprise Plus offering with high availability, which includes a 99.99% availability SLA inclusive of maintenance.
+
+The choice served us well for years, but our streak broke in September 2025, when a different live migration caused a major incident. From that incident, we learned that the failure mode of live migrations is catastrophic. It causes downtime until the operation completes, and it's unsafe to trigger a replica failover while the migration is ongoing.
+
+On the other hand, the failure of a live migration felt completely novel. We hadn't seen one before, and Google also reacted with extreme concern.
+
+Specifically, Google escalated our ticket to P0 and administratively "pinned" our database to its datacenter, which prevented additional live migrations since they were assumed to be unsafe.
+
+In the months following, Google and Clerk worked together to ensure that future live migrations would not cause an incident. This process included weekly phone calls and involved over 80 Google staff members. At Google's guidance, Clerk was focused on reducing our average queries per request, introducing Google's managed connection pooler, and increasing the Postgres version. Meanwhile, Google worked to identify the issue in their live migration process.
+
+It wasn't until January that both teams were confident that our Cloud SQL database could safely be unpinned. Google and Clerk were on a call together for the first live migration following the unpinning, which succeeded without incident.
+
+The multi-month process was exhaustive and left our team feeling confident that Google had addressed the root cause. We believed that our database would be back to the reliability it enjoyed previously.
+
+Unfortunately, this incident revealed that live migrations are still unsafe.
+
+## Remediations
+
+The clarity around the root cause of this incident means that the remedies are also quite clear.
+
+### Database pinning
+
+We have requested that Google pins our database again to avoid additional live migrations. Unfortunately, at the time of writing, that request has not yet been accommodated. However, they have assured us another migration is unlikely in the near term, and that they are actively investigating what went wrong with this live migration.
+
+### Eliminate live migrations going forward
+
+Our core issue is that Google's live migrations have proven unreliable. While live migrations have the advantage of being zero-downtime when they work, the disadvantage is that they are opaque, and we are stuck trusting Google's word that they will be reliable in the future.
+
+Instead, we believe it will be safer to depend on traditional replica promotion for ALL Postgres database maintenance going forward. Clerk already has an automated process for safe and fast replica promotion, which we used without incident for a Postgres major version upgrade on January 17, 2026.
+
+Although this process requires more setup than a live migration, we believe the extra work is worthwhile compared to relying on the opaque live migration process.
+
+With all that said, live migrations are currently an expectation of using Google Cloud SQL. Unless Google offers us a way to disable them permanently, we will need to migrate to another database provider or operate Postgres in-house to avoid this behavior. We are actively investigating our options.
+
+## Additional concerns
+
+### 429s instead of 500s
+
+During this outage, our system returned 429s instead of 500s. The 429 is bubbled up directly from an internal service, instead of being transformed to a 500. This will be addressed so applications can accurately assess the state of Clerk's systems based on the error code.
+
+### General reliability concerns
+
+We understand the weight of this situation. Incidents like these are completely unacceptable for any service, much less for authentication infrastructure. We have let our customers down and are reacting in-kind.
+
+As shared above, we have shifted the majority of our engineering team to reliability focused projects for the foreseeable future. With this change, we are confident the coming months will bring improved reliability.
+
+## Closing
+
+We understand the seriousness of this moment. Customers depend on Clerk for critical infrastructure, and we have not lived up to that responsibility. Our focus now is straightforward: improve reliability, address the risks made clear by these incidents, and earn back the trust we have damaged. We are sorry, and we will continue to communicate openly as we make progress.

@@ -1,0 +1,330 @@
+# Quickly Build a User Switcher, Just Like Gmail
+# джерело: https://clerk.com/blog/build-a-user-switcher-just-like-gmail
+# отримано: 2026-09-25
+
+Developing an authentication system from scratch can be time-consuming, and the process can be prone to bugs. If you're looking for a customer identity platform that provides user management features like authentication, authorization, and management of user profiles, roles, and permissions, check out Clerk. Clerk can save you time when it comes to building and testing your authentication flow. It also provides multi-session authentication, which allows users to seamlessly log in and switch between different accounts.
+
+In this tutorial, you'll learn how to easily implement your own user profile switcher using Clerk and Next.js. You can follow along with this tutorial using this GitHub repository.
+
+## What Is Clerk
+
+Clerk is a one-stop solution for authentication and customer identity management. It helps you build a flawless user authentication flow that supports logging in with a password, multifactor authentication, or social logins with providers like Google, LinkedIn, Facebook, and GitHub. Clerk provides components like `<SignUp/>` and `<SignIn/>` that you can plug into your application right away to quickly build an authentication flow.
+
+It's common for users to have multiple accounts for different purposes. For instance, you may have a personal YouTube channel for your friends and family, and another one specifically intended for your audience in your work as a developer. With Clerk’s multisession feature, you can seamlessly and intuitively switch between both accounts as needed.
+
+## Building a User Switcher
+
+Before you begin building a user switcher, you'll need a code editor like Visual Studio Code. You'll also need Node.js (version 14 or newer) and npm installed.
+
+Create your Clerk account by following the steps on their website. Once registered, navigate to the Clerk dashboard, where you'll begin this tutorial:
+
+Clerk dashboard home for starting the tutorial
+
+### Set Up the Project
+
+To set up the project, run `npx create-next-app clerk-app` in your terminal. This will initialize a Next.js project. Then you need to run `npm install @clerk/nextjs` inside the project and open your Clerk dashboard in a web browser. In the left navigation, click on **API Keys** and copy the **Frontend API key**, **Backend API keys** and **JWT verification key**:
+
+Clerk API keys page showing frontend and backend keys
+
+Save the keys copied above in a `.env.local` file inside your project:
+
+```text
+NEXT_PUBLIC_CLERK_FRONTEND_API=<frontend-key>
+CLERK_API_KEY=<backend-api-key>
+CLERK_JWT_KEY=<jwt-verification-key>
+```
+
+### Set Up the Authentication Flow
+
+The authentication flow of your application dictates how the users access different parts of your application. In this example, the user authentication flow works like this:
+
+User switcher flow diagram
+
+To begin, implement the authentication flow in the `pages/_app.js`:
+
+```jsx
+import { ClerkProvider, SignedIn, SignedOut } from '@clerk/nextjs'
+
+import { useRouter } from 'next/router'
+
+import Head from 'next/head'
+
+import Link from 'next/link'
+
+// pages that can be accessed without an active user session.
+
+const publicPages = ['/', '/sign-in/[[...index]]', '/sign-up/[[...index]]']
+
+const MyApp = ({ Component, pageProps }) => {
+  const router = useRouter()
+
+  return (
+    <ClerkProvider {...pageProps}>
+      <Head>
+        <title>Clerk app</title>
+
+        <link rel="icon" href="/favicon.ico" />
+
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      </Head>
+
+      {/*If the route is for the home, sign-in and sign-up pages: show them without checks.*/}
+
+      {publicPages.includes(router.pathname) ? (
+        <Component {...pageProps} />
+      ) : (
+        <>
+          {/*Show all pages if the user is signed in*/}
+
+          <SignedIn>
+            <Component {...pageProps} />
+          </SignedIn>
+
+          {/*Ask to sign in if the user isn't signed in*/}
+
+          <SignedOut>
+            <main>
+              <p>
+                Please{' '}
+                <Link href="/sign-in">
+                  <a>sign in</a>
+                </Link>{' '}
+                to access this page.
+              </p>
+            </main>
+          </SignedOut>
+        </>
+      )}
+    </ClerkProvider>
+  )
+}
+
+export default MyApp
+```
+
+### Create the Sign-Up and Sign-In Pages
+
+Next.js uses file-system-based routing, which makes it easy to create new pages. To learn more about Next.js routing check out their official documentation.
+
+To create the sign-up and sign-in pages, navigate to the `pages/` folder in your project and create two new folders: `sign-up/` and `sign-in/`. Then create a new `[[...index]].js` file inside both of these folders. These routes will catch all the paths, including `/sign-up` and `/sign-in`.  You can read more about dynamic routing in the Next.js documentation.
+
+Use the prebuilt components for `<SignIn/>` and `<SignUp/>` to populate the pages:
+
+```jsx
+import { SignUp } from '@clerk/nextjs'
+
+const SignUpPage = () => <SignUp path="/sign-up" routing="path" signInUrl="/sign-in" />
+
+export default SignUpPage
+```
+
+Clerk SignUp component page screenshot
+
+```jsx
+import { SignIn } from '@clerk/nextjs'
+
+const SignInPage = () => <SignIn path="/sign-in" routing="path" signUpUrl="/sign-up" />
+
+export default SignInPage
+```
+
+Clerk SignIn component page screenshot
+
+### Create the Home Page
+
+Now, the home page should display the greeting "Welcome to your new app." at the top of the page. If the user is signed in, it will show them their profile page. Otherwise, it will ask them to sign up or sign in:
+
+Home page with UserButton in navigation
+
+Update the `pages/index.js` file to use the `<SignedIn/>` component to conditionally render the child components if the user is signed in and use the `<SignedOut/>` component to render the child components if the user isn't signed in.
+
+Inside the `<SignedIn/>` component, use the `<UserProfile/>` component provided by Clerk to show the user's profile details and allow them to edit their information.
+
+You can also use the `<UserButton />` component in the top `<nav />` to allow users to manage their accounts and sign out of the application. The `<UserButton />` will render as a button with the user's avatar.
+
+Inside the `<SignedOut/>`, render two `<Link />` components to send the user to the sign-in or sign-up page:
+
+```jsx
+import { SignedOut, SignedIn, UserProfile, UserButton } from '@clerk/nextjs'
+
+import React from 'react'
+
+import Link from 'next/link'
+
+const Home = () => {
+  return (
+    <div
+      style={{
+        display: 'flex',
+
+        justifyContent: 'center',
+
+        alignItems: 'center',
+      }}
+    >
+      <main>
+        <nav
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <h1>Welcome to your new app.</h1>
+
+          <UserButton />
+        </nav>
+
+        <div>
+          <SignedIn>
+            <UserProfile />
+          </SignedIn>
+
+          <SignedOut>
+            <Link href="/sign-up">
+              <a>Sign up </a>
+            </Link>
+            or
+            <Link href="/sign-in">
+              <a> Sign in </a>
+            </Link>
+            to get started.
+          </SignedOut>
+        </div>
+      </main>
+    </div>
+  )
+}
+
+export default Home
+```
+
+If the user isn't signed in, the page will look like this:
+
+Signed-out state prompting sign-in
+
+Or if the user is signed in, it will look like this:
+
+Signed-in state with profile visible
+
+When you click the user avatar at the top-right of your screen, a pop-up will appear containing buttons for **Manage account** and **Sign out**:
+
+User menu with Manage account and Sign out
+
+### Implementing the User Switcher
+
+Before moving on with this tutorial, you need to navigate to your Clerk dashboard and enable the **Multi-session handling** feature inside the **Sessions** settings:
+
+Enable multi-session handling in Clerk dashboard
+
+After enabling multisession handling, go back to your application window and click on the user avatar again. Now you'll see that a new option, **Add account**, is available:
+
+Add account option shown in user menu
+
+Clicking on the **Add account** button will redirect users to the sign-in page, where they can sign in or sign up for a new account.
+
+After signing in, Clerk will redirect the user back to the application with the new session, and the avatar pop-up menu will show all active sessions. The user can now switch between accounts by selecting them from the list:
+
+Multiple active sessions list in user switcher
+
+### Authenticating API Endpoints
+
+To prevent malicious requests from coming through, it's essential to authenticate your API endpoints. With Clerk, you can access the user's authentication status in the Next.js API handlers. To do that, you must wrap your API handler function inside Clerk's `withAuth` higher-order function to access the `auth` property on the request object.
+
+The following example uses the `request.auth` property to check if the `sessionId` is available and then sends the `userId` in the response. Otherwise, it returns a `401: Unauthorized` response code:
+
+```jsx
+import { withAuth } from '@clerk/nextjs/api'
+
+export default withAuth((request, response) => {
+  const { sessionId, userId } = request.auth
+
+  if (!sessionId) {
+    return response.status(401).json({ id: null, message: 'No user signed in!' })
+  }
+
+  return response.status(200).json({ id: userId })
+})
+```
+
+On the home page, add a button to request the API endpoint and show the user ID in an alert:
+
+```jsx
+import { SignedOut, SignedIn, UserProfile, SignOutButton, UserButton, useAuth } from '@clerk/nextjs'
+
+import React from 'react'
+
+import Link from 'next/link'
+
+const Home = () => {
+  function showUserId() {
+    fetch('/api/getUserId')
+      .then((res) => res.json())
+
+      .then(({ id }) => {
+        alert(`User id: ${id}`)
+      })
+  }
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+
+        justifyContent: 'center',
+
+        alignItems: 'center',
+      }}
+    >
+      <main>
+        <nav
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <h1>Welcome to your new app.</h1>
+
+          <UserButton />
+        </nav>
+
+        <div>
+          <SignedIn>
+            <button onClick={showUserId}>Show user ID</button>
+
+            <UserProfile />
+
+            <SignOutButton />
+          </SignedIn>
+
+          <SignedOut>
+            <Link href="/sign-up">
+              <a>Sign up </a>
+            </Link>
+            or
+            <Link href="/sign-in">
+              <a> Sign in </a>
+            </Link>
+            to get started.
+          </SignedOut>
+        </div>
+      </main>
+    </div>
+  )
+}
+
+export default Home
+```
+
+After you've added this button, your user switcher is ready:
+
+View video
+
+## Conclusion
+
+After completing this tutorial, you will have successfully built a Next.js application that supports multisessions. While doing so, you learned about creating a new Next.js application, setting up a Clerk account, and integrating the Clerk SDK with your Next.js application.
+
+You used the UI components provided by Clerk to create an authentication flow and user profile page. You also learned about the importance of multisession support in your application and how easy you can implement it with Clerk. Lastly, you created an API route in Next.js and secured it with Clerk.
+
+Using the Clerk SDK, you can expand on the example above to add social logins and multifactor authentication to your application.

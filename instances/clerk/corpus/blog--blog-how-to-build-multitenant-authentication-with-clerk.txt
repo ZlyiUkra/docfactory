@@ -1,0 +1,1280 @@
+# How to Build Multi-Tenant Authentication with Clerk
+# джерело: https://clerk.com/blog/how-to-build-multitenant-authentication-with-clerk
+# отримано: 2026-09-25
+
+If you're building a SaaS product, multi-tenancy shouldn’t be an afterthought. Designing with multiple tenants in mind sets you up to scale effectively and securely.
+
+But building multi-tenant logic from scratch can get complicated fast. You need to think through everything from how users join organizations to how sessions are scoped and how permissions are enforced across contexts.
+
+That’s where Clerk comes in.
+
+Clerk’s built-in support for isolating tenants within a single codebase simplifies the heavy lifting. Instead of wiring up custom logic, you can use Clerk’s drop-in UI components to get a multi-tenant foundation in place quickly, while still maintaining flexibility as your product grows.
+
+### What You’ll Learn in This Guide
+
+In this guide, we’ll walk through how to use Clerk to build a complete multi-tenant experience into your app. Specifically, you’ll learn how to:
+
+- Let users create and join organizations
+- Invite users to organizations with specific roles
+- Scope authentication and session logic by organization
+- Use our organization switcher so users can switch between multiple tenants
+- Enforce role-based access control (RBAC) per organization
+- Configure custom domains with Clerk’s Verified Domains
+
+## Building multi-tenancy features into a task manager
+
+To demo this, you’ll learn how to add multi-tenancy features into a task manager called Kozi. At the moment, Kozi is feature complete for individual users, allowing them to add tasks and organize their tasks into projects.
+
+Once the multi-tenancy features are added using Clerk, users will be able to create team workspaces and switch between them. Each workspace will have four distinct roles:
+
+- Admin - the default role, users in this role can perform all actions and manage the organization
+- Member - users in this role can create and manage tasks, but not the organization
+- Reader - users in this role can only read existing tasks but not make changes
+
+The app is built with Next.js, Clerk, Neon, and Prisma for the ORM.
+
+### Following along
+
+If you want to follow along, clone the `orgs-exp-start` branch in the Kozi repo and follow the instructions in the README to get set up.
+
+> The project also uses Posthog for user activity tracking and analytics, but it’s not necessary to configure that for this article. You can skip that section of the README when configuring the project.
+
+You’ll need the following before you get started:
+
+- A Clerk account
+- A Neon account
+- Node and NPM installed locally
+- Familiarity with Next.js
+
+## Step 1 - Enable Organizations in your Clerk app
+
+Start by accessing your application in the Clerk dashboard. Select **Configure** from the top nav and then **Settings** under **Organization management**. Toggle the **Enable organizations** option to turn the feature on.
+
+Once on, the view will update to present a number of new options. Here are a few notable ones:
+
+- **Allow new members to delete organizations** - When enabled, organization creators will be granted the `Delete organization` permission, allowing them to delete organizations. Turn this off if you want to allow users to create organizations but not delete them.
+- **Enable verified domains** - This option allows you to associate domains with organizations, and is something we will explore later in this article.
+- **Allow new members to create organizations** - If you want to control organization creation, disabling this option will prevent members to create organizations themselves.
+
+Enable organizations
+
+While we’re in the dashboard, create the roles and permissions by heading to **Roles and Permissions**, then select the **Permissions** tab. You’ll use the **Create new permission** button to create two permissions with the following values:
+
+| Permission  | Key               | Description                                        |
+| ----------- | ----------------- | -------------------------------------------------- |
+| Read tasks  | `org:tasks:read`  | A user who can read organization tasks.            |
+| Write tasks | `org:tasks:write` | A user who can create and edit organization tasks. |
+
+Next head back to the **Roles** tab and select the **Create new role** button to create the following role:
+
+| Name   | Key          | Description                     | Permissions                                  |
+| ------ | ------------ | ------------------------------- | -------------------------------------------- |
+| Reader | `org:reader` | A user who can only read tasks. | `org:sys_memberships:read`, `org:tasks:read` |
+
+Next select both the **Admin** and **Member** roles and add the `org:tasks:read` and `org:tasks:write` permissions to enable those roles to use the new permissions.
+
+> You can learn more about roles and permissions in our docs.
+
+## Step 2 - Let users create and join orgs
+
+Now that the Clerk application is configured, let’s move over to the code. The first change to make is to add the `<OrganizationSwitcher />` component which is an all-in-one component that lets users create organizations, invite other members, and switch between the ones they have access to.
+
+Open the project locally and update the `Sidebar.tsx` component to add the `<OrganizationSwitcher />` component like so:
+
+filename: src/app/app/components/Sidebar.tsx
+```tsx
+'use client'
+
+import { cn } from '@/lib/utils'
+import { ChevronRightIcon, ChevronLeftIcon, InboxIcon } from 'lucide-react'
+import React from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import CreateProjectButton from './CreateProjectButton'
+import ProjectLink from './ProjectLink'
+import { useProjectStore } from '@/lib/store'
+import { UserButton, useUser } from '@clerk/nextjs'
+import { OrganizationSwitcher, UserButton, useUser } from '@clerk/nextjs'
+import { getProjects } from '../actions'
+
+function Sidebar() {
+  const [isCollapsed, setIsCollapsed] = React.useState(false)
+  const { projects, setProjects } = useProjectStore()
+  const { user } = useUser()
+  const router = useRouter()
+
+  const ownerId = user?.id
+  const canCreateProjects = true
+
+  // Navigate to /app when ownerId changes
+  React.useEffect(() => {
+    if (ownerId) {
+      router.push('/app')
+    }
+  }, [ownerId, router])
+
+  // Fetch projects when component mounts or organization changes
+  React.useEffect(() => {
+    getProjects().then(setProjects)
+  }, [setProjects, ownerId])
+
+  return (
+    <div
+      className={cn(
+        'h-screen border-r border-gray-200 bg-gradient-to-b from-blue-50 via-purple-50/80 to-blue-50 p-4 dark:border-gray-800 dark:from-blue-950/20 dark:via-purple-950/20 dark:to-blue-950/20',
+        'flex flex-col transition-all duration-300 ease-in-out',
+        isCollapsed ? 'w-16' : 'w-64',
+      )}
+    >
+      <nav className="flex-grow space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <div
+            className={cn(
+              'transition-all duration-300',
+              isCollapsed ? 'w-0 overflow-hidden' : 'w-auto',
+            )}
+          >
+            <UserButton showName />
+          </div>
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="flex-shrink-0 rounded-lg p-1 transition-colors hover:bg-white/75 dark:hover:bg-gray-800/50"
+          >
+            {isCollapsed ? (
+              <ChevronRightIcon className="h-4 w-4" />
+            ) : (
+              <ChevronLeftIcon className="h-4 w-4" />
+            )}
+          </button>
+        </div>
+
+        <div
+          className={cn(
+            'transition-all duration-300',
+            isCollapsed ? 'w-0 overflow-hidden' : 'w-auto',
+          )}
+        >
+          <Link
+            href="/app"
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-white/75 dark:text-gray-200 dark:hover:bg-gray-800/50"
+          >
+            <InboxIcon className="h-4 w-4" />
+            <span>Inbox</span>
+          </Link>
+        </div>
+
+        <div
+          className={cn(
+            'pt-4 transition-all duration-300',
+            isCollapsed ? 'w-0 overflow-hidden' : 'w-auto',
+          )}
+        >
+          <div className="flex items-center justify-between px-3 pb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
+            <span>Projects</span>
+            {canCreateProjects && <CreateProjectButton />}
+          </div>
+          {projects.map((project) => (
+            <ProjectLink key={project.id} project={project} isCollapsed={isCollapsed} />
+          ))}
+        </div>
+      </nav>
+
+      <div
+        className={cn(
+          'mt-auto pt-4 transition-all duration-300',
+          isCollapsed ? 'w-0 overflow-hidden' : 'w-auto',
+        )}
+      >
+        <OrganizationSwitcher />
+      </div>
+    </div>
+  )
+}
+
+export default Sidebar
+```
+
+Now the bottom of the sidebar shows a “Personal account” button. This is the `<OrganizationSwitcher />` component. By default every user has a personal account (meaning they do not have an organization active on their account), but clicking that button opens a menu allowing users to create new organizations:
+
+The organization switcher
+
+## Step 3 - Creating an organization and inviting members
+
+With the `<OrganizationSwitcher />` in place, let’s use it to create a new organization and invite others to it. Open the switcher and select **Create Organization**. This will bring up a modal where you can set the name of your new organization. I’ll create one called Frontiers:
+
+Create organization
+
+After clicking **Create organization**, the form will ask for email addresses of anyone that should be invited to the organization, along with the role those users should be assigned:
+
+Invite members
+
+Clerk handles the process of sending email invitations to those users. When the user clicks the **Accept Invitation** button in their email, they’ll be brought to the application where they will then be able to access that organization as well in the switcher.
+
+Accept invitation
+
+At this point, Kozi permits users to switch their active organization, but the code still needs to be slightly modified to only return data relevant to that organization. As of now, the current user’s ID is used to filter data returned from the queries.
+
+For example, the following code renders the Inbox page. It includes a query that returns tasks not associated to any projects. The `auth` helper function from Clerk is parsing the `userId` and setting that to `ownerId` which is in turn used in the query:
+
+filename: src/app/app/page.tsx
+```tsx
+import React from 'react'
+import { auth } from '@clerk/nextjs/server'
+import { prisma } from '@/lib/db'
+import TaskList from './components/TaskList'
+import { redirect } from 'next/navigation'
+
+export default async function AppHome() {
+  const { userId } = await auth()
+
+  if (!userId) {
+    return redirect('/sign-in')
+  }
+
+  const ownerId = userId
+
+  // Get the user's inbox tasks
+  const tasks = await prisma.task.findMany({
+    where: {
+      owner_id: ownerId,
+      project_id: null,
+    },
+    orderBy: {
+      created_at: 'desc',
+    },
+  })
+
+  return (
+    <div className="flex h-screen">
+      <TaskList title="Inbox" tasks={tasks} />
+    </div>
+  )
+}
+```
+
+The `auth` function also returns an `orgId` if the user has an organization selected (it will return `null` otherwise) so we can modify the code to check for the `orgId` first and default back to the `userId` if it is not present:
+
+filename: src/app/app/page.tsx
+```tsx
+import React from 'react'
+import { auth } from '@clerk/nextjs/server'
+import { prisma } from '@/lib/db'
+import TaskList from './components/TaskList'
+import { redirect } from 'next/navigation'
+
+export default async function AppHome() {
+  const { userId } = await auth()
+  const { userId, orgId } = await auth()
+
+  if (!userId) {
+    return redirect('/sign-in')
+  }
+
+  const ownerId = userId
+  const ownerId = orgId || userId
+
+  // Get the user's inbox tasks
+  const tasks = await prisma.task.findMany({
+    where: {
+      owner_id: ownerId,
+      project_id: null,
+    },
+    orderBy: {
+      created_at: 'desc',
+    },
+  })
+
+  return (
+    <div className="flex h-screen">
+      <TaskList title="Inbox" tasks={tasks} />
+    </div>
+  )
+}
+```
+
+The same change can be made to the page that renders each project:
+
+filename: src/app/app/projects/[id]/page.tsx
+```tsx
+import React from 'react'
+import { auth } from '@clerk/nextjs/server'
+import { prisma } from '@/lib/db'
+import { notFound, redirect } from 'next/navigation'
+import TaskList from '../../components/TaskList'
+
+interface ProjectPageProps {
+  params: Promise<{
+    _id: string
+  }>
+}
+
+export default async function Project({ params }: ProjectPageProps) {
+  const { userId } = await auth()
+  const { userId, orgId } = await auth()
+
+  // If the user is not logged in, redirect to the sign-in page
+  if (!userId) {
+    return redirect('/sign-in')
+  }
+
+  const ownerId = userId
+  const ownerId = orgId || userId
+
+  const { _id } = await params
+  const project = await prisma.project.findUnique({
+    where: {
+      id: _id,
+      owner_id: ownerId,
+    },
+  })
+
+  // Check if the project exists and belongs to the user
+  if (!project || project.owner_id !== ownerId) {
+    notFound()
+  }
+
+  // Get the project tasks
+  const tasks = await prisma.task.findMany({
+    where: {
+      project_id: _id,
+      owner_id: ownerId,
+    },
+    orderBy: {
+      created_at: 'desc',
+    },
+  })
+
+  return (
+    <div className="flex h-screen">
+      <TaskList title={project.name} tasks={tasks} projectId={project.id} />
+    </div>
+  )
+}
+```
+
+And finally, all of the other queries stored in `actions.ts`:
+
+filename: src/app/app/actions.ts
+```ts
+'use server'
+
+import { auth } from '@clerk/nextjs/server'
+import { prisma } from '@/lib/db'
+import { revalidatePath } from 'next/cache'
+
+export async function createTask(formData: FormData) {
+  const { userId } = await auth()
+  const { userId, orgId } = await auth()
+
+  if (!userId) {
+    throw new Error('Unauthorized')
+  }
+
+  const title = formData.get('title') as string
+  if (!title?.trim()) {
+    throw new Error('Title is required')
+  }
+
+  const ownerId = userId
+  const ownerId = orgId || userId
+  const project_id = formData.get('project_id') as string | null
+
+  await prisma.task.create({
+    data: {
+      title: title.trim(),
+      owner_id: ownerId,
+      project_id: project_id || null,
+    },
+  })
+
+  revalidatePath('/app')
+}
+
+export async function toggleTask(taskId: string) {
+  const { userId } = await auth()
+  const { userId, orgId } = await auth()
+  if (!userId) {
+    throw new Error('Unauthorized')
+  }
+
+  const ownerId = userId
+  const ownerId = orgId || userId
+
+  const task = await prisma.task.findUnique({
+    where: { id: taskId },
+  })
+
+  if (!task || task.owner_id !== ownerId) {
+    throw new Error('Task not found or unauthorized')
+  }
+
+  await prisma.task.update({
+    where: { id: taskId },
+    data: { is_completed: !task.is_completed },
+  })
+
+  revalidatePath('/app')
+}
+
+export async function updateTask(formData: FormData) {
+  const { userId } = await auth()
+  const { userId, orgId } = await auth()
+  if (!userId) {
+    throw new Error('Unauthorized')
+  }
+
+  const ownerId = userId
+  const ownerId = orgId || userId
+
+  const id = formData.get('id') as string
+  const title = formData.get('title') as string
+  const description = formData.get('description') as string
+
+  if (!id || !title?.trim()) {
+    throw new Error('Invalid input')
+  }
+
+  const task = await prisma.task.findUnique({
+    where: { id },
+  })
+
+  if (!task || task.owner_id !== ownerId) {
+    throw new Error('Task not found or unauthorized')
+  }
+
+  await prisma.task.update({
+    where: { id },
+    data: {
+      title: title.trim(),
+      description: description?.trim() || null,
+    },
+  })
+
+  revalidatePath('/app')
+}
+
+export async function createProject(formData: FormData) {
+  const { userId } = await auth()
+  const { userId, orgId } = await auth()
+  if (!userId) {
+    throw new Error('Unauthorized')
+  }
+
+  const ownerId = userId
+  const ownerId = orgId || userId
+
+  const name = formData.get('name') as string
+  if (!name?.trim()) {
+    throw new Error('Project name is required')
+  }
+
+  const project = await prisma.project.create({
+    data: {
+      name: name.trim(),
+      owner_id: ownerId,
+    },
+  })
+
+  revalidatePath('/app')
+  return project
+}
+
+export async function getProjects() {
+  const { userId } = await auth()
+  const { userId, orgId } = await auth()
+  if (!userId) {
+    throw new Error('Unauthorized')
+  }
+
+  const ownerId = userId
+  const ownerId = orgId || userId
+
+  return prisma.project.findMany({
+    where: {
+      owner_id: ownerId,
+    },
+    orderBy: {
+      created_at: 'asc',
+    },
+  })
+}
+
+export async function updateProject(formData: FormData) {
+  const { userId } = await auth()
+  const { userId, orgId } = await auth()
+  if (!userId) {
+    throw new Error('Unauthorized')
+  }
+
+  const ownerId = userId
+  const ownerId = orgId || userId
+
+  const id = formData.get('id') as string
+  const name = formData.get('name') as string
+
+  if (!id || !name?.trim()) {
+    throw new Error('Invalid input')
+  }
+
+  const project = await prisma.project.findUnique({
+    where: { id },
+  })
+
+  if (!project || project.owner_id !== ownerId) {
+    throw new Error('Project not found or unauthorized')
+  }
+
+  await prisma.project.update({
+    where: { id },
+    data: {
+      name: name.trim(),
+    },
+  })
+
+  revalidatePath('/app')
+}
+
+export async function deleteProject(projectId: string) {
+  const { userId } = await auth()
+  const { userId, orgId } = await auth()
+  if (!userId) {
+    throw new Error('Unauthorized')
+  }
+
+  const ownerId = userId
+  const ownerId = orgId || userId
+
+  // Delete all tasks associated with the project first
+  await prisma.task.deleteMany({
+    where: {
+      project_id: projectId,
+      owner_id: ownerId,
+    },
+  })
+
+  // Then delete the project
+  await prisma.project.delete({
+    where: {
+      id: projectId,
+      owner_id: ownerId,
+    },
+  })
+
+  revalidatePath('/app')
+}
+
+export async function deleteTask(taskId: string) {
+  const { userId } = await auth()
+  const { userId, orgId } = await auth()
+  if (!userId) {
+    throw new Error('Unauthorized')
+  }
+
+  const ownerId = userId
+  const ownerId = orgId || userId
+
+  // Delete the task
+  await prisma.task.delete({
+    where: {
+      id: taskId,
+      owner_id: ownerId,
+    },
+  })
+
+  revalidatePath('/app')
+}
+```
+
+The `Sidebar.tsx` renders a list of projects associated with the current user or organization, and while the `getProjects` function in the `actions.ts` file will fetch the correct list of projects, the Sidebar is a client component and we need a way for it to react to changes. Instead of using the `auth` helper function (which is a server-side function), we can use the `useOrganization()` helper to get details about the user’s active organization and react to changes with a `useEffect`.
+
+Make the following changes to `Sidebar.tsx` to update it’s behavior:
+
+filename: src/app/app/components/Sidebar.tsx
+```tsx
+'use client'
+
+import { cn } from '@/lib/utils'
+import { ChevronRightIcon, ChevronLeftIcon, InboxIcon } from 'lucide-react'
+import React from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import CreateProjectButton from './CreateProjectButton'
+import ProjectLink from './ProjectLink'
+import { useProjectStore } from '@/lib/store'
+import { OrganizationSwitcher, UserButton, useUser } from '@clerk/nextjs'
+import { OrganizationSwitcher, UserButton, useUser, useOrganization } from '@clerk/nextjs'
+import { getProjects } from '../actions'
+
+function Sidebar() {
+  const [isCollapsed, setIsCollapsed] = React.useState(false)
+  const { projects, setProjects } = useProjectStore()
+  const { user } = useUser()
+  const { organization } = useOrganization()
+  const router = useRouter()
+
+  const ownerId = organization?.id || user?.id
+  const ownerId = user?.id
+  const canCreateProjects = true
+
+  // Navigate to /app when ownerId changes
+  React.useEffect(() => {
+    if (ownerId) {
+      router.push('/app')
+    }
+  }, [ownerId, router])
+
+  // Fetch projects when component mounts or organization changes
+  React.useEffect(() => {
+    getProjects().then(setProjects)
+  }, [setProjects, ownerId])
+
+  return (
+    <div
+      className={cn(
+        'h-screen border-r border-gray-200 bg-gradient-to-b from-blue-50 via-purple-50/80 to-blue-50 p-4 dark:border-gray-800 dark:from-blue-950/20 dark:via-purple-950/20 dark:to-blue-950/20',
+        'flex flex-col transition-all duration-300 ease-in-out',
+        isCollapsed ? 'w-16' : 'w-64',
+      )}
+    >
+      <nav className="flex-grow space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <div
+            className={cn(
+              'transition-all duration-300',
+              isCollapsed ? 'w-0 overflow-hidden' : 'w-auto',
+            )}
+          >
+            <UserButton showName />
+          </div>
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="flex-shrink-0 rounded-lg p-1 transition-colors hover:bg-white/75 dark:hover:bg-gray-800/50"
+          >
+            {isCollapsed ? (
+              <ChevronRightIcon className="h-4 w-4" />
+            ) : (
+              <ChevronLeftIcon className="h-4 w-4" />
+            )}
+          </button>
+        </div>
+
+        <div
+          className={cn(
+            'transition-all duration-300',
+            isCollapsed ? 'w-0 overflow-hidden' : 'w-auto',
+          )}
+        >
+          <Link
+            href="/app"
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-white/75 dark:text-gray-200 dark:hover:bg-gray-800/50"
+          >
+            <InboxIcon className="h-4 w-4" />
+            <span>Inbox</span>
+          </Link>
+        </div>
+
+        <div
+          className={cn(
+            'pt-4 transition-all duration-300',
+            isCollapsed ? 'w-0 overflow-hidden' : 'w-auto',
+          )}
+        >
+          <div className="flex items-center justify-between px-3 pb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
+            <span>Projects</span>
+            {canCreateProjects && <CreateProjectButton />}
+          </div>
+          {projects.map((project) => (
+            <ProjectLink key={project.id} project={project} isCollapsed={isCollapsed} />
+          ))}
+        </div>
+      </nav>
+
+      <div
+        className={cn(
+          'mt-auto pt-4 transition-all duration-300',
+          isCollapsed ? 'w-0 overflow-hidden' : 'w-auto',
+        )}
+      >
+        <OrganizationSwitcher />
+      </div>
+    </div>
+  )
+}
+
+export default Sidebar
+```
+
+With this change, the list of projects in the sidebar will react to changing between organizations.
+
+## Step 4 - Gate access using RBAC
+
+Now that users can switch between organizations, you’ll need to handle the different roles assigned to each user. To make this as simple as possible, Clerk offers the `has` helper function which takes a role or permission as a parameter to check to see if the user in the current context has the proper role/permission.
+
+Recall that we created the `Reader` role which should have read-only access to tasks. This role omits the `orgs:tasks:write` permission so we can conditionally render the components differently if the user’s role does not have this permission.
+
+To prevent the user from creating tasks, edit `CreateTaskInput.tsx` as follows:
+
+filename: src/app/app/components/CreateTaskInput.tsx
+```tsx
+'use client'
+
+import { useState } from 'react'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { createTask } from '@/app/app/actions'
+import { PlusIcon, LockIcon } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { useAuth } from '@clerk/nextjs'
+
+interface Props {
+  projectId?: string
+}
+
+export default function CreateTaskInput({ projectId }: Props) {
+  const [title, setTitle] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const canCreate = true
+  const { has } = useAuth()
+  const canCreate = has?.({ permission: 'org:tasks:create' })
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    // Don't create a task if the title is empty or user can't create
+    if (!title.trim() || !canCreate) return
+
+    try {
+      setIsSubmitting(true)
+      const formData = new FormData()
+      formData.append('title', title)
+      if (projectId) {
+        formData.append('project_id', projectId)
+      }
+      await createTask(formData)
+      setTitle('')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <div
+      className={cn(
+        'group relative w-full rounded-full bg-white p-2 dark:bg-gray-800',
+        canCreate
+          ? 'focus-within:shadow-[0_4px_20px_-2px_rgba(96,165,250,0.3),0_4px_20px_-2px_rgba(192,132,252,0.3)]'
+          : 'opacity-70',
+        'transition-shadow duration-200',
+      )}
+    >
+      <div
+        className={cn(
+          'absolute inset-0 rounded-full bg-gradient-to-r',
+          canCreate
+            ? 'from-blue-400/25 to-purple-400/25 transition-opacity duration-200 group-focus-within:from-blue-400 group-focus-within:to-purple-400'
+            : 'from-gray-300/25 to-gray-400/25',
+        )}
+      ></div>
+      <div className="absolute inset-[1px] rounded-full bg-white transition-all group-focus-within:inset-[2px] dark:bg-gray-800"></div>
+      <div className="relative">
+        <form onSubmit={handleSubmit} className="flex w-full items-center gap-2">
+          {!canCreate && (
+            <div className="ml-3 text-gray-400">
+              <LockIcon className="h-4 w-4" />
+            </div>
+          )}
+          <Input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder={canCreate ? 'Add a task...' : "You don't have permission to create tasks"}
+            disabled={!canCreate}
+            className="flex-1 border-0 bg-transparent text-gray-900 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 dark:text-gray-100"
+          />
+          <Button
+            type="submit"
+            size="icon"
+            disabled={isSubmitting || !title.trim() || !canCreate}
+            className="flex !h-[30px] !min-h-0 !w-[30px] items-center justify-center !rounded-full !p-0 !leading-none"
+          >
+            <PlusIcon className="h-4 w-4" />
+          </Button>
+        </form>
+      </div>
+    </div>
+  )
+}
+```
+
+To make sure the user can’t edit tasks (including completing/uncompleting them), edit the `TaskCard.tsx` file:
+
+filename: src/app/app/components/TaskCard.tsx
+```tsx
+'use client'
+
+import React from 'react'
+import { toggleTask } from '../actions'
+import EditTaskModal from './EditTaskModal'
+import { cn } from '@/lib/utils'
+import { Task } from '@prisma/client'
+import { useAuth } from '@clerk/nextjs'
+
+interface Props {
+  task: Task
+  projectName?: string
+}
+
+export default function TaskCard({ task, projectName }: Props) {
+  const [isModalOpen, setIsModalOpen] = React.useState(false)
+  const { has } = useAuth()
+  const canEdit = has?.({ permission: 'org:tasks:edit' })
+  const canEdit = true
+
+  const handleClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement
+    // Don't open modal if clicking the checkbox
+    if (!target.closest('button')) {
+      setIsModalOpen(true)
+    }
+  }
+
+  return (
+    <>
+      <div
+        onClick={handleClick}
+        className={cn(
+          'cursor-pointer rounded-lg border border-transparent p-2 transition-colors duration-200 hover:border-gray-100 dark:border-gray-800 dark:hover:bg-gray-800/50',
+          task.is_completed && 'opacity-50',
+        )}
+      >
+        <div className="flex items-start justify-between">
+          <div className="flex items-start gap-3">
+            {/* Checkbox */}
+            <button
+              onClick={(e) => {
+                if (!canEdit) {
+                  return
+                }
+                e.stopPropagation()
+                toggleTask(task.id)
+              }}
+              className={cn(
+                'mt-1 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border',
+                canEdit
+                  ? 'cursor-pointer border-gray-300 hover:border-gray-400 dark:border-gray-600 dark:hover:border-gray-500'
+                  : 'cursor-not-allowed border-gray-200 opacity-60 dark:border-gray-700',
+              )}
+            >
+              {task.is_completed && (
+                <svg
+                  className="h-3 w-3 text-gray-500 dark:text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              )}
+            </button>
+            {/* Task details */}
+            <div>
+              <h3
+                className={cn(
+                  'font-medium',
+                  task.is_completed && 'text-gray-400 line-through dark:text-gray-500',
+                )}
+              >
+                {task.title}
+              </h3>
+
+              {task.description && (
+                <p
+                  className={cn(
+                    'mt-1 text-sm text-gray-500 dark:text-gray-400',
+                    task.is_completed && 'line-through opacity-75',
+                  )}
+                >
+                  {task.description}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <EditTaskModal
+        task={task}
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        projectName={projectName}
+        canEdit={canEdit}
+      />
+    </>
+  )
+}
+```
+
+The Sidebar should also be edited to prevent `Reader` users from seeing the option to add a project:
+
+filename: src/app/app/components/Sidebar.tsx
+```tsx
+'use client'
+
+import { cn } from '@/lib/utils'
+import { ChevronRightIcon, ChevronLeftIcon, InboxIcon } from 'lucide-react'
+import React from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import CreateProjectButton from './CreateProjectButton'
+import ProjectLink from './ProjectLink'
+import { useProjectStore } from '@/lib/store'
+import { OrganizationSwitcher, UserButton, useUser, useOrganization } from '@clerk/nextjs'
+import { getProjects } from '../actions'
+import { useAuth } from '@clerk/nextjs'
+
+function Sidebar() {
+  const [isCollapsed, setIsCollapsed] = React.useState(false)
+  const { projects, setProjects } = useProjectStore()
+  const { user } = useUser()
+  const { organization } = useOrganization()
+  const router = useRouter()
+  const { has } = useAuth()
+
+  const ownerId = organization?.id || user?.id
+  const canCreateProjects = has?.({ permission: 'org:projects:create' })
+  const canCreateProjects = true
+
+  // Navigate to /app when ownerId changes
+  React.useEffect(() => {
+    if (ownerId) {
+      router.push('/app')
+    }
+  }, [ownerId, router])
+
+  // Fetch projects when component mounts or organization changes
+  React.useEffect(() => {
+    getProjects().then(setProjects)
+  }, [setProjects, ownerId])
+
+  return (
+    <div
+      className={cn(
+        'h-screen border-r border-gray-200 bg-gradient-to-b from-blue-50 via-purple-50/80 to-blue-50 p-4 dark:border-gray-800 dark:from-blue-950/20 dark:via-purple-950/20 dark:to-blue-950/20',
+        'flex flex-col transition-all duration-300 ease-in-out',
+        isCollapsed ? 'w-16' : 'w-64',
+      )}
+    >
+      <nav className="flex-grow space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <div
+            className={cn(
+              'transition-all duration-300',
+              isCollapsed ? 'w-0 overflow-hidden' : 'w-auto',
+            )}
+          >
+            <UserButton showName />
+          </div>
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="flex-shrink-0 rounded-lg p-1 transition-colors hover:bg-white/75 dark:hover:bg-gray-800/50"
+          >
+            {isCollapsed ? (
+              <ChevronRightIcon className="h-4 w-4" />
+            ) : (
+              <ChevronLeftIcon className="h-4 w-4" />
+            )}
+          </button>
+        </div>
+
+        <div
+          className={cn(
+            'transition-all duration-300',
+            isCollapsed ? 'w-0 overflow-hidden' : 'w-auto',
+          )}
+        >
+          <Link
+            href="/app"
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-white/75 dark:text-gray-200 dark:hover:bg-gray-800/50"
+          >
+            <InboxIcon className="h-4 w-4" />
+            <span>Inbox</span>
+          </Link>
+        </div>
+
+        <div
+          className={cn(
+            'pt-4 transition-all duration-300',
+            isCollapsed ? 'w-0 overflow-hidden' : 'w-auto',
+          )}
+        >
+          <div className="flex items-center justify-between px-3 pb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
+            <span>Projects</span>
+            {canCreateProjects && <CreateProjectButton />}
+          </div>
+          {projects.map((project) => (
+            <ProjectLink key={project.id} project={project} isCollapsed={isCollapsed} />
+          ))}
+        </div>
+      </nav>
+
+      <div
+        className={cn(
+          'mt-auto pt-4 transition-all duration-300',
+          isCollapsed ? 'w-0 overflow-hidden' : 'w-auto',
+        )}
+      >
+        <OrganizationSwitcher />
+      </div>
+    </div>
+  )
+}
+
+export default Sidebar
+```
+
+Now that the frontend is updated, you also need to modify any backend code to also check the user’s permissions for maximum security. Fortunately the `has` function works the same in server-side operations just like it does on the front end.
+
+For any server action that makes changes to the database, you’ll use `has` to check the permissions like so:
+
+filename: src/app/app/actions.ts
+```tsx
+'use server'
+
+import { auth } from '@clerk/nextjs/server'
+import { prisma } from '@/lib/db'
+import { revalidatePath } from 'next/cache'
+
+export async function createTask(formData: FormData) {
+  const { userId, orgId, has } = await auth()
+  if (!userId || (orgId && !has?.({ permission: 'org:tasks:write' }))) {
+    throw new Error('Unauthorized')
+  }
+
+  const title = formData.get('title') as string
+  if (!title?.trim()) {
+    throw new Error('Title is required')
+  }
+
+  const ownerId = orgId || userId
+  const project_id = formData.get('project_id') as string | null
+
+  await prisma.task.create({
+    data: {
+      title: title.trim(),
+      owner_id: ownerId,
+      project_id: project_id || null,
+    },
+  })
+
+  revalidatePath('/app')
+}
+
+export async function toggleTask(taskId: string) {
+  const { userId, orgId, has } = await auth()
+  if (!userId || (orgId && !has?.({ permission: 'org:tasks:write' }))) {
+    throw new Error('Unauthorized')
+  }
+
+  const ownerId = orgId || userId
+
+  const task = await prisma.task.findUnique({
+    where: { id: taskId },
+  })
+
+  if (!task || task.owner_id !== ownerId) {
+    throw new Error('Task not found or unauthorized')
+  }
+
+  await prisma.task.update({
+    where: { id: taskId },
+    data: { is_completed: !task.is_completed },
+  })
+
+  revalidatePath('/app')
+}
+
+export async function updateTask(formData: FormData) {
+  const { userId, orgId, has } = await auth()
+  if (!userId || (orgId && !has?.({ permission: 'org:tasks:write' }))) {
+    throw new Error('Unauthorized')
+  }
+
+  const ownerId = orgId || userId
+
+  const id = formData.get('id') as string
+  const title = formData.get('title') as string
+  const description = formData.get('description') as string
+
+  if (!id || !title?.trim()) {
+    throw new Error('Invalid input')
+  }
+
+  const task = await prisma.task.findUnique({
+    where: { id },
+  })
+
+  if (!task || task.owner_id !== ownerId) {
+    throw new Error('Task not found or unauthorized')
+  }
+
+  await prisma.task.update({
+    where: { id },
+    data: {
+      title: title.trim(),
+      description: description?.trim() || null,
+    },
+  })
+
+  revalidatePath('/app')
+}
+
+export async function createProject(formData: FormData) {
+  const { userId, orgId, has } = await auth()
+  if (!userId || (orgId && !has?.({ permission: 'org:tasks:write' }))) {
+    throw new Error('Unauthorized')
+  }
+
+  const ownerId = orgId || userId
+
+  const name = formData.get('name') as string
+  if (!name?.trim()) {
+    throw new Error('Project name is required')
+  }
+
+  const project = await prisma.project.create({
+    data: {
+      name: name.trim(),
+      owner_id: ownerId,
+    },
+  })
+
+  revalidatePath('/app')
+  return project
+}
+
+export async function getProjects() {
+  const { userId, orgId } = await auth()
+  if (!userId) {
+    throw new Error('Unauthorized')
+  }
+
+  const ownerId = orgId || userId
+
+  return prisma.project.findMany({
+    where: {
+      owner_id: ownerId,
+    },
+    orderBy: {
+      created_at: 'asc',
+    },
+  })
+}
+
+export async function updateProject(formData: FormData) {
+  const { userId, orgId, has } = await auth()
+  if (!userId || (orgId && !has?.({ permission: 'org:tasks:write' }))) {
+    throw new Error('Unauthorized')
+  }
+
+  const ownerId = orgId || userId
+
+  const id = formData.get('id') as string
+  const name = formData.get('name') as string
+
+  if (!id || !name?.trim()) {
+    throw new Error('Invalid input')
+  }
+
+  const project = await prisma.project.findUnique({
+    where: { id },
+  })
+
+  if (!project || project.owner_id !== ownerId) {
+    throw new Error('Project not found or unauthorized')
+  }
+
+  await prisma.project.update({
+    where: { id },
+    data: {
+      name: name.trim(),
+    },
+  })
+
+  revalidatePath('/app')
+}
+
+export async function deleteProject(projectId: string) {
+  const { userId, orgId, has } = await auth()
+  if (!userId || (orgId && !has?.({ permission: 'org:tasks:write' }))) {
+    throw new Error('Unauthorized')
+  }
+
+  const ownerId = orgId || userId
+
+  // Delete all tasks associated with the project first
+  await prisma.task.deleteMany({
+    where: {
+      project_id: projectId,
+      owner_id: ownerId,
+    },
+  })
+
+  // Then delete the project
+  await prisma.project.delete({
+    where: {
+      id: projectId,
+      owner_id: ownerId,
+    },
+  })
+
+  revalidatePath('/app')
+}
+
+export async function deleteTask(taskId: string) {
+  const { userId, orgId, has } = await auth()
+  if (!userId || (orgId && !has?.({ permission: 'org:tasks:write' }))) {
+    throw new Error('Unauthorized')
+  }
+
+  const ownerId = orgId || userId
+
+  // Delete the task
+  await prisma.task.delete({
+    where: {
+      id: taskId,
+      owner_id: ownerId,
+    },
+  })
+
+  revalidatePath('/app')
+}
+```
+
+Users with the `Reader` role in a specific organization should now only be able to see tasks in that organization, but not edit them. Furthermore if they switch to another organization where they have the `Member` role, they can add and edit tasks.
+
+## Optional - Add custom domains per org
+
+Using Verified Domains, you can also configure your application to automatically invite users to a specific organization if they sign in with an email address that matches a specific domain. This is extremely helpful for HR or IT teams who need to onboard users into an application. It avoids having them manually create a user record.
+
+As an example, let’s say I want to automatically invite any user who signs in with an `@clerk.dev` domain name into the Frontiers organization. I’ll start by toggling **Enable verified domains** in the organizations settings page shown earlier. I’ll also enable **Automatic invitation** and **Automatic suggestion** to streamline the experience.
+
+Enable verified domains
+
+In Kozi, I’ll access the organization settings by opening the `<OrganizationSwitcher />` and selecting Manage. In the modal, I can add a domain to the Verified domains list. I’ll be asked to verify ownership of the domain by entering my email address to receive a six digit code.
+
+Add verified domain
+
+Now whenever somebody joins the app with an `@clerk.dev` email address, the `<OrganizationSwitcher />` will automatically list the Frontiers organization as available for me to join and access.
+
+## Conclusion
+
+Multi-tenancy is one of those architectural decisions that pays off early and compounds over time. Whether you're supporting teams, companies, or entire departments, having the right structure in place makes it easier to manage access, enforce security, and scale your product with confidence.
+
+With Clerk, adding multi-tenant support doesn’t require reinventing your auth stack. You get drop-in UI components, APIs, and sensible defaults that help you stay focused on your product, not boilerplate.
+
+As your app grows, so will the complexity of your users and their organizations. This guide gives you a solid foundation to handle that complexity with clarity.

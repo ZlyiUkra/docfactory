@@ -1,0 +1,729 @@
+# A practical guide to testing Clerk Next.js applications
+# джерело: https://clerk.com/blog/testing-clerk-nextjs
+# отримано: 2026-09-25
+
+We understand that writing tests isn't the most exciting part of development. That's why they are often shelved as "tech debt" or pushed to the bottom of the priority list. But it's not just about motivation - writing good tests is _hard_.
+
+You might wonder:
+
+- What do I test?
+- How do I test it?
+- Should I write integration tests or end-to-end tests?
+- How do I mock Clerk?
+
+This post addresses these challenges directly to help you develop a meaningful testing strategy for your Next.js application using Clerk.
+
+By the end, you'll be equipped to test critical authentication flows by mocking Clerk's API in integration tests.
+
+You'll also learn how to incorporate end-to-end tests and simulate real-world user interactions with your application to make sure that your application works (and continues to work) as it should in production.
+
+## Meet Pup Party
+
+This post demonstrates how to add comprehensive tests to a sample application called Pup Party.
+
+Pup Party allows dog owners to rate and discover dog-friendly cafes and restaurants. Users can evaluate venues as "Pup-approved" or "Pup-fail" based on criteria such as dog-friendliness, ambiance, and the quality of dog treats.
+
+To follow along and implement tests step-by-step, download the starter code and follow the set up instructions here.
+
+Alternatively, you can study the complete source code, including tests, here.
+
+## Choosing the right testing approach
+
+Before we dive in, it's important to take a moment to think about what exactly you should be testing and the types of tests that will be most effective. This planning step is crucial, as it guides you in creating tests that are not only meaningful but also efficient to run and maintain.
+
+I've seen teams fall into three common traps:
+
+1. Over-relying on unit tests that focus too much on internals
+2. Struggling to scale and manage integration tests effectively due to a reliance on brittle test data and overly complex test logic
+3. Over-investing in E2E tests, leading to slow, flaky test suites that bog down development
+
+So, what's the right approach?
+
+In this post, we turn to Kent C. Dodds and his testing trophy:
+
+- Write mostly integration tests
+- Supplement with well-placed E2E tests
+- Don't overdo it
+
+Following Kent's testing philosophy, this post primarily focuses on integration tests and later addresses E2E tests for critical user paths.
+
+## Integration tests
+
+To write integration tests, you will be using two essential tools:
+
+- **Jest**: A test runner and assertion framework to structure and execute your integration tests.
+- **React Testing Library (RTL)**: A popular testing framework for React applications that encourages testing components from the user's perspective, while still supporting the use of Jest mocks where necessary.
+
+### Set up Jest and RTL
+
+Start by installing these dev dependencies:
+
+filename: Terminal
+```bash
+npm install --save-dev jest \
+  @types/jest \
+  @testing-library/react \
+  @testing-library/jest-dom \
+  @testing-library/dom \
+  @testing-library/user-event \
+  jest-environment-jsdom \
+  next-router-mock
+```
+
+Add a `test:jest` script to `package.json`:
+
+filename: ./package.json
+```json
+"scripts": {
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start",
+  "lint": "next lint",
+  "test:jest": "jest",
+},
+```
+
+Add a `jest.config.ts` file to the root of your project:
+
+filename: ./jest.config.ts
+```typescript
+import type { Config } from 'jest'
+import nextJest from 'next/jest.js'
+
+const createJestConfig = nextJest({
+  dir: './',
+})
+
+const config: Config = {
+  clearMocks: true,
+  testEnvironment: 'jsdom',
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
+  // Map next-router-mock to the next/navigation module it mocks
+  // Learn more - https://github.com/scottrippey/next-router-mock
+  moduleNameMapper: {
+    '^next/navigation$': 'next-router-mock',
+  },
+}
+
+export default createJestConfig(config)
+```
+
+Create a `jest.setup.ts` file in the root of your project to globally import @testing-library/jest-dom, which enhances Jest with custom matchers for more intuitive and readable DOM assertions:
+
+filename: ./jest.setup.ts
+```typescript
+import '@testing-library/jest-dom'
+```
+
+In the ` ./tsconfig.json` file, add `"jest"` to the `types` array:
+
+filename: ./tsconfig.json
+```json
+{
+  "compilerOptions": {
+    "types": ["jest"]
+  }
+}
+```
+
+Finally, create a ` ./__tests__` directory in your root folder. Within this directory, add an empty `index.test.tsx` file - this is where you'll set up your mocks, configure helpers, and write your integration tests in the next section.
+
+#### Set up your mocks and helpers
+
+In your integration tests, you should avoid making actual network calls, including to Clerk. Network calls can introduce variability and slow down your test suite, making it harder to achieve consistent and fast test results. Instead, you should mock these libraries to control their behavior in your tests and keep your integration test suite lean.
+
+> It's a best practice to avoid writing integration tests for the internals of third-party libraries like Clerk, as they already have their own tests.
+
+Below is the code to mock @clerk/nextjs, which allows you to simulate its behavior and focus on testing your application's logic without relying on external dependencies. Additionally, a helper function called `renderWithProviders` is defined. This function takes an `isSignedIn` argument, allowing you to simulate authenticated and unauthenticated user states in your tests.
+
+filename: ./__tests__/index.test.tsx
+```tsx
+import { render, screen, waitFor } from '@testing-library/react'
+import { ReactNode } from 'react'
+import SubmitReviewPage from '../app/submit-review/page'
+import { ClerkProvider, useAuth } from '@clerk/nextjs'
+import { MemoryRouterProvider } from 'next-router-mock/MemoryRouterProvider/next-13.5'
+import { userEvent } from '@testing-library/user-event'
+
+jest.mock('@clerk/nextjs', () => {
+  const originalModule = jest.requireActual('@clerk/nextjs')
+  return {
+    ...originalModule,
+    useAuth: jest.fn(() => ({ userId: null })),
+    SignIn: () => <div data-testid="clerk-sign-in">Sign In Component</div>,
+    ClerkProvider: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  }
+})
+
+const TestProviders = ({
+  isLoggedIn = false,
+  children,
+}: {
+  isLoggedIn?: boolean
+  children: ReactNode
+}) => {
+  ;(useAuth as jest.Mock).mockReturnValue({ userId: isLoggedIn ? 'user-id' : null })
+
+  // Here, we wrap our component in the ClerkProvider and MemoryRouterProvider to provide the necessary context for our tests.
+  // MemoryRouterProvider is used to mock the Next.js router,
+  // which is necessary for testing components that use the router.
+  return (
+    <MemoryRouterProvider>
+      <ClerkProvider>{children}</ClerkProvider>
+    </MemoryRouterProvider>
+  )
+}
+
+const renderWithProviders = (ui: ReactNode, isLoggedIn?: boolean) => {
+  return render(<TestProviders isLoggedIn={isLoggedIn}>{ui}</TestProviders>)
+}
+```
+
+> The details about next-router-mock are outside the scope of this post, but you can learn more about it in the library's documentation for a deeper understanding.
+
+Now that you have Jest and RTL configured, along with your mocks and test context provider, it's time to write some meaningful integration tests!
+
+You will implement three integration tests for Pup Party. For each test scenario, you'll read a definition of the requirements in plain text before implementing code to programmatically test the expected behavior and protect against regressions.
+
+### Test case 1: Unauthenticated users cannot submit a review
+
+If an unauthenticated user tries to access the submission page, they should be redirected to the sign-in page.
+
+Here's the test implementation, along with comments explaining each notable line.
+
+Add it to the bottom of index.test.tsx:
+
+filename: ./__tests__/index.test.tsx
+```tsx
+// Add below the previous snippet at the bottom of the file
+
+describe('Submit Review Page', () => {
+  // Grouping tests related to unauthenticated user scenarios
+  describe('When a user is unauthenticated', () => {
+    const isLoggedIn = false
+
+    it('redirects them to sign in when they try to access the review submission page', async () => {
+      // Render the SubmitReviewPage component with the user not logged in
+      renderWithProviders(<SubmitReviewPage />, isLoggedIn)
+
+      // Wait for the sign-in element to appear, indicating a redirect to sign-in
+      waitFor(
+        () => {
+          expect(screen.getByTestId('clerk-sign-in')).toBeInTheDocument()
+        },
+        { timeout: 5000 }, // Timeout after 5 seconds if the element doesn't appear
+      )
+
+      // Ensure the review submission prompt is not visible, confirming the redirect
+      waitFor(
+        () => {
+          expect(
+            screen.queryByText('Review how dog-friendly this restaurant is!'),
+          ).not.toBeInTheDocument()
+        },
+        { timeout: 5000 }, // Timeout after 5 seconds if the element is still visible
+      )
+    })
+  })
+})
+```
+
+In this test, an unauthenticated user's experience on the `<SubmitReviewPage />` is simulated by setting ` isSignedIn` to ` false` and passing it as the second argument to our ` renderWithProviders` function.
+
+The `waitFor` utility from React Testing Library is used to verify that the UI updates correctly after state changes, specifically ensuring the user is redirected to the sign-in page and cannot access the review submission content.
+
+> You can see the complete test file here and reference it if you're following along and need help figuring out where things go.
+
+### Test case 2: Authenticated users can successfully submit a valid review
+
+When a signed-in user submits valid details in the review form, the form should process successfully and then display a confirmation message.
+
+Here's the test implementation:
+
+filename: ./__tests__/index.test.tsx
+```tsx
+describe('Submit Review Page', () => {
+  describe('When a user is authenticated', () => {
+    const isLoggedIn = true
+
+    // Add beneath "it" function in previous snippet
+    it('allows them to submit a review successfully', async () => {
+      const user = userEvent.setup()
+
+      renderWithProviders(<SubmitReviewPage />, isLoggedIn)
+
+      expect(
+        await screen.findByText('Welcome to the Dog Friendly Restaurant Reviews form!'),
+      ).toBeInTheDocument()
+
+      expect(screen.queryByTestId('clerk-sign-in')).not.toBeInTheDocument()
+
+      const reviewInput = await screen.findByRole('textbox', {
+        name: /review/i,
+      })
+      const ratingInput = await screen.findByRole('spinbutton', {
+        name: /rating/i,
+      })
+
+      await user.click(reviewInput)
+      await user.type(reviewInput, 'Great place!')
+      await user.click(ratingInput)
+      await user.type(ratingInput, '5')
+
+      await user.click(screen.getByText('Submit'))
+
+      // expect the form to be cleared
+      expect(screen.getByLabelText('Review')).toHaveValue('')
+      expect(screen.getByLabelText('Rating')).toHaveValue
+
+      // expect a success toast
+      expect(await screen.findByText('Form submitted successfully!')).toBeInTheDocument()
+    })
+  })
+})
+```
+
+In the code above, `isSignedIn` is set to `true` to simulate the experience of an authenticated user accessing Pup Party.
+
+The `userEvent` utilities are used to mimic user actions, such as clicking into a form input, typing, hitting "Submit", and viewing a success notification.
+
+> Use React Testing Library's selectors like `findByRole` and `getByLabelText` to create more robust tests.
+>
+> This approach, compared to using selectors like `getElementById` or `querySelector`, avoids relying on rigid DOM structures in your queries and assertions. By focusing on the roles and labels, you reduce the likelihood of introducing test failures from UI layout changes. It also promotes the use of semantic HTML, thereby enhancing your application's accessibility.
+
+### Test case 3: Authenticated users must submit valid reviews
+
+Requirements for the submission form:
+
+- When authenticated users add a rating that is less than zero, they should see a "Rating must be a number above 0" error appear next to the rating field
+- When authenticated users add a written review that is less than 5 characters long, they should see a "Review must be at least 5 characters" error appear next to the review field
+- If authenticated users submit the form without correcting the errors, the form fields should retain the original values along with their error messages, and an additional "Please fix the errors in the form!" will be displayed to the user
+
+Here's the test code that checks these requirements:
+
+filename: ./__tests__/index.test.tsx
+```tsx
+describe('Submit Review Page', () => {
+  describe('When a user is authenticated', () => {
+    const isLoggedIn = true
+
+    it('displays error messages when the user adds a rating that is less than 0', async () => {
+      const user = userEvent.setup()
+
+      renderWithProviders(<SubmitReviewPage />, isLoggedIn)
+
+      expect(
+        await screen.findByText('Welcome to the Dog Friendly Restaurant Reviews form!'),
+      ).toBeInTheDocument()
+
+      expect(screen.queryByTestId('clerk-sign-in')).not.toBeInTheDocument()
+
+      // Note the use of findByRole, as well as async/await. Role lookup is based on the role attribute, which is used to describe the purpose of an element.
+      // This is useful for accessibility.
+      const reviewInput = await screen.findByRole('textbox', {
+        name: /review/i,
+      })
+      const ratingInput = await screen.findByRole('spinbutton', {
+        // Note: can also find by Label!
+        name: /rating/i,
+      })
+
+      await user.click(reviewInput)
+      await user.type(reviewInput, 'Great place!')
+      await user.click(ratingInput)
+      await user.type(ratingInput, '-1')
+
+      expect(await screen.findByText('Rating must be a number above 0')).toBeInTheDocument()
+
+      await user.click(screen.getByText('Submit'))
+
+      // Note the use of getByLabelText to find the input field by its label text, which helps with accessibility.
+      expect(screen.getByLabelText('Review')).toHaveValue('Great place!')
+      expect(screen.getByLabelText('Rating')).toHaveValue(-1)
+
+      // expect an error message
+      expect(await screen.findByText('Please fix the errors in the form!')).toBeInTheDocument()
+    })
+
+    it('displays error messages when the user adds a review that is less than 5 characters', async () => {
+      const user = userEvent.setup()
+
+      renderWithProviders(<SubmitReviewPage />, isLoggedIn)
+
+      // Note here the user of findByText based on the page's text content as viewed by the user.
+      expect(
+        await screen.findByText('Welcome to the Dog Friendly Restaurant Reviews form!'),
+      ).toBeInTheDocument()
+
+      // Note the use of queryByTestId to check for non-existence.
+      expect(screen.queryByTestId('clerk-sign-in')).not.toBeInTheDocument()
+
+      // Note the use of findByRole, as well as async/await.
+      const reviewInput = await screen.findByRole('textbox', {
+        name: /review/i,
+      })
+      const ratingInput = await screen.findByRole('spinbutton', {
+        // Note: can also find by Label!
+        name: /rating/i,
+      })
+
+      await user.click(reviewInput)
+      await user.type(reviewInput, 'ok')
+      await user.click(ratingInput)
+      await user.type(ratingInput, '5')
+
+      expect(await screen.findByText('Review must be at least 5 characters')).toBeInTheDocument()
+
+      await user.click(screen.getByText('Submit'))
+
+      // Expect the form to be cleared
+      expect(screen.getByLabelText('Review')).toHaveValue('ok')
+      expect(screen.getByLabelText('Rating')).toHaveValue(5)
+
+      // Expect an error message
+      expect(await screen.findByText('Please fix the errors in the form!')).toBeInTheDocument()
+    })
+  })
+})
+```
+
+> While the previous examples used a single test, here you've created separate tests for each validation error case, making it easier to identify and debug specific failures.
+
+This code simulates a user interaction where an invalid review is submitted. It sets up a user event, renders the `<SubmitReviewPage />` for an authenticated user, and then mimics user actions of submitting a valid review but an invalid rating.
+
+The `async` and `await` syntax is used to ensure that each action and corresponding assertion happens in the correct order, as some operations are asynchronous and need to complete before the next action or assertion takes place.
+
+### Running the integration tests
+
+Execute your integration tests by running `test:jest`:
+
+filename: Terminal
+```bash
+npm run test:jest
+```
+
+This script, defined earlier, will run the tests and display the results in your terminal:
+
+./jest-results.png
+
+## End-to-end tests
+
+Having implemented integration tests, let's turn our attention to end-to-end (E2E) tests.
+
+> Integration tests focus on verifying that specific components interact correctly with each other, while E2E tests validate complete user workflows across an entire application in production-like environments.
+>
+> Both are necessary because integration tests provide faster, more targeted feedback about component interactions during development, while E2E tests ensure the complete system functions properly from a user's perspective before release.
+>
+> Learn more about end-to-end tests.
+
+Unlike integration tests that mock Clerk, E2E tests interact with Clerk directly to simulate production conditions.
+
+To write E2E tests, you will be using two essential tools:
+
+- **Playwright**: A powerful automation framework that allows you to perform end-to-end testing across multiple browsers. It offers comprehensive features for simulating user interactions and validating web applications.
+- **@clerk/testing**: This utility offers helpful tools specifically designed for testing Clerk applications.
+
+### Set up Playwright and @clerk/testing
+
+Start by create a new directory called `./e2e` - this is where you'll write your E2E in the upcoming section.
+
+Install `@clerk/testing` as a dev dependency:
+
+filename: Terminal
+```bash
+npm install @clerk/testing --save-dev
+```
+
+Initialize and install Playwright:
+
+filename: Terminal
+```bash
+npm init playwright
+```
+
+Choose the following options when prompted:
+
+filename: Terminal
+```bash
+> Do you want to use TypeScript or JavaScript? → TypeScript
+> Where to put your end-to-end tests? → e2e
+> Add a GitHub Actions workflow? → N
+> Install Playwright browsers? → Y
+```
+
+> `npm init playwright` automatically installs Playwright as a dev dependency and creates a default `playwright.config.ts` file
+
+Replace the contents of `./playwright.config.ts` to configure Playwright for end-to-end testing:
+
+filename: ./playwright.config.ts
+```typescript
+import { defineConfig } from '@playwright/test'
+
+// Set the port for the server
+const PORT = process.env.PORT || 3000
+
+// Set webServer.url and use.baseURL with the location of the WebServer
+// respecting the correct set port
+const baseURL = `http://localhost:${PORT}`
+
+export default defineConfig({
+  // Look for tests in the "e2e" directory
+  testDir: './e2e',
+  // Set the number of retries for each, in case of failure
+  retries: 1,
+  // Run your local dev server before starting the tests.
+  webServer: {
+    command: 'npm run dev',
+    // Base URL to use in actions like `await page.goto('/')`
+    url: baseURL,
+    // Set the timeout for the server to start
+    timeout: 120 * 1000,
+    // Reuse the server between tests
+    reuseExistingServer: !process.env.CI,
+  },
+  use: {
+    // Base URL to use in actions like `await page.goto('/')`.
+    baseURL,
+
+    // Collect trace when retrying the failed test.
+    // See https://playwright.dev/docs/trace-viewer
+    trace: 'retry-with-trace',
+  },
+})
+```
+
+Define an additional script to run E2E tests:
+
+filename: ./package.json
+```json
+"scripts": {
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start",
+  "lint": "next lint",
+  "test:jest": "jest",
+  "test:playwright": "playwright test --ui"
+},
+```
+
+To ensure your E2E tests don't inadvertently run when invoking the `test:jest` script - which could cause errors due to Playwright tests being incompatible with Jest - update `jest.config.ts` as follows:
+
+filename: ./jest.config.ts
+```typescript
+import type { Config } from 'jest'
+import nextJest from 'next/jest.js'
+
+const createJestConfig = nextJest({
+  dir: './',
+})
+
+const config: Config = {
+  clearMocks: true,
+  testEnvironment: 'jsdom',
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
+  // map next-router-mock to the next/navigation module it mocks
+  // learn more - https://github.com/scottrippey/next-router-mock
+  moduleNameMapper: {
+    '^next/navigation$': 'next-router-mock',
+  },
+  testPathIgnorePatterns: ['<rootDir>/e2e/', '<rootDir>/.next/', '<rootDir>/node_modules/'],
+}
+
+export default createJestConfig(config)
+```
+
+#### Enable Clerk testing tokens
+
+Clerk testing tokens allow you to bypass Clerk's bot detection mechanisms, which can otherwise block automated test requests with "bot traffic detected" errors.
+
+The @clerk/testing library makes accessing Clerk testing tokens easy by automatically obtaining one when your test suite starts. It then offers the `setupClerkTestingToken` function, which injects the token, enabling your tests to bypass Clerk's bot detection mechanisms without any hassle. The `clerk.signIn` method internally uses the `setupClerkTestingToken` helper, so there's no need to call it separately when using this method.
+
+> While it's helpful to understand why this is necessary, @clerk/testing and the Playwright integration abstract away the details, so you don't have to manage tokens manually.
+
+To configure Playwright with Clerk, create `./e2e/global.setup.ts` and call the `clerkSetup()` function:
+
+filename: ./e2e/global.setup.ts
+```typescript
+import { clerkSetup } from '@clerk/testing/playwright'
+import { test as setup } from '@playwright/test'
+
+// Setup must be run serially, this is necessary if Playwright is configured to run fully parallel: https://playwright.dev/docs/test-parallel
+setup.describe.configure({ mode: 'serial' })
+
+setup('global setup', async ({}) => {
+  await clerkSetup()
+})
+```
+
+Next, make sure `global.setup.ts` is called from `./playwright.config.ts`:
+
+filename: ./playwright.config.ts
+```typescript
+import { defineConfig } from '@playwright/test'
+import { defineConfig, devices } from '@playwright/test'
+
+// Set the port for the server
+const PORT = process.env.PORT || 3000
+
+// Set webServer.url and use.baseURL with the location of the WebServer
+// respecting the correct set port
+const baseURL = `http://localhost:${PORT}`
+
+export default defineConfig({
+  // Look for tests in the "e2e" directory
+  testDir: './e2e',
+  // Set the number of retries for each, in case of failure
+  retries: 1,
+  // Run your local dev server before starting the tests.
+  webServer: {
+    command: 'npm run dev',
+    // Base URL to use in actions like `await page.goto('/')`
+    url: baseURL,
+    // Set the timeout for the server to start
+    timeout: 120 * 1000,
+    // Reuse the server between tests
+    reuseExistingServer: !process.env.CI,
+  },
+  use: {
+    // Base URL to use in actions like `await page.goto('/')`
+    baseURL,
+
+    // Collect trace when retrying the failed test.
+    // See https://playwright.dev/docs/trace-viewer
+    trace: 'retry-with-trace',
+  },
+
+  // Configure projects for major browsers
+  projects: [
+    {
+      name: 'global setup',
+      testMatch: /global\.setup\.ts/,
+    },
+    {
+      name: 'Main tests',
+      testMatch: /user-submits-review\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'], // or your browser of choice
+      },
+      dependencies: ['global setup'],
+    },
+  ],
+})
+```
+
+#### Create a test Clerk user
+
+Since E2E tests interact with the Clerk API and require user authentication, you must create a real Clerk user and supply your test runner with the user's credentials. These credentials allow your tests to sign in, simulate an authenticated user state, and ensure everything functions as expected in a real-world scenario.
+
+Create a test user through the Clerk dashboard:
+
+./create-user.png
+
+Add the username and password to `.env.local`. Also add your Clerk application's `SECRET_KEY` and `PUBLISHABLE_KEY` if you haven't already:
+
+filename: ./env.local
+```bash
+E2E_CLERK_USER_USERNAME=xxxxxxxxx
+E2E_CLERK_USER_PASSWORD=xxxxxxxxx
+CLERK_SECRET_KEY=xxxxxxxxx
+CLERK_PUBLISHABLE_KEY=xxxxxxxxx
+```
+
+> Replace `xxxxxxxxx` with your actual credentials.
+>
+> If you have enabled usernames for your Clerk application, set `E2E_CLERK_USER_USERNAME` to a username. If your Clerk application does not support usernames, set it to an email address instead.
+
+Next, update your `playwright.config.ts` file to load environment variables such that they can be accessed from your tests:
+
+filename: ./playwright.config.ts
+```typescript
+// At the top of the file
+import { defineConfig, devices } from '@playwright/test'
+import dotenv from 'dotenv'
+import path from 'path'
+
+// Read the .env.local file and set the environment variables
+dotenv.config({ path: path.resolve(__dirname, '.env.local') })
+```
+
+You now have everything in place to write an end-to-end test.
+
+### Test case: Users can authenticate and successfully submit a review
+
+This test verifies a critical user flow in a Clerk-authenticated application: signing in, submitting a review, and signing out.
+
+Since this is an end-to-end test, it will cover multiple points in the system, ensuring that real user interactions work as expected.
+
+Create `./e2e/user-submits-review.spec.ts` and paste the following:
+
+filename: ./e2e/user-submits-review.spec.ts
+```typescript
+import { test, expect } from '@playwright/test'
+import { clerk } from '@clerk/testing/playwright'
+
+test('user can sign in, submit a review and sign out', async ({ page }) => {
+  await page.goto('/sign-in')
+
+  // Clerk's signIn utility uses setupClerkTestingToken() under the hood, so no reason to call it separately
+  await clerk.signIn({
+    page,
+    signInParams: {
+      strategy: 'password',
+      identifier: process.env.E2E_CLERK_USER_USERNAME!,
+      password: process.env.E2E_CLERK_USER_PASSWORD!,
+    },
+  })
+
+  await page.goto('/submit-review')
+
+  await expect(page).toHaveURL('/submit-review')
+
+  // Fill in the review form
+  await page.getByLabel(/review/i).fill('Had a great experience!')
+  await page.getByLabel(/rating/i).fill('5')
+  await page.getByRole('button', { name: /submit/i }).click()
+
+  await expect(page.getByText(/form submitted successfully/i)).toBeVisible()
+
+  // Clerk's signOut utility uses setupClerkTestingToken() under the hood, so no reason to call it separately
+  await clerk.signOut({ page })
+
+  expect(page).toHaveURL('/')
+})
+```
+
+> The `clerk.signIn()` function automatically uses the `setupClerkTestingToken()` helper, so there's no need to call it manually.
+
+The test starts by navigating to the sign-in page and using Clerk's `signIn` utility to authenticate a test user.
+
+Once signed in, the test redirects to the review submission page, where it completes and submits a form, then verifies a success message. Finally, it signs out and confirms redirection to the home page.
+
+Running this test in the future will help catch any errors introduced by code changes. If a change breaks the functionality, the test will fail, alerting you to the issue. If the test passes, you can be confident that this flow in your application is working as it should.
+
+### Running the end-to end tests
+
+Run `test:playwright` to execute your end-to-end tests:
+
+filename: Terminal
+```bash
+npm run test:playwright
+```
+
+The result:
+
+./playwright-results.png
+
+## Conclusion
+
+In the introduction, key questions were posed about testing in Clerk applications:
+
+- What should be tested?
+- How should it be tested?
+- Should integration or end-to-end tests be used?
+- How can Clerk be effectively mocked?
+
+This post has provided comprehensive answers to these questions, guiding you through the process of developing a robust testing strategy against a practical application.
+
+Equipped with this knowledge, you now have the tools to confidently implement a balanced testing strategy for any appliation using Clerk for Next.js authentication.
+
+For more detailed guidance on testing Clerk applications, be sure to check out the Clerk documentation on testing.

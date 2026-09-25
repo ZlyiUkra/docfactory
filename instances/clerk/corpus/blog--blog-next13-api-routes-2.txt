@@ -1,0 +1,444 @@
+# Next.js 13 Routes Part 2: Implementing Protected Routes
+# джерело: https://clerk.com/blog/next13-api-routes-2
+# отримано: 2026-09-25
+
+In part one of this series, you learned about Next.js API routes and how to protect API routes with JWT authentication. In this part, you'll learn how to create protected routes using React Context as well as how using Clerk makes this process easier.
+
+## Exploring the Starter App
+
+To get started, a starter app already has been made that you can clone from GitHub:
+
+```bash
+git clone https://github.com/heraldofsolace/NextJS-protected-routes-demo.git
+cd NextJS-protected-routes-demo
+yarn install
+yarn dev
+```
+
+The app will start running at `localhost:3000`.
+
+The posts page can be found at `http://localhost:3000/posts`, which shows a list of all the posts.
+
+List of all posts
+
+This page has a companion API route that returns all the posts in JSON:
+
+```bash
+$ curl "http://localhost:3000/api/posts"
+[{"id":1,"userId":1,"text":"Hello, World!"},{"id":2,"userId":2,"text":"Hello, NextJS"},{"id":3,"userId":1,"text":"Lorem ipsum dolor sit amet. "},{"id":4,"userId":3,"text":"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur ut rhoncus neque. Sed lacinia magna a mi tincidunt, ac interdum."}]
+```
+
+The data for posts is stored in **data.js**.
+
+The `/api/auth/login` route implements JWT authentication and returns a JWT when the correct username and password combination is supplied:
+
+```bash
+$ curl -X POST "http://localhost:3000/api/auth/login" -d '{"username": "john", "password": "password"}' -H 'Content-Type: application/json'
+{"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjMsImxvY2F0aW9uIjoiRnJhbmNlIiwibmFtZSI6IkpvaG4iLCJpYXQiOjE2Njk0NDUzMDQsImV4cCI6MTY2OTUzMTcwNH0.mlShbJr6xG8TIOyY6B2gD0c-leoyw1T3Sr5EncTgl00"}
+```
+
+Finally, the `/api/users/me` route returns the currently authenticated user, provided a valid JWT is passed in the header:
+
+```bash
+$ curl http://localhost:3000/api/users/me -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjMsImxvY2F0aW9uIjoiRnJhbmNlIiwibmFtZSI6IkpvaG4iLCJpYXQiOjE2Njk0NDUzMDQsImV4cCI6MTY2OTUzMTcwNH0.mlShbJr6xG8TIOyY6B2gD0c-leoyw1T3Sr5EncTgl00"
+{"id":3,"username":"john","name":"John","location":"France"}
+```
+
+The user profiles can also be found in **data.js**.
+
+The goal of the article is to protect the `/api/posts` API route and the `/posts` page using the JWT authentication strategy. In part one, you saw how JWT authentication can be added to API routes using the `jwt.verify` method. However, it's resource intensive to manually verify and decode the JWT in every single API route. It's also tedious to manually include the authentication header in every request that you make from a page.
+
+In this article, you'll learn how to "share" an authenticated session across all pages by using an `AuthContext`. You'll also refactor the JWT verification to a `withAuth` wrapper that will make it easy to protect API routes. Finally, you'll see how using Clerk makes this process smooth and seamless.
+
+## Implementing AuthContext
+
+`AuthContext` is simply a React Context that will make it easy to pass required authentication parameters throughout the app. To implement this, first install the required libraries:
+
+```bash
+yarn add js-cookie axios
+```
+
+`js-cookie` will be used to store the JWT in the browser's cookie. `axios` makes it easy to preconfigure a default API service with headers. You'll use this to include the token in the headers once the user logs in.
+
+Create a file named **api.js** in the project root:
+
+```javascript
+import Axios from 'axios'
+
+const api = Axios.create({
+  baseURL: 'http://localhost:3000',
+  headers: {
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  },
+})
+
+export default api
+```
+
+Here, an instance of `axios` is created that will be used to make API calls later.
+
+Create the file `auth_context.js`:
+
+```javascript
+import React, { createContext, useState, useContext, useEffect } from 'react'
+import Cookies from 'js-cookie'
+import api from './api'
+import jwt from 'jsonwebtoken'
+
+const JWT_KEY = process.env.JWT_SECRET_KEY
+const AuthContext = createContext({})
+
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchUserFromCookie() {
+      const token = Cookies.get('token')
+      if (token) {
+        api.defaults.headers.Authorization = `Bearer ${token}`
+        const { data: user } = await api.get('api/users/me')
+        if (user) setUser(user)
+      }
+      setIsLoading(false)
+    }
+    fetchUserFromCookie()
+  }, [])
+
+  const login = async (username, password) => {
+    const {
+      data: { token },
+    } = await api.post('api/auth/login', { username, password })
+    console.log('TOKEN ', token)
+    if (token) {
+      Cookies.set('token', token, { expires: 60 })
+      api.defaults.headers.Authorization = `Bearer ${token}`
+      const { data: user } = await api.get('api/users/me')
+      setUser(user)
+    }
+  }
+
+  const logout = () => {
+    Cookies.remove('token')
+    setUser(null)
+    delete api.defaults.headers.Authorization
+    window.location.pathname = '/login'
+  }
+
+  return (
+    <AuthContext.Provider
+      value={{
+        isAuthenticated: !!user,
+        user,
+        login,
+        loading: isLoading,
+        logout,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  )
+}
+
+export const useAuth = () => useContext(AuthContext)
+```
+
+The most important bits in the above Context are the `fetchUserFromCookie`, `login`, and `logout` functions. The `fetchUserFromCookie` function fetches the token from the cookie and sets the `authorization` header in the default `api` instance.
+
+It then makes a call to `/api/users/me` to retrieve and store the authenticated user. The `login` function logs in the user through the `/api/auth/login` route and stores the token in the cookie. The `logout` function deletes the user, the cookie, and the `authorization` header.
+
+Finally, create the `withAuth` function that'll protect the API routes by wrapping the handlers:
+
+```javascript
+export const withAuth = (handler) => {
+  return (req, res) => {
+    const { authorization } = req.headers
+    if (!authorization)
+      return res.status(401).json({ error: 'The authorization header is required' })
+    const token = authorization.split(' ')[1]
+
+    jwt.verify(token, JWT_KEY, (err, payload) => {
+      if (err) return res.status(401).json({ error: 'Unauthorized' })
+      req.auth = { user: payload }
+      handler(req, res)
+    })
+  }
+}
+```
+
+You can now modify `pages/api/posts.js` to include `withAuth`:
+
+```javascript
+import { withAuth } from '../../auth_context'
+import { users, posts } from '../../data'
+
+export default withAuth((req, res) => {
+  const { userId } = req.auth.user
+
+  const userPosts = posts.filter((post) => {
+    return post.userId == userId
+  })
+
+  res.status(200).json(userPosts)
+})
+```
+
+Note that only the posts by the logged in user are returned. The logged in user is found through `req.auth.user`.
+
+Let's now create the login page. First, add Formik and Yup. These are not strictly required but will help in creating the login form.
+
+```bash
+yarn add formik yup
+```
+
+Create `pages/login.js`:
+
+```javascript
+import React from 'react'
+import { Formik, ErrorMessage, Form, Field } from 'formik'
+import * as Yup from 'yup'
+import { useAuth } from '../auth_context'
+import { useRouter } from 'next/router'
+import api from '../api'
+
+const LoginForm = () => {
+  const { login } = useAuth()
+  const router = useRouter()
+  return (
+    <Formik
+      initialValues={{ username: '', password: '' }}
+      validationSchema={Yup.object({
+        username: Yup.string().required('Required'),
+        password: Yup.string().required('Required'),
+      })}
+      onSubmit={async ({ username, password }, { setSubmitting, setErrors }) => {
+        try {
+          await login(username, password)
+          setSubmitting(false)
+          router.push('/posts')
+        } catch (error) {
+          const formikErrors = { password: error.response.data.error }
+          setErrors(formikErrors)
+          setSubmitting(false)
+        }
+      }}
+    >
+      {({ isSubmitting }) => (
+        <Form>
+          <div>
+            <label>Username</label>
+            <br />
+            <Field name="username" type="text"></Field>
+            <ErrorMessage name="username" component="p"></ErrorMessage>
+          </div>
+          <div>
+            <label>Password</label>
+            <br />
+            <Field name="password" type="password"></Field>
+            <ErrorMessage name="password" component="p"></ErrorMessage>
+          </div>
+          <button type="submit" disabled={isSubmitting}>
+            Login
+          </button>
+        </Form>
+      )}
+    </Formik>
+  )
+}
+
+export default LoginForm
+```
+
+This page uses the `login` function described above to log in the user.
+
+Now update `pages/posts.js` to make use of `AuthContext`:
+
+```javascript
+import { useEffect, useState } from 'react'
+import api from '../api'
+import { useAuth } from '../auth_context'
+
+export default function Posts() {
+  const [posts, setPosts] = useState(null)
+  const { user, logout } = useAuth()
+  console.log(user)
+  useEffect(() => {
+    async function fetchPosts() {
+      const { data: postsList } = await api.get('api/posts')
+      setPosts(postsList)
+      console.log(postsList)
+    }
+    if (user) fetchPosts()
+  }, [user])
+
+  return (
+    <>
+      <ul>
+        {posts?.map((post) => {
+          return <li key={post.id}>{post.text}</li>
+        })}
+      </ul>
+      <button onClick={logout}>Logout</button>
+    </>
+  )
+}
+```
+
+Finally, update `pages/_app.js` to wrap everything in `AuthProvider`:
+
+```javascript
+import '../styles/globals.css'
+import { AuthProvider } from '../auth_context'
+
+function MyApp({ Component, pageProps }) {
+  return (
+    <AuthProvider>
+      <Component {...pageProps} />
+    </AuthProvider>
+  )
+}
+
+export default MyApp
+```
+
+Start the server with `yarn dev` and visit `http://localhost:3000/login`. Log in with the credentials (you can find the username in **data.js** and the password is "password") and you'll be redirected to the posts page. You can verify that you're only seeing posts from the logged in user.
+
+The final app for this section can be found in the `manual` branch of the GitHub repo.
+
+## Authentication with Clerk
+
+In this section, you'll replace the manual authentication with Clerk. Before starting with Clerk, you should revert the changes you've made so far. You can simply run `git stash && git clean -fdx` to stash your changes.
+
+First, create an application in Clerk. You can keep all the default options.
+
+Creating an application in Clerk
+
+Once the application is created, go to the **API keys** page and copy the frontend API key, the backend API key, and the JWT verification key. Paste these into `.env`:
+
+```
+NEXT_PUBLIC_CLERK_FRONTEND_API=your_frontend_api_key
+CLERK_API_KEY=your_backend_api_key
+CLERK_JWT_KEY=your_jwt_key
+```
+
+Install the required library:
+
+```bash
+yarn add @clerk/nextjs
+```
+
+Wrap `pages/_app.js` with `Clerkprovider`:
+
+```javascript
+import { ClerkProvider, SignedIn, SignedOut, RedirectToSignIn } from '@clerk/nextjs'
+import { useRouter } from 'next/router'
+
+const publicPages = ['/']
+
+function MyApp({ Component, pageProps }) {
+  const { pathname } = useRouter()
+  const isPublicPage = publicPages.includes(pathname)
+
+  return (
+    <ClerkProvider {...pageProps}>
+      {isPublicPage ? (
+        <Component {...pageProps} />
+      ) : (
+        <>
+          <SignedIn>
+            <Component {...pageProps} />
+          </SignedIn>
+          <SignedOut>
+            <RedirectToSignIn />
+          </SignedOut>
+        </>
+      )}
+    </ClerkProvider>
+  )
+}
+
+export default MyApp
+```
+
+The `publicPages` array decides which pages will not be protected under authentication. For a protected page, if the user is not signed in, they will be redirected to the login page.
+
+Create the file **middleware.js** in the project route:
+
+```javascript
+import { withClerkMiddleware } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server'
+
+export default withClerkMiddleware((req) => {
+  return NextResponse.next()
+})
+
+// Stop Middleware running on static files
+export const config = { matcher: '/((?!.*\\.).*)' }
+```
+
+Modify `pages/api/posts.js` to include the `getAuth` function that authenticates the user with Clerk:
+
+```javascript
+import { posts } from '../../data'
+import { getAuth } from '@clerk/nextjs/server'
+
+export default function handler(req, res) {
+  const { userId } = getAuth(req)
+  const userPosts = posts.filter((post) => {
+    return post.userId == userId
+  })
+
+  res.status(200).json(userPosts)
+}
+```
+
+In the Clerk dashboard, go to the **Users** page and create a test user.
+
+Creating a new user
+
+After the user is created, open the record and copy the ID as shown below.
+
+Copying user ID
+
+Open **data.js** and replace the numeric `id` field of any one user and the `userId` field in the `posts` array:
+
+```javascript
+export const users = [
+  {
+    id: 'user_2IUxt1YsiCfebtlUwOe5dU91Det',
+    username: 'bob',
+    name: 'Bob',
+    location: 'USA',
+    password: '$2y$10$mj1OMFvVmGAR4gEEXZGtA.R5wYWBZTis72hSXzpxEs.QoXT3ifKSq',
+  },
+  // ...
+]
+
+export const posts = [
+  {
+    id: 1,
+    userId: 'user_2IUxt1YsiCfebtlUwOe5dU91Det',
+    text: 'Hello, World!',
+  },
+  // ...
+  {
+    id: 3,
+    userId: 'user_2IUxt1YsiCfebtlUwOe5dU91Det',
+    text: 'Lorem ipsum dolor sit amet. ',
+  },
+  // ...
+]
+```
+
+Run the server again with `yarn dev`. Visit `http://localhost:3000/posts` and you should be redirected to Clerk's login page.
+
+Clerk's login page
+
+After logging in, you'll be redirected back to the `/posts` page. Verify that you can see only the posts corresponding to the logged in user.
+
+The posts page
+
+## Conclusion
+
+Protecting Next.js routes with authentication is a vital part of developing any web app. However, manually creating authentication mechanisms can be tedious and time-consuming. A solution like Clerk’s Next.js authentication comes with all the bells and whistles so that you don't need to worry about auth and can focus on the core app instead.

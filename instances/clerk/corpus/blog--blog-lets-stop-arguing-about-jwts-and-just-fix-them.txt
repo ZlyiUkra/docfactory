@@ -1,0 +1,68 @@
+# Let's stop arguing about JWTs and just fix them
+# джерело: https://clerk.com/blog/lets-stop-arguing-about-jwts-and-just-fix-them
+# отримано: 2026-09-25
+
+This week there was a fresh batch of debates about JWTs as session tokens on Hacker News. For the uninitiated, this happens incredibly frequently on HN, to the point where moderator dang has posted roundups:
+
+Lets Stop Arguing About Jwts And Just Fix Them guide illustration
+
+Just about every thread goes the same way:
+
+1. Everyone agrees that infrequently-refreshed, stateless JWTs should not be used as session tokens because they're irrevocable
+2. Everyone agrees that it's pointless to use long-lived, stateless JWTs in combination with a stateful, database-backed blocklist of revoked JWTs
+3. Everyone agrees that database-backed, stateful session tokens are easy to build and sufficient for the 99% case
+4. With trepidation, everyone agrees that frequently-refreshed, stateless JWTs are acceptable as session tokens because the short expiration serves as a revocation mechanism
+
+Why the trepidation on 4? Usually, it's because 3 is easier. Here's one viral post's rationale (they refer to stateful session tokens as bearer tokens):
+
+> [...] you've just reintroduced a bearer token, because that's exactly what the refresh token is. Looking at JWTs from that perspective, you've introduced a client-side cache of user identity (the JWT) and added a bunch of complexity (involving the creation, verification, and token refresh) for the hope of optimizing part of the work you used to do on the server (checking user identity using a bearer token). Was it worth it?
+
+The author is right: The complexity of 4 is high and the benefits for the 99% case are minimal.
+
+Yet, JWTs are clearly winning. Their usage has grown, not dwindled, while two major trends in software development have increased their demand.
+
+### Trend 1: Developers are relentlessly focused on efficiency
+
+This has been a trend for decades. It's _impressive_ that today's developers care about a 10ms query vs a <1ms JWT, but it's not _surprising_.
+
+The simple reality is that Google Lighthouse scores – and the wealth of evidence supporting that users prefer fast applications – have placed an unprecedented emphasis on loading speed.
+
+The developers who care most are no stranger to complexity, as they're often thinking about problems like distributed storage and operating at the edge. It's no surprise they're eager to treat one less query as an easy win.
+
+### Trend 2: Modern integrations often require a synced session
+
+This trend is more recent. Third-party integrations are sweetening the buy-vs-build deal by doing more for their customers. If an integration knows which user is signed in and their permissions, then it can expose APIs directly to the frontend, and even offer user-facing UIs as part of their service:
+
+- New database tools like Supabase, Hasura, Grafbase, Convex all allow querying from the frontend, and use JWTs to know which user is signed in
+- Embeddable help desk and community tools like Zendesk and Canny use JWTs to know which user is signed in
+- Stripe's user-facing UIs (Checkout, Customer Portal, Payment Element) use a backend API request and session token to know which user is signed in (not a JWT, but still part of the trend!)
+
+The newer a tool is, the more likely it is to allow syncing sessions by JWT.
+
+### It's time to embrace JWTs and disarm the footguns
+
+These trends aren't going anywhere. It's time we embrace JWTs and fix the bad implementations that have stained their reputation:
+
+#### For web developers
+
+Check your application code. If you use stateless JWTs (no database check) and they don't expire in 5 minutes or less, report it to your security team.
+
+#### For authentication tools
+
+Don't generate session JWTs with a lifetime greater than 5 minutes. If developers want to configure a longer lifetime, warn that it's bad practice for XSS attacks.
+
+Provide a refresh mechanism that depends on a HttpOnly cookie in the browser.
+
+#### For integrations
+
+Don't accept session JWTs with a lifetime greater than 5 minutes. If you must, warn developers that it's bad practice for XSS attacks.
+
+Critically, provide developers with a mechanism to send a new JWT after the first JWT expires – don't receive a JWT once and then manage an independent session.
+
+### Really, just expiration?
+
+Yes, long expiration is the #1 most common security mistake with JWTs. It leaves many sites especially vulnerable when XSS attacks or account takeovers occur.
+
+#### Does Clerk do this?
+
+Yes! Clerk's session JWTs default to a 1 minute lifetime, and our refresh mechanism depends on an HttpOnly cookie. We even offer "Active Device" management in our `<UserProfile/>` component so end-users can revoke their own sessions.

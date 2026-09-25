@@ -1,0 +1,214 @@
+# Comparing Clerk Webhooks vs Backend API
+# джерело: https://clerk.com/blog/webhooks-v-bapi
+# отримано: 2026-09-25
+
+This post compares Clerk Webhooks and the Backend API, focusing on their roles in querying user data specifically.
+
+Whether you need to query information about a specific unauthenticated user, a list of users, or synchronize Clerk user data with another system, this comparison will help you choose the best option for your circumstances.
+
+> This guide specifically addresses situations where querying data about unauthenticated users is necessary. For guidance on reading data about the currently authenticated user from your server or client, please refer to A guide to reading authenticated user data from Clerk.
+
+## What is the Backend API?
+
+The Clerk Backend API is designed to query or update information from your Clerk application, such as user data.
+
+You can query users one at a time, or, if you need a list of users, it's possible to effectively batch the query to improve efficiency.
+
+Backend API requests are limited to 100 per 10 seconds for your Clerk application. While the Backend API is straightforward to use, you should be judicious so as not to exceed your request allowance, otherwise, your application might stop working properly.
+
+### How does the Backend API work?
+
+The easiest way to interface with the Backend API is by using a Clerk backend SDK. The most popular option is the JavaScript Backend SDK although there are others.
+
+To retrieve a specific user, call `getUser` with their identifier. This awaitable function returns a Clerk `User` object populated with all the information Clerk stores about the user.
+
+```ts
+const userId = 'user_123'
+
+const response = await clerkClient.users.getUser(userId)
+
+console.log(response)
+
+// _User {
+//   id: 'user_123',
+//   passwordEnabled: true,
+//   totpEnabled: false,
+//   backupCodeEnabled: false,
+//   twoFactorEnabled: false,
+//   banned: false,
+//   locked: false,
+//   createdAt: 1708103362688,
+//   updatedAt: 1708103362701,
+//   imageUrl: 'https://img.clerk.com/eyJ...',
+//   hasImage: false,
+//   primaryEmailAddressId: 'idn_123',
+//   primaryPhoneNumberId: null,
+//   primaryWeb3WalletId: null,
+//   lastSignInAt: null,
+//   externalId: null,
+//   username: null,
+//   firstName: 'Test',
+//   lastName: 'User',
+//   publicMetadata: {},
+//   privateMetadata: {},
+//   unsafeMetadata: {},
+//   emailAddresses: [
+//     _EmailAddress {
+//       id: 'idn_123',
+//       emailAddress: 'testclerk123@gmail.com',
+//       verification: [_Verification],
+//       linkedTo: []
+//     }
+//   ],
+//   phoneNumbers: [],
+//   web3Wallets: [],
+//   externalAccounts: [],
+//   lastActiveAt: null,
+//   createOrganizationEnabled: true
+// }
+```
+
+When you need to fetch a list of users by their IDs, `getUserList` effectively batches `getUser` queries into one. This is not only simpler than sending and handling a sequence of requests, it's more efficient as well. Because this operation initiates only one API call under the hood, your backend request allowance goes further.
+
+```ts
+const userId = ['user_123', 'user_456']
+
+const response = await clerkClient.users.getUserList({ userId })
+
+console.log(response)
+// {
+//   data: [
+//     _User {
+//       id: 'user_123',
+//       passwordEnabled: false,
+//       totpEnabled: false,
+//       backupCodeEnabled: false,
+//       twoFactorEnabled: false,
+//       banned: false,
+//       locked: false,
+//       createdAt: 1707561967007,
+//       updatedAt: 1707561967095,
+//       imageUrl: 'https://img.clerk.com/eyJ...',
+//       hasImage: true,
+//       primaryEmailAddressId: 'idn_123',
+//       primaryPhoneNumberId: null,
+//       primaryWeb3WalletId: null,
+//       lastSignInAt: 1707561967014,
+//       externalId: null,
+//       username: null,
+//       firstName: 'First',
+//       lastName: 'Test',
+//       publicMetadata: {},
+//       privateMetadata: {},
+//       unsafeMetadata: {},
+//       emailAddresses: [Array],
+//       phoneNumbers: [],
+//       web3Wallets: [],
+//       externalAccounts: [Array],
+//       lastActiveAt: 1707523200000,
+//       createOrganizationEnabled: true
+//     },
+//     _User {
+//       id: 'user_456',
+//       passwordEnabled: false,
+//       totpEnabled: false,
+//       backupCodeEnabled: false,
+//       twoFactorEnabled: false,
+//       banned: false,
+//       locked: false,
+//       createdAt: 1707539597250,
+//       updatedAt: 1707539597331,
+//       imageUrl: 'https://img.clerk.com/eyJ...',
+//       hasImage: true,
+//       primaryEmailAddressId: 'idn_456',
+//       primaryPhoneNumberId: null,
+//       primaryWeb3WalletId: null,
+//       lastSignInAt: 1707539597260,
+//       externalId: null,
+//       username: null,
+//       firstName: 'Second',
+//       lastName: 'Test',
+//       publicMetadata: {},
+//       privateMetadata: {},
+//       unsafeMetadata: {},
+//       emailAddresses: [Array],
+//       phoneNumbers: [],
+//       web3Wallets: [],
+//       externalAccounts: [Array],
+//       lastActiveAt: 1707523200000,
+//       createOrganizationEnabled: true
+//     }
+//   ],
+//   totalCount: 2
+// }
+```
+
+While the focus of this post is querying user data, the Backend API also supports manipulating user data with `createUser`, `updateUser`, and specific helpers like `banUser`. Additionally, the Backend API supports similar operations for organizations, sessions, and more.
+
+> Explore everything the Backend API has to offer in the reference documentation.
+
+## What are Clerk Webhooks?
+
+A Webhook is a way for Clerk to send data to another system when specific events happen, such as when a user is created or updated.
+
+They're most commonly used to register events with external systems, send analytics events, and synchronize databases with Clerk.
+
+Think of Webhooks like a notification that automatically sends information to a URL you specify, allowing different systems to react to Clerk to events when they happen.
+
+Webhooks are more complex than calling the Backend API. You need to verify that the request came from Clerk, manage occasional duplicate and out-of-order events, plus handle the asynchronous nature of Webhooks, which can complicate building synchronous workflows such as a custom onboarding flow. Despite these challenges, Webhooks do not enforce any rate limits. Clerk will send as many Webhooks events as your server can handle.
+
+### How do Clerk Webhooks work?
+
+To enable Webhook events, register your Webhook endpoints from the dashboard. Once configured, Clerk will push event data to these endpoints as events occur in your Clerk application.
+
+Example events:
+
+- `user.created`
+- `user.updated`
+- `user.deleted`
+
+> Configure your Webhook endpoints to receive only the necessary event types for your integration. Listening for unnecessary or all events can strain your server, which we strongly advise against.
+
+Clerk uses svix to ensure Webhooks are delivered reliably with retries and other mechanisms.
+
+Flowchart illustrating the process of handling webhooks with Clerk. On the left, the Clerk logo is connected to an event that triggers a webhook, such as user creation. This event is linked to a Clerk-powered application on the right side via the Internet/Local network. Below, the Svix logo is connected to a tunnel (e.g., ngrok, localtunnel), which then routes to the webhook route in your application. The flow shows how events from Clerk trigger webhooks that are routed through Svix and tunnels to reach the application.
+
+> Learn more about Webhooks and how to debug them in the documentation.
+
+## Comparing Webhooks vs Backend API
+
+Below is a table summarizing the differences between Webhooks and the Backend API.
+
+Use it to understand your options at a glance or reference the next time you return to this page.
+
+|                           | Backend API                                         | Webhooks                                                                                                                  |
+| ------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Purpose                   | Directly query and manipulate user data from Clerk. | Used to send events from Clerk to another system, allowing for automated and instantaneous communication between systems. |
+| Model                     | Request/response (manual fetching or polling).      | Event-driven.                                                                                                             |
+| Response handling         | Initiate and `await` API responses.                 | Must handle events asynchronously.                                                                                        |
+| Implementation complexity | Requires API calls, typically simpler to implement. | Requires setting up reliable and secure endpoints to receive Webhooks.                                                    |
+| Scalability               | Dependent on rate limit.                            | Can handle high volumes of events when needed.                                                                            |
+| Reliability               | Highly available.                                   | Dependent on the quality of your Webhook endpoint implementation.                                                         |
+| Example                   | Example functions:  `getUser` and `getUserList`.    | Example events:  `user.created`, `user.updated`, and `user.deleted`.                                                      |
+
+Key differences:
+
+- **Complexity** Using Webhooks to keep your database in sync with Clerk can be more complex than calling the Backend API due to their asynchronous nature.
+- **Rate limits** The Backend API imposes rate limits, which can impede your application's functionality if exceeded. You can often avoid these limits by using alternative methods to read authenticated user data and by batching queries with `getUserList` when appropriate. Unlike the Backend API, Webhooks don't have rate limits. For this reason, synchronizing your database with Clerk using Webhooks is a viable alternative to the Backend API if you are likely to surpass the request allowance.
+- **Always up-to-date** When you query records from the Backend API, you query the freshest data from the source of truth. This is in contrast to reading from a database synchronized with Clerk using Webhooks, which might not have received the latest events yet.
+- **Synchronous vs asynchronous** With the Backend API, you control when to initiate an API call and how to handle the response, making it a predictable method. By comparison, Webhooks provide an asynchronous mechanism to receive and react to events. They are best used for things like sending notifications or updating systems where it isn't critical that the data is immediately up-to-date. For example, an email provider for weekly newsletters or an analytics platform for daily event rollups.
+- **Adding or updating resources** The Backend API is suitable for both querying and manipulating data, unlike Webhooks which can only react to events.
+
+## Guidance
+
+### When the Backend API is better
+
+- **Straightforward access** The Backend API is the most straightforward tool to programmatically query the most up-to-date data from Clerk. It can support a variety of use cases, provided you don't encroach on the rate limits.
+- **Synchronous events** The Backend API's request-response pattern is well-suited to operations that require synchronization or that must act in a serialized fashion, such as an onboarding flow.
+
+### When Webhooks are better
+
+- **Integrations** Webhooks are the preferred method to update external systems with data from Clerk. Use them to notify another system like an email platform or CMS when a new Clerk user is created or if they update their email.
+  Or send events to an analytics platform like Google Analytics or Posthog.
+  You can even use Webhooks to create new user notifications in Discord or Slack!
+- **Synchronizing Clerk with your database** The Backend API limits can be restrictive for certain applications. For instance, a B2C social media application where you frequently need to render user information with their posts. In such cases, you would likely hit the Backend API limit quickly. Webhooks provide a means to synchronize your database with Clerk. You can then query your database to the sidestep rate limit.

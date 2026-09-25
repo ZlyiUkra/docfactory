@@ -1,0 +1,253 @@
+# How Clerk integrates with a Next.js application using Supabase
+# джерело: https://clerk.com/blog/how-clerk-integrates-nextjs-supabase
+# отримано: 2026-09-25
+
+Supabase is one of the most popular backend platforms on the web, but it breaks from traditional architecture patterns when accessing data.
+
+Full-stack applications typically have distinct frontend and backend codebases. When a user needs to access or modify data, the frontend proxy requests through the backend to the database. This prevents third parties from obtaining the connection string used for database operations.  In comparison, Supabase allows you to build applications _without_ a backend, yet still keep your data safe.
+
+In this article, you’ll learn how Supabase functions with Next.js applications, and how Clerk integrates with this configuration.
+
+This article assumes you have familiarity with Next.js and Supabase, and have ideally built an application using them both.
+
+## How Supabase works with Next.js applications
+
+Supabase provides a way to access data from the client directly without going through your own backend.
+
+As a full-stack JavaScript framework, Next.js supports accessing Supabase through server-side code, but most developers take advantage of the Supabase API to gain direct access to the underlying data. In this setup, the client will request data from the database through the API and include an authorization token so that the service can associate the request with a specific user.
+
+To protect the data, Supabase uses a feature of Postgres (the underlying database engine) called Row Level Security (RLS). RLS is a way to secure database tables on a per-record by using policies to evaluate each request and determine if the user making a data access/modification request is authorized to do so on the specific rows.
+
+> To learn a more about how the Supabase API works with RLS, check out our article comparing Supabase Auth and Clerk where we dive deeper into both implementations.
+
+## How Clerk integrates with Next.js and Supabase
+
+When a user signs in with Clerk, they receive short-lived tokens that are used by backend services to validate requests. In a traditional configuration, this would be the backend code you write for your application. As stated in the previous section, applications using Supabase often bypass any custom backend code and send requests directly to Supabase, so there are a few considerations to be taken so that Clerk will work properly with Supabase.
+
+### Verifying JWTs with the JWKS endpoint
+
+In the traditional configuration, Clerk’s SDKs will automatically verify your request using the public key associated with Clerk application.
+
+Supabase does not support this since you do not control the backend code that powers the Supabase APIs. However, Supabase does support integrating with Clerk as a third party authentication provider, where JWTs sent to the Supabase backend will automatically be verified with your Clerk application using the JWKS endpoint for that application.
+
+A JSON Web Key Set (JWKS) is a JSON object that contains a set of keys used to verify the signatures of JWTs. This object is often publicly available through a standard URL so they can be used by external systems and integrations to perform this verification.
+
+The following diagram shows what this flow looks like:
+
+JWT Verification Flow
+
+1. The user signs in using Clerk
+2. Clerk issues JWT to the user
+3. User makes request to Supabase, including JWT
+4. Supabase verifies with the Clerk application JWKS endpoint
+5. Clerk verifies token
+6. Supabase response to the user with the requested data
+
+### Setting the correct role
+
+Supabase supports a number of different roles which each provide different levels of access for managing database and storage operations. The role which the request assumes is set in the JWT itself as the `role` claim.
+
+To adhere to Supabase standards, the `role` in the JWT should be set to `authenticated` so that the request has the correct level of security. The following snippet shows what the claims of the JWT are when properly configured:
+
+```json
+{
+  "app_metadata": {},
+  "aud": "authenticated",
+  "azp": "http://localhost:3000",
+  "email": "brian@clerk.dev",
+  "exp": 1742938129,
+  "iat": 1742938069,
+  "iss": "https://modest-hog-24.clerk.accounts.dev",
+  "jti": "01a722552fe233fc649b",
+  "nbf": 1742938064,
+  "role": "authenticated", // Note the 'role' claim
+  "sub": "user_2s2XJgQ2iQDUAsTBpem9QTu8Zf7"
+}
+```
+
+### Using the Clerk JWT for requests to Supabase
+
+Clerk stores its token in cookies that automatically get sent with every request in the same domain. Without some infrastructure considerations, your Supabase application is likely not going to be accessible on the same domain as your application.
+
+Fortunately, you can obtain the current session token using the `getToken` function of the SDK:
+
+```tsx
+import { useSession } from '@clerk/nextjs'
+
+const { session } = useSession()
+session.getToken()
+```
+
+When creating a Supabase client in your front end, you can provide the token created using the JWT template into the `accessToken` option of the Supabase client:
+
+```tsx
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_KEY!,
+  {
+    // Use the session.getToken() method from Clerk
+    accessToken: () => session?.getToken(),
+  },
+)
+```
+
+This will ensure that each request sent to Supabase will contain the custom token created with the JWT secret so that Supabase can validate it, extract the claims, and use it to access the requested data.
+
+> Interested in more content featuring Supabase? Let us know!
+
+### Using the Clerk user ID in RLS policies
+
+Once the token has been verified, the claims within that token are accessible to Postgres using the built-in `auth.jwt()` function (used to access the JWT claims) and accessing the `sub` claim.
+
+For example, say a `tasks` table has the following RLS policy defined:
+
+```sql
+create policy "select_by_user_id" on tasks
+for select using (auth.jwt()->>'sub' = user_id);
+```
+
+Assuming the Clerk user ID is `user_2s2XJgQ2iQDUAsTBpem9QTu8Zf7`, running a `select` statement will effectively apply a filter to restrict what data is returned as shown below:
+
+```sql
+select * from tasks;
+-- Turns into this:
+select * from tasks where user_id = 'user_2s2XJgQ2iQDUAsTBpem9QTu8Zf7';
+```
+
+This can provide an additional layer of security for applications with a dedicated backend, or save the developer from having to build one in the first place, if implemented properly.
+
+## Examining an implementation of Next.js using Clerk and Supabase
+
+To see this implemented in a real-world application, we’ll explore the code for Quillmate. Quillmate is an open-source, web-based writing tool built with Next.js, Supabase, and Clerk.
+
+> The source code for Quillmate is available on GitHub.
+
+### Configuring the integration
+
+To integrate Supabase with Clerk, you’d start in the Supabase Dashboard and navigate to **Authentication** > **Sign In/Up** > **Third Party Auth** and add Clerk as the provider. The modal that appears will prompt you for a **Clerk Domain**, but also contains a link to open the Supabase Integration Setup page in Clerk to select your application and enable the integration:
+
+Supabase Integration Setup
+
+Once completed, you’ll be provided with the Clerk Domain for your application and instance. You simply need to copy and paste this into the Supabase Dashboard and click **Create connection**.
+
+Supabase now knows that when a JWT is received that was issued by Clerk, it should use the JWKS endpoint available on the provided Clerk Domain for verification. On the Clerk side, the session claims have been updated to include `"role": "authenticated"` with all new JWTs created:
+
+Managed claim
+
+### Accessing Supabase with a Clerk JWT
+
+The following code demonstrates how the JWT template is accessed when creating the Supabase client. This code uses the React Context API to simplify creating and accessing the client with the Clerk `getToken` function, but you may create the client however you need as long as you can pass in the `getToken` function:
+
+```tsx
+'use client'
+
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { useSession } from '@clerk/nextjs'
+import { createContext, useContext, useEffect, useState } from 'react'
+
+type SupabaseContext = {
+  supabase: SupabaseClient | null
+  isLoaded: boolean
+}
+
+const Context = createContext<SupabaseContext>({
+  supabase: null,
+  isLoaded: false,
+})
+
+type Props = {
+  children: React.ReactNode
+}
+
+export default function SupabaseProvider({ children }: Props) {
+  const { session } = useSession()
+  const [supabase, setSupabase] = useState<SupabaseClient | null>(null)
+  const [isLoaded, setIsLoaded] = useState(false)
+
+  useEffect(() => {
+    if (!session) return
+
+    const client = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_KEY!,
+      {
+        accessToken: () => session?.getToken(),
+      },
+    )
+
+    setSupabase(client)
+    setIsLoaded(true)
+  }, [session])
+
+  return (
+    <Context.Provider value={{ supabase, isLoaded }}>
+      {!isLoaded ? <div>Loading...</div> : children}
+    </Context.Provider>
+  )
+}
+
+export const useSupabase = () => {
+  const context = useContext(Context)
+  if (context === undefined) {
+    throw new Error('useSupabase must be used within a SupabaseProvider')
+  }
+  return {
+    supabase: context.supabase,
+    isLoaded: context.isLoaded,
+  }
+}
+```
+
+For the sake of this explanation, the only table of interest is the `articles` table. The `articles` table itself has a relatively simple schema:
+
+```sql
+create table if not exists public.articles (
+  id bigint primary key generated always as identity,
+  title text not null,
+  content text not null,
+  user_id text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+```
+
+Quillmate will request a list of records from the `articles` table using the following code. Note that I am not leveraging the user ID within these queries. This is because the Clerk/Supabase integration will automatically parse the user ID from the request.
+
+```tsx
+const { data, error } = await supabase
+  .from('articles')
+  .select('*')
+  .order('updated_at', { ascending: false })
+```
+
+And is protected from the following RLS policies. Note the use of `auth.jwt()->>'sub'` which extracts the `sub` claim (which is the user ID) from the JWT used on the request and compares it with the `user_id` column in the table.
+
+```sql
+CREATE POLICY "Users can view their own articles"
+  ON public.articles
+  FOR SELECT
+  USING (auth.jwt()->>'sub' = user_id);
+
+CREATE POLICY "Users can create their own articles"
+  ON public.articles
+  FOR INSERT
+  WITH CHECK (auth.jwt()->>'sub' = user_id);
+
+CREATE POLICY "Users can update their own articles"
+  ON public.articles
+  FOR UPDATE
+  USING (auth.jwt()->>'sub' = user_id);
+
+CREATE POLICY "Users can delete their own articles"
+  ON public.articles
+  FOR DELETE
+  USING (auth.jwt()->>'sub' = user_id);
+```
+
+## Conclusion
+
+Building an application with Supabase can challenge the architectural norms that developers have used for decades. However, once you properly understand how the data is accessed and secured by Supabase, building with this new approach can save development time and potentially increase table security by ensuring that each request is evaluated with RLS on a row-by-row basis.
+
+This includes B2B applications, which is covered in our follow up article on building multi-tenancy applications with Supabase and Clerk.

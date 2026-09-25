@@ -1,0 +1,147 @@
+# Next.js SSR authentication with Clerk
+# джерело: https://clerk.com/blog/next-js-ssr-authentication-with-clerk
+# отримано: 2026-09-25
+
+## What is Server-Side Rendering (SSR) for React?
+
+**Update (11/2/2023):** The code examples shown in this post have been deprecated. For the most up-to-date code examples on how to use Clerk with Next.js SSR, read the documentation. Additionally we have a new blog.
+
+React was originally built to run on the client. Once React started, hooks would run to load data, and eventually a full page would be generated.
+
+But since React is just a Javascript library, there was no reason it couldn't run on a server, too. **Server-side rendering** (SSR) runs React on the server to generate a page's initial HTML (a.k.a the first _render_), then runs React again on the client to provide reactivity.
+
+Server-side rendering is particularly helpful for pages that must be indexed in search engines, since search engines cannot index pages that are rendered client-side.
+
+The bigger benefit, though, is that server-side render can reduce the complexity of an application and lead to fewer lines of code. This is especially true in the modern era, where frameworks like Next.js provide helpers that drastically reduce the setup time for SSR.
+
+### How to use SSR with Next.js?
+
+Server-side rendering can be used by including `export async function getServerSideProps()` on any pages you need SSR. Below is an example of how a page would look when using SSR:
+
+```jsx
+function Page({ data }) {
+  // use the data on our page
+  ;<div>{data.content}</div>
+}
+
+export async function getServerSideProps() {
+  // Fetch data from an API
+  const res = await fetch(`https://api.example.com/data`)
+  const data = await res.json()
+
+  // Pass data to the page via props
+  return { props: { data } }
+}
+
+export default Page
+```
+
+This example retrieves some data from api.example.com. Then, we pass the data to the UI using the return statement. Finally, in the UI, we present the data to the user.
+
+_You can read more about Server-side rendering in the Next.js SSR documentation._
+
+Now that you have a basic understanding of how SSR works, let us investigate how Clerk and SSR can work together.
+
+## How to use Clerk with SSR?
+
+Clerk allows you to verify a user is authenticated and to retrieve user profile data when using SSR. Below, we will cover how to implement both.
+
+### Securing pages with SSR
+
+With Clerk and Next.js SSR, we can check if the user is authenticated and, if not, redirect them to the sign-in page without rendering anything on the client. Clerk provides a helper called `withServerSideAuth`, which allows you to access authentication information:
+
+```jsx
+import { withServerSideAuth } from '@clerk/nextjs/ssr'
+
+export const getServerSideProps = withServerSideAuth(({ req, resolvedUrl }) => {
+  const { sessionId } = req.auth
+
+  if (!sessionId) {
+    return { redirect: { destination: '/sign-in?redirect_url=' + resolvedUrl } }
+  }
+
+  return { props: {} }
+})
+```
+
+The snippet above checks to see if there is a session. If not, it will redirect the user to the sign-in page. Once the user has successfully authenticated, Clerk will redirect the user back to the page they were initially trying to access. Here is a quick GIF showing the process in action.
+
+Next Js Ssr Authentication With Clerk guide illustration
+
+_If you want to see it in action, check out this fully functional example that contains all the code you need for SSR authentication with a redirect back._
+
+### Retrieving userId or JWT templates
+
+Server-side rendering gives you the opportunity to retrieve data from 3rd party APIs and your own database. When using Clerk, you have the option of retrieving the user ID, or if you are using a Clerk integration such as Hasura you can also retrieve the JWT ready for use.
+
+Below is an example of retrieving a Hasura JWT token ready to retrieve data before sending the page to the user.
+
+```jsx
+import { withServerSideAuth } from '@clerk/nextjs/ssr'
+
+export const getServerSideProps = withServerSideAuth(async ({ req }) => {
+  const { sessionId, getToken } = req.auth
+
+  if (!sessionId) {
+    return { redirect: { destination: '/sign-in?redirect_url=' + resolvedUrl } }
+  }
+  // use a token for your Clerk integrations
+  const hasuraToken = await getToken({ template: 'hasura' })
+
+  // retrieve data from your Hasura integration
+
+  return { props: {} }
+})
+```
+
+If you aren’t using a JWT template or a Clerk integration you can just retrieve the userId and use that against your own database.
+
+```jsx
+import { withServerSideAuth } from '@clerk/nextjs/ssr'
+
+export const getServerSideProps = withServerSideAuth(async ({ req }) => {
+  const { sessionId, userId } = req.auth
+
+  if (!sessionId) {
+    return { redirect: { destination: '/sign-in?redirect_url=' + resolvedUrl } }
+  }
+
+  // use the userId to retrieve your own data
+
+  return { props: {} }
+})
+```
+
+## Enabling Full SSR Mode
+
+In some cases, you may need the full User object available to you. For example, if you need to retrieve the user’s primary email address
+
+Clerk can use an additional network request to retrieve the full User object. To enable it, you will need to add `{ loadUser: true }` to your SSR request. Then, the complete User object will be available:
+
+```jsx
+import { withServerSideAuth } from '@clerk/nextjs/ssr'
+
+export const getServerSideProps = withServerSideAuth(
+  async ({ req, resolvedUrl }) => {
+    const { sessionId, getToken, userId } = req.auth
+    // retrieve the user object
+    const { user } = req
+    // return the users primary email address.
+    const email = user.emailAddresses.find((email) => {
+      return email.id === user.primaryEmailAddressId
+    })
+
+    // retrieve data using the email address.
+    const data = getDataFromEmail(email)
+
+    return { props: { data } }
+  },
+  { loadUser: true },
+)
+```
+
+## **Ready to add auth to your app?**
+
+Be sure to visit our Next.js authentication with Clerk page today to better understand how you can add authentication in minutes - not weeks.
+
+Want to connect with other developers? Join our Discord community or follow @clerk on X to stay up to date with the latest features, improvements, and sneak peeks to Clerk.

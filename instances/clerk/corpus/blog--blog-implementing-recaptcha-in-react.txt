@@ -1,0 +1,405 @@
+# Implementing reCAPTCHA in React
+# джерело: https://clerk.com/blog/implementing-recaptcha-in-react
+# отримано: 2026-09-25
+
+reCAPTCHA is a free service provided by Google that protects websites from spam and abuse by using risk analysis techniques to differentiate between humans and bots.
+
+Developers can use reCAPTCHA to detect and block malicious user sign-ups, usually automated bots that attempt to create fake accounts. Additionally, reCAPTCHA acts as a guardrail against data scraping bots accessing and collecting information from a website, ensuring the protection of sensitive information.
+
+In this article, you'll learn about reCAPTCHA and how to implement it on your own site. More specifically, you'll create a sign-up form in a React application and use reCAPTCHA to verify that the user is a human before they can submit that form.
+
+## What Is reCAPTCHA?
+
+Before you implement reCAPTCHA on your website, let's take a look at how it works and its common use cases.
+
+### How reCAPTCHA Works
+
+When users visit a website with reCAPTCHA enabled, they're presented with a challenge they must complete to prove that they're human. This challenge can take several forms:
+
+- **An image challenge:** The user is presented with a distorted image of letters and numbers and asked to type the characters they see into a text box.
+- **An audio challenge:** Instead of images, an audio recording of letters and numbers is used and the user is asked to type the characters they hear into a text box.
+- **A No CAPTCHA reCAPTCHA:** The user is asked to click on a checkbox to indicate that they're not a robot. In some cases, Google might also ask the user to complete a separate image or audio challenge if it needs further proof that the user is human. You'll use this type of reCAPTCHA in the tutorial later in this article.
+
+Once the user completes the challenge, the website will receive a response from the reCAPTCHA server indicating whether the user is human or not. Based on this response, the website can decide whether to allow the user to access certain pages or forms or deny access if it determines that the user is likely a bot.
+
+Note that there's also a form of reCAPTCHA that doesn't actually present a challenge to the user. Instead, the system uses advanced risk analysis techniques to determine whether the user is human. This method is called _invisible reCAPTCHA_.
+
+### reCAPTCHA Use Cases
+
+These are some prominent use cases for reCAPTCHA:
+
+- **Preventing spam and bots on online forms:** This is a top use case. reCAPTCHA can protect online forms such as survey forms, blog post comment forms, and customer feedback from spamming bots.
+
+- **Protecting login pages:** reCAPTCHA can be used to protect login pages from automated bots trying to gain unauthorized access by brute-force attacks. Requiring a user to solve a reCAPTCHA challenge before completing the login process makes it much more difficult for bots to gain access to an account.
+
+- **Preventing scraping and data harvesting:** Adding reCAPTCHA verification stops automated bots from accessing the website, which stops attempts at data scraping and harvesting at an early stage. For example, Cloudflare runs bot checks as a measure to prevent bots from opening websites and scraping data.
+
+## Implementing reCAPTCHA in Your React Application
+
+In this tutorial, you'll create a newsletter sign-up page to collect users' email addresses and names using React. You'll then add a reCAPTCHA to the sign-up form on this page to verify if the user is a human and filter out bots and spam.
+
+Before getting started, ensure that you have the following installed on your computer:
+
+- Node.js (version 16 or above)
+- npm (version 8 or above)
+- A code editor (Visual Studio Code is recommended)
+
+You can also clone this GitHub repository to try the example application.
+
+### Set Up a React Project
+
+Open your terminal and run the following command to initialize a React project using Create React App:
+
+```bash
+npx create-react-app react-recaptcha-example -y
+```
+
+Now change the directory to the project and open it in your code editor:
+
+```bash
+cd react-recaptcha-example
+```
+
+First, update the title on the `public/index.html` page to "reCAPTCHA example".
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    <!-- Rest meta tags -->
+    <title>reCAPTCHA example</title>
+  </head>
+  <body>
+    <!-- Rest of the body -->
+  </body>
+</html>
+```
+
+Then, open the **src/App.js** file to update the application to show a simple `<h1>` tag with "Sign up for Newsletter" as the content.
+
+```jsx
+function App() {
+  return (
+    <div>
+      <h1>Sign up for Newsletter</h1>
+    </div>
+  )
+}
+
+export default App
+```
+
+Run `npm start` in the terminal to start the application. This command will run the React application on `http://localhost:3000` and open it in your default browser.
+
+Initial layout
+
+The initial setup is now ready. Next, you'll create the sign-up form for the newsletter.
+
+### Create a Sign-Up Form
+
+To create a sign-up form, open the **App.js** file in the code editor and add a `form` element in the `App` component. In the `form` element, add two input boxes—`Email` and `Name`—to collect the user's email address and name. To allow users to submit the form, add a `button` in the `form`.
+
+To track the input value of the two input fields, create two state variables: `email` and `name`. Add the `onChange` event handler on the `input` elements to update the input value using `setEmail` and `setName` functions:
+
+```jsx
+import { useState } from 'react'
+import './App.css'
+
+function App() {
+  const [email, setEmail] = useState('')
+  const [name, setName] = useState('')
+  return (
+    <div>
+      <h1>Sign up for Newsletter</h1>
+      <form>
+        <input
+          name="Email"
+          type={'email'}
+          value={email}
+          required
+          placeholder="joe@example.com"
+          onChange={(event) => setEmail(event.target.value)}
+        />
+        <input
+          name="Name"
+          type={'name'}
+          value={name}
+          required
+          placeholder="Joe"
+          onChange={(event) => setName(event.target.value)}
+        />
+        <button type="submit">Sign up</button>
+      </form>
+    </div>
+  )
+}
+
+export default App
+```
+
+You'll see a basic sign-up form, as shown below:
+
+Basic sign-up form
+
+While functional, this form doesn't look very stylish. To make it look nicer, open the **App.css** file, remove all existing styles, and paste the CSS rules from below to align the form in the center and add some padding:
+
+```css
+h1 {
+  text-align: center;
+}
+
+form {
+  margin: 40px auto;
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+}
+
+input {
+  margin-bottom: 20px;
+  padding: 5px;
+  border-radius: 5px;
+}
+
+button {
+  padding: 5px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+}
+```
+
+After you add the above styles, the sign-up form should look more welcoming.
+
+Sign-up form with styles
+
+### Configure reCAPTCHA
+
+Now that the sign-up form is ready, it's time to configure the reCAPTCHA verification. To use Google's reCAPTCHA, you must register a site on the reCAPTCHA admin console.
+
+In the admin console, use `react-example` as the **Label**. Then, select **reCAPTCHA v2 > "I'm not a robot" Checkbox** as the reCAPTCHA type.
+
+Add the domains where you want to use the reCAPTCHA, starting with `localhost`.
+
+Register form
+
+Select **Accept the reCAPTCHA Terms of Service** and click **Submit**.
+
+On the next page, click on **COPY SITE KEY** and **COPY SECRET KEY** to copy the values.
+
+Copy site and secret key
+
+Now create a new `.env` file in your project and paste these values, as shown below:
+
+```bash
+REACT_APP_SITE_KEY=<from-admin-dashboard>
+SITE_SECRET=<from-admin-dashboard>
+```
+
+_Note:_ You must append environment variables used in Create React App with `REACT_APP_`, as per the documentation.
+
+To use the reCAPTCHA in your React application, install the react-google-recaptcha npm package by running the following command:
+
+```bash
+npm i react-google-recaptcha
+```
+
+In the **App.js** file, import the `ReCAPTCHA` component and place it below the `<button>`. Pass the `siteKey` prop and assign it to the `process.env.REACT_APP_SITE_KEY` so Google can recognize your reCAPTCHA:
+
+```jsx
+import { useState } from 'react'
+import './App.css'
+import ReCAPTCHA from 'react-google-recaptcha'
+
+function App() {
+  const [email, setEmail] = useState('')
+  const [name, setName] = useState('')
+  return (
+    <div>
+      <h1>Sign up for Newsletter</h1>
+      <form>
+        <input
+          name="Email"
+          type={'email'}
+          value={email}
+          required
+          placeholder="joe@example.com"
+          onChange={(event) => setEmail(event.target.value)}
+        />
+        <input
+          name="Name"
+          type={'name'}
+          value={name}
+          required
+          placeholder="Joe"
+          onChange={(event) => setName(event.target.value)}
+        />
+        <button type="submit">Sign up</button>
+        <ReCAPTCHA sitekey={process.env.REACT_APP_SITE_KEY} />
+      </form>
+    </div>
+  )
+}
+
+export default App
+```
+
+You'll now see the reCAPTCHA rendering inside the `form`:
+
+reCAPTCHA rendering
+
+### Test reCAPTCHA
+
+To test the reCAPTCHA on form submission, you need to call the `getValue` method on the reCAPTCHA instance and verify its value. For this, you need to keep a reference to the reCAPTCHA component, which you can do using the `useRef` hook.
+
+Create a `recaptcha` reference using the `useRef` hook and assign it as the value for the `ref` prop on the `ReCAPTCHA` component:
+
+```jsx
+import { useRef, useState } from 'react'
+import './App.css'
+import ReCAPTCHA from 'react-google-recaptcha'
+
+function App() {
+  const recaptcha = useRef()
+  const [email, setEmail] = useState('')
+  const [name, setName] = useState('')
+  return (
+    <div>
+      <h1>Sign up for Newsletter</h1>
+      <form>
+        {/* input elements*/}
+        <button type="submit">Sign up</button>
+        <ReCAPTCHA ref={recaptcha} sitekey={process.env.REACT_APP_SITE_KEY} />
+      </form>
+    </div>
+  )
+}
+
+export default App
+```
+
+To handle form submission, create a `submitForm` function that'll execute on the form `submit` event and verify the reCAPTCHA before form submission.
+
+To verify the reCAPTCHA, the `submitForm` function calls the `getValue` method on the `recaptcha` ref object. The `getValue` method returns a token or `undefined`. If it's a token, the user has verified themselves. Otherwise, you show them an alert. Add the `submitForm` to the `onChange` event handler on the `form` element:
+
+```jsx
+import { useRef, useState } from 'react'
+import './App.css'
+import ReCAPTCHA from 'react-google-recaptcha'
+
+function App() {
+  const recaptcha = useRef()
+  const [email, setEmail] = useState('')
+  const [name, setName] = useState('')
+
+  async function submitForm(event) {
+    event.preventDefault()
+    const captchaValue = recaptcha.current.getValue()
+    if (!captchaValue) {
+      alert('Please verify the reCAPTCHA!')
+    } else {
+      // make form submission
+      alert('Form submission successful!')
+    }
+  }
+
+  return (
+    <div>
+      <h1>Sign up for Newsletter</h1>
+      <form onSubmit={submitForm}>{/* other elements */}</form>
+    </div>
+  )
+}
+
+export default App
+```
+
+### Server-Side Validation
+
+So far, you've only checked if the user verified themselves using the reCAPTCHA, but you have yet to determine whether the token value is valid. If you open your reCAPTCHA admin console, you'll see the following message.
+
+Warning message on reCAPTCHA console
+
+To rectify this, you can request Google's reCAPTCHA verify API to confirm whether the provided token is valid. As this operation requires you to share the `SITE_SECRET` with Google, you must handle this operation on the server side for security reasons.
+
+You can create a simple HTTP server using Node.js to implement the server-side validation. To quickly create a Node.js server, you need the following dependencies:
+
+- `express`: to create the server application
+- `axios`: to make network requests on the server side
+- `cors`: to allow requests coming from a different origin (localhost: 3000)
+- `dotenv`: to read the environment variables from the `.env` file
+
+Run the following command to install all these dependencies:
+
+```bash
+npm i express axios dotenv cors
+```
+
+Now create the new file **server.js**, and set up a server that listens on port `8000`. Use the `cors` middleware to allow incoming requests from all origins and the `express.json` middleware to parse the JSON payload in the request body. Retrieve the `SITE_SECRET` from the environment variables.
+
+The server accepts POST requests on the `/verify` route. In the POST request handler, you use the Google reCAPTCHA API to verify the `captchaValue` sent in the request body. You then send the response back to the user with the data returned from the reCAPTCHA API:
+
+```js
+require('dotenv').config()
+const express = require('express')
+const cors = require('cors')
+const axios = require('axios')
+const app = express()
+const port = 8000
+
+const SITE_SECRET = process.env.SITE_SECRET
+
+app.use(cors())
+app.use(express.json())
+
+app.post('/verify', async (request, response) => {
+  const { captchaValue } = request.body
+  const { data } = await axios.post(
+    `https://www.google.com/recaptcha/api/siteverify?secret=${SITE_SECRET}&response=${captchaValue}`,
+  )
+  response.send(data)
+})
+
+app.listen(port, () => {
+  console.log(`Server listening at ${port}`)
+})
+```
+
+Run **node server.js** to start the server application.
+
+On the frontend, you need to update the `submitForm` method to send the `captchaValue` to the `/verify` endpoint in a POST request. In the **App.js** file, update the `submitForm` function to request the `http://localhost:8000/verify` endpoint for server-side validation and show the user an alert based on whether the validation was successful using the returned `success` property on the response data:
+
+```js
+async function submitForm(event) {
+  event.preventDefault()
+  const captchaValue = recaptcha.current.getValue()
+  if (!captchaValue) {
+    alert('Please verify the reCAPTCHA!')
+  } else {
+    const res = await fetch('http://localhost:8000/verify', {
+      method: 'POST',
+      body: JSON.stringify({ captchaValue }),
+      headers: {
+        'content-type': 'application/json',
+      },
+    })
+    const data = await res.json()
+    if (data.success) {
+      // make form submission
+      alert('Form submission successful!')
+    } else {
+      alert('reCAPTCHA validation failed!')
+    }
+  }
+}
+```
+
+The reCAPTCHA validation flow is now complete. See it in action below.
+
+View video
+
+## Conclusion
+
+In this article, you learned the importance of reCAPTCHA validation and how to use it to prevent malicious users from misusing your application. By following this tutorial, you successfully created a sign-up form with reCAPTCHA validation and you also created a Node.js server to further validate the reCAPTCHA value for better security.
+
+Clerk provides an easy way to add authentication and user management to your application. It offers beautiful components ready to plug into your application and build the authentication flow in no time. If you're looking for a complete authentication and identity platform, sign up to try Clerk today.

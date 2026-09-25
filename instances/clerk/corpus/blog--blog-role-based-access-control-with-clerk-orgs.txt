@@ -1,0 +1,176 @@
+# Role based access control with Clerk Organizations
+# джерело: https://clerk.com/blog/role-based-access-control-with-clerk-orgs
+# отримано: 2026-09-25
+
+Managing permissions in large SaaS applications can be a nightmare.
+
+Providing team owners a way to grant functionality to users in a simplified way can be the difference between companies purchasing your software or going with a competitor. Clerk provides you with a way to build this functionality with minimal effort. By utilizing roles and permissions built into Organizations, you can implement role-based access control for your users.
+
+> RBAC is essential for B2B applications. Learn more about our B2B SaaS solution for comprehensive enterprise features.
+
+In this article, you'll learn how roles and permissions in Clerk can be used to allow functionality within an application for a user based solely on the role they are assigned.
+
+## What is Role-Based Access Control?
+
+Role-Based Access Control (RBAC) is a method of managing application security by granting permissions to systems based on the role assigned to the user.
+
+When a user signs into an application, they provide their credentials to prove their identity. This process of the user proving _who they are_ is known as Authentication in cybersecurity. Role-based access control is involved in the process of Authorization, which is identifying _what they can do_.
+
+With RBAC, individual permissions can be linked to one or more roles. Roles are often correlated to the job function of the user, granting them access to everything they need to fulfill their duties while preventing them from having access to what they don't need.
+
+As your system evolves, you can simply update the permissions assigned to a given role to grant those members access to new functionality. This approach to security makes security management easier compared to assigning permissions to individual users.
+
+## Implement RBAC with organizations
+
+The example used in this article is built on the concept of a team-based task management app built with Next.js, where each team is an organization in Clerk.
+
+There will be three roles each with a different set of permissions included. Based on the role assigned to the user, their ability to perform operations within the app will vary. The following diagram demonstrates how three separate users with different roles will inherit their permissions:
+
+- Charlie will have the Viewer role and can view the tasks, but not create or modify them.
+- Bob has the Member and will be able to add and edit their own tasks, but not tasks created by another user.
+- Alice will have the Manager role and will be able to manage all tasks in the organization.
+
+A diagram showing how permissions roll into roles and are then assigned to users.
+
+The code referenced in this article is open-source and can be accessed on GitHub in the `article-3` branch.
+
+## Defining custom roles and permissions
+
+When you enable organizations for a Clerk application, there are two default roles and a set of default permissions.
+
+The Admin role contains all of the necessary permissions to manage the organization and its members, and the Member role can view the active organization, but not manage it. Developers can create custom roles and permissions that can be assigned by organization administrators as well, located in the Clerk dashboard in the **"Organization settings"** of the side nav under **"Roles"** and **"Permissions"** respectively.
+
+In this example, there are three custom permissions created:
+
+| Name         | Key          | Description                       |
+| ------------ | ------------ | --------------------------------- |
+| Manage tasks | tasks:manage | Allow users to edit all tasks.    |
+| Edit tasks   | tasks:edit   | Allows users to edit their tasks. |
+| View tasks   | tasks:view   | Allows users to view tasks.       |
+
+There are also two custom roles created, and the Member role is updated to include the `View tasks` and `Edit tasks` permissions:
+
+| Name     | Key     | Description                                                     | Permissions                                        |
+| -------- | ------- | --------------------------------------------------------------- | -------------------------------------------------- |
+| Manager  | manager | Users with this role can create tasks and edit all tasks.       | View tasks, Edit tasks, Manage tasks, Read Members |
+| Member\* | member  | Users with this role can create tasks and edit their own tasks. | View tasks, Edit tasks, Read members               |
+| Viewer   | viewer  | Users with this role can only view tasks.                       | View tasks, Read members                           |
+
+- The Member role is a default role.
+
+Now when a user is invited, administrators can set their role even before they accept the invitation.
+
+The Clerk user invite modal with brian@clerk.dev populated in the text area and a red arrow pointing to a dropdown showing the Admin role selected.
+
+## Adjusting functionality based on permissions
+
+A role defines a set of permissions, but the permissions themselves should dictate what parts of the application users within that role have access to.
+
+Clerk provides a set of authorization helper functions that can be used to check if the active user has a specific set of permissions and appropriately adjust the way the application behaves. The following example demonstrates how the `has()` function can be used with the name of the permission to determine if the user can create or edit tasks:
+
+filename: src/app/security.ts
+```ts
+import { auth } from '@clerk/nextjs/server'
+
+export function canCreateTasks() {
+  const { sessionClaims, has } = auth()
+  if (!isLicensed()) return false
+  let canCreateTasks = false
+  // 👉 If there is no org, it's the user's personal account
+  if (!sessionClaims?.org_id) {
+    canCreateTasks = true
+  }
+  // 👉 Check to make sure the user has the 'org:tasks:edit' permission
+  if (sessionClaims?.org_id && has({ permission: 'org:tasks:edit' })) {
+    canCreateTasks = true
+  }
+  return canCreateTasks
+}
+
+export function canEditTask(createdById: string) {
+  if (!isLicensed()) return false
+  const { userId, sessionClaims, has } = auth()
+  let canEditTask = false
+  // 👉 If there is no org, it's the user's personal account
+  if (!sessionClaims?.org_id) {
+    canEditTask = true
+  } else {
+    // 👉 If the user has the 'org:tasks:manage' permission, they can edit any task
+    if (has({ permission: 'org:tasks:manage' })) {
+      canEditTask = true
+      // 👉 If the user has the 'org:tasks:edit' permission AND the user IDs match, they can edit this task
+    } else if (has({ permission: 'org:tasks:edit' }) && createdById === userId) {
+      canEditTask = true
+    }
+  }
+  return canEditTask
+}
+```
+
+These security functions are passed into the rendered components to determine if they should be disabled:
+
+filename: src/app/page.tsx
+```tsx
+<div className="flex flex-col">
+  <AddTaskForm disabled={!canCreateTasks()} />
+  <div className="flex flex-col gap-2 p-2">
+    {tasks.map((task) => (
+      <TaskRow key={task.id} task={task} disabled={!canEditTask(task.created_by_id)} />
+    ))}
+  </div>
+</div>
+```
+
+The security functions can also be used to verify user's permissions in server actions. The following function is executed when the user wants to create a task. By leveraging the `canCreateTasks()` function, an erorr is thrown if the user attempts to do something they are not permitted to do:
+
+filename: src/app/actions.ts
+```ts
+import { canCreateTasks, getUserInfo } from './security'
+
+export async function createTask(name: string) {
+  if (!canCreateTasks()) {
+    throw new Error('User not permitted to create tasks')
+  }
+
+  const { userId, ownerId } = getUserInfo()
+  await sql`
+    insert into tasks (name, owner_id, created_by_id) values (${name}, ${ownerId}, ${userId});
+  `
+}
+```
+
+## Working directly with roles and permissions
+
+While Clerk offers a simple way to check the active user's permissions out of the box, there may be a situation where you want to check their roles or permissions manually.
+
+By default, a user's organizational permissions can be accessed through the `sessionClaims` object of the `auth()` function:
+
+```ts
+const { sessionClaims } = auth()
+```
+
+This gives you the flexibility to leverage the roles and permissions as you see fit. The following sample shows the structure of the `sessionClaims` if a user has selected an organization:
+
+```json
+{
+  "azp": "http://localhost:3005",
+  "exp": 1721770193,
+  "iat": 1721770133,
+  "iss": "https://assuring-cod-50.clerk.accounts.dev",
+  "jti": "daeb648e4c6dbfbdd2ce",
+  "nbf": 1721770123,
+  "org_id": "org_2ieWEfZl0M6ccS1Ap1XVRbEm9Kk",
+  "org_metadata": {
+    "isLicensed": true
+  },
+  "org_permissions": ["org:tasks:edit", "org:tasks:view", "org:tasks:manage"],
+  "org_role": "org:manager",
+  "org_slug": "d2-gamers",
+  "sid": "sess_2jfFHBJQpqzwZbnwHXti0yxCz1G",
+  "sub": "user_2iVvo8iFCJQJ1WCXeBk5T9lUTO5"
+}
+```
+
+## Conclusion
+
+With minimal effort, role-based access control is made accessible to applications of any size using organizations in Clerk. By checking the list of permissions a user has based on their assigned role, you can easily enable different areas of your application, or restrict functionality.

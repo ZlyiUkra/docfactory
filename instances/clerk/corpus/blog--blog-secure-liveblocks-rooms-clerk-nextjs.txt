@@ -1,0 +1,135 @@
+# How to secure Liveblocks Rooms with Clerk in Next.js
+# джерело: https://clerk.com/blog/secure-liveblocks-rooms-clerk-nextjs
+# отримано: 2026-09-25
+
+Real-time apps make life seamless, but without proper security, they can expose users’ most sensitive information in an instant.
+
+Liveblocks is a platform that enables developers to build collaborative platforms faster with real-time APIs.  Liveblocks takes a component-driven approach to development, where wrapping areas of your application in one of the provided components will automatically add real-time interaction for your users. When coupled with Clerk, you can not only secure your Liveblocks-enabled application but also integrate user information for easy traceability.
+
+In this article, you’ll learn how to configure Clerk and Liveblocks to ensure that only authorized users can access Liveblocks rooms.
+
+## What is Liveblocks?
+
+Liveblocks is a platform that enables developers to easily integrate collaborative features and custom real-time functionality within their applications.
+
+Using one of their pre-built components, you can easily add functionality like comments, mentions, notifications, live text editors, and multiplayer canvas collaboration. One of the core entities of Liveblocks is the Room, which is essentially an isolated, virtual space where users can collaborate. Each project contains multiple rooms for users to enter to collaborate with others currently active in that room.
+
+When developing a solution with Liveblocks, Rooms will often be a one-to-one mapping with an entity in your application.
+
+## How room security works
+
+Rooms also offer a security boundary that can be configured to only allow access to users who should have access.
+
+By default, everyone has access to a room based on the public key that’s embedded into the application. You can also request a security token whenever the room is being accessed. This is done using a specially crafted API endpoint that is called during the initialization process. Using this API endpoint for security provides an opportunity to check what the current user should have access to.
+
+Using a Next.js route, you can use Clerk to check the currently logged-in user and perform any necessary security checks to make sure the user has access to what they are requesting before issuing a security token.
+
+## The Liveblocks authorization route
+
+As mentioned in the previous section, you’ll need to create an API route in Next.js to use with Liveblocks.
+
+For context, this article is built around the concept of a team-based task manager, where multiple people can share task lists using organizations in Clerk. The following code snippet defines the route needed to perform the necessary checks, including:
+
+- Check that the request is being made by an authenticated user.
+- Check the database to ensure the task exists.
+- Verify that the user is permitted to work with that task based on their ID or the active organization ID.
+- Create the Liveblocks session token and include the necessary user details to display the user within Liveblocks components.
+
+filename: src/api/liveblocks-auth/route.ts
+```ts
+import { getOneTask } from '@/app/actions'
+import { useSession } from '@clerk/nextjs'
+import { auth, currentUser } from '@clerk/nextjs/server'
+import { Liveblocks } from '@liveblocks/node'
+
+export async function POST(req: Request) {
+  // Use Clerk to get the session claims for the current user.
+  // Return a 401 response if the claims are not present (the user is not logged in)
+  const { sessionClaims } = auth()
+  if (!sessionClaims) {
+    return new Response('Not authorized', { status: 401 })
+  }
+
+  // Use Clerk to get more details about the current user.
+  const user = await currentUser()
+  if (!user) {
+    return new Response('Not authorized', { status: 401 })
+  }
+
+  // Parse the task ID from the request and query it from the database
+  const { room } = await req.json()
+  const [task] = await getOneTask(+room)
+  if (!task) {
+    return new Response('Not authorized', { status: 401 })
+  }
+
+  // If the task was not created by the user or within the organization,
+  // send back a 401
+  if (task.owner_id !== user.id && task.owner_id !== sessionClaims?.org_id) {
+    return new Response('Not authorized', { status: 401 })
+  }
+
+  // All security checks passed so create the session and include the name and
+  // avatar of the user, which will be shown within Liveblocks components
+  const liveblocks = new Liveblocks({
+    secret: process.env.LIVEBLOCKS_SECRET_KEY as string,
+  })
+  const session = liveblocks.prepareSession(user.id, {
+    userInfo: {
+      name: user.fullName,
+      avatar: user.imageUrl,
+    },
+  })
+  session.allow(room, session.FULL_ACCESS)
+  const { body, status } = await session.authorize()
+
+  // Return the response
+  return new Response(body, { status })
+}
+```
+
+## Configure `LiveblocksProvider` to use the authorization route
+
+With the auth API route configured, the next step is to tell Liveblocks to use it.
+
+Luckily this is a relatively straightforward process. If you’ve followed the Liveblocks quickstart for Next.js, your `LiveblocksProvider` probably looks similar to this:
+
+```tsx
+function ChatRoom({ taskId, children }: { taskId: number; children: ReactNode }) {
+  return (
+    <LiveblocksProvider publicApiKey={'pk_dev_06dAgs...'}>
+      <RoomProvider id={`${taskId}`}>
+        <ClientSideSuspense fallback={<div>Loading…</div>}>{children}</ClientSideSuspense>
+      </RoomProvider>
+    </LiveblocksProvider>
+  )
+}
+```
+
+The only change we need to perform is to replace the `publicApiKey` prop with the `authEndpoint` prop and set the value of that prop to the API route you want to use:
+
+```tsx
+function ChatRoom({ taskId, children }: { taskId: number; children: ReactNode }) {
+  return (
+    <LiveblocksProvider authEndpoint="/api/liveblocks-auth">
+      <RoomProvider id={`${taskId}`}>
+        <ClientSideSuspense fallback={<div>Loading…</div>}>{children}</ClientSideSuspense>
+      </RoomProvider>
+    </LiveblocksProvider>
+  )
+}
+```
+
+And that’s it! From now on, Liveblocks will use the configured API route to create the security tokens used to access Liveblock room data.
+
+## See it in action
+
+The following animation demonstrates what to expect when this integration is properly implemented. Note how commenting on specific tasks also displays the user’s name and avatar, which is populated from the Clerk data when the security token is created:
+
+View video
+
+The above demo is from an open-source project, which you can explore in more detail on GitHub.
+
+## Conclusion
+
+After reading this article you now understand the Liveblocks authorization process and how Clerk user data can be used to verify the user has access to the room. You also understand how Clerk user data can enhance the Liveblocks session, leading to a seamless experience for your users.

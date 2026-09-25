@@ -1,0 +1,404 @@
+# Build an App with Clerk, Prisma Cloud, and Next.js
+# джерело: https://clerk.com/blog/build-app-with-clerk-prisma-nextjs
+# отримано: 2026-09-25
+
+This platform helps developers handle user management processes for their applications, allowing them to avoid re-inventing the wheel in user authentication strategies and focus on developing the core of their business.
+
+Clerk can be used to add customer identity management to your application and handle authentication for your application by adding custom sign-in methods. It can also help users track the devices signed in to their accounts on the user profile page, and provide leaked passwords protection by comparing the password entered by the user with the passwords found in major data breaches, as well as many more features.
+
+In this article, you will learn how to build an app using Clerk, Prisma Cloud, and Next.js. This will be a simple application that helps you understand how to implement authentication in your Next.js application using Clerk. The finished application will only show the data from the database to the authenticated users.
+
+## The Tech Stack
+
+The following technologies will be used to create the app:
+
+- Next.js is a framework built on top of React. Next.js is optimized for developer experience, and provides all the features required to build powerful and highly interactive applications with no configuration required.
+
+- Clerk is a customer identity platform compatible with popular stacks such as JavaScript, React, Next.js, Ruby, and Firebase. It allows you to implement a strong authentication system in your application by providing pre-built components such as `<SignIn />`, `<SignUp />`, and `<UserProfile />`. Clerk supports multiple authentication strategies, including passwords, magic links, social logins, Web3, multifactor authentication and email or SMS passcodes, and allows you to easily implement them in your application.
+
+- Prisma Cloud is a cloud-based collaborative environment that provides support to developers using Prisma, an object-relational mapper (ORM) that helps you model data in a human-readable format. Prisma Cloud provides you with an online data browser that allows you to easily view and edit data collaboratively online. It also offers a query console and ability to integrate with your Prisma databases and schema.
+
+- Heroku is a cloud platform that allows developers to build, run, and operate applications.
+
+- PostgreSQL is an advanced open source relational database management system.
+
+## Building an App with Clerk, Prisma Cloud, and Next.js
+
+To follow along in building this app, you need to have the following set up:
+
+- A code editor of your choice
+- Node.js and Yarn installed on your development machine
+- A Clerk account
+- A Prisma Cloud account
+- A Heroku account
+
+You can see all the code for this application in one place in this GitHub repository.
+
+### Creating a Next.js Application
+
+The easiest way to create a Next.js application is by using `create-next-app`, which sets up everything for you automatically. To create the application, run the following command in the terminal:
+
+```bash
+yarn create next-app clerk-prisma
+```
+
+The command above creates a folder with the name `clerk-prisma`. This application will only contain a navigation bar and a content area. Open `pages/index.js` in the project root folder and replace the existing code with the following:
+
+```js
+import styles from '../styles/Home.module.css'
+
+export default function Home() {
+  return (
+    <div className={styles.container}>
+      <nav className={styles.nav}>
+        <h2>My Tasks</h2>
+      </nav>
+
+      <div>
+        <p>Sign in to view your tasks!</p>
+      </div>
+    </div>
+  )
+}
+```
+
+To provide some styling for the application, open `styles/Home.module.css` and replace the existing code with the following:
+
+```css
+.container {
+  margin: 1rem auto;
+  max-width: 760px;
+  text-align: center;
+}
+
+.nav {
+  background: gray;
+  padding: 0.2rem;
+}
+```
+
+Run the following command in the terminal to start a development server:
+
+```bash
+yarn dev
+```
+
+Open `http://localhost:3000/` in your browser and you should see the following:
+
+A website created with Next.js
+
+### Adding Clerk
+
+To add Clerk for user authentication in the application, open the Clerk dashboard in your browser and create a new application by providing the required details.
+
+An image showing the creation of a new app on the Clerk dashboard
+
+Provide the application name, and accept the default settings, which will allow the user to sign in using their email address and a password or to use their Google account. Click the **FINISH** button and you will be navigated to your application details page.
+
+> Creating a new application in Clerk automatically creates a new development instance optimized for local application development.
+
+#### Adding Sign-Up and Sign-In Functionality to the Application Using Clerk
+
+In this section, you will add sign-up and sign-in forms, and build a page that is only visible to authenticated users.
+
+Run the following command in your terminal to install Clerk's Next.js SDK, which gives you access to prebuilt components, hooks, and other features provided by Clerk:
+
+```bash
+yarn add @clerk/nextjs
+```
+
+You now need to link your local development with the Clerk instance created when you initialized your new app in Clerk. On your Clerk dashboard API Keys page, copy the `Frontend API key`, create a `.env.local` file in the project root folder and paste in the key in the file as shown below:
+
+```env
+NEXT_PUBLIC_CLERK_FRONTEND_API={your_frontend_api_key}
+```
+
+Open the terminal to kill the running application by pressing `CTRL+C` or `CMD+C`, and relaunch the application with the command below to load the environment variables:
+
+```bash
+yarn dev
+```
+
+To use the Clerk context in the application, the entire application needs to be wrapped in the `<ClerkProvider />` component. To achieve this, open the `pages/_app.js` file and replace the existing content with the following:
+
+```js
+import '../styles/globals.css'
+import { ClerkProvider } from '@clerk/nextjs'
+
+function MyApp({ Component, pageProps }) {
+  return (
+    <ClerkProvider {...pageProps}>
+      <Component {...pageProps} />
+    </ClerkProvider>
+  )
+}
+
+export default MyApp
+```
+
+It's time to add a sign-in button and some content for authenticated users. You'll achieve this with some pre-built components and a hook provided by Clerk. These are:
+
+- `useUser()`: This is a hook used to access the current user and user state—whether they're logged in or not.
+- `<SignInButton />`: This will display a sign-in button on the webpage.
+- `<SignUpButton />`: This will display a sign-up button on the webpage.
+- `<UserButton />`: This component displays a button for the current user to access their profile details.
+
+You can learn more about Clerk's components, hooks, and helper functions in the official documentation.
+
+Open `pages/index.js` file and replace it with the following code:
+
+```js
+import styles from '../styles/Home.module.css'
+
+import { useUser, UserButton, SignInButton, SignUpButton } from '@clerk/nextjs'
+
+export default function Home() {
+  const { isSignedIn, isLoading, user } = useUser()
+  return (
+    <div className={styles.container}>
+      <nav className={styles.nav}>
+        <h2>My Tasks</h2>
+        {isSignedIn ? (
+          <UserButton />
+        ) : (
+          <div>
+            <SignInButton />
+            <SignUpButton />
+          </div>
+        )}
+      </nav>
+
+      <div>
+        {isLoading ? (
+          <></>
+        ) : (
+          <div>
+            {isSignedIn ? (
+              <div>
+                <p>Welcome {user.firstName}!</p>
+              </div>
+            ) : (
+              <p>Sign in to view your tasks!</p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+```
+
+Once you've implemented the preceding code, there will be a different view for users who are signed in and users who are not.
+
+Signed Out Users:
+The view for users who have not signed in
+
+Signed In Users:
+The view for users who have signed in
+
+### Adding Prisma to the Application
+
+To add Prisma to the application, run the following commands in your terminal:
+
+```bash
+yarn add -D prisma
+
+yarn add @prisma/client
+
+npx prisma init
+```
+
+The first command installs Prisma as a `dev` dependency and gives you access to the Prisma CLI. The second command installs the Prisma client, which is a query builder, and the last command initializes Prisma in your application. Initializing Prisma creates a `prisma` folder with a `schema.prisma` file. It also creates a `.env` file in the project root folder with the `DATABASE_URL` variable.
+
+To connect to Prisma Cloud, open https://cloud.prisma.io in your browser and create a new project. On the "Configure project" page, provide a project name, connect your GitHub account and click the **Create a repository** option. Click **Next** and go to the next page.
+
+The project configuration page
+
+On the "Select template" page, select the **Empty** template option and click **Next**.
+
+The select template page
+
+On the "Configure environment" page, click on **Provision a new database**, select **Heroku PostgreSQL** as the database provider, and click **Sign in with Heroku** to connect your Heroku account. After signing with Heroku, provide a name for your application. Click on the **Create project** button.
+
+The configure environment page
+
+On the "Deploy project page", copy the `DATABASE_URL` and `DATABASE_MIGRATE_URL`, and insert them at the appropriate points in your local `.env` file, then click **DONE**.
+
+The deploy project page
+
+Your local `.env` file should now have the following:
+
+```bash
+DATABASE_URL={YOUR_DATABASE_URL_VALUE}
+
+MIGRATE_DATABASE_URL={YOUR_MIGRATE_DATABASE_URL_VALUE}
+```
+
+#### Creating a Shadow Database Manually
+
+Some Prisma commands that are used only in development, such as `prisma migrate`, need a temporary second database that is automatically created and deleted every time these commands are run. Because Heroku PostgreSQL is hosted on the cloud, you need to create a shadow database manually and copy the connection string.
+
+While this tutorial will walk you through the relevant steps, if you'd like to learn more about Prisma shadow databases, you can do so here.
+
+To create the shadow database, open your Heroku dashboard, and locate and open the newly created project. Under the **Resources** tab, click on the **Add-ons** search bar and type "Heroku Postgres". Click on the first result to add the database.
+
+The deploy project page
+
+Please note that you will now have two databases, as shown below:
+
+Two databases on Heroku
+
+Click on the one on top (the one you created manually) to open its details. On the **Settings** tab under **Database Credentials**, click on **View Credentials** and copy the database `URI`. You will add this to your local `.env` file to allow you to connect to the database.
+
+The shadow DB details page
+
+Add the `URI` to the local `.env` file with the key `SHADOW_DATABASE_URL`.
+
+Your local `.env` file should now have the following details:
+
+```env
+DATABASE_URL={YOUR DATABASE URL}
+
+MIGRATE_DATABASE_URL={YOUR DATABASE MIGRATE URL}
+
+SHADOW_DATABASE_URL={YOUR SHADOW DATABASE URL}
+```
+
+#### Defining a Schema for Your Model
+
+To define a schema for your tasks model, open the `prisma/schema.prisma` file, and replace the existing content with the following:
+
+```prisma
+datasource db {
+  provider = "postgres"
+  url      = env("MIGRATE_DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+  referentialIntegrity = "prisma"
+}
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["referentialIntegrity"]
+}
+
+model Tasks {
+  id  String  @id @default(cuid())
+  task String
+}
+```
+
+The `datasource db` provides details for connecting to the database for running migrations and querying. When querying the database after running the migrations, the value for `url` in `database db` will be switched to `env("DATABASE_URL")`. This is because at the time of writing, one of the limitations of the data proxy is that it can only used to query the database with Prisma Client. The `DATABASE_MIGRATE_URL` contains a direct connection string to the database that will be used to run migrations.
+
+The tasks model will only contain two fields:
+
+- **`id`:** The task id
+- **`task`:** The task name
+
+#### Running the Migrations and Adding Some Data with Prisma
+
+To run the migrations and add the `tasks` table to the database, run the following command in your terminal, and provide a name for the new migration:
+
+```bash
+npx prisma migrate dev
+```
+
+When the migration runs successfully, you should see this message on the terminal:
+
+A successful prisma migration
+
+Now that your database is in sync with your schema, you can add some data with Prisma. To do this, run the following command in your terminal to open Prisma Studio in your browser:
+
+```bash
+npx prisma studio
+```
+
+After Prisma Studio loads, select your model to add some data. Click on the **Add record** button, add three tasks, and click on the **Save 3 changes** button to save the tasks.
+
+Prisma Studio interface
+
+#### Showing the Data to Authenticated Users
+
+Open the `prisma/schema.prisma` file and change the `url` value in the `datasource db` to `env("DATABASE_URL")`. The `prisma/schema.prisma` file should now look like this:
+
+```prisma
+datasource db {
+  provider = "postgres"
+  url      = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+  referentialIntegrity = "prisma"
+}
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["referentialIntegrity"]
+}
+
+model Tasks {
+  id  String  @id @default(cuid())
+  task String
+}
+```
+
+Next, you need to fetch the data from the database. This can be achieved by modifying the `pages/index.js` file as shown below:
+
+```js
+import styles from '../styles/Home.module.css'
+
+import { useUser, UserButton, SignInButton, SignUpButton } from '@clerk/nextjs'
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
+
+export default function Home({ tasks }) {
+  const { isSignedIn, isLoading, user } = useUser()
+  return (
+    <div className={styles.container}>
+      <nav className={styles.nav}>
+        <h2>My Tasks</h2>
+        {isSignedIn ? (
+          <UserButton />
+        ) : (
+          <div>
+            <SignInButton />
+            <SignUpButton />
+          </div>
+        )}
+      </nav>
+
+      <div>
+        {isLoading ? (
+          <></>
+        ) : (
+          <div>
+            {isSignedIn ? (
+              <div>
+                <p>Welcome {user.firstName}!</p>
+                {tasks ? tasks.map((task) => <p>{task.task}</p>) : <div></div>}
+              </div>
+            ) : (
+              <p>Sign in to view your tasks!</p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export async function getServerSideProps() {
+  const tasks = await prisma.tasks.findMany()
+  return {
+    props: {
+      tasks: tasks,
+    },
+  }
+}
+```
+
+Open `http://localhost:3000/` in your browser, and once you've logged in, you should be able to see the tasks you just added.
+
+The added tasks after logging in
+
+## Conclusion
+
+In this article, you have learned about Clerk, a powerful service that can handle user identity management for you. You have also learned about the various use cases of Clerk, a few of its components and hooks, and how you can integrate it into your Next.js application to easily handle user authentication. Finally, you have learned how to integrate Prisma into the application, use Prisma Cloud, and add data to your cloud-hosted database on Heroku.

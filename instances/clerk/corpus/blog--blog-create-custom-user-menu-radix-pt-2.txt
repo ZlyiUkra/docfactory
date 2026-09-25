@@ -1,0 +1,534 @@
+# Create Your Own Custom User Menu with Radix - Part 2
+# джерело: https://clerk.com/blog/create-custom-user-menu-radix-pt-2
+# отримано: 2026-09-25
+
+Code samples are from @clerk/nextjs 4.29.5, @radix-ui/react-dropdown-menu 2.0.6, class-variance-authority 0.7.0 and
+@heroicons/react 2.1.1
+
+Welcome to the second part of building a custom user menu! In the first part, we built a replacement for Clerk’s `<UserButton /> `using the Radix Dropdown primitive and some of Clerk’s hooks. Now we’ll be upgrading our user button with sign-in functionality when the user is not logged in as well as improve the behavior of the component in several ways.
+
+## Refactoring the component
+
+The first step is to refactor the component so it's ready to build upon. Take the contents of the `return` and create a new component in the file above the exported component. Call the new component `<UserButtonAndMenu />` and paste the copied code. We will need to add in the destructures for the user method from the `useUser()` hook, `signOut()`, and `openUserProfile()` from the `userClerk()` hook, and the router method from the `userRouter()` hook.
+
+The first step is to refactor the component so it's ready to build upon.
+
+- Create a new component in the file called `<UserButtonAndMenu />`
+- Move the JSX from the original `<UserButton />` into the `<UserButtonAndMenu />` component
+- Move `user` method from `useUser()` hook to the new component
+- Move `signOut()`, and `openUserProfile()` from `userClerk()` hook to the new component
+- Move `router` method from `userRouter()` hook to the new component\\
+
+In the `<UserButton />` component, we’re going to leave the check for `isLoaded` and add a `user.id` check using `if ( !user.id ) {}` and return the `<SignInButton />` component from Clerk if there is no user.
+
+```tsx
+'use client'
+
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
+import { useUser, useClerk, SignInButton } from '@clerk/nextjs'
+import { useRouter } from 'next/navigation'
+import Image from 'next/image'
+import Link from 'next/link'
+
+// Create a new UserButtonandMenu component and move the old return into this
+const UserButtonAndMenu = () => {
+  const { signOut, openUserProfile } = useClerk()
+  const router = useRouter()
+  const { user } = useUser()
+
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild>
+        {/* Render a button using the image and email from `user` */}
+        <button className="flex flex-row rounded-xl border border-gray-200 bg-white px-4 py-3 text-black drop-shadow-md">
+          <Image
+            alt={user?.primaryEmailAddress?.emailAddress!}
+            src={user?.imageUrl}
+            width={30}
+            height={30}
+            className="mr-2 rounded-full border border-gray-200 drop-shadow-sm"
+          />
+          {user?.username ? user.username : user?.primaryEmailAddress?.emailAddress!}
+        </button>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content className="mt-4 w-52 rounded-xl border border-gray-200 bg-white px-6 py-4 text-black drop-shadow-2xl">
+          <DropdownMenu.Label />
+          <DropdownMenu.Group className="py-3">
+            <DropdownMenu.Item asChild>
+              {/* Create a button with an onClick to open the User Profile modal */}
+              <button onClick={() => openUserProfile()} className="pb-3">
+                Profile
+              </button>
+            </DropdownMenu.Item>
+            <DropdownMenu.Item asChild>
+              {/* Create a fictional link to /subscriptions */}
+              <Link href="/subscriptions" passHref className="py-3">
+                Subscription
+              </Link>
+            </DropdownMenu.Item>
+          </DropdownMenu.Group>
+          <DropdownMenu.Separator className="my-1 h-px bg-gray-500" />
+          <DropdownMenu.Item asChild>
+            {/* Create a Sign Out button -- signOut() takes a call back where the user is redirected */}
+            <button onClick={() => signOut(() => router.push('/'))} className="py-3">
+              Sign Out{' '}
+            </button>
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  )
+}
+
+// Refactor to show the default <SignInButton /> if the user is logged out
+// Show the UserButtonAndMenu if the user is logged in
+export const UserButton = () => {
+  const { isLoaded, user } = useUser()
+
+  if (!isLoaded) return null
+
+  if (!user?.id) return <SignInButton />
+
+  return <UserButtonAndMenu />
+}
+```
+
+## Improving the component
+
+If you saved your work and tested it, you will see that the refactoring has already accomplished the base goal — it is now both a Sign-In button and a User Button/User Menu. We can still improve the component and provide a better user experience, so let’s do a few more refactors.
+
+The first step is moving the button to its component. We’ll also add in a `forwardRef` to plan for the later improvements.
+
+Tip: You might have your own custom button already created or available from a library you are using. If so then you
+can use that in place of this one.
+
+```tsx
+// Add import
+import * as React from 'react'
+
+// Create a new <Button /> component using the same classes
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {}
+
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ children, className, ...props }, ref) => {
+    return (
+      <button ref={ref} className={className} {...props}>
+        {children}
+      </button>
+    )
+  },
+)
+```
+
+The second step is to refactor part of the `<UserButtonAndMenu /`> component. We want to take advantage of the new `<Button />`
+
+```tsx
+const UserButtonAndMenu = () => {
+  const { user } = useUser()
+  const { signOut, openUserProfile } = useClerk()
+  const router = useRouter()
+
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild>
+        {/* Swap <button /> to the new <Button /> */}
+        <Button>
+          <Image
+            alt={user?.primaryEmailAddress?.emailAddress!}
+            src={user?.imageUrl!}
+            width={30}
+            height={30}
+            className="mr-2 rounded-full border border-gray-200 drop-shadow-sm"
+          />
+          {user?.username ? user.username : user?.primaryEmailAddress?.emailAddress!}
+        </Button>
+      </DropdownMenu.Trigger>
+    </DropdownMenu.Root>
+
+    // rest of the component remains the same
+  )
+}
+```
+
+The third step is to refactor the top-level `<UserButton /> `component to also use the new `<Button />` component. This button will use `openSignIn() `from `useClerk()` to programmatically open the sign-in modal. This results in a custom button and removal of the Clerk `<SignInButton />`
+
+```tsx
+// Update @clerk/nextjs imports
+import { useUser, useClerk } from '@clerk/nextjs'
+
+export const UserButton = () => {
+  const { isLoaded, user } = useUser()
+  // Bring in openSignIn
+  const { openSignIn } = useClerk()
+
+  if (!isLoaded || !user?.id) {
+    /* Use the new <Button /> component for the sign-in button */
+    return <Button onClick={() => openSignIn()}>Sign In</Button>
+  }
+
+  return <UserButtonAndMenu />
+}
+```
+
+You can see that we left the user profile image inside of `<UserMenuAndButton />` and passed it to the `<Button />` as a child. Depending on your need you could hoist the image handling into the `<Button />` — that’s totally up to the needs of what you’re building.
+
+## Refining the component
+
+Everything is working nicely at this point, and the structure is in a great place to build on. That said, we can add a few refinements to elevate the user experience. Let’s start by installing an icon package and the class-variance-authority package.
+
+This is using `@heroicons/react` as it's a simple, one-stop icon package. Use other icons that might suit your design
+or needs better.
+
+```bash
+pnpm install @heroicons/react class-variance-authority
+```
+
+With that installed, let’s do another refactor of the Button. We’ll use `class-variance-authority` to expand on what the button can do. This is a very structured approach and provides TypeScript support. We will set up a `variant` and a `size`, use the resulting `primary` and `regular` for the main button, and `menu` and `small` for the buttons in the dropdown menu.
+
+```tsx
+// Add imports
+import { VariantProps, cva } from 'class-variance-authority'
+
+// Configure the styles for the Button and its variants and sizes
+const button = cva(['flex', 'flex-row', 'items-center', 'rounded-xl'], {
+  variants: {
+    variant: {
+      primary: [
+        'border',
+        'border-gray-200',
+        'bg-white',
+        'text-black',
+        'drop-shadow-md',
+        'hover:bg-stone-100',
+        'hover:text-stone-800',
+      ],
+      menu: ['bg-transparent', 'text-gray-800/70', 'hover:text-gray-900'],
+    },
+    size: {
+      regular: ['px-4', 'py-3'],
+      small: ['py-3', 'py-2'],
+    },
+  },
+  defaultVariants: {
+    variant: 'primary',
+    size: 'regular',
+  },
+})
+
+// Extend the default Button types with props created by create-variance-authority
+interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof button> {}
+
+// Create a new <Button /> component using the same classes
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ variant, size, children, className, ...props }, ref) => {
+    return (
+      <button
+        ref={ref}
+        className="flex flex-row rounded-xl border border-gray-200 bg-white px-4 py-3 text-black drop-shadow-md"
+        {...props}
+      >
+        {children}
+      </button>
+    )
+  },
+)
+```
+
+This `<Button />` component can be used anywhere in your application — if you don’t have a `<Button />` you’ve built
+already or one from a library then you can move this out of the `<UserButton />` and instead use it application-wide.
+
+Now that our `<Button />` has reached its final form, let’s import some icons.
+
+```typescript
+// Add import
+import {
+  ArrowRightCircleIcon,
+  ArrowRightEndOnRectangleIcon,
+  CurrencyDollarIcon,
+  UserIcon,
+} from '@heroicons/react/24/solid'
+```
+
+Let’s modify the button that serves as the trigger for the User Menu. We’ll use Clerk’s `hasImage` value from the `user` return of `useUser()`. Using them will let us display the `UserIcon` we just imported when the user hasn’t set a profile image, but use their image when they have. We will also will move the logic we have for the label for the button up.
+
+```tsx
+const UserButtonAndMenu = () => {
+  const { signOut, openUserProfile } = useClerk()
+  const router = useRouter()
+  const { user } = useUser()
+  // Use the firstname if there is on, otherwise provide a label */
+  const label = user?.firstName ? user.firstName : 'Profile'
+
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild>
+        <Button>
+          {/* Render a button using the image and email from `user` */}
+          {user?.hasImage ? (
+            <Image
+              alt={label}
+              src={user?.imageUrl}
+              width={30}
+              height={30}
+              className="mr-2 rounded-full border border-gray-200 drop-shadow-sm"
+            />
+          ) : (
+            <>
+              {/* Display the icon is there is no profile image */}
+              <UserIcon className="mr-2 h-6 w-auto" />
+            </>
+          )}
+          {label}
+        </Button>
+      </DropdownMenu.Trigger>
+    </DropdownMenu.Root>
+
+    // Rest of the component here
+  )
+}
+```
+
+We can use the `ArrowRightCircleIcon` to add a little flare to the Sign-In button.
+
+```tsx
+export const UserButton = () => {
+  const { isLoaded, user } = useUser()
+  const { openSignIn } = useClerk()
+
+  if (!isLoaded) return null
+
+  if (!user?.id) {
+    return (
+      <Button onClick={() => openSignIn()}>
+        Sign In
+        {/* Add an icon to the Sign-in button */}
+        <ArrowRightCircleIcon className="ml-2 h-6 w-auto" />
+      </Button>
+    )
+  }
+
+  return <UserButtonAndMenu />
+}
+```
+
+Lastly, we will use `UserIcon`, `ArrowRightEndOnTectangleIcon`, and `CurrencyDollarIcon` to add icons to the drop-down menu. At the same time we will add the variant and size to the buttons so they are using the new configuration.
+
+```tsx
+<DropdownMenu.Portal>
+  <DropdownMenu.Content className="mt-4 w-52 rounded-xl border border-gray-200 bg-white px-2 py-2 text-black drop-shadow-2xl">
+    <DropdownMenu.Label />
+    <DropdownMenu.Group className="py-1">
+      <DropdownMenu.Item asChild>
+        <Button onClick={() => openUserProfile()} className="pb-3" variant="menu" size="small">
+          <UserIcon className="mr-2 h-6 w-auto" />
+          Profile
+        </Button>
+      </DropdownMenu.Item>
+      <DropdownMenu.Item asChild>
+        <Link href="/subscriptions" passHref>
+          <Button className="py-2" variant="menu" size="small">
+            <CurrencyDollarIcon className="mr-2 h-6 w-auto" />
+            Subscription
+          </Button>
+        </Link>
+      </DropdownMenu.Item>
+    </DropdownMenu.Group>
+    <DropdownMenu.Separator className="my-1 h-px bg-gray-200" />
+    <DropdownMenu.Item asChild>
+      <Button
+        onClick={() => signOut(() => router.push('/'))}
+        className="py-3"
+        variant="menu"
+        size="small"
+      >
+        <ArrowRightEndOnRectangleIcon className="mr-2 h-5 w-auto" /> Sign Out
+      </Button>
+    </DropdownMenu.Item>
+  </DropdownMenu.Content>
+</DropdownMenu.Portal>
+```
+
+## Finishing Touches
+
+We can add a few finishing touches to the component to flesh it out some more with a few smaller tweaks and improvements:
+
+- add an `accent` variant, and then use that for the user button.
+- give `menu` variant buttons unique styling.
+- add `className="min-w-[192px]"` to the sign-in and user button to help give them a more consistent width.
+- add `ArrowPathIcon` to the icon import create a button for `!isLoaded`, and give it a loading/spanning state.
+- use the `outline-none` class to remove the focus ring from the menu items
+
+```tsx
+'use client'
+
+import * as React from 'react'
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
+import { useUser, useClerk } from '@clerk/nextjs'
+import { useRouter } from 'next/navigation'
+import Image from 'next/image'
+import Link from 'next/link'
+import {
+  ArrowPathIcon,
+  ArrowRightCircleIcon,
+  ArrowRightEndOnRectangleIcon,
+  CurrencyDollarIcon,
+  UserIcon,
+} from '@heroicons/react/24/solid'
+import { VariantProps, cva } from 'class-variance-authority'
+
+const button = cva(['flex', 'flex-row', 'items-center', 'rounded-xl'], {
+  variants: {
+    variant: {
+      primary: [
+        'border',
+        'border-gray-200',
+        'bg-white',
+        'text-black',
+        'drop-shadow-md',
+        'hover:bg-stone-100',
+        'hover:text-stone-800',
+        'justify-center',
+      ],
+      accent: [
+        'border',
+        'border-stone-950',
+        'bg-stone-800/70',
+        'hover:bg-stone-950',
+        'text-stone-200',
+        'justify-center',
+      ],
+      menu: [
+        'w-full',
+        'justify-start',
+        'bg-transparent',
+        'hover:bg-stone-800/70',
+        'text-gray-800/70',
+        'hover:text-stone-100',
+        'px-4',
+        'rounded-sm',
+      ],
+    },
+    size: {
+      regular: ['px-4', 'py-3'],
+      small: ['py-3', 'py-2'],
+    },
+  },
+  defaultVariants: {
+    variant: 'primary',
+    size: 'regular',
+  },
+})
+
+interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof button> {}
+
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ variant, size, children, className, ...props }, ref) => {
+    return (
+      <button ref={ref} className={button({ variant, size, className })} {...props}>
+        {children}
+      </button>
+    )
+  },
+)
+
+// Create a new UserButtonandMenu component and move the old return into this
+const UserButtonAndMenu = () => {
+  const { user } = useUser()
+  const { signOut, openUserProfile } = useClerk()
+  const router = useRouter()
+  const label = user?.firstName ? user.firstName : 'Profile'
+
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild className="outline-none">
+        <Button variant="accent" className="min-w-[192px]">
+          {user?.hasImage ? (
+            <Image
+              alt={label ? label : 'Profile image'}
+              src={user?.imageUrl}
+              width={30}
+              height={30}
+              className="mr-2 rounded-full border border-stone-950 drop-shadow-sm"
+            />
+          ) : (
+            <UserIcon className="mr-2 h-6 w-auto" />
+          )}
+          {label}
+        </Button>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content className="mt-4 w-52 rounded-xl border border-gray-200 bg-white px-2 py-2 text-black drop-shadow-2xl">
+          <DropdownMenu.Label />
+          <DropdownMenu.Group className="py-1">
+            <DropdownMenu.Item asChild className="outline-none">
+              <Button
+                onClick={() => openUserProfile()}
+                className="pb-3"
+                variant="menu"
+                size="small"
+              >
+                <UserIcon className="mr-2 h-6 w-auto" />
+                Profile
+              </Button>
+            </DropdownMenu.Item>
+            <DropdownMenu.Item asChild className="outline-none">
+              <Link href="/subscriptions" passHref>
+                <Button className="py-2" variant="menu" size="small">
+                  <CurrencyDollarIcon className="mr-2 h-6 w-auto" />
+                  Subscription
+                </Button>
+              </Link>
+            </DropdownMenu.Item>
+          </DropdownMenu.Group>
+          <DropdownMenu.Separator className="my-1 h-px bg-gray-200" />
+          <DropdownMenu.Item asChild className="outline-none">
+            <Button
+              onClick={() => signOut(() => router.push('/'))}
+              className="py-3"
+              variant="menu"
+              size="small"
+            >
+              <ArrowRightEndOnRectangleIcon className="mr-2 h-5 w-auto" /> Sign Out
+            </Button>
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  )
+}
+
+export const UserButton = () => {
+  const { isLoaded, user } = useUser()
+  const { openSignIn } = useClerk()
+
+  if (!isLoaded)
+    return (
+      <Button onClick={() => openSignIn()} className="w-48">
+        <ArrowPathIcon className="ml-2 h-6 w-auto animate-spin" />
+      </Button>
+    )
+
+  if (!user?.id)
+    return (
+      <Button onClick={() => openSignIn()} className="w-48">
+        Sign In
+        <ArrowRightCircleIcon className="ml-2 h-6 w-auto" />
+      </Button>
+    )
+
+  return <UserButtonAndMenu />
+}
+```
+
+Example repository: https://github.com/royanger/clerk-custom-user-menu
+
+## Explore the Powerful Customization Options Clerk Offers!
+
+With this component you have the building blocks to build out your own user button and menu. Add the new entries to the dropdown that you need for your application, and use the tools provided by Radix and `cva` to design and style your component so it matches your application's design language!
+
+Take a look at our Custom Flows documentation to explore more ways to customize your application using the many hooks and methods Clerks provides. The ability to add the pieces you need from Clerk to fully custom and unique UI provides flexibility to projects.
+
+For more in-depth technical inquiries or to engage with our community, feel free to join our Discord. Stay in the loop with the latest Clerk features, enhancements, and sneak peeks by following our X account, @clerk. Your journey to seamless user management starts here!

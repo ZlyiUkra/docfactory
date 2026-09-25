@@ -1,0 +1,683 @@
+# The Ultimate Guide to Next.js Authentication
+# джерело: https://clerk.com/blog/nextjs-authentication
+# отримано: 2026-09-25
+
+Next.js has become the go-to framework for JavaScript and React development. It has become so popular because of the superior developer experience, performance optimization features, and its ability to facilitate different rendering options and serverless functions with ease. The combination of these attributes makes it an appealing choice for both new and experienced developers.
+
+In Next.js 13, the Next.js team significantly upgraded the capabilities of the framework. Moving to what they call the “App Router,” Next.js is now based on React Server Components which boast performance upgrades over the previous client-server architecture.
+
+But this shift has also led to a change in how authentication works in Next.js. In this article we want to provide an up-to-date guide on how authentication now works on Next.js so you can easily understand the concepts involved and **easily add secure authentication to your Next.js applications**.
+
+## The Next.js App Router
+
+The App Router paradigm was introduced in Next.js 13 and is a significant shift in how the Next.js framework works.
+
+Next.js was initially built as a React framework to facilitate server-side rendered and statically generated sites. But as the framework grew, more options became available:
+
+1. **Client-Side Rendering (CSR)** is where content is rendered on the client side, after the initial page load. This is ideal for pages that don’t require SEO or initial content served by the server. Common for user dashboards or pages behind authentication. You use React state and effects (`useState`, `useEffect`, etc.) as you would in a regular React app.
+2. **Static Site Generation (SSG)** is where pages are pre-rendered at build time and served statically. Each request receives the same HTML. This is good for content that doesn’t change often and doesn’t need to be updated with every request, such as blogs, marketing pages, and documentation, etc. Here, you use `getStaticProps` to fetch the required data at build time.
+3. **Incremental Static Regeneration (ISR)** lets you statically generate pages with the option to update them in the background. Once updated, subsequent requests get the new version. This is useful for content that updates periodically but doesn’t need real-time updates. Like with SSG, you can use `getStaticProps`, but this time you add a `revalidate` property. The `revalidate` interval (in seconds) determines how often the page should be updated.
+4. **Server-Side Rendering (SSR)** means each request is rendered on-the-fly on the server, providing fresh data. It is ideal for pages that need real-time data or when content changes frequently. Also beneficial for SEO. You use `getServerSideProps` to fetch data on each request.
+
+You could have some pages work with CSR, some SSG, and some SSR. But this also led to confusion and performance issues with sites not optimally built.
+
+Next.js 13 and the App Router are designed to simplify the developer experience within Next.js, and rebuild the framework around React Server Components. With RSC, the default for the entire site is server-side rendering, with each page being opted-in to CSR as needed. This leads to performance gains, as rendering on the server is faster, and you don’t have to send heavy JavaScript payloads over the network for hydration. It also means more sites can work on the ‘edge’ network, where sites are served from multiple servers close to users.
+
+But this does mean that the way developers have been using Next.js thus far has now changed. The old, Pages Router continues to work, and can be used side-by-side with the App Router, but significant changes in how data is served, such as no request/response objects being passed means developers will need to rethink how they work, and how their authentication works.
+
+Here, we’re going to go through:
+
+1. How authentication works with the pages router in Next.js
+2. How authentication works with the App Router in Next.js
+
+This will give you the ability to use either as you need, and to see the differences in each paradigm when it comes to authentication.
+
+## Authentication With the Next.js Pages Router
+
+Before we get into authentication with the App Router, let’s look at how authentication works with the Pages Router in Next.js.
+
+Let’s create a Next.js project. To do this, we use:
+
+```sh
+npx create-next-app@latest
+```
+
+You will be prompted to choose different options, but given that we are explicitly using the Pages Router, you’ll want to select “no” when asked if you would like to use the App Router.
+
+With that done, we can install Clerk:
+
+```sh
+npm install @clerk/nextjs
+```
+
+Next, we want to add our API keys as environmental variables in an `.env.local` file. To get these, sign up for a free Clerk account:
+
+```sh
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_*****
+CLERK_SECRET_KEY=sk_test_*****
+```
+
+Before we go any further, we’ll also make some small changes to our homepage, at `pages/index.js`:
+
+```jsx
+import Head from 'next/head'
+
+export default function Home() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-500 to-purple-500">
+      <Head>
+        <title>Hello Pages Router with Next.js & Clerk</title>
+        <meta
+          name="description"
+          content="A simple Hello World homepage using Next.js and TailwindCSS"
+        />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+
+      <div className="rounded-xl bg-white p-8 shadow-lg">
+        <h1 className="mb-4 text-2xl font-bold text-blue-500">Hello, Pages Router!</h1>
+        <p className="text-gray-600">This is a simple homepage built with Next.js and Clerk</p>
+      </div>
+    </div>
+  )
+}
+```
+
+If we now run `npm run dev`, we’ll get this homepage:
+
+Nextjs Authentication tutorial illustration
+
+We’re now ready to start adding Clerk to our code. The first thing we need to do is mount the ClerkProvider. The `ClerkProvider` is the core component of Clerk. It is what handles all the active session data and the user context. Whenever a Clerk hook (or any other components) needs authentication data, it is getting it from the `ClerkProvider`.
+
+The `ClerkProvider` needs needs to access headers to authenticate any user. This is important because:
+
+`headers()` is a Dynamic Function whose returned values cannot be known ahead of time. Using it in a layout or page
+will opt a route into dynamic rendering at request time.
+
+To protect your entire application, it is recommended to wrap our main Component in the `_app.tsx|jsx` file:
+
+```tsx
+import { ClerkProvider } from '@clerk/nextjs'
+import type { AppProps } from 'next/app'
+
+function MyApp({ Component, pageProps }: AppProps) {
+  return (
+    <ClerkProvider {...pageProps}>
+      <Component {...pageProps} />
+    </ClerkProvider>
+  )
+}
+
+export default MyApp
+```
+
+This will protect every page within the application and will make the user context accessible anywhere within the app, but will also opt every page into dynamic rendering.
+
+If you have statically served pages or are using incremental static regeneration, you can wrap route groups further into your application. For example, you might want to leave your marketing site unprotected, but wrap your dashboard components in the `ClerkProvider`.
+
+Clerk requires middleware to determine the routes that need to be protected. This is in `middleware.js` in our root directory. This matcher will put every page and API route on the site behind authentication:
+
+```jsx
+import { authMiddleware } from '@clerk/nextjs'
+
+// This example protects all routes including api/trpc routes
+// Please edit this to allow other routes to be public as needed.
+// See https://clerk.com/docs/references/nextjs/auth-middleware for more information about configuring your middleware
+export default authMiddleware({})
+
+export const config = {
+  matcher: ['/((?!.+\\.[\\w]+$|_next).*)', '/', '/(api|trpc)(.*)'],
+}
+```
+
+The entire application is now protected. Accessing any page while signed out will redirect you to the sign up page. If we go to the homepage again, we get redirected:
+
+Nextjs Authentication tutorial illustration
+
+Usually, this isn’t what you want. Your homepage, product, and marketing pages aren’t very helpful if they are behind authentication!
+
+If you navigate to the homepage now you’ll also get this warning:
+
+The request to / is being redirected because there is no signed-in user, and the path is not included in ignoredRoutes
+or publicRoutes.
+
+To prevent this behavior, choose one of:
+
+1. To make the route accessible to both signed in and signed out users, pass `publicRoutes: ["/"]` to `authMiddleware`
+2. To prevent Clerk authentication from running at all, pass `ignoredRoutes: ["/((?!api|trpc))(_next.*|.+\\.[\\w]+$)", "/"]` to `authMiddleware`
+3. Pass a custom afterAuth to `authMiddleware`, and replace Clerk’s default behavior of redirecting unless a route is included in public routes
+
+So let’s make a change to add a public route:
+
+```jsx
+import { authMiddleware } from '@clerk/nextjs'
+
+export default authMiddleware({
+  publicRoutes: ['/'],
+})
+
+export const config = {
+  matcher: ['/((?!.+\\.[\\w]+$|_next).*)', '/', '/(api|trpc)(.*)'],
+}
+```
+
+Now, when we head to the homepage, it is available again:
+
+Nextjs Authentication tutorial illustration
+
+Great. But now there is no way for us to sign up or sign in. Clerk’s Next.js Authentication SDK provides helpers for determining whether a user is signed in or note, and conditionally changing the text. Let’s wrap our text in these components:
+
+```jsx
+import { SignedOut } from '@clerk/nextjs'
+import Head from 'next/head'
+import Link from 'next/link'
+
+export default function Home() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-500 to-purple-500">
+      <Head>
+        <title>Hello Pages Router with Next.js & Clerk</title>
+        <meta
+          name="description"
+          content="A simple Hello World homepage using Next.js and TailwindCSS"
+        />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+
+      <div className="rounded-xl bg-white p-8 shadow-lg">
+        <h1 className="mb-4 text-2xl font-bold text-blue-500">Hello, Pages Router!</h1>
+        <p className="text-gray-600">This is a simple homepage built with Next.js and Clerk</p>
+
+        <SignedOut>
+          <Link href="/sign-up">
+            <div>
+              <h3 className="mb-4 text-xl font-bold text-blue-500">
+                Sign in or sign up for an account
+              </h3>
+            </div>
+          </Link>
+        </SignedOut>
+      </div>
+    </div>
+  )
+}
+```
+
+Here, if a user is signed out, they’ll see a link to a sign up page. This page doesn’t exist yet, so lets create it. It will live at `pages/sign-up/[[...index]].jsx`:
+
+```jsx
+import { SignUp } from '@clerk/nextjs'
+
+export default function Page() {
+  return <SignUp />
+}
+```
+
+Not much to it. If you try to go that page, you’ll be redirected to sign in/sign up, so it will look like its working. But you are actually being redirected because that page hasn’t been defined as a public route in the middleware, so it itself is behind authentication. To get around this, we’re actually going to add it to our environment variables as a special page:
+
+```sh
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/
+```
+
+Now, if we go to that sign up page, we’ll get the modal where we can sign up:
+
+Nextjs Authentication tutorial illustration
+
+Then, as our environment variables say, we’re redirected to the home page:
+
+Nextjs Authentication tutorial illustration
+
+As you can see, the link to sign in as gone, as it was wrapped in the component that only shows it if you are signed out.
+
+We now have a problem. We are now signed in (great!), but we can’t sign out (uh oh!). We could create a specific link for this as well, but Clerk provides a UserButton component that allows us to do this easily. Let’s add that to the homepage:
+
+```jsx
+import { SignedOut } from '@clerk/nextjs'
+import Head from 'next/head'
+import Link from 'next/link'
+
+export default function Home() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-500 to-purple-500">
+      <Head>
+        <title>Hello Pages Router with Next.js & Clerk</title>
+        <meta
+          name="description"
+          content="A simple Hello World homepage using Next.js and TailwindCSS"
+        />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+
+      <div className="rounded-xl bg-white p-8 shadow-lg">
+        <h1 className="mb-4 text-2xl font-bold text-blue-500">Hello, Pages Router!</h1>
+        <p className="text-gray-600">This is a simple homepage built with Next.js and Clerk</p>
+
+        <SignedOut>
+          <Link href="/sign-up">
+            <div>
+              <h3 className="mb-4 text-xl font-bold text-blue-500">
+                Sign in or sign up for an account
+              </h3>
+            </div>
+          </Link>
+        </SignedOut>
+        <SignedIn>
+          <div>
+            <UserButton afterSignOutUrl="/" />
+          </div>
+        </SignedIn>
+      </div>
+    </div>
+  )
+}
+```
+
+We’ve wrapped this `UserButton` within the SignedIn component so it’ll only show when the user is signed in:
+
+Nextjs Authentication tutorial illustration
+
+Using that button, the user can easily adjust their profile as well as sign out of the application.
+
+Now the user is signed in, they can visit other pages. Let’s create a `pages/protected.jsx` page:
+
+```jsx
+import { clerkClient } from '@clerk/nextjs'
+import { getAuth, buildClerkProps } from '@clerk/nextjs/server'
+
+const ProtectedPage = ({ user }) => {
+  if (!user) {
+    return (
+      <div>
+        <p>Please log in to view this content.</p>
+        {/* Optionally add a login button or redirect logic here */}
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <h1>Welcome, {user.firstName}!</h1>
+      <p>This is your protected page.</p>
+      {/* Other user-specific JSX components/data can be added here */}
+    </div>
+  )
+}
+
+export default ProtectedPage
+
+export const getServerSideProps = async (ctx) => {
+  const { userId } = getAuth(ctx.req)
+
+  if (!userId) {
+    return { props: {} } // This will pass an empty props object and the component will handle the "not logged in" state
+  }
+
+  const userFromClerk = userId ? await clerkClient.users.getUser(userId) : null
+  const user = userFromClerk
+    ? {
+        id: userFromClerk.id,
+        firstName: userFromClerk.firstName,
+        lastName: userFromClerk.lastName,
+        // ... Add other necessary fields here
+      }
+    : null
+
+  return { props: { user, ...buildClerkProps(ctx.req) } }
+}
+```
+
+The code uses the `clerkClient`, `getAuth`, and `buildClerkProps` utilities from the `@clerk/nextjs` library to handle user authentication. If a user is not authenticated (determined by the absence of a `user` prop), the page prompts the user to log in. If authenticated, the page displays a personalized welcome message.
+
+The server-side function `getServerSideProps` checks for the `userId` in the incoming request using the `getAuth` function; if the `userId` is present (indicating authentication), it fetches detailed user information from Clerk via `clerkClient.users.getUser`. The fetched data is then streamlined to a simpler format, extracting only necessary fields like the user’s first name and last name.
+
+The `getServerSideProps` function concludes by returning the user data, if any, along with additional props sourced from `buildClerkProps`, ensuring the frontend receives the necessary data to render the page appropriately.
+
+This renders as:
+
+Nextjs Authentication tutorial illustration
+
+Here, the authentication is checked on the server before the page is rendered via `getServerSideProps`. We can also check whether the user is authenticated on the client. Let’s create a `pages/protected-client.jsx` page:
+
+```jsx
+import { useUser } from '@clerk/nextjs'
+
+export default function Example() {
+  const { isLoaded, isSignedIn, user } = useUser()
+
+  if (!isLoaded || !isSignedIn) {
+    return null
+  }
+
+  return (
+    <div>
+      <h1>Welcome, {user.firstName}!</h1>
+      <p>This is your protected page on the client.</p>
+      {/* Other user-specific JSX components/data can be added here */}
+    </div>
+  )
+}
+```
+
+Which renders this page:
+
+Nextjs Authentication tutorial illustration
+
+One final part of Next.js we can protect with authentication–API routes. With the pages router, any route within pages/api is returned as an API. Let’s protect an API route at `pages/api/auth.js`:
+
+```jsx
+import { clerkClient } from '@clerk/nextjs'
+import { getAuth } from '@clerk/nextjs/server'
+
+export default async function handler(req, res) {
+  const { userId } = getAuth(req)
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' })
+  }
+
+  const user = userId ? await clerkClient.users.getUser(userId) : null
+
+  return res.status(200).json({ user })
+}
+```
+
+This uses the `getAuth` helper that retrieves the authentication state to protect the API route. If we call this within the browser, we’ll get the user JSON:
+
+Nextjs Authentication tutorial illustration
+
+You now have a protected Next.js application using the pages router. Let’s move on to the App Router.
+
+## Authentication with the Next.js App Router
+
+We’re now going to work through an entire example with the Next.js App Router. Some of this is the same as above, particularly, the set up, but once we get into the actual authentication, there are going to be some differences.
+
+Let’s create a new Next.js project:
+
+```sh
+npx create-next-app@latest
+```
+
+This time, when you are prompted to use the App Router, select “yes”.
+
+Then install Clerk into this project:
+
+```
+npm install @clerk/nextjs
+```
+
+And then add our API keys in an `.env.local` file:
+
+```sh
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_*****
+CLERK_SECRET_KEY=sk_test_*****
+```
+
+We’ll spool up another bare-bones homepage, this time at `app/page.js`:
+
+```jsx
+import Head from 'next/head'
+
+export default function Home() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-500 to-purple-500">
+      <Head>
+        <title>Hello Pages Router with Next.js & Clerk</title>
+        <meta name="description" content="A simple Hello World homepage using Next.js and Clerk" />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+
+      <div className="rounded-xl bg-white p-8 shadow-lg">
+        <h1 className="mb-4 text-2xl font-bold text-blue-500">Hello, Pages Router!</h1>
+        <p className="text-gray-600">This is a simple homepage built with Next.js and Clerk</p>
+      </div>
+    </div>
+  )
+}
+```
+
+If we now run `npm run dev`, we’ll get this homepage:
+
+Nextjs Authentication tutorial illustration
+
+Looks like we have some nicer default styling with the App Router.
+
+Next up is to add the `ClerkProvider`. This is the first point at which there is a difference between the pages router and the App Router. With the App Router, we’re going to add the `ClerkProvider` to our `layout.js`:
+
+```jsx
+import { ClerkProvider } from '@clerk/nextjs'
+
+export const metadata = {
+  title: 'Next.js 13 with Clerk',
+}
+
+export default function RootLayout({ children }) {
+  return (
+    <ClerkProvider>
+      <html lang="en">
+        <body>{children}</body>
+      </html>
+    </ClerkProvider>
+  )
+}
+```
+
+The App Router doesn’t use the `_app.js` file. Instead, layout.js lets you set a global layout for your application. Therefore you can add the `ClerkProvider` to e.g. the `dashboard/layout.js` file, and only the files within that route group would require a login. To repeat from above, this is important because the `ClerkProvider` requires dynamic rendering. If you nest the `ClerkProvider` at a lower level, this allows you to serve the landing and marketing pages statically.
+
+The root layout is a server component. If you plan to use the `ClerkProvider` outside the root layout, it will need to
+be a server component as well.
+
+Next step is the middleware. Again, this is in `middleware.js` in our root directory. This time, we’ll start with our homepage as a public route:
+
+```jsx
+import { authMiddleware } from '@clerk/nextjs'
+
+export default authMiddleware({
+  publicRoutes: ['/'],
+})
+
+export const config = {
+  matcher: ['/((?!.+\\.[\\w]+$|_next).*)', '/', '/(api|trpc)(.*)'],
+}
+```
+
+Clerk is now protecting the entire application. Let’s change our homepage to use the SignedOut component so we can sign in to the app:
+
+```jsx
+import { SignedOut } from '@clerk/nextjs'
+import Head from 'next/head'
+import Link from 'next/link'
+
+export default function Home() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-500 to-purple-500">
+      <Head>
+        <title>Hello Pages Router with Next.js & Clerk</title>
+        <meta
+          name="description"
+          content="A simple Hello World homepage using Next.js and TailwindCSS"
+        />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+
+      <div className="rounded-xl bg-white p-8 shadow-lg">
+        <h1 className="mb-4 text-2xl font-bold text-blue-500">Hello, Pages Router!</h1>
+        <p className="text-gray-600">This is a simple homepage built with Next.js and Clerk</p>
+
+        <SignedOut>
+          <Link href="/sign-up">
+            <div>
+              <h3 className="mb-4 text-xl font-bold text-blue-500">
+                Sign in or sign up for an account
+              </h3>
+            </div>
+          </Link>
+        </SignedOut>
+      </div>
+    </div>
+  )
+}
+```
+
+The link now shows on the page:
+
+Nextjs Authentication tutorial illustration
+
+Next we’ll add the two other components that will be important for signing up/in/out. First, the sign up page, which will be at `app/sign-up/[[...sign-up]]/page.jsx`:
+
+```jsx
+import { SignUp } from '@clerk/nextjs'
+
+export default function Page() {
+  return <SignUp />
+}
+```
+
+Remember to also add these new endpoints to your `.env.local`:
+
+```sh
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/
+```
+
+Second, we need the user button:
+
+```jsx
+import { SignedIn, SignedOut, UserButton } from '@clerk/nextjs'
+import Link from 'next/link'
+
+export default function Home() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-500 to-purple-500">
+      <div className="rounded-xl bg-white p-8 shadow-lg">
+        <h1 className="mb-4 text-2xl font-bold text-blue-500">Hello, App Router!</h1>
+        <p className="text-gray-600">This is a simple homepage built with Next.js and Clerk</p>
+
+        <SignedOut>
+          <Link href="/sign-up">
+            <div>
+              <h3 className="mb-4 text-xl font-bold text-blue-500">
+                Sign in or sign up for an account
+              </h3>
+            </div>
+          </Link>
+        </SignedOut>
+        <SignedIn>
+          <div>
+            <UserButton afterSignOutUrl="/" />
+          </div>
+        </SignedIn>
+      </div>
+    </div>
+  )
+}
+```
+
+Now, when we click the sign up/in link we again go through to the Clerk modal:
+
+Nextjs Authentication tutorial illustration
+
+Once we sign in we are redirected back to the homepage, now with the user button:
+
+Nextjs Authentication tutorial illustration
+
+With the user signed in, let’s do the same as with the pages router: create a protected page and a protected API.
+
+Again, for protected pages, we can check for authentication on the server or on the client. Let’s quickly do the client side as that is similar to the pages router:
+
+```jsx
+'use client'
+
+import { useUser } from '@clerk/nextjs'
+
+export default function Example() {
+  const { isLoaded, isSignedIn, user } = useUser()
+
+  if (!isLoaded || !isSignedIn) {
+    return null
+  }
+
+  return (
+    <div>
+      <h1>Welcome, {user.firstName}!</h1>
+      <p>This is your protected page on the client.</p>
+      {/* Other user-specific JSX components/data can be added here */}
+    </div>
+  )
+}
+```
+
+The only difference between the App Router and the pages router version here is the “use client” directive. By default, all components in the App Router are server components, so will render on the server. The “use client” directive opts this component into client-side rendering, so we can then use Clerk hooks.
+
+This renders as:
+
+Nextjs Authentication tutorial illustration
+
+For server rendering, Clerk has two App Router-specific helpers that you can use with your Server Components:
+
+1. auth() will return the Authentication object of the currently active user. One of the fundamental differences with the App Router is that you don’t have to inspect the request object constantly for authentication headers. Instead they are available in the global scope through Next.js’s headers() and cookies() functions, that ClerkProvider gives you access to.
+2. currentUser() will return the User object of the currently active user so you can render information, like their first and last name, directly from the server.
+
+Here, we’re going to use both to get information about the user on a protected page:
+
+```jsx
+import { auth, currentUser } from '@clerk/nextjs'
+
+export default async function Page() {
+  // Get the userId from auth() -- if null, the user is not logged in
+  const { userId } = auth()
+
+  if (userId) {
+    // Query DB for user specific information or display assets only to logged in users
+  }
+
+  // Get the User object when you need access to the user's information
+  const user = await currentUser()
+
+  // Use `user` to render user details or create UI elements
+  return (
+    <div>
+      <h1>Welcome, {user.firstName}!</h1>
+      <p>This is your protected page.</p>
+      {/* Other user-specific JSX components/data can be added here */}
+    </div>
+  )
+}
+```
+
+Which gives us a page with user information rendered:
+
+Nextjs Authentication tutorial illustration
+
+For API routes, the routing is different, but the code is similar. Let’s build an API route under `app/api/user/route.jsx`:
+
+```jsx
+import { NextResponse } from 'next/server'
+import { auth, currentUser } from '@clerk/nextjs'
+
+export async function GET() {
+  const { userId } = auth()
+
+  if (!userId) {
+    return new NextResponse('Unauthorized', { status: 401 })
+  }
+
+  const user = await currentUser()
+
+  // perform your Route Handler's logic
+
+  return NextResponse.json({ user }, { status: 200 })
+}
+```
+
+We don’t have the request and response objects with the App Router, so get all our authentication data from our Clerk helpers (which get it from the ClerkProvider which gets it from the global scope via the Next.js headers() function). We can return a JSON of the user’s information:
+
+Nextjs Authentication tutorial illustration
+
+And that’s it. You have server-side, client-side, and API route authentication using the Next.js App Router.
+
+## Authenticating with the App Router
+
+The Next.js App Router offers significant performance gains compared to the traditional pages router. However, you can absolutely continue leveraging the pages router in your Next.js applications – Clerk supports authentication with both routing approaches.
+
+To learn more about the App Router, check out the official Next.js documentation. If you would like to get started with Clerk, sign up for a free account and follow along with our Next.js Quickstart.

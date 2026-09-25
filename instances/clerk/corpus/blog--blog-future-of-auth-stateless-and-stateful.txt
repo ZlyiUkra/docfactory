@@ -1,0 +1,84 @@
+# The future of authentication is both stateful and stateless
+# джерело: https://clerk.com/blog/future-of-auth-stateless-and-stateful
+# отримано: 2026-09-25
+
+Should session authentication be stateless or stateful? This simple question has been the source of many spirited debates, especially on Hacker News where it's spurred many lively threads over the years.
+
+The discussion always boils down to two primary points:
+
+1. Stateful authentication is more secure
+2. Stateless authentication is faster
+
+In this post, we'll first discuss the reasons behind both, and explain how a hybrid approach offers the best of both worlds.
+
+## What is stateless? What is stateful?
+
+This post will be hard to follow if you don't know the difference between stateful and stateless authentication, so let's start from there.
+
+### Stateful authentication
+
+Stateful authentication relies on a database (or another mechanism for storing "state") to determine if a session is still active.
+
+When a session begins, a unique identifier is created to be passed along with future web requests.
+
+When requests are received, that unique identifier is used to query the database and check if the session is still active.
+
+### Stateless authentication
+
+Stateless authentication relies on cryptography to determine if a session is still active.
+
+When a session begins, a cryptographically signed token is generated (usually in the form of a JWT) that encodes the user's ID and the timestamp when the session expires. This token is then passed along with future web requests.
+
+When requests are received, the backend confirms that the token's signature is valid and that it has not expired. This is considered stateless because no database is involved, just cryptography to verify the signature.
+
+## Stateful authentication is more secure
+
+The first issue to consider is security. Love it or hate it, security is the most important feature on any authentication system.
+
+Stateful authentication is considered more secure because the database can be updated at any time to mark the session as inactive. When the next request is received, the backend will notice the change and refuse the request.
+
+Since the database is checked on every request, instantaneous session revocation is possible. This is ideal if an attacker has access to a system and needs to be stopped immediately.
+
+With stateless authentication, though, the backend only inspects the token. No database is involved, so the token will remain valid until the hardcoded expiration is passed. So, if an attacker gets hold of a token, their attack can continue until the expiration passes.
+
+## Stateless authentication is faster
+
+Since stateful authentication is more secure, you might expect it's the easy choice. It's not, because stateless authentication is _significantly_ faster.
+
+The cryptography required for stateless authentication can consistently be performed in under 1 millisecond.
+
+On the other hand, the database query required for stateful authentication can take 10-20 milliseconds.
+
+Authentication happens on every request, so the performance hit of a stateful approach quickly starts to look like a common bottleneck. As a result, developers start looking for faster alternatives, and naturally gravitate toward stateless authentication.
+
+## Hybrid stateful and stateless authentication offers the best of both worlds
+
+Fortunately, authentication is not a zero-sum game. Developers can build a hybrid approach of stateful _and_ stateless authentication that is both fast and secure.
+
+The magic comes from a simple sleight-of-hand: instead of setting stateless tokens to expire with the session, they can be set with a short expiration and refreshed periodically.
+
+When a token is refreshed, the database is checked to ensure the session is still active. As a result, sessions can still be revoked before they end. The potential delay before revocation completes depends on how frequently tokens must be refreshed. If a 60 second expiration is assigned to each token, then revocation will take a maximum of 60 seconds.
+
+Refreshing stateless tokens is a stateful process, since it requires querying the database to confirm the session is still active. But with the optimal approach, refreshes will happen asynchronously, except for the very first load after an application is closed.
+
+### In practice
+
+Clerk changed to a hybrid approach for session management 6 months ago. The functionality is built-in to our SDKs without any configuration, so most developers don't even recognize it's happening.
+
+Our stateless authentication tokens are set to expire every 60 seconds. In practice, here's how it works:
+
+1. When a user signs in, a stateless authentication token is created immediately.
+2. An asynchronous poller is started on the frontend to refresh the stateless token every 50 seconds. The 10 second difference is to account for potential network delays and clock-skew between our token generator and the developer's backend.
+3. While the user is active on the application, every request to the developer's backend will include an active, stateless authentication token.
+
+But now, let's say the user closes the application for a few minutes so our poller stops. When the user revisits the application, the latest token has already expired since 60 seconds have elapsed.
+
+In this case, we need to update the token synchronously before requests to the backend can be processed. It's the one exception to an otherwise completely stateless authentication experience.
+
+In the end, Clerk's authentication solution is both stateful and stateless. Sessions can be revoked within 60 seconds, yet the vast majority of requests use stateless authentication and can be verified in under 1ms.
+
+## Conclusion
+
+To address speed and security concerns, we believe the future of authentication is both stateful and stateless. We've been using this solution for over 6 months and it has proven to be robust and resilient over many millions of refreshes and authentications.
+
+Our session management is included free in every Clerk plan - give it a try to test for yourself, or watch your network tab while signed in on clerk.dev to see it in action!

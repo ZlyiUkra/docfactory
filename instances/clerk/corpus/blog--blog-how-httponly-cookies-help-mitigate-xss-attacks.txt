@@ -1,0 +1,47 @@
+# How HttpOnly cookies help mitigate XSS attacks
+# джерело: https://clerk.com/blog/how-httponly-cookies-help-mitigate-xss-attacks
+# отримано: 2026-09-25
+
+**In short: HttpOnly cookies do not prevent cross-site scripting (XSS) attacks, but they do lessen the impact and prevent the need to sign out users after the XSS is patched. HttpOnly cookies are not a substitute for XSS prevention measures.**
+
+Our very first architecture decision at Clerk was to use HttpOnly cookies for session management. It has long been understood that HttpOnly cookies help mitigate cross-site scripting (XSS) attacks, and we felt it was important to include this best-practice directly in our product.
+
+But while there's strong consensus that using HttpOnly cookies is a best practice, we've found many developers are unsure of how they help with XSS. We think this stems from the guidance, which often just says what to do rather than explaining why:
+
+> A cookie with the HttpOnly attribute is inaccessible to the JavaScript Document.cookie API; it is sent only to the server. For example, cookies that persist server-side sessions don't need to be available to JavaScript, and should have the HttpOnly attribute. This precaution helps mitigate cross-site scripting (XSS) attacks.\
+> Mozilla MDN Web Docs
+
+> Cookies [...] SHOULD be tagged to be inaccessible via JavaScript (HttpOnly).\
+> NIST 800-63B
+
+## The attack vector
+
+After reading this guidance, you might be surprised to learn that HttpOnly cookies do not prevent XSS attacks.
+
+Instead, HttpOnly cookies are helpful when you assume an XSS attack will happen and want to **lessen the impact**. Ultimately, they mitigate XSS attacks by making it easier for organizations to respond.
+
+The specific threat HttpOnly cookies protect against is called **session token exfiltration**, which is a fancy way of saying that the attacker is able to steal a user's session token.
+
+When a session token is stored in a cookie _without_ the HttpOnly flag, the token can be stolen during an XSS attack with document.cookie. This is problematic because session tokens are the primary mechanism used by backends to authenticate a user.
+
+**Once an attacker has access to a session token, they can often act on behalf of a user until that token expires or is revoked.** Actions can be taken remotely - even if the user is no longer visiting the page with the XSS vulnerability - which can serve to dramatically increase the surface area of the attack.
+
+Conversely, when a session token is stored in a cookie _with_ the HttpOnly flag, that token cannot be directly exfiltrated during an XSS attack. This minimizes the surface area of the XSS attack and makes it easier for organizations to respond.
+
+## Responding to XSS attacks - without HttpOnly cookies
+
+When an organization is responding to an XSS attack, the first step is always patching the XSS vulnerability.
+
+If HttpOnly cookies were not used, organizations should then assume that session tokens were exfiltrated. This means that - even with the XSS vulnerability patched - the attacker may still have the ability to act on behalf of users.
+
+The next step is revoking the session of any user who may have been subjected to the XSS vulnerability, since those are the users who may have had their session tokens exfiltrated. These users will need to sign in again next time they visit the website.
+
+Lastly, the organization will need to reverse any actions the attacker took on behalf of their users, from the time the vulnerability began to the time session tokens were revoked.
+
+## Responding to XSS attacks - with HttpOnly cookies
+
+With HttpOnly cookies, organizations still need to patch the XSS vulnerability and reverse any actions taken on behalf of their users, but they do not need to revoke sessions and ask users to sign in again.
+
+## What about localStorage and sessionStorage?
+
+Although window.localStorage and window.sessionStorage are newer client-side storage APIs, they function like cookies _without_ the HttpOnly flag. HttpOnly cookies are still the only standard mechanism for persisting session tokens that cannot be exfiltrated during an XSS attack.

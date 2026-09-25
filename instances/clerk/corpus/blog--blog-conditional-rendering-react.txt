@@ -1,0 +1,373 @@
+# Guide to Conditional Rendering in React
+# джерело: https://clerk.com/blog/conditional-rendering-react
+# отримано: 2026-09-25
+
+Conditional rendering is a pattern used in React to render a different user interface (UI) based on whether a condition is `true` or `false`. This can be as simple as rendering a loading message while waiting for an API to return the data, where the loading message is conditionally rendered based on whether the loading is `true` or `false`.
+
+Conditional rendering is quite helpful for showing a personalized UI based on the user's preference, completing a user flow without changing routes, or showing a loading or error state.
+
+In this article, you'll learn about different conditional rendering methods in React applications. You'll use the Clerk client for React to implement a simple dashboard application that conditionally shows the UI based on whether or not the user is signed in.
+
+## What's Conditional Rendering in React?
+
+Conditional rendering in React allows you to implement interactive interfaces where you render different UIs based on the application state; these can range from user inputs to user preferences. Let's dig into conditional rendering with some practical use cases.
+
+### Showing Personalized UIs
+
+This can be based on your preference as a user and is one of the most common uses you'll see out there. Consider Twitter, for example. You'll only see the **Explore** section if you're not signed in to Twitter.
+
+Twitter hiding sections conditionally
+
+When you're signed in, you'll see a personalized feed in sections like **Home** and **Messages**.
+
+Conditionally show personalized feed in Twitter
+
+### Completing a User Flow without Changing Routes
+
+This is another use case for conditional rendering. Consider Typeform, for example. The application has multiple pages in a single form, but rather than navigating to a new page for every question, it uses conditional rendering to show only the current question.
+
+Conditional rendering in Typeform
+
+### Showing a Loading or Error State
+
+This is essential for any application dealing with data loading. Consider Twitter again. See how **Home** and **Trending** both show a loader while fetching the feed.
+
+Conditional rendering for loading
+
+## Implementing Conditional Rendering on Authentication
+
+There are a few ways to do conditional rendering in React, and you'll learn about five of them in this article. You can follow the examples by setting up this GitHub repository on your local drive.
+
+### "If…else" Statements
+
+You can use the good old `if…else` conditional statement in JavaScript. You can use the `if` condition to return a certain JSX if the user is signed in and something else if they aren't.
+
+```tsx
+// AppWithIf.jsx
+
+function App() {
+  const isLoggedIn = true
+  if (isLoggedIn) {
+    return <div className="App">Hello, logged in user!</div>
+  } else {
+    return <div>User not logged in!</div>
+  }
+}
+
+export default App
+```
+
+### The Conditional (Ternary) Operator
+
+The conditional (ternary) operator can also be used to check whether the user is signed in and return components accordingly.
+
+The ternary operator is a good choice if you've abstracted your JSX into components:
+
+```tsx
+// AppWithTernary.jsx
+
+function SignedIn() {
+  return <div className="App">Hello, logged in user!</div>
+}
+
+function SignedOut() {
+  return <div>User not logged in!</div>
+}
+
+function App() {
+  const isLoggedIn = true
+  return isLoggedIn ? <SignedIn /> : <SignedOut />
+}
+
+export default App
+```
+
+### The Switch Case
+
+The switch case is useful when you want to conditionally render a component based on a range of choices—for example, if you're conditionally rendering the component based on the user's permission level, as shown below:
+
+```tsx
+// AppWithSwitch.jsx
+
+function Viewer() {
+  return <div className="App">Hello, logged in as Viewer!</div>
+}
+
+function SignedOut() {
+  return <div>User not logged in!</div>
+}
+
+function Admin() {
+  return <div className="App">Hello, logged in as Admin!</div>
+}
+
+function Editor() {
+  return <div className="App">Hello, logged in as Editor!</div>
+}
+
+function App() {
+  const userPermission = 'admin'
+  switch (userPermission) {
+    case 'viewer':
+      return <Viewer />
+    case 'editor':
+      return <Editor />
+    case 'admin':
+      return <Admin />
+    default:
+      return <SignedOut />
+  }
+}
+
+export default App
+```
+
+### Immediately Invoked Function Expressions (IIFE)
+
+An IIFE is a good option if you want to use the conditional statement within the `return` statement. In this example, the anonymous function below the `h1` tag runs on every render and returns the JSX based on the user's login state:
+
+```tsx
+// AppWithIIFE.jsx
+
+function App() {
+  const isLoggedIn = true
+  return (
+    <div>
+      <h1>Amazing application</h1>
+      {(function () {
+        if (isLoggedIn) {
+          return <div className="App">Hello, logged in user!</div>
+        } else {
+          return <div>User not logged in!</div>
+        }
+      })()}
+    </div>
+  )
+}
+
+export default App
+```
+
+### Higher-Order Components
+
+A higher-order component (HOC) is a pattern for reusing component logic. You can use a HOC to abstract the authentication logic with multiple components. In this example, the `withAuth` function is a HOC that takes a component as input and returns another component with conditional rendering based on the user's login state:
+
+```tsx
+// AppWithHOC.jsx
+
+import { useEffect, useState } from 'react'
+
+async function getUserAuth() {
+  // get Auth state from somewhere
+  return true
+}
+
+function withAuth(Component) {
+  return function ComponentWithAuth() {
+    const [isLoggedIn, setLoggedIn] = useState(true)
+    useEffect(() => {
+      getUserAuth().then((auth) => setLoggedIn(auth))
+    }, [])
+    return isLoggedIn ? <Component /> : <div>Please log in to view this component.</div>
+  }
+}
+
+function Dashboard({}) {
+  return (
+    <div>
+      <h1>Amazing application</h1>
+      <p>Best dashboard</p>
+    </div>
+  )
+}
+
+const DashboardWithAuth = withAuth(Dashboard)
+
+function App() {
+  return <DashboardWithAuth />
+}
+
+export default App
+```
+
+## Conditional Rendering with Clerk
+
+You've now learned about different ways of using conditional rendering for authentication. You can see that dealing with authentication can get very messy: the more auth state you manage, the more complex the conditionals become. What if there was an authentication provider that takes care of all the conditional rendering for you?
+
+Next you'll see how the Clerk frontend client can be used to implement conditional rendering based on the user's authentication state.
+
+Run the following command in your terminal to create a new React project:
+
+```shell
+npx create-react-app clerk-react-conditionals
+```
+
+Navigate to the newly made project in your terminal by running the following:
+
+```shell
+cd clerk-react-conditionals
+```
+
+Now install the Clerk React client using the following command:
+
+```shell
+npm install @clerk/clerk-react
+```
+
+Log in to your Clerk dashboard and copy the frontend API key from the **API keys** page.
+
+Copy frontend API key from Clerk
+
+Create the new file **.env.local** and securely save the frontend API key like so:
+
+```bash
+REACT_APP_CLERK_FRONTEND_API=<paste-the-key-from-clerk-dashboard>
+
+```
+
+_Note:_ Don't commit the **.env.local** file to keep the key safe.
+
+In the **App.js** file, add the `ClerkProvider` at the top level in the `App` component. Pass the `ClerkProvider` with the `frontendApi` prop from the environment variables. The `ClerkProvider` provides the authentication state and methods to all the child components:
+
+```tsx
+import React from 'react'
+import {
+  ClerkProvider,
+  SignedIn,
+  SignedOut,
+  SignOutButton,
+  SignInButton,
+  useUser,
+} from '@clerk/clerk-react'
+
+const frontendApi = process.env.REACT_APP_CLERK_FRONTEND_API
+
+function App() {
+  return (
+    <ClerkProvider frontendApi={frontendApi}>
+      <SignedIn>
+        <p style={{ padding: 20 }}>Welcome to the amazing dashboard!</p>
+      </SignedIn>
+      <SignedOut>
+        <p style={{ padding: 20 }}>You must be signed in to use the dashboard.</p>
+      </SignedOut>
+    </ClerkProvider>
+  )
+}
+```
+
+The `SignedIn` and `SignedOut` components from Clerk conditionally render the children. The `SignedIn` component renders children if the user is signed in, and the `SignedOut` component renders children if they're not. This example renders different messages, but you can use any other component according to your application.
+
+Run `npm start` in your terminal to start the application and open http://localhost:3000 in a web browser. You should see the following message.
+
+Signed-out user view
+
+### Using the React Hook
+
+The dashboard conditionally renders different messages based on a user's sign-in state, but the user still needs the option to sign in. As a good practice, you can put the **Sign in** and **Sign out** buttons at the top `NavBar` component:
+
+```tsx
+import React from 'react'
+import {
+  ClerkProvider,
+  SignedIn,
+  SignedOut,
+  SignOutButton,
+  SignInButton,
+  useUser,
+} from '@clerk/clerk-react'
+
+function NavBar() {
+  const { user, isSignedIn } = useUser()
+  return (
+    <nav
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '10px 20px',
+        backgroundColor: 'peachpuff',
+      }}
+    >
+      <h2>Amazing dashboard</h2>
+      {isSignedIn ? (
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <p style={{ marginRight: 10 }}>Hello, {user.firstName}!</p>
+          <SignOutButton />
+        </div>
+      ) : (
+        <SignInButton />
+      )}
+    </nav>
+  )
+}
+```
+
+The `NavBar` component uses the `useUser` hook from Clerk to get the `user` object and `isSignedIn` Boolean flag. The component renders a navbar with an `h2` "Amazing dashboard" and, depending on the value of `isSignedIn`, displays either a greeting with the user's first name and a `SignOutButton` component or a `SignInButton` component.
+
+Now use the `NavBar` component in the `App`. The final application code should look as shown below:
+
+```tsx
+import React from 'react'
+import {
+  ClerkProvider,
+  SignedIn,
+  SignedOut,
+  SignOutButton,
+  SignInButton,
+  useUser,
+} from '@clerk/clerk-react'
+
+const frontendApi = process.env.REACT_APP_CLERK_FRONTEND_API
+
+function App() {
+  return (
+    <ClerkProvider frontendApi={frontendApi}>
+      <NavBar />
+      <SignedIn>
+        <p style={{ padding: 20 }}>Welcome to the amazing dashboard!</p>
+      </SignedIn>
+      <SignedOut>
+        <p style={{ padding: 20 }}>You must be signed in to use the dashboard.</p>
+      </SignedOut>
+    </ClerkProvider>
+  )
+}
+
+function NavBar() {
+  const { user, isSignedIn } = useUser()
+  return (
+    <nav
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '10px 20px',
+        backgroundColor: 'peachpuff',
+      }}
+    >
+      <h2>Amazing dashboard</h2>
+      {isSignedIn ? (
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <p style={{ marginRight: 10 }}>Hello, {user.firstName}!</p>
+          <SignOutButton />
+        </div>
+      ) : (
+        <SignInButton />
+      )}
+    </nav>
+  )
+}
+
+export default App
+```
+
+Your secured dashboard application can be seen in action below.
+
+View video
+
+## Conclusion
+
+After completing this tutorial, you'll have successfully built a secured dashboard application that conditionally renders specific UIs according to the user's sign-in state. While doing so, you learned about different ways of conditionally rendering the UI in React. You also discovered various components and hooks that Clerk provides to render UIs conditionally depending on the user's authentication status.
+
+Clerk is a complete user management solution with pre-built components, hooks, and even a user interface for user profile management. Clerk is an easy-to-integrate solution for your React applications with first-class support for all modern frameworks such as Next.js, Remix, and RedwoodJS. Give Clerk a try for free to explore a complete list of its features.

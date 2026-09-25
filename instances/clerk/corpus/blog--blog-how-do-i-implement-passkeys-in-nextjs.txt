@@ -1,0 +1,775 @@
+# How do I implement passkeys in Next.js?
+# джерело: https://clerk.com/blog/how-do-i-implement-passkeys-in-nextjs
+# отримано: 2026-09-25
+
+Passkeys promise a future where you never have to remember a password again and where phishing emails and credential stuffing attacks stop working.
+
+If you're building or scaling a product, they reduce risk, lower support load, and ship a sign-in experience that doesn't feel like a tax on conversion. This article unpacks what passkeys are, why they're more secure than traditional authentication methods, and how they fit into today's browser and device ecosystem.
+
+We'll then walk through a concrete Next.js implementation, focusing on both the registration flow (creating a passkey) and the authentication flow (signing in with it). You'll see how the browser, authenticator, and server coordinate using WebAuthn challenges, and how to wire it into a practical, end-to-end passkey experience.
+
+**TL;DR**
+
+- Passkeys replace passwords with public-key cryptography: the device generates a key pair, keeps the private key locked behind biometrics or a PIN, and the server stores only the public key.
+- During sign-in, the server issues a one-time challenge that the device signs, proving possession without transmitting secrets.
+- Passkeys are phishing-resistant (private key only responds to the original domain) and remove reusable credentials from your database.
+- In Next.js, you can implement passkeys manually using the SimpleWebAuthn library with two round-trips each for registration and authentication.
+- Or skip the complexity: Clerk supports passkeys with a single dashboard toggle and one component.
+
+## What are passkeys?
+
+Passkeys are a modern, phishing-resistant form of passwordless authentication that replaces traditional passwords with cryptographic credentials tied to a user's device and unlocked locally via biometric authentication (for example, Face ID, Touch ID, or Windows Hello) or a device PIN. When a user registers, the device generates a public/private key pair. The server stores only the public key and challenges the device to prove possession of the private key during sign-in, so the private key never leaves the device. Passkeys provide multi-factor assurance because they combine something-you-have (the device) with something-you-are or something-you-know (biometric or PIN that unlocks the key), and they reduce server-side risk since attackers have no reusable secrets to steal.
+
+### Key benefits of passkey authentication
+
+- **Passwordless authentication**: No passwords to create, remember, or leak.
+- **MFA built in by default**: Device possession + local biometric or PIN unlock (or security key).
+- **Phishing-resistant**: Private keys only sign challenges for the registering origin.
+- **Reduced server liability**: Servers store only public keys, not reusable secrets.
+- **Simpler user experience**: Faster sign-in flows and fewer account recovery calls.
+- **Cross-device sync**: Platforms often let users sync passkeys between their devices for seamless access (implementation and privacy depend on the vendor).
+- **Attestation & device validation**: Attestation is cryptographic proof that an authenticator provides about its identity and security properties (e.g., make, model, certification level). This optional feature helps servers verify authenticator properties during registration.
+- **Interoperability**: Major browsers and platforms support passkeys via WebAuthn and CTAP standards.
+
+> WebAuthn is a W3C standard and part of the FIDO2 specification that enables websites to authenticate users via public-key cryptography, allowing secure, phishing-resistant sign-ins through biometrics, security keys, or platform authenticators. You can learn more about WebAuthn on the World Wide Web Consortium website.
+
+## Implementing passkeys in Next.js with WebAuthn
+
+Building a complete passkeys implementation in Next.js from scratch would require many steps. Instead, we'll dive into a pre-built implementation and cover the important parts of the application as they pertain to passkeys to provide a clear understanding of how they work. The goal is to give you enough detail to evaluate effort and risk for your team, not to turn you into a security engineer.
+
+The code for this article is available on GitHub. Feel free to review it in your browser or clone the repo to your machine to explore it. We'll cover the code in two sections:
+
+- **Registration** will explain how a new user gets signed up with an application using a passkey.
+- **Authentication** explains how a returning user signs in with their passkey.
+
+This guide assumes familiarity with Next.js App Router, basic TypeScript, and a database for storing user credentials. The demo uses Postgres, but any database works.
+
+> For developers looking to understand Next.js authentication more broadly, we have a comprehensive guide covering multiple authentication strategies.
+
+### Passkey registration flow
+
+Before looking at the code, let's cover the workflow at a high level. The following diagram visually shows how areas of the application communicate with each other. Additional details for each step of the flow can be found below the image.
+
+Passkeys registration sequence diagram
+
+1. **User enters username** - The user types a username (and other data required for sign-up) into the registration form in the browser.
+2. **Browser requests registration options** - The browser sends a request to the server asking for WebAuthn registration options for this user.
+3. **Server prepares options** - The server creates the user record, generates a fresh random challenge, configures passkey settings, and returns the registration options to the browser.
+4. **Browser shows native registration prompt** - The browser or OS shows a built-in prompt such as "Create a passkey" or "Use Face ID to register".
+5. **User approves with biometrics or a security key** - The user completes the biometric check or interacts with their security key so the authenticator can proceed.
+6. **Authenticator creates a new key pair** - The authenticator creates a new public/private key pair for this site. The private key stays on the device and is never sent to the server.
+7. **Browser sends credential to the server** - The browser sends the new credential data (including the public key and associated identifiers) back to the server.
+8. **Server validates and stores the credential** - The server validates the challenge and signature, then stores the credential ID, public key, and metadata so this passkey can be used for future logins.
+9. **Registration completes** - The server responds with success, and the browser updates the UI to indicate that passkey registration is complete.
+
+#### The client-side registration component
+
+Now that you understand how the workflow operates, let's dive into the code, starting with the `PasskeyRegister` component. The demo application mounts this component on the homepage and allows the user to enter their desired username and a display name. When the user submits the form, the component first checks the current browser for WebAuthn support, then sends the data to the `/api/register/options` endpoint.
+
+The code uses the SimpleWebAuthn library to handle the WebAuthn protocol details:
+
+filename: src/components/PasskeyRegister.tsx
+```tsx
+'use client'
+
+import { useState } from 'react'
+import { startRegistration } from '@simplewebauthn/browser'
+import type { PublicKeyCredentialCreationOptionsJSON } from '@simplewebauthn/browser'
+
+interface Props {
+  onSuccess?: () => void
+}
+
+export default function PasskeyRegister({ onSuccess }: Props) {
+  const [username, setUsername] = useState('')
+  const [displayName, setDisplayName] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+    setSuccess(false)
+    setLoading(true)
+
+    try {
+      // Check if the browser supports WebAuthn
+      // This API is required for passkey operations
+      if (!window.PublicKeyCredential) {
+        throw new Error('WebAuthn is not supported in this browser')
+      }
+
+      // Request registration options from the server
+      // The server generates a cryptographic challenge and configuration
+      // that defines how the passkey should be created
+      const optionsRes = await fetch('/api/register/options', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, displayName }),
+      })
+
+      if (!optionsRes.ok) {
+        const errorData = await optionsRes.json()
+        throw new Error(errorData.error || 'Failed to get registration options')
+      }
+
+      const options: PublicKeyCredentialCreationOptionsJSON = await optionsRes.json()
+
+      // Trigger the browser's passkey creation flow
+      // This prompts the user to authenticate (e.g., fingerprint, Face ID)
+      // and creates a new public-private key pair
+      const credential = await startRegistration({ optionsJSON: options })
+
+      // Send the new credential to the server for verification
+      // The server validates the response and stores the public key
+      const verifyPayload = {
+        ...credential,
+        username,
+      }
+
+      const verifyRes = await fetch('/api/register/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(verifyPayload),
+      })
+
+      if (!verifyRes.ok) {
+        const errorData = await verifyRes.json()
+        throw new Error(errorData.error || 'Registration verification failed')
+      }
+
+      // Step 5: Registration complete - reset form and notify parent
+      setSuccess(true)
+      setUsername('')
+      setDisplayName('')
+      onSuccess?.()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Registration failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Expand to see the UI code
+  return (
+    <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-md">
+      <h2 className="mb-4 text-2xl font-bold">Register Passkey</h2>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="register-username" className="mb-1 block text-sm font-medium">
+            Username
+          </label>
+          <input
+            id="register-username"
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+            disabled={loading}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="register-displayname" className="mb-1 block text-sm font-medium">
+            Display Name
+          </label>
+          <input
+            id="register-displayname"
+            type="text"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            required
+            disabled={loading}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
+        >
+          {loading ? 'Registering...' : 'Register'}
+        </button>
+      </form>
+
+      {error && (
+        <div className="mt-4 rounded border border-red-400 bg-red-100 p-3 text-red-700">
+          {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="mt-4 rounded border border-green-400 bg-green-100 p-3 text-green-700">
+          Passkey registered successfully!
+        </div>
+      )}
+    </div>
+  )
+}
+```
+
+#### Generating passkey registration options on the server
+
+When the server receives the form data, it creates the user record in the database. Using the `@simplewebauthn/server` package, the server creates a series of options and stores a cryptographic challenge in the database. This challenge is a high-entropy, single-use string that the next step of the process uses.
+
+These options define the relying party and user identity, configure how the authenticator should behave (for example, preferring passkey-style resident credentials and user verification), and use the timeout and generated challenge to control how long and under what conditions the client (typically the user's browser) will allow the registration to continue.
+
+The server returns the object created from the options to the client along with the challenge.
+
+filename: src/app/api/register/options/route.ts
+```tsx
+import { NextRequest, NextResponse } from 'next/server'
+import { generateRegistrationOptions } from '@simplewebauthn/server'
+import { findOrCreateUser, insertChallenge } from '@/lib/db'
+import type { RegistrationOptionsRequest } from '@/types/webauthn'
+
+export const runtime = 'nodejs'
+
+export async function POST(request: NextRequest) {
+  try {
+    // Parse and validate the incoming request
+    const body: RegistrationOptionsRequest = await request.json()
+    const { username, displayName } = body
+
+    if (!username || !displayName) {
+      return NextResponse.json({ error: 'Username and displayName are required' }, { status: 400 })
+    }
+
+    // Create the user record or retrieve existing one
+    const user = await findOrCreateUser(username, displayName)
+
+    // Configure the Relying Party (RP) - your application's identity
+    // The rpId must match the domain where passkeys will be used
+    const rpId = process.env.NEXT_PUBLIC_RP_ID || 'localhost'
+    const rpName = 'Passkey Demo'
+
+    // Generate WebAuthn registration options
+    // This creates a cryptographic challenge the client must sign
+    const options = await generateRegistrationOptions({
+      rpName,
+      rpID: rpId,
+      userName: username,
+      userDisplayName: displayName,
+      // 'none' means we don't need hardware attestation certificates
+      attestationType: 'none',
+      authenticatorSelection: {
+        // 'preferred' allows both passkeys and security keys
+        residentKey: 'preferred',
+        // 'preferred' requests biometric/PIN verification when available
+        userVerification: 'preferred',
+      },
+      timeout: 60000,
+    })
+
+    // Store the challenge in the database for verification later
+    // The challenge expires after 60 seconds for security
+    await insertChallenge(user.id, 'registration', options.challenge, 60000)
+
+    // Return options to client - disable caching since challenge is single-use
+    return NextResponse.json(options, {
+      headers: {
+        'Cache-Control': 'no-store',
+      },
+    })
+  } catch (error) {
+    console.error('Registration options error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+```
+
+The client receives the challenge and generates a public/private key pair. The private key is stored on the device that created it and never leaves that device. It is used to digitally sign the challenge that was received from the server. The client also creates a "credential ID," which uniquely identifies that device and is stored in the database, enabling a single account to register multiple passkeys if needed.
+
+Once complete, the client sends the signed challenge, public key, and credential ID back to the server. The `startRegistration` function provided by `@simplewebauthn/browser` triggers this second trip to the server (shown in the client-side code above).
+
+> Most browsers support using smartphones to create and store passkeys. When using this option, browsers often present a QR code to create a secure tunnel (using Bluetooth or Wi-Fi) between the computer and the smartphone to complete the registration process.
+
+#### Verifying the passkey registration response
+
+When the server receives this payload, it retrieves the user and challenge from the database. Using the provided public key, the server verifies the signature and (assuming the verification succeeds) stores that public key as a passkey for the user.
+
+filename: src/app/api/register/verify/route.ts
+```tsx
+import { NextRequest, NextResponse } from 'next/server'
+import { verifyRegistrationResponse } from '@simplewebauthn/server'
+import type { RegistrationResponseJSON } from '@simplewebauthn/server'
+import { isoBase64URL } from '@simplewebauthn/server/helpers'
+import { getUserByUsername, consumeChallenge, insertCredential } from '@/lib/db'
+
+export const runtime = 'nodejs'
+
+interface VerifyRequest {
+  username: string
+  id: string
+  rawId: string
+  response: {
+    clientDataJSON: string
+    attestationObject: string
+    transports?: AuthenticatorTransport[]
+  }
+  type: string
+  clientExtensionResults?: Record<string, unknown>
+  authenticatorAttachment?: string
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body: VerifyRequest = await request.json()
+    const { username, ...credential } = body
+
+    if (!username || !credential.id) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+
+    // Look up the user who initiated registration from the database
+    const user = await getUserByUsername(username)
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    // Decode the base64url-encoded client data to access the challenge
+    // The client data contains the challenge, origin, and type of operation
+    const clientDataBytes = isoBase64URL.toBuffer(credential.response.clientDataJSON)
+    const clientDataJSON = JSON.parse(new TextDecoder().decode(clientDataBytes))
+
+    // Verify the challenge matches what we stored and hasn't expired
+    // This prevents replay attacks - each challenge can only be used once
+    const challengeValid = await consumeChallenge(user.id, 'registration', clientDataJSON.challenge)
+    if (!challengeValid) {
+      return NextResponse.json({ error: 'Invalid or expired challenge' }, { status: 400 })
+    }
+
+    // These must match the values used during registration options
+    const rpId = process.env.NEXT_PUBLIC_RP_ID || 'localhost'
+    const expectedOrigin = process.env.NEXT_PUBLIC_ORIGIN || 'http://localhost:3000'
+
+    // Cryptographically verify the registration response
+    // This checks the signature, origin, and challenge
+    const verification = await verifyRegistrationResponse({
+      response: credential as RegistrationResponseJSON,
+      expectedChallenge: clientDataJSON.challenge,
+      expectedOrigin,
+      expectedRPID: rpId,
+      requireUserVerification: false,
+    })
+
+    if (!verification.verified || !verification.registrationInfo) {
+      return NextResponse.json({ error: 'Registration verification failed' }, { status: 400 })
+    }
+
+    // Extract the credential info we need to store
+    // aaguid identifies the authenticator model (useful for security policies)
+    const { credential: dbCredential, aaguid } = verification.registrationInfo
+
+    // Convert the raw public key bytes to PEM format for database storage
+    // PEM is a standard format that's easy to store and retrieve
+    const publicKeyPem = `-----BEGIN PUBLIC KEY-----\n${Buffer.from(dbCredential.publicKey)
+      .toString('base64')
+      .match(/.{1,64}/g)
+      ?.join('\n')}\n-----END PUBLIC KEY-----\n`
+
+    // Store the credential - this public key will verify future sign-ins
+    await insertCredential(
+      user.id,
+      dbCredential.id,
+      publicKeyPem,
+      dbCredential.counter, // Counter helps detect cloned credentials (see the callout below for more details.)
+      credential.response.transports, // How the authenticator communicates (USB, NFC, etc.)
+      aaguid,
+    )
+
+    return NextResponse.json(
+      { ok: true },
+      {
+        headers: {
+          'Cache-Control': 'no-store',
+        },
+      },
+    )
+  } catch (error) {
+    console.error('Registration verification error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+```
+
+> Passkey clients automatically track the number of times a passkey is used. A best practice is to track the count server-side as well. If the client sends a count that the server does not expect, it could indicate that a passkey has leaked. You'll see below that the counter is incremented each time a passkey is used for authentication.
+
+Once this process completes, the server deletes the challenge from the database. Since each challenge has an expiration time (60 seconds in this demo), the entire flow must complete within the specified time; otherwise, it becomes invalid.
+
+### Passkey authentication flow
+
+Authenticating with passkeys follows a similar flow to registration. While the details of each step are different, the number of steps involved in authentication is the same:
+
+Passkeys authentication sequence diagram
+
+1. **User enters username** - The user types their username into the sign-in form in the browser.
+2. **Browser requests authentication options** - The browser sends a request to the server asking for WebAuthn options (including a fresh challenge) for this username.
+3. **Server prepares options** - The server looks up the user, finds their registered passkeys, generates a new random challenge, and sends the authentication options back to the browser.
+4. **Browser shows native authentication prompt** - The browser or OS shows a built-in prompt such as "Sign in with Face ID?" or "Use your security key".
+5. **User approves with a passkey** - The user completes the biometric check or uses their security key. The authenticator unlocks the private key stored on the device.
+6. **Authenticator signs the challenge** - The authenticator signs the challenge (and related data) with the private key. The private key never leaves the device.
+7. **Browser sends the signed result to the server** - The browser sends the credential data (including the signature and identifiers) to the server for verification.
+8. **Server verifies the response** - The server looks up the matching public key, checks that the challenge is valid and unused, and verifies the signature and counter.
+9. **User is signed in** - If everything checks out, the server responds with success and the browser updates the UI to show that the user is signed in (and typically establishes a session or issues a token).
+
+#### The client-side authentication component
+
+In the `PasskeyAuth` component, the user enters their username and submits the form. The component sends this data to the `/api/auth/options` endpoint.
+
+filename: src/components/PasskeyAuth.tsx
+```tsx
+'use client'
+
+import { useState } from 'react'
+import { startAuthentication } from '@simplewebauthn/browser'
+import type { PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/browser'
+
+interface Props {
+  onSuccess?: () => void
+}
+
+export default function PasskeyAuth({ onSuccess }: Props) {
+  const [username, setUsername] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+    setSuccess(false)
+    setLoading(true)
+
+    try {
+      // Verify the browser supports WebAuthn
+      if (!window.PublicKeyCredential) {
+        throw new Error('WebAuthn is not supported in this browser')
+      }
+
+      // Request authentication options (including challenge) from server
+      // The server looks up the user's registered passkeys
+      const optionsRes = await fetch('/api/auth/options', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username }),
+      })
+
+      if (!optionsRes.ok) {
+        const errorData = await optionsRes.json()
+        throw new Error(errorData.error || 'Failed to get authentication options')
+      }
+
+      const options: PublicKeyCredentialRequestOptionsJSON = await optionsRes.json()
+
+      // Trigger the browser's passkey authentication flow
+      // This prompts for biometric/PIN and signs the challenge
+      const credential = await startAuthentication({ optionsJSON: options })
+
+      // Send the signed challenge to the server for verification
+      const verifyPayload = {
+        ...credential,
+        username,
+      }
+
+      const verifyRes = await fetch('/api/auth/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(verifyPayload),
+      })
+
+      if (!verifyRes.ok) {
+        const errorData = await verifyRes.json()
+        throw new Error(errorData.error || 'Authentication verification failed')
+      }
+
+      // Authentication successful
+      setSuccess(true)
+      setUsername('')
+      onSuccess?.()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Authentication failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Expand to see the UI code
+  return (
+    <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-md">
+      <h2 className="mb-4 text-2xl font-bold">Sign In with Passkey</h2>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="auth-username" className="mb-1 block text-sm font-medium">
+            Username
+          </label>
+          <input
+            id="auth-username"
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+            disabled={loading}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-green-500 focus:outline-none"
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full rounded-md bg-green-600 px-4 py-2 text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-400"
+        >
+          {loading ? 'Signing in...' : 'Sign In'}
+        </button>
+      </form>
+
+      {error && (
+        <div className="mt-4 rounded border border-red-400 bg-red-100 p-3 text-red-700">
+          {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="mt-4 rounded border border-green-400 bg-green-100 p-3 text-green-700">
+          Authenticated successfully!
+        </div>
+      )}
+    </div>
+  )
+}
+```
+
+#### Generating passkey authentication options on the server
+
+On the server, the user is retrieved from the database along with their registered passkeys. The server creates authentication options using details for each of the user's credentials (allowing the use of any passkeys the user owns), and stores the challenge in the database before sending the options back to the client.
+
+filename: src/app/api/auth/options/route.ts
+```tsx
+import { NextRequest, NextResponse } from 'next/server'
+import { generateAuthenticationOptions } from '@simplewebauthn/server'
+import { getUserByUsername, getCredentialsByUserId, insertChallenge } from '@/lib/db'
+import type { AuthenticationOptionsRequest } from '@/types/webauthn'
+
+export const runtime = 'nodejs'
+
+export async function POST(request: NextRequest) {
+  try {
+    const body: AuthenticationOptionsRequest = await request.json()
+    const { username } = body
+
+    if (!username) {
+      return NextResponse.json({ error: 'Username is required' }, { status: 400 })
+    }
+
+    // Find the user attempting to authenticate from the database
+    const user = await getUserByUsername(username)
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    // Retrieve all passkeys registered to this user
+    // Users can have multiple passkeys (e.g., laptop + phone)
+    const credentials = await getCredentialsByUserId(user.id)
+    if (credentials.length === 0) {
+      return NextResponse.json({ error: 'No credentials found for user' }, { status: 404 })
+    }
+
+    const rpId = process.env.NEXT_PUBLIC_RP_ID || 'localhost'
+
+    // Generate authentication options with a fresh challenge
+    const options = await generateAuthenticationOptions({
+      rpID: rpId,
+      // List all valid credentials - the authenticator will use one it recognizes
+      allowCredentials: credentials.map((cred) => ({
+        id: cred.credential_id,
+        type: 'public-key',
+        transports: cred.transports as AuthenticatorTransport[] | undefined,
+      })),
+      userVerification: 'preferred',
+      timeout: 60000,
+    })
+
+    // Store the challenge for verification - expires in 60 seconds
+    await insertChallenge(user.id, 'authentication', options.challenge, 60000)
+
+    return NextResponse.json(options, {
+      headers: {
+        'Cache-Control': 'no-store',
+      },
+    })
+  } catch (error) {
+    console.error('Authentication options error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+```
+
+#### Verifying the passkey authentication response
+
+Assuming the client has access to one of the registered passkeys, the private key associated with that passkey signs the challenge and sends the signature back to the server for verification. As with registration, `@simplewebauthn/browser` handles the second trip back to the server, this time with the `startAuthentication` method. Once the client signs the challenge, it sends the signed challenge to the `/api/auth/verify` endpoint for verification.
+
+filename: src/app/api/auth/verify/route.ts
+```tsx
+import { NextRequest, NextResponse } from 'next/server'
+import { verifyAuthenticationResponse } from '@simplewebauthn/server'
+import type { AuthenticationResponseJSON } from '@simplewebauthn/server'
+import { isoBase64URL } from '@simplewebauthn/server/helpers'
+import {
+  getUserByUsername,
+  consumeChallenge,
+  getCredentialById,
+  updateCredentialSignCount,
+} from '@/lib/db'
+
+export const runtime = 'nodejs'
+
+interface VerifyRequest {
+  username: string
+  id: string
+  rawId: string
+  response: {
+    clientDataJSON: string
+    authenticatorData: string
+    signature: string
+    userHandle?: string
+  }
+  type: string
+  clientExtensionResults?: Record<string, unknown>
+  authenticatorAttachment?: string
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body: VerifyRequest = await request.json()
+    const { username, ...credential } = body
+
+    if (!username || !credential.id) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+
+    // Find the user attempting to sign in from the database
+    const user = await getUserByUsername(username)
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    // Decode the client data to extract the challenge
+    const clientDataBytes = isoBase64URL.toBuffer(credential.response.clientDataJSON)
+    const clientDataJSON = JSON.parse(new TextDecoder().decode(clientDataBytes))
+
+    // Verify the challenge is valid and mark it as used
+    // This prevents replay attacks
+    const challengeValid = await consumeChallenge(
+      user.id,
+      'authentication',
+      clientDataJSON.challenge,
+    )
+    if (!challengeValid) {
+      return NextResponse.json({ error: 'Invalid or expired challenge' }, { status: 400 })
+    }
+
+    // Load the stored credential to get the public key
+    // Also verify this credential belongs to this user
+    const dbCredential = await getCredentialById(credential.id)
+    if (!dbCredential || dbCredential.user_id !== user.id) {
+      return NextResponse.json({ error: 'Credential not found' }, { status: 404 })
+    }
+
+    const rpId = process.env.NEXT_PUBLIC_RP_ID || 'localhost'
+    const expectedOrigin = process.env.NEXT_PUBLIC_ORIGIN || 'http://localhost:3000'
+
+    // Convert the stored PEM public key back to raw bytes
+    const publicKeyPem = dbCredential.public_key
+    const publicKeyBase64 = publicKeyPem
+      .replace(/-----BEGIN PUBLIC KEY-----/, '')
+      .replace(/-----END PUBLIC KEY-----/, '')
+      .replace(/\s/g, '')
+    const publicKeyBytes = Buffer.from(publicKeyBase64, 'base64')
+
+    // Cryptographically verify the signed challenge
+    // This proves the user has the private key (stored on their device)
+    const verification = await verifyAuthenticationResponse({
+      response: credential as AuthenticationResponseJSON,
+      expectedChallenge: clientDataJSON.challenge,
+      expectedOrigin,
+      expectedRPID: rpId,
+      credential: {
+        id: credential.id,
+        publicKey: new Uint8Array(publicKeyBytes),
+        counter: dbCredential.sign_count, // Used to detect cloned credentials
+      },
+      requireUserVerification: false,
+    })
+
+    if (!verification.verified) {
+      return NextResponse.json({ error: 'Authentication verification failed' }, { status: 401 })
+    }
+
+    // Update the sign count to track usage
+    // If the count ever goes backwards, it may indicate a cloned credential
+    const newCounter = verification.authenticationInfo.newCounter
+    await updateCredentialSignCount(credential.id, newCounter)
+
+    // Authentication successful - at this point you would typically
+    // create a session, set a cookie, or issue a JWT
+    return NextResponse.json(
+      { ok: true },
+      {
+        headers: {
+          'Cache-Control': 'no-store',
+        },
+      },
+    )
+  } catch (error) {
+    console.error('Authentication verification error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+```
+
+A verified signature indicates the user is authenticated. At this point, you'd typically create a session and set a cookie or return a JWT.
+
+## Clerk makes passkeys simple
+
+Clerk supports passkeys out of the box with a simple toggle in our dashboard:
+
+The Clerk dashboard with the passkeys toggle highlighted
+
+Once enabled, any mounted `<SignIn />` or `<SignUp />` components will present your users with an option to register or authenticate using passkeys, supporting the workflows described above without building, testing, or maintaining code.
+
+Sign In form with passkeys option highlighted
+
+All it takes is a single line of code in your project to render this form:
+
+```tsx
+import { SignIn } from '@clerk/nextjs'
+
+export default function SignInPage() {
+  return (
+    <div className="bg-muted flex w-full flex-1 items-center justify-center p-6 md:p-10">
+      <SignIn />
+    </div>
+  )
+}
+```
+
+For growth-minded engineering teams, this is a build‑vs‑buy decision: do you want engineers investing cycles in auth primitives, or in features that move activation, retention, and revenue?
+
+### Beyond passwordless: Complete User Management
+
+Furthermore, our platform offers more than sign-up and sign-in using passkeys. You can enable additional authentication options your users expect (email codes, social sign in, etc.), and you don't have to own the edge cases around recovery, device changes, and evolving platform behavior.
+
+On top of authentication, you get an easy way for your users to self-serve their needs, from user profile details to password resets. For B2B apps, you can use Organizations to enable multi-tenancy support for your application in a few lines of code, while supporting passkeys across all tenants of your application, a requirement that often shows up in enterprise evaluations sooner than founders expect.
+
+> For developers exploring other passwordless options, magic links provide an alternative authentication method worth considering.
+
+## Conclusion
+
+Passkeys remove much of the pain and risk of authentication by replacing brittle passwords with strong, origin-bound cryptography. By leaning on platform authenticators and standards like WebAuthn and FIDO2, you get phishing resistance and built-in MFA without making users jump through extra hoops, and you reduce the blast radius of credential theft for your company.
+
+In this tutorial, we explored what passkeys are, how the registration and authentication flows work, and how to wire them up end-to-end in a Next.js app using SimpleWebAuthn. We also explored how simple it is to add passkeys to your application with Clerk, while reducing effort around testing and maintenance. To get started with Clerk, check out our quickstart guide or learn more about passkey configuration options.

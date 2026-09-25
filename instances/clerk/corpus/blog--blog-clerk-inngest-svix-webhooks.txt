@@ -1,0 +1,68 @@
+# Introducing Webhook Workflows with Inngest & Svix
+# джерело: https://clerk.com/blog/clerk-inngest-svix-webhooks
+# отримано: 2026-09-25
+
+In this post we will dive into how the collaboration between Clerk, Inngest, and Svix enhances your authentication workflows using Clerk’s new Inngest webhook transformation template.
+
+## Building with Clerk Webhooks
+
+Clerk webhooks (powered by Svix) allow you to receive event notifications from Clerk. When a `user.created` event is triggered, you may want to:
+
+- Sync user data to your database.
+- Kick off an account provisioning workflow.
+- Start a trial in Stripe.
+- Send a welcome email or start a drip campaign.
+- Add the user to your product newsletter in Mailchimp.
+
+Today, with Clerk’s new Inngest webhook transformation template, you can easily use Clerk webhook events to trigger Inngest functions.
+
+Inngest is a reliability layer for your application. Using it comes with a few key benefits such as managing concurrency, automatic retries, parallel execution, complex workflows, or task scheduling. This approach eliminates concerns about operating and scaling webhooks or error handling.
+
+## See it in Action
+
+The code below features the `inngest.createFunction` method, which inserts a new user into the database. It will be triggered whenever a `clerk/user.created` event occurs.
+
+```javascript
+const syncUser = inngest.createFunction(
+  { id: 'sync-user-from-clerk' },
+  { event: 'clerk/user.created' }, // ← This is the function's triggering event
+  async ({ event }) => {
+    const user = event.data // The event payload's data will be the Clerk User json object
+    const { id, first_name, last_name } = user
+    const email = user.email_addresses.find((e) => e.id === user.primary_email_address_id).email
+    await database.users.insert({ id, email, first_name, last_name })
+  },
+)
+```
+
+You can also have multiple functions react to the same event. The code below uses `step.sleep` to send a welcome email, then wait for three days, then follow up with a message offering a free trial:
+
+```javascript
+const sendOnboardingEmails = inngest.createFunction(
+  { id: 'onboarding-emails' },
+  { event: 'clerk/user.created' },
+  async ({ event, step }) => {
+    // ← step is available in the handler's arguments
+    const { user } = event.data
+    const { first_name } = user
+    const email = user.email_addresses.find((e) => e.id === user.primary_email_address_id).email
+
+    await step.run('welcome-email', async () => {
+      await emails.sendWelcomeEmail({ email, first_name })
+    })
+
+    // wait 3 days before second email
+    await step.sleep('wait-3-days', '3 days')
+
+    await step.run('trial-offer-email', async () => {
+      await emails.sendTrialOfferEmail({ email, first_name })
+    })
+  },
+)
+```
+
+To learn how to integrate Inngest into your workflows, check out Clerk's official integration guide or refer to Inngest documentation.
+
+## **Onward and Upward**
+
+As we continue to relentlessly improve the Developer Experience of our products, we are excited to see what developers build using the Inngest integration.

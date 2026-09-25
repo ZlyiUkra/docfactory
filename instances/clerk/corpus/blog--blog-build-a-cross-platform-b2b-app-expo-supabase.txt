@@ -1,0 +1,2482 @@
+# Build a Cross-Platform B2B App with Clerk, Expo, and Supabase
+# джерело: https://clerk.com/blog/build-a-cross-platform-b2b-app-expo-supabase
+# отримано: 2026-09-25
+
+B2B applications with multi-tenancy capabilities often outperform their single-tenant counterparts, driving higher revenue and accelerated growth. The ability to serve multiple organizations from a single codebase is both a technical feature and a business advantage.
+
+Popular mobile apps like Notion, Slack, and Asana have solved this problem by implementing robust multi-tenancy features, allowing users to effortlessly manage multiple organizations and switch between them. What was once a complex feature reserved for enterprise applications is now expected in even small-scale business apps.
+
+In this article, you'll learn how to add multi-tenancy to your React Native & Expo app using Clerk and Supabase. We'll walk through the process from setup to implementation, showing you how to give your users a seamless experience switching between their organizations.
+
+## What is multi-tenancy?
+
+Multi-tenancy is when a single instance of an application is used by multiple tenants or organizations. Each tenant has their own data and can't see or access the data of other tenants. Modern applications often allow users to belong to multiple tenants and switch between them as needed.
+
+Building an application with multiple tenants is complex. Allowing users to switch between tenants means you have to carefully consider and plan your security model to ensure the application is performant and that tenant data cannot be accessed by users who don't belong to that tenant.
+
+## How does Clerk help?
+
+Clerk makes it easy to add multi-tenancy to your app by providing the necessary APIs to allow users not only to switch between tenants, but also to create and manage their own organizations. This eliminates the need to build complex organization management systems from scratch.
+
+When a user switches between tenants, the token issued to that user automatically includes the organization ID of the active tenant, making it easy to check which tenant's data should be presented. By handling these authentication complexities, Clerk allows developers to focus on building the core functionality of their application.
+
+> If you're working with web applications, you can also explore similar patterns with React authentication.
+
+## Demo: Adding multi-tenancy to a time tracking app
+
+To demonstrate how to add multi-tenancy to an app with Clerk, we'll be adding multi-tenancy to a time tracking app called Aika. Here is an overview of the tasks we'll be doing:
+
+1. Enable organizations for the Clerk application
+2. Implement an organization switcher so users can switch between their organizations
+3. Add a method for users to create organizations and invite others
+4. Update the Supabase RLS policies to use the organization ID to filter data
+
+If you want to follow along, you can clone the orgs-start branch of the Aika repository. Follow the setup instructions in the README to get the app running.
+
+> In the provided code snippets, be sure to check the comments for additional context on what each line or block does.
+
+### Step 1: Enable organizations
+
+Access the application in the Clerk dashboard and navigate to the **Configure** tab. Then in the left navigation under **Organization management** select the **Settings** option. Finally, toggle **Enable organizations**.
+
+Enable organizations
+
+> For more detailed guidance, see the organizations setup documentation.
+
+### Step 2: Implement organizations on the settings screen
+
+Most of the changes in the app will take place in the settings screen. A new button will be added to the list that lets the user see which organization they currently have active, and lets them switch between their organizations, create new ones, or accept invitations using modals and Clerk's helper functions.
+
+Below is an annotated picture of what these changes will look like:
+
+1. The settings screen with a button to open the organization selection modal (shown)
+2. A secondary modal that appears when selecting an invitation
+3. A new screen to create an organization
+4. Another new screen to invite members to a new organization
+
+New screens
+
+Before starting, install the `@clerk/types` package since you'll use it for type safety. If you need help with the initial Expo setup, refer to the quickstart guide.
+
+```bash
+pnpm install @clerk/types
+```
+
+Now you'll create the button to open the organization selection modal. This will use helper functions from the Clerk Expo SDK to display the active organization. Since no organization is active by default, the button will display "Personal account".
+
+Open the `app/(tabs)/protected/settings.tsx` file and make the following changes:
+
+filename: app/(tabs)/protected/settings.tsx
+```tsx
+import { Ionicons } from '@expo/vector-icons'
+import React, { useState } from 'react'
+import { Image, StyleSheet, TouchableOpacity } from 'react-native'
+
+import { ThemedText } from '@/components/ThemedText'
+import { ThemedView } from '@/components/ThemedView'
+import { useAuth, useUser } from '@clerk/clerk-expo'
+import { useAuth, useOrganization, useOrganizationList, useUser } from '@clerk/clerk-expo'
+import { UserOrganizationInvitationResource } from '@clerk/types'
+
+export default function HomeScreen() {
+  const { user } = useUser()
+  const { signOut } = useAuth()
+
+  // Get the list of organizations the user is a member of and any invitations they have
+  // Note: The `useOrganizationList` function requires that you specify what's included in the response
+  const { userMemberships, userInvitations, setActive } = useOrganizationList({
+    userMemberships: true,
+    userInvitations: true,
+  })
+
+  // Get the active organization
+  const { organization } = useOrganization()
+
+  // A state object to control the visibility of the organization selection modal (will be added next)
+  const [modalVisible, setModalVisible] = useState(false)
+
+  return (
+    <ThemedView style={styles.container}>
+      <ThemedView style={styles.titleContainer}>
+        <ThemedText type="title">Settings</ThemedText>
+      </ThemedView>
+      <ThemedView style={styles.contentContainer}>
+        <ThemedText type="subtitle">User Information</ThemedText>
+        <ThemedView style={styles.userContainer}>
+          <ThemedView style={styles.userImageContainer}>
+            <Image source={{ uri: user?.imageUrl || '' }} style={styles.userImage} />
+          </ThemedView>
+          <ThemedView style={styles.userInfoContainer}>
+            <ThemedText type="defaultSemiBold">
+              {user?.firstName} {user?.lastName}
+            </ThemedText>
+            <ThemedText>{user?.emailAddresses[0].emailAddress}</ThemedText>
+          </ThemedView>
+        </ThemedView>
+
+        <ThemedText type="subtitle">Organization</ThemedText>
+        <TouchableOpacity onPress={() => setModalVisible(true)}>
+          <ThemedView style={styles.organizationContainer}>
+            <ThemedView style={styles.organizationImageContainer}>
+              <Image
+                source={{ uri: organization?.imageUrl || user?.imageUrl || '' }}
+                style={styles.organizationImage}
+              />
+            </ThemedView>
+            <ThemedView style={styles.organizationInfoContainer}>
+              <ThemedText type="defaultSemiBold">
+                {organization?.name || 'Personal account'}
+              </ThemedText>
+              <ThemedText>{organization?.slug || 'No organization'}</ThemedText>
+            </ThemedView>
+            <Ionicons name="chevron-forward" size={24} color="#888" />
+          </ThemedView>
+        </TouchableOpacity>
+
+        <ThemedView style={styles.signOutButtonContainer}>
+          <TouchableOpacity onPress={() => signOut()}>
+            <ThemedText style={{ color: 'red' }}>Sign Out</ThemedText>
+          </TouchableOpacity>
+        </ThemedView>
+      </ThemedView>
+    </ThemedView>
+  )
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingTop: 16,
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 16,
+    paddingHorizontal: 16,
+  },
+  contentContainer: {
+    gap: 12,
+    marginBottom: 24,
+    borderRadius: 8,
+    padding: 16,
+    width: '100%',
+    height: 150,
+    paddingHorizontal: 16,
+  },
+  userContainer: {
+    gap: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f7f7f7',
+    padding: 8,
+    borderRadius: 8,
+  },
+  userInfoContainer: {
+    marginLeft: 12,
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  userImageContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 100,
+    backgroundColor: 'transparent',
+  },
+  userImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 100,
+    backgroundColor: 'transparent',
+  },
+  signOutButtonContainer: {
+    gap: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 8,
+    padding: 8,
+    backgroundColor: '#ffebee',
+    justifyContent: 'center',
+  },
+  organizationContainer: {
+    gap: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f7f7f7',
+    padding: 8,
+    borderRadius: 8,
+    justifyContent: 'space-between',
+  },
+  organizationInfoContainer: {
+    marginLeft: 12,
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  organizationImageContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 10,
+    backgroundColor: 'transparent',
+  },
+  organizationImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 10,
+    backgroundColor: 'transparent',
+  },
+})
+```
+
+Now create `components/OrganizationSwitcherModal.tsx` file that will store the code to display the organization switcher modal.
+
+filename: components/OrganizationSwitcherModal.tsx
+```tsx
+import { Ionicons } from '@expo/vector-icons'
+import { router } from 'expo-router'
+import React from 'react'
+import { FlatList, Image, Modal, SafeAreaView, StyleSheet, TouchableOpacity } from 'react-native'
+
+import { ThemedText } from '@/components/ThemedText'
+import { ThemedView } from '@/components/ThemedView'
+
+interface Props {
+  modalVisible: boolean
+  setModalVisible: (visible: boolean) => void
+  userInvitations: { data?: any[] } | null | undefined
+  userMemberships: { data?: any[] } | null | undefined
+  organization: any | null | undefined
+  user: any | null | undefined
+  handleOpenInvitation: (invitation: any) => void
+  setActive?: (params: { organization: string | null }) => Promise<void>
+}
+
+export function OrganizationSwitcherModal({
+  modalVisible,
+  setModalVisible,
+  userInvitations,
+  userMemberships,
+  organization,
+  user,
+  handleOpenInvitation,
+  setActive,
+}: Props) {
+  // When the user selects an organization, use the parent component to set the active organization then redirect to the home screen
+  const handleSelectOrganization = async (orgId: string) => {
+    try {
+      if (setActive) {
+        if (orgId === 'personal-account') {
+          await setActive({ organization: null })
+        } else {
+          await setActive({ organization: orgId })
+        }
+        setModalVisible(false)
+        router.replace('/protected')
+      }
+    } catch (error) {
+      console.error('Error setting active organization:', error)
+    }
+  }
+
+  // When the user clicks the "Create New Organization" button, close the modal and navigate to the create organization screen
+  const handleCreateOrganization = () => {
+    // Close the modal first
+    setModalVisible(false)
+    // Navigate to the create organization screen
+    router.push('/screens/create-organization')
+  }
+  return (
+    <Modal
+      animationType="slide"
+      transparent={true}
+      visible={modalVisible}
+      onRequestClose={() => setModalVisible(false)}
+    >
+      <SafeAreaView style={styles.modalContainer}>
+        <ThemedView style={styles.modalContent}>
+          <ThemedView style={styles.modalHeader}>
+            <ThemedText type="subtitle">Select Organization</ThemedText>
+            <TouchableOpacity onPress={() => setModalVisible(false)}>
+              <Ionicons name="close" size={24} color="#888" />
+            </TouchableOpacity>
+          </ThemedView>
+
+          {/* Pending Invitations */}
+          {(userInvitations?.data?.length || 0) > 0 && (
+            <ThemedView style={styles.sectionContainer}>
+              <ThemedView style={styles.sectionHeader}>
+                <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
+                  Pending Invitations
+                </ThemedText>
+                <ThemedView style={styles.badge}>
+                  <ThemedText style={styles.badgeText}>{userInvitations?.data?.length}</ThemedText>
+                </ThemedView>
+              </ThemedView>
+              <FlatList
+                data={userInvitations?.data || []}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[styles.invitationItem]}
+                    onPress={() => handleOpenInvitation(item)}
+                  >
+                    <ThemedView style={styles.orgItemImageContainer}>
+                      <Image
+                        source={{
+                          uri: item.publicOrganizationData.imageUrl || user?.imageUrl || '',
+                        }}
+                        style={styles.orgItemImage}
+                      />
+                    </ThemedView>
+                    <ThemedView style={styles.orgItemInfoContainer}>
+                      <ThemedText type="defaultSemiBold">
+                        {item.publicOrganizationData.name}
+                      </ThemedText>
+                      <ThemedText>{item.publicOrganizationData.slug}</ThemedText>
+                    </ThemedView>
+                    <Ionicons name="mail-outline" size={24} color="#2196F3" />
+                  </TouchableOpacity>
+                )}
+              />
+              <ThemedView style={styles.divider} />
+            </ThemedView>
+          )}
+
+          {/* Your Organizations */}
+          <ThemedView style={styles.sectionContainer}>
+            <ThemedView style={styles.sectionHeader}>
+              <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
+                Your Organizations
+              </ThemedText>
+            </ThemedView>
+
+            <FlatList
+              data={[
+                // Personal account always at the top
+                { isPersonal: true, id: 'personal-account', organization: null },
+                ...(userMemberships?.data || []).map((membership) => ({
+                  isPersonal: false,
+                  id: membership.organization.id,
+                  organization: membership.organization,
+                })),
+              ]}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => {
+                // Handle personal account special case
+                if (item.isPersonal) {
+                  return (
+                    <TouchableOpacity
+                      style={[
+                        styles.organizationItem,
+                        organization?.id === undefined && styles.activeOrganization,
+                      ]}
+                      onPress={() => handleSelectOrganization(item.id)}
+                    >
+                      <ThemedView style={styles.orgItemImageContainer}>
+                        <Image source={{ uri: user?.imageUrl || '' }} style={styles.orgItemImage} />
+                      </ThemedView>
+                      <ThemedView style={styles.orgItemInfoContainer}>
+                        <ThemedText type="defaultSemiBold">Personal account</ThemedText>
+                        <ThemedText>
+                          {user?.username || user?.emailAddresses[0].emailAddress}
+                        </ThemedText>
+                      </ThemedView>
+                      {organization?.id === undefined && (
+                        <Ionicons name="checkmark" size={24} color="#4CAF50" />
+                      )}
+                    </TouchableOpacity>
+                  )
+                }
+
+                // Regular organization item
+                return (
+                  <TouchableOpacity
+                    style={[
+                      styles.organizationItem,
+                      item.id === organization?.id && styles.activeOrganization,
+                    ]}
+                    onPress={() => handleSelectOrganization(item.id)}
+                  >
+                    <ThemedView style={styles.orgItemImageContainer}>
+                      <Image
+                        source={{ uri: item.organization?.imageUrl || user?.imageUrl || '' }}
+                        style={styles.orgItemImage}
+                      />
+                    </ThemedView>
+                    <ThemedView style={styles.orgItemInfoContainer}>
+                      <ThemedText type="defaultSemiBold">{item.organization?.name}</ThemedText>
+                      <ThemedText>{item.organization?.slug}</ThemedText>
+                    </ThemedView>
+                    {item.id === organization?.id && (
+                      <Ionicons name="checkmark" size={24} color="#4CAF50" />
+                    )}
+                  </TouchableOpacity>
+                )
+              }}
+            />
+          </ThemedView>
+
+          {/* Add a button to create a new organization */}
+          {/* This will direct them to app/screens/create-organization */}
+          <TouchableOpacity style={styles.createOrgButton} onPress={handleCreateOrganization}>
+            <Ionicons name="add-circle-outline" size={24} color="#fff" />
+            <ThemedText style={styles.createOrgButtonText}>Create New Organization</ThemedText>
+          </TouchableOpacity>
+        </ThemedView>
+      </SafeAreaView>
+    </Modal>
+  )
+}
+
+const styles = StyleSheet.create({
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0)',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 16,
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  sectionContainer: {
+    marginBottom: 16,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  sectionTitle: {
+    marginRight: 8,
+  },
+  badge: {
+    backgroundColor: '#2196F3',
+    borderRadius: 100,
+    paddingHorizontal: 8,
+  },
+  badgeText: {
+    color: 'white',
+    fontSize: 12,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#f0f0f0',
+    marginVertical: 8,
+  },
+  invitationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    backgroundColor: '#f7f7f7',
+  },
+  organizationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    backgroundColor: '#f7f7f7',
+  },
+  activeOrganization: {
+    backgroundColor: '#e3f2fd',
+  },
+  orgItemImageContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  orgItemImage: {
+    width: 40,
+    height: 40,
+  },
+  orgItemInfoContainer: {
+    marginLeft: 12,
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  createOrgButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2196F3',
+    padding: 12,
+    borderRadius: 8,
+  },
+  createOrgButtonText: {
+    color: 'white',
+    marginLeft: 8,
+  },
+})
+```
+
+The `components/InvitationModal.tsx` is also needed so the user can accept invitations if they are selected from the organization switcher modal.
+
+Create the `components/InvitationModal.tsx` and add the following code to it:
+
+filename: components/InvitationModal.tsx
+```tsx
+import { Ionicons } from '@expo/vector-icons'
+import { router } from 'expo-router'
+import React from 'react'
+import { Image, Modal, SafeAreaView, StyleSheet, TouchableOpacity } from 'react-native'
+
+import { ThemedText } from '@/components/ThemedText'
+import { ThemedView } from '@/components/ThemedView'
+
+interface Props {
+  isVisible: boolean
+  onClose: () => void
+  selectedInvitation: any | null
+  user: any | null | undefined
+  setActive?: (params: { organization: string | null }) => Promise<void>
+  onComplete?: () => void
+}
+
+export function InvitationModal({
+  isVisible,
+  onClose,
+  selectedInvitation,
+  user,
+  setActive,
+  onComplete,
+}: Props) {
+  // Handle accepting an invitation and set the active organization
+  const handleAcceptInvitation = async () => {
+    try {
+      if (!selectedInvitation) return
+      await selectedInvitation?.accept()
+      onClose()
+      if (setActive) {
+        await setActive({ organization: selectedInvitation?.publicOrganizationData.id })
+      }
+      if (onComplete) {
+        onComplete()
+      }
+      router.replace('/protected')
+    } catch (error) {
+      console.error('Error accepting invitation:', error)
+    }
+  }
+
+  // Handle skipping an invitation
+  const handleSkipInvitation = async () => {
+    try {
+      onClose()
+      if (onComplete) {
+        onComplete()
+      }
+    } catch (error) {
+      console.error('Error skipping invitation:', error)
+    }
+  }
+  return (
+    <Modal visible={isVisible} animationType="slide" transparent={true} onRequestClose={onClose}>
+      <SafeAreaView style={styles.modalContainer}>
+        <ThemedView style={styles.modalContent}>
+          <ThemedView style={styles.modalHeader}>
+            <ThemedText type="subtitle">Accept Invitation</ThemedText>
+            <TouchableOpacity onPress={onClose}>
+              <Ionicons name="close" size={24} color="#888" />
+            </TouchableOpacity>
+          </ThemedView>
+          <ThemedView style={styles.modalBody}>
+            <ThemedView style={styles.invitationDetails}>
+              <ThemedView style={styles.orgImageContainer}>
+                <Image
+                  source={{
+                    uri:
+                      selectedInvitation?.publicOrganizationData.imageUrl || user?.imageUrl || '',
+                  }}
+                  style={styles.orgImage}
+                />
+              </ThemedView>
+              <ThemedView style={styles.invitationTextContainer}>
+                <ThemedText type="defaultSemiBold" style={styles.orgName}>
+                  {selectedInvitation?.publicOrganizationData.name}
+                </ThemedText>
+                <ThemedText style={styles.orgSlug}>
+                  {selectedInvitation?.publicOrganizationData.slug}
+                </ThemedText>
+              </ThemedView>
+            </ThemedView>
+            <ThemedText style={styles.invitationMessage}>
+              You&apos;ve been invited to join this organization. Would you like to accept?
+            </ThemedText>
+          </ThemedView>
+          <ThemedView style={styles.modalFooter}>
+            <TouchableOpacity style={styles.rejectButton} onPress={handleSkipInvitation}>
+              <ThemedText style={{ color: '#fff' }}>Not now</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.acceptButton} onPress={handleAcceptInvitation}>
+              <ThemedText style={{ color: '#fff' }}>Accept</ThemedText>
+            </TouchableOpacity>
+          </ThemedView>
+        </ThemedView>
+      </SafeAreaView>
+    </Modal>
+  )
+}
+
+const styles = StyleSheet.create({
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0)',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 16,
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  modalBody: {
+    padding: 16,
+  },
+  invitationDetails: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  orgImageContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginRight: 16,
+  },
+  orgImage: {
+    width: 60,
+    height: 60,
+  },
+  invitationTextContainer: {
+    flex: 1,
+  },
+  orgName: {
+    fontSize: 18,
+    marginBottom: 4,
+  },
+  orgSlug: {
+    opacity: 0.7,
+  },
+  invitationMessage: {
+    marginTop: 8,
+    lineHeight: 22,
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 24,
+  },
+  rejectButton: {
+    backgroundColor: '#f44336',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    flex: 1,
+    marginRight: 8,
+    alignItems: 'center',
+  },
+  acceptButton: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    flex: 1,
+    marginLeft: 8,
+    alignItems: 'center',
+  },
+})
+```
+
+Now back in the `app/(tabs)/protected/settings.tsx` file, add the two modal components to the screen. We're also adding two state objects for when a user selects an invitation and the required functions to handle those interactions:
+
+filename: app/(tabs)/protected/settings.tsx
+```tsx
+import { Ionicons } from '@expo/vector-icons'
+import React, { useState } from 'react'
+import { Image, StyleSheet, TouchableOpacity } from 'react-native'
+
+import { ThemedText } from '@/components/ThemedText'
+import { ThemedView } from '@/components/ThemedView'
+import { useAuth, useUser } from '@clerk/clerk-expo'
+import { useAuth, useOrganization, useOrganizationList, useUser } from '@clerk/clerk-expo'
+import { UserOrganizationInvitationResource } from '@clerk/types'
+
+import { OrganizationSwitcherModal } from '@/components/OrganizationSwitcherModal'
+import { InvitationModal } from '@/components/InvitationModal'
+
+export default function HomeScreen() {
+  const { user } = useUser()
+  const { signOut } = useAuth()
+
+  // Get the list of organizations the user is a member of and any invitations they have
+  // Note: The `useOrganizationList` function requires that you specify what's included in the response
+  const { userMemberships, userInvitations, setActive } = useOrganizationList({
+    userMemberships: true,
+    userInvitations: true,
+  })
+
+  // Get the active organization
+  const { organization } = useOrganization()
+
+  // A state object to control the visibility of the organization selection modal (will be added next)
+  const [modalVisible, setModalVisible] = useState(false)
+  const [selectedInvitation, setSelectedInvitation] =
+    useState<UserOrganizationInvitationResource | null>(null)
+  const [isInvitationModalVisible, setIsInvitationModalVisible] = useState(false)
+
+  const handleInvitationComplete = () => {
+    setSelectedInvitation(null)
+  }
+
+  const handleOpenInvitation = async (invitation: UserOrganizationInvitationResource) => {
+    try {
+      setSelectedInvitation(invitation)
+      setModalVisible(false)
+      setIsInvitationModalVisible(true)
+    } catch (error) {
+      console.error('Error setting active organization:', error)
+    }
+  }
+
+  return (
+    <ThemedView style={styles.container}>
+      <ThemedView style={styles.titleContainer}>
+        <ThemedText type="title">Settings</ThemedText>
+      </ThemedView>
+      <ThemedView style={styles.contentContainer}>
+        <ThemedText type="subtitle">User Information</ThemedText>
+        <ThemedView style={styles.userContainer}>
+          <ThemedView style={styles.userImageContainer}>
+            <Image source={{ uri: user?.imageUrl || '' }} style={styles.userImage} />
+          </ThemedView>
+          <ThemedView style={styles.userInfoContainer}>
+            <ThemedText type="defaultSemiBold">
+              {user?.firstName} {user?.lastName}
+            </ThemedText>
+            <ThemedText>{user?.emailAddresses[0].emailAddress}</ThemedText>
+          </ThemedView>
+        </ThemedView>
+
+        <ThemedText type="subtitle">Organization</ThemedText>
+        <TouchableOpacity onPress={() => setModalVisible(true)}>
+          <ThemedView style={styles.organizationContainer}>
+            <ThemedView style={styles.organizationImageContainer}>
+              <Image
+                source={{ uri: organization?.imageUrl || user?.imageUrl || '' }}
+                style={styles.organizationImage}
+              />
+            </ThemedView>
+            <ThemedView style={styles.organizationInfoContainer}>
+              <ThemedText type="defaultSemiBold">
+                {organization?.name || 'Personal account'}
+              </ThemedText>
+              <ThemedText>{organization?.slug || 'No organization'}</ThemedText>
+            </ThemedView>
+            <Ionicons name="chevron-forward" size={24} color="#888" />
+          </ThemedView>
+        </TouchableOpacity>
+
+        <OrganizationSwitcherModal
+          modalVisible={modalVisible}
+          setModalVisible={setModalVisible}
+          userInvitations={userInvitations}
+          userMemberships={userMemberships}
+          organization={organization}
+          user={user}
+          handleOpenInvitation={handleOpenInvitation}
+          setActive={setActive}
+        />
+
+        <InvitationModal
+          isVisible={isInvitationModalVisible}
+          onClose={() => setIsInvitationModalVisible(false)}
+          selectedInvitation={selectedInvitation}
+          user={user}
+          setActive={setActive}
+          onComplete={handleInvitationComplete}
+        />
+
+        <ThemedView style={styles.signOutButtonContainer}>
+          <TouchableOpacity onPress={() => signOut()}>
+            <ThemedText style={{ color: 'red' }}>Sign Out</ThemedText>
+          </TouchableOpacity>
+        </ThemedView>
+      </ThemedView>
+    </ThemedView>
+  )
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingTop: 16,
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 16,
+    paddingHorizontal: 16,
+  },
+  contentContainer: {
+    gap: 12,
+    marginBottom: 24,
+    borderRadius: 8,
+    padding: 16,
+    width: '100%',
+    height: 150,
+    paddingHorizontal: 16,
+  },
+  userContainer: {
+    gap: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f7f7f7',
+    padding: 8,
+    borderRadius: 8,
+  },
+  userInfoContainer: {
+    marginLeft: 12,
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  userImageContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 100,
+    backgroundColor: 'transparent',
+  },
+  userImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 100,
+    backgroundColor: 'transparent',
+  },
+  signOutButtonContainer: {
+    gap: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 8,
+    padding: 8,
+    backgroundColor: '#ffebee',
+    justifyContent: 'center',
+  },
+  organizationContainer: {
+    gap: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f7f7f7',
+    padding: 8,
+    borderRadius: 8,
+    justifyContent: 'space-between',
+  },
+  organizationInfoContainer: {
+    marginLeft: 12,
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  organizationImageContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 10,
+    backgroundColor: 'transparent',
+  },
+  organizationImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 10,
+    backgroundColor: 'transparent',
+  },
+})
+```
+
+Next, you'll add the two screens to allow users to create organizations. When the user selects "Create organization" they will be directed to the `create-organization` screen first. When they specify the name and slug of the organization, they will then go to the `add-organization-members` screen where they can invite members to the organization by email.
+
+Create the `app/screens/create-organization.tsx` file and add the following code:
+
+filename: app/screens/create-organization.tsx
+```tsx
+import { Ionicons } from '@expo/vector-icons'
+import { router } from 'expo-router'
+import React, { useState } from 'react'
+import { StyleSheet, TextInput, TouchableOpacity } from 'react-native'
+
+import { ThemedText } from '@/components/ThemedText'
+import { ThemedView } from '@/components/ThemedView'
+import { useOrganizationList } from '@clerk/clerk-expo'
+
+export default function CreateOrganizationScreen() {
+  const [name, setName] = useState('')
+  const [slug, setSlug] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  // Function to generate slug from name
+  const generateSlug = (name: string): string => {
+    return name
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '') // Remove special characters except whitespace and hyphens
+      .replace(/\s+/g, '-') // Replace spaces with hyphens
+      .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+  }
+
+  // Update slug when name changes
+  const handleNameChange = (text: string) => {
+    setName(text)
+    setSlug(generateSlug(text))
+  }
+
+  // Using the Clerk Expo SDK helper function to create an organization and set it as active
+  const { createOrganization, setActive } = useOrganizationList({ userMemberships: true })
+
+  // Function to reset the form state
+  const resetForm = () => {
+    setName('')
+    setSlug('')
+    setError('')
+    setIsLoading(false)
+  }
+
+  const handleCreateOrganization = async () => {
+    if (!name.trim()) {
+      setError('Organization name is required')
+      return
+    }
+
+    setIsLoading(true)
+    setError('')
+
+    try {
+      if (createOrganization) {
+        const organization = await createOrganization({
+          name: name.trim(),
+          slug: slug.trim() || undefined, // Use the provided slug or let Clerk generate one
+        })
+
+        // Reset the form state
+        resetForm()
+
+        // Set the active organization
+        setActive({ organization: organization.id })
+
+        // Navigate to the add members screen with the new organization ID
+        router.push('/screens/add-organization-members')
+      }
+    } catch (error) {
+      console.error('Error creating organization:', error)
+      setError('Failed to create organization. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <ThemedView style={styles.container}>
+      <ThemedView style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#000" />
+        </TouchableOpacity>
+        <ThemedText type="title">Create Organization</ThemedText>
+      </ThemedView>
+
+      <ThemedView style={styles.content}>
+        <ThemedView style={styles.inputContainer}>
+          <ThemedText type="subtitle">Organization Name *</ThemedText>
+          <TextInput
+            value={name}
+            onChangeText={handleNameChange}
+            placeholder="Enter organization name"
+            style={styles.input}
+          />
+        </ThemedView>
+
+        <ThemedView style={styles.inputContainer}>
+          <ThemedText type="subtitle">Organization Slug (optional)</ThemedText>
+          <ThemedText style={styles.helpText}>
+            The slug will be used in URLs and must be unique. If not provided, one will be
+            generated.
+          </ThemedText>
+          <TextInput
+            value={slug}
+            onChangeText={(text: string) => setSlug(text.toLowerCase().replace(/\s+/g, '-'))}
+            placeholder="your-organization-slug"
+            style={styles.input}
+          />
+        </ThemedView>
+
+        {error ? <ThemedText style={styles.errorText}>{error}</ThemedText> : null}
+
+        <TouchableOpacity
+          style={[styles.nextButton, (!name.trim() || isLoading) && styles.disabledButton]}
+          onPress={handleCreateOrganization}
+          disabled={!name.trim() || isLoading}
+        >
+          <ThemedText style={styles.nextButtonText}>
+            {isLoading ? 'Creating...' : 'Next'}
+          </ThemedText>
+        </TouchableOpacity>
+      </ThemedView>
+    </ThemedView>
+  )
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingTop: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  backButton: {
+    marginRight: 16,
+  },
+  content: {
+    padding: 16,
+    flex: 1,
+  },
+  inputContainer: {
+    marginBottom: 24,
+  },
+  input: {
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    padding: 12,
+  },
+  helpText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+  },
+  nextButton: {
+    backgroundColor: '#2196F3',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  nextButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  disabledButton: {
+    backgroundColor: '#BDBDBD',
+  },
+  errorText: {
+    color: 'red',
+    marginBottom: 16,
+  },
+})
+```
+
+Then create the `app/screens/add-organization-members.tsx` file and add the following code:
+
+filename: app/screens/add-organization-members.tsx
+```tsx
+import { Ionicons } from '@expo/vector-icons'
+import { router } from 'expo-router'
+import React, { useState } from 'react'
+import { FlatList, StyleSheet, TextInput, TouchableOpacity } from 'react-native'
+
+import { ThemedText } from '@/components/ThemedText'
+import { ThemedView } from '@/components/ThemedView'
+import { useOrganization } from '@clerk/clerk-expo'
+
+interface MemberEmail {
+  id: string
+  email: string
+}
+
+export default function AddOrganizationMembersScreen() {
+  const [emails, setEmails] = useState<MemberEmail[]>([])
+  const [currentEmail, setCurrentEmail] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const { organization } = useOrganization()
+
+  const isValidEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  }
+
+  const handleAddEmail = () => {
+    if (!currentEmail.trim()) return
+
+    if (!isValidEmail(currentEmail)) {
+      setError('Please enter a valid email address')
+      return
+    }
+
+    // Check if email already exists in the list
+    if (emails.some((item) => item.email.toLowerCase() === currentEmail.toLowerCase())) {
+      setError('This email has already been added')
+      return
+    }
+
+    setEmails([...emails, { id: Date.now().toString(), email: currentEmail.trim() }])
+    setCurrentEmail('')
+    setError('')
+  }
+
+  const handleRemoveEmail = (id: string) => {
+    setEmails(emails.filter((email) => email.id !== id))
+  }
+
+  const handleInviteMembers = async () => {
+    if (emails.length === 0) {
+      setError('Please add at least one email address')
+      return
+    }
+
+    setIsLoading(true)
+    setError('')
+
+    try {
+      if (organization) {
+        // Invite members using the Clerk Expo SDK
+        await organization.inviteMembers({
+          emailAddresses: emails.map((e) => e.email),
+          role: 'org:member',
+        })
+
+        // Navigate back to the home screen
+        router.replace('/protected')
+      } else {
+        throw new Error('Organization not found')
+      }
+    } catch (error) {
+      console.error('Error inviting members:', error)
+      setError('Failed to invite members. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleSkip = () => {
+    // Navigate back to home screen without inviting anyone
+    router.replace('/protected')
+  }
+
+  return (
+    <ThemedView style={styles.container}>
+      <ThemedView style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#000" />
+        </TouchableOpacity>
+        <ThemedText type="title">Add Members</ThemedText>
+      </ThemedView>
+
+      <ThemedView style={styles.content}>
+        <ThemedText type="subtitle">Invite members to your organization</ThemedText>
+        <ThemedText style={styles.helpText}>
+          Enter email addresses of people you&apos;d like to invite to your organization.
+        </ThemedText>
+
+        <ThemedView style={styles.inputContainer}>
+          <ThemedView style={styles.emailInputRow}>
+            <TextInput
+              value={currentEmail}
+              onChangeText={(text: string) => {
+                setCurrentEmail(text)
+                if (error) setError('')
+              }}
+              placeholder="Enter email address"
+              style={styles.input}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              onSubmitEditing={handleAddEmail}
+            />
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={handleAddEmail}
+              disabled={!currentEmail.trim()}
+            >
+              <Ionicons name="add" size={24} color="white" />
+            </TouchableOpacity>
+          </ThemedView>
+
+          {error ? <ThemedText style={styles.errorText}>{error}</ThemedText> : null}
+        </ThemedView>
+
+        <ThemedView style={styles.emailListContainer}>
+          <FlatList
+            data={emails}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <ThemedView style={styles.emailItem}>
+                <ThemedText>{item.email}</ThemedText>
+                <TouchableOpacity onPress={() => handleRemoveEmail(item.id)}>
+                  <Ionicons name="close-circle" size={20} color="#888" />
+                </TouchableOpacity>
+              </ThemedView>
+            )}
+            ListEmptyComponent={
+              <ThemedView style={styles.emptyList}>
+                <ThemedText style={styles.emptyListText}>No members added yet</ThemedText>
+              </ThemedView>
+            }
+          />
+        </ThemedView>
+
+        <ThemedView style={styles.buttonContainer}>
+          <TouchableOpacity style={styles.skipButton} onPress={handleSkip} disabled={isLoading}>
+            <ThemedText style={styles.skipButtonText}>Skip</ThemedText>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.inviteButton, isLoading && styles.disabledButton]}
+            onPress={handleInviteMembers}
+            disabled={emails.length === 0 || isLoading}
+          >
+            <ThemedText style={styles.inviteButtonText}>
+              {isLoading ? 'Inviting...' : 'Invite Members'}
+            </ThemedText>
+          </TouchableOpacity>
+        </ThemedView>
+      </ThemedView>
+    </ThemedView>
+  )
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingTop: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  backButton: {
+    marginRight: 16,
+  },
+  content: {
+    padding: 16,
+    flex: 1,
+  },
+  helpText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+    marginBottom: 16,
+  },
+  inputContainer: {
+    marginBottom: 16,
+  },
+  emailInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  input: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    padding: 12,
+  },
+  addButton: {
+    backgroundColor: '#2196F3',
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  emailListContainer: {
+    flex: 1,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    padding: 8,
+  },
+  emailItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  emptyList: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  emptyListText: {
+    color: '#888',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 16,
+  },
+  skipButton: {
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    flex: 1,
+    marginRight: 8,
+  },
+  skipButtonText: {
+    fontWeight: '600',
+  },
+  inviteButton: {
+    backgroundColor: '#2196F3',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    flex: 2,
+  },
+  inviteButtonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+  disabledButton: {
+    backgroundColor: '#BDBDBD',
+  },
+  errorText: {
+    color: 'red',
+    marginTop: 8,
+  },
+})
+```
+
+The last detail is to add the new screens into the routing configuration in `app/(tabs)/_layout.tsx`. These are being added to the protected stack so only authorized users may access them.
+
+Open that file and make the following changes:
+
+filename: app/(tabs)/\_layout.tsx
+```tsx
+import { useAuth } from '@clerk/clerk-expo'
+import { Stack } from 'expo-router'
+
+export default function AppLayout() {
+  const { isSignedIn } = useAuth()
+
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Protected guard={!isSignedIn}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="sign-up" />
+      </Stack.Protected>
+
+      <Stack.Protected guard={isSignedIn!}>
+        <Stack.Screen name="protected" />
+        <Stack.Screen name="screens/create-organization" />
+        <Stack.Screen name="screens/add-organization-members" />
+      </Stack.Protected>
+    </Stack>
+  )
+}
+```
+
+Now you may access the application using `pnpm start` and then `w` to open the application in your web browser. Try creating a new organization and adding a member to it. It's best if you have an alternate email address you can use for this. If you do, invite that email address then sign into the app as that account and check the organization switcher modal as that user to test accepting an invitation.
+
+### Step 3: Update RLS policies to use organization ID
+
+One thing you may notice is that the data on the home screen stays the same regardless of the active organization. This is because the existing RLS policies still use the `sub` claim (which is the user ID) to identify the user making requests. We need to update the RLS policies to use the `o`.`id` claim instead to identify the active organization of the user making the request. The policies will be configured to fall back on the `sub` claim to identify the user if the `o`.`id` claim is not present (as in, they are in their personal account).
+
+Instead of accessing the claims from the JWT directly, a custom SQL function can be used to extract the correct claim and return it as a string to the RLS policy. This approach minimizes potential mistakes and centralizes the logic for accessing the claims in one place.
+
+Start by running the following command in your terminal to create a new migration file.
+
+```bash
+supabase migration new setup-orgs
+```
+
+A new file with the name `setup-orgs` will be created in the `migrations` directory. Open that file and add the following SQL to add the function, update the existing policies, and add a `created_by` column to the `time_entries` table (which will be used in the next step to identify timers on the home screen of the app):
+
+filename: supabase/migrations/{TIMESTAMP}\_setup-orgs.sql
+```sql
+-- Add requesting_owner_id function
+create or replace function requesting_owner_id()
+returns text as $$
+    select coalesce(
+        (auth.jwt() -> 'o'::text) ->> 'id'::text,
+        (auth.jwt() ->> 'sub'::text)
+    )::text;
+$$ language sql stable;
+
+-- Update RLS policies to use the new requesting_owner_id function
+-- Update select policy
+DROP POLICY IF EXISTS select_own_time_entries ON time_entries;
+CREATE POLICY select_own_time_entries ON time_entries
+  FOR SELECT
+  USING (owner_id = requesting_owner_id());
+
+-- Update insert policy
+DROP POLICY IF EXISTS insert_own_time_entries ON time_entries;
+CREATE POLICY insert_own_time_entries ON time_entries
+  FOR INSERT
+  WITH CHECK (owner_id = requesting_owner_id());
+
+-- Update update policy
+DROP POLICY IF EXISTS update_own_time_entries ON time_entries;
+CREATE POLICY update_own_time_entries ON time_entries
+  FOR UPDATE
+  USING (owner_id = requesting_owner_id());
+
+-- Update delete policy
+DROP POLICY IF EXISTS delete_own_time_entries ON time_entries;
+CREATE POLICY delete_own_time_entries ON time_entries
+  FOR DELETE
+  USING (owner_id = requesting_owner_id());
+
+-- Add created_by column to time_entries table
+alter table time_entries add created_by text default (auth.jwt() ->> 'sub'::text);
+```
+
+Now run the following command to apply the migration:
+
+```bash
+supabase db push
+```
+
+Next you'll need to update some of the database access code in `app/(tabs)/protected/index.tsx` to use the organization ID instead of the user ID when creating records. These changes also add a `setInterval` to refresh the entries every 30 seconds, acting as a polling mechanism to detect changes from other users.
+
+Open the `app/(tabs)/protected/index.tsx` file and make the following changes:
+
+filename: app/(tabs)/protected/index.tsx
+```tsx
+import React, { useEffect, useRef, useState } from 'react'
+import { FlatList, StyleSheet } from 'react-native'
+
+import { ThemedText } from '@/components/ThemedText'
+import { ThemedView } from '@/components/ThemedView'
+import { TimeEntryItem } from '@/components/TimeEntryItem'
+import { TimerCounter } from '@/components/TimerCounter'
+import { TimerInputForm } from '@/components/TimerInputForm'
+import { createSupabaseClerkClient } from '@/utils/supabase'
+import { useAuth, useUser } from '@clerk/clerk-expo'
+import { useAuth, useOrganization, useUser } from '@clerk/clerk-expo'
+
+interface TimeEntry {
+  id: string
+  description: string
+  start_time: string
+  end_time: string | null
+  created_at: string
+  // This is the user ID of the user who created the time entry
+  created_by: string
+}
+
+export default function HomeScreen() {
+  const { user } = useUser()
+  // This is the active organization of the user
+  const { organization } = useOrganization()
+  const { getToken } = useAuth()
+  const [description, setDescription] = useState('')
+  const [isTimerRunning, setIsTimerRunning] = useState(false)
+  const [currentEntryId, setCurrentEntryId] = useState<string | null>(null)
+  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([])
+  const [elapsedTime, setElapsedTime] = useState(0)
+  // We track the start time to calculate elapsed time
+  const startTimeRef = useRef<Date | null>(null)
+  // Track the last time we updated the elapsed time
+  const lastUpdateRef = useRef<number>(0)
+
+  // Timer interval reference
+  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const supabase = createSupabaseClerkClient(getToken())
+
+  // This is the owner ID of the time entry, defaults to the user ID if no organization is active
+  const ownerId = organization?.id || user?.id
+
+  // Stop the timer counter
+  const stopTimerCounter = () => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current)
+      timerIntervalRef.current = null
+    }
+    setElapsedTime(0)
+    startTimeRef.current = null
+  }
+
+  // Start the timer counter
+  const startTimerCounter = (initialStartTime?: Date) => {
+    const start = initialStartTime || new Date()
+    startTimeRef.current = start
+    lastUpdateRef.current = Date.now()
+
+    // Calculate initial elapsed time
+    const now = new Date()
+    const initialDiffInSeconds = Math.floor((now.getTime() - start.getTime()) / 1000)
+    setElapsedTime(initialDiffInSeconds)
+
+    // Clear any existing interval
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current)
+      timerIntervalRef.current = null
+    }
+
+    // Set up the interval to update elapsed time every second
+    const intervalId = setInterval(() => {
+      if (startTimeRef.current) {
+        // Use the current time for accurate timing
+        const now = new Date()
+        const diffInSeconds = Math.floor((now.getTime() - startTimeRef.current.getTime()) / 1000)
+
+        // Only update if the time has actually changed
+        if (diffInSeconds !== elapsedTime) {
+          setElapsedTime(diffInSeconds)
+        }
+      }
+    }, 500) // Update more frequently for better accuracy
+
+    timerIntervalRef.current = intervalId
+  }
+
+  // Function to fetch time entries from Supabase
+  const fetchTimeEntries = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('time_entries')
+        .select('*')
+        .order('start_time', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching time entries:', error)
+        return
+      }
+
+      setTimeEntries(data || [])
+
+      // Check if there's an active timer (entry without end_time)
+      const activeEntry = data?.find((entry) => !entry.end_time)
+      const activeEntry = data?.find(
+        (entry: TimeEntry) => !entry.end_time && entry.created_by === user?.id,
+      )
+
+      if (activeEntry) {
+        setIsTimerRunning(true)
+        setCurrentEntryId(activeEntry.id)
+        setDescription(activeEntry.description)
+
+        // Start the timer counter with the saved start time
+        const startDate = new Date(activeEntry.start_time)
+        startTimerCounter(startDate)
+      }
+    } catch (error) {
+      console.error('Error fetching time entries:', error)
+    }
+  }
+
+  // Function to update a time entry
+  const updateTimeEntry = async (id: string, updates: Partial<TimeEntry>) => {
+    try {
+      const { error } = await supabase.from('time_entries').update(updates).eq('id', id)
+
+      if (error) {
+        console.error('Error updating time entry:', error)
+        return
+      }
+
+      // Refresh the time entries list
+      fetchTimeEntries()
+    } catch (error) {
+      console.error('Error updating time entry:', error)
+    }
+  }
+
+  // Function to delete a time entry
+  const deleteTimeEntry = async (id: string) => {
+    try {
+      const { error } = await supabase.from('time_entries').delete().eq('id', id)
+
+      if (error) {
+        console.error('Error deleting time entry:', error)
+        return
+      }
+
+      // Refresh the time entries list
+      fetchTimeEntries()
+    } catch (error) {
+      console.error('Error deleting time entry:', error)
+    }
+  }
+
+  // Start a new timer
+  const startTimer = async () => {
+    if (!description.trim()) {
+      alert('Please enter what you are working on')
+      return
+    }
+
+    try {
+      const startDate = new Date()
+      const { data, error } = await supabase
+        .from('time_entries')
+        .insert({
+          description: description.trim(),
+          start_time: startDate.toISOString(),
+          owner_id: user?.id,
+          owner_id: ownerId,
+        })
+        .select()
+
+      if (error) {
+        console.error('Error starting timer:', error)
+        return
+      }
+
+      if (data && data[0]) {
+        setIsTimerRunning(true)
+        setCurrentEntryId(data[0].id)
+        startTimerCounter(startDate)
+        fetchTimeEntries()
+      }
+    } catch (error) {
+      console.error('Error in startTimer:', error)
+    }
+  }
+
+  // Stop the current timer
+  const stopTimer = async () => {
+    if (!currentEntryId) return
+
+    try {
+      const { error } = await supabase
+        .from('time_entries')
+        .update({ end_time: new Date().toISOString() })
+        .eq('id', currentEntryId)
+
+      if (error) {
+        console.error('Error stopping timer:', error)
+        return
+      }
+
+      setIsTimerRunning(false)
+      setCurrentEntryId(null)
+      setDescription('')
+      stopTimerCounter()
+      fetchTimeEntries()
+    } catch (error) {
+      console.error('Error in stopTimer:', error)
+    }
+  }
+
+  // Update the elapsed time even when the app is in background
+  useEffect(() => {
+    if (isTimerRunning && startTimeRef.current) {
+      const now = new Date()
+      const diffInSeconds = Math.floor((now.getTime() - startTimeRef.current.getTime()) / 1000)
+      setElapsedTime(diffInSeconds)
+    }
+  }, [isTimerRunning])
+
+  // Fetch time entries when component mounts
+  useEffect(() => {
+    fetchTimeEntries()
+
+    // Clean up timer interval when component unmounts
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current)
+        timerIntervalRef.current = null
+      }
+    }
+  }, [])
+
+  // Fetch time entries when component mounts or user changes
+  useEffect(() => {
+    fetchTimeEntries()
+
+    // Set up periodic refresh every 30 seconds to detect changes from other users
+    const refreshInterval = setInterval(() => {
+      fetchTimeEntries()
+    }, 30000)
+
+    // Clean up interval on component unmount
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current)
+        timerIntervalRef.current = null
+      }
+
+      if (refreshInterval) {
+        clearInterval(refreshInterval)
+      }
+    }
+  }, [ownerId])
+
+  return (
+    <ThemedView style={styles.container}>
+      <ThemedView style={styles.titleContainer}>
+        <ThemedText type="title">⏳ Aika Timer</ThemedText>
+      </ThemedView>
+
+      {/* Timer Form */}
+      <ThemedView style={styles.formContainer}>
+        {!isTimerRunning ? (
+          <TimerInputForm
+            description={description}
+            onDescriptionChange={setDescription}
+            onStartTimer={startTimer}
+          />
+        ) : (
+          <TimerCounter
+            isRunning={isTimerRunning}
+            description={description}
+            elapsedTime={elapsedTime}
+            onStart={startTimer}
+            onStop={stopTimer}
+          />
+        )}
+      </ThemedView>
+
+      {/* Time Entries List */}
+      <ThemedView style={styles.entriesContainer}>
+        <ThemedText type="subtitle" style={styles.entriesTitle}>
+          Previous Work Logs
+        </ThemedText>
+        {timeEntries.length === 0 ? (
+          <ThemedText style={styles.emptyText}>
+            No work logs yet. Start tracking your time!
+          </ThemedText>
+        ) : (
+          <FlatList
+            data={timeEntries}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <TimeEntryItem item={item} onUpdate={updateTimeEntry} onDelete={deleteTimeEntry} />
+            )}
+            style={styles.list}
+            scrollEnabled={true}
+            showsVerticalScrollIndicator={true}
+            contentContainerStyle={styles.listContentContainer}
+          />
+        )}
+      </ThemedView>
+    </ThemedView>
+  )
+}
+
+const styles = StyleSheet.create({
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 16,
+    paddingHorizontal: 16,
+  },
+  formContainer: {
+    gap: 12,
+    marginBottom: 24,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    height: 150,
+    paddingHorizontal: 16,
+  },
+  disabledInput: {
+    backgroundColor: '#f0f0f0',
+    color: '#666',
+  },
+  entriesContainer: {
+    gap: 12,
+    flex: 1,
+  },
+  list: {
+    paddingHorizontal: 16,
+  },
+  listContentContainer: {
+    flexGrow: 1,
+    paddingBottom: 16,
+  },
+  entriesTitle: {
+    paddingHorizontal: 16,
+  },
+  emptyText: {
+    fontStyle: 'italic',
+    color: '#888',
+    marginTop: 8,
+    paddingHorizontal: 16,
+  },
+  signOutButton: {
+    backgroundColor: '#64748B',
+    padding: 12,
+    borderRadius: 6,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  container: {
+    flex: 1,
+    paddingTop: 16,
+  },
+  contentContainer: {
+    padding: 16,
+  },
+})
+```
+
+The last thing to do is update the `TimeEntryItem` component to render the name of the user who created the entry. This will use the `created_by` field in the database, which is set to the user ID when the entry is created.
+
+This is used along with the `useOrganization` hook from the Clerk Expo SDK to load the list of members in the organization and find the member with the matching user ID.
+
+Open the `components/TimeEntryItem.tsx` and make the following changes:
+
+filename: components/TimeEntryItem.tsx
+```tsx
+import { useOrganization, useUser } from '@clerk/clerk-expo'
+import { Ionicons } from '@expo/vector-icons'
+import React, { useEffect, useRef, useState } from 'react'
+import {
+  Animated,
+  Easing,
+  Modal,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native'
+
+// Import ThemedText and ThemedView components
+import { ThemedText } from './ThemedText'
+import { ThemedView } from './ThemedView'
+
+interface TimeEntry {
+  id: string
+  description: string
+  start_time: string
+  end_time: string | null
+  created_at: string
+  created_by?: string
+}
+
+interface TimeEntryItemProps {
+  item: TimeEntry
+  onUpdate?: (id: string, updates: Partial<TimeEntry>) => Promise<void>
+  onDelete?: (id: string) => Promise<void>
+}
+
+// Custom slow spinner component
+function SlowSpinner() {
+  const spinValue = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    // Create a continuous rotation animation
+    const startRotation = () => {
+      // Reset the value to 0 when starting
+      spinValue.setValue(0)
+
+      // Create the animation
+      Animated.timing(spinValue, {
+        toValue: 1,
+        duration: 3000, // Slower animation (3 seconds per rotation)
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }).start(() => startRotation()) // When complete, run again
+    }
+
+    // Start the animation loop
+    startRotation()
+
+    // Cleanup function
+    return () => {
+      // This will stop any pending animations when component unmounts
+      spinValue.stopAnimation()
+    }
+  }, [spinValue])
+
+  const spin = spinValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  })
+
+  return (
+    <Animated.View
+      style={{
+        transform: [{ rotate: spin }],
+        width: 16,
+        height: 16,
+        borderWidth: 2,
+        borderColor: '#2563EB',
+        borderTopColor: 'transparent',
+        borderRadius: 8,
+      }}
+    />
+  )
+}
+
+export function TimeEntryItem({ item, onUpdate, onDelete }: TimeEntryItemProps) {
+  const { user } = useUser()
+  const { organization } = useOrganization()
+  const [isModalVisible, setIsModalVisible] = useState(false)
+  const [editedDescription, setEditedDescription] = useState(item.description)
+  const [startDate, setStartDate] = useState(new Date(item.start_time))
+  const [endDate, setEndDate] = useState(item.end_time ? new Date(item.end_time) : null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [creatorName, setCreatorName] = useState<string | null>(null)
+
+  // Track the text inputs separately from the actual date objects
+  const [startDateText, setStartDateText] = useState('')
+  const [endDateText, setEndDateText] = useState('')
+
+  // Reset form state when modal is opened
+  useEffect(() => {
+    if (isModalVisible) {
+      setEditedDescription(item.description)
+      setStartDate(new Date(item.start_time))
+      setEndDate(item.end_time ? new Date(item.end_time) : null)
+
+      // Initialize text fields with formatted dates
+      const formattedStartDate = formatDate(new Date(item.start_time).toISOString())
+      const formattedStartTime = formatTime(new Date(item.start_time))
+      setStartDateText(`${formattedStartDate} ${formattedStartTime}`)
+
+      if (item.end_time) {
+        const formattedEndDate = formatDate(new Date(item.end_time).toISOString())
+        const formattedEndTime = formatTime(new Date(item.end_time))
+        setEndDateText(`${formattedEndDate} ${formattedEndTime}`)
+      } else {
+        setEndDateText('')
+      }
+    }
+  }, [isModalVisible, item.description, item.start_time, item.end_time])
+
+  // Format date to display in a readable format
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString()
+  }
+
+  // Format time to display in a readable format
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  }
+
+  // Initialize date text fields on component mount
+  useEffect(() => {
+    if (startDate) {
+      setStartDateText(`${formatDate(startDate.toISOString())} ${formatTime(startDate)}`)
+    }
+    if (endDate) {
+      setEndDateText(`${formatDate(endDate.toISOString())} ${formatTime(endDate)}`)
+    }
+  }, [startDate, endDate])
+
+  // Get creator name if created_by is available
+  useEffect(() => {
+    if (item.created_by) {
+      // If the current user is the creator
+      if (user && user.id === item.created_by) {
+        setCreatorName('You')
+      } else {
+        organization?.getMemberships().then((memberships) => {
+          const member = memberships.data.find((m) => m.publicUserData?.userId === item.created_by)
+          setCreatorName(
+            `${member?.publicUserData?.firstName} ${member?.publicUserData?.lastName} (${member?.publicUserData?.identifier})` ||
+              'Another team member',
+          )
+        })
+      }
+    } else {
+      setCreatorName(null)
+    }
+  }, [item.created_by, user])
+
+  // Calculate duration between start and end time
+  const calculateDuration = (start: string, end: string | null) => {
+    if (!end) return 'In progress'
+
+    const startDate = new Date(start)
+    const endDate = new Date(end)
+    const diffMs = endDate.getTime() - startDate.getTime()
+
+    const diffMins = Math.floor(diffMs / 60000)
+    const hours = Math.floor(diffMins / 60)
+    const mins = diffMins % 60
+
+    return `${hours}h${mins}m`
+  }
+
+  // Handle saving changes
+  const handleSave = async () => {
+    if (!onUpdate) return
+
+    // Try to parse dates from text inputs before saving
+    let validStartDate = startDate
+    let validEndDate = endDate
+
+    // Parse start date text
+    try {
+      const [datePart, timePart] = startDateText.split(' ')
+      if (datePart && timePart) {
+        const [month, day, year] = datePart.split('/')
+        const [hours, minutes] = timePart.replace('AM', '').replace('PM', '').trim().split(':')
+
+        if (month && day && year && hours && minutes) {
+          const newDate = new Date()
+          newDate.setFullYear(parseInt(year), parseInt(month) - 1, parseInt(day))
+
+          let hrs = parseInt(hours)
+          if (timePart.includes('PM') && hrs < 12) hrs += 12
+          if (timePart.includes('AM') && hrs === 12) hrs = 0
+
+          newDate.setHours(hrs, parseInt(minutes))
+          validStartDate = newDate
+        }
+      }
+    } catch {
+      // Use the existing startDate if parsing fails
+    }
+
+    // Parse end date text if it exists
+    if (endDateText && endDate) {
+      try {
+        const [datePart, timePart] = endDateText.split(' ')
+        if (datePart && timePart) {
+          const [month, day, year] = datePart.split('/')
+          const [hours, minutes] = timePart.replace('AM', '').replace('PM', '').trim().split(':')
+
+          if (month && day && year && hours && minutes) {
+            const newDate = new Date()
+            newDate.setFullYear(parseInt(year), parseInt(month) - 1, parseInt(day))
+
+            let hrs = parseInt(hours)
+            if (timePart.includes('PM') && hrs < 12) hrs += 12
+            if (timePart.includes('AM') && hrs === 12) hrs = 0
+
+            newDate.setHours(hrs, parseInt(minutes))
+            validEndDate = newDate
+          }
+        }
+      } catch {
+        // Use the existing endDate if parsing fails
+        console.error('Failed to parse end date')
+      }
+    }
+
+    setIsSubmitting(true)
+    try {
+      await onUpdate(item.id, {
+        description: editedDescription,
+        start_time: validStartDate.toISOString(),
+        end_time: validEndDate ? validEndDate.toISOString() : null,
+      })
+      setIsModalVisible(false)
+    } catch (error) {
+      console.error('Failed to update time entry:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // Handle deleting the entry
+  const handleDelete = async () => {
+    if (!onDelete) return
+
+    setIsSubmitting(true)
+    try {
+      await onDelete(item.id)
+      setIsModalVisible(false)
+    } catch (error) {
+      console.error('Error deleting time entry:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <ThemedView style={styles.container}>
+      {/* View mode - always visible */}
+      <TouchableOpacity
+        style={styles.entryItem}
+        onPress={() => setIsModalVisible(true)}
+        activeOpacity={0.7}
+      >
+        <ThemedView style={styles.entryContent}>
+          <View style={styles.descriptionContainer}>
+            <ThemedText type="defaultSemiBold" numberOfLines={1}>
+              {item.description}
+            </ThemedText>
+            {organization && creatorName && (
+              <ThemedText style={styles.creatorText}>{creatorName}</ThemedText>
+            )}
+          </View>
+          {item.end_time ? (
+            <ThemedText style={styles.durationText}>
+              {calculateDuration(item.start_time, item.end_time)}
+            </ThemedText>
+          ) : (
+            <View style={styles.inProgressContainer}>
+              <SlowSpinner />
+              <ThemedText style={styles.inProgressText}>In progress</ThemedText>
+            </View>
+          )}
+        </ThemedView>
+        <View style={styles.rightSection}>
+          <ThemedText style={styles.dateText}>{formatDate(item.start_time)}</ThemedText>
+          <Ionicons name="chevron-forward" size={16} color="#888" />
+        </View>
+      </TouchableOpacity>
+
+      {/* Edit mode - in modal */}
+      <Modal
+        visible={isModalVisible}
+        onRequestClose={() => setIsModalVisible(false)}
+        animationType="fade"
+        transparent
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContainer}>
+            <ThemedView style={styles.modalContent}>
+              <ThemedText style={styles.modalTitle}>Edit Time Entry</ThemedText>
+
+              <View style={styles.formGroup}>
+                <ThemedText style={styles.label}>Description</ThemedText>
+                <TextInput
+                  style={styles.input}
+                  value={editedDescription}
+                  onChangeText={setEditedDescription}
+                  placeholder="What were you working on?"
+                  placeholderTextColor="#aaa"
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <ThemedText style={styles.label}>Start Time</ThemedText>
+                <TextInput
+                  style={styles.input}
+                  value={startDateText}
+                  onChangeText={(text) => {
+                    // Just update the text field without validation
+                    setStartDateText(text)
+
+                    // Try to parse the date but don't throw errors
+                    try {
+                      const [datePart, timePart] = text.split(' ')
+                      if (datePart && timePart) {
+                        const [month, day, year] = datePart.split('/')
+                        const [hours, minutes] = timePart
+                          .replace('AM', '')
+                          .replace('PM', '')
+                          .trim()
+                          .split(':')
+
+                        if (month && day && year && hours && minutes) {
+                          const newDate = new Date(startDate)
+                          newDate.setFullYear(parseInt(year), parseInt(month) - 1, parseInt(day))
+
+                          let hrs = parseInt(hours)
+                          if (timePart.includes('PM') && hrs < 12) hrs += 12
+                          if (timePart.includes('AM') && hrs === 12) hrs = 0
+
+                          newDate.setHours(hrs, parseInt(minutes))
+                          setStartDate(newDate)
+                        }
+                      }
+                    } catch {
+                      // Silently fail - we'll use the previous valid date if parsing fails
+                    }
+                  }}
+                  placeholder="MM/DD/YYYY HH:MM AM/PM"
+                  placeholderTextColor="#aaa"
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <ThemedText style={styles.label}>End Time</ThemedText>
+                {endDate ? (
+                  <TextInput
+                    style={styles.input}
+                    value={endDateText}
+                    onChangeText={(text) => {
+                      // Just update the text field without validation
+                      setEndDateText(text)
+
+                      // Try to parse the date but don't throw errors
+                      try {
+                        const [datePart, timePart] = text.split(' ')
+                        if (datePart && timePart) {
+                          const [month, day, year] = datePart.split('/')
+                          const [hours, minutes] = timePart
+                            .replace('AM', '')
+                            .replace('PM', '')
+                            .trim()
+                            .split(':')
+
+                          if (month && day && year && hours && minutes) {
+                            const newDate = new Date(endDate)
+                            newDate.setFullYear(parseInt(year), parseInt(month) - 1, parseInt(day))
+
+                            let hrs = parseInt(hours)
+                            if (timePart.includes('PM') && hrs < 12) hrs += 12
+                            if (timePart.includes('AM') && hrs === 12) hrs = 0
+
+                            newDate.setHours(hrs, parseInt(minutes))
+                            setEndDate(newDate)
+                          }
+                        }
+                      } catch {
+                        // Silently fail - we'll use the previous valid date if parsing fails
+                      }
+                    }}
+                    placeholder="MM/DD/YYYY HH:MM AM/PM"
+                    placeholderTextColor="#aaa"
+                  />
+                ) : (
+                  <View style={styles.inProgressContainer}>
+                    <SlowSpinner />
+                    <ThemedText style={styles.inProgressText}>In progress</ThemedText>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.buttonContainer}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => setIsModalVisible(false)}
+                  disabled={isSubmitting}
+                >
+                  <ThemedText style={styles.buttonText}>Cancel</ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.button, styles.deleteButton]}
+                  onPress={handleDelete}
+                  disabled={isSubmitting}
+                >
+                  <ThemedText style={styles.buttonText}>Delete</ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.button, styles.saveButton]}
+                  onPress={handleSave}
+                  disabled={isSubmitting}
+                >
+                  <ThemedText style={styles.buttonText}>Save</ThemedText>
+                </TouchableOpacity>
+              </View>
+            </ThemedView>
+          </View>
+        </View>
+      </Modal>
+    </ThemedView>
+  )
+}
+
+const styles = StyleSheet.create({
+  container: {
+    marginVertical: 4,
+  },
+  modalContent: {
+    padding: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  entryItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: 'transparent',
+    backgroundColor: '#f7f7f7',
+    padding: 8,
+    marginVertical: 4,
+    borderRadius: 6,
+    gap: 3,
+    alignItems: 'center',
+  },
+  entryContent: {
+    gap: 4,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    flex: 1,
+  },
+  dateText: {
+    fontSize: 12,
+    color: '#888',
+  },
+  rightSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  durationText: {
+    fontWeight: 'bold',
+    fontFamily: 'monospace',
+  },
+  inProgressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#EBF4FF', // Light blue background
+    paddingVertical: 1,
+    paddingHorizontal: 6,
+    borderRadius: 100,
+  },
+  inProgressText: {
+    color: '#2563EB',
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  formGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 6,
+    padding: 10,
+    borderColor: '#ccc',
+  },
+  dateTimeButton: {
+    borderWidth: 1,
+    borderRadius: 6,
+    padding: 10,
+    backgroundColor: '#333',
+    justifyContent: 'center',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 20,
+  },
+  cancelButton: {
+    backgroundColor: '#555',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+  },
+  webDatePickerContainer: {
+    backgroundColor: '#333',
+    padding: 10,
+    borderRadius: 6,
+    marginTop: 8,
+    gap: 10,
+  },
+  webDateInput: {
+    borderWidth: 1,
+    borderColor: '#444',
+    borderRadius: 4,
+    padding: 8,
+    backgroundColor: '#222',
+    color: 'white',
+    marginBottom: 10,
+  },
+  webDatePickerButton: {
+    backgroundColor: '#2563EB',
+    padding: 8,
+    borderRadius: 4,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  webDatePickerButtonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+  button: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveButton: {
+    backgroundColor: '#2563EB',
+  },
+  deleteButton: {
+    backgroundColor: '#DC2626',
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: '90%',
+    maxWidth: 500,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  descriptionContainer: {
+    gap: 2,
+  },
+  creatorText: {
+    color: '#777',
+    fontSize: 12,
+  },
+})
+```
+
+Now when you use the app within an organization, you'll see the time entries of every user within that organization, including their active ones!
+
+## Conclusion
+
+Multi-tenancy is a powerful feature that allows you to create a single instance of an application that can be used by multiple tenants or organizations. Many platforms use a multi-tenancy model to increase the number of users and revenue. Clerk makes it easy to add multi-tenancy to your app by providing robust APIs for managing organizations and memberships.
+
+These APIs can be used with Expo to implement multi-tenancy into your cross-platform React Native app.

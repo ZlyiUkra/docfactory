@@ -1,0 +1,1919 @@
+# Implement Role-Based Access Control in Next.js 15
+# джерело: https://clerk.com/blog/nextjs-role-based-access-control
+# отримано: 2026-09-25
+
+Assigning permissions to individual users is a complex task, especially when you have a large number of users.
+
+Role-Based Access Control (RBAC) is a popular approach to managing access permissions in software applications, allowing you to assign different roles and permissions to different users.
+
+This article will guide you through building a Q\&A platform using Next.js and Neon, and show you how to implement authentication and RBAC with Clerk.
+
+## What is Role-Based Access Control?
+
+Before we get started, let's understand RBAC and how it will be implemented in the Q\&A platform.
+
+RBAC is a security method that allows users to interact with features of an application or system based on their roles and the permissions granted to those roles.
+
+This approach simplifies access management by grouping permissions into roles instead of assigning them to individual users, making it easier to maintain and scale as your application grows.
+
+By implementing RBAC, organizations can enforce the principle of least privilege, ensuring users only have access to the resources necessary for their specific responsibilities.
+
+Below is a breakdown of the permissions for each role in the Q\&A platform:
+
+| Role        | Description                                                               | Permissions                                                                                                                                                    |
+| ----------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Viewer      | Users not signed in or logged into the Q\&A platform.                     | • View questions and answers                                                                                                                                   |
+| Contributor | Registered users who can ask or answer questions in the Q\&A platform.    | Everything from the Viewer role + • Post questions• Answer questions• Edit own questions and answers• Delete own questions and answers |
+| Moderator   | Users with additional permissions to manage content in the Q\&A platform. | Everything from the Contributor role + • Admin dashboard access• Approve and disapprove questions• Approve and disapprove answers            |
+| Admin       | Users with full control over the Q\&A platform.                           | Everything from the Moderator role + • Edit others' questions and answers• Delete others' questions and answers• Manage user roles           |
+
+With that in mind, let us jump straight into building the Q\&A platform and implement RBAC using Clerk.
+
+> Clerk provides two approaches to RBAC.
+>
+> Organizations is ideal for B2B applications like GitHub or Notion, where your customers are teams or companies who need to invite team members and manage their roles. It includes built-in role management and components for role-based rendering.
+>
+> User metadata, demonstrated in this guide, is better suited for B2C applications with simple permission structures where individual users have different access levels but don't belong to teams.
+
+## What you'll build
+
+Before writing any code, let's take a look at how our platform works.
+
+The landing page enables users to sign up or sign in using the **Start Exploring** button. It features a clean design with a navigation menu and welcome message.
+
+Once signed in, users can ask questions and provide answers. Each question displays the author's name, timestamp, and interaction options. Users can edit or delete their own content, and view answers from other contributors.
+
+Homepage of a Q\&A Platform with a centered welcome message, navigation menu at the top showing Home, Q\&A, and Admin options, and a user profile icon. The main content features a large 'Welcome to Our Q\&A Platform' heading, followed by a subtitle encouraging community participation and a 'Start Exploring' button. The page has a clean, minimal design with a white background and footer copyright text.
+
+Q\&A Platform page showing a question input field at the top with an 'Ask' button. Below are two example questions: 'What is React used for?' and 'How many days are in a week?' Each question displays the author's name (Brian Morrison), timestamp, and has edit and delete icons. Questions include their answers with similar metadata and interaction options. The page maintains the same header with navigation menu and user profile icon as the homepage.
+
+Administrators can review and moderate all submitted content through the Admin Dashboard. The page displays questions and answers with approval status indicators, allowing admins to approve or reject content using simple checkmark and X icons.
+
+Admin Dashboard showing moderation controls for Q\&A content. The page displays questions and answers with approval status indicators - green 'Approved' tags for accepted content and red 'Disapproved' tags for rejected content. Each entry has approve/reject buttons (green checkmark and red X icons). The dashboard includes a 'Set Roles' button at the top right. Questions shown include 'What is React used for?' and 'How many days are in a week?' with their respective answers and moderation statuses. The page maintains the consistent header with navigation and user profile.
+
+Finally, administrators can manage user permissions through the role management page. Using a search interface, admins can find users and assign appropriate roles (Admin, Moderator, Contributor, or Viewer) or remove existing roles.
+
+User role management page with a search bar and Submit button at the top. Below shows a user profile for Brian Morrison with their current role listed as admin. A row of role management buttons includes 'Make Admin', 'Make Moderator', 'Make Contributor', 'Make Viewer', and a red 'Remove Role' button. The page maintains the standard Q\&A Platform header with navigation menu and user profile icon.
+
+## Building the frontend
+
+In this section, we will build the frontend of the Q\&A platform. In order to follow along, you should have a basic understanding of React or Next.js, as well as Node.js installed.
+
+> If you're new to Next.js authentication, check out our Ultimate Guide to Next.js Authentication for foundational concepts.
+
+### Install dependencies
+
+Start by running the following command in your terminal to bootstrap a Next.js application, accepting the default options as they are presented:
+
+```bash
+npx create-next-app@latest qa-app
+cd qa-app
+```
+
+Next, run the following commands to initialize shadcn/ui, once again accepting the default configuration options as they are presented:
+
+```bash
+npx shadcn@latest init
+```
+
+Add the necessary components to build the UI components of the Q\&A platform:
+
+```bash
+npx shadcn@latest add button input card separator badge
+```
+
+Finally, install Lucide React, which will be used to render the icons in the UI components:
+
+```bash
+npm install lucide-react
+```
+
+With the dependencies in place, let's create the components that used with the layout, starting with the type definitions we'll use throughout the process.
+
+### Creating the header and updating the homepage
+
+The header component will allow our users to navigate to different parts of the application, as well as hold the Clerk `UserButton` component (to be done later in this guide).
+
+Create the `src/components/Header.tsx` file and paste in the following code:
+
+filename: src/components/Header.tsx
+```tsx
+'use client'
+
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+
+const Header = () => {
+  return (
+    <header className="border-b bg-white">
+      <div className="container mx-auto px-4">
+        <div className="flex h-16 items-center justify-between">
+          <Link href="/" className="text-xl font-bold">
+            Q&A platform
+          </Link>
+          <nav>
+            <ul className="flex space-x-4">
+              <li>
+                <Link href="/">
+                  <Button variant="ghost">Home</Button>
+                </Link>
+              </li>
+              <li>
+                <Link href="/qa">
+                  <Button variant="ghost">Q&A</Button>
+                </Link>
+              </li>
+
+              <li>
+                <Link href="/admin">
+                  <Button variant="ghost">Admin</Button>
+                </Link>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </div>
+    </header>
+  )
+}
+
+export default Header
+```
+
+With the header component in place, replace the code in `app/page.tsx` with the following, which will update the homepage to use the header component and match the demo:
+
+filename: app/page.tsx
+```tsx
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import Header from '@/components/Header'
+
+export default function Home() {
+  return (
+    <div className="flex min-h-screen flex-col">
+      <Header />
+      <main className="flex-grow">
+        <section className="flex w-full items-center justify-center py-12 md:py-24 lg:py-32 xl:py-48">
+          <div className="container px-4 md:px-6">
+            <div className="flex flex-col items-center space-y-4 text-center">
+              <div className="space-y-2">
+                <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none">
+                  Welcome to Our Q&A platform
+                </h1>
+                <p className="mx-auto max-w-[700px] text-gray-500 md:text-xl dark:text-gray-400">
+                  Join our community to ask questions, share knowledge, and learn from others.
+                </p>
+              </div>
+              <div className="space-x-4">
+                <Link href="/qa">
+                  <Button size="lg">Start Exploring</Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+      <footer className="flex w-full items-center justify-center bg-gray-100 py-6 dark:bg-gray-800">
+        <div className="container px-4 md:px-6">
+          <p className="text-center text-sm text-gray-500 dark:text-gray-400">
+            (c) 2024 Q&A platform. All rights reserved.
+          </p>
+        </div>
+      </footer>
+    </div>
+  )
+}
+```
+
+### Create the Q\&A section
+
+Next, you'll build out the Q\&A section, where signed-in users can ask and answer questions and anonymous users can view questions. We'll start by creating a few shared components that will be used throughout the application before creating the page that will display the Q\&A section.
+
+Let's start by creating a file named `types/types.d.ts` to define the types we'll be using. Populate it with the following code:
+
+filename: types/types.d.ts
+```ts
+interface Answer {
+  id: number | null
+  ans: string
+  approved?: boolean | null
+  contributor: string
+  contributorId: string
+  questionId: number
+  timestamp?: string // ISO 8601 string format
+}
+
+interface Question {
+  id: number | null
+  quiz: string
+  approved: boolean | null
+  answers: Answer[]
+  contributor: string
+  contributorId: string
+  timestamp?: string // ISO 8601 string format
+}
+
+type Roles = 'admin' | 'moderator' | 'contributor' | 'viewer'
+```
+
+Now you'll create the component that renders the form where users can ask questions. Create the `src/components/QuestionForm.tsx` file and paste in the following:
+
+filename: src/components/QuestionForm.tsx
+```tsx
+import { useEffect, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+
+interface QuestionFormProps {
+  onSubmit: (question: string) => void
+}
+
+export default function QuestionForm({ onSubmit }: QuestionFormProps) {
+  const [quiz, setQuiz] = useState('')
+  const [showSubmitText, setShowSubmitText] = useState(false)
+
+  useEffect(() => {
+    if (showSubmitText) {
+      setTimeout(() => {
+        setShowSubmitText(false)
+      }, 7000)
+    }
+  }, [showSubmitText])
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (quiz.trim()) {
+      onSubmit(quiz)
+      setQuiz('')
+      setShowSubmitText(true)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="mb-6">
+      <div className="flex gap-2">
+        <div className="flex-grow">
+          <Input
+            type="text"
+            name="quiz"
+            id="quiz"
+            value={quiz}
+            onChange={(e) => setQuiz(e.target.value)}
+            placeholder="Ask a question..."
+            className="flex-grow"
+          />
+          <div className="h-4 text-sm text-green-500 transition-all">
+            {showSubmitText ? 'Your question has been submitted for review.' : ''}
+          </div>
+        </div>
+        <Button type="submit">Ask</Button>
+      </div>
+    </form>
+  )
+}
+```
+
+Next, modify the `src/lib/utils.ts` file to add a helper function used to format dates in a more friendly way, which will be used in the `QuestionItem` and `AnswerItem` components you'll create in a moment:
+
+filename: src/lib/utils.ts
+```ts
+import { clsx, type ClassValue } from 'clsx'
+import { twMerge } from 'tailwind-merge'
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
+export function formatDate(dateString: string) {
+  const date = new Date(dateString)
+  return date.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+```
+
+Now create a `QuestionItem` component that manages and displays a question and its answers. Moreover, the component allows adding, editing, and deleting of questions or answers.
+
+Create the `src/components/QuestionItem.tsx` file and paste the following code into the file:
+
+filename: src/components/QuestionItem.tsx
+```tsx
+import { useEffect, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card'
+import { Pencil, Trash2 } from 'lucide-react'
+import { Separator } from '@/components/ui/separator'
+import AnswerItem from './AnswerItem'
+import { formatDate } from '@/lib/utils'
+
+interface Props {
+  question: Question
+  onEditQuestion: (id: number, newText: string) => void
+  onDeleteQuestion: (id: number) => void
+  onAddAnswer: (questionId: number, answerText: string) => void
+  onEditAnswer: (answerId: number, newText: string) => void
+  onDeleteAnswer: (answerId: number) => void
+}
+
+export default function QuestionItem({
+  question,
+  onEditQuestion,
+  onDeleteQuestion,
+  onAddAnswer,
+  onEditAnswer,
+  onDeleteAnswer,
+}: Props) {
+  const [answer, setAnswer] = useState('')
+  const [isEditing, setIsEditing] = useState(false)
+  const [editedQuestion, setEditedQuestion] = useState(question.quiz)
+  const [showSubmitText, setShowSubmitText] = useState(false)
+
+  useEffect(() => {
+    if (showSubmitText) {
+      setTimeout(() => {
+        setShowSubmitText(false)
+      }, 7000)
+    }
+  }, [showSubmitText])
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (answer.trim()) {
+      if (question.id !== null) {
+        onAddAnswer(question.id, answer)
+        setShowSubmitText(true)
+      }
+      setAnswer('')
+    }
+  }
+
+  const handleQuestionEdit = () => {
+    if (editedQuestion.trim() && editedQuestion !== question.quiz) {
+      if (question.id !== null) {
+        onEditQuestion(question.id, editedQuestion)
+      }
+      setIsEditing(false)
+    }
+  }
+
+  const handleAnswerEdit = async (answerId: number | null, newText: string) => {
+    if (answerId !== null && question.id !== null) {
+      await onEditAnswer(answerId, newText)
+    }
+  }
+
+  const handleAnswerDelete = async (answerId: number | null) => {
+    if (answerId !== null && question.id !== null) {
+      await onDeleteAnswer(answerId)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        {isEditing ? (
+          <div className="flex gap-2">
+            <Input
+              value={editedQuestion}
+              onChange={(e) => setEditedQuestion(e.target.value)}
+              className="flex-grow"
+            />
+            <Button onClick={handleQuestionEdit}>Save</Button>
+            <Button variant="outline" onClick={() => setIsEditing(false)}>
+              Cancel
+            </Button>
+          </div>
+        ) : (
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <CardTitle>{question.quiz}</CardTitle>
+
+              <div>
+                <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => question.id !== null && onDeleteQuestion(question.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="text-sm text-gray-500">
+              <span>{question.contributor}</span>
+              <span> • </span>
+              <span>{question.timestamp && formatDate(question.timestamp)}</span>
+            </div>
+          </div>
+        )}
+      </CardHeader>
+      <CardContent>
+        <h3 className="mb-2 font-semibold">Answers:</h3>
+        {question.answers && question.answers.filter((a) => a.approved !== false).length > 0 ? (
+          <ul className="space-y-4">
+            {question.answers
+              .filter((a) => a.approved !== false)
+              .map((answer, index, filteredAnswers) => (
+                <li key={answer.id}>
+                  <AnswerItem
+                    answer={answer}
+                    onEditAnswer={(newText) => handleAnswerEdit(answer.id, newText)}
+                    onDeleteAnswer={() => handleAnswerDelete(answer.id)}
+                  />
+                  {index < filteredAnswers.length - 1 && <Separator className="my-2" />}
+                </li>
+              ))}
+          </ul>
+        ) : (
+          <p className="text-gray-500">No answers yet.</p>
+        )}
+      </CardContent>
+
+      <CardFooter>
+        <form onSubmit={handleSubmit} className="w-full">
+          <div className="flex gap-2">
+            <div className="flex-grow">
+              <Input
+                type="text"
+                value={answer}
+                onChange={(e) => setAnswer(e.target.value)}
+                placeholder="Add an answer..."
+              />
+
+              <div className="h-4 text-sm text-green-500 transition-all">
+                {showSubmitText ? 'Your answer has been submitted for review.' : ''}
+              </div>
+            </div>
+            <Button type="submit">Answer</Button>
+          </div>
+        </form>
+      </CardFooter>
+    </Card>
+  )
+}
+```
+
+Your editor may be displaying an error regarding the `AnswerItem` component, which does not yet exist. This component is used to render answers for each question.
+
+Create the `src/components/AnswerItem.tsx` file and paste the following code into the file:
+
+```tsx
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Pencil, Trash2 } from 'lucide-react'
+import { formatDate } from '@/lib/utils'
+
+interface Props {
+  answer: Answer
+  onEditAnswer: (newText: string) => void
+  onDeleteAnswer: () => void
+}
+
+function AnswerItem({ answer, onEditAnswer, onDeleteAnswer }: Props) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [editedAnswer, setEditedAnswer] = useState(answer.ans)
+
+  const handleEdit = () => {
+    if (editedAnswer.trim() && editedAnswer !== answer.ans) {
+      onEditAnswer(editedAnswer)
+      setIsEditing(false)
+    }
+  }
+
+  return (
+    <div>
+      {isEditing ? (
+        <div className="flex w-full gap-2">
+          <Input
+            value={editedAnswer}
+            onChange={(e) => setEditedAnswer(e.target.value)}
+            className="flex-grow"
+          />
+          <Button onClick={handleEdit}>Save</Button>
+          <Button variant="outline" onClick={() => setIsEditing(false)}>
+            Cancel
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div className="flex items-start justify-between">
+            <p>{answer.ans}</p>
+
+            <div>
+              <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)}>
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={onDeleteAnswer}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          <div className="text-sm text-gray-500">
+            <span>{answer.contributor}</span>
+            <span> • </span>
+            <span>{answer.timestamp && formatDate(answer.timestamp)}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default AnswerItem
+```
+
+Now you'll create the page that manages and displays questions and answers, handles form submissions, and interacts with the user. Note that the code below contains function placeholders that will be implemented later in this article to interact with the database.
+
+Create the `app/qa/page.tsx` file and paste the following code into the file:
+
+filename: app/qa/page.tsx
+```tsx
+'use client'
+
+import { useState, useEffect } from 'react'
+import QuestionForm from '../../components/QuestionForm'
+import QuestionItem from '@/components/QuestionItem'
+import Header from '../../components/Header'
+
+export default function QAPage() {
+  const [questions, setQuestions] = useState<Question[]>([])
+
+  useEffect(() => {
+    fetchQuestions()
+  }, [])
+
+  // These placeholders will be populated later in this guide
+  const fetchQuestions = async () => {}
+  const addQuestion = async (question: string) => {}
+  const editQuestion = async (id: number, newText: string) => {}
+  const deleteQuestion = async (id: number) => {}
+  const addAnswer = async (questionId: number, answer: string) => {}
+  const editAnswer = async (answerId: number, newText: string) => {}
+  const deleteAnswer = async (answerId: number) => {}
+
+  return (
+    <div className="flex min-h-screen flex-col">
+      <Header />
+      <main className="container mx-auto flex-grow p-4">
+        <QuestionForm onSubmit={addQuestion} />
+        {Array.isArray(questions) && (
+          <div className="space-y-4">
+            {questions.map((question) => (
+              <QuestionItem
+                key={question.id}
+                question={question}
+                onEditQuestion={editQuestion}
+                onDeleteQuestion={deleteQuestion}
+                onAddAnswer={addAnswer}
+                onEditAnswer={editAnswer}
+                onDeleteAnswer={deleteAnswer}
+              />
+            ))}
+          </div>
+        )}
+      </main>
+    </div>
+  )
+}
+```
+
+### Creating the admin area
+
+With the home page and Q\&A page created, it's time to create the admin area. The admin area will be used to manage questions and answers.
+
+Start by creating the `src/components/QuestionCard.tsx` which is used by the admin page for approving and managing questions and answers. Paste the following into that file:
+
+filename: src/components/QuestionCard.tsx
+```tsx
+'use client'
+
+import { Button } from '@/components/ui/button'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { CheckCircle, XCircle } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { formatDate } from '@/lib/utils'
+
+interface Props {
+  question: Question
+  onQuestionApproved: (id: number) => void
+  onQuestionDisapproved: (id: number) => void
+  onAnswerApproved: (answerId: number) => void
+  onAnswerDisapproved: (answerId: number) => void
+}
+
+export default function QuestionCard({
+  question,
+  onQuestionApproved,
+  onQuestionDisapproved,
+  onAnswerApproved,
+  onAnswerDisapproved,
+}: Props) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex flex-col">
+          <div className="mb-2 flex items-start justify-between">
+            <div className="flex items-center space-x-2">
+              <span className="text-xl">{question.quiz}</span>
+              <ApprovalBadge approved={question.approved} />
+            </div>
+
+            <div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => question.id !== null && onQuestionApproved(question.id)}
+              >
+                <CheckCircle className="h-4 w-4 text-green-500" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => question.id !== null && onQuestionDisapproved(question.id)}
+              >
+                <XCircle className="h-4 w-4 text-red-500" />
+              </Button>
+            </div>
+          </div>
+          <div className="text-sm text-gray-500">
+            <span>{question.contributor}</span>
+            <span> • </span>
+            <span>{question.timestamp && formatDate(question.timestamp)}</span>
+          </div>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <h3 className="mb-2 font-semibold">Answers:</h3>
+        {question.answers && question.answers.length > 0 ? (
+          <ul className="space-y-4">
+            {question.answers.map((answer) => (
+              <li key={answer.id} className="flex flex-col">
+                <div className="mb-2 flex items-start justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span>{answer.ans}</span>
+                    <ApprovalBadge approved={answer.approved ?? null} />
+                  </div>
+                  <div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        if (question.id !== null && answer.id !== null) {
+                          onAnswerApproved(answer.id)
+                        }
+                      }}
+                    >
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        if (question.id !== null && answer.id !== null) {
+                          onAnswerDisapproved(answer.id)
+                        }
+                      }}
+                    >
+                      <XCircle className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="text-sm text-gray-500">
+                  <span>{answer.contributor}</span>
+                  <span> • </span>
+                  <span>{answer.timestamp && formatDate(answer.timestamp)}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-gray-500">No answers yet.</p>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function ApprovalBadge({ approved }: { approved: boolean | null }) {
+  if (approved === true) {
+    return (
+      <Badge variant="outline" className="border-green-300 bg-green-100 text-green-800">
+        Approved
+      </Badge>
+    )
+  } else if (approved === false) {
+    return (
+      <Badge variant="outline" className="border-red-300 bg-red-100 text-red-800">
+        Disapproved
+      </Badge>
+    )
+  } else {
+    return (
+      <Badge variant="outline" className="border-yellow-300 bg-yellow-100 text-yellow-800">
+        Pending
+      </Badge>
+    )
+  }
+}
+```
+
+Create the `app/admin/page.tsx` file, used to render the area for admins and moderators, and paste the following code into the file:
+
+filename: app/admin/page.tsx
+```tsx
+'use client'
+
+import { useEffect, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import Link from 'next/link'
+import Header from '@/components/Header'
+import QuestionCard from '@/components/QuestionCard'
+
+export default function AdminPage() {
+  const [questions, setQuestions] = useState<Question[]>([])
+
+  useEffect(() => {
+    fetchQuestions()
+  }, [])
+
+  // These placeholders will be populated later in this guide
+  const fetchQuestions = async () => {}
+  const onQuestionApproved = async (id: number) => {}
+  const onQuestionDisapproved = async (id: number) => {}
+  const onAnswerApproved = async (answerId: number) => {}
+  const onAnswerDisapproved = async (answerId: number) => {}
+
+  return (
+    <div className="flex min-h-screen flex-col">
+      <Header />
+      <main className="container mx-auto flex-grow p-4">
+        <h1 className="mb-6 text-3xl font-bold">Admin Dashboard</h1>
+        <div className="mb-4 flex justify-end">
+          <Button>
+            <Link href="/admin/set-user-roles">Set Roles</Link>
+          </Button>
+        </div>
+        <div className="space-y-4">
+          {questions.map((question) => (
+            <QuestionCard
+              key={question.id}
+              question={question}
+              onQuestionApproved={onQuestionApproved}
+              onQuestionDisapproved={onQuestionDisapproved}
+              onAnswerApproved={onAnswerApproved}
+              onAnswerDisapproved={onAnswerDisapproved}
+            />
+          ))}
+        </div>
+      </main>
+    </div>
+  )
+}
+```
+
+### Testing the application
+
+With all of our pages created, you can test the application by running the following command in the terminal, which will start the dev server and allow you to view the application in your browser:
+
+```bash
+npm run dev
+```
+
+By default it runs on `localhost:3000`, but may use a different port if `3000` is already in use. Use the provided URL to access the application.
+
+## Adding Clerk for authentication and authorization
+
+Now let's add authentication to the application using Clerk. In your browser, go to the Clerk dashboard to create an account if you don't already have one, which will automatically walk you through setting up your first application with Clerk. If you already have an account, sign in and create a new application, which will also guide you through setting up Clerk.
+
+Follow steps 1-3 shown in the onboarding guide to install and configure Clerk in your Next.js application. Return to this page once you are finished to continue the tutorial.
+
+### Setting up Clerk in the application
+
+At this point, the Clerk SDK should be installed, and the middleware should be defined per the quickstart instructions. Next, you'll need to wrap the application with the `<ClerkProvider>` which will allow Clerk to protect pages that require authentication.
+
+Update the `app/layout.tsx` file to wrap the application with the `<ClerkProvider>`:
+
+filename: app/layout.tsx
+```tsx
+import type { Metadata } from 'next'
+import { Geist, Geist_Mono } from 'next/font/google'
+import './globals.css'
+import { ClerkProvider } from '@clerk/nextjs'
+
+const geistSans = Geist({
+  variable: '--font-geist-sans',
+  subsets: ['latin'],
+})
+
+const geistMono = Geist_Mono({
+  variable: '--font-geist-mono',
+  subsets: ['latin'],
+})
+
+export const metadata: Metadata = {
+  title: 'Create Next App',
+  description: 'Generated by create next app',
+}
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode
+}>) {
+  return (
+    <ClerkProvider>
+      <html lang="en">
+        <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+          {children}
+        </body>
+      </html>
+    </ClerkProvider>
+  )
+}
+```
+
+Add the following environment variables to your `.env.local` file, which tell Clerk where to redirect users when they sign up or sign in:
+
+filename: .env.local
+```env
+NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL=/
+NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=/
+```
+
+Next, update the `header` component to include a `UserButton` if the user is signed in, or a `SignInButton` if the user is not signed in:
+
+filename: src/app/components/header.tsx
+```tsx
+'use client'
+
+import { Show, SignInButton, UserButton } from '@clerk/nextjs'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+
+const Header = () => {
+  return (
+    <header className="border-b bg-white">
+      <div className="container mx-auto px-4">
+        <div className="flex h-16 items-center justify-between">
+          <Link href="/" className="text-xl font-bold">
+            Q&A platform
+          </Link>
+          <nav>
+            <ul className="flex space-x-4">
+              <li>
+                <Link href="/">
+                  <Button variant="ghost">Home</Button>
+                </Link>
+              </li>
+              <li>
+                <Link href="/qa">
+                  <Button variant="ghost">Q&A</Button>
+                </Link>
+              </li>
+
+              <li>
+                <Link href="/admin">
+                  <Button variant="ghost">Admin</Button>
+                </Link>
+              </li>
+
+              <Show when="signed-in">
+                <li className="flex items-center">
+                  <UserButton />
+                </li>
+              </Show>
+              <Show when="signed-out">
+                <li className="flex items-center rounded bg-black px-2 font-bold text-white">
+                  <SignInButton mode="modal" />
+                </li>
+              </Show>
+            </ul>
+          </nav>
+        </div>
+      </div>
+    </header>
+  )
+}
+
+export default Header
+```
+
+### Test it out
+
+If your application is no longer running, start it up again with `npm run dev` and use the updated header to log into the application. This will let you create a user account and redirect you back to the home page.
+
+Once logged in, notice how the header includes the `UserButton` instead of the `SignInButton`.
+
+## Configuring RBAC with Clerk
+
+Now let's add RBAC to the application using Clerk metadata. The role for a specific user will be set in the Clerk metadata, which is arbitrary data that is stored alongside a user that can be accessed and modified through the Clerk API, as well as directly in the Dashboard.
+
+### Set a role for the user
+
+Log into the Clerk dashboard and navigate to the **Users** page and select your user account. Scroll down to the _User metadata_ section and select **Edit** next to the _Public_ option.
+
+Add the following JSON and select Save to manually add the admin role to your own user account in order for it to have all the system permissions. Later in the tutorial, you will add a basic admin tool to change a user's role.
+
+```json
+{
+  "role": "admin"
+}
+```
+
+### Include the user role with the Clerk metadata
+
+Next, you'll need to update the token created by Clerk to include the metadata when it's created. This will allow you to check the role of the user without having to make an additional API call.
+
+In the Clerk Dashboard, navigate to the **Sessions** page. Under the _Customize session token_ section, select **Edit**. In the modal that opens, enter the following JSON and select **Save**.
+
+```json
+{
+  "metadata": "{{user.public_metadata}}"
+}
+```
+
+### Declare the role types for the Metadata
+
+Go back to the project and create a global type file to add type definitions for the metadata. Create the `types/global.d.ts` file and paste the following code into the file:
+
+filename: types/global.d.ts
+```ts
+export {}
+
+declare global {
+  interface CustomJwtSessionClaims {
+    metadata: {
+      role?: Roles
+    }
+  }
+}
+```
+
+### Updating your middleware
+
+The middleware is used to check each request it comes in and apply authentication logic. Let's update the middleware to check the role of the user and redirect them to the appropriate page.
+
+Update `src/middleware.ts` as follows:
+
+filename: src/middleware.ts
+```ts
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server'
+
+// The route matcher defines routes that should be protected
+const isAdminRoute = createRouteMatcher(['/admin(.*)'])
+
+export default clerkMiddleware()
+export default clerkMiddleware(async (auth, req) => {
+  // Fetch the user's role from the session claims
+  const userRole = (await auth()).sessionClaims?.metadata?.role
+
+  // Protect all routes starting with `/admin`
+  if (isAdminRoute(req) && !(userRole === 'admin' || userRole === 'moderator')) {
+    const url = new URL('/', req.url)
+    return NextResponse.redirect(url)
+  }
+})
+
+export const config = {
+  matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)',
+  ],
+}
+```
+
+### Setting user roles from the application
+
+Now we can define a new page in the application that will let admins set user roles. We'll start by creating the server actions that will be used to set the user role by passing in the role name.
+
+Create the `src/app/admin/set-user-roles/actions.ts` file and paste the following code into the file:
+
+filename: src/app/admin/set-user-roles/actions.ts
+```ts
+'use server'
+
+import { clerkClient } from '@clerk/nextjs/server'
+import { checkRole } from './utils'
+
+export async function setRole(formData: FormData): Promise<void> {
+  const client = await clerkClient()
+
+  try {
+    const res = await client.users.updateUser(formData.get('id') as string, {
+      publicMetadata: { role: formData.get('role') },
+    })
+    console.log({ message: res.publicMetadata })
+  } catch (err) {
+    throw new Error(err instanceof Error ? err.message : String(err))
+  }
+}
+
+export async function removeRole(formData: FormData): Promise<void> {
+  const client = await clerkClient()
+
+  try {
+    const res = await client.users.updateUser(formData.get('id') as string, {
+      publicMetadata: { role: null },
+    })
+    console.log({ message: res.publicMetadata })
+  } catch (err) {
+    throw new Error(err instanceof Error ? err.message : String(err))
+  }
+}
+```
+
+Finally, we'll create a page that allows admins to search through users using the Clerk Backend API and the above server actions to set their role.
+
+Create a file called `src/app/admin/set-user-roles/page.tsx` and paste in the following code to populate the page:
+
+filename: src/app/admin/set-user-roles/page.tsx
+```tsx
+// import { SearchUsers } from "./SearchUsers";
+import { clerkClient } from '@clerk/nextjs/server'
+import { removeRole, setRole } from './actions'
+import Header from '@/components/Header'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+
+export default async function AdminDashboard(params: {
+  searchParams: Promise<{ search?: string }>
+}) {
+  const query = (await params.searchParams).search
+
+  const client = await clerkClient()
+  const users = query ? (await client.users.getUserList({ query })).data : []
+
+  return (
+    <div className="flex min-h-screen flex-col">
+      <Header />
+      <main className="container mx-auto flex-grow p-4">
+        <form className="mb-6">
+          <div className="flex flex-col gap-2">
+            <label htmlFor="search">Search for users</label>
+            <div className="flex gap-2">
+              <Input id="search" name="search" type="text" className="flex-grow" />
+              <Button type="submit">Submit</Button>
+            </div>
+          </div>
+        </form>
+        {users.map((user) => (
+          <div key={user.id} className="flex min-h-screen flex-col">
+            <div className="space-y-4 rounded-md bg-white p-4 shadow-md">
+              <div className="text-lg font-semibold text-gray-800">
+                {user.firstName} {user.lastName}
+              </div>
+
+              <div className="text-sm text-gray-600">
+                {
+                  user.emailAddresses.find((email) => email.id === user.primaryEmailAddressId)
+                    ?.emailAddress
+                }
+              </div>
+
+              <div className="text-sm font-medium text-blue-600">
+                Role: {user.publicMetadata.role as string}
+              </div>
+              <div className="mt-2 flex space-x-4">
+                <form action={setRole} className="mt-2">
+                  <input type="hidden" value={user.id} name="id" />
+                  <input type="hidden" value="admin" name="role" />
+                  <Button type="submit">Make Admin</Button>
+                </form>
+
+                <form action={setRole} className="mt-2">
+                  <input type="hidden" value={user.id} name="id" />
+                  <input type="hidden" value="moderator" name="role" />
+                  <Button type="submit">Make Moderator</Button>
+                </form>
+
+                <form action={setRole} className="mt-2">
+                  <input type="hidden" value={user.id} name="id" />
+                  <input type="hidden" value="contributor" name="role" />
+                  <Button type="submit">Make Contributor</Button>
+                </form>
+
+                <form action={setRole} className="mt-2">
+                  <input type="hidden" value={user.id} name="id" />
+                  <input type="hidden" value="viewer" name="role" />
+                  <Button type="submit">Make Viewer</Button>
+                </form>
+
+                <form action={removeRole} className="mt-2">
+                  <input type="hidden" value={user.id} name="id" />
+                  <Button
+                    type="submit"
+                    className="rounded-md bg-red-600 px-4 py-2 text-white transition hover:bg-red-700"
+                  >
+                    Remove Role
+                  </Button>
+                </form>
+              </div>
+            </div>
+          </div>
+        ))}
+      </main>
+    </div>
+  )
+}
+```
+
+Add three more users to the Q\&A platform, then go to Admin page and click the **Set Roles** button. Search for the users you added and set their roles by clicking either the **Make Admin**, **Make Moderator**, **Make Contributor**, or **Make Viewer** button.
+
+## Integrate with Postgres using Neon
+
+In this section, you will learn how to integrate Neon Postgres with Clerk in the Q\&A platform, using `drizzle-orm` and `drizzle-kit` to interact with the database.
+
+### Creating the database
+
+Start by creating a new Neon database. Open your browser and go to neon.tech. Create an account if you don't already have one, then create a new database. Once the database is created, you'll be presented with a Quickstart screen. Select the **Copy snippet** button to copy it to your clipboard:
+
+The Neon Quickstart screen
+
+Paste it into your `.env.local` file as `DATABASE_URL` like so:
+
+filename: .env.local
+```env
+DATABASE_URL=postgresql://neondb_owner:***************@ep-black-boat-a8ryq543-pooler.eastus2.azure.neon.tech/neondb?sslmode=require
+```
+
+### Install the dependencies
+
+Now you'll need to install the following dependencies:
+
+- `drizzle-orm` - The ORM that the application will use to interact with the database.
+- `drizzle-kit` - The tool that will generate migrations and interact with the database.
+- `@neondatabase/serverless` - The driver that will be used to connect to the database.
+
+Run the following command to install the dependencies:
+
+```bash
+npm install drizzle-orm @neondatabase/serverless
+npm install -D drizzle-kit
+```
+
+### Setting up the database schema
+
+Next you'll create the schema file which `drizzle-orm` will use to interact with the database, while `drizzle-kit` will be used to apply schema changes to the database.
+
+Create a new file called `src/db/schema.ts` and paste in the following code:
+
+filename: src/db/schema.ts
+```ts
+import { pgTable, serial, text, boolean, timestamp, integer } from 'drizzle-orm/pg-core'
+import { relations } from 'drizzle-orm'
+
+// Questions table
+export const questions = pgTable('questions', {
+  id: serial('id').primaryKey(),
+  quiz: text('quiz').notNull(),
+  approved: boolean('approved'),
+  contributor: text('contributor').notNull(),
+  contributorId: text('contributor_id').notNull(),
+  timestamp: timestamp('timestamp', { withTimezone: true }).defaultNow(),
+})
+
+// Answers table
+export const answers = pgTable('answers', {
+  id: serial('id').primaryKey(),
+  ans: text('ans').notNull(),
+  approved: boolean('approved'),
+  contributor: text('contributor').notNull(),
+  contributorId: text('contributor_id').notNull(),
+  questionId: integer('question_id')
+    .notNull()
+    .references(() => questions.id),
+  timestamp: timestamp('timestamp', { withTimezone: true }).defaultNow(),
+})
+
+// Define relationships using Drizzle's relations function
+export const questionsRelations = relations(questions, ({ many }) => ({
+  answers: many(answers),
+}))
+
+export const answersRelations = relations(answers, ({ one }) => ({
+  question: one(questions, {
+    fields: [answers.questionId],
+    references: [questions.id],
+  }),
+}))
+```
+
+Create the `src/db/index.ts` file and paste in the following code, which is used by the application to establish a connection to the database:
+
+filename: src/db/index.ts
+```ts
+import { neon } from '@neondatabase/serverless'
+import { drizzle } from 'drizzle-orm/neon-http'
+import { questions, answers, questionsRelations, answersRelations } from './schema'
+
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL must be a Neon postgres connection string')
+}
+const sql = neon(process.env.DATABASE_URL!)
+
+export const db = drizzle(sql, {
+  schema: { questions, answers, questionsRelations, answersRelations },
+})
+```
+
+In the root of the project, create the `drizzle.config.ts` used by `drizzle-kit` to manage the database schema:
+
+filename: drizzle.config.ts
+```ts
+import { defineConfig } from 'drizzle-kit'
+import { loadEnvConfig } from '@next/env'
+
+loadEnvConfig(process.cwd())
+
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL must be a Neon postgres connection string')
+}
+
+export default defineConfig({
+  dialect: 'postgresql',
+  dbCredentials: {
+    url: process.env.DATABASE_URL,
+  },
+  schema: './src/db/schema.ts',
+})
+```
+
+Finally, run the following command from your terminal to push the schema to the Neon database:
+
+```bash
+npx drizzle-kit push
+```
+
+If you go to the tables section in your Neon dashboard, you should see that two tables named `questions` and `answers` were created.
+
+### Defining database interactions
+
+Now that the database schema is set up, you can start defining database interactions. We're going to start with the database calls used by the main Q\&A section of the app.
+
+Create `src/app/qa/actions.ts` and paste in the following:
+
+filename: src/app/qa/actions.ts
+```ts
+'use server'
+import { db } from '@/db/index'
+import { questions, answers } from '@/db/schema'
+import { and, desc, eq } from 'drizzle-orm'
+import { currentUser } from '@clerk/nextjs/server'
+
+// Fetches all questions, available to authenticated and anonymous users
+export async function getAllQuestions(): Promise<Question[]> {
+  const data = await db
+    .select()
+    .from(questions)
+    .where(eq(questions.approved, true))
+    .orderBy(desc(questions.timestamp))
+  const res: Question[] = data.map((question) => ({
+    id: question.id,
+    quiz: question.quiz,
+    approved: question.approved,
+    contributor: question.contributor,
+    contributorId: question.contributorId,
+    timestamp: question.timestamp?.toISOString(),
+  }))
+  for (const question of res) {
+    const answerData = await db
+      .select()
+      .from(answers)
+      .where(and(eq(answers.questionId, question.id as number), eq(answers.approved, true)))
+      .orderBy(desc(answers.timestamp))
+    question.answers = answerData.map((answer) => ({
+      id: answer.id,
+      ans: answer.ans,
+      approved: answer.approved,
+      contributor: answer.contributor,
+      contributorId: answer.contributorId,
+      questionId: answer.questionId,
+      timestamp: answer.timestamp?.toISOString(),
+    }))
+  }
+  return res
+}
+
+// Creates a new question, available only to authenticated users
+export const createQuestion = async (quiz: string) => {
+  const user = await currentUser()
+  if (!user) {
+    throw new Error('Unauthorized')
+  }
+
+  await db.insert(questions).values({
+    quiz: quiz,
+    contributor: user.fullName as string,
+    contributorId: user.id,
+  })
+}
+
+// Creates a new answer, available only to authenticated users
+export const createAnswer = async (answer: string, questionId: number) => {
+  const user = await currentUser()
+  if (!user) {
+    throw new Error('Unauthorized')
+  }
+
+  await db.insert(answers).values({
+    ans: answer,
+    contributor: user.fullName as string,
+    contributorId: user.id,
+    questionId: questionId,
+  })
+}
+
+// Deletes a question, available only to the question's contributor
+export const deleteQuestion = async (id: number) => {
+  const user = await currentUser()
+  if (!user) {
+    throw new Error('Unauthorized')
+  }
+
+  try {
+    const result = await db
+      .delete(questions)
+      .where(and(eq(questions.id, id), eq(questions.contributorId, user.id)))
+    return result
+  } catch (error) {
+    console.error('Error deleting question:', error)
+    throw new Error('Failed to delete question')
+  }
+}
+
+// Deletes an answer, available only to the answer's contributor
+export const deleteAnswer = async (id: number) => {
+  const user = await currentUser()
+  if (!user) {
+    throw new Error('Unauthorized')
+  }
+
+  try {
+    await db.delete(answers).where(and(eq(answers.id, id), eq(answers.contributorId, user.id)))
+  } catch (error) {
+    console.error('Error deleting answer:', error)
+    throw new Error('Failed to delete answer')
+  }
+}
+
+// Updates a question, available only to the question's contributor
+export const updateQuestion = async (id: number, newText: string) => {
+  const user = await currentUser()
+  if (!user) {
+    throw new Error('Unauthorized')
+  }
+
+  try {
+    await db
+      .update(questions)
+      .set({ quiz: newText })
+      .where(and(eq(questions.contributorId, user.id), eq(questions.id, id)))
+  } catch (error) {
+    console.error('Error updating question:', error)
+    throw new Error('Failed to update question')
+  }
+}
+
+// Updates an answer, available only to the answer's contributor
+export const updateAnswer = async (id: number, newText: string) => {
+  const user = await currentUser()
+  if (!user) {
+    throw new Error('Unauthorized')
+  }
+
+  try {
+    await db
+      .update(answers)
+      .set({ ans: newText })
+      .where(and(eq(answers.contributorId, user.id), eq(answers.id, id)))
+  } catch (error) {
+    console.error('Error updating answer:', error)
+    throw new Error('Failed to update answer')
+  }
+}
+```
+
+Now we can wire up the placeholder functions in `src/app/qa/actions.ts` with the new database interactions we just created.
+
+Update the `src/app/qa/page.tsx` file like so:
+
+filename: src/app/qa/page.tsx
+```tsx
+'use client'
+
+import { useState, useEffect } from 'react'
+import QuestionForm from '../../components/QuestionForm'
+import QuestionItem from '@/components/QuestionItem'
+import Header from '../../components/Header'
+import * as actions from '../../app/qa/actions'
+
+export default function QAPage() {
+  const [questions, setQuestions] = useState<Question[]>([])
+
+  useEffect(() => {
+    fetchQuestions()
+  }, [])
+
+  // These placeholders will be populated later in this guide
+  const fetchQuestions = async () => {}
+  const addQuestion = async (question: string) => {}
+  const editQuestion = async (id: number, newText: string) => {}
+  const deleteQuestion = async (id: number) => {}
+  const addAnswer = async (questionId: number, answer: string) => {}
+  const editAnswer = async (questionId: number, answerId: number, newText: string) => {}
+  const deleteAnswer = async (questionId: number, answerId: number) => {}
+
+  const fetchQuestions = async () => {
+    const questions = await actions.getAllQuestions()
+    setQuestions(questions)
+  }
+
+  const addQuestion = async (quiz: string) => {
+    await actions.createQuestion(quiz)
+    fetchQuestions()
+  }
+
+  const editQuestion = async (id: number, newText: string) => {
+    await actions.updateQuestion(id, newText)
+    fetchQuestions()
+  }
+
+  const deleteQuestion = async (id: number) => {
+    await actions.deleteQuestion(id)
+    fetchQuestions()
+  }
+
+  const addAnswer = async (questionId: number, answer: string) => {
+    await actions.createAnswer(answer, questionId)
+    fetchQuestions()
+  }
+
+  const editAnswer = async (answerId: number, newText: string) => {
+    await actions.updateAnswer(answerId, newText)
+    fetchQuestions()
+  }
+
+  const deleteAnswer = async (answerId: number) => {
+    await actions.deleteAnswer(answerId)
+    fetchQuestions()
+  }
+
+  return (
+    <div className="flex min-h-screen flex-col">
+      <Header />
+      <main className="container mx-auto flex-grow p-4">
+        <QuestionForm onSubmit={addQuestion} />
+        {Array.isArray(questions) && (
+          <div className="space-y-4">
+            {questions.map((question) => (
+              <QuestionItem
+                key={question.id}
+                question={question}
+                onEditQuestion={editQuestion}
+                onDeleteQuestion={deleteQuestion}
+                onAddAnswer={addAnswer}
+                onEditAnswer={editAnswer}
+                onDeleteAnswer={deleteAnswer}
+              />
+            ))}
+          </div>
+        )}
+      </main>
+    </div>
+  )
+}
+```
+
+Now the server actions will prevent users from editing questions or answers that do not belong to them, but we can create a better user experience by making sure only the person who posted the question or answer can edit or delete it. The `useUser` hook from Clerk can be used to get the current user's information.
+
+Update the `QuestionItem` component like so:
+
+filename: src/components/QuestionItem.tsx
+```tsx
+import { useEffect, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card'
+import { Pencil, Trash2 } from 'lucide-react'
+import { Separator } from '@/components/ui/separator'
+import AnswerItem from './AnswerItem'
+import { formatDate } from '@/lib/utils'
+import { useUser } from '@clerk/nextjs'
+
+interface Props {
+  question: Question
+  onEditQuestion: (id: number, newText: string) => void
+  onDeleteQuestion: (id: number) => void
+  onAddAnswer: (questionId: number, answerText: string) => void
+  onEditAnswer: (answerId: number, newText: string) => void
+  onDeleteAnswer: (answerId: number) => void
+}
+
+export default function QuestionItem({
+  question,
+  onEditQuestion,
+  onDeleteQuestion,
+  onAddAnswer,
+  onEditAnswer,
+  onDeleteAnswer,
+}: Props) {
+  const { user } = useUser()
+  const [answer, setAnswer] = useState('')
+  const [isEditing, setIsEditing] = useState(false)
+  const [editedQuestion, setEditedQuestion] = useState(question.quiz)
+  const [showSubmitText, setShowSubmitText] = useState(false)
+
+  useEffect(() => {
+    if (showSubmitText) {
+      setTimeout(() => {
+        setShowSubmitText(false)
+      }, 7000)
+    }
+  }, [showSubmitText])
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (answer.trim()) {
+      if (question.id !== null) {
+        onAddAnswer(question.id, answer)
+        setShowSubmitText(true)
+      }
+      setAnswer('')
+    }
+  }
+
+  const handleQuestionEdit = () => {
+    if (editedQuestion.trim() && editedQuestion !== question.quiz) {
+      if (question.id !== null) {
+        onEditQuestion(question.id, editedQuestion)
+      }
+      setIsEditing(false)
+    }
+  }
+
+  const handleAnswerEdit = async (answerId: number | null, newText: string) => {
+    if (answerId !== null && question.id !== null) {
+      await onEditAnswer(answerId, newText)
+    }
+  }
+
+  const handleAnswerDelete = async (answerId: number | null) => {
+    if (answerId !== null && question.id !== null) {
+      await onDeleteAnswer(answerId)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        {isEditing ? (
+          <div className="flex gap-2">
+            <Input
+              value={editedQuestion}
+              onChange={(e) => setEditedQuestion(e.target.value)}
+              className="flex-grow"
+            />
+            <Button onClick={handleQuestionEdit}>Save</Button>
+            <Button variant="outline" onClick={() => setIsEditing(false)}>
+              Cancel
+            </Button>
+          </div>
+        ) : (
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <CardTitle>{question.quiz}</CardTitle>
+
+              {user?.id === question.contributorId && (
+                <div>
+                  <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => question.id !== null && onDeleteQuestion(question.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+            <div className="text-sm text-gray-500">
+              <span>{question.contributor}</span>
+              <span> • </span>
+              <span>{question.timestamp && formatDate(question.timestamp)}</span>
+            </div>
+          </div>
+        )}
+      </CardHeader>
+      <CardContent>
+        <h3 className="mb-2 font-semibold">Answers:</h3>
+        {question.answers && question.answers.filter((a) => a.approved !== false).length > 0 ? (
+          <ul className="space-y-4">
+            {question.answers
+              .filter((a) => a.approved !== false)
+              .map((answer, index, filteredAnswers) => (
+                <li key={answer.id}>
+                  <AnswerItem
+                    answer={answer}
+                    onEditAnswer={(newText) => handleAnswerEdit(answer.id, newText)}
+                    onDeleteAnswer={() => handleAnswerDelete(answer.id)}
+                  />
+                  {index < filteredAnswers.length - 1 && <Separator className="my-2" />}
+                </li>
+              ))}
+          </ul>
+        ) : (
+          <p className="text-gray-500">No answers yet.</p>
+        )}
+      </CardContent>
+
+      <CardFooter>
+        <form onSubmit={handleSubmit} className="w-full">
+          <div className="flex gap-2">
+            <div className="flex-grow">
+              <Input
+                type="text"
+                value={answer}
+                onChange={(e) => setAnswer(e.target.value)}
+                placeholder="Add an answer..."
+              />
+
+              <div className="h-4 text-sm text-green-500 transition-all">
+                {showSubmitText ? 'Your answer has been submitted for review.' : ''}
+              </div>
+            </div>
+            <Button type="submit">Answer</Button>
+          </div>
+        </form>
+      </CardFooter>
+    </Card>
+  )
+}
+```
+
+And the `AnswerItem` component:
+
+filename: src/components/AnswerItem.tsx
+```tsx
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Pencil, Trash2 } from 'lucide-react'
+import { formatDate } from '@/lib/utils'
+import { useUser } from '@clerk/nextjs'
+
+type Props = {
+  answer: Answer
+  onEditAnswer: (newText: string) => void
+  onDeleteAnswer: () => void
+}
+
+function AnswerItem({ answer, onEditAnswer, onDeleteAnswer }: Props) {
+  const { user } = useUser()
+  const [isEditing, setIsEditing] = useState(false)
+  const [editedAnswer, setEditedAnswer] = useState(answer.ans)
+
+  const handleEdit = () => {
+    if (editedAnswer.trim() && editedAnswer !== answer.ans) {
+      onEditAnswer(editedAnswer)
+      setIsEditing(false)
+    }
+  }
+
+  return (
+    <div>
+      {isEditing ? (
+        <div className="flex w-full gap-2">
+          <Input
+            value={editedAnswer}
+            onChange={(e) => setEditedAnswer(e.target.value)}
+            className="flex-grow"
+          />
+          <Button onClick={handleEdit}>Save</Button>
+          <Button variant="outline" onClick={() => setIsEditing(false)}>
+            Cancel
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div className="flex items-start justify-between">
+            <p>{answer.ans}</p>
+            {user?.id === answer.contributorId && (
+              <div>
+                <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={onDeleteAnswer}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </div>
+          <div className="text-sm text-gray-500">
+            <span>{answer.contributor}</span>
+            <span> • </span>
+            <span>{answer.timestamp && formatDate(answer.timestamp)}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default AnswerItem
+```
+
+Next let's create a set of server actions used by the admin area to manage questions and answers. Notice in the following code we dont need to check the user's role, because we are using the Clerk middleware to protect this route.
+
+Create the `src/app/admin/actions.ts` file and add the following content:
+
+filename: src/app/admin/actions.ts
+```tsx
+'use server'
+import { db } from '@/db/index'
+import { questions, answers } from '@/db/schema'
+import { eq, desc } from 'drizzle-orm'
+
+export const getAllQuestionsWithAnswers = async () => {
+  const questionsData = await db.select().from(questions).orderBy(desc(questions.timestamp))
+  const res: Question[] = questionsData.map((question) => ({
+    id: question.id,
+    quiz: question.quiz,
+    approved: question.approved,
+    contributor: question.contributor,
+    contributorId: question.contributorId,
+    timestamp: question.timestamp?.toISOString(),
+  }))
+  for (const question of res) {
+    const answerData = await db
+      .select()
+      .from(answers)
+      .where(eq(answers.questionId, question.id as number))
+      .orderBy(desc(answers.timestamp))
+    if (!answerData) continue
+    question.answers = answerData.map((answer) => ({
+      id: answer.id,
+      ans: answer.ans,
+      approved: answer.approved,
+      contributor: answer.contributor,
+      contributorId: answer.contributorId,
+      questionId: answer.questionId,
+      timestamp: answer.timestamp?.toISOString(),
+    }))
+  }
+  return res
+}
+
+export const approveQuestion = async (id: number) => {
+  try {
+    await db.update(questions).set({ approved: true }).where(eq(questions.id, id))
+  } catch (error) {
+    console.error('Error approving question:', error)
+    throw new Error('Failed to approve question')
+  }
+}
+
+export const disapproveQuestion = async (id: number) => {
+  try {
+    await db.update(questions).set({ approved: false }).where(eq(questions.id, id))
+  } catch (error) {
+    console.error('Error disapproving question:', error)
+    throw new Error('Failed to disapprove question')
+  }
+}
+
+export const approveAnswer = async (id: number) => {
+  try {
+    await db.update(answers).set({ approved: true }).where(eq(answers.id, id))
+  } catch (error) {
+    console.error('Error approving answer:', error)
+    throw new Error('Failed to approve answer')
+  }
+}
+
+export const disapproveAnswer = async (id: number) => {
+  try {
+    await db.update(answers).set({ approved: false }).where(eq(answers.id, id))
+  } catch (error) {
+    console.error('Error disapproving answer:', error)
+    throw new Error('Failed to disapprove answer')
+  }
+}
+```
+
+Now let's do the same thing to the `admin` page as the `qa` page. Update the `src/app/admin/page.tsx` file like so:
+
+filename: app/admin/page.tsx
+```tsx
+'use client'
+
+import { useEffect, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import Link from 'next/link'
+import Header from '@/components/Header'
+import QuestionCard from '@/components/QuestionCard'
+import {
+  approveQuestion,
+  disapproveQuestion,
+  getAllQuestionsWithAnswers,
+  approveAnswer,
+  disapproveAnswer,
+} from './actions'
+
+export default function AdminPage() {
+  const [questions, setQuestions] = useState<Question[]>([])
+
+  useEffect(() => {
+    fetchQuestions()
+  }, [])
+
+  // These placeholders will be populated later in this guide
+  const fetchQuestions = async () => {}
+  const onQuestionApproved = async (id: number) => {}
+  const onQuestionDisapproved = async (id: number) => {}
+  const onAnswerApproved = async (answerId: number) => {}
+  const onAnswerDisapproved = async (answerId: number) => {}
+
+  const fetchQuestions = async () => {
+    const questions = await getAllQuestionsWithAnswers()
+    setQuestions(questions)
+  }
+
+  const onQuestionApproved = async (id: number) => {
+    await approveQuestion(id)
+    fetchQuestions()
+  }
+
+  const onQuestionDisapproved = async (id: number) => {
+    await disapproveQuestion(id)
+    fetchQuestions()
+  }
+
+  const onAnswerApproved = async (answerId: number) => {
+    await approveAnswer(answerId)
+    fetchQuestions()
+  }
+
+  const onAnswerDisapproved = async (answerId: number) => {
+    await disapproveAnswer(answerId)
+    fetchQuestions()
+  }
+
+  return (
+    <div className="flex min-h-screen flex-col">
+      <Header />
+      <main className="container mx-auto flex-grow p-4">
+        <h1 className="mb-6 text-3xl font-bold">Admin Dashboard</h1>
+        <div className="mb-4 flex justify-end">
+          <Button>
+            <Link href="/admin/set-user-roles">Set Roles</Link>
+          </Button>
+        </div>
+        <div className="space-y-4">
+          {questions.map((question) => (
+            <QuestionCard
+              key={question.id}
+              question={question}
+              onQuestionApproved={onQuestionApproved}
+              onQuestionDisapproved={onQuestionDisapproved}
+              onAnswerApproved={onAnswerApproved}
+              onAnswerDisapproved={onAnswerDisapproved}
+            />
+          ))}
+        </div>
+      </main>
+    </div>
+  )
+}
+```
+
+## Test it out!
+
+After completing all the steps throughout this guide, you can now start up the application once more to test out all the features!
+
+Here are a couple of things to try:
+
+- Create a new question as a user of each role.
+- Try approving and disapproving questions and answers.
+- Try editing and deleting questions and answers.
+- Explore the data in the Neon database.
+
+## Conclusion
+
+In this tutorial, you have learned how to integrate Clerk for authentication, configure RBAC using metadata, and enforce role-based restrictions to ensure users only access features appropriate to their roles. Also, you learned how to integrate Neon Postgres database with Drizzle ORM for seamless data management and how to conditionally render UI based on user roles.
+
+By following this tutorial, developers can build secure applications by implementing Role-Based Access Control (RBAC) with Clerk.
+
+Here is the source code (remember to give it a star ⭐).

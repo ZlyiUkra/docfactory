@@ -1,0 +1,372 @@
+# Per-user B2B monetization with Stripe and Clerk Organizations
+# джерело: https://clerk.com/blog/per-user-licensing-with-stripe-and-clerk-organizations
+# отримано: 2026-09-25
+
+Businesses tend to spend more money on software compared to individual consumers.
+
+One of the most popular monetization models for B2B applications is the Per-User model, where a business purchases one “seat” for each user who will be using the application. Per-user pricing is a great way for application developers to generate income. The model is relatively straightforward, provides predictable pricing for finance departments, and allows for a steady stream of income that scales with the use of your application
+
+In this article, you'll learn how Clerk Organizations and Stripe can be configured to implement per-user monetization into a web application.
+
+> This guide focuses on implementation details. For a comprehensive overview of B2B SaaS architecture and features, learn more about our B2B SaaS solution.
+
+## Project Overview
+
+This article will use an open-source application called Team Task that is preconfigured with the functionality described below. All of the critical parts of the code that enable per-user licensing will be thoroughly explained, however, you are welcome to dive right into the code hosted in GitHub.
+
+Everything is built with self-service in mind, so users will be able to do the following without assistance from you:
+
+- Create organizations and invite users
+- Add and manage licenses using Stripe
+- Assign and remove licenses from individual users
+
+Using the pre-built Clerk components, users will be able to create organizations and invite users.
+
+View video
+
+Once the organization is created, they will be prompted to purchase licenses via Stripe. Once purchased, administrators can toggle users to gain full use of the application.
+
+View video
+
+Finally, administrators will also be able to easily manage their Stripe subscription with the click of a button.
+
+View video
+
+## Creating organizations
+
+Clerk Organizations allows you to easily add multi-tenancy into an application by letting users create organizations and invite users into them using the `OrganizationSwitcher` component.
+
+When a user creates an organization, they'll immediately be asked if there are any users they want to invite into the organization by simply providing a list of email addresses. Behind the scenes, our system will also check to see if the Clerk application has any endpoints that are configured to receive a webhook when an organization is created.
+
+Webhooks are a way for one service to inform another when an event occurs. The event, in this case, was that an organization was created. Team Task contains a route handler at `/api/clerk-hooks` that is configured to accept the following payload that Clerk will send when an organization is created:
+
+```json
+{
+  "data": {
+    "admin_delete_enabled": true,
+    "created_at": 1721316613833,
+    "created_by": "user_2iNu3heTeGj0U8G2gGFPWnVLbZm",
+    "has_image": false,
+    "id": "org_2jQQ2U3ykrhcoElPbh6ZVgUPKlV",
+    "image_url": "https://img.clerk.com/eyJ0eXBlIjoiZGVmYXVsdCIsImlpZCI6Imluc18yaU50WjRDSGh2V1UwUW14bzYzZE81S3NNRjIiLCJyaWQiOiJvcmdfMmpRUTJVM3lrcmhjb0VsUGJoNlpWZ1VQS2xWIiwiaW5pdGlhbHMiOiJEIn0",
+    "logo_url": null,
+    "max_allowed_memberships": 5,
+    "name": "Dev Ed",
+    "object": "organization",
+    "private_metadata": {},
+    "public_metadata": {},
+    "slug": "dev-ed",
+    "updated_at": 1721316613833
+  },
+  "event_attributes": {
+    "http_request": {
+      "client_ip": "73.36.196.123",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+    }
+  },
+  "object": "event",
+  "type": "organization.created"
+}
+```
+
+To automate the process of creating Stripe customer records based on organizations in the application, we can accept the webhook message, create a Stripe customer, and create a record in a Neon table to associate the Clerk `org_id` to the Stripe `customer_id`.
+
+filename: src/app/api/clerk-hooks/route.ts
+```tsx
+const stripe = new Stripe(process.env.STRIPE_KEY as string)
+const sql = neon(process.env.DATABASE_URL as string)
+
+const handler = createWebhooksHandler({
+  secret: process.env.CLERK_WEBHOOK_SECRET as string,
+  onOrganizationCreated: async (org) => {
+    // Create customer in Stripe
+    const customer = await stripe.customers.create({
+      name: org.name,
+    })
+
+    // Create record in neon
+    await sql`insert into orgs (org_id, stripe_customer_id) values (${org.id}, ${customer.id})`
+  },
+})
+```
+
+This table will also track the number of licenses an organization has purchased, using a default value of `0` when the record is created.
+
+A sample of data from the orgs table in Neon
+
+### Process overview
+
+1. A user starts the process by creating an organization in Clerk.
+2. Clerk's backend will asynchronously send a message to a route handler informing the application that a new organization was created.
+3. The application will create a customer in Stripe.
+4. Finally, the application will insert a new row into a Neon database to associate the Clerk Organization with the Stripe Customer, along with a default license count of 0.
+
+The process diagram walking through the following steps: creating an organization in Clerk, a webhook being sent from Clerk to the application, the application creating a customer record in Stripe, the application storing the values in a Neon database.
+
+## Initial license purchase
+
+Once the organization is created and users are invited, we'll redirect the current user to a page that lets them purchase licenses for the organization.
+
+The `OrganizationSwitcher` uses the `afterCreateOrganizationUrl` prop to automatically forward the user to the `/licensing` page.
+
+filename: src/components/navbar.tsx
+```tsx
+<OrganizationSwitcher afterCreateOrganizationUrl={'/licensing'} />
+```
+
+The licensing page is used for both the initial license purchase as well as managing and allocating licesnes over time. When the page is loading, it queries the `license_count` value in the `orgs` table for that organization to determine how to render the page.
+
+filename: src/app/licensing/page.tsx
+```tsx
+<div className="mb-4 flex justify-center">
+  {currentLicenseCount === 0 ? (
+    <PurchaseLicensesCard />
+  ) : (
+    <ManageLicensesCard
+      licensedUsersCount={currentlyLicensedUsers}
+      purchasedLicensesCount={currentLicenseCount}
+    />
+  )}
+</div>
+```
+
+The `PurchaseLicensesCard` component displays an input for the user to select how many licenses are required. Selecting the **"Purchase via Stripe"** button will use that value to create a Stripe Checkout Session using a server action.
+
+Creating a Checkout Session requires the customer ID, a product ID that represents the per-user rate, purchase quantity, and redirect URLs. The session object returned from Stripe will contain the `url` that the user should be sent to for completing the transaction.
+
+filename: src/app/licensing/actions.ts
+```tsx
+export async function getCheckoutUrl(clerkOrgId: string, quantity: number) {
+  const [row] = await sql`select stripe_customer_id from orgs where org_id=${clerkOrgId}`
+  const session = await stripe.checkout.sessions.create({
+    mode: 'subscription',
+    customer: row.stripe_customer_id,
+    line_items: [
+      {
+        price: 'price_1PajlBGVJ29rMAV1JmqqgEwa',
+        quantity: quantity,
+        adjustable_quantity: {
+          enabled: true,
+          minimum: 1,
+        },
+      },
+    ],
+    success_url: 'http://localhost:3005/licensing',
+    cancel_url: 'http://localhost:3005/licensing',
+  })
+  return session.url
+}
+```
+
+Since the `PurchaseLicensesCard` is a client component, we can redirect them using `window.location.href`:
+
+filename: src/app/licensing/PurchaseLicensesCard.tsx
+```tsx
+async function onPurchaseClicked() {
+  setIsLoading(true)
+  const url = await getCheckoutUrl(organization?.id as string, count)
+  window.location.href = url as string
+}
+```
+
+The user will then be prompted for payment info to complete the transaction.
+
+The Stripe checkout page.
+
+After payment, they'll be redirected back to `/licensing`, where a list of users will be displayed to allocate licenses to.
+
+Stripe offers webhooks for a wide array of events that occur on their end as well. The `customer.subscription.created` webhooks can be used to update the `license_count` value of an organization in the Neon database to match the value that was purchased:
+
+filename: src/app/api/stripe-hooks/route.ts
+```tsx
+export async function updateLicenseCount(stripeCustomerId: string, quantity: number) {
+  const sql = neon(process.env.DATABASE_URL as string)
+  await sql`update orgs set license_count=${quantity} where stripe_customer_id=${stripeCustomerId}`
+}
+
+export async function POST(request: NextRequest) {
+  const sig = request.headers.get('stripe-signature')
+  const body = await request.text()
+  const event = stripe.webhooks.constructEvent(body, sig, endpointSecret)
+  // Handle the event
+  switch (event.type) {
+    case 'customer.subscription.created':
+      await updateLicenseCount(
+        event.data.object.customer as string,
+        // @ts-ignore
+        event.data.object.quantity,
+      )
+      break
+    default:
+      console.log(`Unhandled event type ${event.type}`)
+  }
+  return new NextResponse(null, { status: 200 })
+}
+```
+
+### Process overview
+
+1. The user provides the number of licenses to purchase, and the application requests a Checkout Session URL from Stripe.
+2. The user is sent to Stripe to complete the transaction.
+3. Stripe will redirect the user back to the application URL while simultaneously sending an asynchronous webhook message to a route handler of the application.
+4. The application will update the `license_count` value for that organization in the Neon database.
+
+A process diagram showing the following steps: the application requesting creating a checkout session from Stripe, the user being redirected for checkout, stripe redirecting back to the application on purchase as well as sending a webhook message to the application informing it of the number of licenses purchased, finally the application setting the value in the Neon database.
+
+## Licensing users
+
+Now that licenses have been purchased, they need to be assigned to users.
+
+As mentioned in the previous section, the `/licensing` page will automatically be updated to render a list of users who are members of an organization by querying the `license_count` value on load.
+
+Since individual users can have access to multiple organizations within a single Clerk application, we use the concept of a “membership” to associate a user to an organization, modeling what is effectively a “many to many” relationship:
+
+A crowfoot diagram showing the many to many relationship between Clerk users and Clerk organizations by using Memberships as the joining entity.
+
+Clerk offers various types of metadata to add arbitrary data to entities in Clerk, and memberships can also contain metadata independent of the organization or user. Toggling on the last column will flag the user as “licensed” in their membership metadata using the following server action:
+
+filename: src/app/licensing/actions.ts
+```tsx
+export async function toggleUserLicense(orgId: string, userId: string, status: boolean) {
+  await clerkClient.organizations.updateOrganizationMembershipMetadata({
+    organizationId: orgId,
+    userId: userId,
+    publicMetadata: {
+      isLicensed: status,
+    },
+  })
+}
+```
+
+When the licensing page loads, the Clerk Backend API is used to query the memberships of the organization, which includes the metadata used to flag a specific user as licensed in that organization. This both sets the toggle for the user row as well as to aggregate the total number of currently licensed users, which will also be used to determine how many licenses are available.
+
+filename: src/app/licensing/page.tsx
+```tsx
+const [row] =
+  await sql`select license_count from orgs where org_id=${sessionClaims?.org_id as string}`
+const currentLicenseCount = row.license_count
+let currentlyLicensedUsers = 0
+
+// Load users
+let res = await clerkClient.organizations.getOrganizationMembershipList({
+  organizationId: sessionClaims?.org_id as string,
+})
+const users: UserRowViewModel[] = []
+res.data.forEach((el) => {
+  let name = el.publicUserData?.firstName
+    ? `${el.publicUserData?.firstName} ${el.publicUserData?.lastName}`
+    : ''
+  const isLicensed = (el.publicMetadata?.isLicensed as boolean) || false
+  if (isLicensed) {
+    currentlyLicensedUsers++
+  }
+  users.push({
+    id: el.publicUserData?.userId as string,
+    orgId: sessionClaims?.org_id as string,
+    email: el.publicUserData?.identifier as string,
+    name: name,
+    isLicensed,
+  })
+})
+```
+
+If the `currentlyLicensedUsers` value is equal or greater than `currentLicenseCount` and the user  is not already licensed, the ability to enable licenses for a user can be disabled:
+
+filename: src/app/licensing/page.tsx
+```tsx
+<TableBody>
+  {users?.map((u) => (
+    <UserRow
+      key={u.id}
+      id={u.id}
+      orgId={u.orgId}
+      name={u.name ? u.name : u.email}
+      isLicensed={u.isLicensed}
+      emailAddress={u.email}
+      disabled={!u.isLicensed && currentlyLicensedUsers >= currentLicenseCount}
+    />
+  ))}
+</TableBody>
+```
+
+## Managing the subscription
+
+Besides rendering a list of users, the `/licensing` page now also renders the `ManageLicensesCard` component to display the available of licenses along with a button to manage the current subscription using the Stripe Customer Portal.
+
+The application licensing page showing a "Manage Subscription" card with the number of available seats, number purchased, and a button to manage the subscription. A list of users with toggles to indicate license status is also shown.
+
+The Customer Portal is a hosted solution from Stripe that allows users to manage their own subscriptions without developers having to build a custom user interface.
+
+This feature is off by default, but can easily be enabled in the Stripe Dashboard. Since licenses are managed via Stripe subscriptions, we only need to allow subscription management for our customers for this specific SKU.
+
+The settings page for the Stripe Customer Portal.
+
+As with the Checkout Session for the initial license purchase, a custom URL will be generated based on the Stripe customer ID:
+
+filename: src/app/licensing/actions.ts
+```tsx
+export async function getPortalUrl(clerkOrgId: string) {
+  const stripeId = await getStripeCustomerIdFromOrgId(clerkOrgId)
+  const session = await stripe.billingPortal.sessions.create({
+    customer: stripeId,
+    return_url: 'http://localhost:3005/licensing',
+  })
+  return session.url
+}
+```
+
+After the URL is returned to the front end, the user will be redirected to the Customer Portal where they can adjust their licenses as needed:
+
+The Stripe Customer Portal.
+
+The `customer.subscription.updated` event from Stripe will also be handled in the route handler to update the license count for a specific organization:
+
+filename: src/app/api/stripe-hooks/route.ts
+```tsx
+case 'customer.subscription.updated':
+  await updateLicenseCount(
+    event.data.object.customer as string,
+    // @ts-ignore
+    event.data.object.quantity,
+  )
+  break
+```
+
+### Process overview
+
+1. The application generates a Customer Portal URL from Stripe for the active customer.
+2. The user can manage the number of licenses active in their subscription.
+3. Upon updating the subscription, Stripe sends a webhook to the application informing it of the change.
+4. The application updates the `license_count` in the database.
+
+A process diagram showing the following steps: the application requesting a Customer Portal URL from Stripe, redirecting the user to Stripe to update the licenses, Stripe sending a webhook to the application informing it of the updated licensing count, the application updating the license count in the Neon table.
+
+## Accessing license status
+
+Clerk makes it easy to access information about the currently logged-in user, and accessing membership metadata is no exception.
+
+Recall that we stored the `isLicensed` flag within the membership metadata. To access these values, the `sessionClaims` object of the `auth()` function can be used:
+
+filename: src/app/page.tsx
+```tsx
+const { sessionClaims } = auth()
+
+let isLicensed = false
+if (sessionClaims?.org_metadata && sessionClaims?.org_metadata.isLicensed) {
+  isLicensed = true
+}
+```
+
+Then you can decide what functionality of the application can be restricted based on that flag, for example:
+
+filename: src/app/page.tsx
+```tsx
+<AddTaskForm disabled={!isLicensed} />
+<div className="flex flex-col gap-2 p-2">
+  {tasks.map((task) => <TaskRow key={task.id} task={task} disabled={!isLicensed} />)}
+</div>
+```
+
+## Summary
+
+Per-user licensing is a great way to monetize an application. Stripe offers a great suite of tools that allows developers to process transactions and generate revenue from their work. By combining with power of Clerk Organizations with Stripe, you can build a seamless workflow for your users to independently create their own tenants, purchase and assign licenses for those tenants, and change the subscription at any time.

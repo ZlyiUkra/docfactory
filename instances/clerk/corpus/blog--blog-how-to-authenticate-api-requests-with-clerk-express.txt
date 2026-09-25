@@ -1,0 +1,410 @@
+# How to Authenticate API Requests with Clerk & Express
+# джерело: https://clerk.com/blog/how-to-authenticate-api-requests-with-clerk-express
+# отримано: 2026-09-25
+
+APIs are essential for building powerful applications that can communicate and share data with other systems.
+
+However, with great power comes great responsibility: it's critical to ensure that only authorized users can access your API, and that requests are properly authenticated and verified. Failure to do so can lead to serious security breaches, data leaks, and other vulnerabilities that can compromise the integrity of your application and put your users at risk.
+
+In this tutorial, we'll explore how to use Clerk with Express to authenticate API requests using `ClerkExpressWithAuth()` and `ClerkExpressRequireAuth()` middleware, and build a secure and robust backend for your application. Let's get started!
+
+## Always authenticate
+
+When developing an API, especially in Express.js or any other framework, it's important to authenticate requests for a number of reasons:
+
+1. **Security**: The most important reason is to maintain the security of your application. By authenticating API requests, you ensure that only authorized clients or users can interact with your API. This reduces the potential for malicious actions such as data theft, unauthorized modification, or even denial of service attacks.
+2. **Access Control**: It allows you to control who can access certain resources and operations in your API. For instance, certain resources might only be available to admin users, while others are available to all authenticated users.
+3. **Rate Limiting**: When you authenticate a user, you can associate them with a specific usage quota. This can be used to implement rate limiting, preventing any single user from overloading the server with requests.
+4. **Data Accuracy**: In many cases, your API's operations will be tied to a specific user's data. For example, a "get user profile" endpoint would need to know which user's profile to retrieve. Authentication provides a way to associate requests with users.
+5. **Audit and Logs**: It allows you to keep track of who did what and when. This is very useful when you need to audit the usage of your system.
+
+Implementing express authentication or Node.js authentication is vital for maintaining the integrity, security, and reliable operation of your APIs.
+
+That being said, there might be some API routes that you intentionally leave unauthenticated for various reasons. For instance, a login or registration route needs to be unauthenticated so that users can authenticate or create an account. Similarly, you might provide some public data through your API that doesn't require authentication.
+
+But you should default to authentication. Consider it a component of building as you plan out epics or sprints on APIs. But adding auth doesn’t have to be particularly challenging. You can build this out yourself with middleware functions, but like a lot of elements in authentication, it’s better to use specialized components.
+
+Let’s go through two of these we have at Clerk, `ClerkExpressWithAuth()` and `ClerkExpressRequireAuth()` to see how we can set these up Express authentication and call these endpoints from a client.
+
+You can check out all the code for this tutorial in this repo.
+
+## Authenticating Express API endpoints with Clerk
+
+Before we get to the Clerk specifics, it’s good to define two components of API methods in Express (and elsewhere) that are fundamental concepts to how authentication will work: _callbacks_ and _middleware_.
+
+A **_callback_** function is a function that is passed to another function as a parameter and then invoked by that function at a later time. Callbacks are heavily used in Node.js because it's designed to be asynchronous and non-blocking. When performing I/O operations like making HTTP requests, Node.js can start the operation and then continue executing other code without waiting for the operation to complete. When the operation is complete, the callback function is called with the result.
+
+**_Middleware_** functions are functions that have access to the request object (req), the response object (res), and the next middleware function in the application’s request-response cycle. Middleware functions can perform tasks like modifying the request or response objects, ending the request-response cycle, or invoking the next middleware function in the stack.
+
+In Express, middleware functions are often used as callbacks to handle HTTP requests. When you define a route in Express.js, you provide a callback function that's called whenever a client makes a request to that route. This callback function is also a middleware, because it has access to the `req`, `res`, and `next` objects.
+
+```jsx
+app.get('/example', function (req, res, next) {
+  // This function is a middleware and a callback
+})
+```
+
+So, in this sense, middleware functions are a specific type of callback. They're callbacks that are designed to be used in the context of an HTTP request to an Express.js server.
+
+This is what we’re going to do with Clerk. We’re going to use one of two authentication middleware functions as a callback for the request to our API endpoint. Those two middleware functions are:
+
+1. `ClerkExpressWithAuth()` is a lax authentication middleware that returns an empty auth object when an unauthenticated request is made.
+2. `ClerkExpressRequireAuth()` is a strict authentication middleware that raises an error when an unauthenticated request is made.
+
+There are subtle but important differences between these two. Let’s go through them.
+
+### Using ClerkExpressWithAuth()
+
+`ClerkExpressWithAuth()` is lax in that when it fails, it still returns an object, not an error.
+
+Let’s get some code up and running to showcase this function. We’ll create a directory called ‘backend’ and make that the current directory:
+
+```bash
+mkdir backend && cd backend
+```
+
+With that done, we’ll start installing our dependencies for this code. If you don’t already have it, you’ll also need node as this is the runtime we’re building upon. You can grab the latest build from here.
+
+Then you can run `npm init` to create a package.json in that directory. With that we can use npm to install:
+
+- Express, which is the web framework for Node.js we’re going to use. Express is a great option for running node servers because it’s fast, minimal, and unopinionated.
+- dotenv, which is the node package you need to read environmental variables in node.
+- @clerk/clerk-sdk-node is the Node.js SDK for the Clerk user management platform.
+- cors allows us to easily call the endpoint from a client
+
+```bash
+npm install express dotenv cors @clerk/clerk-sdk-node
+```
+
+When they are installed, create a file in your `with-auth` directory called `app.js`:
+
+```bash
+touch app.js
+```
+
+Then create a `.env` file in the same directory:
+
+```bash
+touch .env
+```
+
+This is where you’re going to store your `CLERK_API_KEY`. You can find this in your dashboard. Because you are building these routes on the backend, you can use your secret key:
+
+Clerk Secret Key
+
+Then open this directory with your IDE. If you are using VS Code, you can just type `code .` and you’ll get a window ready in that directory.
+
+Add your secret key to your .env file after `CLERK_API_KEY=key-goes-here`. Add the following code to `app.js`:
+
+```jsx
+import 'dotenv/config' // To read CLERK_API_KEY
+import { ClerkExpressWithAuth } from '@clerk/clerk-sdk-node'
+import express from 'express'
+import cors from 'cors'
+const port = process.env.PORT || 3000
+
+const app = express()
+app.use(cors())
+// Use the lax middleware that returns an empty auth object when unauthenticated
+app.get('/protected-endpoint', ClerkExpressWithAuth(), (req, res) => {
+  res.json(req.auth)
+})
+
+app.listen(port, () => {
+  console.log(`Example app listening at http://localhost:${port}`)
+})
+```
+
+Let’s work through this line by line.
+
+- Firstly we have all our imports:
+  - `import "dotenv/config"` imports the "dotenv" package and automatically runs its `config` function. This package reads environmental variables from the `.env` file and adds them to `process.env`. Here we need it to access a `CLERK_API_KEY` environment variable.
+  - We import `ClerkExpressWithAuth` from the "@clerk/clerk-sdk-node" package. This function is middleware for Express.js that handles authentication with Clerk.
+  - We import `express` from the Express.js package
+  - `import cors from "cors"` imports the "cors" package, a package used for enabling Cross Origin Resource Sharing (CORS). We’ll need this to aid calling the endpoint from our client.
+- We then set a constant `port` to the value of the `PORT` environment variable if it's set, otherwise it defaults to `3000`.
+- `const app = express()` creates a new Express application. The application is what is going to run our server.
+- `app.use(cors())` adds the CORS middleware to the Express application, enabling CORS.
+- `app.get(…)` defines a route for the path "/protected-endpoint" on the Express app. This route has two middleware functions:
+  - `ClerkExpressWithAuth`: This is the function that checks the authorization of the incoming request. If the request is authenticated, it sets `req.auth` to an object representing the authenticated user.
+  - `(req, res) => { res.json(req.auth); console.log(res.json); }`: This is an anonymous function that takes the incoming request and outgoing response as arguments. It sends a JSON response with the `auth` object from the request, and then it logs the JSON response function to the console.
+- The final `app.listen(…)` part of the code starts the server and makes it listen for incoming connections on the specified port. It logs a message to the console indicating that the server is running and listening on that port.
+
+Let’s run this:
+
+```bash
+node app.js
+```
+
+You should now see that message from in your `app.listen(…)` terminal:
+
+```bash
+Example app listening at http://localhost:3000
+```
+
+Great! You have a working endpoint. Let’s call that endpoint (`http://localhost:3000/protected-endpoint`) from Postman to see what it returns:
+
+```json
+{
+  "sessionClaims": null,
+  "sessionId": null,
+  "session": null,
+  "userId": null,
+  "user": null,
+  "actor": null,
+  "orgId": null,
+  "orgRole": null,
+  "orgSlug": null,
+  "organization": null,
+  "claims": null
+}
+```
+
+As we said above, `ClerkExpressWithAuth()` returns “an empty auth object when unauthenticated.” Now, you have a conundrum—you need an authenticated user to check this really works. To do that, we’ll create a quick React frontend client that calls `/protected-endpoint` after authenticating a user.
+
+Keep that app running and open up another terminal. If it opens up in the same directory, make sure you cd .. up a level (you don’t want to create your frontend React app in a subdirectory of your backend—headaches will ensue).
+
+We’ll first install create-react-app to help us (funnily enough) create a react app:
+
+```bash
+npm install create-react-app
+```
+
+Then run `npx create-react-app my-app` where my-app is the name of your app. Here we’ll go with auth-frontend:
+
+```bash
+npx create-react-app frontend
+```
+
+Then we’ll `cd frontend` to get into that directory and open with our IDE (again using `code .` if using VS Code).
+
+Again, we’re going to add Clerk to this project, this time using`@clerk/clerk-react`, which is the Clerk React SDK.
+
+We’ll also want to install `isomorphic-fetch` and `es6-promise` to polyfill the Fetch API for browsers that don't support it:
+
+```bash
+npm install @clerk/clerk-react isomorphic-fetch es6-promise
+```
+
+Like with the backend, you are going to need your Clerk API key. This time though you are going to use your public key as we’re authorizing a frontend client:
+
+Clerk Publishable Key
+
+Create a .env file and then add that key to it like this: `REACT_APP_CLERK_PUBLISHABLE_KEY=key-goes-here`.
+
+Now go to the src/App.js file, remove the boilerplate entirely and add this code:
+
+```jsx
+import React from 'react'
+import './App.css'
+import { ClerkProvider, SignedIn, SignedOut, RedirectToSignIn } from '@clerk/clerk-react'
+import Auth from './auth'
+
+if (!process.env.REACT_APP_CLERK_PUBLISHABLE_KEY) {
+  throw 'Missing Publishable Key'
+}
+
+const clerkPubKey = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY
+
+function App() {
+  return (
+    <ClerkProvider publishableKey={clerkPubKey}>
+      <SignedIn>
+        <Auth />
+      </SignedIn>
+      <SignedOut>
+        <RedirectToSignIn />
+      </SignedOut>
+    </ClerkProvider>
+  )
+}
+
+export default App
+```
+
+We won’t go through this line by line because we’ve taken it entirely, with one exception, from our docs on getting started with React. Head there to learn more about Clerk and React.
+
+That one exception is that we’ve swapped out the `<Welcome />` component in the documentation within the `<SignedIn></SignedIn>` component for an `<Auth />` component. Within the src directory add `auth.js` and add this code:
+
+```jsx
+//src/auth.js
+
+import fetch from 'isomorphic-fetch'
+import React, { useState, useEffect } from 'react'
+
+import { useAuth } from '@clerk/clerk-react'
+
+function Auth() {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const { getToken } = useAuth()
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = await getToken()
+        const response = await fetch('http://localhost:3000/protected-endpoint', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+            mode: 'cors',
+          },
+        })
+
+        if (!response.ok) {
+          throw new Error('Network response was not ok')
+        }
+
+        const result = await response.json()
+        setData(result)
+        setLoading(false)
+      } catch (err) {
+        setError(err)
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [getToken])
+
+  if (loading) {
+    return <div>Loading...</div>
+  }
+
+  if (error) {
+    return <div>Error: {error.message}</div>
+  }
+
+  return (
+    <div>
+      <h1>Data from API:</h1>
+      <p>{JSON.stringify(data, null, 2)}</p>
+    </div>
+  )
+}
+
+export default Auth
+```
+
+We will go through this line by line as it shows how you can pass that authentication token to the API endpoint.
+
+- `import fetch from "isomorphic-fetch"` imports the `fetch` function from the `isomorphic-fetch` package.
+- The next line imports the `React` default export and the `useState` and `useEffect` named exports from the `react` package. `useState` is a React Hook that lets you add React state to function components, and `useEffect` lets you perform side effects in function components.
+- The final import is for the `useAuth` hook from the `@clerk/clerk-react` package. This hook provides access to Clerk's auth-related functionality.
+- The `Auth` function component is then declared. Four pieces of state are created using the `useState` hook: `data`, `loading`, and `error` for storing API response data, the loading state, and any error messages, respectively. The `getToken` function is extracted from the `useAuth` hook to allow authentication token retrieval.
+- We then create a `useEffect` hook to define a side effect that fetches data from an API when the component is first mounted and whenever the `getToken` function changes.
+- Within the `useEffect` hook, the `fetchData` function tries to retrieve a token, then sends a GET request to our `/protected-endpoint`. If the request fails, it sets the error state and stops loading. If it succeeds, it sets the data state to the response data, and stops loading.
+  - The critical part of this is the line `Authorization: Bearer ${token}`. Here, we’re passing the authorization token from our now-signed-in-user to our `/protected-endpoint` to use in its own authentication.
+- In the rendering part of the `Auth` component, it checks if the `loading` state is true, and if so, returns a "Loading..." message. If there's an error, it displays the error message. Otherwise, it displays the data fetched from `/protected-endpoint`.
+- Finally we export the `Auth` component as the default export of this module. This allows the `Auth` component to be imported and used in other parts of the application.
+
+And thus we import that `Auth` and call it within the `SignedIn` function so we can use the authorization token and pass it to `/protected-endpoint`. Within `/protected-endpoint`, the ClerkExpressWithAuth middleware will check whether it is a valid token, and, if so, return a full auth object:
+
+```json
+{
+  "sessionClaims": {
+    "azp": "http://localhost:3000",
+    "exp": 1686337111,
+    "iat": 1686337051,
+    "iss": "https://keen-moray-98.clerk.accounts.dev",
+    "nbf": 1686337041,
+    "sid": "sess_2QvzpU7hY6lF5GQSjQQHckp8wps",
+    "sub": "user_2Qbkhxfu7VCmvM4Xguez0fmMg1c"
+  },
+  "sessionId": "sess_2QvzpU7hY6lF5GQSjQQHckp8wps",
+  "userId": "user_2Qbkhxfu7VCmvM4Xguez0fmMg1c",
+  "claims": {
+    "azp": "http://localhost:3000",
+    "exp": 1686337111,
+    "iat": 1686337051,
+    "iss": "https://keen-moray-98.clerk.accounts.dev",
+    "nbf": 1686337041,
+    "sid": "sess_2QvzpU7hY6lF5GQSjQQHckp8wps",
+    "sub": "user_2Qbkhxfu7VCmvM4Xguez0fmMg1c"
+  }
+}
+```
+
+Now, on the backend we have our `sessionId` and `userId` and `claims` to use as needed and we know our user is authenticated and allowed to use this API endpoint!
+
+### Using ClerkExpressRequireAuth()
+
+`ClerkExpressRequireAuth` works slightly different when a user is unauthenticated. Whereas `ClerkExpressWithAuth` just returned an empty auth object, `ClerkExpressRequireAuth` returns an error.
+
+Swap out your code in your express app.js for this below:
+
+```jsx
+import 'dotenv/config' // To read CLERK_API_KEY
+import { ClerkExpressRequireAuth } from '@clerk/clerk-sdk-node'
+import express from 'express'
+
+const port = process.env.PORT || 3000
+const app = express()
+
+// Use the strict middleware that raises an error when unauthenticated
+app.get('/protected-endpoint', ClerkExpressRequireAuth(), (req, res) => {
+  res.json(req.auth)
+})
+
+app.use((err, req, res, next) => {
+  console.error(err.stack)
+  res.status(401).send('Unauthenticated!')
+})
+
+app.listen(port, () => {
+  console.log(`Example app listening at http://localhost:${port}`)
+})
+```
+
+Most of this code is the same as the `ClerkExpressWithAuth` example above. The differences are:
+
+- We’re importing the `ClerkExpressRequireAuth` from the Clerk Node.js SDK
+- We’re calling that `ClerkExpressRequireAuth` middleware within our app.get() function.
+- We now have an error-handling middleware function. If an error occurs in any middleware function that is run before this one (here the `ClerkExpressRequireAuth`), this function will be called. It logs the stack trace of the error and sends a response with the HTTP status code `401`, indicating that the client must authenticate to get the requested response, along with the message `Unauthenticated!`.
+
+And lo and behold, if you call this in Postman you’ll get a 401 and this message:
+
+```
+Unauthenticated!
+```
+
+This is safer as we aren’t even sharing the structure of our auth object.
+
+If we now call this within our React app though, we do get our auth object because we are authenticated:
+
+```json
+{
+  "sessionClaims": {
+    "azp": "http://localhost:3000",
+    "exp": 1686337111,
+    "iat": 1686337051,
+    "iss": "https://keen-moray-98.clerk.accounts.dev",
+    "nbf": 1686337041,
+    "sid": "sess_2QvzpU7hY6lF5GQSjQQHckp8wps",
+    "sub": "user_2Qbkhxfu7VCmvM4Xguez0fmMg1c"
+  },
+  "sessionId": "sess_2QvzpU7hY6lF5GQSjQQHckp8wps",
+  "userId": "user_2Qbkhxfu7VCmvM4Xguez0fmMg1c",
+  "claims": {
+    "azp": "http://localhost:3000",
+    "exp": 1686337111,
+    "iat": 1686337051,
+    "iss": "https://keen-moray-98.clerk.accounts.dev",
+    "nbf": 1686337041,
+    "sid": "sess_2QvzpU7hY6lF5GQSjQQHckp8wps",
+    "sub": "user_2Qbkhxfu7VCmvM4Xguez0fmMg1c"
+  }
+}
+```
+
+And with that, you can now authenticate any API endpoint in your Express apps.
+
+## Fast, authenticated endpoints
+
+With Express and Clerk you can get authenticated, production-ready APIs up in a matter of just a few minutes. There is more code in our client that for our endpoint. Using `ClerkExpressWithAuth()` or `ClerkExpressRequireAuth()` you can protect any endpoint and add express authentication or node authentication without the hassle of building it yourself.
+
+This is what you need with authentication—you want it done quickly. That way it’ll actually get done rather than sitting in your backlog queue for months until a dev can get to it. Or an attacker can get to your unprotected endpoints.
+
+Next steps? Check out the code for this tutorial here. Check out Clerk here and more about using Clerk for express and node authentication here, and how to take these security elements even further with the options. Learn how to set up Clerk within your client to make user management super simple here.

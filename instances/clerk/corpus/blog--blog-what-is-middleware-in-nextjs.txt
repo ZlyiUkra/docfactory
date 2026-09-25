@@ -1,0 +1,391 @@
+# What is middleware in Next.js?
+# джерело: https://clerk.com/blog/what-is-middleware-in-nextjs
+# отримано: 2026-09-25
+
+Next.js middleware provides you with an incredible opportunity to customize the way your Next.js application handles requests.
+
+Middleware enables developers to intercept requests and perform operations like session validation, logging, and caching. While it may be tempting to use middleware to process and apply logic to every request to the application, doing so improperly might lead to massive performance depredations for your application. Once you understand how middleware works, you'll be better equipped to use middleware and understand when it shouldn't be used.
+
+In this comprehensive guide, you'll learn what middleware is as it pertains to Next.js, how it works, and some of it's common use cases.
+
+## What is Next.js middleware?
+
+Middleware in Next.js refers to functions that run automatically for every incoming request, allowing you to inspect or modify the request data before it reaches your application's routing system.
+
+Middleware can be used for a variety of purposes, such as authentication, logging, and error handling. For example, you could use middleware to authenticate incoming requests by checking tokens or credentials before allowing the request to proceed to your application's routing system.
+
+Another benefit of using middleware in Next.js is its flexibility and customizability.
+
+You can write your own middleware functions to fit the specific needs of your application to set application-wide settings or policies. This prevents you from having to worry about the complexity of having multiple layers of routing configuration.
+
+By leveraging middleware, you can create a more robust, scalable, and maintainable application that meets the demands of complex web applications.
+
+## When does Next.js process the middleware?
+
+Next.js performs a series of operations when a request is received, so it helps to understand where middleware is handled in the order of operations:
+
+### 1. `headers`
+
+The `headers` configuration from `next.config.js` is applied first, setting the initial headers for every incoming request. This stage can be used to set security-related headers, such as content security policy or cross-origin resource sharing (CORS) headers.
+
+### 2. `redirects`
+
+The `redirects` configuration from `next.config.js` follows, determining how requests are redirected to other URLs. This stage handles URL rewriting and redirects, allowing you to manage routing rules that affect multiple pages or entire applications.
+
+### 3. Middleware evaluation
+
+Once `headers` and `redirects` are processed from the Next.js config file, the middleware is evaluated, and any logic within is executed. As you might expect, we’re going to dive deeper into this step throughout the guide.
+
+### 4. `beforeFiles`
+
+Next, the `beforeFiles` (`rewrites`) from `next.config.js` is applied. This stage allows you to perform additional rewriting or file-specific logic before routing takes place.
+
+### 5. File system routes
+
+The application's file system routes come into play next, including directories like `public/` and `_next/static/`, as well as individual pages and apps. This stage is where your application's static files are served.
+
+### 6. `afterFiles`
+
+Next up the `afterFiles` (`rewrites`) from `next.config.js` apply, providing a final chance to modify request data before dynamic routing takes place.
+
+### 7. Dynamic Routes
+
+Dynamic routes, like `/blog/[slug]`, execute next in the sequence. These routes require specific handling and rewriting logic to accommodate variables or parameters.
+
+### 8. `fallback`
+
+Finally, the `fallback` from `next.config.js` is applied, determining what happens when a request can't be routed using other configurations. This stage provides an opportunity to implement error handlers or fallback routes.
+
+## What are some common use cases for Next.js middleware?
+
+### Authentication
+
+Authentication can be used with a login system where a user's credentials are validated before accessing sensitive routes or data. For instance, you might use Next.js middleware to validate a user's session on every request, redirecting them to the login page if their token is invalid.
+
+Clerk uses Next.js middleware to intercept the request and determine the user's authentication state, something we'll explore in more detail later in this article.
+
+### Logging
+
+Logging logic can be added to middleware to track important events in your application, such as user actions or errors. You might implement logging using Next.js middleware to log every request to a centralized server, allowing you to analyze and debug issues more efficiently.
+
+### Data fetching
+
+While there are certain limitations to what kind of fetching can be performed, middleware can technically be used to load data from an API or database on every request, providing the most up-to-date information to users.
+
+We'll explore the limitations of Next.js middleware in a later section.
+
+### Request routing
+
+Middleware can be used to customize the routing behavior of your application, such as catching all requests to a certain path and redirecting them to another route. This might be useful for implementing a catch-all error handler or for rewriting URLs to use a different domain.
+
+### Cacheing
+
+Cacheing can be used to improve performance by storing frequently used resources in memory and controlling the number of requests from individual users. The following example would check a cache object for the content of the request. If found, it is returned, otherwise, the response is intercepted and added to the cache for the next request.
+
+```tsx
+import { NextResponse } from 'next/server'
+
+const cache = new Map()
+
+export function middleware(request) {
+  const { pathname } = request.nextUrl
+
+  // Check if the response is cached
+  if (cache.has(pathname)) {
+    return new NextResponse(cache.get(pathname), {
+      headers: { 'X-Cache': 'HIT' },
+    })
+  }
+
+  // If not cached, proceed with the request
+  const response = NextResponse.next()
+
+  // Cache the response for future requests
+  response.then((res) => {
+    const clonedRes = res.clone()
+    clonedRes.text().then((body) => {
+      cache.set(pathname, body)
+    })
+  })
+
+  response.headers.set('X-Cache', 'MISS')
+  return response
+}
+
+export const config = {
+  matcher: '/api/:path*',
+}
+```
+
+### Rate limiting
+
+Similarly, you could use middleware to keep track of requests coming from a single user or IP address and block the request if that user is making too many requests too frequently. This can help prevent upstream resources (ie: database) from being impacted for other uses.
+
+### Page transforms
+
+HTML rewrites and data transforms can be used to customize the behavior of your application when serving HTML files or transforming data in real-time. For instance, you might use Next.js middleware to rewrite URLs for images and other static assets, allowing you to host them on a different domain or with a custom subdomain.
+
+### Analytics/reporting
+
+Analytics and reporting can be used to track user behavior and monitor application performance, providing insights for improving the overall experience. You could use Next.js middleware to modify cookies on the fly, allowing you to integrate tracking scripts from third-party analytics providers without affecting the application's functionality.
+
+### Internationalization
+
+Internationalization can be used to deliver content in multiple languages and adapt the UI based on the user's locale. For example, you might determine a user's location by their IP or an HTTP header using middleware, redirecting users to a different language version of your application when they access it with a specific query parameter or cookie.
+
+## How can I use middleware in a Next.js project?
+
+To use middleware in a Next.js project, you'd create a single file at the root of the project called `middleware.ts` and add the necessary components.
+
+Creating middleware involves defining a `middleware` function and (optionally) a matcher.
+
+### The `middleware` function
+
+The `middleware` function is where the logic of the middleware is stored. It uses a request as the single parameter and returns a response like so:
+
+```tsx
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+
+export function middleware(request: NextRequest) {
+  // Your middleware logic here
+  return NextResponse.next()
+}
+```
+
+Using the `NextRequest` and `NextResponse` objects, you could write a basic middleware to redirect requests to `/dashboard`, while allowing requests to other routes to proceed:
+
+```tsx
+export function middleware(request: NextRequest) {
+  if (request.nextUrl.pathname.startsWith('/api')) {
+    return NextResponse.next()
+  }
+
+  if (request.nextUrl.pathname.startsWith('/dashboard')) {
+    return NextResponse.redirect(new URL('/sign-in', request.url))
+  }
+}
+```
+
+It's important to note that the `middleware` function must return one of the following responses:
+
+- `NextResponse.next()` - Allows the request to proceed to its destination.
+- `NextResponse.redirect()` - Redirects the response to another route.
+- `NextResponse.rewrite()` - Transparently renders an alternate route internally without forcing the browser to redirect.
+- `NextResponse.json()` - Returns raw JSON to the caller.
+- `Response`/`NextResponse` - You can craft a custom response to the caller.
+
+### The matcher
+
+The matcher is how Next.js decides if a request should be processed by middleware. The matcher is defined in and exported via the `config` object like so:
+
+```tsx
+export const config = {
+  matcher: '/hello',
+}
+```
+
+You can also define a matcher in a number of ways. The above example matches a single route, but you can also include an array of routes:
+
+```tsx
+export const config = {
+  matcher: ['/hello', '/world'],
+}
+```
+
+And for more complex scenarios, you can use regex:
+
+```tsx
+export const config = {
+  matcher: ['/hello', '/world', '//[a-zA-Z]+/'],
+}
+```
+
+If a matcher is not specified, Next.js will use the middleware for ALL routes. This can cause the middleware to run when it really doesn't need to, which can lead to degraded performance and potentially increased hosting costs.
+
+## How to combine multiple Next.js middleware
+
+Next.js only supports one middleware file and function per project. If you need to use multiple functions, you'd have to create separate functions that return the appropriate response and call them in sequence, conditionally returning a response if a middleware generates one.
+
+For example, let's say you want to use both a logging middleware and an authentication middleware.
+
+First, create two separate middleware functions:
+
+```tsx
+export function logRequest(req) {
+  console.log(`Request made to: ${req.nextUrl.pathname}`)
+}
+```
+
+```tsx
+import { NextResponse } from 'next/server'
+
+// Assuming an in-memory cache for sessions
+const sessions = new Map()
+
+export function checkAuth(req) {
+  const token = req.cookies.get('auth-token')
+  if (!token) {
+    return NextResponse.redirect(new URL('/login', req.url))
+  }
+
+  // Check if the session exists and is not expired
+  if (sessions.has(token)) {
+    const session = sessions.get(token)
+    if (session.expiration < Date.now()) {
+      // Session has expired, clear it from cache and redirect to login
+      sessions.delete(token)
+      return NextResponse.redirect(new URL('/login', req.url))
+    }
+    // Valid session, proceed with the request
+    return
+  } else {
+    // Session not found or invalid, redirect to login
+    return NextResponse.redirect(new URL('/login', req.url))
+  }
+}
+```
+
+Then, in your `middleware.ts` file, use both of these functions in sequence, returning the response from `checkAuth` if the authentication checks fail:
+
+```tsx
+import { NextResponse } from 'next/server'
+import { checkAuth } from './middleware/checkAuth'
+import { logRequest } from './middleware/logRequest'
+
+// Main Middleware File
+export function middleware(req) {
+  logRequest(req)
+
+  const authResponse = checkAuth(req)
+  if (authResponse) return authResponse
+
+  return NextResponse.next()
+}
+
+export const config = {
+  matcher: ['/hello', '/world', '//[a-zA-Z]+/'],
+}
+```
+
+## How does Clerk use Next.js middleware?
+
+Clerk uses middleware to protect routes as they come into your Next.js application. The `clerkMiddleware` function actually wraps the typical middleware logic and internally will parse the cookies coming into the request and verify them with your userbase in Clerk.
+
+```tsx
+import { clerkMiddleware } from '@clerk/nextjs/server'
+
+export default clerkMiddleware()
+
+export const config = {
+  matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
+    '/((?!_next|[^?]*\\\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)',
+  ],
+}
+```
+
+Since we wrap the middleware logic, we can extend it and provide helper functions like `auth` which makes it easier to protect routes:
+
+```tsx
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+
+const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/forum(.*)'])
+
+export default clerkMiddleware(async (auth, req) => {
+  if (isProtectedRoute(req)) await auth.protect()
+})
+
+export const config = {
+  matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
+    '/((?!_next|[^?]*\\\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)',
+  ],
+}
+```
+
+The body of the callback in `clerkMiddlware` works just like a standard middleware so you can also apply custom routing rules. For example, the following snippet shows you how to reroute the incoming request to `/onboarding` only if the user is logging in for the first time:
+
+```tsx
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server'
+
+const isPublicRoute = createRouteMatcher(['/'])
+
+export default clerkMiddleware(async (auth, req) => {
+  const { userId, sessionClaims, redirectToSignIn } = await auth()
+
+  // If the user isn't signed in and the route is private, redirect to sign-in
+  if (!userId && !isPublicRoute(req)) {
+    return redirectToSignIn({ returnBackUrl: req.url })
+  }
+
+  // Catch users who do not have `onboardingComplete: true` in their publicMetadata
+  // Redirect them to the /onboading route to complete onboarding
+  if (
+    userId &&
+    !sessionClaims?.metadata?.onboardingComplete &&
+    req.nextUrl.pathname !== '/onboarding'
+  ) {
+    const onboardingUrl = new URL('/onboarding', req.url)
+    return NextResponse.redirect(onboardingUrl)
+  }
+
+  // All other routes are protected and the user is authenticated, let them view the requested page
+})
+
+export const config = {
+  matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
+    '/((?!_next|[^?]*\\\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)',
+  ],
+}
+```
+
+> To learn more about how this onboarding flow works, check out How to Add an Onboarding Flow for your Application with Clerk on our blog.
+
+## Limitations to consider with Next.js middleware
+
+Next.js middleware has several limitations that developers should be aware of:
+
+### Edge Runtime Constraints
+
+Middleware runs on the Edge Runtime, limiting the APIs and libraries that can be used. The Edge Runtime provides a subset of Node.js APIs, which means that middleware must rely on these limited resources. While this limitation may seem restrictive, it helps ensure that middleware functions are fast and efficient.
+
+Because of the Edge Runtime, they also cannot use native Node.js APIs or perform operations like reading and writing to the file system.
+
+### Size Restriction
+
+Middleware functions are limited to 1MB in size, including all bundled code. This restriction is in place to ensure that middleware does not consume too much memory and can handle a large number of requests efficiently.
+
+### ES Modules Only
+
+Only ES Modules can be used in middleware. CommonJS modules are not supported. This is because ES Modules provide a more secure and efficient way of managing dependencies, which is essential for middleware functions.
+
+### No String Evaluation
+
+JavaScript's `eval` and `new Function(evalString)` are not allowed within the middleware runtime. This restriction helps prevent potential security vulnerabilities by blocking access to arbitrary code execution.
+
+### Performance Considerations
+
+Since middleware runs before every request with a matched route, complex or time-consuming operations in middleware can block users from receiving responses quickly. To mitigate this issue, developers should focus on writing lightweight and efficient middleware code that does not hinder the performance of their application.
+
+It's also the reason that accessing a database within the middleware is generally not a good idea. It not only adds latency to the request but could also impact the performance of your database.
+
+### Limited Access to Request/Response
+
+Middleware does not have full access to complete request and response objects, which can limit certain dynamic operations. Specifically, the middleware cannot access the full URL path name, the request/response body, and some of the headers.
+
+To work around this limitation, developers can use techniques like callbacks or promises to interact with the request and response objects.
+
+## Conclusion
+
+You are now better equipped to use Next.js middleware in the real world.
+
+In this article, we have explored Next.js middleware from an introductory level but also discussed how it works, when it runs in relation to other operations Next performs with every request, and some of the best use cases for middleware.

@@ -1,0 +1,264 @@
+# How to set environment variables in Node.js
+# джерело: https://clerk.com/blog/how-to-set-environment-variables-in-nodejs
+# отримано: 2026-09-25
+
+As software developers, we're constantly juggling the need for flexibility, scalability, and security in our applications.
+
+One important aspect of achieving this balance is the proper use of environment variables. In this post, you'll learn various ways to set environment variables in Node.js, exploring best practices for their usage, as well as discussing key considerations for maintaining the security and integrity of your application. From validating environment variables at startup to avoiding committing sensitive files with Git, we'll cover essential guidelines for making the most of environment variables while minimizing potential risks.
+
+Whether you're a seasoned developer or just starting out with Node.js, this piece aims to provide valuable insights and actionable advice for ensuring your applications are secure, maintainable, and scalable.
+
+## What are environment variables?
+
+Environment variables are key-value pairs stored outside your codebase, often in a configuration file or system settings. They hold data like API keys, database credentials, or other environment-specific settings. This ensures sensitive information is not hardcoded into your application, keeping it secure and easier to manage across different environments, such as development, testing, and production.
+
+In Node.js development, environment variables are an important concept to understand because they allow you to configure your application dynamically without modifying the code. For example, you can use the same codebase but point to different databases or APIs depending on whether you’re in a development or production environment. This flexibility improves security, simplifies deployment, and makes your app more adaptable.
+
+Unlike regular JavaScript variables, environment variables are typically not defined in your code. Instead, they are stored in the operating system or external files (like `.env`) and accessed using `process.env`. Regular variables are scoped to your application, while environment variables exist independently and can influence multiple applications on the same system.
+
+## Accessing environment variables in Node.js
+
+In Node.js, the `process.env` object is used to access and manage environment variables. To retrieve a variable, you reference it using `process.env.VARIABLE_NAME`. For example, `process.env.API_KEY` fetches the value of `API_KEY`. You can technically set the value of an environment variable within the code, but this is generally counterproductive and defeats the purpose of using environment variables.
+
+The following snippet shows how the `API_KEY` would be referenced in an Express API:
+
+```ts
+const express = require('express')
+const app = express()
+
+// Access API key from environment variables
+const apiKey = process.env.API_KEY
+
+if (!apiKey) {
+  console.error('Error: API key is not defined.')
+  process.exit(1)
+}
+
+app.get('/', (req, res) => {
+  res.send('API key is successfully loaded.')
+})
+
+// Start the server
+const PORT = process.env.PORT || 3000
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`)
+})
+```
+
+## Setting environment variables in Node.js
+
+Now that you understand what environment variables are used for and how to access them, let's dive into the various ways to set them.
+
+### 1. Using `dotenv`
+
+One popular method for setting environment variables is the `dotenv` package. This package allows you to separate your environment-specific variables from your code and load them easily into your application.
+
+You can specify the key-value pairs in a `.env` file like so:
+
+```makefile
+PORT=3000
+DB_USERNAME=dbuser
+
+```
+
+You can then import the package and run the `config()` function which will import the values from `.env` by default:
+
+```ts
+import * as dotenv from 'dotenv'
+dotenv.config()
+```
+
+Then, in your Node.js code, you can access these variables using the `process.env` object:
+
+```ts
+console.log(process.env.PORT) // Output: 3000
+console.log(process.env.DB_USERNAME) // Output: dbuser
+```
+
+You can also load different environment variable files using the `path` parameter:
+
+```ts
+dotenv.config({ path: './path/to/another.env' })
+```
+
+While `dotenv` is very useful for development, other methods should likely be considered for running in a production environment.
+
+### 2. Setting on the system level
+
+On a Unix-based system (such as Linux or macOS), you can set environment variables at the system level by adding them to your shell configuration file such as  `~/.bashrc` for Bash or  `~/.zshrc` for ZShell. This will apply to all processes running in that shell session.
+
+For example, add the following lines to your `~/.bashrc` file:
+
+```
+export PORT=3000
+export DB_USERNAME=myuser
+
+```
+
+Then, restart your terminal or run `source ~/.bashrc` to apply the changes. You can then access these variables in your Node.js application using the `process.env` object.
+
+If you are running your application as a system process, the same values can be added to `/etc/environment` for global system access.
+
+### 3. Setting in a launch script
+
+You can also set environment variables at launch time by creating a script that sets the variables and then runs your Node.js application. For example, you can create a `launch.sh` file:
+
+```bash
+#!/bin/bash
+export PORT=3000
+export DB_USERNAME=myuser
+node app.js
+```
+
+Make the script executable with `chmod +x launch.sh`, then run it using `./launch.sh`. This will set the specified environment variables and then run your Node.js application.
+
+### 4. Setting in PM2
+
+PM2 (Process Manager 2) is a popular process manager for Node.js applications. You can set environment variables when starting your application with PM2:
+
+```bash
+pm2 start app.js --env PORT=3000 --env DB_USERNAME=myuser
+```
+
+This will set the `PORT` and `DB_USERNAME` environment variables when running your application. You can also use a configuration file named `ecosystem.config.js` and specify values for different environments:
+
+```js
+module.exports = {
+  apps: [
+    {
+      name: 'my-app',
+      script: 'app.js',
+      instances: 1,
+      env: {
+        NODE_ENV: 'development',
+        API_KEY: 'dev-key',
+      },
+      env_production: {
+        NODE_ENV: 'production',
+        API_KEY: 'prod-key',
+      },
+    },
+  ],
+}
+```
+
+Then, you can specify the environment to use when starting PM2:
+
+```bash
+pm2 start ecosystem.config.js --env production
+
+```
+
+### 5. Setting in Docker
+
+When running a Node.js application in a Docker container, there are multiple ways that environment variables can be set. When defining the `Dockerfile`, you can use the `ENV` keyword to specify default values for environment variables:
+
+```
+FROM node:22
+
+WORKDIR /app
+
+ENV PORT=3000
+ENV DB_USERNAME=myuser
+
+COPY package*.json ./
+
+RUN npm install
+
+COPY . .
+
+CMD ["node", "app.js"]
+
+```
+
+This will set the environment variables when building and running your Docker image.
+
+When running the container, you can specify them in the command to override the default values as well:
+
+```bash
+docker run -e PORT=5173 my-image
+
+```
+
+Finally, when using `docker-compose` to run containers, you can specify the environment variables in the YAML:
+
+```yaml
+version: '3.8'
+
+services:
+  app:
+    image: node:22
+    container_name: my-app
+    environment:
+      - PORT=5173
+```
+
+## Best practices for using environment variables in Node.js applications
+
+When working with environment variables in your Node.js application, there are some best practices you can follow to ensure security, maintainability, and scalability. Here are some key guidelines:
+
+### Use descriptive names and document their purpose
+
+When naming your environment variables, use descriptive names that clearly indicate their purpose. It's also a good idea to mention them in the project's README file with a short description documenting what each variable is used form, making it easier for other developers (or you in the future) to understand.
+
+### Validate environment variables on app startup
+
+Before using any environment variables, make sure they are properly set by validating them during startup. This can be done by checking if the variable exists and has a value. If not, you can default to a specific value or throw an error.
+
+For example:
+
+```jsx
+const env = process.env
+if (!env.USERNAME) {
+  throw new Error('USERNAME environment variable is required')
+}
+```
+
+### Avoid committing `.env` files with Git
+
+By default, `.env` files are committed to your project's version control system (such as Git). If you are using a `.env` file to store environment variables, make sure to exclude your VCS from tracking the file. In Git, it's as simple as adding the following line to your `.gitignore` file:
+
+```
+build/
+dist/
+node_modules
+
+.env
+
+```
+
+### Consider using a KMS to increase security
+
+To further increase the security of your environment variables, consider using a Key Management System (KMS). A KMS provides an additional layer of protection by encrypting and securely storing your sensitive data. This is especially important if you're working with sensitive information such as API keys or encryption keys.
+
+### Specify default values
+
+When defining environment variables, it's a good idea to specify default values for those that may not be set. This ensures that your application will continue to function even if certain environment variables are missing or unset. The default values should not contain sensitive information though.
+
+For example, storing the connection string for a hosted database can be considered a risk. However, assuming that the project setup involves running the database locally, specifying `localhost` for the connection string would not be risky.
+
+### Never expose environment variables in the front end
+
+Most frameworks and tools have naming conventions developers can use to inject environment variables in to the development and building process. For example, you can use the `NEXT_PUBLIC_` prefix and any client-side code will be able to access those variables.
+
+One of the most critical best practices is to never expose sensitive environment variables directly to the front-end. API keys and database connection strings should only ever be accessible from the server. When building with front end frameworks, make sure you understand how to securely use environment variables to avoid leaking secrets.
+
+## How Clerk uses environment variables in Node.js projects
+
+Clerk offers various SDKs supporting different Node.js configurations, with Express being our latest.
+
+We use environment variables to configure the SDK and associate it with an application in the Clerk dashboard, which also loads any configuration items from the dashboards and allows users of that application to authenticate:
+
+```
+CLERK_PUBLISHABLE_KEY=pk_test_YmlnLXdlYXNlbC00NC5jbGVyay5hY2NvdW50cy5kZXYk
+CLERK_SECRET_KEY=sk_test_frHrr**************************************
+
+```
+
+This allows Node.js projects to make backend requests to Clerk, as well as front end projects to use Express for validating API requests.
+
+## Conclusion
+
+In today's interconnected world, keeping your application's secrets safe is more crucial than ever. Environment variables are a fundamental part of any modern software project, but they can also be a significant security risk if not handled properly.
+
+In this article, we've explored the best practices for using environment variables in Node.js applications, from validating their existence to avoiding exposing sensitive information directly to the front end. By following these guidelines and being mindful of potential risks, you'll be well on your way to creating secure and maintainable software that's ready for production.

@@ -1,0 +1,182 @@
+# Authenticated data access using Clerk, Prisma, and MongoDB - A post-making fullstack app
+# джерело: https://clerk.com/blog/clerk-prisma-mongodb-fullstack-post-app
+# отримано: 2026-09-25
+
+Prisma is a server-side library that helps your app read and write data to your database in an intuitive and safe way. As a next-gen ORM, Prisma lets you increase your productivity and simplify your codebase, by allowing you to write much less code for CRUD operations, and by giving you the protection of type safety.
+
+Prisma has supported connectors for relational databases like PostgreSQL, MySQL and SQLite for quite some time. Recently though, the good folks at Prisma developed and released their MongoDB connector, which combines the type-safe Prisma TypeScript generator with the flexibility of a document store like MongoDB.\*
+
+_\*Currently in Preview mode_
+
+At Clerk we've been really excited about this release, so, we decided to showcase how you can easily add a complete authentication workflow to your web application along with authenticated access for your Prisma API layer.
+
+## The post publishing application
+
+You can find the full source code of this example in our Clerk-Prisma starter repository.
+
+This example application will let you create an account, create posts for others to see, and browse existing user posts. Random idea sharing at its best!
+
+Clerk Prisma Mongodb Fullstack Post App tutorial illustration
+
+## Setting up the application
+
+To run this application properly you need to configure your Clerk application, create a MongoDB Atlas database instance, then follow the instructions in the repository.
+
+### Creating a Clerk application
+
+If you are new to Clerk you will first need to create an account, then create a new application. For this application, choose the "Standard Setup". Creating a Clerk application will automatically create a development instance, which is what you'll be using.
+
+### Creating a MongoDB Atlas database
+
+MongoDB Atlas is the database-as-a-service solution provided by MongoDB, that gives you all the goodies of a world-class managed database service. From cross-regional resiliency, to security and performance monitoring, MongoDB Atlas is a great choice both for quickly spinning up a MongoDB instance in the cloud, and for companies that require enterprise level services.
+
+Since we just need to get a database instance as quickly as possible for our example project, the forever-free tier is more than enough. Simply sign up, create a database, and **retrieve your secure connection URL**.
+
+_Note: If you would rather use a local database instance, remember that Prisma requires your MongoDB instance to be in replica-set mode. This comes by default with MongoDB Atlas._
+
+## Show me the code
+
+To run the full example locally, you will need to follow a few small steps. First, go ahead and clone the example application.
+
+`git clone git@github.com:clerkinc/clerk-prisma-starter.git`
+
+Go inside your project folder and copy the .env.example file to a .env.local file.
+
+`cp .env.example .env.local`
+
+### Clerk Environment Variables
+
+You will need the Frontend API value which can be found on the dashboard on your development instance's home page. Add the following to your .env.local file: `NEXT_PUBLIC_CLERK_FRONTEND_API=<your-frontend-api>`.
+
+Next you will need the Clerk API key which can also be found on your dashboard under **Settings ➜ API** **keys**. Add the following to your .env.local file:
+
+`CLERK_API_KEY=<your-api-key>`
+
+### Prisma setup
+
+For Prisma to generate the required TypeScript bindings for our code and facilitate the database access layer, we need to setup a `DATABASE_URL` environment variable beside our application schema file.
+
+Inside the `server/db/prisma` folder, create a `.env` file and there add the `DATABASE_URL` environment variable with the connection URL for your MongoDB instance. It will look something like this:
+
+```bat
+DATABASE_URL="mongodb+srv://username:pass@dblocation/myFirstDatabase?retryWrites=true&w=majority"
+```
+
+When this is set you can now run the Prisma code generator. The Prisma schema that we have used for this application, signifies to the Prisma ORM that we would like to create a collection of Post documents with the fields and connections as shown below:
+
+```
+model Post {
+ id          String   @id @default(dbgenerated()) @map("_id") @db.ObjectId
+ createdAt   DateTime @default(now())
+ title       String
+ body        String?
+ views       Int      @default(0)
+ author      String
+ authorEmail String
+
+ @@unique([authorEmail, title])
+}
+```
+
+Prisma provides a multitude of helpers to apply on your data model definition which you can use to describe relationships, set constraints and configure attribute types. All that configuration is in code, making it a much more familiar environment for application developers with zero amount of boilerplate.
+
+To generate the TypeScript API for accessing this model, inside the repository, execute the `npm run schema:generate` command. This will create all the required types and APIs to use your MongoDB Posts collection which you can import directly from the `@prisma/client` package. You can use the types both for the entities and the database operations, as shown in the `types/index.ts` file.
+
+### Use Prisma Studio to add a few posts
+
+Another great tool from the Prisma team is Prisma Studio. Prisma Studio gives you a visual data editor with direct access to your database.
+
+Clerk Prisma Mongodb Fullstack Post App tutorial illustration
+
+For this example you can add a couple of posts or more with the `authorEmail` attribute matching the email address with which you will sign up for the app.
+
+## How Clerk provides authenticated access to your data
+
+For the frontend part of our example, `@clerk/nextjs` provides access to the Clerk pre-built components and helpers to enhance your application with user authentication, as quickly and intuitively as possible. Below we will show some of the code snippets that guarantee user authenticated behaviours.
+
+### Only allow interface actions to specific users
+
+Our users should be able to delete only their own posts and capability should be as intuitive as possible on the interface level. To achieve this, we include a deletion button on our post cards, only visible to users which are signed in and their email matches the author of the post.
+
+```tsx
+function PostCard({ deletePost }) {
+  /** Clerk hook */
+  const user = useUser()
+  /** Get the user email address */
+  const primaryEmailAddress = user.primaryEmailAddress?.emailAddress
+
+  return (
+    <CardLayout>
+      {/* ... */}
+      {primaryEmailAddress === post.authorEmail && (
+        <Image
+          cursor="pointer"
+          onClick={async () => await deletePost(post.id)}
+          boxSize="20px"
+          alt="delete"
+          src="/images/trash.png"
+        />
+      )}
+      {/* ... */}
+    </CardLayout>
+  )
+}
+```
+
+As you can see, just by using the `useUser` hook from the Clerk package, we are able to get all the required properties for the signed in user, and achieve the functionality we described.
+
+### Authenticated access to Prisma models
+
+To safeguard your data from unauthenticated access and unauthorized operations directly at the  Prisma model API, you only need to add a thin middleware layer on top of the data model access code. This middleware for our application, will use the `@clerk/nextjs/api` in the API routes to determine the authentication status and recognize the signed in user.
+
+```typescript
+async function handler(req: RequireSessionProp<NextApiRequest>, res: NextApiResponse) {
+  /** On how this works visit https://nextjs.org/docs/api-routes/dynamic-api-routes */
+  const postId = req.query.id as string
+
+  /**
+   * For this example, we want to identify the email of the person trying to modify some post.
+   * We do this through the Clerk cookie ;)
+   */
+  const primaryEmailAddress = await getClerkUserPrimaryEmail(req.session.userId as string)
+
+  /** We check if the persisted post email matches the requesters. */
+  const persistedPost = await getPostById(postId)
+
+  if (primaryEmailAddress !== persistedPost?.authorEmail) {
+    /** If it does not match, he will get a 401 */
+    res.status(401).end()
+  }
+
+  switch (req.method) {
+    case 'PUT':
+      /** The client will send the post object in the PUT request body. */
+      const modifiedPost = req.body
+      const updatedPost = await updatePost(postId, modifiedPost)
+
+      res.status(200).json(updatedPost)
+      break
+    case 'DELETE':
+      await deletePost(postId)
+      res.status(200).json({ completed: true })
+      break
+    default:
+      res.status(405).end()
+      break
+  }
+}
+
+export default requireSession(handler)
+```
+
+The requireSession helper guarantees that an authenticated user is accessing the endpoint, and also populates the `req.session` attribute on the request object coming from Next.js.
+
+In this endpoint, we retrieve the primary email address of the authenticated user and compare it with the author of the post to be deleted or updated. For the sake of the example, we only check for the primary email address of the user, but since Clerk also supports multiple email addresses per account, you could adjust the logic accordingly.
+
+## Wrapping up
+
+This showcase application demonstrates how, with little effort, you can add authentication and authorization to both the frontend and the backend layers using Clerk and Prisma. Prisma has proved to be an excellent addition to an engineer’s arsenal, especially when it comes to simplicity, productivity and type safety. Folks at Prisma have done an excellent job listening to community feedback, adding new features and solidifying their place as one of the top ORMs out there.
+
+At Clerk we strongly believe that you as an engineer should not have to spend so much time and effort building and maintaining authentication workflows. Authentication, user management and security are hard, and we focus exclusively on giving you the best in class solution. All this so you can focus on what really matters, which is realizing the idea that makes your product unique.
+
+If you have any feedback, are running into trouble, or just want to share what you've built - we'd love to hear from you! Reach out to us on X @clerk, on our Discord community, or through any of our other support channels.

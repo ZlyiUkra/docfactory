@@ -1,0 +1,102 @@
+# Postmortem: June 26, 2025 service outage
+# джерело: https://clerk.com/blog/postmortem-jun-26-2025-service-outage
+# отримано: 2026-09-25
+
+On June 26, 2025, all Clerk services were down from 6:16 UTC to 7:01 UTC, caused by an outage of our compute infrastructure that impacted all Clerk customers.
+
+We are deeply sorry for this outage. Clerk is a critical infrastructure component for our customers, and we take our reliability and uptime seriously. We know that any amount of downtime is unacceptable, and regardless of the cause, our system’s reliability is our responsibility and we fell short of our standards and your expectations.
+
+Graph of request throughput to our services during the outage. (GMT+3)
+
+_Graph of request throughput to our services during the outage. (GMT+3)_
+
+## Timeline of events
+
+- 6:16 UTC: Downtime begins and the team starts its investigation
+- 6:20 UTC: The team determines that there was neither a deploy coincident with the failure,  nor a spike in traffic
+- 6:28 UTC: The team identifies that our Google Cloud Run containers are in a continuous restart loop, and receiving `SIGINT` shutdown signals immediately on start
+- 6:32 UTC: The team decides to begin preparing a new release, to test if the `SIGINT`s are related to the particular container
+- 6:40 UTC: A fresh container is prepared and deployed, and it also immediately receives a `SIGINT`
+- 6:41 UTC: Unable to find a root cause, a P1 incident is filed with Google and we begin speaking with their support
+- 6:49 UTC: We receive the first indication that there is an incident at Google: _“I’ve inspected your Cloud Run service and we suspect that you’re being impacted by the internal incident. Please allow me some time to confirm more on this while I reach out to the Specialist”_
+- 6:50 UTC: We ask Google which incident, since none has been posted on its status page
+- 6:55 UTC: Google responds: _”Yes, this seems to be not yet confirmed hence I’m checking with the Cloud Run Specialist to confirm the same”_
+- 7:01 UTC: Service is restored
+- 7:32 UTC: We receive the first official confirmation of an incident from Google, via an event from their Service Health API:
+```text
+  {
+    @type: "type.googleapis.com/google.cloud.servicehealth.logging.v1.EventLog"
+    category: "INCIDENT"
+    description: "We are experiencing an  issue with Cloud Run beginning at Wednesday, 2025-06-25 23:16 PDT.
+
+    Our engineering team continues to investigate the issue.
+
+    We will provide an update by Thursday, 2025-06-26 00:45 PDT with current details.
+
+    We apologize to all who are affected by the disruption."
+    detailedCategory: "CONFIRMED_INCIDENT"
+    detailedState: "CONFIRMED"
+    impactedLocations: "['us-central1']"
+    impactedProductIds: "['9D7d2iNBQWN24zc1VamE']"
+    impactedProducts: "['Cloud Run']"
+    nextUpdateTime: "2025-06-26T07:45:00Z"
+    relevance: "RELATED"
+    startTime: "2025-06-26T06:16:42Z"
+    state: "ACTIVE"
+    symptom: "The impacted customers in the us-central1 region may observe the service issues while using Cloud Run DirectVPC."
+    title: "Cloud Run customers are experiencing an issue in us-central1 region"
+    updateTime: "2025-06-26T07:32:13.864860Z"
+    workaround: "None at this time."
+  }
+```
+
+## What specifically went wrong?
+
+We architected Clerk to be resilient against failures in Google Cloud availability zones, but not entire regions. Cloud Run is stated to provide zonal redundancy, which implies that this incident was caused by a full regional failure.
+
+On the other hand, if this was truly a regional failure, we would expect many more services to be impacted than just Clerk. While there was some discussion on Hacker News, the blast radius of this event is surprisingly small for a regional failure.
+
+We are awaiting more information from Google about exactly which system failed, and will update this post when it’s received.
+
+**Update (June 27, 12:40AM UTC):** Google has notified us that their root cause analysis would be published by June 30.
+
+**Update (July 8):** Google provided an RCA Summary, titled _"Cloud Run customers are experiencing an issue in “us-central1” region"_ (Event ID: `MLFZZXV`)
+
+- On June 25th 23:16 PDT, Cloud Run Direct VPC workloads in the `us-central1` region experienced downtime for a duration of 51 minutes (June 26 00:07 PDT).
+- Workloads in our cloud regions are served out of multiple partitions. Every app deployment is randomly assigned to a primary partition (this cannot be controlled by customers, and is not visible to them). In this incident, only one partition was impacted. As a result approximately 15% of Direct VPC workloads in “us-central1” experienced downtime.
+- Workloads in a serving partition are typically served from multiple capacity pools. Our capacity management system uses a load balancer configuration for each capacity pool to signal whether or not the capacity in the pool is online. However, for safety reasons the capacity management system is designed to fail open — that is, if the load balancer configuration is not present, customer workloads can still serve from this capacity.
+- This incident was the result of the above tooling implementation alongside the design of our scaling for Direct VPC workloads. Post mitigation and confirmation of the issue’s resolution, our product and SRE teams have deep dived into the architecture which led to this incident and is committed to improving our service to ensure there is no recurrence of this issue.
+
+> **Clerk's interpretation** This RCA indicates that a design flaw with Google Cloud Run's zonal redundancy caused our traffic to fail completely, instead of failover into a different capacity pool. This outcome is what we anticipated, and our remediation of regional failovers should prevent similar failures in the future.
+
+## Remediations
+
+When incidents like this happen, we immediately turn our attention toward preventing their recurrence. Regardless of the root cause, it is our responsibility to build a service that is resilient to failures within our infrastructure providers. To that end, we are starting the following remediations:
+
+### Regional failover for compute (immediate)
+
+This incident could have been mitigated with a failover that shifted our Cloud Run traffic to a different region when `us-central1` began failing. Work is starting on this immediately.
+
+### Multi-cloud redundancy for compute
+
+Although Google Cloud Platform (GCP) was remarkably stable for Clerk’s early years, we have faced three major server disruptions since May 2025 that we attribute to GCP incidents. This shows that we need to explore additional redundancy outside of a single cloud vendor.
+
+We will begin investigating multi-cloud redundancy for our compute infrastructure. This would make Clerk resilient to complete service failures of Cloud Run, as well as failure of Google’s Cloud Load Balancer.
+
+### Additional service isolation and redundancy for session management
+
+Any incident in our Session Management service has an outsized impact on our customers, since it results in complete downtime of their service.
+
+Following an incident in February, we isolated our Session Management service from our User Management service, ensuring that bugs in our User Management codebase would not impact the availability of our Session Management service.
+
+Unfortunately, in the event of a compute outage at origin like we saw in this incident, both services still come down.
+
+To further mitigate session management failures, we are exploring architectural changes that will allow Clerk to continue issuing session tokens for a greater variety of incidents. Though a longer-term project, this will include bringing distributed storage and compute to our Session Management service.
+
+## Looking ahead
+
+This list of remediations we are exploring is not exhaustive, and doesn’t represent a final state for our efforts to make Clerk as resilient as possible. We will continue to invest in stability and scalability to make sure our customers can rely on Clerk as a critical service provider.
+
+This was a serious outage, and we know that businesses rely on Clerk. We are again deeply sorry for the impact on our customers and will continue working to improve our reliability going forward.
+
+For any questions, please contact support.

@@ -1,0 +1,848 @@
+# Build a Movie Emoji Quiz App with Remix, Fauna, and Clerk
+# джерело: https://clerk.com/blog/build-movie-emoji-quiz-with-remix-fauna-and-clerk
+# отримано: 2026-09-25
+
+> Fauna’s service ended on May 30, 2025, but they’ve open-sourced their codebase.
+
+## Project setup
+
+A fun challenge coming out of the modern smartphone world is to identify a movie based only on a sequence of emoji. Sometimes the emoji “spell out” the words in the title, while other times they identify key plot themes. Test the emoji game of all the movie buffs you know by building a Movie Emoji Quiz app.
+
+In this tutorial, we will build the app using the Remix full-stack web framework, a Fauna database, and Clerk for authentication and user management. Remix is a relatively new, open-source framework for React that has been gaining traction. Fauna is a developer-friendly, cloud-based database platform that offers modern features, such as real-time streaming and GraphQL. Clerk, an authentication provider built for the modern web, has a first-party Remix authentication package and integrates with Fauna through its JWT templates feature.
+
+A brief web search didn't come up with any existing Remix and Fauna tutorials. And then I found this tweet from Ryan Florence (@ryanflorence), the co-founder of Remix:
+
+> I really want to build some demos with FaunaDB (I love the direction they're going) and AWS DynamoDB (I mean, come on, it's solid) as well. — Ryan Florence (@ryanflorence) April 6, 2021
+
+That sold me on moving forward in building with this stack.
+
+If you would like to skip ahead, you can see the [completed
+codebase](https://github.com/clerkinc/remix-fauna-tutorial) here.
+
+### Assumptions
+
+This tutorial makes the following assumptions...
+
+- Basic command line usage
+- Node.js (≥ v14) installed with `npm` (≥ v7)
+- Experience with React components and hooks
+- Clerk and Fauna accounts already set up (if you haven’t done so, do it now\... we’ll wait)
+
+### Set up a Clerk application
+
+The first step is to create a new application from the Clerk dashboard. We’ll name this application **Movie Emoji Quiz** and leave the default **Password** authentication strategy selected. We’re also going to choose **Google** and **Twitter** as the social login providers, but feel free to select whichever ones you and your friends use.
+
+Build Movie Emoji Quiz With Remix Fauna And Clerk guide illustration
+
+Click the **Add application** button and your Clerk development instance will be created.
+
+### Create Remix project
+
+The next step is to create the Remix project. Run the following command in your terminal:
+
+```bash
+npx create-remix movie-emoji-quiz
+```
+
+It may prompt you to install the create-remix package. Then respond with the following:
+
+```text
+? What type of app do you want to create? Just the basics
+? Where do you want to deploy? Remix App Server
+? Do you want me to run `npm install`? Yes
+```
+
+It will then ask “TypeScript or JavaScript?”, we’re going with **JavaScript** on this one, but that’s up to your personal preference.
+
+As the instructions state, change into the app directory with `cd movie-emoji-quiz/`
+
+Now install the two dependencies we need for this application:
+
+```bash
+npm install @clerk/remix faunadb
+```
+
+Next, touch `.env` to create an environment variables file and replace `<YOUR_FRONTEND_API>` and `<YOUR_CLERK_API_KEY> `with their respective values from your Clerk instance, which you can get from the API keys page.
+
+```yaml
+CLERK_FRONTEND_API=<YOUR_FRONTEND_API>
+CLERK_API_KEY=<YOUR_CLERK_API_KEY>
+```
+
+Once those environment variables are set, spin up the Remix dev server:
+
+```bash
+npm run dev
+```
+
+### Set up Clerk authentication
+
+To share authentication state with Remix routes, we need to make three modifications to the `app/root.jsx` file:
+
+1. Export `rootAuthLoader` as `loader`
+2. Export `ClerkCatchBoundary` as `CatchBoundary`
+3. Wrap the default export with `ClerkApp`
+
+```jsx
+import { rootAuthLoader } from '@clerk/remix/ssr.server'
+import { ClerkApp, ClerkCatchBoundary } from '@clerk/remix'
+
+export const loader = (args) => rootAuthLoader(args) /* 1 */
+export const CatchBoundary = ClerkCatchBoundary() /* 2 */
+
+function App() {
+  return <html lang="en">{/*...*/}</html>
+}
+
+export default ClerkApp(App) /* 3 */
+```
+
+Clerk supports Remix SSR out-of-the-box.
+
+### Set up Fauna database
+
+From the Fauna dashboard, create a new database. We named ours **emoji-movie-quiz** and chose the **Classic** Region Group.
+
+We only need to create one Collection for this application. You can do so either in the Dashboard UI or in the interactive query shell.
+
+To do it in the shell, type the following:
+
+```javascript
+CreateCollection({ name: 'challenge' })
+```
+
+Then press the **Run query** button. If it was successful, you should see similar output.
+
+Build Movie Emoji Quiz With Remix Fauna And Clerk guide illustration
+
+We’re going to seed the database with a few examples to get started. If you’ve never used the Fauna Query Language (FQL) before, the syntax may look a little funny.
+
+```javascript
+Map(
+  [
+    { emoji: '🔕🐑🐑🐑', title: 'Silence of the Lambs' },
+    { emoji: '💍💍💍💍⚰️', title: 'Four Weddings and a Funeral' },
+    { emoji: '🏝🏐', title: 'Castaway' },
+    { emoji: '👽📞🏡', title: 'E.T.' },
+    { emoji: '👂👀👃👅✋6️⃣', title: 'The Sixth Sense' },
+  ],
+  Lambda('data', Create(Collection('challenge'), { data: Var('data') })),
+)
+```
+
+This will map over the examples array and create a new document with challenge data for each item in the Challenge collection.
+
+To learn more about FQL, check out the Fauna docs and this handy [cheat
+sheet](https://docs.fauna.com/fauna/current/api/fql/cheat_sheet).
+
+You can navigate to the **Collections** tab to validate that the data is all set. You can even make edits directly from the user interface if you prefer.
+
+Build Movie Emoji Quiz With Remix Fauna And Clerk guide illustration
+
+While we’re here, let’s navigate over to the **Functions** tab and write a couple FQL functions we will need later.
+
+Click the **New Function** button, name it `getChallenges`, and then paste the following function body:
+
+```javascript
+Query(
+  Lambda(
+    [],
+    Map(
+      Paginate(Documents(Collection('challenge'))),
+      Lambda(
+        'challenge',
+        Let(
+          {
+            challengeRef: Get(Var('challenge')),
+            data: Select('data', Var('challengeRef')),
+            refId: Select(['ref', 'id'], Var('challengeRef')),
+          },
+          Merge(Var('data'), { id: Var('refId') }),
+        ),
+      ),
+    ),
+  ),
+)
+```
+
+This function will get all the challenges and include the unique document ID inside each data object.
+
+You can test out the functionality in the Shell by running:
+
+```javascript
+Call('getChallenges')
+```
+
+The second function we’re going to define is called `getChallengeById` and will take the unique document ID parameter and return the respective challenge data or `null` if it doesn’t exist.
+
+```javascript
+Query(
+  Lambda(
+    'id',
+    Let(
+      {
+        challengeRef: Ref(Collection('challenge'), Var('id')),
+        exists: Exists(Var('challengeRef')),
+        challenge: If(Var('exists'), Get(Var('challengeRef')), null),
+      },
+      Select('data', Var('challenge'), null),
+    ),
+  ),
+)
+```
+
+That’s all of the custom functions we’ll need here.
+
+### Authentication integration
+
+Although Fauna offers built-in identity and basic password authentication, it requires that you manage the user data yourself and does not provide features like prebuilt UI components, `<UserProfile />` access, and other auth strategies such as OAuth social login and magic links. Clerk provides these features and more without the hassle of managing your own user and identity service.
+
+The Clerk integration with Fauna enables you to authenticate queries to your Fauna database using a JSON Web Token (JWT) created with a JWT template.
+
+From your Clerk dashboard, navigate to the JWT Templates screen. Click the **New template** button and choose the **Fauna** template.
+
+Build Movie Emoji Quiz With Remix Fauna And Clerk guide illustration
+
+Take note of the default template name of fauna (as this will come up later). You can leave the default settings and optionally add your own custom claims using convenient shortcodes.
+
+Build Movie Emoji Quiz With Remix Fauna And Clerk guide illustration
+
+While keeping this tab open, go back to the Fauna dashboard and navigate to the **Security** page.
+
+Click on the **Roles** tab and then create a **New Custom Role**. Name this role `user` and give it **Read** and **Create** access to the `challenge` collection as well as **Call** permission for both `getChallenges` and `getChallengeById` functions.
+
+Build Movie Emoji Quiz With Remix Fauna And Clerk guide illustration
+
+If everything looks correct, click **Save** to create the user role.
+
+Next, click on the **Providers** tab and click on the **New Access Provider** button.
+
+Enter `Clerk` as the name to identify this access provider.
+
+We’re going to play a little pattycake back-and-forth between Fauna and Clerk, but bear with me and we’ll get through it together.
+
+1. **Fauna**: Copy the **Audience** URL and go back to the Clerk JWT template tab.
+2. **Clerk**: Paste the Audience URL as the value for the `aud` claim.
+3. **Clerk**: Copy the **Issuer** URL.
+4. **Fauna**: Paste into Issuer field.
+5. **Clerk**: Copy the **JWKS Endpoint** URL.
+6. **Fauna**: Paste into the JWKS endpoint field.
+7. **Fauna**: Select the **user** role for access.
+
+Build Movie Emoji Quiz With Remix Fauna And Clerk guide illustration
+
+After those fields have been set, you can save both the Clerk JWT template and Fauna access provider. Whew! That was fun.
+
+### Add Clerk auth to Remix
+
+Now we can get back into building our application. Open the Remix project in your code editor of choice.
+
+In Remix, `app/root.jsx` wraps your entire application in both server and browser contexts.
+
+Clerk requires a few modifications to this file so the authentication state can be shared with your Remix routes. First, add these imports to `app/root.jsx`:
+
+```jsx
+import { rootAuthLoader } from '@clerk/remix/ssr.server'
+import { ClerkApp, ClerkCatchBoundary } from '@clerk/remix'
+```
+
+Second, export `rootAuthLoader` as `loader` taking in the args parameter.
+
+```javascript
+export const loader = (args) => rootAuthLoader(args)
+```
+
+Next, we need to export the `ClerkCatchBoundary` as `CatchBoundary` to handle expired authentication tokens. If you want your own custom boundary, you can pass it in as the first argument.
+
+```javascript
+export const CatchBoundary = ClerkCatchBoundary()
+```
+
+And finally, we need to wrap the default export with the `ClerkApp` higher-order component.
+
+```jsx
+export default ClerkApp(function App() {
+  return <html lang="en">{/*[...]*/}</html>
+})
+```
+
+That’s all that’s needed to install and configure Clerk for authentication. The next step will include adding sign in functionality.
+
+### Add SignIn to index route
+
+We’re going to use the Clerk hosted `<SignIn />` component to render the sign in form.
+
+Update `app/routes/index.jsx` with the following:
+
+```jsx
+import { SignIn } from '@clerk/remix'
+import styles from '~/styles/index.css'
+
+export const links = () => {
+  return [{ rel: 'stylesheet', href: styles }]
+}
+
+export default function Index() {
+  return (
+    <div>
+      <main>
+        <div className="content">
+          <SignIn />
+        </div>
+      </main>
+    </div>
+  )
+}
+```
+
+We’re using Remix’s route styles functionality to dynamically add a stylesheet to this route.
+
+Create a `styles` directory inside of the `app` folder and save the following as `index.css`:
+
+app/styles/index.css
+
+Your app should now look something like:
+
+Build Movie Emoji Quiz With Remix Fauna And Clerk guide illustration
+
+If you see a blank screen, you may be already signed in. We will handle that case momentarily.
+
+Inside of the `app` directory, create a folder called `components` and a file called `header.jsx`.
+
+Drop in the following code:
+
+```jsx
+import { SignedIn, UserButton } from '@clerk/remix'
+
+export default function Header() {
+  return (
+    <header>
+      <span className="logo">Movie Emoji Quiz</span>
+      <SignedIn>
+        <UserButton />
+      </SignedIn>
+    </header>
+  )
+}
+```
+
+Here we’re making use of the `<SignedIn>` control flow component and the `<UserButton />` which will allow us to edit our profile and sign out.
+
+Go back to `app/routes/index.jsx` and import the `<Header />` component and add it just above the `<main>` element:
+
+```jsx
+import Header from '../components/header'
+
+export default function Index() {
+  return (
+    <div>
+      <Header />
+      <main>
+        <div className="content">
+          <SignIn />
+        </div>
+      </main>
+    </div>
+  )
+}
+```
+
+If you sign in, you should now see your avatar. Click on it to see the user profile menu.
+
+Build Movie Emoji Quiz With Remix Fauna And Clerk guide illustration
+
+You can now sign in, sign out, and manage your account. Clerk makes it super easy with their hosted components.
+
+### Authenticate with the Fauna client
+
+In order to start fetching data from our Fauna database, we need to set up the Fauna client.
+
+Create a `utils` folder inside of `app` and a file named `db.server.js`.
+
+The `.server` naming convention is a hint to the compiler to ignore this file in the browser bundle.
+
+Add the following code:
+
+```javascript
+import { getAuth } from '@clerk/remix/ssr.server'
+import faunadb from 'faunadb'
+
+export const getClient = async (request) => {
+  const { userId, getToken } = await getAuth(request)
+
+  if (!userId) {
+    return null
+  }
+
+  const secret = await getToken({ template: 'fauna' })
+
+  return new faunadb.Client({ secret })
+}
+
+export const q = faunadb.query
+```
+
+Here we are using the `getAuth` function from Clerk to check if we have a `userId` (e.g. if the user is signed in) and to get access to the `getToken` function, which when called with our Fauna JWT template name (it was simply “fauna” if you remember), will be passed to the Fauna client as the authentication secret.
+
+If the user is signed in and we get access to the Fauna JWT template, we should then be able to make queries against our Fauna database.
+
+We are also exporting `q` here, which is a convention when using `faunadb.query`. This way all our database helper functions are kept in the same place.
+
+## Display movie challenges
+
+Now it’s time to display some of these challenges.
+
+First let’s create a new route at `/challenges`. We do this by creating a file `app/routes/challenges.jsx` and populating it with the following:
+
+```jsx
+import { Outlet } from '@remix-run/react'
+import Header from '../components/header'
+import styles from '~/styles/index.css'
+
+export const links = () => {
+  return [{ rel: 'stylesheet', href: styles }]
+}
+
+export default function Challenges() {
+  return (
+    <div>
+      <Header />
+      <main>
+        <div className="content">
+          <Outlet />
+        </div>
+      </main>
+    </div>
+  )
+}
+```
+
+This should look the same as the index route, with the exception being `<SignIn />` is replaced with the Remix `<Outlet />` component.
+
+Next, import the database utils we previous created and export a `loader` function with the below code:
+
+```javascript
+import { getClient, q } from '../utils/db.server'
+
+export const loader = async ({ request }) => {
+  const client = await getClient(request)
+
+  if (!client) {
+    return null
+  }
+
+  const response = await client.query(q.Call('getChallenges'))
+
+  // Check your terminal for response data
+  console.log(response)
+
+  return json(response)
+}
+```
+
+You can see we’re using the Fauna client to perform a FQL query to call the `getChallenges` function we created. If all went well, check your terminal window (not the browser console) and you should see the response data.
+
+Create a new file `app/components/sidebar.jsx` that will loop over this data and create links to each challenge based on its ID.
+
+```jsx
+import { NavLink } from '@remix-run/react'
+
+export default function Sidebar({ data }) {
+  return (
+    <aside>
+      <h2>Guess these movies...</h2>
+      <ul>
+        {data?.map((movie) => (
+          <li key={movie.id}>
+            <NavLink to={`/challenges/${movie.id}`}>{movie.emoji}</NavLink>
+          </li>
+        ))}
+      </ul>
+    </aside>
+  )
+}
+```
+
+Import the `<Sidebar />` component in the index route directly under the `main` element.
+
+To access the data from the loader, we will use the aptly named `useLoaderData` hook from Remix and pass the `data` property to the `Sidebar` component:
+
+```jsx
+export default function Challenges() {
+  const { data } = useLoaderData()
+
+  return (
+    <div>
+      <Header />
+      <main>
+        <Sidebar data={data} />
+        <div className="content">
+          <Outlet />
+        </div>
+      </main>
+    </div>
+  )
+}
+```
+
+If you visit http://localhost:3000/challenges, you should now see the emoji challenges rendered as links in the sidebar:
+
+Build Movie Emoji Quiz With Remix Fauna And Clerk guide illustration
+
+If you click on the links, they will cause an error because we haven’t created those individual challenge routes. Let’s do that now.
+
+### Create challenge route
+
+Let’s create a new stylesheet that will hold the challenge styles at `app/styles/challenge.css`.
+
+app/styles/index.css
+
+Next, create a file inside a folder at the path `app/routes/challenges/$id.jsx`
+
+The `$` prefix is important here as it creates a dynamic segment.
+
+Add the following code:
+
+```jsx
+import { json } from '@remix-run/node'
+import { useLoaderData } from '@remix-run/react'
+import { getClient, q } from '../../utils/db.server'
+import styles from '~/styles/challenge.css'
+
+export const links = () => {
+  return [{ rel: 'stylesheet', href: styles }]
+}
+
+export const loader = async ({ params, request }) => {
+  const client = await getClient(request)
+
+  if (isNaN(params.id)) {
+    throw new Response('Challenge not found', {
+      status: 404,
+    })
+  }
+
+  const challenge = await client.query(q.Call('getChallengeById', params.id))
+
+  if (!challenge) {
+    throw new Response('Challenge not found', {
+      status: 404,
+    })
+  }
+
+  return json(challenge)
+}
+
+export default function Challenge() {
+  const { emoji } = useLoaderData()
+
+  return (
+    <div>
+      <span className="emoji">{emoji}</span>
+    </div>
+  )
+}
+```
+
+This code follows a similar pattern to what we did in the sidebar with the `loader` and the `useLoaderData` hook. The difference here is we’re calling the `getChallengeById` FQL function and passing it the `id` parameter, which comes from the `$id` dynamic route.
+
+We are also using a Remix convention of throwing `Response` objects for error scenarios (e.g. invalid ID, challenge not found).
+
+If you click on the links in the sidebar, you should now see each emoji challenge rendered in its full glory (a large type size).
+
+Build Movie Emoji Quiz With Remix Fauna And Clerk guide illustration
+
+### Challenge form
+
+Now it’s time to add the form to submit guesses for the emoji challenges. Form handling is one area where Remix really shines.
+
+Add the following form markup below the emoji:
+
+```jsx
+<form method="post" autoComplete="off">
+  <label htmlFor="guess">What movie is this?</label>
+  <input id="guess" type="text" name="guess" placeholder="Enter movie title..." required />
+  <button className="submit-btn">Submit guess</button>
+</form>
+```
+
+This is pretty standard JSX form markup. Nothing too fancy going on here.
+
+Let’s import our DB utils as well as the `json` Response helper from Remix.
+
+```javascript
+import { json } from '@remix-run/node'
+import { getClient, q } from '~/utils/db.server'
+```
+
+Then export the following action function:
+
+```javascript
+export const action = async ({ params, request }) => {
+  const form = await request.formData()
+  const guess = form.get('guess')
+  const client = await getClient(request)
+  const challenge = await client.query(q.Call('getChallengeById', params.id))
+  const isCorrect = guess.toLowerCase() === challenge.title.toLowerCase()
+
+  return json({
+    guessed: isCorrect ? 'correct' : 'incorrect',
+    message: isCorrect ? 'Correct! ✅' : 'Incorrect! ❌',
+    answer: challenge.title,
+  })
+}
+```
+
+Here we’re using native FormData methods to read the guess input and comparing it against the challenge title we get by calling our FQL `getChallengeById` function with the challenge ID from the route params.
+
+Based on whether the guess matches the title (case insensitive), we return an appropriate JSON response. We can access the action data using the `useActionData` hook (also aptly named).
+
+```javascript
+import { useActionData, useLoaderData } from '@remix-run/react'
+```
+
+Now we can update the UI to display the correct message based on the guess submitted.
+
+```jsx
+export default function Challenge() {
+  const { emoji } = useLoaderData()
+  const data = useActionData()
+
+  return (
+    <div>
+      <span className="emoji">{emoji}</span>
+      <form method="post" autoComplete="off">
+        <label htmlFor="guess">What movie is this?</label>
+        <input id="guess" type="text" name="guess" placeholder="Enter movie title..." required />
+        {data?.guessed ? (
+          <p className={`message message--${data.guessed}`}>{data.message}</p>
+        ) : null}
+        <button className="submit-btn">Submit guess</button>
+        {data?.guessed === 'incorrect' ? (
+          <div className="reveal">
+            <button className="reveal-btn" type="button">
+              Reveal answer
+            </button>
+            <span className="reveal-text">{data?.answer}</span>
+          </div>
+        ) : null}
+      </form>
+    </div>
+  )
+}
+```
+
+If an incorrect guess is submit, we provide the user a way to reveal the answer.
+
+Build Movie Emoji Quiz With Remix Fauna And Clerk guide illustration
+
+The form should now work to submit correct and incorrect guesses.
+
+### Handling transitions
+
+Because the form is shared between different challenge routes, if you enter text in one input and go to another challenge, you will see the input value is not being cleared.
+
+We can fix this by using the `useTransition` hook, putting a ref on the form element, and then resetting the form when the transition is a normal page load.
+
+```jsx
+export default function Challenge() {
+  const { emoji } = useLoaderData()
+  const data = useActionData()
+  const transition = useTransition()
+  const ref = useRef()
+
+  useEffect(() => {
+    if (transition.type == 'normalLoad') {
+      // Reset form on route change
+      ref.current && ref.current.reset()
+    }
+  }, [transition])
+
+  return (
+    <div>
+      <span className="emoji">{emoji}</span>
+      <form ref={ref} method="post" autoComplete="off">
+        <label htmlFor="guess">What movie is this?</label>
+        <input id="guess" type="text" name="guess" placeholder="Enter movie title..." required />
+        {data?.guessed ? (
+          <p className={`message message--${data.guessed}`}>{data.message}</p>
+        ) : null}
+        <button className="submit-btn">Submit guess</button>
+        {data?.guessed === 'incorrect' ? (
+          <div className="reveal">
+            <button className="reveal-btn" type="button">
+              Reveal answer
+            </button>
+            <span className="reveal-text">{data?.answer}</span>
+          </div>
+        ) : null}
+      </form>
+    </div>
+  )
+}
+```
+
+You will need to add the necessary hook imports from React and Remix.
+
+```javascript
+import { useEffect, useRef } from 'react'
+import { useActionData, useLoaderData, useTransition } from '@remix-run/react'
+```
+
+After that is added, the form should clear when choosing a different challenge.
+
+## Submit new challenges
+
+This app is not much so much fun if users can’t submit their own movie emoji challenges. So that’s the functionality we’re going to add now.
+
+As with most things in Remix, the first thing we need to do is create a new route.
+
+Create `app/routes/challenges/new.jsx` with the following:
+
+```jsx
+import { getAuth } from '@clerk/remix/ssr.server'
+import { json, redirect } from '@remix-run/node'
+import { Form, useActionData } from '@remix-run/react'
+import { getClient, q } from '~/utils/db.server'
+import styles from '~/styles/challenge.css'
+
+export const links = () => {
+  return [{ rel: 'stylesheet', href: styles }]
+}
+
+const badRequest = (data) => json(data, { status: 400 })
+
+const validateEmoji = (emoji) =>
+  !emoji.trim() || /\p{L}|\p{N}(?!\uFE0F)|\p{Z}/gu.test(emoji)
+    ? 'Please enter only emoji'
+    : undefined
+
+const validateTitle = (title) =>
+  title && title.length > 1 ? undefined : 'Please enter a movie title'
+
+export const action = async ({ request }) => {
+  const form = await request.formData()
+  const emoji = form.get('emoji')
+  const title = form.get('title')
+
+  if (typeof emoji !== 'string' || typeof title !== 'string') {
+    return badRequest({
+      formError: 'Form not submitted correctly.',
+    })
+  }
+
+  const fieldErrors = {
+    emoji: validateEmoji(emoji),
+    title: validateTitle(title),
+  }
+
+  if (Object.values(fieldErrors).some(Boolean)) {
+    return badRequest({
+      fieldErrors,
+      fieldValues: {
+        emoji,
+        title,
+      },
+    })
+  }
+
+  const { userId } = await getAuth(request)
+  const client = await getClient(request)
+  const data = {
+    emoji,
+    title,
+    userId,
+  }
+
+  const response = await client.query(q.Create('challenge', { data }))
+
+  return redirect(`/challenges/${response.ref.value.id}`)
+}
+
+export default function NewRoute() {
+  const actionData = useActionData()
+
+  return (
+    <div>
+      <h1>Create new challenge</h1>
+      <Form method="post" autoComplete="off">
+        <div className="form-field">
+          <label htmlFor="emoji">Emoji</label>
+          <input id="emoji" type="text" name="emoji" />
+        </div>
+        {actionData?.fieldErrors?.emoji ? (
+          <p className="form-validation-error" role="alert" id="name-error">
+            {actionData.fieldErrors.emoji}
+          </p>
+        ) : null}
+        <div className="form-field">
+          <label htmlFor="title">Movie</label>
+          <input id="title" type="text" name="title" />
+        </div>
+        {actionData?.fieldErrors?.title ? (
+          <p className="form-validation-error" role="alert" id="name-error">
+            {actionData.fieldErrors.title}
+          </p>
+        ) : null}
+        {actionData?.formError ? (
+          <p className="form-validation-error" role="alert">
+            {actionData.formError}
+          </p>
+        ) : null}
+        <button className="submit-btn">Submit challenge</button>
+      </Form>
+    </div>
+  )
+}
+```
+
+This time we’re using the `Form` component provided by Remix, which helps with automatically serializing the values. There’s validation logic to check for valid emoji and titles. If the validation passes, we create a new challenge. We use the `getAuth` function from Clerk to send in the user ID along with the emoji and title. These values form the data for a new challenge document in Fauna. On a successful document creation, the user is redirected to the new challenge page.
+
+Let’s add a link to the header so we can get to this page. It’s wrapped with `<div className="actions">` to provide the necessary styling.
+
+```jsx
+import { SignedIn, UserButton } from '@clerk/remix'
+import { Link } from '@remix-run/react'
+
+export default function Header() {
+  return (
+    <header>
+      <span className="logo">Movie Emoji Quiz</span>
+      <SignedIn>
+        <div className="actions">
+          <Link to="/challenges/new">Submit challenge</Link>
+          <UserButton />
+        </div>
+      </SignedIn>
+    </header>
+  )
+}
+```
+
+Clicking the link should take you to the page where you can create a new challenge. You should see validation errors if you don’t fill out the form properly.
+
+Build Movie Emoji Quiz With Remix Fauna And Clerk guide illustration
+
+Once submitted, you will be redirected to the new challenge page. Because the action created a new mutation, Remix will automatically update the data in the sidebar. Neat!
+
+Build Movie Emoji Quiz With Remix Fauna And Clerk guide illustration
+
+You now have a working Movie Emoji Quiz app. If you’re ready to share it with your family and friends, Remix makes deployment very easy and has support for various deployment targets. Using the Vercel CLI, all you need to deploy your Remix app is run:
+
+```bash
+npm i -g vercel
+vercel
+```
+
+And your app will be live within minutes!
+
+## Next steps
+
+To take this app even further, you can do the following:
+
+- Add catch boundaries and redirects to handle error cases and invalid challenge routes
+- Create Remix routes for `/sign-in` and `/sign-out` to use mounted Clerk components
+- Use the Clerk User API to query the username for each user user-submitted challenge so you can give them credit for their cleverness
+- Keep track of correct guesses and display an indicator in the UI so the user knows which challenges they have yet to tackle
+
+If you enjoyed this tutorial or have any questions, feel free to reach out to me (**@devchampian**) on X, follow **@clerk**, or join our **Discord community** to connect with other developers. Happy coding!

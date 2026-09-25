@@ -1,0 +1,129 @@
+# Adding Clerk auth to your CLI
+# джерело: https://clerk.com/blog/adding-clerk-auth-to-your-cli
+# отримано: 2026-09-25
+
+CLI auth usually goes wrong in one of two ways: users paste API keys into config files, or developers invent long-lived tokens that never quite expire.
+
+The better pattern is the one developers already recognize from tools like Vercel, Stripe, Supabase, and GitHub: open the browser, sign in, return to the terminal, and keep the session in the OS keychain. Under the hood, that usually means OAuth 2.0 Authorization Code with Proof Key for Code Exchange (PKCE) and a one-shot localhost callback.
+
+Until now, Clerk's docs haven't laid this pattern out in one place. Last summer, developer Erik Steiger spent three days reverse-engineering the flow to wire Clerk into a Rust CLI. His writeup is excellent, and it exposed a real docs gap.
+
+This post puts the flow in one place with Clerk OAuth primitives you can use today and a small TypeScript implementation you can copy, adapt, or vendor.
+
+## Two paths, both valid
+
+When a CLI needs to authenticate a human user through a browser, you have two standard choices:
+
+|                     | Localhost callback + PKCE                                            | Device Authorization Grant (RFC 8628)                                     |
+| ------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Flow                | CLI opens browser → browser redirects to `127.0.0.1:{port}/callback` | CLI shows a `user_code` → user types it on a secondary device → CLI polls |
+| Incoming port       | Required                                                             | Not required                                                              |
+| UX friction         | Low (browser auto-opens, redirect just works)                        | Medium (typing codes, secondary device)                                   |
+| Headless / CI       | Poor                                                                 | Excellent                                                                 |
+| Real-world examples | `vercel`, `supabase`, Stripe CLI (hybrid), Erik's post               | `gh` (GitHub CLI)                                                         |
+
+The right choice depends on where the CLI runs. `gh` picked device flow because GitHub cares about CI parity; `vercel` picked localhost callback because their audience is desktop-first.
+
+Clerk's backend already supports everything the localhost-callback flow needs: OAuth Applications with PKCE (S256), authorize + token + userinfo + revoke endpoints, and loopback redirect behavior for `127.0.0.1` callbacks per RFC 8252 §7.3. So that's where we start. (We'll come back to device flow at the end.)
+
+## The five moving parts
+
+```
+┌──────────┐  1. /oauth/authorize        ┌──────────┐
+│   CLI    │ ──────────────────────────► │ Clerk UI │
+└────┬─────┘                             └────┬─────┘
+     │                                        │
+     │                                        │ 2. user approves
+     │                                        ▼
+     │       3. redirect ?code=...     ┌─────────────────────┐
+     │ ◄────────────────────────────── │ 127.0.0.1:{port}/cb │
+     │                                 └─────────────────────┘
+     │
+     │       4. POST /oauth/token      ┌────────────────┐
+     │ ──────────────────────────────► │  Clerk backend │
+     │ ◄────── access + refresh ────── │                │
+     │                                 └────────────────┘
+     │
+     │       5. keychain.set(session)
+     ▼
+┌─────────────┐
+│ OS keychain │
+└─────────────┘
+```
+
+1. **Generate PKCE + state.** `code_verifier` is generated from 32 random bytes, giving 256 bits of entropy and encoding to a 43-character base64url string; `code_challenge = base64url(sha256(verifier))`; `state` is a separate Cross-Site Request Forgery (CSRF) token. A dozen lines of `node:crypto`.
+2. **Spin up the listener.** A one-request HTTP server on `127.0.0.1:0` (random port). Use `127.0.0.1` over `localhost` so the backend doesn't have to resolve DNS weirdness, and over `0.0.0.0` so other hosts on the network can't reach the listener.
+3. **Open the browser** to `{issuer}/oauth/authorize?response_type=code&client_id=…&redirect_uri=http://127.0.0.1:{port}/callback&code_challenge=…&state=…&code_challenge_method=S256`. When the callback arrives, validate that `state` matches the original value before exchanging the code.
+4. **Exchange the code** with a POST to `/oauth/token` with `grant_type=authorization_code` + the `code_verifier`. You get back `access_token`, `refresh_token`, `expires_in`.
+5. **Store the token set** in the OS keychain (Keychain on macOS, Credential Manager on Windows, Secret Service on Linux). Fall back to a `chmod 600` JSON file if the keychain isn't available.
+
+## Setup (one-time)
+
+Before the CLI can start the flow, register an OAuth Application in your Clerk dev instance. The CLI only needs two config values at runtime: the issuer URL and the OAuth application's `client_id`.
+
+You can create the OAuth application three ways:
+
+- **Clerk Dashboard** — In the **OAuth Applications** page, create an application. Set the redirect URI to `http://127.0.0.1/callback`, enable public client + PKCE, and request the scopes you need.
+- **`curl` against the Backend API** with the instance's secret key, if you prefer scripting setup.
+- **The Clerk CLI** if you already have it installed:
+
+  filename: terminal
+
+```bash
+  clerk link --app app_...
+
+  clerk api /oauth_applications --app app_... -X POST -d '{
+    "name": "my-cli",
+    "redirect_uris": ["http://127.0.0.1/callback"],
+    "scopes": "profile email offline_access",
+    "public": true,
+    "pkce_required": true
+  }' --yes
+```
+
+None of these setup paths are required at runtime.
+
+## Small enough to audit
+
+The example implementation lives at **clerk/cli-auth-example**. It's designed to be copied, adapted, or vendored into your own CLI. It is intentionally small and inspectable.
+
+Directory layout:
+
+```
+src/
+├── types.ts                    # the public contract
+├── clerk-cli-auth.ts           # the class
+└── lib/
+    ├── pkce.ts                 # node:crypto
+    ├── auth-server.ts          # node:http, one-shot server
+    ├── token-exchange.ts       # fetch + error mapping
+    └── credential-store.ts     # keychain, file, memory strategies
+```
+
+These are the traps worth handling if you copy the code:
+
+**The auth server must respond to the browser _before_ resolving its promise.** If the CLI "moves on" to the token exchange before the browser finishes rendering the success page, the user sees a hang. Respond first, then fire your callbacks inside `res.end()`.
+
+**Don't hard-code a fixed callback port.** Bind to `127.0.0.1:0` and let the OS pick. Register your redirect URI as `http://127.0.0.1/callback`; at runtime, send the actual `http://127.0.0.1:{port}/callback` redirect URI. Clerk accepts loopback callbacks with dynamic local ports for this CLI pattern. Fixed ports cause collisions.
+
+**Your keychain layer needs a file fallback.** Not every environment has a keychain. CI runners, Docker containers, SSH sessions over tmux. `@napi-rs/keyring` can throw on init. Wrap every `get/set/delete` in a try/catch that falls back to a `chmod 600` JSON file, and log a warning so users know where their credentials actually live.
+
+## What this post doesn't cover
+
+**Device flow.** RFC 8628. Best for CI, headless servers, and environments where the CLI can't open a browser. Outside the scope of this post.
+
+**Token refresh semantics.** The example refreshes when the access token is within 30s of expiry. That's fine for interactive CLIs but naive for long-running workers. A production implementation should offer configurable skew and retry behavior.
+
+**Token revocation on logout.** The example clears local credentials. A production SDK should also revoke the refresh token server-side when possible.
+
+**Machine-to-machine tokens.** Different primitive (machine tokens), different use case (service-to-service, not user auth). Covered separately in the docs.
+
+## The next path should be shorter
+
+Adding user auth to a CLI shouldn't be a three-day spike. The building blocks are already in Clerk: OAuth Applications, PKCE, token verification, refresh grants, and machine-to-machine auth.
+
+If your CLI runs on a user's machine, start with localhost callback + PKCE. If it needs headless or CI parity, use device flow when available. Either way, don't make users paste credentials into config files.
+
+The example lives at clerk/cli-auth-example. Fork it, copy it, or just lift the pattern into your own codebase. Credit to Erik Steiger for writing up the gap. The next developer's path should be a lot shorter.
+
+Thoughts, questions? Reach out on X or in the Clerk Discord.

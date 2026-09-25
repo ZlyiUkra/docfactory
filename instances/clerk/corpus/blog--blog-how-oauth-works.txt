@@ -1,0 +1,446 @@
+# How OAuth Works
+# джерело: https://clerk.com/blog/how-oauth-works
+# отримано: 2026-09-25
+
+OAuth is confusing. There's no getting around it - the specification is complex, the terminology is overloaded, and the security considerations are numerous. But it doesn't have to be intimidating once you understand the core concepts.
+
+This guide focuses on practical understanding over abstract theory. While Clerk handles most OAuth complexity for you with a built-in authorization server, understanding the fundamentals will make you a better developer and help you debug issues when they arise.
+
+Here's what we'll cover:
+
+- **OAuth Scoped Access** - letting third-party apps access user data without sharing passwords
+- **The Authorization Code Flow** - the step-by-step process that makes it work
+- **Real implementation details** - actual code you can run, not just theory
+- **Security essentials** - PKCE, state parameters, and other protections
+
+There are plenty of OAuth articles out there, but many focus on abstract concepts without showing you how the pieces actually fit together. This guide takes a different approach - we'll walk through a complete implementation so you can see exactly how OAuth works in practice.
+
+## What is OAuth?
+
+OAuth stands for "Open Authorization", and it is a set of standard specifications designed by the IETF that address how a user can grant a third party application access to some of their data/resources, without providing their login directly.
+
+As an example, imagine that you are a brand manager at a trendy coffee shop, and you have been tasked with writing marketing content and scheduling it to go out at certain times throughout the week. There are many "content planning" apps that will allow you to do this across several social platforms -- LinkedIn, Twitter/X, Facebook, etc -- let's imagine we're using a fictional one called "Content Planner". Content Planner needs to make posts on your behalf on social platforms.
+
+Content Planner _could_ just ask you for your email and password for each social platform, but this is less than ideal for several reasons:
+
+- **Restricting access:** You probably do not want to give Content Planner full access to your account -- only the ability to make posts, but restrict access to send DMs, change your password, or delete your account. If Content Planner has a security incident, it would be best to minimize the damage. Principle of least privilege, right?
+- **Avoiding bot protection issues:** If Content Planner did have your credentials, it would need to sign in as you. Many apps and authentication providers will automatically detect and block any sort of scripted login attempts as a bot, to prevent fraud and bot attacks (shameless plug: Clerk will do this for your app automatically). So, it would be tough for Content Planner to actually sign in as you even if you did provide your email/password.
+- **Avoiding MFA issues:** It's becoming increasingly common as a security measure to require more than just an email/password. Sending an OTP to your phone or email, getting an authentication code from an app, using a passkey, etc. are all common methods of increasing the security of your users' accounts (shameless plug once again, each of these are a simple toggle with Clerk). In these cases, an email and password alone wouldn't be sufficient anyway.
+
+What we need here is a legitimate avenue through which you, as a user of Content Planner, can tell Twitter (going to refer to it as Twitter for this post, I know it's "X" now though), LinkedIn, Facebook, etc that you would like to grant access to Content Planner to make posts on your behalf. This type of interaction is exactly what OAuth was designed to handle.
+
+## Common OAuth Terminology
+
+Let's start with some common terminology. This will help to communicate concepts clearly through the rest of the piece.
+
+- **Client**: This is a very generic term that is common in software discussions. When discussing OAuth, however, it has a very specific meaning that is important to really internalize: _A Client is an entity that wants to get something from another entity_.
+  Referencing our above example, Content Planner is the Client, since it wants to get permission to make posts from Twitter, Facebook, LinkedIn, etc.
+- **Authorization Service**: This refers to the service that is responsible for signing the user in and out and delegating access to the user's account to third parties. For example, users signing into Content Planner with their Twitter account would use Twitter's authorization service. This may or may not be a _server_, though you will often see it referenced as a "authorization server", including in OAuth specs, but we're going to call it a service in this piece, because it's more accurate, and less confusing. This is sometimes also referred to as an "Identity Provider" or "IdP".
+- **Resource Service**: This refers to the service that has the resources the client wants access to. Referencing our above example again for Twitter, this would be the Twitter app itself, which is what has the ability to post things. As mentioned above, this may or may not run on a separate server from the authorization service, and you will likely see it referred to as a "resource server" in other writing about OAuth, but we're sticking with "service" in this piece for accuracy. This is sometimes also referred to as an "Service Provider" or "SP".
+- **OAuth Access Token**: A string of random characters (which is generally what a "token" is in the realm of web development) or JWT that is given to the _Client_ by the _Authorization Service_ if the OAuth process is completed successfully. The Client can then send this Token to the _Resource Service_ as a form of proof that it should be allowed to access what it's trying to access.
+
+With all of this covered, we should be able to piece together a very basic overview of how OAuth works:
+
+oauth.png
+
+## Other OAuth use cases
+
+We're going to get deeper into the details of how all of this works in a minute, but be aware that OAuth is broader than this. The diagram above is just one way of using OAuth, and there are several others. OAuth as a protocol can be used for creating users and signing in with a regular username and password, for signing in with one of those number codes that you sometimes do with TV apps, for single sign on (where you "Sign in with Google"), for authorizing requests between two servers that don't even involve a human, and much more. In fact, there are _30+ RFCs_ describing modifications and extensions to OAuth.
+
+This makes the term "OAuth" fairly confusing in general. When someone refers to using OAuth, are they talking about signing in to their app using a third-party app? Are they talking about building authentication for their app? Or are they talking about granting access to resources on a user's behalf as described above? This confusion makes it really hard to research and learn about OAuth. In order to further clarify this, we are introducing more specific terms for each of these three flows, that we are hoping will be adopted more widely for the benefit of all developers on the OAuth learning journey:
+
+1. **OAuth Scoped Access** - scoped 3rd party data access via OAuth (the one we described above)
+2. **OAuth SSO** - sign on to an app through a third-party app, using OAuth (like Sign in with Google, etc)
+3. **OAuth User Management** - OAuth as a user registration and sign in/out mechanism (a full authorization service built with OAuth)
+
+In this post, we're going to discuss _OAuth Scoped Access_, the same flow we have been describing since the start.
+
+## The OAuth authorization code flow in action
+
+Now that we have a broad idea of the scope and goals of OAuth, let's get into the specifics for what is likely the most common OAuth flow, called the "Authorization Code Flow", which allows for OAuth scoped access. You are now stepping into the shoes of the developer of the Content Planner app, tasked with _implementing_ an OAuth flow with Twitter. We will walk through how to write a Client that interacts with an Authorization Service. We'll use the same example we have been using above, with Content Planner as the Client and Twitter as the Authorization/Resource Service.
+
+> _All references to Twitter and its API are fictional, just for example purposes._
+
+1. You make a request to Twitter's API to make a post on your user's behalf. This will fail, since you do not have permission to do so. However, Twitter will return a `www-authenticate` header alongside the 401, which has the value `Bearer resource_metadata=http://api.twitter.com/.well-known/oauth-protected-resource` (as defined by RFC 9728).
+
+2. You can visit this URL and get back information about _where to go_ to get an OAuth flow going with Twitter. Here's what you might see as the response:
+
+```json
+   {
+     "resource": "https://api.twitter.com",
+     // ⚠️ This line below is the important part!
+     "authorization_servers": ["https://auth.twitter.com"],
+     "token_types_supported": ["urn:ietf:params:oauth:token-type:access_token"],
+     "token_introspection_endpoint": "https://auth.twitter.com/oauth/token",
+     "token_introspection_endpoint_auth_methods_supported": ["client_secret_basic", "none"],
+     "service_documentation": "https://docs.twitter.com/oauth",
+     "authorization_data_types_supported": ["oauth_scope"],
+     "authorization_data_locations_supported": ["header"],
+     "key_challenges_supported": [
+       {
+         "challenge_type": "urn:ietf:params:oauth:pkce:code_challenge",
+         "challenge_algs": ["S256"]
+       }
+     ]
+   }
+```
+
+3. You can now select an authorization server (though `authorization_servers` is an array, realistically you are nearly always just going to get just one back), and make a request to that authorization server for its metadata, which outlines the OAuth endpoints. This should be found at our authorization server URL we got from the metadata file above, `https://auth.twitter.com`, then we tack on the established path, `/.well-known/oauth-authorization-server` according to RFC 8414. Making a request to this path should return something along these lines:
+
+```json
+   {
+     "issuer": "https://twitter.com",
+     // ⚠️ This line below is the important part!
+     "authorization_endpoint": "https://auth.twitter.com/oauth/authorize",
+     "token_endpoint": "https://auth.twitter.com/oauth/token",
+     "token_endpoint_auth_methods_supported": ["client_secret_basic", "none"],
+     "token_endpoint_auth_signing_alg_values_supported": ["RS256", "ES256"],
+     "userinfo_endpoint": "https://auth.twitter.com/oauth/userinfo",
+     "jwks_uri": "https://auth.twitter.com/.well-known/jwks.json",
+     "registration_endpoint": "https://auth.twitter.com/oauth/register",
+     "scopes_supported": ["openid", "profile", "email"],
+     "response_types_supported": ["code"],
+     "service_documentation": "https://docs.twitter.com/oauth",
+     "ui_locales_supported": ["en-US"]
+   }
+```
+
+   > It should be noted that the steps above are not required, nor does every service that has implemented OAuth support them. Normally, all you need to get started with OAuth is the `authorization_endpoint` seen above, so if you know that endpoint already the steps above can be skipped. They are still recommended though - in the case the service makes changes to their endpoints in any way, following the above steps would allow your app to automatically "heal" through this.
+
+4. Now that we have the authorization endpoint, we can kick off the "Authorization Code Flow" in earnest. The way an OAuth flow begins is normally that your user clicks a button or takes some action within your app. In this case, we'll imagine there's a "Connect with Twitter" button in the interface for Content Planner, and the user clicks that button.
+
+   As the app developer, we can decide what that link looks like, and we'd like for it to point to the _authorization endpoint_, but also provide some extra details according to the OAuth spec. Let's write that code (in React, just for the example):
+
+```jsx
+   function OAuthConnection() {
+     // we just got this from the authorization server metadata
+     const authorizeEndpoint = 'https://auth.twitter.com/oauth/authorize'
+
+     // we'll talk about these these below, promise
+     const params = {
+       response_type: 'code',
+       client_id: 'abc123',
+       redirect_uri: `https://contentplanner.app/oauth_callback`,
+       scope: 'email profile tweet:write tweet_stats:read',
+       state: 'random-value',
+     }
+
+     // this just takes the params and tacks them on to the authorize endpoint
+     // as a querystring
+     const authorizeUrl = `${authorizeEndpoint}?${new URLSearchParams(params).toString()}`
+
+     return (
+       <div>
+         <p>Connect Content Planner to your X account</p>
+         <a href={authorizeUrl}>Connect!</a>
+       </div>
+     )
+   }
+```
+
+   First, let's talk about the "params" specified above, to make sure we understand what's actually going on there:
+
+   - `response_type` - we mentioned earlier that are several different types of OAuth flows, which makes OAuth a rather confusing thing in general. Now we are starting to pay this debt - since there can be several different flows available from the same authorize endpoint, we need to supply this parameter to specify which type of flow we want to run. In this case, if you recall, we're after the _"Authorization Code Flow"_, and the param _"code"_ is what tells OAuth that this is what we want.
+
+   - `client_id` - OAuth specifies that _Clients_ must _register_ with the _Authorization Service_ in order for the flow to work. This is so that when the user goes through the flow in which they grant access, the Authorization Service is able to make it clear _whom_ the user is granting access to. You may have done something like this before. Normally, this involves making an account with the Resource Service, going into some sort of "developer settings" and creating an "OAuth Application" or "OAuth Client", where you put in a name, a redirect url, sometimes an avatar, etc. When you have created an OAuth client, the UI will provide you with a **Client ID** and **Client Secret**. We'd take that Client ID and use it for this parameter.
+
+   For our example, this would mean logging into Twitter, going into their developer settings, creating an OAuth Client through their UI, and pasting the Client ID in here (or more commonly, pulling it from an environment variable). It's worth noting that OAuth also includes an optional extension called "dynamic client registration" that authorization services can implement, in which there is an API endpoint through which an OAuth Client can be created, rather than through an application's UI, but this isn't super common at the moment. We'll talk about that more later.
+
+   - `redirect_uri` - When our user clicks on the "connect" link, it will send them out to the Authorization Service for Twitter -- after they are done, Twitter needs to send them back to Content Planner. This is the URL that they are sent back to.
+
+   redirect-uri.png
+
+   - `scope` - _Authorization Services_ may define "scopes" which determine what users are able to grant access to. As a _client_, you can then request access to the scopes you need via this param when hitting the authorize endpoint. Here, we're asking for some basic info about the user, as well as the ability to write tweets and read the tweet stats, so we can see how well our scheduled tweets performed.
+
+   - `state` - This is for security, and ensures that the initial authorization request matches up with the response that was sent back. The base purpose of this param is for the _Client_ to generate it, then for the _authorization service_ to send it back as a query string when it goes to the `redirect_uri`. The _client_ then checks it against the initial value to make sure it matches. Leaving this out can expose users to CSRF attack shenanigans where an attacker can begin an OAuth flow with their own account, then get someone else to click a link that will complete it with _the victim's_ account, letting the attacker take over the victim's account. The state param can also be used to pass some data safely through the OAuth redirect flow, since we know we will get it back on the other side.
+
+   Clicking the `authorizeUrl` link will bring users to a "consent screen", which might look something like this:
+
+   This screen clearly lays out what permissions you are granting as a user and whom you are granting them to. It utilizes the `scopes` that we passed in the query to clarify for the user what they are allowing, and to whom. If the user accepts, they will be sent back to the `redirect_uri` specified in the params, with `state` and `code` as query parameters. The redirect might look something like this:
+
+```
+   https://contentplanner.app/oauth_callback?code=h89sf89d8hfsd&state=random-value
+```
+
+5. So now we need to handle the `oauth_callback` route. The next step in the OAuth flow is to take the "code" here, which is referred to as an "Authorization Code" and exchange this for an actual OAuth Token. Let's write that code (express endpoint as an example):
+
+```tsx
+   app.get('/oauth_callback', async (req, res) => {
+     const qs = new URLSearchParams(req.query)
+     const code = qs.get('code')
+     const state = qs.get('state')
+     const error = qs.get('error')
+
+     // Handle user denial or other errors
+     if (error) {
+       return res.status(400).send(`OAuth error: ${error}`)
+     }
+
+     // we'd want to store the state we sent to the authorize endpoint
+     // somewhere so we can compare the two here
+     if (state !== originalStateValue) {
+       return res.status(400).send('State param mismatch')
+     }
+
+     // this is the token endpoint we got from the metadata in step 3
+     const response = await fetch(tokenEndpoint, {
+       method: 'POST',
+       headers: {
+         'Content-Type': 'application/x-www-form-urlencoded',
+       },
+       body: new URLSearchParams({
+         client_id: process.env.CLIENT_ID,
+         client_secret: process.env.CLIENT_SECRET,
+         code,
+         grant_type: 'authorization_code',
+         redirect_uri: `https://contentplanner.app/oauth_callback`,
+       }).toString(),
+     }).then((res) => res.json())
+
+     // normally we'd store these somewhere secure for use with
+     // making requests to the resource server!
+     const accessToken = res.access_token
+     const refreshToken = res.refresh_token
+
+     res.json({ success: 'true' })
+   })
+```
+
+   > You may be asking - why does this happen in two steps? Why return an "authorization code" and not just send back the OAuth token to save time and resources? We skimmed over this detail in the initial diagram for clarity, but this extra "authorization code for access token exchange" is a required part of the authorization code flow.
+   >
+   > The answer here is security. For me, understanding 'security' things is easiest by hearing an explanation of how an attacker would be able to exploit this if it were done a different way. So in that spirit, let's imagine that, in the name of efficiency, we decide that we're going to return the OAuth token straight into the redirect URL, and skip the authorization code.
+   >
+   > In this case, the user is in the browser when they hit the "accept" button on the consent screen, and the authorization service then issues a redirect back to the `redirect_uri`, including the token. The OAuth token now appears fully in the user's browser history, it's visible at least briefly in the URL bar, it's accessible to browser extensions, it shows up in CDN logs, ISP logs, server logs, etc -- these are all problematic as they could leak and make the sensitive OAuth token available to attackers. Additionally, because the Client ID is not a sensitive or secret value and is already exposed in the browser, an attacker with access to it could obtain an OAuth token for your service, bypassing client verification via the client secret.
+   >
+   > It is generally for this reason that we need both a Client ID and Client Secret - the Client ID can be public without issue, but the Client Secret cannot, which is why we never send it through the browser, and only utilize it when making a direct request from our Client to the Authorization Service, as we can see happening in the code example above.
+   >
+   > Ensuring that the Token exchange happens as a _server to server_ connection makes it more secure, since by avoiding the browser, the sensitive Access Token has fewer places that it appears where it could be extracted by an attacker.
+
+6. Now that we have the OAuth Access Token, we can use it to make a request to the Resource Service. In this example, at the scheduled time, Content Planner could hit Twitter's API in order to send the tweet. As long as we include a valid Access Token with the right scopes, it should work just fine. It might look something like this:
+
+```tsx
+   await fetch('https://api.twitter.com/tweet', {
+     method: 'POST',
+     headers: {
+       Authorization: 'Bearer <my_access_token>',
+     },
+     body: JSON.stringify({ text: 'Developers developers developers...' }),
+   })
+```
+
+   Because we have included the Access Token with the request, Twitter will allow Content Planner to post this tweet on our behalf, even though it doesn't have our account sign-in details. Hooray!
+
+Sometimes, it can help to actually write this code to fully lock it in to your brain. If that's the case, I'd encourage you to give it a shot! Here's the implementation that I wrote to do this, in case it's helpful at all. It didn't take too long and is very little code.
+
+## Common OAuth questions
+
+Understanding the Authorization Code Flow is a huge step forward in understanding OAuth and how it works overall. But there are also a bunch of other details that I was curious about in my own journey to learn about OAuth, which you might be too, so let's address them.
+
+### What happens if you already finished the flow, but now want to request more scopes?
+
+There's no concept of modifying an existing OAuth Access Token. If you want a token with more scopes, you'd go through the flow again from the start, but request more scopes as parameters to the authorization endpoint. You could then replace the existing Access Token with the new one with more scopes.
+
+### Does the Access Token expire? What happens if/when it does?
+
+Yes, normally, they do, as do most types of access tokens. When you get back an Access Token at the end of the flow, the Authorization Service is expected to also return a _Refresh Token._ It has a much longer expiration than the Access Token and can be used to request a new Access Token. Generally, this works as such:
+
+1. You make a request with an Access Token that has just expired, and get back a 401 response from the Resource Service.
+2. You assume this is because the Access Token has expired, and make a request to the "Token Endpoint" (you may have noticed this in the authorization server metadata above), with a valid Refresh Token, and it will return a new Access Token and Refresh Token pair.
+3. Now you replay the original request with your new Access Token
+
+If the Refresh Token expires due to the user not using the service for a long time, they will need to re-establish the connection by going through the Authorization Code Flow again.
+
+Here's an example of how a token refresh call might look:
+
+```ts
+const refreshResponse = await fetch(tokenEndpoint, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  body: new URLSearchParams({
+    grant_type: 'refresh_token',
+    refresh_token: currentRefreshToken,
+    client_id: process.env.CLIENT_ID,
+    client_secret: process.env.CLIENT_SECRET, // if confidential client
+  }).toString(),
+})
+
+// Both tokens are replaced for security
+const { access_token, refresh_token } = await refreshResponse.json()
+```
+
+### Can tokens be opaque tokens or JWTs? What's the difference?
+
+Opaque tokens are random strings that need to be verified on each request with the authorization server. Because they "phone home" to the authorization server to verify on each request, opaque tokens can be instantly revoked, but are also slower since they add an extra step to each request that includes one. JWTs are digitally signed by the issuer, and can be verified without ever contacting the authorization server by verifying the signature. However, because of this, they cannot be revoked, and in order to stay secure normally have shorter expiration times. Either token type _can_ be used as an OAuth Access Token; which one is preferred is up to the developer. Ory provides a very good overview of the tradeoffs in their article here.
+
+### What if you want to revoke access?
+
+It's expected that an authorization server has a revocation endpoint, which, if hit with a valid OAuth Access Token, will revoke that token's access and make it useless. This, in combination with clearing out any existing stored Access/Refresh Tokens should be enough to remove an OAuth grant and require a fresh new connection if needed.
+
+## Public clients and PKCE
+
+So far, we've been assuming that Content Planner is running on a server where we can safely store the `client_secret` and use it during the token exchange step. This type of OAuth client is called a **confidential client** because it can keep secrets... well, secret.
+
+But what if you want to build a mobile app or a single-page web application (SPA) that runs entirely in the browser? In these cases, there's no secure server-side environment to store the `client_secret`. Any secret you embed in a mobile app can be extracted by someone with the right tools, and anything in a browser-based app is visible to browser extensions and anyone who opens the developer tools. These are called **public clients** because they cannot securely store secrets.
+
+This creates a problem with our authorization code flow. Remember in step 5 above, we made a server-to-server request that included the `client_secret` to exchange the authorization code for an Access Token? If we can't safely store a `client_secret`, how do we prove to the authorization service that we're the legitimate client and not an attacker who intercepted someone else's authorization code?
+
+The answer is **PKCE** (Proof Key for Code Exchange, pronounced "pixie"), defined in RFC 7636. PKCE replaces the `client_secret` with a dynamically generated proof that only the Client who started the OAuth flow can provide.
+
+Here's how it works: instead of relying on a pre-shared secret, the Client generates a random value called a **code verifier** at the start of each OAuth flow, along with a **code challenge** (which is a hashed version of the code verifier). The Client sends the code challenge when starting the authorization flow, then proves it started the flow by providing the original code verifier during the token exchange.
+
+Let's see how this changes our code example. First, we need to generate the PKCE values when creating our authorization URL:
+
+```tsx
+// Helper function to generate a random code verifier
+function generateCodeVerifier() {
+  const array = new Uint8Array(32)
+  crypto.getRandomValues(array)
+  return btoa(String.fromCharCode(...array))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '')
+}
+
+// Helper function to create code challenge from verifier
+async function generateCodeChallenge(verifier: string) {
+  const encoder = new TextEncoder()
+  const data = encoder.encode(verifier)
+  const digest = await crypto.subtle.digest('SHA-256', data)
+  return btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '')
+}
+
+async function OAuthConnection() {
+  const authorizeEndpoint = 'https://auth.twitter.com/oauth/authorize'
+
+  // Generate PKCE values using Web Crypto API
+  const codeVerifier = generateCodeVerifier()
+  const codeChallenge = await generateCodeChallenge(codeVerifier)
+
+  // Store code verifier in browser storage
+  sessionStorage.setItem('pkce_code_verifier', codeVerifier)
+
+  const params = {
+    response_type: 'code',
+    client_id: 'abc123', // we still need this, but no secret required
+    redirect_uri: `https://contentplanner.app/oauth_callback`,
+    scope: 'email profile tweet:write tweet_stats:read',
+    state: 'random-value',
+    // PKCE parameters
+    code_challenge: codeChallenge,
+    code_challenge_method: 'S256', // indicates we used SHA256 hashing
+  }
+
+  const authorizeUrl = `${authorizeEndpoint}?${new URLSearchParams(params).toString()}`
+
+  return (
+    <div>
+      <p>Connect Content Planner to your X account</p>
+      <a href={authorizeUrl}>Connect!</a>
+    </div>
+  )
+}
+```
+
+Then, in our callback handler, instead of sending a `client_secret`, we send the `code_verifier`:
+
+```ts
+// This would run when the user is redirected back to your SPA
+async function handleOAuthCallback() {
+  const urlParams = new URLSearchParams(window.location.search)
+  const code = urlParams.get('code')
+  const state = urlParams.get('state')
+  const error = urlParams.get('error')
+
+  if (error) {
+    console.error(`OAuth error: ${error}`)
+    return
+  }
+
+  if (state !== originalStateValue) {
+    console.error('State param mismatch')
+    return
+  }
+
+  // Retrieve the code verifier from browser storage
+  const codeVerifier = sessionStorage.getItem('pkce_code_verifier')
+
+  if (!codeVerifier) {
+    console.error('No code verifier found')
+    return
+  }
+
+  const tokenEndpoint = 'https://auth.twitter.com/oauth/token'
+
+  const response = await fetch(tokenEndpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      client_id: 'abc123',
+      code,
+      grant_type: 'authorization_code',
+      redirect_uri: `https://contentplanner.app/oauth_callback`,
+      code_verifier: codeVerifier, // PKCE proof instead of secret
+    }).toString(),
+  }).then((res) => res.json())
+
+  const accessToken = response.access_token
+  const refreshToken = response.refresh_token
+
+  // Clean up the stored code verifier
+  sessionStorage.removeItem('pkce_code_verifier')
+
+  // Store tokens securely in your SPA (consider using secure storage)
+  sessionStorage.setItem('access_token', accessToken)
+  sessionStorage.setItem('refresh_token', refreshToken)
+
+  console.log('OAuth flow completed successfully!')
+}
+```
+
+The security here works because an attacker who intercepts the authorization code still can't use it — they would need the original `code_verifier` to complete the token exchange, and only the client that started the flow has that value.
+
+> You might wonder: if the `code_verifier` is stored in the browser (like in sessionStorage), couldn't an attacker just steal that instead?
+>
+> The key difference is _timing_ and _access_. The `code_verifier` only exists for the brief duration of the OAuth flow and is likely only accessible to the specific application that created it. A `client_secret`, on the other hand, would be permanently embedded in the app code where it could be extracted by anyone. Additionally, each PKCE flow uses a unique `code_verifier`, so even if one was somehow compromised, it couldn't be reused for other users or future flows.
+>
+> While these restrictions make it more difficult for an attacker to compromise the OAuth flow, it's not impossible. For this reason, public clients are inherently less secure than confidential clients, and this should be acknowledged when making decisions about which type of client to use.
+
+PKCE is becoming mandatory for many OAuth providers, even for confidential clients, because it provides an additional layer of security. It's considered a best practice to use PKCE for all OAuth flows when possible, regardless of whether your client can store secrets or not. In fact, the most up to date OAuth spec, OAuth 2.1, requires that PKCE be used for all authorization code flows.
+
+## Dynamic Client Registration
+
+We briefly mentioned above the concept that it was possible to register an OAuth Client with your Authorization Service via API, rather than manually through their UI. This is not required, and many Authorization Services do not implement this capability, but it is possible, and is referred to as _dynamic client registration_, as defined by RFC 7591.
+
+If an Authorization Service implements Dynamic Client Registration, this means that anyone can register an OAuth client through a public API endpoint. There are a variety of scenarios where this might be needed, largely centered around when many different OAuth clients need to be created in a self-serve manner.
+
+However, it does come with some substantial security risks:
+
+- Dynamic client registration creates an unauthenticated, public endpoint that is accessible to anyone on the internet. This means there is no way to trace or verify the identity of who creates OAuth clients, allowing attackers to create Clients anonymously without leaving any audit trail. This lack of accountability makes it extremely difficult to track malicious activity back to its source.
+- Attackers can exploit this open access to create thousands of OAuth Clients over time. Even with rate limiting measures in place, determined attackers can slowly build up large numbers of Clients by spreading their registration attempts across extended periods. This proliferation makes legitimate Clients increasingly difficult to identify among potentially fraudulent ones, especially since Client names and metadata can be set to anything, making proper identification significantly harder for administrators.
+- The ability to freely register Clients opens the door to sophisticated social engineering attacks. Attackers can create Clients with legitimate-sounding names and descriptions, potentially tricking users into authorizing malicious applications that appear trustworthy. These deceptive Clients can request broad scopes while maintaining their facade of legitimacy, making it extremely difficult for both users and administrators to distinguish legitimate Clients from malicious imposters attempting to harvest user data or gain unauthorized access.
+- Implementing dynamic client registration increases the administrative burden required for monitoring and cleanup activities. This additional complexity makes security audits and compliance reviews more challenging, as administrators must sift through potentially thousands of dynamically created clients. The system requires ongoing vigilance to identify and remove malicious Clients, creating a operational overhead that many organizations may not be prepared to handle effectively.
+
+That being said, as long as you have evaluated and accepted the risks, dynamic client registration can be an essential feature in some scenarios.
+
+## OAuth & OIDC
+
+There's another standard that is built on top of and often used with OAuth called "OpenID Connect" (OIDC). This standard is written and maintained by a different standards committee, the OpenID Foundation.
+
+The key addition to OAuth is that when you return the access and refresh tokens, so long as an `openid` scope is included, you should also return another property called `id_token`, which is a JWT that has some basic user information like name, email, profile photo, etc. This helps the _Client_ to know who the user is that just went through the flow. Without OIDC, if the _Client_ needed to get any details about the user, it would need to use the Access Token to make another request to some API endpoint that returns user info (OIDC also standardizes a "user info" endpoint for this purpose). With OIDC, this step can be skipped since the user info is returned as part of the initial OAuth response.
+
+There's more in the OIDC specification that expands out more details on session management if you're using OAuth for user login, but we won't address those in this piece, since it's focused on OAuth scoped access.
+
+## Using OAuth with Clerk
+
+Now that you understand how OAuth scoped access works under the hood, you might be ready to make this happen for one of your applications. If you're using Clerk, we have a robust OAuth authorization server built in for you automatically, that's ready to use.
+
+You can navigate to "Config > OAuth applications" in the Clerk dashboard to register an OAuth application. This gives you back the `client_id` and `client_secret` we discussed, along with all the proper endpoint configurations. For scenarios where you need the dynamic client registration we discussed earlier (like multi-tenant SaaS platforms or developer marketplaces), Clerk also supports this - though it's optional and needs to be explicitly enabled due to the security considerations we covered.
+
+And remember all those security considerations we covered - CSRF protection via the state parameter, PKCE for public clients, secure token storage? Clerk supports all of these automatically, with the most security-conscious implementation out of the box.
+
+If you are looking to build out an OAuth feature for your Clerk application, check out our step-by-step guide on how to do so. We also have a minimal demo OAuth client that can be used to quickly test against Clerk's built-in authorization server.

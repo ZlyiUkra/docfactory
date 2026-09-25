@@ -1,0 +1,1023 @@
+# Build a blog with tRPC, Drizzle, Next.js and Clerk
+# джерело: https://clerk.com/blog/build-a-blog-with-trpc-drizzle-nextjs-clerk
+# отримано: 2026-09-25
+
+In this tutorial, you'll build a blog app from scratch using many modern and popular technologies such as Next.js, Clerk, tRPC, Drizzle, and more. After reading this tutorial, you'll have a simple blog application that allows users to create and read posts.
+
+The tech stack you'll use:
+
+- Next.js App Router
+- Clerk (Authentication)
+- Drizzle (Database ORM)
+- Vercel (Deploying your app and creating your database)
+- Neon (Postgres database)
+- tRPC (Type-safe API endpoint wrapper)
+- Tanstack Query (Data fetching and caching)
+- Zod (Schema validation)
+- Tailwind (Styling your app)
+
+First, you'll create a Next.js App Router app with Clerk. Then, you'll get your app up and running using Drizzle. To do this, you'll deploy your app to Vercel, where you'll create a Neon database that will be used by Drizzle to access and manipulate data. You can stop here, or you can continue on to add tRPC and zod to your app for enhanced type-safety. You'll set up your tRPC server and create endpoints/procedures for your queries and mutations. Then you'll set up your tRPC client and replace the Drizzle queries and mutations with the tRPC procedures using Tanstack Query. Lastly, you'll learn how to create protected procedures using Clerk's authentication context.
+
+> Check out the finished product in Clerk's demo repository:
+> https://github.com/clerk/clerk-nextjs-trpc-drizzle
+
+> **Last verified 2026-05-06** with Clerk v7 (Core 3) and Next.js 16 (React 19 + Turbopack). Pinned versions: `next` 16.2.5, `react` / `react-dom` 19.2.6, `typescript` 6.0.3, `@clerk/nextjs` 7.3.1, `drizzle-orm` 0.45.2, `drizzle-kit` 0.31.10, `@neondatabase/serverless` 1.1.0, `@trpc/*` 11.17.0, `@tanstack/react-query` 5.100.9, `zod` 4.4.3, `tailwindcss` / `@tailwindcss/postcss` 4.2.4, `dotenv` 17.2.0.
+
+## Create a Next.js + Clerk app
+
+To create a Next.js app with Clerk, follow the quickstart in the Clerk Docs.
+
+Or, you can clone the Clerk repository, which is the result of following the quickstart:
+
+```bash
+gh repo clone clerk/clerk-nextjs-app-quickstart
+```
+
+### Initialize Clerk
+
+From your project directory, run the Clerk CLI:
+
+```bash
+npx -y clerk@latest init --accountless
+```
+
+You don't need a Clerk account to get started. The `--accountless` flag provisions an accountless application, writes development keys to `.env.local`, and configures the SDK. Before deploying to production, run `npx -y clerk@latest auth login` to claim the application, then run `npx -y clerk@latest deploy` to configure its production instance.
+
+The Clerk Dashboard is where you, as the application owner, can manage your application's settings, users, and organizations. For example, if you want to enable phone number authentication, multi-factor authentication, social providers like Google, delete users, or create organizations, you can do all of this and more in the Clerk Dashboard.
+
+### Verify the Clerk middleware (`proxy.ts`)
+
+In Next.js 16, the Clerk middleware lives in `proxy.ts` at the project root (renamed from `middleware.ts` in Next.js 15). The Clerk quickstart creates this file for you; if you scaffolded a Next.js app yourself, create it now:
+
+filename: proxy.ts
+```ts
+import { clerkMiddleware } from '@clerk/nextjs/server'
+
+export default clerkMiddleware()
+
+export const config = {
+  matcher: [
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    '/(api|trpc)(.*)',
+  ],
+}
+```
+
+This file does not protect any routes — it exists so that `auth()` can read the current Clerk session from Server Components, Route Handlers, and (later in this tutorial) the tRPC context. Authorization in this app happens at the tRPC procedure level via `protectedProcedure`, not in the middleware.
+
+## Install dependencies and test your app
+
+While developing, it's best practice to keep your project running so that you can test your changes as you work. So, let's make sure the app is working as expected.
+
+1. Run the following commands to install the dependencies and start the development server:
+```bash
+   npm install
+   npm run dev
+```
+2. Open your browser and navigate to the URL displayed in your terminal. The default is `http://localhost:3000` and will be used through the remainder of the tutorial. It should render a new Next.js app, but with a "Sign in" and "Sign up" button in the top right corner.
+   The development instance running.
+3. Select the "Sign in" button. You should be redirected to your Clerk Account Portal sign-in page, which renders Clerk's `<SignIn />` component. The `<SignIn />` component will look different depending on the configuration of your Clerk instance.
+   A Clerk Account Portal sign-in page.
+4. Sign in to your Clerk application.
+5. You should be redirected back to your app, where you should see Clerk's `<UserButton />` component in the top right corner.
+
+## Install Drizzle
+
+Run the following commands to install Drizzle and the `dotenv` package to load environment variables:
+
+```bash
+npm install drizzle-orm drizzle-kit dotenv
+```
+
+## Install `@neondatabase/serverless`
+
+You'll be using Neon to create your database. Run the following command to install the Neon serverless driver for connecting to your Neon database.
+
+```bash
+npm i @neondatabase/serverless
+```
+
+## Configure Drizzle
+
+Now you need to configure Drizzle to work with your Neon database, and create a Drizzle configuration file, which essentially tells Drizzle where your database is and how to connect to it.
+
+1. Create a `db` directory in the root of your project.
+2. In the `db` directory, create a `drizzle.ts` file with the following code:
+
+   filename: db/drizzle.ts
+```ts
+   import { neon } from '@neondatabase/serverless'
+   import { drizzle } from 'drizzle-orm/neon-http'
+
+   if (!process.env.DATABASE_URL) {
+     throw new Error('DATABASE_URL is not defined in your .env file')
+   }
+
+   const sql = neon(process.env.DATABASE_URL)
+
+   export const db = drizzle({ client: sql })
+```
+3. At the root of your app, create a `drizzle.config.ts` file with the following code:
+
+   filename: drizzle.config.ts
+
+```ts
+   import 'dotenv/config'
+   import { defineConfig } from 'drizzle-kit'
+
+   if (!process.env.DATABASE_URL) {
+     throw new Error('DATABASE_URL is not defined in your .env file')
+   }
+
+   export default defineConfig({
+     schema: './db/schema.ts',
+     out: './migrations',
+     dialect: 'postgresql',
+     dbCredentials: {
+       url: process.env.DATABASE_URL,
+     },
+   })
+```
+
+   > Drizzle Kit doesn't auto-load `.env` files. The `dotenv/config` import makes the kit commands pick up `DATABASE_URL` automatically — you'll add that value to your `.env` after creating the Neon database in the next steps.
+
+## Deploy to Vercel
+
+> **Vercel + Neon UI:** This walk-through was last verified against the Vercel and Neon dashboards on 2026-05-08. Both dashboards rearrange labels periodically — if a panel name differs, look for the equivalent (e.g., **Storage** is where databases live; **Environment Variables Prefix** is under **Advanced options** when connecting a database).
+
+To make things a little bit easier, you'll be using Vercel to create your Neon database. But before you can do that, you first need to deploy your app to Vercel.
+
+1. Create a repository on GitHub for your app. If you're not sure how to do this, follow the GitHub docs.
+2. Go to Vercel and add a new project. While going through the process, select the **Environment Variables** dropdown, and add your Clerk Publishable and Secret Keys.
+   Vercel dashboard showing where to input environment variables
+3. Select **Deploy** to deploy your app to Vercel.
+4. Select the **Settings** tab.
+5. In the left sidenav, select **Functions**.
+6. Under **Function Region**, there should be a tag next to one of the continents. Select the continent where the tag is, and the dropdown will reveal what regions on Vercel's network that your Vercel Functions will execute in. **Take note of the region.** Keep the Vercel dashboard open.
+   Vercel dashboard with an arrow pointing to a tag that says "iad1", and an arrow pointing to a highlighted element that says "Washington, D.C., USA (EAST) - us-east-1 - iad1"
+
+## Spin up a Neon database
+
+1. While still in Vercel's dashboard, select the **Storage** tab.
+2. Select **Create Database**.
+3. Select **Neon** as the database provider and select **Continue**.
+4. Select the **Region** dropdown and select the region you noted earlier. You want your database's region to match your Vercel Functions region for optimal performance.
+5. Select **Continue**.
+6. When connecting to the database, select **Advanced options** and under **Environment Variables Prefix**, enter `DATABASE` so that the environment variable is `DATABASE_URL`. Then select **Connect**.
+7. The dashboard exposes several connection-string variants (`DATABASE_URL_UNPOOLED`, `PGHOST`, `POSTGRES_*`, etc.) for different drivers and tooling. This app only uses `DATABASE_URL`, so copy that one line into your `.env`:
+
+filename: .env
+```env
+DATABASE_URL=***
+```
+
+## Update your Vercel environment variables
+
+When you add new environment variables to your `.env` file, don't forget to update your Vercel environment variables.
+
+1. In Vercel's dashboard, select the **Settings** tab.
+2. In the left sidenav, select **Environment Variables**.
+3. Add the new `DATABASE_URL` environment variable to your Vercel environment variables.
+4. Select **Save**.
+
+## Create a database model
+
+Now that your database is created and connected to your app, it's time to create a database model. This model will be used to create a table in your database.
+
+In the `db` directory, create a `schema.ts` file with the following code:
+
+filename: db/schema.ts
+```ts
+import { pgTable, text, serial } from 'drizzle-orm/pg-core'
+
+export const posts = pgTable('posts', {
+  id: serial().primaryKey(),
+  title: text().notNull(),
+  content: text().notNull(),
+  authorId: text('author_id').notNull(),
+})
+```
+
+> When a column's JS name differs from the SQL convention (camelCase vs. snake\_case here), pass the SQL name explicitly to the column helper. Drizzle otherwise uses the JS property verbatim, producing quoted camelCase columns that don't match standard Postgres conventions.
+
+## Generate and apply your database migration
+
+Run the following command to generate a migration file:
+
+```bash
+npx drizzle-kit generate
+```
+
+Then, run the following command to apply the migrations to your database:
+
+```bash
+npx drizzle-kit migrate
+```
+
+> If this command fails with only `Command failed with exit code 1` and no Postgres error, the `@neondatabase/serverless` HTTP driver is swallowing the underlying error. Run the migrator directly through `drizzle-orm/neon-http/migrator` in a small script with `try`/`catch` to surface what actually went wrong.
+
+Learn more about migrations in the Drizzle docs.
+
+### Query your database
+
+Now that all of the set up is complete, it's time to start building out your app!
+
+Let's start with your homepage. Replace the contents of `app/page.tsx` with the following code:
+
+filename: app/page.tsx
+```tsx
+import Link from 'next/link'
+import { posts as postsTable } from '@/db/schema'
+import { db } from '@/db/drizzle'
+
+export default async function Page() {
+  // Use drizzle to query the database for all posts
+  const posts = await db.select().from(postsTable)
+
+  // Display the posts on the homepage
+  return (
+    <div className="-mt-16 flex min-h-screen flex-col items-center justify-center">
+      <h1 className="mb-8 text-4xl font-bold">Posts</h1>
+      {posts.length === 0 && <div>No posts found</div>}
+      {posts.length > 0 && (
+        <div className="mb-8 flex max-w-2xl flex-col space-y-4">
+          {posts.map((post) => (
+            <Link
+              key={post.id}
+              href={`/posts/${post.id}`}
+              className="inline-block rounded-lg border-2 border-current px-4 py-2 text-current transition-all hover:scale-[0.98]"
+            >
+              <span className="text-lg font-semibold">{post.title}</span>
+              <span className="text-sm">by {post.authorId}</span>
+            </Link>
+          ))}
+        </div>
+      )}
+      <Link
+        href="/posts/create"
+        className="inline-block rounded-lg border-2 border-current px-4 py-2 text-current transition-all hover:scale-[0.98]"
+      >
+        Create New Post
+      </Link>
+    </div>
+  )
+}
+```
+
+This code fetches all posts from your database and displays them on the homepage, showing the title and author ID for each post. It uses Drizzle's `select()` method to select all rows from the `posts` table.
+
+That shows how to query for all records, but how do you query for a single record?
+
+### Query a single record
+
+Let's add a page that displays a single post. This code uses the URL parameters to get the post's ID, and then fetches it from your database and displays it on the page, showing the title, author ID, and content. It uses the following methods from Drizzle:
+
+- `select()` to select a single row from the `posts` table.
+- `where()` to filter the query results.
+  - `eq()` filter operator to check if the first argument is equal to the second argument, which in this case compares the ID of the post to the ID in the URL.
+
+Create the `app/posts/[id]/page.tsx` file and paste the following code:
+
+filename: app/posts/[id]/page.tsx
+```tsx
+import { eq } from 'drizzle-orm'
+import { posts as postsTable } from '@/db/schema'
+import { db } from '@/db/drizzle'
+
+export default async function Post({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  // Use Drizzle to query the database for the post with an ID that matches the ID in the URL
+  const response = await db
+    .select()
+    .from(postsTable)
+    .where(eq(postsTable.id, parseInt(id)))
+  const post = response[0]
+
+  return (
+    <div className="mx-auto mt-8 flex min-h-screen max-w-2xl flex-col">
+      {!post && <div>No post found.</div>}
+      {post && (
+        <article className="w-full max-w-2xl">
+          <h1 className="mb-2 text-2xl font-bold sm:text-3xl md:text-4xl">{post.title}</h1>
+          <p className="text-sm sm:text-base">by {post.authorId}</p>
+          <div className="prose prose-gray prose-sm sm:prose-base lg:prose-lg mt-4 sm:mt-8">
+            {post.content || 'No content available.'}
+          </div>
+        </article>
+      )}
+    </div>
+  )
+}
+```
+
+Test the page by navigating to a post's URL. For example, `http://localhost:3000/posts/1`. For now, it should show a "No post found" message because you haven't created any posts yet. Let's add a way to create posts.
+
+### Create a new post
+
+Next, you'll add a page that allows users to create new posts. This page uses Clerk's `auth()` helper to get the user's ID. It is a helper that is specific to Next.js App Router, and it provides authentication information on the server side.
+
+- If there is no user ID, the user is not signed in, so a sign in button is displayed.
+- If the user is signed in, the "Create New Post" form is displayed. When the form is submitted, the `createPost()` function is called. This function creates a new post in the database using the `db.insert()` method, which is a Drizzle method that inserts a new row into a table.
+
+Create the `app/posts/create/page.tsx` file and paste the following code:
+
+filename: app/posts/create/page.tsx
+```tsx
+import { redirect } from 'next/navigation'
+import { SignInButton } from '@clerk/nextjs'
+import { auth } from '@clerk/nextjs/server'
+import { posts as postsTable } from '@/db/schema'
+import { db } from '@/db/drizzle'
+
+export default async function Page() {
+  // Use Clerk's `auth()` hook to get the user's ID
+  const { userId } = await auth()
+
+  // Protect this page from unauthenticated users
+  if (!userId) {
+    return (
+      <div className="flex h-[calc(100vh-4rem)] flex-col items-center justify-center space-y-4">
+        <p>You must be signed in to create a post.</p>
+        <SignInButton>
+          <button
+            type="submit"
+            className="inline-block cursor-pointer rounded-lg border-2 border-current px-4 py-2 text-current transition-all hover:scale-[0.98]"
+          >
+            Sign in
+          </button>
+        </SignInButton>
+      </div>
+    )
+  }
+
+  // Handle form submission
+  async function createPost(formData: FormData) {
+    'use server'
+
+    const title = formData.get('title') as string
+    const content = formData.get('content') as string
+    const authorId = formData.get('authorId') as string
+
+    if (!title || !content || !authorId) {
+      throw new Error('Missing required field')
+    }
+
+    await db.insert(postsTable).values({
+      title,
+      content,
+      authorId,
+    })
+
+    redirect('/')
+  }
+
+  return (
+    <div className="mx-auto max-w-2xl p-4">
+      <h1 className="mb-6 text-2xl font-bold">Create New Post</h1>
+      <form action={createPost} className="space-y-6">
+        <input type="hidden" name="authorId" value={userId} />
+        <div>
+          <label htmlFor="title" className="mb-2 block text-lg">
+            Title
+          </label>
+          <input
+            type="text"
+            id="title"
+            name="title"
+            required
+            placeholder="Enter your post title"
+            className="w-full rounded-lg border px-4 py-2"
+          />
+        </div>
+        <div>
+          <label htmlFor="content" className="mb-2 block text-lg">
+            Content
+          </label>
+          <textarea
+            id="content"
+            name="content"
+            required
+            placeholder="Write your post content here..."
+            rows={6}
+            className="w-full rounded-lg border px-4 py-2"
+          />
+        </div>
+        <button
+          type="submit"
+          className="inline-block w-full rounded-lg border-2 border-current px-4 py-2 text-current transition-all hover:scale-[0.98]"
+        >
+          Create Post
+        </button>
+      </form>
+    </div>
+  )
+}
+```
+
+Test the page by navigating to `http://localhost:3000/posts/create` and creating a new post. You should be redirected to the homepage, where you should see the new post.
+
+## Install tRPC, `@tanstack/react-query`, and `zod`
+
+Now, you've got a Next.js, Clerk, and Drizzle app that can create and display posts. You could stop here and have a perfectly functional app that functions entirely server-side. But let's take it a step further and add tRPC to your app for type-safe API endpoints.
+
+- tRPC is a wrapper around your API endpoints to make them type-safe and easier to use.
+- `zod` is a schema validation library, also used to enhance your app's type safety.
+- `@tanstack/react-query` is a library for data fetching and caching.
+
+Run the following command to install tRPC, `@tanstack/react-query`, and `zod`:
+
+```bash
+npm i @trpc/server @trpc/client @trpc/react-query @tanstack/react-query zod
+```
+
+## Create a tRPC server
+
+Now, you'll configure tRPC for your app. You'll start by initializing a tRPC server that creates a `router` and `publicProcedure` that you can use to create your API endpoints.
+
+Create the `app/server/trpc.ts` file and paste the following code:
+
+filename: app/server/trpc.ts
+```ts
+import { initTRPC } from '@trpc/server'
+
+const t = initTRPC.create()
+
+export const router = t.router
+export const publicProcedure = t.procedure
+```
+
+### Create a tRPC endpoint
+
+Now, you'll create a router that's going to have your procedures on it. This code creates a router with a `getPosts` procedure that uses the tRPC `publicProcedure` you created in the previous step to make a query using tRPC's `query()` method. The query then uses Drizzle to query the `posts` table in your database. That part should look familiar, because you've used this same pattern in your app earlier!
+
+Create the `app/server/routers/posts.ts` file and paste the following code:
+
+filename: app/server/routers/posts.ts
+```ts
+import { publicProcedure, router } from '../trpc'
+import { db } from '@/db/drizzle'
+import { posts as postsTable } from '@/db/schema'
+
+export const postRouter = router({
+  getPosts: publicProcedure.query(async () => {
+    return await db.select().from(postsTable)
+  }),
+})
+
+export type PostRouter = typeof postRouter
+```
+
+This is the file where you'll add all of your queries and mutations, so you'll probably update this file frequently as you build out your app.
+
+### Connect the tRPC router to your App Router
+
+Now you need to connect the tRPC router to your App Router. You'll use a Route Handler that uses tRPC's `fetchRequestHandler()` method to pass requests from Next.js to the tRPC router.
+
+1. In `app/`, create an `api` directory.
+2. In `app/api/`, create a `trpc` directory.
+3. In `app/api/trpc/`, create a `[trpc]` directory. This will capture whatever the user requests from the tRPC router, such as `getPosts`, and set it as one of the route parameters.
+4. In `app/api/trpc/[trpc]`, create a `route.ts` file, which will be the route handler for your tRPC routers.
+5. In `route.ts`, paste the following code:
+
+filename: app/api/trpc/[trpc]/route.ts
+```ts
+import { fetchRequestHandler } from '@trpc/server/adapters/fetch'
+import { postRouter } from '@/app/server/routers/posts'
+
+const handler = (req: Request) =>
+  fetchRequestHandler({
+    endpoint: '/api/trpc',
+    req,
+    router: postRouter,
+    createContext: () => ({}),
+  })
+
+export { handler as GET, handler as POST }
+```
+
+At this point, your API endpoint should be working. You can test it by navigating to `http://localhost:3000/api/trpc/getPosts`. You should see a JSON response with the posts from your database.
+
+## Create a tRPC client
+
+So far, your app is entirely server-side and static. You need a way to mutate data, which is where `@tanstack/react-query` comes in. But to use tRPC with `@tanstack/react-query`, you need to create a tRPC client.
+
+Create the `app/_trpc/client.ts` file and paste the following code:
+
+filename: app/\_trpc/client.ts
+```ts
+'use client'
+
+import { createTRPCReact } from '@trpc/react-query'
+
+import type { PostRouter } from '@/app/server/routers/posts'
+
+export const trpc = createTRPCReact<PostRouter>({})
+```
+
+> **Alternative:** tRPC v11 also ships `@trpc/tanstack-react-query`'s `createTRPCContext` + `useTRPC()` pattern, which returns query options factories and is the project's currently recommended path. This tutorial sticks with `createTRPCReact` to keep the setup compact, but either works.
+
+## Create a Tanstack Query + tRPC provider
+
+To use Tanstack Query and tRPC together, you need to create a provider that provides both the Tanstack Query client and the tRPC client to your app. This provider will make both the Tanstack Query client and the tRPC client available to your app, using the `<trpc.Provider>` and `<QueryClientProvider>` components.
+
+Create the `app/_trpc/Provider.tsx` file and paste the following code:
+
+filename: app/\_trpc/Provider.tsx
+```tsx
+'use client'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { httpBatchLink } from '@trpc/client'
+import React, { useState } from 'react'
+
+import { trpc } from './client'
+
+export default function Provider({ children }: { children: React.ReactNode }) {
+  // Create a Tanstack Query client
+  const [queryClient] = useState(() => new QueryClient({}))
+  // Create a tRPC client
+  const [trpcClient] = useState(() =>
+    trpc.createClient({
+      links: [
+        httpBatchLink({
+          url: '/api/trpc',
+        }),
+      ],
+    }),
+  )
+  return (
+    <trpc.Provider client={trpcClient} queryClient={queryClient}>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    </trpc.Provider>
+  )
+}
+```
+
+Now, wrap your app in the provider. Update the main layout to import the provider as `TRPCProvider` and wrap your app in it. It's very important that `<ClerkProvider>` is wrapped around `<TRPCProvider>`, and not the other way around, because the `<TRPCProvider>` needs to have access to the Clerk authentication context.
+
+filename: app/layout.tsx
+```tsx
+import type { Metadata } from 'next'
+import { ClerkProvider, SignInButton, SignUpButton, UserButton, Show } from '@clerk/nextjs'
+import { Geist, Geist_Mono } from 'next/font/google'
+import './globals.css'
+import TRPCProvider from '@/app/_trpc/Provider'
+
+const geistSans = Geist({
+  variable: '--font-geist-sans',
+  subsets: ['latin'],
+})
+
+const geistMono = Geist_Mono({
+  variable: '--font-geist-mono',
+  subsets: ['latin'],
+})
+
+export const metadata: Metadata = {
+  title: 'Clerk Next.js Quickstart',
+  description: 'Generated by create next app',
+}
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode
+}>) {
+  return (
+    <ClerkProvider>
+      <TRPCProvider>
+        <html lang="en">
+          <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+            <header className="flex h-16 items-center justify-end gap-4 p-4">
+              <Show when="signed-out">
+                <SignInButton />
+                <SignUpButton />
+              </Show>
+              <Show when="signed-in">
+                <UserButton />
+              </Show>
+            </header>
+            {children}
+          </body>
+        </html>
+      </TRPCProvider>
+    </ClerkProvider>
+  )
+}
+```
+
+> In Clerk v7 (Core 3), `<Show>` is the unified conditional component for rendering based on auth state. The older `<SignedIn>` and `<SignedOut>` wrappers still work for back-compat, but `<Show when="signed-in">` / `<Show when="signed-out">` is the recommended pattern.
+
+## Use the tRPC client to fetch and mutate data
+
+Now, you can use the `trpc` client to fetch and mutate data in your app! Let's update the functionality of your app to use the `trpc` client.
+
+Let's start by updating the homepage where the list of posts is displayed. Since the page is still rendered server-side, you'll create a client component that uses the `trpc` client to fetch the posts.
+
+Create the `app/components/Posts.tsx` file and paste the following code:
+
+filename: app/components/Posts.tsx
+```tsx
+'use client'
+
+import Link from 'next/link'
+import { trpc } from '../_trpc/client'
+
+export default function Posts() {
+  // Use the `getPosts` query from the TRPC client
+  const getPosts = trpc.getPosts.useQuery()
+  const { isLoading, data: posts } = getPosts
+
+  return (
+    <div className="mb-8 flex max-w-2xl flex-col space-y-4">
+      {isLoading && <div>Loading...</div>}
+      {!isLoading && posts?.length === 0 && <div>No posts found</div>}
+      {!isLoading &&
+        posts?.map((post) => (
+          <Link
+            key={post.id}
+            href={`/posts/${post.id}`}
+            className="flex flex-col rounded-lg px-2 py-4 transition-all hover:bg-neutral-100 hover:underline dark:hover:bg-neutral-800"
+          >
+            <span className="text-lg font-semibold">{post.title}</span>
+            <span className="text-sm">by {post.authorId}</span>
+          </Link>
+        ))}
+    </div>
+  )
+}
+```
+
+Then, update the homepage (`app/page.tsx`) to use the `<Posts />` component:
+
+filename: app/page.tsx
+```tsx
+import Link from 'next/link'
+import Posts from './components/Posts'
+
+export default function Page() {
+  return (
+    <div className="-mt-16 flex min-h-screen flex-col items-center justify-center">
+      <h1 className="mb-8 text-4xl font-bold">Posts</h1>
+      <Posts />
+      <Link
+        href="/posts/create"
+        className="inline-block rounded-lg border-2 border-current px-4 py-2 text-current transition-all hover:scale-[0.98]"
+      >
+        Create New Post
+      </Link>
+    </div>
+  )
+}
+```
+
+Notice that the `db.select().from(postsTable)` function is removed from the homepage file. Instead, `trpc.getPosts.useQuery()` is used to fetch the posts, because remember, you created a tRPC `postRouter` with a `getPosts` procedure that uses `db.select().from(postsTable)`. So now, you don't need to use Drizzle directly; instead, you can use the tRPC `getPosts` procedure and Tanstack Query's `useQuery()` hook in order to have type safety, a better developer experience, and a more performant app.
+
+Why couldn't `trpc.getPosts.useQuery()` get called in the homepage file? Hooks, like `useQuery()`, have to be used in a Client Component, and the homepage is a Server Component. To keep the homepage as a Server Component, this logic is moved to the `<Posts />` component, which is made a Client Component.
+
+Also, because tRPC is using Tanstack Query to fetch the data, the query result includes not only the data, but also other states, such as loading and error states. You can learn more about in the Tanstack Query docs.
+
+> In TanStack Query v5, prefer `isPending` for initial-load checks. We use `isLoading` here because it behaves the same way on a query with no `initialData`.
+
+Before we update the rest of your app to use tRPC and Tanstack Query, let's test and make sure the new logic is working. Navigate to the homepage and make sure you can see the posts. Once you've verified everything's working, go back to your `postRouter` and let's create more procedures to handle your other queries.
+
+### Use tRPC to fetch a single post
+
+In `app/server/routers/posts.ts`, update the code to add a `getPost` procedure to fetch a single post by ID:
+
+filename: app/server/routers/posts.ts
+```ts
+import { publicProcedure, router } from '../trpc'
+import { db } from '@/db/drizzle'
+import { eq } from 'drizzle-orm'
+import { z } from 'zod'
+import { posts as postsTable } from '@/db/schema'
+
+export const postRouter = router({
+  getPosts: publicProcedure.query(async () => {
+    return await db.select().from(postsTable)
+  }),
+  getPost: publicProcedure
+    .input(z.object({ id: z.coerce.number().int() }))
+    .query(async ({ input }) => {
+      const posts = await db.select().from(postsTable).where(eq(postsTable.id, input.id))
+      return posts[0]
+    }),
+})
+
+export type PostRouter = typeof postRouter
+```
+
+> The input uses Zod 4's `z.coerce.number().int()` to validate the URL param as an integer at the schema boundary. The URL string passes through coercion automatically, so no client change is needed. This replaces the older `z.string()` + `parseInt(input.id)` pattern, which would let `NaN` reach Postgres on bad input.
+
+Then, update `app/posts/[id]/page.tsx` to use the `getPost` procedure by pasting the following code:
+
+filename: app/posts/[id]/page.tsx
+```tsx
+'use client'
+
+import { trpc } from '@/app/_trpc/client'
+import { use } from 'react'
+
+export default function Post({ params }: { params: Promise<{ id: string }> }) {
+  // Params are wrapped in a promise, so we need to unwrap them using React's `use()` hook
+  const { id } = use(params)
+  // Use the `getPost` query from the TRPC client
+  const { data: post, isLoading } = trpc.getPost.useQuery({ id })
+
+  return (
+    <div className="mx-auto mt-8 flex min-h-screen max-w-2xl flex-col">
+      {isLoading && <p>Loading...</p>}
+      {!isLoading && !post && <p>No post found.</p>}
+      {!isLoading && post && (
+        <article className="w-full max-w-2xl">
+          <h1 className="mb-2 text-2xl font-bold sm:text-3xl md:text-4xl">{post.title}</h1>
+          <p className="text-sm sm:text-base">by {post.authorId}</p>
+          <div className="prose prose-gray prose-sm sm:prose-base lg:prose-lg mt-4 sm:mt-8">
+            {post.content || 'No content available.'}
+          </div>
+        </article>
+      )}
+    </div>
+  )
+}
+```
+
+This replaces `db.select().from().where(eq())` with `trpc.getPost.useQuery()`. It also replaces how you get the post ID from `params`. `params` are wrapped in a promise. Before, `await` was used to handle `params`, but because Client Components cannot be async, it was replaced with React's `use()` hook.
+
+And before you go any further, test to make sure the new logic is working. Navigate to a post's URL, such as `http://localhost:3000/posts/1`, and make sure you can see the post.
+
+If that's working, go back to your `postRouter` and let's add the last procedure you need to handle your create post functionality.
+
+### Use tRPC to create a new post
+
+In `app/server/routers/posts.ts`, add the following code:
+
+filename: app/server/routers/posts.ts
+```ts
+import { publicProcedure, router } from '../trpc'
+import { db } from '@/db/drizzle'
+import { eq } from 'drizzle-orm'
+import { z } from 'zod'
+import { posts as postsTable } from '@/db/schema'
+
+const postSchema = z.object({
+  title: z.string(),
+  content: z.string(),
+  authorId: z.string(),
+})
+
+export const postRouter = router({
+  getPosts: publicProcedure.query(async () => {
+    return await db.select().from(postsTable)
+  }),
+  getPost: publicProcedure.input(z.object({ id: z.string() })).query(async ({ input }) => {
+    const posts = await db
+      .select()
+      .from(postsTable)
+      .where(eq(postsTable.id, parseInt(input.id)))
+    return posts[0]
+  }),
+  // Protected procedure that requires a user to be signed in
+  createPosts: publicProcedure.input(postSchema).mutation(async ({ input }) => {
+    return await db.insert(postsTable).values({
+      title: input.title,
+      content: input.content,
+      authorId: input.authorId,
+    })
+  }),
+})
+
+export type PostRouter = typeof postRouter
+```
+
+This adds a `createPosts` procedure that creates a new post, and a `postSchema` that uses zod to validate the input.
+
+Update `app/posts/create/page.tsx` to use this new procedure by pasting the following code:
+
+filename: app/posts/create/page.tsx
+```tsx
+'use client'
+
+import { useRouter } from 'next/navigation'
+import { SignInButton, useAuth } from '@clerk/nextjs'
+import { trpc } from '@/app/_trpc/client'
+import { useState } from 'react'
+
+export default function NewPost() {
+  const router = useRouter()
+  const [title, setTitle] = useState('')
+  const [content, setContent] = useState('')
+  // Use Clerk's `useAuth()` hook to get the user's ID
+  const { userId, isLoaded } = useAuth()
+  // Use the `createPosts` mutation from the TRPC client
+  const createPostMutation = trpc.createPosts.useMutation()
+
+  // Check if Clerk is loaded
+  if (!isLoaded) {
+    return (
+      <div className="flex h-[calc(100vh-4rem)] flex-col items-center justify-center space-y-4">
+        <div>Loading...</div>
+      </div>
+    )
+  }
+
+  // Protect this page from unauthenticated users
+  if (!userId) {
+    return (
+      <div className="flex h-[calc(100vh-4rem)] flex-col items-center justify-center space-y-4">
+        <p>You must be signed in to create a post.</p>
+        <SignInButton>
+          <button
+            type="submit"
+            className="inline-block cursor-pointer rounded-lg border-2 border-current px-4 py-2 text-current transition-all hover:scale-[0.98]"
+          >
+            Sign in
+          </button>
+        </SignInButton>
+      </div>
+    )
+  }
+
+  // Handle form submission
+  async function createPost(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    await createPostMutation.mutateAsync({
+      title,
+      content,
+      authorId: userId as string,
+    })
+    router.push('/')
+  }
+  return (
+    <div className="mx-auto max-w-2xl p-4">
+      <h1 className="mb-6 text-2xl font-bold">Create New Post</h1>
+      <form onSubmit={createPost} className="space-y-6">
+        <div>
+          <label htmlFor="title" className="mb-2 block text-lg">
+            Title
+          </label>
+          <input
+            type="text"
+            id="title"
+            name="title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Enter your post title"
+            className="w-full rounded-lg border px-4 py-2"
+          />
+        </div>
+        <div>
+          <label htmlFor="content" className="mb-2 block text-lg">
+            Content
+          </label>
+          <textarea
+            id="content"
+            name="content"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Write your post content here..."
+            rows={6}
+            className="w-full rounded-lg border px-4 py-2"
+          />
+        </div>
+        <button
+          type="submit"
+          className="inline-block w-full rounded-lg border-2 border-current px-4 py-2 text-current transition-all hover:scale-[0.98]"
+        >
+          Create Post
+        </button>
+      </form>
+    </div>
+  )
+}
+```
+
+This updates a few things. First, it turns this page into a Client Component, because Tanstack Query and the tRPC client are client-side. So now, the Server Action that you created before can no longer be used. Instead, the form data is handled using state. When the form is submitted, the `createPost()` function no longer uses `db.insert()` explicitly, but instead uses `trpc.createPosts.useMutation()` from the tRPC client. Also, because the page is now a Client Component, Clerk's `auth()` helper no longer works, so it's replaced with Clerk's `useAuth()` hook. This introduces the benefit of having access to Clerk's loading state, so a loading UI is added.
+
+Note the use of `await createPostMutation.mutateAsync(...)` followed by `router.push('/')` from `useRouter()`. The fire-and-forget `mutate(...)` would let the redirect run before the row is committed, so the homepage could render without the new post on first load. And `redirect()` from `next/navigation` is a server-context helper — calling it from a client event handler is unsupported. `mutateAsync` returns a promise we can `await`, and `useRouter().push('/')` is the conventional client-side navigation primitive.
+
+And don't forget, test your changes. Navigate to `http://localhost:3000/posts/create` and make sure you can create a new post.
+
+Once you've confirmed everything's working, you're almost done...
+
+## Create protected procedures
+
+In many applications, it's essential to restrict access to certain routes based on user authentication status. This ensures that sensitive data and functionality are only accessible to authorized users.
+
+The benefit of using Clerk with tRPC is that you can create protected procedures using Clerk's authentication context. Clerk's `Auth` object includes important authentication information like the current user's session ID, user ID, and organization ID. It also contains methods to check for the current user's permissions and to retrieve their session token. You can use the `Auth` object to access the user's authentication information in your tRPC queries.
+
+### Create the tRPC context
+
+Create the `app/server/context.ts` file and paste the following code:
+
+filename: app/server/context.ts
+```ts
+import { auth } from '@clerk/nextjs/server'
+
+export const createContext = async () => {
+  return { auth: await auth() }
+}
+
+export type Context = Awaited<ReturnType<typeof createContext>>
+```
+
+This creates a context that will be used to create the context for every tRPC query sent to the server. The context will use the `auth()` helper from Clerk to access the user's `Auth` object.
+
+### Pass the context to the tRPC server
+
+Then, in your tRPC server (`app/api/trpc/[trpc]/route.ts`), pass the context:
+
+filename: app/api/trpc/[trpc]/route.ts
+```ts
+import { fetchRequestHandler } from '@trpc/server/adapters/fetch'
+import { postRouter } from '@/app/server/routers/posts'
+import { createContext } from '@/app/server/context'
+
+const handler = (req: Request) =>
+  fetchRequestHandler({
+    endpoint: '/api/trpc',
+    req,
+    router: postRouter,
+    createContext,
+  })
+
+export { handler as GET, handler as POST }
+```
+
+### Access the context data in your procedures
+
+The tRPC context, or `ctx`, should now have access to the Clerk `Auth` object.
+
+In your `server/trpc.ts` file, create a protected procedure:
+
+filename: app/server/trpc.ts
+```ts
+import { initTRPC, TRPCError } from '@trpc/server'
+import { Context } from './context'
+
+const t = initTRPC.context<Context>().create()
+
+// Check if the user is signed in
+// Otherwise, throw an UNAUTHORIZED code
+const isAuthed = t.middleware(({ next, ctx }) => {
+  if (!ctx.auth.userId) {
+    throw new TRPCError({ code: 'UNAUTHORIZED' })
+  }
+  return next({
+    ctx: {
+      auth: ctx.auth,
+    },
+  })
+})
+
+export const router = t.router
+export const publicProcedure = t.procedure
+export const protectedProcedure = t.procedure.use(isAuthed)
+```
+
+### Use your protected procedure
+
+Once you have created your procedure, you can use it in any router. In this case, you don't want unauthenticated users to be able to create posts, so let's update the `createPosts` mutation to be protected by swapping the `publicProcedure` with the `protectedProcedure`:
+
+filename: app/server/routers/posts.ts
+```ts
+import { protectedProcedure, publicProcedure, router } from '../trpc'
+// ...The rest of your code...
+
+const postSchema = z.object({
+  title: z.string(),
+  content: z.string(),
+})
+
+export const postRouter = router({
+  // ...The rest of your code...
+
+  // Protected procedure that requires a user to be signed in
+  createPosts: protectedProcedure.input(postSchema).mutation(async ({ input, ctx }) => {
+    return await db.insert(postsTable).values({
+      title: input.title,
+      content: input.content,
+      authorId: ctx.auth.userId,
+    })
+  }),
+})
+
+export type PostRouter = typeof postRouter
+```
+
+Notice that `authorId` is no longer in the input schema. A protected procedure guarantees that `ctx.auth.userId` exists, so the user ID is read from the server-side Clerk context instead of from the client — a client-supplied `authorId` would be untrusted and could be spoofed to impersonate another user.
+
+Update the client-side create page (`app/posts/create/page.tsx`) to drop `authorId` from the `mutateAsync(...)` payload at the same time:
+
+filename: app/posts/create/page.tsx
+```tsx
+await createPostMutation.mutateAsync({ title, content })
+```
+
+`useAuth()` is still used on the page to gate rendering (loading state + signed-in check), but the user ID never crosses the wire.
+
+## Finished!
+
+At this point, you've got a fully functional app for creating and displaying posts. You can now add more features to your app, such as updating and deleting posts, adding comments, storing more author information from the Clerk `User` object, and more.
+
+Before shipping this app to production, you'll likely want a custom in-app sign-in/sign-up page instead of the hosted Account Portal flow we relied on here. Clerk's Build a custom sign-in-or-up page guide walks through creating `/sign-in/[[...sign-in]]/page.tsx`, the matching sign-up route, and the `NEXT_PUBLIC_CLERK_*` env vars that wire them up.

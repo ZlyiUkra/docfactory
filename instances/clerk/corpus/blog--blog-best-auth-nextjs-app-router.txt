@@ -1,0 +1,306 @@
+# What is the best way to handle authentication in Next.js App Router?
+# джерело: https://clerk.com/blog/best-auth-nextjs-app-router
+# отримано: 2026-09-25
+
+Next.js has dramatically simplified the process of building full stack applications with React by providing the flexibility of server- and client-side rendering and introducing patterns like middleware and server actions, but these bring additional complexities when it comes to securing your application. With multiple points of protection, it can be challenging to understand how to properly implement Next.js App Router authentication and check that your users are authenticated before allowing them to access the data they are requesting.
+
+In this article, you'll learn about the available Next.js App Router authentication options, and how to check the authentication status in middleware, layouts, server actions, and more.
+
+## What are the main authentication options for Next.js App Router?
+
+### Fully custom
+
+One option is to create a fully customized authentication solution for your application.
+
+This gives you the most control over your authentication stack, but it also puts all of the responsibility on you to build a fast and secure authentication system. You’ll have to consider:
+
+- Where will you store your user data?
+- How do you verify user email addresses?
+- What will your sign-in/up experience be like?
+- How do you implement single sign-on?
+- How will the server identify the user?
+
+On top of implementation details, you’ll also be responsible for monitoring the ever-evolving landscape of cybersecurity to understand newly discovered vulnerabilities, as well as taking time to patch your code to protect against them.
+
+> Learn more about how to implement JWT authentication in a Next.js app in our dedicated guide.
+
+### Package-based solution
+
+There are many pre-built packages available for developers to implement Next.js app router authentication. These packages often include the base logic for implementing authentication (sign in, sign up, etc), but you are still responsible for storing the user data, which is a benefit and a drawback. While you can easily access user data in your own database, you are still responsible for securing that data and making sure that attackers cannot gain access to it.
+
+On top of that, you’d need to make sure that the package is continually kept up to date to ensure that any vulnerabilities are mitigated. Some packages are maintained by well-known and highly reputable security teams, while others might be independently maintained and worked on only when the package owner is able.
+
+### Third-party providers
+
+Services like Clerk offer hosted solutions for authentication and user management. These platforms typically have opinionated approaches to authentication which can provide a clear implementation direction. Good hosted solutions also have dedicated security teams to ensure that products using the platform are protected against emerging threats. And while these platforms often store user data on your behalf, you’d have access to the user data through data exports, automatic synchronization, and API access.
+
+Not all third-party authentication solutions are alike though. You’ll have to do your research to compare and contrast the features each platform enables. Furthermore, it’s a good idea to reference unaffiliated sources to understand potential security flaws that real-world products have encountered while using a solution you might be interested in.
+
+## How to implement authentication in Next.js App Router?
+
+While the above section details the available Next.js App Router authentication options to consider when securing your application, understanding the different ways you can secure your application once you make that decision is another factor.
+
+Ultimately, the way you protect areas of your application depends on how you identify the user making the request. The following examples assume the application uses a JWT stored within a cookie that's sent back to the server with each request.
+
+You’ll notice in many of the samples below, the same approach is being used throughout to identify the user making the request by:
+
+- Parsing the `token` cookie
+- Validating and parsing the JWT claims into a `user` object
+- Checking that the user details are parsed successfully
+
+```tsx
+// Parse the cookie
+const token = request.cookies.get('token')?.value
+
+// Validate and parse the claims
+if (token) {
+  // Use the `parseToken` helper function to extract the claims into `user`
+  user = await parseToken(token)
+}
+
+// Check the user
+if (!user) {
+  // The user is not authorized
+}
+```
+
+For reference, here is the full implementation of `parseToken`:
+
+filename: src/lib/jwt.ts
+```ts
+import * as jose from 'jose'
+
+const publicKeyPem = process.env.JWT_PUBLIC_KEY as string
+
+async function getPublicKey() {
+  return jose.importSPKI(publicKeyPem, 'RS256')
+}
+
+export async function parseToken(token: string): Promise<jose.JWTPayload | null> {
+  if (!token) return null
+
+  try {
+    const publicKey = await getPublicKey()
+    const { payload } = await jose.jwtVerify(token, publicKey)
+    return payload
+  } catch (err) {
+    console.error('Error parsing token', err)
+    return null
+  }
+}
+```
+
+> This snippet is included for quick reference as it's used throughout the article. You can see the full implementation of `src/lib/jwt.ts`, including code to create JWTs, on GitHub.
+
+### Middleware
+
+Next.js middleware allows developers to execute functions on every incoming request and decide what to do with the request. In the context of Next.js App Router authentication, middleware can decide if the user should proceed to their requested page or be redirected to a sign in page if they are not authenticated.
+
+Below is a sample middleware file that shows how to redirect the user to `/sign-in` if they try to access `/dashboard` and are signed out:
+
+```tsx
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+import { parseToken } from './lib/jwt'
+
+export async function middleware(request: NextRequest) {
+  // Create a variable to hold user details
+  let user
+  const token = request.cookies.get('token')?.value
+  if (token) {
+    // Use the `parseToken` helper function to extract the claims into `user`
+    user = await parseToken(token)
+  }
+
+  // Get the pathname of the requested URL
+  const { pathname } = request.nextUrl
+
+  // If there is no user info and the request is to /dashboard, redirect to /sign-in
+  if (pathname.includes('/dashboard') && !user) {
+    const url = new URL('/sign-in', req.nextUrl)
+    return NextResponse.redirect(url)
+  }
+}
+
+export const config = {
+  matcher: '/(.*)',
+}
+```
+
+> A full demo of this implementation including sign-up and sign-in flows can be found on GitHub.
+
+### Protecting individual pages and routes
+
+You can opt to protect individual pages and routes by using the same pattern as above and deciding how to address unauthenticated users. The following snippet will parse the user and redirect users to `/sign-in` if they are not already authenticated:
+
+```jsx
+import { cookies } from 'next/headers'
+import { parseToken } from '@/lib/jwt'
+import { redirect } from 'next/navigation'
+
+async function DashboardPage() {
+  let user
+  const token = (await cookies()).get('token')?.value
+  if (token) {
+    user = await parseToken(token)
+  }
+  if (!user) {
+    redirect('/sign-in')
+  }
+
+  return <div>{/* Dashboard content */}</div>
+}
+
+export default DashboardPage
+```
+
+And this snippet will respond with a `401 Unauthorized` status when a user tries to access an API endpoint without being authenticated:
+
+```tsx
+import { parseToken } from '@/lib/jwt'
+import { NextRequest } from 'next/server'
+
+export async function GET(request: NextRequest) {
+  let user
+  const token = request.cookies.get('token')?.value
+  if (token) {
+    user = await parseToken(token)
+  }
+  if (!user) {
+    return new Response('', { status: 401 })
+  }
+
+  return new Response(JSON.stringify({ message: 'Ok!' }), { status: 200 })
+}
+```
+
+### Securing server actions
+
+Server Actions are functions that execute on the server but can be called in server and client components to handle a variety of tasks such as form submissions. When it comes to authentication, you should treat them with the same security considerations as public-facing API endpoints, and verify if the user is allowed to perform the action.
+
+When a server action is called, Next.js will make an HTTP request to the current route with a special header to tell the server what function to execute. This means that even if you use middleware to protect the `/dashboard` route, if you call a server function that is stored in the `/dashboard` route from `/` it will not consider any rules defined in the middleware.
+
+To ensure that server actions are always secure, make sure to check the user details in each individual function:
+
+```tsx
+'use server'
+
+import { cookies } from 'next/headers'
+import { parseToken } from '@/lib/jwt'
+
+export async function getChartData() {
+  const cookieStore = await cookies()
+  const tokenCookie = await cookieStore.get('token')
+  const user = await parseToken(tokenCookie?.value as string)
+
+  if (!user) {
+    throw new Error('User is unauthorized')
+  }
+
+  return {
+    message: 'OK!',
+  }
+}
+```
+
+### Client-side pages and components
+
+It’s not recommended to add authorization code or security checks in client-side components since the code is downloaded to the user’s device regardless of authentication state. Any security checks performed locally are purely for cosmetic reasons or to inform the user they need to be authenticated to view the contents of that component.
+
+If you are building an application where secure client-side components are mounted on public pages, the best approach is to use `fetch` to request data from an API that performs security checks in the route handler before responding with the data, or an unauthorized status code. Calling a server action that has security rules built into the function is also acceptable.
+
+The following `Chart.tsx` component demonstrates how this should work when fetching data from an API:
+
+```tsx
+'use client'
+import { useEffect, useState } from 'react'
+
+function Chart() {
+  // Set up component state
+  const [isLoading, setIsLoading] = useState(true)
+  const [requiresAuth, setRequiresAuth] = useState<boolean>()
+  const [data, setData] = useState<any>()
+
+  // On component render, fetch data from /api/data (implementation shown above)
+  useEffect(() => {
+    async function loadData() {
+      const res = await fetch('/api/data')
+      // If the response is a 401 status, indicate the viewer is unauthorized
+      if (res.status === 401) {
+        setRequiresAuth(true)
+      } else {
+        const json = await res.json()
+        setData(json)
+      }
+      setIsLoading(false)
+    }
+    loadData()
+  }, [])
+
+  if (isLoading) {
+    return <div>Loading...</div>
+  }
+
+  // If the init logic determines the viewer is unauthorized, render that message
+  if (requiresAuth) {
+    return <div>You need to sign in to view this component</div>
+  }
+
+  return <div>{/* Chart data */}</div>
+}
+
+export default Chart
+```
+
+### A note on securing layouts
+
+Layouts in Next.js are special React components that are applied to any pages in the same directory as well as nested directories. This means that as the user accesses routes deeper within the application, each layout would be wrapped by its parent layout before rendering the final page content as children of the layout.
+
+Take the following application structure as an example:
+
+```txt
+src/
+│
+├── app/
+│   ├── layout.tsx       # RootLayout (wraps entire application)
+│   ├── page.tsx         # Root page
+│   │
+│   └── dashboard/
+│       ├── layout.tsx   # DashboardLayout (specific to /dashboard routes)
+│       └── page.tsx     # Dashboard main page
+```
+
+If the user were to access the `/` route, the resulting page would load with its content wrapped in the `RootLayout`. Accessing the `/dashboard` route would first apply the `RootLayout`, then the `DashboardLayout`, and finally the page content.
+
+While it may be tempting to add security and authorization code to layouts, Next.js does not run the code in a layout on every single navigation event due to Partial Rendering. This means that there is no guarantee the code will run consistently and it could lead to vulnerabilities in your application. Instead, you should do the security checks close to your data source or the component that'll be conditionally rendered.
+
+> You can learn more about Partial Rendering in the Next.js docs.
+
+## Tips on choosing the best solution for your application
+
+### Choosing the implementation
+
+When it comes to choosing between a custom authentication system, packages, or a hosted platform, it ultimately comes down to the level of effort or engineering hours you are willing to give to your implementation. Custom solutions require the most time and responsibility and are well suited for dedicated teams of security-minded engineers.
+
+Packages are a middle-ground. Some of the hard work has already been done, but you are still completely responsible for the way it is implemented, and for keeping it up to date. Finally, great hosted solutions often provide a turn-key offering with dedicated personnel to prioritize security for their customers (you) and offer support for implementation and any ongoing issues you might encounter.
+
+### Securing your application
+
+As stated earlier, selecting the best method from the list above highly depends on how your application is structured.
+
+Middleware is easily the most secure and flexible to work with. It lets you apply security checks before the request ever reaches the code within pages, layouts, server actions, etc. One thing to consider is that Next.js defaults to the edge runtime for middleware, which does not support all Node.js APIs and may cause some confusion when building your middleware. This however can be changed in the middleware configuration:
+
+filename: src/middleware.ts
+```ts
+export const config = {
+  runtime: 'nodejs',
+}
+```
+
+Securing individual pages and routes would be used sparingly or only in special circumstances since it's very narrowly scoped. It would however be useful for API routes where only some methods need to be protected, such as a `GET` request that's public but a `POST` request that requires authentication.
+
+Securing client-side code should only be done for cosmetic purposes as it doesn’t actually apply any security, and adding authorization code directly in a layout should be avoided. Finally, any server actions should always be protected individually since they could be called from any area of the application by mistake.
+
+## Try Clerk for Next.js App Router authentication
+
+If you want to quickly add authentication and user management to your application, Clerk can be implemented in as little as two minutes and provides comprehensive Next.js App Router authentication. Our solution uses middleware to apply security rules to all requests and wraps your entire application at the root layout to ensure that all child routes, server or client rendered, have access to the user context, allowing you to easily secure your application in any way you see fit.

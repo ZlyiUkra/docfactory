@@ -1,0 +1,193 @@
+# A guide to reading authenticated user data from Clerk
+# джерело: https://clerk.com/blog/read-user-data-guide
+# отримано: 2026-09-25
+
+Reading data about the authenticated user is a fundamental part of any application.
+
+Whether you need to access the user's ID, username, contact information, or profile data, Clerk provides various methods to accomplish this depending on your runtime environment and application needs.
+
+Options are great! But they can also make it challenging to decide which approach to take. I wrote this guide to explain the different methods and their appropriate use cases. This way, you can choose the most suitable and efficient option for your circumstances.
+
+> This post is about accessing data about the currently-authenticated user. If you want to query data about unauthenticated users, you can use the Backend API or Webhooks. For guidance on which is best for your circumstances, please refer to Clerk Webhooks vs BackendAPI.
+
+## Methods to read authenticated user data
+
+Below is a table summarizing the different approaches to read  authenticated user data from Clerk.
+
+Use it to understand your options at a glance or reference the next time you return to this page.
+
+Read User Data Guide setup guide
+
+## Frontend API with `useUser()`
+
+Clerk's Frontend API enables authenticated users to access their own data and perform actions specific to their account from a browser or native environment.
+
+To access the authenticated user, you could call the `/v1/me` endpoint. However, the convenient option in Next.js is to invoke `useUser()`, which queries `/v1/me` under the hood.
+
+```tsx
+'use client'
+import { useUser } from '@clerk/nextjs'
+
+export default function Example() {
+  const { isLoaded, isSignedIn, user } = useUser()
+
+  if (!isLoaded || !isSignedIn) {
+    return null
+  }
+
+  return <div>Hello, {user.firstName} welcome to Clerk</div>
+}
+```
+
+Certain Frontend API requests are rate-limited but `/v1/me` is not. This endpoint has no defined limit, making it practically unlimited.
+
+### Guidance
+
+When to use Frontend API with `useUser()`:
+
+- Call `useUser()` from a client component when you need to update the UI with information about the authenticated user.
+- Best-suited for when you need to dynamically update the UI in response to a client event. `useUser()` returns a `User` with a `reload()` function that makes it even easier to render the most up-to-date user information.
+- Also useful for loading user information on page load, though server-side rendering (SSR) may be preferred for this.
+
+When to avoid:
+
+- `useUser()` won't work from a server environment and is therefore inappropriate for server-side-rendering user information.
+- Unsuitable for accessing user private metadata.
+- Avoid querying and sending user data from the frontend to the backend. Fetch and verify the data directly on the backend to ensure its integrity.
+
+## Backend API with `currentUser()`
+
+Clerk's Backend API is designed to query user data from a server environment.
+
+The `currentUser()` helper is used to access information about the currently authenticated user from server components, server actions, and other server-side code like so:
+
+```tsx
+import { auth, currentUser } from '@clerk/nextjs/server'
+
+export default async function Page() {
+  // Get the Backend API User object when you need access to the user's information
+  const user = await currentUser()
+  // Use `user` to render user details or create UI elements
+}
+```
+
+> `currentUser()` calls Clerk's Backend API behind the scenes. This counts towards your application's Backend API request rate limit of 100 requests per 10 seconds.
+
+### Guidance
+
+When to use `currentUser()`:
+
+- Call `currentUser()` from a Next.js server component, server action, API route handler, or other backend code where you require data about the authenticated user.
+- Suitable for accessing user private metadata.
+- A good option when you need to query potentially large attributes such as `user.organizatons` from a backend environment. Dynamic attributes like these are usually too big for custom session claims (session claims are the subject of the next section).
+- Suitable for accessing user data infrequently due to rate limits.
+
+When to avoid:
+
+- Do not exceed 100 requests per 10 seconds. This limit applies to _all_ Backend API requests made by your application. Exceeding this limit will result in a `429 Too Many Requests` error and your application might not work properly.
+- Avoid querying and storing user data in your database. If a user updates their information via a Clerk component like `<UserProfile />`, your database won't be synchronized. Instead, store only the user ID and fetch the latest user data from Clerk as needed.
+
+> If you _only_ need the authenticated user ID, calling the Backend API is not efficient.
+>
+> Read the `userId` default session claim with `auth()` or `useAuth()` using the guidance in the next section instead.
+
+## Session claims
+
+Claims are pieces of information about the authenticated user. They're encoded in the Clerk session token and digitally signed to ensure the information is authentic.
+
+Claims are accessible from frontend or backend environments, and since they don't require an API roundtrip, rate limits do not apply.
+
+The user ID is included in the token by default. However, the user's username, contact information, and other attributes are not. To access this optional data, it's necessary to customize the session token with custom claims.
+
+### Read user ID
+
+Below are two code examples demonstrating how to access the authenticated user's ID on the client and on the server with the  `useAuth()` and `auth()` helpers respectively:
+
+**Client**
+
+```tsx
+'use client'
+import { useAuth } from '@clerk/nextjs'
+
+export default function Page() {
+  const { isLoaded, userId, sessionId } = useAuth()
+
+  // In case the user signs out while on the page.
+  if (!isLoaded || !userId) {
+    return null
+  }
+
+  return (
+    <div>
+      Hello, {userId} your current active session is {sessionId}
+    </div>
+  )
+}
+```
+
+**Server**
+
+```tsx
+import { auth } from '@clerk/nextjs/server'
+
+export default async function Page() {
+  // Get the userId from auth() -- if null, the user is not signed in
+  const { userId } = auth()
+
+  if (userId) {
+    // Use `userId` to store an entity in the database
+  }
+}
+```
+
+### Set and read custom session claims
+
+To customize session claims for your application, open the Clerk dashboard then click **Sessions**.
+
+Look for the "Customize session token section" and press **Edit**.
+
+Define a JSON structure that includes dynamic placeholders called shortcodes (remember to **Save** after). Clerk will replace these shortcodes with the actual values at runtime:
+
+```json
+{
+  "firstName": "{{user.first_name}}",
+  "lastName": "{{user.last_name}}",
+  "email": "{{user.primary_email_address}}",
+  "avatarUrl": "{{user.image_url}}",
+  "publicMetadata": "{{user.public_metadata}}"
+}
+```
+
+Read custom session claims from a backend environment with the same `auth()` helper and the returned `sessionClaims` property.
+
+**Server**
+
+```tsx
+import { auth } from '@clerk/nextjs/server'
+
+export default async function Page() {
+  // Get the userId from auth() -- if null, the user is not signed in
+  const { userId, sessionClaims } = auth()
+
+  if (userId && sessionClaims) {
+    const { firstName, lastName, email, avatarUrl, publicMetadata } = sessionClaims
+  }
+}
+```
+
+> To get auto-complete and prevent TypeScript errors when working with custom session claims, define a global type.
+
+Custom session claims are technically accessible from frontend environments, but this is rarely needed, so the Next.js SDK doesn't provide a dedicated helper.
+
+### Guidance
+
+When to use session claims:
+
+- Custom session claims are best suited for scenarios where you need to frequently access certain user attributes from the backend, but the Backend API rate limits would normally be prohibitive.
+- In either frontend or server environments, session claims are the most efficient way to access just the user ID. This eliminates the need for unnecessary API calls.
+
+When to avoid:
+
+- The _entire_ session token must not exceed 4KB due to browser cookie size limits. Use good judgment when including custom claims such as `user.organizations`, which can cause the token to exceed this limit and break your app. Only store essential, predictably-sized user data in the token, and occasionally fetch larger claims through separate Backend API calls.
+- Unsuitable for accessing user private metadata.
+- Do not use custom session claims in a frontend environment. It requires less configuration and code to use the Frontend API with `useUser()`, as described at the top of this guide.

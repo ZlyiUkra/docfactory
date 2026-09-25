@@ -1,0 +1,178 @@
+# How to take your Clerk application to production
+# джерело: https://clerk.com/blog/how-to-take-your-clerk-app-to-prod
+# отримано: 2026-09-25
+
+When you're building a modern web app, authentication is one of the first things you’ll want to wire up, and Clerk makes that easy and fast!
+
+When you first create a Clerk application, we initialize a development instance of our platform help you get up and running in minutes. But when it's time to launch, you’ll need to switch to a production instance for maximum security and higher user limits. That transition comes with a few key differences and steps to follow.
+
+In this article, you’ll learn what separates development from production, how to configure a Clerk production instance, and how to upgrade your social login providers for production use.
+
+## What is the difference between dev and prod?
+
+Clerk’s development instances are optimized for speed and simplicity. They let you integrate authentication and user management quickly, without worrying about configuration or infrastructure. By default, they’re set up to be as flexible as possible, allowing HTTP connections and using shared OAuth credentials across all Clerk apps.
+
+Production instances, by contrast, prioritize security and isolation. They require HTTPS, and each instance must use its own credentials for identity providers. Rather than relying on cross-domain redirects, Clerk authenticates users directly on your domain using DNS records, reducing the risk of cross-site scripting attacks and improving user trust.
+
+## Migrating to Production: Step by Step
+
+The first step in going to production is securing a custom domain. This is the address where users will access your app, and it’s also how Clerk will verify the authenticity of authentication requests.
+
+### Step 1: Create a production instance
+
+Head to the Clerk Dashboard. At the top of the page, you’ll see a toggle labeled **Development**—click it and select **Create production instance** from the dropdown menu.
+
+Clerk dashboard showing how to switch from a development instance to a production instance. The dropdown menu labeled “Development” is open, with a red arrow pointing to the “Create production instance” option. This step is part of promoting your app to production in Clerk.
+
+Clerk gives you the option to clone your dev settings or start with a fresh configuration. If you choose to clone, note that some sensitive settings like SSO connections, integrations, and custom paths won’t carry over. These need to be configured again for security reasons.
+
+### Step 2: Configure DNS
+
+Once your instance is created, Clerk will show you a checklist of remaining steps to make your production environment fully functional. Among these steps is configuring DNS records. These records tell the internet that Clerk is authorized to manage auth on your domain and are required for login, email delivery, and other user-facing features to work properly.
+
+![Clerk production instance dashboard displaying the initial setup checklist. It highlights required actions such as setting custom OAuth2 credentials and configuring CNAME records before deployment. Metrics for total users, active users, and deployment status (frontend not deployed, backend operational) are shown below.
+](https://clerk.com/_media/blog/how-to-take-your-clerk-app-to-prod/img2.png)
+
+### Step 3: Update your API keys
+
+With the instance and DNS in place, you’ll need to update your application with the new API keys. Each Clerk instance—development or production—has its own set of keys, located under **Configure** > **API Keys**. Production keys are prefixed with `pk_live` and `sk_live` for the publishable and secret key respectively.
+
+Clerk dashboard showing the API keys configuration page for a production instance. The screen displays the public "publishable key" (pk\_live\_...) for frontend use and a masked secret key under “default.” It also shows relevant deployment URLs, including the Frontend API, Backend API, and JWKS endpoint. A warning at the bottom reminds users that Clerk support will never ask for secret keys.
+
+### Step 4: Update SSO Connections
+
+Social login is a common part of many apps, and Clerk makes it easy to integrate providers like Google, GitHub, and Discord. In development mode, Clerk uses shared OAuth credentials behind the scenes, so you don’t need to register anything manually. This saves time, especially when testing across multiple identity providers.
+
+However, in production, each provider needs to recognize and trust _your_ app specifically. That means you’ll need to register an application with each identity provider and generate your own client ID and secret. Once created, you can plug those into the Clerk dashboard for each enabled provider in **Configure** > **SSO connections**.
+
+Clerk maintains a helpful set of guides for each OAuth provider, walking you through the process of registering your app and setting up redirect URIs. These are worth bookmarking, especially if your app supports multiple login options.
+
+## Practical Example: Taking Quillmate Live
+
+In this section, I’ll walk you through how I migrated **Quillmate**—an open source online writing platform built with Next.js, Clerk, and Supabase—from development to production.
+
+Quillmate is deployed on Vercel, and I’ve registered `quillmate.site` with Namecheap as my domain.
+
+> The order of the steps in this portion of the guide deviates slightly from what’s listed above to follow the launch checklist in the Clerk dashboard which may vary from app to app.
+
+### Step 1: Create a production instance
+
+I’ll start by selecting the **Create production instance** from the toolbar as described below and opting to clone my instance settings, which will enable email and Google login strategies:
+
+Clerk dashboard showing the “Create production instance” button in the toolbar. The “Development” toggle is selected, and a red arrow points to the button. This step is part of promoting your app to production in Clerk.
+
+When prompted, I’ll enter `quillmate.site` as the application domain and click **Create instance**:
+
+The Create production instance modal open with the domain quillmate.site entered in the input field. The “Create instance” button is highlighted.
+
+I’m then brought to the Overview tab of my production instance, which contains the checklist of the tasks I need to perform to finish setting up the instance.
+
+Clerk production instance dashboard displaying the initial setup checklist. It highlights required actions such as setting custom OAuth2 credentials and configuring CNAME records before deployment. Metrics for total users, active users, and deployment status (frontend not deployed, backend operational) are shown below.
+
+### Step 2: Configure Google SSO
+
+Selecting any task here will bring you to the dashboard page where you can complete the task, so I’ll start by selecting **Set social connection (OAuth) credentials**. This will bring me to my list of enabled SSO connections.
+
+The list of enabled SSO connections for the production instance. The “Google” connection is highlighted.
+
+You’ll need to create OAuth credentials for each provider listed. I’m using only Google to demonstrate the process, so I’ll click the cog icon to open the configuration model for that provider.
+
+In the modal, **Use custom credentials** is already enabled (since they are required for production instances). There is also a link to our docs, which describes the process of configuring Google SSO with Clerk, but I’ll also cover this process here.
+
+The Google SSO configuration modal open with the “Use custom credentials” option enabled. The “Client ID” and “Client Secret” fields are highlighted.
+
+To create the Google OAuth credentials, you’ll access the Google Cloud Console and create a new project if you don’t already have one you want to work with. I have a project named “Quillmate Demo” that I’m using. I’ll use the menu to navigate to **APIs & Services > OAuth consent screen** and select **Get started**.
+
+The OAuth overivew tab in Google Cloud with Get Started button highlighted.
+
+The following screen will present a series of steps where you’ll need to populate information in each step. The fields are pretty self-explanatory, so here is how I populated mine:
+
+1. App Information
+   1. App name: Quillmate Demo
+   2. User support email: My email address
+2. Audience
+   1. External
+3. Contact Information
+   1. Email address: My email address
+4. Finish
+   1. I agree to the Google API Services: User Data Policy.
+
+Once I click **Create**, I’ll once again use the menu to navigate to **APIs & Services > Credentials** and select **Create credentials > OAuth client ID**.
+
+The API & Serviecs menu item in Google Cloud Console with the “Credentials” submenu open and the “Create credentials” button highlighted.
+
+In the Create OAuth client ID page, I’ll set the Application type to Web application and give it a name, Quillmate Demo, in my case. Under Authorized JavaScript origins, I’ll enter “https://quillmate.site” since that’s the only URL used to access this demo, but if you use more than one URL, you’ll need to enter them all here. Finally, for Authorized redirect URIs, I’ll paste in the value displayed in the Clerk dashboard.
+
+The final version of the screen looks like so:
+
+The Create OAuth client ID page in Google Cloud Console.
+
+Once I click **Create** at the bottom of the screen, I’ll receive my client ID and secret:
+
+The OAuth client created modal
+
+> Your client secret should be protected like any secret, as anyone who obtains it can impersonate your application to steal user credentials.
+
+Then I can copy those values into the Clerk dashboard and click **Update** to complete the configuration.
+
+The OAuth client ID and secret copied into the Clerk dashboard.
+
+### Step 3: Configure DNS
+
+To complete the setup in the Clerk dashboard, I’ll head back to the **Overview** tab and select **Finish your setup** from the list of tasks.
+
+The Finish your setup task in the Clerk dashboard.
+
+This will redirect me to the Domains section, where five records will need to be created in my DNS provider to point the necessary subdomains to Clerk for user management, as well as configure email security so we can send messages on behalf of your domain. Every provider is going to be different, but the following image represents the entered records on my registrar:
+
+DNS records for quillmate.site in my DNS provider.
+
+Once entered, I’ll head back to the Clerk dashboard and click Validate configuration near the top of the page, which will prompt us to check the DNS records:
+
+The Validate configuration button in the Clerk dashboard.
+
+Once verified, Clerk will generate the SSL certificates required for a secure connection to our services.
+
+> Setting DNS records can take time to propagate, sometimes up to 24 hours in rare circumstances.
+
+### Step 4: Updating the domain and API keys in Vercel
+
+As mentioned earlier, I am hosting Quillmate on Vercel. In this section, I’ll set the custom domain with Vercel as well as update the Clerk API keys being used to point to the production instance of the Clerk application.
+
+I have already deployed the development version of my application to Vercel, so I’ll start by selecting it from the list of applications I’m hosting. I’ll then navigate to **Settings > Domains** and click **Add**.
+
+The Domains section in Vercel with the “Add” button highlighted.
+
+Then I’ll enter the domain `quillmate.site` and click **Add Domain**.
+
+The Add Domain modal in Vercel with the domain quillmate.site entered in the input field. The “Add Domain” button is highlighted.
+
+Once added, I’ll need to update my DNS again to match what Vercel expects, specifically pointing the root of the domain to 76.76.21.21.
+
+The Domain configuration page in Vercel for quillmate.site.
+
+Once added to my DNS configuration, I can refresh the domain in Vercel to verify the configuration and generate the SSL certificates to access my site at `https://quillmate.site`.
+
+Now that the application is accessible at my domain, I can update the API keys. These are located in the Clerk Dashboard under **Configure > API Keys**. Since I’m using Next.js, I’ll select that option from _Quick Copy_ and then click the **Copy** button.
+
+The API keys configuration page in the Clerk dashboard with the "Next.js” option selected and the “Copy” button highlighted.
+
+Back in the Vercel dashboard, I’ll navigate to **Settings > Environment Variables** to access the current environment variables. I’ll need to modify the `CLERK_SECRET_KEY` and `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` variables to only work in non-production environments. To do this, I’ll click the three dots next to each variable and select **Edit**. I can then edit the **Environments,** uncheck the **Production** environment, and click **Save**.
+
+The Environment Variables section in Vercel.
+
+Once this is done for both variables, I’ll scroll up to the section where I can add new variables. Using the **Environments** drop-down once more, I can uncheck all but the **Production** environment, paste in the copied values from the Clerk dashboard, and click **Save**.
+
+The Environment Variables section in Vercel with the new variables added.
+
+> For added security, you may consider adding the CLERK\_SECRET\_KEY variable separately and setting it as a Sensitive variable to prevent team members from reading
+
+Once I save, I’ll get the option to **redeploy** my application, which is required for the new variables to take effect.
+
+## Conclusion
+
+Moving your Clerk app to production is more than just flipping a flag—it’s about setting up a secure and trustworthy authentication layer that runs under your domain. Development mode is perfect for quick iteration, but production mode ensures that users have a seamless and secure experience.
+
+By creating a production instance, updating your DNS, configuring your own OAuth credentials, and deploying with the right keys, you’ll have a secure, production-ready app with Clerk that creates a great experience for your users.
+
+> Learn more about taking your Clerk app to production in our docs.

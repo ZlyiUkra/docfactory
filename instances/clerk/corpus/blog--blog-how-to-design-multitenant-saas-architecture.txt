@@ -1,0 +1,264 @@
+# How to Design a Multi-Tenant SaaS Architecture
+# джерело: https://clerk.com/blog/how-to-design-multitenant-saas-architecture
+# отримано: 2026-09-25
+
+Designing for multiple customers in a single application sounds simple—until it's not.
+
+Multi-tenancy is the process of supporting multiple organizations or customers in a single application. It requires deliberate architectural choices around authentication, authorization, data storage, and performance. As your product grows, so do the expectations around isolation, access control, and performance. Building a solid multi-tenant strategy is the foundation for scale.
+
+In this guide, we’ll walk through the core principles of multi-tenancy, popular database models, authentication flows, and the tools that help you ship a secure, flexible SaaS product faster.
+
+## Key Principles of Multi-Tenant Design
+
+### Data Isolation
+
+The most important rule of multi-tenancy is this: **one tenant should never see another tenant’s data**. This is often enforced at the application layer, but can also be enforced at the database level using Postgres's Row-Level Security (RLS) mechanism. Platforms like Supabase and Neon support this natively.
+
+For stricter isolation, such as in compliance-driven industries, some apps take it further by assigning **a separate database per tenant**—a pattern we’ll explore in more detail shortly.
+
+### Auth Separation
+
+In more security-sensitive applications, you may want to isolate not just data but user identity as well. This could mean creating **separate user pools** per tenant or requiring tenant-specific authentication flows like custom sign-in URLs.
+
+### Role Scoping
+
+Once users are inside the app, you still need to control _what_ they can do. Assigning roles and permissions per tenant is critical to ensure users only access the data and functionality they’re entitled to. This is especially important when users can belong to more than one tenant.
+
+Role Based Access Control (RBAC) is a scalable strategy for ensuring users have the right access within a tenant. It dictates that each user has a role that contains all of the permissions they need to perform their duties, and the authorization logic can check which permissions exist for the user before allowing them to perform the desired action on the system.
+
+### Shared Infrastructure
+
+Most SaaS products operate on **shared infrastructure**, where compute, storage, and codebases are reused across tenants. This reduces operational costs and simplifies deployments. However, one downside is that a noisy tenant (one with heavy usage or bad behavior) could affect others if isolation isn't thoughtfully implemented. This is why it's important to have a good understanding of the different database models and how they can be used to isolate data, as well as a good system to monitor and alert on tenant-level performance.
+
+## Multi-Tenant Authentication Flows
+
+### Making Authentication Tenant-Aware
+
+In a multi-tenant SaaS app, authentication often needs to be aware of which tenant the user is associated with, sometimes before they’ve even signed in. Some tenants may require specific login methods or domain restrictions that your system needs to enforce.
+
+There are a couple of common patterns to handle this:
+
+The system that handles user authentication can preemptively determine which tenant the user belongs to based on their username or domain. For example, if someone signs in with `brian@clerk.dev`, the system can detect the domain and automatically associate the login with the `clerk.dev` organization. At Clerk, we call this “**verified domains**” and it allows new users to sign up with their own domain and automatically be associated with the correct tenant. This makes the experience seamless while maintaining tenant-level security controls.
+
+Another approach is **explicit tenant selection**, where the user is prompted to select their tenant before authenticating. This can be handled via a subdomain, URL path, or even a dropdown based on past login history. Once selected, your app can enforce tenant-specific auth logic for that session.
+
+### Managing Tenant Context for Logged-In Users
+
+If users in your app can belong to more than one organization, you’ll need a way to determine which tenant context they’re operating in at any given time.
+
+This can be tracked using a field on the user account that stores their active tenant, or through a dedicated mapping table in the database that links users to the tenants they belong to along with their associated roles and permissions.
+
+When using JWT-based authentication, details about the active tenant in which the user is operating can be stored in the token claims. When verified, the system can trust the claims and automatically associate the request with that tenant. Clerk’s B2B tools use this approach, storing the user’s active organization and their permissions directly in the token.
+
+This ensures your app knows not just _who_ is logged in—but _what they can do_ and _where they are_ in the multi-tenant hierarchy.
+
+## Common Database Patterns
+
+The way you model and isolate tenant data has huge implications for scalability and maintainability. Here are the most common strategies:
+
+### Shared DB / Shared Schema
+
+All tenants share the same database and the same table structure. Each record includes a tenant ID to segment the data. This is the easiest setup to manage and makes it straightforward to run queries across tenants—such as for analytics or internal metrics. However, it also introduces a higher risk of accidental data leakage if tenant IDs aren’t properly enforced. Without database-level controls like RLS, you’ll be relying solely on application logic to enforce boundaries.
+
+Multi-tenant database structure diagram
+
+### Shared DB / Isolated Schemas
+
+In this model, all tenants share a single database, but each tenant has its own schema. This provides a stronger logical boundary between tenants than a shared schema. You get more security at the database level while still avoiding the overhead of managing many separate databases. That said, you’ll need to apply database changes to every schema, which can be tedious if not automated. Additionally, not all tooling or ORMs support multiple schemas cleanly.
+
+### Isolated DB per Tenant
+
+With this approach, each tenant is given a completely separate database. It offers the highest level of isolation and is often required by enterprise customers in regulated industries. This setup allows you to fine-tune performance and resources per tenant. However, it comes with a significant maintenance cost as migrations and schema changes need to be deployed to every database instance. If you are using a shared application layer, you’ll also need a routing mechanism in your application to connect each user to the correct database.
+
+Database per tenant diagram
+
+### Hybrid Models
+
+Some SaaS platforms use a mix of the above models. For example, small teams and startups may be placed on a shared schema, while enterprise customers receive isolated databases as part of a premium plan. This hybrid approach gives you the flexibility to scale tenant isolation based on customer needs, without overengineering from day one.
+
+## Modeling Tenants in Your Database
+
+### Structuring Tables for Multi-Tenant Access
+
+The way you design your tables plays a big role in protecting tenant data. Any table that stores tenant-specific records should include a `tenant_id` field, and often a `created_by_user_id` as well. This provides a clear trail of ownership and supports granular permission enforcement.
+
+An example of a `tasks` table with these attributes would look like this:
+
+```sql
+CREATE TABLE tasks (
+ task_id SERIAL PRIMARY KEY,
+ title VARCHAR(255) NOT NULL,
+    description TEXT,
+ done BOOLEAN DEFAULT FALSE,
+ created_by_user_id TEXT NOT NULL,
+ tenant_id TEXT NOT NULL
+);
+```
+
+You’ll also want a way to track which users belong to which tenants and what roles they have. This can be done with mapping tables that link users to tenants along with their access level. Here is an example of these tables:
+
+```sql
+-- This table tracks which users
+CREATE TABLE user_tenants (
+ user_id TEXT NOT NULL,
+ tenant_id TEXT NOT NULL
+);
+
+-- This would track the role a user has in each tenant
+CREATE TABLE user_roles (
+ user_id TEXT NOT NULL,
+    role VARCHAR(50) NOT NULL,
+ tenant_id TEXT NOT NULL
+);
+
+-- This table tracks which permissions belong to which role
+CREATE TABLE role_permissions (
+    role VARCHAR(50) NOT NULL,
+ tenant_id TEXT NOT NULL,
+ permission_id INT NOT NULL
+);
+
+-- This would contain the permission name (ex: tasks.read, tasks.write)
+CREATE TABLE permissions (
+ permission_id SERIAL PRIMARY KEY,
+ permission_name VARCHAR(50) NOT NULL UNIQUE
+);
+```
+
+Before allowing any sensitive operation, like writing or deleting data, your app should verify the user's permissions for the active tenant. Whether you do that in application logic or using database-level RLS, this check is key to maintaining secure multi-tenant boundaries.
+
+### Associating Requests with the Right Tenant
+
+To properly enforce tenant isolation, every request must be explicitly tied to a tenant. Let’s take a practical look at the two proposed strategies from earlier, using the database structure from the previous section.
+
+**Store the active tenant with the user or session record in the database**
+
+When storing the user’s active tenant ID in the database, a query to the `tasks` table returning all tasks for a user actively in the `org_1234` tenant would look like this:
+
+```sql
+SELECT *
+  FROM tasks
+  WHERE tenant_id = 'org_1234';
+```
+
+Now let’s also consider the permissions a user has when inserting a record into the `tasks` table. You’d first want to check to make sure the user has a role with the `tasks.write` permission:
+
+```sql
+SELECT 1
+FROM user_tenants ut
+JOIN user_roles ur ON ut.user_id = ur.user_id AND ut.tenant_id = ur.tenant_id
+JOIN role_permissions rp ON ur.role = rp.role AND ur.tenant_id = rp.tenant_id
+JOIN permissions p ON rp.permission_id = p.permission_id
+WHERE ut.user_id = 'user_123'
+  AND p.permission_name = 'tasks.write'
+  AND ut.tenant_id = 'org_123'
+LIMIT 1;
+
+```
+
+Assuming the above check passes, the following query could then be executed:
+
+```sql
+INSERT INTO tasks (
+ title,
+  description,
+ done,
+ created_by_user_id,
+ tenant_id
+) VALUES (
+  'Task Title',
+  'This is the description of the task.',
+ FALSE,
+  'user_1234',
+  'org_1234'
+);
+```
+
+**Store the active tenant information in the JWT**
+
+If you store the user’s role and permissions in the JWT, you will check the values of the verified token claims in code before executing the query. For example, Clerk issues tokens with claims that would look like the following.
+
+Note the organization values in the `o` claim and the list of permissions stored in the `perms` claim:
+
+```sql
+{
+  "azp": "http://localhost:3001",
+  "exp": 1749142876,
+  "fea": "o:articles",
+  "fva": [
+    2,
+    -1
+ ],
+  "iat": 1749142816,
+  "iss": "https://modest-hog-24.clerk.accounts.dev",
+  "jti": "106e6c2a3d141e64dbcf",
+  "nbf": 1749142806,
+  "o": {
+    "fpm": "3",
+    "id": "org_1234",
+    "per": "read,write",
+    "rol": "admin",
+    "slg": "echoes"
+ },
+  "perms": [
+    "org:tasks:read",
+    "org:tasks:write"
+ ],
+  "pla": "o:free_org",
+  "role": "authenticated",
+  "sid": "sess_2y66UuWq2epuWYYmMfkkT59SeA7",
+  "sub": "user_2s2XJgQ2iQDUAsTBpem9QTu8Zf7",
+  "v": 2
+}
+```
+
+> In this example, `perms` was added manually into the session claims in the Clerk dashboard.
+
+The following JavaScript example checks for the `org:tasks:write` permission before inserting a task using the `sub` claim as the user ID and the `o`.`id` as the tenant ID:
+
+```jsx
+const { sessionClaims } = await auth() // Using the Clerk `auth` helper function
+
+if (sessionClaims?.perms.includes('org:tasks:write')) {
+  const query = `
+ INSERT INTO tasks (title, description, done, created_by_user_id, tenant_id)
+ VALUES ($1, $2, $3, $4, $5) RETURNING task_id;
+ `
+
+  const values = [title, description, done, sessionClaims.sub, sessionClaims.o.id]
+
+  const res = await client.query(query, values)
+}
+```
+
+## Tools That Help
+
+### Clerk
+
+Clerk is a complete user management solution that integrates seamlessly with multi-tenant apps. Through our B2B toolkit, we support organizations (tenants), verified domains, and fine-grained access control through custom roles and permissions. We also support enterprise authentication flows such as SAML and OIDC, multifactor authentication, and passkeys, and can enforce identity providers on a per-tenant basis.
+
+### Database options
+
+Databases are the backbone of tenant isolation. Choosing the right provider and schema strategy impacts not only performance but also how you scale and segment customers.
+
+**Supabase** is a great choice for shared-database models. It offers built-in Row-Level Security (RLS), letting you enforce per-tenant access at the database layer itself. Because it's built on Postgres, you can use policies, views, and triggers to implement sophisticated tenant-aware queries while still keeping things performant.
+
+**Neon** provides a compelling model for apps that need stronger isolation. It allows you to spin up isolated branches of a database that can be tied to specific tenants, allowing for independent data storage, migrations, and even teardown if needed. You can pair Neon with Vercel or Supabase for shared frontend and auth infrastructure while maintaining hard tenant boundaries at the data level.
+
+**PlanetScale** offers horizontal scaling through Vitess and supports schema branches, though its approach to isolation is more opinionated. It works well for global apps with high throughput demands but requires careful planning when implementing tenant-specific patterns.
+
+### Automating Tenant Infrastructure with AWS or GCP
+
+For teams adopting a **per-tenant infrastructure model**, cloud providers like AWS and GCP offer automation tools to make that feasible at scale.
+
+With **AWS**, you can use CloudFormation, CDK, or Terraform to provision dedicated resources per tenant—databases, S3 buckets, Lambda functions, and even isolated VPCs if required. Services like EventBridge or Step Functions can orchestrate the entire flow: when a new tenant signs up, your system triggers a pipeline that creates their environment, configures access, and notifies your app.
+
+**GCP** offers similar functionality through tools like Deployment Manager, Workflows, and Cloud Functions. You can set up Cloud SQL instances for per-tenant databases, deploy Cloud Run services for tenant-specific APIs, or isolate workloads with separate projects or namespaces. Pub/Sub can act as the event bus that kicks off provisioning workflows based on user actions or internal triggers.
+
+In both cases, treating infrastructure as code makes tenant provisioning consistent, repeatable, and secure. For enterprise-grade SaaS, this approach not only meets isolation and compliance requirements—it becomes a selling point for larger customers who expect guarantees around performance and data segregation.
+
+## Conclusion
+
+Designing for multi-tenancy is about more than just scaling. It’s about trust, flexibility, and maintainability. As your user base grows and your customer’s needs evolve, your architecture should support that growth without adding friction or risk.
+
+The right combination of tools with the proper strategy can help you avoid scaling issues down the road. Using the knowledge and recommended tools outlined in this article, you are now well-equipped to design a multi-tenant SaaS architecture that scales from your first 10 users to your next 10,000.

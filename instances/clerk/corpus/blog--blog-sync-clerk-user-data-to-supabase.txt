@@ -1,0 +1,328 @@
+# Synchronize user data from Clerk to Supabase
+# джерело: https://clerk.com/blog/sync-clerk-user-data-to-supabase
+# отримано: 2026-09-25
+
+Most web applications aren’t built for just one user.
+
+Whether you’re building admin dashboards, team-based tools, or collaborative writing platforms, you’ll eventually need access to other users in your system.
+
+When you’re using Clerk, there are a few ways to make that happen—each with its own tradeoffs around performance, accuracy, and infrastructure. In this article, you’ll learn how to access user information using Clerk’s **Backend API**, and how to **sync Clerk users to your Supabase database** using Webhooks and Supabase Functions.
+
+> This article will focus on Next.js and Supabase. We also have another guide on our blog that is a more framework-agnostic method of accessing other user’s data.
+
+## Accessing Users with the Backend API
+
+Clerk’s **Backend API (BAPI)** allows you to securely retrieve data about the data stored within your Clerk application using your own server environment. This includes data about other users, whether that is individual users or members of an organization.
+
+Since Clerk is the source of truth when it comes to information about users in your system, the biggest benefit of accessing user data through the Clerk Backend API is that it will always retrieve the most up-to-date version of that information. When a user updates their record (or an admin updates it for them), the API will reflect those changes immediately, ensuring that your application always has access to the latest profile, metadata, and status values without relying on a separate syncing process.
+
+The following code snippet demonstrates how to call our Backend API with JavaScript to retrieve details about a user:
+
+```tsx
+const userId = 'user_123'
+const response = await clerkClient.users.getUser(userId)
+```
+
+Requests can also be made directly to the API as shown in our docs.
+
+As with any external API, BAPI usage is subject to rate limits. To prevent hitting those limits, it’s a good idea to add a caching layer, either on the server or in the client.
+
+## Syncing User Data with Webhooks and Supabase Functions
+
+Another approach is to proactively sync user data to your database by using Clerk **Webhooks**.
+
+Once configured, Clerk can send data to your application any time specific events occur—like a user being created or updated. Each time an event is triggered, Clerk will send an HTTP POST request to a defined endpoint, containing the relevant payload.
+
+The following sample code demonstrates the payload that is sent along with a `user.updated` event that is triggered whenever a user record is modified:
+
+```json
+{
+  "data": {
+    "birthday": "",
+    "created_at": 1654012591514,
+    "email_addresses": [
+      {
+        "email_address": "example@example.org",
+        "id": "idn_29w83yL7CwVlJXylYLxcslromF1",
+        "linked_to": [],
+        "object": "email_address",
+        "reserved": true,
+        "verification": {
+          "attempts": null,
+          "expire_at": null,
+          "status": "verified",
+          "strategy": "admin"
+        }
+      }
+    ],
+    "external_accounts": [],
+    "external_id": null,
+    "first_name": "Example",
+    "gender": "",
+    "id": "user_29w83sxmDNGwOuEthce5gg56FcC",
+    "image_url": "https://img.clerk.com/xxxxxx",
+    "last_name": null,
+    "last_sign_in_at": null,
+    "object": "user",
+    "password_enabled": true,
+    "phone_numbers": [],
+    "primary_email_address_id": "idn_29w83yL7CwVlJXylYLxcslromF1",
+    "primary_phone_number_id": null,
+    "primary_web3_wallet_id": null,
+    "private_metadata": {},
+    "profile_image_url": "https://www.gravatar.com/avatar?d=mp",
+    "public_metadata": {},
+    "two_factor_enabled": false,
+    "unsafe_metadata": {},
+    "updated_at": 1654012824306,
+    "username": null,
+    "web3_wallets": []
+  },
+  "event_attributes": {
+    "http_request": {
+      "client_ip": "0.0.0.0",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+    }
+  },
+  "object": "event",
+  "timestamp": 1654012824306,
+  "type": "user.updated"
+}
+```
+
+On the Supabase side, you can create a **Supabase Function** to receive the webhook payload and write the data directly to your database. This gives you local access to user data, which is helpful for scenarios like:
+
+- Joining on user metadata in custom queries
+- Performing analytics or reporting
+- Enforcing RLS (Row-Level Security) policies that rely on user attributes
+
+The main benefit of this approach is that your application no longer has to reach out to Clerk in real time—user data is already where you need it. The tradeoff is that syncing is asynchronous, meaning there may be a slight delay between when an event is triggered and when the data becomes available. It also introduces more infrastructure and code you’ll need to manage.
+
+## Practical Example
+
+Let’s take a look at how to implement both of these strategies using a real-world project. **Quillmate** is an open-source writing platform built with Next.js and Supabase.
+
+> You can clone the repository from it’s home on GitHub.
+
+To follow along, make sure you have Docker Desktop installed, which is used to build and deploy the function to Supabase.
+
+### Create and configure the Supabase Edge Function
+
+Start by creating the function by running the following command from the root of the project:
+
+```bash
+pnpx supabase functions new clerk-webhooks
+```
+
+This should create an empty function located at `supabase/functions/clerk-webhooks`. In your terminal, navigate to that directory and run the following command to add the `@clerk/backend` library to the function:
+
+```bash
+pnpx deno add npm:@clerk/backend
+```
+
+Now open the `index.ts` file from that directory and replace all of the contents with the following code that automatically adds and updates records for users, organizations, and memberships:
+
+filename: supabase/functions/clerk-webhooks/index.ts
+```tsx
+import { createClient } from 'npm:@supabase/supabase-js'
+import { verifyWebhook } from 'npm:@clerk/backend/webhooks'
+
+Deno.serve(async (req) => {
+  // Verify webhook signature
+  const webhookSecret = Deno.env.get('CLERK_WEBHOOK_SECRET')
+
+  if (!webhookSecret) {
+    return new Response('Webhook secret not configured', { status: 500 })
+  }
+
+  const event = await verifyWebhook(req, { signingSecret: webhookSecret })
+
+  // Create supabase client
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  if (!supabaseUrl || !supabaseServiceKey) {
+    return new Response('Supabase credentials not configured', { status: 500 })
+  }
+  const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+  switch (event.type) {
+    case 'user.created': {
+      // Handle user creation
+      const { data: user, error } = await supabase
+        .from('users')
+        .insert([
+          {
+            id: event.data.id,
+            first_name: event.data.first_name,
+            last_name: event.data.last_name,
+            avatar_url: event.data.image_url,
+            created_at: new Date(event.data.created_at).toISOString(),
+            updated_at: new Date(event.data.updated_at).toISOString(),
+          },
+        ])
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error creating user:', error)
+        return new Response(JSON.stringify({ error: error.message }), { status: 500 })
+      }
+
+      return new Response(JSON.stringify({ user }), { status: 200 })
+    }
+
+    case 'user.updated': {
+      // Handle user update
+      const { data: user, error } = await supabase
+        .from('users')
+        .update({
+          first_name: event.data.first_name,
+          last_name: event.data.last_name,
+          avatar_url: event.data.image_url,
+          updated_at: new Date(event.data.updated_at).toISOString(),
+        })
+        .eq('id', event.data.id)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error updating user:', error)
+        return new Response(JSON.stringify({ error: error.message }), { status: 500 })
+      }
+
+      return new Response(JSON.stringify({ user }), { status: 200 })
+    }
+
+    case 'organization.created': {
+      // Handle organization creation
+      const { data, error } = await supabase
+        .from('organizations')
+        .insert([
+          {
+            id: event.data.id,
+            name: event.data.name,
+            created_at: new Date(event.data.created_at).toISOString(),
+            updated_at: new Date(event.data.updated_at).toISOString(),
+          },
+        ])
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error updating owner:', error)
+        return new Response(JSON.stringify({ error: error.message }), { status: 500 })
+      }
+
+      return new Response(JSON.stringify({ data }), { status: 200 })
+    }
+
+    case 'organization.updated': {
+      const { data, error } = await supabase
+        .from('organizations')
+        .update({
+          name: event.data.name,
+          updated_at: new Date(event.data.updated_at).toISOString(),
+        })
+        .eq('id', event.data.id)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error updating owner:', error)
+        return new Response(JSON.stringify({ error: error.message }), { status: 500 })
+      }
+
+      return new Response(JSON.stringify({ data }), { status: 200 })
+    }
+
+    case 'organizationMembership.created': {
+      const { data, error } = await supabase
+        .from('members')
+        .insert([
+          {
+            id: event.data.id,
+            user_id: event.data.public_user_data?.user_id,
+            organization_id: event.data.organization?.id,
+            created_at: new Date(event.data.created_at).toISOString(),
+            updated_at: new Date(event.data.updated_at).toISOString(),
+          },
+        ])
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error updating member:', error)
+        return new Response(JSON.stringify({ error: error.message }), { status: 500 })
+      }
+
+      return new Response(JSON.stringify({ data }), { status: 200 })
+    }
+
+    case 'organizationMembership.updated': {
+      const { data, error } = await supabase
+        .from('members')
+        .update({
+          user_id: event.data.public_user_data?.user_id,
+          organization_id: event.data.organization?.id,
+          updated_at: new Date(event.data.updated_at).toISOString(),
+        })
+        .eq('id', event.data.id)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error updating member:', error)
+        return new Response(JSON.stringify({ error: error.message }), { status: 500 })
+      }
+
+      return new Response(JSON.stringify({ data }), { status: 200 })
+    }
+
+    default: {
+      // Unhandled event type
+      console.log('Unhandled event type:', JSON.stringify(event, null, 2))
+      return new Response(JSON.stringify({ success: true }), { status: 200 })
+    }
+  }
+})
+```
+
+Finally, deploy the new function with the following command:
+
+```bash
+pnpx supabase functions deploy
+```
+
+Now open the Supabase dashboard for your project and navigate to **Edge Functions** from the left navigation. Copy the URL of the function.
+
+The Supabase Edge Functions page with the URL of the function highlighted
+
+Next, click the name of the function to open it, select the **Details** tab, disable **Enforce JWT Verification**, then **Save changes.** This functionality will interfere with verifying the payload using the Clerk Webhook Secret, which will be configured in the next section.
+
+Disable JWT verification in the Supabase Edge Functions Details page
+
+### Configure the Clerk Webhook
+
+Next, head over to the Clerk dashboard for your application and navigate to **Configure > Webhooks**. Click **Add Endpoint**.
+
+The Clerk Webhooks page with the Add Endpoint button highlighted
+
+In the form that appears, paste in the URL of the Supabase Edge Function from the previous steps into the **Endpoint URL** field, enable the `user.created` event, and click **Create** at the bottom of the form.
+
+The Clerk Webhooks page with the Endpoint URL field highlighted
+
+The configuration for the created webhook endpoint will automatically open up. Click the eye icon near the **Signing Secret** to reveal the secret and copy the value.
+
+The Clerk Webhooks page with the Signing Secret field highlighted
+
+Now head back the Supabase dashboard and navigate to **Edge Functions** > **Secrets**. Add a new secret named `CLERK_WEBHOOK_SECRET` and paste in the value you copied from the Clerk dashboard.
+
+The Supabase Edge Functions Secrets page with the CLERK\_WEBHOOK\_SECRET secret being added
+
+That’s it! From now on, any new user created in this Clerk application will automatically be synchronized over to the Supabase database. You can actually test it from the Clerk dashboard by opening the webhook, accessing the Testing tab, selecting the `user.created` event, and clicking **Send Example**.
+
+For other events, you’d simply enable the desired events and update the switch statement to parse the data for those events.
+
+## Conclusion
+
+If you need to sync user data from Clerk to Supabase, Edge Functions are a great match to Clerk’s webhooks. When properly configured, you can build the necessary logic to conditionally process incoming event data into any table in your Supabase database and make user data available to join on for analytics, reporting, and other necessary workloads.

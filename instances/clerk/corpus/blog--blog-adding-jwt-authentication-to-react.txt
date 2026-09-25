@@ -1,0 +1,514 @@
+# Adding JWT Authentication to React
+# джерело: https://clerk.com/blog/adding-jwt-authentication-to-react
+# отримано: 2026-09-25
+
+JSON Web Token (JWT) authentication is a method of securely authenticating users and allowing them to access protected resources on a website or application. It's a popular and widely used method of web authentication as it allows for easy and secure user authentication without the need for the server to maintain a session state.
+
+In this process, the server generates a signed JWT and sends it to the client. The client then includes this token in subsequent requests to the server to authenticate themselves. The JWT is usually stored in the browser's localStorage and sent as part of the request's headers.
+
+However, the JWT mechanism can be arduous and error-prone, especially if you're building it from scratch. In this article, you'll learn how to implement JWT in a React application using a standard flow, and then you'll see how much easier it gets when repeating the exercise using Clerk's React authentication.
+
+## What Is JWT Authentication?
+
+Before we discuss how a user is authenticated with JWT, let's take a closer look at what it contains:
+
+1. `The header:` consists of two parts—the token type, which is JWT, and a signing algorithm, such as HMAC-SHA256 or RSA
+2. `The payload:` contains the claims—in other words, the statements about an entity (typically, the user) and additional data
+3. `The signature:` used to verify the JWT's integrity
+
+To authenticate a client using JWT, the server first generates a signed JWT and sends it to the client. The client then includes the JWT in the header (usually the authorization header) of subsequent requests to the server.
+
+The server then decodes the JWT and verifies the signature to ensure that a trusted party sent it. If the signature is valid, the server can then use the information contained in the JWT to authenticate the client and authorize their access to specific resources. The diagram below shows a standard JWT authentication flow.
+
+JWT authentication flow
+
+### Advantages and Downsides of Using JWT
+
+Using JWT authentication offers the following advantages:
+
+1. `JWT authentication is stateless:` A JWT contains all the information regarding the user's identity and authentication, including the claims. This can be more efficient than storing session information on the server as it reduces the amount of data that needs to be stored and retrieved for each request.
+
+2. `Create anywhere:` Another advantage of JWT authentication is that the token can be generated from anywhere, including external services or third-party applications. This allows for flexibility in terms of where and how the token is generated, which can be useful in a microservices architecture where different services may need to authenticate users.
+
+3. `Fine-grained access control:` JWT can contain information about the user's role and permissions in the form of claims. This gives the application developers a lot of control over what actions a user is allowed to take.
+
+However, there are also some disadvantages to using JWT authentication:
+
+1. `Hard to invalidate:` Invalidating JWTs is only possible if you maintain a list on a shared database, which introduces additional overhead. The database is necessary because if you need to revoke a token or if a user's permissions change, the server won't otherwise be able to determine the status of the token and might give access when it shouldn't. If the JWTs you're using are long-lived—in other words, they have a very long (or no) expiration time specified—it becomes even more important that they're stored in an accessible database.
+
+2. `Size and security concerns:` JWTs can sometimes contain unnecessary information that might be useless for the application and, at the same time, make the token larger and more cumbersome to work with. If the JWT is unencrypted, it can also end up revealing too much about the user.
+
+Given these challenges, some would say that using cookies over JWT works better in some instances as a method of authentication; for example, when the application needs to keep track of the user's activity across multiple pages, as cookies can be easily read and written on the server side. Let's compare the two in detail.
+
+### Are Cookies Better Than JWT?
+
+To start with, you can create session-based cookies, which automatically expire after the user session is closed, or you can easily set an expiration time for a cookie, which gives more control over session invalidation. You can also use HttpOnly cookies to prevent JavaScript from accessing the cookie information.
+
+However, it's important to note that cookies come with their own flaws. Specifically, as the cookie data is stored on the server and the cookie identifier is stored on the client, they're not entirely stateless like JWTs. This means that the server needs to store and retrieve the cookie data for each request, which would be additional overhead to the authentication process and slow down the application's performance, especially if the number of concurrent users increases.
+
+They're also not ideal for non-browser-based applications, such as mobile and desktop applications. Additionally, cookies can be more vulnerable to certain attacks, such as cross-site scripting (XSS) and cross-site request forgery (CSRF).
+
+Now that we've covered the advantages and some of the potential challenges of JWT authentication, let's see the process in action. In the following section, you'll see how to implement JWT authentication in your React application.
+
+## Implementing JWT Authentication in Your React Application
+
+In this tutorial, you'll build a simple full-stack application with authentication in Next.js. Next.js allows you to implement frontend applications using React and a backend API server without setting up another Node.js project. You'll also understand the pitfalls of creating a JWT authentication from scratch and learn to overcome those limitations using the Clerk SDK.
+
+> For pure React applications (without Next.js), check out our React authentication solution which handles JWT and other auth methods seamlessly.
+
+The application stores the key to the user's safehouse (a protected resource) and uses JWT authentication to verify their identity. The application shows the user a welcome page, where they can sign in with a username and password. It generates a JWT for the user, which they can use to verify their identity. Once signed in, users will see their safehouse's secret key by exchanging the JWT with the server.
+
+Before you begin, you'll need a code editor like Visual Studio Code. You'll also need Node.js (version 16 or newer) and npm installed. If you want to check out the completed application, you can clone this GitHub repository.
+
+### Setting Up the Project
+
+To set up a Next.js project, run the following command:
+
+```bash
+npx create-next-app clerk-jwt-example
+```
+
+You'll be prompted on whether you'd like to use TypeScript and ESLint. For simplicity, choose `No` for TypeScript and then `Yes` for ESLint.
+
+After you complete the npm installation, open the project in your code editor and change the directory to the project by running `cd clerk-jwt-example` in your terminal.
+
+To use the browser's default styling, remove all existing styles from `styles/globals.css` and `styles/Home.module.css`.
+
+### JWT Authentication Using a Standard Flow
+
+In this example, you'll create two pages: `/jwt-home` and `jwt-safehouse`. The former will be the login page to collect credentials, and the latter will be the secured page showing secret information.
+
+More specifically, the `/jwt-home` page accepts the user credentials and requests the `/api/auth` API endpoint to generate the signed JWT. The application stores the returned JWT in localStorage as the `jwt-token` key. The `/jwt-safehouse` acts as the secured page and requests the secret information from the `/api/safehouse` API endpoint in exchange for the signed JWT. The `/jwt-safehouse` page then displays the secret information to the signed-in user.
+
+In Next.js, you can create a new application route by creating a new file with the route name under the `pages/` folder. Similarly, to create a new API endpoint, you need to create a new file under the `pages/api/` folder.
+
+#### Update the Application Home Page
+
+To access different parts of your application, update the application home page (`pages/index.js`) to show links to other pages in the application. The code below uses the `Link` component from `next/link`, which is the Next.js version of the `<a>` tag:
+
+```jsx
+import Link from 'next/link'
+
+export default function Home() {
+  return (
+    <div>
+      Home
+      <br />
+      <ol>
+        <li>
+          <Link href={'/jwt-home'}>JWT Home</Link>
+        </li>
+        <li>
+          <Link href={'/jwt-safehouse'}>JWT Safe house</Link>
+        </li>
+      </ol>
+    </div>
+  )
+}
+```
+
+Now start the application by running `npm run dev` in the terminal. Open `http://localhost:3000` in a web browser to see the application. You'll see the page, as shown below.
+
+Initial layout
+
+#### Create a Signed JWT
+
+To create a signed JWT, you first need to install the `jsonwebtoken` package. `jsonwebtoken` provides utilities to sign and verify JWTs. Run `npm i jsonwebtoken` to install the package in your project.
+
+You'll need a JWT signing secret to use with `jsonwebtoken`. For this, create a new file, `.env.local`, to store the application's secret credentials. In this file, add a new environment variable, `DIY_JWT_SECRET`, with a random hash string as a value:
+
+```txt
+DIY_JWT_SECRET=2182312c81187ab82bbe053df6b7aa55
+```
+
+To generate the signed JWT with the user's `signInTime` and `username`, create an API route `/api/auth` by creating the new file `pages/api/auth.js`. The API route accepts the user credentials, and if the provided password is `pikachu`, it returns a `200` response with the signed JWT. Otherwise, it returns a `401` response with an error message:
+
+```js
+import jwt from 'jsonwebtoken'
+
+export default function handler(req, res) {
+  const jwtSecretKey = process.env.DIY_JWT_SECRET
+  const { username, password } = req.body
+  // confirm if password is valid
+  if (password !== 'pikachu') {
+    return res.status(401).json({ message: 'Invalid password' })
+  }
+  let data = {
+    signInTime: Date.now(),
+    username,
+  }
+
+  const token = jwt.sign(data, jwtSecretKey)
+  res.status(200).json({ message: 'success', token })
+}
+```
+
+#### Create a Login with JWT
+
+Now that the `/api/auth` API endpoint is ready, create the new file `pages/jwt-home.jsx` and implement a login form component to send user credentials to `/api/auth`.
+
+The code below implements a React component, `Home`, that displays a form to collect the user credentials and, on form submission, makes an HTTP POST request to the `/api/auth` endpoint with the collected credentials.
+
+If the response message is `success`, it saves the received JWT in localStorage under the `jwt-token` key. Otherwise, it shows a browser alert with the response message:
+
+```jsx
+import { useState } from 'react'
+import { useRouter } from 'next/router'
+
+export default function Home() {
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const router = useRouter()
+
+  function submitUser(event) {
+    event.preventDefault()
+    fetch('/api/auth', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ username, password }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.message === 'success') {
+          localStorage.setItem('jwt-token', data.token)
+          setUsername('')
+          setPassword('')
+          router.push('/jwt-safehouse')
+        } else {
+          alert(data.message)
+        }
+      })
+  }
+  return (
+    <>
+      <main style={{ padding: '50px' }}>
+        <h1>Login </h1>
+        <br />
+
+        <form onSubmit={submitUser}>
+          <input
+            value={username}
+            type="text"
+            placeholder="Username"
+            onChange={(e) => setUsername(e.target.value)}
+          />
+          <br />
+          <br />
+
+          <input
+            value={password}
+            type="password"
+            placeholder="Password"
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <br />
+          <br />
+
+          <button type="submit">Login</button>
+        </form>
+      </main>
+    </>
+  )
+}
+```
+
+JWT flow login page
+
+#### Exchange the JWT for the Secret Data
+
+The next step is to implement an API endpoint to verify the JWT from the incoming request header. If it's valid, the endpoint should return a `200` response with the secret data; otherwise, it will return a `401` response with an error message.
+
+Create a new file, `pages/api/safehouse.js`. In this file, copy and paste the following code to verify the incoming JWT from the `jwt-token` request header:
+
+```js
+import jwt from 'jsonwebtoken'
+
+export default function handler(req, res) {
+  const tokenHeaderKey = 'jwt-token'
+  const jwtSecretKey = process.env.DIY_JWT_SECRET
+  const token = req.headers[tokenHeaderKey]
+  try {
+    const verified = jwt.verify(token, jwtSecretKey)
+    if (verified) {
+      return res.status(200).json({ safehouseKey: 'under-the-doormat', message: 'success' })
+    } else {
+      // Access Denied
+      return res.status(401).json({ message: 'error' })
+    }
+  } catch (error) {
+    // Access Denied
+    return res.status(401).json({ message: 'error' })
+  }
+}
+```
+
+#### Display the Safehouse Secret Data
+
+The final step in the flow is to request the secret data from the `/api/safehouse` API endpoint and display it if the JWT is valid.
+
+To show the secret safehouse data, create the new file `pages/jwt-safehouse.jsx` with the following code:
+
+```jsx
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+
+export default function SafeHouse() {
+  const [token, setToken] = useState('')
+  const [userData, setUserData] = useState({})
+
+  useEffect(() => {
+    const token = localStorage.getItem('jwt-token')
+    setToken(token)
+    fetch('/api/safehouse', {
+      headers: {
+        'jwt-token': token,
+      },
+    })
+      .then((res) => res.json())
+      .then((data) => setUserData(data))
+  }, [])
+
+  function logout() {
+    setToken('')
+    localStorage.removeItem('jwt-token')
+  }
+
+  if (!token) {
+    return (
+      <>
+        <main style={{ padding: '50px' }}>
+          <p>You&apos;re not logged in.</p>
+          <Link href={'/jwt-home'}>Home</Link>
+        </main>
+      </>
+    )
+  }
+
+  return (
+    <>
+      <main style={{ padding: '50px' }}>
+        <h1>Safehouse </h1>
+        <p>
+          You Safehouse key is <strong>{userData?.safehouseKey || 'Loading...'}</strong>
+        </p>
+        <button onClick={logout}>Logout</button>
+      </main>
+    </>
+  )
+}
+```
+
+The above code implements a `SafeHouse` component that renders the secret data if the JWT is available in localStorage. Otherwise, it prompts the user to log in with a link to the `/jwt-home` page.
+
+The component gets the `jwt-token` from localStorage and makes a `fetch` request to the `/api/safehouse` in the `useEffect` hook that runs on the initial render in the browser.
+
+The `Logout` button triggers the `logout()` function that clears the `token` state variable and removes the localStorage item.
+
+The standard JWT authentication flow is ready.
+
+View video
+
+Note that the solution you implemented above is very naive for a number of reasons. First, to make this system work, you'll need to implement and maintain additional code to track any updates to the JWT and pass the JWT in the request headers.
+
+Next, you can't invalidate the stored JWT from outside the user's browser, which is a critical security issue—if a user's account is suspended or deleted, a JWT issued before that action would still be valid and could be used to authenticate as that user.
+
+Further, if a user's password is changed, a JWT that was issued before the password change would still be valid and could be used to authenticate as the user with the old password.
+
+### Authentication Using Clerk
+
+By using the Clerk SDK, you can overcome the limitations discussed above. In the following section, you'll find the steps to implement a more secure and scalable solution for your JWT authentication while retaining the same functionality.
+
+#### Set Up the Clerk SDK
+
+Below are the steps to setting up the Clerk SDK:
+
+1. Sign up for a free account on Clerk.com.
+
+2. On your Clerk dashboard, click `Add application` to create a new application.
+
+3. In the Application name field, type in "JWT Example" and click `Finish`.
+
+   Create new Clerk application
+
+4. On the application dashboard, click on `API Keys` in the left navigation. Then copy the `Frontend API key`, `Backend API key`, and `JWT verification key`.
+
+   Copy Clerk credentials
+
+5. Save the keys in the file `.env.local` inside your project:
+
+```
+   NEXT_PUBLIC_CLERK_FRONTEND_API=<frontend-key>
+   CLERK_API_KEY=<backend-api-key>
+   CLERK_JWT_KEY=<jwt-verification-key>
+```
+
+6. Install the Clerk SDK by running `npm i @clerk/nextjs` inside your project.
+
+7. Add the `ClerkProvider` in the `pages/_app.js` file to use the authentication state throughout the application:
+
+```jsx
+   import { ClerkProvider } from '@clerk/nextjs'
+
+   export default function App({ Component, pageProps }) {
+     return (
+       <ClerkProvider {...pageProps}>
+         <Component {...pageProps} />
+       </ClerkProvider>
+     )
+   }
+```
+
+#### Implement Sign In and Sign Up
+
+With the Clerk SDK installed, you can easily set up your sign-in and sign-up pages.
+
+_Note:_ In Next.js, files named `pages/sign-in/[[...<anything>]].jsx` create a catch-all route that will match /sign-in, /sign-in/a, /sign-in/a/b, and so on.
+
+For the sign-in page, create the new file `pages/sign-in/[[...index]].jsx` and use the prebuilt `<SignIn>` component from `@clerk/nextjs`:
+
+```jsx
+import { SignIn } from '@clerk/nextjs'
+
+export default function SignInPage() {
+  return <SignIn path="/sign-in" routing="path" signUpUrl="/sign-up" />
+}
+```
+
+For the sign-up page, create the new file `pages/sign-up/[[...index]].jsx` and use the prebuilt `<SignUp>` component from `@clerk/nextjs`:
+
+```jsx
+import { SignUp } from '@clerk/nextjs'
+
+export default function SignUpPage() {
+  return <SignUp path="/sign-up" routing="path" signInUrl="/sign-in" />
+}
+```
+
+#### Fetch the Secret Data from the API
+
+To use the Clerk SDK with the API endpoints, you must create the file `middleware.js` at the project root with the following code:
+
+```js
+import { withClerkMiddleware } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server'
+
+export default withClerkMiddleware((req) => {
+  return NextResponse.next()
+})
+
+// Stop Middleware running on static files
+export const config = { matcher: '/((?!.*\\.).*)' }
+```
+
+To create the API endpoint `/api/clerk-safehouse`, create a new file, `pages/api/clerk-safehouse.js`. If the user is signed in, the API handler returns a `200` response with the `safehouseKey`. Otherwise, it returns a `401` response with an error message.
+
+This API handler function uses the `getAuth` utility function from `@clerk/nextjs/server` to get the user's authentication state on the server:
+
+```jsx
+import { getAuth } from '@clerk/nextjs/server'
+
+export default async function handler(req, res) {
+  try {
+    const { userId } = getAuth(req)
+    if (!userId) {
+      return res.status(401).json({ message: 'error' })
+    }
+    return res.status(200).json({ safehouseKey: 'under-the-doormat', message: 'success' })
+  } catch (err) {
+    return res.status(401).json({ message: 'error' })
+  }
+}
+```
+
+#### Display the Secret Data
+
+To display the data from the `/api/clerk-safehouse` API endpoint, create the new file `pages/safehouse.jsx`.
+
+In this file, create a `SafeHouse` component that uses the `useUser` hook from `@clerk/nextjs` to get the authentication state. If the user isn't signed in, it returns the prebuilt component `<RedirectToSignIn>` from `@clerk/nextjs` that redirects the user to the `/sign-in` page.
+
+However, if the user is signed in, it'll display the `safehouseKey` fetched from the API call to the `/api/clerk-safehouse` endpoint. It also returns the `<SignOutButton>` that the user can click to sign out of the application:
+
+```jsx
+import { useEffect, useState } from 'react'
+
+import { SignOutButton, RedirectToSignIn, useUser } from '@clerk/nextjs'
+
+export default function SafeHouse() {
+  const { isSignedIn } = useUser()
+  const [userData, setUserData] = useState({})
+
+  useEffect(() => {
+    fetch('/api/clerk-safehouse')
+      .then((res) => res.json())
+      .then((data) => setUserData(data))
+  }, [])
+
+  if (!isSignedIn) {
+    return <RedirectToSignIn />
+  }
+
+  return (
+    <>
+      <main style={{ padding: '50px' }}>
+        <h1>Safehouse </h1>
+        <p>
+          You Safehouse key is <strong>{userData?.safehouseKey || 'Loading...'}</strong>
+        </p>
+        <SignOutButton />
+      </main>
+    </>
+  )
+}
+```
+
+#### Update Application Home Page
+
+Finally, update the application home page (`pages/index.js`) to include the new `/safehouse` link in the list:
+
+```jsx
+import Link from 'next/link'
+
+export default function Home() {
+  return (
+    <div>
+      Home
+      <br />
+      <ol>
+        <li>
+          <Link href={'/jwt-home'}>JWT Home</Link>
+        </li>
+        <li>
+          <Link href={'/jwt-safehouse'}>JWT Safe house</Link>
+        </li>
+        <li>
+          <Link href={'/safehouse'}>Clerk Safe house</Link>
+        </li>
+      </ol>
+    </div>
+  )
+}
+```
+
+Your React application is ready with end-to-end authentication.
+
+View video
+
+### Traditional JWT Authentication vs. Clerk
+
+Now that you've implemented authentication in your React application using the traditional JWT flow and with Clerk, you can see how easy it is to implement a full-fledged authentication using the latter approach.
+
+In the do-it-yourself JWT approach, all responsibilities regarding authentication—such as storing the password, verifying user identity, and crafting a beautiful user experience—fall on your shoulders.
+
+Clerk lifts this burden by offering a full-stack solution for managing user authentication. It not only provides easy integrations on the frontend with prebuilt components but also authentication utilities for the backend API routes. With Clerk, you don't have to worry about password management, user session management, or signing and storing the JWT. It's all managed for you automatically.
+
+Apart from its simplicity, the Clerk SDK also uses short-lived JWTs and HttpOnly cookies to provide an additional layer of security for your application. While short-lived JWTs help to protect against replay attacks and limit the window of opportunity for an attacker to use a compromised token, HttpOnly cookies help to protect against XSS attacks.
+
+## Conclusion
+
+In this article, you've successfully set up JWT authentication in a React application. While doing so, you learned more about JWT authentication and how to overcome some of its challenges. In particular, you saw how using a solution like Clerk can tremendously simplify JWT authentication in React and make the process more secure at the same time.
+
+Clerk is a one-stop solution for authentication and customer identity management. It can help you build a flawless user authentication flow that supports login with password, multifactor authentication, and social logins with providers like Google, LinkedIn, Facebook, GitHub, and many more.
+
+Clerk provides beautiful components ready to plug into your application and build the authentication flow in no time. Sign up to try Clerk today.

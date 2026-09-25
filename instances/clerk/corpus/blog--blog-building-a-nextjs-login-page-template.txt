@@ -1,0 +1,1228 @@
+# Build a Next.js login page template
+# джерело: https://clerk.com/blog/building-a-nextjs-login-page-template
+# отримано: 2026-09-25
+
+Session-based authentication, introduced in 1960 at MIT, is still one of the most commonly implemented authentication strategies.
+
+With session-based authentication, every user sign-in creates a session on the server that is associated with the user record in the database. These sessions include details such as a creation timestamp, expiration timestamp, and session status. The session ID is set in a cookie and sent back to the client so that the server can determine the user making any future requests from that client.
+
+In this article, you’ll learn how to build session-based authentication into a Next.js application, from implementing the proper database tables to updating the website with authentication forms.
+
+## Implementation overview
+
+There are a set of common requirements when it comes to implementing session-based authentication in any application.
+
+### Database schema
+
+At least two tables are required:
+
+- **users** - When users sign up, the application needs to at least store a user ID, username, and password so they can return in the future.
+- **sessions** - The sessions table tracks the information described in the previous section, allowing the application to look up a session by ID and determine the user it’s associated with.
+
+Any tables with records associated with specific users will also need a `userId` or similar column added to make the association.
+
+### Backend changes
+
+Beyond the required functionality to interact with the new database tables, the backend also needs to be able to hash and salt the user passwords so they are not stored in plain text. It’s also best practice to implement sign-up and login form validation server-side so that bad data is not committed to the database.
+
+Protections also need to be added so that the session ID is checked with the database on each request, and that the user's permissions are verified before performing the requested operation or returning data to the client.
+
+### Frontend changes
+
+Since the frontend is what the user interacts with, there are some expected elements required such as sign-in forms, sign-up forms, and a sign-out button. To provide the best user experience, it’s also recommended to implement validation on the forms so that users get immediate feedback if their input is not acceptable before they submit. It also has the added benefit of preventing bad data from being sent to the server.
+
+You should also ensure that unauthenticated users cannot access routes that are reserved for users who are signed in.
+
+### Cookies
+
+Cookies are a way to store small bits of arbitrary data in your browser. While they can be set in the browser, they are more commonly sent to the client from a server for an HTTP request. Cookies set by a server are automatically sent back to that server with every request.
+
+In the context of session-based authentication, the server will create a cookie to store the session identifier and send it back to the client upon successful sign-in. When a request is made, the server checks the session ID associated with the request and looks up which user the session belongs to so it can properly identify who is making the request and apply the appropriate authorization rules.
+
+If you want to learn how to implement the same strategy in a standard React application, check out our blog post covering how to do this with React and Express.
+
+## Clerk for user management
+
+While you’ll learn how to build a typical authentication system in this article, user management is a much bigger topic than simply allowing users to create accounts and sign in to your application.
+
+Clerk is a user management platform that's designed to get you up and running with authentication quickly by providing drop-in UI components. For example, the following snippet demonstrates the code required to build a sign-in page into a Next.js application using Clerk:
+
+filename: src/app/sign-in/[[...sign-in]]/page.tsx
+```tsx
+import { SignIn } from '@clerk/nextjs'
+
+export default function Page() {
+  return <SignIn />
+}
+```
+
+When using Clerk, you can easily configure the traditional email & password strategy as well as others like social sign-in providers, passkeys, and even email & SMS code authentication.
+
+You’ll also provide your users an elegant way to manage their own account data, reset passwords, and connect multiple authentication providers, giving them the flexibility to sign-in to your application the way they want.
+
+Add user management to your Next.js application with Clerk in as little as 2 minutes. Check out our docs to learn how to get started!
+
+## Introducing the demo project, Quillmate
+
+Quillmate is an AI-powered application for writers. Users can use Quillmate to help them develop ideas, draft pieces, and ask the AI assistant to help with various tasks.
+
+Quillmate is built with the following tech:
+
+- **Next.js** - The entire application is built with Next.js
+- **Vercel** - Since it is built with Next.js, it is easily deployable to Vercel.
+- **OpenAI** - The AI functionality utilizes OpenAI’s APIs.
+- **Neon** - All data is stored in a Postgres database provided by Neon.
+- **Prisma** - Prisma is the ORM used to talk to the database.
+
+If you want to follow along, clone the `build-nextjs-login-page-start` branch from the GitHub repository. Follow the instructions provided in the project’s README before proceeding.
+
+## Install new dependencies
+
+There are two new dependencies that need to be installed before modifying the existing codebase:
+
+- `bcryptjs` - bcryptjs is a very popular hashing library that will be used to hash and salt the passwords before saving them to the database.
+- `zod` - zod will be used for both client and server-side form validation, ensuring our data is always clean and providing a better user experience.
+
+Install those dependencies with the following command:
+
+```bash
+npm install zod bcryptjs
+```
+
+## Updating the database schema
+
+Now let’s get the database schema updated. Navigate your code editor to `prisma/schema.prisma` and make the following changes to define the new database tables:
+
+```
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Article {
+  id          String        @id @default(uuid())
+  title       String
+  content     String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @default(now()) @updatedAt
+  chatMessages ChatMessage[]
+
+  @@map("articles")
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  articleId String?
+  role      String
+  content   String
+  createdAt DateTime @default(now())
+  article   Article? @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@map("chat_messages")
+}
+
+model User {
+  id            String        @id @default(uuid())
+  email         String       @unique
+  passwordHash  String
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @default(now()) @updatedAt
+  sessions      Session[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+```
+
+Run the following command in the terminal to update the Prisma client and push the changes to the Neon database:
+
+```bash
+npx prisma generate
+npx prisma db push
+```
+
+## Create the middleware
+
+As mentioned earlier in this guide, you’ll need to separate your public routes from those that require the user to be signed in. In an application with dedicated backends and frontends, you’d typically separate the views in the frontend to prevent unauthorized users from accessing those views, and protect the backend API routes so that tech savvy users can’t bypass protections in the frontend.
+
+Since Next.js is a full-stack framework, you can actually do both using middleware, which provides a way for you to intercept requests and apply your own logic to the request before the user reaches their destination.
+
+Create `src/middleware.ts` and paste in the following code:
+
+filename: src/middleware.ts
+```tsx
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+
+// Add paths that don't require authentication
+const publicPaths = ['/signin', '/signup', '/']
+
+export function middleware(request: NextRequest) {
+  // Get the session ID from the cookies
+  const sessionId = request.cookies.get('sessionId')
+  const { pathname } = request.nextUrl
+
+  // Allow access to public paths
+  if (publicPaths.includes(pathname)) {
+    // Redirect to articles if already authenticated
+    if (sessionId) {
+      return NextResponse.redirect(new URL('/articles', request.url))
+    }
+    return NextResponse.next()
+  }
+
+  // Require authentication for all other paths
+  if (!sessionId) {
+    const signInUrl = new URL('/signin', request.url)
+    signInUrl.searchParams.set('from', pathname)
+    return NextResponse.redirect(signInUrl)
+  }
+
+  return NextResponse.next()
+}
+
+export const config = {
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+}
+```
+
+## Creating the sign-up and login routes
+
+With the database changes and middleware in place, you can now add the necessary forms and logic to allow users to create an account and sign into the application. Each of these routes contain three files as follows:
+
+- `page.tsx` - The client-side sign-up or login page the user will interact with.
+- `actions.ts` - Server actions that are used to interact with the database to create new users and create sessions.
+- `validation.ts` - Validation models that are shared between the sign-up or login page and server action, enabling validation on both ends of the application.
+
+There are also a few functions that will be shared between both the sign-up and sign-in routes, so let’s get that set up before building them.
+
+Create a the `src/app/auth/actions.ts` file and populate it with the following:
+
+filename: src/app/auth/actions.ts
+```tsx
+'use server'
+
+import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
+import { db } from '@/db'
+
+// Gets the current user info, redirecting to /signin if there is none
+export async function requireAuth() {
+  const user = await getCurrentUser()
+  if (!user) {
+    redirect('/signin')
+  }
+  return user
+}
+
+// Removes the session from the database and removes the cookie
+export async function signOut() {
+  const c = await cookies()
+  const sessionId = c.get('sessionId')?.value
+
+  if (sessionId) {
+    await db.session.delete({
+      where: { id: sessionId },
+    })
+  }
+
+  c.delete('sessionId')
+  redirect('/signin')
+}
+
+// Gets the current user info based on the sessionId cookie
+export async function getCurrentUser() {
+  const c = await cookies()
+  const sessionId = c.get('sessionId')?.value
+  if (!sessionId) return null
+
+  const session = await db.session.findUnique({
+    where: { id: sessionId },
+    include: { user: true },
+  })
+
+  if (!session || session.expiresAt < new Date()) {
+    c.delete('sessionId')
+    return null
+  }
+
+  return session.user
+}
+
+// Create a session and set the sessionId cookie
+export async function createSessionAndCookie(userId: string) {
+  const SESSION_DURATION_DAYS = 7
+  const expiresAt = new Date()
+  expiresAt.setDate(expiresAt.getDate() + SESSION_DURATION_DAYS)
+
+  const session = await db.session.create({
+    data: {
+      userId,
+      expiresAt,
+    },
+  })
+
+  const c = await cookies()
+
+  // Set session cookie
+  c.set('sessionId', session.id, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    expires: new Date(session.expiresAt),
+  })
+}
+```
+
+### Handling sign-up
+
+Since `validation.ts` is the simplest of the three files, start by creating `src/app/signup/validation.ts` and paste in the following:
+
+filename: src/app/signup/validation.ts
+```tsx
+import { z } from 'zod'
+
+// Validation schemas
+export const signUpSchema = z
+  .object({
+    email: z.string().toLowerCase().email('Invalid email address'),
+    password: z
+      .string()
+      .min(8, 'Password must be at least 8 characters')
+      .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+      .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+      .regex(/[0-9]/, 'Password must contain at least one number'),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ['confirmPassword'],
+  })
+```
+
+Next, create the server actions file at `src/app/signup/actions.ts` and paste in the following:
+
+filename: src/app/signup/actions.ts
+```tsx
+'use server'
+
+import { redirect } from 'next/navigation'
+import bcrypt from 'bcryptjs'
+import { db } from '@/db'
+import { signUpSchema } from './validation'
+import { createSessionAndCookie } from '../auth/actions'
+
+export async function signUp(formData: FormData) {
+  // Perform server-side validation
+  const validatedFields = signUpSchema.safeParse({
+    email: formData.get('email'),
+    password: formData.get('password'),
+    confirmPassword: formData.get('confirmPassword'),
+  })
+
+  // Return errors if there are any
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+    }
+  }
+
+  const { email, password } = validatedFields.data
+
+  // Check if user already exists
+  const existingUser = await db.user.findUnique({
+    where: { email },
+  })
+
+  if (existingUser) {
+    return {
+      errors: {
+        email: ['User with this email already exists'],
+      },
+    }
+  }
+
+  // Hash password and create user
+  const passwordHash = await bcrypt.hash(password, 10)
+  const user = await db.user.create({
+    data: {
+      email,
+      passwordHash,
+    },
+  })
+
+  // Create session, allowing the user to be immediately signed in
+  await createSessionAndCookie(user.id)
+
+  // Redirect the user to the protected route
+  redirect('/articles')
+}
+```
+
+Finally, create `src/app/signup/page.tsx` and paste in the following:
+
+filename: src/app/signup/page.tsx
+```tsx
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+import { signUp } from './actions'
+import { signUpSchema } from './validation'
+
+export default function SignUp() {
+  const [errors, setErrors] = useState<{ [key: string]: string[] }>({})
+  const [clientErrors, setClientErrors] = useState<{ [key: string]: string[] }>({})
+
+  async function handleSubmit(formData: FormData) {
+    // Reset errors
+    setClientErrors({})
+
+    // Validate form data
+    const result = signUpSchema.safeParse({
+      email: formData.get('email'),
+      password: formData.get('password'),
+      confirmPassword: formData.get('confirmPassword'),
+    })
+
+    if (!result.success) {
+      const formattedErrors: { [key: string]: string[] } = {}
+      result.error.errors.forEach((error) => {
+        const path = error.path[0].toString()
+        if (!formattedErrors[path]) {
+          formattedErrors[path] = []
+        }
+        formattedErrors[path].push(error.message)
+      })
+      setClientErrors(formattedErrors)
+      return
+    }
+
+    const serverResult = await signUp(formData)
+    if (serverResult?.errors) {
+      setErrors(serverResult.errors)
+    }
+  }
+
+  function handleInputChange(field: string, value: string, formElement: HTMLFormElement) {
+    const formData = new FormData(formElement)
+    formData.set(field, value)
+
+    const result = signUpSchema.safeParse({
+      email: formData.get('email'),
+      password: formData.get('password'),
+      confirmPassword: formData.get('confirmPassword'),
+    })
+
+    if (!result.success) {
+      const fieldErrors = result.error.errors
+        .filter((error) => error.path[0] === field)
+        .map((error) => error.message)
+
+      if (fieldErrors.length > 0) {
+        setClientErrors((prev) => ({
+          ...prev,
+          [field]: fieldErrors,
+        }))
+      } else {
+        setClientErrors((prev) => ({
+          ...prev,
+          [field]: [],
+        }))
+      }
+    } else {
+      setClientErrors((prev) => ({
+        ...prev,
+        [field]: [],
+      }))
+    }
+  }
+
+  return (
+    <div className="flex min-h-screen flex-col justify-center bg-gray-50 py-12 sm:px-6 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          Create a new account
+        </h2>
+        <p className="mt-2 text-center text-sm text-gray-600">
+          Or{' '}
+          <Link href="/signin" className="font-medium text-blue-600 hover:text-blue-500">
+            sign in to your account
+          </Link>
+        </p>
+      </div>
+
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-white px-4 py-8 shadow sm:rounded-lg sm:px-10">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              const formData = new FormData(e.target as HTMLFormElement)
+              handleSubmit(formData)
+            }}
+            className="space-y-6"
+          >
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                Email address
+              </label>
+              <div className="mt-1">
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:ring-blue-500 focus:outline-none sm:text-sm"
+                  onChange={(e) => handleInputChange('email', e.target.value, e.target.form!)}
+                />
+              </div>
+              {(clientErrors.email || errors.email)?.map((error) => (
+                <p key={error} className="mt-1 text-sm text-red-600">
+                  {error}
+                </p>
+              ))}
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                Password
+              </label>
+              <div className="mt-1">
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:ring-blue-500 focus:outline-none sm:text-sm"
+                  onChange={(e) => handleInputChange('password', e.target.value, e.target.form!)}
+                />
+              </div>
+              {(clientErrors.password || errors.password)?.map((error) => (
+                <p key={error} className="mt-1 text-sm text-red-600">
+                  {error}
+                </p>
+              ))}
+            </div>
+
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                Confirm password
+              </label>
+              <div className="mt-1">
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:ring-blue-500 focus:outline-none sm:text-sm"
+                  onChange={(e) =>
+                    handleInputChange('confirmPassword', e.target.value, e.target.form!)
+                  }
+                />
+              </div>
+              {(clientErrors.confirmPassword || errors.confirmPassword)?.map((error) => (
+                <p key={error} className="mt-1 text-sm text-red-600">
+                  {error}
+                </p>
+              ))}
+            </div>
+
+            <div>
+              <button
+                type="submit"
+                className="flex w-full justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
+              >
+                Sign up
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  )
+}
+```
+
+### Handling sign-in
+
+Now let’s create the sign-in logic and views starting with the validation file as we did in the previous section. Create `src/app/signin/validation.ts` and paste in the following code:
+
+filename: src/app/signin/validation.ts
+```tsx
+import { z } from 'zod'
+
+export const signInSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(1, 'Password is required'),
+})
+```
+
+Next, create the server actions at `src/app/signin/actions.ts` and populate the file with the following:
+
+filename: src/app/signin/actions.ts
+```tsx
+'use server'
+
+import { redirect } from 'next/navigation'
+import bcrypt from 'bcryptjs'
+import { db } from '@/db'
+import { signInSchema } from './validation'
+import { createSessionAndCookie } from '../auth/actions'
+
+export async function signIn(formData: FormData) {
+  const validatedFields = signInSchema.safeParse({
+    email: formData.get('email'),
+    password: formData.get('password'),
+  })
+
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+    }
+  }
+
+  const { email, password } = validatedFields.data
+
+  const user = await db.user.findUnique({
+    where: { email },
+  })
+
+  if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+    return {
+      errors: {
+        email: ['Invalid email or password'],
+      },
+    }
+  }
+
+  // Create session
+  await createSessionAndCookie(user.id)
+
+  redirect('/articles')
+}
+```
+
+Then create the login page at `src/app/signin/page.tsx` and paste in the following:
+
+filename: src/app/signin/page.tsx
+```tsx
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+import { signIn } from './actions'
+import { signInSchema } from './validation'
+
+export default function SignIn() {
+  const [errors, setErrors] = useState<{ [key: string]: string[] }>({})
+  const [clientErrors, setClientErrors] = useState<{ [key: string]: string[] }>({})
+
+  async function handleSubmit(formData: FormData) {
+    // Reset errors
+    setClientErrors({})
+
+    // Validate form data
+    const result = signInSchema.safeParse({
+      email: formData.get('email'),
+      password: formData.get('password'),
+    })
+
+    if (!result.success) {
+      const formattedErrors: { [key: string]: string[] } = {}
+      result.error.errors.forEach((error) => {
+        const path = error.path[0].toString()
+        if (!formattedErrors[path]) {
+          formattedErrors[path] = []
+        }
+        formattedErrors[path].push(error.message)
+      })
+      setClientErrors(formattedErrors)
+      return
+    }
+
+    const serverResult = await signIn(formData)
+    if (serverResult?.errors) {
+      setErrors(serverResult.errors)
+    }
+  }
+
+  // Validate the fields as the user types
+  function handleInputChange(field: string, value: string) {
+    const result = signInSchema.safeParse({
+      email: field === 'email' ? value : '',
+      password: field === 'password' ? value : '',
+    })
+
+    if (!result.success) {
+      const fieldError = result.error.errors.find((error) => error.path[0] === field)
+      if (fieldError) {
+        setClientErrors((prev) => ({
+          ...prev,
+          [field]: [fieldError.message],
+        }))
+      }
+    } else {
+      setClientErrors((prev) => ({
+        ...prev,
+        [field]: [],
+      }))
+    }
+  }
+
+  return (
+    <div className="flex min-h-screen flex-col justify-center bg-gray-50 py-12 sm:px-6 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          Sign in to your account
+        </h2>
+        <p className="mt-2 text-center text-sm text-gray-600">
+          Or{' '}
+          <Link href="/signup" className="font-medium text-blue-600 hover:text-blue-500">
+            create a new account
+          </Link>
+        </p>
+      </div>
+
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-white px-4 py-8 shadow sm:rounded-lg sm:px-10">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              const formData = new FormData(e.target as HTMLFormElement)
+              handleSubmit(formData)
+            }}
+            className="space-y-6"
+          >
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                Email address
+              </label>
+              <div className="mt-1">
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:ring-blue-500 focus:outline-none sm:text-sm"
+                  onChange={(e) => handleInputChange('email', e.target.value)}
+                />
+              </div>
+              {(clientErrors.email || errors.email)?.map((error) => (
+                <p key={error} className="mt-1 text-sm text-red-600">
+                  {error}
+                </p>
+              ))}
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                Password
+              </label>
+              <div className="mt-1">
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:ring-blue-500 focus:outline-none sm:text-sm"
+                  onChange={(e) => handleInputChange('password', e.target.value)}
+                />
+              </div>
+              {(clientErrors.password || errors.password)?.map((error) => (
+                <p key={error} className="mt-1 text-sm text-red-600">
+                  {error}
+                </p>
+              ))}
+            </div>
+
+            <div>
+              <button
+                type="submit"
+                className="flex w-full justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
+              >
+                Sign in
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  )
+}
+```
+
+## Associating articles with users
+
+At this point, the user can now create an account and sign in as needed, but the `/articles` route which contains the protected pages still needs to have several pieces updated to ensure users can only work with articles associated with their account and not ALL articles.
+
+Update `prisma/schema.prisma` one more time to update the `Article` model so those records are associated with a user by creating the `userId` column and Prisma relation:
+
+```
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Article {
+  id          String        @id @default(uuid())
+  userId      String
+  title       String
+  content     String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @default(now()) @updatedAt
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chatMessages ChatMessage[]
+
+  @@map("articles")
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  articleId String?
+  role      String
+  content   String
+  createdAt DateTime @default(now())
+  article   Article? @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@map("chat_messages")
+}
+
+model User {
+  id            String        @id @default(uuid())
+  email         String       @unique
+  passwordHash  String
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @default(now()) @updatedAt
+  articles      Article[]
+  sessions      Session[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @reauthaulation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+```
+
+Apply your changes with the same terminal commands as before:
+
+```bash
+npx prisma generate
+npx prisma db push
+```
+
+Next, you’ll update the server actions used for the `/articles` route to store the user’s ID whenever an article record is created, and filter returned articles when the user requests them, ensuring that users can only access the articles they are supposed to.
+
+Update `src/app/articles/actions.ts` as follows:
+
+filename: src/app/articles/actions.ts
+```tsx
+'use server'
+
+import { db } from '@/db'
+import { requireAuth } from '@/app/auth/actions'
+
+export async function fetchArticles() {
+  const user = await requireAuth()
+
+  return await db.article.findMany({
+    where: {
+      userId: user.id,
+    },
+    orderBy: {
+      updatedAt: 'desc',
+    },
+  })
+}
+
+export async function createNewArticle() {
+  const user = await requireAuth()
+
+  return await db.article.create({
+    data: {
+      title: 'New Article',
+      content: '# New Article\n\nStart writing your content here...',
+      userId: user.id,
+    },
+  })
+}
+
+export async function saveArticle(id: string, title: string, content: string) {
+  const user = await requireAuth()
+
+  return await db.article.update({
+    where: {
+      id,
+      userId: user.id,
+    },
+    data: {
+      title,
+      content,
+      updatedAt: new Date(),
+    },
+  })
+}
+
+export async function getChatMessages(userId: string, articleId: string, since?: Date) {
+  return await db.chatMessage.findMany({
+    where: {
+      articleId,
+      ...(since && {
+        createdAt: {
+          gte: since,
+        },
+      }),
+    },
+    orderBy: {
+      createdAt: 'asc',
+    },
+  })
+}
+
+export async function createChatMessage(
+  userId: string,
+  articleId: string,
+  role: 'user' | 'assistant',
+  content: string,
+) {
+  return await db.chatMessage.create({
+    data: {
+      articleId,
+      role,
+      content,
+    },
+  })
+}
+```
+
+Finally, you’ll update `src/app/articles/page.tsx` to add a sign-out button that leverages the `signOut` function in our shared authentication utility file:
+
+filename: src/app/articles/page.tsx
+```tsx
+'use client'
+
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { ChatSidebar } from './components/ChatSidebar'
+import { createNewArticle, fetchArticles, saveArticle } from './actions'
+import { useDebounce } from '@/hooks/useDebounce'
+import { MarkdownEditor } from './components/MarkdownEditor'
+import { signOut } from '@/app/auth/actions'
+
+interface Article {
+  id: string
+  title: string
+  content: string
+}
+
+export default function ArticlesPage() {
+  const [articles, setArticles] = useState<Article[]>([])
+  const [selectedArticle, setSelectedArticle] = useState<Article | null>(null)
+  const [content, setContent] = useState<string>('')
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [context, setContext] = useState<string>()
+
+  useEffect(() => {
+    loadArticles()
+  }, [])
+
+  async function loadArticles() {
+    try {
+      const fetchedArticles = await fetchArticles()
+      setArticles(fetchedArticles)
+      if (fetchedArticles.length > 0 && !selectedArticle) {
+        setSelectedArticle(fetchedArticles[0])
+        setContent(fetchedArticles[0].content)
+      }
+      setIsLoading(false)
+    } catch (error) {
+      console.error('Failed to load articles:', error)
+      setIsLoading(false)
+    }
+  }
+
+  const handleArticleSelect = (article: Article) => {
+    setSelectedArticle(article)
+    setContent(article.content)
+  }
+
+  const handleNewArticle = async () => {
+    try {
+      const newArticle = await createNewArticle()
+      if (newArticle) {
+        setArticles((prev) => [...prev, newArticle])
+        handleArticleSelect(newArticle)
+      }
+    } catch (error) {
+      console.error('Failed to create article:', error)
+    }
+  }
+
+  const extractTitleFromContent = (content: string): string | null => {
+    const h1Match = content.match(/^#\s+(.+)$/m)
+    return h1Match ? h1Match[1].trim() : null
+  }
+
+  const saveContent = useCallback(
+    async (articleId: string, currentTitle: string, newContent: string) => {
+      setIsSaving(true)
+      try {
+        const newTitle = extractTitleFromContent(newContent) || currentTitle
+        await saveArticle(articleId, newTitle, newContent)
+
+        // Update the articles list with the new title if it changed
+        if (newTitle !== currentTitle) {
+          setArticles((prev) =>
+            prev.map((article) =>
+              article.id === articleId ? { ...article, title: newTitle } : article,
+            ),
+          )
+          if (selectedArticle?.id === articleId) {
+            setSelectedArticle((prev) => (prev ? { ...prev, title: newTitle } : prev))
+          }
+        }
+      } catch (error) {
+        console.error('Failed to save article:', error)
+      } finally {
+        setIsSaving(false)
+      }
+    },
+    [selectedArticle?.id],
+  )
+
+  const debouncedSave = useDebounce(saveContent, 1000)
+
+  const handleContentChange = (newContent: string | undefined) => {
+    if (!selectedArticle || !newContent) return
+    setContent(newContent)
+    debouncedSave(selectedArticle.id, selectedArticle.title, newContent)
+  }
+
+  const handleAskAssistant = useCallback((selectedText: string) => {
+    setContext(selectedText)
+  }, [])
+
+  const handleAppendToArticle = useCallback(
+    (text: string) => {
+      if (!selectedArticle) return
+      const newContent = content + text
+      setContent(newContent)
+      debouncedSave(selectedArticle.id, selectedArticle.title, newContent)
+    },
+    [content, selectedArticle, debouncedSave],
+  )
+
+  if (isLoading) {
+    return <div className="flex flex-1 items-center justify-center">Loading...</div>
+  }
+
+  return (
+    <div className="flex flex-1 overflow-hidden">
+      {/* Article List Sidebar */}
+      <div className="w-64 overflow-y-auto border-r border-gray-200 bg-white">
+        <div className="flex h-full flex-col p-4">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">Articles</h2>
+            <button
+              onClick={handleNewArticle}
+              className="rounded-lg bg-blue-500 px-2 py-1 text-sm text-white hover:bg-blue-600"
+            >
+              New
+            </button>
+          </div>
+          <div className="flex-1 space-y-1">
+            {articles.map((article) => (
+              <button
+                key={article.id}
+                onClick={() => handleArticleSelect(article)}
+                className={`w-full rounded-lg px-3 py-2 text-left text-sm ${
+                  selectedArticle?.id === article.id
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                {article.title}
+              </button>
+            ))}
+          </div>
+          <div className="mt-4">
+            <form action={signOut}>
+              <button
+                type="submit"
+                className="w-full rounded-lg bg-gray-50 px-3 py-2 text-left text-sm text-gray-900 transition-all hover:bg-red-600 hover:text-white"
+              >
+                Sign out
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      {/* Markdown Editor */}
+      <div className="relative h-full flex-1">
+        {selectedArticle ? (
+          <>
+            <MarkdownEditor
+              value={content}
+              onChange={handleContentChange}
+              height="100%"
+              onAskAssistant={handleAskAssistant}
+            />
+            {isSaving && (
+              <div className="absolute top-2 right-2 rounded-md bg-gray-800 px-2 py-1 text-xs text-white opacity-75">
+                Saving...
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="flex h-full items-center justify-center p-8 text-gray-500">
+            Select an article or create a new one
+          </div>
+        )}
+      </div>
+
+      {/* Chat Sidebar */}
+      {selectedArticle ? (
+        <ChatSidebar
+          content={selectedArticle.content}
+          articleId={selectedArticle.id}
+          context={context}
+          onClearContext={() => setContext(undefined)}
+          onAppendToArticle={handleAppendToArticle}
+        />
+      ) : null}
+    </div>
+  )
+}
+```
+
+## Update the homepage link
+
+The last thing to do is update the “Get started” button on the home page to go to `/signin` instead of `/articles`, which will let users sign into the application if they are not already:
+
+filename: src/app/page.tsx
+```tsx
+import Link from 'next/link'
+import { Button } from "@/components/ui/button"
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { ArrowRight, Sparkles, Zap, RefreshCw } from 'lucide-react'
+
+export default function LandingPage() {
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-purple-100 to-white">
+      <main className="container mx-auto px-4 py-16 space-y-24">
+        {/* Hero Section */}
+        <section className="text-center space-y-6">
+          <h1 className="text-5xl font-extrabold tracking-tight text-gray-900 sm:text-6xl">
+            Elevate Your Writing with{' '}
+            <span className="inline-block text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-500">
+              QuillMate
+            </span>
+          </h1>
+          <p className="text-xl text-gray-700 max-w-2xl mx-auto">
+            Unlock your creativity and boost your productivity with our AI-powered writing assistant.
+          </p>
+          <Link href="/articles">
+          <Link href="/signin">
+            <Button size="lg" className="mt-8 bg-purple-600 hover:bg-purple-700 text-white">
+              Get Started with QuillMate <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </Link>
+        </section>
+
+        {/* Feature Cards */}
+        <section className="space-y-8 max-w-2xl mx-auto">
+          <Card className="border-purple-200 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-lg transition-all duration-300">
+            <CardHeader>
+              <CardTitle className="flex items-center text-gray-900">
+                <Sparkles className="mr-2 h-5 w-5 text-purple-500" />
+                AI-Powered Suggestions
+              </CardTitle>
+              <CardDescription className="text-gray-600">
+                Get intelligent writing suggestions and improvements in real-time as you type with QuillMate.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card className="border-purple-200 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-lg transition-all duration-300">
+            <CardHeader>
+              <CardTitle className="flex items-center text-gray-900">
+                <Zap className="mr-2 h-5 w-5 text-purple-500" />
+                Instant Content Generation
+              </CardTitle>
+              <CardDescription className="text-gray-600">
+                Generate high-quality content for various purposes with just a few clicks using QuillMate's AI.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card className="border-purple-200 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-lg transition-all duration-300">
+            <CardHeader>
+              <CardTitle className="flex items-center text-gray-900">
+                <RefreshCw className="mr-2 h-5 w-5 text-purple-500" />
+                Style Adaptation
+              </CardTitle>
+              <CardDescription className="text-gray-600">
+                Easily adapt your writing style for different audiences and purposes with QuillMate's intelligent assistance.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </section>
+      </main>
+    </div>
+  )
+}
+```
+
+## Test it out!
+
+Now that all the changes are implemented, execute the following command in your terminal to start up the dev server:
+
+```bash
+npm run dev
+```
+
+Open your browser and navigate to the URL displayed in the terminal and you’ll be able to create a user account, sign into the application, and start creating articles!
+
+QuillMate Demo
+
+After creating an article and chatting with the AI assistant, you can head to the Neon console to explore how the data is structured in the database.
+
+Neon Console
+
+## Conclusion
+
+You are now well-equipped to implement session-based authentication within your own application. By following the general guidance introduced at the beginning of this post, you can provide your users the ability to create accounts and sign in to your Next.js site.
+
+While this guide outlines the steps required to implement authentication, adding sign up and sign in to a web application is only one aspect of user management. Consider giving Clerk a try for a complete user management platform that can be configured in minutes, saving you and your team hours of development, testing, and debugging effort.
+
+Feel free to use the provided repository as a resource when building Next.js web applications going forward!

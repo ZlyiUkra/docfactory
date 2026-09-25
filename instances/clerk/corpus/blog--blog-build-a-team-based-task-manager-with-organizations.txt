@@ -1,0 +1,258 @@
+# Build a team-based task manager with Next.js, Neon, and Clerk
+# джерело: https://clerk.com/blog/build-a-team-based-task-manager-with-organizations
+# отримано: 2026-09-25
+
+Building a multi-tenant application with robust permissions can be tricky.
+
+Clerk Organizations were designed to simplify adding multi-tenant functionality to your application. By implementing Organizations, your users will be empowered to create isolated areas of your application, while also allowing users to have granular permissions based on their assigned roles, restricting or permitting functionality as needed.
+
+> Organizations are a core feature of B2B applications. Learn more about our B2B SaaS solution for comprehensive multi-tenant architecture.
+
+In this article, we'll take leverage the common example of a to-do app and implement Clerk Organizations to enable users to access task lists that are shared across teams.
+
+## Project overview and setup
+
+This guide uses an open-source starter project that you can clone to your computer to build on.
+
+The project is a multi-tenant take on a simple concept; a task management app. Upon setting up the project, you'll have a functional to-do app where you can add, complete, and update tasks. Throughout this guide, you'll add the ability to create and switch between organizations, where each organization has an isolated list of tasks where multiple users can be invited into for collaboration.
+
+To follow along, this guide assumes you have a general understanding of Next.js as well as Node and NPM installed locally on your workstation.
+
+### Clone the project locally
+
+To follow this guide, open your terminal and clone the starter repository using the following script. This will also switch you to the `article-1` branch which contains the proper starting point for this article:
+
+```bash
+git clone https://github.com/bmorrisondev/team-todo-demo.git
+git checkout article-1
+```
+
+Now run the following script in your terminal to install the necessary dependencies.
+
+```bash
+npm install
+```
+
+### Set up a Clerk project
+
+If you do not have a Clerk account, create one before proceeding, which will walk you through creating a project. If you already have an account, create a new project for this guide. Give the project a name and accept the default login providers: Email and Google.
+
+You'll be presented with a Next.js quick start guide. Follow only step 2, which instructs you to create the `.env.local` file and populate it with the necessary environment variables. The remainder of the steps are already completed as part of the starter repo.
+
+### Set up a Neon database
+
+While any Postgres database should be usable, this guide leverages Neon. If you do not have an account, create one at neon.tech. If you do, create an empty database, copy the connection string from the “**Connection Details**” block, and add it to your `.env.local` file as `DATABASE_URL` like so:
+
+```bash
+DATABASE_URL=postgresql://teamtodo_owner:*********@ep-frosty-tree-a54nb30r.us-east-2.aws.neon.tech/teamtodo?sslmode=require
+```
+
+Next, access the SQL Editor from the left navigation and paste in the following database script to set up the schema:
+
+```sql
+create table tasks (
+  id serial primary key,
+  name text not null,
+  description text,
+  is_done boolean not null default false,
+  owner_id text not null,
+  created_on timestamp not null default now(),
+  created_by_id text not null
+);
+```
+
+### Access the project
+
+Back on your computer, start the project with the following command:
+
+```bash
+npm run dev
+```
+
+By default, the application will be accessible at `http://localhost:3000` however the port might be different if another process is using port 3000, so use what's shown in the terminal. Accessing the URL from your browser should prompt you to create an account using Clerk before rendering this:
+
+A to-do app logged in as a user with an input box, add button, and no tasks.
+
+Feel free to test it out by adding a few tasks.
+
+## Enable Clerk Organizations
+
+Now that you understand the project and the current state it's in, let's start by setting up the Organizations feature in Clerk.
+
+Log into the Clerk Dashboard and select **"Organization Settings"** from the left navigation. In the settings tab, click the toggle next to **"Enable organizations"** if it's not on already.
+
+The Clerk Dashboard with one arrow pointing towards "Organization Settings" in the left nav, and another pointing towards the toggle next to "Enable organizations".
+
+From now on, users within this Clerk application will be able to create organizations and invite other users to them. This setting is configurable on this same page. Make sure to leave the default checked for the remainder of this guide.
+
+## Update the code
+
+Now that Clerk Organizations are set up, we need to update the project to enable users to create organizations, switch between them, and create tasks specifically for that organization.
+
+Start by adding the `OrganizationSwitcher` to the `Navbar` component:
+
+filename: src/app/layout/Navbar.tsx
+```ts
+import * as React from 'react'
+import Link from 'next/link'
+import { SignedIn, SignedOut, UserButton } from '@clerk/nextjs'
+import { OrganizationSwitcher, SignedIn, SignedOut, UserButton } from '@clerk/nextjs'
+import { metadata } from '@/app/layout'
+
+function Navbar() {
+  return (
+    <nav className="flex items-center justify-between border-b border-slate-200 bg-slate-100 p-2">
+      <div className="flex items-center gap-2">
+        <div>{metadata.title as string}</div>
+      </div>
+      <SignedIn>
+        <div className="flex items-center gap-2">
+          <OrganizationSwitcher />
+          <UserButton />
+        </div>
+      </SignedIn>
+      <SignedOut>
+        <Link href="/sign-in">Sign in</Link>
+      </SignedOut>
+    </nav>
+  )
+}
+
+export default Navbar
+```
+
+The application should update to show “**Personal account**” next to your avatar in the upper right. This essentially indicates that the user does not have an organization selected that they are working in.
+
+The app with an arrow pointing towards the newly-added OrganizationSwitcher
+
+This same menu gives you the ability to create an organization, however, the database queries will need to be modified to recognize that the user is in an organization, so let's get those updated now.
+
+The `auth()` function, part of Clerk's Next.js SDK, returns token claims for the current user stored in `sessionClaims`. These claims can be used to determine if an organization is selected along with the permissions the user has set for that specific organization. By default the `org_id` value of the claims is not set unless the user has an organization selected, indicating they are in the “Personal account”.
+
+The following is what `sessionClaims` looks like with an organization selected:
+
+```tsx
+{
+  exp: 1719602340,
+  iat: 1719602280,
+  iss: 'https://assuring-cod-50.clerk.accounts.dev',
+  jti: '3194d5c953057b24c256',
+  nbf: 1719602270,
+  org_id: 'org_2iR0dJJzzY3q9kLK0gsDVT08IP4',
+  org_role: 'org:admin',
+  org_slug: 'd2-gamers',
+  sid: 'sess_2iWNGtu9GSFzttofPmhfB23FL9q',
+  sub: 'user_2iNu3heTeGj0U8G2gGFPWnVLbZm',
+}
+```
+
+Currently, the `getUserInfo` function in `src/app/actions.ts` uses the `auth()` function to return the user's ID from the claims, which is used as the `owner_id` in the database for a given task. The following snippet shows `getUserInfo` updated to conditionally return `org_id` if it is populated and how it is used in the database queries.
+
+Note however that `userId` is still being used to maintain a record of who creates specific tasks, regardless if an organization is set or not.
+
+filename: src/app/actions.ts
+```tsx
+'use server'
+import { auth } from '@clerk/nextjs/server'
+import { neon } from '@neondatabase/serverless'
+
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL is missing')
+}
+const sql = neon(process.env.DATABASE_URL)
+
+function getUserInfo() {
+  const { sessionClaims } = auth()
+  if (!sessionClaims) {
+    throw new Error('No session claims')
+  }
+
+  let userInfo = {
+    userId: sessionClaims.sub,
+    ownerId: sessionClaims.sub,
+  }
+
+  if (sessionClaims.org_id) {
+    userInfo.ownerId = sessionClaims.org_id
+  }
+
+  return userInfo
+}
+
+export async function getTasks() {
+  const { userId } = getUserInfo()
+  const { ownerId } = getUserInfo()
+  let res = await sql`
+    select * from tasks
+      where owner_id = ${userId};
+      where owner_id = ${ownerId};
+  `
+  return res
+}
+
+export async function createTask(name: string) {
+  const { userId } = getUserInfo()
+  const { userId, ownerId } = getUserInfo()
+  await sql`
+    insert into tasks (name, owner_id, created_by_id)
+      values (${name}, ${userId}, ${userId});
+      values (${name}, ${ownerId}, ${userId});
+  `
+}
+
+export async function setTaskState(taskId: number, isDone: boolean) {
+  const { userId } = getUserInfo()
+  const { ownerId } = getUserInfo()
+  await sql`
+    update tasks set is_done = ${isDone}
+      where id = ${taskId} and owner_id = ${userId};
+      where id = ${taskId} and owner_id = ${ownerId};
+  `
+}
+
+export async function updateTask(taskId: number, name: string, description: string) {
+  const { userId } = getUserInfo()
+  const { ownerId } = getUserInfo()
+  await sql`
+    update tasks set name = ${name}, description = ${description}
+      where id = ${taskId} and owner_id = ${userId};
+      where id = ${taskId} and owner_id = ${ownerId};
+  `
+}
+```
+
+## Test Organization lists
+
+To test the changes, use the Organization Switcher from the navigation bar and create a new organization.
+
+View video
+
+The task list should automatically refresh into a blank list. Create a task to make sure it gets added to the list. Now switch back to the “Personal account” organization and notice how your previous list of tasks is rendered without the task you created while the organization was selected.
+
+View video
+
+Now let's invite another user into the organization to demonstrate how the tasks in the organization are shared, but the “Personal account” tasks are isolated between users.
+
+If you are in the “Personal account” still, use the switcher to select the organization you created. Once active, use the switcher again and click the gear icon next to the organization name. Then select Members from the left navigation in the modal, and finally click the “Invite” button. Invite another user via their email address.
+
+Many email providers support plus notation where you can add a + to the end of your username along with an identifier to create a separate email address.
+
+This can be used if you do not have multiple email addresses.
+
+The user should receive an email with an invitation to the organization. Accept the invitation and create an account with the application. Upon completing the sign-up process, you should be dropped into the “Personal account” of the new user, which will have a blank list of tasks.
+
+A blank to do app logged in as a different account
+
+Now use the Organization Switcher to select your organization to see the tasks created by the previous user.
+
+The organization todo list as seen by the different user
+
+Adding additional tasks will show them for all users that have access to this organization.
+
+## Conclusion
+
+Clerk Organizations feature provides a way to easily add multi-tenancy into your application.
+
+In this article, you learned how Organizations can be used to allow users to add and modify data across available organizations. By enabling Organizations and slightly tweaking the code based on the token claims, your applications can take advantage of isolated, collaborative environments just like the demo app that was built onto in this guide.
+
+If you enjoyed this article, share it on X and let us know what you liked about it by tagging @clerk!

@@ -1,0 +1,1497 @@
+# Building a React Login Page Template
+# джерело: https://clerk.com/blog/building-a-react-login-page-template
+# отримано: 2026-09-25
+
+Authentication is a crucial aspect of any web application that requires users to sign in and manage their accounts.
+
+In this article, we'll be exploring how to implement a basic authentication system using Express as well as a signup and login form in React.js. You'll learn the difference between the JWT- and session-based authentication and some associated best practices. You'll then learn how to implement session authentication step by step using a real-world demo that's before getting access to a ready-to-use React login page template based on the steps outlined in this guide.
+
+> For a production-ready solution, learn more about our React support which handles all the complexity shown in this guide.
+
+By the end of this tutorial, you'll have a solid understanding of how to create a login page using React, handle user registration, and protect routes from unauthenticated users.
+
+We also have a guide on how to build this same functionality into a Next.js application on our blog.
+
+## Types of authentication
+
+There are different ways to authenticate users, but the primary methods today are JWT-based authentication and session-based authentication.
+
+### Session-based authentication
+
+Session-based authentication is a method of tracking a user's login state by creating a unique session for each authenticated user. When a user logs in, the server generates a session ID and stores session information server-side, typically in memory or a database. This session ID is then sent to the client, usually as a cookie, which the client includes with subsequent requests to prove authentication.
+
+Cookies are used since they are sent back to the server with each request. When the server receives the session ID, it can look up the session in the database to both confirm its validity, as well as reference the associated user.
+
+This article covers how to implement session-based authentication into a React application.
+
+### JWT-based authentication
+
+JSON Web Token (JWT) authentication is an authentication method where a signed, encoded token is generated upon user login and returned to the client.
+
+The JWT contains information such as the user ID, issue date, expiration date, etc. Once verified by the server using a private key, the server can trust that the information within the JWT correctly identifies the party that made the request.
+
+Unlike session-based authentication, JWTs are self-contained and eliminate the need for server-side session storage.
+
+You can read more about JWT vs. sessions in our article Combining then benefits of session tokens and JWTs.
+
+## What is required to implement session authentication?
+
+Implementing session-based authentication includes several key requirements.
+
+### Storage
+
+A storage mechanism is required to hold information about the users and the sessions. Using a database would require two tables, one for each entity. The following table diagram outlines the minimum requirements to implement session-based authentication.
+
+A database table diagram showing the minimum requirements to implement session-based authentication
+
+The `users` table will store general information about the user such as their name, email address, and a hashed version of the password. The `sessions` table will store details about each session.
+
+Notice how the sessions table contains a userId field which is a foreign key of the users table. This is used to associate that session with a specific user.
+
+### Handling sign up
+
+Signing up the user will require a form to be created on the front end that is accessible if the user is not already authenticated. This typically includes, at minimum, inputs for username and password.
+
+The server needs a route handler that can accept the user’s credentials when they click “Sign up”. The simplest implementation of this will create a user record and store the username and a hashed version of the password.
+
+NEVER store the user credentials in plain text. If anyone obtains unauthorized access to your database, all of your users’ credentials will be exposed.
+
+It’s also a best practice to implement validation on both the form the user interacts with and the route handler on the server. This ensures that any requirements for the inputs (ex: password complexity) are met before any records are created.
+
+A sequence diagram showing the steps involved in signing up a user
+
+1. Using the login page in React, the user submits their username and password to the server.
+2. The server creates a user record in the database.
+3. The database returns the ID of the new record.
+4. The server creates a session with the user ID.
+5. The database returns the ID of the new record.
+6. The server sets the cookie and responds back to the front end.
+
+### Handling sign in
+
+A login form is also required to allow the user to sign in. Again, the simplest implementation is at least a username and password.
+
+As with handling sign-up, a route handler also needs to be created on the server to handle the credentials when they are submitted. Instead of creating a new user record, the credentials are verified with the existing user record.
+
+If the React login page contains the proper credentials and they match when checked with the database, a session is created in the database. The token is added to a cookie that is sent back to the client.
+
+Cookies are used for several reasons:
+
+- They are automatically sent with each request to the server.
+- Cookies can be configured to prevent client-side scripts from accessing them, making them more secure than local storage.
+- An expiration can be set directly on the cookie, preventing the browser from trying to access a protected route when the session is expired.
+
+A sequence diagram showing the steps involved in signing in a user
+
+1. Using the login page in React, the user submits their credentials to the server.
+2. The server queries the user record to check the credentials.
+3. The database returns the user record if found.
+4. The server compares the hashed passwords. If successful, create a new session in the database.
+5. The database responds with the ID of the session
+6. The server sets the session ID in the cookie and sends it back to the client.
+
+While this article will guide you through implementing session authentication in your React app, check out how Clerk can accomplish it with only a few lines of code!
+
+### Protecting authorized routes
+
+Finally, routes on both the front end and back end need to be configured to be protected. In a typical React application using `react-router-dom`, Routes can be wrapped in a parent component which will check the authorization status with the server before rendering them. When the React login page is used to authenticate a user, the `<ProtectedRoute />` component will automatically permit access to those views.
+
+```tsx
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider } from '@/hooks/use-auth'
+import { ProtectedRoute } from '@/components/protected-route'
+import Home from '@/views/home'
+import AppView from '@/views/app'
+
+function AppRoot() {
+  return (
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          {/* The following route is protected */}
+          <Route
+            path="/app"
+            element={
+              <ProtectedRoute>
+                <AppView />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </Router>
+    </AuthProvider>
+  )
+}
+
+export default AppRoot
+```
+
+On the server, the session ID that is sent to the server will be checked with the `sessions` table in the database to make sure the sessions is valid before processing the request. In Express, middleware can be created that wraps routes or route collections to make sure this is done automatically on the proper requests.
+
+## Follow along with Quillmate
+
+To demonstrate how session-based authentication can be implemented, we’ll use a realistic project called Qulllmate.
+
+Quillmate is an open-source web application where writers can create articles with the help of an AI assistant. The core entity of Quillmate is an article, and each article has its own AI assistant that understands what has already been written and helps when asked questions about the material.
+
+The following video demonstrates the finished product, where the user can sign up, sign in, create articles, and ask AI for assistance:
+
+View video
+
+Quillmate is built with React and uses Express to both serve the application, as well as handle backend requests. The project uses Open AI to ask questions about articles, and Neon to store the data.
+
+Quillmate is built with the following tech stack:
+
+- **React** - The front end of the application is built with React.
+- **Express** - The application is hosted with Express. Requests to paths starting with `/api` will be handled by various API routes, whereas any other requests will serve up the React app.
+- **Neon** - Neon is a PostgreSQL database platform that is used for storing structured data.
+- **Prisma** - To simplify requests to the database, Prisma is used as an ORM.
+- **Open AI** - The AI Assistant functionality is backed by requests to the Open AI API.
+
+You may optionally clone the quillmate-react repository to follow along yourself with this article. Follow the directions in the readme to get the project running on your own system.
+
+## Adding the database tables
+
+Let’s start by adding the `users` table and `sessions` table. This can be done by modifying the Prisma schema and running a script to apply the changes to the Neon database.
+
+Modify the `prisma/schema.prisma` file and add the `User` and `Session` models:
+
+```
+model User {
+  id           Int       @id @default(autoincrement())
+  email        String    @unique
+  name         String?
+  passwordHash String    @map("password_hash")
+  sessions     Session[]
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
+  articles     Article[]
+
+  @@map("users")
+}
+
+model Session {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int      @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("sessions")
+}
+```
+
+Next, update the `Article` model to include a relationship with the user:
+
+```
+model Article {
+  id        Int      @id @default(autoincrement())
+  title     String   @db.VarChar(256)
+  content   String   @db.Text
+  summary   String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  messages  Message[]
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int      @map("user_id")
+
+  @@map("articles")
+}
+```
+
+Finally, push the schema changes to Neon and update the local client by running the following commands in your terminal:
+
+```bash
+npx prisma db push
+npx prisma generate
+```
+
+## Updating Express to support authentication
+
+Next, you’ll need to update the backend to support creating accounts, creating sessions, and protecting the necessary routes.
+
+### Install dependencies
+
+The following dependencies are required:
+
+- `bcryptjs` - Used for salting and hashing passwords before saving them to the database.
+- `cookie-parser` - An Express middleware that makes working with cookies easier.
+- `zod` - Used for type validation.
+
+Run the following commands to install those packages and their types:
+
+```bash
+npm install bcryptjs cookie-parser zod
+npm install -D @types/bcryptjs @types/cookie-parser
+```
+
+### Create the Express auth middleware
+
+Next, create the Express middleware that will be used to protect routes. This will be used by protected routes to make sure that the request is authorized, returning a 401 status if it is not. It will also handle removing the session from the database if it’s expired.
+
+Create a file at `server/middleware/auth.ts` and paste in the following:
+
+filename: server/middleware/auth.ts
+```ts
+import { Request, Response, NextFunction } from 'express'
+import { prisma } from '../db/prisma'
+
+export async function requireAuth(req: Request, res: Response, next: NextFunction) {
+  try {
+    const token = req.cookies.session
+
+    if (!token) {
+      res.status(401).json({ error: 'Authentication required' })
+      return
+    }
+
+    const session = await prisma.session.findUnique({
+      where: { token },
+      include: { user: true },
+    })
+
+    if (!session) {
+      res.clearCookie('session')
+      res.status(401).json({ error: 'Invalid session' })
+      return
+    }
+
+    if (session.expiresAt < new Date()) {
+      await prisma.session.delete({ where: { id: session.id } })
+      res.clearCookie('session')
+      res.status(401).json({ error: 'Session expired' })
+      return
+    }
+
+    req.user = {
+      id: session.user.id,
+      email: session.user.email,
+      name: session.user.name,
+    }
+    req.session = {
+      id: session.id,
+      token: session.token,
+    }
+
+    next()
+  } catch (error) {
+    console.error('Auth middleware error:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+}
+```
+
+If your editor is complaining about setting the `req.user` and `req.session` values, create a file at `server/types/express.d.ts` and paste in the following:
+
+filename: server/types/express.d.ts
+```ts
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: number
+        email: string
+        name: string | null
+      }
+      session?: {
+        id: number
+        token: string
+      }
+    }
+  }
+}
+
+export {}
+```
+
+### Add routes to handle auth functions
+
+Now let’s add the routes required to enable sign-up and sign-in. The route file will also include validation from  There will be four routes in total:
+
+- `/api/signin` - Used by the React login page to create a session and return it back to the user.
+- `/api/signup` - Used to create an account, which we’ll use to also create a session right away.
+- `/api/signout` - Used to sign the user out, which deletes the session. This route is protected by the middleware.
+- `/api/me` - Used by the front end to verify that the session is valid before loading the articles. This route is also protected by the middleware.
+
+Create a file at `server/routes/auth.ts` and paste in the following:
+
+filename: server/routes/auth.ts
+```ts
+import { Router } from 'express'
+import { prisma } from '../db/prisma'
+import bcrypt from 'bcryptjs'
+import { randomBytes } from 'crypto'
+import { ZodError } from 'zod'
+import { requireAuth } from '../middleware/auth'
+import { z } from 'zod'
+
+const router = Router()
+
+const signUpSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number'),
+  name: z.string().optional(),
+})
+
+// Sign up
+router.post('/signup', async (req, res) => {
+  try {
+    const result = signUpSchema.safeParse(req.body)
+    if (!result.success) {
+      res.status(400).json({
+        error: 'Validation failed',
+        details: result.error.errors.map((err) => ({
+          path: err.path.join('.'),
+          message: err.message,
+        })),
+      })
+      return
+    }
+
+    const { email, password, name } = result.data
+
+    // Validate input
+    if (!email || !password) {
+      res.status(400).json({ error: 'Email and password are required' })
+      return
+    }
+
+    // Check if user exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    })
+
+    if (existingUser) {
+      res.status(400).json({ error: 'Email already registered' })
+      return
+    }
+
+    // Hash password
+    const salt = await bcrypt.genSalt(10)
+    const passwordHash = await bcrypt.hash(password, salt)
+
+    // Create user
+    const user = await prisma.user.create({
+      data: {
+        email,
+        passwordHash,
+        name,
+      },
+    })
+
+    // Create session
+    const token = randomBytes(32).toString('hex')
+    const expiresAt = new Date()
+    expiresAt.setDate(expiresAt.getDate() + 30) // 30 days from now
+
+    await prisma.session.create({
+      data: {
+        token,
+        userId: user.id,
+        expiresAt,
+      },
+    })
+
+    // Set cookie
+    res.cookie('session', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      expires: expiresAt,
+    })
+
+    res.json({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+    })
+  } catch (err) {
+    console.error('Sign up error:', err)
+    if (err instanceof ZodError) {
+      res.status(400).json({
+        error: 'Validation failed',
+        details: err.errors.map((err) => ({
+          path: err.path.join('.'),
+          message: err.message,
+        })),
+      })
+      return
+    }
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+const signInSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(1, 'Password is required'),
+})
+// Sign in
+router.post('/signin', async (req, res) => {
+  try {
+    const result = signInSchema.safeParse(req.body)
+    if (!result.success) {
+      res.status(400).json({
+        error: 'Validation failed',
+        details: result.error.errors.map((err) => ({
+          path: err.path.join('.'),
+          message: err.message,
+        })),
+      })
+      return
+    }
+
+    const { email, password } = result.data
+
+    // Validate input
+    if (!email || !password) {
+      res.status(400).json({ error: 'Email and password are required' })
+      return
+    }
+
+    // Find user
+    const user = await prisma.user.findUnique({
+      where: { email },
+    })
+
+    if (!user) {
+      res.status(401).json({ error: 'Invalid credentials' })
+      return
+    }
+
+    // Verify password
+    const isValid = await bcrypt.compare(password, user.passwordHash)
+    if (!isValid) {
+      res.status(401).json({ error: 'Invalid credentials' })
+      return
+    }
+
+    // Create session
+    const token = randomBytes(32).toString('hex')
+    const expiresAt = new Date()
+    expiresAt.setDate(expiresAt.getDate() + 30) // 30 days from now
+
+    await prisma.session.create({
+      data: {
+        token,
+        userId: user.id,
+        expiresAt,
+      },
+    })
+
+    // Set cookie
+    res.cookie('session', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      expires: expiresAt,
+    })
+
+    res.json({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+    })
+  } catch (err) {
+    console.error('Sign in error:', err)
+    if (err instanceof ZodError) {
+      res.status(400).json({
+        error: 'Validation failed',
+        details: err.errors.map((err) => ({
+          path: err.path.join('.'),
+          message: err.message,
+        })),
+      })
+      return
+    }
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// Sign out
+router.post('/signout', requireAuth, async (req, res) => {
+  try {
+    const token = req.cookies.session
+    if (token) {
+      await prisma.session.delete({
+        where: { token },
+      })
+      res.clearCookie('session')
+    }
+    res.json({ message: 'Signed out successfully' })
+  } catch (error) {
+    console.error('Signout error:', error)
+    res.status(500).json({ error: 'Failed to sign out' })
+  }
+})
+
+// Get current user
+router.get('/me', requireAuth, async (req, res) => {
+  try {
+    const token = req.cookies.session
+    if (!token) {
+      res.json({ user: null })
+      return
+    }
+
+    const session = await prisma.session.findUnique({
+      where: { token },
+      include: { user: true },
+    })
+
+    if (!session || session.expiresAt < new Date()) {
+      res.clearCookie('session')
+      res.json({ user: null })
+      return
+    }
+
+    res.json({
+      id: session.user.id,
+      email: session.user.email,
+      name: session.user.name,
+    })
+  } catch (error) {
+    console.error('Get current user error:', error)
+    res.status(500).json({ error: 'Failed to get current user' })
+  }
+})
+
+export default router
+```
+
+### Update the `/api/articles` route to filter by user
+
+Next, we’ll need to update the `/api/articles` routes to ensure that when database records are created, the user information is saved with the record as well. This will allow queries to return only the articles created by that user.
+
+Update `server/routes/articles.ts` like so:
+
+filename: server/routes/articles.ts
+```ts
+import { Router } from 'express'
+import { prisma } from '../db/prisma'
+import { requireAuth } from '../middleware/auth'
+
+const router = Router()
+
+// Get all articles
+router.get('/', async (req, res) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'User not found' })
+      return
+    }
+
+    const allArticles = await prisma.article.findMany({
+      where: {
+        userId: req.user.id,
+      },
+      orderBy: {
+        updatedAt: 'desc',
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    })
+    res.json(allArticles)
+  } catch (error) {
+    console.error('Error fetching articles:', error)
+    res.status(500).json({ error: 'Failed to fetch articles' })
+  }
+})
+
+// Get single article
+router.get('/:id', async (req, res) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'User not found' })
+      return
+    }
+
+    const article = await prisma.article.findUnique({
+      where: {
+        id: parseInt(req.params.id),
+        userId: req.user.id,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    })
+
+    if (!article) {
+      res.status(404).json({ error: 'Article not found' })
+      return
+    }
+
+    res.json(article)
+  } catch (error) {
+    console.error('Error fetching article:', error)
+    res.status(500).json({ error: 'Failed to fetch article' })
+  }
+})
+
+// Create article
+router.post('/', async (req, res) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'User not found' })
+      return
+    }
+
+    const { title, content, summary } = req.body
+
+    const newArticle = await prisma.article.create({
+      data: {
+        title,
+        content,
+        summary,
+        userId: req.user.id,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    })
+    res.json(newArticle)
+  } catch (error) {
+    console.error('Error creating article:', error)
+    res.status(500).json({ error: 'Failed to create article' })
+  }
+})
+
+// Update article
+router.put('/:id', async (req, res) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'User not found' })
+      return
+    }
+
+    const { title, content, summary } = req.body
+    const articleId = parseInt(req.params.id)
+
+    // First verify the article belongs to the user
+    const article = await prisma.article.findUnique({
+      where: {
+        id: articleId,
+        userId: req.user.id,
+      },
+    })
+
+    if (!article) {
+      res.status(404).json({ error: 'Article not found' })
+      return
+    }
+
+    const updatedArticle = await prisma.article.update({
+      where: {
+        id: articleId,
+      },
+      data: {
+        title,
+        content,
+        summary,
+        updatedAt: new Date(),
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    })
+
+    res.json(updatedArticle)
+  } catch (error) {
+    console.error('Error updating article:', error)
+    res.status(500).json({ error: 'Failed to update article' })
+  }
+})
+
+// Delete article
+router.delete('/:id', async (req, res) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'User not found' })
+      return
+    }
+
+    const articleId = parseInt(req.params.id)
+
+    // First verify the article belongs to the user
+    const article = await prisma.article.findUnique({
+      where: {
+        id: articleId,
+        userId: req.user.id,
+      },
+    })
+
+    if (!article) {
+      res.status(404).json({ error: 'Article not found' })
+      return
+    }
+
+    const deletedArticle = await prisma.article.delete({
+      where: {
+        id: articleId,
+      },
+    })
+
+    res.json(deletedArticle)
+  } catch (error) {
+    console.error('Error deleting article:', error)
+    res.status(500).json({ error: 'Failed to delete article' })
+  }
+})
+
+export default router
+```
+
+### Update the Express server entry point
+
+The last thing to do on the server is update `server/index.ts` to set up `cookie-parser`, register the `/api/auth` routes, and protect the `/api/articles` and `/api/ai` routes.
+
+Update `server/index.ts` as follows:
+
+filename: server/index.ts
+```ts
+import express from 'express'
+import path from 'path'
+import cors from 'cors'
+import dotenv from 'dotenv'
+dotenv.config()
+
+import { createProxyMiddleware } from 'http-proxy-middleware'
+import articlesRouter from './routes/articles'
+import aiRouter from './routes/ai'
+import cookieParser from 'cookie-parser'
+import authRoutes from './routes/auth'
+import { requireAuth } from './middleware/auth'
+
+console.log(`NODE_ENV: ${process.env.NODE_ENV}`)
+
+const app = express()
+const PORT = process.env.PORT || 3000
+const VITE_PORT = process.env.VITE_PORT || 5173
+
+// Middleware
+app.use(
+  cors({
+    origin:
+      process.env.NODE_ENV === 'production' ? process.env.FRONTEND_URL : 'http://localhost:5173',
+    credentials: true,
+  }),
+)
+app.use(cookieParser())
+app.use(express.json())
+
+// API routes
+app.use('/api', (req, res, next) => {
+  console.log(`API Request: ${req.method} ${req.url}`)
+  next()
+})
+
+// Public routes
+app.use('/api/auth', authRoutes)
+
+// Protected routes
+app.use('/api/articles', requireAuth, articlesRouter)
+app.use('/api/ai', requireAuth, aiRouter)
+
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok' })
+})
+
+// Development: Proxy all non-API requests to Vite dev server
+if (process.env.NODE_ENV !== 'production') {
+  app.use(
+    '/',
+    createProxyMiddleware({
+      target: `http://localhost:${VITE_PORT}`,
+      changeOrigin: true,
+      ws: true,
+      // Don't proxy /api requests
+      filter: (pathname: string) => !pathname.startsWith('/api'),
+    }),
+  )
+} else {
+  // Production: Serve static files
+  app.use(express.static(path.join(__dirname, '../dist')))
+
+  // Handle React routing in production
+  app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api')) {
+      res.sendFile(path.join(__dirname, '../dist/index.html'))
+    }
+  })
+}
+
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`)
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`Proxying non-API requests to http://localhost:${VITE_PORT}`)
+  }
+})
+```
+
+## Implementing the login page in React
+
+With the backend updated to support authentication, let’s update the frontend to do the same.
+
+### Create a context, provider, and hook for global auth
+
+Since the authentication state can affect the way the entire application behaves, we’ll create a React Context and Provider so we can check if the user is logged in from anywhere. We’ll also add the logic to sign up, sign in, and sign out from the context, making it easy to call those functions from various points of the app.
+
+Create the `src/hooks/use-auth.tsx` file and add the following code:
+
+filename: src/hooks/use-auth.tsx
+```tsx
+import { createContext, useContext, useState, useEffect } from 'react'
+import { User } from '@/types'
+
+interface AuthContextType {
+  user: User | null
+  signIn: (email: string, password: string) => Promise<void>
+  signUp: (email: string, password: string, name?: string) => Promise<void>
+  signOut: () => Promise<void>
+  isLoading: boolean
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    checkAuth()
+  }, [])
+
+  // Used to check the session status with the server
+  const checkAuth = async () => {
+    try {
+      const response = await fetch('/api/auth/me', {
+        credentials: 'include',
+      })
+      const data = await response.json()
+      setUser(data)
+    } catch (error) {
+      console.error('Failed to check auth status:', error)
+      setUser(null)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Used to create a session and store the user data in the context
+  const signIn = async (email: string, password: string) => {
+    const response = await fetch('/api/auth/signin', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({ email, password }),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Failed to sign in')
+    }
+
+    const data = await response.json()
+    setUser(data)
+  }
+
+  // Used to sign up a new user, create a session, and store the user data in the context
+  const signUp = async (email: string, password: string, name?: string) => {
+    const response = await fetch('/api/auth/signup', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({ email, password, name }),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Failed to sign up')
+    }
+
+    const data = await response.json()
+    setUser(data)
+  }
+
+  // Used to sign out a user and clear the user data from the context
+  const signOut = async () => {
+    await fetch('/api/auth/signout', {
+      method: 'POST',
+      credentials: 'include',
+    })
+    setUser(null)
+  }
+
+  return (
+    <AuthContext.Provider value={{ user, signIn, signUp, signOut, isLoading }}>
+      {children}
+    </AuthContext.Provider>
+  )
+}
+
+// Custom hook to access the auth context from any component
+export function useAuth() {
+  const context = useContext(AuthContext)
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
+}
+```
+
+Next, update the `src/App.tsx` file to wrap the entire application with the provider:
+
+filename: src/App.tsx
+```tsx
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import Home from '@/views/home'
+import AppView from '@/views/app'
+import { AuthProvider } from '@/hooks/use-auth'
+
+function AppRoot() {
+  return (
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/app" element={<AppView />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Router>
+    </AuthProvider>
+  )
+}
+
+export default AppRoot
+```
+
+### Add sign-up and sign-in views
+
+Next, let’s add the sign-up and sign-in views. These views will both be very similar, each containing form elements where the user can enter their credentials. Both also use `zod` for client-side validation, which prevents an unnecessary network trip to the server if the user does not populate the fields properly. If validation fails, errors will be shown on the respective fields.
+
+The key difference between them is what happens when the user submits the form, specifically, the method called from the `useAuth` hook created earlier.
+
+Create the `src/views/sign-in.tsx` page and populate it with the following code:
+
+filename: src/views/sign-in.tsx
+```tsx
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useAuth } from '@/hooks/use-auth'
+import { z, ZodError } from 'zod'
+
+const signInSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(1, 'Password is required'),
+})
+
+export default function SignIn() {
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+  })
+  const [errors, setErrors] = useState<{
+    email?: string
+    password?: string
+    submit?: string
+  }>({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const navigate = useNavigate()
+  const { signIn } = useAuth()
+
+  const handleSubmit = async (data: typeof formData) => {
+    try {
+      setIsSubmitting(true)
+      setErrors({})
+
+      // Validate the form data
+      const validatedData = signInSchema.parse(data)
+
+      // Attempt sign in
+      await signIn(validatedData.email, validatedData.password)
+      navigate('/app')
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const formattedErrors: Record<string, string> = {}
+        error.errors.forEach((err) => {
+          if (err.path) {
+            formattedErrors[err.path[0]] = err.message
+          }
+        })
+        setErrors(formattedErrors)
+      } else {
+        setErrors({ submit: 'Failed to sign in. Please try again.' })
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({ ...prev, [name]: value }))
+    // Clear error when user starts typing
+    if (errors[name as keyof typeof errors]) {
+      setErrors((prev) => ({ ...prev, [name]: undefined }))
+    }
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-purple-50/30 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle className="text-center text-2xl">Sign In</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleSubmit(formData)
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <label htmlFor="email" className="text-sm font-medium">
+                Email
+              </label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+                placeholder="Enter your email"
+                className={errors.email ? 'border-red-500' : ''}
+              />
+              {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="password" className="text-sm font-medium">
+                Password
+              </label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                placeholder="Enter your password"
+                className={errors.password ? 'border-red-500' : ''}
+              />
+              {errors.password && <p className="text-sm text-red-500">{errors.password}</p>}
+            </div>
+            {errors.submit && <p className="text-center text-sm text-red-500">{errors.submit}</p>}
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? 'Signing In...' : 'Sign In'}
+            </Button>
+            <div className="text-center text-sm">
+              Don't have an account?{' '}
+              <a href="/signup" className="text-purple-600 hover:text-purple-500">
+                Sign up
+              </a>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+```
+
+Do the same with `src/views/sign-up.tsx`:
+
+filename: src/views/sign-up.tsx
+```tsx
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useAuth } from '@/hooks/use-auth'
+import { z, ZodError } from 'zod'
+
+const signUpSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number'),
+  name: z.string().optional(),
+})
+
+export default function SignUp() {
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    name: '',
+  })
+  const [errors, setErrors] = useState<{
+    email?: string
+    password?: string
+    name?: string
+    submit?: string
+  }>({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const navigate = useNavigate()
+  const { signUp } = useAuth()
+
+  const handleSubmit = async (data: typeof formData) => {
+    try {
+      setIsSubmitting(true)
+      setErrors({})
+
+      // Validate the form data
+      const validatedData = signUpSchema.parse(data)
+
+      // Attempt sign up
+      await signUp(validatedData.email, validatedData.password, validatedData.name)
+      navigate('/app')
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const formattedErrors: Record<string, string> = {}
+        error.errors.forEach((err) => {
+          if (err.path) {
+            formattedErrors[err.path[0]] = err.message
+          }
+        })
+        setErrors(formattedErrors)
+      } else {
+        setErrors({ submit: 'Failed to create account. Please try again.' })
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({ ...prev, [name]: value }))
+    // Clear error when user starts typing
+    if (errors[name as keyof typeof errors]) {
+      setErrors((prev) => ({ ...prev, [name]: undefined }))
+    }
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-purple-50/30 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle className="text-center text-2xl">Sign Up</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleSubmit(formData)
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <label htmlFor="email" className="text-sm font-medium">
+                Email
+              </label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+                placeholder="Enter your email"
+                className={errors.email ? 'border-red-500' : ''}
+              />
+              {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="password" className="text-sm font-medium">
+                Password
+              </label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                placeholder="Create a password"
+                className={errors.password ? 'border-red-500' : ''}
+              />
+              {errors.password && <p className="text-sm text-red-500">{errors.password}</p>}
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="name" className="text-sm font-medium">
+                Name (optional)
+              </label>
+              <Input
+                id="name"
+                name="name"
+                type="text"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="Enter your name"
+                className={errors.name ? 'border-red-500' : ''}
+              />
+              {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
+            </div>
+            {errors.submit && <p className="text-center text-sm text-red-500">{errors.submit}</p>}
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? 'Creating Account...' : 'Create Account'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+```
+
+Now register the views in `src/App.tsx`:
+
+filename: src/App.tsx
+```tsx
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import Home from '@/views/home'
+import AppView from '@/views/app'
+import { AuthProvider } from '@/hooks/use-auth'
+import SignIn from '@/views/auth/sign-in'
+import SignUp from '@/views/auth/sign-up'
+
+function AppRoot() {
+  return (
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/signin" element={<SignIn />} />
+          <Route path="/signup" element={<SignUp />} />
+          <Route path="/app" element={<AppView />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Router>
+    </AuthProvider>
+  )
+}
+
+export default AppRoot
+```
+
+### Protecting the App page
+
+To protect routes, we’ll create a separate component that will use the context & provider and check the authentication state before allowing the user to proceed. If the authentication state is being checked by the provider, a “Loading…” message will be rendered for the user. If the user is not logged in, they will be redirected to the sign-in view.
+
+Create the `src/components/protected-route.tsx` file and add the following:
+
+filename: src/components/protected-route.tsx
+```tsx
+import { Navigate } from 'react-router-dom'
+import { useAuth } from '@/hooks/use-auth'
+
+export function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, isLoading } = useAuth()
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-purple-50/30">
+        <div className="text-purple-600">Loading...</div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return <Navigate to="/signin" replace />
+  }
+
+  return <>{children}</>
+}
+```
+
+Update `src/App.tsx` and wrap the element for the `/app` route in the `<ProtectedRoute>` component:
+
+filename: src/App.tsx
+```tsx
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider } from '@/hooks/use-auth'
+import SignIn from '@/views/auth/sign-in'
+import SignUp from '@/views/auth/sign-up'
+import Home from '@/views/home'
+import AppView from '@/views/app'
+import { ProtectedRoute } from '@/components/protected-route'
+
+function AppRoot() {
+  return (
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/app" element={<AppView />} />
+          <Route path="/signin" element={<SignIn />} />
+          <Route path="/signup" element={<SignUp />} />
+          <Route
+            path="/app"
+            element={
+              <ProtectedRoute>
+                <AppView />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Router>
+    </AuthProvider>
+  )
+}
+
+export default AppRoot
+```
+
+### Add a sign-out button
+
+The last thing to add is a sign-out button that lets users log out of the app once they are finished. This will use the `signOut` function of the `useAuth` hook to remove the session from the database and clear the cookie set in the browser.
+
+Update `src/components/article-list.tsx` with the following:
+
+filename: src/components/article-list.tsx
+```jsx
+import { Button } from "@/components/ui/button"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Article } from "@/types"
+import { useAuth } from "@/hooks/use-auth"
+
+interface ArticleListProps {
+  articles: Article[]
+  selectedArticle: Article | null
+  onArticleSelect: (article: Article) => void
+  onNewArticle: () => void
+}
+
+export function ArticleList({
+  articles,
+  selectedArticle,
+  onArticleSelect,
+  onNewArticle,
+}: ArticleListProps) {
+  const { signOut } = useAuth()
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="border-b border-purple-100 p-4 bg-white">
+        <div className="flex justify-between items-center">
+          <h2 className="text-lg font-semibold">Articles</h2>
+          <Button onClick={onNewArticle} size="sm">New</Button>
+        </div>
+      </div>
+      <ScrollArea className="flex-1">
+        <div className="space-y-4 p-4">
+          {articles.map(article => (
+            <div
+              key={article.id}
+              className={`p-4 rounded-lg cursor-pointer transition-colors ${
+                selectedArticle?.id === article.id
+                  ? 'bg-purple-100'
+                  : 'hover:bg-purple-50'
+              }`}
+              onClick={() => onArticleSelect(article)}
+            >
+              <h3 className="font-medium mb-1">{article.title}</h3>
+              <div className="text-sm text-gray-500">
+                <p>Updated {new Date(article.updatedAt).toLocaleDateString()}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </ScrollArea>
+      <div className="border-b border-t border-purple-100 p-4 bg-white">
+        <Button
+          onClick={() => signOut()}
+          variant="outline"
+          className="w-full"
+        >
+          Sign Out
+        </Button>
+      </div>
+    </div>
+  )
+}
+```
+
+## Testing the app
+
+With all the changes in place, you may test the application! Run the application with the following command in your terminal:
+
+```bash
+npm run dev
+```
+
+Now open `localhost:3000` in your browser and try creating a user to use the application, create an article, and experiment with the AI functionality! I encourage you to also log into Neon and check the contents of the database, specifically the `users` and `sessions` tables as they contain the records needed to support authentication.
+
+## So why Clerk then?
+
+Clerk is a user management and authentication platform, so it might surprise you that we’re publishing an article walking you through how to implement authentication yourself.
+
+This article covers how to implement a single method of authentication, but in reality, user management is much more than just session-based authentication. For example, it’s commonplace in modern web applications to also support social login providers like Google or Apple. A password reset flow is also a critical requirement for supporting your own authentication setup.
+
+These are just a few of the many features Clerk supports out of the box, oftentimes with a single line of code.
+
+Using Clerk, you can easily create a sign-in page by just importing and rendering the `<SignIn />` component like so:
+
+```tsx
+import { SignIn } from '@clerk/clerk-react'
+
+export default function SignInView() {
+  return <SignIn />
+}
+```
+
+If you want to learn how easy it is to get Clerk working in a React application, check out the quickstart on our docs.
+
+If you want to download a template version of the React login page template to use in your own project, check out the react-session-auth-template repository on GitHub.
+
+## Conclusion
+
+In conclusion, this article has walked you through how to implement a basic authentication system using React and Express. By setting up a session-based authentication flow, we've covered how to create a sign-in page, handle user registration, log users in and out, as well as protect routes with a simple `ProtectedRoute` component.
+
+While implementing a custom authentication system can be a great learning experience, it's also important to consider the larger picture of what user management really entails. In reality, you'll often need to support features like social login providers, password reset flows, and more.
+
+That's where Clerk comes in - a user management and authentication platform that simplifies the process of implementing these features with just a few lines of code. If you're interested in learning more about how easy it is to get Clerk working in a React application, check out the quickstart guide on our documentation site.

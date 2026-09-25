@@ -1,0 +1,105 @@
+# Using Clerk SSO to access Google Calendar and other service data
+# джерело: https://clerk.com/blog/using-clerk-sso-access-google-calendar
+# отримано: 2026-09-25
+
+Allowing users to sign on with services like Google and Apple is a staple in modern authentication, but single sign-on (SSO) goes farther than that.
+
+When a user signs in with an SSO provider, they receive a token that developers can use to determine who is making the request. With the proper configuration, developers can also access data within that service on behalf of the user. And while most developers know that Clerk can easily allow SSO with a wide range of providers, we also simplify the process involved in accessing user data.
+
+In this article, you'll learn how to leverage Clerk to access data on behalf of the current user to request their availability from Google Calendar using an open-source, live demo application.
+
+## Single sign-on and access tokens
+
+When a user logs into an application using OAuth, a common protocol for modern SSO, access tokens are created and sent to the client.
+
+Developers will typically store these access tokens in a cookie or some other local storage mechanism. With each request to a backend system, the access token minted during the login process is sent along with the request. The system will verify the claims to ensure that the user making the request is who they say they are, and that the token is still valid.
+
+As mentioned in the introduction of this article, access tokens can be used to request the user's data and verify their identity.
+
+When using an SSO provider, developers can define _scopes_ for what the specific access tokens minted have access to. Scopes help the service provider inform the user what data the developer is requesting access to so they can make an informed decision to permit or deny access to that data. For example, including the following scopes will enable access tokens minted by this application to read the calendar data for the current user:
+
+- `https://www.googleapis.com/auth/calendar.readonly`
+- `https://www.googleapis.com/auth/calendar.events.readonly`
+
+When the user logs in, they will be presented with an access form like so:
+
+The Google OAuth consent screen
+
+It's also worth noting that access tokens are time-bound and expire after a certain period.
+
+The login process will often send a longer-lived refresh token that can be used to refresh the access token transparently before it expires. This allows developers to enable users to sign in using their preferred method, all while transparently keeping the access tokens current.
+
+When combined with the proper scopes, developers can use these tokens to verify the user's identity and access data within that service.
+
+## Clerk helps with token management and data access
+
+Clerk enables SSO with many popular providers with a simple toggle, but the capabilities go further than that.
+
+When users log in using Clerk with an SSO provider, we store those tokens in our system and manage the lifecycle for developers. The access tokens are automatically kept current so you don't have to worry about them expiring and having to refresh them. We also provide simple functions to retrieve the access tokens, meaning your application can easily access data within that service on behalf of the user.
+
+This allows you as the developer to focus on building functionality into your application instead of having to manage tokens, as we'll explore in the following demo.
+
+To explore in detail how Clerk manages tokens, read the article “Combining the benefits of session tokens and JWTs” on our blog!
+
+## Demo: BookMate
+
+BookMate is an open-source, publicly accessible, lightweight clone of popular booking services like cal.com or Calendly.
+
+Users of the platform can create a profile, set their general availability, and share their profile for others to request meetings.
+
+The BookMate availability settings screen
+
+On top of setting general availability, users can also link their Google Calendar to the platform so that when someone tries to request time from them, BookMate will consider events that are already scheduled to avoid users from being double-booked.
+
+The BookMate calendar settings screen
+
+Clerk's `getUserOauthAccessToken` is used on the BookMate backend to make requests to Google on behalf of the user.
+
+filename: src/app/settings/actions.ts
+```ts
+'use server'
+import { auth, clerkClient } from '@clerk/nextjs/server'
+
+export async function getGoogleToken() {
+  const { userId } = await auth()
+
+  const client = await clerkClient()
+  const token = await client.users.getUserOauthAccessToken(userId || '', 'oauth_google')
+
+  return {
+    token: token.data[0].token,
+  }
+}
+```
+
+This token is used to list the calendars the user wants to consider when a visitor tries to book, but also when the visitor tries to check the availability on the user's profile. Note that the following code snippet securely executes regardless of who's logged in:
+
+filename: src/lib/google.ts
+```ts
+const client = await clerkClient()
+const token = await client.users.getUserOauthAccessToken(userId, 'oauth_google')
+const accessToken = token.data[0].token
+
+// Code removed for brevity.
+
+const response = await fetch(
+  `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
+    calendarId,
+  )}/events?timeMin=${monthStart.toISOString()}&timeMax=${monthEnd.toISOString()}&singleEvents=true&orderBy=startTime`,
+  {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  },
+)
+```
+
+To experience this app yourself, check it out at https://bookmate-sigma.vercel.app, or explore the source code on GitHub.
+
+## Conclusion
+
+In this article, we explored how Clerk simplifies the process of implementing SSO and accessing third-party services like Google Calendar. By managing token lifecycles and providing straightforward functions to retrieve access tokens, Clerk allows developers to focus on building features rather than dealing with authentication infrastructure.
+
+The BookMate demo demonstrates how easy it is to integrate Google Calendar data into your application using Clerk's OAuth capabilities. With just a few lines of code, you can securely access user data from external services while maintaining a smooth user experience.
+
+Whether you're building a scheduling application like BookMate or any other service that requires SSO integration, Clerk's token management and data access features can significantly reduce development complexity while maintaining security best practices.

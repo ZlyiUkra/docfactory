@@ -1,0 +1,371 @@
+# Build a waitlist with Clerk user metadata
+# джерело: https://clerk.com/blog/build-a-waitlist-with-clerk-user-metadata
+# отримано: 2026-09-25
+
+As of Nov 2024, Clerk now has a built-in waitlist feature that you can use instead of the one outlined in this article. Learn more.
+
+Fast feedback when building a software-as-a-service application is critical.
+
+This is especially true in the early days of building. The quicker you can get a working version of your product in the hands of users, the faster you can collect input and make decisions based on that input. Doing so can make an incredible difference in the success of your online business. One option is to use a platform to collect emails and notify them that the application is ready to test, but wouldn't it be nice to have them sign up for the application directly first?
+
+In this article, you'll learn how to configure Clerk to allow users to sign up for your application but restrict their access until you explicitly allow it. You'll also learn how to create a page to interact with the user's info in Clerk to grant them access to the application.
+
+> 💡 To follow along with this article, you'll need a free Clerk account, as well as Node.js installed on your computer.
+
+## Follow along using the Cooking with Clerk repository
+
+Cooking with Clerk is an open-source web application built with Clerk and Next.js that will be used to apply the techniques outlined in this article. The application is an AI-powered recipe generator that uses OpenAI's API as part of the generative process. During development, we don't want to allow anyone to use it since it can easily start increasing our cost to use the OpenAI API.
+
+If you want to follow along, clone the repository to your computer and follow the steps outlined in the `readme.md` file to get your local environment set up. The source code can be found at https://github.com/bmorrisondev/cooking-with-clerk.
+
+The remainder of this article assumes you will be following along using the `waitlist-article` branch, however this is entirely optional. It also assumes you've already signed in with your own account.
+
+To build the waitlist functionality, we'll be performing the following actions:
+
+- Configure session tokens and user metadata to flag users in and out of the waitlist.
+- Set up the Clerk middleware to redirect users based on those flags.
+- Design an admin dashboard that allows administrators to enable/disable users.
+
+## Configure session tokens and user metadata
+
+Users in Clerk can be configured with various types of metadata that can store information about that user in JSON format.
+
+We can take advantage of this storage mechanism to assign the various flags to users of our application:
+
+- `isBetaUser` can be used to determine if the user has access to test the application while in early development.
+- `isAdmin` can be used to determine if the user has access to the admin dashboard that will be created to allow users into the beta.
+
+Let's start by setting the `isAdmin` flag on our own account. Open the Clerk dashboard and navigate to **"Users"** from the left navigation.
+
+The Clerk Dashboard Users section
+
+Select the user you want to allow admin access to, then scroll to the bottom and locate the **Metadata** section. Click the first **"Edit"** button to edit the users' public metadata.
+
+Editing the user's public metadata in the Clerk Dashboard
+
+Paste the following into the JSON editor and click Save.
+
+```json
+{
+  "isBetaUser": true
+}
+```
+
+Now even though public metadata is accessible from the front end, we'll be modifying the Clerk middleware to determine where to redirect the user once they've signed in. This means we'll need to add the public metadata to the claims so we have access to it before the user is fully loaded in the front end.
+
+To do this, select **"Sessions"** from the left navigation, then click **"Edit"** in the **Customize session token** section.
+
+The sessions tab of the Clerk Dashboard
+
+Paste the following into the JSON editor and click Save.
+
+```json
+{
+  "metadata": "{{user.public_metadata}}"
+}
+```
+
+Every token minted from now on will contain the JSON that is saved to the user's public metadata within the claims of the token.
+
+It's worth noting that the total size of the authentication object (including custom session claims) cannot exceed 4kb.
+
+## Route users using Clerk middleware
+
+The Clerk middleware runs on every page load to determine if the user is authenticated and is allowed to access the requested resource using the `isProtectedRoute` helper. For example, the following middleware configuration will protect every page that starts with the `/app` route and the `/api` route:
+
+filename: src/middleware.ts
+```tsx
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+
+const isProtectedRoute = createRouteMatcher(['/app(.*)', '/api(.*)'])
+
+export default clerkMiddleware((auth, req) => {
+  if (isProtectedRoute(req)) {
+    auth().protect()
+  }
+})
+
+export const config = {
+  matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)',
+  ],
+}
+```
+
+Clerk will automatically parse the session claims (where the public metadata is) within the `auth()` function, which means it's accessible to us during this process like so:
+
+```tsx
+const { sessionClaims } = auth()
+```
+
+Using this, we can determine if the session claims contain our `isBetaUser` flag. Update the `src/middleware.ts` file to match the following:
+
+filename: src/middleware.ts
+```tsx
+// 👉 Update the imports
+import { ClerkMiddlewareAuth, clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server'
+
+const isProtectedRoute = createRouteMatcher(['/app(.*)', '/api(.*)'])
+
+// 👉 Create a type to define the metadata
+type UserMetadata = {
+  isBetaUser?: boolean
+}
+
+export default clerkMiddleware((auth, req) => {
+  if (isProtectedRoute(req)) {
+    auth().protect()
+
+    // 👉 Use `auth()` to get the sessionClaims, which includes the public metadata
+    const { sessionClaims } = auth()
+    const { isBetaUser } = sessionClaims?.metadata as UserMetadata
+    if (!isBetaUser) {
+      // 👉 If the user is not a beta user, redirect them to the waitlist
+      return NextResponse.redirect(new URL('/waitlist', req.url))
+    }
+  }
+})
+
+export const config = {
+  matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)',
+  ],
+}
+```
+
+From now on, any user that does not have `isBetaUser` defined in their public metadata will instead be redirected to a page that simply tells them that they are on the waitlist. It's also worth noting that since this check is performed after `auth().protect()`, this function will only run if the user is logged in with a Clerk account, preventing it from running when not needed.
+
+To see this in action, start the project on your computer by running `npm run dev` in your terminal and navigate to the URL displayed in the terminal (the default is `http://localhost:3000`, but may differ if another process is using port 3000).
+
+Cooking with Clerk homepage
+
+Click **"Sign In"** in the upper right and log in with the user account you used during setup. You should be able to access and test the app with no issues.
+
+Cooking with Clerk with recipes generated
+
+Now sign out using the user menu, and sign in again with a different account. You'll notice that instead of accessing the application, you are redirected to `/waitlist`. This is the middleware at work!
+
+Cooking with Clerk waitlist
+
+## Creating the admin area
+
+Now that we've built the capability into the app to require the `isBetaUser` flag to be set, we need a way to set this for users interested in testing the app. Sure, it can be done from within the Clerk dashboard, but we can also take advantage of the Clerk SDK to create a page that allows us to perform this action within the app. Start by creating the `src/app/admin/page.tsx` file and paste the following code into it. This will create a page at `/admin` that displays an empty table.
+
+filename: src/app/admin/page.tsx
+```tsx
+import React from 'react'
+import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import UserRow from './UserRow'
+import { clerkClient } from '@clerk/nextjs/server'
+
+export const fetchCache = 'force-no-store'
+
+async function Admin() {
+  // 👉 Gets the users from the Clerk application
+  let res = await clerkClient.users.getUserList()
+  let users = res.data
+
+  return (
+    <main>
+      <h1 className="my-2 text-2xl font-bold">Admin</h1>
+      <h2 className="my-2 text-xl">Users</h2>
+      <Table className="rounded-lg border border-gray-200">
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[100px]">Name</TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead className="text-right">Beta enabled?</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>{/* 👉 User records will be displayed here */}</TableBody>
+      </Table>
+    </main>
+  )
+}
+
+export default Admin
+```
+
+Next, we're going to create a client component that will display a row for each user within the table named `UserRow`. Before we do that, however, we need a server action that the `UserRow` component can use to interact with the Clerk Backend SDK to toggle the `isBetaUser` flag within a user's public metadata. Create the `src/app/admin/actions.ts` file and populate it with the following:
+
+filename: src/app/admin/actions.ts
+```tsx
+'use server'
+
+import { clerkClient } from '@clerk/nextjs/server'
+
+export async function setBetaStatus(userId: string, status: boolean) {
+  await clerkClient.users.updateUserMetadata(userId, {
+    publicMetadata: {
+      isBetaUser: status,
+    },
+  })
+}
+```
+
+Now create the `src/app/admin/UserRow.tsx` file with the following contents. This will be used to render each user in a row on the admin page.
+
+filename: src/app/admin/UserRow\.tsx
+```tsx
+'use client'
+import React, { useState } from 'react'
+import { TableCell, TableRow } from '@/components/ui/table'
+import { Switch } from '@/components/ui/switch'
+import { setBetaStatus } from './actions'
+
+// 👉 Define the necessary props we need to render the component
+type Props = {
+  name: string
+  id: string
+  emailAddress?: string
+  metadata?: UserPublicMetadata
+}
+
+function UserRow({ name, id, metadata, emailAddress }: Props) {
+  // 👉 Set the initial state of `isBetaUser` based on the metadata
+  const [isBetaUser, setIsBetaUser] = useState(metadata?.isBetaUser || false)
+
+  // 👉 Calls the server action defined earlier and sets the state on change
+  async function onToggleBetaStatus() {
+    try {
+      await setBetaStatus(id, !isBetaUser)
+      setIsBetaUser(!isBetaUser)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  return (
+    <TableRow>
+      <TableCell className="flex flex-col">
+        <span>{name}</span>
+        <span className="text-xs text-gray-600 italic">{id}</span>
+      </TableCell>
+
+      <TableCell>{emailAddress}</TableCell>
+
+      <TableCell className="text-right">
+        <Switch onCheckedChange={onToggleBetaStatus} checked={isBetaUser} aria-readonly />
+      </TableCell>
+    </TableRow>
+  )
+}
+
+export default UserRow
+```
+
+Finally, update `src/app/admin/page.tsx` by importing the new component and adding it to the table:
+
+filename: src/app/admin/page.tsx
+```tsx
+import React from 'react'
+import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { clerkClient } from '@clerk/nextjs/server'
+import UserRow from './UserRow'
+
+export const fetchCache = 'force-no-store'
+
+async function Admin() {
+  let res = await clerkClient.users.getUserList()
+  let users = res.data
+
+  return (
+    <main>
+      <h1 className="my-2 text-2xl font-bold">Admin</h1>
+      <h2 className="my-2 text-xl">Users</h2>
+      <Table className="rounded-lg border border-gray-200">
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[100px]">Name</TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead className="text-right">Beta enabled?</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {users?.map((u) => (
+            <UserRow
+              key={u.id}
+              id={u.id}
+              name={`${u.firstName} ${u.lastName}`}
+              metadata={u.publicMetadata}
+              emailAddress={u.emailAddresses[0]?.emailAddress}
+            />
+          ))}
+        </TableBody>
+      </Table>
+    </main>
+  )
+}
+
+export default Admin
+```
+
+Open the app in your browser again and navigate to `/admin`, you should see a list of the users from your Clerk application displayed in a table. Notice how only the account you manually added `isBetaUser` to during the first part of this guide has the toggle enabled under the Beta enabled? column.
+
+Cooking with Clerk admin panel
+
+Now, if you toggle another user on and log in again with that account, you should be redirected to `/app` instead of `/waitlist`! Furthermore, if you open the application in the Clerk dashboard and review the user's public metadata, you should see that `isBetaUser` has been enabled via the dashboard.
+
+## Securing the admin page
+
+At this point, we've effectively built the waitlist functionality, as well as created a polished experience for controlling the flags enabled on the user account. The problem is that the middleware is set up only to protect `/app` and not `/admin`, so anyone with the beta flag could technically access the admin panel. With a few minor tweaks to `middleware.ts`, we can also prevent users from accessing the admin panel:
+
+filename: src/middleware.ts
+```tsx
+import { ClerkMiddlewareAuth, clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server'
+
+const isProtectedRoute = createRouteMatcher(['/app(.*)', '/api(.*)', '/admin(.*)'])
+
+type UserMetadata = {
+  isBetaUser?: boolean
+  isAdmin?: boolean
+}
+
+export default clerkMiddleware((auth, req) => {
+  if (isProtectedRoute(req)) {
+    auth().protect()
+
+    const { sessionClaims } = auth()
+    const { isBetaUser } = sessionClaims?.metadata as UserMetadata
+    const { isAdmin, isBetaUser } = sessionClaims?.metadata as UserMetadata
+    if (isAdmin) {
+      // 👉 If the user is an admin, let them proceed to anything
+      return
+    }
+    if (!isAdmin && req.nextUrl.pathname.startsWith('/admin')) {
+      // 👉 If the user is not an admin and they try to access the admin panel, return an error
+      return NextResponse.error()
+    }
+    if (!isBetaUser) {
+      return NextResponse.redirect(new URL('/waitlist', req.url))
+    }
+  }
+})
+
+export const config = {
+  matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)',
+  ],
+}
+```
+
+Now whenever someone tries to access `/admin` without the `isAdmin` flag set in their Clerk user metadata, they'll get a 404 page instead of the admin panel.
+
+## Conclusion
+
+Clerk user metadata can be extremely useful for storing various information about the user.
+
+This is simply one example of how to use metadata. If you need some more inspiration, we also have a blog post showing how to build an onboarding flow using a similar approach that I recommend reading!
+
+Do you have an interesting way you've used user metadata in your application? Share it on X and let us know by tagging @clerk!

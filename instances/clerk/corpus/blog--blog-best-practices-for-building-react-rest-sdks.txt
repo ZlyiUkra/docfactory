@@ -1,0 +1,91 @@
+# Three best practices for building React REST SDKs
+# джерело: https://clerk.com/blog/best-practices-for-building-react-rest-sdks
+# отримано: 2026-09-25
+
+## 1. No secret keys allowed
+
+This may be obvious but it must be stated as #1. Since React hooks run in the browser, SDKs cannot use secret keys for API access.
+
+Instead, the API should be designed to scope access based on the currently signed-in user. Then, a session token or a JWT can be used to authorize requests to the API.
+
+## 2. GETs should be Hooks
+
+This is the critical change that turns a Node SDK into a React SDK. In Node SDKs, GET methods usually return a Promise:
+
+```jsx
+import { getUser } from '@clerk/nextjs'
+
+const user = await getUser()
+```
+
+Unfortunately, using a Promise in a React Component is a big headache. The developer needs to add `useEffect` and `useState` hooks to render a loading state while the Promise is pending, then update when the resolves.
+
+The end result is quite verbose and hard to decipher:
+
+```jsx
+import { useEffect, useState } from 'react'
+import { getUser } from '@clerk/nextjs'
+
+const UserProfile = () => {
+  const [user, setUser] = useState(null)
+  useEffect(() => {
+    const load = async () => {
+      const res = await getUser()
+      setUser(res)
+    }
+    load()
+  }, [getUser, setData])
+  if (!user) {
+    return <div>Loading</div>
+  }
+  return <div>Name: {user.name}</div>
+}
+```
+
+The solution is to provide developers with a hook instead of a Promise. Hooks are composable, so under the hood this is still built with `useEffect` and `useState`, it just doesn't burden the developer with setting them up manually:
+
+```jsx
+import { useUser } from '@clerk/nextjs'
+
+const UserProfile = () => {
+  const { user } = useUser()
+  if (!user) {
+    return <div>Loading</div>
+  }
+  return <div>Name: {user.name}</div>
+}
+```
+
+That's much easier to use!
+
+## 3. Hooks should "react" to mutations
+
+There is still a problem in the example above. What if the user wants to change their name and the developer triggers an update:
+
+```jsx
+user.update({ name: 'Ben Bitdiddle' })
+```
+
+By default, the `useUser` hook in our `<UserProfile/>` component won't automatically refresh. But since it's a hook, developers will expect it to – that's the whole point of React!
+
+There are two high-level strategies to refreshing the hook, **eager refresh** and **sequential refresh**.
+
+### Eager refresh
+
+Eager refresh is the most performant solution, but it can be hard to configure. The idea is that the API endpoint behind `user.update()` should return the updated User object in its response body. When the response is received, `user.update()` can propogate the new value to any components calling `useUser()`.
+
+This example isn't particularly hard to configure because the mutation is contained to the `User` object. It can be achieved with a globally-scoped React context to store the value of the User object, instead of using `useState` directly in the `useUser` hook.
+
+Eager refresh is much harder to configure when there are side effects involved. For example, at Clerk we have a `SignIn` object that is responsible for tracking the state of a sign-in flow while the user completes their first and second factor. Once the user successfully signs in, it has the side effect of generating a `Session` object, which changes the application's state from signed-out to signed-in.
+
+We achieve eager refresh when a sign in completes by returning both the `SignIn` object and `Session` object from the server, but establishing a clean pattern for this has proven easier-said-than-done.
+
+### Sequential refresh
+
+The alternative to eager refresh is sequential refresh, which is less performant but can be easier to configure, especially when side effects are possible.
+
+Using our example above, instead of trying to return both `SignIn` and the new `Session` at once, the final `SignIn` endpoint can instead return only the `SignIn` resource.
+
+When the client sees that the `SignIn` is complete, though, it knows that a new `Session` must exist. So, it can trigger a second request to retrieve the new `Session`.
+
+Two round-trips to the server will inherently be slower than one, but the development burden of eager refresh may make sequential refresh a viable alternative – especially as edge compute has made round-trips less costly over time.

@@ -1,0 +1,324 @@
+# Build a Next.js sign-up form with React Hook Form
+# джерело: https://clerk.com/blog/nextjs-sign-up-form
+# отримано: 2026-09-25
+
+In this post, you will learn how to build a sign-up form using the Next.js App Router and the following technologies:
+
+> This guide shows how to build authentication from scratch. For a production-ready solution, see our Next.js Authentication offering or explore our comprehensive Next.js authentication guide.
+
+- **Argon2** - Secure password hashing algorithm that provides strong protection against attacks.
+- **Drizzle** - ORM (Object-Relational Mapping) tool used to define the database schema and perform database operations, such as inserting or querying users.
+- **Zod** - TypeScript-first schema declaration and validation library.
+- **shadcn/ui** - An assortment of beautifully-designed components you can copy into your app.
+- **React Hook Form** - Library to simplify React form management and validation.
+
+By the end of this guide, you will have a fully functional and secure sign-up form with the following features:
+
+1. **Dynamic form validation** - Users receive feedback on the validity of their input when they type.
+2. **Password strength feedback** - Input validation ensures users follow password best practices to create strong passwords.
+3. **Secure password storage** - Passwords are hashed using Argon2 before being stored.
+
+We won't be building the sign-up form step-by-step. Instead, you'll find the complete source code for the post on GitHub. I will guide you through the key parts of the code, explaining how each section functions and contributes to the final product.
+
+## Database schema
+
+Let's begin with the database schema, as it defines the structure of the sign-up form and serves as its foundation.
+
+filename: @/db/schema.ts
+```ts
+import { sql } from 'drizzle-orm'
+import { AnyPgColumn, integer, pgTable, timestamp, uniqueIndex, varchar } from 'drizzle-orm/pg-core'
+
+export const usersTable = pgTable(
+  'users',
+  {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    email: varchar({ length: 254 }).notNull().unique(),
+    passwordHash: varchar('password_hash', { length: 255 }).notNull(),
+  },
+  (table) => [uniqueIndex('emailUniqueIndex').on(lower(table.email))],
+)
+
+export function lower(email: AnyPgColumn) {
+  return sql`lower(${email})`
+}
+```
+
+I'm using Drizzle with Postgres, but one of the advantages of using an ORM like Drizzle is its flexibility - you can adapt it to work with almost any database with minimal adjustments.
+
+The table includes these columns: `id`, `createdAt`, `email`, and `passwordHash`.
+
+An important aspect often overlooked is ensuring emails are stored as unique and case-insensitive. While PostgreSQL offers the `citext` module for this purpose, I've opted for an index using the `lower` function. This approach keeps everything within the application code and avoids the need to run additional PostgreSQL queries.
+
+While basic constraints like length are useful at the database level, validations like email format are best handled in the application layer. In the next section, we'll explore using Zod to define and validate the email and other inputs before storing them in the database.
+
+## Zod validation
+
+filename: @/definitions/sign-up.ts
+```ts
+import { z } from 'zod'
+
+export const signUpFormSchema = z.object({
+  email: z.string().email({ message: 'Please enter a valid email.' }).toLowerCase().trim(),
+  password: z
+    .string()
+    .min(8, { message: 'Be at least 8 characters long' })
+    .regex(/[a-zA-Z]/, { message: 'Contain at least one letter.' })
+    .regex(/[0-9]/, { message: 'Contain at least one number.' })
+    .regex(/[^a-zA-Z0-9]/, {
+      message: 'Contain at least one special character.',
+    }),
+})
+
+export type SignUpFormData = z.infer<typeof signUpFormSchema>
+type SignUpFieldErrors = z.inferFlattenedErrors<typeof signUpFormSchema>['fieldErrors']
+
+export type SignUpActionState = {
+  formData?: SignUpFormData
+  fieldErrors?: SignUpFieldErrors
+}
+```
+
+It's important to validate user input on both the frontend (in the client component) and the backend (in the server function):
+
+- Client-side validation provides instant feedback to users and improves the user experience by catching errors before submitting the form. However, client-side validation can be bypassed or may fail if JavaScript doesn't load correctly.
+- Server-side validation acts as a crucial security layer, ensuring that invalid and potentially malicious data is caught and handled properly before it reaches the database, even if the client-side validation is circumvented.
+
+Instead of duplicating validation code on the server and client, we use Zod to define the "shape" of a valid form in one place. By exporting the schema, it can be referenced on both the server and client and we keep the code nice and DRY.
+
+> Zod is more than just a validation library — it can also normalize inputs. In the snippet above, I use `trim()` on `email` to remove whitespace that a user might accidentally include at the end of their email.
+>
+> When you use Zod's `safeParse` method, it not only validates the input but also returns the formatted value.
+
+## Server action
+
+```ts
+'use server'
+
+export async function signUp(
+  _initialState: SignUpActionState,
+  formData: FormData,
+): Promise<SignUpActionState> {
+  const form = Object.fromEntries(formData) as SignUpFormData
+
+  const parsedForm = signUpFormSchema.safeParse(form)
+  if (!parsedForm.success) {
+    // If validation fails, return the form data and field errors
+    return {
+      formData: form,
+      fieldErrors: parsedForm.error.flatten().fieldErrors,
+    }
+  }
+
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(lower(usersTable.email), parsedForm.data.email))
+  if (user) {
+    // If the email is already taken, return the form data and an error message
+    return {
+      formData: form,
+      fieldErrors: {
+        email: ['The email you entered has already been taken.'],
+      },
+    }
+  }
+
+  const passwordHash = await hash(parsedForm.data.password)
+  await db.insert(usersTable).values({
+    email: parsedForm.data.email,
+    passwordHash,
+  })
+
+  // Here is where you would create an active session for the user before redirecting
+
+  redirect('/')
+}
+```
+
+A server action is a server-side function that can be called directly from client components. This allows you to run backend code, such as database queries and mutations, without needing to create separate API endpoints.
+
+A common security oversight with server functions is assuming client-side validation is sufficient. However, server functions are essentially HTTP endpoints and a malicious actor could send invalid data directly using a tool like cURL. This may lead to inconsistencies in your database and could even pose a security risk. For this reason, we use Zod to validate all incoming data on the server, even though we already have client-side validation in place.
+
+The server function checks for existing users by querying the database with the provided email. If a user is found, it returns a field-level error message stating: `"The email you entered has already been taken"`.
+
+## Password hashing
+
+In the server action above, we first hash the password before storing it in the database:
+
+filename: @/actions/sign-up.ts
+```tsx
+const passwordHash = await hash(parsedForm.data.password)
+
+await db.insert(usersTable).values({
+  email: parsedForm.data.email,
+  passwordHash,
+})
+```
+
+What is hashing and why is it important?
+
+Storing passwords in plain text creates a significant security vulnerability. If an attacker gains access to your database through a data breach, they immediately have access to every user's account. Worse yet, since many people reuse passwords across services, compromised credentials could lead to breaches of users' accounts on other platforms.
+
+This is where password hashing becomes crucial. A hash function transforms a password into an irreversible string of characters. When a user attempts to sign in, the system hashes their input password and compares it with the stored hash. If they match, you know the credentials are valid. This all happens without ever storing or exposing the actual password.
+
+The code uses Argon2 for password hashing, which is considered one of the most secure hashing algorithms available today. While older algorithms like MD5 were once common, they've proven vulnerable to reverse-engineering attacks. Other popular options like Bcrypt are still secure, but Argon2 offers additional benefits - it's memory-hard (making it resistant to specialized hardware attacks) and was specifically designed to be future-proof against advances in password cracking technology.
+
+## Creating the form with React Hook Form
+
+```tsx
+'use client'
+
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { SignUpActionState, signUpFormSchema, SignUpFormData } from '@/definitions/sign-up'
+import { useActionState, useTransition } from 'react'
+import InputError from './ui/input-error'
+
+interface SignUpFormProps {
+  action: (initialState: SignUpActionState, formData: FormData) => Promise<SignUpActionState>
+}
+
+export default function SignUpForm({ action }: SignUpFormProps) {
+  const [actionState, submitAction, isPending] = useActionState(action, {})
+  const [, startTransition] = useTransition()
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<SignUpFormData>({
+    resolver: zodResolver(signUpFormSchema),
+    mode: 'onTouched',
+    defaultValues: actionState.formData,
+  })
+
+  return (
+    <Card className="mx-auto w-full max-w-sm">
+      <CardHeader>
+        <CardTitle>Create your account</CardTitle>
+        <CardDescription>Welcome! Please fill in the details to get started.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form
+          action={submitAction}
+          onSubmit={handleSubmit((_, e) => {
+            startTransition(() => {
+              const formData = new FormData(e?.target)
+              submitAction(formData)
+            })
+          })}
+          className="space-y-4"
+          noValidate
+        >
+          <div className="space-y-2">
+            <Label htmlFor="email" className={errors.email ? 'text-destructive' : ''}>
+              Email
+            </Label>
+            <Input
+              {...register('email')}
+              id="email"
+              type="email"
+              placeholder="Enter your email"
+              defaultValue={actionState.formData?.email}
+              className={errors.email ? 'border-destructive ring-destructive' : ''}
+              aria-invalid={errors.email ? 'true' : 'false'}
+            />
+            <InputError error={errors.email?.message} />
+            <InputError error={actionState.fieldErrors?.email} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="password" className={errors.password ? 'text-destructive' : ''}>
+              Password
+            </Label>
+            <Input
+              {...register('password')}
+              id="password"
+              type="password"
+              placeholder="Enter your password"
+              defaultValue={actionState.formData?.password}
+              className={errors.password ? 'border-destructive ring-destructive' : ''}
+              aria-invalid={errors.password ? 'true' : 'false'}
+            />
+            <InputError error={errors.password?.message} />
+            <InputError error={actionState.fieldErrors?.password} />
+          </div>
+          <Button className="w-full" type="submit" disabled={isPending}>
+            Sign Up
+          </Button>
+        </form>
+        <p className="text-muted-foreground mt-4 text-center text-sm">
+          By joining, you agree to our{' '}
+          <a href="/terms" className="hover:text-primary underline">
+            Terms of Service
+          </a>{' '}
+          and{' '}
+          <a href="/privacy" className="hover:text-primary underline">
+            Privacy Policy
+          </a>
+        </p>
+      </CardContent>
+    </Card>
+  )
+}
+```
+
+While server-side validation is essential for security, relying on it alone creates a suboptimal user experience. Without client-side validation, users would need to submit the form to see if their input was valid - an experience that feels clunky and outdated.
+
+The `SignUpForm` component uses React Hook Form to provide immediate, dynamic feedback as users type.
+
+By passing the same Zod schema we use on the server to React Hook Form's `zodResolver`, we get automatic validation of password strength requirements and email format.
+
+This creates a layered validation approach - immediate client-side feedback for a smooth user experience, backed by robust server-side validation for security.
+
+As an added benefit, if JavaScript is disabled, the form gracefully falls back to server-side validation, displaying errors returned from the server function via `useActionState`.
+
+## Advanced sign-up form features
+
+This concludes our guide to building a secure sign-up form with Next.js, React Hook Form, and Argon2. You now have a solid foundation with robust form validation and proper password hashing. Additionally, the form is built using progressive enhancement, meaning it works even without JavaScript. This means you'll never miss a potential sign-up, even if JavaScript fails to load due to network issues, browser settings, or extensions.
+
+While this is a good start, production-ready sign-up forms usually require more sophisticated features. Here are some advanced capabilities to consider for your implementation:
+
+User experience improvements:
+
+- **Social Sign-In Options** - Improve conversion rate by enabling your users to sign up quickly by authenticating with Google and other SSO providers.
+- **Biometric Authentication with Passkeys** - Enable users to sign-up using fingerprint or facial recognition.
+- **Web3 Authentication Options** - Enables users to authenticate using blockchain-based methods.
+
+Security measures:
+
+- **Email Verification** - Ensure user authenticity and prevent spam accounts by confirming the user's email address.
+- **Bot Detection** - Utilize CAPTCHA or similar technologies to prevent automated and spam sign-ups.
+- **Rate Limiting** - Protect against abuse by limiting the number of sign-up attempts from a single source.
+- **Blocklist** - Block specific account identifiers, such as accounts with your competitor's email domain, from signing up.
+- **Block Email Subaddresses** - Prevent sign-ups using email addresses with characters like `+`, `=`, or `#`.
+- **Block High-Risk Disposable Email Addresses** - Reject sign-ups using email addresses from disposable email domains.
+
+## So why Clerk then?
+
+Clerk is a user management and authentication platform, so it might surprise you that we're publishing an article that explains how to implement user registration in Next.js yourself.
+
+While implementing the sophisticated features listed above from scratch is possible, it requires significant development effort and security expertise. If these advanced features are important for your application but you don't want to build them yourself, consider using a complete user management and authentication platform like Clerk that provides these capabilities out of the box.
+
+In addition to sign-up, Clerk provides sign-in and manages the entire session, allowing you to authenticate access to pages and access information about the current user wherever you need it.
+
+Learn how to add not only a sign-up form but complete sign-in and session management in minutes:
+
+The best part? _Clerk uses components as the API_.
+
+Instead of building your own form component and manually building all the necessary logic, you can just drop a Next.js `<SignUp />` component in your page like so:
+
+```tsx
+import { SignUp } from '@clerk/nextjs'
+
+export default function MySignUpPage() {
+  return <SignUp />
+}
+```
+
+Clerk's component-driven approach makes setup incredibly easy. You can further customise your sign-up process and manage advanced features directly from the Clerk dashboard once you create a free application following the link below.

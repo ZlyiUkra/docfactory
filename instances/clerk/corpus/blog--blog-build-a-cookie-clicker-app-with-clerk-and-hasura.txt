@@ -1,0 +1,445 @@
+# Build a Cookie Clicker App with Clerk and Hasura
+# джерело: https://clerk.com/blog/build-a-cookie-clicker-app-with-clerk-and-hasura
+# отримано: 2026-09-25
+
+Hasura provides a GraphQL engine that can help you build real-time APIs and ship modern apps faster. Although Hasura itself does not handle authentication, you can bring your own auth server and integrate it with Hasura via JWTs. This is where Clerk fits in.
+
+In this tutorial we will use Clerk with Hasura to build a full-stack Next.js app with a database and GraphQL API, all without having to write any backend code.
+
+> If you would like to skip ahead and see the completed codebase, browse to the repo here.
+
+## Assumptions
+
+This tutorial makes the following assumptions:
+
+- Basic command line usage
+- Node.js installed and `npm` (or `yarn` if you prefer) for package management
+- Experience with React components and hooks
+- Familiarity with the Next.js application structure (created with `create-next-app`)
+- Comfortable running Docker Compose commands (alternative path is to use Hasura Cloud)
+- Clerk and Hasura accounts already set up (if you haven’t done so, do it now\... we’ll wait)
+
+## Set up Clerk project
+
+We’re going to start off with creating a new project from the Clerk dashboard. I’m going to name this application “More Cookies Please” (you’ll see why shortly) and leave the default options selected for authentication strategy and turn on social login with Google.
+
+Build A Cookie Clicker App With Clerk And Hasura guide illustration
+
+The next thing we need to do is navigate to JWT Templates from the left menu and create a template based on Hasura.
+
+Hasura template
+
+The next thing we need to do is navigate to JWT Templates from the left menu and create a template based on Hasura.
+
+Hasura token claims
+
+Click the “Apply changes” button and navigate back to the Home dashboard. Here we’re going to copy the Frontend API key.
+
+Frontend API key
+
+That’s all we need to do in the Clerk dashboard.
+
+## Clone the starter repo
+
+Now it’s time to clone the clerk-hasura-starter repo from GitHub. Name this project directory `more-cookies-please` to match the Clerk instance name.
+
+```bash
+git clone https://github.com/clerkinc/clerk-hasura-starter.git more-cookies-please
+```
+
+Once you have the repository downloaded to your computer, run the following commands to change into the directory, install the package dependencies, and copy the `.env.local.sample` so we can set a couple environment variables:
+
+```bash
+cd more-cookies-please/
+npm install
+cp .env.local.sample .env.local
+```
+
+Add in the Frontend API key from Clerk that was copied earlier. We’re also going to set the GraphQL endpoint even though it hasn’t been created yet.
+
+```bash
+NEXT_PUBLIC_CLERK_FRONTEND_API=<YOUR_FRONTEND_API>
+NEXT_PUBLIC_HASURA_GRAPHQL_API=http://localhost:8080/v1/graphql
+```
+
+**Note**: `CLERK_API_KEY` is available in the sample but isn’t needed for this tutorial.
+
+Once those environment variables are set, start up the application with `npm run dev`
+
+Open your web browser to http://localhost:3000 and you should see the starter application homepage, which prompts you to sign up. So now let’s sign up for an account.
+
+Click the Sign up button and you will be redirected to a Sign Up form generated for your application with Clerk components. I’m going to choose **Sign up with Google** since it's the fastest (and doesn’t require a new password).
+
+Once you’ve signed up and logged in, you should see the following screen:
+
+App welcome
+
+Now it’s time to customize this application. We’re going to install a little package I created based on the excellent react-rewards library and inspired by Cookie Clicker (thank @bsinthewild for reminding me of this).
+
+```bash
+npm install react-cookie-clicker
+```
+
+**Note**: ⚠️ You will see some warnings about conflicting peer dependencies due to a mismatch of React versions, but it’s safe to proceed.
+
+We’re going to create a new file called `MoreCookies.js` inside of the `components/` folder.
+
+Because this library does not support server-side rendering (SSR), we need to make use of the dynamic imports from Next.js or we’ll get some nasty errors.
+
+```jsx
+import dynamic from 'next/dynamic'
+const CookieClicker = dynamic(() => import('react-cookie-clicker'), {
+  ssr: false,
+})
+
+const MoreCookies = () => {
+  return (
+    <div style={{ marginTop: 150 }}>
+      <CookieClicker />
+      <h2>Click the cookie</h2>
+    </div>
+  )
+}
+
+export default MoreCookies
+```
+
+Now let’s add the component to `pages/index.js`:
+
+```jsx
+import styles from '../styles/Home.module.css'
+import Link from 'next/link'
+import { SignedIn, SignedOut } from '@clerk/nextjs'
+import MoreCookies from '../components/MoreCookies'
+
+const SignupLink = () => (
+  <Link href="/sign-up">
+    <a className={styles.cardContent}>
+      <img src="/icons/user-plus.svg" alt="Clone the starter repo illustration" />
+      <div>
+        <h3>Sign up for an account</h3>
+        <p>Sign up and sign in to explore all the features provided by Clerk out-of-the-box</p>
+      </div>
+      <div className={styles.arrow}>
+        <img src="/icons/arrow-right.svg" alt="Clone the starter repo illustration" />
+      </div>
+    </a>
+  </Link>
+)
+
+const Main = () => (
+  <main className={styles.main}>
+    <SignedOut>
+      <h1 className={styles.title}>Welcome to your new app</h1>
+      <p className={styles.description}>Sign up for an account to get started</p>
+      <div className={styles.cards}>
+        <div className={styles.card}>
+          <SignupLink />
+        </div>
+      </div>
+    </SignedOut>
+    <SignedIn>
+      <MoreCookies />
+    </SignedIn>
+  </main>
+)
+```
+
+The `ClerkFeatures` component can be removed, but the `Footer` and `Home` components should remain untouched.
+
+You can see here we are making use of the `SignedIn` and `SignedOut` components from Clerk. We can also finally see the big cookie button!
+
+Go ahead and click it for a nice reward. You’ve earned it. 🍪
+
+Cookie button
+
+## Set up Hasura GraphQL engine
+
+Clicking the cookie is a lot of fun, but what is even more fun? Keeping count of all those clicks!
+
+This is where the Hasura GraphQL integration comes in.
+
+There are two different ways we can connect to Hasura: we can use Hasura Cloud or Hasura Core running from a Docker container. We’re going to do the latter for this tutorial, but you can see instructions for connecting with Hasura Cloud in our integration documentation.
+
+The starter repo already contains the `docker-compose.yml` file we need.
+
+The only part we need to update here is the JWT secret. Uncomment the line for `HASURA_GRAPHQL_JWT_SECRET` and add in the value for your Clerk Frontend API. The JWT URL path points to the JSON Web Key Set (JWKS) endpoint we have set up for your application.
+
+```yaml
+HASURA_GRAPHQL_JWT_SECRET: '{"jwk_url":"https://<YOUR_FRONTEND_API>/.well-known/jwks.json"}'
+```
+
+**Note**: Make sure the **https://** protocol is included in the URL in front of the Frontend API.
+
+Once the JWT secret is set, run the following command:
+
+```bash
+docker compose up -d
+```
+
+This will spin up Docker services for GraphQL engine as well as a Postgres database.
+
+You can confirm that the services are running correctly with the following:
+
+```bash
+docker compose ps
+```
+
+If all is good, you should see output similar to:
+
+```bash
+COMMAND                  SERVICE           STATUS        PORTS
+"graphql-engine serve"   graphql-engine    running       0.0.0.0:8080->8080/tcp
+"docker-entrypoint.s…"   postgres          running       5432/tcp
+```
+
+Head to http://localhost:8080/console to open the Hasura console.
+
+Hasura GraphiQL console
+
+Hasura has already done the work of setting up a GraphQL endpoint for us and also provided the GraphiQL integrated development environment (IDE) to explore the API.
+
+It’s time to set up the database to keep the score count.
+
+Navigate to the **Data** page and fill out the form to Connect Existing Database. (Remember we have the Postgres one running from Docker Compose?)
+
+Connect database
+
+Name the database `default` (or something more clever) and input the database URL copied from the `docker-compose.yml` file. Click connect and the data source will be added.
+
+The next step is to create the database table named `scoreboard` and add two fields:
+
+1. `user_id` is a Text field that will contain the user ID from Clerk
+2. `count` is an Integer field that will keep track of the click count
+
+Add new table
+
+Set the `user_id` as the **Primary Key** for the table. Then click the Add Table button.
+
+The next thing we need to do is set permissions for the “user” role. Click on the **Permissions** tab and enter `user` as a new role. Then we need to set the basic **CRUD** (Create, Read, Update, Delete) operations on the table.
+
+### Insert (Create)
+
+For **Insert** permissions, set the following values:
+
+- **Row insert permissions**: Without any checks
+- **Column insert permissions**: `count` checked
+- **Column presets**: `user_id` from session variable `X-Hasura-User-Id`
+
+Insert permissions
+
+With the Clerk integration, the user ID will be set as the session variable and Hasura will then set that as the `user_id` column when the request is made.
+
+### Select (Read)
+
+For **Select** permissions, set the following values:
+
+- **Row select permissions**: With custom check `{"user_id":{"_eq":"X-Hasura-User-Id"}}`
+- **Column select permissions**: `count` and `user_id` checked
+
+Select permissions
+
+The custom check ensures only the current authenticated user can read their own count. If the user ID from the session variable matches the one from the table, the user is granted read permission to every column in their database row.
+
+### Update
+
+For Update permissions, set the following values:
+
+- **Pre-update check**: With same check as select `{"user_id":{"_eq":"X-Hasura-User-Id"}}`
+- **Column update permissions**: `count` checked
+
+Update permissions
+
+Having the same custom check prevents another authenticated user from updating someone else’s count.
+
+### Delete
+
+We can skip over **Delete** permissions since we aren’t implementing a mechanism to delete user records from the scoreboard.
+
+Your final permissions access chart should look like the following:
+
+Permissions chart
+
+## Configure the client
+
+Now it’s time to make authenticated requests from the codebase to Hasura.
+
+If you take a look at `hooks/index.js`, you can see the `useQuery` hook that has been set up. It makes use of graphql-request, a minimal GraphQL client, with the useSWR hook to perform query requests to the GraphQL endpoint.
+
+```jsx
+import { request } from 'graphql-request'
+import { useAuth } from '@clerk/nextjs'
+import useSWR from 'swr'
+
+export const useQuery = (query, variables, blockRequest) => {
+  if (!query) {
+    throw Error('No query provided to `useQuery`')
+  }
+  const { getToken } = useAuth()
+  const endpoint = process.env.NEXT_PUBLIC_HASURA_GRAPHQL_API
+  const fetcher = async () =>
+    request(endpoint, query, variables, {
+      authorization: `Bearer ${await getToken({ template: 'hasura' })}`,
+    })
+
+  return useSWR(query, blockRequest ? () => {} : fetcher)
+}
+```
+
+What we’re doing is reading the custom JWT (from the template we named `hasura`) from the session object provided by Clerk. Note that the call to `getToken` is asynchronous and returns a Promise that needs to be resolved before accessing the value.
+
+We pass the custom fetcher function, which accepts a GraphQL query and optional variables, to `useSWR`. The `blockRequest` parameter is something we’ll make use of later to prevent certain calls from happening.
+
+Let’s try this out to make sure we can get some data. Open up `components/MoreCookies.js` and import the `useQuery` hook and log the `data` to the console:
+
+```jsx
+import dynamic from 'next/dynamic'
+import { useQuery } from '../hooks'
+const CookieClicker = dynamic(() => import('react-cookie-clicker'), {
+  ssr: false,
+})
+
+const MoreCookies = () => {
+  const { data } = useQuery(`query { scoreboard { count } }`)
+  console.log('data >>', data)
+
+  return (
+    <div style={{ marginTop: 150 }}>
+      <CookieClicker />
+      <h2>Click the cookie</h2>
+    </div>
+  )
+}
+
+export default MoreCookies
+```
+
+If all went well, you should see the following:
+
+```jsx
+data >> undefined
+data >> { scoreboard: Array(0) }
+```
+
+The data is `undefined` at first but then gets populated. `scoreboard` is an empty Array because we haven’t recorded any click counts yet. So let’s do that now.
+
+In order to make the GraphQL mutation we’re going to create another custom hook in `hooks/index.js`:
+
+```jsx
+export const useCountMutation = (count, data) => {
+  const prevCount = data?.scoreboard[0]?.count ?? 0
+  const blockRequest = count < 1 || prevCount === count
+
+  // Block mutation if count is less than 1 or equal to previous value
+  return useQuery(
+    `mutation {
+      insert_scoreboard_one(
+        object: { count: ${count} },
+        on_conflict: { constraint: scoreboard_pkey, update_columns: count }) {
+        count
+        user_id
+      }
+  }`,
+    null,
+    blockRequest,
+  )
+}
+```
+
+This hook accepts the `count` as the first parameter and the `data` object containing previous data as the second parameter. It makes use of the `useQuery` hook to apply the `insert_scoreboard_one` insert mutation as an upsert. Instead of adding multiple rows to the database table, the `on_conflict` argument sets a constraint on the primary key (`user_id`) and if it already exists, only the `count` column will be updated. Both `count` and `user_id` values are returned from a successful mutation.
+
+If we replace the `useQuery` with `useCountMutation` in the `MoreCookies` component, we can give us some credit for those clicks we’ve already made. (I set mine at `10` but you can be more or less generous.)
+
+```jsx
+import dynamic from 'next/dynamic'
+import { useCountMutation } from '../hooks'
+const CookieClicker = dynamic(() => import('react-cookie-clicker'), {
+  ssr: false,
+})
+
+const MoreCookies = () => {
+  const { data } = useCountMutation(10)
+  console.log('data >>', data)
+
+  return (
+    <div style={{ marginTop: 150 }}>
+      <CookieClicker />
+      <h2>Click the cookie</h2>
+    </div>
+  )
+}
+
+export default MoreCookies
+```
+
+If you look at the browser console, you should now see something like:
+
+```
+data >> { insert_scoreboard_one: { count: 10, user_id: 'user_29IqLFGiidcpkwqplE1F8C8EnD1' } }
+```
+
+You can confirm that this made it into the Postgres database by going to the **Data** tab in the Hasura Console and clicking into **scoreboard** and **Browse Rows**:
+
+Browse rows
+
+Success! The count (fake or not) has made it into the database and is associated with the authenticated user.
+
+So now that everything is working as intended, we can go ahead and connect it all together. We’ll add one more custom hook that performs both the initial `useQuery` and the `useCountMutation`. This is going to need both `useState` and `useEffect` from React so make sure you import those.
+
+```jsx
+export const useScoreboard = () => {
+  const [count, setCount] = useState(0)
+  const { data } = useQuery(`query {
+    scoreboard { count, user_id }
+  }`)
+  const increment = () => {
+    setCount(count + 1)
+  }
+
+  // Perform mutation on count
+  useCountMutation(count, data)
+
+  useEffect(() => {
+    if (!count && data?.scoreboard[0]) {
+      // Set initial count from database
+      setCount(data.scoreboard[0].count)
+    }
+  }, [count, data])
+
+  return [count, increment]
+}
+```
+
+It returns the current `count` as well as an `increment` function, both of which we can pass as props to the `<CookieClicker />` component.
+
+```jsx
+import dynamic from 'next/dynamic'
+import { useScoreboard } from '../hooks'
+const CookieClicker = dynamic(() => import('react-cookie-clicker'), {
+  ssr: false,
+})
+
+const MoreCookies = () => {
+  const [count, increment] = useScoreboard()
+
+  return (
+    <div style={{ marginTop: 150 }}>
+      <CookieClicker count={count} onClick={increment} />
+      <h2>Click the cookie</h2>
+      <p>Current count: {count}</p>
+    </div>
+  )
+}
+
+export default MoreCookies
+```
+
+By setting the `count` and `onClick` props on `CookieClicker`, it will now reward you with cookies based on the number of times the button is clicked. Keep clicking for more cookies!
+
+Build A Cookie Clicker App With Clerk And Hasura guide illustration
+
+## Closing thoughts
+
+Hope you had fun building this. You now have a complete Cookie Clicker app built using Clerk, Hasura, and Next.js — with no backend code required! To take it even further, you could implement an actual scoreboard that keeps track of all the cookie clicks from multiple users. Then deploy this app to production, share it with your friends, and see how much idle time they have on their hands. 😆
+
+If you enjoyed this tutorial or have any questions, feel free to reach out to me (@devchampian) on X, follow @clerk, or join our Discord community to connect with other developers. Happy coding!

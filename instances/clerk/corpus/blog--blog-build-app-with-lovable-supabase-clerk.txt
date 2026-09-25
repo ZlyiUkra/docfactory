@@ -1,0 +1,227 @@
+# How to build an AI coding rules app with Clerk, Lovable, and Supabase
+# джерело: https://clerk.com/blog/build-app-with-lovable-supabase-clerk
+# отримано: 2026-09-25
+
+Building robust and secure full-stack applications requires a lot of upfront knowledge, especially around frameworks, databases, and authentication.
+
+But with tools like Lovable, Clerk, and Supabase, that barrier is much lower. Now, anyone from solo developers to designers can prototype and launch apps faster by combining AI with modern dev tooling.
+
+In this guide, you'll step through the process of creating a secure, full-stack app using Lovable’s AI builder, Clerk for authentication, and Supabase for data storage. By the end, you'll understand how these tools fit together and how to guide AI to generate working software with just a few prompts.
+
+> Since coding with AI is non-deterministic, your results of the final app may differ from whats shown in this article, although the functionality will be similar. Each section also includes follow up prompts to correct common issues that may surface when building this app.
+
+## What is Lovable?
+
+Lovable is an AI-powered "vibe coding" platform that allows developers and non-developers to build full stack applications and websites simply by chatting with an AI agent. It integrates seamlessly with popular frameworks like React and Supabase. We've worked closely with the Lovable team to ensure its AI understands how to implement Clerk properly, making it easier than ever to add authentication and user management to your Lovable-built apps.
+
+### How it Works
+
+Start by entering a basic prompt. For example:
+
+```
+Create an app where a user can store their vibe coding rules for different projects.
+```
+
+You can include specific fields you'd like to store and instruct the AI to use Clerk for authentication. Lovable will then scaffold the app and provide a real-time preview within the browser. You then would iterate on the generated application by refining prompts until the result aligns with your vision. Once complete, Lovable helps deploy your app to platforms like Vercel.
+
+> While Lovable can generate fully functional apps without prior dev experience, AI is not foolproof. It may introduce bugs or vulnerabilities. Think of AI as your assistant, not your replacement.
+
+## How can Clerk be used with vibe coding?
+
+Clerk is a user management and authentication platform designed to get authentication added into applications as quickly as possible. When using Clerk, the complexity that comes with properly implemented authentication is wrapped into beautifully designed drop-in UI components that often only require a single line of code.
+
+For example, the sign-in form shown below only takes a single line of code to render in a React app: `<SignIn />`
+
+The sign-in form provided by Clerk
+
+Because of this, vibe coding platforms like Lovable can easily configure applications with the required components to quickly get user management added to your apps. As mentioned in the previous section, we’ve worked directly with the Lovable team to make it as easy as asking Lovable to use Clerk for authentication:
+
+```
+Use Clerk for authentication and use 'modal' mode for signing in.
+```
+
+## Building a tool to store AI coding rules
+
+If you’ve ever used AI to assist you with building projects, you probably already know that using preconfigured sets of rules can streamline the process of implementing certain frameworks or platforms. So in this guide, we’ll build a simple application that lets users store those rules for alter use, along with tagging them with specific languages or frameworks the rules are used for.
+
+To follow along, you’ll need the following:
+
+- A Lovable account
+- A Supabase account
+- A Clerk account
+
+The free tiers for each of these services should be more than enough to build the example in this guide.
+
+### Bootstrap the application
+
+Start in Lovable and enter this prompt into the chat input on the home page:
+
+```
+Create an app where a user can store their vibe coding rules for different projects. The
+user should be able to paste in a name for the rule set, the project name, the rules
+themselves (as a text block), and select from a number of popular vibe coding tools.
+Use Clerk for authentication and use 'modal' mode for signing in.
+```
+
+While Lovable starts building, head to dashboard.clerk.com, create a new Clerk application, and configure your sign-in methods. For this tutorial, name the app "Lovable Vibes" and keep the default settings.
+
+The Clerk dashboard
+
+Once the app is created, you’ll be redirected to our onboarding screen where you can select from a list of popular frameworks that Clerk supports. Lovable uses React, so select React as the framework and locate your API key. Copy this value and return to Lovable.
+
+The Clerk onboarding screen
+
+Next, head back to Lovable. The app likely will not have loaded because the Clerk API key was not specified, so paste the key into the chat and Lovable will add it to the project.
+
+The Clerk API key
+
+Once complete, your application should load properly in the preview window.  Go ahead and sign in with Google or email and you will likely be redirected to a protected area of the application where you can add your AI rules.
+
+Verify that the `<UserButton />` component appears in the navigation. This is an example of a drop-in component provided by Clerk that allows users to manage their accounts.
+
+The UserButton component
+
+### Correcting potential issues
+
+If you're redirected to a broken page after sign-in, it's likely due to an incompatibility between Clerk's Account Portal and Lovable's preview mode. Use the following prompt to switch to modal mode:
+
+```
+Make sure the sign-in button on the home page uses Clerk’s “modal” mode.
+```
+
+## Adding Supabase for Storage
+
+Now that authentication is working, it's time to store user data. Supabase is an open-source Backend as a Service (BaaS) built on PostgreSQL that supports advanced features like RLS and integrates well with both Clerk and Lovable.
+
+Visit supabase.com and start a new project. Name it "Lovable Vibes."
+
+The Supabase project create screen
+
+Go to **Authentication** > **Sign-in / Providers** > **Third Party Auth** and select Clerk from the **Add provider** menu.
+
+The Supabase third party auth screen
+
+Click the “**Clerk’s Connect with Supabase page**” link from the modal to open the integration wizard. Select the Clerk app you created in the previous section, enable the integration, and copy the **Clerk domain** for your app.
+
+The Clerk connect with Supabase page
+
+Paste that URL into the Supabase integration settings and click **Create connection**.
+
+The Supabase integration settings
+
+Back in Lovable, connect your project to Supabase by clicking the Supabase icon in the header. Grant access and select your project. Once the integration is finished, Lovable will be able to configure your Supabase project on your behalf.
+
+The Lovable Supabase integration settings
+
+Before proceeding, you'll need to teach Lovable how to properly create Supabase tables that work with Clerk.
+
+Supabase uses Row-Level Security (RLS) to enforce data access rules at the database level.  RLS policies are used to check incoming requests against a set of rules to ensure users can only access data belonging to them. Without the proper configuration, users could inadvertently access records that don't belong to them. Clerk provides the authenticated user's ID as a JWT claim, and Supabase policies can use that claim to restrict access.
+
+> Learn more about how Clerk integrates with Supabase in this article on our blog.
+
+Instead of providing these instructions every time tables need to be configured, we can use the **Project Knowledge** feature of Lovable to add information that should guide all responses related to those rules (kind of like the rules that will be stored in this app!)
+
+Under **Project Settings > Knowledge**, paste the following:
+
+```
+All Supabase tables must use Row-Level Security (RLS) with this policy:
+(auth.jwt() ->> 'sub') = owner_id
+
+This ties each row to the authenticated Clerk user.
+
+When creating the Supabase client, pass the Clerk session token as the access token:
+
+import { createClient } from '@supabase/supabase-js'
+import { useSession } from '@clerk/clerk-react'
+
+const { session } = useSession()
+
+const client = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_KEY!,
+  {
+    accessToken: () => session?.getToken(),
+  },
+)
+
+DO NOT USE THE BEARER HEADER. Use the `accessToken` key of the Supabase client configuration.
+Keep RLS enabled and always scope access using Clerk’s sub claim.
+```
+
+Then, run the following prompt to create the database tables:
+
+```
+Create the tables for the app in Supabase and wire the Supabase client into the project
+as defined in the project rules. For any clients make sure to use
+the generated Supabase types.
+```
+
+Lovable will generate the SQL to execute. It should look similar to the following SQL. Provided it does, go ahead and let Lovable create the tables.
+
+```sql
+-- Create a table for rule sets
+CREATE TABLE public.rule_sets (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  owner_id TEXT NOT NULL, -- This will store the Clerk user ID (sub claim)
+  name TEXT NOT NULL,
+  project_name TEXT NOT NULL,
+  rules TEXT NOT NULL,
+  tools TEXT[] DEFAULT '{}', -- Array of tool names
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- Enable Row Level Security
+ALTER TABLE public.rule_sets ENABLE ROW LEVEL SECURITY;
+
+-- Create RLS policy that ties each row to the authenticated Clerk user
+CREATE POLICY "Users can manage their own rule sets"
+  ON public.rule_sets
+  FOR ALL
+  USING ((auth.jwt() ->> 'sub') = owner_id)
+  WITH CHECK ((auth.jwt() ->> 'sub') = owner_id);
+
+-- Create an index for better performance on owner_id queries
+CREATE INDEX idx_rule_sets_owner_id ON public.rule_sets(owner_id);
+```
+
+Now you can fully test the app by adding some rules to the application!
+
+The app with some rules
+
+### Correcting potential issues
+
+If you run into type mismatches, it's usually because Lovable tried to define its own types instead of using the ones auto-generated by Supabase. In that case, re-prompt with:
+
+```
+Make sure to use the generated Supabase types.
+
+Don’t create custom types for connecting to Supabase.
+```
+
+If authentication fails, it’s likely the Supabase client isn't configured with the proper access token from Clerk. This token is how Supabase knows which user is making the request. To fix this, re-prompt with:
+
+```
+When creating the Supabase client, pass the Clerk session token as the access token:
+
+import { createClient } from '@supabase/supabase-js'
+import { useSession } from '@clerk/clerk-react'
+const { session } = useSession()
+const client = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_KEY!,
+  {
+    accessToken: () => session?.getToken(),
+  },
+)
+
+DO NOT USE THE BEARER HEADER. Use the `accessToken` key of the Supabase client configuration.
+```
+
+These fixes help ensure your Supabase policies are enforced correctly and that user data stays properly scoped.
+
+## Conclusion
+
+With the help of AI, you no longer need to write every line of code by hand to build a secure, scalable application. Lovable enables you to  generate a full stack application using natural language. By pairing it with Clerk and Supabase, you ensure the app has a strong foundation for authentication and data management.
+
+While AI can handle much of the heavy lifting, human supervision still plays an important part to ensure your app is built properly. You provide the vision, review the output, and help guide the agent in the right direction. When used thoughtfully, this toolchain gives you the speed of low-code builders with the flexibility of custom software.

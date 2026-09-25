@@ -1,0 +1,505 @@
+# A Complete Guide to Session Management in Next.js
+# джерело: https://clerk.com/blog/complete-guide-session-management-nextjs
+# отримано: 2026-09-25
+
+Session management is a concept that flies under the radar in most applications. It’s built into every authentication library you are using, and seamlessly allows users to stay logged in, use different tabs, and stay secure while they are using your app.
+
+But because it is abstracted away by auth systems, it’s also opaque. How does session management work to keep track of your usage?
+
+Here, we want to build session management in Next.js without using any authentication library to show you what is really happening under the hood.
+
+## What is a session?
+
+This might seem like a trivial question, but it doesn’t have a trivial answer. One of the reasons that session management is often abstracted away from developers is that it’s a difficult concept to grok and implement.
+
+A session is a series of interactions between a user and an application that occur within a given time frame.
+
+A session is initiated when a user logs in or starts interacting with the application and is typically terminated when the user logs out or after a period of inactivity. It is a way to preserve certain data/state across multiple requests between the client and the server in an inherently stateless environment, which is the HTTP protocol.
+
+These are the main components of a session:
+
+1. **Session Identifier** (Session ID): A unique string that distinguishes one session from another. It is sent by the server to the client after successful login and is usually stored in a cookie on the client side.
+2. **Session Store**: A storage mechanism, often on the server side, where session data, such as user details and preferences, are stored. This could be in-memory storage, a database, a file system, or a distributed cache, depending on the application's requirements.
+3. **Session Data**: Information stored in the session, often including user preferences, user identification and authentication data, and temporary application state. This data is used to personalize the user experience and to maintain the state of the application between different requests from the client.
+4. **Session Timeout**: A mechanism to terminate sessions after a predefined period of inactivity to minimize the risk of unauthorized access. Once a session is timed out, the user needs to re-authenticate to continue interacting with the application.
+5. **Session Cookie**: A type of HTTP cookie sent from the server to the client’s browser to store the session ID.
+
+So a session lifecycle starts with **creation**, when a session is created from a user login or starts interacting with an application. This is when a unique session ID is generated and associated with the user. The session is **maintained** through the session ID that is transmitted with each subsequent request from the client and is used to retrieve and manage session data on the server. The session **ends** when the user logs out or after a period of inactivity (session timeout). Any data stored in the session is usually deleted or invalidated.
+
+## Why session management is important
+
+Session management is pivotal for the seamless functioning and robust security of web applications. When it's not implemented effectively, applications become vulnerable to a host of security issues and often provide an experience that's frustrating for users. Thus, grasping and applying solid session management strategies are absolutely critical if one wants to build web applications that are secure, scalable, and user-friendly.
+
+### Importance for Security
+
+Session management acts as the security guard of web applications. It works to correctly identify and authenticate users, ensuring they only access what they’re allowed to. It’s there to protect sensitive information belonging to the users by allowing only authenticated and authorized individuals to access it. It also safeguards session identifiers as they are transmitted and stored. It shields applications from security threats, such as session hijacking, session fixation, and Cross-Site Request Forgery (CSRF).
+
+### Enhancement of User Experience
+
+From a user experience standpoint, sessions empower applications to remember user preferences and deliver personalized content, crafting an experience that is more engaging for the user. Efficient session management allows users to move between different devices and browser tabs when interacting with applications without needing to keep logging in. This ease of access enhances overall user convenience and experience. Sessions are like invisible assistants, remembering temporary data between user requests, meaning users can roam freely within an application without the fear of losing their progress or context.
+
+Beyond security and user experience, sessions are a tool for collecting valuable data regarding user behavior and preferences. This kind of information is a goldmine for businesses, helping them make well-informed decisions and refine their strategies based on user interaction and needs. In essence, it’s like having a pulse on user behavior, enabling the refinement of business strategies and decision-making.
+
+## Setting up session management in Next.js
+
+We’re going to produce a simple two page site that allows us access to a protected page if we are logged in. Fundamentally, this is an authentication setup, but we are going to set it up using JSON Web Tokens (JWT) that we’ll store on the client. This will give the user a live "session," so once they have logged in, they can continue to access the protected page, until the token and session expires.
+
+We’re going to use Next.js 13 and the App Router. Let’s first create a new Next project:
+
+```sh
+npx create-next-app@latest
+```
+
+To follow this tutorial you should use the defaults from the prompts. We’ll then open up the code in our IDE. We’re using VS Code, so we can:
+
+```sh
+cd my-app
+code .
+```
+
+We also want to install the libraries we’re going to use. None of these are authentication libraries. Instead they are libraries that let us directly access cookies and databases, and implement JWTs.
+
+```sh
+npm install js-cookie sqlite sqlite3 jsonwebtoken
+```
+
+- `js-cookie` is a lightweight JavaScript library that provides a straightforward API to handle browser cookies, allowing you to create, read, and delete cookies in a way that works with various JavaScript environments, like the browser and Node.js.
+- `sqlite` is a library that serves as a lightweight, file-based database engine, allowing developers to utilize SQL-based database functionality without the need for a full-fledged database management system.
+- `sqlite3` is a Node.js library that provides bindings to SQLite3, enabling interaction with SQLite databases, allowing developers to perform operations like querying, updating, and deleting records in SQLite databases from within Node.js applications.
+- `jsonwebtoken` is a Node.js library that allows you to securely handle JSON Web Tokens (JWTs), which are compact, URL-safe means of representing claims to be transferred between two parties, commonly used for authentication and information exchange in web development.
+
+Now, we’re ready to code.
+
+### The login page
+
+First, let’s remove the boilerplate from the app/page.js file and replace it with this code:
+
+```jsx
+'use client'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+
+function LoginPage() {
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const router = useRouter()
+
+  const handleLogin = async (e) => {
+    e.preventDefault() // Prevent default form submission
+
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username,
+          password,
+        }),
+      })
+
+      if (!response.ok) throw new Error('Login failed')
+
+      const { token } = await response.json()
+      document.cookie = `token=${token}; path=/`
+      router.push('/protected')
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  return (
+    <div>
+      <form onSubmit={handleLogin}>
+        <label>
+          Username:
+          <input
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+          />
+        </label>
+        <br />
+        <label>
+          Password:
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </label>
+        <br />
+        <button type="submit">Log In</button>
+      </form>
+    </div>
+  )
+}
+
+export default LoginPage
+```
+
+### Login Code
+
+This is going to be our login page. The UX is simple–just a form with a username field, a password field, and a submit button.
+
+Complete Guide Session Management Nextjs guide illustration
+
+When the button is clicked, the `handleLogin` function is called.
+
+The `handleLogin` function is an asynchronous event handler that deals with the logic of the login attempt. There are five main components to this function:
+
+1. `const response = await fetch("/api/login", {...})`. This sends a POST HTTP request to the `/api/login` endpoint with the username and password as the body of the request.
+2. `if (!response.ok) throw new Error("Login failed")`. This checks if the response received from the server is not ok (i.e., the HTTP status code is not in the range 200-299). If it's not ok, it throws an error with the message "Login failed".
+3. `const { token } = await response.json()`. If the response is ok, this parses the JSON body of the response and extracts the token property from it. This is the token that authenticates the user for subsequent requests.
+4. `document.cookie = token=${token}; path=/`. This sets a cookie in the user's browser with the name token and the value received from the login API, which is accessible to any path in the domain.
+5. `router.push("/protected")`. This navigates the user to the `/protected` route of the app.
+
+So this is calling the login API, and if it receives a token back, sets that token in the browser and passes the user to the protected page. If the login fails and no token comes back, it just tells the user “Login failed.”
+
+### The login API
+
+Let’s take a look at the login API next:
+
+```jsx
+import { NextResponse } from 'next/server'
+import sqlite3 from 'sqlite3'
+import { open } from 'sqlite'
+import jwt from 'jsonwebtoken'
+
+async function authenticateUser(username, password) {
+  let db = null
+
+  // Check if the database instance has been initialized
+  if (!db) {
+    // If the database instance is not initialized, open the database connection
+    db = await open({
+      filename: 'userdatabase.db', // Specify the database file path
+      driver: sqlite3.Database, // Specify the database driver (sqlite3 in this case)
+    })
+  }
+
+  const sql = `SELECT * FROM users WHERE username = ? AND password = ?`
+  const user = await db.get(sql, username, password)
+  return user
+}
+
+export async function POST(req) {
+  const body = await req.json()
+  const { username, password } = body
+
+  // Perform user authentication here against your database or authentication service
+  const user = await authenticateUser(username, password)
+  const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
+    expiresIn: '1m',
+  })
+  return NextResponse.json({ token })
+}
+```
+
+Let’s go through the POST function first. This is the part of the code that receives the POST call from the login page and authenticates our users.
+
+- `const body = await req.json()` reads the JSON body from the incoming request object (req). It is awaited because reading the body is an asynchronous operation.
+- `const { username, password } = body`. After the body is read, the username and password are destructured from it. These would be the username and password sent in the request, likely provided by the user through a form in the frontend.
+- `const user = await authenticateUser(username, password)` calls the authenticateUser function to authenticate users against the user database.
+- `const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: "1m" })`. If the user is successfully authenticated, a JWT is generated using the jwt.sign method. This token includes the user’s ID (user.id) as part of its payload. The token is signed using a secret key stored in `process.env.JWT_SECRET`, and it’s set to expire in 1 minute (expiresIn: "1m").
+- `return NextResponse.json({ token })`. Finally, if everything is successful, the function returns a response with the generated token in JSON format.
+
+The core parts here are the `authenticateUser` call and the JWT signing. We’ll look closer at the `authenticateUser` call in a moment, but let’s discuss JWTs first as they are integral to session management.
+
+### JSON Web Tokens
+
+JSON Web Tokens (JWTs) are a compact, URL-safe means of representing claims to be transferred between two parties. The claims in a JWT are encoded as a JSON object that is used as the payload of the token, which is then signed to secure the information.
+
+JWTs are commonly used for authentication and information exchange in web development. When a user logs in, the server generates a JWT that encodes user information (like user ID) and sends this token to the client. The client then includes this token in the Authorization header in subsequent requests, allowing the server to identify and authorize the user.
+
+JWTs consist of three parts separated by dots (.):
+
+1. **Header**: The header typically consists of two parts: the type of the token, which is JWT, and the signing algorithm being used, such as HMAC SHA256 or RSA.
+2. **Payload**: The payload contains the claims. Claims are statements about a user and additional metadata, such as expiry times, which are critical in session management.
+3. **Signature**: The signature is used to verify the message wasn't changed along the way and, in the case of tokens signed with a private key, it can also verify the sender of the JWT.
+
+A JWT might look like this:
+
+```text
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+```
+
+- The first part is the Header, Base64Url encoded.
+- The second part is the Payload, also Base64Url encoded.
+- The third part is the Signature.
+
+So here, the payload is our user ID, and we’re signing the token with our `JWT_SECRET` in our `.env.local`. This secret should be a long, random string. You can generate a random JWT secret like this:
+
+```sh
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+### Authenticating the user
+
+The `authenticateUser` function is an asynchronous function intended to authenticate a user based on a provided username and password against a user record in an SQLite database.
+
+Session management is really user management. So, you need to have a database set up of all your users so you can get, in this case, their IDs to add as the JWT payload. Here, we’ve set up a small SQLite database locally with a single user. To do this properly, you’ll need a full database for all your users, plus a way to add those users.
+
+In this function, we initialize a connection to an SQLite database file named `userdatabase.db` using the sqlite `open` method. Once the database connection is established, we create an SQL query string, `sql`, to select a user from the users table where the `username` and `password` match the provided arguments.
+
+We then execute this SQL query using `await db.get(sql, username, password)`, which will return the first row that satisfies the conditions (i.e., where the username and password match the input), or return undefined if no such row exists.
+
+We then return that user to the `POST` function, which uses the ID within the JWT payload, and returns that to the client.
+
+### Validating the token
+
+After we’ve got the user and added the token to the user’s browser cookies, we are routed to the /protected page.
+
+```jsx
+'use client'
+import Cookies from 'js-cookie'
+import jwt from 'jsonwebtoken'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+
+function ProtectedPage() {
+  const router = useRouter()
+
+  useEffect(() => {
+    const token = Cookies.get('token')
+
+    if (!token) {
+      router.replace('/') // If no token is found, redirect to login page
+      return
+    }
+
+    // Validate the token by making an API call
+    const validateToken = async () => {
+      try {
+        const res = await fetch('/api/protected', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (!res.ok) throw new Error('Token validation failed')
+      } catch (error) {
+        console.error(error)
+        router.replace('/') // Redirect to login if token validation fails
+      }
+    }
+
+    validateToken()
+  }, [router])
+
+  return <div>Protected Content</div>
+}
+
+export default ProtectedPage
+```
+
+Not too much is happening on this page, apart from checking the token exists on the local client and then sending it as part of the authorization header as a bearer token to the protected API endpoint. That endpoint is where we do two things:
+
+1. Check that the token hasn’t expired
+2. Check that the token is valid
+
+```jsx
+import jwt from 'jsonwebtoken'
+import { NextResponse } from 'next/server'
+import { headers } from 'next/headers'
+
+export async function GET() {
+  try {
+    const headersInstance = headers()
+    const authHeader = headersInstance.get('authorization')
+
+    const token = authHeader.split(' ')[1]
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET)
+    if (!decoded) {
+      return NextResponse.json(
+        { message: 'Expired' },
+        {
+          status: 400,
+        },
+      )
+    } else if (decoded.exp < Math.floor(Date.now() / 1000)) {
+      return NextResponse.json(
+        { message: 'Expired' },
+        {
+          status: 400,
+        },
+      )
+    } else {
+      // If the token is valid, return some protected data.
+      return NextResponse.json(
+        { data: 'Protected data' },
+        {
+          status: 200,
+        },
+      )
+    }
+  } catch (error) {
+    console.error('Token verification failed', error)
+    return NextResponse.json(
+      { message: 'Unauthorized' },
+      {
+        status: 400,
+      },
+    )
+  }
+}
+```
+
+The first part is to extract the authorization header from the request, and then extract the token by splitting it from `Bearer`.
+
+Then we use the verify method on the JWT with the secret we used to sign it originally. This will allow us to show it is an authenticated token. If the token is invalid, `jwt.verify` throws an error. From there, we want to check whether the token has expired by comparing the exp field in the decoded token with the current timestamp.
+
+If the token is valid and not expired, the function returns a JSON response (with some data if you wanted). If the token is invalid or expired, or if any error occurs during verification, it returns a JSON response with a 400 status code and a message "Unauthorized".
+
+If all is good, the user will be directed to the protected page:
+
+Complete Guide Session Management Nextjs guide illustration
+
+Because the token persists within the browser, they can also go to the protected page in another tab:
+
+Complete Guide Session Management Nextjs guide illustration
+
+But the token expires after only a minute. If they try and reload after that time, they are redirected to the login page again:
+
+Complete Guide Session Management Nextjs guide illustration
+
+And you have successfully managed a session!
+
+### The problems with this approach
+
+This is the most basic code to get session management working. But even here we’ve had to manage our own user database, manage our own secrets, and manage all of the logic in between. It isn’t a robust system:
+
+- We’re missing the substantial error handling that is needed for this to work properly. For instance, we want to handle the case where the Authorization header is missing or malformed, to avoid issues like calling split on undefined, which would throw an error.
+- We’re missing any of the checks in the user management system for encrypting passwords.
+- We’re not managing our database calls well or persisting a connection.
+
+If you are building your own session management system, you are also building your own user management system, and becoming a database administrator.
+
+## Session management in Next.js with Clerk
+
+The easier way is to use a specifically designed authentication library. Here, we’re going to use Clerk, but any auth library is going to take this headache away from you.
+
+First, we’ll set up the project in exactly the same way:
+
+```
+npx create-next-app@latest
+```
+
+Again, use the defaults from the prompts. Then open the code
+
+```
+cd my-clerk-app
+code .
+```
+
+We don’t need to install all the libraries from before. All we need this time is the Clerk SDK:
+
+```sh
+npm install @clerk/nextjs
+```
+
+We’ll start with adding the environment variables we need for Clerk–our `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY`–into our `.env.local file`:
+
+```text
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_something
+CLERK_SECRET_KEY=sk_test_something
+```
+
+After that, we need to add the `<ClerkProvider />` wrapper to the app. This is the critical component for session management. It is what we provide the active session and user information to all of Clerk’s components anywhere in the app. We add it in` Layout.js`, wrapping the entire body of our application:
+
+```jsx
+import { ClerkProvider } from '@clerk/nextjs'
+
+export const metadata = {
+  title: 'Create Next App',
+  description: 'Generated by create next app',
+}
+
+export default function RootLayout({ children }) {
+  return (
+    <ClerkProvider>
+      <html lang="en">
+        <body>{children}</body>
+      </html>
+    </ClerkProvider>
+  )
+}
+```
+
+We’ll then add some middleware. This is what decides which pages are protected and which aren’t. The default code below protects every page on the site:
+
+```jsx
+import { authMiddleware } from '@clerk/nextjs'
+
+// This example protects all routes including api/trpc routes
+// Please edit this to allow other routes to be public as needed.
+// See https://clerk.com/docs/references/nextjs/auth-middleware for more information about configuring your middleware
+export default authMiddleware({})
+
+export const config = {
+  matcher: ['/((?!.+\\.[\\w]+$|_next).*)', '/', '/(api|trpc)(.*)'],
+}
+```
+
+We then need three pages. First, a sign up page, which will go at `app/sign-up/[[...sign-up]]/page`:
+
+```jsx
+import { SignUp } from '@clerk/nextjs'
+
+export default function Page() {
+  return <SignUp />
+}
+```
+
+Then a sign in page at `app/sign-in/[[...sign-in]]/page`:
+
+```jsx
+import { SignIn } from '@clerk/nextjs'
+
+export default function Page() {
+  return <SignIn />
+}
+```
+
+Finally, we’ll add a button to interact with these pages on our home page:
+
+```jsx
+import { UserButton } from '@clerk/nextjs'
+
+export default function Home() {
+  return (
+    <div>
+      <UserButton afterSignOutUrl="/" />
+    </div>
+  )
+}
+```
+
+That’s a lot less code. We need to add paths to these in our `.env.local` as well:
+
+```text
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/
+NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/
+```
+
+And that’s it. Run `npm run dev` and you’ll get a way to sign in:
+
+Complete Guide Session Management Nextjs guide illustration
+
+Sign in, and you’ll be at a protected account page:
+
+Complete Guide Session Management Nextjs guide illustration
+
+And that is all that’s needed for session management with Clerk. You can set up other session options like token timeouts and custom payloads in your dashboard.
+
+## The pitfalls of session management
+
+Session management is a critical component in web development, acting as the gatekeeper to user-specific, sensitive information and functionalities.
+
+But implementing robust session management is not without its challenges. Security, performance, and usability issues are all concerns you’ll have to deal with when building session management in Next.js. Like many aspects of authentication, session management is one that is best left to dedicated libraries and solutions. Check out the Clerk session docs to find out more about setting this up easily with Clerk.

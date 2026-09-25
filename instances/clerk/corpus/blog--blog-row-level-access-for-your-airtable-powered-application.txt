@@ -1,0 +1,157 @@
+# Row-level access for your Airtable-powered application with Clerk
+# джерело: https://clerk.com/blog/row-level-access-for-your-airtable-powered-application
+# отримано: 2026-09-25
+
+Airtable is an online platform to access, manage, and collaborate on relational or spreadsheet-like information. The folks at Airtable have done an amazing job on both the user experience and the technical aspects of the product. As a no-code tool – for most use cases – it can help with your whole team’s efficiency around data management.
+
+Airtable is a great choice as a database for any kind of resource you want to serve in an application, but lacks the granular access management capabilities that most web applications need.
+
+As an example, consider an apartment hunting application where realtors need to add and manage the most attractive apartments for each of their clients. Each apartment will be listed in a single table, and you need to make sure that clients can only access the apartments selected for them. To achieve that, we can leverage some Clerk magic to provide **authenticated user access** to only certain rows in your Airtable apartment hunt database.
+
+## Setup for the Apartment Hunt
+
+To kickstart the apartment hunt project, you can start by creating your Airtable account and then use the Apartment Hunting Template from the template gallery.
+
+Row Level Access For Your Airtable Powered Application tutorial illustration
+
+In the created dataset you will need to add a column that represents the email that the Apartment has been assigned to. Go ahead and create the Email column of type _“Email”._
+
+Row Level Access For Your Airtable Powered Application tutorial illustration
+
+_Setting the column's type to Email adds more capabilities to the field, including validation that the email address is valid._
+
+For the sake of our example, you can go ahead and fill the Email column with the email address you will use to access your Apartment Hunting application. For me, it's _peter@clerk.com_.
+
+## Create a Clerk application
+
+If you are new to Clerk you will need to create an account on our platform, then follow the steps to create a new application.
+
+After you create an account and a new application for this example, you can move on to the repository setup.
+
+## Show me the code
+
+To run the full example locally, you will need to follow a few small steps. First, go ahead and clone the example application.
+
+```sh
+git clone https://github.com/clerkinc/clerk-airtable-apartment-hunt.git
+```
+
+Go inside your project folder and copy the `.env.example` file to a `.env.local` file.
+
+```sh
+cp .env.example .env.local
+```
+
+#### Clerk Environment Variables
+
+You will need the Frontend API value which can be found on the dashboard on your development instance's home page. Set this value as the `NEXT_PUBLIC_CLERK_FRONTEND_API`.
+
+Next you will need the Clerk API key which can also be found on your dashboard under Settings ➜ API keys. Add that as `CLERK_API_KEY` in your .env.local file.
+
+#### Airtable Environment Variables
+
+For Airtable you need to go to the Airtable account page to generate an API key and retrieve your base key. The base key can be found after selecting the newly created database on the API page. These variables should be set as `AIRTABLE_API_KEY` and `AIRTABLE_BASE_ID` respectively.
+
+Finally your .env.local file should look something like:
+
+```text
+AIRTABLE_API_KEY=keyojbaeZ5KBe9JMR
+AIRTABLE_BASE_ID=appBMXDYAGWAgvH8S
+NEXT_PUBLIC_CLERK_FRONTEND_API=clerk.2ct1o.leet.lcl.dev
+CLERK_API_KEY=test_avDIYjpk0SqaTGF1Wx8MdrEHZIkg2zSObU
+```
+
+Now you just need to install the project dependencies with `yarn install` inside the project folder, then `yarn dev` to start the application locally.
+
+## How Clerk provides authenticated access to your data
+
+To authorize Airtable data access with Clerk, we introduce a thin and customizable access management layer over the Airtable API in our backend.\*
+
+_\*The Airtable Rest API does not restrict us from calling it directly from the browser, but it is not recommended since we would need expose sensitive information. For more information, please see this community forum answer._
+
+In the Apartment Hunting application, `@clerk/nextjs` takes care of the frontend of user authentication. For apartment data access, we use Next.js API routes to interact with the Airtable API in a secure manner. These routes use `@clerk/nextjs/api` to determine the signed in user.
+
+### Only showing apartments assigned to the current user
+
+To make sure users only have access to the properties assigned to them, we create a `/api/apartments` endpoint to fetch this information. The code for this endpoint can be seen below:
+
+```typescript
+async function handler(req: WithSessionProp<NextApiRequest>, res: NextApiResponse) {
+  switch (req.method) {
+    case 'GET':
+      /**
+       * Get the user email from the userId attached on the request.
+       */
+      const userId = req.session?.userId as string
+      const user = await ClerkInstance.users.getUser(userId)
+      const primaryEmailAddress =
+        user.emailAddresses.find((emailAddress) => emailAddress.id === user.primaryEmailAddressId)
+          ?.emailAddress || ''
+
+      /** Use the email to retrieve the assigned apartments. */
+      const apartments = await getApartmentsByEmail(primaryEmailAddress)
+      res.status(200).json(apartments)
+      break
+    default:
+      res.status(405).end()
+  }
+}
+
+/**
+ * Only allow authenticated access or respond with status code 403 Forbidden.
+ * Add the req.session attribute on the NextApiRequest object
+ */
+export default requireSession(handler)
+```
+
+The `requireSession` helper guarantees that an authenticated user is accessing the endpoint, and also populates `req.session` attribute on the request object coming from Next.js.
+
+In this endpoint, we retrieve the primary email address of the authenticated user and use it to fetch only apartments assigned to this email. Here, we only check for the primary email address of the user, but since Clerk also supports multiple email addresses per account, you could adjust the logic accordingly.
+
+### Only allow assigned users to modify the apartment status
+
+In a similar manner, we want to restrict editing the apartment status to only the assigned user. The logic for restricting that access can be seen below:
+
+```typescript
+async function handler(req: WithSessionProp<NextApiRequest>, res: NextApiResponse) {
+  switch (req.method) {
+    case 'PUT':
+      const apartment = req.body
+      const userId = req.session?.userId as string
+
+      /** We make sure prevent a user with different account to update the visitation status. */
+      const user = await ClerkInstance.users.getUser(userId)
+      const primaryEmailAddress = user.emailAddresses.find(
+        (emailAddress) => emailAddress.id === user.primaryEmailAddressId,
+      )?.emailAddress
+
+      /** We check if the persisted apartment email matches the requesters. */
+      const persistedApartment = await getApartmentById(apartment.id)
+
+      /** If the emails do not match, return 401 Unauthorized */
+      if (primaryEmailAddress !== persistedApartment.fields.Email) {
+        res.status(401).end()
+        break
+      }
+
+      const results = await updateApartment(apartment)
+      res.status(200).json(results)
+      break
+    default:
+      res.status(405).end()
+      break
+  }
+}
+
+export default requireSession(handler)
+```
+
+In the same manner as the apartment fetch, we only allow authenticated access by using the `requireSession` middleware. We perform an extra check with the signed in user's email address to ensure they are assigned to the apartment.
+
+## In summary
+
+This was just a simple example of how Clerk can be used to add row-level access an to application that uses Airtable as it's database. While we built this example, we were really impressed with how powerful Airtable can be at managing project data, with little to no code involved.
+
+In the same manner, Clerk abstracts away the intricacies of authentication and user management, allowing a robust solution to be deployed with little code, and users to managed with no code through our dashboard.
+
+If you have any feedback, are running into trouble, or just want to share what you've built - we'd love to hear from you! Reach out to us on X @clerk, on our Discord community, or through any of our support channels.

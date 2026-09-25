@@ -1,0 +1,200 @@
+# How to implement Google authentication in Next.js 15
+# джерело: https://clerk.com/blog/nextjs-google-authentication
+# отримано: 2026-09-25
+
+This guide walks you through adding Google authentication to your Next.js 15 application in record time.
+
+> For a comprehensive overview of all authentication methods in Next.js, see our Ultimate Guide to Next.js Authentication.
+
+By the end, you'll implement essential authentication features including:
+
+- Google authentication for sign-up and sign-in
+- Route protection from unauthenticated access
+- Google One Tap integration (optional)
+- Access to Google services like Calendar on behalf of the authenticated user using OAuth (optional)
+
+You'll also learn how to add a polished user button dropdown that gives your users control over their session and profile.
+
+Google sign-in, user button dropdown, and One Tap UI
+
+To implement Google authentication, you can choose between building it yourself with an open-source library - giving you complete control over the implementation - or using Clerk, which offers the quickest path to integration in Next.js. Both approaches have their place, but in this guide, we'll use Clerk.
+
+## An introduction to Clerk
+
+Clerk homepage showing user management platform and components
+
+Clerk is a user management and authentication platform that makes it quick to add secure authentication to your Next.js application. We provide pre-built components like ⁠`<SignIn/>` and `<SignUp />` that you can configure to support various authentication methods, including Google.
+
+Using familiar Next.js patterns like components and middleware, Clerk handles all the complex backend logic — from session management to route protection.
+
+## How to implement Google authentication using Clerk
+
+Before you implement Google authentication, you'll need to **create a Clerk account** to manage your users and authentication settings. Creating an account is free for your first 10,000 monthly users, and no credit card is required.
+
+Sign in to the Clerk dashboard and create your first application. Give it a name and enable Google authentication (you can enable additional authentication methods at any time), then click "Create application".
+
+To proceed with this guide, follow the quickstart steps in the Clerk dashboard. Once you've completed the setup, return here to continue with the next steps.
+
+***
+
+Welcome back!
+
+Start your development server and visit http://localhost:3000 to sign up and create your first Clerk user.
+
+The quickstart code demonstrates a basic Clerk implementation in your root layout. It wraps your application in ⁠`<ClerkProvider />` and adds authentication UI components — showing a `<SignInButton />` button for unauthenticated users and a `<UserButton />` for those signed in.
+
+The authentication components work as expected, but positioning them in the main navigation bar would create a more predictable user experience. Let's quickly explore how to do that next before diving into route protection.
+
+> If you've set up Single Sign-On (SSO) with Google before, you know it usually starts with configuring Google Cloud credentials. With Clerk in development mode, you can skip this setup and start building immediately using our shared development keys. For production, you'll still need custom Google credentials.
+
+## Adding authentication to your navigation bar
+
+While some authentication solutions focus solely on authentication, Clerk also handles user management. This means you get access to components like `⁠<UserButton />` - a dropdown that shows which account is signed in and lets users manage their session and profile data.
+
+Since `⁠<UserButton />` and ⁠`<SignInButton />` are standard React components, you can style and position them anywhere in your application.
+
+Here's a quick example using Tailwind CSS to illustrate how it’s done:
+
+filename: src/app/layout.tsx
+```tsx
+import {
+  ClerkProvider,
+  SignInButton,
+  SignedIn,
+  SignedOut,
+  UserButton
+} from '@clerk/nextjs'
+import './globals.css'
+
+export default function RootLayout({
+  children
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <ClerkProvider>
+      <html lang="en">
+        <body>
+          <nav className="bg-white p-4 shadow-md">
+            <div className="container mx-auto flex items-center justify-between">
+              <h1 className="text-xl">My App</h1>
+              <div className="flex items-center">
+                <SignedOut>
+                  <SignInButton />
+                </SignedOut>
+                <SignedIn>
+                  <UserButton />
+                  <UserButton showName />
+                </SignedIn>
+              </div>
+            </div>
+          </nav>
+          {children}
+        </body>
+      </html>
+    </ClerkProvider>
+  )
+}
+```
+
+## Protecting routes from unauthenticated access
+
+Now that users can sign in, let's explore how to restrict page access to authenticated users only. While there are several approaches to route protection in Next.js, we will focus on using middleware here.
+
+During the quickstart, you added Clerk middleware to your application. By default, all routes are public. Let's update the middleware to protect specific routes or patterns of routes from unauthenticated access:
+
+filename: src/middlware.ts
+```tsx
+import { clerkMiddleware } from '@clerk/nextjs/server'
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+
+const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/forum(.*)'])
+
+export default clerkMiddleware()
+export default clerkMiddleware(async (auth, req) => {
+  if (isProtectedRoute(req)) await auth.protect()
+})
+
+export const config = {
+  matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)',
+  ],
+}
+```
+
+Above, we create a route matcher for paths starting with "⁠/dashboard" or ⁠"/forum" and then check each request against these patterns. If the route matches, use `⁠auth.protect()` to automatically redirect users to sign in. In effect, only authenticated users can access these pages.
+
+> **Authentication vs authorization**
+>
+> Authentication only verifies that a user is signed in. While this guide shows you how to protect routes from unauthenticated access, you might also need authorization — checking if an authenticated user has _permission_ to access specific resources based on ownership or roles.
+
+## Adding Google One Tap support
+
+Google One Tap proactively prompts users to sign in with their Google account in a single click when they visit your site. This convenient approach can help increase your sign-in conversion rate compared to traditional authentication flows.
+
+To implement Google One Tap, first, update your Clerk application to use custom Google credentials instead of shared credentials.
+
+Then, add ⁠`<GoogleOneTap />` to your layout:
+
+filename: src/app/layout.tsx
+```tsx
+import {
+  ClerkProvider,
+  SignInButton,
+  SignedIn,
+  SignedOut,
+  UserButton,
+  GoogleOneTap,
+} from '@clerk/nextjs'
+import './globals.css'
+
+export default function RootLayout({
+  children
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <ClerkProvider>
+      <html lang="en">
+        <body>
+          <nav className="bg-white p-4 shadow-md">
+            <div className="container mx-auto flex items-center justify-between">
+              <h1 className="text-xl">My App</h1>
+              <div className="flex items-center">
+                <SignedOut>
+                  <GoogleOneTap />
+                  <SignInButton />
+                </SignedOut>
+                <SignedIn>
+                  <UserButton showName />
+                </SignedIn>
+              </div>
+            </div>
+          </nav>
+          {children}
+        </body>
+      </html>
+    </ClerkProvider>
+  )
+}
+```
+
+When new users visit your application, Google One Tap will conveniently prompt them to sign in directly from the corner of the screen.
+
+## Accessing Google services on behalf of the authenticated user using OAuth
+
+Accessing Google services via OAuth after Google sign-in
+When users sign in with Google using Clerk, you're not just authenticating them — you're establishing a secure connection through OAuth that can do much more. While the authentication token proves who the user is, OAuth also enables your application to access Google services on their behalf.
+
+Clerk simplifies this process. Beyond providing SSO with various providers, Clerk makes it straightforward to access user data from connected services. For example, you can retrieve an authenticated user's Google Calendar availability with just a few lines of code. For a detailed walkthrough, check out our guide to accessing Google Calendar data with a complete demo application.
+
+## Conclusion
+
+In this guide, you've learned how to add Google authentication to your Next.js application using Clerk. Rather than building complex authentication logic yourself, Clerk provided pre-built components and middleware that enabled you to implement secure Google authentication in minutes. With Clerk's foundation in place, adding additional features like Google One Tap and OAuth access to Google services might have been easier to implement than you expected!
+
+While we used Clerk's Account Portal (a hosted authentication page) for the fastest implementation, you can also build your own sign-in and sign-up pages then render `<SignIn />` and `<SignUp />` directly in your application without the need for an external redirect. Learn how in this guide or by following along with this video:
+
+For more information about how to add Google as a social connection and an important note on switching to production, please refer to the Clerk documentation.

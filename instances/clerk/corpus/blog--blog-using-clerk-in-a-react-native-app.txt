@@ -1,0 +1,2116 @@
+# Using Clerk in a React Native app
+# джерело: https://clerk.com/blog/using-clerk-in-a-react-native-app
+# отримано: 2026-09-25
+
+The cross-platform capabilities of React Native combined with Expo's development tools have transformed how developers approach mobile app creation. Add Clerk's user management and Supabase's powerful backend, and you have a complete toolkit for building production-ready apps that deploy everywhere.
+
+In this tutorial, you'll learn how to create a time tracking app called Aika from scratch. You'll create this app with React Native and Expo, implement secure authentication with Clerk, and set up data storage using Supabase. By the end of this guide, you'll have built a fully functional, cross-platform time tracking app that works on both iOS and Android devices.
+
+## Why Clerk for authentication?
+
+When building any application, you'll face the challenge of implementing secure authentication. Clerk goes beyond just authentication and provides a complete user management solution that's both secure and easy to implement.
+
+### Comprehensive user management
+
+With Clerk, you'll save hours of development time as it handles everything from sign-up and sign-in flows to session management and user profiles. You can easily implement multiple authentication methods including email/password, OAuth providers like Google and Apple, email codes, passkeys, and more.
+
+In this guide, you'll implement email/password and Google authentication, giving your users flexibility in how they access the application.
+
+### Multi-tenancy and role-based access control
+
+If you are building an application that requires teams and collaboration, you'll appreciate Clerk's multi-tenancy features and role-based access control. Our B2B tools allow developers to enable users to create their own teams, invite others to join, and assign roles to users within their teams.
+
+> While we won't fully utilize these features in our initial build, you'll learn how to add multi-tenancy in the next article in this series.
+
+### Built-in security protections
+
+Clerk has a number of additional security features built into every application created on our platform. These include features like device management and bot detection, which are crucial for maintaining the security of user accounts without requiring you to implement these protections yourself. You can also easily protect against platform abuse by preventing the use of email subaddresses, such as `user+tag@example.com`, which are often used to bypass free tier limits. Finally, Clerk automatically checks all credentials against a list of known breached credentials to prevent account takeover attacks.
+
+This is not a complete list of the security features we offer, and you can learn more on our Authentication page.
+
+## Why choose Supabase for your backend
+
+For data storage, you'll use Supabase, an open-source Firebase alternative that provides a powerful Postgres database with a simple API.
+
+### Postgres-based backend as a service
+
+With Supabase, you'll harness the power of a full PostgreSQL database without setting up and maintaining your own server infrastructure. While you can execute SQL queries against the database just like any other, Supabase also provides the Data API, which allows you to access the database from your application using a simple API protected by Row Level Security (RLS), ensuring data is only accessible to the correct users.
+
+### Seamless integration with Clerk
+
+One of the most compelling reasons to use Supabase with Clerk is our seamless integration. You'll configure RLS policies to work with Clerk's JWT tokens, requiring users to be authenticated before accessing data belonging to those users. This creates a secure, scalable system with minimal backend code, saving you time and reducing potential security vulnerabilities. Learn more in our Supabase integration guide.
+
+### Developer-friendly experience
+
+When working with Supabase, you'll appreciate its clean, intuitive dashboard for managing your database, along with comprehensive documentation. Supabase also has excellent client libraries and developer tooling, making it easy to apply schema changes and deploy changes to your Supabase project from your workstation. This allows you to focus on building features rather than configuring infrastructure.
+
+## Build Aika: step-by-step instructions
+
+Now that you understand why we're using Clerk and Supabase, let's build the Aika time tracking app from scratch. Follow these steps carefully to create your own fully functional time tracking application.
+
+Before following along, make sure you have the following:
+
+- A Clerk account
+- A Supabase account
+- The Supabase CLI installed
+
+> As you build this project, be sure to check the comments in each code snippet for additional context on relevant code blocks.
+
+A completed version of this project can be found on GitHub.
+
+### 1. Configure Clerk and Supabase
+
+Start by creating a new Clerk application in the Clerk dashboard. Name your application "Aika" and leave the sign in options as default.
+
+Clerk dashboard
+
+The next page will show the onboarding screen for Clerk, along with a selectable list of the most popular frameworks. Select **Expo** from the list, copy the API keys from step 2, and set them aside for later use.
+
+Clerk onboarding
+
+Now head over to the Supabase dashboard and create a new project. Name it "Aika", select **Generate a password** in the Database Password section, and then **Create new project**. Make sure to copy the password for later use.
+
+Supabase dashboard
+
+Navigate to the **Authentication** section in the left sidebar, and then select **Sign in / Providers**, then **Third Party Auth**. Select **Clerk** from the list of providers to open a modal to configure the integration.
+
+Configure the Clerk integration in the Supabase dashboard
+
+In the modal, select **Clerk's Connect with Supabase page** to open the integration wizard in the Clerk dashboard.
+
+Clerk's Connect with Supabase page
+
+In the wizard, ensure the correct organization, application, and instance are selected. Select **Activate Supabase integration**, then copy the value in the **Clerk domain** field. This will be used in the next step.
+
+Clerk integration wizard
+
+Once copied, go back to the Supabase dashboard, paste the value into the modal, and select **Create connection**.
+
+Next, navigate to **Project Settings** > **Data API** and note the **Project URL** for later.
+
+Supabase Data API
+
+Then navigate to the **API Keys** node and copy the **anon** key. This will be used in the next step.
+
+Supabase API Keys
+
+Both Clerk and Supabase are now configured, and you can start building Aika.
+
+### 2. Initialize your React Native app with Expo
+
+Now, you'll create a new Expo project using the latest version of the Expo SDK. Expo provides an excellent development experience for React Native with features like hot reloading, easy access to native APIs, and simplified deployment.
+
+Open your terminal and run these commands:
+
+```bash
+pnpx create-expo-app@latest aika
+cd aika
+pnpm start
+```
+
+You should see the Expo development server running and options to open your app on iOS, Android, or web. For this guide, you'll be using the web version of the app, which can be accessed by tapping `w` in the terminal.
+
+Expo development server
+
+Now stop the development server by pressing `Ctrl + C` in the terminal and run the following command to install the Clerk and Supabase SDKs along with their peer dependencies:
+
+```bash
+pnpm install @clerk/clerk-expo @supabase/supabase-js expo-secure-store expo-auth-session react-native-url-polyfill
+```
+
+Create a `.env` file in your project root to store the Clerk and Supabase API keys:
+
+```
+EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=your_publishable_key_here
+EXPO_PUBLIC_SUPABASE_URL=your_supabase_url_here
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+```
+
+### 3. Adding authentication with Clerk
+
+To use the Clerk SDK, you need to wrap the entire application in the `ClerkProvider` component, which provides access to all of the necessary control components and helper functions. Update `app/_layout.tsx` to wrap the application in a `ClerkProvider`:
+
+filename: app/\_layout.tsx
+```tsx
+import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native'
+import { useFonts } from 'expo-font'
+import { Stack } from 'expo-router'
+import { StatusBar } from 'expo-status-bar'
+import 'react-native-reanimated'
+
+import { useColorScheme } from '@/hooks/useColorScheme'
+import { ClerkProvider } from '@clerk/clerk-expo'
+import { tokenCache } from '@clerk/clerk-expo/token-cache'
+
+export default function RootLayout() {
+  const colorScheme = useColorScheme()
+  const [loaded] = useFonts({
+    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+  })
+
+  if (!loaded) {
+    // Async font loading only occurs in development.
+    return null
+  }
+
+  return (
+    <ClerkProvider tokenCache={tokenCache}>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="+not-found" />
+        </Stack>
+        <StatusBar style="auto" />
+      </ThemeProvider>
+    </ClerkProvider>
+  )
+}
+```
+
+Now you'll need to configure the authentication pages as well as a protected area of the application that requires users to be signed in before they can access it. Start by creating a new folder called `app/(tabs)/protected` and move all of the files from `app/(tabs)` into it. The updated file structure should look like this:
+
+```
+# Before
+app/
+└── (tabs)/
+    ├── _layout.tsx
+    ├── explore.tsx
+    └── index.tsx
+
+# After
+app/
+└── (tabs)/
+    └── protected/
+        ├── _layout.tsx
+        ├── explore.tsx
+        └── index.tsx
+```
+
+Create a new layout file at `app/(tabs)/_layout.tsx` to wrap the protected routes in a `Stack.Protected` component. The Clerk SDK will be used to determine if the user is signed in and redirect them to the appropriate screen:
+
+filename: app/(tabs)/\_layout.tsx
+```tsx
+import { useAuth } from '@clerk/clerk-expo'
+import { Stack } from 'expo-router'
+
+export default function AppLayout() {
+  // useAuth hook from Clerk SDK
+  const { isSignedIn } = useAuth()
+
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      {/* Public routes */}
+      <Stack.Protected guard={!isSignedIn}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="sign-up" />
+      </Stack.Protected>
+
+      {/* Protected routes */}
+      <Stack.Protected guard={isSignedIn!}>
+        <Stack.Screen name="protected" />
+      </Stack.Protected>
+    </Stack>
+  )
+}
+```
+
+Create the `constants/AuthStyles.ts` file to export styles that will be shared across the authentication pages, making the code cleaner:
+
+filename: constants/AuthStyles.ts
+```ts
+import { StyleSheet } from 'react-native'
+
+export const styles = StyleSheet.create({
+  formContainer: {
+    marginTop: 72,
+    width: '100%',
+    maxWidth: 420,
+    alignSelf: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  headerContainer: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#0F172A', // Slate 900
+  },
+  subtitle: {
+    fontSize: 15,
+    color: '#64748B', // Slate 500
+    marginTop: 10,
+    lineHeight: 22,
+  },
+  form: {
+    width: '100%',
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#334155', // Slate 700
+    marginBottom: 8,
+  },
+  input: {
+    height: 48,
+    borderWidth: 1,
+    borderColor: '#E2E8F0', // Slate 200
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    backgroundColor: '#F8FAFC', // Slate 50
+    color: '#1E293B', // Slate 800
+  },
+  button: {
+    backgroundColor: '#6366F1', // Indigo 500
+    borderRadius: 12,
+    height: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 28,
+    shadowColor: '#6366F1', // Indigo 500
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  buttonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  textButton: {
+    marginTop: 20,
+    alignItems: 'center',
+    padding: 8,
+  },
+  textButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#6366F1', // Indigo 500
+  },
+})
+```
+
+To support OAuth, you'll use a dedicated `OAuthButton` component that can accept one of the many providers that Clerk supports. Create `components/OAuthButton.tsx`:
+
+filename: components/OAuthButton.tsx
+```tsx
+import { styles } from '@/constants/AuthStyles'
+import { useSSO } from '@clerk/clerk-expo'
+import { OAuthStrategy } from '@clerk/types'
+import * as AuthSession from 'expo-auth-session'
+import * as WebBrowser from 'expo-web-browser'
+import React, { useCallback, useEffect } from 'react'
+import { Platform, Text, TouchableOpacity } from 'react-native'
+
+export const useWarmUpBrowser = () => {
+  useEffect(() => {
+    if (Platform.OS === 'web') return
+    void WebBrowser.warmUpAsync()
+    return () => {
+      void WebBrowser.coolDownAsync()
+    }
+  }, [])
+}
+WebBrowser.maybeCompleteAuthSession()
+
+interface Props {
+  // The OAuthStrategy type from Clerk allows you to specify the provider you want to use in this specific instance of the OAuthButton component
+  strategy: OAuthStrategy
+  children: React.ReactNode
+}
+
+export default function OAuthButton({ strategy, children }: Props) {
+  useWarmUpBrowser()
+  // useSSO hook from Clerk SDK to support various SSO providers
+  const { startSSOFlow } = useSSO()
+
+  const onPress = useCallback(async () => {
+    try {
+      const { createdSessionId, setActive } = await startSSOFlow({
+        strategy,
+        redirectUrl: AuthSession.makeRedirectUri(),
+      })
+
+      if (createdSessionId) {
+        setActive!({ session: createdSessionId })
+      } else {
+        throw new Error('Failed to create session')
+      }
+    } catch (err) {
+      console.error(JSON.stringify(err, null, 2))
+    }
+  }, [startSSOFlow, strategy])
+
+  return (
+    <TouchableOpacity onPress={onPress} style={styles.button}>
+      <Text style={styles.buttonText}>{children}</Text>
+    </TouchableOpacity>
+  )
+}
+```
+
+Now you'll configure the sign-in and sign-up screens at `app/(tabs)/index.tsx` and `app/(tabs)/sign-up.tsx` respectively. This will ensure that the first screen a user sees when they access the application is the sign-in form.
+
+Create `app/(tabs)/index.tsx`:
+
+filename: app/(tabs)/index.tsx
+```tsx
+import OAuthButton from '@/components/OAuthButton'
+import { styles } from '@/constants/AuthStyles'
+import { useSignIn } from '@clerk/clerk-expo'
+import { useRouter } from 'expo-router'
+import { useState } from 'react'
+import { Text, TextInput, TouchableOpacity, View } from 'react-native'
+
+function SignInScreen() {
+  const router = useRouter()
+  // [useSignIn hook](/docs/hooks/use-sign-in) from Clerk SDK to handle sign-in logic
+  const { signIn, isLoaded, setActive } = useSignIn()
+  const [emailAddress, setEmailAddress] = useState('')
+  const [password, setPassword] = useState('')
+
+  const onSignInPress = async () => {
+    if (!isLoaded || !setActive) return
+
+    try {
+      // signIn.create() method from Clerk SDK to handle sign-in logic
+      const signInAttempt = await signIn.create({
+        identifier: emailAddress,
+        password,
+      })
+
+      if (signInAttempt.status === 'complete') {
+        await setActive({
+          session: signInAttempt.createdSessionId,
+        })
+        // Navigate to protected screen once the session is created
+        router.replace('/(tabs)/protected')
+      } else {
+        console.error(JSON.stringify(signInAttempt, null, 2))
+      }
+    } catch (err: any) {
+      console.error(JSON.stringify(err, null, 2))
+    }
+  }
+
+  return (
+    <View style={styles.formContainer}>
+      <View style={styles.headerContainer}>
+        <Text style={styles.title}>Sign In</Text>
+        <Text style={styles.subtitle}>Enter your credentials to access your account</Text>
+      </View>
+
+      {/* OAuthButton component to handle OAuth sign-in */}
+      <View style={{ marginBottom: 24 }}>
+        <OAuthButton strategy="oauth_google">Sign in with Google</OAuthButton>
+      </View>
+
+      <View style={styles.form}>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Email address</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your email address"
+            value={emailAddress}
+            onChangeText={(text) => setEmailAddress(text)}
+            autoCapitalize="none"
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Password</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your password"
+            value={password}
+            onChangeText={(text) => setPassword(text)}
+            secureTextEntry
+          />
+        </View>
+
+        <TouchableOpacity style={styles.button} onPress={onSignInPress} activeOpacity={0.8}>
+          <Text style={styles.buttonText}>Sign In</Text>
+        </TouchableOpacity>
+
+        {/* Link to sign-up screen */}
+        <TouchableOpacity
+          style={styles.textButton}
+          onPress={() => router.push('/sign-up')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.textButtonText}>Don&apos;t have an account? Sign up.</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  )
+}
+
+export default SignInScreen
+```
+
+The sign-up screen is similar to the sign-in screen but contains additional logic to handle verifying a new user account by requesting the six-digit code that is sent to their email address.
+
+Create the `app/(tabs)/sign-up.tsx` file:
+
+filename: app/(tabs)/sign-up.tsx
+```tsx
+import { styles } from '@/constants/AuthStyles'
+import { useSignUp } from '@clerk/clerk-expo'
+import { useRouter } from 'expo-router'
+import { useState } from 'react'
+import { Text, TextInput, TouchableOpacity, View } from 'react-native'
+import OAuthButton from '@/components/OAuthButton'
+
+function SignUpScreen() {
+  const router = useRouter()
+  const { signUp, isLoaded, setActive } = useSignUp()
+  const [emailAddress, setEmailAddress] = useState('')
+  const [password, setPassword] = useState('')
+  const [pendingVerification, setPendingVerification] = useState(false)
+  const [code, setCode] = useState('')
+
+  // [useSignUp hook](/docs/hooks/use-sign-up) from Clerk SDK to handle sign-up logic
+  const onSignUpPress = async () => {
+    if (!isLoaded || !signUp) {
+      return
+    }
+
+    try {
+      // Start by creating a new temporary user record
+      await signUp.create({
+        emailAddress,
+        password,
+      })
+
+      // Prepare the email address verification, which will send the email a code
+      await signUp.prepareEmailAddressVerification({
+        strategy: 'email_code',
+      })
+
+      setPendingVerification(true)
+    } catch (err: any) {
+      console.error(JSON.stringify(err, null, 2))
+    }
+  }
+
+  const onVerifyPress = async () => {
+    if (!isLoaded || !signUp) {
+      return
+    }
+
+    try {
+      // Attempt to verify the email address using the provided code
+      const completeSignUp = await signUp.attemptEmailAddressVerification({
+        code,
+      })
+
+      if (completeSignUp.status === 'complete') {
+        // If the sign-up is complete, set the active session and navigate to the protected screen
+        await setActive({ session: completeSignUp.createdSessionId })
+        router.replace('/(tabs)/protected')
+      } else {
+        console.error(JSON.stringify(completeSignUp, null, 2))
+      }
+    } catch (err: any) {
+      console.error(JSON.stringify(err, null, 2))
+    }
+  }
+
+  // Email verification screen
+  if (pendingVerification) {
+    return (
+      <View style={styles.formContainer}>
+        <View style={styles.headerContainer}>
+          <Text style={styles.title}>Verify your email</Text>
+          <Text style={styles.subtitle}>
+            Enter the verification code sent to your email address
+          </Text>
+        </View>
+
+        <View style={styles.form}>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Verification code</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter the verification code"
+              value={code}
+              onChangeText={(text) => setCode(text)}
+            />
+          </View>
+
+          <TouchableOpacity style={styles.button} onPress={onVerifyPress} activeOpacity={0.8}>
+            <Text style={styles.buttonText}>Verify</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    )
+  }
+
+  // Sign up screen
+  return (
+    <View style={styles.formContainer}>
+      <View style={styles.headerContainer}>
+        <Text style={styles.title}>Sign Up</Text>
+        <Text style={styles.subtitle}>Create your account to get started</Text>
+      </View>
+
+      {/* OAuthButton component can also be used to create accounts */}
+      <View style={{ marginBottom: 24 }}>
+        <OAuthButton strategy="oauth_google">Sign up with Google</OAuthButton>
+      </View>
+
+      <View style={styles.form}>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Email address</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your email address"
+            value={emailAddress}
+            onChangeText={(text) => setEmailAddress(text)}
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Password</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Create a password"
+            value={password}
+            onChangeText={(text) => setPassword(text)}
+            secureTextEntry
+          />
+        </View>
+
+        <TouchableOpacity style={styles.button} onPress={onSignUpPress} activeOpacity={0.8}>
+          <Text style={styles.buttonText}>Sign Up</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.textButton}
+          onPress={() => router.push('/')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.textButtonText}>Already have an account? Sign in.</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  )
+}
+
+export default SignUpScreen
+```
+
+Authentication should be fully configured at this point. Start the development server by running the following command in your terminal:
+
+```bash
+pnpm start
+```
+
+Press `w` with the terminal focused to open the web version of your app again and test creating an account and signing in. Once signed in, you should be redirected to the protected screen, which is the same as the home screen from before since we moved those screens into the `protected` folder.
+
+### 4. Adding Supabase and integrating Clerk
+
+Now that Clerk is configured, you'll need to configure Supabase to work with Clerk. Start by running the following commands in your terminal to initialize Supabase in the repository and link it to the application you created earlier:
+
+```bash
+supabase init
+supabase link # Select your project when prompted and enter the database password from when you created your Supabase project
+```
+
+Now run the following command to create a new database migration which will be used to store timer history:
+
+```bash
+supabase migration new timer_entries
+```
+
+A new file will be created at `supabase/migrations` with a timestamp and the name `timer_entries`. In the migration file, you'll define the table, enable RLS, and configure the necessary RLS policies to parse the JWT token and extract the Clerk user ID from the `sub` claim, associating that record to the user who created it.
+
+Open the file and add the following SQL:
+
+filename: supabase/migrations/{TIMESTAMP}-timer\_entries.sql
+```sql
+-- Create time_entries table for tracking time
+CREATE TABLE time_entries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+  end_time TIMESTAMP WITH TIME ZONE,
+  description TEXT,
+  owner_id TEXT NOT NULL
+);
+
+-- Enable Row Level Security on time_entries table
+ALTER TABLE time_entries ENABLE ROW LEVEL SECURITY;
+
+-- Create policy for selecting time entries
+CREATE POLICY select_own_time_entries ON time_entries
+  FOR SELECT
+  USING (owner_id = (auth.jwt() ->> 'sub'::text));
+
+-- Create policy for inserting time entries
+CREATE POLICY insert_own_time_entries ON time_entries
+  FOR INSERT
+  WITH CHECK (owner_id = (auth.jwt() ->> 'sub'::text));
+
+-- Create policy for updating time entries
+CREATE POLICY update_own_time_entries ON time_entries
+  FOR UPDATE
+  USING (owner_id = (auth.jwt() ->> 'sub'::text));
+
+-- Create policy for deleting time entries
+CREATE POLICY delete_own_time_entries ON time_entries
+  FOR DELETE
+  USING (owner_id = (auth.jwt() ->> 'sub'::text));
+```
+
+Now run the following command to apply the migration. Paste in the database password from when you created your Supabase project if prompted.
+
+```bash
+supabase db push
+```
+
+Next you'll configure a custom Supabase client that accepts a `Promise<string | null>` as an argument, which will be used to set the access token for the Supabase client allowing Clerk to manage the session. Create the `utils/supabase.ts` file which exports this client:
+
+filename: utils/supabase.ts
+```ts
+import { createClient } from '@supabase/supabase-js'
+import 'react-native-url-polyfill/auto'
+
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
+
+export function createSupabaseClerkClient(accessToken: Promise<string | null>) {
+  return createClient(supabaseUrl!, supabaseAnonKey!, {
+    accessToken: () => accessToken,
+  })
+}
+```
+
+Now you can start implementing the core logic for the timer and history.
+
+### 5. Implementing the timer and history
+
+There are a few components that will be needed to implement this functionality. The below image contains annotated screenshots of the final implementation of the home screen, with the left image showing the timer running and the right image showing it stopped:
+
+The home screen annotated
+
+The timer component is shown when the user has an active timer and lets them stop the timer when they are finished doing the work. Create `components/TimerCounter.tsx` and paste in the following code:
+
+filename: components/TimerCounter.tsx
+```tsx
+import { Ionicons } from '@expo/vector-icons'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { StyleSheet, TouchableOpacity } from 'react-native'
+
+import { ThemedText } from './ThemedText'
+import { ThemedView } from './ThemedView'
+
+interface TimerCounterProps {
+  isRunning: boolean
+  description: string
+  initialStartTime?: Date | null
+  onStart: () => void
+  onStop: () => void
+}
+
+export function TimerCounter({
+  isRunning,
+  description,
+  initialStartTime,
+  onStart,
+  onStop,
+}: TimerCounterProps) {
+  const [elapsedTime, setElapsedTime] = useState(0)
+
+  // We track the start time to calculate elapsed time
+  const startTimeRef = useRef<Date | null>(null)
+
+  // Track the last time we updated the elapsed time
+  const lastUpdateRef = useRef<number>(0)
+
+  // Timer interval reference
+  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Format elapsed time in HH:MM:SS format
+  const formatElapsedTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    const secs = seconds % 60
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  }
+
+  // Start the timer counter
+  const startTimerCounter = useCallback((startTime?: Date) => {
+    const start = startTime || new Date()
+    startTimeRef.current = start
+    lastUpdateRef.current = Date.now()
+
+    // Calculate initial elapsed time
+    const now = new Date()
+    const initialDiffInSeconds = Math.floor((now.getTime() - start.getTime()) / 1000)
+    setElapsedTime(initialDiffInSeconds)
+
+    // Clear any existing interval
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current)
+      timerIntervalRef.current = null
+    }
+
+    // Set up the interval to update elapsed time every second
+    const intervalId = setInterval(() => {
+      if (startTimeRef.current) {
+        // Use the current time for accurate timing
+        const now = new Date()
+        const diffInSeconds = Math.floor((now.getTime() - startTimeRef.current.getTime()) / 1000)
+
+        setElapsedTime(diffInSeconds)
+      }
+    }, 500) // Update more frequently for better accuracy
+
+    timerIntervalRef.current = intervalId
+  }, [])
+
+  // Stop the timer counter
+  const stopTimerCounter = useCallback(() => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current)
+      timerIntervalRef.current = null
+    }
+    setElapsedTime(0)
+    startTimeRef.current = null
+  }, [])
+
+  // Initialize timer when component mounts or when isRunning changes
+  useEffect(() => {
+    if (isRunning && initialStartTime) {
+      startTimerCounter(initialStartTime)
+    } else if (!isRunning) {
+      stopTimerCounter()
+    }
+
+    // Clean up timer interval when component unmounts
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current)
+        timerIntervalRef.current = null
+      }
+    }
+  }, [isRunning, initialStartTime, startTimerCounter, stopTimerCounter])
+
+  // Animated style for the progress indicator
+  return (
+    <ThemedView style={styles.container}>
+      <ThemedView style={styles.card}>
+        <ThemedView style={styles.content}>
+          {/* Timer Description */}
+          <ThemedText
+            type="subtitle"
+            style={styles.description}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {description}
+          </ThemedText>
+
+          {/* Timer Display */}
+          <ThemedView style={styles.timerDisplay}>
+            {/* Time Display */}
+            <ThemedText type="defaultSemiBold" style={styles.timeText}>
+              {formatElapsedTime(elapsedTime)}
+            </ThemedText>
+          </ThemedView>
+        </ThemedView>
+
+        {/* Control Button */}
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => {
+            if (isRunning) {
+              stopTimerCounter()
+              onStop()
+            } else {
+              onStart()
+            }
+          }}
+        >
+          <ThemedView style={styles.buttonContent}>
+            <Ionicons name="stop" size={24} color="#fff" />
+          </ThemedView>
+        </TouchableOpacity>
+      </ThemedView>
+    </ThemedView>
+  )
+}
+
+const styles = StyleSheet.create({
+  container: {
+    alignItems: 'center',
+    marginVertical: 16,
+    backgroundColor: 'transparent',
+    width: '100%',
+  },
+  card: {
+    width: '100%',
+    padding: 16,
+    borderRadius: 8,
+    backgroundColor: '#000',
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 2,
+  },
+  content: {
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    flex: 1,
+  },
+  description: {
+    textAlign: 'left',
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  timerDisplay: {
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    marginTop: 4,
+    backgroundColor: 'transparent',
+  },
+  timeText: {
+    fontSize: 28,
+    fontFamily: 'monospace',
+    fontWeight: '700',
+    color: '#fff',
+  },
+  button: {
+    padding: 12,
+    borderRadius: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    aspectRatio: 1,
+    backgroundColor: '#DC2626',
+  },
+  buttonContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    color: '#fff',
+  },
+})
+```
+
+The `TimerInputForm.tsx` component lets the user input a description for the timer and start it. Create `components/TimerInputForm.tsx` and paste in the following code:
+
+filename: components/TimerInputForm.tsx
+```tsx
+import { Ionicons } from '@expo/vector-icons'
+import React, { useState } from 'react'
+import { StyleSheet, TextInput, TouchableOpacity } from 'react-native'
+import { ThemedText } from './ThemedText'
+import { ThemedView } from './ThemedView'
+
+interface TimerInputFormProps {
+  description: string
+  onDescriptionChange: (text: string) => void
+  onStartTimer: () => void
+}
+
+export function TimerInputForm({
+  description,
+  onDescriptionChange,
+  onStartTimer,
+}: TimerInputFormProps) {
+  const [isInputFocused, setIsInputFocused] = useState(false)
+
+  return (
+    <ThemedView style={styles.formContent}>
+      <ThemedText type="defaultSemiBold" style={styles.formLabel}>
+        What are you working on?
+      </ThemedText>
+      <ThemedView style={styles.inputContainer}>
+        <TextInput
+          style={[styles.input, isInputFocused && styles.inputFocused]}
+          value={description}
+          onChangeText={onDescriptionChange}
+          placeholder="Enter task description"
+          placeholderTextColor="#aaa"
+          selectionColor="#4f83cc"
+          cursorColor="#4f83cc"
+          onFocus={() => setIsInputFocused(true)}
+          onBlur={() => setIsInputFocused(false)}
+        />
+        <TouchableOpacity style={styles.button} onPress={onStartTimer}>
+          <ThemedView style={styles.buttonContent}>
+            <Ionicons name="play" size={24} color="#fff" />
+          </ThemedView>
+        </TouchableOpacity>
+      </ThemedView>
+    </ThemedView>
+  )
+}
+
+const styles = StyleSheet.create({
+  formContent: {
+    gap: 8,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    width: '100%',
+    backgroundColor: '#000',
+    padding: 16,
+    borderRadius: 8,
+  },
+  inputContainer: {
+    gap: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    backgroundColor: 'transparent',
+  },
+  input: {
+    height: 48,
+    borderWidth: 1,
+    borderColor: '#333',
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    fontSize: 12,
+    backgroundColor: '#222',
+    color: '#fff',
+    flex: 1,
+  },
+  inputFocused: {
+    borderColor: '#4f83cc',
+    borderWidth: 1,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2563EB',
+    color: '#fff',
+  },
+  button: {
+    padding: 12,
+    alignItems: 'center',
+    backgroundColor: '#2563EB',
+    borderRadius: 100,
+  },
+  formLabel: {
+    color: '#fff',
+    marginBottom: 8,
+  },
+})
+```
+
+The `TimeEntryItem.tsx` component displays a single time entry and is used in a `FlatList` component which allows rendering a list of time entries and making it scrollable. This component also has a modal that allows the user to edit or delete the time entry. Create `components/TimeEntryItem.tsx` and paste in the following code:
+
+filename: components/TimeEntryItem.tsx
+```tsx
+import { Ionicons } from '@expo/vector-icons'
+import React, { useEffect, useRef, useState } from 'react'
+import {
+  Animated,
+  Easing,
+  Modal,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native'
+import { ThemedText } from './ThemedText'
+import { ThemedView } from './ThemedView'
+
+interface TimeEntry {
+  id: string
+  description: string
+  start_time: string
+  end_time: string | null
+  created_at: string
+}
+
+interface TimeEntryItemProps {
+  item: TimeEntry
+  onUpdate?: (id: string, updates: Partial<TimeEntry>) => Promise<void>
+  onDelete?: (id: string) => Promise<void>
+}
+
+// Custom slow spinner component
+function SlowSpinner() {
+  const spinValue = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    // Create a continuous rotation animation
+    const startRotation = () => {
+      // Reset the value to 0 when starting
+      spinValue.setValue(0)
+
+      // Create the animation
+      Animated.timing(spinValue, {
+        toValue: 1,
+        duration: 3000, // Slower animation (3 seconds per rotation)
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }).start(() => startRotation()) // When complete, run again
+    }
+
+    // Start the animation loop
+    startRotation()
+
+    // Cleanup function
+    return () => {
+      // This will stop any pending animations when component unmounts
+      spinValue.stopAnimation()
+    }
+  }, [spinValue])
+
+  const spin = spinValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  })
+
+  return (
+    <Animated.View
+      style={{
+        transform: [{ rotate: spin }],
+        width: 16,
+        height: 16,
+        borderWidth: 2,
+        borderColor: '#2563EB',
+        borderTopColor: 'transparent',
+        borderRadius: 8,
+      }}
+    />
+  )
+}
+
+export function TimeEntryItem({ item, onUpdate, onDelete }: TimeEntryItemProps) {
+  const [isModalVisible, setIsModalVisible] = useState(false)
+  const [editedDescription, setEditedDescription] = useState(item.description)
+  const [startDate, setStartDate] = useState(new Date(item.start_time))
+  const [endDate, setEndDate] = useState(item.end_time ? new Date(item.end_time) : null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Track the text inputs separately from the actual date objects
+  const [startDateText, setStartDateText] = useState('')
+  const [endDateText, setEndDateText] = useState('')
+
+  // Reset form state when modal is opened
+  useEffect(() => {
+    if (isModalVisible) {
+      setEditedDescription(item.description)
+      setStartDate(new Date(item.start_time))
+      setEndDate(item.end_time ? new Date(item.end_time) : null)
+
+      // Initialize text fields with formatted dates
+      const formattedStartDate = formatDate(new Date(item.start_time).toISOString())
+      const formattedStartTime = formatTime(new Date(item.start_time))
+      setStartDateText(`${formattedStartDate} ${formattedStartTime}`)
+
+      if (item.end_time) {
+        const formattedEndDate = formatDate(new Date(item.end_time).toISOString())
+        const formattedEndTime = formatTime(new Date(item.end_time))
+        setEndDateText(`${formattedEndDate} ${formattedEndTime}`)
+      } else {
+        setEndDateText('')
+      }
+    }
+  }, [isModalVisible, item.description, item.start_time, item.end_time])
+
+  // Format date to display in a readable format
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString()
+  }
+
+  // Format time to display in a readable format
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  }
+
+  // Initialize date text fields on component mount
+  useEffect(() => {
+    if (startDate) {
+      setStartDateText(`${formatDate(startDate.toISOString())} ${formatTime(startDate)}`)
+    }
+    if (endDate) {
+      setEndDateText(`${formatDate(endDate.toISOString())} ${formatTime(endDate)}`)
+    }
+  }, [startDate, endDate])
+
+  // Calculate duration between start and end time
+  const calculateDuration = (start: string, end: string | null) => {
+    if (!end) return 'In progress'
+
+    const startDate = new Date(start)
+    const endDate = new Date(end)
+    const diffMs = endDate.getTime() - startDate.getTime()
+
+    const diffMins = Math.floor(diffMs / 60000)
+    const hours = Math.floor(diffMins / 60)
+    const mins = diffMins % 60
+
+    return `${hours}h${mins}m`
+  }
+
+  // Handle saving changes
+  const handleSave = async () => {
+    if (!onUpdate) return
+
+    // Try to parse dates from text inputs before saving
+    let validStartDate = startDate
+    let validEndDate = endDate
+
+    // Parse start date text
+    try {
+      const [datePart, timePart] = startDateText.split(' ')
+      if (datePart && timePart) {
+        const [month, day, year] = datePart.split('/')
+        const [hours, minutes] = timePart.replace('AM', '').replace('PM', '').trim().split(':')
+
+        if (month && day && year && hours && minutes) {
+          const newDate = new Date()
+          newDate.setFullYear(parseInt(year), parseInt(month) - 1, parseInt(day))
+
+          let hrs = parseInt(hours)
+          if (timePart.includes('PM') && hrs < 12) hrs += 12
+          if (timePart.includes('AM') && hrs === 12) hrs = 0
+
+          newDate.setHours(hrs, parseInt(minutes))
+          validStartDate = newDate
+        }
+      }
+    } catch {
+      // Use the existing startDate if parsing fails
+    }
+
+    // Parse end date text if it exists
+    if (endDateText && endDate) {
+      try {
+        const [datePart, timePart] = endDateText.split(' ')
+        if (datePart && timePart) {
+          const [month, day, year] = datePart.split('/')
+          const [hours, minutes] = timePart.replace('AM', '').replace('PM', '').trim().split(':')
+
+          if (month && day && year && hours && minutes) {
+            const newDate = new Date()
+            newDate.setFullYear(parseInt(year), parseInt(month) - 1, parseInt(day))
+
+            let hrs = parseInt(hours)
+            if (timePart.includes('PM') && hrs < 12) hrs += 12
+            if (timePart.includes('AM') && hrs === 12) hrs = 0
+
+            newDate.setHours(hrs, parseInt(minutes))
+            validEndDate = newDate
+          }
+        }
+      } catch {
+        // Use the existing endDate if parsing fails
+        console.error('Failed to parse end date')
+      }
+    }
+
+    setIsSubmitting(true)
+    try {
+      await onUpdate(item.id, {
+        description: editedDescription,
+        start_time: validStartDate.toISOString(),
+        end_time: validEndDate ? validEndDate.toISOString() : null,
+      })
+      setIsModalVisible(false)
+    } catch (error) {
+      console.error('Failed to update time entry:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // Handle deleting the entry
+  const handleDelete = async () => {
+    if (!onDelete) return
+
+    setIsSubmitting(true)
+    try {
+      await onDelete(item.id)
+      setIsModalVisible(false)
+    } catch (error) {
+      console.error('Error deleting time entry:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <ThemedView style={styles.container}>
+      {/* Row item */}
+      <TouchableOpacity
+        style={styles.entryItem}
+        onPress={() => setIsModalVisible(true)}
+        activeOpacity={0.7}
+      >
+        <ThemedView style={styles.entryContent}>
+          <ThemedText type="defaultSemiBold" numberOfLines={1}>
+            {item.description}
+          </ThemedText>
+          {item.end_time ? (
+            <ThemedText style={styles.durationText}>
+              {calculateDuration(item.start_time, item.end_time)}
+            </ThemedText>
+          ) : (
+            <View style={styles.inProgressContainer}>
+              <SlowSpinner />
+              <ThemedText style={styles.inProgressText}>In progress</ThemedText>
+            </View>
+          )}
+        </ThemedView>
+        <View style={styles.rightSection}>
+          <ThemedText style={styles.dateText}>{formatDate(item.start_time)}</ThemedText>
+          <Ionicons name="chevron-forward" size={16} color="#888" />
+        </View>
+      </TouchableOpacity>
+
+      {/* Edit modal */}
+      <Modal
+        visible={isModalVisible}
+        onRequestClose={() => setIsModalVisible(false)}
+        animationType="fade"
+        transparent
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContainer}>
+            <ThemedView style={styles.modalContent}>
+              <ThemedText style={styles.modalTitle}>Edit Time Entry</ThemedText>
+
+              <View style={styles.formGroup}>
+                <ThemedText style={styles.label}>Description</ThemedText>
+                <TextInput
+                  style={styles.input}
+                  value={editedDescription}
+                  onChangeText={setEditedDescription}
+                  placeholder="What were you working on?"
+                  placeholderTextColor="#aaa"
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <ThemedText style={styles.label}>Start Time</ThemedText>
+                <TextInput
+                  style={styles.input}
+                  value={startDateText}
+                  onChangeText={(text) => {
+                    // Just update the text field without validation
+                    setStartDateText(text)
+
+                    // Try to parse the date but don't throw errors
+                    try {
+                      const [datePart, timePart] = text.split(' ')
+                      if (datePart && timePart) {
+                        const [month, day, year] = datePart.split('/')
+                        const [hours, minutes] = timePart
+                          .replace('AM', '')
+                          .replace('PM', '')
+                          .trim()
+                          .split(':')
+
+                        if (month && day && year && hours && minutes) {
+                          const newDate = new Date(startDate)
+                          newDate.setFullYear(parseInt(year), parseInt(month) - 1, parseInt(day))
+
+                          let hrs = parseInt(hours)
+                          if (timePart.includes('PM') && hrs < 12) hrs += 12
+                          if (timePart.includes('AM') && hrs === 12) hrs = 0
+
+                          newDate.setHours(hrs, parseInt(minutes))
+                          setStartDate(newDate)
+                        }
+                      }
+                    } catch {
+                      // Silently fail - we'll use the previous valid date if parsing fails
+                    }
+                  }}
+                  placeholder="MM/DD/YYYY HH:MM AM/PM"
+                  placeholderTextColor="#aaa"
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <ThemedText style={styles.label}>End Time</ThemedText>
+                {endDate ? (
+                  <TextInput
+                    style={styles.input}
+                    value={endDateText}
+                    onChangeText={(text) => {
+                      // Just update the text field without validation
+                      setEndDateText(text)
+
+                      // Try to parse the date but don't throw errors
+                      try {
+                        const [datePart, timePart] = text.split(' ')
+                        if (datePart && timePart) {
+                          const [month, day, year] = datePart.split('/')
+                          const [hours, minutes] = timePart
+                            .replace('AM', '')
+                            .replace('PM', '')
+                            .trim()
+                            .split(':')
+
+                          if (month && day && year && hours && minutes) {
+                            const newDate = new Date(endDate)
+                            newDate.setFullYear(parseInt(year), parseInt(month) - 1, parseInt(day))
+
+                            let hrs = parseInt(hours)
+                            if (timePart.includes('PM') && hrs < 12) hrs += 12
+                            if (timePart.includes('AM') && hrs === 12) hrs = 0
+
+                            newDate.setHours(hrs, parseInt(minutes))
+                            setEndDate(newDate)
+                          }
+                        }
+                      } catch {
+                        // Silently fail - we'll use the previous valid date if parsing fails
+                      }
+                    }}
+                    placeholder="MM/DD/YYYY HH:MM AM/PM"
+                    placeholderTextColor="#aaa"
+                  />
+                ) : (
+                  <View style={styles.inProgressContainer}>
+                    <SlowSpinner />
+                    <ThemedText style={styles.inProgressText}>In progress</ThemedText>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.buttonContainer}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => setIsModalVisible(false)}
+                  disabled={isSubmitting}
+                >
+                  <ThemedText style={styles.buttonText}>Cancel</ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.button, styles.deleteButton]}
+                  onPress={handleDelete}
+                  disabled={isSubmitting}
+                >
+                  <ThemedText style={styles.buttonText}>Delete</ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.button, styles.saveButton]}
+                  onPress={handleSave}
+                  disabled={isSubmitting}
+                >
+                  <ThemedText style={styles.buttonText}>Save</ThemedText>
+                </TouchableOpacity>
+              </View>
+            </ThemedView>
+          </View>
+        </View>
+      </Modal>
+    </ThemedView>
+  )
+}
+
+const styles = StyleSheet.create({
+  container: {
+    marginVertical: 4,
+  },
+  modalContent: {
+    padding: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  entryItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: 'transparent',
+    backgroundColor: '#f7f7f7',
+    padding: 8,
+    marginVertical: 4,
+    borderRadius: 6,
+    gap: 3,
+    alignItems: 'center',
+  },
+  entryContent: {
+    gap: 4,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    flex: 1,
+  },
+  dateText: {
+    fontSize: 12,
+    color: '#888',
+  },
+  rightSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  durationText: {
+    fontWeight: 'bold',
+    fontFamily: 'monospace',
+  },
+  inProgressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#EBF4FF', // Light blue background
+    paddingVertical: 1,
+    paddingHorizontal: 6,
+    borderRadius: 100,
+  },
+  inProgressText: {
+    color: '#2563EB',
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  formGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 6,
+    padding: 10,
+    borderColor: '#ccc',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 20,
+  },
+  cancelButton: {
+    backgroundColor: '#555',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+  },
+  button: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveButton: {
+    backgroundColor: '#2563EB',
+  },
+  deleteButton: {
+    backgroundColor: '#DC2626',
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: '90%',
+    maxWidth: 500,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+})
+```
+
+All three of these components are then used in `app/(tabs)/protected/index.tsx` to display the timer, history, and settings. The logic to run operations against Supabase is also implemented in that file and leveraged from the child components.
+
+Update `app/(tabs)/protected/index.tsx` and replace all of the code with what's below:
+
+filename: app/(tabs)/protected/index.tsx
+```tsx
+import React, { useEffect, useRef, useState } from 'react'
+import { FlatList, StyleSheet } from 'react-native'
+
+import { ThemedText } from '@/components/ThemedText'
+import { ThemedView } from '@/components/ThemedView'
+import { TimeEntryItem } from '@/components/TimeEntryItem'
+import { TimerCounter } from '@/components/TimerCounter'
+import { TimerInputForm } from '@/components/TimerInputForm'
+import { createSupabaseClerkClient } from '@/utils/supabase'
+import { useAuth, useUser } from '@clerk/clerk-expo'
+
+interface TimeEntry {
+  id: string
+  description: string
+  start_time: string
+  end_time: string | null
+  created_at: string
+}
+
+export default function HomeScreen() {
+  const { user } = useUser()
+  const { getToken } = useAuth()
+  const [description, setDescription] = useState('')
+  const [isTimerRunning, setIsTimerRunning] = useState(false)
+  const [currentEntryId, setCurrentEntryId] = useState<string | null>(null)
+  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([])
+  const [elapsedTime, setElapsedTime] = useState(0)
+  // We track the start time to calculate elapsed time
+  const startTimeRef = useRef<Date | null>(null)
+  // Track the last time we updated the elapsed time
+  const lastUpdateRef = useRef<number>(0)
+
+  // Timer interval reference
+  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const supabase = createSupabaseClerkClient(getToken())
+
+  // Stop the timer counter
+  const stopTimerCounter = () => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current)
+      timerIntervalRef.current = null
+    }
+    setElapsedTime(0)
+    startTimeRef.current = null
+  }
+
+  // Start the timer counter
+  const startTimerCounter = (initialStartTime?: Date) => {
+    const start = initialStartTime || new Date()
+    startTimeRef.current = start
+    lastUpdateRef.current = Date.now()
+
+    // Calculate initial elapsed time
+    const now = new Date()
+    const initialDiffInSeconds = Math.floor((now.getTime() - start.getTime()) / 1000)
+    setElapsedTime(initialDiffInSeconds)
+
+    // Clear any existing interval
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current)
+      timerIntervalRef.current = null
+    }
+
+    // Set up the interval to update elapsed time every second
+    const intervalId = setInterval(() => {
+      if (startTimeRef.current) {
+        // Use the current time for accurate timing
+        const now = new Date()
+        const diffInSeconds = Math.floor((now.getTime() - startTimeRef.current.getTime()) / 1000)
+
+        // Only update if the time has actually changed
+        if (diffInSeconds !== elapsedTime) {
+          setElapsedTime(diffInSeconds)
+        }
+      }
+    }, 500) // Update more frequently for better accuracy
+
+    timerIntervalRef.current = intervalId
+  }
+
+  // Function to fetch time entries from Supabase
+  const fetchTimeEntries = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('time_entries')
+        .select('*')
+        .order('start_time', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching time entries:', error)
+        return
+      }
+
+      setTimeEntries(data || [])
+
+      // Check if there's an active timer (entry without end_time)
+      const activeEntry = data?.find((entry) => !entry.end_time)
+      if (activeEntry) {
+        setIsTimerRunning(true)
+        setCurrentEntryId(activeEntry.id)
+        setDescription(activeEntry.description)
+
+        // Start the timer counter with the saved start time
+        const startDate = new Date(activeEntry.start_time)
+        startTimerCounter(startDate)
+      }
+    } catch (error) {
+      console.error('Error fetching time entries:', error)
+    }
+  }
+
+  // Function to update a time entry
+  const updateTimeEntry = async (id: string, updates: Partial<TimeEntry>) => {
+    try {
+      const { error } = await supabase.from('time_entries').update(updates).eq('id', id)
+
+      if (error) {
+        console.error('Error updating time entry:', error)
+        return
+      }
+
+      // Refresh the time entries list
+      fetchTimeEntries()
+    } catch (error) {
+      console.error('Error updating time entry:', error)
+    }
+  }
+
+  // Function to delete a time entry
+  const deleteTimeEntry = async (id: string) => {
+    try {
+      const { error } = await supabase.from('time_entries').delete().eq('id', id)
+
+      if (error) {
+        console.error('Error deleting time entry:', error)
+        return
+      }
+
+      // Refresh the time entries list
+      fetchTimeEntries()
+    } catch (error) {
+      console.error('Error deleting time entry:', error)
+    }
+  }
+
+  // Start a new timer
+  const startTimer = async () => {
+    if (!description.trim()) {
+      alert('Please enter what you are working on')
+      return
+    }
+
+    try {
+      const startDate = new Date()
+      const { data, error } = await supabase
+        .from('time_entries')
+        .insert({
+          description: description.trim(),
+          start_time: startDate.toISOString(),
+          owner_id: user?.id,
+        })
+        .select()
+
+      if (error) {
+        console.error('Error starting timer:', error)
+        return
+      }
+
+      if (data && data[0]) {
+        setIsTimerRunning(true)
+        setCurrentEntryId(data[0].id)
+        startTimerCounter(startDate)
+        fetchTimeEntries()
+      }
+    } catch (error) {
+      console.error('Error in startTimer:', error)
+    }
+  }
+
+  // Stop the current timer
+  const stopTimer = async () => {
+    if (!currentEntryId) return
+
+    try {
+      const { error } = await supabase
+        .from('time_entries')
+        .update({ end_time: new Date().toISOString() })
+        .eq('id', currentEntryId)
+
+      if (error) {
+        console.error('Error stopping timer:', error)
+        return
+      }
+
+      setIsTimerRunning(false)
+      setCurrentEntryId(null)
+      setDescription('')
+      stopTimerCounter()
+      fetchTimeEntries()
+    } catch (error) {
+      console.error('Error in stopTimer:', error)
+    }
+  }
+
+  // Update the elapsed time even when the app is in background
+  useEffect(() => {
+    if (isTimerRunning && startTimeRef.current) {
+      const now = new Date()
+      const diffInSeconds = Math.floor((now.getTime() - startTimeRef.current.getTime()) / 1000)
+      setElapsedTime(diffInSeconds)
+    }
+  }, [isTimerRunning])
+
+  // Fetch time entries when component mounts
+  useEffect(() => {
+    fetchTimeEntries()
+
+    // Clean up timer interval when component unmounts
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current)
+        timerIntervalRef.current = null
+      }
+    }
+  }, [])
+
+  return (
+    <ThemedView style={styles.container}>
+      <ThemedView style={styles.titleContainer}>
+        <ThemedText type="title">⏳ Aika Timer</ThemedText>
+      </ThemedView>
+
+      {/* Timer Form */}
+      <ThemedView style={styles.formContainer}>
+        {!isTimerRunning ? (
+          <TimerInputForm
+            description={description}
+            onDescriptionChange={setDescription}
+            onStartTimer={startTimer}
+          />
+        ) : (
+          <TimerCounter
+            isRunning={isTimerRunning}
+            description={description}
+            initialStartTime={startTimeRef.current}
+            onStart={startTimer}
+            onStop={stopTimer}
+          />
+        )}
+      </ThemedView>
+
+      {/* Time Entries List */}
+      <ThemedView style={styles.entriesContainer}>
+        <ThemedText type="subtitle" style={styles.entriesTitle}>
+          Previous Work Logs
+        </ThemedText>
+        {timeEntries.length === 0 ? (
+          <ThemedText style={styles.emptyText}>
+            No work logs yet. Start tracking your time!
+          </ThemedText>
+        ) : (
+          <FlatList
+            data={timeEntries}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <TimeEntryItem item={item} onUpdate={updateTimeEntry} onDelete={deleteTimeEntry} />
+            )}
+            style={styles.list}
+            scrollEnabled={true}
+            showsVerticalScrollIndicator={true}
+            contentContainerStyle={styles.listContentContainer}
+          />
+        )}
+      </ThemedView>
+    </ThemedView>
+  )
+}
+
+const styles = StyleSheet.create({
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 16,
+    paddingHorizontal: 16,
+  },
+  formContainer: {
+    gap: 12,
+    marginBottom: 24,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    height: 150,
+    paddingHorizontal: 16,
+  },
+  disabledInput: {
+    backgroundColor: '#f0f0f0',
+    color: '#666',
+  },
+  entriesContainer: {
+    gap: 12,
+    flex: 1,
+  },
+  list: {
+    paddingHorizontal: 16,
+  },
+  listContentContainer: {
+    flexGrow: 1,
+    paddingBottom: 16,
+  },
+  entriesTitle: {
+    paddingHorizontal: 16,
+  },
+  emptyText: {
+    fontStyle: 'italic',
+    color: '#888',
+    marginTop: 8,
+    paddingHorizontal: 16,
+  },
+  signOutButton: {
+    backgroundColor: '#64748B',
+    padding: 12,
+    borderRadius: 6,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  container: {
+    flex: 1,
+    paddingTop: 16,
+  },
+  contentContainer: {
+    padding: 16,
+  },
+})
+```
+
+Now access the application in your browser again and test out the timer functionality! You can also check the database to see the time entries being added:
+
+The Supabase dashboard with entries shown in the table
+
+### 6. Implementing the settings screen
+
+The last thing you'll build in this demo is a simple settings screen that will display information about the currently logged in user and provide a method of signing out. Two helper functions from the Clerk SDK will be used: the `useUser` hook to get the currently logged in user and the `useAuth` hook to access the function required to sign out.
+
+Create the `app/(tabs)/protected/settings.tsx` file and add the following code:
+
+filename: app/(tabs)/protected/settings.tsx
+```typescript
+import React from 'react'
+import { Image, StyleSheet, TouchableOpacity } from 'react-native'
+
+import { ThemedText } from '@/components/ThemedText'
+import { ThemedView } from '@/components/ThemedView'
+import { useAuth, useUser } from '@clerk/clerk-expo'
+
+export default function SettingsScreen() {
+  const { user } = useUser()
+  const { signOut } = useAuth()
+
+  return (
+    <ThemedView style={styles.container}>
+      <ThemedView style={styles.titleContainer}>
+        <ThemedText type="title">Settings</ThemedText>
+      </ThemedView>
+
+      <ThemedView style={styles.contentContainer}>
+        {/* User Information */}
+        <ThemedText type="subtitle">User Information</ThemedText>
+        <ThemedView style={styles.userContainer}>
+          <ThemedView style={styles.userImageContainer}>
+            <Image source={{ uri: user?.imageUrl || '' }} style={styles.userImage} />
+          </ThemedView>
+          <ThemedView style={styles.userInfoContainer}>
+            <ThemedText type="defaultSemiBold">
+              {user?.firstName} {user?.lastName}
+            </ThemedText>
+            <ThemedText>{user?.emailAddresses[0].emailAddress}</ThemedText>
+          </ThemedView>
+        </ThemedView>
+
+        {/* Sign Out Button */}
+        <ThemedView style={styles.signOutButtonContainer}>
+          <TouchableOpacity onPress={() => signOut()}>
+            <ThemedText style={{ color: 'red' }}>Sign Out</ThemedText>
+          </TouchableOpacity>
+        </ThemedView>
+      </ThemedView>
+    </ThemedView>
+  )
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingTop: 16,
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 16,
+    paddingHorizontal: 16,
+  },
+  contentContainer: {
+    gap: 12,
+    marginBottom: 24,
+    borderRadius: 8,
+    padding: 16,
+    width: '100%',
+    height: 150,
+    paddingHorizontal: 16,
+  },
+  userContainer: {
+    gap: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f7f7f7',
+    padding: 8,
+    borderRadius: 8,
+  },
+  userInfoContainer: {
+    marginLeft: 12,
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  userImageContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 100,
+    backgroundColor: 'transparent',
+  },
+  userImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 100,
+    backgroundColor: 'transparent',
+  },
+  signOutButtonContainer: {
+    gap: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 8,
+    padding: 8,
+    backgroundColor: '#ffebee',
+    justifyContent: 'center',
+  },
+})
+```
+
+Expo will automatically add the new screen to the bottom tab bar so you can access it but the icon will not be present since it needs to be set in the layout file for the protected routes. Update `app/(tabs)/protected/_layout.tsx` to specify the configuration for that bar:
+
+filename: app/(tabs)/protected/\_layout.tsx
+```tsx
+import { Tabs } from 'expo-router'
+import React from 'react'
+import { Platform } from 'react-native'
+
+import { HapticTab } from '@/components/HapticTab'
+import { IconSymbol } from '@/components/ui/IconSymbol'
+import TabBarBackground from '@/components/ui/TabBarBackground'
+import { Colors } from '@/constants/Colors'
+import { useColorScheme } from '@/hooks/useColorScheme'
+
+export default function TabLayout() {
+  const colorScheme = useColorScheme()
+
+  return (
+    <Tabs
+      screenOptions={{
+        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        headerShown: false,
+        tabBarButton: HapticTab,
+        tabBarBackground: TabBarBackground,
+        tabBarStyle: Platform.select({
+          ios: {
+            // Use a transparent background on iOS to show the blur effect
+            position: 'absolute',
+          },
+          default: {},
+        }),
+      }}
+    >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Home',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="explore"
+        options={{
+          title: 'Explore',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Settings',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="gear" color={color} />,
+        }}
+      />
+    </Tabs>
+  )
+}
+```
+
+You'll also need to map the `gear` icon in the `IconSymbol` component so it displays in the tab bar:
+
+filename: components/ui/IconSymbol.tsx
+```tsx
+// Fallback for using MaterialIcons on Android and web.
+
+import MaterialIcons from '@expo/vector-icons/MaterialIcons'
+import { SymbolViewProps, SymbolWeight } from 'expo-symbols'
+import { ComponentProps } from 'react'
+import { OpaqueColorValue, type StyleProp, type TextStyle } from 'react-native'
+
+type IconMapping = Record<SymbolViewProps['name'], ComponentProps<typeof MaterialIcons>['name']>
+type IconSymbolName = keyof typeof MAPPING
+
+/**
+ * Add your SF Symbols to Material Icons mappings here.
+ * - see Material Icons in the [Icons Directory](https://icons.expo.fyi).
+ * - see SF Symbols in the [SF Symbols](https://developer.apple.com/sf-symbols/) app.
+ */
+const MAPPING = {
+  'house.fill': 'home',
+  'paperplane.fill': 'send',
+  'chevron.left.forwardslash.chevron.right': 'code',
+  'chevron.right': 'chevron-right',
+  gear: 'settings',
+} as IconMapping
+
+/**
+ * An icon component that uses native SF Symbols on iOS, and Material Icons on Android and web.
+ * This ensures a consistent look across platforms, and optimal resource usage.
+ * Icon `name`s are based on SF Symbols and require manual mapping to Material Icons.
+ */
+export function IconSymbol({
+  name,
+  size = 24,
+  color,
+  style,
+}: {
+  name: IconSymbolName
+  size?: number
+  color: string | OpaqueColorValue
+  style?: StyleProp<TextStyle>
+  weight?: SymbolWeight
+}) {
+  return <MaterialIcons color={color} size={size} name={MAPPING[name]} style={style} />
+}
+```
+
+Finally, delete the `app/(tabs)/protected/explore.tsx` screen since it's no longer used.
+
+## Conclusion
+
+You've successfully built a fully functional time tracking app using React Native, Expo, Clerk, and Supabase. Through this article, you've learned how to implement secure authentication with Clerk, set up a Supabase database with proper security using Row Level Security that integrates with Clerk, and build a timer interface that allows users to track their time.
+
+The combination of React Native, Expo, Clerk, and Supabase provides a solid foundation for building secure, scalable applications that can grow with your needs. In the next article, we'll explore how to easily add multitenancy with Clerk's B2B tools, making Aika a suitable option for teams and organizations looking to track time for their employees!

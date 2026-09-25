@@ -1,0 +1,559 @@
+# Building a Custom User Profile with Clerk
+# джерело: https://clerk.com/blog/building-custom-user-profile-with-clerk
+# отримано: 2026-09-25
+
+Failing to implement a proper authentication system can make your application vulnerable and your users' information open to potential hackers.
+
+If you don't want to get into the technicalities of implementing an authentication system from scratch, Clerk is your solution. Clerk provides built-in components for your application that can be easily integrated into your frontend application, and it supports most of the popular frameworks, like React, Next.js, and Gatsby.
+
+Clerk can be beneficial for your customer identity management. You can easily manage your user sessions, devices, and profiles from the Clerk dashboard. Moreover, you can easily integrate Clerk with services like Firebase or Google Analytics.
+
+In addition, Clerk makes integrating authentication to your existing application simple since it provides built-in hooks for adding authentication. You can implement social sign-in, password-based authentication, or Web3 logins easily using Clerk. You can also extend your functionalities and create custom components and user profiles using their SDK and APIs.
+
+In this article, you'll see how Clerk authentication can be implemented in your Next.js application and how you can implement the Clerk built-in components for user profiles. You'll also learn how to create custom user profiles for your users and update users' profiles using your custom components.
+
+## What Is Clerk?
+
+Clerk is an all-in-one solution for your authentication and user management needs. It provides features like password-based or social sign-in, passwordless login using magic links or email, and SMS passcodes. It also provides a user management dashboard, user analytics, allow/block list, rate limiting, and more.
+
+With Clerk, you can set up a complete user management system within ten minutes. Clerk can seamlessly integrate with popular technologies, including React, Next.js, Gatsby, RedwoodJS, Remix, Node.js, and Go.
+
+For popular frontend frameworks, like React, Remix, RedwoodJS, or Gatsby, Clerk has created well-designed components for login, sign-up, the user profile, and the user button. However, it's not limited to built-in components. You can always create custom components with the help of hooks provided by the Clerk SDK.
+
+Because Clerk provides you with frontend SDK, API, and backend APIs for developing custom pages for your users, building a customer user profile is easy.
+
+## Building a Custom User Profile Using Clerk
+
+This article aims to show how you can create custom user profiles for your Next.js applications and how to implement the built-in components. To do this, you'll use the Clerk SDK for Next.js.
+
+The basic flow of the application is shown in the following GIF:
+
+View video
+
+### Prerequisites
+
+Before you build your custom user profiles with Clerk, you need to satisfy a few prerequisites, including the following:
+
+- Create a Clerk account.
+- Have a basic understanding of Next.js. To learn more about Next.js, you can check out their documentation.
+- Have a basic understanding of Tailwind CSS (optional)
+
+You can create a free account for Clerk from the Clerk sign-up page. After creating your account, you'll be redirected to the Clerk dashboard. There, you will be asked to create a new application. Add an application with the name of your choice. This is what the setup for this tutorial looks like:
+
+Clerk app creation page
+
+After successfully creating the application, you'll be able to visit the application's dashboard:
+
+Clerk application dashboard
+
+You can find your API keys in the menu under the **Developers** section. Click on **API Keys** and copy the frontend API key. You'll need this later in the project.
+
+In addition to your Clerk account, Node.js and npm must be installed on your local computer to create and run the application.
+
+If you want to copy the code and follow along, you can use this GitHub repo.
+
+### Creating a Next.js Application
+
+The first step in building this application is to create a Next.js application. To scaffold a Next.js application, run the following command in the terminal:
+
+```bash
+npx create-next-app@latest
+```
+
+Once the installation is complete, you can run the application using `npm run dev` in the terminal, and the application will start on port `3000`. Next.js will render the `index.jsx` file inside the `pages` folder. You can delete the contents of the `index.jsx` file as it will be customized.
+
+The second step is to integrate Tailwind CSS with your Next.js application. You can follow this Tailwind CSS installation guide to do so.
+
+Then install the Clerk SDK for the Next.js plug-in. To install the SDK, run the following command in the terminal:
+
+```bash
+npm install @clerk/nextjs
+```
+
+For using forms effortlessly, you can also integrate the `react-hook-form` plug-in by running the following command:
+
+```bash
+npm install react-hook-form
+```
+
+Another plug-in called `react-icons` is used for adding icons to the application. You can install `react-icons` by simply running the following command in your terminal:
+
+```bash
+npm install react-icons
+```
+
+These previous plug-ins are the only ones that will be used in this application.
+
+## Integrating User Profile in Your Next.js App
+
+To add a user profile to your Next.js app using Clerk, you need to obtain the frontend API key, create a new `.env.local` file, and paste the frontend API key to a variable called `NEXT_PUBLIC_CLERK_FRONTEND_API`. The `.env.local` file should look similar to this:
+
+```bash
+NEXT_PUBLIC_CLERK_FRONTEND_API=clerk.noice.bjsdn-81.lcl.dev
+```
+
+Then you need to wrap your Next.js application with the `ClerkProvider` component. The `ClerkProvider` wrapper can be found in the `@clerk/nextjs` SDK. The SDK also has methods called `SignedIn`, `SignedOut`, and `RedirectToSignIn`. These components can be used to secure your application. For example, the components wrapped inside the `SignedIn` will require the user to sign in. You can read about the different components in the official docs.
+
+The `_app.js` file for this application should look like this:
+
+```jsx
+import '../styles/globals.css'
+import { ClerkProvider, SignedIn, SignedOut, RedirectToSignIn } from '@clerk/nextjs'
+
+import { useRouter } from 'next/router'
+
+import Header from '../components/Header'
+
+const publicPages = []
+
+function MyApp({ Component, pageProps }) {
+  const { pathname } = useRouter()
+  const isPublicPage = publicPages.includes(pathname)
+
+  return (
+    <ClerkProvider frontendApi={process.env.NEXT_PUBLIC_CLERK_FRONTEND_API}>
+      {isPublicPage ? (
+        <Component {...pageProps} />
+      ) : (
+        <>
+          <SignedIn>
+            <Header />
+            <Component {...pageProps} />
+          </SignedIn>
+          <SignedOut>
+            <RedirectToSignIn />
+          </SignedOut>
+        </>
+      )}
+    </ClerkProvider>
+  )
+}
+
+export default MyApp
+```
+
+You must pass the API key in the `ClerkProvider` through the `frontendApi` prop. The `publicPages` array can store the pages that are available to everyone. But for this article, all the pages will be secured.
+
+The `SignedIn` wrapper holds all the components. That means, if you are signed in, you'll only be able to access the pages. You'll be redirected to the sign-in page if you are not signed in. You'll be redirected to the login screen if you are not logged in using the `RedirectToSignIn` component.
+
+### Header and User Profile
+
+The `Header` component is a very basic header. The code for the `Header` component looks like this in the `Header.jsx` file:
+
+```jsx
+import { GiAstronautHelmet } from 'react-icons/gi'
+import { CgProfile } from 'react-icons/cg'
+import { UserButton } from '@clerk/clerk-react'
+
+import Link from 'next/link'
+
+const Header = (props) => {
+  return (
+    <div className="w-full bg-purple-600 py-4">
+      <div className="mx-auto flex w-10/12 items-center justify-between">
+        <Link href={'/'}>
+          <a>
+            <h4 className="flex items-center text-2xl font-bold text-white">
+              <GiAstronautHelmet className="mr-4" />
+              Clerk is Awesome
+            </h4>
+          </a>
+        </Link>
+        <div>
+          <UserButton userProfileUrl="/profile" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default Header
+```
+
+You can see that the `Header` component is using a component called `UserButton`. Clerk provides this component, and the button renders a toggle menu for accessing the user profile:
+
+UserButton demo
+
+The `userProfileUrl` prop holds the location of the **Manage account** page. Here, the location is `/profile`.
+
+Now, create a new page called `profile.jsx` inside the `pages` folder. You only need to render a single component to generate the user profile:
+
+```jsx
+import { UserProfile } from '@clerk/nextjs'
+
+const Profile = () => {
+  return <UserProfile />
+}
+export default Profile
+```
+
+The `UserProfile` component provided by Clerk does everything for you and generates an aesthetically pleasing user profile.
+
+If you try to visit the `/profile` route now, you'll need to sign in or create a new account. Clerk already handles the authorization for accessing specific pages. After successfully logging in, you'll be able to visit the user profile page:
+
+Clerk UserProfile component
+
+You can also update your profile from here, which you'll learn about in the next section.
+
+### Implementing Custom User Profile
+
+To implement a custom user profile, create a new page called `view.jsx` inside your `pages` directory. This page will render a custom user profile. As this article focuses more on the technicalities of implementing a custom user profile, the design and Tailwind classes will not be discussed.
+
+To help the user access the custom user profile, update your `index.jsx` file like this:
+
+```jsx
+import Head from 'next/head'
+import styles from '../styles/Home.module.css'
+
+import Link from 'next/dist/client/link'
+
+const Home = () => {
+  return (
+    <div className={styles.container}>
+      <Head>
+        <title>Create Next App</title>
+        <meta name="description" content="Generated by create next app" />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+      <div className="flex h-screen w-full flex-col items-center justify-center">
+        <h1 className="text-6xl font-bold text-purple-600">Clerk is Awesome</h1>
+        <Link href={'/view'}>
+          <a>
+            <button className="mt-4 bg-purple-600 px-4 py-2 font-bold text-white transition-all hover:bg-purple-800">
+              View Profile
+            </button>
+          </a>
+        </Link>
+      </div>
+      <div></div>
+    </div>
+  )
+}
+
+export default Home
+```
+
+The previous code shows a centered text, "Clerk is Awesome," and a button for accessing the custom user profile with a link of `/view`.
+
+The final design of the custom profile page will look like this:
+
+Custom user profile screen
+
+You'll have to use the `useUser` hook available in the Clerk SDK to get the necessary information from the backend. The `useUser` hook returns the values of the current user along with other important information, like the user creation date and external connected accounts if two-factor authentication is connected:
+
+useUser returned data
+
+If you look at the returned data closely, you'll find that the data contains an object `unsafeMetadata`. The `unsafeMetadata` object can hold custom values stored for custom user profile information:
+
+unsafeMetadata object
+
+For this article, you can see there are two custom fields: `customBio` and `customName`.
+
+Clerk has three types of metadata for storing additional user information: public, private, and unsafe. Both public and private metadata can be updated or added from the backend, and you can access or view only the public metadata from the frontend. The unsafe metadata can be read or written from the frontend:
+
+Comparison of metadata types
+
+Because of the ability to write from the frontend, this article will use unsafe metadata for custom user information. You can read more about metadata in Clerk's documentation.
+
+Look at the `view.jsx` file:
+
+```jsx
+import { useUser } from '@clerk/nextjs'
+
+import Image from 'next/image'
+
+import Link from 'next/link'
+
+const ViewProfile = () => {
+  const { isLoaded, isSignedIn, user } = useUser()
+  if (!isLoaded || !isSignedIn) {
+    return null
+  }
+
+  console.log(user)
+
+  return (
+    <div className="container mx-auto">
+      <div className="flex">
+        <div className="mx-4">
+          <Image
+            src={user.profileImageUrl}
+            width={'250px'}
+            height={'250px'}
+            alt={user.fullName}
+            className="rounded-lg"
+          />
+        </div>
+        <div className="ml-4">
+          <div className="-mx-4 overflow-x-auto px-4 py-4 sm:-mx-8 sm:px-8">
+            <div className="inline-block w-full overflow-hidden rounded-lg shadow-md">
+              <table className="w-full leading-normal">
+                <tbody>
+                  {/* Firstname */}
+                  <tr>
+                    <td className="whitespace-no-wrap border-b border-gray-200 bg-white px-5 py-5 text-sm text-gray-900">
+                      First Name
+                    </td>
+                    <td className="whitespace-no-wrap border-b border-gray-200 bg-white px-5 py-5 text-sm text-gray-900">
+                      {user.firstName}
+                    </td>
+                  </tr>
+                  {/* Last Name */}
+                  <tr>
+                    <td className="whitespace-no-wrap border-b border-gray-200 bg-white px-5 py-5 text-sm text-gray-900">
+                      Last Name
+                    </td>
+                    <td className="whitespace-no-wrap border-b border-gray-200 bg-white px-5 py-5 text-sm text-gray-900">
+                      {user.lastName}
+                    </td>
+                  </tr>
+                  {/* Emails */}
+                  <tr>
+                    <td className="whitespace-no-wrap border-b border-gray-200 bg-white px-5 py-5 text-sm text-gray-900">
+                      Emails
+                    </td>
+                    <td className="whitespace-no-wrap border-b border-gray-200 bg-white px-5 py-5 text-sm text-gray-900">
+                      {user.emailAddresses.map((email) => (
+                        <div key={email.emailAddress}>{email.emailAddress}, </div>
+                      ))}
+                    </td>
+                  </tr>
+                  {/* Unsafe Metadata Example */}
+                  <tr>
+                    <td className="whitespace-no-wrap border-b border-gray-200 bg-white px-5 py-5 text-sm text-gray-900">
+                      Custom Name
+                    </td>
+                    <td className="whitespace-no-wrap border-b border-gray-200 bg-white px-5 py-5 text-sm text-gray-900">
+                      {user.unsafeMetadata.customName}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="whitespace-no-wrap border-b border-gray-200 bg-white px-5 py-5 text-sm text-gray-900">
+                      Custom Bio
+                    </td>
+                    <td className="whitespace-no-wrap border-b border-gray-200 bg-white px-5 py-5 text-sm text-gray-900">
+                      {user.unsafeMetadata.customBio}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div className="flex justify-center">
+            <Link href={'/additional'}>
+              <button className="mt-4 bg-purple-600 px-4 py-2 font-bold text-white transition-all hover:bg-purple-800">
+                Update Additional Information
+              </button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default ViewProfile
+```
+
+Don't get overwhelmed. The code can look complicated, but it's not. Now, break down the essential components. Begin by importing the `useUser` hook from the Clerk SDK. Then the `Image` and `Link` components are imported from Next.js.
+
+The `ViewProfile` component renders the user profile. The initial step of using `useUser` is to destructure its essential functions:
+
+```jsx
+const { isLoaded, isSignedIn, user } = useUser()
+if (!isLoaded || !isSignedIn) {
+  return null
+}
+```
+
+In the previous code, the functions check if the page is not loaded or the user is not signed in. If not, then nothing is rendered. You can console the `user` object here:
+
+```jsx
+console.log(user)
+```
+
+This will return all the information available to Clerk for the particular user. Now that you have access to the `user` object, you can use it to render the profile values. For example, you can generate the user's profile image by simply accessing the `user.profileImageUrl` key. The first name of the user is stored inside the `user.firstName` key.
+
+The template here only uses these keys: `user.profileImageUrl`, `user.firstName`, `user.lastName`, `user.fullName`, `user.emailAddresses`, and `user.unsafeMetadata`. The custom user profile can be implemented using the `user` object.
+
+### Updating Current User Profile
+
+If you look at the previous code, you'll find that it also contains a link to another page for updating the profile information. Look at how you can edit user information from a custom profile update page.
+
+Create a new page with the name `additional.jsx` file inside the `pages` directory. The `react-hook-form` plug-in will be used here, though it's not necessary for a simple form like this. If your form is large and complex, `react-hook-form` is a great solution. This plug-in makes the binding of the input fields simple. You can look at React Hook Form's "Get Started" example to get a basic idea of how it works.
+
+Now take a look at the complete code and then break it into parts:
+
+```jsx
+import { useForm } from 'react-hook-form'
+import { useUser } from '@clerk/nextjs/dist/client'
+
+import { useRouter } from 'next/router'
+
+const AdditionalUpdate = () => {
+  const router = useRouter()
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = useForm()
+
+  const { isLoaded, isSignedIn, user } = useUser()
+
+  const onSubmit = (data) => {
+    try {
+      user.update({
+        firstName: data.firstName,
+        lastName: data.lastName,
+        unsafeMetadata: {
+          customName: data.customName,
+          customBio: data.customBio,
+        },
+      })
+
+      router.push('/view')
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  if (!isLoaded || !isSignedIn) {
+    return null
+  }
+
+  return (
+    <div className="mx-10">
+      <h1 className="py-4 text-2xl font-bold">Update Additional Information</h1>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <div>
+          <label className="mb-2 block text-sm font-bold text-gray-700" htmlFor="firstName">
+            First Name
+          </label>
+          <input
+            defaultValue={user.firstName}
+            {...register('firstName', {
+              required: true,
+            })}
+            className="focus:shadow-outline w-full appearance-none rounded border px-3 py-2 leading-tight text-gray-700 shadow focus:outline-none"
+          />
+          {errors.firstName && <span className="text-sm text-red-600">This field is required</span>}
+        </div>
+        <div>
+          <label className="mb-2 block text-sm font-bold text-gray-700" htmlFor="lastName">
+            Last Name
+          </label>
+          <input
+            defaultValue={user.lastName}
+            {...register('lastName', {
+              required: true,
+            })}
+            className="focus:shadow-outline w-full appearance-none rounded border px-3 py-2 leading-tight text-gray-700 shadow focus:outline-none"
+          />
+          {errors.lastName && <span className="text-sm text-red-600">This field is required</span>}
+        </div>
+        <div>
+          <label className="mb-2 block text-sm font-bold text-gray-700" htmlFor="customName">
+            Custom Name
+          </label>
+          <input
+            defaultValue={user.unsafeMetadata.customName}
+            {...register('customName', {
+              required: true,
+            })}
+            className="focus:shadow-outline w-full appearance-none rounded border px-3 py-2 leading-tight text-gray-700 shadow focus:outline-none"
+          />
+          {errors.customName && (
+            <span className="text-sm text-red-600">This field is required</span>
+          )}
+        </div>
+        <div className="mt-4">
+          <label className="mb-2 block text-sm font-bold text-gray-700" htmlFor="customBio">
+            Custom Bio
+          </label>
+          <textarea
+            rows={6}
+            defaultValue={user.unsafeMetadata.customBio}
+            {...register('customBio', {
+              required: true,
+            })}
+            className="focus:shadow-outline w-full appearance-none rounded border px-3 py-2 leading-tight text-gray-700 shadow focus:outline-none"
+          ></textarea>
+          {errors.customBio && <span className="text-sm text-red-600">This field is required</span>}
+        </div>
+
+        <button
+          type="submit"
+          className="my-4 bg-purple-500 px-8 py-2 text-lg font-semibold text-white transition-all hover:bg-purple-700"
+        >
+          Update
+        </button>
+      </form>
+    </div>
+  )
+}
+
+export default AdditionalUpdate
+```
+
+The `onSubmit` function is used for saving the updated information to the server. The `user.update` function is used for updating the values. A new object with the updated values is passed into this function:
+
+```jsx
+user.update({
+  firstName: data.firstName,
+  lastName: data.lastName,
+  unsafeMetadata: {
+    customName: data.customName,
+    customBio: data.customBio,
+  },
+})
+```
+
+As you can see from the previous object, the `firstName`, `lastName`, and two custom fields are being updated. The custom fields can be updated by updating the keys inside `unsafeMetadata`.
+
+The `user.update` function is wrapped inside a `try…catch` block. The page will be redirected to the custom user profile if the object is successfully updated.
+
+But how do you render the already existing values of the user? It's implemented using a similar approach to building a custom user profile. The `defaultValue` of the input field is filled with the corresponding `user` object value:
+
+```jsx
+<input
+  defaultValue={user.firstName}
+  {...register('firstName', {
+    required: true,
+  })}
+/>
+```
+
+The `register` method is a `react-hook-form` method that registers the input field with the value passed. For example, the previous code registers the value with `firstName`. You can access this value by accessing the `data.firstName` object.
+
+Finally, the complete template is placed inside `form` tags, where the `onSubmit` function looks like this: `onSubmit={handleSubmit(onSubmit)}`. The `handleSubmit` function is a `react-hook-form` function that handles submissions. It takes in another function as a parameter, and the `onSubmit` function is passed here.
+
+The last thing you need to do is add `www.gravatar.com` to your `next.config.js` file. When there is no profile picture set by the user for their profile, a Gravatar is shown. The image component in Next.js requires the hostnames to be added to the `next.config.js`. Your `next.config.js` file should look like this:
+
+```js
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  reactStrictMode: true,
+  swcMinify: true,
+  images: {
+    domains: ['images.clerk.com', 'www.gravatar.com'],
+  },
+}
+
+module.exports = nextConfig
+```
+
+Your user profile update page is now ready.
+
+You can access and check the page by visiting the localhost URL, `http://localhost:3000/additional`. You can also check this GitHub repo for all the code from this tutorial.
+
+The functionalities discussed earlier can also be implemented using the Clerk frontend API. The frontend API has endpoints like `https://clerk.example.com/v1/me` for updating the user profile from the frontend. You can check the frontend API documentation to learn more.
+
+## Conclusion
+
+Clerk is a great solution for quickly integrating authentication and custom user profiles into your application. It provides more than authentication; you can manage users, sessions, APIs, and more right from the Clerk dashboard.
+
+This article aims to show you how custom user profiles can be built using the Next.js Clerk SDK. You also saw how Clerk components could be used for rapid development.
+
+You can get started with Clerk for free for up to 500 monthly active users in your application. To create a Clerk account, visit their sign-up page.

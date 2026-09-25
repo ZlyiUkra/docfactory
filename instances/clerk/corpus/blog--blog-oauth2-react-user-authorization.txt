@@ -1,0 +1,847 @@
+# Implementing OAuth 2.0 to React for User Authorization
+# джерело: https://clerk.com/blog/oauth2-react-user-authorization
+# отримано: 2026-09-25
+
+In today's digital age, applications are used for everything. From social media to online banking, so much can be done online. However, as society's reliance on online services grows, so does the need to keep personal information secure. This is where OAuth 2.0 comes in.
+
+OAuth 2.0 is a popular protocol for both developers and users that lets you share certain information with a third-party app without providing a password. It's become the standard for many online businesses because it's secure and easy to use.
+
+In this article, you'll learn more about OAuth 2.0 and the different ways it can be used. You'll also learn how to implement OAuth 2.0 in a React application for user authorization.
+
+> Looking for a simpler way to add OAuth to React? Learn more about our React support with pre-built flows for Google, GitHub, and other providers.
+
+## Authentication and Authorization
+
+The first step in understanding OAuth 2.0 is understanding that while there are similarities between authentication and authorization, the two concepts are different.
+
+_Authentication_ is the process of verifying the identity of a user or system. Using a set of credentials, such as a username or password, authentication makes sure that users are who they say they are.
+
+Meanwhile, _authorization_ is the process of figuring out if an authenticated user has the right privileges to access certain resources or do certain things. It's mainly focused on figuring out what a user can do and what resources they can use based on their role or other characteristics.
+
+Authentication and authorization are both important parts of web security. They work together to make sure that only people who are allowed to can use a system or its resources.
+
+Now that you know how authentication and authorization work, let's dig into what OAuth 2.0 is.
+
+## What Is OAuth 2.0
+
+OAuth 2.0, also referred to as the OAuth 2.0 Authorization Framework, is an open standard for authorization that lets users give third-party applications limited access to their web server resources without giving the applications their private credentials. OAuth 2.0 gives users more control over their data; they can selectively grant access to the applications they want to use.
+
+For instance, OAuth 2.0 can be utilized to help users sign in to third-party applications with their Google account. This is often referred to as social login and is so common you've probably used it.
+
+Here is a brief explanation of what occurs when you use a social login:
+
+1. A Google sign-up button will pop up on the screen of the third-party app.
+2. When you click the button, you'll be taken to Google's authorization server, where you'll be asked to sign into your Google account (if you aren't currently).
+3. Google displays a consent screen after you log in, listing the permissions the third-party application is requesting (_ie_ your public information, such as email and name).
+4. Once you give your approval, Google will send you back to the app and provide it with an access token that will allow the app to access your public information.
+5. The third-party app can then use the access token to make API calls to Google on your behalf as long as the requests are within the scope of the permissions you granted.
+
+This five-step process defines the OAuth 2.0 flow or grant type. An OAuth 2.0 flow (_ie_ an OAuth 2.0 grant type) typically defines the steps involved in getting an access token, as seen here:
+
+Sample OAuth 2.0 flow, courtesy of Gideon Idoko
+
+By following this implicit OAuth 2.0 flow (more on this later), you can use a third-party application without giving it access to your Google credentials. You can also stop the application from using your account at any time.
+
+### Types of OAuth 2.0 Flows
+
+OAuth 2.0 identifies a number of different grant types, or OAuth 2.0 flows, that can be used to get an access token (which is used to access a protected resource). The OAuth 2.0 flow chosen usually depends on the client application, the protected resource, and the trust between the client and the server that does the authorization.
+
+The following are some of the most popular types of OAuth 2.0 flows:
+
+#### Authorization Code Flow
+
+In an authorization code flow, the resource owner is sent from the client application to the authorization server's authorization endpoint. Then the resource owner logs in and grants consent to the client, and is sent back to the client with an authorization code. Then the client exchanges this code for an access token.
+
+Web applications commonly use this flow; however, it can also be used by mobile apps using the Proof Key for Code Exchange (PKCE) technique.
+
+#### Implicit Flow with Form Post
+
+The implicit flow with form post is similar to the authorization code flow but is used for browser-based client applications, especially single-page apps. In this case, instead of trading an authorization code for an access token, the authorization server gives the access token directly to the client application, as in the example flow discussed previously.
+
+#### Resource Owner Password Flow
+
+In a resource owner password flow, the resource owner already knows the client and feels comfortable giving them access to their credentials. The owner of the resource gives the client their private credentials directly, which the client then trades for an access token.
+
+#### Client Credentials Flow
+
+In the case of a client credentials flow, the client uses their own credentials to access protected resources instead of using the credentials of the resource owner. Afterward, the authorization server gives the client an access token.
+
+### OAuth 2.0 Roles
+
+OAuth 2.0 roles define the entities in an OAuth 2.0 flow, and there are four major roles:
+
+1. **Resource owner:** The user who owns the protected resource that the client application needs to access. The resource owner may be a person, a system, or a device.
+2. **Resource server:** The server where the client wants to access a protected resource. The resource server is in charge of enforcing access controls on the protected resource.
+3. **Client:** The third-party app that wants to access the protected resource on behalf of the resource owner. The client could be a server-based, mobile, or web application.
+4. **Authorization server:** The server that verifies the resource owner's identity and gives access tokens to the client after the resource owner gives permission. The authorization server also checks the client's access tokens before letting them use protected resources.
+
+Now that you have a better understanding of OAuth 2.0 and the different roles and flows, let's implement OAuth 2.0 in a React application.
+
+## Implementing OAuth 2.0 in a React Application
+
+In this section, you'll learn how to implement an OAuth 2.0 authorization code flow in your React application. Additionally, you'll learn a less complicated approach to implementing user authorization with Clerk.
+
+All the code for this tutorial can be found in this GitHub repo.
+
+### Prerequisites
+
+Before you begin, you'll need Node.js version 16 or later installed on your machine. Node.js ships with npm, which you'll use to install the necessary packages.
+
+In addition, it's recommended that you have a basic knowledge of React and JavaScript to help you complete this tutorial with ease.
+
+#### OAuth 2.0 with the Standard Flow
+
+So far, you've only learned about the various OAuth 2.0 flow types. Here, you'll implement one.
+
+The authorization code flow is the most secure flow for web server applications, and this is how it works:
+
+Authorization code OAuth 2.0 flow courtesy of Gideon Idoko
+
+There are three main components: the authorization server, the frontend, and the backend. The final component is the resource (which is part of the backend) that only authorized users can access. In order for a user to be authorized, they must complete the authorization code flow:
+
+1. A user goes to the authorization server from the frontend to get an authorization code.
+2. The authorization code is then sent to the backend.
+3. The backend verifies the authorization code by getting tokens from the authorization server.
+4. The backend then authorizes the user to have access to the resource.
+
+In this scenario, the frontend is a React application, and the backend/resource is a Node.js application. Building the authorization server is beyond the scope of this article, so instead, you'll leverage Google OAuth 2.0.
+
+Alright, let's get started!
+
+### Get Your Google Client ID and Secret
+
+Interacting with the authorization server to get the authorization code is the first step in the OAuth 2.0 flow. You'll need a Google client ID and secret to be able to achieve that.
+
+Follow these steps to obtain the client ID and secret:
+
+1. Create a new Google Cloud project.
+
+   New Google Cloud project
+
+2. Name it. In this example, it's "standard-auth".
+
+3. Locate the **More Products** section on the sidebar, and click on **APIs & Services** and then the **OAuth consent screen**. Select **External** user type and click on **CREATE**. This will create a new OAuth consent screen. The OAuth consent screen tells users what app is asking for access to their information and what information the app can access:
+
+   Create a new OAuth consent screen
+
+4. Enter a name for your OAuth consent and the required email addresses; then click **SAVE AND CONTINUE**. At this point, you'll be shown the scope tab. Select the scopes indicated in the following image and click on the **Update** button to save it:
+
+   Select scopes
+
+5. Add the email that you want to use to test the consent screen in the **Test users** section:
+
+   Test users section
+
+6. Click on **APIs & Services** on the sidebar again, and then select **Credentials**. Click on the **CREATE CREDENTIALS** button and then select **OAuth client ID**:
+
+   CREATE CREDENTIALS
+
+7. Complete the form and click on **CREATE** when you're done:
+
+   OAuth Credentials screen
+
+   The redirect URI specifies where Google should navigate after the consent screen. This means that the redirect or callback has to be created on the React frontend.
+
+8. Copy your newly created client ID and secret, and save them somewhere safe. You'll need them later when requesting an authorization code and tokens.
+
+### Implement the Node.js Backend
+
+Now that you have your client ID and secret, it's time to implement the backend with Node.js and the Express framework.
+
+To do so, create a new directory (_ie_ `standard-auth`) to house the backend project:
+
+```bash
+mkdir standard-auth
+```
+
+Then create another directory inside it called `server`:
+
+```bash
+cd standard-auth && mkdir server
+```
+
+Initialize a new project within the `server` directory:
+
+```bash
+npm init esnext -y
+```
+
+And install the necessary packages by running this command:
+
+```bash
+npm install axios@1.3.4 cookie-parser@1.4.6 cors@2.8.5 dotenv@16.0.3 express@4.18.2 jsonwebtoken@9.0.0 query-string@8.1.0
+```
+
+Create a new `.env` file and add the following to it:
+
+```text
+GOOGLE_CLIENT_ID=<the client ID you created earlier>
+GOOGLE_CLIENT_SECRET=<the client secret you created earlier>
+REDIRECT_URL=http://localhost:3000/auth/callback
+CLIENT_URL=http://localhost:3000
+TOKEN_SECRET=<any random string>
+```
+
+Update the environment variables accordingly.
+
+Create a new `server.js` file, which is where the server-side code will be stored:
+
+```bash
+touch server.js
+```
+
+Add the following code to `server.js` to import all the necessary dependencies and create a config object:
+
+```javascript
+import 'dotenv/config'
+import express from 'express'
+import cors from 'cors'
+import axios from 'axios'
+import queryString from 'query-string'
+import jwt from 'jsonwebtoken'
+import cookieParser from 'cookie-parser'
+
+const config = {
+  clientId: process.env.GOOGLE_CLIENT_ID,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+  tokenUrl: 'https://oauth2.googleapis.com/token',
+  redirectUrl: process.env.REDIRECT_URL,
+  clientUrl: process.env.CLIENT_URL,
+  tokenSecret: process.env.TOKEN_SECRET,
+  tokenExpiration: 36000,
+  postUrl: 'https://jsonplaceholder.typicode.com/posts',
+}
+```
+
+Here, `config.authUrl` is a link to the OAuth consent screen. It is sent along with some query parameters to the frontend. Then a request is made to `config.tokenUrl`, along with some query parameters to verify an authorization code.
+
+You need to define the parameters for both URLs by adding the following code to `server.js`:
+
+```javascript
+const authParams = queryString.stringify({
+  client_id: config.clientId,
+  redirect_uri: config.redirectUrl,
+  response_type: 'code',
+  scope: 'openid profile email',
+  access_type: 'offline',
+  state: 'standard_oauth',
+  prompt: 'consent',
+})
+const getTokenParams = (code) =>
+  queryString.stringify({
+    client_id: config.clientId,
+    client_secret: config.clientSecret,
+    code,
+    grant_type: 'authorization_code',
+    redirect_uri: config.redirectUrl,
+  })
+```
+
+Initialize a new Express app:
+
+```javascript
+const app = express()
+```
+
+And add the following middlewares to resolve CORS, parse cookies, and verify authorization, respectively:
+
+```javascript
+// Resolve CORS
+app.use(
+  cors({
+    origin: [config.clientUrl],
+    credentials: true,
+  }),
+)
+
+// Parse Cookie
+app.use(cookieParser())
+
+// Verify auth
+const auth = (req, res, next) => {
+  try {
+    const token = req.cookies.token
+    if (!token) return res.status(401).json({ message: 'Unauthorized' })
+    jwt.verify(token, config.tokenSecret)
+    return next()
+  } catch (err) {
+    console.error('Error: ', err)
+    res.status(401).json({ message: 'Unauthorized' })
+  }
+}
+```
+
+At this point, you can start adding endpoints for different tasks.
+
+Add the following endpoint (`/auth/url`) to return the authorization URL to the frontend:
+
+```javascript
+app.get('/auth/url', (_, res) => {
+  res.json({
+    url: `${config.authUrl}?${authParams}`,
+  })
+})
+```
+
+Then add another endpoint (`/auth/token`) that will get an authorization code from the frontend and verify it:
+
+```javascript
+app.get('/auth/token', async (req, res) => {
+  const { code } = req.query
+  if (!code) return res.status(400).json({ message: 'Authorization code must be provided' })
+  try {
+    // Get all parameters needed to hit authorization server
+    const tokenParam = getTokenParams(code)
+    // Exchange authorization code for access token (id token is returned here too)
+    const {
+      data: { id_token },
+    } = await axios.post(`${config.tokenUrl}?${tokenParam}`)
+    if (!id_token) return res.status(400).json({ message: 'Auth error' })
+    // Get user info from id token
+    const { email, name, picture } = jwt.decode(id_token)
+    const user = { name, email, picture }
+    // Sign a new token
+    const token = jwt.sign({ user }, config.tokenSecret, {
+      expiresIn: config.tokenExpiration,
+    })
+    // Set cookies for user
+    res.cookie('token', token, {
+      maxAge: config.tokenExpiration,
+      httpOnly: true,
+    })
+    // You can choose to store user in a DB instead
+    res.json({
+      user,
+    })
+  } catch (err) {
+    console.error('Error: ', err)
+    res.status(500).json({ message: err.message || 'Server error' })
+  }
+})
+```
+
+If the authorization code is verified (_ie_ exchanged for an access token successfully), a new token is signed for the current user. The signed token will then be set as a cookie that will expire based on the `tokenExpiration` key in the `config` object.
+
+Add the `/auth/logged_in` endpoint to check the logged-in state of a user:
+
+```javascript
+app.get('/auth/logged_in', (req, res) => {
+  try {
+    // Get token from cookie
+    const token = req.cookies.token
+    if (!token) return res.json({ loggedIn: false })
+    const { user } = jwt.verify(token, config.tokenSecret)
+    const newToken = jwt.sign({ user }, config.tokenSecret, {
+      expiresIn: config.tokenExpiration,
+    })
+    // Reset token in cookie
+    res.cookie('token', newToken, {
+      maxAge: config.tokenExpiration,
+      httpOnly: true,
+    })
+    res.json({ loggedIn: true, user })
+  } catch (err) {
+    res.json({ loggedIn: false })
+  }
+})
+```
+
+Then add the `/auth/logout` endpoint to log out a user in session:
+
+```javascript
+app.post('/auth/logout', (_, res) => {
+  // clear cookie
+  res.clearCookie('token').json({ message: 'Logged out' })
+})
+```
+
+This will clear the `token` cookie, which invalidates a logged-in user's session.
+
+Finally, add the resource endpoint:
+
+```javascript
+app.get('/user/posts', auth, async (_, res) => {
+  try {
+    const { data } = await axios.get(config.postUrl)
+    res.json({ posts: data?.slice(0, 5) })
+  } catch (err) {
+    console.error('Error: ', err)
+  }
+})
+```
+
+This basically fetches posts (resources) and returns them as a response. The middleware for validating user authorization (`auth`) is used here because only authorized users are allowed to access this endpoint.
+
+Now you need to make the Express app listen on port `5000`:
+
+```javascript
+const PORT = process.env.PORT || 5000
+
+app.listen(PORT, () => console.log(`🚀 Server listening on port ${PORT}`))
+```
+
+### Implement the React Frontend
+
+The easiest way to start a React project is to use boilerplate code. Go to the `standard-auth` directory and bootstrap a new React project using Create React App:
+
+```bash
+npx create-react-app client
+```
+
+This will create a `client` directory with your React project inside it.
+
+Change to the `client` directory using `cd client` and install the following packages:
+
+```bash
+npm install axios@1.3.4 react-router-dom@6.9.0
+```
+
+Next, create a `.env` file in the root directory of your React project:
+
+```bash
+echo REACT_APP_SERVER_URL = http://localhost:5000 > .env
+```
+
+Open the `App.css` file in the `src` directory of your React project and add the following CSS code:
+
+```css
+.btn {
+  border-radius: 100rem;
+  padding: 12px 16px;
+  background: linear-gradient(170deg, #61dbfb, #2e849b) !important;
+  width: 10rem;
+  border: none;
+  color: white;
+  font-weight: 600;
+  margin: 1rem 0;
+  cursor: pointer;
+}
+```
+
+This will help style a button using the `btn` class.
+
+Update your `App.js` file to import the necessary method and hooks by adding the following code just above the `App` component:
+
+```javascript
+import { RouterProvider, createBrowserRouter, useNavigate } from 'react-router-dom'
+import axios from 'axios'
+import { useEffect, useRef, useState, createContext, useContext, useCallback } from 'react'
+
+// Ensures cookie is sent
+axios.defaults.withCredentials = true
+
+const serverUrl = process.env.REACT_APP_SERVER_URL
+```
+
+After updating the `App.js` file, you need to create a new React context to hold the logged-in and user states so they can be shared globally. To do so, add the following code just above the `App` component:
+
+```javascript
+const AuthContext = createContext()
+
+const AuthContextProvider = ({ children }) => {
+  const [loggedIn, setLoggedIn] = useState(null)
+  const [user, setUser] = useState(null)
+
+  const checkLoginState = useCallback(async () => {
+    try {
+      const {
+        data: { loggedIn: logged_in, user },
+      } = await axios.get(`${serverUrl}/auth/logged_in`)
+      setLoggedIn(logged_in)
+      user && setUser(user)
+    } catch (err) {
+      console.error(err)
+    }
+  }, [])
+
+  useEffect(() => {
+    checkLoginState()
+  }, [checkLoginState])
+
+  return (
+    <AuthContext.Provider value={{ loggedIn, checkLoginState, user }}>
+      {children}
+    </AuthContext.Provider>
+  )
+}
+```
+
+The `checkLoginState` function in this React context makes a call to your backend's `/auth/logged_in` endpoint. Here, it's called in a `useEffect` block to run every time the app initially renders.
+
+Next, add the following `Dashboard` component just before the `App` component:
+
+```javascript
+const Dashboard = () => {
+  const { user, loggedIn, checkLoginState } = useContext(AuthContext)
+  const [posts, setPosts] = useState([])
+  useEffect(() => {
+    ;(async () => {
+      if (loggedIn === true) {
+        try {
+          // Get posts from server
+          const {
+            data: { posts },
+          } = await axios.get(`${serverUrl}/user/posts`)
+          setPosts(posts)
+        } catch (err) {
+          console.error(err)
+        }
+      }
+    })()
+  }, [loggedIn])
+
+  const handleLogout = async () => {
+    try {
+      await axios.post(`${serverUrl}/auth/logout`)
+      // Check login state again
+      checkLoginState()
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  return (
+    <>
+      <h3>Dashboard</h3>
+      <button className="btn" onClick={handleLogout}>
+        Logout
+      </button>
+      <h4>{user?.name}</h4>
+      <br />
+      <p>{user?.email}</p>
+      <br />
+      <img src={user?.picture} alt={user?.name} />
+      <br />
+      <div>
+        {posts.map((post, idx) => (
+          <div>
+            <h5>{post?.title}</h5>
+            <p>{post?.body}</p>
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+```
+
+Later, you'll render this component conditional based on the logged-in state of a user.
+
+Add the `Login` component:
+
+```javascript
+const Login = () => {
+  const handleLogin = async () => {
+    try {
+      // Gets authentication url from backend server
+      const {
+        data: { url },
+      } = await axios.get(`${serverUrl}/auth/url`)
+      // Navigate to consent screen
+      window.location.assign(url)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+  return (
+    <>
+      <h3>Login to Dashboard</h3>
+      <button className="btn" onClick={handleLogin}>
+        Login
+      </button>
+    </>
+  )
+}
+```
+
+This component renders a button that takes the user to the OAuth consent screen you made earlier.
+
+Do you remember when you provided a callback URL when you created your client ID and secret? Because of this, you need to add a component to handle the callback:
+
+```javascript
+const Callback = () => {
+  const called = useRef(false)
+  const { checkLoginState, loggedIn } = useContext(AuthContext)
+  const navigate = useNavigate()
+  useEffect(() => {
+    ;(async () => {
+      if (loggedIn === false) {
+        try {
+          if (called.current) return // prevent rerender caused by StrictMode
+          called.current = true
+          const res = await axios.get(`${serverUrl}/auth/token${window.location.search}`)
+          console.log('response: ', res)
+          checkLoginState()
+          navigate('/')
+        } catch (err) {
+          console.error(err)
+          navigate('/')
+        }
+      } else if (loggedIn === true) {
+        navigate('/')
+      }
+    })()
+  }, [checkLoginState, loggedIn, navigate])
+  return <></>
+}
+```
+
+Create a router to define routes that render the components you created earlier:
+
+```javascript
+const Home = () => {
+  const { loggedIn } = useContext(AuthContext)
+  if (loggedIn === true) return <Dashboard />
+  if (loggedIn === false) return <Login />
+  return <></>
+}
+
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <Home />,
+  },
+  {
+    path: '/auth/callback', // google will redirect here
+    element: <Callback />,
+  },
+])
+```
+
+Finally, update the `App` component with the following code:
+
+```javascript
+function App() {
+  return (
+    <div className="App">
+      <header className="App-header">
+        <img src={logo} className="App-logo" alt="logo" />
+        <AuthContextProvider>
+          <RouterProvider router={router} />
+        </AuthContextProvider>
+      </header>
+    </div>
+  )
+}
+```
+
+Now, it's time to test out the implementation. Go to your `server` directory and run the following command to spin up the server:
+
+```bash
+node server.js
+```
+
+Open another terminal in your `client` directory and run this command to spin up your React server:
+
+```bash
+npm start
+```
+
+This command will open up http://localhost:3000 in your default browser. You should see something like this when the server is fully running:
+
+React home
+
+If you click on the login button, you'll be redirected to the OAuth consent screen:
+
+OAuth consent screen
+
+After you're redirected, you'll be logged in and authorized to access the post resources:
+
+Dashboard
+
+If you've followed along, you've officially implemented the OAuth 2.0 authorization code flow in React. Great work!
+
+## Authorization with Clerk
+
+As you can see, implementing OAuth 2.0 is complicated and time-consuming. This is where Clerk can help.
+
+Clerk is a service that takes care of user management. This means developers don't have to keep reinventing the wheel and can focus on what they do best. Moreover, Clerk can also take care of authorization.
+
+In this section, you'll see how Clerk can easily be used to replicate the implementation in the previous section.
+
+Before you proceed, you need to have a Clerk account. An account will give you access to both a publishable key and a secret key, as well as other customizations.
+
+If you don't already have an account, go to Clerk's sign-up page and create one:
+
+Clerk sign-up page
+
+After you've signed up, click on **Add application** to create a new project:
+
+Add a new application on Clerk
+
+Update the settings for your new application to match the settings shown here:
+
+New application settings
+
+When you're done, click on **FINISH**, and a new application will be created.
+
+Navigate to the **API Keys** section. Copy your publishable and secret keys, and save them somewhere safe:
+
+Clerk API Keys page
+
+### Implement the Node.js Backend
+
+For this Clerk example, you need to rewrite the Node.js implementation you did previously. Update your `.env` file in the `server` directory with the following:
+
+```text
+CLERK_SECRET_KEY=<the secret key you copied from your Clerk account>
+```
+
+Update the environment variable accordingly.
+
+Then run the following command in your `server` directory to install Clerk's Node.js SDK:
+
+```bash
+npm install @clerk/clerk-sdk-node@4.7.11
+```
+
+Update your `server.js` file with the following code:
+
+```javascript
+import 'dotenv/config'
+import express from 'express'
+import cors from 'cors'
+import axios from 'axios'
+import { ClerkExpressRequireAuth } from '@clerk/clerk-sdk-node'
+
+const config = {
+  postUrl: 'https://jsonplaceholder.typicode.com/posts',
+  clerkSecretKey: process.env.CLERK_SECRET_KEY, // Clerk automatically picks this from the env
+}
+
+const app = express()
+
+app.use(cors())
+
+app.get('/user/posts', ClerkExpressRequireAuth(), async (req, res) => {
+  console.log('REQUEST AUTH: ', req.auth)
+  try {
+    const { data } = await axios.get(config.postUrl)
+    res.json({ posts: data?.slice(0, 5) })
+  } catch (err) {
+    console.error('Error: ', err)
+  }
+})
+
+const PORT = process.env.PORT || 5000
+
+app.listen(PORT, () => console.log(`🚀 Server listening on port ${PORT}`))
+```
+
+Here, you're using the `ClerkExpressRequireAuth()` middleware to allow only authorized access to the `/user/posts/` route. It's that easy!
+
+### Implement the React Frontend
+
+To implement the React frontend, update the `.env` file in your `client` directory with the following:
+
+```text
+REACT_APP_CLERK_PUBLISHABLE_KEY=<the publishable key you copied from your Clerk account>
+REACT_APP_SERVER_URL = http://localhost:5000
+```
+
+Remember to update the environment variable accordingly.
+
+Then run the following command in the `client` directory to install the Clerk React SDK:
+
+```bash
+npm install @clerk/clerk-react@4.12.4
+```
+
+Update the `App.js` file inside the `src` directory in your `client` directory with the following code:
+
+```javascript
+import logo from './logo.svg'
+import './App.css'
+import {
+  ClerkProvider,
+  SignedIn,
+  SignedOut,
+  UserButton,
+  RedirectToSignIn,
+  useAuth,
+} from '@clerk/clerk-react'
+import { useState, useEffect } from 'react'
+import axios from 'axios'
+
+const clerkPubKey = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY
+const serverUrl = process.env.REACT_APP_SERVER_URL
+
+const Dashboard = () => {
+  const [posts, setPosts] = useState([])
+  const { getToken } = useAuth()
+
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const token = await getToken()
+        console.log('token: ', token)
+        // Get posts from server
+        const {
+          data: { posts },
+        } = await axios.get(`${serverUrl}/user/posts`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        setPosts(posts)
+      } catch (err) {
+        console.error(err)
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  return (
+    <>
+      <h3>Dashboard</h3>
+      <UserButton />
+      <div>
+        {posts.map((post, idx) => (
+          <div>
+            <h5>{post?.title}</h5>
+            <p>{post?.body}</p>
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
+function App() {
+  return (
+    // Don't forget to pass the publishableKey prop
+    <ClerkProvider publishableKey={clerkPubKey}>
+      <div className="App">
+        <header className="App-header">
+          <img src={logo} className="App-logo" alt="logo" />
+          <SignedIn>
+            <Dashboard />
+          </SignedIn>
+          <SignedOut>
+            <RedirectToSignIn />
+          </SignedOut>
+        </header>
+      </div>
+    </ClerkProvider>
+  )
+}
+
+export default App
+```
+
+Clerk's React SDK exports prebuilt components that are very useful. For instance, the `SignedIn` component renders its children (in this case, the `Dashboard` component) only when a user is signed in. The `SignedOut` component does the opposite.
+
+The `RedirectToSignIn` component redirects the users to a form where they can choose their authentication method. In this case, the users will be prompted to use their Google account or email address (you set this when creating your Clerk application).
+
+The `Dashboard` component makes a request to get post resources using the token provided by the `useAuth` hook from the Clerk SDK.
+
+If you go through the sign-up process, you'll end up with something like this:
+
+Dashboard after Clerk
+
+## Standard Authorization vs. Clerk
+
+As you can see, implementing a standard and secure authorization can be difficult, time-consuming, and in some cases, unnecessary. However, you can solve these issues with Clerk, which can help you implement user authentication and authorization with ease.
+
+Clerk does this by providing a range of authentication methods, including social login, password-based, and multifactor authentication. It also gives developers access to a user interface where they can control their applications' authentication and user management settings. Moreover, analytics and reporting capabilities are available to developers to help them keep track of user behavior.
+
+If you enjoyed this article, you might also like our guide to implementing session-based authentication with React and Express.

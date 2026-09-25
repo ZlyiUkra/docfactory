@@ -1,0 +1,84 @@
+# Postmortem: February 6, 2025 service outage
+# джерело: https://clerk.com/blog/postmortem-feb-6-2025-service-outage
+# отримано: 2026-09-25
+
+On Thursday, February 6th, 2025, a database query was directly executed to deprecate a feature for 3,700 customers, and an error in the query resulted in immediate downtime for those customers. In addition, the downtime triggered automatic retries elsewhere in our service which nearly overloaded our infrastructure, and created significant delays for our other customers for 4 minutes, until the retry backoff took effect.
+
+The incident lasted a total of 26 minutes, from the initial error to when the query was successfully reversed, and our systems returned to normal.
+
+As a provider of mission-critical infrastructure, we recognize that this outage is unacceptable. After a detailed review of the incident, we have determined several actions that can be taken to mitigate its recurrence. Some have already been implemented, while others will require more significant engineering efforts.
+
+In this postmortem, we discuss the timeline of events, and our complete set of remediations.
+
+## Timeline of events
+
+- **9:43 UTC** — Erroneous update query runs, setting `false` values to `"true"` within a jsonb field.
+- **9:45 UTC** — Engineers receive error alerts and begin investigating.
+- **9:47 UTC** — First customer outage reports arrive.
+- **9:48 UTC** — Internal incident is declared.
+- **9:50 UTC** — Status page updated (initially with an incorrect start time).
+- **10:00-10:04 UTC** — Engineers begin manually restoring service for customers while a bulk resolution is prepared.
+- **10:05 UTC** — Bulk update query is executed to correct the issue.
+- **10:06 UTC** — Bulk update query completes, service health is restored.
+- **10:10 UTC** — Status page updated to reflect restored status with accurate start/end times.
+
+## Remediations
+
+### Tuning automatic retry mechanisms
+
+One of our retry mechanisms was misconfigured to retry too aggressively on 500-class errors, which increased the blast radius of this event. An adjustment to the mechanism has already been applied, and an audit of other retry mechanisms is being conducted.
+
+### Further limiting direct database access
+
+Direct database access at Clerk is already significantly limited, with only a small subset of our most senior team having this permission. However, our processes indicated they should use their own judgement for when it is safe and appropriate to leverage the capability.
+
+Going forward, these team members will retain access, but our policies will dictate that it is only leveraged in true emergency situations, when downtime is actively impacting our customers. Other changes must be executed from within our change management tooling.
+
+### Mandating staged rollouts for all changes to critical infrastructure
+
+In 2024, Clerk’s platform team developed several new mechanisms for staged rollouts. As Clerk has grown, we have seen a healthy culture where our engineers _demand_ that staged rollout infrastructure is in place. In many cases, we’ve delayed launches to build more mechanisms where they are missing.
+
+In our review since the incident, we confirmed that the vast majority of changes to our critical systems leverage staged rollouts. However, when our team noted exceptions, it was always because the change was considered simple, including the one that led to this incident.
+
+In addition, our review revealed that different projects have approached building cohorts for staged rollouts differently.
+
+Going forward, we will be mandating that all changes to critical infrastructure require staged rollouts. We will also codify a process for building and ordering cohorts, which will incorporate the number of active users an application is supporting, and the subscription plan that applications are enrolled on.
+
+### Improving SDK resilience for session management service outages
+
+Clerk’s session management service is designed with a once-per-minute JWT refresh. We leverage this design in three critical areas of our service:
+
+- **Session revocation:** When a session is revoked administratively – either by the user or by an application administrator – the revocation is achieved by blocking new JWTs from being generated. Using a short-lived JWT means we can guarantee revocation within one minute.
+- **Abuse detection and prevention:** CAPTCHAs during sign up have become less effective recently as AI has gained the ability to solve them. At the same time, freemium and trial pricing have become commonplace. We’re engaged in a constant cat-and-mouse game with these attackers, and have found that our once-per-minute session refresh mechanism is a much more effective place to detect and prevent abuse than sign up.
+- **XSS mitigation:** JavaScript-accessible JWTs are an expectation of many application architectures, despite seeming antithetical to web security best practices on its face. The concern is that script-accessible JWTs can be exfiltrated during XSS attacks, which would allow continued use of the JWT even after the XSS is patched. Clerk can safely allow script access because our JWTs expire every minute, which ensures that successful exfiltration would not meaningfully extend an XSS attack.
+
+In normal operation, our once-per-minute refresh is an implementation detail that most of our customers are not aware of. However, in the event of an outage like Thursday’s, it means our customers have a strong uptime dependency on Clerk.
+
+Going forward, we would like to eliminate as much of this strong uptime dependency as possible. We believe we can update our SDKs so that if our session management service goes down, existing sessions are maintained throughout the outage, while new session creation, session revocation, abuse prevention, and XSS mitigation are not operational. This would result in future outages having less impact on our customers.
+
+In the interest of full disclosure, we want to highlight that this is not a simple adjustment and will take time to develop. As a simple example of a challenge, we will need to ensure the `/.well-known/jwks.json` endpoint is hardened to avoid the downtime, and/or we need provide a mechanism to self-host the JWT public key. Regardless of the effort it takes, we are placing high priority on this project.
+
+### Completely decoupling session management from user management
+
+At a high level, Clerk operates two services: user management, which covers sign up, sign in, and user profiles, and session management, which only handles sessions. These two systems started tightly coupled, but have naturally decoupled with time as they represent significantly different workloads:
+
+- User management requires relatively low read and write, but it has many moving pieces. There are many different settings, and our customers use thousands of different permutations of those settings. In addition, we’re frequently introducing new settings and modifying existing settings as authentication evolves.
+- Session management is the opposite. It’s extremely high read, low write, and has relatively few moving pieces.
+
+In this incident, an error in our user management service brought down our session management service.
+
+Going forward, we plan to decouple session management from user management as much as possible. They will still be tightly _integrated_, since sign up and sign in lead to the creation of a session, but downtime in user management should not lead downtime in session management.
+
+### Eliminating the use of JSON column types for structured and typed data
+
+Some application settings are stored in JSON column types. These columns have been used primarily for convenience, with types being enforced at our compute layer. In this incident, strict typing was not enforced for the query because it was executed directly against the database, which led to the outage.
+
+Going forward, in addition to further limiting direct database access, we are ceasing additional use of JSON column types for structured and typed data. Instead, we will use strongly typed database columns, which would have prevented the erroneous query from being executed. Over time, we will also migrate and deprecate our existing usage of JSON column types.
+
+## Looking Ahead
+
+We regret the impact this incident had on our customers. At Clerk, reliability is a top priority, and this postmortem reflects our commitment to transparency and continuous improvement.
+
+Some fixes are already in place, while others—like enhanced SDK resilience and service decoupling—are being prioritized to prevent future incidents and strengthen our platform.
+
+For any questions, please contact support

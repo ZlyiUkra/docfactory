@@ -1,0 +1,102 @@
+# Postmortem: Database Incident (September 14–18, 2025)
+# джерело: https://clerk.com/blog/2025-09-18-database-incident-postmortem
+# отримано: 2026-09-25
+
+Between September 14th and September 18th, 2025, we experienced a database incident that intermittently impacted customer traffic with significant request failures and latency spikes. The issue originated from an automatic database upgrade by our cloud provider, which exposed an interaction with our connection pooling configuration. This document explains the timeline, root cause, contributing factors, and our mitigation of the issue.
+
+## Timeline
+
+- **Sep 14, 05:30 UTC** – Cloud provider auto-upgrades our database (minor version).
+- **Sep 14, shortly after** – Internal monitoring detects an increased but still acceptable database load. No impact on latency is observed.
+- **Sep 15, 13:08 UTC** – Internal monitoring alerts about significant request failures and increased latency. The incident begins.
+- **Sep 15–18** – Engineering teams continually investigate, optimize queries, and tune database parameters.
+- **Sep 15, 14:09 UTC** – Request latency normalizes but our database remains unhealthy.
+- **Sep 15, 14:58-15:16 UTC** – Significant request failures and latency spikes.
+- **Sept 17, 00:22 UTC** – A deploy including a new query optimization appears to eliminate spikes in database load.
+- **Sept 17, 01:00 UTC** – Spikes in database load reappear. However, engineers note that the remaining spikes now appear periodic, occurring roughly every 15 minutes. During these periodic spikes, session management was functional due to the session endpoints higher tolerance for latency, as well as the retry mechanism in our SDKs.
+- **Sep 17, 07:15-08:10 UTC** - Engineering teams perform a manual minor version upgrade and increase database capacity. User sessions remain active throughout. For a period of 3-6 minutes, new sign ins, sign ups, and other account management activities face failures. The database health improves notably and latency spikes again appear to be eliminated.
+- **Sep 17, 15:07-15:14 UTC** - Significant request failures and latency spikes. Engineers again observe periodic spikes in database load every 15 minutes.
+- **Sep 18, 03:19 UTC** – Root cause identified, and a fix applied to database connection pooling configuration. After release, database load immediately dropped below pre-incident levels. Latency spikes resolved and stability restored.
+
+## Root Cause
+
+The incident was triggered by an automatic minor version upgrade of our database (Postgres) performed by our cloud provider on September 14th. While this was a minor upgrade, it contained a significant internal change to how Postgres handled connection locks.
+
+### 1. Postgres change to connection lock handling
+
+- In versions prior to the upgrade, Postgres' lock manager granted new connections with O(n²) time complexity, meaning each connection request slowed as more connections were processed.
+- This inefficiency inadvertently acted as a natural rate limiter, spacing out how quickly new client connections were created.
+- After the upgrade, this bottleneck was removed and connection granting was optimized (commit), meaning large batches of new connections could be granted nearly instantaneously.
+
+### 2. Our Cloud Run and connection pooling configuration
+
+- Our Cloud Run configuration leverages many containers. During a deploy, these containers spin up sequentially, within about a minute.
+- Our connection pooler in each Cloud Run container was configured with a static maximum connection lifetime of 15 minutes, which causes each connection to be closed and replaced every 15 minutes.
+- Under the old Postgres behavior, new connections were created slowly enough that these expirations were naturally spread out over time.
+- Under the new Postgres behavior, all expired connections were recreated simultaneously, leading to synchronized connection recycling.
+- Unknowingly, our database was in a new state: Synchronized connection recycling of a single Cloud Run container could be managed by our database, but synchronized connection recycling across all Cloud Run containers creates unmanageable load.
+
+### 3. Back pressure causes synchronization of connection recycling across all Cloud Run containers
+
+- At deploy time, each Cloud Run container start is sufficiently spread out such that the load from each connection recycling is unnoticeable.
+- Over time, any back pressure in Clerk's database causes the recycling events of each container to synchronize through a "bus bunching" effect. Once the busses are bunched, there is a "thundering herd" effect every 15 minutes as each containers refreshes its connections all at once.
+- As this effect continues to compound every 15 minutes, more connections begin cycling simultaneously, eventually exhausting the pool of active connections and leading to customer-facing latency spikes.
+
+## Mitigations During the Incident
+
+- **Query optimization**: We optimized several expensive queries, permanently reducing baseline database load. Additionally, we refined several critical indexes and carried out a comprehensive re-indexing, resulting in reduced database overhead.
+- **Traffic shaping**: To protect stability, we temporarily applied more aggressive blocking of abusive traffic. While effective, this may have inadvertently resulted in a small number of legitimate requests being rejected (HTTP 429).
+- **Cloud provider engagement**: We explored rolling back the auto-upgrade, but our provider was unwilling to revert the database version.
+
+## Why Diagnosis Was Difficult
+
+Although the root cause may seem straightforward in hindsight, several factors combined to make identification challenging:
+
+### 1. Metrics resolution hid the cycling pattern
+
+- Our database connection metrics were sampled at 60-second intervals, but the connection recycling occurred within seconds every 15 minutes.
+- This meant our dashboards showed only _occasional spikes_ in active connections, rather than the synchronized, repeating pattern.
+- Because the spikes appeared sporadic rather than rhythmic, we initially treated them as a symptom of underlying load rather than the initiating cause.
+
+### 2. Overlapping events confused the timeline
+
+- During the same window, we were mitigating a large volume of fraudulent sign ups targeting some of our customers.
+- This attack created its own periodic load surges every \~10 minutes, which overlapped with the database's 15-minute connection cycling.
+- The similar periods led us to initially suspect the attack was the primary driver of latency spikes, delaying deeper focus on the database layer.
+
+### 3. Confounding jobs and queries
+
+- Our database also runs several recurring background jobs and scheduled queries.
+- Some of these happen on 10, 15, and 30-minute intervals, which coincidentally aligned with the timing of observed spikes.
+- These jobs, while legitimate contributors to load, became false positives during our investigation, diverting attention and masking the real synchronization issue.
+
+### 4. Mixed symptoms across APIs
+
+- Latency spikes were seen in our Frontend API but not consistently in our Backend API, which has the same connection pooling logic.
+- This discrepancy made the issue harder to triangulate, as it suggested selective load / query inefficiency rather than a systemic connection pooling effect.
+- Looking back, we believe that we did not observe this with our Backend API, due to the fact that it simply just manages a lot less connections (and the Database could handle the cycling load, even if they all became synchronized).
+
+### 5. Release freeze effect not obvious
+
+- Ironically, we imposed a release freeze (intended to minimize risk during the incident) unintentionally made the issue worse, since normal deployments naturally stagger the connection creation across machines as the fleet of machines rolled out.
+- Because this wasn't an intuitive connection, it obscured one of the clearest signals that would have otherwise pointed to connection synchronization.
+
+## Resolution and current status
+
+- We adjusted our connection pooling strategy to include a jitter to prevent synchronized cycling.
+- Since the fix, the database has remained stable and is performing better than before the upgrade, due to the performance improvements that were implemented during the incident.
+
+## Additional remediations and closing
+
+Of course, we are incredibly sorry for the downtime this incident caused, but we also know that apologies are not enough. While we are excited this incident is behind us, it's important to stress that we're not moving on from infrastructure improvements. Incidents like this are unacceptable, and we recognize Clerk has faced too many recently.
+
+Since our June 26 incident, our team has been urgently focused on improving our resilience. We've shipped improvements every single week, and internally, we have more confidence in our reliability, and our reliability roadmap, than ever before.
+
+Beyond the narrow resolution to this issue, we have additional remediation work planned. Most notably:
+
+- **Evaluating other database providers:** Over the past month, we have already been evaluating database solutions that offer more control over upgrades and downgrades, and improved performance compared to our current provider.
+- **Additional service isolation:** Our ability to keep sessions operational during much of this incident was a direct result of our remediations following the June 26 incident. Now, we want to extend that concept further. For example, isolating Sign Up and Sign In infrastructure from other parts of the system.
+- **Continued database optimizations:** Throughout this incident, we implemented a handful of new-to-Clerk optimization techniques to our most costly queries. We'll continue marching down the list to further improve our database performance.
+- **Investigating solutions for tenant isolation:** Throughout this incident, we received many requests to isolate one application from others, and we recognize the potential benefits of that approach. We are encouraged by many modern approaches to sharding and multi-tenant infrastructure, and will continue evaluating solutions. In full disclosure, this is likely on a longer time horizon than the other improvements.
+
+We know every incident carries a cost for you and your users, and we take that responsibility seriously. Our focus is on earning back your trust through reliability, not words, and to ensure that Clerk is an infrastructure partner you can always count on.

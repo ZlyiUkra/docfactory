@@ -1,0 +1,301 @@
+# Multi-tenant analytics with Tinybird and Clerk
+# джерело: https://clerk.com/blog/tinybird-and-clerk
+# отримано: 2026-09-25
+
+When you run analytics for internal use, you often don't think much about role-based access control or multi-tenancy. You just connect a BI tool to your database or data warehouse and start running some queries.
+
+But when you're serving analytics to your end users in your product or application, then you have to think about multi-tenancy, rate limiting, and access control down to the database level.
+
+In traditional databases, this can be pretty challenging. It's why products like Clerk are popular; they abstract the complexities of auth and access control, typically to the transactional database that stores information about users, their IDs, and their metadata.
+
+Adding real-time, user-facing analytics to the mix presents some additional challenges. Using Clerk JWT templates and Tinybird real-time analytics APIs with row-level security policies addresses those complexities.
+
+Here's what you'll learn in this post:
+
+1. How Tinybird APIs are secured using static tokens or JWTs
+2. How to use the Clerk JWT template for Tinybird
+3. How to modify Tinybird API definitions to support Clerk JWTs
+4. How to create a React context provider for auth to Tinybird APIs
+5. How to update Clerk Middleware to set the token
+
+> Everything covered below can be gleaned from the open source Tinybird Clerk JWT template.
+
+## Getting familiar with Tinybird
+
+Tinybird is an analytics backend for your application. You use Tinybird to build real-time data APIs over large amounts of data such as logs, event streams, or other time series data. Tinybird gives you the tooling and infrastructure to store, query, and serve analytics and metrics to end users of your application without having to fuss with the complexities of a real-time analytics database.
+
+And when it comes to authentication and multi-tenancy, Tinybird offers some nice perks: Every API you build with Tinybird can be secured by either static tokens or JSON Web Tokens (JWTs). Within those tokens, you can define security policies that limit access based on user metadata.
+
+For example, here are three Tinybird JWTs with claims that limit access at the user, team, or organization level. You'll notice that these look almost identical, but with the `fixed_params` object modified to support the security policy we want to implement.
+
+**User level**
+
+```json
+{
+  "workspace_id": "31048b76-52e8-497b-90a4-0c6a5513920d",
+  "name": "user_123_jwt",
+  "exp": 123123123123,
+  "scopes": [
+    {
+      "type": "PIPE:READ",
+      "resource": "my_api_endpoint",
+      "fixed_params": {
+        "user_id": "user123"
+      }
+    }
+  ]
+}
+```
+
+**Team level**
+
+```json
+{
+  "workspace_id": "31048b76-52e8-497b-90a4-0c6a5513920d",
+  "name": "team_abc_jwt",
+  "exp": 123123123123,
+  "scopes": [
+    {
+      "type": "PIPE:READ",
+      "resource": "my_api_endpoint",
+      "fixed_params": {
+        "team_id": "team_abc"
+      }
+    }
+  ]
+}
+```
+
+**Organization level**
+
+```json
+{
+  "workspace_id": "31048b76-52e8-497b-90a4-0c6a5513920d",
+  "name": "org_acme_jwt",
+  "exp": 123123123123,
+  "scopes": [
+    {
+      "type": "PIPE:READ",
+      "resource": "my_api_endpoint",
+      "fixed_params": {
+        "organization_id": "org_acme"
+      }
+    }
+  ]
+}
+```
+
+Tinybird APIs are defined using SQL queries (called "pipes" in Tinybird parlance), extended with a Jinja-like templating functions to add advanced logic or query parameters.
+
+For example, consider the pipe called `my_api_endpoint` referenced in the above JWTs, which might look this:
+
+```sql
+SELECT
+    toStartOfDay(timestamp) AS day,
+    sum(some_number) AS total
+FROM app_events
+WHERE 1
+{% if defined(user_id) %}
+    AND user_id = {{String(user_id)}}
+{% elif defined(team_id) %}
+    AND team_id = {{String(team_id)}}
+{% else %}
+    AND organization_id = {{String(organization_id)}}
+{% end %}
+```
+
+This pipe uses Tinybird's templating language to define three query parameters: `user_id`, `team_id`, and `organization_id` for the API endpoint. When supplied in the request, those parameters will trigger the query to filter.
+
+For example, the following request would trigger a query against the database filtering only by events belonging to `user123` and return the response:
+
+```bash
+curl -d https://api.tinybird.co/v0/pipes/my_api_endpoint?user_id=user123&token=<static_token>
+```
+
+Of course, this is not a particularly secure implementation. We're passing both the `user_id` and the static token in the URL. If we were making a request directly from the browser, this would be insecure; the token would be compromised, and the `user_id` could easily be modified to access another user's data.
+
+JWTs solve this for us. They're not stored server-side, so they're less likely to leak. They're validated by the backend service using a secret key and contain an embedded expiration time. The JWT contains data about the requesting party and is passed to the server in the request headers. Nothing gets exposed, the data returned is properly scoped, everybody wins.
+
+Let's see how to use Clerk's JWT templates to secure a Tinybird API.
+
+## Using Clerk JWTs to secure Tinybird endpoints
+
+Everything I share below references the Tinybird Clerk JWT template, which includes an open-source code example, video tutorial, and live demo. Feel free to go straight there and follow the guide, or follow along here.
+
+### Setting up the Clerk JWT template
+
+Go to the Clerk dashboard, and select **Configure** > **JWT Template**. Select the **Tinybird JWT template**.
+
+The Create Jwt Template modal in the Clerk dashboard
+
+Tinybird JWTs must be signed using the admin token for the workspace where the Tinybird resources are hosted. In Clerk, make sure to enable **Custom signing key** with **HS256** signing algorithm, and paste in the Workspace admin token:
+
+A screenshot of the Tinybird Clerk JWT template in the Clerk dashboard
+
+You can also set an optional token lifetime. Tinybird's API endpoints will return a 403 if requested with an expired token.
+
+Modify the claims as needed for your application:
+
+```json
+{
+  "name": "frontend_jwt",
+  "scopes": [
+    {
+      "type": "PIPES:READ",
+      "resource": "<YOUR-TINYBIRD-PIPE-NAME>",
+      "fixed_params": {
+        "organization_id": "{{org.slug}}",
+        "user_id": "{{user.id}}"
+      }
+    }
+  ],
+  "workspace_id": "<YOUR-TINYBIRD-WORKSPACE-ID>"
+}
+```
+
+The example above uses the Clerk shortcodes `org.slug` and `user.id` to reference the unique identifiers for the organization and user stored in Clerk. These get passed to the Tinybird resources secured by the JWT.
+
+### Bonus: Rate limiting
+
+Rate limiting can be an important part of multi-tenant architectures to prevent one or a few users from monopolizing resources. Tinybird JWTs support rate limiting through a `limits` claim:
+
+```json
+{
+    "limits": {
+        "rps": 10
+    },
+    …
+}
+```
+
+When you specify a `limits.rps` field in the payload of the JWT, Tinybird uses the name specified in the payload of the JWT to track the number of requests being made. If the number of requests per second goes beyond the limit, Tinybird starts rejecting new requests and returns an "HTTP 429 Too Many Requests" error.
+
+### Configuring your Tinybird APIs
+
+The only thing you need to do is double-check (or update) your Tinybird APIs and ensure logic exists to filter on the passed parameters. This logic is customizable so you can handle requests in a way that makes sense for your use case. In a multi-tenant architecture, it often makes sense to filter by default at the organization level, making an `organization_id` required in the endpoint, then optionally adding user-level filtering for resources where a user might need to see their specific data:
+
+```sql
+SELECT * FROM table
+WHERE organization_id = {{String(organization_id, required=True)}}
+{% if defined(user_id) %}
+    AND user_id = {{UUID(user_id)}}
+{% end %}
+```
+
+## Configuring a frontend-only app for multi-tenant analytics
+
+Once you've created the JWT template in Clerk and implemented the filtering logic in your Tinybird APIs, it's relatively simple to implement the logic in your application. The example below is for a TypeScript/Next.js app, but can easily be extended to any other language or framework.
+
+### Basic project structure
+
+The core components of this implementation in Next.js are:
+
+- `TinybirdProvider.tsx` - A React context provider that manages the Tinybird JWT token
+- `page.tsx` - The main page component that demonstrates token usage
+
+### TinybirdProvider component
+
+The `TinybirdProvider` component is a React context provider that manages the authentication token needed to access Tinybird's API endpoints. This provider automatically fetches and stores the user's token (provided by Clerk on sign-in) in its state and makes it available to any component in the app through the `useTinybirdToken` hook (by using a hook, we can avoid prop drilling across components).
+
+filename: src/app/providers/TinybirdProvider.tsx
+```tsx
+'use client'
+
+import { useSession } from '@clerk/nextjs'
+import { createContext, useContext, useState, ReactNode, useEffect } from 'react'
+
+interface TinybirdContextType {
+  token: string
+  setToken: (token: string) => void
+}
+
+const TinybirdContext = createContext<TinybirdContextType | undefined>(undefined)
+
+export function TinybirdProvider({ children }: { children: ReactNode }) {
+  const [token, setToken] = useState('')
+  const { session } = useSession()
+
+  useEffect(() => {
+    if (!session) return
+
+    async function populateToken() {
+      const token = await session?.getToken({ template: 'tinybird' })
+      if (!token) return
+      setToken(token)
+    }
+
+    populateToken()
+  }, [session])
+
+  return <TinybirdContext.Provider value={{ token, setToken }}>{children}</TinybirdContext.Provider>
+}
+
+export function useTinybirdToken() {
+  const context = useContext(TinybirdContext)
+  if (context === undefined) {
+    throw new Error('useTinybirdToken must be used within a TinybirdProvider')
+  }
+  return context
+}
+```
+
+The provider automatically fetches the token when a user signs in and updates it when the session changes.
+
+### Using the token in your application
+
+To use the Tinybird token in your application, simply wrap your app with the `TinybirdProvider` and use the `useTinybirdToken` hook where needed:
+
+filename: src/app/layout.tsx
+```tsx
+import { TinybirdProvider } from './providers/TinybirdProvider'
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        <ClerkProvider>
+          <TinybirdProvider>{children}</TinybirdProvider>
+        </ClerkProvider>
+      </body>
+    </html>
+  )
+}
+```
+
+In any component that needs to make Tinybird API calls, use the `useTinybirdToken` hook to get the token and make requests:
+
+filename: src/app/components/MyComponent.tsx
+```tsx
+import { useTinybirdToken } from './providers/TinybirdProvider'
+
+function MyComponent() {
+  const { token } = useTinybirdToken()
+
+  const fetchData = async () => {
+    const response = await fetch('https://api.tinybird.co/v0/pipes/your_pipe.json', {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+    // Handle response
+  }
+
+  return (
+    // Your component JSX
+  )
+}
+```
+
+This implementation provides a clean, efficient way to handle multi-tenant analytics with Clerk and Tinybird, while keeping the authentication logic on the client side. The provider automatically manages the token, and components can easily access it through the `useTinybirdToken` hook.
+
+## Demo
+
+Want to see how this works in practice? Check out this live Clerk JWT demo for a Tinybird API. If you want to check out the code, you can find it in this repository.
+
+View video
+
+## Get started
+
+Building real-time analytics features into your application is pretty simple with Clerk and Tinybird. Just create a JWT template, add filtering parameters to your Tinybird APIs, and use Clerk middleware to set the token header in the request.
+
+If you'd like to build a user-facing analytics MVP, sign up for Tinybird (it's free, no time limit) and follow the quick start. You'll be able to build your first API in a few minutes and have it secured in your application just as quickly using Clerk.

@@ -1,0 +1,83 @@
+# Just-in-time API requests are replacing webhooks
+# джерело: https://clerk.com/blog/just-in-time-api-requests-are-replacing-webhooks
+# отримано: 2026-09-25
+
+Clerk is building the next-generation of Authentication and User Management APIs. We offer webhooks so developers can sync user records in their own database, but the majority (70%) don't use them. Instead, they simply don't have a users table at all.
+
+The ability to function without webhooks was a baseline technical requirement for Clerk. We knew our developer experience must be easier than our open source competitors, and we felt (and still feel!) this would be impossible if we required using webhooks. The overhead of spinning up a listener process in development is just too significant.
+
+Ultimately, there is only one way a service like Clerk can eliminate the need for webhooks: **ask developers to request data in real-time instead of syncing data as it changes.**
+
+This isn't a novel idea, but it's rarely considered viable because of two overwhelming developer concerns:
+
+1. **Reliability** - If Clerk's API has downtime, many developers are more comfortable having a copy of user data in their own database. The idea is that they can better degrade the experience with stale data than having no data at all.
+2. **Latency** - Loading time is a significant concern for everything from UX to Google Search rankings. If a page cannot be rendered until an external API request completes, overall loading time can be much slower.
+
+Reliability concerns are the number one reason customers use our webhooks today. It's a legitimate concern and a prudent mitigation, but it does take significant engineering resources to consume the webhooks and design a failover to the stale-data experience. We expect that over time – as Clerk grows more stable and mature – the percent of customers who opt for webhooks will decline.
+
+On the other hand, latency concerns are a problem we've been able to address head-on, with a little help from cutting-edge technology and the latest software development trends:
+
+## React moved data-loading to frontend, so we moved our API to the frontend
+
+A major reason real-time API requests raise latency concerns is because APIs are usually only requested from the backend. As a result, two hops are required before data can be accessed:
+
+Just In Time Api Requests Are Replacing Webhooks setup guide
+
+When the presentation layer was composed into HTML on the server – as it was in MVC frameworks like Rails – it made a lot of sense for APIs to only be exposed to the backend.
+
+But now this paradigm has changed: **with React, data is loaded and composed directly from the frontend\*:**
+
+Just In Time Api Requests Are Replacing Webhooks setup guide
+
+Eliminating this extra hop ensures that Clerk data can load just as quickly as the developer's own data, as if it lived directly in the developer's database.
+
+_\*: To be more precise, data is loaded and composed directly from React, which may be running in the frontend or the backend with SSR (server-side rendering). If SSR is being used, accessing Clerk's API directly will reduce development overhead, but will not have significant impact on latency._
+
+## Edge computing reduced the latency of simple plumbing
+
+Although we'd love to make Clerk's entire API accessible from the frontend, it simply is not possible to do so. In general, we can only return endpoints that the current user has permission to access. This is usually limited to:
+
+- Their own profile information
+- Information about the organizations they belong to
+
+For other data – like information about other users – we rely on the developer to authorize the API request on their backend first.
+
+In the past, this authorization step very clearly added a hop. But with the recent rise of distributed "edge" computing, the latency cost of this hop has been drastically reduced.
+
+Since edge compute runs close to users, this authorization hop **can readily be executed in under 15ms**, barely impacting latency!
+
+We already see a significant percentage of our customers leveraging the low latency cost of authorization on the edge, and it's growing as edge resources become more more accessible and widespread. In the past few years (and months!), we've seen significant strides from:
+
+- Next.js launching Edge Middleware
+- Remix loaders and actions running natively on the edge
+- Netlify Edge making it easy to run arbitrary code on the edge
+- Cloudflare Workers making it easy to run arbitrary code on the edge
+
+## JWTs enabled sub-millisecond session authentication
+
+Although we've primarily discussed user management so far, a unique differentiator of Clerk is that we also manage sessions. We _love_ managing sessions because it helps us build better developer experiences. In particular, knowing which user is currently signed in enables us to offer:
+
+- `useUser()` to retrieve the current user's profile information
+- `<UserProfile/>` to render a self-serve user profile for the current user
+
+While managing sessions is helpful for our own product, it's essential that we're also able to inform our customer's backend which user is currently signed in - and quickly!
+
+If developers made just-in-time requests to Clerk's API for session authentication, it would add significant latency to every one of their endpoints. This is unacceptable, so we needed to find another way.
+
+Enter JWTs (JSON Web Tokens): cryptographically signed JSON objects that enable us to secure pass the current user's ID to the developer's backend. To verify the user ID, developers simply need to verify the JWT's signature with their public key (for convenience, we've abstracted this logic away in our SDKs).
+
+Incredibly, JWTs allow developers to perform session authentication in **under 1ms**, so latency is not a concern.
+
+But our favorite part about JWT authentication is that it's not just limited to the developer's backend: **Clerk can also generate custom JWTs to integrate with third-party services!** We offer prebuilt "JWT templates" for several database solutions, including Supabase, Hasura, and more.
+
+If a service is not listed among our prebuilt JWT templates, developers can build completely custom JWTs using our editor:
+
+Just In Time Api Requests Are Replacing Webhooks setup guide
+
+## In summary
+
+While webhooks will always have their place, Clerk has demonstrated that developers are willing and eager to adopt low-latency webhook alternatives _today_.
+
+The strategies outlined here are agnostic, and we believe it's inevitable that more APIs will become frontend accessible and leverage JWTs in the future. We're confident that webhook alternatives will lead to faster API integrations and happier developers, and we're thrilled to sharing our findings.
+
+_Interested in problems like these? Follow us on X for more day-to-day insights, or check out our openings to help us solve them!_

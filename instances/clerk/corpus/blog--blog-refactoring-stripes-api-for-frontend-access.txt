@@ -1,0 +1,86 @@
+# Refactoring Stripe's API for frontend access
+# джерело: https://clerk.com/blog/refactoring-stripes-api-for-frontend-access
+# отримано: 2026-09-25
+
+Today we launched `use-stripe-subscription`, a package that makes it easier for frontend developers to implement Stripe billing. It features:
+
+- `useSubscription()` - a React hook that returns:
+  - `products` - an array of Product objects available for subscription
+  - `redirectToCheckout()` - Redirects to Stripe Checkout to purchase a subscription to one of the `products`
+  - `subscription` - the current customer’s active Subscription object, if it exists
+  - `redirectToCustomerPortal()` - Redirects to Stripe Billing’s Customer Portal so the customer can manage their subscription
+- `<Gate>` - a component that selectively renders children based on the customer’s subscription
+
+`use-stripe-subscription` is open-source and was built to work with any authentication and user management solution, not just Clerk.
+
+## Why did Clerk build this?
+
+Clerk is a Customer Identity _Platform._ We don’t just handle authentication, we also make it easier to sync and leverage customer identity with developers’ favorite tools.
+
+`use-stripe-subscription` leverages customer identity to add a new authorization layer to Stripe’s API. By default, Stripe’s API is only designed for backend access, since it relies on a secret key for authorization that cannot be exposed to the frontend.
+
+We added a per-customer authorization layer, which allows frontend developers to securely retrieve subscription information about the signed-in customer, without exposing the secret key to the frontend.
+
+This sounds fancier than it is: most teams using Stripe are effectively building this in-house. We just packaged the solution to save in-house teams from reinventing the wheel.
+
+## Securing Stripe’s API for frontend access
+
+To secure an API for frontend access, developers can refer to one, simple question:
+
+> _What actions can a signed-in user perform on their own?_
+
+Frontend APIs should be designed to power self-serve user interfaces. If the API is granted broader permissions, then a malicious actor may make unauthorized requests.
+
+Luckily, Stripe’s API contains two objects that `use-stripe-subscription` leverages to determine which actions a user can perform on their own.
+
+### The Customer object
+
+In Stripe, every Subscription object belongs to a Customer object. The Customer object can represent an individual or a business.
+
+As a long as an API can map the signed-in user to their Customer object, it’s trivial to restrict endpoints
+
+- If a user _does not_ have a Subscription, allow them to initialize a Checkout Session with their Customer ID to begin a new subscription
+- If a user _does_ have a Subscription, allow them to read the object, and to start a Customer Portal session to manage the subscription
+
+### The Customer Portal Configuration object
+
+Allowing users to start a Checkout Session from the frontend might sound unsafe – how can the API know which products a user is allowed to purchase on their own?
+
+For this, we leverage Stripe’s Customer Portal product, which requires developers to specify which subscriptions a customer can switch between on their own:
+
+Refactoring Stripes Api For Frontend Access setup guide
+
+_Stripe’s Customer Portal settings page requires developers to configure which products a customer can switch between on their own_
+
+Before `use-stripe-subscription` creates a Checkout Session, it verifies that the product is listed in the Customer Portal Configuration object. We assume that, if the configuration shows a customer is able to switch to a product, they should also be allowed to purchase that product new.
+
+To make things easy for developers, the list of available subscription products is always accessible in the `products` attribute of the `useSubscription()` hook. This list is derived directly from the Customer Portal Configuration object.
+
+## Passing in the Stripe Customer ID
+
+To configure `use-stripe-subscription`, developers must create an endpoint on their server that communicates with Stripe’s API. The endpoint is responsible for retrieving the product list and current subscription information, as well as for generating Checkout and the Customer Portal sessions.
+
+The package provides a complete Javascript implementation for this endpoint, except that developers must build their own function to determine the Stripe Customer ID associated with the request.
+
+```javascript
+import { subscriptionHandler } from 'use-stripe-subscription'
+
+const handler = async (req, res) => {
+  // Build your own findOrCreateCustomerId
+  const customerId = await findOrCreateCustomerId(req)
+
+  res.json(await subscriptionHandler({ customerId, query: req.query, body: req.body }))
+}
+```
+
+This implementation is ideal because it works for both B2C and B2B subscription companies. The package doesn’t know (and therefore, is not opinionated about) whether the user is operating on behalf of a personal Customer object, or on behalf of a business’s Customer object.
+
+## What about webhooks?
+
+We know that frontend developers prefer to avoid webhooks, so `use-stripe-subscription` does not require them. Instead, it makes just-in-time API requests to Stripe to ensure it always has the latest data.
+
+For very high-traffic websites, this strategy unfortunately has the potential to run into to Stripe’s API rate limit (100 read operations per second).
+
+From our perspective, it’s quite unfortunate that Stripe asks developers to configure webhooks and setup a cache just to have access to updated data. It’s much simpler to query data directly from Stripe as it’s needed.
+
+To alleviate this limitation, we investigating ways to add a robust caching solution to the package. Discussions and PRs toward this end are very much appreciated.
