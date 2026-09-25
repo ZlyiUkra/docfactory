@@ -1,0 +1,64 @@
+# React Router Releases: v7.13.2
+# джерело: https://github.com/remix-run/react-router/blob/main/CHANGELOG.md#v7132
+# отримано: 2026-09-25
+# версія: 7.13.2
+
+Date: 2026-03-23
+
+### What's Changed
+
+#### Pass-through Requests (unstable)
+
+By default, React Router normalizes the `request.url` passed to your `loader`, `action`, and `middleware` functions by removing React Router's internal implementation details (`.data` suffixes, `index` + `_routes` query params). This release introduces a new `future.unstable_passThroughRequests` flag to disable this normalization and pass the raw HTTP `request` instance to your handlers.
+
+In addition to reducing server-side overhead by eliminating multiple `new Request()` calls on the critical path, this also provides additional visibility to your route handlers/instrumentations allowing you to differentiate document from data requests.
+
+If you were previously relying on the normalization of `request.url`, you can switch to use the new sibling `unstable_url` parameter which contains a `URL` instance representing the normalized location:
+
+```tsx
+// ❌ Before: you could assume there was no `.data` suffix in `request.url`
+export async function loader({ request }: Route.LoaderArgs) {
+  let url = new URL(request.url);
+  if (url.pathname === "/path") {
+    // This check will fail with the flag enabled because the `.data` suffix will
+    // exist on data requests
+  }
+}
+
+// ✅ After: use `unstable_url` for normalized routing logic and `request.url`
+// for raw routing logic
+export async function loader({ request, unstable_url }: Route.LoaderArgs) {
+  if (unstable_url.pathname === "/path") {
+    // This will always have the `.data` suffix stripped
+  }
+
+  // And now you can distinguish between document versus data requests
+  let isDataRequest = new URL(request.url).pathname.endsWith(".data");
+}
+```
+
+#### Route handlers/middleware `unstable_url` parameter
+
+We have added a new `unstable_url: URL` parameter to route handler methods (`loader`, `action`, `middleware`, etc.) that contains the normalized URL the application is navigating to or fetching with React Router implementation details removed (`.data`suffix, `index`/`_routes` query params).
+
+This parameter is primarily needed when adopting the new `future.unstable_passthroughRequests` future flag as a way to continue accessing the normalized URL. If you don't have the flag enabled, then `unstable_url` will match `request.url`.
+
+### Patch Changes
+
+- `react-router` - Fix `clientLoader.hydrate` when an ancestor route is also hydrating a `clientLoader` (#14835)
+- `react-router` - Fix type error when passing Framework Mode route components using `Route.ComponentProps` to `createRoutesStub` (#14892)
+- `react-router` - Fix percent encoding in relative path navigation (#14786)
+- `react-router` - Internal refactor to consolidate framework-agnostic/React-specific route type layers - no public API changes (#14765)
+- `@react-router/dev` - Fix `react-router dev` crash when Unix socket files exist in the project root (#14854)
+- `@react-router/dev` - Escape redirect locations in pre-rendered redirect HTML (#14880)
+- `create-react-router` - replace `chalk` with `picocolors` (#14837)
+
+### Unstable Changes
+
+⚠️ _Unstable features are not recommended for production use_
+
+- `react-router` - Sync protocol validation to RSC flows (#14882)
+- `react-router` - Add `future.unstable_passThroughRequests` flag (#14775)
+- `react-router` - Add a new `unstable_url: URL` parameter to route handler methods (`loader`, `action`, `middleware`, etc.) representing the normalized URL the application is navigating to or fetching, with React Router implementation details removed (`.data`suffix, `index`/`_routes` query params) (#14775)
+
+**Full Changelog**: `v7.13.1...v7.13.2`

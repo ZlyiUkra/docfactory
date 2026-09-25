@@ -1,0 +1,193 @@
+# React Router release: v0.9.0
+# джерело: https://github.com/remix-run/react-router/releases/tag/v0.9.0
+# отримано: 2026-09-25
+# версія: 0.9.0
+
+Tag v0.9.0, published 2015-11-10, pre-release.
+
+### `ActiveState` mixin `isActive`
+
+`isActive` is now an instance method.
+
+```js
+// 0.7.x
+var SomethingActive = React.createClass({
+  mixins: [ActiveState],
+
+  render: function () {
+    var isActive = SomethingActive.isActive(...);
+  }
+});
+
+// 0.9.x
+var SomethingActive = React.createClass({
+  mixins: [ActiveState],
+
+  render: function () {
+    var isActive = this.isActive(...);
+  }
+});
+```
+
+### `<Routes onActiveStateChange/>` -> `<Routes onChange />`
+
+```js
+// 0.7.x
+<Routes onActiveStateChange={fn} />
+
+function fn(nextState) {}
+
+// 0.9.x
+<Routes onChange={fn} />
+
+function fn() {
+  // no arguments
+  // `this` is the routes instance
+  // here are some useful methods to get at the data you probably need
+  this.getCurrentPath();
+  this.getActiveRoutes();
+  this.getActiveParams();
+  this.getActiveQuery();
+}
+```
+
+### `.` in params support
+
+`.` used to be a delimiter like `/`, but now its a valid character in
+your params.
+
+### `transition.retry()`
+
+`transition.retry()` used to use `transitionTo`, creating a new history
+entry, it now uses `replaceWith`.
+
+```js
+// 0.7.x
+React.createClass({
+  login: function () {
+    // ...
+    transition.retry();
+  }
+});
+
+// 0.9.x
+React.createClass({
+  mixins: [Navigation],
+  login: function () {
+    // ...
+    this.transitionTo(transition.path);
+  }
+});
+```
+
+### Returning promises from transition hooks
+
+Transition hooks are now sync, unless you opt-in to async with
+`transition.wait(promise)`.
+
+```js
+// 0.7.x
+React.createClass({
+  statics: {
+    willTransitionTo: function (transition) {
+      return somePromise();
+    }
+  }
+});
+
+// 0.9.x
+React.createClass({
+  statics: {
+    willTransitionTo: function (transition) {
+      transition.wait(somePromise());
+    }
+  }
+});
+```
+
+### `preserveScrollPosition` -> `scrollBehavior`
+
+`preserveScrollPosition` was totally broken and should have been named
+`perverseScrollPosition`.
+
+There are now three scroll behaviors you can use:
+- `'browser'`
+- `'scrollToTop'`
+- `'none'`
+
+`browser` is the default, and imitates what browsers do in a typical
+page reload scenario (preserves scroll positions when using the back
+button, scrolls up when you come to a new page, etc.) Also, you can no
+longer specify scroll behavior per `<Route/>` anymore, only `<Routes/>`
+
+```
+<Routes scrollBehavior="scrollToTop"/>
+```
+
+### RouteStore
+
+This was not a public module, but we know some people were using it.
+It's gone now. We have made getting at the current routes incredibly
+convenient now with additions to the `ActiveState` mixin.
+
+### `Router.transitionTo, replaceWith, goBack`
+
+These methods have been moved to mixins.
+
+```js
+var Router = require('react-router');
+
+// 0.7.x
+React.createClass({
+  whenever: function () {
+    Router.transitionTo('something');
+    Router.replaceWith('something');
+    Router.goBack();
+  }
+});
+
+// 0.9.x
+var Navigation = Router.Navigation;
+
+React.createClass({
+  mixins: [Navigation],
+  whenever: function () {
+    this.transitionTo('something');
+    this.replaceWith('something');
+    this.goBack();
+  }
+});
+```
+
+### `<Routes onTransitionError onAbortedTransition/>`
+
+These were removed, there is no upgrade path in `0.9.0` but we will have
+something soon. These weren't intended to be used.
+
+### `ActiveState` lifecycle method `updateActiveState` removed
+
+We didn't actually need this. Just use `this.isActive(to, params,
+query)`.
+
+### `AsyncState` mixin removed
+
+There is no upgrade path. Just use `comoponentDidMount` to request
+state. This was some groundwork for server-side rendering but we are
+going a different direction now (using props passed in to route
+handlers) so we've removed it.
+
+## Changes
+
+- 5aae2a8 [added] onChange event to Routes
+- ba65269 [removed] AsyncState
+- 4d8c7a1 [removed] `<Routes onTransitionError>`
+- 4d8c7a1 [removed] `<Routes onAbortedTransition>`
+- ed0cf62 [added] Navigation mixin for components that need to modify the URL
+- ed0cf62 [added] CurrentPath mixin for components that need to know the current URL path
+- ed0cf62 [added] getActiveRoutes, getActiveParams, and getActiveQuery methods to ActiveState mixin
+- ed0cf62 [removed] Awkward updateActiveState callback from ActiveState mixin
+- ed0cf62 [removed] Router.PathState (use Router.CurrentPath instead)
+- ed0cf62 [removed] Router.Transitions (use Router.Navigation instead)
+- ed0cf62 [removed] Router.RouteLookup (because it was useless)
+- ed0cf62 [added] `<Routes scrollBehavior="browser">` alias of "imitateBrowser"
+- ed0cf62 [changed] `<Routes fixedPath>` => `<Routes initialPath>` will be useful for SSR

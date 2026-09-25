@@ -1,0 +1,88 @@
+# React Router release: v6.14.0
+# джерело: https://github.com/remix-run/react-router/releases/tag/react-router%406.14.0
+# отримано: 2026-09-25
+# версія: 6.14.0
+
+Tag react-router@6.14.0, published 2023-06-23.
+
+## What's Changed
+
+### JSON/Text Submissions
+
+`6.14.0` adds support for JSON and Text submissions via `useSubmit`/`fetcher.submit` since it's not always convenient to have to serialize into `FormData` if you're working in a client-side SPA. To opt-into these encodings you just need to specify the proper `formEncType`:
+
+**Opt-into `application/json` encoding:**
+
+```js
+function Component() {
+  let navigation = useNavigation();
+  let submit = useSubmit();
+  submit({ key: "value" }, { method: "post", encType: "application/json" });
+  // navigation.formEncType => "application/json"
+  // navigation.json        => { key: "value" }
+}
+
+async function action({ request }) {
+  // request.headers.get("Content-Type") => "application/json"
+  // await request.json()                => { key: "value" }
+}
+```
+
+**Opt-into `text/plain` encoding:**
+
+```js
+function Component() {
+  let navigation = useNavigation();
+  let submit = useSubmit();
+  submit("Text submission", { method: "post", encType: "text/plain" });
+  // navigation.formEncType => "text/plain"
+  // navigation.text        => "Text submission"
+}
+
+async function action({ request }) {
+  // request.headers.get("Content-Type") => "text/plain"
+  // await request.text()                => "Text submission"
+}
+```
+
+**⚠️ Default Behavior Will Change in v7**
+
+Please note that to avoid a breaking change, the default behavior will still encode a simple key/value JSON object into a `FormData` instance:
+
+```jsx
+function Component() {
+  let navigation = useNavigation();
+  let submit = useSubmit();
+  submit({ key: "value" }, { method: "post" });
+  // navigation.formEncType => "application/x-www-form-urlencoded"
+  // navigation.formData    => FormData instance
+}
+
+async function action({ request }) {
+  // request.headers.get("Content-Type") => "application/x-www-form-urlencoded"
+  // await request.formData()            => FormData instance
+}
+```
+
+This behavior will likely change in v7 so it's best to make any JSON object submissions explicit with `formEncType: "application/x-www-form-urlencoded"` or `formEncType: "application/json"` to ease your eventual v7 migration path.
+
+### Minor Changes
+
+- Add support for `application/json` and `text/plain` encodings for `useSubmit`/`fetcher.submit`. To reflect these additional types, `useNavigation`/`useFetcher` now also contain `navigation.json`/`navigation.text` and `fetcher.json`/`fetcher.text` which include the json/text submission if applicable. (#10413)
+
+### Patch Changes
+
+- When submitting a form from a `submitter` element, prefer the built-in `new FormData(form, submitter)` instead of the previous manual approach in modern browsers (those that support the new `submitter` parameter) (#9865)
+  - For browsers that don't support it, we continue to just append the submit button's entry to the end, and we also add rudimentary support for `type="image"` buttons
+  - If developers want full spec-compliant support for legacy browsers, they can use the `formdata-submitter-polyfill`
+- Call `window.history.pushState/replaceState` _before_ updating React Router state (instead of after) so that `window.location` matches `useLocation` during synchronous React 17 rendering (#10448)
+  - ⚠️ Note: generally apps should not be relying on `window.location` and should always reference `useLocation` when possible, as `window.location` will not be in sync 100% of the time (due to `popstate` events, concurrent mode, etc.)
+- Avoid calling `shouldRevalidate` for fetchers that have not yet completed a data load (#10623)
+- Strip `basename` from the `location` provided to `<ScrollRestoration getKey>` to match the `useLocation` behavior (#10550)
+- Strip `basename` from locations provided to `unstable_useBlocker` functions to match the `useLocation` behavior (#10573)
+- Fix `unstable_useBlocker` key issues in `StrictMode` (#10573)
+- Fix `generatePath` when passed a numeric `0` value parameter (#10612)
+- Fix `tsc --skipLibCheck:false` issues on React 17 (#10622)
+- Upgrade `typescript` to 5.1 (#10581)
+
+**Full Changelog**: https://github.com/remix-run/react-router/compare/react-router@6.13.0...react-router@6.14.0

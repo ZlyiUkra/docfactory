@@ -1,0 +1,45 @@
+# React Router v6 Releases: v6.18.0
+# джерело: https://github.com/remix-run/react-router/blob/v6/CHANGELOG.md#v6180
+# отримано: 2026-09-25
+# версія: 6.18.0
+
+Date: 2023-10-31
+
+### What's Changed
+
+#### New Fetcher APIs
+
+Per this RFC, we've introduced some new APIs that give you more granular control over your fetcher behaviors.
+
+- You may now specify your own fetcher identifier via `useFetcher({ key: string })`, which allows you to access the same fetcher instance from different components in your application without prop-drilling
+- Fetcher keys are now exposed on the fetchers returned from `useFetchers` so that they can be looked up by `key`
+- `Form` and `useSubmit` now support optional `navigate`/`fetcherKey` props/params to allow kicking off a fetcher submission under the hood with an optionally user-specified `key`
+  - `<Form method="post" navigate={false} fetcherKey="my-key">`
+  - `submit(data, { method: "post", navigate: false, fetcherKey: "my-key" })`
+  - Invoking a fetcher in this way is ephemeral and stateless
+  - If you need to access the state of one of these fetchers, you will need to leverage `useFetchers()` or `useFetcher({ key })` to look it up elsewhere
+
+#### Persistence Future Flag (`future.v7_fetcherPersist`)
+
+Per the same RFC as above, we've introduced a new `future.v7_fetcherPersist` flag that allows you to opt-into the new fetcher persistence/cleanup behavior. Instead of being immediately cleaned up on unmount, fetchers will persist until they return to an `idle` state. This makes pending/optimistic UI _much_ easier in scenarios where the originating fetcher needs to unmount.
+
+- This is sort of a long-standing bug fix as the `useFetchers()` API was always supposed to only reflect **in-flight** fetcher information for pending/optimistic UI -- it was not intended to reflect fetcher data or hang onto fetchers after they returned to an `idle` state
+- Keep an eye out for the following specific behavioral changes when opting into this flag and check your app for compatibility:
+  - Fetchers that complete _while still mounted_ will no longer appear in `useFetchers()` after completion - they served no purpose in there since you can access the data via `useFetcher().data`
+  - Fetchers that previously unmounted _while in-flight_ will not be immediately aborted and will instead be cleaned up once they return to an `idle` state
+    - They will remain exposed via `useFetchers` while in-flight so you can still access pending/optimistic data after unmount
+    - If a fetcher is no longer mounted when it completes, then it's result will not be post processed - e.g., redirects will not be followed and errors will not bubble up in the UI
+    - However, if a fetcher was re-mounted elsewhere in the tree using the same `key`, then it's result will be processed, even if the originating fetcher was unmounted
+
+### Minor Changes
+
+- Add fetcher `key` APIs and `navigate=false` options (#10960)
+- Add `future.v7_fetcherPersist` flag (#10962)
+- Add support for optional path segments in `matchPath` (#10768)
+
+### Patch Changes
+
+- Fix the `future` prop on `BrowserRouter`, `HashRouter` and `MemoryRouter` so that it accepts a `Partial<FutureConfig>` instead of requiring all flags to be included (#10962)
+- Fix `router.getFetcher`/`router.deleteFetcher` type definitions which incorrectly specified `key` as an optional parameter (#10960)
+
+**Full Changelog**: `6.17.0...6.18.0`

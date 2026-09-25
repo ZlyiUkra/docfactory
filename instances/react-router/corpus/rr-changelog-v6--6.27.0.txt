@@ -1,0 +1,47 @@
+# React Router v6 Releases: v6.27.0
+# джерело: https://github.com/remix-run/react-router/blob/v6/CHANGELOG.md#v6270
+# отримано: 2026-09-25
+# версія: 6.27.0
+
+Date: 2024-10-11
+
+### What's Changed
+
+#### Stabilized APIs
+
+This release stabilizes a handful of "unstable" APIs in preparation for the pending React Router v7 release (see these posts for more info):
+
+- `unstable_dataStrategy` → `dataStrategy` (`createBrowserRouter` and friends) (Docs)
+- `unstable_patchRoutesOnNavigation` → `patchRoutesOnNavigation` (`createBrowserRouter` and friends) (Docs)
+- `unstable_flushSync` → `flushSync` (`useSubmit`, `fetcher.load`, `fetcher.submit`) (Docs)
+- `unstable_viewTransition` → `viewTransition` (`<Link>`, `<Form>`, `useNavigate`, `useSubmit`) (Docs)
+
+### Minor Changes
+
+- Stabilize the `unstable_flushSync` option for navigations and fetchers (#11989)
+- Stabilize the `unstable_viewTransition` option for navigations and the corresponding `unstable_useViewTransitionState` hook (#11989)
+- Stabilize `unstable_dataStrategy` (#11974)
+- Stabilize `unstable_patchRoutesOnNavigation` (#11973)
+  - Add new `PatchRoutesOnNavigationFunctionArgs` type for convenience (#11967)
+
+### Patch Changes
+
+- Fix bug when submitting to the current contextual route (parent route with an index child) when an `?index` param already exists from a prior submission (#12003)
+- Fix `useFormAction` bug - when removing `?index` param it would not keep other non-Remix `index` params (#12003)
+- Fix bug with fetchers not persisting `preventScrollReset` through redirects during concurrent fetches (#11999)
+- Avoid unnecessary `console.error` on fetcher abort due to back-to-back revalidation calls (#12050)
+- Fix bugs with `partialHydration` when hydrating with errors (#12070)
+- Remove internal cache to fix issues with interrupted `patchRoutesOnNavigation` calls (#12055)
+  - ⚠️ This may be a breaking change if you were relying on this behavior in the `unstable_` API
+  - We used to cache in-progress calls to `patchRoutesOnNavigation` internally so that multiple navigations with the same start/end would only execute the function once and use the same promise
+  - However, this approach was at odds with `patch` short circuiting if a navigation was interrupted (and the `request.signal` aborted) since the first invocation's `patch` would no-op
+  - This cache also made some assumptions as to what a valid cache key might be - and is oblivious to any other application-state changes that may have occurred
+  - So, the cache has been removed because in _most_ cases, repeated calls to something like `import()` for async routes will already be cached automatically - and if not it's easy enough for users to implement this cache in userland
+- Remove internal `discoveredRoutes` FIFO queue from `unstable_patchRoutesOnNavigation` (#11977)
+  - ⚠️ This may be a breaking change if you were relying on this behavior in the `unstable_` API
+  - This was originally implemented as an optimization but it proved to be a bit too limiting
+  - If you need this optimization you can implement your own cache inside `patchRoutesOnNavigation`
+- Fix types for `RouteObject` within `PatchRoutesOnNavigationFunction`'s `patch` method so it doesn't expect agnostic route objects passed to `patch` (#11967)
+- Expose errors thrown from `patchRoutesOnNavigation` directly to `useRouteError` instead of wrapping them in a 400 `ErrorResponse` instance (#12111)
+
+**Full Changelog**: `v6.26.2...v6.27.0`

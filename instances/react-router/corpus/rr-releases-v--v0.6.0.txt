@@ -1,0 +1,132 @@
+# React Router release: v0.6.0
+# джерело: https://github.com/remix-run/react-router/releases/tag/v0.6.0
+# отримано: 2026-09-25
+# версія: 0.6.0
+
+Tag v0.6.0, published 2015-11-10, pre-release.
+
+### Path Matching
+
+Paths that start with `/` are absolute and work exactly as they used to.
+Paths that don't start with `/` are now relative, meaning they extend
+their parent route.
+
+Simply add `/` in front of all your paths to keep things working.
+
+```xml
+<!-- 0.5.x -->
+<Route path="/foo">
+  <Route path="bar"/>
+</Route>
+
+<!-- 0.6.x -->
+<Route path="/foo">
+  <Route path="/bar"/>
+</Route>
+```
+
+Though, you may want to embrace this new feature:
+
+```xml
+<!-- 0.5.x -->
+<Route path="/course/:courseId">
+  <Route path="/course/:courseId/assignments"/>
+  <Route path="/course/:courseId/announcements"/>
+</Route>
+
+<!-- 0.6.x -->
+<Route path="/course/:courseId">
+  <Route path="assignments"/>
+  <Route path="announcements"/>
+</Route>
+```
+
+Also `.` is no longer matched in dynamic segments.
+
+```xml
+<!-- 0.5.x -->
+<Route path="/file/:filename" />
+
+<!-- 0.6.x -->
+<Route path="/file/:filename.?:ext?" />
+
+<!--
+  or for a looser match to allow for multiple `.` note that the data
+  will be available on `this.props.params.splat` instead of
+  `this.props.params.filename`
+-->
+<Route path="/file/*" />
+```
+
+### Link params
+
+Links should now pass their params in the `params` property, though the
+old behavior will still work, you should update your code soon because
+it will be removed by `v1.0`
+
+```js
+// 0.5.x
+<Link to="user" userId="123"/>
+
+// 0.6.x
+<Link to="user" params={{userId: "123"}}/>
+```
+
+### Dynamic Segments, keys, and lifecycle methods
+
+If you have dynamic segments and are depending on `getInitialState`,
+`componentWillMount`, or `componentDidMount` to fire between transitions
+to the same route--like `users/123` and `users/456`--then you have two
+options:
+- add `addHandlerKey={true}` to your route and keep the previous
+  behavior (but lose out on performance), or
+- implement `componentWillReceiveProps`.
+
+```js
+// 0.5.x
+<Route handler={User} path="/user/:userId"/>
+
+// 0.6.x
+<Route handler={User} path="/user/:userId" addHandlerKey={true} />
+
+// 0.5.x
+var User = React.createClass({
+  getInitialState: function () {
+    return {
+      user: getUser(this.props.params.userId);
+    }
+  }
+});
+
+// 0.6.x
+var User = React.createClass({
+  getInitialState: function () {
+    return this.getState();
+  },
+
+  componentWillReceiveProps: function (newProps) {
+    this.setState(this.getState(newProps));
+  },
+
+  getState: function (props) {
+    props = props || this.props;
+    return {
+      user: getUser(props.params.userId)
+    };
+  }
+});
+```
+
+## Changes
+
+- 2a75f3e [added] query argument to willTransitionTo
+- b7e21bb [fixed] Window scrolling
+- 5864531 [changed] Default `<Redirect from>` to *
+- 1064881 [changed] paths to inherit parents
+- 79caf99 [added] `<DefaultRoute name>`
+- 25adcab [fixed] Using HashLocation without a preceeding /
+- a63c940 [added] `<NotFoundRoute>`
+- d5bd656 [changed] path matching algorithm
+- 6526e70 [removed] location="disabled"
+- 8d2f3ed [changed] `<Link/>`s to take params property
+- 2a85b74 [changed] handler keys to be optional

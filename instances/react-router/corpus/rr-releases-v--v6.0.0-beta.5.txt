@@ -1,0 +1,52 @@
+# React Router release: v6.0.0-beta.5
+# джерело: https://github.com/remix-run/react-router/releases/tag/v6.0.0-beta.5
+# отримано: 2026-09-25
+# версія: 6.0.0-beta.5
+
+Tag v6.0.0-beta.5, published 2021-09-25, pre-release.
+
+This week's release adds some much-needed polish to a few niche features of the router: splat routes (a route that uses a `*` path) and basenames. It also adds a `renderMatches` API that completes the story for those of you who may have been using `react-router-config` in v4 and v5.
+
+## 🐛  Bugfixes
+
+- A `*` in a child route path matches *after* a slash following its parent route path. This fixes some situations where the `*` was overly greedy (see #7972)
+- Resolution of `<Link to=".">` and `useResolvedPath(".")` values are fixed in splat routes. Previously these resolved relative to the parent route's path. They now resolve relative to the path of the route that rendered them.
+
+## ✨  Enhancements
+
+This release makes it easier to work with apps that have multiple entry points. Using the `<Router basename>` prop allows React Router to be easily deployed on only a portion of a larger site by using a portion of the URL pathname (the "basename") to transparently prefix all route paths and link navigations.
+
+For example, you can deploy one React Router app at the `/inbox` URL prefix, and another one at the `/admin` prefix. These base URLs represent two different entry points into your app, each with its own bundles. The rest of your site, including the root / URL could be rendered by something other than React Router, for example by your server framework of choice.
+
+In the bundle for each entry point, simply initialize React Router with the basename of that entry point.
+
+```tsx
+<Router basename="/inbox">
+  // ...
+</Router>
+```
+
+Then define your routes and link paths without using the `/inbox` URL prefix in any of them. The entire app will run relative to that prefix.
+
+Another improvement in this release is the addition of the `renderMatches` API, which is the complement of `matchRoutes`. These APIs are both very low-level and should not normally be needed. But they are sometimes nice to use if you are doing your own data loading using the array of `matches` that you get back from `matchRoutes`.
+
+`matchRoutes` and `renderMatches` are the equivalent of the `react-router-config` package we shipped in v4 and v5, just built directly into the router instead of in a separate package.
+
+## 💔 Breaking Changes
+
+- `<Routes basename>` has moved to `<Router basename>`. This prop is also available on all router variants (`<BrowserRouter>`, `<HashRouter>`, etc.).
+- `useLocation().pathname` no longer includes the basename, if present.
+- The `basename` argument was removed from `useRoutes`. This reverts the signature to `useRoutes(routes, location)`, same as it was previous to beta.4.
+- Descendant `<Routes>` do not get the params from their parents. This helps a set of `<Routes>` to be more portable by decoupling it from the params of its parents and makes it easier to know which params will be returned from `useParams()`. If you were relying on this behavior previously, you'll need to pass along the params manually to the elements rendered by the descendant `<Routes>`. See this comment for an example of how this is to be done and for a potential workaround if you really need the old behavior.
+- `match.pathname` in a splat route now includes the portion of the pathname matched by the `*`. This makes the `*` param behave much more like other dynamic `:id`-style params.
+- Resolution of relative `<Link>`s in splat routes is changed now because the entire pathname that was matched by that route is now different (see previous bullet). Instead of resolving relative to the portion of the pathname before the `*`, paths resolve relative to the full pathname that was matched by the route.
+
+## 💻 Installing
+
+Development for v6 is chugging along on the `dev` branch.
+
+If you'd like to test it out, install from npm:
+
+```bash
+$ npm install history react-router-dom@next
+```

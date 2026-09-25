@@ -1,0 +1,104 @@
+# React Router release: v6.0.0-beta.4
+# джерело: https://github.com/remix-run/react-router/releases/tag/v6.0.0-beta.4
+# отримано: 2026-09-25
+# версія: 6.0.0-beta.4
+
+Tag v6.0.0-beta.4, published 2021-09-11, pre-release.
+
+Last week we released a lot of nice little bug features, but we did get a little carried away and let a little bug slip through with relative path resolution. Our bad! That nasty lil' guy is squashed in this week's beta. 🐛
+
+And there's more! Let's dive in…
+
+## 🐛 Bugfixes
+
+- Path resolution for nested relative routes was broken in the last release and should now be fixed. Nested routes construct their pathname based on the location of their parent, *not* the current location. This is explained in detail under Relative Routes and Links in our advanced guides, and the issue itself in #8004
+
+## ✨ Enhancements
+
+- We made some enhancements with the `Params` type which is now generic, so you can add your own types if you know what to expect from functions that return query parameters. (#8019)
+
+```tsx
+// before
+let { valid, invalid } = useParams(); // No problems here!
+
+let match = useMatch("profile/:userId");
+let userId = match?.params.user; // wrong param, but TS doesn't know that!
+
+// after:
+let { valid, invalid } = useParams<"valid" | "key">(); // Property 'invalid' does not exist on type 'Params<"valid" | "key">'
+
+let match = useMatch<"userId">("profile/:userId");
+let userId = match?.params.user; // Property 'user' does not exist on type 'Params<"userId">'
+```
+
+- Absolute nested path support
+
+There was quite a bit of discussion in #7335 from people who are using constants to define their route paths. In this style, paths are often written as absolute paths from the root `/` URL. These constants are then able to be used both in `<Route path>` definitions as well as `<Link to>` values. It usually looks something like this:
+
+```tsx
+const USERS_PATH = "/users";
+const USERS_INDEX_PATH = `${USERS_PATH}/`;
+const USER_PROFILE_PATH = `${USERS_PATH}/:id`;
+
+function UsersRoutes() {
+  return (
+    <Routes>
+      <Route path={USERS_PATH} element={<UsersLayout />}>
+        <Route path={USERS_INDEX_PATH} element={<UsersIndex />} />
+        <Route path={USER_PROFILE_PATH} element={<UserProfile />} />
+      </Route>
+    </Routes>
+  );
+}
+```
+
+This style of use is now fully supported in v6. This is great for people who write their apps like this, but **it technically could cause some breakage** if you were using absolute paths (that start with `/`) in nested routes in previous betas. To fix this, simply **remove the `/` from the beginning of any route paths that are meant to be relative**. React Router will throw an error if you are using absolute paths that don't match their parent route paths. Hopefully this should help you find them if you are upgrading.
+
+If you were using `<Route path="/">` to indicate an index route, you can now use the new `<Route index>` prop to accomplish the same thing. The `index` prop makes it easy to scan a route config to find the index route. It also provides a guarantee that nobody will ever add children to that route.
+
+Here's the same route config as the one above, but rewritten with relative paths and the `index` prop:
+
+```tsx
+function UsersRoutes() {
+  return (
+    <Routes>
+      <Route path="users" element={<UsersLayout />}>
+        <Route index element={<UsersIndex />} />
+        <Route path=":id" element={<UserProfile />} />
+      </Route>
+    </Routes>
+  );
+}
+```
+
+A lot of our work on React Router is about doing the **least surprising** thing for our users. Allowing absolute paths in nested routes gets us a little closer to that goal!
+
+## 💔 Breaking Changes
+
+- Removed the ability for nested route paths to begin with a `/` and not contain the complete path of their parent routes. This was necessary in order to introduce support for absolute paths in nested routes, described in detail above
+
+- Removed the `createRoutesFromArray` utility function. You can now pass your routes directly to `useRoutes` or `matchRoutes` without passing it through `createRoutesFromArray` first
+
+- Removed the `PartialRouteObject` type. If you were importing and using this type before, use `RouteObject` instead, which has been updated to make all properties optional
+
+- The `useRoutes` API has changed slightly. Instead of passing a basename as the second argument, you should instead pass it as a named property in an object:
+
+```tsx
+// Before
+useRoutes([...routes], basename);
+
+// After
+useRoutes([...routes], { basename });
+```
+
+- The `matchPath` function now returns `match.pattern` instead of `match.path`, which is a little more descriptive about what it actually is
+
+## 💻 Installing
+
+Development for v6 is chugging along on the `dev` branch.
+
+If you'd like to test it out, install from npm:
+
+```bash
+$ npm install history react-router-dom@next
+```

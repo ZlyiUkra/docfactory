@@ -1,0 +1,78 @@
+# React Router release: v0.13.0
+# джерело: https://github.com/remix-run/react-router/releases/tag/v0.13.0
+# отримано: 2026-09-25
+# версія: 0.13.0
+
+Tag v0.13.0, published 2015-11-10, pre-release.
+
+React introduced the ability to use ES6 classes for component definitions, which has the side-effect of mixins not being "the thing" anymore. Our mixins like `State` and `Navigation` just proxied calls to some methods on an undocumented feature of React called `context`, that in turn called methods on the router instance under the hood.
+
+Without mixins we needed a way for you to get access to these methods. We decided the simplest solution was to stop hiding the router instance and just put the whole thing on context.
+
+You can think about context as values that are floating around a render tree that parent components (`Handler` in the `Router.run` callback) can explicitly define and descendent components can explicitly ask for. The stuff on context doesn't show up in a component unless you ask for it.
+
+**Note:** You can still use our mixins, you'll just get a deprecation warning.
+
+```js
+// 0.12.x
+var Foo = React.createClass({
+  mixins: [ Router.State ],
+  render: function () {
+    var id = this.getParams().id;
+    var searchTerm = this.getQuery().searchTerm;
+    // etc. ...
+  }
+});
+
+// 0.13.x w/o ES6 fanciness
+var Foo = React.createClass({
+  contextTypes: {
+    router: React.PropTypes.func
+  },
+
+  render: function () {
+    var router = this.context.router;
+    var id = router.getCurrentParams().id;
+    var searchTerm = router.getCurrentQuery().searchTerm;
+    // etc.
+  }
+});
+
+// 0.13.x w/ ES6 fanciness
+class Foo extends React.Component {
+  render () {
+    var { router } = this.context;
+    var id = router.getCurrentParams().id;
+    var searchTerm = router.getCurrentQuery().searchTerm;
+    // etc.
+  }
+}
+
+Foo.contextTypes = {
+  router: React.PropTypes.func
+};
+```
+
+Most of the time we prefer to just pass the state down the props tree
+and not mess with context:
+
+```js
+Router.run(routes, (Handler, state) => {
+  React.render(<Handler {...state}/>, document.body);
+});
+
+// and then when rendering route handlers, keep passing it down
+<RouteHandler {...this.props}/>
+
+// and then in your methods you have what you need on props
+var id = this.props.params.id;
+var searchTerm = this.props.query.searchTerm;
+```
+
+## Changes
+
+- f3a44f1 [fixed] React 0.13 compatibility
+- 559c604 [changed] Use empty bracket notation for arrays
+- 07b4972 [fixed] Allow repetition in child paths
+- 696a706 [fixed] Use defaultProps of config components
+- 61f0a8c [changed] Deprecate Navigation/State mixins

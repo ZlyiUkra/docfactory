@@ -1,0 +1,310 @@
+# React Router Releases: v7.2.0
+# джерело: https://github.com/remix-run/react-router/blob/main/CHANGELOG.md#v720
+# отримано: 2026-09-25
+# версія: 7.2.0
+
+Date: 2025-02-18
+
+### What's Changed
+
+#### Type-safe `href` utility
+
+In framework mode, we now provide you with a fully type-safe `href` utility to give you all the warm and fuzzy feelings of path auto-completion and param validation for links in your application:
+
+```tsx
+import { href } from "react-router";
+
+export default function Component() {
+  const link = href("/blog/:slug", { slug: "my-first-post" });
+  //                ^ type-safe!     ^ Also type-safe!
+
+  return (
+    <main>
+      <Link to={href("/products/:id", { id: "asdf" })} />
+      <NavLink to={href("/:lang?/about", { lang: "en" })} />
+    </main>
+  );
+}
+```
+
+You'll now get type errors if you pass a bad path value or a bad param value:
+
+```ts
+const badPath = href("/not/a/valid/path");
+//                   ^ Error!
+
+const badParam = href("/blog/:slug", { oops: "bad param" });
+//                                     ^ Error!
+```
+
+#### Prerendering with a SPA Fallback
+
+This release enhances the ability to use a combination of pre-rendered paths alongside other paths that operate in "SPA Mode" when pre-rendering with `ssr:false`.
+
+- If you specify `ssr:false` without a `prerender` config, this is considered "SPA Mode" and the generated `index.html` file will only render down to the root route and will be able to hydrate for any valid application path
+- If you specify `ssr:false` with a `prerender` config but _do not_ include the `/` path (i.e., `prerender: ['/blog/post']`), then we still generate a "SPA Mode" `index.html` file that can hydrate for any path in the application
+- If you specify `ssr:false` and include the `/` path in your `prerender` config, the generated `index.html` file will be specific to the root index route, so we will now also generate a separate "SPA Mode" file in `__spa-fallback.html` that you can serve/hydrate for non-prerendered paths
+
+For more info, see the Pre-rendering docs for more info.
+
+#### Allow a root `loader` in SPA Mode
+
+SPA Mode used to prohibit the use of loaders in all routes so that we could hydrate for any path in the application. However, because the root route is always rendered at build time, we can lift this restriction for the root route.
+
+In order to use your build-time loader data during pre-rendering, we now also expose the `loaderData` as an optional prop for the `HydrateFallback` component on routes:
+
+- This will be defined so long as the `HydrateFallback` is rendering because _children_ routes are loading
+- This will be `undefined` if the `HydrateFallback` is rendering because the route itself has it's own hydrating `clientLoader`
+  - In SPA mode, this will allow you to render loader root data into the SPA Mode HTML file
+
+### Minor Changes
+
+- `react-router` - New type-safe `href` utility that guarantees links point to actual paths in your app (#13012)
+- `@react-router/dev` - Generate a "SPA fallback" HTML file when pre-rendering the `/` route with `ssr:false` (#12948)
+- `@react-router/dev` - Allow a `loader` in the root route in SPA mode because it can be called/server-rendered at build time (#12948)
+  - `Route.HydrateFallbackProps` now also receives `loaderData`
+
+### Patch Changes
+
+- `react-router` - Disable Lazy Route Discovery for all `ssr:false` apps and not just "SPA Mode" because there is no runtime server to serve the search-param-configured `__manifest` requests (#12894)
+  - We previously only disabled this for "SPA Mode" but we realized it should apply to all `ssr:false` apps
+  - In those `prerender` scenarios we would pre-render the `/__manifest` file but that makes some unnecessary assumptions about the static file server behaviors
+- `react-router` - Don't apply Single Fetch revalidation de-optimization when in SPA mode since there is no server HTTP request (#12948)
+- `react-router` - Properly handle revalidations to across a pre-render/SPA boundary (#13021)
+  - In "hybrid" applications where some routes are pre-rendered and some are served from a SPA fallback, we need to avoid making `.data` requests if the path wasn't pre-rendered because the request will 404
+  - We don't know all the pre-rendered paths client-side, however:
+    - All `loader` data in `ssr:false` mode is static because it's generated at build time
+    - A route must use a `clientLoader` to do anything dynamic
+    - Therefore, if a route only has a `loader` and not a `clientLoader`, we disable revalidation by default because there is no new data to retrieve
+    - We short circuit and skip single fetch `.data` request logic if there are no server loaders with `shouldLoad=true` in our single fetch `dataStrategy`
+    - This ensures that the route doesn't cause a `.data` request that would 404 after a submission
+- `react-router` - Align dev server behavior with static file server behavior when `ssr:false` is set (#12948)
+  - When no `prerender` config exists, only SSR down to the root `HydrateFallback` (SPA Mode)
+  - When a `prerender` config exists but the current path is not pre-rendered, only SSR down to the root `HydrateFallback` (SPA Fallback)
+  - Return a 404 on `.data` requests to non-pre-rendered paths
+- `react-router` - Improve prefetch performance of CSS side effects in framework mode (#12889)
+- `react-router` - Properly handle interrupted manifest requests in lazy route discovery (#12915)
+- `@react-router/dev` - Handle custom `envDir` in Vite config (#12969)
+- `@react-router/dev` - Fix CLI parsing to allow argument-less `npx react-router` usage (#12925)
+- `@react-router/dev` - Skip action-only resource routes when using `prerender:true` (#13004)
+- `@react-router/dev` - Enhance invalid export detection when using `ssr:false` (#12948)
+  - `headers`/`action` functions are prohibited in all routes with `ssr:false` because there will be no runtime server on which to run them
+  - `loader` functions are more nuanced and depend on whether a given route is prerendered
+    - When using `ssr:false` without a `prerender` config, only the `root` route can have a `loader`
+    - When using `ssr:false` with a `prerender` config, only routes matched by a `prerender` path can have a `loader`
+- `@react-router/dev` - Error at build time in `ssr:false` + `prerender` apps for the edge case scenario of: (#13021)
+  - A parent route has only a `loader` (does not have a `clientLoader`)
+  - The parent route is pre-rendered
+  - The parent route has children routes which are not prerendered
+  - This means that when the child paths are loaded via the SPA fallback, the parent won't have any `loaderData` because there is no server on which to run the `loader`
+  - This can be resolved by either adding a parent `clientLoader` or pre-rendering the child paths
+  - If you add a `clientLoader`, calling the `serverLoader()` on non-prerendered paths will throw a 404
+- `@react-router/dev` - Limit prerendered resource route `.data` files to only the target route (#13004)
+- `@react-router/dev` - Fix pre-rendering of binary files (#13039)
+- `@react-router/dev` - Fix typegen for repeated params (#13012)
+  - In React Router, path parameters are keyed by their name, so for a path pattern like `/a/:id/b/:id?/c/:id`, the last `:id` will set the value for `id` in `useParams` and the `params` prop
+    - For example, `/a/1/b/2/c/3` will result in the value `{ id: 3 }` at runtime
+  - Previously, generated types for params incorrectly modeled repeated params with an array
+    - For example, `/a/1/b/2/c/3` generated a type like `{ id: [1,2,3] }`.
+  - To be consistent with runtime behavior, the generated types now correctly model the "last one wins" semantics of path parameters.
+    - For example, `/a/1/b/2/c/3` now generates a type like `{ id: 3 }`.
+- `@react-router/dev` - Fix path to load `package.json` for `react-router --version` (#13012)
+
+### Unstable Changes
+
+⚠️ _Unstable features are not recommended for production use_
+
+- `react-router` - Add `unstable_SerializesTo` brand type for library authors to register types serializable by React Router's streaming format (`turbo-stream`) (#12264)
+- `@react-router/dev` - Add unstable support for splitting route modules in framework mode via `future.unstable_splitRouteModules` (#11871)
+- `@react-router/dev` - Add `future.unstable_viteEnvironmentApi` flag to enable experimental Vite Environment API support (#12936)
+
+#### Split Route Modules (unstable)
+
+> ⚠️ This feature is currently unstable, enabled by the `future.unstable_splitRouteModules` flag. We’d love any interested users to play with it locally and provide feedback, but we do not recommend using it in production yet.
+>
+> If you do choose to adopt this flag in production, please ensure you do sufficient testing against your production build to ensure that the optimization is working as expected.
+
+One of the conveniences of the Route Module API is that everything a route needs is in a single file. Unfortunately this comes with a performance cost in some cases when using the `clientLoader`, `clientAction`, and `HydrateFallback` APIs.
+
+As a basic example, consider this route module:
+
+```tsx
+import { MassiveComponent } from "~/components";
+
+export async function clientLoader() {
+  return await fetch("https://example.com/api").then((response) =>
+    response.json(),
+  );
+}
+
+export default function Component({ loaderData }) {
+  return <MassiveComponent data={loaderData} />;
+}
+```
+
+In this example we have a minimal `clientLoader` export that makes a basic fetch call, whereas the default component export is much larger. This is a problem for performance because it means that if we want to navigate to this route client-side, the entire route module must be downloaded before the client loader can start running.
+
+To visualize this as a timeline:
+
+In the following timeline diagrams, different characters are used within the Route Module bars to denote the different Route Module APIs being exported.
+
+```
+Get Route Module:  |--=======|
+Run clientLoader:            |-----|
+Render:                            |-|
+```
+
+Instead, we want to optimize this to the following:
+
+```
+Get clientLoader:  |--|
+Get Component:     |=======|
+Run clientLoader:     |-----|
+Render:                     |-|
+```
+
+To achieve this optimization, React Router will split the route module into multiple smaller modules during the production build process. In this case, we'll end up with two separate virtual modules — one for the client loader and one for the component and its dependencies.
+
+```tsx
+export async function clientLoader() {
+  return await fetch("https://example.com/api").then((response) =>
+    response.json(),
+  );
+}
+```
+
+```tsx
+import { MassiveComponent } from "~/components";
+
+export default function Component({ loaderData }) {
+  return <MassiveComponent data={loaderData} />;
+}
+```
+
+> 💡 This optimization is automatically applied in framework mode, but you can also implement it in library mode via `route.lazy` and authoring your route in multiple files as covered in our blog post on lazy loading route modules.
+
+Now that these are available as separate modules, the client loader and the component can be downloaded in parallel. This means that the client loader can be executed as soon as it's ready without having to wait for the component.
+
+This optimization is even more pronounced when more Route Module APIs are used. For example, when using `clientLoader`, `clientAction` and `HydrateFallback`, the timeline for a single route module during a client-side navigation might look like this:
+
+```
+Get Route Module:     |--~~++++=======|
+Run clientLoader:                     |-----|
+Render:                                     |-|
+```
+
+This would instead be optimized to the following:
+
+```
+Get clientLoader:     |--|
+Get clientAction:     |~~|
+Get HydrateFallback:  SKIPPED
+Get Component:        |=======|
+Run clientLoader:        |-----|
+Render:                        |-|
+```
+
+Note that this optimization only works when the Route Module APIs being split don't share code within the same file. For example, the following route module can't be split:
+
+```tsx
+import { MassiveComponent } from "~/components";
+
+const shared = () => console.log("hello");
+
+export async function clientLoader() {
+  shared();
+  return await fetch("https://example.com/api").then((response) =>
+    response.json(),
+  );
+}
+
+export default function Component({ loaderData }) {
+  shared();
+  return <MassiveComponent data={loaderData} />;
+}
+```
+
+This route will still work, but since both the client loader and the component depend on the `shared` function defined within the same file, it will be de-optimized into a single route module.
+
+To avoid this, you can extract any code shared between exports into a separate file. For example:
+
+```tsx
+export const shared = () => console.log("hello");
+```
+
+You can then import this shared code in your route module without triggering the de-optimization:
+
+```tsx
+import { MassiveComponent } from "~/components";
+import { shared } from "./shared";
+
+export async function clientLoader() {
+  shared();
+  return await fetch("https://example.com/api").then((response) =>
+    response.json(),
+  );
+}
+
+export default function Component({ loaderData }) {
+  shared();
+  return <MassiveComponent data={loaderData} />;
+}
+```
+
+Since the shared code is in its own module, React Router is now able to split this route module into two separate virtual modules:
+
+```tsx
+import { shared } from "./shared";
+
+export async function clientLoader() {
+  shared();
+  return await fetch("https://example.com/api").then((response) =>
+    response.json(),
+  );
+}
+```
+
+```tsx
+import { MassiveComponent } from "~/components";
+import { shared } from "./shared";
+
+export default function Component({ loaderData }) {
+  shared();
+  return <MassiveComponent data={loaderData} />;
+}
+```
+
+If your project is particularly performance sensitive, you can set the `unstable_splitRouteModules` future flag to `"enforce"`:
+
+```tsx
+export default {
+  future: {
+    unstable_splitRouteModules: "enforce",
+  },
+};
+```
+
+This setting will raise an error if any route modules can't be split:
+
+```
+Error splitting route module: routes/example/route.tsx
+
+- clientLoader
+
+This export could not be split into its own chunk because it shares code with other exports. You should extract any shared code into its own module and then import it within the route module.
+```
+
+### Changes by Package
+
+- `create-react-router`
+- `react-router`
+- `@react-router/architect`
+- `@react-router/cloudflare`
+- `@react-router/dev`
+- `@react-router/express`
+- `@react-router/fs-routes`
+- `@react-router/node`
+- `@react-router/remix-config-routes-adapter`
+- `@react-router/serve`
+
+**Full Changelog**: `v7.1.5...v7.2.0`

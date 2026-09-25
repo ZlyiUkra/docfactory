@@ -1,0 +1,118 @@
+# React Router Releases: v7.6.1
+# джерело: https://github.com/remix-run/react-router/blob/main/CHANGELOG.md#v761
+# отримано: 2026-09-25
+# версія: 7.6.1
+
+Date: 2025-05-25
+
+### Patch Changes
+
+- `react-router` - Partially revert optimization added in `7.1.4` to reduce calls to `matchRoutes` because it surfaced other issues (#13562)
+- `react-router` - Update `Route.MetaArgs` to reflect that `data` can be potentially `undefined` (#13563)
+  - This is primarily for cases where a route `loader` threw an error to it's own `ErrorBoundary`, but it also arises in the case of a 404 which renders the root `ErrorBoundary`/`meta` but the root `loader` did not run because not routes matched
+- `react-router` - Avoid initial fetcher execution 404 error when Lazy Route Discovery is interrupted by a navigation (#13564)
+- `react-router` - Properly `href` replaces splats `*` (#13593)
+  - `href("/products/*", { "*": "/1/edit" }); // -> /products/1/edit`
+- `@react-router/architect` - Update `@architect/functions` from `^5.2.0` to `^7.0.0` (#13556)
+- `@react-router/dev` - Prevent typegen with route files that are outside the `app/` directory (#12996)
+- `@react-router/dev` - Add additional logging to `build` command output when cleaning assets from server build (#13547)
+- `@react-router/dev` - Don't clean assets from server build when `build.ssrEmitAssets` has been enabled in Vite config (#13547)
+- `@react-router/dev` - Fix typegen when same route is used at multiple paths (#13574)
+  - For example, `routes/route.tsx` is used at 4 different paths here:
+
+```ts
+    import { type RouteConfig, route } from "@react-router/dev/routes";
+    export default [
+      route("base/:base", "routes/base.tsx", [
+        route("home/:home", "routes/route.tsx", { id: "home" }),
+        route("changelog/:changelog", "routes/route.tsx", { id: "changelog" }),
+        route("splat/*", "routes/route.tsx", { id: "splat" }),
+      ]),
+      route("other/:other", "routes/route.tsx", { id: "other" }),
+    ] satisfies RouteConfig;
+```
+
+  - Previously, typegen would arbitrarily pick one of these paths to be the "winner" and generate types for the route module based on that path
+  - Now, typegen creates unions as necessary for alternate paths for the same route file
+
+- `@react-router/dev` - Better types for `params` (#13543)
+  - For example:
+
+```ts
+    // routes.ts
+    import { type RouteConfig, route } from "@react-router/dev/routes";
+
+    export default [
+      route("parent/:p", "routes/parent.tsx", [
+        route("route/:r", "routes/route.tsx", [
+          route("child1/:c1a/:c1b", "routes/child1.tsx"),
+          route("child2/:c2a/:c2b", "routes/child2.tsx"),
+        ]),
+      ]),
+    ] satisfies RouteConfig;
+```
+
+  - Previously, `params` for `routes/route` were calculated as `{ p: string, r: string }`.
+  - This incorrectly ignores params that could come from child routes
+  - If visiting `/parent/1/route/2/child1/3/4`, the actual params passed to `routes/route` will have a type of `{ p: string, r: string, c1a: string, c1b: string }`
+  - Now, `params` are aware of child routes and autocompletion will include child params as optionals:
+
+```ts
+    params.|
+    //     ^ cursor is here and you ask for autocompletion
+    // p: string
+    // r: string
+    // c1a?: string
+    // c1b?: string
+    // c2a?: string
+    // c2b?: string
+```
+
+  - You can also narrow the types for `params` as it is implemented as a normalized union of params for each page that includes `routes/route`:
+
+```ts
+    if (typeof params.c1a === 'string') {
+      params.|
+      //     ^ cursor is here and you ask for autocompletion
+      // p: string
+      // r: string
+      // c1a: string
+      // c1b: string
+    }
+```
+
+- `@react-router/dev` - Fix `href` for optional segments (#13595)
+  - Type generation now expands paths with optionals into their corresponding non-optional paths
+  - For example, the path `/user/:id?` gets expanded into `/user` and `/user/:id` to more closely model visitable URLs
+  - `href` then uses these expanded (non-optional) paths to construct type-safe paths for your app:
+
+```ts
+    // original: /user/:id?
+    // expanded: /user & /user/:id
+    href("/user"); // ✅
+    href("/user/:id", { id: 1 }); // ✅
+```
+
+  - This becomes even more important for static optional paths where there wasn't a good way to indicate whether the optional should be included in the resulting path:
+
+```ts
+    // original: /products/:id/detail?
+
+    // before
+    href("/products/:id/detail?"); // ❌ How can we tell `href` to include or omit `detail?` segment with a complex API?
+
+    // now
+    // expanded: /products/:id & /products/:id/detail
+    href("/product/:id"); // ✅
+    href("/product/:id/detail"); // ✅
+```
+
+### Unstable Changes
+
+⚠️ _Unstable features are not recommended for production use_
+
+- `@react-router/dev` - Renamed internal `react-router/route-module` export to `react-router/internal` (#13543)
+- `@react-router/dev` - Removed `Info` export from generated `+types/*` files (#13543)
+- `@react-router/dev` - Normalize dirent entry path across node versions when generating SRI manifest (#13591)
+
+**Full Changelog**: `v7.6.0...v7.6.1`
