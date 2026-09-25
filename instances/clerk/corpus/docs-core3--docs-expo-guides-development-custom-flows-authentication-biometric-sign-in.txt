@@ -1,0 +1,244 @@
+# Build a custom authentication flow using biometric sign-in
+# джерело: https://clerk.com/docs/expo/guides/development/custom-flows/authentication/biometric-sign-in
+# отримано: 2026-09-25
+# версія: core-3
+
+> This guide is for users who want to build a custom flow. To use a _prebuilt_ UI, use the Account Portal pages or prebuilt components.
+
+Biometric sign-in lets returning users sign in with their device's biometrics. After a normal sign-in or sign-up, your app can enroll the current installation as a biometric credential. When the session expires, the user can sign in again with biometrics instead of their original sign-in method.
+
+This is different from using biometrics only to unlock local app content. Biometric sign-in authenticates with Clerk and creates a Clerk session. It is also different from a passkey: biometric credentials are scoped to the native app installation and don't use WebAuthn.
+
+During enrollment, the SDK generates a device-bound key pair and registers the public key with Clerk. The private key never leaves the device. To sign in, the device signs a one-time Clerk challenge after the user approves the system authentication prompt. Clerk verifies the signature before creating a session.
+
+> For a custom Expo flow, use the useBiometricCredentials() hook to enroll biometric credentials and sign in returning users. The hook uses native code, so it requires a development build and doesn't work in Expo Go. Don't use `expo-local-authentication` in its place; that package only verifies biometrics locally and cannot create a Clerk session.
+
+## Enable biometric sign-in
+
+1. In the Clerk Dashboard, navigate to the **Native applications** page and enable the Native API. This is required to integrate Clerk in your native application or browser extension.
+   > Enabling the Native API opens a public request pathway that bypasses browser-based CAPTCHA challenges. Learn more about how the Native API affects bot protection.
+2. Navigate to the **User & Authentication** page and select the **Biometric** tab.
+3. Enable **Sign-in with mobile biometrics**.
+
+If you use Clerk's prebuilt authentication views, you can also enable **Prompt after sign-in** or **Prompt after sign-up**. The prebuilt views will then offer enrollment after authentication and display biometric sign-in when a signed-out user has an enrolled credential. For a custom flow, use the APIs demonstrated in this guide.
+
+> If the native  is your app's non-dismissible root authentication view, use useAuthViewState() before replacing it with authenticated content so biometric enrollment can finish.
+
+## Configure your platform
+
+**iOS**
+
+To support Face ID, add `NSFaceIDUsageDescription` to the `infoPlist` configuration in your Expo app config. The value must explain why your app uses Face ID.
+
+filename: app.json
+```json
+{
+  "expo": {
+    "ios": {
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Use Face ID to sign in to this app."
+      }
+    }
+  }
+}
+```
+
+**Android**
+
+Biometric sign-in is supported on Android 9 (API level 28) and later. The device must have a Class 3 biometric enrolled. Clerk automatically adds the `USE_BIOMETRIC` permission to your app's merged manifest.
+
+> Enrollment requires biometrics to be available on the device. The default policy, `'biometry_current_set'`, requires the currently enrolled biometrics and invalidates the private key when biometric enrollment changes. To allow fallback during sign-in, explicitly pass `'biometry_or_device_passcode'` as the `policy`. This allows the device passcode on iOS and the device PIN, pattern, or password on Android 11 (API level 30) and later. On Android 9 and 10, sign-in remains biometric-only.
+>
+> Credentials enrolled with a policy other than `'biometry_current_set'` cannot be used for biometric reverification. Keep the default policy if your app needs to reverify sessions with biometrics.
+
+## Enroll a biometric credential
+
+Enroll the current app installation only after the user completes a normal sign-in or sign-up and Clerk has a session with a status of `active` or `pending`.
+
+The following example demonstrates how to enroll the current Expo app installation. The `reason` is displayed in the system authentication prompt.
+
+filename: components/enroll-biometric-credential.tsx
+```tsx
+import { useBiometricCredentials } from '@clerk/expo'
+import { Button } from 'react-native'
+
+export function EnrollBiometricCredential() {
+  const { enroll } = useBiometricCredentials()
+
+  const enrollCurrentDevice = async () => {
+    try {
+      await enroll({ reason: 'Use biometrics to sign in.' })
+    } catch (err) {
+      // See https://clerk.com/docs/guides/development/custom-flows/error-handling
+      // for more info on error handling.
+      console.error(JSON.stringify(err, null, 2))
+    }
+  }
+
+  return <Button title="Enable biometric sign-in" onPress={enrollCurrentDevice} />
+}
+```
+
+## Sign a returning user in
+
+When the user no longer has an active session, check whether a local biometric credential is available before displaying biometric sign-in. While signed out, this availability check only inspects local state and can't confirm that the credential still exists in Clerk. If the subsequent sign-in reports that the credential no longer exists, the SDK removes the stale local state.
+
+The following example checks availability, signs the user in, and sets the created session as active.
+
+filename: components/sign-in-with-biometrics.tsx
+```tsx
+import { useEffect, useState } from 'react'
+import { useSignIn, useBiometricCredentials } from '@clerk/expo'
+import { Button } from 'react-native'
+
+export function SignInWithBiometrics() {
+  const { isLoaded, setActive } = useSignIn()
+  const { getAvailability, signIn } = useBiometricCredentials()
+  const [isAvailable, setIsAvailable] = useState(false)
+
+  const refreshAvailability = async () => {
+    try {
+      const availability = await getAvailability()
+      setIsAvailable(availability.isAvailable)
+    } catch {
+      setIsAvailable(false)
+    }
+  }
+
+  useEffect(() => {
+    void refreshAvailability()
+  }, [])
+
+  const handleSignIn = async () => {
+    if (!isLoaded) return
+
+    try {
+      const result = await signIn()
+      if (result.status === 'complete' && result.createdSessionId) {
+        await setActive({ session: result.createdSessionId })
+      }
+    } catch (err) {
+      // Keep another sign-in method available when biometric sign-in fails.
+      console.error(JSON.stringify(err, null, 2))
+      await refreshAvailability()
+    }
+  }
+
+  if (!isLoaded || !isAvailable) return null
+
+  return <Button title="Sign in with biometrics" onPress={handleSignIn} />
+}
+```
+
+## Reverify an active session
+
+While the user is signed in, reverify their identity with an enrolled biometric credential. This requires an active session and a credential enrolled with `'biometry_current_set'`. Successful reverification updates the existing session and refreshes its token, so you don't need to call setActive().
+
+The following example requires a completed verification at the `'multi_factor'` level. The server can downgrade the requested level when the user hasn't enrolled multi-factor authentication (MFA), so the example checks both `status` and `level`. If MFA isn't enrolled, require enrollment before retrying. Replace the console messages with your app's success and fallback handling.
+
+filename: components/reverify-with-biometrics.tsx
+```tsx
+import { isBiometricCredentialError, useBiometricCredentials } from '@clerk/expo'
+import { Button } from 'react-native'
+
+export function ReverifyWithBiometrics() {
+  const { reverify } = useBiometricCredentials()
+
+  const handleReverify = async () => {
+    try {
+      const result = await reverify({
+        level: 'multi_factor',
+        reason: 'Verify your identity to continue.',
+      })
+
+      if (result.status !== 'complete' || result.level !== 'multi_factor') {
+        console.error(
+          'Multi-factor requirement not met. Check MFA enrollment and verification options.',
+        )
+        return
+      }
+
+      console.log('Multi-factor verification complete')
+    } catch (err) {
+      if (isBiometricCredentialError(err)) {
+        if (err.code === 'biometric_authentication_canceled') return
+
+        if (err.code === 'biometric_credential_policy_incompatible') {
+          console.error('Choose another verification method for this credential.')
+          return
+        }
+      }
+
+      console.error(JSON.stringify(err, null, 2))
+    }
+  }
+
+  return <Button title="Verify with biometrics" onPress={handleReverify} />
+}
+```
+
+For sensitive actions in your own backend, also enforce the required verification level and freshness on the server. The client-side completion check doesn't replace that requirement.
+
+## Revoke a biometric credential
+
+While the user is signed in, list their active biometric credentials and let them choose which credential to revoke. Revoking a credential prevents Clerk from accepting it again. When the matching credential belongs to the current app installation, the SDK also deletes its local private key and credential metadata.
+
+> Don't delete only the local key as a replacement for revocation. Local deletion doesn't invalidate the credential stored by Clerk.
+
+The following example lists biometric credentials and revokes the selected credential.
+
+filename: components/revoke-biometric-credential.tsx
+```tsx
+import { useEffect, useState } from 'react'
+import { type BiometricCredential, useBiometricCredentials } from '@clerk/expo'
+import { Button, Text, View } from 'react-native'
+
+export function RevokeBiometricCredential() {
+  const { list, revoke } = useBiometricCredentials()
+  const [credentials, setCredentials] = useState<BiometricCredential[]>([])
+
+  const loadBiometricCredentials = async () => {
+    try {
+      setCredentials(await list())
+    } catch (err) {
+      // See https://clerk.com/docs/guides/development/custom-flows/error-handling
+      // for more info on error handling.
+      console.error(JSON.stringify(err, null, 2))
+    }
+  }
+
+  const handleRevoke = async (id: string) => {
+    try {
+      await revoke(id)
+      setCredentials((currentCredentials) =>
+        currentCredentials.filter((credential) => credential.id !== id),
+      )
+    } catch (err) {
+      // See https://clerk.com/docs/guides/development/custom-flows/error-handling
+      // for more info on error handling.
+      console.error(JSON.stringify(err, null, 2))
+    }
+  }
+
+  useEffect(() => {
+    void loadBiometricCredentials()
+  }, [])
+
+  return (
+    <View>
+      {credentials.map((credential) => (
+        <View key={credential.id}>
+          <Text>{credential.name ?? 'Biometric credential'}</Text>
+          <Button title="Revoke" onPress={() => handleRevoke(credential.id)} />
+        </View>
+      ))}
+    </View>
+  )
+}
+```
+
+---
+
+## Sitemap
+
+Overview of all docs pages

@@ -1,0 +1,96 @@
+# Read user data
+# джерело: https://clerk.com/docs/expo/guides/users/reading
+# отримано: 2026-09-25
+# версія: core-3
+
+Clerk offers a comprehensive suite of hooks that expose low-level access to authentication, session management, and multi-tenancy. With Clerk hooks, you can access and manage user data, handle sign-in and sign-up flows, control session management, and implement advanced flows like session reverification for sensitive actions. By using these hooks, you can extend or replace Clerk's built-in components and customize how authentication behaves in your application.
+
+This guide demonstrates how to use the `useAuth()` and `useUser()` hooks to read user data in your Expo application.
+
+**For AI agents:** When wiring or testing these helpers, run `npx clerk@latest users list --json` to inspect the instance's existing user data, or create a test user with `npx clerk@latest users create --email <email> --password <password> --yes` (the password is required while password authentication is enabled, the default). Install Clerk's skills with `npx skills add clerk/skills` for correct CLI and SDK usage.
+
+## Session data example
+
+The following example demonstrates how to use the useAuth() hook to access the current auth state, like whether the user is signed in or not. It also includes a basic example for using the `getToken()` method to retrieve a session token for fetching data from an external resource.
+
+filename: src/app/external-data.tsx
+```tsx
+import { useAuth } from '@clerk/expo'
+import { Text, View, TouchableOpacity } from 'react-native'
+
+export default function ExternalData() {
+  const { userId, sessionId, getToken, isLoaded, isSignedIn } = useAuth()
+
+  const fetchExternalData = async () => {
+    const token = await getToken()
+
+    // Fetch data from an external API
+    const response = await fetch('https://api.example.com/data', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    return response.json()
+  }
+
+  // Handle loading state
+  if (!isLoaded) return <Text>Loading...</Text>
+
+  // Protect the page from unauthenticated users
+  if (!isSignedIn) return <Text>Sign in to view this page</Text>
+
+  return (
+    <View>
+      <Text>
+        Hello, {userId}! Your current active session is {sessionId}.
+      </Text>
+      <TouchableOpacity onPress={fetchExternalData}>
+        <Text>Fetch Data</Text>
+      </TouchableOpacity>
+    </View>
+  )
+}
+```
+
+## User data example
+
+The following example demonstrates how to use the useUser() hook to access the User object, which contains the current user's data such as their ID.
+
+filename: src/app/(user)/index.tsx
+```tsx
+import { useUser } from '@clerk/expo'
+import { Text, View } from 'react-native'
+
+export default function Page() {
+  const { isSignedIn, user, isLoaded } = useUser()
+
+  // Handle loading state
+  if (!isLoaded)
+    return (
+      <View>
+        <Text>Loading...</Text>
+      </View>
+    )
+
+  // Protect the page from unauthenticated users
+  if (!isSignedIn)
+    return (
+      <View>
+        <Text>Sign in to view this page</Text>
+      </View>
+    )
+
+  return (
+    <View>
+      <Text>Hello {user.id}!</Text>
+    </View>
+  )
+}
+```
+
+---
+
+## Sitemap
+
+Overview of all docs pages

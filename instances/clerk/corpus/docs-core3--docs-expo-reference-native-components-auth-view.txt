@@ -1,0 +1,229 @@
+# <AuthView /> component
+# джерело: https://clerk.com/docs/expo/reference/native-components/auth-view
+# отримано: 2026-09-25
+# версія: core-3
+
+> This documents the native `<AuthView />` from `@clerk/expo/native`. For web projects, use the web  or  components from `@clerk/expo/web`.
+
+| iOS                                                                                                                                                                                                  | Android                                                                                                                                                                                                      |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| The AuthView renders a comprehensive authentication interface that handles both user sign-in and sign-up flows on iOS. | The AuthView renders a comprehensive authentication interface that handles both user sign-in and sign-up flows on Android. |
+
+The `<AuthView />` component renders a complete native authentication interface using SwiftUI on iOS and Jetpack Compose on Android. It handles authentication flows including email, phone, OAuth, passkeys, biometric sign-in, and multi-factor authentication. All methods enabled in your Clerk Dashboard are automatically supported.
+
+The `<AuthView />` renders inline in your React Native view hierarchy, so you can place it in a modal, route, full-screen view, or any other layout that fits your app.
+
+> Before using this component, ensure you meet the Expo requirements.
+
+## Usage
+
+The following examples show how to use the `<AuthView />` in your Expo app. You can use useAuth() or useUser() to read authentication state and update your UI after auth changes.
+
+### Render in a modal
+
+The following example demonstrates one way to render `<AuthView />` inside a React Native `<Modal>`. The native dismiss button is shown by default. Use `onDismiss` to close the modal in React Native state.
+
+> When using native components, pass `{ treatPendingAsSignedOut: false }` to useAuth() so pending session tasks are not treated as signed out.
+
+> Keep the React Native `<Modal>` that contains `<AuthView />` mounted at the same level as your signed-in and signed-out content. Don't render the modal only inside signed-out content, because auth state can change before required session tasks are finished and unmount the modal too early.
+
+filename: src/app/index.tsx
+```tsx
+import { AuthView } from '@clerk/expo/native'
+import { useAuth, useUser } from '@clerk/expo'
+import { useState } from 'react'
+import { Button, Modal, StyleSheet, Text, View } from 'react-native'
+
+export default function AuthButton() {
+  const { isSignedIn } = useAuth({ treatPendingAsSignedOut: false })
+  const { user } = useUser()
+  const [isAuthOpen, setIsAuthOpen] = useState(false)
+
+  return (
+    <View style={styles.container}>
+      {isSignedIn ? (
+        <Text>User ID: {user?.id}</Text>
+      ) : (
+        <Button title="Sign in" onPress={() => setIsAuthOpen(true)} />
+      )}
+      <Modal
+        animationType="slide"
+        visible={isAuthOpen}
+        presentationStyle="pageSheet"
+        onRequestClose={() => setIsAuthOpen(false)}
+      >
+        <AuthView onDismiss={() => setIsAuthOpen(false)} />
+      </Modal>
+    </View>
+  )
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+})
+```
+
+### Sign-in only
+
+```tsx
+<AuthView mode="signIn" />
+```
+
+### Sign-up only
+
+```tsx
+<AuthView mode="signUp" />
+```
+
+### Render as a required full-screen view
+
+You can render `<AuthView />` directly in a full-screen view when users must authenticate before continuing. In this case, pass `isDismissible={false}` so the native dismiss button isn't shown.
+
+filename: src/app/(auth)/sign-in.tsx
+```tsx
+import { AuthView } from '@clerk/expo/native'
+import { useSession } from '@clerk/expo'
+import { useRouter } from 'expo-router'
+import { useEffect } from 'react'
+
+export default function SignInScreen() {
+  const { session } = useSession()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (session?.status === 'active') {
+      router.replace('/(home)')
+    }
+  }, [session?.status, router])
+
+  return <AuthView isDismissible={false} />
+}
+```
+
+### Render in a navigation stack
+
+To push `<AuthView />` onto your app's navigation stack, hide the route's header and pass `onHostBack`. The component keeps its native header, so its screen titles, back buttons, swipe-back gestures, and transitions remain native.
+
+Passing `onHostBack` shows a back button on the component's first screen, where it has no screen of its own to return to. The callback runs when the button is tapped. Pop your route in response.
+
+The component never leaves the route on its own, so react to the auth state to know when the flow is finished. The following example pops the route once the session becomes active.
+
+filename: src/app/(auth)/sign-in.tsx
+```tsx
+import { AuthView } from '@clerk/expo/native'
+import { useSession } from '@clerk/expo'
+import { Stack, useRouter } from 'expo-router'
+import { useEffect } from 'react'
+
+export default function SignInScreen() {
+  const { session } = useSession()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (session?.status === 'active') {
+      router.back()
+    }
+  }, [session?.status, router])
+
+  return (
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <AuthView isDismissible={false} onHostBack={() => router.back()} />
+    </>
+  )
+}
+```
+
+### Custom logo
+
+By default, `<AuthView />` renders the logo configured in your application's **Settings**. Use `logoMaxHeight` to constrain how tall that logo can be, in density-independent pixels:
+
+```tsx
+<AuthView logoMaxHeight={64} />
+```
+
+To render your own content instead, pass a React Native element to `logo`. The native UI doesn't size or space this content, so your element must define its own layout and accessibility behavior:
+
+filename: src/app/(auth)/sign-in.tsx
+```tsx
+import { AuthView } from '@clerk/expo/native'
+import { Image, StyleSheet } from 'react-native'
+
+export default function SignInScreen() {
+  return (
+    <AuthView
+      logo={
+        <Image
+          source={require('../../../assets/logo.png')}
+          style={styles.logo}
+          accessibilityLabel="Acme"
+        />
+      }
+    />
+  )
+}
+
+const styles = StyleSheet.create({
+  logo: {
+    width: 120,
+    height: 40,
+    resizeMode: 'contain',
+  },
+})
+```
+
+## Properties
+
+| Name                                                                                                          | Type                                                                                          | Description                                                                                                                                                                                                                                                                                                                                         |
+| ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| isDismissible                                                                                                 | boolean                                                                                       | Whether the authentication view can be dismissed by the user. When true, a dismiss button appears in the native navigation bar. When false, no dismiss button is shown. Defaults to true.                                                                                                                                                           |
+| logo                                                                                                          | React.ReactElement                                                                            | Replaces the logo configured in your application's Settings with custom React Native content rendered above the auth form. The native authentication UI doesn't apply sizing, spacing, or accessibility attributes to this content — the element you provide must define its own layout and accessibility behavior. See Custom logo for an example. |
+| logoMaxHeight                                                                                                 | number                                                                                        | The maximum height of the logo configured in your application's Settings, in density-independent pixels (points on iOS, dp on Android). Defaults to 44. This doesn't size custom logo content, which must define its own layout. See Custom logo for an example.                                                                                    |
+| 'signIn' - Restricts the interface to sign-in flows only. Users can only authenticate with existing accounts. | 'signUp' - Restricts the interface to sign-up flows only. Users can only create new accounts. |                                                                                                                                                                                                                                                                                                                                                     |
+| onDismiss                                                                                                     | () => void                                                                                    | A callback that runs when the native authentication view requests dismissal. Use this to update your app's presentation state, such as closing a React Native . Use useAuth(), useUser(), or useSession() to read auth state after authentication changes.                                                                                  |
+| onHostBack                                                                                                    | () => void                                                                                    | A callback that runs when the user taps the back button on the authentication view's first screen. Passing the callback adds this button. Use it when the component fills a route whose header is hidden, and pop your route in response. The component keeps its native header, so navigation inside the authentication view stays native.         |
+
+## Social connection (OAuth) configuration
+
+`<AuthView />` automatically shows sign-in buttons for any social connections enabled in your Clerk Dashboard. However, native OAuth requires additional credential setup — without it, the buttons will appear but fail with an error when tapped.
+
+### Sign in with Google
+
+Follow the steps in the Sign in with Google guide to complete the following:
+
+1. Enable Google as a social connection with **Use custom credentials** toggled on.
+2. Create OAuth 2.0 credentials in the Google Cloud Console — you'll need an **iOS Client ID**, **Android Client ID**, and **Web Client ID**.
+3. Set the **Web Client ID** and **Client Secret** in the Clerk Dashboard.
+4. Add your iOS application to the **Native Applications** page in the Clerk Dashboard (Team ID + Bundle ID).
+5. Add your Android application to the **Native Applications** page in the Clerk Dashboard (package name).
+6. Add the Google Client IDs as environment variables in your `.env` file. Follow the `.env.example` in the Sign in with Google guide.
+7. Configure the `@clerk/expo` plugin with the iOS URL scheme in your `app.json`.
+
+> You do **not** need to install `expo-crypto` or use the `useSignInWithGoogle()` hook — `<AuthView />` handles the sign-in flow automatically.
+
+### Sign in with Apple
+
+Follow the steps in the Sign in with Apple guide to complete the following:
+
+1. Add your iOS application to the **Native Applications** page in the Clerk Dashboard (Team ID + Bundle ID).
+2. Enable Apple as a social connection in the Clerk Dashboard.
+
+> You do **not** need to install `expo-apple-authentication`, `expo-crypto`, or use the `useSignInWithApple()` hook — `<AuthView />` handles the sign-in flow automatically.
+
+## Platform support
+
+| Platform | Status                                                                                                               |
+| -------- | -------------------------------------------------------------------------------------------------------------------- |
+| iOS      | Supported (SwiftUI)                                                                                                  |
+| Android  | Supported (Jetpack Compose)                                                                                          |
+| Web      | Use  from `@clerk/expo/web` |
+
+---
+
+## Sitemap
+
+Overview of all docs pages

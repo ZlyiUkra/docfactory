@@ -1,0 +1,215 @@
+# <UserProfileView /> component
+# джерело: https://clerk.com/docs/expo/reference/native-components/user-profile-view
+# отримано: 2026-09-25
+# версія: core-3
+
+> This documents the native `<UserProfileView />` from `@clerk/expo/native`. For web projects, use the web  component.
+
+| iOS                                                                                                                                                                                                                                     | Android                                                                                                                                                                                                                                         |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The UserProfileView renders a comprehensive user profile interface that displays user information and provides account management options on iOS. | The UserProfileView renders a comprehensive user profile interface that displays user information and provides account management options on Android. |
+
+The `<UserProfileView />` component renders a fully native profile management interface using SwiftUI on iOS and Jetpack Compose on Android. It allows users to manage:
+
+- Profile details
+- Email addresses
+- Phone numbers
+- Multi-factor authentication (MFA)
+- Passkeys
+- Connected accounts
+- Active sessions
+
+> Before using this component, ensure you meet the Expo requirements.
+
+## Usage
+
+The `<UserProfileView />` renders inline in your React Native view hierarchy, so you can place it in a modal, sheet, route, full-screen view, or any other layout that fits your app.
+
+**Modal**
+
+The following example demonstrates one way to render `<UserProfileView />` inside a React Native `<Modal>`. The native dismiss button is shown by default. Use `onDismiss` to close the modal in React Native state.
+
+filename: src/app/(home)/index.tsx
+```tsx
+import { UserProfileView } from '@clerk/expo/native'
+import { useState } from 'react'
+import { Button, Modal, StyleSheet, View } from 'react-native'
+
+export default function HomeScreen() {
+  const [isAuthOpen, setIsAuthOpen] = useState(false)
+
+  return (
+    <View style={styles.container}>
+      <Button title="Account" onPress={() => setIsAuthOpen(true)} />
+      <Modal
+        animationType="slide"
+        visible={isAuthOpen}
+        presentationStyle="pageSheet"
+        onRequestClose={() => setIsAuthOpen(false)}
+      >
+        <UserProfileView onDismiss={() => setIsAuthOpen(false)} />
+      </Modal>
+    </View>
+  )
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+})
+```
+
+**Full-screen view**
+
+When rendering `<UserProfileView />` directly in a full-screen view, pass `isDismissible={false}` if users shouldn't be able to dismiss the view.
+
+> When using native components, pass `{ treatPendingAsSignedOut: false }` to useAuth() so pending session tasks are not treated as signed out.
+
+filename: src/app/(home)/profile.tsx
+```tsx
+import { UserProfileView } from '@clerk/expo/native'
+import { useAuth } from '@clerk/expo'
+import { useRouter } from 'expo-router'
+import { useEffect } from 'react'
+
+export default function ProfileScreen() {
+  const { isLoaded, isSignedIn } = useAuth({ treatPendingAsSignedOut: false })
+  const router = useRouter()
+
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) {
+      router.replace('/(auth)/sign-in')
+    }
+  }, [isLoaded, isSignedIn, router])
+
+  return <UserProfileView isDismissible={false} style={{ flex: 1 }} />
+}
+```
+
+**Navigation stack**
+
+To push `<UserProfileView />` onto your app's navigation stack, hide the route's header and pass `onHostBack`. The component keeps its native header, so its screen titles, back buttons, swipe-back gestures, and transitions remain native.
+
+Passing `onHostBack` shows a back button on the component's first screen, where it has no screen of its own to return to. The callback runs when the button is tapped. Pop your route in response.
+
+filename: src/app/(home)/profile.tsx
+```tsx
+import { UserProfileView } from '@clerk/expo/native'
+import { Stack, useRouter } from 'expo-router'
+
+export default function ProfileScreen() {
+  const router = useRouter()
+
+  return (
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <UserProfileView isDismissible={false} onHostBack={() => router.back()} style={{ flex: 1 }} />
+    </>
+  )
+}
+```
+
+The component never leaves the route on its own, so use useAuth(), useUser(), or useSession() to react when the user signs out.
+
+> When using native components, pass `{ treatPendingAsSignedOut: false }` to useAuth() so pending session tasks are not treated as signed out.
+
+## Add custom pages
+
+Pass the `customPages` property to add native rows to the root profile screen. Each row can open React Native content or an external URL. Every custom page requires a unique `path` and must define either `content` or `href`.
+
+The following example adds a page that renders React Native content and a row that opens Clerk's documentation. Use useUserProfileCustomPageNavigation() to navigate within the native profile from your custom content.
+
+filename: src/app/(home)/profile.tsx
+```tsx
+import { UserProfileView, useUserProfileCustomPageNavigation } from '@clerk/expo/native'
+import { Button, Text, View } from 'react-native'
+
+function APIKeysPage() {
+  const { navigateBack } = useUserProfileCustomPageNavigation()
+
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', padding: 24 }}>
+      <Text style={{ fontSize: 24, marginBottom: 16 }}>API keys</Text>
+      <Button title="Back to profile" onPress={() => void navigateBack()} />
+    </View>
+  )
+}
+
+export default function ProfileScreen() {
+  return (
+    <UserProfileView
+      isDismissible={false}
+      customPages={[
+        {
+          path: 'api-keys',
+          label: 'API keys',
+          icon: 'key',
+          content: <APIKeysPage />,
+        },
+        {
+          path: 'docs',
+          label: 'Documentation',
+          icon: 'book',
+          href: 'https://clerk.com/docs',
+        },
+      ]}
+    />
+  )
+}
+```
+
+React Native content mounts when its row is selected. Rows appear at the end of the profile section by default. Use `placement` to insert a row at the start or end of a section, or before or after a built-in row.
+
+The following example places a custom row before the built-in security row:
+
+```tsx
+<UserProfileView
+  customPages={[
+    {
+      path: 'support',
+      label: 'Support',
+      icon: 'info',
+      placement: { type: 'before', row: 'security' },
+      content: <SupportPage />,
+    },
+  ]}
+/>
+```
+
+### Custom page options
+
+| Name       | Type                                                                                                                                                                                          | Description                                                                                                                                           |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| content    | ReactNode                                                                                                                                                                                     | React Native content rendered when the row is selected. This property can't be used with href.                                                        |
+| href       | string                                                                                                                                                                                        | URL opened when the row is selected. This property can't be used with content.                                                                        |
+| icon?      | 'user' | 'profile' | 'security' | 'settings' | 'billing' | 'key' | 'lock' | 'email' | 'phone' | 'add' | 'switch' | 'users' | 'warning' | 'info' | 'globe' | 'folder' | 'book' | Icon displayed in the native profile row. Defaults to 'settings'.                                                                                     |
+| label      | string                                                                                                                                                                                        | Text displayed in the native profile row.                                                                                                             |
+| path       | string                                                                                                                                                                                        | A unique path that identifies the page. Pass this value to the custom page navigation hook's push() method to open the page from another custom page. |
+| placement? | type: 'sectionStart' | 'sectionEnd'; section: 'profile' | 'account'  |  type: 'before' | 'after'; row: 'manageAccount' | 'security' | 'switchAccount' | 'addAccount' | 'signOut'      | Where to insert the row relative to Clerk's built-in sections or rows. Defaults to { type: 'sectionEnd', section: 'profile' }.                       |
+
+## Properties
+
+| Name          | Type                     | Description                                                                                                                                                                                                                                                                                                                   |
+| ------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| customPages   | UserProfileCustomPage[] | Custom pages displayed as rows in the root profile screen. See Add custom pages for the supported options.                                                                                                                                                                                                                    |
+| isDismissible | boolean                  | Whether the profile view can be dismissed by the user. When true, a dismiss button appears in the native navigation bar. When false, no dismiss button is shown. Defaults to true.                                                                                                                                            |
+| onDismiss     | () => void               | A callback that runs when the user dismisses the native profile view. Use this to update your app's presentation state, such as closing a React Native .                                                                                                                                                              |
+| onHostBack    | () => void               | A callback that runs when the user taps the back button on the profile view's first screen. Passing the callback adds this button. Use it when the component fills a route whose header is hidden, and pop your route in response. The component keeps its native header, so navigation inside the profile view stays native. |
+| style         | StyleProp    | Style applied to the container view.                                                                                                                                                                                                                                                                                          |
+
+## Platform support
+
+| Platform | Status                                                                                                               |
+| -------- | -------------------------------------------------------------------------------------------------------------------- |
+| iOS      | Supported (SwiftUI)                                                                                                  |
+| Android  | Supported (Jetpack Compose)                                                                                          |
+| Web      | Use  from `@clerk/expo/web` |
+
+---
+
+## Sitemap
+
+Overview of all docs pages

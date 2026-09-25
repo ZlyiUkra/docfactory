@@ -1,0 +1,116 @@
+# useUser() | Vue
+# джерело: https://clerk.com/docs/nuxt/reference/composables/use-user
+# отримано: 2026-09-25
+# версія: core-3
+
+The `useUser()` composable provides access to the current user's User object, which contains all the data for a single user in your application and provides methods to manage their account. This composable also allows you to check if the user is signed in and if Clerk has loaded and initialized.
+
+## Returns
+
+| Name       | Type          | Description                                                                                           |
+| ---------- | ------------- | ----------------------------------------------------------------------------------------------------- |
+| isLoaded   | Ref | Indicates whether Clerk has completed initialization. Initially false, becomes true once Clerk loads. |
+| isSignedIn | Ref | Indicates whether a user is currently signed in.                                                      |
+| user       | Ref    | The User object for the current active user. If the user isn't signed in, user will be null.          |
+
+## How to use the `useUser()` composable
+
+### Get the current user
+
+The useUser() composable provides access to the current user's User object, which contains the current user's data such as their ID. It also includes the `isSignedIn` property to check if the active user is signed in, which is helpful for protecting a page.
+
+filename: GetCurrentUser.vue
+```vue
+<script setup>
+import { useUser } from '@clerk/vue'
+
+const { isSignedIn, user, isLoaded } = useUser()
+</script>
+
+<template>
+  <!-- Use `isLoaded` to check if Clerk is loaded -->
+  <div v-if="!isLoaded">Loading...</div>
+
+  <!-- Use `isSignedIn` to check if the user is signed in -->
+  <div v-else-if="!isSignedIn">Sign in to view this page</div>
+
+  <div v-else>Hello {{ user?.id }}!</div>
+</template>
+```
+
+### Update user data
+
+The following example uses the `useUser()` composable to access the User object, which calls the update() method to update the current user's information.
+
+filename: UpdateUser.vue
+```vue
+<script setup>
+import { useUser } from '@clerk/vue'
+
+const { isLoaded, user } = useUser()
+
+const updateUser = async () => {
+  await user.value?.update({
+    firstName: 'John',
+    lastName: 'Doe',
+  })
+}
+</script>
+
+<template>
+  <div v-if="!isLoaded">
+    <!-- Handle loading state -->
+  </div>
+
+  <div v-else-if="user">
+    <button @click="updateUser">Update your name</button>
+    <p>user.firstName: {{ user?.firstName }}</p>
+    <p>user.lastName: {{ user?.lastName }}</p>
+  </div>
+</template>
+```
+
+### Reload user data
+
+The following example uses the `useUser()` composable to access the User object, which calls the reload() method to get the latest user's information.
+
+You only need to call `user.reload()` if you've updated the `User` object outside of the `user.update()` method or Clerk hooks; for example, if you made changes through an API endpoint.
+
+filename: ReloadUser.vue
+```vue
+<script setup>
+import { useUser } from '@clerk/vue'
+
+const { isLoaded, user } = useUser()
+
+const updateUser = async () => {
+  // Update user data via an API endpoint
+  const updateMetadata = await fetch('/api/updateMetadata')
+
+  // Check if the update was successful
+  if (updateMetadata.message !== 'success') {
+    throw new Error('Error updating')
+  }
+
+  // If the update was successful, reload the user data
+  await user.value?.reload()
+}
+</script>
+
+<template>
+  <div v-if="!isLoaded">
+    <!-- Handle loading state -->
+  </div>
+
+  <div v-else-if="user">
+    <button @click="updateUser">Update your metadata</button>
+    <p>user role: {{ user.publicMetadata?.role }}</p>
+  </div>
+</template>
+```
+
+---
+
+## Sitemap
+
+Overview of all docs pages
