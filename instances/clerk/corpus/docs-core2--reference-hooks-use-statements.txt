@@ -1,0 +1,207 @@
+# `useStatements()`
+# джерело: https://github.com/clerk/clerk-docs/blob/core-2/docs/reference/hooks/use-statements.mdx
+# отримано: 2026-09-25
+# версія: core-2
+
+SDK: nextjs, react
+
+> [!WARNING]
+>
+> Billing is currently in Beta and its APIs are experimental and may undergo breaking changes. To mitigate potential disruptions, we recommend pinning your SDK and `clerk-js` package versions.
+
+The `useStatements()` hook provides access to the statements associated with a user or Organization. It returns a paginated list of statements and includes methods for managing them.
+
+## Parameters
+
+`useStatements()` accepts a single optional object with the following properties:
+
+| Property                                          | Type                                  | Description                                                                                                                                                               |
+| ------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|  `enabled?`                   | `boolean`                             | If `true`, a request will be triggered when the hook is mounted. Defaults to `true`.                                                                                      |
+|  `for?`                           | "user" \| "organization" | Specifies whether to fetch for the current user or Organization. Defaults to `'user'`.                                                                                    |
+|  `infinite?`                 | `boolean`                             | If `true`, newly fetched data will be appended to the existing list rather than replacing it. Useful for implementing infinite scroll functionality. Defaults to `false`. |
+|  `initialPage?`           | `number`                              | A number that specifies which page to fetch. For example, if `initialPage` is set to 10, it will skip the first 9 pages and fetch the 10th page. Defaults to `1`.         |
+|  `keepPreviousData?` | `boolean`                             | If `true`, the previous data will be kept in the cache until new data is fetched. Defaults to `false`.                                                                    |
+|  `pageSize?`                 | `number`                              | A number that specifies the maximum number of results to return per page. Defaults to `10`.                                                                               |
+
+## Returns
+
+`useStatements()` returns an object with the following properties:
+
+| Property                                       | Type                                                                                                                                                                                                                      | Description                                                                                                                                                                                                   |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|  `count`                     | `number`                                                                                                                                                                                                                  | The total count of data that exist remotely.                                                                                                                                                                  |
+|  `data`                       | BillingStatementResource[]                                                                                                                    | An array that contains the fetched data. For example, for the `memberships` attribute, data will be an array of `OrganizationMembership` objects. |
+|  `error`                     | null \| ClerkAPIResponseError                                                                                                                                                                                | Clerk's API response error object.                                                                                                                                                                            |
+|  `fetchNext`             | () => void                                                                                                                                                                                                   | A function that triggers the next page to be loaded. This is the same as `fetchPage(page => Math.min(pageCount, page + 1))`.                                                                                  |
+|  `fetchPage`             | `ValueOrSetter`\<`number`\>                                                                                                                                                                                               | A function that triggers a specific page to be loaded.                                                                                                                                                        |
+|  `fetchPrevious`     | () => void                                                                                                                                                                                                   | A function that triggers the previous page to be loaded. This is the same as `fetchPage(page => Math.max(0, page - 1))`.                                                                                      |
+|  `hasNextPage`         | `boolean`                                                                                                                                                                                                                 | A boolean that indicates if there are available pages to be fetched.                                                                                                                                          |
+|  `hasPreviousPage` | `boolean`                                                                                                                                                                                                                 | A boolean that indicates if there are available pages to be fetched.                                                                                                                                          |
+|  `isError`                 | `boolean`                                                                                                                                                                                                                 | A boolean that indicates the request failed.                                                                                                                                                                  |
+|  `isFetching`           | `boolean`                                                                                                                                                                                                                 | A boolean that is `true` if there is an ongoing request or a revalidation.                                                                                                                                    |
+|  `isLoading`             | `boolean`                                                                                                                                                                                                                 | A boolean that is `true` if there is an ongoing request and there is no fetched data.                                                                                                                         |
+|  `page`                       | `number`                                                                                                                                                                                                                  | The current page.                                                                                                                                                                                             |
+|  `pageCount`             | `number`                                                                                                                                                                                                                  | The total amount of pages. It is calculated based on `count`, `initialPage`, and `pageSize`.                                                                                                                  |
+|  `revalidate`           | () => Promise\<void\>                                                                                                                                                                                        | A function that triggers a revalidation of the current page.                                                                                                                                                  |
+|  `setData`                 | `CacheSetter`\<undefined \| ClerkPaginatedResponse\<BillingStatementResource\>\> | A function that allows you to set the data manually.                                                                                                                                                          |
+
+## Examples
+
+### Basic usage
+
+The following example demonstrates how to fetch and display a user's statements.
+
+SDK: nextjs
+
+```tsx
+  'use client'
+
+  import { useStatements } from '@clerk/nextjs/experimental'
+
+  export default function StatementsList() {
+    const { data, isLoading } = useStatements({
+      for: 'user',
+      pageSize: 10,
+    })
+
+    if (isLoading) {
+      return <div>Loading statements...</div>
+    }
+
+    if (!data || data.length === 0) {
+      return <div>No statements found.</div>
+    }
+
+    return (
+      <ul>
+        {data?.map((statement) => (
+          <li key={statement.id}>
+            Statement ID: {statement.id} - {statement.status}
+            <br />
+            Date: {statement.timestamp.toLocaleDateString()}
+          </li>
+        ))}
+      </ul>
+    )
+  }
+```
+
+SDK: react
+
+```tsx
+  import { useStatements } from '@clerk/clerk-react/experimental'
+
+  export default function StatementsList() {
+    const { data, isLoading } = useStatements({
+      for: 'user',
+      pageSize: 10,
+    })
+
+    if (isLoading) {
+      return <div>Loading statements...</div>
+    }
+
+    if (!data || data.length === 0) {
+      return <div>No statements found.</div>
+    }
+
+    return (
+      <ul>
+        {data?.map((statement) => (
+          <li key={statement.id}>
+            Statement ID: {statement.id} - {statement.status}
+            <br />
+            Date: {statement.timestamp.toLocaleDateString()}
+          </li>
+        ))}
+      </ul>
+    )
+  }
+```
+
+### Infinite pagination
+
+The following example demonstrates how to implement infinite scrolling with statements.
+
+SDK: nextjs
+
+```tsx
+  'use client'
+
+  import { useStatements } from '@clerk/nextjs/experimental'
+
+  export default function InfiniteStatements() {
+    const { data, isLoading, hasNextPage, fetchNext } = useStatements({
+      for: 'user',
+      infinite: true,
+      pageSize: 20,
+    })
+
+    if (isLoading) {
+      return <div>Loading...</div>
+    }
+
+    if (!data || data.length === 0) {
+      return <div>No statements found.</div>
+    }
+
+    return (
+      <div>
+        <ul>
+          {data?.map((statement) => (
+            <li key={statement.id}>
+              Statement ID: {statement.id}
+              <br />
+              Amount: {statement.totals.grandTotal.amountFormatted}
+              <br />
+              Status: {statement.status}
+            </li>
+          ))}
+        </ul>
+
+        {hasNextPage && <button onClick={() => fetchNext()}>Load more statements</button>}
+      </div>
+    )
+  }
+```
+
+SDK: react
+
+```tsx
+  import { useStatements } from '@clerk/clerk-react/experimental'
+
+  export default function InfiniteStatements() {
+    const { data, isLoading, hasNextPage, fetchNext } = useStatements({
+      for: 'user',
+      infinite: true,
+      pageSize: 20,
+    })
+
+    if (isLoading) {
+      return <div>Loading...</div>
+    }
+
+    if (!data || data.length === 0) {
+      return <div>No statements found.</div>
+    }
+
+    return (
+      <div>
+        <ul>
+          {data?.map((statement) => (
+            <li key={statement.id}>
+              Statement ID: {statement.id}
+              <br />
+              Amount: {statement.totals.grandTotal.amountFormatted}
+              <br />
+              Status: {statement.status}
+            </li>
+          ))}
+        </ul>
+
+        {hasNextPage && <button onClick={() => fetchNext()}>Load more statements</button>}
+      </div>
+    )
+  }
+```
