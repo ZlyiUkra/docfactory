@@ -83,6 +83,16 @@ SECTIONS = instance.config().get("sections") or "numbered"
 # документа. Сам фрагмент, його id і кеш від поля не залежать.
 PASSAGE_CONTEXT = bool(instance.config().get("passage_context"))
 
+# Чи зрізати з імені документа суфікс редакції «-<8 знаків хеша>». Типово — ні, і
+# для примірника без цього поля в config.json ім'я документа, ключ злиття й кеш ті
+# самі, що й до його появи. Вмикає його примірник, чий читач робить документ на
+# кожну редакцію файла (engine/readers/ghhistory.py): «docs-api-hooks-usenavigate-
+# 8b34c3a8» і «…-5f2ded07» — та сама сторінка, і незмінний розділ обох має злитися
+# в один фрагмент із версіями обох, як зливається в знімках інших примірників.
+# Ідентифікатор фрагмента від поля не залежить: він будується з повного імені файла.
+REVISION_SUFFIX = bool(instance.config().get("revision_suffix"))
+_REVISION = re.compile(r"-[0-9a-f]{8}$")
+
 # Тека документів — у примірнику, з яким працює цей запуск (див. instance.py):
 # код тепер спільний на всі домени, а corpus/ у кожного домену свій.
 DOCS_DIRS = [instance.root() / "corpus"]
@@ -185,6 +195,8 @@ class Document:
         # intro». Однакове в тієї самої сторінки різних версій — за ним зливаються
         # повтори.
         self.slug = path.stem.partition("--")[2] or path.stem
+        if REVISION_SUFFIX:
+            self.slug = _REVISION.sub("", self.slug)
         self.path = path
         self.title = head[0] if head else path.stem  # напр. 22.1 String Objects
         self.url = ""
@@ -482,6 +494,12 @@ def _corpus_stamp() -> str:
     пишеться, а все працює як до його появи.
     """
     parts: list = [CACHE_VERSION, SECTIONS, MAX_CHARS, MIN_CHARS]
+    # Лише коли поле ввімкнене: з ним ті самі файли дають інший індекс, і кеш,
+    # зібраний без нього, чужий. Без поля відбиток той самий до байта, що й до його
+    # появи, — інакше кеш кожного примірника став би чужим, а в astro, чий корпус в
+    # архіві, кеш — єдине, з чого індекс узагалі збирається.
+    if REVISION_SUFFIX:
+        parts.append("revision_suffix")
     for folder in DOCS_DIRS:
         try:
             with os.scandir(folder) as entries:
