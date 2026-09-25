@@ -1,0 +1,237 @@
+# Routing
+# джерело: https://github.com/remix-run/react-router/blob/react-router@8.4.0/docs/start/declarative/routing.md
+# отримано: 2026-09-25
+# версія: 8.4.0, 8.3.1, 8.3.0, 8.2.0, 8.1.0, 8.0.1, 8.0.0, 8.0.0-pre.1, 8.0.0-pre.0, 7.18.4, 7.18.3, 7.18.2, 7.18.1, 7.18.0, 7.17.0, 7.16.0, 7.15.1, 7.15.0, 7.14.2, 7.14.1, 7.14.0, 7.14.0-pre.0, 7.13.2, 7.13.1, 7.13.0, 7.12.0, 7.11.0, 7.10.1, 7.10.0, 7.9.6, 7.9.5, 7.9.4, 7.9.3, 7.9.2, 7.9.1, 7.9.0, 7.8.2, 7.8.1, 7.8.0, 7.7.1, experimental, nightly
+
+## Routing
+
+[MODES: declarative]
+
+## Configuring Routes
+
+Routes are configured by rendering `<Routes>` and `<Route>` that couple URL segments to UI elements.
+
+```tsx
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { BrowserRouter, Routes, Route } from "react-router";
+import App from "./app";
+
+const root = document.getElementById("root");
+
+ReactDOM.createRoot(root).render(
+  <BrowserRouter>
+    <Routes>
+      <Route path="/" element={<App />} />
+    </Routes>
+  </BrowserRouter>,
+);
+```
+
+Here's a larger sample config:
+
+```tsx
+<Routes>
+  <Route index element={<Home />} />
+  <Route path="about" element={<About />} />
+
+  <Route element={<AuthLayout />}>
+    <Route path="login" element={<Login />} />
+    <Route path="register" element={<Register />} />
+  </Route>
+
+  <Route path="concerts">
+    <Route index element={<ConcertsHome />} />
+    <Route path=":city" element={<City />} />
+    <Route path="trending" element={<Trending />} />
+  </Route>
+</Routes>
+```
+
+## Nested Routes
+
+Routes can be nested inside parent routes.
+
+```tsx
+<Routes>
+  <Route path="dashboard" element={<Dashboard />}>
+    <Route index element={<Home />} />
+    <Route path="settings" element={<Settings />} />
+  </Route>
+</Routes>
+```
+
+The path of the parent is automatically included in the child, so this config creates both `"/dashboard"` and `"/dashboard/settings"` URLs.
+
+Child routes are rendered through the `<Outlet/>` in the parent route.
+
+```tsx
+import { Outlet } from "react-router";
+
+export default function Dashboard() {
+  return (
+    <div>
+      <h1>Dashboard</h1>
+      {/* will either be <Home/> or <Settings/> */}
+      <Outlet />
+    </div>
+  );
+}
+```
+
+## Layout Routes
+
+Routes _without_ a `path` create new nesting for their children, but they don't add any segments to the URL.
+
+```tsx
+<Routes>
+  <Route element={<MarketingLayout />}>
+    <Route index element={<MarketingHome />} />
+    <Route path="contact" element={<Contact />} />
+  </Route>
+
+  <Route path="projects">
+    <Route index element={<ProjectsHome />} />
+    <Route element={<ProjectsLayout />}>
+      <Route path=":pid" element={<Project />} />
+      <Route path=":pid/edit" element={<EditProject />} />
+    </Route>
+  </Route>
+</Routes>
+```
+
+## Index Routes
+
+Index routes render into their parent's `<Outlet/>` at their parent's URL (like a default child route). They are configured with the `index` prop:
+
+```tsx
+<Routes>
+  <Route path="/" element={<Root />}>
+    {/* renders into the outlet in <Root> at "/" */}
+    <Route index element={<Home />} />
+
+    <Route path="dashboard" element={<Dashboard />}>
+      {/* renders into the outlet in <Dashboard> at "/dashboard" */}
+      <Route index element={<DashboardHome />} />
+      <Route path="settings" element={<Settings />} />
+    </Route>
+  </Route>
+</Routes>
+```
+
+Note that index routes can't have children. If you're expecting that behavior, you probably want a layout route.
+
+## Route Prefixes
+
+A `<Route path>` _without_ an `element` prop adds a path prefix to its child routes, without introducing a parent layout.
+
+```tsx
+<Route path="projects">
+  <Route index element={<ProjectsHome />} />
+  <Route element={<ProjectsLayout />}>
+    <Route path=":pid" element={<Project />} />
+    <Route path=":pid/edit" element={<EditProject />} />
+  </Route>
+</Route>
+```
+
+## Dynamic Segments
+
+If a path segment starts with `:` then it becomes a "dynamic segment". When the route matches the URL, the dynamic segment will be parsed from the URL and provided as `params` to other router APIs like `useParams`.
+
+```tsx
+<Route path="teams/:teamId" element={<Team />} />
+```
+
+```tsx
+import { useParams } from "react-router";
+
+export default function Team() {
+  let params = useParams();
+  // params.teamId
+}
+```
+
+You can have multiple dynamic segments in one route path:
+
+```tsx
+<Route
+  path="/c/:categoryId/p/:productId"
+  element={<Product />}
+/>
+```
+
+```tsx
+import { useParams } from "react-router";
+
+export default function CategoryProduct() {
+  let { categoryId, productId } = useParams();
+  // ...
+}
+```
+
+You should ensure that all dynamic segments in a given path are unique. Otherwise, as the `params` object is populated - latter dynamic segment values will override earlier values.
+
+## Optional Segments
+
+You can make a route segment optional by adding a `?` to the end of the segment.
+
+```tsx
+<Route path=":lang?/categories" element={<Categories />} />
+```
+
+You can have optional static segments, too:
+
+```tsx
+<Route path="users/:userId/edit?" element={<User />} />
+```
+
+## Splats
+
+Also known as "catchall" and "star" segments. If a route path pattern ends with `/*` then it will match any characters following the `/`, including other `/` characters.
+
+```tsx
+<Route path="files/*" element={<File />} />
+```
+
+```tsx
+let params = useParams();
+// params["*"] will contain the remaining URL after files/
+let filePath = params["*"];
+```
+
+You can destructure the `*`, you just have to assign it a new name. A common name is `splat`:
+
+```tsx
+let { "*": splat } = useParams();
+```
+
+## Linking
+
+Link to routes from your UI with `Link` and `NavLink`
+
+```tsx
+import { NavLink, Link } from "react-router";
+
+function Header() {
+  return (
+    <nav>
+      {/* NavLink makes it easy to show active states */}
+      <NavLink
+        to="/"
+        className={({ isActive }) =>
+          isActive ? "active" : ""
+        }
+      >
+        Home
+      </NavLink>
+
+      <Link to="/concerts/salt-lake-city">Concerts</Link>
+    </nav>
+  );
+}
+```
+
+---
+
+Next: Navigating

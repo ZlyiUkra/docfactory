@@ -1,0 +1,161 @@
+# Await
+# джерело: https://github.com/remix-run/react-router/blob/react-router@8.0.0-pre.1/docs/api/components/Await.md
+# отримано: 2026-09-25
+# версія: 8.0.0-pre.1, 8.0.0-pre.0, 7.18.4, 7.18.3, 7.18.2, 7.18.1, 7.18.0, 7.17.0, 7.16.0, 7.15.1, 7.15.0, 7.14.2, 7.14.1, 7.14.0, 7.14.0-pre.0, 7.13.2, 7.13.1, experimental, nightly
+
+## Await
+
+[MODES: framework, data]
+
+## Summary
+
+Reference Documentation ↗
+
+Used to render promise values with automatic error handling.
+
+**Note:** `<Await>` expects to be rendered inside a `<React.Suspense>`
+
+```tsx
+import { Await, useLoaderData } from "react-router";
+
+export async function loader() {
+  // not awaited
+  const reviews = getReviews();
+  // awaited (blocks the transition)
+  const book = await fetch("/api/book").then((res) => res.json());
+  return { book, reviews };
+}
+
+function Book() {
+  const { book, reviews } = useLoaderData();
+  return (
+    <div>
+      <h1>{book.title}</h1>
+      <p>{book.description}</p>
+      <React.Suspense fallback={<ReviewsSkeleton />}>
+        <Await
+          resolve={reviews}
+          errorElement={
+            <div>Could not load reviews 😬</div>
+          }
+          children={(resolvedReviews) => (
+            <Reviews items={resolvedReviews} />
+          )}
+        />
+      </React.Suspense>
+    </div>
+  );
+}
+```
+
+## Signature
+
+```tsx
+function Await<Resolve>({
+  children,
+  errorElement,
+  resolve,
+}: AwaitProps<Resolve>)
+```
+
+## Props
+
+### children
+
+When using a function, the resolved value is provided as the parameter.
+
+```tsx
+<Await resolve={reviewsPromise}>
+  {(resolvedReviews) => <Reviews items={resolvedReviews} />}
+</Await>
+```
+
+When using React elements, `useAsyncValue` will provide the
+resolved value:
+
+```tsx
+<Await resolve={reviewsPromise}>
+  <Reviews />
+</Await>
+
+function Reviews() {
+  const resolvedReviews = useAsyncValue();
+  return <div>...</div>;
+}
+```
+
+### errorElement
+
+The error element renders instead of the `children` when the `Promise`
+rejects.
+
+```tsx
+<Await
+  errorElement={<div>Oops</div>}
+  resolve={reviewsPromise}
+>
+  <Reviews />
+</Await>
+```
+
+To provide a more contextual error, you can use the `useAsyncError` in a
+child component
+
+```tsx
+<Await
+  errorElement={<ReviewsError />}
+  resolve={reviewsPromise}
+>
+  <Reviews />
+</Await>
+
+function ReviewsError() {
+  const error = useAsyncError();
+  return <div>Error loading reviews: {error.message}</div>;
+}
+```
+
+If you do not provide an `errorElement`, the rejected value will bubble up
+to the nearest route-level `ErrorBoundary`
+and be accessible via the `useRouteError` hook.
+
+### resolve
+
+Takes a `Promise`
+returned from a `loader` to be
+resolved and rendered.
+
+```tsx
+import { Await, useLoaderData } from "react-router";
+
+export async function loader() {
+  let reviews = getReviews(); // not awaited
+  let book = await getBook();
+  return {
+    book,
+    reviews, // this is a promise
+  };
+}
+
+export default function Book() {
+  const {
+    book,
+    reviews, // this is the same promise
+  } = useLoaderData();
+
+  return (
+    <div>
+      <h1>{book.title}</h1>
+      <p>{book.description}</p>
+      <React.Suspense fallback={<ReviewsSkeleton />}>
+        <Await
+          // and is the promise we pass to Await
+          resolve={reviews}
+        >
+          <Reviews />
+        </Await>
+      </React.Suspense>
+    </div>
+  );
+}
+```
