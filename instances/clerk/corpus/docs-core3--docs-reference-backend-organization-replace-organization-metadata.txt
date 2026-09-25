@@ -1,0 +1,68 @@
+# replaceOrganizationMetadata()
+# джерело: https://clerk.com/docs/reference/backend/organization/replace-organization-metadata
+# отримано: 2026-09-25
+# версія: core-3
+
+Replaces the metadata associated with the specified Organization. Unlike `updateOrganizationMetadata()`, which deep-merges into the existing metadata, this method uses replace semantics: when a metadata field is provided, its previous value is overwritten in full with no merging at any level.
+
+The distinction is at two layers:
+
+- **Top-level field omission preserves the existing value.** Each top-level field (`publicMetadata`, `privateMetadata`) is handled independently. If you don't include a field in the request, the stored value for that field is left untouched.
+- **The value inside a provided field is replaced in full.** When you do include a field, its previous content is discarded — any nested keys present before but absent in the new value are dropped. There is no merge.
+
+For the provided field, you can also send:
+
+- `{}` (empty object) to clear the field.
+- `null` to overwrite the field with a JSON `null` value. Prefer `{}` unless you specifically need a stored `null`.
+
+Returns the updated `Organization`.
+
+```typescript
+function replaceOrganizationMetadata(organizationId: string, params: { privateMetadata?: OrganizationPrivateMetadata; publicMetadata?: OrganizationPublicMetadata }): Promise<Organization>
+```
+
+## Parameters
+
+| Parameter                 | Type                                                                                                                                                                                                                                                                                                  | Description                                                                                                                                                |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `organizationId`          | `string`                                                                                                                                                                                                                                                                                              | The ID of the Organization to replace the metadata for.                                                                                                    |
+| `params`                  | { privateMetadata?: OrganizationPrivateMetadata; publicMetadata?: OrganizationPublicMetadata; } | The metadata to replace.                                                                                                                                   |
+| `params.privateMetadata?` | OrganizationPrivateMetadata                                                                                                                                                                                         | Metadata that can be read and set only from the Backend API.                                               |
+| `params.publicMetadata?`  | OrganizationPublicMetadata                                                                                                                                                                                           | Metadata that can be read from the Frontend API and Backend API, but can be set only from the Backend API. |
+
+## Usage
+
+> Using `clerkClient` varies based on the SDK you're using. Refer to the overview for usage details, including guidance on how to access the `userId` and other properties.
+
+```tsx
+const organizationId = 'org_123'
+
+const response = await clerkClient.organizations.replaceOrganizationMetadata(organizationId, {
+  publicMetadata: {
+    tier: 'enterprise',
+  },
+})
+```
+
+## Backend API (BAPI) endpoint
+
+This method in the SDK is a wrapper around the BAPI endpoint `PUT/organizations/{organization_id}/metadata`. See the BAPI reference for more information.
+
+Here's an example of making a request directly to the endpoint using cURL.
+
+Replace `YOUR_SECRET_KEY` with your Clerk Secret Key. You can find your Secret Key on the **API keys** page in the Clerk Dashboard.
+
+filename: curl.sh
+```bash
+curl -XPUT -H 'Authorization: Bearer {{secret}}' -H "Content-type: application/json" -d '{
+  "public_metadata": {
+    "tier": "enterprise"
+  }
+}' 'https://api.clerk.com/v1/organizations/{organization_id}/metadata'
+```
+
+---
+
+## Sitemap
+
+Overview of all docs pages

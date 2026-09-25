@@ -1,0 +1,110 @@
+# Session tasks
+# джерело: https://clerk.com/docs/guides/development/custom-flows/authentication/session-tasks
+# отримано: 2026-09-25
+# версія: core-3
+
+> This guide is for users who want to build a custom flow. To use a _prebuilt_ UI, use the Account Portal pages or prebuilt components.
+
+Session tasks are pending requirements that users must complete after authentication, such as choosing an Organization. These tasks ensure that users meet all requirements before gaining full access to your application.
+
+If you're building a custom flow, and the user's sign-in or sign-up status is `complete` but the user can't access protected content or routes and is being treated as signed-out, it could be because their `session.status` is `pending` due to pending session tasks. Once the user completes all of their pending session tasks, their `session.status` will be updated to `active` and the user will be treated as "signed-in" and be able to access protected content or routes.
+
+When enabled in the Clerk Dashboard, these tasks are handled automatically within the `<SignIn />` and `<SignUp />` components. If the prebuilt components don't meet your specific needs or if you require more control over the logic, you can opt out of using the `<SignUp />` and `<SignIn />` components and create a custom flow to display tasks. **This guide demonstrates how to use the Clerk API to build a custom user interface for handling session tasks.**
+
+## Available tasks
+
+Each task is identified by a unique [SessionTask['key']](https://clerk.com/docs/reference/types/session-task.md). You can use these task keys to conditionally handle different requirements in your application logic.
+
+The following table lists the available tasks and their corresponding keys. Some tasks require you to update your application in order to enable them. See the linked reference guide for usage instructions.
+
+| Setting                                                                                                                                               | Key                   | Description                                                                                                                                                                                                                                                  |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Allow Personal Accounts                                                 | `choose-organization` | Disabled by default when enabling Organizations for instances created after August 22, 2025. When disabled, users are required to choose an Organization after authenticating. When enabled, users can choose a Personal Account instead of an Organization. |
+| Force password reset                  | `reset-password`      | Enabled by default for instances created after December 8, 2025. When enabled, the user is required to reset their password on their next sign-in if their password is marked as compromised.                                                                |
+| Require multi-factor authentication | `setup-mfa`           | When enabled, users are required to set up multi-factor authentication (MFA) after authenticating. Users can choose between authenticator app (TOTP), SMS verification, or backup codes depending on which methods are enabled in the instance settings.     |
+
+1. ## Detect pending session tasks
+
+   First, you need to tell your app where to redirect users when they have pending session tasks.
+
+   The `taskUrls` option allows you to specify custom URL paths where users are redirected after sign-up or sign-in when specific session tasks need to be completed.
+
+   Configure the `taskUrls` option on the  component.
+
+```tsx
+   <ClerkProvider
+     taskUrls={{
+       'choose-organization': '/session-tasks/choose-organization',
+       'reset-password': '/session-tasks/reset-password',
+     }}
+   >
+     {children}
+   </ClerkProvider>
+```
+2. ## Handle pending session tasks
+
+   Now, the user will be redirected to the URL you've set with the `taskUrls` option. You need to display the appropriate task UI based on the task that the user needs to complete. If you were using the prebuilt components, you would simply render the appropriate component based on the task. However, since you're building a custom flow, you need to build the UI yourself. You can use the custom flow guide associated with the task to help get you started:
+
+   | Session task          | Custom flow guide                                                                                                            |
+   | --------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+   | `choose-organization` | Organization switcher guide |
+   | `reset-password`      | Reset password guide             |
+   | `setup-mfa`           | Multi-factor authentication guide    |
+3. ## Protect routes
+
+   What if your user exits the authentication or session task flow before completing their tasks and doesn't know how to get to the appropriate page to complete their session tasks? What if your user is navigating through your app as a `pending` user and can't figure out why they can't access certain content?
+
+   If a user's authentication or session task flow is interrupted and they aren't able to complete the tasks, you can use the  component to redirect them to the appropriate task page so they can complete the tasks and move their session to an `active` (signed-in) state. This component will redirect users based on the URL's you've set with the `taskUrls` option.
+
+   In the following example, the `<RedirectToTasks />` component is used in the app's layout file so that users can't access **any** of the app until they complete their pending session tasks. However, you can also use the `<RedirectToTasks />` component to protect a single page or route group.
+
+   filename: app/layout.tsx
+
+```tsx
+   import { RedirectToTasks } from '@clerk/nextjs'
+
+   export default function Layout({ children }: { children: React.ReactNode }) {
+     return (
+       <>
+         <RedirectToTasks />
+         {children}
+       </>
+     )
+   }
+```
+
+## FAQ
+
+### What is the `navigate` parameter in `finalize()` doing?
+
+In the authentication custom flows, such as the email/password custom flow, there's a step where you set the session to active using `finalize()`. If there are pending session tasks, the session won't actually be set as `active`. It will be in a `pending` state until all tasks are completed. By default, `pending` sessions are treated as signed-out across Clerk's authentication context, so the `pending` user won't be able to access protected content or routes. Therefore, this is the step where you should check for pending session tasks and redirect to the appropriate task page.
+
+```tsx
+await finalize({
+  session: signIn.createdSessionId,
+  navigate: async ({ session, decorateUrl }) => {
+    // Handle session tasks
+    // See https://clerk.com/docs/guides/development/custom-flows/authentication/session-tasks
+    if (session?.currentTask) {
+      console.log(session?.currentTask)
+      return
+    }
+
+    // If no session tasks, navigate the signed-in user to the home page
+    const url = decorateUrl('/')
+    if (url.startsWith('http')) {
+      window.location.href = url
+    } else {
+      router.push(url)
+    }
+  },
+})
+```
+
+However, if you've set the `taskUrls` option on your Clerk integration, it will override the `navigate` behavior and will redirect the user to whatever URL path you've set for the task. It's recommended to rely on the `taskUrls` option so that you can maintain the task URLs in one place (your Clerk integration). However, the `navigate` parameter is still useful and can be used as a fallback.
+
+---
+
+## Sitemap
+
+Overview of all docs pages

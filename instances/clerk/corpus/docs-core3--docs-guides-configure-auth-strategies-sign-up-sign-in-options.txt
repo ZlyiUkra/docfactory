@@ -1,0 +1,203 @@
+# Sign-up and sign-in options
+# джерело: https://clerk.com/docs/guides/configure/auth-strategies/sign-up-sign-in-options
+# отримано: 2026-09-25
+# версія: core-3
+
+Clerk provides multiple options for configuring a sign-up and sign-in flow for your application. This guide will walk you through each option.
+
+You can modify your authentication options after your application has been created by navigating to the Clerk Dashboard and selecting any of the options under **User & authentication** in the left sidenav.
+
+**For AI agents:** Instead of clicking through the Dashboard, configure these options with the CLI: run `npx clerk@latest config schema` to discover the auth keys (e.g., `auth_email`, `auth_phone`, `auth_username`, `auth_password`), then apply changes with `npx clerk@latest config patch`. Install Clerk's skills with `npx skills add clerk/skills` for correct CLI and SDK usage.
+
+## User & authentication
+
+To configure the options available to users for authentication, navigate to the **User & authentication** page in the Clerk Dashboard.
+
+The easiest way to allow your users to create and manage their authentication options is to use the prebuilt  component. If you're building a custom user interface using the Clerk API, refer to the custom flow guides.
+
+### Email
+
+Users can authenticate with their email address using the following options:
+
+- **Email verification code**: Users receive an OTP to their email address to sign in.
+
+  > In Clerk's prebuilt components, after requesting an email or SMS verification code, users must wait 30 seconds before requesting another. This resend cooldown is separate from code expiration: the current code remains valid for 10 minutes and can still be entered after the cooldown ends.
+- **Email verification link**: Users receive an email with a link to sign in. As a security measure, email links expire after 10 minutes to prevent the use of compromised or stale links.
+  - **Require the same device and browser**: Email links are required to be verified from the same device and browser on which the sign-up or sign-in was initiated. For example:
+    - A user tries to sign in from their desktop browser.
+    - They open the email link on their mobile phone to verify their email address.
+    - The user's sign-in on the desktop browser **gets an error**, because the link was verified on a different device and browser.
+
+### Phone
+
+> This feature requires a paid plan for production use, but all features are free to use in development mode so that you can try out what works for you. See the pricing page for more information.
+
+Users can authenticate with their phone number and verify it with an OTP.
+
+> In Clerk's prebuilt components, after requesting an email or SMS verification code, users must wait 30 seconds before requesting another. This resend cooldown is separate from code expiration: the current code remains valid for 10 minutes and can still be entered after the cooldown ends.
+
+SMS functionality is restricted to phone numbers from countries enabled on your SMS allowlist.
+
+### SMS allowlist
+
+SMS functionality, including SMS OTPs, is restricted to phone numbers from countries that are enabled on your SMS allowlist. This can be useful for avoiding extraneous SMS fees from countries from which your app is not expected to attract traffic. **By default, only the US and Canada are enabled.**
+
+Every instance starts off with a default set of enabled SMS country tiers. To tailor it to your needs:
+
+1. In the Clerk Dashboard, navigate to the **SMS** page.
+2. Select the **Settings** tab.
+3. Enable or disable countries as needed.
+
+If a country is disabled, then phone numbers starting with the corresponding country calling code:
+
+- Cannot receive OTPs and a request to receive an OTP will be rejected with an error
+- Cannot receive notifications for password or passkey modifications
+- Cannot be used upon sign-up
+- Cannot be added to an existing user profile
+
+### Username
+
+In this section, you can allow users to set their username. Usernames must be between 4 and 64 characters long and do not allow special characters (^$!.`#+~`), but this can be customized.
+
+> Usernames only support Latin-based characters. This restriction helps protect against Unicode spoofing and homograph attacks, where characters from non-Latin scripts can be used to impersonate users.
+
+### Password
+
+When **Password** is enabled, users provide a password to sign in.
+
+Disabling **Password** will only affect new users. Existing users will still be able to sign in with their existing password.
+
+### Passkeys
+
+> This feature requires a paid plan for production use, but all features are free to use in development mode so that you can try out what works for you. See the pricing page for more information.
+
+A passkey is a type of sign-in credential that requires one user action, but uses two authentication factors:
+
+1. A pin number or biometric data
+2. A physical device
+
+**Users can only create passkeys after signing up**, so you'll need to enable another authentication strategy for the sign-up process. After signing in, users can create a passkey.
+
+> When setting up passkeys with Android or Expo, there are a few additional steps to follow:
+>
+> - Set up passkeys for Android.
+> - Set up passkeys for Expo.
+
+#### Passkey limitations
+
+- Passkeys can't be enrolled as a dedicated multi-factor authentication method, but they can be configured to satisfy the multi-factor requirement when a user signs in with one.
+- Not all devices and browsers are compatible with passkeys. Passkeys are built on WebAuthn technology and you should check the Browser Compatibility docs for an up-to-date list.
+- Your users can have a max of 10 passkeys per account.
+
+#### Domain restrictions for passkeys
+
+Passkeys are tied to the domain they are created on and **cannot be used across different domains**. However, passkeys **do work on subdomains** if they are registered on the root domain. For example:
+
+- Passkeys created on `your-domain.com` **cannot be used** on `your-domain-admin.com` (different domains).
+- Passkeys created on `your-domain.com` **can be used** on `accounts.your-domain.com` (subdomain of the same root domain).
+- Passkeys created on `staging1.your-domain.com` **cannot be used** on `staging2.your-domain.com` (sibling subdomains) unless the passkey was scoped to `your-domain.com` (i.e., the shared root domain).
+
+**If you're using satellite domains**, in both development and production, passkeys won't be portable between your primary domain and your satellite domains so you should avoid using them.
+
+If you're **not** using satellite domains:
+
+- **In development**, you can either:
+  - **The recommended approach**. Use Clerk's components, Elements, or custom flows, instead of the Account Portal. This ensures the passkey is created and used entirely on your development domain, so passkeys created on `localhost` will only work on `localhost`.
+  - Create a passkey directly through the Account Portal instead of your local application to keep it tied to the Account Portal's domain. Passkeys created on your Account Portal (e.g., `your-app.accounts.dev`) will only work on that domain, which can cause issues if you switch between `localhost` and the Account Portal during development. If you choose this approach, ensure all testing happens on the same domain where the passkey was created.
+
+- **In production,** your Account Portal is usually hosted on a subdomain of your main domain (e.g., `accounts.your-domain.com`), enabling passkeys to work seamlessly across your app. However, as stated above, if you use **satellite domains**, passkeys will not work as intended.
+
+### User model
+
+In this section, you can:
+
+- Allow users to set their first and last name.
+- Allow users to delete their accounts.
+- Control whether users can change their email address, phone number, or username after sign-up. See Restrict changes.
+
+## Restrict changes
+
+By default, users can add, remove, and modify their own email addresses, phone numbers, and usernames after sign-up. If you need tighter control over these identifiers, you can prevent users from changing them.
+
+To restrict identifier changes:
+
+1. In the Clerk Dashboard, navigate to the **User & authentication** page.
+2. In the **User model** section, under **User permissions**, turn off **Allow users to change their [identifier]** for each identifier you want to lock down (for example, **Allow users to change their email address**). This toggle only appears for identifiers that are used for sign-up or sign-in.
+
+When changes are restricted:
+
+- Users can still view their identifiers in  but cannot add, remove, or modify them.
+- For email addresses, the restriction also prevents connecting an OAuth account that would add a new email address.
+- Admins retain full control and can still modify user identifiers through the Dashboard or the Backend API.
+
+> This feature prevents changes _after_ sign-up. To control _who can sign up_ in the first place, see restricting access for access modes, allowlists, blocklists, and disposable email blocking.
+
+## SSO connections
+
+SSO connections are a way to allow users to authenticate with their existing accounts from other services. For example, if a user already has an account with Google, they can sign in with their Google account instead of creating a new account with your application.
+
+Clerk offers two different types of SSO connections:
+
+- For all users, which are also known as OAuth connections, or social connections. Read more about OAuth connections.
+- For specific domains and Organizations, which are also known as Enterprise SSO connections. Read more about Enterprise SSO connections.
+
+To enable SSO connections, navigate to the **SSO connections** page in the Clerk Dashboard.
+
+## Web3 authentication
+
+Clerk provides Web3 authentication with either Base, MetaMask, Coinbase Wallet, or OKX Wallet. As part of validating the accuracy of the returned Web3 account address, Clerk handles the signing of a message and verifying the signature. Because sign-in with Web3 uses the same abstraction as our other authentication factors, like passwords or email links, other Clerk features like multi-factor authentication and profile enrichment work for Web3 users out-of-the-box.
+
+To enable Web3 authentication, navigate to the **Web3** page in the Clerk Dashboard.
+
+## Multi-factor authentication
+
+Clerk supports multi-factor authentication (MFA), also known as two-factor authentication (2FA). If a user enables MFA for their account, they are required to complete a second verification step during sign-in. This enhances security by enforcing two different types of verification. Many websites offer this as an optional step, giving users control over their own security.
+
+The following MFA strategies are currently available:
+
+- **SMS verification code**
+- **Authenticator application (also known as TOTP - Time-based One-time Password)**
+- **Backup codes**
+
+> Enable **Backup codes** alongside whichever other strategies you offer. If a user loses access to every other factor they've enrolled, an unused backup code can let them sign in without an admin resetting their MFA. See MFA account recovery.
+
+To configure MFA strategies:
+
+1. In the Clerk Dashboard, navigate to the **Multi-factor** page.
+2. Toggle on the MFA strategies you would like to enable.
+3. If you would like to force MFA for all users in your app, toggle on **Require multi-factor authentication**. When enabled, after authenticating, users will have a pending `setup-mfa` session task and will need to fulfill the task before they are considered `active` (signed-in).
+   If you leave this setting disabled, users can choose to enable MFA for their own accounts through their account settings.
+4. Select **Save**.
+
+If you're building a custom user interface instead of using the Account Portal or prebuilt components, you can use the Clerk API to build a custom flow that allows users to sign in with MFA.
+
+### Passkeys and multi-factor authentication
+
+A passkey is itself a multi-factor credential — a single sign-in combines two authentication factors (a physical device and a PIN or biometric) — so a passkey sign-in can satisfy your application's multi-factor requirement on its own. When this behavior is in effect, a user who signs in with a passkey isn't prompted to complete a second factor.
+
+For instances created on or after **July 8, 2026**, this is the default behavior and can't be disabled.
+
+For instances created before **July 8, 2026**, this behavior is off by default, but you can opt in:
+
+1. In the Clerk Dashboard, navigate to the **User & authentication** page.
+2. Enable **Sign-in with passkey**, if it isn't already — the following setting only appears once passkey sign-in is on.
+3. Toggle on **Passkeys satisfy multi-factor authentication**.
+
+### Reset a user's MFA
+
+To remove a user's MFA methods in the Clerk Dashboard:
+
+1. In the Clerk Dashboard, navigate to the **Users** page and select the user.
+2. In the **Two step verifications** section, open the three-dot menu next to **Authenticator app** or **SMS code** and select **Remove method**.
+
+There's no single action that resets everything at once, and backup codes have no **Remove method** option of their own — but Clerk deletes them and disables MFA once you remove the user's last second factor. Clerk doesn't provide an end-user MFA reset flow, because applications differ in what they require before granting a reset. To reduce how often users need a reset, or build a reset flow of your own, see MFA account recovery.
+
+## Restricting access
+
+Clerk provides options for controlling who can access your application. Access modes determine how users gain access, while allowlists, blocklists, and other restrictions control which identifiers can be used to sign up. Learn more about restricting access.
+
+---
+
+## Sitemap
+
+Overview of all docs pages

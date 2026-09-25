@@ -1,0 +1,315 @@
+# Build a custom sign-in flow with Device Trust
+# джерело: https://clerk.com/docs/guides/development/custom-flows/authentication/device-trust
+# отримано: 2026-09-25
+# версія: core-3
+
+> This guide is for users who want to build a custom flow. To use a _prebuilt_ UI, use the Account Portal pages or prebuilt components.
+
+> This guide applies to the following Clerk SDKs:
+>
+> - `@clerk/react` v6 or higher
+> - `@clerk/nextjs` v7 or higher
+> - `@clerk/expo` v3 or higher
+> - `@clerk/react-router` v3 or higher
+> - `@clerk/tanstack-react-start` v0.26.0 or higher
+>
+> If you're using an older version of one of these SDKs, or are using the legacy API, refer to the legacy API documentation.
+
+If you have Device Trust enabled for your application, when a user is signing in **with a password** on a new device, **the sign-in attempt will return a status of `needs_client_trust`**. Your custom sign-in flow needs to support handling an email code, SMS code, or email link, depending on the settings you've enabled in the Clerk Dashboard. This guide demonstrates the email code and SMS code strategies.
+
+> Device Trust was previously called "Client Trust." The feature was renamed, but its API values - including the `needs_client_trust` status used throughout this guide - kept their original names so that existing integrations keep working.
+
+If Device Trust **and** MFA are enabled, MFA will take precedence and the sign-in attempt will return a status of `needs_second_factor`. See the MFA custom flow guide for more information.
+
+**Email code**
+
+### Configure application settings
+
+**This example uses the email and password sign-in custom flow as a base. However, you can modify this approach according to the settings you've configured for your application's instance in the Clerk Dashboard.**
+
+1. In the Clerk Dashboard, navigate to the **User & authentication** page.
+2. Enable **Sign-up with email**.
+   - **Require email address** should be enabled.
+   - For **Verify at sign-up**, **Email verification code** is enabled by default. This is the option you'll want for this example.
+3. Enable **Sign in with email**.
+4. Select the **Password** tab and enable **Sign-up with password**.
+
+### Build the custom flow
+
+filename: app/sign-in/page.tsx
+```tsx
+  'use client'
+
+  import { useSignIn } from '@clerk/nextjs'
+  import { useRouter } from 'next/navigation'
+
+  export default function Page() {
+    const { signIn, errors, fetchStatus } = useSignIn()
+    const router = useRouter()
+
+    const handleSubmit = async (formData: FormData) => {
+      const emailAddress = formData.get('email') as string
+      const password = formData.get('password') as string
+
+      await signIn.password({
+        emailAddress,
+        password,
+      })
+
+      if (signIn.status === 'complete') {
+        await signIn.finalize({
+          navigate: ({ session, decorateUrl }) => {
+            // Handle session tasks
+            // See https://clerk.com/docs/guides/development/custom-flows/authentication/session-tasks
+            if (session?.currentTask) {
+              console.log(session?.currentTask)
+              return
+            }
+
+            // If no session tasks, navigate the signed-in user to the home page
+            const url = decorateUrl('/')
+            if (url.startsWith('http')) {
+              window.location.href = url
+            } else {
+              router.push(url)
+            }
+          },
+        })
+      } else if (signIn.status === 'needs_second_factor') {
+        // See https://clerk.com/docs/guides/development/custom-flows/authentication/multi-factor-authentication
++     } else if (signIn.status === 'needs_client_trust') {
++       const emailCodeFactor = signIn.supportedSecondFactors.find(
++         (factor) => factor.strategy === 'email_code',
++       )
++
++       if (emailCodeFactor) {
++         await signIn.mfa.sendEmailCode()
++       }
+      } else {
+        // Check why the sign-in is not complete
+        console.error('Sign-in attempt not complete:', signIn)
+      }
+    }
+
+    const handleVerify = async (formData: FormData) => {
+      const code = formData.get('code') as string
+
+      await signIn.mfa.verifyEmailCode({ code })
+
+      if (signIn.status === 'complete') {
+        await signIn.finalize({
+          navigate: ({ session, decorateUrl }) => {
+            // Handle session tasks
+            // See https://clerk.com/docs/guides/development/custom-flows/authentication/session-tasks
+            if (session?.currentTask) {
+              console.log(session?.currentTask)
+              return
+            }
+
+            // If no session tasks, navigate the signed-in user to the home page
+            const url = decorateUrl('/')
+            if (url.startsWith('http')) {
+              window.location.href = url
+            } else {
+              router.push(url)
+            }
+          },
+        })
+      }
+    }
+
++   if (signIn.status === 'needs_client_trust') {
++     return (
++       <>
++         <h1>Verify your account</h1>
++         <form action={handleVerify}>
++           <div>
++             <label htmlFor="code">Code</label>
++             <input id="code" name="code" type="text" />
++             {errors.fields.code && <p>{errors.fields.code.message}</p>}
++           </div>
++           <button type="submit" disabled={fetchStatus === 'fetching'}>
++             Verify
++           </button>
++         </form>
++         <button onClick={() => signIn.mfa.sendEmailCode()}>I need a new code</button>
++         <button onClick={() => signIn.reset()}>Start over</button>
++         {/* For your debugging purposes. You can just console.log errors, but we put them in the UI for convenience */}
++         {errors && <p>{JSON.stringify(errors, null, 2)}</p>}
++       </>
++     )
++   }
+
+    return (
+      <>
+        <h1>Sign in</h1>
+        <form action={handleSubmit}>
+          <div>
+            <label htmlFor="email">Enter email address</label>
+            <input id="email" name="email" type="email" />
+            {errors.fields.identifier && <p>{errors.fields.identifier.message}</p>}
+          </div>
+          <div>
+            <label htmlFor="password">Enter password</label>
+            <input id="password" name="password" type="password" />
+            {errors.fields.password && <p>{errors.fields.password.message}</p>}
+          </div>
+          <button type="submit" disabled={fetchStatus === 'fetching'}>
+            Continue
+          </button>
+        </form>
+        {/* For your debugging purposes. You can just console.log errors, but we put them in the UI for convenience */}
+        {errors && <p>{JSON.stringify(errors, null, 2)}</p>}
+      </>
+    )
+  }
+```
+
+**SMS code**
+
+### Configure application settings
+
+Device Trust will fallback to SMS verification code **only if email is completely disabled for the application**, or else Device Trust will fallback to either email code or email link, depending on your application's settings.
+
+1. In the Clerk Dashboard, navigate to the **User & authentication** page.
+2. Ensure all email options are disabled.
+3. Select the **Phone** tab. Ensure all the settings are enabled.
+4. Select the **Password** tab and enable **Sign-up with password**. **Device Trust** is enabled by default (applications created before November 14, 2025 will need to enable Device Trust).
+
+### Build the custom flow
+
+filename: app/sign-in/page.tsx
+```tsx
+  'use client'
+
+  import { useSignIn } from '@clerk/nextjs'
+  import type { PhoneCodeFactor } from '@clerk/nextjs/types'
+  import { useRouter } from 'next/navigation'
+
+  export default function Page() {
+    const { signIn, errors, fetchStatus } = useSignIn()
+    const router = useRouter()
+
+    const handleSubmit = async (formData: FormData) => {
+      const phoneNumber = formData.get('phoneNumber') as string
+      const password = formData.get('password') as string
+
+      await signIn.password({
+        phoneNumber,
+        password,
+      })
+
+      if (signIn.status === 'complete') {
+        await signIn.finalize({
+          navigate: ({ session, decorateUrl }) => {
+            // Handle session tasks
+            // See https://clerk.com/docs/guides/development/custom-flows/authentication/session-tasks
+            if (session?.currentTask) {
+              console.log(session?.currentTask)
+              return
+            }
+
+            // If no session tasks, navigate the signed-in user to the home page
+            const url = decorateUrl('/')
+            if (url.startsWith('http')) {
+              window.location.href = url
+            } else {
+              router.push(url)
+            }
+          },
+        })
+      } else if (signIn.status === 'needs_second_factor') {
+        // See https://clerk.com/docs/guides/development/custom-flows/authentication/multi-factor-authentication
++     } else if (signIn.status === 'needs_client_trust') {
++       const phoneCodeFactor = signIn.supportedSecondFactors.find(
++         (factor): factor is PhoneCodeFactor => factor.strategy === 'phone_code',
++       )
++
++       if (phoneCodeFactor) {
++         await signIn.mfa.sendPhoneCode()
++       }
+      } else {
+        // Check why the sign-in is not complete
+        console.error('Sign-in attempt not complete:', signIn)
+      }
+    }
+
+    const handleVerify = async (formData: FormData) => {
+      const code = formData.get('code') as string
+
+      await signIn.mfa.verifyPhoneCode({ code })
+
+      if (signIn.status === 'complete') {
+        await signIn.finalize({
+          navigate: ({ session, decorateUrl }) => {
+            // Handle session tasks
+            // See https://clerk.com/docs/guides/development/custom-flows/authentication/session-tasks
+            if (session?.currentTask) {
+              console.log(session?.currentTask)
+              return
+            }
+
+            // If no session tasks, navigate the signed-in user to the home page
+            const url = decorateUrl('/')
+            if (url.startsWith('http')) {
+              window.location.href = url
+            } else {
+              router.push(url)
+            }
+          },
+        })
+      }
+    }
+
++   if (signIn.status === 'needs_client_trust') {
++     return (
++       <>
++         <h1>Verify your account</h1>
++         <form action={handleVerify}>
++           <div>
++             <label htmlFor="code">Code</label>
++             <input id="code" name="code" type="text" />
++             {errors.fields.code && <p>{errors.fields.code.message}</p>}
++           </div>
++           <button type="submit" disabled={fetchStatus === 'fetching'}>
++             Verify
++           </button>
++         </form>
++         <button onClick={() => signIn.mfa.sendPhoneCode()}>I need a new code</button>
++         <button onClick={() => signIn.reset()}>Start over</button>
++         {/* For your debugging purposes. You can just console.log errors, but we put them in the UI for convenience */}
++         {errors && <p>{JSON.stringify(errors, null, 2)}</p>}
++       </>
++     )
++   }
+
+    return (
+      <>
+        <h1>Sign in</h1>
+        <form action={handleSubmit}>
+          <div>
+            <label htmlFor="phoneNumber">Enter phone number</label>
+            <input id="phoneNumber" name="phoneNumber" type="tel" />
+            {errors.fields.identifier && <p>{errors.fields.identifier.message}</p>}
+          </div>
+          <div>
+            <label htmlFor="password">Enter password</label>
+            <input id="password" name="password" type="password" />
+            {errors.fields.password && <p>{errors.fields.password.message}</p>}
+          </div>
+          <button type="submit" disabled={fetchStatus === 'fetching'}>
+            Continue
+          </button>
+        </form>
+        {/* For your debugging purposes. You can just console.log errors, but we put them in the UI for convenience */}
+        {errors && <p>{JSON.stringify(errors, null, 2)}</p>}
+      </>
+    )
+  }
+```
+
+---
+
+## Sitemap
+
+Overview of all docs pages

@@ -1,0 +1,174 @@
+# Test helpers
+# джерело: https://clerk.com/docs/guides/development/testing/playwright/test-helpers
+# отримано: 2026-09-25
+# версія: core-3
+
+The `@clerk/testing` package also provides some helper functions to sign in/sign out with Clerk in your Playwright tests without having to interact with the UI.
+To use these commands, import the `clerk` object from the `@clerk/testing/playwright` package.
+
+### `clerk.signIn()`
+
+The `clerk.signIn()` function is used to sign in a user using Clerk. There are two ways to use it:
+
+- **`emailAddress` parameter** (recommended): Signs in by creating a server-side token via the Backend API. This bypasses all verification steps, including email verification and multi-factor authentication. Requires `CLERK_SECRET_KEY` to be set.
+- **`signInParams` parameter**: Signs in client-side using the specified strategy (password, phone code, or email code). Only handles first factor verification — multi-factor authentication is not supported with this approach.
+
+Before calling `clerk.signIn()`, it is required to call `page.goto()` and navigate to an unprotected page that loads Clerk. For example, the index (`/`) page.
+
+> `clerk.signIn()` internally uses the `setupClerkTestingToken()` helper, so you don't need to call it separately.
+
+#### Parameters
+
+`clerk.signIn()` accepts an object with the following properties:
+
+| Name                           | Type                          | Description                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ------------------------------ | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| emailAddress?                  | string                        | The email address of the user to sign in. This is an alternative to using the signInParams parameter. A Secret KeyYour Clerk Secret Key is used to authenticate requests from your backend to Clerk's API. You can find it on the API keys page in the Clerk Dashboard. Do not expose this on the frontend with a public environment variable. is required to be set in the CLERK\_SECRET\_KEY environment variable to use this parameter. |
+| page                           | Page                          | The Playwright Page object to use for the sign-in operation.                                                                                                                                                                                                                                                                                                                                                                               |
+| setupClerkTestingTokenOptions? | SetupClerkTestingTokenOptions | Options to pass to setupClerkTestingToken(). See SetupClerkTestingTokenOptions.                                                                                                                                                                                                                                                                                                                                                            |
+| signInParams                   | ClerkSignInParams             | The parameters to use for the sign-in operation. See ClerkSignInParams.                                                                                                                                                                                                                                                                                                                                                                    |
+
+#### `ClerkSignInParams`
+
+The `ClerkSignInParams` type is used to define the object that is passed to the `signInParams` parameter of the `clerk.signIn()` function. It has the following properties:
+
+| Name                                                                                    | Type                                                                                                                                                    | Description                                                                      |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| identifier                                                                              | string                                                                                                                                                  | The user's identifier. This could be a username, a phone number, or an email.    |
+| password                                                                                | string                                                                                                                                                  | The user's password. This is required only if the strategy is set to 'password'. |
+| password: The command will sign in the user using the provided password and identifier. | phone\_code: You must have a user with a test phone number as an identifier (e.g., +15555550100). Currently only supported in development environments. |                                                                                  |
+
+#### `SetupClerkTestingTokenOptions`
+
+The `SetupClerkTestingTokenOptions` type is used to define the object that is passed to the `setupClerkTestingTokenOptions` parameter of the `clerk.signIn()` function. It has the following properties:
+
+| Name            | Type   | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| --------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| frontendApiUrl? | string | The Frontend API URLYour Clerk Frontend API URL, or FAPI URL, is the URL of your Clerk app's dedicated Frontend API instance. You can find it on the API keys page in the Clerk Dashboard. for your Clerk dev instance, without the protocol. If provided, it overrides the Frontend API URL parsed from the Publishable KeyYour Clerk Publishable Key tells your app what your FAPI URL is, enabling your app to locate and communicate with your dedicated FAPI instance. You can find it on the API keys page in the Clerk Dashboard.. |
+
+#### Example
+
+The following example demonstrates the recommended way to use `clerk.signIn()` with the `emailAddress` parameter. This approach works regardless of your instance's verification or MFA settings.
+
+filename: e2e/app.spec.ts
+```ts
+import { clerk } from '@clerk/testing/playwright'
+
+test('sign in', async ({ page }) => {
+  // Navigate to an unprotected page that loads Clerk
+  await page.goto('/')
+
+  await clerk.signIn({
+    page,
+    emailAddress: process.env.E2E_CLERK_USER_EMAIL,
+  })
+
+  // Navigate to a protected page
+  await page.goto('/protected')
+})
+```
+
+Alternatively, you can use the `signInParams` parameter to sign in using a specific strategy. This approach only handles first factor verification — if your instance has email verification or MFA enabled, use the `emailAddress` parameter instead.
+
+filename: e2e/app.spec.ts
+```ts
+import { clerk } from '@clerk/testing/playwright'
+
+test('sign in', async ({ page }) => {
+  // Navigate to an unprotected page that loads Clerk
+  await page.goto('/')
+
+  await clerk.signIn({
+    page,
+    signInParams: { strategy: 'phone_code', identifier: '+15555550100' },
+  })
+
+  // Navigate to a protected page
+  await page.goto('/protected')
+})
+```
+
+### `clerk.signOut()`
+
+`clerk.signOut()` is used to sign out the current user using Clerk.
+
+Before calling `clerk.signOut()`, it is required to call `page.goto()` and navigate to an unprotected page that loads Clerk. For example, the index (`/`) page.
+
+#### Parameters
+
+`clerk.signOut()` accepts an object with the following properties:
+
+| Name            | Type           | Description                                                  |
+| --------------- | -------------- | ------------------------------------------------------------ |
+| page            | Page           | The Playwright Page object to use for the sign-in operation. |
+| signOutOptions? | SignOutOptions | Options to pass to clerk.signOut(). See SignOutOptions.      |
+
+#### `SignOutOptions`
+
+The `SignOutOptions` type is used to define the object that is passed to the `signOutOptions` parameter of the `clerk.signOut()` function. It has the following properties:
+
+| Name         | Type   | Description                                                                         |
+| ------------ | ------ | ----------------------------------------------------------------------------------- |
+| redirectUrl? | string | The full URL or path to navigate after sign-out is complete.                        |
+| sessionId?   | string | The ID of a specific session to sign out of. Useful for multi-session applications. |
+
+#### Example
+
+The following example demonstrates how to use `clerk.signOut()` in a test to sign out a user.
+
+filename: e2e/app.spec.ts
+```ts
+import { clerk } from '@clerk/testing/playwright'
+
+test('sign out', async ({ page }) => {
+  // Navigate to an unprotected page that loads Clerk
+  await page.goto('/')
+
+  await clerk.signIn({
+    page,
+    signInParams: { strategy: 'phone_code', identifier: '+15555550100' },
+  })
+
+  await page.goto('/protected')
+  await clerk.signOut({ page })
+  await page.goto('/protected')
+  // should redirect to sign in page
+})
+```
+
+### `clerk.loaded()`
+
+`clerk.loaded()` asserts that Clerk has been loaded.
+
+Before calling `clerk.loaded()`, it is required to call `page.goto()` and navigate to an unprotected page that loads Clerk. For example, the index (`/`) page.
+
+#### Parameters
+
+`clerk.loaded()` accepts an object with the following properties:
+
+| Name | Type | Description                                                  |
+| ---- | ---- | ------------------------------------------------------------ |
+| page | Page | The Playwright Page object to use for the sign-in operation. |
+
+#### Example
+
+The following example demonstrates how to use `clerk.loaded()` in a test to assert that Clerk has been loaded.
+
+filename: e2e/app.spec.ts
+```ts
+import { clerk } from '@clerk/testing/playwright'
+
+test('ensure that clerk has loaded', async ({ page }) => {
+  // Navigate to an unprotected page that loads Clerk
+  await page.goto('/')
+
+  await clerk.loaded({ page })
+  // clerk has loaded
+})
+```
+
+---
+
+## Sitemap
+
+Overview of all docs pages

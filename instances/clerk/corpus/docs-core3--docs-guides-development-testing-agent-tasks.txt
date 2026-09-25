@@ -1,0 +1,89 @@
+# Agent Tasks (Beta)
+# джерело: https://clerk.com/docs/guides/development/testing/agent-tasks
+# отримано: 2026-09-25
+# версія: core-3
+
+> **Beta:** This feature is currently in beta. Functionality may change before general availability. If you run into any issues, please reach out to our support team.
+
+Agent Tasks provide a way to create authenticated sessions on behalf of users without going through the standard sign-in flow. When you create an Agent Task, Clerk returns a URL that, when visited, creates a session for the specified user and redirects to the URL of your choice.
+
+This is useful for:
+
+- Automated end-to-end testing where you need a signed-in user
+- AI agent workflows that act on behalf of a user
+
+## Create an Agent Task
+
+Use the `clerkClient.agentTasks.create()` method to create an Agent Task. The returned `url` can then be visited to establish the session.
+
+filename: app/api/example/route.ts
+```ts
+import { auth, clerkClient } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server'
+
+export async function POST() {
+  // Use the `auth()` helper to access the `isAuthenticated` and the user's ID
+  const { isAuthenticated, userId } = await auth()
+
+  // Protect the route from unauthenticated users
+  if (!isAuthenticated) {
+    return new NextResponse('Unauthorized', { status: 401 })
+  }
+
+  // Instantiate the `clerkClient`
+  const client = await clerkClient()
+
+  // Use the `createAgentTask()` method to create the Agent Task
+  const agentTask = await client.agentTasks.create({
+    onBehalfOf: {
+      userId,
+    },
+    permissions: '*',
+    agentName: 'my-agent',
+    taskDescription: 'Automated test login',
+    redirectUrl: 'http://localhost:3000/dashboard',
+  })
+
+  return NextResponse.json({ message: 'Agent Task created', agentTask })
+}
+```
+
+## Use with Playwright
+
+In Playwright tests, instantiate the client with `createClerkClient()` from `@clerk/backend` rather than importing `clerkClient` from your framework SDK (e.g., `@clerk/nextjs/server`). Framework SDK exports aren't available outside your app's request context.
+
+filename: e2e/app.spec.ts
+```ts
+import { createClerkClient } from '@clerk/backend'
+import { test, expect } from '@playwright/test'
+
+const clerkClient = createClerkClient({
+  secretKey: process.env.CLERK_SECRET_KEY,
+})
+
+test('authenticated user flow', async ({ page }) => {
+  const agentTask = await clerkClient.agentTasks.create({
+    onBehalfOf: {
+      userId: 'user_xxx',
+      // or { identifier: 'test@example.com' }
+    },
+    permissions: '*',
+    agentName: 'test-agent',
+    taskDescription: 'test-login',
+    redirectUrl: 'http://localhost:3000/dashboard',
+  })
+
+  await page.goto(agentTask.url)
+  await expect(page.locator('header')).toContainText('Welcome')
+})
+```
+
+## Revoke an Agent Task
+
+If you need to invalidate an Agent Task before it's used, you can revoke it.
+
+---
+
+## Sitemap
+
+Overview of all docs pages

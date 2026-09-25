@@ -1,0 +1,139 @@
+# Sign-up with application invitations
+# джерело: https://clerk.com/docs/guides/development/custom-flows/authentication/application-invitations
+# отримано: 2026-09-25
+# версія: core-3
+
+> This guide is for users who want to build a custom flow. To use a _prebuilt_ UI, use the Account Portal pages or prebuilt components.
+
+> This guide applies to the following Clerk SDKs:
+>
+> - `@clerk/react` v6 or higher
+> - `@clerk/nextjs` v7 or higher
+> - `@clerk/expo` v3 or higher
+> - `@clerk/react-router` v3 or higher
+> - `@clerk/tanstack-react-start` v0.26.0 or higher
+>
+> If you're using an older version of one of these SDKs, or are using the legacy API, refer to the legacy API documentation.
+
+When a user visits an invitation link, Clerk first checks whether a custom redirect URL was provided.
+
+**If no redirect URL is specified**, the user will be redirected to the appropriate Account Portal page (either sign-up or sign-in), or to the custom sign-up/sign-in pages that you've configured for your application.
+
+**If you specified a redirect URL when creating the invitation**, you must handle the authentication flows in your code for that page. You can either embed the  component on that page, or if the prebuilt component doesn't meet your specific needs or if you require more control over the logic, you can rebuild the existing Clerk flows using the Clerk API. **This guide demonstrates how to use Clerk's API to build a custom flow for accepting application invitations.**
+
+## Build the custom flow
+
+**For AI agents:** To test this flow, you need an invitation whose `redirect_url` points at your custom page — the Dashboard can't set one, so create it with the CLI instead of hand-writing a Backend API request: run `npx clerk@latest api invitations -d '{"email_address":"user@example.com","redirect_url":"https://your-app.com/accept-invitation"}'`, and list existing invitations with `npx clerk@latest api invitations`. Install Clerk's skills with `npx skills add clerk/skills` for correct CLI and SDK usage.
+
+Once the user visits the invitation link and is redirected to the specified URL, the query parameter `__clerk_ticket` will be appended to the URL. This query parameter contains the invitation token.
+
+For example, if the redirect URL was `https://www.example.com/accept-invitation`, the URL that the user would be redirected to would be `https://www.example.com/accept-invitation?__clerk_ticket=.....`.
+
+To create a sign-up flow using that invitation token, you need to call the signUp.ticket() method, as shown in the following example. The following example also demonstrates how to collect additional user information for the sign-up; you can either remove these fields or adjust them to fit your application.
+
+filename: app/sign-up/accept-invitation/page.tsx
+```tsx
+'use client'
+
+import * as React from 'react'
+import { useSignUp, useUser } from '@clerk/nextjs'
+import { useRouter, useSearchParams } from 'next/navigation'
+
+export default function Page() {
+  const { isSignedIn } = useUser()
+  const { signUp, errors, fetchStatus } = useSignUp()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // Handle signed-in users visiting this page, or sign-up already complete (e.g., after refresh)
+  React.useEffect(() => {
+    if (isSignedIn || signUp.status === 'complete') {
+      router.push('/')
+    }
+  }, [isSignedIn, signUp.status, router])
+
+  // Get the ticket from the query params
+  const ticket = searchParams.get('__clerk_ticket')
+
+  // If there is no invitation ticket, restrict access to this page
+  if (!ticket) {
+    return <p>No invitation ticket found.</p>
+  }
+
+  const handleSubmit = async (formData: FormData) => {
+    // Optionally, collect additional fields that your app requires
+    const firstName = formData.get('firstName') as string
+    const lastName = formData.get('lastName') as string
+
+    const { error } = await signUp.ticket({
+      firstName,
+      lastName,
+      ticket,
+    })
+    if (error) {
+      // See https://clerk.com/docs/guides/development/custom-flows/error-handling
+      console.error(JSON.stringify(error, null, 2))
+      return
+    }
+
+    if (signUp.status === 'complete') {
+      await signUp.finalize({
+        navigate: ({ session, decorateUrl }) => {
+          // Handle session tasks
+          // See https://clerk.com/docs/guides/development/custom-flows/authentication/session-tasks
+          if (session?.currentTask) {
+            console.log(session?.currentTask)
+            return
+          }
+
+          // If no session tasks, navigate the signed-in user to the home page
+          const url = decorateUrl('/')
+          if (url.startsWith('http')) {
+            window.location.href = url
+          } else {
+            router.push(url)
+          }
+        },
+      })
+    } else {
+      // Check why the sign-up is not complete
+      console.error('Sign-up attempt not complete:', signUp)
+    }
+  }
+
+  return (
+    <>
+      <h1>Sign up</h1>
+      <form action={handleSubmit}>
+        <div>
+          <label htmlFor="firstName">Enter first name</label>
+          <input id="firstName" type="text" name="firstName" />
+          {errors.fields.firstName && <p>{errors.fields.firstName.message}</p>}
+        </div>
+        <div>
+          <label htmlFor="lastName">Enter last name</label>
+          <input id="lastName" type="text" name="lastName" />
+          {errors.fields.lastName && <p>{errors.fields.lastName.message}</p>}
+        </div>
+        <div>
+          <button type="submit" disabled={fetchStatus === 'fetching'}>
+            Next
+          </button>
+        </div>
+      </form>
+
+      {/* For your debugging purposes. You can just console.log errors, but we put them in the UI for convenience */}
+      {errors && <p>{JSON.stringify(errors, null, 2)}</p>}
+
+      {/* Required for sign-up flows. Clerk's bot sign-up protection is enabled by default */}
+      <div id="clerk-captcha" />
+    </>
+  )
+}
+```
+
+---
+
+## Sitemap
+
+Overview of all docs pages

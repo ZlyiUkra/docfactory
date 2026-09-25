@@ -1,0 +1,176 @@
+# Restricting access
+# джерело: https://clerk.com/docs/guides/secure/restricting-access
+# отримано: 2026-09-25
+# версія: core-3
+
+Clerk provides restriction options that give you enhanced control over who can access your application. These options enable you to limit sign-ups, sign-ins, or prevent accounts with specific identifiers, such as email addresses, phone numbers, and even entire domains, from accessing your application.
+
+**For AI agents:** Configure these restrictions (access mode, allowlist, blocklist, disposable/subaddress blocking) on the instance with `npx clerk@latest config patch --json '<payload>'` (or `--file <path>`) instead of the Dashboard — run `npx clerk@latest config schema` first to find the keys (e.g., `auth_access_control` for allowlist/blocklist, `sign_up_mode`, `block_email_subaddresses`, `block_disposable_email_domains`). `sign_up_mode` keeps the values `public`, `restricted`, and `waitlist`, which the Dashboard labels **Open**, **Invite-only**, and **Waitlist**. Install Clerk's skills with `npx skills add clerk/skills` for correct CLI and SDK usage.
+
+## Access mode
+
+**Access mode** controls how users gain access to your application. Clerk supports three modes, and an application is in exactly one of them at a time:
+
+- **Open**
+- **Invite-only**
+- **Waitlist**
+
+Select the mode on the **Access mode** page in the Clerk Dashboard. The Dashboard labels correspond to the following API values, which are unchanged:
+
+| Dashboard label | API value    |
+| --------------- | ------------ |
+| **Open**        | `public`     |
+| **Invite-only** | `restricted` |
+| **Waitlist**    | `waitlist`   |
+
+### Open
+
+In **Open** mode, the sign-up process is open to anyone. This mode is the **default** and is ideal for applications that want broad user access.
+
+### Invite-only
+
+In **Invite-only** mode, user access is controlled by the application admin(s). Users can be added to the application through invitations, enterprise connections or manual user creation. This mode is ideal for applications that are in private beta or internal tools.
+
+To enable this mode:
+
+1. In the Clerk Dashboard, navigate to the **Access mode** page.
+2. Select **Invite-only** and select **Save**.
+
+Additional features available in **Invite-only** mode:
+
+- The  component will keep the prompt to sign up hidden by default. This is to avoid confusion for users who don't have access.
+
+- The  is accessible only to users who have been invited and have a valid invitation link. Users who don't have access will see a message indicating that they need an invitation to sign up.
+
+### Waitlist
+
+ component
+
+In **Waitlist** mode, users can register their interest in your app by joining a waitlist. Existing users and users who have been approved from the waitlist will be able to sign in to your app, while new users will need to join the waitlist to access your app. This mode is ideal for apps in early development stages or those wanting to generate interest before launch.
+
+When a user joins the waitlist, they receive the **Waitlist confirmation** email acknowledging their request.
+
+Once approved, they receive the **Waitlist invitation** email with instructions on how to join your app. By default, this email includes an **Accept invitation** button that redirects them to your app's Account Portal sign-up page, which hosts Clerk's `<SignUp />` component. What happens next depends on the settings configured in the Clerk Dashboard. If your app only requires an email address, the Account Portal creates the user's account and signs them in. If your app requires more information, the `<SignUp />` component collects that additional information before creating the account and signing the user in.
+
+You can customize both waitlist emails to match your brand.
+
+> **Email** must be enabled in the Clerk Dashboard to allow waitlist invitation emails to be sent to users after they are approved. Support for sending waitlist invitations when **Email** is disabled is actively being worked on.
+
+To enable **Waitlist** mode:
+
+1. In the Clerk Dashboard, navigate to the **Access mode** page.
+2. Select **Waitlist** and select **Save**.
+
+Additional features available in **Waitlist** mode:
+
+- The  component will only be accessible to users who have been approved from the waitlist or already have an account.
+
+- The  is accessible only to users who have been invited and have a valid invitation link. Users who don't have access will see a message indicating that they need to join the waitlist to access your app.
+
+- The `<SignIn />` and `<SignUp />` components handle the waitlist flow for you. If you'd like to build a custom waitlist page, you can use the  component. See the guide on building a custom waitlist page for more information.
+
+#### Manage users on your waitlist
+
+Once users join your waitlist, you can manage their access from the Clerk Dashboard. You can approve, deny, or re-invite users.
+
+To manage a user on your waitlist:
+
+1. In the Clerk Dashboard, navigate to the **Waitlist** page.
+2. On the right-side of the user's row, select the menu icon (...).
+3. If the user's invitation status is **Waitlist**, you can select **Invite** or select **Revoke** to deny their invitation. To re-invite a user, you must first revoke their existing invitation. Once their invitation is **Revoked**, select the menu icon (...) and select **Re-invite**.
+
+#### Customize waitlist emails
+
+To configure the waitlist emails:
+
+1. In the Clerk Dashboard, navigate to the **Emails** page.
+2. Select the **Waitlist** tab.
+3. In **Available templates**, enable or disable a template, or select a template to edit. For detailed information on the customization options, see the guide on customizing email templates.
+
+## Allowlist
+
+> This feature requires a paid plan for production use, but all features are free to use in development mode so that you can try out what works for you. See the pricing page for more information.
+
+By adding specific identifiers to the allowlist, _only_ users with those identifiers will be able to sign up to your application, while others will be blocked. This is useful for internal tools, where you want to allow only users with your company domain to have access to the application.
+
+After creating an account, users cannot change their identifier to bypass the allowlist, making this feature a secure way to control who can access your application. For example, if you add `clerk.dev` as an allowed email domain, any user with a `@clerk.dev` email address can sign up for your application. Email addresses from different domains will not be able to sign up.
+
+> Allowlist identifiers are case-insensitive. For example, allowing `JOHN.DOE@clerk.dev` has the same effect as allowing `john.doe@clerk.dev`, since identifiers are normalized to lowercase.
+
+> The allowlist applies to applications in **Open** access mode, and can only be enabled while your application is in that mode. In **Invite-only** and **Waitlist** modes, sign-ups are already restricted, so the allowlist doesn't apply.
+
+To enable this feature:
+
+1. In the Clerk Dashboard, navigate to the **Access mode** page.
+2. Toggle on **Enable allowlist** and select **Save**.
+
+> Enabling the Allowlist without adding any identifier exceptions blocks _all_ sign-ups.
+
+## Blocklist
+
+> This feature requires a paid plan for production use, but all features are free to use in development mode so that you can try out what works for you. See the pricing page for more information.
+
+By adding specific identifiers to the blocklist, you can prevent users with those identifiers from signing up. This helps protect your application from attacks, such as scripts creating multiple spam accounts. For example, adding `clerk.dev` to the blocked email domains list prevents anyone with an email address ending in `@clerk.dev` from signing up.
+
+> Blocklist identifiers are case-insensitive. For example, blocking `JOHN.DOE@clerk.dev` has the same effect as blocking `john.doe@clerk.dev`, since identifiers are normalized to lowercase.
+
+You can also block email addresses from all subdomains by using `*@*.clerk.dev`. This prevents sign-ups from email addresses such as `@subdomain.clerk.dev` or `@subdomain2.clerk.dev`, and deeper subdomains like `@subdomain.subdomain2.clerk.dev`.
+
+> A wildcard must stand in for an entire local part or an entire subdomain label. It can't match part of one.
+>
+> `*@clerk.dev` and `*@*.clerk.dev` are both supported. A partial pattern such as `john*@clerk.dev` is not — it's a syntactically valid email address, so it's stored as an exact identifier rather than a prefix pattern. It won't match `johnsmith@clerk.dev`, or any other address that merely starts with `john`.
+>
+> To block a family of related addresses that share a prefix, see **Block email subaddresses**, which handles the provider-specific separators those addresses use.
+
+To enable this feature:
+
+1. In the Clerk Dashboard, navigate to the **Blocklist** page.
+2. Toggle on **Enable blocklist** and select **Save**.
+
+> In the case that you have enabled the allowlist and the blocklist and have added the same identifier in both, the allowlist takes precedence.
+
+> The allowlist and blocklist apply to **sign-ups**. Older applications may also apply them to **sign-ins**: these show an **Apply allowlist and blocklist to sign-ins** setting on the **Blocklist** page, which you can turn off to match the current behavior. If you don't see that setting, your application applies these lists to sign-ups only.
+
+For additional security, adding an individual email address to the blocklist will also block any attempts to sign up with the email address modified to contain a subaddress. Subaddresses are identified by the provider-specific separators listed under **Block email subaddresses**.
+
+For example, if you add `john.doe@clerk.dev` as a blocked email address, it means that anybody with `john.doe@clerk.dev` email address will not be able to sign up for your application, including `john.doe+anything@clerk.dev` and any other subaddress.
+
+> Only the separators carry over to the blocklist. Gmail dot matching belongs to **Block email subaddresses**, so blocking `janedoe@gmail.com` won't also block `jane.doe@gmail.com`.
+
+## Block email subaddresses
+
+**Block email subaddresses** allows you to block email addresses that contain a subaddress from signing up or being added to existing accounts. For example, if `user@clerk.com` already has an account, `user+sub@clerk.com` will be blocked.
+
+Email providers use different formats for subaddresses, so Clerk applies different rules depending on the provider:
+
+| Provider            | Domains                                                                                                                                                                                                                                                                                                                            | Subaddress separators | Additional matching                                                                                                                 |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Gmail               | `gmail.com`, `googlemail.com`                                                                                                                                                                                                                                                                                                      | `+`, `=`, `#`         | Dots in the local part are ignored. For example, if `jsmith@gmail.com` already has an account, `j.smith@gmail.com` will be blocked. |
+| Yahoo Mail          | Yahoo's own mail domains: `yahoo.com`, `ymail.com`, `rocketmail.com`, `y7mail.com`, and Yahoo's country domains such as `yahoo.co.uk`, `yahoo.fr`, `yahoo.co.jp`, and `yahoo.com.br`. Domains that merely begin with a `yahoo` label, such as `yahoo.dev` or a `yahoo.` subdomain on a hosting provider, are not treated as Yahoo. | `+`, `=`, `#`, `-`    | —                                                                                                                                   |
+| All other providers | Any other domain                                                                                                                                                                                                                                                                                                                   | `+`, `=`, `#`         | —                                                                                                                                   |
+
+> Existing accounts with email subaddresses will not be affected by this restriction, and will still be allowed to sign in.
+>
+> This feature is designed to prevent mass-spam account creation from a single email address. Matching is based on the address with its subaddress removed, so the first sign-up for a given base address is allowed even if it contains a subaddress. Any subsequent sign-ups using other subaddresses of that base address are blocked.
+
+To enable this feature:
+
+1. In the Clerk Dashboard, navigate to the **Rules** page.
+2. Toggle on **Block email subaddresses** and select **Save**.
+
+## Block sign-ups that use disposable email addresses
+
+Disposable email addresses are throwaway inboxes, commonly used to create spam accounts. This restriction blocks all addresses that are _known to be disposable_ from signing up or being added to existing accounts.
+
+To enable this feature:
+
+1. In the Clerk Dashboard, navigate to the **Rules** page.
+2. Toggle on **Block sign-ups that use disposable email addresses** and select **Save**.
+
+> The restrictions on this page control who can **sign up**. If you want to prevent existing users from changing their email, phone, or username **after sign-up**, see restrict identifier changes.
+
+---
+
+## Sitemap
+
+Overview of all docs pages

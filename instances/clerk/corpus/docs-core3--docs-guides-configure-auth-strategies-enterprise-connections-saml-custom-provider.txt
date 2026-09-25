@@ -1,0 +1,105 @@
+# Add a custom identity provider as a SAML connection
+# джерело: https://clerk.com/docs/guides/configure/auth-strategies/enterprise-connections/saml/custom-provider
+# отримано: 2026-09-25
+# версія: core-3
+
+**Before you start**
+
+- Upgrade to a paid plan
+- Enable email for your application.
+
+Clerk supports Enterprise SSO via the SAML protocol, enabling you to create authentication strategies for an identity provider (IdP). Clerk offers direct integrations with Microsoft Entra ID, Google Workspace, and Okta Workforce, but you can also integrate with any other IdP that supports the SAML protocol.
+
+In this guide, **you** configure the connection in the Clerk Dashboard, while **the customer** (whoever manages the IdP) configures the IdP.
+
+> This guide requires coordination between you and your customers' IT administrators. If you're creating an enterprise connection **for an Organization**, you can allow your customers' IT admins to configure SSO themselves. See the guide on self-serve SSO for more information.
+
+1. ## Create a SAML connection in Clerk
+
+   1. In the Clerk Dashboard, navigate to the **SSO connections** page.
+   2. Select **Add connection** and select **For specific domains or organizations**.
+   3. Under **SAML**, select **Custom SAML Provider**.
+   4. Enter the **Domain**. This is the email domain of the users you want to allow to sign in to your application. Optionally, select an **Organization**.
+   5. Enter the **Name**. This will be displayed on the sign-in form.
+   6. Select **Add connection**. You'll be redirected to the connection's configuration page.
+   7. On the **SSO** tab, in the **Service Provider configuration** section, save the **Assertion Consumer Service (ACS) URL** and **Entity ID** values somewhere secure. You'll need to give these to the customer so they can configure their IdP.
+2. ## Configure SAML application
+
+   Now the customer's IdP needs to be configured with the **ACS URL** and **Entity ID** from Clerk.
+
+   To get you started, you can use the following email template with detailed instructions. Remember to share the **ACS URL** and **Entity ID**:
+
+   Here are the instructions for setting up SAML SSO with your IdP:
+
+   **Step 1: Create a SAML application**
+
+   1. In your IdP's dashboard, create a new **SAML 2.0** application.
+   2. Add the **Assertion Consumer Service (ACS) URL** and **Entity ID** values provided to you. Some IdPs label these differently, for example **Single sign-on URL** and **Audience URI (SP Entity ID)**.
+
+   **Step 2: Configure attribute statements**
+
+   Your SAML response must include the following attributes:
+
+   | Attribute name | Required | User attribute |
+   | -------------- | -------- | -------------- |
+   | `mail`         | ✅        | Primary email  |
+   | `firstName`    | ❌        | First name     |
+   | `lastName`     | ❌        | Last name      |
+
+   **Step 3: Assign users or groups**
+
+   Assign users or groups to the application before they can sign in with SSO. The exact steps depend on your IdP.
+
+   **Step 4: Share the IdP details**
+
+   Provide the application's **Metadata URL**. If your IdP doesn't support a metadata URL, share the **SSO URL**, **Entity ID (Issuer)**, and **Signing certificate** instead.
+3. ## Add the IdP configuration in Clerk
+
+   Once the customer has shared their IdP details, add them to the connection. There are two options:
+
+   - **Metadata configuration** (recommended) - Use the metadata URL or file from the IdP. This is the quickest and most reliable method, but not all IdPs support it.
+   - **Custom configuration** - Manually input the IdP's settings.
+4. ### Metadata configuration
+
+   1. In the Clerk Dashboard, open the connection and select the **SSO** tab. Under **Identity Provider configuration**, select **Add via metadata**.
+   2. Input the metadata URL or upload the metadata file that the customer shared.
+5. ### Custom configuration
+
+   If you're configuring the IdP manually, fill in these three fields in the Clerk Dashboard:
+
+   - **SSO URL** - The IdP's URL that Clerk redirects your users to so they can authenticate.
+   - **Entity ID** - The unique identifier of the IdP application.
+   - **Certificate** - The certificate Clerk needs to securely connect to the IdP.
+
+   1. In the Clerk Dashboard, under **Identity Provider configuration**, select **Use manual configuration**.
+   2. Paste the **SSO URL** and **Entity ID**, and upload the **Certificate** that the customer shared.
+
+   > If you closed the connection's configuration page in the Clerk Dashboard, you can find it by navigating to the **SSO connections** page and selecting the settings icon next to the connection you want to configure.
+6. ## Map IdP claims to Clerk fields
+
+   Clerk automatically maps the standard SAML claims (email, first name, and last name) to the User object. To review them, select the connection's **SSO** tab and find the **Common attributes** section under **Attribute mapping**.
+
+   To map a claim that has no standard Clerk field, store it in the user's `publicMetadata`. The approach depends on whether the connection also uses Directory Sync:
+
+   - **SSO only:** In the identity provider (IdP), prefix the claim name with `public_metadata_`. For example, mapping a phone number to `public_metadata_phone_number` stores it under `phone_number` in `User.publicMetadata`. Some IdPs, such as Microsoft Entra, send claims as URLs; map those as plain strings.
+   - **SSO with Directory Sync:** Define a custom attribute so the mapping applies to both SSO and SCIM. Define it on the connection's **Overview** tab (in the **Identity provider attributes** section), then map it in the **SSO** tab (in the **Custom attributes** section of the **Attribute mapping** section). Refer to the guide on custom attribute mapping. While Directory Sync is enabled, SCIM is the only source for these values and overrides SSO.
+
+   Learn more about accessing user metadata from the API.
+7. ## Enable the connection in Clerk
+
+   You have configured the SAML connection. Once enabled, all users with email addresses ending in the domain will be redirected to your identity provider (IdP) at sign-up and sign-in.
+
+   > If the SAML configuration in Clerk or your IdP has an error, existing users with matching email domains will be **unable to sign in** once the connection is enabled. We recommend coordinating with your counterpart to test the connection at an off-peak time.
+
+   To make the connection available for your users to authenticate with:
+
+   1. Navigate to the **SSO connections** page and select the connection.
+   2. At the top of the page, toggle on **Enable connection** and select **Save**.
+
+> Custom SAML connections don't send a login hint to the IdP by default. To send one, see Configure a SAML login hint.
+
+---
+
+## Sitemap
+
+Overview of all docs pages

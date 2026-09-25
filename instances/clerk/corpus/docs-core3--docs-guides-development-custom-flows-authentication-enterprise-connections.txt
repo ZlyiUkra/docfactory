@@ -1,0 +1,90 @@
+# Build a custom flow for authenticating with enterprise connections
+# джерело: https://clerk.com/docs/guides/development/custom-flows/authentication/enterprise-connections
+# отримано: 2026-09-25
+# версія: core-3
+
+> This guide is for users who want to build a custom flow. To use a _prebuilt_ UI, use the Account Portal pages or prebuilt components.
+
+> This guide applies to the following Clerk SDKs:
+>
+> - `@clerk/react` v6 or higher
+> - `@clerk/nextjs` v7 or higher
+> - `@clerk/expo` v3 or higher
+> - `@clerk/react-router` v3 or higher
+> - `@clerk/tanstack-react-start` v0.26.0 or higher
+>
+> If you're using an older version of one of these SDKs, or are using the legacy API, refer to the legacy API documentation.
+
+## Before you start
+
+You must configure your application instance through the Clerk Dashboard for the enterprise connection(s) that you want to use. Visit the appropriate guide for your platform to learn how to configure your instance.
+
+## Build the custom flow
+
+The following example **will both sign up _and_ sign in users**, eliminating the need for a separate sign-up page. However, if you want to have separate sign-up and sign-in pages, the sign-up and sign-in flows are equivalent, meaning that all you have to do is swap out the `SignIn` object for the `SignUp` object using the useSignUp() hook.
+
+The following example:
+
+1. Accesses the SignIn object using the useSignIn() hook.
+2. Starts the authentication process by calling SignIn.sso(params). This method requires the following params:
+   - `redirectUrl`: The URL that the browser will be redirected to once the user authenticates with the identity provider (IdP) if no additional requirements are needed, and a session has been created.
+   - `redirectCallbackUrl`: The URL that the browser will be redirected to once the user authenticates with the IdP if additional requirements are needed.
+3. Creates a route at the URL that the `redirectCallbackUrl` param points to. The following example re-uses the `/sign-in` route, which should be written to handle when a sign-in attempt is in a non-complete status such as `needs_second_factor`.
+
+filename: app/sign-in/page.tsx
+```tsx
+'use client'
+
+import * as React from 'react'
+import { useSignIn } from '@clerk/nextjs'
+
+export default function Page() {
+  const { signIn, errors, fetchStatus } = useSignIn()
+
+  const signInWithEnterpriseSSO = async (formData: FormData) => {
+    const email = formData.get('email') as string
+
+    const { error } = await signIn.sso({
+      identifier: email,
+      strategy: 'enterprise_sso',
+      // The URL that the user will be redirected to if additional requirements are needed
+      redirectCallbackUrl: '/sign-in',
+      redirectUrl: '/sign-in/tasks', // Learn more about session tasks at https://clerk.com/docs/guides/development/custom-flows/authentication/session-tasks
+    })
+    if (error) {
+      // See https://clerk.com/docs/guides/development/custom-flows/error-handling
+      // for more info on error handling
+      console.error(JSON.stringify(error, null, 2))
+      return
+    }
+
+    if (signIn.status === 'needs_second_factor') {
+      // See https://clerk.com/docs/guides/development/custom-flows/authentication/multi-factor-authentication
+    } else if (signIn.status === 'needs_client_trust') {
+      // See https://clerk.com/docs/guides/development/custom-flows/authentication/device-trust
+    } else {
+      // Check why the sign-in is not complete
+      console.error('Sign-in attempt not complete:', signIn)
+    }
+  }
+
+  return (
+    <>
+      <form action={signInWithEnterpriseSSO}>
+        <input id="email" type="email" name="email" placeholder="Enter email address" />
+        <button type="submit" disabled={fetchStatus === 'fetching'}>
+          Sign in with Enterprise SSO
+        </button>
+      </form>
+      {/* For your debugging purposes. You can just console.log errors, but we put them in the UI for convenience */}
+      {errors && <p>{JSON.stringify(errors, null, 2)}</p>}
+    </>
+  )
+}
+```
+
+---
+
+## Sitemap
+
+Overview of all docs pages

@@ -1,0 +1,221 @@
+# Build a custom flow for creating and managing Organization invitations
+# джерело: https://clerk.com/docs/guides/development/custom-flows/organizations/manage-organization-invitations
+# отримано: 2026-09-25
+# версія: core-3
+
+> This guide is for users who want to build a custom flow. To use a _prebuilt_ UI, use the Account Portal pages or prebuilt components.
+
+Organization members with appropriate Permissions can invite new users to their Organization and manage those invitations. The invitation recipient can be either an existing user of your application or a new user. If they are a new user, they will need to sign up in order to accept the invitation.
+
+Users with the appropriate Permissions can also revoke Organization invitations for users that have not yet joined, which will prevent the user from becoming an Organization member.
+
+This guide will demonstrate how to use the Clerk API to build a custom flow for inviting users to an Organization and managing an Organization's pending invitations.
+
+> This guide is for creating and managing Organization invitations client-side. You can also create an Organization invitation using the Backend API. See the Organization invitations reference for more information.
+>
+> Also, see the custom flow for accepting Organization invitations.
+
+To invite a user:
+
+1. Use the useOrganization() hook to get `organization`, which is the Active Organization's.
+2. Use `organization` to call the inviteMember() method, with the recipient's email address and desired Role passed as arguments.
+
+To revoke an invitation:
+
+1. Use the `useOrganization()` hook to get `invitations`, which is a list of invitations for the Active Organization's.
+2. `invitations` is an array of OrganizationInvitation objects. Each `OrganizationInvitation` object has a revoke() method that can be called to revoke the invitation.
+
+The following example includes:
+
+- An `<InviteMember />` component that allows administrators to invite new members to their Organization.
+- An `<InvitationList />` component that lists all pending invitations and allows administrators to revoke them.
+
+filename: app/components/InvitationList.tsx
+```tsx
+'use client'
+
+import { useOrganization } from '@clerk/nextjs'
+import type { OrganizationCustomRoleKey } from '@clerk/nextjs/types'
+import { ChangeEventHandler, useEffect, useRef, useState } from 'react'
+
+export const OrgMembersParams = {
+  memberships: {
+    pageSize: 5,
+    keepPreviousData: true,
+  },
+}
+
+export const OrgInvitationsParams = {
+  invitations: {
+    pageSize: 5,
+    keepPreviousData: true,
+  },
+}
+
+// Form to invite a new member to the organization.
+export const InviteMember = () => {
+  const { isLoaded, organization, invitations } = useOrganization(OrgInvitationsParams)
+  const [emailAddress, setEmailAddress] = useState('')
+  const [disabled, setDisabled] = useState(false)
+
+  if (!isLoaded || !organization) {
+    return <>Loading</>
+  }
+
+  const onSubmit = async (e: React.ChangeEvent<HTMLFormElement>) => {
+    e.preventDefault()
+
+    const submittedData = Object.fromEntries(new FormData(e.currentTarget).entries()) as {
+      email: string | undefined
+      role: OrganizationCustomRoleKey | undefined
+    }
+
+    if (!submittedData.email || !submittedData.role) {
+      return
+    }
+
+    setDisabled(true)
+    await organization.inviteMember({
+      emailAddress: submittedData.email,
+      role: submittedData.role,
+    })
+    await invitations?.revalidate?.()
+    setEmailAddress('')
+    setDisabled(false)
+  }
+
+  return (
+    <form onSubmit={onSubmit}>
+      <input
+        name="email"
+        type="text"
+        placeholder="Email address"
+        value={emailAddress}
+        onChange={(e) => setEmailAddress(e.target.value)}
+      />
+      <label>Role</label>
+      <SelectRole fieldName={'role'} />
+      <button type="submit" disabled={disabled}>
+        Invite
+      </button>
+    </form>
+  )
+}
+
+type SelectRoleProps = {
+  fieldName?: string
+  isDisabled?: boolean
+  onChange?: ChangeEventHandler<HTMLSelectElement>
+  defaultRole?: string
+}
+
+const SelectRole = (props: SelectRoleProps) => {
+  const { fieldName, isDisabled = false, onChange, defaultRole } = props
+  const { organization } = useOrganization()
+  const [fetchedRoles, setRoles] = useState<OrganizationCustomRoleKey[]>([])
+  const isPopulated = useRef(false)
+
+  useEffect(() => {
+    if (isPopulated.current) return
+    organization
+      ?.getRoles({
+        pageSize: 20,
+        initialPage: 1,
+      })
+      .then((res) => {
+        isPopulated.current = true
+        setRoles(res.data.map((roles) => roles.key as OrganizationCustomRoleKey))
+      })
+  }, [organization?.id])
+
+  if (fetchedRoles.length === 0) return null
+
+  return (
+    <select
+      name={fieldName}
+      disabled={isDisabled}
+      aria-disabled={isDisabled}
+      onChange={onChange}
+      defaultValue={defaultRole}
+    >
+      {fetchedRoles?.map((roleKey) => (
+        <option key={roleKey} value={roleKey}>
+          {roleKey}
+        </option>
+      ))}
+    </select>
+  )
+}
+
+// List of pending invitations to an organization.
+export const InvitationList = () => {
+  const { isLoaded, invitations, memberships } = useOrganization({
+    ...OrgInvitationsParams,
+    ...OrgMembersParams,
+  })
+
+  if (!isLoaded) {
+    return <>Loading</>
+  }
+
+  return (
+    <>
+      <table>
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Invited</th>
+            <th>Role</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {invitations?.data?.map((inv) => (
+            <tr key={inv.id}>
+              <td>{inv.emailAddress}</td>
+              <td>{inv.createdAt.toLocaleDateString()}</td>
+              <td>{inv.role}</td>
+              <td>
+                <button
+                  onClick={async () => {
+                    await inv.revoke()
+                    await Promise.all([memberships?.revalidate, invitations?.revalidate])
+                  }}
+                >
+                  Revoke
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div>
+        <button
+          disabled={!invitations?.hasPreviousPage || invitations?.isFetching}
+          onClick={() => invitations?.fetchPrevious?.()}
+        >
+          Previous
+        </button>
+
+        <button
+          disabled={!invitations?.hasNextPage || invitations?.isFetching}
+          onClick={() => invitations?.fetchNext?.()}
+        >
+          Next
+        </button>
+      </div>
+    </>
+  )
+}
+```
+
+## Next steps
+
+Now that you've created a flow for managing Organization invitations, you might want to create a flow for accepting invitations. See the dedicated custom flow guide for more information.
+
+---
+
+## Sitemap
+
+Overview of all docs pages

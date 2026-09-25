@@ -1,0 +1,148 @@
+# Email and SMS templates
+# джерело: https://clerk.com/docs/guides/customizing-clerk/email-sms-templates
+# отримано: 2026-09-25
+# версія: core-3
+
+Clerk provides a templating system that allows you to customize the default system email and SMS messages sent during authentication flows.
+
+The template editor enables you to change the wording and styling so that it is more consistent with your own branding.
+
+It is also a useful way to translate the content to another target language in the case that English is not the default locale of your application.
+
+The logo used in Clerk emails comes from your application's settings. To add or update it, navigate to your application's **Settings** in the Clerk Dashboard, and upload your application logo under **Branding**.
+
+## Before you start
+
+### Revolvapp WYSIWYG email editor plugin
+
+The email editor uses the Revolvapp WYSIWYG email template editor plugin by Imperavi. To acquaint yourself with the template markup syntax, consult Imperavi's docs.
+
+As you will see, the template markup is an HTML-like language and each type of node supports its own set of attributes which control its behavior. A lot of the attributes are borrowed from HTML itself.
+
+Revolvapp allows the user to design the template using blocks and under the hood transpiles its markup to table-based HTML so that the resulting email renders consistently across email clients.
+
+### Handlebars templating language
+
+Both the email and SMS editor use the Handlebars templating language for the interpolation of dynamic values into your content via variables. Variables are wrapped in double curly braces. For example: `{{app.name}}`. When the message is to be sent, the variable will be replaced with the actual value, which in this example would be the name of the application.
+
+When editing a template in the Clerk Dashboard, you can insert variables at the desired position, so there is no need to write them by hand. Though, you can still do so if you like.
+
+> In order to unescape special characters, you may need to wrap variables in triple curly braces. For example: `{{{app.name}}}`. This will allow special characters (e.g., `'`, `&`) to appear as displayed and not as escaped HTML entities (e.g., `&apos;`, `&amp;`).
+
+| Variable name                | Description                                                                                                        |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `action_url`                 | The URL the user will be redirected to after visiting the link.                                                    |
+| `app.domain_name`            | The domain name of the application.                                                                                |
+| `app.logo_image_url`         | The URL of the logo image of the application.                                                                      |
+| `app.name`                   | The name of the application.                                                                                       |
+| `invitation.expires_in_days` | The number of days until the invitation expires.                                                                   |
+| `invitation.public_metadata` | The public metadata of the invitation. |
+| `inviter.name`               | The name of the user who invited the recipient.                                                                    |
+
+#### Helpers
+
+In addition to variables, Clerk registers a set of Handlebars helpers that you can use in your templates. A helper is called by name and can accept arguments.
+
+| Helper                          | Description                                                                                          |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `{{current_year}}`              | Renders the current year (UTC) as a four-digit number, such as `2026`. Useful for copyright notices. |
+| `{{clerk_url}}`                 | Renders the Clerk URL.                                                                               |
+| `{{dashboard_url}}`             | Renders the URL of the Clerk Dashboard.                                                              |
+| `{{secured_by_clerk_logo_url}}` | Renders the URL of the "Secured by Clerk" logo image.                                                |
+
+#### Partials
+
+Clerk also registers a set of Handlebars partials — reusable snippets that render common pieces of a template. A partial is included using the `{{> partial_name}}` syntax.
+
+> These partials render HTML and are intended for **email templates only**. They don't apply to SMS templates, which are plain text.
+
+| Partial           | Description                                                                                                                                                         |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `{{> app_logo}}`  | Renders your application's logo image (using `app.logo_image_url`) when a logo is set, and falls back to the application name otherwise.                            |
+| `{{> org_logo}}`  | Renders the Organization's logo image (using `org.logo_image_url`) when a logo is set, and falls back to the Organization name otherwise.                           |
+| `{{> copyright}}` | Renders a copyright line for the current year and application name. When Clerk branding is enabled, it also includes the "Secured by Clerk" logo, linking to Clerk. |
+
+## Edit email templates
+
+To access the email templates:
+
+1. In the Clerk Dashboard, navigate to the **Emails** page.
+2. Select a template to edit.
+3. Once you have selected a template, you will be presented with template operations, the template settings, and the WYSIWYG editor.
+
+**For AI agents:** Instead of editing templates in the Dashboard, use the CLI: run `npx clerk@latest api templates/email` (or `templates/sms`) to list templates, or update one by fetching it with `npx clerk@latest api templates/email/<slug>`, editing the JSON, and sending it back with `npx clerk@latest api templates/email/<slug> -X PUT --file template.json` — the update requires the full template (`name`, `subject`, and `body` are required; `from_email_name`, `reply_to_email_name`, and `delivered_by_clerk` are optional) — discover the related endpoints (preview, revert, `toggle_delivery`) via `npx clerk@latest api ls templates`. Install Clerk's skills with `npx skills add clerk/skills` for correct CLI and SDK usage.
+
+### Template operations
+
+The following operations are available for an email template:
+
+- **Preview**: enables you to get an idea of how the template will render when sent to the recipient. This is useful for sampling your changes without actually having to commit them first. The `app_logo` and `copyright` sections (if present) will be replaced with their actual markup in this view.
+- **Copy**: copies the current state of the editor to another instance. This is especially useful for promoting changes from your development or staging environment to production after you have tested them. **The copy icon will not appear if there are no other instances available on your application.**
+- **Revert**: reverts to the system default template version. This can be useful if you want to start over from scratch.
+- **Reset**: undo all changes since the last save by selecting the **Reset** button at the bottom right of the dashboard.
+
+### Email template settings
+
+The following settings can be changed per email template:
+
+- **Delivered by Clerk**: Clerk will deliver your emails using its own email service provider (ESP). However, if you wish to handle delivery of emails on your own, then you can toggle this setting off. This means that Clerk will no longer be sending this particular email and in order to deliver it yourself, you will need to listen to the `emails.created` webhook and extract the necessary info from the event payload.
+- **Name**: a name for the template on the template listing page. It does not affect the outgoing email in any way.
+- **From**: the email address that will be used as the **From** address in the email header. The format is `<local part>@<your-domain>`. You can change the local part to a custom value. If no value is provided, it defaults `noreply`.
+- **Reply-To**: the email address that will be used as the **Reply-To** address in the email header. This is useful if you want to direct replies to a different email address than the one used in the **From** field. The format is `<local part>@<your-domain>`. You can change the local part to a custom value. If no value is provided, the **Reply-To** header will be omitted.
+- **Subject**: the subject line of the email.
+
+### Email WYSIWYG editor
+
+The email WYSIWYG editor is split into two parts:
+
+- The toolbar
+- The text area
+
+#### Toolbar controls
+
+The toolbar is located at the top of the editor and contains the following controls, in order from left to right:
+
+- **Shortcut** button
+- **Mobile view** toggle
+- **HTML mode** toggle - For this tool to appear, you will need to unselect any currently selected block.
+- **Background** button
+- **Settings** button
+
+For the following controls to appear, you will need to select an existing block in the text area. These controls will not be visible otherwise.
+
+- **Add block** button
+- **Alignment** button
+- **Link** button
+- **Text color** button
+- **Variable** button
+- **Border** button
+
+#### Text area controls
+
+The email WYSIWYG editor text area is intended mainly for authoring content. Though, if you select a block, a set of tools will also appear. In order from top to bottom, these are:
+
+- **Move handle**
+- **Delete**
+- **Clone**
+
+## Edit SMS templates
+
+To access the SMS templates:
+
+1. In the Clerk Dashboard, navigate to the **SMS** page.
+2. Select a template to edit. You can also disable certain SMS notifications.
+3. You'll be redirected to the template's page where you can see what the template looks like. To customize the content of an SMS message, you must deliver it yourself; see the **Delivered by Clerk** section for more information.
+
+### Delivered by Clerk
+
+Clerk will deliver your SMS messages using its own SMS Gateway. However, if you wish to handle SMS delivery on your own, then you can toggle **Delivered by Clerk** off.
+
+This means that Clerk will no longer be sending this particular SMS and in order to deliver it yourself, you will need to listen to the `sms.created` webhook and extract the necessary info from the event payload.
+
+> Remember, this is a per-template setting and will not be applied to other templates.
+
+---
+
+## Sitemap
+
+Overview of all docs pages

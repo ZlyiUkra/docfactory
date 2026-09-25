@@ -1,0 +1,90 @@
+# MFA account recovery
+# джерело: https://clerk.com/docs/guides/secure/mfa-recovery
+# отримано: 2026-09-25
+# версія: core-3
+
+A user with multi-factor authentication (MFA) enabled needs a second factor to sign in unless they use a passkey and their instance has **Passkeys satisfy multi-factor authentication** enabled. This setting is on by default for instances created on or after July 8, 2026; older instances must enable it in the Clerk Dashboard. If a user can't use a passkey under this configuration, loses access to every second factor they've enrolled — by losing their phone, reinstalling their authenticator app, or giving up a phone number — and has no unused backup codes, they can't sign in until their MFA enrollments are reset.
+
+Clerk doesn't provide an end-user MFA reset flow through the Frontend API. Resets happen in the Clerk Dashboard, or through the Backend API from your own application. This guide covers why, how to reduce how often users need a reset, and how to build a reset flow of your own.
+
+## Why Clerk doesn't provide a built-in reset flow
+
+A reset lets a user back into their account without their second factor, so the checks you require before granting one are what actually protect the account. What counts as enough verification depends on your product, threat model, and compliance obligations, so Clerk provides the reset operations and leaves that decision to you.
+
+## Reduce how often users need a reset
+
+### Enable backup codes
+
+Backup codes are single-use codes that a user saves when they enroll in MFA. A user who still has an unused backup code can sign in without an admin resetting their MFA.
+
+To enable backup codes:
+
+1. In the Clerk Dashboard, navigate to the **Multi-factor** page.
+2. Toggle on **Backup codes**.
+3. Select **Save**.
+
+Once enabled, Clerk's prebuilt components and the Account Portal generate a set of backup codes at the end of authenticator app and SMS enrollment and display them with copy, download, and print actions. There's nothing further to configure. Users can regenerate their codes later from the **Security** tab of .
+
+In a custom flow, you own the enrollment UI, so generate the codes with `user.createBackupCode()` and display them yourself. Show them once, at the end of enrollment, and give users a way to save them. See Manage MFA for a full implementation.
+
+### Enable more than one second factor
+
+A user enrolled in both an authenticator app and SMS can still sign in after losing one of them. Prompt for a second method once the user has set up the first.
+
+### Let users sign in with a passkey
+
+A passkey that satisfies MFA signs a user in on its own, so a user who has one enrolled can get back in without a second factor or a reset. It's on by default for instances created on or after July 8, 2026; older instances can turn on **Passkeys satisfy multi-factor authentication** in the Clerk Dashboard.
+
+## Remove a user's MFA methods in the Clerk Dashboard
+
+The Clerk Dashboard removes MFA methods one at a time:
+
+1. In the Clerk Dashboard, navigate to the **Users** page and select the user.
+2. In the **Two step verifications** section, open the three-dot menu next to **Authenticator app** or **SMS code** and select **Remove method**.
+
+There's no single action that resets everything at once, and backup codes have no **Remove method** option of their own. But once you remove the user's last second factor, Clerk deletes their backup codes and disables MFA — so removing the authenticator app and SMS clears everything. To reset MFA programmatically instead, use the Backend API.
+
+## Build your own MFA reset flow
+
+Build a reset flow in your app when Dashboard resets no longer scale, or when your verification requirements involve steps a support agent can't perform by hand.
+
+### Reset the enrollments
+
+How you verify the user is specific to your app. Once they're verified, call the Backend API from your server.
+
+`disableUserMFA()` removes every MFA method at once:
+
+```tsx
+await clerkClient.users.disableUserMFA('user_123')
+```
+
+To remove a single method, for example for a user who lost their authenticator app but still has SMS, use the granular methods:
+
+- `deleteUserTOTP()` removes the user's authenticator app enrollment.
+- `deleteUserBackupCodes()` removes the user's backup codes.
+
+```tsx
+await clerkClient.users.deleteUserTOTP('user_123')
+```
+
+### Re-enroll the user
+
+If **Require multi-factor authentication** is enabled on your instance, the user is prompted to enroll again the next time they sign in. If MFA is optional, they can enroll again from their account settings whenever they choose.
+
+## What a reset doesn't do
+
+- **The user's sessions stay active.** A reset removes MFA enrollments and doesn't revoke sessions or change the password. If you're resetting MFA because you suspect the account was compromised, reset the password with `updateUser()` and pass `signOutOfOtherSessions: true` to revoke all of the user's active sessions in the same request.
+- **Device Trust still applies, if it's enabled.** A user with no MFA enabled is challenged with an email code, SMS code, or email link when they sign in with a password from a new device.
+
+## Next steps
+
+- Manage MFA in a custom flow: Build enrollment for authenticator apps, SMS, and backup codes with the Clerk API.
+- Configure MFA strategies: Choose which second factors your app offers, and whether MFA is required.
+- Understand Device Trust: See how Clerk challenges new devices when a user hasn't enabled MFA.
+- Require reverification: Require users to re-verify their identity before sensitive actions such as changing MFA.
+
+---
+
+## Sitemap
+
+Overview of all docs pages

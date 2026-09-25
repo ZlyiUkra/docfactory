@@ -1,0 +1,163 @@
+# Build a custom flow for handling legal acceptance
+# джерело: https://clerk.com/docs/guides/development/custom-flows/authentication/legal-acceptance
+# отримано: 2026-09-25
+# версія: core-3
+
+> This guide applies to the following Clerk SDKs:
+>
+> - `@clerk/react` v6 or higher
+> - `@clerk/nextjs` v7 or higher
+> - `@clerk/expo` v3 or higher
+> - `@clerk/react-router` v3 or higher
+> - `@clerk/tanstack-react-start` v0.26.0 or higher
+>
+> If you're using an older version of one of these SDKs, or are using the legacy API, refer to the legacy API documentation.
+
+When the legal acceptance feature is enabled, users are required to agree to your Terms of Service and Privacy Policy before they can sign up to your application.
+
+If you're using the `<SignUp />` component, a checkbox appears and the legal acceptance flow is handled for you. However, if you're building a custom user interface, you need to handle legal acceptance in your sign-up form.
+
+This guide demonstrates how to use the Clerk API to build a custom user interface for handling legal acceptance.
+
+## Before you start
+
+By default, the legal acceptance feature is disabled. To enable it, navigate to the **Legal** page in the Clerk Dashboard.
+
+## Add legal acceptance to your sign-up flow
+
+To support legal acceptance in your sign-up custom flow, pass the `legalAccepted` boolean to whichever method is initializing the sign-up process (e.g., SignUp.password(), SignUp.create(), etc.). Because `legalAccepted` is tracked through a simple boolean, this means that you can add any kind of "legal acceptance" fields to your sign-up form that you want - you are not limited to only "Terms of Service" or "Privacy Policy" fields.
+
+**This example uses the email and password sign-up custom flow as a base. However, you can modify this approach according to the settings you've configured for your application's instance in the Clerk Dashboard.**
+
+filename: app/sign-up/page.tsx
+```tsx
+  'use client'
+
+  import { useAuth, useSignUp } from '@clerk/nextjs'
+  import Link from 'next/link'
+  import { useRouter } from 'next/navigation'
+
+  export default function Page() {
+    const { signUp, errors, fetchStatus } = useSignUp()
+    const { isSignedIn } = useAuth()
+    const router = useRouter()
+
+    const handleSubmit = async (formData: FormData) => {
+      const emailAddress = formData.get('email') as string
+      const password = formData.get('password') as string
++     const legalAccepted = formData.get('legalAccepted') as boolean
+
+      const { error } = await signUp.password({
+        emailAddress,
+        password,
++       legalAccepted,
+      })
+      if (error) {
+        // See https://clerk.com/docs/guides/development/custom-flows/error-handling
+        // for more info on error handling
+        console.error(JSON.stringify(error, null, 2))
+        return
+      }
+
+      if (!error) await signUp.verifications.sendEmailCode()
+    }
+
+    const handleVerify = async (formData: FormData) => {
+      const code = formData.get('code') as string
+
+      await signUp.verifications.verifyEmailCode({
+        code,
+      })
+      if (signUp.status === 'complete') {
+        await signUp.finalize({
+          // Redirect the user to the home page after signing up
+          navigate: ({ session, decorateUrl }) => {
+            // Handle session tasks
+            // See https://clerk.com/docs/guides/development/custom-flows/authentication/session-tasks
+            if (session?.currentTask) {
+              console.log(session?.currentTask)
+              return
+            }
+
+            // If no session tasks, navigate the signed-in user to the home page
+            const url = decorateUrl('/')
+            if (url.startsWith('http')) {
+              window.location.href = url
+            } else {
+              router.push(url)
+            }
+          },
+        })
+      } else {
+        // Check why the sign-up is not complete
+        console.error('Sign-up attempt not complete:', signUp)
+      }
+    }
+
+    if (signUp.status === 'complete' || isSignedIn) {
+      return null
+    }
+
+    if (
+      signUp.status === 'missing_requirements' &&
+      signUp.unverifiedFields.includes('email_address') &&
+      signUp.missingFields.length === 0
+    ) {
+      return (
+        <>
+          <h1>Verify your account</h1>
+          <form action={handleVerify}>
+            <div>
+              <label htmlFor="code">Code</label>
+              <input id="code" name="code" type="text" />
+            </div>
+            {errors.fields.code && <p>{errors.fields.code.message}</p>}
+            <button type="submit" disabled={fetchStatus === 'fetching'}>
+              Verify
+            </button>
+          </form>
+          <button onClick={() => signUp.verifications.sendEmailCode()}>I need a new code</button>
+        </>
+      )
+    }
+
+    return (
+      <>
+        <h1>Sign up</h1>
+        <form action={handleSubmit}>
+          <div>
+            <label htmlFor="email">Enter email address</label>
+            <input id="email" type="email" name="email" />
+            {errors.fields.emailAddress && <p>{errors.fields.emailAddress.message}</p>}
+          </div>
+          <div>
+            <label htmlFor="password">Enter password</label>
+            <input id="password" type="password" name="password" />
+            {errors.fields.password && <p>{errors.fields.password.message}</p>}
+          </div>
++         <div>
++           <label htmlFor="legalAccepted">
++             I accept the <Link href="/terms">Terms of Service</Link> and{' '}
++             <Link href="/privacy">Privacy Policy</Link>
++           </label>
++           <input id="legalAccepted" type="checkbox" name="legalAccepted" defaultChecked={false} />
++         </div>
+          <button type="submit" disabled={fetchStatus === 'fetching'}>
+            Continue
+          </button>
+        </form>
+        {/* For your debugging purposes. You can just console.log errors, but we put them in the UI for convenience */}
+        {errors && <p>{JSON.stringify(errors, null, 2)}</p>}
+
+        {/* Required for sign-up flows. Clerk's bot sign-up protection is enabled by default */}
+        <div id="clerk-captcha" />
+      </>
+    )
+  }
+```
+
+---
+
+## Sitemap
+
+Overview of all docs pages

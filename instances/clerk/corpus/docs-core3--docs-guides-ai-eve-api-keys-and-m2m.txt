@@ -1,0 +1,267 @@
+# API keys & M2M
+# джерело: https://clerk.com/docs/guides/ai/eve/api-keys-and-m2m
+# отримано: 2026-09-25
+# версія: core-3
+
+**API keys** authenticate programmatic callers; **M2M tokens** authenticate calls between your agents. Both extend the Custom channel auth chain. Create each token in Clerk, then verify it at your agent's channel.
+
+> Skip the manual setup — install `clerkAuth()` (channel auth) and `clerkM2MToken()` (for subagent delegation) via shadcn.
+
+filename: terminal
+```bash
+$ bunx --bun shadcn@latest add clerk/eve-agents/auth
+```
+
+***
+
+The sections below set up both token types by hand: API key authentication first, then agent-to-agent M2M.
+
+## API key authentication
+
+An API key authenticates a known programmatic caller — a script, a cron job, a partner's backend — as a Clerk user or org. Create one, then verify it at your channel.
+
+### Create an API key
+
+**Clerk CLI**
+
+filename: terminal
+```bash
+$ clerk api /api_keys \
+$   -d '{"name":"Chat API key","subject":"<user_id>","scopes":["chat:send"]}' \
+$   --yes
+```
+
+**Backend API**
+
+```ts
+import { createClerkClient } from '@clerk/backend'
+
+const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY })
+
+const apiKey = await clerk.apiKeys.create({
+  name: 'Chat API key',
+  subject: userId,
+  scopes: ['chat:send'],
+})
+```
+
+Clerk returns the `secret` once. Hand it to the caller as a bearer token.
+
+### Verify the API key in the channel
+
+Set `acceptsToken: 'api_key'` and map the result.
+
+filename: agent/channels/eve.ts
+```ts
+import { createClerkClient } from '@clerk/backend'
+import type { AuthFn } from 'eve/channels/auth'
+import { eveChannel } from 'eve/channels/eve'
+
+const clerk = createClerkClient({
+  secretKey: process.env.CLERK_SECRET_KEY,
+})
+
+const apiKeyAuth: AuthFn<Request> = async (request) => {
+  const state = await clerk
+    .authenticateRequest(request, { acceptsToken: 'api_key' })
+    .catch(() => null)
+
+  if (!state?.isAuthenticated) return null
+
+  const auth = state.toAuth()
+
+  return {
+    authenticator: 'clerk',
+    principalType: 'machine',
+    principalId: auth.subject,
+    subject: auth.subject,
+    attributes: {
+      tokenType: auth.tokenType,
+      ...(auth.scopes?.length && { scopes: auth.scopes }),
+      ...(auth.userId && { userId: auth.userId }),
+      ...(auth.orgId && { orgId: auth.orgId }),
+    },
+  }
+}
+
+export default eveChannel({
+  auth: [apiKeyAuth],
+})
+```
+
+API keys are scoped to either a user or an org, never both — pass through whichever Clerk populated.
+
+### Verify required scopes
+
+Check `auth.scopes` and decide where to enforce. Reject at the channel boundary when the scope is required to talk to the agent at all. Check inside a tool when the scope only matters for that tool, and return a structured error the model can relay to the caller.
+
+**In channel auth**
+
+Throw `ForbiddenError` from the `AuthFn` to reject the request with a `403` before the agent runs.
+
+filename: agent/channels/eve.ts
+```ts
+import { ForbiddenError } from 'eve/channels/auth'
+
+const REQUIRED_SCOPES = ['chat:send']
+
+const scopes = auth.scopes ?? []
+for (const scope of REQUIRED_SCOPES) {
+  if (!scopes.includes(scope)) {
+    throw new ForbiddenError({ message: `Missing required scope: ${scope}` })
+  }
+}
+```
+
+**Inside a tool**
+
+Return a structured error from `execute`. The model relays the message to the caller and the rest of the agent keeps running.
+
+filename: agent/tools/send\_chat.ts
+```ts
+import { defineTool } from 'eve/tools'
+import { z } from 'zod'
+
+export default defineTool({
+  description: 'Send a chat message.',
+  inputSchema: z.object({ message: z.string() }),
+  execute: async ({ message }, ctx) => {
+    const auth = ctx.session.auth.current
+    const scopes = auth?.attributes.scopes
+
+    if (!Array.isArray(scopes) || !scopes.includes('chat:send')) {
+      return { error: true, message: 'API key is missing the chat:send scope.' }
+    }
+
+    // ... send the chat message
+    return { ok: true }
+  },
+})
+```
+
+## Agent-to-agent M2M
+
+M2M auth lets agents on separate deployments call each other. Each agent gets a Clerk **machine**: the caller mints a token with its own machine secret, and the receiver verifies with its own. A one-way **scope** models the relationship. Grant `main-agent → project-agent` and the main agent can mint tokens the project agent accepts. Remove the scope and it's a runtime kill switch.
+
+### Create the machines
+
+**Clerk CLI**
+
+Create `project-agent` first (its ID is needed to scope `main-agent`):
+
+filename: terminal
+```bash
+$ clerk api /machines -d '{"name":"project-agent"}' --yes
+```
+
+Then create `main-agent` scoped to it:
+
+filename: terminal
+```bash
+$ clerk api /machines \
+$   -d '{"name":"main-agent","scoped_machines":["<project_machine_id>"]}' \
+$   --yes
+```
+
+**Backend API**
+
+```ts
+import { createClerkClient } from '@clerk/backend'
+
+const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! })
+
+const project = await clerk.machines.create({ name: 'project-agent' })
+const main = await clerk.machines.create({
+  name: 'main-agent',
+  scopedMachines: [project.id],
+})
+```
+
+Scopes are one-way. For two-way calls, create the reverse scope too. Copy each machine's secret key into the matching agent's environment:
+
+filename: .env
+```env
+CLERK_MACHINE_SECRET_KEY=ak_...
+```
+
+### Outbound: mint a token in the calling agent
+
+Declare the receiver as a remote subagent. Mint with `m2m.createToken()`, then hand the lazy resolver to `bearer()`.
+
+filename: agent/subagents/project.ts
+```ts
+import { createClerkClient } from '@clerk/backend'
+import { defineRemoteAgent } from 'eve'
+import { bearer } from 'eve/agents/auth'
+
+const clerk = createClerkClient({
+  secretKey: process.env.CLERK_SECRET_KEY,
+})
+
+const mintProjectAgentToken = async (): Promise<string> => {
+  const m2m = await clerk.m2m.createToken({
+    machineSecretKey: process.env.CLERK_MACHINE_SECRET_KEY,
+    secondsUntilExpiration: 300,
+    minRemainingTtlSeconds: 60,
+  })
+  return m2m.token as string
+}
+
+export default defineRemoteAgent({
+  url: process.env.PROJECT_AGENT_URL ?? 'http://127.0.0.1:3002',
+  description: 'Delegates project management tasks to the project agent.',
+  auth: bearer(mintProjectAgentToken),
+})
+```
+
+`bearer(resolver)` runs the resolver on every outbound request, so each call carries a valid token. Clerk reuses the current one while it has at least `minRemainingTtlSeconds` left and mints a new one otherwise.
+
+### Inbound: verify the token in the receiving agent
+
+Verify like any other channel token: pass `machineSecretKey` and set `acceptsToken: 'm2m_token'`. Clerk runs the signature and scope checks before your code sees the principal.
+
+filename: agent/channels/eve.ts
+```ts
+const clerkAuth: AuthFn<Request> = async (request) => {
+  const state = await clerk
+    .authenticateRequest(request, {
+      acceptsToken: 'm2m_token',
+      machineSecretKey: process.env.CLERK_MACHINE_SECRET_KEY,
+    })
+    .catch(() => null)
+
+  if (!state?.isAuthenticated) return null
+
+  const auth = state.toAuth()
+
+  return {
+    authenticator: 'clerk',
+    principalType: 'machine',
+    principalId: auth.subject,
+    subject: auth.subject,
+    attributes: {
+      tokenType: auth.tokenType,
+      ...(auth.scopes?.length && { scopes: auth.scopes }),
+    },
+  }
+}
+```
+
+A missing or revoked scope rejects the token with `401`.
+
+### Runtime decoupling
+
+Remove a scope in the **Clerk Dashboard** — or via `machines.deleteScope()` — and the next minted token fails verification. No code change, no redeploy.
+
+## Related guides
+
+- Custom channel auth — the multi-token auth chain these tokens build on.
+- Authorize tool calls — gate tool invocations against permissions and scopes.
+- Using M2M tokens — full reference for machines, scopes, and token claims.
+- Token formats — when to choose JWT M2M tokens over opaque ones.
+
+---
+
+## Sitemap
+
+Overview of all docs pages

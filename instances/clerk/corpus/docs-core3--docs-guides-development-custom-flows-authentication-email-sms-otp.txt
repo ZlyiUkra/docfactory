@@ -1,0 +1,313 @@
+# Build a custom sign-in flow with email or phone code
+# джерело: https://clerk.com/docs/guides/development/custom-flows/authentication/email-sms-otp
+# отримано: 2026-09-25
+# версія: core-3
+
+> This guide is for users who want to build a custom flow. To use a _prebuilt_ UI, use the Account Portal pages or prebuilt components.
+
+> This guide applies to the following Clerk SDKs:
+>
+> - `@clerk/react` v6 or higher
+> - `@clerk/nextjs` v7 or higher
+> - `@clerk/expo` v3 or higher
+> - `@clerk/react-router` v3 or higher
+> - `@clerk/tanstack-react-start` v0.26.0 or higher
+>
+> If you're using an older version of one of these SDKs, or are using the legacy API, refer to the legacy API documentation.
+
+Clerk supports passwordless authentication, which lets users sign in and sign up without having to remember a password. Instead, users receive a one-time password (OTP) via email or phone, which they can use to authenticate themselves.
+
+This guide demonstrates how to build a custom user interface for signing up and signing in using phone OTP. The process for using email OTP is similar, and the differences will be highlighted throughout.
+
+> In Clerk's prebuilt components, after requesting an email or SMS verification code, users must wait 30 seconds before requesting another. This resend cooldown is separate from code expiration: the current code remains valid for 10 minutes and can still be entered after the cooldown ends.
+
+1. ## Enable phone OTP
+
+   To use phone OTP:
+
+   1. In the Clerk Dashboard, navigate to the **User & authentication** page.
+   2. Disable all email authentication settings, or these examples will error.
+   3. Select the **Phone** tab and enable **Sign-up with phone** and **Sign-in with phone**. It's recommended to enable **Verify at sign-up**.
+   4. Ensure **Password** is disabled, as you want to use SMS OTP and not password authentication.
+
+   To use email OTP:
+
+   1. In the Clerk Dashboard, navigate to the **User & authentication** page.
+   2. Ensure **Require email address** is enabled.
+   3. Ensure **Verify at sign-up** is enabled, with **Email verification code** selected.
+   4. Ensure **Sign-in with email** is enabled, with **Email verification code** selected.
+   5. Ensure **Password** is disabled, as you want to use email OTP and not password authentication.
+
+   **For AI agents:** Instead of toggling these settings in the Dashboard, run `npx clerk@latest config patch --json '{"auth_email":{"used_for_sign_up":false,"used_for_sign_in":false,"sign_in_strategies":[]},"auth_phone":{"used_for_sign_up":true,"verify_at_sign_up":true,"verification_strategies":["phone_code"],"used_for_sign_in":true,"sign_in_strategies":["phone_code"]},"auth_password":{"enabled":false,"required":false}}'` to disable email authentication, enable phone OTP, and disable password authentication. Run `npx clerk@latest config schema --keys auth_phone auth_email` to see all available settings, including the email OTP equivalents. Install Clerk's skills with `npx skills add clerk/skills` for correct CLI and SDK usage.
+2. ## Sign-up flow
+
+   First, understand that the `useSignUp()` hook returns an object with the following properties:
+
+   - `signUp`: The SignUpFuture object. Use this to initiate the sign-up process and check the current state of the sign-up attempt.
+   - `errors`: The Errors object that contains the errors that occurred during the last API request. You can use this to display errors to the user in your custom UI.
+   - `fetchStatus`: The fetch status of the underlying SignUpFuture resource. You can use this to display a loading state or disable buttons while the request is in progress.
+
+   Then, to sign up a user using their phone number and verify their sign-up with an SMS code, you must:
+
+   1. Initiate the sign-up process by collecting the user's phone number with the signUp.create() method.
+   2. Send a one-time code to the provided phone number for verification with the signUp.verifications.sendPhoneCode() method (or signUp.verifications.sendEmailCode() if you're modifying this example for email OTP).
+   3. Collect the one-time code and verify it with the signUp.verifications.verifyPhoneCode() method (or signUp.verifications.verifyEmailCode() if you're modifying this example for email OTP).
+      > Phone numbers must be in E.164 format.
+   4. If the phone number verification is successful, finalize the sign-up with the signUp.finalize() method to create the user and set the newly created session as the active session.
+
+   filename: src/app/sign-up/page.tsx
+
+```tsx
+   'use client'
+
+   import * as React from 'react'
+   import { useAuth, useSignUp } from '@clerk/nextjs'
+   import { useRouter } from 'next/navigation'
+
+   export default function SignUpPage() {
+     const { signUp, errors, fetchStatus } = useSignUp()
+     const { isSignedIn } = useAuth()
+     const router = useRouter()
+
+     const handleSubmit = async (formData: FormData) => {
+       // For email OTP: collect the email address instead of the phone number
+       const phoneNumber = formData.get('phoneNumber') as string
+
+       // For email OTP: change create({ phoneNumber }) to create({ emailAddress })
+       const { error } = await signUp.create({ phoneNumber })
+       if (error) {
+         // See https://clerk.com/docs/guides/development/custom-flows/error-handling
+         console.error(JSON.stringify(error, null, 2))
+         return
+       }
+
+       // For email OTP: change sendPhoneCode() to sendEmailCode()
+       if (!error) await signUp.verifications.sendPhoneCode()
+     }
+
+     const handleVerify = async (formData: FormData) => {
+       const code = formData.get('code') as string
+
+       // For email OTP: change verifyPhoneCode() to verifyEmailCode()
+       await signUp.verifications.verifyPhoneCode({ code })
+
+       if (signUp.status === 'complete') {
+         await signUp.finalize({
+           navigate: ({ session, decorateUrl }) => {
+             // Handle session tasks
+             // See https://clerk.com/docs/guides/development/custom-flows/authentication/session-tasks
+             if (session?.currentTask) {
+               console.log(session?.currentTask)
+               return
+             }
+
+             // If no session tasks, navigate the signed-in user to the home page
+             const url = decorateUrl('/')
+             if (url.startsWith('http')) {
+               window.location.href = url
+             } else {
+               router.push(url)
+             }
+           },
+         })
+       } else {
+         // Check why the status is not complete
+         console.error('Sign-up attempt not complete.', signUp)
+       }
+     }
+
+     if (signUp.status === 'complete' || isSignedIn) {
+       return null
+     }
+
+     if (
+       signUp.status === 'missing_requirements' &&
+       // For email OTP: check for phone_number instead of email_address
+       signUp.unverifiedFields.includes('phone_number') &&
+       signUp.missingFields.length === 0
+     ) {
+       return (
+         <>
+           <h1>Verify your account</h1>
+           <form action={handleVerify}>
+             <div>
+               <label htmlFor="code">Code</label>
+               <input id="code" name="code" type="text" />
+             </div>
+             {errors.fields.code && <p>{errors.fields.code.message}</p>}
+             <button type="submit" disabled={fetchStatus === 'fetching'}>
+               Verify
+             </button>
+           </form>
+           {/* For email OTP: change sendPhoneCode() to sendEmailCode() */}
+           <button onClick={() => signUp.verifications.sendPhoneCode()}>I need a new code</button>
+         </>
+       )
+     }
+
+     return (
+       <>
+         <h1>Sign up</h1>
+         <form action={handleSubmit}>
+           {/* For email OTP: collect the emailAddress instead */}
+           <div>
+             <label htmlFor="phoneNumber">Phone number</label>
+             <input id="phoneNumber" name="phoneNumber" type="tel" />
+             {errors.fields.phoneNumber && <p>{errors.fields.phoneNumber.message}</p>}
+           </div>
+           <button type="submit" disabled={fetchStatus === 'fetching'}>
+             Continue
+           </button>
+         </form>
+         {/* For your debugging purposes. You can just console.log errors, but we put them in the UI for convenience */}
+         {errors && <p>{JSON.stringify(errors, null, 2)}</p>}
+
+         {/* Required for sign-up flows. Clerk's bot sign-up protection is enabled by default */}
+         <div id="clerk-captcha" />
+       </>
+     )
+   }
+```
+3. ## Sign-in flow
+
+   First, understand that the `useSignIn()` hook returns an object with the following properties:
+
+   - `signIn`: The SignInFuture object. Use this to initiate the sign-in process and check the current state of the sign-in attempt.
+   - `errors`: The Errors object that contains the errors that occurred during the last API request. You can use this to display errors to the user in your custom UI.
+   - `fetchStatus`: The fetch status of the underlying SignInFuture resource. You can use this to display a loading state or disable buttons while the request is in progress.
+
+   1. Initiate the sign-in process by collecting the user's phone number with the signIn.phoneCode.sendCode() method.
+   2. Collect the one-time code and verify it with the signIn.phoneCode.verifyCode() method (or signIn.emailCode.verifyCode() if you're modifying this example for email OTP).
+      > Phone numbers must be in E.164 format.
+   3. If the phone number verification is successful, finalize the sign-in with the signIn.finalize() method to set the newly created session as the active session.
+
+   filename: src/app/sign-in/page.tsx
+
+```tsx
+   'use client'
+
+   import { useSignIn } from '@clerk/nextjs'
+   import { useRouter } from 'next/navigation'
+
+   export default function Page() {
+     const { signIn, errors, fetchStatus } = useSignIn()
+     const router = useRouter()
+
+     async function handleSubmit(formData: FormData) {
+       // For email OTP: collect the email address instead of the phone number
+       const phoneNumber = formData.get('phoneNumber') as string
+
+       // For email OTP: change phoneNumber to emailAddress
+       const { error } = await signIn.create({ identifier: phoneNumber })
+       if (error) {
+         // See https://clerk.com/docs/guides/development/custom-flows/error-handling
+         console.error(JSON.stringify(error, null, 2))
+         return
+       }
+
+       // For email OTP: change phoneCode.sendCode() to emailCode.sendCode()
+       if (!error) await signIn.phoneCode.sendCode({ phoneNumber })
+
+       if (signIn.status === 'complete') {
+         await signIn.finalize({
+           navigate: ({ session, decorateUrl }) => {
+             // Handle session tasks
+             // See https://clerk.com/docs/guides/development/custom-flows/authentication/session-tasks
+             if (session?.currentTask) {
+               console.log(session?.currentTask)
+               return
+             }
+
+             // If no session tasks, navigate the signed-in user to the home page
+             const url = decorateUrl('/')
+             if (url.startsWith('http')) {
+               window.location.href = url
+             } else {
+               router.push(url)
+             }
+           },
+         })
+       } else if (signIn.status === 'needs_second_factor') {
+         // See https://clerk.com/docs/guides/development/custom-flows/authentication/multi-factor-authentication
+       } else if (signIn.status === 'needs_client_trust') {
+         // See https://clerk.com/docs/guides/development/custom-flows/authentication/device-trust
+       } else {
+         // Check why the sign-in is not complete
+         console.error('Sign-in attempt not complete:', signIn)
+       }
+     }
+
+     async function handleVerification(formData: FormData) {
+       const code = formData.get('code') as string
+
+       // For email OTP: change phoneCode.verifyCode() to emailCode.verifyCode()
+       await signIn.phoneCode.verifyCode({ code })
+
+       if (signIn.status === 'complete') {
+         await signIn.finalize({
+           navigate: ({ session, decorateUrl }) => {
+             // Handle session tasks
+             // See https://clerk.com/docs/guides/development/custom-flows/authentication/session-tasks
+             if (session?.currentTask) {
+               console.log(session?.currentTask)
+               return
+             }
+
+             // If no session tasks, navigate the signed-in user to the home page
+             const url = decorateUrl('/')
+             if (url.startsWith('http')) {
+               window.location.href = url
+             } else {
+               router.push(url)
+             }
+           },
+         })
+       } else {
+         // Check why the sign-in is not complete
+         console.error('Sign-in attempt not complete:', signIn)
+       }
+     }
+
+     if (signIn.status === 'needs_first_factor') {
+       return (
+         <>
+           <h1>Verify your phone number</h1>
+           <form action={handleVerification}>
+             <label htmlFor="code">Enter your verification code</label>
+             <input id="code" name="code" type="text" />
+             {errors.fields.code && <p>{errors.fields.code.message}</p>}
+             <button type="submit" disabled={fetchStatus === 'fetching'}>
+               Verify
+             </button>
+           </form>
+           {/* For email OTP: change phoneCode.sendCode() to emailCode.sendCode() */}
+           <button onClick={() => signIn.phoneCode.sendCode()}>I need a new code</button>
+           <button onClick={() => signIn.reset()}>Start over</button>
+         </>
+       )
+     }
+
+     return (
+       <>
+         <h1>Sign in</h1>
+         <form action={handleSubmit}>
+           {/* For email OTP: collect the email address instead of the phone number */}
+           <label htmlFor="phoneNumber">Enter phone number</label>
+           <input id="phoneNumber" name="phoneNumber" type="tel" />
+           {errors.fields.identifier && <p>{errors.fields.identifier.message}</p>}
+           <button type="submit" disabled={fetchStatus === 'fetching'}>
+             Continue
+           </button>
+         </form>
+         {/* For your debugging purposes. You can just console.log errors, but we put them in the UI for convenience */}
+         {errors && <p>{JSON.stringify(errors, null, 2)}</p>}
+       </>
+     )
+   }
+```
+
+---
+
+## Sitemap
+
+Overview of all docs pages

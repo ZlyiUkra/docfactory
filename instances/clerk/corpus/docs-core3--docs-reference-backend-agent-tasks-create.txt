@@ -1,0 +1,89 @@
+# create() (Beta)
+# джерело: https://clerk.com/docs/reference/backend/agent-tasks/create
+# отримано: 2026-09-25
+# версія: core-3
+
+> **Beta:** This feature is currently in beta. Functionality may change before general availability. If you run into any issues, please reach out to our support team.
+
+Creates an Agent Task that generates a URL which, when visited, creates a session for the specified user. This is useful for automated testing or agent-driven flows where full authentication isn't practical.
+
+Returns the created `AgentTask` object.
+
+```typescript
+function create(params: CreateAgentTaskParams): Promise<AgentTask>
+```
+
+## `CreateAgentTaskParams`
+
+| Property                                                                | Type                                                                                           | Description                                                                                                                                                                                                                                                                                                                                                               |
+| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|  `agentName`                                      | `string`                                                                                       | The name of the agent creating the task. Used to derive a stable `agent_id` for the Agent Task.                                                                                                                                                                                                                                                                           |
+|  `onBehalfOf`                                    | `{ identifier: string; userId?: never; } | { identifier?: never; userId: string; }` | The user to create an Agent Task for. Provide either a `userId` or an `identifier` (e.g., an email address, phone number, or username).                                                                                                                                                                                                                                   |
+| `onBehalfOf.identifier`                                                 | `string`                                                                                       | The identifier of the user to create an Agent Task for.                                                                                                                                                                                                                                                                                                                   |
+| `onBehalfOf.userId?`                                                    | `never`                                                                                        | -                                                                                                                                                                                                                                                                                                                                                                         |
+|  `permissions`                                  | `string`                                                                                       | The permissions the Agent Task will have. Currently, `'*'` is the only supported value, which grants all permissions.                                                                                                                                                                                                                                                     |
+|  `redirectUrl`                                  | `string`                                                                                       | The URL the user lands on after the Agent Task is accepted. In production instances, must be a valid absolute URL with an `https` scheme. In development instances, `http` is also permitted. The URL's domain must belong to one of the instance's associated domains (primary or satellite); otherwise, the redirect will be rejected when the task ticket is consumed. |
+|  `sessionMaxDurationInSeconds?` | `number`                                                                                       | The maximum duration that the session created by the Agent Task should last. By default, the duration is `1800` (30 minutes).                                                                                                                                                                                                                                             |
+|  `taskDescription`                          | `string`                                                                                       | The description of the Agent Task to create.                                                                                                                                                                                                                                                                                                                              |
+
+## Usage
+
+> Using `clerkClient` varies based on the SDK you're using. Refer to the overview for usage details, including guidance on how to access the `userId` and other properties.
+
+```tsx
+const agentTask = await clerkClient.agentTasks.create({
+  onBehalfOf: {
+    userId: 'user_123',
+  },
+  permissions: '*',
+  agentName: 'my-agent',
+  taskDescription: 'Perform automated action',
+  redirectUrl: 'https://example.com/dashboard',
+})
+
+// agentTask.url is the URL to visit to authenticate the user
+```
+
+## Example
+
+filename: app/api/example/route.ts
+```ts
+import { auth, clerkClient } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server'
+
+export async function POST() {
+  // Use the `auth()` helper to access the `isAuthenticated` and the user's ID
+  const { isAuthenticated, userId } = await auth()
+
+  // Protect the route from unauthenticated users
+  if (!isAuthenticated) {
+    return new NextResponse('Unauthorized', { status: 401 })
+  }
+
+  // Instantiate the `clerkClient`
+  const client = await clerkClient()
+
+  // Use the `createAgentTask()` method to create the Agent Task
+  const agentTask = await client.agentTasks.create({
+    onBehalfOf: {
+      userId,
+    },
+    permissions: '*',
+    agentName: 'my-agent',
+    taskDescription: 'Automated test login',
+    redirectUrl: 'http://localhost:3000/dashboard',
+  })
+
+  return NextResponse.json({ message: 'Agent Task created', agentTask })
+}
+```
+
+## Backend API (BAPI) endpoint
+
+This method in the SDK is a wrapper around the BAPI endpoint `POST/agents/tasks`. See the BAPI reference for more information.
+
+---
+
+## Sitemap
+
+Overview of all docs pages

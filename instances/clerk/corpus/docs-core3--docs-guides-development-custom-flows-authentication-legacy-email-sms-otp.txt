@@ -1,0 +1,295 @@
+# Build a custom email or phone OTP authentication flow (Legacy)
+# джерело: https://clerk.com/docs/guides/development/custom-flows/authentication/legacy/email-sms-otp
+# отримано: 2026-09-25
+# версія: core-3
+
+> This guide is for users who want to build a custom flow. To use a _prebuilt_ UI, use the Account Portal pages or prebuilt components.
+
+> **Legacy:** This guide uses the Core 2 `useSignIn()` and `useSignUp()` hooks, which are available in Core 3 SDKs by adding the `/legacy` subpath to the import path. If you're using a Core 2 SDK, remove the `/legacy` subpath.
+
+Clerk supports passwordless authentication, which lets users sign in and sign up without having to remember a password. Instead, users receive a one-time password (OTP) via email or phone, which they can use to authenticate themselves.
+
+This guide will walk you through how to build a custom phone OTP sign-up and sign-in flow. The process for using email OTP is similar, and the differences will be highlighted throughout.
+
+> Phone numbers must be in E.164 format.
+
+1. ## Enable phone OTP
+
+   To use phone OTP, you first need to enable it for your application.
+
+   1. In the Clerk Dashboard, navigate to the **User & authentication** page.
+   2. Select the **Phone** tab and enable **Sign-up with phone** and **Sign-in with phone**. It's recommended to enable **Verify at sign-up**.
+2. ## Sign-up flow
+
+   To sign up a user using an OTP, you must:
+
+   1. Initiate the sign-up process by collecting the user's identifier, which for this example is a phone number.
+   2. Send the user an OTP to the given identifier.
+   3. Verify the code supplied by the user.
+
+   To create a sign-up flow for **email** OTP, the flow is the same except you'll swap `phoneNumber` for `emailAddress` throughout the code. You can find all available methods in the SignUp object documentation.
+
+   filename: app/sign-up/[[...sign-up]]/page.tsx
+
+```tsx
+   'use client'
+
+   import * as React from 'react'
+   import { useSignUp } from '@clerk/nextjs/legacy'
+   import { useRouter } from 'next/navigation'
+
+   export default function Page() {
+     const { isLoaded, signUp, setActive } = useSignUp()
+     const [verifying, setVerifying] = React.useState(false)
+     const [phoneNumber, setPhoneNumber] = React.useState('')
+     const [code, setCode] = React.useState('')
+     const router = useRouter()
+
+     async function handleSubmit(e: React.FormEvent) {
+       e.preventDefault()
+
+       if (!isLoaded && !signUp) return null
+
+       try {
+         // Start sign-up process using the phone number provided
+         await signUp.create({
+           phoneNumber,
+         })
+
+         // Start the verification - a text message will be sent to the
+         // number with a one-time password (OTP)
+         await signUp.preparePhoneNumberVerification()
+
+         // Set verifying to true to display second form
+         // and capture the OTP code
+         setVerifying(true)
+       } catch (err) {
+         // See https://clerk.com/docs/guides/development/custom-flows/error-handling
+         // for more info on error handling
+         console.error('Error:', JSON.stringify(err, null, 2))
+       }
+     }
+
+     async function handleVerification(e: React.FormEvent) {
+       e.preventDefault()
+
+       if (!isLoaded && !signUp) return null
+
+       try {
+         // Use the code provided by the user and attempt verification
+         const signUpAttempt = await signUp.attemptPhoneNumberVerification({
+           code,
+         })
+
+         // If verification was completed, set the session to active
+         // and redirect the user
+         if (signUpAttempt.status === 'complete') {
+           await setActive({
+             session: signUpAttempt.createdSessionId,
+             navigate: async ({ session, decorateUrl }) => {
+               if (session?.currentTask) {
+                 // Handle pending session tasks
+                 // See https://clerk.com/docs/guides/development/custom-flows/authentication/session-tasks
+                 console.log(session?.currentTask)
+                 return
+               }
+
+               const url = decorateUrl('/')
+               if (url.startsWith('http')) {
+                 window.location.href = url
+               } else {
+                 router.push(url)
+               }
+             },
+           })
+         } else {
+           // If the status is not complete, check why. User may need to
+           // complete further steps.
+           console.error(signUpAttempt)
+         }
+       } catch (err) {
+         // See https://clerk.com/docs/guides/development/custom-flows/error-handling
+         // for more info on error handling
+         console.error('Error:', JSON.stringify(err, null, 2))
+       }
+     }
+
+     if (verifying) {
+       return (
+         <>
+           <h1>Verify your phone number</h1>
+           <form onSubmit={handleVerification}>
+             <label htmlFor="code">Enter your verification code</label>
+             <input value={code} id="code" name="code" onChange={(e) => setCode(e.target.value)} />
+             <button type="submit">Verify</button>
+           </form>
+         </>
+       )
+     }
+
+     return (
+       <>
+         <h1>Sign up</h1>
+         <form onSubmit={handleSubmit}>
+           <label htmlFor="phone">Enter phone number</label>
+           <input
+             value={phoneNumber}
+             id="phone"
+             name="phone"
+             type="tel"
+             onChange={(e) => setPhoneNumber(e.target.value)}
+           />
+           <button type="submit">Continue</button>
+         </form>
+       </>
+     )
+   }
+```
+3. ## Sign-in flow
+
+   To authenticate a user with an OTP, you must:
+
+   1. Initiate the sign-in process by creating a `SignIn` using the identifier provided, which for this example is a phone number.
+   2. Send the user an OTP to the given identifier.
+   3. Verify the code supplied by the user.
+
+   To create a sign-in flow for **email** OTP, it's the same except you'll swap `phone` for `email` and `phoneNumber` for `emailAddress` throughout the code. You can find all available methods in the SignIn object documentation.
+
+   filename: app/sign-in/[[...sign-in]]/page.tsx
+
+```tsx
+   'use client'
+
+   import * as React from 'react'
+   import { useSignIn } from '@clerk/nextjs/legacy'
+   import type { PhoneCodeFactor, SignInFirstFactor } from '@clerk/nextjs/types'
+   import { useRouter } from 'next/navigation'
+
+   export default function Page() {
+     const { isLoaded, signIn, setActive } = useSignIn()
+     const router = useRouter()
+
+     const [phoneNumber, setPhoneNumber] = React.useState('')
+     const [code, setCode] = React.useState('')
+     const [verifying, setVerifying] = React.useState(false)
+
+     async function handleSubmit(e: React.FormEvent) {
+       e.preventDefault()
+
+       if (!isLoaded && !signIn) return null
+
+       try {
+         // Start the sign-in process using the phone number method
+         const { supportedFirstFactors } = await signIn.create({
+           identifier: phoneNumber,
+         })
+
+         // Check if `phone_code` is a valid first factor
+         const isPhoneCodeFactor = (factor: SignInFirstFactor): factor is PhoneCodeFactor => {
+           return factor.strategy === 'phone_code'
+         }
+         const phoneCodeFactor = supportedFirstFactors?.find(isPhoneCodeFactor)
+
+         if (phoneCodeFactor) {
+           // Grab the phoneNumberId
+           const { phoneNumberId } = phoneCodeFactor
+
+           // Send the OTP code to the user
+           await signIn.prepareFirstFactor({
+             strategy: 'phone_code',
+             phoneNumberId,
+           })
+
+           // Set verifying to true to display second form
+           // and capture the OTP code
+           setVerifying(true)
+         }
+       } catch (err) {
+         // See https://clerk.com/docs/guides/development/custom-flows/error-handling
+         // for more info on error handling
+         console.error('Error:', JSON.stringify(err, null, 2))
+       }
+     }
+
+     async function handleVerification(e: React.FormEvent) {
+       e.preventDefault()
+
+       if (!isLoaded && !signIn) return null
+
+       try {
+         // Use the code provided by the user and attempt verification
+         const signInAttempt = await signIn.attemptFirstFactor({
+           strategy: 'phone_code',
+           code,
+         })
+
+         // If verification was completed, set the session to active
+         // and redirect the user
+         if (signInAttempt.status === 'complete') {
+           await setActive({
+             session: signInAttempt.createdSessionId,
+             navigate: async ({ session, decorateUrl }) => {
+               if (session?.currentTask) {
+                 // Handle pending session tasks
+                 // See https://clerk.com/docs/guides/development/custom-flows/authentication/session-tasks
+                 console.log(session?.currentTask)
+                 return
+               }
+
+               const url = decorateUrl('/')
+               if (url.startsWith('http')) {
+                 window.location.href = url
+               } else {
+                 router.push(url)
+               }
+             },
+           })
+         } else {
+           // If the status is not complete, check why. User may need to
+           // complete further steps.
+           console.error(signInAttempt)
+         }
+       } catch (err) {
+         // See https://clerk.com/docs/guides/development/custom-flows/error-handling
+         // for more info on error handling
+         console.error('Error:', JSON.stringify(err, null, 2))
+       }
+     }
+
+     if (verifying) {
+       return (
+         <>
+           <h1>Verify your phone number</h1>
+           <form onSubmit={handleVerification}>
+             <label htmlFor="code">Enter your verification code</label>
+             <input value={code} id="code" name="code" onChange={(e) => setCode(e.target.value)} />
+             <button type="submit">Verify</button>
+           </form>
+         </>
+       )
+     }
+
+     return (
+       <>
+         <h1>Sign in</h1>
+         <form onSubmit={handleSubmit}>
+           <label htmlFor="phone">Enter phone number</label>
+           <input
+             value={phoneNumber}
+             id="phone"
+             name="phone"
+             type="tel"
+             onChange={(e) => setPhoneNumber(e.target.value)}
+           />
+           <button type="submit">Continue</button>
+         </form>
+       </>
+     )
+   }
+```
+
+---
+
+## Sitemap
+
+Overview of all docs pages

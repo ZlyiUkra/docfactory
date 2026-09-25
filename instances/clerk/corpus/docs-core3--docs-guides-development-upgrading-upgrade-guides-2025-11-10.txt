@@ -1,0 +1,290 @@
+# Upgrade to API version 2025-11-10
+# джерело: https://clerk.com/docs/guides/development/upgrading/upgrade-guides/2025-11-10
+# отримано: 2026-09-25
+# версія: core-3
+
+**Version 2025-11-10** of Clerk's Frontend and Backend APIs introduces updates to how Clerk Billing formats its responses. These changes improve consistency and clarity across the APIs, making them easier to work with and understand.
+
+To use this new API version, refer to the versioning guide. This guide documents all updates at the API level. Since implementation details may differ between SDKs, it will help you identify which parts of your SDK usage may require additional review in the documentation, and assist consumers using unofficial or custom API clients in managing the upgrade.
+
+The following sections provide a detailed overview of the response type and endpoint changes. In general, these updates fall into one of the following categories:
+
+1. **Updating branding:** Clerk Billing was originally developed under the working name "Commerce", which is why `/commerce/` appeared in endpoints. This API version standardizes on "Billing" instead of the deprecated "Commerce". Terminology has also been updated for consistency, including renaming "payment sources" to "payment methods".
+2. **Clearer handling of missing or empty data:** In some cases, a response type has different information depending on the request that prompted the response. Previous API versions handled the absence of this information in inconsistent ways;sometimes using empty values (e.g., `""` for strings or `0` for numbers), sometimes `null`, and sometimes omitting the field entirely. Version 2025-11-10 introduces standardized semantics:
+   - If the response explicitly indicates that the data doesn't exist, it will be set to `null`.
+   - If the response is not making any assertion about the existence of the data, it will not include the key at all.
+   - If the response is trying to tell you that the data is set to the empty value (e.g., `""` for strings, `0` for numbers), it will be set to that value.
+3. **Removal of deprecated fields:** As our API responses have evolved, several response fields were deprecated but retained for backwards compatibility. This API version removes those deprecated fields.
+
+## Backend response type changes
+
+### Payers
+
+| Name                | Type           | Description                                                                                                                                                                 |
+| ------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| created\_at?        | number         | The created\_at field will now be omitted instead of returning 0 when an endpoint does not provide that data.                                                               |
+| email?              | string | null | The email field will now be explicitly null for Organization payers, instead of "". It can also be omitted from certain endpoints that do not provide that data.            |
+| first\_name?        | string | null | The first\_name field will now be explicitly null for Organization payers, instead of "". It can also be omitted from certain endpoints that do not provide that data.      |
+| image\_url?         | string         | The image\_url field will now be omitted from endpoints that do not provide that data, instead of returning "".                                                             |
+| last\_name?         | string | null | The last\_name field will now be explicitly null for Organization payers, instead of "". It can also be omitted from certain endpoints that do not provide that data.       |
+| organization\_id    | string | null | The organization\_id field will now be explicitly null for user payers, instead of omitted.                                                                                 |
+| organization\_name? | string | null | The organization\_name field will now be explicitly null for user payers, instead of omitted. It can still be omitted from certain endpoints that do not provide that data. |
+| updated\_at?        | number         | The updated\_at field will now be omitted instead of returning 0 when an endpoint does not provide that data.                                                               |
+| user\_id            | string | null | The user\_id field will now be explicity null for Organization payers, instead of omitted.                                                                                  |
+
+### Payment attempts
+
+| Name                   | Type                         | Description                                                                                                           |
+| ---------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| failed\_at             | number | null               | The failed\_at field can now be explicitly null. Previously, it was unset if the payment attempt hadn't failed.       |
+| gateway\_external\_id  | string | null               | The gateway\_external\_id field can now be explicitly null. Previously, it would be set to "" if unset.               |
+| gateway\_external\_url | string | null               | The gateway\_external\_url field can now be explicitly null. Previously, it was omitted if unset.                     |
+| invoice\_id            | string                       | The invoice\_id field has been removed in favor of the statement\_id field.                                           |
+| paid\_at               | number | null               | The paid\_at field can now be explicitly null. Previously, it was unset if the payment attempt had not succeeded yet. |
+| payment\_source        | BillingPaymentMethodResource | The payment\_source field has been removed in favor of the payment\_method field.                                     |
+| payment\_source\_id    | string                       | The payment\_source\_id field has been removed in favor of the payment\_method\_id field.                             |
+
+### Payment methods
+
+The **payment sources** response type has been renamed to **payment methods**.
+
+| Name            | Type           | Description                                                                     |
+| --------------- | -------------- | ------------------------------------------------------------------------------- |
+| card\_type      | string | null | The card\_type field can now be null.                                           |
+| created\_at     | number         | The created\_at field can now be omitted when previously it was set to 0.       |
+| expiry\_month   | number | null | The expiry\_month field can now be null or omitted.                             |
+| expiry\_year    | number | null | The expiry\_year field can now be null or omitted.                              |
+| last4           | string | null | The last4 field can now be null.                                                |
+| object          | string         | The object field will now always be "commerce\_payment\_method".                |
+| payment\_method | string         | The payment\_method field has been removed in favor of the payment\_type field. |
+| updated\_at     | number         | The updated\_at field can now be omitted when previously it was set to 0.       |
+| wallet\_type    | string | null | The wallet\_type field can now be null or omitted.                              |
+
+### Payment method initialize responses
+
+| Name   | Type   | Description                                                                  |
+| ------ | ------ | ---------------------------------------------------------------------------- |
+| object | string | The object field will now always be "commerce\_payment\_method\_initialize". |
+
+### Plans
+
+| Name                               | Type             | Description                                                                                                                                            |
+| ---------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| amount                             | number           | The amount field has been removed. Use fee.amount instead.                                                                                             |
+| amount\_formatted                  | string           | The amount\_formatted field has been removed. Use fee.amount\_formatted instead.                                                                       |
+| annual\_amount                     | number           | The annual\_amount field has been removed. Use annual\_fee.amount instead.                                                                             |
+| annual\_amount\_formatted          | string           | The annual\_amount\_formatted field has been removed. Use annual\_fee.amount\_formatted instead.                                                       |
+| annual\_monthly\_amount            | number           | The annual\_monthly\_amount field has been removed. Use annual\_monthly\_fee.amount instead.                                                           |
+| annual\_monthly\_amount\_formatted | string           | The annual\_monthly\_amount\_formatted field has been removed. Use annual\_monthly\_fee.amount\_formatted instead.                                     |
+| avatar\_url                        | string | null   | The avatar\_url field can now be null.                                                                                                                 |
+| currency                           | string           | The currency field has been removed. Use fee.currency, annual\_monthly\_fee.currency, or annual\_fee.currency instead.                                 |
+| currency\_symbol                   | string           | The currency\_symbol field has been removed. Use fee.currency\_symbol, annual\_monthly\_fee.currency\_symbol, or annual\_fee.currency\_symbol instead. |
+| description                        | string | null   | The description field can now be null.                                                                                                                 |
+| features                           | Feature[]       | The features field can now be omitted from responses.                                                                                                  |
+| payer\_type                        | array of strings | The payer\_type field has been removed. Use for\_payer\_type instead.                                                                                  |
+
+### Subscription Items
+
+| Name                | Type                            | Description                                                                                                                             |
+| ------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| amount              | BillingMoneyAmount              | The amount field can no longer be null. It will instead be omitted when the endpoint doesn't include that data in the response.         |
+| lifetime\_paid      | BillingMoneyAmount              | The lifetime\_paid field can no longer be null. It will instead be omitted when the endpoint doesn't include that data in the response. |
+| next\_invoice       | BillingSubscriptionItemResource | The next\_invoice field has been removed, in favor of the next\_payment field.                                                          |
+| next\_payment       | BillingSubscriptionItemResource | The next\_payment field can be omitted when the endpoint doesn't include that data in the response.                                     |
+| payer               | BillingPayerResource            | The payer field can no longer be null, and will instead be omitted when the endpoint doesn't include that data in the response.         |
+| payment\_source     | BillingPaymentMethodResource    | The payment\_source field has been removed, in favor of the payment\_method field.                                                      |
+| payment\_source\_id | string                          | The payment\_source\_id field has been removed, in favor of the payment\_method\_id field.                                              |
+| period\_start       | number                          | The period\_start field can no longer be null.                                                                                          |
+| plan                | BillingPlanResource | null     | The plan field can now be null, in preparation for a future change to Subscription Items that represent an inactive Subscription.       |
+| plan\_id            | string | null                  | The plan\_id field can now be null, in preparation for a future change to Subscription Items that represent an inactive Subscription.   |
+| proration\_date     | string                          | The proration\_date field can now be omitted when the response does not contain information about proration.                            |
+
+### Subscription Item next payments
+
+| Name   | Type               | Description                             |
+| ------ | ------------------ | --------------------------------------- |
+| amount | BillingMoneyAmount | The amount field can no longer be null. |
+| date   | number             | The date field can no longer be null.   |
+
+## Backend endpoint changes
+
+The following endpoints have changed their URLs:
+
+| Old endpoint                                                                      | New endpoint                                                                     |
+| --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `GET /v1/​commerce/​plans`                                                        | `GET /v1/​billing/​plans`                                                        |
+| `GET /v1/​commerce/​statements`                                                   | `GET /v1/​billing/​statements`                                                   |
+| `GET /v1/​commerce/​statements/​{statementID}`                                    | `GET /v1/​billing/​statements/​{statementID}`                                    |
+| `GET /v1/​commerce/​statements/​{statementID}/​payment_attempts`                  | `GET /v1/​billing/​statements/​{statementID}/​payment_attempts`                  |
+| `GET /v1/​commerce/​subscription_items`                                           | `GET /v1/​billing/​subscription_items`                                           |
+| `DELETE /v1/​commerce/​subscription_items/​{subscriptionItemID}`                  | `DELETE /v1/​billing/​subscription_items/​{subscriptionItemID}`                  |
+| `POST /v1/​commerce/​subscription_items/​{subscriptionItemID}/​extend_free_trial` | `POST /v1/​billing/​subscription_items/​{subscriptionItemID}/​extend_free_trial` |
+
+## Frontend response type changes
+
+### Billing settings
+
+| Name                     | Type           | Description                                                                                           |
+| ------------------------ | -------------- | ----------------------------------------------------------------------------------------------------- |
+| enabled                  | boolean        | The enabled field has been removed in favor of the user.enabled and organization.enabled fields.      |
+| has\_paid\_org\_plans    | boolean        | The has\_paid\_org\_plans field has been removed in favor of the organization.has\_paid\_plans field. |
+| has\_paid\_user\_plans   | boolean        | The has\_paid\_user\_plans field has been removed in favor of the user.has\_paid\_plans field.        |
+| stripe\_publishable\_key | string | null | The stripe\_publishable\_key field can no longer be omitted and will instead be null when unset.      |
+
+### Checkouts
+
+| Name            | Type                         | Description                                                                       |
+| --------------- | ---------------------------- | --------------------------------------------------------------------------------- |
+| payment\_source | BillingPaymentMethodResource | The payment\_source field has been removed in favor of the payment\_method field. |
+
+### Invoices
+
+**Invoices** have been removed in favor of **statements**.
+
+### Payers
+
+| Name                | Type           | Description                                                                                                                                                                 |
+| ------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| created\_at?        | number         | The created\_at field will now be omitted instead of returning 0 when an endpoint does not provide that data.                                                               |
+| email?              | string | null | The email field will now be explicitly null for Organization payers, instead of "". It can also be omitted from certain endpoints that do not provide that data.            |
+| first\_name?        | string | null | The first\_name field will now be explicitly null for Organization payers, instead of "". It can also be omitted from certain endpoints that do not provide that data.      |
+| image\_url?         | string         | The image\_url field will now be omitted from endpoints that do not provide that data, instead of returning "".                                                             |
+| last\_name?         | string | null | The last\_name field will now be explicitly null for Organization payers, instead of "". It can also be omitted from certain endpoints that do not provide that data.       |
+| organization\_id    | string | null | The organization\_id field will now be explicitly null for user payers, instead of omitted.                                                                                 |
+| organization\_name? | string | null | The organization\_name field will now be explicitly null for user payers, instead of omitted. It can still be omitted from certain endpoints that do not provide that data. |
+| updated\_at?        | number         | The updated\_at field will now be omitted instead of returning 0 when an endpoint does not provide that data.                                                               |
+| user\_id            | string | null | The user\_id field will now be explicity null for Organization payers, instead of omitted.                                                                                  |
+
+### Payment attempts
+
+| Name                   | Type                         | Description                                                                                                           |
+| ---------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| failed\_at             | number | null               | The failed\_at field can now be explicitly null. Previously, it was unset if the payment attempt hadn't failed.       |
+| gateway\_external\_id  | string | null               | The gateway\_external\_id field can now be explicitly null. Previously, it would be set to "" if unset.               |
+| gateway\_external\_url | string | null               | The gateway\_external\_url field can now be explicitly null. Previously, it was omitted if unset.                     |
+| invoice\_id            | string                       | The invoice\_id field has been removed in favor of the statement\_id field.                                           |
+| paid\_at               | number | null               | The paid\_at field can now be explicitly null. Previously, it was unset if the payment attempt had not succeeded yet. |
+| payment\_source        | BillingPaymentMethodResource | The payment\_source field has been removed in favor of the payment\_method field.                                     |
+| payment\_source\_id    | string                       | The payment\_source\_id field has been removed in favor of the payment\_method\_id field.                             |
+
+### Payment methods
+
+The **payment sources** response type has been renamed to **payment methods**.
+
+| Name            | Type           | Description                                                                     |
+| --------------- | -------------- | ------------------------------------------------------------------------------- |
+| card\_type      | string | null | The card\_type field can now be null.                                           |
+| created\_at     | number         | The created\_at field can now be omitted when previously it was set to 0.       |
+| expiry\_month   | number | null | The expiry\_month field can now be null or omitted.                             |
+| expiry\_year    | number | null | The expiry\_year field can now be null or omitted.                              |
+| last4           | string | null | The last4 field can now be null.                                                |
+| object          | string         | The object field will now always be "commerce\_payment\_method".                |
+| payment\_method | string         | The payment\_method field has been removed in favor of the payment\_type field. |
+| updated\_at     | number         | The updated\_at field can now be omitted when previously it was set to 0.       |
+| wallet\_type    | string | null | The wallet\_type field can now be null or omitted.                              |
+
+### Plans
+
+| Name                               | Type           | Description                                                                                                                                            |
+| ---------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| amount                             | number         | The amount field has been removed. Use fee.amount instead.                                                                                             |
+| amount\_formatted                  | string         | The amount\_formatted field has been removed. Use fee.amount\_formatted instead.                                                                       |
+| annual\_amount                     | number         | The annual\_amount field has been removed. Use annual\_fee.amount instead.                                                                             |
+| annual\_amount\_formatted          | string         | The annual\_amount\_formatted field has been removed. Use annual\_fee.amount\_formatted instead.                                                       |
+| annual\_monthly\_amount            | number         | The annual\_monthly\_amount field has been removed. Use annual\_monthly\_fee.amount instead.                                                           |
+| annual\_monthly\_amount\_formatted | string         | The annual\_monthly\_amount\_formatted field has been removed. Use annual\_monthly\_fee.amount\_formatted instead.                                     |
+| avatar\_url                        | string | null | The avatar\_url field can now be null.                                                                                                                 |
+| currency                           | string         | The currency field has been removed. Use fee.currency, annual\_monthly\_fee.currency, or annual\_fee.currency instead.                                 |
+| currency\_symbol                   | string         | The currency\_symbol field has been removed. Use fee.currency\_symbol, annual\_monthly\_fee.currency\_symbol, or annual\_fee.currency\_symbol instead. |
+| description                        | string | null | The description field can now be null.                                                                                                                 |
+| features                           | Feature[]     | The features field can now be omitted from responses.                                                                                                  |
+| payer\_type                        | string[]      | The payer\_type field has been removed. Use for\_payer\_type instead.                                                                                  |
+
+### Products
+
+Products have been removed.
+
+### Subscription next payment objects
+
+| Name | Type   | Description                                                 |
+| ---- | ------ | ----------------------------------------------------------- |
+| time | number | The time field has been removed in favor of the date field. |
+
+### Subscription Items
+
+| Name                | Type                            | Description                                                                                                                             |
+| ------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| amount              | BillingMoneyAmount              | The amount field can no longer be null. It will instead be omitted when the endpoint doesn't include that data in the response.         |
+| lifetime\_paid      | BillingMoneyAmount              | The lifetime\_paid field can no longer be null. It will instead be omitted when the endpoint doesn't include that data in the response. |
+| next\_invoice       | BillingSubscriptionItemResource | The next\_invoice field has been removed, in favor of the next\_payment field.                                                          |
+| next\_payment       | BillingSubscriptionItemResource | The next\_payment field can be omitted when the endpoint doesn't include that data in the response.                                     |
+| payer               | BillingPayerResource            | The payer field can no longer be null, and will instead be omitted when the endpoint doesn't include that data in the response.         |
+| payment\_source     | BillingPaymentMethodResource    | The payment\_source field has been removed, in favor of the payment\_method field.                                                      |
+| payment\_source\_id | string                          | The payment\_source\_id field has been removed, in favor of the payment\_method\_id field.                                              |
+| period\_start       | number                          | The period\_start field can no longer be null.                                                                                          |
+| proration\_date     | string                          | The proration\_date field can now be omitted when the response does not contain information about proration.                            |
+
+### Subscription Item next payments
+
+| Name   | Type               | Description                             |
+| ------ | ------------------ | --------------------------------------- |
+| amount | BillingMoneyAmount | The amount field can no longer be null. |
+| date   | number             | The date field can no longer be null.   |
+
+### Checkout totals
+
+| Name                           | Type                          | Description                                                                                                        |
+| ------------------------------ | ----------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| credit                         | BillingMoneyAmount | null    | The credit field can no longer be omitted, and will instead be null when it doesn't apply.                         |
+| past\_due                      | BillingMoneyAmount | null    | The past\_due field can no longer be omitted, and will instead be null when it doesn't apply.                      |
+| proration                      | BillingCheckoutTotals | null | The proration field can no longer be omitted, and will instead be null when it doesn't apply.                      |
+| total\_due\_after\_free\_trial | BillingMoneyAmount | null    | The total\_due\_after\_free\_trial field can no longer be omitted, and will instead be null when it doesn't apply. |
+| total\_due\_now                | BillingMoneyAmount | null    | The total\_due\_now field can no longer be omitted, and will instead be null when it doesn't apply.                |
+
+## Frontend endpoint changes
+
+The following endpoints have changed their URLs:
+
+| Old endpoint                                                                                | New endpoint                                                                               |
+| ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `POST /v1/​me/​commerce/​checkouts`                                                         | `POST /v1/​me/​billing/​checkouts`                                                         |
+| `GET /v1/​me/​commerce/​checkouts/​{checkoutID}`                                            | `GET /v1/​me/​billing/​checkouts/​{checkoutID}`                                            |
+| `PATCH /v1/​me/​commerce/​checkouts/​{checkoutID}/​confirm`                                 | `PATCH /v1/​me/​billing/​checkouts/​{checkoutID}/​confirm`                                 |
+| `POST /v1/​organizations/​{organizationID}/​commerce/​checkouts`                            | `POST /v1/​organizations/​{organizationID}/​billing/​checkouts`                            |
+| `GET /v1/​organizations/​{organizationID}/​commerce/​checkouts/​{checkoutID}`               | `GET /v1/​organizations/​{organizationID}/​billing/​checkouts/​{checkoutID}`               |
+| `PATCH /v1/​organizations/​{organizationID}/​commerce/​checkouts/​{checkoutID}/​confirm`    | `PATCH /v1/​organizations/​{organizationID}/​billing/​checkouts/​{checkoutID}/​confirm`    |
+| `GET /v1/​me/​commerce/​invoices`                                                           | Removed                                                                                    |
+| `GET /v1/​organizations/​{organizationID}/​commerce/​invoices`                              | Removed                                                                                    |
+| `GET /v1/​me/​commerce/​payment_attempts`                                                   | `GET /v1/​me/​billing/​payment_attempts`                                                   |
+| `GET /v1/​me/​commerce/​payment_attempts/​{paymentAttemptID}`                               | `GET /v1/​me/​billing/​payment_attempts/​{paymentAttemptID}`                               |
+| `GET /v1/​organizations/​{organizationID}/​commerce/​payment_attempts`                      | `GET /v1/​organizations/​{organizationID}/​billing/​payment_attempts`                      |
+| `GET /v1/​organizations/​{organizationID}/​commerce/​payment_attempts/​{paymentAttemptID}`  | `GET /v1/​organizations/​{organizationID}/​billing/​payment_attempts/​{paymentAttemptID}`  |
+| `POST /v1/​me/​commerce/​payment_sources/​initialize`                                       | `POST /v1/​me/​billing/​payment_sources/​initialize`                                       |
+| `GET /v1/​me/​commerce/​payment_sources`                                                    | `GET /v1/​me/​billing/​payment_sources`                                                    |
+| `POST /v1/​me/​commerce/​payment_sources`                                                   | `POST /v1/​me/​billing/​payment_sources`                                                   |
+| `DELETE /v1/​me/​commerce/​payment_sources/​{paymentSourceID}`                              | `DELETE /v1/​me/​billing/​payment_sources/​{paymentSourceID}`                              |
+| `PUT /v1/​commerce/​payers/​default_payment_source`                                         | `PUT /v1/​billing/​payers/​default_payment_source`                                         |
+| `POST /v1/​organizations/​{organizationID}/​commerce/​payment_sources/​initialize`          | `POST /v1/​organizations/​{organizationID}/​billing/​payment_sources/​initialize`          |
+| `GET /v1/​organizations/​{organizationID}/​commerce/​payment_sources`                       | `GET /v1/​organizations/​{organizationID}/​billing/​payment_sources`                       |
+| `POST /v1/​organizations/​{organizationID}/​commerce/​payment_sources`                      | `POST /v1/​organizations/​{organizationID}/​billing/​payment_sources`                      |
+| `DELETE /v1/​organizations/​{organizationID}/​commerce/​payment_sources/​{paymentSourceID}` | `DELETE /v1/​organizations/​{organizationID}/​billing/​payment_sources/​{paymentSourceID}` |
+| `PUT /v1/​organizations/​{organizationID}/​commerce/​payers/​default_payment_source`        | `PUT /v1/​organizations/​{organizationID}/​billing/​payers/​default_payment_source`        |
+| `GET /v1/​commerce/​plans`                                                                  | `GET /v1/​billing/​plans`                                                                  |
+| `GET /v1/​commerce/​plans/​{planIDOrSlug}`                                                  | `GET /v1/​billing/​plans/​{planIDOrSlug}`                                                  |
+| `GET /v1/​commerce/​products`                                                               | Removed                                                                                    |
+| `GET /v1/​me/​commerce/​statements`                                                         | `GET /v1/​me/​billing/​statements`                                                         |
+| `GET /v1/​me/​commerce/​statements/​{statementID}`                                          | `GET /v1/​me/​billing/​statements/​{statementID}`                                          |
+| `GET /v1/​organizations/​{organizationID}/​commerce/​statements`                            | `GET /v1/​organizations/​{organizationID}/​billing/​statements`                            |
+| `GET /v1/​organizations/​{organizationID}/​commerce/​statements/​{statementID}`             | `GET /v1/​organizations/​{organizationID}/​billing/​statements/​{statementID}`             |
+| `GET /v1/​me/​commerce/​subscription`                                                       | `GET /v1/​me/​billing/​subscription`                                                       |
+| `GET /v1/​organizations/​{organizationID}/​commerce/​subscription`                          | `GET /v1/​organizations/​{organizationID}/​billing/​subscription`                          |
+| `GET /v1/​me/​commerce/​subscription_items`                                                 | `GET /v1/​me/​billing/​subscription_items`                                                 |
+| `DELETE /v1/​me/​commerce/​subscription_items/​{subscriptionItemID}`                        | `DELETE /v1/​me/​billing/​subscription_items/​{subscriptionItemID}`                        |
+| `GET /v1/​organizations/​{organizationID}/​commerce/​subscription_items`                    | `GET /v1/​organizations/​{organizationID}/​billing/​subscription_items`                    |
+| `DELETE /v1/​organizations/​{organizationID}/​commerce/​subscription_items`                 | `DELETE /v1/​organizations/​{organizationID}/​billing/​subscription_items`                 |
+
+---
+
+## Sitemap
+
+Overview of all docs pages
