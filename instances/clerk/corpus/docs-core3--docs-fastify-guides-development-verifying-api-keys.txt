@@ -1,0 +1,92 @@
+# Verify API keys in your Fastify application with Clerk
+# джерело: https://clerk.com/docs/fastify/guides/development/verifying-api-keys
+# отримано: 2026-09-25
+# версія: core-3
+
+When building a resource server that needs to accept and verify API keys issued by Clerk, it's crucial to verify these keys on your backend to ensure the request is coming from an authenticated client.
+
+Clerk's Fastify SDK provides a built-in getAuth() function that supports token validation via the `acceptsToken` parameter. This lets you specify which type(s) of token your route should accept in your Fastify application.
+
+By default, `acceptsToken` is set to `session_token`, which means API keys will **not** be accepted unless explicitly configured. You can pass either a **single token type** or an **array of token types** to `acceptsToken`. To learn more about the supported token types, see the getAuth() options documentation.
+
+Below are two examples of verifying API keys in a Fastify route. Both assume that clerkPlugin() has been registered before the routes that call `getAuth()`.
+
+## Example 1: Accepting a single token type
+
+In the following example, the `acceptsToken` parameter is set to only accept `api_key`s.
+
+- If the API key is invalid or missing, `getAuth()` will return `false` for `isAuthenticated`, and the request will be rejected with a `401` response.
+- If the API key is valid, `subject`, `scopes`, and `claims` are returned. API keys are scoped to either a user or an Organization, so `subject` is the user ID or Organization ID associated with the key.
+
+filename: src/routes/example.ts
+```ts
+import Fastify from 'fastify'
+import { clerkPlugin, getAuth } from '@clerk/fastify'
+
+const fastify = Fastify()
+
+fastify.register(clerkPlugin)
+
+fastify.get('/api/example', (request, reply) => {
+  const authObject = getAuth(request, {
+    acceptsToken: 'api_key',
+  })
+
+  // If isAuthenticated is false, the token is invalid
+  if (!authObject.isAuthenticated) {
+    return reply.code(401).send({ error: 'Unauthorized' })
+  }
+
+  const { subject, scopes, claims } = authObject
+
+  return reply.send({ subject, scopes, claims })
+})
+```
+
+## Example 2: Accepting multiple token types
+
+In the following example, the `acceptsToken` parameter allows `session_token`s, `oauth_token`s, and `api_key`s.
+
+- If the token is invalid or missing, `getAuth()` will return `false` for `isAuthenticated`. Check `isAuthenticated` before reading the other properties, like `userId`.
+- If the token is an `api_key`, use `subject` to identify the user or Organization associated with the key.
+- If the token is valid, `isAuthenticated` is `true`. This example includes pseudo-code that uses `subject` for API keys or `userId` for session and OAuth tokens to get data from a database.
+
+filename: src/routes/example.ts
+```ts
+import Fastify from 'fastify'
+import { clerkPlugin, getAuth } from '@clerk/fastify'
+
+const fastify = Fastify()
+
+fastify.register(clerkPlugin)
+
+fastify.post('/api/example', (request, reply) => {
+  // Accept session_token, oauth_token, and api_key types
+  const authObject = getAuth(request, {
+    acceptsToken: ['session_token', 'oauth_token', 'api_key'],
+  })
+
+  // If the token is invalid or missing
+  if (!authObject.isAuthenticated) {
+    return reply.code(401).send({ error: 'Unauthorized' })
+  }
+
+  // Check if the token is an api key and if it doesn't have the required scope
+  if (authObject.tokenType === 'api_key' && !authObject.scopes.includes('read:data')) {
+    return reply.code(401).send({ error: 'API Key missing the "read:data" scope' })
+  }
+
+  // If the token is valid, move forward with the application logic
+  // This example includes pseudo-code for getting data from a database using the resource owner ID
+  const ownerId = authObject.tokenType === 'api_key' ? authObject.subject : authObject.userId
+  const data = db.select().from(resources).where(eq(resources.ownerId, ownerId))
+
+  return reply.send({ data })
+})
+```
+
+---
+
+## Sitemap
+
+Overview of all docs pages

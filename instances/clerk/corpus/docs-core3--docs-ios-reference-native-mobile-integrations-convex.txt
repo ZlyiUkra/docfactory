@@ -1,0 +1,218 @@
+# Integrate Convex with Clerk
+# джерело: https://clerk.com/docs/ios/reference/native-mobile/integrations/convex
+# отримано: 2026-09-25
+# версія: core-3
+
+**Example Repository**
+
+- Clerk Convex Swift
+
+**Before you start**
+
+- Set up a Clerk application
+- Integrate Clerk into your app
+- Integrate Convex into your app
+
+With Convex, you can build a backend with a provided realtime database, file storage, text search, scheduling, and more. Paired with Clerk's authentication and user management features, you can build native mobile apps with a secure auth flow and realtime data access.
+
+This guide shows how to integrate Convex with Clerk in your native mobile app. It assumes you have already integrated both Convex and Clerk in your app.
+
+1. ## Set up Clerk as a Convex auth provider
+
+   For your Clerk session token to work with Convex, you need to set up the Convex integration in Clerk.
+
+   1. In the Clerk Dashboard, navigate to the Convex integration setup.
+   2. Choose your configuration options, and then select **Activate Convex integration**. This will reveal the Frontend API URL for your Clerk instance.
+   3. Save the URL. In development, its format is `https://verb-noun-00.clerk.accounts.dev`. In production, its format is `https://clerk.<your-domain>.com`.
+2. ## Map additional claims (optional)
+
+   If you need to map additional claims, navigate to the **Sessions** page in the Clerk Dashboard.
+
+   In the **Claims** section, the default audience (`aud`) claim required by Convex is pre-mapped. You can include additional claims as necessary. Shortcodes are available to make adding dynamic user values easy.
+3. ## Configure Convex with Clerk's Frontend API URL
+
+   1. Convex backend functions don't read your app's `.env` file. In your Convex project, run the following command to set your Clerk Frontend API URL:
+
+      filename: terminal
+
+```sh
+      npx convex env set CLERK_FRONTEND_API_URL <fapi_url>
+```
+
+      > This command needs an existing Convex deployment. If you don't have one yet, run `npx convex dev --once` to configure the project and create it, then rerun the command above.
+
+   2. In your Convex project's `convex` folder, create an `auth.config.ts` file with the following configuration:
+
+      filename: convex/auth.config.ts
+
+```ts
+      import type { AuthConfig } from 'convex/server'
+
+      export default {
+        providers: [
+          {
+            domain: process.env.CLERK_FRONTEND_API_URL!,
+            applicationID: 'convex',
+          },
+        ],
+      } satisfies AuthConfig
+```
+4. ## Sync your auth configuration
+
+   In your Convex project, run the following command to sync your auth configuration to your Convex backend:
+
+   filename: terminal
+
+```sh
+   npx convex dev
+```
+5. ## Add the Clerk Convex SDK to your app
+
+   Add `clerk-convex-swift` via Swift Package Manager to your app:
+
+   filename: Package.swift
+
+```swift
+   dependencies: [
+     .package(url: "https://github.com/clerk/clerk-convex-swift", from: "0.1.0")
+   ]
+
+   targets: [
+     .target(
+       name: "YourApp",
+       dependencies: [
+         .product(name: "ClerkConvex", package: "clerk-convex-swift")
+       ]
+     )
+   ]
+```
+
+   Configure Clerk first with your Clerk Publishable Key, then initialize `ConvexClientWithAuth` with `ClerkConvexAuthProvider` using your Convex deployment URL. Refer to the Convex deployment docs for more info.
+
+   filename: MyApp.swift
+
+```swift
+   import ClerkConvex
+   import ClerkKit
+   import ConvexMobile
+   import SwiftUI
+
+   @MainActor
+   let client = ConvexClientWithAuth(
+     deploymentUrl: "YOUR_CONVEX_DEPLOYMENT_URL",
+     authProvider: ClerkConvexAuthProvider()
+   )
+
+   @main
+   struct MyApp: App {
+     init() {
+       Clerk.configure(publishableKey: "{{pub_key}}")
+     }
+
+     var body: some Scene {
+       WindowGroup {
+         ContentView()
+           .environment(Clerk.shared)
+       }
+     }
+   }
+```
+
+   After users authenticate with Clerk, auth state is automatically synced to Convex. Use `client` for subscriptions, mutations, actions, and auth state.
+6. ## Show UI based on auth state
+
+   Convex exposes auth state from the authenticated client. Use that state to render loading, signed-out, and signed-in UI.
+
+   filename: ContentView\.swift
+
+```swift
+   import ConvexMobile
+   import SwiftUI
+
+   struct ContentView: View {
+     @State private var authState: AuthState<String> = .loading
+
+     var body: some View {
+       Group {
+         switch authState {
+         case .loading:
+           ProgressView()
+         case .unauthenticated:
+           Text("Unauthenticated")
+         case .authenticated:
+           AuthenticatedView()
+         }
+       }
+       .task {
+         for await state in client.authState.values {
+           authState = state
+         }
+       }
+     }
+   }
+```
+7. ## Make requests and present data in the UI
+
+   With Clerk and Convex configured, authenticated requests stay in sync so you can subscribe and render data with minimal setup.
+
+   filename: AuthenticatedView\.swift
+
+```swift
+   import ConvexMobile
+   import SwiftUI
+
+   struct AuthenticatedView: View {
+     @State private var messages: [Message] = []
+
+     var body: some View {
+       List(messages) { message in
+         VStack(alignment: .leading) {
+           Text(message.author)
+           Text(message.body)
+         }
+       }
+       .task {
+         let publisher = client
+           .subscribe(to: "messages:list")
+           .replaceError(with: [Message]())
+
+         for await latest in publisher.values {
+           messages = latest
+         }
+       }
+     }
+   }
+
+   struct Message: Identifiable, Codable {
+     let id: String
+     let author: String
+     let body: String
+   }
+```
+8. ## Deploy to production
+
+   Set the Frontend API URL from your Clerk production instance on your Convex production deployment. In your Convex project, run:
+
+   filename: terminal
+
+```sh
+   npx convex env --prod set CLERK_FRONTEND_API_URL https://clerk.<your_domain>.com
+```
+
+   Then, run the following command to sync your auth configuration to your Convex production deployment:
+
+   filename: terminal
+
+```sh
+   npx convex deploy
+```
+
+## Next steps
+
+For more information on how to use Convex with Clerk, see the Convex docs.
+
+---
+
+## Sitemap
+
+Overview of all docs pages

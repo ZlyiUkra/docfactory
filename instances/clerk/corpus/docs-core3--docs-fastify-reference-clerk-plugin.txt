@@ -1,0 +1,135 @@
+# clerkPlugin()
+# джерело: https://clerk.com/docs/fastify/reference/clerk-plugin
+# отримано: 2026-09-25
+# версія: core-3
+
+The `clerkPlugin()` function is a Fastify plugin that integrates Clerk's authentication into your application. The function checks request cookies and headers for a session JWT. If valid, it attaches the `Auth` object to the `request` object under the `auth` key.
+
+You can register the plugin for all routes or limit it to specific ones.
+
+> Load environment variables before importing any Clerk modules. Clerk reads environment variables (such as API keys) during initialization, so they must be available at import time.
+>
+> In Node.js, run your app with the `--env-file=.env` flag so environment variables are available during module initialization.
+>
+> For more information, refer to the Fastify docs.
+
+### Example: Register `clerkPlugin()` for all routes
+
+filename: index.ts
+```ts
+import Fastify from 'fastify'
+import { clerkPlugin } from '@clerk/fastify'
+
+const fastify = Fastify({ logger: true })
+
+fastify.register(clerkPlugin)
+
+const start = async () => {
+  try {
+    await fastify.listen({ port: 8080 })
+  } catch (error) {
+    fastify.log.error(error)
+    process.exit(1)
+  }
+}
+
+start()
+```
+
+### Example: Register `clerkPlugin()` for specific routes
+
+To apply Clerk authentication only to specific routes, register the plugin in the scope of those routes.
+
+In the following example, the application is split into protected and public routes:
+
+filename: index.ts
+```ts
+import Fastify, { FastifyPluginCallback } from 'fastify'
+import { clerkClient, clerkPlugin, getAuth } from '@clerk/fastify'
+
+const fastify = Fastify({ logger: true })
+
+const protectedRoutes: FastifyPluginCallback = (instance, options, done) => {
+  instance.register(clerkPlugin)
+
+  instance.get('/protected', async (req, reply) => {
+    // Use `getAuth()` to access `isAuthenticated` and the user's ID
+    const { isAuthenticated, userId } = getAuth(req)
+
+    // Protect the route from unauthenticated users
+    if (!isAuthenticated) {
+      return reply.code(403).send({ message: 'Access denied. Authentication required.' })
+    }
+
+    // Use `clerkClient` to access the `getUser()` method
+    // to get the user's Backend `User` object
+    const user = await clerkClient.users.getUser(userId)
+
+    // Only authenticated users will see the following message
+    reply.send({ message: 'This is a protected route.', user })
+  })
+
+  done()
+}
+
+const publicRoutes: FastifyPluginCallback = (instance, options, done) => {
+  instance.get('/', async (req, reply) => {
+    reply.send({ message: 'This is a public route.' })
+  })
+
+  done()
+}
+
+fastify.register(protectedRoutes)
+fastify.register(publicRoutes)
+
+const start = async () => {
+  try {
+    await fastify.listen({ port: 8080 })
+  } catch (error) {
+    fastify.log.error(error)
+    process.exit(1)
+  }
+}
+
+start()
+```
+
+### `clerkPlugin()` options
+
+The `clerkPlugin()` function accepts the following options:
+
+| Name                 | Type                                   | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| -------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| apiUrl?              | string                                 | The Clerk Backend API endpoint. Defaults to 'https://api.clerk.com'.                                                                                                                                                                                                                                                                                                                                                                                                     |
+| apiVersion?          | string                                 | The version passed to the Clerk API. Defaults to 'v1'.                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| audience?            | string | string[]                    | A string or list of audiences.                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| domain?              | string                                 | The domain of a satellite application in a multi-domain setup.                                                                                                                                                                                                                                                                                                                                                                                                            |
+| isSatellite?         | boolean                                | Whether the instance is a satellite domain in a multi-domain setup. Defaults to false.                                                                                                                                                                                                                                                                                                                                                                                    |
+| jwtKey?              | string                                 | The JWKS Public Key from the API keys in the Clerk Dashboard. For more information, refer to Manual JWT verification.                                                                                                                                                                                                                                                                                                                                                     |
+| proxyUrl?            | string                                 | The proxy URL from a multi-domain setup.                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| publishableKey?      | string                                 | Your Clerk Publishable KeyYour Clerk Publishable Key tells your app what your FAPI URL is, enabling your app to locate and communicate with your dedicated FAPI instance. You can find it on the API keys page in the Clerk Dashboard.. Optional when using the Backend API resources. Required when using authenticateRequest(), unless acceptsToken is set to 'api\_key' or 'm2m\_token'. If required and not provided, Clerk throws an error.                          |
+| satelliteAutoSync?   | boolean                                | Controls whether a satellite app automatically syncs authentication state with the primary domain on first page load. When false (default), the satellite app skips the automatic redirect if no session cookies exist, and only triggers the handshake after the user initiates a sign-in or sign-up action. When true, the satellite app redirects to the primary domain on every first visit to sync state. Defaults to false. See satellite domains for more details. |
+| sdkMetadata?         | { name: string, version: string }     | Metadata about the SDK.                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| secretKey (required) | string                                 | Your Clerk Secret KeyYour Clerk Secret Key is used to authenticate requests from your backend to Clerk's API. You can find it on the API keys page in the Clerk Dashboard. Do not expose this on the frontend with a public environment variable..                                                                                                                                                                                                                        |
+| taskUrls?            | Record<SessionTask['key'], string>   | The URL paths users are redirected to after sign-up or sign-in when specific session tasks need to be completed. For example, { 'choose-organization': '/onboarding/choose-organization' } redirects users to /onboarding/choose-organization after sign-up if they need to choose an Organization.                                                                                                                                                                      |
+| telemetry?           | { disabled: boolean, debug: boolean } | Telemetry configuration.                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| userAgent?           | string                                 | The User-Agent request header passed to the Clerk API.                                                                                                                                                                                                                                                                                                                                                                                                                    |
+
+| Name     | Type                        | Description                                                                               |
+| -------- | --------------------------- | ----------------------------------------------------------------------------------------- |
+| hookName | 'onRequest' | 'preHandler' | Determines which of Fastify's Request/Reply hooks Clerk should run. Default: 'preHandler' |
+
+#### Example: Pass `hookName` in `clerkPlugin()` options
+
+```ts
+fastify.register(clerkPlugin, {
+  hookName: 'preHandler',
+})
+```
+
+---
+
+## Sitemap
+
+Overview of all docs pages

@@ -1,0 +1,275 @@
+# Clerk Go SDK
+# джерело: https://clerk.com/docs/go/getting-started/quickstart
+# отримано: 2026-09-25
+# версія: core-3
+
+**Example Repository**
+
+- Go Quickstart Repo
+
+**Before you start**
+
+- Set up a Clerk application
+
+The Clerk Go SDK is built on top of the Clerk Backend API.
+
+## Installation
+
+If you're using Go Modules and have a `go.mod` file in your project's root, you can import `clerk-sdk-go` directly in your `.go` files:
+
+```go
+import (
+  "github.com/clerk/clerk-sdk-go/v2"
+)
+```
+
+Alternatively, you can `go get` the package explicitly and it will add the necessary dependencies to your `go.mod` file:
+
+filename: terminal
+```sh
+go get -u github.com/clerk/clerk-sdk-go/v2
+```
+
+## Usage
+
+For details on how to use this module, see the Go Documentation.
+
+The Clerk Go SDK is organized using a resource-based structure similar to the Clerk Backend API. Each API supports specific operations, like `Create` or `List`. For example, the `actortoken` resource supports the `Create`, `Revoke`, and `GetClient` operations. For the list of supported resources, see `https://github.com/clerk/clerk-sdk-go/tree/v2` where almost each directory represents a resource.
+
+To execute API operations, you must configure Clerk Go with your Clerk Secret Key.
+
+Depending on your use case, there are two ways to use the Clerk Go SDK:
+
+- Without a client: The best option if you're using one API key.
+- With a client: The best option if you're using more than one API key.
+
+For most use cases, the API **without** a client is a better choice as it requires a minimal setup and provides a more concise API for invoking operations. However, if you need to operate on multiple Clerk instances from one application, or need more flexibility for tests and mocking, you can instantiate multiple API clients with different API keys.
+
+The following examples demonstrate both approaches.
+
+### Usage without a client
+
+If you only use one API key, you can import the packages required for the APIs you need. Then you can execute your desired request methods as functions, such as `$resource$.Get()` or `$resource$.Delete()`, where `$resource$` is the resource you want to interact with, such as `user`.
+
+filename: main.go
+```go
+package main
+
+import (
+  "context"
+  "fmt"
+
+  "github.com/clerk/clerk-sdk-go/v2"
+  "github.com/clerk/clerk-sdk-go/v2/user"
+)
+
+func main() {
+  // Each operation requires a context.Context as the first argument
+  ctx := context.Background()
+
+  // Set the API key with your Clerk Secret Key
+  clerk.SetKey("{{secret}}")
+
+  // Create a new user
+  newUser, err := user.Create(ctx, &user.CreateParams{})
+  if err != nil {
+    // Handle error
+    panic(err)
+  }
+  fmt.Println(newUser.ID)
+
+  // Get user details
+  userDetails, err := user.Get(ctx, newUser.ID)
+  if err != nil {
+    // Handle error
+    panic(err)
+  }
+  fmt.Println(userDetails.ID)
+
+  // List users
+  userList, err := user.List(ctx, &user.ListParams{})
+  if err != nil {
+    // Handle error
+    panic(err)
+  }
+  for _, u := range userList.Users {
+    // Process each user
+    fmt.Println(u.ID)
+  }
+
+  // Delete user
+  deletedResource, err := user.Delete(ctx, newUser.ID)
+  if err != nil {
+    // Handle error
+    panic(err)
+  }
+  fmt.Println(deletedResource.Deleted)
+}
+```
+
+#### Example
+
+The following example demonstrates how to use the Clerk Go SDK to execute Clerk Backend API operations.
+
+By executing the code in the snippet below, you will:
+
+- Create an Organization and update its slug.
+- Fetch all Organization memberships and loop through them to get the first one.
+- Get more details about the Organization's user.
+
+> Your Clerk Secret Key is required. If you're signed into the Clerk Dashboard, your Secret Key should become visible by selecting the eye icon. Otherwise, you can retrieve your Clerk Secret Key on the **API keys** page in the Clerk Dashboard.
+
+filename: main.go
+```go
+package main
+
+import (
+  "context"
+  "fmt"
+
+  "github.com/clerk/clerk-sdk-go/v2"
+  "github.com/clerk/clerk-sdk-go/v2/organization"
+  "github.com/clerk/clerk-sdk-go/v2/organizationmembership"
+  "github.com/clerk/clerk-sdk-go/v2/user"
+)
+
+func main() {
+  // Each API operation requires a context.Context as the first argument.
+  ctx := context.Background()
+
+  // Set the API key
+  clerk.SetKey("{{secret}}")
+
+  // Create an organization
+  org, err := organization.Create(ctx, &organization.CreateParams{
+    Name: clerk.String("Clerk Inc"),
+  })
+  if err != nil {
+    // You can get additional information on the error, if it can
+    // be type-cast to clerk.APIErrorResponse.
+    if apiErr, ok := err.(*clerk.APIErrorResponse); ok {
+      fmt.Println(apiErr.TraceID)
+      fmt.Println(apiErr.Error())
+      fmt.Println(string(apiErr.Response.RawJSON))
+    }
+    // handle the error
+    panic(err)
+  }
+
+  // Update the organization
+  org, err = organization.Update(ctx, org.ID, &organization.UpdateParams{
+    Slug: clerk.String("clerk"),
+  })
+  if err != nil {
+    // handle the error
+    panic(err)
+  }
+
+  // List the organization's memberships
+  listParams := organizationmembership.ListParams{
+    OrganizationID: org.ID,
+  }
+  listParams.Limit = clerk.Int64(10)
+  memberships, err := organizationmembership.List(ctx, &listParams)
+  if err != nil {
+    // handle the error
+    panic(err)
+  }
+  if memberships.TotalCount == 0 {
+    return
+  }
+  membership := memberships.OrganizationMemberships[0]
+
+  // Get more details about the membership's user
+  usr, err := user.Get(ctx, membership.PublicUserData.UserID)
+  if err != nil {
+    // handle the error
+    panic(err)
+  }
+  fmt.Println(usr.ID)
+}
+```
+
+### Usage with a client
+
+If you're working with multiple keys, it's recommended to use Clerk Go with a client. The API packages for each resource export a `Client`, which supports all the API's operations. This way, you can create as many clients as needed, each with their own API key, as shown in the following example:
+
+filename: main.go
+```go
+package main
+
+import (
+  "context"
+  "fmt"
+
+  "github.com/clerk/clerk-sdk-go/v2"
+  "github.com/clerk/clerk-sdk-go/v2/user"
+)
+
+func main() {
+  // Each operation requires a context.Context as the first argument.
+  ctx := context.Background()
+
+  // Initialize a client with an API key
+  config := &clerk.ClientConfig{}
+  config.Key = clerk.String("{{secret}}")
+  client := user.NewClient(config)
+
+  // Create a new user
+  newUser, err := client.Create(ctx, &user.CreateParams{})
+  if err != nil {
+    // Handle error
+    panic(err)
+  }
+  fmt.Println(newUser.ID)
+
+  // Get user details
+  userDetails, err := client.Get(ctx, newUser.ID)
+  if err != nil {
+    // Handle error
+    panic(err)
+  }
+  fmt.Println(userDetails.ID)
+
+  // List users
+  userList, err := client.List(ctx, &user.ListParams{})
+  if err != nil {
+    // Handle error
+    panic(err)
+  }
+  for _, u := range userList.Users {
+    // Process each user
+    fmt.Println(u.ID)
+  }
+
+  // Delete user
+  deletedResource, err := client.Delete(ctx, newUser.ID)
+  if err != nil {
+    // Handle error
+    panic(err)
+  }
+  fmt.Println(deletedResource.Deleted)
+}
+```
+
+## Next steps
+
+Explore the most relevant next steps for your backend SDK using the following guides.
+
+- Verify a Clerk session in Go: Learn how to verify a Clerk session in your Go application.
+- Backend API reference: Learn more about the Clerk Backend API that powers the Clerk Go SDK.
+- Clerk Go SDK reference: Learn about the Clerk Go SDK and how to integrate it into your app.
+
+## More to explore
+
+Explore additional Clerk features that help you build, manage, and grow your application.
+
+- **Organizations** - Organizations are shared accounts that let teams collaborate, manage members and roles, and control access to shared resources.
+- **Billing** - Billing enables you to manage subscriptions, free trials, payments, plans, and billing-related webhook events for B2C and B2B applications.
+- **Waitlist** - Waitlist lets you collect signups and control access to new products or features before launch through a simple, integrated workflow.
+
+---
+
+## Sitemap
+
+Overview of all docs pages

@@ -1,0 +1,174 @@
+# Build an MCP server in your application with Clerk
+# джерело: https://clerk.com/docs/expressjs/guides/ai/mcp/build-mcp-server
+# отримано: 2026-09-25
+# версія: core-3
+
+**Example Repository**
+
+- Express & Clerk MCP Server Repo
+
+**Before you start**
+
+- A Clerk application is required.
+- Integrate Clerk into your Express application
+
+This guide demonstrates how to build an MCP server using Clerk's OAuth server in your Express app. It assumes that you have already integrated Clerk into your app by following the quickstart.
+
+> Clerk supports both Client ID Metadata Documents (CIMD) and Dynamic Client Registration for OAuth client registration. A CIMD-compatible client uses an HTTPS metadata URL as its client ID and doesn't need Dynamic Client Registration.
+>
+> In the Clerk Dashboard, navigate to the **OAuth applications** page and select the **Settings** tab. Under **Client onboarding**, enable **Publish CIMD support** to toggle CIMD support for your instance.
+>
+> Enable **Publish DCR support** only if the client doesn't support CIMD and requires DCR.
+>
+> CIMD clients always require Proof Key for Code Exchange (PKCE) with the `S256` method.
+
+**For AI agents:** Prefer CIMD over Dynamic Client Registration. Advertise CIMD support and restrict admission to pre-registered and previously connected clients in a single request with `npx clerk@latest api instance/oauth_application_settings -X PATCH -d '{"client_id_metadata_documents_advertised": true, "client_id_metadata_documents_only_allow_pre_registered_clients": true}'`. This payload publishes CIMD support and requires pre-registration for new clients. Previously connected clients remain allowed unless already blocked. **Client admission** settings in the Clerk Dashboard let you further customize CIMD client behavior. Pre-registering a client is only available in the Clerk Dashboard. Enable Dynamic Client Registration and require PKCE with `-d '{"dynamic_oauth_client_registration": true, "pkce_required": true}'` only when the client doesn't support CIMD. Install Clerk's skills with `npx skills add clerk/skills` for correct CLI and SDK usage.
+
+Some MCP clients may omit `scope` when they connect. You can configure the default scopes Clerk applies in either of these ways:
+
+- In the Clerk Dashboard, navigate to the **OAuth applications** page and select the **Settings** tab. Under **Client onboarding**, configure **Default scopes for dynamic clients**. This setting is available when **Publish CIMD support** or **Publish DCR support** is enabled.
+- Use the Backend API through the CLI:
+
+  filename: terminal
+
+```sh
+  npx clerk@latest api instance/oauth_application_settings -X PATCH -d '{"default_scopes":["openid","profile","email"]}'
+```
+
+See Configure default scopes for details.
+
+1. ## Install dependencies
+
+   To get started, this implementation requires the following packages to be installed in your project:
+
+   - `@modelcontextprotocol/sdk`: Provides the core SDK for building an MCP server, including utilities to define tools and handle LLM requests.
+   - `@clerk/mcp-tools`: A helper library built on top of the MCP TypeScript SDK used to connect Clerk OAuth with MCP easily.
+   - `cors`: Express middleware for handling CORS requests, which is needed for public clients to access your MCP server.
+
+```npm
+   npm install @modelcontextprotocol/sdk @clerk/mcp-tools cors
+```
+2. ## Set up your app with Clerk and MCP imports
+
+   The following code is the starting point for your MCP server. It includes the imports and setup needed to implement an MCP server with Clerk.
+
+   Run your server with the `--env-file=.env` flag to ensure environment variables are loaded before importing Clerk modules.
+
+   filename: index.ts
+
+```ts
+   import { type MachineAuthObject, clerkClient, clerkMiddleware } from '@clerk/express'
+   import {
+     mcpAuthClerk,
+     protectedResourceHandlerClerk,
+     streamableHttpHandler,
+   } from '@clerk/mcp-tools/express'
+   import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+   import express from 'express'
+   import cors from 'cors'
+
+   const app = express()
+   // if you need to interface with a public client, this is required
+   app.use(cors({ exposedHeaders: ['WWW-Authenticate'] }))
+   app.use(clerkMiddleware())
+   app.use(express.json())
+
+   app.listen(3000)
+```
+3. ## Create your MCP server and define tools
+
+   To let external LLM-powered tools securely interact with your app, you need to define an MCP server, and expose one or more resources, prompts, and/or tools.
+
+   For this guide, you'll implement a single, example tool called `get_clerk_user_data` that retrieves information about the authenticated Clerk user. For more documentation on how to build MCP tools, see the MCP documentation.
+
+   The `McpServer()` function is used to create a new MCP server with a name and version. The `server.registerTool()` function is used to define tools that external LLM-based apps can invoke. Each tool includes:
+
+   - A name (`get_clerk_user_data`).
+   - A description of what the tool does.
+   - Input parameters (none in this case).
+   - A function that represents the implementation of the tool. In this case, it extracts the user ID, which is provided by Clerk's OAuth authentication, and then fetches the user's data using Clerk's `getUser()` method. The response is then returned in MCP's expected response format.
+
+   filename: index.ts
+
+```ts
+   import { type MachineAuthObject, clerkClient, clerkMiddleware } from '@clerk/express'
+   import {
+     mcpAuthClerk,
+     protectedResourceHandlerClerk,
+     streamableHttpHandler,
+   } from '@clerk/mcp-tools/express'
+   import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+   import express from 'express'
+
+   const app = express()
+   app.use(clerkMiddleware())
+   app.use(express.json())
+
+   const server = new McpServer({
+     name: 'test-server',
+     version: '0.0.1',
+   })
+
+   server.registerTool(
+     'get_clerk_user_data',
+     {
+       description: 'Gets data about the Clerk user that authorized this request',
+     },
+     async ({ authInfo }) => {
+       // non-null assertion is safe here, mcpAuthClerk ensures presence
+       const userId = authInfo!.extra!.userId! as string
+       const userData = await clerkClient.users.getUser(userId)
+
+       return {
+         content: [{ type: 'text', text: JSON.stringify(userData) }],
+       }
+     },
+   )
+
+   app.listen(3000)
+```
+
+   ## Secure your MCP server & expose metadata endpoints
+
+   Now that your MCP server and tools are defined, the next step is to secure your endpoints and expose them according to the MCP specification. To comply with the MCP specification, your server must expose OAuth protected resource metadata at a specific endpoint (`.well-known/oauth-protected-resource`). This metadata allows clients to discover where to authenticate, and some details about how the authentication service works. Older versions of the MCP spec required that you also expose OAuth authorization server metadata at a specific endpoint (`.well-known/oauth-authorization-server`). This is no longer required by the current MCP spec, but it may be necessary for some clients that only support older versions of the spec.
+
+   Clerk provides prebuilt helpers via `@clerk/mcp-tools` that handle this for you:
+
+   - `mcpAuthClerk`: Authentication middleware that automatically verifies the `Authorization` header using Clerk-issued OAuth tokens. If unauthorized, it returns a `www-authenticate` header in accordance with the MCP specification.
+   - `protectedResourceHandlerClerk`: Express handler that serves OAuth **protected resource metadata** in the format expected by MCP clients. This handler lets you define specific supported OAuth scopes to declare what access levels your resource requires.
+   - `authServerMetadataHandlerClerk`: Express handler that serves OAuth **authorization server metadata** in the format expected by MCP clients. This is still often needed for clients that implement older mcp spec versions.
+   - `streamableHttpHandler`: Express handler that connects your MCP server to incoming requests using the streamable HTTP transport.
+
+   > For a more in-depth explanation of these helpers, see the MCP Express reference.
+
+   To secure your endpoints and expose your MCP server to a client, add the following code to your file:
+
+   filename: index.ts
+
+```ts
+   // The rest of your code...
+
+   app.post('/mcp', mcpAuthClerk, streamableHttpHandler(server))
+   app.get(
+     '/.well-known/oauth-protected-resource/mcp',
+     // Specify the scopes that your MCP server needs here
+     protectedResourceHandlerClerk({ scopes_supported: ['email', 'profile'] }),
+   )
+   // This is still often needed for clients that implement the older mcp spec
+   app.get('/.well-known/oauth-authorization-server', authServerMetadataHandlerClerk)
+
+   app.listen(3000)
+```
+
+   > Your `.well-known` endpoints must be **publicly accessible** for MCP clients to discover OAuth metadata. When protecting routes, consider these paths and ensure they are not protected.
+4. ## Finished 🎉
+
+   Once this is complete, clients that support the latest MCP spec can now invoke the `get_clerk_user_data` tool to securely fetch user data from your app, assuming the request is authorized with a Clerk OAuth token. To test this out, learn how to connect your client LLM to the MCP server.
+
+   The next step is to replace the demo tool with your own tools, resources, and/or prompts that are relevant to your app. You can learn more about how to do this in the MCP SDK documentation.
+
+---
+
+## Sitemap
+
+Overview of all docs pages
