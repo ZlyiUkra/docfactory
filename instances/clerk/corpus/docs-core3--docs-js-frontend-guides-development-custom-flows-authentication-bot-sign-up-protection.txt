@@ -1,0 +1,83 @@
+# Add bot protection to your custom sign-up flow
+# джерело: https://clerk.com/docs/js-frontend/guides/development/custom-flows/authentication/bot-sign-up-protection
+# отримано: 2026-09-25
+# версія: core-3
+
+> This guide is for users who want to build a custom flow. To use a _prebuilt_ UI, use the Account Portal pages or prebuilt components.
+
+Clerk provides the ability to add a CAPTCHA widget to your sign-up flows to protect against bot sign-ups. The  component handles this flow out-of-the-box. However, if you're building a custom user interface, this guide will show you how to add the CAPTCHA widget to your custom sign-up flow.
+
+1. ## Enable bot sign-up protection
+
+   1. In the Clerk Dashboard, navigate to the **Rules** page under **Protect**.
+   2. In the **Bot sign-up protection** row, check the **Status**.
+      - If **Disabled**, select **Enable**. In the dialog, toggle on **Enable**, then select **Save**.
+      - If **Enabled**, bot sign-up protection is already active and no action is required. To disable it, select **Manage**, toggle off **Enable**, then select **Save**.
+
+   **For AI agents:** Run `npx clerk@latest config patch --json '{"auth_attack_protection":{"bot_protection":{"captcha_enabled":true}}}'` to enable bot sign-up protection instead of using the **Bot sign-up protection** dialog on the **Rules** page in the Dashboard. Install Clerk's skills with `npx skills add clerk/skills` for correct CLI and SDK usage.
+
+   > When enabled, users suspected of being a bot will be shown an interactive challenge (like clicking a checkbox) to verify they are human. The CAPTCHA widget will only be shown if the client is suspected to be a bot.
+
+   > **Deprecated:** If your application previously had the **Invisible** CAPTCHA type selected, it's highly recommended to switch to the **Smart** option, as the **Invisible** option is deprecated.
+   > For newer applications, CAPTCHA type options are no longer shown in the Dashboard. Bot protection uses the **Smart** option by default and is enabled from the **Bot sign-up protection** row on the **Rules** page.
+2. ## Add the CAPTCHA widget to your custom sign-up form
+
+   To render the CAPTCHA widget in your custom sign-up form, **you need to include the `<div id="clerk-captcha" />` element by the time you call `signUp.create()`**. This element acts as a placeholder onto which the widget will be rendered.
+
+   If this element is not found, the SDK will transparently fall back to an invisible widget in order to avoid breaking your sign-up flow. If this happens, you should see a relevant error in your browser's console.
+
+   > The invisible widget fallback automatically blocks suspected bot traffic without offering users falsely detected as bots with an opportunity to prove otherwise. Therefore, it's strongly recommended that you ensure the `<div id="clerk-captcha" />` element exists in your DOM.
+
+   The following example shows how to support the CAPTCHA widget:
+
+```tsx
+   <>
+     <h1>Sign up</h1>
+     <form onSubmit={handleSubmit}>
+       <div>
+         <label htmlFor="email">Enter email address</label>
+         <input
+           id="email"
+           type="email"
+           name="email"
+           value={emailAddress}
+           onChange={(e) => setEmailAddress(e.target.value)}
+         />
+       </div>
+       <div>
+         <label htmlFor="password">Enter password</label>
+         <input
+           id="password"
+           type="password"
+           name="password"
+           value={password}
+           onChange={(e) => setPassword(e.target.value)}
+         />
+       </div>
+
+       {/* Clerk's CAPTCHA widget */}
+       <div id="clerk-captcha" />
+
+       <button type="submit">Continue</button>
+     </form>
+   </>
+```
+3. ## Customize the appearance of the CAPTCHA widget
+
+   You can customize the appearance of the CAPTCHA widget by passing data attributes to the `<div id="clerk-captcha" />` element. The following attributes are supported:
+
+   - `data-cl-theme`: The CAPTCHA widget theme. Can take the following values: `'light'`, `'dark'`, `'auto'`. Defaults to `'auto'`.
+   - `data-cl-size`: The CAPTCHA widget size. Can take the following values: `'normal'`, `'flexible'`, `'compact'`. Defaults to `'normal'`.
+   - `data-cl-language`: The CAPTCHA widget language. Must be either `'auto'` (default) to use the language that the visitor has chosen, or language and country code (e.g., `'en-US'`). Some languages are supported by Clerk but not by Cloudflare Turnstile, which is used for the CAPTCHA widget. See Cloudflare Turnstile's supported languages.
+
+   For example, to set the theme to `'dark'`, the size to `'flexible'`, and the language to `'es-ES'`, you would add the following attributes to the `<div id="clerk-captcha" />` element:
+
+```html
+   <div id="clerk-captcha" data-cl-theme="dark" data-cl-size="flexible" data-cl-language="es-ES" />
+```
+
+---
+
+## Sitemap
+
+Overview of all docs pages

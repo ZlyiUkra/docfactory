@@ -1,0 +1,179 @@
+# Client object
+# джерело: https://clerk.com/docs/astro/reference/objects/client
+# отримано: 2026-09-25
+# версія: core-3
+
+The `Client` object keeps track of the authenticated sessions in the current device. The device can be a browser, a native application, or any other medium that is usually the requesting part in a request/response architecture.
+
+The `Client` object also holds information about any sign-in or sign-up attempts that might be in progress, tracking the sign-in or sign-up progress.
+
+## Example
+
+The `Client` object is available on the Clerk object. Use the $clerkStore to access the `Clerk` object, as shown in the following example.
+
+**React**
+
+filename: components/client.tsx
+```tsx
+import { useStore } from '@nanostores/react'
+import { $clerkStore } from '@clerk/astro/client'
+
+export default function Client() {
+  // Use the $clerkStore to access the Clerk object
+  const clerk = useStore($clerkStore)
+
+  // Access the client object
+  const client = clerk.client
+
+  return <pre>{JSON.stringify(client, null, 2)}</pre>
+}
+```
+
+**Vue**
+
+filename: components/client.vue
+```vue
+<script setup>
+import { useStore } from '@nanostores/vue'
+import { $clerkStore } from '@clerk/astro/client'
+
+const clerk = useStore($clerkStore)
+
+const client = clerk.value.client
+</script>
+
+<template>
+  <pre>{JSON.stringify(client, null, 2)}</pre>
+</template>
+```
+
+**Svelte**
+
+filename: components/client.svelte
+```svelte
+<script>
+  // The $ prefix is reserved in Svelte for its own reactivity system.
+  // Alias the imports to avoid conflicts.
+  import { $clerkStore as clerk } from '@clerk/astro/client'
+</script>
+
+const client = $clerk.client
+
+<pre>{JSON.stringify(client, null, 2)}</pre>
+```
+
+## Properties
+
+| Property                                                             | Type                                                                                                                                      | Description                                                                                                                                                                                                                                                                                                                                                                                           |
+| -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|  `captchaBypass`                           | `boolean`                                                                                                                                 | Indicates whether CAPTCHA checks are skipped for this client.                                                                                                                                                                                                                                                                                                                                         |
+|  `cookieExpiresAt`                       | `null | Date`                                                                                                                  | The date and time when the client authentication cookie is currently set to expire. Clerk can refresh this cookie, so the value can change. Returns `null` when the expiration is unavailable. Device Trust uses the client cookie to recognize a known browser.                                                                    |
+|  `createdAt`                                   | `null | Date`                                                                                                                  | The date and time when the client was created.                                                                                                                                                                                                                                                                                                                                                        |
+|  `id?`                                                | `string`                                                                                                                                  | The unique identifier of the resource.                                                                                                                                                                                                                                                                                                                                                                |
+|  `lastActiveSessionId`               | `null | string`                                                                                                                | The ID of the last active Session on this client.                                                                                                                                                                                                                                                                                        |
+|  `lastAuthenticationStrategy` | null | LastAuthenticationStrategy | The last authentication strategy used by this client; `null` when unknown or feature disabled.                                                                                                                                                                                                                                                                                                        |
+|  `sessions`                                     | SessionResource[]                                    | A list of sessions that have been created on this client.                                                                                                                                                                                                                                                                                                                                             |
+|  `signedInSessions`                     | SignedInSessionResource[]                            | A list of sessions on this client where the user has completed the full sign-in flow. Sessions can be in one of the following states:  `"active"`: The user has completed the full sign-in flow and all pending tasks. `"pending"`: The user has completed the sign-in flow but still needs to complete one or more required steps (pending tasks).  |
+|  `signIn`                                         | SignInResource                                                                     | The current sign-in attempt.                                                                                                                                                                                                                                                                                                                                                                          |
+|  `signUp`                                         | SignUpResource                                                                     | The current sign-up attempt.                                                                                                                                                                                                                                                                                                                                                                          |
+|  `updatedAt`                                   | `null | Date`                                                                                                                  | The date and time when the client was last updated.                                                                                                                                                                                                                                                                                                                                                   |
+
+## Methods
+
+### `buildTouchUrl()`
+
+Builds a URL that refreshes the current client's authentication state and then redirects the user to the specified URL.
+
+```typescript
+function buildTouchUrl(params: { redirectUrl: URL }): string
+```
+
+#### Parameters
+
+| Parameter | Type                               | Description                      |
+| --------- | ---------------------------------- | -------------------------------- |
+| `params`  | `{ redirectUrl: URL; }` | The URL to redirect the user to. |
+
+### `clearCache()`
+
+Clears any locally cached session data for the current client.
+
+```typescript
+function clearCache(): void
+```
+
+### `create()`
+
+Creates a new client for the current instance along with its cookie.
+
+```typescript
+function create(): Promise<ClientResource>
+```
+
+### `destroy()`
+
+Deletes the client. All sessions will be reset.
+
+```typescript
+function destroy(): Promise<void>
+```
+
+### `isEligibleForTouch()`
+
+Indicates whether the client cookie is due to expire in 8 days or less.
+
+```typescript
+function isEligibleForTouch(): boolean
+```
+
+### `isNew()`
+
+Indicates whether this client hasn't been saved (created) yet in the Frontend API.
+
+```typescript
+function isNew(): boolean
+```
+
+### `reload()`
+
+Reloads the resource, which is useful when you want to access the latest user data after performing a mutation. To make the updated data immediately available, this method forces a session token refresh instead of waiting for the automatic refresh cycle that could temporarily retain stale information. Learn more about forcing a token refresh.
+
+```typescript
+function reload(p?: ClerkResourceReloadParams): Promise<ClientResource>
+```
+
+#### `ClerkResourceReloadParams`
+
+| Property                                              | Type     | Description                                                                                                                                                                   |
+| ----------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|  `rotatingTokenNonce?` | `string` | A nonce to use for rotating the user's token. Used in native application OAuth flows to allow the native client to update its JWT once despite changes in its rotating token. |
+
+### `removeSessions()`
+
+Removes all sessions created on the client.
+
+```typescript
+function removeSessions(): Promise<ClientResource>
+```
+
+### `resetSignIn()`
+
+Resets the current sign-in attempt. Clears the in-progress sign-in state on the client.
+
+```typescript
+function resetSignIn(): void
+```
+
+### `resetSignUp()`
+
+Resets the current sign-up attempt. Clears the in-progress sign-up state on the client.
+
+```typescript
+function resetSignUp(): void
+```
+
+---
+
+## Sitemap
+
+Overview of all docs pages

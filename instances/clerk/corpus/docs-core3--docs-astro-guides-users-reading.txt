@@ -1,0 +1,263 @@
+# Read user data
+# джерело: https://clerk.com/docs/astro/guides/users/reading
+# отримано: 2026-09-25
+# версія: core-3
+
+Clerk provides helpers that you can use to read user data in your Astro application.
+
+**For AI agents:** When wiring or testing these helpers, run `npx clerk@latest users list --json` to inspect the instance's existing user data, or create a test user with `npx clerk@latest users create --email <email> --password <password> --yes` (the password is required while password authentication is enabled, the default). Install Clerk's skills with `npx skills add clerk/skills` for correct CLI and SDK usage.
+
+## Server-side
+
+The auth() and currentUser() locals are Astro-specific helpers that you can use inside of your Astro components and endpoints.
+
+- The `auth()` local returns the `Auth` object of the currently active user.
+- The `currentUser()` local returns the `Backend User` object of the currently active user. This is helpful if you want to render user information, like their first and last name, directly from the server. Under the hood, `currentUser()` uses the `clerkClient` wrapper to make a call to the Backend API. **This does count towards the Backend API request rate limit**. This also uses `fetch()` so it is automatically deduped per request.
+
+The following example demonstrates how to protect a page from unauthenticated users and access the current user's information.
+
+**.astro component**
+
+filename: src/pages/me.astro
+```astro
+---
+// Use `locals.auth()` to access `isAuthenticated` and the user's ID
+const { isAuthenticated, userId } = Astro.locals.auth()
+
+// Protect the route by checking if the user is signed in
+if (!isAuthenticated) {
+  return Astro.redirect('/sign-in')
+}
+
+// Get the Backend User object when you need access to the user's information
+const user = await Astro.locals.currentUser()
+---
+
+<!-- Use `user` to render user details or create UI elements -->
+<div>Welcome, {user.firstName}!</div>
+```
+
+**API Route**
+
+filename: src/pages/api/me.ts
+```tsx
+export async function GET({ locals }) {
+  // Use `locals.auth()` to access `isAuthenticated` and the user's ID
+  const { isAuthenticated, userId } = locals.auth()
+
+  // Protect the route by checking if the user is signed in
+  if (!isAuthenticated) {
+    return new Response('Unauthorized', { status: 401 })
+  }
+
+  // Get the Backend User object when you need access to the user's information
+  const user = await locals.currentUser()
+
+  // Add your Route Handler's logic with the returned `user` object
+
+  return new Response(
+    JSON.stringify({ userId: user.id, email: user.emailAddresses[0].emailAddress }),
+  )
+}
+```
+
+### Reduce repetition
+
+To avoid repeating the same authentication check in every page, move it into a small helper. Because Astro only redirects when the frontmatter **returns** the redirect, the helper returns the `Response` and each page returns the helper's result.
+
+filename: src/lib/require-auth.ts
+```ts
+import type { AstroGlobal } from 'astro'
+
+// Returns a redirect Response when the user is signed out, or undefined when
+// they're signed in. The page must return this value for the redirect to run.
+export function requireAuth(context: AstroGlobal): Response | undefined {
+  const { isAuthenticated } = context.locals.auth()
+
+  if (!isAuthenticated) {
+    return context.redirect('/sign-in')
+  }
+}
+```
+
+Each protected page then becomes one import and one call:
+
+filename: src/pages/dashboard.astro
+```astro
+---
+import { requireAuth } from '../lib/require-auth'
+
+const redirect = requireAuth(Astro)
+if (redirect) return redirect
+---
+
+<h1>Dashboard</h1>
+```
+
+### Retrieve data from external sources
+
+Clerk provides integrations with a number of popular databases.
+
+To retrieve a token from a JWT template and fetch data from an external source, use the `getToken()` method from the `auth()` local.
+
+filename: src/pages/api/route.ts
+```ts
+export async function GET({ locals }) {
+  // Use `locals.auth()` to access `isAuthenticated`, the user's ID, and the `getToken()` method
+  const { isAuthenticated, userId, getToken } = locals.auth()
+
+  // Protect the route by checking if the user is signed in
+  if (!isAuthenticated) {
+    return new Response('Unauthorized', { status: 401 })
+  }
+
+  // Use `getToken()` to get a token from the JWT template
+  const token = await getToken({ template: 'supabase' })
+
+  // Fetch data from Supabase and return it
+  const data = { supabaseData: 'Hello World' }
+
+  return new Response(JSON.stringify(data))
+}
+```
+
+## Client-side
+
+Clerk Astro provides a set of useful stores that give you access to many important objects, such as the `Clerk`, `User`, and `Session` object.
+
+### `$authStore`
+
+The following example demonstrates how to use the $authStore to access the current auth state. It uses `userId` to detect if the user is signed in.
+
+**React**
+
+filename: components/external-data.tsx
+```tsx
+import { useStore } from '@nanostores/react'
+import { $authStore } from '@clerk/astro/client'
+
+export default function ExternalData() {
+  const { userId } = useStore($authStore)
+
+  if (userId === undefined) {
+    // Handle loading state however you like
+    return <div>Loading...</div>
+  }
+
+  if (userId === null) {
+    // Handle signed out state however you like
+    return <div>Sign in to view this page</div>
+  }
+
+  return <div>...</div>
+}
+```
+
+**Vue**
+
+filename: components/external-data.vue
+```vue
+<script setup>
+import { useStore } from '@nanostores/vue'
+import { $authStore } from '@clerk/astro/client'
+
+const auth = useStore($authStore)
+</script>
+
+<template>
+  <div v-if="auth.userId === undefined">Loading...</div>
+  <div v-else-if="auth.userId === null">Sign in to view this page</div>
+  <div v-else>...</div>
+</template>
+```
+
+**Svelte**
+
+filename: components/external-data.svelte
+```svelte
+<script>
+  // The $ prefix is reserved in Svelte for its own reactivity system.
+  // Alias the imports to avoid conflicts.
+  import { $authStore as auth } from '@clerk/astro/client'
+</script>
+
+{#if $auth.userId === undefined}
+  <div>Loading...</div>
+{:else if $auth.userId === null}
+  <div>Sign in to view this page</div>
+{:else}
+  <div>...</div>
+{/if}
+```
+
+### `$userStore`
+
+The following example demonstrates how to use the $userStore to access the User object, which contains the current user's data such as their ID. It returns `undefined` while Clerk is still loading and `null` if the user is not signed in.
+
+**React**
+
+filename: user.tsx
+```tsx
+import { useStore } from '@nanostores/react'
+import { $userStore } from '@clerk/astro/client'
+
+export default function User() {
+  const user = useStore($userStore)
+
+  // Handle loading state
+  if (user === undefined) return <p>Loading...</p>
+
+  // Protect the page from unauthenticated users
+  if (user === null) return <p>Sign in to view this page</p>
+
+  return <p>Hello {user.id}!</p>
+}
+```
+
+**Vue**
+
+filename: user.vue
+```vue
+<script setup>
+import { useStore } from '@nanostores/vue'
+import { $userStore } from '@clerk/astro/client'
+
+const user = useStore($userStore)
+</script>
+
+<template>
+  <!-- Use `isLoaded` to check if Clerk is loaded -->
+  <div v-if="!isLoaded">Loading...</div>
+  <!-- Use `isSignedIn` to check if the user is signed in -->
+  <div v-else-if="!isSignedIn">Sign in to access this page</div>
+  <!-- Use `userId` to access the current user's ID -->
+  <div v-else>Hello, {{ userId }}!</div>
+</template>
+```
+
+**Svelte**
+
+filename: user.svelte
+```svelte
+<script>
+  // The $ prefix is reserved in Svelte for its own reactivity system.
+  // Alias the imports to avoid conflicts.
+  import { $userStore as user } from '@clerk/astro/client'
+</script>
+
+{#if $user === undefined}
+  <!-- Use `isLoaded` to check if Clerk is loaded -->
+  <div>Loading...</div>
+{:else if $user === null}
+  <!-- Use `isSignedIn` to check if the user is signed in -->
+  <div>Sign in to access this page</div>
+{:else}
+  <div>Hello {$user.id}!</div>
+{/if}
+```
+
+---
+
+## Sitemap
+
+Overview of all docs pages

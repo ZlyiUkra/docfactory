@@ -1,0 +1,302 @@
+# $userStore
+# джерело: https://clerk.com/docs/astro/reference/client-side-helpers/user-store
+# отримано: 2026-09-25
+# версія: core-3
+
+The `$userStore` store provides a convenient way to access current User data and helper methods for managing the active user.
+
+## How to use the `$userStore` store
+
+### Retrieve the current user data
+
+The following example demonstrates how to use the $userStore to access the User object, which contains the current user's data such as their ID. It returns `undefined` while Clerk is still loading and `null` if the user is not signed in.
+
+**React**
+
+filename: user.tsx
+```tsx
+import { useStore } from '@nanostores/react'
+import { $userStore } from '@clerk/astro/client'
+
+export default function User() {
+  const user = useStore($userStore)
+
+  // Handle loading state
+  if (user === undefined) return <p>Loading...</p>
+
+  // Protect the page from unauthenticated users
+  if (user === null) return <p>Sign in to view this page</p>
+
+  return <p>Hello {user.id}!</p>
+}
+```
+
+**Vue**
+
+filename: user.vue
+```vue
+<script setup>
+import { useStore } from '@nanostores/vue'
+import { $userStore } from '@clerk/astro/client'
+
+const user = useStore($userStore)
+</script>
+
+<template>
+  <!-- Use `isLoaded` to check if Clerk is loaded -->
+  <div v-if="!isLoaded">Loading...</div>
+  <!-- Use `isSignedIn` to check if the user is signed in -->
+  <div v-else-if="!isSignedIn">Sign in to access this page</div>
+  <!-- Use `userId` to access the current user's ID -->
+  <div v-else>Hello, {{ userId }}!</div>
+</template>
+```
+
+**Svelte**
+
+filename: user.svelte
+```svelte
+<script>
+  // The $ prefix is reserved in Svelte for its own reactivity system.
+  // Alias the imports to avoid conflicts.
+  import { $userStore as user } from '@clerk/astro/client'
+</script>
+
+{#if $user === undefined}
+  <!-- Use `isLoaded` to check if Clerk is loaded -->
+  <div>Loading...</div>
+{:else if $user === null}
+  <!-- Use `isSignedIn` to check if the user is signed in -->
+  <div>Sign in to access this page</div>
+{:else}
+  <div>Hello {$user.id}!</div>
+{/if}
+```
+
+### Update the current user data
+
+The following example demonstrates how to use the `$userStore` store to update the current user's data on the client-side.
+
+For more information on the `update()` method, see the User reference.
+
+**React**
+
+filename: user.tsx
+```tsx
+import { useStore } from '@nanostores/react'
+import { $userStore } from '@clerk/astro/client'
+
+export default function User() {
+  const user = useStore($userStore)
+
+  if (user === undefined) {
+    // Handle loading state however you like
+    return null
+  }
+
+  if (user === null) return null
+
+  const updateUser = async () => {
+    await user.update({
+      firstName: 'John',
+      lastName: 'Doe',
+    })
+  }
+
+  return (
+    <>
+      <button onClick={updateUser}>Click me to update your name</button>
+      <p>user.firstName: {user?.firstName}</p>
+      <p>user.lastName: {user?.lastName}</p>
+    </>
+  )
+}
+```
+
+**Vue**
+
+filename: user.vue
+```vue
+<script setup>
+import { useStore } from '@nanostores/vue'
+import { $userStore } from '@clerk/astro/client'
+
+const user = useStore($userStore)
+
+const updateUser = async () => {
+  await user.value.update({
+    firstName: 'John',
+    lastName: 'Doe',
+  })
+}
+</script>
+
+<template>
+  <div v-if="user === undefined">
+    <!-- Handle loading state however you like -->
+  </div>
+
+  <div v-else-if="user !== null">
+    <button @click="updateUser">Click me to update your name</button>
+    <p>user.firstName: {{ user.firstName }}</p>
+    <p>user.lastName: {{ user.lastName }}</p>
+  </div>
+</template>
+```
+
+**Svelte**
+
+filename: user.svelte
+```svelte
+<script>
+  // The $ prefix is reserved in Svelte for its own reactivity system.
+  // Alias the imports to avoid conflicts.
+  import { $userStore as user } from '@clerk/astro/client'
+
+  const updateUser = async () => {
+    await $user.update({
+      firstName: 'John',
+      lastName: 'Doe',
+    })
+  }
+</script>
+
+{#if $user === undefined}
+  <!-- Handle loading state however you like -->
+{:else if $user !== null}
+  <button on:click={updateUser}>Click me to update your name</button>
+  <p>user.firstName: {$user.firstName}</p>
+  <p>user.lastName: {$user.lastName}</p>
+{/if}
+```
+
+### Reload user data
+
+The following example demonstrates how to use the `$userStore` store to reload the current user's data on the client-side.
+
+You only need to call `user.reload()` if you've updated the `User` object outside of the `user.update()` method or Clerk hooks; for example, if you made changes through an API endpoint.
+
+For more information on the `reload()` method, see the User reference.
+
+**React**
+
+filename: user.tsx
+```tsx
+import { useStore } from '@nanostores/react'
+import { $userStore } from '@clerk/astro/client'
+
+export default function User() {
+  const user = useStore($userStore)
+
+  if (user === undefined) {
+    // Handle loading state however you like
+    return null
+  }
+
+  if (user === null) return null
+
+  const updateUser = async () => {
+    // Update data via an API endpoint
+    const updateMetadata = await fetch('/api/updateMetadata')
+
+    // Check if the update was successful
+    if (updateMetadata.message !== 'success') {
+      throw new Error('Error updating')
+    }
+
+    // If the update was successful, reload the user data
+    await user.reload()
+  }
+
+  return (
+    <>
+      <button onClick={updateUser}>Click me to update your metadata</button>
+      <p>user role: {user?.publicMetadata.role}</p>
+    </>
+  )
+}
+```
+
+**Vue**
+
+filename: user.vue
+```vue
+<script setup>
+import { useStore } from '@nanostores/vue'
+import { $userStore } from '@clerk/astro/client'
+
+const user = useStore($userStore)
+
+const updateUser = async () => {
+  // Update data via an API endpoint
+  const updateMetadata = await fetch('/api/updateMetadata')
+
+  // Check if the update was successful
+  if (updateMetadata.message !== 'success') {
+    throw new Error('Error updating')
+  }
+
+  // If the update was successful, reload the user data
+  await user.value.reload()
+}
+</script>
+
+<template>
+  <div v-if="user === undefined">
+    <!-- Handle loading state however you like -->
+  </div>
+
+  <div v-else-if="user !== null">
+    <button @click="updateUser">Click me to update your metadata</button>
+    <p>user role: {{ user?.publicMetadata.role }}</p>
+  </div>
+</template>
+```
+
+**Svelte**
+
+filename: user.svelte
+```svelte
+<script>
+  // The $ prefix is reserved in Svelte for its own reactivity system.
+  // Alias the imports to avoid conflicts.
+  import { useStore } from '@nanostores/svelte'
+  import { $userStore as userStore } from '@clerk/astro/client'
+
+  const user = useStore(userStore)
+
+  const updateUser = async () => {
+    if ($user) {
+      try {
+        // Update data via an API endpoint
+        const response = await fetch('/api/updateMetadata')
+        const updateMetadata = await response.json()
+
+        // Check if the update was successful
+        if (updateMetadata.message !== 'success') {
+          throw new Error('Error updating')
+        }
+
+        // If the update was successful, reload the user data
+        await $user.reload()
+      } catch (error) {
+        console.error('Failed to update metadata:', error)
+        // Handle the error appropriately
+      }
+    }
+  }
+</script>
+
+{#if $user === undefined}
+  <!-- Handle loading state however you like -->
+{:else if $user !== null}
+  <button on:click={updateUser}>Click me to update your metadata</button>
+  <p>user role: {$user.publicMetadata?.role}</p>
+{/if}
+```
+
+---
+
+## Sitemap
+
+Overview of all docs pages
