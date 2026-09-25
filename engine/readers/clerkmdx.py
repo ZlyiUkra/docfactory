@@ -12,8 +12,9 @@
 Чим відрізняється від `ghdocs-mdx`. Сторінка Core 2 не самодостатня: чимала частина
 її тексту — вставки, яких у самому файлі немає.
 
-1. `<Include src="_partials/…" />` — спільний фрагмент з `docs/_partials/`. Без
-   розгортання на місці кроків quickstart-а в корпус лягла б порожнеча.
+1. `<Include src="_partials/…" />` — спільний фрагмент з `docs/_partials/`, а
+   `<Include src="./_partials/…" />` — з теки поруч зі сторінкою. Без розгортання на
+   місці кроків quickstart-а в корпус лягла б порожнеча.
 2. `<Typedoc src="…" />` — таблиця параметрів, згенерована з коду SDK, лежить у
    `clerk-typedoc/`. Без неї довідник хуків лишався б без жодного параметра.
 3. `<If sdk="nextjs">…</If>` — сайт показує вміст лише для обраного SDK. Корпус
@@ -26,7 +27,9 @@
 (`_partials`, `_tooltips`) документами не стають: це шматки сторінок, а не сторінки.
 """
 
+import hashlib
 import json
+import posixpath
 import re
 from urllib.parse import urlsplit
 
@@ -105,7 +108,8 @@ def clerk_mdx(source: dict, ctx) -> list[Item]:
             cache[path] = _markup.front_matter(text)[1]
         return cache[path]
 
-    def expand(text: str, where: str, depth: int = 0) -> str:
+    def expand(text: str, where: str, here: str, depth: int = 0) -> str:
+        """`here` — файл, чий це текст: `./_partials/…` рахується від його теки."""
         out: list[str] = []
         fence = ""
         for line in text.replace("\r\n", "\n").split("\n"):
@@ -122,11 +126,15 @@ def clerk_mdx(source: dict, ctx) -> list[Item]:
             inc, doc = _INCLUDE.match(line), _TYPEDOC.match(line)
             if (inc or doc) and depth < _DEPTH:
                 indent, src = (inc or doc).groups()
-                src = src.strip("/").removesuffix(".mdx")
-                path = f"docs/{src}.mdx" if inc else f"clerk-typedoc/{src}.mdx"
+                src = src.removesuffix(".mdx")
+                if src.startswith(("./", "../")):
+                    path = posixpath.normpath(posixpath.join(posixpath.dirname(here), src))
+                else:
+                    path = ("docs/" if inc else "clerk-typedoc/") + src.strip("/")
+                path += ".mdx"
                 body = fragment(path, where)
                 if body is not None:
-                    body = expand(body, where, depth + 1)
+                    body = expand(body, where, path, depth + 1)
                     out += ["", *[(indent + ln) if ln.strip() else "" for ln in
                                   body.split("\n")], ""]
                 continue
@@ -145,6 +153,7 @@ def clerk_mdx(source: dict, ctx) -> list[Item]:
                    if p.startswith("docs/") and p.endswith(".mdx")
                    and not any(part.startswith("_") for part in p.split("/")))
     items = []
+    names: set[str] = set()
     for path in pages:
         raw = raw_base + path
         if not ctx.allowed(raw):
@@ -153,12 +162,18 @@ def clerk_mdx(source: dict, ctx) -> list[Item]:
         stem = path[len("docs/"):].removesuffix(".mdx")
         stem = re.sub(r"(^|/)index$", "", stem) or "index"
         name = _markup.slug(stem)
+        # «organization-membership-request.mdx» і «organization/membership-request.mdx»
+        # лежать у core-1 поруч і дають те саме ім'я: без суфікса друга сторінка тихо
+        # перезаписала б першу. Суфікс — від шляху, тож не зсувається з новими файлами.
+        if name in names:
+            name += "-" + hashlib.sha1(path.encode()).hexdigest()[:8]
+        names.add(name)
 
         def make(raw=raw, blob=blob, path=path):
             text = ctx.text(raw)
             _markup.refuse_html(text, raw)
             meta, rest = _markup.front_matter(text)
-            body = _markup.markdown_body(_flush_headings(expand(rest, path)))
+            body = _markup.markdown_body(_flush_headings(expand(rest, path, path)))
             # Сторінка для окремих SDK каже про це лише в шапці YAML, яку корпус не
             # зберігає; без цього рядка довідник хука Expo не відрізнити від вебового.
             if meta.get("sdk"):
