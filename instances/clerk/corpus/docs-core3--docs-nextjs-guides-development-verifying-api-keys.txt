@@ -1,0 +1,86 @@
+# Verify API keys in your Next.js application with Clerk
+# джерело: https://clerk.com/docs/nextjs/guides/development/verifying-api-keys
+# отримано: 2026-09-25
+# версія: core-3
+
+When building a resource server that needs to accept and verify API keys issued by Clerk, it's crucial to verify these keys on your backend to ensure the request is coming from an authenticated client.
+
+> This guide assumes you've configured clerkMiddleware() in your Next.js application. The `auth()` helper requires Clerk Middleware to be configured before it can read request authentication state.
+
+Clerk's Next.js SDK provides a built-in auth() function that supports token validation via the `acceptsToken` parameter. This lets you specify which type(s) of token your API route should accept. You can also use the auth.protect() method to check if a request includes a valid machine token (e.g., API key or OAuth token) and enforce access rules accordingly.
+
+By default, `acceptsToken` is set to `session_token`, which means API keys will **not** be accepted unless explicitly configured. You can pass either a **single token type** or an **array of token types** to `acceptsToken`. To learn more about the supported token types, see the auth() parameters documentation.
+
+Below are two examples of verifying API keys in a Next.js API route using Clerk's SDK:
+
+## Example 1: Accepting a single token type
+
+In the following example, the `acceptsToken` parameter is set to only accept `api_key`s.
+
+- If the API key is invalid or missing, `auth()` will return `false` for `isAuthenticated`, and the request will be rejected with a `401` response.
+- If the API key is valid, `subject`, `scopes`, and `claims` are returned. API keys are scoped to either a user or an Organization, so `subject` is the user ID or Organization ID associated with the key.
+
+filename: app/api/example/route.ts
+```tsx
+import { NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
+
+export async function GET() {
+  const authObject = await auth({ acceptsToken: 'api_key' })
+
+  // If isAuthenticated is false, the token is invalid
+  if (!authObject.isAuthenticated) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { subject, scopes, claims } = authObject
+
+  return NextResponse.json({ subject, scopes, claims })
+}
+```
+
+## Example 2: Accepting multiple token types
+
+In the following example, the `acceptsToken` parameter allows `session_token`s, `oauth_token`s, and `api_key`s.
+
+- If the token is invalid or missing, `auth()` will return `false` for `isAuthenticated`. Check `isAuthenticated` before reading the other properties, like `userId`.
+- If the token is an `api_key`, use `subject` to identify the user or Organization associated with the key.
+- If the token is valid, `isAuthenticated` is `true`. This example includes pseudo-code that uses `subject` for API keys or `userId` for session and OAuth tokens to get data from a database.
+
+filename: app/api/example/route.ts
+```tsx
+import { NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
+
+export async function POST() {
+  // Accept session_token, oauth_token, and api_key types
+  const authObject = await auth({
+    acceptsToken: ['session_token', 'oauth_token', 'api_key'],
+  })
+
+  // If the token is invalid or missing
+  if (!authObject.isAuthenticated) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // Check if the token is an api key and if it doesn't have the required scope
+  if (authObject.tokenType === 'api_key' && !authObject.scopes.includes('read:data')) {
+    return NextResponse.json({ error: 'API Key missing the "read:data" scope' }, { status: 401 })
+  }
+
+  // If the token is valid, move forward with the application logic
+  // This example includes pseudo-code for getting data from a database using the resource owner ID
+  const ownerId = authObject.tokenType === 'api_key' ? authObject.subject : authObject.userId
+  const data = db.select().from(resources).where(eq(resources.ownerId, ownerId))
+
+  return NextResponse.json({ data })
+}
+```
+
+To enforce token types across your API routes, check the token type in each Route Handler with auth({ acceptsToken }).
+
+---
+
+## Sitemap
+
+Overview of all docs pages

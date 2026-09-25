@@ -1,0 +1,386 @@
+# clerkMiddleware()
+# джерело: https://clerk.com/docs/nextjs/reference/clerk-middleware
+# отримано: 2026-09-25
+# версія: core-3
+
+The `clerkMiddleware()` helper integrates Clerk authentication into your Next.js application through Middleware. `clerkMiddleware()` is compatible with both the App and Pages routers.
+
+**For AI agents:** Run `npx clerk@latest init --framework next` to scaffold this middleware (plus `<ClerkProvider>` and env keys) automatically, instead of writing it by hand. Install Clerk's skills with `npx skills add clerk/skills` for correct CLI and SDK usage.
+
+## Configure `clerkMiddleware()`
+
+> If you're using Next.js ≤15, name your file `middleware.ts` instead of `proxy.ts`. The code itself remains the same; only the filename changes.
+
+Create a `proxy.ts` file at the root of your project, or in your `src/` directory if you have one.
+
+> For more information about Middleware in Next.js, see the Next.js documentation.
+
+filename: proxy.ts
+```tsx
+import { clerkMiddleware } from '@clerk/nextjs/server'
+
+export default clerkMiddleware()
+
+export const config = {
+  matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)',
+    // Always run for Clerk-specific frontend API routes
+    '/__clerk/(.*)',
+  ],
+}
+```
+
+## Protecting routes
+
+Middleware is not the best place to protect routes. Instead, **protect access as close to the resource as possible**, in the code that reads or mutates the data. This way, the same code that touches the data also enforces who can reach it.
+
+- To require a signed-in user, see the guide on protecting content from unauthenticated users.
+- To require a specific Role, Permission, Feature, or Plan, see the guide on authorization checks.
+- For machine requests (API keys, OAuth tokens, machine tokens), check the token type in the Route Handler with auth({ acceptsToken }).
+
+> **Deprecated:** `createRouteMatcher()` is deprecated. If you're currently using it to protect routes, migrate to resource-based auth checks. See the guide on migrating away from `createRouteMatcher()` for more information.
+
+## Debug your Middleware
+
+If you are having issues getting your Middleware dialed in, or are trying to narrow down auth-related issues, you can use the debugging feature in `clerkMiddleware()`. Add `{ debug: true }` to `clerkMiddleware()` and you will get debug logs in your terminal.
+
+filename: proxy.ts
+```tsx
+import { clerkMiddleware } from '@clerk/nextjs/server'
+
+export default clerkMiddleware(
+  (auth, req) => {
+    // Add your middleware checks
+  },
+  { debug: true },
+)
+
+export const config = {
+  matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)',
+    // Always run for Clerk-specific frontend API routes
+    '/__clerk/(.*)',
+  ],
+}
+```
+
+If you would like to set up debugging for your development environment only, you can use the `process.env.NODE_ENV` variable to conditionally enable debugging. For example, `{ debug: process.env.NODE_ENV === 'development' }`.
+
+## Combine Middleware
+
+You can combine other Middleware with Clerk's Middleware by returning the second Middleware from `clerkMiddleware()`.
+
+filename: proxy.ts
+```js
+import { clerkMiddleware } from '@clerk/nextjs/server'
+import createMiddleware from 'next-intl/middleware'
+
+import { AppConfig } from './utils/AppConfig'
+
+const intlMiddleware = createMiddleware({
+  locales: AppConfig.locales,
+  localePrefix: AppConfig.localePrefix,
+  defaultLocale: AppConfig.defaultLocale,
+})
+
+export default clerkMiddleware(async (auth, req) => {
+  return intlMiddleware(req)
+})
+
+export const config = {
+  matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)',
+    // Always run for Clerk-specific frontend API routes
+    '/__clerk/(.*)',
+  ],
+}
+```
+
+## Frontend API proxy
+
+The `frontendApiProxy` option enables built-in proxying of Clerk Frontend API requests through your application. Use this when requests to Clerk's API cannot be made directly from the browser and must be routed through your server.
+
+When enabled, requests matching the proxy path (by default, `/__clerk`) are intercepted and forwarded to Clerk's Frontend API before authentication runs. The `proxyUrl` used for authentication handshake is automatically derived.
+
+> You must also enable proxying in the Clerk Dashboard and configure the client-side proxy URL so ClerkJS routes browser requests through your proxy.
+
+### Basic usage
+
+> Ensure your middleware matcher includes the proxy path (by default, `/__clerk`) so proxy requests are handled by the middleware.
+
+filename: proxy.ts
+```ts
+import { clerkMiddleware } from '@clerk/nextjs/server'
+
+export default clerkMiddleware({
+  frontendApiProxy: {
+    enabled: true,
+  },
+})
+
+export const config = {
+  matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)',
+    // Always run for Clerk-specific frontend API routes
+    '/__clerk/(.*)',
+  ],
+}
+```
+
+### Multi-domain support
+
+For applications that serve multiple domains (e.g., preview deployments, staging environments), you can pass a function to `enabled` to conditionally enable proxying based on the request URL.
+
+filename: proxy.ts
+```ts
+import { clerkMiddleware } from '@clerk/nextjs/server'
+
+export default clerkMiddleware({
+  frontendApiProxy: {
+    // Only proxy on non-production domains
+    enabled: (url) => url.hostname !== 'myapp.com',
+  },
+})
+
+export const config = {
+  matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)',
+    // Always run for Clerk-specific frontend API routes
+    '/__clerk/(.*)',
+  ],
+}
+```
+
+### Custom proxy path
+
+filename: proxy.ts
+```ts
+import { clerkMiddleware } from '@clerk/nextjs/server'
+
+export default clerkMiddleware({
+  frontendApiProxy: {
+    enabled: true,
+    path: '/custom-clerk-proxy',
+  },
+})
+
+export const config = {
+  matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)',
+    // Always run for the custom proxy path
+    '/custom-clerk-proxy/(.*)',
+  ],
+}
+```
+
+### `FrontendApiProxyOptions`
+
+| Name    | Type                               | Description                                                                                                                                                                              |
+| ------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| enabled | boolean | ((url: URL) => boolean) | Enable Frontend API proxy handling. When true, requests to the proxy path are forwarded to Clerk's Frontend API, and the proxyUrl is automatically derived for authentication handshake. |
+| path?   | string                             | The path prefix for proxy requests. Defaults to '/\_\_clerk'. Must be unique and not conflict with other routes in your application.                                                     |
+
+### App Router route handlers
+
+As an alternative to handling the proxy in middleware, you can use route handlers in a Next.js App Router. **This is useful if you prefer to keep proxy logic separate from your middleware.**
+
+> In Next.js App Router, folders that start with `_` are treated as private folders. To create a literal `__clerk` route segment, use `%5F%5Fclerk` in the file path. The resulting route is still `/__clerk/*`.
+
+#### `createFrontendApiProxyHandlers()`
+
+Returns an object with `GET`, `POST`, `PUT`, `DELETE`, and `PATCH` handlers that can be directly exported from a route file.
+
+> When using route handlers instead of the `frontendApiProxy` middleware option, the `proxyUrl` is **not** auto-derived. You must set the `proxyUrl` option on `clerkMiddleware()` or set the `NEXT_PUBLIC_CLERK_PROXY_URL` environment variable for the authentication handshake to work correctly.
+
+> In Next.js App Router, folders that start with `_` are treated as private folders. To create a literal `__clerk` route segment, use `%5F%5Fclerk` in the file path. The resulting route is still `/__clerk/*`.
+
+filename: app/api/%5F%5Fclerk/[[...path]]/route.ts
+```ts
+import { createFrontendApiProxyHandlers } from '@clerk/nextjs/server'
+
+export const { GET, POST, PUT, DELETE, PATCH } = createFrontendApiProxyHandlers()
+```
+
+#### `clerkFrontendApiProxy()`
+
+For more control, you can use `clerkFrontendApiProxy()` directly in individual route handlers.
+
+filename: app/api/%5F%5Fclerk/[[...path]]/route.ts
+```ts
+import { clerkFrontendApiProxy } from '@clerk/nextjs/server'
+
+export async function GET(request: Request) {
+  return clerkFrontendApiProxy(request)
+}
+
+export async function POST(request: Request) {
+  return clerkFrontendApiProxy(request)
+}
+```
+
+## `clerkMiddleware()` options
+
+The `clerkMiddleware()` function accepts an optional object. The following options are available:
+
+| Name                     | Type                                 | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ------------------------ | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| audience?                | string | string[]                  | A string or list of audiences. If passed, it is checked against the aud claim in the token.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| authorizedParties?       | string[]                            | An allowlist of origins to verify against, to protect your application from the subdomain cookie leaking attack. For example: ['http://localhost:3000', 'https://example.com']                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| clockSkewInMs?           | number                               | Specifies the allowed time difference (in milliseconds) between the Clerk server (which generates the token) and the clock of the user's application server when validating a token. Defaults to 5000 ms (5 seconds).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| domain?                  | string                               | The domain used for satellites to inform Clerk where this application is deployed.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| frontendApiProxy?        | FrontendApiProxyOptions              | Configure Frontend API proxy handling. When enabled, requests to the proxy path are forwarded to Clerk's Frontend API, and the proxyUrl is automatically derived for authentication handshake.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| isSatellite?             | boolean                              | When using Clerk's satellite feature, this should be set to true for secondary domains.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| jwtKey                   | string                               | Used to verify the session token in a networkless manner. Supply the JWKS Public Key from the API keys page in the Clerk Dashboard. It's recommended to use the environment variable instead. For more information, refer to Manual JWT verification.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| organizationSyncOptions? | OrganizationSyncOptions | undefined | Used to activate a specific Organization or Personal AccountPersonal Accounts are individual workspaces that allow users to operate independently without belonging to an Organization. Learn more about Personal Accounts. based on URL path parameters. If there's a mismatch between the Active OrganizationA user can be a member of multiple Organizations, but only one can be active at a time. The Active Organization determines which Organization-specific data the user can access and which Role and related Permissions they have within the Organization. in the session (e.g., as reported by auth()) and the Organization indicated by the URL, the middleware will attempt to activate the Organization specified in the URL. |
+| proxyUrl?                | string                               | Specify the URL of the proxy, if using a proxy.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| publishableKey           | string                               | The Clerk Publishable KeyYour Clerk Publishable Key tells your app what your FAPI URL is, enabling your app to locate and communicate with your dedicated FAPI instance. You can find it on the API keys page in the Clerk Dashboard. for your instance.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| satelliteAutoSync?       | boolean                              | Controls whether a satellite app automatically syncs authentication state with the primary domain on first page load. When false (default), the satellite app skips the automatic redirect if no session cookies exist, and only triggers the handshake after the user initiates a sign-in or sign-up action. When true, the satellite app redirects to the primary domain on every first visit to sync state. Defaults to false. See satellite domains for more details.                                                                                                                                                                                                                                                                       |
+| secretKey?               | string                               | The Clerk Secret KeyYour Clerk Secret Key is used to authenticate requests from your backend to Clerk's API. You can find it on the API keys page in the Clerk Dashboard. Do not expose this on the frontend with a public environment variable. for your instance. The CLERK\_ENCRYPTION\_KEY environment variable must be set when providing secretKey as an option, refer to Dynamic keys.                                                                                                                                                                                                                                                                                                                                                   |
+| signInUrl                | string                               | The full URL or path to your sign-in page. Needs to point to your primary application on the client-side. Required for a satellite application in a development instance. It's recommended to use the environment variable instead.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| signUpUrl                | string                               | The full URL or path to your sign-up page. Needs to point to your primary application on the client-side. Required for a satellite application in a development instance. It's recommended to use the environment variable instead.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+
+It's also possible to dynamically set options based on the incoming request:
+
+filename: proxy.ts
+```ts
+import { clerkMiddleware } from '@clerk/nextjs/server'
+
+export default clerkMiddleware(
+  (auth, req) => {
+    // Add your middleware checks
+  },
+  (req) => ({
+    // Provide `domain` based on the request host
+    domain: req.nextUrl.host,
+  }),
+)
+```
+
+### Dynamic keys
+
+> Dynamic keys are not accessible on the client-side.
+
+The following options, known as "Dynamic Keys," are shared to the Next.js application server through `clerkMiddleware`, enabling access by server-side helpers like auth():
+
+- `signUpUrl`
+- `signInUrl`
+- `secretKey`
+- `publishableKey`
+
+Dynamic keys are encrypted and shared during request time using a AES encryption algorithm. When providing a `secretKey`, the `CLERK_ENCRYPTION_KEY` environment variable is mandatory and used as the encryption key. If no `secretKey` is provided to `clerkMiddleware`, the encryption key defaults to `CLERK_SECRET_KEY`.
+
+When providing `CLERK_ENCRYPTION_KEY`, it is recommended to use a 32-byte (256-bit), pseudorandom value. You can use `openssl` to generate a key:
+
+filename: terminal
+```sh
+openssl rand --hex 32
+```
+
+For multi-tenant applications, you can dynamically define Clerk keys depending on the incoming request. Here's an example:
+
+filename: proxy.ts
+```ts
+import { clerkMiddleware } from '@clerk/nextjs/server'
+
+// You would typically fetch these keys from a external store or environment variables.
+const tenantKeys = {
+  tenant1: { publishableKey: 'pk_tenant1...', secretKey: 'sk_tenant1...' },
+  tenant2: { publishableKey: 'pk_tenant2...', secretKey: 'sk_tenant2...' },
+}
+
+export default clerkMiddleware(
+  (auth, req) => {
+    // Add your middleware checks
+  },
+  (req) => {
+    // Resolve tenant based on the request
+    const tenant = getTenant(req)
+    return tenantKeys[tenant]
+  },
+)
+```
+
+### `OrganizationSyncOptions`
+
+The `organizationSyncOptions` property on the clerkMiddleware() options
+object has the type `OrganizationSyncOptions`, which has the following properties:
+
+| Name                                  | Type                                | Description |
+| ------------------------------------- | ----------------------------------- | ----------- |
+| ["/orgs/:slug", "/orgs/:slug/(.\*)"] | ["/orgs/:id", "/orgs/:id/(.\*)"]   |             |
+| ["/me", "/me/(.\*)"]                 | ["/user/:any", "/user/:any/(.\*)"] |             |
+
+> Organization activation from `organizationSyncOptions` relies on Clerk's handshake, which redirects the browser to Clerk's Frontend API. The handshake only runs for requests that look like document navigations — a `GET` request whose `Sec-Fetch-Dest` is `document` or `iframe`, or (for clients that don't send `Sec-Fetch-Dest`) a `GET` request with an `Accept: text/html` header. As a result, `organizationSyncOptions` won't set the active Organization for browser `fetch()`/`XHR` calls or WebSocket upgrades, which never carry those headers. When you need Organization context in those code paths, set the active Organization explicitly with setActive() before opening the WebSocket or making the request.
+
+### Pattern
+
+A `Pattern` is a `string` that represents the structure of a URL path. In addition to any valid URL, it may include:
+
+- Named path parameters prefixed with a colon (e.g., `:id`, `:slug`, `:any`).
+- Wildcard token, `(.*)`, which matches the remainder of the path.
+
+#### Examples
+
+- `/orgs/:slug`
+
+| URL                       | Matches | `:slug` value |
+| ------------------------- | ------- | ------------- |
+| `/orgs/acmecorp`          | ✅       | `acmecorp`    |
+| `/orgs`                   | ❌       | n/a           |
+| `/orgs/acmecorp/settings` | ❌       | n/a           |
+
+- `/app/:any/orgs/:id`
+
+| URL                             | Matches | `:id` value |
+| ------------------------------- | ------- | ----------- |
+| `/app/petstore/orgs/org_123`    | ✅       | `org_123`   |
+| `/app/dogstore/v2/orgs/org_123` | ❌       | n/a         |
+
+- `/personal-account/(.*)`
+
+| URL                          | Matches |
+| ---------------------------- | ------- |
+| `/personal-account/settings` | ✅       |
+| `/personal-account`          | ❌       |
+
+## `createRouteMatcher()` (Deprecated)
+
+> **Deprecated:** `createRouteMatcher()` is deprecated and logs a runtime deprecation warning when called. To protect routes, migrate to resource-based auth checks (see the migration guide). For non-auth path logic, use the framework's native matching instead.
+
+`createRouteMatcher()` is a Clerk helper function that accepts an array of routes and checks if the route the user is trying to visit matches one of the routes passed to it. The paths provided to this helper can be in the same format as the paths provided to the Next.js Middleware matcher.
+
+The `createRouteMatcher()` helper returns a function that, if called with the `req` object from the Middleware, will return `true` if the user is trying to access a route that matches one of the routes passed to `createRouteMatcher()`.
+
+> When matching a subtree of routes, prefer the `:path*` form: it maps directly to how the router matches path segments. For example, use `/dashboard/:path*` instead of `/dashboard(.*)`.
+
+```tsx
+import { createRouteMatcher } from '@clerk/nextjs/server'
+
+const isDashboardRoute = createRouteMatcher(['/dashboard/:path*'])
+```
+
+For non-auth path logic in your Middleware, use the framework's native matching (`config.matcher` and `req.nextUrl.pathname`). For an example, see Geo blocking.
+
+---
+
+## Sitemap
+
+Overview of all docs pages

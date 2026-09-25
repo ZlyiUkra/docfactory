@@ -1,0 +1,138 @@
+# Route Handlers
+# джерело: https://clerk.com/docs/nextjs/reference/app-router/route-handlers
+# отримано: 2026-09-25
+# версія: core-3
+
+Clerk provides helpers that allow you to protect your Route Handlers, fetch the current user, and interact with the Clerk Backend API.
+
+> If you have a `<Link>` tag on a public page that points to a protected page that returns a `400`-level error, like a `401`, the data prefetch will fail because it will be redirected to the sign-in page and throw a confusing error in the console. To prevent this behavior, disable prefetching by adding `prefetch={false}` to the `<Link>` component.
+
+## Protect your Route Handlers
+
+If you aren't protecting your Route Handler using clerkMiddleware(), you can protect your Route Handler in two ways:
+
+- Use auth.protect() if you want Clerk to return a `404` error when there is no signed in user.
+- Use auth().userId if you want to customize the behavior or error message.
+
+**auth.protect()**
+
+filename: app/api/route.ts
+```tsx
+import { auth } from '@clerk/nextjs/server'
+
+export async function GET() {
+  // If there is no signed in user, this will return a 404 error
+  await auth.protect()
+
+  // Add your Route Handler logic here
+
+  return Response.json({ message: 'Hello world!' })
+}
+```
+
+**auth().userId()**
+
+filename: app/api/route.ts
+```tsx
+import { auth } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server'
+
+export async function GET() {
+  const { isAuthenticated, userId } = await auth()
+
+  if (!isAuthenticated) {
+    return NextResponse.json({ error: 'Error: No signed in user' }, { status: 401 })
+  }
+
+  // Add your Route Handler logic here
+
+  return NextResponse.json({ userId })
+}
+```
+
+## Retrieve data from external sources
+
+Clerk provides integrations with a number of popular databases.
+
+The following example demonstrates how to use `auth().getToken()` to retrieve a token from a JWT template and use it to fetch data from the external source.
+
+filename: app/api/route.ts
+```ts
+import { NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
+export async function GET() {
+  const { isAuthenticated, getToken } = await auth()
+
+  if (!isAuthenticated) {
+    return new Response('Unauthorized', { status: 401 })
+  }
+
+  const token = await getToken({ template: 'supabase' })
+
+  // Fetch data from Supabase and return it.
+  const data = { supabaseData: 'Hello World' }
+
+  return NextResponse.json({ data })
+}
+```
+
+## Retrieve the current user
+
+To retrieve information about the current user in your Route Handler, you can use the currentUser() helper, which returns the `Backend User` object of the currently active user. **It does count towards the Backend API request rate limit** so it's recommended to use the useUser() hook on the client side when possible and only use `currentUser()` when you specifically need user data in a server context. For more information on this helper, see the currentUser() reference.
+
+> The `Backend User` object includes a `privateMetadata` field that should not be exposed to the frontend. Avoid passing the full user object returned by `currentUser()` to the frontend. Instead, pass only the specified fields you need.
+
+filename: app/api/route.ts
+```ts
+import { NextResponse } from 'next/server'
+import { auth, currentUser } from '@clerk/nextjs/server'
+
+export async function GET() {
+  const { isAuthenticated } = await auth()
+
+  if (!isAuthenticated) {
+    return new Response('Unauthorized', { status: 401 })
+  }
+
+  const user = await currentUser()
+  if (!user) {
+    return new Response('User not found', { status: 404 })
+  }
+
+  return NextResponse.json({ userId: user.id, email: user.emailAddresses[0].emailAddress })
+}
+```
+
+## Interact with Clerk's Backend API
+
+`clerkClient` is a wrapper around the Backend API that makes it easier to interact with the API. For example, to update a user's first and last name, you can use the `users.updateUser()` method.
+
+filename: app/api/route.ts
+```ts
+import { NextResponse, NextRequest } from 'next/server'
+import { auth, clerkClient } from '@clerk/nextjs/server'
+
+export async function POST(req: NextRequest) {
+  const { isAuthenticated, userId } = await auth()
+
+  // Protect the endpoint from unauthenticated users
+  if (!isAuthenticated) return NextResponse.redirect(new URL('/sign-in', req.url))
+
+  // Set the parameters for the `updateUser()` method
+  const params = { firstName: 'John', lastName: 'Wick' }
+
+  // Initialize `clerkClient`
+  const client = await clerkClient()
+
+  // Use the `updateUser()` method to update the user's first and last name
+  const user = await client.users.updateUser(userId, params)
+
+  return NextResponse.json({ user })
+}
+```
+
+---
+
+## Sitemap
+
+Overview of all docs pages

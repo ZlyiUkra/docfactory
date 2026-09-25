@@ -1,0 +1,407 @@
+# Organization object
+# джерело: https://clerk.com/docs/nextjs/reference/objects/organization
+# отримано: 2026-09-25
+# версія: core-3
+
+The `Organization` object holds information about an Organization, as well as methods for managing it.
+
+To use these methods, you must have the **Organizations** feature enabled in your app's settings in the Clerk Dashboard.
+
+## Example
+
+The following example uses the useOrganization() hook to access the active Organization object.
+
+filename: app/organization/page.tsx
+```tsx
+'use client'
+import { useOrganization } from '@clerk/nextjs'
+
+export default function Page() {
+  const { isLoaded, organization } = useOrganization()
+
+  if (!isLoaded) return <div>Loading...</div>
+
+  return <h1>Welcome to {organization?.name}</h1>
+}
+```
+
+## Properties
+
+| Property                                                       | Type                                                                                                               | Description                                                                                                                                                                                                                                                                                                                   |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|  `adminDeleteEnabled`           | `boolean`                                                                                                          | Whether the Organization allows admins to delete users.                                                                                                                                                                                                                                                                       |
+|  `createdAt`                             | `Date`                                                                                                             | The date when the Organization was first created.                                                                                                                                                                                                                                                                             |
+|  `exclusiveMembership`         | `boolean`                                                                                                          | Whether the Organization enforces exclusive membership, meaning members must have it set as their active Organization. Defaults to `false` for instances that have not adopted the feature.                                                                                                                                   |
+|  `hasImage`                               | `boolean`                                                                                                          | Whether the Organization has an image.                                                                                                                                                                                                                                                                                        |
+|  `id`                                           | `string`                                                                                                           | The unique identifier for the Organization.                                                                                                                                                                                                                                                                                   |
+|  `imageUrl`                               | `string`                                                                                                           | Holds the Organization's logo. Compatible with Clerk's Image Optimization.                                                                                                                                                                      |
+|  `maxAllowedMemberships`     | `number`                                                                                                           | The maximum number of memberships allowed in the Organization.                                                                                                                                                                                                                                                                |
+|  `membersCount`                       | `number`                                                                                                           | The number of members in the Organization.                                                                                                                                                                                                                                                                                    |
+|  `name`                                       | `string`                                                                                                           | The name of the Organization.                                                                                                                                                                                                                                                                                                 |
+|  `pendingInvitationsCount` | `number`                                                                                                           | The number of pending invitations in the Organization.                                                                                                                                                                                                                                                                        |
+|  `publicMetadata`                   | OrganizationPublicMetadata | Metadata that can be read from both the Frontend API and Backend API, but can be set only from the Backend API. Once the user accepts the invitation and signs up, these metadata will end up in the user's public metadata. |
+|  `selfServeSSOEnabled`         | `boolean`                                                                                                          | Whether the Organization allows self-serve SSO.                                                                                                                                                                                                                                                                               |
+|  `slug`                                       | `null | string`                                                                                         | The URL-friendly identifier of the Organization. If supplied, it must be unique for the instance.                                                                                                                                                                                                                             |
+|  `ssoBypassAllowlist`           | `SSOBypassAllowlistResource`                                                                                       | The organization's SSO bypass allowlist: the members who may sign in with an email code when the organization's enterprise SSO is unavailable. Managing it requires the `org:sys_entconns_sso_bypass:manage` permission.                                                                                                      |
+|  `updatedAt`                             | `Date`                                                                                                             | The date when the Organization was last updated.                                                                                                                                                                                                                                                                              |
+
+## Methods
+
+### `addMember()`
+
+Adds a user as a member to an organization. A user can only be added to an organization if they are not already a member of it and if they already exist in the same instance as the organization. Only administrators can add members to an organization.
+
+Returns an OrganizationMembershipResource object.
+
+```typescript
+function addMember(params: AddMemberParams): Promise<OrganizationMembershipResource>
+```
+
+#### `AddMemberParams`
+
+| Property                     | Type     | Description                                                                                                                                   |
+| ---------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+|  `role`     | `string` | The Role that will be assigned to the user. |
+|  `userId` | `string` | The unique identifier of the user to add as a member.                                                                                         |
+
+### `addPaymentMethod()`
+
+Adds a payment method.
+
+Returns a BillingPaymentMethodResource object.
+
+```typescript
+function addPaymentMethod(params: AddPaymentMethodParams): Promise<BillingPaymentMethodResource>
+```
+
+#### `AddPaymentMethodParams`
+
+| Property                                 | Type       | Description                                                        |
+| ---------------------------------------- | ---------- | ------------------------------------------------------------------ |
+|  `gateway`           | `"stripe"` | The payment gateway to use.                                        |
+|  `paymentToken` | `string`   | A token representing payment details, usually from a payment form. |
+
+### `createDomain()`
+
+Creates a new domain.
+
+Returns an OrganizationDomainResource object.
+
+> You must have **Verified domains** enabled in your app's settings in the Clerk Dashboard.
+
+```typescript
+function createDomain(domainName: string, params?: Pick<CreateOrganizationDomainParams, "enrollmentMode">): Promise<OrganizationDomainResource>
+```
+
+#### Parameters
+
+| Parameter                 | Type                                                                                                  | Description                                                                                                            |
+| ------------------------- | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `domainName`              | `string`                                                                                              | The name of the domain to create.                                                                                      |
+| `params?`                 | `Pick`<`CreateOrganizationDomainParams`, `"enrollmentMode"`>                                         | Optional parameters, including the `enrollmentMode` to assign to the new domain.                                       |
+| `params?.enrollmentMode?` | `"manual_invitation" | "automatic_invitation" | "automatic_suggestion" | "enterprise_sso"` | The enrollment mode that determines how matching users are added to the Organization. Defaults to `manual_invitation`. |
+
+### `destroy()`
+
+Deletes the Organization. Only administrators can delete an Organization.
+
+Deleting an Organization will also delete all memberships and invitations. **This is not reversible.**
+
+```typescript
+function destroy(): Promise<void>
+```
+
+### `getDomain()`
+
+Gets a domain for an Organization based on the given domain ID.
+
+Returns an OrganizationDomainResource object.
+
+> You must have **Verified domains** enabled in your app's settings in the Clerk Dashboard.
+
+```typescript
+function getDomain(domainId: { domainId: string }): Promise<OrganizationDomainResource>
+```
+
+#### Parameters
+
+| Parameter  | Type                               | Description                                 |
+| ---------- | ---------------------------------- | ------------------------------------------- |
+| `domainId` | `{ domainId: string; }` | The unique identifier of the domain to get. |
+
+### `getDomains()`
+
+Gets the list of domains.
+
+Returns a ClerkPaginatedResponse of OrganizationDomainResource objects.
+
+> You must have **Verified domains** enabled in your app's settings in the Clerk Dashboard.
+
+```typescript
+function getDomains(params?: GetDomainsParams): Promise<ClerkPaginatedResponse<OrganizationDomainResource>>
+```
+
+#### `GetDomainsParams`
+
+| Property                                | Type                                                                                                  | Description                                                                                                                                                                           |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `enrollmentMode?`                       | `"manual_invitation" | "automatic_invitation" | "automatic_suggestion" | "enterprise_sso"` | The enrollment mode will decide how new users join an organization. |
+|  `initialPage?` | `number`                                                                                              | A number that specifies which page to fetch. For example, if `initialPage` is set to `10`, it will skip the first 9 pages and fetch the 10th page. Defaults to `1`.                   |
+|  `pageSize?`       | `number`                                                                                              | A number that specifies the maximum number of results to return per page. Defaults to `10`.                                                                                           |
+
+### `getInvitations()`
+
+Gets the list of invitations.
+
+Returns a ClerkPaginatedResponse of OrganizationInvitationResource objects.
+
+```typescript
+function getInvitations(params?: GetInvitationsParams): Promise<ClerkPaginatedResponse<OrganizationInvitationResource>>
+```
+
+#### `GetInvitationsParams`
+
+| Property                                | Type                                                            | Description                                                                                                                                                         |
+| --------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|  `initialPage?` | `number`                                                        | A number that specifies which page to fetch. For example, if `initialPage` is set to `10`, it will skip the first 9 pages and fetch the 10th page. Defaults to `1`. |
+|  `pageSize?`       | `number`                                                        | A number that specifies the maximum number of results to return per page. Defaults to `10`.                                                                         |
+| `status?`                               | `("pending" | "accepted" | "revoked" | "expired")[]` | The status of the invitations to get.                                                                                                                               |
+
+### `getMembershipRequests()`
+
+Gets the list of membership requests.
+
+Returns a ClerkPaginatedResponse of OrganizationMembershipRequestResource objects.
+
+> You must have **Verified domains** and **Automatic suggestion** enabled in your app's settings in the Clerk Dashboard.
+
+```typescript
+function getMembershipRequests(params?: GetMembershipRequestParams): Promise<ClerkPaginatedResponse<OrganizationMembershipRequestResource>>
+```
+
+#### `GetMembershipRequestParams`
+
+| Property                                | Type                                                        | Description                                                                                                                                                         |
+| --------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|  `initialPage?` | `number`                                                    | A number that specifies which page to fetch. For example, if `initialPage` is set to `10`, it will skip the first 9 pages and fetch the 10th page. Defaults to `1`. |
+|  `pageSize?`       | `number`                                                    | A number that specifies the maximum number of results to return per page. Defaults to `10`.                                                                         |
+| `status?`                               | `"pending" | "accepted" | "revoked" | "expired"` | The status of the membership requests to get.                                                                                                                       |
+
+### `getMemberships()`
+
+Gets the list of Organization Memberships.
+
+Returns a ClerkPaginatedResponse of OrganizationMembershipResource objects.
+
+```typescript
+function getMemberships(params?: GetMembersParams): Promise<ClerkPaginatedResponse<OrganizationMembershipResource>>
+```
+
+#### `GetMembersParams`
+
+| Property                                | Type                                                                                                                                 | Description                                                                                                                                                         |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|  `initialPage?` | `number`                                                                                                                             | A number that specifies which page to fetch. For example, if `initialPage` is set to `10`, it will skip the first 9 pages and fetch the 10th page. Defaults to `1`. |
+|  `pageSize?`       | `number`                                                                                                                             | A number that specifies the maximum number of results to return per page. Defaults to `10`.                                                                         |
+| `query?`                                | `string`                                                                                                                             | The query to filter the users by.                                                                                                                                   |
+| `role?`                                 | OrganizationCustomRoleKey[] | The Role to filter the users by.                                  |
+
+### `getPaymentMethods()`
+
+Gets a list of payment methods that have been stored.
+
+Returns a ClerkPaginatedResponse of BillingPaymentMethodResource objects.
+
+```typescript
+function getPaymentMethods(params?: GetPaymentMethodsParams): Promise<ClerkPaginatedResponse<BillingPaymentMethodResource>>
+```
+
+#### `GetPaymentMethodsParams`
+
+| Property                                | Type     | Description                                                                                                                                                         |
+| --------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|  `initialPage?` | `number` | A number that specifies which page to fetch. For example, if `initialPage` is set to `10`, it will skip the first 9 pages and fetch the 10th page. Defaults to `1`. |
+|  `pageSize?`       | `number` | A number that specifies the maximum number of results to return per page. Defaults to `10`.                                                                         |
+
+### `getRoles()`
+
+Gets the list of Roles available.
+
+Returns a ClerkPaginatedResponse of RoleResource objects and a `has_role_set_migration` status.
+
+When `has_role_set_migration` is `true`, updating Organization membership Roles is not allowed. Learn how to build a custom flow for managing member Roles in an Organization.
+
+```typescript
+function getRoles(params?: GetRolesParams): Promise<GetRolesResponse>
+```
+
+#### `GetRolesParams`
+
+| Property                                | Type     | Description                                                                                                                                                         |
+| --------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|  `initialPage?` | `number` | A number that specifies which page to fetch. For example, if `initialPage` is set to `10`, it will skip the first 9 pages and fetch the 10th page. Defaults to `1`. |
+|  `pageSize?`       | `number` | A number that specifies the maximum number of results to return per page. Defaults to `10`.                                                                         |
+
+### `initializePaymentMethod()`
+
+Initializes a payment method.
+
+Returns a BillingInitializedPaymentMethodResource object.
+
+```typescript
+function initializePaymentMethod(params: InitializePaymentMethodParams): Promise<BillingInitializedPaymentMethodResource>
+```
+
+#### `InitializePaymentMethodParams`
+
+| Property                       | Type       | Description                 |
+| ------------------------------ | ---------- | --------------------------- |
+|  `gateway` | `"stripe"` | The payment gateway to use. |
+
+### `inviteMember()`
+
+Creates and sends an invitation to the given email address.
+
+Returns an OrganizationInvitationResource object.
+
+```typescript
+function inviteMember(params: InviteMemberParams): Promise<OrganizationInvitationResource>
+```
+
+#### `InviteMemberParams`
+
+| Property                                 | Type     | Description                                                                                                                                   |
+| ---------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+|  `emailAddress` | `string` | The email address of the user to invite.                                                                                                      |
+|  `role`                 | `string` | The Role that will be assigned to the user. |
+
+### `inviteMembers()`
+
+Creates and sends invitations to the given email addresses.
+
+Returns an array of OrganizationInvitationResource objects.
+
+```typescript
+function inviteMembers(params: InviteMembersParams): Promise<OrganizationInvitationResource[]>
+```
+
+#### `InviteMembersParams`
+
+| Property                                     | Type                  | Description                                                                                                                                    |
+| -------------------------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+|  `emailAddresses` | `string[]` | The email addresses of the users to invite.                                                                                                    |
+|  `role`                     | `string`              | The Role that will be assigned to the users. |
+
+### `attemptOwnershipVerification()`
+
+Completes the verification process started by prepareOwnershipVerification(), by resolving the published TXT record for each of the given domains in a single request. A single bad domain does not fail the batch; it lands in the returned OrganizationDomainsBulkOwnershipVerificationResource object's `errors` array.
+
+Returns an OrganizationDomainsBulkOwnershipVerificationResource object.
+
+```typescript
+function attemptOwnershipVerification(domainIds: string[]): Promise<OrganizationDomainsBulkOwnershipVerificationResource>
+```
+
+#### Parameters
+
+| Parameter   | Type                  | Description                                       |
+| ----------- | --------------------- | ------------------------------------------------- |
+| `domainIds` | `string[]` | The unique identifiers of the domains to attempt. |
+
+### `prepareOwnershipVerification()`
+
+Starts the verification process of multiple Verified Domains at once by issuing a fresh TXT challenge for each of the given domains in a single request. Each resolved domain's `ownershipVerification` property carries the `txtRecordName` and `txtRecordValue` the Organization admin must publish. A single bad domain does not fail the batch; it lands in the returned OrganizationDomainsBulkOwnershipVerificationResource object's `errors` array.
+
+Returns an OrganizationDomainsBulkOwnershipVerificationResource object.
+
+```typescript
+function prepareOwnershipVerification(domainIds: string[]): Promise<OrganizationDomainsBulkOwnershipVerificationResource>
+```
+
+#### Parameters
+
+| Parameter   | Type                  | Description                                       |
+| ----------- | --------------------- | ------------------------------------------------- |
+| `domainIds` | `string[]` | The unique identifiers of the domains to prepare. |
+
+### `reload()`
+
+Reloads the resource, which is useful when you want to access the latest user data after performing a mutation. To make the updated data immediately available, this method forces a session token refresh instead of waiting for the automatic refresh cycle that could temporarily retain stale information. Learn more about forcing a token refresh.
+
+```typescript
+function reload(p?: ClerkResourceReloadParams): Promise<OrganizationResource>
+```
+
+#### `ClerkResourceReloadParams`
+
+| Property                                              | Type     | Description                                                                                                                                                                   |
+| ----------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|  `rotatingTokenNonce?` | `string` | A nonce to use for rotating the user's token. Used in native application OAuth flows to allow the native client to update its JWT once despite changes in its rotating token. |
+
+### `removeMember()`
+
+Removes a member.
+
+Returns an OrganizationMembershipResource object.
+
+```typescript
+function removeMember(userId: string): Promise<OrganizationMembershipResource>
+```
+
+#### Parameters
+
+| Parameter | Type     | Description                                  |
+| --------- | -------- | -------------------------------------------- |
+| `userId`  | `string` | The unique identifier of the user to remove. |
+
+### `setLogo()`
+
+Sets or replaces an Organization's logo.
+
+```typescript
+function setLogo(params: SetOrganizationLogoParams): Promise<OrganizationResource>
+```
+
+#### `SetOrganizationLogoParams`
+
+| Property                 | Type                                     | Description                                                                                            |
+| ------------------------ | ---------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+|  `file` | `null | string | Blob | File` | The file to set as the Organization's logo. The file must be an image and its size cannot exceed 10MB. |
+
+### `update()`
+
+Updates the current Organization.
+
+```typescript
+function update(params: UpdateOrganizationParams): Promise<OrganizationResource>
+```
+
+#### `UpdateOrganizationParams`
+
+| Property                  | Type     | Description                                                                                       |
+| ------------------------- | -------- | ------------------------------------------------------------------------------------------------- |
+|  `name`  | `string` | The name of the Organization.                                                                     |
+|  `slug?` | `string` | The URL-friendly identifier of the Organization. If supplied, it must be unique for the instance. |
+
+### `updateMember()`
+
+Updates a given member.
+
+Returns an OrganizationMembershipResource object.
+
+```typescript
+function updateMember(params: UpdateMembershipParams): Promise<OrganizationMembershipResource>
+```
+
+#### `UpdateMembershipParams`
+
+| Property                     | Type     | Description                                                                                                                                   |
+| ---------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+|  `role`     | `string` | The Role that will be assigned to the user. |
+|  `userId` | `string` | The unique identifier of the user to update.                                                                                                  |
+
+---
+
+## Sitemap
+
+Overview of all docs pages

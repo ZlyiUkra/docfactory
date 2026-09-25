@@ -1,0 +1,187 @@
+# useAPIKeys()
+# джерело: https://clerk.com/docs/nextjs/reference/hooks/use-api-keys
+# отримано: 2026-09-25
+# версія: core-3
+
+The `useAPIKeys()` hook provides access to the API keys associated with a user or organization. It returns a paginated list of APIKeyResource objects and includes methods for managing pagination.
+
+## Parameters
+
+`useAPIKeys()` accepts a single optional object with the following properties:
+
+| Name             | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ---------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| enabled          | boolean | If true, a request will be triggered when the hook is mounted. Defaults to true.                                                                                                                                                                                                                                                                                                                                              |
+| infinite         | boolean | If true, newly fetched data will be appended to the existing list rather than replacing it. Useful for implementing infinite scroll functionality. Defaults to false.                                                                                                                                                                                                                                                         |
+| initialPage      | number  | A number that specifies which page to fetch. For example, if initialPage is set to 10, it will skip the first 9 pages and fetch the 10th page. Defaults to 1.                                                                                                                                                                                                                                                                 |
+| keepPreviousData | boolean | If true, the previous data will be kept in the cache until new data is fetched. Defaults to false.                                                                                                                                                                                                                                                                                                                            |
+| pageSize         | number  | A number that specifies the maximum number of results to return per page. Defaults to 10.                                                                                                                                                                                                                                                                                                                                     |
+| query            | string  | A search query to filter API keys by name.                                                                                                                                                                                                                                                                                                                                                                                    |
+| subject          | string  | The ID of the user or Organization to fetch API keys for. If not provided, defaults to the Active OrganizationA user can be a member of multiple Organizations, but only one can be active at a time. The Active Organization determines which Organization-specific data the user can access and which Role and related Permissions they have within the Organization. if available, otherwise defaults to the current user. |
+
+## Returns
+
+| Name            | Type                   | Description                                                                                                                                   |
+| --------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| count           | number                 | The total count of data that exist remotely.                                                                                                  |
+| data            | T[]                   | An array that contains the fetched data. For example, for the memberships attribute, data will be an array of OrganizationMembership objects. |
+| fetchNext       | () => void             | A function that triggers the next page to be loaded. This is the same as fetchPage(page => Math.min(pageCount, page + 1)).                    |
+| fetchPage       | (page: number) => void | A function that triggers a specific page to be loaded.                                                                                        |
+| fetchPrevious   | () => void             | A function that triggers the previous page to be loaded. This is the same as fetchPage(page => Math.max(0, page - 1)).                        |
+| hasNextPage     | boolean                | A boolean that indicates if there are available pages to be fetched.                                                                          |
+| hasPreviousPage | boolean                | A boolean that indicates if there are available pages to be fetched.                                                                          |
+| isError         | boolean                | A boolean that indicates the request failed.                                                                                                  |
+| isFetching      | boolean                | A boolean that is true if there is an ongoing request or a revalidation.                                                                      |
+| isLoading       | boolean                | A boolean that is true if there is an ongoing request and there is no fetched data.                                                           |
+| page            | number                 | The current page.                                                                                                                             |
+| pageCount       | number                 | The total amount of pages. It is calculated based on count, initialPage, and pageSize.                                                        |
+| revalidate      | () => void             | A function that triggers a revalidation of the current page.                                                                                  |
+| setData         | (data: any[]) => void | A function that allows you to set the data manually.                                                                                          |
+
+## Examples
+
+### Basic usage
+
+The following example demonstrates how to fetch and display a user's API keys.
+
+filename: app/api-keys/page.tsx
+```tsx
+'use client'
+
+import { useAPIKeys } from '@clerk/nextjs'
+
+export default function APIKeysList() {
+  const { data, isLoading, page, pageCount, fetchNext, fetchPrevious } = useAPIKeys({
+    pageSize: 10,
+  })
+
+  if (isLoading) {
+    return <div>Loading...</div>
+  }
+
+  if (!data || data.length === 0) {
+    return <div>No API keys found.</div>
+  }
+
+  return (
+    <div>
+      <ul>
+        {data.map((apiKey) => (
+          <li key={apiKey.id}>
+            <strong>{apiKey.name}</strong>
+            <br />
+            Subject: {apiKey.subject}
+            <br />
+            Revoked: {apiKey.revoked ? 'Yes' : 'No'}
+            <br />
+            Created: {apiKey.createdAt.toLocaleDateString()}
+          </li>
+        ))}
+      </ul>
+
+      <div>
+        Page {page} of {pageCount}
+      </div>
+      <button onClick={() => fetchPrevious()}>Previous</button>
+      <button onClick={() => fetchNext()}>Next</button>
+    </div>
+  )
+}
+```
+
+### Infinite pagination
+
+The following example demonstrates how to implement infinite scrolling with API keys.
+
+filename: app/api-keys/infinite/page.tsx
+```tsx
+'use client'
+
+import { useAPIKeys } from '@clerk/nextjs'
+
+export default function InfiniteAPIKeys() {
+  const { data, isLoading, hasNextPage, fetchNext } = useAPIKeys({
+    infinite: true,
+    pageSize: 20,
+  })
+
+  if (isLoading) {
+    return <div>Loading...</div>
+  }
+
+  if (!data || data.length === 0) {
+    return <div>No API keys found.</div>
+  }
+
+  return (
+    <div>
+      <ul>
+        {data.map((apiKey) => (
+          <li key={apiKey.id}>
+            <strong>{apiKey.name}</strong>
+            <br />
+            Subject: {apiKey.subject}
+            <br />
+            Revoked: {apiKey.revoked ? 'Yes' : 'No'}
+          </li>
+        ))}
+      </ul>
+
+      {hasNextPage && <button onClick={() => fetchNext()}>Load more API keys</button>}
+    </div>
+  )
+}
+```
+
+### With search query
+
+The following example demonstrates how to use the `query` parameter to search API keys by name.
+
+filename: app/api-keys/search/page.tsx
+```tsx
+'use client'
+
+import { useAPIKeys } from '@clerk/nextjs'
+import { useState } from 'react'
+
+export default function SearchAPIKeys() {
+  const [search, setSearch] = useState('')
+
+  // Consider debouncing `search` in production to avoid firing a request on every keystroke
+  const { data, isLoading } = useAPIKeys({
+    query: search,
+    pageSize: 10,
+  })
+
+  return (
+    <div>
+      <input
+        type="text"
+        placeholder="Search API keys..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
+
+      {isLoading ? (
+        <div>Loading...</div>
+      ) : !data || data.length === 0 ? (
+        <div>No API keys found.</div>
+      ) : (
+        <ul>
+          {data.map((apiKey) => (
+            <li key={apiKey.id}>
+              <strong>{apiKey.name}</strong> - {apiKey.subject}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+```
+
+---
+
+## Sitemap
+
+Overview of all docs pages

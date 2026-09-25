@@ -1,0 +1,188 @@
+# Build a custom checkout flow with an existing payment method
+# джерело: https://clerk.com/docs/react/guides/development/custom-flows/billing/checkout-existing-payment-method
+# отримано: 2026-09-25
+# версія: core-3
+
+> This guide is for users who want to build a custom flow. To use a _prebuilt_ UI, use the Account Portal pages or prebuilt components.
+
+> Billing regularly introduces new features and UI changes to Clerk's components. If you'd like to remain on a specific version of Clerk's components or SDK, you can follow the steps in the pinning documentation.
+
+This guide will walk you through how to build a custom user interface for a checkout flow that allows users to checkout **with an existing payment method**. For the custom flow that allows users to **add a new payment method** during checkout, see the dedicated guide.
+
+1. ## Enable Billing Features
+
+   To use Billing Features, you first need to ensure they are enabled for your application. Follow the Billing documentation to enable them and setup your Plans.
+2. ## Build the custom flow
+
+   To create a checkout session with an existing payment method, you must:
+
+   1. Set up the checkout provider with Plan details.
+   2. Initialize the checkout session when the user is ready.
+   3. Fetch and display the user's existing payment methods.
+   4. Confirm the payment with the selected payment method.
+   5. Complete the checkout process and redirect the user.
+
+   The following example:
+
+   1. Uses the useCheckout() hook to initiate and manage the checkout session.
+   2. Uses the usePaymentMethods() hook to fetch the user's existing payment methods.
+   3. Assumes that you have already have a valid `planId`, which you can acquire in many ways:
+      - Copy from the Clerk Dashboard.
+      - Use the Clerk Backend API.
+      - Use the new usePlans() hook to get the Plan details.
+
+   > Examples for this SDK aren't available yet. For now, try adapting the  available example to fit your SDK.
+
+   filename: app/checkout/page.tsx
+
+```tsx
+   'use client'
+   import { Show, ClerkLoaded } from '@clerk/nextjs'
+   import { useRouter } from 'next/navigation'
+   import { CheckoutProvider, useCheckout, usePaymentMethods } from '@clerk/nextjs/experimental'
+   import { useMemo, useState } from 'react'
+
+   export default function CheckoutPage() {
+     return (
+       // Update with your Plan ID and Plan Period
+       <CheckoutProvider planId="cplan_123" planPeriod="month">
+         <ClerkLoaded>
+           <Show when="signed-in">
+             <CustomCheckout />
+           </Show>
+         </ClerkLoaded>
+       </CheckoutProvider>
+     )
+   }
+
+   function CustomCheckout() {
+     const { checkout } = useCheckout()
+
+     if (checkout.status === 'needs_initialization') {
+       return <CheckoutInitialization />
+     }
+
+     return (
+       <div className="checkout-container">
+         <CheckoutSummary />
+         <PaymentSection />
+       </div>
+     )
+   }
+
+   function CheckoutInitialization() {
+     const { checkout, fetchStatus } = useCheckout()
+
+     if (checkout.status !== 'needs_initialization') {
+       return null
+     }
+
+     return (
+       <button onClick={() => checkout.start()} disabled={fetchStatus === 'fetching'}>
+         {fetchStatus === 'fetching' ? 'Initializing...' : 'Start Checkout'}
+       </button>
+     )
+   }
+
+   function PaymentSection() {
+     const { checkout, errors, fetchStatus } = useCheckout()
+     const { data, isLoading } = usePaymentMethods({
+       for: 'user',
+       pageSize: 20,
+     })
+
+     const [paymentMethodId, setPaymentMethodId] = useState<string | null>(null)
+
+     const router = useRouter()
+
+     const defaultMethod = useMemo(() => data?.find((method) => method.isDefault), [data])
+
+     const submitSelectedMethod = async () => {
+       const selectedPaymentMethodId = paymentMethodId || defaultMethod?.id
+       if (fetchStatus === 'fetching' || !selectedPaymentMethodId) return
+
+       try {
+         // Confirm checkout with payment method
+         const { error } = await checkout.confirm({ paymentMethodId: selectedPaymentMethodId })
+         if (error) {
+           console.error(JSON.stringify(error, null, 2))
+           return
+         }
+         // Complete checkout and redirect
+         await checkout.finalize({
+           navigate: ({ decorateUrl }) => {
+             const url = decorateUrl('/')
+             if (url.startsWith('http')) {
+               window.location.href = url
+             } else {
+               router.push(url)
+             }
+           },
+         })
+       } catch (error) {
+         console.error('Payment failed:', error)
+       }
+     }
+
+     if (isLoading) {
+       return <div>Loading...</div>
+     }
+
+     return (
+       <>
+         <select
+           defaultValue={defaultMethod?.id}
+           onChange={(e) => {
+             const methodId = e.target.value
+             const method = data?.find((method) => method.id === methodId)
+             if (method) {
+               setPaymentMethodId(method.id)
+             }
+           }}
+         >
+           {data?.map((method) => (
+             <option key={method.id} value={method.id}>
+               **** **** **** {method.last4} {method.cardType}
+             </option>
+           ))}
+         </select>
+
+         {errors.global && (
+           <ul>
+             {errors.global.map((error, index) => (
+               <li key={index}>{error.longMessage || error.message}</li>
+             ))}
+           </ul>
+         )}
+
+         <button type="button" disabled={fetchStatus === 'fetching'} onClick={submitSelectedMethod}>
+           {fetchStatus === 'fetching' ? 'Processing...' : 'Complete Purchase'}
+         </button>
+       </>
+     )
+   }
+
+   function CheckoutSummary() {
+     const { checkout } = useCheckout()
+
+     if (!checkout.plan) {
+       return null
+     }
+
+     return (
+       <div>
+         <h2>Order Summary</h2>
+         <span>{checkout.plan.name}</span>
+         <span>
+           {checkout.totals.totalDueNow.currencySymbol} {checkout.totals.totalDueNow.amountFormatted}
+         </span>
+       </div>
+     )
+   }
+```
+
+---
+
+## Sitemap
+
+Overview of all docs pages

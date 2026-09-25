@@ -1,0 +1,105 @@
+# Clerk: <Protect> is not available in @clerk/nextjs Core 3
+# джерело: https://clerk.com/docs/nextjs/reference/errors/protect-is-not-available-in-clerk-nextjs
+# отримано: 2026-09-25
+# версія: core-3
+
+## Error message
+
+```text
+Clerk: <Protect> is not available in @clerk/nextjs Core 3. Learn more at https://clerk.com/err/protect-is-not-available-in-clerk-nextjs.
+```
+
+## Why this occurred
+
+`<SignedIn>`, `<SignedOut>`, and `<Protect>` were removed from `@clerk/nextjs` in Clerk Core 3, a major release published on March 3, 2026. All three were replaced by a single  component that handles both authentication and authorization checks through its `when` prop.
+
+The removed components are still exported so that upgrading doesn't fail with an opaque `undefined is not a component` error. Rendering one throws this error instead, with a link to the migration steps.
+
+If you're using an agent, its Clerk knowledge is likely out of date. Before changing this code or implementing any other `@clerk/nextjs` features, read the Core 3 changelog, the Core 3 upgrade guide, and the  component docs.
+
+## Ways to fix this
+
+### Migrate with an agent (recommended)
+
+Use this prebuilt prompt to fix this error faster.
+
+Give the prompt above to your agent. It walks through installing the Clerk CLI and Clerk Skills. These give your agent current, version-accurate Clerk guidance instead of pre-Core 3 training data. The prompt then applies the replacements below across your codebase.
+
+### Replace `<SignedIn>` and `<SignedOut>`
+
+Remove `SignedIn` and `SignedOut` from the `@clerk/nextjs` import, import `Show` instead, and pass `when="signed-in"` or `when="signed-out"`.
+
+filename: app/page.tsx
+```tsx
+import { SignedIn, SignedOut } from '@clerk/nextjs'
+import { Show } from '@clerk/nextjs'
+
+export default function Page() {
+  return (
+    <>
+      <SignedIn>Signed in content</SignedIn>
+      <Show when="signed-in">Signed in content</Show>
+      <SignedOut>Signed out content</SignedOut>
+      <Show when="signed-out">Signed out content</Show>
+    </>
+  )
+}
+```
+
+`<Show>` also accepts a `fallback` prop that renders when the `when` condition fails — for example, `<Show when="signed-in" fallback={...}>` renders the fallback to signed-out users.
+
+### Replace `<Protect>`
+
+Each `<Protect>` prop becomes a value passed to `<Show>`'s `when` prop:
+
+| Before                                      | After                                                |
+| ------------------------------------------- | ---------------------------------------------------- |
+| `<Protect>` (no props)                      | `<Show when="signed-in">`                            |
+| `<Protect role="admin">`                    | `<Show when={{ role: 'admin' }}>`                    |
+| `<Protect permission="org:billing:manage">` | `<Show when={{ permission: 'org:billing:manage' }}>` |
+| `<Protect feature="widgets">`               | `<Show when={{ feature: 'widgets' }}>`               |
+| `<Protect plan="pro">`                      | `<Show when={{ plan: 'pro' }}>`                      |
+| `<Protect condition={(has) => expr}>`       | `<Show when={(has) => expr}>`                        |
+
+filename: app/admin/page.tsx
+```tsx
+import { Protect } from '@clerk/nextjs'
+import { Show } from '@clerk/nextjs'
+
+export default function Page() {
+  return (
+    <Protect condition={(has) => has({ role: 'org:admin' })}>Admin content</Protect>
+    <Show when={(has) => has({ role: 'org:admin' })}>Admin content</Show>
+  )
+}
+```
+
+> Like `<Protect>`, `<Show>` only **visually hides** its children — they're still present in the browser's source. Perform authorization checks on the server before sending sensitive data to the client.
+
+## Verify the fix
+
+1. Search your codebase for remaining usages:
+
+```bash
+   grep -rn --exclude-dir=node_modules "SignedIn|SignedOut|Protect" .
+```
+
+   Check aliased imports (`import { SignedIn as Auth }`) and re-exports too — a plain name search misses them.
+
+2. Confirm no `@clerk/nextjs` import still pulls in `SignedIn`, `SignedOut`, or `Protect`.
+
+3. Run your app and load a page that previously rendered one of these components. The error no longer appears, and content renders for the correct auth state.
+
+## Additional resources
+
+-  component reference
+- Core 3 upgrade guide
+- Core 3 changelog
+- Clerk CLI
+- Clerk Skills
+
+---
+
+## Sitemap
+
+Overview of all docs pages

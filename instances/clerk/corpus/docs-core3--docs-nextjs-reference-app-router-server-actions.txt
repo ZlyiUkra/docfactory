@@ -1,0 +1,192 @@
+# Server Actions
+# джерело: https://clerk.com/docs/nextjs/reference/app-router/server-actions
+# отримано: 2026-09-25
+# версія: core-3
+
+Clerk provides helpers that are specific for server-side usage. The following guide provides examples for using these helpers with Server Actions in Server Components and in Client Components.
+
+## With Server Components
+
+### Protect your Server Actions
+
+You can use the `isAuthenticated` property from the auth() helper to protect your Server Actions. If `isAuthenticated` is `false`, then the user is not signed in.
+
+filename: actions.ts
+```tsx
+import { auth } from '@clerk/nextjs/server'
+
+export default function AddToCart() {
+  async function addItem(formData: FormData) {
+    'use server'
+
+    const { isAuthenticated } = await auth()
+
+    if (!isAuthenticated) {
+      throw new Error('You must be signed in to add an item to your cart')
+    }
+
+    console.log('add item server action', formData)
+  }
+
+  return (
+    <form action={addItem}>
+      <input value={'test'} type="text" name="name" />
+      <button type="submit">Add to Cart</button>
+    </form>
+  )
+}
+```
+
+When performing Organization-related operations, you can use `auth().orgId` to check a user's Organization ID before performing an action.
+
+filename: actions.ts
+```tsx
+import { auth, clerkClient } from '@clerk/nextjs/server'
+
+export default function AddVerifiedDomain() {
+  async function addVerifiedDomain(formData: FormData) {
+    'use server'
+
+    const { isAuthenticated, orgId } = await auth()
+
+    if (!isAuthenticated) {
+      throw new Error('You must be signed in to add a verified domain')
+    }
+
+    if (!orgId) {
+      throw new Error('No Active Organization found. Set one as active or create/join one')
+    }
+
+    const domain = formData.get('domain')?.toString()
+    if (!domain) {
+      throw new Error('Domain is required')
+    }
+
+    const client = await clerkClient()
+    await client.organizations.createOrganizationDomain({
+      organizationId: orgId,
+      name: domain,
+      enrollmentMode: 'automatic_invitation',
+    })
+
+    console.log(`Added domain ${domain} to Organization ${orgId}`)
+  }
+
+  return (
+    <form action={addVerifiedDomain}>
+      <input placeholder="example.com" type="text" name="domain" />
+      <button type="submit">Add Domain</button>
+    </form>
+  )
+}
+```
+
+For more examples on how to use the `auth()` helper, see the auth() reference.
+
+### Read user data
+
+To retrieve information about the current user in your Server Actions, you can use the currentUser() helper, which returns the `Backend User` object of the currently active user. **It does count towards the Backend API request rate limit** so it's recommended to use the useUser() hook on the client-side when possible and only use `currentUser()` when you specifically need user data in a server context. For more information on this helper, see the currentUser() reference.
+
+filename: app/page.tsx
+```tsx
+import { auth, currentUser } from '@clerk/nextjs/server'
+
+export default function AddHobby() {
+  async function addHobby(formData: FormData) {
+    'use server'
+
+    const { isAuthenticated } = await auth()
+    if (!isAuthenticated) {
+      throw new Error('You must be signed in to use this feature')
+    }
+
+    const user = await currentUser()
+    if (!user) {
+      throw new Error('User not found')
+    }
+
+    const serverData = {
+      usersHobby: formData.get('hobby'),
+      userId: user.id,
+      profileImage: user.imageUrl,
+    }
+
+    console.log('add item server action completed with user details ', serverData)
+  }
+
+  return (
+    <form action={addHobby}>
+      <input value={'soccer'} type="text" name="hobby" />
+      <button type="submit">Submit your hobby</button>
+    </form>
+  )
+}
+```
+
+## With Client Components
+
+When you define a Server Action inside a Client Component, the request headers are not available by default because Client Components run in the browser and headers are only available in a server-side context. This is an issue for Clerk's server-side helpers, like `auth()` and `currentUser()`, as they require the request headers to be available in order to work. So if you are using these helpers in a Server Action that's being called inside a Client Component, you need to **pass the Server Action as a prop** to the Client Component.
+
+The following example demonstrates the flow of data from the Server Action being passed to the Client Component, and the Client Component being used on a page. Use the following tabs to view the example code for each file.
+
+**Server Action**
+
+filename: app/actions.ts
+```tsx
+'use server'
+import { auth, currentUser } from '@clerk/nextjs/server'
+
+export async function addHobby(formData: FormData) {
+  const { isAuthenticated } = await auth()
+
+  if (!isAuthenticated) {
+    throw new Error('You must be signed in to use this feature')
+  }
+
+  const user = await currentUser()
+  if (!user) {
+    throw new Error('User not found')
+  }
+
+  const serverData = {
+    usersHobby: formData.get('hobby'),
+    userId: user.id,
+    profileImage: user.imageUrl,
+  }
+
+  console.log('add Hobby completed with user details ', serverData)
+}
+```
+
+**Client Component**
+
+filename: app/components/AddHobby.tsx
+```tsx
+'use client'
+
+export default function UI({ addHobby }) {
+  return (
+    <form action={addHobby}>
+      <input value={'soccer'} type="text" name="hobby" />
+      <button type="submit">Submit your hobby</button>
+    </form>
+  )
+}
+```
+
+**Page**
+
+filename: app/page.tsx
+```tsx
+import AddHobby from './components/AddHobby'
+import { addHobby } from './actions'
+export default function Hobby() {
+  return <AddHobby addHobby={addHobby} />
+}
+```
+
+---
+
+## Sitemap
+
+Overview of all docs pages
