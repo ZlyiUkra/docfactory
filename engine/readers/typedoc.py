@@ -15,6 +15,17 @@
 всіх сторінках, а заголовок («Function useNavigate») лягає назвою документа. Рядки
 «Defined in packages/…:377» лишаються: це адреса вихідного коду на тому самому
 коміті, з якого зібрано довідник, і для звірки цитати вона корисніша за будь-що.
+
+Члени, оголошені в node_modules, у документ не йдуть. Це атрибути DOM з @types/react
+(aria-*, on*, className), які TypeDoc розгортає в кожному інтерфейсі, що їх
+успадковує: LinkProps — 285 таких членів із 296, і те саме дослівно в NavLinkProps,
+FormProps, FetcherFormProps. У корпусі це були тисячі однакових фрагментів, які
+займали вікно пошуку й нічого не казали про роутер. Критерій — походження («Defined in
+node_modules»), а не успадкування: члени SharedFormProps (action, method, encType) теж
+успадковані, але оголошені в packages/ і власної сторінки не мають — викинути їх
+означало б втратити єдину копію тексту. Разом із зовнішніми йдуть і п'ять власних
+членів, що лежать у node_modules: опції cookie (CookieParseOptions,
+CookieSerializeOptions) — це прийнята втрата.
 """
 
 import re
@@ -28,6 +39,9 @@ _HREF = re.compile(r'href="([^"#?]+\.html)(?:#[^"]*)?"')
 _H1 = re.compile(r"<h1[^>]*>(.*?)</h1>", re.S)
 _CONTENT = re.compile(r'<div class="col-content">(.*?)<div class="col-sidebar"', re.S)
 _PAGE_TITLE = re.compile(r'<div class="tsd-page-title">.*?</h1>\s*</div>', re.S)
+# Секція одного члена. Секції членів не вкладені одна в одну, тож нежадібний пошук до
+# першого закриття бере рівно один член.
+_MEMBER = re.compile(r'<section class="tsd-panel tsd-member[^"]*"[^>]*>.*?</section>', re.S)
 
 
 @register("typedoc")
@@ -70,7 +84,10 @@ def typedoc(source: dict, ctx) -> list[Item]:
                 raise SystemExit(f"{url}: немає col-content — розмітка TypeDoc змінилася.")
             h1 = _H1.search(m.group(1))
             title = unescape(re.sub(r"<[^>]+>", "", h1.group(1))).strip() if h1 else ""
-            body = _markup.html_body(_PAGE_TITLE.sub("", m.group(1), count=1))
+            content = _MEMBER.sub(
+                lambda sec: "" if "Defined in node_modules" in sec.group(0) else sec.group(0),
+                _PAGE_TITLE.sub("", m.group(1), count=1))
+            body = _markup.html_body(content)
             _markup.require(title, body, url, min_chars=1)
             return _markup.document(title, url, ctx.stamp, body, source.get("version", ""))
 
