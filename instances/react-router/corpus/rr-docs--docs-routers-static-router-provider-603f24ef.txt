@@ -1,0 +1,93 @@
+# StaticRouterProvider
+# джерело: https://github.com/remix-run/react-router/blob/react-router@6.30.6/docs/routers/static-router-provider.md
+# отримано: 2026-09-25
+# версія: 6.30.6, 6.30.4, 6.30.3, 6.30.3-pre-v6.0, 6.30.2, 6.30.2-pre-v6.0, 6.30.1, 6.30.0, 6.30.0-pre-v6.0, 6.29.0, 6.29.0-pre-v6.2, 6.28.3-pre-v6.1, 6.28.3-pre-v6.0, 6.28.2, 6.28.2-pre.0, 6.28.1, 6.28.1-pre.0, 6.28.0, 6.28.0-pre.0, 6.27.0, 6.27.0-pre.1, 6.27.0-pre.0, 6.26.2, 6.26.2-pre.0, 6.26.1, 6.26.1-pre.0, 6.26.0, 6.26.0-pre.1, 6.26.0-pre.0, 6.25.1, 6.25.1-pre.0, 6.25.0, 6.25.0-pre.0, 6.24.1, 6.24.1-pre.0, 6.24.0, 6.24.0-pre.0, 6.23.1, 6.23.1-pre.1, 6.23.1-pre.0, 6.23.0, 6.23.0-pre.1, 6.23.0-pre.0, 6.22.3, 6.22.3-pre.0, 6.22.2, 6.22.2-pre.0, 6.22.1, 6.22.1-pre.0, 6.22.0, 6.22.0-pre.0, 6.21.3, 6.21.3-pre.0, 6.21.2, 6.21.2-pre.0, 6.21.1, 6.21.1-pre.0, 6.21.0, 6.21.0-pre.3, 6.21.0-pre.2, 6.21.0-pre.1, 6.21.0-pre.0, 6.20.1, 6.20.1-pre.0, 6.20.0, 6.20.0-pre.0, 6.19.0, 6.19.0-pre.0, 6.18.0, 6.18.0-pre.1, 6.18.0-pre.0, 6.17.0, 6.17.0-pre.2, 6.17.0-pre.1, 6.17.0-pre.0, 6.16.0, 6.16.0-pre.2, 6.16.0-pre.1, 6.16.0-pre.0, 6.15.0, 6.15.0-pre.0, 6.14.2, 6.14.2-pre.1, 6.14.2-pre.0, 6.14.1, 6.14.1-pre.1, 6.14.1-pre.0, 6.14.0, 6.14.0-pre.1, 6.14.0-pre.0, 6.13.0, 6.13.0-pre.1, 6.12.2-pre.0, 6.12.1, 6.12.1-pre.0, 6.12.0, 6.12.0-pre.1, 6.12.0-pre.0, 6.11.2, 6.11.2-pre.0, 6.11.1, 6.11.1-pre.0, 6.11.0, 6.11.0-pre.2, 6.11.0-pre.1, 6.11.0-pre.0, experimental
+
+## `<StaticRouterProvider>`
+
+A `<StaticRouterProvider>` accepts a `router` from `createStaticRouter()` and a `context` from `createStaticHandler()` and renders your application on the server (i.e., Node or another Javascript runtime). For a more complete overview, please refer to the Server-Side Rendering guide.
+
+```jsx
+import {
+  createStaticHandler,
+  createStaticRouter,
+  StaticRouterProvider,
+} from "react-router-dom/server";
+import Root, {
+  loader as rootLoader,
+  ErrorBoundary as RootBoundary,
+} from "./root";
+
+const routes = [
+  {
+    path: "/",
+    loader: rootLoader,
+    Component: Root,
+    ErrorBoundary: RootBoundary,
+  },
+];
+
+export async function renderHtml(req) {
+  let { query, dataRoutes } = createStaticHandler(routes);
+  let fetchRequest = createFetchRequest(req);
+  let context = await query(fetchRequest);
+
+  // If we got a redirect response, short circuit and let our Express server
+  // handle that directly
+  if (context instanceof Response) {
+    throw context;
+  }
+
+  let router = createStaticRouter(dataRoutes, context);
+  return ReactDOMServer.renderToString(
+    <React.StrictMode>
+      <StaticRouterProvider
+        router={router}
+        context={context}
+      />
+    </React.StrictMode>
+  );
+}
+```
+
+## Type Declaration
+
+```ts
+declare function StaticRouterProvider(props: {
+  context: StaticHandlerContext;
+  router: Router;
+  hydrate?: boolean;
+  nonce?: string;
+}: JSX.Element;
+```
+
+## `context`
+
+This is the `context` returned from the `createStaticHandler().query()` calls which contains all of the fetched data for the request.
+
+## `router`
+
+This is the router created via `createStaticRouter`
+
+## `hydrate`
+
+By default, `<StaticRouterProvider>` will stringify the required hydration data onto `window.__staticRouterHydrationData` in a `<script>` tag which will be read and automatically hydrated by `createBrowserRouter()`.
+
+If you wish to do more advanced hydration manually, you can pass `hydrate={false}` to disable this automatic hydration. Client-side, you would then pass your own `hydrationData` to `createBrowserRouter`.
+
+## `nonce`
+
+When leveraging automatic hydration, you may provide a `nonce` value to be rendered onto the `<script>` tag and used along with your Content Security Policy.
+
+**See also:**
+
+- `createStaticHandler`
+- `createStaticRouter`
+- `createBrowserRouter`
+
+[node]: https://nodejs.org/
+[ssr]: ../guides/ssr
+[createstaticrouter]: ./create-static-router
+[createstatichandler]: ./create-static-handler
+[createbrowserrouter]: ./create-browser-router
+[nonce]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/script-src#unsafe_inline_script

@@ -1,0 +1,79 @@
+# unstable_usePrompt
+# джерело: https://github.com/remix-run/react-router/blob/react-router@6.30.6/docs/hooks/use-prompt.md
+# отримано: 2026-09-25
+# версія: 6.30.6, 6.30.4, 6.30.3, 6.30.3-pre-v6.0, 6.30.2, 6.30.2-pre-v6.0, 6.30.1, 6.30.0, 6.30.0-pre-v6.0, 6.29.0, 6.29.0-pre-v6.2, 6.28.3-pre-v6.1, 6.28.3-pre-v6.0, 6.28.2, 6.28.2-pre.0, 6.28.1, 6.28.1-pre.0, 6.28.0, 6.28.0-pre.0, 6.27.0, 6.27.0-pre.1, 6.27.0-pre.0, 6.26.2, 6.26.2-pre.0, 6.26.1, 6.26.1-pre.0, 6.26.0, 6.26.0-pre.1, 6.26.0-pre.0, 6.25.1, 6.25.1-pre.0, 6.25.0, 6.25.0-pre.0, 6.24.1, 6.24.1-pre.0, 6.24.0, 6.24.0-pre.0, 6.23.1, 6.23.1-pre.1, 6.23.1-pre.0, 6.23.0, 6.23.0-pre.1, 6.23.0-pre.0, 6.22.3, 6.22.3-pre.0, 6.22.2, 6.22.2-pre.0, 6.22.1, 6.22.1-pre.0, 6.22.0, 6.22.0-pre.0, 6.21.3, 6.21.3-pre.0, 6.21.2, 6.21.2-pre.0, 6.21.1, 6.21.1-pre.0, 6.21.0, 6.21.0-pre.3, 6.21.0-pre.2, 6.21.0-pre.1, 6.21.0-pre.0, 6.20.1, 6.20.1-pre.0, 6.20.0, 6.20.0-pre.0, 6.19.0, 6.19.0-pre.0, experimental
+
+## `unstable_usePrompt`
+
+  Type declaration
+
+```tsx
+declare function unstable_usePrompt({
+  when,
+  message,
+}: {
+  when: boolean | BlockerFunction;
+  message: string;
+}) {
+
+type BlockerFunction = (args: {
+  currentLocation: Location;
+  nextLocation: Location;
+  historyAction: HistoryAction;
+}) => boolean;
+
+interface Location<State = any> extends Path {
+  state: State;
+  key: string;
+}
+
+interface Path {
+  pathname: string;
+  search: string;
+  hash: string;
+}
+
+enum HistoryAction {
+  Pop = "POP",
+  Push = "PUSH",
+  Replace = "REPLACE",
+}
+```
+
+The `unstable_usePrompt` hook allows you to prompt the user for confirmation via `window.confirm` prior to navigating away from the current location.
+
+This only works for client-side navigations within your React Router application and will not block document requests. To prevent document navigations you will need to add your own `beforeunload` event handler.
+
+Blocking a user from navigating is a bit of an anti-pattern, so please carefully consider any usage of this hook and use it sparingly. In the de-facto use case of preventing a user navigating away from a half-filled form, you might consider persisting unsaved state to `sessionStorage` and automatically re-filling it if they return instead of blocking them from navigating away.
+
+We do not plan to remove the `unstable_` prefix from this hook because the behavior is non-deterministic across browsers when the prompt is open, so React Router cannot guarantee correct behavior in all scenarios.  To avoid this non-determinism, we recommend using `useBlocker` instead which also gives you control over the confirmation UX.
+
+```tsx
+function ImportantForm() {
+  let [value, setValue] = React.useState("");
+
+  // Block navigating elsewhere when data has been entered into the input
+  unstable_usePrompt({
+    message: "Are you sure?",
+    when: ({ currentLocation, nextLocation }) =>
+      value !== "" &&
+      currentLocation.pathname !== nextLocation.pathname,
+  });
+
+  return (
+    <Form method="post">
+      <label>
+        Enter some important data:
+        <input
+          name="data"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+        />
+      </label>
+      <button type="submit">Save</button>
+    </Form>
+  );
+}
+```
+
+[window-confirm]: https://developer.mozilla.org/en-US/docs/Web/API/Window/confirm

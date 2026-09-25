@@ -1,0 +1,72 @@
+# useOutletContext
+# джерело: https://github.com/remix-run/react-router/blob/react-router@6.4.3/docs/hooks/use-outlet-context.md
+# отримано: 2026-09-25
+# версія: 6.4.3, 6.4.3-pre.2, 6.4.3-pre.1, 6.4.3-pre.0, 6.4.2, 6.4.2-pre.1, 6.4.2-pre.0, 6.4.1, 6.4.1-pre.0, 6.4.0, 6.4.0-pre.15, 6.4.0-pre.14, 6.4.0-pre.13, 6.4.0-pre.12, 6.4.0-pre.11, 6.4.0-pre.10, 6.4.0-pre.9, 6.4.0-pre.8, 6.4.0-pre.7, 6.4.0-pre.6, 6.4.0-pre.5, 6.4.0-pre.4, 6.4.0-pre.3, 6.4.0-pre.2, 6.4.0-pre.1, 6.4.0-pre.0
+
+## `useOutletContext`
+
+  Type declaration
+
+```tsx
+declare function useOutletContext<
+  Context = unknown
+>(): Context;
+```
+
+Often parent routes manage state or other values you want shared with child routes. You can create your own context provider if you like, but this is such a common situation that it's built-into `<Outlet />`:
+
+```tsx
+function Parent() {
+  const [count, setCount] = React.useState(0);
+  return <Outlet context={[count, setCount]} />;
+}
+```
+
+```tsx
+import { useOutletContext } from "react-router-dom";
+
+function Child() {
+  const [count, setCount] = useOutletContext();
+  const increment = () => setCount((c) => c + 1);
+  return <button onClick={increment}>{count}</button>;
+}
+```
+
+If you're using TypeScript, we recommend the parent component provide a custom hook for accessing the context value. This makes it easier for consumers to get nice typings, control consumers, and know who's consuming the context value. Here's a more realistic example:
+
+```tsx
+import * as React from "react";
+import type { User } from "./types";
+import { Outlet, useOutletContext } from "react-router-dom";
+
+type ContextType = { user: User | null };
+
+export default function Dashboard() {
+  const [user, setUser] = React.useState<User | null>(null);
+
+  return (
+    <div>
+      <h1>Dashboard</h1>
+      <Outlet context={{ user }} />
+    </div>
+  );
+}
+
+export function useUser() {
+  return useOutletContext<ContextType>();
+}
+```
+
+```tsx
+import { useUser } from "../dashboard";
+
+export default function DashboardMessages() {
+  const { user } = useUser();
+  return (
+    <div>
+      <h2>Messages</h2>
+      <p>Hello, {user.name}!</p>
+    </div>
+  );
+}
+```

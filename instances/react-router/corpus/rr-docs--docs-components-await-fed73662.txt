@@ -1,0 +1,157 @@
+# Await
+# джерело: https://github.com/remix-run/react-router/blob/react-router@6.4.3/docs/components/await.md
+# отримано: 2026-09-25
+# версія: 6.4.3, 6.4.3-pre.2, 6.4.3-pre.1, 6.4.3-pre.0, 6.4.2, 6.4.2-pre.1, 6.4.2-pre.0, 6.4.1, 6.4.1-pre.0, 6.4.0, 6.4.0-pre.15, 6.4.0-pre.14, 6.4.0-pre.13
+
+## `<Await>`
+
+Used to render deferred values with automatic error handling. Make sure to review the Deferred Data Guide since there are a few APIs that work together with this component.
+
+```jsx
+import { Await, useLoaderData } from "react-router-dom";
+
+function Book() {
+  const { book, reviews } = useLoaderData();
+  return (
+    <div>
+      <h1>{book.title}</h1>
+      <p>{book.description}</p>
+      <React.Suspense fallback={<ReviewsSkeleton />}>
+        <Await
+          resolve={reviews}
+          errorElement={
+            <div>Could not load reviews 😬</div>
+          }
+          children={(resolvedReviews) => (
+            <Reviews items={resolvedReviews} />
+          )}
+        />
+      </React.Suspense>
+    </div>
+  );
+}
+```
+
+**Note:** `<Await>` expects to be rendered inside of a `<React.Suspense>` or `<React.SuspenseList>` parent to enable the fallback UI.
+
+## Type declaration
+
+```tsx
+declare function Await(
+  props: AwaitProps
+): React.ReactElement;
+
+interface AwaitProps {
+  children: React.ReactNode | AwaitResolveRenderFunction;
+  errorElement?: React.ReactNode;
+  resolve: TrackedPromise | any;
+}
+
+interface AwaitResolveRenderFunction {
+  (data: Awaited<any>): React.ReactElement;
+}
+```
+
+## `children`
+
+Can either be React elements or a function.
+
+When using a function, the value is provided as the only parameter.
+
+```tsx
+<Await resolve={reviewsPromise}>
+  {(resolvedReviews) => <Reviews items={resolvedReviews} />}
+</Await>
+```
+
+When using React elements, `useAsyncValue` will provide the data:
+
+```tsx
+<Await resolve={reviewsPromise}>
+  <Reviews />
+</Await>;
+
+function Reviews() {
+  const resolvedReviews = useAsyncValue();
+  return <div>{/* ... */}</div>;
+}
+```
+
+## `errorElement`
+
+The error element renders instead of the children when the promise rejects. You can access the error with `useAsyncError`.
+
+If the promise rejects, you can provide an optional `errorElement` to handle that error in a contextual UI via the `useAsyncError` hook.
+
+```tsx
+<Await
+  resolve={reviewsPromise}
+  errorElement={<ReviewsError />}
+>
+  <Reviews />
+</Await>;
+
+function ReviewsError() {
+  const error = useAsyncError();
+  return <div>{error.message}</div>;
+}
+```
+
+If you do not provide an errorElement, the rejected value will bubble up to the nearest route-level `errorElement` and be accessible via the `useRouteError` hook.
+
+## `resolve`
+
+Takes a promise returned from a deferred loader value to be resolved and rendered.
+
+```jsx
+import {
+  defer,
+  Route,
+  useLoaderData,
+  Async,
+} from "react-router-dom";
+
+// given this route
+<Route
+  loader={async () => {
+    let book = await getBook();
+    let reviews = getReviews(); // not awaited
+    return defer({
+      book,
+      reviews, // this is a promise
+    });
+  }}
+  element={<Book />}
+/>;
+
+function Book() {
+  const {
+    book,
+    reviews, // this is the same promise
+  } = useLoaderData();
+  return (
+    <div>
+      <h1>{book.title}</h1>
+      <p>{book.description}</p>
+      <React.Suspense fallback={<ReviewsSkeleton />}>
+        <Await
+          // and is the promise we pass to Await
+          resolve={reviews}
+        >
+          <Reviews />
+        </Await>
+        />
+      </React.Suspense>
+    </div>
+  );
+}
+```
+
+[useloaderdata]: ../hooks/use-loader-data
+[userouteerror]: ../hooks/use-route-error
+[defer]: ../utils/defer
+[deferred guide]: ../guides/deferred
+[useasyncvalue]: ../hooks/use-async-value
+[useasyncerror]: ../hooks/use-async-error
+[routeerrorelement]: ../route/error-element
+[loader]: ../route/loader

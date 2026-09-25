@@ -1,0 +1,27 @@
+# README
+# джерело: https://github.com/remix-run/react-router/blob/v6.0.0-beta.6/docs/README.md
+# отримано: 2026-09-25
+# версія: 6.0.0-beta.6, 6.0.0-beta.5, 6.0.0-beta.4, 6.0.0-beta.3, 6.0.0-beta.2, 6.0.0-beta.1, 6.0.0-beta.0, experimental
+
+## Welcome to React Router
+
+**Please note: These docs are currently very much a work in progress. If you are interested in lending a hand, please contact @mjackson directly on Twitter or just go ahead and find a TODO, complete it, and make a PR. Thanks!**
+
+Welcome to the React Router docs! If you're reading this, you're probably browsing our docs on GitHub. You're welcome to keep reading here, or you may prefer browsing them on our website. Either way, we hope you find them useful!
+
+The docs are currently divided up into the following sections:
+
+- Installation
+- Getting Started
+- Advanced Guides
+- Tutorial
+- API Reference
+- Contributing
+- FAQ
+
+If you're not sure where to begin, our Getting Started guide is a great place to start!
+
+If you're looking for past versions of the docs, they are all on GitHub and versioned with everything else alongside the actual code.
+
+- React Router v4/5 docs
+- React Router v3 docs

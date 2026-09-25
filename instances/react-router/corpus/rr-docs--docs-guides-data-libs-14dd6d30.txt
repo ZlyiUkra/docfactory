@@ -1,0 +1,120 @@
+# Data Library Integration
+# джерело: https://github.com/remix-run/react-router/blob/react-router@6.30.6/docs/guides/data-libs.md
+# отримано: 2026-09-25
+# версія: 6.30.6, 6.30.4, 6.30.3, 6.30.3-pre-v6.0, 6.30.2, 6.30.2-pre-v6.0, 6.30.1, 6.30.0, 6.30.0-pre-v6.0, 6.29.0, 6.29.0-pre-v6.2, 6.28.3-pre-v6.1, 6.28.3-pre-v6.0, 6.28.2, 6.28.2-pre.0, 6.28.1, 6.28.1-pre.0, 6.28.0, 6.28.0-pre.0, 6.27.0, 6.27.0-pre.1, 6.27.0-pre.0, 6.26.2, 6.26.2-pre.0, 6.26.1, 6.26.1-pre.0, 6.26.0, 6.26.0-pre.1, 6.26.0-pre.0, 6.25.1, 6.25.1-pre.0, 6.25.0, 6.25.0-pre.0, 6.24.1, 6.24.1-pre.0, 6.24.0, 6.24.0-pre.0, 6.23.1, 6.23.1-pre.1, 6.23.1-pre.0, 6.23.0, 6.23.0-pre.1, 6.23.0-pre.0, 6.22.3, 6.22.3-pre.0, 6.22.2, 6.22.2-pre.0, 6.22.1, 6.22.1-pre.0, 6.22.0, 6.22.0-pre.0, 6.21.3, 6.21.3-pre.0, 6.21.2, 6.21.2-pre.0, 6.21.1, 6.21.1-pre.0, 6.21.0, 6.21.0-pre.3, 6.21.0-pre.2, 6.21.0-pre.1, 6.21.0-pre.0, 6.20.1, 6.20.1-pre.0, 6.20.0, 6.20.0-pre.0, 6.19.0, 6.19.0-pre.0, 6.18.0, 6.18.0-pre.1, 6.18.0-pre.0, 6.17.0, 6.17.0-pre.2, 6.17.0-pre.1, 6.17.0-pre.0, 6.16.0, 6.16.0-pre.2, 6.16.0-pre.1, 6.16.0-pre.0, 6.15.0, 6.15.0-pre.0, 6.14.2, 6.14.2-pre.1, 6.14.2-pre.0, 6.14.1, 6.14.1-pre.1, 6.14.1-pre.0, 6.14.0, 6.14.0-pre.1, 6.14.0-pre.0, 6.13.0, 6.13.0-pre.1, 6.12.2-pre.0, 6.12.1, 6.12.1-pre.0, 6.12.0, 6.12.0-pre.1, 6.12.0-pre.0, 6.11.2, 6.11.2-pre.0, 6.11.1, 6.11.1-pre.0, 6.11.0, 6.11.0-pre.2, 6.11.0-pre.1, 6.11.0-pre.0, 6.10.0, 6.10.0-pre.2, 6.10.0-pre.1, 6.10.0-pre.0, 6.9.0, 6.9.0-pre.0, 6.8.2, 6.8.2-pre.3, 6.8.2-pre.2, 6.8.2-pre.1, 6.8.2-pre.0, 6.8.1, 6.8.1-pre.0, 6.8.0, 6.8.0-pre.1, 6.7.1-pre.0, 6.7.0, 6.7.0-pre.5, 6.7.0-pre.4, 6.7.0-pre.3, 6.7.0-pre.2, 6.7.0-pre.1, 6.6.3-pre.0, 6.6.2, 6.6.2-pre.0, 6.6.1, 6.6.1-pre.1, 6.6.1-pre.0, 6.6.0, 6.6.0-pre.0, 6.5.0, 6.5.0-pre.1, 6.5.0-pre.0, 6.4.5, 6.4.5-pre.2, 6.4.5-pre.1, 6.4.5-pre.0, 6.4.4, 6.4.4-pre.2, 6.4.4-pre.1, 6.4.4-pre.0, 6.4.3, 6.4.3-pre.2, 6.4.3-pre.1, 6.4.3-pre.0, experimental
+
+## Data Library Integration
+
+Since the release of v6.4 some folks wonder if React Router is attempting to replace libraries like React Query, useSwr, etc.
+
+The answer is "nope!".
+
+React Router's data APIs are about _when_ to load, mutate, and revalidate data, but not _how_ to do it. It's about the data lifecycle, not the actual implementation of data fetching, mutation, storage, and caching.
+
+Considering that `<a href>` and `<form action>` are both navigation events, and both coupled to data (what data to show or what data to change), it makes sense that a client side router would help you with the _navigation state_ of both elements. But the actual data implementation is up to you.
+
+The examples here were adapted from TkDodo's blog, thank you for the great post!
+
+## Loading Data
+
+Instead of loading data in components, you use your data abstractions inside of loaders. Note that this loading happens outside of the React render lifecycle, so you can't use hooks like React Query's `useQuery`, you'll need to use the query client's methods directly.
+
+```jsx
+import { queryClient } from "./query-client";
+
+export const loader = ({ params }) => {
+  return queryClient.fetchQuery(queryKey, queryFn, {
+    staleTime: 10000,
+  });
+};
+```
+
+If the query client throws errors correctly, then React Router's `errorElement` will work the same.
+
+Of course, you can use all of the features of the data library, like caching. Caching your data ensures that when the user clicks the back button to a page you've already seen, the data is loaded from the cache immediately. Sometimes caching is the right choice, sometimes you always want it fresh, but that's not a decision within the scope of React Router's data APIs.
+
+React Router only retains the _current page's loaderData_. If users click "back", all loaders are called again. Without a data caching library like React Query (or HTTP cache headers on your JSON API to use the browser's own HTTP cache), your app will refetch all of the data again.
+
+In this way, React Router is about _timing_, where React Query is about _caching_.
+
+## Accessing Data in Components
+
+While React Router's `useLoaderData` returns whatever you returned from your loader, you can use your data abstraction's hooks instead to get access to the full feature set of that package.
+
+```diff
+export default function SomeRouteComponent() {
+- const data = useLoaderData();
++ const { data } = useQuery(someQueryKey);
+}
+```
+
+## Invalidating Data in Mutations
+
+Because most of these library's have some mechanism for caching, you'll need to invalidate those caches at some point.
+
+The perfect place to invalidate those caches is in a React Router action.
+
+```jsx
+import { queryClient } from "./query-client";
+
+export const action = async ({ request, params }) => {
+  const formData = await request.formData();
+  const updates = Object.fromEntries(formData);
+  await updateContact(params.contactId, updates);
+  await queryClient.invalidateQueries(["contacts"]);
+  return redirect(`/contacts/${params.contactId}`);
+};
+```
+
+## Usage with `defer`
+
+You can similarly take advantage of the deferred APIs:
+
+```jsx
+function loader() {
+  return defer({
+    // no await!
+    someData: queryClient.fetchQuery("someKey", fn),
+  });
+}
+
+function Comp() {
+  // *do* useLoaderData for promise
+  const { someData } = useLoaderData();
+  return (
+    <div>
+      <h1>Something</h1>
+      <Await
+        resolve={someData}
+        errorElement={<div>Oops!</div>}
+      >
+        <SomeView />
+      </Await>
+    </div>
+  );
+}
+
+function SomeView() {
+  // instead of accessing with useAsyncValue
+  // const someData = useAsyncValue();
+  // `useQuery` as usual
+  const { data } = useQuery("someKey");
+  // ...
+}
+```
+
+## The Overlap
+
+Hooks like `useQuery` often return pending and error states you can use to branch your UI. With React Router, you can keep all of that branching out of your happy path components and rely on `errorElement`, `useNavigation`, and `Await` instead.
+
+## Conclusion
+
+With all of these APIs working together, you can now use `useNavigation` from React Router to build pending states, optimistic UI, and more. Use React Router for timing of data loading, mutations, and navigation state, then use libraries like React Query for the actual implementation of loading, invalidating, storage, and caching.
+
+[react-query]: https://tanstack.com/query/v4/
+[useswr]: https://swr.vercel.app/
+[errorelement]: ../route/error-element
+[action]: ../route/action
+[tkdodo]: https://tkdodo.eu/blog/react-query-meets-react-router
+[usenavigation]: ../hooks/use-navigation
+[await]: ../components/await

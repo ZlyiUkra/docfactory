@@ -1,0 +1,181 @@
+# loader
+# джерело: https://github.com/remix-run/react-router/blob/react-router@6.4.0-pre.15/docs/route/loader.md
+# отримано: 2026-09-25
+# версія: 6.4.0-pre.15
+
+## `loader`
+
+Each route can define a "loader" function to provide data to the route element before it renders.
+
+This feature only works if using a data router
+
+```js
+<DataBrowserRouter>
+  <Route
+    element={<Teams />}
+    path="teams"
+    loader={async () => {
+      return fakeDb.from("teams").select("*");
+    }}
+  >
+    <Route
+      element={<Team />}
+      path=":teamId"
+      loader={async ({ params }) => {
+        return fetch(`/api/teams/${params.teamId}.json`);
+      }}
+    />
+  </Route>
+</DataBrowserRouter>
+```
+
+As the user navigates around the app, the loaders for the next matching branch of routes will be called in parallel and their data made available to components through `useLoaderData`.
+
+## `params`
+
+Route params are parsed from dynamic segments and passed to your loader. This is useful for figuring out which resource to load:
+
+```tsx
+<Route
+  path="/teams/:teamId"
+  loader={({ params }) => {
+    return fakeGetTeam(params.teamId);
+  }}
+/>
+```
+
+## `request`
+
+This is a Fetch Request instance being made to your application.
+
+```tsx
+<Route loader={({ request }) => {}} />
+```
+
+> A request?!
+
+It might seem odd at first that loaders receive a "request". Consider that `<Link>` does something like the following code and ask yourself, "what default behavior is being prevented here?".
+
+```tsx
+<a
+  href={props.to}
+  onClick={(event) => {
+    event.preventDefault();
+    navigate(props.to);
+  }}
+/>
+```
+
+Without React Router, the browser would have made a Request to your server, but React Router prevented it! Instead of the browser sending the request to your server, React Router sends the request to your loaders.
+
+The most common use case is creating a URL and reading the URLSearchParams from it:
+
+```tsx
+<Route
+  loader={({ request }) => {
+    const url = new URL(request.url);
+    const searchTerm = url.searchParams.get("q");
+    return searchProducts(searchTerm);
+  }}
+/>
+```
+
+Note that the APIs here are not React Router specific, but rather standard web objects: Request, URL, URLSearchParams.
+
+## Returning Responses
+
+While you can return anything you want from a loader and get access to it from `useLoaderData`, you can also return a web Response.
+
+This might not seem immediately useful, but consider `fetch`. Since the return value of of `fetch` is a Response, and loaders understand responses, many loaders can return a simple fetch!
+
+```tsx
+// an HTTP API
+<Route
+  element={<Teams />}
+  loader={() => fetch("/api/teams.json")}
+/>;
+
+// or even a graphql endpoint
+<Route
+  element={<Friends />}
+  loader={({ params }) =>
+    fetch("/_gql", {
+      method: "post",
+      body: JSON.stringify({
+        query: gql`...`,
+        params: params,
+      }),
+    })
+  }
+/>;
+```
+
+You can construct the response yourself as well:
+
+```tsx
+<Route
+  element={<SomeRoute />}
+  loader={() => {
+    const data = { some: "thing" };
+    return new Response(JSON.stringify(data), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json; utf-8",
+      },
+    });
+  }}
+/>
+```
+
+React Router will automatically call `response.json()` so your components don't need to parse it while rendering:
+
+```tsx
+function SomeRoute() {
+  const data = useLoaderData();
+  // { some: "thing" }
+}
+```
+
+Using the `json` utility simplifies this so you don't have to construct them yourself. This next example is effectively the same as the previous example:
+
+```tsx
+import { json } from "react-router-dom";
+
+<Route
+  element={<SomeRoute />}
+  loader={() => {
+    const data = { some: "thing" };
+    return json(data);
+  }}
+/>;
+```
+
+If you're planning an upgrade to Remix, returning responses from every loader will make the migration smoother. You can read more about that here: Migrating to Remix.
+
+## Throwing in Loaders
+
+You can `throw` in your loader to break out of the current call stack (stop running the current code) and React Router will start over down the "error path".
+
+```tsx
+<Route
+  loader={async ({ params }) => {
+    const res = await fetch(`/api/properties/${params.id}`);
+    if (res.status === 404) {
+      throw new Response("Not Found", { status: 404 });
+    }
+    return res.json();
+  }}
+/>
+```
+
+For more details, read the errorElement documentation.
+
+[dynamicsegments]: ./route#dynamic-segments
+[request]: https://developer.mozilla.org/en-US/docs/Web/API/Request
+[response]: https://developer.mozilla.org/en-US/docs/Web/API/Response
+[url]: https://developer.mozilla.org/en-US/docs/Web/API/URL
+[urlsearchparams]: https://developer.mozilla.org/en-US/docs/Web/API/URLSearchParams
+[migratingtoremix]: ../guides/migrating-to-remix
+[useloaderdata]: ../hooks/use-loader-data
+[json]: ../fetch/json
+[errorelement]: ./error-element

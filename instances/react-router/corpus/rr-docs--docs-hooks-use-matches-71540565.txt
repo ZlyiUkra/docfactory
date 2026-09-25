@@ -1,0 +1,102 @@
+# useMatches
+# джерело: https://github.com/remix-run/react-router/blob/react-router@6.30.6/docs/hooks/use-matches.md
+# отримано: 2026-09-25
+# версія: 6.30.6, 6.30.4, 6.30.3, 6.30.3-pre-v6.0, 6.30.2, 6.30.2-pre-v6.0, 6.30.1, 6.30.0, 6.30.0-pre-v6.0, 6.29.0, 6.29.0-pre-v6.2, 6.28.3-pre-v6.1, 6.28.3-pre-v6.0, 6.28.2, 6.28.2-pre.0, 6.28.1, 6.28.1-pre.0, 6.28.0, 6.28.0-pre.0, 6.27.0, 6.27.0-pre.1, 6.27.0-pre.0, 6.26.2, 6.26.2-pre.0, 6.26.1, 6.26.1-pre.0, 6.26.0, 6.26.0-pre.1, 6.26.0-pre.0, 6.25.1, 6.25.1-pre.0, 6.25.0, 6.25.0-pre.0, 6.24.1, 6.24.1-pre.0, 6.24.0, 6.24.0-pre.0, 6.23.1, 6.23.1-pre.1, 6.23.1-pre.0, 6.23.0, 6.23.0-pre.1, 6.23.0-pre.0, 6.22.3, 6.22.3-pre.0, 6.22.2, 6.22.2-pre.0, 6.22.1, 6.22.1-pre.0, 6.22.0, 6.22.0-pre.0, 6.21.3, 6.21.3-pre.0, 6.21.2, 6.21.2-pre.0, 6.21.1, 6.21.1-pre.0, 6.21.0, 6.21.0-pre.3, 6.21.0-pre.2, 6.21.0-pre.1, 6.21.0-pre.0, 6.20.1, 6.20.1-pre.0, 6.20.0, 6.20.0-pre.0, 6.19.0, 6.19.0-pre.0, 6.18.0, 6.18.0-pre.1, 6.18.0-pre.0, 6.17.0, 6.17.0-pre.2, 6.17.0-pre.1, 6.17.0-pre.0, 6.16.0, 6.16.0-pre.2, 6.16.0-pre.1, 6.16.0-pre.0, 6.15.0, 6.15.0-pre.0, 6.14.2, 6.14.2-pre.1, 6.14.2-pre.0, 6.14.1, 6.14.1-pre.1, 6.14.1-pre.0, 6.14.0, 6.14.0-pre.1, 6.14.0-pre.0, 6.13.0, 6.13.0-pre.1, 6.12.2-pre.0, 6.12.1, 6.12.1-pre.0, 6.12.0, 6.12.0-pre.1, 6.12.0-pre.0, 6.11.2, 6.11.2-pre.0, 6.11.1, 6.11.1-pre.0, 6.11.0, 6.11.0-pre.2, 6.11.0-pre.1, 6.11.0-pre.0, 6.10.0, 6.10.0-pre.2, 6.10.0-pre.1, 6.10.0-pre.0, 6.9.0, 6.9.0-pre.0, 6.8.2, 6.8.2-pre.3, 6.8.2-pre.2, 6.8.2-pre.1, 6.8.2-pre.0, 6.8.1, 6.8.1-pre.0, experimental
+
+## `useMatches`
+
+Returns the current route matches on the page. This is most useful for creating abstractions in parent layouts to get access to their child route's data.
+
+```js
+import { useMatches } from "react-router-dom";
+
+function SomeComponent() {
+  const matches = useMatches();
+  // [match1, match2, ...]
+}
+```
+
+A `match` has the following shape:
+
+```js
+{
+  // route id
+  id,
+
+  // the portion of the URL the route matched
+  pathname,
+
+  // the data from the loader
+  data,
+
+  // the parsed params from the URL
+  params,
+
+  // the <Route handle> with any app specific data
+  handle,
+};
+```
+
+Pairing `<Route handle>` with `useMatches` gets very powerful since you can put whatever you want on a route `handle` and have access to `useMatches` anywhere.
+
+`useMatches` only works with a data router like `createBrowserRouter`, since they know the full route tree up front and can provide all of the current matches. Additionally, `useMatches` will not match down into any descendant route trees since the router isn't aware of the descendant routes.
+
+## Breadcrumbs
+
+The proverbial use case here is adding breadcrumbs to a parent layout that uses data from the child routes.
+
+```jsx
+<Route element={<Root />}>
+  <Route
+    path="messages"
+    element={<Messages />}
+    loader={loadMessages}
+    handle={{
+      // you can put whatever you want on a route handle
+      // here we use "crumb" and return some elements,
+      // this is what we'll render in the breadcrumbs
+      // for this route
+      crumb: () => <Link to="/messages">Messages</Link>,
+    }}
+  >
+    <Route
+      path="conversation/:id"
+      element={<Thread />}
+      loader={loadThread}
+      handle={{
+        // `crumb` is your own abstraction, we decided
+        // to make this one a function so we can pass
+        // the data from the loader to it so that our
+        // breadcrumb is made up of dynamic content
+        crumb: (data) => <span>{data.threadName}</span>,
+      }}
+    />
+  </Route>
+</Route>
+```
+
+Now we can create a `Breadcrumbs` component that takes advantage of our home-grown `crumb` abstraction with `useMatches` and `handle`.
+
+```tsx
+function Breadcrumbs() {
+  let matches = useMatches();
+  let crumbs = matches
+    // first get rid of any matches that don't have handle and crumb
+    .filter((match) => Boolean(match.handle?.crumb))
+    // now map them into an array of elements, passing the loader
+    // data to each one
+    .map((match) => match.handle.crumb(match.data));
+
+  return (
+    <ol>
+      {crumbs.map((crumb, index) => (
+        <li key={index}>{crumb}</li>
+      ))}
+    </ol>
+  );
+}
+```
+
+Now you can render `<Breadcrumbs/>` anywhere you want, probably in the root component.
+
+[createbrowserrouter]: ../routers/create-browser-router
