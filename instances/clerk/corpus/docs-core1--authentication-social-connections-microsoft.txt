@@ -1,0 +1,109 @@
+# Microsoft
+# джерело: https://github.com/clerk/clerk-docs/blob/core-1/docs/authentication/social-connections/microsoft.mdx
+# отримано: 2026-09-25
+# версія: core-1
+
+How to set up social connection with Microsoft Azure Active Directory
+
+## Overview
+
+Adding social connection with Microsoft Azure to your app with Clerk only requires populating the **Client ID**, **Client Secret** and **Authorized redirect URI** in your instance settings.
+
+To make the development flow as smooth as possible, Clerk uses preconfigured shared OAuth credentials and redirect URIs for development instances - no other configuration is needed.
+
+For production instances, you will need to generate your own Client ID and Client Secret using your Microsoft Azure account.
+
+## Before you start
+
+- You need to create a Clerk Application in your Clerk Dashboard. For more information, check out our Set up your application guide.
+- You need to have a Microsoft Azure account, you can sign up for one here.
+
+## Limitations
+
+- Currently Clerk supports only the `common` tenant type, which is intended for allowing sign-ins both from organization members and public Microsoft users.
+- Only credentials of type `secret` are currently supported (not the `certificate` type).
+
+Selecting the desired tenant type (`common`, `organizations`, `consumers` or specific tenant ID) will become available in an upcoming version of Clerk.
+
+## Configuring Microsoft social connection
+
+After creating a Microsoft Azure account, you will need to create a new App Registration.
+
+To do so, navigate to the list of applications and click on New Registration.
+
+Accessing the "New registration" page
+
+In the new application form, make sure you fill in the following fields:
+
+Filling required fields
+
+After creating a new app, you will be presented with the app information page.
+
+The **Application (client) ID** visible on this page should be pasted into the **Client ID** form field on the Clerk end.
+
+To generate a value, click on the **Client credentials** link:
+
+Generating a new credential
+
+Microsoft Azure supports 2 kinds of credentials:
+
+1. Client secrets (as the majority of oauth providers)
+2. Certificates
+
+At the time of writing, Clerk supports only Client secrets.
+
+To create a new client secret, click on the New client secret button as illustrated below:
+
+Certificates & secrets screen
+
+You will be prompted to provide a name and lifetime for the new secret.
+
+Adding a name and selecting expiration date
+
+After confirming your choice, the new secret will be listed. This is the only time you will able to copy & paste it, so make sure you do so before navigating away. Also, take note of the lifetime of said secret because you will need to generate a new one before it expires.
+
+The newly generated secret can now be pasted in the **Client Secret** input on the Clerk end.
+
+Finally, you'll need to instruct your Microsoft Azure app to operate in OpenID  mode so that it provides clerk with an **id_token** when the sign-in completes. This allows Clerk to populate data about the user from their Microsoft profile.
+
+This can be done by navigating to the Authentication section and checking the option displayed below:
+
+Turning on OpenID mode
+
+Congratulations! Social connection with Microsoft Azure is now configured for your instance.
+
+Stay tuned for updates as Clerk integrates support for more Microsoft social connection options.
+
+### Stay secure against the nOAuth vulnerability
+
+A vulnerability called nOAuth has been recently discovered in Microsoft's Azure AD OAuth applications. This vulnerability can lead to full account takeovers, as attackers can spoof the provided email and potentially gain full control of a victim's account.
+
+To protect users, Clerk has implemented stringent measures against the Microsoft OAuth provider, enforcing stricter checks on verified email addresses. However, this has impacted the functionality of users using Azure AD.
+
+Microsoft has introduced an optional claim, `xms_edov`, that can be added to your Azure application. This claim provides additional context to determine whether the returned email is verified.
+
+To enable this optional claim, you'll need to follow these steps:
+
+Navigate to your Azure application's **Token configuration** page, and click on **Add optional claim**.
+
+Add optional claims
+
+Select the `email` and `xms_pdl` claims for both **ID** and **Access**, and click on **Add**.
+
+    At the time of writing, the `xms_edov` claim is still in preview, and may not be available for all applications. So we'll choose another one from the list and we'll rename it later on in the manifest.
+
+Select claims
+
+Accept the permission changes. This will add `email` in your API permissions.
+
+Accept permissions
+
+Navigate to the **Manifest** page, and update the `idToken` and `accessToken` values names from `xms_pdl` to `xms_edov`.
+
+Update manifest
+
+Navigate back to the **Token configuration** page, and check the `xms_edov` claim for both **ID** and **Access**.
+
+Check claims
+
+Now you're all set! Microsoft will send the `xms_edov` claim in the token, and Clerk will use it to determine whether the email is verified or not, even if it is used with Azure AD.

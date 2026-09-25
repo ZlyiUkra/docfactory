@@ -1,0 +1,141 @@
+# Error handling
+# джерело: https://github.com/clerk/clerk-docs/blob/core-1/docs/custom-flows/error-handling.mdx
+# отримано: 2026-09-25
+# версія: core-1
+
+When using the `signUp()` or `signIn()` functions, proper error handling can help you provide your users with useful feedback.
+
+## Example
+
+A user is attempting to sign up with your application, but they are attempting to use a password that has been found in an online data breach. This will return a 422 error code with the message: "Password has been found in an online data breach. For account safety, please use a different password."
+
+```jsx
+import { useState } from "react";
+import { useSignUp } from "@clerk/clerk-react";
+
+function Example() {
+  const [error, setError] = useState(null);
+
+  const { signUp } = useSignUp();
+
+  const signUpUser = async () => {
+    const response = await signUp
+      ?.create({
+        identifier: "example@email.com",
+        password: "Tester01!",
+      })
+      .then((res) => console.log("response", res))
+      .catch((err) => setError(err.errors[0].message));
+  };
+
+  return (
+    <div>
+      <button onClick={signUpUser}>Sign Up</button>
+      <div>
+        <error>{error}</error>
+      </div>
+    </div>
+  );
+}
+```
+
+```js
+const { client } = window.Clerk;
+
+const signUp = await client.signUp.create({
+  identifier: "example@email.com",
+  password: "Tester01!",
+})
+  .then((res) => console.log("response", res))
+  .catch((err) => setError(err.errors[0].message));
+
+```
+
+Errors returned from the `signIn()` function are handled in a similar way:
+
+```jsx
+import { useState } from "react";
+import { useSignIn } from "@clerk/clerk-react";
+
+function Example() {
+  const [error, setError] = useState(null);
+
+  const { signIn } = useSignIn();
+
+  const signInUser = async () => {
+    const response = await signIn.create({
+      identifier: emailAddress,
+      password,
+    })
+    .then((result) => console.log("result", result))
+    .catch((err) => setError("error", err.errors[0].message));
+  };
+
+  return (
+    <div>
+      <button onClick={signInUser}>Sign In</button>
+      <div>
+        <error>{error}</error>
+      </div>
+    </div>
+  );
+}
+```
+
+```js
+const { client } = window.Clerk;
+
+const signIn = await client.signIn.create({
+  identifier: emailAddress,
+  password,
+  })
+  .then((result) => console.log("result", result))
+  .catch((err) => console.error("error", err.errors[0].message));
+```
+
+## Special error cases
+
+### User locked
+
+If you have Account Lockout enabled on your instance and the user reaches the maximum allowed attempts (see list of relevant actions here), you will receive an HTTP status of 403 (Forbidden) and the following error payload:
+
+```json
+{
+  "errors": [
+    {
+      "message": "Account locked",
+      "long_message": "Your account is locked. You will be able to try again in 30 minutes. For more information, please contact support.",
+      "code": "user_locked",
+      "meta": {
+        "lockout_expires_in_seconds": 1800
+      }
+    }
+  ]
+}
+```
+
+`lockout_expires_in_seconds` represents the time remaining until the user is able to attempt authentication again.
+In the above example, 1800 seconds (or 30 minutes) are left until they are able to retry, as of the current moment.
+
+The admin might have configured e.g. a 45-minute lockout duration.
+Thus, 15 minutes after one has been locked, 30 minutes will still remain until the lockout lapses.
+
+You can opt to render the error message returned as-is or format the supplied `lockout_expires_in_seconds` value as per your liking in your own custom error message.
+
+For instance, if you wish to inform a user at which absolute time they will be able to try again, you could add the remaining seconds to the current time and format the resulting timestamp.
+
+```js
+if (errors[0].code === 'user_locked') {
+    // Get the current date and time
+    let currentDate = new Date();
+
+    // Add the remaining seconds until lockout expires
+    currentDate.setSeconds(currentDate.getSeconds() + errors[0].meta.lockout_expires_in_seconds);
+
+    // Format the resulting date and time into a human-readable string
+    const lockoutExpiresAt = currentDate.toLocaleString();
+
+    // Do something with lockoutExpiresAt
+    console.log('Your account is locked, you will be able to try again at ' + lockoutExpiresAt);
+}
+```

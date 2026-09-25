@@ -1,0 +1,145 @@
+# Integrate Convex with Clerk
+# джерело: https://github.com/clerk/clerk-docs/blob/core-1/docs/integrations/databases/convex.mdx
+# отримано: 2026-09-25
+# версія: core-1
+
+- Create a JWT Template based on Convex
+- Configure Convex with the Clerk issuer domain
+- Install and configure Clerk's React SDK
+- Configure the Clerk and Convex providers
+- Access user identity in Convex queries and mutations
+
+## Introduction
+
+Convex is the full-stack TypeScript development platform. With Convex you get to build a backend with a provided realtime database, file storage, text search, scheduling and more. Paired with Clerk's user authentication and management features, you can build a powerful application with minimal effort.
+
+This tutorial assumes that you have already set up a Clerk application and a React + Convex application. This tutorial will also assume that you have not added Clerk to your application yet.
+
+### Create a JWT Template based on Convex
+
+In the Clerk Dashboard, navigate to the JWT Templatespage. Select the **New template** button to create a new template based on Convex.
+
+The JWT Templates page in the Clerk Dashboard. The 'New template' button was clicked, and a pop up titled 'New JWT template' is shown. The 'Convex' template is hovered over.
+
+Once the Convex template is created, you will be redirected to the template's page. You can now configure the template to your needs.
+
+The 'Create new template' page of the JWT Templates page in the Clerk Dashboard.
+
+The Convex template will pre-populate the default audience (`aud`) claim required by Convex. You can include additional claims as necessary. Shortcodes are available to make adding dynamic user values easy.
+
+The 'Create new template' page of the JWT Templates page in the Clerk Dashboard. The page is scrolled down to the 'Claims' section.
+
+By default, Clerk will sign the JWT with a private key automatically generated for your application, which is what most developers use for Convex. If you so choose, you can customize this key.
+
+### Configure Convex with the Clerk issuer domain
+
+The next step is to configure Convex with the issuer domain provided by Clerk. From your Clerk **JWT template** screen, find the **Issuer** input and click to **Copy** the URL.
+
+The 'Create new template' page of the JWT Templates page in the Clerk Dashboard. There is a red box surrounding the 'Issuer' section.
+
+In your `convex` folder, add an `auth.config.js` file with the following configuration:
+
+```ts
+export default {
+  providers: [
+    {
+      domain: "https://your-issuer-url.clerk.accounts.dev/",
+      applicationID: "convex",
+    },
+  ]
+};
+```
+
+Replace the `domain` string with the **Issuer** URL you copied.
+
+### Deploy your changes to Convex
+
+Run `npx convex dev` to automatically sync your configuration to your backend.
+
+### Install `@clerk/clerk-react`
+
+Install Clerk's React SDK by running the following command in your terminal:
+
+```bash
+  npm install @clerk/clerk-react
+```
+```bash
+  yarn add @clerk/clerk-react
+```
+
+```bash
+  pnpm add @clerk/clerk-react
+```
+
+### Set environment variables
+
+In your React project's root folder, you may have an `.env.local` file alongside `package.json` and other configuration files. If you don't see it, create it.
+
+Add the following code to your `.env.local` file to set your public key.
+
+**Pro tip!** If you are signed into your Clerk Dashboard, you can copy your publishable key below. Otherwise, you can find it in the Clerk Dashboard on the API Keys page.
+
+```sh
+VITE_CLERK_PUBLISHABLE_KEY={{pub_key}}
+```
+
+### Configure the Clerk and Convex providers
+
+Both Clerk and Convex have Provider components that are required to wrap your React application to provide the authentication and client context.
+
+You may have already had a `<ConvexProvider>` configured. Be sure that `<ClerkProvider>` wraps `ConvexProviderWithClerk`, and that `useAuth` is passed to `ConvexProviderWithClerk`.
+
+```ts
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App";
+import "./index.css";
+import { ClerkProvider, useAuth } from "@clerk/clerk-react";
+import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { ConvexReactClient } from "convex/react";
+
+// Import your publishable key
+const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
+
+if (!PUBLISHABLE_KEY) {
+  throw new Error("Missing Publishable Key")
+}
+
+const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+      <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+        <App />
+      </ConvexProviderWithClerk>
+    </ClerkProvider>
+  </React.StrictMode>
+);
+```
+
+### Access user identity in Convex queries and mutations
+
+You can access the user information from the JWT in Convex queries and mutations.
+Use the `ctx.auth.getUserIdentity()` which returns the parsed information from the JWT, or `null` if the client isn't authenticated.
+
+```ts
+import type { UserIdentity } from 'convex/server';
+import { query } from './_generated/server';
+
+export default query(async (ctx) => {
+  const user = await ctx.auth.getUserIdentity();
+
+  if (user === null) {
+    return null;
+  }
+
+  return user.tokenIdentifier;
+});
+```
+
+You can customize the information in the JWT by navigating to the JWT Templatespage in the Clerk Dashboard. All the keys must be valid OpenID standard claims.
+
+### Finished!
+
+You now have a fully functioning React and Convex application with Clerk authentication. Be aware that Convex may require usage of their custom hooks and methods rather than Clerk's, such as using Convex's `useConvexAuth()` hook instead of Clerk's `useAuth()` hook in some cases. For more informationon how to use Convex with Clerk, check out the Convex docs.

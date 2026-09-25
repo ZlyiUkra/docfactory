@@ -1,0 +1,194 @@
+# Use Clerk with Fastify
+# джерело: https://github.com/clerk/clerk-docs/blob/core-1/docs/quickstarts/fastify.mdx
+# отримано: 2026-09-25
+# версія: core-1
+
+Learn how to use Clerk to easily add authentication focused on security, speed, and DX to your Fastify server.
+
+After following this guide, you should have a working Fastify app with public and private routes, authenticated using the `clerkPlugin` and `getAuth` helpers.
+
+If you're looking for a more complete example, check out our Fastify example app.
+
+  The next major version of the Clerk Fastify SDK is coming soon! If you're just starting a project, consider trying out the Core 2 beta instead.
+
+### Install `@clerk/fastify`
+
+```bash
+  npm install @clerk/fastify
+```
+
+```bash
+  yarn add @clerk/fastify
+```
+
+```bash
+  pnpm add @clerk/fastify
+```
+
+### Set environment variables
+
+Below is an example of an `.env.local` file.
+
+**Pro tip!** If you are signed into your Clerk Dashboard, your secret key should become visible by clicking on the eye icon. Otherwise, you can find your keys in the Clerk Dashboard on the API Keys page.
+
+```env
+CLERK_PUBLISHABLE_KEY={{pub_key}}
+CLERK_SECRET_KEY={{secret}}
+```
+
+This examples uses `dotenv` to load the environment variables. You can use any other library or method, if you so wish.
+
+```bash
+  npm install dotenv
+  npm install -D @types/dotenv
+```
+
+```bash
+  yarn add dotenv
+  yarn add -D @types/dotenv
+```
+
+```bash
+  pnpm add dotenv
+  pnpm add -D @types/dotenv
+```
+
+### Configure `clerkPlugin` in your Fastify application
+
+The Clerk plugin can be registered globally or for specific routes. This examples registers the plugin globally.
+
+```ts
+import * as dotenv from "dotenv";
+
+dotenv.config();
+
+import Fastify from "fastify";
+import { clerkClient, clerkPlugin, getAuth } from "@clerk/fastify";
+
+const fastify = Fastify({ logger: true });
+
+fastify.register(clerkPlugin);
+
+const start = async () => {
+  try {
+    await fastify.listen({ port: 3000 });
+  } catch (err) {
+    fastify.log.error(err);
+    process.exit(1);
+  }
+};
+
+start();
+```
+
+### Accessing auth state using `getAuth`
+
+The `getAuth` helper can be used to access the auth state of the current request.
+
+```ts
+import * as dotenv from "dotenv";
+
+dotenv.config();
+
+import Fastify from "fastify";
+import { clerkClient, clerkPlugin, getAuth } from "@clerk/fastify";
+
+const fastify = Fastify({ logger: true });
+
+fastify.register(clerkPlugin);
+
+fastify.get("/", async (req, reply) => {
+  /**
+   * Access the auth state for this request.
+   * In this example, the userId loads the whole User object
+   * from the Clerk servers
+   */
+  const { userId } = getAuth(req);
+  const user = userId ? await clerkClient.users.getUser(userId) : null;
+  return { user };
+});
+
+const start = async () => {
+  try {
+    await fastify.listen({ port: 3000 });
+  } catch (err) {
+    fastify.log.error(err);
+    process.exit(1);
+  }
+};
+
+start();
+```
+
+### Require authentication for a route
+
+To protect a route using Clerk, you can use `getAuth` to check if the user is authenticated. If the user is not authenticated, you can return a 403 error.
+
+```ts
+fastify.get("/protected", async (request, reply) => {
+  const { userId } = getAuth(request);
+  if (!userId) {
+    return reply.code(403).send();
+  }
+
+  const user = await clerkClient.users.getUser(userId);
+  return { user };
+});
+```
+
+### Using Clerk for specific routes only
+
+If you want to use Clerk for specific routes only, you can register the plugin for specific routes. In this example, the routes are split into two groups: one for public routes and one for private routes.
+
+```ts
+import * as dotenv from "dotenv";
+
+dotenv.config();
+
+
+import Fastify, { FastifyPluginCallback } from "fastify";
+import { clerkClient, clerkPlugin, getAuth } from "@clerk/fastify";
+
+const fastify = Fastify({ logger: true });
+
+/**
+ * Register Clerk only for a subset of your routes
+ */
+const protectedRoutes: FastifyPluginCallback = (instance, opts, done) => {
+  instance.register(clerkPlugin);
+  instance.get("/protected", async (request, reply) => {
+    const { userId } = getAuth(request);
+    if (!userId) {
+      return reply.code(403).send();
+    }
+
+    const user = await clerkClient.users.getUser(userId);
+    return { user };
+  });
+  done();
+};
+
+const publicRoutes: FastifyPluginCallback = (instance, opts, done) => {
+  instance.get("/", async (request, reply) => {
+    return { message: "This is a public endpoint. Request /protected to test the Clerk auth middleware" };
+  });
+  done();
+};
+
+/**
+ * Register your routes as you normally would
+ */
+fastify.register(protectedRoutes);
+fastify.register(publicRoutes);
+
+const start = async () => {
+  try {
+    await fastify.listen({ port: 3000 });
+  } catch (err) {
+    fastify.log.error(err);
+    process.exit(1);
+  }
+};
+
+start();
+```

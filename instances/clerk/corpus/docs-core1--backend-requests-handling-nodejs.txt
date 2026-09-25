@@ -1,0 +1,177 @@
+# Handling requests with Node.js and Express
+# джерело: https://github.com/clerk/clerk-docs/blob/core-1/docs/backend-requests/handling/nodejs.mdx
+# отримано: 2026-09-25
+# версія: core-1
+
+## Node.js and Connect/Express Middleware
+
+The Clerk Node SDK offers two authentication middlewares specifically for Express and Connect/Express compatible frameworks such as Gatsby and Fastify.
+
+## `ClerkExpressWithAuth()`
+
+`ClerkExpressWithAuth()` is a lax middleware that returns an empty auth object when an unauthenticated request is made.
+
+```js
+  import "dotenv/config"; // To read CLERK_API_KEY
+  import { ClerkExpressWithAuth } from "@clerk/clerk-sdk-node";
+  import express from "express";
+
+  const port = process.env.PORT || 3000;
+
+  const app = express();
+  // Use the lax middleware that returns an empty auth object when unauthenticated
+  app.get(
+    "/protected-endpoint",
+    ClerkExpressWithAuth({
+      // Add options here
+      // See the Middleware options section for more details
+    }),
+    (req, res) => {
+      res.json(req.auth);
+    }
+  );
+
+app.listen(port, () => {
+  console.log(`Example app listening at http://localhost:${port}`);
+});
+```
+
+```typescript
+  import "dotenv/config"; // To read CLERK_API_KEY
+  import {
+    ClerkExpressWithAuth,
+    LooseAuthProp,
+    WithAuthProp,
+  } from '@clerk/clerk-sdk-node';
+  import express, { Application, Request, Response } from 'express';
+
+  const port = process.env.PORT || 3000;
+
+  const app: Application = express();
+
+  declare global {
+    namespace Express {
+      interface Request extends LooseAuthProp {}
+    }
+  }
+
+  // Use the lax middleware that returns an empty auth object when unauthenticated
+  app.get(
+    '/protected-route',
+    ClerkExpressWithAuth({
+      // Add options here
+      // See the Middleware options section for more details
+    }),
+    (req: WithAuthProp<Request>, res: Response) => {
+      res.json(req.auth);
+    }
+  );
+
+  app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(401).send('Unauthenticated!');
+  });
+
+  app.listen(port, () => {
+    console.log(`Example app listening at http://localhost:${port}`);
+  });
+```
+
+## `ClerkExpressRequireAuth()`
+
+`ClerkExpressRequireAuth()` is a strict middleware that raises an error when an unauthenticated request is made.
+
+```js
+  import "dotenv/config"; // To read CLERK_API_KEY
+  import { ClerkExpressRequireAuth } from '@clerk/clerk-sdk-node';
+  import express from 'express';
+
+  const port = process.env.PORT || 3000;
+  const app = express();
+
+  // Use the strict middleware that raises an error when unauthenticated
+  app.get(
+    '/protected-endpoint',
+    ClerkExpressRequireAuth({
+      // Add options here
+      // See the Middleware options section for more details
+    }),
+    (req, res) => {
+      res.json(req.auth);
+    }
+  );
+
+  app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(401).send('Unauthenticated!');
+  });
+
+  app.listen(port, () => {
+    console.log(`Example app listening at http://localhost:${port}`);
+  });
+```
+
+```typescript
+  import "dotenv/config"; // To read CLERK_API_KEY
+import {
+  ClerkExpressRequireAuth,
+  RequireAuthProp,
+  StrictAuthProp,
+} from '@clerk/clerk-sdk-node';
+import express, { Application, Request, Response } from 'express';
+
+const port = process.env.PORT || 3000;
+const app: Application = express();
+
+declare global {
+  namespace Express {
+    interface Request extends StrictAuthProp {}
+  }
+}
+
+// Use the strict middleware that raises an error when unauthenticated
+app.get(
+  '/protected-route',
+  ClerkExpressRequireAuth({
+    // Add options here
+    // See the Middleware options section for more details
+  }),
+  (req: RequireAuthProp<Request>, res) => {
+    res.json(req.auth);
+  }
+);
+
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(401).send('Unauthenticated!');
+});
+
+app.listen(port, () => {
+  console.log(`Example app listening at http://localhost:${port}`);
+});
+
+```
+
+### Express error handlers
+
+Express comes with a default error handler for errors encountered in the middleware chain.
+
+Developers can also implement their own custom error handlers as detailed in the Express error handling guide. An example error handler can be found above.
+
+If you are using the strict middleware variant, the `err` passed to your error handler will contain enough context for you to respond as you deem fit.
+
+## Middleware options
+
+These options can be used with both `ClerkExpressWithAuth` and `ClerkExpressRequireAuth`.
+
+| Name        | Type        | Description    |
+| ----------- | ----------- | -------------- |
+| `audience` | `string \| string[]` | A string or list of audiences. If passed, it is checked against the `aud` claim in the token. |
+| `authorizedParties`| `string[]` | Can be used to validate that the `azp` claim equals any of your known origins that are permitted to generate those tokens. This is an extra security check that we highly recommend that you do. For more information, refer to Manual JWT Verification.An example of the value you can pass is: `['http://localhost:4003', 'https://clerk.dev']` |
+| `jwtKey`  | `string` | Clerk's JWT session token can be verified in a networkless manner using the JWT verification key. By default, Clerk will use our well-known JWKs endpoint to fetch and cache the key for any subsequent token verification. If you use the `CLERK_JWT_KEY` environment variable or the `jwtKey` option to supply the key, Clerk will pick it up and do networkless verification for session tokens using it. For more information, refer to Networkless Token Verification. |
+| `onError` | `(error: ClerkAPIResponseError) => unknown` | This function can act as a custom error handler tailored to the needs of your application.  |
+| `signInUrl` | `string` | The URL to redirect to when the user is not authenticated. |
+
+| `isSatellite` | `boolean \| (url: URL) => boolean` | When using Clerk's satellite feature, this should be enabled for secondary domains. |
+| `domain` | `string \| (url: URL) => boolean` | The domain used for satellites to inform Clerk where this application is deployed. |
+| `proxyUrl` | `string` | If using a proxy, specify the URL of the proxy. |

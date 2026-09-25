@@ -1,0 +1,166 @@
+# Webhooks overview
+# джерело: https://github.com/clerk/clerk-docs/blob/core-1/docs/integrations/webhooks/overview.mdx
+# отримано: 2026-09-25
+# версія: core-1
+
+Clerk webhooks allow you to receive event notifications from Clerk. Clerk will send a `POST` request to a URL you specify when certain events happen in your Clerk account.
+
+Clerk uses Svix to send our webhooks.
+
+You can find the Webhook signing secret when you click on the endpoint you created on the **Webhooks** page in the Clerk Dashboard.
+
+## Supported webhook events
+
+### Emails
+
+- `email.created`
+
+### Organization
+
+- `organization.created`
+- `organization.deleted`
+- `organization.updated`
+
+### Organization Invitation
+
+- `organizationInvitation.accepted`
+- `organizationInvitation.created`
+- `organizationInvitation.revoked`
+
+### Organization Membership
+
+- `organizationMembership.created`
+- `organizationMembership.deleted`
+- `organizationMembership.updated`
+
+### Organization Domains
+
+- `organizationDomain.created`
+- `organizationDomain.deleted`
+- `organizationDomain.updated`
+
+### Session
+
+- `session.created`
+- `session.ended`
+- `session.removed`
+- `session.revoked`
+
+### SMS
+
+- `sms.created`
+
+### User
+
+- `user.created`
+- `user.deleted`
+- `user.updated`
+
+## Payload structure
+
+The payload of the message includes the type of the event in the type property.
+
+The `data` property contains the actual payload sent by Clerk. The payload can be a different object depending on the `event` type. For example, for `user.*` events, the payload will always be the User object . For `organization.*` event type, the payload will always be an organization (except for when it is deleted).
+
+Below is an example of a webhook payload for a `user.created` event:
+
+```json
+{
+  "data": {
+    "birthday": "",
+    "created_at": 1654012591514,
+    "email_addresses": [
+      {
+        "email_address": "example@example.org",
+        "id": "idn_29w83yL7CwVlJXylYLxcslromF1",
+        "linked_to": [],
+        "object": "email_address",
+        "verification": {
+          "status": "verified",
+          "strategy": "ticket"
+        }
+      }
+    ],
+    "external_accounts": [],
+    "external_id": "567772",
+    "first_name": "Example",
+    "gender": "",
+    "id": "user_29w83sxmDNGwOuEthce5gg56FcC",
+    "last_name": "Example",
+    "locked": false,
+    "last_sign_in_at": 1654012591514,
+    "object": "user",
+    "password_enabled": true,
+    "phone_numbers": [],
+    "primary_email_address_id": "idn_29w83yL7CwVlJXylYLxcslromF1",
+    "primary_phone_number_id": null,
+    "primary_web3_wallet_id": null,
+    "private_metadata": {},
+    "profile_image_url": "https://www.gravatar.com/avatar?d=mp",
+    "public_metadata": {},
+    "two_factor_enabled": false,
+    "unsafe_metadata": {},
+    "updated_at": 1654012591835,
+    "username": null,
+    "web3_wallets": []
+  },
+  "object": "event",
+  "type": "user.created"
+}
+```
+
+## TypeScript support
+
+Clerk provides the types as part of our SDK offering. Below is an example of type usage in a webhook handler:
+
+```tsx
+import type { WebhookEvent } from "@clerk/nextjs/server"
+
+const handler = req => {
+  const evt = req.body.evt as WebhookEvent;
+  switch (evt.type) {
+    case 'user.created':
+      // UserJSON.first_name is a string
+      const firstName = evt.data.first_name
+      // UserJSON.last_name is a string
+      const lastName = evt.data.last_name
+      // UserJSON.email_addresses is an array of EmailAddressJSON
+      const emails = evt.data.email_addresses;
+  }
+}
+```
+
+## Handling delivery issues
+
+### Retry
+
+Svix will use a set schedule and retry any webhooks that fail. To see the up-to-date schedule, check out the Svix Retry Schedule.
+
+If Svix is attempting and failing to send a webhook, and that endpoint is removed or disabled from the **Webhooks** page of the Clerk Dashboard, then the attempts will also be disabled.
+
+### Replay
+
+If a webhook message or multiple webhook messages fail to send, you have an option to reply the webhook messages. This protects against your service having downtime or against a misconfigured endpoint. To replay webhook messages, in the Clerk Dashboard, go to the **Webhooks** page. Select the affected Endpoint. From the **Attempted Messages** section, locate a message you want to reply  to, click the menu icon on the right side, and then select **Replay**.
+
+The Webhooks page of the Clerk Dashboard. There is a red arrow pointing to the Replay option for a failed webhook message. There is a red box around the 'Replay' button.
+
+#### Replay options
+
+From the Replay Messages menu, you will have 3 options.
+1. Resend the specific message you selected.
+2. Resend all failed messages since the first failed message in that date range.
+3. Resend all missing messages since the first failed message in that date range.
+
+The Webhooks page of the Clerk Dashboard. The Replay menu, for replaying failling or missing webhook messages, is open and showing three options.
+
+## Sync data to your database
+
+You can find a guide on how to use webhooks to sync your data to your database here.
+
+## Protecting your webhooks from abuse
+
+To ensure that the api route receiving the webhook can only be hit by your app, there are a few protections you can put in place:
+
+- **Verify the request signature**: Svix webhook requests are signed and can be verified to ensure the request is not malicious. To learn more, check out Svix's guide on how to verify webhooks with the svix libraries or how to verify webooks manually.
+
+- **Only accept requests coming from Svix's webhook IPs**:  To further prevent attackers from flooding your servers or wasting your compute, you can ensure that your webhook-receiving api routes only accept requests coming from Svix's webhook IPs, rejecting all other requests.

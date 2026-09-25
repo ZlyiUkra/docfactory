@@ -1,0 +1,147 @@
+# Integrate Grafbase with Clerk
+# джерело: https://github.com/clerk/clerk-docs/blob/core-1/docs/integrations/databases/grafbase.mdx
+# отримано: 2026-09-25
+# версія: core-1
+
+The first step is to create a new Clerk application from your Clerk Dashboard if you haven’t done so already. You can choose whichever authentication strategy and social sign-in providers you prefer. For more information, check out our Set up your application guide.
+
+After your Clerk application has been created, go to the Clerk Dashboard and navigate to the **JWT Templates** page. Click on the **New template** button to create a new template based on Grafbase.
+
+The JWT Templates page in the Clerk Dashboard. The 'New template' button was clicked, and a pop up titled 'New JWT template' is shown. The 'Grafbase' template is hovered over.
+
+Once the Grafbase template is created, you will be redirected to the template's page. You can now configure the template to your needs.
+
+The 'Create new template' page of the JWT Templates page in the Clerk Dashboard.
+
+The Grafbase template will pre-populate the default claims required by Grafbase. You can include additional claims as necessary. Shortcodes are available to make adding dynamic user values easy.
+
+  If your GraphQL API restricts access based on groups, you’ll need to specify the users groups in the `groups` claim.
+
+The 'Create new template' page of the JWT Templates page in the Clerk Dashboard. The page is scrolled down to the 'Claims' section.
+
+## Configure Grafbase
+
+The next step is to configure Grafbase with the issuer domain provided by Clerk. From your Clerk **JWT template** screen, find the **Issuer** input and click to **Copy** the URL.
+
+The 'Create new template' page of the JWT Templates page in the Clerk Dashboard. There is a red box surrounding the 'Issuer' section.
+
+### Signed in user authentication
+
+If you want to enable access to your Grafbase data for any signed-in user, then you’ll want to configure your schema with the `allow: private` rule:
+
+```graphql
+schema
+  @auth(
+    providers: [{ type: oidc, issuer: "{{ env.ISSUER_URL }}" }]
+    rules: [{ allow: private }]
+  ) {
+  query: Query
+}
+```
+
+Make sure to set the environment variable `ISSUER_URL` (using the Grafbase CLI, or Clerk Dashboard) to be your Frontend API value. This value can be found in the Clerk Dashboard on the **API Keys** page.
+
+### Group-based authentication
+
+If you’re working with group-based user access then you can use `allow: groups`, and provide an array of groups to your schema `@auth` rules:
+
+```graphql
+schema
+  @auth(
+    providers: [{ type: oidc, issuer: "{{ env.ISSUER_URL }}" }]
+		rules: [{ allow: groups, groups: ["backend", "admin"] }]
+  ) {
+  query: Query
+}
+```
+
+Make sure to replace `YOUR_FRONTEND_API` with the Frontend API value. This value can be found in the Clerk Dashboard on the **API Keys** page.
+
+If needed, you can also use a shortcode to dynamically include the users current organization's role. Shortcodes can be found and updated on your **JWT template** for Grafbase in the Clerk Dashboard.
+
+```json
+{
+	"groups": ["{{org.role}}"]
+}
+```
+
+## Authenticating requests
+
+You must send OIDC (JWT) tokens using an `Authorization: Bearer TOKEN` header. Your token must include the group if using group-based authentication.
+
+The `useAuth()` hook os the easiest way to generate JWTs. Use `await getToken({ template: "..." })` and specify your grafbase template to retrieve a new JWT.
+
+```tsx
+import { useAuth } from '@clerk/nextjs'
+import useSWR from 'swr'
+
+export const useQuery = (query, variables) => {
+  if (!query) {
+    throw Error('No query provided to `useQuery`')
+  }
+
+  const { getToken } = useAuth()
+
+  const fetcher = async () => {
+    const token = await getToken({ template: 'grafbase' })
+    const results = await fetch('YOUR_GRAFBASE_API', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ query, variables })
+    }).then(res => res.json())
+    return results
+  }
+  return useSWR(query, fetcher)
+}
+
+const YOUR_GRAPHQL_QUERY = `
+	query {
+		__schema {
+			types {
+				name
+			}
+		}
+	}
+`
+
+const SchemaPage = () => {
+  const { data, error } = useQuery(YOUR_GRAPHQL_QUERY)
+  if (error) {
+    return <div>error</div>
+  }
+  return <pre>{JSON.stringify({ data }, 2, null)}</pre>
+}
+
+export default SchemaPage
+```
+
+```tsx
+import { useAuth } from '@clerk/nextjs'
+
+export const ApolloProviderWrapper = ({ children }: PropsWithChildren) => {
+  const { getToken } = useAuth()
+
+  const client = useMemo(() => {
+    const authMiddleware = setContext(async (operation, { headers }) => {
+      const token = await getToken({ template: 'grafbase' })
+
+      return {
+        headers: {
+          ...headers,
+          authorization: `Bearer ${token}`
+        }
+      }
+    })
+
+    return new ApolloClient({
+      link: from([authMiddleware, httpLink]),
+      cache: new InMemoryCache()
+    })
+  }, [getToken])
+
+  return <ApolloProvider client={client}>{children}</ApolloProvider>
+}
+```

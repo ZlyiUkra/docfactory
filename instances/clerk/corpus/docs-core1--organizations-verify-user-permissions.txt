@@ -1,0 +1,306 @@
+# Verify the active user's permissions in an organization
+# джерело: https://github.com/clerk/clerk-docs/blob/core-1/docs/organizations/verify-user-permissions.mdx
+# отримано: 2026-09-25
+# версія: core-1
+
+  The following authorization checks are predicated on a user having an active organization. Without this, they will likely always evaluate to false by default. Clerk's built-in `<OrganizationSwitcher/>` component and`useOrganizationList().setActive({ organization: <orgId> })` method are two available options to set an organization as active for a user.
+
+In general, you should always verify whether or not a user is authorized to access sensitive information, important content, or exclusive features. The most secure way to implement authorization is by checking the active user's role or permissions.
+
+Clerk enables two broad approaches to role and permissions-based authorization:
+
+1. **Immediately blocking unauthorized users**.
+  - Use the `<Protect>` component to prevent content from rendering if the active user is unauthorized.
+  - Call `auth().protect()` to throw an error if the active user is unauthorized.
+2. **Configuring custom behavior for unauthorized users*.
+  - The `has()` helper returns `false` if the active user lacks the role or permissions you're checking for. You can choose how your app responds without immediately throwing an error or preventing content from rendering.
+
+## Authorization in Client Components
+
+The examples below work for both SSR and CSR. Examples are written for Next.js App Router but they are supported by any React meta framework, such as Remix or Gatsby.
+
+<Tabs type="framework" items={["Next.js with ", "Next.js with has()"]}>
+
+    The following snippet uses Clerk's `<Protect>` component to only render the form for users with the `org:team_settings:manage` permission.
+
+```tsx
+      'use client';
+      import { Protect } from "@clerk/nextjs";
+
+      export function SettingsForm(){
+        return (
+          <Protect
+            permission="org:team_settings:manage"
+            fallback={<p>You are not allowed to see this section.</p>}
+          >
+            <form>
+              ....
+            </form>
+          </Protect>
+        )
+      }
+```
+
+    The `useAuth()` hook can help you access what permissions a user has by using `has()`. In the example below, `has({ permission: "org:team_settings:manage" })` returns `false` if the user does not have the `org:team_settings:manage` permission.
+
+```tsx
+      'use client';
+      import { useAuth } from "@clerk/nextjs";
+
+      export function SettingsForm(){
+        const { has } = useAuth();
+
+        const canManageSettings = has({ permission: "org:team_settings:manage" });
+
+        if(!canManageSettings) return null;
+
+        return (
+          <form>
+            //...
+          </form>
+        )
+      }
+```
+
+## Authorization in React Server Components
+
+<Tabs type="framework" items={[ "RSC with has()", "RSC with auth().protect()", "RSC with "]}>
+
+    The following example uses `has()` to inspect a user's permissions granularly. If the user doesn't have the `org:team_settings:read` permission, the component returns `null` instead of rendering its children.
+
+```tsx
+      import type { PropsWithChildren } from "react";
+      import { auth } from "@clerk/nextjs/server";
+
+      export default function SettingsLayout(props: PropsWithChildren){
+        const { has } = auth()
+
+        const canAccessSettings = has({permission: "org:team_settings:read"});
+
+        if(!canAccessSettings) return null;
+
+        return props.children
+      }
+```
+
+      `auth().protect()` will throw a `notFound` Next.js error if authorization checks fail.
+
+```tsx
+      import type { PropsWithChildren } from "react";
+      import { auth } from "@clerk/nextjs/server";
+
+      export default function SettingsLayout(props: PropsWithChildren){
+        const { userId } = auth().protect({permission: "org:team_settings:read"})
+
+        return props.children
+      }
+```
+
+    The following snippet uses `<Protect>`'s `condition` prop to conditionally render its children if the user has the `org:team_settings:read` permission.
+
+```tsx
+        import type { PropsWithChildren } from "react";
+        import { Protect } from "@clerk/nextjs";
+
+        export default function SettingsLayout(props: PropsWithChildren){
+          return (
+            <Protect
+              permission="org:team_settings:read"
+            >
+              {props.children}
+            </Protect>
+          )
+        }
+```
+
+## Authorization in endpoints
+
+```tsx
+      import { auth } from "@clerk/nextjs/server";
+
+      export default function ServerComponent() {
+        async function myAction() {
+          'use server'
+          const { has } = auth();
+
+          const canManage = has({permission:"org:team_settings:manage"});
+          ...
+          // Perform a DB operation ...
+        }
+      }
+```
+
+      `auth().protect()` will throw a `notFound` Next.js error if authorization checks fail.
+
+### Using `auth().protect()`
+
+```tsx
+      import { useAuth } from "@clerk/nextjs";
+
+      export const POST = () => {
+        const { userId } = auth().protect({
+          permission: "org:team_settings:manage"
+        })
+        return users.createTeam(userId);
+      }
+```
+
+### Using `has()`
+
+```tsx
+      import { useAuth } from "@clerk/nextjs";
+
+      export const GET = () => {
+        const { userId, has } = auth();
+
+        if(!userId){
+          return Response.json({error: "Unathorized"}, {status: 401})
+        }
+
+        if(!has({permission: "org:team_settings:read"})){
+          return Response.json({error: "Forbidden"}, {status: 403})
+        }
+
+        return users.getTeams(userId)
+      }
+```
+
+```tsx
+      import { getAuth } from "@clerk/nextjs/server";
+
+      export default async function handler(req: NextApiRequest) {
+        const { userId, has } = await getAuth(req);
+
+        if (!userId) return res.status(401);
+
+        if(!has({permission: "org:team_settings:read"})) return res.status(403)
+
+        return users.getTeams(userId)
+      }
+```
+
+## Authorization in Remix Loaders
+
+```tsx
+export const loader: LoaderFunction = async args => {
+  const { has } = await getAuth(args);
+
+  if(has({permission: "org:team_settings:manage"})){
+    return redirect('/request-access');
+  }
+  return {};
+};
+
+export default function Settings() {
+  return (
+    <div>
+      <h1>Settings Page</h1>
+    </div>
+  );
+}
+```
+
+## Authorization in JS SDK
+
+If you are not using React or any of the meta-frameworks we support, there's a good chance that you are using Clerk.js directly. In that case, the following example can help.
+
+```tsx
+    import Clerk from '@clerk/clerk-js'
+
+    const clerk = new Clerk(...)
+    await clerk.load(...)
+
+    const canManageSettings = clerk.session.checkAuthorization({
+      permission: "org:team_settings:manage"
+    })
+```
+
+## Authorize with roles
+
+Performing role checks is not considered a best-practice and developers should avoid it as much as possible. Usually, complex role checks can be refactored with a single permission check.
+
+You can pass a `role` the same way you can pass a `permission` in all the examples above.
+
+<Tabs type="framework" items={[ "RSC with ","RSC with auth().protect()", "Client Component with has()", ]}>
+
+  The following example uses `<Protect>`'s `condition` prop to conditionally render its children if the user is either an `org:admin` or an `org:billing_manager`.
+
+```tsx
+    import type { PropsWithChildren } from "react";
+    import { Protect } from "@clerk/nextjs";
+
+    export default function SettingsLayout(props: PropsWithChildren){
+      return (
+        <Protect
+          condition={has => has({role: "org:admin"}) || has({role: "org:billing_manager"})}
+        >
+          {props.children}
+        </Protect>
+      )
+    }
+```
+
+    `auth().protect()` will throw a `notFound` Next.js error if authorization checks fail.
+
+```tsx
+    import type { PropsWithChildren } from "react";
+    import { auth } from "@clerk/nextjs/server";
+
+    export default function SettingsLayout(props: PropsWithChildren){
+      const { userId } = auth().protect(has => has({role: "org:admin"}) || has({role: "org:billing_manager"}))
+
+      return props.children
+    }
+```
+
+  The following snippet uses `useAuth()` to inspect a user's roles granularly. If the user doesn't have either an `org:admin` or an `org:billing_manager` role, the component returns `null` instead of rendering its children.
+
+```tsx
+    'use client';
+    import { useAuth } from "@clerk/nextjs";
+
+    export function SettingsForm(){
+      const { has } = useAuth();
+      const canAccessSettings = has({role: "org:admin"}) || has({role: "org:billing_manager"})
+
+      if(!canManageSettings) return null;
+
+      return (
+        <form>
+          //...
+        </form>
+      )
+    }
+```
+
+## How to add types for roles and permissions
+
+In order to enhance typesafety in your project, you can define a global `ClerkAuthorization` interface, which defines the acceptable values for roles and permissions.
+
+  By default, types related to roles and permissions, such as `OrganizationCustomRoleKey` and `OrganizationCustomPermissionKey`, will be assigned to `string` if `ClerkAuthorization` is not defined. If you define `ClerkAuthorization` in your project, `OrganizationCustomRoleKey` and `OrganizationCustomPermissionKey` will be assigned to the keys of the `ClerkAuthorization` interface.
+
+In the example below, `ClerkAuthorization` is defined with the default roles that Clerk provides.
+
+```tsx
+export { };
+
+declare global {
+  interface ClerkAuthorization {
+    permission: '';
+    role: 'org:admin' | 'org:member';
+  }
+}
+```
+
+Because Clerk supports custom roles and permissions, you can modify `ClerkAuthorization` to align with the roles and permissions configured in your Clerk application. See how in the example below, the default Clerk roles `org:admin` and `org:member` are replaced with custom roles `org:super_admin`, `org:teacher`, and `org:student`.
+
+```tsx
+export { };
+
+declare global {
+  interface ClerkAuthorization {
+    permission: 'org:quiz:create' | 'org:quiz:grade' | 'org:quiz:read' | 'org:quiz:fill';
+    role: 'org:super_admin' | 'org:teacher' | 'org:student';
+  }
+}
+```

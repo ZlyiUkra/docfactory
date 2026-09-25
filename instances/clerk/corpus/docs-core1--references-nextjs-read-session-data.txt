@@ -1,0 +1,217 @@
+# Read session and user data in your Next.js app with Clerk
+# джерело: https://github.com/clerk/clerk-docs/blob/core-1/docs/references/nextjs/read-session-data.mdx
+# отримано: 2026-09-25
+# версія: core-1
+
+Clerk provides a set of hooks and helpers that you can use to access the active session and user data in your Next.js application. Here are examples of how to use these helpers in both the client and server side to get you started.
+
+## Server side
+
+### App Router
+
+`auth()` and `currentUser()` are App Router-specific helpers that you can use inside of your Route Handlers, Middleware, Server Components, and Server Actions.
+
+The `auth()` helper will return the `Auth` object of the currently active user. Now that request data is available in the global scope through Next.js's `headers()` and `cookies()` methods, passing the request object to Clerk is no longer required.
+
+The `currentUser()` helper will return the `Backend API User` object of the currently active user. This is helpful if you want to render information, like their first and last name, directly from the server.
+
+ Under the hood, `currentUser()` uses the `clerkClient` wrapper to make a call to Clerk's Backend API. This does count towards the Backend API Request Rate Limit. This also uses `fetch()` so it is automatically deduped per request.
+
+  Any requests from a Client Component to a Route Handler will read the session from cookies and will not need the token sent as a Bearer token.
+
+    This example uses the new `auth()` helper to validate an authenticated user and the new `currentUser()` helper to access the `Backend API User` object for the authenticated user.
+
+```tsx
+    import { auth, currentUser } from "@clerk/nextjs";
+
+    export default async function Page() {
+
+      // Get the userId from auth() -- if null, the user is not signed in
+      const { userId } = auth();
+
+      if (userId) {
+        // Query DB for user specific information or display assets only to signed in users
+      }
+
+      // Get the Backend API User object when you need access to the user's information
+      const user = await currentUser()
+      // Use `user` to render user details or create UI elements
+    }
+```
+
+    A Route Handler added to `publicRoutes` can still use the `auth()` helper to return information about the user or their authentication state, or to control access to some or all of the Route Handler. The `auth()` helper does require Middleware.
+
+```tsx
+    import { NextResponse } from 'next/server';
+    import { auth } from '@clerk/nextjs';
+
+    export async function GET() {
+
+      // Get the userId from auth() -- if null, the user is not signed in
+      const { userId } = auth();
+
+      if (!userId) {
+        return new NextResponse("Unauthorized", { status: 401 });
+      }
+
+      // Perform your Route Handler's logic
+
+      return NextResponse.json({ userId }, { status: 200 });
+    }
+```
+
+    A Route Handler added to `publicRoutes` can still use the `auth()` helper to return information about the user or their authentication state, or to control access to some or all of the Route Handler. The `auth()` helper does require Middleware.
+
+    In this example, the `auth()` helper is used to validate an authenticated user and the `currentUser()` helper is used to access the `Backend API User` object for the authenticated user.
+
+```tsx
+    import { NextResponse } from 'next/server';
+    import { currentUser, auth } from "@clerk/nextjs";
+
+    export async function GET() {
+
+      // Get the userId from auth() -- if null, the user is not signed in
+      const { userId } = auth();
+
+      if (!userId) {
+        return new NextResponse("Unauthorized", { status: 401 });
+      }
+
+      // Get the Backend API User object when you need access to the user's information
+      const user = await currentUser();
+
+      // Perform your Route Handler's logic with the returned user object
+
+      return NextResponse.json({ "user": user }, { status: 200 })
+    }
+```
+
+### Pages Router
+
+    For Next.js applications using the Pages Router, you can retrieve information about the user and their authentication state, or control access to some or all of your API routes by using the `getAuth()` helper. The `getAuth()` helper does require Middleware.
+
+```tsx
+    import type { NextApiRequest, NextApiResponse } from "next";
+    import { getAuth } from "@clerk/nextjs/server";
+
+    export default function handler(req: NextApiRequest, res: NextApiResponse) {
+      const { userId } = getAuth(req);
+
+      if (!userId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      // retrieve data from your database
+
+      res.status(200).json({});
+    }
+```
+
+    For Next.js applications using the Pages Router, you can retrieve information about the user and their authentication state, or control access to some or all of your API routes by using the `getAuth()` helper. The `getAuth()` helper does require Middleware.
+
+    In some cases, you may need the full `User` object. For example, if you want to access the user's email address address or name, you can use the `clerkClient` helper to get the full `User` object.
+
+```tsx
+    import { clerkClient } from "@clerk/nextjs";
+    import { getAuth } from "@clerk/nextjs/server";
+    import type { NextApiRequest, NextApiResponse } from "next";
+
+    export default async function handler(
+      req: NextApiRequest,
+      res: NextApiResponse
+    ) {
+      const { userId } = getAuth(req);
+
+      if (!userId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const user = await clerkClient.users.getUser(userId);
+
+      // use the user object to decide what data to return
+
+      return res.status(200).json({});
+    }
+```
+
+    You can access the active session and user data in your `getServerSideProps` using the `getAuth()` helper.
+
+      Please note the addition of `buildClerkProps` in the return statement, which informs the Clerk React helpers of the authentication state during server-side rendering (like `useAuth()`, `<SignedIn>`, and `<SignedOut>`).
+
+```tsx
+    import { getAuth, buildClerkProps } from "@clerk/nextjs/server";
+    import { GetServerSideProps } from "next";
+
+    export const getServerSideProps: GetServerSideProps = async (ctx) => {
+      const { userId } = getAuth(ctx.req);
+
+      if (!userId) {
+        // handle user is not signed in.
+      }
+
+      // Load any data your application needs for the page using the userId
+
+      return { props: { ...buildClerkProps(ctx.req) } };
+    };
+```
+
+    You can also access the full `User` object before passing it to the page by using the `clerkClient` helper.
+
+```tsx
+    import { clerkClient } from "@clerk/nextjs";
+    import { getAuth, buildClerkProps } from "@clerk/nextjs/server";
+    import { GetServerSideProps } from "next";
+
+    export const getServerSideProps: GetServerSideProps = async (ctx) => {
+      const { userId } = getAuth(ctx.req);
+
+      const user = userId ? await clerkClient.users.getUser(userId) : undefined;
+
+      return { props: { ...buildClerkProps(ctx.req, { user }) } };
+    };
+```
+
+## Client side
+
+### `useAuth`
+
+The `useAuth` hook is a convenient way to access the current auth state. This hook provides the minimal information needed for data-loading and helper methods to manage the current active session.
+
+```tsx
+"use client";
+import { useAuth } from "@clerk/nextjs";
+
+export default function Example() {
+  const { isLoaded, userId, sessionId, getToken } = useAuth();
+
+  // In case the user signs out while on the page.
+  if (!isLoaded || !userId) {
+    return null;
+  }
+
+  return (
+    <div>
+      Hello, {userId} your current active session is {sessionId}
+    </div>
+  );
+}
+```
+
+### `useUser`
+
+The `useUser` hook is a convenient way to access the current user data where you need it. This hook provides the user data and helper methods to manage the current active session.
+
+```tsx
+"use client";
+import { useUser } from "@clerk/nextjs";
+
+export default function Example() {
+  const { isLoaded, isSignedIn, user } = useUser();
+
+  if (!isLoaded || !isSignedIn) {
+    return null;
+  }
+
+  return <div>Hello, {user.firstName} welcome to Clerk</div>;
+}
+```

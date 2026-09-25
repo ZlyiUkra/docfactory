@@ -1,0 +1,123 @@
+# Invite users to an organization
+# джерело: https://github.com/clerk/clerk-docs/blob/core-1/docs/organizations/inviting-users.mdx
+# отримано: 2026-09-25
+# версія: core-1
+
+Organization members with appropriate permissions can invite new users to their organization and manage those invitations. When an administrator invites a new member, an invitation email is sent out. The invitation recipient can be either an existing user of your application or a new user. If the latter is true, the user will need to register in order to accept the invitation.
+
+In React and Next.js applications, the `useOrganization()` hook returns the `organization` property, which is then used to call `organization.inviteMember()` passing in the recipient's email address and desired role.
+
+Administrators are also able to revoke organization invitations for users that have not yet joined, which will prevent the user from becoming an organization member. This is done by calling the `revoke()` method on the invitations in the `invitationList` returned by the `useOrganization()` hook.
+
+## Usage
+
+The example below includes an `InviteMember()` component that allows administrators to invite new members to their organization. It also includes an `InvitationList()` component that lists all pending invitations and allows administrators to revoke them. This example is written for Next.js App Router but is supported by any React meta framework, such as Remix or Gatsby.
+
+```tsx
+"use client"
+
+import { useOrganization } from '@clerk/nextjs';
+import { useState } from 'react';
+
+function InviteMember() {
+  const { organization, isLoaded } = useOrganization();
+  const [emailAddress, setEmailAddress] = useState('');
+  const [role, setRole] = useState<'org:member' | 'admin'>('org:member');
+  const [disabled, setDisabled] = useState(false);
+
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    if (!organization || !isLoaded) {
+      return <>Loading</>;
+    }
+
+    e.preventDefault();
+    setDisabled(true);
+    try {
+    await organization.inviteMember({ emailAddress, role });
+    setEmailAddress('');
+    setRole('org:member');
+    setDisabled(false);
+    } catch (error) {
+      // Handle error if one if returned
+      console.log('Error:', error)
+    }
+  };
+
+  return (
+    <form onSubmit={onSubmit}>
+      <input
+        type="text"
+        placeholder="Email address"
+        value={emailAddress}
+        onChange={e => setEmailAddress(e.target.value)}
+      />
+      <label>
+        <input
+          type="radio"
+          checked={role === 'admin'}
+          onChange={() => {
+            setRole('admin');
+          }}
+        />{' '}
+        Admin
+      </label>
+      <label>
+        <input
+          type="radio"
+          checked={role === 'org:member'}
+          onChange={() => {
+            setRole('org:member');
+          }}
+        />{' '}
+        Member
+      </label>{' '}
+      <button type="submit" disabled={disabled}>
+        Invite
+      </button>
+    </form>
+  );
+}
+
+export default function InvitationList() {
+  const { invitations, isLoaded } = useOrganization({ invitations: {} });
+
+  if (!invitations || !isLoaded) {
+    return <>Loading</>;
+  }
+
+  return (
+    <div>
+      <h2>Invite member</h2>
+      <InviteMember />
+
+      <h2>Pending invitations</h2>
+
+        {invitations.data && invitations.data.length ? invitations.data?.map(i => (
+          <ul>
+          <li key={i.id}>
+            {i.emailAddress} <button onClick={() => i.revoke()}>Revoke</button>
+          </li>
+          </ul>
+        )) : (
+          <p>No pending invitations</p>
+        )}
+    </div>
+  );
+}
+```
+
+### Custom redirect URL
+
+When creating an organization invitation and using Clerk's Next.js, Remix, or Backend SDKs, you can specify a custom redirect URL. After users click on organization invitation link and the ticket is verified, they will get redirected to that URL. The URL will contain two important query parameters added by Clerk: `__clerk_ticket` and `__clerk_status`.
+
+The `__clerk_ticket` query parameter will hold the actual ticket token, which can be used during sign-in and sign-up flows in order to complete the organization invitation flow.
+
+The `__clerk_status` query parameter is the outcome of the ticket verification and will contain one of three values:
+- `sign_in` indicates the user already exists in your application. You should create a sign-in ticket in order to complete the flow.
+- `sign_up` indicates the user doesn't already exist in your application. You should create a sign-up ticket in order to complete the flow.
+- `complete` indicates the user already exists in your application, and was signed in. The flow has been completed and no further actions are required.
+
+An example implementation on how to create an invitation by providing a redirect url using Clerk backend SDK:
+```ts
+clerkClient.organizations.createOrganizationInvitation({ organizationId: 'org_2S7G8yGKaPp7nWn52idDTnxXkWW', emailAddress: 'member@myapp.com', inviterUserId: 'user_2ULtoAaFHBSep6Gnr5bphZXITmD', role: 'org:member', redirectUrl: "https://myapp.com/invite-accepted" })
+```
