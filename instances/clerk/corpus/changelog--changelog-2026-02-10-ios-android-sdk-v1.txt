@@ -1,0 +1,124 @@
+# iOS and Android SDKs v1
+# джерело: https://clerk.com/changelog/2026-02-10-ios-android-sdk-v1
+# отримано: 2026-09-25
+
+Clerk's iOS and Android SDKs are now at v1, focused on a better developer experience and a simplified API across both platforms. The biggest change is a unified entry point: all auth methods now live under `.auth` in each SDK, so everything related to authentication is in one place — with simpler, easier-to-use APIs throughout.
+
+If you're upgrading from v0, follow the migration guides: iOS v1 migration guide and Android v1 migration guide.
+
+## What's new in iOS
+
+Some highlights:
+
+- **Unified auth entry point:** All auth flows live under `clerk.auth`, so sign-in, sign-up, and sign-out share one consistent surface.
+
+  **Swift**
+
+```swift
+  var signIn = try await Clerk.shared.auth.signInWithEmailCode(
+    emailAddress: "newuser@clerk.com"
+  )
+```
+
+  **SwiftUI**
+
+```swift
+  struct ContentView: View {
+    @Environment(Clerk.self) private var clerk
+
+    var body: some View {
+      Button("Send code") {
+        Task {
+          await sendEmailCode()
+        }
+      }
+    }
+
+    private func sendEmailCode() async {
+      do {
+        var signIn = try await clerk.auth.signInWithEmailCode(
+          emailAddress: "newuser@clerk.com"
+        )
+      } catch {
+        // Handle error
+      }
+    }
+  }
+```
+
+- **Import only what you need:** v1 splits the iOS SDK into `ClerkKit` (core APIs) and `ClerkKitUI` (prebuilt views), so you only import what you use.
+
+```swift
+  import ClerkKit
+  import ClerkKitUI
+```
+
+- **Simpler, more flexible configuration:** Configure Clerk once at launch with `Clerk.configure(...)`.
+
+```swift
+  Clerk.configure(publishableKey: "YOUR_PUBLISHABLE_KEY")
+```
+
+- **More modern SwiftUI wiring:** Inject `Clerk.shared` directly into the environment instead of the old custom key, and read it with `@Environment(Clerk.self)`.
+
+```swift
+  ContentView()
+    .environment(Clerk.shared)
+```
+
+```swift
+  @Environment(Clerk.self) private var clerk
+```
+
+Check out the iOS docs for full details.
+
+## What's new in Android
+
+Some highlights:
+
+- **Unified auth entry point:** All auth flows live under `Clerk.auth`, so sign-in, sign-up, and sign-out stay in one place.
+
+  **Kotlin**
+
+```kotlin
+  val signIn = Clerk.auth.signInWithOtp {
+    email = "newuser@clerk.com"
+  }
+```
+
+  **Compose**
+
+```kotlin
+  @Composable
+  fun SignInView() {
+    val scope = rememberCoroutineScope()
+
+    Button(onClick = {
+      scope.launch {
+        sendEmailCode()
+      }
+    }) {
+      Text("Send code")
+    }
+  }
+
+  private suspend fun sendEmailCode() {
+    Clerk.auth.signInWithOtp { email = "newuser@clerk.com" }
+      .onSuccess { signIn ->
+        // Continue the flow
+      }
+      .onFailure { error ->
+        // Handle error
+      }
+  }
+```
+- **Clearer auth state naming:** `signIn` and `signUp` state are now `currentSignIn` and `currentSignUp` to avoid method-name confusion.
+- **Builder pattern for auth methods:** Auth flows adopt builders for cleaner call sites and more explicit parameter grouping, including MFA steps.
+
+Check out the Android docs for full details.
+
+## Get started
+
+v1 makes it easier to build consistent native experiences across iOS and Android. Follow the platform quickstarts to get set up: iOS quickstart and Android quickstart. If you're upgrading, use the migration guides above to update imports, config, and auth flow calls.
+
+Need help? Reach us on Clerk Discord or explore the source on GitHub: clerk-ios and clerk-android.

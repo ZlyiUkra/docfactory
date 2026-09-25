@@ -1,0 +1,40 @@
+# Set Active Organization by Slug
+# джерело: https://clerk.com/changelog/2024-08-02-set-active-by-slug
+# отримано: 2026-09-25
+
+For applications that include the organization slug in their URL path, when managing the Clerk active organization, it is common to have an organization slug handy from the URL, but not necessarily an organization ID.
+
+Now, it's possible to call `setActive` with an organization slug. This saves an extra call to fetch the organization ID, improving performance and reducing complexity.
+
+The example below creates a component that uses The Next.js useParams() hook to get the organization slug from the URL, and then the `setActive` method to set that organization as active.
+
+```tsx
+'use client'
+
+import { useEffect } from 'react'
+import { useParams } from 'next/navigation'
+import { useAuth, useOrganizationList } from '@clerk/nextjs'
+
+export function SyncActiveOrganizationFromURLToSession() {
+  const { setActive, isLoaded } = useOrganizationList()
+
+  // Get the organization slug from the session
+  const { orgSlug } = useAuth()
+
+  // Get the organization slug from the URL
+  // e.g. https://example.com/orgSlug/<your-org-slug>
+  const { orgSlug: urlOrgSlug } = useParams() as { orgSlug: string }
+
+  useEffect(() => {
+    if (!isLoaded) return
+
+    // If the org slug in the URL is not the same as the org slug in the session (the active organization),
+    // set the active organization to be the org from the URL.
+    if (urlOrgSlug !== orgSlug) {
+      void setActive({ organization: urlOrgSlug })
+    }
+  }, [orgSlug, isLoaded, setActive, urlOrgSlug])
+
+  return null
+}
+```

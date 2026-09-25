@@ -1,0 +1,155 @@
+# OAuth Provider Improvements
+# джерело: https://clerk.com/changelog/2025-06-13-oauth-improvements
+# отримано: 2026-09-25
+
+We're excited  to announce a major expansion to Clerk's OAuth capabilities! This release adds the following features to Clerk:
+
+- OAuth tokens generated through Clerk's OAuth endpoints can now be verified  through Clerk's SDKs and instantly revoked.
+- Clerk now supports authorization server metadata out of the box.
+- The OAuth authorization flow now includes a consent screen that displays the access that the user is granting and ensures that they are ok with it before completing the flow.
+- Implementing public clients (that must complete the token exchange in the browser) with Clerk's OAuth feature is now possible due to changes to our CORS handling.
+- Clerk now supports dynamic client registration for OAuth clients.
+- Clerk's OAuth implementation is compatible with all the requirements needed to implement MCP services using Clerk as an authorization service.
+
+We have been working hard for the last few months on these features and are beyond excited to finally get them into our customers and users' hands. Many thanks to everyone who helped us to test and refine them through our early access program!
+
+### What is OAuth?
+
+If you're a web developer, you have no doubt heard the term “OAuth” and know it's in some way related to authentication, or maybe to single sign on, but for the vast majority of engineers, this is about as far as it goes. Truth be told, OAuth is quite a confusing topic, largely because _the term “OAuth” is used to refer to three entirely different features, and there is no clear way to differentiate between them._ We wrote a detailed post explaining OAuth in general, as well as these three distinctions that you can read here. The key takeaway: these new features enable **OAuth scoped access** - allowing third-party applications to access user data with explicit permission and limited scope.
+
+Let's recap the three OAuth use cases:
+
+1. **OAuth Scoped Access** - _The features from this announcement enable this_
+2. **OAuth SSO** - _We already had support for this_
+3. **OAuth User Management** - _We do user management, but not via OAuth_
+
+With this background out of the way, let's get into an example of how these new features work!
+
+### Implementing OAuth scoped access
+
+If you'd like to take this feature for a spin, we have a guide on how to implement OAuth scoped access into a Clerk application right here. It just takes a few minutes to configure an OAuth client in Clerk's dashboard and start using it.
+
+### Verifying OAuth access tokens with Clerk
+
+If you are building an application that uses Clerk and would like to incorporate OAuth, you will want to ensure that, after the client gets an OAuth access token, they can use it to make authenticated requests into your app (the _resource service_) using the token. Let's look at an example of how this could be done on an API route with Clerk's Next.js SDK:
+
+```tsx
+// app/api/example/route.ts
+import { auth } from '@clerk/nextjs'
+
+export async function GET() {
+  const { userId, isAuthenticated } = await auth({
+    acceptsToken: 'oauth_token',
+  })
+
+  if (!isAuthenticated) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // pseudo-code: get user data from a database
+  const userData = await getUserDataFromDatabase({ clerkUserId: userId })
+
+  return Response.json(userData)
+}
+```
+
+To learn more about verifying machine tokens with Clerk, check out our new OAuth documentation on the topic right here.
+
+OAuth token verification through Clerk is currently available across most of our SDK ecosystem, making it easy to build resource servers that can authenticate requests from OAuth clients.
+
+**Fully supported:**
+
+- Next.js
+- JavaScript Backend SDK
+- Express SDK
+- React Router
+- Fastify SDK
+- TanStack Start
+- Python SDK
+- C# SDK
+- Java SDK
+
+**Coming soon:**
+
+- Astro SDK
+- Nuxt SDK
+- PHP SDK
+- Go SDK
+- Ruby SDK
+- Expo SDK
+- iOS SDK
+
+If you're using one of the "coming soon" SDKs, you can verify OAuth tokens using Clerk's REST API directly:
+
+```bash
+curl https://api.clerk.com/oauth_applications/access_tokens/verify \
+  -X POST \
+  -H 'Authorization: Bearer your-clerk-api-key-here' \
+  -H 'Content-Type: application/json' \
+  -d '{ "access_token": "your-oauth-token-here" }'
+```
+
+Want to help prioritize? Let us know on our roadmap which SDK you need most!
+
+### OAuth consent screen
+
+The new OAuth consent screen ensures users understand exactly what permissions they're granting before completing the OAuth flow.
+
+**The consent screen displays:**
+
+- The requesting application's name and logo
+- Specific scopes being requested in user-friendly language
+- Clear accept/deny options
+
+Clerk's OAuth consent screen
+
+In order to avoid breaking changes and security issues, we have implemented the following settings with respect to the consent screen
+
+- **New OAuth applications**: Consent screen enabled by default
+- **Existing OAuth applications**: Disabled by default (to avoid breaking changes), but we strongly recommend enabling it
+- **OAuth applications with dynamic client registration enabled**: Consent screen automatically enforced and cannot be disabled
+
+You can toggle the consent screen in the settings for any individual OAuth application on the Clerk dashboard.
+
+A screenshot of the OAuth "consent screen" setting in the Clerk dashboard
+
+We strongly recommend enabling the consent screen for all OAuth applications. Without a consent screen, any logged-in user who visits an OAuth authorization URL automatically grants access to any requested scopes. The consent screen acts as a critical security checkpoint, preventing malicious applications from silently gaining access to user accounts.
+
+### Dynamic client registration
+
+Clerk now supports dynamic client registration, allowing OAuth clients to be created programmatically via API in addition to manually through the dashboard.
+
+You can enable this feature through a toggle in your OAuth applications settings:
+
+A screenshot of the "enable dynamic client registration" setting in the Clerk dashboard
+
+**What is dynamic client registration?** If you're unfamiliar with this OAuth extension, we cover it in detail (including real-world use cases and security considerations) in our comprehensive OAuth guide, and our documentation.
+
+### Building an MCP service using Clerk's OAuth server
+
+We've heard loud and clear from our users about the interest in leveraging OAuth to support MCP integrations. With this set of improvements to our OAuth capabilities, building MCP services that use Clerk as their authorization server becomes possible.
+
+MCP services often need to access user data from various sources on behalf of AI applications. This requires robust OAuth flows with proper consent management, token verification, and security controls - exactly what Clerk's enhanced OAuth features provide. The combination of dynamic client registration (for registering MCP servers programmatically), the consent screen (for secure user authorization), and comprehensive SDK support makes Clerk an ideal authorization server for MCP implementations.
+
+Imagine the following example of a real-world use case. Say you've built a project management tool using Clerk for authentication. With Clerk's OAuth server, you can easily expose an MCP endpoint that allows AI applications like Cursor, ChatGPT, Claude, or Windsurf to securely access your users' project data. Your users can authorize these AI tools through Clerk's consent screen, and the AI applications can then help with tasks like generating project summaries, suggesting optimizations, or automating workflows - all while maintaining secure, user-controlled access to your application's data.
+
+We will have another post coming soon that goes into detailed implementation of building MCP services using Clerk's OAuth server. In the meantime, if you'd like to peek behind the curtains, we have a reference implementation of an MCP service using next.js and Clerk right here.
+
+### Custom scopes: coming soon
+
+We don't yet have support for adding custom OAuth scopes, we wanted to get these new OAuth features into our users' hands as quickly as they were usable and stable, which we feel like they are now. Next on our list is implementing a way that custom scopes can be added, accepted, and checked through our SDKs. We'll have another update coming your way soon when this feature is available!
+
+If you're interested in getting involved with early access for custom OAuth scopes, please add a vote and/or feedback to the item on our roadmap here and we'll be in touch soon!
+
+### Aside: didn't Clerk already have OAuth support?
+
+Sort of - while Clerk previously had endpoints for OAuth, and docs for how to configure it for SSO, this implementation was built specifically for SSO integration with Shopify and was lacking several critical features that are necessary for broad usage:
+
+- The OAuth access token returned was not accepted by any of Clerk's SDKs and did not have a method for verifying its authenticity, making it not very useful as an access token.
+- There was no OAuth consent page implemented, meaning that users going through the OAuth flow would not get the chance to review and accept scopes being requested by the third party. As long as the user was signed in, and visited an authorize link, the access request would be automatically accepted. There are some cases when only limited scopes are available and the flow is only being used for SSO where this can make sense (which was the case with the previous implementation), but outside of that it's a substantial security risk.
+- While PKCE was previously implemented in order to support public clients, Clerk's API would reject any requests to the token endpoint made from a browser due to incomplete CORS configuration, making the public client flow for most use cases non-functional.
+- The OAuth applications page in Clerk's dashboard had no pagination, so any more than 10 applications were not displayed and unable to be accessed at all.
+- There was no support for dynamic client registration, an OAuth protocol extension that is a frequent requirement for use with MCP services.
+- There was no way to create custom scopes and add them to OAuth requests
+
+With the current release, all of these points (outside of the custom scopes, but that's coming very soon) are now resolved, and we feel confident that this is a _feature-complete_ release of a built-in OAuth server for OAuth scoped access.

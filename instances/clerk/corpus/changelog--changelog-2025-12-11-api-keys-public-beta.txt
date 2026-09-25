@@ -1,0 +1,88 @@
+# API Keys Public Beta
+# джерело: https://clerk.com/changelog/2025-12-11-api-keys-public-beta
+# отримано: 2026-09-25
+
+API keys are now available for authorization, with management built-in to the prebuilt components. This feature is part of the machine authentication suite.
+
+## Zero-Code UI Components
+
+When you enable API keys in the Clerk Dashboard, an **API Keys** tab appears in your `<UserProfile />` and `<OrganizationProfile />` components. Users can then create, view, and revoke their API keys.
+
+You can also use the standalone `<APIKeys />` component anywhere in your application:
+
+```tsx
+import { APIKeys } from '@clerk/nextjs'
+
+export default function Page() {
+  return <APIKeys />
+}
+```
+
+## Backend SDK Integration
+
+You can also create and manage API keys programmatically using the Backend SDK, with control over scopes, claims, and expiration:
+
+```ts
+const apiKey = await clerkClient.apiKeys.create({
+  name: 'Production API Key',
+  subject: 'user_xxx', // or 'org_xxx' for organization keys
+  scopes: ['read:data', 'write:data'],
+  secondsUntilExpiration: 86400, // optional: expires in 24 hours
+})
+
+// Store apiKey.secret immediately - it's only shown once!
+```
+
+## Verify API Keys in Your Routes
+
+Use the `auth()` helper to verify API keys in your backend. An example of this using Next.js is shown below:
+
+```tsx
+import { auth } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server'
+
+export async function GET() {
+  const { isAuthenticated, userId, scopes } = await auth({
+    acceptsToken: 'api_key',
+  })
+
+  if (!isAuthenticated) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // Check scopes for fine-grained access control
+  if (!scopes?.includes('read:data')) {
+    return NextResponse.json({ error: 'Missing required scope' }, { status: 403 })
+  }
+
+  return NextResponse.json({ userId })
+}
+```
+
+## Key Features
+
+- **User & Organization scoped** — Keys maintain identity context, always tied to a user or organization
+- **Instant revocation** — API keys use opaque tokens (not JWTs), enabling immediate invalidation
+- **Scopes** — Define exactly what each key can access
+- **Custom claims** — Store additional metadata on keys (backend SDK only)
+- **Optional expiration** — Set TTL or keep keys long-lived
+
+## Pricing
+
+API keys are **free to use during the beta period**. After general availability, they'll move to a simple usage-based pricing model:
+
+- `$0.001` per key creation
+- `$0.00001` per key verification
+
+Billing isn't live yet — we'll provide at least **30 days' notice** before billing begins. We'll also provide usage stats and monitoring in the Dashboard before then, so you'll have complete visibility over your usage and costs.
+
+## Get Started Today
+
+Ready to let your users create API keys? Check out these resources:
+
+- API keys guide — Complete walkthrough of enabling and using API keys
+- Backend SDK reference — Full API for creating, listing, verifying, and revoking keys
+- Dashboard — Enable API keys for your application
+- Tutorial — Build a SaaS application with Clerk and API keys, step by step
+
+We'd love to hear your feedback as you try out API keys. Your input during the beta period will help us refine the feature. Have questions or suggestions? Reach out through our feedback portal or join the discussion in our Discord community.

@@ -1,0 +1,106 @@
+# January 2024 Vulnerability Update
+# джерело: https://clerk.com/changelog/2024-02-02
+# отримано: 2026-09-25
+
+The Clerk team recently identified and patched a critical security vulnerability in the **@clerk/nextjs** SDK that allows malicious actors to gain privileged access or act-on-behalf-of other users.
+
+If you use @clerk/nextjs and have not yet upgraded, please upgrade immediately to 4.29.3
+
+https://clerk.com/changelog/2024-01-12.md
+
+## Timeline of events
+
+### January 9, 2024
+
+Clerk is in the process of developing a new Next.js SDK. During an internal audit of its codebase on the morning of January 9, 2024, one of our team members noticed a discrepancy in how the user’s authentication state was being determined across different helpers.
+
+Around 11:00 AM UTC, more of the the team was notified and it was confirmed that the discrepancy represented a critical security vulnerability. It was determined that the vulnerability was first introduced with `@clerk/nextjs@4.7.0` on Jan 17, 2023.
+
+At 1:06 PM UTC, our team created a pull request in an internal fork of our `clerk/javascript` repository with a potential fix. Simultaneously, we also began investigating whether the same issue existed for any other SDK packages. Fortunately, no other SDKs were affected by this change.
+
+At 3:43 PM UTC, we began identifying which customers were impacted. The Next.js SDK communicates with Clerk servers using a particular header, and we leveraged this to determine which customers were impacted. _(Ultimately, we decided it was best to notify all customers, instead of only the impacted Next.js customers.)_
+
+At 5:24 PM UTC, we contacted Cloudflare, Netlify, and Vercel to investigate if network-layer mitigation could be added as an additional safeguard for our customers.
+
+At 7:23 PM UTC, we created a GitHub Security Advisory to request a CVE for our package. This was to make sure the vulnerability was picked up in downstream security tooling that checks for dependency vulnerabilities.
+
+By 8:19 PM UTC, each vendor had responded to indicate that network-level mitigation was feasible, and provided a list of additional details required to enable the mitigation.
+
+### January 10th, 2024
+
+We spent the day fulfilling the requests from the cloud vendors to enable network-level mitigations. Each vendor had different requests and required different degrees of back-and-forth.
+
+### January 11th, 2024
+
+The cloud vendors all notified us of their intended timelines for deploying network-layer mitigation. In turn, we planned to notify to customers on January 12 at 3:00 PM UTC, after receiving confirmation that all providers had deployed mitigation. We prepared the changelog entry and queued the notification email accordingly.
+
+### January 12, 2024
+
+At 4:36 AM UTC we were notified that one vendor identified a bug during the rollout of its mitigation. We collaborated with the vendor to identify and resolve the issue. The next rollout was scheduled to start around 2:00 PM UTC, but was not expected to finish before our planned 3:00 PM UTC customer notification. We made the decision to delay notification until the rollout could complete.
+
+By 9:00 AM UTC, the other two vendors had verified that their mitigation efforts were deployed.
+
+At 3:46 PM UTC, we were notified that the final vendor’s rollout was in progress, and that the bug was no longer present.
+
+At 5:35 PM UTC, @clerk/nextjs\@4.29.3 was released with the fix.
+
+At 5:53 PM UTC, the changelog was published and we emailed all customers notifying them of the issue and to upgrade to 4.29.3.
+
+At 5:58 PM UTC, the GitHub advisory was published.
+
+At 6:10 PM UTC, GitHub assigned CVE-2024-22206 for this vulnerability.
+
+We chose to omit specific technical details of the vulnerability to reduce the probability of a zero-day attack. However, additional information was made available to customers who sought to inspect their logs for evidence of an exploit.
+
+At 11:04 PM UTC, we announced the vulnerability on Twitter.
+
+### January 12 - January 26, 2024
+
+All customers were welcomed to email our team for assistance with upgrades. We dedicated a team to helping resolve any issues that arose as customers upgraded.
+
+By January 26, all open threads had closed.
+
+### January 31, 2024
+
+We deprecated @clerk/nextjs versions in the range >= 4.7.0, < 4.29.3 on the NPM registry
+
+## Technical details
+
+The @clerk/nextjs SDK uses JWTs to determine the user making a request. A cryptographic signature is used to verify the authenticity of the JWTs. Since verifying the signature is a relatively expensive operation, the SDK only verifies the JWT once per request, within Next.js middleware.
+
+In Next.js, middleware runs in a separate process from the endpoint handler (meaning, the page rendering endpoint or API endpoint). Therefore, Clerk needed to devise a solution for passing the authentication state from middleware to the endpoint handler.
+
+Our solution was to decorate the request with an additional header containing a boolean that indicated the authentication state. If that boolean indicated the user was signed in, the endpoint would parse user details (like userId) from the JWT, without re-verification.
+
+The vulnerability arose due to mismatch in where the SDK looked for the JWT. In both middleware and the endpoint handler, Clerk’s SDK should have looked at the header first, then the cookie. This is how the mechanism was originally designed, and how it functioned until version 4.7.0.
+
+In version 4.7.0, a code refactor resulted in the endpoint handler mistakenly looking at the cookie first, then the header. As a result, it became possible to pass a valid JWT in the header, but a fabricated JWT in the cookie. Middleware would verify the header JWT and decorate the request to indicate it was authenticated, but then the endpoint handler would read fabricated claims from the cookie JWT without re-verification.
+
+Using this technique, the vulnerability allowed an attacker could fabricate claims for two types of attacks:
+
+- Act-on-behalf: an attacker could modify the subject claim (”sub”) to act on behalf of an arbitrary user ID
+- Privilege escalation: the attacker could modify any claims used for authorization to attain increased privileges. For example, a “role” can be arbitrarily changed from “member” to “admin”
+
+Only applications that used authentication in endpoint handlers were impacted. Applications were not impacted if they use a Next.js frontend with a different framework’s backend.
+
+## Lessons and Remediation
+
+While we are fortunate this vulnerability did not escalate into an incident, we regret that it was introduced in the first place. Going forward, we have shifted our focus to preventing vulnerabilities like this from being introduced again.
+
+When Next.js middleware was first introduced in 2021, our SDK team recognized it presented a unique security challenge compared to other frameworks because it runs in a separate thread. In turn, the team consulted with one of our website security experts on the design. The original implementation was safe, but an end-to-end test against this particular vector was not created. The missing test allowed for the refactor, which was performed by a different individuals, to unknowingly introduce the vulnerability.
+
+Alongside releasing the patch version, we updated our CI suites so this exact vulnerability could not be re-introduced. We have also adapted our processes so our web security experts are not only responsible for participating in the design and review of the implementation, but also the design and review of our tests.
+
+In addition, we plan to perform the following over the next two quarters:
+
+- Engage with a third party to conduct code audits of all our SDKs with fresh eyes
+- Add security automation to our build pipelines including vulnerability and risk analysis for first and third-party code
+- Provide additional security training and resources for our engineers
+
+These steps are in addition to our regular independent security audits of our codebase, regular penetration testing, and the continual reports we receive from external security researchers.
+
+If you believe you have found a security vulnerability, please report it to us through our vulnerability disclosure program. For any additional questions or concerns, please reach out to security@clerk.dev.
+
+## Acknowledgements
+
+This was a true, critical vulnerability in our most popular SDK. We want to thank the teams at Cloudflare, Netlify, Vercel for working closely with us to protect our customers against exploits. We are pleased that no customers have reported evidence of an exploit, and we believe that is in large part due to the cloud vendors proactive, network-layer mitigation. We are incredibly grateful for their collaboration and swift action.

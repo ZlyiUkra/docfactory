@@ -1,0 +1,102 @@
+# @clerk/nextjs v6
+# джерело: https://clerk.com/changelog/2024-10-22-clerk-nextjs-v6
+# отримано: 2026-09-25
+
+The Next.js team has announced the stable release of Next.js 15, and Clerk is continuing the tradition of (nearly) same-day support for new major Next.js releases with the release of `@clerk/nextjs` v6.
+
+Get started by running the Clerk upgrade CLI:
+
+```
+npx @clerk/upgrade
+```
+
+Not ready to upgrade to Next.js v15? No problem: `@clerk/nextjs` v6 is backwards compatible with Next.js v14, including the switch to static rendering by default.
+
+## Asynchronous `auth()` (breaking change)
+
+Now that Next.js's request APIs are asynchronous, Clerk's `auth()` helper will follow suit. In addition to supporting Next.js's new async APIs, this change will also allow the addition of more robust validations and new functionality into the `auth()` helper. Stay tuned!
+
+```tsx
+import { auth } from '@clerk/nextjs/server'
+
+export default async function Page() {
+  const { userId } = await auth()
+
+  if (!userId) {
+    return <h1>Hello, guest!</h1>
+  }
+
+  return <h1>Hello, {userId}!</h1>
+}
+```
+
+With the change to async, we weren't happy with how the usage of `auth().protect()` felt, so we moved `protect` to be a property of `auth`, instead of part of the return value.
+
+```tsx
+import { auth } from '@clerk/nextjs/server'
+
+export default async function Page() {
+  const { userId } = await auth.protect()
+
+  return <h1>Hello, {userId}!</h1>
+}
+```
+
+To make migration as easy as possible, we're also including a codemod that will update your usages of `auth()` and `auth().protect()`. For situations where the codemod isn't able to update your code, please see the upgrade guide for detailed steps.
+
+## Static rendering by default, opt-in dynamic (and partial prerendering support)
+
+Historically, usage of `<ClerkProvider>` has opted your entire application in to dynamic rendering due to the dynamic and personalized nature of auth-related data. We've heard the feedback from our users that this default didn't feel like it aligned with Next.js best practices. Starting with v6, **`<ClerkProvider>` will no longer opt your entire application into dynamic rendering by default.** This change also brings support for Next.js's upcoming Partial Prerendering mode (PPR). PPR allows a page to be both static _and_ dynamic by moving the optimization from pages to components.
+
+Dynamic auth data is still available by using the `auth()` helper in a server component. This data can also be passed to client components directly as needed. This is the recommended way to access auth data going forward. For existing applications that use the `useAuth()` hook in Client Components that are server-side rendered, this is a breaking change. Wrap these components in `<ClerkProvider dynamic>` to make auth data available to the hook during rendering. As a best practice, we recommend wrapping usage of `<ClerkProvider dynamic>` with suspense to ensure your page is setup to take advantage of PPR.
+
+```tsx
+import { Suspense } from 'react'
+import { ClerkProvider } from '@clerk/nextjs'
+
+export default function Page() {
+  return (
+    <main>
+      <header>
+        <Logo />
+        <Suspense fallback={<FallbackAvatar />}>
+          <ClerkProvider dynamic>
+            <UserAvatar />
+          </ClerkProvider>
+        </Suspense>
+      </header>
+    </main>
+  )
+}
+```
+
+If you want `<ClerkProvider>` to continue making dynamic auth data available by default, add the `dynamic` prop to your root `<ClerkProvider>`:
+
+```tsx
+import { ClerkProvider } from '@clerk/nextjs'
+
+export default function RootLayout({ children }) {
+  return (
+    <ClerkProvider dynamic>
+      <html>
+        <body>{children}</body>
+      </html>
+    </ClerkProvider>
+  )
+}
+```
+
+This opts every single page into dynamic rendering, or PPR when enabled. For this reason, it is still recommended to take a more granular approach to dynamic data access by using `<ClerkProvider dynamic>` further down your component tree.
+
+To learn more about Next.js's different rendering modes and how Clerk interacts with them, check out the documentation.
+
+## Removal of deprecated APIs
+
+A number of deprecated APIs have been removed as part of this release:
+
+- `authMiddleware()` - use `clerkMiddleware()` instead
+- `redirectToSignIn()` - use `const { redirectToSignIn } = await auth()` instead
+- `redirectToSignUp()` - use `const { redirectToSignUp } = await auth()` instead
+- `clerkClient` singleton - use `await clerkClient()` instead
+
+For more information, please see the upgrade guide.

@@ -1,0 +1,58 @@
+# Reverification: Public Beta
+# джерело: https://clerk.com/changelog/2024-12-02-reverification-beta
+# отримано: 2026-09-25
+
+Our new **reverification** feature protects sensitive actions by requiring that users have verified their credentials recently. If not, the user is prompted to verify their credentials again.
+
+## How it works
+
+Our SDK has been updated with new backend and frontend helpers to detect and coordinate a reverification flow. This is how you can protect a Next.js route handler:
+
+filename: /app/api/transfer/route.ts
+```ts
+import { auth, reverificationErrorResponse } from '@clerk/nextjs/server'
+
+export const POST = async (request: Request) => {
+  const { has } = await auth()
+
+  // Check if the user has *not* verified their credentials within the past 10 minutes.
+  const shouldUserReverify = !has({ reverification: 'strict' })
+
+  // If the user hasn't reverified, return an error with the matching configuration (e.g., `strict`)
+  if (shouldUserReverify) {
+    return reverificationErrorResponse('strict')
+  }
+
+  const { amountInCents } = await request.json()
+  // Now that the user has verified credentials, let's perform the sensitive action
+  const updatedResource = await db.updateBalance(amountInCents)
+  return new Response(JSON.stringify(updatedResource))
+}
+```
+
+Then, from the frontend, you can configure fetch to listen for the reverification error and prompt the user for reverification. You can use our new `useReverification()` helper for this:
+
+filename: /app/transfer/page.tsx
+```tsx
+'use client'
+
+import { useReverification } from '@clerk/nextjs'
+
+export default function Page({ amountInCents }: { amountInCents: number }) {
+  const [transferMoney] = useReverification(() =>
+    fetch('/api/transfer', {
+      method: 'POST',
+      body: JSON.stringify({ amountInCents }),
+    }),
+  )
+
+  return <button onClick={transferMoney}>Transfer</button>
+}
+```
+
+Whenever Clerk identifies that a user needs to verify their credentials, a modal will appear, similar to the one shown in the image.
+reverification component
+
+## Get started
+
+Visit the reverification guide to discover examples on how to integrate this feature into your application today.

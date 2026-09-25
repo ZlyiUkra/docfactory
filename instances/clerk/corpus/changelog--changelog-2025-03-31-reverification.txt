@@ -1,0 +1,69 @@
+# Reverification
+# джерело: https://clerk.com/changelog/2025-03-31-reverification
+# отримано: 2026-09-25
+
+Reverification is officially out of beta and is a great way to protect sensitive actions by requiring users to provide a step-up verification.
+
+As part of this release, we've also updated the `<UserProfile />` component to require reverification for actions like password changes and email updates, you can find the complete list on our documentation.
+
+## How it works
+
+Our SDK includes straightforward hooks to manage reverification smoothly. Here's how to secure a Next.js server action:
+
+filename: app/actions.ts
+```ts
+'use server'
+
+import { auth, reverificationError } from '@clerk/nextjs/server'
+
+export const myAction = async () => {
+  const { has } = await auth.protect()
+
+  // Confirm the user's credentials have been recently verified
+  const shouldUserRevalidate = !has({ reverification: 'strict' })
+
+  // Prompt reverification if recent verification is missing
+  if (shouldUserRevalidate) {
+    return reverificationError('strict')
+  }
+
+  // Proceed if reverification is successful
+  return { success: true }
+}
+```
+
+filename: app/page.tsx
+```tsx
+'use client'
+
+import { useReverification } from '@clerk/nextjs'
+import { isReverificationCancelledError } from '@clerk/nextjs/errors'
+import { myAction } from '../actions'
+
+export default function Page() {
+  const performAction = useReverification(myAction)
+
+  const handleClick = async () => {
+    try {
+      const myData = await performAction()
+      //     ^ this is typed as { success: boolean }
+    } catch (error) {
+      if (isReverificationCancelledError(error)) {
+        // Handle the case where the user cancels reverification
+      }
+
+      // Handle any errors that occur during the action
+    }
+  }
+
+  return <button onClick={handleClick}>Perform action</button>
+}
+```
+
+### Compatibility
+
+- Support for Reverification is enabled for all new Clerk applications
+- For existing applications that want to enable Reverification, you will need to activate the Reverification APIs within the Clerk Dashboard
+- Native and mobile app support within our SDKs is still actively underway and will be available soon
+
+For all of the details around Reverification, explore our documentation.

@@ -1,0 +1,109 @@
+# Core 3
+# джерело: https://clerk.com/changelog/2026-03-03-core-3
+# отримано: 2026-09-25
+
+> **Editor's note (August 2026):** Keyless mode has been removed. For supported frameworks, the current no-account flow is `clerk init`, which provisions an accountless application and writes development keys for you. For other frameworks, the CLI applies the supported setup and guides you through the remaining steps, which may include adding API keys.
+
+We're excited to announce the latest major release of Clerk's SDKs, Core 3. With the release, we're investing in better customization primitives and agent-friendly APIs. Highlights include:
+
+- **Improved customization APIs**: New hooks for building custom sign in, sign up, and checkout flows.
+- **Theme editor and interactive docs**: Customize components visually and preview props live in the docs.
+- **Agent-optimized onboarding**: Keyless mode for more SDKs: TanStack Start, Astro, and React Router.
+- **Modern React support**: Improved support for apps that use concurrent rendering features.
+- **Performance improvements**: Smaller bundles, faster token fetching, better offline handling.
+
+## Upgrade today
+
+We've built an upgrade CLI that scans your codebase and applies codemods for most breaking changes. If you've used our upgrade tool before, the process is the same.
+
+```bash
+npx @clerk/upgrade
+```
+
+Core 3 requires **Node.js 20.9.0+**. For the full list of changes, upgrade prompts, and step-by-step instructions, see the Core 3 upgrade guide.
+
+> If you need to reference the previous documentation, the Core 2 docs are still available.
+
+## Improved customization APIs
+
+We've redesigned the APIs for the `useSignIn`, `useSignUp` and `useCheckout` hooks, and introduced a new `useWaitlist` hook. These refreshed APIs make building custom auth UIs easier for humans and agents.
+
+Previously, you needed to maintain your own state for attempt status, loading states, and error parsing. Now, it's all exposed from the hooks:
+
+```javascript
+// signIn is stateful, updates will trigger re-renders
+const { signIn, fetchStatus, errors } = useSignIn()
+
+// Step methods map directly to the flow
+await signIn.password({ emailAddress, password })
+await signIn.emailCode.sendCode()
+await signIn.emailCode.verifyCode({ code })
+
+// Read the resource's status directly
+signIn.status // 'needs_first_factor' | 'needs_second_factor' | 'complete'
+
+// Built-in fetch state
+fetchStatus // 'idle' | 'fetching'
+
+// Structured field-level errors
+errors.fields.identifier // "Couldn't find your account"
+errors.fields.password // "Password is incorrect"
+```
+
+The same structure applies whether you're building a sign up form, a waitlist, or a checkout flow, so you don't need to learn a different API for each one. The hooks are designed to work with any component library, whether you're using shadcn/ui, Radix, or your own components.
+
+We've also rewritten all of our custom flow documentation to use the new hooks.
+
+## Theme editor and interactive docs
+
+We've launched a theme editor that lets you visually customize Clerk's prebuilt components and copy the resulting `appearance` prop configuration into your app. You can adjust colors, spacing, typography, and borders, and see the changes in real time. Give it a whirl and share your custom themes with us!
+
+Our component documentation is now interactive too. You can tweak props, see live previews, and copy working code directly from the docs.
+
+## Agent-optimized onboarding for more frameworks
+
+Keyless mode, the ability to try Clerk without creating an account or configuring API keys, now works with **TanStack Start**, **Astro**, and **React Router**. You can go from `pnpm install` to a working auth setup without leaving your editor. Great for agents!
+
+## Modern React support
+
+Clerk now works correctly when your app is using React's concurrent features, including transitions, Suspense, and streaming SSR. Previously, Clerk's auth state synchronization could conflict with concurrent rendering, leading to stale state during `useTransition` navigations or hydration mismatches with streaming. Core 3 reworks how Clerk manages auth state internally to resolve these issues. No code changes are needed on your end.
+
+## Performance improvements
+
+- **Smaller bundles**: React is now shared across all framework SDKs instead of being bundled separately with Clerk's components. This saves roughly \~50KB gzipped (the size of `react` + `react-dom`) for apps using components and framework-specific packages like `@clerk/nextjs` or `@clerk/tanstack-react-start`.
+- **Faster satellite domains**: Previously, satellite domains triggered a Handshake redirect to the primary domain on every first page load, even for anonymous visitors. Core 3 introduces a `satelliteAutoSync` option (defaults to `false`) that skips the redirect when no session cookies exist. The handshake now only fires after an explicit sign in action, eliminating the unnecessary redirect for most satellite traffic.
+- **Better offline handling**: `getToken()` previously returned `null` both when the user was signed out and when the device was offline. The latter was unintentional. It now throws a `ClerkOfflineError` when the network is unavailable, so you can more reliably handle being offline in your application.
+- **Optimized token fetching**: `getToken()` now proactively refreshes session tokens in the background before they expire, so your app never has to wait for a token refresh mid-request. This eliminates intermittent blocking delays in apps that make frequent API calls, like AI chat apps with sequential requests.
+
+## Other updates
+
+- **Simplified package names**: `@clerk/clerk-react` is now `@clerk/react`. `@clerk/clerk-expo` is now `@clerk/expo`. The upgrade CLI handles the rename.
+- **Unified `<Show>` component**: `<Protect>`, `<SignedIn>`, and `<SignedOut>` are replaced by a single `<Show>` component. Use `when="signed-in"`, `when="signed-out"`, or pass a condition callback for authorization checks. In certain scenarios, these components still expose the content they are wrapping in your source code. We picked `Show` as the new name to make it clear that this utility should be only be used to control visibility. Learn more.
+
+```jsx
+// Previously <SignedIn>
+<Show when="signed-in">
+  <Dashboard />
+</Show>
+
+// Previously <Protect>
+<Show when={(has) => has({ role: 'admin' })}>
+  <AdminPanel />
+</Show>
+```
+
+- **Automatic light/dark theme**: Previously, you had to manually switch Clerk's component theme depending on the theme of your application. Now, Clerk's components automatically match your app's color scheme if it supports light and dark mode. No additional configuration needed. Learn more.
+- **Automatic Vite env detection**: Clerk detects environment variables in Vite-based projects automatically. No more manually passing `VITE_CLERK_PUBLISHABLE_KEY`. Learn more.
+- **Portal provider**: New `UNSAFE_PortalProvider` component lets you specify a custom container for Clerk's portaled UI elements (popovers, modals, tooltips). This solves a common issue when using Clerk components inside libraries like Radix Dialog or React Aria, where portaled elements would render to `document.body` and end up behind the dialog. Learn more.
+- **Frontend API proxy helper**: `clerkMiddleware` in Next.js and Express now supports proxying requests to Clerk's Frontend API. Previously, you had to implement this yourself following the guide in our docs. Enable it with `frontendApiProxy: { enabled: true }` in your middleware config. Learn more.
+- **Types subpath exports**: You can now import Clerk types directly from any SDK package (e.g. `import type { UserResource } from '@clerk/react/types'`) instead of installing the separate `@clerk/types` package. `@clerk/types` has been deprecated.
+- **Next.js cache components support**: Baseline support for Next.js's cache components. If you're using cache components, `ClerkProvider` should be placed inside `<body>` rather than wrapping `<html>`.
+- **Component changelog**: A new centralized component changelog tracks visual and behavioral updates to prebuilt components, independent of SDK releases.
+
+## Deprecations
+
+- **Clerk Elements**: Deprecated in favor of the redesigned hooks, which cover the same custom UI use cases with less complexity.
+- **`@clerk/types`**: As mentioned above, the dedicated types package has been deprecated in favor of exposing types through existing SDKs.
+- For additional deprecations and breaking changes, see the upgrade guide.
+
+If you run into issues upgrading, reach out on Discord or contact support. We're here to help. Happy building!

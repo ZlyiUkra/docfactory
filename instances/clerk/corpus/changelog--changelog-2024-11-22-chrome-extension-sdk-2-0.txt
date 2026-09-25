@@ -1,0 +1,67 @@
+# Chrome Extension SDK 2.0
+# джерело: https://clerk.com/changelog/2024-11-22-chrome-extension-sdk-2-0
+# отримано: 2026-09-25
+
+We're excited to release version 2.0 of the Chrome Extension SDK. Version 2.0 comes with the new `createClerkClient()` helper for background service workers, improved support for syncing auth state with your web application and detailed documentation for the SDK.
+
+Take a look at our Chrome Extension Quickstart if you're just getting started, or read over the Chrome Extension documentation to learn about all of the features.
+
+Our Chrome Extension Quickstart repo and Chrome Extension Demo repo are a great reference or starting point for a project.
+
+## Introducing `createClerkClient()` for Service Workers
+
+Chrome Extensions pose a unique challenge for developers using Clerk. When the popup or side panel is closed, the Clerk session cookie will become stale. The `createClerkClient()` function is specifically designed to allow extension developers to refresh the user's session, obtain a valid token or other auth, and retrieve user data.
+
+filename: src/background/index.ts
+```ts
+import { createClerkClient } from '@clerk/chrome-extension/background'
+
+const publishableKey = process.env.PLASMO_PUBLIC_CLERK_PUBLISHABLE_KEY
+
+// create a new Clerk instance and get a fresh token for the user
+async function getToken() {
+  const clerk = await createClerkClient({
+    publishableKey,
+  })
+
+  // if there is no user session, then return nothing
+  if (!clerk.session) {
+    return null
+  }
+
+  // return the user's token
+  return await clerk.session?.getToken()
+}
+
+// create a listener to listen for messages from content scripts
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log('Handling request for the users current token')
+
+  getToken()
+    .then((token) => {
+      sendResponse({ token })
+    })
+    .catch((error) => {
+      console.error('[Service Worker]: Error occured -> ', JSON.stringify(error))
+      sendResponse({ token: null })
+    })
+
+  return true // REQUIRED: Indicates that the listener responds asynchronously.
+})
+```
+
+You can now send a message from a content script to the background service worker and get auth status or a token for the user.
+
+filename: src/tabs/content.tsx
+```tsx
+// send a message to the background service worker
+chrome.runtime.sendMessage({ greeting: 'get-token' }, (response) => {
+  // you can now have access to the user's token
+  console.log(response.token)
+})
+```
+
+## Breaking Changes
+
+- `syncSessionWithTab` has been removed and replaced with `syncHost`. Changelog Sync Host Guide
+- The `storage` host permission is now required. Changelog

@@ -1,0 +1,101 @@
+# Infra Changelog - Oct 9, 2025
+# джерело: https://clerk.com/changelog/2025-10-09-infra-changelog
+# отримано: 2026-09-25
+
+_This post is part of a regular series where Clerk shares details about ongoing infrastructure improvements. These updates happen continually behind the scenes, and will not impact end-users beyond improving reliability and performance._
+
+_For previous updates, see Infra Changelog – Sep 25, 2025._
+
+## Changes since last update
+
+### In-network database migration to minimize latency
+
+A migration of our Cloud SQL database within GCP’s network was completed to minimize latency between Cloud Run and Cloud SQL. It was performed by GCP to reverse a prior migration that had increased network latency.
+
+Although the first migration was unnoticed except by our latency monitoring, the reversal was coincident with a “connectivity issue” that lasted 11 minutes. Thankfully, our session failover mechanism succeeded and prevented active users from being signed out. However, new sign ups, sign ins, and other account changes failed during this time.
+
+We are awaiting a full root cause analysis from GCP to determine if the two events were related. We will share the analysis when it becomes available.
+
+Once connectivity was restored, we verified that latency improved as expected.
+
+### Convert high-update workload to append-only
+
+We had a particular high-update table that created undue stress on the database in periods of high activity.
+
+We’ve replaced that high-update workload with an append-only workload. The change was carried out over the course of a week, where we incrementally enabled dual writes until we reached 100% of traffic, then leveraged dual reads over several days to ensure consistent behavior. Finally, we removed dual writes and now only leverage the append-only workload.
+
+### Direct queuing of background jobs
+
+We leverage PubSub for background jobs. Many jobs require transactional guarantees, which we achieve by writing the job details to the database within a transaction. Others don’t, like non-essential jobs for analytics and telemetry.
+
+Previously, all jobs were written to the database, regardless of if they required a transactional guarantee. Going forward, jobs that don’t require transactional guarantees will be queued directly to reduce the database load.
+
+### Database tuning
+
+We’ve continued efforts to tune autovacuum and fillfactor settings. Though this is an ongoing effort that is never truly “done,” we feel we’ve made the major adjustments necessary to take advantage of our recently upgraded database specs.
+
+### Query and index tuning
+
+This is a regular activity that will likely be in every update, but it is still included in the interest of completeness. This time, the biggest improvement came from replacing a DISTINCT with an alternate strategy.
+
+## In progress
+
+### Blue/green database upgrade automation
+
+We’re building an automated mechanism for blue/green database upgrades, which we’ll leverage for version upgrades and settings changes that typically require minutes of downtime.
+
+With automation, we expect these upgrades to complete in a few seconds maximum, and are exploring solutions to minimize request failures during that window.
+
+### Application-to-database “chattiness” optimizations
+
+We’ve started focusing more on and reducing the overall number of queries per request, by either changing our application logic or leveraging database functions to perform multiple queries at once.
+
+These changes will make us more resilient to future database VM migrations within the network, which are typically done administratively by GCP and out of our control. Our intention is to support up to 2ms of network latency between our compute and the database without a noticeable impact on user experience.
+
+### Reduce session API requests
+
+_(Promoted to in progress)_
+
+We’ve discovered a bug in our session refresh logic that causes individual devices to send more refreshes than necessary. We believe resolving this bug can significantly reduce our request volume.
+
+### Improved monitoring
+
+We’re re-analyzing all of our recent degradation and outage incidents and improving our monitoring suite. So far, we’re optimistic that we can achieve earlier notice of potential issues by tuning our existing monitors and adding new ones.
+
+## Planned
+
+### Database connection pooler and major version upgrade
+
+_(Unchanged since last update)_
+
+Clerk has historically only used a client-side database pooler inside our Cloud Run containers. Though we’ve known this is non-optimal, we did this because Google did not offer managed database pooler, and we were skeptical of putting a self-hosted service in the middle of two managed services (Cloud Run and Cloud SQL).
+
+In March, Google released a managed connection pooler in Preview, and it reached General Availability this week. However, using the connection pooler will require a major database version upgrade, and in our particular case, a network infrastructure upgrade. We are collaborating with Google to determine how we can achieve both upgrades safely and without downtime.
+
+Simultaneously, we are investigating other database and connection pooler solutions that can run within our VPC.
+
+We plan to leverage our blue/green automation for these upgrades.
+
+### Further session API isolation
+
+_(Unchanged since last update)_
+
+Currently, the session API must failover to a replica during primary database downtime, which is not ideal since the primary database is still impacted by other workloads. We are pursuing solutions that would lead to a session-specific database.
+
+### Additional service isolation
+
+_(Unchanged since last update)_
+
+While working to isolate our Session API, we’ve already developed a handful of techniques that can be re-used to isolate other services. When done, we’d like isolated workloads for each of our product areas:
+
+- Session
+- Sign up
+- Sign in
+- User account management (profile fields)
+- Organizations
+- Billing
+- Fraud
+
+### Additional staged rollout mechanisms
+
+Today, our staged rollout mechanisms usually target all traffic in increasing percentages. We intend to build more targeted rollout mechanisms, for example by customer cohort or products used.

@@ -1,0 +1,104 @@
+# MCP Server Support for Next.js
+# джерело: https://clerk.com/changelog/2025-06-25-mcp-server-nextjs
+# отримано: 2026-09-25
+
+We're excited to announce server-side support for the Model Context Protocol (MCP) in Next.js applications using Clerk authentication. This enables your users to securely grant AI applications like Claude, Cursor, and others access to their data within your app.
+
+## What is MCP?
+
+MCP is an open standard that allows AI applications to request permission to access users' private information that would normally require authentication — like emails, private repositories, or application-specific data. This creates new possibilities for AI-powered workflows while keeping users in control of their data access.
+
+If you are building an application using Clerk and would like for your users to be able to grant access to their data to AI applications, you can now do so with Clerk's MCP support 🎉.
+
+## Getting Started
+
+Setting up an MCP server in your Next.js app is straightforward with Clerk's modern OAuth provider implementation. Here's an example of how the MCP route handler might look in your Next.js app:
+
+```tsx
+// app/[transport]/route.ts
+import { verifyClerkToken } from '@clerk/mcp-tools/next'
+import { clerkClient, auth } from '@clerk/nextjs/server'
+import { createMcpHandler, experimental_withMcpAuth as withMcpAuth } from '@vercel/mcp-adapter'
+
+const clerk = await clerkClient()
+
+const handler = createMcpHandler((server) => {
+  server.tool(
+    'get-clerk-user-data',
+    'Gets data about the Clerk user that authorized this request',
+    {},
+    async (_, { authInfo }) => {
+      const userId = authInfo!.extra!.userId! as string
+      const userData = await clerk.users.getUser(userId)
+      return {
+        content: [{ type: 'text', text: JSON.stringify(userData) }],
+      }
+    },
+  )
+})
+
+const authHandler = withMcpAuth(
+  handler,
+  async (_, token) => {
+    const clerkAuth = await auth({ acceptsToken: 'oauth_token' })
+    return verifyClerkToken(clerkAuth, token)
+  },
+  {
+    required: true,
+    resourceMetadataPath: '/.well-known/oauth-protected-resource/mcp',
+  },
+)
+
+export { authHandler as GET, authHandler as POST }
+```
+
+> OAuth tokens are machine tokens. Machine token usage is free during our public beta period but will be subject to pricing once generally available. Pricing is expected to be competitive and below market averages.
+
+## Implementation Details
+
+Our MCP implementation is built on the current specification draft, ensuring compatibility with the latest protocol standards and authentication flows. We've worked closely with the MCP community and contributed to the specification and SDK to ensure robust, secure integrations.
+
+Rather than requiring separate MCP servers with their own authentication protocols, our approach allows you to add MCP capabilities directly to your existing application through a single API endpoint. This eliminates the overhead of deploying and managing additional services - you can expose your app's functionality to AI tools without architectural complexity.
+
+For legacy clients that use outdated implementations of the MCP protocol and/or do not support authentication, tools like mcp-remote can bridge the gap.
+
+We are also grateful to Vercel for their fantastic work on the MCP Adapter, which this implementation leverages heavily. We've thoroughly enjoyed collaborating with their team on this project.
+
+## Connecting AI Tools
+
+Once your MCP server is running, connecting it to AI tools is straightforward. For example, with Cursor, you can add this configuration:
+
+```json
+{
+  "mcpServers": {
+    "clerk-mcp-example": {
+      "url": "http://localhost:3000/mcp"
+    }
+  }
+}
+```
+
+That's it — no `stdio` tools, command execution, or additional software installation required. Just provide the URL and authentication is handled automatically through the MCP protocol.
+
+For a complete guide on testing your MCP server with various AI clients, check out our MCP client integration guide.
+
+## Customer Implementations
+
+We've been developing MCP tooling publicly for the past few months and have been impressed by our customers' enthusiasm for building with this technology. The extensive testing and feedback we've received has been invaluable in shaping and stabilizing this release.
+
+We'd like to highlight a couple of examples of customers who have deployed MCP servers with Clerk authentication to production:
+
+- Overbooked - (MCP Server Documentation)
+- Scorecard - (Launch Post, MCP Repo)
+
+These customers have been exceptional development partners, and their engineering teams are working hard to build innovative products and ensure that their users can integrate their products with MCP as easily as possible. We're proud to have them as part of the Clerk community and encourage you to explore their products as well as their new MCP integrations!
+
+## What's Next
+
+This initial release focuses on Next.js support, with additional framework support coming soon. We're also working on expanded tooling and utilities to make MCP integration even more straightforward across different development environments.
+
+Beyond server-side tooling, we're also building client-side tools to help AI applications connect with MCP endpoints more easily. If you're interested in early access for any of these features, please reach out to our support team, and we'll get you set up!
+
+Check out our step-by-step MCP implementation guide in the documentation to get started with your first MCP-enabled endpoint.
+
+We're excited to see what new AI-powered experiences you'll build with MCP and Clerk. If you have feedback or questions, we'd love to hear from you!

@@ -1,0 +1,90 @@
+# MCP Server Support for Express
+# джерело: https://clerk.com/changelog/2025-07-29-express-mcp
+# отримано: 2026-09-25
+
+We're excited to announce server-side support for the Model Context Protocol (MCP) in Express.js applications using Clerk authentication. This enables your users to securely grant AI applications like Claude, Cursor, and others access to their data within your app.
+
+## Getting Started
+
+Setting up an MCP server in your Express app is straightforward with Clerk's modern OAuth provider implementation. Here's the entire implementation, within a single file in about 50 lines of code:
+
+```tsx
+import 'dotenv/config'
+import { clerkClient, clerkMiddleware } from '@clerk/express'
+import {
+  mcpAuthClerk,
+  protectedResourceHandlerClerk,
+  streamableHttpHandler,
+  authServerMetadataHandlerClerk,
+} from '@clerk/mcp-tools/express'
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import cors from 'cors'
+import express from 'express'
+
+const app = express()
+app.use(cors({ exposedHeaders: ['WWW-Authenticate'] }))
+app.use(clerkMiddleware())
+app.use(express.json())
+
+const server = new McpServer({
+  name: 'test-server',
+  version: '0.0.1',
+})
+
+server.tool(
+  'get_clerk_user_data',
+  'Gets data about the Clerk user that authorized this request',
+  {},
+  async (_, { authInfo }) => {
+    const userId = authInfo!.extra!.userId! as string
+    const userData = await clerkClient.users.getUser(userId)
+
+    return {
+      content: [{ type: 'text', text: JSON.stringify(userData) }],
+    }
+  },
+)
+
+app.post('/mcp', mcpAuthClerk, streamableHttpHandler(server))
+
+app.get(
+  '/.well-known/oauth-protected-resource/mcp',
+  protectedResourceHandlerClerk({ scopes_supported: ['email', 'profile'] }),
+)
+
+app.get('/.well-known/oauth-authorization-server', authServerMetadataHandlerClerk)
+
+app.listen(3000, () => {
+  console.log('Server running on port 3000')
+})
+```
+
+A full reference implementation is available and open source on GitHub if you'd like to test it out.
+
+> OAuth tokens are machine tokens. Machine token usage is free during our public beta period but will be subject to pricing once generally available. Pricing is expected to be competitive and below market averages.
+
+## Connecting AI Tools
+
+Once your MCP server is running, connecting it to AI tools is straightforward. For example, with Cursor, you can add this configuration:
+
+```json
+{
+  "mcpServers": {
+    "clerk-mcp-example": {
+      "url": "http://localhost:3000/mcp"
+    }
+  }
+}
+```
+
+That's it — no `stdio` tools, command execution, or additional software installation required. Just provide the URL and authentication is handled automatically through the MCP protocol.
+
+For a complete guide on testing your MCP server with various AI clients, check out our MCP client integration guide.
+
+## What's Next
+
+Clerk's OAuth provider offers support for the MCP protocol with any framework, but MCP is still a new standard, it's changing quickly, and support and implementation can vary across different clients and frameworks, which often makes implementation tricky.
+
+For this reason, we are creating end-to-end working examples and helpful utilities for each framework that we plan to steadily release over time. We recently released an MCP implementation for Next.js, and we will continue to roll out examples and guides for other frameworks in the coming months.
+
+We're excited to see what new AI-powered experiences you'll build with MCP and Clerk. If you have feedback or questions, we'd love to hear from you!

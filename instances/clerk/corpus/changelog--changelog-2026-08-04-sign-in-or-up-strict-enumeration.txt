@@ -1,0 +1,45 @@
+# Sign-in-or-up now works with strict enumeration protection
+# джерело: https://clerk.com/changelog/2026-08-04-sign-in-or-up-strict-enumeration
+# отримано: 2026-09-25
+
+View video
+
+At Clerk, we strive to provide an auth solution with the best user experience and the strongest security and privacy protections.
+
+Many customers use our all-in-one `<SignIn />` component to implement sign-in-or-up, a single entry point for their application: A visitor types their email address and Clerk decides whether to sign them in or create an account, so nobody has to remember whether they signed up before.
+
+Previously, Strict user enumeration protection was incompatible with this flow. Strict enumeration protection hides whether an email address or phone number is already registered with your app, by never showing a "no account found" response when signing in.
+
+Until now you had to pick one. We are happy to share that `<SignIn />` now supports both together out-of-the-box, with no code changes needed.
+
+## Verify first, decide second
+
+Under strict protection, a sign-in for an identifier that doesn't exist already continues to the verification screen instead of failing. Only after a visitor has proven their identity do we choose whether to sign them in or sign them up:
+
+1. The visitor enters their email address or phone number.
+2. Clerk shows the verification screen and sends a code or email link, whether or not the account exists.
+3. The visitor enters the code or follows the link.
+4. If the account exists, they're signed in. If it doesn't, Clerk creates it and continues to sign-up.
+
+The order is what makes this safe. The visitor proves they control the address before Clerk commits to anything, so someone probing your sign-in page with addresses they don't own learns nothing either way. New and returning users see the same screens in the same number of steps.
+
+## Requirements
+
+**Your instance must be in Open access mode.**
+
+**Password can't be the starting strategy.** Either disable **Password** or set the instance's preferred sign-in strategy to OTP. Under strict protection, a password step has no safe exit:
+
+- A visitor without an account lands on a password screen they can never get past, and Clerk isn't allowed to explain why.
+- A visitor who enters the wrong password can't be offered "sign up instead?", because that would answer the question strict protection is hiding.
+
+On development instances, `<SignIn />` logs a `sign_up_if_missing_password_preferred` console warning when it detects this combination.
+
+Username identifiers aren't supported either, since a username alone gives Clerk no way to contact the person to verify them.
+
+## Get started
+
+Enable strict protection on the **Rules** page under **Protect** in the Clerk Dashboard. If your app already renders `<SignIn />` as a combined sign-in-or-up page and is in **Open** access mode, it keeps working once you switch — there's no new prop and nothing to migrate.
+
+If you're building your own interface, or you want this behavior without turning strict protection on, the `signUpIfMissing` option does the same thing in a custom flow. Refer to the sign-in-or-up custom flow guide.
+
+The Account Portal hosts sign-in and sign-up on separate pages, so a sign-in-or-up experience there isn't available under any setting today. General support is on our roadmap. For now, render `<SignIn />` in your own app.

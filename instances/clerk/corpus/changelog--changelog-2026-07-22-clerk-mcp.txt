@@ -1,0 +1,46 @@
+# Connect your AI tools to Clerk MCP with one command
+# джерело: https://clerk.com/changelog/2026-07-22-clerk-mcp
+# отримано: 2026-09-25
+
+Clerk's MCP server gives your AI agents up-to-date Clerk SDK snippets and implementation patterns. Until now, connecting it meant editing a different config file for every client. The latest Clerk CLI release adds a `clerk mcp` command group that handles the whole thing:
+
+```bash
+$ clerk mcp install
+```
+
+## Ten clients, one command
+
+`clerk mcp install` detects the AI clients on your machine and registers the Clerk MCP server in each one you pick from an interactive list. It supports Claude Code, Cursor, GitHub Copilot (VS Code), Windsurf, Gemini CLI, Codex, opencode, OpenClaw, Warp, and Hermes Agent.
+
+Entries are registered user-globally, so the server is available in every project. Where a client ships a usable non-interactive registration command (like `claude mcp add` or `codex mcp add`), Clerk delegates to it so the client keeps owning its config format, and writes config files directly for the rest. Re-running `install` always converges: whatever is already sitting under the entry name is replaced, so there's no conflict state to untangle.
+
+```bash
+$ # Skip the prompt: target specific clients, or all of them
+$ clerk mcp install --client claude --client cursor
+$ clerk mcp install --all
+```
+
+`clerk mcp list` shows every Clerk entry the CLI has registered across your clients, and `clerk mcp uninstall` removes them, prompting only with the clients that actually have one.
+
+## A built-in bridge replaces `npx mcp-remote`
+
+Instead of pointing each editor at a remote URL through `npx mcp-remote`, every client is configured to launch the same built-in bridge — `clerk mcp run` — expressed in that client's own config format (`{ "command": "clerk", "args": ["mcp", "run"] }` for most). `clerk mcp run` is a stdio↔Streamable-HTTP bridge built into the CLI, so there's no npx dependency, and updating the CLI updates the bridge everywhere at once with no re-install needed.
+
+## `clerk doctor` checks your connection
+
+`clerk doctor` now probes your configured Clerk MCP server with a real `initialize` handshake, so you can tell the difference between "not installed", "installed but unreachable", and "working" at a glance.
+
+## Built for agents
+
+Like every CLI command, `clerk mcp` respects the agent contract: non-TTY runs never prompt and emit JSON automatically, per-client failures are reported structurally in a `failures` array instead of aborting the run, and every registration-blocking error carries a stable `code` plus a `docsUrl` pointing at the manual setup instructions as a fallback.
+
+## Get started
+
+Update to the latest CLI and connect your clients:
+
+```bash
+$ clerk update
+$ clerk mcp install
+```
+
+See the CLI docs for the full command reference, or the Clerk MCP server docs for manual per-client setup.

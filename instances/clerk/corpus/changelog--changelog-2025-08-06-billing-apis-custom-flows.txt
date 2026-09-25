@@ -1,0 +1,167 @@
+# Build custom flows with React and Clerk Billing
+# джерело: https://clerk.com/changelog/2025-08-06-billing-apis-custom-flows
+# отримано: 2026-09-25
+
+Building on our recent billing button components, we're introducing a set of React hooks that enable you to build fully custom billing flows. These hooks provide direct access to billing data and functionality, giving you complete control over the user experience.
+
+## Control the checkout flow
+
+View video
+
+You can now build your own checkout flow with Clerk Billing for both users and organizations. Leverage the `useCheckout()` hook to create a custom checkout experience. Choose between prompting users to enter their payment details or pay with a saved payment method.
+
+Below you can see a simple example of a custom checkout flow that is using the `<PaymentElement />` component where users can enter their payment details.
+
+```tsx
+'use client'
+import {
+  CheckoutProvider,
+  useCheckout,
+  PaymentElementProvider,
+  PaymentElement,
+  usePaymentElement,
+} from '@clerk/nextjs/experimental'
+
+export default function CheckoutPage() {
+  return (
+    <CheckoutProvider for="user" planId="cplan_xxx" planPeriod="month">
+      <CustomCheckout />
+    </CheckoutProvider>
+  )
+}
+
+function CustomCheckout() {
+  const { checkout } = useCheckout()
+  const { plan } = checkout
+
+  return (
+    <div className="checkout-container">
+      <span>Subscribe to {plan.name}</span>
+
+      <PaymentElementProvider checkout={checkout}>
+        <PaymentSection />
+      </PaymentElementProvider>
+    </div>
+  )
+}
+
+function PaymentSection() {
+  const { checkout } = useCheckout()
+  const { isConfirming, confirm } = checkout
+  const { isFormReady, submit } = usePaymentElement()
+  const isButtonDisabled = !isFormReady || isConfirming
+
+  const subscribe = async () => {
+    const { data } = await submit()
+    await confirm(data)
+  }
+
+  return (
+    <>
+      <PaymentElement fallback={<div>Loading payment element...</div>} />
+      <button disabled={isButtonDisabled} onClick={subscribe}>
+        {isConfirming ? 'Processing...' : 'Complete Purchase'}
+      </button>
+    </>
+  )
+}
+```
+
+To enable users to pay with a saved payment method, you can use the `usePaymentMethods()` hook to display a list of saved payment methods.
+
+```tsx
+import { usePaymentMethods } from '@clerk/nextjs/experimental'
+
+function PaymentMethodSelector() {
+  const { data: methods, isLoading } = usePaymentMethods()
+
+  return (
+    <div className="payment-methods">
+      <h3>Select Payment Method</h3>
+      {methods?.map((method) => (
+        <button key={method.id} className="payment-method-option">
+          {method.cardType} ending in {method.last4}
+        </button>
+      ))}
+    </div>
+  )
+}
+```
+
+## Design your own pricing table
+
+`usePlans()` fetches your instance's configured plans, perfect for building custom pricing tables or plan selection interfaces.
+
+```tsx
+import { usePlans } from '@clerk/nextjs/experimental'
+
+function CustomPricingTable() {
+  const { data: plans, isLoading } = usePlans({
+    for: 'user',
+    pageSize: 10,
+  })
+
+  if (isLoading) return <div>Loading plans...</div>
+
+  return (
+    <div className="pricing-grid">
+      {plans?.map((plan) => (
+        <div key={plan.id} className="plan-card">
+          <h3>{plan.name}</h3>
+          <p>{plan.description}</p>
+          <p>
+            {plan.currency} {plan.amountFormatted}/month
+          </p>
+          <ul>
+            {plan.features.map((feature) => (
+              <li key={feature.id}>{feature.name}</li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  )
+}
+```
+
+## Display subscription details
+
+Usage of the useSubscription hook
+
+Access current subscription details to build custom account management interfaces and display billing status.
+
+```tsx
+import { useSubscription } from '@clerk/nextjs/experimental'
+
+function SubscriptionStatus() {
+  const { data: subscription, isLoading } = useSubscription()
+
+  if (!subscription) return <div>No active subscription</div>
+
+  return (
+    <div className="subscription-status">
+      <h3>Current Plan: {subscription.plan.name}</h3>
+      <p>Status: {subscription.status}</p>
+      <p>Next billing: {subscription.nextPayment.date.toLocaleDateString()}</p>
+    </div>
+  )
+}
+```
+
+## Complete Control Over Billing
+
+For detailed documentation, visit:
+
+- `usePlans()`
+- `usePaymentMethods()`
+- `useSubscription()`
+- `useCheckout()`
+- `usePaymentElement()`
+
+For advanced usage examples, visit:
+
+- Checkout with a new payment method
+- Checkout with an existing payment method
+- Add a new payment method
+
+> These hooks are currently exported as `experimental` while we continue to refine the API based on developer feedback.

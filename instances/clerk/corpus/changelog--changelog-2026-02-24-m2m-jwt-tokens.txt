@@ -1,0 +1,59 @@
+# JWT format support for M2M tokens
+# джерело: https://clerk.com/changelog/2026-02-24-m2m-jwt-tokens
+# отримано: 2026-09-25
+
+## Why JWT?
+
+JWT M2M tokens offer several advantages over opaque tokens:
+
+- **Networkless verification** — JWTs can be verified locally using your instance's public key, without making a network request to Clerk's servers
+- **No verification cost** — Opaque token verification costs `$0.00001` per request, while JWT verification is free since it happens locally
+- **Self-contained** — All necessary information (machine ID, claims, expiration) is embedded in the token itself
+- **Lower latency** — Local verification is significantly faster than a network round-trip
+
+## When to use opaque tokens
+
+Opaque tokens remain valuable for security-sensitive scenarios:
+
+- **Instant revocation** — Opaque tokens can be invalidated immediately, while JWTs remain valid until they expire
+- **Maximum security** — Opaque tokens do not contain any embedded information. Server-side verification is required to access payload data.
+
+## Getting Started
+
+**Dashboard**
+
+To generate your M2M token format:
+
+1. Navigate to Machines in the Clerk Dashboard
+2. Select the machine you want to generate the token for.
+3. Select **Generate token**
+4. Toggle **Generate token as JWT**
+5. Select **Create**
+
+**SDK**
+
+```javascript
+// Create a JWT token on Machine A
+const m2mToken = await clerkClient.m2m.createToken({
+  tokenFormat: 'jwt',
+})
+
+// Send authenticated request to Machine B
+await fetch('<machine-b-url>', {
+  headers: {
+    Authorization: `Bearer ${m2mToken.token}`,
+  },
+})
+
+// Verify the token on Machine B — no network request needed
+const verified = await clerkClient.m2m.verify({ token })
+```
+
+### Pricing
+
+We will begin charging for M2M token usage starting March 16, 2026. The pricing will be:
+
+- `$0.001` per token creation
+- `$0.00001` per token verification (opaque tokens only)
+
+For more details, see the M2M tokens documentation and token formats documentation.

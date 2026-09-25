@@ -1,0 +1,83 @@
+# Clerk Expo v2
+# джерело: https://clerk.com/changelog/2024-07-26-clerk-expo-v2
+# отримано: 2026-09-25
+
+We are excited to announce that we have released `@clerk/clerk-expo` v2 with support for Expo Web! This means that you can create universal apps that run on Android, iOS, and the web all with a single codebase!
+
+## Getting started
+
+If you haven't already created an Expo app with Clerk you can follow the Expo quickstart guide.
+
+Otherwise, you can update your existing Expo app to the latest version of `@clerk/clerk-expo` by following the upgrade guide.
+
+## Use Clerk's prebuilt components on the web
+
+Adding a sign-in page to your web app is now as easy as adding a single component:
+
+```tsx
+import { SignIn } from '@clerk/clerk-expo/web'
+
+export default function Page() {
+  return <SignIn />
+}
+```
+
+## Build universal authentication flows from one codebase
+
+Leverage our hooks to build universal sign-in and sign-up views for Android, iOS, and web all from one codebase 🤯.
+
+Here's an example of a OAuth sign-in flow, using the SDK's `useOAuth` hook:
+
+```tsx
+import React from 'react'
+import * as WebBrowser from 'expo-web-browser'
+import { Text, View, Button } from 'react-native'
+import { Link } from 'expo-router'
+import { useOAuth } from '@clerk/clerk-expo'
+import * as Linking from 'expo-linking'
+
+export const useWarmUpBrowser = () => {
+  React.useEffect(() => {
+    void WebBrowser.warmUpAsync()
+    return () => {
+      void WebBrowser.coolDownAsync()
+    }
+  }, [])
+}
+
+const SignInWithOAuth = () => {
+  useWarmUpBrowser()
+
+  const { startOAuthFlow } = useOAuth({ strategy: 'oauth_google' })
+
+  const onPress = React.useCallback(async () => {
+    try {
+      const { createdSessionId, signIn, signUp, setActive } = await startOAuthFlow({
+        redirectUrl: Linking.createURL('/'),
+      })
+
+      if (createdSessionId) {
+        setActive!({ session: createdSessionId })
+      } else {
+        // Use signIn or signUp for next steps such as MFA
+      }
+    } catch (err) {
+      console.error('OAuth error', err)
+    }
+  }, [])
+
+  return (
+    <View>
+      <Link href="/">
+        <Text>Home</Text>
+      </Link>
+      <Button title="Sign in with Google" onPress={onPress} />
+    </View>
+  )
+}
+export default SignInWithOAuth
+```
+
+Want to learn more about using Clerk with Expo? Check out **@clerk/clerk-expo**.
+
+Excited specifically about Expo Web? Check out our Expo Web support guide.

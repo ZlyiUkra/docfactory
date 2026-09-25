@@ -1,0 +1,95 @@
+# Community SDK support for Astro
+# джерело: https://clerk.com/changelog/2024-03-28
+# отримано: 2026-09-25
+
+> We've released our official SDK for Astro! Please refer to the official Astro SDK changelog.
+
+## Install the package
+
+To get up and running with Clerk and Astro, start by installing the `astro-clerk-auth` and `@astrojs/node` packages:
+
+```bash
+npm i astro-clerk-auth @astrojs/node
+```
+
+## Add environment variables
+
+Before you start using the Clerk integration, you'll first need to set the following environment variables:
+
+```bash
+PUBLIC_ASTRO_APP_CLERK_PUBLISHABLE_KEY=<your-publishable-key>
+CLERK_SECRET_KEY=<your-secret-key>
+
+PUBLIC_ASTRO_APP_CLERK_SIGN_IN_URL=/sign-in
+PUBLIC_ASTRO_APP_CLERK_SIGN_UP_URL=/sign-up
+```
+
+## Extend the types
+
+Update the `env.d.ts` file inside your Astro project:
+
+```tsx
+/// <reference types="astro/client" />
+/// <reference types="astro-clerk-auth/env" />
+```
+
+## Add the Clerk integration
+
+Open `astro.config.mjs` file and add the `clerk()` integration, and set the `output` to `server`:
+
+```tsx
+import { defineConfig } from 'astro/config'
+import node from '@astrojs/node'
+import clerk from 'astro-clerk-auth'
+
+export default defineConfig({
+  integrations: [clerk()],
+  output: 'server',
+  adapter: node({
+    mode: 'standalone',
+  }),
+})
+```
+
+## Use the middleware
+
+This example showcases how to use the `clerkMiddleware` and the `createRouteMatcher` in Astro:
+
+```tsx
+import { clerkMiddleware, createRouteMatcher } from 'astro-clerk-auth/server'
+
+const isProtectedPage = createRouteMatcher(['/user(.*)'])
+
+export const onRequest = clerkMiddleware((auth, context, next) => {
+  if (isProtectedPage(context.request) && !auth().userId) {
+    return auth().redirectToSignIn()
+  }
+
+  return next()
+})
+```
+
+## Use the components
+
+The package exports the Clerk prebuilt UI components as Astro components and can be used anywhere inside the website:
+
+```astro
+---
+import { SignedIn, SignedOut } from 'astro-clerk-auth/components/control'
+import { UserButton, SignIn } from 'astro-clerk-auth/components/interactive'
+---
+
+<Layout title="Welcome to Astro + Clerk">
+  <SignedIn>
+    <UserButton />
+  </SignedIn>
+
+  <SignedOut>
+    <SignIn routing="hash" />
+  </SignedOut>
+</Layout>
+```
+
+Congratulations, you have secured your Astro website with Clerk!
+
+To learn more, check out the repo on GitHub.

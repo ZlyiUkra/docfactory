@@ -1,0 +1,106 @@
+# Infra Changelog - Sep 25, 2025
+# джерело: https://clerk.com/changelog/2025-09-25-infra-changelog
+# отримано: 2026-09-25
+
+_Starting with this post, we will regularly share details about ongoing infrastructure improvements. These updates happen continually behind the scenes, and will not impact end-users beyond improving reliability and performance._
+
+## Released this week
+
+### Isolated compute for our Session API
+
+Following the incident on June 26, we began isolating our session API infrastructure from the rest of our frontend-facing API, which includes workloads like sign ups, sign ins, user profiles.
+
+To keep our session API running during an incident, we require access to session-relevant storage and compute during that downtime.
+
+We started with storage, which was the more challenging of the two workstreams. Thankfully, this was released ahead of the incident last week, and helped reduce the blast radius.
+
+When queries against our primary database failed, our new “outage resiliency” mechanism kicked in and started working off a read replica to serve session tokens instead. Here’s a chart of the tokens served:
+
+Outage resilience spike
+
+Unfortunately, this chart does not reflect the full volume of session tokens that were requested during the incident, since many failed because our compute was exhausted. Here’s what happened:
+
+- Clerk uses Google Cloud Run with auto-scaling for compute. It serves all requests for sessions, sign ups, sign ins, organizations, and billing.
+- When the database failed, session requests continued to succeed because of our failover mechanism, but non-session requests got stuck behind query timeouts, and overall request latency increased.
+- Increased request latency triggered auto-scaling of Cloud Run until the configured maximum containers was hit. During this autoscaling, the session requests continued to succeed.
+- Once the maximum was hit, throughput for our frontend API Cloud Run service dropped sharply, and session requests were no longer reliably being served.
+
+The solution to this is to serve session requests from a separate Cloud Run service than the rest of our frontend API. That way, session requests can retain high throughput against the read replica during a primary database incident, while the rest of the of the frontend API can wait for the primary database to recover.
+
+We’ve built this so our session API compute is always on and handling all session requests, so we do not need to wait for a failover of Cloud Run. Here are charts showing our request volume move to the new Cloud Run service for our session API after release:
+
+_Frontend API requests - now with session requests removed:_
+
+Frontend API decrease
+
+_Session API requests running independently:_
+
+Session API start
+
+### Database tuning
+
+Following the auto-upgrade last week, it was expected that we’d need to retune our database in response to its improved overall performance. Below is the improvement to average query latency after a process of reindexing and adjusting our auto-vacuum settings:
+
+**September 18: First full stable day**
+
+- P50: 40μs
+- P95: 115μs
+- P99: 703μs
+
+**September 24: Yesterday**
+
+- P50: 40μs (no change)
+- P95: 96μs (16% improvement)
+- P99: 584μs (17% improvement)
+
+## In progress
+
+### Reducing latency between our compute and our database
+
+Working with GCP support, we learned that there is an opportunity to reduce the network latency between Cloud Run and Cloud SQL, to improve our overall request latency. We expect this to be completed within the next week.
+
+### Continued database tuning
+
+We have more database tuning ahead. We expect modest additional improvements as we continue to monitor auto-vacuum settings, and begin adjusting fillfactor settings.
+
+## Planned
+
+### Where possible, convert high-write workloads from update to append-only
+
+Our original architecture depended on frequent updates, which has become burdensome on our database as we’ve scaled.
+
+Where possible, we plan to reduce our use of this pattern, and instead rely on append-only tables. In the process, we may opt to move these workloads to a time-series database like ClickHouse.
+
+### Reduce session API requests
+
+We’ve discovered a bug in our session refresh logic that causes individual devices to send more refreshes than necessary. We believe resolving this bug can significantly reduce our request volume.
+
+### Further session API isolation
+
+Currently, the session API must failover to a replica during primary database downtime, which is not ideal since the primary database is still impacted by other workloads. We are pursuing solutions that would lead to a session-specific database.
+
+### Additional service isolation
+
+While working to isolate our Session API, we’ve already developed a handful of techniques that can be re-used to isolate other services. When done, we’d like isolated workloads for each of our product areas:
+
+- Session
+- Sign up
+- Sign in
+- User account management (profile fields)
+- Organizations
+- Billing
+- Fraud
+
+### Database restart resilience
+
+Over the last few years, one of the benefits of Cloud SQL has been that it can achieve most database upgrades with only a few seconds of downtime. Clerk has application logic to ensure that requests in these few seconds are retried and unnoticeable to users.
+
+But now, Clerk is rapidly approaching the point where we need to execute operations that require longer primary database downtime. We require additional application logic to handle writes during this downtime without impacting users.
+
+### Database connection pooler and major version upgrade
+
+Clerk has historically only used a client-side database pooler inside our Cloud Run containers. Though we’ve known this is non-optimal, we did this because Google did not offer a managed database connection pooler, and we were skeptical of putting a self-hosted service in between two managed services (Cloud Run and Cloud SQL).
+
+In March, Google released a managed connection pooler in Preview, and it reached General Availability this week. However, using the connection pooler will require a major database version upgrade, and in our particular case, a network infrastructure upgrade. We are collaborating with Google to determine how we can achieve both upgrades safely and without downtime.
+
+Simultaneously, we are investigating other database and connection pooler solutions that can run within our VPC.

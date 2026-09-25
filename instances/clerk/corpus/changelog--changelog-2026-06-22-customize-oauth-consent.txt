@@ -1,0 +1,72 @@
+# Customize your OAuth consent page
+# джерело: https://clerk.com/changelog/2026-06-22-customize-oauth-consent
+# отримано: 2026-09-25
+
+OAuth consent is required when a user reviews an OAuth Client's request to access their data and possibly act on their behalf.
+It's a critical part of OAuth 2.0, MCP and many agentic AI integrations.
+Until now, that screen was hosted only on Clerk's Account Portal.
+You can now host it on a route in your own application and style it to match your product.
+
+## What's new
+
+- **`<OAuthConsent />` component** — a prebuilt consent UI available in `@clerk/nextjs`, `@clerk/react`, `@clerk/react-router`, `@clerk/tanstack-react-start`, `@clerk/astro`, `@clerk/vue`, and `@clerk/nuxt`. The component reads OAuth authorization parameters from the URL, loads consent metadata, renders requested scopes, and submits the user's allow or deny decision to Clerk.
+- **Dashboard path configuration** — set your OAuth consent location under **Configure → Paths** in the Clerk Dashboard.
+- **Organization selection** — when an OAuth application requests the `user:org:read` scope, `<OAuthConsent />` displays an organization selector so users can choose which org they're granting access on behalf of.
+
+For most applications, Clerk recommends using the default Account Portal consent page. If you need the consent screen to live inside your own product, use the prebuilt `<OAuthConsent />` component on your domain — you control the route, layout, and styling, while Clerk keeps consent logic, scope rendering, and denial handling intact. Fully custom consent flows are also possible, but they should be reserved for cases where the prebuilt component cannot support a required layout or interaction.
+
+## Get started
+
+Create a route that renders `<OAuthConsent />` for signed-in users:
+
+filename: app/oauth-consent/page.tsx
+```tsx
+import { OAuthConsent, Show } from '@clerk/nextjs'
+// Ensure this route does not display any other navigation
+
+export const metadata = {
+  referrer: 'strict-origin-when-cross-origin',
+}
+
+export default function OAuthConsentPage() {
+  return (
+    <Show when="signed-in">
+      <OAuthConsent />
+    </Show>
+  )
+}
+```
+
+For visual changes only — colors, fonts, spacing — use the `appearance` prop instead of building a custom UI:
+
+```tsx
+<OAuthConsent
+  appearance={{
+    variables: {
+      colorPrimary: '#6d47ff',
+    },
+  }}
+/>
+```
+
+Keep the consent route focused. If your app uses a shared layout with navigation or account menus, use a minimal layout for this route so users are not pulled away from the OAuth flow.
+
+## Configure it in the Dashboard
+
+1. Create and deploy your consent route (for example, `/oauth-consent`).
+2. In the Clerk Dashboard, open **Configure → Paths** and set the **OAuth consent** location to that route.
+   For production instances, you will need a complete URL. In development instances, set a path relative to the Fallback development host.
+3. If all paths have been customized, you have the option to disable the Account Portal
+4. Confirm the consent screen is enabled for every OAuth application that will use the custom route.
+
+## Security
+
+OAuth consent is a security boundary. A custom page can weaken it if it hides the requesting application, misstates scopes, buries the deny action, or auto-approves access. Do not use `appearance` overrides to hide scopes, redirect warnings, or the deny action. After shipping, monitor Application Logs for `oauth_authorization.granted` and `oauth_token.created` events. See our full security checklist before going to production.
+
+## Custom consent flows
+
+If `<OAuthConsent />` cannot support your required layout, you can build a fully custom consent page using methods available in Clerk's React-based SDKs, but you are then responsible for maintaining it as a security-sensitive surface. See the detailed guide on building a custom OAuth consent page.
+
+## Learn more
+
+See the complete reference to customizing the OAuth consent page for framework-specific examples, dashboard configuration details, and custom flow requirements.

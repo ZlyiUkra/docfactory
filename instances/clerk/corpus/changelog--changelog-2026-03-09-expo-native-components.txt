@@ -1,0 +1,87 @@
+# Native React Native components, Google Sign-In, and Core 3
+# джерело: https://clerk.com/changelog/2026-03-09-expo-native-components
+# отримано: 2026-09-25
+
+`@clerk/expo` 3.1 brings native UI components powered by SwiftUI (iOS) and Jetpack Compose (Android), native Google Sign-In, and the new Core-3 Signal API. This is a major version bump that requires Expo SDK 53+.
+
+## Native React Native components
+
+Three prebuilt native components are now available from `@clerk/expo/native`:
+
+- **`<AuthView />`** renders the full sign-in/sign-up UI natively, with support for `signIn`, `signUp`, and `signInOrUp` modes. Session sync to the JS SDK happens automatically.
+- **`<UserButton />`** displays the user's avatar and opens the native profile modal on tap. It fills its parent container, so the parent controls the size and shape.
+- **`<UserProfileView />`** renders the profile management UI inline. For modal presentation, use the new `useUserProfileModal()` hook.
+
+All components use hook-based state management rather than callbacks. React to auth state changes with `useAuth()` in a `useEffect`:
+
+```tsx
+import { AuthView, UserButton } from '@clerk/expo/native'
+import { useAuth, useUserProfileModal } from '@clerk/expo'
+
+function App() {
+  const { isSignedIn } = useAuth()
+  const { presentUserProfile } = useUserProfileModal()
+
+  if (!isSignedIn) {
+    return <AuthView mode="signInOrUp" />
+  }
+
+  return (
+    <>
+      <View style={{ width: 44, height: 44, borderRadius: 22, overflow: 'hidden' }}>
+        <UserButton />
+      </View>
+      <TouchableOpacity onPress={presentUserProfile}>
+        <Text>Manage Profile</Text>
+      </TouchableOpacity>
+    </>
+  )
+}
+```
+
+These components require the `@clerk/expo` Expo config plugin, which automatically adds the clerk-ios and clerk-android native SDKs to your project. See the native components overview for setup and usage.
+
+## Native Google Sign-In
+
+Google Sign-In now uses platform-native APIs instead of browser-based OAuth:
+
+- **iOS**: ASAuthorization (system credential picker)
+- **Android**: Credential Manager (one-tap / passkey-ready)
+
+This is exposed via the `NativeClerkGoogleSignIn` TurboModule spec and integrated into the `@clerk/expo` config plugin. No extra packages are needed beyond configuring your Google OAuth credentials in the Clerk Dashboard.
+
+## Core-3 Signal APIs
+
+`@clerk/expo` 3.1 ships with the Core-3 Signal API, which replaces the legacy `setActive()` pattern with reactive hooks:
+
+```tsx
+// Core 3
+const { signIn } = useSignIn()
+await signIn.create({ identifier: email })
+await signIn.password({ password })
+if (signIn.status === 'complete') {
+  await signIn.finalize({ navigate: () => router.push('/') })
+}
+```
+
+Key changes from Core 2:
+
+- `signIn.password()`, `signIn.emailCode.sendCode()` replace `signIn.attemptFirstFactor()`
+- `signIn.finalize()` replaces `setActive({ session: signIn.createdSessionId })`
+- Error handling via `errors.fields.identifier?.message` instead of try/catch
+
+See the Expo quickstart and Core-3 upgrade guide for migration details.
+
+## New hooks
+
+Three new hooks are exported from `@clerk/expo`:
+
+| Hook                    | Description                                                                                   |
+| ----------------------- | --------------------------------------------------------------------------------------------- |
+| `useUserProfileModal()` | Present the native profile modal imperatively. Returns `{ presentUserProfile, isAvailable }`. |
+| `useNativeSession()`    | Access native SDK session state: `isSignedIn`, `sessionId`, `user`, `refresh()`.              |
+| `useNativeAuthEvents()` | Listen for auth state changes (`signedIn`, `signedOut`) from native components.               |
+
+## Get started
+
+Follow the Expo quickstart to set up a new project with native components, or check the native components reference for the full API. The clerk-expo-quickstart repo has three example apps: JS-only, JS with native sign-in, and full native components.
