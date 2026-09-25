@@ -1,0 +1,96 @@
+# routeRSCServerRequest
+# джерело: https://github.com/remix-run/react-router/blob/react-router@7.10.1/docs/api/rsc/routeRSCServerRequest.md
+# отримано: 2026-09-25
+# версія: 7.10.1, 7.10.0, 7.9.6, 7.9.5, 7.9.4, 7.9.3, 7.9.2, experimental
+
+## unstable_routeRSCServerRequest
+
+[MODES: data]
+
+This API is experimental and subject to breaking changes in
+minor/patch releases. Please use with caution and pay **very** close attention
+to release notes for relevant changes.
+
+## Summary
+
+Reference Documentation ↗
+
+Routes the incoming `Request`
+to the RSC server and
+appropriately proxies the server response for data / resource requests, or
+renders to HTML for a document request.
+
+```tsx
+import { createFromReadableStream } from "@vitejs/plugin-rsc/ssr";
+import * as ReactDomServer from "react-dom/server.edge";
+import {
+  unstable_RSCStaticRouter as RSCStaticRouter,
+  unstable_routeRSCServerRequest as routeRSCServerRequest,
+} from "react-router";
+
+routeRSCServerRequest({
+  request,
+  fetchServer,
+  createFromReadableStream,
+  async renderHTML(getPayload) {
+    const payload = getPayload();
+
+    return await renderHTMLToReadableStream(
+      <RSCStaticRouter getPayload={getPayload} />,
+      {
+        bootstrapScriptContent,
+        formState: await payload.formState,
+      }
+    );
+  },
+});
+```
+
+## Signature
+
+```tsx
+async function routeRSCServerRequest({
+  request,
+  fetchServer,
+  createFromReadableStream,
+  renderHTML,
+  hydrate = true,
+}: {
+  request: Request;
+  fetchServer: (request: Request) => Promise<Response>;
+  createFromReadableStream: SSRCreateFromReadableStreamFunction;
+  renderHTML: (
+    getPayload: () => DecodedPayload,
+  ) => ReadableStream<Uint8Array> | Promise<ReadableStream<Uint8Array>>;
+  hydrate?: boolean;
+}): Promise<Response>
+```
+
+## Params
+
+### opts.createFromReadableStream
+
+Your `react-server-dom-xyz/client`'s `createFromReadableStream` function, used to decode payloads from the server.
+
+### opts.fetchServer
+
+A function that forwards a `Request` to the RSC handler
+and returns a `Promise<Response>` containing a serialized `unstable_RSCPayload`.
+
+### opts.hydrate
+
+Whether to hydrate the server response with the RSC payload. Defaults to `true`.
+
+### opts.renderHTML
+
+A function that renders the `unstable_RSCPayload` to HTML, usually using a `<RSCStaticRouter>`.
+
+### opts.request
+
+The request to route.
+
+## Returns
+
+A `Response`
+that either contains the RSC
+payload for data requests, or renders the HTML for document requests.

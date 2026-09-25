@@ -1,0 +1,85 @@
+# createContext
+# джерело: https://github.com/remix-run/react-router/blob/react-router@7.8.0/docs/api/utils/createContext.md
+# отримано: 2026-09-25
+# версія: 7.8.0, experimental
+
+## unstable_createContext
+
+[MODES: framework, data]
+
+This API is experimental and subject to breaking changes in
+minor/patch releases. Please use with caution and pay **very** close attention
+to release notes for relevant changes.
+
+## Summary
+
+Reference Documentation ↗
+
+Creates a type-safe `unstable_RouterContext` object that can be used to
+* store and retrieve arbitrary values in `action`s,
+* `loader`s, and middleware.
+* Similar to React's `createContext`,
+* but specifically designed for React Router's request/response lifecycle.
+
+Enable this API with the `future.unstable_middleware` flag.
+
+If a `defaultValue` is provided, it will be returned from `context.get()`
+when no value has been set for the context. Otherwise, reading this context
+when no value has been set will throw an error.
+
+```tsx
+import { unstable_createContext } from "react-router";
+
+// Create a context for user data
+export const userContext =
+  unstable_createContext<User | null>(null);
+```
+
+```tsx
+import { getUserFromSession } from "~/auth.server";
+import { userContext } from "~/context";
+
+export const authMiddleware = async ({
+  context,
+  request,
+}) => {
+  const user = await getUserFromSession(request);
+  context.set(userContext, user);
+};
+```
+
+```tsx
+import { userContext } from "~/context";
+
+export async function loader({
+  context,
+}: Route.LoaderArgs) {
+  const user = context.get(userContext);
+
+  if (!user) {
+    throw new Response("Unauthorized", { status: 401 });
+  }
+
+  return { user };
+}
+```
+
+## Signature
+
+```tsx
+function unstable_createContext<T>(
+  defaultValue?: T,
+): unstable_RouterContext<T>
+```
+
+## Params
+
+### defaultValue
+
+An optional default value for the context. This value will be returned if no value has been set for this context.
+
+## Returns
+
+A `unstable_RouterContext` object that can be used with
+`context.get()` and `context.set()` in `action`s,
+`loader`s, and middleware.
