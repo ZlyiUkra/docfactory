@@ -1,0 +1,61 @@
+# Protect pages in your Nuxt app with Clerk
+# джерело: https://github.com/clerk/clerk-docs/blob/core-2/docs/guides/secure/protect-pages.mdx
+# отримано: 2026-09-25
+# версія: core-2
+
+SDK: nuxt
+
+This guide demonstrates how to protect pages in your Nuxt application.
+
+> [!TIP]
+> To learn how to protect API routes, see the dedicated guide.
+
+## Protect a single page
+
+The `useAuth()` composable provides access to the current user's authentication state and methods to manage the active session. It also includes the `isSignedIn` property to check if the active user is signed in, which is helpful for protecting a page.
+
+In the following example, the `isLoaded` property checks if Clerk has finished initializing and the `isSignedIn` property checks if the user is signed in in order to protect the page.
+
+```vue
+<script setup>
+const { isSignedIn, isLoaded, userId } = useAuth()
+</script>
+
+<template>
+  <!-- Use `isLoaded` to check if Clerk is loaded -->
+  <div v-if="!isLoaded">Loading...</div>
+  <!-- Use `isSignedIn` to check if the user is signed in -->
+  <div v-else-if="!isSignedIn">Sign in to access this page</div>
+  <!-- Use `userId` to access the current user's ID -->
+  <div v-else>Hello, {{ userId }}!</div>
+</template>
+```
+
+## Protect multiple pages
+
+The `createRouteMatcher()` is a Clerk helper function that allows you to protect multiple routes in your Nuxt application. It accepts an array of route patterns and checks if the route the user is trying to visit matches one of the patterns passed to it.
+
+The `createRouteMatcher()` helper returns a function that, when called with the `to` route object from Nuxt's `defineNuxtRouteMiddleware()`, will return `true` if the user is trying to access a route that matches one of the patterns provided.
+
+### Example
+
+In your `middleware/` directory, create a file named `auth.global.ts` with the following code. This middleware:
+
+- Uses the `isSignedIn` property returned by the `useAuth()` composable to check if the user is signed in.
+- Uses the `createRouteMatcher()` helper to check if the user is trying to access a protected route. If they are but they aren't signed in, they are redirected to the sign-in page.
+
+```ts
+// Define the routes you want to protect with `createRouteMatcher()`
+const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/forum(.*)'])
+
+export default defineNuxtRouteMiddleware((to) => {
+  // Use the `useAuth()` composable to access the `isSignedIn` property
+  const { isSignedIn } = useAuth()
+
+  // Check if the user is not signed in and is trying to access a protected route
+  // If so, redirect them to the sign-in page
+  if (!isSignedIn.value && isProtectedRoute(to)) {
+    return navigateTo('/sign-in')
+  }
+})
+```
