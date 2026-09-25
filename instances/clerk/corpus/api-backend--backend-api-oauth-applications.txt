@@ -1,0 +1,183 @@
+# Backend API: OAuth Applications
+# джерело: https://clerk.com/docs/reference/backend-api
+# отримано: 2026-09-25
+
+OAuth applications contain data for clients using Clerk as an OAuth2 identity provider.
+
+## GET /oauth_applications
+
+Get a list of OAuth applications for an instance
+
+This request returns the list of OAuth applications for an instance.
+Results can be paginated using the optional `limit` and `offset` query parameters.
+The OAuth applications are ordered by descending creation date.
+Most recent OAuth applications will be returned first.
+
+Parameters:
+
+- `limit` (query) `integer`: Applies a limit to the number of results returned. Can be used for paginating the results together with `offset`.
+- `offset` (query) `integer`: Skip the first `offset` results when paginating. Needs to be an integer greater or equal to zero. To be used in conjunction with `limit`.
+- `order_by` (query) `string`: Allows to return OAuth applications in a particular order. At the moment, you can order the returned OAuth applications by their `created_at` and `name`. In order to specify the direction, you can use the `+/-` symbols prepended in the property to order by. For example, if you want OAuth applications to be returned in descending order according to their `created_at` property, you can use `-created_at`. If you don't use `+` or `-`, then `+` is implied. We only support one `order_by` parameter, and if multiple `order_by` parameters are provided, we will only keep the first one. For example, if you pass `order_by=name&order_by=created_at`, we will consider only the first `order_by` parameter, which is `name`. The `created_at` parameter will be ignored in this case.
+- `name_query` (query) `string`: Returns OAuth applications with names that match the given query, via case-insensitive partial match. Also returns the OAuth application whose `client_id` is exactly the given query, which is useful for resolving a `client_id` to the OAuth application `id` required by the read, update and delete endpoints.
+
+Responses:
+
+- `200`: A list of OAuth applications
+- `400`: Request was not successful
+- `403`: Authorization invalid
+- `422`: Invalid request parameters
+
+## POST /oauth_applications
+
+Create an OAuth application
+
+Creates a new OAuth application with the given name and callback URL for an instance.
+The callback URL must be a valid URL.
+All URL schemes are allowed such as `http://`, `https://`, `myapp://`, etc...
+
+Request body (application/json):
+
+- `name` `string`, required: The name of the new OAuth application. Max length: 256
+- `redirect_uris` `array of string`: An array of redirect URIs of the new OAuth application
+- `callback_url` `string`: The callback URL of the new OAuth application
+- `scopes` `string`: Define the application's built-in and custom scope ceiling. Provide scope keys as a space-delimited string. Custom keys must exist in the instance OAuth scope catalog.
+- `consent_screen_enabled` `boolean`: True to enable a consent screen to display in the authentication flow.
+- `pkce_required` `boolean`: True to require the Proof Key of Code Exchange (PKCE) flow.
+- `device_authorization_grant_enabled` `boolean`: True to enable the OAuth Device Authorization Grant for this application. Enabling requires the new OAuth IdP and a reachable device verification page.
+- `public` `boolean`: If true, this client is public and you can use the Proof Key of Code Exchange (PKCE) flow.
+
+Responses:
+
+- `200`: An OAuth application with client secret
+- `400`: Request was not successful
+- `403`: Authorization invalid
+- `422`: Invalid request parameters
+
+## GET /oauth_applications/{oauth_application_id}
+
+Retrieve an OAuth application by ID
+
+Fetches the OAuth application whose ID matches the provided `id` in the path.
+
+Parameters:
+
+- `oauth_application_id` (path, required) `string`: The ID of the OAuth application
+
+Responses:
+
+- `200`: An OAuth application
+- `403`: Authorization invalid
+- `404`: Resource not found
+
+## PATCH /oauth_applications/{oauth_application_id}
+
+Update an OAuth application
+
+Updates an existing OAuth application
+
+Parameters:
+
+- `oauth_application_id` (path, required) `string`: The ID of the OAuth application to update
+
+Request body (application/json):
+
+- `name` `string`: The new name of the OAuth application. Max length: 256
+- `redirect_uris` `array of string`: An array of redirect URIs of the new OAuth application
+- `callback_url` `string`: The new callback URL of the OAuth application
+- `scopes` `string`: Replace the application's complete built-in and custom scope ceiling. Provide scope keys as a space-delimited string. Custom keys must exist in the instance OAuth scope catalog. Required built-in scopes, such as `offline_access`, must be included in the replacement set, otherwise the request is rejected. Omit this field to leave all scope assignments unchanged.
+- `consent_screen_enabled` `boolean`: True to enable a consent screen to display in the authentication flow. This cannot be disabled for dynamically registered OAuth Applications.
+- `pkce_required` `boolean`: True to require the Proof Key of Code Exchange (PKCE) flow.
+- `device_authorization_grant_enabled` `boolean`: True to enable the OAuth Device Authorization Grant for this application. Enabling requires the new OAuth IdP and a reachable device verification page. Omit this field to leave the setting unchanged.
+- `public` `boolean`: If true, this client is public and you can use the Proof Key of Code Exchange (PKCE) flow.
+
+Responses:
+
+- `200`: An OAuth application
+- `400`: Request was not successful
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## DELETE /oauth_applications/{oauth_application_id}
+
+Delete an OAuth application
+
+Deletes the given OAuth application.
+This is not reversible.
+
+Parameters:
+
+- `oauth_application_id` (path, required) `string`: The ID of the OAuth application to delete
+
+Responses:
+
+- `200`: Deleted Object
+- `403`: Authorization invalid
+- `404`: Resource not found
+
+## PUT /oauth_applications/{oauth_application_id}/logo
+
+Upload a logo for the OAuth application
+
+Set or replace an OAuth application's logo by uploading an image file.
+This endpoint uses the `multipart/form-data` request content type and accepts a file of image type.
+The file size cannot exceed 10MB.
+Only the following file content types are supported: `image/jpeg`, `image/png`, `image/gif`, `image/webp`.
+
+Parameters:
+
+- `oauth_application_id` (path, required) `string`: The ID of the OAuth application for which to upload a logo
+
+Request body (multipart/form-data):
+
+- `uploader_user_id` `string`: The ID of the user that will be credited with the image upload.
+- `file` `string`, required
+
+Responses:
+
+- `200`: An OAuth application
+- `400`: Request was not successful
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `413`: Request was not successful
+
+## POST /oauth_applications/{oauth_application_id}/rotate_secret
+
+Rotate the client secret of the given OAuth application
+
+Rotates the OAuth application's client secret.
+When the client secret is rotated, make sure to update it in authorized OAuth clients.
+
+Parameters:
+
+- `oauth_application_id` (path, required) `string`: The ID of the OAuth application for which to rotate the client secret
+
+Responses:
+
+- `200`: An OAuth application with client secret
+- `403`: Authorization invalid
+- `404`: Resource not found
+
+## POST /oauth_applications/{oauth_application_id}/revoke_token
+
+Revoke an OAuth application token
+
+Revoke both OAuth access token and refresh token for the associated grant for the given OAuth application.
+The request may specify either token.
+JWT access tokens cannot be revoked.
+
+Parameters:
+
+- `oauth_application_id` (path, required) `string`: The ID of the OAuth application for which to revoke the token
+
+Request body (application/json):
+
+- `token` `string`, required: The opaque OAuth access token or refresh token to revoke. All tokens associated with the same OAuth grant are also revoked.
+
+Responses:
+
+- `204`: Token revoked
+- `400`: Request was not successful
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters

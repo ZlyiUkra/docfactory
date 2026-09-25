@@ -1,0 +1,217 @@
+# Backend API: Directories
+# джерело: https://clerk.com/docs/reference/backend-api
+# отримано: 2026-09-25
+
+## GET /directories
+
+List all directories
+
+Returns a list of all directories for the instance.
+
+Parameters:
+
+- `limit` (query) `integer`: Applies a limit to the number of results returned. Can be used for paginating the results together with `offset`.
+- `offset` (query) `integer`: Skip the first `offset` results when paginating. Needs to be an integer greater or equal to zero. To be used in conjunction with `limit`.
+
+Responses:
+
+- `200`: A list of directories
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+
+## POST /directories
+
+Create a directory
+
+Create a new directory for the instance.
+
+Request body (application/json):
+
+- `enterprise_connection_id` `string`, required: The ID of the enterprise connection to associate with this directory.
+- `name` `string`: A human-friendly name for the directory.
+- `provider` `string`, required: The identity provider for this directory.
+- `group_role_mappings` `array of object`: Optional directory group to organization role mappings to create with the directory.
+
+Responses:
+
+- `200`: A directory
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `422`: Invalid request parameters
+
+## GET /directories/{directory_id}
+
+Retrieve a directory
+
+Returns the details of a directory.
+
+Parameters:
+
+- `directory_id` (path, required) `string`: The ID of the directory to retrieve
+
+Responses:
+
+- `200`: A directory
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+
+## PATCH /directories/{directory_id}
+
+Update a directory
+
+Updates a directory.
+
+Parameters:
+
+- `directory_id` (path, required) `string`: The ID of the directory to update
+
+Request body (application/json):
+
+- `name` `string`: A human-friendly name for the directory.
+- `enabled` `boolean`: Whether the directory is enabled.
+- `provider` `string`: The identity provider for this directory.
+- `attribute_mapping` `object`: Attribute-to-directory-path entries to merge into the directory's attribute mapping. Set a key to `null` to remove it from the mapping.
+- `group_role_mapping_enabled` `boolean`: Whether group-to-role mapping is enabled for this directory.
+
+Responses:
+
+- `200`: A directory
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## DELETE /directories/{directory_id}
+
+Delete a directory
+
+Deletes a directory and stops provisioning for it. Provisioning requests authenticated
+with the directory's API key are rejected afterwards.
+
+Parameters:
+
+- `directory_id` (path, required) `string`: The ID of the directory to delete
+
+Responses:
+
+- `200`: Deleted Object
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+
+## POST /directories/{directory_id}/rotate_api_key
+
+Rotate a directory's API key
+
+Generates a new API key for the directory and returns it in the `api_key` field.
+This is the only way to obtain the key after creation, so make sure to update it in
+your identity provider. The previous key remains valid for a short grace period before
+it expires.
+
+Parameters:
+
+- `directory_id` (path, required) `string`: The ID of the directory whose API key to rotate
+
+Responses:
+
+- `200`: A directory
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## GET /directories/{directory_id}/group_role_mappings
+
+List directory group role mappings
+
+Returns the list of directory group to organization role mappings for a directory, ordered by precedence.
+
+Parameters:
+
+- `directory_id` (path, required) `string`: The ID of the directory.
+
+Responses:
+
+- `200`: A list of directory group role mappings, ordered by precedence.
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+
+## POST /directories/{directory_id}/group_role_mappings
+
+Create a directory group role mapping
+
+Creates a new directory group to organization role mapping for a directory.
+Mappings can be created while group role mapping is disabled on the
+directory, but they only take effect once it is enabled.
+
+Parameters:
+
+- `directory_id` (path, required) `string`: The ID of the directory.
+
+Request body (application/json):
+
+- `directory_group_id` `string`: The group ID from the identity provider. Exactly one of `directory_group_id` or `scim_group_id` is required.
+- `scim_group_id` `string`: The legacy name for `directory_group_id`. Send either one, or both with the same value; sending both with different values is rejected.
+- `role_id` `string`, required: The ID of the organization role to assign to members of the group.
+- `precedence` `integer`: The precedence for this mapping. Lower values take priority when a user belongs to multiple mapped groups. If omitted, the mapping is appended with the next-highest precedence.
+
+Responses:
+
+- `200`: A directory group role mapping
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## PUT /directories/{directory_id}/group_role_mappings
+
+Replace directory group role mappings
+
+Replaces the entire set of directory group role mappings for a directory. The position of
+each item in the `mappings` array determines its precedence (the first item gets
+precedence 1). Passing an empty array removes all mappings. Mappings can be replaced
+while group role mapping is disabled on the directory, but they only take effect once
+it is enabled.
+
+Parameters:
+
+- `directory_id` (path, required) `string`: The ID of the directory.
+
+Request body (application/json):
+
+- `mappings` `array of object`, required: The desired set of mappings. Array order sets precedence (1-indexed). An empty array clears all mappings.
+
+Responses:
+
+- `200`: A list of directory group role mappings, ordered by precedence.
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## DELETE /directories/{directory_id}/group_role_mappings/{mapping_id}
+
+Delete a directory group role mapping
+
+Deletes a single directory group role mapping. Mappings can be deleted while group role
+mapping is disabled on the directory, but the change only takes effect once it is
+enabled.
+
+Parameters:
+
+- `directory_id` (path, required) `string`: The ID of the directory.
+- `mapping_id` (path, required) `string`: The ID of the directory group role mapping to delete.
+
+Responses:
+
+- `200`: A directory group role mapping was deleted.
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found

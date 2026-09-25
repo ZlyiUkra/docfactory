@@ -1,0 +1,177 @@
+# Backend API: Sessions
+# джерело: https://clerk.com/docs/reference/backend-api
+# отримано: 2026-09-25
+
+The Session object is an abstraction over an HTTP session.
+It models the period of information exchange between a user and the server.
+Sessions are created when a user successfully goes through the sign in or sign up flows.
+
+## GET /sessions
+
+List all sessions
+
+Returns a list of sessions matching the provided criteria.
+The sessions are returned sorted by creation date, with the newest sessions appearing first.
+
+Note: This endpoint does not return all sessions that have ever existed. Old and inactive sessions are periodically cleaned up and will not be included in the results.
+
+**Deprecation Notice (2024-01-01):** All parameters were initially considered optional, however
+moving forward at least one of `client_id` or `user_id` parameters should be provided.
+
+Parameters:
+
+- `client_id` (query) `string`: List sessions for the given client
+- `user_id` (query) `string`: List sessions for the given user
+- `status` (query) `string, one of abandoned, active, ended, expired, removed, replaced, revoked`: Filter sessions by the provided status
+- `paginated` (query) `boolean`: Whether to paginate the results. If true, the results will be paginated. If false, the results will not be paginated.
+- `limit` (query) `integer`: Applies a limit to the number of results returned. Can be used for paginating the results together with `offset`.
+- `offset` (query) `integer`: Skip the first `offset` results when paginating. Needs to be an integer greater or equal to zero. To be used in conjunction with `limit`.
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `422`: Invalid request parameters
+
+## POST /sessions
+
+Create a new active session
+
+Create a new active session for the provided user ID.
+
+**This operation is intended only for use in testing, and is not available for production instances.** If you are looking to generate a user session from the backend,
+we recommend using the Sign-in Tokens resource instead.
+
+Request body (application/json):
+
+- `user_id` `string`, required: The ID representing the user
+- `active_organization_id` `string`: The ID of the organization to set as active for this session
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `404`: Request was not successful
+- `422`: Invalid request parameters
+
+## GET /sessions/{session_id}
+
+Retrieve a session
+
+Retrieve the details of a session
+
+Parameters:
+
+- `session_id` (path, required) `string`: The ID of the session
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `404`: Resource not found
+
+## POST /sessions/{session_id}/refresh
+
+Refresh a session
+
+Refreshes a session by creating a new session token. A 401 is returned when there
+are validation errors, which signals the SDKs to fall back to the handshake flow.
+
+Parameters:
+
+- `session_id` (path, required) `string`: The ID of the session
+
+Request body (application/json):
+
+- `expired_token` `string`, required: The JWT that is sent via the `__session` cookie from your frontend. Note: this JWT must be associated with the supplied session ID.
+- `refresh_token` `string`, required: The refresh token from the `__refresh` cookie set via FAPI's handshake flow.
+- `request_origin` `string`, required: The origin of the request.
+- `request_headers` `object`: The headers of the request.
+- `format` `string, one of token, cookie`: The format of the response.
+- `request_originating_ip` `string`: The IP address of the request.
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+
+## GET /sessions/{session_id}/reverifications/{reverification_id}
+
+Retrieve a reverification
+
+Retrieve a reverification scoped to a session. A resource server can use this to validate a reverification id it received from its client: confirm it is real, scoped to the expected session, completed, and how fresh each factor is. Single-use / replay detection is the caller's responsibility (the id is stable, so the caller dedups consumed ids).
+
+Parameters:
+
+- `session_id` (path, required) `string`: The ID of the session the reverification belongs to
+- `reverification_id` (path, required) `string`: The ID of the reverification
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `404`: Resource not found
+
+## POST /sessions/{session_id}/revoke
+
+Revoke a session
+
+Sets the status of a session as "revoked", which is an unauthenticated state.
+In multi-session mode, a revoked session will still be returned along with its client object, however the user will need to sign in again.
+
+Parameters:
+
+- `session_id` (path, required) `string`: The ID of the session
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `404`: Resource not found
+
+## POST /sessions/{session_id}/tokens
+
+Create a session token
+
+Creates a session JSON Web Token (JWT) based on a session.
+
+Parameters:
+
+- `session_id` (path, required) `string`: The ID of the session
+
+Request body (application/json):
+
+- `expires_in_seconds` `integer`: Use this parameter to override the default session token lifetime.
+
+Responses:
+
+- `200`: OK
+- `401`: Authentication invalid
+- `404`: Resource not found
+
+## POST /sessions/{session_id}/tokens/{template_name}
+
+Create a session token from a JWT template
+
+Creates a JSON Web Token (JWT) based on a session and a JWT Template name defined for your instance
+
+Parameters:
+
+- `session_id` (path, required) `string`: The ID of the session
+- `template_name` (path, required) `string`: The name of the JWT template defined in your instance (e.g. `custom_hasura`).
+
+Request body (application/json):
+
+- `expires_in_seconds` `integer`: Use this parameter to override the JWT lifetime.
+
+Responses:
+
+- `200`: OK
+- `401`: Authentication invalid
+- `404`: Resource not found

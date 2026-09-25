@@ -1,0 +1,290 @@
+# Backend API: Billing
+# джерело: https://clerk.com/docs/reference/backend-api
+# отримано: 2026-09-25
+
+Billing-related endpoints for managing statements and payment attempts.
+
+## GET /billing/plans
+
+List all billing plans
+
+Returns a list of all billing plans for the instance. The plans are returned sorted by creation date,
+with the newest plans appearing first. This includes both free and paid plans. Pagination is supported.
+
+Parameters:
+
+- `paginated` (query) `boolean`: Whether to paginate the results. If true, the results will be paginated. If false, the results will not be paginated.
+- `limit` (query) `integer`: Applies a limit to the number of results returned. Can be used for paginating the results together with `offset`.
+- `offset` (query) `integer`: Skip the first `offset` results when paginating. Needs to be an integer greater or equal to zero. To be used in conjunction with `limit`.
+- `payer_type` (query) `string, one of user, org`: Filter plans by payer type
+
+Responses:
+
+- `200`: A list of commerce plans.
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `422`: Invalid request parameters
+- `500`: Request was not successful
+
+## GET /billing/prices
+
+List all billing prices
+
+Returns a list of all prices for the instance. The prices are returned sorted by amount ascending,
+then by creation date descending. This includes both default and custom prices. Pagination is supported.
+
+Parameters:
+
+- `paginated` (query) `boolean`: Whether to paginate the results. If true, the results will be paginated. If false, the results will not be paginated.
+- `limit` (query) `integer`: Applies a limit to the number of results returned. Can be used for paginating the results together with `offset`.
+- `offset` (query) `integer`: Skip the first `offset` results when paginating. Needs to be an integer greater or equal to zero. To be used in conjunction with `limit`.
+- `plan_id` (query) `string`: Filter prices by plan ID
+
+Responses:
+
+- `200`: A list of billing prices.
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+- `500`: Request was not successful
+
+## POST /billing/prices
+
+Create a custom billing price
+
+Creates a custom price for a billing plan. Custom prices allow you to offer different pricing
+to specific customers while maintaining the same plan structure.
+
+Request body (application/json):
+
+- `plan_id` `string`, required: The ID of the plan this price belongs to.
+- `currency` `string`: The currency code (e.g., "USD"). Defaults to USD.
+- `amount` `integer`, required: The monthly amount in cents. Use `0` for a complimentary price. Positive amounts must be at least $1 (100 cents).
+- `annual_monthly_amount` `integer`: The monthly amount in cents when billed annually. Use `0` for a complimentary price. Positive amounts must be at least $1 (100 cents).
+- `description` `string`: An optional description for this custom price.
+- `supported_billing_periods` `string, one of month, annual, both`: Which billing periods this price supports. Inferred from amounts if omitted.
+
+Responses:
+
+- `200`: A billing price.
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+- `500`: Request was not successful
+
+## GET /billing/subscription_items
+
+List all subscription items
+
+Returns a list of all subscription items for the instance. The subscription items are returned sorted by creation date,
+with the newest appearing first. This includes subscriptions for both users and organizations. Pagination is supported.
+
+Parameters:
+
+- `paginated` (query) `boolean`: Whether to paginate the results. If true, the results will be paginated. If false, the results will not be paginated.
+- `limit` (query) `integer`: Applies a limit to the number of results returned. Can be used for paginating the results together with `offset`.
+- `offset` (query) `integer`: Skip the first `offset` results when paginating. Needs to be an integer greater or equal to zero. To be used in conjunction with `limit`.
+- `status` (query) `string, one of active, ended, past_due, upcoming, free_trial`: Filter subscription items by status
+- `payer_type` (query) `string, one of user, org`: Filter subscription items by payer type
+- `plan_id` (query) `string`: Filter subscription items by plan ID
+- `include_free` (query) `boolean`: Whether to include free plan subscription items
+- `query` (query) `string`: Search query to filter subscription items
+
+Responses:
+
+- `200`: A list of commerce subscription items.
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `422`: Invalid request parameters
+- `500`: Request was not successful
+
+## DELETE /billing/subscription_items/{subscription_item_id}
+
+Cancel a subscription item
+
+Cancel a specific subscription item. The subscription item can be canceled immediately or at the end of the current billing period.
+
+Parameters:
+
+- `subscription_item_id` (path, required) `string`: The ID of the subscription item to cancel
+- `end_now` (query) `boolean`: Whether to cancel the subscription immediately (true) or at the end of the current billing period (false, default)
+
+Responses:
+
+- `200`: A commerce subscription item.
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+- `500`: Request was not successful
+
+## POST /billing/subscription_items/{subscription_item_id}/extend_free_trial
+
+Extend free trial for a subscription item
+
+Extends the free trial period for a specific subscription item to the specified timestamp.
+The subscription item must be currently in a free trial period, and the plan must support free trials.
+The timestamp must be in the future and not more than 365 days from the end of the current trial period
+This operation is idempotent - repeated requests with the same timestamp will not change the trial period.
+
+Parameters:
+
+- `subscription_item_id` (path, required) `string`: The ID of the subscription item to extend the free trial for
+
+Request body (application/json):
+
+- `extend_to` `string`, required: RFC3339 timestamp to extend the free trial to. Must be in the future and not more than 365 days from now.
+
+Responses:
+
+- `200`: A commerce subscription item.
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+- `500`: Request was not successful
+
+## POST /billing/subscription_items/{subscription_item_id}/price_transition
+
+Create a price transition for a subscription item
+
+Creates a price transition for the specified subscription item.
+This may create an upcoming subscription item or activate immediately depending on plan and payer rules.
+
+Parameters:
+
+- `subscription_item_id` (path, required) `string`: The ID of the subscription item to transition
+
+Request body (application/json):
+
+- `from_price_id` `string`, required: The current price ID of the subscription item.
+- `to_price_id` `string`, required: The target price ID to transition to.
+
+Responses:
+
+- `200`: A commerce price transition.
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `409`: Conflict
+- `422`: Invalid request parameters
+- `500`: Request was not successful
+
+## POST /billing/subscription_items/{subscription_item_id}/discounts
+
+Apply a discount to a subscription item
+
+Applies an existing discount to a subscription item.
+Manual application is an override path: self-serve distribution rules are not enforced.
+At most one active discount is allowed per subscription item; applying a different
+discount replaces the currently active one. Re-applying the same active discount returns a conflict.
+
+Parameters:
+
+- `subscription_item_id` (path, required) `string`: The ID of the subscription item to apply the discount to
+
+Request body (application/json):
+
+- `discount_id` `string`, required: The ID of the discount to apply to the subscription item.
+
+Responses:
+
+- `200`: A commerce discount redemption.
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `409`: Conflict
+- `422`: Invalid request parameters
+- `500`: Request was not successful
+
+## DELETE /billing/subscription_items/{subscription_item_id}/discounts/{discount_id}
+
+Remove a discount from a subscription item
+
+Removes the active discount from a subscription item.
+The discount_id must match the subscription item's currently active discount.
+
+Parameters:
+
+- `subscription_item_id` (path, required) `string`: The ID of the subscription item to remove the discount from
+- `discount_id` (path, required) `string`: The ID of the discount to remove
+
+Responses:
+
+- `200`: A commerce discount redemption.
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `409`: Conflict
+- `422`: Invalid request parameters
+- `500`: Request was not successful
+
+## GET /billing/statements
+
+List all billing statements
+
+Returns a list of all billing statements for the instance. The statements are returned sorted by creation date,
+with the newest statements appearing first. Pagination is supported.
+
+Parameters:
+
+- `paginated` (query) `boolean`: Whether to paginate the results. If true, the results will be paginated. If false, the results will not be paginated.
+- `limit` (query) `integer`: Applies a limit to the number of results returned. Can be used for paginating the results together with `offset`.
+- `offset` (query) `integer`: Skip the first `offset` results when paginating. Needs to be an integer greater or equal to zero. To be used in conjunction with `limit`.
+
+Responses:
+
+- `200`: A list of billing statements.
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `422`: Invalid request parameters
+- `500`: Request was not successful
+
+## GET /billing/statements/{statementID}
+
+Retrieve a billing statement
+
+Retrieves the details of a billing statement.
+
+Parameters:
+
+- `statementID` (path, required) `string`: The ID of the statement to retrieve.
+
+Responses:
+
+- `200`: A billing statement.
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+- `500`: Request was not successful
+
+## GET /billing/statements/{statementID}/payment_attempts
+
+List payment attempts for a billing statement
+
+Returns a list of all payment attempts for a specific billing statement. The payment attempts are returned sorted by creation date,
+with the newest payment attempts appearing first. Pagination is supported.
+
+Parameters:
+
+- `statementID` (path, required) `string`: The ID of the statement to retrieve payment attempts for.
+- `paginated` (query) `boolean`: Whether to paginate the results. If true, the results will be paginated. If false, the results will not be paginated.
+- `limit` (query) `integer`: Applies a limit to the number of results returned. Can be used for paginating the results together with `offset`.
+- `offset` (query) `integer`: Skip the first `offset` results when paginating. Needs to be an integer greater or equal to zero. To be used in conjunction with `limit`.
+
+Responses:
+
+- `200`: A list of billing payment attempts.
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+- `500`: Request was not successful

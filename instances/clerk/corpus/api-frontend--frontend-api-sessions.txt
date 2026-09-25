@@ -1,0 +1,282 @@
+# Frontend API: Sessions
+# джерело: https://clerk.com/docs/reference/frontend-api
+# отримано: 2026-09-25
+
+Used to interact with the sessions of a client.
+
+## DELETE /v1/client/sessions
+
+Remove client's sessions
+
+Removes all the sessions of the current client without removing the __client cookie
+
+Responses:
+
+- `200`: Returns the response for DELETE session object.
+- `401`: Request was not successful
+- `404`: Request was not successful
+
+## GET /v1/client/sessions/{session_id}
+
+Get Session
+
+Returns the session with the given id
+
+Parameters:
+
+- `session_id` (path, required) `string`: The user session ID.
+
+Responses:
+
+- `200`: Returns a Session object.
+- `401`: Request was not successful
+- `404`: Request was not successful
+
+## POST /v1/client/sessions/{session_id}/touch
+
+Touch session
+
+Specify the active session for the client.
+
+When force organization selection is enabled and `active_organization_id` is sent as null or empty string,
+the session will keep the previous active organization and will not attempt to switch to a personal account.
+
+Parameters:
+
+- `session_id` (path, required) `string`: The user session ID.
+
+Request body (application/x-www-form-urlencoded):
+
+- `active_organization_id` `string`: The ID or slug of the organization to activate. When force organization selection is enabled and this value is sent as null or empty string, the session will keep the previous active organization and will not attempt to switch to a personal account.
+- `intent` `string, one of focus, select_session, select_org`: Indicates why the touch request was triggered.
+
+Responses:
+
+- `200`: Returns a touched Session object. The `client` field may be null for intents that skip piggybacking.
+- `400`: Request was not successful
+- `401`: Request was not successful
+- `403`: Request was not successful
+- `404`: Request was not successful
+- `422`: Request was not successful
+
+## POST /v1/client/sessions/{session_id}/end
+
+End Session
+
+Marks the given session as ended.
+
+Parameters:
+
+- `session_id` (path, required) `string`: The user session ID.
+
+Responses:
+
+- `200`: Returns a Session object.
+- `400`: Request was not successful
+- `401`: Request was not successful
+- `404`: Request was not successful
+
+## POST /v1/client/sessions/{session_id}/remove
+
+Remove Session
+
+Delete the given session.
+
+Parameters:
+
+- `session_id` (path, required) `string`: The user session ID.
+
+Responses:
+
+- `200`: Returns a Session object.
+- `400`: Request was not successful
+- `401`: Request was not successful
+- `404`: Request was not successful
+
+## POST /v1/client/sessions/{session_id}/tokens
+
+Create Session Token
+
+Create a session JWT for the authenticated requested user.
+
+When force organization selection is enabled and `organization_id` is sent as null or empty string,
+the token will be created with the previous active organization and will not attempt to switch to a personal account.
+
+Parameters:
+
+- `session_id` (path, required) `string`: The user session ID.
+
+Request body (application/x-www-form-urlencoded):
+
+- `organization_id` `string`: The organization ID to associate with the token. The user must be a member of the organization. If present but empty, the personal account will be set as active. If absent, the previous active organization for the session will be used. When force organization selection is enabled and this value is sent as null or empty string, the token will be created with the previous active organization and will not attempt to switch to a personal account.
+
+Responses:
+
+- `200`: OK
+- `401`: Request was not successful
+- `403`: Request was not successful
+- `404`: Request was not successful
+
+## POST /v1/client/sessions/{session_id}/tokens/{template_name}
+
+Create Session Token With JWT Template
+
+Create a session JWT for the authenticated requested user.
+
+Parameters:
+
+- `session_id` (path, required) `string`: The user session ID.
+- `template_name` (path, required) `string`: the template name
+
+Responses:
+
+- `200`: OK
+- `401`: Request was not successful
+- `404`: Request was not successful
+
+## POST /v1/client/sessions/{session_id}/verify
+
+Start a new session reverification
+
+Start a new session reverification flow by providing a verification level.
+
+If the requested level equals 'secondFactor' or 'multiFactor' and the associated user
+doesn't have any available second factor, then we fall back to 'firstFactor'
+
+Parameters:
+
+- `session_id` (path, required) `string`: the user session ID.
+
+Request body (application/x-www-form-urlencoded):
+
+- `level` `string, one of first_factor, second_factor, multi_factor`, required: The level of authentication that the user needs to go through
+
+Responses:
+
+- `200`: Returns the session reverification object, as well as the session object.
+- `401`: Request was not successful
+- `403`: Request was not successful
+- `422`: Request was not successful
+
+## POST /v1/client/sessions/{session_id}/verify/prepare_first_factor
+
+Prepare session reverification first factor
+
+Prepare the first factor verification.
+Depending on the strategy, this request will do something different.
+
+Parameter actions:
+If the strategy equals email_code then this request will send an email with an OTP code.
+If the strategy equals phone_code then this request will send an SMS with an OTP code.
+
+Parameters:
+
+- `Origin` (header) `string`: The origin of the request
+- `session_id` (path, required) `string`: the user session ID.
+
+Request body (application/x-www-form-urlencoded):
+
+- `trusted_device_id` `string`: The biometric credential enrolled on this native client. Required with `trusted_device`.
+- `strategy` `string, one of email_code, phone_code, passkey, enterprise_sso, trusted_device`: The strategy to be prepared for first factor authentication.
+- `email_address_id` `string`: Used with the `email_code` strategy.
+- `phone_number_id` `string`: Used with the `phone_code` strategy.
+- `proof_token` `string`: Proof token produced by the Clerk Protect SDK.
+
+Responses:
+
+- `200`: Returns the session reverification object, as well as the session object.
+- `400`: Request was not successful
+- `401`: Request was not successful
+- `403`: Request was not successful
+- `422`: Request was not successful
+
+## POST /v1/client/sessions/{session_id}/verify/attempt_first_factor
+
+Attempt session reverification first factor
+
+Attempt the first factor verification.
+Requires the first factor verification to be prepared, unless you're using a password.
+
+Parameter rules:
+If the strategy equals `email_code` then a code is required.
+If the strategy equals `password` then a password is required.
+
+Parameters:
+
+- `Origin` (header) `string`: The origin of the request
+- `session_id` (path, required) `string`: the user session ID.
+
+Request body (application/x-www-form-urlencoded):
+
+- `trusted_device_id` `string`: The biometric credential enrolled on this native client. Required with `trusted_device`.
+- `client_data` `string`: The exact server-issued challenge data. Required with `trusted_device`.
+- `signature` `string`: The base64url-encoded ES256 signature. Required with `trusted_device`.
+- `algorithm` `string, one of ES256`: Required with `trusted_device`.
+- `strategy` `string, one of email_code, password, phone_code, passkey, trusted_device`, required: The strategy to be used for first factor authentication.
+- `code` `string`: The code that was sent to the email. Used with the `email_code` and `phone_code` strategies.
+- `password` `string`: Used with the `password` strategy.
+- `public_key_credential` `string`: Used with the `passkey` strategy.
+
+Responses:
+
+- `200`: Returns the session reverification object, as well as the session object.
+- `400`: Request was not successful
+- `401`: Request was not successful
+- `403`: Request was not successful
+- `422`: Request was not successful
+- `429`: Request was not successful
+
+## POST /v1/client/sessions/{session_id}/verify/prepare_second_factor
+
+Prepare session reverification second factor
+
+Prepare the second factor verification.
+Requires the `status` to be equal to `needs_second_factor`.
+
+Parameters:
+
+- `session_id` (path, required) `string`: the user session ID.
+
+Request body (application/x-www-form-urlencoded):
+
+- `trusted_device_id` `string`: The biometric credential enrolled on this native client. Required with `trusted_device`.
+- `strategy` `string, one of phone_code, trusted_device`: The strategy to be prepared for second factor authentication.
+- `phone_number_id` `string`: Used with the `phone_code` strategy.
+- `proof_token` `string`: Proof token produced by the Clerk Protect SDK.
+
+Responses:
+
+- `200`: Returns the session reverification object, as well as the session object.
+- `400`: Request was not successful
+- `401`: Request was not successful
+- `403`: Request was not successful
+- `422`: Request was not successful
+
+## POST /v1/client/sessions/{session_id}/verify/attempt_second_factor
+
+Attempt session reverification second factor
+
+Attempt the second factor verification.
+Requires the `status` to be equal to `needs_second_factor` and for the preparation step to have been called.
+
+Parameters:
+
+- `session_id` (path, required) `string`: the user session ID.
+
+Request body (application/x-www-form-urlencoded):
+
+- `trusted_device_id` `string`: The biometric credential enrolled on this native client. Required with `trusted_device`.
+- `client_data` `string`: The exact server-issued challenge data. Required with `trusted_device`.
+- `signature` `string`: The base64url-encoded ES256 signature. Required with `trusted_device`.
+- `algorithm` `string, one of ES256`: Required with `trusted_device`.
+- `strategy` `string, one of phone_code, totp, backup_code, trusted_device`: The strategy to be attempted for second factor authentication.
+- `code` `string`: Used with the `phone_code`, `totp` and `backup_code` strategies.
+
+Responses:
+
+- `200`: Returns the session reverification object, as well as the session object.
+- `400`: Request was not successful
+- `401`: Request was not successful
+- `403`: Request was not successful
+- `422`: Request was not successful
+- `429`: Request was not successful

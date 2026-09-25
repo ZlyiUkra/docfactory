@@ -1,0 +1,184 @@
+# Backend API: Email Addresses
+# джерело: https://clerk.com/docs/reference/backend-api
+# отримано: 2026-09-25
+
+A user can be associated with one or more email addresses, which allows them to be contacted via email.
+
+## POST /email_addresses
+
+Create an email address
+
+Create a new email address
+
+Request body (application/json):
+
+- `user_id` `string`, required: The ID representing the user
+- `email_address` `string`, required: The new email address. Must adhere to the RFC 5322 specification for email address format.
+- `verified` `boolean`: When created, the email address will be marked as verified.
+- `primary` `boolean`: Create this email address as the primary email address for the user. Default: false, unless it is the first email address.
+- `notify_primary_email_address_changed` `boolean`: If set to `true` and the email address is created as the user's new primary, the previous primary email address is notified of the change. By default, no notification is sent.
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `409`: Conflict
+- `422`: Invalid request parameters
+
+## GET /email_addresses/{email_address_id}
+
+Retrieve an email address
+
+Returns the details of an email address.
+
+Parameters:
+
+- `email_address_id` (path, required) `string`: The ID of the email address to retrieve
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+
+## PATCH /email_addresses/{email_address_id}
+
+Update an email address
+
+Updates an email address.
+
+Parameters:
+
+- `email_address_id` (path, required) `string`: The ID of the email address to update
+
+Request body (application/json):
+
+- `verified` `boolean`: The email address will be marked as verified.
+- `primary` `boolean`: Set this email address as the primary email address for the user.
+- `notify_primary_email_address_changed` `boolean`: If set to `true` and this update makes the email address the user's new primary, the previous primary email address is notified of the change. By default, no notification is sent.
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `409`: Conflict
+
+## DELETE /email_addresses/{email_address_id}
+
+Delete an email address
+
+Delete the email address with the given ID
+
+Parameters:
+
+- `email_address_id` (path, required) `string`: The ID of the email address to delete
+
+Responses:
+
+- `200`: Deleted Object
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `409`: Conflict
+
+## POST /email_addresses/{email_address_id}/prepare_verification
+
+Send a verification code to an email address
+
+Sends a one-time code to the given email address so that a backend can
+verify the user controls it (for example, in a custom, backend-driven
+sign-in flow). The code is tracked on its own verification; confirm it
+with attempt_verification.
+
+Parameters:
+
+- `email_address_id` (path, required) `string`: The ID of the email address to send the verification code to
+
+Responses:
+
+- `200`: The verification. After prepare_verification it is pending (unverified); after attempt_verification its status reflects the attempt outcome.
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `500`: Request was not successful
+
+## POST /email_addresses/{email_address_id}/attempt_verification
+
+Verify a code sent to an email address
+
+Checks a one-time code against the verification identified by
+verification_id, and returns the verification with its updated status
+(`verified`, `unverified`, `expired`, or `failed`) and attempt count, so a
+backend driving its own frontend can react on every attempt — an incorrect
+or expired code is reported through the status, not as an error. Resubmitting
+a verification whose code was already accepted is rejected with a
+`verification_already_verified` error. If the code
+is correct and the email address is not already verified, it is also marked
+as verified as a side effect (just as it would be in a frontend verification
+flow); an already verified email address is left unchanged. It never creates
+a session; to sign the user in afterwards, mint a sign-in token.
+
+Parameters:
+
+- `email_address_id` (path, required) `string`: The ID of the email address whose code is being verified
+
+Request body (application/json):
+
+- `verification_id` `string`, required: The ID of the verification to check, such as one returned by prepare_verification
+- `code` `string`, required: The verification code that was sent to the email address
+
+Responses:
+
+- `200`: The verification. After prepare_verification it is pending (unverified); after attempt_verification its status reflects the attempt outcome.
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `500`: Request was not successful
+
+## PUT /users/{user_id}/email_address
+
+Replace a user's email address
+
+Replaces all of the user's email addresses with a single primary email address.
+By default the new email address is created verified, with the admin verification strategy.
+When `identification_status` is `reserved` it is created reserved instead: unverified but usable
+for sign-in and locked so no other user can claim it. When it is `unverified` the address is
+neither usable for sign-in nor locked. Any existing email addresses are deleted.
+If an existing email address is linked to a connected account, the request is rejected; remove
+the connected account first.
+
+**Warning:** `identification_status: unverified` can lock the user out of their account. An
+unverified email address cannot be used to sign in, so if the user has no other verified or
+reserved identifier, deleting their existing email addresses leaves them unable to
+authenticate — and unable to verify the new address, since that requires signing in. Recovery
+then requires another admin API call.
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user whose email address to replace
+
+Request body (application/json):
+
+- `email_address` `string`, required: The new email address. Must adhere to the RFC 5322 specification for email address format.
+- `identification_status` `string, one of verified, reserved, unverified`: Controls the status of the replacement email address. Defaults to `verified`. Set to `reserved` to create it reserved (unverified but usable for sign-in and locked so no other user can claim it), or to `unverified` to create it neither usable for sign-in nor locked. **Warning:** `unverified` can lock the user out of their account. An unverified email address cannot be used to sign in, so if the user has no other verified or reserved identifier, they will be unable to authenticate and unable to verify this address. Prefer `reserved` unless you specifically need the address left unclaimed — for example so that another user can also hold it until one of them verifies it.
+- `notify_primary_email_address_changed` `boolean`: If set to `true`, the user's previous primary email address is notified that the primary email address has changed. No notification is sent when the replacement is the user's current primary email address. By default, no notification is sent.
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters

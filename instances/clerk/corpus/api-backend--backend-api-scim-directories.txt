@@ -1,0 +1,216 @@
+# Backend API: SCIM Directories
+# джерело: https://clerk.com/docs/reference/backend-api
+# отримано: 2026-09-25
+
+## GET /scim_directories
+
+List all directories
+
+Returns a list of all directories for the instance.
+
+Parameters:
+
+- `limit` (query) `integer`: Applies a limit to the number of results returned. Can be used for paginating the results together with `offset`.
+- `offset` (query) `integer`: Skip the first `offset` results when paginating. Needs to be an integer greater or equal to zero. To be used in conjunction with `limit`.
+
+Responses:
+
+- `200`: A list of directories
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+
+## POST /scim_directories
+
+Create a directory
+
+Create a new directory for the instance.
+
+Request body (application/json):
+
+- `enterprise_connection_id` `string`, required: The ID of the enterprise connection to associate with this directory.
+- `name` `string`: A human-friendly name for the directory.
+- `provider` `string`, required: The identity provider for this directory.
+- `group_role_mappings` `array of object`: Optional SCIM group to organization role mappings to create with the directory.
+
+Responses:
+
+- `200`: A directory
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `422`: Invalid request parameters
+
+## GET /scim_directories/{scim_directory_id}
+
+Retrieve a directory
+
+Returns the details of a directory.
+
+Parameters:
+
+- `scim_directory_id` (path, required) `string`: The ID of the directory to retrieve
+
+Responses:
+
+- `200`: A directory
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+
+## PATCH /scim_directories/{scim_directory_id}
+
+Update a directory
+
+Updates a directory.
+
+Parameters:
+
+- `scim_directory_id` (path, required) `string`: The ID of the directory to update
+
+Request body (application/json):
+
+- `name` `string`: A human-friendly name for the directory.
+- `enabled` `boolean`: Whether the directory is enabled.
+- `provider` `string`: The identity provider for this directory.
+- `attribute_mapping` `object`: Attribute-to-SCIM-path entries to merge into the directory's attribute mapping. Set a key to `null` to remove it from the mapping.
+- `group_role_mapping_enabled` `boolean`: Whether group-to-role mapping is enabled for this directory.
+
+Responses:
+
+- `200`: A directory
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## DELETE /scim_directories/{scim_directory_id}
+
+Delete a directory
+
+Deletes a directory and stops provisioning for it. SCIM requests authenticated
+with the directory's API key are rejected afterwards.
+
+Parameters:
+
+- `scim_directory_id` (path, required) `string`: The ID of the directory to delete
+
+Responses:
+
+- `200`: Deleted Object
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+
+## POST /scim_directories/{scim_directory_id}/rotate_api_key
+
+Rotate a directory's API key
+
+Generates a new API key for the directory and returns it in the `api_key` field.
+This is the only way to obtain the key after creation, so make sure to update it in
+your identity provider. The previous key remains valid for a short grace period before
+it expires.
+
+Parameters:
+
+- `scim_directory_id` (path, required) `string`: The ID of the directory whose API key to rotate
+
+Responses:
+
+- `200`: A directory
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## GET /scim_directories/{scim_directory_id}/group_role_mappings
+
+List SCIM group role mappings
+
+Returns the list of SCIM group to organization role mappings for a directory, ordered by precedence.
+
+Parameters:
+
+- `scim_directory_id` (path, required) `string`: The ID of the directory.
+
+Responses:
+
+- `200`: A list of SCIM group role mappings, ordered by precedence.
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+
+## POST /scim_directories/{scim_directory_id}/group_role_mappings
+
+Create a SCIM group role mapping
+
+Creates a new SCIM group to organization role mapping for a directory.
+Mappings can be created while group role mapping is disabled on the
+directory, but they only take effect once it is enabled.
+
+Parameters:
+
+- `scim_directory_id` (path, required) `string`: The ID of the directory.
+
+Request body (application/json):
+
+- `scim_group_id` `string`, required: The SCIM group ID from the identity provider.
+- `role_id` `string`, required: The ID of the organization role to assign to members of the SCIM group.
+- `precedence` `integer`: The precedence for this mapping. Lower values take priority when a user belongs to multiple mapped groups. If omitted, the mapping is appended with the next-highest precedence.
+
+Responses:
+
+- `200`: A SCIM group role mapping
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## PUT /scim_directories/{scim_directory_id}/group_role_mappings
+
+Replace SCIM group role mappings
+
+Replaces the entire set of SCIM group role mappings for a directory. The position of
+each item in the `mappings` array determines its precedence (the first item gets
+precedence 1). Passing an empty array removes all mappings. Mappings can be replaced
+while group role mapping is disabled on the directory, but they only take effect once
+it is enabled.
+
+Parameters:
+
+- `scim_directory_id` (path, required) `string`: The ID of the directory.
+
+Request body (application/json):
+
+- `mappings` `array of object`, required: The desired set of mappings. Array order sets precedence (1-indexed). An empty array clears all mappings.
+
+Responses:
+
+- `200`: A list of SCIM group role mappings, ordered by precedence.
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## DELETE /scim_directories/{scim_directory_id}/group_role_mappings/{mapping_id}
+
+Delete a SCIM group role mapping
+
+Deletes a single SCIM group role mapping. Mappings can be deleted while group role
+mapping is disabled on the directory, but the change only takes effect once it is
+enabled.
+
+Parameters:
+
+- `scim_directory_id` (path, required) `string`: The ID of the directory.
+- `mapping_id` (path, required) `string`: The ID of the SCIM group role mapping to delete.
+
+Responses:
+
+- `200`: A SCIM group role mapping was deleted.
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found

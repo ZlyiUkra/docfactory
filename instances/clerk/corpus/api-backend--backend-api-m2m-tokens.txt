@@ -1,0 +1,100 @@
+# Backend API: M2M Tokens
+# джерело: https://clerk.com/docs/reference/backend-api
+# отримано: 2026-09-25
+
+Machine to Machine Tokens are used to manage authentication between Machines.
+
+## GET /m2m_tokens
+
+Get M2M Tokens
+
+Fetches M2M tokens for a specific machine.
+
+Only tokens created with the opaque token format are returned by this endpoint. JWT-format M2M tokens are stateless and are not stored.
+
+This endpoint can be authenticated by either a Machine Secret Key or by a Clerk Secret Key.
+
+- When fetching M2M tokens with a Machine Secret Key, only tokens associated with the authenticated machine can be retrieved.
+- When fetching M2M tokens with a Clerk Secret Key, tokens for any machine in the instance can be retrieved.
+
+Parameters:
+
+- `subject` (query, required) `string`
+- `revoked` (query) `boolean`
+- `expired` (query) `boolean`
+- `limit` (query) `number`
+- `offset` (query) `number`
+
+Responses:
+
+- `200`: 200 OK
+- `400`: 400 Bad Request
+- `403`: 403 Forbidden
+- `404`: 404 Not Found
+
+## POST /m2m_tokens
+
+Create a M2M Token
+
+Creates a new M2M Token. Must be authenticated via a Machine Secret Key.
+
+Request body (application/json):
+
+- `token_format` `string, one of opaque, jwt`
+- `seconds_until_expiration` `number`
+- `claims`
+- `min_remaining_ttl_seconds` `integer`: Enables server-side token reuse for opaque-format tokens. When set, if a non-revoked, non-expired M2M token already exists for this machine with identical `claims` and `scopes` and at least this many seconds of remaining lifetime, that existing token is returned and no new token is minted. Use this when caching tokens in application memory across requests is impractical — for example, in serverless functions, short-lived job workers, or autoscaling containers that churn faster than the token TTL. Pooling at the server collapses many redundant create calls into reuse of a single live token, which is the recommended pattern for high-volume M2M traffic. Must be strictly less than the effective token lifetime — that is, `seconds_until_expiration` when provided, or the machine's default TTL otherwise. A value greater than or equal to the lifetime is rejected with a 400, since no freshly-minted token would ever satisfy the requirement. Only applies to opaque-format tokens (`token_format` defaults to `opaque`). JWT-format tokens are stateless and are never deduplicated.
+
+Responses:
+
+- `201`: 201 Created
+- `400`: 400 Bad Request
+- `409`: 409 Conflict
+
+## POST /m2m_tokens/{m2m_token_id}/revoke
+
+Revoke a M2M Token
+
+Revokes a M2M Token.
+
+This endpoint only revokes stored opaque-format M2M tokens. JWT-format M2M tokens are stateless and cannot be revoked.
+
+This endpoint can be authenticated by either a Machine Secret Key or by a Clerk Secret Key.
+
+- When revoking a M2M Token with a Machine Secret Key, the token must managed by the Machine associated with the Machine Secret Key.
+- When revoking a M2M Token with a Clerk Secret Key, any token on the Instance can be revoked.
+
+Parameters:
+
+- `m2m_token_id` (path, required) `string`
+
+Request body (application/json):
+
+- `revocation_reason` `string`
+
+Responses:
+
+- `200`: 200 OK
+- `400`: 400 Bad Request
+- `404`: 404 Not Found
+
+## POST /m2m_tokens/verify
+
+Verify a M2M Token
+
+Verifies a M2M Token.
+
+This endpoint can be authenticated by either a Machine Secret Key or by a Clerk Secret Key.
+
+- When verifying a M2M Token with a Machine Secret Key, the token must be granted access to the Machine associated with the Machine Secret Key.
+- When verifying a M2M Token with a Clerk Secret Key, any token on the Instance can be verified.
+
+Request body (application/json):
+
+- `token` `string`, required
+
+Responses:
+
+- `200`: 200 OK
+- `400`: 400 Bad Request
+- `404`: 404 Not Found

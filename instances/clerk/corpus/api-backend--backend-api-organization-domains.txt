@@ -1,0 +1,146 @@
+# Backend API: Organization Domains
+# джерело: https://clerk.com/docs/reference/backend-api
+# отримано: 2026-09-25
+
+Manage organization domains.
+
+## GET /organizations/{organization_id}/domains
+
+Get a list of all domains of an organization.
+
+Get a list of all domains of an organization.
+
+Parameters:
+
+- `organization_id` (path, required) `string`: The organization ID.
+- `verified` (query) `string`: Filter domains by their verification status. `true` or `false`
+- `enrollment_mode` (query) `string`: Filter domains by their enrollment mode. Accepts `automatic_invitation`, `automatic_suggestion`, `manual_invitation` or `enterprise_sso`. Prefix a value with `-` to exclude it instead (e.g. `-enterprise_sso`). Include and exclude filters can be combined and compose as AND.
+- `limit` (query) `integer`: Applies a limit to the number of results returned. Can be used for paginating the results together with `offset`.
+- `offset` (query) `integer`: Skip the first `offset` results when paginating. Needs to be an integer greater or equal to zero. To be used in conjunction with `limit`.
+
+Responses:
+
+- `200`: A list of organization domains
+- `401`: Authentication invalid
+- `422`: Invalid request parameters
+
+## POST /organizations/{organization_id}/domains
+
+Create a new organization domain.
+
+Creates a new organization domain. By default the domain is verified, but can be optionally set to unverified.
+
+Parameters:
+
+- `organization_id` (path, required) `string`: The ID of the organization where the new domain will be created.
+
+Request body (application/json):
+
+- `name` `string`: The name of the new domain
+- `enrollment_mode` `string`: The enrollment_mode for the new domain. This can be `automatic_invitation`, `automatic_suggestion`, `manual_invitation` or `enterprise_sso`
+- `verified` `boolean`: The status of domain's verification. Defaults to true
+
+Responses:
+
+- `200`: An organization domain
+- `400`: Request was not successful
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## PATCH /organizations/{organization_id}/domains/{domain_id}
+
+Update an organization domain.
+
+Updates the properties of an existing organization domain.
+
+Parameters:
+
+- `organization_id` (path, required) `string`: The ID of the organization to which the domain belongs
+- `domain_id` (path, required) `string`: The ID of the domain
+
+Request body (application/json):
+
+- `enrollment_mode` `string`: The enrollment_mode for the new domain. This can be `automatic_invitation`, `automatic_suggestion`, `manual_invitation` or `enterprise_sso`
+- `verified` `boolean`: The status of the domain's verification
+
+Responses:
+
+- `200`: An organization domain
+- `400`: Request was not successful
+- `403`: Request was not successful
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## DELETE /organizations/{organization_id}/domains/{domain_id}
+
+Remove a domain from an organization.
+
+Removes the given domain from the organization.
+
+Parameters:
+
+- `organization_id` (path, required) `string`: The ID of the organization to which the domain belongs
+- `domain_id` (path, required) `string`: The ID of the domain
+
+Responses:
+
+- `200`: Deleted Object
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Request was not successful
+- `404`: Resource not found
+
+## POST /organizations/{organization_id}/domains/{domain_id}/verify_ownership
+
+Mark an organization domain's ownership as verified
+
+Flips the organization domain's ownership state to verified via the
+manual override path, bypassing the self-serve TXT DNS challenge. The
+domain row records strategy=`manual_override` and an
+`organization_domain.ownership_verified` audit event is emitted with the
+same strategy.
+
+Idempotent: re-calling on an already-verified domain returns the current
+ownership state without re-emitting the audit event.
+
+Parameters:
+
+- `organization_id` (path, required) `string`: The ID of the organization to which the domain belongs
+- `domain_id` (path, required) `string`: The ID of the domain
+
+Responses:
+
+- `200`: An organization domain
+- `401`: Authentication invalid
+- `403`: Request was not successful
+- `404`: Resource not found
+
+## GET /organization_domains
+
+List all organization domains
+
+Retrieves a list of all organization domains within the current instance.
+This endpoint can be used to list all domains across all organizations
+or filter domains by organization, verification status, enrollment mode, or search query.
+
+The response includes pagination information and details about each domain
+including its verification status, enrollment mode, and associated counts.
+
+Parameters:
+
+- `organization_id` (query) `string`: The ID of the organization to filter domains by
+- `verified` (query) `string, one of true, false`: Filter by verification status
+- `enrollment_mode` (query) `array of string, one of manual_invitation, automatic_invitation, automatic_suggestion, enterprise_sso, -manual_invitation, -automatic_invitation, -automatic_suggestion, -enterprise_sso`: Filter by enrollment mode. Prefix a value with `-` to exclude it instead (e.g. `-enterprise_sso`). Include and exclude filters can be combined and compose as AND.
+- `query` (query) `string`: Search domains by name or organization ID. If the query starts with "org_", it will search by exact organization ID match. Otherwise, it performs a case-insensitive partial match on the domain name. Note: An empty string or whitespace-only value is not allowed and will result in a validation error.
+- `domains` (query) `array of string`: Filter by exact domain names. Accepts multiple values (e.g. domains=example.com&domains=test.org).
+- `order_by` (query) `string`: Allows to return organization domains in a particular order. At the moment, you can order the returned domains by their `name` or `created_at`. In order to specify the direction, you can use the `+/-` symbols prepended to the property to order by. For example, if you want domains to be returned in descending order according to their `created_at` property, you can use `-created_at`. If you don't use `+` or `-`, then `+` is implied. Defaults to `-created_at`.
+- `offset` (query) `integer`: Skip the first `offset` results when paginating. Needs to be an integer greater or equal to zero. To be used in conjunction with `limit`.
+- `limit` (query) `integer`: Applies a limit to the number of results returned. Can be used for paginating the results together with `offset`.
+
+Responses:
+
+- `200`: A list of organization domains
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `422`: Invalid request parameters

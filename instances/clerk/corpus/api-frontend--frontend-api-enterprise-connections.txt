@@ -1,0 +1,419 @@
+# Frontend API: Enterprise Connections
+# джерело: https://clerk.com/docs/reference/frontend-api
+# отримано: 2026-09-25
+
+Endpoints for managing enterprise connections.
+
+## GET /v1/organizations/{organizationID}/enterprise_connections
+
+List enterprise connections for the active organization
+
+Returns the active enterprise connections visible to the requesting user within the active organization
+context. The active organization is taken from the session, not the URL path. Unless the
+`with_organization_account_linking` query is `true`, the result set is filtered to connections whose domains
+match the user's verified primary email address.
+
+Parameters:
+
+- `organizationID` (path, required) `string`: The ID of the active organization
+- `_clerk_session_id` (query) `string`: The session_id associated with the requesting user.
+
+Responses:
+
+- `200`: Returns active enterprise connections for the current user's primary email domain.
+- `401`: Request was not successful
+- `403`: Request was not successful
+
+## POST /v1/organizations/{organizationID}/enterprise_connections
+
+Create enterprise connection for an organization
+
+Creates an enterprise connection bound to the organization in the URL path. The caller's session must be pinned
+to that organization and the caller must hold the `org:sys_entconns:manage` permission.
+
+Parameters:
+
+- `organizationID` (path, required) `string`: The ID of the active organization
+- `_clerk_session_id` (query) `string`: The session_id associated with the requesting user.
+
+Request body (application/x-www-form-urlencoded):
+
+- `provider` `string, one of saml_custom, saml_okta, saml_google, saml_microsoft, oidc_custom, oidc_github_enterprise, oidc_gitlab`, required: SSO provider type
+- `name` `string`: Optional display name for the enterprise connection. When omitted (or sent empty), the name defaults to the requesting user's primary email address domain, falling back to the organization's name.
+- `domains` `array of string`, required: Domains served by this enterprise connection. Repeated values are sent as multiple `domains` form fields (e.g. `domains=acme.test&domains=beta.acme.test`). Each entry is lowercased, trimmed, and deduplicated server-side. Every supplied domain must already exist as one of the organization's domains with verified ownership (see the organization domains verification flow) and the `enterprise_sso` enrollment mode; the whole request is rejected with a 422 if any domain is missing, unverified, or configured with a different enrollment mode.
+- `saml_idp_entity_id` `string`: SAML IdP entity ID (only when using a SAML provider)
+- `saml_idp_sso_url` `string`: SAML IdP SSO URL (only when using a SAML provider)
+- `saml_idp_certificate` `string`: SAML IdP X.509 certificate (only when using a SAML provider)
+- `saml_idp_metadata_url` `string`: SAML IdP metadata URL (only when using a SAML provider)
+- `saml_idp_metadata` `string`: SAML IdP metadata XML document (only when using a SAML provider)
+- `saml_attribute_mapping` `string`: JSON-encoded IdP attribute mapping (only when using a SAML provider). Shape depends on provider.
+- `saml_allow_subdomains` `boolean`
+- `saml_allow_idp_initiated` `boolean`
+- `saml_force_authn` `boolean`
+- `oidc_client_id` `string`: OIDC client ID (only when using an OIDC provider)
+- `oidc_client_secret` `string`: OIDC client secret (only when using an OIDC provider)
+- `oidc_discovery_url` `string`: OIDC discovery URL (only when using an OIDC provider)
+- `oidc_auth_url` `string`: OIDC authorization endpoint URL (only when using an OIDC provider)
+- `oidc_token_url` `string`: OIDC token endpoint URL (only when using an OIDC provider)
+- `oidc_user_info_url` `string`: OIDC user info endpoint URL (only when using an OIDC provider)
+- `oidc_requires_pkce` `boolean`
+
+Responses:
+
+- `201`: Returns the enterprise connection for the current user's primary email domain.
+- `400`: Request was not successful
+- `401`: Request was not successful
+- `402`: Payment required
+- `403`: Request was not successful
+- `404`: Resource not found
+- `409`: Request was not successful
+- `422`: Invalid request parameters
+
+## PATCH /v1/organizations/{organizationID}/enterprise_connections/{enterprise_connection_id}
+
+Update enterprise connection for an organization
+
+Updates an enterprise connection bound to the organization in the URL path. The caller's session must be pinned
+to that organization and the caller must hold the `org:sys_entconns:manage` permission.
+
+Parameters:
+
+- `organizationID` (path, required) `string`: The ID of the active organization
+- `enterprise_connection_id` (path, required) `string`: The ID of the enterprise connection
+- `_clerk_session_id` (query) `string`: The session_id associated with the requesting user.
+
+Request body (application/x-www-form-urlencoded):
+
+- `name` `string`
+- `domains` `array of string`: Replacement domains for this enterprise connection. Repeated values are sent as multiple `domains` form fields (e.g. `domains=acme.test&domains=beta.acme.test`). Every supplied domain must already exist as one of the organization's domains with verified ownership and the `enterprise_sso` enrollment mode.
+- `active` `boolean`
+- `sync_user_attributes` `boolean`
+- `disable_additional_identifications` `boolean`
+- `custom_attributes` `string`: JSON-encoded custom attributes (only when enabled for the instance).
+- `saml_idp_entity_id` `string`
+- `saml_idp_sso_url` `string`
+- `saml_idp_certificate` `string`
+- `saml_idp_metadata_url` `string`
+- `saml_idp_metadata` `string`
+- `saml_attribute_mapping` `string`: JSON-encoded IdP attribute mapping. Shape depends on provider.
+- `saml_allow_subdomains` `boolean`
+- `saml_allow_idp_initiated` `boolean`
+- `saml_force_authn` `boolean`
+- `oidc_client_id` `string`
+- `oidc_client_secret` `string`
+- `oidc_discovery_url` `string`
+- `oidc_auth_url` `string`
+- `oidc_token_url` `string`
+- `oidc_user_info_url` `string`
+- `oidc_requires_pkce` `boolean`
+
+Responses:
+
+- `200`: Returns the enterprise connection for the current user's primary email domain.
+- `400`: Request was not successful
+- `401`: Request was not successful
+- `402`: Payment required
+- `403`: Request was not successful
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## DELETE /v1/organizations/{organizationID}/enterprise_connections/{enterprise_connection_id}
+
+Delete enterprise connection for an organization
+
+Deletes an enterprise connection bound to the organization in the URL path. The caller's session must be pinned
+to that organization and the caller must hold the `org:sys_entconns:manage` permission.
+
+Parameters:
+
+- `organizationID` (path, required) `string`: The ID of the active organization
+- `enterprise_connection_id` (path, required) `string`: The ID of the enterprise connection to delete
+- `_clerk_session_id` (query) `string`: The session_id associated with the requesting user.
+
+Responses:
+
+- `200`: Returns a deleted generic object.
+- `400`: Request was not successful
+- `401`: Request was not successful
+- `402`: Payment required
+- `403`: Request was not successful
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## GET /v1/organizations/{organizationID}/enterprise_connections/{enterprise_connection_id}/test_runs
+
+List enterprise connection test runs for an organization
+
+Returns a paginated list of SAML or OIDC debug test runs for an organization-bound enterprise connection.
+
+Parameters:
+
+- `organizationID` (path, required) `string`: The ID of the active organization
+- `enterprise_connection_id` (path, required) `string`: The ID of the enterprise connection
+- `_clerk_session_id` (query) `string`: The session_id associated with the requesting user.
+- `status` (query) `array of string, one of pending, success, failed`: Filter test runs by status (may be repeated)
+- `limit` (query) `integer`: Applies a limit to the number of results returned. Can be used for paginating the results together with `offset`.
+- `offset` (query) `integer`: Skip the first `offset` results when paginating. Needs to be an integer greater or equal to zero. To be used in conjunction with `limit`.
+- `paginated` (query) `boolean`: Whether to paginate the results. If true, the results will be paginated. If false, the results will not be paginated.
+
+Responses:
+
+- `200`: Returns a paginated list of enterprise connection test runs.
+- `401`: Request was not successful
+- `402`: Payment required
+- `403`: Request was not successful
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## POST /v1/organizations/{organizationID}/enterprise_connections/{enterprise_connection_id}/test_runs
+
+Create enterprise connection test run for an organization
+
+Returns a short-lived URL that starts the IdP test flow for an organization-bound enterprise connection.
+
+Parameters:
+
+- `organizationID` (path, required) `string`: The ID of the active organization
+- `enterprise_connection_id` (path, required) `string`: The ID of the enterprise connection
+- `_clerk_session_id` (query) `string`: The session_id associated with the requesting user.
+
+Responses:
+
+- `200`: Returns a URL to initiate an enterprise connection test run.
+- `401`: Request was not successful
+- `402`: Payment required
+- `403`: Request was not successful
+- `404`: Resource not found
+
+## GET /v1/me/enterprise_connections
+
+List enterprise connections for the current user
+
+**Deprecated.** Use `GET /v1/organizations/{organizationID}/enterprise_connections` instead.
+
+Returns active enterprise connections on the instance whose domains match the **verified** primary email address
+of the current user. If the user has no primary email or it is not verified, the list is empty.
+
+Deprecated.
+
+Parameters:
+
+- `_clerk_session_id` (query) `string`: The session_id associated with the requesting user.
+
+Responses:
+
+- `200`: Returns active enterprise connections for the current user's primary email domain.
+- `401`: Request was not successful
+- `403`: Request was not successful
+
+## POST /v1/me/enterprise_connections
+
+Create enterprise connection
+
+**Deprecated.** Use `POST /v1/organizations/{organizationID}/enterprise_connections` instead.
+
+Creates an enterprise connection for the instance.
+
+Deprecated.
+
+Parameters:
+
+- `_clerk_session_id` (query) `string`: The session_id associated with the requesting user.
+
+Request body (application/x-www-form-urlencoded):
+
+- `provider` `string, one of saml_custom, saml_okta, saml_google, saml_microsoft, oidc_custom, oidc_github_enterprise, oidc_gitlab`, required: SSO provider type
+- `name` `string`: Optional display name for the enterprise connection. When omitted, the name defaults to the requesting user's primary email address domain, falling back to the current user's active organization's name.
+- `domains` `array of string`, required: Domains served by this enterprise connection. Repeated values are sent as multiple `domains` form fields (e.g. `domains=acme.test&domains=beta.acme.test`). Each entry is lowercased, trimmed, and deduplicated server-side. Every supplied domain must already exist as one of the organization's domains with verified ownership and the `enterprise_sso` enrollment mode; the whole request is rejected with a 422 if any domain is missing, unverified, or configured with a different enrollment mode.
+- `organization_id` `string`: Optional organization ID to associate with this connection
+- `saml_idp_entity_id` `string`: SAML IdP entity ID (only when using a SAML provider)
+- `saml_idp_sso_url` `string`: SAML IdP SSO URL (only when using a SAML provider)
+- `saml_idp_certificate` `string`: SAML IdP X.509 certificate (only when using a SAML provider)
+- `saml_idp_metadata_url` `string`: SAML IdP metadata URL (only when using a SAML provider)
+- `saml_idp_metadata` `string`: SAML IdP metadata XML document (only when using a SAML provider)
+- `saml_attribute_mapping` `string`: JSON-encoded IdP attribute mapping (only when using a SAML provider). Shape depends on provider.
+- `saml_allow_subdomains` `boolean`
+- `saml_allow_idp_initiated` `boolean`
+- `saml_force_authn` `boolean`
+- `oidc_client_id` `string`: OIDC client ID (only when using an OIDC provider)
+- `oidc_client_secret` `string`: OIDC client secret (only when using an OIDC provider)
+- `oidc_discovery_url` `string`: OIDC discovery URL (only when using an OIDC provider)
+- `oidc_auth_url` `string`: OIDC authorization endpoint URL (only when using an OIDC provider)
+- `oidc_token_url` `string`: OIDC token endpoint URL (only when using an OIDC provider)
+- `oidc_user_info_url` `string`: OIDC user info endpoint URL (only when using an OIDC provider)
+- `oidc_requires_pkce` `boolean`
+
+Responses:
+
+- `201`: Returns the enterprise connection for the current user's primary email domain.
+- `400`: Request was not successful
+- `401`: Request was not successful
+- `402`: Payment required
+- `403`: Request was not successful
+- `404`: Resource not found
+- `409`: Request was not successful
+- `422`: Invalid request parameters
+
+## PATCH /v1/me/enterprise_connections/{enterprise_connection_id}
+
+Update enterprise connection
+
+**Deprecated.** Use `PATCH /v1/organizations/{organizationID}/enterprise_connections/{enterprise_connection_id}` instead.
+
+Updates an enterprise connection the current user may manage (verified primary email domain must match the connection).
+
+Deprecated.
+
+Parameters:
+
+- `enterprise_connection_id` (path, required) `string`: The ID of the enterprise connection
+- `_clerk_session_id` (query) `string`: The session_id associated with the requesting user.
+
+Request body (application/x-www-form-urlencoded):
+
+- `name` `string`
+- `domains` `array of string`: Replacement domains for this enterprise connection. Repeated values are sent as multiple `domains` form fields (e.g. `domains=acme.test&domains=beta.acme.test`). Every supplied domain must already exist as one of the organization's domains with verified ownership and the `enterprise_sso` enrollment mode.
+- `active` `boolean`
+- `sync_user_attributes` `boolean`
+- `disable_additional_identifications` `boolean`
+- `organization_id` `string`
+- `custom_attributes` `string`: JSON-encoded custom attributes (only when enabled for the instance).
+- `saml_idp_entity_id` `string`
+- `saml_idp_sso_url` `string`
+- `saml_idp_certificate` `string`
+- `saml_idp_metadata_url` `string`
+- `saml_idp_metadata` `string`
+- `saml_attribute_mapping` `string`: JSON-encoded IdP attribute mapping. Shape depends on provider.
+- `saml_allow_subdomains` `boolean`
+- `saml_allow_idp_initiated` `boolean`
+- `saml_force_authn` `boolean`
+- `oidc_client_id` `string`
+- `oidc_client_secret` `string`
+- `oidc_discovery_url` `string`
+- `oidc_auth_url` `string`
+- `oidc_token_url` `string`
+- `oidc_user_info_url` `string`
+- `oidc_requires_pkce` `boolean`
+
+Responses:
+
+- `200`: Returns the enterprise connection for the current user's primary email domain.
+- `400`: Request was not successful
+- `401`: Request was not successful
+- `402`: Payment required
+- `403`: Request was not successful
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## DELETE /v1/me/enterprise_connections/{enterprise_connection_id}
+
+Delete enterprise connection
+
+**Deprecated.** Use `DELETE /v1/organizations/{organizationID}/enterprise_connections/{enterprise_connection_id}` instead.
+
+Deletes an enterprise connection the current user may manage (verified primary email domain must match the connection).
+
+Deprecated.
+
+Parameters:
+
+- `enterprise_connection_id` (path, required) `string`: The ID of the enterprise connection to delete
+- `_clerk_session_id` (query) `string`: The session_id associated with the requesting user.
+
+Responses:
+
+- `200`: Returns a deleted generic object.
+- `400`: Request was not successful
+- `401`: Request was not successful
+- `402`: Payment required
+- `403`: Request was not successful
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## GET /v1/me/enterprise_connections/{enterprise_connection_id}/test_runs
+
+List enterprise connection test runs
+
+**Deprecated.** Use `GET /v1/organizations/{organizationID}/enterprise_connections/{enterprise_connection_id}/test_runs` instead.
+
+Returns a paginated list of SAML or OIDC debug test runs for the connection.
+
+Deprecated.
+
+Parameters:
+
+- `enterprise_connection_id` (path, required) `string`: The ID of the enterprise connection
+- `_clerk_session_id` (query) `string`: The session_id associated with the requesting user.
+- `status` (query) `array of string, one of pending, success, failed`: Filter test runs by status (may be repeated)
+- `limit` (query) `integer`: Applies a limit to the number of results returned. Can be used for paginating the results together with `offset`.
+- `offset` (query) `integer`: Skip the first `offset` results when paginating. Needs to be an integer greater or equal to zero. To be used in conjunction with `limit`.
+- `paginated` (query) `boolean`: Whether to paginate the results. If true, the results will be paginated. If false, the results will not be paginated.
+
+Responses:
+
+- `200`: Returns a paginated list of enterprise connection test runs.
+- `401`: Request was not successful
+- `402`: Payment required
+- `403`: Request was not successful
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## POST /v1/me/enterprise_connections/{enterprise_connection_id}/test_runs
+
+Create enterprise connection test run
+
+**Deprecated.** Use `POST /v1/organizations/{organizationID}/enterprise_connections/{enterprise_connection_id}/test_runs` instead.
+
+Returns a short-lived URL that starts the IdP test flow for this connection.
+
+Deprecated.
+
+Parameters:
+
+- `enterprise_connection_id` (path, required) `string`: The ID of the enterprise connection
+- `_clerk_session_id` (query) `string`: The session_id associated with the requesting user.
+
+Responses:
+
+- `200`: Returns a URL to initiate an enterprise connection test run.
+- `401`: Request was not successful
+- `402`: Payment required
+- `403`: Request was not successful
+- `404`: Resource not found
+
+## GET /v1/enterprise_connections/{enterpriseConnectionID}/init_test_run
+
+Initiate enterprise connection test run
+
+Initiates a test run for an enterprise connection.
+Validates the provided ticket and redirects to the Identity Provider for authentication.
+
+Parameters:
+
+- `enterpriseConnectionID` (path, required) `string`: The ID of the enterprise connection to test
+- `ticket` (query, required) `string`: A ticket that authorizes and expires this test run request
+
+Responses:
+
+- `301`: Redirect to Identity Provider for authentication
+- `400`: Request was not successful
+- `404`: Resource not found
+
+## GET /v1/enterprise_connections/{enterpriseConnectionID}/test_runs/{testRunID}
+
+Get enterprise connection test run result
+
+Returns the result of an enterprise connection test run as an HTML page.
+Displays success or error status with detailed information about the test run.
+
+Parameters:
+
+- `enterpriseConnectionID` (path, required) `string`: The ID of the enterprise connection
+- `testRunID` (path, required) `string`: The ID of the test run (SAML debug run or OAuth debug run)
+- `token` (query, required) `string`: A token that authorizes access to view the test run results
+
+Responses:
+
+- `200`: HTML page displaying the test run result
+- `400`: Request was not successful
+- `404`: Resource not found

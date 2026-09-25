@@ -1,0 +1,241 @@
+# Platform API: Users
+# джерело: https://clerk.com/docs/reference/platform-api
+# отримано: 2026-09-25
+
+Operations for managing users within an application instance.
+
+## GET /platform/applications/{applicationID}/instances/{envOrInsID}/users
+
+List instance users
+
+List all users for an application instance.
+
+The `envOrInsID` parameter can be either an environment type (e.g., "development", "production")
+or an instance ID.
+
+Use the `query` parameter to filter users by searching across email addresses, phone numbers,
+usernames, web3 wallets, user IDs, first names, and last names.
+
+Use the `order_by` parameter to sort the results. Prefix with `+` for ascending or `-` for descending order.
+Valid fields: `created_at`, `updated_at`, `last_sign_in_at`, `last_active_at`, `email_address`, `first_name`,
+`last_name`, `username`, `phone_number`, `web3_wallet`. Default is `-created_at` (most recent first).
+
+Requires the `users:read` scope.
+
+Security: platform_api_access_token
+
+Parameters:
+
+- `applicationID` (path, required) `string`: Application ID.
+- `envOrInsID` (path, required) `string`: Environment type (e.g., "development", "production") or instance ID.
+- `query` (query) `string`: A search query to filter users. Searches across email addresses, phone numbers, usernames, web3 wallets, user IDs, first names, and last names.
+- `order_by` (query) `string`: Field to order results by. Prefix with `+` for ascending or `-` for descending order. Valid fields: `created_at`, `updated_at`, `last_sign_in_at`, `last_active_at`, `email_address`, `first_name`, `last_name`, `username`, `phone_number`, `web3_wallet`.
+- `limit` (query) `integer`: Number of results to return per page (1-500, default 10).
+- `offset` (query) `integer`: Number of results to skip for pagination.
+
+Responses:
+
+- `200`: Users retrieved successfully.
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## POST /platform/applications/{applicationID}/instances/{envOrInsID}/users
+
+Create an instance user
+
+Creates a user within an application instance.
+
+The `envOrInsID` parameter can be either an environment type (e.g., "development", "production")
+or an instance ID.
+
+Requires the `users:manage` scope.
+
+Security: platform_api_access_token
+
+Parameters:
+
+- `applicationID` (path, required) `string`: Application ID.
+- `envOrInsID` (path, required) `string`: Environment type (e.g., "development", "production") or instance ID.
+
+Request body (application/json):
+
+- `external_id` `string`: The ID of the user as used in your external systems or your previous authentication solution. Must be unique across your instance.
+- `first_name` `string`: The first name to assign to the user.
+- `last_name` `string`: The last name to assign to the user.
+- `locale` `string`: The locale to assign to the user (e.g., "en-US", "fr-FR").
+- `email_address` `array of string`: Email addresses to add to the user. Must be unique across your instance. The first email address will be set as the user's primary email address. Created verified by default; see `email_address_identification_status` to create them reserved.
+- `email_address_identification_status` `array of string, one of verified, reserved`: Controls the status each email address is created with. Runs parallel to `email_address`: when provided, it must contain exactly one item per email address, applied by position. When omitted or empty, every email address is created `verified`. Set an item to `reserved` to create the corresponding email address reserved (unverified but usable for sign-in and locked so no other user can claim it).
+- `phone_number` `array of string`: Phone numbers to add to the user. Must be unique across your instance. The first phone number will be set as the user's primary phone number. Created verified by default; see `phone_number_identification_status` to create them reserved.
+- `phone_number_identification_status` `array of string, one of verified, reserved`: Controls the status each phone number is created with. Runs parallel to `phone_number`: when provided, it must contain exactly one item per phone number, applied by position. When omitted or empty, every phone number is created `verified`. Set an item to `reserved` to create the corresponding phone number reserved (unverified but usable for sign-in and locked so no other user can claim it).
+- `web3_wallet` `array of string`: Web3 wallets to add to the user. Must be unique across your instance. The first wallet will be set as the user's primary wallet.
+- `username` `string`: The username to give to the user. It must be unique across your instance.
+- `password` `string`: The plaintext password to give the user. Must be at least 8 characters long, and cannot be in any list of hacked passwords.
+- `password_digest` `string`: In case you already have the password digests and not the passwords, you can use them for the newly created user via this property. The digests should be generated with one of the supported algorithms. The hashing algorithm can be specified using the `password_hasher` property.
+- `password_hasher` `string`: The hashing algorithm used to generate `password_digest`. See the Backend API user creation documentation for supported algorithms and digest formats.
+- `skip_password_checks` `boolean`: When set to `true` all password checks are skipped. It is recommended to use this method only when migrating plaintext passwords to Clerk. Upon migration the user base should be prompted to pick a stronger password.
+- `skip_password_requirement` `boolean`: When set to `true`, `password` is not required anymore when creating the user and can be omitted. This is useful when you need to create a user without a password in an instance that is using passwords. You cannot use this flag if password is the only way to sign in to your instance.
+- `totp_secret` `string`: If TOTP is configured on the instance, provides the secret to enable it for the newly created user. Supported options are a 30-second period, 6-digit codes, and SHA1.
+- `backup_codes` `array of string`: Backup codes for the user. Provide plaintext codes or their corresponding bcrypt digests.
+- `public_metadata` `object`: Metadata saved on the user that is visible to both the Frontend and Backend APIs.
+- `private_metadata` `object`: Metadata saved on the user that is only visible to the Backend API.
+- `unsafe_metadata` `object`: Metadata saved on the user that can be updated from both the Frontend and Backend APIs. It is not guaranteed to be safe because the frontend can modify it.
+- `delete_self_enabled` `boolean`: If enabled, the user can delete themselves via FAPI.
+- `legal_accepted_at` `string`: A custom RFC3339 timestamp for when the user accepted legal requirements.
+- `skip_legal_checks` `boolean`: When set to `true` all legal checks are skipped. Use only when migrating a user to Clerk.
+- `skip_user_requirement` `boolean`: When set to `true`, identification types are not enforced. At least one identification type must be enabled and provided on the instance (email, phone, web3 wallet, or username). Users without required identification types cannot use those authentication strategies.
+- `create_organization_enabled` `boolean`: If enabled, the user can create organizations via FAPI.
+- `create_organizations_limit` `integer`: The maximum number of organizations the user can create. Zero means unlimited.
+- `created_at` `string`: A custom RFC3339 timestamp for when the user signed up to the application.
+- `bypass_client_trust` `boolean`: When set to `true`, the user bypasses Device Trust checks during sign-in.
+- `banned` `boolean`: When set to `true`, the user is created already banned and cannot sign in. Requires the same plan support as the ban user endpoint.
+- `locked` `boolean`: When set to `true`, the user is created already locked. Requires the user lockout feature to be enabled on the instance.
+
+Responses:
+
+- `200`: User created successfully.
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `402`: Payment required
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## DELETE /platform/applications/{applicationID}/instances/{envOrInsID}/users/{userID}
+
+Delete a user
+
+Delete a user within an application instance. Returns the deleted user object.
+
+Deleting a user that does not exist (or has already been deleted) returns 404.
+
+The `envOrInsID` parameter can be either an environment type (e.g., "development", "production")
+or an instance ID.
+
+Requires the `users:delete` scope.
+
+Security: platform_api_access_token
+
+Parameters:
+
+- `applicationID` (path, required) `string`: Application ID.
+- `envOrInsID` (path, required) `string`: Environment type (e.g., "development", "production") or instance ID.
+- `userID` (path, required) `string`: User ID.
+
+Responses:
+
+- `200`: Deleted Object
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+
+## POST /platform/applications/{applicationID}/instances/{envOrInsID}/users/{userID}/profile_image
+
+Update a user profile image
+
+Sets or replaces the profile image for a user within an application instance.
+
+The `envOrInsID` parameter can be either an environment type (e.g., "development", "production")
+or an instance ID.
+
+Requires the `users:manage` scope.
+
+Security: platform_api_access_token
+
+Parameters:
+
+- `applicationID` (path, required) `string`: Application ID.
+- `envOrInsID` (path, required) `string`: Environment type (e.g., "development", "production") or instance ID.
+- `userID` (path, required) `string`: User ID.
+
+Request body (multipart/form-data):
+
+- `file` `string`, required
+
+Responses:
+
+- `200`: User profile image updated successfully.
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `413`: Request was not successful
+
+## DELETE /platform/applications/{applicationID}/instances/{envOrInsID}/users/{userID}/profile_image
+
+Delete a user profile image
+
+Deletes the profile image for a user within an application instance.
+
+The `envOrInsID` parameter can be either an environment type (e.g., "development", "production")
+or an instance ID.
+
+Requires the `users:manage` scope.
+
+Security: platform_api_access_token
+
+Parameters:
+
+- `applicationID` (path, required) `string`: Application ID.
+- `envOrInsID` (path, required) `string`: Environment type (e.g., "development", "production") or instance ID.
+- `userID` (path, required) `string`: User ID.
+
+Responses:
+
+- `200`: User profile image deleted successfully.
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+
+## POST /platform/applications/{applicationID}/instances/{envOrInsID}/users/{userID}/ban
+
+Ban a user
+
+Marks a user as banned within an application instance. This terminates their active sessions
+(marks them as revoked) and prevents them from signing in again.
+
+Requires the `users:manage` scope.
+
+Security: platform_api_access_token
+
+Parameters:
+
+- `applicationID` (path, required) `string`: Application ID.
+- `envOrInsID` (path, required) `string`: Environment type (e.g., "development", "production") or instance ID.
+- `userID` (path, required) `string`: User ID.
+
+Responses:
+
+- `200`: User banned successfully.
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+
+## POST /platform/applications/{applicationID}/instances/{envOrInsID}/users/{userID}/unban
+
+Unban a user
+
+Removes the ban from a user within an application instance. This allows them to sign in again.
+
+Requires the `users:manage` scope.
+
+Security: platform_api_access_token
+
+Parameters:
+
+- `applicationID` (path, required) `string`: Application ID.
+- `envOrInsID` (path, required) `string`: Environment type (e.g., "development", "production") or instance ID.
+- `userID` (path, required) `string`: User ID.
+
+Responses:
+
+- `200`: User unbanned successfully.
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found

@@ -1,0 +1,199 @@
+# Backend API: Machines
+# джерело: https://clerk.com/docs/reference/backend-api
+# отримано: 2026-09-25
+
+A Machine represents a machine/server/service which can be used in machine-to-machine authentication.
+
+## GET /machines
+
+Get a list of machines for an instance
+
+This request returns the list of machines for an instance. The machines are
+ordered by descending creation date (i.e. most recent machines will be
+returned first)
+
+Parameters:
+
+- `limit` (query) `integer`: Applies a limit to the number of results returned. Can be used for paginating the results together with `offset`.
+- `offset` (query) `integer`: Skip the first `offset` results when paginating. Needs to be an integer greater or equal to zero. To be used in conjunction with `limit`.
+- `query` (query) `string`: Returns machines with ID or name that match the given query. Uses exact match for machine ID and partial match for name.
+- `order_by` (query) `string`: Allows to return machines in a particular order. You can order the returned machines by their `name` or `created_at`. To specify the direction, use the `+` or `-` symbols prepended to the property to order by. For example, to return machines in descending order by `created_at`, use `-created_at`. If you don't use `+` or `-`, then `+` is implied. Defaults to `-created_at`.
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `422`: Invalid request parameters
+
+## POST /machines
+
+Create a machine
+
+Creates a new machine.
+
+Request body (application/json):
+
+- `name` `string`, required: The name of the machine
+- `scoped_machines` `array of string`: Array of machine IDs that this machine will have access to. Maximum of 150 scopes per machine.
+- `default_token_ttl` `integer`: The default time-to-live (TTL) in seconds for tokens created by this machine. Must be at least 1 second.
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `422`: Invalid request parameters
+
+## GET /machines/{machine_id}
+
+Retrieve a machine
+
+Returns the details of a machine.
+
+Parameters:
+
+- `machine_id` (path, required) `string`: The ID of the machine to retrieve
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## PATCH /machines/{machine_id}
+
+Update a machine
+
+Updates an existing machine.
+Only the provided fields will be updated.
+
+Parameters:
+
+- `machine_id` (path, required) `string`: The ID of the machine to update
+
+Request body (application/json):
+
+- `name` `string`: The name of the machine
+- `default_token_ttl` `integer`: The default time-to-live (TTL) in seconds for tokens created by this machine. Must be at least 1 second.
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## DELETE /machines/{machine_id}
+
+Delete a machine
+
+Deletes a machine.
+
+Parameters:
+
+- `machine_id` (path, required) `string`: The ID of the machine to delete
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## GET /machines/{machine_id}/secret_key
+
+Retrieve a machine secret key
+
+Returns the secret key for a machine.
+
+Parameters:
+
+- `machine_id` (path, required) `string`: The ID of the machine to retrieve the secret key for
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+
+## POST /machines/{machine_id}/secret_key/rotate
+
+Rotate a machine's secret key
+
+Rotates the machine's secret key.
+When the secret key is rotated, make sure to update it in your machine/application.
+The previous secret key will remain valid for the duration specified by the previous_token_ttl parameter.
+
+Parameters:
+
+- `machine_id` (path, required) `string`: The ID of the machine to rotate the secret key for
+
+Request body (application/json):
+
+- `previous_token_ttl` `integer`, required: The time in seconds that the previous secret key will remain valid after rotation. This ensures a graceful transition period for updating applications with the new secret key. Set to 0 to immediately expire the previous key. Maximum value is 8 hours (28800 seconds).
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## POST /machines/{machine_id}/scopes
+
+Create a machine scope
+
+Creates a new machine scope, allowing the specified machine to access another machine.
+Maximum of 150 scopes per machine.
+
+Parameters:
+
+- `machine_id` (path, required) `string`: The ID of the machine that will have access to another machine
+
+Request body (application/json):
+
+- `to_machine_id` `string`, required: The ID of the machine that will be scoped to the current machine
+
+Responses:
+
+- `200`: Machine scope created successfully for a machine
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `409`: Conflict
+- `422`: Invalid request parameters
+
+## DELETE /machines/{machine_id}/scopes/{other_machine_id}
+
+Delete a machine scope
+
+Deletes a machine scope, removing access from one machine to another.
+
+Parameters:
+
+- `machine_id` (path, required) `string`: The ID of the machine that has access to another machine
+- `other_machine_id` (path, required) `string`: The ID of the machine that is being accessed
+
+Responses:
+
+- `200`: Machine scope deleted successfully for a machine
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters

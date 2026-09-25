@@ -1,0 +1,182 @@
+# Backend API: Role Sets
+# джерело: https://clerk.com/docs/reference/backend-api
+# отримано: 2026-09-25
+
+Role sets define collections of roles that can be assigned to organization members.
+Each organization uses one role set to determine the available roles for its members.
+Role sets support default roles for new members and creator roles for organization founders.
+
+## GET /role_sets
+
+Get a list of role sets
+
+Returns a list of role sets for the instance.
+Results can be paginated using the optional `limit` and `offset` query parameters.
+The role sets are ordered by descending creation date by default.
+
+Parameters:
+
+- `query` (query) `string`: Returns role sets with ID, name, or key that match the given query. Uses exact match for role set ID and partial match for name and key.
+- `order_by` (query) `string`: Allows to return role sets in a particular order. At the moment, you can order the returned role sets by their `created_at`, `name`, or `key`. In order to specify the direction, you can use the `+/-` symbols prepended in the property to order by. For example, if you want role sets to be returned in descending order according to their `created_at` property, you can use `-created_at`. If you don't use `+` or `-`, then `+` is implied. Defaults to `-created_at`.
+- `limit` (query) `integer`: Applies a limit to the number of results returned. Can be used for paginating the results together with `offset`.
+- `offset` (query) `integer`: Skip the first `offset` results when paginating. Needs to be an integer greater or equal to zero. To be used in conjunction with `limit`.
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `422`: Invalid request parameters
+
+## POST /role_sets
+
+Create a role set
+
+Creates a new role set with the given name and roles.
+The key must be unique for the instance and start with the 'role_set:' prefix, followed by lowercase alphanumeric characters and underscores only.
+You must provide at least one role and specify a default role key and creator role key.
+
+Request body (application/json):
+
+- `name` `string`, required: The name of the new role set
+- `key` `string`: A unique key for the role set. Must start with 'role_set:' and contain only lowercase alphanumeric characters and underscores. If not provided, a key will be generated from the name.
+- `description` `string`: Optional description for the role set
+- `default_role_key` `string`, required: The key of the role to use as the default role for new organization members. Must be one of the roles in the `roles` array.
+- `creator_role_key` `string`, required: The key of the role to assign to organization creators. Must be one of the roles in the `roles` array.
+- `type` `string, one of initial, custom`: The type of the role set. "initial" role sets are the default for new organizations. Only one role set can be "initial" per instance.
+- `roles` `array of string`, required: Array of role keys to include in the role set. Must contain at least one role and no more than 10 roles.
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `402`: Payment required
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## GET /role_sets/{role_set_key_or_id}
+
+Retrieve a role set
+
+Retrieves an existing role set by its key or ID.
+
+Parameters:
+
+- `role_set_key_or_id` (path, required) `string`: The key or ID of the role set
+
+Responses:
+
+- `200`: Success
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+
+## PATCH /role_sets/{role_set_key_or_id}
+
+Update a role set
+
+Updates an existing role set.
+You can update the name, key, description, type, default role, or creator role.
+All parameters are optional - you can update only the fields you want to change.
+
+Parameters:
+
+- `role_set_key_or_id` (path, required) `string`: The key or ID of the role set to update
+
+Request body (application/json):
+
+- `name` `string`: The new name for the role set
+- `key` `string`: A unique key for the role set. Must start with 'role_set:' and contain only lowercase alphanumeric characters and underscores.
+- `description` `string`: Optional description for the role set
+- `type` `string, one of initial`: Set to "initial" to make this the default role set for new organizations. Only one role set can be "initial" per instance; setting this will change any existing initial role set to "custom".
+- `default_role_key` `string`: The key of the role to use as the default role for new organization members. Must be an existing role in the role set.
+- `creator_role_key` `string`: The key of the role to assign to organization creators. Must be an existing role in the role set.
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## POST /role_sets/{role_set_key_or_id}/replace
+
+Replace a role set
+
+Replaces a role set with another role set. This is functionally equivalent to deleting
+the role set but allows for atomic replacement with migration support.
+Organizations using this role set will be migrated to the destination role set.
+
+Parameters:
+
+- `role_set_key_or_id` (path, required) `string`: The key or ID of the role set to replace
+
+Request body (application/json):
+
+- `dest_role_set_key` `string`, required: The key of the destination role set
+- `reassignment_mappings`: Mappings from source role keys to destination role keys. Required if members have roles that need to be reassigned.
+
+Responses:
+
+- `200`: Deleted Object
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## POST /role_sets/{role_set_key_or_id}/roles
+
+Add roles to a role set
+
+Adds one or more roles to an existing role set.
+You can optionally update the default role or creator role when adding new roles.
+
+Parameters:
+
+- `role_set_key_or_id` (path, required) `string`: The key or ID of the role set
+
+Request body (application/json):
+
+- `role_keys` `array of string`, required: Array of role keys to add to the role set. Must contain at least one role and no more than 10 roles.
+- `default_role_key` `string`: Optionally update the default role to one of the newly added roles.
+- `creator_role_key` `string`: Optionally update the creator role to one of the newly added roles.
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## POST /role_sets/{role_set_key_or_id}/roles/replace
+
+Replace a role in a role set
+
+Replaces a role in a role set with another role. This atomically removes
+the source role and reassigns any members to the destination role.
+
+Parameters:
+
+- `role_set_key_or_id` (path, required) `string`: The key or ID of the role set
+
+Request body (application/json):
+
+- `role_key` `string`, required: The key of the role to remove from the role set
+- `to_role_key` `string`, required: The key of the role to reassign members to
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters

@@ -1,0 +1,191 @@
+# Backend API: Phone Numbers
+# джерело: https://clerk.com/docs/reference/backend-api
+# отримано: 2026-09-25
+
+A user can be associated with one or more phone numbers, which allows them to be contacted via SMS.
+
+## POST /phone_numbers
+
+Create a phone number
+
+Create a new phone number
+
+Request body (application/json):
+
+- `user_id` `string`, required: The ID representing the user
+- `phone_number` `string`, required: The new phone number. Must adhere to the E.164 standard for phone number format.
+- `verified` `boolean`: When created, the phone number will be marked as verified.
+- `primary` `boolean`: Create this phone number as the primary phone number for the user. Default: false, unless it is the first phone number.
+- `reserved_for_second_factor` `boolean`: Create this phone number as reserved for multi-factor authentication. The phone number must also be verified. If there are no other reserved second factors, the phone number will be set as the default second factor.
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## GET /phone_numbers/{phone_number_id}
+
+Retrieve a phone number
+
+Returns the details of a phone number
+
+Parameters:
+
+- `phone_number_id` (path, required) `string`: The ID of the phone number to retrieve
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+
+## PATCH /phone_numbers/{phone_number_id}
+
+Update a phone number
+
+Updates a phone number
+
+Parameters:
+
+- `phone_number_id` (path, required) `string`: The ID of the phone number to update
+
+Request body (application/json):
+
+- `verified` `boolean`: The phone number will be marked as verified.
+- `primary` `boolean`: Set this phone number as the primary phone number for the user.
+- `reserved_for_second_factor` `boolean`: Set this phone number as reserved for multi-factor authentication. The phone number must also be verified. If there are no other reserved second factors, the phone number will be set as the default second factor.
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+
+## DELETE /phone_numbers/{phone_number_id}
+
+Delete a phone number
+
+Delete the phone number with the given ID
+
+Parameters:
+
+- `phone_number_id` (path, required) `string`: The ID of the phone number to delete
+
+Responses:
+
+- `200`: Deleted Object
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+
+## POST /phone_numbers/{phone_number_id}/prepare_verification
+
+Send a verification code to a phone number
+
+Sends a one-time code to the given phone number so that a backend can
+verify the user controls it (for example, in a custom, backend-driven
+sign-in flow). The code is tracked on its own verification; confirm it
+with attempt_verification.
+
+Parameters:
+
+- `phone_number_id` (path, required) `string`: The ID of the phone number to send the verification code to
+
+Responses:
+
+- `200`: The verification. After prepare_verification it is pending (unverified); after attempt_verification its status reflects the attempt outcome.
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `429`: Request was not successful
+- `500`: Request was not successful
+
+## POST /phone_numbers/{phone_number_id}/attempt_verification
+
+Verify a code sent to a phone number
+
+Checks a one-time code against the verification identified by
+verification_id, and returns the verification with its updated status
+(`verified`, `unverified`, `expired`, or `failed`) and attempt count, so a
+backend driving its own frontend can react on every attempt — an incorrect
+or expired code is reported through the status, not as an error. Resubmitting
+a verification whose code was already accepted is rejected with a
+`verification_already_verified` error. If the code for this verification
+could not be sent (the SMS provider refused or failed the send after
+prepare_verification had returned), the attempt is rejected with a
+`verification_code_not_sent` error and no attempt is counted; call
+prepare_verification again to send a new code. If too many codes have been
+checked for this phone number recently, the attempt is rejected with a
+`verification_code_too_many_attempts` error and no attempt is counted; the
+limit is per phone number, so wait for the `Retry-After` period rather than
+sending a new code. If the code
+is correct and the phone number is not already verified, it is also marked
+as verified as a side effect (just as it would be in a frontend verification
+flow); an already verified phone number is left unchanged. It never creates
+a session; to sign the user in afterwards, mint a sign-in token.
+
+Parameters:
+
+- `phone_number_id` (path, required) `string`: The ID of the phone number whose code is being verified
+
+Request body (application/json):
+
+- `verification_id` `string`, required: The ID of the verification to check, such as one returned by prepare_verification
+- `code` `string`, required: The verification code that was sent to the phone number
+
+Responses:
+
+- `200`: The verification. After prepare_verification it is pending (unverified); after attempt_verification its status reflects the attempt outcome.
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Request was not successful
+- `429`: Request was not successful
+- `500`: Request was not successful
+
+## PUT /users/{user_id}/phone_number
+
+Replace a user's phone number
+
+Replaces all of the user's phone numbers with a single primary phone number.
+By default the new phone number is created verified, with the admin verification strategy.
+When `identification_status` is `reserved` it is created reserved instead: unverified but usable
+for sign-in and locked so no other user can claim it. When it is `unverified` the phone number is
+neither usable for sign-in nor locked. The new phone number is never reserved for
+second factor. Any existing phone numbers are deleted; replacing a phone number that is reserved
+for second factor disables the user's MFA.
+
+**Warning:** `identification_status: unverified` can lock the user out of their account. An
+unverified phone number cannot be used to sign in, so if the user has no other verified or
+reserved identifier, deleting their existing phone numbers leaves them unable to authenticate —
+and unable to verify the new number, since that requires signing in. Recovery then requires
+another admin API call.
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user whose phone number to replace
+
+Request body (application/json):
+
+- `phone_number` `string`, required: The new phone number. Must adhere to the E.164 standard for phone number format.
+- `identification_status` `string, one of verified, reserved, unverified`: Controls the status of the replacement phone number. Defaults to `verified`. Set to `reserved` to create it reserved (unverified but usable for sign-in and locked so no other user can claim it), or to `unverified` to create it neither usable for sign-in nor locked. **Warning:** `unverified` can lock the user out of their account. An unverified phone number cannot be used to sign in, so if the user has no other verified or reserved identifier, they will be unable to authenticate and unable to verify this number. Prefer `reserved` unless you specifically need the number left unclaimed — for example so that another user can also hold it until one of them verifies it.
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters

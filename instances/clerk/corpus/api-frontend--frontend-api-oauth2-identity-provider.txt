@@ -1,0 +1,408 @@
+# Frontend API: OAuth2 Identity Provider
+# джерело: https://clerk.com/docs/reference/frontend-api
+# отримано: 2026-09-25
+
+Requests for the OAuth2 authorization flow.
+
+## GET /oauth/authorize
+
+Request OAuth2 authorization
+
+Request OAuth2 authorization. If successful, receive authorization grant via redirect.
+
+Parameters:
+
+- `response_type` (query, required) `string, one of code`: The authorization flow type. Must be `code` for authorization code flow.
+- `client_id` (query, required) `string`: The OAuth2 client ID of the OAuth application.
+- `redirect_uri` (query) `string`: The URI to redirect to after authorization. Must be registered for the OAuth application.
+- `scope` (query) `array of string`: Space-separated list of scopes being requested. Available scopes are `email`, `profile`, `openid`, `public_metadata`, `private_metadata`, `offline_access`, and `user:org:read` (when Organizations are enabled), and any custom scope keys assigned to the OAuth application. Falls back to the OAuth application's registered scopes if not provided.
+- `state` (query) `string`: An opaque value used to maintain state between the request and callback (minimum 8 characters). Required to prevent CSRF attacks unless PKCE parameters (`code_challenge` and `code_challenge_method`) are provided.
+- `prompt` (query) `array of string, one of none, login, consent`: Space-separated list of prompts. Supported values are `none` (no user interaction), `login` (force re-authentication), and `consent` (force consent screen).
+- `code_challenge` (query) `string`: The code challenge for PKCE (Proof Key for Code Exchange). Required for public clients.
+- `code_challenge_method` (query) `string, one of S256`: The method used to generate the code challenge. Must be `S256`.
+- `response_mode` (query) `string, one of query, form_post`: The method used to return authorization response parameters. Supported values are `query` (parameters in URL query string) and `form_post` (parameters in POST body).
+- `nonce` (query) `string`: String value used to associate a client session with an ID Token and to mitigate replay attacks. Used in OpenID Connect flows.
+- `resource` (query) `string`: Absolute URI that identifies the resource server for the requested access token, as defined by RFC 8707. The URI must not contain a fragment. Only one `resource` value is supported.
+
+Responses:
+
+- `200`: HTML `form_post` authorization response containing either a code or an OAuth error. An invalid `resource` returns `error=invalid_target`. The response preserves a supplied `state` and includes `iss`.
+- `302`: Intermediate redirect for top-level navigation, sign-in, or consent.
+- `303`: Authorization response redirect containing either a code or an OAuth error. An invalid `resource` returns `error=invalid_target`. The redirect preserves a supplied `state` and includes `iss`.
+- `400`: Direct bad-request response used when the authorization server cannot safely return the error to the client's redirect URI.
+- `401`: Unauthorized error, for example the provided client is invalid.
+- `403`: Forbidden error, for example you are trying to use a satellite domain
+
+## POST /oauth/authorize
+
+Request OAuth2 authorization
+
+Request OAuth2 authorization. If successful, receive authorization grant via redirect.
+
+Request body (application/x-www-form-urlencoded):
+
+- `response_type` `string, one of code`, required: The authorization flow type. Must be `code` for authorization code flow.
+- `client_id` `string`, required: The OAuth2 client ID of the OAuth application.
+- `redirect_uri` `string`: The URI to redirect to after authorization. Must be registered for the OAuth application.
+- `scope` `string`: Space-separated list of scopes being requested. Available scopes are `email`, `profile`, `openid`, `public_metadata`, `private_metadata`, `offline_access`, and `user:org:read` (when Organizations are enabled), and any custom scope keys assigned to the OAuth application. Falls back to the OAuth application's registered scopes if not provided.
+- `state` `string`: An opaque value used to maintain state between the request and callback (minimum 8 characters). Required to prevent CSRF attacks unless PKCE parameters (`code_challenge` and `code_challenge_method`) are provided.
+- `prompt` `string`: Space-separated list of prompts. Supported values are `none` (no user interaction), `login` (force re-authentication), and `consent` (force consent screen). Multiple values should be space-delimited (e.g., "login consent").
+- `code_challenge` `string`: The code challenge for PKCE (Proof Key for Code Exchange). Required for public clients.
+- `code_challenge_method` `string, one of S256`: The method used to generate the code challenge. Must be `S256`.
+- `response_mode` `string, one of query, form_post`: The method used to return authorization response parameters. Supported values are `query` (parameters in URL query string) and `form_post` (parameters in POST body).
+- `nonce` `string`: String value used to associate a client session with an ID Token and to mitigate replay attacks. Used in OpenID Connect flows.
+- `resource` `string`: Absolute URI that identifies the resource server for the requested access token, as defined by RFC 8707. The URI must not contain a fragment. Only one `resource` value is supported.
+
+Responses:
+
+- `200`: HTML `form_post` authorization response containing either a code or an OAuth error. An invalid `resource` returns `error=invalid_target`. The response preserves a supplied `state` and includes `iss`.
+- `302`: Intermediate redirect for top-level navigation, sign-in, or consent.
+- `303`: Authorization response redirect containing either a code or an OAuth error. An invalid `resource` returns `error=invalid_target`. The redirect preserves a supplied `state` and includes `iss`.
+- `400`: Direct bad-request response used when the authorization server cannot safely return the error to the client's redirect URI.
+- `401`: Unauthorized error, for example the provided client is invalid.
+- `403`: Forbidden error, for example you are trying to use a satellite domain
+
+## POST /oauth/register
+
+Register OAuth 2.0 Client
+
+Registers a new OAuth 2.0 client with the authorization server according to RFC 7591
+(OAuth 2.0 Dynamic Client Registration Protocol).
+
+This endpoint allows clients to dynamically register by submitting client metadata.
+Upon successful registration, the authorization server assigns a unique client identifier
+and optionally a client secret (for confidential clients).
+
+**Authentication:** This endpoint does not require authentication as it is used for
+initial client registration. However, the endpoint is disabled by default and must
+be enabled in the Instance settings.
+
+**Client Types:**
+- **Confidential clients** receive both a `client_id` and `client_secret`
+- **Public clients** (using `token_endpoint_auth_method: none`) receive only a `client_id`
+
+**Key Points:**
+- All dynamically registered clients must use the consent screen (cannot be disabled)
+- PKCE is not required for dynamically registered clients
+- The `redirect_uris` field is required and must contain at least one valid redirect URI
+- If `client_name` is not provided, the `client_id` will be used as the display name
+- If `scope` is not provided, default scopes will be assigned
+- The `token_endpoint_auth_method` values `client_secret_basic` and `client_secret_post` are
+  treated equivalently in the current implementation; both methods can be used at the
+  token endpoint
+- `application_type` accepts only `native` and `web`. Native clients may use custom URI
+  schemes, claimed `https` URIs (RFC 8252 Section 7.2),
+  and `http` only on loopback hosts. The field is optional; when omitted it defaults to
+  `web` (OpenID Connect Dynamic Client Registration 1.0 §2)
+  and is returned as `web`.
+
+See RFC 7591 for complete specification details.
+
+Request body (application/json):
+
+- `redirect_uris` `array of string`, required: Array of redirection URI strings for use in redirect-based flows such as the authorization code flow. As required by Section 2 of RFC 6749, clients using flows with redirection must register their redirection URI values.
+- `token_endpoint_auth_method` `string, one of client_secret_basic, client_secret_post, none`: Indicator of the requested authentication method for the token endpoint. - `client_secret_basic`: HTTP Basic authentication scheme - `client_secret_post`: Client credentials in the request body - `none`: Public client (no authentication) **Note:** In the current implementation, `client_secret_basic` and `client_secret_post` are treated equivalently. Both methods can be used interchangeably at the token endpoint regardless of which one was specified during registration.
+- `client_name` `string`: Human-readable string name of the client to be presented to the end-user during authorization.
+- `client_uri` `string`: URL string of a web page providing information about the client.
+- `logo_uri` `string`: URL string that references a logo for the client. If present, the Clerk will display this image to the end-user during approval.
+- `scope` `string`: Space-separated list of scope values that the client can use when requesting access tokens. If omitted, the client will be registered with the default set of scopes. Accepts built-in scope values and, on instances using Clerk's current OAuth identity provider, any custom scope defined for the instance. Instances still on the legacy OAuth identity provider accept built-in scope values only. Scope values that the instance does not define are rejected with `invalid_client_metadata`.
+- `application_type` `string`: Kind of the application as defined by OpenID Connect Dynamic Client Registration 1.0. Accepted values are `native` and `web`. Any other non-empty value is rejected with `invalid_client_metadata`. An omitted or empty value defaults to `web`. See OpenID Connect Dynamic Client Registration 1.0 §2: "The default, if omitted, is web." MCP clients should send this field (SEP-837) so native-style redirect URIs are not judged against the OIDC default of `web`. Clerk cannot identify an MCP client at this shared endpoint, so omitting the field is still accepted and defaults to `web`. When `native`, custom URI schemes and claimed `https` redirect URIs are allowed. See RFC 8252 Section 7.2 for claimed `https` redirect URIs. Plain `http` is allowed only for loopback hosts (`localhost` and IPv4 or IPv6 loopback addresses); other `http` hosts are rejected with `invalid_redirect_uri`. When `web`, the current redirect URI checks apply. Clerk does not issue the implicit grant, so the OIDC `https` and non-`localhost` rule for web clients is not enforced.
+
+Responses:
+
+- `201`: Client information response after successful OAuth 2.0 dynamic client registration. Returns the client identifier, client secret (for confidential clients), and client metadata according to RFC 7591.
+- `400`: OAuth 2.0 dynamic client registration error response according to RFC 7591. Indicates that the client registration request was invalid.
+- `422`: Unprocessable entity error. The dynamic client registration feature may not be enabled for this instance.
+- `500`: Internal server error. The authorization server encountered an unexpected condition that prevented it from fulfilling the registration request.
+
+## POST /oauth/device_authorization
+
+Start a device authorization request
+
+Starts an OAuth 2.0 Device Authorization Grant (RFC 8628). Display the returned
+`user_code` and `verification_uri`, then poll `/oauth/token` with the returned
+`device_code` at the specified `interval`.
+
+Security: ClientCredentials
+
+Request body (application/x-www-form-urlencoded):
+
+- `client_id` `string`, required: OAuth 2.0 client identifier. Must match the authenticated client.
+- `client_secret` `string`: OAuth 2.0 client secret when not using HTTP Basic Authentication.
+- `scope` `string`: Space-separated list of requested scopes. Must be a subset of the scopes allowed for the client.
+- `nonce` `string`: OpenID Connect nonce. Must be at least 8 characters when present.
+
+Responses:
+
+- `200`: Device authorization request created.
+- `400`: Bad request.
+- `401`: Unauthorized error. Common causes: - Invalid client credentials (`client_id` or `client_secret`) - Invalid or expired authorization code - Invalid or expired refresh token - Invalid `code_verifier` for PKCE flow
+- `403`: Forbidden error, for example you are trying to use a satellite domain
+- `422`: Request was not successful
+- `429`: Too many requests
+
+## POST /oauth/token
+
+Get OAuth2 token
+
+Exchange an authorization grant for OAuth2 tokens (access token, refresh token, and optionally ID token).
+
+This endpoint implements the OAuth 2.0 Token Endpoint (RFC 6749) and OpenID Connect token endpoint.
+It supports three grant types by default: `authorization_code`, `refresh_token`, and
+`urn:ietf:params:oauth:grant-type:device_code`. Instances with token exchange enabled also support
+`urn:ietf:params:oauth:grant-type:token-exchange`.
+
+#### Grant Types
+
+- **`authorization_code`**: Exchange an authorization code for tokens
+- **`refresh_token`**: Refresh an access token using a refresh token
+- **`urn:ietf:params:oauth:grant-type:device_code`**: Poll for the tokens of a device
+  authorization request (RFC 8628), which the client starts at
+  `/oauth/device_authorization`
+- **`urn:ietf:params:oauth:grant-type:token-exchange`**: Exchange an access token for a
+  resource-scoped access token (RFC 8693). This grant is available only when enabled for the instance.
+
+#### Authentication
+
+- **Confidential clients**: Must authenticate using one of the following methods:
+  - HTTP Basic Authentication: `Authorization: Basic base64(client_id:client_secret)`
+  - Client credentials in request body: Include `client_id` and `client_secret` in form fields
+  - *Note: Both methods (`client_secret_basic` and `client_secret_post`) are treated equivalently*
+- **Public clients** (PKCE flow): No client secret required. Must provide `client_id` and `code_verifier` in request body.
+
+#### PKCE (Proof Key for Code Exchange)
+
+Public clients and clients that cannot securely store a client secret must use PKCE (RFC 7636).
+When using PKCE:
+- Include `code_challenge` and `code_challenge_method` in the authorization request
+- Include `code_verifier` in the token request (instead of `client_secret`)
+
+#### Scopes
+
+Available scopes:
+- `openid` - Enables OpenID Connect features, returns an `id_token` in the response
+- `email` - User's email address
+- `profile` - Basic profile information (name, username, picture, etc.)
+- `public_metadata` - Clerk custom scope for public metadata
+- `private_metadata` - Clerk custom scope for private metadata
+
+Default scopes (if not specified): `email profile`
+
+#### Token Lifespans
+
+- **Access token**: 1 day (86400 seconds). Access tokens issued by token exchange are valid for up to
+  5 minutes and never expire after the source token.
+- **Refresh token**: 10 years
+- **ID token**: 1 day (86400 seconds)
+- **Authorization code**: 10 minutes (must be exchanged within this time)
+
+#### OpenID Connect
+
+When the `openid` scope is included in the authorization request, the token response will include
+an `id_token` field containing a signed JWT with user identity information per the OpenID Connect specification.
+The `id_token` will be refreshed along with the access token when using the `refresh_token` grant type.
+
+Security: ClientCredentials
+
+Request body (application/x-www-form-urlencoded):
+
+- `grant_type` `string, one of authorization_code, refresh_token, urn:ietf:params:oauth:grant-type:device_code, urn:ietf:params:oauth:grant-type:token-exchange`, required: The grant type being used. - `authorization_code`: Exchange an authorization code for tokens - `refresh_token`: Refresh an access token - `urn:ietf:params:oauth:grant-type:device_code`: Poll for tokens for a device authorization request - `urn:ietf:params:oauth:grant-type:token-exchange`: Exchange an access token for a resource-scoped access token
+- `device_code` `string`: The device code issued by the device authorization endpoint. **Required when `grant_type=urn:ietf:params:oauth:grant-type:device_code`**.
+- `code` `string`: The authorization code received from the authorization endpoint. **Required when `grant_type=authorization_code`**.
+- `redirect_uri` `string`: The redirect URI used in the authorization request. Must match exactly. **Required when `grant_type=authorization_code`**.
+- `code_verifier` `string`: The PKCE code verifier that corresponds to the `code_challenge` sent in the authorization request. **Required for public clients using PKCE with `grant_type=authorization_code`**. Confidential clients using `client_secret` should not include this parameter.
+- `client_id` `string`: The OAuth 2.0 client identifier. **Required for public clients** (those not using HTTP Basic Authentication). For confidential clients, can be provided here or via HTTP Basic Authentication.
+- `client_secret` `string`: The OAuth 2.0 client secret. **Required for confidential clients** (unless using HTTP Basic Authentication). Public clients using PKCE should not include this parameter.
+- `refresh_token` `string`: The refresh token issued to the client. **Required when `grant_type=refresh_token`**.
+- `subject_token` `string`: The active access token to exchange. **Required when `grant_type=urn:ietf:params:oauth:grant-type:token-exchange`**.
+- `subject_token_type` `string, one of urn:ietf:params:oauth:token-type:access_token`: The type of the subject token. **Required when `grant_type=urn:ietf:params:oauth:grant-type:token-exchange`**.
+- `requested_token_type` `string, one of urn:ietf:params:oauth:token-type:access_token`: The requested output token type for an RFC 8693 token exchange.
+- `scope` `string`: Space-separated list of scopes for the access token. **Optional when `grant_type=refresh_token`**. If provided, the requested scope must not exceed the scope originally granted. If omitted, the same scope as originally granted will be used.
+- `resource` `string`: Absolute URI that identifies the resource server for the access token, as defined by RFC 8707. **Required when `grant_type=urn:ietf:params:oauth:grant-type:token-exchange`**. For authorization code and refresh token grants, if omitted, the resource from the authorization grant is used. If provided, it must exactly match that resource. The URI must not contain a fragment. Only one `resource` value is supported.
+
+Responses:
+
+- `200`: Successfully issued OAuth2 tokens. The response includes an `access_token` and `refresh_token`. If the `openid` scope was granted, an `id_token` (JWT) will also be included in the response.
+- `400`: Bad request error. Common causes: - Missing required parameters - Invalid `grant_type` value - Malformed request - Expired authorization code - Invalid `redirect_uri` (doesn't match authorization request) - Unsupported token type for revocation (e.g., JWT access tokens) - A granted scope is no longer allowed (for example after a custom scope is deleted) - The device authorization request has not been approved yet, has been polled too quickly, or has expired (RFC 8628 §3.5) - Invalid, repeated, or mismatched `resource` value (RFC 8707)
+- `401`: Unauthorized error. Common causes: - Invalid client credentials (`client_id` or `client_secret`) - Invalid or expired authorization code - Invalid or expired refresh token - Invalid `code_verifier` for PKCE flow
+- `403`: Forbidden. The response may contain `access_denied` when a device authorization request was denied.
+
+## GET /oauth/userinfo
+
+Get user info after OAuth2 flow
+
+Get user info in exchange for a valid OAuth2 access token.
+
+Responses:
+
+- `200`: Get user info after successful OAuth2 flow
+- `400`: Request was not successful
+- `401`: Request was not successful
+- `403`: Request was not successful
+
+## POST /oauth/userinfo
+
+Get user info after OAuth2 flow
+
+Get user info in exchange for a valid OAuth2 access token.
+
+Responses:
+
+- `200`: Get user info after successful OAuth2 flow
+- `400`: Request was not successful
+- `401`: Request was not successful
+- `403`: Request was not successful
+
+## POST /oauth/token_info
+
+Get information for an access or refresh token
+
+Get information for an access or refresh token
+
+Request body (application/x-www-form-urlencoded):
+
+- `token` `string`, required: The value of the access or the refresh token
+- `token_type_hint` `string`: A hint about the type of the token submitted for introspection. Can be one of the following `access_token` and `refresh_token`
+- `scope` `string`: The granted scopes for the token to check against
+
+Responses:
+
+- `200`: Get information for an access or refresh token
+- `401`: Unauthorized error, for example the provided client is invalid.
+- `422`: You are currently using the legacy OAuth 2.0 provider, please migrate to the new one via Clerk Dashboard.
+
+## POST /oauth/token/revoke
+
+Revoke OAuth2 token
+
+Revoke OAuth2 token by token.
+
+#### Authentication
+
+- **Confidential clients**: Must authenticate using HTTP Basic Authentication with Client ID as username and Client Secret as password in the Authorization header.
+
+Security: ClientCredentials
+
+Request body (application/x-www-form-urlencoded):
+
+- `token` `string`: The token to revoke.
+- `token_type_hint` `string, one of access_token, refresh_token`: A hint about the type of the token to be revoked.
+
+Responses:
+
+- `200`: Success, no content.
+- `400`: Bad request error. Common causes: - Missing required parameters - Invalid `grant_type` value - Malformed request - Expired authorization code - Invalid `redirect_uri` (doesn't match authorization request) - Unsupported token type for revocation (e.g., JWT access tokens) - A granted scope is no longer allowed (for example after a custom scope is deleted) - The device authorization request has not been approved yet, has been polled too quickly, or has expired (RFC 8628 §3.5) - Invalid, repeated, or mismatched `resource` value (RFC 8707)
+- `401`: Unauthorized error. Common causes: - Invalid client credentials (`client_id` or `client_secret`) - Invalid or expired authorization code - Invalid or expired refresh token - Invalid `code_verifier` for PKCE flow
+
+## GET /v1/me/oauth/consent/{client_id}
+
+Get consent information
+
+Returns the scopes for a given OAuth Application Client ID.
+An optional `scope` query parameter can restrict the returned scopes to only those requested.
+The OAuth application must have consent screen enabled.
+
+Security: DevBrowser
+
+Parameters:
+
+- `client_id` (path, required) `string`: The OAuth Application Client ID to get consent information for.
+- `scope` (query) `string`: Optional space-separated list of scopes to restrict the response to only those requested.
+- `redirect_uri` (query) `string`: Optional redirect URI from the original OAuth authorize request. When provided and registered for the OAuth application, the response will include a `redirect_domain` field containing the PSL-resolved root domain for display on the consent screen. Unregistered or malformed URIs are silently ignored and `redirect_domain` will be null.
+
+Responses:
+
+- `200`: OAuth2 consent information (scopes with descriptions) for a given OAuth Application Client ID
+- `400`: Request was not successful
+- `401`: Request was not successful
+- `403`: Request was not successful
+- `404`: Request was not successful
+- `422`: Request was not successful
+
+## POST /v1/me/oauth/consent/{client_id}
+
+Submit OAuth2 consent decision
+
+Submits the user's consent decision for an OAuth2 authorization request.
+
+This endpoint allows building custom consent portals as a replacement for
+the default account-portal-rendered consent screen.
+
+The OAuth application must have the consent screen enabled. On grant, the
+flow continues just like the standard `/oauth/authorize` endpoint and
+returns the appropriate redirect.
+
+In addition to the fields documented below, the request body must
+re-submit the standard OAuth2 authorize parameters from the original
+`/oauth/authorize` request: `response_type`, `redirect_uri`, `scope`,
+`state`, `nonce`, `code_challenge`, `code_challenge_method`, and `resource`. These
+are forwarded as-is to the authorize flow.
+
+Security: DevBrowser
+
+Parameters:
+
+- `client_id` (path, required) `string`: The OAuth Application Client ID the consent decision applies to.
+
+Request body (application/x-www-form-urlencoded):
+
+- `consented` `boolean`, required: The user's consent decision. `true` grants the requested scopes and continues the authorization flow; any other value is treated as a denial and returns an `access_denied` error in the redirect.
+- `organization_id` `string`: Optional. The organization to scope the issued token to. The authenticated user must be a member of this organization. If omitted, the user's currently active organization is used.
+- `resource` `string`: Absolute URI from the original authorization request that identifies the resource server for the requested access token. The URI must not contain a fragment. Only one `resource` value is supported.
+
+Responses:
+
+- `200`: HTML `form_post` authorization response containing either a code or an OAuth error. An invalid `resource` returns `error=invalid_target`. The response preserves a supplied `state` and includes `iss`.
+- `302`: Intermediate redirect for sign-in or consent.
+- `303`: Authorization response redirect containing either a code or an OAuth error. An invalid `resource` returns `error=invalid_target`. The redirect preserves a supplied `state` and includes `iss`.
+- `400`: Request was not successful
+- `401`: Request was not successful
+- `403`: Request was not successful
+- `404`: Request was not successful
+- `422`: Request was not successful
+
+## POST /v1/me/oauth/device
+
+Submit an OAuth2 device authorization decision
+
+Approves or denies a pending OAuth2 device authorization for the authenticated user.
+
+Security: DevBrowser, ProductionBrowser, ProductionNativeApp, ProductionNativeFlag
+
+Request body (application/x-www-form-urlencoded):
+
+- `user_code` `string`, required: The user code returned by the device authorization endpoint.
+- `approved` `boolean`, required: Whether the authenticated user approves the device authorization.
+- `organization_id` `string`: Optional organization context for the issued tokens.
+
+Responses:
+
+- `200`: Completed OAuth2 device authorization decision.
+- `400`: Request was not successful
+- `401`: Request was not successful
+- `403`: Request was not successful
+- `404`: Request was not successful
+- `422`: Request was not successful
+- `429`: Request was not successful
+
+## POST /v1/me/oauth/device/lookup
+
+Look up an OAuth2 device authorization
+
+Returns the OAuth application and requested scopes associated with a user code.
+
+Security: DevBrowser, ProductionBrowser, ProductionNativeApp, ProductionNativeFlag
+
+Request body (application/x-www-form-urlencoded):
+
+- `user_code` `string`, required: The user code returned by the device authorization endpoint.
+
+Responses:
+
+- `200`: OAuth2 device authorization information for the verification screen.
+- `400`: Request was not successful
+- `401`: Request was not successful
+- `403`: Request was not successful
+- `404`: Request was not successful
+- `422`: Request was not successful
+- `429`: Request was not successful

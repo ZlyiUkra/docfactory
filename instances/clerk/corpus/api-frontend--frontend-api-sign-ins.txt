@@ -1,0 +1,282 @@
+# Frontend API: Sign Ins
+# джерело: https://clerk.com/docs/reference/frontend-api
+# отримано: 2026-09-25
+
+Used to sign in a user in the current client.
+
+## POST /v1/client/sign_ins
+
+Create a new Sign In or replace the current one.
+
+Creates or replaces the current Sign in object.
+In order to authenticate a Sign in in as few requests as possible,
+you can pass in parameters to this request that can identify and verify the Sign in.
+
+Parameter rules:
+
+If the strategy equals `phone_code`, `email_code`, `web3_[provider]_signature`, `reset_password_code` or `reset_password_phone_code` then an identifier is required.
+
+If the strategy equals `email_link` then an identifier is required and optionally redirect_url can be supplied.
+
+If the strategy equals `password` then both an identifier and a password is required.
+
+If the strategy equals `oauth_[provider]` or `saml` then a redirect_url is required, and an action_complete_redirect_url is optional.
+
+If the strategy equals `oauth_token_[provider]` then at least one of code (grant code) or token (openID token) is required. Passing only the token will probably retrieve minimal information about the user from the OAuth provider. You can pass both code and token for the best results.
+
+If the strategy equals `ticket` then ticket is required.
+
+If the strategy equals `passkey` then no identifier is provided.
+
+If the strategy equals `trusted_device` then trusted_device_id is required.
+
+If the strategy equals `google_one_tap` then token is required.
+
+Parameters:
+
+- `Origin` (header) `string`: The origin of the request
+
+Request body (application/x-www-form-urlencoded):
+
+- `strategy` `string`: Strategy used to sign in. Can be one of `phone_code`, `email_code`, `ticket`, `web3_[provider]_signature` `reset_password_code`, `reset_password_phone_code`, `email_link`, `oauth_[provider]`, `oauth_token_[provider]`, `saml`, `password`, `passkey`, `trusted_device`, `google_one_tap`
+- `identifier` `string`: The unique identifier of the user. This changes depending on the strategy.
+- `password` `string`: The password of the user. Only used with password strategy.
+- `ticket` `string`: Ticket to be used for signing in.
+- `redirect_url` `string`
+- `action_complete_redirect_url` `string`
+- `transfer` `boolean`
+- `code` `string`: The authorization or grant code for an OAuth exchange. Only used with `oauth_token_[provider]` strategies.
+- `token` `string`: The ID token from an OpenID Connect flow. Only used with `oauth_token_[provider]` and `google_one_tap` strategies.
+- `oidc_login_hint` `string`: Used with `oauth_[provider]`. The given value will be forwarded to the OIDC `login_hint` parameter of the generated redirect URL.
+- `oidc_prompt` `string`: Used with `oauth_[provider]` or `enterprise_sso`. The given value will be forwarded to the OIDC `prompt` parameter of the generated redirect URL. When using shared credentials, this value might be adjusted for security reasons.
+- `proof_token` `string`: Proof token produced by the Clerk Protect SDK.
+- `trusted_device_id` `string`: Used with the `trusted_device` strategy.
+
+Responses:
+
+- `200`: Returns the sign in object, as well as the updated session object.
+- `307`: Redirect, no body.
+- `400`: Request was not successful
+- `403`: Request was not successful
+- `404`: Request was not successful
+- `409`: Request was not successful
+- `422`: Request was not successful
+- `429`: Request was not successful
+
+## GET /v1/client/sign_ins/{sign_in_id}
+
+Retrieve sign-in
+
+Returns the sign-in with the given ID.
+The sign in is returned only if it belongs to the requesting client and is not abandoned.
+
+Parameters:
+
+- `sign_in_id` (path, required) `string`: The ID of the sign in to be retrieved.
+
+Responses:
+
+- `200`: Returns the sign in object, as well as the updated session object.
+- `400`: Request was not successful
+- `401`: Request was not successful
+- `404`: Request was not successful
+
+## POST /v1/client/sign_ins/{sign_in_id}/reset_password
+
+Reset password on sign-in
+
+Reset password on sign-in.
+
+Parameters:
+
+- `sign_in_id` (path, required) `string`: The ID of the sign in to be retrieved.
+
+Request body (application/x-www-form-urlencoded):
+
+- `password` `string`, required
+- `sign_out_of_other_sessions` `boolean`
+
+Responses:
+
+- `200`: Returns the sign in object, as well as the updated session object.
+- `400`: Request was not successful
+- `401`: Request was not successful
+- `403`: Request was not successful
+- `422`: Request was not successful
+
+## POST /v1/client/sign_ins/{sign_in_id}/prepare_first_factor
+
+Prepare First Factor Verification
+
+Prepares the verification object for the identified Sign in.
+This step authenticates that the user is who they say they are.
+Depending on the strategy, this request will do something different.
+
+Parameter actions:
+If the strategy equals email_code then this request will send an email with an OTP code.
+If the strategy equals phone_code then this request will send an SMS with an OTP code.
+If the strategy equals oauth_[provider] then this request generate a URL that the User needs to visit in order to authenticate.
+If the strategy equals passkey then this request will begin the passkey registration flow.
+If the strategy equals trusted_device then this request will issue a trusted-device sign-in challenge.
+
+Parameter rules:
+If the strategy equals `oauth_[provider]` then a redirect_url is required, and an action_complete_redirect_url is optional.
+
+Parameters:
+
+- `sign_in_id` (path, required) `string`: The ID of the sign in to be retrieved.
+- `Origin` (header) `string`: The origin of the request
+
+Request body (application/x-www-form-urlencoded):
+
+- `strategy` `string`, required: The strategy to be prepared for first factor authentication. Can be one of the following `email_code`, `email_link`, `phone_code`, `web3_metamask_signature`, `web3_base_signature`, `web3_coinbase_wallet_signature`, `web3_okx_wallet_signature`, `reset_password_phone_code`, `reset_password_email_code`, `oauth_[provider]`, `saml`, `passkey`, `trusted_device`, `enterprise_sso`
+- `email_address_id` `string`: Used with the `email_code`, `reset_password_email_code` and `email_link` strategies. Pass the `email_address_id` from this sign-in's `supported_first_factors` unchanged.
+- `phone_number_id` `string`: Used with the `phone_code` and `reset_password_phone_code` strategies. Pass the `phone_number_id` from this sign-in's `supported_first_factors` unchanged.
+- `proof_token` `string`: Proof token produced by the Clerk Protect SDK.
+- `web3_wallet_id` `string`: Used with the `web3_metamask_signature`, `web3_base_signature`, `web3_coinbase_wallet_signature` and `web3_okx_wallet_signature` strategies. Pass the `web3_wallet_id` from this sign-in's `supported_first_factors` unchanged.
+- `passkey_id` `string`: Used with the `passkey` strategy.
+- `trusted_device_id` `string`: Used with the `trusted_device` strategy.
+- `redirect_url` `string`: Used with `email_link`, `oauth_[provider]`, and `saml` strategies.
+- `action_complete_redirect_url` `string`: Used with `oauth_[provider]` and `saml` strategies.
+- `oidc_login_hint` `string`: Used with `oauth_[provider]`. The given value will be forwarded to the OIDC `login_hint` parameter of the generated redirect URL.
+- `oidc_prompt` `string`: Used with `oauth_[provider]` or `enterprise_sso`. The given value will be forwarded to the OIDC `prompt` parameter of the generated redirect URL. When using shared credentials this value might be adjusted for security reasons.
+
+Responses:
+
+- `200`: Returns the sign in object, as well as the updated session object.
+- `400`: Request was not successful
+- `401`: Request was not successful
+- `403`: Request was not successful
+- `404`: Request was not successful
+- `422`: Request was not successful
+- `429`: Request was not successful
+
+## POST /v1/client/sign_ins/{sign_in_id}/attempt_first_factor
+
+Attempt First Factor Verification
+
+Attempt the first verification.
+Requires the sign in attempt to be identified, and the first factor verification to be prepared, unless you're using a password.
+
+Parameter rules:
+If the strategy equals `email_code` or `phone_code` then a code is required.
+If the strategy equals `password` then a password is required.
+If the strategy equals `trusted_device` then trusted_device_id, client_data, signature and algorithm are required.
+
+Parameters:
+
+- `sign_in_id` (path, required) `string`: The ID of the sign in.
+- `Origin` (header) `string`: The origin of the request
+
+Request body (application/x-www-form-urlencoded):
+
+- `strategy` `string`, required: The strategy to be used for first factor authentication. Can be one of the following `email_code`, `email_link`, `password`, `phone_code`, `web3_metamask_signature`, `web3_base_signature`, `web3_coinbase_wallet_signature`, `web3_okx_wallet_signature`, `reset_password_phone_code`, `reset_password_email_code`, `passkey`, `trusted_device`, `google_one_tap`
+- `code` `string`: The code that was sent to the email. Used with the `email_code`, `phone_code`, and `email_link` strategies.
+- `password` `string`: Used with the `password` and `reset_password_phone_code` strategies.
+- `signature` `string`: Used with the `web3_metamask_signature`, `web3_base_signature`, `web3_coinbase_wallet_signature`, `web3_okx_wallet_signature`, and `trusted_device` strategies.
+- `token` `string`: The ID token from an OpenID Connect flow. Only used with `oauth_token_[provider]` and `google_one_tap` strategies.
+- `ticket` `string`
+- `public_key_credential` `string`: Used with the `passkey` strategy.
+- `trusted_device_id` `string`: Used with the `trusted_device` strategy.
+- `client_data` `string`: Canonical trusted-device challenge payload returned by prepare.
+- `algorithm` `string, one of ES256`: Signature algorithm used with the `trusted_device` strategy.
+
+Responses:
+
+- `200`: Returns the sign in object, as well as the updated session object.
+- `307`: Redirect, no body.
+- `400`: Request was not successful
+- `401`: Request was not successful
+- `403`: Request was not successful
+- `404`: Request was not successful
+- `422`: Request was not successful
+- `429`: Request was not successful
+
+## POST /v1/client/sign_ins/{sign_in_id}/prepare_second_factor
+
+Prepare Second Factor Verification
+
+Prepare the second verification.
+Requires the sign in attempt `status` to be equal to `needs_second_factor` or `needs_client_trust`.
+
+Parameters:
+
+- `sign_in_id` (path, required) `string`: The ID of the sign in.
+
+Request body (application/x-www-form-urlencoded):
+
+- `strategy` `string, one of phone_code, email_code, email_link`: The strategy to be prepared for second factor authentication.
+- `phone_number_id` `string`: Used with the `phone_code` strategy.
+- `proof_token` `string`: Proof token produced by the Clerk Protect SDK.
+- `email_address_id` `string`: Used with the `email_code` and `email_link` strategies.
+- `redirect_url` `string`: Used with the `email_link` strategy. The redirect URL after email link verification.
+
+Responses:
+
+- `200`: Returns the sign in object, as well as the updated session object.
+- `400`: Request was not successful
+- `401`: Request was not successful
+- `403`: Request was not successful
+- `422`: Request was not successful
+
+## POST /v1/client/sign_ins/{sign_in_id}/attempt_second_factor
+
+Attempt Second Factor Verification
+
+Attempt the second verification.
+Requires the sign in attempt `status` to be equal to `needs_second_factor` or `needs_client_trust`, and for the preparation step to have been called.
+
+Parameters:
+
+- `sign_in_id` (path, required) `string`: The ID of the sign in.
+
+Request body (application/x-www-form-urlencoded):
+
+- `strategy` `string, one of email_code, phone_code, totp, backup_code`: The strategy to be attempted for second factor authentication.
+- `code` `string`: Used with the `phone_code`, `totp` and `backup_code` strategies.
+
+Responses:
+
+- `200`: Returns the sign in object, as well as the updated session object.
+- `307`: Redirect, no body.
+- `400`: Request was not successful
+- `401`: Request was not successful
+- `403`: Request was not successful
+- `422`: Request was not successful
+- `429`: Request was not successful
+
+## GET /v1/tickets/accept
+
+Accept ticket
+
+Parses a ticket JWT and performs the necessary actions depending on the ticket's source type.
+Depending on the ticket source type, a successful response can either redirect to a new location
+with the ticket in the query string, or respond directly with a text/html content type for the response body.
+
+Parameters:
+
+- `ticket` (query, required) `string`: The JWT with verification information
+
+Responses:
+
+- `200`: Successful response with a plain text or HTML body.
+- `302`: Redirect
+- `303`: Redirect
+- `400`: Request was not successful
+- `404`: Request was not successful
+
+## GET /v1/verify
+
+Attempt Email Link Verification
+
+Attempt to verify a verification with email_link strategy.
+
+Parameters:
+
+- `token` (query, required) `string`: The JWT with verification information
+
+Responses:
+
+- `200`: OK
+- `303`: Redirect
+- `400`: Request was not successful

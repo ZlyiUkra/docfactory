@@ -1,0 +1,159 @@
+# Backend API: Enterprise Connections
+# джерело: https://clerk.com/docs/reference/backend-api
+# отримано: 2026-09-25
+
+An Enterprise Connection holds configuration data required for facilitating an enterprise SSO flow between your
+Clerk instance and an identity provider.
+
+## GET /enterprise_connections
+
+List enterprise connections
+
+Returns the list of enterprise connections for the instance.
+Results can be paginated using the optional `limit` and `offset` query parameters.
+
+Parameters:
+
+- `limit` (query) `integer`: Applies a limit to the number of results returned. Can be used for paginating the results together with `offset`.
+- `offset` (query) `integer`: Skip the first `offset` results when paginating. Needs to be an integer greater or equal to zero. To be used in conjunction with `limit`.
+- `organization_id` (query) `string`: Filter enterprise connections by organization ID
+- `active` (query) `boolean`: Filter by active status. If true, only active connections are returned. If false, only inactive connections are returned. If omitted, all connections are returned.
+
+Responses:
+
+- `200`: A list of enterprise connections
+- `402`: Payment required
+- `403`: Authorization invalid
+- `422`: Invalid request parameters
+
+## POST /enterprise_connections
+
+Create an enterprise connection
+
+Create a new enterprise connection.
+
+Request body (application/json):
+
+- `name` `string`, required: The display name of the connection
+- `provider` `string, one of saml_custom, saml_okta, saml_google, saml_microsoft, oidc_custom, oidc_github_enterprise, oidc_gitlab`, required: The identity provider (e.g. saml_custom, oidc_custom, oidc_github_enterprise, oidc_gitlab)
+- `domains` `array of string`, required: Domains associated with the enterprise connection (required; at least one). Values are normalized to lowercase. Each domain must be a valid fully qualified domain name.
+- `organization_id` `string`: Organization ID when the connection is linked to an organization
+- `allow_organization_account_linking` `boolean`: Whether this connection supports account linking via organization membership
+- `active` `boolean`: Whether the enterprise connection is active. When true, IdP metadata must be provided via the `saml` object.
+- `saml` `object`: SAML connection-specific properties. Only applied when the enterprise connection uses SAML (e.g. provider is saml_custom). Use this to set IdP configuration, attribute mapping, and other SAML-specific settings at creation time.
+- `oidc` `object`: OIDC connection-specific properties. Only applied when the enterprise connection uses OIDC (e.g. provider is oidc_custom, oidc_github_enterprise, or oidc_gitlab).
+- `custom_attributes` `array of object`: Custom attributes to map from the IdP to the user's profile via SSO or SCIM provisioning. Requires the custom attributes feature to be enabled for the instance.
+
+Responses:
+
+- `201`: An enterprise connection
+- `402`: Payment required
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `409`: Request was not successful
+- `422`: Invalid request parameters
+
+## GET /enterprise_connections/{enterprise_connection_id}
+
+Retrieve an enterprise connection
+
+Fetches the enterprise connection whose ID matches the provided `enterprise_connection_id` in the path.
+
+Parameters:
+
+- `enterprise_connection_id` (path, required) `string`: The ID of the enterprise connection
+
+Responses:
+
+- `200`: An enterprise connection
+- `402`: Payment required
+- `403`: Authorization invalid
+- `404`: Resource not found
+
+## PATCH /enterprise_connections/{enterprise_connection_id}
+
+Update an enterprise connection
+
+Updates the enterprise connection whose ID matches the provided `enterprise_connection_id` in the path.
+When enabling the connection (setting `active` to true), any existing verified organization domains that match the connection's domains (e.g. used for enrollment modes like automatic invitation) may be deleted so the connection can be enabled.
+
+Parameters:
+
+- `enterprise_connection_id` (path, required) `string`: The ID of the enterprise connection to update
+
+Request body (application/json):
+
+- `name` `string`: The display name of the enterprise connection
+- `domains` `array of string`: Domains associated with the enterprise connection. Values are normalized to lowercase. Empty array means ignored (no change); non-empty array means set domains to the given list (replaces existing).
+- `active` `boolean`: Whether the enterprise connection is active. When set to true (enabling), any existing verified organization domains for the same domain(s) will be removed so the connection can be enabled.
+- `sync_user_attributes` `boolean`: Whether to sync user attributes on sign-in
+- `disable_additional_identifications` `boolean`: Whether to disable additional identifications
+- `allow_organization_account_linking` `boolean`: Whether this connection supports account linking via organization membership
+- `organization_id` `string`: Organization ID to link to this enterprise connection. Only linking is supported; sending this field sets or changes the linked organization. There is no way to unlink an organization once linked.
+- `saml` `object`: SAML connection-specific properties. Only applied when the enterprise connection uses SAML. Use this to update IdP configuration, attribute mapping, and other SAML-specific settings.
+- `oidc` `object`: OIDC connection-specific properties. Only applied when the enterprise connection uses OIDC (e.g. oidc_custom, oidc_github_enterprise, or oidc_gitlab).
+- `custom_attributes` `array of object`: Custom attributes to map from the IdP to the user's profile via SSO or SCIM provisioning. Requires the custom attributes feature to be enabled for the instance.
+
+Responses:
+
+- `200`: An enterprise connection
+- `400`: Request was not successful
+- `402`: Payment required
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## DELETE /enterprise_connections/{enterprise_connection_id}
+
+Delete an enterprise connection
+
+Deletes the enterprise connection whose ID matches the provided `enterprise_connection_id` in the path.
+
+Parameters:
+
+- `enterprise_connection_id` (path, required) `string`: The ID of the enterprise connection to delete
+
+Responses:
+
+- `200`: Deleted Object
+- `402`: Payment required
+- `403`: Authorization invalid
+- `404`: Resource not found
+
+## GET /enterprise_connections/{enterprise_connection_id}/test_runs
+
+List enterprise connection test runs
+
+Returns a paginated list of SAML or OIDC debug test runs for an enterprise connection.
+
+Parameters:
+
+- `enterprise_connection_id` (path, required) `string`: The ID of the enterprise connection
+- `status` (query) `array of string, one of pending, success, failed`: Filter test runs by status (may be repeated)
+- `limit` (query) `integer`: Applies a limit to the number of results returned. Can be used for paginating the results together with `offset`.
+- `offset` (query) `integer`: Skip the first `offset` results when paginating. Needs to be an integer greater or equal to zero. To be used in conjunction with `limit`.
+
+Responses:
+
+- `200`: A list of enterprise connection test runs
+- `402`: Payment required
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## POST /enterprise_connections/{enterprise_connection_id}/test_runs
+
+Create an enterprise connection test run
+
+Returns a short-lived URL that starts the IdP test flow for this connection.
+
+Parameters:
+
+- `enterprise_connection_id` (path, required) `string`: The ID of the enterprise connection
+
+Responses:
+
+- `200`: A URL to initiate an enterprise connection test run
+- `402`: Payment required
+- `403`: Authorization invalid
+- `404`: Resource not found

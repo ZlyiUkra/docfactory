@@ -1,0 +1,101 @@
+# Platform API: Application Transfers
+# джерело: https://clerk.com/docs/reference/platform-api
+# отримано: 2026-09-25
+
+An object representing a transfer request for an application between workspaces.
+
+The high-level flow for application transfer:
+
+1. The initial workspace can create an application transfer. A single-use `code` will be generated which may be distributed to any end-user of Clerk.
+2. The code must be claimed through the clerk dashboard: https://dashboard.clerk.com/apps/transfer?code=<...>
+
+Note that once a transfer is claimed, the original workspace will no longer have access to the application.
+
+## GET /platform/application_transfers
+
+List application transfers
+
+List all transfer requests created by the authenticated workspace. Returns
+transfers sorted by creation date in descending order (most recent first).
+
+Use the `status` parameter to filter by transfer status.
+
+Security: platform_api_access_token
+
+Parameters:
+
+- `status` (query) `array of string, one of pending, completed, canceled, expired`: Filter by transfer status. Multiple values can be provided by repeating the parameter (e.g., `?status=pending&status=canceled`).
+- `limit` (query) `integer`: Number of results to return per page (1-500, default 10).
+- `starting_after` (query) `string`: Cursor for pagination. Provide the ID of the last transfer from the previous page to get the next page of results.
+- `ending_before` (query) `string`: Cursor for pagination. Provide the ID of the first transfer from the previous page to get the previous page of results.
+
+Responses:
+
+- `200`: Application transfers retrieved successfully.
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `422`: Invalid request parameters
+
+## POST /platform/applications/{applicationID}/transfers
+
+Create an application transfer
+
+Create a new transfer request for an application. This initiates the process of
+transferring ownership of the application to another workspace.
+
+Only one pending transfer can exist for an application at a time. The transfer
+will expire after 24 hours if not completed.
+
+Security: platform_api_access_token
+
+Parameters:
+
+- `applicationID` (path, required) `string`: Application ID.
+
+Responses:
+
+- `201`: Application transfer created successfully.
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `409`: Conflict
+
+## GET /platform/applications/{applicationID}/transfers/{transferID}
+
+Get an application transfer
+
+Retrieve details of an application transfer by its ID.
+
+Security: platform_api_access_token
+
+Parameters:
+
+- `applicationID` (path, required) `string`: Application ID.
+- `transferID` (path, required) `string`: Application Transfer ID.
+
+Responses:
+
+- `200`: Application transfer retrieved successfully.
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+
+## DELETE /platform/applications/{applicationID}/transfers/{transferID}
+
+Cancel an application transfer
+
+Cancel an existing application transfer. Only transfers in 'pending' status can be canceled.
+
+Security: platform_api_access_token
+
+Parameters:
+
+- `applicationID` (path, required) `string`: Application ID.
+- `transferID` (path, required) `string`: Application Transfer ID.
+
+Responses:
+
+- `200`: Application transfer canceled successfully.
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `409`: Conflict

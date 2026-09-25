@@ -1,0 +1,852 @@
+# Backend API: Users
+# джерело: https://clerk.com/docs/reference/backend-api
+# отримано: 2026-09-25
+
+The user object represents a user that has successfully signed up to your application.
+
+## GET /users
+
+List all users
+
+Returns a list of all users.
+The users are returned sorted by creation date, with the newest users appearing first.
+
+To walk more than a few pages, paginate with `starting_after` rather than `offset`.
+A cursor page costs the same no matter how far into the list it sits, while a large `offset`
+has to walk and discard every row before it, so it gets progressively slower and eventually
+times out. Cursor pagination requires the `created_at` ordering, which is the default.
+
+Parameters:
+
+- `email_address` (query) `array of string`: Returns users with the specified email addresses. Accepts up to 100 email addresses. Any email addresses not found are ignored.
+- `phone_number` (query) `array of string`: Returns users with the specified phone numbers. Accepts up to 100 phone numbers. Any phone numbers not found are ignored.
+- `external_id` (query) `array of string`: Returns users with the specified external IDs. For each external ID, the `+` and `-` can be prepended to the ID, which denote whether the respective external ID should be included or excluded from the result set. Accepts up to 100 external IDs. Any external IDs not found are ignored.
+- `username` (query) `array of string`: Returns users with the specified usernames. Accepts up to 100 usernames. Any usernames not found are ignored.
+- `web3_wallet` (query) `array of string`: Returns users with the specified web3 wallet addresses. Accepts up to 100 web3 wallet addresses. Any web3 wallet addresses not found are ignored.
+- `user_id` (query) `array of string`: Returns users with the user IDs specified. For each user ID, the `+` and `-` can be prepended to the ID, which denote whether the respective user ID should be included or excluded from the result set. Accepts up to 100 user IDs. Any user IDs not found are ignored.
+- `organization_id` (query) `array of string`: Returns users that have memberships to the given organizations. For each organization ID, the `+` and `-` can be prepended to the ID, which denote whether the respective organization should be included or excluded from the result set. Accepts up to 100 organization IDs.
+- `query` (query) `string`: Returns users that match the given query. For possible matches, we check the email addresses, phone numbers, usernames, web3 wallets, user IDs, first and last names. The query value doesn't need to match the exact value you are looking for, it is capable of partial matches as well.
+- `email_address_query` (query) `string`: Returns users with emails that match the given query, via case-insensitive partial match. For example, `email_address_query=ello` will match a user with the email `HELLO@example.com`.
+- `phone_number_query` (query) `string`: Returns users with phone numbers that match the given query, via case-insensitive partial match. For example, `phone_number_query=555` will match a user with the phone number `+1555xxxxxxx`.
+- `username_query` (query) `string`: Returns users with usernames that match the given query, via case-insensitive partial match. For example, `username_query=CoolUser` will match a user with the username `SomeCoolUser`.
+- `name_query` (query) `string`: Returns users with names that match the given query, via case-insensitive partial match.
+- `banned` (query) `boolean`: Returns users which are either banned (`banned=true`) or not banned (`banned=false`).
+- `last_active_at_before` (query) `integer`: Returns users whose last session activity was before the given date (with millisecond precision). Example: use 1700690400000 to retrieve users whose last session activity was before 2023-11-23.
+- `last_active_at_after` (query) `integer`: Returns users whose last session activity was after the given date (with millisecond precision). Example: use 1700690400000 to retrieve users whose last session activity was after 2023-11-23.
+- `last_active_at_since` (query) `integer`: Returns users that had session activity since the given date. Example: use 1700690400000 to retrieve users that had session activity from 2023-11-23 until the current day. Deprecated in favor of `last_active_at_after`.
+- `created_at_before` (query) `integer`: Returns users who have been created before the given date (with millisecond precision). Example: use 1730160000000 to retrieve users who have been created before 2024-10-29.
+- `created_at_after` (query) `integer`: Returns users who have been created after the given date (with millisecond precision). Example: use 1730160000000 to retrieve users who have been created after 2024-10-29.
+- `last_sign_in_at_before` (query) `integer`: Returns users whose last sign-in was before the given date (with millisecond precision). Example: use 1700690400000 to retrieve users whose last sign-in was before 2023-11-23.
+- `last_sign_in_at_after` (query) `integer`: Returns users whose last sign-in was after the given date (with millisecond precision). Example: use 1700690400000 to retrieve users whose last sign-in was after 2023-11-23.
+- `provider` (query) `string`: Returns users with external accounts for the specified OAuth provider. Must be used in combination with the `provider_user_id` parameter. For example, use `provider=oauth_google&provider_user_id=12345` to retrieve a user with Google provider user ID 12345.
+- `provider_user_id` (query) `array of string`: Returns users with the specified provider user IDs for a specific provider. Must be used in combination with the `provider` parameter. For example, use `provider=oauth_google&provider_user_id=12345` to retrieve a user with Google provider user ID 12345. Accepts up to 100 provider user IDs. Any provider user IDs not found are ignored.
+- `limit` (query) `integer`: Applies a limit to the number of results returned. Can be used for paginating the results together with `offset`.
+- `offset` (query) `integer`: Skip the first `offset` results when paginating. Needs to be an integer greater or equal to zero. To be used in conjunction with `limit`.
+- `starting_after` (query) `string`: A cursor for pagination: the `id` of the last user on the previous page. Returns the users that follow it. **Requires ordering by `created_at`** — that is, `order_by` omitted, or set to `created_at`, `+created_at` or `-created_at`. Any other `order_by` value is rejected with a 422: the other orderings sort by a value that is neither unique per user nor immutable, so a cursor over them would skip or repeat users. Cannot be combined with a non-zero `offset`, which is also a 422. Keep every other parameter identical across requests, and stop when a page returns fewer than `limit` users.
+- `order_by` (query) `string`: Allows to return users in a particular order. At the moment, you can order the returned users by their `created_at`,`updated_at`,`email_address`,`web3wallet`,`first_name`,`last_name`,`phone_number`,`username`,`last_active_at`,`last_sign_in_at`. In order to specify the direction, you can use the `+/-` symbols prepended in the property to order by. For example, if you want users to be returned in descending order according to their `created_at` property, you can use `-created_at`. If you don't use `+` or `-`, then `+` is implied. We only support one `order_by` parameter, and if multiple `order_by` parameters are provided, we will only keep the first one. For example, if you pass `order_by=username&order_by=created_at`, we will consider only the first `order_by` parameter, which is `username`. The `created_at` parameter will be ignored in this case. Only the `created_at` orderings can be combined with `starting_after` cursor pagination; see that parameter.
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `422`: Invalid request parameters
+
+## POST /users
+
+Create a new user
+
+Creates a new user. Your user management settings determine how you should setup your user model.
+
+By default, any email address and phone number created using this method is marked as verified. Use the `email_address_identification_status` and `phone_number_identification_status` arrays to instead create some or all of them as reserved (unverified but usable for sign-in and locked so no other user can claim them).
+
+Note: If you are performing a migration, check out our guide on zero downtime migrations.
+
+The following rate limit rules apply to this endpoint: 1000 requests per 10 seconds for production instances and 100 requests per 10 seconds for development instances
+
+Request body (application/json):
+
+- `external_id` `string`: The ID of the user as used in your external systems or your previous authentication solution. Must be unique across your instance.
+- `first_name` `string`: The first name to assign to the user
+- `last_name` `string`: The last name to assign to the user
+- `locale` `string`: The locale to assign to the user (e.g., "en-US", "fr-FR")
+- `email_address` `array of string`: Email addresses to add to the user. Must be unique across your instance. The first email address will be set as the user's primary email address. Created verified by default; see `email_address_identification_status` to create them reserved.
+- `email_address_identification_status` `array of string, one of verified, reserved`: Controls the status each email address is created with. Runs parallel to `email_address`: when provided, it must contain exactly one item per email address, applied by position. When omitted or empty, every email address is created `verified`. Set an item to `reserved` to create the corresponding email address reserved instead (unverified but usable for sign-in and locked so no other user can claim it).
+- `phone_number` `array of string`: Phone numbers to add to the user. Must be unique across your instance. The first phone number will be set as the user's primary phone number. Created verified by default; see `phone_number_identification_status` to create them reserved.
+- `phone_number_identification_status` `array of string, one of verified, reserved`: Controls the status each phone number is created with. Runs parallel to `phone_number`: when provided, it must contain exactly one item per phone number, applied by position. When omitted or empty, every phone number is created `verified`. Set an item to `reserved` to create the corresponding phone number reserved instead (unverified but usable for sign-in and locked so no other user can claim it).
+- `web3_wallet` `array of string`: Web3 wallets to add to the user. Must be unique across your instance. The first wallet will be set as the user's primary wallet.
+- `username` `string`: The username to give to the user. It must be unique across your instance.
+- `password` `string`: The plaintext password to give the user. Must be at least 8 characters long, and cannot be in any list of hacked passwords.
+- `password_digest` `string`: In case you already have the password digests and not the passwords, you can use them for the newly created user via this property. The digests should be generated with one of the supported algorithms. The hashing algorithm can be specified using the `password_hasher` property.
+- `password_hasher` `string`: The hashing algorithm that was used to generate the password digest. The algorithms we support at the moment are `bcrypt`, `bcrypt_sha256_django`, `md5`, `pbkdf2_sha1`, `pbkdf2_sha256`, `pbkdf2_sha256_django`, `pbkdf2_sha512`, `phpass`, `md5_phpass`, `scrypt_firebase`, `scrypt_werkzeug`, `sha256`, `ldap_ssha`, the `argon2` variants: `argon2i` and `argon2id`, `sha512_symfony`, the SHA-512 variant of the Symfony legacy hasher, and `pbkdf2_sha512_hex`, a variant of `pbkdf2_sha512` that accepts hex-encoded salt and hash. Each of the supported hashers expects the incoming digest to be in a particular format. See the Clerk docs for more information.
+- `skip_password_checks` `boolean`: When set to `true` all password checks are skipped. It is recommended to use this method only when migrating plaintext passwords to Clerk. Upon migration the user base should be prompted to pick stronger password.
+- `skip_password_requirement` `boolean`: When set to `true`, `password` is not required anymore when creating the user and can be omitted. This is useful when you are trying to create a user that doesn't have a password, in an instance that is using passwords. Please note that you cannot use this flag if password is the only way for a user to sign into your instance.
+- `skip_restriction_checks` `boolean`: When set to `true`, the instance's restrictions are not applied to this user. Those settings are the allowlist, the blocklist, blocked disposable email domains and blocked email subaddresses, and they normally reject a matching identifier here just as they do at sign-up. Use this when your backend is creating a user it already trusts, such as during a migration or from an admin tool.
+- `totp_secret` `string`: In case TOTP is configured on the instance, you can provide the secret to enable it on the newly created user without the need to reset it. Please note that currently the supported options are: * Period: 30 seconds * Code length: 6 digits * Algorithm: SHA1
+- `backup_codes` `array of string`: If Backup Codes are configured on the instance, you can provide them to enable it on the newly created user without the need to reset them. You must provide the backup codes in plain format or the corresponding bcrypt digest.
+- `public_metadata` `object`: Metadata saved on the user, that is visible to both your Frontend and Backend APIs
+- `private_metadata` `object`: Metadata saved on the user, that is only visible to your Backend API
+- `unsafe_metadata` `object`: Metadata saved on the user, that can be updated from both the Frontend and Backend APIs. Note: Since this data can be modified from the frontend, it is not guaranteed to be safe.
+- `delete_self_enabled` `boolean`: If enabled, user can delete themselves via FAPI.
+- `legal_accepted_at` `string`: A custom timestamp denoting _when_ the user accepted legal requirements, specified in RFC3339 format (e.g. `2012-10-20T07:15:20.902Z`).
+- `skip_legal_checks` `boolean`: When set to `true` all legal checks are skipped. It is not recommended to skip legal checks unless you are migrating a user to Clerk.
+- `skip_user_requirement` `boolean`: When set to `true`, identification types are not enforced. At least one identification type must be enabled and provided on your instance (email, phone, web3 wallet, or username). Users created without required identification types cannot use those authentication strategies It is not recommended to use this flag unless you need to allow Clerk UI components to prompt for required fields while BAPI creates users with minimal data, or for migration a user to Clerk.
+- `create_organization_enabled` `boolean`: If enabled, user can create organizations via FAPI.
+- `create_organizations_limit` `integer`: The maximum number of organizations the user can create. 0 means unlimited.
+- `created_at` `string`: A custom date/time denoting _when_ the user signed up to the application, specified in RFC3339 format (e.g. `2012-10-20T07:15:20.902Z`).
+- `bypass_client_trust` `boolean`: When set to `true`, the user will bypass Device Trust checks during sign-in.
+- `banned` `boolean`: When set to `true`, the user is created already banned and cannot sign in. Requires the same plan support as the ban user endpoint.
+- `locked` `boolean`: When set to `true`, the user is created already locked. Requires the user lockout feature to be enabled on the instance.
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `402`: Payment required
+- `403`: Authentication invalid
+- `422`: Invalid request parameters
+
+## GET /users/count
+
+Count users
+
+Returns a total count of all users that match the given filtering criteria.
+
+Parameters:
+
+- `email_address` (query) `array of string`: Counts users with the specified email addresses. Accepts up to 100 email addresses. Any email addresses not found are ignored.
+- `phone_number` (query) `array of string`: Counts users with the specified phone numbers. Accepts up to 100 phone numbers. Any phone numbers not found are ignored.
+- `external_id` (query) `array of string`: Counts users with the specified external IDs. Accepts up to 100 external IDs. Any external IDs not found are ignored.
+- `username` (query) `array of string`: Counts users with the specified usernames. Accepts up to 100 usernames. Any usernames not found are ignored.
+- `web3_wallet` (query) `array of string`: Counts users with the specified web3 wallet addresses. Accepts up to 100 web3 wallet addresses. Any web3 wallet addresses not found are ignored.
+- `user_id` (query) `array of string`: Counts users with the user IDs specified. Accepts up to 100 user IDs. Any user IDs not found are ignored.
+- `organization_id` (query) `array of string`: Returns users that have memberships to the given organizations. For each organization ID, the `+` and `-` can be prepended to the ID, which denote whether the respective organization should be included or excluded from the result set. Accepts up to 100 organization IDs.
+- `query` (query) `string`: Counts users that match the given query. For possible matches, we check the email addresses, phone numbers, usernames, web3 wallets, user IDs, first and last names. The query value doesn't need to match the exact value you are looking for, it is capable of partial matches as well.
+- `email_address_query` (query) `string`: Counts users with emails that match the given query, via case-insensitive partial match. For example, `email_address_query=ello` will match a user with the email `HELLO@example.com`, and will be included in the resulting count.
+- `phone_number_query` (query) `string`: Counts users with phone numbers that match the given query, via case-insensitive partial match. For example, `phone_number_query=555` will match a user with the phone number `+1555xxxxxxx`, and will be included in the resulting count.
+- `username_query` (query) `string`: Counts users with usernames that match the given query, via case-insensitive partial match. For example, `username_query=CoolUser` will match a user with the username `SomeCoolUser`, and will be included in the resulting count.
+- `name_query` (query) `string`: Returns users with names that match the given query, via case-insensitive partial match.
+- `banned` (query) `boolean`: Counts users which are either banned (`banned=true`) or not banned (`banned=false`).
+- `last_active_at_before` (query) `integer`: Returns users whose last session activity was before the given date (with millisecond precision). Example: use 1700690400000 to retrieve users whose last session activity was before 2023-11-23.
+- `last_active_at_after` (query) `integer`: Returns users whose last session activity was after the given date (with millisecond precision). Example: use 1700690400000 to retrieve users whose last session activity was after 2023-11-23.
+- `last_active_at_since` (query) `integer`: Returns users that had session activity since the given date. Example: use 1700690400000 to retrieve users that had session activity from 2023-11-23 until the current day. Deprecated in favor of `last_active_at_after`.
+- `created_at_before` (query) `integer`: Returns users who have been created before the given date (with millisecond precision). Example: use 1730160000000 to retrieve users who have been created before 2024-10-29.
+- `created_at_after` (query) `integer`: Returns users who have been created after the given date (with millisecond precision). Example: use 1730160000000 to retrieve users who have been created after 2024-10-29.
+- `last_sign_in_at_before` (query) `integer`: Counts users whose last sign-in was before the given date (with millisecond precision). Example: use 1700690400000 to count users whose last sign-in was before 2023-11-23.
+- `last_sign_in_at_after` (query) `integer`: Counts users whose last sign-in was after the given date (with millisecond precision). Example: use 1700690400000 to count users whose last sign-in was after 2023-11-23.
+- `provider` (query) `string`: Counts users with external accounts for the specified OAuth provider. Must be used in combination with the `provider_user_id` parameter. For example, use `provider=oauth_google&provider_user_id=12345` to count users with Google provider user ID 12345. Accepts up to 100 providers.
+- `provider_user_id` (query) `array of string`: Counts users with the specified provider user IDs for a specific provider. Must be used in combination with the `provider` parameter. For example, use `provider=oauth_google&provider_user_id=12345` to count users with Google provider user ID 12345. Accepts up to 100 provider user IDs. Any provider user IDs not found are ignored.
+
+Responses:
+
+- `200`: Success
+- `422`: Invalid request parameters
+
+## GET /users/{user_id}
+
+Retrieve a user
+
+Retrieve the details of a user
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user to retrieve
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `404`: Resource not found
+
+## PATCH /users/{user_id}
+
+Update a user
+
+Update a user's attributes.
+
+You can set the user's primary contact identifiers (email address and phone numbers) by updating the `primary_email_address_id` and `primary_phone_number_id` attributes respectively.
+Both IDs should correspond to verified identifications that belong to the user.
+
+You can remove a user's username by setting the username attribute to null or the blank string "".
+
+As of API version 2026-05-12, this endpoint no longer accepts `public_metadata`, `private_metadata`, or `unsafe_metadata`.
+Use `PATCH /v1/users/{user_id}/metadata` to merge updates into existing metadata, or `PUT /v1/users/{user_id}/metadata` to replace a metadata field entirely.
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user to update
+
+Request body (application/json):
+
+- `external_id` `string`: The ID of the user as used in your external systems or your previous authentication solution. Must be unique across your instance.
+- `first_name` `string`: The first name to assign to the user
+- `last_name` `string`: The last name to assign to the user
+- `locale` `string`: The locale to assign to the user (e.g., "en-US", "fr-FR")
+- `primary_email_address_id` `string`: The ID of the email address to set as primary. It must be verified, and present on the current user.
+- `notify_primary_email_address_changed` `boolean`: If set to `true`, the user will be notified that their primary email address has changed. By default, no notification is sent.
+- `primary_phone_number_id` `string`: The ID of the phone number to set as primary. It must be verified, and present on the current user.
+- `primary_web3_wallet_id` `string`: The ID of the web3 wallets to set as primary. It must be verified, and present on the current user.
+- `username` `string`: The username to give to the user. It must be unique across your instance.
+- `profile_image_id` `string`: The ID of the image to set as the user's profile image
+- `password` `string`: The plaintext password to give the user. Must be at least 8 characters long, and cannot be in any list of hacked passwords.
+- `password_digest` `string`: In case you already have the password digests and not the passwords, you can use them for the newly created user via this property. The digests should be generated with one of the supported algorithms. The hashing algorithm can be specified using the `password_hasher` property.
+- `password_hasher` `string`: The hashing algorithm that was used to generate the password digest. The algorithms we support at the moment are `bcrypt`, `bcrypt_sha256_django`, `md5`, `pbkdf2_sha1`, `pbkdf2_sha256`, `pbkdf2_sha256_django`, `pbkdf2_sha512`, `phpass`, `md5_phpass`, `scrypt_firebase`, `scrypt_werkzeug`, `sha256`, `ldap_ssha`, the `argon2` variants: `argon2i` and `argon2id`, `sha512_symfony`, the SHA-512 variant of the Symfony legacy hasher, and `pbkdf2_sha512_hex`, a variant of `pbkdf2_sha512` that accepts hex-encoded salt and hash. Each of the supported hashers expects the incoming digest to be in a particular format. See the Clerk docs for more information.
+- `skip_password_checks` `boolean`: Set it to `true` if you're updating the user's password and want to skip any password policy settings check. This parameter can only be used when providing a `password`.
+- `sign_out_of_other_sessions` `boolean`: Set to `true` to sign out the user from all their active sessions once their password is updated. This parameter can only be used when providing a `password`.
+- `totp_secret` `string`: In case TOTP is configured on the instance, you can provide the secret to enable it on the specific user without the need to reset it.
+- `backup_codes` `array of string`: If Backup Codes are configured on the instance, you can provide them to enable it on the specific user without the need to reset them.
+- `delete_self_enabled` `boolean`: If true, the user can delete themselves with the Frontend API.
+- `create_organization_enabled` `boolean`: If true, the user can create organizations with the Frontend API.
+- `legal_accepted_at` `string`: A custom timestamp denoting _when_ the user accepted legal requirements, specified in RFC3339 format.
+- `skip_legal_checks` `boolean`: When set to `true` all legal checks are skipped.
+- `create_organizations_limit` `integer`: The maximum number of organizations the user can create. 0 means unlimited.
+- `created_at` `string`: A custom date/time denoting _when_ the user signed up to the application.
+- `bypass_client_trust` `boolean`: When set to `true`, the user will bypass Device Trust checks during sign-in.
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `404`: Resource not found
+- `409`: Conflict
+- `422`: Invalid request parameters
+
+## DELETE /users/{user_id}
+
+Delete a user
+
+Delete the specified user
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user to delete
+
+Responses:
+
+- `200`: Deleted Object
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `404`: Resource not found
+
+## POST /users/{user_id}/ban
+
+Ban a user
+
+Marks the given user as banned, which means that all their sessions are revoked and they are not allowed to sign in again.
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user to ban
+
+Responses:
+
+- `200`: Success
+- `402`: Payment required
+
+## POST /users/{user_id}/unban
+
+Unban a user
+
+Removes the ban mark from the given user.
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user to unban
+
+Responses:
+
+- `200`: Success
+- `402`: Payment required
+
+## POST /users/ban
+
+Ban multiple users
+
+Marks multiple users as banned, which means that all their sessions are revoked and they are not allowed to sign in again.
+
+Request body (application/json):
+
+- `user_ids` `array of string`, required: Array of user IDs to ban
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `402`: Payment required
+
+## POST /users/unban
+
+Unban multiple users
+
+Removes the ban mark from multiple users.
+
+Request body (application/json):
+
+- `user_ids` `array of string`, required: Array of user IDs to unban
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `402`: Payment required
+
+## POST /users/{user_id}/lock
+
+Lock a user
+
+Marks the given user as locked, which means they are not allowed to sign in again until the lock expires.
+Lock duration can be configured in the instance's restrictions settings.
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user to lock
+
+Responses:
+
+- `200`: Success
+- `403`: Authorization invalid
+
+## POST /users/{user_id}/unlock
+
+Unlock a user
+
+Removes the lock from the given user.
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user to unlock
+
+Responses:
+
+- `200`: Success
+- `403`: Authorization invalid
+
+## POST /users/{user_id}/profile_image
+
+Set user profile image
+
+Update a user's profile image
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user to update the profile image for
+
+Request body (multipart/form-data):
+
+- `file` `string`
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Request was not successful
+- `404`: Request was not successful
+
+## DELETE /users/{user_id}/profile_image
+
+Delete user profile image
+
+Delete a user's profile image
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user to delete the profile image for
+
+Responses:
+
+- `200`: Success
+- `404`: Request was not successful
+
+## PUT /users/{user_id}/metadata
+
+Replace a user's metadata
+
+Replace a user's metadata attributes with the provided values.
+
+Unlike `PATCH /v1/users/{user_id}/metadata` (merge semantics), this endpoint
+replaces the supplied metadata fields entirely — the prior contents of each
+supplied field are discarded. Fields omitted from the request body are
+left unchanged.
+
+Prefer the `PATCH` endpoint for partial updates. Use `PUT` only when you
+explicitly intend to overwrite a metadata field wholesale.
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user whose metadata will be replaced
+
+Request body (application/json):
+
+- `public_metadata` `object`: Metadata saved on the user, that is visible to both your frontend and backend. The existing value will be replaced entirely with the new object.
+- `private_metadata` `object`: Metadata saved on the user that is only visible to your backend. The existing value will be replaced entirely with the new object.
+- `unsafe_metadata` `object`: Metadata saved on the user, that can be updated from both the Frontend and Backend APIs. The existing value will be replaced entirely with the new object. Note: Since this data can be modified from the frontend, it is not guaranteed to be safe.
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## PATCH /users/{user_id}/metadata
+
+Merge and update a user's metadata
+
+Update a user's metadata attributes by merging existing values with the provided parameters.
+
+This endpoint behaves differently than the *Update a user* endpoint.
+Metadata values will not be replaced entirely.
+Instead, a deep merge will be performed.
+Deep means that any nested JSON objects will be merged as well.
+
+You can remove metadata keys at any level by setting their value to `null`.
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user whose metadata will be updated and merged
+
+Request body (application/json):
+
+- `public_metadata` `object`: Metadata saved on the user, that is visible to both your frontend and backend. The new object will be merged with the existing value.
+- `private_metadata` `object`: Metadata saved on the user that is only visible to your backend. The new object will be merged with the existing value.
+- `unsafe_metadata` `object`: Metadata saved on the user, that can be updated from both the Frontend and Backend APIs. The new object will be merged with the existing value. Note: Since this data can be modified from the frontend, it is not guaranteed to be safe.
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## GET /users/{user_id}/billing/subscription
+
+Retrieve a user's billing subscription
+
+Retrieves the billing subscription for the specified user.
+This includes subscription details, active plans, billing information, and payment status.
+The subscription contains subscription items which represent the individual plans the user is subscribed to.
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user whose subscription to retrieve
+
+Responses:
+
+- `200`: A commerce subscription.
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+- `500`: Request was not successful
+
+## GET /users/{user_id}/billing/credits
+
+Retrieve a user's credit balance
+
+Retrieves the current credit balance for the specified user.
+Credits can be applied during checkout to reduce the charge or automatically applied to upcoming recurring charges
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user whose credit balance to retrieve
+
+Responses:
+
+- `200`: A payer's credit balance.
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+- `500`: Request was not successful
+
+## POST /users/{user_id}/billing/credits
+
+Adjust a user's credit balance
+
+Increases or decreases the credit balance for the specified user.
+Each adjustment is recorded as a ledger entry. The idempotency_key parameter
+ensures that duplicate requests are safely handled.
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user whose credit balance to adjust
+
+Request body (application/json):
+
+- `amount` `integer`, required: The credit amount in cents. Must be greater than zero.
+- `action` `string, one of increase, decrease`, required: Whether to increase or decrease the credit balance.
+- `currency` `string`: The currency code (e.g. "USD"). Defaults to USD if not provided.
+- `idempotency_key` `string`, required: A unique key to ensure the adjustment is applied only once. Repeated requests with the same key return the original ledger entry.
+- `note` `string`: An optional note to attach to the ledger entry.
+
+Responses:
+
+- `200`: A credit ledger entry.
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `409`: Request was not successful
+- `422`: Invalid request parameters
+- `500`: Request was not successful
+
+## GET /users/{user_id}/oauth_access_tokens/{provider}
+
+Retrieve the OAuth access token of a user
+
+Fetch the corresponding OAuth access token for a user that has previously authenticated with a particular OAuth provider.
+For OAuth 2.0, if the access token has expired and we have a corresponding refresh token, the access token will be refreshed transparently the new one will be returned.
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user for which to retrieve the OAuth access token
+- `provider` (path, required) `string`: The ID of the OAuth provider (e.g. `oauth_google`)
+- `paginated` (query) `boolean`: Whether to paginate the results. If true, the results will be paginated. If false, the results will not be paginated.
+- `limit` (query) `integer`: Applies a limit to the number of results returned. Can be used for paginating the results together with `offset`.
+- `offset` (query) `integer`: Skip the first `offset` results when paginating. Needs to be an integer greater or equal to zero. To be used in conjunction with `limit`.
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## GET /users/{user_id}/organization_memberships
+
+Retrieve all memberships for a user
+
+Retrieve a paginated list of the user's organization memberships
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user whose organization memberships we want to retrieve
+- `limit` (query) `integer`: Applies a limit to the number of results returned. Can be used for paginating the results together with `offset`.
+- `offset` (query) `integer`: Skip the first `offset` results when paginating. Needs to be an integer greater or equal to zero. To be used in conjunction with `limit`.
+
+Responses:
+
+- `200`: A list of organization memberships
+- `403`: Request was not successful
+
+## GET /users/{user_id}/organization_invitations
+
+Retrieve all invitations for a user
+
+Retrieve a paginated list of the user's organization invitations
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user whose organization invitations we want to retrieve
+- `limit` (query) `integer`: Applies a limit to the number of results returned. Can be used for paginating the results together with `offset`.
+- `offset` (query) `integer`: Skip the first `offset` results when paginating. Needs to be an integer greater or equal to zero. To be used in conjunction with `limit`.
+- `status` (query) `string, one of pending, accepted, revoked, expired`: Filter organization invitations based on their status
+
+Responses:
+
+- `200`: A list of organization invitations with public organization data
+- `400`: Request was not successful
+- `403`: Request was not successful
+- `404`: Resource not found
+
+## POST /users/{user_id}/remove_password
+
+Remove a user's password
+
+Removes the password credential from the given user. This is a privileged operation and does not require the user's current password. Password removal is allowed even when the user has no other sign-in method configured.
+
+If the user does not have a password, the user is returned unchanged and no password-deletion or user-update event is emitted. By default, existing sessions remain active. Set `sign_out_of_other_sessions` to `true` to revoke sessions active when the request is processed.
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user whose password to remove
+
+Request body (application/json):
+
+- `sign_out_of_other_sessions` `boolean`: Set to `true` to revoke all of the user's active sessions after removing the password.
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `500`: Request was not successful
+
+## POST /users/{user_id}/verify_password
+
+Verify the password of a user
+
+Check that the user's password matches the supplied input.
+Useful for custom auth flows and re-verification.
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user for whom to verify the password
+
+Request body (application/json):
+
+- `password` `string`, required: The user password to verify
+
+Responses:
+
+- `200`: The provided password was correct.
+- `400`: The user does not have a password set.
+- `404`: The user does not exist.
+- `422`: The provided password was incorrect.
+- `500`: Request was not successful
+
+## POST /users/{user_id}/verify_totp
+
+Verify a TOTP or backup code for a user
+
+Verify that the provided TOTP or backup code is valid for the user.
+Verifying a backup code will result it in being consumed (i.e. it will
+become invalid).
+Useful for custom auth flows and re-verification.
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user for whom to verify the TOTP
+
+Request body (application/json):
+
+- `code` `string`, required: The TOTP or backup code to verify
+
+Responses:
+
+- `200`: The provided TOTP or backup code was correct.
+- `400`: The user does not have TOTP configured for their account.
+- `404`: The user does not exist.
+- `422`: The provided TOTP or backup code was incorrect.
+- `500`: Request was not successful
+
+## DELETE /users/{user_id}/mfa
+
+Disable a user's MFA methods
+
+Disable all of a user's MFA methods (e.g. OTP sent via SMS, TOTP on their authenticator app) at once.
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user whose MFA methods are to be disabled
+
+Responses:
+
+- `200`: Successful operation.
+- `404`: Resource not found
+- `500`: Request was not successful
+
+## DELETE /users/{user_id}/backup_code
+
+Disable all user's Backup codes
+
+Disable all of a user's backup codes.
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user whose backup codes are to be deleted.
+
+Responses:
+
+- `200`: Successful operation.
+- `404`: Resource not found
+- `500`: Request was not successful
+
+## DELETE /users/{user_id}/passkeys/{passkey_identification_id}
+
+Delete a user passkey
+
+Delete the passkey identification for a given user. The user is notified through email or SMS unless the passkey registration was never completed.
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user that owns the passkey identity
+- `passkey_identification_id` (path, required) `string`: The ID of the passkey identity to be deleted
+
+Responses:
+
+- `200`: Deleted Object
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `500`: Request was not successful
+
+## GET /users/{user_id}/trusted_devices
+
+List a user's trusted devices
+
+Returns the active trusted devices enrolled by the user.
+
+Deprecated.
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user whose trusted devices are returned
+
+Responses:
+
+- `200`: Success
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `500`: Request was not successful
+
+## DELETE /users/{user_id}/trusted_devices/{trusted_device_id}
+
+Revoke a user's trusted device
+
+Revokes an active trusted device enrolled by the user.
+
+Deprecated.
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user that owns the trusted device
+- `trusted_device_id` (path, required) `string`: The ID of the trusted device to revoke
+
+Responses:
+
+- `200`: Success
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `500`: Request was not successful
+
+## GET /users/{user_id}/biometric_credentials
+
+List a user's biometric credentials
+
+Returns the active biometric credentials enrolled by the user.
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user whose biometric credentials are returned
+
+Responses:
+
+- `200`: Success
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `500`: Request was not successful
+
+## DELETE /users/{user_id}/biometric_credentials/{biometric_credential_id}
+
+Revoke a user's biometric credential
+
+Revokes an active biometric credential enrolled by the user.
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user that owns the biometric credential
+- `biometric_credential_id` (path, required) `string`: The ID of the biometric credential to revoke
+
+Responses:
+
+- `200`: Success
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `500`: Request was not successful
+
+## DELETE /users/{user_id}/web3_wallets/{web3_wallet_identification_id}
+
+Delete a user web3 wallet
+
+Delete the web3 wallet identification for a given user.
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user that owns the web3 wallet
+- `web3_wallet_identification_id` (path, required) `string`: The ID of the web3 wallet identity to be deleted
+
+Responses:
+
+- `200`: Deleted Object
+- `400`: Request was not successful
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `500`: Request was not successful
+
+## DELETE /users/{user_id}/totp
+
+Delete all the user's TOTPs
+
+Deletes all of the user's TOTPs.
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user whose TOTPs are to be deleted
+
+Responses:
+
+- `200`: Successful operation.
+- `404`: Resource not found
+- `500`: Request was not successful
+
+## DELETE /users/{user_id}/external_accounts/{external_account_id}
+
+Delete External Account
+
+Delete an external account by ID.
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user's external account
+- `external_account_id` (path, required) `string`: The ID of the external account to delete
+
+Responses:
+
+- `200`: Deleted Object
+- `400`: Request was not successful
+- `403`: Request was not successful
+- `404`: Resource not found
+- `500`: Request was not successful
+
+## POST /users/{user_id}/password/set_compromised
+
+Set a user's password as compromised
+
+Sets the given user's password as compromised. The user will be prompted to reset their password on their next sign-in.
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user to set the password as compromised
+
+Request body (application/json):
+
+- `revoke_all_sessions` `boolean`
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
+
+## POST /users/{user_id}/password/unset_compromised
+
+Unset a user's password as compromised
+
+Sets the given user's password as no longer compromised. The user will no longer be prompted to reset their password on their next sign-in.
+
+If the user is in reserved-email password quarantine, the quarantine is preserved and the returned user will still have `requires_password_reset` set to `true`. Reserved-email password quarantine can only be cleared by completing a password reset or changing/removing the password.
+
+Parameters:
+
+- `user_id` (path, required) `string`: The ID of the user to unset the compromised status for
+
+Responses:
+
+- `200`: Success
+- `400`: Request was not successful
+- `401`: Authentication invalid
+- `403`: Authorization invalid
+- `404`: Resource not found
+- `422`: Invalid request parameters
