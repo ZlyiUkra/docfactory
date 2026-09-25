@@ -1,0 +1,136 @@
+# APIKeys object (Beta)
+# джерело: https://clerk.com/docs/tanstack-react-start/reference/objects/api-keys
+# отримано: 2026-09-25
+# версія: core-3
+
+> **Beta:** This feature is currently in beta. Functionality may change before general availability. If you run into any issues, please reach out to our support team.
+
+The `APIKeys` object provides methods for managing API keys that allow your application's users to grant third-party services programmatic access to your application's API endpoints on their behalf. API keys are long-lived, opaque tokens that can be instantly revoked.
+
+> If a `subject` parameter is not provided, the methods will automatically use the Active Organization ID if available, otherwise they will use the current User ID.
+
+## Example
+
+The `APIKeys` object is available on the Clerk object. Use the useClerk() hook to access the `clerk` object, as shown in the following example.
+
+filename: app/routes/index.tsx
+```tsx
+import { useClerk } from '@clerk/tanstack-react-start'
+import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/')({
+  component: Home,
+})
+
+export default function Home() {
+  // Use the useClerk hook to access the clerk object
+  const clerk = useClerk()
+
+  // Access the APIKeys object
+  const apiKeys = clerk.apiKeys
+
+  return <pre>{JSON.stringify(apiKeys, null, 2)}</pre>
+}
+```
+
+## Properties
+
+The `APIKeys` methods create, list, and revoke APIKeyResource objects. The properties below describe `APIKeyResource`.
+
+| Property                                         | Type                                    | Description                                                                                                                                                                                            |
+| ------------------------------------------------ | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+|  `claims`                     | null | Record<string, any> | Custom claims associated with the API key, or `null` if none.                                                                                                                                          |
+|  `createdAt`               | `Date`                                  | The date and time when the API key was created.                                                                                                                                                        |
+|  `createdBy`               | `null | string`              | The ID of the user that created the API key.                                                                                                                                                           |
+|  `description`           | `null | string`              | A description for the API key.                                                                                                                                                                         |
+|  `expiration`             | `null | Date`                | The expiration date and time for the API key, or `null` if the key never expires.                                                                                                                      |
+|  `expired`                   | `boolean`                               | Indicates whether the API key has expired.                                                                                                                                                             |
+|  `id`                             | `string`                                | A unique identifier for the API key.                                                                                                                                                                   |
+|  `lastUsedAt`             | `null | Date`                | The date and time when the API key was last used to authenticate a request, or `null` if it has never been used.                                                                                       |
+|  `name`                         | `string`                                | The name of the API key.                                                                                                                                                                               |
+|  `revocationReason` | `null | string`              | The reason the API key was revoked, or `null` if not revoked.                                                                                                                                          |
+|  `revoked`                   | `boolean`                               | Indicates whether the API key has been revoked.                                                                                                                                                        |
+|  `scopes`                     | `string[]`                   | An array of scopes that define what the API key can access.                                                                                                                                            |
+|  `secret?`                    | `string`                                | The API key secret. **This property is only present in the response from create() and cannot be retrieved later.** |
+|  `subject`                   | `string`                                | The user or organization ID that the API key is associated with.                                                                                                                                       |
+|  `type`                         | `string`                                | The type of the API key.                                                                                                                                                                               |
+|  `updatedAt`               | `Date`                                  | The date and time when the API key was last updated.                                                                                                                                                   |
+
+## Methods
+
+### `create()`
+
+Creates a new API key.
+
+Returns an APIKeyResource object that includes the `secret` property.
+
+> Make sure to store the API key secret immediately after creation, as it will not be available again.
+
+```typescript
+function create(params: CreateAPIKeyParams): Promise<APIKeyResource>
+```
+
+#### `CreateAPIKeyParams`
+
+| Property                                                      | Type     | Description                                                                                                                             |
+| ------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+|  `description?`                       | `string` | The description of the API key.                                                                                                         |
+|  `name`                                      | `string` | The name of the API key.                                                                                                                |
+|  `secondsUntilExpiration?` | `number` | The number of seconds until the API key expires. Set to `null` or omit to create a key that never expires.                              |
+|  `subject?`                               | `string` | The user or organization ID to associate the API key with. If not provided, defaults to the Active Organization, then the current User. |
+
+### `getAll()`
+
+Gets a paginated list of API keys for the current user or organization.
+
+Returns a ClerkPaginatedResponse of APIKeyResource objects.
+
+```typescript
+function getAll(params?: GetAPIKeysParams): Promise<ClerkPaginatedResponse<APIKeyResource>>
+```
+
+#### `GetAPIKeysParams`
+
+| Property                                | Type     | Description                                                                                                                                                         |
+| --------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|  `initialPage?` | `number` | A number that specifies which page to fetch. For example, if `initialPage` is set to `10`, it will skip the first 9 pages and fetch the 10th page. Defaults to `1`. |
+|  `pageSize?`       | `number` | A number that specifies the maximum number of results to return per page. Defaults to `10`.                                                                         |
+| `query?`                                | `string` | A search query to filter API keys by name.                                                                                                                          |
+| `subject?`                              | `string` | The user or organization ID to query API keys by. If not provided, defaults to the Active Organization, then the current User.                                      |
+
+### `reload()`
+
+Reloads the resource, which is useful when you want to access the latest user data after performing a mutation. To make the updated data immediately available, this method forces a session token refresh instead of waiting for the automatic refresh cycle that could temporarily retain stale information. Learn more about forcing a token refresh.
+
+```typescript
+function reload(p?: ClerkResourceReloadParams): Promise<APIKeyResource>
+```
+
+#### `ClerkResourceReloadParams`
+
+| Property                                              | Type     | Description                                                                                                                                                                   |
+| ----------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|  `rotatingTokenNonce?` | `string` | A nonce to use for rotating the user's token. Used in native application OAuth flows to allow the native client to update its JWT once despite changes in its rotating token. |
+
+### `revoke()`
+
+Revokes a given API key by ID.
+
+Returns an APIKeyResource object.
+
+```typescript
+function revoke(params: RevokeAPIKeyParams): Promise<APIKeyResource>
+```
+
+#### `RevokeAPIKeyParams`
+
+| Property                                          | Type     | Description                          |
+| ------------------------------------------------- | -------- | ------------------------------------ |
+|  `apiKeyID`                  | `string` | The ID of the API key to revoke.     |
+|  `revocationReason?` | `string` | The reason for revoking the API key. |
+
+---
+
+## Sitemap
+
+Overview of all docs pages

@@ -1,0 +1,275 @@
+# Clerk Billing for B2B SaaS
+# джерело: https://clerk.com/docs/react-router/guides/billing/for-b2b
+# отримано: 2026-09-25
+# версія: core-3
+
+> Billing regularly introduces new features and UI changes to Clerk's components. If you'd like to remain on a specific version of Clerk's components or SDK, you can follow the steps in the pinning documentation.
+
+Clerk Billing for B2B SaaS allows you to create Plans and manage Subscriptions **for companies or organizations** in your application. If you'd like to charge individual users, see Billing for B2C SaaS. You can also combine both B2C and B2B Billing in the same application.
+
+**For AI agents:** Run `npx clerk@latest enable billing --for orgs` to enable Billing for Organizations instead of navigating to the Billing Settings page in the Dashboard (if Organizations aren't enabled yet, the command enables them automatically). Install Clerk's skills with `npx skills add clerk/skills` for correct CLI and SDK usage.
+
+## Enable Billing
+
+To enable Billing for your application, navigate to the **Billing Settings** page in the Clerk Dashboard. This page will guide you through enabling Billing for your application.
+
+Clerk Billing costs the same as using Stripe Billing directly, just 0.7% per transaction, plus transaction fees which are paid directly to Stripe. Clerk Billing is **not** the same as Stripe Billing. Plans and pricing are managed directly through the Clerk Dashboard and won't sync with your existing Stripe products or plans. Clerk uses Stripe **only** for payment processing, so you don't need to set up Stripe Billing.
+
+### Payment gateway
+
+Once you have enabled Billing, you will see the following **Payment gateway** options for collecting payments via Stripe:
+
+- **Clerk development gateway**: A shared **test** Stripe account used for development instances. This allows developers to test and build Billing flows **in development** without needing to create and configure a Stripe account.
+- **Stripe account**: Use your own Stripe account for production. **A Stripe account created for a development instance cannot be used for production**. You will need to create a separate Stripe account for your production environment.
+
+## Create a Plan
+
+Subscription Plans are what your customers subscribe to. There is no limit to the number of Plans you can create. If your Clerk instance has existing Custom Permissions, the corresponding Features from those Permissions will automatically be added to the Free Plan for Organizations. This ensures that Organization members get the same set of Custom Permissions when Billing is enabled, because all Organizations start on the Free Plan.
+
+To create a Plan, navigate to the **Subscription plans** page in the Clerk Dashboard. Here, you can create, edit, and delete Plans. To setup B2B Billing, select the **Plans for Organizations** tab and select **Add Plan**. When creating a Plan, you can also create Features for the Plan; see the next section for more information.
+
+> What is the **Publicly available** option?
+>
+> ***
+>
+> Plans appear in some Clerk components depending on what kind of Plan it is. All Plans can appear in the `<PricingTable />` component. If it's an Organization Plan, it can appear in the `<OrganizationProfile />` component. When creating or editing a Plan, if you'd like to hide it from appearing in Clerk components, you can toggle the **Publicly available** option off.
+
+## Add Features to a Plan
+
+Features make it easy to give entitlements to your Plans. You can add any number of Features to a Plan.
+
+You can add a Feature to a Plan when you are creating a Plan. To add it after a Plan is created:
+
+1. In the Clerk Dashboard, navigate to the **Subscription plans** page.
+2. Select the Plan you'd like to add a Feature to.
+3. In the **Features** section, select **Add Feature**.
+
+> What is the **Publicly available** option?
+>
+> ***
+>
+> Plans appear in some Clerk components depending on what kind of Plan it is. All Plans can appear in the `<PricingTable />` component. If it's an Organization Plan, it can appear in the `<OrganizationProfile />` component. When adding a Feature to a Plan, it will also automatically appear in the corresponding Plan. When creating or editing a Feature, if you'd like to hide it from appearing in Clerk components, you can toggle the **Publicly available** option off.
+
+## Create a pricing page
+
+You can create a pricing page by using the  component. This component displays a table of Plans and Features that customers can subscribe to. **It's recommended to create a dedicated page**, as shown in the following example.
+
+filename: app/routes/pricing.tsx
+```tsx
+import type { Route } from './+types/pricing'
+import { PricingTable } from '@clerk/react-router'
+
+export function meta({}: Route.MetaArgs) {
+  return [{ title: 'Pricing' }]
+}
+
+export default function PricingPage() {
+  return (
+    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 1rem' }}>
+      <PricingTable for="organization" />
+    </div>
+  )
+}
+```
+
+## Control access with Features, Plans, and Permissions
+
+You can use Clerk's Features, Plans, and Permissions to gate access to content using authorization checks. There are a few ways to do this, but the recommended approach is to either use the `has()` method or the  component.
+
+> Permission-based authorization checks link with Feature-based authorization checks. This means that if you are checking a Custom Permission, it will only work if the Feature part of the Permission key (`org:<feature>:<permission>`) **is a Feature included in the Organization's active Plan**. For example, say you want to check if an Organization member has the Custom Permission `org:teams:manage`, where `teams` is the Feature. Before performing the authorization check, you need to ensure that the user's Organization is subscribed to a Plan that has the `teams` Feature. If the user's Organization is not subscribed to a Plan that has the `teams` Feature, the authorization check will always return `false`, _even if the user has the Custom Permission_.
+
+### Example: Using `has()`
+
+Use the `has()` method to test if the Organization has access to a **Plan**:
+
+```jsx
+const hasPremiumAccess = has({ plan: 'gold' })
+```
+
+Or a **Feature**:
+
+```jsx
+const hasPremiumAccess = has({ feature: 'widgets' })
+```
+
+The `has()` method is a server-side helper that checks if the Organization has been granted a specific type of access control (Role, Permission, Feature, or Plan) and returns a boolean value. `has()` is available on the `auth` object, which you will access differently depending on the framework you are using.
+
+> Why aren't Custom Permissions appearing in the session token (JWT) or in API responses (including the result of the `has()` check)?
+>
+> ***
+>
+> Custom Permissions will only appear in the session token (JWT) and in API responses (including the result of the `has()` check) if the Feature part of the Permission key (`org:<feature>:<permission>`) **is a Feature included in the Organization's active Plan**. If the Feature is not part of the Plan, the `has()` check for Permissions using that Feature will return `false`, and those Permissions will not be represented in the session token.
+>
+> For example, say you want to check if an Organization member has the Custom Permission `org:teams:manage`, where `teams` is the Feature. The user's Organization must be subscribed to a Plan that has the `teams` Feature for authorization checks to work. If the user's Organization is not subscribed to a Plan that has the `teams` Feature, the authorization check will always return `false`, _even if the user has the Custom Permission_.
+
+**Plan**
+
+The following example demonstrates how to use `has()` to check if an Organization has a Plan.
+
+filename: app/routes/bronze-content.tsx
+```tsx
+import type { Route } from './+types/bronze-content'
+import { useAuth } from '@clerk/react-router'
+
+export function meta({}: Route.MetaArgs) {
+  return [{ title: 'Bronze Content' }]
+}
+
+export default function BronzeContentPage() {
+  const { has, isLoaded } = useAuth()
+
+  if (!isLoaded) return <div>Loading...</div>
+
+  const hasBronzePlan = has({ plan: 'bronze' })
+
+  if (!hasBronzePlan) return <h1>Only subscribers to the Bronze plan can access this content.</h1>
+
+  return <h1>For Bronze subscribers only</h1>
+}
+```
+
+**Feature**
+
+The following example demonstrates how to use `has()` to check if an Organization has a Feature.
+
+filename: app/routes/premium-content.tsx
+```tsx
+import type { Route } from './+types/premium-content'
+import { useAuth } from '@clerk/react-router'
+
+export function meta({}: Route.MetaArgs) {
+  return [{ title: 'Page' }]
+}
+
+export default function PremiumContentPage() {
+  const { isLoaded, has } = useAuth()
+
+  if (!isLoaded) return <div>Loading...</div>
+
+  const hasPremiumAccess = has({ feature: 'premium_access' })
+
+  if (!hasPremiumAccess)
+    return <h1>Only subscribers with the Premium Access feature can access this content.</h1>
+
+  return <h1>Our Exclusive Content</h1>
+}
+```
+
+**Permission**
+
+The following example demonstrates how to use `has()` to check if an Organization has a Permission.
+
+filename: app/routes/manage-premium-content.tsx
+```tsx
+import type { Route } from './+types/manage-premium-content'
+import { useAuth } from '@clerk/react-router'
+
+export function meta({}: Route.MetaArgs) {
+  return [{ title: 'Manage Premium Content' }]
+}
+
+export default function ManagePremiumContentPage() {
+  const { has, isLoaded } = useAuth()
+
+  if (!isLoaded) return <div>Loading...</div>
+
+  const hasPremiumAccessManage = has({ permission: 'org:premium_access:manage' })
+
+  if (!hasPremiumAccessManage)
+    return (
+      <h1>Only subscribers with the Premium Access Manage permission can access this content.</h1>
+    )
+
+  return <h1>Our Exclusive Content</h1>
+}
+```
+
+### Example: Using `<Show>`
+
+The  component can be used to protect content or even entire routes by checking if the Organization has been granted a specific type of access control (Role, Permission, Feature, or Plan). You can pass a `fallback` prop to `<Show>` that will be rendered if the Organization does not have the access control.
+
+**Plan**
+
+The following example demonstrates how to use `<Show>` to protect a page by checking if the Organization has a Plan.
+
+filename: app/routes/protected-content.tsx
+```tsx
+import type { Route } from './+types/protected-content'
+import { Show } from '@clerk/react-router'
+
+export function meta({}: Route.MetaArgs) {
+  return [{ title: 'Protected Content' }]
+}
+
+export default function ProtectedContentPage() {
+  return (
+    <Show
+      when={{ plan: 'bronze' }}
+      fallback={<p>Only subscribers to the Bronze plan can access this content.</p>}
+    >
+      <h1>Exclusive Bronze Content</h1>
+      <p>This content is only visible to Bronze subscribers.</p>
+    </Show>
+  )
+}
+```
+
+**Feature**
+
+The following example demonstrates how to use `<Show>` to protect a page by checking if the Organization has a Feature.
+
+filename: app/routes/protected-premium-content.tsx
+```tsx
+import type { Route } from './+types/protected-premium-content'
+import { Show } from '@clerk/react-router'
+
+export function meta({}: Route.MetaArgs) {
+  return [{ title: 'Protected Premium Content' }]
+}
+
+export default function ProtectedPremiumContentPage() {
+  return (
+    <Show
+      when={{ feature: 'premium_access' }}
+      fallback={<p>Only subscribers with the Premium Access feature can access this content.</p>}
+    >
+      <h1>Exclusive Premium Content</h1>
+      <p>This content is only visible to users with Premium Access feature.</p>
+    </Show>
+  )
+}
+```
+
+**Permission**
+
+The following example demonstrates how to use `<Show>` to protect a page by checking if the Organization has a Permission.
+
+filename: app/routes/protected-manage-content.tsx
+```tsx
+import type { Route } from './+types/protected-manage-content'
+import { Show } from '@clerk/react-router'
+
+export function meta({}: Route.MetaArgs) {
+  return [{ title: 'Protected Manage Content' }]
+}
+
+export default function ProtectedManageContentPage() {
+  return (
+    <Show
+      when={{ permission: 'org:premium_access:manage' }}
+      fallback={
+        <p>Only subscribers with the Premium Access Manage permission can access this content.</p>
+      }
+    >
+      <h1>Exclusive Management Content</h1>
+      <p>This content is only visible to users with Premium Access Manage permission.</p>
+    </Show>
+  )
+}
+```
+
+---
+
+## Sitemap
+
+Overview of all docs pages

@@ -1,0 +1,129 @@
+# Build a custom Google One Tap authentication flow
+# джерело: https://clerk.com/docs/tanstack-react-start/guides/development/custom-flows/authentication/google-one-tap
+# отримано: 2026-09-25
+# версія: core-3
+
+> This guide is for users who want to build a custom flow. To use a _prebuilt_ UI, use the Account Portal pages or prebuilt components.
+
+Google One Tap enables users to press a single button to authentication in your Clerk application with a Google account.
+
+This guide will walk you through how to build a custom Google One Tap authentication flow.
+
+1. ## Enable Google as a social connection
+
+   To use Google One Tap with Clerk, follow the steps in the dedicated guide to configure Google as a social connection in the Clerk Dashboard using custom credentials.
+2. ## Create the Google One Tap authentication flow
+
+   To authenticate users with Google One Tap, you must:
+
+   1. Initialize a "Sign In With Google" client UI, passing in your Client ID.
+   2. Use the response to authenticate the user in your Clerk app if the request was successful.
+   3. Redirect the user back to the page they started the authentication flow from by default, or to another URL if necessary.
+
+   The following example creates a component that implements a custom Google One Tap authentication flow, which can be used in a sign-in or sign-up page.
+
+   > Examples for this SDK aren't available yet. For now, try adapting the  available example to fit your SDK.
+
+   filename: app/components/CustomGoogleOneTap.tsx
+
+```tsx
+   'use client'
+   import { useClerk } from '@clerk/nextjs'
+   import { useRouter } from 'next/navigation'
+   import Script from 'next/script'
+   import { useEffect } from 'react'
+
+   // Add clerk to Window to avoid type errors
+   declare global {
+     interface Window {
+       google: any
+     }
+   }
+
+   export function CustomGoogleOneTap({ children }: { children: React.ReactNode }) {
+     const clerk = useClerk()
+     const router = useRouter()
+
+     useEffect(() => {
+       // Will show the One Tap UI after two seconds
+       const timeout = setTimeout(() => oneTap(), 2000)
+       return () => {
+         clearTimeout(timeout)
+       }
+     }, [])
+
+     const oneTap = () => {
+       const { google } = window
+       if (google) {
+         google.accounts.id.initialize({
+           // Add your Google Client ID here.
+           client_id: 'xxx-xxx-xxx',
+           callback: async (response: any) => {
+             // Here we call our provider with the token provided by Google
+             call(response.credential)
+           },
+         })
+
+         // Uncomment below to show the One Tap UI without
+         // logging any notifications.
+         // return google.accounts.id.prompt() // without listening to notification
+
+         // Display the One Tap UI, and log any errors that occur.
+         return google.accounts.id.prompt((notification: any) => {
+           console.log('Notification ::', notification)
+           if (notification.isNotDisplayed()) {
+             console.log('getNotDisplayedReason ::', notification.getNotDisplayedReason())
+           } else if (notification.isSkippedMoment()) {
+             console.log('getSkippedReason  ::', notification.getSkippedReason())
+           } else if (notification.isDismissedMoment()) {
+             console.log('getDismissedReason ::', notification.getDismissedReason())
+           }
+         })
+       }
+     }
+
+     const call = async (token: any) => {
+       try {
+         const res = await clerk.authenticateWithGoogleOneTap({
+           token,
+         })
+
+         await clerk.handleGoogleOneTapCallback(res, {
+           signInFallbackRedirectUrl: '/example-fallback-path',
+         })
+       } catch (error) {
+         router.push('/sign-in')
+       }
+     }
+
+     return (
+       <>
+         <Script src="https://accounts.google.com/gsi/client" strategy="beforeInteractive">
+           {children}
+         </Script>
+       </>
+     )
+   }
+```
+
+   You can then display this component on any page. The following example demonstrates a page that displays this component:
+
+   filename: app/google-sign-in-example/page.tsx
+
+```tsx
+   import { CustomGoogleOneTap } from '@/app/components/CustomGoogleOneTap'
+
+   export default function CustomOneTapPage({ children }: { children: React.ReactNode }) {
+     return (
+       <CustomGoogleOneTap>
+         <h1>Google One Tap Example</h1>
+       </CustomGoogleOneTap>
+     )
+   }
+```
+
+---
+
+## Sitemap
+
+Overview of all docs pages

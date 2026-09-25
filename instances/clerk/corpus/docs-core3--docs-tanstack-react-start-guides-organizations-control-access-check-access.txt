@@ -1,0 +1,140 @@
+# Check Roles and Permissions with Authorization Checks
+# джерело: https://clerk.com/docs/tanstack-react-start/guides/organizations/control-access/check-access
+# отримано: 2026-09-25
+# версія: core-3
+
+Authorization checks are checks you perform in your code to determine the access rights and privileges of a user, ensuring they have the necessary Permissions to perform specific actions or access certain content. These checks are essential for protecting sensitive data, gating premium features, and ensuring users stay within their allowed scope of access.
+
+Within Organizations, authorization checks can be performed by checking a user's Roles or Custom Permissions. Roles like `org:admin` determine a user's level of access within an Organization, while Custom Permissions like `org:invoices:create` provide fine-grained control over specific features and actions.
+
+## Examples
+
+You can protect content and even entire routes based on Organization membership, Roles, and Permissions by performing authorization checks.
+
+In the following example, the page is restricted to authenticated users, users who have the `org:admin` Role, and users who belong to the `Acme Corp` Organization. It uses the `has()` helper to perform the authorization check for the `org:admin` Role.
+
+**Server-side**
+
+filename: src/routes/protected.tsx
+```tsx
+import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
+import { clerkClient, auth } from '@clerk/tanstack-react-start/server'
+
+const authStateFn = createServerFn({ method: 'GET' }).handler(async () => {
+  // Use `auth()` to access the `Auth` object
+  // https://clerk.com/docs/reference/backend/types/auth-object
+  const { isAuthenticated, orgId, has } = await auth()
+  const requiredOrgName = 'Acme Corp'
+
+  // Check if the user is authenticated
+  if (!isAuthenticated) {
+    // This might error if you're redirecting to a path that doesn't exist yet
+    // You can create a sign-in route to handle this
+    // See https://clerk.com/docs/tanstack-react-start/guides/development/custom-sign-in-or-up-page
+    throw redirect({
+      to: '/sign-in/$',
+    })
+  }
+
+  // Check if there is an Active Organization
+  if (!orgId) return { error: 'Set an Active Organization to access this page.' }
+
+  // Check if the user has the `org:admin` Role
+  if (!has({ role: 'org:admin' })) return { error: 'You must be an admin to access this page.' }
+
+  // Use the `getOrganization()` method to get the Backend `Organization` object
+  const organization = await clerkClient().organizations.getOrganization({ organizationId: orgId })
+
+  // Check if Organization name matches (e.g., 'Acme Corp')
+  if (organization.name !== requiredOrgName) {
+    return {
+      error: `This page is only accessible in the ${requiredOrgName} Organization. Switch to the ${requiredOrgName} Organization to access this page.`,
+    }
+  }
+
+  return { organizationName: organization.name }
+})
+
+export const Route = createFileRoute('/protected')({
+  component: Protected,
+  beforeLoad: () => authStateFn(),
+  loader: async ({ context }) => context,
+})
+
+function Protected() {
+  const state = Route.useLoaderData()
+
+  if ('error' in state) return <p>{state.error}</p>
+
+  return (
+    <p>
+      You are currently signed in as an <strong>admin</strong> in the{' '}
+      <strong>{state.organizationName}</strong> Organization.
+    </p>
+  )
+}
+```
+
+**Client-side**
+
+filename: src/routes/protected.tsx
+```tsx
+import { useAuth, useOrganization } from '@clerk/tanstack-react-start'
+import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/protected')({
+  component: Protected,
+})
+
+function Protected() {
+  // The `useAuth()` hook gives you access to properties like `isSignedIn` and `has()`
+  const { isSignedIn, has } = useAuth()
+  const { organization } = useOrganization()
+  const requiredOrgName = 'Acme Corp'
+
+  // Check if the user is authenticated
+  if (!isSignedIn) return <p>You must be signed in to access this page.</p>
+
+  // Check if there is an Active Organization
+  if (!organization) return <p>Set an Active Organization to access this page.</p>
+
+  // Check if the user has the `org:admin` Role
+  if (!has({ role: 'org:admin' })) return <p>You must be an admin to access this page.</p>
+
+  // Check if Organization name matches (e.g., 'Acme Corp')
+  if (organization.name !== requiredOrgName)
+    return (
+      <p>
+        This page is only accessible in the <strong>{requiredOrgName}</strong> Organization. Switch
+        to the <strong>{requiredOrgName}</strong> Organization to access this page.
+      </p>
+    )
+
+  return (
+    <p>
+      You are currently signed in as an <strong>admin</strong> in the{' '}
+      <strong>{organization.name}</strong> Organization.
+    </p>
+  )
+}
+```
+
+When a user isn't in the required Organization, render an  alongside the message to let them switch to the required Organization.
+
+For more examples on how to perform authorization checks, see the dedicated guide.
+
+## Next steps
+
+Now that you know how to check Roles and Permissions, you can:
+
+- Perform authorization checks: Learn how to perform authorization checks to limit access to content or entire routes based on a user's Role or Permissions.
+- Features and Plans: Learn how to check Features and Plans for Subscription-based applications.
+- Set up Roles and Permissions: Learn how to set up Roles and Permissions to control what invited users can access.
+- Configure default Roles: Learn how to configure default Roles for new Organization members.
+
+---
+
+## Sitemap
+
+Overview of all docs pages

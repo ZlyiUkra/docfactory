@@ -1,0 +1,99 @@
+# Verify OAuth access tokens in your TanStack React Start application with Clerk
+# джерело: https://clerk.com/docs/tanstack-react-start/guides/development/verifying-oauth-access-tokens
+# отримано: 2026-09-25
+# версія: core-3
+
+When building a resource server that needs to accept and verify OAuth access tokens issued by Clerk, it's crucial to verify these tokens on your backend to ensure the request is coming from an authenticated client.
+
+> This guide assumes you've configured clerkMiddleware() in your TanStack React Start application. The `auth()` helper requires Clerk Middleware to be configured before it can read request authentication state.
+
+Clerk's TanStack React Start SDK provides a built-in auth() function that supports token validation via the `acceptsToken` parameter. This lets you specify which type(s) of token your server function or API route should accept.
+
+By default, `acceptsToken` is set to `session_token`, which means OAuth tokens will **not** be accepted unless explicitly configured. You can pass either a **single token type** or an **array of token types** to `acceptsToken`. To learn more about the supported token types, see the auth() parameters documentation.
+
+Below are two examples of verifying OAuth access tokens in a TanStack React Start API route using Clerk's SDK:
+
+## Example 1: Accepting a single token type
+
+In the following example, the `acceptsToken` parameter is set to only accept `oauth_token`s.
+
+- If the token is invalid or missing, `auth()` will return `false` for `isAuthenticated`, and the request will be rejected with a `401` response.
+- If the token is valid, `userId` (the user who authorized the OAuth application) is returned along with the token's granted `scopes` for use in the application logic.
+
+filename: app/routes/api/example.tsx
+```tsx
+import { json } from '@tanstack/react-start'
+import { createFileRoute } from '@tanstack/react-router'
+import { auth } from '@clerk/tanstack-react-start/server'
+
+export const ServerRoute = createFileRoute('/api/example')({
+  server: {
+    handlers: {
+      GET: async () => {
+        const authObject = await auth({
+          acceptsToken: 'oauth_token',
+        })
+
+        // If isAuthenticated is false, the token is invalid
+        if (!authObject.isAuthenticated) {
+          return json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
+        const { userId, scopes } = authObject
+
+        return json({ userId, scopes })
+      },
+    },
+  },
+})
+```
+
+## Example 2: Accepting multiple token types
+
+In the following example, the `acceptsToken` parameter allows both `session_token`s and `oauth_token`s.
+
+- If the token is invalid or missing, `auth()` will return `false` for `isAuthenticated`. Check `isAuthenticated` before reading the other properties, like `userId`.
+- If the token is an `oauth_token`, the code checks that it includes the required `'profile'` scope. If not, the request is rejected with a `401` response.
+- If the token is valid and the required scope is present, `isAuthenticated` is `true` and `userId` is returned. Because the `'profile'` scope grants access to the user's identity, this example uses the `userId` to fetch and return the user's profile data.
+
+filename: app/routes/api/example.tsx
+```tsx
+import { json } from '@tanstack/react-start'
+import { createFileRoute } from '@tanstack/react-router'
+import { auth, clerkClient } from '@clerk/tanstack-react-start/server'
+
+export const ServerRoute = createFileRoute('/api/example')({
+  server: {
+    handlers: {
+      POST: async () => {
+        // Accept both session_token and oauth_token types
+        const authObject = await auth({
+          acceptsToken: ['session_token', 'oauth_token'],
+        })
+
+        // If isAuthenticated is false, the token is invalid
+        if (!authObject.isAuthenticated) {
+          return json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
+        // Check if the token is an oauth_token and if it doesn't have the required scope
+        if (authObject.tokenType === 'oauth_token' && !authObject.scopes.includes('profile')) {
+          return json({ error: 'OAuth token missing the "profile" scope' }, { status: 401 })
+        }
+
+        // The 'profile' scope grants access to the user's identity,
+        // so fetch and return the authenticated user's profile data
+        const user = await clerkClient().users.getUser(authObject.userId)
+
+        return json({ id: user.id, firstName: user.firstName, lastName: user.lastName })
+      },
+    },
+  },
+})
+```
+
+---
+
+## Sitemap
+
+Overview of all docs pages
