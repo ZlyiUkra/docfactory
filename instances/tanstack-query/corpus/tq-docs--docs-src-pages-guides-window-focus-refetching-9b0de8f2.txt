@@ -1,0 +1,89 @@
+# Window Focus Refetching
+# джерело: https://github.com/TanStack/query/blob/v3.32.1/docs/src/pages/guides/window-focus-refetching.md
+# отримано: 2026-09-26
+# версія: 3.32.1, 3.32.0, 3.31.0, 3.30.0, 3.29.1, 3.29.0, 3.28.0, 3.27.0, 3.26.0, 3.25.1, 3.25.0, 3.24.6, 3.24.5, 3.24.4, 3.24.3, 3.24.2, 3.24.1, 3.24.0, 3.23.2, 3.23.1, 3.23.0, 3.22.0, 3.21.1, 3.21.0, 3.20.0, 3.19.6, 3.19.5, 3.19.4, 3.19.3, 3.19.2, 3.19.1, 3.19.0, 3.18.1, 3.18.0, 3.17.3, 3.17.2, 3.17.1, 3.17.0, 3.16.1, 3.16.0, 3.15.3, 3.15.2, 3.15.1, 3.15.0, 3.14.0, 3.13.12, 3.13.11, 3.13.10, 3.13.9, 3.13.8, 3.13.7, 3.13.6, 3.13.5, 3.13.4, 3.13.3, 3.13.2, 3.13.1, 3.13.0, 3.12.3, 3.12.2, 3.12.1, 3.12.0, 3.11.0, 3.10.0, 3.9.9, 3.9.8, 3.9.7, 3.9.6, 3.9.5, 3.9.4, 3.9.3, 3.9.2, 3.9.1, 3.9.0
+
+If a user leaves your application and returns to stale data, **React Query automatically requests fresh data for you in the background**. You can disable this globally or per-query using the `refetchOnWindowFocus` option:
+
+#### Disabling Globally
+
+```js
+//
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+    },
+  },
+})
+
+function App() {
+  return <QueryClientProvider client={queryClient}>...</QueryClientProvider>
+}
+```
+
+#### Disabling Per-Query
+
+```js
+useQuery('todos', fetchTodos, { refetchOnWindowFocus: false })
+```
+
+## Custom Window Focus Event
+
+In rare circumstances, you may want to manage your own window focus events that trigger React Query to revalidate. To do this, React Query provides a `focusManager.setEventListener` function that supplies you the callback that should be fired when the window is focused and allows you to set up your own events. When calling `focusManager.setEventListener`, the previously set handler is removed (which in most cases will be the default handler) and your new handler is used instead. For example, this is the default handler:
+
+```js
+focusManager.setEventListener(handleFocus => {
+  // Listen to visibillitychange and focus
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('visibilitychange', handleFocus, false)
+    window.addEventListener('focus', handleFocus, false)
+  }
+
+  return () => {
+    // Be sure to unsubscribe if a new handler is set
+    window.removeEventListener('visibilitychange', handleFocus)
+    window.removeEventListener('focus', handleFocus)
+  }
+})
+```
+
+## Ignoring Iframe Focus Events
+
+A great use-case for replacing the focus handler is that of iframe events. Iframes present problems with detecting window focus by both double-firing events and also firing false-positive events when focusing or using iframes within your app. If you experience this, you should use an event handler that ignores these events as much as possible. I recommend this one! It can be set up in the following way:
+
+```js
+import { focusManager } from 'react-query'
+import onWindowFocus from './onWindowFocus' // The gist above
+
+focusManager.setEventListener(onWindowFocus) // Boom!
+```
+
+## Managing Focus in React Native
+
+Instead of event listeners on `window`, React Native provides focus information through the `AppState` module. You can use the `AppState` "change" event to trigger an update when the app state changes to "active":
+
+```js
+import { AppState } from 'react-native'
+import { focusManager } from 'react-query'
+
+focusManager.setEventListener(handleFocus => {
+  AppState.addEventListener('change', handleFocus)
+
+  return () => {
+   AppState.removeEventListener('change', handleFocus)
+  }
+})
+```
+
+## Managing focus state
+
+```js
+import { focusManager } from 'react-query'
+
+// Override the default focus state
+focusManager.setFocused(true)
+
+// Fallback to the default focus check
+focusManager.setFocused(undefined)
+```

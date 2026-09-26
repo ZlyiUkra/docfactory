@@ -1,0 +1,99 @@
+# createWebStoragePersister
+# джерело: https://github.com/TanStack/query/blob/v4.0.0-beta.12/docs/src/pages/plugins/createWebStoragePersister.md
+# отримано: 2026-09-26
+# версія: 4.0.0-beta.12, 4.0.0-beta.11, 4.0.0-beta.10, 4.0.0-beta.9, 4.0.0-beta.8, 4.0.0-beta.7, 4.0.0-beta.6, 4.0.0-beta.5, 4.0.0-beta.4, 4.0.0-beta.3, 4.0.0-beta.2, 4.0.0-beta.1, 4.0.0-alpha.24, 4.0.0-alpha.23, 4.0.0-alpha.22, 4.0.0-alpha.21, 4.0.0-alpha.20, 4.0.0-alpha.19, 4.0.0-alpha.18, 4.0.0-alpha.17, 4.0.0-alpha.16, 4.0.0-alpha.15, 4.0.0-alpha.14, 4.0.0-alpha.13, 4.0.0-alpha.12
+
+## Installation
+
+This utility comes packaged with `react-query` and is available under the `react-query/createWebStoragePersister` import.
+
+## Usage
+
+- Import the `createWebStoragePersister` function
+- Create a new webStoragePersister
+- Pass it to the `persistQueryClient` function
+
+```ts
+import { persistQueryClient } from 'react-query/persistQueryClient'
+import { createWebStoragePersister } from 'react-query/createWebStoragePersister'
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      cacheTime: 1000 * 60 * 60 * 24, // 24 hours
+    },
+  },
+})
+
+const localStoragePersister = createWebStoragePersister({ storage: window.localStorage })
+// const sessionStoragePersister = createWebStoragePersister({ storage: window.sessionStorage })
+
+persistQueryClient({
+  queryClient,
+  persister: localStoragePersister,
+})
+```
+
+## API
+
+### `createWebStoragePersister`
+
+Call this function to create a webStoragePersister that you can use later with `persistQueryClient`.
+
+```js
+createWebStoragePersister(options: CreateWebStoragePersisterOptions)
+```
+
+### `Options`
+
+```ts
+interface CreateWebStoragePersisterOptions {
+  /** The storage client used for setting an retrieving items from cache (window.localStorage or window.sessionStorage) */
+  storage: Storage
+  /** The key to use when storing the cache */
+  key?: string
+  /** To avoid spamming,
+   * pass a time in ms to throttle saving the cache to disk */
+  throttleTime?: number
+  /** How to serialize the data to storage */
+  serialize?: (client: PersistedClient) => string
+  /** How to deserialize the data from storage */
+  deserialize?: (cachedString: string) => PersistedClient
+}
+```
+
+The default options are:
+
+```js
+{
+  key = `REACT_QUERY_OFFLINE_CACHE`,
+  throttleTime = 1000,
+  serialize = JSON.stringify,
+  deserialize = JSON.parse,
+}
+```
+
+#### `serialize` and `deserialize` options
+
+There is a limit to the amount of data which can be stored in `localStorage`.
+If you need to store more data in `localStorage`, you can override the `serialize` and `deserialize` functions to compress and decrompress the data using a library like lz-string.
+
+```js
+import { QueryClient } from 'react-query';
+import { persistQueryClient } from 'react-query/persistQueryClient'
+import { createWebStoragePersister } from 'react-query/createWebStoragePersister'
+
+import { compress, decompress } from 'lz-string';
+
+const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } });
+
+persistQueryClient({
+  queryClient: connectionsQueryClient,
+  persistor: createWebStoragePersister({
+    storage: window.localStorage,
+    serialize: data => compress(JSON.stringify(data)),
+    deserialize: data => JSON.parse(decompress(data)),
+  }),
+  maxAge: Infinity,
+});
+```

@@ -1,0 +1,95 @@
+# TypeScript
+# джерело: https://github.com/TanStack/query/blob/v4.20.5/docs/typescript.md
+# отримано: 2026-09-26
+# версія: 4.20.5, 4.20.4, 4.20.3, 4.20.2, 4.20.1, 4.20.0, 4.19.1, 4.19.0, 4.18.1, 4.18.0, 4.17.1, 4.17.0, 4.16.1, 4.16.0, 4.15.1, 4.15.0, 4.14.8, 4.14.7, 4.14.6, 4.14.5, 4.14.4, 4.14.3
+
+React Query is now written in **TypeScript** to make sure the library and your projects are type-safe!
+
+Things to keep in mind:
+
+- Types currently require using TypeScript v4.1 or greater
+- Changes to types in this repository are considered **non-breaking** and are usually released as **patch** semver changes (otherwise every type enhancement would be a major version!).
+- It is **highly recommended that you lock your react-query package version to a specific patch release and upgrade with the expectation that types may be fixed or upgraded between any release**
+- The non-type-related public API of React Query still follows semver very strictly.
+
+## Type Inference
+
+Types in React Query generally flow through very well so that you don't have to provide type annotations for yourself
+
+```ts
+const { data } = useQuery({
+//      ^? const data: number | undefined
+  queryKey: ['test'],
+  queryFn: () => Promise.resolve(5)
+})
+```
+
+typescript playground
+
+```ts
+const { data } = useQuery({
+//      ^? const data: string | undefined
+  queryKey: ['test'],
+  queryFn: () => Promise.resolve(5),
+  select: data => data.toString(),
+})
+```
+
+typescript playground
+
+This works best if your `queryFn` has a well-defined returned type. Keep in mind that most data fetching libraries return `any` per default, so make sure to extract it to a properly typed function:
+
+```ts
+const fetchGroups = (): Promise<Group[]> => axios.get('/groups').then(response => response.data)
+
+const { data } = useQuery({ queryKey: ['groups'], queryFn: fetchGroups })
+//      ^? const data: Group[] | undefined
+```
+
+typescript playground
+
+## Type Narrowing
+
+React Query uses a discriminated union type for the query result, discriminated by the `status` field and the derived status boolean flags. This will allow you to check for e.g. `success` status to make `data` defined:
+
+```ts
+const { data, isSuccess } = useQuery({
+  queryKey: ['test'],
+  queryFn: () => Promise.resolve(5),
+})
+
+if (isSuccess) {
+    data
+//  ^? const data: number
+}
+```
+
+typescript playground
+
+## Typing the error field
+
+The type for error defaults to `unknown`. This is in line with what TypeScript gives you per default in a catch clauses (see useUnknownInCatchVariables). The safest way to work with `error` would be to perform a runtime check; another way would be to explicitly define types for `data` and `error`:
+
+```ts
+const { error } = useQuery({ queryKey: ['groups'], queryFn: fetchGroups })
+//      ^? const error: unknown
+
+if (error instanceof Error) {
+  error
+// ^? const error: Error
+}
+```
+
+typescript playground
+
+```ts
+const { error } = useQuery<Group[], Error>(['groups'], fetchGroups)
+//      ^? const error: Error | null
+```
+
+typescript playground
+
+## Further Reading
+
+For tips and tricks around type inference, have a look at React Query and TypeScript from
+the Community Resources.

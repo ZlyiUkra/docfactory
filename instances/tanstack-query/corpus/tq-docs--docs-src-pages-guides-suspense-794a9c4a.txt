@@ -1,0 +1,103 @@
+# Suspense
+# джерело: https://github.com/TanStack/query/blob/v4.0.0-beta.23/docs/src/pages/guides/suspense.md
+# отримано: 2026-09-26
+# версія: 4.0.0-beta.23, 4.0.0-beta.22, 4.0.0-beta.21, 4.0.0-beta.20, 4.0.0-beta.19, 4.0.0-beta.18, 4.0.0-beta.17, 4.0.0-beta.16, 4.0.0-beta.15, 4.0.0-beta.14, 4.0.0-beta.13, 4.0.0-beta.12, 4.0.0-beta.11, 4.0.0-beta.10, 4.0.0-beta.9, 4.0.0-beta.8, 4.0.0-beta.7, 4.0.0-beta.6, 4.0.0-beta.5, 4.0.0-beta.4, 4.0.0-beta.3, 4.0.0-beta.2, 4.0.0-beta.1, 4.0.0-alpha.24, 4.0.0-alpha.23, 4.0.0-alpha.22, 4.0.0-alpha.21, 4.0.0-alpha.20, 4.0.0-alpha.19, 4.0.0-alpha.18, 4.0.0-alpha.17, 4.0.0-alpha.16, 4.0.0-alpha.15, 4.0.0-alpha.14, 4.0.0-alpha.13, 4.0.0-alpha.12, 4.0.0-alpha.11, 4.0.0-alpha.10, 4.0.0-alpha.9, 4.0.0-alpha.8, 4.0.0-alpha.7, 4.0.0-alpha.6, 4.0.0-alpha.5, 4.0.0-alpha.4, 4.0.0-alpha.3, 4.0.0-alpha.2, 4.0.0-alpha.1, 3.39.1, 3.39.0, 3.38.1, 3.38.0, 3.37.0, 3.36.0, 3.35.0, 3.34.20, 3.34.19, 3.34.18, 3.34.17, 3.34.16, 3.34.15, 3.34.14, 3.34.13, 3.34.12, 3.34.11, 3.34.10, 3.34.9, 3.34.8, 3.34.7, 3.34.6, 3.34.5, 3.34.4, 3.34.3, 3.34.2, 3.34.1, 3.34.0, 3.33.7, 3.33.6, 3.33.5, 3.33.4, 3.33.3, 3.33.2, 3.33.1, 3.33.0, 3.32.3, 3.32.2, 3.32.1, 3.32.0, 3.31.0, 3.30.0, 3.29.1, 3.29.0, 3.28.0, 3.27.0, 3.26.0, 3.25.1, 3.25.0, 3.24.6, 3.24.5, 3.24.4, 3.24.3, 3.24.2, 3.24.1, 3.24.0, 3.23.2, 3.23.1, 3.23.0, 3.22.0
+
+> NOTE: Suspense mode for React Query is experimental, same as Suspense for data fetching itself. These APIs WILL change and should not be used in production unless you lock both your React and React Query versions to patch-level versions that are compatible with each other.
+
+React Query can also be used with React's new Suspense for Data Fetching API's. To enable this mode, you can set either the global or query level config's `suspense` option to `true`.
+
+Global configuration:
+
+```js
+// Configure for all queries
+import { QueryClient, QueryClientProvider } from 'react-query'
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      suspense: true,
+    },
+  },
+})
+
+function Root() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <App />
+    </QueryClientProvider>
+  )
+}
+```
+
+Query configuration:
+
+```js
+import { useQuery } from 'react-query'
+
+// Enable for an individual query
+useQuery(queryKey, queryFn, { suspense: true })
+```
+
+When using suspense mode, `status` states and `error` objects are not needed and are then replaced by usage of the `React.Suspense` component (including the use of the `fallback` prop and React error boundaries for catching errors). Please read the Resetting Error Boundaries and look at the Suspense Example for more information on how to set up suspense mode.
+
+In addition to queries behaving differently in suspense mode, mutations also behave a bit differently. By default, instead of supplying the `error` variable when a mutation fails, it will be thrown during the next render of the component it's used in and propagate to the nearest error boundary, similar to query errors. If you wish to disable this, you can set the `useErrorBoundary` option to `false`. If you wish that errors are not thrown at all, you can set the `throwOnError` option to `false` as well!
+
+## Resetting Error Boundaries
+
+Whether you are using **suspense** or **useErrorBoundaries** in your queries, you will need a way to let queries know that you want to try again when re-rendering after some error occurred.
+
+Query errors can be reset with the `QueryErrorResetBoundary` component or with the `useQueryErrorResetBoundary` hook.
+
+When using the component it will reset any query errors within the boundaries of the component:
+
+```js
+import { QueryErrorResetBoundary } from 'react-query'
+import { ErrorBoundary } from 'react-error-boundary'
+
+const App: React.FC = () => (
+  <QueryErrorResetBoundary>
+    {({ reset }) => (
+      <ErrorBoundary
+        onReset={reset}
+        fallbackRender={({ resetErrorBoundary }) => (
+          <div>
+            There was an error!
+            <Button onClick={() => resetErrorBoundary()}>Try again</Button>
+          </div>
+        )}
+      >
+        <Page />
+      </ErrorBoundary>
+    )}
+  </QueryErrorResetBoundary>
+)
+```
+
+When using the hook it will reset any query errors within the closest `QueryErrorResetBoundary`. If there is no boundary defined it will reset them globally:
+
+```js
+import { useQueryErrorResetBoundary } from 'react-query'
+import { ErrorBoundary } from 'react-error-boundary'
+
+const App: React.FC = () => {
+  const { reset } = useQueryErrorResetBoundary()
+  return (
+    <ErrorBoundary
+      onReset={reset}
+      fallbackRender={({ resetErrorBoundary }) => (
+        <div>
+          There was an error!
+          <Button onClick={() => resetErrorBoundary()}>Try again</Button>
+        </div>
+      )}
+    >
+      <Page />
+    </ErrorBoundary>
+  )
+}
+```
+
+## Fetch-on-render vs Render-as-you-fetch
+
+Out of the box, React Query in `suspense` mode works really well as a **Fetch-on-render** solution with no additional configuration. This means that when your components attempt to mount, they will trigger query fetching and suspend, but only once you have imported them and mounted them. If you want to take it to the next level and implement a **Render-as-you-fetch** model, we recommend implementing Prefetching on routing callbacks and/or user interactions events to start loading queries before they are mounted and hopefully even before you start importing or mounting their parent components.

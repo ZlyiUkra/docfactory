@@ -1,0 +1,41 @@
+# Parallel Queries
+# джерело: https://github.com/TanStack/query/blob/v4.0.0-beta.23/docs/src/pages/guides/parallel-queries.md
+# отримано: 2026-09-26
+# версія: 4.0.0-beta.23, 4.0.0-beta.22, 4.0.0-beta.21, 4.0.0-beta.20, 4.0.0-beta.19, 4.0.0-beta.18, 4.0.0-beta.17, 4.0.0-beta.16, 4.0.0-beta.15, 4.0.0-beta.14, 4.0.0-beta.13, 4.0.0-beta.12, 4.0.0-beta.11, 4.0.0-beta.10, 4.0.0-beta.9, 4.0.0-beta.8, 4.0.0-beta.7, 4.0.0-beta.6, 4.0.0-beta.5, 4.0.0-beta.4, 4.0.0-beta.3, 4.0.0-beta.2, 4.0.0-beta.1, 4.0.0-alpha.24, 4.0.0-alpha.23, 4.0.0-alpha.22, 4.0.0-alpha.21, 4.0.0-alpha.20, 4.0.0-alpha.19, 4.0.0-alpha.18, 4.0.0-alpha.17, 4.0.0-alpha.16, 4.0.0-alpha.15, 4.0.0-alpha.14, 4.0.0-alpha.13, 4.0.0-alpha.12, 4.0.0-alpha.11, 4.0.0-alpha.10, 4.0.0-alpha.9, 4.0.0-alpha.8, 4.0.0-alpha.7, 4.0.0-alpha.6, 4.0.0-alpha.5, 4.0.0-alpha.4, 4.0.0-alpha.3, 4.0.0-alpha.2
+
+"Parallel" queries are queries that are executed in parallel, or at the same time so as to maximize fetching concurrency.
+
+## Manual Parallel Queries
+
+When the number of parallel queries does not change, there is **no extra effort** to use parallel queries. Just use any number of React Query's `useQuery` and `useInfiniteQuery` hooks side-by-side!
+
+```js
+function App () {
+  // The following queries will execute in parallel
+  const usersQuery = useQuery(['users'], fetchUsers)
+  const teamsQuery = useQuery(['teams'], fetchTeams)
+  const projectsQuery = useQuery(['projects'], fetchProjects)
+  ...
+}
+```
+
+> When using React Query in suspense mode, this pattern of parallelism does not work, since the first query would throw a promise internally and would suspend the component before the other queries run. To get around this, you'll either need to use the `useQueries` hook (which is suggested) or orchestrate your own parallelism with separate components for each `useQuery` instance (which is lame).
+
+## Dynamic Parallel Queries with `useQueries`
+
+If the number of queries you need to execute is changing from render to render, you cannot use manual querying since that would violate the rules of hooks. Instead, React Query provides a `useQueries` hook, which you can use to dynamically execute as many queries in parallel as you'd like.
+
+`useQueries` accepts an **options object** with a **queries key** whose value is an **array of query objects**. It returns an **array of query results**:
+
+```js
+function App({ users }) {
+  const userQueries = useQueries({
+    queries: users.map(user => {
+      return {
+        queryKey: ['user', user.id],
+        queryFn: () => fetchUserById(user.id),
+      }
+    })
+  })
+}
+```

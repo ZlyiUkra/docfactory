@@ -1,0 +1,59 @@
+# Placeholder Query Data
+# джерело: https://github.com/TanStack/query/blob/v4.13.7/docs/guides/placeholder-query-data.md
+# отримано: 2026-09-26
+# версія: 4.13.7, 4.13.6, 4.13.5, 4.13.4, 4.13.3, 4.13.2, 4.13.1, 4.13.0, 4.12.0, 4.11.1, 4.11.0, 4.10.4, 4.10.3, 4.10.2, 4.10.1, 4.10.0, 4.9.0, 4.8.0, 4.7.2, 4.7.1, 4.7.0, 4.6.1, 4.6.0, 4.5.0, 4.4.0, 4.3.9, 4.3.8, 4.3.7, 4.3.6, 4.3.5, 4.3.4, 4.3.3, 4.3.2, 4.3.1, 4.3.0, 4.3.0-beta.7, 4.3.0-beta.6, 4.3.0-beta.5, 4.3.0-beta.4, 4.3.0-beta.3, 4.3.0-beta.2, 4.3.0-beta.1, 4.3.0-beta.0, 4.2.3, 4.2.2, 4.2.1, 4.2.0, 4.1.4, 4.1.3, 4.1.2, 4.1.1, 4.1.0, 4.0.11-beta.5, 4.0.11-beta.4, 4.0.11-beta.3, 4.0.11-beta.2, 4.0.11-beta.1, 4.0.11-beta.0, 4.0.10, 4.0.9, 4.0.8
+
+## What is placeholder data?
+
+Placeholder data allows a query to behave as if it already has data, similar to the `initialData` option, but **the data is not persisted to the cache**. This comes in handy for situations where you have enough partial (or fake) data to render the query successfully while the actual data is fetched in the background.
+
+> Example: An individual blog post query could pull "preview" data from a parent list of blog posts that only include title and a small snippet of the post body. You would not want to persist this partial data to the query result of the individual query, but it is useful for showing the content layout as quickly as possible while the actual query finishes to fetch the entire object.
+
+There are a few ways to supply placeholder data for a query to the cache before you need it:
+
+- Declaratively:
+  - Provide `placeholderData` to a query to prepopulate its cache if empty
+- Imperatively:
+  - Prefetch or fetch the data using `queryClient` and the `placeholderData` option
+
+## Placeholder Data as a Value
+
+```tsx
+function Todos() {
+  const result = useQuery(['todos'], () => fetch('/todos'), {
+    placeholderData: placeholderTodos,
+  })
+}
+```
+
+### Placeholder Data as a Function
+
+If the process for accessing a query's placeholder data is intensive or just not something you want to perform on every render, you can memoize the value or pass a memoized function as the `placeholderData` value:
+
+```tsx
+function Todos() {
+  const placeholderData = useMemo(() => generateFakeTodos(), [])
+  const result = useQuery(['todos'], () => fetch('/todos'), { placeholderData })
+}
+```
+
+### Placeholder Data from Cache
+
+In some circumstances, you may be able to provide the placeholder data for a query from the cached result of another. A good example of this would be searching the cached data from a blog post list query for a preview version of the post, then using that as the placeholder data for your individual post query:
+
+```tsx
+function Todo({ blogPostId }) {
+  const result = useQuery(['blogPost', blogPostId], () => fetch(`/blogPosts/${blogPostId}`), {
+    placeholderData: () => {
+      // Use the smaller/preview version of the blogPost from the 'blogPosts' query as the placeholder data for this blogPost query
+      return queryClient
+        .getQueryData(['blogPosts'])
+        ?.find(d => d.id === blogPostId)
+    },
+  })
+}
+```
+
+## Further reading
+
+For a comparison between `Placeholder Data` and `Initial Data`, have a look at the Community Resources.

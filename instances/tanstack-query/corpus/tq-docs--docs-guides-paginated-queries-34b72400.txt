@@ -1,0 +1,80 @@
+# Paginated / Lagged Queries
+# джерело: https://github.com/TanStack/query/blob/v4.13.7/docs/guides/paginated-queries.md
+# отримано: 2026-09-26
+# версія: 4.13.7, 4.13.6, 4.13.5, 4.13.4, 4.13.3, 4.13.2, 4.13.1, 4.13.0, 4.12.0, 4.11.1, 4.11.0, 4.10.4, 4.10.3, 4.10.2, 4.10.1, 4.10.0, 4.9.0, 4.8.0, 4.7.2, 4.7.1, 4.7.0, 4.6.1, 4.6.0, 4.5.0, 4.4.0, 4.3.9, 4.3.8, 4.3.7, 4.3.6, 4.3.5, 4.3.4, 4.3.3, 4.3.2, 4.3.1, 4.3.0, 4.3.0-beta.7, 4.3.0-beta.6, 4.3.0-beta.5, 4.3.0-beta.4, 4.3.0-beta.3, 4.3.0-beta.2, 4.3.0-beta.1, 4.3.0-beta.0, 4.2.3, 4.2.2, 4.2.1, 4.2.0, 4.1.4, 4.1.3, 4.1.2, 4.1.1, 4.1.0, 4.0.11-beta.5, 4.0.11-beta.4, 4.0.11-beta.3, 4.0.11-beta.2, 4.0.11-beta.1, 4.0.11-beta.0, 4.0.10, 4.0.9, 4.0.8, 4.0.7, 4.0.6, 4.0.5
+
+Rendering paginated data is a very common UI pattern and in React Query, it "just works" by including the page information in the query key:
+
+```tsx
+const result = useQuery(['projects', page], fetchProjects)
+```
+
+However, if you run this simple example, you might notice something strange:
+
+**The UI jumps in and out of the `success` and `loading` states because each new page is treated like a brand new query.**
+
+This experience is not optimal and unfortunately is how many tools today insist on working. But not React Query! As you may have guessed, React Query comes with an awesome feature called `keepPreviousData` that allows us to get around this.
+
+## Better Paginated Queries with `keepPreviousData`
+
+Consider the following example where we would ideally want to increment a pageIndex (or cursor) for a query. If we were to use `useQuery`, **it would still technically work fine**, but the UI would jump in and out of the `success` and `loading` states as different queries are created and destroyed for each page or cursor. By setting `keepPreviousData` to `true` we get a few new things:
+
+- **The data from the last successful fetch available while new data is being requested, even though the query key has changed**.
+- When the new data arrives, the previous `data` is seamlessly swapped to show the new data.
+- `isPreviousData` is made available to know what data the query is currently providing you
+
+```tsx
+function Todos() {
+  const [page, setPage] = React.useState(0)
+
+  const fetchProjects = (page = 0) => fetch('/api/projects?page=' + page).then((res) => res.json())
+
+  const {
+    isLoading,
+    isError,
+    error,
+    data,
+    isFetching,
+    isPreviousData,
+  } = useQuery(['projects', page], () => fetchProjects(page), { keepPreviousData : true })
+
+  return (
+    <div>
+      {isLoading ? (
+        <div>Loading...</div>
+      ) : isError ? (
+        <div>Error: {error.message}</div>
+      ) : (
+        <div>
+          {data.projects.map(project => (
+            <p key={project.id}>{project.name}</p>
+          ))}
+        </div>
+      )}
+      <span>Current Page: {page + 1}</span>
+      <button
+        onClick={() => setPage(old => Math.max(old - 1, 0))}
+        disabled={page === 0}
+      >
+        Previous Page
+      </button>{' '}
+      <button
+        onClick={() => {
+          if (!isPreviousData && data.hasMore) {
+            setPage(old => old + 1)
+          }
+        }}
+        // Disable the Next Page button until we know a next page is available
+        disabled={isPreviousData || !data?.hasMore}
+      >
+        Next Page
+      </button>
+      {isFetching ? <span> Loading...</span> : null}{' '}
+    </div>
+  )
+}
+```
+
+## Lagging Infinite Query results with `keepPreviousData`
+
+While not as common, the `keepPreviousData` option also works flawlessly with the `useInfiniteQuery` hook, so you can seamlessly allow your users to continue to see cached data while infinite query keys change over time.

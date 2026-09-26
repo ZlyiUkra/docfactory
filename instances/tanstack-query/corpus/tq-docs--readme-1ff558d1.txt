@@ -1,0 +1,53 @@
+# README
+# джерело: https://github.com/TanStack/query/blob/v3.12.0/README.md
+# отримано: 2026-09-26
+# версія: 3.12.0, 3.11.0, 3.10.0, 3.9.9, 3.9.8, 3.9.7, 3.9.6, 3.9.5, 3.9.4, 3.9.3, 3.9.2, 3.9.1, 3.9.0, 3.8.3, 3.8.2, 3.8.1, 3.8.0, 3.7.1, 3.7.0, 3.6.1
+
+React Query Header
+
+Hooks for fetching, caching and updating asynchronous data in React
+
+Enjoy this library? Try the entire TanStack! React Table, React Form, React Charts
+
+## Visit react-query.tanstack.com for docs, guides, API and more!
+
+Still on **React Query v2**? No problem! Check out the v2 docs here: https://react-query-v2.tanstack.com/.
+
+## Quick Features
+
+- Transport/protocol/backend agnostic data fetching (REST, GraphQL, promises, whatever!)
+- Auto Caching + Refetching (stale-while-revalidate, Window Refocus, Polling/Realtime)
+- Parallel + Dependent Queries
+- Mutations + Reactive Query Refetching
+- Multi-layer Cache + Automatic Garbage Collection
+- Paginated + Cursor-based Queries
+- Load-More + Infinite Scroll Queries w/ Scroll Recovery
+- Request Cancellation
+- React Suspense + Fetch-As-You-Render Query Prefetching
+- Dedicated Devtools
+-
+
+   (depending on features imported)
+
+### Become a Sponsor!
+
+## Contributors ✨
+
+Thanks goes to these wonderful people (emoji key):
+
+    Tanner Linsley💻 🤔 💡 🚧 👀
+    Andrew Cherniavskii💻 🐛
+    Thibaut Tiberghien📖
+    Rohit Garg🔧
+    Avinash💻 🐛
+    Jason O'Neill🚧 ⚠️
+    Jack Zhao💻 🐛
+
+    dpyzo0o💻
+    Jelte Liekens💻
+    Jen Gettings💻
+    Justin💻
+    Marcelo Alves💻
+    Zorza📖
+
+This project follows the all-contributors specification. Contributions of any kind welcome!

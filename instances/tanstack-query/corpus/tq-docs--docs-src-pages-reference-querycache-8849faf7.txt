@@ -1,0 +1,115 @@
+# QueryCache
+# джерело: https://github.com/TanStack/query/blob/v4.0.0-beta.23/docs/src/pages/reference/QueryCache.md
+# отримано: 2026-09-26
+# версія: 4.0.0-beta.23, 4.0.0-beta.22, 4.0.0-beta.21, 4.0.0-beta.20, 4.0.0-beta.19, 4.0.0-beta.18, 4.0.0-beta.17, 4.0.0-beta.16, 4.0.0-beta.15, 4.0.0-beta.14, 4.0.0-beta.13, 4.0.0-beta.12, 4.0.0-beta.11, 4.0.0-beta.10, 4.0.0-beta.9, 4.0.0-beta.8, 4.0.0-beta.7, 4.0.0-beta.6, 4.0.0-beta.5, 4.0.0-beta.4, 4.0.0-beta.3, 4.0.0-beta.2, 4.0.0-beta.1, 4.0.0-alpha.24, 4.0.0-alpha.23, 4.0.0-alpha.22, 4.0.0-alpha.21, 4.0.0-alpha.20, 4.0.0-alpha.19, 4.0.0-alpha.18, 4.0.0-alpha.17, 4.0.0-alpha.16, 4.0.0-alpha.15, 4.0.0-alpha.14, 4.0.0-alpha.13, 4.0.0-alpha.12, 4.0.0-alpha.11, 4.0.0-alpha.10, 4.0.0-alpha.9, 4.0.0-alpha.8, 4.0.0-alpha.7, 4.0.0-alpha.6, 4.0.0-alpha.5, 4.0.0-alpha.4, 4.0.0-alpha.3, 4.0.0-alpha.2, 4.0.0-alpha.1, 3.39.2, 3.39.1, 3.39.0, 3.38.1, 3.38.0, 3.37.0, 3.36.0, 3.35.0, 3.34.20, 3.34.19, 3.34.18, 3.34.17, 3.34.16, 3.34.15, 3.34.14, 3.34.13, 3.34.12, 3.34.11, 3.34.10, 3.34.9, 3.34.8, 3.34.7, 3.34.6, 3.34.5, 3.34.4, 3.34.3, 3.34.2, 3.34.1, 3.34.0, 3.33.7, 3.33.6, 3.33.5, 3.33.4, 3.33.3, 3.33.2, 3.33.1, 3.33.0, 3.32.3, 3.32.2
+
+The `QueryCache` is the storage mechanism for React Query. It stores all the data, meta information and state of queries it contains.
+
+**Normally, you will not interact with the QueryCache directly and instead use the `QueryClient` for a specific cache.**
+
+```js
+import { QueryCache } from 'react-query'
+
+const queryCache = new QueryCache({
+  onError: error => {
+    console.log(error)
+  },
+  onSuccess: data => {
+    console.log(data)
+  }
+})
+
+const query = queryCache.find('posts')
+```
+
+Its available methods are:
+
+- `find`
+- `findAll`
+- `subscribe`
+- `clear`
+
+**Options**
+
+- `onError?: (error: unknown, query: Query) => void`
+  - Optional
+  - This function will be called if some query encounters an error.
+- `onSuccess?: (data: unknown, query: Query) => void`
+  - Optional
+  - This function will be called if some query is successful.
+
+## Global callbacks
+
+The `onError` and `onSuccess` callbacks on the QueryCache can be used to handle these events on a global level. They are different to `defaultOptions` provided to the QueryClient because:
+- `defaultOptions` can be overridden by each Query - the global callbacks will **always** be called.
+- `defaultOptions` callbacks will be called once for each Observer, while the global callbacks will only be called once per Query.
+
+## `queryCache.find`
+
+`find` is a slightly more advanced synchronous method that can be used to get an existing query instance from the cache. This instance not only contains **all** the state for the query, but all of the instances, and underlying guts of the query as well. If the query does not exist, `undefined` will be returned.
+
+> Note: This is not typically needed for most applications, but can come in handy when needing more information about a query in rare scenarios (eg. Looking at the query.state.dataUpdatedAt timestamp to decide whether a query is fresh enough to be used as an initial value)
+
+```js
+const query = queryCache.find(queryKey)
+```
+
+**Options**
+
+- `queryKey?: QueryKey`: Query Keys
+- `filters?: QueryFilters`: Query Filters
+
+**Returns**
+
+- `Query`
+  - The query instance from the cache
+
+## `queryCache.findAll`
+
+`findAll` is even more advanced synchronous method that can be used to get existing query instances from the cache that partially match query key. If queries do not exist, empty array will be returned.
+
+> Note: This is not typically needed for most applications, but can come in handy when needing more information about a query in rare scenarios
+
+```js
+const queries = queryCache.findAll(queryKey)
+```
+
+**Options**
+
+- `queryKey?: QueryKey`: Query Keys
+- `filters?: QueryFilters`: Query Filters
+
+**Returns**
+
+- `Query[]`
+  - Query instances from the cache
+
+## `queryCache.subscribe`
+
+The `subscribe` method can be used to subscribe to the query cache as a whole and be informed of safe/known updates to the cache like query states changing or queries being updated, added or removed
+
+```js
+const callback = event => {
+  console.log(event.type, event.query)
+}
+
+const unsubscribe = queryCache.subscribe(callback)
+```
+
+**Options**
+
+- `callback: (event: QueryCacheNotifyEvent) => void`
+  - This function will be called with the query cache any time it is updated via its tracked update mechanisms (eg, `query.setState`, `queryClient.removeQueries`, etc). Out of scope mutations to the cache are not encouraged and will not fire subscription callbacks
+
+**Returns**
+
+- `unsubscribe: Function => void`
+  - This function will unsubscribe the callback from the query cache.
+
+## `queryCache.clear`
+
+The `clear` method can be used to clear the cache entirely and start fresh.
+
+```js
+queryCache.clear()
+```

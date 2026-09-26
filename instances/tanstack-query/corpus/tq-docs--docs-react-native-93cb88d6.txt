@@ -1,0 +1,73 @@
+# React Native
+# джерело: https://github.com/TanStack/query/blob/v4.3.9/docs/react-native.md
+# отримано: 2026-09-26
+# версія: 4.3.9, 4.3.8, 4.3.7, 4.3.6, 4.3.5, 4.3.4, 4.3.3, 4.3.2, 4.3.1, 4.3.0, 4.3.0-beta.7, 4.3.0-beta.6, 4.3.0-beta.5, 4.3.0-beta.4, 4.3.0-beta.3, 4.3.0-beta.2, 4.3.0-beta.1, 4.3.0-beta.0, 4.2.3, 4.2.2, 4.2.1, 4.2.0, 4.1.4, 4.1.3, 4.1.2, 4.1.1, 4.1.0, 4.0.11-beta.5, 4.0.11-beta.4, 4.0.11-beta.3, 4.0.11-beta.2, 4.0.11-beta.1, 4.0.11-beta.0, 4.0.10, 4.0.9, 4.0.8, 4.0.7, 4.0.6, 4.0.5, 4.0.4, 4.0.3, 4.0.2, 4.0.1, 4.0.0
+
+React Query is designed to work out of the box with React Native, with the exception of the devtools, which are only supported with React DOM at this time.
+
+There is a 3rd party Flipper plugin which you can try: https://github.com/bgaleotti/react-query-native-devtools
+
+If you would like to help us make the built-in devtools platform agnostic, please let us know!
+
+## Online status management
+
+React Query already supports auto refetch on reconnect in web browser.
+To add this behavior in React Native you have to use React Query `onlineManager` as in the example below:
+
+```ts
+import NetInfo from '@react-native-community/netinfo'
+import { onlineManager } from '@tanstack/react-query'
+
+onlineManager.setEventListener(setOnline => {
+  return NetInfo.addEventListener(state => {
+    setOnline(!!state.isConnected)
+  })
+})
+```
+
+## Refetch on App focus
+
+In React Native you have to use React Query `focusManager` to refetch when the App is focused.
+
+```ts
+import { focusManager } from '@tanstack/react-query'
+
+function onAppStateChange(status: AppStateStatus) {
+  if (Platform.OS !== 'web') {
+    focusManager.setFocused(status === 'active')
+  }
+}
+
+useEffect(() => {
+  const subscription = AppState.addEventListener('change', onAppStateChange)
+
+  return () => subscription.remove()
+}, [])
+```
+
+## Refresh on Screen focus
+
+In some situations, you may want to refetch the query when a React Native Screen is focused again.
+This custom hook will call the provided `refetch` function when the screen is focused again.
+
+```ts
+import React from 'react'
+import { useFocusEffect } from '@react-navigation/native'
+
+export function useRefreshOnFocus<T>(refetch: () => Promise<T>) {
+  const firstTimeRef = React.useRef(true)
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (firstTimeRef.current) {
+         firstTimeRef.current = false;
+         return;
+      }
+
+      refetch()
+    }, [refetch])
+  )
+}
+```
+
+In the above code, `refetch` is skipped the first time because `useFocusEffect` calls our callback on mount in addition to screen focus.
