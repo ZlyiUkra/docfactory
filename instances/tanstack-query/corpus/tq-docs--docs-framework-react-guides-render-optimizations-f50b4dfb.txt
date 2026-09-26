@@ -1,0 +1,74 @@
+# Render Optimizations
+# джерело: https://github.com/TanStack/query/blob/v5.55.4/docs/framework/react/guides/render-optimizations.md
+# отримано: 2026-09-26
+# версія: 5.55.4, 5.55.3, 5.55.2, 5.55.1, 5.55.0, 5.54.2, 5.54.1, 5.54.0, 5.53.3, 5.53.2, 5.53.1, 5.53.0, 5.52.3, 5.52.2, 5.52.1, 5.52.0, 5.51.24, 5.51.23, 5.51.22, 5.51.21, 5.51.20, 5.51.19, 5.51.18, 5.51.17, 5.51.16, 5.51.15, 5.51.14, 5.51.13, 5.51.12, 5.51.11, 5.51.10, 5.51.9, 5.51.7, 5.51.6, 5.51.5, 5.51.4, 5.51.3, 5.51.2, 5.51.1, 5.51.0, 5.50.3, 5.50.2, 5.50.1, 5.50.0, 5.49.2, 5.49.1, 5.49.0, 5.48.2, 5.48.1, 5.48.0, 5.47.0, 5.46.2, 5.46.1, 5.46.0, 5.45.1, 5.45.0, 5.44.0, 5.43.1, 5.43.0, 5.42.0, 5.41.0, 5.40.3, 5.40.2, 5.40.1, 5.40.0, 5.39.0, 5.38.0, 5.37.1, 5.37.0, 5.36.2, 5.36.1, 5.36.0, 5.35.6, 5.35.5, 5.35.4, 5.35.3, 5.35.2, 5.35.1, 5.35.0, 5.34.2, 5.34.1, 5.34.0, 5.33.1, 5.33.0, 5.32.1, 5.32.0
+
+React Query applies a couple of optimizations automatically to ensure that your components only re-render when they actually need to. This is done by the following means:
+
+## structural sharing
+
+React Query uses a technique called "structural sharing" to ensure that as many references as possible will be kept intact between re-renders. If data is fetched over the network, usually, you'll get a completely new reference by json parsing the response. However, React Query will keep the original reference if _nothing_ changed in the data. If a subset changed, React Query will keep the unchanged parts and only replace the changed parts.
+
+> Note: This optimization only works if the `queryFn` returns JSON compatible data. You can turn it off by setting `structuralSharing: false` globally or on a per-query basis, or you can implement your own structural sharing by passing a function to it.
+
+### referential identity
+
+The top level object returned from `useQuery`, `useInfiniteQuery`, `useMutation` and the Array returned from `useQueries` is **not referentially stable**. It will be a new reference on every render. However, the `data` properties returned from these hooks will be as stable as possible.
+
+## tracked properties
+
+React Query will only trigger a re-render if one of the properties returned from `useQuery` is actually "used". This is done by using custom getters. This avoids a lot of unnecessary re-renders, e.g. because properties like `isFetching` or `isStale` might change often, but are not used in the component.
+
+You can customize this feature by setting `notifyOnChangeProps` manually globally or on a per-query basis. If you want to turn that feature off, you can set `notifyOnChangeProps: 'all'`.
+
+> Note: Custom getters are invoked by accessing a property, either via destructuring or by accessing it directly. If you use object rest destructuring, you will disable this optimization. We have a lint rule to guard against this pitfall.
+
+## select
+
+You can use the `select` option to select a subset of the data that your component should subscribe to. This is useful for highly optimized data transformations or to avoid unnecessary re-renders.
+
+```js
+export const useTodos = (select) => {
+  return useQuery({
+    queryKey: ['todos'],
+    queryFn: fetchTodos,
+    select,
+  })
+}
+
+export const useTodoCount = () => {
+  return useTodos((data) => data.length)
+}
+```
+
+A component using the `useTodoCount` custom hook will only re-render if the length of the todos changes. It will **not** re-render if e.g. the name of a todo changed.
+
+### memoization
+
+The `select` function will only re-run if:
+
+- the `select` function itself changed referentially
+- `data` changed
+
+This means that an inlined `select` function, as shown above, will run on every render. To avoid this, you can wrap the `select` function in `useCallback`, or extract it to a stable function reference if it doesn't have any dependencies:
+
+```js
+// wrapped in useCallback
+export const useTodoCount = () => {
+  return useTodos(useCallback((data) => data.length, []))
+}
+```
+
+```js
+// extracted to a stable function reference
+const selectTodoCount = (data) => data.length
+
+export const useTodoCount = () => {
+  return useTodos(selectTodoCount)
+}
+```
+
+## Further Reading
+
+For an in-depth guide about these topics, read React Query Render Optimizations from
+the Community Resources.

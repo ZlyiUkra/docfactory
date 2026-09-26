@@ -1,0 +1,118 @@
+# hydration
+# джерело: https://github.com/TanStack/query/blob/v5.39.0/docs/framework/react/reference/hydration.md
+# отримано: 2026-09-26
+# версія: 5.39.0, 5.38.0, 5.37.1, 5.37.0, 5.36.2, 5.36.1, 5.36.0, 5.35.6, 5.35.5, 5.35.4, 5.35.3, 5.35.2, 5.35.1, 5.35.0, 5.34.2, 5.34.1, 5.34.0, 5.33.1, 5.33.0, 5.32.1, 5.32.0, 5.31.0, 5.30.6, 5.30.5, 5.30.4, 5.30.3, 5.30.2, 5.30.1, 5.30.0, 5.29.3, 5.29.2, 5.29.1, 5.29.0, 5.28.14, 5.28.13, 5.28.12, 5.28.11, 5.28.10, 5.28.9, 5.28.8, 5.28.7, 5.28.6, 5.28.5, 5.28.4, 5.28.3, 5.28.2, 5.28.1, 5.28.0, 5.27.8, 5.27.7, 5.27.6, 5.27.5, 5.27.4, 5.27.3, 5.27.1, 5.27.0, 5.26.3, 5.26.2, 5.26.1, 5.26.0, 5.25.0, 5.24.8, 5.24.7, 5.24.6, 5.24.5, 5.24.4, 5.24.3, 5.24.2, 5.24.1, 5.24.0, 5.23.0, 5.22.2, 5.22.1, 5.22.0, 5.21.7, 5.21.6, 5.21.5, 5.21.4, 5.21.3, 5.21.2, 5.21.1, 5.21.0, 5.20.5, 5.20.4, 5.20.3, 5.20.2, 5.20.1, 5.20.0, 5.19.1, 5.19.0, 5.18.2, 5.18.1, 5.18.0, 5.17.22
+
+## `dehydrate`
+
+`dehydrate` creates a frozen representation of a `cache` that can later be hydrated with `HydrationBoundary` or `hydrate`. This is useful for passing prefetched queries from server to client or persisting queries to localStorage or other persistent locations. It only includes currently successful queries by default.
+
+```tsx
+import { dehydrate } from '@tanstack/react-query'
+
+const dehydratedState = dehydrate(queryClient, {
+  shouldDehydrateQuery,
+  shouldDehydrateMutation,
+})
+```
+
+**Options**
+
+- `client: QueryClient`
+  - **Required**
+  - The `queryClient` that should be dehydrated
+- `options: DehydrateOptions`
+  - Optional
+  - `shouldDehydrateMutation: (mutation: Mutation) => boolean`
+    - Optional
+    - Whether to dehydrate mutations.
+    - The function is called for each mutation in the cache
+      - Return `true` to include this mutation in dehydration, or `false` otherwise
+    - Defaults to only including paused mutations
+    - If you would like to extend the function while retaining the default behavior, import and execute `defaultShouldDehydrateMutation` as part of the return statement
+  - `shouldDehydrateQuery: (query: Query) => boolean`
+    - Optional
+    - Whether to dehydrate queries.
+    - The function, it is called for each query in the cache
+      - Return `true` to include this query in dehydration, or `false` otherwise
+    - Defaults to only including successful queries
+    - If you would like to extend the function while retaining the default behavior, import and execute `defaultShouldDehydrateQuery` as part of the return statement
+
+**Returns**
+
+- `dehydratedState: DehydratedState`
+  - This includes everything that is needed to hydrate the `queryClient` at a later point
+  - You **should not** rely on the exact format of this response, it is not part of the public API and can change at any time
+  - This result is not in serialized form, you need to do that yourself if desired
+
+### limitations
+
+Some storage systems (such as browser Web Storage API) require values to be JSON serializable. If you need to dehydrate values that are not automatically serializable to JSON (like `Error` or `undefined`), you have to serialize them for yourself. Since only successful queries are included per default, to also include `Errors`, you have to provide `shouldDehydrateQuery`, e.g.:
+
+```tsx
+// server
+const state = dehydrate(client, { shouldDehydrateQuery: () => true }) // to also include Errors
+const serializedState = mySerialize(state) // transform Error instances to objects
+
+// client
+const state = myDeserialize(serializedState) // transform objects back to Error instances
+hydrate(client, state)
+```
+
+## `hydrate`
+
+`hydrate` adds a previously dehydrated state into a `cache`.
+
+```tsx
+import { hydrate } from '@tanstack/react-query'
+
+hydrate(queryClient, dehydratedState, options)
+```
+
+**Options**
+
+- `client: QueryClient`
+  - **Required**
+  - The `queryClient` to hydrate the state into
+- `dehydratedState: DehydratedState`
+  - **Required**
+  - The state to hydrate into the client
+- `options: HydrateOptions`
+  - Optional
+  - `defaultOptions: DefaultOptions`
+    - Optional
+    - `mutations: MutationOptions` The default mutation options to use for the hydrated mutations.
+    - `queries: QueryOptions` The default query options to use for the hydrated queries.
+  - `queryClient?: QueryClient`,
+    - Use this to use a custom QueryClient. Otherwise, the one from the nearest context will be used.
+
+### Limitations
+
+If the queries included in dehydration already exist in the queryCache, `hydrate` does not overwrite them and they will be **silently** discarded.
+
+[//]: # 'HydrationBoundary'
+
+## `HydrationBoundary`
+
+`HydrationBoundary` adds a previously dehydrated state into the `queryClient` that would be returned by `useQueryClient()`. If the client already contains data, the new queries will be intelligently merged based on update timestamp.
+
+```tsx
+import { HydrationBoundary } from '@tanstack/react-query'
+
+function App() {
+  return <HydrationBoundary state={dehydratedState}>...</HydrationBoundary>
+}
+```
+
+**Options**
+
+- `state: DehydratedState`
+  - The state to hydrate
+- `options: HydrateOptions`
+  - Optional
+  - `defaultOptions: QueryOptions`
+    - The default query options to use for the hydrated queries.
+  - `queryClient?: QueryClient`,
+    - Use this to use a custom QueryClient. Otherwise, the one from the nearest context will be used.
+
+[//]: # 'HydrationBoundary'

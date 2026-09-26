@@ -1,0 +1,67 @@
+# useQueries
+# джерело: https://github.com/TanStack/query/blob/v5.67.2/docs/framework/react/reference/useQueries.md
+# отримано: 2026-09-26
+# версія: 5.67.2, 5.67.1, 5.67.0, 5.66.11, 5.66.10, 5.66.9, 5.66.8, 5.66.7, 5.66.6, 5.66.5, 5.66.4, 5.66.3, 5.66.2, 5.66.1, 5.66.0, 5.65.1, 5.65.0, 5.64.2, 5.64.1, 5.64.0, 5.63.0, 5.62.16, 5.62.14, 5.62.13, 5.62.12, 5.62.11, 5.62.10, 5.62.9, 5.62.8, 5.62.7, 5.62.6, 5.62.5, 5.62.4, 5.62.3, 5.62.2, 5.62.1, 5.62.0, 5.61.6, 5.61.5, 5.61.4, 5.61.3, 5.61.2, 5.61.1, 5.61.0, 5.60.7, 5.60.6, 5.60.5, 5.60.4, 5.60.3, 5.60.2, 5.60.1, 5.60.0, 5.59.20, 5.59.19, 5.59.18, 5.59.17, 5.59.16, 5.59.15, 5.59.14, 5.59.13, 5.59.12, 5.59.11, 5.59.10, 5.59.9, 5.59.8, 5.59.7, 5.59.6, 5.59.5, 5.59.4, 5.59.3, 5.59.2, 5.59.1, 5.59.0
+
+The `useQueries` hook can be used to fetch a variable number of queries:
+
+```tsx
+const ids = [1, 2, 3]
+const results = useQueries({
+  queries: ids.map((id) => ({
+    queryKey: ['post', id],
+    queryFn: () => fetchPost(id),
+    staleTime: Infinity,
+  })),
+})
+```
+
+**Options**
+
+The `useQueries` hook accepts an options object with a **queries** key whose value is an array with query option objects identical to the `useQuery` hook (excluding the `queryClient` option - because the `QueryClient` can be passed in on the top level).
+
+- `queryClient?: QueryClient`
+  - Use this to provide a custom QueryClient. Otherwise, the one from the nearest context will be used.
+- `combine?: (result: UseQueriesResults) => TCombinedResult`
+  - Use this to combine the results of the queries into a single value.
+
+> Having the same query key more than once in the array of query objects may cause some data to be shared between queries. To avoid this, consider de-duplicating the queries and map the results back to the desired structure.
+
+**placeholderData**
+
+The `placeholderData` option exists for `useQueries` as well, but it doesn't get information passed from previously rendered Queries like `useQuery` does, because the input to `useQueries` can be a different number of Queries on each render.
+
+**Returns**
+
+The `useQueries` hook returns an array with all the query results. The order returned is the same as the input order.
+
+## Combine
+
+If you want to combine `data` (or other Query information) from the results into a single value, you can use the `combine` option. The result will be structurally shared to be as referentially stable as possible.
+
+```tsx
+const ids = [1, 2, 3]
+const combinedQueries = useQueries({
+  queries: ids.map((id) => ({
+    queryKey: ['post', id],
+    queryFn: () => fetchPost(id),
+  })),
+  combine: (results) => {
+    return {
+      data: results.map((result) => result.data),
+      pending: results.some((result) => result.isPending),
+    }
+  },
+})
+```
+
+In the above example, `combinedQueries` will be an object with a `data` and a `pending` property. Note that all other properties of the Query results will be lost.
+
+### Memoization
+
+The `combine` function will only re-run if:
+
+- the `combine` function itself changed referentially
+- any of the query results changed
+
+This means that an inlined `combine` function, as shown above, will run on every render. To avoid this, you can wrap the `combine` function in `useCallback`, or extract it to a stable function reference if it doesn't have any dependencies.

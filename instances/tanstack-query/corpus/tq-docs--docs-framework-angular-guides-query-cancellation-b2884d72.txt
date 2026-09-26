@@ -1,0 +1,106 @@
+# Query Cancellation
+# джерело: https://github.com/TanStack/query/blob/v5.51.10/docs/framework/angular/guides/query-cancellation.md
+# отримано: 2026-09-26
+# версія: 5.51.10, 5.51.9, 5.51.7, 5.51.6, 5.51.5, 5.51.4, 5.51.3, 5.51.2, 5.51.1, 5.51.0, 5.50.3, 5.50.2, 5.50.1, 5.50.0, 5.49.2, 5.49.1, 5.49.0, 5.48.2, 5.48.1, 5.48.0, 5.47.0, 5.46.2, 5.46.1, 5.46.0, 5.45.1, 5.45.0, 5.44.0, 5.43.1, 5.43.0, 5.42.0, 5.41.0, 5.40.3, 5.40.2, 5.40.1, 5.40.0, 5.39.0, 5.38.0, 5.37.1, 5.37.0, 5.36.2, 5.36.1, 5.36.0, 5.35.6, 5.35.5, 5.35.4, 5.35.3, 5.35.2, 5.35.1, 5.35.0, 5.34.2, 5.34.1, 5.34.0, 5.33.1, 5.33.0, 5.32.1, 5.32.0, 5.31.0, 5.30.6, 5.30.5, 5.30.4, 5.30.3, 5.30.2, 5.30.1, 5.30.0, 5.29.3, 5.29.2, 5.29.1, 5.29.0, 5.28.14, 5.28.13, 5.28.12, 5.28.11, 5.28.10, 5.28.9, 5.28.8, 5.28.7, 5.28.6, 5.28.5, 5.28.4, 5.28.3, 5.28.2, 5.28.1, 5.28.0, 5.27.8, 5.27.7, 5.27.6, 5.27.5, 5.27.4, 5.27.3, 5.27.1, 5.27.0, 5.26.3, 5.26.2, 5.26.1, 5.26.0, 5.25.0, 5.24.8, 5.24.7, 5.24.6, 5.24.5, 5.24.4, 5.24.3, 5.24.2, 5.24.1, 5.24.0, 5.23.0, 5.22.2, 5.22.1, 5.22.0, 5.21.7, 5.21.6, 5.21.5, 5.21.4, 5.21.3, 5.21.2, 5.21.1, 5.21.0, 5.20.5, 5.20.4, 5.20.3, 5.20.2, 5.20.1, 5.20.0, 5.19.1, 5.19.0, 5.18.2, 5.18.1, 5.18.0, 5.17.22
+
+TanStack Query provides each query function with an `AbortSignal` instance. When a query becomes out-of-date or inactive, this `signal` will become aborted. This means that all queries are cancellable, and you can respond to the cancellation inside your query function if desired. The best part about this is that it allows you to continue to use normal async/await syntax while getting all the benefits of automatic cancellation.
+
+## Default behavior
+
+By default, queries that unmount or become unused before their promises are resolved are _not_ cancelled. This means that after the promise has resolved, the resulting data will be available in the cache. This is helpful if you've started receiving a query, but then unmount the component before it finishes. If you mount the component again and the query has not been garbage collected yet, data will be available.
+
+However, if you consume the `AbortSignal`, the Promise will be cancelled (e.g. aborting the fetch) and therefore, also the Query must be cancelled. Cancelling the query will result in its state being _reverted_ to its previous state.
+
+## Using `HttpClient`
+
+```ts
+import { HttpClient } from '@angular/common/http'
+import { injectQuery } from '@tanstack/angular-query-experimental'
+
+postQuery = injectQuery(() => ({
+  enabled: this.postId() > 0,
+  queryKey: ['post', this.postId()],
+  queryFn: async (context): Promise<Post> => {
+    const abort$ = fromEvent(context.signal, 'abort')
+    return lastValueFrom(this.getPost$(this.postId()).pipe(takeUntil(abort$)))
+  },
+}))
+```
+
+## Using `fetch`
+
+[//]: # 'Example2'
+
+```ts
+query = injectQuery(() => ({
+  queryKey: ['todos'],
+  queryFn: async ({ signal }) => {
+    const todosResponse = await fetch('/todos', {
+      // Pass the signal to one fetch
+      signal,
+    })
+    const todos = await todosResponse.json()
+
+    const todoDetails = todos.map(async ({ details }) => {
+      const response = await fetch(details, {
+        // Or pass it to several
+        signal,
+      })
+      return response.json()
+    })
+
+    return Promise.all(todoDetails)
+  },
+}))
+```
+
+[//]: # 'Example2'
+
+## Using `axios`
+
+[//]: # 'Example3'
+
+```tsx
+import axios from 'axios'
+
+const query = injectQuery(() => ({
+  queryKey: ['todos'],
+  queryFn: ({ signal }) =>
+    axios.get('/todos', {
+      // Pass the signal to `axios`
+      signal,
+    }),
+}))
+```
+
+[//]: # 'Example3'
+
+## Manual Cancellation
+
+You might want to cancel a query manually. For example, if the request takes a long time to finish, you can allow the user to click a cancel button to stop the request. To do this, you just need to call `queryClient.cancelQueries({ queryKey })`, which will cancel the query and revert it back to its previous state. If you have consumed the `signal` passed to the query function, TanStack Query will additionally also cancel the Promise.
+
+[//]: # 'Example7'
+
+```ts
+@Component({
+  standalone: true,
+  template: `<button (click)="onCancel()">Cancel</button>`,
+})
+export class TodosComponent {
+  query = injectQuery(() => ({
+    queryKey: ['todos'],
+    queryFn: async ({ signal }) => {
+      const resp = await fetch('/todos', { signal })
+      return resp.json()
+    },
+  }))
+
+  queryClient = injectQueryClient()
+
+  onCancel() {
+    this.queryClient.cancelQueries(['todos'])
+  }
+}
+```
+
+[//]: # 'Example7'

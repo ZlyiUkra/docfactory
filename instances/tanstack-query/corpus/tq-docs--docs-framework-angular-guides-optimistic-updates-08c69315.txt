@@ -1,0 +1,152 @@
+# Optimistic Updates
+# джерело: https://github.com/TanStack/query/blob/v5.60.6/docs/framework/angular/guides/optimistic-updates.md
+# отримано: 2026-09-26
+# версія: 5.60.6, 5.60.5, 5.60.4, 5.60.3, 5.60.2, 5.60.1, 5.60.0, 5.59.20, 5.59.19, 5.59.18, 5.59.17, 5.59.16, 5.59.15, 5.59.14, 5.59.13, 5.59.12, 5.59.11, 5.59.10, 5.59.9, 5.59.8, 5.59.7, 5.59.6, 5.59.5, 5.59.4, 5.59.3, 5.59.2, 5.59.1, 5.59.0, 5.58.1, 5.58.0, 5.57.2, 5.57.1, 5.57.0, 5.56.2, 5.56.1, 5.56.0, 5.55.4, 5.55.3, 5.55.2, 5.55.1, 5.55.0, 5.54.2, 5.54.1, 5.54.0, 5.53.3, 5.53.2, 5.53.1, 5.53.0, 5.52.3, 5.52.2, 5.52.1, 5.52.0, 5.51.24, 5.51.23, 5.51.22, 5.51.21, 5.51.20, 5.51.19, 5.51.18, 5.51.17, 5.51.16, 5.51.15, 5.51.14, 5.51.13, 5.51.12, 5.51.11
+
+[//]: # 'ExampleUI1'
+
+```ts
+addTodo = injectMutation(() => ({
+  mutationFn: (newTodo: string) => axios.post('/api/data', { text: newTodo }),
+  // make sure to _return_ the Promise from the query invalidation
+  // so that the mutation stays in `pending` state until the refetch is finished
+  onSettled: async () => {
+    return await queryClient.invalidateQueries({ queryKey: ['todos'] })
+  },
+}))
+```
+
+[//]: # 'ExampleUI1'
+[//]: # 'ExampleUI2'
+
+```angular-ts
+@Component({
+  template: `
+    @for (todo of todos.data(); track todo.id) {
+      <li>{{ todo.title }}</li>
+    }
+    @if (addTodo.isPending()) {
+      <li style="opacity: 0.5">{{ addTodo.variables() }}</li>
+    }
+  `,
+})
+class TodosComponent {}
+```
+
+[//]: # 'ExampleUI2'
+[//]: # 'ExampleUI3'
+
+```angular-ts
+@Component({
+  template: `
+    @if (addTodo.isError()) {
+      <li style="color: red">
+        {{ addTodo.variables() }}
+        <button (click)="addTodo.mutate(addTodo.variables())">Retry</button>
+      </li>
+    }
+  `,
+})
+class TodosComponent {}
+```
+
+[//]: # 'ExampleUI3'
+[//]: # 'ExampleUI4'
+
+```ts
+// somewhere in your app
+addTodo = injectMutation(() => ({
+  mutationFn: (newTodo: string) => axios.post('/api/data', { text: newTodo }),
+  onSettled: () => queryClient.invalidateQueries({ queryKey: ['todos'] }),
+  mutationKey: ['addTodo'],
+}))
+
+// access variables somewhere else
+
+mutationState = injectMutationState<string>(() => ({
+  filters: { mutationKey: ['addTodo'], status: 'pending' },
+  select: (mutation) => mutation.state.variables,
+}))
+```
+
+[//]: # 'ExampleUI4'
+[//]: # 'Example'
+
+```ts
+updateTodo = injectMutation((client) => ({
+  mutationFn: updateTodo,
+  // When mutate is called:
+  onMutate: async (newTodo) => {
+    // Cancel any outgoing refetches
+    // (so they don't overwrite our optimistic update)
+    await client.cancelQueries({ queryKey: ['todos'] })
+
+    // Snapshot the previous value
+    const previousTodos = client.getQueryData(['todos'])
+
+    // Optimistically update to the new value
+    client.setQueryData(['todos'], (old) => [...old, newTodo])
+
+    // Return a context object with the snapshotted value
+    return { previousTodos }
+  },
+  // If the mutation fails,
+  // use the context returned from onMutate to roll back
+  onError: (err, newTodo, context) => {
+    client.setQueryData(['todos'], context.previousTodos)
+  },
+  // Always refetch after error or success:
+  onSettled: () => {
+    client.invalidateQueries({ queryKey: ['todos'] })
+  },
+}))
+```
+
+[//]: # 'Example'
+[//]: # 'Example2'
+
+```ts
+updateTodo = injectMutation((client) => ({
+  mutationFn: updateTodo,
+  // When mutate is called:
+  onMutate: async (newTodo) => {
+    // Cancel any outgoing refetches
+    // (so they don't overwrite our optimistic update)
+    await client.cancelQueries({ queryKey: ['todos', newTodo.id] })
+
+    // Snapshot the previous value
+    const previousTodo = client.getQueryData(['todos', newTodo.id])
+
+    // Optimistically update to the new value
+    client.setQueryData(['todos', newTodo.id], newTodo)
+
+    // Return a context with the previous and new todo
+    return { previousTodo, newTodo }
+  },
+  // If the mutation fails, use the context we returned above
+  onError: (err, newTodo, context) => {
+    client.setQueryData(['todos', context.newTodo.id], context.previousTodo)
+  },
+  // Always refetch after error or success:
+  onSettled: (newTodo) => {
+    client.invalidateQueries({ queryKey: ['todos', newTodo.id] })
+  },
+}))
+```
+
+[//]: # 'Example2'
+[//]: # 'Example3'
+
+```ts
+injectMutation({
+  mutationFn: updateTodo,
+  // ...
+  onSettled: (newTodo, error, variables, context) => {
+    if (error) {
+      // do something
+    }
+  },
+})
+```
+
+[//]: # 'Example3'

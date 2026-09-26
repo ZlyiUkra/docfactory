@@ -1,0 +1,106 @@
+# Query Cancellation
+# джерело: https://github.com/TanStack/query/blob/v5.60.2/docs/framework/angular/guides/query-cancellation.md
+# отримано: 2026-09-26
+# версія: 5.60.2, 5.60.1, 5.60.0, 5.59.20, 5.59.19, 5.59.18, 5.59.17, 5.59.16, 5.59.15, 5.59.14, 5.59.13, 5.59.12, 5.59.11, 5.59.10, 5.59.9, 5.59.8, 5.59.7, 5.59.6, 5.59.5, 5.59.4, 5.59.3, 5.59.2, 5.59.1, 5.59.0, 5.58.1, 5.58.0, 5.57.2, 5.57.1, 5.57.0, 5.56.2, 5.56.1, 5.56.0, 5.55.4, 5.55.3, 5.55.2, 5.55.1, 5.55.0, 5.54.2, 5.54.1, 5.54.0, 5.53.3, 5.53.2, 5.53.1, 5.53.0, 5.52.3, 5.52.2, 5.52.1, 5.52.0, 5.51.24, 5.51.23, 5.51.22, 5.51.21, 5.51.20, 5.51.19, 5.51.18, 5.51.17, 5.51.16, 5.51.15, 5.51.14, 5.51.13, 5.51.12, 5.51.11
+
+TanStack Query provides each query function with an `AbortSignal` instance. When a query becomes out-of-date or inactive, this `signal` will become aborted. This means that all queries are cancellable, and you can respond to the cancellation inside your query function if desired. The best part about this is that it allows you to continue to use normal async/await syntax while getting all the benefits of automatic cancellation.
+
+## Default behavior
+
+By default, queries that unmount or become unused before their promises are resolved are _not_ cancelled. This means that after the promise has resolved, the resulting data will be available in the cache. This is helpful if you've started receiving a query, but then unmount the component before it finishes. If you mount the component again and the query has not been garbage collected yet, data will be available.
+
+However, if you consume the `AbortSignal`, the Promise will be cancelled (e.g. aborting the fetch) and therefore, also the Query must be cancelled. Cancelling the query will result in its state being _reverted_ to its previous state.
+
+## Using `HttpClient`
+
+```ts
+import { HttpClient } from '@angular/common/http'
+import { injectQuery } from '@tanstack/angular-query-experimental'
+
+postQuery = injectQuery(() => ({
+  enabled: this.postId() > 0,
+  queryKey: ['post', this.postId()],
+  queryFn: async (context): Promise<Post> => {
+    const abort$ = fromEvent(context.signal, 'abort')
+    return lastValueFrom(this.getPost$(this.postId()).pipe(takeUntil(abort$)))
+  },
+}))
+```
+
+## Using `fetch`
+
+[//]: # 'Example2'
+
+```ts
+query = injectQuery(() => ({
+  queryKey: ['todos'],
+  queryFn: async ({ signal }) => {
+    const todosResponse = await fetch('/todos', {
+      // Pass the signal to one fetch
+      signal,
+    })
+    const todos = await todosResponse.json()
+
+    const todoDetails = todos.map(async ({ details }) => {
+      const response = await fetch(details, {
+        // Or pass it to several
+        signal,
+      })
+      return response.json()
+    })
+
+    return Promise.all(todoDetails)
+  },
+}))
+```
+
+[//]: # 'Example2'
+
+## Using `axios`
+
+[//]: # 'Example3'
+
+```tsx
+import axios from 'axios'
+
+const query = injectQuery(() => ({
+  queryKey: ['todos'],
+  queryFn: ({ signal }) =>
+    axios.get('/todos', {
+      // Pass the signal to `axios`
+      signal,
+    }),
+}))
+```
+
+[//]: # 'Example3'
+
+## Manual Cancellation
+
+You might want to cancel a query manually. For example, if the request takes a long time to finish, you can allow the user to click a cancel button to stop the request. To do this, you just need to call `queryClient.cancelQueries({ queryKey })`, which will cancel the query and revert it back to its previous state. If you have consumed the `signal` passed to the query function, TanStack Query will additionally also cancel the Promise.
+
+[//]: # 'Example7'
+
+```angular-ts
+@Component({
+  standalone: true,
+  template: `<button (click)="onCancel()">Cancel</button>`,
+})
+export class TodosComponent {
+  query = injectQuery(() => ({
+    queryKey: ['todos'],
+    queryFn: async ({ signal }) => {
+      const resp = await fetch('/todos', { signal })
+      return resp.json()
+    },
+  }))
+
+  queryClient = injectQueryClient()
+
+  onCancel() {
+    this.queryClient.cancelQueries(['todos'])
+  }
+}
+```
+
+[//]: # 'Example7'

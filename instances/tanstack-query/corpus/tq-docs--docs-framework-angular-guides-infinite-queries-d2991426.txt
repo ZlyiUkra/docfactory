@@ -1,0 +1,153 @@
+# Infinite Queries
+# джерело: https://github.com/TanStack/query/blob/v5.51.10/docs/framework/angular/guides/infinite-queries.md
+# отримано: 2026-09-26
+# версія: 5.51.10, 5.51.9, 5.51.7, 5.51.6, 5.51.5, 5.51.4, 5.51.3, 5.51.2, 5.51.1, 5.51.0, 5.50.3, 5.50.2, 5.50.1, 5.50.0, 5.49.2, 5.49.1, 5.49.0, 5.48.2, 5.48.1, 5.48.0, 5.47.0, 5.46.2, 5.46.1, 5.46.0, 5.45.1, 5.45.0, 5.44.0, 5.43.1, 5.43.0, 5.42.0, 5.41.0, 5.40.3, 5.40.2, 5.40.1, 5.40.0, 5.39.0, 5.38.0, 5.37.1, 5.37.0, 5.36.2, 5.36.1, 5.36.0, 5.35.6, 5.35.5, 5.35.4, 5.35.3, 5.35.2, 5.35.1, 5.35.0, 5.34.2, 5.34.1, 5.34.0, 5.33.1, 5.33.0, 5.32.1, 5.32.0, 5.31.0, 5.30.6, 5.30.5, 5.30.4, 5.30.3, 5.30.2, 5.30.1, 5.30.0, 5.29.3, 5.29.2, 5.29.1, 5.29.0, 5.28.14, 5.28.13, 5.28.12, 5.28.11, 5.28.10, 5.28.9, 5.28.8, 5.28.7, 5.28.6, 5.28.5, 5.28.4, 5.28.3, 5.28.2, 5.28.1, 5.28.0, 5.27.8, 5.27.7, 5.27.6, 5.27.5, 5.27.4, 5.27.3, 5.27.1, 5.27.0, 5.26.3, 5.26.2, 5.26.1, 5.26.0, 5.25.0, 5.24.8, 5.24.7, 5.24.6, 5.24.5, 5.24.4, 5.24.3, 5.24.2, 5.24.1, 5.24.0, 5.23.0, 5.22.2, 5.22.1, 5.22.0, 5.21.7, 5.21.6, 5.21.5, 5.21.4, 5.21.3, 5.21.2, 5.21.1, 5.21.0, 5.20.5, 5.20.4, 5.20.3, 5.20.2, 5.20.1, 5.20.0, 5.19.1, 5.19.0
+
+[//]: # 'Example'
+
+```ts
+import { Component, computed, inject } from '@angular/core'
+import { injectInfiniteQuery } from '@tanstack/angular-query-experimental'
+import { lastValueFrom } from 'rxjs'
+import { ProjectsService } from './projects-service'
+
+@Component({
+  selector: 'example',
+  templateUrl: './example.component.html',
+})
+export class Example {
+  projectsService = inject(ProjectsService)
+
+  query = injectInfiniteQuery(() => ({
+    queryKey: ['projects'],
+    queryFn: async ({ pageParam }) => {
+      return lastValueFrom(this.projectsService.getProjects(pageParam))
+    },
+    initialPageParam: 0,
+    getPreviousPageParam: (firstPage) => firstPage.previousId ?? undefined,
+    getNextPageParam: (lastPage) => lastPage.nextId ?? undefined,
+    maxPages: 3,
+  }))
+
+  nextButtonDisabled = computed(
+    () => !this.#hasNextPage() || this.#isFetchingNextPage(),
+  )
+  nextButtonText = computed(() =>
+    this.#isFetchingNextPage()
+      ? 'Loading more...'
+      : this.#hasNextPage()
+        ? 'Load newer'
+        : 'Nothing more to load',
+  )
+
+  #hasNextPage = this.query.hasNextPage
+  #isFetchingNextPage = this.query.isFetchingNextPage
+}
+```
+
+```html
+<div>
+  @if (query.isPending()) {
+  <p>Loading...</p>
+  } @else if (query.isError()) {
+  <span>Error: {{ query?.error().message }}</span>
+  } @else { @for (page of query?.data().pages; track $index) { @for (project of
+  page.data; track project.id) {
+  <p>{{ project.name }} {{ project.id }}</p>
+  } }
+  <div>
+    <button (click)="query.fetchNextPage()" [disabled]="nextButtonDisabled()">
+      {{ nextButtonText() }}
+    </button>
+  </div>
+  }
+</div>
+```
+
+[//]: # 'Example'
+[//]: # 'Example1'
+
+```ts
+@Component({
+  template: ` <list-component (endReached)="fetchNextPage()" /> `,
+})
+export class Example {
+  query = injectInfiniteQuery(() => ({
+    queryKey: ['projects'],
+    queryFn: async ({ pageParam }) => {
+      return lastValueFrom(this.projectsService.getProjects(pageParam))
+    },
+  }))
+
+  fetchNextPage() {
+    // Do nothing if already fetching
+    if (this.query.isFetching()) return
+    this.query.fetchNextPage()
+  }
+}
+```
+
+[//]: # 'Example1'
+[//]: # 'Example3'
+
+```ts
+query = injectInfiniteQuery(() => ({
+  queryKey: ['projects'],
+  queryFn: fetchProjects,
+  getNextPageParam: (lastPage, pages) => lastPage.nextCursor,
+  getPreviousPageParam: (firstPage, pages) => firstPage.prevCursor,
+}))
+```
+
+[//]: # 'Example3'
+[//]: # 'Example4'
+
+```ts
+query = injectInfiniteQuery(() => ({
+  queryKey: ['projects'],
+  queryFn: fetchProjects,
+  select: (data) => ({
+    pages: [...data.pages].reverse(),
+    pageParams: [...data.pageParams].reverse(),
+  }),
+}))
+```
+
+[//]: # 'Example4'
+[//]: # 'Example8'
+
+```ts
+injectInfiniteQuery(() => ({
+  queryKey: ['projects'],
+  queryFn: fetchProjects,
+  initialPageParam: 0,
+  getNextPageParam: (lastPage, pages) => lastPage.nextCursor,
+  getPreviousPageParam: (firstPage, pages) => firstPage.prevCursor,
+  maxPages: 3,
+}))
+```
+
+[//]: # 'Example8'
+[//]: # 'Example9'
+
+```ts
+injectInfiniteQuery(() => ({
+  queryKey: ['projects'],
+  queryFn: fetchProjects,
+  initialPageParam: 0,
+  getNextPageParam: (lastPage, allPages, lastPageParam) => {
+    if (lastPage.length === 0) {
+      return undefined
+    }
+    return lastPageParam + 1
+  },
+  getPreviousPageParam: (firstPage, allPages, firstPageParam) => {
+    if (firstPageParam <= 1) {
+      return undefined
+    }
+    return firstPageParam - 1
+  },
+}))
+```
+
+[//]: # 'Example9'

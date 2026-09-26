@@ -1,0 +1,47 @@
+# Prefetching
+# джерело: https://github.com/TanStack/query/blob/v5.24.6/docs/framework/vue/guides/prefetching.md
+# отримано: 2026-09-26
+# версія: 5.24.6, 5.24.5, 5.24.4, 5.24.3, 5.24.2, 5.24.1, 5.24.0, 5.23.0, 5.22.2, 5.22.1, 5.22.0, 5.21.7, 5.21.6, 5.21.5, 5.21.4, 5.21.3, 5.21.2, 5.21.1, 5.21.0, 5.20.5, 5.20.4, 5.20.3, 5.20.2, 5.20.1, 5.20.0, 5.19.1, 5.19.0, 5.18.2, 5.18.1, 5.18.0, 5.17.22
+
+If you're lucky enough, you may know enough about what your users will do to be able to prefetch the data they need before it's needed! If this is the case, you can use the `prefetchQuery` method to prefetch the results of a query to be placed into the cache:
+
+[//]: # 'ExamplePrefetching'
+
+```tsx
+const prefetchTodos = async () => {
+  // The results of this query will be cached like a normal query
+  await queryClient.prefetchQuery({
+    queryKey: ['todos'],
+    queryFn: fetchTodos,
+  })
+}
+```
+
+[//]: # 'ExamplePrefetching'
+
+- If **fresh** data for this query is already in the cache, the data will not be fetched
+- If a `staleTime` is passed eg. `prefetchQuery({ queryKey: ['todos'], queryFn: fn, staleTime: 5000 })` and the data is older than the specified `staleTime`, the query will be fetched
+- If no instances of `useQuery` appear for a prefetched query, it will be deleted and garbage collected after the time specified in `gcTime`.
+
+## Prefetching Infinite Queries
+
+Infinite Queries can be prefetched like regular Queries. Per default, only the first page of the Query will be prefetched and will be stored under the given QueryKey. If you want to prefetch more than one page, you can use the `pages` option, in which case you also have to provide a `getNextPageParam` function:
+
+[//]: # 'ExampleInfiniteQuery'
+
+```tsx
+const prefetchTodos = async () => {
+  // The results of this query will be cached like a normal query
+  await queryClient.prefetchInfiniteQuery({
+    queryKey: ['projects'],
+    queryFn: fetchProjects,
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, pages) => lastPage.nextCursor,
+    pages: 3, // prefetch the first 3 pages
+  })
+}
+```
+
+[//]: # 'ExampleInfiniteQuery'
+
+The above code will try to prefetch 3 pages in order, and `getNextPageParam` will be executed for each page to determine the next page to prefetch. If `getNextPageParam` returns `undefined`, the prefetching will stop.

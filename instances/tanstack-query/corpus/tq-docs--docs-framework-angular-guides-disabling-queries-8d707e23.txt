@@ -1,0 +1,91 @@
+# Disabling/Pausing Queries
+# джерело: https://github.com/TanStack/query/blob/v5.34.1/docs/framework/angular/guides/disabling-queries.md
+# отримано: 2026-09-26
+# версія: 5.34.1, 5.34.0, 5.33.1, 5.33.0, 5.32.1, 5.32.0, 5.31.0, 5.30.6, 5.30.5, 5.30.4, 5.30.3, 5.30.2, 5.30.1, 5.30.0, 5.29.3, 5.29.2, 5.29.1, 5.29.0, 5.28.14, 5.28.13, 5.28.12, 5.28.11, 5.28.10, 5.28.9, 5.28.8, 5.28.7, 5.28.6, 5.28.5, 5.28.4, 5.28.3, 5.28.2, 5.28.1, 5.28.0, 5.27.8, 5.27.7, 5.27.6, 5.27.5, 5.27.4, 5.27.3, 5.27.1, 5.27.0, 5.26.3, 5.26.2, 5.26.1, 5.26.0, 5.25.0
+
+[//]: # 'Example'
+
+```ts
+@Component({
+  selector: 'todos',
+  template: `<div>
+    <button (click)="query.refetch()">Fetch Todos</button>
+
+    @if (query.data()) {
+      <ul>
+        @for (todo of query.data(); track todo.id) {
+          <li>{{ todo.title }}</li>
+        }
+      </ul>
+    } @else {
+      @if (query.isError()) {
+        <span>Error: {{ query.error().message }}</span>
+      } @else if (query.isLoading()) {
+        <span>Loading...</span>
+      } @else if (!query.isLoading() && !query.isError()) {
+        <span>Not ready ...</span>
+      }
+    }
+
+    <div>{{ query.isLoading() ? 'Fetching...' : '' }}</div>
+  </div>`,
+})
+export class TodosComponent {
+  query = injectQuery(() => ({
+    queryKey: ['todos'],
+    queryFn: fetchTodoList,
+    enabled: false,
+  }))
+}
+```
+
+[//]: # 'Example'
+[//]: # 'Example2'
+
+```ts
+@Component({
+  selector: 'todos',
+  template: `
+    <div>
+      // 🚀 applying the filter will enable and execute the query
+      <filters-form onApply="filter.set" />
+      <todos-table data="query.data()" />
+    </div>
+  `,
+})
+export class TodosComponent {
+  filter = signal('')
+
+  todosQuery = injectQuery(() => ({
+    queryKey: ['todos', this.filter()],
+    queryFn: () => fetchTodos(this.filter()),
+    enabled: !!this.filter(),
+  }))
+}
+```
+
+[//]: # 'Example2'
+[//]: # 'Example3'
+
+```ts
+@Component({
+  selector: 'todos',
+  template: `
+    <div>
+      // 🚀 applying the filter will enable and execute the query
+      <filters-form onApply="filter.set" />
+      <todos-table data="query.data()" />
+    </div>
+  `,
+})
+export class TodosComponent {
+  filter = signal('')
+
+  todosQuery = injectQuery(() => ({
+    queryKey: ['todos', this.filter()],
+    queryFn: this.filter ? () => fetchTodos(this.filter()) : skipToken,
+  }))
+}
+```
+
+[//]: # 'Example3'

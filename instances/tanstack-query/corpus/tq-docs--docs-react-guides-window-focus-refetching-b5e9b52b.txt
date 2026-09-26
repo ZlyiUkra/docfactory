@@ -1,0 +1,102 @@
+# Window Focus Refetching
+# джерело: https://github.com/TanStack/query/blob/v5.17.21/docs/react/guides/window-focus-refetching.md
+# отримано: 2026-09-26
+# версія: 5.17.21, 5.17.20, 5.17.19, 5.17.18, 5.17.17, 5.17.16, 5.17.15, 5.17.14, 5.17.13, 5.17.12, 5.17.11, 5.17.10, 5.17.9, 5.17.8, 5.17.7, 5.17.6, 5.17.5, 5.17.4, 5.17.3, 5.17.2, 5.17.1, 5.17.0, 5.16.1, 5.16.0, 5.15.5, 5.15.4, 5.15.3, 5.15.2, 5.15.1, 5.15.0, 5.14.7, 5.14.6, 5.14.5, 5.14.4, 5.14.3, 5.14.2, 5.14.1, 5.14.0, 5.13.5, 5.13.4, 5.13.3, 5.13.2, 5.13.1, 5.13.0, 5.12.2, 5.12.1, 5.12.0, 5.11.0, 5.10.0, 5.9.0, 5.8.9, 5.8.8, 5.8.7, 5.8.6, 5.8.5
+
+If a user leaves your application and returns and the query data is stale, **TanStack Query automatically requests fresh data for you in the background**. You can disable this globally or per-query using the `refetchOnWindowFocus` option:
+
+#### Disabling Globally
+
+[//]: # 'Example'
+
+```tsx
+//
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false, // default: true
+    },
+  },
+})
+
+function App() {
+  return <QueryClientProvider client={queryClient}>...</QueryClientProvider>
+}
+```
+
+[//]: # 'Example'
+
+#### Disabling Per-Query
+
+[//]: # 'Example2'
+
+```tsx
+useQuery({
+  queryKey: ['todos'],
+  queryFn: fetchTodos,
+  refetchOnWindowFocus: false,
+})
+```
+
+[//]: # 'Example2'
+
+## Custom Window Focus Event
+
+In rare circumstances, you may want to manage your own window focus events that trigger TanStack Query to revalidate. To do this, TanStack Query provides a `focusManager.setEventListener` function that supplies you the callback that should be fired when the window is focused and allows you to set up your own events. When calling `focusManager.setEventListener`, the previously set handler is removed (which in most cases will be the default handler) and your new handler is used instead. For example, this is the default handler:
+
+[//]: # 'Example3'
+
+```tsx
+focusManager.setEventListener((handleFocus) => {
+  // Listen to visibilitychange
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('visibilitychange', () => handleFocus(), false)
+    return () => {
+      // Be sure to unsubscribe if a new handler is set
+      window.removeEventListener('visibilitychange', () => handleFocus())
+    }
+  }
+})
+```
+
+[//]: # 'Example3'
+[//]: # 'ReactNative'
+
+## Managing Focus in React Native
+
+Instead of event listeners on `window`, React Native provides focus information through the `AppState` module. You can use the `AppState` "change" event to trigger an update when the app state changes to "active":
+
+```tsx
+import { AppState } from 'react-native'
+import { focusManager } from '@tanstack/react-query'
+
+function onAppStateChange(status: AppStateStatus) {
+  if (Platform.OS !== 'web') {
+    focusManager.setFocused(status === 'active')
+  }
+}
+
+useEffect(() => {
+  const subscription = AppState.addEventListener('change', onAppStateChange)
+
+  return () => subscription.remove()
+}, [])
+```
+
+[//]: # 'ReactNative'
+
+## Managing focus state
+
+[//]: # 'Example4'
+
+```tsx
+import { focusManager } from '@tanstack/react-query'
+
+// Override the default focus state
+focusManager.setFocused(true)
+
+// Fallback to the default focus check
+focusManager.setFocused(undefined)
+```
+
+[//]: # 'Example4'

@@ -1,0 +1,161 @@
+# TypeScript
+# джерело: https://github.com/TanStack/query/blob/v5.60.7/docs/framework/angular/typescript.md
+# отримано: 2026-09-26
+# версія: 5.60.7, 5.60.6, 5.60.5
+
+[//]: # 'TypeInference1'
+
+```angular-ts
+@Component({
+  // ...
+  template: `@let data = query.data();`,
+  //               ^? data: number | undefined
+})
+class MyComponent {
+  query = injectQuery(() => ({
+    queryKey: ['test'],
+    queryFn: () => Promise.resolve(5),
+  }))
+}
+```
+
+[//]: # 'TypeInference1'
+[//]: # 'TypeInference2'
+
+```angular-ts
+@Component({
+  // ...
+  template: `@let data = query.data();`,
+  //               ^? data: string | undefined
+})
+class MyComponent {
+  query = injectQuery(() => ({
+    queryKey: ['test'],
+    queryFn: () => Promise.resolve(5),
+    select: (data) => data.toString(),
+  }))
+}
+```
+
+[//]: # 'TypeInference2'
+[//]: # 'TypeInference3'
+
+In this example we pass Group[] to the type parameter of HttpClient's `get` method.
+
+```angular-ts
+@Component({
+  template: `@let data = query.data();`,
+  //               ^? data: Group[] | undefined
+})
+class MyComponent {
+  http = inject(HttpClient)
+
+  query = injectQuery(() => ({
+    queryKey: ['groups'],
+    queryFn: () => lastValueFrom(this.http.get<Group[]>('/groups')),
+  }))
+}
+```
+
+[//]: # 'TypeInference3'
+[//]: # 'TypeNarrowing'
+
+```angular-ts
+@Component({
+  // ...
+  template: `
+    @if (query.isSuccess()) {
+      @let data = query.data();
+      //    ^? data: number
+    }
+  `,
+})
+class MyComponent {
+  query = injectQuery(() => ({
+    queryKey: ['test'],
+    queryFn: () => Promise.resolve(5),
+  }))
+}
+```
+
+> TypeScript currently does not support discriminated unions on object methods. Narrowing on signal fields on objects such as query results only works on signals returning a boolean. Prefer using `isSuccess()` and similar boolean status signals over `status() === 'success'`.
+
+[//]: # 'TypeNarrowing'
+[//]: # 'TypingError'
+
+```angular-ts
+@Component({
+  // ...
+  template: `@let error = query.error();`,
+  //                ^? error: Error | null
+})
+class MyComponent {
+  query = injectQuery(() => ({
+    queryKey: ['groups'],
+    queryFn: fetchGroups
+  }))
+}
+```
+
+[//]: # 'TypingError'
+[//]: # 'TypingError2'
+
+```angular-ts
+@Component({
+  // ...
+  template: `@let error = query.error();`,
+  //                ^? error: string | null
+})
+class MyComponent {
+  query = injectQuery<Group[], string>(() => ({
+    queryKey: ['groups'],
+    queryFn: fetchGroups,
+  }))
+}
+```
+
+[//]: # 'TypingError2'
+[//]: # 'TypingError3'
+
+```ts
+import axios from 'axios'
+
+query = injectQuery(() => ({ queryKey: ['groups'], queryFn: fetchGroups }))
+
+computed(() => {
+  const error = query.error()
+  //     ^? error: Error | null
+
+  if (axios.isAxiosError(error)) {
+    error
+    // ^? const error: AxiosError
+  }
+})
+```
+
+[//]: # 'TypingError3'
+[//]: # 'RegisterErrorType'
+
+```ts
+import '@tanstack/angular-query-experimental'
+
+declare module '@tanstack/angular-query-experimental' {
+  interface Register {
+    defaultError: AxiosError
+  }
+}
+
+const query = injectQuery(() => ({
+  queryKey: ['groups'],
+  queryFn: fetchGroups,
+}))
+
+computed(() => {
+  const error = query.error()
+  //      ^? error: AxiosError | null
+})
+```
+
+[//]: # 'RegisterErrorType'
+[//]: # 'Materials'
+[//]: # 'Materials'
