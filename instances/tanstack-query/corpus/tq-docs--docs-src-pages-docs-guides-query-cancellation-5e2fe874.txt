@@ -1,0 +1,57 @@
+# Query Cancellation
+# джерело: https://github.com/TanStack/query/blob/v2.26.3/docs/src/pages/docs/guides/query-cancellation.md
+# отримано: 2026-09-26
+# версія: 2.26.3, 2.26.2, 2.26.1, 2.26.0, 2.25.2, 2.25.1, 2.23.1, 2.23.0, 2.22.2, 2.22.1, 2.22.0, 2.21.2, 2.21.1, 2.21.0, 2.20.1, 2.20.0, 2.19.0, 2.18.0, 2.17.2, 2.17.1, 2.17.0, 2.16.1, 2.16.0, 2.15.4, 2.15.3, 2.15.2, 2.15.1, 2.15.0, 2.14.1, 2.14.0, 2.13.1, 2.13.0, 2.12.1, 2.12.0, 2.11.1, 2.11.0, 2.10.1, 2.10.0, 2.9.0, 2.8.0, 2.7.1, 2.7.0, 2.6.0, 2.5.14, 2.5.13, 2.5.12, 2.5.11, 2.5.10, 2.5.9, 2.5.8, 2.5.7, 2.5.6, 2.5.5, 2.5.4, 2.5.3, 2.5.2, 2.5.1, 2.5.0, 2.4.21, 2.4.20, 2.4.19, 2.4.18, 2.4.17, 2.4.16, 2.4.15, 2.4.14
+
+By default, queries that become inactive before their promises are resolved are simply ignored instead of canceled. Why is this?
+
+- For most applications, ignoring out-of-date queries is sufficient.
+- Cancellation APIs may not be available for every query function.
+- If cancellation APIs are available, they typically vary in implementation between utilities/libraries (eg. Fetch vs Axios vs XMLHttpRequest).
+
+But don't worry! If your queries are high-bandwidth or potentially very expensive to download, React Query exposes a generic way to **cancel** query requests using a cancellation token or other related API. To integrate with this feature, attach a `cancel` function to the promise returned by your query that implements your request cancellation. When a query becomes out-of-date or inactive, this `promise.cancel` function will be called (if available):
+
+## Using `axios`
+
+```js
+import { CancelToken } from 'axios'
+
+const query = useQuery('todos', () => {
+  // Create a new CancelToken source for this request
+  const source = CancelToken.source()
+
+  const promise = axios.get('/todos', {
+    // Pass the source token to your request
+    cancelToken: source.token,
+  })
+
+  // Cancel the request if React Query calls the `promise.cancel` method
+  promise.cancel = () => {
+    source.cancel('Query was cancelled by React Query')
+  }
+
+  return promise
+})
+```
+
+## Using `fetch`
+
+```js
+const query = useQuery('todos', () => {
+  // Create a new AbortController instance for this request
+  const controller = new AbortController()
+  // Get the abortController's signal
+  const signal = controller.signal
+
+  const promise = fetch('/todos', {
+    method: 'get',
+    // Pass the signal to your request
+    signal,
+  })
+
+  // Cancel the request if React Query calls the `promise.cancel` method
+  promise.cancel = () => controller.abort()
+
+  return promise
+})
+```
