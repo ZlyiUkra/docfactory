@@ -31,6 +31,7 @@ import sys
 from urllib.parse import urlsplit
 
 from engine.readers import Item, _markup, register
+from engine.readers.mdsite import _SITEMAP
 
 _MD_LINK = re.compile(r"\((https://[^)\s]+\.md)\)")
 # Модулі маршрутизації Angular, з яких будується таблиця «файл → адреса сайту».
@@ -71,6 +72,10 @@ def _document(ctx, md_url: str, page: str, version: str) -> str:
     text = ctx.text(md_url)
     _markup.refuse_html(text, md_url)
     _, rest = _markup.front_matter(text)
+    # Той самий хвіст «## Sitemap», що й у react.dev: у clerk.com він закінчує кожну
+    # сторінку документації й давав 2487 фрагментів без змісту. Вираз точний, тож
+    # сторінкам без такого хвоста (nestjs, supabase) нічого не змінюється.
+    rest = _SITEMAP.sub("\n", rest)
     title, rest = _split_title(rest)
     body = _markup.markdown_body(rest)
     _markup.require(title, body, md_url, min_chars=1)
