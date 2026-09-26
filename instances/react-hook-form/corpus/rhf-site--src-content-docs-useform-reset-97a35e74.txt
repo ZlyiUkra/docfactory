@@ -1,0 +1,314 @@
+# reset (content/docs/useform/reset)
+# джерело: https://github.com/react-hook-form/documentation/blob/a05e1e7c9cc18b7022d0421d3f3c2224a2a543bc/src/content/docs/useform/reset.mdx
+# отримано: 2026-09-26
+# версія: 7.79.0
+
+## \</> `reset:` `<T>(values?: T | ResetAction<T>, options?: Record<string, boolean>) => void`
+
+Reset the entire form state, fields reference, and subscriptions. There are optional arguments and will allow partial form state reset.
+
+### Props
+
+---
+
+`Reset` has the ability to retain formState. Here are the options you may use:
+
+| Name      |                          | Type                                                       | Description                                                                                                                                                                                                                                                                                                                                                                                                          |
+| --------- | ------------------------ | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `values`  |                          | object \| (values: Object) => Object  | An optional object to reset form values, and it's recommended to provide the **entire** defaultValues when supplied.                                                                                                                                                                                                                                                                                                 |
+| `options` | `keepErrors`             | boolean                               | All errors will remain. This will not guarantee with further user actions.                                                                                                                                                                                                                                                                                                                                           |
+|           | `keepDirty`              | boolean                               | `DirtyFields` form state will remain, and `isDirty` will temporarily remain as the current state until further user's action.**Important:** this keep option doesn't reflect form input values but only dirty fields form state.                                                                                                                                                                           |
+|           | `keepDirtyValues`        | boolean                               | `DirtyFields` and `isDirty` will remained, and only none dirty fields will be updated to the latest rest value. Check out the example.**Important:** formState `dirtyFields` will need to be subscribed.                                                                                                                                          |
+|           | `keepValues`             | boolean                               | Form input values will be unchanged.                                                                                                                                                                                                                                                                                                                                                                                 |
+|           | `keepDefaultValues`      | boolean                               | Keep the same defaultValues which are initialised via `useForm`.`isDirty` will be checked again: it is set to be the result of the comparison of any new values provided against the original `defaultValues`. `dirtyFields` will be updated again if values are provided: it is set to be result of the comparison between the new values provided against the original `defaultValues`. |
+|           | `keepIsSubmitted`        | boolean                               | `isSubmitted` state will be unchanged.                                                                                                                                                                                                                                                                                                                                                                               |
+|           | `keepIsSubmitSuccessful` | boolean                               | `isSubmitSuccessful` state will be unchanged.                                                                                                                                                                                                                                                                                                                                                                        |
+|           | `keepTouched`            | boolean                               | `isTouched` state will be unchanged.                                                                                                                                                                                                                                                                                                                                                                                 |
+|           | `keepIsValid`            | boolean                               | `isValid` will temporarily persist as the current state until additional user actions.                                                                                                                                                                                                                                                                                                                               |
+|           | `keepSubmitCount`        | boolean                               | `submitCount` state will be unchanged.                                                                                                                                                                                                                                                                                                                                                                               |
+
+Rules
+
+- It is recommended to always provide defaultValues when resetting a form
+  to ensure all inputs, especially controlled components, are restored correctly.
+
+**Examples:**
+
+---
+
+**Uncontrolled**
+
+```tsx
+
+
+interface UseFormInputs {
+  firstName: string
+  lastName: string
+}
+
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<UseFormInputs>()
+  const onSubmit = (data: UseFormInputs) => {
+    console.log(data)
+  }
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <label>First name</label>
+      <input {...register("firstName", { required: true })} />
+
+      <label>Last name</label>
+      <input {...register("lastName")} />
+
+      <input type="submit" />
+      <input type="reset" value="Standard Reset Field Values" />
+      <input
+        type="button"
+        onClick={() => reset()}
+        value="Custom Reset Field Values & Errors"
+      />
+    </form>
+  )
+}
+```
+
+```javascript
+
+
+
+
+  const { register, handleSubmit, reset } = useForm()
+  const resetAsyncForm = useCallback(async () => {
+    const result = await fetch("./api/formValues.json") // result: { firstName: 'test', lastName: 'test2' }
+    reset(result) // asynchronously reset your form values
+  }, [reset])
+
+  useEffect(() => {
+    resetAsyncForm()
+  }, [resetAsyncForm])
+
+  return (
+    <form onSubmit={handleSubmit((data) => {})}>
+      <input {...register("firstName")} />
+      <input {...register("lastName")} />
+
+      <input
+        type="button"
+        onClick={() => {
+          reset(
+            {
+              firstName: "bill",
+            },
+            {
+              keepErrors: true,
+              keepDirty: true,
+            }
+          )
+        }}
+      />
+
+      <button
+        onClick={() => {
+          reset((formValues) => ({
+            ...formValues,
+            lastName: "test",
+          }))
+        }}
+      >
+        Reset partial
+      </button>
+    </form>
+  )
+}
+```
+
+**Controller**
+
+```tsx
+
+
+
+interface IFormInputs {
+  firstName: string
+  lastName: string
+}
+
+
+  const { register, handleSubmit, reset, setValue, control } =
+    useForm<IFormInputs>()
+  const onSubmit = (data: IFormInputs) => console.log(data)
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <Controller
+        render={({ field }) => <TextField {...field} />}
+        name="firstName"
+        control={control}
+        rules={{ required: true }}
+        defaultValue=""
+      />
+      <Controller
+        render={({ field }) => <TextField {...field} />}
+        name="lastName"
+        control={control}
+        defaultValue=""
+      />
+
+      <input type="submit" />
+      <input type="button" onClick={reset} />
+      <input
+        type="button"
+        onClick={() => {
+          reset({
+            firstName: "bill",
+            lastName: "luo",
+          })
+        }}
+      />
+    </form>
+  )
+}
+```
+
+```javascript
+
+
+
+
+  const { register, handleSubmit, reset, setValue, control } = useForm()
+  const onSubmit = (data) => console.log(data)
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <Controller
+        render={({ field }) => <TextField {...field} />}
+        name="firstName"
+        control={control}
+        rules={{ required: true }}
+        defaultValue=""
+      />
+      <Controller
+        render={({ field }) => <TextField {...field} />}
+        name="lastName"
+        control={control}
+        defaultValue=""
+      />
+
+      <input type="submit" />
+      <input type="button" onClick={reset} />
+      <input
+        type="button"
+        onClick={() => {
+          reset({
+            firstName: "bill",
+            lastName: "luo",
+          })
+        }}
+      />
+    </form>
+  )
+}
+```
+
+**Submit with Reset**
+
+```javascript
+
+
+function App() {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState,
+    formState: { isSubmitSuccessful },
+  } = useForm({ defaultValues: { something: "anything" } })
+
+  const onSubmit = (data) => {
+    // It's recommended to reset in useEffect as execution order matters
+    // reset({ ...data })
+  }
+
+  React.useEffect(() => {
+    if (formState.isSubmitSuccessful) {
+      reset({ something: "" })
+    }
+  }, [formState.isSubmitSuccessful, reset])
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <input {...register("something")} />
+      <input type="submit" />
+    </form>
+  )
+}
+```
+
+**Field Array**
+
+```javascript
+
+
+
+function App() {
+  const { register, control, handleSubmit, reset } = useForm({
+    defaultValues: {
+      loadState: "unloaded",
+      names: [{ firstName: "Bill", lastName: "Luo" }],
+    },
+  })
+  const { fields, remove } = useFieldArray({
+    control,
+    name: "names",
+  })
+
+  useEffect(() => {
+    reset({
+      names: [
+        {
+          firstName: "Bob",
+          lastName: "Actually",
+        },
+        {
+          firstName: "Jane",
+          lastName: "Actually",
+        },
+      ],
+    })
+  }, [reset])
+
+  const onSubmit = (data) => console.log("data", data)
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <ul>
+        {fields.map((item, index) => (
+          <li key={item.id}>
+            <input {...register(`names.${index}.firstName`)} />
+
+            <Controller
+              render={({ field }) => <input {...field} />}
+              name={`names.${index}.lastName`}
+              control={control}
+            />
+            <button type="button" onClick={() => remove(index)}>
+              Delete
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      <input type="submit" />
+    </form>
+  )
+}
+```
+
+### Videos
+
+---

@@ -1,0 +1,115 @@
+# Migrate V7 to V8 (BETA) (content/migrate-v7-to-v8)
+# джерело: https://github.com/react-hook-form/documentation/blob/3ac1fe0254947748d993cd4b1915fc5dea87ba8b/src/content/migrate-v7-to-v8.mdx
+# отримано: 2026-09-26
+# версія: 8.0.0-beta.4, 7.89.0, 7.88.0, 7.87.0, 7.86.0, 7.85.0, 8.0.0-beta.3
+
+## Installation
+
+```bash
+npm install react-hook-form@beta
+```
+
+## React Compiler
+
+V8 adds first-class support for the React Compiler. No additional configuration is required — React Hook Form is now compatible out of the box.
+
+## Flat Field Array
+
+V8's types support flat field arrays, allowing simpler data structures when working with `useFieldArray`.
+
+```tsx
+// Before (V7) — each row had to be an object
+useFieldArray({ name: "items" }) // items: { value: string }[]
+
+// After (V8) — primitive values type-check
+useFieldArray({ name: "items" }) // items: string[]
+```
+
+**Note:** as of the current beta, this is a types-only improvement — `fields` still spreads each entry with `{ ...field, key }` internally, which does not behave as expected for primitive array items. Verify rendering behavior for a primitive `items: string[]` array before relying on this in production.
+
+## Breaking Changes
+
+The following changes require updates to your existing code when upgrading from V7.
+
+### Input Ref
+
+`register`'s returned `ref` is unchanged — it's still a callback ref that receives the real DOM element. This change is about `Controller` and `useController`'s `field.ref` instead: in V7, `field.ref` was a partial proxy object exposing only `focus`, `select`, `setCustomValidity`, and `reportValidity`. In V8, `field.ref` is the actual DOM element, so any method or property on the real node is available.
+
+```tsx
+const { field } = useController({ name: "firstName", control })
+
+// Before (V7) — field.ref only exposed a fixed set of methods
+field.ref.appendChild // ❌ not available
+
+// After (V8) — field.ref is the actual input element
+field.ref.appendChild // ✅ available, like any other DOM node
+```
+
+See #12773 for details.
+
+### useFieldArray
+
+Two changes affect `useFieldArray`:
+
+**`id` renamed to `key`**
+
+The internal render identifier has been renamed from `id` to `key`. Update any destructured field references:
+
+```tsx
+const { fields, append } = useFieldArray({ name: "items" })
+
+// fields[0].key is the unique render identifier (was fields[0].id)
+```
+
+Note: you can still append `id` or `key` as data — neither affects the render key:
+
+```tsx
+append({
+  key: "custom-key", // stored as field data, does not override the render key
+  id: "custom-id", // stored as field data, does not override the render key
+})
+
+fields[0].key // unique id used for re-render (auto-generated)
+```
+
+**`keyName` prop removed**
+
+The `keyName` option has been removed from `useFieldArray`. The render key is always `key`.
+
+### Watch Component
+
+The `<Watch />` component prop `names` has been renamed to `name` for consistency with the rest of the API.
+
+```tsx
+// Before (V7)
+<Watch names={["firstName", "lastName"]} />
+
+// After (V8)
+<Watch name={["firstName", "lastName"]} />
+```
+
+### watch Callback API
+
+The `watch` subscription callback overload's exported type (`WatchObserver`) has been removed from the public API — as of the current beta, the callback still works at runtime, but you lose the named type if you relied on importing it. Use `subscribe` instead going forward, since it's the supported, fully-typed API for this pattern.
+
+```tsx
+// Before (V7)
+watch((value, { name, type }) => console.log(value))
+
+// After (V8) — use subscribe
+subscribe({
+  formState: { values: true },
+  callback: ({ values }) => console.log(values),
+})
+```
+
+### setValue
+
+As of the current beta, `setValue` still directly updates `useFieldArray` fields, unchanged from V7 — this section describes a planned change that has not yet shipped. If you need to overwrite an entire field array, the `replace` method from `useFieldArray` remains the recommended approach in both V7 and V8:
+
+```tsx
+const { replace } = useFieldArray({ name: "items" })
+replace(newItems)
+```
+
+> See `setValue` and `useFieldArray` docs for details.

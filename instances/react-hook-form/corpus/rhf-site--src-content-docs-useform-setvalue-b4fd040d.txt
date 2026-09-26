@@ -1,0 +1,169 @@
+# setValue (content/docs/useform/setvalue)
+# джерело: https://github.com/react-hook-form/documentation/blob/3ac1fe0254947748d993cd4b1915fc5dea87ba8b/src/content/docs/useform/setvalue.mdx
+# отримано: 2026-09-26
+# версія: 8.0.0-beta.4, 7.89.0, 7.88.0, 7.87.0, 7.86.0, 7.85.0, 8.0.0-beta.3
+
+## \</> `setValue:` UseFormSetValue
+
+This function allows you to dynamically set the value of a registered field and provides options to validate and update the form state. At the same time, it attempts to avoid unnecessary re-renders.
+
+### Props
+
+---
+
+| Name                                     |                                                   | Description                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ---------------------------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`string   |                                                   | Target a single field or field array by name.                                                                                                                                                                                                                                                                                                                                                               |
+| `value`unknown |                                                   | The value for the field. This argument is required and cannot be `undefined`.                                                                                                                                                                                                                                                                                                                               |
+| `options`                                | `shouldValidate`boolean | Whether to compute if your input is valid or not (subscribed to errors).Whether to compute if your entire form is valid or not (subscribed to isValid).This option only recomputes validity for the specified field, not the entire form's `errors`.                                                                          |
+|                                          | `shouldDirty`boolean    | Whether to compute if your input is dirty or not against your `defaultValues` (subscribed to dirtyFields).Whether to compute if your entire form is dirty or not against your `defaultValues` (subscribed to isDirty).This option will update `dirtyFields` at the specified field level, not the entire form's dirty fields. |
+|                                          | `shouldTouch`boolean    | (since 7.8.0) Whether to set the input itself to be touched.                                                                                                                                                                                                                                                                                                                                    |
+|                                          | `delayError`boolean     | (since 7.82.0) Opt-in flag that delays the display of the resulting validation error, using the delay (in milliseconds) configured via `useForm({ delayError })`. Only takes effect when `shouldValidate` is also set to `true`.                                                                                                                                    |
+
+Rules
+
+- `shouldDirty` only guarantees that the target field is marked in `dirtyFields` immediately. Because `isDirty` always compares current values against `defaultValues`, a later update to _any_ field can trigger a `dirtyFields` recompute that also surfaces other fields whose value already differs from their default — including ones last written with `shouldDirty: false`.
+
+- You can use methods such as replace or update for a field array; however, they will cause the component to unmount and remount for the targeted field array.
+
+```javascript
+  const { update } = useFieldArray({ name: "array" })
+
+  // unmount fields and remount with updated value
+  update(0, { test: "1", test1: "2" })
+
+  // will directly update input value
+  setValue("array.0.test1", "1")
+  setValue("array.0.test2", "2")
+```
+
+- It's recommended to target the field's name rather than make the second argument a nested object.
+
+```javascript
+  setValue("yourDetails.firstName", "value") // ✅ performant
+  setValue("yourDetails", { firstName: "value" }) ❌ // less performant
+
+  register("nestedValue", { value: { test: "data" } }) // register a nested value input
+  setValue("nestedValue.test", "updatedData") // ❌ failed to find the relevant field
+  setValue("nestedValue", { test: "updatedData" }) // ✅ setValue finds the input and updates it
+```
+
+- It's recommended to register the input's name before invoking `setValue`. To update the entire `FieldArray`, make sure the `useFieldArray` hook is being executed first.
+
+  **Important:** Prefer `replace` from `useFieldArray` for updating an entire field array — it's the more explicit, purpose-built API, and this `setValue` usage may become discouraged in a future version.
+
+```javascript
+  // you can update an entire Field Array,
+  setValue("fieldArray", [{ test: "1" }, { test: "2" }]) // ⚠️ works, but prefer replace() from useFieldArray
+
+  // you can use `setValue` on an unregistered input
+  setValue("notRegisteredInput", "value") // ✅ prefer it to be registered
+
+  // the following will implicitly register a single input (without register being invoked)
+  setValue("resultSingleNestedField", { test: "1", test2: "2" }) // ⚠️ works, but registers a field you never called register() on — prefer registering it explicitly
+
+  // With registered inputs, `setValue` will update both inputs correctly.
+  register("notRegisteredInput.test")
+  register("notRegisteredInput.test2")
+  setValue("notRegisteredInput", { test: "1", test2: "2" }) // ✅ sugar syntax to setValue twice
+```
+
+### Examples
+
+---
+
+**Basic**
+
+```javascript
+
+
+const App = () => {
+  const { register, setValue } = useForm({
+    firstName: "",
+  })
+
+  return (
+    <form>
+      <input {...register("firstName", { required: true })} />
+      <button onClick={() => setValue("firstName", "Bill")}>setValue</button>
+      <button
+        onClick={() =>
+          setValue("firstName", "Luo", {
+            shouldValidate: true,
+            shouldDirty: true,
+          })
+        }
+      >
+        setValue options
+      </button>
+    </form>
+  )
+}
+```
+
+**Delay Error**
+
+```javascript
+// the actual delay (in ms) is configured once at the form level
+const { setValue } = useForm({ delayError: 500 })
+
+setValue("firstName", "Bill", {
+  delayError: true, // opt in to the 500ms delay configured above
+  shouldValidate: true,
+})
+```
+
+**Dependent Fields**
+
+```tsx
+
+
+
+type FormValues = {
+  a: string
+  b: string
+  c: string
+}
+
+
+  const { watch, register, handleSubmit, setValue, formState } =
+    useForm<FormValues>({
+      defaultValues: {
+        a: "",
+        b: "",
+        c: "",
+      },
+    })
+  const onSubmit = (data: FormValues) => console.log(data)
+  const [a, b] = watch(["a", "b"])
+
+  useEffect(() => {
+    if (formState.touchedFields.a && formState.touchedFields.b && a && b) {
+      setValue("c", `${a} ${b}`)
+    }
+  }, [setValue, a, b, formState])
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <input {...register("a")} placeholder="a" />
+      <input {...register("b")} placeholder="b" />
+      <input {...register("c")} placeholder="c" />
+      <input type="submit" />
+
+      <button
+        type="button"
+        onClick={() => {
+          setValue("a", "what", { shouldTouch: true })
+          setValue("b", "ever", { shouldTouch: true })
+        }}
+      >
+        trigger value
+      </button>
+    </form>
+  )
+}
+```
+
+### Video
+
+---

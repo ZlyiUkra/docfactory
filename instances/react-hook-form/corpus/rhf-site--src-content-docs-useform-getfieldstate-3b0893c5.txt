@@ -1,0 +1,116 @@
+# getFieldState (content/docs/useform/getfieldstate)
+# джерело: https://github.com/react-hook-form/documentation/blob/eacf28eb1ff326eda857fe05ce7c99a174a3d05f/src/content/docs/useform/getfieldstate.mdx
+# отримано: 2026-09-26
+# версія: 7.81.0, 8.0.0-beta.2
+
+## \</> `getFieldState:` UseFormGetFieldState
+
+This method is introduced in react-hook-form (v7.25.0) to return individual field state. It's useful in case you are trying to retrieve nested field state in a typesafe way.
+
+### Props
+
+---
+
+| Name      | Type                          | Description                                                                                                                                                                         |
+| --------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`    | `string` | registered field name.                                                                                                                                                              |
+| formState | `object` | This is an optional prop, which is only required if `formState` is not been read/subscribed from the `useForm`, `useFormContext` or `useFormState`. Read rules for more information |
+
+### Return
+
+---
+
+| Name      | Type                                           | Description                                                                                 |
+| --------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `isDirty` | `boolean`                 | field is modified.**Condition:** subscribe to `dirtyFields`.                           |
+| isTouched | `boolean`                 | field has received a focus and blur event.**Condition:** subscribe to `touchedFields`. |
+| invalid   | `boolean`                 | field is not valid.**Condition:** subscribe to `errors`.                               |
+| error     | `undefined \| FieldError` | field error object.**Condition:** subscribe to `errors`.                               |
+
+Rules
+
+- name needs to match a registered field name.
+```javascript
+  getFieldState("test")
+  getFieldState("test") // ✅ register input and return field state
+  getFieldState("non-existent-name") // ❌ will return state as false and error as undefined
+```
+- `getFieldState` works by subscribing to the form state update, and you can subscribe to the formState in the following ways:
+  - You can subscribe at the `useForm`, `useFormContext` or `useFormState`. This is will establish the form state subscription and `getFieldState` second argument will no longer be required.
+
+```javascript
+    const {
+      register,
+      formState: { isDirty },
+    } = useForm()
+    register("test")
+    getFieldState("test") // ✅
+```
+
+```javascript
+    const { isDirty } = useFormState()
+    register("test")
+    getFieldState("test") // ✅
+```
+
+```javascript
+    const {
+      register,
+      formState: { isDirty },
+    } = useFormContext()
+    register("test")
+    getFieldState("test") // ✅
+```
+
+  - When form state subscription is not setup, you can pass the entire `formState` as the second optional argument by following the example below:
+```javascript
+    const { register } = useForm()
+    register("test")
+    const { isDirty } = getFieldState("test") // ❌ formState isDirty is not subscribed at useForm
+    const { register, formState } = useForm()
+    const { isDirty } = getFieldState("test", formState) // ✅ formState.isDirty subscribed
+    const { formState } = useFormContext()
+    const { touchedFields } = getFieldState("test", formState) // ✅ formState.touchedFields subscribed
+```
+
+##### Examples
+
+---
+
+```javascript
+
+
+
+
+
+  const {
+    register,
+    getFieldState,
+    formState: { isDirty, isValid },
+  } = useForm({
+    mode: "onChange",
+
+    defaultValues: {
+      firstName: "",
+    },
+  })
+
+  // you can invoke before render or within the render function
+
+  const fieldState = getFieldState("firstName")
+
+  return (
+    <form>
+      <input {...register("firstName", { required: true })} />{" "}
+      <p>{getFieldState("firstName").isDirty && "dirty"}</p>{" "}
+      <p>{getFieldState("firstName").isTouched && "touched"}</p>
+      <button
+        type="button"
+        onClick={() => console.log(getFieldState("firstName"))}
+      >
+        field state
+      </button>
+    </form>
+  )
+}
+```

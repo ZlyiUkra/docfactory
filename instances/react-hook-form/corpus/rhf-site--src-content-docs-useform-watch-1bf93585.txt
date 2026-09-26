@@ -1,0 +1,285 @@
+# watch (content/docs/useform/watch)
+# джерело: https://github.com/react-hook-form/documentation/blob/3ac1fe0254947748d993cd4b1915fc5dea87ba8b/src/content/docs/useform/watch.mdx
+# отримано: 2026-09-26
+# версія: 8.0.0-beta.4, 7.89.0, 7.88.0, 7.87.0, 7.86.0, 7.85.0, 8.0.0-beta.3
+
+## \</> `watch:` UseFormWatch
+
+This method watches specified inputs and returns their values. It is useful for rendering input values and determining what to render based on conditions.
+
+### Overloads
+
+This function has four overloads:
+
+- `watch(name: string, defaultValue?: unknown): unknown`
+- `watch(names: string[], defaultValue?: {[key:string]: unknown}): unknown[]`
+- `watch(): {[key:string]: unknown}`
+- `watch(callback, defaultValues?): { unsubscribe: () => void }` _(deprecated, see below)_
+
+The explanation of each of these four overloads follows below.
+
+#### 1-a. Watching single field `watch(name: string, defaultValue?: unknown): unknown`
+
+---
+
+Call `watch` inside your component to subscribe to a field's value and re-render when it changes.
+
+**Params**
+
+| Name           | Type                           | Description                         |
+| -------------- | ------------------------------ | ----------------------------------- |
+| `name`         | `string`  | the field name                      |
+| `defaultValue` | `unknown` | _optional_. default value for field |
+
+**Returns** the single field value.
+
+```tsx
+const name = watch("name")
+```
+
+#### 1-b. Watching some fields `watch(names: string[], defaultValue?: {[key:string]: unknown}): unknown[]`
+
+---
+
+Call `watch` inside your component to subscribe to an array of fields and re-render when any of them change.
+
+**Params**
+
+| Name           | Type                                           | Description                           |
+| -------------- | ---------------------------------------------- | ------------------------------------- |
+| `names`        | `string[]`                | the field names                       |
+| `defaultValue` | `{[key:string]: unknown}` | _optional_. default values for fields |
+
+**Returns** an array of field values.
+
+```tsx
+const [name, name1] = watch(["name", "name1"])
+```
+
+#### 1-c. Watching the entire form `watch(): {[key:string]: unknown}`
+
+---
+
+Watch and subscribe to the entire form's changes based on `onChange`, triggering re-renders at the `useForm` level.
+
+**Params** None
+
+**Returns** the entire form values.
+
+```tsx
+const formValues = watch()
+```
+
+#### 2. Deprecated: consider use or migrate to subscribe. Watching with callback fn `watch(callback: (data, { name, type }) => void, defaultValues?: {[key:string]: unknown}): { unsubscribe: () => void }` (since 7.0.0)
+
+---
+
+Subscribe to field updates or changes without triggering a re-render.
+
+**Params**
+
+| Name            | Type                                                  | Description                                          |
+| --------------- | ----------------------------------------------------- | ---------------------------------------------------- |
+| `callback`      | `(data, { name, type }) => void` | callback function to subscribe to all fields changes |
+| `defaultValues` | `{[key:string]: unknown}`        | _optional_. defaultValues for the entire form        |
+
+**Returns** object with `unsubscribe` function.
+
+**Callback arguments**
+
+The `type` argument indicates the originating DOM event (typed as `EventType`). For standard web inputs, this is `'change'` when a user updates a field. `type` is `undefined` when the change was triggered programmatically (e.g., via `setValue`, `reset`, or after `unregister`). See `EventType` for the full union (which includes React Native event types).
+
+### Rules
+
+---
+
+- When `defaultValue` is not defined, the first render of `watch` will return `undefined` because it is called before `register`. It's **recommended** to provide `defaultValues` to `useForm` to avoid this behavior, but you can also set an inline `defaultValue` as the second argument.
+- When both `defaultValue` and `defaultValues` are supplied, the value from `defaultValues` takes precedence; the inline `defaultValue` is only used as a fallback when no value exists for that field at all.
+- This API will trigger a re-render at the root of your application or form. Consider using a callback or the useWatch API if you experience performance issues.
+- The `watch` result is optimized for the render phase rather than `useEffect` dependencies. To detect value updates, you may want to use an external custom hook for value comparison.
+
+### Examples:
+
+---
+
+#### Watch in a Form
+
+```tsx
+
+
+interface IFormInputs {
+  name: string
+  showAge: boolean
+  age: number
+}
+
+function App() {
+  const {
+    register,
+    watch,
+    formState: { errors },
+    handleSubmit,
+  } = useForm<IFormInputs>()
+  const watchShowAge = watch("showAge", false) // you can supply default value as second argument
+  const watchAllFields = watch() // when you pass nothing as an argument, you are watching everything
+  const watchFields = watch(["showAge", "age"]) // you can also target specific fields by their names
+
+  const onSubmit = (data: IFormInputs) => console.log(data)
+
+  return (
+    <>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <input {...register("name", { required: true, maxLength: 50 })} />
+        <input type="checkbox" {...register("showAge")} />
+        {/* based on yes selection to display Age Input*/}
+        {watchShowAge && (
+          <input type="number" {...register("age", { min: 50 })} />
+        )}
+        <input type="submit" />
+      </form>
+    </>
+  )
+}
+```
+
+```javascript
+
+
+function App() {
+  const {
+    register,
+    watch,
+    formState: { errors },
+    handleSubmit,
+  } = useForm()
+  const watchShowAge = watch("showAge", false) // you can supply default value as second argument
+  const watchAllFields = watch() // when you pass nothing as an argument, you are watching everything
+  const watchFields = watch(["showAge", "number"]) // you can also target specific fields by their names
+
+  const onSubmit = (data) => console.log(data)
+
+  return (
+    <>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <input type="checkbox" {...register("showAge")} />
+
+        {/* based on yes selection to display Age Input*/}
+        {watchShowAge && (
+          <input type="number" {...register("age", { min: 50 })} />
+        )}
+
+        <input type="submit" />
+      </form>
+    </>
+  )
+}
+```
+
+#### Watch in Field Array
+
+```tsx
+
+
+type FormValues = {
+  test: {
+    firstName: string
+    lastName: string
+  }[]
+}
+
+function App() {
+  const { register, control, handleSubmit, watch } = useForm<FormValues>()
+  const { fields, remove, append } = useFieldArray({
+    name: "test",
+    control,
+  })
+  const onSubmit = (data: FormValues) => console.log(data)
+
+  console.log(watch("test"))
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      {fields.map((field, index) => {
+        return (
+          <div key={field.id}>
+            <input
+              defaultValue={field.firstName}
+              {...register(`test.${index}.firstName`)}
+            />
+            <input
+              defaultValue={field.lastName}
+              {...register(`test.${index}.lastName`)}
+            />
+            <button type="button" onClick={() => remove(index)}>
+              Remove
+            </button>
+          </div>
+        )
+      })}
+      <button
+        type="button"
+        onClick={() =>
+          append({
+            firstName: "bill",
+            lastName: "luo",
+          })
+        }
+      >
+        Append
+      </button>
+    </form>
+  )
+}
+```
+
+```javascript
+
+
+function App() {
+  const { register, control, handleSubmit, watch } = useForm()
+  const { fields, remove, append } = useFieldArray({
+    name: "test",
+    control,
+  })
+  const onSubmit = (data) => console.log(data)
+
+  console.log(watch("test"))
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      {fields.map((field, index) => {
+        return (
+          <div key={field.id}>
+            <input
+              defaultValue={field.firstName}
+              {...register(`test.${index}.firstName`)}
+            />
+            <input
+              defaultValue={field.lastName}
+              {...register(`test.${index}.lastName`)}
+            />
+            <button type="button" onClick={() => remove(index)}>
+              Remove
+            </button>
+          </div>
+        )
+      })}
+      <button
+        type="button"
+        onClick={() =>
+          append({
+            firstName: "bill",
+            lastName: "luo",
+          })
+        }
+      >
+        Append
+      </button>
+    </form>
+  )
+}
+```
+
+## Video
+
+---

@@ -1,0 +1,139 @@
+# resetDefaultValues (content/docs/useform/resetdefaultvalues)
+# джерело: https://github.com/react-hook-form/documentation/blob/a6613c0e7f5b086f0eb2675d16cb4787e42fa2df/src/content/docs/useform/resetdefaultvalues.mdx
+# отримано: 2026-09-26
+# версія: 7.80.0
+
+## \</> `resetDefaultValues:` `<T>(values: T, options?: Record<string, boolean>) => void`
+
+Update `defaultValues` and recompute `dirtyFields`/`isDirty` against the new baseline without modifying the current form values. This is useful when a form disables submission while `!isDirty` — after a successful async submission you can advance the baseline to the submitted values so that only post-submit edits are considered dirty.
+
+### Props
+
+---
+
+| Name      |               | Type                         | Description                                                                                                          |
+| --------- | ------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `values`  |               | object  | The new default values to establish as the baseline. Recommended to provide the full object.                         |
+| `options` | `keepDirty`   | boolean | When set to `true`, existing `dirtyFields` state is preserved as-is rather than recomputed against the new baseline. |
+|           | `keepIsValid` | boolean | When set to `true`, validation is not re-run after the baseline update and `isValid` remains unchanged.              |
+
+Rules
+
+- Current form values (what the user has typed) are **never** modified by this method — only the internal baseline used to compute dirty state changes.
+- `dirtyFields` and `isDirty` are recomputed against the new baseline unless `keepDirty` is set.
+
+##### Examples:
+
+---
+
+**After Async Submission**
+
+```tsx
+
+
+interface FormValues {
+  firstName: string
+  lastName: string
+}
+
+
+  const {
+    register,
+    handleSubmit,
+    resetDefaultValues,
+    formState: { isDirty },
+  } = useForm<FormValues>({
+    defaultValues: { firstName: "", lastName: "" },
+  })
+
+  const onSubmit = async (data: FormValues) => {
+    await saveToServer(data)
+    // Advance the baseline to the submitted values.
+    // isDirty will now only be true if the user edits after this point.
+    resetDefaultValues(data)
+  }
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <input {...register("firstName")} />
+      <input {...register("lastName")} />
+      <button type="submit" disabled={!isDirty}>
+        Save
+      </button>
+    </form>
+  )
+}
+```
+
+```javascript
+
+
+
+  const {
+    register,
+    handleSubmit,
+    resetDefaultValues,
+    formState: { isDirty },
+  } = useForm({
+    defaultValues: { firstName: "", lastName: "" },
+  })
+
+  const onSubmit = async (data) => {
+    await saveToServer(data)
+    // Advance the baseline to the submitted values.
+    // isDirty will now only be true if the user edits after this point.
+    resetDefaultValues(data)
+  }
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <input {...register("firstName")} />
+      <input {...register("lastName")} />
+      <button type="submit" disabled={!isDirty}>
+        Save
+      </button>
+    </form>
+  )
+}
+```
+
+**With Options**
+
+```javascript
+
+
+
+  const { register, resetDefaultValues } = useForm({
+    defaultValues: { firstName: "", lastName: "" },
+  })
+
+  const handleServerUpdate = (serverValues) => {
+    resetDefaultValues(serverValues, {
+      keepDirty: true, // preserve existing dirty tracking
+      keepIsValid: true, // skip re-validation
+    })
+  }
+
+  return (
+    <form>
+      <input {...register("firstName")} />
+      <input {...register("lastName")} />
+      <button
+        type="button"
+        onClick={() =>
+          handleServerUpdate({ firstName: "Jane", lastName: "Doe" })
+        }
+      >
+        Load server values
+      </button>
+    </form>
+  )
+}
+```
+
+### Related
+
+---
+
+- reset
+- resetField
