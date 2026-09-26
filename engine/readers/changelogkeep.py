@@ -28,18 +28,24 @@ def changelog_keep(source: dict, ctx) -> list[Item]:
                          f"формат змінився, читача треба поправити.")
     cite = source.get("cite", source["url"])
     label = source.get("label", "Changelog")
-    items = []
+    # версія → [(дата, текст)]. Журнал RHF буває з двома записами однієї версії (6.12.0 від
+    # 28.11 і від 12.12.2020): окремими документами з одним ім'ям файла другий затер би
+    # перший, тож записи версії зливаються в один документ у порядку журналу.
+    entries: dict = {}
     for i, head in enumerate(heads):
-        version = head.group(1)
-        day = head.group(2) or ""
         chunk = text[head.end():heads[i + 1].start() if i + 1 < len(heads) else len(text)]
+        entries.setdefault(head.group(1), []).append((head.group(2) or "", chunk))
+    items = []
+    for version, parts in entries.items():
         name = re.sub(r"[^\w.-]+", "-", version)
 
-        def make(chunk=chunk, version=version, day=day):
-            body = _markup.markdown_body(chunk)
-            if day:
-                body = f"Released {day}.\n\n{body}"
-            return _markup.document(f"{label}: {version}", cite, ctx.stamp, body, version)
+        def make(parts=parts, version=version):
+            bodies = []
+            for day, chunk in parts:
+                body = _markup.markdown_body(chunk)
+                bodies.append(f"Released {day}.\n\n{body}" if day else body)
+            return _markup.document(f"{label}: {version}", cite, ctx.stamp,
+                                    "\n\n".join(bodies), version)
 
         items.append(Item(id=f"{source['id']}/{name}",
                           file=f"{source['id']}--{name}.txt", make=make))
