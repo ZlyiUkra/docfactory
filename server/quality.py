@@ -52,6 +52,15 @@ from common import profile
 CASES = [(q, [w] if isinstance(w, str) else list(w))
          for q, w in profile.checks()["quality"]]
 
+# Друга десятка — поле quality_model: ті самі теми, записані так, як їх поставить
+# модель за промптом примірника, — назвами документації, з фреймворком і, де треба,
+# з version. Перша десятка міряє найгірший випадок (людина своїми словами, повз
+# промпт), друга — те, що сервер віддасть моделі насправді. Проганяється самим
+# spec_mcp._find, без розкладу на способи. Без поля — лише перша десятка.
+MODEL_CASES = [(c[0], [c[1]] if isinstance(c[1], str) else list(c[1]),
+                c[2] if len(c) > 2 else "")
+               for c in profile.checks().get("quality_model") or []]
+
 K = 5
 WARMUP_SEC = 90
 
@@ -169,7 +178,28 @@ def main(argv: list[str]) -> int:
         print("злиття дає більше за кожен спосіб окремо"
               if score["разом"] > best else
               "злиття не дало більше за кращий зі способів")
+    if MODEL_CASES:
+        model(spec_mcp, show)
     return 0
+
+
+def model(spec_mcp, show: bool) -> None:
+    """Друга десятка: запити «як модель», тим самим шляхом, що й сервер."""
+    print(f"\nяк модель — {len(MODEL_CASES)} запитів назвами документації:")
+    hits = 0
+    for query, wants, version in MODEL_CASES:
+        keep = None
+        if version:
+            def keep(p, want=version):
+                return any(spec_mcp.version_within(v, want) for v in p.versions)
+        found, _ = spec_mcp._find(query, K, keep)
+        hit = any(within(p.anchor, w) for p in found for w in wants)
+        hits += hit
+        tail = f"  version={version}" if version else ""
+        print(f"· {query}{tail}\n    треба {' | '.join(wants):<11} {'+' if hit else '-'}")
+        if show:
+            print(f"      {', '.join(p.anchor for p in found)}")
+    print(f"\nяк модель   {hits} із {len(MODEL_CASES)}")
 
 
 if __name__ == "__main__":
