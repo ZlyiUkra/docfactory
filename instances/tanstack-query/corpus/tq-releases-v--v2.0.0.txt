@@ -1,0 +1,238 @@
+# TanStack Query release: v2.0.0
+# джерело: https://github.com/TanStack/query/releases/tag/v2.0.0
+# отримано: 2026-09-26
+# версія: 2.0.0
+
+Tag v2.0.0, published 2020-06-22.
+
+## Summary
+
+- Better query invalidation & refetching, less over-fetching
+- Simplified dependent query syntax and new `idle` query state
+- Multi-instance polling and interval support
+- New query status booleans
+- Bidirectional Infinite Queries
+- Improved mutation lifecycle
+- Better test cleanup utils
+- Prep for future SSR enhancements
+
+> **TYPESCRIPT USERS!** Types are currently being updated to use the new 2.0 api and will be available very soon. You can make that happen faster by contributing to them in `/types/index.d.ts` and testing them in `/types/test.ts` and opening a PR!
+
+## Breaking Changes & Migration Guide
+
+- Do you use falsy query keys for dependent queries?
+  - The new way to do dependent queries to instead use the `enabled` config flag. You should move your conditions in your key to the `enabled` option
+    - Before
+```js
+    useQuery(ready && queryKey, queryFn)
+```
+    - After
+```js
+    useQuery(queryKey, queryFn, { enabled: ready })
+```
+- Do you use functions as queryKeys for dependent queries?
+  - If you use functions as query keys that can potentially throw, you should migrate their logic to the `enabled` config option and use optional chaining to cast them to a boolean
+    - Before
+```js
+    useQuery(() => ['user', user.id], queryFn)
+```
+    - After
+```js
+    useQuery(['user', user?.id], queryFn, { enabled: user?.id })
+```
+- Do you expect dependent queries to start in the `success` state?
+
+  - Dependent queries now start in a new `idle` state. You should account for this new state where possible. Most rendering logic should still work if you are checking first for the `loading` and `error` states first, then falling back to the "success" state, but still... it's a good idea to do this
+
+    - Before
+
+```js
+    const { status, data } = useQuery(key, fn)
+
+    return status === 'loading'
+      ? 'Loading...'
+      : status === 'error'
+      ? error.message
+      : data
+      ? 'The Data'
+      : 'Not Ready'
+```
+
+    - After
+
+```js
+    const { status } = useQuery(key, fn
+
+    return status === 'idle' ? 'Not Ready' : status === 'loading'
+      ? 'Loading...'
+      : status === 'error'
+      ? error.message
+      : 'The Data'
+```
+
+- Do you use `queryCache.refetchQueries`?
+  - `refetchQueries` has been renamed to `invalidateQueries`. You will need make this rename change for your app to continue working propertly. The name change comes due to some differences in what the function does.
+    - Before, any queries that matched the `queryKey` used in `refetchQueries(queryKey)` and were also stale, would be refetched... \*\*even queries that were inactive and not rendered on the screen. This resulted in quite a few queries being refetched regardless of their immediate necessity.
+    - Now, with `invalidateQueries`, only queries that are actively rendered will be refetched, while any other matching queries will forcefully be marked as stale.
+    - This probably won't affect much performance, but should help reduce overfetching out of the box.
+- Did you expect `queryCache.refetchQueries` to only refetch stale queries?
+  - The new `invalidateQueries` method will **always refetch matching queries that are active**. All other matched queries that are not active will be immediately marked as stale.
+- Do you call `queryCache.refetchQueries` with the `force` option?
+  - Before, the `force` option was a way to force queries that were not stale to refetch.
+  - Now, he new `invalidateQueries` method will **always refetch matching queries that are active** and all other matched queries that are not active will be immediately marked as stale.
+- Do you use a global configuration object to configure React Query?
+  - Before, the global configuration object was flat:
+```js
+    const globalConfig = {
+      suspense,
+      useErrorBoundary,
+      throwOnError,
+      refetchAllOnWindowFocus,
+      queryKeySerializerFn,
+      onMutate,
+      onSuccess,
+      onError,
+      onSettled,
+      retry,
+      retryDelay,
+      staleTime,
+      cacheTime,
+      refetchInterval,
+      queryFnParamsFilter,
+      refetchOnMount,
+      isDataEqual,
+    }
+```
+  - Now, the global configuration object has 3 parts. The `shared` section, which is only for the `suspense` and `queryKeySerializerFn` options (that are inherited into all others) and the `queries` and `mutations` sections, each corresponding to the functionality they are used for in React Query:
+```js
+    const globalConfig = {
+      shared: {
+        suspense,
+      },
+      queries: {
+        suspense, // defaults to `shared.suspense`
+        queryKeySerializerFn,
+        enabled,
+        retry,
+        retryDelay,
+        staleTime,
+        cacheTime,
+        refetchOnWindowFocus,
+        refetchInterval,
+        queryFnParamsFilter,
+        refetchOnMount,
+        isDataEqual,
+        onError,
+        onSuccess,
+        onSettled,
+        throwOnError,
+        useErrorBoundary,
+      },
+      mutations: {
+        suspense, // defaults to `shared.suspense`
+        throwOnError,
+        onMutate,
+        onError,
+        onSuccess,
+        onSettled,
+        useErrorBoundary,
+      },
+    }
+```
+- Do you use "optional query variables" eg. `useQuery(queryKey, optionalVariables, queryFn)` or `useQuery({ variables })`?
+  - Optional variables have been removed. They were not used by many and also were unnecessary seeing how you can inline them into your query function
+  - Before
+```js
+    useQuery('todos', [optional, variables], queryFn)
+```
+  - After
+```js
+    useQuery('todos', (key) => queryFn(key, optional, variables))
+```
+- Do you use the `globalConfig.refetchAllOnWindowFocus` config option?
+  - `refetchAllOnWindowFocus` has been renamed to `refetchOnWindowFocus` to match the option in the configuration object for `useQuery` and friends.
+- Do you use the `refetch` function returned by `useQuery` and friends?
+  - Previously this `refetch` function would not trigger an actual refetch if the query is not stale.
+  - Now, calling this `refetch` will always trigger a refetch, regardless if the query is stale or not.
+- Do you expect `prefetchQuery` to skip the first render of `useQuery` instances that render after it?
+  - Previously, the first `useQuery` call after a `prefetchQuery` would be skipped all the time.
+  - Now, the `staleTime` of a `prefetchQuery` instance is honored. So, if you call `prefetchQuery(key, fn, { staletime: 5000 })`, and then `useQuery(key, fn)` is rendered within those initial 5000 milliseconds, the query will **not refetch in the background, since it is not stale yet**. Likewise, if the stale time has been reached by the time `useQuery(key, fn)` renders, **it will refetch in the background**, since it is stale when `useQuery` mounts/renders.
+- Do you use `prefetchQuery`'s `throwOnError` or `force` options?
+  - `prefetchQuery`'s `throwOnError` and `force` options are now located in a fourth argument, after the query config.
+  - Before
+```js
+    prefetchQuery(key, fn, { ...queryConfig, throwOnError: true, force: true })
+```
+  - After
+```js
+    prefetchQuery(key, fn, queryConfig, { throwOnError: true, force: true })
+```
+- Do you call `mutate()` with additional side-effect callbacks? eg. `mutate(vars, { onError, onSuccess, onSettled })`
+
+  - There are no code changes here, however previously, `mutate()`-level side effects would run _before_ side-effects defined in `useMutation`. That order has been reversed to make more sense.
+  - Now, the side-effect callbacks in `useMutation` will be fired before their `mutate`-level counterparts.
+  - Before
+
+```js
+    const mutate = useMutation(fn, {
+      onSuccess: () => console.log('I will run second'),
+    })
+
+    mutate(vars, { onSuccess: () => console.log('I will run first') })
+```
+
+  - After
+
+```js
+    const mutate = useMutation(fn, {
+      onSuccess: () => console.log('I will run first'),
+    })
+
+    mutate(vars, { onSuccess: () => console.log('I will run second') })
+```
+
+- Do you use `setQueryData` to update multiple queries with a single query key? eg. `setQueryData('todos', newData)` and expect queryKeys `['todos', 1]` and `['todos', 2]` to both get updated?
+  - `setQueryData` no longer allows updating multiple queries at once (via prefix matching). If you need to update multiple queries with the same data, you can use the `queryCache.getQueries()` function to match all of the queries you want, then loop over them and use their `query.setData` function to set all of them to the same value.
+
+## New Features
+
+- The booleans `isSuccess`, `isError` `isLoading` and a new one called `isIdle` have been added to the queryInfo object returned by `useQuery` (and friends) and `useMutation`. These are derived safely from the `queryInfo.status` and are guaranteed to not overlap. In most situations, they are easier to use, less typo-prone than status strings and also more terse for determining what to render based on the status of a query.
+
+```js
+  const queryInfo = useQuery(queryKey, fn)
+
+  return queryInfo.isLoading ? (
+    'Loading...'
+  ) : queryInfo.isError ? (
+    queryInfo.error.message
+  ) : (
+    <div>{queryInfo.data}</div>
+  )
+```
+
+- `queryCaches` is now exported, which allows you to clean up all query caches that were created. We do this in our own tests when multiple caches are used for testing and to be thorough.
+
+```js
+  // test.js
+  import { queryCaches } from 'react-query'
+
+  afterEach(() => {
+    queryCaches.forEach((queryCache) => queryCache.clear())
+  })
+```
+
+- `fetchMore` now supports an optional `previous` option, which will determine if the data you are fetching is should be prepended instead of appended to your infinite list. eg, `fetchMore(nextPageVars, { previous: true })`
+
+```js
+  const { fetchMore } = useInfiniteQuery(queryKey, fn)
+
+  return (
+    <button
+      onClick={() => fetchMore(previousPageVariables, { previous: true })}
+    />
+  )
+```
+
+- `refetchInterval` can now be changed on the fly. Check out the auto-refetching example to see it in action!
+- `invalidateQueries` (previously `refetchQueries`) now has an option called `refetchActive` that when set to `false` will **not** refetch matching queries that are active on the page.
+- `makeQueryCache` now accepts an optional configuration object. The `defaultConfig` object is used to override the default query configuration config to use inside of this cache. The `frozen` option if set to `true` will simulate React Query being run on the server, where no queries are cached for privacy and safety concerns. This is the default when using React Query on the server and is optional. You can also set it to `true` on the server and have it work as it would on the client. More information on this coming soon!

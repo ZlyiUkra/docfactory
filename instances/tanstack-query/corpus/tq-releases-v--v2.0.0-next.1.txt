@@ -1,0 +1,66 @@
+# TanStack Query release: v2.0.0-next.1
+# джерело: https://github.com/TanStack/query/releases/tag/v2.0.0-next.1
+# отримано: 2026-09-26
+# версія: 2.0.0-next.1
+
+Tag v2.0.0-next.1, published 2020-06-17, pre-release.
+
+## New Features
+
+- The booleans `isSuccess`, `isError` `isLoading` and a new one called `isIdle` have been added to the queryInfo object returned by `useQuery` and friends. These are derived safely from the `queryInfo.status` and are guaranteed to not overlap. In most situations, they are easier to use, less typo-prone than status strings and also more terse for determining what to render based on the status of a query.
+- `queryCaches` is now exported, which allows you to clean up all query caches that were created. We do this in our own tests when multiple caches are used for testing and to be thorough.
+- `fetchMore` now supports an optional `previous` option, which will determine if the data you are fetching is should be prepended instead of appended to your infinite list. eg, `fetchMore(nextPageVars, { previous: true })`
+- `makeQueryCache` now accepts an optional configuration object. The `defaultConfig` object is used to override the default query configuration config to use inside of this cache. The `frozen` option if set to `true` will simulate React Query being run on the server, where no queries are cached for privacy and safety concerns. This is the default when using React Query on the server and is optional. You can also set it to `true` on the server and have it work as it would on the client. More information on this coming soon!
+- `refetchInterval` can now be changed on the fly. Check out the auto-refetching example to see it in action!
+
+## Breaking Changes
+
+- Conditional, falsy or nullish query keys have been replaced by the `enabled` config flag. This flag must be a boolean-esque value, not a function. If you are looking to replace the throwable function option, you should instead use optional chaining, eg. `useQuery(user?.id, fn, { enabled: user?.id })`.
+- Dependent Queries (via the `enabled` option) will now start in a new `idle` state if they are initialized with no data and `enabled: false`.
+- `refetchQueries` has been replace by `invalidateQueries`. Previously, `refetchQueries` would refetch any query key it matched that was stale, even if it was not currently being used on the screen. This has changed and it will now only refetch active queries (those being subscribed to with useQuery and friends). All other queries that it matches will simply be marked as "stale" and be refetched when they are rendered next, if ever. You can also pass an `invalidateQueries(queryKey, { refetchActive: false })` option if you do not want active queries to refetch either. This should save some bandwidth for queries that were cached, but not in use that will no longer be fetched again until they are needed.
+- Config is now split into 3 parts, `shared`, `queries` and `mutations`
+
+```js
+const globalConfig = {
+  shared: {
+    suspense,
+    queryKeySerializerFn,
+  },
+  queries: {
+    ...shared,
+    enabled,
+    retry,
+    retryDelay,
+    staleTime,
+    cacheTime,
+    refetchOnWindowFocus,
+    refetchInterval,
+    queryFnParamsFilter,
+    refetchOnMount,
+    isDataEqual,
+    onError,
+    onSuccess,
+    onSettled,
+    throwOnError,
+    useErrorBoundary,
+  },
+  mutations: {
+    ...shared,
+    throwOnError,
+    onMutate,
+    onError,
+    onSuccess,
+    onSettled,
+    useErrorBoundary,
+  },
+}
+```
+
+- All `force` options have been removed. Functions that are meant to update the query always will. If you need to check that a query is stale before calling one of these functions, you can use `queryCache.get(queryKey).state.isStale` to do so.
+- Optional `queryVariables` have been removed. These didn't make much sense to begin with, and if you still need them, you can just inline them in your query function anyway, eg. `useQuery(['hello', 'world'], (a, b) => queryFn(a, b, customVariable1, customVariable2))`
+- As a migration tool, falsy and functional query keys will throw an error now, showing you where you need to convert to use the `enabled` config option
+- `globalConfig.refetchAllOnWindowFocus`, which previous overlapped in fuctionality with the query-level `refetchOnWindowFocus` has been consolidated to a single `refetchOnWindowFocus` that can set in the the global `config.queries.refetchOnWindowFocus` and also on a per query basis.
+- The `refetch` function returned by useQuery and friends will now **always** trigger a refetch for the query, regardless if the query is stale or not. This is way more clear and reliable to deal with.
+- `prefetchQuery` will no longer disable the next render of that query using useQuery (and friends). Instead, the `staleTime` will be respected for the prefetchQuery call, so if `prefetchQuery(key, fn, { staletime: 5000 })` is called, and then `useQuery(key, fn, { staleTime: 1000 })` is rendered within those initial 5000 milliseconds, the query will not refetch in the background. But if the stale time has been reached by the time useQuery renders, it will refetch in the background.
+- `prefetchQuery`'s `force` option has been removed. When you call `prefetchQuery`, the queryFn will always be called, regardless if the query is stale or not.
+- `prefetchQuery`'s `throwOnError` option is now located in a fourth argument, after the query config, eg. `prefetchQuery(key, fn, config, { throwOnError: true })`
