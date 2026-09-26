@@ -123,17 +123,22 @@ def main(argv: list[str]) -> int:
     for query, wants in CASES:
         deep = max(K * spec_mcp.DEPTH, fuse)
         t0 = time.perf_counter()
-        words = spec_mcp._dedup(spec_mcp._INDEX.retrieve(query, deep), fuse, query)
+        # Той самий відсів варіантів, що в spec_mcp._find; без variant_strict — None.
+        keep = spec_mcp._only_wanted(query)
+        words = spec_mcp._dedup(spec_mcp._INDEX.retrieve(query, deep, keep), fuse, query)
         t_words += time.perf_counter() - t0
         found = {"по словах": words[:K]}
 
         if ready:
             t0 = time.perf_counter()
-            hits = vectorstore.search(embed.embed_query(query), deep)
+            limit = deep if keep is None else max(50, deep * 2)
+            hits = vectorstore.search(embed.embed_query(query), limit)
             t_meaning += time.perf_counter() - t0
-            meaning = spec_mcp._dedup([spec_mcp._BY_ID[h["uid"]] for h in hits
-                                       if h.get("uid") in spec_mcp._BY_ID], fuse,
-                                      query)
+            meaning = [spec_mcp._BY_ID[h["uid"]] for h in hits
+                       if h.get("uid") in spec_mcp._BY_ID]
+            if keep is not None:
+                meaning = [p for p in meaning if keep(p)]
+            meaning = spec_mcp._dedup(meaning, fuse, query)
             found["за змістом"] = meaning[:K]
             found["разом"] = spec_mcp._dedup(spec_mcp._rrf([words, meaning], K * 2), K,
                                              query)

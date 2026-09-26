@@ -446,6 +446,29 @@ def _wanted_variant(query: str) -> str:
     return next((name for alias, name in _ALIASES if f" {alias} " in q), "")
 
 
+def _only_wanted(query: str, keep=None):
+    """Фільтр для variant_strict: коли запит називає варіант, фрагменти інших
+    варіантів відсіюються разом із фільтром версії `keep`.
+
+    Згортання тут не рятує: у tanstack-query довідник API кожного фреймворку має
+    свої імена сторінок (injectQuery в Angular, createQuery у Solid), тож двійників
+    у React вони не мають і, щільні на назви опцій, відтісняють гайди. Відсів іде
+    до відбору місць, а не після, — інакше видача коротшала б. Варіант, у сторінки
+    якого є двійник названого, лишається: часто саме він тягне сторінку вгору, а
+    _dedup потім віддає місце двійникові. Сторінки поза виразом варіантів (README,
+    приклади, журнали змін) проходять. Без поля чи без названого варіанта
+    повертається сам `keep`, і видача та сама, що й була."""
+    want = _wanted_variant(query) if profile.VARIANT_STRICT and _VARIANT else ""
+    if not want:
+        return keep
+
+    def only(p: Passage) -> bool:
+        m = _VARIANT.match(p.anchor)
+        return ((not m or m.group(1) == want or want in _TWINS.get(_page_key(p), {}))
+                and (keep is None or keep(p)))
+    return only
+
+
 def _dedup(passages: list[Passage], k: int, query: str = "") -> list[Passage]:
     """Одне місце у видачі — один розділ.
 
@@ -490,6 +513,7 @@ def _find(query: str, k: int, keep=None) -> tuple[list[Passage], str]:
     config.json це k — і тоді розділ, п'ятий по словах і четвертий за змістом, зі
     злиття по п'ять місць випадає, хоч обидва способи його знайшли. Примірник, якому
     це важливо, задає глибину сам; решта дістає рівно ту видачу, що й раніше."""
+    keep = _only_wanted(query, keep)
     fuse = profile.FUSION_DEPTH or k
     deep = max(k * DEPTH, fuse)
     words = _dedup(_INDEX.retrieve(query, deep, keep), fuse, query)

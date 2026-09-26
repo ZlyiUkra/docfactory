@@ -52,6 +52,9 @@ FUSION_DEPTH = int(_CONF.get("fusion_depth") or 0)
 # називають у запиті («next.js» для nextjs); без них — саме ім'я, «-» як пробіл.
 VARIANT_PATTERN = _CONF.get("variant_pattern") or ""
 VARIANT_ALIASES = _CONF.get("variant_aliases") or {}
+# Суворий відбір варіантів: коли запит називає варіант, фрагменти інших варіантів до
+# видачі не допускаються зовсім. Без поля — лише згортання, як і раніше.
+VARIANT_STRICT = bool(_CONF.get("variant_strict"))
 
 
 def text(name: str) -> str:
