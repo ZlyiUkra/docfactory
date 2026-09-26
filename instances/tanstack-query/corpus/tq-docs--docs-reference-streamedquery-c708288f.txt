@@ -1,0 +1,45 @@
+# streamedQuery
+# джерело: https://github.com/TanStack/query/blob/@tanstack%2Fquery-core@5.102.8/docs/reference/streamedQuery.md
+# отримано: 2026-09-26
+# версія: 5.102.8, 5.102.7, 5.102.6, 5.102.5, 5.102.4, 5.102.3, 5.102.2, 5.102.1, 5.102.0, 5.101.4, 5.101.3, 5.101.2, 5.101.1, 5.101.0, 5.100.14, 5.100.13, 5.100.12, 5.100.11, 5.100.9, 5.100.8, 5.100.7, 5.100.6, 5.100.5, 5.100.4, 5.100.3, 5.100.2, 5.100.0, 5.99.2, 5.99.1, 5.99.0, 5.98.0, 5.97.0, 5.96.2, 5.96.1, 5.96.0, 5.95.2, 5.95.1, 5.95.0, 5.94.5, 5.94.4, 5.91.2, 5.91.0, 5.90.20, 5.90.19, 5.90.18, 5.90.17, 5.90.16, 5.90.15, 5.90.14
+
+`streamedQuery` is a helper function to create a query function that streams data from an AsyncIterable. Data will be an Array of all the chunks received. The query will be in a `pending` state until the first chunk of data is received, but will go to `success` after that. The query will stay in fetchStatus `fetching` until the stream ends.
+
+To see `streamedQuery` in action, take a look at our chat example in the examples/react/chat directory on GitHub.
+
+```tsx
+import { experimental_streamedQuery as streamedQuery } from '@tanstack/react-query'
+
+const query = queryOptions({
+  queryKey: ['data'],
+  queryFn: streamedQuery({
+    streamFn: fetchDataInChunks,
+  }),
+})
+```
+
+> Note: `streamedQuery` is currently marked as `experimental` because we want to gather feedback from the community. If you've tried out the API and have feedback for us, please provide it in this GitHub discussion.
+
+**Options**
+
+- `streamFn: (context: QueryFunctionContext) => Promise<AsyncIterable<TData>>`
+  - **Required**
+  - The function that returns a Promise of an AsyncIterable with data to stream in.
+  - Receives a QueryFunctionContext
+- `refetchMode?: 'append' | 'reset' | 'replace'`
+  - Optional
+  - Defines how refetches are handled.
+  - Defaults to `'reset'`
+  - When set to `'reset'`, the query will erase all data and go back into `pending` state.
+  - When set to `'append'`, data will be appended to existing data.
+  - When set to `'replace'`, all data will be written to the cache once the stream ends.
+- `reducer?: (accumulator: TData, chunk: TQueryFnData) => TData`
+  - Optional
+  - Reduces streamed chunks (`TQueryFnData`) into the final data shape (`TData`).
+  - Default: appends each chunk to the end of the accumulator when `TData` is an array.
+  - If `TData` is not an array, you must provide a custom `reducer`.
+- `initialValue?: TData = TQueryFnData`
+  - Optional
+  - Defines the initial data to be used while the first chunk is being fetched, and it is also returned when the stream yields no values.
+  - It is mandatory when custom `reducer` is provided.
+  - Defaults to an empty array.
