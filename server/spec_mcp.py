@@ -672,6 +672,11 @@ if __name__ == "__main__":
         _port = _serve_port()
         print(f"spec_mcp: HTTP-сервер на http://127.0.0.1:{_port}/mcp "
               f"(Ctrl+C спиняє)", file=sys.stderr)
-        mcp.run(transport="streamable-http", host="127.0.0.1", port=_port)
+        try:
+            mcp.run(transport="streamable-http", host="127.0.0.1", port=_port)
+        except KeyboardInterrupt:
+            # Ctrl+C — штатна зупинка: uvicorn уже закрив сесії, тож traceback,
+            # який anyio підіймає слідом, нічого не каже, окрім «зупинили».
+            print("spec_mcp: сервер зупинено", file=sys.stderr)
     else:
         mcp.run()      # stdio: клієнт сам запускає цей процес і говорить у труби
