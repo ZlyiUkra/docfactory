@@ -71,8 +71,9 @@ API — імена хуків і пропсів, middleware, імена паке
 | Backend, Frontend, Platform API | специфікації OpenAPI, з яких сайт рендерить довідники | `openapi` |
 | журнал змін і блог | `clerk.com/changelog/llms.txt`, `clerk.com/blog/llms.txt` | `llms-heading` |
 
-Читач `clerk-mdx` додано разом із цим примірником окремим модулем (`engine/readers/clerkmdx.py`). Чинні читачі не
-змінено жодним рядком.
+Читач `clerk-mdx` додано разом із цим примірником окремим модулем (`engine/readers/clerkmdx.py`). З чинних читачів
+змінено один: `llms-heading` зрізає хвіст «Sitemap» (див. вище); для nestjs і supabase від цього нічого не
+змінилося, бо в їхніх сторінках такого хвоста немає.
 
 Особливості, які варто знати:
 
