@@ -1,0 +1,83 @@
+# Quick Start
+# джерело: https://github.com/TanStack/query/blob/@tanstack%2Fquery-core@5.103.3/docs/framework/lit/quick-start.md
+# отримано: 2026-09-26
+# версія: 5.103.3, 5.103.2, 5.103.1, 5.103.0, 5.102.8, 5.102.7, 5.102.6, 5.102.5, 5.102.4, 5.102.3, 5.102.2, 5.102.1, 5.102.0, 5.101.4, 5.101.3, 5.101.2, 5.101.1, 5.101.0, 5.100.14, 5.100.13, 5.100.12, 5.100.11
+
+This snippet shows the three core Lit Query concepts:
+
+- Queries
+- Mutations
+- Query Invalidation
+
+For complete runnable examples, see Basic, Pagination, and SSR.
+
+```ts
+import { LitElement, html } from 'lit'
+import {
+  QueryClient,
+  QueryClientProvider,
+  createMutationController,
+  createQueryController,
+} from '@tanstack/lit-query'
+import { addTodo, getTodos } from './api'
+
+const queryClient = new QueryClient()
+
+class AppQueryProvider extends QueryClientProvider {
+  constructor() {
+    super()
+    this.client = queryClient
+  }
+}
+
+customElements.define('app-query-provider', AppQueryProvider)
+
+class TodosView extends LitElement {
+  private readonly todos = createQueryController(this, {
+    queryKey: ['todos'],
+    queryFn: getTodos,
+  })
+
+  private readonly createTodo = createMutationController(this, {
+    mutationFn: addTodo,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['todos'] })
+    },
+  })
+
+  render() {
+    const query = this.todos()
+    const mutation = this.createTodo()
+
+    if (query.isPending) return html`Loading...`
+    if (query.isError) return html`Error: ${query.error.message}`
+
+    return html`
+      <ul>
+        ${query.data.map((todo) => html`<li>${todo.title}</li>`)}
+      </ul>
+
+      <button
+        ?disabled=${mutation.isPending}
+        @click=${() => this.createTodo.mutate({ title: 'Write Lit docs' })}
+      >
+        Add Todo
+      </button>
+    `
+  }
+}
+
+customElements.define('todos-view', TodosView)
+```
+
+Mount the provider around your component:
+
+```html
+<app-query-provider>
+  <todos-view></todos-view>
+</app-query-provider>
+```
+
+The controllers are created with `this` because a `LitElement` is a `ReactiveControllerHost`. Lit Query uses the host lifecycle to subscribe, request updates, and clean up when the element disconnects.
+
+Continue with Reactive Controllers vs Hooks if you know React Query, or go straight to Queries.

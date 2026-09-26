@@ -1,0 +1,73 @@
+# Ensure correct order of inference-sensitive properties in useMutation()
+# джерело: https://github.com/TanStack/query/blob/@tanstack%2Fquery-core@5.103.3/docs/eslint/mutation-property-order.md
+# отримано: 2026-09-26
+# версія: 5.103.3, 5.103.2, 5.103.1, 5.103.0, 5.102.8, 5.102.7, 5.102.6, 5.102.5, 5.102.4, 5.102.3, 5.102.2, 5.102.1, 5.102.0, 5.101.4, 5.101.3, 5.101.2, 5.101.1, 5.101.0, 5.100.14, 5.100.13, 5.100.12, 5.100.11, 5.100.9, 5.100.8, 5.100.7, 5.100.6, 5.100.5, 5.100.4, 5.100.3, 5.100.2, 5.100.0, 5.99.2, 5.99.1, 5.99.0, 5.98.0, 5.97.0, 5.96.2, 5.96.1, 5.96.0, 5.95.2, 5.95.1, 5.95.0, 5.94.5, 5.94.4, 5.91.2, 5.91.0, 5.90.20, 5.90.19, 5.90.18, 5.90.17, 5.90.16, 5.90.15, 5.90.14, 5.90.12, 5.90.11, 5.90.10, 5.90.9, 5.90.8, 5.90.7, 5.90.6, 5.90.5, 5.90.4
+
+For the following functions, the property order of the passed in object matters due to type inference:
+
+- `useMutation()`
+
+The correct property order is as follows:
+
+- `onMutate`
+- `onError`
+- `onSettled`
+
+All other properties are insensitive to the order as they do not depend on type inference.
+
+## Rule Details
+
+Examples of **incorrect** code for this rule:
+
+```tsx
+/* eslint "@tanstack/query/mutation-property-order": "warn" */
+import { useMutation } from '@tanstack/react-query'
+
+const mutation = useMutation({
+  mutationFn: () => Promise.resolve('success'),
+  onSettled: () => {
+    results.push('onSettled-promise')
+    return Promise.resolve('also-ignored') // Promise<string> (should be ignored)
+  },
+  onMutate: async () => {
+    results.push('onMutate-async')
+    await sleep(1)
+    return { backup: 'async-data' }
+  },
+  onError: async () => {
+    results.push('onError-async-start')
+    await sleep(1)
+    results.push('onError-async-end')
+  },
+})
+```
+
+Examples of **correct** code for this rule:
+
+```tsx
+/* eslint "@tanstack/query/mutation-property-order": "warn" */
+import { useMutation } from '@tanstack/react-query'
+
+const mutation = useMutation({
+  mutationFn: () => Promise.resolve('success'),
+  onMutate: async () => {
+    results.push('onMutate-async')
+    await sleep(1)
+    return { backup: 'async-data' }
+  },
+  onError: async () => {
+    results.push('onError-async-start')
+    await sleep(1)
+    results.push('onError-async-end')
+  },
+  onSettled: () => {
+    results.push('onSettled-promise')
+    return Promise.resolve('also-ignored') // Promise<string> (should be ignored)
+  },
+})
+```
+
+## Attributes
+
+- [x] ✅ Recommended
+- [x] 🔧 Fixable

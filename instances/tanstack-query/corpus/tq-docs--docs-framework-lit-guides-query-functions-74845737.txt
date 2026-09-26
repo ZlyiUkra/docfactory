@@ -1,0 +1,81 @@
+# Query Functions
+# джерело: https://github.com/TanStack/query/blob/@tanstack%2Fquery-core@5.103.3/docs/framework/lit/guides/query-functions.md
+# отримано: 2026-09-26
+# версія: 5.103.3, 5.103.2, 5.103.1, 5.103.0, 5.102.8, 5.102.7, 5.102.6, 5.102.5, 5.102.4, 5.102.3, 5.102.2, 5.102.1, 5.102.0, 5.101.4, 5.101.3, 5.101.2, 5.101.1, 5.101.0, 5.100.14, 5.100.13, 5.100.12, 5.100.11
+
+A query function can be any function that returns a promise. The promise should resolve data or throw an error.
+
+```ts
+createQueryController(this, {
+  queryKey: ['todos'],
+  queryFn: fetchTodos,
+})
+
+createQueryController(this, () => ({
+  queryKey: ['todo', this.todoId],
+  queryFn: () => fetchTodo(this.todoId),
+}))
+```
+
+## Handling Errors
+
+TanStack Query needs failed query functions to throw or return a rejected promise. Some clients do that automatically. The browser `fetch` API does not, so check `response.ok` yourself:
+
+```ts
+async function fetchTodos(): Promise<Todo[]> {
+  const response = await fetch('/api/todos')
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch todos')
+  }
+
+  return response.json() as Promise<Todo[]>
+}
+```
+
+The thrown error is available on the query result:
+
+```ts
+const query = this.todos()
+
+if (query.isError) {
+  return html`Error: ${query.error.message}`
+}
+```
+
+## Query Function Context
+
+TanStack Query passes a context object to every query function. It includes:
+
+- `queryKey`: the current query key
+- `client`: the `QueryClient`
+- `signal`: an `AbortSignal` for cancellation
+- `meta`: optional query metadata
+
+```ts
+createQueryController(this, {
+  queryKey: ['todos', { status: 'open' }],
+  queryFn: async ({ queryKey, signal }) => {
+    const [, filters] = queryKey
+    const response = await fetch(`/api/todos?status=${filters.status}`, {
+      signal,
+    })
+    if (!response.ok) throw new Error('Failed to fetch todos')
+    return response.json() as Promise<Todo[]>
+  },
+})
+```
+
+Infinite query functions also receive `pageParam`:
+
+```ts
+createInfiniteQueryController(this, {
+  queryKey: ['projects'],
+  queryFn: ({ pageParam }) => fetchProjectsPage(pageParam),
+  initialPageParam: 1,
+  getNextPageParam: (lastPage) =>
+    lastPage.hasMore ? lastPage.page + 1 : undefined,
+})
+```
+
+See Infinite Queries for the controller-specific behavior.

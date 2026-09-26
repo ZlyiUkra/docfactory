@@ -1,0 +1,83 @@
+# Query Invalidation
+# джерело: https://github.com/TanStack/query/blob/@tanstack%2Fquery-core@5.103.3/docs/framework/lit/guides/query-invalidation.md
+# отримано: 2026-09-26
+# версія: 5.103.3, 5.103.2, 5.103.1, 5.103.0, 5.102.8, 5.102.7, 5.102.6, 5.102.5, 5.102.4, 5.102.3, 5.102.2, 5.102.1, 5.102.0, 5.101.4, 5.101.3, 5.101.2, 5.101.1, 5.101.0, 5.100.14, 5.100.13, 5.100.12, 5.100.11
+
+Waiting for queries to become stale is not always enough. After a mutation succeeds, you often know that related cached data is out of date. Use `queryClient.invalidateQueries` to mark matching queries stale and refetch active observers.
+
+```ts
+queryClient.invalidateQueries()
+
+queryClient.invalidateQueries({
+  queryKey: ['todos'],
+})
+```
+
+When a query is invalidated:
+
+- It is marked stale, overriding any `staleTime`
+- If a matching query is active in a controller, it can refetch in the background
+
+## Invalidation from Mutations
+
+```ts
+private readonly addTodo = createMutationController(this, {
+  mutationFn: addTodo,
+  onSuccess: async () => {
+    await queryClient.invalidateQueries({ queryKey: ['todos'] })
+  },
+})
+```
+
+Use this pattern when the mutation result tells you related cached data is stale. The Pagination example shows invalidation after project mutations.
+
+## Query Matching
+
+Match a group of queries by prefix:
+
+```ts
+queryClient.invalidateQueries({ queryKey: ['projects'] })
+```
+
+Both of these query keys match:
+
+```ts
+const projectsListKey = ['projects']
+const projectsPageKey = ['projects', 1, 250, false]
+```
+
+Use a more specific key when only one slice should be invalidated:
+
+```ts
+queryClient.invalidateQueries({
+  queryKey: ['projects', this.page],
+})
+```
+
+Use `exact: true` to match only the exact key:
+
+```ts
+queryClient.invalidateQueries({
+  queryKey: ['projects'],
+  exact: true,
+})
+```
+
+## Manual Cache Updates
+
+Invalidation is usually simpler than normalized cache updates. When you do need immediate UI updates, combine targeted cache writes with invalidation:
+
+```ts
+queryClient.setQueryData<TodosResponse>(['todos'], (existing) => {
+  if (!existing) return existing
+
+  return {
+    ...existing,
+    items: [...existing.items, createdTodo],
+  }
+})
+
+await queryClient.invalidateQueries({ queryKey: ['todos'] })
+```
+
+For rollback with optimistic updates, see the mutation guide and the Pagination example.
