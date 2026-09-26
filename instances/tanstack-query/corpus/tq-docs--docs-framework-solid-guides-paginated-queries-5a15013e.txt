@@ -1,0 +1,79 @@
+# Paginated / Lagged Queries
+# джерело: https://github.com/TanStack/query/blob/@tanstack%2Fquery-core@5.103.1/docs/framework/solid/guides/paginated-queries.md
+# отримано: 2026-09-26
+# версія: 5.103.1, 5.103.0, 5.102.8, 5.102.7, 5.102.6, 5.102.5, 5.102.4, 5.102.3, 5.102.2, 5.102.1, 5.102.0, 5.101.4, 5.101.3, 5.101.2, 5.101.1, 5.101.0, 5.100.14, 5.100.13, 5.100.12, 5.100.11, 5.100.9, 5.100.8, 5.100.7, 5.100.6, 5.100.5, 5.100.4, 5.100.3, 5.100.2, 5.100.0, 5.99.2, 5.99.1, 5.99.0, 5.98.0, 5.97.0, 5.96.2, 5.96.1, 5.96.0, 5.95.2, 5.95.1, 5.95.0, 5.94.5, 5.94.4, 5.91.2, 5.91.0
+
+[//]: # 'Example'
+
+```tsx
+const projectsQuery = useQuery(() => ({
+  queryKey: ['projects', page()],
+  queryFn: () => fetchProjects(page()),
+}))
+```
+
+[//]: # 'Example'
+[//]: # 'Example2'
+
+```tsx
+import { createSignal, Switch, Match, Show, For } from 'solid-js'
+import { keepPreviousData, useQuery } from '@tanstack/solid-query'
+
+function Todos() {
+  const [page, setPage] = createSignal(0)
+
+  const fetchProjects = (page = 0) =>
+    fetch('/api/projects?page=' + page).then((res) => res.json())
+
+  const projectsQuery = useQuery(() => ({
+    queryKey: ['projects', page()],
+    queryFn: () => fetchProjects(page()),
+    placeholderData: keepPreviousData,
+  }))
+
+  return (
+    <div>
+      <Switch>
+        <Match when={projectsQuery.isPending}>
+          <div>Loading...</div>
+        </Match>
+        <Match when={projectsQuery.isError}>
+          <div>Error: {projectsQuery.error.message}</div>
+        </Match>
+        <Match when={projectsQuery.isSuccess}>
+          <div>
+            <For each={projectsQuery.data.projects}>
+              {(project) => <p>{project.name}</p>}
+            </For>
+          </div>
+        </Match>
+      </Switch>
+      <span>Current Page: {page() + 1}</span>
+      <button
+        onClick={() => setPage((old) => Math.max(old - 1, 0))}
+        disabled={page() === 0}
+      >
+        Previous Page
+      </button>
+      <button
+        onClick={() => {
+          if (!projectsQuery.isPlaceholderData && projectsQuery.data?.hasMore) {
+            setPage((old) => old + 1)
+          }
+        }}
+        // Disable the Next Page button until we know a next page is available
+        disabled={
+          projectsQuery.isPlaceholderData || !projectsQuery.data?.hasMore
+        }
+      >
+        Next Page
+      </button>
+      <Show when={projectsQuery.isFetching}>
+        <span> Loading...</span>
+      </Show>
+    </div>
+  )
+}
+```
+
+[//]: # 'Example2'
