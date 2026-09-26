@@ -31,6 +31,7 @@ from urllib.parse import urlsplit
 
 from engine.readers import Item, _markup, register
 from engine.readers.mdheading import _document, _split_title
+from engine.readers.mdsite import _SITEMAP
 
 _LOC = re.compile(r"<loc>\s*([^<\s]+)\s*</loc>")
 _LINK = re.compile(r"\]\((https://[^)\s#?]+)[^)]*\)")
@@ -154,6 +155,21 @@ def mdfile(source: dict, ctx) -> list[Item]:
     name = _markup.slug(urlsplit(page).path)
 
     def make():
-        return _document(ctx, source["url"], page, source.get("version", ""))
+        url, version = source["url"], source.get("version", "")
+        text = ctx.text(url)
+        _markup.refuse_html(text, url)
+        meta, rest = _markup.front_matter(text)
+        if not meta.get("title"):
+            # Без назви в шапці — рівно те, що робить _document, лише без другого
+            # завантаження того самого файла.
+            title, rest = _split_title(_SITEMAP.sub("\n", rest))
+        else:
+            # Запис блогу tanstack.com тримає назву в шапці YAML, а текст починає
+            # картинкою чи одразу підрозділом: з першого заголовка назвою ставав
+            # «How to install», а сам підрозділ зникав із тексту.
+            title = meta["title"]
+        body = _markup.markdown_body(rest)
+        _markup.require(title, body, url, min_chars=1)
+        return _markup.document(title, page, ctx.stamp, body, version)
 
     return [Item(id=f"{source['id']}/{name}", file=f"{source['id']}--{name}.txt", make=make)]
