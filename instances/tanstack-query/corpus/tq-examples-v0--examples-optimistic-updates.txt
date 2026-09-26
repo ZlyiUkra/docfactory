@@ -1,0 +1,146 @@
+# Example: optimistic-updates
+# джерело: https://github.com/TanStack/query/tree/v0.4.3/examples/optimistic-updates
+# отримано: 2026-09-26
+# версія: 0.4.3
+
+## Example
+
+To run this example:
+
+- `npm install` or `yarn`
+- `npm run dev` or `yarn dev`
+
+## libs/fetch.js
+
+```js
+import fetch from 'isomorphic-unfetch'
+
+export default async function (...args) {
+  const res = await fetch(...args)
+  return await res.json()
+}
+```
+
+## package.json
+
+```json
+{
+  "name": "basic",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "isomorphic-unfetch": "3.0.0",
+    "next": "9.1.1",
+    "react-query": "latest"
+  },
+  "scripts": {
+    "dev": "next",
+    "start": "next start",
+    "build": "next build"
+  }
+}
+```
+
+## pages/api/data.js
+
+```js
+const data = []
+
+function shouldFail() {
+  return Math.random() > 0.7
+}
+
+export default (req, res) => {
+  if (req.method === 'POST') {
+    const body = JSON.parse(req.body)
+
+    // sometimes it will fail, this will cause a regression on the UI
+
+    if (shouldFail()) {
+      throw new Error('Could not add item!')
+    }
+
+    data.push(body.text.toUpperCase())
+    res.json(data)
+    return
+  }
+
+  setTimeout(() => {
+    res.json(data)
+  }, 300)
+}
+```
+
+## pages/index.js
+
+```js
+import React from 'react'
+import fetch from '../libs/fetch'
+
+import { useQuery, useMutation, setQueryData } from 'react-query'
+
+export default () => {
+  const [text, setText] = React.useState('')
+  const { data, isLoading, isFetching } = useQuery('todos', () =>
+    fetch('/api/data')
+  )
+
+  const [mutatePostTodo] = useMutation(
+    text =>
+      fetch('/api/data', {
+        method: 'POST',
+        body: JSON.stringify({ text }),
+      }),
+    {
+      refetchQueries: ['todos'],
+      // to revalidate the data and ensure the UI doesn't
+      // remain in an incorrect state, ALWAYS trigger a
+      // a refetch of the data, even on failure
+      refetchQueriesOnFailure: true,
+    }
+  )
+
+  async function handleSubmit(event) {
+    event.preventDefault()
+    // mutate current data to optimistically update the UI
+    // the fetch below could fail, so we need to revalidate
+    // regardless
+
+    setQueryData('todos', [...data, text], {
+      shouldRefetch: false,
+    })
+
+    try {
+      // send text to the API
+      await mutatePostTodo(text)
+      setText('')
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  return (
+    <div>
+      <form onSubmit={handleSubmit}>
+        <input
+          type="text"
+          onChange={event => setText(event.target.value)}
+          value={text}
+        />
+        <button>Create</button>
+      </form>
+      <ul>
+        {isLoading ? (
+          'Loading...'
+        ) : (
+          <>
+            {data ? data.map(datum => <li key={datum}>{datum}</li>) : null}
+            <div>{isFetching ? 'Updating in background...' : ' '}</div>
+          </>
+        )}
+      </ul>
+    </div>
+  )
+}
+```

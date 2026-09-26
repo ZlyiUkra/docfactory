@@ -1,0 +1,434 @@
+# Example: react/offline
+# джерело: https://github.com/TanStack/query/tree/@tanstack%2Fquery-core@4.44.0/examples/react/offline
+# отримано: 2026-09-26
+# версія: 4.44.0
+
+## Example
+
+To run this example:
+
+- `npm install`
+- `npm run dev`
+
+## package.json
+
+```json
+{
+  "name": "@tanstack/query-example-react-offline",
+  "private": true,
+  "main": "src/index.jsx",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tanstack/react-location": "^3.7.0",
+    "@tanstack/react-query": "^4.44.0",
+    "@tanstack/react-query-devtools": "^4.44.0",
+    "@tanstack/react-query-persist-client": "^4.44.0",
+    "@tanstack/query-sync-storage-persister": "^4.44.0",
+    "ky": "^0.30.0",
+    "msw": "^0.39.2",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "react-hot-toast": "^2.2.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^2.0.0",
+    "vite": "^3.0.0"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
+```
+
+## src/App.jsx
+
+```jsx
+import * as React from 'react'
+
+import {
+  useQuery,
+  QueryClient,
+  MutationCache,
+  onlineManager,
+  useIsRestoring,
+} from '@tanstack/react-query'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import toast, { Toaster } from 'react-hot-toast'
+
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
+import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister'
+import {
+  Link,
+  Outlet,
+  ReactLocation,
+  Router,
+  useMatch,
+} from '@tanstack/react-location'
+
+import * as api from './api'
+import { movieKeys, useMovie } from './movies'
+
+const persister = createSyncStoragePersister({
+  storage: window.localStorage,
+})
+
+const location = new ReactLocation()
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      cacheTime: 1000 * 60 * 60 * 24, // 24 hours
+      staleTime: 2000,
+      retry: 0,
+    },
+  },
+  // configure global cache callbacks to show toast notifications
+  mutationCache: new MutationCache({
+    onSuccess: (data) => {
+      toast.success(data.message)
+    },
+    onError: (error) => {
+      toast.error(error.message)
+    },
+  }),
+})
+
+// we need a default mutation function so that paused mutations can resume after a page reload
+queryClient.setMutationDefaults(movieKeys.all(), {
+  mutationFn: async ({ id, comment }) => {
+    // to avoid clashes with our optimistic update when an offline mutation continues
+    await queryClient.cancelQueries({ queryKey: movieKeys.detail(id) })
+    return api.updateMovie(id, comment)
+  },
+})
+
+export default function App() {
+  return (
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{ persister }}
+      onSuccess={() => {
+        // resume mutations after initial restore from localStorage was successful
+        queryClient.resumePausedMutations().then(() => {
+          queryClient.invalidateQueries()
+        })
+      }}
+    >
+      <Movies />
+      <ReactQueryDevtools initialIsOpen />
+    </PersistQueryClientProvider>
+  )
+}
+
+function Movies() {
+  const isRestoring = useIsRestoring()
+  return (
+    <Router
+      location={location}
+      routes={[
+        {
+          path: '/',
+          element: <List />,
+        },
+        {
+          path: ':movieId',
+          element: <Detail />,
+          errorElement: <MovieError />,
+          loader: ({ params: { movieId } }) =>
+            queryClient.getQueryData(movieKeys.detail(movieId)) ??
+            // do not load if we are offline or hydrating because it returns a promise that is pending until we go online again
+            // we just let the Detail component handle it
+            (onlineManager.isOnline() && !isRestoring
+              ? queryClient.fetchQuery({
+                  queryKey: movieKeys.detail(movieId),
+                  queryFn: () => api.fetchMovie(movieId),
+                })
+              : undefined),
+        },
+      ]}
+    >
+      <Outlet />
+      <Toaster />
+    </Router>
+  )
+}
+
+function List() {
+  const moviesQuery = useQuery({
+    queryKey: movieKeys.list(),
+    queryFn: api.fetchMovies,
+  })
+
+  if (moviesQuery.isLoading && moviesQuery.isFetching) {
+    return 'Loading...'
+  }
+
+  if (moviesQuery.data) {
+    return (
+      <div>
+        <h1>Movies</h1>
+        <p>
+          Try to mock offline behaviour with the button in the devtools. You can
+          navigate around as long as there is already data in the cache. You'll
+          get a refetch as soon as you go online again.
+        </p>
+        <ul>
+          {moviesQuery.data.movies.map((movie) => (
+            <li key={movie.id}>
+              <Link to={`./${movie.id}`} preload>
+                {movie.title}
+              </Link>
+            </li>
+          ))}
+        </ul>
+        <div>
+          Updated at: {new Date(moviesQuery.data.ts).toLocaleTimeString()}
+        </div>
+        <div>{moviesQuery.isFetching && 'fetching...'}</div>
+      </div>
+    )
+  }
+
+  // query will be in 'idle' fetchStatus while restoring from localStorage
+  return null
+}
+
+function MovieError() {
+  const { error } = useMatch()
+
+  return (
+    <div>
+      <Link to="..">Back</Link>
+      <h1>Couldn't load movie!</h1>
+      <div>{error.message}</div>
+    </div>
+  )
+}
+
+function Detail() {
+  const {
+    params: { movieId },
+  } = useMatch()
+  const { comment, setComment, updateMovie, movieQuery } = useMovie(movieId)
+
+  if (movieQuery.isLoading && movieQuery.isFetching) {
+    return 'Loading...'
+  }
+
+  function submitForm(event) {
+    event.preventDefault()
+
+    updateMovie.mutate({
+      id: movieId,
+      comment,
+    })
+  }
+
+  if (movieQuery.data) {
+    return (
+      <form onSubmit={submitForm}>
+        <Link to="..">Back</Link>
+        <h1>Movie: {movieQuery.data.movie.title}</h1>
+        <p>
+          Try to mock offline behaviour with the button in the devtools, then
+          update the comment. The optimistic update will succeed, but the actual
+          mutation will be paused and resumed once you go online again.
+        </p>
+        <p>
+          You can also reload the page, which will make the persisted mutation
+          resume, as you will be online again when you "come back".
+        </p>
+        <p>
+          <label>
+            Comment: <br />
+            <textarea
+              name="comment"
+              value={comment}
+              onChange={(event) => setComment(event.target.value)}
+            />
+          </label>
+        </p>
+        <button type="submit">Submit</button>
+        <div>
+          Updated at: {new Date(movieQuery.data.ts).toLocaleTimeString()}
+        </div>
+        <div>{movieQuery.isFetching && 'fetching...'}</div>
+        <div>
+          {updateMovie.isPaused
+            ? 'mutation paused - offline'
+            : updateMovie.isLoading && 'updating...'}
+        </div>
+      </form>
+    )
+  }
+
+  if (movieQuery.isPaused) {
+    return "We're offline and have no data to show :("
+  }
+
+  return null
+}
+```
+
+## src/api.js
+
+```js
+import { setupWorker, rest } from 'msw'
+import ky from 'ky'
+
+const movies = [
+  {
+    id: '1',
+    title: 'Guardians of the Galaxy',
+    comment: '',
+  },
+  {
+    id: '2',
+    title: 'Wall-E',
+    comment: '',
+  },
+]
+
+export const fetchMovie = (id) => ky.get(`/movies/${id}`).json()
+export const fetchMovies = () => ky.get('/movies').json()
+export const updateMovie = (id, comment) =>
+  ky.post(`/movies/${id}`, { json: { comment } }).json()
+
+export const worker = setupWorker(
+  ...[
+    rest.get('/movies', (req, res, ctx) => {
+      return res(
+        ctx.delay(1000),
+        ctx.json({
+          ts: Date.now(),
+          movies: movies.map(({ id, title }) => ({ id, title })),
+        }),
+      )
+    }),
+    rest.get('/movies/:id', (req, res, ctx) => {
+      const { id } = req.params
+
+      const movie = movies.find((movie) => movie.id === id)
+      if (!movie) {
+        return res(ctx.status(404, `Movie with id ${id} not found`))
+      }
+
+      return res(
+        ctx.delay(1000),
+        ctx.json({
+          ts: Date.now(),
+          movie,
+        }),
+      )
+    }),
+    rest.post('/movies/:id', (req, res, ctx) => {
+      const { id } = req.params
+      const { comment } = req.body
+
+      movies.forEach((movie) => {
+        if (movie.id === id) {
+          movie.comment = comment.toUpperCase()
+        }
+      })
+
+      return res(
+        ctx.delay(1000),
+        ctx.json({
+          message: `Successfully updated movie ${id}`,
+        }),
+      )
+    }),
+  ],
+)
+```
+
+## src/index.jsx
+
+```jsx
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App'
+import { worker } from './api'
+
+worker.start()
+
+const rootElement = document.getElementById('root')
+ReactDOM.createRoot(rootElement).render(
+  <div style={{ padding: '16px' }}>
+    <App />
+  </div>,
+)
+```
+
+## src/movies.js
+
+```js
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import * as api from './api'
+import * as React from 'react'
+
+export const movieKeys = {
+  all: () => ['movies'],
+  list: () => [...movieKeys.all(), 'list'],
+  details: () => [...movieKeys.all(), 'detail'],
+  detail: (id) => [...movieKeys.details(), id],
+}
+
+export const useMovie = (movieId) => {
+  const queryClient = useQueryClient()
+
+  const movieQuery = useQuery({
+    queryKey: movieKeys.detail(movieId),
+    queryFn: () => api.fetchMovie(movieId),
+  })
+
+  const [comment, setComment] = React.useState()
+
+  const updateMovie = useMutation({
+    mutationKey: movieKeys.detail(movieId),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: movieKeys.detail(movieId) })
+      const previousData = queryClient.getQueryData(movieKeys.detail(movieId))
+
+      // remove local state so that server state is taken instead
+      setComment(undefined)
+
+      queryClient.setQueryData(movieKeys.detail(movieId), {
+        ...previousData,
+        movie: {
+          ...previousData.movie,
+          comment,
+        },
+      })
+
+      return { previousData }
+    },
+    onError: (_, __, context) => {
+      queryClient.setQueryData(movieKeys.detail(movieId), context.previousData)
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: movieKeys.detail(movieId) })
+    },
+  })
+
+  return {
+    comment: comment ?? movieQuery.data?.movie.comment,
+    setComment,
+    updateMovie,
+    movieQuery,
+  }
+}
+```

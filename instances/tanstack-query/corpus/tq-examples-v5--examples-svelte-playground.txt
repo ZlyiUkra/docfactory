@@ -1,0 +1,559 @@
+# Example: svelte/playground
+# джерело: https://github.com/TanStack/query/tree/@tanstack%2Fquery-core@5.103.3/examples/svelte/playground
+# отримано: 2026-09-26
+# версія: 5.103.3
+
+## Example
+
+This example is a rewrite of the React Query playground example.
+
+To run this example:
+
+- `npm install`
+- `npm run dev`
+
+## package.json
+
+```json
+{
+  "name": "@tanstack/query-example-svelte-playground",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tanstack/svelte-query": "^6.2.5",
+    "@tanstack/svelte-query-devtools": "^6.2.5"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-auto": "^7.0.1",
+    "@sveltejs/kit": "^2.70.3",
+    "@sveltejs/vite-plugin-svelte": "^5.1.1",
+    "svelte": "^5.57.1",
+    "svelte-check": "^4.7.6",
+    "typescript": "5.8.3",
+    "vite": "^6.4.1"
+  }
+}
+```
+
+## src/app.html
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%sveltekit.assets%/favicon.png" />
+    <meta name="viewport" content="width=device-width" />
+    %sveltekit.head%
+  </head>
+  <body data-sveltekit-preload-data="hover">
+    <div style="display: contents">%sveltekit.body%</div>
+  </body>
+</html>
+```
+
+## src/lib/stores.svelte.ts
+
+```ts
+export function ref<T>(initial: T) {
+  let value = $state(initial)
+
+  return {
+    get value() {
+      return value
+    },
+    set value(newValue) {
+      value = newValue
+    },
+  }
+}
+
+export const staleTime = ref(1000)
+export const gcTime = ref(3000)
+export const errorRate = ref(0.05)
+export const queryTimeMin = ref(1000)
+export const queryTimeMax = ref(2000)
+
+export const editingIndex = ref<number | null>(null)
+export const views = ref(['', 'fruit', 'grape'])
+
+let initialId = 0
+const initialList = [
+  'apple',
+  'banana',
+  'pineapple',
+  'grapefruit',
+  'dragonfruit',
+  'grapes',
+].map((d) => ({ id: initialId++, name: d, notes: 'These are some notes' }))
+
+export const list = ref(initialList)
+export const id = ref(initialId)
+
+export type Todos = typeof initialList
+export type Todo = Todos[0]
+```
+
+## src/routes/+layout.svelte
+
+```svelte
+<script lang="ts">
+  import '../app.css'
+  import { browser } from '$app/environment'
+  import { QueryClientProvider, QueryClient } from '@tanstack/svelte-query'
+  import { SvelteQueryDevtools } from '@tanstack/svelte-query-devtools'
+
+  const { children } = $props()
+
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        enabled: browser,
+      },
+    },
+  })
+</script>
+
+<svelte:head>
+  <title>Svelte Query Playground Example</title>
+</svelte:head>
+
+<QueryClientProvider client={queryClient}>
+  <div id="app">
+    {@render children()}
+  </div>
+  <SvelteQueryDevtools />
+</QueryClientProvider>
+```
+
+## src/routes/+page.svelte
+
+```svelte
+<script lang="ts">
+  import { useQueryClient } from '@tanstack/svelte-query'
+  import {
+    staleTime,
+    gcTime,
+    errorRate,
+    queryTimeMin,
+    queryTimeMax,
+  } from '../lib/stores.svelte'
+  import App from './App.svelte'
+
+  const queryClient = useQueryClient()
+
+  queryClient.setDefaultOptions({
+    queries: {
+      staleTime: staleTime.value,
+      gcTime: gcTime.value,
+    },
+  })
+</script>
+
+<p>
+  The "staleTime" and "gcTime" durations have been altered in this example to
+  show how query stale-ness and query caching work on a granular level
+</p>
+<div>
+  Stale Time:{' '}
+  <input
+    type="number"
+    min="0"
+    step="1000"
+    bind:value={staleTime.value}
+    style="width: 100px"
+  />
+</div>
+<div>
+  GcTime:{' '}
+  <input
+    type="number"
+    min="0"
+    step="1000"
+    bind:value={gcTime.value}
+    style="width: 100px"
+  />
+</div>
+<br />
+<div>
+  Error Rate:{' '}
+  <input
+    type="number"
+    min="0"
+    max="1"
+    step=".05"
+    bind:value={errorRate.value}
+    style="width: 100px"
+  />
+</div>
+<div>
+  Fetch Time Min:{' '}
+  <input
+    type="number"
+    min="1"
+    step="500"
+    bind:value={queryTimeMin.value}
+    style="width: 100px"
+  />{' '}
+</div>
+<div>
+  Fetch Time Max:{' '}
+  <input
+    type="number"
+    min="1"
+    step="500"
+    bind:value={queryTimeMax.value}
+    style="width: 100px"
+  />
+</div>
+
+<br />
+<App />
+<br />
+```
+
+## src/routes/AddTodo.svelte
+
+```svelte
+<script lang="ts">
+  import { createMutation, useQueryClient } from '@tanstack/svelte-query'
+  import {
+    errorRate,
+    queryTimeMin,
+    queryTimeMax,
+    list,
+    id,
+  } from '$lib/stores.svelte'
+  import type { Todo } from '$lib/stores.svelte'
+
+  const queryClient = useQueryClient()
+
+  let name = $state('')
+
+  const postTodo = async ({ name, notes }: Omit<Todo, 'id'>) => {
+    return new Promise((resolve, reject) => {
+      setTimeout(
+        () => {
+          if (Math.random() < errorRate.value) {
+            return reject(
+              new Error(
+                JSON.stringify(
+                  { postTodo: { name: $state.snapshot(name), notes } },
+                  null,
+                  2,
+                ),
+              ),
+            )
+          }
+          const todo = { name, notes, id: id.value }
+          id.value = id.value + 1
+          list.value.push(todo)
+          resolve(todo)
+        },
+        queryTimeMin.value +
+          Math.random() * (queryTimeMax.value - queryTimeMin.value),
+      )
+    })
+  }
+
+  const addMutation = createMutation(() => ({
+    mutationFn: postTodo,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['todos'] })
+    },
+  }))
+</script>
+
+<div>
+  <input bind:value={name} disabled={addMutation.status === 'pending'} />
+
+  <button
+    onclick={() => addMutation.mutate({ name, notes: name })}
+    disabled={addMutation.status === 'pending' || !name}
+  >
+    Add Todo
+  </button>
+
+  <div>
+    {addMutation.status === 'pending'
+      ? 'Saving...'
+      : addMutation.status === 'error'
+        ? addMutation.error.message
+        : 'Saved!'}
+  </div>
+</div>
+```
+
+## src/routes/App.svelte
+
+```svelte
+<script lang="ts">
+  import { useQueryClient } from '@tanstack/svelte-query'
+  import TodosList from './TodosList.svelte'
+  import EditTodo from './EditTodo.svelte'
+  import AddTodo from './AddTodo.svelte'
+  import { views, editingIndex } from '../lib/stores.svelte'
+
+  const queryClient = useQueryClient()
+</script>
+
+<div>
+  <div>
+    <button onclick={() => queryClient.invalidateQueries()}>
+      Force Refetch All
+    </button>
+  </div>
+  <br />
+  <hr />
+
+  {#each views.value as view}
+    <div>
+      <TodosList initialFilter={view} />
+      <br />
+    </div>
+  {/each}
+
+  <button
+    onclick={() => {
+      views.value.push('')
+    }}
+  >
+    Add Filter List
+  </button>
+  <hr />
+
+  {#if editingIndex.value !== null}
+    <EditTodo />
+    <hr />
+  {/if}
+
+  <AddTodo />
+</div>
+```
+
+## src/routes/EditTodo.svelte
+
+```svelte
+<script lang="ts">
+  import {
+    useQueryClient,
+    createQuery,
+    createMutation,
+  } from '@tanstack/svelte-query'
+  import {
+    errorRate,
+    queryTimeMin,
+    queryTimeMax,
+    list,
+    editingIndex,
+  } from '$lib/stores.svelte'
+  import type { Todo } from '$lib/stores.svelte'
+
+  const queryClient = useQueryClient()
+
+  const fetchTodoById = async ({ id }: { id: number }): Promise<Todo> => {
+    return new Promise((resolve, reject) => {
+      setTimeout(
+        () => {
+          if (Math.random() < errorRate.value) {
+            return reject(
+              new Error(JSON.stringify({ fetchTodoById: { id } }, null, 2)),
+            )
+          }
+          const todo = $state.snapshot(list.value.find((d) => d.id === id))
+          if (!todo) {
+            return reject(
+              new Error(JSON.stringify({ fetchTodoById: { id } }, null, 2)),
+            )
+          }
+          resolve(todo)
+        },
+        queryTimeMin.value +
+          Math.random() * (queryTimeMax.value - queryTimeMin.value),
+      )
+    })
+  }
+
+  function patchTodo(todo?: Todo): Promise<Todo> {
+    console.info('patchTodo', todo)
+    return new Promise((resolve, reject) => {
+      setTimeout(
+        () => {
+          if (Math.random() < errorRate.value) {
+            return reject(
+              new Error(JSON.stringify({ patchTodo: todo }, null, 2)),
+            )
+          }
+          if (!todo) {
+            return reject(
+              new Error(JSON.stringify({ patchTodo: todo }, null, 2)),
+            )
+          }
+          list.value = list.value.map((d) => {
+            if (d.id === todo.id) {
+              return $state.snapshot(todo)
+            }
+            return d
+          })
+          resolve(todo)
+        },
+        queryTimeMin.value +
+          Math.random() * (queryTimeMax.value - queryTimeMin.value),
+      )
+    })
+  }
+
+  const query = createQuery(() => ({
+    queryKey: ['todo', { id: editingIndex.value }],
+    queryFn: () => fetchTodoById({ id: editingIndex.value || 0 }),
+    enabled: editingIndex.value !== null,
+  }))
+
+  const saveMutation = createMutation(() => ({
+    mutationFn: patchTodo,
+    onSuccess: (data) => {
+      // Update `todos` and the individual todo queries when this mutation succeeds
+      queryClient.invalidateQueries({ queryKey: ['todos'] })
+      queryClient.setQueryData(['todo', { id: editingIndex }], data)
+    },
+  }))
+
+  const todo = $derived(query.data)
+
+  const onSave = () => {
+    saveMutation.mutate(todo)
+  }
+
+  const disableEditSave = $derived(
+    query.status === 'pending' || saveMutation.status === 'pending',
+  )
+</script>
+
+<div>
+  <div>
+    {#if query.data}
+      <button onclick={() => (editingIndex.value = null)}>Back</button> Editing
+      Todo "{query.data.name}" (#{editingIndex.value})
+    {/if}
+  </div>
+  {#if query.status === 'pending'}
+    <span>Loading... (Attempt: {query.failureCount + 1})</span>
+  {:else if query.error}
+    <span>
+      Error! <button onclick={() => query.refetch()}>Retry</button>
+    </span>
+  {:else if todo}
+    <label>
+      Name:{' '}
+      <input bind:value={todo.name} disabled={disableEditSave} />
+    </label>
+    <label>
+      Notes:{' '}
+      <input bind:value={todo.notes} disabled={disableEditSave} />
+    </label>
+    <div>
+      <button onclick={onSave} disabled={disableEditSave}> Save </button>
+    </div>
+    <div>
+      {saveMutation.status === 'pending'
+        ? 'Saving...'
+        : saveMutation.status === 'error'
+          ? saveMutation.error.message
+          : 'Saved!'}
+    </div>
+    <div>
+      {#if query.isFetching}
+        <span>
+          Background Refreshing... (Attempt: {query.failureCount + 1})
+        </span>
+      {:else}
+        <span>&nbsp;</span>
+      {/if}
+    </div>
+  {/if}
+</div>
+```
+
+## src/routes/TodosList.svelte
+
+```svelte
+<script lang="ts">
+  import { createQuery } from '@tanstack/svelte-query'
+  import {
+    errorRate,
+    queryTimeMin,
+    queryTimeMax,
+    list,
+    editingIndex,
+  } from '$lib/stores.svelte'
+  import type { Todos } from '$lib/stores.svelte'
+
+  let { initialFilter }: { initialFilter: string } = $props()
+
+  let filter = $state(initialFilter)
+
+  const fetchTodos = async ({ filter }: { filter: string }): Promise<Todos> => {
+    return new Promise((resolve, reject) => {
+      setTimeout(
+        () => {
+          if (Math.random() < errorRate.value) {
+            return reject(
+              new Error(JSON.stringify({ fetchTodos: { filter } }, null, 2)),
+            )
+          }
+          resolve(list.value.filter((d) => d.name.includes(filter)))
+        },
+        queryTimeMin.value +
+          Math.random() * (queryTimeMax.value - queryTimeMin.value),
+      )
+    })
+  }
+
+  const query = createQuery(() => ({
+    queryKey: ['todos', { filter: filter }],
+    queryFn: () => fetchTodos({ filter: filter }),
+  }))
+</script>
+
+<div>
+  <label>
+    Filter:{' '}
+    <input bind:value={filter} />
+  </label>
+</div>
+
+{#if query.status === 'pending'}
+  <span>Loading... (Attempt: {query.failureCount + 1})</span>
+{:else if query.status === 'error'}
+  <span>
+    Error: {query.error.message}
+    <br />
+    <button onclick={() => query.refetch()}>Retry</button>
+  </span>
+{:else}
+  <ul>
+    {#if query.data}
+      {#each query.data as todo}
+        <li>
+          {todo.name}{' '}
+          <button onclick={() => (editingIndex.value = todo.id)}> Edit </button>
+        </li>
+      {/each}
+    {/if}
+  </ul>
+  <div>
+    {#if query.isFetching}
+      <span>
+        Background Refreshing... (Attempt: {query.failureCount + 1})
+      </span>
+    {:else}
+      <span>&nbsp;</span>
+    {/if}
+  </div>
+{/if}
+```

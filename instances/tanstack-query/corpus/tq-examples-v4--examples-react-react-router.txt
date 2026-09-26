@@ -1,0 +1,598 @@
+# Example: react/react-router
+# джерело: https://github.com/TanStack/query/tree/@tanstack%2Fquery-core@4.44.0/examples/react/react-router
+# отримано: 2026-09-26
+# версія: 4.44.0
+
+## React Router Example
+
+To run this example:
+
+- `npm install`
+- `npm run dev`
+
+## package.json
+
+```json
+{
+  "name": "@tanstack/query-example-react-router",
+  "private": true,
+  "main": "src/index.jsx",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^4.44.0",
+    "@tanstack/react-query-devtools": "^4.44.0",
+    "localforage": "^1.10.0",
+    "match-sorter": "^6.3.1",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "react-router-dom": "^6.4.0",
+    "rooks": "^6.4.3",
+    "sort-by": "^1.2.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^2.0.0",
+    "vite": "^3.0.0"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
+```
+
+## src/contacts.js
+
+```js
+import localforage from 'localforage'
+import { matchSorter } from 'match-sorter'
+import sortBy from 'sort-by'
+
+const seed = async () => {
+  const initialData = [
+    {
+      avatar: 'https://avatars.githubusercontent.com/u/5580297?v=4',
+      createdAt: 1660978713047,
+      favorite: false,
+      first: 'Tanner',
+      id: 'usupkc1',
+      last: 'Linsley',
+      notes: 'Created React Query',
+      twitter: '@tannerlinsley',
+    },
+    {
+      avatar: 'https://avatars.githubusercontent.com/u/1021430',
+      createdAt: 1660979124264,
+      favorite: false,
+      first: 'Dominik',
+      id: 'kvvztl7',
+      last: 'D',
+      notes: 'Maintains React Query',
+      twitter: '@tkdodo',
+    },
+  ]
+  const contacts = await localforage.getItem('contacts')
+  if (!contacts) {
+    set(initialData)
+  }
+}
+
+seed()
+
+export async function getContacts(query) {
+  await fakeNetwork(`getContacts:${query}`)
+  let contacts = await localforage.getItem('contacts')
+  if (!contacts) contacts = []
+  if (query) {
+    contacts = matchSorter(contacts, query, { keys: ['first', 'last'] })
+  }
+  return contacts.sort(sortBy('last', 'createdAt'))
+}
+
+export async function createContact() {
+  await fakeNetwork()
+  let id = Math.random().toString(36).substring(2, 9)
+  let contact = { id, createdAt: Date.now() }
+  let contacts = await getContacts()
+  contacts.unshift(contact)
+  await set(contacts)
+  return contact
+}
+
+export async function getContact(id) {
+  await fakeNetwork(`contact:${id}`)
+  let contacts = await localforage.getItem('contacts')
+  let contact = contacts.find((contact) => contact.id === id)
+  return contact ?? null
+}
+
+export async function updateContact(id, updates) {
+  await fakeNetwork()
+  let contacts = await localforage.getItem('contacts')
+  let contact = contacts.find((contact) => contact.id === id)
+  if (!contact) throw new Error('No contact found for', id)
+  Object.assign(contact, updates)
+  await set(contacts)
+  return contact
+}
+
+export async function deleteContact(id) {
+  let contacts = await localforage.getItem('contacts')
+  let index = contacts.findIndex((contact) => contact.id === id)
+  if (index > -1) {
+    contacts.splice(index, 1)
+    await set(contacts)
+    return true
+  }
+  return false
+}
+
+function set(contacts) {
+  return localforage.setItem('contacts', contacts)
+}
+
+async function fakeNetwork() {
+  return new Promise((res) => {
+    setTimeout(res, Math.random() * 800)
+  })
+}
+```
+
+## src/error-page.jsx
+
+```jsx
+import * as React from 'react'
+import { useRouteError } from 'react-router-dom'
+
+export default function ErrorPage() {
+  const error = useRouteError()
+  console.error(error)
+
+  return (
+    <div id="error-page">
+      <h1>Oops!</h1>
+      <p>Sorry, an unexpected error has occurred.</p>
+      <p>
+        <i>{error.statusText || error.message}</i>
+      </p>
+    </div>
+  )
+}
+```
+
+## src/index.jsx
+
+```jsx
+import * as React from 'react'
+import * as ReactDOM from 'react-dom/client'
+import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+
+import './index.css'
+
+import ErrorPage from './error-page'
+import Root, { loader as rootLoader, action as rootAction } from './routes/root'
+import Contact, {
+  loader as contactLoader,
+  action as contactAction,
+} from './routes/contact'
+import EditContact, { action as editAction } from './routes/edit'
+import { action as destroyAction } from './routes/destroy'
+import Index from './routes/index'
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 10,
+    },
+  },
+})
+
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <Root />,
+    errorElement: <ErrorPage />,
+    loader: rootLoader(queryClient),
+    action: rootAction(queryClient),
+    children: [
+      {
+        index: true,
+        element: <Index />,
+      },
+      {
+        path: 'contacts/:contactId',
+        element: <Contact />,
+        loader: contactLoader(queryClient),
+        action: contactAction(queryClient),
+      },
+      {
+        path: 'contacts/:contactId/edit',
+        element: <EditContact />,
+        loader: contactLoader(queryClient),
+        action: editAction(queryClient),
+      },
+      {
+        path: 'contacts/:contactId/destroy',
+        element: <EditContact />,
+        action: destroyAction(queryClient),
+        errorElement: <div>Oops! There was an error.</div>,
+      },
+    ],
+  },
+])
+
+const rootElement = document.getElementById('root')
+ReactDOM.createRoot(rootElement).render(
+  <React.StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+      <ReactQueryDevtools position="bottom-right" />
+    </QueryClientProvider>
+  </React.StrictMode>,
+)
+```
+
+## src/routes/contact.jsx
+
+```jsx
+import * as React from 'react'
+import { Form, useFetcher, useParams } from 'react-router-dom'
+import { getContact, updateContact } from '../contacts'
+import { useQuery } from '@tanstack/react-query'
+
+const contactDetailQuery = (id) => ({
+  queryKey: ['contacts', 'detail', id],
+  queryFn: async () => {
+    const contact = await getContact(id)
+    if (!contact) {
+      throw new Response('', {
+        status: 404,
+        statusText: 'Not Found',
+      })
+    }
+    return contact
+  },
+})
+
+export const loader =
+  (queryClient) =>
+  async ({ params }) => {
+    const query = contactDetailQuery(params.contactId)
+    return (
+      queryClient.getQueryData(query.queryKey) ??
+      (await queryClient.fetchQuery(query))
+    )
+  }
+
+export const action =
+  (queryClient) =>
+  async ({ request, params }) => {
+    let formData = await request.formData()
+    const contact = await updateContact(params.contactId, {
+      favorite: formData.get('favorite') === 'true',
+    })
+    await queryClient.invalidateQueries({ queryKey: ['contacts'] })
+    return contact
+  }
+
+export default function Contact() {
+  const params = useParams()
+  const { data: contact } = useQuery(contactDetailQuery(params.contactId))
+
+  return (
+    <div id="contact">
+      <div>
+        <img key={contact.avatar} src={contact.avatar || null} />
+      </div>
+
+      <div>
+        <h1>
+          {contact.first || contact.last ? (
+            <>
+              {contact.first} {contact.last}
+            </>
+          ) : (
+            <i>No Name</i>
+          )}{' '}
+          <Favorite contact={contact} />
+        </h1>
+
+        {contact.twitter && (
+          <p>
+            <a target="_blank" href={`https://twitter.com/${contact.twitter}`}>
+              {contact.twitter}
+            </a>
+          </p>
+        )}
+
+        {contact.notes && <p>{contact.notes}</p>}
+
+        <div>
+          <Form action="edit">
+            <button type="submit">Edit</button>
+          </Form>
+          <Form
+            method="post"
+            action="destroy"
+            onSubmit={(event) => {
+              // eslint-disable-next-line no-restricted-globals
+              if (!confirm('Please confirm you want to delete this record.')) {
+                event.preventDefault()
+              }
+            }}
+          >
+            <button type="submit">Delete</button>
+          </Form>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Favorite({ contact }) {
+  const fetcher = useFetcher()
+  let favorite = contact.favorite
+  if (fetcher.formData) {
+    favorite = fetcher.formData.get('favorite') === 'true'
+  }
+
+  return (
+    <fetcher.Form method="post">
+      <button
+        name="favorite"
+        value={favorite ? 'false' : 'true'}
+        aria-label={favorite ? 'Remove from favorites' : 'Add to favorites'}
+      >
+        {favorite ? '★' : '☆'}
+      </button>
+    </fetcher.Form>
+  )
+}
+```
+
+## src/routes/destroy.jsx
+
+```jsx
+import { redirect } from 'react-router-dom'
+import { deleteContact } from '../contacts'
+
+export const action =
+  (queryClient) =>
+  async ({ params }) => {
+    await deleteContact(params.contactId)
+    queryClient.invalidateQueries({ queryKey: ['contacts'] })
+    return redirect('/')
+  }
+```
+
+## src/routes/edit.jsx
+
+```jsx
+import * as React from 'react'
+import { Form, useLoaderData, redirect, useNavigate } from 'react-router-dom'
+
+import { updateContact } from '../contacts'
+
+export const action =
+  (queryClient) =>
+  async ({ request, params }) => {
+    const formData = await request.formData()
+    const updates = Object.fromEntries(formData)
+    await updateContact(params.contactId, updates)
+    queryClient.invalidateQueries({ queryKey: ['contacts'] })
+    return redirect(`/contacts/${params.contactId}`)
+  }
+
+export default function Edit() {
+  const contact = useLoaderData()
+  const navigate = useNavigate()
+
+  return (
+    <Form method="post" id="contact-form">
+      <p>
+        <span>Name</span>
+        <input
+          placeholder="First"
+          aria-label="First name"
+          type="text"
+          name="first"
+          defaultValue={contact.first}
+        />
+        <input
+          placeholder="Last"
+          aria-label="Last name"
+          type="text"
+          name="last"
+          defaultValue={contact.last}
+        />
+      </p>
+      <label>
+        <span>Twitter</span>
+        <input
+          type="text"
+          name="twitter"
+          placeholder="@jack"
+          defaultValue={contact.twitter}
+        />
+      </label>
+      <label>
+        <span>Avatar URL</span>
+        <input
+          placeholder="https://example.com/avatar.jpg"
+          aria-label="Avatar URL"
+          type="text"
+          name="avatar"
+          defaultValue={contact.avatar}
+        />
+      </label>
+      <label>
+        <span>Notes</span>
+        <textarea name="notes" defaultValue={contact.notes} rows={6} />
+      </label>
+      <p>
+        <button type="submit">Save</button>
+        <button
+          type="button"
+          onClick={() => {
+            navigate(-1)
+          }}
+        >
+          Cancel
+        </button>
+      </p>
+    </Form>
+  )
+}
+```
+
+## src/routes/index.jsx
+
+```jsx
+import * as React from 'react'
+
+export default function Index() {
+  return (
+    <p id="zero-state">
+      This is a demo for integrating React Router with React Query.
+      <br />
+      Check out{' '}
+      <a href="https://reactrouter.com/">
+        the docs at reactrouter.com
+      </a> and{' '}
+      <a href="https://tanstack.com/query/v4/docs/overview">
+        the docs at tanstack.com
+      </a>
+      .
+    </p>
+  )
+}
+```
+
+## src/routes/root.jsx
+
+```jsx
+import * as React from 'react'
+import {
+  Outlet,
+  useLoaderData,
+  Form,
+  NavLink,
+  useNavigation,
+  useSubmit,
+} from 'react-router-dom'
+import { useDebounce } from 'rooks'
+
+import { createContact, getContacts } from '../contacts'
+import { useQuery, useIsFetching } from '@tanstack/react-query'
+
+const contactListQuery = (q) => ({
+  queryKey: ['contacts', 'list', q ?? 'all'],
+  queryFn: () => getContacts(q),
+})
+
+export const loader =
+  (queryClient) =>
+  async ({ request }) => {
+    const url = new URL(request.url)
+    const q = url.searchParams.get('q')
+    if (!queryClient.getQueryData(contactListQuery(q).queryKey)) {
+      await queryClient.fetchQuery(contactListQuery(q))
+    }
+    return { q }
+  }
+
+export const action = (queryClient) => async () => {
+  const contact = await createContact()
+  queryClient.invalidateQueries({ queryKey: ['contacts', 'list'] })
+  return contact
+}
+
+export default function Root() {
+  const { q } = useLoaderData()
+  const { data: contacts } = useQuery(contactListQuery(q))
+  const searching = useIsFetching(['contacts', 'list']) > 0
+  const navigation = useNavigation()
+  const submit = useSubmit()
+
+  const debouncedSubmit = useDebounce(submit, 500)
+
+  return (
+    <>
+      <div id="sidebar">
+        <h1>React Router Contacts</h1>
+        <div>
+          <form id="search-form" role="search">
+            <input
+              id="q"
+              aria-label="Search contacts"
+              placeholder="Search"
+              type="search"
+              name="q"
+              key={q}
+              autoFocus
+              defaultValue={q}
+              className={searching ? 'loading' : ''}
+              onChange={(event) => {
+                debouncedSubmit(event.currentTarget.form)
+              }}
+            />
+            <div id="search-spinner" aria-hidden hidden={!searching} />
+            <div className="sr-only" aria-live="polite"></div>
+          </form>
+          <Form method="post">
+            <button type="submit">New</button>
+          </Form>
+        </div>
+        <nav>
+          {contacts.length ? (
+            <ul>
+              {contacts.map((contact) => (
+                <li key={contact.id}>
+                  <NavLink
+                    to={`contacts/${contact.id}`}
+                    className={({ isActive, isPending }) =>
+                      isActive ? 'active' : isPending ? 'pending' : ''
+                    }
+                  >
+                    {contact.first || contact.last ? (
+                      <>
+                        {contact.first} {contact.last}
+                      </>
+                    ) : (
+                      <i>No Name</i>
+                    )}{' '}
+                    {contact.favorite && <span>★</span>}
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>
+              <i>No contacts</i>
+            </p>
+          )}
+        </nav>
+      </div>
+      <div
+        id="detail"
+        className={navigation.state === 'loading' ? 'loading' : ''}
+      >
+        <Outlet />
+      </div>
+    </>
+  )
+}
+```

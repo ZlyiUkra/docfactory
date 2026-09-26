@@ -1,0 +1,129 @@
+# Example: auto-refetching
+# джерело: https://github.com/TanStack/query/tree/v1.5.10/examples/auto-refetching
+# отримано: 2026-09-26
+# версія: 1.5.10
+
+## Example
+
+To run this example:
+
+- `npm install` or `yarn`
+- `npm run dev` or `yarn dev`
+
+## package.json
+
+```json
+{
+  "name": "refetch-interval",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^0.19.2",
+    "isomorphic-unfetch": "3.0.0",
+    "next": "9.3.2",
+    "react": "16.13.0",
+    "react-dom": "16.13.0",
+    "react-query": "latest"
+  },
+  "scripts": {
+    "dev": "next",
+    "start": "next start",
+    "build": "next build"
+  }
+}
+```
+
+## pages/api/data.js
+
+```js
+// an simple endpoint for getting current list
+let list = ['Item 1', 'Item 2', 'Item 3']
+
+export default (req, res) => {
+  if (req.query.add) {
+    if (!list.includes(req.query.add)) {
+      list.push(req.query.add)
+    }
+  } else if (req.query.clear) {
+    list = []
+  }
+  res.json(list)
+}
+```
+
+## pages/index.js
+
+```js
+import React from 'react'
+import axios from 'axios'
+
+//
+
+import { useQuery, useMutation, queryCache } from 'react-query'
+
+export default () => {
+  const [value, setValue] = React.useState('')
+
+  const { status, data, error } = useQuery(
+    'todos',
+    async () => {
+      const { data } = await axios.get('/api/data')
+      return data
+    },
+    {
+      // Refetch the data every second
+      refetchInterval: 1000,
+    }
+  )
+
+  const [mutateAddTodo] = useMutation(
+    value => fetch(`/api/data?add=${value}`),
+    {
+      onSuccess: () => queryCache.refetchQueries('todos'),
+    }
+  )
+
+  const [mutateClear] = useMutation(value => fetch(`/api/data?clear=1`), {
+    onSuccess: () => queryCache.refetchQueries('todos'),
+  })
+
+  if (status === 'loading') return <h1>Loading...</h1>
+  if (status === 'error') return <span>Error: {error.message}</span>
+
+  return (
+    <div>
+      <h1>Auto Refetch with stale-time set to 1s)</h1>
+      <p>
+        This example is best experienced on your own machine, where you can open
+        multiple tabs to the same localhost server and see your changes
+        propagate between the two.
+      </p>
+      <h2>Todo List</h2>
+      <form
+        onSubmit={async ev => {
+          ev.preventDefault()
+          try {
+            await mutateAddTodo(value)
+            setValue('')
+          } catch {}
+        }}
+      >
+        <input
+          placeholder="enter something"
+          value={value}
+          onChange={ev => setValue(ev.target.value)}
+        />
+      </form>
+      <ul>
+        {data.map(item => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+      <div>
+        <button onClick={mutateClear}>Clear All</button>
+      </div>
+    </div>
+  )
+}
+```

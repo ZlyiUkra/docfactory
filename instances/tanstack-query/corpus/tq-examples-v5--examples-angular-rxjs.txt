@@ -1,0 +1,235 @@
+# Example: angular/rxjs
+# джерело: https://github.com/TanStack/query/tree/@tanstack%2Fquery-core@5.103.3/examples/angular/rxjs
+# отримано: 2026-09-26
+# версія: 5.103.3
+
+## TanStack Query Angular RxJS Example
+
+To run this example:
+
+- `pnpm install`
+- `pnpm start`
+
+## package.json
+
+```json
+{
+  "name": "@tanstack/query-example-angular-rxjs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development"
+  },
+  "dependencies": {
+    "@angular/common": "^20.0.0",
+    "@angular/compiler": "^20.0.0",
+    "@angular/core": "^20.0.0",
+    "@angular/forms": "^20.0.0",
+    "@angular/platform-browser": "^20.0.0",
+    "@tanstack/angular-query-experimental": "^5.103.3",
+    "rxjs": "^7.8.2",
+    "tslib": "^2.8.1",
+    "zone.js": "0.15.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^20.0.0",
+    "@angular/cli": "^20.0.0",
+    "@angular/compiler-cli": "^20.0.0",
+    "typescript": "5.8.3"
+  }
+}
+```
+
+## src/app/api/autocomplete-mock.interceptor.ts
+
+```ts
+import { HttpResponse } from '@angular/common/http'
+import { delayWhen, of, timer } from 'rxjs'
+import type { Observable } from 'rxjs'
+import type { HttpEvent, HttpInterceptorFn } from '@angular/common/http'
+
+export const autocompleteMockInterceptor: HttpInterceptorFn = (
+  req,
+  next,
+): Observable<HttpEvent<any>> => {
+  const { url } = req
+
+  if (url.includes('/api/autocomplete')) {
+    const term = new URLSearchParams(req.url.split('?')[1]).get('term') || ''
+
+    const data = [
+      'C#',
+      'C++',
+      'Go',
+      'Java',
+      'JavaScript',
+      'Kotlin',
+      'Lisp',
+      'Objective-C',
+      'PHP',
+      'Perl',
+      'Python',
+      'R',
+      'Ruby',
+      'Rust',
+      'SQL',
+      'Scala',
+      'Shell',
+      'Swift',
+      'TypeScript',
+    ]
+
+    // Simulate network latency with a random delay between 100ms and 500ms
+    const delayDuration = Math.random() * (500 - 100) + 100
+    return of(
+      new HttpResponse({
+        status: 200,
+        body: {
+          suggestions: data.filter((item) =>
+            item.toLowerCase().startsWith(term.toLowerCase()),
+          ),
+        },
+      }),
+    ).pipe(delayWhen(() => timer(delayDuration)))
+  }
+  return next(req)
+}
+```
+
+## src/app/app.component.ts
+
+```ts
+import { ChangeDetectionStrategy, Component } from '@angular/core'
+import { ExampleComponent } from './components/example.component'
+
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'app-root',
+  template: `<example />`,
+  imports: [ExampleComponent],
+})
+export class AppComponent {}
+```
+
+## src/app/components/example.component.html
+
+```html
+<h1>Search for a programming language</h1>
+
+<form [formGroup]="form">
+  <input type="text" formControlName="term" />
+
+  @if (query.isSuccess() && query.data().suggestions.length) {
+    <ul>
+      @for (suggestion of query.data().suggestions; track suggestion) {
+        <li>{{ suggestion }}</li>
+      }
+    </ul>
+  }
+</form>
+```
+
+## src/app/components/example.component.ts
+
+```ts
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core'
+import { toSignal } from '@angular/core/rxjs-interop'
+import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms'
+import {
+  injectQuery,
+  keepPreviousData,
+} from '@tanstack/angular-query-experimental'
+import { debounceTime, distinctUntilChanged, lastValueFrom } from 'rxjs'
+import { AutocompleteService } from '../services/autocomplete-service'
+
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'example',
+  templateUrl: './example.component.html',
+  imports: [ReactiveFormsModule],
+})
+export class ExampleComponent {
+  readonly #autocompleteService = inject(AutocompleteService)
+  readonly #fb = inject(NonNullableFormBuilder)
+
+  readonly form = this.#fb.group({
+    term: '',
+  })
+
+  readonly term = toSignal(
+    this.form.controls.term.valueChanges.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+    ),
+    { initialValue: '' },
+  )
+
+  readonly query = injectQuery(() => ({
+    queryKey: ['suggestions', this.term()],
+    queryFn: () => {
+      return lastValueFrom(
+        this.#autocompleteService.getSuggestions(this.term()),
+      )
+    },
+    placeholderData: keepPreviousData,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  }))
+}
+```
+
+## src/app/services/autocomplete-service.ts
+
+```ts
+import { HttpClient } from '@angular/common/http'
+import { Injectable, inject } from '@angular/core'
+import { of } from 'rxjs'
+
+interface Response {
+  suggestions: Array<string>
+}
+
+@Injectable({
+  providedIn: 'root',
+})
+export class AutocompleteService {
+  readonly #http = inject(HttpClient)
+
+  getSuggestions = (term: string = '') =>
+    term.trim() === ''
+      ? of({ suggestions: [] })
+      : this.#http.get<Response>(
+          `/api/autocomplete?term=${encodeURIComponent(term)}`,
+        )
+}
+```
+
+## src/index.html
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>TanStack Query Angular RxJS example</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  </head>
+  <body>
+    <app-root></app-root>
+  </body>
+</html>
+```
+
+## src/main.ts
+
+```ts
+import { bootstrapApplication } from '@angular/platform-browser'
+import { appConfig } from './app/app.config'
+import { AppComponent } from './app/app.component'
+
+bootstrapApplication(AppComponent, appConfig).catch((err) => console.error(err))
+```

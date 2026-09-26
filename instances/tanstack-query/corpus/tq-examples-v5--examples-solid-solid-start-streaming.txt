@@ -1,0 +1,956 @@
+# Example: solid/solid-start-streaming
+# джерело: https://github.com/TanStack/query/tree/@tanstack%2Fquery-core@5.103.3/examples/solid/solid-start-streaming
+# отримано: 2026-09-26
+# версія: 5.103.3
+
+## SolidStart
+
+Everything you need to build a Solid project, powered by `solid-start`;
+
+## Creating a project
+
+```bash
+# create a new project in the current directory
+npm init solid@latest
+
+# create a new project in my-app
+npm init solid@latest my-app
+```
+
+## Developing
+
+Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+
+```bash
+npm run dev
+
+# or start the server and open the app in a new browser tab
+npm run dev -- --open
+```
+
+## Building
+
+Solid apps are built with _presets_, which optimise your project for deployment to different environments.
+
+By default, `npm run build` will generate a Node app that you can run with `npm start`. To use a different preset, add it to the `devDependencies` in `package.json` and specify in your `app.config.js`.
+
+## This project was created with the Solid CLI
+
+## package.json
+
+```json
+{
+  "name": "@tanstack/query-example-solid-start-streaming",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vinxi dev",
+    "build": "vinxi build",
+    "start": "vinxi start",
+    "version": "vinxi version"
+  },
+  "dependencies": {
+    "@solidjs/meta": "^0.29.4",
+    "@solidjs/router": "^0.15.3",
+    "@solidjs/start": "^1.1.3",
+    "@tanstack/solid-query": "^5.103.3",
+    "@tanstack/solid-query-devtools": "^5.103.3",
+    "solid-js": "^1.9.15",
+    "vinxi": "^0.5.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
+```
+
+## src/app.tsx
+
+```tsx
+// @refresh reload
+import { MetaProvider, Title } from '@solidjs/meta'
+import { A, Router } from '@solidjs/router'
+import { FileRoutes } from '@solidjs/start/router'
+import { Suspense } from 'solid-js'
+import { SolidQueryDevtools } from '@tanstack/solid-query-devtools'
+import { QueryClient, QueryClientProvider } from '@tanstack/solid-query'
+import './app.css'
+
+export default function App() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        staleTime: 5000,
+      },
+    },
+  })
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <SolidQueryDevtools />
+      <Router
+        root={(props) => (
+          <MetaProvider>
+            <Title>SolidStart - Basic</Title>
+            <a href="/">Home</a>
+            <a href="/streamed">Streamed</a>
+            <a href="/deferred">Deferred</a>
+            <a href="/mixed">Mixed</a>
+            <a href="/with-error">With Error</a>
+            <a href="/hydration">Hydration</a>
+            <A preload={true} href="/prefetch">
+              Prefetch
+            </A>
+            <a href="/batch-methods">Batching Methods</a>
+            <Suspense>{props.children}</Suspense>
+          </MetaProvider>
+        )}
+      >
+        <FileRoutes />
+      </Router>
+    </QueryClientProvider>
+  )
+}
+```
+
+## src/components/example.tsx
+
+```tsx
+import type { ParentComponent } from 'solid-js'
+
+export interface ExampleProps {
+  title: string
+  deferStream?: boolean
+  sleep?: number
+}
+
+export const Example: ParentComponent<ExampleProps> = (props) => {
+  return (
+    <div class="example">
+      <div class="example__header">
+        <div class="example__title">{props.title}</div>
+        <div>[deferStream={String(props.deferStream || false)}]</div>
+        <div style={{ 'margin-left': '10px' }}>
+          [simulated sleep: {props.sleep || 0}ms]
+        </div>
+      </div>
+
+      {props.children}
+    </div>
+  )
+}
+```
+
+## src/components/post-viewer.tsx
+
+```tsx
+import { useQuery } from '@tanstack/solid-query'
+import { resetErrorBoundaries } from 'solid-js'
+import { createSignal } from 'solid-js'
+import { For } from 'solid-js'
+import { Example } from './example'
+import { QueryBoundary } from './query-boundary'
+import type { Component } from 'solid-js'
+import { fetchPost } from '~/utils/api'
+
+export interface PostViewerProps {
+  deferStream?: boolean
+  sleep?: number
+  simulateError?: boolean
+}
+
+export const PostViewer: Component<PostViewerProps> = (props) => {
+  const [simulateError, setSimulateError] = createSignal(props.simulateError)
+  const [postId, setPostId] = createSignal(1)
+
+  const query = useQuery(() => ({
+    queryKey: ['posts', postId()],
+    queryFn: () =>
+      fetchPost({
+        postId: postId(),
+        sleep: props.sleep,
+        simulateError:
+          simulateError() || (simulateError() !== false && postId() === 5),
+      }),
+    deferStream: props.deferStream,
+    throwOnError: true,
+  }))
+
+  return (
+    <Example
+      title="Post Query"
+      deferStream={props.deferStream}
+      sleep={props.sleep}
+    >
+      <div style={{ 'margin-top': '20px' }}>
+        <button
+          onClick={() => {
+            setPostId(Math.max(postId() - 1, 1))
+            resetErrorBoundaries()
+          }}
+        >
+          Previous Post
+        </button>
+        <button
+          onClick={() => {
+            setPostId(Math.min(postId() + 1, 100))
+            resetErrorBoundaries()
+          }}
+        >
+          Next Post
+        </button>
+      </div>
+
+      {/* NOTE: without this extra wrapping div, for some reason solid ends up printing two errors... feels like a bug in solid. */}
+      <div>
+        <QueryBoundary
+          query={query}
+          loadingFallback={<div class="loader">loading post...</div>}
+          errorFallback={(err, retry) => (
+            <div>
+              <div class="error">{err.message}</div>
+              <button
+                onClick={() => {
+                  setSimulateError(false)
+                  retry()
+                }}
+              >
+                retry
+              </button>
+            </div>
+          )}
+        >
+          {(posts) => (
+            <For each={posts}>
+              {(post) => (
+                <div style={{ 'margin-top': '20px' }}>
+                  <b>
+                    [post {postId()}] {post.title}
+                  </b>
+                  <p>{post.body}</p>
+                </div>
+              )}
+            </For>
+          )}
+        </QueryBoundary>
+      </div>
+    </Example>
+  )
+}
+```
+
+## src/components/query-boundary.tsx
+
+```tsx
+import { ErrorBoundary, Match, Suspense, Switch, children } from 'solid-js'
+import type { UseQueryResult } from '@tanstack/solid-query'
+import type { JSX } from 'solid-js'
+
+export interface QueryBoundaryProps<T = unknown> {
+  query: UseQueryResult<T, Error>
+
+  /**
+   * Triggered when the data is initially loading.
+   */
+  loadingFallback?: JSX.Element
+
+  /**
+   * Triggered when fetching is complete, but the returned data was falsey.
+   */
+  notFoundFallback?: JSX.Element
+
+  /**
+   * Triggered when the query results in an error.
+   */
+  errorFallback?: (err: Error, retry: () => void) => JSX.Element
+
+  /**
+   * Triggered when fetching is complete, and the returned data is not falsey.
+   */
+  children: (data: Exclude<T, null | false | undefined>) => JSX.Element
+}
+
+/**
+ * Convenience wrapper that handles suspense and errors for queries. Makes the results of query.data available to
+ * children (as a render prop) in a type-safe way.
+ */
+export function QueryBoundary<T>(props: QueryBoundaryProps<T>) {
+  return (
+    <Suspense fallback={props.loadingFallback}>
+      <ErrorBoundary
+        fallback={(err: Error, reset) =>
+          props.errorFallback ? (
+            props.errorFallback(err, async () => {
+              await props.query.refetch()
+              reset()
+            })
+          ) : (
+            <div>
+              <div class="error">{err.message}</div>
+              <button
+                onClick={async () => {
+                  await props.query.refetch()
+                  reset()
+                }}
+              >
+                retry
+              </button>
+            </div>
+          )
+        }
+      >
+        <Switch>
+          {/* <Match when={props.query.isError}>
+            {props.errorFallback ? (
+              props.errorFallback
+            ) : (
+              <div>
+                <div class="error">{props.query.error?.message}</div>
+                <button
+                  onClick={() => {
+                    props.query.refetch();
+                  }}
+                >
+                  retry
+                </button>
+              </div>
+            )}
+          </Match> */}
+
+          <Match when={!props.query.isFetching && !props.query.data}>
+            {props.notFoundFallback ? (
+              props.notFoundFallback
+            ) : (
+              <div>not found</div>
+            )}
+          </Match>
+
+          <Match when={props.query.data}>
+            {props.children(
+              props.query.data as Exclude<T, null | false | undefined>,
+            )}
+          </Match>
+        </Switch>
+      </ErrorBoundary>
+    </Suspense>
+  )
+}
+```
+
+## src/components/user-info.tsx
+
+```tsx
+import { useQuery } from '@tanstack/solid-query'
+import { createSignal } from 'solid-js'
+import { Example } from './example'
+import { QueryBoundary } from './query-boundary'
+import type { Component } from 'solid-js'
+import { fetchUser } from '~/utils/api'
+
+export interface UserInfoProps {
+  deferStream?: boolean
+  sleep?: number
+  simulateError?: boolean
+  staleTime?: number
+  gcTime?: number
+}
+
+export const userInfoQueryOpts = (props?: UserInfoProps) => ({
+  queryKey: ['user'],
+  queryFn: () => fetchUser(props),
+  deferStream: props?.deferStream,
+  staleTime: props?.staleTime,
+  gcTime: props?.gcTime,
+  throwOnError: true,
+})
+
+export const UserInfo: Component<UserInfoProps> = (props) => {
+  const [simulateError, setSimulateError] = createSignal(props.simulateError)
+
+  const query = useQuery(() =>
+    userInfoQueryOpts({ ...props, simulateError: simulateError() }),
+  )
+
+  return (
+    <Example
+      title="User Query"
+      deferStream={props.deferStream}
+      sleep={props.sleep}
+    >
+      <QueryBoundary
+        query={query}
+        loadingFallback={<div class="loader">loading user...</div>}
+        errorFallback={(err, retry) => (
+          <div>
+            <div class="error">{err.message}</div>
+            <button
+              onClick={() => {
+                setSimulateError(false)
+                retry()
+              }}
+            >
+              retry
+            </button>
+          </div>
+        )}
+      >
+        {(user) => (
+          <>
+            <div>id: {user.id}</div>
+            <div>name: {user.name}</div>
+            <div>queryTime: {user.queryTime}</div>
+            <button
+              onClick={() => {
+                query.refetch()
+              }}
+            >
+              refetch
+            </button>
+          </>
+        )}
+      </QueryBoundary>
+    </Example>
+  )
+}
+```
+
+## src/entry-client.tsx
+
+```tsx
+// @refresh reload
+import { mount, StartClient } from '@solidjs/start/client'
+
+const app = document.getElementById('app')
+if (!app) throw new Error('Missing #app element')
+
+mount(() => <StartClient />, app)
+```
+
+## src/entry-server.tsx
+
+```tsx
+// @refresh reload
+import { createHandler, StartServer } from '@solidjs/start/server'
+
+export default createHandler(() => (
+  <StartServer
+    document={({ assets, children, scripts }) => (
+      <html lang="en">
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <link rel="icon" href="/favicon.ico" />
+          {assets}
+        </head>
+        <body>
+          <div id="app">{children}</div>
+          {scripts}
+        </body>
+      </html>
+    )}
+  />
+))
+```
+
+## src/routes/[...404].tsx
+
+```tsx
+import { Title } from '@solidjs/meta'
+import { HttpStatusCode } from '@solidjs/start'
+
+export default function NotFound() {
+  return (
+    <main>
+      <Title>Not Found</Title>
+      <HttpStatusCode code={404} />
+      <h1>Page Not Found</h1>
+      <p>
+        Visit{' '}
+        <a href="https://start.solidjs.com" target="_blank">
+          start.solidjs.com
+        </a>{' '}
+        to learn how to build SolidStart apps.
+      </p>
+    </main>
+  )
+}
+```
+
+## src/routes/batch-methods.tsx
+
+```tsx
+import { notifyManager, useQuery } from '@tanstack/solid-query'
+import { createSignal } from 'solid-js'
+import { QueryBoundary } from '~/components/query-boundary'
+
+function sleep(milliseconds: number) {
+  return new Promise((res) => setTimeout(res, milliseconds))
+}
+
+function spin(milliseconds: number) {
+  const start = performance.now()
+  while (performance.now() - start <= milliseconds) {
+    // do nothing
+  }
+}
+
+async function sayHello(name: string) {
+  console.info('[api] sayHello.start')
+
+  await sleep(500)
+
+  // make the layout shift more obvious, it doesn't always happen
+  console.time('[api] sayHello.spin')
+  spin(20)
+  console.timeEnd('[api] sayHello.spin')
+
+  console.info('[api] sayHello.end')
+  return `Hello ${name}`
+}
+
+export default function BatchMethods() {
+  const [count, setCount] = createSignal(0)
+
+  const hello = useQuery(() => ({
+    queryKey: ['hello', count()] as const,
+    queryFn: ({ queryKey: [_, count] }) => sayHello(`solid ${count}`),
+  }))
+
+  return (
+    <div>
+      <select
+        value="timer"
+        ref={(el) => (el.value = 'timer')} // browser caches form input
+        onInput={(e) => {
+          const type = e.currentTarget.value
+          if (type === 'raf') notifyManager.setScheduler(requestAnimationFrame)
+          if (type === 'tick') notifyManager.setScheduler(queueMicrotask)
+          if (type === 'timer')
+            notifyManager.setScheduler((cb) => setTimeout(cb, 0))
+        }}
+      >
+        <option value="raf">requestAnimationFrame</option>
+        <option value="timer">setTimeout</option>
+        <option value="tick">queueMicrotick</option>
+      </select>
+      <button class="increment" onClick={() => setCount((x) => x + 1)}>
+        Clicks: {count()}
+      </button>
+      <p>
+        <QueryBoundary loadingFallback={'Loading...'} query={hello}>
+          {(data) => <div style={{ 'background-color': 'aqua' }}>{data}</div>}
+        </QueryBoundary>
+      </p>
+      <div style={{ 'background-color': 'red' }}>
+        Something below to demonstrate layout shift
+      </div>
+      <p>
+        Due to the way solidjs handles updates, sometimes the updating of a
+        query results in DOM modifications triggering a rerender twice. This is
+        perceived as a glitch in the layout of the webpage that usually lasts
+        for one frame. By using another batching strategy in the browser,
+        instead of the default setTimeout one, we can mitigate this issue. Try
+        out requestAnimationFrame or queueMicrotick.
+      </p>
+    </div>
+  )
+}
+```
+
+## src/routes/deferred.tsx
+
+```tsx
+import { Title } from '@solidjs/meta'
+import { PostViewer } from '~/components/post-viewer'
+import { UserInfo } from '~/components/user-info'
+
+export default function Deferred() {
+  return (
+    <main>
+      <Title>Solid Query - Deferred</Title>
+
+      <h1>Solid Query - Deferred Example</h1>
+
+      <div class="description">
+        <p>
+          Both queries are configured with deferStream=true, so the server will
+          not start streaming HTML to the client until the queries have
+          resolved. In this case we are not really taking advantage of streaming
+          - this mimics traditional renderAsync + Suspense behavior. Note how
+          the green bar in the devtools is much larger now - the client does not
+          start receiving any information until 2+ seconds (both queries
+          resolve).
+        </p>
+
+        <p>
+          Clients with javascript disabled will see the resolved state for both
+          queries. (try turning off javascript and reloading this page)
+        </p>
+
+        <img
+          class="description_img"
+          src="/imgs/deferred.png"
+          alt="devtools deferred requests"
+        />
+      </div>
+
+      <UserInfo sleep={2000} deferStream />
+
+      <PostViewer sleep={2000} deferStream />
+    </main>
+  )
+}
+```
+
+## src/routes/hydration.tsx
+
+```tsx
+import { useQuery } from '@tanstack/solid-query'
+import { Suspense, createSignal } from 'solid-js'
+import { NoHydration } from 'solid-js/web'
+import { Title } from '@solidjs/meta'
+import type { UseQueryResult } from '@tanstack/solid-query'
+import { fetchUser } from '~/utils/api'
+
+export default function Hydration() {
+  const query = useQuery(() => ({
+    queryKey: ['user'],
+    queryFn: () => fetchUser({ sleep: 500 }),
+    deferStream: true,
+  }))
+
+  const [initialQueryState] = createSignal(JSON.parse(JSON.stringify(query)))
+
+  return (
+    <main>
+      <Title>Solid Query - Hydration</Title>
+
+      <h1>Solid Query - Hydration Example</h1>
+
+      <div class="description">
+        <p>
+          Lists the query state as seen on the server, initial render on the
+          client (right after hydration), and current client value. Ideally, if
+          SSR is setup correctly, these values are exactly the same in all three
+          contexts.
+        </p>
+      </div>
+
+      <button onClick={() => query.refetch()}>Refetch</button>
+
+      <table class="example example--table">
+        <thead>
+          <tr>
+            <th>Context</th>
+            <th>data.name</th>
+            <th>isFetching</th>
+            <th>isFetched</th>
+            <th>isPending</th>
+            <th>isRefetching</th>
+            <th>isLoading</th>
+            <th>isStale</th>
+            <th>isSuccess</th>
+            <th>isError</th>
+            <th>error</th>
+            <th>fetchStatus</th>
+            <th>dataUpdatedAt</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <Suspense>
+            <NoHydration>
+              <QueryStateRow context="server" query={query} />
+            </NoHydration>
+
+            <QueryStateRow
+              context="client (initial render)"
+              query={initialQueryState()!}
+            />
+
+            <QueryStateRow context="client" query={query} />
+          </Suspense>
+        </tbody>
+      </table>
+    </main>
+  )
+}
+
+type QueryState = UseQueryResult<
+  {
+    id: string
+    name: string
+    queryTime: number
+  },
+  Error
+>
+
+const QueryStateRow = (props: { context: string; query: QueryState }) => {
+  return (
+    <tr>
+      <td>{props.context}</td>
+      <td>{props.query.data?.name}</td>
+      <td>{String(props.query.isFetching)}</td>
+      <td>{String(props.query.isFetched)}</td>
+      <td>{String(props.query.isPending)}</td>
+      <td>{String(props.query.isRefetching)}</td>
+      <td>{String(props.query.isLoading)}</td>
+      <td>{String(props.query.isStale)}</td>
+      <td>{String(props.query.isSuccess)}</td>
+      <td>{String(props.query.isError)}</td>
+      <td>{String(props.query.error)}</td>
+      <td>{String(props.query.fetchStatus)}</td>
+      <td>{String(props.query.dataUpdatedAt)}</td>
+    </tr>
+  )
+}
+```
+
+## src/routes/index.tsx
+
+```tsx
+import { Title } from '@solidjs/meta'
+
+export default function Home() {
+  return (
+    <main>
+      <Title>Solid Query v5</Title>
+
+      <h1>Solid Query v5</h1>
+
+      <p>
+        This demo demonstrates how Solid Query can be used in SSR, with
+        streaming support. Use the links in the top left to navigate between the
+        various examples.
+      </p>
+    </main>
+  )
+}
+```
+
+## src/routes/mixed.tsx
+
+```tsx
+import { Title } from '@solidjs/meta'
+import { PostViewer } from '~/components/post-viewer'
+import { UserInfo } from '~/components/user-info'
+
+export default function Mixed() {
+  return (
+    <main>
+      <Title>Solid Query - Mixed</Title>
+
+      <h1>Solid Query - Mixed Example</h1>
+
+      <div class="description">
+        <p>
+          You may want to require that key queries resolve before the initial
+          HTML is streamed to the client, while allowing the rest of your
+          queries to stream to the client as they resolve. A common use case for
+          this is to populate SEO meta tags and/or social graph information for
+          unfurl scenarios such as sharing the page as a link in Slack.
+        </p>
+
+        <p>
+          In this example, the quick (100ms) user query has deferStream set to
+          true, while the more expensive post query (1000ms) is streamed to the
+          client when ready. Clients with javascript disabled will see the
+          resolved state for the user query, and the loading state for the post
+          query. (try turning off javascript and reloading this page)
+        </p>
+      </div>
+
+      <UserInfo deferStream sleep={100} />
+
+      <PostViewer sleep={1000} />
+    </main>
+  )
+}
+```
+
+## src/routes/prefetch.tsx
+
+```tsx
+import { noop, useQueryClient } from '@tanstack/solid-query'
+import { isServer } from 'solid-js/web'
+import { Title } from '@solidjs/meta'
+import { UserInfo, userInfoQueryOpts } from '~/components/user-info'
+
+export const route = {
+  load: () => {
+    const queryClient = useQueryClient()
+    // Prefetching the user info and caching it for 15 seconds.
+    queryClient
+      .query(userInfoQueryOpts({ sleep: 500, gcTime: 15000 }))
+      .catch(noop)
+  },
+}
+
+export default function Prefetch() {
+  return (
+    <main>
+      <Title>Solid Query - Prefetch</Title>
+
+      <h1>Solid Query - Prefetch Example</h1>
+
+      <div class="description">
+        <p>
+          SolidStart now supports link prefetching. This means that when a user
+          hovers over a link, the browser can prefetch the data for that page
+          before the user even clicks on the link. This can make navigating
+          around your app feel much faster.
+        </p>
+        <p>
+          To see this in action, go to the home page and reload the page. Then
+          hover over the "Prefetch" link in the navigation. You should see the
+          user data prefetch in the background and in the devtools. When you
+          click on the link, the page should load instantly.
+        </p>
+      </div>
+
+      <UserInfo sleep={500} />
+    </main>
+  )
+}
+```
+
+## src/routes/streamed.tsx
+
+```tsx
+import { Title } from '@solidjs/meta'
+import { PostViewer } from '~/components/post-viewer'
+import { UserInfo } from '~/components/user-info'
+
+export default function Streamed() {
+  return (
+    <main>
+      <Title>Solid Query - Streamed</Title>
+
+      <h1>Solid Query - Streamed Example</h1>
+
+      <div class="description">
+        <p>
+          HTML is streamed from the server ASAP, reducing key metrics such as
+          TTFB and TTI. Suspended queries are streamed to the client when they
+          resolve on the server. This is represented in your devtools by the
+          green and blue chunks of the waterfall.
+        </p>
+
+        <p>
+          Clients with javascript disabled will see the loading state for both
+          queries. (try turning off javascript and reloading this page)
+        </p>
+
+        <img
+          class="description_img"
+          src="/imgs/streaming.png"
+          alt="devtools streaming request"
+        />
+      </div>
+
+      <UserInfo sleep={2500} />
+
+      <PostViewer sleep={300} />
+    </main>
+  )
+}
+```
+
+## src/routes/with-error.tsx
+
+```tsx
+import { Title } from '@solidjs/meta'
+import { PostViewer } from '~/components/post-viewer'
+import { UserInfo } from '~/components/user-info'
+
+export default function Streamed() {
+  return (
+    <main>
+      <Title>Solid Query - Errors</Title>
+
+      <h1>Solid Query - Errors</h1>
+
+      <div class="description">
+        <p>
+          For more control over error handling, try leveraging the `Switch`
+          component and watching the reactive `query.isError` property. See
+          `components/query-boundary.tsx` for one possible approach.
+        </p>
+      </div>
+
+      <UserInfo sleep={10} deferStream simulateError />
+
+      <PostViewer sleep={3000} deferStream simulateError />
+    </main>
+  )
+}
+```
+
+## src/utils/api.ts
+
+```ts
+interface PostData {
+  userId: number
+  id: number
+  title: string
+  body: string
+}
+
+const doSleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+export const fetchPost = async ({
+  postId,
+  simulateError,
+  sleep,
+}: {
+  postId: number
+  simulateError?: boolean
+  sleep?: number
+}) => {
+  console.info('[api] fetchPost.start', { postId, sleep, simulateError })
+
+  let response
+  if (!simulateError) {
+    response = await fetch(
+      `https://jsonplaceholder.typicode.com/posts/${postId}`,
+    ).then((res) => res.json())
+  }
+
+  // simulate extra latency to make things like streaming behavior more clear
+  if (sleep) {
+    await doSleep(sleep)
+  }
+
+  console.info('[api] fetchPost.done', { postId, sleep, simulateError })
+
+  if (simulateError) {
+    throw new Error('API request to get post was not OK')
+  }
+
+  return [response] as PostData[]
+}
+
+export const fetchUser = async ({
+  sleep,
+  simulateError,
+}: { sleep?: number; simulateError?: boolean } = {}) => {
+  console.info('[api] fetchUser.start', { sleep, simulateError })
+
+  if (sleep) {
+    await doSleep(sleep)
+  }
+
+  console.info('[api] fetchUser.done', { sleep, simulateError })
+
+  if (simulateError) {
+    throw new Error('API request to get user was not OK')
+  }
+
+  return {
+    id: 'abc',
+    name: `john doe`,
+    queryTime: Date.now(),
+  }
+}
+```

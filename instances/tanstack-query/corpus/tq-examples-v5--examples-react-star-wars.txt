@@ -1,0 +1,429 @@
+# Example: react/star-wars
+# джерело: https://github.com/TanStack/query/tree/@tanstack%2Fquery-core@5.103.3/examples/react/star-wars
+# отримано: 2026-09-26
+# версія: 5.103.3
+
+## Example
+
+To run this example:
+
+- `npm install`
+- `npm run dev`
+
+## package.json
+
+```json
+{
+  "name": "@tanstack/query-example-react-star-wars",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.103.3",
+    "@tanstack/react-query-devtools": "^5.103.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router": "^6.25.1",
+    "react-router-dom": "^6.25.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tailwindcss": "^4.3.3",
+    "typescript": "5.8.3",
+    "vite": "^6.4.1"
+  }
+}
+```
+
+## src/App.tsx
+
+```tsx
+import { BrowserRouter as Router } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import Layout from './Layout'
+
+import './styles.css'
+
+const queryClient = new QueryClient()
+
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Router>
+        <Layout />
+        <ReactQueryDevtools initialIsOpen />
+      </Router>
+    </QueryClientProvider>
+  )
+}
+```
+
+## src/Character.tsx
+
+```tsx
+import { useParams, Link as RouterLink } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { getCharacter, getFilm, getPlanet } from './api'
+
+export default function Character() {
+  let params = useParams()
+  const characterId = params.characterId!
+
+  const { status, data } = useQuery({
+    queryKey: ['character', characterId],
+    queryFn: () => getCharacter(characterId),
+  })
+
+  if (status === 'pending') return <p>Loading...</p>
+  if (status === 'error') return <p>Error :(</p>
+
+  const homeworldUrlParts = data.homeworld.split('/').filter(Boolean)
+  const homeworldId = homeworldUrlParts[homeworldUrlParts.length - 1]
+
+  return (
+    <div>
+      <h2 className="text-4xl">{data.name}</h2>
+      <p>
+        <strong>Born</strong>: {data.birth_year}
+      </p>
+      <p>
+        <strong>Eyes</strong>: {data.eye_color}
+      </p>
+      <p>
+        <strong>Hair</strong>: {data.hair_color}
+      </p>
+      <p>
+        <strong>Height</strong>: {data.height}
+      </p>
+      <p>
+        <strong>Mass</strong>: {data.mass}
+      </p>
+      <p>
+        <strong>Homeworld</strong>: <Homeworld homeworldId={homeworldId} />
+      </p>
+
+      <h4 className="text-2xl pt-4">Films</h4>
+      {data.films.map((film: any) => {
+        const filmUrlParts = film.split('/').filter(Boolean)
+        const filmId = filmUrlParts[filmUrlParts.length - 1]
+        return <Film filmId={filmId} key={`${filmId}`} />
+      })}
+    </div>
+  )
+}
+
+function Film({ filmId }: { filmId: string }) {
+  const { data, status } = useQuery({
+    queryKey: ['film', filmId],
+    queryFn: () => getFilm(filmId),
+  })
+
+  if (status === 'success') {
+    return (
+      <RouterLink
+        className="text-blue-500 hover:underline"
+        to={`/films/${filmId}`}
+      >
+        <h6 className="text-lg">
+          {data.episode_id}. {data.title}
+        </h6>
+      </RouterLink>
+    )
+  }
+}
+
+function Homeworld({ homeworldId }: { homeworldId: string }) {
+  const { data, status } = useQuery({
+    queryKey: ['homeworld', homeworldId],
+    queryFn: () => getPlanet(homeworldId),
+  })
+
+  if (status === 'pending') return <span>Loading...</span>
+  if (status === 'error') return <span>Error :(</span>
+
+  return <span>{data.name}</span>
+}
+```
+
+## src/Characters.tsx
+
+```tsx
+import { Link as RouterLink } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { getCharacters } from './api'
+
+export default function Characters() {
+  const { status, data } = useQuery({
+    queryKey: ['characters'],
+    queryFn: () => getCharacters(),
+  })
+
+  if (status === 'pending') return <p>Loading...</p>
+  if (status === 'error') return <p>Error :(</p>
+
+  return (
+    <div>
+      <h2 className="text-4xl">Characters</h2>
+      {data.results.map((person: any) => {
+        const personUrlParts = person.url.split('/').filter(Boolean)
+        const personId = personUrlParts[personUrlParts.length - 1]
+        return (
+          <article key={personId}>
+            <RouterLink
+              className="text-blue-500 hover:underline"
+              to={`/characters/${personId}`}
+            >
+              <h6 className="text-xl">{person.name}</h6>
+            </RouterLink>
+          </article>
+        )
+      })}
+    </div>
+  )
+}
+```
+
+## src/Film.tsx
+
+```tsx
+import { useParams, Link as RouterLink } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { getFilm, getCharacter } from './api'
+
+export default function Film() {
+  const { filmId } = useParams()
+
+  if (!filmId) {
+    return <p>Invalid film ID</p>
+  }
+
+  const { data, status } = useQuery({
+    queryKey: ['film', filmId],
+    queryFn: () => getFilm(filmId),
+  })
+
+  if (status === 'pending') return <p>Loading...</p>
+
+  if (status === 'error') return <p>Error :(</p>
+
+  return (
+    <div>
+      <h2 className="text-4xl">{data.title}</h2>
+      <p>{data.opening_crawl}</p>
+      <br />
+      <h4 className="text-2xl">Characters</h4>
+      {data.characters.map((character: string) => {
+        const characterUrlParts = character.split('/').filter(Boolean)
+        const characterId = characterUrlParts[characterUrlParts.length - 1]
+        return <Character characterId={characterId} key={characterId} />
+      })}
+    </div>
+  )
+}
+
+function Character({ characterId }: { characterId: string }) {
+  const { data, status } = useQuery({
+    queryKey: ['character', characterId],
+    queryFn: () => getCharacter(characterId),
+  })
+
+  if (status !== 'success') {
+    return null
+  }
+
+  return (
+    <RouterLink
+      className="text-blue-500 hover:underline"
+      to={`/characters/${characterId}`}
+    >
+      <h6 className="text-lg">{data.name}</h6>
+    </RouterLink>
+  )
+}
+```
+
+## src/Films.tsx
+
+```tsx
+import { Link as RouterLink } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { getFilms } from './api'
+
+export default function Films() {
+  const { data, status } = useQuery({
+    queryKey: ['films'],
+    queryFn: () => getFilms(),
+  })
+
+  if (status === 'pending') {
+    return <p>Loading...</p>
+  }
+  if (status === 'error') {
+    return <p>Error :(</p>
+  }
+
+  return (
+    <div>
+      <h2 className="text-4xl">Films</h2>
+      {data.results.map((film: any) => {
+        const filmUrlParts = film.url.split('/').filter(Boolean)
+        const filmId = filmUrlParts[filmUrlParts.length - 1]
+        return (
+          <article key={filmId}>
+            <RouterLink
+              className="text-blue-500 hover:underline"
+              to={`/films/${filmId}`}
+            >
+              <h6 className="text-xl">
+                {film.episode_id}. {film.title}{' '}
+                <em>
+                  ({new Date(Date.parse(film.release_date)).getFullYear()})
+                </em>
+              </h6>
+            </RouterLink>
+          </article>
+        )
+      })}
+    </div>
+  )
+}
+```
+
+## src/Home.tsx
+
+```tsx
+import { Link as RouterLink } from 'react-router-dom'
+
+export default function Home() {
+  return (
+    <div>
+      <h2 className="text-4xl">TanStack Query Demo</h2>
+      <p>Using the Star Wars API</p>
+      <p>
+        (Built by{' '}
+        <a
+          className="text-blue-500 hover:underline"
+          href="https://twitter.com/Brent_m_Clark"
+        >
+          @Brent_m_Clark
+        </a>
+        )
+      </p>
+      <h5 className="text-2xl pt-4">Why TanStack Query?</h5>
+      <p>
+        In this demo you will be able to see how TanStack Query is a significant
+        improvement over <strong>redux</strong>, <strong>mobx</strong>, and any
+        other general-purpose state container.
+      </p>
+      <p>
+        No reducers, thunks, or sagas. No ES6 models to maintain in order to tag
+        them as observable.
+      </p>
+      <p>
+        Simply associate a key with your fetch call and let{' '}
+        <strong>TanStack Query</strong> handle the rest.
+      </p>
+      <h5 className="text-2xl pt-4">Ready to get started?</h5>
+      <p>
+        Check out the{' '}
+        <RouterLink className="text-blue-500 hover:underline" to="/films">
+          Films
+        </RouterLink>{' '}
+        and{' '}
+        <RouterLink className="text-blue-500 hover:underline" to="/characters">
+          Characters
+        </RouterLink>
+        !
+      </p>
+    </div>
+  )
+}
+```
+
+## src/Layout.tsx
+
+```tsx
+import { Route, Link as RouterLink, Routes } from 'react-router-dom'
+import Films from './Films'
+import Film from './Film'
+import Characters from './Characters'
+import Character from './Character'
+import Home from './Home'
+
+export default function Layout() {
+  return (
+    <div>
+      <nav className="bg-gray-300 w-full flex flex-row gap-6 justify-center items-center h-12">
+        <RouterLink to="/">
+          <span className="uppercase hover:underline">Home</span>
+        </RouterLink>
+        <RouterLink to="/films">
+          <span className="uppercase hover:underline">Films</span>
+        </RouterLink>
+        <RouterLink to="/characters">
+          <span className="uppercase hover:underline">Characters</span>
+        </RouterLink>
+      </nav>
+      <div className="p-2">
+        <Routes>
+          <Route exact path="/films" element={<Films />} />
+          <Route exact path="/films/:filmId" element={<Film />} />
+          <Route exact path="/characters" element={<Characters />} />
+          <Route
+            exact
+            path="/characters/:characterId"
+            element={<Character />}
+          />
+          <Route path="/" element={<Home />} />
+        </Routes>
+      </div>
+    </div>
+  )
+}
+```
+
+## src/api.ts
+
+```ts
+export const getFilms = async () => {
+  const res = await fetch('https://swapi.dev/api/films/')
+  return await res.json()
+}
+
+export const getFilm = async (filmId: string) => {
+  const res = await fetch(`https://swapi.dev/api/films/${filmId}/`)
+  return await res.json()
+}
+
+export const getCharacters = async () => {
+  const res = await fetch('https://swapi.dev/api/people/')
+  return await res.json()
+}
+
+export const getCharacter = async (characterId: string) => {
+  const res = await fetch(`https://swapi.dev/api/people/${characterId}/`)
+  return await res.json()
+}
+
+export const getPlanet = async (planetId: string) => {
+  const res = await fetch(`https://swapi.dev/api/planets/${planetId}/`)
+  return await res.json()
+}
+```
+
+## src/index.tsx
+
+```tsx
+import ReactDOM from 'react-dom/client'
+import App from './App'
+
+const rootElement = document.getElementById('root')
+if (!rootElement) throw new Error('Missing #root element')
+ReactDOM.createRoot(rootElement).render(<App />)
+```

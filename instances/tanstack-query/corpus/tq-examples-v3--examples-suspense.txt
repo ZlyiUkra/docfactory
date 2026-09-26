@@ -1,0 +1,298 @@
+# Example: suspense
+# джерело: https://github.com/TanStack/query/tree/v3.39.2/examples/suspense
+# отримано: 2026-09-26
+# версія: 3.39.2
+
+## Example
+
+To run this example:
+
+- `npm install` or `yarn`
+- `npm run start` or `yarn start`
+
+## package.json
+
+```json
+{
+  "name": "new",
+  "version": "1.0.0",
+  "description": "",
+  "keywords": [],
+  "main": "src/index.js",
+  "dependencies": {
+    "axios": "^0.21.1",
+    "react": "0.0.0-experimental-5faf377df",
+    "react-dom": "0.0.0-experimental-5faf377df",
+    "react-error-boundary": "^2.2.3",
+    "react-query": "^3.5.0",
+    "react-scripts": "3.0.1"
+  },
+  "devDependencies": {
+    "@rescripts/cli": "^0.0.11",
+    "@rescripts/rescript-use-babel-config": "^0.0.8",
+    "@rescripts/rescript-use-eslint-config": "^0.0.9",
+    "babel-eslint": "10.0.1"
+  },
+  "scripts": {
+    "start": "rescripts start",
+    "build": "rescripts build",
+    "test": "rescripts test",
+    "eject": "rescripts eject"
+  },
+  "browserslist": [
+    ">0.2%",
+    "not dead",
+    "not ie <= 11",
+    "not op_mini all"
+  ]
+}
+```
+
+## src/components/Button.js
+
+```js
+import React from "react";
+
+import Spinner from "./Spinner";
+
+export default function Button({ children, timeoutMs = 3000, onClick }) {
+  const [startTransition, isPending] = React.useTransition({
+    timeoutMs: timeoutMs
+  });
+
+  const handleClick = e => {
+    startTransition(() => {
+      onClick(e);
+    });
+  };
+
+  return (
+    <>
+      <button onClick={handleClick} disabled={isPending}>
+        {children} {isPending ? <Spinner /> : null}
+      </button>
+    </>
+  );
+}
+```
+
+## src/components/Project.js
+
+```js
+import React from "react";
+import { useQuery } from "react-query";
+
+import Button from "./Button";
+import Spinner from "./Spinner";
+
+import { fetchProject } from "../queries";
+
+export default function Project({ activeProject, setActiveProject }) {
+  const { data, isFetching } = useQuery(["project", activeProject], () =>
+    fetchProject(activeProject)
+  );
+
+  return (
+    <div>
+      <Button onClick={() => setActiveProject(null)}>Back</Button>
+      <h1>
+        {activeProject} {isFetching ? <Spinner /> : null}
+      </h1>
+      {data ? (
+        <div>
+          <p>forks: {data.forks_count}</p>
+          <p>stars: {data.stargazers_count}</p>
+          <p>watchers: {data.watchers}</p>
+        </div>
+      ) : null}
+      <br />
+      <br />
+    </div>
+  );
+}
+```
+
+## src/components/Projects.js
+
+```js
+import React from "react";
+import { useQuery, useQueryClient } from "react-query";
+
+import Button from "./Button";
+import Spinner from "./Spinner";
+
+import { fetchProjects, fetchProject } from "../queries";
+
+export default function Projects({ setActiveProject }) {
+  const queryClient = useQueryClient();
+  const { data, isFetching } = useQuery("projects", fetchProjects);
+
+  return (
+    <div>
+      <h1>Projects {isFetching ? <Spinner /> : null}</h1>
+      {data.map((project) => (
+        <p key={project.name}>
+          <Button
+            onClick={() => {
+              // Prefetch the project query
+              queryClient.prefetchQuery(["project", project.name], () =>
+                fetchProject(project.name)
+              );
+              setActiveProject(project.name);
+            }}
+          >
+            Load
+          </Button>{" "}
+          {project.name}
+        </p>
+      ))}
+    </div>
+  );
+}
+```
+
+## src/components/Spinner.js
+
+```js
+import React from "react";
+
+export default function Spinner() {
+  return (
+    <span
+      className="fa fa-circle-o-notch fa-spin"
+      style={{
+        marginLeft: 4,
+        fontSize: "small"
+      }}
+    />
+  );
+}
+```
+
+## src/index.js
+
+```js
+import React, { lazy } from "react";
+import ReactDOM from "react-dom";
+import {
+  useQueryClient,
+  QueryClient,
+  QueryClientProvider,
+  QueryErrorResetBoundary,
+} from "react-query";
+import { ReactQueryDevtools } from "react-query/devtools";
+import { ErrorBoundary } from "react-error-boundary";
+
+import "./styles.css";
+
+import { fetchProjects } from "./queries";
+
+import Button from "./components/Button";
+
+const Projects = lazy(() => import("./components/Projects"));
+const Project = lazy(() => import("./components/Project"));
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 0,
+      suspense: true,
+    },
+  },
+});
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Example />
+    </QueryClientProvider>
+  );
+}
+
+function Example() {
+  const queryClient = useQueryClient();
+  const [showProjects, setShowProjects] = React.useState(false);
+  const [activeProject, setActiveProject] = React.useState(null);
+
+  return (
+    <>
+      <Button
+        onClick={() => {
+          setShowProjects((old) => {
+            if (!old) {
+              queryClient.prefetchQuery("projects", fetchProjects);
+            }
+            return !old;
+          });
+        }}
+      >
+        {showProjects ? "Hide Projects" : "Show Projects"}
+      </Button>
+
+      <hr />
+
+      <QueryErrorResetBoundary>
+        {({ reset }) => (
+          <ErrorBoundary
+            fallbackRender={({ error, resetErrorBoundary }) => (
+              <div>
+                There was an error!{" "}
+                <Button onClick={() => resetErrorBoundary()}>Try again</Button>
+                <pre style={{ whiteSpace: "normal" }}>{error.message}</pre>
+              </div>
+            )}
+            onReset={reset}
+          >
+            <React.Suspense fallback={<h1>Loading projects...</h1>}>
+              {showProjects ? (
+                activeProject ? (
+                  <Project
+                    activeProject={activeProject}
+                    setActiveProject={setActiveProject}
+                  />
+                ) : (
+                  <Projects setActiveProject={setActiveProject} />
+                )
+              ) : null}
+            </React.Suspense>
+          </ErrorBoundary>
+        )}
+      </QueryErrorResetBoundary>
+      <ReactQueryDevtools initialIsOpen />
+    </>
+  );
+}
+
+const rootElement = document.getElementById("root");
+ReactDOM.createRoot(rootElement).render(<App />);
+```
+
+## src/queries.js
+
+```js
+import axios from "axios";
+
+// let count = 0;
+
+export async function fetchProjects(key) {
+  console.info("fetch projects");
+  // if (count < 4) {
+  //   count++;
+  //   throw new Error("testing");
+  // }
+  let { data } = await axios.get(
+    `https://api.github.com/users/tannerlinsley/repos?sort=updated`
+  );
+  await new Promise((r) => setTimeout(r, 1000));
+  return data;
+}
+
+export async function fetchProject(id) {
+  console.info("fetch project id", id);
+  let { data } = await axios.get(
+    `https://api.github.com/repos/tannerlinsley/${id}`
+  );
+  await new Promise((r) => setTimeout(r, 1000));
+  return data;
+}
+```

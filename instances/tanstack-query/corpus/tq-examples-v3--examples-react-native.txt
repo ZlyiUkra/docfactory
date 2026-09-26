@@ -1,0 +1,553 @@
+# Example: react-native
+# джерело: https://github.com/TanStack/query/tree/v3.39.2/examples/react-native
+# отримано: 2026-09-26
+# версія: 3.39.2
+
+## App.tsx
+
+```tsx
+import * as React from 'react';
+import { AppStateStatus, Platform } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { QueryClient, QueryClientProvider, focusManager } from 'react-query';
+
+import { useAppState } from '@app/hooks/useAppState';
+import { MoviesStack } from '@app/navigation/MoviesStack';
+import { useOnlineManager } from '@app/hooks/useOnlineManager';
+
+function onAppStateChange(status: AppStateStatus) {
+  // React Query already supports in web browser refetch on window focus by default
+  if (Platform.OS !== 'web') {
+    focusManager.setFocused(status === 'active');
+  }
+}
+
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: 2 } },
+});
+
+export default function App() {
+  useOnlineManager();
+
+  useAppState(onAppStateChange);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <NavigationContainer>
+        <MoviesStack />
+      </NavigationContainer>
+    </QueryClientProvider>
+  );
+}
+```
+
+## Example
+
+To run this example:
+
+- Install expo CLI if needed `npm install --global expo-cli`
+- `yarn`
+- `yarn start`
+
+## package.json
+
+```json
+{
+  "main": "node_modules/expo/AppEntry.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "eject": "expo eject",
+    "lint:check": "eslint --ext '.js,.ts,.tsx' .",
+    "lint:fix": "yarn lint --fix",
+    "type:check": "tsc --noEmit",
+    "prettier": "prettier \"{.,src,src/**}/*.{md,js,jsx,ts,tsx,json}\"",
+    "prettier:check": "yarn prettier -c",
+    "prettier:fix": "yarn prettier -w",
+    "dev:check": "yarn prettier:check & yarn lint:check & yarn type:check"
+  },
+  "dependencies": {
+    "@react-navigation/stack": "^6.0.2",
+    "@react-navigation/native": "^6.0.2",
+    "@react-native-community/netinfo": "6.0.2",
+    "expo": "~43.0.2",
+    "expo-status-bar": "~1.1.0",
+    "react": "17.0.1",
+    "react-dom": "17.0.1",
+    "react-native": "0.64.3",
+    "react-native-web": "0.17.1",
+    "react-query": "^3.34.7",
+    "expo-constants": "~12.1.3",
+    "react-native-paper": "4.9.2",
+    "react-native-screens": "~3.8.0",
+    "react-native-reanimated": "~2.2.0",
+    "react-native-gesture-handler": "~1.10.2",
+    "react-native-safe-area-context": "3.3.2"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.12.9",
+    "@callstack/eslint-config": "^10.1.0",
+    "@expo/config": "^3.3.27",
+    "@types/react-native": "~0.64.3",
+    "babel-plugin-module-resolver": "^4.1.0",
+    "eslint": "^7.32.0",
+    "eslint-import-resolver-alias": "^1.1.2",
+    "eslint-plugin-prettier": "^4.0.0",
+    "prettier": "^2.3.2",
+    "typescript": "~4.4.3"
+  },
+  "private": false
+}
+```
+
+## src/components/Divider.tsx
+
+```tsx
+import React from 'react';
+import { StyleSheet } from 'react-native';
+import { Divider as PaperDivider } from 'react-native-paper';
+
+export function Divider() {
+  return <PaperDivider style={styles.divider} />;
+}
+
+const styles = StyleSheet.create({
+  divider: {
+    marginLeft: 10,
+  },
+});
+```
+
+## src/components/ErrorMessage.tsx
+
+```tsx
+import React from 'react';
+import { Text, View, StyleSheet } from 'react-native';
+
+type Props = {
+  message: string;
+};
+
+export function ErrorMessage({ message }: Props) {
+  return (
+    <View style={styles.fill}>
+      <Text>{message}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  fill: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});
+```
+
+## src/components/ListItem.tsx
+
+```tsx
+import React from 'react';
+import { View, StyleSheet } from 'react-native';
+import { Paragraph, TouchableRipple } from 'react-native-paper';
+
+type Props = {
+  item: any;
+  onPress: (item: any) => void;
+};
+
+export function ListItem({ item, onPress }: Props) {
+  return (
+    <TouchableRipple onPress={() => onPress(item)} accessibilityRole="button">
+      <View style={styles.item}>
+        <View style={styles.firstRow}>
+          <Paragraph style={styles.title}>{item.title}</Paragraph>
+        </View>
+        <View style={styles.secondRow}>
+          <Paragraph>{item.year}</Paragraph>
+        </View>
+      </View>
+    </TouchableRipple>
+  );
+}
+
+const styles = StyleSheet.create({
+  item: {
+    paddingRight: 10,
+    paddingLeft: 30,
+    paddingTop: 20,
+    paddingBottom: 10,
+    marginBottom: 10,
+  },
+  firstRow: {
+    marginTop: 5,
+    marginBottom: 5,
+  },
+  secondRow: {
+    marginBottom: 10,
+  },
+  title: { fontWeight: 'bold' },
+});
+```
+
+## src/components/LoadingIndicator.tsx
+
+```tsx
+import React from 'react';
+import { ActivityIndicator, View, StyleSheet } from 'react-native';
+
+export function LoadingIndicator() {
+  return (
+    <View style={styles.fill}>
+      <ActivityIndicator size="large" />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  fill: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});
+```
+
+## src/hooks/useAppState.ts
+
+```ts
+import { useEffect } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
+
+export function useAppState(onChange: (status: AppStateStatus) => void) {
+  useEffect(() => {
+    AppState.addEventListener('change', onChange);
+    return () => {
+      AppState.removeEventListener('change', onChange);
+    };
+  }, [onChange]);
+}
+```
+
+## src/hooks/useOnlineManager.ts
+
+```ts
+import React from 'react';
+import NetInfo from '@react-native-community/netinfo';
+import { onlineManager } from 'react-query';
+import { Platform } from 'react-native';
+
+export function useOnlineManager() {
+  React.useEffect(() => {
+    // React Query already supports on reconnect auto refetch in web browser
+    if (Platform.OS !== 'web') {
+      return NetInfo.addEventListener((state) => {
+        onlineManager.setOnline(
+          state.isConnected != null &&
+            state.isConnected &&
+            Boolean(state.isInternetReachable)
+        );
+      });
+    }
+  }, []);
+}
+```
+
+## src/hooks/useRefreshByUser.ts
+
+```ts
+import React from 'react';
+
+export function useRefreshByUser(refetch: () => Promise<unknown>) {
+  const [isRefetchingByUser, setIsRefetchingByUser] = React.useState(false);
+
+  async function refetchByUser() {
+    setIsRefetchingByUser(true);
+
+    try {
+      await refetch();
+    } finally {
+      setIsRefetchingByUser(false);
+    }
+  }
+
+  return {
+    isRefetchingByUser,
+    refetchByUser,
+  };
+}
+```
+
+## src/hooks/useRefreshOnFocus.ts
+
+```ts
+import React from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+
+export function useRefreshOnFocus(refetch: () => void) {
+  const enabledRef = React.useRef(false);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (enabledRef.current) {
+        refetch();
+      } else {
+        enabledRef.current = true;
+      }
+    }, [refetch])
+  );
+}
+```
+
+## src/lib/api.ts
+
+```ts
+import movies from '../data/movies.json';
+
+export type Movie = {
+  title: string;
+  year: number;
+};
+
+export type MovieDetails = Movie & {
+  info: {
+    plot: string;
+    actors: string[];
+  };
+};
+
+function delay(t: number, v: () => void) {
+  return new Promise(function (resolve) {
+    setTimeout(resolve.bind(null, v), t);
+  });
+}
+
+export async function fetchMovies() {
+  console.log('fetchMovies');
+  return delay(200 + Math.floor(Math.random() * 2000), () =>
+    movies
+      .slice(0, 100)
+      .map((movie) => ({ title: movie.title, year: movie.year }))
+  ) as Promise<Movie[]>;
+}
+
+export async function fetchMovie(title: string) {
+  console.log('fetchMovie', title);
+  return delay(200 + Math.floor(Math.random() * 2000), () => {
+    const result = movies.filter((item) => item.title === title);
+    if (result.length == 0) {
+      throw new Error('Movie not found');
+    }
+    return result[0];
+  }) as Promise<MovieDetails>;
+}
+```
+
+## src/navigation/MoviesStack.tsx
+
+```tsx
+import React from 'react';
+import { createStackNavigator } from '@react-navigation/stack';
+
+import { MoviesStackNavigator } from './types';
+import { MoviesListScreen } from '@app/screens/MoviesListScreen';
+import { MovieDetailsScreen } from '@app/screens/MovieDetailsScreen';
+
+const Stack = createStackNavigator<MoviesStackNavigator>();
+
+export function MoviesStack() {
+  return (
+    <Stack.Navigator initialRouteName="MoviesList">
+      <Stack.Screen
+        name="MoviesList"
+        component={MoviesListScreen}
+        options={{
+          headerTitle: 'Movies',
+        }}
+      />
+      <Stack.Screen
+        name="MovieDetails"
+        component={MovieDetailsScreen}
+        options={{
+          headerTitle: 'Movie details',
+        }}
+      />
+    </Stack.Navigator>
+  );
+}
+```
+
+## src/navigation/types.ts
+
+```ts
+import { Movie } from '@app/lib/api';
+
+export type MoviesStackNavigator = {
+  MoviesList: undefined;
+  MovieDetails: { movie: Movie };
+};
+```
+
+## src/screens/MovieDetailsScreen.tsx
+
+```tsx
+import * as React from 'react';
+import { View, RefreshControl, StyleSheet, ScrollView } from 'react-native';
+import { Title, Paragraph } from 'react-native-paper';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RouteProp } from '@react-navigation/native';
+import { useQuery } from 'react-query';
+
+import { LoadingIndicator } from '@app/components/LoadingIndicator';
+import { ErrorMessage } from '@app/components/ErrorMessage';
+import { useRefreshByUser } from '@app/hooks/useRefreshByUser';
+import { fetchMovie, MovieDetails } from '@app/lib/api';
+import type { MoviesStackNavigator } from '@app/navigation/types';
+
+type MoviesDetailsScreenNavigationProp = StackNavigationProp<
+  MoviesStackNavigator,
+  'MovieDetails'
+>;
+
+type Props = {
+  navigation: MoviesDetailsScreenNavigationProp;
+  route: RouteProp<MoviesStackNavigator, 'MovieDetails'>;
+};
+
+export function MovieDetailsScreen({ route }: Props) {
+  const { isLoading, error, data, refetch } = useQuery<MovieDetails, Error>(
+    ['movie', route.params.movie.title],
+    () => fetchMovie(route.params.movie.title),
+    { initialData: route.params.movie as MovieDetails }
+  );
+
+  const { isRefetchingByUser, refetchByUser } = useRefreshByUser(refetch);
+
+  if (isLoading) return <LoadingIndicator />;
+  if (error) return <ErrorMessage message={error.message}></ErrorMessage>;
+  if (!data) return null;
+
+  return (
+    <ScrollView
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefetchingByUser}
+          onRefresh={refetchByUser}
+        />
+      }
+    >
+      <View style={styles.titleRow}>
+        <Title>
+          {data.title} ({data.year})
+        </Title>
+      </View>
+      {data.info ? (
+        <>
+          <View style={styles.infoRow}>
+            <Paragraph>{data.info.plot}</Paragraph>
+          </View>
+          <View style={styles.actorsRow}>
+            <Paragraph>
+              {data.info.actors.slice(0, -1).join(', ') +
+                ' or ' +
+                data.info.actors.slice(-1)}
+            </Paragraph>
+          </View>
+        </>
+      ) : (
+        <LoadingIndicator />
+      )}
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  titleRow: {
+    flexDirection: 'row',
+    margin: 20,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    margin: 20,
+  },
+  actorsRow: {
+    flexDirection: 'column',
+    margin: 20,
+    marginTop: 10,
+  },
+});
+```
+
+## src/screens/MoviesListScreen.tsx
+
+```tsx
+import React from 'react';
+import { FlatList, RefreshControl } from 'react-native';
+import { useQuery } from 'react-query';
+
+import { StackNavigationProp } from '@react-navigation/stack';
+import { LoadingIndicator } from '@app/components/LoadingIndicator';
+import { ErrorMessage } from '@app/components/ErrorMessage';
+import { Divider } from '@app/components/Divider';
+import { ListItem } from '@app/components/ListItem';
+import { useRefreshByUser } from '@app/hooks/useRefreshByUser';
+import { useRefreshOnFocus } from '@app/hooks/useRefreshOnFocus';
+import { fetchMovies, Movie } from '@app/lib/api';
+import { MoviesStackNavigator } from '@app/navigation/types';
+
+type MoviesListScreenNavigationProp = StackNavigationProp<
+  MoviesStackNavigator,
+  'MoviesList'
+>;
+
+type Props = {
+  navigation: MoviesListScreenNavigationProp;
+};
+
+export function MoviesListScreen({ navigation }: Props) {
+  const { isLoading, error, data, refetch } = useQuery<Movie[], Error>(
+    ['movies'],
+    fetchMovies
+  );
+  const { isRefetchingByUser, refetchByUser } = useRefreshByUser(refetch);
+  useRefreshOnFocus(refetch);
+
+  const onListItemPress = React.useCallback(
+    (movie) => {
+      navigation.navigate('MovieDetails', {
+        movie,
+      });
+    },
+    [navigation]
+  );
+
+  const renderItem = React.useCallback(
+    ({ item }) => {
+      return <ListItem item={item} onPress={onListItemPress} />;
+    },
+    [onListItemPress]
+  );
+
+  if (isLoading) return <LoadingIndicator />;
+
+  if (error) return <ErrorMessage message={error.message}></ErrorMessage>;
+
+  return (
+    <FlatList
+      data={data}
+      renderItem={renderItem}
+      keyExtractor={(item) => item.title}
+      ItemSeparatorComponent={() => <Divider />}
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefetchingByUser}
+          onRefresh={refetchByUser}
+        />
+      }
+    ></FlatList>
+  );
+}
+```

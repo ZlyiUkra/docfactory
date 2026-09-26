@@ -1,0 +1,303 @@
+# Example: angular/auto-refetching
+# джерело: https://github.com/TanStack/query/tree/@tanstack%2Fquery-core@5.103.3/examples/angular/auto-refetching
+# отримано: 2026-09-26
+# версія: 5.103.3
+
+## TanStack Query Angular auto-refetching example
+
+To run this example:
+
+- `pnpm install`
+- `pnpm start`
+
+## package.json
+
+```json
+{
+  "name": "@tanstack/query-example-angular-auto-refetching",
+  "type": "module",
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development"
+  },
+  "private": true,
+  "dependencies": {
+    "@angular/common": "^20.0.0",
+    "@angular/compiler": "^20.0.0",
+    "@angular/core": "^20.0.0",
+    "@angular/platform-browser": "^20.0.0",
+    "@tanstack/angular-query-experimental": "^5.103.3",
+    "rxjs": "^7.8.2",
+    "tslib": "^2.8.1",
+    "zone.js": "0.15.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^20.0.0",
+    "@angular/cli": "^20.0.0",
+    "@angular/compiler-cli": "^20.0.0",
+    "typescript": "5.8.3"
+  }
+}
+```
+
+## src/app/app.component.ts
+
+```ts
+import { ChangeDetectionStrategy, Component } from '@angular/core'
+import { AutoRefetchingExampleComponent } from './components/auto-refetching.component'
+
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'app-root',
+  template: `<auto-refetching-example />`,
+  imports: [AutoRefetchingExampleComponent],
+})
+export class AppComponent {}
+```
+
+## src/app/components/auto-refetching.component.html
+
+```html
+<div>
+  <h1>Auto Refetch with stale-time set to {{ intervalMs() }}ms</h1>
+  <p>
+    This example is best experienced on your own machine, where you can open
+    multiple tabs to the same localhost server and see your changes propagate
+    between the two.
+  </p>
+  <label>
+    Query Interval speed (ms):
+    <input [value]="intervalMs()" (input)="inputChange($event)" />
+    <span
+      [ngStyle]="{
+        display: 'inline-block',
+        marginLeft: '.5rem',
+        width: '10px',
+        height: '10px',
+        background: tasks.isFetching() ? 'green' : 'transparent',
+        transition: !tasks.isFetching() ? 'all .3s ease' : 'none',
+        borderRadius: '100%',
+        transform: 'scale(2)',
+      }"
+    ></span>
+  </label>
+  <h2>Todo List</h2>
+
+  <input placeholder="Enter something" (keydown.enter)="addItem($event)" />
+  <ul>
+    @for (item of tasks.data(); track item) {
+      <li>{{ item }}</li>
+    }
+  </ul>
+  <div>
+    <button (click)="clearTasks()">Clear All</button>
+  </div>
+</div>
+```
+
+## src/app/components/auto-refetching.component.ts
+
+```ts
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  signal,
+} from '@angular/core'
+import {
+  injectMutation,
+  injectQuery,
+} from '@tanstack/angular-query-experimental'
+import { NgStyle } from '@angular/common'
+import { TasksService } from '../services/tasks.service'
+
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'auto-refetching-example',
+  templateUrl: './auto-refetching.component.html',
+  imports: [NgStyle],
+})
+export class AutoRefetchingExampleComponent {
+  readonly #tasksService = inject(TasksService)
+
+  readonly intervalMs = signal(1000)
+
+  readonly tasks = injectQuery(() =>
+    this.#tasksService.allTasks(this.intervalMs()),
+  )
+
+  readonly addMutation = injectMutation(() => this.#tasksService.addTask())
+  readonly clearMutation = injectMutation(() =>
+    this.#tasksService.clearAllTasks(),
+  )
+
+  clearTasks() {
+    this.clearMutation.mutate()
+  }
+
+  inputChange($event: Event) {
+    const target = $event.target as HTMLInputElement
+    this.intervalMs.set(Number(target.value))
+  }
+
+  addItem($event: Event) {
+    const target = $event.target as HTMLInputElement
+    const value = target.value
+    this.addMutation.mutate(value)
+    target.value = ''
+  }
+}
+```
+
+## src/app/interceptor/mock-api.interceptor.ts
+
+```ts
+/**
+ * MockApiInterceptor is used to simulate API responses for `/api/tasks` endpoints.
+ * It handles the following operations:
+ * - GET: Fetches all tasks from localStorage.
+ * - POST: Adds a new task to localStorage.
+ * - DELETE: Clears all tasks from localStorage.
+ * Simulated responses include a delay to mimic network latency.
+ */
+import { HttpResponse } from '@angular/common/http'
+import { delay, of } from 'rxjs'
+import type {
+  HttpEvent,
+  HttpHandlerFn,
+  HttpInterceptorFn,
+  HttpRequest,
+} from '@angular/common/http'
+import type { Observable } from 'rxjs'
+
+export const mockInterceptor: HttpInterceptorFn = (
+  req: HttpRequest<unknown>,
+  next: HttpHandlerFn,
+): Observable<HttpEvent<any>> => {
+  const respondWith = (status: number, body: any) =>
+    of(new HttpResponse({ status, body })).pipe(delay(100))
+  if (req.url === '/api/tasks') {
+    switch (req.method) {
+      case 'GET':
+        return respondWith(
+          200,
+          JSON.parse(localStorage.getItem('tasks') || '[]'),
+        )
+      case 'POST':
+        const tasks = JSON.parse(localStorage.getItem('tasks') || '[]')
+        tasks.push(req.body)
+        localStorage.setItem('tasks', JSON.stringify(tasks))
+        return respondWith(201, {
+          status: 'success',
+          task: req.body,
+        })
+      case 'DELETE':
+        localStorage.removeItem('tasks')
+        return respondWith(200, { status: 'success' })
+    }
+  }
+  return next(req)
+}
+```
+
+## src/app/services/tasks.service.ts
+
+```ts
+import { HttpClient } from '@angular/common/http'
+import { Injectable, inject } from '@angular/core'
+import {
+  QueryClient,
+  mutationOptions,
+  queryOptions,
+} from '@tanstack/angular-query-experimental'
+
+import { lastValueFrom } from 'rxjs'
+
+@Injectable({
+  providedIn: 'root',
+})
+export class TasksService {
+  readonly #queryClient = inject(QueryClient) // Manages query state and caching
+  readonly #http = inject(HttpClient) // Handles HTTP requests
+
+  /**
+   * Fetches all tasks from the API.
+   * Returns an observable containing an array of task strings.
+   */
+  allTasks = (intervalMs: number) =>
+    queryOptions({
+      queryKey: ['tasks'],
+      queryFn: () => {
+        return lastValueFrom(this.#http.get<Array<string>>('/api/tasks'))
+      },
+      refetchInterval: intervalMs,
+    })
+
+  /**
+   * Creates a mutation for adding a task.
+   * On success, invalidates and refetches the "tasks" query cache to update the task list.
+   */
+  addTask() {
+    return mutationOptions({
+      mutationFn: (task: string) =>
+        lastValueFrom(this.#http.post('/api/tasks', task)),
+      mutationKey: ['tasks'],
+      onSuccess: () => {
+        this.#queryClient.invalidateQueries({ queryKey: ['tasks'] })
+      },
+    })
+  }
+
+  /**
+   * Creates a mutation for clearing all tasks.
+   * On success, invalidates and refetches the "tasks" query cache to ensure consistency.
+   */
+  clearAllTasks() {
+    return mutationOptions({
+      mutationFn: () => lastValueFrom(this.#http.delete('/api/tasks')),
+      mutationKey: ['clearTasks'],
+      onSuccess: () => {
+        this.#queryClient.invalidateQueries({ queryKey: ['tasks'] })
+      },
+    })
+  }
+}
+```
+
+## src/index.html
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>TanStack Query Angular auto-refetching example</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  </head>
+  <body>
+    <app-root></app-root>
+  </body>
+</html>
+```
+
+## src/main.ts
+
+```ts
+import { bootstrapApplication } from '@angular/platform-browser'
+import { appConfig } from './app/app.config'
+import { AppComponent } from './app/app.component'
+
+bootstrapApplication(AppComponent, appConfig)
+  .then(() => {
+    // an simple endpoint for getting current list
+    localStorage.setItem(
+      'tasks',
+      JSON.stringify(['Item 1', 'Item 2', 'Item 3']),
+    )
+  })
+  .catch((err) => console.error(err))
+```

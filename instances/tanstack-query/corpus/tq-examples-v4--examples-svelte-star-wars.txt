@@ -1,0 +1,448 @@
+# Example: svelte/star-wars
+# джерело: https://github.com/TanStack/query/tree/@tanstack%2Fquery-core@4.44.0/examples/svelte/star-wars
+# отримано: 2026-09-26
+# версія: 4.44.0
+
+## Example
+
+This example is a rewrite of the React Query star-wars example.
+
+To run this example:
+
+- `npm install`
+- `npm run dev`
+
+## package.json
+
+```json
+{
+  "name": "@tanstack/query-example-svelte-star-wars",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
+  },
+  "dependencies": {
+    "@tanstack/svelte-query": "^4.44.0"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-auto": "^2.0.0",
+    "@sveltejs/kit": "^1.15.0",
+    "autoprefixer": "^10.4.13",
+    "postcss": "^8.4.20",
+    "svelte": "^3.54.0",
+    "svelte-check": "^2.9.2",
+    "tailwindcss": "^3.2.4",
+    "tslib": "^2.4.1",
+    "typescript": "^4.7.4",
+    "vite": "^4.0.0"
+  }
+}
+```
+
+## src/app.html
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%sveltekit.assets%/favicon.png" />
+    <meta name="viewport" content="width=device-width" />
+    %sveltekit.head%
+  </head>
+  <body data-sveltekit-preload-data="hover">
+    <div style="display: contents">%sveltekit.body%</div>
+  </body>
+</html>
+```
+
+## src/routes/+layout.svelte
+
+```svelte
+<script lang="ts">
+  import '../app.css'
+  import { browser } from '$app/environment'
+  import { QueryClientProvider, QueryClient } from '@tanstack/svelte-query'
+
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        enabled: browser,
+      },
+    },
+  })
+</script>
+
+<svelte:head>
+  <title>Svelte Query Star Wars Example</title>
+</svelte:head>
+
+<QueryClientProvider client={queryClient}>
+  <nav
+    class="bg-gray-300 w-full flex flex-row gap-4 justify-center items-center h-10"
+  >
+    <a href="/">Home</a>
+    <a href="/films">Films</a>
+    <a href="/characters">Characters</a>
+  </nav>
+  <slot />
+</QueryClientProvider>
+```
+
+## src/routes/+page.svelte
+
+```svelte
+<div>
+  <h2 class="text-4xl">React Query Demo</h2>
+  <p>Using the Star Wars API</p>
+  <p>
+    (Built by <a href="https://twitter.com/Brent_m_Clark">@Brent_m_Clark</a>
+    )
+  </p>
+  <section>
+    <h5 class="text-2xl">Why React Query?</h5>
+    <p>
+      In this demo you will be able to see how React Query is a significant
+      improvement over <strong>redux</strong>, <strong>mobx</strong>, and any
+      other general-purpose state container.
+    </p>
+    <p>
+      No reducers, thunks, or sagas. No ES6 models to maintain in order to tag
+      them as observable.
+    </p>
+    <p>
+      Simply associate a key with your fetch call and let{' '}
+      <strong>React Query</strong> handle the rest.
+    </p>
+    <h5 class="text-2xl">Ready to get started?</h5>
+    <p>
+      Check out the{' '}
+      <a href="/films" class="underline"> Films </a>
+      and
+      <a href="/characters" class="underline"> Characters </a>
+      !
+    </p>
+  </section>
+</div>
+```
+
+## src/routes/characters/+page.svelte
+
+```svelte
+<script lang="ts">
+  import { createQuery } from '@tanstack/svelte-query'
+
+  const getCharacters = async () => {
+    const res = await fetch('https://swapi.dev/api/people/')
+    return await res.json()
+  }
+
+  const query = createQuery({
+    queryKey: ['characters'],
+    queryFn: getCharacters,
+  })
+</script>
+
+{#if $query.status === 'loading'}
+  <p>Loading...</p>
+{/if}
+
+{#if $query.status === 'error'}
+  <p>Error :(</p>
+{/if}
+
+{#if $query.status === 'success'}
+  <div>
+    <h2 class="text-4xl">Characters</h2>
+    {#each $query.data.results as person}
+      {@const personUrlParts = person.url.split('/').filter(Boolean)}
+      {@const personId = personUrlParts[personUrlParts.length - 1]}
+      <article>
+        <a href={`/characters/${personId}`}>
+          <h6 class="text-xl">{person.name}</h6>
+        </a>
+      </article>
+    {/each}
+  </div>
+{/if}
+```
+
+## src/routes/characters/[characterId]/+page.svelte
+
+```svelte
+<script lang="ts">
+  import { createQuery } from '@tanstack/svelte-query'
+  import Homeworld from './Homeworld.svelte'
+  import Film from './Film.svelte'
+  import type { PageData } from './$types'
+
+  export let data: PageData
+
+  const getCharacter = async () => {
+    const res = await fetch(
+      `https://swapi.dev/api/people/${data.params.characterId}/`,
+    )
+    return await res.json()
+  }
+
+  const query = createQuery({
+    queryKey: ['character', data.params.characterId],
+    queryFn: getCharacter,
+  })
+</script>
+
+{#if $query.status === 'loading'}
+  <p>Loading...</p>
+{/if}
+
+{#if $query.status === 'error'}
+  <p>Error :(</p>
+{/if}
+
+{#if $query.status === 'success'}
+  {@const homeworldUrlParts = $query.data.homeworld.split('/').filter(Boolean)}
+  {@const homeworldId = homeworldUrlParts[homeworldUrlParts.length - 1]}
+  <div>
+    <h2 class="text-4xl">{$query.data.name}</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Feature</th>
+          <th>Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Born</td>
+          <td>{$query.data.birth_year}</td>
+        </tr>
+        <tr>
+          <td>Eyes</td>
+          <td>{$query.data.eye_color}</td>
+        </tr>
+        <tr>
+          <td>Hair</td>
+          <td>{$query.data.hair_color}</td>
+        </tr>
+        <tr>
+          <td>Height</td>
+          <td>{$query.data.height}</td>
+        </tr>
+        <tr>
+          <td>Mass</td>
+          <td>{$query.data.mass}</td>
+        </tr>
+        <tr>
+          <td>Homeworld</td>
+          <td><Homeworld {homeworldId} /></td>
+        </tr>
+      </tbody>
+    </table>
+    <br />
+    <h4 class="text-2xl">Films</h4>
+    {#each $query.data.films as film}
+      {@const filmUrlParts = film.split('/').filter(Boolean)}
+      {@const filmId = filmUrlParts[filmUrlParts.length - 1]}
+      <Film {filmId} />
+    {/each}
+  </div>
+{/if}
+```
+
+## src/routes/characters/[characterId]/+page.ts
+
+```ts
+import type { PageLoad } from './$types'
+
+export const load: PageLoad = ({ params }) => {
+  return { params }
+}
+```
+
+## src/routes/characters/[characterId]/Film.svelte
+
+```svelte
+<script lang="ts">
+  import { createQuery } from '@tanstack/svelte-query'
+
+  export let filmId: string
+
+  const getFilm = async () => {
+    const res = await fetch(`https://swapi.dev/api/films/${filmId}/`)
+    return await res.json()
+  }
+
+  const query = createQuery({
+    queryKey: ['film', filmId],
+    queryFn: getFilm,
+  })
+</script>
+
+{#if $query.status === 'success'}
+  <article>
+    <a href={`/films/${filmId}`}>
+      <h6 class="text-lg">{$query.data.episode_id}. {$query.data.title}</h6>
+    </a>
+  </article>
+{/if}
+```
+
+## src/routes/characters/[characterId]/Homeworld.svelte
+
+```svelte
+<script lang="ts">
+  import { createQuery } from '@tanstack/svelte-query'
+
+  export let homeworldId: string
+
+  const getHomeworld = async () => {
+    const res = await fetch(`https://swapi.dev/api/planets/${homeworldId}/`)
+    return await res.json()
+  }
+
+  const query = createQuery({
+    queryKey: ['homeworld', homeworldId],
+    queryFn: getHomeworld,
+  })
+</script>
+
+{#if $query.status === 'success'}
+  <span>
+    {$query.data.name}
+  </span>
+{/if}
+```
+
+## src/routes/films/+page.svelte
+
+```svelte
+<script lang="ts">
+  import { createQuery } from '@tanstack/svelte-query'
+
+  const getFilms = async () => {
+    const res = await fetch('https://swapi.dev/api/films/')
+    return await res.json()
+  }
+
+  const query = createQuery({
+    queryKey: ['films'],
+    queryFn: getFilms,
+  })
+</script>
+
+{#if $query.status === 'loading'}
+  <p>Loading...</p>
+{/if}
+
+{#if $query.status === 'error'}
+  <p>Error :(</p>
+{/if}
+
+{#if $query.status === 'success'}
+  <div>
+    <h2 class="text-4xl">Films</h2>
+    {#each $query.data.results as film}
+      {@const filmUrlParts = film.url.split('/').filter(Boolean)}
+      {@const filmId = filmUrlParts[filmUrlParts.length - 1]}
+      <article>
+        <a href={`/films/${filmId}`}>
+          <h6 class="text-xl">
+            {film.episode_id}. {film.title}{' '}
+            <em>
+              ({new Date(Date.parse(film.release_date)).getFullYear()})
+            </em>
+          </h6>
+        </a>
+      </article>
+    {/each}
+  </div>
+{/if}
+```
+
+## src/routes/films/[filmId]/+page.svelte
+
+```svelte
+<script lang="ts">
+  import { createQuery } from '@tanstack/svelte-query'
+  import Character from './Character.svelte'
+  import type { PageData } from './$types'
+
+  export let data: PageData
+
+  const getFilm = async () => {
+    const res = await fetch(
+      `https://swapi.dev/api/films/${data.params.filmId}/`,
+    )
+    return await res.json()
+  }
+
+  const query = createQuery({
+    queryKey: ['film', data.params.filmId],
+    queryFn: getFilm,
+  })
+</script>
+
+{#if $query.status === 'loading'}
+  <p>Loading...</p>
+{/if}
+
+{#if $query.status === 'error'}
+  <p>Error :(</p>
+{/if}
+
+{#if $query.status === 'success'}
+  <div>
+    <h2 class="text-4xl">{$query.data.title}</h2>
+    <p>{$query.data.opening_crawl}</p>
+    <br />
+    <h4 class="text-2xl">Characters</h4>
+    {#each $query.data.characters as character}
+      {@const characterUrlParts = character.split('/').filter(Boolean)}
+      {@const characterId = characterUrlParts[characterUrlParts.length - 1]}
+      <Character {characterId} />
+    {/each}
+  </div>
+{/if}
+```
+
+## src/routes/films/[filmId]/+page.ts
+
+```ts
+import type { PageLoad } from './$types'
+
+export const load: PageLoad = ({ params }) => {
+  return { params }
+}
+```
+
+## src/routes/films/[filmId]/Character.svelte
+
+```svelte
+<script lang="ts">
+  import { createQuery } from '@tanstack/svelte-query'
+
+  export let characterId: string
+
+  const getCharacter = async () => {
+    const res = await fetch(`https://swapi.dev/api/people/${characterId}/`)
+    return await res.json()
+  }
+
+  const query = createQuery({
+    queryKey: ['character', characterId],
+    queryFn: getCharacter,
+  })
+</script>
+
+{#if $query.status === 'success'}
+  <article>
+    <a href={`/characters/${characterId}`}>
+      <h6 class="text-lg">{$query.data.name}</h6>
+    </a>
+  </article>
+{/if}
+```

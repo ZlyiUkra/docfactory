@@ -1,0 +1,198 @@
+# Example: load-more-infinite-scroll
+# джерело: https://github.com/TanStack/query/tree/v3.39.2/examples/load-more-infinite-scroll
+# отримано: 2026-09-26
+# версія: 3.39.2
+
+## Example
+
+To run this example:
+
+- `npm install` or `yarn`
+- `npm run dev` or `yarn dev`
+
+## package.json
+
+```json
+{
+  "name": "load-more-infinite-scroll",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^0.21.1",
+    "isomorphic-unfetch": "3.0.0",
+    "next": "9.3.2",
+    "react": "16.13.0",
+    "react-dom": "16.13.0",
+    "react-intersection-observer": "^8.33.1",
+    "react-query": "^3.5.0"
+  },
+  "scripts": {
+    "dev": "next",
+    "start": "next start",
+    "build": "next build"
+  }
+}
+```
+
+## pages/about.js
+
+```js
+export default () => {
+  return (
+    <a
+      href=""
+      onClick={e => {
+        window.history.back()
+        e.preventDefault()
+      }}
+    >
+      Back
+    </a>
+  )
+}
+```
+
+## pages/api/projects.js
+
+```js
+// an endpoint for getting projects data
+export default (req, res) => {
+  const cursor = parseInt(req.query.cursor) || 0
+  const pageSize = 5
+
+  const data = Array(pageSize)
+    .fill(0)
+    .map((_, i) => {
+      return {
+        name: 'Project ' + (i + cursor) + ` (server time: ${Date.now()})`,
+        id: i + cursor,
+      }
+    })
+
+  const nextId = cursor < 10 ? data[data.length - 1].id + 1 : null
+  const previousId = cursor > -10 ? data[0].id - pageSize : null
+
+  setTimeout(() => res.json({ data, nextId, previousId }), 1000)
+}
+```
+
+## pages/index.js
+
+```js
+import React from 'react'
+import Link from 'next/link'
+import axios from 'axios'
+import { useInView } from 'react-intersection-observer'
+import { useInfiniteQuery, QueryClient, QueryClientProvider } from 'react-query'
+import { ReactQueryDevtools } from 'react-query/devtools'
+
+const queryClient = new QueryClient()
+
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Example />
+    </QueryClientProvider>
+  )
+}
+
+function Example() {
+  const { ref, inView } = useInView()
+
+  const {
+    status,
+    data,
+    error,
+    isFetching,
+    isFetchingNextPage,
+    isFetchingPreviousPage,
+    fetchNextPage,
+    fetchPreviousPage,
+    hasNextPage,
+    hasPreviousPage,
+  } = useInfiniteQuery(
+    'projects',
+    async ({ pageParam = 0 }) => {
+      const res = await axios.get('/api/projects?cursor=' + pageParam)
+      return res.data
+    },
+    {
+      getPreviousPageParam: firstPage => firstPage.previousId ?? undefined,
+      getNextPageParam: lastPage => lastPage.nextId ?? undefined,
+    }
+  )
+
+  React.useEffect(() => {
+    if (inView) {
+      fetchNextPage()
+    }
+  }, [inView])
+
+  return (
+    <div>
+      <h1>Infinite Loading</h1>
+      {status === 'loading' ? (
+        <p>Loading...</p>
+      ) : status === 'error' ? (
+        <span>Error: {error.message}</span>
+      ) : (
+        <>
+          <div>
+            <button
+              onClick={() => fetchPreviousPage()}
+              disabled={!hasPreviousPage || isFetchingPreviousPage}
+            >
+              {isFetchingPreviousPage
+                ? 'Loading more...'
+                : hasPreviousPage
+                ? 'Load Older'
+                : 'Nothing more to load'}
+            </button>
+          </div>
+          {data.pages.map(page => (
+            <React.Fragment key={page.nextId}>
+              {page.data.map(project => (
+                <p
+                  style={{
+                    border: '1px solid gray',
+                    borderRadius: '5px',
+                    padding: '10rem 1rem',
+                    background: `hsla(${project.id * 30}, 60%, 80%, 1)`,
+                  }}
+                  key={project.id}
+                >
+                  {project.name}
+                </p>
+              ))}
+            </React.Fragment>
+          ))}
+          <div>
+            <button
+              ref={ref}
+              onClick={() => fetchNextPage()}
+              disabled={!hasNextPage || isFetchingNextPage}
+            >
+              {isFetchingNextPage
+                ? 'Loading more...'
+                : hasNextPage
+                ? 'Load Newer'
+                : 'Nothing more to load'}
+            </button>
+          </div>
+          <div>
+            {isFetching && !isFetchingNextPage
+              ? 'Background Updating...'
+              : null}
+          </div>
+        </>
+      )}
+      <hr />
+      <Link href="/about">
+        <a>Go to another page</a>
+      </Link>
+      <ReactQueryDevtools initialIsOpen />
+    </div>
+  )
+}
+```

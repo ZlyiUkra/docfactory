@@ -1,0 +1,178 @@
+# Example: react/eslint-plugin-demo
+# джерело: https://github.com/TanStack/query/tree/@tanstack%2Fquery-core@5.103.3/examples/react/eslint-plugin-demo
+# отримано: 2026-09-26
+# версія: 5.103.3
+
+## package.json
+
+```json
+{
+  "name": "@tanstack/query-example-eslint-plugin-demo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:eslint": "eslint ./src"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.103.3",
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@tanstack/eslint-plugin-query": "^5.103.3",
+    "eslint": "^9.39.0",
+    "typescript": "5.8.3",
+    "typescript-eslint": "^8.70.1"
+  },
+  "nx": {
+    "targets": {
+      "test:eslint": {
+        "dependsOn": [
+          "^build"
+        ]
+      }
+    }
+  }
+}
+```
+
+## src/allowlist-demo.tsx
+
+```tsx
+import { queryOptions } from '@tanstack/react-query'
+
+export function todosOptions(userId: string) {
+  const api = useApiClient()
+  return queryOptions({
+    // ✅ passes: 'api' is in allowlist.variables
+    queryKey: ['todos', userId],
+    queryFn: () => api.fetchTodos(userId),
+  })
+}
+
+export function todosByApiOptions(userId: string) {
+  const todoApi = useApiClient()
+  // ❌ fails: 'api' is in allowlist.variables, but this variable is named 'todoApi'
+  // eslint-disable-next-line @tanstack/query/exhaustive-deps -- The following dependencies are missing in your queryKey: todoApi
+  return queryOptions({
+    queryKey: ['todos', userId],
+    queryFn: () => todoApi.fetchTodos(userId),
+  })
+}
+
+export function todosWithTrackingOptions(
+  tracker: AnalyticsClient,
+  userId: string,
+) {
+  return queryOptions({
+    // ✅ passes: AnalyticsClient is in allowlist.types
+    queryKey: ['todos', userId],
+    queryFn: async () => {
+      tracker.track('todos')
+      return fetch(`/api/todos?userId=${userId}`).then((r) => r.json())
+    },
+  })
+}
+
+export function todosWithClientOptions(client: ApiClient, userId: string) {
+  // ❌ fails: AnalyticsClient is in allowlist.types, but this param is typed as ApiClient
+  // eslint-disable-next-line @tanstack/query/exhaustive-deps -- The following dependencies are missing in your queryKey: client
+  return queryOptions({
+    queryKey: ['todos', userId],
+    queryFn: () => client.fetchTodos(userId),
+  })
+}
+
+interface ApiClient {
+  fetchTodos: (userId: string) => Promise<Array<{ id: string }>>
+}
+
+interface AnalyticsClient {
+  track: (event: string) => Promise<void>
+}
+
+function useApiClient(): ApiClient {
+  throw new Error('not implemented')
+}
+```
+
+## src/prefer-query-options-demo.tsx
+
+```tsx
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { todoOptions, todosOptions } from './queries'
+
+// ✅ passes: consuming imported queryOptions result directly
+export function Todos() {
+  const query = useQuery(todosOptions)
+  return query.data
+}
+
+// ✅ passes: spreading imported queryOptions result with additional options
+export function Todo({ id }: { id: string }) {
+  const query = useQuery({
+    ...todoOptions(id),
+    select: (data) => data.title,
+  })
+  return query.data
+}
+
+// ✅ passes: referencing queryKey from imported queryOptions result
+export function invalidateTodos() {
+  const queryClient = useQueryClient()
+  queryClient.invalidateQueries({ queryKey: todosOptions.queryKey })
+}
+
+// ❌ fails: inline queryKey + queryFn should use queryOptions()
+export function TodosBad() {
+  const query = useQuery(
+    // eslint-disable-next-line @tanstack/query/prefer-query-options -- Prefer using queryOptions() or infiniteQueryOptions() to co-locate queryKey and queryFn.
+    {
+      queryKey: ['todos'],
+      queryFn: () => fetch('/api/todos').then((r) => r.json()),
+    },
+  )
+  return query.data
+}
+
+// ❌ fails: inline queryKey should reference queryOptions result
+export function InvalidateTodosBad() {
+  const queryClient = useQueryClient()
+  // eslint-disable-next-line @tanstack/query/prefer-query-options -- Prefer referencing a queryKey from a queryOptions() result instead of typing it manually.
+  queryClient.invalidateQueries({ queryKey: ['todos'] })
+}
+
+// ❌ fails: inline queryKey as direct parameter
+export function GetTodosDataBad() {
+  const queryClient = useQueryClient()
+  // eslint-disable-next-line @tanstack/query/prefer-query-options -- Prefer referencing a queryKey from a queryOptions() result instead of typing it manually.
+  return queryClient.getQueryData(['todos'])
+}
+```
+
+## src/queries.tsx
+
+```tsx
+import { queryOptions } from '@tanstack/react-query'
+
+// ✅ passes: queryKey and queryFn are co-located via queryOptions()
+export const todosOptions = queryOptions({
+  queryKey: ['todos'],
+  queryFn: () => fetchTodos(),
+})
+
+// ✅ passes: factory function wrapping queryOptions()
+export const todoOptions = (id: string) =>
+  queryOptions({
+    queryKey: ['todo', id],
+    queryFn: () => fetchTodo(id),
+  })
+
+function fetchTodos(): Promise<Array<{ id: string; title: string }>> {
+  throw new Error('not implemented')
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function fetchTodo(id: string): Promise<{ id: string; title: string }> {
+  throw new Error('not implemented')
+}
+```

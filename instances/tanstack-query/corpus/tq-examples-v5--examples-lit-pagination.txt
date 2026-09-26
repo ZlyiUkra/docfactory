@@ -1,0 +1,1269 @@
+# Example: lit/pagination
+# джерело: https://github.com/TanStack/query/tree/@tanstack%2Fquery-core@5.103.3/examples/lit/pagination
+# отримано: 2026-09-26
+# версія: 5.103.3
+
+## Example
+
+To run this example from the repo root:
+
+- `pnpm --dir examples/lit/pagination run dev`
+
+## config/ports.js
+
+```js
+const DEFAULT_DEMO_PORT = 4183
+const DEFAULT_API_PORT = 4184
+
+function readPortFromEnv(name, fallback) {
+  const rawValue = process.env[name]
+  if (!rawValue) {
+    return fallback
+  }
+
+  const parsed = Number.parseInt(rawValue, 10)
+  const valid = Number.isInteger(parsed) && parsed >= 1 && parsed <= 65_535
+
+  if (!valid) {
+    throw new Error(
+      `Invalid ${name}="${rawValue}". Expected integer in [1, 65535].`,
+    )
+  }
+
+  return parsed
+}
+
+export const DEMO_PORT = readPortFromEnv(
+  'PAGINATION_DEMO_PORT',
+  DEFAULT_DEMO_PORT,
+)
+export const API_PORT = readPortFromEnv('PAGINATION_API_PORT', DEFAULT_API_PORT)
+```
+
+## package.json
+
+```json
+{
+  "name": "@tanstack/query-example-lit-pagination",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node ./scripts/dev.mjs",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tanstack/lit-query": "^0.2.24",
+    "@tanstack/query-core": "^5.103.3",
+    "lit": "^3.3.3"
+  },
+  "devDependencies": {
+    "typescript": "5.8.3",
+    "vite": "^6.4.1"
+  }
+}
+```
+
+## scripts/dev.mjs
+
+```js
+import { spawn } from 'node:child_process'
+import { once } from 'node:events'
+import { API_PORT } from '../config/ports.js'
+
+const viteCommand = process.platform === 'win32' ? 'vite.cmd' : 'vite'
+const cwd = new URL('..', import.meta.url)
+
+function forwardOutput(prefix, stream, output) {
+  stream.on('data', (chunk) => {
+    output.write(`${prefix}${chunk}`)
+  })
+}
+
+function start(name, command, args, extraEnv = {}) {
+  const child = spawn(command, args, {
+    cwd,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: {
+      ...process.env,
+      ...extraEnv,
+    },
+  })
+
+  forwardOutput(`[${name}] `, child.stdout, process.stdout)
+  forwardOutput(`[${name}] `, child.stderr, process.stderr)
+
+  return child
+}
+
+async function stop(child) {
+  if (!child || child.exitCode !== null) {
+    return
+  }
+
+  child.kill('SIGTERM')
+  await Promise.race([
+    once(child, 'exit'),
+    new Promise((resolve) => setTimeout(resolve, 2000)),
+  ])
+
+  if (child.exitCode === null) {
+    child.kill('SIGKILL')
+    await Promise.race([
+      once(child, 'exit'),
+      new Promise((resolve) => setTimeout(resolve, 2000)),
+    ])
+  }
+}
+
+async function run() {
+  const api = start('api', process.execPath, ['./server/index.mjs'])
+  const web = start('web', viteCommand, [], {
+    VITE_PAGINATION_API_PORT: String(API_PORT),
+  })
+
+  const shutdown = async () => {
+    await Promise.all([stop(web), stop(api)])
+  }
+
+  process.on('SIGINT', shutdown)
+  process.on('SIGTERM', shutdown)
+
+  const [winner] = await Promise.race([
+    once(api, 'exit').then(([code]) => ({ name: 'api', code })),
+    once(web, 'exit').then(([code]) => ({ name: 'web', code })),
+  ])
+
+  await shutdown()
+
+  if (winner.code !== 0 && winner.code !== null) {
+    process.exitCode = winner.code
+  } else {
+    process.exitCode = 1
+  }
+}
+
+run().catch((error) => {
+  console.error(error)
+  process.exitCode = 1
+})
+```
+
+## server/index.mjs
+
+```js
+import { createServer } from 'node:http'
+import { API_PORT } from '../config/ports.js'
+
+const PAGE_SIZE = 10
+const TOTAL_PROJECTS = 50
+const JSON_CONTENT_TYPE = 'application/json'
+
+function createSeedProjects() {
+  return Array.from({ length: TOTAL_PROJECTS }, (_, index) => ({
+    id: index + 1,
+    name: `Project ${index + 1}`,
+    owner: `Team ${(index % 5) + 1}`,
+    isFavorite: false,
+  }))
+}
+
+let projects = createSeedProjects()
+let nextProjectId = projects.length + 1
+let totalRequestCount = 0
+let totalMutationCount = 0
+let failNextMutation = false
+const perPageRequestCount = new Map()
+
+function writeJson(res, status, body) {
+  const payload = JSON.stringify(body)
+  res.writeHead(status, {
+    'content-type': 'application/json; charset=utf-8',
+    'cache-control': 'no-store',
+    'access-control-allow-origin': '*',
+    'access-control-allow-methods': 'GET,POST,PATCH,OPTIONS',
+    'access-control-allow-headers': 'content-type',
+    'content-length': Buffer.byteLength(payload),
+  })
+  res.end(payload)
+}
+
+function parsePositiveInt(rawValue, fallback) {
+  if (rawValue == null || rawValue === '') {
+    return fallback
+  }
+
+  const parsed = Number.parseInt(rawValue, 10)
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    return undefined
+  }
+
+  return parsed
+}
+
+function parseNonNegativeInt(rawValue, fallback) {
+  if (rawValue == null || rawValue === '') {
+    return fallback
+  }
+
+  const parsed = Number.parseInt(rawValue, 10)
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    return undefined
+  }
+
+  return parsed
+}
+
+function resetState() {
+  projects = createSeedProjects()
+  nextProjectId = projects.length + 1
+  totalRequestCount = 0
+  totalMutationCount = 0
+  failNextMutation = false
+  perPageRequestCount.clear()
+}
+
+async function sleep(ms) {
+  if (!ms || ms <= 0) {
+    return
+  }
+
+  await new Promise((resolve) => {
+    setTimeout(resolve, ms)
+  })
+}
+
+async function readJsonBody(req) {
+  const contentType = req.headers['content-type']
+  if (!contentType || !contentType.startsWith(JSON_CONTENT_TYPE)) {
+    return {
+      ok: false,
+      status: 415,
+      error: 'Expected application/json request body',
+    }
+  }
+
+  const chunks = []
+  for await (const chunk of req) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+  }
+
+  const raw = Buffer.concat(chunks).toString('utf8')
+  if (!raw) {
+    return {
+      ok: false,
+      status: 400,
+      error: 'Request body is required',
+    }
+  }
+
+  try {
+    return {
+      ok: true,
+      value: JSON.parse(raw),
+    }
+  } catch {
+    return {
+      ok: false,
+      status: 400,
+      error: 'Request body must be valid JSON',
+    }
+  }
+}
+
+function buildProjectsPage(page) {
+  const totalPages = Math.max(1, Math.ceil(projects.length / PAGE_SIZE))
+  const boundedPage = Math.min(page, totalPages)
+  const startIndex = (boundedPage - 1) * PAGE_SIZE
+  const endIndex = startIndex + PAGE_SIZE
+  const items = projects.slice(startIndex, endIndex)
+
+  totalRequestCount += 1
+  const pageRequests = (perPageRequestCount.get(boundedPage) ?? 0) + 1
+  perPageRequestCount.set(boundedPage, pageRequests)
+
+  return {
+    page: boundedPage,
+    pageSize: PAGE_SIZE,
+    totalPages,
+    totalProjects: projects.length,
+    hasMore: boundedPage < totalPages,
+    projects: items,
+    requestMeta: {
+      totalRequestCount,
+      pageRequestCount: pageRequests,
+      totalMutationCount,
+    },
+  }
+}
+
+function maybeFailMutation(res) {
+  if (!failNextMutation) {
+    return false
+  }
+
+  failNextMutation = false
+  writeJson(res, 500, { error: 'Forced mutation failure (test)' })
+  return true
+}
+
+function validateProjectName(name) {
+  if (typeof name !== 'string') {
+    return 'Project name must be a string'
+  }
+
+  const trimmed = name.trim()
+  if (trimmed.length < 3) {
+    return 'Project name must be at least 3 characters'
+  }
+
+  if (trimmed.length > 60) {
+    return 'Project name must be 60 characters or fewer'
+  }
+
+  return null
+}
+
+function validateOwner(owner) {
+  if (typeof owner !== 'string') {
+    return 'Owner must be a string'
+  }
+
+  const trimmed = owner.trim()
+  if (!trimmed) {
+    return 'Owner is required'
+  }
+
+  if (trimmed.length > 40) {
+    return 'Owner must be 40 characters or fewer'
+  }
+
+  return null
+}
+
+const server = createServer(async (req, res) => {
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, {
+      'access-control-allow-origin': '*',
+      'access-control-allow-methods': 'GET,POST,PATCH,OPTIONS',
+      'access-control-allow-headers': 'content-type',
+      'cache-control': 'no-store',
+    })
+    res.end()
+    return
+  }
+
+  if (!req.url) {
+    writeJson(res, 400, { error: 'Missing URL' })
+    return
+  }
+
+  const requestUrl = new URL(req.url, `http://127.0.0.1:${API_PORT}`)
+
+  if (requestUrl.pathname === '/api/projects' && req.method === 'GET') {
+    const page = parsePositiveInt(requestUrl.searchParams.get('page'), 1)
+    if (!page) {
+      writeJson(res, 400, { error: 'Invalid page parameter' })
+      return
+    }
+
+    const delayMs = parseNonNegativeInt(requestUrl.searchParams.get('delay'), 0)
+    if (delayMs === undefined) {
+      writeJson(res, 400, { error: 'Invalid delay parameter' })
+      return
+    }
+
+    await sleep(delayMs)
+
+    if (requestUrl.searchParams.get('error') === 'true') {
+      writeJson(res, 500, {
+        error: 'Forced server error (test)',
+        page,
+      })
+      return
+    }
+
+    writeJson(res, 200, buildProjectsPage(page))
+    return
+  }
+
+  if (requestUrl.pathname === '/api/projects' && req.method === 'POST') {
+    if (maybeFailMutation(res)) {
+      return
+    }
+
+    const payload = await readJsonBody(req)
+    if (!payload.ok) {
+      writeJson(res, payload.status, { error: payload.error })
+      return
+    }
+
+    const nameError = validateProjectName(payload.value?.name)
+    if (nameError) {
+      writeJson(res, 422, { error: nameError })
+      return
+    }
+
+    const ownerError = validateOwner(payload.value?.owner)
+    if (ownerError) {
+      writeJson(res, 422, { error: ownerError })
+      return
+    }
+
+    const project = {
+      id: nextProjectId,
+      name: payload.value.name.trim(),
+      owner: payload.value.owner.trim(),
+      isFavorite: false,
+    }
+
+    nextProjectId += 1
+    totalMutationCount += 1
+    projects = [project, ...projects]
+
+    writeJson(res, 201, {
+      project,
+      mutationCount: totalMutationCount,
+    })
+    return
+  }
+
+  const patchMatch = requestUrl.pathname.match(/^\/api\/projects\/(\d+)$/)
+  if (patchMatch && req.method === 'PATCH') {
+    if (maybeFailMutation(res)) {
+      return
+    }
+
+    const projectId = Number.parseInt(patchMatch[1], 10)
+    const projectIndex = projects.findIndex(
+      (project) => project.id === projectId,
+    )
+    if (projectIndex === -1) {
+      writeJson(res, 404, { error: `Project ${projectId} was not found` })
+      return
+    }
+
+    const payload = await readJsonBody(req)
+    if (!payload.ok) {
+      writeJson(res, payload.status, { error: payload.error })
+      return
+    }
+
+    if (typeof payload.value?.isFavorite !== 'boolean') {
+      writeJson(res, 422, { error: 'isFavorite must be a boolean' })
+      return
+    }
+
+    const nextProject = {
+      ...projects[projectIndex],
+      isFavorite: payload.value.isFavorite,
+    }
+
+    totalMutationCount += 1
+    projects = projects.map((project, index) =>
+      index === projectIndex ? nextProject : project,
+    )
+
+    writeJson(res, 200, {
+      project: nextProject,
+      mutationCount: totalMutationCount,
+    })
+    return
+  }
+
+  if (
+    requestUrl.pathname === '/api/testing/fail-next-mutation' &&
+    req.method === 'POST'
+  ) {
+    failNextMutation = true
+    writeJson(res, 200, { ok: true })
+    return
+  }
+
+  if (requestUrl.pathname === '/api/reset' && req.method === 'POST') {
+    resetState()
+    writeJson(res, 200, { ok: true })
+    return
+  }
+
+  writeJson(res, 404, { error: 'Not found' })
+})
+
+server.listen(API_PORT, '127.0.0.1', () => {
+  console.log(`[api] listening on http://127.0.0.1:${API_PORT}`)
+})
+```
+
+## src/api.ts
+
+```ts
+export type Project = {
+  id: number
+  name: string
+  owner: string
+  isFavorite: boolean
+}
+
+export type ProjectsPageResponse = {
+  page: number
+  pageSize: number
+  totalPages: number
+  totalProjects: number
+  hasMore: boolean
+  projects: Project[]
+  requestMeta: {
+    totalRequestCount: number
+    pageRequestCount: number
+    totalMutationCount: number
+  }
+}
+
+export type CreateProjectInput = {
+  name: string
+  owner: string
+}
+
+export type ToggleProjectFavoriteInput = {
+  id: number
+  isFavorite: boolean
+}
+
+export type ProjectMutationResponse = {
+  project: Project
+  mutationCount: number
+}
+
+export type ProjectsQueryKey = readonly ['projects', number, number, boolean]
+
+const DEFAULT_API_PORT = 4184
+const configuredApiPort = Number.parseInt(
+  import.meta.env.VITE_PAGINATION_API_PORT ?? String(DEFAULT_API_PORT),
+  10,
+)
+const API_PORT = Number.isInteger(configuredApiPort)
+  ? configuredApiPort
+  : DEFAULT_API_PORT
+const API_BASE_URL = `http://127.0.0.1:${API_PORT}`
+
+function buildProjectsUrl(
+  page: number,
+  delayMs: number,
+  forceError: boolean,
+): URL {
+  const url = new URL('/api/projects', API_BASE_URL)
+  url.searchParams.set('page', String(page))
+
+  if (delayMs > 0) {
+    url.searchParams.set('delay', String(delayMs))
+  }
+
+  if (forceError) {
+    url.searchParams.set('error', 'true')
+  }
+
+  return url
+}
+
+async function readJsonOrThrow<T>(
+  response: Response,
+  fallbackMessage: string,
+): Promise<T> {
+  if (response.ok) {
+    return (await response.json()) as T
+  }
+
+  const payload = (await response.json().catch(() => null)) as {
+    error?: string
+  } | null
+
+  throw new Error(
+    payload && typeof payload === 'object' && 'error' in payload
+      ? String(payload.error ?? fallbackMessage)
+      : fallbackMessage,
+  )
+}
+
+async function requestJson<T>(
+  url: URL,
+  init: RequestInit,
+  fallbackMessage: string,
+): Promise<T> {
+  const response = await fetch(url, init)
+  return readJsonOrThrow<T>(response, fallbackMessage)
+}
+
+export function projectsQueryKey(
+  page: number,
+  delayMs: number,
+  forceError: boolean,
+): ProjectsQueryKey {
+  return ['projects', page, delayMs, forceError] as const
+}
+
+export async function fetchProjectsPage(
+  page: number,
+  delayMs: number,
+  forceError: boolean,
+): Promise<ProjectsPageResponse> {
+  const response = await fetch(buildProjectsUrl(page, delayMs, forceError))
+  return readJsonOrThrow<ProjectsPageResponse>(
+    response,
+    `Failed to fetch projects page ${page}`,
+  )
+}
+
+export async function createProjectOnServer(
+  input: CreateProjectInput,
+): Promise<ProjectMutationResponse> {
+  return requestJson<ProjectMutationResponse>(
+    new URL('/api/projects', API_BASE_URL),
+    {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(input),
+    },
+    'Failed to create project',
+  )
+}
+
+export async function toggleProjectFavoriteOnServer(
+  input: ToggleProjectFavoriteInput,
+): Promise<ProjectMutationResponse> {
+  return requestJson<ProjectMutationResponse>(
+    new URL(`/api/projects/${input.id}`, API_BASE_URL),
+    {
+      method: 'PATCH',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ isFavorite: input.isFavorite }),
+    },
+    `Failed to update project ${input.id}`,
+  )
+}
+
+export async function armNextProjectMutationFailureOnServer(): Promise<void> {
+  await requestJson<{ ok: true }>(
+    new URL('/api/testing/fail-next-mutation', API_BASE_URL),
+    {
+      method: 'POST',
+    },
+    'Failed to arm next mutation failure',
+  )
+}
+
+export async function resetProjectsApiState(): Promise<void> {
+  await requestJson<{ ok: true }>(
+    new URL('/api/reset', API_BASE_URL),
+    {
+      method: 'POST',
+    },
+    'Failed to reset API state',
+  )
+}
+```
+
+## src/main.ts
+
+```ts
+import { LitElement, html } from 'lit'
+import {
+  QueryClient,
+  QueryClientProvider,
+  createMutationController,
+  createQueryController,
+  keepPreviousData,
+  noop,
+} from '@tanstack/lit-query'
+import {
+  armNextProjectMutationFailureOnServer,
+  createProjectOnServer,
+  fetchProjectsPage,
+  projectsQueryKey,
+  resetProjectsApiState,
+  toggleProjectFavoriteOnServer,
+} from './api'
+import type {
+  CreateQueryOptions,
+  MutationResultAccessor,
+  QueryKey,
+  QueryResultAccessor,
+} from '@tanstack/lit-query'
+import type {
+  CreateProjectInput,
+  Project,
+  ProjectsPageResponse,
+  ToggleProjectFavoriteInput,
+} from './api'
+
+type ProjectsCacheSnapshot = Array<[QueryKey, ProjectsPageResponse | undefined]>
+type FavoriteMutationContext = {
+  snapshots: ProjectsCacheSnapshot
+}
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      staleTime: 5_000,
+    },
+    mutations: {
+      retry: false,
+    },
+  },
+})
+
+class PaginationQueryProvider extends QueryClientProvider {
+  constructor() {
+    super()
+    this.client = queryClient
+  }
+
+  protected override createRenderRoot(): HTMLElement | DocumentFragment {
+    return this
+  }
+}
+
+customElements.define('pagination-query-provider', PaginationQueryProvider)
+
+class PaginationDemo extends LitElement {
+  static properties = {
+    page: { state: true },
+    delayMs: { state: true },
+    forceErrorMode: { state: true },
+    prefetchStatus: { state: true },
+    resetError: { state: true },
+    draftName: { state: true },
+    draftOwner: { state: true },
+    mutationControlStatus: { state: true },
+    mutationControlError: { state: true },
+  }
+
+  private page = 1
+  private delayMs = 250
+  private forceErrorMode = false
+  private prefetchStatus = 'idle'
+  private resetError: string | undefined
+  private draftName = 'Platform Rollout'
+  private draftOwner = 'Team 6'
+  private mutationControlStatus = 'idle'
+  private mutationControlError: string | undefined
+  private lastAutoPrefetchPage = 0
+  private readonly projectsQueryOptions: CreateQueryOptions<
+    ProjectsPageResponse,
+    Error
+  >
+  private readonly projectsQuery: QueryResultAccessor<
+    ProjectsPageResponse,
+    Error
+  >
+  private readonly createProjectMutation: MutationResultAccessor<
+    Project,
+    Error,
+    CreateProjectInput,
+    unknown
+  >
+  private readonly favoriteMutation: MutationResultAccessor<
+    Project,
+    Error,
+    ToggleProjectFavoriteInput,
+    FavoriteMutationContext
+  >
+
+  constructor() {
+    super()
+
+    this.projectsQueryOptions = {
+      queryKey: projectsQueryKey(this.page, this.delayMs, this.forceErrorMode),
+      queryFn: () =>
+        fetchProjectsPage(this.page, this.delayMs, this.forceErrorMode),
+      placeholderData: keepPreviousData,
+    }
+
+    this.projectsQuery = createQueryController<ProjectsPageResponse, Error>(
+      this,
+      this.projectsQueryOptions,
+    )
+
+    this.createProjectMutation = createMutationController<
+      Project,
+      Error,
+      CreateProjectInput
+    >(
+      this,
+      {
+        mutationKey: ['create-project'],
+        mutationFn: async (input) => {
+          const response = await createProjectOnServer(input)
+          return response.project
+        },
+        onMutate: () => {
+          this.mutationControlStatus = 'idle'
+          this.mutationControlError = undefined
+        },
+        onSuccess: async () => {
+          this.page = 1
+          this.lastAutoPrefetchPage = 0
+          this.prefetchStatus = 'idle'
+          this.draftName = ''
+          this.draftOwner = 'Team 6'
+          this.syncProjectsQueryOptions()
+          await queryClient.invalidateQueries({
+            queryKey: ['projects'],
+            refetchType: 'none',
+          })
+          await this.projectsQuery.refetch()
+        },
+      },
+      queryClient,
+    )
+
+    this.favoriteMutation = createMutationController<
+      Project,
+      Error,
+      ToggleProjectFavoriteInput,
+      FavoriteMutationContext
+    >(
+      this,
+      {
+        mutationKey: ['toggle-project-favorite'],
+        mutationFn: async (input) => {
+          const response = await toggleProjectFavoriteOnServer(input)
+          return response.project
+        },
+        onMutate: async (variables) => {
+          this.mutationControlStatus = 'idle'
+          this.mutationControlError = undefined
+          await queryClient.cancelQueries({ queryKey: ['projects'] })
+
+          const snapshots = queryClient.getQueriesData<ProjectsPageResponse>({
+            queryKey: ['projects'],
+          })
+
+          for (const [key, existing] of snapshots) {
+            if (!existing) {
+              continue
+            }
+
+            queryClient.setQueryData<ProjectsPageResponse>(key, {
+              ...existing,
+              projects: existing.projects.map((project) =>
+                project.id === variables.id
+                  ? { ...project, isFavorite: variables.isFavorite }
+                  : project,
+              ),
+            })
+          }
+
+          return { snapshots }
+        },
+        onError: (_error, _variables, context) => {
+          for (const [key, snapshot] of context?.snapshots ?? []) {
+            queryClient.setQueryData(key, snapshot)
+          }
+        },
+        onSettled: async () => {
+          await queryClient.invalidateQueries({ queryKey: ['projects'] })
+        },
+      },
+      queryClient,
+    )
+  }
+
+  protected override createRenderRoot(): HTMLElement | DocumentFragment {
+    return this
+  }
+
+  override updated(): void {
+    this.maybePrefetchNextPage()
+  }
+
+  private syncProjectsQueryOptions(): void {
+    this.projectsQueryOptions.queryKey = projectsQueryKey(
+      this.page,
+      this.delayMs,
+      this.forceErrorMode,
+    )
+    this.projectsQueryOptions.queryFn = () =>
+      fetchProjectsPage(this.page, this.delayMs, this.forceErrorMode)
+  }
+
+  private refetchForCurrentState(): void {
+    this.syncProjectsQueryOptions()
+    void this.projectsQuery.refetch()
+  }
+
+  private async maybePrefetchNextPage(): Promise<void> {
+    const query = this.projectsQuery()
+    const currentData = query.data
+
+    if (!currentData || query.isPlaceholderData || !currentData.hasMore) {
+      return
+    }
+
+    if (this.lastAutoPrefetchPage === currentData.page) {
+      return
+    }
+
+    this.lastAutoPrefetchPage = currentData.page
+    await this.prefetchPage(currentData.page + 1)
+  }
+
+  private onDelayInput(event: Event): void {
+    const target = event.target as HTMLInputElement
+    const nextValue = Number.parseInt(target.value, 10)
+
+    if (!Number.isInteger(nextValue) || nextValue < 0) {
+      return
+    }
+
+    this.delayMs = nextValue
+    this.refetchForCurrentState()
+  }
+
+  private onErrorModeToggle(event: Event): void {
+    const target = event.target as HTMLInputElement
+    this.forceErrorMode = target.checked
+    this.refetchForCurrentState()
+  }
+
+  private onDraftNameInput(event: Event): void {
+    const target = event.target as HTMLInputElement
+    this.draftName = target.value
+  }
+
+  private onDraftOwnerInput(event: Event): void {
+    const target = event.target as HTMLInputElement
+    this.draftOwner = target.value
+  }
+
+  private async prefetchPage(targetPage: number): Promise<void> {
+    this.prefetchStatus = `pending:${targetPage}`
+
+    try {
+      await queryClient
+        .query({
+          queryKey: projectsQueryKey(
+            targetPage,
+            this.delayMs,
+            this.forceErrorMode,
+          ),
+          queryFn: () =>
+            fetchProjectsPage(targetPage, this.delayMs, this.forceErrorMode),
+        })
+        .catch(noop)
+      this.prefetchStatus = `ready:${targetPage}`
+    } catch (error) {
+      this.prefetchStatus = `error:${String(error)}`
+    }
+  }
+
+  private async prefetchNext(): Promise<void> {
+    const query = this.projectsQuery()
+    const currentData = query.data
+
+    if (!currentData?.hasMore) {
+      this.prefetchStatus = 'skipped:no-next-page'
+      return
+    }
+
+    await this.prefetchPage(currentData.page + 1)
+  }
+
+  private goToPreviousPage(): void {
+    if (this.page > 1) {
+      this.page -= 1
+      this.refetchForCurrentState()
+    }
+  }
+
+  private goToNextPage(): void {
+    const currentData = this.projectsQuery().data
+    if (!currentData?.hasMore) {
+      return
+    }
+
+    this.page += 1
+    this.refetchForCurrentState()
+  }
+
+  private async resetDemoState(): Promise<void> {
+    this.resetError = undefined
+
+    try {
+      await resetProjectsApiState()
+      this.page = 1
+      this.delayMs = 250
+      this.forceErrorMode = false
+      this.prefetchStatus = 'idle'
+      this.resetError = undefined
+      this.draftName = 'Platform Rollout'
+      this.draftOwner = 'Team 6'
+      this.mutationControlStatus = 'idle'
+      this.mutationControlError = undefined
+      this.lastAutoPrefetchPage = 0
+      this.syncProjectsQueryOptions()
+      this.createProjectMutation.reset()
+      this.favoriteMutation.reset()
+      await queryClient.resetQueries({ queryKey: ['projects'] })
+      await this.projectsQuery.refetch()
+    } catch (error) {
+      this.resetError = String(error)
+    }
+  }
+
+  private submitCreateProject(): void {
+    const name = this.draftName.trim()
+    const owner = this.draftOwner.trim()
+
+    if (!name || !owner) {
+      return
+    }
+
+    this.createProjectMutation.mutate({ name, owner })
+  }
+
+  private toggleFavorite(project: Project): void {
+    this.favoriteMutation.mutate({
+      id: project.id,
+      isFavorite: !project.isFavorite,
+    })
+  }
+
+  private async armNextMutationFailure(): Promise<void> {
+    this.mutationControlError = undefined
+
+    try {
+      await armNextProjectMutationFailureOnServer()
+      this.mutationControlStatus = 'armed'
+    } catch (error) {
+      this.mutationControlStatus = 'error'
+      this.mutationControlError = String(error)
+    }
+  }
+
+  render() {
+    const query = this.projectsQuery()
+    const projects = query.data?.projects ?? []
+    const hasMore = query.data?.hasMore ?? false
+    const createProject = this.createProjectMutation()
+    const favoriteProject = this.favoriteMutation()
+
+    return html`
+      <main>
+        <h1>TanStack Lit Query Pagination Demo</h1>
+        <p>
+          Pagination + mutation demo with optimistic favorite toggles,
+          invalidation, and deterministic server failures.
+        </p>
+
+        <section>
+          <div data-testid="query-status">query: ${query.status}</div>
+          <div data-testid="is-fetching">
+            isFetching: ${query.isFetching ? 'yes' : 'no'}
+          </div>
+          <div data-testid="is-placeholder">
+            isPlaceholderData: ${query.isPlaceholderData ? 'yes' : 'no'}
+          </div>
+          <div data-testid="current-page">page: ${this.page}</div>
+          <div data-testid="response-page">
+            response-page: ${query.data?.page ?? '-'}
+          </div>
+          <div data-testid="has-more">has-more: ${hasMore ? 'yes' : 'no'}</div>
+          <div data-testid="total-projects">
+            total-projects: ${query.data?.totalProjects ?? 0}
+          </div>
+          <div data-testid="total-request-count">
+            total-requests: ${query.data?.requestMeta.totalRequestCount ?? 0}
+          </div>
+          <div data-testid="page-request-count">
+            page-requests: ${query.data?.requestMeta.pageRequestCount ?? 0}
+          </div>
+          <div data-testid="total-mutation-count">
+            total-mutations: ${query.data?.requestMeta.totalMutationCount ?? 0}
+          </div>
+          <div data-testid="prefetch-status">
+            prefetch: ${this.prefetchStatus}
+          </div>
+        </section>
+
+        ${
+          query.isError
+            ? html`<p data-testid="query-error">${String(query.error)}</p>`
+            : null
+        }
+        ${
+          this.resetError
+            ? html`<p data-testid="reset-error">${this.resetError}</p>`
+            : null
+        }
+
+        <section>
+          <label for="delayInput">Delay (ms)</label>
+          <input
+            id="delayInput"
+            data-testid="delay-input"
+            type="number"
+            min="0"
+            .value=${String(this.delayMs)}
+            @input=${this.onDelayInput}
+          />
+
+          <label for="errorModeToggle">Force query error</label>
+          <input
+            id="errorModeToggle"
+            data-testid="force-error-toggle"
+            type="checkbox"
+            .checked=${this.forceErrorMode}
+            @change=${this.onErrorModeToggle}
+          />
+
+          <button
+            data-testid="reset-demo-state"
+            @click=${() => this.resetDemoState()}
+          >
+            Reset Demo State
+          </button>
+          <button
+            data-testid="refetch"
+            @click=${() => this.projectsQuery.refetch()}
+          >
+            Refetch
+          </button>
+          <button
+            data-testid="prefetch-next"
+            @click=${() => this.prefetchNext()}
+          >
+            Prefetch Next
+          </button>
+          <button
+            data-testid="arm-mutation-error"
+            @click=${() => this.armNextMutationFailure()}
+          >
+            Fail Next Mutation
+          </button>
+          <div data-testid="mutation-control-status">
+            mutation-control: ${this.mutationControlStatus}
+          </div>
+          ${
+            this.mutationControlError
+              ? html`<div data-testid="mutation-control-error">
+                  ${this.mutationControlError}
+                </div>`
+              : null
+          }
+        </section>
+
+        <section>
+          <div data-testid="create-mutation-status">
+            create-mutation: ${createProject.status}
+          </div>
+          ${
+            createProject.isError
+              ? html`<div data-testid="create-mutation-error">
+                  ${String(createProject.error)}
+                </div>`
+              : null
+          }
+
+          <label for="projectNameInput">Project name</label>
+          <input
+            id="projectNameInput"
+            data-testid="project-name-input"
+            .value=${this.draftName}
+            @input=${this.onDraftNameInput}
+          />
+
+          <label for="projectOwnerInput">Owner</label>
+          <input
+            id="projectOwnerInput"
+            data-testid="project-owner-input"
+            .value=${this.draftOwner}
+            @input=${this.onDraftOwnerInput}
+          />
+
+          <button
+            data-testid="create-project"
+            ?disabled=${createProject.isPending}
+            @click=${() => this.submitCreateProject()}
+          >
+            Create Project
+          </button>
+        </section>
+
+        <section>
+          <div data-testid="favorite-mutation-status">
+            favorite-mutation: ${favoriteProject.status}
+          </div>
+          ${
+            favoriteProject.isError
+              ? html`<div data-testid="favorite-mutation-error">
+                  ${String(favoriteProject.error)}
+                </div>`
+              : null
+          }
+        </section>
+
+        <section>
+          <button
+            data-testid="previous-page"
+            ?disabled=${this.page === 1 || query.isPlaceholderData}
+            @click=${() => this.goToPreviousPage()}
+          >
+            Previous
+          </button>
+          <button
+            data-testid="next-page"
+            ?disabled=${!hasMore || query.isPlaceholderData}
+            @click=${() => this.goToNextPage()}
+          >
+            Next
+          </button>
+        </section>
+
+        <ul data-testid="project-list">
+          ${projects.map(
+            (project) => html`
+              <li data-testid="project-item">
+                <span data-testid="project-name"
+                  >${project.id}: ${project.name} (${project.owner})</span
+                >
+                <span data-testid="project-favorite-state"
+                  >${project.isFavorite ? 'favorite' : 'standard'}</span
+                >
+                <button
+                  data-testid="toggle-favorite"
+                  ?disabled=${favoriteProject.isPending}
+                  @click=${() => this.toggleFavorite(project)}
+                >
+                  ${project.isFavorite ? 'Unfavorite' : 'Favorite'}
+                </button>
+              </li>
+            `,
+          )}
+        </ul>
+      </main>
+    `
+  }
+}
+
+customElements.define('pagination-demo', PaginationDemo)
+
+class PaginationDemoRoot extends LitElement {
+  protected override createRenderRoot(): HTMLElement | DocumentFragment {
+    return this
+  }
+
+  render() {
+    return html`
+      <pagination-query-provider>
+        <pagination-demo></pagination-demo>
+      </pagination-query-provider>
+    `
+  }
+}
+
+customElements.define('pagination-demo-root', PaginationDemoRoot)
+```

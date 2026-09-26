@@ -1,0 +1,277 @@
+# Example: react/algolia
+# джерело: https://github.com/TanStack/query/tree/@tanstack%2Fquery-core@4.44.0/examples/react/algolia
+# отримано: 2026-09-26
+# версія: 4.44.0
+
+## Example
+
+To run this example:
+
+- `npm install`
+- `npm run dev`
+
+## package.json
+
+```json
+{
+  "name": "@tanstack/query-example-react-algolia",
+  "private": true,
+  "main": "src/index.tsx",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@algolia/client-search": "4.11.0",
+    "@algolia/transporter": "4.11.0",
+    "@tanstack/react-query": "^4.44.0",
+    "@tanstack/react-query-devtools": "^4.44.0",
+    "algoliasearch": "4.12.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@tanstack/eslint-plugin-query": "^4.44.0",
+    "@types/react": "^18.0.14",
+    "@types/react-dom": "^18.0.5",
+    "@vitejs/plugin-react": "^2.0.0",
+    "typescript": "^4.7.4",
+    "vite": "^3.0.0"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
+```
+
+## src/App.tsx
+
+```tsx
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
+import './styles.css'
+import Search from './Search'
+
+const queryClient = new QueryClient()
+
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <div className="App">
+        <h1>TanStack Query with Algolia</h1>
+        <Search />
+      </div>
+    </QueryClientProvider>
+  )
+}
+```
+
+## src/Search.tsx
+
+```tsx
+import { useState } from 'react'
+
+import SearchResults from './SearchResults'
+
+export default function Search() {
+  const [query, setQuery] = useState('')
+
+  const handleOnChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    event.preventDefault()
+    // It is recommended to debounce this event in prod
+    setQuery(event.target.value)
+  }
+
+  return (
+    <div>
+      <input
+        onChange={handleOnChange}
+        value={query}
+        placeholder="Search products"
+      />
+      <SearchResults query={query} />
+    </div>
+  )
+}
+```
+
+## src/SearchResults.tsx
+
+```tsx
+import useAlgolia from './useAlgolia'
+
+type Product = {
+  name: string
+  shortDescription: string
+  salePrice: number
+}
+
+type SearchResultsProps = {
+  query: string
+}
+
+export default function SearchResults({ query = '' }: SearchResultsProps) {
+  const {
+    hits,
+    isLoading,
+    isFetching,
+    status,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useAlgolia<Product>({
+    indexName: 'bestbuy',
+    query,
+    hitsPerPage: 5,
+    staleTime: 1000 * 30, // 30s
+    cacheTime: 1000 * 60 * 15, // 15m
+    enabled: !!query,
+  })
+
+  if (!query) return null
+
+  if (isLoading) return <div className="loading">Loading...</div>
+
+  return (
+    <div>
+      <div className="search-status">
+        Satus: {status} {isFetching && <span>fetching...</span>}
+      </div>
+      <div>
+        <div className="search-result">
+          {hits && hits.length > 0 ? (
+            hits.map((product) => (
+              <li key={product.objectID} className="product">
+                <span className="product-name">{product.name}</span>
+                {product.shortDescription && (
+                  <>
+                    <br />
+                    <span className="product-description">
+                      {product.shortDescription}
+                    </span>
+                  </>
+                )}
+                <br />
+                <span className="product-price">${product.salePrice}</span>
+              </li>
+            ))
+          ) : (
+            <h3>No products found!</h3>
+          )}
+        </div>
+        {hasNextPage && (
+          <div className="search-more" onClick={() => fetchNextPage()}>
+            more
+          </div>
+        )}
+        {isFetchingNextPage && (
+          <div className="search-status">Fetching next page...</div>
+        )}
+      </div>
+    </div>
+  )
+}
+```
+
+## src/algolia.ts
+
+```ts
+import algoliasearch from 'algoliasearch'
+import { Hit } from '@algolia/client-search'
+
+// From Algolia example
+// https://github.com/algolia/react-instantsearch
+const ALGOLIA_APP_ID = 'latency'
+const ALGOLIA_SEARCH_API_KEY = '6be0576ff61c053d5f9a3225e2a90f76'
+
+type SearchOptions = {
+  indexName: string
+  query: string
+  pageParam: number
+  hitsPerPage: number
+}
+
+export async function search<TData>({
+  indexName,
+  query,
+  pageParam = 0,
+  hitsPerPage = 10,
+}: SearchOptions): Promise<{
+  hits: Hit<TData>[]
+  nextPage: number | undefined
+}> {
+  const client = algoliasearch(ALGOLIA_APP_ID, ALGOLIA_SEARCH_API_KEY)
+  const index = client.initIndex(indexName)
+
+  console.log('alogolia:search', { indexName, query, pageParam, hitsPerPage })
+
+  const { hits, page, nbPages } = await index.search<TData>(query, {
+    page: pageParam,
+    hitsPerPage,
+  })
+
+  const nextPage = page + 1 < nbPages ? page + 1 : undefined
+
+  return { hits, nextPage }
+}
+```
+
+## src/index.tsx
+
+```tsx
+import ReactDOM from 'react-dom/client'
+
+import App from './App'
+
+const rootElement = document.getElementById('root') as HTMLElement
+ReactDOM.createRoot(rootElement).render(<App />)
+```
+
+## src/useAlgolia.ts
+
+```ts
+import { useInfiniteQuery } from '@tanstack/react-query'
+import { search } from './algolia'
+
+export type UseAlgoliaOptions = {
+  indexName: string
+  query: string
+  hitsPerPage?: number
+  staleTime?: number
+  cacheTime?: number
+  enabled?: boolean
+}
+
+export default function useAlgolia<TData>({
+  indexName,
+  query,
+  hitsPerPage = 10,
+  staleTime,
+  cacheTime,
+  enabled,
+}: UseAlgoliaOptions) {
+  const queryInfo = useInfiniteQuery({
+    queryKey: ['algolia', indexName, query, hitsPerPage],
+    queryFn: ({ pageParam }) =>
+      search<TData>({ indexName, query, pageParam, hitsPerPage }),
+    getNextPageParam: (lastPage) => lastPage?.nextPage,
+    staleTime,
+    cacheTime,
+    enabled,
+  })
+
+  const hits = queryInfo.data?.pages.map((page) => page.hits).flat()
+
+  return { ...queryInfo, hits }
+}
+```

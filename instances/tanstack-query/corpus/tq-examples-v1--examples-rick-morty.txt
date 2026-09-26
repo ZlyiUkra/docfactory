@@ -1,0 +1,503 @@
+# Example: rick-morty
+# джерело: https://github.com/TanStack/query/tree/v1.5.10/examples/rick-morty
+# отримано: 2026-09-26
+# версія: 1.5.10
+
+## Example
+
+To run this example:
+
+- `npm install` or `yarn`
+- `npm run start` or `yarn start`
+
+## package.json
+
+```json
+{
+  "private": true,
+  "scripts": {
+    "start": "rescripts start",
+    "build": "rescripts build",
+    "test": "rescripts test",
+    "eject": "rescripts eject"
+  },
+  "dependencies": {
+    "@material-ui/core": "^4.9.7",
+    "react": "^16.8.6",
+    "react-dom": "^16.8.6",
+    "react-query": "1.0.12",
+    "react-query-devtools": "^1.0.13",
+    "react-router": "^5.1.2",
+    "react-router-dom": "^5.1.2",
+    "react-scripts": "3.0.1",
+    "stop-runaway-react-effects": "^1.2.0"
+  },
+  "devDependencies": {
+    "@rescripts/cli": "^0.0.11",
+    "@rescripts/rescript-use-babel-config": "^0.0.8",
+    "@rescripts/rescript-use-eslint-config": "^0.0.9",
+    "babel-eslint": "10.0.1"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
+```
+
+## src/App.js
+
+```js
+import React from "react";
+import { BrowserRouter as Router } from "react-router-dom";
+import { ThemeProvider } from "@material-ui/core";
+import { createMuiTheme } from "@material-ui/core/styles";
+
+import { ReactQueryDevtools } from "react-query-devtools";
+
+import "./styles.css";
+import Layout from "./Layout";
+
+export default function App() {
+  return (
+    <Router>
+      <ThemeProvider theme={theme}>
+        <Layout />
+        <ReactQueryDevtools />
+      </ThemeProvider>
+    </Router>
+  );
+}
+
+const theme = createMuiTheme({
+  typography: {
+    h1: {
+      fontFamily: "Roboto Mono, monospace"
+    },
+    h2: {
+      fontFamily: "Roboto Mono, monospace"
+    },
+    h3: {
+      fontFamily: "Roboto Mono, monospace"
+    },
+    h4: {
+      fontFamily: "Roboto Mono, monospace"
+    },
+    h5: {
+      fontFamily: "Roboto Mono, monospace"
+    },
+    h6: {
+      fontFamily: "Roboto Mono, monospace"
+    }
+  }
+});
+```
+
+## src/Character.js
+
+```js
+import React from "react";
+import {
+  Typography,
+  Link,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper
+} from "@material-ui/core";
+import { Link as RouterLink } from "react-router-dom";
+import { useParams } from "react-router";
+import { useQuery } from "react-query";
+import fetch from "./fetch";
+
+function Character() {
+  const { characterId } = useParams();
+  const { status, data } = useQuery(`character-${characterId}`, () =>
+    fetch(`https://rickandmortyapi.com/api/character/${characterId}`)
+  );
+
+  if (status === "loading") return <p>Loading...</p>;
+  if (status === "error") return <p>Error :(</p>;
+
+  const locationUrlPars = data.location.url.split("/").filter(Boolean);
+  const locationId = locationUrlPars[locationUrlPars.length - 1];
+
+  return (
+    <div>
+      <Typography variant="h2">{data.name}</Typography>
+      <TableContainer component={Paper} style={{ maxWidth: "400px" }}>
+        <Table size="small" aria-label="simple table">
+          <TableHead>
+            <TableRow>
+              <TableCell>Feature</TableCell>
+              <TableCell>Value</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            <TableRow>
+              <TableCell>Gender</TableCell>
+              <TableCell>{data.gender}</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell>Status</TableCell>
+              <TableCell>{data.status}</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell>Species</TableCell>
+              <TableCell>{data.species}</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell>Origin</TableCell>
+              <TableCell>{data.origin.name}</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell>Location</TableCell>
+              <TableCell>
+                <Location id={locationId} />
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </TableContainer>
+      <br />
+      <Typography variant="h4">Episodes</Typography>
+      {data.episode.map(episode => {
+        const episodeUrlParts = episode.split("/").filter(Boolean);
+        const episodeId = episodeUrlParts[episodeUrlParts.length - 1];
+
+        return <Episode id={episodeId} key={`episode-${episodeId}`} />;
+      })}
+    </div>
+  );
+}
+
+function Episode({ id }) {
+  const { data, status } = useQuery(`episode-${id}`, () =>
+    fetch(`https://rickandmortyapi.com/api/episode/${id}`)
+  );
+
+  if (status !== "success") {
+    return null;
+  }
+
+  return (
+    <article key={id}>
+      <Link component={RouterLink} to={`/episodes/${id}`}>
+        <Typography variant="h6">
+          {data.episode}. {data.name} - {data.air_date}
+        </Typography>
+      </Link>
+    </article>
+  );
+}
+
+function Location({ id }) {
+  const { data, status } = useQuery(`location-${id}`, () =>
+    fetch(`https://rickandmortyapi.com/api/location/${id}`)
+  );
+
+  if (status === "loading") return <p>Loading...</p>;
+  if (status === "error") return <p>Error :(</p>;
+
+  return (
+    <>
+      {data.name} - {data.type}
+    </>
+  );
+}
+
+export default Character;
+```
+
+## src/Characters.js
+
+```js
+import React from "react";
+import { Typography, Link } from "@material-ui/core";
+import { Link as RouterLink } from "react-router-dom";
+import { useQuery } from "react-query";
+import fetch from "./fetch";
+
+export default function Characters() {
+  const { status, data } = useQuery("characters", () =>
+    fetch("https://rickandmortyapi.com/api/character/")
+  );
+
+  if (status === "loading") return <p>Loading...</p>;
+  if (status === "error") return <p>Error :(</p>;
+
+  console.info(data);
+
+  return (
+    <div>
+      <Typography variant="h2">Characters</Typography>
+      {data.results.map(person => {
+        return (
+          <article key={person.id} style={{ margin: "16px 0 0" }}>
+            <Link component={RouterLink} to={`/characters/${person.id}`}>
+              <Typography variant="h6">
+                {person.name} - {person.gender}: {person.species}
+              </Typography>
+            </Link>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+```
+
+## src/Episode.js
+
+```js
+import React from "react";
+import { Typography, Link } from "@material-ui/core";
+import { Link as RouterLink } from "react-router-dom";
+import { useParams } from "react-router";
+import { useQuery } from "react-query";
+import fetch from "./fetch";
+
+function Episode() {
+  const { episodeId } = useParams();
+  const { data, status } = useQuery(`episode-${episodeId}`, () =>
+    fetch(`https://rickandmortyapi.com/api/episode/${episodeId}`)
+  );
+
+  if (status === "loading") return <p>Loading...</p>;
+  if (status === "error") return <p>Error :(</p>;
+
+  return (
+    <div>
+      <Typography variant="h2">{data.name}</Typography>
+      <Typography variant="body1">{data.air_date}</Typography>
+      <br />
+      <Typography variant="h4">Characters</Typography>
+      {data.characters.map(character => {
+        const characterUrlParts = character.split("/").filter(Boolean);
+        const characterId = characterUrlParts[characterUrlParts.length - 1];
+        return <Character id={characterId} key={characterId} />;
+      })}
+    </div>
+  );
+}
+
+function Character({ id }) {
+  const { data, status } = useQuery(`character-${id}`, () =>
+    fetch(`https://rickandmortyapi.com/api/character/${id}`)
+  );
+
+  if (status === "loading") return <p>Loading...</p>;
+  if (status === "error") return <p>Error :(</p>;
+
+  return (
+    <article key={id}>
+      <Link component={RouterLink} to={`/characters/${id}`}>
+        <Typography variant="h6">{data.name}</Typography>
+      </Link>
+    </article>
+  );
+}
+
+export default Episode;
+```
+
+## src/Episodes.js
+
+```js
+import React from "react";
+import { Typography, Link } from "@material-ui/core";
+import { Link as RouterLink } from "react-router-dom";
+import { useQuery } from "react-query";
+import fetch from "./fetch";
+
+export default function Episodes() {
+  const { data, status } = useQuery("episodes", () =>
+    fetch("https://rickandmortyapi.com/api/episode")
+  );
+
+  if (status === "loading") {
+    return <p>Loading...</p>;
+  }
+  if (status === "error") {
+    return <p>Error :(</p>;
+  }
+
+  return (
+    <div>
+      <Typography variant="h2">Episodes</Typography>
+      {data.results.map(episode => (
+        <article key={episode.id}>
+          <Link component={RouterLink} to={`/episodes/${episode.id}`}>
+            <Typography variant="h6">
+              {episode.episode} - {episode.name} <em>{episode.airDate}</em>
+            </Typography>
+          </Link>
+        </article>
+      ))}
+    </div>
+  );
+}
+```
+
+## src/Home.js
+
+```js
+import React from "react";
+import { Typography } from "@material-ui/core";
+import { makeStyles } from "@material-ui/core/styles";
+import { Link } from "@material-ui/core";
+import { Link as RouterLink } from "react-router-dom";
+
+export default function Home() {
+  const classes = useStyles();
+
+  return (
+    <div>
+      <Typography variant="h2">React Query Demo</Typography>
+      <Typography variant="subtitle1">Using the Rick And Morty API</Typography>
+      <Typography variant="subtitle2">
+        (Built by <a href="https://twitter.com/axelfuh">@axelfuh</a>
+        )
+      </Typography>
+      <section className={classes.main}>
+        <Typography variant="h5">Why React Query?</Typography>
+        <Typography variant="body1">
+          In this demo you will be able to see how React Query is a significant
+          improvement over <strong>redux</strong>, <strong>mobx</strong>, and
+          any other general-purpose state container.
+        </Typography>
+        <Typography variant="body1">
+          No reducers, thunks, or sagas. No ES6 models to maintain in order to
+          tag them as observable.
+        </Typography>
+        <Typography variant="body1">
+          Simply associate a key with your fetch call and let{" "}
+          <strong>React Query</strong> handle the rest.
+        </Typography>
+        <Typography variant="h5">Ready to get started?</Typography>
+        <Typography variant="body1">
+          Check out the{" "}
+          <Link component={RouterLink} to="/episodes">
+            Episodes
+          </Link>{" "}
+          and{" "}
+          <Link component={RouterLink} to="/characters">
+            Characters
+          </Link>
+          !
+        </Typography>
+      </section>
+    </div>
+  );
+}
+
+const useStyles = makeStyles(() => ({
+  main: {
+    margin: "44px 0",
+    "& p": {
+      margin: "12px 0 24px"
+    }
+  }
+}));
+```
+
+## src/Layout.js
+
+```js
+import React from "react";
+import Episodes from "./Episodes";
+import Episode from "./Episode";
+import Characters from "./Characters";
+import Character from "./Character";
+import Home from "./Home";
+import { Link, Button } from "@material-ui/core";
+import { makeStyles } from "@material-ui/core/styles";
+import { Switch, Route, Link as RouterLink } from "react-router-dom";
+
+export default function Layout() {
+  const classes = useStyles();
+
+  return (
+    <div className="App">
+      <nav className={classes.menu}>
+        <Link component={RouterLink} to="/">
+          <Button color="primary">Home</Button>
+        </Link>
+        <Link component={RouterLink} to="/episodes">
+          <Button color="primary">Episodes</Button>
+        </Link>
+        <Link component={RouterLink} to="/characters">
+          <Button color="primary">Characters</Button>
+        </Link>
+      </nav>
+      <main className={classes.main}>
+        <Switch>
+          <Route exact path="/episodes">
+            <Episodes />
+          </Route>
+          <Route exact path="/episodes/:episodeId">
+            <Episode />
+          </Route>
+          <Route exact path="/characters">
+            <Characters />
+          </Route>
+          <Route exact path="/characters/:characterId">
+            <Character />
+          </Route>
+          <Route path="/">
+            <Home />
+          </Route>
+        </Switch>
+      </main>
+    </div>
+  );
+}
+
+const useStyles = makeStyles(theme => ({
+  main: {
+    margin: "0 auto",
+    padding: "16px"
+  },
+  menu: {
+    margin: "0 auto",
+    display: "flex",
+    justifyContent: "center",
+    backgroundColor: "#CCC",
+    "& button": {
+      margin: theme.spacing(1)
+    }
+  }
+}));
+```
+
+## src/fetch.js
+
+```js
+export default async function(...args) {
+  const res = await fetch(...args);
+  return await res.json();
+}
+```
+
+## src/index.js
+
+```js
+import React from "react";
+import ReactDOM from "react-dom";
+
+import App from "./App";
+
+const rootElement = document.getElementById("root");
+ReactDOM.render(<App />, rootElement);
+```

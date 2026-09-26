@@ -1,0 +1,157 @@
+# Example: load-more-pagination
+# джерело: https://github.com/TanStack/query/tree/v0.4.3/examples/load-more-pagination
+# отримано: 2026-09-26
+# версія: 0.4.3
+
+## Example
+
+To run this example:
+
+- `npm install` or `yarn`
+- `npm run dev` or `yarn dev`
+
+## libs/fetch.js
+
+```js
+import fetch from 'isomorphic-unfetch'
+
+export default async function (...args) {
+  const res = await fetch(...args)
+  return await res.json()
+}
+```
+
+## package.json
+
+```json
+{
+  "name": "pagination",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "isomorphic-unfetch": "3.0.0",
+    "next": "9.1.1",
+    "react-query": "latest"
+  },
+  "scripts": {
+    "dev": "next",
+    "start": "next start",
+    "build": "next build"
+  }
+}
+```
+
+## pages/about.js
+
+```js
+import Link from 'next/link'
+
+export default () => {
+  return <Link href="/"><a>back</a></Link>
+}
+```
+
+## pages/api/projects.js
+
+```js
+// an endpoint for getting projects data
+export default (req, res) => {
+  const cursor = parseInt(req.query.cursor || 0)
+
+  const data = Array(3)
+    .fill(0)
+    .map((_, i) => {
+      return {
+        name: 'Project ' + (i + cursor) + ` (server time: ${Date.now()})`,
+        id: i + cursor,
+      }
+    })
+
+  const nextId = cursor < 9 ? data[data.length - 1].id + 1 : null
+
+  setTimeout(() => res.json({ data, nextId }), 1000)
+}
+```
+
+## pages/index.js
+
+```js
+import React from 'react'
+import fetch from '../libs/fetch'
+import Link from 'next/link'
+
+import { useQuery } from 'react-query'
+
+export default () => {
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isFetchingMore,
+    fetchMore,
+    canFetchMore,
+  } = useQuery(
+    'projects',
+    ({ nextId } = {}) => fetch('/api/projects?cursor=' + (nextId || 0)),
+    {
+      paginated: true,
+      getCanFetchMore: lastPage => lastPage.nextId,
+    }
+  )
+
+  const loadMore = async () => {
+    try {
+      const { nextId } = data[data.length - 1]
+
+      await fetchMore({
+        nextId,
+      })
+    } catch {}
+  }
+
+  return (
+    <div>
+      <h1>Pagination</h1>
+      {isLoading ? (
+        <p>Loading...</p>
+      ) : data ? (
+        <>
+          {data.map((page, i) => (
+            <React.Fragment key={i}>
+              {page.data.map(project => (
+                <p
+                  style={{
+                    border: '1px solid gray',
+                    borderRadius: '5px',
+                    padding: '5rem 1rem',
+                  }}
+                  key={project.id}
+                >
+                  {project.name}
+                </p>
+              ))}
+            </React.Fragment>
+          ))}
+          <div>
+            {canFetchMore ? (
+              <button onClick={loadMore} disabled={isFetchingMore}>
+                {isFetchingMore ? 'Loading more...' : 'Load More'}
+              </button>
+            ) : (
+              'Nothing more to fetch.'
+            )}
+          </div>
+          <div>
+            {isFetching && !isFetchingMore ? 'Background Updating...' : null}
+          </div>
+        </>
+      ) : null}
+      <hr />
+      <Link href="/about">
+        <a>Go to another page</a>
+      </Link>
+    </div>
+  )
+}
+```

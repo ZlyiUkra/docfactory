@@ -1,0 +1,280 @@
+# Example: svelte/optimistic-updates-typescript
+# джерело: https://github.com/TanStack/query/tree/@tanstack%2Fquery-core@4.44.0/examples/svelte/optimistic-updates-typescript
+# отримано: 2026-09-26
+# версія: 4.44.0
+
+## create-svelte
+
+Everything you need to build a Svelte project, powered by `create-svelte`.
+
+## Creating a project
+
+If you're seeing this, you've probably already done this step. Congrats!
+
+```bash
+# create a new project in the current directory
+npm create svelte@latest
+
+# create a new project in my-app
+npm create svelte@latest my-app
+```
+
+## Developing
+
+Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+
+```bash
+npm run dev
+
+# or start the server and open the app in a new browser tab
+npm run dev -- --open
+```
+
+## Building
+
+To create a production version of your app:
+
+```bash
+npm run build
+```
+
+You can preview the production build with `npm run preview`.
+
+> To deploy your app, you may need to install an adapter for your target environment.
+
+## package.json
+
+```json
+{
+  "name": "@tanstack/query-example-svelte-optimistic-updates-typescript",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
+  },
+  "dependencies": {
+    "@tanstack/svelte-query": "^4.44.0"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-auto": "^2.0.0",
+    "@sveltejs/kit": "^1.15.0",
+    "svelte": "^3.54.0",
+    "svelte-check": "^2.9.2",
+    "tslib": "^2.4.1",
+    "typescript": "^4.7.4",
+    "vite": "^4.0.0"
+  }
+}
+```
+
+## src/app.html
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%sveltekit.assets%/favicon.png" />
+    <meta name="viewport" content="width=device-width" />
+    %sveltekit.head%
+  </head>
+  <body data-sveltekit-preload-data="hover">
+    <div style="display: contents">%sveltekit.body%</div>
+  </body>
+</html>
+```
+
+## src/routes/+layout.svelte
+
+```svelte
+<script lang="ts">
+  import '../app.css'
+  import { browser } from '$app/environment'
+  import { QueryClientProvider, QueryClient } from '@tanstack/svelte-query'
+
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        enabled: browser,
+      },
+    },
+  })
+</script>
+
+<QueryClientProvider client={queryClient}>
+  <main>
+    <slot />
+  </main>
+</QueryClientProvider>
+```
+
+## src/routes/+page.svelte
+
+```svelte
+<script lang="ts">
+  import '../app.css'
+  import {
+    useQueryClient,
+    createQuery,
+    createMutation,
+  } from '@tanstack/svelte-query'
+
+  type Todo = {
+    id: string
+    text: string
+  }
+
+  type Todos = {
+    items: readonly Todo[]
+    ts: number
+  }
+
+  let text: string
+
+  const client = useQueryClient()
+
+  const endpoint = 'http://localhost:5173/api/data'
+
+  const fetchTodos = async (): Promise<Todos> =>
+    await fetch(endpoint).then((r) => r.json())
+
+  const createTodo = async (text: string): Promise<Todo> =>
+    await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text,
+      }),
+    }).then((res) => res.json())
+
+  const todos = createQuery<Todos, Error>({
+    queryKey: ['optimistic'],
+    queryFn: fetchTodos,
+  })
+
+  const addTodoMutation = createMutation(createTodo, {
+    // When mutate is called:
+    onMutate: async (newTodo: string) => {
+      text = ''
+      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+      await client.cancelQueries(['optimistic'])
+
+      // Snapshot the previous value
+      const previousTodos = client.getQueryData<Todos>(['optimistic'])
+
+      // Optimistically update to the new value
+      if (previousTodos) {
+        client.setQueryData<Todos>(['optimistic'], {
+          ...previousTodos,
+          items: [
+            ...previousTodos.items,
+            { id: Math.random().toString(), text: newTodo },
+          ],
+        })
+      }
+
+      return { previousTodos }
+    },
+    // If the mutation fails, use the context returned from onMutate to roll back
+    onError: (err: any, variables: any, context: any) => {
+      if (context?.previousTodos) {
+        client.setQueryData<Todos>(['optimistic'], context.previousTodos)
+      }
+    },
+    // Always refetch after error or success:
+    onSettled: () => {
+      client.invalidateQueries(['optimistic'])
+    },
+  })
+</script>
+
+<h1>Optimistic Updates</h1>
+<p>
+  In this example, new items can be created using a mutation. The new item will
+  be optimistically added to the list in hopes that the server accepts the item.
+  If it does, the list is refetched with the true items from the list. Every now
+  and then, the mutation may fail though. When that happens, the previous list
+  of items is restored and the list is again refetched from the server.
+</p>
+
+<form
+  on:submit={(e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    $addTodoMutation.mutate(text)
+  }}
+>
+  <div>
+    <input type="text" bind:value={text} />
+    <button disabled={$addTodoMutation.isLoading}>Create</button>
+  </div>
+</form>
+
+{#if $todos.isLoading}
+  Loading...
+{/if}
+{#if $todos.error}
+  An error has occurred:
+  {$todos.error.message}
+{/if}
+{#if $todos.isSuccess}
+  <div class="mb-4">
+    Updated At: {new Date($todos.data.ts).toLocaleTimeString()}
+  </div>
+  <ul>
+    {#each $todos.data.items as todo}
+      <li>{todo.text}</li>
+    {/each}
+  </ul>
+{/if}
+{#if $todos.isFetching}
+  <div style="color:darkgreen; font-weight:700">
+    'Background Updating...' : ' '
+  </div>
+{/if}
+
+<style>
+  li {
+    text-align: left;
+  }
+</style>
+```
+
+## src/routes/api/data/+server.ts
+
+```ts
+import { json, type RequestHandler } from '@sveltejs/kit'
+
+type Todo = {
+  id: string
+  text: string
+}
+
+const items: Todo[] = []
+
+/** @type {import('./$types').RequestHandler} */
+export const GET: RequestHandler = async (req) => {
+  await new Promise((r) => setTimeout(r, 1000))
+  return json({ ts: Date.now(), items }, { status: 200 })
+}
+
+/** @type {import('./$types').RequestHandler} */
+export const POST: RequestHandler = async ({ request }) => {
+  const { text } = await request.json()
+
+  if (Math.random() > 0.7) {
+    json({ message: 'Could not add item!' }, { status: 500 })
+  }
+  const newTodo = {
+    id: Math.random().toString(),
+    text: text.toUpperCase() as string,
+  }
+  items.push(newTodo)
+  return json(newTodo, { status: 200 })
+}
+```

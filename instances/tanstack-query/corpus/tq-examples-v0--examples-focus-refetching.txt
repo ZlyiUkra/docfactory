@@ -1,0 +1,158 @@
+# Example: focus-refetching
+# джерело: https://github.com/TanStack/query/tree/v0.4.3/examples/focus-refetching
+# отримано: 2026-09-26
+# версія: 0.4.3
+
+## Example
+
+To run this example:
+
+- `npm install` or `yarn`
+- `npm run dev` or `yarn dev`
+
+## components/button.js
+
+```js
+import React from 'react'
+
+export default ({ children, ...props }) => {
+  return (
+    <div>
+      <button {...props}>
+        {children}
+        <style jsx>{`
+          button {
+            width: 100px;
+            height: 40px;
+            border: none;
+            color: #fff;
+            background: #03a9f4;
+            font-size: 1rem;
+            border-radius: 5px;
+          }
+        `}</style>
+      </button>
+    </div>
+  )
+}
+```
+
+## libs/auth.js
+
+```js
+// mock login and logout
+
+export function login() {
+  document.cookie = 'swr-test-token=swr;'
+}
+
+export function logout() {
+  document.cookie = 'swr-test-token=; expires=Thu, 01 Jan 1970 00:00:01 GMT;'
+}
+```
+
+## libs/fetch.js
+
+```js
+import fetch from 'isomorphic-unfetch'
+
+export default async function (...args) {
+  const res = await fetch(...args)
+  return await res.json()
+}
+```
+
+## package.json
+
+```json
+{
+  "name": "focus-revalidate",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "isomorphic-unfetch": "3.0.0",
+    "next": "9.1.1",
+    "react-query": "latest"
+  },
+  "scripts": {
+    "dev": "next",
+    "start": "next start",
+    "build": "next build"
+  }
+}
+```
+
+## pages/api/user.js
+
+```js
+// an endpoint for getting user info
+export default (req, res) => {
+  if (req.cookies['swr-test-token'] === 'swr') {
+    // authorized
+    res.json({
+      loggedIn: true,
+      name: 'Tanner',
+      avatar: 'https://github.com/tannerlinsley.png',
+    })
+    return
+  }
+
+  res.json({
+    loggedIn: false,
+  })
+}
+```
+
+## pages/index.js
+
+```js
+import React from 'react'
+import Button from '../components/button'
+import fetch from '../libs/fetch'
+import { login, logout } from '../libs/auth'
+
+import { useQuery, useMutation } from 'react-query'
+
+export default () => {
+  const { data, isLoading } = useQuery('user', () => fetch('/api/user'))
+
+  const [logoutMutation] = useMutation(logout, {
+    refetchQueries: ['user'],
+  })
+
+  const [loginMutation] = useMutation(login, {
+    refetchQueries: ['user'],
+  })
+
+  if (isLoading) return <h1>Loading...</h1>
+  if (data && data.loggedIn) {
+    return (
+      <div>
+        <h1>Welcome, {data.name}</h1>
+        <img src={data.avatar} width={80} />
+        <Button
+          onClick={() => {
+            logoutMutation()
+          }}
+        >
+          Logout
+        </Button>
+      </div>
+    )
+  } else {
+    return (
+      <div>
+        <h1>Please login</h1>
+        <Button
+          onClick={() => {
+            loginMutation()
+          }}
+        >
+          Login
+        </Button>
+      </div>
+    )
+  }
+}
+```

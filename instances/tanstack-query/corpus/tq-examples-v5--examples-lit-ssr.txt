@@ -1,0 +1,787 @@
+# Example: lit/ssr
+# джерело: https://github.com/TanStack/query/tree/@tanstack%2Fquery-core@5.103.3/examples/lit/ssr
+# отримано: 2026-09-26
+# версія: 5.103.3
+
+## Example
+
+To run this example from the repo root:
+
+- `pnpm --dir examples/lit/ssr run dev`
+
+## config/ports.js
+
+```js
+const DEFAULT_SSR_HOST = '127.0.0.1'
+const DEFAULT_SSR_PORT = 4174
+
+function normalizeUrlHost(host) {
+  if (host.includes(':') && !host.startsWith('[') && !host.endsWith(']')) {
+    return `[${host}]`
+  }
+
+  return host
+}
+
+function resolvePort(name, fallback) {
+  const value = process.env[name]
+  if (!value) {
+    return fallback
+  }
+
+  const parsedPort = Number.parseInt(value, 10)
+  const isValidPort =
+    Number.isInteger(parsedPort) && parsedPort > 0 && parsedPort <= 65_535
+
+  if (!isValidPort) {
+    throw new Error(
+      `Invalid ${name} "${value}". Expected an integer between 1 and 65535.`,
+    )
+  }
+
+  return parsedPort
+}
+
+export const SSR_PORT = resolvePort('SSR_PORT', DEFAULT_SSR_PORT)
+export const SSR_HOST = process.env.SSR_HOST ?? DEFAULT_SSR_HOST
+
+function resolveConnectHost(host) {
+  if (host === '0.0.0.0') {
+    return '127.0.0.1'
+  }
+
+  if (host === '::') {
+    return '[::1]'
+  }
+
+  return normalizeUrlHost(host)
+}
+
+function resolvePublicOrigin(host, port) {
+  const explicitOrigin = process.env.SSR_PUBLIC_ORIGIN
+  if (explicitOrigin) {
+    const url = new URL(explicitOrigin)
+    return url.origin
+  }
+
+  const explicitPublicHost = process.env.SSR_PUBLIC_HOST
+  const publicHost = explicitPublicHost
+    ? normalizeUrlHost(explicitPublicHost)
+    : resolveConnectHost(host)
+
+  return `http://${publicHost}:${port}`
+}
+
+export const SSR_CONNECT_HOST = resolveConnectHost(SSR_HOST)
+export const SSR_BASE_URL = `http://${SSR_CONNECT_HOST}:${SSR_PORT}`
+export const SSR_PUBLIC_ORIGIN = resolvePublicOrigin(SSR_HOST, SSR_PORT)
+```
+
+## package.json
+
+```json
+{
+  "name": "@tanstack/query-example-lit-ssr",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node ./scripts/dev.mjs",
+    "build": "tsc --noEmit && vite build"
+  },
+  "dependencies": {
+    "@lit-labs/ssr": "^3.3.0",
+    "@tanstack/lit-query": "^0.2.24",
+    "@tanstack/query-core": "^5.103.3",
+    "lit": "^3.3.3"
+  },
+  "devDependencies": {
+    "@lit-labs/ssr-client": "^1.1.7",
+    "tsx": "^4.19.0",
+    "typescript": "5.8.3",
+    "vite": "^6.4.1"
+  }
+}
+```
+
+## scripts/dev.mjs
+
+```js
+import { spawn, spawnSync } from 'node:child_process'
+import { once } from 'node:events'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm'
+const tsxCommand = process.platform === 'win32' ? 'tsx.cmd' : 'tsx'
+const cwd = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+
+function runBuild() {
+  const result = spawnSync(npmCommand, ['run', 'build'], {
+    cwd,
+    stdio: 'inherit',
+  })
+
+  if (result.status !== 0) {
+    process.exit(result.status ?? 1)
+  }
+}
+
+async function run() {
+  runBuild()
+
+  const server = spawn(tsxCommand, ['./server/index.mjs'], {
+    cwd,
+    stdio: 'inherit',
+  })
+
+  const stopServer = (signal) => {
+    if (server.exitCode === null) {
+      server.kill(signal)
+    }
+  }
+
+  process.on('SIGINT', () => stopServer('SIGINT'))
+  process.on('SIGTERM', () => stopServer('SIGTERM'))
+
+  const outcome = await Promise.race([
+    once(server, 'error').then(([error]) => {
+      throw error
+    }),
+    once(server, 'exit').then(([code]) => ({ code })),
+  ])
+
+  process.exitCode = outcome.code ?? 0
+}
+
+run().catch((error) => {
+  console.error(error)
+  process.exitCode = 1
+})
+```
+
+## server/index.mjs
+
+```js
+import { createServer } from 'node:http'
+import { readFile } from 'node:fs/promises'
+import { dirname, extname, resolve, sep } from 'node:path'
+import { setTimeout as sleep } from 'node:timers/promises'
+import { fileURLToPath } from 'node:url'
+import { render } from '@lit-labs/ssr'
+import { collectResult } from '@lit-labs/ssr/lib/render-result.js'
+import { html } from 'lit'
+import { QueryClient, dehydrate } from '@tanstack/lit-query'
+import {
+  SSR_BASE_URL,
+  SSR_HOST,
+  SSR_PORT,
+  SSR_PUBLIC_ORIGIN,
+} from '../config/ports.js'
+import {
+  DATA_QUERY_KEY,
+  DEFAULT_MESSAGE,
+  QUERY_STALE_TIME,
+  createDataQueryOptions,
+} from '../src/api.js'
+import {
+  getSsrQueryControllerCreationCount,
+  resetSsrQueryControllerCreationCount,
+} from '../src/app.ts'
+
+const serverDir = dirname(fileURLToPath(import.meta.url))
+const distDir = resolve(serverDir, '../dist')
+const templatePath = resolve(distDir, 'index.html')
+
+const contentTypes = {
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml; charset=utf-8',
+}
+
+let requestCount = 0
+let failNextDataRequest = false
+let nextDataDelayMs = 0
+
+const apiCorsHeaders = {
+  'access-control-allow-headers': 'content-type',
+  'access-control-allow-methods': 'GET,POST,OPTIONS',
+  'access-control-allow-origin': '*',
+}
+
+function createBrowserQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        staleTime: QUERY_STALE_TIME,
+      },
+    },
+  })
+}
+
+function nextDataResponse() {
+  requestCount += 1
+  return {
+    message: DEFAULT_MESSAGE,
+    requestCount,
+    servedAt: new Date().toISOString(),
+  }
+}
+
+function resetApiState() {
+  requestCount = 0
+  failNextDataRequest = false
+  nextDataDelayMs = 0
+}
+
+function parseNonNegativeDelayMs(value) {
+  const parsedDelayMs = Number.parseInt(value ?? '', 10)
+  if (!Number.isInteger(parsedDelayMs) || parsedDelayMs < 0) {
+    return undefined
+  }
+
+  return parsedDelayMs
+}
+
+async function consumeNextDataDelay() {
+  const delayMs = nextDataDelayMs
+  nextDataDelayMs = 0
+
+  if (delayMs > 0) {
+    await sleep(delayMs)
+  }
+}
+
+function consumeFailNextDataRequest() {
+  if (!failNextDataRequest) {
+    return false
+  }
+
+  failNextDataRequest = false
+  return true
+}
+
+function writeBuffer(res, statusCode, contentType, payload, extraHeaders = {}) {
+  res.writeHead(statusCode, {
+    'cache-control': 'no-store',
+    'content-length': payload.byteLength,
+    'content-type': contentType,
+    ...extraHeaders,
+  })
+  res.end(payload)
+}
+
+function writeHtml(res, statusCode, body, extraHeaders = {}) {
+  const payload = Buffer.from(body)
+  writeBuffer(
+    res,
+    statusCode,
+    'text/html; charset=utf-8',
+    payload,
+    extraHeaders,
+  )
+}
+
+function writeJson(res, statusCode, body) {
+  const payload = Buffer.from(JSON.stringify(body))
+  writeBuffer(
+    res,
+    statusCode,
+    'application/json; charset=utf-8',
+    payload,
+    apiCorsHeaders,
+  )
+}
+
+function serializeJsonForHtml(value) {
+  return JSON.stringify(value).replace(/[<>&\u2028\u2029]/g, (character) => {
+    switch (character) {
+      case '<':
+        return '\\u003c'
+      case '>':
+        return '\\u003e'
+      case '&':
+        return '\\u0026'
+      case '\u2028':
+        return '\\u2028'
+      case '\u2029':
+        return '\\u2029'
+      default:
+        return character
+    }
+  })
+}
+
+async function readTemplate() {
+  try {
+    return await readFile(templatePath, 'utf8')
+  } catch (error) {
+    if (error && typeof error === 'object' && 'code' in error) {
+      throw new Error(
+        'Missing built client assets. Run "pnpm --dir examples/lit/ssr run build" from the repo root first.',
+      )
+    }
+
+    throw error
+  }
+}
+
+async function serveAsset(pathname, res) {
+  if (!pathname.startsWith('/assets/')) {
+    return false
+  }
+
+  const assetPath = resolve(distDir, `.${pathname}`)
+  const distRootPrefix = `${distDir}${sep}`
+  if (!assetPath.startsWith(distRootPrefix)) {
+    return false
+  }
+
+  try {
+    const file = await readFile(assetPath)
+    const contentType =
+      contentTypes[extname(assetPath)] ?? 'application/octet-stream'
+    writeBuffer(res, 200, contentType, file)
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function renderPage(res) {
+  const queryClient = createBrowserQueryClient()
+  resetSsrQueryControllerCreationCount(queryClient)
+  await queryClient.prefetchQuery(createDataQueryOptions(SSR_PUBLIC_ORIGIN))
+
+  const prefetchedQueryState = queryClient.getQueryState(DATA_QUERY_KEY)
+  if (prefetchedQueryState?.status !== 'success') {
+    throw new Error(
+      'SSR prefetch did not complete successfully. Refusing to render loading HTML.',
+    )
+  }
+
+  const appHtml = await collectResult(
+    render(
+      html`<ssr-app
+        api-base-url=${SSR_PUBLIC_ORIGIN}
+        .queryClient=${queryClient}
+      ></ssr-app>`,
+    ),
+  )
+
+  const dehydratedState = dehydrate(queryClient)
+  const controllerCreationCount =
+    getSsrQueryControllerCreationCount(queryClient)
+  if (controllerCreationCount < 1) {
+    throw new Error('SSR render did not exercise createQueryController.')
+  }
+
+  const template = await readTemplate()
+  const htmlDocument = template
+    .replace('__SSR_APP_HTML__', appHtml)
+    .replace('__QUERY_STATE_JSON__', serializeJsonForHtml(dehydratedState))
+
+  writeHtml(res, 200, htmlDocument, {
+    'x-ssr-query-controller-created': String(controllerCreationCount),
+  })
+}
+
+const server = createServer(async (req, res) => {
+  const requestUrl = new URL(req.url ?? '/', SSR_BASE_URL)
+  const method = req.method ?? 'GET'
+
+  if (method === 'OPTIONS' && requestUrl.pathname.startsWith('/api/')) {
+    res.writeHead(204, {
+      'cache-control': 'no-store',
+      ...apiCorsHeaders,
+    })
+    res.end()
+    return
+  }
+
+  if (method === 'GET' && requestUrl.pathname === '/api/data') {
+    await consumeNextDataDelay()
+
+    if (consumeFailNextDataRequest()) {
+      writeJson(res, 500, { error: 'Forced data failure (test)' })
+      return
+    }
+
+    writeJson(res, 200, nextDataResponse())
+    return
+  }
+
+  if (method === 'GET' && requestUrl.pathname === '/api/request-count') {
+    writeJson(res, 200, { count: requestCount })
+    return
+  }
+
+  if (method === 'POST' && requestUrl.pathname === '/api/reset') {
+    resetApiState()
+    writeJson(res, 200, { ok: true })
+    return
+  }
+
+  if (method === 'POST' && requestUrl.pathname === '/api/test/fail-next-data') {
+    failNextDataRequest = true
+    writeJson(res, 200, { ok: true })
+    return
+  }
+
+  if (
+    method === 'POST' &&
+    requestUrl.pathname === '/api/test/delay-next-data'
+  ) {
+    const delayMs = parseNonNegativeDelayMs(requestUrl.searchParams.get('ms'))
+    if (delayMs === undefined) {
+      writeJson(res, 400, { error: 'Invalid ms query parameter.' })
+      return
+    }
+
+    nextDataDelayMs = delayMs
+    writeJson(res, 200, { ok: true, delayMs })
+    return
+  }
+
+  if (method === 'GET' && requestUrl.pathname === '/') {
+    try {
+      await renderPage(res)
+    } catch (error) {
+      console.error('[ssr] render failed:', error)
+      writeHtml(
+        res,
+        500,
+        '<!doctype html><html><body>SSR render failed.</body></html>',
+      )
+    }
+    return
+  }
+
+  if (method === 'GET' && (await serveAsset(requestUrl.pathname, res))) {
+    return
+  }
+
+  writeJson(res, 404, { error: 'Not found' })
+})
+
+server.listen(SSR_PORT, SSR_HOST, () => {
+  console.log(
+    `[ssr] listening on ${SSR_BASE_URL} (public origin ${SSR_PUBLIC_ORIGIN})`,
+  )
+})
+```
+
+## src/api.ts
+
+```ts
+import type { CreateQueryOptions } from '@tanstack/lit-query'
+
+export const DATA_QUERY_KEY = ['ssr-example-data'] as const
+export const DEFAULT_MESSAGE = 'Hello from SSR!'
+export const QUERY_STALE_TIME = 30_000
+
+export type DataResponse = {
+  message: string
+  requestCount: number
+  servedAt: string
+}
+
+function resolveApiUrl(pathname: string, apiBaseUrl: string): string {
+  if (!apiBaseUrl) {
+    return pathname
+  }
+
+  return new URL(pathname, apiBaseUrl).toString()
+}
+
+async function readJson<TResponse>(response: Response): Promise<TResponse> {
+  let payload: TResponse | { error?: string } | null = null
+
+  try {
+    payload = (await response.json()) as TResponse | { error?: string }
+  } catch {
+    if (response.ok) {
+      throw new Error(
+        `Failed to parse JSON response with status ${response.status}.`,
+      )
+    }
+  }
+
+  if (!response.ok) {
+    const errorDetail =
+      payload &&
+      typeof payload === 'object' &&
+      'error' in payload &&
+      typeof payload.error === 'string'
+        ? `: ${payload.error}`
+        : ''
+
+    throw new Error(
+      `Request failed with status ${response.status}${errorDetail}`,
+    )
+  }
+
+  return payload as TResponse
+}
+
+export function createDataQueryOptions(apiBaseUrl = '') {
+  return {
+    queryKey: DATA_QUERY_KEY,
+    queryFn: async ({ signal }) => {
+      const response = await fetch(resolveApiUrl('/api/data', apiBaseUrl), {
+        signal,
+      })
+      return readJson<DataResponse>(response)
+    },
+    retry: false,
+    staleTime: QUERY_STALE_TIME,
+  } satisfies CreateQueryOptions<
+    DataResponse,
+    Error,
+    DataResponse,
+    DataResponse,
+    typeof DATA_QUERY_KEY
+  >
+}
+```
+
+## src/app.ts
+
+```ts
+import { LitElement, css, html } from 'lit'
+import {
+  createQueryController,
+  type QueryClient,
+  type QueryResultAccessor,
+} from '@tanstack/lit-query'
+import { createDataQueryOptions, type DataResponse } from './api.js'
+
+const ssrQueryControllerCreationCounts = new WeakMap<QueryClient, number>()
+
+function incrementSsrQueryControllerCreationCount(
+  queryClient: QueryClient,
+): void {
+  ssrQueryControllerCreationCounts.set(
+    queryClient,
+    (ssrQueryControllerCreationCounts.get(queryClient) ?? 0) + 1,
+  )
+}
+
+export function resetSsrQueryControllerCreationCount(
+  queryClient: QueryClient,
+): void {
+  ssrQueryControllerCreationCounts.set(queryClient, 0)
+}
+
+export function getSsrQueryControllerCreationCount(
+  queryClient: QueryClient,
+): number {
+  return ssrQueryControllerCreationCounts.get(queryClient) ?? 0
+}
+
+export class SsrApp extends LitElement {
+  static properties = {
+    apiBaseUrl: { attribute: 'api-base-url' },
+    queryClient: { attribute: false },
+  }
+
+  static styles = css`
+    :host {
+      color: #1f2937;
+      display: block;
+      font-family:
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        'Segoe UI',
+        sans-serif;
+      max-width: 32rem;
+      padding: 1.5rem;
+    }
+
+    article {
+      background: #ffffff;
+      border: 1px solid #d1d5db;
+      border-radius: 1rem;
+      box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08);
+      padding: 1.25rem;
+    }
+
+    h1 {
+      font-size: 1.25rem;
+      margin: 0 0 1rem;
+    }
+
+    p {
+      margin: 0.5rem 0;
+    }
+
+    button {
+      background: #111827;
+      border: none;
+      border-radius: 999px;
+      color: #ffffff;
+      cursor: pointer;
+      font: inherit;
+      margin-top: 1rem;
+      padding: 0.65rem 1rem;
+    }
+
+    button[disabled] {
+      cursor: wait;
+      opacity: 0.65;
+    }
+  `
+
+  apiBaseUrl = ''
+  queryClient?: QueryClient
+
+  private dataQuery?: QueryResultAccessor<DataResponse, Error>
+
+  protected override willUpdate(): void {
+    if (!this.dataQuery && this.queryClient) {
+      incrementSsrQueryControllerCreationCount(this.queryClient)
+      this.dataQuery = createQueryController(
+        this,
+        createDataQueryOptions(this.apiBaseUrl),
+        this.queryClient,
+      )
+    }
+  }
+
+  private readonly handleRefetch = (): void => {
+    void this.dataQuery?.refetch()
+  }
+
+  protected override render() {
+    if (!this.dataQuery) {
+      return html`
+        <article data-testid="content">
+          <h1>Lit Query SSR</h1>
+          <p data-testid="status">Loading...</p>
+        </article>
+      `
+    }
+
+    const query = this.dataQuery()
+
+    if (query.isPending) {
+      return html`
+        <article data-testid="content">
+          <h1>Lit Query SSR</h1>
+          <p data-testid="status">Loading...</p>
+        </article>
+      `
+    }
+
+    if (query.isError) {
+      return html`
+        <article data-testid="content">
+          <h1>Lit Query SSR</h1>
+          <p data-testid="status">Error</p>
+          <p data-testid="error-message">${query.error?.message}</p>
+        </article>
+      `
+    }
+
+    return html`
+      <article data-testid="content">
+        <h1>Lit Query SSR</h1>
+        <p data-testid="status">${query.isFetching ? 'Refreshing' : 'Ready'}</p>
+        <p data-testid="message">${query.data.message}</p>
+        <p data-testid="request-count">
+          Request count: ${query.data.requestCount}
+        </p>
+        <p data-testid="served-at">Served at: ${query.data.servedAt}</p>
+        <button
+          data-testid="refetch-button"
+          ?disabled=${query.isFetching}
+          @click=${this.handleRefetch}
+        >
+          Refetch
+        </button>
+      </article>
+    `
+  }
+}
+
+if (!customElements.get('ssr-app')) {
+  customElements.define('ssr-app', SsrApp)
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    'ssr-app': SsrApp
+  }
+}
+```
+
+## src/main.ts
+
+```ts
+import '@lit-labs/ssr-client/lit-element-hydrate-support.js'
+
+import { QueryClient, hydrate, type DehydratedState } from '@tanstack/lit-query'
+import { QUERY_STALE_TIME } from './api.js'
+
+type HydratableSsrApp = HTMLElement & {
+  queryClient?: QueryClient
+}
+
+function createQueryClient(): QueryClient {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        staleTime: QUERY_STALE_TIME,
+      },
+    },
+  })
+}
+
+function readDehydratedState(): DehydratedState {
+  const stateElement = document.getElementById('__QUERY_STATE__')
+  if (!stateElement) {
+    throw new Error('Missing dehydrated state script.')
+  }
+
+  const stateText = stateElement.textContent?.trim() ?? 'null'
+  return JSON.parse(stateText) as DehydratedState
+}
+
+async function bootstrap() {
+  if (document.readyState === 'loading') {
+    await new Promise<void>((resolve) => {
+      document.addEventListener('DOMContentLoaded', () => resolve(), {
+        once: true,
+      })
+    })
+  }
+
+  const appElement = document.querySelector(
+    'ssr-app',
+  ) as HydratableSsrApp | null
+  if (!appElement) {
+    throw new Error('Expected the SSR app element to exist before hydration.')
+  }
+
+  const queryClient = createQueryClient()
+  queryClient.mount()
+  hydrate(queryClient, readDehydratedState())
+  appElement.queryClient = queryClient
+
+  window.addEventListener(
+    'pagehide',
+    () => {
+      queryClient.unmount()
+    },
+    { once: true },
+  )
+
+  await import('./app.js')
+}
+
+void bootstrap()
+```

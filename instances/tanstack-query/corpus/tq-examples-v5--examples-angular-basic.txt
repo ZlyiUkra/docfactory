@@ -1,0 +1,270 @@
+# Example: angular/basic
+# джерело: https://github.com/TanStack/query/tree/@tanstack%2Fquery-core@5.103.3/examples/angular/basic
+# отримано: 2026-09-26
+# версія: 5.103.3
+
+## TanStack Query Angular basic example
+
+To run this example:
+
+- `pnpm install`
+- `pnpm start`
+
+## package.json
+
+```json
+{
+  "name": "@tanstack/query-example-angular-basic",
+  "type": "module",
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development"
+  },
+  "private": true,
+  "dependencies": {
+    "@angular/common": "^20.0.0",
+    "@angular/compiler": "^20.0.0",
+    "@angular/core": "^20.0.0",
+    "@angular/platform-browser": "^20.0.0",
+    "@tanstack/angular-query-experimental": "^5.103.3",
+    "rxjs": "^7.8.2",
+    "tslib": "^2.8.1",
+    "zone.js": "0.15.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^20.0.0",
+    "@angular/cli": "^20.0.0",
+    "@angular/compiler-cli": "^20.0.0",
+    "typescript": "5.8.3"
+  }
+}
+```
+
+## src/app/app.component.html
+
+```html
+<p>
+  As you visit the posts below, you will notice them in a loading state the
+  first time you load them. However, after you return to this list and click on
+  any posts you have already visited again, you will see them load instantly and
+  background refresh right before your eyes!
+  <strong>
+    (You may need to throttle your network speed to simulate longer loading
+    sequences)
+  </strong>
+</p>
+@if (postId() > -1) {
+  <post [postId]="postId()" (setPostId)="postId.set($event)"></post>
+} @else {
+  <posts (setPostId)="postId.set($event)" />
+}
+```
+
+## src/app/app.component.ts
+
+```ts
+import { ChangeDetectionStrategy, Component, signal } from '@angular/core'
+import { PostComponent } from './components/post.component'
+import { PostsComponent } from './components/posts.component'
+
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'basic-example',
+  templateUrl: './app.component.html',
+  imports: [PostComponent, PostsComponent],
+})
+export class BasicExampleComponent {
+  readonly postId = signal(-1)
+}
+```
+
+## src/app/components/post.component.html
+
+```html
+<div>
+  <div>
+    <a (click)="setPostId.emit(-1)" href="#"> Back </a>
+  </div>
+  @if (postQuery.isPending()) {
+    Loading...
+  } @else if (postQuery.isError()) {
+    Error: {{ postQuery.error().message }}
+  }
+  @if (postQuery.data(); as post) {
+    <h1>{{ post.title }}</h1>
+    <div>
+      <p>{{ post.body }}</p>
+    </div>
+    @if (postQuery.isFetching()) {
+      Background Updating...
+    }
+  }
+</div>
+```
+
+## src/app/components/post.component.ts
+
+```ts
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  input,
+  output,
+} from '@angular/core'
+import { injectQuery } from '@tanstack/angular-query-experimental'
+import { fromEvent, lastValueFrom, takeUntil } from 'rxjs'
+import { PostsService } from '../services/posts-service'
+
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'post',
+  templateUrl: './post.component.html',
+})
+export class PostComponent {
+  readonly #postsService = inject(PostsService)
+
+  readonly setPostId = output<number>()
+  readonly postId = input(0)
+
+  readonly postQuery = injectQuery(() => ({
+    enabled: this.postId() > 0,
+    queryKey: ['post', this.postId()],
+    queryFn: (context) => {
+      // Cancels the request when component is destroyed before the request finishes
+      const abort$ = fromEvent(context.signal, 'abort')
+      return lastValueFrom(
+        this.#postsService.postById$(this.postId()).pipe(takeUntil(abort$)),
+      )
+    },
+  }))
+}
+```
+
+## src/app/components/posts.component.html
+
+```html
+<div>
+  <h1>Posts</h1>
+  @if (postsQuery.isPending()) {
+    Loading...
+  } @else if (postsQuery.isError()) {
+    Error: {{ postsQuery.error().message }}
+  } @else if (postsQuery.isSuccess()) {
+    <div class="todo-container">
+      @for (post of postsQuery.data(); track post.id) {
+        <p>
+          <!--          We can access the query data here to show bold links for-->
+          <!--          ones that are cached-->
+          <a
+            href="#"
+            (click)="setPostId.emit(post.id)"
+            [style]="
+              queryClient.getQueryData(['post', post.id])
+                ? {
+                    fontWeight: 'bold',
+                    color: 'green',
+                  }
+                : {}
+            "
+            >{{ post.title }}</a
+          >
+        </p>
+      }
+    </div>
+  }
+  <div>
+    @if (postsQuery.isFetching()) {
+      Background Updating...
+    }
+  </div>
+</div>
+```
+
+## src/app/components/posts.component.ts
+
+```ts
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  output,
+} from '@angular/core'
+import { QueryClient, injectQuery } from '@tanstack/angular-query-experimental'
+import { lastValueFrom } from 'rxjs'
+import { PostsService } from '../services/posts-service'
+
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'posts',
+  templateUrl: './posts.component.html',
+})
+export class PostsComponent {
+  readonly queryClient = inject(QueryClient)
+  readonly #postsService = inject(PostsService)
+  readonly setPostId = output<number>()
+
+  readonly postsQuery = injectQuery(() => ({
+    queryKey: ['posts'],
+    queryFn: () => lastValueFrom(this.#postsService.allPosts$()),
+  }))
+}
+```
+
+## src/app/services/posts-service.ts
+
+```ts
+import { HttpClient } from '@angular/common/http'
+import { Injectable, inject } from '@angular/core'
+
+@Injectable({
+  providedIn: 'root',
+})
+export class PostsService {
+  readonly #http = inject(HttpClient)
+
+  postById$ = (postId: number) =>
+    this.#http.get<Post>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
+
+  allPosts$ = () =>
+    this.#http.get<Array<Post>>('https://jsonplaceholder.typicode.com/posts')
+}
+
+export interface Post {
+  id: number
+  title: string
+  body: string
+}
+```
+
+## src/index.html
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>TanStack Query Angular basic example</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  </head>
+  <body>
+    <basic-example></basic-example>
+  </body>
+</html>
+```
+
+## src/main.ts
+
+```ts
+import { bootstrapApplication } from '@angular/platform-browser'
+import { appConfig } from './app/app.config'
+import { BasicExampleComponent } from './app/app.component'
+
+bootstrapApplication(BasicExampleComponent, appConfig).catch((err) =>
+  console.error(err),
+)
+```

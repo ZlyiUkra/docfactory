@@ -1,0 +1,274 @@
+# Example: angular/pagination
+# джерело: https://github.com/TanStack/query/tree/@tanstack%2Fquery-core@5.103.3/examples/angular/pagination
+# отримано: 2026-09-26
+# версія: 5.103.3
+
+## TanStack Query Angular pagination example
+
+To run this example:
+
+- `pnpm install`
+- `pnpm start`
+
+## package.json
+
+```json
+{
+  "name": "@tanstack/query-example-angular-pagination",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development"
+  },
+  "dependencies": {
+    "@angular/common": "^20.0.0",
+    "@angular/compiler": "^20.0.0",
+    "@angular/core": "^20.0.0",
+    "@angular/platform-browser": "^20.0.0",
+    "@tanstack/angular-query-experimental": "^5.103.3",
+    "rxjs": "^7.8.2",
+    "tslib": "^2.8.1",
+    "zone.js": "0.15.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^20.0.0",
+    "@angular/cli": "^20.0.0",
+    "@angular/compiler-cli": "^20.0.0",
+    "typescript": "5.8.3"
+  }
+}
+```
+
+## src/app/api/projects-mock.interceptor.ts
+
+```ts
+import { HttpResponse } from '@angular/common/http'
+import { delay, of } from 'rxjs'
+import type { Observable } from 'rxjs'
+import type { HttpEvent, HttpInterceptorFn } from '@angular/common/http'
+
+export const projectsMockInterceptor: HttpInterceptorFn = (
+  req,
+  next,
+): Observable<HttpEvent<any>> => {
+  const { url } = req
+
+  if (url.includes('/api/projects')) {
+    const page = parseInt(
+      new URLSearchParams(req.url.split('?')[1]).get('page') || '0',
+      10,
+    )
+    const pageSize = 10
+
+    const projects = Array(pageSize)
+      .fill(0)
+      .map((_, i) => {
+        const id = page * pageSize + (i + 1)
+        return {
+          name: 'Project ' + id,
+          id,
+        }
+      })
+
+    return of(
+      new HttpResponse({
+        status: 200,
+        body: {
+          projects,
+          hasMore: page < 9,
+        },
+      }),
+    ).pipe(delay(1000))
+  }
+  return next(req)
+}
+```
+
+## src/app/app.component.ts
+
+```ts
+import { ChangeDetectionStrategy, Component } from '@angular/core'
+import { ExampleComponent } from './components/example.component'
+
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'app-root',
+  template: `<example />`,
+  imports: [ExampleComponent],
+})
+export class AppComponent {}
+```
+
+## src/app/components/example.component.html
+
+```html
+<div>
+  <p>
+    In this example, each page of data remains visible as the next page is
+    fetched. The buttons and capability to proceed to the next page are also
+    suppressed until the next page cursor is known. Each page is cached as a
+    normal query too, so when going to previous pages, you'll see them
+    instantaneously while they are also refetched invisibly in the background.
+  </p>
+
+  @if (query.isPending()) {
+    <div>Loading...</div>
+  } @else if (query.isError()) {
+    <div>Error: {{ query.error().message }}</div>
+  } @else if (query.isSuccess()) {
+    <div>
+      @for (project of query.data().projects; track project.id) {
+        <p>{{ project.name }}</p>
+      }
+    </div>
+  }
+
+  <div>Current Page: {{ page() + 1 }}</div>
+
+  <button (click)="previousPage()" [disabled]="page() === 0">
+    Previous Page
+  </button>
+  <button
+    (click)="nextPage()"
+    [disabled]="query.isPlaceholderData() || !query.data()?.hasMore"
+  >
+    Next Page
+  </button>
+  <!-- Since the last page's data potentially sticks around between page requests, -->
+  <!-- we can use `isFetching` to show a background loading -->
+  <!-- indicator since our `status === 'pending'` state won't be triggered -->
+  @if (query.isFetching()) {
+    <span>Loading...</span>
+  }
+</div>
+```
+
+## src/app/components/example.component.ts
+
+```ts
+import {
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core'
+import {
+  QueryClient,
+  injectQuery,
+  keepPreviousData,
+  noop,
+} from '@tanstack/angular-query-experimental'
+import { lastValueFrom } from 'rxjs'
+import { ProjectsService } from '../services/projects.service'
+
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'example',
+  templateUrl: './example.component.html',
+})
+export class ExampleComponent {
+  readonly queryClient = inject(QueryClient)
+  readonly projectsService = inject(ProjectsService)
+  readonly page = signal(0)
+
+  readonly query = injectQuery(() => ({
+    queryKey: ['projects', this.page()],
+    queryFn: () => {
+      return lastValueFrom(this.projectsService.getProjects(this.page()))
+    },
+    placeholderData: keepPreviousData,
+    staleTime: 5000,
+  }))
+
+  readonly prefetchEffect = effect(() => {
+    const data = this.query.data()
+    const isPlaceholderData = this.query.isPlaceholderData()
+    const newPage = this.page() + 1
+
+    untracked(() => {
+      if (!isPlaceholderData && data?.hasMore) {
+        void this.queryClient
+          .query({
+            queryKey: ['projects', newPage],
+            queryFn: () =>
+              lastValueFrom(this.projectsService.getProjects(newPage)),
+          })
+          .catch(noop)
+      }
+    })
+  })
+
+  previousPage() {
+    this.page.update((currentPage) => {
+      return Math.max(currentPage - 1, 0)
+    })
+  }
+
+  nextPage() {
+    this.page.update((currentPage) => {
+      return this.query.data()?.hasMore ? currentPage + 1 : currentPage
+    })
+  }
+}
+```
+
+## src/app/services/projects.service.ts
+
+```ts
+import { HttpClient } from '@angular/common/http'
+import { Injectable, inject } from '@angular/core'
+
+interface Project {
+  id: number
+  name: string
+}
+
+interface ProjectResponse {
+  projects: Array<Project>
+  hasMore: boolean
+}
+
+@Injectable({
+  providedIn: 'root',
+})
+export class ProjectsService {
+  readonly #http = inject(HttpClient)
+
+  getProjects(page: number) {
+    return this.#http.get<ProjectResponse>(`/api/projects?page=${page}`)
+  }
+}
+```
+
+## src/index.html
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>TanStack Query Angular pagination example</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  </head>
+  <body>
+    <app-root></app-root>
+  </body>
+</html>
+```
+
+## src/main.ts
+
+```ts
+import { bootstrapApplication } from '@angular/platform-browser'
+import { appConfig } from './app/app.config'
+import { AppComponent } from './app/app.component'
+
+bootstrapApplication(AppComponent, appConfig).catch((err) => console.error(err))
+```

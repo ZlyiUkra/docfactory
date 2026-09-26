@@ -1,0 +1,262 @@
+# Example: react/algolia
+# джерело: https://github.com/TanStack/query/tree/@tanstack%2Fquery-core@5.103.3/examples/react/algolia
+# отримано: 2026-09-26
+# версія: 5.103.3
+
+## Example
+
+To run this example:
+
+- `npm install`
+- `npm run dev`
+
+## package.json
+
+```json
+{
+  "name": "@tanstack/query-example-react-algolia",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@algolia/client-search": "5.59.0",
+    "@tanstack/react-query": "^5.103.3",
+    "@tanstack/react-query-devtools": "^5.103.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@tanstack/eslint-plugin-query": "^5.103.3",
+    "@types/react": "^18.2.79",
+    "@types/react-dom": "^18.2.25",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "5.8.3",
+    "vite": "^6.4.1"
+  }
+}
+```
+
+## src/App.tsx
+
+```tsx
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
+import './styles.css'
+import Search from './Search'
+
+const queryClient = new QueryClient()
+
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <div className="App">
+        <h1>TanStack Query with Algolia</h1>
+        <Search />
+      </div>
+    </QueryClientProvider>
+  )
+}
+```
+
+## src/Search.tsx
+
+```tsx
+import * as React from 'react'
+
+import SearchResults from './SearchResults'
+
+export default function Search() {
+  const [query, setQuery] = React.useState('')
+
+  const handleOnChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    event.preventDefault()
+    // It is recommended to debounce this event in prod
+    setQuery(event.target.value)
+  }
+
+  return (
+    <div>
+      <input
+        onChange={handleOnChange}
+        value={query}
+        placeholder="Search products"
+      />
+      <SearchResults query={query} />
+    </div>
+  )
+}
+```
+
+## src/SearchResults.tsx
+
+```tsx
+import useAlgolia from './useAlgolia'
+
+type Product = {
+  name: string
+  shortDescription: string
+  salePrice: number
+}
+
+type SearchResultsProps = {
+  query: string
+}
+
+export default function SearchResults({ query = '' }: SearchResultsProps) {
+  const {
+    hits,
+    isLoading,
+    isFetching,
+    status,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useAlgolia<Product>({
+    indexName: 'bestbuy',
+    query,
+    hitsPerPage: 5,
+    staleTime: 1000 * 30, // 30s
+    gcTime: 1000 * 60 * 15, // 15m
+  })
+
+  if (!query) return null
+
+  if (isLoading) return <div className="loading">Loading...</div>
+
+  return (
+    <div>
+      <div className="search-status">
+        Status: {status} {isFetching && <span>fetching...</span>}
+      </div>
+      <div>
+        <div className="search-result">
+          {hits && hits.length > 0 ? (
+            hits.map((product) => (
+              <li key={product.objectID} className="product">
+                <span className="product-name">{product.name}</span>
+                {product.shortDescription && (
+                  <>
+                    <br />
+                    <span className="product-description">
+                      {product.shortDescription}
+                    </span>
+                  </>
+                )}
+                <br />
+                <span className="product-price">${product.salePrice}</span>
+              </li>
+            ))
+          ) : (
+            <h3>No products found!</h3>
+          )}
+        </div>
+        {hasNextPage && (
+          <div className="search-more" onClick={() => fetchNextPage()}>
+            more
+          </div>
+        )}
+        {isFetchingNextPage && (
+          <div className="search-status">Fetching next page...</div>
+        )}
+      </div>
+    </div>
+  )
+}
+```
+
+## src/algolia.ts
+
+```ts
+import { searchClient } from '@algolia/client-search'
+import type { Hit } from '@algolia/client-search'
+
+// From Algolia example
+// https://github.com/algolia/react-instantsearch
+const ALGOLIA_APP_ID = 'latency'
+const ALGOLIA_SEARCH_API_KEY = '6be0576ff61c053d5f9a3225e2a90f76'
+
+type SearchOptions = {
+  indexName: string
+  query: string
+  pageParam: number
+  hitsPerPage: number
+}
+
+export async function search<TData>({
+  indexName,
+  query,
+  pageParam,
+  hitsPerPage = 10,
+}: SearchOptions): Promise<{
+  hits: Array<Hit<TData>>
+  nextPage: number | undefined
+}> {
+  const client = searchClient(ALGOLIA_APP_ID, ALGOLIA_SEARCH_API_KEY)
+
+  console.log('algolia:search', { indexName, query, pageParam, hitsPerPage })
+
+  const { hits, page, nbPages } = await client.searchSingleIndex<TData>({
+    indexName,
+    searchParams: { query, page: pageParam, hitsPerPage },
+  })
+
+  const nextPage = page + 1 < nbPages ? page + 1 : undefined
+
+  return { hits, nextPage }
+}
+```
+
+## src/index.tsx
+
+```tsx
+import ReactDOM from 'react-dom/client'
+
+import App from './App'
+
+const rootElement = document.getElementById('root')
+if (!rootElement) throw new Error('Missing #root element')
+ReactDOM.createRoot(rootElement).render(<App />)
+```
+
+## src/useAlgolia.ts
+
+```ts
+import { skipToken, useInfiniteQuery } from '@tanstack/react-query'
+import { search } from './algolia'
+
+export type UseAlgoliaOptions = {
+  indexName: string
+  query: string
+  hitsPerPage?: number
+  staleTime?: number
+  gcTime?: number
+}
+
+export default function useAlgolia<TData>({
+  indexName,
+  query,
+  hitsPerPage = 10,
+  staleTime,
+  gcTime,
+}: UseAlgoliaOptions) {
+  const queryInfo = useInfiniteQuery({
+    queryKey: ['algolia', indexName, query, hitsPerPage],
+    queryFn: query
+      ? ({ pageParam }) =>
+          search<TData>({ indexName, query, pageParam, hitsPerPage })
+      : skipToken,
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => lastPage.nextPage,
+    staleTime,
+    gcTime,
+  })
+
+  const hits = queryInfo.data?.pages.map((page) => page.hits).flat()
+
+  return { ...queryInfo, hits }
+}
+```

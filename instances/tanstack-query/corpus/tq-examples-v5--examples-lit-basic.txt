@@ -1,0 +1,950 @@
+# Example: lit/basic
+# джерело: https://github.com/TanStack/query/tree/@tanstack%2Fquery-core@5.103.3/examples/lit/basic
+# отримано: 2026-09-26
+# версія: 5.103.3
+
+## Example
+
+To run this example from the repo root:
+
+- `pnpm --dir examples/lit/basic run dev`
+
+## basic-query.html
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lit Query Basic Example</title>
+  </head>
+  <body>
+    <basic-query-root></basic-query-root>
+    <script type="module" src="/src/basic-query.ts"></script>
+  </body>
+</html>
+```
+
+## config/port.js
+
+```js
+const DEFAULT_DEMO_PORT = 4173
+const envPort = process.env.DEMO_PORT
+
+function resolvePort() {
+  if (!envPort) {
+    return DEFAULT_DEMO_PORT
+  }
+
+  const parsedPort = Number.parseInt(envPort, 10)
+  const isValidPort =
+    Number.isInteger(parsedPort) && parsedPort > 0 && parsedPort <= 65535
+
+  if (!isValidPort) {
+    throw new Error(
+      `Invalid DEMO_PORT "${envPort}". Expected an integer between 1 and 65535.`,
+    )
+  }
+
+  return parsedPort
+}
+
+export const DEMO_PORT = resolvePort()
+```
+
+## lifecycle-contract.html
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TanStack Lit Query Lifecycle Contract Fixture</title>
+  </head>
+  <body>
+    <lifecycle-contract-root></lifecycle-contract-root>
+    <script type="module" src="/src/lifecycle-contract.ts"></script>
+  </body>
+</html>
+```
+
+## mutation.html
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lit Query Mutation Example</title>
+  </head>
+  <body>
+    <mutation-example-root></mutation-example-root>
+    <script type="module" src="/src/mutation.ts"></script>
+  </body>
+</html>
+```
+
+## package.json
+
+```json
+{
+  "name": "@tanstack/query-example-lit-basic",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tanstack/lit-query": "^0.2.24",
+    "@tanstack/query-core": "^5.103.3",
+    "lit": "^3.3.3"
+  },
+  "devDependencies": {
+    "typescript": "5.8.3",
+    "vite": "^6.4.1"
+  }
+}
+```
+
+## src/basic-query.ts
+
+```ts
+import { LitElement, html } from 'lit'
+import {
+  QueryClient,
+  QueryClientProvider,
+  createQueryController,
+} from '@tanstack/lit-query'
+import { fetchTodosFromServer, resetTodoApi } from './todoApi'
+import type { TodosResponse } from './todoApi'
+
+resetTodoApi()
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { retry: false },
+  },
+})
+
+class BasicQueryProvider extends QueryClientProvider {
+  constructor() {
+    super()
+    this.client = queryClient
+  }
+
+  protected override createRenderRoot(): HTMLElement | DocumentFragment {
+    return this
+  }
+}
+
+customElements.define('basic-query-provider', BasicQueryProvider)
+
+class BasicQueryExample extends LitElement {
+  private readonly todos = createQueryController<TodosResponse, Error>(this, {
+    queryKey: ['todos'],
+    queryFn: fetchTodosFromServer,
+  })
+
+  protected override createRenderRoot(): HTMLElement | DocumentFragment {
+    return this
+  }
+
+  render() {
+    const query = this.todos()
+    return html`
+      <main>
+        <h1>Basic Query Example</h1>
+        <p data-testid="basic-query-status">
+          Status: <strong>${query.status}</strong>
+        </p>
+        <button
+          data-testid="basic-refetch"
+          @click=${() => this.todos.refetch()}
+        >
+          Refetch
+        </button>
+
+        ${
+          query.isPending
+            ? html`<p data-testid="basic-loading">Loading...</p>`
+            : null
+        }
+        ${
+          query.isError
+            ? html`<p data-testid="basic-error">
+                Error: ${String(query.error)}
+              </p>`
+            : null
+        }
+
+        <ul data-testid="basic-todo-list">
+          ${(query.data?.items ?? []).map(
+            (todo) =>
+              html`<li data-testid="basic-todo-item">${todo.title}</li>`,
+          )}
+        </ul>
+      </main>
+    `
+  }
+}
+
+customElements.define('basic-query-example', BasicQueryExample)
+
+class BasicQueryRoot extends LitElement {
+  protected override createRenderRoot(): HTMLElement | DocumentFragment {
+    return this
+  }
+
+  render() {
+    return html`
+      <basic-query-provider>
+        <basic-query-example></basic-query-example>
+      </basic-query-provider>
+    `
+  }
+}
+
+customElements.define('basic-query-root', BasicQueryRoot)
+```
+
+## src/lifecycle-contract.ts
+
+```ts
+import { LitElement, html } from 'lit'
+import {
+  QueryClient,
+  QueryClientProvider,
+  createQueryController,
+} from '@tanstack/lit-query'
+
+type ContractProbeData = {
+  provider: 'provider-a' | 'provider-b'
+  payload: string
+}
+
+type ContractTarget = 'orphan' | 'provider-a' | 'provider-b'
+
+const contractQueryKey = ['lifecycle-contract', 'provider-binding'] as const
+let contractConsumerInstanceCount = 0
+
+function createContractClient(data: ContractProbeData): QueryClient {
+  const client = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        staleTime: Number.POSITIVE_INFINITY,
+      },
+    },
+  })
+
+  client.setQueryData(contractQueryKey, data)
+  return client
+}
+
+const contractClientA = createContractClient({
+  provider: 'provider-a',
+  payload: 'provider-a cache',
+})
+
+const contractClientB = createContractClient({
+  provider: 'provider-b',
+  payload: 'provider-b cache',
+})
+
+class ContractProviderA extends QueryClientProvider {
+  constructor() {
+    super()
+    this.client = contractClientA
+  }
+
+  protected override createRenderRoot(): HTMLElement | DocumentFragment {
+    return this
+  }
+}
+
+if (!customElements.get('contract-provider-a')) {
+  customElements.define('contract-provider-a', ContractProviderA)
+}
+
+class ContractProviderB extends QueryClientProvider {
+  constructor() {
+    super()
+    this.client = contractClientB
+  }
+
+  protected override createRenderRoot(): HTMLElement | DocumentFragment {
+    return this
+  }
+}
+
+if (!customElements.get('contract-provider-b')) {
+  customElements.define('contract-provider-b', ContractProviderB)
+}
+
+class LifecycleContractConsumer extends LitElement {
+  private readonly instanceId = ++contractConsumerInstanceCount
+
+  private readonly query = createQueryController<ContractProbeData, Error>(
+    this,
+    {
+      queryKey: contractQueryKey,
+      queryFn: () => {
+        throw new Error(
+          'Lifecycle contract fixture unexpectedly fetched from queryFn.',
+        )
+      },
+      retry: false,
+      staleTime: Number.POSITIVE_INFINITY,
+    },
+  )
+
+  protected override createRenderRoot(): HTMLElement | DocumentFragment {
+    return this
+  }
+
+  private renderQueryState() {
+    try {
+      const query = this.query()
+
+      return html`
+        <div data-testid="contract-query-status">query: ${query.status}</div>
+        <div data-testid="contract-provider-value">
+          provider: ${query.data?.provider ?? 'none'}
+        </div>
+        <div data-testid="contract-payload">
+          payload: ${query.data?.payload ?? 'none'}
+        </div>
+        <div data-testid="contract-error">
+          error: ${query.error ? String(query.error) : 'none'}
+        </div>
+      `
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+
+      return html`
+        <div data-testid="contract-query-status">query: missing-client</div>
+        <div data-testid="contract-provider-value">provider: none</div>
+        <div data-testid="contract-payload">payload: none</div>
+        <div data-testid="contract-error">error: ${message}</div>
+      `
+    }
+  }
+
+  render() {
+    return html`
+      <div data-testid="contract-instance-id">instance: ${this.instanceId}</div>
+      ${this.renderQueryState()}
+    `
+  }
+}
+
+if (!customElements.get('lifecycle-contract-consumer')) {
+  customElements.define(
+    'lifecycle-contract-consumer',
+    LifecycleContractConsumer,
+  )
+}
+
+class LifecycleContractRoot extends LitElement {
+  static properties = {
+    currentTarget: { state: true },
+  }
+
+  private currentTarget: ContractTarget = 'orphan'
+
+  protected override createRenderRoot(): HTMLElement | DocumentFragment {
+    return this
+  }
+
+  override firstUpdated(): void {
+    this.moveConsumerTo('orphan')
+  }
+
+  moveConsumerTo(target: ContractTarget): void {
+    const consumer = this.ensureConsumer()
+    const destination = this.getContainer(target)
+    destination.appendChild(consumer)
+    this.currentTarget = target
+    this.requestUpdate()
+  }
+
+  private ensureConsumer(): LifecycleContractConsumer {
+    const existing = this.querySelector<LifecycleContractConsumer>(
+      'lifecycle-contract-consumer',
+    )
+    if (existing) {
+      return existing
+    }
+
+    return document.createElement(
+      'lifecycle-contract-consumer',
+    ) as LifecycleContractConsumer
+  }
+
+  private getContainer(target: ContractTarget): HTMLElement {
+    const selector =
+      target === 'orphan'
+        ? '[data-contract-slot="orphan"]'
+        : target === 'provider-a'
+          ? 'contract-provider-a'
+          : 'contract-provider-b'
+
+    const container = this.querySelector(selector)
+    if (!(container instanceof HTMLElement)) {
+      throw new Error(
+        `Lifecycle contract container not found for target "${target}".`,
+      )
+    }
+
+    return container
+  }
+
+  render() {
+    return html`
+      <main>
+        <h1>Lifecycle Contract Fixture</h1>
+        <p>
+          Exercises the same consumer across missing-provider and provider
+          switching flows.
+        </p>
+        <div data-testid="contract-location">
+          location: ${this.currentTarget}
+        </div>
+
+        <section>
+          <h2>Orphan Zone</h2>
+          <div data-contract-slot="orphan"></div>
+        </section>
+
+        <section>
+          <h2>Provider A</h2>
+          <contract-provider-a></contract-provider-a>
+        </section>
+
+        <section>
+          <h2>Provider B</h2>
+          <contract-provider-b></contract-provider-b>
+        </section>
+      </main>
+    `
+  }
+}
+
+if (!customElements.get('lifecycle-contract-root')) {
+  customElements.define('lifecycle-contract-root', LifecycleContractRoot)
+}
+```
+
+## src/main.ts
+
+```ts
+import { LitElement, html } from 'lit'
+import {
+  QueryClient,
+  QueryClientProvider,
+  createMutationController,
+  createQueryController,
+  useIsFetching,
+  useIsMutating,
+} from '@tanstack/lit-query'
+import {
+  addTodoOnServer,
+  failNextFetchRequest,
+  failNextMutationRequest,
+  fetchTodosFromServer,
+  resetTodoApi,
+} from './todoApi'
+import type { Todo, TodosResponse } from './todoApi'
+
+resetTodoApi()
+
+const demoQueryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+    },
+    mutations: {
+      retry: false,
+    },
+  },
+})
+
+class DemoQueryProvider extends QueryClientProvider {
+  constructor() {
+    super()
+    this.client = demoQueryClient
+  }
+
+  protected override createRenderRoot(): HTMLElement | DocumentFragment {
+    return this
+  }
+}
+
+customElements.define('demo-query-provider', DemoQueryProvider)
+
+class TanstackLitQueryDemo extends LitElement {
+  static properties = {
+    nextTodoTitle: { state: true },
+    cacheSeedCount: { state: true },
+  }
+
+  private nextTodoTitle = 'Add mutation assertion'
+  private cacheSeedCount = 0
+
+  private readonly todosQuery = createQueryController<TodosResponse, Error>(
+    this,
+    {
+      queryKey: ['todos'],
+      queryFn: fetchTodosFromServer,
+    },
+  )
+
+  private readonly createTodoMutation = createMutationController<
+    Todo,
+    Error,
+    string
+  >(this, {
+    mutationKey: ['create-todo'],
+    mutationFn: addTodoOnServer,
+    onSuccess: (createdTodo) => {
+      demoQueryClient.setQueryData<TodosResponse>(['todos'], (existing) => {
+        if (!existing) {
+          return {
+            items: [createdTodo],
+            requestCount: 0,
+            source: 'cache',
+          }
+        }
+
+        return {
+          items: [...existing.items, createdTodo],
+          requestCount: existing.requestCount,
+          source: 'cache',
+        }
+      })
+    },
+  })
+
+  private readonly isFetching = useIsFetching(this, {
+    queryKey: ['todos'],
+  })
+
+  private readonly isMutating = useIsMutating(this, {
+    mutationKey: ['create-todo'],
+  })
+
+  protected override createRenderRoot(): HTMLElement | DocumentFragment {
+    return this
+  }
+
+  private onTitleInput(event: Event): void {
+    const target = event.target as HTMLInputElement
+    this.nextTodoTitle = target.value
+  }
+
+  private addTodo(): void {
+    const title = this.nextTodoTitle.trim()
+    if (!title) {
+      return
+    }
+
+    this.createTodoMutation.mutate(title)
+    this.nextTodoTitle = ''
+  }
+
+  private async invalidateTodos(): Promise<void> {
+    await demoQueryClient.invalidateQueries({ queryKey: ['todos'] })
+  }
+
+  private seedCacheOnlyTodo(): void {
+    this.cacheSeedCount += 1
+
+    const seedTodo: Todo = {
+      id: 10_000 + this.cacheSeedCount,
+      title: `Seeded cache todo ${this.cacheSeedCount}`,
+    }
+
+    demoQueryClient.setQueryData<TodosResponse>(['todos'], (existing) => {
+      if (!existing) {
+        return {
+          items: [seedTodo],
+          requestCount: 0,
+          source: 'cache',
+        }
+      }
+
+      return {
+        items: [...existing.items, seedTodo],
+        requestCount: existing.requestCount,
+        source: 'cache',
+      }
+    })
+  }
+
+  private forceNextFetchFailure(): void {
+    failNextFetchRequest()
+  }
+
+  private forceNextMutationFailure(): void {
+    failNextMutationRequest()
+  }
+
+  private async resetDemoState(): Promise<void> {
+    resetTodoApi()
+    this.cacheSeedCount = 0
+    this.nextTodoTitle = 'Add mutation assertion'
+
+    await demoQueryClient.resetQueries({ queryKey: ['todos'] })
+    this.createTodoMutation.reset()
+  }
+
+  render() {
+    const query = this.todosQuery()
+    const mutation = this.createTodoMutation()
+    const todos = query.data?.items ?? []
+
+    return html`
+      <main>
+        <h1>TanStack Lit Query E2E Demo</h1>
+        <p>Verifies integration between Lit, query-core, and this adapter.</p>
+
+        <section>
+          <div data-testid="query-status">query: ${query.status}</div>
+          <div data-testid="mutation-status">mutation: ${mutation.status}</div>
+          <div data-testid="active-fetches">fetches: ${this.isFetching()}</div>
+          <div data-testid="active-mutations">
+            mutations: ${this.isMutating()}
+          </div>
+          <div data-testid="request-count">
+            server-requests: ${query.data?.requestCount ?? 0}
+          </div>
+          <div data-testid="data-source">
+            source: ${query.data?.source ?? 'none'}
+          </div>
+        </section>
+
+        <section>
+          <button
+            data-testid="refetch"
+            @click=${() => this.todosQuery.refetch()}
+          >
+            Refetch
+          </button>
+          <button
+            data-testid="invalidate"
+            @click=${() => this.invalidateTodos()}
+          >
+            Invalidate
+          </button>
+          <button
+            data-testid="seed-cache"
+            @click=${() => this.seedCacheOnlyTodo()}
+          >
+            Seed Cache
+          </button>
+          <button
+            data-testid="reset-demo-state"
+            @click=${() => this.resetDemoState()}
+          >
+            Reset Demo State
+          </button>
+          <button
+            data-testid="fail-next-fetch"
+            @click=${() => this.forceNextFetchFailure()}
+          >
+            Fail Next Fetch
+          </button>
+          <button
+            data-testid="fail-next-mutation"
+            @click=${() => this.forceNextMutationFailure()}
+          >
+            Fail Next Mutation
+          </button>
+        </section>
+
+        <section>
+          <label for="newTodoInput">New todo</label>
+          <input
+            id="newTodoInput"
+            data-testid="new-todo-input"
+            .value=${this.nextTodoTitle}
+            @input=${this.onTitleInput}
+          />
+          <button data-testid="add-todo" @click=${() => this.addTodo()}>
+            Add Todo (Mutation)
+          </button>
+        </section>
+
+        ${
+          query.isError
+            ? html`<div data-testid="query-error">${String(query.error)}</div>`
+            : null
+        }
+        ${
+          mutation.isError
+            ? html`<div data-testid="mutation-error">
+                ${String(mutation.error)}
+              </div>`
+            : null
+        }
+
+        <ul data-testid="todo-list">
+          ${todos.map(
+            (todo) =>
+              html`<li data-testid="todo-item">${todo.id}: ${todo.title}</li>`,
+          )}
+        </ul>
+      </main>
+    `
+  }
+}
+
+customElements.define('tanstack-lit-query-demo', TanstackLitQueryDemo)
+
+class DemoRoot extends LitElement {
+  protected override createRenderRoot(): HTMLElement | DocumentFragment {
+    return this
+  }
+
+  render() {
+    return html`
+      <demo-query-provider>
+        <tanstack-lit-query-demo></tanstack-lit-query-demo>
+      </demo-query-provider>
+    `
+  }
+}
+
+customElements.define('demo-root', DemoRoot)
+```
+
+## src/mutation.ts
+
+```ts
+import { LitElement, html } from 'lit'
+import {
+  QueryClient,
+  QueryClientProvider,
+  createMutationController,
+  createQueryController,
+} from '@tanstack/lit-query'
+import { addTodoOnServer, fetchTodosFromServer, resetTodoApi } from './todoApi'
+import type { Todo, TodosResponse } from './todoApi'
+
+resetTodoApi()
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { retry: false },
+    mutations: { retry: false },
+  },
+})
+
+class MutationExampleProvider extends QueryClientProvider {
+  constructor() {
+    super()
+    this.client = queryClient
+  }
+
+  protected override createRenderRoot(): HTMLElement | DocumentFragment {
+    return this
+  }
+}
+
+customElements.define('mutation-example-provider', MutationExampleProvider)
+
+class MutationExample extends LitElement {
+  static properties = {
+    nextTitle: { state: true },
+  }
+
+  private nextTitle = 'Created from mutation example'
+
+  private readonly todos = createQueryController<TodosResponse, Error>(this, {
+    queryKey: ['todos'],
+    queryFn: fetchTodosFromServer,
+  })
+
+  private readonly addTodo = createMutationController<Todo, Error, string>(
+    this,
+    {
+      mutationKey: ['create-todo'],
+      mutationFn: addTodoOnServer,
+      onSuccess: (created) => {
+        queryClient.setQueryData<TodosResponse>(['todos'], (existing) => {
+          if (!existing) {
+            return {
+              items: [created],
+              requestCount: 0,
+              source: 'cache',
+            }
+          }
+
+          return {
+            items: [...existing.items, created],
+            requestCount: existing.requestCount,
+            source: 'cache',
+          }
+        })
+      },
+    },
+  )
+
+  protected override createRenderRoot(): HTMLElement | DocumentFragment {
+    return this
+  }
+
+  private onInput(event: Event): void {
+    const target = event.target as HTMLInputElement
+    this.nextTitle = target.value
+  }
+
+  private submit(): void {
+    const title = this.nextTitle.trim()
+    if (!title) return
+    this.addTodo.mutate(title)
+    this.nextTitle = ''
+  }
+
+  render() {
+    const query = this.todos()
+    const mutation = this.addTodo()
+    const items = query.data?.items ?? []
+
+    return html`
+      <main>
+        <h1>Mutation Example</h1>
+        <p data-testid="mutation-query-status">
+          Query: <strong>${query.status}</strong>
+        </p>
+        <p data-testid="mutation-mutation-status">
+          Mutation: <strong>${mutation.status}</strong>
+        </p>
+
+        <label for="title">Todo title</label>
+        <input
+          id="title"
+          data-testid="mutation-input"
+          .value=${this.nextTitle}
+          @input=${this.onInput}
+        />
+        <button data-testid="mutation-add" @click=${this.submit}>
+          Add Todo
+        </button>
+
+        <ul data-testid="mutation-todo-list">
+          ${items.map(
+            (todo) =>
+              html`<li data-testid="mutation-todo-item">${todo.title}</li>`,
+          )}
+        </ul>
+      </main>
+    `
+  }
+}
+
+customElements.define('mutation-example', MutationExample)
+
+class MutationExampleRoot extends LitElement {
+  protected override createRenderRoot(): HTMLElement | DocumentFragment {
+    return this
+  }
+
+  render() {
+    return html`
+      <mutation-example-provider>
+        <mutation-example></mutation-example>
+      </mutation-example-provider>
+    `
+  }
+}
+
+customElements.define('mutation-example-root', MutationExampleRoot)
+```
+
+## src/todoApi.ts
+
+```ts
+export type Todo = {
+  id: number
+  title: string
+}
+
+export type TodosResponse = {
+  items: Todo[]
+  requestCount: number
+  source: 'server' | 'cache'
+}
+
+let todos: Todo[] = [
+  { id: 1, title: 'Ship lit-query alpha' },
+  { id: 2, title: 'Write integration checks' },
+]
+
+let requestCount = 0
+let nextTodoId = 3
+let failNextFetch = false
+let failNextMutation = false
+
+const delay = (ms: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms)
+  })
+
+export async function fetchTodosFromServer(): Promise<TodosResponse> {
+  await delay(90)
+  if (failNextFetch) {
+    failNextFetch = false
+    throw new Error('Forced fetch failure (test)')
+  }
+  requestCount += 1
+
+  return {
+    items: todos.map((todo) => ({ ...todo })),
+    requestCount,
+    source: 'server',
+  }
+}
+
+export async function addTodoOnServer(title: string): Promise<Todo> {
+  await delay(70)
+  if (failNextMutation) {
+    failNextMutation = false
+    throw new Error('Forced mutation failure (test)')
+  }
+
+  const nextTodo: Todo = {
+    id: nextTodoId,
+    title,
+  }
+
+  nextTodoId += 1
+  todos = [...todos, nextTodo]
+
+  return { ...nextTodo }
+}
+
+export function resetTodoApi(): void {
+  todos = [
+    { id: 1, title: 'Ship lit-query alpha' },
+    { id: 2, title: 'Write integration checks' },
+  ]
+  requestCount = 0
+  nextTodoId = 3
+  failNextFetch = false
+  failNextMutation = false
+}
+
+export function failNextFetchRequest(): void {
+  failNextFetch = true
+}
+
+export function failNextMutationRequest(): void {
+  failNextMutation = true
+}
+```

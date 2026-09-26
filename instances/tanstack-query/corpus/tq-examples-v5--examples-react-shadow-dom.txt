@@ -1,0 +1,117 @@
+# Example: react/shadow-dom
+# джерело: https://github.com/TanStack/query/tree/@tanstack%2Fquery-core@5.103.3/examples/react/shadow-dom
+# отримано: 2026-09-26
+# версія: 5.103.3
+
+## Example
+
+To run this example:
+
+- `pnpm install`
+- `pnpm run dev`
+
+## package.json
+
+```json
+{
+  "name": "@tanstack/query-example-react-shadow-dom",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.103.3",
+    "@tanstack/react-query-devtools": "^5.103.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.2",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "5.8.3",
+    "vite": "^6.4.1"
+  }
+}
+```
+
+## src/DogList.tsx
+
+```tsx
+import { useQuery } from '@tanstack/react-query'
+
+type DogsResp = {
+  message: {
+    [dog: string]: Array<string>
+  }
+}
+
+export const DogList = () => {
+  const { data, status } = useQuery<DogsResp>({
+    queryKey: ['dogs'],
+    queryFn: async () => {
+      const resp = await fetch('https://dog.ceo/api/breeds/list/all')
+      if (resp.ok) {
+        return resp.json()
+      }
+      throw new Error('something went wrong')
+    },
+  })
+
+  if (status === 'pending') return 'Loading...'
+
+  if (status === 'error') return 'Error!'
+
+  const dogs = Object.keys(data.message)
+
+  return (
+    <div>
+      {dogs.map((dog) => (
+        <div key={dog}>{dog}</div>
+      ))}
+    </div>
+  )
+}
+```
+
+## src/main.tsx
+
+```tsx
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import './index.css'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import { DogList } from './DogList'
+
+const appRoot = document.getElementById('root')
+if (!appRoot) throw new Error('Missing #root element')
+
+const queryClient = new QueryClient()
+const shadowRoot = appRoot.attachShadow({ mode: 'open' })
+const root = ReactDOM.createRoot(shadowRoot)
+
+root.render(
+  <React.StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <div
+        style={{
+          width: '100vw',
+          padding: '30px',
+        }}
+      >
+        <h2>Dog Breeds</h2>
+        <DogList />
+      </div>
+      <ReactQueryDevtools
+        initialIsOpen={false}
+        buttonPosition="bottom-left"
+        shadowDOMTarget={shadowRoot}
+      />
+    </QueryClientProvider>
+  </React.StrictMode>,
+)
+```

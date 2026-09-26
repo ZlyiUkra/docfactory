@@ -1,0 +1,182 @@
+# Example: react/auto-refetching
+# джерело: https://github.com/TanStack/query/tree/@tanstack%2Fquery-core@5.103.3/examples/react/auto-refetching
+# отримано: 2026-09-26
+# версія: 5.103.3
+
+## Example
+
+To run this example:
+
+- `npm install`
+- `npm run dev`
+
+## package.json
+
+```json
+{
+  "name": "@tanstack/query-example-react-auto-refetching",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.103.3",
+    "@tanstack/react-query-devtools": "^5.103.3",
+    "next": "^16.0.7",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "5.8.3"
+  }
+}
+```
+
+## src/pages/api/data.ts
+
+```ts
+import type { NextApiRequest, NextApiResponse } from 'next'
+
+// an simple endpoint for getting current list
+let list = ['Item 1', 'Item 2', 'Item 3']
+
+export default async (
+  req: NextApiRequest,
+  res: NextApiResponse<typeof list>,
+) => {
+  if (req.query.add) {
+    if (!list.includes(req.query.add)) {
+      list.push(req.query.add)
+    }
+  } else if (req.query.clear) {
+    list = []
+  }
+
+  await new Promise((r) => setTimeout(r, 100))
+
+  res.json(list)
+}
+```
+
+## src/pages/index.tsx
+
+```tsx
+import React from 'react'
+
+import {
+  QueryClient,
+  QueryClientProvider,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+
+const queryClient = new QueryClient()
+
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Example />
+    </QueryClientProvider>
+  )
+}
+
+function Example() {
+  const queryClient = useQueryClient()
+  const [intervalMs, setIntervalMs] = React.useState(1000)
+  const [value, setValue] = React.useState('')
+
+  const { status, data, error, isFetching } = useQuery({
+    queryKey: ['todos'],
+    queryFn: async (): Promise<Array<string>> => {
+      const response = await fetch('/api/data')
+      return await response.json()
+    },
+    // Refetch the data every second
+    refetchInterval: intervalMs,
+  })
+
+  const addMutation = useMutation({
+    mutationFn: (add: string) => fetch(`/api/data?add=${add}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['todos'] }),
+  })
+
+  const clearMutation = useMutation({
+    mutationFn: () => fetch(`/api/data?clear=1`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['todos'] }),
+  })
+
+  if (status === 'pending') return <h1>Loading...</h1>
+  if (status === 'error') return <span>Error: {error.message}</span>
+
+  return (
+    <div>
+      <h1>Auto Refetch with stale-time set to {intervalMs}ms</h1>
+      <p>
+        This example is best experienced on your own machine, where you can open
+        multiple tabs to the same localhost server and see your changes
+        propagate between the two.
+      </p>
+      <label>
+        Query Interval speed (ms):{' '}
+        <input
+          value={intervalMs}
+          onChange={(ev) => setIntervalMs(Number(ev.target.value))}
+          type="number"
+          step="100"
+        />{' '}
+        <span
+          style={{
+            display: 'inline-block',
+            marginLeft: '.5rem',
+            width: 10,
+            height: 10,
+            background: isFetching ? 'green' : 'transparent',
+            transition: !isFetching ? 'all .3s ease' : 'none',
+            borderRadius: '100%',
+            transform: 'scale(2)',
+          }}
+        />
+      </label>
+      <h2>Todo List</h2>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault()
+          addMutation.mutate(value, {
+            onSuccess: () => {
+              setValue('')
+            },
+          })
+        }}
+      >
+        <input
+          placeholder="enter something"
+          value={value}
+          onChange={(ev) => setValue(ev.target.value)}
+        />
+      </form>
+      <ul>
+        {data.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+      <div>
+        <button
+          onClick={() => {
+            clearMutation.mutate()
+          }}
+        >
+          Clear All
+        </button>
+      </div>
+      <ReactQueryDevtools initialIsOpen />
+    </div>
+  )
+}
+```

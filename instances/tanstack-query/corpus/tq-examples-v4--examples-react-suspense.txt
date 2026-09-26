@@ -1,0 +1,297 @@
+# Example: react/suspense
+# джерело: https://github.com/TanStack/query/tree/@tanstack%2Fquery-core@4.44.0/examples/react/suspense
+# отримано: 2026-09-26
+# версія: 4.44.0
+
+## Example
+
+To run this example:
+
+- `pnpm install`
+- `pnpm dev`
+
+## package.json
+
+```json
+{
+  "name": "@tanstack/query-example-react-suspense",
+  "private": true,
+  "main": "src/index.jsx",
+  "dependencies": {
+    "@tanstack/react-query": "^4.44.0",
+    "@tanstack/react-query-devtools": "^4.44.0",
+    "axios": "^0.21.1",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "react-error-boundary": "^2.2.3"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^2.0.0",
+    "vite": "^3.0.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "browserslist": [
+    ">0.2%",
+    "not dead",
+    "not ie <= 11",
+    "not op_mini all"
+  ]
+}
+```
+
+## src/components/Button.jsx
+
+```jsx
+import React from 'react'
+
+import Spinner from './Spinner'
+
+export default function Button({ children, onClick }) {
+  const [isPending, startTransition] = React.useTransition()
+
+  const handleClick = (e) => {
+    startTransition(() => {
+      onClick(e)
+    })
+  }
+
+  return (
+    <>
+      <button onClick={handleClick} disabled={isPending}>
+        {children} {isPending ? <Spinner /> : null}
+      </button>
+    </>
+  )
+}
+```
+
+## src/components/Project.jsx
+
+```jsx
+import React from 'react'
+import { useQuery } from '@tanstack/react-query'
+
+import Button from './Button'
+import Spinner from './Spinner'
+
+import { fetchProject } from '../queries'
+
+export default function Project({ activeProject, setActiveProject }) {
+  const { data, isFetching } = useQuery({
+    queryKey: ['project', activeProject],
+    queryFn: () => fetchProject(activeProject),
+  })
+
+  return (
+    <div>
+      <Button onClick={() => setActiveProject(null)}>Back</Button>
+      <h1>
+        {activeProject} {isFetching ? <Spinner /> : null}
+      </h1>
+      {data ? (
+        <div>
+          <p>forks: {data.forks_count}</p>
+          <p>stars: {data.stargazers_count}</p>
+          <p>watchers: {data.watchers}</p>
+        </div>
+      ) : null}
+      <br />
+      <br />
+    </div>
+  )
+}
+```
+
+## src/components/Projects.jsx
+
+```jsx
+import React from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+
+import Button from './Button'
+import Spinner from './Spinner'
+
+import { fetchProjects, fetchProject } from '../queries'
+
+export default function Projects({ setActiveProject }) {
+  const queryClient = useQueryClient()
+  const { data, isFetching } = useQuery({
+    queryKey: ['projects'],
+    queryFn: fetchProjects,
+  })
+
+  return (
+    <div>
+      <h1>Projects {isFetching ? <Spinner /> : null}</h1>
+      {data.map((project) => (
+        <p key={project.name}>
+          <Button
+            onClick={() => {
+              // Prefetch the project query
+              queryClient.prefetchQuery({
+                queryKey: ['project', project.name],
+                queryFn: () => fetchProject(project.name),
+              })
+              setActiveProject(project.name)
+            }}
+          >
+            Load
+          </Button>{' '}
+          {project.name}
+        </p>
+      ))}
+    </div>
+  )
+}
+```
+
+## src/components/Spinner.jsx
+
+```jsx
+import React from 'react'
+
+export default function Spinner() {
+  return (
+    <span
+      className="fa fa-circle-o-notch fa-spin"
+      style={{
+        marginLeft: 4,
+        fontSize: 'small',
+      }}
+    />
+  )
+}
+```
+
+## src/index.jsx
+
+```jsx
+import React, { lazy } from 'react'
+import ReactDOM from 'react-dom/client'
+import {
+  useQueryClient,
+  QueryClient,
+  QueryClientProvider,
+  QueryErrorResetBoundary,
+} from '@tanstack/react-query'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import { ErrorBoundary } from 'react-error-boundary'
+
+import { fetchProjects } from './queries'
+
+import Button from './components/Button'
+
+const Projects = lazy(() => import('./components/Projects'))
+const Project = lazy(() => import('./components/Project'))
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 0,
+      suspense: true,
+    },
+  },
+})
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Example />
+    </QueryClientProvider>
+  )
+}
+
+function Example() {
+  const queryClient = useQueryClient()
+  const [showProjects, setShowProjects] = React.useState(false)
+  const [activeProject, setActiveProject] = React.useState(null)
+
+  return (
+    <>
+      <Button
+        onClick={() => {
+          setShowProjects((old) => {
+            if (!old) {
+              queryClient.prefetchQuery({
+                queryKey: ['projects'],
+                queryFn: fetchProjects,
+              })
+            }
+            return !old
+          })
+        }}
+      >
+        {showProjects ? 'Hide Projects' : 'Show Projects'}
+      </Button>
+
+      <hr />
+
+      <QueryErrorResetBoundary>
+        {({ reset }) => (
+          <ErrorBoundary
+            fallbackRender={({ error, resetErrorBoundary }) => (
+              <div>
+                There was an error!{' '}
+                <Button onClick={() => resetErrorBoundary()}>Try again</Button>
+                <pre style={{ whiteSpace: 'normal' }}>{error.message}</pre>
+              </div>
+            )}
+            onReset={reset}
+          >
+            <React.Suspense fallback={<h1>Loading projects...</h1>}>
+              {showProjects ? (
+                activeProject ? (
+                  <Project
+                    activeProject={activeProject}
+                    setActiveProject={setActiveProject}
+                  />
+                ) : (
+                  <Projects setActiveProject={setActiveProject} />
+                )
+              ) : null}
+            </React.Suspense>
+          </ErrorBoundary>
+        )}
+      </QueryErrorResetBoundary>
+      <ReactQueryDevtools initialIsOpen />
+    </>
+  )
+}
+
+const rootElement = document.getElementById('root')
+ReactDOM.createRoot(rootElement).render(<App />)
+```
+
+## src/queries.js
+
+```js
+import axios from 'axios'
+
+// let count = 0;
+
+export async function fetchProjects(key) {
+  console.info('fetch projects')
+  // if (count < 4) {
+  //   count++;
+  //   throw new Error("testing");
+  // }
+  let { data } = await axios.get(
+    `https://api.github.com/users/tannerlinsley/repos?sort=updated`,
+  )
+  await new Promise((r) => setTimeout(r, 1000))
+  return data
+}
+
+export async function fetchProject(id) {
+  console.info('fetch project id', id)
+  let { data } = await axios.get(
+    `https://api.github.com/repos/tannerlinsley/${id}`,
+  )
+  await new Promise((r) => setTimeout(r, 1000))
+  return data
+}
+```

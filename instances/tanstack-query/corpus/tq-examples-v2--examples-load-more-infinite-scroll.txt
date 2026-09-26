@@ -1,0 +1,228 @@
+# Example: load-more-infinite-scroll
+# джерело: https://github.com/TanStack/query/tree/v2.26.4/examples/load-more-infinite-scroll
+# отримано: 2026-09-26
+# версія: 2.26.4
+
+## Example
+
+To run this example:
+
+- `npm install` or `yarn`
+- `npm run dev` or `yarn dev`
+
+## hooks/useIntersectionObserver.js
+
+```js
+import React from 'react'
+
+export default function useIntersectionObserver({
+  root,
+  target,
+  onIntersect,
+  threshold = 1.0,
+  rootMargin = '0px',
+  enabled = true,
+}) {
+  React.useEffect(() => {
+    if (!enabled) {
+      return
+    }
+
+    const observer = new IntersectionObserver(
+      entries =>
+        entries.forEach(entry => entry.isIntersecting && onIntersect()),
+      {
+        root: root && root.current,
+        rootMargin,
+        threshold,
+      }
+    )
+
+    const el = target && target.current
+
+    if (!el) {
+      return
+    }
+
+    observer.observe(el)
+
+    return () => {
+      observer.unobserve(el)
+    }
+  }, [target.current, enabled])
+}
+```
+
+## package.json
+
+```json
+{
+  "name": "pagination",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^0.19.2",
+    "isomorphic-unfetch": "3.0.0",
+    "next": "9.3.2",
+    "react": "16.13.0",
+    "react-dom": "16.13.0",
+    "react-query": "^2.21.2",
+    "react-query-devtools": "^2.4.7"
+  },
+  "scripts": {
+    "dev": "next",
+    "start": "next start",
+    "build": "next build"
+  }
+}
+```
+
+## pages/about.js
+
+```js
+export default () => {
+  return (
+    <a
+      href=""
+      onClick={e => {
+        window.history.back()
+        e.preventDefault()
+      }}
+    >
+      Back
+    </a>
+  )
+}
+```
+
+## pages/api/projects.js
+
+```js
+// an endpoint for getting projects data
+export default (req, res) => {
+  const cursor = parseInt(req.query.cursor) || 0
+
+  const data = Array(5)
+    .fill(0)
+    .map((_, i) => {
+      return {
+        name: 'Project ' + (i + cursor) + ` (server time: ${Date.now()})`,
+        id: i + cursor,
+      }
+    })
+
+  const nextId = cursor < 10 ? data[data.length - 1].id + 1 : null
+
+  setTimeout(() => res.json({ data, nextId }), 1000)
+}
+```
+
+## pages/index.js
+
+```js
+import React from 'react'
+import Link from 'next/link'
+import axios from 'axios'
+
+import {
+  useInfiniteQuery,
+  QueryCache,
+  ReactQueryCacheProvider,
+} from 'react-query'
+import { ReactQueryDevtools } from 'react-query-devtools'
+
+//
+
+import useIntersectionObserver from '../hooks/useIntersectionObserver'
+
+const queryCache = new QueryCache()
+
+export default function App() {
+  return (
+    <ReactQueryCacheProvider queryCache={queryCache}>
+      <Example />
+    </ReactQueryCacheProvider>
+  )
+}
+
+function Example() {
+  const {
+    status,
+    data,
+    error,
+    isFetching,
+    isFetchingMore,
+    fetchMore,
+    canFetchMore,
+  } = useInfiniteQuery(
+    'projects',
+    async (key, nextId = 0) => {
+      const { data } = await axios.get('/api/projects?cursor=' + nextId)
+      return data
+    },
+    {
+      getFetchMore: lastGroup => lastGroup.nextId,
+    }
+  )
+
+  const loadMoreButtonRef = React.useRef()
+
+  useIntersectionObserver({
+    target: loadMoreButtonRef,
+    onIntersect: fetchMore,
+    enabled: canFetchMore,
+  })
+
+  return (
+    <div>
+      <h1>Infinite Loading</h1>
+      {status === 'loading' ? (
+        <p>Loading...</p>
+      ) : status === 'error' ? (
+        <span>Error: {error.message}</span>
+      ) : (
+        <>
+          {data.map((page, i) => (
+            <React.Fragment key={i}>
+              {page.data.map(project => (
+                <p
+                  style={{
+                    border: '1px solid gray',
+                    borderRadius: '5px',
+                    padding: '10rem 1rem',
+                  }}
+                  key={project.id}
+                >
+                  {project.name}
+                </p>
+              ))}
+            </React.Fragment>
+          ))}
+          <div>
+            <button
+              ref={loadMoreButtonRef}
+              onClick={() => fetchMore()}
+              disabled={!canFetchMore || isFetchingMore}
+            >
+              {isFetchingMore
+                ? 'Loading more...'
+                : canFetchMore
+                ? 'Load More'
+                : 'Nothing more to load'}
+            </button>
+          </div>
+          <div>
+            {isFetching && !isFetchingMore ? 'Background Updating...' : null}
+          </div>
+        </>
+      )}
+      <hr />
+      <Link href="/about">
+        <a>Go to another page</a>
+      </Link>
+      <ReactQueryDevtools initialIsOpen />
+    </div>
+  )
+}
+```

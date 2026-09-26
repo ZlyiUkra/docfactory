@@ -1,0 +1,280 @@
+# Example: angular/router
+# джерело: https://github.com/TanStack/query/tree/@tanstack%2Fquery-core@5.103.3/examples/angular/router
+# отримано: 2026-09-26
+# версія: 5.103.3
+
+## TanStack Query Angular router example
+
+To run this example:
+
+- `pnpm install`
+- `pnpm start`
+
+## package.json
+
+```json
+{
+  "name": "@tanstack/query-example-angular-router",
+  "type": "module",
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development"
+  },
+  "private": true,
+  "dependencies": {
+    "@angular/common": "^20.0.0",
+    "@angular/compiler": "^20.0.0",
+    "@angular/core": "^20.0.0",
+    "@angular/platform-browser": "^20.0.0",
+    "@angular/router": "^20.0.0",
+    "@tanstack/angular-query-experimental": "^5.103.3",
+    "rxjs": "^7.8.2",
+    "tslib": "^2.8.1",
+    "zone.js": "0.15.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^20.0.0",
+    "@angular/cli": "^20.0.0",
+    "@angular/compiler-cli": "^20.0.0",
+    "typescript": "5.8.3"
+  }
+}
+```
+
+## src/app/app.component.html
+
+```html
+<p>
+  As you visit the posts below, you will notice them in a loading state the
+  first time you load them. However, after you return to this list and click on
+  any posts you have already visited again, you will see them load instantly and
+  background refresh right before your eyes!
+  <strong>
+    (You may need to throttle your network speed to simulate longer loading
+    sequences)
+  </strong>
+</p>
+<router-outlet />
+```
+
+## src/app/app.component.ts
+
+```ts
+import { ChangeDetectionStrategy, Component } from '@angular/core'
+import { RouterOutlet } from '@angular/router'
+
+@Component({
+  selector: 'app-root',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [RouterOutlet],
+  templateUrl: './app.component.html',
+})
+export class AppComponent {}
+```
+
+## src/app/app.routes.ts
+
+```ts
+import type { Route } from '@angular/router'
+
+// loadComponent lazily loads the component
+// when the component is the default export, there is no need to handle the promise
+
+export const routes: Array<Route> = [
+  {
+    path: '',
+    loadComponent: () => import('./components/posts.component'),
+  },
+  {
+    path: 'post/:postId',
+    loadComponent: () => import('./components/post.component'),
+  },
+]
+```
+
+## src/app/components/post.component.html
+
+```html
+<div>
+  <div>
+    <a routerLink="/" href="#">Back</a>
+  </div>
+  @if (postQuery.isPending()) {
+    Loading...
+  } @else if (postQuery.isError()) {
+    Error: {{ postQuery.error().message }}
+  }
+  @if (postQuery.isSuccess()) {
+    @let post = postQuery.data();
+    <h1>{{ post.title }}</h1>
+    <div>
+      <p>{{ post.body }}</p>
+    </div>
+    @if (postQuery.isFetching()) {
+      Background Updating...
+    }
+  }
+</div>
+```
+
+## src/app/components/post.component.ts
+
+```ts
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  input,
+  numberAttribute,
+} from '@angular/core'
+import { RouterLink } from '@angular/router'
+import { injectQuery } from '@tanstack/angular-query-experimental'
+import { lastValueFrom } from 'rxjs'
+import { PostsService } from '../services/posts-service'
+
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'post',
+  templateUrl: './post.component.html',
+  imports: [RouterLink],
+})
+export default class PostComponent {
+  readonly #postsService = inject(PostsService)
+
+  // The Angular router will automatically bind postId
+  // as `withComponentInputBinding` is added to `provideRouter`.
+  // See https://angular.dev/api/router/withComponentInputBinding
+  readonly postId = input.required({
+    transform: numberAttribute,
+  })
+
+  readonly postQuery = injectQuery(() => ({
+    queryKey: ['post', this.postId()],
+    queryFn: () => {
+      return lastValueFrom(this.#postsService.postById$(this.postId()))
+    },
+  }))
+}
+```
+
+## src/app/components/posts.component.html
+
+```html
+<div>
+  <h1>Posts</h1>
+  @if (postsQuery.isPending()) {
+    Loading...
+  } @else if (postsQuery.isError()) {
+    Error: {{ postsQuery.error().message }}
+  } @else if (postsQuery.isSuccess()) {
+    <div class="todo-container">
+      @for (post of postsQuery.data(); track post.id) {
+        <p>
+          <!--          We can access the query data here to show bold links for-->
+          <!--          ones that are cached-->
+          <a
+            routerLink="post/{{ post.id }}"
+            [style]="
+              queryClient.getQueryData(['post', post.id])
+                ? {
+                    fontWeight: 'bold',
+                    color: 'green',
+                  }
+                : {}
+            "
+            >{{ post.title }}</a
+          >
+        </p>
+      }
+    </div>
+  }
+  <div>
+    @if (postsQuery.isFetching()) {
+      Background Updating...
+    }
+  </div>
+</div>
+```
+
+## src/app/components/posts.component.ts
+
+```ts
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core'
+import { RouterLink } from '@angular/router'
+import { QueryClient, injectQuery } from '@tanstack/angular-query-experimental'
+import { lastValueFrom } from 'rxjs'
+import { PostsService } from '../services/posts-service'
+
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'posts',
+  templateUrl: './posts.component.html',
+  imports: [RouterLink],
+})
+export default class PostsComponent {
+  readonly #postsService = inject(PostsService)
+
+  readonly postsQuery = injectQuery(() => ({
+    queryKey: ['posts'],
+    queryFn: () => lastValueFrom(this.#postsService.allPosts$()),
+  }))
+
+  readonly queryClient = inject(QueryClient)
+}
+```
+
+## src/app/services/posts-service.ts
+
+```ts
+import { HttpClient } from '@angular/common/http'
+import { Injectable, inject } from '@angular/core'
+
+@Injectable({
+  providedIn: 'root',
+})
+export class PostsService {
+  readonly #http = inject(HttpClient)
+
+  postById$ = (postId: number) =>
+    this.#http.get<Post>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
+
+  allPosts$ = () =>
+    this.#http.get<Array<Post>>('https://jsonplaceholder.typicode.com/posts')
+}
+
+export interface Post {
+  id: number
+  title: string
+  body: string
+}
+```
+
+## src/index.html
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>TanStack Query Angular router example</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  </head>
+  <body>
+    <app-root></app-root>
+  </body>
+</html>
+```
+
+## src/main.ts
+
+```ts
+import { bootstrapApplication } from '@angular/platform-browser'
+import { appConfig } from './app/app.config'
+import { AppComponent } from './app/app.component'
+
+bootstrapApplication(AppComponent, appConfig).catch((err) => console.error(err))
+```

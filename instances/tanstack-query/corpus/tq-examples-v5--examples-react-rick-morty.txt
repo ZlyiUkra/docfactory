@@ -1,0 +1,433 @@
+# Example: react/rick-morty
+# джерело: https://github.com/TanStack/query/tree/@tanstack%2Fquery-core@5.103.3/examples/react/rick-morty
+# отримано: 2026-09-26
+# версія: 5.103.3
+
+## Example
+
+To run this example:
+
+- `npm install`
+- `npm run dev`
+
+## package.json
+
+```json
+{
+  "name": "@tanstack/query-example-react-rick-morty",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.103.3",
+    "@tanstack/react-query-devtools": "^5.103.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router": "^6.25.1",
+    "react-router-dom": "^6.25.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tailwindcss": "^4.3.3",
+    "typescript": "5.8.3",
+    "vite": "^6.4.1"
+  }
+}
+```
+
+## src/App.tsx
+
+```tsx
+import { BrowserRouter as Router } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import Layout from './Layout'
+
+import './styles.css'
+
+const queryClient = new QueryClient()
+
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Router>
+        <Layout />
+        <ReactQueryDevtools initialIsOpen />
+      </Router>
+    </QueryClientProvider>
+  )
+}
+```
+
+## src/Character.tsx
+
+```tsx
+import { useParams, Link as RouterLink } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { getCharacter, getEpisode, getLocation } from './api'
+
+function Character() {
+  let params = useParams()
+  const characterId = params.characterId!
+
+  const { status, data } = useQuery({
+    queryKey: ['character', characterId],
+    queryFn: () => getCharacter(characterId),
+  })
+
+  if (status === 'pending') return <p>Loading...</p>
+  if (status === 'error') return <p>Error :(</p>
+
+  const locationUrlParts = data.location.url.split('/').filter(Boolean)
+  const locationId = locationUrlParts[locationUrlParts.length - 1]
+
+  return (
+    <div>
+      <h2 className="text-4xl">{data.name}</h2>
+      <p>
+        <strong>Gender</strong>: {data.gender}
+      </p>
+      <p>
+        <strong>Status</strong>: {data.status}
+      </p>
+      <p>
+        <strong>Species</strong>: {data.species}
+      </p>
+      <p>
+        <strong>Origin</strong>: {data.origin.name}
+      </p>
+      <p>
+        <strong>Location</strong>: <Location locationId={locationId} />
+      </p>
+
+      <h4 className="text-2xl pt-4">Episodes</h4>
+      {data.episode.map((episode: any) => {
+        const episodeUrlParts = episode.split('/').filter(Boolean)
+        const episodeId = episodeUrlParts[episodeUrlParts.length - 1]
+        return <Episode episodeId={episodeId} key={`${episodeId}`} />
+      })}
+    </div>
+  )
+}
+
+function Episode({ episodeId }: { episodeId: string }) {
+  const { data, status } = useQuery({
+    queryKey: ['episode', episodeId],
+    queryFn: () => getEpisode(episodeId),
+  })
+
+  if (status === 'success') {
+    return (
+      <article key={episodeId}>
+        <RouterLink
+          className="text-blue-500 hover:underline"
+          to={`/episodes/${episodeId}`}
+        >
+          <h6 className="text-lg">
+            {data.episode}. {data.name} - {data.air_date}
+          </h6>
+        </RouterLink>
+      </article>
+    )
+  }
+}
+
+function Location({ locationId }: { locationId: string }) {
+  const { data, status } = useQuery({
+    queryKey: ['location', locationId],
+    queryFn: () => getLocation(locationId),
+  })
+
+  if (status === 'pending') return <span>Loading...</span>
+  if (status === 'error') return <span>Error :(</span>
+
+  return (
+    <span>
+      {data.name} - {data.type}
+    </span>
+  )
+}
+
+export default Character
+```
+
+## src/Characters.tsx
+
+```tsx
+import { Link as RouterLink } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { getCharacters } from './api'
+
+export default function Characters() {
+  const { status, data } = useQuery({
+    queryKey: ['characters'],
+    queryFn: () => getCharacters(),
+  })
+
+  if (status === 'pending') return <p>Loading...</p>
+  if (status === 'error') return <p>Error :(</p>
+
+  return (
+    <div>
+      <h2 className="text-4xl">Characters</h2>
+      {data.results.map((person: any) => {
+        return (
+          <article key={person.id}>
+            <RouterLink
+              className="text-blue-500 hover:underline"
+              to={`/characters/${person.id}`}
+            >
+              <h6 className="text-xl">
+                {person.name} - {person.gender}: {person.species}
+              </h6>
+            </RouterLink>
+          </article>
+        )
+      })}
+    </div>
+  )
+}
+```
+
+## src/Episode.tsx
+
+```tsx
+import { useParams, Link as RouterLink } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { getCharacter, getEpisode } from './api'
+
+function Episode() {
+  let params = useParams()
+  const episodeId = params.episodeId!
+
+  const { data, status } = useQuery({
+    queryKey: ['episode', episodeId],
+    queryFn: () => getEpisode(episodeId),
+  })
+
+  if (status === 'pending') return <p>Loading...</p>
+
+  if (status === 'error') return <p>Error :(</p>
+
+  return (
+    <div>
+      <h2 className="text-4xl">{data.name}</h2>
+      <p>{data.air_date}</p>
+      <br />
+      <h4 className="text-2xl">Characters</h4>
+      {data.characters.map((character: any) => {
+        const characterUrlParts = character.split('/').filter(Boolean)
+        const characterId = characterUrlParts[characterUrlParts.length - 1]
+        return <Character characterId={characterId} key={characterId} />
+      })}
+    </div>
+  )
+}
+
+function Character({ characterId }: { characterId: string }) {
+  const { data, status } = useQuery({
+    queryKey: ['character', characterId],
+    queryFn: () => getCharacter(characterId),
+  })
+
+  if (status === 'pending') return <p>Loading...</p>
+  if (status === 'error') return <p>Error :(</p>
+
+  return (
+    <article key={characterId}>
+      <RouterLink
+        className="text-blue-500 hover:underline"
+        to={`/characters/${characterId}`}
+      >
+        <h6 className="text-lg">{data.name}</h6>
+      </RouterLink>
+    </article>
+  )
+}
+
+export default Episode
+```
+
+## src/Episodes.tsx
+
+```tsx
+import { Link as RouterLink } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { getEpisodes } from './api'
+
+export default function Episodes() {
+  const { data, status } = useQuery({
+    queryKey: ['episodes'],
+    queryFn: () => getEpisodes(),
+  })
+
+  if (status === 'pending') {
+    return <p>Loading...</p>
+  }
+  if (status === 'error') {
+    return <p>Error :(</p>
+  }
+
+  return (
+    <div>
+      <h2 className="text-4xl">Episodes</h2>
+      {data.results.map((episode: any) => (
+        <article key={episode.id}>
+          <RouterLink
+            className="text-blue-500 hover:underline"
+            to={`/episodes/${episode.id}`}
+          >
+            <h6 className="text-xl">
+              {episode.episode} - {episode.name} <em>{episode.airDate}</em>
+            </h6>
+          </RouterLink>
+        </article>
+      ))}
+    </div>
+  )
+}
+```
+
+## src/Home.tsx
+
+```tsx
+import { Link as RouterLink } from 'react-router-dom'
+
+export default function Home() {
+  return (
+    <div>
+      <h2 className="text-4xl">TanStack Query Demo</h2>
+      <p>Using the Rick And Morty API</p>
+      <p>
+        (Built by{' '}
+        <a
+          className="text-blue-500 hover:underline"
+          href="https://twitter.com/axelfuh"
+        >
+          @axelfuh
+        </a>
+        )
+      </p>
+      <h5 className="text-2xl pt-4">Why TanStack Query?</h5>
+      <p>
+        In this demo you will be able to see how TanStack Query is a significant
+        improvement over <strong>redux</strong>, <strong>mobx</strong>, and any
+        other general-purpose state container.
+      </p>
+      <p>
+        No reducers, thunks, or sagas. No ES6 models to maintain in order to tag
+        them as observable.
+      </p>
+      <p>
+        Simply associate a key with your fetch call and let{' '}
+        <strong>TanStack Query</strong> handle the rest.
+      </p>
+      <h5 className="text-2xl pt-4">Ready to get started?</h5>
+      <p>
+        Check out the{' '}
+        <RouterLink className="text-blue-500 hover:underline" to="/episodes">
+          Episodes
+        </RouterLink>{' '}
+        and{' '}
+        <RouterLink className="text-blue-500 hover:underline" to="/characters">
+          Characters
+        </RouterLink>
+        !
+      </p>
+    </div>
+  )
+}
+```
+
+## src/Layout.tsx
+
+```tsx
+import { Route, Link as RouterLink, Routes } from 'react-router-dom'
+import Episodes from './Episodes'
+import Episode from './Episode'
+import Characters from './Characters'
+import Character from './Character'
+import Home from './Home'
+
+export default function Layout() {
+  return (
+    <div>
+      <nav className="bg-gray-300 w-full flex flex-row gap-6 justify-center items-center h-12">
+        <RouterLink to="/">
+          <span className="uppercase hover:underline">Home</span>
+        </RouterLink>
+        <RouterLink to="/episodes">
+          <span className="uppercase hover:underline">Episodes</span>
+        </RouterLink>
+        <RouterLink to="/characters">
+          <span className="uppercase hover:underline">Characters</span>
+        </RouterLink>
+      </nav>
+      <div className="p-2">
+        <Routes>
+          <Route exact path="/episodes" element={<Episodes />} />
+          <Route exact path="/episodes/:episodeId" element={<Episode />} />
+          <Route exact path="/characters" element={<Characters />} />
+          <Route
+            exact
+            path="/characters/:characterId"
+            element={<Character />}
+          />
+          <Route path="/" element={<Home />} />
+        </Routes>
+      </div>
+    </div>
+  )
+}
+```
+
+## src/api.ts
+
+```ts
+export const getEpisodes = async () => {
+  const res = await fetch('https://rickandmortyapi.com/api/episode/')
+  return await res.json()
+}
+
+export const getEpisode = async (episodeId: string) => {
+  const res = await fetch(
+    `https://rickandmortyapi.com/api/episode/${episodeId}`,
+  )
+  return await res.json()
+}
+
+export const getCharacters = async () => {
+  const res = await fetch('https://rickandmortyapi.com/api/character/')
+  return await res.json()
+}
+
+export const getCharacter = async (characterId: string) => {
+  const res = await fetch(
+    `https://rickandmortyapi.com/api/character/${characterId}`,
+  )
+  return await res.json()
+}
+
+export const getLocation = async (locationId: string) => {
+  const res = await fetch(
+    `https://rickandmortyapi.com/api/location/${locationId}`,
+  )
+  return await res.json()
+}
+```
+
+## src/index.tsx
+
+```tsx
+import ReactDOM from 'react-dom/client'
+import App from './App'
+
+const rootElement = document.getElementById('root')
+if (!rootElement) throw new Error('Missing #root element')
+ReactDOM.createRoot(rootElement).render(<App />)
+```
