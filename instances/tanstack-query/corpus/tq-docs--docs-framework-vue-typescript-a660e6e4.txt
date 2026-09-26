@@ -1,0 +1,122 @@
+# TypeScript
+# джерело: https://github.com/TanStack/query/blob/@tanstack%2Fquery-core@5.103.3/docs/framework/vue/typescript.md
+# отримано: 2026-09-26
+# версія: 5.103.3, 5.103.2, 5.103.1, 5.103.0, 5.102.8, 5.102.7, 5.102.6, 5.102.5, 5.102.4, 5.102.3, 5.102.2, 5.102.1, 5.102.0
+
+[//]: # 'TypeInference1'
+
+```tsx
+const { data } = useQuery({
+  //    ^? const data: Ref<number> | Ref<undefined>
+  queryKey: ['test'],
+  queryFn: () => Promise.resolve(5),
+})
+```
+
+typescript playground
+
+[//]: # 'TypeInference1'
+[//]: # 'TypeInference2'
+
+```tsx
+const { data } = useQuery({
+  //      ^? const data: Ref<string> | Ref<undefined>
+  queryKey: ['test'],
+  queryFn: () => Promise.resolve(5),
+  select: (data) => data.toString(),
+})
+```
+
+typescript playground
+
+[//]: # 'TypeInference2'
+[//]: # 'TypeInference3'
+
+```tsx
+const fetchGroups = (): Promise<Group[]> =>
+  axios.get('/groups').then((response) => response.data)
+
+const { data } = useQuery({ queryKey: ['groups'], queryFn: fetchGroups })
+//      ^? const data: Ref<Group[]> | Ref<undefined>
+```
+
+typescript playground
+
+[//]: # 'TypeInference3'
+[//]: # 'TypeNarrowing'
+
+```tsx
+const { data, isSuccess } = reactive(
+  useQuery({
+    queryKey: ['test'],
+    queryFn: () => Promise.resolve(5),
+  }),
+)
+
+if (isSuccess) {
+  data
+  // ^? const data: number
+}
+```
+
+typescript playground
+
+The `reactive()` wrapper is what makes this work: it flattens the result into
+plain values, so `isSuccess` and `data` stay part of the same discriminated
+union. Destructuring `useQuery()` directly gives you independent refs, and
+TypeScript cannot carry a narrowing from one ref to another — `if (isSuccess.value)`
+leaves `data.value` as `Group[] | undefined`. Without `reactive()`, narrow the
+value ref itself:
+
+```tsx
+const { data } = useQuery({ queryKey: ['groups'], queryFn: fetchGroups })
+
+if (data.value !== undefined) {
+  data.value
+  // ^? const data: Group[]
+}
+```
+
+[//]: # 'TypeNarrowing'
+[//]: # 'TypingError'
+
+```tsx
+const { error } = useQuery({ queryKey: ['groups'], queryFn: fetchGroups })
+//      ^? const error: Ref<unknown>
+
+if (error.value instanceof Error) {
+  error.value
+  //     ^? const error: Error
+}
+```
+
+typescript playground
+
+[//]: # 'TypingError'
+[//]: # 'TypingError2'
+[//]: # 'TypingError2'
+[//]: # 'TypingError3'
+[//]: # 'TypingError3'
+[//]: # 'RegisterErrorType'
+
+```tsx
+import '@tanstack/vue-query'
+
+declare module '@tanstack/vue-query' {
+  interface Register {
+    // Use unknown so call sites must narrow explicitly.
+    defaultError: unknown
+  }
+}
+
+const { error } = useQuery({ queryKey: ['groups'], queryFn: fetchGroups })
+//      ^? const error: unknown | null
+```
+
+[//]: # 'RegisterErrorType'
+[//]: # 'TypingMeta'
+[//]: # 'TypingMeta'
+[//]: # 'TypingQueryOptions'
+[//]: # 'TypingQueryOptions'
+[//]: # 'Materials'
+[//]: # 'Materials'
