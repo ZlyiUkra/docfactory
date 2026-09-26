@@ -180,7 +180,7 @@ cd ../..                        # назад у корінь: усі кроки 
 ```
 
 Порт береться з `config.json` примірника (у ecmascript — `8760`, адреса `http://127.0.0.1:8760/mcp`; у react — `8761`;
-у nestjs — `8762`; у astro — `8763`; у supabase — `8764`; у react-router — `8765`). Від запуску до першої відповіді —
+у nestjs — `8762`; у astro — `8763`; у supabase — `8764`; у react-router — `8765`; у clerk — `8766`). Від запуску до першої відповіді —
 секунди: стільки збирається індекс по словах. Виняток — astro: його корпус утричі більший за інші разом, і холодний
 старт із диска Windows триває близько трьох хвилин, поки термінал мовчить. Готовим сервер стає тоді, коли надрукував
 рядок з адресою.
@@ -198,9 +198,9 @@ cd ../..                        # назад у корінь: усі кроки 
 Це робиться один раз — запис лишається, і надалі досить самого кроку 1.
 
 **3. Перевірити під'єднання.** У сесії Claude Code — команда `/mcp`: має бути сервер і два інструменти — в ecmascript
-`search_spec` та `read_section`, у react, nestjs, astro, supabase і react-router `search_docs` та `read_section` (імена
+`search_spec` та `read_section`, у react, nestjs, astro, supabase, react-router і clerk `search_docs` та `read_section` (імена
 задає `config.json` примірника). Поза сесією той самий перелік дає `claude mcp list`. Однакові імена інструментів у
-різних примірниках не заважають тримати всі шість серверів під'єднаними одночасно: Claude Code розводить їх сам.
+різних примірниках не заважають тримати всі сім серверів під'єднаними одночасно: Claude Code розводить їх сам.
 
 
 **Той самий сервер з іншого місця.** Клієнтів у сервера може бути скільки завгодно одночасно: друге вікно
@@ -230,7 +230,8 @@ WSL2 прокидає порти linux-сторони на Windows-івськи�
 Покрокова інструкція для кожного домену — у README його примірника, розділ «Спосіб Б»:
 [ecmascript](instances/ecmascript/README.md), [react](instances/react/README.md),
 [nestjs](instances/nestjs/README.md), [astro](instances/astro/README.md),
-[supabase](instances/supabase/README.md), [react-router](instances/react-router/README.md).
+[supabase](instances/supabase/README.md), [react-router](instances/react-router/README.md),
+[clerk](instances/clerk/README.md).
 
 ## Оновлення корпусу
 
@@ -384,6 +385,23 @@ api.reactrouter.com для 8.4.0 і 7.18.4, нотатки релізів з CHA
 - приклад питання агентові: `./df react-router ask "How did route matching change between v5 and v6?"`;
 - докладніше — у [instances/react-router/README.md](instances/react-router/README.md).
 
+### clerk
+
+Документація Clerk (автентифікація й керування користувачами) трьох ліній SDK: поточна Core 3 — з clerk.com, кожна
+сторінка у варіанті кожного SDK, — і архівні Core 2 та Core 1 — з гілок репозиторію clerk/clerk-docs, бо на сайті
+їх закриває robots.txt. Плюс довідники Backend, Frontend і Platform API з OpenAPI, журнал змін з 2021 року й блог.
+4 121 документ.
+
+- порт `8766`; запис у Claude Code — `clerk-docs`, адреса `http://127.0.0.1:8766/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-clerk`, модель векторів — `bge-small`;
+- версія — мітка лінії: фільтр `version` приймає `core-3`, `core-2`, `core-1`; довідники API, журнал змін і блог
+  лінії не мають;
+- архіви бере новий читач `clerk-mdx`: розгортає вставки `_partials` і згенерований довідник `clerk-typedoc`, а
+  блоки для окремих SDK підписує рядком «SDK: …»;
+- приклад питання агентові: `./df clerk ask "How do I protect routes in Core 2 with Next.js?"`;
+- докладніше — у [instances/clerk/README.md](instances/clerk/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
@@ -413,8 +431,8 @@ Gatsby з `page-data.json`), `ghdocs` (markdown-документація на т
 
 ## Стан і дорожня карта
 
-Живуть шість примірників — `ecmascript` (переїхав із `final/`), `react`, `nestjs`, `astro`, `supabase` і
-`react-router` — і всі містять самі дані домену: корпус, `sources.json`, `config.json`, `prompts/`, `checks.json`, `.env`, `.mcp.json`. Увесь
+Живуть сім примірників — `ecmascript` (переїхав із `final/`), `react`, `nestjs`, `astro`, `supabase`,
+`react-router` і `clerk` — і всі містять самі дані домену: корпус, `sources.json`, `config.json`, `prompts/`, `checks.json`, `.env`, `.mcp.json`. Увесь
 код спільний — `engine/` (як будувати корпус), `server/` (MCP-сервер, чотири шари, власний агент), `common/` (пошук по
 словах і за змістом, профіль домену). Пошук іде і по словах (BM25), і за змістом (fastembed + Qdrant); сервер
 відповідає і на stdio, і на HTTP. Лишилося тільки scaffold нових доменів.
