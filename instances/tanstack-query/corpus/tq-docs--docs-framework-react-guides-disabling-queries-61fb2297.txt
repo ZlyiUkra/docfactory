@@ -1,0 +1,128 @@
+# Disabling/Pausing Queries
+# джерело: https://github.com/TanStack/query/blob/v5.87.2/docs/framework/react/guides/disabling-queries.md
+# отримано: 2026-09-26
+# версія: 5.87.2, 5.87.1, 5.87.0, 5.86.0, 5.85.9, 5.85.8, 5.85.7, 5.85.6, 5.85.5, 5.85.4, 5.85.3, 5.85.2, 5.85.1, 5.85.0, 5.84.2, 5.84.1, 5.84.0, 5.83.1, 5.83.0, 5.82.0, 5.81.5, 5.81.4, 5.81.3, 5.81.2, 5.80.10, 5.80.9, 5.80.8, 5.80.7, 5.80.6, 5.80.5, 5.80.4, 5.80.3, 5.80.2, 5.80.1, 5.80.0, 5.79.2, 5.79.1, 5.79.0, 5.78.0, 5.77.2, 5.77.1, 5.77.0, 5.76.2, 5.76.1, 5.76.0, 5.75.8, 5.75.7, 5.75.6, 5.75.5, 5.75.4, 5.75.3, 5.75.2, 5.75.1, 5.75.0, 5.74.11, 5.74.10, 5.74.9, 5.74.8, 5.74.7, 5.74.6, 5.74.5, 5.74.4, 5.74.3, 5.74.2, 5.74.1, 5.74.0, 5.73.3, 5.73.2, 5.73.1, 5.73.0, 5.72.3, 5.72.2, 5.72.1, 5.72.0, 5.71.10, 5.71.9, 5.71.8, 5.71.7, 5.71.6, 5.71.5, 5.71.4, 5.71.3, 5.71.2, 5.71.1, 5.71.0, 5.70.0, 5.69.3, 5.69.2, 5.69.1, 5.69.0, 5.68.1, 5.68.0, 5.67.3, 5.67.2, 5.67.1, 5.67.0, 5.66.11, 5.66.10, 5.66.9, 5.66.8, 5.66.7, 5.66.6, 5.66.5, 5.66.4, 5.66.3, 5.66.2, 5.66.1, 5.66.0, 5.65.1, 5.65.0, 5.64.2, 5.64.1, 5.64.0
+
+If you ever want to disable a query from automatically running, you can use the `enabled = false` option. The enabled option also accepts a callback that returns a boolean.
+
+When `enabled` is `false`:
+
+- If the query has cached data, then the query will be initialized in the `status === 'success'` or `isSuccess` state.
+- If the query does not have cached data, then the query will start in the `status === 'pending'` and `fetchStatus === 'idle'` state.
+- The query will not automatically fetch on mount.
+- The query will not automatically refetch in the background.
+- The query will ignore query client `invalidateQueries` and `refetchQueries` calls that would normally result in the query refetching.
+- `refetch` returned from `useQuery` can be used to manually trigger the query to fetch. However, it will not work with `skipToken`.
+
+> TypeScript users may prefer to use skipToken as an alternative to `enabled = false`.
+
+[//]: # 'Example'
+
+```tsx
+function Todos() {
+  const { isLoading, isError, data, error, refetch, isFetching } = useQuery({
+    queryKey: ['todos'],
+    queryFn: fetchTodoList,
+    enabled: false,
+  })
+
+  return (
+    <div>
+      <button onClick={() => refetch()}>Fetch Todos</button>
+
+      {data ? (
+        <>
+          <ul>
+            {data.map((todo) => (
+              <li key={todo.id}>{todo.title}</li>
+            ))}
+          </ul>
+        </>
+      ) : isError ? (
+        <span>Error: {error.message}</span>
+      ) : isLoading ? (
+        <span>Loading...</span>
+      ) : (
+        <span>Not ready ...</span>
+      )}
+
+      <div>{isFetching ? 'Fetching...' : null}</div>
+    </div>
+  )
+}
+```
+
+[//]: # 'Example'
+
+Permanently disabling a query opts out of many great features that TanStack Query has to offer (like background refetches), and it's also not the idiomatic way. It takes you from the declarative approach (defining dependencies when your query should run) into an imperative mode (fetch whenever I click here). It is also not possible to pass parameters to `refetch`. Oftentimes, all you want is a lazy query that defers the initial fetch:
+
+## Lazy Queries
+
+The enabled option can not only be used to permanently disable a query, but also to enable / disable it at a later time. A good example would be a filter form where you only want to fire off the first request once the user has entered a filter value:
+
+[//]: # 'Example2'
+
+```tsx
+function Todos() {
+  const [filter, setFilter] = React.useState('')
+
+  const { data } = useQuery({
+    queryKey: ['todos', filter],
+    queryFn: () => fetchTodos(filter),
+    // ⬇️ disabled as long as the filter is empty
+    enabled: !!filter,
+  })
+
+  return (
+    <div>
+      // 🚀 applying the filter will enable and execute the query
+      <FiltersForm onApply={setFilter} />
+      {data && <TodosTable data={data} />}
+    </div>
+  )
+}
+```
+
+[//]: # 'Example2'
+
+### isLoading (Previously: `isInitialLoading`)
+
+Lazy queries will be in `status: 'pending'` right from the start because `pending` means that there is no data yet. This is technically true, however, since we are not currently fetching any data (as the query is not _enabled_), it also means you likely cannot use this flag to show a loading spinner.
+
+If you are using disabled or lazy queries, you can use the `isLoading` flag instead. It's a derived flag that is computed from:
+
+`isPending && isFetching`
+
+so it will only be true if the query is currently fetching for the first time.
+
+## Typesafe disabling of queries using `skipToken`
+
+If you are using TypeScript, you can use the `skipToken` to disable a query. This is useful when you want to disable a query based on a condition, but you still want to keep the query to be type safe.
+
+> IMPORTANT: `refetch` from `useQuery` will not work with `skipToken`. Other than that, `skipToken` works the same as `enabled: false`.
+
+[//]: # 'Example3'
+
+```tsx
+import { skipToken, useQuery } from '@tanstack/react-query'
+
+function Todos() {
+  const [filter, setFilter] = React.useState<string | undefined>()
+
+  const { data } = useQuery({
+    queryKey: ['todos', filter],
+    // ⬇️ disabled as long as the filter is undefined or empty
+    queryFn: filter ? () => fetchTodos(filter) : skipToken,
+  })
+
+  return (
+    <div>
+      // 🚀 applying the filter will enable and execute the query
+      <FiltersForm onApply={setFilter} />
+      {data && <TodosTable data={data} />}
+    </div>
+  )
+}
+```
+
+[//]: # 'Example3'

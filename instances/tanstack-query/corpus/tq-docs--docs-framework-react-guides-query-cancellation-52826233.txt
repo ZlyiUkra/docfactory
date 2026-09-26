@@ -1,0 +1,193 @@
+# Query Cancellation
+# джерело: https://github.com/TanStack/query/blob/v5.85.6/docs/framework/react/guides/query-cancellation.md
+# отримано: 2026-09-26
+# версія: 5.85.6, 5.85.5, 5.85.4, 5.85.3, 5.85.2, 5.85.1, 5.85.0, 5.84.2, 5.84.1, 5.84.0, 5.83.1, 5.83.0, 5.82.0, 5.81.5, 5.81.4, 5.81.3, 5.81.2, 5.80.10, 5.80.9, 5.80.8, 5.80.7, 5.80.6, 5.80.5, 5.80.4, 5.80.3, 5.80.2, 5.80.1, 5.80.0, 5.79.2, 5.79.1, 5.79.0, 5.78.0, 5.77.2, 5.77.1, 5.77.0, 5.76.2, 5.76.1, 5.76.0, 5.75.8, 5.75.7, 5.75.6, 5.75.5, 5.75.4, 5.75.3, 5.75.2, 5.75.1, 5.75.0, 5.74.11, 5.74.10, 5.74.9, 5.74.8, 5.74.7, 5.74.6, 5.74.5, 5.74.4, 5.74.3, 5.74.2, 5.74.1, 5.74.0, 5.73.3, 5.73.2, 5.73.1, 5.73.0, 5.72.3, 5.72.2, 5.72.1, 5.72.0, 5.71.10, 5.71.9, 5.71.8, 5.71.7, 5.71.6, 5.71.5, 5.71.4, 5.71.3, 5.71.2
+
+TanStack Query provides each query function with an `AbortSignal` instance. When a query becomes out-of-date or inactive, this `signal` will become aborted. This means that all queries are cancellable, and you can respond to the cancellation inside your query function if desired. The best part about this is that it allows you to continue to use normal async/await syntax while getting all the benefits of automatic cancellation.
+
+The `AbortController` API is available in most runtime environments, but if your runtime environment does not support it, you will need to provide a polyfill. There are several available.
+
+## Default behavior
+
+By default, queries that unmount or become unused before their promises are resolved are _not_ cancelled. This means that after the promise has resolved, the resulting data will be available in the cache. This is helpful if you've started receiving a query, but then unmount the component before it finishes. If you mount the component again and the query has not been garbage collected yet, data will be available.
+
+However, if you consume the `AbortSignal`, the Promise will be cancelled (e.g. aborting the fetch) and therefore, also the Query must be cancelled. Cancelling the query will result in its state being _reverted_ to its previous state.
+
+## Using `fetch`
+
+[//]: # 'Example'
+
+```tsx
+const query = useQuery({
+  queryKey: ['todos'],
+  queryFn: async ({ signal }) => {
+    const todosResponse = await fetch('/todos', {
+      // Pass the signal to one fetch
+      signal,
+    })
+    const todos = await todosResponse.json()
+
+    const todoDetails = todos.map(async ({ details }) => {
+      const response = await fetch(details, {
+        // Or pass it to several
+        signal,
+      })
+      return response.json()
+    })
+
+    return Promise.all(todoDetails)
+  },
+})
+```
+
+[//]: # 'Example'
+
+## Using `axios` v0.22.0+
+
+[//]: # 'Example2'
+
+```tsx
+import axios from 'axios'
+
+const query = useQuery({
+  queryKey: ['todos'],
+  queryFn: ({ signal }) =>
+    axios.get('/todos', {
+      // Pass the signal to `axios`
+      signal,
+    }),
+})
+```
+
+[//]: # 'Example2'
+
+### Using `axios` with version lower than v0.22.0
+
+[//]: # 'Example3'
+
+```tsx
+import axios from 'axios'
+
+const query = useQuery({
+  queryKey: ['todos'],
+  queryFn: ({ signal }) => {
+    // Create a new CancelToken source for this request
+    const CancelToken = axios.CancelToken
+    const source = CancelToken.source()
+
+    const promise = axios.get('/todos', {
+      // Pass the source token to your request
+      cancelToken: source.token,
+    })
+
+    // Cancel the request if TanStack Query signals to abort
+    signal?.addEventListener('abort', () => {
+      source.cancel('Query was cancelled by TanStack Query')
+    })
+
+    return promise
+  },
+})
+```
+
+[//]: # 'Example3'
+
+## Using `XMLHttpRequest`
+
+[//]: # 'Example4'
+
+```tsx
+const query = useQuery({
+  queryKey: ['todos'],
+  queryFn: ({ signal }) => {
+    return new Promise((resolve, reject) => {
+      var oReq = new XMLHttpRequest()
+      oReq.addEventListener('load', () => {
+        resolve(JSON.parse(oReq.responseText))
+      })
+      signal?.addEventListener('abort', () => {
+        oReq.abort()
+        reject()
+      })
+      oReq.open('GET', '/todos')
+      oReq.send()
+    })
+  },
+})
+```
+
+[//]: # 'Example4'
+
+## Using `graphql-request`
+
+An `AbortSignal` can be set in the client `request` method.
+
+[//]: # 'Example5'
+
+```tsx
+const client = new GraphQLClient(endpoint)
+
+const query = useQuery({
+  queryKey: ['todos'],
+  queryFn: ({ signal }) => {
+    client.request({ document: query, signal })
+  },
+})
+```
+
+[//]: # 'Example5'
+
+## Using `graphql-request` with version lower than v4.0.0
+
+An `AbortSignal` can be set in the `GraphQLClient` constructor.
+
+[//]: # 'Example6'
+
+```tsx
+const query = useQuery({
+  queryKey: ['todos'],
+  queryFn: ({ signal }) => {
+    const client = new GraphQLClient(endpoint, {
+      signal,
+    })
+    return client.request(query, variables)
+  },
+})
+```
+
+[//]: # 'Example6'
+
+## Manual Cancellation
+
+You might want to cancel a query manually. For example, if the request takes a long time to finish, you can allow the user to click a cancel button to stop the request. To do this, you just need to call `queryClient.cancelQueries({ queryKey })`, which will cancel the query and revert it back to its previous state. If you have consumed the `signal` passed to the query function, TanStack Query will additionally also cancel the Promise.
+
+[//]: # 'Example7'
+
+```tsx
+const query = useQuery({
+  queryKey: ['todos'],
+  queryFn: async ({ signal }) => {
+    const resp = await fetch('/todos', { signal })
+    return resp.json()
+  },
+})
+
+const queryClient = useQueryClient()
+
+return (
+  <button
+    onClick={(e) => {
+      e.preventDefault()
+      queryClient.cancelQueries({ queryKey: ['todos'] })
+    }}
+  >
+    Cancel
+  </button>
+)
+```
+
+[//]: # 'Example7'
+
+## Limitations
+
+Cancellation does not work when working with `Suspense` hooks: `useSuspenseQuery`, `useSuspenseQueries` and `useSuspenseInfiniteQuery`.

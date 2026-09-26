@@ -1,0 +1,117 @@
+# Query Functions
+# джерело: https://github.com/TanStack/query/blob/@tanstack%2Fquery-core@5.90.12/docs/framework/react/guides/query-functions.md
+# отримано: 2026-09-26
+# версія: 5.90.12, 5.90.11, 5.90.10, 5.90.9, 5.90.8, 5.90.7, 5.90.6, 5.90.5, 5.90.4, 5.90.3, 5.90.2, 5.90.1, 5.90.0, 5.89.0, 5.88.0, 5.87.5, 5.87.4, 5.87.3, 5.87.2, 5.87.1, 5.87.0, 5.86.0, 5.85.9, 5.85.8, 5.85.7, 5.85.6, 5.85.5, 5.85.4, 5.85.3, 5.85.2, 5.85.1, 5.85.0, 5.84.2, 5.84.1, 5.84.0, 5.83.1, 5.83.0, 5.82.0, 5.81.5, 5.81.4, 5.81.3, 5.81.2, 5.80.10, 5.80.9, 5.80.8, 5.80.7, 5.80.6, 5.80.5, 5.80.4, 5.80.3, 5.80.2, 5.80.1, 5.80.0, 5.79.2, 5.79.1, 5.79.0, 5.78.0, 5.77.2, 5.77.1, 5.77.0
+
+A query function can be literally any function that **returns a promise**. The promise that is returned should either **resolve the data** or **throw an error**.
+
+All of the following are valid query function configurations:
+
+[//]: # 'Example'
+
+```tsx
+useQuery({ queryKey: ['todos'], queryFn: fetchAllTodos })
+useQuery({ queryKey: ['todos', todoId], queryFn: () => fetchTodoById(todoId) })
+useQuery({
+  queryKey: ['todos', todoId],
+  queryFn: async () => {
+    const data = await fetchTodoById(todoId)
+    return data
+  },
+})
+useQuery({
+  queryKey: ['todos', todoId],
+  queryFn: ({ queryKey }) => fetchTodoById(queryKey[1]),
+})
+```
+
+[//]: # 'Example'
+
+## Handling and Throwing Errors
+
+For TanStack Query to determine a query has errored, the query function **must throw** or return a **rejected Promise**. Any error that is thrown in the query function will be persisted on the `error` state of the query.
+
+[//]: # 'Example2'
+
+```tsx
+const { error } = useQuery({
+  queryKey: ['todos', todoId],
+  queryFn: async () => {
+    if (somethingGoesWrong) {
+      throw new Error('Oh no!')
+    }
+    if (somethingElseGoesWrong) {
+      return Promise.reject(new Error('Oh no!'))
+    }
+
+    return data
+  },
+})
+```
+
+[//]: # 'Example2'
+
+## Usage with `fetch` and other clients that do not throw by default
+
+While most utilities like `axios` or `graphql-request` automatically throw errors for unsuccessful HTTP calls, some utilities like `fetch` do not throw errors by default. If that's the case, you'll need to throw them on your own. Here is a simple way to do that with the popular `fetch` API:
+
+[//]: # 'Example3'
+
+```tsx
+useQuery({
+  queryKey: ['todos', todoId],
+  queryFn: async () => {
+    const response = await fetch('/todos/' + todoId)
+    if (!response.ok) {
+      throw new Error('Network response was not ok')
+    }
+    return response.json()
+  },
+})
+```
+
+[//]: # 'Example3'
+
+## Query Function Variables
+
+Query keys are not just for uniquely identifying the data you are fetching, but are also conveniently passed into your query function as part of the QueryFunctionContext. While not always necessary, this makes it possible to extract your query functions if needed:
+
+[//]: # 'Example4'
+
+```tsx
+function Todos({ status, page }) {
+  const result = useQuery({
+    queryKey: ['todos', { status, page }],
+    queryFn: fetchTodoList,
+  })
+}
+
+// Access the key, status and page variables in your query function!
+function fetchTodoList({ queryKey }) {
+  const [_key, { status, page }] = queryKey
+  return new Promise()
+}
+```
+
+[//]: # 'Example4'
+
+### QueryFunctionContext
+
+The `QueryFunctionContext` is the object passed to each query function. It consists of:
+
+- `queryKey: QueryKey`: Query Keys
+- `client: QueryClient`: QueryClient
+- `signal?: AbortSignal`
+  - AbortSignal instance provided by TanStack Query
+  - Can be used for Query Cancellation
+- `meta: Record<string, unknown> | undefined`
+  - an optional field you can fill with additional information about your query
+
+Additionally, Infinite Queries get the following options passed:
+
+- `pageParam: TPageParam`
+  - the page parameter used to fetch the current page
+- `direction: 'forward' | 'backward'`
+  - **deprecated**
+  - the direction of the current page fetch
+  - To get access to the direction of the current page fetch, please add a direction to `pageParam` from `getNextPageParam` and `getPreviousPageParam`.

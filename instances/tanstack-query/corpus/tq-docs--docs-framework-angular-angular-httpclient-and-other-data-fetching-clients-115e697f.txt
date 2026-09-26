@@ -1,0 +1,48 @@
+# Angular HttpClient and other data fetching clients
+# джерело: https://github.com/TanStack/query/blob/v5.86.0/docs/framework/angular/angular-httpclient-and-other-data-fetching-clients.md
+# отримано: 2026-09-26
+# версія: 5.86.0, 5.85.9, 5.85.8, 5.85.7, 5.85.6, 5.85.5, 5.85.4, 5.85.3, 5.85.2, 5.85.1, 5.85.0, 5.84.2, 5.84.1, 5.84.0, 5.83.1, 5.83.0, 5.82.0, 5.81.5, 5.81.4, 5.81.3, 5.81.2, 5.80.10, 5.80.9, 5.80.8, 5.80.7, 5.80.6, 5.80.5, 5.80.4, 5.80.3, 5.80.2, 5.80.1, 5.80.0, 5.79.2, 5.79.1, 5.79.0, 5.78.0, 5.77.2, 5.77.1, 5.77.0, 5.76.2, 5.76.1, 5.76.0, 5.75.8, 5.75.7, 5.75.6, 5.75.5, 5.75.4, 5.75.3, 5.75.2, 5.75.1, 5.75.0, 5.74.11, 5.74.10, 5.74.9, 5.74.8, 5.74.7, 5.74.6, 5.74.5, 5.74.4, 5.74.3, 5.74.2, 5.74.1, 5.74.0, 5.73.3, 5.73.2, 5.73.1, 5.73.0, 5.72.3, 5.72.2, 5.72.1, 5.72.0, 5.71.10, 5.71.9, 5.71.8, 5.71.7, 5.71.6, 5.71.5, 5.71.4, 5.71.3, 5.71.2, 5.71.1, 5.71.0, 5.70.0, 5.69.3, 5.69.2, 5.69.1, 5.69.0, 5.68.1, 5.68.0, 5.67.3, 5.67.2, 5.67.1, 5.67.0
+
+Because TanStack Query's fetching mechanisms are agnostically built on Promises, you can use literally any asynchronous data fetching client, including the browser native `fetch` API, `graphql-request`, and more.
+
+## Using Angular's `HttpClient` for data fetching
+
+`HttpClient` is a powerful and integrated part of Angular, which gives the following benefits:
+
+- Mock responses in unit tests using provideHttpClientTesting.
+- Interceptors can be used for a wide range of functionality including adding authentication headers, performing logging, etc. While some data fetching libraries have their own interceptor system, `HttpClient` interceptors are integrated with Angular's dependency injection system.
+- `HttpClient` automatically informs `PendingTasks`, which enables Angular to be aware of pending requests. Unit tests and SSR can use the resulting application _stableness_ information to wait for pending requests to finish. This makes unit testing much easier for Zoneless applications.
+- When using SSR, `HttpClient` will cache requests performed on the server. This will prevent unneeded requests on the client. `HttpClient` SSR caching works out of the box. TanStack Query has its own hydration functionality which may be more powerful but requires some setup. Which one fits your needs best depends on your use case.
+
+### Using observables in `queryFn`
+
+As TanStack Query is a promise based library, observables from `HttpClient` need to be converted to promises. This can be done with the `lastValueFrom` or `firstValueFrom` functions from `rxjs`.
+
+```ts
+@Component({
+  // ...
+})
+class ExampleComponent {
+  private readonly http = inject(HttpClient)
+
+  readonly query = injectQuery(() => ({
+    queryKey: ['repoData'],
+    queryFn: () =>
+      lastValueFrom(
+        this.http.get('https://api.github.com/repos/tanstack/query'),
+      ),
+  }))
+}
+```
+
+> Since Angular is moving towards RxJS as an optional dependency, it's expected that `HttpClient` will also support promises in the future.
+>
+> Support for observables in TanStack Query for Angular is planned.
+
+## Comparison table
+
+| Data fetching client                                | Pros                                                | Cons                                                                       |
+| --------------------------------------------------- | --------------------------------------------------- | -------------------------------------------------------------------------- |
+| **Angular HttpClient**                              | Featureful and very well integrated with Angular.   | Observables need to be converted to Promises.                              |
+| **Fetch**                                           | Browser native API, so adds nothing to bundle size. | Barebones API which lacks many features.                                   |
+| **Specialized libraries such as `graphql-request`** | Specialized features for specific use cases.        | If it's not an Angular library it won't integrate well with the framework. |

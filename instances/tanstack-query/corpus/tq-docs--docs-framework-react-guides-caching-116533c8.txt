@@ -1,0 +1,33 @@
+# Caching Examples
+# джерело: https://github.com/TanStack/query/blob/@tanstack%2Fquery-core@5.90.12/docs/framework/react/guides/caching.md
+# отримано: 2026-09-26
+# версія: 5.90.12, 5.90.11, 5.90.10, 5.90.9, 5.90.8, 5.90.7, 5.90.6, 5.90.5, 5.90.4, 5.90.3, 5.90.2, 5.90.1, 5.90.0, 5.89.0, 5.88.0, 5.87.5, 5.87.4, 5.87.3, 5.87.2, 5.87.1, 5.87.0, 5.86.0, 5.85.9, 5.85.8, 5.85.7, 5.85.6, 5.85.5, 5.85.4, 5.85.3, 5.85.2, 5.85.1, 5.85.0, 5.84.2, 5.84.1, 5.84.0, 5.83.1, 5.83.0, 5.82.0, 5.81.5, 5.81.4, 5.81.3, 5.81.2, 5.80.10, 5.80.9, 5.80.8, 5.80.7, 5.80.6, 5.80.5, 5.80.4, 5.80.3, 5.80.2, 5.80.1, 5.80.0, 5.79.2, 5.79.1, 5.79.0, 5.78.0, 5.77.2, 5.77.1, 5.77.0
+
+> Please thoroughly read the Important Defaults before reading this guide
+
+## Basic Example
+
+This caching example illustrates the story and lifecycle of:
+
+- Query Instances with and without cache data
+- Background Refetching
+- Inactive Queries
+- Garbage Collection
+
+Let's assume we are using the default `gcTime` of **5 minutes** and the default `staleTime` of `0`.
+
+- A new instance of `useQuery({ queryKey: ['todos'], queryFn: fetchTodos })` mounts.
+  - Since no other queries have been made with the `['todos']` query key, this query will show a hard loading state and make a network request to fetch the data.
+  - When the network request has completed, the returned data will be cached under the `['todos']` key.
+  - The hook will mark the data as stale after the configured `staleTime` (defaults to `0`, or immediately).
+- A second instance of `useQuery({ queryKey: ['todos'], queryFn: fetchTodos })` mounts elsewhere.
+  - Since the cache already has data for the `['todos']` key from the first query, that data is immediately returned from the cache.
+  - The new instance triggers a new network request using its query function.
+    - Note that regardless of whether both `fetchTodos` query functions are identical or not, both queries' `status` are updated (including `isFetching`, `isPending`, and other related values) because they have the same query key.
+  - When the request completes successfully, the cache's data under the `['todos']` key is updated with the new data, and both instances are updated with the new data.
+- Both instances of the `useQuery({ queryKey: ['todos'], queryFn: fetchTodos })` query are unmounted and no longer in use.
+  - Since there are no more active instances of this query, a garbage collection timeout is set using `gcTime` to delete and garbage collect the query (defaults to **5 minutes**).
+- Before the cache timeout has completed, another instance of `useQuery({ queryKey: ['todos'], queryFn: fetchTodos })` mounts. The query immediately returns the available cached data while the `fetchTodos` function is being run in the background. When it completes successfully, it will populate the cache with fresh data.
+- The final instance of `useQuery({ queryKey: ['todos'], queryFn: fetchTodos })` unmounts.
+- No more instances of `useQuery({ queryKey: ['todos'], queryFn: fetchTodos })` appear within **5 minutes**.
+  - The cached data under the `['todos']` key is deleted and garbage collected.

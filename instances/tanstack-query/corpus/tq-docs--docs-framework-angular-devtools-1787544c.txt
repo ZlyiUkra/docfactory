@@ -1,0 +1,117 @@
+# Devtools
+# джерело: https://github.com/TanStack/query/blob/v5.80.10/docs/framework/angular/devtools.md
+# отримано: 2026-09-26
+# версія: 5.80.10, 5.80.9, 5.80.8, 5.80.7, 5.80.6, 5.80.5, 5.80.4, 5.80.3, 5.80.2, 5.80.1, 5.80.0, 5.79.2, 5.79.1, 5.79.0, 5.78.0, 5.77.2, 5.77.1, 5.77.0, 5.76.2, 5.76.1, 5.76.0, 5.75.8, 5.75.7, 5.75.6, 5.75.5, 5.75.4, 5.75.3, 5.75.2, 5.75.1, 5.75.0, 5.74.11, 5.74.10, 5.74.9, 5.74.8, 5.74.7, 5.74.6, 5.74.5, 5.74.4, 5.74.3, 5.74.2, 5.74.1, 5.74.0, 5.73.3, 5.73.2, 5.73.1, 5.73.0, 5.72.3, 5.72.2, 5.72.1, 5.72.0, 5.71.10, 5.71.9, 5.71.8, 5.71.7, 5.71.6, 5.71.5, 5.71.4, 5.71.3, 5.71.2, 5.71.1, 5.71.0, 5.70.0, 5.69.3, 5.69.2, 5.69.1, 5.69.0, 5.68.1, 5.68.0, 5.67.3, 5.67.2, 5.67.1, 5.67.0, 5.66.11, 5.66.10, 5.66.9, 5.66.8, 5.66.7, 5.66.6, 5.66.5, 5.66.4, 5.66.3, 5.66.2, 5.66.1, 5.66.0, 5.65.1, 5.65.0, 5.64.2, 5.64.1, 5.64.0, 5.63.0, 5.62.16, 5.62.14, 5.62.13, 5.62.12, 5.62.11, 5.62.10, 5.62.9, 5.62.8, 5.62.7, 5.62.6, 5.62.5, 5.62.4, 5.62.3, 5.62.2, 5.62.1, 5.62.0, 5.61.6, 5.61.5, 5.61.4, 5.61.3, 5.61.2, 5.61.1, 5.61.0, 5.60.7, 5.60.6, 5.60.5, 5.60.4, 5.60.3, 5.60.2, 5.60.1, 5.60.0
+
+## Enable devtools
+
+The devtools help you debug and inspect your queries and mutations. You can enable the devtools by adding `withDevtools` to `provideTanStackQuery`.
+
+By default, the devtools are enabled when Angular `isDevMode` returns true. So you don't need to worry about excluding them during a production build. The core tools are lazily loaded and excluded from bundled code. In most cases, all you'll need to do is add `withDevtools()` to `provideTanStackQuery` without any additional configuration.
+
+```ts
+import {
+  QueryClient,
+  provideTanStackQuery,
+  withDevtools,
+} from '@tanstack/angular-query-experimental'
+
+export const appConfig: ApplicationConfig = {
+  providers: [provideTanStackQuery(new QueryClient(), withDevtools())],
+}
+```
+
+## Configuring if devtools are loaded
+
+If you need more control over when devtools are loaded, you can use the `loadDevtools` option. This is particularly useful if you want to load devtools based on environment configurations. For instance, you might have a test environment running in production mode but still require devtools to be available.
+
+When not setting the option or setting it to 'auto', the devtools will be loaded when Angular is in development mode.
+
+```ts
+provideTanStackQuery(new QueryClient(), withDevtools())
+
+// which is equivalent to
+provideTanStackQuery(
+  new QueryClient(),
+  withDevtools(() => ({ loadDevtools: 'auto' })),
+)
+```
+
+When setting the option to true, the devtools will be loaded in both development and production mode.
+
+```ts
+provideTanStackQuery(
+  new QueryClient(),
+  withDevtools(() => ({ loadDevtools: true })),
+)
+```
+
+When setting the option to false, the devtools will not be loaded.
+
+```ts
+provideTanStackQuery(
+  new QueryClient(),
+  withDevtools(() => ({ loadDevtools: false })),
+)
+```
+
+The `withDevtools` options are returned from a callback function to support reactivity through signals. In the following example
+a signal is created from a RxJS observable that listens for a keyboard shortcut. When the event is triggered, the devtools are lazily loaded.
+Using this technique allows you to support on-demand loading of the devtools even in production mode, without including the full tools in the bundled code.
+
+```ts
+@Injectable({ providedIn: 'root' })
+class DevtoolsOptionsManager {
+  loadDevtools = toSignal(
+    fromEvent<KeyboardEvent>(document, 'keydown').pipe(
+      map(
+        (event): boolean =>
+          event.metaKey && event.ctrlKey && event.shiftKey && event.key === 'D',
+      ),
+      scan((acc, curr) => acc || curr, false),
+    ),
+    {
+      initialValue: false,
+    },
+  )
+}
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideHttpClient(),
+    provideTanStackQuery(
+      new QueryClient(),
+      withDevtools(() => ({
+        initialIsOpen: true,
+        loadDevtools: inject(DevtoolsOptionsManager).loadDevtools(),
+      })),
+    ),
+  ],
+}
+```
+
+### Options
+
+Of these options `client`, `position`, `errorTypes`, `buttonPosition`, and `initialIsOpen` support reactivity through signals.
+
+- `loadDevtools?: 'auto' | boolean`
+  - Defaults to `auto`: lazily loads devtools when in development mode. Skips loading in production mode.
+  - Use this to control if the devtools are loaded.
+- `initialIsOpen?: Boolean`
+  - Set this to `true` if you want the tools to default to being open
+- `buttonPosition?: "top-left" | "top-right" | "bottom-left" | "bottom-right" | "relative"`
+  - Defaults to `bottom-right`
+  - The position of the TanStack logo to open and close the devtools panel
+  - If `relative`, the button is placed in the location that you render the devtools.
+- `position?: "top" | "bottom" | "left" | "right"`
+  - Defaults to `bottom`
+  - The position of the Angular Query devtools panel
+- `client?: QueryClient`,
+  - Use this to use a custom QueryClient. Otherwise, the QueryClient provided through `provideTanStackQuery` will be injected.
+- `errorTypes?: { name: string; initializer: (query: Query) => TError}[]`
+  - Use this to predefine some errors that can be triggered on your queries. Initializer will be called (with the specific query) when that error is toggled on from the UI. It must return an Error.
+- `styleNonce?: string`
+  - Use this to pass a nonce to the style tag that is added to the document head. This is useful if you are using a Content Security Policy (CSP) nonce to allow inline styles.
+- `shadowDOMTarget?: ShadowRoot`
+  - Default behavior will apply the devtool's styles to the head tag within the DOM.
+  - Use this to pass a shadow DOM target to the devtools so that the styles will be applied within the shadow DOM instead of within the head tag in the light DOM.
