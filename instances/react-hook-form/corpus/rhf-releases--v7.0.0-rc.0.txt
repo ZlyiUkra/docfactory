@@ -1,0 +1,261 @@
+# React Hook Form release: Version 7.0.0-rc.0
+# джерело: https://github.com/react-hook-form/react-hook-form/releases/tag/v7.0.0-rc.0
+# отримано: 2026-09-26
+# версія: 7.0.0-rc.0
+
+Tag v7.0.0-rc.0, published 2021-03-07.
+
+## Vision
+
+📖 (DX) Strictly typed form
+🏋🏻‍♀️ Reduce package size
+🏎 Performance
+💁‍♂️ Simplicity and consistency
+
+## Documenation
+
+https://react-hook-form-website-git-v7.bluebill1049.now.sh/ (temp URL)
+
+## Issues
+
+- close #3719
+- close #2887
+- close #2086
+- close #2155
+- close #3538
+- close #3110
+- close #3698
+- close #1680
+- close #3155
+- close #3045
+- close #3525
+- close #912
+
+## API changes
+
+Changelog will be updated once the V7 branch is merged into the master branch.
+
+- `register`
+
+```diff
+- <input ref={register, { required: true }} name="test" />
++ <input {...register('name', { required: true })} />
+```
+
+- `MutationObserver` is removed.
+- input name will need to be consistent with '.' syntax instead of `[]` for the array field, this is to be consistent with typescript usage.
+
+```diff
+- test[2].test
++ test.2.test
+```
+
+-------
+
+`valueAs`
+
+It will always be run before the build-in validator and `resolver`.
+
+```tsx
+useForm<{ test: number }>();
+
+<input {...reigster('test', { validate: (data: number) => { console.log(data) } })} /> // the data will be consistent with type declaration.
+```
+
+-------
+
+- `Controller`
+
+```diff
+- <Controller as={<input />} />
++ <Controller render={({ field }) => <input {...field} />} />
+```
+
+```diff
+- <Controller render={(props) => <input {...props} />} />
++ <Controller render={({ field, fieldState, formState }) => <input {...field} />} />
+```
+
+```ts
+fieldState : {
+  invalid: boolean;
+  isTouched: boolean;
+  isDirty: boolean;
+  error: FieldError;
+}
+```
+
+-------
+
+- `reset`
+
+```diff
+- reset(values, { isDIrty: true })
++ // second argument is still optional
++ reset(values, {
++   keepDefaultValues: true, // new
++   keepValues: true, // new
++   keepDirty: true,
++ })
+```
+
+-------
+
+- `getValues`
+
+```tsx
+const { register, getValues } = useForm({ defaultValues: { test: 'test' } });
+
+console.log(getValues()) // v6 return {}
+
+// v7 return { test: 'test' } and only the first call before the render, the second re-render getValues will read what's in the current view.
+console.log(getValues());
+
+return <input {...register('test')} />;
+```
+
+-------
+
+- `append`
+- `insert`
+- `prepend`
+
+```ts
+append(object, config: { shouldDirty: boolean, focusIndex: number, focusName: string })
+insert(object, config: { shouldDirty: boolean, focusIndex: number, focusName: string })
+prepend(object, config: { shouldDirty: boolean, focusIndex: number, focusName: string })
+```
+
+```ts
+append({
+  test: [
+    { test: 'name' }
+  ]
+}) // support deep nested field array
+```
+
+-------
+
+- `resolver`
+
+```diff
+- resolver: (values: any, context?: object) => Promise<ResolverResult> | ResolverResult
++ resolver: (
++    values: any,
++    context?: object,
++    options: {
++       criteriaMode?: 'firstError' | 'all',
++       names?: string[],
++       fields: { [name]: field } // Support nested field
++    }
++  ) => Promise<ResolverResult> | ResolverResult
+```
+
+-------
+- `watch`
+
+```ts
+React.useEffect(()  => {
+  watch((value, { name, type }) => {
+    console.log('value', value);
+  })
+}, [watch])
+```
+
+```diff
+- watch(['test', 'test1']); // { test: '1', test1: '2' }
++ watch(['test', 'test1']); // ['1', '2']
+```
+
+```diff
+- watch('test', 'test'); // default value will return when inpu removed
++ watch('test', 'test'); // default value will only return on the initial call before render
+```
+
+-------
+
+- `trigger`
+
+```diff
+- await trigger('test'); // will return true/false
+- trigger('test'); // return void in v7
+```
+
+-------
+
+- `errors`
+
+```diff
+- const { errors } = useForm();
++ const { formState: { errors } } = useForm();
+```
+
+-------
+
+- `useFormState`
+
+This new hook will allow you to subscribe `formState` update at the component level instead of the root level where you initialized the `useForm`. Users will have the capability to subscribe to individual form state at each `useFormState`.
+
+```
+const { isDirty } = useFormState();
+```
+
+-------
+
+- `setError`
+
+```diff
+- setError('test', { type: 'type', message: 'issue', shouldFocus: true })
++ setError('test', { type: 'type', message: 'issue' }, { shouldFocus: true })
+```
+
+-------
+
+- `unregister`
+
+```ts
+unregister: (
+  name?: FieldPath<TFieldValues> | FieldPath<TFieldValues>[],
+  options?: Pick<
+    KeepStateOptions, 'keepTouched' | 'keepDirty' | 'keepIsValid' | 'keepErrors'
+  >,
+) => void
+```
+
+-------
+
+- `touch`
+
+rename `touch ` to `touchedFields`, keep it consistent with `dirtyFields` from `formState`.
+
+-------
+
+`deafultValues`
+
+```ts
+useForm({
+  defaultValues: {test: 'test'}
+});
+
+getValues(); // V6 returns {} because nothing is registered
+
+getValues(); // v7 restusn { test: 'test' } because of the shallow merge.
+```
+
+-------
+
+**Remove console warning**
+
+The ES6 module build includes references to process.env.NODE_ENV, which breaks browser usages. We will remove those `console.warning` for now, until we figure out a better solution in the long run. Also, improve the documentation to fulfill the gap.
+
+-------
+
+**TS Improvement**
+
+- `watch`
+- `clearErrors`
+- `setError`
+
+-------
+
+- remove IE 11 support

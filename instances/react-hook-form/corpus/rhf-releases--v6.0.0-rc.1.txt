@@ -1,0 +1,214 @@
+# React Hook Form release: Version 6.0.0-rc.1
+# джерело: https://github.com/react-hook-form/react-hook-form/releases/tag/v6.0.0-rc.1
+# отримано: 2026-09-26
+# версія: 6.0.0-rc.1
+
+Tag v6.0.0-rc.1, published 2020-05-19.
+
+### 🚨 Breaking changes
+
+remove `validationSchema` and embrace validation resolver
+https://github.com/react-hook-form/react-hook-form-resolvers
+
+**Reason:** we would love to support all kinds of schema validation instead of just Yup, also it's not fair to carry that extra logic for users who don't use schema at all. also perhaps there are lighter options than only `Yup` as well.
+
+| Name | Size | Url |
+|--|--|--|
+| Superstruct | 4.5KB | link |
+| Yup | 20KB | link |
+| Joi | 29KB | link |
+
+```diff
+- useForm({ validationSchema: schema })
++ useForm({ resolver: yupResolver(schema) })
++ useForm({ resolver: joiResolver(schema) })
++ useForm({ resolver: superStructResolver(schema) })
+```
+
+```ts
+import React from 'react';
+import { useForm } from 'react-hook-form';
+import { yupResolver } from 'react-hook-form-resolvers';
+
+const SignupSchema = yup.object().shape({
+  name: yup.string().required(),
+  age: yup.number().required(),
+});
+
+const App = () => {
+  const { register, handleSubmit } = useForm({
+    resolver: yupResolver(SignupSchema), // yup, joi and even your own.
+  });
+
+  return (
+    <>
+      <form onSubmit={handleSubmit(d => console.log(d))}>
+        <label>Test</label>
+        <input name="test" ref={register} />
+        <input type="submit" />
+      </form>
+    </>
+  );
+};
+```
+
+---------------------
+
+reanme `validationResolver` to resolver
+reanme `validationContext` to context
+reanme `validateCriteriaMode` to `criteriaMode`
+
+**Reason:** less for the user to type, consistent with the rest of the APIs. This is a generic validation library, it makes sense to keep naming generic and validation should already be the context for this whole lib.
+
+```diff
+- validationResolver,
+- validationContext,
++ resolver,
++ context,
+```
+
+---------------------
+
+`Controller` props `onChange` change from array arguments to object arguments
+
+**Reason:** This should be the expected behavior for function's `arguments`.
+
+```diff
+- onChange = {([e]) => console.log(e)};
++ onChange = {(e) => console.log(e)};
+```
+
+---------------------
+
+`triggerValidation` rename to `trigger`
+
+**Reason:** Less for a user to type and consistent with the rest of the APIs. However, if this having issue or conflict with your existing code base, you have the option to rename it in the deconstructor.
+
+```diff
+- triggerValidation();
++ trigger();
+```
+
+---------------------
+
+`FormContext` rename to `FormProvider`
+
+**Reason:** Align name with all those big libraries such as Redux, styled-components and etc.
+
+```diff
+- <FormContext />
++ <FormProvider />
+```
+
+export `FormContext`
+
+**Reason:** Some users may want to use `FormContext.Consumer`.
+
+```jsx
+import { FormContext } from 'react-hook-form';
+
+// in your connected component
+render() {
+  return (
+    <FormContext.Consumer>
+      {({ register, handleSubmit }) => {
+        // do something with the useForm methods here
+      }}
+    </FormContext.Consumer>
+  )
+};
+```
+
+---------------------
+
+remove `nest` option for `watch`& `getValues`, so data return from both methods will be in `FormValues` shape.
+
+**Reason:** Consistency for form values and better type support.
+
+```diff
+- getValues({ nest: true }); // { test: { data: 'test' }}
+- watch({ nest: true });  // { test: { data: 'test' }}
++ getValues(); // { test: { data: 'test' }}
++ watch();  // { test: { data: 'test' }}
+```
+
+---------------------
+
+`dirtyFields` change type from `set` to `object`
+
+**Reason**: consistency form state API and simplify the codebase. Reduced codebase size with object data shape.
+
+---------------------
+
+`dirty` change name to `isDirty`
+
+**Reason**: consistency form state name for boolean data.
+
+### 🥃 New Features
+
+TS: `NestedValue`
+
+**Reason**: The field value can be array/object such as Material-UI Multiple Select and custom registered field (Custom Register).
+
+Currently, errors object expects an array value to always be multiple fields, but it can also be a single field with an array value. To solve this, it supports NestedValue to determine if it is the field value (array/object).
+
+```ts
+import { useForm, NestedValue } from 'react-hook-form';
+
+type FormValues = {
+  key1: string;
+  key2: number;
+  key3: NestedValue<{
+    key1: string;
+    key2: number;
+  }>;
+  key4: NestedValue<string[]>
+};
+
+const { errors } = useForm<FormValues>();
+
+errors?.key1?.message // no type error
+errors?.key2?.message // no type error
+errors?.key3?.message // no type error
+errors?.key4?.message // no type error
+```
+
+---------------------
+
+`useWatch` (new) subscribe to registered inputs.
+
+**Reason:** This could isolate the re-render within a particular component without trigger re-render at the form level. This is different from `watch` API, which will re-render at the root of `useForm`
+
+```ts
+<input name="test" ref={register} />
+
+function IsolateReRender() {
+  const { state } = useWatch({
+    name: 'test',
+    control,
+    defaultValue: 'default'
+  });
+
+  return <div>{state}</div>
+}
+```
+
+---------------------
+
+`getValues()` support array of field names
+
+ **Reason:** API Consistency with `watch`
+
+```ts
++ getValues(['test', 'test1']); // { test: 'test', test1: 'test1' }
+```
+
+---------------------
+
+`useForm({ mode: 'all' })` support all validation
+
+ **Reason:** so each input can validate with blur and change. https://github.com/react-hook-form/react-hook-form/issues/1222
+
+```ts
++ useForm({ mode: 'all' })
+```
