@@ -1,0 +1,55 @@
+# useQueries
+# джерело: https://github.com/TanStack/query/blob/v5.17.21/docs/react/reference/useQueries.md
+# отримано: 2026-09-26
+# версія: 5.17.21, 5.17.20, 5.17.19, 5.17.18, 5.17.17, 5.17.16, 5.17.15, 5.17.14, 5.17.13, 5.17.12, 5.17.11, 5.17.10, 5.17.9, 5.17.8, 5.17.7, 5.17.6, 5.17.5, 5.17.4, 5.17.3, 5.17.2, 5.17.1, 5.17.0, 5.16.1, 5.16.0, 5.15.5, 5.15.4, 5.15.3, 5.15.2, 5.15.1, 5.15.0, 5.14.7, 5.14.6, 5.14.5, 5.14.4, 5.14.3, 5.14.2, 5.14.1, 5.14.0
+
+The `useQueries` hook can be used to fetch a variable number of queries:
+
+```tsx
+const ids = [1,2,3]
+const results = useQueries({
+  queries: ids.map(id => (
+    { queryKey: ['post', id], queryFn: () => fetchPost(id), staleTime: Infinity },
+  )),
+})
+```
+
+**Options**
+
+The `useQueries` hook accepts an options object with a **queries** key whose value is an array with query option objects identical to the `useQuery` hook (excluding the `queryClient` option - because the `QueryClient` can be passed in on the top level).
+
+- `queryClient?: QueryClient`
+  - Use this to provide a custom QueryClient. Otherwise, the one from the nearest context will be used.
+- `combine?: (result: UseQueriesResults) => TCombinedResult`
+  - Use this to combine the results of the queries into a single value.
+
+> Having the same query key more than once in the array of query objects may cause some data to be shared between queries. To avoid this, consider de-duplicating the queries and map the results back to the desired structure.
+
+**placeholderData**
+
+The `placeholderData` option exists for `useQueries` as well, but it doesn't get information passed from previously rendered Queries like `useQuery` does, because the input to `useQueries` can be a different number of Queries on each render.
+
+**Returns**
+
+The `useQueries` hook returns an array with all the query results. The order returned is the same as the input order.
+
+## Combine
+
+If you want to combine `data` (or other Query information) from the results into a single value, you can use the `combine` option. The result will be structurally shared to be as referentially stable as possible.
+
+```tsx
+const ids = [1,2,3]
+const combinedQueries = useQueries({
+  queries: ids.map(id => (
+    { queryKey: ['post', id], queryFn: () => fetchPost(id) },
+  )),
+  combine: (results) => {
+    return ({
+      data: results.map(result => result.data),
+      pending: results.some(result => result.isPending),
+    })
+  }
+})
+```
+
+In the above example, `combinedQueries` will be an object with a `data` and a `pending` property. Note that all other properties of the Query results will be lost.

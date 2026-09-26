@@ -1,0 +1,84 @@
+# useInfiniteQuery
+# джерело: https://github.com/TanStack/query/blob/v5.15.1/docs/react/reference/useInfiniteQuery.md
+# отримано: 2026-09-26
+# версія: 5.15.1, 5.15.0, 5.14.7, 5.14.6, 5.14.5, 5.14.4, 5.14.3, 5.14.2, 5.14.1, 5.14.0, 5.13.5, 5.13.4, 5.13.3, 5.13.2, 5.13.1, 5.13.0, 5.12.2, 5.12.1, 5.12.0, 5.11.0, 5.10.0, 5.9.0, 5.8.9, 5.8.8, 5.8.7, 5.8.6, 5.8.5, 5.8.4, 5.8.3, 5.8.2, 5.8.1, 5.8.0, 5.7.4, 5.7.3, 5.7.2, 5.7.1, 5.7.0, 5.6.1, 5.6.0, 5.5.0, 5.4.3, 5.4.2, 5.4.1, 5.4.0, 5.3.0, 5.2.1, 5.2.0, 5.1.0, 5.0.5, 5.0.4, 5.0.3, 5.0.2, 5.0.1, 5.0.0, 5.0.0-rc.16, 5.0.0-rc.15, 5.0.0-rc.14, 5.0.0-rc.13, 5.0.0-rc.12, 5.0.0-rc.11, 5.0.0-rc.10, 5.0.0-rc.9, 5.0.0-rc.8, 5.0.0-rc.7, 5.0.0-rc.6, 5.0.0-rc.5, 5.0.0-rc.4, 5.0.0-rc.3, 5.0.0-rc.2, 5.0.0-rc.1, 5.0.0-beta.37, 5.0.0-beta.36, 5.0.0-beta.35, 5.0.0-beta.34, 5.0.0-beta.33, 5.0.0-beta.32
+
+```tsx
+const {
+  fetchNextPage,
+  fetchPreviousPage,
+  hasNextPage,
+  hasPreviousPage,
+  isFetchingNextPage,
+  isFetchingPreviousPage,
+  ...result
+} = useInfiniteQuery({
+  queryKey,
+  queryFn: ({ pageParam }) => fetchPage(pageParam),
+  initialPageParam: 1,
+  ...options,
+  getNextPageParam: (lastPage, allPages, lastPageParam, allPageParams) =>
+    lastPage.nextCursor,
+  getPreviousPageParam: (firstPage, allPages, firstPageParam, allPageParams) =>
+    firstPage.prevCursor,
+})
+```
+
+**Options**
+
+The options for `useInfiniteQuery` are identical to the `useQuery` hook with the addition of the following:
+
+- `queryFn: (context: QueryFunctionContext) => Promise<TData>`
+  - **Required, but only if no default query function has been defined** `defaultQueryFn`
+  - The function that the query will use to request data.
+  - Receives a QueryFunctionContext
+  - Must return a promise that will either resolve data or throw an error.
+- `initialPageParam: TPageParam`
+  - **Required**
+  - The default page param to use when fetching the first page.
+- `getNextPageParam: (lastPage, allPages, lastPageParam, allPageParams) => TPageParam | undefined | null`
+  - **Required**
+  - When new data is received for this query, this function receives both the last page of the infinite list of data and the full array of all pages, as well as pageParam information.
+  - It should return a **single variable** that will be passed as the last optional parameter to your query function.
+  - Return `undefined` or `null` to indicate there is no next page available.
+- `getPreviousPageParam: (firstPage, allPages, firstPageParam, allPageParams) => TPageParam | undefined | null`
+  - When new data is received for this query, this function receives both the first page of the infinite list of data and the full array of all pages, as well as pageParam information.
+  - It should return a **single variable** that will be passed as the last optional parameter to your query function.
+  - Return `undefined` or `null`to indicate there is no previous page available.
+- `maxPages: number | undefined`
+  - The maximum number of pages to store in the infinite query data.
+  - When the maximum number of pages is reached, fetching a new page will result in the removal of either the first or last page from the pages array, depending on the specified direction.
+  - If `undefined` or equals `0`, the number of pages is unlimited
+  - Default value is `undefined`
+  - `getNextPageParam` and `getPreviousPageParam` must be properly defined if `maxPages` value is greater than `0` to allow fetching a page in both directions when needed.
+
+**Returns**
+
+The returned properties for `useInfiniteQuery` are identical to the `useQuery` hook, with the addition of the following and a small difference in `isRefetching`:
+
+- `data.pages: TData[]`
+  - Array containing all pages.
+- `data.pageParams: unknown[]`
+  - Array containing all page params.
+- `isFetchingNextPage: boolean`
+  - Will be `true` while fetching the next page with `fetchNextPage`.
+- `isFetchingPreviousPage: boolean`
+  - Will be `true` while fetching the previous page with `fetchPreviousPage`.
+- `fetchNextPage: (options?: FetchNextPageOptions) => Promise<UseInfiniteQueryResult>`
+  - This function allows you to fetch the next "page" of results.
+`getNextPageParam`.
+  - `options.cancelRefetch: boolean` if set to `true`, calling `fetchNextPage` repeatedly will invoke `fetchPage` every time, whether the previous
+  invocation has resolved or not. Also, the result from previous invocations will be ignored. If set to `false`, calling `fetchNextPage`
+  repeatedly won't have any effect until the first invocation has resolved. Default is `true`.
+- `fetchPreviousPage: (options?: FetchPreviousPageOptions) => Promise<UseInfiniteQueryResult>`
+  - This function allows you to fetch the previous "page" of results.
+  - `options.cancelRefetch: boolean` same as for `fetchNextPage`.
+- `hasNextPage: boolean`
+  - This will be `true` if there is a next page to be fetched (known via the `getNextPageParam` option).
+- `hasPreviousPage: boolean`
+  - This will be `true` if there is a previous page to be fetched (known via the `getPreviousPageParam` option).
+- `isRefetching: boolean`
+  - Is `true` whenever a background refetch is in-flight, which _does not_ include initial `pending` or fetching of next or previous page
+  - Is the same as `isFetching && !isPending && !isFetchingNextPage && !isFetchingPreviousPage`
+
+Keep in mind that imperative fetch calls, such as `fetchNextPage`, may interfere with the default refetch behaviour, resulting in outdated data. Make sure to call these functions only in response to user actions, or add conditions like `hasNextPage && !isFetching`.

@@ -1,0 +1,49 @@
+# Reactivity
+# джерело: https://github.com/TanStack/query/blob/v5.17.21/docs/svelte/reactivity.md
+# отримано: 2026-09-26
+# версія: 5.17.21, 5.17.20, 5.17.19, 5.17.18, 5.17.17, 5.17.16, 5.17.15, 5.17.14, 5.17.13, 5.17.12, 5.17.11, 5.17.10, 5.17.9, 5.17.8, 5.17.7, 5.17.6, 5.17.5, 5.17.4, 5.17.3, 5.17.2, 5.17.1, 5.17.0, 5.16.1, 5.16.0, 5.15.5, 5.15.4, 5.15.3, 5.15.2
+
+Svelte uses a compiler to build your code which optimises rendering. By default, components run once, unless they are referenced in your markup. To be able to react to changes in options you need to use stores.
+
+In the below example, the `refetchInterval` option is set from the variable `intervalMs`, which is bound to the input field. However, as the query is not able to react to changes in `intervalMs`, `refetchInterval` will not change when the input value changes.
+
+```svelte
+<script lang="ts">
+  import { createQuery } from '@tanstack/svelte-query'
+
+  const endpoint = 'http://localhost:5173/api/data'
+
+  let intervalMs = 1000
+
+  const query = createQuery({
+    queryKey: ['refetch'],
+    queryFn: async () => await fetch(endpoint).then((r) => r.json()),
+    refetchInterval: intervalMs,
+  })
+</script>
+
+<input type="number" bind:value={intervalMs} />
+```
+
+To solve this, we can convert `intervalMs` into a writable store. The query options can then be turned into a derived store, which will be passed into the function with true reactivity.
+
+```svelte
+<script lang="ts">
+  import { derived, writable } from 'svelte/store'
+  import { createQuery } from '@tanstack/svelte-query'
+
+  const endpoint = 'http://localhost:5173/api/data'
+
+  const intervalMs = writable(1000)
+
+  const query = createQuery(
+    derived(intervalMs, ($intervalMs) => ({
+      queryKey: ['refetch'],
+      queryFn: async () => await fetch(endpoint).then((r) => r.json()),
+      refetchInterval: $intervalMs,
+    })),
+  )
+</script>
+
+<input type="number" bind:value={$intervalMs} />
+```

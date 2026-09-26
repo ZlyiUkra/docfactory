@@ -1,0 +1,192 @@
+# Testing
+# джерело: https://github.com/TanStack/query/blob/v5.0.0/docs/react/guides/testing.md
+# отримано: 2026-09-26
+# версія: 5.0.0, 5.0.0-rc.16, 5.0.0-rc.15, 5.0.0-rc.14, 5.0.0-rc.13, 5.0.0-rc.12, 5.0.0-rc.11, 5.0.0-rc.10, 5.0.0-rc.9, 5.0.0-rc.8, 5.0.0-rc.7, 5.0.0-rc.6, 5.0.0-rc.5, 5.0.0-rc.4, 5.0.0-rc.3, 5.0.0-rc.2, 5.0.0-rc.1, 5.0.0-beta.37, 5.0.0-beta.36, 5.0.0-beta.35, 5.0.0-beta.34, 5.0.0-beta.33, 5.0.0-beta.32, 5.0.0-beta.31, 5.0.0-beta.30, 5.0.0-beta.29, 5.0.0-beta.28, 5.0.0-beta.27, 5.0.0-beta.26, 5.0.0-beta.25, 5.0.0-beta.24, 5.0.0-beta.23, 5.0.0-beta.22, 5.0.0-beta.21, 5.0.0-beta.20, 5.0.0-beta.19, 5.0.0-beta.18, 5.0.0-beta.17, 5.0.0-beta.16, 5.0.0-beta.15, 5.0.0-beta.14, 5.0.0-beta.13, 5.0.0-beta.12, 5.0.0-beta.11, 5.0.0-beta.10, 5.0.0-beta.9, 5.0.0-beta.8, 5.0.0-beta.7, 5.0.0-beta.6, 5.0.0-beta.5, 5.0.0-beta.4, 5.0.0-beta.3, 5.0.0-beta.2, 5.0.0-beta.1, 5.0.0-beta.0, 5.0.0-alpha.91, 5.0.0-alpha.90, 5.0.0-alpha.89, 5.0.0-alpha.88, 5.0.0-alpha.87, 5.0.0-alpha.86, 5.0.0-alpha.85, 5.0.0-alpha.84, 5.0.0-alpha.83, 5.0.0-alpha.82, 5.0.0-alpha.81, 5.0.0-alpha.80, 5.0.0-alpha.79, 5.0.0-alpha.78, 5.0.0-alpha.77, 5.0.0-alpha.76, 5.0.0-alpha.75, 5.0.0-alpha.74, 5.0.0-alpha.73, 5.0.0-alpha.72, 5.0.0-alpha.71, 5.0.0-alpha.70, 5.0.0-alpha.69, 5.0.0-alpha.68, 5.0.0-alpha.67, 5.0.0-alpha.66, 5.0.0-alpha.65, 5.0.0-alpha.64, 5.0.0-alpha.63, 5.0.0-alpha.62, 5.0.0-alpha.61, 5.0.0-alpha.60, 5.0.0-alpha.59, 5.0.0-alpha.58, 5.0.0-alpha.57, 5.0.0-alpha.56, 5.0.0-alpha.55, 5.0.0-alpha.54, 5.0.0-alpha.53, 5.0.0-alpha.52, 5.0.0-alpha.51, 5.0.0-alpha.50, 5.0.0-alpha.49, 5.0.0-alpha.48, 5.0.0-alpha.47, 5.0.0-alpha.46, 5.0.0-alpha.45, 5.0.0-alpha.44, 5.0.0-alpha.43, 5.0.0-alpha.42, 5.0.0-alpha.41, 5.0.0-alpha.40, 5.0.0-alpha.39, 5.0.0-alpha.38, 5.0.0-alpha.37, 5.0.0-alpha.36, 5.0.0-alpha.35, 5.0.0-alpha.34, 5.0.0-alpha.32, 5.0.0-alpha.31, 5.0.0-alpha.30, 5.0.0-alpha.29, 5.0.0-alpha.28, 5.0.0-alpha.27, 5.0.0-alpha.26, 5.0.0-alpha.25, 5.0.0-alpha.24, 5.0.0-alpha.23, 5.0.0-alpha.22, 5.0.0-alpha.21, 5.0.0-alpha.20, 5.0.0-alpha.19, 5.0.0-alpha.18, 5.0.0-alpha.17, 5.0.0-alpha.16, 5.0.0-alpha.15, 5.0.0-alpha.14, 5.0.0-alpha.13, 5.0.0-alpha.12, 5.0.0-alpha.11, 5.0.0-alpha.10, 5.0.0-alpha.9, 5.0.0-alpha.8, 5.0.0-alpha.7, 5.0.0-alpha.6, 5.0.0-alpha.5, 5.0.0-alpha.4, 5.0.0-alpha.3, 5.0.0-alpha.2, 5.0.0-alpha.1, 5.0.0-alpha.0
+
+React Query works by means of hooks - either the ones we offer or custom ones that wrap around them.
+
+With React 17 or earlier, writing unit tests for these custom hooks can be done by means of the React Hooks Testing Library library.
+
+Install this by running:
+
+```sh
+npm install @testing-library/react-hooks react-test-renderer --save-dev
+```
+
+(The `react-test-renderer` library is needed as a peer dependency of `@testing-library/react-hooks`, and needs to correspond to the version of React that you are using.)
+
+*Note*: when using React 18 or later, `renderHook` is available directly through the `@testing-library/react` package, and `@testing-library/react-hooks` is no longer required.
+
+## Our First Test
+
+Once installed, a simple test can be written. Given the following custom hook:
+
+```tsx
+export function useCustomHook() {
+  return useQuery({ queryKey: ['customHook'], queryFn: () => 'Hello' });
+}
+```
+
+Using React 17 or earlier, we can write a test for this as follows:
+
+```tsx
+const queryClient = new QueryClient();
+const wrapper = ({ children }) => (
+  <QueryClientProvider client={queryClient}>
+    {children}
+  </QueryClientProvider>
+);
+
+const { result, waitFor } = renderHook(() => useCustomHook(), { wrapper });
+
+await waitFor(() => result.current.isSuccess);
+
+expect(result.current.data).toEqual("Hello");
+```
+
+Using React 18 or later, the semantics of `waitFor` have changed, and the above test needs to be modified as follows:
+
+```tsx
+import { renderHook, waitFor } from "@testing-library/react";
+
+...
+
+const { result } = renderHook(() => useCustomHook(), { wrapper });
+
+await waitFor(() => expect(result.current.isSuccess).toBe(true));
+```
+
+Note that we provide a custom wrapper that builds the `QueryClient` and `QueryClientProvider`. This helps to ensure that our test is completely isolated from any other tests.
+
+It is possible to write this wrapper only once, but if so we need to ensure that the `QueryClient` gets cleared before every test, and that tests don't run in parallel otherwise one test will influence the results of others.
+
+## Turn off retries
+
+The library defaults to three retries with exponential backoff, which means that your tests are likely to timeout if you want to test an erroneous query. The easiest way to turn retries off is via the QueryClientProvider. Let's extend the above example:
+
+```tsx
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // ✅ turns retries off
+      retry: false,
+    },
+  },
+})
+const wrapper = ({ children }) => (
+  <QueryClientProvider client={queryClient}>
+    {children}
+  </QueryClientProvider>
+);
+```
+
+This will set the defaults for all queries in the component tree to "no retries". It is important to know that this will only work if your actual useQuery has no explicit retries set. If you have a query that wants 5 retries, this will still take precedence, because defaults are only taken as a fallback.
+
+## Set cacheTime to Infinity with Jest
+
+If you use Jest, you can set the `cacheTime` to `Infinity` to prevent "Jest did not exit one second after the test run completed" error message. This is the default behavior on the server, and is only necessary to set if you are explicitly setting a `cacheTime`.
+
+## Testing Network Calls
+
+The primary use for React Query is to cache network requests, so it's important that we can test our code is making the correct network requests in the first place.
+
+There are plenty of ways that these can be tested, but for this example we are going to use nock.
+
+Given the following custom hook:
+
+```tsx
+function useFetchData() {
+  return useQuery({
+    queryKey: ['fetchData'],
+    queryFn: () => request('/api/data'),
+  });
+}
+```
+
+We can write a test for this as follows:
+
+```tsx
+const queryClient = new QueryClient();
+const wrapper = ({ children }) => (
+  <QueryClientProvider client={queryClient}>
+    {children}
+  </QueryClientProvider>
+);
+
+const expectation = nock('http://example.com')
+  .get('/api/data')
+  .reply(200, {
+    answer: 42
+  });
+
+const { result, waitFor } = renderHook(() => useFetchData(), { wrapper });
+
+await waitFor(() => {
+  return result.current.isSuccess;
+});
+
+expect(result.current.data).toEqual({answer: 42});
+```
+
+Here we are making use of `waitFor` and waiting until the query status indicates that the request has succeeded. This way we know that our hook has finished and should have the correct data. *Note*: when using React 18, the semantics of `waitFor` have changed as noted above.
+
+## Testing Load More / Infinite Scroll
+
+First we need to mock our API response
+
+```tsx
+function generateMockedResponse(page) {
+  return {
+    page: page,
+    items: [...]
+  }
+}
+```
+
+Then, our `nock` configuration needs to differentiate responses based on the page, and we'll be using `uri` to do this.
+`uri`'s value here will be something like `"/?page=1` or `/?page=2`
+
+```tsx
+const expectation = nock('http://example.com')
+  .persist()
+  .query(true)
+  .get('/api/data')
+  .reply(200, (uri) => {
+    const url = new URL(`http://example.com${uri}`);
+    const { page } = Object.fromEntries(url.searchParams);
+    return generateMockedResponse(page);
+  });
+```
+
+(Notice the `.persist()`, because we'll be calling from this endpoint multiple times)
+
+Now we can safely run our tests, the trick here is to await for the data assertion to pass:
+
+```tsx
+const { result, waitFor } = renderHook(
+  () => useInfiniteQueryCustomHook(),
+  { wrapper },
+);
+
+await waitFor(() => result.current.isSuccess);
+
+expect(result.current.data.pages).toStrictEqual(generateMockedResponse(1));
+
+result.current.fetchNextPage();
+
+await waitFor(() =>
+  expect(result.current.data.pages).toStrictEqual([
+    ...generateMockedResponse(1),
+    ...generateMockedResponse(2),
+  ]),
+);
+
+expectation.done();
+```
+
+*Note*: when using React 18, the semantics of `waitFor` have changed as noted above.
+
+## Further reading
+
+For additional tips and an alternative setup using `mock-service-worker`, have a look at Testing React Query from
+the Community Resources.

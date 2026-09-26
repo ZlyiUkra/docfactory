@@ -1,0 +1,139 @@
+# React Native
+# джерело: https://github.com/TanStack/query/blob/v5.15.1/docs/react/react-native.md
+# отримано: 2026-09-26
+# версія: 5.15.1, 5.15.0, 5.14.7, 5.14.6, 5.14.5, 5.14.4, 5.14.3, 5.14.2, 5.14.1, 5.14.0, 5.13.5, 5.13.4, 5.13.3, 5.13.2, 5.13.1, 5.13.0, 5.12.2, 5.12.1, 5.12.0, 5.11.0, 5.10.0, 5.9.0, 5.8.9, 5.8.8, 5.8.7, 5.8.6, 5.8.5, 5.8.4, 5.8.3, 5.8.2, 5.8.1, 5.8.0, 5.7.4, 5.7.3, 5.7.2, 5.7.1, 5.7.0, 5.6.1, 5.6.0, 5.5.0, 5.4.3, 5.4.2, 5.4.1, 5.4.0, 5.3.0, 5.2.1, 5.2.0, 5.1.0, 5.0.5, 5.0.4, 5.0.3, 5.0.2, 5.0.1, 5.0.0, 5.0.0-rc.16, 5.0.0-rc.15, 5.0.0-rc.14, 5.0.0-rc.13, 5.0.0-rc.12, 5.0.0-rc.11, 5.0.0-rc.10, 5.0.0-rc.9, 5.0.0-rc.8, 5.0.0-rc.7, 5.0.0-rc.6, 5.0.0-rc.5, 5.0.0-rc.4, 5.0.0-rc.3, 5.0.0-rc.2, 5.0.0-rc.1, 5.0.0-beta.37, 5.0.0-beta.36, 5.0.0-beta.35, 5.0.0-beta.34, 5.0.0-beta.33, 5.0.0-beta.32, 5.0.0-beta.31, 5.0.0-beta.30, 5.0.0-beta.29, 5.0.0-beta.28, 5.0.0-beta.27, 5.0.0-beta.26, 5.0.0-beta.25, 5.0.0-beta.24, 5.0.0-beta.23, 5.0.0-beta.22, 5.0.0-beta.21, 5.0.0-beta.20, 5.0.0-beta.19, 5.0.0-beta.18, 5.0.0-beta.17, 5.0.0-beta.16, 5.0.0-beta.15, 5.0.0-beta.14, 5.0.0-beta.13, 5.0.0-beta.12, 5.0.0-beta.11, 5.0.0-beta.10, 5.0.0-beta.9, 5.0.0-beta.8, 5.0.0-beta.7, 5.0.0-beta.6, 5.0.0-beta.5, 5.0.0-beta.4, 5.0.0-beta.3, 5.0.0-beta.2, 5.0.0-beta.1, 5.0.0-beta.0, 5.0.0-alpha.91, 4.38.0, 4.37.1, 4.37.0, 4.36.2, 4.36.1, 4.36.0, 4.35.7, 4.35.6, 4.35.5, 4.35.4, 4.35.3, 4.35.2, 4.35.1, 4.35.0, 4.34.4, 4.34.3, 4.34.2, 4.34.1, 4.34.0, 4.33.1, 4.33.0, 4.32.6, 4.32.5, 4.32.4, 4.32.3, 4.32.2, 4.32.1, 4.32.0, 4.31.0, 4.30.0
+
+React Query is designed to work out of the box with React Native, with the exception of the devtools, which are only supported with React DOM at this time.
+
+There is a 3rd party Flipper plugin which you can try: https://github.com/bgaleotti/react-query-native-devtools
+
+There is a 3rd party Reactotron plugin which you can try: https://github.com/hsndmr/reactotron-react-query
+
+If you would like to help us make the built-in devtools platform agnostic, please let us know!
+
+## Online status management
+
+React Query already supports auto refetch on reconnect in web browser.
+To add this behavior in React Native you have to use React Query `onlineManager` as in the example below:
+
+```tsx
+import NetInfo from '@react-native-community/netinfo'
+import { onlineManager } from '@tanstack/react-query'
+
+onlineManager.setEventListener(setOnline => {
+  return NetInfo.addEventListener(state => {
+    setOnline(!!state.isConnected)
+  })
+})
+```
+
+## Refetch on App focus
+
+Instead of event listeners on `window`, React Native provides focus information through the `AppState` module. You can use the `AppState` "change" event to trigger an update when the app state changes to "active":
+
+```tsx
+import { useEffect } from "react"
+import { AppState, Platform } from 'react-native'
+import type { AppStateStatus } from "react-native"
+import { focusManager } from '@tanstack/react-query'
+
+function onAppStateChange(status: AppStateStatus) {
+  if (Platform.OS !== 'web') {
+    focusManager.setFocused(status === 'active')
+  }
+}
+
+useEffect(() => {
+  const subscription = AppState.addEventListener('change', onAppStateChange)
+
+  return () => subscription.remove()
+}, [])
+```
+
+## Refresh on Screen focus
+
+In some situations, you may want to refetch the query when a React Native Screen is focused again.
+This custom hook will call the provided `refetch` function when the screen is focused again.
+
+```tsx
+import React from 'react'
+import { useFocusEffect } from '@react-navigation/native'
+
+export function useRefreshOnFocus<T>(refetch: () => Promise<T>) {
+  const firstTimeRef = React.useRef(true)
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (firstTimeRef.current) {
+         firstTimeRef.current = false;
+         return;
+      }
+
+      refetch()
+    }, [refetch])
+  )
+}
+```
+
+In the above code, `refetch` is skipped the first time because `useFocusEffect` calls our callback on mount in addition to screen focus.
+
+## Disable re-renders on out of focus Screens
+
+In some situations, including performance concerns, you may want to stop re-renders when a React Native screen gets out of focus. To achieve this we can use `useFocusEffect` from `@react-navigation/native` together with the `notifyOnChangeProps` query option.
+
+This custom hook provides a `notifyOnChangeProps` option that will return an empty array whenever a screen goes out of focus - effectively stopping any re-renders on that scenario. Whenever the screens gets in focus again, the behavior goes back to normal.
+
+```tsx
+import React from 'react'
+import { NotifyOnChangeProps } from '@tanstack/query-core'
+import { useFocusEffect } from '@react-navigation/native'
+
+export function useFocusNotifyOnChangeProps(notifyOnChangeProps?: NotifyOnChangeProps) {
+  const focusedRef = React.useRef(true)
+
+  useFocusEffect(
+    React.useCallback(() => {
+      focusedRef.current = true
+
+      return () => {
+        focusedRef.current = false
+      }
+    }, [])
+  )
+
+  return () => {
+    if (!focusedRef.current) {
+      return []
+    }
+
+    if (typeof notifyOnChangeProps === 'function') {
+      return notifyOnChangeProps()
+    }
+
+    return notifyOnChangeProps.current
+  }
+}
+```
+
+In the above code, `useFocusEffect` is used to change the value of a reference that the callback will use as a condition.
+
+The argument is wrapped in a reference to also guarantee that the returned callback always keeps the same reference.
+
+Example usage:
+
+```tsx
+function MyComponent() {
+  const notifyOnChangeProps = useFocusNotifyOnChangeProps();
+
+  const { dataUpdatedAt } = useQuery({
+    queryKey: ['myKey'],
+    queryFn: async () => {
+      const response = await fetch('https://api.github.com/repos/tannerlinsley/react-query');
+      return response.json();
+    },
+    notifyOnChangeProps,
+  });
+
+  return <div>DataUpdatedAt: {dataUpdatedAt}</div>;
+};
+```

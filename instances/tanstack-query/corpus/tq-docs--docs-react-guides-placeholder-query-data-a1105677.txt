@@ -1,0 +1,85 @@
+# Placeholder Query Data
+# джерело: https://github.com/TanStack/query/blob/v5.0.0-alpha.32/docs/react/guides/placeholder-query-data.md
+# отримано: 2026-09-26
+# версія: 5.0.0-alpha.32, 5.0.0-alpha.31, 5.0.0-alpha.30, 5.0.0-alpha.29, 5.0.0-alpha.28, 5.0.0-alpha.27, 5.0.0-alpha.26, 5.0.0-alpha.25, 5.0.0-alpha.24, 5.0.0-alpha.23, 5.0.0-alpha.22, 5.0.0-alpha.21, 5.0.0-alpha.20, 5.0.0-alpha.19, 5.0.0-alpha.18, 5.0.0-alpha.17, 5.0.0-alpha.16, 5.0.0-alpha.15, 5.0.0-alpha.14, 5.0.0-alpha.13, 5.0.0-alpha.12, 5.0.0-alpha.11, 5.0.0-alpha.10, 5.0.0-alpha.9, 5.0.0-alpha.8, 5.0.0-alpha.7, 5.0.0-alpha.6, 5.0.0-alpha.5, 5.0.0-alpha.4, 5.0.0-alpha.3, 5.0.0-alpha.2, 5.0.0-alpha.1, 5.0.0-alpha.0, 4.38.0, 4.37.1, 4.37.0, 4.36.2, 4.36.1, 4.36.0, 4.35.7, 4.35.6, 4.35.5, 4.35.4, 4.35.3, 4.35.2, 4.35.1, 4.35.0, 4.34.4, 4.34.3, 4.34.2, 4.34.1, 4.34.0, 4.33.1, 4.33.0, 4.32.6, 4.32.5, 4.32.4, 4.32.3, 4.32.2, 4.32.1, 4.32.0, 4.31.0, 4.30.0, 4.29.25, 4.29.24, 4.29.23, 4.29.22, 4.29.21, 4.29.20, 4.29.19, 4.29.18, 4.29.17, 4.29.16, 4.29.15, 4.29.14, 4.29.13, 4.29.12, 4.29.11, 4.29.10, 4.29.9, 4.29.8, 4.29.7, 4.29.6, 4.29.5, 4.29.4, 4.29.3, 4.29.2, 4.29.1, 4.29.0, 4.28.1, 4.28.0, 4.27.1, 4.27.0, 4.26.2, 4.26.1, 4.26.0, 4.25.0, 4.24.14, 4.24.13, 4.24.12, 4.24.11, 4.24.10, 4.24.9, 4.24.8, 4.24.7, 4.24.6, 4.24.5, 4.24.4, 4.24.3, 4.24.2, 4.24.1, 4.24.0, 4.23.0, 4.22.4, 4.22.3
+
+## What is placeholder data?
+
+Placeholder data allows a query to behave as if it already has data, similar to the `initialData` option, but **the data is not persisted to the cache**. This comes in handy for situations where you have enough partial (or fake) data to render the query successfully while the actual data is fetched in the background.
+
+> Example: An individual blog post query could pull "preview" data from a parent list of blog posts that only include title and a small snippet of the post body. You would not want to persist this partial data to the query result of the individual query, but it is useful for showing the content layout as quickly as possible while the actual query finishes to fetch the entire object.
+
+There are a few ways to supply placeholder data for a query to the cache before you need it:
+
+- Declaratively:
+  - Provide `placeholderData` to a query to prepopulate its cache if empty
+- Imperatively:
+  - Prefetch or fetch the data using `queryClient` and the `placeholderData` option
+
+## Placeholder Data as a Value
+
+[//]: # 'Example'
+
+```tsx
+function Todos() {
+  const result = useQuery({
+    queryKey: ['todos'],
+    queryFn: () => fetch('/todos'),
+    placeholderData: placeholderTodos,
+  })
+}
+```
+
+[//]: # 'Example'
+[//]: # 'Memoization'
+
+### Placeholder Data Memoization
+
+If the process for accessing a query's placeholder data is intensive or just not something you want to perform on every render, you can memoize the value:
+
+[//]: # 'Memoization'
+[//]: # 'Example2'
+
+```tsx
+function Todos() {
+  const placeholderData = useMemo(() => generateFakeTodos(), [])
+  const result = useQuery({
+    queryKey: ['todos'],
+    queryFn: () => fetch('/todos'),
+    placeholderData,
+  })
+}
+```
+
+[//]: # 'Example2'
+
+### Placeholder Data from Cache
+
+In some circumstances, you may be able to provide the placeholder data for a query from the cached result of another. A good example of this would be searching the cached data from a blog post list query for a preview version of the post, then using that as the placeholder data for your individual post query:
+
+[//]: # 'Example3'
+
+```tsx
+function Todo({ blogPostId }) {
+  const result = useQuery({
+    queryKey: ['blogPost', blogPostId],
+    queryFn: () => fetch(`/blogPosts/${blogPostId}`),
+    placeholderData: () => {
+      // Use the smaller/preview version of the blogPost from the 'blogPosts'
+      // query as the placeholder data for this blogPost query
+      return queryClient
+        .getQueryData(['blogPosts'])
+        ?.find((d) => d.id === blogPostId)
+    },
+  })
+}
+```
+
+[//]: # 'Example3'
+[//]: # 'Materials'
+
+## Further reading
+
+For a comparison between `Placeholder Data` and `Initial Data`, have a look at the Community Resources.
+
+[//]: # 'Materials'

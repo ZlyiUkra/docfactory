@@ -1,0 +1,78 @@
+# React Native
+# джерело: https://github.com/TanStack/query/blob/v5.0.0-alpha.90/docs/react/react-native.md
+# отримано: 2026-09-26
+# версія: 5.0.0-alpha.90, 5.0.0-alpha.89, 5.0.0-alpha.88, 5.0.0-alpha.87, 5.0.0-alpha.86, 5.0.0-alpha.85, 5.0.0-alpha.84, 5.0.0-alpha.83, 5.0.0-alpha.82, 5.0.0-alpha.81, 5.0.0-alpha.80, 5.0.0-alpha.79, 5.0.0-alpha.78, 5.0.0-alpha.77, 5.0.0-alpha.76, 5.0.0-alpha.75, 5.0.0-alpha.74, 5.0.0-alpha.73, 5.0.0-alpha.72, 5.0.0-alpha.71, 5.0.0-alpha.70, 5.0.0-alpha.69, 5.0.0-alpha.68, 5.0.0-alpha.67, 5.0.0-alpha.66, 5.0.0-alpha.65, 5.0.0-alpha.64, 5.0.0-alpha.63, 5.0.0-alpha.62, 5.0.0-alpha.61, 5.0.0-alpha.60, 5.0.0-alpha.59, 5.0.0-alpha.58, 5.0.0-alpha.57, 5.0.0-alpha.56, 5.0.0-alpha.55, 5.0.0-alpha.54, 5.0.0-alpha.53, 5.0.0-alpha.52, 5.0.0-alpha.51, 5.0.0-alpha.50, 5.0.0-alpha.49, 5.0.0-alpha.48, 5.0.0-alpha.47, 5.0.0-alpha.46, 5.0.0-alpha.45, 5.0.0-alpha.44, 5.0.0-alpha.43, 5.0.0-alpha.42, 5.0.0-alpha.41, 5.0.0-alpha.40, 5.0.0-alpha.39, 5.0.0-alpha.38, 5.0.0-alpha.37, 5.0.0-alpha.36, 5.0.0-alpha.35, 5.0.0-alpha.34, 5.0.0-alpha.32, 5.0.0-alpha.31, 5.0.0-alpha.30, 5.0.0-alpha.29, 5.0.0-alpha.28, 5.0.0-alpha.27, 5.0.0-alpha.26, 5.0.0-alpha.25, 5.0.0-alpha.24, 5.0.0-alpha.23, 5.0.0-alpha.22, 5.0.0-alpha.21, 5.0.0-alpha.20, 5.0.0-alpha.19, 5.0.0-alpha.18, 5.0.0-alpha.17, 5.0.0-alpha.16, 5.0.0-alpha.15, 5.0.0-alpha.14, 5.0.0-alpha.13, 5.0.0-alpha.12, 5.0.0-alpha.11, 5.0.0-alpha.10, 5.0.0-alpha.9, 5.0.0-alpha.8, 5.0.0-alpha.7, 5.0.0-alpha.6, 5.0.0-alpha.5, 5.0.0-alpha.4, 5.0.0-alpha.3, 5.0.0-alpha.2, 5.0.0-alpha.1, 5.0.0-alpha.0, 4.29.25, 4.29.24, 4.29.23, 4.29.22, 4.29.21, 4.29.20, 4.29.19, 4.29.18, 4.29.17, 4.29.16, 4.29.15, 4.29.14, 4.29.13, 4.29.12, 4.29.11, 4.29.10, 4.29.9, 4.29.8, 4.29.7, 4.29.6, 4.29.5, 4.29.4, 4.29.3, 4.29.2, 4.29.1, 4.29.0, 4.28.1, 4.28.0, 4.27.1, 4.27.0, 4.26.2, 4.26.1, 4.26.0, 4.25.0, 4.24.14, 4.24.13, 4.24.12, 4.24.11, 4.24.10, 4.24.9, 4.24.8, 4.24.7, 4.24.6, 4.24.5, 4.24.4, 4.24.3, 4.24.2, 4.24.1, 4.24.0, 4.23.0, 4.22.4, 4.22.3, 4.22.2, 4.22.1, 4.22.0, 4.21.0, 4.20.10, 4.20.9
+
+React Query is designed to work out of the box with React Native, with the exception of the devtools, which are only supported with React DOM at this time.
+
+There is a 3rd party Flipper plugin which you can try: https://github.com/bgaleotti/react-query-native-devtools
+
+There is a 3rd party Reactotron plugin which you can try: https://github.com/hsndmr/reactotron-react-query
+
+If you would like to help us make the built-in devtools platform agnostic, please let us know!
+
+## Online status management
+
+React Query already supports auto refetch on reconnect in web browser.
+To add this behavior in React Native you have to use React Query `onlineManager` as in the example below:
+
+```tsx
+import NetInfo from '@react-native-community/netinfo'
+import { onlineManager } from '@tanstack/react-query'
+
+onlineManager.setEventListener(setOnline => {
+  return NetInfo.addEventListener(state => {
+    setOnline(!!state.isConnected)
+  })
+})
+```
+
+## Refetch on App focus
+
+Instead of event listeners on `window`, React Native provides focus information through the `AppState` module. You can use the `AppState` "change" event to trigger an update when the app state changes to "active":
+
+```tsx
+import { useEffect } from "react"
+import { AppState, Platform } from 'react-native'
+import type { AppStateStatus } from "react-native"
+import { focusManager } from '@tanstack/react-query'
+
+function onAppStateChange(status: AppStateStatus) {
+  if (Platform.OS !== 'web') {
+    focusManager.setFocused(status === 'active')
+  }
+}
+
+useEffect(() => {
+  const subscription = AppState.addEventListener('change', onAppStateChange)
+
+  return () => subscription.remove()
+}, [])
+```
+
+## Refresh on Screen focus
+
+In some situations, you may want to refetch the query when a React Native Screen is focused again.
+This custom hook will call the provided `refetch` function when the screen is focused again.
+
+```tsx
+import React from 'react'
+import { useFocusEffect } from '@react-navigation/native'
+
+export function useRefreshOnFocus<T>(refetch: () => Promise<T>) {
+  const firstTimeRef = React.useRef(true)
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (firstTimeRef.current) {
+         firstTimeRef.current = false;
+         return;
+      }
+
+      refetch()
+    }, [refetch])
+  )
+}
+```
+
+In the above code, `refetch` is skipped the first time because `useFocusEffect` calls our callback on mount in addition to screen focus.

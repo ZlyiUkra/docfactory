@@ -1,0 +1,52 @@
+# Parallel Queries
+# джерело: https://github.com/TanStack/query/blob/v5.14.0/docs/react/guides/parallel-queries.md
+# отримано: 2026-09-26
+# версія: 5.14.0, 5.13.5, 5.13.4, 5.13.3, 5.13.2, 5.13.1, 5.13.0, 5.12.2, 5.12.1, 5.12.0, 5.11.0, 5.10.0, 5.9.0, 5.8.9, 5.8.8, 5.8.7, 5.8.6, 5.8.5, 5.8.4, 5.8.3, 5.8.2, 5.8.1, 5.8.0, 5.7.4, 5.7.3, 5.7.2, 5.7.1, 5.7.0, 5.6.1, 5.6.0, 5.5.0, 5.4.3, 5.4.2, 5.4.1, 5.4.0, 5.3.0, 5.2.1, 5.2.0, 5.1.0, 5.0.5, 5.0.4, 5.0.3, 5.0.2, 5.0.1, 5.0.0, 5.0.0-rc.16, 5.0.0-rc.15, 5.0.0-rc.14, 5.0.0-rc.13, 5.0.0-rc.12, 5.0.0-rc.11, 5.0.0-rc.10, 5.0.0-rc.9, 5.0.0-rc.8, 5.0.0-rc.7, 5.0.0-rc.6, 5.0.0-rc.5, 5.0.0-rc.4, 5.0.0-rc.3, 5.0.0-rc.2, 5.0.0-rc.1, 5.0.0-beta.37, 5.0.0-beta.36, 5.0.0-beta.35, 5.0.0-beta.34, 5.0.0-beta.33, 5.0.0-beta.32, 5.0.0-beta.31, 5.0.0-beta.30, 5.0.0-beta.29, 5.0.0-beta.28, 5.0.0-beta.27, 5.0.0-beta.26, 5.0.0-beta.25, 5.0.0-beta.24, 5.0.0-beta.23, 5.0.0-beta.22, 5.0.0-beta.21, 5.0.0-beta.20, 5.0.0-beta.19, 5.0.0-beta.18, 5.0.0-beta.17, 5.0.0-beta.16, 5.0.0-beta.15, 5.0.0-beta.14, 5.0.0-beta.13
+
+"Parallel" queries are queries that are executed in parallel, or at the same time so as to maximize fetching concurrency.
+
+## Manual Parallel Queries
+
+When the number of parallel queries does not change, there is **no extra effort** to use parallel queries. Just use any number of TanStack Query's `useQuery` and `useInfiniteQuery` hooks side-by-side!
+
+[//]: # 'Example'
+
+```tsx
+function App () {
+  // The following queries will execute in parallel
+  const usersQuery = useQuery({ queryKey: ['users'], queryFn: fetchUsers })
+  const teamsQuery = useQuery({ queryKey: ['teams'], queryFn: fetchTeams })
+  const projectsQuery = useQuery({ queryKey: ['projects'], queryFn: fetchProjects })
+  ...
+}
+```
+
+[//]: # 'Example'
+[//]: # 'Info'
+
+> When using React Query in suspense mode, this pattern of parallelism does not work, since the first query would throw a promise internally and would suspend the component before the other queries run. To get around this, you'll either need to use the `useSuspenseQueries` hook (which is suggested) or orchestrate your own parallelism with separate components for each `useSuspenseQuery` instance.
+
+[//]: # 'Info'
+
+## Dynamic Parallel Queries with `useQueries`
+
+If the number of queries you need to execute is changing from render to render, you cannot use manual querying since that would violate the rules of hooks. Instead, TanStack Query provides a `useQueries` hook, which you can use to dynamically execute as many queries in parallel as you'd like.
+
+`useQueries` accepts an **options object** with a **queries key** whose value is an **array of query objects**. It returns an **array of query results**:
+
+[//]: # 'Example2'
+
+```tsx
+function App({ users }) {
+  const userQueries = useQueries({
+    queries: users.map((user) => {
+      return {
+        queryKey: ['user', user.id],
+        queryFn: () => fetchUserById(user.id),
+      }
+    }),
+  })
+}
+```
+
+[//]: # 'Example2'

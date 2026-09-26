@@ -1,0 +1,77 @@
+# Updates from Mutation Responses
+# джерело: https://github.com/TanStack/query/blob/v5.15.1/docs/react/guides/updates-from-mutation-responses.md
+# отримано: 2026-09-26
+# версія: 5.15.1, 5.15.0, 5.14.7, 5.14.6, 5.14.5, 5.14.4, 5.14.3, 5.14.2, 5.14.1, 5.14.0, 5.13.5, 5.13.4, 5.13.3, 5.13.2, 5.13.1, 5.13.0, 5.12.2, 5.12.1, 5.12.0, 5.11.0, 5.10.0, 5.9.0, 5.8.9, 5.8.8, 5.8.7, 5.8.6, 5.8.5, 5.8.4, 5.8.3, 5.8.2, 5.8.1, 5.8.0, 5.7.4, 5.7.3, 5.7.2, 5.7.1, 5.7.0, 5.6.1, 5.6.0, 5.5.0, 5.4.3, 5.4.2, 5.4.1, 5.4.0, 5.3.0, 5.2.1, 5.2.0, 5.1.0, 5.0.5, 5.0.4, 5.0.3, 5.0.2, 5.0.1
+
+When dealing with mutations that **update** objects on the server, it's common for the new object to be automatically returned in the response of the mutation. Instead of refetching any queries for that item and wasting a network call for data we already have, we can take advantage of the object returned by the mutation function and update the existing query with the new data immediately using the Query Client's `setQueryData` method:
+
+[//]: # 'Example'
+```tsx
+const queryClient = useQueryClient()
+
+const mutation = useMutation({
+  mutationFn: editTodo,
+  onSuccess: data => {
+    queryClient.setQueryData(['todo', { id: 5 }], data)
+  }
+})
+
+mutation.mutate({
+  id: 5,
+  name: 'Do the laundry',
+})
+
+// The query below will be updated with the response from the
+// successful mutation
+const { status, data, error } = useQuery({
+  queryKey: ['todo', { id: 5 }],
+  queryFn: fetchTodoById,
+})
+```
+[//]: # 'Example'
+
+You might want to tie the `onSuccess` logic into a reusable mutation, for that you can
+create a custom hook like this:
+
+[//]: # 'Example2'
+```tsx
+const useMutateTodo = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: editTodo,
+    // Notice the second argument is the variables object that the `mutate` function receives
+    onSuccess: (data, variables) => {
+      queryClient.setQueryData(['todo', { id: variables.id }], data)
+    },
+  })
+}
+```
+[//]: # 'Example2'
+
+## Immutability
+
+Updates via `setQueryData` must be performed in an _immutable_ way. **DO NOT** attempt to write directly to the cache by mutating data (that you retrieved from the cache) in place. It might work at first but can lead to subtle bugs along the way.
+
+[//]: # 'Example3'
+```tsx
+queryClient.setQueryData(
+  ['posts', { id }],
+  (oldData) => {
+    if (oldData) {
+      // ❌ do not try this
+      oldData.title = 'my new post title'
+    }
+    return oldData
+  })
+
+queryClient.setQueryData(
+  ['posts', { id }],
+  // ✅ this is the way
+  (oldData) => oldData ? {
+    ...oldData,
+    title: 'my new post title'
+  } : oldData
+)
+```
+[//]: # 'Example3'

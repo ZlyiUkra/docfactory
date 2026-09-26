@@ -1,0 +1,222 @@
+# SSR
+# джерело: https://github.com/TanStack/query/blob/v5.8.0/docs/vue/guides/ssr.md
+# отримано: 2026-09-26
+# версія: 5.8.0, 5.7.4, 5.7.3, 5.7.2, 5.7.1, 5.7.0, 5.6.1, 5.6.0, 5.5.0, 5.4.3, 5.4.2, 5.4.1, 5.4.0, 5.3.0, 5.2.1, 5.2.0, 5.1.0, 5.0.5, 5.0.4, 5.0.3, 5.0.2, 5.0.1, 5.0.0, 5.0.0-rc.16, 5.0.0-rc.15, 5.0.0-rc.14, 5.0.0-rc.13, 5.0.0-rc.12, 5.0.0-rc.11, 5.0.0-rc.10, 5.0.0-rc.9, 5.0.0-rc.8, 5.0.0-rc.7, 5.0.0-rc.6, 5.0.0-rc.5, 5.0.0-rc.4, 5.0.0-rc.3, 5.0.0-rc.2, 5.0.0-rc.1, 5.0.0-beta.37, 5.0.0-beta.36, 5.0.0-beta.35, 5.0.0-beta.34, 5.0.0-beta.33, 5.0.0-beta.32, 5.0.0-beta.31, 5.0.0-beta.30, 5.0.0-beta.29, 5.0.0-beta.28, 5.0.0-beta.27, 5.0.0-beta.26, 5.0.0-beta.25, 5.0.0-beta.24, 5.0.0-beta.23, 5.0.0-beta.22, 5.0.0-beta.21, 5.0.0-beta.20, 5.0.0-beta.19, 5.0.0-beta.18, 5.0.0-beta.17, 5.0.0-beta.16, 5.0.0-beta.15, 5.0.0-beta.14, 5.0.0-beta.13, 5.0.0-beta.12, 5.0.0-beta.11, 5.0.0-beta.10, 5.0.0-beta.9, 5.0.0-beta.8, 5.0.0-beta.7, 5.0.0-beta.6, 5.0.0-beta.5, 5.0.0-beta.4, 5.0.0-beta.3, 5.0.0-beta.2, 5.0.0-beta.1, 5.0.0-beta.0, 5.0.0-alpha.91, 5.0.0-alpha.90, 5.0.0-alpha.89, 5.0.0-alpha.88, 5.0.0-alpha.87, 5.0.0-alpha.86, 5.0.0-alpha.85, 5.0.0-alpha.84, 5.0.0-alpha.83, 5.0.0-alpha.82, 5.0.0-alpha.81, 5.0.0-alpha.80, 5.0.0-alpha.79, 5.0.0-alpha.78, 5.0.0-alpha.77, 5.0.0-alpha.76, 5.0.0-alpha.75, 5.0.0-alpha.74, 5.0.0-alpha.73, 5.0.0-alpha.72, 5.0.0-alpha.71, 5.0.0-alpha.70, 5.0.0-alpha.69, 5.0.0-alpha.68, 5.0.0-alpha.67, 5.0.0-alpha.66, 5.0.0-alpha.65, 5.0.0-alpha.64, 5.0.0-alpha.63, 5.0.0-alpha.62, 5.0.0-alpha.61, 5.0.0-alpha.60, 5.0.0-alpha.59, 5.0.0-alpha.58, 5.0.0-alpha.57, 5.0.0-alpha.56, 5.0.0-alpha.55, 5.0.0-alpha.54, 5.0.0-alpha.53, 5.0.0-alpha.52, 5.0.0-alpha.51, 5.0.0-alpha.50, 5.0.0-alpha.49, 5.0.0-alpha.48, 5.0.0-alpha.47, 5.0.0-alpha.46, 5.0.0-alpha.45, 5.0.0-alpha.44, 5.0.0-alpha.43, 5.0.0-alpha.42, 5.0.0-alpha.41, 5.0.0-alpha.40, 5.0.0-alpha.39, 5.0.0-alpha.38, 5.0.0-alpha.37, 5.0.0-alpha.36, 5.0.0-alpha.35, 5.0.0-alpha.34, 5.0.0-alpha.32, 5.0.0-alpha.31, 5.0.0-alpha.30, 5.0.0-alpha.29, 5.0.0-alpha.28, 5.0.0-alpha.27, 5.0.0-alpha.26, 5.0.0-alpha.25, 5.0.0-alpha.24, 5.0.0-alpha.23, 5.0.0-alpha.22, 5.0.0-alpha.21, 5.0.0-alpha.20, 5.0.0-alpha.19, 5.0.0-alpha.18, 5.0.0-alpha.17, 5.0.0-alpha.16, 5.0.0-alpha.15, 5.0.0-alpha.14, 5.0.0-alpha.13, 5.0.0-alpha.12, 5.0.0-alpha.11, 5.0.0-alpha.10, 5.0.0-alpha.9, 5.0.0-alpha.8, 5.0.0-alpha.7, 5.0.0-alpha.6, 5.0.0-alpha.5, 5.0.0-alpha.4, 5.0.0-alpha.3, 5.0.0-alpha.2, 5.0.0-alpha.1, 5.0.0-alpha.0
+
+Vue Query supports prefetching multiple queries on the server and then _dehydrating_ those queries to the queryClient. This means the server can prerender markup that is immediately available on page load and as soon as JS is available, Vue Query can upgrade or _hydrate_ those queries with the full functionality of the library. This includes refetching those queries on the client if they have become stale since the time they were rendered on the server.
+
+## Using Nuxt.js
+
+### Nuxt 3
+
+First create `vue-query.ts` file in your `plugins` directory with the following content:
+
+```ts
+import type { DehydratedState, VueQueryPluginOptions } from '@tanstack/vue-query'
+import { VueQueryPlugin, QueryClient, hydrate, dehydrate } from '@tanstack/vue-query'
+// Nuxt 3 app aliases
+import { useState } from '#app'
+
+export default defineNuxtPlugin((nuxt) => {
+  const vueQueryState = useState<DehydratedState | null>('vue-query')
+
+  // Modify your Vue Query global settings here
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { staleTime: 5000 } },
+  })
+  const options: VueQueryPluginOptions = { queryClient }
+
+  nuxt.vueApp.use(VueQueryPlugin, options)
+
+  if (process.server) {
+    nuxt.hooks.hook('app:rendered', () => {
+      vueQueryState.value = dehydrate(queryClient)
+    })
+  }
+
+  if (process.client) {
+    nuxt.hooks.hook('app:created', () => {
+      hydrate(queryClient, vueQueryState.value)
+    })
+  }
+})
+```
+
+Now you are ready to prefetch some data in your pages with `onServerPrefetch`.
+
+- Prefetch all the queries that you need with `queryClient.prefetchQuery` or `suspense`
+
+```ts
+export default defineComponent({
+  setup() {
+    const { data, suspense } = useQuery('test', fetcher)
+
+    onServerPrefetch(async () => {
+      await suspense()
+    })
+
+    return { data }
+  },
+})
+```
+
+### Nuxt 2
+
+First create `vue-query.js` file in your `plugins` directory with the following content:
+
+```js
+import Vue from 'vue'
+import { VueQueryPlugin, QueryClient, hydrate } from '@tanstack/vue-query'
+
+export default (context) => {
+  // Modify your Vue Query global settings here
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { staleTime: 5000 } },
+  })
+  const options = { queryClient }
+
+  Vue.use(VueQueryPlugin, options)
+
+  if (process.client) {
+    if (context.nuxtState && context.nuxtState['vue-query']) {
+      hydrate(queryClient, context.nuxtState['vue-query'])
+    }
+  }
+}
+```
+
+Add this plugin to your `nuxt.config.js`
+
+```js
+module.exports = {
+  ...
+  plugins: ['~/plugins/vue-query.js'],
+};
+```
+
+Now you are ready to prefetch some data in your pages with `onServerPrefetch`.
+
+- Use `useContext` to get nuxt context
+- Use `useQueryClient` to get server-side instance of `queryClient`
+- Prefetch all the queries that you need with `queryClient.prefetchQuery` or `suspense`
+- Dehydrate `queryClient` to the `nuxtContext`
+
+```js
+// pages/todos.vue
+<template>
+  <div>
+    <button @click="refetch">Refetch</button>
+    <p>{{ data }}</p>
+  </div>
+</template>
+
+<script lang="ts">
+import {
+  defineComponent,
+  onServerPrefetch,
+  useContext,
+} from "@nuxtjs/composition-api";
+import { useQuery, useQueryClient, dehydrate } from "@tanstack/vue-query";
+
+export default defineComponent({
+  setup() {
+    // This will be prefetched and sent from the server
+    const { refetch, data, suspense } = useQuery("todos", getTodos);
+    // This won't be prefetched, it will start fetching on client side
+    const { data2 } = useQuery("todos2", getTodos);
+
+    onServerPrefetch(async () => {
+     const { ssrContext } = useContext();
+      const queryClient = useQueryClient();
+      await suspense();
+
+      ssrContext.nuxt.vueQueryState = dehydrate(queryClient);
+    });
+
+    return {
+      refetch,
+      data,
+    };
+  },
+});
+</script>
+```
+
+As demonstrated, it's fine to prefetch some queries and let others fetch on the queryClient. This means you can control what content server renders or not by adding or removing `prefetchQuery` or `suspense` for a specific query.
+
+## Using Vite SSR
+
+Sync VueQuery client state with vite-ssr in order to serialize it in the DOM:
+
+```js
+// main.js (entry point)
+import App from './App.vue'
+import viteSSR from 'vite-ssr/vue'
+import { QueryClient, VueQueryPlugin, hydrate, dehydrate } from '@tanstack/vue-query'
+
+export default viteSSR(App, { routes: [] }, ({ app, initialState }) => {
+  // -- This is Vite SSR main hook, which is called once per request
+
+  // Create a fresh VueQuery client
+  const queryClient = new QueryClient()
+
+  // Sync initialState with the client state
+  if (import.meta.env.SSR) {
+    // Indicate how to access and serialize VueQuery state during SSR
+    initialState.vueQueryState = { toJSON: () => dehydrate(queryClient) }
+  } else {
+    // Reuse the existing state in the browser
+    hydrate(queryClient, initialState.vueQueryState)
+  }
+
+  // Mount and provide the client to the app components
+  app.use(VueQueryPlugin, { queryClient })
+})
+```
+
+Then, call VueQuery from any component using Vue's `onServerPrefetch`:
+
+```html
+<!-- MyComponent.vue -->
+<template>
+  <div>
+    <button @click="refetch">Refetch</button>
+    <p>{{ data }}</p>
+  </div>
+</template>
+
+<script setup>
+  import { useQuery } from '@tanstack/vue-query'
+  import { onServerPrefetch } from 'vue'
+
+  // This will be prefetched and sent from the server
+  const { refetch, data, suspense } = useQuery('todos', getTodos)
+  onServerPrefetch(suspense)
+</script>
+```
+
+## Tips, Tricks and Caveats
+
+### Only successful queries are included in dehydration
+
+Any query with an error is automatically excluded from dehydration. This means that the default behavior is to pretend these queries were never loaded on the server, usually showing a loading state instead, and retrying the queries on the queryClient. This happens regardless of error.
+
+Sometimes this behavior is not desirable, maybe you want to render an error page with a correct status code instead on certain errors or queries. In those cases, use `fetchQuery` and catch any errors to handle those manually.
+
+### Staleness is measured from when the query was fetched on the server
+
+A query is considered stale depending on when it was `dataUpdatedAt`. A caveat here is that the server needs to have the correct time for this to work properly, but UTC time is used, so timezones do not factor into this.
+
+Because `staleTime` defaults to `0`, queries will be refetched in the background on page load by default. You might want to use a higher `staleTime` to avoid this double fetching, especially if you don't cache your markup.
+
+This refetching of stale queries is a perfect match when caching markup in a CDN! You can set the cache time of the page itself decently high to avoid having to re-render pages on the server, but configure the `staleTime` of the queries lower to make sure data is refetched in the background as soon as a user visits the page. Maybe you want to cache the pages for a week, but refetch the data automatically on page load if it's older than a day?
+
+### High memory consumption on server
+
+In case you are creating the `QueryClient` for every request, Vue Query creates the isolated cache for this client, which is preserved in memory for the `gcTime` period. That may lead to high memory consumption on server in case of high number of requests during that period.
+
+On the server, `gcTime` defaults to `Infinity` which disables manual garbage collection and will automatically clear memory once a request has finished. If you are explicitly setting a non-Infinity `gcTime` then you will be responsible for clearing the cache early.
+
+To clear the cache after it is not needed and to lower memory consumption, you can add a call to `queryClient.clear()` after the request is handled and dehydrated state has been sent to the client.
+
+Alternatively, you can set a smaller `gcTime`.

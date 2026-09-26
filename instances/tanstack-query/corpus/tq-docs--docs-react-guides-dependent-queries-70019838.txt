@@ -1,0 +1,56 @@
+# Dependent Queries
+# джерело: https://github.com/TanStack/query/blob/v5.0.0-beta.28/docs/react/guides/dependent-queries.md
+# отримано: 2026-09-26
+# версія: 5.0.0-beta.28, 5.0.0-beta.27, 5.0.0-beta.26, 5.0.0-beta.25, 5.0.0-beta.24, 5.0.0-beta.23, 5.0.0-beta.22, 5.0.0-beta.21, 5.0.0-beta.20, 5.0.0-beta.19, 5.0.0-beta.18, 5.0.0-beta.17, 5.0.0-beta.16, 5.0.0-beta.15, 5.0.0-beta.14, 5.0.0-beta.13, 5.0.0-beta.12, 5.0.0-beta.11, 5.0.0-beta.10, 5.0.0-beta.9, 5.0.0-beta.8, 5.0.0-beta.7, 5.0.0-beta.6, 5.0.0-beta.5, 5.0.0-beta.4, 5.0.0-beta.3, 5.0.0-beta.2, 5.0.0-beta.1, 5.0.0-beta.0, 5.0.0-alpha.91, 5.0.0-alpha.90, 5.0.0-alpha.89, 5.0.0-alpha.88, 5.0.0-alpha.87, 5.0.0-alpha.86, 5.0.0-alpha.85, 5.0.0-alpha.84, 5.0.0-alpha.83, 5.0.0-alpha.82, 5.0.0-alpha.81, 5.0.0-alpha.80, 5.0.0-alpha.79, 5.0.0-alpha.78, 5.0.0-alpha.77, 5.0.0-alpha.76, 5.0.0-alpha.75, 5.0.0-alpha.74, 5.0.0-alpha.73, 5.0.0-alpha.72, 5.0.0-alpha.71, 5.0.0-alpha.70, 5.0.0-alpha.69, 5.0.0-alpha.68, 5.0.0-alpha.67, 5.0.0-alpha.66, 5.0.0-alpha.65, 5.0.0-alpha.64, 5.0.0-alpha.63, 5.0.0-alpha.62, 5.0.0-alpha.61, 5.0.0-alpha.60, 5.0.0-alpha.59, 5.0.0-alpha.58, 5.0.0-alpha.57, 5.0.0-alpha.56, 5.0.0-alpha.55, 5.0.0-alpha.54, 5.0.0-alpha.53, 5.0.0-alpha.52, 5.0.0-alpha.51, 5.0.0-alpha.50, 5.0.0-alpha.49, 5.0.0-alpha.48, 5.0.0-alpha.47, 5.0.0-alpha.46, 5.0.0-alpha.45, 5.0.0-alpha.44, 5.0.0-alpha.43, 5.0.0-alpha.42, 5.0.0-alpha.41, 5.0.0-alpha.40, 5.0.0-alpha.39, 5.0.0-alpha.38, 5.0.0-alpha.37, 5.0.0-alpha.36, 5.0.0-alpha.35, 5.0.0-alpha.34, 5.0.0-alpha.32
+
+Dependent (or serial) queries depend on previous ones to finish before they can execute. To achieve this, it's as easy as using the `enabled` option to tell a query when it is ready to run:
+
+[//]: # 'Example'
+
+```tsx
+// Get the user
+const { data: user } = useQuery({
+  queryKey: ['user', email],
+  queryFn: getUserByEmail,
+})
+
+const userId = user?.id
+
+// Then get the user's projects
+const {
+  status,
+  fetchStatus,
+  data: projects,
+} = useQuery({
+  queryKey: ['projects', userId],
+  queryFn: getProjectsByUser,
+  // The query will not execute until the userId exists
+  enabled: !!userId,
+})
+```
+
+[//]: # 'Example'
+
+The `projects` query will start in:
+
+```tsx
+status: 'pending'
+isPending: false
+fetchStatus: 'idle'
+```
+
+As soon as the `user` is available, the `projects` query will be `enabled` and will then transition to:
+
+```tsx
+status: 'pending'
+isPending: true
+fetchStatus: 'fetching'
+```
+
+Once we have the projects, it will go to:
+
+```tsx
+status: 'success'
+isPending: false
+fetchStatus: 'idle'
+```

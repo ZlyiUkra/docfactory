@@ -1,0 +1,97 @@
+# Query Key Factory
+# джерело: https://github.com/TanStack/query/blob/v5.0.0-alpha.20/docs/react/community/lukemorales-query-key-factory.md
+# отримано: 2026-09-26
+# версія: 5.0.0-alpha.20, 5.0.0-alpha.19, 5.0.0-alpha.18, 5.0.0-alpha.17, 5.0.0-alpha.16, 5.0.0-alpha.15, 5.0.0-alpha.14, 5.0.0-alpha.13, 5.0.0-alpha.12, 5.0.0-alpha.11, 5.0.0-alpha.10, 5.0.0-alpha.9, 5.0.0-alpha.8, 5.0.0-alpha.7, 5.0.0-alpha.6, 5.0.0-alpha.5, 5.0.0-alpha.4, 5.0.0-alpha.3, 5.0.0-alpha.2, 5.0.0-alpha.1, 5.0.0-alpha.0, 4.29.3, 4.29.2, 4.29.1, 4.29.0, 4.28.1, 4.28.0, 4.27.1, 4.27.0, 4.26.2, 4.26.1, 4.26.0, 4.25.0, 4.24.14, 4.24.13, 4.24.12, 4.24.11, 4.24.10, 4.24.9, 4.24.8, 4.24.7, 4.24.6, 4.24.5, 4.24.4, 4.24.3, 4.24.2, 4.24.1, 4.24.0, 4.23.0, 4.22.4, 4.22.3, 4.22.2, 4.22.1, 4.22.0, 4.21.0, 4.20.10, 4.20.9, 4.20.8
+
+Typesafe query key management with auto-completion features. Focus on writing and invalidating queries without the hassle of remembering how you've set up a key for a specific query!
+
+## Installation
+
+You can install Query Key Factory via NPM.
+
+```bash
+$ npm i @lukemorales/query-key-factory
+# or
+$ pnpm add @lukemorales/query-key-factory
+# or
+$ yarn add @lukemorales/query-key-factory
+```
+
+## Quick start
+
+Start by defining the query keys for your app:
+
+### Declare everything in a single file
+
+```tsx
+import { createQueryKeyStore } from '@lukemorales/query-key-factory'
+
+export const queryKeys = createQueryKeyStore({
+  users: null,
+  todos: {
+    completed: null,
+    search: (query: string, limit = 15) => [query, limit],
+    byId: (todoId: string) => ({ todoId }),
+  },
+})
+```
+
+### Fine-grained declaration by features
+
+```tsx
+import { createQueryKeys, mergeQueryKeys } from '@lukemorales/query-key-factory'
+
+// my-api/users.ts
+export const usersKeys = createQueryKeys('users')
+
+// my-api/todos.ts
+export const todosKeys = createQueryKeys('todos', {
+  completed: null,
+  search: (query: string, limit = 15) => [query, limit],
+  byId: (todoId: string) => ({ todoId }),
+})
+
+// my-api/index.ts
+export const queryKeys = mergeQueryKeys(usersKeys, todosKeys)
+```
+
+Use throughout your codebase as the single source for writing the query keys for your cache management:
+```tsx
+import { queryKeys, completeTodo, fetchSingleTodo } from '../my-api'
+
+export function Todo({ todoId }) {
+  const queryClient = useQueryClient()
+
+  const query = useQuery({ queryKey: queryKeys.todos.byId(todoId), queryFn: fetchSingleTodo })
+
+  const mutation = useMutation({
+    mutationFn: () => completeTodo,
+    onSuccess: () => {
+      // Invalidate and refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.todos.completed })
+    },
+  })
+
+  return (
+    <div>
+      <h1>
+        {query.data?.title}
+      </h1>
+
+      <p>
+        {query.data?.description}
+      </p>
+
+      <button
+        onClick={() => {
+          mutation.mutate({ todoId })
+        }}
+      >
+        Complete Todo
+      </button>
+    </div>
+  )
+}
+```
+
+Check the complete documentation on GitHub.
