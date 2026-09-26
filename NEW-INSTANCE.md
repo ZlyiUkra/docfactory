@@ -112,6 +112,8 @@ Trim `requirements.txt` to what the domain actually needs. `pypdf` belongs there
 | `passage_context` | `true`: vectors and the word index also see the document title and the heading path, not only the excerpt text; for documentation cut into small sections whose text never names its topic. Changing it means rebuilding the vectors | `false` |
 | `fusion_depth` | how many places of each search method the fusion of word search and meaning search sees; a section ranked fifth by words and fourth by meaning drops out of a top five fused from five places each. Measured on `quality` before choosing | `k` of the call |
 | `revision_suffix` | `true`: the trailing `-<8 hex>` (a revision hash) is cut from a document name before identical excerpts are merged. For a reader that writes one document per revision of a file (`ghdocs-history`): without it, an unchanged section of two revisions stays two excerpts. Excerpt ids keep the full name | `false` |
+| `variant_pattern` | a regular expression with one group that names a variant at the start of a document name, e.g. `^docs-(nextjs\|react\|vue)-` for a site that keeps one page per SDK. Variants of the same section take one place in the results instead of several; when the query names a variant, that variant's copy takes the place. Without the field results are exactly as before | none |
+| `variant_aliases` | `{variant: [words]}`: how a query names a variant (`"nextjs": ["next.js"]`); without it, the variant name itself with `-` read as a space | none |
 
 **Ports in use today:** 8760 `ecmascript`, 8761 `react`. Take the next free one.
 
@@ -426,6 +428,8 @@ cd ../..
 | `passage_context` | `true`: вектори й індекс по словах бачать не лише текст уривка, а й назву документа та шлях заголовків; для документації, порізаної на дрібні розділи, чий текст не називає своєї теми. Зміна поля — це перерахунок векторів | `false` |
 | `fusion_depth` | скільки місць кожного способу бачить злиття пошуку по словах і за змістом; розділ, п'ятий по словах і четвертий за змістом, зі злиття по п'ять місць випадає. Вибирається за виміром `quality` | `k` виклику |
 | `revision_suffix` | `true`: суфікс `-<8 знаків хеша>` зрізається з імені документа перед злиттям однакових фрагментів. Для читача, що пише документ на кожну редакцію файла (`ghdocs-history`): без поля незмінний розділ двох редакцій лишається двома фрагментами. Id фрагмента бере повне ім'я | `false` |
+| `variant_pattern` | регулярний вираз з однією групою — ім'я варіанта на початку імені документа, напр. `^docs-(nextjs\|react\|vue)-` для сайту, що тримає сторінку на кожен SDK. Варіанти того самого розділу займають у видачі одне місце замість кількох; якщо запит називає варіант, місце дістається його копії. Без поля видача та сама, що до його появи | немає |
+| `variant_aliases` | `{варіант: [слова]}`: як запит називає варіант (`"nextjs": ["next.js"]`); без поля — саме ім'я варіанта, «-» як пробіл | немає |
 
 **Зайняті порти:** 8760 `ecmascript`, 8761 `react`. Беріть наступний вільний.
 
@@ -739,6 +743,8 @@ você quiser busca por significado.
 | `passage_context` | `true`: os vetores e o índice por palavras veem também o título do documento e o caminho de títulos, não só o texto do trecho; para documentação cortada em seções pequenas cujo texto não nomeia o tema. Mudar o campo exige recalcular os vetores | `false` |
 | `fusion_depth` | quantas posições de cada método a fusão da busca por palavras e por significado vê; uma seção quinta por palavras e quarta por significado cai fora de um top cinco fundido de cinco posições cada. Escolhido medindo com `quality` | `k` da chamada |
 | `revision_suffix` | `true`: o sufixo `-<8 hex>` (hash da revisão) é cortado do nome do documento antes de fundir trechos idênticos. Para um leitor que grava um documento por revisão de arquivo (`ghdocs-history`): sem ele, uma seção inalterada de duas revisões fica como dois trechos. O id do trecho usa o nome completo | `false` |
+| `variant_pattern` | uma expressão regular com um grupo que nomeia a variante no início do nome do documento, p. ex. `^docs-(nextjs\|react\|vue)-` para um site com uma página por SDK. Variantes da mesma seção ocupam um lugar nos resultados em vez de vários; quando a consulta nomeia uma variante, a cópia dela ocupa o lugar. Sem o campo os resultados são exatamente como antes | nenhum |
+| `variant_aliases` | `{variante: [palavras]}`: como a consulta nomeia uma variante (`"nextjs": ["next.js"]`); sem ele, o próprio nome da variante com `-` lido como espaço | nenhum |
 
 **Portas já usadas:** 8760 `ecmascript`, 8761 `react`. Pegue a próxima livre.
 

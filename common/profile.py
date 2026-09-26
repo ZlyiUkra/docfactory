@@ -46,6 +46,12 @@ EXAMPLE_LABEL = _CONF.get("example_label") or ""
 # k=3, а від 12 злиття вже губить розділ, перший в одному зі способів, — його
 # перемагають сторінки, що є в обох списках хоч і далеко.
 FUSION_DEPTH = int(_CONF.get("fusion_depth") or 0)
+# Варіанти тієї самої сторінки для різних SDK (clerk: /docs/nextjs/…, /docs/vue/…).
+# Вираз з однією групою — ім'я варіанта на початку імені документа; без поля
+# варіантів немає, і видача та сама, що до його появи. Синоніми — як варіант
+# називають у запиті («next.js» для nextjs); без них — саме ім'я, «-» як пробіл.
+VARIANT_PATTERN = _CONF.get("variant_pattern") or ""
+VARIANT_ALIASES = _CONF.get("variant_aliases") or {}
 
 
 def text(name: str) -> str:

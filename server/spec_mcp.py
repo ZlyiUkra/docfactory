@@ -404,7 +404,49 @@ def _rrf(rankings: list[list[Passage]], k: int, const: int = 60) -> list[Passage
 DEPTH = 6
 
 
-def _dedup(passages: list[Passage], k: int) -> list[Passage]:
+# Варіанти тієї самої сторінки для різних SDK — поле variant_pattern у config.json.
+# У clerk сторінка Core 3 лежить у 10–12 варіантах (/docs/nextjs/…, /docs/astro/…),
+# що різняться лише кодом; оцінки в них майже однакові, і п'ять місць видачі
+# займала одна сторінка, а правильний SDK з них ще й випадав. Без поля _VARIANT —
+# None, ключ розділу той самий, що й був, і видача не змінюється ні на місце.
+_VARIANT = re.compile(profile.VARIANT_PATTERN) if profile.VARIANT_PATTERN else None
+
+
+def _page_key(p: Passage) -> tuple[str, int]:
+    """Ключ згортання: розділ разом із номером частини, а ім'я варіанта в ньому
+    заміняється «*». Саме заміняється, а не вирізається: інакше
+    docs-astro-reference-hooks-use-auth збігся б із reference-hooks-use-auth —
+    сторінкою іншої лінії, яка мусить лишитися у видачі окремо."""
+    m = _VARIANT.match(p.anchor) if _VARIANT else None
+    if not m:
+        return p.anchor, p.part
+    return p.anchor[:m.start(1)] + "*" + p.anchor[m.end(1):], p.part
+
+
+# Сторінка → {варіант: фрагмент}: щоб на запит, що називає SDK, віддати саме його
+# варіант, навіть якщо пошук приніс інший.
+_TWINS: dict[tuple[str, int], dict[str, Passage]] = {}
+if _VARIANT:
+    for _p in _INDEX.passages:
+        _m = _VARIANT.match(_p.anchor)
+        if _m:
+            _TWINS.setdefault(_page_key(_p), {}).setdefault(_m.group(1), _p)
+_ALIASES = sorted(
+    ((a.lower(), name) for name in {v for twins in _TWINS.values() for v in twins}
+     for a in (profile.VARIANT_ALIASES.get(name) or [name.replace("-", " ")])),
+    key=lambda pair: -len(pair[0]))
+
+
+def _wanted_variant(query: str) -> str:
+    """Варіант, який називає запит («…in Next.js» → nextjs), або порожньо. Довша назва
+    перемагає: «React Router» — це react-router, а не react."""
+    if not _ALIASES:
+        return ""
+    q = " " + re.sub(r"\.(?=\s|$)", "", re.sub(r"[^a-z0-9.]+", " ", query.lower())) + " "
+    return next((name for alias, name in _ALIASES if f" {alias} " in q), "")
+
+
+def _dedup(passages: list[Passage], k: int, query: str = "") -> list[Passage]:
     """Одне місце у видачі — один розділ.
 
     Документація сусідніх версій описує той самий розділ майже однаково. Дослівні
@@ -414,14 +456,19 @@ def _dedup(passages: list[Passage], k: int) -> list[Passage]:
     рангом; решта поступається місцем іншим розділам.
 
     Ключ — розділ разом із номером частини: частини довгого розділу несуть різний
-    текст, і згортати їх в одну не можна.
+    текст, і згортати їх в одну не можна. З variant_pattern варіанти однієї
+    сторінки для різних SDK — теж один розділ, і якщо запит називає SDK, місце
+    дістається його варіантові.
     """
+    want = _wanted_variant(query)
     seen, out = set(), []
     for p in passages:
-        key = (p.anchor, p.part)
+        key = _page_key(p)
         if key in seen:
             continue
         seen.add(key)
+        if want:
+            p = _TWINS.get(key, {}).get(want, p)
         out.append(p)
         if len(out) == k:
             break
@@ -445,7 +492,7 @@ def _find(query: str, k: int, keep=None) -> tuple[list[Passage], str]:
     це важливо, задає глибину сам; решта дістає рівно ту видачу, що й раніше."""
     fuse = profile.FUSION_DEPTH or k
     deep = max(k * DEPTH, fuse)
-    words = _dedup(_INDEX.retrieve(query, deep, keep), fuse)
+    words = _dedup(_INDEX.retrieve(query, deep, keep), fuse, query)
     if not _VECTORS_READY:
         return words[:k], "words"
     try:
@@ -455,14 +502,14 @@ def _find(query: str, k: int, keep=None) -> tuple[list[Passage], str]:
         meaning = [_BY_ID[h["uid"]] for h in hits if h.get("uid") in _BY_ID]
         if keep is not None:
             meaning = [p for p in meaning if keep(p)]
-        meaning = _dedup(meaning, fuse)
+        meaning = _dedup(meaning, fuse, query)
     except Exception as exc:                      # noqa: BLE001 - причина в stderr
         print(f"spec_mcp: пошук за змістом не відповів ({exc}); "
               f"віддаю знайдене по словах", file=sys.stderr)
         return words[:k], "words"
     if not meaning:
         return words[:k], "words"
-    return _dedup(_rrf([words, meaning], k * 2), k), "meaning+words"
+    return _dedup(_rrf([words, meaning], k * 2), k, query), "meaning+words"
 
 
 def _search(query: str, k: int, version: str | None = None) -> dict:

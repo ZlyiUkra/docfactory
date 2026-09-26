@@ -123,7 +123,7 @@ def main(argv: list[str]) -> int:
     for query, wants in CASES:
         deep = max(K * spec_mcp.DEPTH, fuse)
         t0 = time.perf_counter()
-        words = spec_mcp._dedup(spec_mcp._INDEX.retrieve(query, deep), fuse)
+        words = spec_mcp._dedup(spec_mcp._INDEX.retrieve(query, deep), fuse, query)
         t_words += time.perf_counter() - t0
         found = {"по словах": words[:K]}
 
@@ -132,9 +132,11 @@ def main(argv: list[str]) -> int:
             hits = vectorstore.search(embed.embed_query(query), deep)
             t_meaning += time.perf_counter() - t0
             meaning = spec_mcp._dedup([spec_mcp._BY_ID[h["uid"]] for h in hits
-                                       if h.get("uid") in spec_mcp._BY_ID], fuse)
+                                       if h.get("uid") in spec_mcp._BY_ID], fuse,
+                                      query)
             found["за змістом"] = meaning[:K]
-            found["разом"] = spec_mcp._dedup(spec_mcp._rrf([words, meaning], K * 2), K)
+            found["разом"] = spec_mcp._dedup(spec_mcp._rrf([words, meaning], K * 2), K,
+                                             query)
 
         marks = []
         for way in ways:
