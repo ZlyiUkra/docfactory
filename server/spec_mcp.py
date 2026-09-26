@@ -498,6 +498,48 @@ def _dedup(passages: list[Passage], k: int, query: str = "") -> list[Passage]:
     return out
 
 
+# Розділи за назвою — поле title_match у config.json. У специфікації заголовок —
+# це ім'я (Object.prototype.toString, IsLooselyEqual), але слова object, prototype,
+# tostring є в сотнях розділів, і на запит з точним ім'ям пошук приносив
+# Array.prototype.toString чи RegExp. Беруться лише імена, схожі на ідентифікатор
+# (з крапкою, [[…]] чи верблюжим регістром): звичайні слова заголовків («Array»,
+# «Tagged Templates») трапляються в побутових запитах і ставили б розділ першим
+# там, де його не шукали.
+TITLE_PIN = 3
+_TITLES: dict[str, list[Passage]] = {}
+if profile.TITLE_MATCH:
+    for _p in _INDEX.passages:
+        if _p.part != 1:
+            continue
+        _name = re.sub(r"^\S*\d\S*\s+", "", _p.heading).split(" (")[0].strip()
+        if (re.fullmatch(r"[\w.%@\[\]]+", _name)
+                and ("." in _name or "[[" in _name or re.search(r"[a-z][A-Z]", _name))):
+            _TITLES.setdefault(_name, []).append(_p)
+
+
+def _titled(query: str, keep=None) -> list[Passage]:
+    """Розділи, чию назву запит містить дослівно, з урахуванням регістру й меж імені:
+    «Object.prototype.toString» не збігається з «toString». Якщо таких розділів
+    більше за TITLE_PIN ([[Get]] є в кожного екзотичного об'єкта), лишаються
+    найвищі по словах."""
+    if not _TITLES:
+        return []
+    found = [p for name, ps in _TITLES.items() if name in query
+             and re.search(rf"(?<![\w.]){re.escape(name)}(?![\w.])", query)
+             for p in ps if keep is None or keep(p)]
+    if len(found) > TITLE_PIN:
+        ids = {id(p) for p in found}
+        found = [p for _, p in _INDEX.scores(query, TITLE_PIN, lambda p: id(p) in ids)]
+    return found
+
+
+def _pin(query: str, hits: list[Passage], k: int, keep=None) -> list[Passage]:
+    """Розділи з назвою із запиту — першими, решта місць — як дав пошук. Без поля
+    title_match повертає `hits` як є."""
+    first = _titled(query, keep)
+    return _dedup(first + hits, k, query) if first else hits
+
+
 def _find(query: str, k: int, keep=None) -> tuple[list[Passage], str]:
     """Пошук по словах, а якщо готовий — разом із пошуком за змістом.
 
@@ -514,6 +556,12 @@ def _find(query: str, k: int, keep=None) -> tuple[list[Passage], str]:
     злиття по п'ять місць випадає, хоч обидва способи його знайшли. Примірник, якому
     це важливо, задає глибину сам; решта дістає рівно ту видачу, що й раніше."""
     keep = _only_wanted(query, keep)
+    hits, how = _find_ranked(query, k, keep)
+    return _pin(query, hits, k, keep), how
+
+
+def _find_ranked(query: str, k: int, keep) -> tuple[list[Passage], str]:
+    """Сам пошук для _find, без розділів за назвою."""
     fuse = profile.FUSION_DEPTH or k
     deep = max(k * DEPTH, fuse)
     words = _dedup(_INDEX.retrieve(query, deep, keep), fuse, query)

@@ -127,7 +127,7 @@ def main(argv: list[str]) -> int:
         keep = spec_mcp._only_wanted(query)
         words = spec_mcp._dedup(spec_mcp._INDEX.retrieve(query, deep, keep), fuse, query)
         t_words += time.perf_counter() - t0
-        found = {"по словах": words[:K]}
+        found = {"по словах": spec_mcp._pin(query, words[:K], K, keep)}
 
         if ready:
             t0 = time.perf_counter()
@@ -139,9 +139,12 @@ def main(argv: list[str]) -> int:
             if keep is not None:
                 meaning = [p for p in meaning if keep(p)]
             meaning = spec_mcp._dedup(meaning, fuse, query)
-            found["за змістом"] = meaning[:K]
-            found["разом"] = spec_mcp._dedup(spec_mcp._rrf([words, meaning], K * 2), K,
-                                             query)
+            # Розділи за назвою (title_match) ставляться поверх кожного способу, як
+            # у spec_mcp._find; без поля _pin повертає видачу як є.
+            found["за змістом"] = spec_mcp._pin(query, meaning[:K], K, keep)
+            found["разом"] = spec_mcp._pin(
+                query, spec_mcp._dedup(spec_mcp._rrf([words, meaning], K * 2), K, query),
+                K, keep)
 
         marks = []
         for way in ways:
