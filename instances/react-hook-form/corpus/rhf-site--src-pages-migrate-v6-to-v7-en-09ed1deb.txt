@@ -1,0 +1,173 @@
+# pages/migrate-v6-to-v7.en
+# джерело: https://github.com/react-hook-form/documentation/blob/b7c5b108540cf1783089f40b1a3e91a31929d74e/src/pages/migrate-v6-to-v7.en.tsx
+# отримано: 2026-09-26
+# версія: 7.12.1-next.0, 7.12.0, 7.11.2-beta.0, 7.11.1
+
+Migrate From V6 to V7
+
+## Migration Guide
+
+V6 to V7
+
+Hi there,
+
+React Hook Form focus on the following aspect on Version 7:
+
+- (DX) Strict typed form
+
+- Reduce package size
+
+- Performance enhancements
+
+- improve API's simplicity and consistency
+
+Here are the changes that you would need to adjust. We sincerely hope those changes aren't creating too much trouble for your codebase. If you are wondering some of the rationals behind and discussion that we had among the community, you can take a look at this RFC for more details.
+
+❤️ React hook Form Team
+
+## Upgrade Packages
+
+Important: if you are using TypeScript, react hook form will need to have TS 4.1 above.
+
+## register:
+
+`register` method is no longer occurred at `ref`, instead invoke the function itself and spread the props into the input. The function itself will return the following props: `onChange`, `onBlur`, `name` and `ref`.
+
+Important: input value and reference will no longer get removed after unmount unless `shouldUnregister` is true.
+
+```
+- <input ref={register({ required: true })} name="test" />
++ <input {...register('test', { required: true })} />
+```
+
+You can use this codemod library to speed up the process: https://github.com/react-hook-form/codemod by running the following command:
+
+On top of that, for better type support, we have removed bracket syntax and replaced with dot syntax.
+
+### Custom register
+
+You will no longer need the name attribute for custom register, you can supply the name of the input straight way.
+
+### ValueAs
+
+`valueAs` will be invoked before `validate` function.
+
+```
+- <input ref={register({ valueAsNumber: true, validate: (value) => parseInt(value) === 2 ) })} name="test" />
++ <input {...register('test', { valueAsNumber: true, validate: (value) => value === 2 ) }} /> // no longer need to parse again
+```
+
+### Missing `ref`
+
+`register` works for any uncontrolled inputs , however, there are components which expose `ref` name differently.
+
+```
+const { ref, ...rest } = register('test') // invoke this before render
+
+<Input {...rest} inputRef={ref} />
+```
+
+## Controller:
+
+We made some change to align consistently with `useController`'s API.
+
+- `as` prop has been removed, and we will consistently be using `render` prop in v7.
+
+- `render` prop will return an object which contains `field` and `fieldState`.
+
+```
+- <Controller as={<input />} />
++ <Controller render={({ field }) => <input {...field} />}
+
+- <Controller render={(props, meta) => <input {...props} />} />
++ <Controller render={({ field, fieldState }) => <input {...field} />} />
+```
+
+### ValueAs
+
+The Controller component `rules` prop no longer supports `setValueAs` or `valueAs*` for `useController`. Do these value transformations in your controlled component.
+
+## reset:
+
+In V7, we made some changes in our API to keep them more consistent and declarative. `Reset`'s second option is the exact reason.
+
+## errors:
+
+`errors` object has been moved into formState object. This will info hook form that `errors` object is been subscribed.
+
+You can use this codemod library to speed up the process: https://github.com/react-hook-form/codemod by running the following command:
+
+## watch:
+
+watch an array of inputs will return `array` instead `object`
+
+## trigger:
+
+Manually triggers form or input validation. This method is also useful when you have depedant validation as react hook form
+
+## setError:
+
+We have fixed the `setError` function to be consistent with the rest of the APIs.
+
+## touched:
+
+Renamed `touched` to `touchedFields`.
+
+## resolver:
+
+We made some huge improvement on resolver, and the third argument now need to host more value than just a single boolean.
+
+```
+- resolver: (values: any, context?: object) => Promise<ResolverResult> | ResolverResult
++ resolver: (
++    values: any,
++    context?: object,
++    options: {
++       criteriaMode?: 'firstError' | 'all',
++       names?: string[],
++       fields: { [name]: field } // Support nested field
++    }
++  ) => Promise<ResolverResult> | ResolverResult
+```
+
+## useFieldArray:
+
+We are offering better focus management in `useFieldArray`, so if you want to disable the focus behaviour, you will have to adjust the option as well.
+
+`useFieldArray` no longer need to supply with a generic, formValues type will inherited from `useForm`.
+
+```
+- useFieldArray<FieldArrayValues>();
++ useFieldArray();
+```
+
+Input name will be strictly type checked with as const.
+
+## useTypedController:
+
+This component is getting deprecated, use `useController` instead.
+
+```
+- <TypedController
+-   as="textarea"
+-   name={['nested', 'object', 'test']}
+-   defaultValue=""
+-   rules={{ required: true }}
+- />
++ <Controller
++   name={'nested.object.test'}
++   defaultValue=""
++   rules={{ required: true }}
++   render={({ field }) => <textarea {...field} />}
++ />);
+```
+
+## Types:
+
+We have made quite a few rename on the type for a better name and consistency. please refer to the TS page for the updated type names.
+
+## shouldUnregister:
+
+In V7, the new default for the `useForm` option: `shouldUnregister` is false. Previously it was defaulted to true.
+
+Important: input value and reference will no longer get removed after unmount unless `shouldUnregister` is true.

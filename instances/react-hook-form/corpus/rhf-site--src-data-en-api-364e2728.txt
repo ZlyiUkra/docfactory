@@ -1,0 +1,789 @@
+# API Documentation (data/en/api)
+# джерело: https://github.com/react-hook-form/documentation/blob/a11cd1f3627e577ddf10dd40b72ab3e88120d6cb/src/data/en/api.tsx
+# отримано: 2026-09-26
+# версія: 7.22.0
+
+API Documentation
+
+## header
+
+focuses on providing the best DX by simplifying the API.
+
+## useForm
+
+useForm
+By invoking `useForm`, you will receive the following methods :
+`useForm` is custom hook for managing forms with ease. It takes optional arguments. The following example demonstrates all of the arguments along with their default values.
+
+- When set to `firstError` (default), only the first error from each field will be gathered.
+
+- When set to `all`, all errors from each field will be gathered.
+
+This context `object` is mutable and will be injected into the `resolver`'s second argument or Yup validation's context object.
+Validation will trigger on the `submit` event and invalid inputs will attach `onChange` event listeners to re-validate them. Validation will trigger on the `blur` event. Validation will trigger on the `change` event with each input, and lead to multiple re-renders. Warning: this often comes with a significant impact on performance. Validation will trigger on the `blur` and `change` events.
+Validation will trigger on the first `blur` event. After that, it will trigger on every `change` event.
+
+Note: when using with `Controller`, make sure to wire up `onBlur` with the `render` prop.
+
+The `defaultValues` for inputs are used as the initial value when a component is first rendered, before a user interacts with it. It is encouraged that you set `defaultValues` for all inputs to non- `undefined` values such as the empty `string` or `null`.
+
+You can set an input's default value with `defaultValue/defaultChecked` (read more from the React doc for Default Values) . You can pass `defaultValues` as an optional argument to `useForm()` to populate the default values for the entire form, or set values on an individual Controller component via its `defaultValue` property. If both `defaultValue` and `defaultValues` are set, the value from `defaultValues` will be used.
+
+## Rules
+
+- `defaultValues` are cached on the first render within the custom hook. If you want to reset the `defaultValues`, you should use the reset api.
+
+- `defaultValues` will be injected into watch, useWatch, Controller and useController's `defaultValue`.
+
+- `defaultValues` will be included in the submission result by default, if this is not the desired behavior use `shouldUnregister: true` instead which means input values will host within all the fields.
+
+- Avoid including custom object into the `defaultValues`. eg: `moment`, `luxon` as those will lead to unexpected result during internal object clone process.
+
+- It's not default state for the form, to include additional form values. To do so: - Register hidden inputs. For example: `<input type="hidden" {...register('test')} />` - Combine values via the onSubmit callback. - Register an input with a value. For example: `register('test', { value: 'test' })`
+
+This option allows you to configure validation strategy when inputs with errors get re-validated after user submit the form ( `onSubmit` event). By default, validation is triggered during the input change event.
+
+Providing an array of fields means only included fields will be validated. This option is useful when you want to toggle which fields are required to validate.
+
+When set to true (default) and the user submits a form that fails the validation, it will set focus on the first field with an error.
+
+Note: only registered fields with a `ref` will work. Custom registered inputs do not apply. For example: `register('test') // doesn't work`
+
+Note: the focus order is based on the `register` order.
+
+By default, an input value will be retained when input is removed. However, you can set `shouldUnregister` to `true` to `unregister` input during unmount.
+
+- This is a global config that overwrites child-level config, if you want to have individual behavior, then you should set the config at the component or hook level, not at `useForm`.
+
+- By default `shouldUnregister: false`: unmounted fields will not be validated by build-in validation.
+
+- By setting `shouldUnregister` to true at `useForm` level, `defaultValues` will not be merged against submission result.
+
+- set `shouldUnregister: true` will set your form behave more closer as native.
+
+Form values will be lived inside your inputs itself.
+
+- input unmount will remove value.
+
+- input hidden should applied for hidden data.
+
+- only registered input will be included as submission data.
+
+- unmounted input will need to notify at either `useForm`, or `useWatch`'s `useEffect` for hook form to verify input is unmounted from the DOM.
+
+```
+const NotWork = () => {
+  const [show, setShow] = React.useState(false);
+  // ❌ won't get notified, need to invoke unregister
+  return {show && <input {...register('test')} />}
+}
+
+const Work = () => {
+  const { show } = useWatch()
+  // ✅ get notified at useEffect
+  return {show && <input {...register('test1')} />}
+}
+
+const App = () => {
+  const [show, setShow] = React.useState(false);
+  const { control } = useForm({ shouldUnregister: true });
+  return (
+    <div>
+      // ✅ get notified at useForm's useEffect
+      {show && <input {...register('test2')} />}
+      <NotWork />
+      <Work control={control} />
+    </div>
+  )
+}
+```
+
+This config will delay the error state to be displayed to the end-user in milliseconds. Correct the error input will remove the error instantly and delay will not be applied.
+
+## unregister
+
+unregister
+
+This method allows you to `unregister` a single input or an array of inputs. It also provides a second optional argument to keep state after unregistering an input.
+
+## Rules
+
+- This method will remove input reference and its value which means build-in validation rules will be removed as well.
+
+- By `unregister` an input, it will not affect or unregister your schema validation.
+
+- Make sure you unmount that input which has `register` callback or else the input will get registered again.
+
+```
+const [show, setShow] = React.useState(true)
+
+const onClick = () => {
+  unregister('test');
+  setShow(false); // make sure to unmount that input so register not invoked again.
+}
+
+{show && <input {...register('test')} />}
+```
+
+## Props
+
+The example below shows what to expect when you invoke the `unregister` method.
+
+```
+<input {...register('yourDetails.firstName')} />
+<input {...register('yourDetails.lastName')} />
+```
+
+The example below shows what to expect when you invoke the `unregister` method.
+
+Type | Input Name | Example
+
+`string // as key name` | `unregister("yourDetails")` | `{}`
+
+`string` | `unregister("yourDetails.firstName")` | `{ lastName: '' }`
+
+`string[]` | `unregister(["yourDetails.lastName"])` | `''`
+
+## register
+
+register
+
+This method allows you to register an input or select element and apply validation rules to React Hook Form. Validation rules are all based on the HTML standard and also allow for custom validation methods.
+
+By invoking the register function and supplying an input's name, you will receive the following methods:
+
+`onChange` | `ChangeHandler` | `onChange` prop to subscribe the input change event.
+
+`onBlur` | `ChangeHandler` | `onBlur` prop to subscribe the input blur event.
+
+`ref` | `React.Ref<any>` | Input reference for hook form to register.
+
+`name` | `string` | Input's name being registered.
+
+## Rules
+
+- `name` is required and unique (except native radio and checkbox). Input name supports both dot and bracket syntax, which allows you to easily create nested form fields.
+
+- `name` can neither start with a number nor use number as key name.
+
+- we are using dot syntax only for typescript usage consistency, so bracket `[]` will not work for array form value.
+
+- `disabled` input will result in an `undefined` form value. If you want to prevent users from updating the input, you can use `readOnly` or disable the entire . Here is an example .
+
+- To produce an array of fields, input names should be followed by a dot and number. For example: `test.0.data`
+
+- Changing the name on each render will result in new inputs being registered. It's recommend to keep static names for each registered input.
+
+- Input value and reference will no longer gets removed based on unmount. You can invoke unregister to remove that value and reference.
+
+By selecting the register option, the API table below will get updated.
+
+### options
+
+Register Options
+
+Register with validation
+
+Register with validation and error message
+
+## Tips
+
+#### Custom Register
+
+You can also `register` inputs with `useEffect` and treat them as virtual inputs. For controlled components, we provide a custom hook useController and Controller component to take care this process for you.
+
+If you choose to manually register fields, you will need to update the input value with setValue.
+
+```
+register('firstName', { required: true, min: 8 });
+
+const { onChange } = register('lastChange'); // this onChange method can update the input value
+
+// This will work for React Native, except you can't reset input value
+<TextInput onTextChange={onChange} />
+```
+
+#### Custom onChange, onBlur
+
+When you want to combine with your `onChange`, onBlur, you can achieve by the following:
+
+```
+// onChange got overwritten by register's onChange method
+<input onChange={handleChange} {...register('test')} />
+
+// register's onChange got overwritten by given onChange props (handleChange)
+<input {...register('test')} onChange={handleChange}/>
+
+const firstName = register('firstName', { required: true })
+<input
+  onChange={(e) => {
+    firstName.onChange(e); // method from hook form register
+    handleChange(e); // your method
+  }}
+  onBlur={firstName.onBlur}
+  ref={firstName.ref}
+/>
+```
+
+#### How to work with innerRef, inputRef?
+
+When the custom input component didn't expose ref correctly, you can get it working via the following.
+
+```
+// not working, because ref is not assigned
+<TextInput {...register('test')} />
+
+const firstName = register('firstName', { required: true })
+<TextInput
+  onChange={firstName.onChange}
+  onBlur={firstName.onBlur}
+  inputRef={firstName.ref} // you can achieve the same for different ref name such as innerRef
+/>
+
+// correct way to forward input's ref
+const Select = React.forwardRef(({ onChange, onBlur, name, label }, ref) => (
+  <select name={name} ref={ref} onChange={onChange} onBlur={onBlur}>
+    <option value="20">20</option>
+    <option value="30">30</option>
+  </select>
+));
+```
+
+### validation
+
+A Boolean which, if true, indicates that the input must have a value before the form can be submitted. You can assign a string to return an error message in the `errors` object.
+
+Note: This config aligns with web constrained API for required input validation, for `object` or `array` type of input use `validate` function instead.
+
+The maximum length of the value to accept for this input.
+
+The minimum length of the value to accept for this input.
+
+The maximum value to accept for this input.
+
+The minimum value to accept for this input.
+
+The regex pattern for the input.
+
+Note: A RegExp object with the /g flag keeps track of the lastIndex where a match occurred.
+
+You can pass a callback function as the argument to validate, or you can pass an object of callback functions to validate all of them.
+
+Note: for `object` or `array` input data, it's recommend to use the `validate` function for validation as the other rules mostly apply to `string`, `string[]`, `number` and `boolean` data type.
+
+## formState
+
+formState
+
+This object contains information about the form state. If you want to subscribe to `formState` via `useEffect`, make sure that you place the entire `formState` in the optional array.
+
+## Rules
+
+`formState` is wrapped with a Proxy to improve render performance and skip extra logic if specific state is not subscribed to. Therefore make sure you invoke or read it before a `render` in order to enable the state update.
+
+```
+// ❌ formState.isValid is accessed conditionally,
+// so the Proxy does not subscribe to changes of that state
+return <button disabled={!formState.isDirty || !formState.isValid} />;
+
+// ✅ read all formState values to subscribe to changes
+const { isDirty, isValid } = formState;
+return <button disabled={!isDirty || !isValid} />;
+```
+
+Indicate the form was successfully submitted without any `Promise` rejection or `Error` been threw within the `handleSubmit` callback.
+
+Set to `true` after the user modifies any of the inputs.
+
+- Make sure to provide all inputs' defaultValues at the useForm, so hook form can have a single source of truth to compare whether the form is dirty.
+
+- File typed input will need to be managed at the app level due to the ability to cancel file selection and FileList object.
+
+- Native inputs will return `string` type by default.
+
+- `isDirty` state will be affected with actions from `useFieldArray`. For example below:
+
+Set to `true` after the form is submitted. Will remain `true` until the `reset` method is invoked.
+An object with the user-modified fields. Make sure to provide all inputs' defaultValues via useForm, so the library can compare against the `defaultValues`.
+
+An object containing all the inputs the user has interacted with.
+`true` if the form is currently being submitted. `false` if otherwise.
+Number of times the form was submitted.
+Set to `true` if the form doesn't have any errors. Set to `true` during validation.
+
+## errors
+
+errors
+
+Object containing form errors and error messages corresponding to each field.
+
+This is useful when you want to return all validation errors for a single input. For instance, a password field that is required to have a minimum length and contain a special character.
+
+Note: You need to set `criteriaMode` to `'all'` for this option to work.
+
+Important: Avoid using error object key names to avoid data overwrite.
+eg:
+```
+register('user'); register('user.type');
+             ❌
+             // error's type will get overwritten.
+```
+
+Note: You can use the ErrorMessage component to help display your error states
+
+## watch
+
+watch
+
+This will watch specified inputs and return their values. It is useful for determining what to render.
+
+## Rules
+
+- When `defaultValue` is not defined, the first render of `watch` will return `undefined` because it is called before `register`, but you can set the `defaultValue` as the second argument or provide `defaultValues` via `useForm` to avoid this behaviour.
+
+- If `defaultValues` was initialised in `useForm` as an argument, then the first render will return what's provided in `defaultValues`.
+
+- when both `defaultValue` and `defaultValues` are supplied, `defaultValue` will be returned instead for the first execution before render.
+
+- After the first render, default values will be shallowly merged with the current form values from the inputs.
+
+- This API will trigger re-render at the root of your app or form, consider using a callback or the useWatch api if you are experiencing performance issues.
+
+- `watch` result is optimised for render phase instead of `useEffect`'s deps, to detect value update you may want to use an external custom hook for value comparison.
+
+### tableTitle
+
+Watch input value by name (similar to lodash get function)
+Watch multiple inputs
+
+Watch all inputs
+
+Watch all inputs and invoke a callback
+
+## handleSubmit
+
+handleSubmit
+
+This function will receive the form data if form validation is successful.
+
+## Rules
+
+- You can easily submit form asynchronously with handleSubmit.
+
+- `disabled` inputs will appear as `undefined` values in form values. If you want to prevent users from updating an input and wish to retain the form value, you can use `readOnly` or disable the entire . Here is an example .
+
+- During the callback, if the function itself throws an error inside of `handleSubmit`, it will not swallow the error itself but bubble it up instead and `isSubmitSuccessful` will be remained as `false`.
+
+## Props
+
+Name | Type | Description
+
+SubmitHandler | `(data: Object, e?: Event) => void` | A successful callback.
+
+SubmitErrorHandler | `(errors: Object, e?: Event) => void` | An error callback.
+
+## reset
+
+reset
+
+Reset either the entire form state or part of the form state.
+
+## Rules
+
+- For controlled components like `React-Select` which do not expose a `ref` prop, you will have to reset the input value manually with setValue or connect your component via useController or Controller.
+
+- You will need to pass `defaultValues` to `useForm` in order to `reset` the `Controller` components' value.
+
+- When you are subscribed to `formState`, it's important to decouple `reset` with `handleSubmit`. Both will update `formState` and `handleSubmit` is async by default. You can check out a working example below:
+
+- When invoking `reset({ value })` without supplying `defaultValues` via `useForm`, the library will replace `defaultValues` with a shallow clone `value` object which you provide (not deepClone) .
+
+- It's recommended to not invoke `reset` inside `onReset` or `onSubmit` callback. - We can't set value for native input during `onReset` event. - Because onSubmit callback is async and includes its validation when `reset` inside the callback it will intercept the result of formState update. This will be problematic when you subscribed to the formState.
+
+## Props
+
+`Reset` has the ability to retain formState. Here are the options you may use:
+
+`values` | `object` | An optional object to reset form values.
+
+`keepErrors` | `boolean` | All errors will remain. This will not guarantee with further user actions.
+
+`keepDirty` | `boolean` | `DirtyFields` form state will remain, and `isDirty` will temporarily remain as the current state until further user's action. Important: this keep option doesn't reflect form input values but only dirty fields form state.
+
+`keepValues` | `boolean` | Form input values will be unchanged.
+
+`keepDefaultValues` | `boolean` | Keep the same defaultValues which are initialised via `useForm`. - `isDirty` will be checked again provided valued against the original `defaultValues`. - `dirtyFields` will be updated again provided valued limited to the root level against the original `defaultValues`.
+
+`keepIsSubmitted` | `boolean` | `isSubmitted` state will be unchanged.
+
+`keepTouched` | `boolean` | `isTouched` state will be unchanged.
+
+`keepIsValid` | `boolean` | `isValid` will temporarily persist as the current state until additional user actions.
+
+`keepSubmitCount` | `boolean` | `submitCount` state will be unchanged.
+
+## setError
+
+setError
+
+The function allows you to manually set one or more errors.
+
+## Rules
+
+- This method will not persist the associated input error if the input passes validation.
+
+- An error that is not associated with an input field will be persisted until cleared with `clearErrors`.
+
+- Can be useful in the `handleSubmit` method when you want to give error feedback to a user after async validation. (ex: API returns validation errors)
+
+- `shouldFocus` doesn't work when an input has been disabled.
+
+## Props
+
+Name | Type | Description
+
+`name` | `string` | input's name.
+
+`error` | `{ type: string, message?: string, types: MultipleFieldErrors }` | Set an error with its type and message.
+
+config | `{ shouldFocus?: boolean }` | Should focus the input during setting an error. This only works when the input's reference is registered, it will not work for custom register as well.
+
+## clearError
+
+clearErrors
+
+This function can manually clear errors in the form.
+
+## Rules
+
+- This will not affect the validation rules attached to each inputs.
+
+- This function will update the following `formState`, note this has no effect on your validation rules, it only temporarily marks your errors as an empty object and set form to valid. - set `isValid` to true - set `errors` to empty object
+
+## Props
+
+Type | Description | Example
+
+`undefined` | Remove all errors. | `clearErrors()`
+
+`string` | Remove single error. | `clearErrors("yourDetails.firstName")`
+
+`string[]` | Remove multiple errors. | `clearErrors(["yourDetails.lastName"])`
+
+- `undefined`: reset all errors
+
+- `string`: reset the error on a single field or by key name.
+
+- `string[]`: reset errors on the given fields
+
+## setValue
+
+setValue
+
+This function allows you to dynamically set the value of a `registered` field. At the same time, it tries to avoid unnecessary rerender.
+
+## Rules
+
+- Only the following conditions will trigger a re-render: - When an error is triggered by a value update - When an error is corrected by a value update - When setValue is invoked for the first time and `formState.isDirty` is set to true
+
+- You can also set the `shouldValidate` parameter to `true` in order to trigger a field validation.
+
+- You can also set the `shouldDirty` parameter to `true` in order to set field to dirty.
+
+- It's recommended to target the field's name rather than make the second argument a nested object.
+
+- It's recommended to register the input's name before invoking `setValue`. However, the following usages are still permitted. To update the entire Field Array, make sure the `useFieldArray` hook is being executed.
+
+## Props
+
+Name | Type | Description
+
+`name` | `string` | - Target a single input by its name. - Target a field array name. Note it will update both the `fields` object and the entire field array's internal state.
+
+`value` | `unknown` | The value for the field. Make sure you supply the entire array when you update `useFieldArray` and value can't be `undefined`.
+
+`config` | `shouldValidate` | `boolean` | - Whether to compute if your input is valid or not (subscribed to `errors` ). - Whether to compute if your entire form is valid or not (subscribed to `isValid` ).
+
+`shouldDirty` | `boolean` | - Whether to compute if your input is dirty or not against your defaultValues (subscribed to `dirtyFields` ). - Whether to compute if your entire form is dirty or not against your defaultValues (subscribed to `isDirty` ).
+
+`shouldTouch` | `boolean` | Whether to set the input itself to be touched.
+
+## getValues
+
+getValues
+
+An optimized helper for reading form values. The difference between `watch` and `getValues` is that `getValues` will not trigger re-renders or subscribe to input changes.
+
+```
+<input {...register('yourDetails.firstName')} />
+<input {...register('yourDetails.lastName')} />
+```
+
+The example below shows what to expect when you invoke `getValues` method.
+
+Input Name | Example
+
+`getValues("yourDetails")` | `{ firstName: '', lastName: '' }`
+
+`getValues("yourDetails.firstName")` | `{ firstName: '' }`
+
+`getValues(["yourDetails.lastName"])` | `['']`
+
+## Rules
+
+- Disabled inputs will be returned as `undefined`. If you want to prevent users from updating the input and still retain the field value, you can use `readOnly` or disable the entire . Here is an example .
+
+- It will return `defaultValues` from `useForm` before the initial render.
+
+- `getValues()`: Reads all form values.
+
+- `getValues('test')`: Read an individual field value by name.
+
+- `getValues(['test', 'test1'])`: Read multiple fields by name.
+
+## trigger
+
+trigger
+
+Manually triggers form or input validation. This method is also useful when you have dependant validation (input validation depends on another input's value).
+
+## Props
+
+Name | Type | Description | Example
+
+name | `undefined` | Triggers validation on all fields. | `trigger()`
+
+`string` | Triggers validation on a specific field value by name | `trigger("yourDetails.firstName")`
+
+`string[]` | Triggers validation on multiple fields by name. | `trigger(["yourDetails.lastName"])`
+
+shouldFocus | `boolean` | Should focus the input during setting an error. This only works when the input's reference is registered, it will not work for custom register as well. | `trigger('name', { shouldFocus: true })`
+
+## useFieldArray
+
+useFieldArray
+
+Custom hook for working with uncontrolled Field Arrays (dynamic inputs). The motivation is to provide better user experience and form performance. You can watch this short video to compare controlled vs uncontrolled Field Array.
+
+## Props
+
+`name` | `string` | ✓ | Name of the field. Important: make sure name is in object shape: `name=test.0.name` as we don't support flat arrays.
+
+`control` | `Object`
+
+`keyName` | `string = 'id'` | field array `key` value, default to "id", you can change the key name. Important: if your field array contains `id` as field value, making sure you change the `keyName` to other.
+
+`shouldUnregister` | `boolean = false` | Field Array will be unregistered after unmount.
+
+## Rules
+
+- The `field.id` (and not `index`) must be added as the component key to prevent re-renders breaking the fields:
+```
+// ✅ correct:
+{fields.map((field, index) => (
+  <div key={field.id}>
+    <input ... />
+  </div>
+))}
+// ✅ correct:
+{fields.map((field, index) => <input key={field.id} ... />)}
+// ❌ incorrect:
+{fields.map((field, index) => <input key={index} ... />)}
+```
+
+- `useFieldArray` automatically generates a unique identifier named `id` which is used for `key` prop. For more information why this is required: https://reactjs.org/docs/lists-and-keys.html#keys
+
+When your array field contains objects with the key name `id` , `useFieldArray` will overwrite and remove it. If you want to keep the `id` field in your array of objects, you must use `keyName` prop to change to other name. Refer to the following example:
+
+```
+const { fields } = useFieldArray({
+  keyName: 'key' // by default key name is id, and input value with name id will be omitted
+})
+
+{fields.map((field, index) => (
+  <div key={field.key}> // key name changed
+    <input {...register('test.id')} /> // input value id will be retained
+  </div>
+))}
+```
+
+- You can not call actions one after another. Actions need to be triggered per render.
+
+- Each `useFieldArray` is unique and has its own state update, which means you should not have multiple useFieldArray with the same `name`.
+
+- Each input name needs to be unique, if you need to build checkbox or radio with the same name then use it with `useController` or `controller`.
+
+- Does not support flat field array.
+
+- When you append, prepend, insert and update the field array, the obj can't be empty object rather need to supply all your input's defaultValues.
+
+## TypeScript
+
+- when register input `name`, you will have to cast them as `const`
+
+- we do not support circular reference. Refer to this this Github issue for more detail.
+
+- for nested field array, you will have to cast the field array by its name.
+
+`fields` | `object & { id: string }` | This `object` contains the `defaultValue` and `key` for all your inputs. It's important to assign `defaultValue` to the inputs. Important: Because each input can be uncontrolled, `id` is required with mapped components to help React to identify which items have changed, are added, or are removed. ``` {fields.map((data, index) => <input key={data.id} name={`data.${index}.value`} />; );} ```
+
+`append` | ``` (obj: object | object[], { shouldFocus?: boolean; focusIndex?: number; focusName?: string; } ) =&gt; void ``` | Append input/inputs to the end of your fields and focus. The input value will be registered during this action.
+
+`prepend` | ``` (obj: object | object[], { shouldFocus?: boolean; focusIndex?: number; focusName?: string; } ) =&gt; void ``` | Prepend input/inputs to the start of your fields and focus. The input value will be registered during this action.
+
+`insert` | `(index: number, value: object | object[], { shouldFocus?: boolean; focusIndex?: number; focusName?: string; }) => void` | Insert input/inputs at particular position and focus.
+
+`swap` | ``(from: number, to: number) =&gt; void`` | Swap input/inputs position.
+
+`move` | ``(from: number, to: number) =&gt; void`` | Move input/inputs to another position.
+
+`update` | ``(index?: number, obj: object) =&gt; void`` | Update input/inputs at particular position.
+
+`replace` | ``(obj: object[]) =&gt; void`` | Replace the entire field array values.
+
+`remove` | ``(index?: number | number[]) =&gt; void`` | Remove input/inputs at particular position, or remove all when no index provided.
+
+## Controller
+
+Controller
+
+## Tips
+
+- Do not `register` input again. This component is made to take care of the registration process.
+
+```
+<Controller
+  name="test"
+  render={({ field }) => {
+    // return <input {...field} {...register('test')} />; ❌ double up the registration
+    return <input {...field} />; // ✅
+  }}
+/>
+```
+
+- Customise what value gets sent to hook form by transforming the value during `onChange`.
+
+```
+<Controller
+  name="test"
+  render={({ field }) => {
+    // sending integer instead of string.
+    return <input {...field} onChange={(e) => field.onChange(parseInt(e.target.value))} />;
+  }}
+/>
+```
+
+`name` | `string` | ✓ | Unique name of your input.
+
+`control` | `Object` | `control` object is from invoking `useForm`. Optional when using `FormProvider`.
+
+`render` | `Function` | This is a render prop . A function that returns a React element and provides the ability to attach events and value into the component. This simplifies integrating with external controlled components with non-standard prop names. Provides `onChange`, `onBlur`, `name`, `ref` and `value` to the child component, and also a `fieldState` object which contains specific input state. ``` <Controller control={control} name="test" render={({ field: { onChange, onBlur, value, name, ref }, fieldState: { invalid, isTouched, isDirty, error }, formState, }) => ( <Checkbox onBlur={onBlur} // notify when input is touched onChange={onChange} // send value to hook form checked={value} inputRef={ref} /> )} /> ``` ``` <Controller render={({ field: { onChange, onBlur, value, name, ref }, fieldState: { invalid, isTouched, isDirty, error }, }) => ( <TextField value={value} onChange={onChange} // send value to hook form onBlur={onBlur} // notify when input is touched inputRef={ref} // wire up the input ref /> )} name="TextField" control={control} rules={{ required: true }} /> ```
+
+`defaultValue` | `any` | The same as an uncontrolled component's `defaultValue`. When passing a `boolean` value, it will be treated as checkbox input. For more details, see useForm's `defaultValues` section. - You need to either provide `defaultValue` at the field-level or `useForm` with `defaultValues`. Note: inline `defaultValue` is required when working with `useFieldArray` by integrating with the value from `fields` object. - If your form will invoke `reset` with default values, you will need to call `useForm` with `defaultValues` instead of setting the `defaultValue` on individual fields. - Setting `defaultValue` inline or at `useForm` can not be `undefined`.
+
+`rules` | `Object` | Validation rules in the same format as for `register`. Important: doesn't support `setValueAs` or `valueAs*` for `useController`.
+
+`shouldUnregister` | `boolean = false` | Input will be unregistered after unmount and defaultValues will be removed as well.
+
+React Hook Form embraces uncontrolled components and native inputs, however it's hard to avoid working with external controlled component such as React-Select , AntD and Material-UI . This wrapper component will make it easier for you to work with them.
+
+## useFormContext
+
+useFormContext
+
+This custom hook allows you to access the form context. `useFormContext` is intended to be used in deeply nested structures, where it would become inconvenient to pass the context as a prop.
+
+You need to wrap your form with the `FormProvider` component for `useFormContext` to work properly.
+
+## control
+
+control
+
+This object contains methods for registering components into React Hook Form.
+
+## Rules
+
+Important: do not access any of the properties inside this object directly. It's for internal usage only.
+
+## ErrorMessage
+
+ErrorMessage
+
+A simple component to render associated input's error message.
+
+### table
+
+Name of the field. `errors` object from React Hook Form. Optional if you are using `FormProvider`. Inline error message. Wrapper component or HTML tag. For example: `as="span"` or `as={<Text />}` This is a render prop for rendering error message or messages.
+Note: you need to set `criteriaMode` to 'all' for using `messages`.
+
+## resolver
+
+resolver
+
+This function allows you to use any external validation library such as Yup , Zod , Joi , Superstruct , Vest and many others. The goal is to make sure you can seamlessly integrate whichever validation library you prefer. If you're not using a library, you can always write your own logic to validate your forms.
+`npm install @hookform/resolvers`
+
+## Rules
+
+- Make sure you are returning an object that has both a `values` and an `errors` property. Their default values should be an empty object. For example: `{}`.
+
+- Schema validation focus on the field level for error reporting. Parent level error look is only limited to the direct parent level that is applicable for components such as group checkboxes.
+
+- The keys of the `error` object should match the `name` values of your fields.
+
+- This function will be cached, while `context` is a mutable `object` that can be changed on each re-render.
+
+- Re-validation of an input will only occur one field at time during a user’s interaction. The lib itself will evaluate the `error` object to trigger a re-render accordingly.
+
+- A resolver cannot be used with the built-in validators (e.g.: required, min, etc.)
+
+## useWatch
+
+useWatch
+
+Behaves similarly to the `watch` API, however, this will isolate re-rendering at the component level and potentially result in better performance for your application.
+
+## useController
+
+useController
+
+`name` | `string` | ✓ | Unique name of your input.
+
+`control` | `Object` | `control` object provided by invoking `useForm`. Optional when using `FormProvider`.
+
+`defaultValue` | `any` | The same as an uncontrolled component's `defaultValue`. When passing a `boolean` value, it will be treated as checkbox input. For more details, see useForm's `defaultValues` section. - You need to either set `defaultValue` at the field-level or call `useForm` with `defaultValues`. If both are set, `devaultValues` will be used. Note: inline `defaultValue` is required when working with `useFieldArray` by integrating with the value from `fields` object. - If your form will invoke `reset` with default values, you will need to call `useForm` with `defaultValues` instead of setting the `defaultValue` on individual fields. - Setting `defaultValue` inline or at `useForm` can not be `undefined`.
+
+`rules` | `Object` | Validation rules in the same format as for `register`. Important: doesn't support `valueAs` for `useController`.
+
+`shouldUnregister` | `boolean = false` | Input will be unregistered after unmount and defaultValues will be removed as well.
+
+## Tips
+
+- Do not `register` input again. This custom hook is designed to take care of the registration process.
+
+```
+const { field } = useController({ name: 'test' })
+
+<input {...field} /> // ✅
+<input {...field} {...register('test')} /> // ❌ double up the registration
+```
+
+- It's ideal to use a single `useController` per component. If you need to use more than one, make sure you rename the prop. May want to consider using `Controller` instead.
+
+```
+const { field: input } = useController({ name: 'test' })
+const { field: checkbox } = useController({ name: 'test1' })
+
+<input {...input} />
+<input {...checkbox} />
+```
+
+This custom hook powers `Controller` . Additionally, it shares the same props and methods as `Controller`. It's useful for creating reusable Controlled input.
+
+## setFocus
+
+This method will allow users to programmatically focus on input. Make sure input's ref is registered into the hook form.
+
+## Rules
+
+This API will invoke focus method from the ref, so it's important to provide `ref` during `register`.

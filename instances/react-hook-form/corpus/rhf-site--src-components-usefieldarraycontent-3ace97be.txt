@@ -1,0 +1,115 @@
+# components/UseFieldArrayContent
+# джерело: https://github.com/react-hook-form/documentation/blob/82aff767582297ac957f19188fe09dd88839b7c4/src/components/UseFieldArrayContent.tsx
+# отримано: 2026-09-26
+# версія: 7.36.0, 7.35.0, 7.35.0-next.0, 7.34.2, 7.34.1, 7.34.0, 7.34.0-next.0, 7.33.1, 7.33.0, 7.32.2, 7.32.1, 7.32.0, 7.31.3, 7.31.2, 7.31.1, 7.31.0, 7.30.0, 7.29.0, 8.0.0-alpha.3
+
+## useFieldArray: `UseFieldArrayProps`
+
+## Return
+
+## Rules
+
+- `useFieldArray` automatically generates a unique identifier named `id` which is used for `key` prop. For more information why this is required: https://reactjs.org/docs/lists-and-keys.html#keys
+
+The `field.id` (and not `index`) must be added as the component key to prevent re-renders breaking the fields:
+```
+// ✅ correct:
+{fields.map((field, index) => <input key={field.id} ... />)}
+
+// ❌ incorrect:
+{fields.map((field, index) => <input key={index} ... />)}
+```
+
+- You can not call actions one after another. Actions need to be triggered per render.
+
+- Each `useFieldArray` is unique and has its own state update, which means you should not have multiple useFieldArray with the same `name`.
+
+- Each input name needs to be unique, if you need to build checkbox or radio with the same name then use it with `useController` or `controller`.
+
+- Does not support flat field array.
+
+- When you append, prepend, insert and update the field array, the obj can't be empty object rather need to supply all your input's defaultValues.
+
+## TypeScript
+
+- when register input `name`, you will have to cast them as `const`
+
+- we do not support circular reference. Refer to this this Github issue for more detail.
+
+- for nested field array, you will have to cast the field array by its name.
+
+## Examples
+
+## Tips
+
+#### Custom Register
+
+You can also `register` inputs at `Controller` without the actual input. This makes `useFieldArray` quick and flexible to use with complex data structure or the actual data is not stored inside an input.
+
+```
+import { useForm, useFieldArray, Controller, useWatch } from "react-hook-form";
+
+const ConditionalInput = ({ control, index, field }) => {
+  const value = useWatch({
+    name: "test",
+    control
+  });
+
+  return (
+    <Controller
+      control={control}
+      name={`test.$\{index\}.firstName`}
+      render={({ field }) =>
+        value?.[index]?.checkbox === "on" ? <input {...field} /> : null
+      }
+    />
+  );
+};
+
+function App() {
+  const { control, register } = useForm();
+  const { fields, append, prepend } = useFieldArray({
+    control,
+    name: "test"
+  });
+
+  return (
+    <form>
+      {fields.map((field, index) => (
+        <ConditionalInput key={field.id} {...{ control, index, field }} />
+      ))}
+    </form>
+  );
+}
+```
+
+#### Controlled Field Array
+
+There will be cases where you want to control the entire field array, which means each onChange reflects on the `fields` object.
+
+```
+import { useForm, useFieldArray } from "react-hook-form";
+
+export default function App() {
+  const { register, handleSubmit, control, watch } = useForm<FormValues>();
+  const { fields, append } = useFieldArray({
+    control,
+    name: "fieldArray"
+  });
+  const watchFieldArray = watch("fieldArray");
+  const controlledFields = fields.map((field, index) => {
+    return {
+      ...field,
+      ...watchFieldArray[index]
+    };
+  });
+
+  return (
+    <form>
+      {controlledFields.map((field, index) => {
+        return <input {...register(`fieldArray.${index}.name` as const)} />;
+      })}
+    </form>
+  );
+}
+```

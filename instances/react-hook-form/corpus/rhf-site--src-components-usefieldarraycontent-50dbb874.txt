@@ -1,0 +1,228 @@
+# components/UseFieldArrayContent
+# джерело: https://github.com/react-hook-form/documentation/blob/e075c35796eef7f8dcd7532090d790439376641f/src/components/UseFieldArrayContent.tsx
+# отримано: 2026-09-26
+# версія: 7.26.1
+
+## useFieldArray: ({ control?: Control, name: string, keyName?: string = 'id' }) => object
+
+## Return
+
+## Rules
+
+- The `field.id` (and not `index`) must be added as the component key to prevent re-renders breaking the fields:
+```
+// ✅ correct:
+{fields.map((field, index) => (
+  <div key={field.id}>
+    <input ... />
+  </div>
+))}
+// ✅ correct:
+{fields.map((field, index) => <input key={field.id} ... />)}
+// ❌ incorrect:
+{fields.map((field, index) => <input key={index} ... />)}
+```
+
+- `useFieldArray` automatically generates a unique identifier named `id` which is used for `key` prop. For more information why this is required: https://reactjs.org/docs/lists-and-keys.html#keys
+
+When your array field contains objects with the key name `id` , `useFieldArray` will overwrite and remove it. If you want to keep the `id` field in your array of objects, you must use `keyName` prop to change to other name. Refer to the following example:
+
+```
+const { fields } = useFieldArray({
+  keyName: 'key' // by default key name is id, and input value with name id will be omitted
+})
+
+{fields.map((field, index) => (
+  <div key={field.key}> // key name changed
+    <input {...register('test.id')} /> // input value id will be retained
+  </div>
+))}
+```
+
+- You can not call actions one after another. Actions need to be triggered per render.
+
+- Each `useFieldArray` is unique and has its own state update, which means you should not have multiple useFieldArray with the same `name`.
+
+- Each input name needs to be unique, if you need to build checkbox or radio with the same name then use it with `useController` or `controller`.
+
+- Does not support flat field array.
+
+- When you append, prepend, insert and update the field array, the obj can't be empty object rather need to supply all your input's defaultValues.
+
+## TypeScript
+
+- when register input `name`, you will have to cast them as `const`
+
+- we do not support circular reference. Refer to this this Github issue for more detail.
+
+- for nested field array, you will have to cast the field array by its name.
+
+## Examples
+
+## Tips
+
+#### Custom Register
+
+You can also `register` inputs at `Controller` without the actual input. This makes `useFieldArray` quick and flexible to use with complex data structure or the actual data is not stored inside an input.
+
+```
+import * as React from "react";
+import { useForm, useFieldArray, Controller, useWatch } from "react-hook-form";
+
+const ConditionalInput = ({ control, index, field }) => {
+  const value = useWatch({
+    name: "test",
+    control
+  });
+
+  return (
+    <Controller
+      control={control}
+      name={`test.$\{index\}.firstName`}
+      render={({ field }) =>
+        value?.[index]?.checkbox === "on" ? <input {...field} /> : null
+      }
+    />
+  );
+};
+
+function App() {
+  const { handleSubmit, control, register } = useForm();
+  const { fields, append, prepend } = useFieldArray({
+    control,
+    name: "test"
+  });
+  const onSubmit = (data) => console.log(data);
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      {fields.map((field, index) => (
+        <section key={field.id}>
+          <input
+            type="checkbox"
+            value="on"
+            {...register(`test.${index}.checkbox`)}
+          />
+          <ConditionalInput {...{ control, index, field }} />
+        </section>
+      ))}
+
+      <button
+        type="button"
+        onClick={() => append({ firstName: "append value" }) }
+      >
+        append
+      </button>
+      <input type="submit" />
+    </form>
+  );
+}
+```
+
+#### Controlled Field Array
+
+There will be cases where you want to control the entire field array, which means each onChange reflects on the `fields` object. You can achieve this by merge with `useWatch` or `watch`'s result.
+
+```
+import * as React from "react";
+import { useForm, useFieldArray } from "react-hook-form";
+
+export default function App() {
+  const { register, handleSubmit, control, watch } = useForm<FormValues>();
+  const { fields, append } = useFieldArray({
+    control,
+    name: "fieldArray"
+  });
+  const watchFieldArray = watch("fieldArray");
+  const controlledFields = fields.map((field, index) => {
+    return {
+      ...field,
+      ...watchFieldArray[index]
+    };
+  });
+
+  return (
+    <form>
+      {controlledFields.map((field, index) => {
+        return <input {...register(`fieldArray.${index}.name` as const)} />;
+      })}
+
+      <button
+        type="button"
+        onClick={() =>
+          append({
+            name: "bill"
+          })
+        }
+      >
+        Append
+      </button>
+    </form>
+  );
+}
+```
+
+#### Conditional inputs
+
+`useFieldArray` is uncontrolled by default, which means `defaultValue` is rendered during input's mounting. This is different from the controlled form, which the local state is keeping updated during user interaction's `onChange`. When inputs get unmounted and remounted, you want to read what's in the current form values from `getValue` function. For individual input, you can safely use `useWatch` hook to retain input value as well.
+
+```
+import React from "react";
+import { useForm, useFieldArray, Controller, useWatch } from "react-hook-form";
+
+const Input = ({ name, control, register, index }) => {
+  const value = useWatch({
+    control,
+    name
+  });
+  return <input {...register(`test.${index}.age`)} defaultValue={value} />;
+};
+
+function App() {
+  const [show, setShow] = React.useState(true);
+  const { register, control, getValues, handleSubmit } = useForm({
+    defaultValues: {
+      test: [{ firstName: "Bill", lastName: "Luo", age: "2" }]
+    }
+  });
+  const { fields, remove } = useFieldArray({
+    control,
+    name: "test"
+  });
+  const onSubmit = (data) => console.log("data", data);
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      {show && (
+        <ul>
+          {fields.map((item, index) => {
+            return (
+              <li key={item.id}>
+                <input {...register(`test.${index}.firstName`)} />
+                <Input
+                  register={register}
+                  control={control}
+                  index={index}
+                  name={`test.${index}.age`}
+                />
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <section>
+        <button
+          type="button"
+          onClick={() => {
+            setShow(!show);
+          }}
+        >
+          Hide
+        </button>
+      </section>
+
+      <input type="submit" />
+    </form>
+  );
+}
+```

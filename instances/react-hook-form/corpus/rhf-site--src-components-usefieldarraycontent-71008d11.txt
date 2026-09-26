@@ -1,0 +1,113 @@
+# components/UseFieldArrayContent
+# джерело: https://github.com/react-hook-form/documentation/blob/63b812f2a5499b4676c9ff23f6e42dd10cfa3761/src/components/UseFieldArrayContent.tsx
+# отримано: 2026-09-26
+# версія: 7.0.3, 7.0.2, 7.0.1, 7.0.0, 7.0.0-rc.8
+
+## useFieldArray: ({ control?: Control, name: string, keyName?: string = 'id' }) => object
+
+## Return
+
+## Tips
+
+#### Custom Register
+
+You can also `register` inputs at `Controller` without the actual input. This makes `useFieldArray` quick flexible to use with complex data structure or the actual data is not stored inside an input.
+
+```
+import * as React from "react";
+import { useForm, useFieldArray, Controller, useWatch } from "react-hook-form";
+
+const ConditionalInput = ({ control, index, field }) => {
+  const value = useWatch({
+    name: "test",
+    control
+  });
+
+  return (
+    <Controller
+      control={control}
+      name={`test.$\{index\}.firstName`}
+      render={({ field }) =>
+        value?.[index]?.checkbox === "on" ? <input {...field} /> : null
+      }
+      defaultValue={field.firstName}
+    />
+  );
+};
+
+function App() {
+  const { handleSubmit, control, register } = useForm();
+  const { fields, append, prepend } = useFieldArray({
+    control,
+    name: "test"
+  });
+  const onSubmit = (data) => console.log(data);
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      {fields.map((field, index) => (
+        <section key={field.id}>
+          <input
+            type="checkbox"
+            value="on"
+            {...register(`test.${index}.checkbox`)}
+            defaultChecked={field.checked}
+          />
+          <ConditionalInput {...{ control, index, field }} />
+        </section>
+      ))}
+
+      <button
+        type="button"
+        onClick={() => append({ firstName: "append value" }) }
+      >
+        append
+      </button>
+      <input type="submit" />
+    </form>
+  );
+}
+```
+
+#### Controlled Field Array
+
+There will be cases where you want to control the entire field array, which means each onChange reflects on the `fields` object. You can achieve this by merge with `useWatch` or `watch`'s result.
+
+```
+import * as React from "react";
+import { useForm, useFieldArray } from "react-hook-form";
+
+export default function App() {
+  const { register, handleSubmit, control, watch } = useForm<FormValues>();
+  const { fields, append } = useFieldArray({
+    control,
+    name: "fieldArray"
+  });
+  const watchFieldArray = watch("fieldArray");
+  const controlledFields = fields.map((field, index) => {
+    return {
+      ...field,
+      ...watchFieldArray[index]
+    };
+  });
+
+  return (
+    <form>
+      {controlledFields.map((field, index) => {
+        return <input {...register(`fieldArray.${index}.name` as const)} />;
+      })}
+
+      <button
+        type="button"
+        onClick={() =>
+          append({
+            name: "bill"
+          })
+        }
+      >
+        Append
+      </button>
+    </form>
+  );
+}
+```

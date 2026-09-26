@@ -1,0 +1,197 @@
+# components/codeExamples/testingForm
+# джерело: https://github.com/react-hook-form/documentation/blob/fafa482bd46c76481ea352e09635c3206b09f1b3/src/components/codeExamples/testingForm.ts
+# отримано: 2026-09-26
+# версія: 7.40.0, 7.39.7, 7.39.6, 7.40.0-next.1, 7.39.5, 7.40.0-next.0, 7.39.4, 7.39.3, 7.39.2, 7.39.1, 7.39.0, 7.38.0, 7.37.0, 7.37.0-next.0, 7.36.1, 7.36.0, 7.35.0, 7.35.0-next.0, 7.34.2, 7.34.1, 7.34.0, 7.34.0-next.0, 7.33.1, 7.33.0, 7.32.2, 7.32.1, 7.32.0, 7.31.3, 7.31.2, 7.31.1, 7.31.0, 7.30.0, 7.29.0, 8.0.0-alpha.3, 8.0.0-alpha.2, 7.28.1, 7.28.0, 7.28.0-next.0, 8.0.0-alpha.1, 7.27.1, 7.27.0, 8.0.0-alpha.0
+
+```
+module.exports = {
+  setupFilesAfterEnv: ["<rootDir>/setup.js"] // or .ts for TypeScript App
+  // ...other settings
+};
+```
+
+```
+import React from "react";
+import { useForm } from "react-hook-form";
+
+export default function App({ login }) {
+  const { register, handleSubmit, formState: { errors }, reset } = useForm();
+  const onSubmit = async data => {
+    await login(data.email, data.password);
+    reset();
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <label htmlFor="email">email</label>
+      <input
+        id="email"
+        {...register("email", {
+          required: "required",
+          pattern: {
+            value: /\S+@\S+\.\S+/,
+            message: "Entered value does not match email format"
+          }
+        })}
+        type="email"
+      />
+      {errors.email && <span role="alert">{errors.email.message}</span>}
+      <label htmlFor="password">password</label>
+      <input
+        id="password"
+        {...register("password", {
+          required: "required",
+          minLength: {
+            value: 5,
+            message: "min length is 5"
+          }
+        })}
+        type="password"
+      />
+      {errors.password && <span role="alert">{errors.password.message}</span>}
+      <button type="submit">SUBMIT</button>
+    </form>
+  );
+}
+```
+
+```
+import React from "react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import App from "./App";
+
+const mockLogin = jest.fn((email, password) => {
+  return Promise.resolve({ email, password });
+});
+
+describe("App", () => {
+  beforeEach(() => {
+    render(<App login={mockLogin} />);
+  });
+
+  it("should display required error when value is invalid", async () => {
+    fireEvent.submit(screen.getByRole("button"));
+
+    expect(await screen.findAllByRole("alert")).toHaveLength(2);
+    expect(mockLogin).not.toBeCalled();
+  });
+
+  it("should display matching error when email is invalid", async () => {
+    fireEvent.input(screen.getByRole("textbox", { name: /email/i }), {
+      target: {
+        value: "test"
+      }
+    });
+
+    fireEvent.input(screen.getByLabelText("password"), {
+      target: {
+        value: "password"
+      }
+    });
+
+    fireEvent.submit(screen.getByRole("button"));
+
+    expect(await screen.findAllByRole("alert")).toHaveLength(1);
+    expect(mockLogin).not.toBeCalled();
+    expect(screen.getByRole("textbox", { name: /email/i }).value).toBe("test");
+    expect(screen.getByLabelText("password").value).toBe("password");
+  });
+
+  it("should display min length error when password is invalid", async () => {
+    fireEvent.input(screen.getByRole("textbox", { name: /email/i }), {
+      target: {
+        value: "test@mail.com"
+      }
+    });
+
+    fireEvent.input(screen.getByLabelText("password"), {
+      target: {
+        value: "pass"
+      }
+    });
+
+    fireEvent.submit(screen.getByRole("button"));
+
+    expect(await screen.findAllByRole("alert")).toHaveLength(1);
+    expect(mockLogin).not.toBeCalled();
+    expect(screen.getByRole("textbox", { name: /email/i }).value).toBe(
+      "test@mail.com"
+    );
+    expect(screen.getByLabelText("password").value).toBe("pass");
+  });
+
+  it("should not display error when value is valid", async () => {
+    fireEvent.input(screen.getByRole("textbox", { name: /email/i }), {
+      target: {
+        value: "test@mail.com"
+      }
+    });
+
+    fireEvent.input(screen.getByLabelText("password"), {
+      target: {
+        value: "password"
+      }
+    });
+
+    fireEvent.submit(screen.getByRole("button"));
+
+    await waitFor(() => expect(screen.queryAllByRole("alert")).toHaveLength(0));
+    expect(mockLogin).toBeCalledWith("test@mail.com", "password");
+    expect(screen.getByRole("textbox", { name: /email/i }).value).toBe("");
+    expect(screen.getByLabelText("password").value).toBe("");
+  });
+});
+```
+
+```
+import React from "react";
+import { useForm } from "react-hook-form";
+
+export default function App() {
+  const { register, handleSubmit, formState } = useForm({
+    mode: "onChange"
+  });
+  const onSubmit = (data) => {};
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <input
+        {...register("answer", {
+          required: true
+        })}
+      />
+      <button type="submit">
+        SUBMIT
+      </button>
+    </form>
+  );
+}
+```
+
+```
+import React from "react";
+import { render, screen, act } from "@testing-library/react";
+import App from "./App";
+
+describe("App", () => {
+  it("should have a submit button", () => {
+    render(<App />);
+    expect(screen.getByText("SUBMIT")).toBeInTheDocument();
+  });
+});
+```
+
+```
+import React from "react";
+import { render, screen, act } from "@testing-library/react";
+import App from "./App";
+
+describe("App", () => {
+  it("should have a submit button", async () => {
+    await act(async () => {
+      render(<App />)
+    });
+    expect(screen.getByText("SUBMIT")).toBeInTheDocument();
+  });
+});
+```
