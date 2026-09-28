@@ -18,7 +18,10 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-MAX_BYTES = 20_000_000
+# Стеля однієї відповіді. 20 МБ не вміщали опис @clerk/nextjs у реєстрі npm (25,7 МБ, тисячі
+# snapshot-версій); підіймається за потребою, а не заздалегідь: розібраний у Python, такий опис
+# займає в пам'яті в рази більше.
+MAX_BYTES = 50_000_000
 TIMEOUT_SEC = 60
 PAUSE_SEC = 1.0
 _UA = "agent0826-docfactory/1.0"
