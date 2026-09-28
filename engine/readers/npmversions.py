@@ -18,10 +18,17 @@ peer-залежності й вимоги до Node. Тому реєстр — �
   точках входу, залежностях і вимогах. Саме ці зміни — канва для переходу з версії на версію.
 
 Версії документа лінії — усі її версії, тож фільтр `version: "4"` знаходить таблицю лінії 4.
+
+Пам'ять. Опис популярного пакета важить мегабайти (react — 7 МБ, astro — 9,5 МБ), а розібраний у
+Python — у рази більше. Тому він читається й розбирається один раз, тексти всіх документів одразу
+пишуться на диск у тимчасову теку, опис звільняється, а запис документа лише бере готовий текст
+з диска.
 """
 
 import json
+import os
 import re
+import tempfile
 
 from engine.readers import Item, _markup, register
 
@@ -66,6 +73,85 @@ def _diff(old: dict, new: dict, what: str) -> list[str]:
     return out
 
 
+def _path(label: str, entry: str) -> str:
+    return label if entry == "." else f"{label}/{entry[2:]}"
+
+
+def _overview(label, cite, stamp, rows, dist_tags, lines) -> str:
+    out = ["## Current dist-tags", ""]
+    out += [f"- `{t}` → {v}" for t, v in dist_tags.items()]
+    out += ["", "## Release lines", ""]
+    for ln in lines:
+        rs = [r for r in rows if r["v"].split(".")[0] == ln]
+        st = [r for r in rs if r["kind"] == "stable"]
+        kinds: dict = {}
+        for r in rs:
+            kinds[r["kind"]] = kinds.get(r["kind"], 0) + 1
+        span = (f"stable {st[0]['v']} ({st[0]['day']}) … {st[-1]['v']} ({st[-1]['day']})"
+                if st else "no stable release")
+        out.append(f"- {ln}.x: {len(rs)} versions ("
+                   + ", ".join(f"{k} {n}" for k, n in sorted(kinds.items()))
+                   + f"); {span}")
+    seen: dict = {}
+    for r in rows:
+        for e in r["entries"]:
+            seen.setdefault(e, [r, r])[1] = r
+    if seen:
+        out += ["", "## Entry points (package exports)", "",
+                "First and last published version that had each import path:", ""]
+        for e, (a, b) in sorted(seen.items(), key=lambda kv: kv[1][0]["day"]):
+            out.append(f"- `{_path(label, e)}`: from {a['v']} ({a['day']}) "
+                       f"to {b['v']} ({b['day']})")
+    return _markup.document(f"{label} npm registry: overview of all versions", cite, stamp,
+                            "\n".join(out))
+
+
+def _line_doc(label, cite, stamp, rows, ln) -> str:
+    out: list[str] = []
+    prev = None
+    minor = None
+    for r in rows:
+        m = _SEMVER.match(r["v"])
+        mm = f"{m.group(1)}.{m.group(2)}" if m else r["v"]
+        if mm != minor:
+            minor = mm
+            out += ["", f"## {label} {mm}.x", ""]
+        line = f"- {r['v']} — published {r['day']}, {r['kind']}"
+        if r["tags"]:
+            line += f", dist-tag {', '.join(r['tags'])}"
+        if r["deprecated"]:
+            line += f", DEPRECATED: {' '.join(r['deprecated'].split())}"
+        changes = []
+        if prev is not None:
+            new_e = [e for e in r["entries"] if e not in prev["entries"]]
+            gone_e = [e for e in prev["entries"] if e not in r["entries"]]
+            if new_e:
+                changes.append("new import paths: "
+                               + ", ".join(_path(label, e) for e in new_e))
+            if gone_e:
+                changes.append("removed import paths: "
+                               + ", ".join(_path(label, e) for e in gone_e))
+            changes += _diff(prev["deps"], r["deps"], "dependency")
+            changes += _diff(prev["peer"], r["peer"], "peer dependency")
+            changes += _diff(prev["engines"], r["engines"], "engine")
+        else:
+            if r["entries"]:
+                changes.append("import paths: "
+                               + ", ".join(_path(label, e) for e in r["entries"]))
+            for what, d in (("dependencies", r["deps"]), ("peer dependencies", r["peer"]),
+                            ("engines", r["engines"])):
+                if d:
+                    changes.append(f"{what}: " + ", ".join(f"{k} {v}" for k, v in d.items()))
+        if changes:
+            line += "; " + "; ".join(changes)
+        out.append(line)
+        prev = r
+    body = (f"{len(rows)} published versions of line {ln}, oldest first, with what changed "
+            f"against the previous version of the line.\n" + "\n".join(out))
+    return _markup.document(f"{label} npm registry: versions {ln}.x", cite, stamp, body,
+                            ", ".join(reversed([r["v"] for r in rows])))
+
+
 @register("npm-versions")
 def npm_versions(source: dict, ctx) -> list[Item]:
     url = source["url"]
@@ -99,99 +185,29 @@ def npm_versions(source: dict, ctx) -> list[Item]:
             })
         return {"rows": rows, "dist_tags": pack.get("dist-tags") or {}}
 
-    # Перелік ліній потрібен уже для переліку документів, тож опис читається тут; для запису
-    # кожен документ читає його ще раз — у пам'яті між ними нічого не лишається.
-    first = load()
-    lines = sorted({r["v"].split(".")[0] for r in first["rows"]}, key=lambda x: (len(x), x))
-    line_versions = {ln: [r["v"] for r in first["rows"] if r["v"].split(".")[0] == ln]
-                     for ln in lines}
-    del first
-
+    data = load()
+    rows = data["rows"]
+    lines = sorted({r["v"].split(".")[0] for r in rows}, key=lambda x: (len(x), x))
+    store = tempfile.mkdtemp(prefix=f"npm-versions-{source['id']}-")
     items = []
 
-    def make_overview():
-        data = load()
-        rows = data["rows"]
-        out = ["## Current dist-tags", ""]
-        out += [f"- `{t}` → {v}" for t, v in data["dist_tags"].items()]
-        out += ["", "## Release lines", ""]
-        for ln in lines:
-            rs = [r for r in rows if r["v"].split(".")[0] == ln]
-            st = [r for r in rs if r["kind"] == "stable"]
-            kinds = {}
-            for r in rs:
-                kinds[r["kind"]] = kinds.get(r["kind"], 0) + 1
-            span = (f"stable {st[0]['v']} ({st[0]['day']}) … {st[-1]['v']} ({st[-1]['day']})"
-                    if st else "no stable release")
-            out.append(f"- {ln}.x: {len(rs)} versions ("
-                       + ", ".join(f"{k} {n}" for k, n in sorted(kinds.items()))
-                       + f"); {span}")
-        seen: dict = {}
-        for r in rows:
-            for e in r["entries"]:
-                seen.setdefault(e, [r, r])[1] = r
-        if seen:
-            out += ["", "## Entry points (package exports)", "",
-                    "First and last published version that had each import path:", ""]
-            for e, (a, b) in sorted(seen.items(), key=lambda kv: kv[1][0]["day"]):
-                path = label if e == "." else f"{label}/{e[2:]}"
-                out.append(f"- `{path}`: from {a['v']} ({a['day']}) to {b['v']} ({b['day']})")
-        body = "\n".join(out)
-        return _markup.document(f"{label} npm registry: overview of all versions", cite,
-                                ctx.stamp, body)
+    def keep(name: str, text: str) -> Item:
+        path = os.path.join(store, name)
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(text)
 
-    items.append(Item(id=f"{source['id']}/overview", file=f"{source['id']}--overview.txt",
-                      make=make_overview))
+        def make(path=path):
+            with open(path, encoding="utf-8") as fh:
+                return fh.read()
 
+        return Item(id=f"{source['id']}/{name.removesuffix('.txt')}",
+                    file=f"{source['id']}--{name}", make=make)
+
+    items.append(keep("overview.txt", _overview(label, cite, ctx.stamp, rows,
+                                                data["dist_tags"], lines)))
     for ln in lines:
-
-        def make(ln=ln):
-            rows = [r for r in load()["rows"] if r["v"].split(".")[0] == ln]
-            out: list[str] = []
-            prev = None
-            minor = None
-            for r in rows:
-                m = _SEMVER.match(r["v"])
-                mm = f"{m.group(1)}.{m.group(2)}" if m else r["v"]
-                if mm != minor:
-                    minor = mm
-                    out += ["", f"## {label} {mm}.x", ""]
-                line = f"- {r['v']} — published {r['day']}, {r['kind']}"
-                if r["tags"]:
-                    line += f", dist-tag {', '.join(r['tags'])}"
-                if r["deprecated"]:
-                    line += f", DEPRECATED: {' '.join(r['deprecated'].split())}"
-                changes = []
-                if prev is not None:
-                    new_e = [e for e in r["entries"] if e not in prev["entries"]]
-                    gone_e = [e for e in prev["entries"] if e not in r["entries"]]
-                    if new_e:
-                        changes.append("new import paths: " + ", ".join(
-                            label if e == "." else f"{label}/{e[2:]}" for e in new_e))
-                    if gone_e:
-                        changes.append("removed import paths: " + ", ".join(
-                            label if e == "." else f"{label}/{e[2:]}" for e in gone_e))
-                    changes += _diff(prev["deps"], r["deps"], "dependency")
-                    changes += _diff(prev["peer"], r["peer"], "peer dependency")
-                    changes += _diff(prev["engines"], r["engines"], "engine")
-                else:
-                    if r["entries"]:
-                        changes.append("import paths: " + ", ".join(
-                            label if e == "." else f"{label}/{e[2:]}" for e in r["entries"]))
-                    for what, d in (("dependencies", r["deps"]), ("peer dependencies",
-                                    r["peer"]), ("engines", r["engines"])):
-                        if d:
-                            changes.append(f"{what}: " + ", ".join(f"{k} {v}"
-                                                                   for k, v in d.items()))
-                if changes:
-                    line += "; " + "; ".join(changes)
-                out.append(line)
-                prev = r
-            body = (f"{len(rows)} published versions of line {ln}, oldest first, with what "
-                    f"changed against the previous version of the line.\n" + "\n".join(out))
-            return _markup.document(f"{label} npm registry: versions {ln}.x", cite, ctx.stamp,
-                                    body, ", ".join(reversed([r["v"] for r in rows])))
-
-        items.append(Item(id=f"{source['id']}/line-{ln}",
-                          file=f"{source['id']}--line-{ln}.txt", make=make))
+        items.append(keep(f"line-{ln}.txt", _line_doc(label, cite, ctx.stamp,
+                                                      [r for r in rows
+                                                       if r["v"].split(".")[0] == ln], ln)))
+    del data, rows
     return items
