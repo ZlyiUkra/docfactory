@@ -1,21 +1,19 @@
-# Zod README 4.4.0-canary.20260429T194540 … 4.4.1
-# джерело: https://raw.githubusercontent.com/colinhacks/zod/edd0bf0f5ada4a8dc581c259407d7bbad0a71ea7/packages/zod/README.md
+# Zod README 3.26.0-canary.20250529T000039
+# джерело: https://raw.githubusercontent.com/colinhacks/zod/fe75806cbb64683f237ed0e4ee93b67a2c5e976d/packages/zod/README.md
 # отримано: 2026-09-28
-# версія: 4.4.1, 4.5.0-canary.20260429T231203, 4.5.0-canary.20260429T225357, 4.4.0, 4.4.0-canary.20260429T195257, 4.4.0-canary.20260429T194540
+# версія: 3.26.0-canary.20250529T000039
 
   Zod
 
     TypeScript-first schema validation with static type inference
 
-    by @colinhacks
+    ✨ Read the docs at zod.dev → ✨
 
-  Docs
+  Documentation
     •
   Discord
     •
-  𝕏
-    •
-  Bluesky
+  @colinhacks
 
 Featured sponsor: Jazz
 
@@ -28,7 +26,7 @@ Featured sponsor: Jazz
 Zod is a TypeScript-first validation library. Define a schema and parse some data with it. You'll get back a strongly typed, validated result.
 
 ```ts
-import * as z from "zod";
+import { z } from "zod/v4";
 
 const User = z.object({
   name: z.string(),
@@ -68,7 +66,7 @@ npm install zod
 Before you can do anything else, you need to define a schema. For the purposes of this guide, we'll use a simple object schema.
 
 ```ts
-import * as z from "zod";
+import { z } from "zod/v4";
 
 const Player = z.object({
   username: z.string(),
@@ -102,7 +100,7 @@ When validation fails, the `.parse()` method will throw a `ZodError` instance wi
 try {
   Player.parse({ username: 42, xp: "100" });
 } catch (err) {
-  if (err instanceof z.ZodError) {
+  if (error instanceof z.ZodError) {
     err.issues;
     /* [
       {

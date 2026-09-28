@@ -1,21 +1,23 @@
-# Zod README 4.4.0-canary.20260429T194540 … 4.4.1
-# джерело: https://raw.githubusercontent.com/colinhacks/zod/edd0bf0f5ada4a8dc581c259407d7bbad0a71ea7/packages/zod/README.md
+# Zod README 3.26.0-canary.20250522T214833 … 3.26.0-canary.20250528T013018
+# джерело: https://raw.githubusercontent.com/colinhacks/zod/80cfd3a14cb53471783c75f9e4b341ed7e569f0f/README.md
 # отримано: 2026-09-28
-# версія: 4.4.1, 4.5.0-canary.20260429T231203, 4.5.0-canary.20260429T225357, 4.4.0, 4.4.0-canary.20260429T195257, 4.4.0-canary.20260429T194540
+# версія: 3.26.0-canary.20250528T013018, 3.25.32, 3.26.0-canary.20250528T011954, 3.26.0-canary.20250528T005843, 3.26.0-canary.20250528T004006, 3.26.0-canary.20250528T002643, 3.26.0-canary.20250528T002114, 3.26.0-canary.20250528T002024, 3.25.31, 3.26.0-canary.20250527T212543, 3.26.0-canary.20250527T000523, 3.25.30, 3.26.0-canary.20250526T233714, 3.26.0-canary.20250526T222458, 3.25.29, 3.26.0-canary.20250526T211617, 3.26.0-canary.20250523T230539, 3.25.28, 3.26.0-canary.20250523T211959, 3.26.0-canary.20250523T204554, 3.25.27, 3.26.0-canary.20250523T194707, 3.25.26, 3.26.0-canary.20250523T194456, 3.25.25, 3.26.0-canary.20250523T184331, 3.25.24, 3.26.0-canary.20250523T183622, 3.26.0-canary.20250523T035151, 3.25.24-beta.0, 3.26.0-canary.20250523T001459, 3.26.0-canary.20250523T001348, 3.25.23, 3.26.0-canary.20250522T225330, 3.26.0-canary.20250522T225157, 3.26.0-canary.20250522T221534, 3.25.22, 3.26.0-canary.20250522T214931, 3.26.0-canary.20250522T214857, 3.26.0-canary.20250522T214833
 
   Zod
 
+    ✨ https://zod.dev ✨
+
     TypeScript-first schema validation with static type inference
 
-    by @colinhacks
-
-  Docs
+  Documentation
     •
   Discord
     •
-  𝕏
+  npm
     •
-  Bluesky
+  Issues
+    •
+  @colinhacks
 
 Featured sponsor: Jazz
 
@@ -28,16 +30,14 @@ Featured sponsor: Jazz
 Zod is a TypeScript-first validation library. Define a schema and parse some data with it. You'll get back a strongly typed, validated result.
 
 ```ts
-import * as z from "zod";
+import { z } from "zod/v4";
 
 const User = z.object({
   name: z.string(),
 });
 
 // some untrusted data...
-const input = {
-  /* stuff */
-};
+const input = { /* stuff */ };
 
 // the parsed result is validated and type safe!
 const data = User.parse(input);
@@ -67,18 +67,18 @@ npm install zod
 
 Before you can do anything else, you need to define a schema. For the purposes of this guide, we'll use a simple object schema.
 
-```ts
-import * as z from "zod";
+```
+import { z } from "zod/v4";
 
 const Player = z.object({
   username: z.string(),
-  xp: z.number(),
+  xp: z.number()
 });
 ```
 
 ### Parsing data
 
-Given any Zod schema, use `.parse` to validate an input. If it's valid, Zod returns a strongly-typed _deep clone_ of the input.
+Given any Zod schema, use `.parse` to validate an input. If it's valid, Zod returns a strongly-typed *deep clone* of the input.
 
 ```ts
 Player.parse({ username: "billie", xp: 100 });
@@ -101,8 +101,8 @@ When validation fails, the `.parse()` method will throw a `ZodError` instance wi
 ```ts
 try {
   Player.parse({ username: 42, xp: "100" });
-} catch (err) {
-  if (err instanceof z.ZodError) {
+} catch(err){
+  if(error instanceof z.ZodError){
     err.issues;
     /* [
       {
@@ -127,9 +127,9 @@ To avoid a `try/catch` block, you can use the `.safeParse()` method to get back 
 ```ts
 const result = Player.safeParse({ username: 42, xp: "100" });
 if (!result.success) {
-  result.error; // ZodError instance
+  result.error;   // ZodError instance
 } else {
-  result.data; // { username: string; xp: number }
+  result.data;    // { username: string; xp: number }
 }
 ```
 
@@ -149,7 +149,7 @@ Zod infers a static type from your schema definitions. You can extract this type
 ```ts
 const Player = z.object({
   username: z.string(),
-  xp: z.number(),
+  xp: z.number()
 });
 
 // extract the inferred type

@@ -1,7 +1,7 @@
-# Zod README 4.4.0-canary.20260429T194540 … 4.4.1
-# джерело: https://raw.githubusercontent.com/colinhacks/zod/edd0bf0f5ada4a8dc581c259407d7bbad0a71ea7/packages/zod/README.md
+# Zod README 4.0.0-beta.20250709T182319 … 4.1.0-canary.20250710T005838
+# джерело: https://raw.githubusercontent.com/colinhacks/zod/74006edd49e3fe8d74010090462859593c2bd1e2/packages/zod/README.md
 # отримано: 2026-09-28
-# версія: 4.4.1, 4.5.0-canary.20260429T231203, 4.5.0-canary.20260429T225357, 4.4.0, 4.4.0-canary.20260429T195257, 4.4.0-canary.20260429T194540
+# версія: 4.1.0-canary.20250710T005838, 4.0.2, 4.0.1, 4.1.0-canary.20250710T002006, 4.1.0-canary.20250709T185023, 4.0.0, 4.0.0-beta.20250709T182319
 
   Zod
 

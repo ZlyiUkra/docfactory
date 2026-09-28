@@ -1,7 +1,7 @@
-# Zod README 1.10.2
+# Zod README 1.10.2-canary … 1.10.2
 # джерело: https://raw.githubusercontent.com/colinhacks/zod/8597d3c279f42dd37602dee6548770ac5a95cd68/README.md
 # отримано: 2026-09-28
-# версія: 1.10.2
+# версія: 1.10.2, 1.10.2-canary
 
   Zod
 

@@ -1,64 +1,46 @@
-# Zod README 3.25.0-canary.20250504T221648 … 3.24.4
-# джерело: https://raw.githubusercontent.com/colinhacks/zod/e62341b1aaf720709ee5f31785db25d5c0491659/README.md
+# Zod README 3.22.0-canary.20230306T210748 … 3.22.0-canary.20230307T060555
+# джерело: https://raw.githubusercontent.com/colinhacks/zod/56ace682e4cc89132c034a3ae2c13b2d5b1a0115/README.md
 # отримано: 2026-09-28
-# версія: 3.24.4, 3.25.0-canary.20250504T221648
+# версія: 3.22.0-canary.20230307T060555, 3.22.0-canary.20230307T044506, 3.21.4, 3.21.3, 3.22.0-canary.20230306T212237, 3.22.0-canary.20230306T210748
 
   Zod
 
-  zod.dev
+    ✨ https://zod.dev ✨
 
     TypeScript-first schema validation with static type inference
 
-  Website
+  Documentation
     •
   Discord
     •
-  𝕏
+  npm
     •
-  Bluesky
+  deno
+    •
+  Issues
+    •
+  @colinhacks
+    •
+  tRPC
 
-  Zod 4 is now in beta!
-
-  Read the announcement 👉
-
-Featured sponsor: Stainless
-
-  Learn more about featured sponsorships
+> These docs have been translated into Chinese.
 
 ## Table of contents
 
-> These docs have been translated into Chinese and Korean.
-
-- Table of contents
 - Introduction
   - Sponsors
-    - Platinum
-    - Gold
-    - Silver
-    - Bronze
-    - Copper
   - Ecosystem
-    - Resources
-    - API libraries
-    - Form integrations
-    - Zod to X
-    - X to Zod
-    - Mocking
-    - Powered by Zod
-    - Utilities for Zod
 - Installation
   - Requirements
-  - From `npm`
+  - Node/npm
+  - Deno
 - Basic usage
 - Primitives
 - Coercion for primitives
 - Literals
 - Strings
-  - Datetimes
-  - Dates
-  - Times
-  - IP addresses
-  - IP ranges
+  - Datetime
+  - IP
 - Numbers
 - BigInts
 - NaNs
@@ -69,75 +51,59 @@ Featured sponsor: Stainless
 - Optionals
 - Nullables
 - Objects
-  - `.shape`
-  - `.keyof`
-  - `.extend`
-  - `.merge`
-  - `.pick/.omit`
-  - `.partial`
-  - `.deepPartial`
-  - `.required`
-  - `.passthrough`
-  - `.strict`
-  - `.strip`
-  - `.catchall`
+  - .shape
+  - .keyof
+  - .extend
+  - .merge
+  - .pick/.omit
+  - .partial
+  - .deepPartial
+  - .passthrough
+  - .strict
+  - .strip
+  - .catchall
 - Arrays
-  - `.element`
-  - `.nonempty`
-  - `.min/.max/.length`
+  - .element
+  - .nonempty
+  - .min/.max/.length
 - Tuples
 - Unions
-- Discriminated unions
+- Discriminated Unions
 - Records
-  - Record key type
 - Maps
 - Sets
 - Intersections
 - Recursive types
-  - ZodType with ZodEffects
   - JSON type
-  - Cyclical objects
+  - Cyclical data
 - Promises
 - Instanceof
 - Functions
 - Preprocess
-- Custom schemas
+- Custom
 - Schema methods
-  - `.parse`
-  - `.parseAsync`
-  - `.safeParse`
-  - `.safeParseAsync`
-  - `.refine`
-    - Arguments
-    - Customize error path
-    - Asynchronous refinements
-    - Relationship to transforms
-  - `.superRefine`
-    - Abort early
-    - Type refinements
-  - `.transform`
-    - Chaining order
-    - Validating during transform
-    - Relationship to refinements
-    - Async transforms
-  - `.default`
-  - `.describe`
-  - `.catch`
-  - `.optional`
-  - `.nullable`
-  - `.nullish`
-  - `.array`
-  - `.promise`
-  - `.or`
-  - `.and`
-  - `.brand`
-  - `.readonly`
-  - `.pipe`
-    - You can use `.pipe()` to fix common issues with `z.coerce`.
+  - .parse
+  - .parseAsync
+  - .safeParse
+  - .safeParseAsync
+  - .refine
+  - .superRefine
+  - .transform
+  - .default
+  - .describe
+  - .catch
+  - .optional
+  - .nullable
+  - .nullish
+  - .array
+  - .promise
+  - .or
+  - .and
+  - .brand
+  - .pipe
 - Guides and concepts
   - Type inference
   - Writing generic functions
-    - Constraining allowable inputs
   - Error handling
   - Error formatting
 - Comparison
@@ -145,7 +111,6 @@ Featured sponsor: Stainless
   - Yup
   - io-ts
   - Runtypes
-  - Ow
 - Changelog
 
 ## Introduction
@@ -164,74 +129,102 @@ Some other great aspects:
 - Functional approach: parse, don't validate
 - Works with plain JavaScript too! You don't need to use TypeScript.
 
-## Sponsors
+### Sponsors
 
-Sponsorship at any level is appreciated and encouraged. If you built a paid product using Zod, consider one of the corporate tiers.
+Sponsorship at any level is appreciated and encouraged. For individual developers, consider the Cup of Coffee tier. If you built a paid product using Zod, consider one of the podium tiers.
 
-Platinum
+#### Gold
 
-      Cut code review time & bugs in half
+      Astro
 
-      coderabbit.ai
+      astro.build
 
-Gold
+        Astro is a new kind of static
+        site builder for the modern web.
+        Powerful developer experience meets
+        lightweight output.
 
-      The API platform for sending notifications
+      Glow Wallet
 
-      courier.com
+      glow.app
 
-      Generate better SDKs for your APIs
+      Your new favorite
 
-      liblab.com
+      Solana wallet.
 
-      Serverless Postgres — Ship faster
+      Deletype
 
-      neon.tech
+      deletype.com
 
-      Build AI apps and workflows with Retool AI
+      Proxy
 
-      retool.com
-
-      Generate best-in-class SDKs
-
-      stainless.com
-
-      SDKs & Terraform providers for your API
-
-      speakeasy.com
-
-Silver
-
-      Nitric
-
-      PropelAuth
-
-      Cerbos
-
-      Scalar
+      proxy.com
 
       Trigger.dev
 
-      <a style="text-decoration:none;" href="https://transloadit.com/?utm_source=zod&utm_medium=refe
-    rral&utm_campaign=sponsorship&utm_content=github" target="_blank">Transloadit
+      trigger.dev
 
-      Infisical
+#### Silver
 
-      Whop
+      Numeric
 
-      CryptoJobsList
+      numeric.io
 
-      Plain.
+      Snaplet
 
-      Inngest
+      snaplet.dev
 
-      Storyblok
+      Marcato Partners
 
-      Mux
+      marcatopartners.com
 
-      Cybozu
+      Interval
 
-Bronze
+      interval.com
+
+      Seasoned Software
+
+      seasoned.cc
+
+      Bamboo Creative
+
+      bamboocreative.nz
+
+#### Bronze
+
+      Brandon Bayer
+
+      @flybayer,
+      creator of Blitz.js
+
+      Jiří Brabec
+
+      @brabeji
+
+      Alex Johansson
+
+      @alexdotjs
+
+      Fungible Systems
+
+      fungible.systems
+
+      Adaptable
+
+      adaptable.io
+
+      Avana Wallet
+
+      avanawallet.com
+      Solana non-custodial wallet
+
+      Jason Lengstorf
+
+      learnwithjason.dev
+
+      Global Illumination, Inc.
+
+      ill.inc
 
 ### Ecosystem
 
@@ -247,37 +240,22 @@ There are a growing number of tools that are built atop or support Zod natively!
 - `tRPC`: Build end-to-end typesafe APIs without GraphQL.
 - `@anatine/zod-nestjs`: Helper methods for using Zod in a NestJS project.
 - `zod-endpoints`: Contract-first strictly typed endpoints with Zod. OpenAPI compatible.
-- `zhttp`: An OpenAPI compatible, strictly typed http library with Zod input and response validation.
 - `domain-functions`: Decouple your business logic from your framework using composable functions. With first-class type inference from end to end powered by Zod schemas.
 - `@zodios/core`: A typescript API client with runtime and compile time validation backed by axios and zod.
 - `express-zod-api`: Build Express-based APIs with I/O schema validation and custom middlewares.
-- `tapiduck`: End-to-end typesafe JSON APIs with Zod and Express; a bit like tRPC, but simpler.
-- `koa-zod-router`: Create typesafe routes in Koa with I/O validation using Zod.
-- `zod-sockets`: Zod-powered Socket.IO microframework with I/O validation and built-in AsyncAPI specs
-- `oas-tszod-gen`: Client SDK code generator to convert OpenApi v3 specifications into TS endpoint caller functions with Zod types.
-- `GQLoom`: Weave GraphQL schema and resolvers using Zod.
-- `oRPC`: Typesafe APIs Made Simple
 
 #### Form integrations
 
 - `react-hook-form`: A first-party Zod resolver for React Hook Form.
-- `TanStack Form`: Headless, performant, and type-safe form state management for TS/JS, React, Vue, Angular, Solid, and Lit
 - `zod-validation-error`: Generate user-friendly error messages from `ZodError`s.
 - `zod-formik-adapter`: A community-maintained Formik adapter for Zod.
 - `react-zorm`: Standalone `<form>` generation and validation for React using Zod.
 - `zodix`: Zod utilities for FormData and URLSearchParams in Remix loaders and actions.
-- `conform`: A typesafe form validation library for progressive enhancement of HTML forms. Works with Remix and Next.js.
 - `remix-params-helper`: Simplify integration of Zod with standard URLSearchParams and FormData for Remix apps.
 - `formik-validator-zod`: Formik-compliant validator library that simplifies using Zod with Formik.
 - `zod-i18n-map`: Useful for translating Zod error messages.
 - `@modular-forms/solid`: Modular form library for SolidJS that supports Zod for validation.
 - `houseform`: A React form library that uses Zod for validation.
-- `sveltekit-superforms`: Supercharged form library for SvelteKit with Zod validation.
-- `mobx-zod-form`: Data-first form builder based on MobX & Zod.
-- `@vee-validate/zod`: Form library for Vue.js with Zod schema validation.
-- `zod-form-renderer`: Auto-infer form fields from zod schema and render them with react-hook-form with E2E type safety.
-- `antd-zod`: Zod adapter for Ant Design form fields validation.
-- `frrm`: Tiny 0.5kb Zod-based, HTML form abstraction that goes brr.
 
 #### Zod to X
 
@@ -289,10 +267,6 @@ There are a growing number of tools that are built atop or support Zod natively!
 - `fastify-type-provider-zod`: Create Fastify type providers from Zod schemas.
 - `zod-to-openapi`: Generate full OpenAPI (Swagger) docs from Zod, including schemas, endpoints & parameters.
 - `nestjs-graphql-zod`: Generates NestJS GraphQL model classes from Zod schemas. Provides GraphQL method decorators working with Zod schemas.
-- `zod-openapi`: Create full OpenAPI v3.x documentation from Zod schemas.
-- `fastify-zod-openapi`: Fastify type provider, validation, serialization and @fastify/swagger support for Zod schemas.
-- `typeschema`: Universal adapter for schema validation.
-- `zodex`: (De)serialization for zod schemas
 
 #### X to Zod
 
@@ -304,46 +278,24 @@ There are a growing number of tools that are built atop or support Zod natively!
 - `zod-prisma`: Generate Zod schemas from your Prisma schema.
 - `Supervillain`: Generate Zod schemas from your Go structs.
 - `prisma-zod-generator`: Emit Zod schemas from your Prisma schema.
-- `drizzle-zod`: Emit Zod schemas from your Drizzle schema.
 - `prisma-trpc-generator`: Emit fully implemented tRPC routers and their validation schemas using Zod.
 - `zod-prisma-types` Create Zod types from your Prisma models.
-- `quicktype`: Convert JSON objects and JSON schemas into Zod schemas.
-- `@sanity-typed/zod`: Generate Zod Schemas from Sanity Schemas.
-- `java-to-zod`: Convert POJOs to Zod schemas
-- `Orval`: Generate Zod schemas from OpenAPI schemas
-- `Kubb`: Generate SDKs and Zod schemas from your OpenAPI schemas
 
 #### Mocking
 
 - `@anatine/zod-mock`: Generate mock data from a Zod schema. Powered by faker.js.
 - `zod-mocking`: Generate mock data from your Zod schemas.
-- `zod-fixture`: Use your zod schemas to automate the generation of non-relevant test fixtures in a deterministic way.
-- `zocker`: Generate plausible mock-data from your schemas.
-- `zodock` Generate mock data based on Zod schemas.
-- `zod-schema-faker` Generates mock data from Zod schemas. Powered by @faker-js/faker and randexp.js
 
 #### Powered by Zod
 
-- `freerstore`: Firestore cost optimizer.
 - `slonik`: Node.js Postgres client with strong Zod integration.
-- `schemql`: Enhances your SQL workflow by combining raw SQL with targeted type safety and schema validation.
 - `soly`: Create CLI applications with zod.
-- `pastel`: Create CLI applications with react, zod, and ink.
 - `zod-xlsx`: A xlsx based resource validator using Zod schemas.
 - `znv`: Type-safe environment parsing and validation for Node.js with Zod schemas.
-- `zod-config`: Load configurations across multiple sources with flexible adapters, ensuring type safety with Zod.
-- `unplugin-environment`: A plugin for loading enviroment variables safely with schema validation, simple with virtual module, type-safe with intellisense, and better DX 🔥 🚀 👷. Powered by Zod.
-- `zod-struct`: Create runtime-checked structs with Zod.
-- `zod-csv`: Validation helpers for zod for parsing CSV data.
-- `fullproduct.dev`: Universal Expo + Next.js App Starter that uses Zod schemas as the single source of truth to keep generated MDX docs, GraphQL, database models, forms, and fetcher functions in sync.
 
 #### Utilities for Zod
 
 - `zod_utilz`: Framework agnostic utilities for Zod.
-- `zod-playground`: A tool for learning and testing Zod schema validation functionalities. Link.
-- `zod-sandbox`: Controlled environment for testing zod schemas. Live demo.
-- `zod-dev`: Conditionally disables Zod runtime parsing in production.
-- `zod-accelerator`: Accelerates Zod's throughput up to ~100x.
 
 ## Installation
 
@@ -363,24 +315,27 @@ There are a growing number of tools that are built atop or support Zod natively!
   }
 ```
 
-### From `npm`
+### From `npm` (Node/Bun)
 
 ```sh
 npm install zod       # npm
-deno add npm:zod      # deno
 yarn add zod          # yarn
 bun add zod           # bun
 pnpm add zod          # pnpm
 ```
 
-Zod also publishes a canary version on every commit. To install the canary:
+### From `deno.land/x` (Deno)
 
-```sh
-npm install zod@canary       # npm
-deno add npm:zod@canary      # deno
-yarn add zod@canary          # yarn
-bun add zod@canary           # bun
-pnpm add zod@canary          # pnpm
+Unlike Node, Deno relies on direct URL imports instead of a package manager like NPM. Zod is available on deno.land/x. The latest version can be imported like so:
+
+```ts
+import { z } from "https://deno.land/x/zod/mod.ts";
+```
+
+You can also specify a particular version:
+
+```ts
+import { z } from "https://deno.land/x/zod@v3.16.1/mod.ts";
 ```
 
 > The rest of this README assumes you are using npm and importing directly from the `"zod"` package.
@@ -456,26 +411,16 @@ Zod now provides a more convenient way to coerce primitive values.
 const schema = z.coerce.string();
 schema.parse("tuna"); // => "tuna"
 schema.parse(12); // => "12"
-```
-
-During the parsing step, the input is passed through the `String()` function, which is a JavaScript built-in for coercing data into strings.
-
-```ts
-schema.parse(12); // => "12"
 schema.parse(true); // => "true"
-schema.parse(undefined); // => "undefined"
-schema.parse(null); // => "null"
 ```
 
-The returned schema is a normal `ZodString` instance so you can use all string methods.
+During the parsing step, the input is passed through the `String()` function, which is a JavaScript built-in for coercing data into strings. Note that the returned schema is a `ZodString` instance so you can use all string methods.
 
 ```ts
 z.coerce.string().email().min(5);
 ```
 
-**How coercion works**
-
-All primitive types support coercion. Zod coerces all inputs using the built-in constructors: `String(input)`, `Number(input)`, `new Date(input)`, etc.
+All primitive types support coercion.
 
 ```ts
 z.coerce.string(); // String(input)
@@ -485,24 +430,21 @@ z.coerce.bigint(); // BigInt(input)
 z.coerce.date(); // new Date(input)
 ```
 
-**Note** — Boolean coercion with `z.coerce.boolean()` may not work how you expect. Any truthy value is coerced to `true`, and any falsy value is coerced to `false`.
+**Boolean coercion**
+
+Zod's boolean coercion is very simple! It passes the value into the `Boolean(value)` function, that's it. Any truthy value will resolve to `true`, any falsy value will resolve to `false`.
 
 ```ts
-const schema = z.coerce.boolean(); // Boolean(input)
+z.coerce.boolean().parse("tuna"); // => true
+z.coerce.boolean().parse("true"); // => true
+z.coerce.boolean().parse("false"); // => true
+z.coerce.boolean().parse(1); // => true
+z.coerce.boolean().parse([]); // => true
 
-schema.parse("tuna"); // => true
-schema.parse("true"); // => true
-schema.parse("false"); // => true
-schema.parse(1); // => true
-schema.parse([]); // => true
-
-schema.parse(0); // => false
-schema.parse(""); // => false
-schema.parse(undefined); // => false
-schema.parse(null); // => false
+z.coerce.boolean().parse(0); // => false
+z.coerce.boolean().parse(undefined); // => false
+z.coerce.boolean().parse(null); // => false
 ```
-
-For more control over coercion logic, consider using `z.preprocess` or `z.pipe()`.
 
 ## Literals
 
@@ -536,7 +478,6 @@ z.string().email();
 z.string().url();
 z.string().emoji();
 z.string().uuid();
-z.string().nanoid();
 z.string().cuid();
 z.string().cuid2();
 z.string().ulid();
@@ -544,20 +485,13 @@ z.string().regex(regex);
 z.string().includes(string);
 z.string().startsWith(string);
 z.string().endsWith(string);
-z.string().datetime(); // ISO 8601; by default only `Z` timezone allowed
-z.string().ip(); // defaults to allow both IPv4 and IPv6
-z.string().cidr(); // defaults to allow both IPv4 and IPv6
+z.string().datetime(); // defaults to UTC, see below for options
+z.string().ip(); // defaults to IPv4 and IPv6, see below for options
 
-// transforms
+// transformations
 z.string().trim(); // trim whitespace
 z.string().toLowerCase(); // toLowerCase
 z.string().toUpperCase(); // toUpperCase
-
-// added in Zod 3.23
-z.string().date(); // ISO date format (YYYY-MM-DD)
-z.string().time(); // ISO time format (HH:mm:ss[.SSSSSS] or HH:mm)
-z.string().duration(); // ISO 8601 duration
-z.string().base64();
 ```
 
 > Check out validator.js for a bunch of other useful string validation functions that can be used in conjunction with Refinements.
@@ -585,17 +519,12 @@ z.string().includes("tuna", { message: "Must include tuna" });
 z.string().startsWith("https://", { message: "Must provide secure URL" });
 z.string().endsWith(".com", { message: "Only .com domains allowed" });
 z.string().datetime({ message: "Invalid datetime string! Must be UTC." });
-z.string().date({ message: "Invalid date string!" });
-z.string().time({ message: "Invalid time string!" });
 z.string().ip({ message: "Invalid IP address" });
-z.string().cidr({ message: "Invalid CIDR" });
 ```
 
-### Datetimes
+### ISO datetimes
 
-As you may have noticed, Zod string includes a few date/time related validations. These validations are regular expression based, so they are not as strict as a full date/time library. However, they are very convenient for validating user input.
-
-The `z.string().datetime()` method enforces ISO 8601; default is no timezone offsets and arbitrary sub-second decimal precision. Seconds may be omitted if precision is not set.
+The `z.string().datetime()` method defaults to UTC validation: no timezone offsets with arbitrary sub-second decimal precision.
 
 ```ts
 const datetime = z.string().datetime();
@@ -603,7 +532,6 @@ const datetime = z.string().datetime();
 datetime.parse("2020-01-01T00:00:00Z"); // pass
 datetime.parse("2020-01-01T00:00:00.123Z"); // pass
 datetime.parse("2020-01-01T00:00:00.123456Z"); // pass (arbitrary precision)
-datetime.parse("2020-01-01T00:00Z"); // pass (hours and minutes only)
 datetime.parse("2020-01-01T00:00:00+02:00"); // fail (no offsets allowed)
 ```
 
@@ -613,19 +541,10 @@ Timezone offsets can be allowed by setting the `offset` option to `true`.
 const datetime = z.string().datetime({ offset: true });
 
 datetime.parse("2020-01-01T00:00:00+02:00"); // pass
-datetime.parse("2020-01-01T00:00+02:00"); // pass
 datetime.parse("2020-01-01T00:00:00.123+02:00"); // pass (millis optional)
 datetime.parse("2020-01-01T00:00:00.123+0200"); // pass (millis optional)
 datetime.parse("2020-01-01T00:00:00.123+02"); // pass (only offset hours)
 datetime.parse("2020-01-01T00:00:00Z"); // pass (Z still supported)
-```
-
-Allow unqualified (timezone-less) datetimes with the `local` flag.
-
-```ts
-const schema = z.string().datetime({ local: true });
-schema.parse("2020-01-01T00:00:00"); // pass
-schema.parse("2020-01-01T00:00"); // pass
 ```
 
 You can additionally constrain the allowable `precision`. By default, arbitrary sub-second precision is supported (but optional).
@@ -635,56 +554,12 @@ const datetime = z.string().datetime({ precision: 3 });
 
 datetime.parse("2020-01-01T00:00:00.123Z"); // pass
 datetime.parse("2020-01-01T00:00:00Z"); // fail
-datetime.parse("2020-01-01T00:00Z"); // fail
 datetime.parse("2020-01-01T00:00:00.123456Z"); // fail
-```
-
-### Dates
-
-> Added in Zod 3.23
-
-The `z.string().date()` method validates strings in the format `YYYY-MM-DD`.
-
-```ts
-const date = z.string().date();
-
-date.parse("2020-01-01"); // pass
-date.parse("2020-1-1"); // fail
-date.parse("2020-01-32"); // fail
-```
-
-### Times
-
-> Added in Zod 3.23
-
-The `z.string().time()` method validates strings in the format `HH:MM` or `HH:MM:SS[.s+]`. The second can include arbitrary decimal precision. It does not allow timezone offsets of any kind.
-
-```ts
-const time = z.string().time();
-
-time.parse("00:00:00"); // pass
-time.parse("09:52:31"); // pass
-time.parse("09:52"); // pass
-time.parse("23:59:59.9999999"); // pass (arbitrary precision)
-
-time.parse("00:00:00.123Z"); // fail (no `Z` allowed)
-time.parse("00:00:00.123+02:00"); // fail (no offsets allowed)
-```
-
-You can set the `precision` option to constrain the allowable decimal precision.
-
-```ts
-const time = z.string().time({ precision: 3 });
-
-time.parse("00:00:00.123"); // pass
-time.parse("00:00:00.123456"); // fail
-time.parse("00:00:00"); // fail
-time.parse("00:00"); // fail
 ```
 
 ### IP addresses
 
-By default `.ip()` allows both IPv4 and IPv6.
+The `z.string().ip()` method by default validate IPv4 and IPv6.
 
 ```ts
 const ip = z.string().ip();
@@ -705,26 +580,6 @@ ipv4.parse("84d5:51a0:9114:1855:4cfa:f2d7:1f12:7003"); // fail
 
 const ipv6 = z.string().ip({ version: "v6" });
 ipv6.parse("192.168.1.1"); // fail
-```
-
-### IP ranges (CIDR)
-
-Validate IP address ranges specified with CIDR notation. By default, `.cidr()` allows both IPv4 and IPv6.
-
-```ts
-const cidr = z.string().cidr();
-cidr.parse("192.168.0.0/24"); // pass
-cidr.parse("2001:db8::/32"); // pass
-```
-
-You can specify a version with the `version` parameter.
-
-```ts
-const ipv4Cidr = z.string().cidr({ version: "v4" });
-ipv4Cidr.parse("84d5:51a0:9114:1855:4cfa:f2d7:1f12:7003"); // fail
-
-const ipv6Cidr = z.string().cidr({ version: "v6" });
-ipv6Cidr.parse("192.168.1.1"); // fail
 ```
 
 ## Numbers
@@ -790,7 +645,7 @@ You can customize certain error messages when creating a nan schema.
 ```ts
 const isNaN = z.nan({
   required_error: "isNaN is required",
-  invalid_type_error: "isNaN must be 'not a number'",
+  invalid_type_error: "isNaN must be not a number",
 });
 ```
 
@@ -874,7 +729,7 @@ const fish = ["Salmon", "Tuna", "Trout"];
 const FishEnum = z.enum(fish);
 ```
 
-**`.enum`**
+**Autocompletion**
 
 To get autocompletion with a Zod enum, use the `.enum` property of your schema:
 
@@ -895,16 +750,6 @@ You can also retrieve the list of options as a tuple with the `.options` propert
 
 ```ts
 FishEnum.options; // ["Salmon", "Tuna", "Trout"];
-```
-
-**`.exclude/.extract()`**
-
-You can create subsets of a Zod enum with the `.exclude` and `.extract` methods.
-
-```ts
-const FishEnum = z.enum(["Salmon", "Tuna", "Trout"]);
-const SalmonAndTrout = FishEnum.extract(["Salmon", "Trout"]);
-const TunaOnly = FishEnum.exclude(["Salmon", "Trout"]);
 ```
 
 ## Native enums
@@ -951,7 +796,7 @@ FruitEnum.parse("Cantaloupe"); // fails
 
 **Const enums**
 
-The `.nativeEnum()` function works for `as const` objects as well. ⚠️ `as const` requires TypeScript 3.4+!
+The `.nativeEnum()` function works for `as const` objects as well. ⚠️ `as const` required TypeScript 3.4+!
 
 ```ts
 const Fruits = {
@@ -1128,7 +973,7 @@ Starting from this object:
 
 ```ts
 const user = z.object({
-  email: z.string(),
+  email: z.string()
   username: z.string(),
 });
 // { email: string; username: string }
@@ -1192,12 +1037,10 @@ Contrary to the `.partial` method, the `.required` method makes all properties r
 Starting from this object:
 
 ```ts
-const user = z
-  .object({
-    email: z.string(),
-    username: z.string(),
-  })
-  .partial();
+const user = z.object({
+  email: z.string()
+  username: z.string(),
+}).partial();
 // { email?: string | undefined; username?: string | undefined }
 ```
 
@@ -1435,38 +1278,20 @@ const myUnion = z.discriminatedUnion("status", [
 myUnion.parse({ status: "success", data: "yippie ki yay" });
 ```
 
-You can extract a reference to the array of schemas with the `.options` property.
-
-```ts
-myUnion.options; // [ZodObject<...>, ZodObject<...>]
-```
-
-To merge two or more discriminated unions, use `.options` with destructuring.
-
-```ts
-const A = z.discriminatedUnion("status", [
-  /* options */
-]);
-const B = z.discriminatedUnion("status", [
-  /* options */
-]);
-
-const AB = z.discriminatedUnion("status", [...A.options, ...B.options]);
-```
-
 ## Records
 
-Record schemas are used to validate types such as `Record<string, number>`. This is particularly useful for storing or caching items by ID.
+Record schemas are used to validate types such as `{ [k: string]: number }`.
+
+If you want to validate the _values_ of an object against some schema but don't care about the keys, use `z.record(valueType)`:
 
 ```ts
-const User = z.object({ name: z.string() });
+const NumberCache = z.record(z.number());
 
-const UserStore = z.record(z.string(), User);
-type UserStore = z.infer<typeof UserStore>;
-// => Record<string, { name: string }>
+type NumberCache = z.infer<typeof NumberCache>;
+// => { [k: string]: number }
 ```
 
-The schema and inferred type can be used like so:
+This is particularly useful for storing or caching items by ID.
 
 ```ts
 const userStore: UserStore = {};
@@ -1479,6 +1304,19 @@ userStore["77d2586b-9e8e-4ecf-8b21-ea7e0530eadd"] = {
   whatever: "Ice cream sundae",
 }; // TypeError
 ```
+
+### Record key type
+
+If you want to validate both the keys and the values, use
+`z.record(keyType, valueType)`:
+
+```ts
+const NoEmptyKeysSchema = z.record(z.string().min(1), z.number());
+NoEmptyKeysSchema.parse({ count: 1 }); // => { 'count': 1 }
+NoEmptyKeysSchema.parse({ "": 1 }); // fails
+```
+
+_(Notice how when passing two arguments, `valueType` is the second argument)_
 
 **A note on numerical keys**
 
@@ -1640,9 +1478,7 @@ Thanks to ggoodman for suggesting this.
 
 ### Cyclical objects
 
-Despite supporting recursive schemas, passing cyclical data into Zod will cause an infinite loop in some cases.
-
-> To detect cyclical objects before they cause problems, consider this approach.
+Despite supporting recursive schemas, passing cyclical data into Zod will cause an infinite loop.
 
 ## Promises
 
@@ -1684,7 +1520,7 @@ const TestSchema = z.instanceof(Test);
 
 const blob: any = "whatever";
 TestSchema.parse(new Test()); // passes
-TestSchema.parse(blob); // throws
+TestSchema.parse("blob"); // throws
 ```
 
 ## Functions
@@ -1773,7 +1609,7 @@ You can create a Zod schema for any TypeScript type by using `z.custom()`. This 
 
 ```ts
 const px = z.custom<`${number}px`>((val) => {
-  return typeof val === "string" ? /^\d+px$/.test(val) : false;
+  return /^\d+px$/.test(val as string);
 });
 
 type px = z.infer<typeof px>; // `${number}px`
@@ -2147,8 +1983,8 @@ numberWithRandomDefault.parse(undefined); // => 0.7223408162401552
 
 Conceptually, this is how Zod processes default values:
 
-1. If the input is `undefined`, the default value is substituted
-2. Then the data is parsed using the base schema. Your default value will be parsed by the schema (including any potential transforms).
+1. If the input is `undefined`, the default value is returned
+2. Otherwise, the data is parsed using the base schema
 
 ### `.describe`
 
@@ -2222,7 +2058,7 @@ A convenience method that returns a "nullish" version of a schema. Nullish schem
 const nullishString = z.string().nullish(); // string | null | undefined
 
 // equivalent to
-z.string().nullable().optional();
+z.string().optional().nullable();
 ```
 
 ### `.array`
@@ -2312,38 +2148,7 @@ type Cat = z.infer<typeof Cat>;
 
 Note that branded types do not affect the runtime result of `.parse`. It is a static-only construct.
 
-### `.readonly`
-
-`.readonly() => ZodReadonly<this>`
-
-This method returns a `ZodReadonly` schema instance that parses the input using the base schema, then calls `Object.freeze()` on the result. The inferred type is also marked as `readonly`.
-
-```ts
-const schema = z.object({ name: z.string() }).readonly();
-type schema = z.infer<typeof schema>;
-// Readonly<{name: string}>
-
-const result = schema.parse({ name: "fido" });
-result.name = "simba"; // error
-```
-
-The inferred type uses TypeScript's built-in readonly types when relevant.
-
-```ts
-z.array(z.string()).readonly();
-// readonly string[]
-
-z.tuple([z.string(), z.number()]).readonly();
-// readonly [string, number]
-
-z.map(z.string(), z.date()).readonly();
-// ReadonlyMap<string, Date>
-
-z.set(z.string()).readonly();
-// ReadonlySet<string>
-```
-
-### `.pipe`
+### `.pipe()`
 
 Schemas can be chained into validation "pipelines". It's useful for easily validating the result after a `.transform()`:
 
@@ -2354,6 +2159,58 @@ z.string()
 ```
 
 The `.pipe()` method returns a `ZodPipeline` instance.
+
+#### You can use `.pipe()` to fix common issues with `z.coerce`.
+
+You can constrain the input to types that work well with your chosen coercion. Then use `.pipe()` to apply the coercion.
+
+without constrained input:
+```ts
+const toDate = z.coerce.date()
+
+// works intuitively
+console.log(toDate.safeParse('2023-01-01').success) // true
+
+// might not be what you want
+console.log(toDate.safeParse(null).success) // true
+```
+
+with constrained input:
+```ts
+const datelike = z.union([z.number(), z.string(), z.date()])
+const datelikeToDate = datelike.pipe(z.coerce.date())
+
+// still works intuitively
+console.log(datelikeToDate.safeParse('2023-01-01').success) // true
+
+// more likely what you want
+console.log(datelikeToDate.safeParse(null).success) // false
+```
+
+You can also use this technique to avoid coercions that throw uncaught errors.
+
+without constrained input:
+```ts
+const toBigInt = z.coerce.bigint()
+
+// works intuitively
+console.log( toBigInt.safeParse( '42' ) ) // true
+
+// probably not what you want
+console.log( toBigInt.safeParse( null ) ) // throws uncaught error
+```
+
+with constrained input:
+```ts
+const toNumber = z.number().or( z.string() ).pipe( z.coerce.number() )
+const toBigInt = z.bigint().or( toNumber ).pipe( z.coerce.bigint() )
+
+// still works intuitively
+console.log( toBigInt.safeParse( '42' ).success ) // true
+
+// error handled by zod, more likely what you want
+console.log( toBigInt.safeParse( null ).success ) // false
+```
 
 ## Guides and concepts
 
@@ -2388,63 +2245,36 @@ type inferred = z.infer<typeof stringToNumber>; // number
 
 ### Writing generic functions
 
-With TypeScript generics, you can write reusable functions that accept Zod schemas as parameters. This enables you to create custom validation logic, schema transformations, and more, while maintaining type safety and inference.
-
-When attempting to write a function that accepts a Zod schema as an input, it's tempting to try something like this:
+When attempting to write a function that accepts a Zod schema as an input, it's common to try something like this:
 
 ```ts
-function inferSchema<T>(schema: z.ZodType<T>) {
-  return schema;
+function makeSchemaOptional<T>(schema: z.ZodType<T>) {
+  return schema.optional();
 }
 ```
 
-This approach is incorrect, and limits TypeScript's ability to properly infer the argument. No matter what you pass in, the type of `schema` will be an instance of `ZodType`.
+This approach has some issues. The `schema` variable in this function is typed as an instance of `ZodType`, which is an abstract class that all Zod schemas inherit from. This approach loses type information, namely _which subclass_ the input actually is.
 
 ```ts
-inferSchema(z.string());
-// => ZodType<string>
+const arg = makeSchemaOptional(z.string());
+arg.unwrap();
 ```
 
-This approach loses type information, namely _which subclass_ the input actually is (in this case, `ZodString`). That means you can't call any string-specific methods like `.min()` on the result of `inferSchema`.
-
-A better approach is to infer _the schema as a whole_ instead of merely its inferred type. You can do this with a utility type called `z.ZodTypeAny`.
+A better approach is for the generic parameter to refer to _the schema as a whole_.
 
 ```ts
-function inferSchema<T extends z.ZodTypeAny>(schema: T) {
-  return schema;
+function makeSchemaOptional<T extends z.ZodTypeAny>(schema: T) {
+  return schema.optional();
 }
-
-inferSchema(z.string());
-// => ZodString
 ```
 
 > `ZodTypeAny` is just a shorthand for `ZodType<any, any, any>`, a type that is broad enough to match any Zod schema.
 
-The Result is now fully and properly typed, and the type system can infer the specific subclass of the schema.
-
-#### Inferring the inferred type
-
-If you follow the best practice of using `z.ZodTypeAny` as the generic parameter for your schema, you may encounter issues with the parsed data being typed as `any` instead of the inferred type of the schema.
+As you can see, `schema` is now fully and properly typed.
 
 ```ts
-function parseData<T extends z.ZodTypeAny>(data: unknown, schema: T) {
-  return schema.parse(data);
-}
-
-parseData("sup", z.string());
-// => any
-```
-
-Due to how TypeScript inference works, it is treating `schema` like a `ZodTypeAny` instead of the inferred type. You can fix this with a type cast using `z.infer`.
-
-```ts
-function parseData<T extends z.ZodTypeAny>(data: unknown, schema: T) {
-  return schema.parse(data) as z.infer<T>;
-  //                        ^^^^^^^^^^^^^^ <- add this
-}
-
-parseData("sup", z.string());
-// => string
+const arg = makeSchemaOptional(z.string());
+arg.unwrap(); // ZodString
 ```
 
 #### Constraining allowable inputs
@@ -2542,6 +2372,7 @@ Yup is a full-featured library that was implemented first in vanilla JS, and lat
 
 - Supports casting and transforms
 - All object fields are optional by default
+- Missing object methods: (partial, deepPartial)
 
 - Missing promise schemas
 - Missing function schemas
@@ -2600,15 +2431,14 @@ This more declarative API makes schema definitions vastly more concise.
 
 ### Runtypes
 
-https://github.com/runtypes/runtypes
+https://github.com/pelotom/runtypes
 
-Runtypes is focused on ergonomics, with good type inference support.
+Good type inference support, but limited options for object type masking (no `.pick` , `.omit` , `.extend` , etc.). No support for `Record` s (their `Record` is equivalent to Zod's `object` ). They DO support readonly types, which Zod does not.
 
 - Supports "pattern matching": computed properties that distribute over unions
-- Supports branded types
-- Supports template literals
-- Supports conformance to predefined static types
+- Supports readonly types
 - Missing object methods: (deepPartial, merge)
+- Missing nonempty arrays with proper typing (`[T, ...T[]]`)
 - Missing promise schemas
 - Missing error customization
 

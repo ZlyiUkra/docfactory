@@ -1,7 +1,7 @@
-# Zod README 3.24.2
+# Zod README 3.25.0-canary.20250211T214501 … 3.24.2
 # джерело: https://raw.githubusercontent.com/colinhacks/zod/e30870369d5b8f31ff4d0130d4439fd997deb523/README.md
 # отримано: 2026-09-28
-# версія: 3.24.2
+# версія: 3.24.2, 3.25.0-canary.20250211T214501
 
   Zod
 

@@ -1,7 +1,7 @@
-# Zod README 4.4.0-canary.20260429T194540 … 4.4.1
-# джерело: https://raw.githubusercontent.com/colinhacks/zod/edd0bf0f5ada4a8dc581c259407d7bbad0a71ea7/packages/zod/README.md
+# Zod README 4.5.0-canary.20260819T160226 … 4.5.0-canary.20260825T051321
+# джерело: https://raw.githubusercontent.com/colinhacks/zod/7b612b536d8bcb1dd160a705cc2d9a4109cb50b3/packages/zod/README.md
 # отримано: 2026-09-28
-# версія: 4.4.1, 4.5.0-canary.20260429T231203, 4.5.0-canary.20260429T225357, 4.4.0, 4.4.0-canary.20260429T195257, 4.4.0-canary.20260429T194540
+# версія: 4.5.0-canary.20260825T051321, 4.5.0-canary.20260827T054049, 4.5.0-canary.20260827T005050, 4.5.0-canary.20260827T003629, 4.5.0-canary.20260826T002553, 4.5.0-canary.20260826T001234, 4.5.0-canary.20260826T000001, 4.5.0-canary.20260825T232139, 4.5.0-canary.20260825T163950, 4.5.0-canary.20260825T055534, 4.5.0-canary.20260825T025411, 4.5.0-canary.20260825T041357, 4.5.0-canary.20260825T040744, 4.5.0-canary.20260825T014134, 4.5.0-canary.20260825T040219, 4.5.0-canary.20260825T025933, 4.5.0-canary.20260825T025549, 4.5.0-canary.20260825T012222, 4.5.0-canary.20260825T000613, 4.5.0-canary.20260825T000704, 4.5.0-canary.20260824T235056, 4.5.0-canary.20260824T235120, 4.5.0-canary.20260824T234547, 4.5.0-canary.20260824T223622, 4.5.0-canary.20260824T223527, 4.5.0-canary.20260824T214023, 4.5.0-canary.20260824T172557, 4.5.0-canary.20260819T210425, 4.5.0-canary.20260819T211159, 4.5.0-canary.20260820T143231, 4.5.0-canary.20260819T200234, 4.5.0-canary.20260819T191034, 4.5.0-canary.20260819T190527, 4.5.0-canary.20260820T155656, 4.5.0-canary.20260820T151954, 4.5.0-canary.20260820T145307, 4.5.0-canary.20260820T144642, 4.5.0-canary.20260820T144632, 4.5.0-canary.20260820T143849, 4.5.0-canary.20260819T211556, 4.5.0-canary.20260819T185743, 4.5.0-canary.20260819T173014, 4.5.0-canary.20260819T185817, 4.5.0-canary.20260819T162129, 4.5.0-canary.20260819T160226
 
   Zod
 
@@ -16,10 +16,6 @@
   𝕏
     •
   Bluesky
-
-Featured sponsor: Jazz
-
-  Learn more about featured sponsorships
 
 ### Read the docs →
 
@@ -93,6 +89,35 @@ const schema = z.string().refine(async (val) => val.length <= 8);
 await schema.parseAsync("hello");
 // => "hello"
 ```
+
+### AOT compilation
+
+**Canary only** — compilation has not shipped in a stable release yet. Install with `npm install zod@canary`.
+
+For hot validation paths, `z.compile(schema)` returns a schema clone with an ahead-of-time compiled fast path. Valid inputs take the compiled path; invalid inputs fall back to the regular parser so error reporting stays identical.
+
+Across a 55-schema benchmark the median speedup is **2.4x**, and it scales with how much work the schema does per parse: a large array of objects is ~9x, a 20-key object ~9x, a nested object ~4.5x, while a bare `z.string()` gains nothing — compilation removes per-node dispatch and allocation, and a single `typeof` has none to remove.
+
+```ts
+const CompiledPlayer = z.compile(Player);
+
+CompiledPlayer.parse({ username: "billie", xp: 100 });
+```
+
+To enable compilation globally for schemas constructed after import:
+
+```ts
+import "zod/compile"; // place before modules that define schemas
+```
+
+Things to know:
+
+- Compilation uses `new Function`. Global mode is automatically disabled when `z.config({ jitless: true })` is set (e.g. CSP environments); calling `z.compile()` directly is an explicit opt-in.
+- Schemas with async refinements or transforms can't be compiled — `z.compile()` throws `ZodCompileAsyncError`; other unsupported constructs throw `ZodCompileUnsupportedError`. In global mode such schemas silently keep using the regular parser.
+- On invalid input, refinements and transforms may run twice (fast path, then fallback).
+- Deriving a new schema from a compiled one (`.refine()`, `.extend()`, etc.) returns an uncompiled schema — compile the final schema.
+
+See `compile` docs for details.
 
 ### Handling errors
 

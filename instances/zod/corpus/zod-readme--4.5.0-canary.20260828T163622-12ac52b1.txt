@@ -1,7 +1,7 @@
-# Zod README 4.4.0-canary.20260429T194540 … 4.4.1
-# джерело: https://raw.githubusercontent.com/colinhacks/zod/edd0bf0f5ada4a8dc581c259407d7bbad0a71ea7/packages/zod/README.md
+# Zod README 4.5.0-canary.20260828T053040 … 4.5.0-canary.20260828T163622
+# джерело: https://raw.githubusercontent.com/colinhacks/zod/2e1f2b414f13fe85c86007cb6bfb30e02a52b3c6/packages/zod/README.md
 # отримано: 2026-09-28
-# версія: 4.4.1, 4.5.0-canary.20260429T231203, 4.5.0-canary.20260429T225357, 4.4.0, 4.4.0-canary.20260429T195257, 4.4.0-canary.20260429T194540
+# версія: 4.5.0-canary.20260828T163622, 4.5.0, 4.5.1, 4.5.0-canary.20260828T171753, 4.5.0-canary.20260828T163402, 4.5.0-canary.20260828T161354, 4.5.0-canary.20260828T160755, 4.5.0-canary.20260828T062315, 4.5.0-canary.20260828T053040
 
   Zod
 
@@ -16,10 +16,6 @@
   𝕏
     •
   Bluesky
-
-Featured sponsor: Jazz
-
-  Learn more about featured sponsorships
 
 ### Read the docs →
 
@@ -93,6 +89,35 @@ const schema = z.string().refine(async (val) => val.length <= 8);
 await schema.parseAsync("hello");
 // => "hello"
 ```
+
+### AOT compilation
+
+**Canary only** — compilation has not shipped in a stable release yet. Install with `npm install zod@canary`.
+
+For hot validation paths, `z.compile(schema)` returns a schema clone with an ahead-of-time compiled fast path. Valid inputs take the compiled path; invalid inputs fall back to the regular parser so error reporting stays identical.
+
+Across a 55-schema benchmark the median speedup is **2.4x**, and it scales with how much work the schema does per parse: a large array of objects is ~9x, a 20-key object ~9x, a nested object ~4.5x, while a bare `z.string()` gains nothing — compilation removes per-node dispatch and allocation, and a single `typeof` has none to remove.
+
+```ts
+const CompiledPlayer = z.compile(Player);
+
+CompiledPlayer.parse({ username: "billie", xp: 100 });
+```
+
+To enable compilation globally for schemas constructed after import:
+
+```ts
+import "zod/compile"; // place before modules that define schemas
+```
+
+Things to know:
+
+- Compilation uses `new Function`. Global mode is automatically disabled when `z.config({ jitless: true })` is set (e.g. CSP environments); calling `z.compile()` directly is an explicit opt-in.
+- Schemas with async refinements or transforms can't be compiled, and neither can a few other constructs. That is not an error: `z.compile()` hands the schema back unchanged and it keeps using the regular parser, exactly as global mode leaves it. Pass `{ strict: true }` to throw `ZodCompileAsyncError` / `ZodCompileUnsupportedError` instead.
+- On invalid input, refinements and transforms may run twice (fast path, then fallback).
+- Deriving a new schema from a compiled one (`.refine()`, `.extend()`, etc.) returns an uncompiled schema — compile the final schema.
+
+See `compile` docs for details.
 
 ### Handling errors
 

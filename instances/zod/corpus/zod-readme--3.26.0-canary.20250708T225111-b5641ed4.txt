@@ -1,7 +1,7 @@
-# Zod README 4.4.0-canary.20260429T194540 … 4.4.1
-# джерело: https://raw.githubusercontent.com/colinhacks/zod/edd0bf0f5ada4a8dc581c259407d7bbad0a71ea7/packages/zod/README.md
+# Zod README 3.25.68-alpha.0 … 3.26.0-canary.20250708T225111
+# джерело: https://raw.githubusercontent.com/colinhacks/zod/e7f20c2c761f924b1182b65eed49c9235822fa16/packages/zod/README.md
 # отримано: 2026-09-28
-# версія: 4.4.1, 4.5.0-canary.20260429T231203, 4.5.0-canary.20260429T225357, 4.4.0, 4.4.0-canary.20260429T195257, 4.4.0-canary.20260429T194540
+# версія: 3.26.0-canary.20250708T225111, 3.25.76, 3.26.0-canary.20250708T090717, 3.26.0-canary.20250707T201657, 3.25.75, 3.25.74, 3.25.73, 3.25.72, 3.26.0-canary.20250703T215303, 3.26.0-canary.20250703T214020, 3.25.71, 3.26.0-canary.20250703T025502, 3.25.70, 3.26.0-canary.20250703T013930, 3.26.0-canary.20250703T011142, 3.25.69, 3.26.0-canary.20250702T200737, 3.25.68, 3.25.68-beta.2, 3.26.0-canary.20250702T074442, 3.25.68-alpha.1, 3.25.68-alpha.0
 
   Zod
 
@@ -28,7 +28,7 @@ Featured sponsor: Jazz
 Zod is a TypeScript-first validation library. Define a schema and parse some data with it. You'll get back a strongly typed, validated result.
 
 ```ts
-import * as z from "zod";
+import * as z from "zod/v4";
 
 const User = z.object({
   name: z.string(),
@@ -68,7 +68,7 @@ npm install zod
 Before you can do anything else, you need to define a schema. For the purposes of this guide, we'll use a simple object schema.
 
 ```ts
-import * as z from "zod";
+import * as z from "zod/v4";
 
 const Player = z.object({
   username: z.string(),

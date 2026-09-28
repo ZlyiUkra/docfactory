@@ -1,7 +1,7 @@
-# Zod README 3.23.0-beta.1 … 3.23.0-beta.2
+# Zod README 3.23.0-canary.20240418T224529 … 3.23.0-beta.2
 # джерело: https://raw.githubusercontent.com/colinhacks/zod/7d1197c7d437ad238341a3caa4489ead469d6507/README.md
 # отримано: 2026-09-28
-# версія: 3.23.0-beta.2, 3.23.0-beta.1
+# версія: 3.23.0-beta.2, 3.23.0-beta.1, 3.23.0-canary.20240418T224529
 
   Zod
 

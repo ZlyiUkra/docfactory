@@ -1,33 +1,33 @@
-# Zod README 3.25.0-canary.20250504T221648 … 3.24.4
-# джерело: https://raw.githubusercontent.com/colinhacks/zod/e62341b1aaf720709ee5f31785db25d5c0491659/README.md
+# Zod README 3.24.0-canary.20241210T025031 … 3.24.0-canary.20241210T025401
+# джерело: https://raw.githubusercontent.com/colinhacks/zod/69a1798ce2df65555bda0a8978a6baadd7d5588e/README.md
 # отримано: 2026-09-28
-# версія: 3.24.4, 3.25.0-canary.20250504T221648
+# версія: 3.24.0-canary.20241210T025401, 3.24.0-canary.20241210T025031
 
   Zod
 
-  zod.dev
+    ✨ https://zod.dev ✨
 
     TypeScript-first schema validation with static type inference
 
-  Website
+  Documentation
     •
   Discord
     •
-  𝕏
+  npm
     •
-  Bluesky
+  deno
+    •
+  Issues
+    •
+  @colinhacks
+    •
+  tRPC
 
-  Zod 4 is now in beta!
-
-  Read the announcement 👉
-
-Featured sponsor: Stainless
-
-  Learn more about featured sponsorships
+clerk announcement
 
 ## Table of contents
 
-> These docs have been translated into Chinese and Korean.
+> These docs have been translated into Chinese.
 
 - Table of contents
 - Introduction
@@ -168,17 +168,13 @@ Some other great aspects:
 
 Sponsorship at any level is appreciated and encouraged. If you built a paid product using Zod, consider one of the corporate tiers.
 
+Diamond
+
+    The most comprehensive User Management Platform
+
+    clerk.com
+
 Platinum
-
-      Cut code review time & bugs in half
-
-      coderabbit.ai
-
-Gold
-
-      The API platform for sending notifications
-
-      courier.com
 
       Generate better SDKs for your APIs
 
@@ -194,15 +190,13 @@ Gold
 
       Generate best-in-class SDKs
 
-      stainless.com
+      stainlessapi.com
 
       SDKs & Terraform providers for your API
 
       speakeasy.com
 
-Silver
-
-      Nitric
+Gold
 
       PropelAuth
 
@@ -229,9 +223,29 @@ Silver
 
       Mux
 
-      Cybozu
+Silver
 
 Bronze
+
+    Brandon Bayer
+    Jiří Brabec
+    Alex Johansson
+    Fungible Systems
+
+    Adaptable
+    Avana Wallet
+    Jason Lengstorf
+    Global Illumination, Inc.
+
+    MasterBorn
+    Ryan Palmer
+    Michael Sweeney
+    Nextbase
+
+    Remotion
+    Connor Sinnott
+    Mohammad-Ali A'râbi
+    Supatool
 
 ### Ecosystem
 
@@ -255,13 +269,10 @@ There are a growing number of tools that are built atop or support Zod natively!
 - `koa-zod-router`: Create typesafe routes in Koa with I/O validation using Zod.
 - `zod-sockets`: Zod-powered Socket.IO microframework with I/O validation and built-in AsyncAPI specs
 - `oas-tszod-gen`: Client SDK code generator to convert OpenApi v3 specifications into TS endpoint caller functions with Zod types.
-- `GQLoom`: Weave GraphQL schema and resolvers using Zod.
-- `oRPC`: Typesafe APIs Made Simple
 
 #### Form integrations
 
 - `react-hook-form`: A first-party Zod resolver for React Hook Form.
-- `TanStack Form`: Headless, performant, and type-safe form state management for TS/JS, React, Vue, Angular, Solid, and Lit
 - `zod-validation-error`: Generate user-friendly error messages from `ZodError`s.
 - `zod-formik-adapter`: A community-maintained Formik adapter for Zod.
 - `react-zorm`: Standalone `<form>` generation and validation for React using Zod.
@@ -277,7 +288,6 @@ There are a growing number of tools that are built atop or support Zod natively!
 - `@vee-validate/zod`: Form library for Vue.js with Zod schema validation.
 - `zod-form-renderer`: Auto-infer form fields from zod schema and render them with react-hook-form with E2E type safety.
 - `antd-zod`: Zod adapter for Ant Design form fields validation.
-- `frrm`: Tiny 0.5kb Zod-based, HTML form abstraction that goes brr.
 
 #### Zod to X
 
@@ -333,9 +343,6 @@ There are a growing number of tools that are built atop or support Zod natively!
 - `znv`: Type-safe environment parsing and validation for Node.js with Zod schemas.
 - `zod-config`: Load configurations across multiple sources with flexible adapters, ensuring type safety with Zod.
 - `unplugin-environment`: A plugin for loading enviroment variables safely with schema validation, simple with virtual module, type-safe with intellisense, and better DX 🔥 🚀 👷. Powered by Zod.
-- `zod-struct`: Create runtime-checked structs with Zod.
-- `zod-csv`: Validation helpers for zod for parsing CSV data.
-- `fullproduct.dev`: Universal Expo + Next.js App Starter that uses Zod schemas as the single source of truth to keep generated MDX docs, GraphQL, database models, forms, and fetcher functions in sync.
 
 #### Utilities for Zod
 
@@ -555,7 +562,7 @@ z.string().toUpperCase(); // toUpperCase
 
 // added in Zod 3.23
 z.string().date(); // ISO date format (YYYY-MM-DD)
-z.string().time(); // ISO time format (HH:mm:ss[.SSSSSS] or HH:mm)
+z.string().time(); // ISO time format (HH:mm:ss[.SSSSSS])
 z.string().duration(); // ISO 8601 duration
 z.string().base64();
 ```
@@ -595,7 +602,7 @@ z.string().cidr({ message: "Invalid CIDR" });
 
 As you may have noticed, Zod string includes a few date/time related validations. These validations are regular expression based, so they are not as strict as a full date/time library. However, they are very convenient for validating user input.
 
-The `z.string().datetime()` method enforces ISO 8601; default is no timezone offsets and arbitrary sub-second decimal precision. Seconds may be omitted if precision is not set.
+The `z.string().datetime()` method enforces ISO 8601; default is no timezone offsets and arbitrary sub-second decimal precision.
 
 ```ts
 const datetime = z.string().datetime();
@@ -603,7 +610,6 @@ const datetime = z.string().datetime();
 datetime.parse("2020-01-01T00:00:00Z"); // pass
 datetime.parse("2020-01-01T00:00:00.123Z"); // pass
 datetime.parse("2020-01-01T00:00:00.123456Z"); // pass (arbitrary precision)
-datetime.parse("2020-01-01T00:00Z"); // pass (hours and minutes only)
 datetime.parse("2020-01-01T00:00:00+02:00"); // fail (no offsets allowed)
 ```
 
@@ -613,7 +619,6 @@ Timezone offsets can be allowed by setting the `offset` option to `true`.
 const datetime = z.string().datetime({ offset: true });
 
 datetime.parse("2020-01-01T00:00:00+02:00"); // pass
-datetime.parse("2020-01-01T00:00+02:00"); // pass
 datetime.parse("2020-01-01T00:00:00.123+02:00"); // pass (millis optional)
 datetime.parse("2020-01-01T00:00:00.123+0200"); // pass (millis optional)
 datetime.parse("2020-01-01T00:00:00.123+02"); // pass (only offset hours)
@@ -625,7 +630,6 @@ Allow unqualified (timezone-less) datetimes with the `local` flag.
 ```ts
 const schema = z.string().datetime({ local: true });
 schema.parse("2020-01-01T00:00:00"); // pass
-schema.parse("2020-01-01T00:00"); // pass
 ```
 
 You can additionally constrain the allowable `precision`. By default, arbitrary sub-second precision is supported (but optional).
@@ -635,7 +639,6 @@ const datetime = z.string().datetime({ precision: 3 });
 
 datetime.parse("2020-01-01T00:00:00.123Z"); // pass
 datetime.parse("2020-01-01T00:00:00Z"); // fail
-datetime.parse("2020-01-01T00:00Z"); // fail
 datetime.parse("2020-01-01T00:00:00.123456Z"); // fail
 ```
 
@@ -657,14 +660,13 @@ date.parse("2020-01-32"); // fail
 
 > Added in Zod 3.23
 
-The `z.string().time()` method validates strings in the format `HH:MM` or `HH:MM:SS[.s+]`. The second can include arbitrary decimal precision. It does not allow timezone offsets of any kind.
+The `z.string().time()` method validates strings in the format `HH:MM:SS[.s+]`. The second can include arbitrary decimal precision. It does not allow timezone offsets of any kind.
 
 ```ts
 const time = z.string().time();
 
 time.parse("00:00:00"); // pass
 time.parse("09:52:31"); // pass
-time.parse("09:52"); // pass
 time.parse("23:59:59.9999999"); // pass (arbitrary precision)
 
 time.parse("00:00:00.123Z"); // fail (no `Z` allowed)
@@ -679,7 +681,6 @@ const time = z.string().time({ precision: 3 });
 time.parse("00:00:00.123"); // pass
 time.parse("00:00:00.123456"); // fail
 time.parse("00:00:00"); // fail
-time.parse("00:00"); // fail
 ```
 
 ### IP addresses
@@ -2147,8 +2148,8 @@ numberWithRandomDefault.parse(undefined); // => 0.7223408162401552
 
 Conceptually, this is how Zod processes default values:
 
-1. If the input is `undefined`, the default value is substituted
-2. Then the data is parsed using the base schema. Your default value will be parsed by the schema (including any potential transforms).
+1. If the input is `undefined`, the default value is returned
+2. Otherwise, the data is parsed using the base schema
 
 ### `.describe`
 
@@ -2354,6 +2355,62 @@ z.string()
 ```
 
 The `.pipe()` method returns a `ZodPipeline` instance.
+
+#### You can use `.pipe()` to fix common issues with `z.coerce`.
+
+You can constrain the input to types that work well with your chosen coercion. Then use `.pipe()` to apply the coercion.
+
+without constrained input:
+
+```ts
+const toDate = z.coerce.date();
+
+// works intuitively
+console.log(toDate.safeParse("2023-01-01").success); // true
+
+// might not be what you want
+console.log(toDate.safeParse(null).success); // true
+```
+
+with constrained input:
+
+```ts
+const datelike = z.union([z.number(), z.string(), z.date()]);
+const datelikeToDate = datelike.pipe(z.coerce.date());
+
+// still works intuitively
+console.log(datelikeToDate.safeParse("2023-01-01").success); // true
+
+// more likely what you want
+console.log(datelikeToDate.safeParse(null).success); // false
+```
+
+You can also use this technique to avoid coercions that throw uncaught errors.
+
+without constrained input:
+
+```ts
+const toBigInt = z.coerce.bigint();
+
+// works intuitively
+console.log(toBigInt.safeParse("42")); // true
+
+// probably not what you want
+console.log(toBigInt.safeParse(null)); // throws uncaught error
+```
+
+with constrained input:
+
+```ts
+const toNumber = z.number().or(z.string()).pipe(z.coerce.number());
+const toBigInt = z.bigint().or(toNumber).pipe(z.coerce.bigint());
+
+// still works intuitively
+console.log(toBigInt.safeParse("42").success); // true
+
+// error handled by zod, more likely what you want
+console.log(toBigInt.safeParse(null).success); // false
+```
 
 ## Guides and concepts
 
@@ -2600,15 +2657,13 @@ This more declarative API makes schema definitions vastly more concise.
 
 ### Runtypes
 
-https://github.com/runtypes/runtypes
+https://github.com/pelotom/runtypes
 
-Runtypes is focused on ergonomics, with good type inference support.
+Good type inference support.
 
 - Supports "pattern matching": computed properties that distribute over unions
-- Supports branded types
-- Supports template literals
-- Supports conformance to predefined static types
 - Missing object methods: (deepPartial, merge)
+- Missing nonempty arrays with proper typing (`[T, ...T[]]`)
 - Missing promise schemas
 - Missing error customization
 
