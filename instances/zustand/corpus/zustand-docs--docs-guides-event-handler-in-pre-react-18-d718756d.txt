@@ -1,0 +1,24 @@
+# Calling actions outside a React event handler in pre React 18
+# джерело: https://github.com/pmndrs/zustand/blob/4.5.7/docs/guides/event-handler-in-pre-react-18.md
+# отримано: 2026-09-28
+# версія: 4.5.7, 4.5.6, 5.0.0-rc.2, 5.0.0-rc.1, 5.0.0-rc.0, 4.5.5, 5.0.0-beta.2, 4.5.4, 5.0.0-beta.1, 4.5.3, 5.0.0-beta.0, 5.0.0-alpha.6, 5.0.0-alpha.5, 5.0.0-alpha.4, 4.5.2, 5.0.0-alpha.3, 4.5.1, 5.0.0-alpha.2, 5.0.0-alpha.1, 5.0.0-alpha.0, 4.5.0, 4.4.7, 4.4.6, 4.4.5, 4.4.4, 4.4.3, 4.4.2, 4.4.1, 4.4.0, 4.3.9, 4.3.8, 4.3.7, 4.3.6, 4.3.5, 4.3.4, 4.3.3, 4.3.2, 4.3.1, 4.3.0, 4.2.0, 4.1.5, 4.1.4, 4.1.3, 4.1.2
+
+Because React handles `setState` synchronously if it's called outside an event handler, updating the state outside an event handler will force react to update the components synchronously. Therefore, there is a risk of encountering the zombie-child effect.
+In order to fix this, the action needs to be wrapped in `unstable_batchedUpdates` like so:
+
+```jsx
+import { unstable_batchedUpdates } from 'react-dom' // or 'react-native'
+
+const useFishStore = create((set) => ({
+  fishes: 0,
+  increaseFishes: () => set((prev) => ({ fishes: prev.fishes + 1 })),
+}))
+
+const nonReactCallback = () => {
+  unstable_batchedUpdates(() => {
+    useFishStore.getState().increaseFishes()
+  })
+}
+```
+
+More details: https://github.com/pmndrs/zustand/issues/302
