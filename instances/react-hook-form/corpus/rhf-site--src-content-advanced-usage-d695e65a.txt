@@ -1,6 +1,6 @@
 # Advanced Usage (content/advanced-usage)
 # джерело: https://github.com/react-hook-form/documentation/blob/3ac1fe0254947748d993cd4b1915fc5dea87ba8b/src/content/advanced-usage.mdx
-# отримано: 2026-09-26
+# отримано: 2026-09-28
 # версія: 8.0.0-beta.4, 7.89.0, 7.88.0, 7.87.0, 8.0.0-beta.3
 
 ## Accessibility (A11y)
@@ -10,9 +10,9 @@ React Hook Form has support for native form validation, which allows you to vali
 The following code example works as intended for validation; however, it can be improved for accessibility.
 
 ```javascript
+import { useForm } from "react-hook-form"
 
-
-
+export default function App() {
   const {
     register,
     handleSubmit,
@@ -42,9 +42,9 @@ The following code example works as intended for validation; however, it can be 
 The following code example is an improved version by leveraging ARIA.
 
 ```javascript
+import { useForm } from "react-hook-form"
 
-
-
+export default function App() {
   const {
     register,
     handleSubmit,
@@ -88,11 +88,11 @@ It's pretty common to collect user information through different pages and secti
 **Step 1:** Set up your routes and store.
 
 ```javascript
-
-
-
-
-
+import { BrowserRouter, Routes, Route } from "react-router-dom"
+import { createStore } from "little-state-machine"
+import Step1 from "./Step1"
+import Step2 from "./Step2"
+import Result from "./Result"
 
 createStore({
   data: {
@@ -101,7 +101,7 @@ createStore({
   },
 })
 
-
+export default function App() {
   return (
     <BrowserRouter>
       <Routes>
@@ -117,12 +117,12 @@ createStore({
 **Step 2:** Create your pages, collect and submit the data to the store and push to the next form/page.
 
 ```javascript
+import { useForm } from "react-hook-form"
+import { useNavigate } from "react-router-dom"
+import { useStateMachine } from "little-state-machine"
+import updateAction from "./updateAction"
 
-
-
-
-
-
+export default function Step1() {
   const { register, handleSubmit } = useForm()
   const { actions } = useStateMachine({ actions: { updateAction } })
   const navigate = useNavigate()
@@ -144,9 +144,9 @@ createStore({
 **Step 3:** Make your final submission with all the data in the store or display the resulting data.
 
 ```javascript
+import { useStateMachine } from "little-state-machine"
 
-
-
+export default function Result() {
   const { state } = useStateMachine()
 
   return <pre>{JSON.stringify(state, null, 2)}</pre>
@@ -162,9 +162,9 @@ Following the above pattern, you should be able to build a wizard form/funnel to
 The idea here is that you can easily compose your form using input components. We are going to create a `Form` component to automatically collect form data.
 
 ```javascript
+import { Form, Input, Select } from "./Components"
 
-
-
+export default function App() {
   const onSubmit = (data) => console.log(data)
 
   return (
@@ -187,10 +187,10 @@ Let's have a look at what is inside each of these components.
 The `Form` component's responsibility is to inject all `react-hook-form` methods into the child component.
 
 ```javascript
+import { Children, createElement } from "react"
+import { useForm } from "react-hook-form"
 
-
-
-
+export default function Form({ defaultValues, children, onSubmit }) {
   const methods = useForm({ defaultValues })
   const { handleSubmit } = methods
 
@@ -217,11 +217,11 @@ The `Form` component's responsibility is to inject all `react-hook-form` methods
 The responsibility of these input components is to register themselves with `react-hook-form`.
 
 ```javascript
-
+export function Input({ register, name, ...rest }) {
   return <input {...register(name)} {...rest} />
 }
 
-
+export function Select({ register, options, name, ...rest }) {
   return (
     <select {...register(name)} {...rest}>
       {options.map((value) => (
@@ -267,21 +267,21 @@ Error messages are visual feedback to our users when there are issues with their
 When we are building forms, there are times when our input lives inside deeply nested component trees; that's when FormContext comes in handy. However, we can further improve the developer experience by creating a `ConnectForm` component and leveraging React's renderProps. The benefit is that you can connect your inputs to React Hook Form much more easily.
 
 ```javascript
+import { FormProvider, useForm, useFormContext } from "react-hook-form"
 
-
-
+export const ConnectForm = ({ children }) => {
   const methods = useFormContext()
 
   return children(methods)
 }
 
-
+export const DeepNest = () => (
   <ConnectForm>
     {({ register }) => <input {...register("deepNestedInput")} />}
   </ConnectForm>
 )
 
-
+export const App = () => {
   const methods = useForm()
 
   return (
@@ -303,8 +303,8 @@ React Hook Form's FormProvider is built upon React's Context API. It solves the 
 **Note:** Using React Hook Form's Devtools alongside FormProvider can cause performance issues in some situations. Before diving deep in performance optimizations, consider this bottleneck first.
 
 ```javascript
-
-
+import { memo } from "react"
+import { useForm, FormProvider, useFormContext } from "react-hook-form"
 
 // we can use memo to prevent re-renders except when the isDirty state changes
 const NestedInput = memo(
@@ -318,13 +318,13 @@ const NestedInput = memo(
     prevProps.formState.isDirty === nextProps.formState.isDirty
 )
 
-
+export const NestedInputContainer = ({ children }) => {
   const methods = useFormContext()
 
   return <NestedInput {...methods} />
 }
 
-
+export default function App() {
   const methods = useForm()
   const onSubmit = (data) => console.log(data)
   console.log(methods.formState.isDirty) // make sure `formState` is read before rendering to enable the Proxy
@@ -347,8 +347,8 @@ const NestedInput = memo(
 React Hook Form embraces uncontrolled components but is also compatible with controlled components. Some components in UI libraries like MUI and Antd (e.g. `Select`, `Checkbox`) do not expose a native input ref and must be wrapped with `Controller`. Simpler components like `Input` forward the ref and can be used directly with `{...register}`. React Hook Form also optimizes re-rendering for controlled components. Here is an example that combines both patterns with validation.
 
 ```javascript
-
-
+import { Input, Select, MenuItem } from "@mui/material"
+import { useForm, Controller } from "react-hook-form"
 
 const defaultValues = {
   select: 10,
@@ -387,9 +387,9 @@ function App() {
 ```
 
 ```javascript
-
-
-
+import { useEffect } from "react"
+import { Input, Select, MenuItem } from "@mui/material"
+import { useForm } from "react-hook-form"
 
 const defaultValues = {
   select: "",
@@ -437,9 +437,9 @@ You can build a custom hook as a resolver. A custom hook can easily integrate wi
 - Pass the validation resolver to the useForm hook
 
 ```javascript
-
-
-
+import { useCallback } from "react"
+import { useForm } from "react-hook-form"
+import * as yup from "yup"
 
 const useYupValidationResolver = (validationSchema) =>
   useCallback(
@@ -477,7 +477,7 @@ const validationSchema = yup.object({
   lastName: yup.string().required("Required"),
 })
 
-
+export default function App() {
   const resolver = useYupValidationResolver(validationSchema)
   const { handleSubmit, register } = useForm({ resolver })
 
@@ -500,10 +500,10 @@ Imagine a scenario where you have a table of data. This table might contain hund
 An example is shown below using react-window.
 
 ```javascript
-
-
-
-
+import { memo } from "react"
+import { FormProvider, useForm, useFormContext } from "react-hook-form"
+import { VariableSizeList as List } from "react-window"
+import AutoSizer from "react-virtualized-auto-sizer"
 
 const items = Array.from(Array(1000).keys()).map((i) => ({
   title: `List ${i}`,
@@ -521,7 +521,7 @@ const WindowedRow = memo(({ index, style, data }) => {
   )
 })
 
-
+export const App = () => {
   const onSubmit = (data) => console.log(data)
   const methods = useForm({ defaultValues: items })
 
@@ -549,8 +549,8 @@ const WindowedRow = memo(({ index, style, data }) => {
 ```
 
 ```javascript
-
-
+import { FixedSizeList } from "react-window"
+import { Controller, useFieldArray, useForm } from "react-hook-form"
 
 const items = Array.from(Array(1000).keys()).map((i) => ({
   title: `List ${i}`,
@@ -619,7 +619,7 @@ npm install -D @testing-library/jest-dom
 Create `setup.js` to import @testing-library/jest-dom.
 
 ```javascript
-
+import "@testing-library/jest-dom"
 ```
 
 **Note:** If you are using React Native, you need to create setup.js, define `window` object, and include the following lines in the setup file:
@@ -645,9 +645,9 @@ Additionally, you can set up eslint-plugin-testing-library and eslint-plugin-jes
 We have set the role attribute accordingly. These attributes are helpful when writing tests and improving accessibility. For more information, you can refer to the testing-library documentation.
 
 ```javascript
+import { useForm } from "react-hook-form"
 
-
-
+export default function App({ login }) {
   const {
     register,
     handleSubmit,
@@ -708,8 +708,8 @@ The following criteria are what we aim to cover with the tests:
 - Test successful submission.
 
 ```javascript
-
-
+import { render, screen, fireEvent, waitFor } from "@testing-library/react"
+import App from "./App"
 
 const mockLogin = jest.fn((email, password) => {
   return Promise.resolve({ email, password })
@@ -808,9 +808,9 @@ If you test a component that uses react-hook-form, you might run into a warning 
 > Warning: An update to MyComponent inside a test was not wrapped in act(...)
 
 ```javascript
+import { useForm } from "react-hook-form"
 
-
-
+export default function App() {
   const { register, handleSubmit } = useForm({
     mode: "onChange",
   })
@@ -830,8 +830,8 @@ If you test a component that uses react-hook-form, you might run into a warning 
 ```
 
 ```javascript
-
-
+import { render, screen } from "@testing-library/react"
+import App from "./App"
 
 it("should have a submit button", () => {
   render(<App />)
@@ -847,8 +847,8 @@ This is because react-hook-form internally uses asynchronous validation handlers
 To solve this, wait until some element from your UI appears with `find*` queries. Note that you **must not** wrap your `render()` calls in `act()`. You can read more about wrapping things in `act` unnecessarily here.
 
 ```javascript
-
-
+import { render, screen } from "@testing-library/react"
+import App from "./App"
 
 it("should have a submit button", async () => {
   render(<App />)
@@ -870,7 +870,7 @@ Native inputs return values in `string` format unless `valueAsNumber` or `valueA
 **Important:** spread `field` onto the input before overriding `onChange`/`value`, so `onBlur`, `name`, and `ref` are still forwarded — without `ref`, RHF can't focus the input on a validation error, and without `onBlur`, `isTouched` never updates.
 
 ```javascript
-
+import { Controller } from "react-hook-form"
 
 const ControllerPlus = ({ control, transform, name, defaultValue }) => (
   <Controller
@@ -913,7 +913,7 @@ Next.js Server Actions and React's `useActionState` work well together, but comb
 ```javascript
 "use server"
 
-
+export async function updateProfile(previousState, data) {
   try {
     await db.user.update({ data })
     return { success: true }
@@ -928,11 +928,11 @@ Next.js Server Actions and React's `useActionState` work well together, but comb
 ```javascript
 "use client"
 
+import { useForm } from "react-hook-form"
+import { useActionState } from "react"
+import { updateProfile } from "./actions"
 
-
-
-
-
+export default function ProfileForm() {
   const [state, submitAction, isPending] = useActionState(updateProfile, null)
   const {
     register,
@@ -981,8 +981,8 @@ Forms often store richer values than plain strings and numbers — a date picker
 For a small form this is harmless. For a large form, or one nested a few levels deep, that extra recursion can be expensive enough to slow down editor type-checking, and in the worst case trip TypeScript's "Type instantiation is excessively deep and possibly infinite" diagnostic.
 
 ```tsx
-
-
+import { useForm } from "react-hook-form"
+import type { Dayjs } from "dayjs"
 
 type BookingForm = {
   guest: {
@@ -1008,7 +1008,7 @@ const { register } = useForm<BookingForm>()
 Register `Dayjs` as an opaque type once, in a `.d.ts` file that's part of your program (or any file the module augmentation can reach):
 
 ```tsx
-
+import type { Dayjs } from "dayjs"
 
 declare module "react-hook-form" {
   interface OpaqueTypes {

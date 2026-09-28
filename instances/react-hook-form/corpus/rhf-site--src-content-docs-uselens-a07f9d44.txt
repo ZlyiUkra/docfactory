@@ -1,6 +1,6 @@
 # useLens (content/docs/uselens)
 # джерело: https://github.com/react-hook-form/documentation/blob/eacf28eb1ff326eda857fe05ce7c99a174a3d05f/src/content/docs/uselens.mdx
-# отримано: 2026-09-26
+# отримано: 2026-09-28
 # версія: 7.81.0, 8.0.0-beta.2
 
 ## \</> `useLens`
@@ -246,7 +246,7 @@ function Component({
 Maps over array fields with `useFieldArray` integration. This method requires the `fields` property from `useFieldArray`.
 
 ```tsx
-
+import { useFieldArray } from "@hookform/lenses/rhf"
 
 function ContactsList({ lens }: { lens: Lens<Contact[]> }) {
   const { fields, append, remove } = useFieldArray(lens.interop())
@@ -327,7 +327,7 @@ return (
 The `interop` method's return value can be passed directly to the `useController` hook from React Hook Form, providing seamless integration:
 
 ```tsx
-
+import { useController } from "react-hook-form"
 
 function ControlledInput({ lens }: { lens: Lens<string> }) {
   const { field, fieldState } = useController(lens.interop())
@@ -525,7 +525,7 @@ Use with Extreme Caution
 Import the enhanced `useFieldArray` from `@hookform/lenses/rhf` for seamless array handling with lenses.
 
 ```tsx
-
+import { useFieldArray } from "@hookform/lenses/rhf"
 
 function DynamicForm({
   lens,
@@ -578,9 +578,9 @@ Rules
 #### Basic Usage
 
 ```tsx
-
-
-
+import { useForm } from "react-hook-form"
+import { Lens, useLens } from "@hookform/lenses"
+import { useFieldArray } from "@hookform/lenses/rhf"
 
 function FormComponent() {
   const { handleSubmit, control } = useForm<{
@@ -750,9 +750,9 @@ React Compiler can automatically optimize these functions for you! Since functio
 For advanced use cases or when you need more control, you can create lenses manually without the `useLens` hook using the `LensCore` class:
 
 ```tsx
-
-
-
+import { useMemo } from "react"
+import { useForm } from "react-hook-form"
+import { LensCore, LensesStorage } from "@hookform/lenses"
 
 function App() {
   const { control } = useForm<{ firstName: string; lastName: string }>()
@@ -794,7 +794,7 @@ declare module "@hookform/lenses" {
   }
 }
 
-
+export {}
 ```
 
 **Step 2: Create the custom lens core implementation**
@@ -802,10 +802,10 @@ declare module "@hookform/lenses" {
 Create a `MyLensCore.ts` file with the actual runtime implementation:
 
 ```typescript
+import type { FieldValues } from "react-hook-form"
+import { LensCore } from "@hookform/lenses"
 
-
-
-
+export class MyLensCore<T extends FieldValues> extends LensCore<T> {
   public getValue() {
     return this.control._formValues
   }
@@ -817,13 +817,13 @@ Create a `MyLensCore.ts` file with the actual runtime implementation:
 Create a `useMyLens.ts` file that accepts control and returns the lens as usual:
 
 ```typescript
+import { type DependencyList, useMemo } from "react"
+import type { FieldValues } from "react-hook-form"
 
+import { LensesStorage, type Lens, type UseLensProps } from "@hookform/lenses"
+import { MyLensCore } from "./MyLensCore"
 
-
-
-
-
-
+export function useMyLens<TFieldValues extends FieldValues = FieldValues>(
   props: UseLensProps<TFieldValues>,
   deps: DependencyList = []
 ): Lens<TFieldValues> {
