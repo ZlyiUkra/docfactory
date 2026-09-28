@@ -108,6 +108,12 @@ def _overview(label, cite, stamp, rows, dist_tags, lines) -> str:
     if seen:
         out += ["", "## Entry points (package exports)", "",
                 "First and last published version that had each import path:", ""]
+        # Шаблон `./*` відкриває будь-який підшлях: zustand 5 прибрав явні `./middleware`,
+        # `./shallow`, а імпорт лишився. Без застереження «до 4.5.7» читається як «видалено».
+        if any("*" in e for e in seen):
+            out += ["A path with `*` is a pattern that opens any subpath: when an explicit path "
+                    "stops at some version while a pattern is still published, the import "
+                    "usually still works through the pattern, it was not removed.", ""]
         for e, (a, b) in sorted(seen.items(), key=lambda kv: kv[1][0]["day"]):
             out.append(f"- `{_path(label, e)}`: from {a['v']} ({a['day']}) "
                        f"to {b['v']} ({b['day']})")
