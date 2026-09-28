@@ -51,7 +51,6 @@ _ATX = re.compile(r"^(#{1,6})[ \t]+(\S.*?)[ \t]*#*[ \t]*$")
 _SETEXT = re.compile(r"^(=+|-+)[ \t]*$")
 # Рядок, що підкресленням заголовка бути не може: пункт списку, цитата, таблиця,
 # інший заголовок. Інакше «---» під пунктом списку став би заголовком із пункту.
-_MDX_CODE = re.compile(r"^(import|export)\s.*$", re.M)
 _NOT_TITLE = re.compile(r"^\s*([-*+>|#]|\d+[.)]\s|```|~~~)")
 
 
@@ -155,7 +154,7 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
             meta, rest = _markup.front_matter(text)
             if path.endswith(".mdx"):
                 # Імпорти й експорти MDX — код сторінки, а не її текст.
-                rest = _MDX_CODE.sub("", rest)
+                rest = _markup.mdx_statements_out(rest)
             rest = _atx(rest)
             title = meta.get("title", "") if meta else ""
             if not title:

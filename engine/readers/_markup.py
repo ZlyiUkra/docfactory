@@ -106,6 +106,28 @@ def title_of(meta: dict, url: str) -> str:
     return re.sub(r"\.md$", "", tail)
 
 
+_MDX_STATEMENT = re.compile(r"^(import|export)\s")
+
+
+def mdx_statements_out(text: str) -> str:
+    """MDX без операторів `import`/`export` верхнього рівня — це код сторінки, а не текст.
+    Рядки всередині огорож коду лишаються: `import { z } from "zod"` у прикладі — частина
+    прикладу, і без нього приклад не збирається."""
+    out: list[str] = []
+    fence = ""
+    for ln in text.split("\n"):
+        m = _FENCE.match(ln)
+        if fence:
+            if _closes(ln, fence):
+                fence = ""
+        elif m:
+            fence = m.group(1)
+        elif _MDX_STATEMENT.match(ln):
+            continue
+        out.append(ln)
+    return "\n".join(out)
+
+
 def front_matter(text: str) -> tuple[dict, str]:
     """(поля шапки YAML, решта тексту). Розбирається лише простий «ключ: значення»
     — більше читачам не треба, а бібліотека YAML тягнула б залежність."""

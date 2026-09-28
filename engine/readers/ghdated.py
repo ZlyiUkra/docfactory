@@ -43,7 +43,6 @@ from engine.readers import Item, _jsx, _markup, register
 _SEMVER = re.compile(r"^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$")
 _CODE = (".ts", ".tsx", ".js", ".jsx")
 _MARKDOWN = (".md", ".mdx")
-_MDX_IMPORT = re.compile(r"^(import|export)\s.*$", re.M)
 _SINCE = re.compile(r"<Since\s+version=\"([^\"]+)\"\s*/>")
 
 
@@ -216,7 +215,7 @@ def ghsite_dated(source: dict, ctx) -> list[Item]:
                 meta, rest = _markup.front_matter(text)
                 rest = _SINCE.sub(r"(since \1)", rest)
                 if path.endswith(".mdx"):
-                    rest = _MDX_IMPORT.sub("", rest)
+                    rest = _markup.mdx_statements_out(rest)
                 title = meta.get("title", "") if meta else ""
                 body = _markup.markdown_body(rest)
             else:
