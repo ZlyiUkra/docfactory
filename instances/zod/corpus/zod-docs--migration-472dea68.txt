@@ -1,0 +1,80 @@
+# Migration guide
+# джерело: https://github.com/colinhacks/zod/blob/v3.24.4/MIGRATION.md
+# отримано: 2026-09-28
+# версія: 3.24.4, 3.24.3, 3.24.2, 3.24.1, 3.24.0, 3.23.8, 3.23.7, 3.23.6, 3.23.5, 3.23.4, 3.23.3, 3.23.2, 3.23.1, 3.23.0, 3.23.0-beta.0, 3.22.4, 3.22.3, 3.22.2, 3.22.1, 3.22.0, 3.21.4, 3.21.3, 3.21.2, 3.21.1, 3.21.0, 3.20.6, 3.20.5, 3.20.4, 3.20.3, 3.20.2, 3.20.1, 3.20.0, 3.19.1, 3.19.0, 3.18.0, 3.17.10, 3.17.9, 3.17.8, 3.17.7, 3.17.6, 3.17.5, 3.17.4, 3.17.3, 3.17.2, 3.17.0, 3.16.1, 3.16.0, 3.15.1, 3.15.0, 3.14.5, 3.14.4, 3.14.3, 3.14.2, 3.14.1, 3.14.0, 3.13.4, 3.13.2, 3.12.0, 3.11.6, 3.11.4, 3.11.3, 3.10.3, 3.9.8, 3.9.0
+
+This is a migration guide to walk you through the process of upgrading to Zod 3.
+
+- If you're upgrading directly from Zod 1, you should read through the list of features + changes in both Zod 2 and Zod 3.
+- If you're upgrading from Zod 2 -> 3, you can skip to the
+
+## Upgrading from Zod 1 → Zod 2
+
+Zod 2 is being retired and will not leave beta. This is due to some unintuitive ramifications of the transformers API: details here.
+
+### New features
+
+- Transformers! These let you provide default values, do casting/coercion, and a lot more. Read more here: Transformers
+- Asynchronous refinements and new .parseAsync and .safeParseAsync methods. Read more here: Refinements
+- Modify unknown key behavior for object schemas: `.strip()` (the default), `.passthrough()`, and `.strict()`
+- New .catchall() method for object schemas: catchall
+
+### Breaking changes
+
+- Object schemas now _strip_ unknown keys by default.
+- Schema parsing now returns a deep clone of the data you pass in (instead of the exact value you pass in)
+- Relatedly, Zod no longer supports cyclical data. Recursive schemas are still supported, but Zod can't properly parse nested objects that contain cycles.
+- Optional and nullable schemas are now represented with the dedicated ZodOptional and ZodNullable classes, instead of using ZodUnion.
+
+## Upgrading from Zod 2 → Zod 3
+
+### New features
+
+- You can now import Zod like `import { z } from 'zod';` instead of using `import * as` syntax.
+- **Structured error messages**. Use the `.format()` method to ZodError to convert the error into a strongly-typed, nested object: format method
+- **Easier unions**. Use the `or` method to ZodType (the base class for all Zod schemas) to easily create union types like `z.string().or(z.number())`
+- **Easier intersections**. Use the `and` method to ZodType (the base class for all Zod schemas) to easily create intersection types
+- **Global error customization**. Use `z.setErrorMap(myErrorMap)` to _globally_ customize the error messages produced by Zod: setErrorMap
+- **Maps and sets**. Zod now supports `Map` and `Set` schemas.
+- **Optional and nullable unwrapping**. ZodOptional and ZodNullable now have a `.unwrap()` method for retrieving the schema they wrap.
+- **A new implementation of transformers**. Details below.
+
+### Breaking changes
+
+- The **minimum TypeScript version** is now _4.1_ (up from 3.7 for Zod 2). Several features have been rewritten to use recursive conditional types, an incredibly powerful new feature introduced in TS4.1.
+
+- **Transformers syntax**. Previously, creating a transformer required an input schema, an output schema, and a function to transform between them. You created transformers like `z.transform(A, B, func)`, where `A` and `B` are Zod schemas. This is no longer the case. Accordingly:
+
+  The old syntax is no longer available:
+
+```ts
+  # not available
+  z.transformer(A, B, func);
+  A.transform(B, func)
+```
+
+  Instead, apply transformations by simply using the `.transform()` method that exists on all Zod schemas.
+
+```ts
+  z.string().transform((val) => val.length);
+```
+
+- Under the hood, all refinements and transformations are executed inside a dedicated "ZodEffects" class. Post-parsing, ZodEffects passes the data through a chain of refinements and transformations, then returns the final value. As such, you can now _interleave_ transformations and refinements. For instance:
+
+```ts
+  const test = z
+    .string()
+    .transform((val) => val.length)
+    .refine((val) => val > 5, { message: "Input is too short" })
+    .transform((val) => val * 2);
+
+  test.parse("12characters"); // => 24
+```
+
+- **Type guards** (the `.check()` method) have been removed. Type guards interact with transformers in unintuitive ways so they were removed. Use `.safeParse` instead.
+
+- Object merging now behaves differently. If you merge two object schema (`A.merge(B)`), the fields of B will overwrite the fields of A if there are shared keys. This is how the `.extend` method already works. If you're looking to create an intersection of the two types, use `z.intersection(A, B)` or use the new `.and` method (`A.and(B)`).
+
+- **Default values**: default value logic is now implemented inside a `ZodDefault` class, instead of using transformers. (In a previous alpha version of Zod 3, default values were implemented inside the ZodOptional class.)
+
+- There have been small internal changes to the ZodIssue subtypes. See the new subtypes in the Error Handling guide. This may impact user who have written a custom error maps. Most users will not be affected.
