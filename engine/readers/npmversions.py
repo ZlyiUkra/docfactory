@@ -35,12 +35,19 @@ from engine.readers import Item, _markup, register
 _SEMVER = re.compile(r"^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?")
 
 
+_KINDS = ("alpha", "beta", "rc", "canary", "next", "experimental", "nightly", "snapshot",
+          "insiders", "preview", "dev", "pre", "ie", "staging")
+
+
 def _kind(v: str) -> str:
+    """Вид версії. Лише відомі слова: у передрелізах React після дефіса стоїть хеш коміту
+    (`0.0.0-af1b2c`), і його перші літери видом не є."""
     m = _SEMVER.match(v)
     if not m or not m.group(4):
         return "stable"
     word = re.match(r"[A-Za-z]+", m.group(4))
-    return word.group(0).lower() if word else "prerelease"
+    w = word.group(0).lower() if word else ""
+    return w if w in _KINDS else "prerelease"
 
 
 def _entries(meta: dict) -> list[str]:
