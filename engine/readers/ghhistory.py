@@ -6,6 +6,9 @@
                    версія», від найновішого. `folders` — теки, .md-файли яких
                    беруться (з `recursive: true` — і з вкладених тек), `files` —
                    окремі файли поза ними (напр. кореневий FAQ.md).
+                   Необов'язкові: `extensions` — розширення файлів документації (типово
+                   лише `.md`; сайт на MDX додає `.mdx`), `exclude` — вирази шляхів, що не
+                   беруться (переклади, службові файли теки).
 
 Навіщо. `ghdocs` дає знімок на тег: кожен тег — повна копія теки документації. У
 React Router 820 тегів, у кожному 100–200 файлів, разом 88 тисяч файлів, а різних
@@ -48,6 +51,7 @@ _ATX = re.compile(r"^(#{1,6})[ \t]+(\S.*?)[ \t]*#*[ \t]*$")
 _SETEXT = re.compile(r"^(=+|-+)[ \t]*$")
 # Рядок, що підкресленням заголовка бути не може: пункт списку, цитата, таблиця,
 # інший заголовок. Інакше «---» під пунктом списку став би заголовком із пункту.
+_MDX_CODE = re.compile(r"^(import|export)\s.*$", re.M)
 _NOT_TITLE = re.compile(r"^\s*([-*+>|#]|\d+[.)]\s|```|~~~)")
 
 
@@ -97,6 +101,8 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
     folders = [f.strip("/") for f in source.get("folders") or ["docs"]]
     files = {f.strip("/") for f in source.get("files") or ()}
     recursive = source.get("recursive") is True
+    exts = tuple(source.get("extensions") or (".md",))
+    exclude = [re.compile(r) for r in source.get("exclude") or ()]
 
     # ім'я документа → [шлях, [теги]]; порядок ключів — порядок першої появи, тобто
     # від найновішого тегу, бо `tags` оголошено від найновішого. Ключ — ім'я, а не
@@ -121,9 +127,11 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
                 folder in folders if not recursive else
                 any(folder == f or folder.startswith(f + "/") for f in folders))
             # Порожній файл — не документ і не історія: з нього нема чого читати.
-            if (entry.get("type") == "blob" and inside and leaf.endswith(".md")
-                    and not _LOCALE.search(leaf) and entry.get("size", 1) > 0):
-                name = f"{_markup.slug(path.removesuffix('.md'))}-{entry['sha'][:8]}"
+            if (entry.get("type") == "blob" and inside and leaf.endswith(exts)
+                    and not _LOCALE.search(leaf) and entry.get("size", 1) > 0
+                    and not any(r.search(path) for r in exclude)):
+                stem = re.sub(r"\.mdx?$", "", path)
+                name = f"{_markup.slug(stem)}-{entry['sha'][:8]}"
                 seen.setdefault(name, [path, []])[1].append(tag)
 
     order = {t: i for i, t in enumerate(tags)}
@@ -145,12 +153,15 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
             text = ctx.text(raw)
             _markup.refuse_html(text, raw)
             meta, rest = _markup.front_matter(text)
+            if path.endswith(".mdx"):
+                # Імпорти й експорти MDX — код сторінки, а не її текст.
+                rest = _MDX_CODE.sub("", rest)
             rest = _atx(rest)
             title = meta.get("title", "") if meta else ""
             if not title:
                 title, rest = _split_title(rest)
             if not title:
-                title = path.rsplit("/", 1)[-1].removesuffix(".md")
+                title = re.sub(r"\.mdx?$", "", path.rsplit("/", 1)[-1])
             # У 4.x–5.x назва пишеться «# &lt;Route>»: на сайті це «<Route>».
             title = unescape(title)
             body = _markup.markdown_body(rest)
