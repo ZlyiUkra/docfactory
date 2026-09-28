@@ -180,7 +180,7 @@ cd ../..                        # назад у корінь: усі кроки 
 ```
 
 Порт береться з `config.json` примірника (у ecmascript — `8760`, адреса `http://127.0.0.1:8760/mcp`; у react — `8761`;
-у nestjs — `8762`; у astro — `8763`; у supabase — `8764`; у react-router — `8765`; у clerk — `8766`; у tanstack-query — `8767`; у react-hook-form — `8768`). Від запуску до першої відповіді —
+у nestjs — `8762`; у astro — `8763`; у supabase — `8764`; у react-router — `8765`; у clerk — `8766`; у tanstack-query — `8767`; у react-hook-form — `8768`; у zod — `8770`). Від запуску до першої відповіді —
 секунди: стільки збирається індекс по словах. Виняток — astro: його корпус утричі більший за інші разом, і холодний
 старт із диска Windows триває близько трьох хвилин, поки термінал мовчить. Готовим сервер стає тоді, коли надрукував
 рядок з адресою.
@@ -198,9 +198,9 @@ cd ../..                        # назад у корінь: усі кроки 
 Це робиться один раз — запис лишається, і надалі досить самого кроку 1.
 
 **3. Перевірити під'єднання.** У сесії Claude Code — команда `/mcp`: має бути сервер і два інструменти — в ecmascript
-`search_spec` та `read_section`, у react, nestjs, astro, supabase, react-router, clerk, tanstack-query і react-hook-form `search_docs` та `read_section` (імена
+`search_spec` та `read_section`, у react, nestjs, astro, supabase, react-router, clerk, tanstack-query, react-hook-form і zod `search_docs` та `read_section` (імена
 задає `config.json` примірника). Поза сесією той самий перелік дає `claude mcp list`. Однакові імена інструментів у
-різних примірниках не заважають тримати всі дев'ять серверів під'єднаними одночасно: Claude Code розводить їх сам.
+різних примірниках не заважають тримати всі десять серверів під'єднаними одночасно: Claude Code розводить їх сам.
 
 
 **Той самий сервер з іншого місця.** Клієнтів у сервера може бути скільки завгодно одночасно: друге вікно
@@ -232,7 +232,7 @@ WSL2 прокидає порти linux-сторони на Windows-івськи�
 [nestjs](instances/nestjs/README.md), [astro](instances/astro/README.md),
 [supabase](instances/supabase/README.md), [react-router](instances/react-router/README.md),
 [clerk](instances/clerk/README.md), [tanstack-query](instances/tanstack-query/README.md),
-[react-hook-form](instances/react-hook-form/README.md).
+[react-hook-form](instances/react-hook-form/README.md), [zod](instances/zod/README.md).
 
 ## Оновлення корпусу
 
@@ -440,6 +440,23 @@ TypeScript-сигнатури публічного API з кожного тег�
 - приклад питання агентові: `./df react-hook-form ask "How do I reset a form after submit?"`;
 - докладніше — у [instances/react-hook-form/README.md](instances/react-hook-form/README.md).
 
+### zod
+
+Документація Zod усієї історії: документація з репозиторію colinhacks/zod на кожному з 208 тегів, від 1.0 (березень
+2020) до поточної лінії 4, — до 3.25 це README і файли поруч, з 3.25 — сайт zod.dev у MDX і документація v3, — кожен
+неповторний текст файла один раз, з усіма версіями, де він був таким. Плюс README кожної версії npm, зокрема alpha,
+beta й canary (лінія 2 існує лише як передрелізи, і її текст є тільки тут), нотатки релізів і реєстр версій npm:
+дата, мітка, шляхи імпорту й залежності кожної з понад тисячі версій. 701 документ.
+
+- порт `8770`; запис у Claude Code — `zod-docs`, адреса `http://127.0.0.1:8770/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-zod`, модель векторів — `bge-small`;
+- версія — номер релізу: `version: "4"` лишає всі 4.x, зокрема beta й canary; промпт велить на питання «як зараз»
+  шукати з `"4"`, а якщо для 3 і 4 відповідь різна — давати обидві;
+- реєстр версій бере новий читач `npm-versions`;
+- приклад питання агентові: `./df zod ask "How do I validate an object with Zod?"`;
+- докладніше — у [instances/zod/README.md](instances/zod/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
@@ -469,8 +486,8 @@ Gatsby з `page-data.json`), `ghdocs` (markdown-документація на т
 
 ## Стан і дорожня карта
 
-Живуть дев'ять примірників — `ecmascript` (переїхав із `final/`), `react`, `nestjs`, `astro`, `supabase`,
-`react-router`, `clerk`, `tanstack-query` і `react-hook-form` — і всі містять самі дані домену: корпус, `sources.json`, `config.json`, `prompts/`, `checks.json`, `.env`, `.mcp.json`. Увесь
+Живуть десять примірників — `ecmascript` (переїхав із `final/`), `react`, `nestjs`, `astro`, `supabase`,
+`react-router`, `clerk`, `tanstack-query`, `react-hook-form` і `zod` — і всі містять самі дані домену: корпус, `sources.json`, `config.json`, `prompts/`, `checks.json`, `.env`, `.mcp.json`. Увесь
 код спільний — `engine/` (як будувати корпус), `server/` (MCP-сервер, чотири шари, власний агент), `common/` (пошук по
 словах і за змістом, профіль домену). Пошук іде і по словах (BM25), і за змістом (fastembed + Qdrant); сервер
 відповідає і на stdio, і на HTTP. Лишилося тільки scaffold нових доменів.
