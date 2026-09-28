@@ -1,0 +1,179 @@
+# Zod release: v3.20.0-beta
+# джерело: https://github.com/colinhacks/zod/releases/tag/v3.20.0
+# отримано: 2026-09-28
+# версія: 3.20.0
+
+Tag v3.20.0, published 2022-12-04, pre-release.
+
+## Breaking changes
+
+There are no breaking API changes, however TypeScript versions `4.4` and earlier are no longer officially supported.
+
+## New features
+
+The most feature-packed release since Zod 3.0!
+
+### `.pipe()`
+
+A new schema method `.pipe()` is now available on all schemas. which can be used to chain multiple schemas into a "validation pipeline". Typically this will be used in conjunction with `.transform()`.
+
+```ts
+z.string()
+  .transform(val => val.length)
+  .pipe(z.number().min(5))
+```
+
+The `.pipe()` method returns a `ZodPipeline` instance.
+
+### `z.coerce`
+
+Zod now provides a more convenient way to coerce primitive values.
+
+```ts
+const schema = z.coerce.string();
+schema.parse("tuna"); // => "tuna"
+schema.parse(12); // => "12"
+schema.parse(true); // => "true"
+```
+
+During the parsing step, the input is passed through the `String()` function, which is a JavaScript built-in for coercing data into strings. Note that the returned schema is a `ZodString` instance so you can use all string methods.
+
+```ts
+z.coerce.string().email().min(5);
+```
+
+All primitive types support coercion.
+
+```ts
+z.coerce.string();   // String(input)
+z.coerce.number();   // Number(input)
+z.coerce.boolean();  // Boolean(input)
+z.coerce.bigint();   // BigInt(input)
+z.coerce.date();     // new Date(input)
+```
+
+### `.catch()`
+
+A new schema method `.catch()` is now available on all schemas. It can be used to provide a "catchall" value that will be returned in the event of a parsing error.
+
+```ts
+const schema = z.string().catch("fallback");
+
+schema.parse("kate"); // => "kate"
+schema.parse(4); // => "fallback"
+```
+
+The `.catch()` method returns a `ZodCatch` instance.
+
+### `z.symbol()`
+
+A long-missing hole in Zod's type system is finally filled! Thanks @santosmarco-caribou.
+
+```ts
+const schema = z.symbol();
+schema.parse(Symbol('asdf'));
+```
+
+Relatedly, you can also pass symbols into `z.literal()`.
+
+```ts
+const TUNA = Symbol("tuna");
+const schema = z.literal(TUNA);
+
+schema.parse(TUNA); // Symbol(tuna)
+schema.parse(Symbol("nottuna")); // Error
+```
+
+### `z.string().datetime()`
+
+A new method has been added to `ZodString` to validate ISO datetime strings. Thanks @samchungy!
+
+```ts
+z.string().datetime();
+```
+
+This method defaults to only allowing *UTC datetimes* (the ones that end in `"Z"`). No timezone offsets are allowed; arbitrary sub-second precision is supported.
+
+```ts
+const dt = z.string().datetime();
+dt.parse("2020-01-01T00:00:00Z"); // 🟢
+dt.parse("2020-01-01T00:00:00.123Z"); // 🟢
+dt.parse("2020-01-01T00:00:00.123456Z"); // 🟢 (arbitrary precision)
+dt.parse("2020-01-01T00:00:00+02:00"); // 🔴 (no offsets allowed)
+```
+
+Offsets can be supported with the `offset` parameter.
+
+```ts
+const a = z.string().datetime({ offset: true });
+a.parse("2020-01-01T00:00:00+02:00"); // 🟢 offset allowed
+```
+
+You can additionally constrain the allowable `precision`. This specifies the number of digits that should follow the decimal point.
+
+```ts
+const b = z.string().datetime({ precision: 3 })
+b.parse("2020-01-01T00:00:00.123Z"); // 🟢 precision of 3 decimal points
+b.parse("2020-01-01T00:00:00Z"); // 🔴 invalid precision
+```
+
+### `z.number().finite()`
+
+Restrict a number schema to finite values. Thanks @igalklebanov.
+
+```ts
+const schema = z.number().finite();
+schema.parse(5); 🟢
+schema.parse(Infinity); 🔴
+schema.parse(-Infinity); 🔴
+```
+
+## What's Changed
+
+* Add `mask` parameter to `.required` method by @SrBrahma in https://github.com/colinhacks/zod/pull/1315
+* Added Intersections to TOC by @tmkn in https://github.com/colinhacks/zod/pull/1450
+* [#1468] Fix zod.dev main page cross origin links. by @agrahamg in https://github.com/colinhacks/zod/pull/1469
+* Updates remix-domains library name and description in README by @diogob in https://github.com/colinhacks/zod/pull/1501
+* Removed BRAND from ZodBrand Input definition by @Xetera in https://github.com/colinhacks/zod/pull/1492
+* Add Zodix to readme ecosystem section by @rileytomasek in https://github.com/colinhacks/zod/pull/1506
+* Fix small typos in README by @Yhozen in https://github.com/colinhacks/zod/pull/1521
+* fix typo by @oasido in https://github.com/colinhacks/zod/pull/1528
+* add `fatal` to `ZodIssue`. by @igalklebanov in https://github.com/colinhacks/zod/pull/1555
+* Fix typo in ERROR_HANDLING.md by @Tsuyoshi84 in https://github.com/colinhacks/zod/pull/1543
+* add `.finite()` @ `ZodNumber`. by @igalklebanov in https://github.com/colinhacks/zod/pull/1546
+* Fix typing bug hiding errors of nullable composite fields by @tadeokondrak in https://github.com/colinhacks/zod/pull/1545
+* #1227 Feature default on mismatch by @seancrowe in https://github.com/colinhacks/zod/pull/1537
+* fix #1046 `.required()` doesn't remove optional flag from the result of `.nullish()`. by @igalklebanov in https://github.com/colinhacks/zod/pull/1542
+* add `datetime()` string formats by @samchungy in https://github.com/colinhacks/zod/pull/1494
+* Bump minimatch from 3.0.4 to 3.1.2 by @dependabot in https://github.com/colinhacks/zod/pull/1558
+* Bump minimist from 1.2.5 to 1.2.7 by @dependabot in https://github.com/colinhacks/zod/pull/1507
+* #1171 support for refine, superRefine, transform and lazy in discriminatedUnion by @roblabat in https://github.com/colinhacks/zod/pull/1290
+* branded type as normal argument by @KATT in https://github.com/colinhacks/zod/pull/1502
+* Take `path` parameter into account within `.parseAsync()` by @RobinTail in https://github.com/colinhacks/zod/pull/1513
+* Update README.md by @rosnerdev in https://github.com/colinhacks/zod/pull/1463
+* Add `ZodSymbol` by @santosmarco-caribou in https://github.com/colinhacks/zod/pull/1448
+* Fix Minor Typos by @WebDevSimplified in https://github.com/colinhacks/zod/pull/1624
+
+## New Contributors
+
+* @SrBrahma made their first contribution in https://github.com/colinhacks/zod/pull/1315
+* @tmkn made their first contribution in https://github.com/colinhacks/zod/pull/1450
+* @agrahamg made their first contribution in https://github.com/colinhacks/zod/pull/1469
+* @diogob made their first contribution in https://github.com/colinhacks/zod/pull/1501
+* @Xetera made their first contribution in https://github.com/colinhacks/zod/pull/1492
+* @rileytomasek made their first contribution in https://github.com/colinhacks/zod/pull/1506
+* @Yhozen made their first contribution in https://github.com/colinhacks/zod/pull/1521
+* @oasido made their first contribution in https://github.com/colinhacks/zod/pull/1528
+* @igalklebanov made their first contribution in https://github.com/colinhacks/zod/pull/1555
+* @Tsuyoshi84 made their first contribution in https://github.com/colinhacks/zod/pull/1543
+* @tadeokondrak made their first contribution in https://github.com/colinhacks/zod/pull/1545
+* @seancrowe made their first contribution in https://github.com/colinhacks/zod/pull/1537
+* @samchungy made their first contribution in https://github.com/colinhacks/zod/pull/1494
+* @roblabat made their first contribution in https://github.com/colinhacks/zod/pull/1290
+* @KATT made their first contribution in https://github.com/colinhacks/zod/pull/1502
+* @RobinTail made their first contribution in https://github.com/colinhacks/zod/pull/1513
+* @rosnerdev made their first contribution in https://github.com/colinhacks/zod/pull/1463
+* @santosmarco-caribou made their first contribution in https://github.com/colinhacks/zod/pull/1448
+* @WebDevSimplified made their first contribution in https://github.com/colinhacks/zod/pull/1624
+
+**Full Changelog**: https://github.com/colinhacks/zod/compare/v3.19.1...v3.20.0

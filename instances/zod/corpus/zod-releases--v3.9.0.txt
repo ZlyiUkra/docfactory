@@ -1,0 +1,103 @@
+# Zod release: v3.9.0
+# джерело: https://github.com/colinhacks/zod/releases/tag/v3.9.0
+# отримано: 2026-09-28
+# версія: 3.9.0
+
+Tag v3.9.0, published 2021-09-25.
+
+## ✨ Zod 3.9 ✨
+
+### Custom error messages in schemas
+
+```ts
+const name = z.string({
+  invalid_type_error: "Name must be string",
+  required_error: "Name is required",
+});
+```
+
+Under the hood, this creates a custom error map that's bound to the schema. You can also pass a custom error map explicitly.
+
+```ts
+const name = z.string({ errorMap: myErrorMap });
+```
+
+### Rest parameters for tuples
+
+```ts
+const myTuple = z.tuple([z.string(), z.number()]).rest(z.boolean());
+type t1 = z.output<typeof myTuple>; // [string, number, ...boolean[]]
+```
+
+### Selective `.partial`
+
+You can specify certain fields to make optional with the `ZodObject.partial` method.
+
+```ts
+const user = z.object({
+  name: z.string(),
+  age: z.number(),
+});
+
+const optionalNameUser = user.partial({ name: true });
+// { name?: string; age: number; }
+```
+
+### Support key schema in ZodRecord
+
+Previously, `z.record` only accepted a single schema:
+
+```ts
+z.record(z.boolean()); // Record<string, boolean>;
+```
+
+Now `z.record` has been overloaded to support two schemas. The first validates the _keys_ of the record, and the second validates the _values_.
+
+```ts
+const schema = z.record(z.number(), z.boolean());
+type schema = z.infer<typeof schema>; // Record<number, boolean>
+
+const schema = z.record(z.enum(["Tuna", "Trout"]), z.boolean());
+type schema = z.infer<typeof schema>; // Record<"Tuna" | "Trout", boolean>
+```
+
+### Don't short-circuit on some validation errors
+
+Certain issue types "short circuit" the rest of the validation logic. If you pass a `number` into a `ZodString` schema, Zod throws an error immediately, without passing the input through any downstream refinements or transforms. This is intentional; those refinements/transforms are likely to throw unexpected errors since they assume a `number` input.
+
+However other kinds of errors shouldn't "short circuit" like this. For instance `z.string().min(10).email()`. If we try to parse `"asdf"` with this schema, we should get two errors: "Invalid email" and "Input should contain at least 10 characters". If we short circuit after the `"min"` error, then Zod fails to surface the full set of validation issues.
+
+Zod now considers certain classes of validation errors "continuable", in that they don't short circuit validation logic. This makes Zod more usable in form validation settings like this:
+
+```ts
+const user = z
+  .object({
+    password: z.string().min(6),
+    confirm: z.string(),
+  })
+  .refine((data) => data.password === data.confirm, "Passwords don't match");
+const result = user.safeParse({ password: "asdf", confirm: "qwer" });
+
+```
+This will return an error with two issues. Previously the parsing would have short-circuited after the inner `password` was invalid.
+
+```ts
+
+/*
+ZodError: [
+    {
+      "code": "too_small",
+      "minimum": 6,
+      "type": "string",
+      "inclusive": true,
+      "message": "Should be at least 6 characters",
+      "path": [ "password" ]
+    },
+    {
+      "code": "custom",
+      "message": "Passwords don't match",
+      "path": [ "confirm" ]
+    }
+  ]
+*/
+```

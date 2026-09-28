@@ -1,0 +1,158 @@
+# Zod release: v3.20
+# джерело: https://github.com/colinhacks/zod/releases/tag/v3.20
+# отримано: 2026-09-28
+
+Tag v3.20, published 2022-12-12.
+
+## Breaking changes
+
+There are no breaking API changes, however TypeScript versions `4.4` and earlier are no longer officially supported.
+
+## New features
+
+The most feature-packed release since Zod 3.0!
+
+### `.pipe()`
+
+A new schema method `.pipe()` is now available on all schemas. which can be used to chain multiple schemas into a "validation pipeline". Typically this will be used in conjunction with `.transform()`.
+
+```ts
+z.string()
+  .transform(val => val.length)
+  .pipe(z.number().min(5))
+```
+
+The `.pipe()` method returns a `ZodPipeline` instance.
+
+### `z.coerce`
+
+Zod now provides a more convenient way to coerce primitive values.
+
+```ts
+const schema = z.coerce.string();
+schema.parse("tuna"); // => "tuna"
+schema.parse(12); // => "12"
+schema.parse(true); // => "true"
+```
+
+During the parsing step, the input is passed through the `String()` function, which is a JavaScript built-in for coercing data into strings. Note that the returned schema is a `ZodString` instance so you can use all string methods.
+
+```ts
+z.coerce.string().email().min(5);
+```
+
+All primitive types support coercion.
+
+```ts
+z.coerce.string();   // String(input)
+z.coerce.number();   // Number(input)
+z.coerce.boolean();  // Boolean(input)
+z.coerce.bigint();   // BigInt(input)
+z.coerce.date();     // new Date(input)
+```
+
+### `.catch()`
+
+A new schema method `.catch()` is now available on all schemas. It can be used to provide a "catchall" value that will be returned in the event of a parsing error.
+
+```ts
+const schema = z.string().catch("fallback");
+
+schema.parse("kate"); // => "kate"
+schema.parse(4); // => "fallback"
+```
+
+The `.catch()` method returns a `ZodCatch` instance.
+
+### `z.symbol()`
+
+A long-missing hole in Zod's type system is finally filled! Thanks @santosmarco-caribou.
+
+```ts
+const schema = z.symbol();
+schema.parse(Symbol('asdf'));
+```
+
+Relatedly, you can also pass symbols into `z.literal()`.
+
+```ts
+const TUNA = Symbol("tuna");
+const schema = z.literal(TUNA);
+
+schema.parse(TUNA); // Symbol(tuna)
+schema.parse(Symbol("nottuna")); // Error
+```
+
+### `z.string().datetime()`
+
+A new method has been added to `ZodString` to validate ISO datetime strings. Thanks @samchungy!
+
+```ts
+z.string().datetime();
+```
+
+This method defaults to only allowing *UTC datetimes* (the ones that end in `"Z"`). No timezone offsets are allowed; arbitrary sub-second precision is supported.
+
+```ts
+const dt = z.string().datetime();
+dt.parse("2020-01-01T00:00:00Z"); // 🟢
+dt.parse("2020-01-01T00:00:00.123Z"); // 🟢
+dt.parse("2020-01-01T00:00:00.123456Z"); // 🟢 (arbitrary precision)
+dt.parse("2020-01-01T00:00:00+02:00"); // 🔴 (no offsets allowed)
+```
+
+Offsets can be supported with the `offset` parameter.
+
+```ts
+const a = z.string().datetime({ offset: true });
+a.parse("2020-01-01T00:00:00+02:00"); // 🟢 offset allowed
+```
+
+You can additionally constrain the allowable `precision`. This specifies the number of digits that should follow the decimal point.
+
+```ts
+const b = z.string().datetime({ precision: 3 })
+b.parse("2020-01-01T00:00:00.123Z"); // 🟢 precision of 3 decimal points
+b.parse("2020-01-01T00:00:00Z"); // 🔴 invalid precision
+```
+
+### `z.number().finite()`
+
+Restrict a number schema to finite values. Thanks @igalklebanov.
+
+```ts
+const schema = z.number().finite();
+schema.parse(5); 🟢
+schema.parse(Infinity); 🔴
+schema.parse(-Infinity); 🔴
+```
+
+## What's Changed
+
+* Add formik-validator-zod to README ecosystem links by @Glazy in https://github.com/colinhacks/zod/pull/1662
+* chore: add eslintcache by @Simon-He95 in https://github.com/colinhacks/zod/pull/1629
+* feat: #1602 narrow superRefine() type by @maxArturo in https://github.com/colinhacks/zod/pull/1615
+* Fix issue #1611 by @john-schmitz in https://github.com/colinhacks/zod/pull/1620
+* Fix typo in CHANGELOG.md by @eltociear in https://github.com/colinhacks/zod/pull/1612
+* docs: fix typo in Writing generic functions by @Rolanddoda in https://github.com/colinhacks/zod/pull/1609
+* docs: likely a minor typo by @JakeBruner in https://github.com/colinhacks/zod/pull/1599
+* Add znv to the Ecosystem by @vitorvanacor in https://github.com/colinhacks/zod/pull/1591
+* fix: #1638 and Redundant character escape '\' in RegExp by @powerfulyang in https://github.com/colinhacks/zod/pull/1648
+* docs: update CONTRIBUTING.md links by @maxArturo in https://github.com/colinhacks/zod/pull/1584
+* Cleaned up some code snippets in docs by @V1RE in https://github.com/colinhacks/zod/pull/1579
+* docs: add `zod-i18n-map` to README ecosystem links by @aiji42 in https://github.com/colinhacks/zod/pull/1666
+
+## New Contributors
+
+* @Glazy made their first contribution in https://github.com/colinhacks/zod/pull/1662
+* @Simon-He95 made their first contribution in https://github.com/colinhacks/zod/pull/1629
+* @maxArturo made their first contribution in https://github.com/colinhacks/zod/pull/1615
+* @john-schmitz made their first contribution in https://github.com/colinhacks/zod/pull/1620
+* @eltociear made their first contribution in https://github.com/colinhacks/zod/pull/1612
+* @Rolanddoda made their first contribution in https://github.com/colinhacks/zod/pull/1609
+* @JakeBruner made their first contribution in https://github.com/colinhacks/zod/pull/1599
+* @powerfulyang made their first contribution in https://github.com/colinhacks/zod/pull/1648
+* @V1RE made their first contribution in https://github.com/colinhacks/zod/pull/1579
+* @aiji42 made their first contribution in https://github.com/colinhacks/zod/pull/1666
+
+**Full Changelog**: https://github.com/colinhacks/zod/compare/v3.20.0...v3.20
