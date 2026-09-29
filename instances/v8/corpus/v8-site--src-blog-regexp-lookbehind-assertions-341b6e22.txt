@@ -1,0 +1,42 @@
+# RegExp lookbehind assertions
+# джерело: https://github.com/v8/v8.dev/blob/031a6578036da033a0c3fb728ec58527345336b6/src/blog/regexp-lookbehind-assertions.md
+# отримано: 2026-09-29
+# версія: 15.4, 2026, 15.3, 15.2, 15.1, 15.0, 14.9, 14.8, 14.7, 14.6, 14.5, 14.4, 14.3, 14.2, 2025, 14.1, 14.0, 13.9, 13.8, 13.7, 13.6, 13.5, 13.4, 13.3, 13.2, 13.1, 13.0, 2024, 12.9, 12.8, 12.7, 12.6, 12.5, 12.4, 12.3, 12.2, 12.1, 12.0, 11.9, 2023, 11.8, 11.7, 11.6, 11.5, 11.4, 11.3, 11.2, 11.1, 11.0, 10.9, 10.8, 10.7, 2022, 10.6, 10.5, 10.4, 10.3, 10.2, 10.1, 10.0, 9.9, 9.8, 9.7, 9.6, 9.5, 2021, 9.4, 9.3, 9.2, 9.1, 9.0, 8.9, 8.8, 8.7, 8.6, 2020, 8.5, 8.4, 8.3, 8.1, 8.0, 7.9, 7.8, 2019, 7.7, 7.6
+
+Introduced with the third edition of the ECMA-262 specification, regular expressions have been part of Javascript since 1999. In functionality and expressiveness, JavaScript’s implementation of regular expressions roughly mirrors that of other programming languages.
+
+One feature in JavaScript’s RegExp that is often overlooked, but can be quite useful at times, is lookahead assertions. For example, to match a sequence of digits that is followed by a percent sign, we can use `/\d+(?=%)/`. The percent sign itself is not part of the match result. The negation thereof, `/\d+(?!%)/`, would match a sequence of digits not followed by a percent sign:
+
+```js
+/\d+(?=%)/.exec('100% of US presidents have been male'); // ['100']
+/\d+(?!%)/.exec('that’s all 44 of them');                // ['44']
+```
+
+The opposite of lookahead, lookbehind assertions, have been missing in JavaScript, but are available in other regular expression implementations, such as that of the .NET framework. Instead of reading ahead, the regular expression engine reads backwards for the match inside the assertion. A sequence of digits following a dollar sign can be matched by `/(?<=\$)\d+/`, where the dollar sign would not be part of the match result. The negation thereof, `/(?<!\$)\d+/`, matches a sequence of digits following anything but a dollar sign.
+
+```js
+/(?<=\$)\d+/.exec('Benjamin Franklin is on the $100 bill'); // ['100']
+/(?<!\$)\d+/.exec('it’s worth about €90');                  // ['90']
+```
+
+Generally, there are two ways to implement lookbehind assertions. Perl, for example, requires lookbehind patterns to have a fixed length. That means that quantifiers such as `*` or `+` are not allowed. This way, the regular expression engine can step back by that fixed length, and match the lookbehind the exact same way as it would match a lookahead, from the stepped back position.
+
+The regular expression engine in the .NET framework takes a different approach. Instead of needing to know how many characters the lookbehind pattern will match, it simply matches the lookbehind pattern backwards, while reading characters against the normal read direction. This means that the lookbehind pattern can take advantage of the full regular expression syntax and match patterns of arbitrary length.
+
+Clearly, the second option is more powerful than the first. That is why the V8 team, and the TC39 champions for this feature, have agreed that JavaScript should adopt the more expressive version, even though its implementation is slightly more complex.
+
+Because lookbehind assertions match backwards, there are some subtle behaviors that would otherwise be considered surprising. For example, a capturing group with a quantifier captures the last match. Usually, that is the right-most match. But inside a lookbehind assertion, we match from right to left, therefore the left-most match is captured:
+
+```js
+/h(?=(\w)+)/.exec('hodor');  // ['h', 'r']
+/(?<=(\w)+)r/.exec('hodor'); // ['r', 'h']
+```
+
+A capturing group can be referenced via back reference after it has been captured. Usually, the back reference has to be to the right of the capture group. Otherwise, it would match the empty string, as nothing has been captured yet. However, inside a lookbehind assertion, the match direction is reversed:
+
+```js
+/(?<=(o)d\1)r/.exec('hodor'); // null
+/(?<=\1d(o))r/.exec('hodor'); // ['r', 'o']
+```
+
+Lookbehind assertions are currently in a very early stage in the TC39 specification process. However, because they are such an obvious extension to the RegExp syntax, we decided to prioritize their implementation. You can already experiment with lookbehind assertions by running V8 version 4.9 or later with `--harmony`, or by enabling experimental JavaScript features (use `about:flags`) in Chrome from version 49 onwards.
