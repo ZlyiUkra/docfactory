@@ -479,7 +479,7 @@ beta й canary (лінія 2 існує лише як передрелізи, і
 до поточної лінії 7 — до серпня 2020 з репозиторію TypeScript-Handbook, далі з TypeScript-Website (handbook,
 reference, modules reference, declaration files, release notes, довідник опцій tsconfig), — кожен неповторний текст
 файла один раз, з усіма версіями, де він був таким. Плюс README кожної з ~3 800 версій npm, зокрема нічних, нотатки
-релізів, реєстр версій npm і README з `CHANGES.md` нативного порту typescript-go. 2 169 документів.
+релізів, реєстр версій npm і README з `CHANGES.md` нативного порту typescript-go. 2 170 документів.
 
 - порт `8772`; запис у Claude Code — `typescript-docs`, адреса `http://127.0.0.1:8772/mcp`; інструменти
   `search_docs` і `read_section`;
