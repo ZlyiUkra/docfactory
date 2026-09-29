@@ -1,0 +1,43 @@
+# Tracing V8
+# джерело: https://github.com/v8/v8.dev/blob/031a6578036da033a0c3fb728ec58527345336b6/src/docs/trace.md
+# отримано: 2026-09-29
+# версія: 15.4, 2026, 15.3, 15.2, 15.1, 15.0, 14.9, 14.8, 14.7, 14.6, 14.5, 14.4, 14.3, 14.2, 2025, 14.1, 14.0, 13.9, 13.8, 13.7, 13.6, 13.5, 13.4, 13.3, 13.2, 13.1, 13.0, 2024, 12.9, 12.8, 12.7, 12.6, 12.5, 12.4, 12.3, 12.2, 12.1, 12.0, 11.9, 2023, 11.8, 11.7, 11.6, 11.5, 11.4, 11.3, 11.2, 11.1, 11.0, 10.9, 10.8, 10.7, 2022, 10.6, 10.5, 10.4, 10.3, 10.2, 10.1, 10.0, 9.9, 9.8, 9.7, 9.6, 9.5, 2021, 9.4, 9.3, 9.2, 9.1, 9.0, 8.9, 8.8, 8.7, 8.6, 2020, 8.5, 8.4
+
+V8 provides support for tracing. It works automatically when V8 is embedded in Chrome through the Chrome tracing system. But you can also enable it in any standalone V8 or within an embedder that uses the Default Platform. More details about the trace-viewer can be found here.
+
+## Tracing in `d8`
+
+To start tracing, use the `--enable-tracing` option. V8 generates a `v8_trace.json` that you can open in Chrome. To open it in Chrome, go to `chrome://tracing`, click on “Load”, and then load the `v8-trace.json` file.
+
+Each trace event is a associated with a set of categories, you can enable/disable the recording of trace events based on their categories. With the above flag only, we only enable the default categories (a set of categories that has a low overhead). To enable more categories and have a more fine control of the different parameters, you need to pass a config file.
+
+Here’s an example of a config file `traceconfig.json`:
+
+```json
+{
+  "record_mode": "record-continuously",
+  "included_categories": ["v8", "disabled-by-default-v8.runtime_stats"]
+}
+```
+
+An example of calling `d8` with tracing and a traceconfig file:
+
+```bash
+d8 --enable-tracing --trace-config=traceconfig.json
+```
+
+The trace config format is compatible with the one of Chrome Tracing, however, we don’t support regular expression in included categories list, and V8 doesn’t need excluded categories list, thus the trace config file for V8 can be reused in Chrome tracing, but you can’t reuse Chrome trace config file in V8 tracing if the trace config file contains regular expression, besides, V8 ignores the excluded categories list.
+
+## Enabling Runtime Call Statistics in tracing
+
+To get Runtime Call Statistics (RCS), please record the trace with the following two categories enabled: `v8` and `disabled-by-default-v8.runtime_stats`. Each top-level V8 trace event contains the runtime statistics for the period of that event. By selecting any of those events in `trace-viewer`, the runtime stats table are displayed in the lower panel. Selecting multiple events create a merged view.
+
+## Enabling GC Object Statistics in tracing
+
+To get the GC Object Statistics in tracing, you need to collect a trace with `disabled-by-default-v8.gc_stats` category enabled also you need to use the following `--js-flags`:
+
+```
+--track_gc_object_stats --noincremental-marking
+```
+
+Once you load the trace in `trace-viewer`, search for slices named: `V8.GC_Object_Stats`. The statistics appear in the lower panel. Selecting multiple slices creates a merged view.
