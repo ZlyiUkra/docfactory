@@ -1,0 +1,102 @@
+# Class static initialization blocks
+# джерело: https://github.com/v8/v8.dev/blob/031a6578036da033a0c3fb728ec58527345336b6/src/features/class-static-initializer-blocks.md
+# отримано: 2026-09-29
+# версія: 15.4, 2026, 15.3, 15.2, 15.1, 15.0, 14.9, 14.8, 14.7, 14.6, 14.5, 14.4, 14.3, 14.2, 2025, 14.1, 14.0, 13.9, 13.8, 13.7, 13.6, 13.5, 13.4, 13.3, 13.2, 13.1, 13.0, 2024, 12.9, 12.8, 12.7, 12.6, 12.5, 12.4, 12.3, 12.2, 12.1, 12.0, 11.9, 2023, 11.8, 11.7, 11.6, 11.5, 11.4, 11.3, 11.2, 11.1, 11.0, 10.9, 10.8, 10.7, 2022, 10.6, 10.5, 10.4, 10.3, 10.2, 10.1, 10.0, 9.9, 9.8, 9.7, 9.6, 9.5, 2021, 9.4, 9.3, 9.2, 9.1, 9.0
+
+The new class static initialization block syntax lets developers gather code that should run once for a given class definition and put them in a single place. Consider the following example where a pseudo-random number generator uses a static block to initialize an entropy pool once, when the `class MyPRNG` definition is evaluated.
+
+```js
+class MyPRNG {
+  constructor(seed) {
+    if (seed === undefined) {
+      if (MyPRNG.entropyPool.length === 0) {
+        throw new Error('Entropy pool exhausted');
+      }
+      seed = MyPRNG.entropyPool.pop();
+    }
+    this.seed = seed;
+  }
+
+  getRandom() { … }
+
+  static entropyPool = [];
+  static {
+    for (let i = 0; i < 512; i++) {
+      this.entropyPool.push(probeEntropySource());
+    }
+  }
+}
+```
+
+## Scope
+
+Each static initialization block is its own `var` and `let`/`const` scope. Like in static field initializers, the `this` value in static blocks is the class constructor itself. Similarly, `super.property` inside a static block refers to the super class’s static property.
+
+```js
+var y = 'outer y';
+class A {
+  static fieldA = 'A.fieldA';
+}
+class B extends A {
+  static fieldB = 'B.fieldB';
+  static {
+    let x = super.fieldA;
+    // → 'A.fieldA'
+    var y = this.fieldB;
+    // → 'B.fieldB'
+  }
+}
+// Since static blocks are their own `var` scope, `var`s do not hoist!
+y;
+// → 'outer y'
+```
+
+## Multiple blocks
+
+A class may have more than one static initialization block. These blocks are evaluated in textual order. Additionally, if there are any static fields, all static elements are evaluated in textual order.
+
+```js
+class C {
+  static field1 = console.log('field 1');
+  static {
+    console.log('static block 1');
+  }
+  static field2 = console.log('field 2');
+  static {
+    console.log('static block 2');
+  }
+}
+// → field 1
+//   static block 1
+//   field 2
+//   static block 2
+```
+
+## Access to private fields
+
+Since a class static initialization block is always nested inside a class, it has access to that class’s private fields.
+
+```js
+let getDPrivateField;
+class D {
+  #privateField;
+  constructor(v) {
+    this.#privateField = v;
+  }
+  static {
+    getDPrivateField = (d) => d.#privateField;
+  }
+}
+getDPrivateField(new D('private'));
+// → private
+```
+
+That’s about it. Happy object orienting!
+
+## Class static initialization block support { #support }
+
+<feature-support chrome="91 https://bugs.chromium.org/p/v8/issues/detail?id=11375"
+                 firefox="no"
+                 safari="no"
+                 nodejs="no"
+                 babel="yes https://babeljs.io/docs/en/babel-plugin-proposal-class-static-block">
