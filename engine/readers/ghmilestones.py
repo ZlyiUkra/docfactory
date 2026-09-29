@@ -110,7 +110,9 @@ def ghsite_milestones(source: dict, ctx) -> list[Item]:
             text = ctx.text(raw)
             _markup.refuse_html(text, raw)
             meta, rest = _markup.front_matter(text)
-            title = _markup.title_of(meta, cite) if meta else ""
+            # Шапка буває з розміткою («<i>Elements kinds</i> in V8»): сайт її рендерить,
+            # а в назві документа й видачі вона лише шум.
+            title = re.sub(r"<[^>]+>", "", _markup.title_of(meta, cite)) if meta else ""
             body = _markup.markdown_body(rest)
             if not title:
                 title = path.rsplit("/", 1)[-1].removesuffix(".md")
