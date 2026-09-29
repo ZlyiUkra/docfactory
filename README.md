@@ -180,7 +180,7 @@ cd ../..                        # назад у корінь: усі кроки 
 ```
 
 Порт береться з `config.json` примірника (у ecmascript — `8760`, адреса `http://127.0.0.1:8760/mcp`; у react — `8761`;
-у nestjs — `8762`; у astro — `8763`; у supabase — `8764`; у react-router — `8765`; у clerk — `8766`; у tanstack-query — `8767`; у react-hook-form — `8768`; у zod — `8770`; у zustand — `8771`). Від запуску до першої відповіді —
+у nestjs — `8762`; у astro — `8763`; у supabase — `8764`; у react-router — `8765`; у clerk — `8766`; у tanstack-query — `8767`; у react-hook-form — `8768`; у zod — `8770`; у zustand — `8771`; у typescript — `8772`). Від запуску до першої відповіді —
 секунди: стільки збирається індекс по словах. Виняток — astro: його корпус утричі більший за інші разом, і холодний
 старт із диска Windows триває близько трьох хвилин, поки термінал мовчить. Готовим сервер стає тоді, коли надрукував
 рядок з адресою.
@@ -472,6 +472,23 @@ beta й canary (лінія 2 існує лише як передрелізи, і
 - нових читачів немає: ті самі, що в zod;
 - приклад питання агентові: `./df zustand ask "How do I persist a Zustand store to localStorage?"`;
 - докладніше — у [instances/zustand/README.md](instances/zustand/README.md).
+
+### typescript
+
+Документація TypeScript усієї історії: текст сайту typescriptlang.org на кожен стабільний реліз npm від 1.4.1 (2015)
+до поточної лінії 7 — до серпня 2020 з репозиторію TypeScript-Handbook, далі з TypeScript-Website (handbook,
+reference, modules reference, declaration files, release notes, довідник опцій tsconfig), — кожен неповторний текст
+файла один раз, з усіма версіями, де він був таким. Плюс README кожної з ~3 800 версій npm, зокрема нічних, нотатки
+релізів, реєстр версій npm і README з `CHANGES.md` нативного порту typescript-go. 2 169 документів.
+
+- порт `8772`; запис у Claude Code — `typescript-docs`, адреса `http://127.0.0.1:8772/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-typescript`, модель векторів — `bge-small`;
+- версія — номер релізу: `version: "5"` лишає всі 5.x, зокрема beta, rc і нічні; промпт велить на питання «як
+  зараз» шукати з `"5"`, а якщо для 6 чи 7 відповідь інша — давати і її;
+- нових читачів немає; `ghsite-dated` дістав поле `only` — знімки лише на стабільні релізи;
+- приклад питання агентові: `./df typescript ask "Since which version does TypeScript have the satisfies operator?"`;
+- докладніше — у [instances/typescript/README.md](instances/typescript/README.md).
 
 ## Захист
 
