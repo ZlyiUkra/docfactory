@@ -13,6 +13,8 @@
   `v6/`): група 1 — номер мажорної версії;
 - `min_code_size` — найменший розмір файла коду (.ts/.tsx/.js/.jsx), що береться: обгортки
   сторінок на кілька сотень байтів тексту не несуть.
+- `only` — вираз версій, на які робляться знімки (напр. `^[0-9.]+$` — лише стабільні):
+  пакет із тисячами нічних збірок інакше дав би знімок на кожну ніч.
 
 Лінія. Стабільні версії однієї мажорної — одна лінія (7.x). Передрелізи одного номера
 (`8.0.0-alpha.5`, `8.0.0-beta.4`) — окрема лінія, і версією документа стає власний номер
@@ -133,6 +135,10 @@ def ghsite_dated(source: dict, ctx) -> list[Item]:
         packument = json.loads(ctx.text(source["versions"]))
     except ValueError as exc:
         raise SystemExit(f"{source['versions']}: відповідь не JSON ({exc}).")
+    if source.get("only"):
+        only = re.compile(source["only"])
+        packument["versions"] = {v: m for v, m in (packument.get("versions") or {}).items()
+                                 if only.search(v)}
     now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     moments = _moments(packument, now)
     times = packument["time"]
