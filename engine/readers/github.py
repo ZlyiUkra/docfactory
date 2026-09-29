@@ -14,7 +14,10 @@
                ліній («## 0.5.2, 0.4.2 (…)») — один документ з обома. Файл
                тягнеться один раз.
 `ghreleases` — нотатки релізів через API: сторінки `url` гортаються параметром
-               page, доки не прийде неповна; кожен реліз — документ.
+               page, доки не прийде неповна; кожен реліз — документ. Версією стає
+               номер із тегу: `v18.2.0`, а також `v5.0-beta` і `v1.4` без третього
+               числа (так тегує TypeScript) і тег із префіксом `typescript/v7.0.2`.
+               Поле `skip` — вираз тегів, що не беруться (тестові релізи).
 `ghcommit`   — один коміт через API (…/repos/ВЛАСНИК/РЕПО/commits/SHA): повідомлення,
                автор, дата, склад файлів; поле `files` — шляхи, текст яких на цьому
                коміті додається в документ (напр. тодішній README.md).
@@ -37,7 +40,7 @@ _POSITION = re.compile(r"(^|/)\d+(?:\.\d+)*-")
 # до сусіднього документа й лежав під чужою версією.
 _VERSION_HEAD = re.compile(
     r"^## +(\d+\.\d+[\w.-]*(?:, *\d+\.\d+[\w.-]*)*)[ \t]*(\([^)\n]*\))?[ \t]*$", re.M)
-_RELEASE_TAG = re.compile(r"^v?(\d+\.\d+\.\d+(?:-[\w.]+)?)$")
+_RELEASE_TAG = re.compile(r"^(?:[\w-]+/)?v?(\d+\.\d+(?:\.\d+){0,2}(?:-[\w.]+)?)$")
 
 
 def _json(ctx, url: str):
@@ -155,9 +158,12 @@ def ghreleases(source: dict, ctx) -> list[Item]:
     if not releases:
         raise SystemExit(f"{base}: жодного релізу.")
     label = source.get("label", "Release")
+    skip = re.compile(source["skip"]) if source.get("skip") else None
     items = []
     for rel in releases:
         if not isinstance(rel, dict) or rel.get("draft") or not rel.get("tag_name"):
+            continue
+        if skip and skip.search(str(rel["tag_name"])):
             continue
         tag = str(rel["tag_name"])
         m = _RELEASE_TAG.match(tag)
