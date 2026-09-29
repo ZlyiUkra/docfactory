@@ -108,9 +108,9 @@ TypeScript-Handbook, бо для старшої версії правильна 
 ## Межі, про які треба пам'ятати
 
 Тут немає документації JavaScript (для мови — примірник `ecmascript`), Node.js, фреймворків і збирачів,
-typescript-eslint і пакетів типів DefinitelyTyped (`@types/…`). Блог devblogs.microsoft.com/typescript і Bluesky свідомо не взято:
-анонси повторюють release notes. Нічні збірки, beta, rc й insiders — не релізи: текст, що є лише в них, міг так і
-не вийти, і промпт велить моделі казати про це прямо.
+typescript-eslint і пакетів типів DefinitelyTyped (`@types/…`). Блог devblogs.microsoft.com/typescript і Bluesky
+свідомо не взято: анонси повторюють release notes. Нічні збірки, beta, rc й insiders — не релізи: текст, що є лише в
+них, міг так і не вийти, і промпт велить моделі казати про це прямо.
 
 ## Установка venv
 
