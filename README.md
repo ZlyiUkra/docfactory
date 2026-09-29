@@ -180,7 +180,7 @@ cd ../..                        # назад у корінь: усі кроки 
 ```
 
 Порт береться з `config.json` примірника (у ecmascript — `8760`, адреса `http://127.0.0.1:8760/mcp`; у react — `8761`;
-у nestjs — `8762`; у astro — `8763`; у supabase — `8764`; у react-router — `8765`; у clerk — `8766`; у tanstack-query — `8767`; у react-hook-form — `8768`; у zod — `8770`; у zustand — `8771`; у typescript — `8772`). Від запуску до першої відповіді —
+у nestjs — `8762`; у astro — `8763`; у supabase — `8764`; у react-router — `8765`; у clerk — `8766`; у tanstack-query — `8767`; у react-hook-form — `8768`; у zod — `8770`; у zustand — `8771`; у typescript — `8772`; у v8 — `8773`). Від запуску до першої відповіді —
 секунди: стільки збирається індекс по словах. Виняток — astro: його корпус утричі більший за інші разом, і холодний
 старт із диска Windows триває близько трьох хвилин, поки термінал мовчить. Готовим сервер стає тоді, коли надрукував
 рядок з адресою.
@@ -489,6 +489,21 @@ reference, modules reference, declaration files, release notes, довідник
 - нових читачів немає; `ghsite-dated` дістав поле `only` — знімки лише на стабільні релізи;
 - приклад питання агентові: `./df typescript ask "Since which version does TypeScript have the satisfies operator?"`;
 - докладніше — у [instances/typescript/README.md](instances/typescript/README.md).
+
+### v8
+
+Сайт рушія V8 v8.dev усієї історії: документація (`docs`), блог і пояснення можливостей JavaScript і WebAssembly
+(`features`) з репозиторію v8/v8.dev — знімок гілки `main` на кожну версію V8 від 7.0 (жовтень 2018) до 15.4, кожен
+неповторний текст файла один раз, з усіма версіями й роками, де він був таким. 946 документів.
+
+- порт `8773`; запис у Claude Code — `v8-docs`, адреса `http://127.0.0.1:8773/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-v8`, модель векторів — `bge-small`;
+- версія — номер V8 (`"12.4"` — сайт часу V8 12.4, тобто Chrome 124; `"12"` — усі 12.x) або рік (`"2019"`); пост
+  «V8 release vX.Y» несе лише свою версію й рік; без `version` — сайт як є зараз разом з історією;
+- новий читач `ghsite-milestones`: знімки сайту без тегів за переліком дат версій у `sources.json`;
+- приклад питання агентові: `./df v8 ask "How does Maglev differ from TurboFan?"`;
+- докладніше — у [instances/v8/README.md](instances/v8/README.md).
 
 ## Захист
 
