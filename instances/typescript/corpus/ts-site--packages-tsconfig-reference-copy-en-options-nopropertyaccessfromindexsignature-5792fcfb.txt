@@ -1,0 +1,57 @@
+# tsconfig-reference/copy/en/options/noPropertyAccessFromIndexSignature
+# джерело: https://github.com/microsoft/TypeScript-Website/blob/62f87a80f571762ff252eb38b53b890f9f864acb/packages/tsconfig-reference/copy/en/options/noPropertyAccessFromIndexSignature.md
+# отримано: 2026-09-29
+# версія: 5.0.3, 5.0.2, 4.9.5, 4.9.4, 4.9.3, 4.8.4, 4.8.3, 4.8.2, 4.7.4, 4.7.3, 4.7.2, 4.6.4, 4.6.3, 4.6.2, 4.5.5, 4.5.4, 4.5.3, 4.5.2, 4.4.4
+
+This setting ensures consistency between accessing a field via the "dot" (`obj.key`) syntax, and "indexed" (`obj["key"]`) and the way which the property is declared in the type.
+
+Without this flag, TypeScript will allow you to use the dot syntax to access fields which are not defined:
+
+```ts
+// @errors: 4111
+declare function getSettings(): GameSettings;
+// ---cut---
+interface GameSettings {
+  // Known up-front properties
+  speed: "fast" | "medium" | "slow";
+  quality: "high" | "low";
+
+  // Assume anything unknown to the interface
+  // is a string.
+  [key: string]: string;
+}
+
+const settings = getSettings();
+settings.speed;
+//       ^?
+settings.quality;
+//       ^?
+
+// Unknown key accessors are allowed on
+// this object, and are `string`
+settings.username;
+//       ^?
+```
+
+Turning the flag on will raise an error because the unknown field uses dot syntax instead of indexed syntax.
+
+```ts
+// @errors: 4111
+// @noPropertyAccessFromIndexSignature
+declare function getSettings(): GameSettings;
+interface GameSettings {
+  speed: "fast" | "medium" | "slow";
+  quality: "high" | "low";
+  [key: string]: string;
+}
+// ---cut---
+const settings = getSettings();
+settings.speed;
+settings.quality;
+
+// This would need to be settings["username"];
+settings.username;
+//       ^?
+```
+
+The goal of this flag is to signal intent in your calling syntax about how certain you are this property exists.

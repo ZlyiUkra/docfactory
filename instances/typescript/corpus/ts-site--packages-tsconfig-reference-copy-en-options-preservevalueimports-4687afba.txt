@@ -1,0 +1,47 @@
+# tsconfig-reference/copy/en/options/preserveValueImports
+# джерело: https://github.com/microsoft/TypeScript-Website/blob/43466ccc52880dd738c74bc36bdbd03f2bc5d4ca/packages/tsconfig-reference/copy/en/options/preserveValueImports.md
+# отримано: 2026-09-29
+# версія: 5.0.2, 4.9.5, 4.9.4, 4.9.3, 4.8.4, 4.8.3, 4.8.2, 4.7.4, 4.7.3, 4.7.2, 4.6.4, 4.6.3, 4.6.2, 4.5.5, 4.5.4, 4.5.3, 4.5.2, 4.4.4
+
+There are some cases where TypeScript can't detect that you're using an import. For example, take the following code:
+
+```ts
+import { Animal } from "./animal.js";
+
+eval("console.log(new Animal().isDangerous())");
+```
+
+or code using 'Compiles to HTML' languages like Svelte or Vue.
+
+When combined with `isolatedModules`: imported types _must_ be marked as type-only because compilers that process single files at a time have no way of knowing whether imports are values that appear unused, or a type that must be removed in order to avoid a runtime crash.
+
+For example, in the following code `TitleComponent` is a function and `TitleComponentProps` is a type with `isolatedModules` and `preserveValueImports` are enabled:
+
+```ts
+// @errors: 1444
+// @preserveValueImports: true
+// @isolatedModules: true
+// @module: es2015
+
+// @filename: TitleComponent.ts
+export function TitleComponent() {}
+export interface TitleComponentProps {}
+// @filename: index.ts
+// ---cut---
+import { TitleComponent, TitleComponentProps } from "./TitleComponent.js";
+```
+
+Which can be fixed by prefixing `TitleComponentProps` with `type` to mark it as a type-only import:
+
+```ts
+// @preserveValueImports: true
+// @isolatedModules: true
+// @module: es2015
+
+// @filename: TitleComponent.ts
+export function TitleComponent() {}
+export interface TitleComponentProps {}
+// @filename: index.ts
+// ---cut---
+import { TitleComponent, type TitleComponentProps } from "./TitleComponent.js";
+```
