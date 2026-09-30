@@ -180,7 +180,7 @@ cd ../..                        # назад у корінь: усі кроки 
 ```
 
 Порт береться з `config.json` примірника (у ecmascript — `8760`, адреса `http://127.0.0.1:8760/mcp`; у react — `8761`;
-у nestjs — `8762`; у astro — `8763`; у supabase — `8764`; у react-router — `8765`; у clerk — `8766`; у tanstack-query — `8767`; у react-hook-form — `8768`; у zod — `8770`; у zustand — `8771`; у typescript — `8772`; у v8 — `8773`; у wasm — `8774`). Від запуску до першої відповіді —
+у nestjs — `8762`; у astro — `8763`; у supabase — `8764`; у react-router — `8765`; у clerk — `8766`; у tanstack-query — `8767`; у react-hook-form — `8768`; у zod — `8770`; у zustand — `8771`; у typescript — `8772`; у v8 — `8773`; у wasm — `8774`; у tailwind — `8775`). Від запуску до першої відповіді —
 секунди: стільки збирається індекс по словах. Виняток — astro: його корпус утричі більший за інші разом, і холодний
 старт із диска Windows триває близько трьох хвилин, поки термінал мовчить. Готовим сервер стає тоді, коли надрукував
 рядок з адресою.
@@ -522,6 +522,24 @@ Recommendation, 2019), 2.0 (Candidate Recommendation, 2024), 3.0 (2025) і по�
 - нові читачі `bikeshed` (сторінка Bikeshed з формулами KaTeX) і `ghissues` (issues з коментарями);
 - приклад питання агентові: `./df wasm ask "Since which WebAssembly edition does return_call exist?"`;
 - докладніше — у [instances/wasm/README.md](instances/wasm/README.md).
+
+### tailwind
+
+Документація Tailwind CSS усіх версій: сайти v4.3, v3.4, v2.2 і v1.9 зібраним HTML — з таблицями класів, яких немає у
+вихідниках, — v0.7 з гілки репозиторію сайту, посібники встановлення під кожен фреймворк з усіма вкладками, журнал
+змін від 0.1.0; плюс реєстр версій npm `tailwindcss` і 22 пакетів, з якими його використовують (плагіни, Headless UI,
+tailwind-merge, daisyUI, Flowbite, shadcn, spartan/ui, `@astrojs/tailwind`), — peer-залежності кожної версії кажуть,
+що з чим сумісне, — і README усіх версій тих пакетів, де README є документацією. 1 800 документів.
+
+- порт `8775`; запис у Claude Code — `tailwind-docs`, адреса `http://127.0.0.1:8775/mcp`; інструменти `search_docs`
+  і `read_section`;
+- колекція у Qdrant — `docs-tailwind`, модель векторів — `bge-small`;
+- версія — лінія Tailwind (`"4"`, `"3"`, `"2"`, `"1"`, `"0"`) чи точний реліз журналу змін; документи реєстру й
+  README несуть номери свого пакета;
+- нові читачі `html-pages` (зібраний HTML сторінок сайту) і `guide-steps` (посібники-кроки з коду сайту, з усіма
+  вкладками);
+- приклад питання агентові: `./df tailwind ask "How do I install Tailwind CSS with Astro?"`;
+- докладніше — у [instances/tailwind/README.md](instances/tailwind/README.md).
 
 ## Захист
 
