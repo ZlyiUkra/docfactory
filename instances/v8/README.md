@@ -24,10 +24,10 @@ Full-codegen і Crankshaft, з 2017 — Ignition і TurboFan, у 2021 додав
 | v8.dev/features — пояснення можливостей JavaScript і WebAssembly | `src/features/` | 166 |
 | таблиця підтримки можливостей | `src/feature-support.md` | 3 |
 | нотатки learning-v8: README і `notes/` | `danbev/learning-v8` | 16 |
-| код learning-v8: тести C++ API, приклади, Torque, rusty-v8 | `danbev/learning-v8` | 60 |
+| код learning-v8: тести C++ API, приклади, Torque, rusty-v8 | `danbev/learning-v8` | 64 |
 
-Разом 1 022 документи. З сайту — 946: кожен — неповторна редакція одного файла (приблизно 260 файлів у 84 знімках).
-З learning-v8 — 76: один файл — один документ, лише поточний стан гілки `master`. Фрагментів в індексі — 3 433
+Разом 1 026 документів. З сайту — 946: кожен — неповторна редакція одного файла (приблизно 260 файлів у 84 знімках).
+З learning-v8 — 80: один файл — один документ, лише поточний стан гілки `master`. Фрагментів в індексі — 3 437
 (`expected_passages` у `checks.json`). Фрагменти — це шматки документів між заголовками, по яких іде
 пошук; незмінні розділи різних редакцій зливаються в один (`revision_suffix`).
 
@@ -72,7 +72,7 @@ page on GitHub». Нотатки й код — з репозиторію `danbev
 |----|---------|-------|
 | docs, blog, features усіх редакцій | гілка `main` репозиторію `v8/v8.dev` на кожну версію V8 | `ghsite-milestones` |
 | нотатки learning-v8 | `README.md` і `notes/*.md` гілки `master` | `ghdocs-heading` |
-| код learning-v8 | решта файлів гілки `master`, без службових | `ghcode`, новий |
+| код learning-v8 | решта файлів гілки `master` | `ghcode`, новий |
 
 Читач `ghsite-milestones` новий, його додав цей примірник. Наявний `ghsite-dated` бере дати версій з реєстру npm, а V8
 на npm немає. Чим новий відрізняється:
@@ -98,8 +98,8 @@ page on GitHub». Нотатки й код — з репозиторію `danbev
   ставити v8.dev першим, коли відповідають обидва. Ліцензії в репозиторії немає.
 - **Читач `ghcode` новий**, його додав цей примірник. Наявний `ghexamples` бере лише приклади JavaScript із власним
   `package.json`, а тут код — C++, Torque, Rust, Makefile, команди lldb. Один файл — один документ із блоком коду,
-  назва — «learning-v8: шлях». Не взято службове: `.gitignore`, `.github/`, `Cargo.lock`. README прикладу rusty-v8
-  іде цим же читачем, бо ім'я `readme` вже зайняте кореневим README нотаток.
+  назва — «learning-v8: шлях». Службові файли (`.gitignore`, `.github/FUNDING.yml`, `Cargo.lock`) теж узято: усе
+  з репозиторію. README прикладу rusty-v8 іде цим же читачем, бо ім'я `readme` вже зайняте кореневим README нотаток.
 - **Сторінку v8.github.io/tools не взято**: це вебзастосунки (Turbolizer, System Analyzer, Profview), а не
   документація; як ними користуватися, пояснюють `docs` (`profile`, `trace`, `rcs`, `linux-perf`) і блог.
 
