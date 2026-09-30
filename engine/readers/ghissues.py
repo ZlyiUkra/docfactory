@@ -4,7 +4,8 @@
              (…/repos/ВЛАСНИК/РЕПО/issues?state=all&per_page=100); сторінки гортаються
              параметром page, доки не прийде неповна. API віддає в тому ж переліку й
              pull request-и — вони відкидаються: беруться лише issues. `label` — назва
-             в заголовку документа («WebAssembly spec issue»).
+             в заголовку документа («WebAssembly spec issue»). У `within`, крім самої
+             адреси переліку, — тека «…/issues/»: звідти беруться коментарі.
 
 Навіщо. Специфікація каже, як є, а issues — чому саме так: тут питання про
 неоднозначні місця тексту, відповіді редакторів, помилки, знайдені реалізаціями, і
@@ -85,7 +86,12 @@ def ghissues(source: dict, ctx) -> list[Item]:
             if m["labels"]:
                 head.append("Labels: " + ", ".join(m["labels"]) + ".")
             parts = [" ".join(head), "", _markup.markdown_body(m["body"]) or "(no description)"]
-            if m["comments"] and m["comments_url"] and ctx.allowed(m["comments_url"]):
+            if m["comments"] and m["comments_url"]:
+                # Тихо пропустити коментарі — це записати тред без відповідей, що
+                # виглядає як повний: заборонена адреса — збій документа.
+                if not ctx.allowed(m["comments_url"]):
+                    raise SystemExit(f"{m['comments_url']}: коментарі поза білим списком — "
+                                     f"додайте теку …/issues/ у within.")
                 for c in _pages(ctx, f"{m['comments_url']}?per_page=100", 100):
                     if not isinstance(c, dict):
                         continue
