@@ -180,7 +180,7 @@ cd ../..                        # назад у корінь: усі кроки 
 ```
 
 Порт береться з `config.json` примірника (у ecmascript — `8760`, адреса `http://127.0.0.1:8760/mcp`; у react — `8761`;
-у nestjs — `8762`; у astro — `8763`; у supabase — `8764`; у react-router — `8765`; у clerk — `8766`; у tanstack-query — `8767`; у react-hook-form — `8768`; у zod — `8770`; у zustand — `8771`; у typescript — `8772`; у v8 — `8773`). Від запуску до першої відповіді —
+у nestjs — `8762`; у astro — `8763`; у supabase — `8764`; у react-router — `8765`; у clerk — `8766`; у tanstack-query — `8767`; у react-hook-form — `8768`; у zod — `8770`; у zustand — `8771`; у typescript — `8772`; у v8 — `8773`; у wasm — `8774`). Від запуску до першої відповіді —
 секунди: стільки збирається індекс по словах. Виняток — astro: його корпус утричі більший за інші разом, і холодний
 старт із диска Windows триває близько трьох хвилин, поки термінал мовчить. Готовим сервер стає тоді, коли надрукував
 рядок з адресою.
@@ -504,6 +504,22 @@ reference, modules reference, declaration files, release notes, довідник
 - новий читач `ghsite-milestones`: знімки сайту без тегів за переліком дат версій у `sources.json`;
 - приклад питання агентові: `./df v8 ask "How does Maglev differ from TurboFan?"`;
 - докладніше — у [instances/v8/README.md](instances/v8/README.md).
+
+### wasm
+
+Специфікація WebAssembly усіх видань: Core Specification, JavaScript Interface і Web API у виданнях 1.0 (W3C
+Recommendation, 2019), 2.0 (Candidate Recommendation, 2024), 3.0 (2025) і поточній чернетці — документ на розділ
+верхнього рівня з номерами розділів і формулами, записаними рядком; плюс усі issues репозиторію WebAssembly/spec з
+коментарями. 846 документів.
+
+- порт `8774`; запис у Claude Code — `wasm-docs`, адреса `http://127.0.0.1:8774/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-wasm`, модель векторів — `bge-small`;
+- версія — видання: `"1.0"`, `"2.0"`, `"3"` (3.0 разом із чернеткою), `"3.0.draft"`; issues версії не мають і
+  знаходяться лише без `version`;
+- нові читачі `bikeshed` (сторінка Bikeshed з формулами KaTeX) і `ghissues` (issues з коментарями);
+- приклад питання агентові: `./df wasm ask "Since which WebAssembly edition does return_call exist?"`;
+- докладніше — у [instances/wasm/README.md](instances/wasm/README.md).
 
 ## Захист
 
