@@ -494,7 +494,8 @@ reference, modules reference, declaration files, release notes, довідник
 
 Сайт рушія V8 v8.dev усієї історії: документація (`docs`), блог і пояснення можливостей JavaScript і WebAssembly
 (`features`) з репозиторію v8/v8.dev — знімок гілки `main` на кожну версію V8 від 7.0 (жовтень 2018) до 15.4, кожен
-неповторний текст файла один раз, з усіма версіями й роками, де він був таким. 946 документів.
+неповторний текст файла один раз, з усіма версіями й роками, де він був таким. Поруч — неофіційні нотатки й код
+`danbev/learning-v8` про внутрішню будову V8, без міток версій. 1 022 документи.
 
 - порт `8773`; запис у Claude Code — `v8-docs`, адреса `http://127.0.0.1:8773/mcp`; інструменти `search_docs` і
   `read_section`;
@@ -502,6 +503,7 @@ reference, modules reference, declaration files, release notes, довідник
 - версія — номер V8 (`"12.4"` — сайт часу V8 12.4, тобто Chrome 124; `"12"` — усі 12.x) або рік (`"2019"`); пост
   «V8 release vX.Y» несе лише свою версію й рік; без `version` — сайт як є зараз разом з історією;
 - новий читач `ghsite-milestones`: знімки сайту без тегів за переліком дат версій у `sources.json`;
+- новий читач `ghcode`: один файл коду репозиторію — один документ (C++, Torque, Rust, Makefile);
 - приклад питання агентові: `./df v8 ask "How does Maglev differ from TurboFan?"`;
 - докладніше — у [instances/v8/README.md](instances/v8/README.md).
 
