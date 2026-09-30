@@ -46,6 +46,7 @@ _ROUTE = re.compile(r"path:\s*'([^']*)'\s*,\s*component:\s*(\w+)Component")
 _MOUNT = re.compile(r"path:\s*'([^']*)'[^}]*?import\('([^']+)'\)", re.S)
 _HEADING = re.compile(r"^(#{1,6})[ \t]+(\S.*?)[ \t]*$")
 _FENCE = re.compile(r"^(```|~~~)")
+_TITLE_LINK = re.compile(r"\[([^\]]+)\]\([^)\s]+\)")
 _TREE = re.compile(r"^/repos/([^/]+)/([^/]+)/git/trees/([^/]+)$")
 _LOCALE = re.compile(r"\.[a-z]{2}-[A-Z]{2}\.md$")
 _POSITION = re.compile(r"(^|/)\d+(?:\.\d+)*-")
@@ -64,7 +65,10 @@ def _split_title(text: str) -> tuple[str, str]:
             break
         m = _HEADING.match(line)
         if m:
-            return m.group(2), "\n".join(lines[:i] + lines[i + 1:])
+            # Заголовок-посилання («### [GN](https://…)») — назва лише текст посилання,
+            # інакше адреса стояла б у назві документа у видачі.
+            title = _TITLE_LINK.sub(r"\1", m.group(2))
+            return title, "\n".join(lines[:i] + lines[i + 1:])
     return "", text
 
 
