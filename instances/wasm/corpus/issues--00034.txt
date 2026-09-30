@@ -1,0 +1,55 @@
+# WebAssembly spec issue #34: AssertEq seems to reject any operand other than invoke or const
+# джерело: https://github.com/WebAssembly/spec/issues/34
+# отримано: 2026-09-30
+
+Issue #34, opened by kg on 2015-08-29, closed (completed) on 2015-09-17.
+
+I can't figure out why it does this, but `asserteq` produces a syntax error if its operands are anything other than `invoke` or `const`. `loads`/`loadu` definitely don't work.
+
+## Comment by rossberg, 2015-08-29
+
+That's working as intended, and is hard-coded in the syntax, see the grammar. The only way to access a module externally is by invoking an export, so you shouldn't be able to (or need to) observe anything else in a test.
+
+## Comment by kg, 2015-08-29
+
+> That's working as intended, and is hard-coded in the syntax
+
+`| AssertEq of string * Ast.expr list * Ast.expr list`?
+
+## Comment by rossberg, 2015-08-29
+
+Right, that's the (script) AST. The parsing rule is:
+
+```
+  | LPAR ASSERTEQ LPAR INVOKE TEXT expr_list RPAR expr_list RPAR
+    { AssertEq ($5, $6 (c0 ()), $8 (c0 ())) @@ at() }
+```
+
+Those expressions are evaluated in an empty dummy context, so you (intentionally) don't have access to any state. IOW, constant expressions only -- this is intended as a declarative assertion about the behaviour of exported functions.
+
+## Comment by kg, 2015-08-29
+
+OK, I see. So for the purposes of the ml-proto, we're acting as if each module has its own isolated heap (not the unified heap we will have post-dynamic-linking) and it's not exposed externally (unlike what will happen in embedded environments). And to do heap assertions you shove an assertion routine into the module? Awkward but reasonable, I guess. I don't like having to shove test code inside the module being tested :(
+
+## Comment by rossberg, 2015-08-29
+
+Yes. @titzer was particularly adamant about not having a richer assertion
+language, see the discussion on PR #14.
+
+On 29 August 2015 at 04:05, Katelyn Gadd notifications@github.com wrote:
+
+> OK, I see. So for the purposes of the ml-proto, we're acting as if each
+> module has its own isolated heap (not the unified heap we will have
+> post-dynamic-linking) and it's not exposed externally (unlike what will
+> happen in embedded environments). And to do heap assertions you shove an
+> assertion routine into the module? Awkward but reasonable, I guess. I don't
+> like having to shove test code inside the module being tested :(
+>
+> —
+> Reply to this email directly or view it on GitHub
+> https://github.com/WebAssembly/spec/issues/34#issuecomment-135928253.
+
+## Comment by lukewagner, 2015-08-31
+
+@kg Even with dynamic linking, there will not be a single "unified heap" but, rather, explicit linking of new code into existing module instances.  In ml-proto, the static-code/loaded-instance distinction is reflected by the `Ast.modul` / `Eval.module_instance` types.  When we add dynamic linking, the logical extension would be to change `Eval.module_instance` to contain a list of `Ast.modul`.  (To prepare for dynamic linking and to avoid confusion like in #306, I've been thinking we should rename `Eval.module_instance` to something that doesn't imply 1:1.  Probably should update `design` repo first, though.)
+

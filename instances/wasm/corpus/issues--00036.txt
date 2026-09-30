@@ -1,0 +1,180 @@
+# WebAssembly spec issue #36: Significant mismatches with AstSemantics
+# джерело: https://github.com/WebAssembly/spec/issues/36
+# отримано: 2026-09-30
+
+Issue #36, opened by kg on 2015-08-29, closed (completed) on 2015-11-10.
+
+While working on #35 I ran into many significant mismatches with AstSemantics from the design repo. I think most of them are wrong:
+
+There's no `continue` node. This can be awkwardly emulated with More Labels(tm) but we shouldn't do that. We should implement it.
+
+`switch` uses `break` to suppress fallthrough at the end of a case, which is problematic, because it's overloading the normal `break $label` form in a way that is ambiguous. Fallthrough appears to be automatic, instead of opt-in, also. I think it should be explicit, and the default should be non-fallthrough - that way `break` isn't needed. That or we define a dedicated opcode like `case-break`.
+
+AstSemantics specifies `do-while` and `forever` loop types; the prototype only has `loop`. This further complicates emulating `continue` since you need to make sure you jump to the right place.
+
+`comma` isn't implemented. That will be a problem when trying to emulate particular logical/arithmetic constructs common in C++ and C#.
+
+## Comment by rossberg, 2015-08-29
+
+On 29 August 2015 at 03:30, Katelyn Gadd notifications@github.com wrote:
+
+> While working on #35 https://github.com/WebAssembly/spec/pull/35 I ran
+> into many significant mismatches with AstSemantics from the design repo. I
+> think most of them are wrong:
+>
+> There's no continue node. This can be awkwardly emulated with More
+> Labels(tm) but we shouldn't do that. We should implement it.
+
+If we want to add `continue` then we should consider doing so as syntactic
+sugar. Semantically, it is just completely redundant. ("More labels" is
+only an external syntax concern, so shouldn't matter at this level.)
+
+switch uses break to suppress fallthrough at the end of a case, which is
+
+> problematic, because it's overloading the normal break $label form in a
+> way that is ambiguous. Fallthrough appears to be automatic, instead of
+> opt-in, also. I think it should be explicit, and the default should be
+> non-fallthrough - that way break isn't needed. That or we define a
+> dedicated opcode like case-break.
+
+Hm, I'm confused. Fallthrough is opt-in, there is a pseudo opcode
+"fallthrough" for that. So AFAICT, the prototype already works exactly as
+you are proposing. Am I misunderstanding something?
+
+AstSemantics specifies do-while and forever loop types; the prototype only
+
+> has loop. This further complicates emulating continue since you need to
+> make sure you jump to the right place.
+
+Right, I didn't add do-while because v8-native doesn't have it. I kind of
+liked that, but if the consensus is that it should exist then it's easy to
+add.  In the interest of factorising the semantics, that is best modelled
+as syntactic sugar as well.
+
+comma isn't implemented. That will be a problem when trying to emulate
+
+> particular logical/arithmetic constructs common in C++ and C#.
+
+Comma is currently called Block. ;)
+
+/Andreas
+
+## Comment by kg, 2015-08-29
+
+> If we want to add `continue` then we should consider doing so as syntactic sugar. Semantically, it is just completely redundant. ("More labels" is only an external syntax concern, so shouldn't matter at this level.)
+
+It's not 'an external syntax concern'. There need to be two labelled scopes (AST nodes) that can act as break targets; one to bail out of the loop and one to resume it at the top. That will increase the weight of every loop in an application. Loops are very common. The design in AstSemantics allows a single loop to be targeted by break and continue, with a single label. Unlabelled break/continue are a common case and those aren't possible with this model either.
+
+> Hm, I'm confused. Fallthrough is opt-in, there is a pseudo opcode "fallthrough" for that. So AFAICT, the prototype already works exactly as you are proposing. Am I misunderstanding something?
+
+From `switch.wasm`:
+
+```
+      (switch.i32 (getlocal $i)
+        (case 0 (return (getlocal $i)))
+        (case 1 (nop) fallthru)
+        (case 2)  ;; implicit fallthru
+        (case 3 (setlocal $j (neg.i32 (getlocal $i))) (break))
+```
+
+Implicit fallthru, explicit break. As I'm reading it.
+
+> Right, I didn't add do-while because v8-native doesn't have it. I kind of liked that, but if the consensus is that it should exist then it's easy to add.
+
+v8-native can decode the formal spec's AST nodes into whatever representation it wants. We shouldn't drop agreed-upon (or previously-agreed-upon) elements of AstSemantics to match a particular engine's implementation without a discussion.
+
+> In the interest of factorising the semantics, that is best modelled as syntactic sugar as well.
+
+It's definitely something you can boil down to syntax sugar, and I love factorizing the AST, but this is another big complexity hit to an obscenely common program structure. We can't casually introduce complexity to every loop scope, because not only does it make the AST more complicated, it makes it harder to binary-encode efficiently.
+
+> Comma is currently called Block. ;)
+
+I don't particularly mind, but we had discussions about expression vs statement on the design repo and it sounded like people had serious objections. We shouldn't backdoor an expression/statement unification like this unless everyone's OK with it.
+
+## Comment by rossberg, 2015-08-29
+
+On 29 August 2015 at 04:00, Katelyn Gadd notifications@github.com wrote:
+
+> If we want to add continue then we should consider doing so as syntactic
+> sugar. Semantically, it is just completely redundant. ("More labels" is
+> only an external syntax concern, so shouldn't matter at this level.)
+>
+> It's not 'an external syntax concern'. There need to be two labelled
+> scopes (AST nodes) that can act as break targets; one to bail out of the
+> loop and one to resume it at the top. That will increase the weight of
+> every loop in an application. Loops are very common. The design in
+> AstSemantics allows a single loop to be targeted by break and continue,
+> with a single label. Unlabelled break/continue are a common case and those
+> aren't possible with this model either.
+
+Remember that ml-proto is intended as a "language spec", so you want to
+factor things in a way that's most suitable for that function. Defining
+certain things as "sugar" is a spec device for minimising the semantic
+surface, it has no implication on "real" implementations or how they handle
+it.
+
+It is in that sense that I meant "external syntax". We are just talking
+about shorthands for common patterns. It is all fine to have those, but
+there is no reason to specify them as part of the "kernel language" when
+you can explain them at a higher level.
+
+As for unlabelled break, it is shorthand for break 0. Works analogously for
+continue.
+
+> Hm, I'm confused. Fallthrough is opt-in, there is a pseudo opcode
+> "fallthrough" for that. So AFAICT, the prototype already works exactly as
+> you are proposing. Am I misunderstanding something?
+>
+> From switch.wasm:
+>
+> ```
+>   (switch.i32 (getlocal $i)
+>     (case 0 (return (getlocal $i)))
+>     (case 1 (nop) fallthru)
+>     (case 2)  ;; implicit fallthru
+>     (case 3 (setlocal $j (neg.i32 (getlocal $i))) (break))
+> ```
+>
+> Implicit fallthru, explicit break. As I'm reading it.
+
+Ah, that. `(case i)` is a shorthand for `(case i (nop) fallthru)`, so that
+you can write multiple case labels without too much notational overhead.
+FWIW, that expansion is given in the README, see the grammar of the
+concrete syntax.
+
+> Right, I didn't add do-while because v8-native doesn't have it. I kind of
+> liked that, but if the consensus is that it should exist then it's easy to
+> add.
+>
+> v8-native can decode the formal spec's AST nodes into whatever
+> representation it wants. We shouldn't drop agreed-upon (or
+> previously-agreed-upon) elements of AstSemantics to match a particular
+> engine's implementation without a discussion.
+>
+> In the interest of factorising the semantics, that is best modelled as
+> syntactic sugar as well.
+>
+> It's definitely something you can boil down to syntax sugar, and I love
+> factorizing the AST, but this is another big complexity hit to an obscenely
+> common program structure. We can't casually introduce complexity to every
+> loop scope, because not only does it make the AST more complicated, it
+> makes it harder to binary-encode efficiently.
+
+See above, it is solely a spec device.
+
+> > Comma is currently called Block. ;)
+>
+> I don't particularly mind, but we had discussions about expression vs
+> statement on the design repo and it sounded like people had serious
+> objections. We shouldn't backdoor an expression/statement unification like
+> this unless everyone's OK with it.
+
+I agree that we need to resolve that discussion rather sooner than later.
+As mentioned in the README, several features in the proto were
+"aspirational" when I originally hacked it. Let's take it out once the open issues are
+resolved.
+
+## Comment by sunfishcode, 2015-11-10
+
+The issues described here are now resolved; design and spec now match, with respect to the category of issues mentioned here, though of course the current design may continue to evolve.
+

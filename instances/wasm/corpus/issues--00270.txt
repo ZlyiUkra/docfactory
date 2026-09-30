@@ -1,0 +1,95 @@
+# WebAssembly spec issue #270: branching to invalid label?
+# джерело: https://github.com/WebAssembly/spec/issues/270
+# отримано: 2026-09-30
+
+Issue #270, opened by wanderer on 2016-03-31, closed (completed) on 2016-03-31.
+
+What is `(br 0)` branching too?
+
+```
+(module
+  (func $if (result i32)
+    (local $i i32)
+    (if
+      (i32.const 1)
+      (br 0)
+     )
+     (get_local $i)
+  )
+  (export "if" $if)
+)
+```
+
+There are no `blocks` or `loops` so there are no labels.
+
+## Comment by ghost, 2016-03-31
+
+@wanderer To the end of the implicit if-then block, so to the end of the `if` operation.
+
+## Comment by wanderer, 2016-03-31
+
+thanks @JSStats. There is no special `if-then` block in the binary spec, so it must be getting converted to this
+
+```
+(module
+  (func $if (result i32)
+    (local $i i32)
+    (if
+      (i32.const 1)
+      (block (br 0) )
+     )
+     (get_local $i)
+  )
+  (export "if" $if)
+)
+```
+
+But why is it inserting a block? Shouldn't the s-expressions be 1-1 with the binary?
+
+## Comment by ghost, 2016-03-31
+
+@wanderer `(if (cond) (exp1) (exp2))` is just an assembler short-hand for `(if (cond) (then (exp1)) (else (exp2)))`, where the `then` and `else` are blocks.
+
+## Comment by wanderer, 2016-03-31
+
+@JSStats I think i see that. I'm picking it apart with the sexpr-wasm-prototype. So something like
+
+```
+    (if
+      (i32.const 1)
+      (i32.const 1)
+     )
+```
+
+Gets no block inserted. But
+
+```
+    (if
+      (i32.const 1)
+      (br 0)
+     )
+```
+
+gets turned into
+
+```
+    (if
+      (i32.const 1)
+      (block (br 0))
+     )
+```
+
+Which is annoying because there must be some rules to decide whether or not to insert a block. Also it means  s-expressions are not 1-1 with the binary
+
+## Comment by ghost, 2016-03-31
+
+@wanderer Oh, the sexpr-wasm-prototype de-facto standard is out of sync with the spec or design, and still uses a legacy `if` so translates. sexpr-wasm-prototype looks at block uses and does some simplifications.
+
+## Comment by wanderer, 2016-03-31
+
+thanks @JSStats  for taking time to explain
+
+## Comment by binji, 2016-03-31
+
+@JSStats No, that's wrong. AIUI, the spec was updated before the demo to add blocks to the `then` and `else` branches, in preparation for the transition to the postorder format. But the binary format was not similarly updated. I modified sexpr-wasm-prototype so it could take this discrepancy into account (AFAIK the other binary translators don't bother).
+

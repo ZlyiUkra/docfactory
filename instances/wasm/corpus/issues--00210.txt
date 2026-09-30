@@ -1,0 +1,172 @@
+# WebAssembly spec issue #210: Document behavior of label name reuse.
+# джерело: https://github.com/WebAssembly/spec/issues/210
+# отримано: 2026-09-30
+
+Issue #210, opened by mbebenita on 2016-01-20, closed (completed) on 2016-02-25.
+
+Currently, the spec does not say if label name reuse is allowed or not:
+
+https://github.com/WebAssembly/spec/commit/f3015ed09e419e91bd69d15a32a284601fe4d29a#diff-d372e456aea857e846293c5f4add7c81R156
+
+I'm not sure what the current implemented behavior is, but I suppose there are only two options:
+1. Not allowed.
+2. Allowed, but scoped (not allowed if ambiguous).
+
+## Comment by binji, 2016-01-20
+
+Just tested this with the spec interpreter:
+
+```
+(module
+  (export "f" $f)
+  (func $f
+    (loop $foo $foo
+      (block $foo
+        (block $foo
+          (br $foo))))
+))
+```
+
+No error. It seems that the spec interpreter just uses the first label it finds.
+
+## Comment by mbebenita, 2016-01-21
+
+What about:
+
+```
+(loop $foo $foo
+  (br $foo))
+```
+
+Is this a break or continue?
+
+## Comment by mbebenita, 2016-01-21
+
+If this is the behavior we want, then I guess we should spec the label search order. I feel that relying on search order is kind of error prone.
+
+## Comment by ghost, 2016-01-21
+
+@mbebenita The loop block label should be the outer label, so it should see the loop repeat label. The binary encoding has no labels here, but you are right that the order should be specified.
+
+## Comment by mbebenita, 2016-01-21
+
+@JSStats I was under the impression that the loop blocks are just blocks with an additional label. So it effectively has two labels, and they are both outer labels as far as the `(br $foo)` is concerned. Am I missing something here?
+
+```
+(block $foo
+  (br $foo) ;; break
+)
+```
+
+```
+(loop $foo %bar
+  (br $foo) ;; continue
+  (br $bar) ;; break
+)
+```
+
+```
+(loop $foo %foo
+  (br $foo) ;; continue or break?
+)
+```
+
+## Comment by kripken, 2016-01-21
+
+I'm in favor of disallowing the ambiguous cases (1 or 2 in the first comment).
+
+## Comment by binji, 2016-01-21
+
+```
+(loop $foo $bar ...)
+```
+
+is sugar for
+
+```
+(block $foo (loop $bar ...))
+```
+
+See https://github.com/WebAssembly/spec/blob/master/ml-proto/README.md#s-expression-syntax.
+
+Testing this in ml-proto:
+
+```
+(module
+  (export "f" $f)
+  (func $f
+    (loop $foo $foo
+      (br $foo))
+))
+(invoke "f")
+```
+
+is an infinite loop.
+
+So the search order is from "outward".
+
+## Comment by mbebenita, 2016-01-21
+
+@kripken option 2 is consistent with JS semantics, so I'd favor that as well.
+
+## Comment by mbebenita, 2016-01-21
+
+@binji ah, I see, that makes sense.
+
+## Comment by ghost, 2016-01-21
+
+@binji Not sure if 'outward' is meaningful. Perhaps note labels are a lexical binding, a stack, and that the lookup chooses the first in the stack, so an inner binding shadows an outer binding. But it's just for the spec wast and perhaps people would rather not have such hazards in tests etc.
+
+## Comment by rossberg, 2016-01-21
+
+Labels have standard lexical scoping behaviour. That is, they scope over the labelled expression, and can be shadowed within their scope. The `loop` case is defined by its desugaring.
+
+We could disallow shadowing, but I don't see a strong reason for that. Everything regarding names is not part of the "official" spec semantics anyway.
+
+## Comment by kg, 2016-01-21
+
+> We could disallow shadowing, but I don't see a strong reason for that.
+
+What is the advantage? From my perspective this has disadvantages because it is unusual and mostly creates an opportunity for confusion.
+
+> Everything regarding names is not part of the "official" spec semantics anyway.
+
+This doesn't match our design history, and it feels like a semantic trick. In the context of tableswitch and a bunch of cases, the best way to describe the numbering of the `br` targets for the cases would be labels where the names are arbitrary compiler-assigned numbers.
+
+## Comment by rossberg, 2016-01-22
+
+On 21 January 2016 at 18:14, Katelyn Gadd notifications@github.com wrote:
+
+> We could disallow shadowing, but I don't see a strong reason for that.
+>
+> What is the advantage? From my perspective this has disadvantages because
+> it is unusual and mostly creates an opportunity for confusion.
+
+Allowing shadowing ensures locality and compositionality: without it, you
+cannot syntactically insert a piece of code into another piece and expect
+it to keep working. At least in general language design, that is a very
+useful modularity property. Not saying it's super-important here, but I
+also don't see the opposite.
+
+Everything regarding names is not part of the "official" spec semantics
+
+> anyway.
+>
+> This doesn't match our design history,
+
+Not sure why you're saying that. The AST semantics never had names, AFAIR.
+
+and it feels like a semantic trick. In the context of tableswitch and a
+
+> bunch of cases, the best way to describe the numbering of the br targets
+> for the cases would be labels where the names are arbitrary
+> compiler-assigned numbers.
+>
+> —
+> Reply to this email directly or view it on GitHub
+> https://github.com/WebAssembly/spec/issues/210#issuecomment-173641404.
+
+## Comment by ghost, 2016-01-24
+
+@rossberg-chromium 'locality and compositionality' seem important for a usable source code. FYI For `(module (func $f1 (block $l1 (block $l1 (nop)))))` sexp-wasm gives 'redefinition of label "$l1"'!
+

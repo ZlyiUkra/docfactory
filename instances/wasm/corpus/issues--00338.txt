@@ -1,0 +1,37 @@
+# WebAssembly spec issue #338: type error in unreachable code on block-sigs branch
+# джерело: https://github.com/WebAssembly/spec/issues/338
+# отримано: 2026-09-30
+
+Issue #338, opened by sunfishcode on 2016-09-11, closed (completed) on 2016-10-26.
+
+The block-sigs branch has this testcase in loop.wast:
+
+```
+(assert_invalid
+  (module (func $type-cont-last-void-vs-empty (result i32)
+    (loop (br 0 (nop)))
+  ))
+  "type mismatch"
+)
+```
+
+The end of the function is unreachable, so implementations shouldn't be required to issue a type error here, by my understanding of the rules.
+
+## Comment by sunfishcode, 2016-09-11
+
+`type-cont-last-num-vs-empty` also in loop.wast is another instance of this.
+
+## Comment by ghost, 2016-09-11
+
+With the block signatures, the `loop` has a declared result type, in this case `void` so the validation can easily use that, it does not need to propagate unreachable types. This seems consistent with `(i32.add (f32.neg (unreachable)))` being a type error too, here `f32.neg` has a declared type which is used even though it's result is unreachable.
+
+This also seems to be related to https://github.com/WebAssembly/design/issues/778
+
+## Comment by rossberg, 2016-09-11
+
+@sunfishcode, acknowledged. Block signatures notwithstanding, the interpreter still implements the don't-type-check-dead-code semantics, which is why I didn't find these when I adapted the tests. Not skipping dead code is gonna be a separate change.
+
+## Comment by rossberg, 2016-10-26
+
+This has been fixed with #345.
+

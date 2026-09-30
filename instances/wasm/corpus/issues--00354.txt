@@ -1,0 +1,59 @@
+# WebAssembly spec issue #354: Convert a general wast to wasm?
+# джерело: https://github.com/WebAssembly/spec/issues/354
+# отримано: 2026-09-30
+
+Issue #354, opened by kripken on 2016-10-03, closed (completed) on 2016-10-10.
+
+Doing `wasm a.wast -o a.wasm` works if the wast validates under the spec interpreter, but if not then not (and e.g. a real-world wast from emscripten would import a bunch of things that the spec interpreter is not aware of). I also tried with `-u` for unchecked but it still hits link failures. Is that intentional? It seems like it would be useful if the reference implementation could convert a general wast to wasm, for comparison purposes.
+
+## Comment by binji, 2016-10-03
+
+Agreed, it seems that the requirement that the module is fully linked is the issue. Even a module as simple as:
+
+```
+(module (import "foo" "bar" (func)))
+```
+
+Fails with the error:
+t.wast:2.3-2.30: link failure: unknown import "foo.bar"
+
+## Comment by rossberg, 2016-10-10
+
+Sorry about this, you want to use the `-d` option (dry) when just converting modules or scripts, see the synopsis examples in the README.
+
+## Comment by kripken, 2016-10-10
+
+Thanks @rossberg-chromium. I still hit a problem, maybe it's something else though, not sure - on this wast I get
+
+```
+a.out.wast:45.21-45.32: runtime crash: undefined global 7
+```
+
+which is an error about `$memoryBase`, defined as
+
+```
+  (import "env" "memoryBase" (global $memoryBase i32))
+...
+  (data (get_global $memoryBase) "...") ;; error is on this line
+```
+
+Is something invalid in that wast code?
+
+## Comment by binji, 2016-10-10
+
+Hm, wabt validates this OK. Though it is kind of a weird case, because when you use a global as the offset for a data or elem segment, you can't validate it until you link.
+
+## Comment by kripken, 2016-10-10
+
+Oh thanks, now I see, this is a link validation issue and therefore this wast needs both `-d` _and_ `-u`.
+
+## Comment by kripken, 2016-10-10
+
+Ok great, with that out of the way it looks like everything works - I can convert a libc++ binaryen wast to wasm using the spec interpreter, or using wabt's wast2wasm, or using binaryen's wasm-as, and all of those run ok in the binaryen interpreter with JS engine integration. So looks like those projects are all in sync. Next step is to test with native wasm support in engines.
+
+## Comment by rossberg, 2016-10-11
+
+Ah, that actually _is_ a bug. A crash error should never occur unless you run an invalid module with `-u`. And you should never need `-u` for conversion.
+
+The crash was due to the fact that validation still tried to check order and boundedness of segment definitions, even though with the new import/export semantics that's is no longer possible in general, as @binji observed. I created #358 to eliminate these checks from static validation.
+

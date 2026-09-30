@@ -1,0 +1,69 @@
+# WebAssembly spec issue #304: runtests.py reports OK even when there are failures
+# джерело: https://github.com/WebAssembly/spec/issues/304
+# отримано: 2026-09-30
+
+Issue #304, opened by sunfishcode on 2016-07-05, closed (completed) on 2016-07-05.
+
+Tweaking a test to induce a failure, I get this output:
+
+> ......................................................# Failure running /wasm/spec/ml-proto/wasm test/return.wast
+> ## .........
+>
+> Ran 63 tests in 5.869s
+>
+> OK
+
+## Comment by rossberg, 2016-07-05
+
+That's weird, I can't reproduce that. How does the test fail when you run it individually?
+
+## Comment by sunfishcode, 2016-07-05
+
+I made this edit:
+
+```diff
+$ git diff
+diff --git a/ml-proto/test/return.wast b/ml-proto/test/return.wast
+index b5bdb1c..9ceca43 100644
+--- a/ml-proto/test/return.wast
++++ b/ml-proto/test/return.wast
+@@ -193,7 +193,7 @@
+ (assert_return (invoke "type-f64"))
+
+ (assert_return (invoke "nullary"))
+-(assert_return (invoke "unary") (f64.const 3.1))
++(assert_return (invoke "unary") (f64.const 3.2))
+
+ (assert_return (invoke "as-func-first") (i32.const 1))
+ (assert_return (invoke "as-func-mid") (i32.const 2))
+```
+
+runtests.py does this:
+
+```
+$ ./runtests.py
+......................................................# Failure running /wasm/spec/ml-proto/wasm test/return.wast
+.........
+----------------------------------------------------------------------
+Ran 63 tests in 5.850s
+
+OK
+```
+
+Running the test manually fails as expected:
+
+```
+$ ./wasm test/return.wast
+Result: 3.1 : f64
+Expect: 3.2 : f64
+test/return.wast:196.1-196.49: wrong return value
+```
+
+## Comment by rossberg, 2016-07-05
+
+Okay, I can reproduce that. Will look into it.
+
+## Comment by rossberg, 2016-07-05
+
+I just pushed a fix, should work now.
+

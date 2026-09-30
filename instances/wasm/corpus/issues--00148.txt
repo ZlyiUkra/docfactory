@@ -1,0 +1,116 @@
+# WebAssembly spec issue #148: S-expression significand syntax
+# джерело: https://github.com/WebAssembly/spec/issues/148
+# отримано: 2026-09-30
+
+Issue #148, opened by drom on 2015-10-22, closed (completed) on 2015-11-07.
+
+I am new to wast syntax and s-expressions. I see several tests that uses "signalling NaN" in form of `nan(0x01234567)`. My understanding that `(` and `)` are special characters in s-expression. Depend on S-expression parser can treat `nan(...)` as an extra level of tree. Will it be better to avoid using parents in `nan` scenario?
+
+## Comment by sunfishcode, 2015-10-22
+
+I picked `nan(0x...)` because it roughly corresponds to the C strtod syntax. It looks like you're right though that this isn't compatible with generic S-expression syntax.
+
+What would people think of angle brackets? eg. `nan<0x...>` Or perhaps following the examples of alignment and offset attributes, `nan significand=0x...`? I'm open to suggestions.
+
+## Comment by rossberg, 2015-10-22
+
+Indeed, I agree. A generic S-expression parser will barf on this. We should find another literal syntax that does not contain brackets.
+
+## Comment by rossberg, 2015-10-22
+
+The second suggestion doesn't quite apply, because `nan` isn't an operator. How about shortening to `nan=0x...`? (As for angle brackets, they are as alien to S-expression syntax as it can get.)
+
+## Comment by jfbastien, 2015-10-22
+
+C11 actually wants an n-char-seq if the NaN package is present. That's not necessarily hex :)
+It does mandate the parens, though!
+
+## Comment by binji, 2015-10-22
+
+Yeah, I ended up having to special case my parser to handle this. It turns out that (at least on my machine) strtod doesn't parse nan(0x...) properly anyway, it always returns quiet NaNs. Strangely @jcbeyler found that the same GLIBC version parsed it properly.
+
+## Comment by jfbastien, 2015-10-22
+
+What's _done_ with the value parsed out isn't specified by C11, so supporting hex or anything else (and which C implementation supports what) is kind of moot w.r.t. WebAssembly. A few choice quotes:
+
+>  The `nan` functions return a quiet NaN, if available, with content indicated through `tagp`.
+> If the implementation does not support quiet NaNs, the functions return zero.
+>
+> A double argument representing a NaN is converted in one of the styles `[-]nan` or `[-]nan(n-char-sequence)` — which style, and the meaning of any `n-char-sequence`, is implementation-defined.
+>
+> `NAN` or `NAN(n-char-sequenceopt)`, ignoring case in the `NAN` part, where:
+> `n-char-sequence`:
+> - `digit`
+> - `nondigit`
+> - `n-char-sequence digit`
+> - `n-char-sequence nondigit`
+>   The subject sequence is defined as the longest initial subsequence of the input string, starting with the first non-white-space character, that is of the expected form. The subject sequence contains no characters if the input string is not of the expected form.
+>
+> A character sequence `NAN` or `NAN(n-char-sequenceopt)` is interpreted as a quiet NaN, if supported in the return type, else like a subject sequence part that does not have the expected form; the meaning of the `n-char-sequence` is implementation-defined. An implementation may use the `n-char-sequence` to determine extra information to be represented in the NaN’s significand.
+
+I suggest we do our own thing here, and specify min/max values for the payload as well as which NaN is quiet and which is signaling. Note that MIPS has the _other_ signaling NaN representation as everyone else (though they're changing that with a CPU flag in new versions IIRC).
+
+The goal is just to be able to accurately represent all valid bit values for float and double, _not_ to be able to use NaNs beyond load/store and the FP bit manipulation functions.
+
+## Comment by drom, 2015-10-22
+
+Any solution without parenthesis would simplify parser. Does it make sense making "signaling NaN" an expression? like: `(nan 0x1234)` ?
+
+## Comment by rossberg, 2015-10-22
+
+@drom, no, that would suggest that `nan` is a Wasm opcode, which it isn't.
+
+## Comment by pjuftring, 2015-10-22
+
+Or you could use an unused character at the beginning of the hexadecimal number like % or @ or *. This could be easy to parse, but would be not self-explanatory.
+
+## Comment by binji, 2015-10-22
+
+I like `nan=0x...`. It's easy to parse and relatively clear. It's nice that it almost mimics the new attribute syntax as well.
+
+## Comment by jcbeyler, 2015-10-22
+
+nan=0x.... seems good to me too, it's easy to reformat it to nan(0x...) for strtod so it's a non issue there.
+
+## Comment by drom, 2015-10-22
+
+`nan=0x0...` feels like attribute to the expression ( similar to offset and allign `(i64.load align=6 (i32.const 0)))` ) rather then value.
+
+## Comment by sunfishcode, 2015-10-22
+
+I'm not enamored with `nan=0x...` because the `0x...` is just a field of the NaN.
+
+Is `nan. ...`, e.g. `nan.0123abcd`, where the `.0123abcd` is parsed just like the dot and trailing digits in a regular hexadecimal literal, complete with trailing zero padding rather than leading zero padding, too cute? Signalling vs quiet aside for the moment.
+
+## Comment by drom, 2015-10-22
+
+`nan.12345` looks good better then `nan=12345` to me.
+
+## Comment by binji, 2015-10-22
+
+@sunfishcode seems strange to me, the hex float bits have trailing zero padding because it represents finer granularity, but the nan tag is just arbitrary bits. How about `nan:0xabcdef`?
+
+(and I think the bikeshed should be vermilion)
+
+## Comment by ghost, 2015-10-22
+
+Should be `(ns.nan 0x....)` where the prefix `ns.` (or something else) separates it from the core opcodes. It's still an operator that converts an integer to a float nan.
+
+## Comment by sunfishcode, 2015-11-04
+
+I convinced myself that the signalling vs quiet issue blocks what niceness there was in `nan.012345`. Trailing zeros was cute because of the way CPUs convert between 32-bit and 64-bit NaN patterns by moving 32-bit NaN fraction fields into the most significant bits of 64-bit NaN fraction fields and adding trailing zeros. However, they also implicitly set the "quiet" bit, which doesn't make sense if this is representing a fractional value.
+
+`nan:0xabcdef` works for me. Also, vermilion is a fine choice.
+
+## Comment by drom, 2015-11-04
+
+Looking forward to see new syntax in the testsuite: `float_literals`, `float_memory` and `float_misc`
+
+## Comment by sunfishcode, 2015-11-05
+
+I created https://github.com/WebAssembly/spec/pull/165 to implement this.
+
+## Comment by drom, 2015-11-07
+
+Thank you. I have added new nan format support into https://github.com/drom/wast-parser
+

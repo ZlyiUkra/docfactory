@@ -1,0 +1,96 @@
+# WebAssembly spec issue #182: Call return types and multiple passes?
+# джерело: https://github.com/WebAssembly/spec/issues/182
+# отримано: 2026-09-30
+
+Issue #182, opened by kripken on 2015-11-18, closed (completed) on 2015-11-19.
+
+I noticed when implementing binaryen's s-parser that I need to do 2 passes: one for almost everything, then later, when I know call return types, I can apply those. Because while we have `i32.add` etc., our `call` syntax doesn't mention the return type.
+
+Maybe I'm missing something here?
+
+## Comment by jcbeyler, 2015-11-18
+
+I believe the consensus is that it would be correctly typed and therefore if you have a i32.add that has a call, it is assumed that the return is i32. This check would be done by the compiler generating the wasm and not the consumer of wasm.
+
+## Comment by AndrewScheidecker, 2015-11-18
+
+I think the only way to parse the text format in a single pass would be if all functions were forward declared. That seems like an obvious win in the binary format, but in the text format I think requiring multiple passes for parsing+validation isn't a problem.
+
+WAVM does 4 passes: S-expressions, declarations, function tables, function bodies.
+
+## Comment by kripken, 2015-11-18
+
+@jcbeyler I see. This does mean though that the compiler has to do a local inference, which is not necessary for `i32.add` etc., so it seems odd at first glance. Unless there is a deeper reason?
+
+A further concern is that the function return type might not be fully specified locally, a method could return an `i32` but show up in a `block` where the return value is ignored, so no local inference tells us the return type. I suppose it isn't needed, if we drop the return value anyhow, but for some compilers it might be important to know (e.g., whether a register is affected).
+
+@AndrewScheidecker: yeah, forward declarations is one solution here. It's probably the smaller in terms of size, too.
+
+## Comment by AndrewScheidecker, 2015-11-18
+
+BTW, there were some discussions in the design repo about more uniformly using typed opcodes:
+https://github.com/WebAssembly/design/issues/311
+https://github.com/WebAssembly/design/issues/408
+
+I think this specific problem would not be solved even if you wrote e.g. `i32.call`, since you also need to know the callee's parameter types to validate the call.
+
+## Comment by jcbeyler, 2015-11-18
+
+Yeah I don't have this problem either: wasm-to-llvm does:
+
+S-expression -> Internal IR
+Function declarations
+Internal passes
+Code generation
+
+## Comment by lukewagner, 2015-11-19
+
+FWIW, the binary format will _definitely_ have a table of function signatures (and perhaps even offsets to their definitions for the benefit of parallel decoding)
+
+## Comment by ghost, 2015-11-19
+
+@lukewagner Including offsets in such a table would break streaming through upper layers. Asm.js did not require a table of function signatures. But a function table is probably not a big problem for streaming which should know the function types at the start anyway.
+
+As @AndrewScheidecker notes, why not just add a result type to each call. If it's good enough for every other operation when why not calls. Check the binary file overhead later and only add a table if really necessary.
+
+The use cases of parallel compilation, or streaming incremental compilation, seem important to plan for. Parallel compilation to reduce compile time, and streaming incremental compilation to reduce memory usage storing intermediate code and to reduce latency.
+
+## Comment by lukewagner, 2015-11-19
+
+@JSStats  That's why I said "perhaps": we could make this table of offsets optional.  In some cases (super fast network, http cache hit, upper-level transformations that don't use a stream), all the wasm bytes will become available at the same time and so the table of offsets would enable various decoder optimization.  I expect this is not something we need for the MVP, though.
+
+Interestingly, the same situation arises at with the section table.  In this case, the byte length is critical since it allows an engine to skip unknown/ignored sections w/o understanding their contents.  To allow streaming, it seems like we would make the length optional for certain types of sections that the engine _must_ know how to decode (viz., the `code` section).
+
+> Check the binary file overhead later and only add a table if really necessary.
+
+We're talking about the text format here.  The binary format should be single-pass.  The signature table is definitely a good idea for the binary format: in asm.js, for lack of a signature table, we have to lazily populate one and do extra checking to make sure that all calls use coherent signatures and it's more complicated, more expensive and problematic for parallelization.
+
+## Comment by ghost, 2015-11-19
+
+@lukewagner For the case in which 'all the wasm bytes will become available at the same time' the table of offsets could be at the end of the file, and this would work with streaming too.
+
+Also it seems that in general upper layer transforms will need to work one function at a time and not stream them. For example to repack variables, or repack the branch target depths. So it might not have much effect if they emitted a byte size for each function at the start of the function, and could this be enough to avoid the offset table?
+
+Perhaps upper layers could usefully process functions in parallel too.
+
+Would compression work in units of functions, so that it could seek to any function?
+
+## Comment by rossberg, 2015-11-19
+
+A couple of observations:
+- Return types would not even be enough, you also need the argument types to do type-checking.
+- With multiple return values you'd also need multiple return types.
+- Even if you were to duplicate the function type signature at every call that wouldn't help your problem, because you'd still need to validate that it matches the actual definition! You'd still need an extra pass for that.
+
+Consequently, forward declarations (in the binary format) or two passes (in the text format) are the only alternatives I can see.
+
+Also, let me point out again what I already said in #311 and #408: the type prefixes on something like i32.add should not be thought of as type annotations, they just name the operator (without that you'd need overloading for operators).
+
+## Comment by lukewagner, 2015-11-19
+
+@JSStats That's a good point; maybe we should have each function define its length.  Probably we're derailing the discussion here, so I'll create a new issue on this topic.
+
+## Comment by kripken, 2015-11-19
+
+Thanks @rossberg-chromium, sorry I didn't fully understand your point earlier about overloading, but now I do. Yes, this makes total sense to me now, closing this issue (remaining relevant parts have already been branched off).
+

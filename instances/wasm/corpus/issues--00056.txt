@@ -1,0 +1,73 @@
+# WebAssembly spec issue #56: load_global after store_global doesn't return the value?
+# джерело: https://github.com/WebAssembly/spec/issues/56
+# отримано: 2026-09-30
+
+Issue #56, opened by marianoguerra on 2015-09-11, closed (completed) on 2015-09-11.
+
+hi, the following code returns 0 for the 3 expressions in comments at the bottom.
+
+shouldn't the last one return 32?
+
+```
+(module
+   (global $rx0 i32)
+
+   (func $gx0 (load_global $rx0))
+   (func $sx0 (param i32) (store_global $rx0 (get_local 0)))
+
+   (export "gx0" $gx0)
+   (export "sx0" $gx0)
+
+   (;
+    (invoke "gx0") ;; returns 0
+    (invoke "sx0" (i32.const 32)) ;; returns 0
+    (invoke "gx0") ;; returns 0, should return 32?
+   ;)
+)
+```
+
+## Comment by marianoguerra, 2015-09-11
+
+doing the operations inside the module seems to work:
+
+```
+(module
+   (global $rx0 i32)
+
+   (func $gx0 (load_global $rx0))
+   (func $sx0 (param i32) (store_global $rx0 (get_local 0)))
+
+   (func $storeandload
+    (call $sx0 (i32.const 42))
+    (call $gx0))
+
+
+   (export "gx0" $gx0)
+   (export "sx0" $gx0)
+   (export "storeandload" $storeandload)
+
+   (;
+    (invoke "gx0") ;; returns 0
+    (invoke "sx0" (i32.const 32)) ;; returns 0
+    (invoke "gx0") ;; returns 0, should return 32?
+    (invoke "storeandload") ;; this one returns 42 as expected
+   ;)
+)
+```
+
+## Comment by lukewagner, 2015-09-11
+
+Looks like a "bug" in the testcase :)
+
+```
+   (export "sx0" $gx0)
+```
+
+should be
+
+```
+   (export "sx0" $sx0)
+```
+
+Closing, but feel to reopen if I've misdiagnosed.
+

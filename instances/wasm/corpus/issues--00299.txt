@@ -1,0 +1,53 @@
+# WebAssembly spec issue #299: (module "...") form is parsed incorrectly
+# джерело: https://github.com/WebAssembly/spec/issues/299
+# отримано: 2026-09-30
+
+Issue #299, opened by lars-t-hansen on 2016-06-24, closed (completed) on 2016-07-12.
+
+This looks like a merge error: some lines are transposed in the section parser.  The test cases do not catch this because all the tests are trivial (no sections) or should fail anyway.  Better test case:
+
+(module "\00asm\0b\00\00\00\04type\04\01\40\00\00\08function\02\01\00\04code\03\01\00\00")
+
+Also, the expected function type is wrong (0x05 rather than 0x40 as documented).
+
+```
+diff --git a/ml-proto/spec/decode.ml b/ml-proto/spec/decode.ml
+index b3b4790..681e383 100644
+--- a/ml-proto/spec/decode.ml
++++ b/ml-proto/spec/decode.ml
+@@ -124,7 +124,7 @@ let value_type s =
+ let expr_type s = vec1 value_type s
+
+ let func_type s =
+-  expect 0x05 s "invalid function type";
++  expect 0x40 s "invalid function type";
+   let ins = vec value_type s in
+   let out = expr_type s in
+   {ins; out}
+@@ -447,9 +447,9 @@ let id s =
+ let section tag f default s =
+   if eos s then default else
+   let start_pos = pos s in
++  if id s <> tag then (rewind start_pos s; default) else
+   let size = vu s in
+   let id_pos = pos s in
+-  if id s <> tag then (rewind start_pos s; default) else
+   let s' = substream s (id_pos + size) in
+   let x = f s' in
+   require (eos s') s' (pos s') "junk at end of section";
+```
+
+## Comment by lars-t-hansen, 2016-06-24
+
+Actually there are more bugs here:
+- in code_section, the lines for size and local parsing are transposed
+- the opcodes for numeric constants are wrong (i32.const should be 0x10 but is 0x0a for example)
+
+## Comment by rossberg, 2016-06-24
+
+Thanks for reporting, I believe these are all cases where the spec en/decoder isn't up-to-date with changes to the binary format. Will fix.
+
+## Comment by lars-t-hansen, 2016-06-24
+
+Thanks!  This API is nice in that it makes it fairly easy to construct illegal bytecode sequences that should be rejected.  (I found a problem in our verifier and needed to construct a program to demonstrate that.)
+

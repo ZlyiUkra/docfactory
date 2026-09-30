@@ -1,0 +1,36 @@
+# WebAssembly spec issue #380: Type mismatch when importing globals?
+# джерело: https://github.com/WebAssembly/spec/issues/380
+# отримано: 2026-09-30
+
+Issue #380, opened by binji on 2016-11-07, closed (completed) on 2016-11-16.
+
+I noticed that the spec interpreter fails this test (should be a type mismatch):
+
+```
+(module
+  (global i32 (i32.const 0))
+  (export "g" (global 0)))
+(register "foo")
+(assert_unlinkable
+  (module (import "foo" "g" (global f32)))
+  "blah")
+```
+
+Seems like an oversight?
+
+## Comment by rossberg, 2016-11-08
+
+Well, not really an oversight, rather that it's not clear how to make it work right now. I would be inclined to make that an error in "proper Wasm". But the only way we can currently express linking is through the JS API, and that freely interconverts global imports, because it doesn't have any type information about them to begin with. Morally, the implicit conversion should be part of the JS API, not Wasm linking semantics, but either way you could not express the above test in browsers.
+
+The only solution would be to make it an error in the spec (since that doesn't consider JS) but not include a test in the suite until we have more stringent ways to express linking in browsers.
+
+That said, there is a bug in the interpreter in that it does not perform the coercion for globals that come from other modules, it only does it for host imports. If you'd add "g" to another f32 in the second module then you get a runtime error. So something has to change one way or the other.
+
+## Comment by rossberg, 2016-11-10
+
+See #384, which tightens the check. That seems to be the right thing to do for the spec. However, for the reasons mentioned above, this can't currently be tested in the browser, so no respective test is included for the time being.
+
+## Comment by rossberg, 2016-11-16
+
+Fixed by #384
+

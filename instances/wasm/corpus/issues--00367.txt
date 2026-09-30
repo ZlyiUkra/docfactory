@@ -1,0 +1,140 @@
+# WebAssembly spec issue #367: Should we allow module-defined globals in get_global initializer expressions?
+# джерело: https://github.com/WebAssembly/spec/issues/367
+# отримано: 2026-09-30
+
+Issue #367, opened by bnjbvr on 2016-10-27, closed (completed) on 2016-11-10.
+
+https://github.com/WebAssembly/design/blob/master/Modules.md#initializer-expression says that the only globals allowed in `get_global` initializer expressions should be immutable imports:
+
+```
+- get_global, where the global index must refer to an immutable import.
+```
+
+There are tests in `memory.wast` that use module-defined globals in `get_global` initializer expressions:
+https://github.com/WebAssembly/spec/blob/master/interpreter/test/memory.wast#L13-L16
+
+In particular, since globals can be initialized with initializer expressions, we can have cycles:
+
+```
+(module
+    (global $foo i32 (get_global $bar))
+    (global $bar i32 (get_global $foo))
+)
+```
+
+The spec interpreter refuses this because it follows initialization order, and `$bar` is not known when we define `$foo`. I just found out there's actually a test for this in `globals.wast`, so this is probably intended behavior here, and probably the reasonable choice if we want to allow module-defined globals to appear in global initializer expressions.
+
+What if we have an imported global, and another global is initialized by `get_global` on this imported global? (that's equivalent to the second global importing the same field, modulo JS strange behavior (if there's a proxy/getter on the imported object field))
+
+In general, instead of doing a `get_global` with a module-defined global $foo as an operand, in an initializer expression of global $bar, a wasm generator can just use the initializer expression of $foo for initializing $bar, preventing a spurious indirection here.
+
+In any cases, it seems that either the design repository is not up to date, or the ml-proto is drifting a bit away from the design.
+
+## Comment by titzer, 2016-10-27
+
+V8 also follows initialization order in parsing the binary. The import section, which can declare imported (immutable) globals, must appear before any sections that can have initializer expressions, including globals themselves. Therefore it's sufficient to parse the import section and add each imported global to a list of globals. Then when parsing the globals section, checking that the initializer expressions is valid is a simple check that they can only refer to previously declared globals. Otherwise it's an error; cycles are not allowed.
+
+Since only immutable globals can be imported, at instantiation time, all imports are resolved in the order they were declared in the imports section, and there is only a single JS-level access to the imports object for each global. So imported immutable globals are initialized with (number) values before beginning the initialization of the other globals.
+
+## Comment by rossberg, 2016-10-27
+
+Yes, as the presence of the tests indicate, it is intended behaviour that initializer expressions can only refer to previous globals (precisely to avoid cycles). Like many other details of validation, the design docs just don't mention this.
+
+As @titzer says, imports always have to occur before all internal definitions, so that case is also well-defined.
+
+I'm not sure I understand what you are getting at in the rest of your comment. An engine is of course free to handle or compile initialisation any way it sees fit, including "inlining" other expressions, as long as it has the observable behaviour of the specified semantics.
+
+So I am not aware of any disagreement between design and spec on this. Can you clarify what fixes you think are needed specifically?
+
+## Comment by bnjbvr, 2016-10-27
+
+That it is technically doable is indeed irrefutable. My question was rather that the design doc says:
+
+```
+In the MVP, to keep things simple while still supporting the basic needs of dynamic
+linking, initializer expressions are restricted to the following nullary operators:
+
+- the four constant operators; and
+- get_global, where the global index must refer to an immutable import.
+```
+
+In this case, we have `get_global` that reference module-defined globals, which are obviously not imports.
+
+**edit** (still not a question :)) So is the design doc lagging behind, or the ml-proto deviating from the design?
+
+## Comment by rossberg, 2016-10-27
+
+Ah, I see, thanks! Yes, that's indeed inconsistent between design and spec. I hadn't noticed it.
+
+I don't have any particular preference regarding which one should be adjusted. Presumably, implementations run the test suite, so would match what the spec says. As @titzer said, V8 does.
+
+## Comment by lukewagner, 2016-10-27
+
+(SM implements what was written in the design doc and we're just now updating to run the latest test suite, hence this issue.)
+
+I know they can both be implemented easily, but there does seem to be a categorical difference: if `get_global` can only refer to constant global imports, then it's indexing the abstract vector of imports; if `get_global` can reference _any_ global, then it's logically indexing the same memory section that it is in the process of initializing which implies a serialization of evaluation of all the init-exprs.  Granted, we all appear to be implementing this sequentially atm, so it's no big deal, but I can imagine other contexts where it would be nice for init-expr evaluation to be independent, e.g. if one wanted to compile a `.wasm` to a `.so` (which seems inevitable).
+
+Thus, I'd slightly prefer to change the interpreter/tests to match the design doc.
+
+## Comment by titzer, 2016-10-27
+
+On Thu, Oct 27, 2016 at 11:11 AM, Benjamin Bouvier <notifications@github.com
+
+> wrote:
+>
+> That it is technically doable is indeed irrefutable. My question was
+> rather that the design doc
+> https://github.com/WebAssembly/design/blob/master/Modules.md#initializer-expression
+> says:
+>
+> In the MVP, to keep things simple while still supporting the basic needs of dynamic
+> linking, initializer expressions are restricted to the following nullary operators:
+> - the four constant operators; and
+> - get_global, where the global index must refer to an immutable import.
+>
+> In this case, we have get_global that reference module-defined globals,
+> which are obviously not imports.
+>
+> I see. I think we should change this last sentence to refer to "immutable
+> global" instead of "immutable import".
+>
+> —
+> You are receiving this because you were mentioned.
+> Reply to this email directly, view it on GitHub
+> https://github.com/WebAssembly/spec/issues/367#issuecomment-256588761,
+> or mute the thread
+> https://github.com/notifications/unsubscribe-auth/ALnq1NjKSuR4kUuDcqB6uZPUH3BQQLTpks5q4Gq3gaJpZM4KiFCw
+> .
+
+## Comment by lukewagner, 2016-10-27
+
+@titzer There's still the apparent ordering dependency and, technically, as long as we don't allow `set_global` in init-exprs, there isn't really a difference between mutable vs. immutable non-imported globals.  Is there really a need for globals to refer to other non-imported globals?  If we were to allow complex init-exprs, I guess I can imagine this could allow init-exprs to be "factored", but I think layer 1 would be the better place for that type of compression.
+
+## Comment by lukewagner, 2016-11-08
+
+So could we design as-is and fix the interpreter/test to match?  (This is a conservative start and could be relaxed later.)
+
+## Comment by rossberg, 2016-11-08
+
+I have developed a minor preference for allowing it, because it would be the only place where we'd make a distinction between uses of imported and internal definitions, which is a bit odd.
+
+## Comment by lukewagner, 2016-11-08
+
+Agreed we're in "light preference" territory, but I think there will need to be a restriction on the index either way: the difference is whether it's simply "only the imports" vs. "only preceding" and the latter also seems a bit special.
+
+## Comment by titzer, 2016-11-09
+
+I'm OK with making the restriction to immutable imports for now. @rossberg-chromium pointed out that this extra restriction would need to be part of the formal spec, but as the formalization right now is currently more general than implementations in other areas, I suppose this is OK.
+
+## Comment by rossberg, 2016-11-09
+
+Okay, I will change the interpreter then.
+
+## Comment by rossberg, 2016-11-10
+
+Here you go: #383.
+
+## Comment by lukewagner, 2016-11-10
+
+Thanks!
+

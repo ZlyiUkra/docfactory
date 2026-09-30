@@ -1,0 +1,151 @@
+# WebAssembly spec issue #179: Break expression handling
+# джерело: https://github.com/WebAssembly/spec/issues/179
+# отримано: 2026-09-30
+
+Issue #179, opened by jcbeyler on 2015-11-18, closed (completed) on 2015-11-20.
+
+Dear all,
+
+As I was starting to handle more complex labeling, I was looking at the labels.wast case:
+
+```
+  (func $loop2 (result i32)
+    (local $i i32)
+    (set_local $i (i32.const 0))
+    (loop $exit $cont
+      (set_local $i (i32.add (get_local $i) (i32.const 1)))
+      (if (i32.eq (get_local $i) (i32.const 5))
+        (br $cont (i32.const -1))
+      )
+      (if (i32.eq (get_local $i) (i32.const 8))
+        (br $exit (get_local $i))
+      )
+      (set_local $i (i32.add (get_local $i) (i32.const 1)))
+      (br $cont)
+    )
+  )
+```
+
+I am especially interested in this break:
+        (br $cont (i32.const -1))
+
+Is the idea behind this to say:
+- If I do branch back to the loop, execute the code of the expression before jumping (well here it would get DCE'd anyway but still)
+  - So for example, if it was (unreachable) we would trap there instead of DCE-ing it
+- Even though I know no one will consume it afterwards (compared to a branch to an exit for example)
+
+I read the design and it wasn't clear if this was or not the behavior that we were going for and I'd prefer checking.
+
+Thanks!
+Jc
+
+## Comment by kg, 2015-11-18
+
+> execute the code of the expression before jumping
+
+This brings to mind a related question: Is `(br $label (br $otherlabel (i32.const -1)))` valid? If the child expression is evaluated before the jump, then it would jump to otherlabel and then maybe jump to label. If it's evaluated after, it would jump to label and then maybe jump to otherlabel. Whether this actually works would depend on the nesting, and the evaluation order would make this either correct or incorrect.
+
+`(br $label1 (block (br $label2 (i32.const 0)) (br $label3 (i32.const 1)))`
+???
+
+We should make sure to clearly specify the behavior of br and br_if in detail so that it's unambiguous how all this works. I don't see much detail in the design repo.
+
+## Comment by kg, 2015-11-18
+
+Should've thought of this before hitting comment:
+Break targets are encoded as nesting distances, so if break-inside-break is evaluated in the wrong order it could actually end up jumping to an unexpected location.
+I can also imagine an implementation of break-within-break where the inner break simply causes the outer break operation to never execute.
+
+## Comment by rossberg, 2015-11-18
+
+@jcbeyler: Hah, I think you just found a bug. The extra argument should neither be necessary nor allowed. I'll look into it.
+
+@kg: yes, that is legal, though obviously not a particularly useful example. Conceptually, it's no different from something like
+
+```
+throw (() => { throw -1 ))()
+```
+
+in JavaScript. (Think of a break as a throw with a lexically scoped target.)
+
+## Comment by rossberg, 2015-11-18
+
+See PR #180.
+
+## Comment by jcbeyler, 2015-11-18
+
+Awesome, thanks, I will update my code to reflect this when @sunfishcode updates the testsuite repo :)
+
+@kg: yes I think that if I look at how wasm-to-llvm does things, this break inside a break actually breaks LLVM's rules and I'd have to do a bunch of work to fix that.
+
+I'm not sure there is a point to having a break inside a break and perhaps we should just put it as undefined behavior (or better illegal). I think I don't see a use-case where you would ever want to write something like:
+
+(br $label1 (if (get_local 0) (br $label2)))
+
+Why not get the deciding factor that was in the break outside and do:
+(if_else (get_local 0) (br $label2) (br $label1))
+
+I suppose one could say it would be a cool way of doing:
+(br $label1 (if_else (get_local 0) (br $label2) (i32.const 0)))
+
+but again I don't see why you would not just do:
+(if_else (get_local 0) (br $label2) (br $label1 (i32.const 0)))
+
+## Comment by kg, 2015-11-18
+
+I think break-within-break would genuinely occur in cases where code was inlined into a break. i.e.
+
+`(br $label (call $x y))`
+->
+`(br $label [body of $x with y inlined])`
+
+Since `return` is now sugar over break, and a function can contain control flow, this would introduce a break into the expression part of a break.
+
+## Comment by jcbeyler, 2015-11-18
+
+Good point :)
+
+However, this case says that a break inside a break is valid. What about a break inside a break that would jump away and therefore not let the outer break be executed. Do we want to say that that is valid?
+
+## Comment by rossberg, 2015-11-19
+
+@jcbeyler, I'm not sure I follow what's special about a break inside a break. It's simply a case of dead code. Is there any particular difference between
+
+```
+(br $x (br $y))
+```
+
+and
+
+```
+(block (br $y) (br $x (i32.const 0)))
+```
+
+or,
+
+```
+(i32.add (br $x) (i32.const 1))
+```
+
+for that matter?
+
+## Comment by jcbeyler, 2015-11-19
+
+Although I agree with the two first ones, I find the last one more troublesome. I'd have to see how to support that kind of case because right now I think it would break a few of my assumptions (which were that things were properly typed (ie (i32.add (left) (right)) implied that left and right nodes were also typed i32. :)
+
+## Comment by jcbeyler, 2015-11-19
+
+I now see your comment here: https://github.com/WebAssembly/spec/issues/182#issuecomment-158068426
+
+So that makes more sense; though a break in an add still seems weird but why not :) now that I think of it, I support a case in labels.wast that does a multiply with a switch in the middle so it should be fine for me :)
+
+## Comment by jcbeyler, 2015-11-20
+
+Closing this since the original problem is solved
+
+## Comment by rossberg, 2015-11-20
+
+> I think it would break a few of my assumptions (which were that things were properly typed (ie (i32.add > (left) (right)) implied that left and right nodes were also typed i32. :)
+
+@jcbeyler, to be clear: your assumption is valid, regardless of break. A break or return expression simply is polymorphic: it can have any type, including i32. That's standard in type systems: any expression that cannot possibly complete normally and produce a value can be given arbitrary type.
+

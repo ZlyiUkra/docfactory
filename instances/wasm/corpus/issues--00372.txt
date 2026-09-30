@@ -1,0 +1,396 @@
+# WebAssembly spec issue #372: can block labels optionally go on `end`?
+# джерело: https://github.com/WebAssembly/spec/issues/372
+# отримано: 2026-09-30
+
+Issue #372, opened by lukewagner on 2016-10-28, closed (completed) on 2016-11-04.
+
+Being able to put a named label on `end` would, I think, make wasm textual representation for switches like those in switch.wast a lot more readable.
+
+With this change and some whitespace heuristics, switch could look a _lot_ nicer
+
+```
+block block block
+  get_local $index
+  br_table $a $b $c
+end $a
+  ...
+end $b
+  ...
+end $c
+```
+
+instead of the current:
+
+```
+block $c
+  block $b
+    block $a
+      get_local $index
+      br_table $a $b $c
+    end
+    ...
+  end
+  ...
+end
+```
+
+(imagine a switch with hundreds of cases; the diagonal!)
+
+## Comment by rossberg, 2016-10-29
+
+Hm, I’d much rather not.
+
+In Wasm’s structured control, labels index block constructs, not positions in the instruction stream. They are JavaScript-style labels, not C-style labels. To pretend otherwise is misleading IMO and would just invite misunderstanding and confusion. Because it would match neither the binary format nor the abstract syntax.
+
+It also does not fit the rest of the concrete syntax at all, where every other symbolic name is bound by placing it directly after the keyword introducing the thing it names. And it doesn’t mesh with the placing of block signatures, which determine the type of the label. (Also, there is no `end` in the non-flat format.)
+
+To address specific examples like the one you give (which hopefully won’t be written by hand much), wouldn’t it be sufficient to just repeat the label at the end, in a comment?
+
+```
+block $a block $b block $c
+  get_local $index
+  br_table $a $b $c
+end ;; $a
+  ...
+end ;; $b
+  ...
+end ;; $c
+```
+
+I would hope that browsers showing code would do something along these lines anyway, not just for `block`.
+
+## Comment by lukewagner, 2016-10-29
+
+> In Wasm’s structured control, labels index block constructs, not positions in the instruction stream.
+
+Yes, but a block is composed of two lexical parts and this just changes which part the label is on; it's still putting the label "on the block".
+
+> They are JavaScript-style labels, not C-style labels.
+
+I don't think that's a relevant consideration for this textual language that is distinctly neither.
+
+> Because it would match neither the binary format nor the abstract syntax.
+
+Labels don't exist in the binary format, they are present only for readability; I think putting the label where your eye naturally wants to jump significantly enhances readability.
+
+>  (Also, there is no end in the non-flat format.)
+
+But that's not what we're rendering in browsers so it doesn't really matter.
+
+> (which hopefully won’t be written by hand much)
+
+I'm not considering the writing-by-hand use case, I'm talking about fixing the very real problem you can see today that, if you open any non-toy wasm in devtools, your code goes diagonally off the screen if the function happens to contain a on-trivial switch statement.  It's very jarring and it's nothing you'd expect from either a high-level language or a low-level assembly.  I am sure that as soon as _anyone_ starts doing _any_ debugging this will be one of the first walls they hit.  I think we _must_ fix this problem.
+
+## Comment by rossberg, 2016-10-29
+
+> code goes diagonally off the screen if the function happens to contain a on-trivial switch statement. It's very jarring and it's nothing you'd expect from either a high-level language or a low-level assembly. I am sure that as soon as anyone starts doing any debugging this will be one of the first walls they hit. I think we must fix this problem.
+
+But isn't that mostly a question of layout, which is a separate issue? Why wouldn't the comment solution work just as well in combination with a respective layout heuristics? It would require such a heuristics either way.
+
+> Yes, but a block is composed of two lexical parts and this just changes which part the label is on; it's still putting the label "on the block".
+
+Well, as I argued in the other paragraph, it would still be at odds with everything else in the syntax, and separates it weirdly from the associated type annotation.
+
+> Labels don't exist in the binary format, they are present only for readability
+
+Hold on, labels stand for concrete indices. Having some labels appear in line at the top (loops) and others out of line at the bottom doesn't square with how the indexing works. Mapping the textual form to the underlying structure it is supposed to represent would become quite confusing.
+
+> > They are JavaScript-style labels, not C-style labels.
+> > I don't think that's a relevant consideration for this textual language that is distinctly neither.
+
+Sure, I was just saying that to point out an analogy, not because I consider looking like JavaScript relevant as such.
+
+## Comment by titzer, 2016-10-29
+
+I could go either way on this, but Luke's proposal does have the nice
+property that is less confusing for humans to read. The only major downside
+that I see is that tools processing the text format would not see labels
+declared at the _beginning_ of the scope in which they are valid, but only
+at the end. They would therefore have to do two passes, or collect unbound
+labels and resolve them at the ends of blocks (remembering which unbound
+labels were in which blocks). Also, that might also turn out to be
+confusing to users that they can reference labels that come later, but only
+labels that correspond to blocks in which they are nested.
+
+On Sat, Oct 29, 2016 at 8:32 PM, rossberg-chromium <notifications@github.com
+
+> wrote:
+>
+> code goes diagonally off the screen if the function happens to contain a
+> on-trivial switch statement. It's very jarring and it's nothing you'd
+> expect from either a high-level language or a low-level assembly. I am sure
+> that as soon as anyone starts doing any debugging this will be one of the
+> first walls they hit. I think we must fix this problem.
+>
+> But isn't that mostly a question of layout, which is a separate issue? Why
+> wouldn't the comment solution work just as well in combination with a
+> respective layout heuristics? It would require such a heuristics either way.
+>
+> Yes, but a block is composed of two lexical parts and this just changes
+> which part the label is on; it's still putting the label "on the block".
+>
+> Well, as I argued in the other paragraph, it would still be at odds with
+> everything else in the syntax, and separates it weirdly from the associated
+> type annotation.
+>
+> Labels don't exist in the binary format, they are present only for
+> readability
+>
+> Hold on, labels stand for concrete indices. Having some labels appear in
+> line at the top (loops) and others out of line at the bottom doesn't square
+> with how the indexing works. Mapping the textual form to the underlying
+> structure it is supposed to represent would become quite confusing.
+>
+> They are JavaScript-style labels, not C-style labels.
+> I don't think that's a relevant consideration for this textual language
+> that is distinctly neither.
+>
+> Sure, I was just saying that to point out an analogy, not because I
+> consider looking like JavaScript relevant as such.
+>
+> —
+> You are receiving this because you are subscribed to this thread.
+> Reply to this email directly, view it on GitHub
+> https://github.com/WebAssembly/spec/issues/372#issuecomment-257107933,
+> or mute the thread
+> https://github.com/notifications/unsubscribe-auth/ALnq1L5UGxpXlCov2amBM8WBJlknNjnjks5q45EpgaJpZM4Kjla2
+> .
+
+## Comment by lukewagner, 2016-10-30
+
+> But isn't that mostly a question of layout, which is a separate issue?
+
+Yes, technically one could do the same layout if the labels were on the blocks, but good luck reading that.  Really, have you tried to read a switch statement with more than a few cases?  It's a nightmare.
+
+> Why wouldn't the comment solution work just as well in combination with a respective layout heuristics?
+
+That would be better than nothing, but if we _all_ do the layout I'm suggesting above (or some variation thereof) and add the label in comments (can you really imagine not given the unreadability?), then it will be silly that we can't just express the label directly without using comments and naming every label twice.
+
+> Well, as I argued in the other paragraph, it would still be at odds with everything else in the syntax, and separates it weirdly from the associated type annotation.
+
+That's a good point, we should allow the type to go on the `end` as well and it will aid readability for the same reason.  Blocks are unique within the language so I don't think we have a real basis for comparison here.
+
+> Hold on, labels stand for concrete indices. Having some labels appear in line at the top (loops) and others out of line at the bottom doesn't square with how the indexing works.
+
+Labels stand for concrete indices _at the uses_, but the label on the block represents no index immediate so putting it at the beginning or end makes no difference w.r.t the serialization and from an AST POV it's the same node and the same label.
+
+> Mapping the textual form to the underlying structure it is supposed to represent would become quite confusing.
+
+I can't see how this is confusing.  Is there perhaps some underlying issue, like something that requires more work in spec/interpreter or the formalism, that is the real root cause for your objection?
+
+@titzer Glad you think it would be a readability improvement too. Due to forward references of functions and other named things, we already require multiple passes when converting text to binary.  E.g., in SM's text-to-binary, we have an intermediate "resolve names" pass that this would drop into easily.
+
+## Comment by rossberg, 2016-10-31
+
+How about this: in syntactic analogy to branches, we (optionally) allow `end` to reference the label of the respective control construct, uniformly for all control constructs. That helps readability of blockish constructs in general, without breaking the binding structure or introducing other irregularity.
+
+The only thing this doesn't give you is avoiding repetition of the label, but arguably the repetition improves readability even more in many cases (various langs require that kind of name repetition).
+
+WDYT?
+
+Some more comments below.
+
+> That's a good point, we should allow the type to go on the end as well and it will aid readability for the same reason.
+
+Oh no! It also is the block signature. Moving that around inconsistently is worse, and will make little sense in the light of desirable generalisations, such as allowing block function signatures.
+
+> Blocks are unique within the language so I don't think we have a real basis for comparison here.
+
+Not so, it would immediately affect `if`, `try` and whatever other control constructs we add.
+
+> Labels stand for concrete indices at the uses, but the label on the block represents no index immediate so putting it at the beginning or end makes no difference w.r.t the serialization and from an AST POV it's the same node and the same label.
+
+No binding of a symbolic identifier is an actual immediate, label or otherwise. Yet they all resolve to raw numbers in order of textual appearance (for labels, that order is reversed, but it's still in order). Moving some label binders out of line would break that.
+
+> Is there perhaps some underlying issue, like something that requires more work in spec/interpreter or the formalism, that is the real root cause for your objection?
+
+The formalism is unaffected since it doesn't have symbolic labels, and it should be easy in the interpreter as well. No, I just think that concrete syntax should be regular and match abstract syntax. Especially in Wasm, where the abstract syntax materialises quite concretely in the binary format, which the text format is supposed to represent.
+
+## Comment by lukewagner, 2016-10-31
+
+I mean, that'd be better than comments, but, as you say, it still seems like unnecessary noise when blocks are stacked, as I showed in my original post.  I _can_ actually see putting labels on both ends enhancing usability for non-switch use cases (like a really long block), though, so that seems fine to _allow_.
+
+I mean, given the many other syntactic sugars, can't one consider `block ... end $a` to be sugar for `block $a ... end $a`?
+
+> >  Blocks are unique within the language so I don't think we have a real basis for comparison here.
+>
+> Not so, it would immediately affect if, try and whatever other control constructs we add.
+
+Yes, by "Blocks" of course I meant "Blocky things".  Label-on-`end` makes sense for all of them, I think.
+
+> Yet they all resolve to raw numbers in order of textual appearance (for labels, that order is reversed, but it's still in order). Moving some label binders out of line would break that.
+
+That's just an optimization of the more intuitive two-step process of attaching names to block nodes in the AST and then computing depths on the AST; I don't think that should override usability.
+
+## Comment by binji, 2016-11-01
+
+I agree that it is more readable to put the label at the end, except for `loop`, of course.
+
+That said, I dislike the idea of making the location of the label arbitrary (i.e. if it were sugar for `block $a ... end $a`). Why should we allow this:
+
+```
+loop
+  br $a
+end $a
+```
+
+or this:
+
+```
+block
+  block $a
+    ...
+    ...
+    br $a
+  end
+end $a
+```
+
+Putting the label in both places fixes this, but it's pretty ugly IMO. I suppose it's nicer than the comment in that it can be validated. OTOH, if we are talking about generating this for viewing in the browser, we can potentially do better than comments or labels: you can highlight the branch location on mouse-over, use arrows, add color, etc.
+
+As block signatures, I've found that people have been confused by `loop`'s signature, because it's specified at the top but only applies to the fall-through. That said, I wouldn't suggest moving the block signature to the end in this case. It's very nice that it matches the binary format, e.g. `block i32 ... end` => `02 7F ... 0B`, etc. But if the label is at the bottom and the block signature stays at the top, I agree that will hurt readability.
+
+## Comment by rossberg, 2016-11-02
+
+@lukewagner, is your only concern with it verbosity, then? I mean, there is a lot of verbosity in the text format, avoiding it has not been a priority so far, AFAICT. And here it would even be optional.
+
+Sugar or no sugar, I'd really prefer not to mess up binding order and natural scoping rules (keep in mind that the label name scopes over the body only, which would also seem non-obvious if its binder was somewhere else).
+
+@binji, is it really that ugly to reference the label at `end`? There is plenty of language precedent for this kind of bracketing. Or for an alternate viewpoint, it also has some symmetry with branches.
+
+Just trying to find something that's a reasonable compromise...
+
+## Comment by lukewagner, 2016-11-02
+
+@rossberg-chromium I mostly just want wasm's text language to not be terribly worse than a traditional linear assembly language and the diagonal-of-doom was the first thing to stick out.
+
+So I've been thinking about this in terms of experienced users that understands the wasm block/loop rules, but @binji makes a good point that we actually have an opportunity to remove one significant bump in the wasm learning curve by regularly putting labels where control flow goes (the top of loops and the `end` of everything else).  Imagine you are somewhat new to wasm and you see two labels at the top and bottom of a block: I can _definitely_ see that leading to "well which one does it jump to?!" confusion.  If the cost is a bit of extra work when parsing (although I think not really, since we already require multiple passes for other kinds of names), that seems totally worth it.
+
+## Comment by kripken, 2016-11-02
+
+I think a benefit to @rossberg-chromium's option of having the labels at both the top and the bottom is that it helps answer the question of "how are these nested?", which is separate from "where does it jump to?":
+
+```
+(block $a
+  (loop $b
+    (block $c
+      (loop $d
+        ..
+          ..tower of doom..
+        ..
+      ) ;; loop $d
+    ) ;; block $c
+  ) ;; loop $b
+) ;; block $a
+```
+
+Without the labels on top and bottom, we'd have
+
+```
+(block
+  (loop $b
+    (block
+      (loop $d
+        ..
+          ..tower of doom..
+        ..
+      )
+    ) $c
+  )
+) $a
+```
+
+and then if someone wants to find where `$c` is nested, they don't have much in terms of hinting. I'd argue all labels on top (or all on bottom) is better for that purpose.
+
+## Comment by lukewagner, 2016-11-02
+
+For that purpose, I'd agree with @binji that what you'd want is your text editor to highlight the other one, as we are accustomed to today with parens and curlies.
+
+FWIW, I was only proposing adding labels in the linear format, where there is a separate `end`, not the s-expr language.  And, with linear assembly languages, we have a huge precedent for putting labels where control flow goes.
+
+## Comment by binji, 2016-11-02
+
+@rossberg-chromium OK, it's not that ugly. But the only languages that are coming to mind are CMake and basic, so... not that pretty either. :)
+
+TBH, I don't have a strong opinion about this. In terms of the options we've discussed: 1) keeping it the same 2) putting labels at the branch destination 3) labels at the top, or at the top and bottom 4) putting labels anywhere, I would rank them as 1 or 2, then 3, then a very distant 4.
+
+## Comment by rossberg, 2016-11-03
+
+@binji: Modula, Ada, Oberon, Dylan, AppleScript, Clu... :)
+
+Of the options you enumerate, I'd be equally fine with either 1 or 3, but
+strongly dislike the others. I would rank 2 worst by far, because I
+couldn't even use a consistent syntax anymore. For better or worse, Wasm
+labels are very much unlike those in conventional assembly language: they
+are not names for positions in an instruction stream, but scoped names for
+blocks that have types and structure.
+
+On 2 November 2016 at 22:10, Ben Smith notifications@github.com wrote:
+
+> @rossberg-chromium https://github.com/rossberg-chromium OK, it's not
+> that ugly. But the only languages that are coming to mind are CMake and
+> basic, so... not that pretty either. :)
+>
+> TBH, I don't have a strong opinion about this. In terms of the options
+> we've discussed: 1) keeping it the same 2) putting labels at the branch
+> destination 3) labels at the top, or at the top and bottom 4) putting
+> labels anywhere, I would rank them as 1 or 2, then 3, then a very distant 4.
+>
+> —
+> You are receiving this because you were mentioned.
+> Reply to this email directly, view it on GitHub
+> https://github.com/WebAssembly/spec/issues/372#issuecomment-258000260,
+> or mute the thread
+> https://github.com/notifications/unsubscribe-auth/AEDOO0et4mWkpwKoW3NcrHaa490K95xLks5q6PxigaJpZM4Kjla2
+> .
+
+## Comment by lukewagner, 2016-11-03
+
+@binji Perhaps then we could reconsider option 4 so that @rossberg-chromium can put labels where they have the most Purity of Essence while browser devtools can render what is most efficiently readable.  That would at least allow a given tool to be consistent (always-top or always-at-destination).
+
+## Comment by ghost, 2016-11-03
+
+For a linear assembler code I see merit in having the labels at the bottom, at the control flow target. But from a data flow perspective, where the block may well be embedded within an expression, it seems much easier to read having the label at the start of the block scope so that the reader can see where the data goes.
+
+How about for the linear text format presenting the label at the end when the block returns no values - this would fit common `br_table` code patterns. And possibly at the start when the block returns values - but given that the linear text format makes no effort to present the data flow this might not help the reader much apart from being able to see the scope of the label bindings.
+
+I see no harm having different presentation patterns for the same effective code if that helps the reader!
+
+## Comment by rossberg, 2016-11-04
+
+@lukewagner, option 3 seems even more readable and less unpopular. :)
+
+## Comment by lukewagner, 2016-11-04
+
+@rossberg-chromium Yes, I would be in favor of 3 were it not for the fact that it will undoubtedly cause otherwise-unnecessary confusion with readers because this one branch has two apparent targets.  I think we shouldn't _inhibit_ what will be the ideal presentation for a large set of users who won't have any sympathy for "yes, but wasm is different you see because..."; putting a label where control flow jumps isn't a radical idea.
+
+## Comment by ghost, 2016-11-04
+
+@lukewagner The reader will also want to see clearly the scope of the block, where it unwinds to on exit, and the label at the start will help the reader see this. I think you are being a little too critical of having a label at the start of the block, as if there is no value for the reader at all, and this is not the case. Consider when the `pick` operator is added and blocks have a stack of block scoped constants, then having a label at the start will help the reader to understand which scope the code is in and which scope is unwinding at a branch operation. It is a common code pattern to comment the end of blocks, to help match the start and end, and this makes code more readable so I don't agree that it 'will undoubtedly cause otherwise-unnecessary confusion with readers'. If people can't agree then just make the parser permissive and accept the label at the start or end and let developer feedback settle the matter.
+
+## Comment by rossberg, 2016-11-04
+
+@lukewagner, I am all for avoiding confusion, but with the exact opposite conclusion. It behaves quite different from the usual jump(*), so if it also looks accordingly different then that is a Good Thing -- we should prevent misconception about what is really going on, not promote it. That's on top of all the technical arguments.
+
+Labelling the block you exit is not a radical idea either, and the closer precedent.
+
+(*) In particular, a branch manipulates the operand stack, and in a way that depends on the block entry point -- you cannot infer that without looking there. Just considering the special case of a branch with no arguments and an empty stack is misleading.
+
+## Comment by lukewagner, 2016-11-04
+
+@rossberg-chromium (Setting aside whether using labels to label where they jump to _in an assembly language_ is the closer precedent) If block signatures are always at the top (which makes sense since that does reflect their actual binary encoding order), that is a fair point; users may need to jump to the top on occasion.  I was also thinking that we can help along new readers by having the syntax highlighting applied by devtools to the displayed wasm text use a more subdued style for `block`'s initial label.  So I guess that addresses my reservations and option 3 sounds fine then.
+
+## Comment by rossberg, 2016-11-04
+
+@lukewagner, I like the idea of using different syntax highlighting to distinguish where control is going. Anyway, #378 :)
+
+Btw, what I meant re the entry point is that it is relevant even if the block signature is placed elsewhere (or empty) -- the signature only determines what values are _kept_ on the stack, but you still need to know the stack at the entry point to determine how much is being _discarded_.
+
+## Comment by lukewagner, 2016-11-04
+
+Indeed, there are multiple reasons one might care to visit the beginning of a block.
+
+## Comment by lukewagner, 2016-11-04
+
+... and to finish that thought: if I'm at a branch and want to go to either, it's nice to be able to `/$label` or `?$label` in vim and get to either immediately without having to do any counting.
+

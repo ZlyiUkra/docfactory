@@ -1,0 +1,159 @@
+# WebAssembly spec issue #150: Tail recursion optimization not trapping
+# джерело: https://github.com/WebAssembly/spec/issues/150
+# отримано: 2026-09-30
+
+Issue #150, opened by jcbeyler on 2015-10-23, closed (completed) on 2015-11-05.
+
+In the fac.wast there is an assert_trap:
+
+(assert_trap (invoke "fac-rec" (i64.const 1073741824)) "runtime: callstack exhausted")
+
+However, in my wasm-to-llvm-prototype code, LLVM removes the tail recursion and therefore this no longer traps.
+
+Now I've seen here and there some comments about testing that we are not optimizing things away. So my first question relates directly to this test:
+- Are we not going to allow that the Wasm compiler performs optimizations such as tail recursion if it wants to?
+  - Is that true only for Web browser case or also the AOT case?
+- What about the other tests then? Should we not allow the compiler to optimize things away if possible?
+  - If for testing purposes, we could perhaps flag the module in a way to say: don't optimize this, we are testing something and, without that flag, be able to optimize away...
+
+Ps: now that we have the awesome mirror: https://github.com/WebAssembly/testsuite; should these questions go there or is it simpler to keep them here?
+
+## Comment by titzer, 2015-10-23
+
+We have discussed tail call optimizations and the general consensus was that engines should not perform tail call optimization if it can change the space complexity of a program. Concretely an engine should not optimize infinite recursion to an infinite loop. However, an engine dropping a frame or two in the middle (when it can prove that doesn't eliminate a stack overflow situation) seems fine.
+
+We want to add explicit proper tail call support to WebAssembly in the future.
+
+If this is a case of LLVM optimizing a C program, that's a layer above WASM.
+
+## Comment by jfbastien, 2015-10-23
+
+This is about wasm _to_ LLVM (then to x86 or w/e), where LLVM optimizes the tail call.
+
+I think as spec'd today LLVM is allowed to do this, as long as there's _some_ limit (where there was none before). i.e. it can transform to a loop, but needs to add an arbitrary limit to the number of iterations.
+
+I like C++'s approach of saying that infinite loops are UB :-)
+I think wasm could do something along those lines, but with the usual limited local nondeterminism.
+
+## Comment by jcbeyler, 2015-10-23
+
+I'm just confused why we would be defining in the language that optimizations cannot happen. I understand why some optimizations might not occur or actually be implemented in the browser world but why would it be defined here?
+
+At worse if you feel strongly about this I'd love just an annotation to be added somewhere (ideally with the method to not be optimized) so that I can turn off optimizations to support the assertion while not having to turn them off altogether just for fear of being too optimal.
+
+## Comment by titzer, 2015-10-23
+
+The main motivation is to avoid programs accidentally relying on
+optimizations in order to work. "Works on my machine" and attendant
+concerns. So it's better to add explicit tail call support and have
+programs opt into a required optimization rather than relying on a
+non-portable optimization.
+
+On Thu, Oct 22, 2015 at 10:17 PM, jcbeyler notifications@github.com wrote:
+
+> I'm just confused why we would be defining in the language that
+> optimizations cannot happen. I understand why some optimizations might not
+> occur or actually be implemented in the browser world but why would it be
+> defined here?
+>
+> At worse if you feel strongly about this I'd love just an annotation to be
+> added somewhere (ideally with the method to not be optimized) so that I can
+> turn off optimizations to support the assertion while not having to turn
+> them off altogether just for fear of being too optimal.
+>
+> —
+> Reply to this email directly or view it on GitHub
+> https://github.com/WebAssembly/spec/issues/150#issuecomment-150475274.
+
+## Comment by ghost, 2015-10-23
+
+I think everyone agrees with making optimized tail call support explicit.
+
+But I for one disagree with making it a requirement that implements not apply a tail call optimization when not explicit. It might even cost performance for some implementations to have to push to the stack to meet the requirement - implementations that naturally store a return address in a register. It affects them even for functions that do not make an tail call to themselves because there might be a chain A->B->C->A etc, so implementations are effectively required to have every function push to the stack. It's another ARM-blind decision.
+
+Developers should not be writing code that depends on the stack being pushed for each function either.  Making the behaviour undefined in the spec. has this effect.
+
+In practice I expect an implementations can just ignore the requirement, and I doubt any app is going to depend on the stack overflowing, so it's not a big mistake.
+
+## Comment by jcbeyler, 2015-10-23
+
+Ok I think there is a misunderstanding of what I am saying or asking:
+- The test suite right now is failing for me because I use LLVM and it is optimizing
+  - I would hate to have to either not support that file and not have the tests OR have to write another way of doing it but this is really only for the testing features
+     (I have one solution which would require to write an opt version and a non opt version to see if the test is failing due to opts)
+
+For me, there are tests that are written to check a certain feature, in this case, that fac-rec would stack overflow. Well that depends on the compiler doing or not tail recursion. Whether or not that is reasonable for a compiler to do in Wasm, I don't really understand why it would be put in the design or the spec that a wasm compiler must (or even should) do tail recursion. For me, Wasm is an input language, the performance you get from it depends on the compiler. It is written in such a way that you should not automatically require huge optimizations (as has been said, the C -> Wasm compiler can be in charge of doing all the fancy optimizations).
+
+I'm really not asking us to add in the spec anything new or add to the language something that would say: don't optimize. Since we have the assert system, which is not in the spec, is there anyway we could add a field to the assert such as:
+
+(assert_trap no-opt (invoke "fac-rec" (i64.const 1073741824)) "runtime: callstack exhausted")
+
+This would be sufficient for me while parsing the file to know that we want to invoke fac-rec and we are supposing no fancy optimizations happening there. Under the hood, I can then decide to generate a single non-optimized version of fac-rec or do two versions and call whichever depending on the assert.
+
+This would also not be changing the language but would just be a new field that the ml-proto can just ignore since for the ml-proto, everything is no-opt. As I move forward in supporting more and more of the testsuite, I can annotate the tests that require it.
+
+My major point is that the test suite is a good thing and I would prefer not to have to fork it. However, if we cannot have a means to have both an optimizing and non-optimizing compiler handle the testsuite, I'll have to start not supporting certain files. That is something I would not really like to do. We just put a mirror for them :)
+
+## Comment by sunfishcode, 2015-10-23
+
+@jcbeyler The easiest way for LLVM-based implementations to implement this requirement is to apply the "disable-tail-calls" function attribute to functions generated from wasm. That way, you can always run the full optimizer, and it will automatically do the right thing.
+
+@JSStats An implementation that ignores this requirement will fail the testsuite. Portability will be weakened if implementations ignore testsuite failures.
+
+> I doubt any app is going to depend on the stack overflowing
+
+There are many developers who are greatly motivated to depend on tail recursion optimizations and having the stack _not_ overflow. If we let implementations provide this feature implicitly and opportunistically (that is to say, unreliably), there's not just a risk that applications will start depending on particular implementations, there's a significant likeliness.
+
+## Comment by jcbeyler, 2015-10-23
+
+I actually am less worried about telling LLVM not to do the tail call recursion than the general case that certain assertions are making assumptions of what the wasm compiler can/should/is doing.
+
+I believe that the assertions should check for semantical validity, not be that specific to what ml-proto is doing.
+
+I'll trudge along further and come back if other cases appear :)
+
+## Comment by rossberg, 2015-10-23
+
+Just to clarify, having this test was not motivated by ml-proto.
+
+## Comment by binji, 2015-10-23
+
+I think you have it backward. It turns out that ml-proto has this behavior by default, but that is merely convenient. If it didn't, I imagine we would determine how to make it have the behavior we want (no implicit TCO).
+
+And we _are_ talking about semantic validity; there is a difference in semantics between running successfully and trapping due to callstack exhaustion.
+
+## Comment by jfbastien, 2015-10-23
+
+FWIW stack exhaustion can happen in a bunch of ways, this is just one of them. We've documented this under environment limits.
+
+## Comment by ghost, 2015-10-23
+
+Sorry, on a little more thought it seems to _only_ affect tail calls, not all functions that might not push the stack, and if there is support for explicitly optimized  tail call then the producer can use these and it should have not adverse effect.
+
+@sunfishcode When explicitly optimized tail calls are added is it possible to control llvm to disable the tail call optimization per-tail-call rather than per-function?
+
+## Comment by sunfishcode, 2015-10-23
+
+@JSStats LLVM's documentation isn't fully clear on how the "disable-tail-calls" function attribute is meant to interact with the `musttail` call attribute, but at a quick glance, it looks like `musttail` wins, so that should work. If it doesn't for some reason, that would be something worth fixing in LLVM, because it's useful functionality to have.
+
+## Comment by jcbeyler, 2015-10-23
+
+Currently, if I put the DisableTailCalls to true, it still does the optimization so I don't know exactly why yet. I'll go figure that one out later, I was working on the memory system. :)
+
+I also have issues with catching a stack overflow in my wrapper so for now, I'm back to disabling assert_traps. I'll go back to both at some point next week :)
+
+## Comment by ghost, 2015-10-24
+
+@sunfishcode Ok, thank you for the explanation. If we look ahead, add explicit tail call optimization support, add a new feature for this, then consider the situation that code producers are in. Assuming developers prefer an optimization if available, then they will produce an intermediate upper layer that encodes for an explicit optimized tail call, and the upper layer will test the feature and rewrite it to an un-optimized tail call if the feature is not available. Lets assume these intermediate layers are shared open source code and a de facto standard, then developers can still generate code that will be optimized on some implementations and not others - so noting has really been achieved except a lot of unnecessary complexity and support to force an implementation not to optimize tail calls which is not the use case anyway!
+
+## Comment by sunfishcode, 2015-10-24
+
+@JSStats Requiring tail call optimization to be explicit has the following advantages:
+- The rules for deciding when a call is a tail call can be explicitly designed, rather than just being left up to whatever the first engines to implement it happen to do. For example, if we just let LLVM backends optimize tail calls whenever they feel like it, they're likely to do so in some situations which are not syntactic tail calls at the WebAssembly level, and decline to do so in some situations which are syntactic tail calls at the WebAssembly level.
+- Interactions between tail calls and other possible future language features, such as stack introspection, can similarly be explicitly designed.
+- Applications which depend on tail calls (eg. Scheme programs not translated out of tail-call style) wouldn't use a layer that falls back to non-tail calls because that would cause them to just crash; they would instead just do the feature test and then (hopefully) politely inform the user of this circumstance.
+
+## Comment by sunfishcode, 2015-11-05
+
+WebAssembly is an as-if platform; implementations are encouraged to optimize, and need not implement the semantics literally in the manner described in the spec, as long as they preserve the observable behavior, however tail call optimization is effectively very observable in practice.
+

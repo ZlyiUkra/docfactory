@@ -1,0 +1,133 @@
+# WebAssembly spec issue #213: Strings - Unicode or C
+# джерело: https://github.com/WebAssembly/spec/issues/213
+# отримано: 2026-09-30
+
+Issue #213, opened by ghost on 2016-01-21, closed (completed) on 2016-02-25.
+
+I cannot locate any specification within the spec regarding strings. So, my questions are:
+1. Is the zero-terminated string baked into wasm? (If so, why?)
+2. What about Unicode? What is the semantics of a string literal, of a block of memory interpreted as a string?
+
+If this question has already been answered, please point me to the spec.
+
+## Comment by binji, 2016-01-21
+
+Do you mean the string literals in the .wast files? This was discussed in #64 some.
+
+## Comment by ghost, 2016-01-21
+
+Thanks. This is part of an answer.
+FWIW I believe that the wasm text format MUST define a proper semantics for string literals, and that zero-terminated strings SHOULD NOT be encouraged. (My guess would be that the latter is a losing battle, but most modern programming languages do not expose the layout of string literals directly.)
+BTW. At least one of the tests in the test suite bakes in the zero-termination semantics.
+
+> On Jan 21, 2016, at 2:33 PM, Ben Smith notifications@github.com wrote:
+>
+> Do you mean the string literals in the .wast files? This was discussed in #64 https://github.com/WebAssembly/spec/issues/64 some.
+>
+> —
+> Reply to this email directly or view it on GitHub https://github.com/WebAssembly/spec/issues/213#issuecomment-173736942.
+
+## Comment by kg, 2016-01-21
+
+At present the only "strings" formally in wasm are things like import/export names. Those are currently null-terminated. Applications will be able to use whatever string representation they want internally.
+
+## Comment by ghost, 2016-01-21
+
+Why are import/export names null-terminated?
+
+> On Jan 21, 2016, at 3:13 PM, Katelyn Gadd notifications@github.com wrote:
+>
+> At present the only "strings" formally in wasm are things like import/export names. Those are currently null-terminated. Applications will be able to use whatever string representation they want internally.
+>
+> —
+> Reply to this email directly or view it on GitHub https://github.com/WebAssembly/spec/issues/213#issuecomment-173745886.
+
+## Comment by ghost, 2016-01-21
+
+@fmccabe Had the same question. Why not use a leb128 to give their length - it would be one byte too for most cases and would not constrain the content. Perhaps it does not compress quite so well, but the imports/exports are not expected to be too large.
+
+## Comment by kg, 2016-01-21
+
+Null terminated strings are smaller, even after stream compression. However, that really only matters if you have a bunch of them. So it would be perfectly reasonable to encode length values for import/export names and most other names in a module.
+
+## Comment by ghost, 2016-01-21
+
+If imports/exports have null termination, this must be only a property of the binary encoding of wasm files.
+
+However, I have seen at least one unit test (https://github.com/WebAssembly/testsuite/blob/master/address.wast) where there are string literals in main code; and the assumption that it was ASCII (i.e., one byte/char) and null-terminated is part of the test.
+
+Either strings _are_ permitted in wasm files’ memory sections, in which case string representation _must_ be decided, or they should _not_ be permitted. There is no middle ground here.
+
+Personally, I can see arguments on all sides. As it happens, I think that a ‘common’ string format is more-or-less inevitable; so it would be better to get in front of that issue.
+
+> On Jan 21, 2016, at 3:37 PM, Katelyn Gadd notifications@github.com wrote:
+>
+> Null terminated strings are smaller, even after stream compression. However, that really only matters if you have a bunch of them. So it would be perfectly reasonable to encode length values for import/export names and most other names in a module.
+>
+> —
+> Reply to this email directly or view it on GitHub https://github.com/WebAssembly/spec/issues/213#issuecomment-173750572.
+
+## Comment by kg, 2016-01-21
+
+That's a misunderstanding of the test case, so thanks for citing the example: The strings in that test case are not null-terminated. The test case defines the size of the heap and then initializes the _start_ of the heap with a string literal. The remainder of the heap remains zero-filled as it would if it had no initializer data whatsoever.
+
+So the string isn't terminated at all, it just happens to be followed by zeroes.
+
+## Comment by ghost, 2016-01-22
+
+It is still one char/byte though.
+
+> On Jan 21, 2016, at 3:58 PM, Katelyn Gadd notifications@github.com wrote:
+>
+> That's a misunderstanding of the test case, so thanks for citing the example: The strings in that test case are not null-terminated. The test case defines the size of the heap and then initializes the start of the heap with a string literal. The remainder of the heap remains zero-filled as it would if it had no initializer data whatsoever.
+>
+> So the string isn't terminated at all, it just happens to be followed by zeroes.
+>
+> —
+> Reply to this email directly or view it on GitHub https://github.com/WebAssembly/spec/issues/213#issuecomment-173754113.
+
+## Comment by kg, 2016-01-22
+
+UTF8
+
+## Comment by ghost, 2016-01-22
+
+@fmccabe The imported `print` function is not part of the wasm standard, so the interpretation it makes of the memory bytes and characters is just a matter of the particular runtime used here for testing.
+
+## Comment by rossberg, 2016-01-22
+
+Just to clarify what others already said: the S-expression format intentionally is completely agnostic to any specific interpretation of string literals. As far as the implementation is concerned, it's just a sequence of random bytes, including 0-bytes, enclosed in ASCII quotes (and with a special meaning assigned to ASCII backslash values). No 0-byte is implicitly appended. The host can interpret these byte sequences in whatever way it sees fit, be it ASCII or Unicode or EBCDIC.
+
+The `print` function cannot actually print strings, only ints or floats. So not even that currently commits to any specific interpretation.
+
+## Comment by titzer, 2016-01-23
+
+For the binary format, I just did the simplest thing, which was
+null-terminated strings. I think we should take the suggestion from
+@JSStats to use an LEB128-encoding length first. Then strings can be
+uninterpreted sequences of bytes from the point of view of the
+decoder/engine.
+
+On Fri, Jan 22, 2016 at 2:14 PM, rossberg-chromium <notifications@github.com
+
+> wrote:
+>
+> Just to clarify what others already said: the S-expression format
+> intentionally is completely agnostic to any specific interpretation of
+> string literals. As far as the implementation is concerned, it's just a
+> sequence of random bytes, including 0-bytes, enclosed in ASCII quotes (and
+> with a special meaning assigned to ASCII backslash values). No 0-byte is
+> implicitly appended. The host can interpret these byte sequences in
+> whatever way it sees fit, be it ASCII or Unicode or EBCDIC.
+>
+> The print function cannot actually print strings, only ints or floats. So
+> not even that currently commits to any specific interpretation.
+>
+> —
+> Reply to this email directly or view it on GitHub
+> https://github.com/WebAssembly/spec/issues/213#issuecomment-173917326.
+
+## Comment by rossberg, 2016-02-25
+
+We decided that the binary format should have leb128 length for strings, no zero terminator.
+

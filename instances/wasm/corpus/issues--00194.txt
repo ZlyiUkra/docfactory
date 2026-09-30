@@ -1,0 +1,43 @@
+# WebAssembly spec issue #194: Separation into classes?
+# джерело: https://github.com/WebAssembly/spec/issues/194
+# отримано: 2026-09-30
+
+Issue #194, opened by kripken on 2015-11-24, closed (completed) on 2015-11-26.
+
+I am having a hard time deciding how to represent WebAssembly in a C++ class hierarchy in binaryen, and would appreciate advice. Right now I have a separate class for `call` and `call_import`, for example, although I have just one `if` whose `else` might be null, instead of two classes, and that feels inconsistent, but I'm not sure which way to refactor it.
+
+I also see that we have `br` and `br_if` which have an optional value argument. That seems to be more consistent with having one `if` class with an optional argument. Is that intended?
+
+## Comment by sunfishcode, 2015-11-24
+
+On `call` vs. `call_import`, there is an open design issue.
+
+## Comment by titzer, 2015-11-25
+
+FWIW in v8-native, we avoid having a heavyweight class-per-structure and
+have a list of all opcodes and their input/output types (i.e. signature).
+That is mostly because v8-native doesn't ever really reify the AST, but
+decodes bytes directly either to validate or to generate an IR graph.
+
+On Wed, Nov 25, 2015 at 12:59 AM, Dan Gohman notifications@github.com
+wrote:
+
+> On call vs. call_import, there is an open design issue
+> https://github.com/WebAssembly/design/issues/421.
+>
+> —
+> Reply to this email directly or view it on GitHub
+> https://github.com/WebAssembly/spec/issues/194#issuecomment-159443231.
+
+## Comment by rossberg, 2015-11-25
+
+FWIW, the nature of the else operand to `if` is quite different from the ones to `br` and friends. Conceptually, the else-less `if` is just a syntactic shorthand. Still, it makes sense to unify the conditionals in an internal AST (that's what the spec does as well).
+
+The arguments to `br`, `return` et al are different, though. They stand for 0 or 1 value being passed. In a potential post-MVP extension with multiple return values, these would naturally generalise to n-ary lists. From that perspective, it does not make sense to treat different arities as separate operators, internally or externally.
+
+In general, I'd argue that the factorisation of operators as described by AstSemantics is oriented more towards reflecting the concrete binary format and certain decoding considerations than what you'd likely represent with an actual AST. So it would seem natural to structure things somewhat differently in a real-world AST-based implementation.
+
+## Comment by kripken, 2015-11-26
+
+Thanks for the feedback, everyone. Ok, it sounds like there isn't really a "right" way to do this from the spec's perspective, and specific implementations might make different decisions. Not sure yet what I'll do in binaryen, but I lean towards optimizing the AST for code size.
+

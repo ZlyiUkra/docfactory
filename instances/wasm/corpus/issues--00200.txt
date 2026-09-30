@@ -1,0 +1,75 @@
+# WebAssembly spec issue #200: br_if question: order of evaluation
+# джерело: https://github.com/WebAssembly/spec/issues/200
+# отримано: 2026-09-30
+
+Issue #200, opened by jcbeyler on 2015-12-03, closed (completed) on 2016-02-12.
+
+As always, it seems I come back to ensure that I'm reading things right. With the new testsuite, I have come up with an issue with the labels.wast test.
+
+Before I go into the problem I am facing, let me first mention that it seems that the ml-proto is supporting:
+`(br_if (i32.const 1) $outer (set_local $i (i32.or (get_local $i) (i32.const 0x10))))`
+
+But the https://github.com/WebAssembly/spec/tree/master/ml-proto file says only:
+`( br_if <expr> <var> )                         ;; = (if_else <expr> (br <var>) (nop))`
+
+When it should really be:
+`( br_if <expr> <var> <expr>?)                         ;; = (if_else <expr> (br <var> <expr>?) (nop))`
+
+no?
+
+Second, this last part seems not to be entirely true because the order of evaluation seems then off. When I consider the test below:
+
+```
+  (func $br_if (result i32)
+    (local $i i32)
+    (set_local $i (i32.const 0))
+    (block $outer
+      (block $inner
+        (br_if (i32.const 0) $inner)
+        (set_local $i (i32.or (get_local $i) (i32.const 0x1)))
+        (br_if (i32.const 1) $inner)
+        (set_local $i (i32.or (get_local $i) (i32.const 0x2)))
+      )
+      (br_if (i32.const 0) $outer (set_local $i (i32.or (get_local $i) (i32.const 0x4))))
+      (set_local $i (i32.or (get_local $i) (i32.const 0x8)))
+      (br_if (i32.const 1) $outer (set_local $i (i32.or (get_local $i) (i32.const 0x10))))
+      (set_local $i (i32.or (get_local $i) (i32.const 0x20)))
+    )
+  )
+```
+
+The assertion requires this method to return 0x1d. This means, we evaluate the sets with the 0x1, 0x4, 0x8, and 0x10.
+
+It is the 0x4 that I have problems with:
+`(br_if (i32.const 0) $outer (set_local $i (i32.or (get_local $i) (i32.const 0x4))))`
+
+In this case, we thus evaluate first the child before branching. Therefore, this is not equivalent to putting a if around the (i32.const 0) and doing a br with the label and the set_local expression.
+
+So, which is it?
+- Is br_if a short-hand for an if with a branch, ie:
+  `( br_if <expr> <var> <expr>?)                         ;; = (if_else <expr> (br <var> <expr>?) (nop))`
+- Is br_if a short-hand to:
+  `( br_if <cond_expr> <var> <expr>?)     ;; = do the expr if there and remember the result, do the if <cond_expr> and, if it is true, jump to <var> while return the result`
+
+Not sure I was entirely clear here but bringing up little issues I see.
+
+Note about what the design repo says:
+- "All nodes other than control flow constructs" , so this does not work here, right?
+- The Branches and nesting section does not express when the br_if should evaluate the expression if it is there
+
+Thanks for your input and I hope you all don' t mind me spamming about these questions :)
+
+## Comment by sunfishcode, 2015-12-03
+
+I have a PR which now includes words to start clarifying this in the design repo: https://github.com/WebAssembly/design/pull/489 .
+
+The intention is that the "result" operand, if present, is evaluated first, unconditionally. Then the condition operand is evaluated (also unconditionally). Then the branch is either taken or not depending on the result of the condition operand.
+
+## Comment by jcbeyler, 2015-12-03
+
+Ok perfect, then I think we can close this, right? Or do we wait till  that PR merges?
+
+## Comment by sunfishcode, 2016-02-12
+
+The PR is now merged. Closing.
+

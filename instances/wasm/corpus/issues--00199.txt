@@ -1,0 +1,128 @@
+# WebAssembly spec issue #199: Segments always being char*, should we not allow data as well?
+# джерело: https://github.com/WebAssembly/spec/issues/199
+# отримано: 2026-09-30
+
+Issue #199, opened by jcbeyler on 2015-12-03, closed (completed) on 2015-12-03.
+
+Right now, this is fine for testing but the spec defines this as being:
+
+`segment: ( segment <int> "<char>*" )`
+
+I am supposing this is just temporary and at some point, in the binary format, we will actually have something more like:
+
+`segment: ( segment <int:start> <int:len> <data of len size>)`
+
+or:
+
+`segment: ( segment <int:start> <int:len> <offset to data of len size>)`
+
+Perhaps in the text format, since this was temporary, it might be the reason char\* was decided to be used. Now however, I would love to have a means to initialize some integer/floating-point arrays to do some more testing.
+
+However, I don't want to move away from the ml-proto support. Could we perhaps extend this to something like:
+
+`init_data: byte_hex init_data |`
+`segment: ( segment <int> "<char>*" ) | ( segment <int> <int> (init_data) )`
+
+This would allow us/me to have segment define integer arrays or whatever we want.
+
+Opinions/Criticisms/Did I miss something?
+
+## Comment by binji, 2015-12-03
+
+I think some of your `<...>` blocks were removed. Can you put them in triple-backticks so they are preserved?
+
+Anyway, you can already specify an arbitrary byte sequence by using escapes: `"\ca\bb\03"` etc.
+
+## Comment by jcbeyler, 2015-12-03
+
+Fixed my first comment thanks :)
+
+Now for the escapes, I thought of doing something like that but stopped immediately:
+
+(first, for me, when I tried, it seemed it had to be "\xca\xbb\x03").
+
+But then, when I actually do it with "\x00", then I have to really pay attention to this and pass it upwards anyway.
+
+So basically, I think the answer is:
+- We can just use your notation but straight away, when raising this into any IR, we will have to register the size and pass that around
+
+This makes more sense to me to just do this anyway since, when writing the S-expression and tweaking it, I'd rather not be updating the size + the actual string. So I'll just do it on my side.
+
+Thanks for the answer!
+
+## Comment by rossberg, 2015-12-03
+
+@jcbeyler, no, the escape is `\aa`, and has always been. :)
+
+Re your proposal: I'm not sure I understand how it is different from what is already provided. The only difference would seem to be the syntactic absence of the `\`, and a (redundant) explicit annotation of the length of the data string?
+
+## Comment by jcbeyler, 2015-12-03
+
+Well after looking a bit more into this I ran into two things:
+- First I totally forgot the difference between octal and hexadecimal escapes to be honest but got a nice refresher course that \aa is in octal and \xaa is in hexadecimal :)
+
+(Reference: https://en.wikipedia.org/wiki/Escape_sequences_in_C and the test program below :))
+- Second, actually this is going to be more tricky than what I thought. Since S-expression is in text form, were I to write:
+
+(segment 0 "\1\1\1")
+
+won't work because now this is in text form so in character form. So the string is actually '\' '1' '\' '1' '\' '1', which was not what I wanted.
+
+Therefore, were we to leave this as is, we have it seems no good way of having three 0 bytes as the segment initialization.
+
+Any ideas? What am I missing or did wrong?
+
+---
+
+My test program was:
+
+```
+#include <stdio.h>
+#include <string.h>
+
+int main() {
+  char* first = "\x42\x43";
+  char* second = "\42\43";
+
+  printf("Content %s - %s\n", first, second);
+  printf("Sizes %lu - %lu\n", strlen(first), strlen(second));
+
+  printf("Two first values %x - %x ; %x - %x\n", first[0], first[1], second[0], second[1]);
+  printf("Two first values %d - %d ; %d - %d\n", first[0], first[1], second[0], second[1]);
+  return 0;
+}
+```
+
+with the result being:
+
+```
+Content BC - "#
+Sizes 2 - 2
+Two first values 42 - 43 ; 22 - 23
+Two first values 66 - 67 ; 34 - 35
+```
+
+## Comment by binji, 2015-12-03
+
+Forget about the C escape sequences. The escape sequences for wast are more limited. `"\xx"` is always a hex escape sequence. So for three 0 bytes, just use `"\00\00\00"`.
+
+## Comment by rossberg, 2015-12-03
+
+> So the string is actually '\' '1' '\' '1' '\' '1'
+
+Are you sure? AFAICS, `"\1\1\1"` simply is a syntax error in ml-proto -- all hex escapes need to have exactly two digits.
+
+## Comment by jcbeyler, 2015-12-03
+
+I am not using ml-proto ;-). I put this here because I didn't know where to put it. Basically, this seems to be a front-end problem. If ml-proto handles this well, then let us close it. I'll figure out how to solve this in wasm-to-llvm later on :).
+
+Just thought you might want to know if this was not supported :)
+
+## Comment by jcbeyler, 2015-12-03
+
+Ok, I fixed it in wasm-to-llvm-prototype (PR https://github.com/WebAssembly/wasm-to-llvm-prototype/pull/56). I actually now see that you do test it in the memory.wast so it's all good.
+
+Apologies for the confusion and thanks for the answers.
+
+Closing now :)
+

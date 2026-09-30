@@ -1,0 +1,48 @@
+# WebAssembly spec issue #277: Reject yielding a value to the top of a loop
+# джерело: https://github.com/WebAssembly/spec/issues/277
+# отримано: 2026-09-30
+
+Issue #277, opened by sunfishcode on 2016-04-21, closed (completed) on 2016-07-12.
+
+The following code currently validates in the ml-proto interpreter:
+
+```
+(module (func (loop (br 0 (i32.const 0)))))
+```
+
+This isn't useful, because the `(i32.const 0)` value isn't actually used, since the branch is going to the top of a loop.
+
+I propose that this be made a validation error, both to diagnose accidental use, and to reserve room for making branches to loop tops to be extended in the future.
+
+## Comment by ghost, 2016-04-22
+
+That would not be consistent with the type system which discards values not consumed. What extensions do you have in mind.
+
+## Comment by lukewagner, 2016-04-22
+
+This change would be subsumed by the more general change to remove the void-subtyping rule (since the loop label has type void).
+
+## Comment by ghost, 2016-04-22
+
+@lukewagner That would seem to imply adding a `discard` operator? It's going to cost encoding efficiency and an expressionless encoding is already ahead. It would also be subsumed by just not returning values from blocks.
+
+## Comment by lukewagner, 2016-04-22
+
+A `discard` for the general case, yes, but also changing `set_local`/`store` to return void (maybe adding a `tee` to maintain the current `set_local`-value-returning semantics).
+
+## Comment by rossberg, 2016-04-22
+
+@sunfishcode, yes, this is a consequence of #271, and your complaint is the same as the original issue #179, so we already went back and forth on this one. But as @lukewagner said, with explicit drops this would be resolved for good.
+
+## Comment by ghost, 2016-04-22
+
+Even if a discard operator is added there is more to this. For example the following would still be valid which might not 'reserve room for making branches to loop tops to be extended in the future'.
+
+```
+(module (func (loop (br 0 (nop)))))
+```
+
+## Comment by rossberg, 2016-07-12
+
+This is obsolete with the new `drop` design.
+

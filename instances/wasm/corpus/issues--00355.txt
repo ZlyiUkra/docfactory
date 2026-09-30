@@ -1,0 +1,234 @@
+# WebAssembly spec issue #355: Are un-exitable blocks ok to ignore?
+# джерело: https://github.com/WebAssembly/spec/issues/355
+# отримано: 2026-09-30
+
+Issue #355, opened by kripken on 2016-10-04, closed (completed) on 2016-10-11.
+
+It's my understanding that it is ok to ignore unreachable code. Does a block whose end is never reached count as unreachable code? Example:
+
+```
+(module
+  (func $__Z12serveroptionPc (result i32)
+    (block $no-exit
+      (return
+        (i32.const 0)
+      )
+    )
+  )
+)
+```
+
+The block is entered but never exited. The spec interpreter doesn't accept this, but binaryen does (it gives the block type `unreachable`, just like it would to e.g. `(i32.ctz (unreachable))`).
+
+## Comment by ghost, 2016-10-04
+
+The blocks have a declared type now, so the `unreachable` type need not be propagated to the result of the block, so the spec looks right to me, looks like something easy to follow in binaryen and consistent with the ast unless a really good reason to do otherwise is demonstrated. Also `(i32.ctz (unreachable))` should have result type `i32` not `unreachable`.
+
+## Comment by kripken, 2016-10-04
+
+@JSStats I'm not sure I follow that. Is it documented somewhere?
+
+Anyhow, the more I think about it, the less I think I understand what "ok to ignore unreachable code" means. Here is a larger example from the fuzzer:
+
+```
+(module
+  (func $__Z12serveroptionPc (result i32)
+    (block $switch$0
+      (return
+        (i32.const 0)
+      )
+      (br $switch$0)
+    )
+    (return ;; see note below
+      (i32.const 0)
+    )
+  )
+)
+```
+
+This is accepted as valid by the spec interpreter. Note that the second `return` is unreachable. Binaryen's optimizer therefore wants to get rid of it, but removing that unreachable code causes the spec interpreter to report an error (since the `$switch$0` block doesn't have the proper return type for the function; although it should be fine, that block is never exited anyhow).
+
+In other words, it looks like the spec interpreter is not ignoring unreachable code, as changes to unreachable code affect it. I guess since it's ok but not mandated to ignore such code, it's ok to either report an error or not report an error? But that raises two questions:
+- Which approach does the spec interpreter do? It might be useful to document that. Or given the spec interpreter's special status, perhaps to have an option for the spec interpreter to either ignore or not? Otherwise, it makes it hard to e.g. use the spec interpreter as the "final answer" on if a wast is valid or not.
+- Which approach should compilers like Binaryen do? If the spec allows ignoring or not ignoring unreachable code, it seems like compilers also have a choice. But then it might not run in all wasm VMs depending on that choice, so which way is better?
+
+Note btw that corner cases like the above appear to not be tested (or it is only tested in `stack.wast`, which binaryen doesn't try to run), otherwise I'd've seen these issues before fuzzing.
+
+## Comment by dschuff, 2016-10-04
+
+IIRC there's a TODO in the interpreter for a "soft error" that it would
+emit for this kind of error. And compilers have to emit unreachable code
+that typechecks. Otherwise their output would not be guaranteed to work in
+all spec-conforming implementations.
+
+On Tue, Oct 4, 2016 at 3:58 PM Alon Zakai notifications@github.com wrote:
+
+> @JSStats https://github.com/JSStats I'm not sure I follow that. Is it
+> documented somewhere?
+>
+> Anyhow, the more I think about it, the less I think I understand what "ok
+> to ignore unreachable code" means. Here is a larger example from the fuzzer:
+>
+> (module
+>   (func $__Z12serveroptionPc (result i32)
+>     (block $switch$0
+>       (return
+>         (i32.const 0)
+>       )
+>       (br $switch$0)
+>     )
+>     (return ;; see note below
+>       (i32.const 0)
+>     )
+>   )
+> )
+>
+> This is accepted as valid by the spec interpreter. Note that the second
+> return is unreachable. Binaryen's optimizer therefore wants to get rid of
+> it, but removing that unreachable code causes the spec interpreter to
+> report an error (since the $switch$0 block doesn't have the proper return
+> type for the function; although it should be fine, that block is never
+> exited anyhow).
+>
+> In other words, it looks like the spec interpreter is not ignoring
+> unreachable code, as changes to unreachable code affect it. I guess since
+> it's ok but not mandated to ignore such code, it's ok to either report an
+> error or not report an error? But that raises two questions:
+> - Which approach does the spec interpreter do? It might be useful to
+>   document that. Or given the spec interpreter's special status, perhaps to
+>   have an option for the spec interpreter to either ignore or not? Otherwise,
+>   it makes it hard to e.g. use the spec interpreter as the "final answer" on
+>   if a wast is valid or not.
+> - Which approach should compilers like Binaryen do? If the spec allows
+>   ignoring or not ignoring unreachable code, it seems like compilers also
+>   have a choice. But then it might not run in all wasm VMs depending on that
+>   choice, so which way is better?
+>
+> Note btw that corner cases like the above appear to not be tested (or it
+> is only tested in stack.wast, which binaryen doesn't try to run),
+> otherwise I'd've seen these issues before fuzzing.
+>
+> —
+> You are receiving this because you are subscribed to this thread.
+> Reply to this email directly, view it on GitHub
+> https://github.com/WebAssembly/spec/issues/355#issuecomment-251537806,
+> or mute the thread
+> https://github.com/notifications/unsubscribe-auth/ABEiKF--Z4QxC4H0VurjF-tGFfevek3wks5qwtoWgaJpZM4KNRlb
+> .
+
+## Comment by kripken, 2016-10-04
+
+@dschuff: Yeah, I just saw the soft error stuff in https://github.com/WebAssembly/spec/pull/345 thanks to @sunfishcode. I just tried that branch though, and it doesn't affect the testcase in https://github.com/WebAssembly/spec/issues/355#issuecomment-251537806. That is, even with that branch that reintroduces type-checking dead code, there is unreachable code that cannot be removed, and I'm not sure that makes sense.
+
+## Comment by AndrewScheidecker, 2016-10-04
+
+Can Binaryen replace the `return` with `unreachable`? Perhaps it needs two notions of unreachable code elimination: code that occurs after unconditional control flow but before an `end`/`else` which can simply be removed, and code that follows an unreachable control structure end label.
+
+I'd personally prefer that the spec either required or prohibited validation of unreachable code. Optional validation increases the burden on producers, since you can't even be sure you've produced valid code if it validates on a single implementation. From an implementation point of view, validating unreachable code is simpler than not. The only argument for optional validation seems to be performance, but it's hard to imagine a situation where there's a lot of unreachable code and validation is the bottleneck rather than the download.
+
+## Comment by ghost, 2016-10-05
+
+@kripken It seems a long standing design decision that `unreachable` propagation is shallow, and does not pass an operator that has a declared result type. There were long discussions.
+
+There is still a design issue to be resolved for the block fall-through, it's almost resolved, a block has a declared type now and the block fall-through can now have the same semantics as a branch out. I'd suggest that binaryen just end blocks with `br 0` and that will resolve this for now.
+
+I don't think binaryen should be running DCE on tests intended to check that dead code is valid. It's fine to run DCE but it then changes the test.
+
+## Comment by kripken, 2016-10-05
+
+@AndrewScheidecker
+
+> Can Binaryen replace the return with unreachable?
+
+Yeah, that's exactly what it does if it can't eliminate the code entirely, so it's what happens after I made it not remove the return (https://github.com/WebAssembly/binaryen/pull/736).
+
+> I'd personally prefer that the spec either required or prohibited validation of unreachable code. Optional validation increases the burden on producers, since you can't even be sure you've produced valid code if it validates on a single implementation.
+
+I think the same.
+
+## Comment by ghost, 2016-10-05
+
+There was a proposal to have a branch out of a block end the block, and was there some show-stopper that prevented that from being practical?
+
+## Comment by AndrewScheidecker, 2016-10-05
+
+> There was a proposal to have a branch out of a block end the block, and was there some show-stopper that prevented that from being practical?
+
+https://github.com/WebAssembly/design/issues/778 - I'm not aware of any show-stoppers for the proposal, but it wouldn't change affect a return following an unreachable block end, as in this issue.
+
+## Comment by ghost, 2016-10-11
+
+Any progress here?
+1. The suggestion to replace the `(return (i32.const 0))` with `(unreachable)` looks like the appropriate solution here, and not a big burden for binaryen.
+2. The result type of a `block` should always be its declared type, never `unreachable`. Then it would appear to match the spec.
+
+Can people agree on this as the next step?
+
+This might result in some potentially unnecessary uses of `(unreachable)`, and perhaps some stats could be obtained to see if this is a big issue. If this were an issue then adopting the suggestion in https://github.com/WebAssembly/design/issues/778 might address many of these.
+
+## Comment by rossberg, 2016-10-11
+
+> Does a block whose end is never reached count as unreachable code?
+
+That's a fair question. I suppose it depends on whether you prefer to view `end` as its own instruction or as part of the encoding of the structured `block` construct. In the former case, you wouldn't need to check because that "instruction" is never "executed". Under the latter view it's a bit more fuzzy.
+
+In any case, the license to skip validation of unreachable code specifically does _not_ mean that any unreachable code is considered valid. Just that the engine doesn't need to check. The spec interpreter performs full checking, obviously (and so does V8). So your first example is invalid, even if some engines might happen to not notice. (Fixing the block signature is enough to make it valid.)
+
+As @dschuff says, that implies that producers need to generate type-correct code, even if it's unreachable. However, the type system is intentionally designed such that an `unreachable` always works and is sufficient (that's why it's polymorphic).
+
+@AndrewScheidecker, I would likewise prefer to make type-checking of unreachable code mandatory, but we could not agree on that after long discussion, hence the compromise.
+
+@JSStats, there is no dispute that the type of a block always is its declared type. The question only is whether an engine needs to check that if its end is unreachable.
+
+## Comment by kripken, 2016-10-11
+
+@rossberg-chromium: regarding the first example, I'm still not sure I follow. Consider it and a variation:
+
+```
+(module
+  (func $x (result i32)
+    (unreachable)
+  )
+  (func $y (result i32)
+    (block
+      (unreachable)
+    )
+  )
+)
+```
+
+The block in `$y` needs `i32` to be valid in the spec interpreter, as you said. But that seems odd - we accept `(unreachable)` in `$x`, even though we expect an i32 there, because it's ok if instead of an i32 we get something that can't be reached. But then in `$y`, the `block` also can't be reached. Why is it a problem there - why is an unreachable `block` different than an unreachable `unreachable`?
+
+One downside of this is as follows: say I have a node `(A)` and I want to insert some code `(Z)` before, so I could do `(A) => (block (Z) (A))`. This used to be a valid operation, but under the new rules it isn't, since it depends on the type the outside code requires :( So such peephole transformations are invalid.
+
+## Comment by binji, 2016-10-11
+
+@kripken: This seems to be the general trend of the format for preferring consumers over producers. It is now the producer's responsibility to annotate types up-front. So in your example, you'll have to determine the type of `A` so you can annotate the block with that type.
+
+Anyway, the issue with your example isn't the `unreachable`. That works in both cases; `$x` expects an `i32` and gets `unreachable` instead => valid. In `$y`, the block expects no result and gets unreachable instead => valid. The problem is that the the result of `$y` expects `i32`, but gets no result from the block (because it has no signature). The `unreachable` doesn't propagate through.
+
+## Comment by kripken, 2016-10-11
+
+@binji: yeah, I guess this is part of a trend to prefer consumers over producers. But I still don't quite see the benefit to consumers, though - why is it easier for them to not propagate the `unreachable`?
+
+## Comment by binji, 2016-10-11
+
+Not sure, but I assume the benefit is in having the block signatures up-front. But as soon as you have explicit types on blocks, it seems weird to me to ignore those when the content is unreachable.
+
+What you're suggesting is equivalent to this:
+
+```
+(func $a
+  (unreachable))
+(func $b (result i32)
+  (call $a))
+```
+
+The unreachable doesn't propagate past the function boundary, because we rely on the function signature for type checking, not the contents of the function.
+
+## Comment by kripken, 2016-10-11
+
+Yeah, I see your point, the simple thing is to always use the block signature.
+
+Ok, the downsides of this for producers are annoying - in particular not being able to do simple transformations like `(A) => (block (Z) (A))` anymore - but we'll have to figure that out in binaryen.
+

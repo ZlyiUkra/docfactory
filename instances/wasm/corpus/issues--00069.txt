@@ -1,0 +1,34 @@
+# WebAssembly spec issue #69: Parser reports constant out of range at incorrect source location
+# джерело: https://github.com/WebAssembly/spec/issues/69
+# отримано: 2026-09-30
+
+Issue #69, opened by sunfishcode on 2015-09-16, closed (completed) on 2015-10-29.
+
+For this testcase:
+
+```
+(module
+  (func $add (param $x i32) (param $y i32) (result i32)
+    (i32.add (get_local $x) (get_local $y))
+  )
+  (export "add" $add)
+)
+
+(assert_eq
+  (invoke "add" (i32.reinterpret/f32 (f32.const 1.0)) (i32.const 0.0))
+  (i32.const 1065353216)
+)
+```
+
+wasm says:
+
+```
+test/test.wasm:8.2-8.11: constant out of range
+```
+
+The actual error is that I had copypastad a 0.0 into an i32 constant, but it took me a while to figure that out because the source line of the error message points at the assert_eq.
+
+## Comment by lukewagner, 2015-10-29
+
+This appears to be fixed (and I think I recall fixing it).
+

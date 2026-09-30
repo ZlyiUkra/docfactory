@@ -1,0 +1,102 @@
+# WebAssembly spec issue #227: Questionable 'arity mismatch' - re-submitted.
+# джерело: https://github.com/WebAssembly/spec/issues/227
+# отримано: 2026-09-30
+
+Issue #227, opened by ghost on 2016-02-02, closed (completed) on 2016-04-22.
+
+Re-submitting https://github.com/WebAssembly/spec/issues/223 as I believe it was incorrectly closed.
+
+This example fails with a 'arity mismatch' in the ml-proto. It is accepted by sexp-wasm.
+
+```
+(module
+ (func $f1 (result i32)
+   (block $l0
+     (br_if (i32.const 1) $l0
+       (block $l1
+         (br $l1 (i32.const 1))))
+     (i32.const 1))))
+```
+
+@rossberg-chromium wrote 'This is an inverse-duplicate of #179. Please reopen that if you disagree with the resolution.'
+
+The above case appears to be significantly different to that in #179. The expected type for `block $l1` is the expected type of `block $l0` which is `i32`. The expected type and the actual type do appear to match here?  Sorry if I have missed something?
+
+## Comment by rossberg, 2016-02-02
+
+It actually is the very issue. The `br_if` desugars into an expression that contains
+
+```
+(block (block $l1 (br $l1 (i32.const 1))) (nop))
+```
+
+which is rejected because the inner block has type `()`.
+
+Now, one could argue that this is primarily a problem with the specific desugaring (which will have to change anyway to reflect the new argument order). But I need to think about this a bit. The ()-subtyping is designed to give implementations (and type checkers) some leeway where they drop the values, because the difference is not observable. But that doesn't extend to label types under the current rules. With the original multi-values semantics, the above worked -- that would be an argument in favour of your request to relax break typing to what it was before. Alternatively, a more targeted change is to allow the label's type to be a subtype of its block's type. However, that would make top-down typing non-deteministic.
+
+## Comment by ghost, 2016-02-02
+
+@rossberg-chromium I'm sure you know this code well, and I can barely read the Ocaml, but I would note that `br_if` seems to desugar to `if` (and then `if_else`) but when doing this manually the error no longer occurs, even adding the extra block with a fall-through nop as in your example above.
+
+```
+(module
+ (func $f1 (result i32)
+   (block $l0
+     (if (i32.const 1)
+       (br $l0
+         (block $l1
+           (br $l1 (i32.const 1)))))
+     (i32.const 1))))
+```
+
+## Comment by rossberg, 2016-02-02
+
+No, the actual desugaring is
+
+```
+(module
+  (func $f1 (result i32)
+    (block $l0
+      (if_else (i32.const 1)
+        (br $l0 (block $l1 (br $l1 (i32.const 1))))
+        (block (block $l1 (br $l1 (i32.const 1))) (nop))
+      )
+      (i32.const 1)
+    )
+  )
+)
+```
+
+The duplication of the expression is a desugaring hack to maintain strictness. I plan to remove it.
+
+## Comment by ghost, 2016-02-02
+
+Thank you I see it now, simplifying it gives the following which fails:
+`(module (func $f1 (block (block $l1 (br $l1 (i32.const 1))) (nop))))`
+
+I do think this illustrates my point in https://github.com/WebAssembly/spec/pull/215 nicely, that having separate semantics for a `block` exit value from the `br` expression versus the fall-through is not clean from a programming perspective and a foot gun. It is just a real pain transforming code and having to deal with this difference.
+
+If you want to check this 'arity' then a type is needed that has the set of all values types with different lengths, in CL this is the wild type `*`, so it contains the type `(values)` and `(values i32)` and `(values i64)` and `(values i32 i32)` etc. This would be the expected type for the all but the last expression in a `block`. The actual type returned by the `block $l1`, not considering that it is unreachable, is the type `(values)` which is in the set of expected types - a subtype relationship. The empty values type  `(values)` appears to be the `None` type in the ml-proto spec code. This would work top down or bottom up.
+
+## Comment by wanderer, 2016-03-30
+
+here is another example, i think of the above issue.
+
+```
+(module
+  (func
+    (call $test)
+  )
+  (func $test
+    (block
+      (br 0 (i32.const 32))
+    ))
+  (start 0))
+```
+
+which results in an arity mismatch. Is the the same thing as above and is this the correct behavior?
+
+## Comment by ghost, 2016-03-31
+
+@wanderer Yes, same issue, and this case is included in the tests in the PR https://github.com/WebAssembly/spec/pull/215 and there is some current discussion there too. I could use support for getting this issue resolved.
+

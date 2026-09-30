@@ -1,0 +1,24 @@
+# WebAssembly spec issue #312: Null pointer comparisons in C/C++ can produce unexpected results
+# джерело: https://github.com/WebAssembly/spec/issues/312
+# отримано: 2026-09-30
+
+Issue #312, opened by ddcc on 2016-07-20, closed (completed) on 2016-08-03.
+
+As pointed out by @pcc in https://reviews.llvm.org/D21768, null pointer comparisons in C/C++ code can produce incorrect results when lowered to WebAssembly. This is because the indirect function table starts at index zero, so comparing the address of a function against the null pointer (zero) can actually return true, when it should return false. Note that null pointer comparisons are well-defined in C++, and compiler optimizations can substitute out null comparisons with true as an optimization.
+
+One potential fix for this is to require a dummy function at index zero in the indirect function table.
+
+## Comment by dschuff, 2016-07-20
+
+I agree that this is something we should fix in the toolchain, although I don't think it's a spec issue per se; the spec says that table indices start at 0 and I think that's fine. Maybe we should file a bug in LLVM, or alternatively it could be in the https://github.com/WebAssembly/tool-conventions repo (which is for exactly this kind of thing but not limited to LLVM) if we want to keep everything on github.
+
+## Comment by rossberg, 2016-07-21
+
+Agreeing with @dschuff, this is not a WebAssembly issue. If a compiler targeting Wasm wants to use the value 0 as the null function pointer then it should make damn sure not to use slot zero for an actual function. Same with index 0 of the linear memory, btw.
+
+Notably, however, C++ provides no guarantee that null pointers are actually represented by the physical value 0. All it guarantees is that casting the integer _constant_ 0 to a pointer type yields the respective null pointer value, but that may be "converting" the value. However, this probably is one of the 3.2M things that are underspecified in C++ without most people being aware, so I doubt many mainstream C++ compiler today could afford to call programmers on that without breaking a lot of code.
+
+## Comment by kripken, 2016-07-21
+
+Yes, this looks like a compiler specific issue. `ensureFunctionIndex` in `binaryen:wasm-linker.cpp` (or the code right before it) should put some dummy function in slot 0. (E.g. the fastcomp backend puts `abort` there; we probably don't want to depend on `abort` here so we could create a function containing just `unreachable` perhaps.)
+

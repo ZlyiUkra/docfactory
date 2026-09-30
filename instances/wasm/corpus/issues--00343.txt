@@ -1,0 +1,65 @@
+# WebAssembly spec issue #343: Undropped br_ifs in block.wast test?
+# джерело: https://github.com/WebAssembly/spec/issues/343
+# отримано: 2026-09-30
+
+Issue #343, opened by kripken on 2016-09-17, closed (completed) on 2016-10-19.
+
+In `binary_0xc` the block test has
+
+```
+  (func (export "break-repeated") (result i32)
+    (block i32
+      (br 0 (i32.const 18))
+      (br 0 (i32.const 19))
+      (br_if 0 (i32.const 20) (i32.const 0))
+      (br_if 0 (i32.const 20) (i32.const 1))
+      (br 0 (i32.const 21))
+      (br_table 0 (i32.const 22) (i32.const 4))
+      (br_table 0 0 0 (i32.const 23) (i32.const 1))
+      (i32.const 21)
+    )
+  )
+```
+
+Since `br_if` now returns its value, those `br_ifs` should normally be dropped, I believe. I guess the reason they aren't dropped here is `br` clearing the stack?
+
+If that's the case, then I'd like to propose moving such tests to `stack.wast`. The motivation is that Binaryen doesn't intend to support such "stacky" code (as it doesn't fit well with its internal optimization IR). We would like to pass the test suite sans `stack.wast`, basically. (So far I've maintained a list of such code in other tests, to ignore them, but I can only ignore a whole module, and in the case here, that means ignoring a lot of non-stacky parts.) If that sounds ok I can make a PR.
+
+## Comment by rossberg, 2016-09-17
+
+Yes, that's an oversight. Because they are dead code, and the interpreter does not currently validate dead code (as we allowed), they went unnoticed. Needs fixing.
+
+There are probably a few other cases of invalid dead code lingering in the test suite that were overlooked during some semantics changes (@sunfishcode also found a couple related to blocks). I'm working on reintroducing full type-checking for dead code, which should help find all these.
+
+## Comment by ghost, 2016-09-17
+
+Is it really invalid? The `br` after the `br_if` does unwind.
+
+## Comment by rossberg, 2016-09-17
+
+@JSStats, oops, yes, you are right. It's valid.
+
+@kripken, I would prefer just adding the drops to this test for now. We probably need a more thorough discussion about what to do post MVP. I'm fine with keeping the "stacky" tests separate for now, but to be honest, I'm not convinced it's a sustainable strategy long term, once we generalise the stack semantics even further (like e.g. with multiple values or block inputs). Especially since neither the syntax nor the type system makes any such distinction, so there's gonna be zero guidance.
+
+## Comment by kripken, 2016-09-17
+
+@rossberg-chromium: Ok, I'll look into adding drops for this. I see it happen in a bunch more places meanwhile, so I'm not sure how practical it is yet.
+
+## Comment by AndrewScheidecker, 2016-09-17
+
+@kripken Take a look at the differences between the spec repo tests and the WAVM binary-0xc tests. WAVM also can't handle the "stacky" WAST syntax yet, so I went through the tests (excluding `stack.wast`) and commented out the tests that didn't work. WAVM_known_failures.wast tests the inverse of the commented out tests.
+
+## Comment by ghost, 2016-09-17
+
+@AndrewScheidecker WAVM might be able to convert these easily. Can't it just maintain a stack of definitions and simply discard them if not used at the end of a block? Both WAVM and binaryen were surely already doing this, as the block unwinding semantics have not changed and they must already support discarding excess values at the end of a block.
+
+Perhaps looking at it slightly differently will help, so have `br_if` pop it's arguments and push new definitions onto the stack. Then it's no different than `i32.const` followed by a `br`, or closer to `i32.const tee_local br`.
+
+## Comment by kripken, 2016-09-18
+
+@AndrewScheidecker: thanks, I'll take a look at that.
+
+## Comment by rossberg, 2016-10-19
+
+I believe this is fixed.
+

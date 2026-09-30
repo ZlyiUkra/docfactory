@@ -1,0 +1,87 @@
+# WebAssembly spec issue #356: Host dependent tests in imports.wast
+# джерело: https://github.com/WebAssembly/spec/issues/356
+# отримано: 2026-09-30
+
+Issue #356, opened by bnjbvr on 2016-10-07, closed (completed) on 2016-10-17.
+
+There are two interesting tests in the 0xc branch in `test/imports.wast`:
+
+```
+(assert_unlinkable
+  (module (import "spectest" "unknown" (global i32)))
+  "unknown import"
+)
+(assert_unlinkable
+  (module (import "spectest" "print" (global i32)))
+  "type mismatch"
+)
+```
+
+Under the ML proto, they pass because there is a strict difference between an integer type and a nullary (resp. function) types. But under JS semantics, according to https://github.com/WebAssembly/design/blob/master/JS.md#webassemblyinstance-constructor :
+
+```
+If i is a global import:
+    - If i is not an immutable global, throw a TypeError.
+    - Append ToWebAssemblyValue(v) to imports.
+```
+
+And `ToWebAssemblyValue` ( https://github.com/WebAssembly/design/blob/master/JS.md#towebassemblyvalue ) will end up calling `ToNumber` (through `ToInt32`, or not all for `int64` which is not JS-compatible).
+
+So when running this test under a JS host, we end up doing `ToNumber(undefined)` (resp. `ToNumber(new WebAssembly.Table)`, and these operations both successfully result in 0 (yay to JS!), and thus pass, although we're expecting a link failure.
+
+What can we do here? Removing the test sounds unfortunate, make ML proto behave like JS sounds unfortunate too. Could we replace `assert_unlinkable` by some host-provided test function, instead?
+
+## Comment by titzer, 2016-10-07
+
+I just implemented this a couple days ago in V8. We throw an error if the import property is not present, even for globals. So an unknown global import will throw, not produce undefined (an then be truncated to 0). IMO that's the more intuitive behavior instead of silently succeeding in the JS way.
+
+## Comment by lukewagner, 2016-10-07
+
+That makes sense for the first case; it seems like we could just add a `HasProperty` test before the `Get` in JS.md.
+
+For the second, though, iiuc, the `HasProperty` would succeed (assuming we mock up `spectest` to be like ml-proto) and so we'd get the coerced number.
+
+## Comment by rossberg, 2016-10-10
+
+Interesting. The underlying trouble is that we don't currently have a good separation between module/linking semantics and the semantics of the JS API in the design docs. For the spec, I tried to isolate the former, and for this case in particular, I was operating under the assumption that the implicit conversion is rather a part of the latter (which the interpreter does not include).
+
+Because if there was a way to link Wasm modules directly, then a more rigid type match should probably be required. However, in an engine we currently cannot express linking without going through JS, so this test does not really translate.
+
+Should I just remove the test?
+
+## Comment by lukewagner, 2016-10-10
+
+> Should I just remove the test?
+
+That makes sense.  This seems like an area we'll be able to cover a lot more thoroughly with JS API tests written in JS.
+
+## Comment by rossberg, 2016-10-11
+
+Thinking about it some more, the alternative of course is that we don't do full JS conversion for globals but require their typeof to be `number`, raising a `TypeError` otherwise. That would be in line with what we require for the other types of imports.
+
+More importantly, such a semantics would probably be more future-proof. In particular, if we want to allow import/export of _mutable_ globals eventually, then they clearly can't be represented by just numbers, but probably by some kind of object or getter/setter pair. The unconditional conversion of everything to numbers will likely get in the way of extending the linking behaviour in such a way that it is sufficiently uniform for immutable and mutable globals. (For example, I think it would be desirable that mutable globals can be imported as immutable with the semantics that their value is read at link time.)
+
+## Comment by titzer, 2016-10-11
+
+That sounds reasonable to me. Disallowing global import values that are not numbers is pretty easy to implement and easy to loosen later if we wish.
+
+## Comment by lukewagner, 2016-10-11
+
+Good point, agreed.
+
+## Comment by lukewagner, 2016-10-11
+
+Ok, so given WebAssembly/design#816, the test should pass as originally written even in a shell that doesn't know anything about "spectest", yes?
+
+## Comment by rossberg, 2016-10-12
+
+@lukewagner, yes, as far as I can see. We should probably change the tests such that they do not rely on `spectest`.
+
+## Comment by lukewagner, 2016-10-12
+
+Yes, makes sense.
+
+## Comment by rossberg, 2016-10-17
+
+Closing thanks to WebAssembly/design#816. Tests extended in #359.
+

@@ -1,0 +1,57 @@
+# WebAssembly spec issue #185: Consider offsets and streaming compilation in binary format
+# джерело: https://github.com/WebAssembly/spec/issues/185
+# отримано: 2026-09-30
+
+Issue #185, opened by lukewagner on 2015-11-19, closed (completed) on 2016-02-25.
+
+With the wasm binary format we have the goals of:
+1. enabling maximally efficient decoding and
+2. allowing streaming compilation (by the engine) and transformation (by polyfills, the specific layer, Service Workers, etc).
+
+Considering only goal 1, you want lots of nice offset tables up front so that a decoder can eagerly fork off parallel decode/compilation tasks, removing the usual sequential bottleneck of scanning to find boundaries.  However, this is hazardous to goal 2: if I want to generate a stream of wasm and the exact target contents are not known _a priori_ (and thus cannot be encoded in the prologue of the stream source; this would be the case for a feature-testing polyfill), then I won't know the offsets up front.
+
+BinaryEncoding.md currently has 3 instances of tables-of-offsets in the global structure section: sections, functions and operator tables.  Operator tables don't seem like an issue since they are tiny prologue stuff.
+
+As discussed in #182, there are various alternatives to the up-front table of offsets.  I like @JSStats suggestion that, for function definitions, putting the length inline in function definition achieves most of the win since streaming compilation probably needs to happen at function granularity _anyways_ to allow, e.g., backpatching of the locals declaration.
+
+Sections are harder: for the primary `code` section we definitely don't want to require knowing the byte length up front, but for some completely unknown section, we definitely want to be able to skip it.  There are a couple of compromises that come to mind that seem viable that I won't enumerate here.
+
+A more general point is that we should definitely have working examples of user-space streaming (polyfill and specific-layer decoding) before finishing v.1 to flush out all these issues.  This was already roughly the plan, but it's important that these libraries don't take the liberty of performing full random access on the source/destination ArrayBuffers; they should behave as if they were operating on streams.
+
+## Comment by kripken, 2015-11-19
+
+Inline function lengths sounds like a good idea to me too.
+
+Agreed we need working examples of streaming. Once there is enough detail to implement the binary format, I can experiment in binaryen.
+
+## Comment by jcbeyler, 2015-11-19
+
+So can I in wasm-to-llvm and produce performance numbers on how easy it is to parse and get up into an IR.
+
+## Comment by kg, 2015-11-20
+
+We already have lengths at the front of function bodies in v8-native, and I would definitely be against removing them. For parallel decode, offsets are probably enough for trivial round-robin parsing across say 3 or 4 workers. It wouldn't scale beyond that, but I think that's OK personally.
+
+Up-front offset tables are unrealistic for most scenarios so I don't think we'll be using them for functions or for deduplication.
+
+One convenience trick we could apply for parallel decode would be to store a small set of offsets into the header, at locations in the file (20% of the way through, 40%, 60%) such that parallel workers could just start at offset0 and run up to offset1. That eliminates the need to scan through the entire stream on every thread. But I think that's not something we should worry about unless it turns out to be necessary, and it's not streamable.
+
+Sections need to have up-front lengths, that's unavoidable. Any encoder that can't handle this needs to be revised so it can handle patching the length header one way or another. If an encoder is producing modules so large that retaining the output in memory for patching is infeasible, it's probably going to have issues when those modules hit the decoder.
+
+Re JSStats' questions in the origin thread:
+
+> Would compression work in units of functions, so that it could seek to any function?
+
+No, that would dramatically compromise compression efficiency, so we can't do it. layer 0 -> layer N compression is whole-module, and stream compression is stream compression. Both of those can be decompressed in a streaming fashion, as long as we don't screw up the design. However, keep in mind that as long as we're polyfilling decompression (both from layer N to layer 0, and from gzip/lzham to raw bytes), that will dramatically inhibit (if not forbid) streaming decode.
+
+## Comment by lukewagner, 2015-11-20
+
+> Sections need to have up-front lengths, that's unavoidable.  Any encoder that can't handle this
+> needs to be revised so it can handle patching the length header one way or another.
+
+By the time you'd be able to backpatch the length, you want to have written the beginning of the `code` section to the output stream.  The solution to this problem could well be specific to the `code` section since ultimately that's the thing we really want to stream into the decoder.
+
+## Comment by rossberg, 2016-02-25
+
+This has been extensively discussed offline and resolved for now. I'm closing, please re-open if you see the need.
+
