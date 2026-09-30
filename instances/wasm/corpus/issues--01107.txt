@@ -1,0 +1,96 @@
+# WebAssembly spec issue #1107: [js-api] Subclassing of WebAssembly classes
+# джерело: https://github.com/WebAssembly/spec/issues/1107
+# отримано: 2026-09-30
+
+Issue #1107, opened by RReverser on 2019-12-03, closed (completed) on 2021-04-30.
+
+In ES6 / ES2015, a lot of work and attention went into making sure that native classes can be subclasses in the same way as user-provided ones, to the point that it's now commonly expected for all native APIs (whether they come from ECMAScript, DOM or other standards).
+
+Currently, `WebAssembly.Module`, `WebAssembly.Instance` and others break this expectation by always returning instance of the built-in class.
+
+Arguably, this might not be a frequent usecase, but I had at least one case where I wanted to subclass built-in API and got hit by this. As a workaround, I had to resort to `Object.setPrototypeOf` hack to get instance of a correct class: https://github.com/GoogleChromeLabs/asyncify/blob/9e4a95d5cf324be3cdb6120c497b0e3ab31a0072/asyncify.mjs#L172
+
+Either way, even if this is not a common occurence, it seems always worth returning instance of a class that constructor was invoked with, at least for consistency with other native APIs.
+
+---
+
+Open question: what to do with static APIs like `WebAssembly.compile{Streaming}` / `WebAssembly.instantiate{Streaming}`?
+
+Unfortunately, these don't live on corresponding classes, so they can't guess which target class user wanted.
+
+There are few options:
+1. Add their duplicates to the corresponding classes as `WebAssembly.Module.compile{Streaming}` / `WebAssembly.Instance.instantiate{Streaming}`, so that they would always have access to specific context. Not pretty, but would integrate more naturally with subclassing.
+2. Pass target class(es) in an extra param (I believe there were discussions about adding it for some other runtime options).
+3. For now, don't worry about it, and just add basic subclassing in constructor, while for static APIs libraries will have to continue using `setPrototypeOf` for wrapping resulting instances.
+
+## Comment by binji, 2020-01-14
+
+Seems like a relatively minor change to the JS API, may be worth bringing up at a future CG meeting.
+
+## Comment by Ms2ger, 2020-04-14
+
+> Currently, `WebAssembly.Module`, `WebAssembly.Instance` and others break this expectation by always returning instance of the built-in class.
+
+Not from the constructors, they don't. See the *steps* in <https://heycam.github.io/webidl/#create-an-interface-object> and <https://heycam.github.io/webidl/#internally-create-a-new-object-implementing-the-interface> in particular. I wouldn't be surprised if there were implementation bugs, of course. I'll make a note to add tests at some point.
+
+> Open question: what to do with static APIs like `WebAssembly.compile{Streaming}` / `WebAssembly.instantiate{Streaming}`?
+>
+> Unfortunately, these don't live on corresponding classes, so they can't guess which target class user wanted.
+>
+> There are few options:
+>
+>     1. Add their duplicates to the corresponding classes as `WebAssembly.Module.compile{Streaming}` / `WebAssembly.Instance.instantiate{Streaming}`, so that they would always have access to specific context. Not pretty, but would integrate more naturally with subclassing.
+>
+>     2. Pass target class(es) in an extra param (I believe there were discussions about adding it for some other runtime options).
+>
+>     3. For now, don't worry about it, and just add basic subclassing in constructor, while for static APIs libraries will have to continue using `setPrototypeOf` for wrapping resulting instances.
+
+I don't have a strong opinion on this yet.
+
+## Comment by RReverser, 2020-04-14
+
+Huh, I wanted to say that for some reason no engine implements this subclassing and thought that these WebIDL steps must be explicitly linked from WebAssembly JS API spec, but just checked on macOS, and it seems JSC gets this right.
+
+As such, it appears that this is indeed implementation bugs in SpiderMonkey and V8 which I'll report now.
+
+## Comment by RReverser, 2020-04-14
+
+Submitted.
+
+Chromium issue: https://bugs.chromium.org/p/chromium/issues/detail?id=1070695
+Firefox issue: https://bugzilla.mozilla.org/show_bug.cgi?id=1629998
+
+## Comment by RReverser, 2020-04-15
+
+@backes I don't suppose we need a separate issue to add tests; would you want to take care of a PR to add relevant spec tests and reference this issue?
+
+## Comment by backes, 2020-04-15
+
+I don't know much about Web IDL, and what exactly to test here. @Ms2ger, do you want to take this?
+
+## Comment by lars-t-hansen, 2020-04-16
+
+There's a simple test case attached to the pending patch at https://bugzilla.mozilla.org/show_bug.cgi?id=1629998
+
+## Comment by RReverser, 2020-04-17
+
+@lars-t-hansen That test looks simple yet robust enough. Would Mozilla want to upstream it to spec tests?
+
+## Comment by lars-t-hansen, 2020-04-20
+
+@RReverser, i'll look into it.
+
+## Comment by eqrion, 2020-05-05
+
+@RReverser That test case was upstreamed to WPT [1]
+
+[1] https://github.com/web-platform-tests/wpt/pull/23402
+
+## Comment by RReverser, 2020-05-05
+
+@eqrion Awesome, thanks!
+
+## Comment by RReverser, 2021-04-30
+
+I'll close this here since it's now purely a Chrome issue.
+

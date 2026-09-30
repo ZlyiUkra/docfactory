@@ -1,0 +1,134 @@
+# WebAssembly spec issue #1219: Missing Feature: Easily compile from string in javascript in browser?
+# джерело: https://github.com/WebAssembly/spec/issues/1219
+# отримано: 2026-09-30
+
+Issue #1219, opened by robertleeplummerjr on 2020-07-08, closed (completed) on 2022-08-04.
+
+We can generate functions in javascript, it would seem you could as well create a micro-function using webassembly as well.  The easiest way I've seen to do it is to read from an array buffer, and it just seemed very overly complex.
+
+The example I've seen is this:
+
+```js
+fetch('simple.wasm').then(response =>
+  response.arrayBuffer()
+).then(bytes => {
+  let mod = new WebAssembly.Module(bytes);
+  let instance = new WebAssembly.Instance(mod, importObject);
+  instance.exports.exported_func();
+})
+```
+(taken from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/Instance)
+
+Why cannot we have this as part of the spec?:
+
+```js
+const rawMod = `
+(module
+  (func $add (param $n0 i32) (param $n1 i32) (result i32)
+    get_local $n0
+    get_local $n1
+    i32.add
+  )
+
+  (export "add" (func $add))
+)`;
+let mod = new WebAssembly.Module(rawMod);
+```
+
+It is perfectly feasible to have an API that generates WASM on the fly, why isn't this a part of the spec?  If it is, part of the spec, and I've misread something, can you point me to where that is?
+
+## Comment by sbc100, 2020-07-08
+
+WebAssembly runtimes don't generally support running the text format directly.   If you want to convert from text to binaryen on the web you can use something like binaryen.js:   https://kripken.github.io/slides/binaryen.js.html
+
+## Comment by robertleeplummerjr, 2020-07-08
+
+>WebAssembly runtimes don't generally support running the text format directly.
+
+I understand that, hence, the reason for opening the issue.  What I'm proposing is this to fill the void for the missing feature.  It is this type of disconnected that can be discouraging and make implementing so hard.   This to me is an unnecessary disconnect, all tailored around loading in a file rather than from a string directly.
+
+If the parser is the problem: Parsers do not take that much time, as they are generally executed once (or a limited amount of times), case in point javascript.
+
+Further it seems counterintuitive to have to require to load in over 2mb (I didn't check gzip size) of a library to parse and compile a tiny function.
+
+Lastly, the browser's are supposed to "have support for wasm", if we can make a function from `new Function(functionBody)`, then I'd equivalently say this feature is missing in order to accomplish what has already been established from the idea of reflection and javascript to facilitate calling a similarly baked wasm function.
+
+It seems that drawing a wall between these technologies in the browser is just reason to not allow javascript to benefit from them.  if I was working on the project this would be one of my first priorities.  Letting all languages benefit from wasm, not just all of them BUT javascript.
+
+## Comment by binji, 2020-07-13
+
+It's not required to read a WebAssembly module from a file. You can also create it from raw bytes. For example, this creates the smallest valid WebAssembly module (but it doesn't actually do anything):
+
+```js
+const data = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0]);
+const module = new WebAssembly.Module(data.buffer);
+```
+
+The text format is not supported in browsers because it hasn't had a use case yet. Most users generate wasm binaries offline, and the wasm binary format has been designed to be loaded and compiled quickly. If a user wants to generate WebAssembly at runtime, they use the binary format too -- see for example waforth.
+
+The text format is extremely verbose, so shouldn't be used as a transport format. I agree it would be more convenient to generate at runtime, but adding browser support for the text format comes at a cost in terms of development time, browser binary size, potential bugs, etc. We'd only want to add this functionality if we knew it had a strong use case.
+
+## Comment by ghost, 2020-10-26
+
+> Lastly, the browser's are supposed to "have support for wasm" ....
+
+And they do! They support "Wasm," not "Wat," which are *mildly* different. Yes, Wat is equivalent to its binary form, but it's not binary, thus shouldn't be considered to be executable.
+
+> This to me is an unnecessary disconnect, all tailored around loading in a file rather than from a string directly.
+
+Well... you can use strings... I guess?
+
+@binji's example can be rewritten as this, if you prefer:
+```js
+const encoder = new TextEncoder;
+const instantiateString = str => WebAssembly.instantiate( encoder.encode( str ).buffer );
+
+const instance = instantiateString("\0\x61\x73\x6d\x1\0\0\0");
+```
+It is a string, as you wanted, right?
+
+Also, that example you had given was incredibly outdated.
+
+> ```js
+> fetch('simple.wasm').then(response =>
+>     response.arrayBuffer()
+> ).then(bytes => {
+>    let mod = new WebAssembly.Module(bytes);
+>    let instance = new WebAssembly.Instance(mod, importObject);
+ >  instance.exports.exported_func();
+> })
+> ```
+
+All browsers currently discourage synchronous instantiation/compilation of WebAssembly.
+
+Instead, currently it's simply the following:
+```ts
+(await WebAssembly.instantiateStreaming(
+    fetch("simple.wasm"),
+    importObject
+)).instance.exports.exported_func();
+```
+
+Ideally, you don't even export the function and just use a Wasm start function, reducing it further:
+```ts
+WebAssembly.instantiateStreaming(
+    fetch("simple.wasm"),
+    importObject
+);
+```
+
+Soon, this may change into:
+```ts
+import "simple.wasm";
+```
+or
+```xhtml
+<script type="module" src="simple.wasm" />
+```
+
+So the ergonomics have changed quite a bit since then.
+
+## Comment by rossberg, 2022-08-04
+
+Closing as won't-fix.
+

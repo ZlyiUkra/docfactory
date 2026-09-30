@@ -1,0 +1,63 @@
+# WebAssembly spec issue #1239: Why don't we check in _tags file for the interpreter?
+# джерело: https://github.com/WebAssembly/spec/issues/1239
+# отримано: 2026-09-30
+
+Issue #1239, opened by ngzhian on 2020-08-25, closed (completed) on 2020-08-26.
+
+Referring to https://github.com/WebAssembly/spec/blob/master/interpreter/Makefile#L49
+I don't really have a clue what it does, I only know that ocamlbuild uses it for uh, building.
+
+The Makefile currently defines it as a `.INTERMEDIATE`, which seems like it always regenerates the file, and deletes it at the end of the rule that has _tags as a goal. In practice, two immediate invocations of `make` will redo the same work (though I observe the second is faster, I think the ocamlbuild step does some caching, or maybe it's the Makefile? not sure), instead of saying "nothing to be done".
+
+Anyway the reason I'm asking is I was trying to run the tests in parallel using GNU `parallel`, `find test/core *.wast -printf '%f\n' | parallel make debugtest/{.}` and was getting strange errors about modules not being found, which I think is because the parallel builds keep remaking the files.
+
+## Comment by rossberg, 2020-08-25
+
+Correctly listing all dependencies for _tags would defeat the purpose of generating it from the directory structure. Declaring it intermediate ensures that it's always up to date. The file only passes arguments to ocamlbuild, it doesn't cause it to rebuild anything the second time round.
+
+I'm not familiar with `parallel`, can't you use `make -j` to avoid that problem?
+
+## Comment by ngzhian, 2020-08-25
+
+If we check in _tags, we can update it every time we change the directory structure, by having the builds continue to depend on _tags, but not as an intermediate. With _tags checked in, it is not removed every time we build, if the directory structure stays the same (most of the time). When things change, a build will change _tags, and we can commit it.
+
+`make -j` (IIUC) parallelizes the building of targets, the way the Makefile is defined now, it won't work for running tests in parallel. As a test:
+
+```
+$ time make debugtest/const debugtest/f64  -j 10
+ocamlbuild -cflags '-w +a-4-27-42-44-45 -warn-error +a-3' -I util -I syntax -I binary -I text -I valid -I runtime -I exec -I script -I host -I main -libs bigarray -quiet main.byte
+mv main.byte wasm.debug
+../test/core/run.py --wasm `pwd`/wasm.debug  ../test/core/const.wast
+../test/core/run.py --wasm `pwd`/wasm.debug  ../test/core/f64.wast
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.477s
+
+OK
+.
+----------------------------------------------------------------------
+Ran 1 test in 1.684s
+
+OK
+
+real    0m2.054s
+user    0m2.427s
+sys     0m0.214s
+```
+
+It cannot parallelize the building of the targets (and running of tests).
+
+I guess instead of mucking around with Make, the other way I can do this is to allow the test runner to run tests in parallel...
+
+(`parallel` is similar to `xargs`, roughly, `find . | xargs rm` will do `rm 1 2 3 4`, `find . | parallel rm` will do `rm 1 & rm 2 & rm 3 & rm 4` all in parallel.
+
+## Comment by rossberg, 2020-08-26
+
+Hm, I'm not sure I understand the problem. The `make -j` log that you show does indeed run the tests in parallel, as can be seen from the interleaved output. Of course, it has to finish the build first. AFAICT, the Python unittest lib itself doesn't support parallelisation, so the only way to parallelise is by running tests individually, as you did there.
+
+For more convenience, I just added a `partest` target in #1240 for running _all_ tests individually and therefor in parallel when combined with `-j` (suppressing distracting output from the Python runner).
+
+## Comment by ngzhian, 2020-08-26
+
+Oh you're right, I wasn't reading the test output correctly. Very nice, thank you!
+

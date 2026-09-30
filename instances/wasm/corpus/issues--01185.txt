@@ -1,0 +1,55 @@
+# WebAssembly spec issue #1185: Overflow handling of integer operations
+# джерело: https://github.com/WebAssembly/spec/issues/1185
+# отримано: 2026-09-30
+
+Issue #1185, opened by rhysd on 2020-04-25, closed (completed) on 2020-04-28.
+
+Hi, I'm making a Wasm interpreter looking this spec for fun. I'm trying to make it conform Wasm spec by passing spec testsuites and am confused with overflow handling.
+
+According to `i32.wast` testsuite,
+
+- `0x80000000 + 0x80000000 = 0`  means `iadd` allows overflow: https://github.com/WebAssembly/spec/blob/e308ca2ae04d5083414782e842a81f931138cf2e/test/core/i32.wast#L43
+- `0x01234567 * 0x76543210 = 0x358e7470` means `imul` allows overflow: https://github.com/WebAssembly/spec/blob/e308ca2ae04d5083414782e842a81f931138cf2e/test/core/i32.wast#L43
+- `0x80000000 / -1 should trap` means `idiv` **does not allow** overflow: https://github.com/WebAssembly/spec/blob/e308ca2ae04d5083414782e842a81f931138cf2e/test/core/i32.wast#L66
+- `0x80000000 % -1 = 0` means `irem` allows overflow: https://github.com/WebAssembly/spec/blob/e308ca2ae04d5083414782e842a81f931138cf2e/test/core/i32.wast#L109
+
+Is the `idiv` behavior correct? At least for me, it looks weird that only `idiv` traps integer overflow.
+
+As far as I checked, WebAssembly specification does say nothing about integer overflow handling. ~So spec of `idiv_s(i1, i2)` does not seem to define the behavior on overflow.~ As @rossberg kindly pointed out, this was defined in spec of `idiv_s`
+
+## Comment by sunfishcode, 2020-04-25
+
+The general pattern is that operators which have "_s" or "_u" in their names, meaning they are explicitly signed or unsigned, trap on overflow, while operators which don't, don't. The concept of overflow depends on a signedness interpretation, because the minimum and maximum value for an integer type depend on whether the type is signed or not.
+
+WebAssembly chose to make add/sub/mul signedness-agnostic, on one hand because if you ignore overflow, and use a two's complement signedness interpretation, signed and unsigned versions of these are the same. And on the other, it also happens that these operators are very common, and common hardware implementations of them don't trap on overflow, so it's convenient for performance for them to not trap.
+
+In theory, this opcode naming convention leaves room for defining explicitly signed and unsigned versions of add, sub, and mul in the future, which would trap on overflow.
+
+Division and remainder do differ between signed and unsigned, so both forms are needed.  Conveniently, these operators are also much less frequent, so even though hardware implementations of these don't always trap when WebAssembly wants them to, it's not a major burden for implementations to do extra checks.
+
+The way remainder is defined in WebAssembly, `0x80000000 % -1` is the correct numerical result without overflow. The obvious implementation of this on x86 does trap, because the obvious x86 implementation uses an instruction which computes both the division and the remainder, and the division `0x80000000 / -1` does overflow. To implement WebAssembly remainder on such platforms, it's necessary to handle this case specially.
+
+## Comment by rossberg, 2020-04-27
+
+The second case in the spec of idiv_s defines the empty result in this case (see also the note explaining it). That converts to a trap on the instruction level.
+
+## Comment by rhysd, 2020-04-28
+
+@sunfishcode @rossberg
+
+Thank you for the detailed explanation. It is very helpful for me because I could not read the background from spec. I now understand that these behaviors are intended.
+
+`irem_s` is defined as follows except for error case:
+
+スクリーンショット 2020-04-28 9 26 13
+
+I was confused because the `j1 / j2` does not cause a trap even if `j1` is `0x80000000_u32` and `j2` is `-1_i32` though `idiv_s(0x80000000, -1)` cause a trap. I'm building my implementation with Rust and Rust is strict against signed integer overflow. I needed to handle the case specially as @sunfishcode kindly explained. FWIW, Go also defines that `x / -1` is always `x` and `x % -1` is always `0` as special case when `x` is the most negative value.
+
+## Comment by rossberg, 2020-04-28
+
+It may help to keep in mind that notation like +, -, *, / in the spec always denotes mathematical operators. Wrap-around, traps, or other special behaviours of a machine are modelled explicitly.
+
+## Comment by rhysd, 2020-04-28
+
+Thank you for the advice. I'll note it.
+

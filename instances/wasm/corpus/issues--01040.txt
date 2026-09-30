@@ -1,0 +1,72 @@
+# WebAssembly spec issue #1040: Malformed vs invalid test assertions
+# джерело: https://github.com/WebAssembly/spec/issues/1040
+# отримано: 2026-09-30
+
+Issue #1040, opened by AndrewScheidecker on 2019-07-01, closed (completed) on 2022-08-04.
+
+Some spec tests rely on implementations precisely distinguishing malformed vs invalid modules, but use modules that are both malformed and invalid. As an example: https://github.com/WebAssembly/spec/blob/master/test/core/if.wast#L894
+
+In this case, the `if`/`end` labels don't match, but the `if` instruction also doesn't validate because the stack is empty.
+
+This means that conforming implementations must strictly observe the error priority of the reference interpreter: it must parse the whole module and find any malformed syntax, even if it realizes that the module is invalid before it encounters malformed syntax.
+
+Is it valuable to require implementations to find the syntax error instead of the validation error? I don't think it is: what matters is that the module is rejected. It simplifies the spec to factor parsing and validation into separate stages, but I imagine most implementations will be doing them simultaneously.
+
+Note that the code to convert the tests to JavaScript currently doesn't distinguish between `assert_invalid` and `assert_malformed`: https://github.com/WebAssembly/spec/blob/master/interpreter/script/js.ml#L76
+
+IMO the test scripts should just use the equivalent of `assert_malformed_or_invalid`.
+
+## Comment by binji, 2019-07-01
+
+Agreed, I assume these are test bugs and not deliberate. There were similar bugs fixed here: https://github.com/WebAssembly/spec/pull/1034
+
+## Comment by rossberg, 2019-07-01
+
+Yeah, I'm not surprised such tests exists, since it's easy to make such mistakes in negative tests. But they should be considered a bug in the test suite. If you discover such cases, fixes are most welcome. ;)
+
+But this problem is not really related to the malformed vs invalid distinction -- a module may also be malformed (or invalid) alone for multiple reasons, and it's not specified which one fires in such a case either. So making the two kinds indistinguishable would not really improve anything fundamental. Either way, you are always free to ignore the difference.
+
+The relevant difference between malformed and invalid is that the latter conceptually is a type error independent of the format (binary vs text) and programs that are merely invalid can still be converted between the two. The former is a format-dependent syntax error.
+
+## Comment by AndrewScheidecker, 2019-07-01
+
+> Yeah, I'm not surprised such tests exists, since it's easy to make such mistakes in negative tests. But they should be considered a bug in the test suite. If you discover such cases, fixes are most welcome. ;)
+
+As you say, it's not a proof that there are no more bugs, but AFAICT those `if` tests are the only cases that WAVM fails when strictly following `assert_invalid` vs `assert_malformed` where there is a validation error in addition to the malformed syntax.
+
+> But this problem is not really related to the malformed vs invalid distinction -- a module may also be malformed (or invalid) alone for multiple reasons, and it's not specified which one fires in such a case either. So making the two kinds indistinguishable would not really improve anything fundamental. Either way, you are always free to ignore the difference.
+>
+> The relevant difference between malformed and invalid is that the latter conceptually is a type error independent of the format (binary vs text) and programs that are merely invalid can still be converted between the two. The former is a format-dependent syntax error.
+
+It's a meaningful distinction for certain tools, but do we care to test that implementations can make that distinction? If implementations don't need to care about the distinction, then I think that calling the assertions  `assert_invalid` and `assert_malformed` is misleading.
+
+## Comment by rossberg, 2019-07-01
+
+What benefit is there in not making the distinction? You can always ignore it if you don't care. And how is it misleading?
+
+## Comment by AndrewScheidecker, 2019-07-03
+
+I  suppose that I *can* ignore the distinction, but it feels like a personal failure when the spec test says `assert_invalid`, and WAVM says "it was malformed, but good enough!"
+
+## Comment by rossberg, 2019-07-03
+
+I think we can view that as similar to not producing the same error message. ;)
+
+## Comment by AndrewScheidecker, 2019-07-05
+
+One more test I'm a little skeptical of: https://github.com/WebAssembly/spec/blob/666dc4cb8d4a81d386a7a716000bb85fbbbd06a2/test/core/binary.wast#L740
+
+The spec interpreter calls this malformed because the `br_table` eats one of the `end` opcodes in place of a label index, so there isn't a `end` corresponding to the `func`.
+
+However, the `end` opcode is an invalid label index, so many reasonable implementations will just fail the module as invalid.
+
+AFAICT there isn't a way to write this test that isn't just testing some other part of parsing/validation.
+
+## Comment by binji, 2019-07-08
+
+Agreed, it's not clear what this test is testing. I'd say the only way to make it make sense is to have the `br_table` immediates extend past the end of the function size, though that would require omitting the required `end` instructions too.
+
+## Comment by rossberg, 2022-08-04
+
+Closing, since I believe the original question has been answered.
+

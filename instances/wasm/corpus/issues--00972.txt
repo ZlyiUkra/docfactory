@@ -1,0 +1,131 @@
+# WebAssembly spec issue #972: [jsapi] limit tests optimization
+# джерело: https://github.com/WebAssembly/spec/issues/972
+# отримано: 2026-09-30
+
+Issue #972, opened by xtuc on 2019-02-21, closed (completed) on 2019-03-06.
+
+The `get_buffer` is slow, the generation of the Wasm module can be > 10min. Of course the execution itself is up to the engine, but here are my suggestions to optimize the test suite a bit:
+- Split it in multiple files to allow multithreading
+- Cache the buffers (min, limit and limit + 1) instead of generating them for each test.
+
+What do you think?
+
+## Comment by binji, 2019-02-22
+
+Caching the get_buffer results sounds good to me. I'd prefer to keep it one file if we can, but if it's still really slow I'd be OK separating it out. @Ms2ger thoughts?
+
+## Comment by Ms2ger, 2019-02-25
+
+Caching sounds great. It might be interesting to see if any particular subtests are slow, or if they're all equally slow
+
+## Comment by xtuc, 2019-02-25
+
+Ok, I will send a PR with that caching and post my benchmarks here.
+
+## Comment by xtuc, 2019-02-25
+
+By the way, is there a reason the `limits.any.js` testsuite isn't in WPT?
+
+## Comment by xtuc, 2019-02-25
+
+Here are the results (in ms)
+
+```
+types: get_buffer 1, 4.990000
+types: get_buffer 1000000, 33252.488000
+types: get_buffer 1000001, 42535.581000
+functions: get_buffer 1, 1.442000
+functions: get_buffer 1000000, 360336.039000
+functions: get_buffer 1000001, 504540.306000
+imports: get_buffer 1, 1.248000
+imports: get_buffer 100000, 8153.456000
+imports: get_buffer 100001, 1802.223000
+exports: get_buffer 1, 1.441000
+exports: get_buffer 100000, 16557.174000
+exports: get_buffer 100001, 24683.390000
+globals: get_buffer 1, 1.151000
+globals: get_buffer 1000000, 83019.206000
+globals: get_buffer 1000001, 160315.990000
+data segments: get_buffer 1, 11.270000
+data segments: get_buffer 100000, 8152.780000
+data segments: get_buffer 100001, 2339.004000
+initial declared memory pages: get_buffer 1, 0.432000
+initial declared memory pages: get_buffer 65536, 0.089000
+initial declared memory pages: get_buffer 65537, 0.051000
+maximum declared memory pages: get_buffer 1, 0.128000
+maximum declared memory pages: get_buffer 65536, 0.062000
+maximum declared memory pages: get_buffer 65537, 0.053000
+initial imported memory pages: get_buffer 1, 0.619000
+initial imported memory pages: get_buffer 65536, 0.162000
+initial imported memory pages: get_buffer 65537, 0.083000
+maximum imported memory pages: get_buffer 1, 0.206000
+maximum imported memory pages: get_buffer 65536, 0.131000
+maximum imported memory pages: get_buffer 65537, 0.086000
+function size: get_buffer 2, 0.384000
+function size: get_buffer 7654321, 58292.331000
+function size: get_buffer 7654322, 91006.932000
+function locals: get_buffer 1, 1.182000
+function locals: get_buffer 50000, 0.280000
+function locals: get_buffer 50001, 0.132000
+function params: get_buffer 1, 0.298000
+function params: get_buffer 1000, 4.214000
+function params: get_buffer 1001, 1645.167000
+function params+locals: get_buffer 1, 0.458000
+function params+locals: get_buffer 49998, 0.187000
+function params+locals: get_buffer 49999, 0.141000
+function returns: get_buffer 0, 0.244000
+function returns: get_buffer 1, 0.099000
+function returns: get_buffer 2, 0.065000
+initial table size: get_buffer 1, 0.298000
+initial table size: get_buffer 10000000, 0.090000
+initial table size: get_buffer 10000001, 0.054000
+maximum table size: get_buffer 1, 0.313000
+maximum table size: get_buffer 10000000, 0.145000
+maximum table size: get_buffer 10000001, 0.073000
+element segments: get_buffer 1, 0.574000
+element segments: get_buffer 10000000, 3321793.161000
+element segments: get_buffer 10000001, 4558369.666000
+tables: get_buffer 0, 4.515000
+tables: get_buffer 1, 10720.861000
+tables: get_buffer 2, 1.533000
+memories: get_buffer 0, 0.203000
+memories: get_buffer 1, 0.246000
+memories: get_buffer 2, 0.167000
+```
+
+Only one test is very slow:
+
+```
+element segments: get_buffer 10000000, 3321793.161000 (55min)
+element segments: get_buffer 10000001, 4558369.666000 (75min)
+```
+
+## Comment by Ms2ger, 2019-02-25
+
+Thanks for checking! That code does seem somewhat expensive; maybe we can optimize the code a bit.
+
+The test isn't in wpt yet because it's intermittently timing out in <https://github.com/web-platform-tests/wpt/pull/14766>; I'm hoping that your work here will help with that.
+
+## Comment by xtuc, 2019-02-25
+
+That's not surprising I guess, I will investigate further.
+
+## Comment by xtuc, 2019-03-01
+
+I just noticed that browers will refuse to synchronously compile the big Wasm buffers (> 4KB):
+https://github.com/WebAssembly/spec/blob/44dfa15cb87b1e9bef36e033ad5d2cdc4c2008fd/test/js-api/limits.any.js#L47-L55
+
+## Comment by lars-t-hansen, 2019-03-04
+
+Isn't that just a limitation in Chrome?  So far as I know, Firefox will synchronously compile any size buffer.
+
+## Comment by xtuc, 2019-03-04
+
+@lars-t-hansen yes I think so, I believe JSC would compile the buffer too.
+
+## Comment by xtuc, 2019-03-06
+
+Actually, this issue might be specific to v8/Chromium. I can get the whole testsuite to run under 10min (v8's `--verify-heap` is slowing it down heavily).
+
+Let's close this for now.
+

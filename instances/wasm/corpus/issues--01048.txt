@@ -1,0 +1,115 @@
+# WebAssembly spec issue #1048: OCaml Dependency is Problematic for Windows
+# джерело: https://github.com/WebAssembly/spec/issues/1048
+# отримано: 2026-09-30
+
+Issue #1048, opened by RyanLamansky on 2019-07-20, closed (completed) on 2022-08-04.
+
+The first line of the Windows instructions in the interpreter README link to a page which immediately states
+> This installer is out of date
+> This installer no longer works. Do not use it.
+
+The page endorses Andreas Hauptmann's installer, which when attempting to run, is intercepted by Window's Smart Screen malware filter.
+
+Is there a drama-free way of getting the spec interpreter running on Windows?
+
+_Gripe: building the official spec interpreter in a language that only has official builds for Linux was a questionable decision, in my opinion._
+
+## Comment by binji, 2019-07-20
+
+There are some instructions here too, on ocaml.org: https://ocaml.org/docs/install.html#Windows. Maybe these will work better for you? If so, we should update the documentation.
+
+## Comment by rossberg, 2019-07-21
+
+Yeah, it's my annual complaint that they don't provide "official" prebuilt Windows binaries. That said, I've used both Jonathan's old installer and Andreas' "OCaml for Windows" one without any problems on my Windows 10 machine. The latter is recommended nowadays, but I still use the former when I want to avoid Cygwin and don't need OPAM, as is the case for the interpreter. I don't remember if I ever had malware alarms, but if so, they are obviously false alarms (as you get often with OSS).
+
+(Another option is WSL, in case you're already running that.)
+
+## Comment by RyanLamansky, 2019-07-21
+
+I'm attempting the WSL route and got OCaml and Python installed from there, but I'm definitely still missing something.
+
+Running the `make` command from /interpreter gives me this
+> -bash: make: command not found
+
+Running `python build.py --html test-html` from /test gives this:
+> Recompiling the wasm interpreter...
+> Traceback (most recent call last):
+>   File "build.py", line 235, in
+>     compile_wasm_interpreter()
+>   File "build.py", line 39, in compile_wasm_interpreter
+>     result = run('make', '-C', INTERPRETER_DIR, 'clean', 'default')
+>   File "build.py", line 26, in run
+>     universal_newlines=True)
+>   File "/usr/lib/python2.7/subprocess.py", line 168, in call
+>     return Popen(*popenargs, **kwargs).wait()
+>   File "/usr/lib/python2.7/subprocess.py", line 390, in __init__
+>     errread, errwrite)
+>   File "/usr/lib/python2.7/subprocess.py", line 1024, in _execute_child
+>     raise child_exception
+> OSError: [Errno 2] No such file or directory
+
+## Comment by rossberg, 2019-07-22
+
+Looks like `make` isn't on your PATH? Not sure how that can happen, but I haven't used WSL myself.
+
+## Comment by RyanLamansky, 2019-07-22
+
+Seems like WSL has basically nothing installed by default.
+`sudo apt-get install make` got the `make` command working.  Now I'm getting this when building the tests:
+
+```
+Recompiling the wasm interpreter...
+Couldn't recompile wasm spec interpreter
+```
+
+That error message is informative but not especially helpful ☹️
+
+## Comment by rossberg, 2019-07-23
+
+Is that when just running the Python script in `test/`? That's probably not what you want to use anyway. Try building the interpreter from its directory as documented.
+
+## Comment by RyanLamansky, 2019-07-24
+
+Well, my ultimate goal is to convert the spec tests to WASM files so that the dozen or so users of my ultra-niche non-web WASM engine can expect it to work as well as browsers even in edge cases.  I realize there's still JavaScript plumbing in those spec tests I'd have to deal with, but I suspect that's less work than _also_ writing a WAST parser.
+
+Anyway, switching over to /interpreter and running `make` gets me this:
+```
+echo >_tags "true: bin_annot"
+echo >>_tags "true: debug"
+echo >>_tags "<{util,syntax,binary,text,valid,runtime,exec,script,host,main}/*.cmx>: for-pack(Wasm)"
+ocamlbuild -cflags '-w +a-3-4-27-42-44-45 -warn-error +a' -I util -I syntax -I binary -I text -I valid -I runtime -I exec -I script -I host -I main -libs bigarray -quiet main.native
++ /usr/bin/ocamlopt -c -w +a-3-4-27-42-44-45 -warn-error +a -g -bin-annot -for-pack Wasm -I exec -I valid -I util -I text -I syntax -I script -I runtime -I main -I host -I binary -o exec/i64_convert.cmx exec/i64_convert.ml
+File "exec/i64_convert.ml", line 25, characters 37-40:
+Error: This expression has type int
+       This is not a function; it cannot be applied.
+Command exited with code 2.
+Makefile:66: recipe for target 'main.native' failed
+make: *** [main.native] Error 10
+rm _tags
+```
+Sounds like a syntax error with this statement:
+```OCAML
+      Int64.(logxor (of_float (xf -. 0x1p63)) min_int)
+```
+For what it's worth, `ocaml --version` is 4.02.3.  Is this the hex float thing I read about in another issue?
+
+## Comment by binji, 2019-07-24
+
+> Well, my ultimate goal is to convert the spec tests to WASM files so that the dozen or so users of my ultra-niche non-web WASM engine can expect it to work as well as browsers even in edge cases.
+
+For this use, it may be easier to use wabt's `wast2json` tool. It will generate a JSON file and a collection of wasm/wat files for each module contained in the wast file.
+
+## Comment by rossberg, 2019-07-24
+
+Yes, that's the hex float thing. I just landed #1044, so that should be gone now. (Though it's sad that Ubuntu is still stuck on OCaml 4.02.)
+
+## Comment by RyanLamansky, 2019-07-25
+
+> For this use, it may be easier to use wabt's wast2json tool. It will generate a JSON file and a collection of wasm/wat files for each module contained in the wast file.
+
+This... is _exactly_ what I need.  I'll have to wire it up in the next couple of weeks and see how many bugs I have!
+
+> Yes, that's the hex float thing. I just landed #1044, so that should be gone now. (Though it's sad that Ubuntu is still stuck on OCaml 4.02.)
+
+That fixed the build for me.  I feel like Windows Subsystem for Linux might be the best solution for Windows users since you can run the official Linux binaries.  Maybe updates to the READMEs are worthwhile?
+

@@ -1,0 +1,42 @@
+# WebAssembly spec issue #1032: Binary encoding of globals
+# джерело: https://github.com/WebAssembly/spec/issues/1032
+# отримано: 2026-09-30
+
+Issue #1032, opened by mhk on 2019-06-05, closed (completed) on 2019-06-05.
+
+Short question, is it possible to deduct the value of a binary global without running a function that uses the global?
+
+Example:
+```
+global:
+74 00 41 7F
+
+74 = i32 (valuetype)
+00 = const (mut)
+41 = i32.const (const instr)
+7F = +127 unsigned LEB128, -1 signed LEB128 (i32)
+```
+So according to the *binary* specs _Uninterpreted integers are encoded as signed integers._, however in the *syntac/struct* specs it says _uninterpreted integers ... are represented as unsigned values_.
+
+I am confused, could someone please clarify. Thank you.
+
+[1]: https://webassembly.github.io/spec/core/binary/modules.html#binary-global
+[2]: https://webassembly.github.io/spec/core/binary/values.html#binary-int
+[3]: https://webassembly.github.io/spec/core/syntax/values.html#syntax-int
+
+## Comment by rossberg, 2019-06-05
+
+Both statements are correct: in the *abstract syntax*, integer values are represented as unsigned numbers, because that matches the vast majority of their uses. Signed operations perform an explicit 2's complement reinterpretation (via the `signed` meta function in the spec).
+
+However, in the *binary format*, integer values are encoded as signed LEB128, because that leads to a more compact encoding of values that are intended to be interpreted as (small) negative integers, which is a common enough case.
+
+Neither determines whether the value is actually signed or not. That is up to use sites to decide.
+
+So in your example, the SLEB value is -1, which encodes the i32 value 0xFFFF_FFFF in the abstract syntax.
+
+FWIW, the text format allows both interpretations, and treats them as equivalent. That is, the value of the above global can be written as both (i32.const -1) or (i32.const 0xffff_ffff).
+
+## Comment by mhk, 2019-06-05
+
+Thank you for your explanation.
+

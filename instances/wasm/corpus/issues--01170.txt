@@ -1,0 +1,47 @@
+# WebAssembly spec issue #1170: [spec] Parsing and validation in a single pass seems to be discouraged
+# джерело: https://github.com/WebAssembly/spec/issues/1170
+# отримано: 2026-09-30
+
+Issue #1170, opened by axic on 2020-03-31, closed (completed) on 2020-06-09.
+
+This test case in `binary.wast` (https://github.com/WebAssembly/spec/blob/v1.1/test/core/binary.wast#L739-L759) tests for `assert_malformed`, e.g. parser error. However it also contains a validation error.
+
+This turns out to pose a difficulty to engines, which would try to do parsing and (or a part of) validation in a single pass.
+
+Is this intentional?
+
+## Comment by rossberg, 2020-03-31
+
+No, every negative test should contain only one mistake. But it's easy to miss cases where that's not the case. Happy to accept fixes. :)
+
+## Comment by chfast, 2020-04-16
+
+### Problem
+
+The problematic test checks `br_table` "with inconsistent target count (2 declared, 1 given)". But the intention is quite distant from how binary parser works. I.e. it assumes the parser fails because there is not enough targets provided
+
+```
+0e02 00 (missing LEB128 encoded target)
+```
+
+but the parser will just consume the next byte being the end `0b`.
+
+```
+0e02 00 0b
+```
+
+and will fail because of the missing final `0b` later. Even the test error message suggests that.
+
+The problem is that in the middle we have `br_table` with 2 targets: `00` and `0b`, where `0b` one is invalid. The module is considered invalid before we are able to realize it is malformed.
+
+### Solution
+
+1. We can just drop the test.
+2. Or to preserve more/less the current cause of being malformed we can add some workaround/hacks preventing the additionally consumed byte seen as invalid `br_table` target. The only idea I have to achieve that is to  make `0b` target valid by adding 10 more functions to the module.
+
+## Comment by binji, 2020-04-16
+
+> The only idea I have to achieve that is to make `0b` target valid by adding 10 more functions to the module.
+
+Right, though you would need to add blocks, not functions. I think it should work, as long as you made the `br_table` target length long enough too, so it attempts to access outside of the code section.
+

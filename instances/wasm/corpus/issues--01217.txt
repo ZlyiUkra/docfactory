@@ -1,0 +1,40 @@
+# WebAssembly spec issue #1217: [spec] Effective address space does not match to max memory size
+# джерело: https://github.com/WebAssembly/spec/issues/1217
+# отримано: 2026-09-30
+
+Issue #1217, opened by rhysd on 2020-07-02, closed (completed) on 2020-07-15.
+
+In spec of memory instruction structure:
+
+https://webassembly.github.io/spec/core/syntax/instructions.html#memory-instructions
+
+It says:
+
+> The static address offset is added to the dynamic address operand, yielding a 33 bit effective address that is the zero-based index at which the memory is accessed.
+
+However, test cases here indicate that max memory size is `2^32 - 1` bytes.
+
+https://github.com/WebAssembly/spec/blob/acdb0ac2dbc7402ce10f63042c476091eebf25ac/test/core/memory_grow.wast#L41-L46
+
+`803 + 0x10000 * 64Ki = 4347592704` and `2^32 - 1 < 4347592704 < 2^33  - 1`.
+
+Reference interpreter implements the `2^32 - 1` bytes limit here. Limit of the number of pages is `0x10000` so the limit of memory bytes is `0x10000 * 64Ki = 2^32`.
+
+https://github.com/WebAssembly/spec/blob/acdb0ac2dbc7402ce10f63042c476091eebf25ac/interpreter/runtime/memory.ml#L27
+
+As the above spec describes, the effective address space is 33bits because 32bits dynamic address operand and 32bits static address offset can be specified to memory instructions. But as the test cases indicate, the max memory size is 2^32 - 1. So memory instructions can refer the byte put at more than 2^32 - 1, but such a memory byte cannot be allocated. It looks mismatch for me.
+
+I know this is an edge case, but I raised this issue because it affects my interpreter implementation.
+
+## Comment by binji, 2020-07-14
+
+Right, the effective address is 33-bits, but everything after 232-1 is deliberately inaccessible. The reason for a 33-bit effective address (instead of 32-bit) is to ensure that the base address plus offset doesn't wrap around to a valid effective address.
+
+## Comment by rhysd, 2020-07-15
+
+Thank you for the clarification.
+
+> The reason for a 33-bit effective address (instead of 32-bit) is to ensure that the base address plus offset doesn't wrap around to a valid effective address.
+
+I didn't know this. So an address after 2^32 - 1 is valid but its memory access is never valid.
+

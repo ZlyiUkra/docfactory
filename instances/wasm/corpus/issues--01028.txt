@@ -1,0 +1,69 @@
+# WebAssembly spec issue #1028: [interpreter] Build failed on Ubuntu
+# джерело: https://github.com/WebAssembly/spec/issues/1028
+# отримано: 2026-09-30
+
+Issue #1028, opened by Honry on 2019-05-29, closed (completed) on 2019-06-21.
+
+I built the interpreter on Ubuntu 16.04, error Log:
+```
+wasm/spec/interpreter$ make
+echo >_tags "true: bin_annot"
+echo >>_tags "true: debug"
+echo >>_tags "<{util,syntax,binary,text,valid,runtime,exec,script,host,main}/*.cmx>: for-pack(Wasm)"
+ocamlbuild -cflags '-w +a-4-27-42-44-45 -warn-error +a' -I util -I syntax -I binary -I text -I valid -I runtime -I exec -I script -I host -I main -libs bigarray -quiet main.native
++ /usr/local/bin/ocamlopt.opt -c -w +a-4-27-42-44-45 -warn-error +a -g -bin-annot -for-pack Wasm -I exec -I util -I script -I binary -I valid -I runtime -I text -I host -I main -I syntax -o exec/i64_convert.cmx exec/i64_convert.ml
+File "exec/i64_convert.ml", line 25, characters 37-40:
+Error: This expression has type int
+       This is not a function; it cannot be applied.
+Command exited with code 2.
+Makefile:66: recipe for target 'main.native' failed
+make: *** [main.native] Error 10
+rm _tags
+```
+
+The error was exposed from https://github.com/WebAssembly/spec/blob/master/interpreter/exec/i64_convert.ml#L25
+
+Change log:
+```
+      - Int64.(logxor (of_float (xf -. 9223372036854775808.0)) min_int)
+      + Int64.(logxor (of_float (xf -. 0x1p63)) min_int)
+```
+
+It's odd, as on Mac OS, it could be built successfully.
+
+Cc/ @rossberg
+
+## Comment by rossberg, 2019-05-29
+
+What's your OCaml version?
+
+## Comment by Honry, 2019-05-29
+
+4.02.2.  I'll try a latest version.
+
+## Comment by Honry, 2019-05-29
+
+Retried on latest OCaml version according to http://ocaml.org/docs/install.html#Available-versions, still failed on Ubuntu 16.04:
+- Ubuntu 16.04, OCaml 4.02.3, result: Fail
+- Mac OS, OCaml 4.07.1, result: Pass
+
+## Comment by rossberg, 2019-06-19
+
+(Sorry, this had scrolled out far from my email backlog.)
+
+Seems like hex float literals were added to Ocaml later than 4.02.
+
+I have to say that I'm a bit flabbergasted that Ubuntu is still on Ocaml 4.02! That version is 5 years old, the current is 4.08. Nowadays it should be easy to install and upgrade it through opam.
+
+But if that is a huge problem I can downgrade the code.
+
+## Comment by Honry, 2019-06-21
+
+> Seems like hex float literals were added to Ocaml later than 4.02.
+
+Indeed, I've manually upgrade the Ocaml, it worked. Thanks!
+
+## Comment by thosakwe, 2019-11-26
+
+I actually get the same error with OCaml 4.0.7.1, and 4.0.8.1.
+

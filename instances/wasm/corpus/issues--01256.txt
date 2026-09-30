@@ -1,0 +1,60 @@
+# WebAssembly spec issue #1256: [test] Memory grow test doesn't test dirty memory
+# джерело: https://github.com/WebAssembly/spec/issues/1256
+# отримано: 2026-09-30
+
+Issue #1256, opened by SoniEx2 on 2020-10-11, closed (completed) on 2022-08-04.
+
+Memory grow tests grow already-zeroed memory. They don't take dirty memory into account. See also https://github.com/WebAssembly/wabt/pull/1557
+
+## Comment by rossberg, 2020-10-12
+
+I don't follow, can you elaborate? The semantics requires that the new pages after a grow are zeroed.
+
+## Comment by osa1, 2020-10-12
+
+I think they mean that none of the tests check old page contents after a grow. Contents in old pages should be preserved after a `memory.grow`.
+
+## Comment by SoniEx2, 2020-10-12
+
+None of the memory grow tests *write* to old pages.
+
+Because we decided to go with reverse memory for https://github.com/WebAssembly/wabt/pull/1557, well... C++ doesn't have a resize_left, so we have to move things around. The tests don't detect if you forget to zero things after moving things around, because they never write to old pages.
+
+E.g. before growing:
+
+[0, 0, 0, 0]
+
+after growing, but before moving it around:
+
+[0, 0, 0, 0, 0, 0, 0, 0]
+
+after moving it around:
+
+[0, 0, 0, 0, 0, 0, 0, 0]
+
+the problem is, if you do add writes, you instead get, before growing:
+
+[4, 3, 2, 1] (adjusted for reverse memory)
+
+after growing, but before moving:
+
+[4, 3, 2, 1, 0, 0, 0, 0]
+
+after moving, before zeroing:
+
+[4, 3, 2, 1, 4, 3, 2, 1]
+
+after zeroing:
+
+[0, 0, 0, 0, 4, 3, 2, 1]
+
+but the tests will never catch this one.
+
+## Comment by rossberg, 2020-10-12
+
+Hm, okay, how about creating a PR to add tests along these lines?
+
+## Comment by rossberg, 2022-08-04
+
+Closing this old issue. Feel free to create a PR anyway.
+

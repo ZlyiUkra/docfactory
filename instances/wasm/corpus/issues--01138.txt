@@ -1,0 +1,45 @@
+# WebAssembly spec issue #1138: [web-api] MIME type check in "compile a potential WebAssembly response" imprecise and ambiguous
+# джерело: https://github.com/WebAssembly/spec/issues/1138
+# отримано: 2026-09-30
+
+Issue #1138, opened by domenic on 2020-03-06, closed (completed) on 2023-02-17.
+
+> 2. Let mimeType be the result of extracting a MIME type from response’s header list.
+>
+> 3. If mimeType is not `application/wasm`, reject returnValue with a TypeError and abort these substeps.
+
+Here _mimeType_ is a MIME type record, as returned by extract a MIME type.
+
+However in step 3 it's compared against a byte sequence.
+
+It's unclear how to interpret the intended check here:
+
+- Do you want to get the raw value of the `Content-Type` header and check that against the byte sequence? In this case `application/wasm;` would not match.
+- Do you want to serialize the MIME type and compare it against the string (not byte sequence) "application/wasm"? In this case `application/wasm;` would match, as would    application/wasm   .
+- Do you want to check against the MIME type's essence? In that case `application/wasm;foo=bar` would match.
+- Note that for any case except getting the raw value of the Content-Type header, using the "extract a MIME type" algorithm means that multiple headers (or, equivalently, one header with comma-separate values) will be treated forgivingly. E.g. `application/javascript, application/wasm` and `application/wasm, unparseable` would both end up as `application/wasm`.
+
+https://github.com/web-platform-tests/wpt/blob/master/wasm/webapi/contenttype.any.js seems to pick "check the raw value of the `Content-Type` header".
+
+/cc @Surma @annevk
+
+## Comment by annevk, 2020-03-06
+
+(Given scripts, style sheets, etc. I think this ought to be an essence check to match precedent.)
+
+## Comment by surma, 2020-03-06
+
+There is a note underneath saying “Note: extra parameters are not allowed, including the empty `application/wasm;`”
+
+## Comment by surma, 2020-03-06
+
+I do wonder why this spec is so strict about the header value.
+
+## Comment by domenic, 2020-03-07
+
+Another consequence here is that if you compare raw values then `APPLICATION/WASM` should not match either.
+
+## Comment by rossberg, 2022-08-04
+
+Has this been resolved?
+

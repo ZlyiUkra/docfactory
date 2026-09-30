@@ -1,0 +1,49 @@
+# WebAssembly spec issue #1207: KaTeX errors should be reported, and fail the build
+# джерело: https://github.com/WebAssembly/spec/issues/1207
+# отримано: 2026-09-30
+
+Issue #1207, opened by ngzhian on 2020-06-10, closed (completed) on 2020-06-11.
+
+Since https://github.com/WebAssembly/spec/commit/484180ba3d9d7638ba1cb400b699ffede796927c.
+Relevant travis build log
+https://travis-ci.org/github/WebAssembly/spec/builds/696623397#L4006 :
+```
+ParseError: KaTeX parse error: Expected group after '^' at position 151: …ightarrow} [t_2^̲}
+    at new ParseError (/home/travis/build/WebAssembly/spec/document/core/util/katex/dist/katex.js:261:14)
+    at Parser.handleSupSubscript (/home/travis/build/WebAssembly/spec/document/core/util/katex/dist/katex.js:15933:13)
+    at Parser.parseAtom (/home/travis/build/WebAssembly/spec/document/core/util/katex/dist/katex.js:16013:28)
+    at Parser.parseExpression (/home/travis/build/WebAssembly/spec/document/core/util/katex/dist/katex.js:15839:23)
+    at Parser.parseGroup (/home/travis/build/WebAssembly/spec/document/core/util/katex/dist/katex.js:16490:29)
+    at Parser.parseGroupOfType (/home/travis/build/WebAssembly/spec/document/core/util/katex/dist/katex.js:16245:21)
+    at Parser.parseArguments (/home/travis/build/WebAssembly/spec/document/core/util/katex/dist/katex.js:16184:22)
+    at Parser.parseFunction (/home/travis/build/WebAssembly/spec/document/core/util/katex/dist/katex.js:16116:37)
+    at Parser.parseGroup (/home/travis/build/WebAssembly/spec/document/core/util/katex/dist/katex.js:16511:21)
+    at Parser.parseAtom (/home/travis/build/WebAssembly/spec/document/core/util/katex/dist/katex.js:15978:21)
+```
+
+Probably 2 things to be improved here:
+- try catching and better error reporting
+- failing the build if katex has a failure
+
+## Comment by ngzhian, 2020-06-10
+
+I think this is a bikeshed issue. Looking at the generated file `_build/bikeshed_mathjax/index.html` line 11046, you'll see `t_2^<em>`, but it should really be `t_2^*` if you look at `_build/bikeshed_singlehtml/index_fixed.html`
+
+## Comment by ngzhian, 2020-06-10
+
+Filed https://github.com/tabatkins/bikeshed/issues/1704
+
+## Comment by ngzhian, 2020-06-10
+
+@Ms2ger correctly spotted the issue as the 2 `*` in the equation, and that `index.bs` specifies
+
+```
+Markup Shorthands: css no, markdown yes, algorithm no, idl no
+```
+
+causing it to be recognized as italics. The fix is to change `markdown yes` to `markdown no`. AFAICT there is no difference (see https://github.com/tabatkins/bikeshed/issues/1704#issuecomment-642177186 for the diff) in other parts of the generated document. As @binji observed, we shouldn't have Markdown in the document we pass to bikeshed anymore.
+
+## Comment by ngzhian, 2020-06-10
+
+Ah yea, forgot about this second part, thanks. I can look at it.
+

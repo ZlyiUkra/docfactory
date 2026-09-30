@@ -1,0 +1,1219 @@
+# WebAssembly spec issue #1052: windows 10 CygWin64 OCaml compiler 4.02.3BS make wast.js => error bsb.exe command not found
+# джерело: https://github.com/WebAssembly/spec/issues/1052
+# отримано: 2026-09-30
+
+Issue #1052, opened by CarpeDiemKopi on 2019-08-12, closed (completed) on 2019-08-16.
+
+One last mistake before wast.js:
+
+```
+Charleen@ROY /cygdrive/d/development/ocaml/spec/interpreter
+$ make wast.js
+echo >_tags "true: bin_annot"
+echo >>_tags "true: debug"
+echo >>_tags "<{util,syntax,binary,text,valid,runtime,exec,script,host,main}/*.cmx>: for-pack(Wasm)"
+ocamlbuild -cflags '-w +a-3-4-27-42-44-45 -warn-error +a' -I util -I syntax -I binary -I text -I valid -I runtime -I exec -I script -I host -I main -libs bigarray -quiet main.byte
+mv main.byte wasm.debug
+mkdir -p _build/jslib/src
+cp meta/jslib/* _build/jslib
+cp _build/util/*.ml* _build/syntax/*.ml* _build/binary/*.ml* _build/text/*.ml* _build/valid/*.ml* _build/runtime/*.ml* _build/exec/*.ml* _build/script/*.ml* _build/host/*.ml* _build/main/*.ml* meta/jslib/*.ml _build/jslib/src
+rm _build/jslib/src/*.ml[^i]
+(cd _build/jslib; ./build.sh ../../wast.js)
+==== Compiling ====
+BSPATH = /cygdrive/c/Program Files/nodejs/bsb
+./build.sh: Zeile 77: bsb.exe: Kommando nicht gefunden.
+make: *** [Makefile:96: wast.js] Fehler 1
+rm _tags
+```
+
+The problem is that `bsb.exe` is only `bsb`.
+`C:\Program Files\nodejs\bsb`
+After renaming to bsb.exe comes the next problem:
+
+```
+File "bsconfig.json", line 1
+Error: package bs-platform is not found
+It's the basic, required package. If you have it installed globally,
+Please run `npm link bs-platform` to make it available
+make: *** [Makefile:96: wast.js] Fehler 1
+rm _tags
+```
+
+I just did it before.
+
+## Comment by CarpeDiemKopi, 2019-08-12
+
+I will try again with a locally installed bs-platform.
+
+## Comment by rossberg, 2019-08-12
+
+I haven't updated my local BS in a while, since I repeatedly had issues with its installation process and its annoying dependency on node. So something may be out of sync. I had planned to switch to js_of_ocaml, but never had time to work on that. Sorry about that. (Patches would be welcome, though. :) )
+
+## Comment by CarpeDiemKopi, 2019-08-12
+
+Now slightly different error messages:
+
+```
+$ make wast.js
+echo >_tags "true: bin_annot"
+echo >>_tags "true: debug"
+echo >>_tags "<{util,syntax,binary,text,valid,runtime,exec,script,host,main}/*.cmx>: for-pack(Wasm)"
+ocamlbuild -cflags '-w +a-3-4-27-42-44-45 -warn-error +a' -I util -I syntax -I binary -I text -I valid -I runtime -I exec -I script -I host -I main -libs bigarray -quiet main.byte
+mv main.byte wasm.debug
+mkdir -p _build/jslib/src
+cp meta/jslib/* _build/jslib
+cp _build/util/*.ml* _build/syntax/*.ml* _build/binary/*.ml* _build/text/*.ml* _build/valid/*.ml* _build/runtime/*.ml* _build/exec/*.ml* _build/script/*.ml* _build/host/*.ml* _build/main/*.ml* meta/jslib/*.ml _build/jslib/src
+rm _build/jslib/src/*.ml[^i]
+(cd _build/jslib; ./build.sh ../../wast.js)
+==== Compiling ====
+BSPATH = /cygdrive/c/Program Files/nodejs/bsb
+File "bsconfig.json", line 1
+Error: package bs-platform is not found
+It's the basic, required package. If you have it installed globally,
+Please run `npm link bs-platform` to make it available
+make: *** [Makefile:96: wast.js] Fehler 1
+rm _tags
+```
+I did run `npm link bs-platform`
+
+I'm not so skilled with shell scripts - how to read/debug them - but I mean the problem results from BSPATH. Can / must it be set as an environment variable?  Can I fix BSPATH in a script for my case?  How is the content of BSPATH determined in the program flow?
+
+```
+# wrong:
+BSPATH = /cygdrive/c/Program Files/nodejs/bsb
+# right:
+BSPATH = /cygdrive/d/development/OCaml/bucklescript_node/node_modules/.bin
+
+```
+In order to make `bsb` and `bsc` available, I have extended `.bash_profile`:
+`export PATH=$PATH:"/cygdrive/d/development/OCaml/bucklescript_node/node_modules/.bin" `
+
+```
+Charleen@ROY /cygdrive/d/development/ocaml/spec/interpreter
+$ bsc -v
+The OCaml compiler, version BuckleScript 5.0.6 (Using OCaml4.02.3+BS )
+Standard library directory: C:\Program Files\nodejs\node_modules\bs-platform\lib\ocaml
+
+Charleen@ROY /cygdrive/d/development/ocaml/spec/interpreter
+$ bsb -v
+5.0.6
+
+```
+
+## Comment by CarpeDiemKopi, 2019-08-12
+
+BSPATH is determined in
+`D:\Development\OCaml\spec\interpreter\meta\jslib\build.sh`
+by `which` command
+
+```
+74 BSPATH=`which bsb`
+75 BPATH=`dirname $BSPATH`/../lib/js
+```
+
+## Comment by CarpeDiemKopi, 2019-08-12
+
+I will try with:
+
+```
+74 BSPATH = "/cygdrive/d/development/OCaml/bucklescript_node/node_modules/.bin"
+75 BPATH  = "/cygdrive/d/development/OCaml/bucklescript_node/node_modules/bs-platform/lib/js"
+```
+without `npm link bs-platform`
+
+I will run it again from start i.e. with cloning your git.
+
+## Comment by CarpeDiemKopi, 2019-08-12
+
+And I came across a follow-up error. Instead of continuing to work with BPATH, it is constructed a second time for the copy command.
+
+`cp `dirname $BSPATH`/../lib/js/*.js lib/js/src`
+
+## Comment by CarpeDiemKopi, 2019-08-12
+
+Next Step of Knowledge:
+
+The command `bsb` needs the switch `-init` and one argument = folder that is created with a directory structure corresponding to a theme for project initialization (default is basic)  BS User Manual 2.1.0 deprecated, see section "Get Started"
+
+> grafik
+
+`bsb -init test` makes directory `test` in invoking directory.
+
+I have followed it in a windows command prompt:
+```
+d:\Development\OCaml\BS>bsb
+[1;31mError:[0m d:\Development\OCaml\BS\bsconfig.json: No such file or directory
+
+```
+**No Error:**
+
+```
+d:\Development\OCaml\BS>bsb -init test
+Making directory test
+d:\Development\OCaml\BS\test\node_modules\bs-platform -> C:\Program Files\nodejs\node_modules\bs-platform
+
+```
+
+## Comment by CarpeDiemKopi, 2019-08-14
+
+**After the following redesign of**
+`D:\Development\OCaml\spec\interpreter\meta\jslib\build.sh`
+
+```
+74 BWPTH="c:/Program Files/nodejs/node_modules/bs-platform/lib/js"
+75 BUPTH="$(cygpath -u "${BWPTH}")"
+76 bsb -init test || exit 1
+77 # copy:
+78 mkdir -p lib/js/src && cp "$BUPTH"/*.js lib/js/src
+```
+
+**the next bug comes now:**
+```
+copy /*.js lib/js/src
+==== Linking full version ====
+Logging on
+Including lib/js/src/arg.js
+Including lib/js/src/array.js
+...
+Including lib/js/src/unixLabels.js
+Including lib/js/src/weak.js
+==== Running for dependencies ====
+D:\development\ocaml\spec\interpreter\_build\jslib\temp.js:11
+      throw new Error('missing module: ' + name)
+      ^
+
+Error: missing module: wasm
+    at require (D:\development\ocaml\spec\interpreter\_build\jslib\temp.js:11:13)
+    at D:\development\ocaml\spec\interpreter\_build\jslib\temp.js:54430:14
+    at Object.<anonymous> (D:\development\ocaml\spec\interpreter\_build\jslib\temp.js:54435:3)
+    at Module._compile (internal/modules/cjs/loader.js:738:30)
+    at Object.Module._extensions..js (internal/modules/cjs/loader.js:749:10)
+    at Module.load (internal/modules/cjs/loader.js:630:32)
+    at tryModuleLoad (internal/modules/cjs/loader.js:570:12)
+    at Function.Module._load (internal/modules/cjs/loader.js:562:3)
+    at Function.Module.runMain (internal/modules/cjs/loader.js:801:12)
+    at internal/main/run_main_module.js:21:11
+make: *** [Makefile:96: wast.js] Fehler 1
+rm _tags
+```
+
+**Error: missing module: wasm**
+
+## Comment by rossberg, 2019-08-15
+
+I just landed #1058, which works on my machine.
+
+Please do not open more bugs for the same issue. Let me know on this one if you still have problems. I'm closing the others as duplicates.
+
+## Comment by CarpeDiemKopi, 2019-08-15
+
+I have still problems:
+
+```
+Charleen@ROY /cygdrive/d/development/OCaml/spec/interpreter
+$ bsb
+Error: D:\development\OCaml\spec\interpreter\bsconfig.json: No such file or directory
+```
+
+You overlooked this of me:
+
+> Next Step of Knowledge:
+>
+> The command bsb needs the switch -init and one argument = folder that is created with a directory structure corresponding to a theme for project initialization (default is basic) BS User Manual 2.1.0 deprecated, see section "Get Started"
+>
+>
+
+Thats's why I found this:
+deprecated BuckleScript User Manual
+grafik
+
+And I also found this bucklescript issue Add Ninja to the Installation section in the Manual .
+
+Do I need a ninja buildsystem? Do you have one installed? So does the call of bsb therefore work for you without further arguments?
+
+ I have 2 problem types to fight with
+- CygWin unix path and windows path (formal conversions; which I now have under control)
+- independently of this functional problems in build.sh/temp.js scripts
+
+## Comment by rossberg, 2019-08-16
+
+The `jslib` directory created by the Makefile and build script have the required structure. What problems do you encounter with the latest patch?
+
+BS doesn't require ninja, AFAICT. I don't have it installed.
+
+## Comment by CarpeDiemKopi, 2019-08-16
+
+One complete pass
+- git clone
+- make
+- make wast.js
+
+**leads to the following error:**
+
+```
+==== Running for dependencies ====
+D:\development\ocaml\spec\interpreter\_build\jslib\temp.js:11
+      throw new Error('missing module: ' + name)
+      ^
+
+Error: missing module: curry
+    at require (D:\development\ocaml\spec\interpreter\_build\jslib\temp.js:11:13)
+    at _registry.parse (D:\development\ocaml\spec\interpreter\_build\jslib\temp.js:11423:13)
+    at require (D:\development\ocaml\spec\interpreter\_build\jslib\temp.js:20:25)
+    at _registry.wasm (D:\development\ocaml\spec\interpreter\_build\jslib\temp.js:17329:13)
+    at require (D:\development\ocaml\spec\interpreter\_build\jslib\temp.js:20:25)
+    at D:\development\ocaml\spec\interpreter\_build\jslib\temp.js:17386:14
+    at Object.<anonymous> (D:\development\ocaml\spec\interpreter\_build\jslib\temp.js:17391:3)
+    at Module._compile (internal/modules/cjs/loader.js:738:30)
+    at Object.Module._extensions..js (internal/modules/cjs/loader.js:749:10)
+    at Module.load (internal/modules/cjs/loader.js:630:32)
+make: *** [Makefile:96: wast.js] Fehler 1
+rm _tags
+
+```
+
+**But I guess the real mistake is this:**
+
+```
+[184/184] Building src\main.cmj
+cp: der Aufruf von stat für '$BSPATH/js/*.js' ist nicht möglich: No such file or directory
+==== Linking full version ====
+```
+
+**And here the complete contents of the CygWin Terminal:**
+```
+Charleen@ROY /cygdrive/d/development/ocaml
+$ dir
+BS  bucklescript  bucklescript_original  build_wast.js_line_78.sh  home  ocaml-4.02.2.tar.gz  opam  opam64  opam64.tar.xz  spec_changed  spec_original
+
+Charleen@ROY /cygdrive/d/development/ocaml
+$ git clone --recursive https://github.com/WebAssembly/spec.git
+Klone nach 'spec' ...
+remote: Enumerating objects: 31, done.
+remote: Counting objects: 100% (31/31), done.
+remote: Compressing objects: 100% (28/28), done.
+remote: Total 18341 (delta 7), reused 9 (delta 3), pack-reused 18310
+Empfange Objekte: 100% (18341/18341), 55.13 MiB | 1.97 MiB/s, Fertig.
+Löse Unterschiede auf: 100% (13007/13007), Fertig.
+Submodul 'document/core/util/katex' (https://github.com/KaTeX/KaTeX.git) für Pfad 'document/core/util/katex' in die Konfiguration eingetragen.
+Klone nach '/cygdrive/d/development/ocaml/spec/document/core/util/katex' ...
+remote: Enumerating objects: 21, done.
+remote: Counting objects: 100% (21/21), done.
+remote: Compressing objects: 100% (18/18), done.
+remote: Total 11586 (delta 4), reused 18 (delta 3), pack-reused 11565
+Empfange Objekte: 100% (11586/11586), 34.01 MiB | 1.98 MiB/s, Fertig.
+Löse Unterschiede auf: 100% (6834/6834), Fertig.
+Submodule path 'document/core/util/katex': checked out 'b9deec098f35919b9ad77baa6b11b7593473d488'
+Submodul 'submodules/katex-fonts' (https://github.com/KaTeX/katex-fonts) für Pfad 'document/core/util/katex/submodules/katex-fonts' in die Konfiguration eingetragen.
+Submodul 'submodules/katex-test-fonts' (https://github.com/KaTeX/katex-test-fonts.git) für Pfad 'document/core/util/katex/submodules/katex-test-fonts' in die Konfiguration eingetragen.
+Klone nach '/cygdrive/d/development/ocaml/spec/document/core/util/katex/submodules/katex-fonts' ...
+remote: Enumerating objects: 5, done.
+remote: Counting objects: 100% (5/5), done.
+remote: Compressing objects: 100% (4/4), done.
+remote: Total 1008 (delta 0), reused 1 (delta 0), pack-reused 1003
+Empfange Objekte: 100% (1008/1008), 5.20 MiB | 1.62 MiB/s, Fertig.
+Löse Unterschiede auf: 100% (507/507), Fertig.
+Klone nach '/cygdrive/d/development/ocaml/spec/document/core/util/katex/submodules/katex-test-fonts' ...
+remote: Enumerating objects: 14, done.
+remote: Total 14 (delta 0), reused 0 (delta 0), pack-reused 14
+Submodule path 'document/core/util/katex/submodules/katex-fonts': checked out 'b4477ffc58391153f8e54231cab4746b9edc349d'
+Submodule path 'document/core/util/katex/submodules/katex-test-fonts': checked out '371f4a7947293ada30ccacdbf403d713d128c944'
+
+Charleen@ROY /cygdrive/d/development/ocaml
+$ cd spec
+
+Charleen@ROY /cygdrive/d/development/ocaml/spec
+$ cd interpreter
+
+Charleen@ROY /cygdrive/d/development/ocaml/spec/interpreter
+$ dir
+binary  exec  host  LICENSE  main  Makefile  meta  README.md  runtime  script  syntax  text  util  valid  winmake.bat
+
+Charleen@ROY /cygdrive/d/development/ocaml/spec/interpreter
+$ make
+echo >_tags "true: bin_annot"
+echo >>_tags "true: debug"
+echo >>_tags "<{util,syntax,binary,text,valid,runtime,exec,script,host,main}/*.cmx>: for-pack(Wasm)"
+ocamlbuild -cflags '-w +a-3-4-27-42-44-45 -warn-error +a' -I util -I syntax -I binary -I text -I valid -I runtime -I exec -I script -I host -I main -libs bigarray -quiet main.native
+mv main.native wasm
+rm _tags
+
+Charleen@ROY /cygdrive/d/development/ocaml/spec/interpreter
+$ make wast.js
+echo >_tags "true: bin_annot"
+echo >>_tags "true: debug"
+echo >>_tags "<{util,syntax,binary,text,valid,runtime,exec,script,host,main}/*.cmx>: for-pack(Wasm)"
+ocamlbuild -cflags '-w +a-3-4-27-42-44-45 -warn-error +a' -I util -I syntax -I binary -I text -I valid -I runtime -I exec -I script -I host -I main -libs bigarray -quiet main.byte
+mv main.byte wasm.debug
+mkdir -p _build/jslib/src
+cp meta/jslib/* _build/jslib
+cp _build/util/*.ml* _build/syntax/*.ml* _build/binary/*.ml* _build/text/*.ml* _build/valid/*.ml* _build/runtime/*.ml* _build/exec/*.ml* _build/script/*.ml* _build/host/*.ml* _build/main/*.ml* meta/jslib/*.ml _build/jslib/src
+rm _build/jslib/src/*.ml[^i]
+(cd _build/jslib; ./build.sh ../../wast.js)
+==== Preparing ====
+D:\development\ocaml\spec\interpreter\_build\jslib\node_modules\bs-platform -> C:\Program Files\nodejs\node_modules\bs-platform
+==== Compiling ====
+BSPATH = C:\Program Files\nodejs\node_modules\bs-platform\lib
+[1/184] Building src\utf8.mliast
+[2/184] Building src\i64.mlast
+[3/184] Building src\wasm.mlast
+[4/184] Building src\env.mlast
+[5/184] Building src\ast.mlast
+[6/184] Building src\f64.mlast
+[7/184] Building src\int.mlast
+[8/184] Building src\main.mlast
+[9/184] Building src\f32.mlast
+[10/184] Building src\utf8.mlast
+[11/184] Building src\env.d
+[12/184] Building src\lib.mlast
+[13/184] Building src\wasm.d
+[14/184] Building src\int.d
+[15/184] Building src\i64.d
+[16/184] Building src\main.d
+[17/184] Building src\ast.d
+[18/184] Building src\f64.d
+[19/184] Building src\lib.mliast
+[20/184] Building src\f32.d
+[21/184] Building src\utf8.d
+[22/184] Building src\i32.mlast
+[23/184] Building src\eval.mliast
+[24/184] Building src\js.mliast
+[25/184] Building src\js.mlast
+[26/184] Building src\func.mliast
+[27/184] Building src\lib.d
+[28/184] Building src\eval.mlast
+[29/184] Building src\func.mlast
+[30/184] Building src\i32.d
+[31/184] Building src\run.mliast
+[32/184] Building src\print.mliast
+[33/184] Building src\run.mlast
+[34/184] Building src\print.mlast
+[35/184] Building src\parse.mlast
+[36/184] Building src\eval.d
+[37/184] Building src\js.d
+[38/184] Building src\lib.cmi
+[39/184] Building src\utf8.cmi
+[40/184] Building src\parse.mliast
+[41/184] Building src\func.d
+[42/184] Building src\sexpr.mlast
+[43/184] Building src\error.mlast
+[44/184] Building src\print.d
+[45/184] Building src\run.d
+[46/184] Building src\error.mliast
+[47/184] Building src\flags.mlast
+[48/184] Building src\float.mlast
+[49/184] Building src\lexer.mliast
+[50/184] Building src\parse.d
+[51/184] Building src\flags.d
+[52/184] Building src\float.d
+[53/184] Building src\global.mlast
+[54/184] Building src\decode.mlast
+[55/184] Building src\encode.mlast
+[56/184] Building src\decode.mliast
+[57/184] Building src\error.d
+[58/184] Building src\lexer.mlast
+[59/184] Building src\encode.mliast
+[60/184] Building src\flags.cmj
+[61/184] Building src\valid.mliast
+[62/184] Building src\valid.mlast
+[63/184] Building src\types.mlast
+[64/184] Building src\global.mliast
+[65/184] Building src\encode.d
+[66/184] Building src\decode.d
+[67/184] Building src\table.mlast
+[68/184] Building src\lexer.d
+[69/184] Building src\sexpr.mliast
+[70/184] Building src\script.mlast
+[71/184] Building src\table.mliast
+[72/184] Building src\parser.mliast
+[73/184] Building src\source.mlast
+[74/184] Building src\types.d
+[75/184] Building src\valid.d
+[76/184] Building src\values.mlast
+[77/184] Building src\lib.cmj
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\lib.ml", line 93, characters 9-12:
+Warning 27: unused variable xs'.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\lib.ml", line 94, characters 6-7:
+Warning 27: unused variable x.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\lib.ml", line 176, characters 20-70:
+Warning: Unimplemented primitive used:caml_ba_sub
+
+[78/184] Building src\source.mliast
+[79/184] Building src\table.d
+[80/184] Building src\sexpr.d
+[81/184] Building src\script.d
+[82/184] Building src\import.mlast
+[83/184] Building src\import.mliast
+[84/184] Building src\global.d
+[85/184] Building src\values.d
+[86/184] Building src\import.d
+[87/184] Building src\source.d
+[88/184] Building src\memory.mliast
+[89/184] Building src\parser.mlast
+[90/184] Building src\memory.mlast
+[91/184] Building src\utf8.cmj
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\utf8.ml", line 8, characters 7-9:
+Warning 27: unused variable ns.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\utf8.ml", line 32, characters 8-10:
+Warning 27: unused variable bs.
+[92/184] Building src\sexpr.cmi
+[93/184] Building src\arrange.mlast
+[94/184] Building src\spectest.mlast
+[95/184] Building src\arrange.mliast
+[96/184] Building src\source.cmi
+[97/184] Building src\f32_convert.mlast
+[98/184] Building src\instance.mlast
+[99/184] Building src\parser.d
+[100/184] Building src\spectest.d
+[101/184] Building src\memory.d
+[102/184] Building src\arrange.d
+[103/184] Building src\operators.mlast
+[104/184] Building src\float.cmj
+[105/184] Building src\sexpr.cmj
+[106/184] Building src\instance.d
+[107/184] Building src\f32_convert.mliast
+[108/184] Building src\error.cmi
+[109/184] Building src\i32_convert.mlast
+[110/184] Building src\f64_convert.mliast
+[111/184] Building src\run.cmi
+[112/184] Building src\operators.d
+[113/184] Building src\source.cmj
+[114/184] Building src\f64_convert.mlast
+[115/184] Building src\f32_convert.d
+[116/184] Building src\i64_convert.mlast
+[117/184] Building src\f64.cmj
+[118/184] Building src\eval_numeric.mliast
+[119/184] Building src\i64_convert.mliast
+[120/184] Building src\eval_numeric.mlast
+[121/184] Building src\i32_convert.mliast
+[122/184] Building src\numeric_error.mlast
+[123/184] Building src\error.cmj
+[124/184] Building src\f64_convert.d
+[125/184] Building src\f32.cmj
+[126/184] Building src\i64_convert.d
+[127/184] Building src\eval_numeric.d
+[128/184] Building src\i32_convert.d
+[129/184] Building src\numeric_error.d
+[130/184] Building src\numeric_error.cmj
+[131/184] Building src\int.cmj
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\int.ml", line 237, characters 4-997:
+Warning 44: this open statement shadows the value identifier add (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\int.ml", line 237, characters 4-997:
+Warning 44: this open statement shadows the value identifier mul (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\int.ml", line 237, characters 4-997:
+Warning 44: this open statement shadows the value identifier zero (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\int.ml", line 237, characters 4-997:
+Warning 44: this open statement shadows the value identifier sub (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\int.ml", line 237, characters 4-997:
+Warning 44: this open statement shadows the value identifier one (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\int.ml", line 132, characters 11-12:
+Warning 27: unused variable r.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\int.ml", line 142, characters 8-9:
+Warning 27: unused variable q.
+[132/184] Building src\i32.cmj
+[133/184] Building src\i64.cmj
+[134/184] Building src\f32_convert.cmi
+[135/184] Building src\f64_convert.cmi
+[136/184] Building src\i32_convert.cmi
+[137/184] Building src\i64_convert.cmi
+[138/184] Building src\types.cmj
+[139/184] Building src\i32_convert.cmj
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\i32_convert.ml", line 10, characters 15-39:
+Warning 44: this open statement shadows the value identifier min_int (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\i32_convert.ml", line 10, characters 48-72:
+Warning 44: this open statement shadows the value identifier min_int (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\i32_convert.ml", line 20, characters 15-39:
+Warning 44: this open statement shadows the value identifier min_int (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\i32_convert.ml", line 30, characters 15-39:
+Warning 44: this open statement shadows the value identifier min_int (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\i32_convert.ml", line 30, characters 48-72:
+Warning 44: this open statement shadows the value identifier min_int (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\i32_convert.ml", line 40, characters 15-39:
+Warning 44: this open statement shadows the value identifier min_int (which is later used)
+[140/184] Building src\table.cmi
+[141/184] Building src\i64_convert.cmj
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\i64_convert.ml", line 12, characters 15-39:
+Warning 44: this open statement shadows the value identifier min_int (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\i64_convert.ml", line 12, characters 48-72:
+Warning 44: this open statement shadows the value identifier min_int (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\i64_convert.ml", line 22, characters 15-39:
+Warning 44: this open statement shadows the value identifier min_int (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\i64_convert.ml", line 24, characters 20-44:
+Warning 44: this open statement shadows the value identifier min_int (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\i64_convert.ml", line 25, characters 6-100:
+Warning 44: this open statement shadows the value identifier min_int (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\i64_convert.ml", line 34, characters 15-39:
+Warning 44: this open statement shadows the value identifier min_int (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\i64_convert.ml", line 34, characters 48-72:
+Warning 44: this open statement shadows the value identifier min_int (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\i64_convert.ml", line 44, characters 15-39:
+Warning 44: this open statement shadows the value identifier min_int (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\i64_convert.ml", line 46, characters 20-44:
+Warning 44: this open statement shadows the value identifier min_int (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\i64_convert.ml", line 47, characters 6-100:
+Warning 44: this open statement shadows the value identifier min_int (which is later used)
+[142/184] Building src\values.cmj
+[143/184] Building src\f64_convert.cmj
+[144/184] Building src\f32_convert.cmj
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\f32_convert.ml", line 34, characters 15-221:
+Warning 44: this open statement shadows the value identifier abs (which is later used)
+[145/184] Building src\global.cmi
+[146/184] Building src\memory.cmi
+[147/184] Building src\table.cmj
+[148/184] Building src\global.cmj
+[149/184] Building src\memory.cmj
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\memory.ml", line 39, characters 4-21:
+Warning: Unimplemented primitive used:caml_ba_fill
+
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\memory.ml", line 63, characters 2-77:
+Warning: Unimplemented primitive used:caml_ba_blit
+
+[150/184] Building src\ast.cmj
+[151/184] Building src\func.cmi
+[152/184] Building src\valid.cmi
+[153/184] Building src\decode.cmi
+[154/184] Building src\encode.cmi
+[155/184] Building src\script.cmj
+[156/184] Building src\eval_numeric.cmi
+[157/184] Building src\js.cmi
+[158/184] Building src\print.cmi
+[159/184] Building src\func.cmj
+[160/184] Building src\parse.cmi
+[161/184] Building src\arrange.cmi
+[162/184] Building src\parser.cmi
+[163/184] Building src\operators.cmj
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\operators.ml", line 1, characters 0-11:
+Warning 44: this open statement shadows the value identifier @@ (which is later used)
+[164/184] Building src\lexer.cmi
+[165/184] Building src\instance.cmj
+[166/184] Building src\eval_numeric.cmj
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval_numeric.ml", line 103, characters 13-15:
+Warning 27: unused variable op.
+[167/184] Building src\eval.cmi
+[168/184] Building src\import.cmi
+[169/184] Building src\valid.cmj
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\valid.ml", line 2, characters 0-11:
+Warning 44: this open statement shadows the value identifier @@ (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\valid.ml", line 91, characters 12-15:
+Warning 27: unused variable ell.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\valid.ml", line 243, characters 23-26:
+Warning 27: unused variable mut.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\valid.ml", line 321, characters 22-23:
+Warning 27: unused variable t.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\valid.ml", line 321, characters 38-40:
+Warning 27: unused variable at.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\valid.ml", line 340, characters 21-24:
+Warning 27: unused variable mut.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\valid.ml", line 382, characters 17-18:
+Warning 27: unused variable c.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\valid.ml", line 386, characters 18-19:
+Warning 27: unused variable c.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\valid.ml", line 397, characters 22-26:
+Warning 27: unused variable init.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\valid.ml", line 403, characters 21-24:
+Warning 27: unused variable mut.
+[170/184] Building src\spectest.cmj
+[171/184] Building src\encode.cmj
+[172/184] Building src\import.cmj
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\import.ml", line 13, characters 31-36:
+Warning 27: unused variable idesc.
+[173/184] Building src\eval.cmj
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 5, characters 0-11:
+Warning 44: this open statement shadows the value identifier @@ (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 4, characters 0-8:
+Warning 45: this open statement shadows the label tables (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 4, characters 0-8:
+Warning 45: this open statement shadows the label memories (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 4, characters 0-8:
+Warning 45: this open statement shadows the label globals (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 4, characters 0-8:
+Warning 45: this open statement shadows the label funcs (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 4, characters 0-8:
+Warning 45: this open statement shadows the label types (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 4, characters 0-8:
+Warning 45: this open statement shadows the label exports (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 259, characters 15-18:
+Warning 27: unused variable msg.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 259, characters 20-22:
+Warning 27: unused variable vs.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 262, characters 16-19:
+Warning 27: unused variable vs'.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 262, characters 21-23:
+Warning 27: unused variable vs.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 265, characters 16-17:
+Warning 27: unused variable k.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 265, characters 19-22:
+Warning 27: unused variable vs'.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 265, characters 25-27:
+Warning 27: unused variable vs.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 268, characters 13-14:
+Warning 27: unused variable n.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 268, characters 16-19:
+Warning 27: unused variable es0.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 271, characters 13-14:
+Warning 27: unused variable n.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 271, characters 16-19:
+Warning 27: unused variable es0.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 271, characters 22-25:
+Warning 27: unused variable vs'.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 271, characters 54-57:
+Warning 27: unused variable es'.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 274, characters 13-14:
+Warning 27: unused variable n.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 274, characters 16-19:
+Warning 27: unused variable es0.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 274, characters 22-25:
+Warning 27: unused variable vs'.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 274, characters 55-58:
+Warning 27: unused variable es'.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 277, characters 22-25:
+Warning 27: unused variable vs'.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 277, characters 53-55:
+Warning 27: unused variable at.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 277, characters 60-63:
+Warning 27: unused variable es'.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 280, characters 13-14:
+Warning 27: unused variable n.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 280, characters 16-19:
+Warning 27: unused variable es0.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 280, characters 22-25:
+Warning 27: unused variable vs'.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 280, characters 59-62:
+Warning 27: unused variable es'.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 287, characters 13-14:
+Warning 27: unused variable n.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 287, characters 16-22:
+Warning 27: unused variable frame'.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 290, characters 13-14:
+Warning 27: unused variable n.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 290, characters 16-22:
+Warning 27: unused variable frame'.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 290, characters 25-28:
+Warning 27: unused variable vs'.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 290, characters 57-60:
+Warning 27: unused variable es'.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 293, characters 16-22:
+Warning 27: unused variable frame'.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 293, characters 25-28:
+Warning 27: unused variable vs'.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 293, characters 51-53:
+Warning 27: unused variable at.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 293, characters 58-61:
+Warning 27: unused variable es'.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 300, characters 13-17:
+Warning 27: unused variable func.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 300, characters 19-21:
+Warning 27: unused variable vs.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 130, characters 14-16:
+Warning 27: unused variable ts.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 133, characters 16-19:
+Warning 27: unused variable es1.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 136, characters 21-24:
+Warning 27: unused variable es2.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 136, characters 31-32:
+Warning 27: unused variable i.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 142, characters 13-14:
+Warning 27: unused variable x.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 145, characters 20-21:
+Warning 27: unused variable i.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 151, characters 21-22:
+Warning 27: unused variable x.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 167, characters 14-15:
+Warning 27: unused variable v.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 170, characters 32-34:
+Warning 27: unused variable v1.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 173, characters 20-21:
+Warning 27: unused variable i.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 173, characters 25-27:
+Warning 27: unused variable v2.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 308, characters 22-23:
+Warning 27: unused variable t.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 314, characters 23-24:
+Warning 27: unused variable t.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 326, characters 4-6:
+Warning 27: unused variable vs.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 329, characters 4-6:
+Warning 27: unused variable vs.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 329, characters 8-10:
+Warning 27: unused variable es.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 337, characters 21-24:
+Warning 27: unused variable out.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 348, characters 4-6:
+Warning 27: unused variable vs.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 361, characters 18-22:
+Warning 27: unused variable inst.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\eval.ml", line 365, characters 19-23:
+Warning 27: unused variable inst.
+[174/184] Building src\decode.cmj
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\decode.ml", line 55, characters 2-35:
+Warning 44: this open statement shadows the value identifier @@ (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\decode.ml", line 444, characters 20-51:
+Warning 44: this open statement shadows the value identifier @@ (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\decode.ml", line 189, characters 0-8:
+Warning 45: this open statement shadows the label name (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\decode.ml", line 588, characters 25-59:
+Warning 44: this open statement shadows the value identifier @@ (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\decode.ml", line 666, characters 14-63:
+Warning 44: this open statement shadows the value identifier @@ (which is later used)
+[175/184] Building src\parser.cmj
+File "text/parser.mly", line 2, characters 0-11:
+Warning 44: this open statement shadows the value identifier @@ (which is later used)
+File "text/parser.mly", line 251, characters 32-33:
+Warning 27: unused variable c.
+File "text/parser.mly", line 251, characters 34-40:
+Warning 27: unused variable lookup.
+File "text/parser.mly", line 255, characters 22-23:
+Warning 27: unused variable c.
+File "text/parser.mly", line 255, characters 24-30:
+Warning 27: unused variable lookup.
+File "text/parser.mly", line 259, characters 29-33:
+Warning 27: unused variable bind.
+File "text/parser.mly", line 260, characters 21-25:
+Warning 27: unused variable anon.
+File "text/parser.mly", line 302, characters 22-23:
+Warning 27: unused variable c.
+File "text/parser.mly", line 303, characters 14-15:
+Warning 27: unused variable c.
+File "text/parser.mly", line 304, characters 15-16:
+Warning 27: unused variable c.
+File "text/parser.mly", line 305, characters 17-18:
+Warning 27: unused variable c.
+File "text/parser.mly", line 311, characters 17-18:
+Warning 27: unused variable c.
+File "text/parser.mly", line 318, characters 36-37:
+Warning 27: unused variable c.
+File "text/parser.mly", line 319, characters 37-38:
+Warning 27: unused variable c.
+File "text/parser.mly", line 320, characters 22-23:
+Warning 27: unused variable c.
+File "text/parser.mly", line 321, characters 22-23:
+Warning 27: unused variable c.
+File "text/parser.mly", line 322, characters 24-25:
+Warning 27: unused variable c.
+File "text/parser.mly", line 323, characters 15-16:
+Warning 27: unused variable c.
+File "text/parser.mly", line 324, characters 18-19:
+Warning 27: unused variable c.
+File "text/parser.mly", line 325, characters 16-17:
+Warning 27: unused variable c.
+File "text/parser.mly", line 326, characters 17-18:
+Warning 27: unused variable c.
+File "text/parser.mly", line 327, characters 18-19:
+Warning 27: unused variable c.
+File "text/parser.mly", line 354, characters 10-11:
+Warning 27: unused variable c.
+File "text/parser.mly", line 456, characters 10-11:
+Warning 27: unused variable c.
+File "text/parser.mly", line 458, characters 10-11:
+Warning 27: unused variable c.
+File "text/parser.mly", line 461, characters 22-23:
+Warning 27: unused variable c.
+File "text/parser.mly", line 466, characters 22-23:
+Warning 27: unused variable c.
+File "text/parser.mly", line 482, characters 12-13:
+Warning 27: unused variable x.
+File "text/parser.mly", line 486, characters 12-13:
+Warning 27: unused variable x.
+File "text/parser.mly", line 490, characters 12-13:
+Warning 27: unused variable x.
+File "text/parser.mly", line 496, characters 12-13:
+Warning 27: unused variable x.
+File "text/parser.mly", line 568, characters 10-11:
+Warning 27: unused variable c.
+File "text/parser.mly", line 568, characters 12-13:
+Warning 27: unused variable x.
+File "text/parser.mly", line 570, characters 10-11:
+Warning 27: unused variable c.
+File "text/parser.mly", line 570, characters 12-13:
+Warning 27: unused variable x.
+File "text/parser.mly", line 600, characters 10-11:
+Warning 27: unused variable c.
+File "text/parser.mly", line 600, characters 12-13:
+Warning 27: unused variable x.
+File "text/parser.mly", line 602, characters 10-11:
+Warning 27: unused variable c.
+File "text/parser.mly", line 602, characters 12-13:
+Warning 27: unused variable x.
+File "text/parser.mly", line 610, characters 10-11:
+Warning 27: unused variable c.
+File "text/parser.mly", line 625, characters 12-13:
+Warning 27: unused variable x.
+File "text/parser.mly", line 627, characters 10-11:
+Warning 27: unused variable c.
+File "text/parser.mly", line 627, characters 12-13:
+Warning 27: unused variable x.
+File "text/parser.mly", line 678, characters 30-31:
+Warning 27: unused variable c.
+[176/184] Building src\env.cmj
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\env.ml", line 21, characters 4-6:
+Warning 27: unused variable vs.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\env.ml", line 26, characters 4-6:
+Warning 27: unused variable vs.
+[177/184] Building src\lexer.cmj
+File "text/lexer.mll", line 165, characters 4-442:
+Warning 44: this open statement shadows the value identifier @@ (which is later used)
+[178/184] Building src\parse.cmj
+[179/184] Building src\js.cmj
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\js.ml", line 4, characters 0-11:
+Warning 44: this open statement shadows the value identifier @@ (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\js.ml", line 310, characters 8-23:
+Warning 3: deprecated: Pervasives.string_of_float
+Please use Js.Float.toString instead, string_of_float generates unparseable floats
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\js.ml", line 220, characters 8-10:
+Warning 27: unused variable ts.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\js.ml", line 220, characters 11-13:
+Warning 27: unused variable at.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\js.ml", line 223, characters 23-25:
+Warning 27: unused variable ts.
+[180/184] Building src\arrange.cmj
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\arrange.ml", line 1, characters 0-11:
+Warning 44: this open statement shadows the value identifier @@ (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\arrange.ml", line 85, characters 13-15:
+Warning 27: unused variable xx.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\arrange.ml", line 88, characters 12-14:
+Warning 27: unused variable xx.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\arrange.ml", line 100, characters 11-13:
+Warning 27: unused variable xx.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\arrange.ml", line 105, characters 12-14:
+Warning 27: unused variable xx.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\arrange.ml", line 137, characters 13-15:
+Warning 27: unused variable xx.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\arrange.ml", line 139, characters 12-14:
+Warning 27: unused variable xx.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\arrange.ml", line 147, characters 11-13:
+Warning 27: unused variable xx.
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\arrange.ml", line 156, characters 12-14:
+Warning 27: unused variable xx.
+[181/184] Building src\wasm.cmj
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\wasm.ml", line 3, characters 2-99:
+Warning 8: this pattern-matching is not exhaustive.
+Here is an example of a value that is not matched:
+Quoted (_, _)
+[182/184] Building src\print.cmj
+[183/184] Building src\run.cmj
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\run.ml", line 2, characters 0-11:
+Warning 44: this open statement shadows the value identifier @@ (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\run.ml", line 128, characters 2-115:
+Warning 44: this open statement shadows the value identifier @@ (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\run.ml", line 128, characters 2-115:
+Warning 44: this open statement shadows the value identifier no_region (which is later used)
+File "D:\development\ocaml\spec\interpreter\_build\jslib\src\run.ml", line 156, characters 23-26:
+Warning 27: unused variable run.
+[184/184] Building src\main.cmj
+cp: der Aufruf von stat für '$BSPATH/js/*.js' ist nicht möglich: No such file or directory
+==== Linking full version ====
+Logging on
+Including lib/js/src/arrange.js
+Including lib/js/src/ast.js
+Including lib/js/src/decode.js
+Including lib/js/src/encode.js
+Including lib/js/src/env.js
+Including lib/js/src/error.js
+Including lib/js/src/eval.js
+Including lib/js/src/eval_numeric.js
+Including lib/js/src/f32.js
+Including lib/js/src/f32_convert.js
+Including lib/js/src/f64.js
+Including lib/js/src/f64_convert.js
+Including lib/js/src/flags.js
+Including lib/js/src/float.js
+Including lib/js/src/func.js
+Including lib/js/src/global.js
+Including lib/js/src/i32.js
+Including lib/js/src/i32_convert.js
+Including lib/js/src/i64.js
+Including lib/js/src/i64_convert.js
+Including lib/js/src/import.js
+Including lib/js/src/instance.js
+Including lib/js/src/int.js
+Including lib/js/src/js.js
+Including lib/js/src/lexer.js
+Including lib/js/src/lib.js
+Including lib/js/src/main.js
+Including lib/js/src/memory.js
+Including lib/js/src/numeric_error.js
+Including lib/js/src/operators.js
+Including lib/js/src/parse.js
+Including lib/js/src/parser.js
+Including lib/js/src/print.js
+Including lib/js/src/run.js
+Including lib/js/src/script.js
+Including lib/js/src/sexpr.js
+Including lib/js/src/source.js
+Including lib/js/src/spectest.js
+Including lib/js/src/table.js
+Including lib/js/src/types.js
+Including lib/js/src/utf8.js
+Including lib/js/src/valid.js
+Including lib/js/src/values.js
+Including lib/js/src/wasm.js
+==== Running for dependencies ====
+D:\development\ocaml\spec\interpreter\_build\jslib\temp.js:11
+      throw new Error('missing module: ' + name)
+      ^
+
+Error: missing module: curry
+    at require (D:\development\ocaml\spec\interpreter\_build\jslib\temp.js:11:13)
+    at _registry.parse (D:\development\ocaml\spec\interpreter\_build\jslib\temp.js:11423:13)
+    at require (D:\development\ocaml\spec\interpreter\_build\jslib\temp.js:20:25)
+    at _registry.wasm (D:\development\ocaml\spec\interpreter\_build\jslib\temp.js:17329:13)
+    at require (D:\development\ocaml\spec\interpreter\_build\jslib\temp.js:20:25)
+    at D:\development\ocaml\spec\interpreter\_build\jslib\temp.js:17386:14
+    at Object.<anonymous> (D:\development\ocaml\spec\interpreter\_build\jslib\temp.js:17391:3)
+    at Module._compile (internal/modules/cjs/loader.js:738:30)
+    at Object.Module._extensions..js (internal/modules/cjs/loader.js:749:10)
+    at Module.load (internal/modules/cjs/loader.js:630:32)
+make: *** [Makefile:96: wast.js] Fehler 1
+rm _tags
+
+```
+
+## Comment by rossberg, 2019-08-16
+
+The problem is this line:
+> cp: der Aufruf von stat für '$BSPATH/js/*.js' ist nicht möglich: No such file or directory
+
+That means it fails to copy the BS JS files to the target dir and thus temp.js does not inlcude them.
+
+Not sure why that doesn't work on your system. What's your BS version, and what's the contents of `C:\Program Files\nodejs\node_modules\bs-platform\lib\js` (i.e., `$BSPATH/js`)?
+
+## Comment by CarpeDiemKopi, 2019-08-16
+
+**versions:**
+
+```
+Charleen@ROY /cygdrive/d/development/ocaml/spec/interpreter
+$ bsc -v
+The OCaml compiler, version BuckleScript 5.0.6 (Using OCaml4.02.3+BS )
+Standard library directory: C:\Program Files\nodejs\node_modules\bs-platform\lib\ocaml
+
+Charleen@ROY /cygdrive/d/development/ocaml/spec/interpreter
+$ bsb -v
+5.0.6
+
+```
+
+**contents of `$BSPATH/js`:**
+
+```
+C:\Program Files\nodejs\node_modules\bs-platform\lib\js>dir
+ Volume in Laufwerk C: hat keine Bezeichnung.
+ Volumeseriennummer: 8652-9979
+
+ Verzeichnis von C:\Program Files\nodejs\node_modules\bs-platform\lib\js
+
+12.08.2019  19:48    <DIR>          .
+12.08.2019  19:48    <DIR>          ..
+12.08.2019  19:48            26.551 arg.js
+12.08.2019  19:48            10.453 array.js
+12.08.2019  19:48             1.206 arrayLabels.js
+12.08.2019  19:48               841 belt.js
+12.08.2019  19:48            15.361 belt_Array.js
+12.08.2019  19:48               149 belt_Debug.js
+12.08.2019  19:48               198 belt_Float.js
+12.08.2019  19:48             7.424 belt_HashMap.js
+12.08.2019  19:48             7.426 belt_HashMapInt.js
+12.08.2019  19:48             7.441 belt_HashMapString.js
+12.08.2019  19:48             5.494 belt_HashSet.js
+12.08.2019  19:48             5.474 belt_HashSetInt.js
+12.08.2019  19:48             5.486 belt_HashSetString.js
+12.08.2019  19:48             1.440 belt_Id.js
+12.08.2019  19:48               200 belt_Int.js
+12.08.2019  19:48            19.763 belt_internalAVLset.js
+12.08.2019  19:48            24.522 belt_internalAVLtree.js
+12.08.2019  19:48             6.205 belt_internalBuckets.js
+12.08.2019  19:48               794 belt_internalBucketsType.js
+12.08.2019  19:48             8.524 belt_internalMapInt.js
+12.08.2019  19:48             8.527 belt_internalMapString.js
+12.08.2019  19:48             3.964 belt_internalSetBuckets.js
+12.08.2019  19:48             4.382 belt_internalSetInt.js
+12.08.2019  19:48             4.391 belt_internalSetString.js
+12.08.2019  19:48            27.207 belt_List.js
+12.08.2019  19:48             7.334 belt_Map.js
+12.08.2019  19:48            10.588 belt_MapDict.js
+12.08.2019  19:48             7.566 belt_MapInt.js
+12.08.2019  19:48             7.611 belt_MapString.js
+12.08.2019  19:48             8.785 belt_MutableMap.js
+12.08.2019  19:48             7.860 belt_MutableMapInt.js
+12.08.2019  19:48             7.893 belt_MutableMapString.js
+12.08.2019  19:48             5.414 belt_MutableQueue.js
+12.08.2019  19:48            12.935 belt_MutableSet.js
+12.08.2019  19:48            12.021 belt_MutableSetInt.js
+12.08.2019  19:48            12.075 belt_MutableSetString.js
+12.08.2019  19:48             2.273 belt_MutableStack.js
+12.08.2019  19:48             2.152 belt_Option.js
+12.08.2019  19:48             1.964 belt_Range.js
+12.08.2019  19:48             2.047 belt_Result.js
+12.08.2019  19:48             5.932 belt_Set.js
+12.08.2019  19:48             8.449 belt_SetDict.js
+12.08.2019  19:48             8.249 belt_SetInt.js
+12.08.2019  19:48             8.279 belt_SetString.js
+12.08.2019  19:48            10.914 belt_SortArray.js
+12.08.2019  19:48             9.116 belt_SortArrayInt.js
+12.08.2019  19:48             9.116 belt_SortArrayString.js
+12.08.2019  19:48             8.098 bigarray.js
+12.08.2019  19:48               984 block.js
+12.08.2019  19:48             8.139 buffer.js
+12.08.2019  19:48            11.122 bytes.js
+12.08.2019  19:48             1.911 bytesLabels.js
+12.08.2019  19:48               313 callback.js
+26.06.2019  14:05               108 camlinternalBigarray.js
+12.08.2019  19:48           203.807 camlinternalFormat.js
+12.08.2019  19:48             7.577 camlinternalFormatBasics.js
+12.08.2019  19:48             1.467 camlinternalLazy.js
+12.08.2019  19:48               108 camlinternalMod.js
+12.08.2019  19:48            22.496 camlinternalOO.js
+12.08.2019  19:48             2.530 caml_array.js
+12.08.2019  19:48               108 caml_array_extern.js
+12.08.2019  19:48             1.584 caml_builtin_exceptions.js
+12.08.2019  19:48             3.888 caml_bytes.js
+12.08.2019  19:48               108 caml_bytes_extern.js
+12.08.2019  19:48               188 caml_char.js
+12.08.2019  19:48             6.040 caml_chrome_debugger.js
+12.08.2019  19:48               782 caml_exceptions.js
+12.08.2019  19:48               750 caml_external_polyfill.js
+12.08.2019  19:48             2.786 caml_float.js
+12.08.2019  19:48               108 caml_float_extern.js
+12.08.2019  19:48            21.439 caml_format.js
+12.08.2019  19:48             1.019 caml_gc.js
+12.08.2019  19:48             3.007 caml_hash.js
+12.08.2019  19:48             1.489 caml_hash_primitive.js
+12.08.2019  19:48               919 caml_int32.js
+12.08.2019  19:48                83 caml_int32_extern.js
+12.08.2019  19:48            14.150 caml_int64.js
+12.08.2019  19:48               108 caml_int64_extern.js
+12.08.2019  19:48             2.201 caml_io.js
+12.08.2019  19:48               619 caml_js_exceptions.js
+12.08.2019  19:48             9.799 caml_lexer.js
+12.08.2019  19:48             5.224 caml_md5.js
+12.08.2019  19:48             2.409 caml_module.js
+12.08.2019  19:48               108 caml_nativeint_extern.js
+12.08.2019  19:48            14.863 caml_obj.js
+12.08.2019  19:48               108 caml_obj_extern.js
+12.08.2019  19:48             1.023 caml_oo.js
+12.08.2019  19:48             1.550 caml_oo_curry.js
+12.08.2019  19:48             1.612 caml_option.js
+12.08.2019  19:48            10.647 caml_parser.js
+12.08.2019  19:48             4.000 caml_primitive.js
+12.08.2019  19:48               728 caml_splice_call.js
+12.08.2019  19:48               944 caml_string.js
+12.08.2019  19:48               108 caml_string_extern.js
+12.08.2019  19:48             2.167 caml_sys.js
+12.08.2019  19:48               108 caml_undefined_extern.js
+12.08.2019  19:48               822 caml_utils.js
+12.08.2019  19:48             1.001 caml_weak.js
+12.08.2019  19:48             2.048 char.js
+12.08.2019  19:48             3.730 complex.js
+12.08.2019  19:48            13.147 curry.js
+12.08.2019  19:48             3.286 digest.js
+12.08.2019  19:48               136 dom.js
+12.08.2019  19:48               108 dom_storage.js
+12.08.2019  19:48               108 dom_storage2.js
+27.06.2019  04:07           132.957 ephemeron.js
+12.08.2019  19:48            11.902 filename.js
+12.08.2019  19:48            50.671 format.js
+12.08.2019  19:48            10.398 gc.js
+12.08.2019  19:48            19.482 genlex.js
+12.08.2019  19:48            20.526 hashtbl.js
+12.08.2019  19:48               847 int32.js
+12.08.2019  19:48             1.386 int64.js
+12.08.2019  19:48             1.310 js.js
+12.08.2019  19:48               108 js_array.js
+12.08.2019  19:48               108 js_array2.js
+12.08.2019  19:48               108 js_cast.js
+12.08.2019  19:48               108 js_console.js
+12.08.2019  19:48               108 js_date.js
+12.08.2019  19:48             1.694 js_dict.js
+12.08.2019  19:48               905 js_exn.js
+12.08.2019  19:48               108 js_float.js
+12.08.2019  19:48               108 js_global.js
+12.08.2019  19:48               189 js_int.js
+12.08.2019  19:48             1.942 js_json.js
+12.08.2019  19:48             5.831 js_list.js
+12.08.2019  19:48             2.267 js_mapperRt.js
+12.08.2019  19:48               881 js_math.js
+12.08.2019  19:48               736 js_null.js
+12.08.2019  19:48               505 js_null_undefined.js
+12.08.2019  19:48               108 js_obj.js
+12.08.2019  19:48             1.892 js_option.js
+12.08.2019  19:48               108 js_promise.js
+29.04.2019  14:23               108 js_promise2.js
+12.08.2019  19:48               108 js_re.js
+12.08.2019  19:48               108 js_result.js
+12.08.2019  19:48               108 js_string.js
+12.08.2019  19:48               108 js_string2.js
+12.08.2019  19:48             1.056 js_typed_array.js
+12.08.2019  19:48               873 js_typed_array2.js
+12.08.2019  19:48             1.234 js_types.js
+12.08.2019  19:48               789 js_undefined.js
+12.08.2019  19:48             2.389 js_vector.js
+12.08.2019  19:48               990 lazy.js
+12.08.2019  19:48             7.786 lexing.js
+12.08.2019  19:48            36.494 list.js
+12.08.2019  19:48             2.382 listLabels.js
+12.08.2019  19:48            14.649 map.js
+12.08.2019  19:48             2.051 marshal.js
+12.08.2019  19:48               718 moreLabels.js
+12.08.2019  19:48               892 nativeint.js
+12.08.2019  19:48               546 node.js
+12.08.2019  19:48               108 node_buffer.js
+12.08.2019  19:48               108 node_child_process.js
+12.08.2019  19:48                89 node_fs.js
+29.04.2019  14:23                89 node_fs2.js
+12.08.2019  19:48               108 node_module.js
+12.08.2019  19:48               108 node_path.js
+12.08.2019  19:48               353 node_process.js
+12.08.2019  19:48             3.365 obj.js
+12.08.2019  19:48               345 oo.js
+12.08.2019  19:48             7.292 parsing.js
+12.08.2019  19:48            15.818 pervasives.js
+12.08.2019  19:48            16.765 printexc.js
+12.08.2019  19:48             2.161 printf.js
+12.08.2019  19:48             4.164 queue.js
+12.08.2019  19:48             6.506 random.js
+12.08.2019  19:48            53.585 scanf.js
+12.08.2019  19:48            19.286 set.js
+12.08.2019  19:48             3.921 sort.js
+27.06.2019  04:07             2.447 spacetime.js
+12.08.2019  19:48             1.145 stack.js
+12.08.2019  19:48               205 stdLabels.js
+12.08.2019  19:48               121 std_exit.js
+12.08.2019  19:48            12.819 stream.js
+12.08.2019  19:48             6.394 string.js
+12.08.2019  19:48             1.556 stringLabels.js
+12.08.2019  19:48             2.159 sys.js
+27.06.2019  04:07             2.319 uchar.js
+12.08.2019  19:48            53.727 unix.js
+12.08.2019  19:48            10.622 unixLabels.js
+12.08.2019  19:48            15.024 weak.js
+             182 Datei(en),      1.365.207 Bytes
+               2 Verzeichnis(se), 17.390.043.136 Bytes frei
+```
+
+## Comment by rossberg, 2019-08-16
+
+That looks fine. Hm. I just committed another change to the script that avoids the copying. Can you give it a shot?
+
+## Comment by CarpeDiemKopi, 2019-08-16
+
+Yes, I will give it a shot now.
+
+## Comment by CarpeDiemKopi, 2019-08-16
+
+It's working.
+
+```
+Charleen@ROY /cygdrive/d/development/OCaml/spec/interpreter
+$ ls
+_build  exec  LICENSE  Makefile  README.md  script  text  valid  wasm.debug  winmake.bat
+binary  host  main     meta      runtime    syntax  util  wasm   wast.js
+```
+
+Thank you for your trouble. I learned some scripting tricks from you.
+
+## Comment by CarpeDiemKopi, 2019-08-16
+
+I will document the instructions for building spec/interpreter from source under CygWin step by step in my answer of the StackExchange question: **How can I install OCaml with OPam on windows?** here
+
+This can then be used for issue 1048:  OCaml Dependency is Problematic for Windows
+

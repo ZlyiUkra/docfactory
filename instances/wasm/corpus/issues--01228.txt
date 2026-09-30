@@ -1,0 +1,82 @@
+# WebAssembly spec issue #1228: Clarify binary encoding of prefixed opcodes
+# джерело: https://github.com/WebAssembly/spec/issues/1228
+# отримано: 2026-09-30
+
+Issue #1228, opened by bnjbvr on 2020-07-28, closed (completed) on 2021-10-07.
+
+Some opcodes are prefixed by a single opcode byte, but it's unclear how to encode the "sub"opcodes that are following (e.g: i32 signed saturated truncation from f32, 0xfc is the prefix, 0x00 is the subopcode byte). My reading of https://webassembly.github.io/spec/core/binary/instructions.html seems to tend towards "it's a single byte", but some implementations (namely Binaryen, WABT, Spidermonkey) seem to allow a variable-length u32 there. In addition to this, the upcoming SIMD spec will introduce variable-length u32 subopcodes, and since there might be a lot of them, it makes sense to use variable-length encoding there. So two questions here:
+
+1. Do we want to uniformize subopcodes encoding, that is, follow SIMD's way and use variable-length u32 encoding for all the prefixes?
+2. If not, would it make sense to precise in the spec text that these should be a fixed (as opposed to variable-length) single byte?
+
+## Comment by RReverser, 2020-07-28
+
+I'd say the grammar is pretty well defined in that `0xHH` notation is used for constants encoded as explicit bytes: https://webassembly.github.io/spec/core/binary/values.html#bytes
+
+If some implementation doesn't read them as such, it's likely a bug.
+
+## Comment by ngzhian, 2020-07-28
+
+> but some implementations (namely Binaryen, WABT, Spidermonkey) seem to allow a variable-length u32 there
+
+Do you have a repro case here? Fwiw V8 will only read LEB128 for SIMD.
+
+Took a quick look at wabt, seems to read LEB128 for all prefixed opcodes https://github.com/WebAssembly/wabt/blob/master/src/binary-reader.cc#L232 @binji
+
+## Comment by ngzhian, 2020-07-28
+
+> Do we want to uniformize subopcodes encoding, that is, follow SIMD's way and use variable-length u32 encoding for all the prefixes?
+
+Probably not. LEB128 means we need 2 bytes for opcodes >= 0x80. So for proposals that have >=0x80 but <= 0xFF, they require an extra byte, which is not necessary.
+
+## Comment by bnjbvr, 2020-07-28
+
+> Do you have a repro case here? Fwiw V8 will only read LEB128 for SIMD.
+
+Yes I do! This is a binary test case, so here's the module's bytes, wrapped in a JS test:
+
+```
+let buffer = new Uint8Array([0,97,115,109,1,0,0,0,1,8,1,96,3,127,127,127,1,127,3,2,1,0,7,8,1,4,109,97,105,110,0,0,10,10,1,8,0,0,252 /* here */,128,0,0,0,11,0,14,4,110,97,109,101,1,7,1,0,4,109,97,105,110]).buffer;
+
+if (WebAssembly.validate(buffer)) {
+  throw new Error('invalid or valid, that is the question');
+}
+```
+
+I should add: for non SIMD prefixed opcodes, i *think* that v8 does use the fixed u8 encoding. Using var u32 makes sense for SIMD opcodes, which may be numerous.
+
+## Comment by binji, 2020-07-28
+
+There was a CG decision in 2017 to say that all prefixed instructions would be a prefix byte followed by a LEB128. It's unfortunate that the spec doesn't implement it this way. For now, I think we should go one of two directions:
+
+1) Keep the spec as it is, and fix existing implementations to require a single byte for the math prefix. (This is the only prefix byte currently in phase 5). We can extend this to LEB128 later, as we've done for other fields.
+2) Consider this a mistake in the spec, and update it to LEB128 now. Similarly, update all upcoming proposals.
+
+Personally, I'd prefer to do the second.
+
+## Comment by lars-t-hansen, 2020-07-29
+
+I agree with @binji - it would be better to fix this now and be done with it than having to make a case-by-case decision for this for every prefix byte forevermore.  I tend to think that @ngzhian's objection about encoding size is not very compelling.
+
+## Comment by ngzhian, 2020-07-29
+
+Yea agree it's not a big factor, I don't know how many proposals will fall into that magic range between 0x80 and 0xff number of instructions, it looks like either they have very little instructions that they fit in 0x80, or that they have so many that they need SIMD.
+
+Besides encoding size, we found some slowdown in compilation speed due to using LEB encoding. It could be due to the branching (checking if byte or LEB), so if we make everything LEB, we can probably gain that back.
+
+## Comment by tlively, 2020-07-29
+
+@binji I wonder if there's a way we can make that CG decision more discoverable. This question seems to consistently come up a couple times a year.
+
+## Comment by binji, 2020-07-29
+
+@tlively I don't think it will be so bad once this change is in the spec, and in the in-flight proposals/overviews.
+
+## Comment by binji, 2020-07-29
+
+Added agenda item here: https://github.com/WebAssembly/meetings/pull/610
+
+## Comment by binji, 2020-08-05
+
+We agreed in the meeting that to change the spec (and all proposals) to use a single prefix byte followed by an leb128-encoded opcode. See https://github.com/WebAssembly/spec/pull/1235 for the spec change.
+

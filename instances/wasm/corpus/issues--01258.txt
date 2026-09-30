@@ -1,0 +1,86 @@
+# WebAssembly spec issue #1258: Binary scripts can still contain quoted modules
+# джерело: https://github.com/WebAssembly/spec/issues/1258
+# отримано: 2026-09-30
+
+Issue #1258, opened by mbovel on 2020-10-13, closed (completed) on 2020-10-14.
+
+Given the binary scripts grammar, I would have expected that a script converted to a binary script using the reference interpreter (`interpreter/wasm -d -u test/core/load.wast -o load.bin.wast`) would not contain any quoted module anymore. This does not seem to be the case: malformed module in text format are preserved, as in `load` for example:
+
+```wast
+...
+(assert_malformed
+  (module quote
+    "(memory 1)(func (param i32) (result i32) (i32.load32_s (local.get 0)))"
+  )
+  "unknown operator"
+)
+...
+```
+
+This makes sense, as there is no equivalent binary representation.
+
+However, the result then does not conform to the documented grammar for binary scripts.
+
+Therefore, would that make sense to either:
+
+1. Make the conversion from script to binary script strip all `assert_malformed` where the argument is a quoted module in text format?
+2. Update the grammar in the documentation to take into account that `assert_malformed` argument can still be a quoted module?
+
+     Alternative grammar proposal for binary scripts
+
+    Using `<bin_module>` instead of `<module>` where the module is guaranteed to be binary form, leaving `<module>` otherwise:
+
+```
+    binscript: <cmd>*
+
+    cmd:
+      <bin_module>                                   ;; define, validate, and initialize module
+      ( register <string> <name>? )                  ;; register module for imports
+      <action>                                       ;; perform action and print results
+      <assertion>                                    ;; assert result of an action
+
+    bin_module:
+      ( module <name>? binary <string>* )            ;; module in binary format (may be malformed)
+
+    action:
+      ( invoke <name>? <string> <expr>* )            ;; invoke function export
+      ( get <name>? <string> )                       ;; get global export
+
+    assertion:
+      ( assert_return <action> <result>* )           ;; assert action has expected results
+      ( assert_trap <action> <failure> )             ;; assert action traps with given failure string
+      ( assert_exhaustion <action> <failure> )       ;; assert action exhausts system resources
+      ( assert_malformed <module> <failure> )        ;; assert module cannot be decoded with given failure string
+      ( assert_invalid <bin_module> <failure> )      ;; assert module is invalid with given failure string
+      ( assert_unlinkable <bin_module> <failure> )   ;; assert module fails to link
+      ( assert_trap <bin_module> <failure> )         ;; assert module traps on instantiation
+```
+
+Side question: could someone confirm that a WebAssembly interpreter does _not_ need to implement the textual format to be compliant to the spec? (The spec have a note for this in the embedding section that seems to confirm it: "For example, an implementation may not support parsing of the text format."). Consequently, could an implementation that does not support the text format simply ignore `(assert_malformed (module quoted ...) ...)` assertions and still be standard-compliant?
+
+## Comment by rossberg, 2020-10-14
+
+Hm, I can't reproduce that. When I run the command, all quote forms are removed. And it's certainly the intention of the grammar that they are excluded.
+
+The concretisation of the binary grammar was a relatively recent change (#1173). Are you sure your interpreter built is up-to-date?
+
+> Side question: could someone confirm that a WebAssembly interpreter does not need to implement the textual format to be compliant to the spec?
+
+Yes, engines do not need to understand the text format, and in practice they typically don't. But none of the assertion language is part of the official Wasm text format as defined by the spec anyway, it belongs to the extended "script" .wast format used for testing (which isn't formally defined beyond the interpreter docs).
+
+## Comment by titzer, 2020-10-14
+
+I haven't seen quoted modules coming out of the reference interpreter. I am using it to translate spec tests (.wast) to (.bin.wast). I can confirm that an engine only needs to understand the spec test commands and does not need to parse quoted modules in order to pass the spec test suite.
+
+## Comment by mbovel, 2020-10-14
+
+> Are you sure your interpreter built is up-to-date?
+
+My bad, I was indeed using a revision before #1173 (with the intention of testing with version WG 1.0 of the spec). #1173 does what I suggested in point 1.: it omits quoted modules when converting to the binary format.
+
+> I can confirm that an engine only needs to understand the spec test commands and does not need to parse quoted modules in order to pass the spec test suite.
+
+Perfect, this is exactly what I wanted.
+
+Thank you for your help!
+

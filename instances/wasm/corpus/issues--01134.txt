@@ -1,0 +1,39 @@
+# WebAssembly spec issue #1134: data.wast and elem.wast test assert duplicate identifiers in text format are accepted
+# джерело: https://github.com/WebAssembly/spec/issues/1134
+# отримано: 2026-09-30
+
+Issue #1134, opened by alexcrichton on 2020-02-26, closed (completed) on 2020-02-27.
+
+According to https://webassembly.github.io/spec/core/text/conventions.html#contexts it says:
+
+> An identifier context is well-formed if no index space contains duplicate identifiers.
+
+But there are two tests which actually assert that duplicate identifiers are accepted:
+
+* https://github.com/WebAssembly/spec/blob/5cc5c69844d879016fc81ba0654c6f02244c315b/test/core/data.wast#L15-L18
+* https://github.com/WebAssembly/spec/blob/master/test/core/elem.wast#L15-L18
+
+Albeit these are for future features to wasm so they're not technically covered by the current spec as-is. Is this a bug in the tests that the identifier names should be updated there to not collide?
+
+Additionally this was originally sourced from https://github.com/bytecodealliance/wat/issues/60 where the text parser there doesn't account for duplicate identifiers. This leads me to conclude that there aren't actually any tests in the test suite right now which assert that duplicate identifiers fail to parse, is that perhaps an intentional omission or something that should be added to the test suite? (I'd be happy to send a PR!)
+
+## Comment by binji, 2020-02-26
+
+Confusingly, the `$m` name here is the name of the memory to apply the data segment to, not the name of the data segment itself (which was not defined in the MVP spec).
+
+## Comment by rossberg, 2020-02-26
+
+Ah, in the MVP version of the text format the identifiers after `data` or `elem` weren't actually binders, but references to memories and tables. This no longer makes sense with the bulk instructions proposal, so the syntax had to change, see the modified version of these tests in the proposal repo:
+
+* https://github.com/WebAssembly/bulk-memory-operations/blob/master/test/core/data.wast#L15-L18
+
+Technically, this was a breaking change to the text format. But since there was no use case for the syntax previously, that was probably fine. (It was my bad for designing this syntax in the first place, but at the time I didn't foresee any need to name segments.)
+
+## Comment by alexcrichton, 2020-02-26
+
+Oh right yeah, forgot about that! In that case it sounds like these tests are "expected to fail if you implement bulk memory", and otherwise it's still true that duplicate identifiers shouldn't be allowed. If that sounds right, I can submit a PR to add some tests to assert that duplicate identifiers are errors and we can close this out.
+
+## Comment by rossberg, 2020-02-26
+
+Sounds good!
+

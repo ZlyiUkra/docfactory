@@ -1,0 +1,28 @@
+# WebAssembly spec issue #1187: Suggestion: runtime ability to get a type index/identifier for function pointers
+# джерело: https://github.com/WebAssembly/spec/issues/1187
+# отримано: 2026-09-30
+
+Issue #1187, opened by vvuk on 2020-04-28, closed (completed) on 2020-05-01.
+
+One of the most common bugs I find is signature mismatches when calling functions by function pointer.  These are often a pain to track down, usually involving figuring out what the table index is and then manually looking up the function.  It would be really handy if there was some kind of instruction to retrieve an integer representing the type of a function pointer at runtime, so that code could have asserts like:
+
+```
+void* GoodFunc() {}
+
+int atexit(void (*func)(void))
+{
+    assert(__wasm_signature_type(funcptr) == __wasm_signature_type(GoodFunc));
+    ...
+}
+```
+
+to catch the error at setup of the function pointer/callback, and not at invocation time.
+
+## Comment by lukewagner, 2020-04-30
+
+Hi Vlad!  Unfortunately, I think this would be difficult and conflicting with some other wasm goals to define at a core wasm spec level.  On the other hand, the toolchain is in a good position to do this.  If you're talking about C function pointers, that means an `i32` index in the global `funcref` table built by the toolchain, so as a debugging option, the toolchain could maintain a parallel table of signatures whose values it gets to invent.
+
+## Comment by vvuk, 2020-05-01
+
+I figured the wasm module already has a set of types, and knows what type each function is so should be able to manage to return something.  But you're right, it could be handled at the toolchain level as well.  Ah well!
+
