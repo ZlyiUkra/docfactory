@@ -39,7 +39,9 @@ def _text(html: str, url: str, stamp: str, version: str, ends: list) -> str:
     start = m.end()
     stop = min((e.start() for e in (r.search(html, start) for r in ends) if e),
                default=len(html))
-    body = _markup.html_body(_LINE.sub("</span>\n", html[start:stop]))
+    # Якір заголовка у v3 — нульової ширини пробіл (U+200B) перед текстом: у тексті він
+    # невидимий, але «​Quick reference» — вже інше слово для пошуку.
+    body = _markup.html_body(_LINE.sub("</span>\n", html[start:stop])).replace("​", "")
     _markup.require(title, body, url)
     return _markup.document(title, url, stamp, body, version)
 
