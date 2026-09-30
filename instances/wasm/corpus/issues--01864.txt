@@ -1,0 +1,76 @@
+# WebAssembly spec issue #1864: Inconsistencies with memory and table max limits in core spec, js-api spec and tests
+# джерело: https://github.com/WebAssembly/spec/issues/1864
+# отримано: 2026-09-30
+
+Issue #1864, opened by evicy on 2024-11-13, open.
+
+### Current status:
+
+After the memory64 update, the spec says that (link):
+- table limits must be within range `2^addrtype - 1`, i.e. for table32 up to `2^32 - 1`, for table64 up to `2^64 - 1`;
+- memory limits must be within range `2^(addrtype - 16)`, i.e. for memory32 up to `2^16` pages, for memory64 up to `2^48` pages.
+This means that we should throw CompileErrors if the limits are exceeded.
+---
+After the memory64 update, the js-api says that (link):
+Regarding tables:
+- throw a CompileError if "The maximum size of a table is 10,000,000." is exceeded;
+- throw a CompileError if "The maximum number of table entries in any table initialization is 10,000,000." is exceeded;
+- throw a RuntimeError if "The maximum size of a table is 10,000,000." is exceeded;
+
+Regarding memories:
+- throw a RuntimeError if for memory32 `2^16` pages is exceeded;
+- throw a RuntimeError if for memory64 `2^18` pages is exceeded;
+---
+After the memory64 update, the spec tests say that (link):
+Regarding tables:
+- table32 with max size `2^32 - 1` is still valid, if exceeded throw CompileError;
+- throw CompileError for table32 with initial size `2^32`;
+- table64 with max size `2^64 - 1` is still valid;
+
+Regarding memories:
+- memory32 with max size `2^16` pages is still valid, if exceeded throw CompileError;
+- memory64 with max size `2^16` pages is still valid;
+- throw CompileError for memory64 with initial or max size `2^48 + 1`.
+
+---
+After the memory64 update, the js-api test `limits.any.js` tests:
+Regarding tables:
+- instantiation fails if the initial table size is `10,000,000 + 1`;
+- instantiation succeeds if the max size is `10,000,000 + 1`;
+- growing table fails, INCORRECT (Wasm function in line 228 returns `wasmI32Const(-1)` by default);
+
+Regarding memories:
+- no memory tests!
+---
+
+### Proposed changes:
+
+1. js-api spec: PR
+    a) remove sentence to throw CompileError if "The maximum size of a table is 10,000,000.", as these tables are valid
+    b) remove sentence to throw CompileError if "The maximum number of table entries in any table initialization is 10,000,000.", as these tables are valid
+    c) adjust sentence to throw RuntimeError if "The maximum size of a table is 10,000,000.". It's unclear if it's both initial and max size of the table.
+
+2. spec tests:
+     a) add tests for table32 with `2^32 - 1` and table64 with `2^64 - 1` initial page size is still valid PR;
+     b) add test that memory32 with initial size `2^16` pages is still valid PR;
+     c) add test that memory64 with initial OR max size `2^48` pages is still valid PR and PR;
+
+3. js-api limits.any.js:
+    a) fix table grow function in `testDynamicLimit()`
+    b) add tests for memory instantiation (initial and max size are OOB or just in bounds)
+    c) add tests for memory64 or table64
+
+## Comment by bvisness, 2024-11-13
+
+> growing table fails, INCORRECT (growing returns -1 by default);
+
+The `table.grow` wasm instruction returns -1 on failure, but the `Table.grow()` JS method throws RangeError on failure. So I think the existing test is correct.
+
+## Comment by evicy, 2024-11-14
+
+Sorry, I wasn't clear with the comment. In limits.any.js:228 we have a Wasm function `grow` that just returns `wasmI32Const(-1)` by default.
+
+## Comment by sbc100, 2025-01-15
+
+Transferring this issue to the main spec repo since memory64 is being archived.
+

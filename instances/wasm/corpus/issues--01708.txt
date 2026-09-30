@@ -1,0 +1,53 @@
+# WebAssembly spec issue #1708: The definition of validation of br_table is inadequate
+# джерело: https://github.com/WebAssembly/spec/issues/1708
+# отримано: 2026-09-30
+
+Issue #1708, opened by r1ru on 2023-11-21, closed (completed) on 2023-11-21.
+
+The spec defines the validation of br_table as follows and  I think this definition is inadequate.
+
+validate_br_table
+
+When I first saw this definition, I took it to mean "all labels have the same type". However, I realised my mistake when I saw the following test in unreached-valid.wast.
+
+https://github.com/WebAssembly/spec/blob/main/test/core/unreached-valid.wast#L49
+
+unreached-valid
+
+In my first interpretation, this module is invalid because [f32] and [f64] are not the same.
+In order for this module to be valid, t* must be something like [f32 f64].
+
+The problem is that it is unclear what is intended by "corresponding" in the spec.
+
+## Comment by rossberg, 2023-11-21
+
+> The problem is that it is unclear what is intended by "corresponding" in the spec.
+
+That is the type in the j-th position, i.e., 𝑡_𝑗 and 𝑡'_𝑖𝑗 are in the same position in their respective vectors. That wording is used in other places of the spec as well. I suppose it is unclear here due to the missing precondition that 𝑡* and C.labels[𝑙_𝑖] have the same length. Please see #1709 for a fix.
+
+## Comment by conrad-watt, 2023-11-21
+
+Just to unpack this a little more, instead of "all labels have the same type" it would be more precise to say "all labels are supertypes of the current stack type" - the reason that the linked test validates is because in unreachable code, there's a conceptual "bottom" type which is a subtype of both `f32` and `f64`, so effectively the current stack is typed as `[⊥]`, and we have `[⊥] <: [f32]` and `[⊥] <: [f64]`.
+
+In particular the following _wouldn't_ validate:
+
+```
+(module
+  (func (export "meet?")
+    (block (result f64)
+      (block (result f32)
+        (f32.const 0) (f64.const 0)
+        (br_table 0 1 1 (i32.const 1))
+      )
+      (drop)
+      (f64.const 0)
+    )
+    (drop)
+  )
+)
+```
+
+## Comment by r1ru, 2023-11-21
+
+Thank you!
+

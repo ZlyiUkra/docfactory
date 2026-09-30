@@ -1,0 +1,43 @@
+# WebAssembly spec issue #1586: Feature request: test-local variables in .wast
+# джерело: https://github.com/WebAssembly/spec/issues/1586
+# отримано: 2026-09-30
+
+Issue #1586, opened by titzer on 2023-02-06, open.
+
+In a CG call a few weeks back, I mentioned that having the ability to have test-local variables in `.wast` files would be useful.
+
+In particular, many tests that use reference types, mostly in proposals right now (such as `function-references` and `gc` use tables internal to a module and an initializer. These tests would be shorter, easier to write, and easier to debug (a key productivity boost for engine implementers) if the test itself could bind variables.
+
+Exact details of syntax and semantics TBD.
+
+Sketch:
+```
+(module
+  (func "create_ref1" (result anyref))
+  ...
+  (func "take_ref" (param anyref) (result i32))
+)
+
+(test-local $ref1 anyref (invoke "create_ref1"))
+
+(assert_return (invoke "take_ref" (test-local.get $ref1)) (i32.const 11))
+```
+
+That would remove the need for tables, but the issue of needing to create objects/functions *inside* a module (because types and decls live in modules) remains.
+
+## Comment by tlively, 2023-02-06
+
+I agree writing tests in terms of table indices makes them hard to understand and modify. Would using exported globals give a similar DevX? I suppose that you can't initialize an exported global with the result of a function call, but maybe it would be ok to keep the `init()` function pattern the test currently use.
+
+## Comment by rossberg, 2023-02-06
+
+I was about to suggest the same -- fwiw, the wast script language already has a `(get "name")` action for accessing exported globals.
+
+There is a gap though, namely, that `invoke` can only take constants as arguments. I think what we need first and foremost is to beef up the syntax of these script "actions" and turn them into a tiny expression language of nested calls and global reads.
+
+In addition, we could introduce new forms of top-level definitions, like @titzer suggests. However, that is inherently limited by the inability to refer to types, not having arbitrary instructions, etc.. So the added value over module globals is likely small.
+
+## Comment by titzer, 2023-02-07
+
+I'm also fine with using globals as arguments to `invoke` as a first step.
+

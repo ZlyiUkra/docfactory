@@ -1,0 +1,44 @@
+# WebAssembly spec issue #1843: Unicode identifiers in the WAT format
+# джерело: https://github.com/WebAssembly/spec/issues/1843
+# отримано: 2026-09-30
+
+Issue #1843, opened by xfq on 2024-11-11, closed (completed) on 2025-07-16. Labels: i18n-needs-resolution.
+
+In https://github.com/WebAssembly/spec/issues/1618 :
+
+> With the annotations proposal (Wasm 3) we now support string-escaping arbitrary Unicode as identifiers, so I think we can close this.
+
+We (W3C i18n WG) have two questions about the resolution:
+
+1. Why are Unicode identifiers not allowed directly in the WebAssembly text format (i.e., string-escaping seems to be required)? Although web developers usually don't read them, devtools developers, Wasm module authors, or WebAssembly compiler developers might read them and find Unicode identifiers useful. Escapes will make the identifiers unreadable. See https://github.com/unicode-org/message-format-wg/blob/5f6657b54f60b35a8fb17653942551ebf0b862ca/spec/message.abnf#L56 for an example of a language supporting Unicode identifiers, using XML-Name related restrictions.
+
+3. Why is it only supported in Wasm 3, but not Wasm 2 (which is not CR yet)?
+
+## Comment by rossberg, 2024-11-11
+
+> 1. Why are Unicode identifiers not allowed directly in the WebAssembly text format (i.e., string-escaping seems to be required)? Although web developers usually don't read them, devtools developers, Wasm module authors, or WebAssembly compiler developers might read them and find Unicode identifiers useful. Escapes will make the identifiers unreadable. See https://github.com/unicode-org/message-format-wg/blob/5f6657b54f60b35a8fb17653942551ebf0b862ca/spec/message.abnf#L56 for an example of a language supporting Unicode identifiers, using XML-Name related restrictions.
+
+The new syntax merely requires delimiting identifiers with quote characters. Escapes are *not* necessary, except for exceptional cases of names that wouldn't even be allowable as unquoted identifiers, such as ones themselves containing quotes or control characters.
+
+The Wasm text format is a lightweight interchange format that is used by a wide variety of tools, with varying degrees of complexity and resource constraints, on a wide range of platforms, from Web to small embedded systems. Undelimited Unicode identifiers, if handled properly according to Unicode UAX # 31, would add substantial complexity to both specification and implementations: Unicode's definition of identifier is complicated and requires Unicode property tables to handle. The burden would be on all tools processing the Wasm text format, and is unlikely to get implemented on all, causing fragmentation. In contrast, to understand quoted identifiers, tools merely need to implement UTF-8 decoding, which is a few lines of code.
+
+As UAX # 31 admits itself:
+
+"The disadvantage of working with the lexical classes defined previously is the storage space needed for the detailed definitions, plus the fact that with each new version of the Unicode Standard new characters are added, which an existing parser would not be able to recognize. In other words, the recommendations based on that table are not upwardly compatible."
+
+Unfortunately, the alternative it suggests (negative character classification) also has serious problems, such as reserving the entire code space for identifiers, and hence turning many future extensions to the language's lexical syntax that would otherwise be conservative into breaking changes.
+
+> 2. Why is it only supported in Wasm 3, but not Wasm 2 (which is not CR yet)?
+
+Simply because it did not make the feature cut, which already happened in 2021. But Wasm 3 is essentially done at this point, so will be pushed into the process immediately after Wasm 2 is published.
+
+## Comment by xfq, 2025-07-16
+
+> The new syntax merely requires delimiting identifiers with quote characters. Escapes are _not_ necessary, except for exceptional cases of names that wouldn't even be allowable as unquoted identifiers, such as ones themselves containing quotes or control characters.
+>
+> The Wasm text format is a lightweight interchange format that is used by a wide variety of tools, with varying degrees of complexity and resource constraints, on a wide range of platforms, from Web to small embedded systems. Undelimited Unicode identifiers, if handled properly according to Unicode UAX # 31, would add substantial complexity to both specification and implementations: Unicode's definition of identifier is complicated and requires Unicode property tables to handle. The burden would be on all tools processing the Wasm text format, and is unlikely to get implemented on all, causing fragmentation. In contrast, to understand quoted identifiers, tools merely need to implement UTF-8 decoding, which is a few lines of code.
+
+We discussed this issue at the i18n WG Teleconference on December 19 last year. Although we strongly discourage this practice, we will not raise a formal objection.
+
+If you describe correctly how to parse the identifier, the rules can be clear, and looking up Unicode property tables is not that hard to implement. Adding quotes has a negative impact on the experience of developers who wish to use non-ASCII identifiers.
+

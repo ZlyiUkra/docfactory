@@ -1,0 +1,96 @@
+# WebAssembly spec issue #1861: [js-api] ToWebAssemblyValue AO does not convert undefined to 0
+# джерело: https://github.com/WebAssembly/spec/issues/1861
+# отримано: 2026-09-30
+
+Issue #1861, opened by ADKaster on 2024-12-23, closed (completed) on 2025-01-06.
+
+In https://wpt.fyi/results/wasm/jsapi/global/constructor.any.html?label=experimental&label=master&aligned
+
+Each major browser passes the subtests `Explicit value undefined for type {f32, f64, i64}`, which expect that an undefined value for `value` for each of those types will become the value 0.
+
+However, https://webassembly.github.io/spec/js-api/#dom-global-global step 5 says to call ToWebAssemblyValue if and only if the value is *missing*, not if it is undefined. Thus we should be expecting a different result for the test cases:
+
+- https://github.com/web-platform-tests/wpt/blob/master/wasm/jsapi/global/constructor.any.js#L123
+- https://github.com/web-platform-tests/wpt/blob/master/wasm/jsapi/global/constructor.any.js#L148
+
+Given that every major implementation is treating missing the same as undefined, the spec should probably change.
+
+Otherwise, we would expect
+
+```
+new WebAssembly.Global( { "value": "i64" }, undefined); --> throws TypeError
+new WebAssembly.Global({ "value": "f32", undefined); --> NaN
+new WebAssembly.Global({ "value": "f64, undefined); --> NaN
+```
+
+As ToWebAssemblyValue calls https://tc39.es/ecma262/multipage/abstract-operations.html#sec-tonumber and https://tc39.es/ecma262/multipage/abstract-operations.html#sec-tobigint64 directly. Neither of those AOs in ES normalize undefined to 0.
+
+## Comment by Ms2ger, 2025-01-06
+
+So to be clear, this is the test you're looking at:
+```js
+const argument = { "value": "i32" };
+const global = new WebAssembly.Global(argument, undefined);
+assert_equals(global.value, 0, "value");
+assert_equals(global.valueOf(), 0, "valueOf");
+```
+and the relevant idl is
+```webidl
+[LegacyNamespace=WebAssembly, Exposed=*]
+interface Global {
+  constructor(GlobalDescriptor descriptor, optional any v);
+  any valueOf();
+  attribute any value;
+};
+```
+The relevant prose is at step 1 of https://webidl.spec.whatwg.org/#create-an-interface-object
+
+* args = [argument, undefined]
+* n = 2
+
+https://webidl.spec.whatwg.org/#compute-the-effective-overload-set
+* F = { the single defined constructor }
+* maxarg = 2
+* max = max(2, 2) = 2
+* arguments = [GlobalDescriptor, optional any]
+* n = 2
+* types = [GlobalDescriptor, any]
+* optionalityValues = ["required", "optional"]
+* S += (constructor, [GlobalDescriptor, any], ["required", "optional"])
+* (i = 1) S += (constructor, [GlobalDescriptor], ["required"])
+* (i = 0) break
+* S = [(constructor, [GlobalDescriptor, any], ["required", "optional"]), (constructor, [GlobalDescriptor], ["required"])]
+
+* S = [(constructor, [GlobalDescriptor, any], ["required", "optional"]), (constructor, [GlobalDescriptor], ["required"])]
+
+https://webidl.spec.whatwg.org/#dfn-overload-resolution-algorithm
+
+* maxarg = 2
+* n = 2
+* argcount = 2
+* S = [(constructor, [GlobalDescriptor, any], ["required", "optional"])]
+* d = -1
+* method = undefined
+* values = []
+* i = 0
+* (i < d: false)
+* (i = d: false)
+* callable = constructor
+* (i = d: false)
+* i = 0:
+  * V = `argument`
+  * type = GlobalDescriptor
+  * optionality = "required"
+  * values += `argument` converted to a dictionary
+* i = 1:
+  * V = undefined
+  * type = optional any
+  * optionality = "optional"
+  * values += "missing"
+
+* <constructor, values> = <constructor, [`argument` converted to a dictionary, "missing"]
+
+Now we move to the constructor steps at https://webassembly.github.io/spec/js-api/index.html#dom-global-global where step 4 checks v against the special value "missing" and calls DefaultValue(i32), i.e. i32.const 0.
+
+No spec change needed.
+

@@ -1,0 +1,47 @@
+# WebAssembly spec issue #1752: A question about max table size
+# джерело: https://github.com/WebAssembly/spec/issues/1752
+# отримано: 2026-09-30
+
+Issue #1752, opened by yamt on 2024-05-23, closed (completed) on 2024-05-23.
+
+i think the maximum usable size of a table is 0xffffffff because:
+
+* table.size uses i32 to return the size
+* table.grow uses 0xffffffff to indicate an error
+
+is it right?
+if so,
+
+* does the spec have the max possible size specified explicitly somewhere? or, is it allowed for a runtime to support table size 0x100000000 by ignoring the table.size/table.grow issues?
+* is a limits without max semantically identical to a limits with max=0xffffffff?
+
+the same questions apply to memory size with custom-page-sizes proposal.
+
+## Comment by rossberg, 2024-05-23
+
+The spec requires that the resulting limits are still valid after growth, or fail otherwise, which implies that tables cannot grow beyond 2^32-1.
+
+Hence indeed an absent table max is currently equivalent to a max of 2^32-1, and similarly for memories. However, IIRC, the threads proposal makes a distinction by requiring an explicit max for shared memories (which arguably is a bit artificial).
+
+## Comment by yamt, 2024-05-23
+
+> The spec requires that the resulting limits are still valid after growth, or fail otherwise, which implies that tables cannot grow beyond 2^32-1.
+>
+> Hence indeed an absent table max is currently equivalent to a max of 2^32-1, and similarly for memories. However, IIRC, the threads proposal makes a distinction by requiring an explicit max (which arguably is a bit artificial).
+
+ok. thank you for explanation.
+
+## Comment by jonathanmarvens, 2024-06-07
+
+I was a bit confused about this too, so I just want to add this comment for anyone else in the future who may run into this implementation detail and want some clarity.
+
+The `i32` *delta* that the `table.grow` instruction consumes can use up the full width of a 32-bit unsigned integer (*i.e.*, absent a maximum limit, a table of size `0` can grow all the way to exactly `4294967295` elements). If the growth operation succeeds, the *previous* size is returned (*i.e.*, left on the stack), so, *e.g.*, successfully growing a table of size `64` by `32` returns `64`, not `96`. If the growth operation fails, `-1` (*i.e.*, `0xffffffff`) is returned. When interpreted as unsigned, `0xffffffff` is `4294967295`, but since a table can never grow larger than `4294967295` elements and only the previous size is returned in this operation, there’s no scenario where `0xffffffff` being returned doesn’t mean failure.
+
+## Comment by rossberg, 2024-06-08
+
+@jonathanmarvens, there is one case where the result _is_ ambiguous: growing with a delta of 0 is always successful; hence growing a table of size 2^32-1 by 0 will succeed and return 2^32-1, which is indistinguishable from -1. But arguably that is too odd a case to matter in practice (and if one really wanted to, one could distinguish it by checking whether the given delta was 0).
+
+## Comment by jonathanmarvens, 2024-06-12
+
+@rossberg Thank you for that extra little detail!
+

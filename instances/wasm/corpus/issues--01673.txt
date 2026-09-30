@@ -1,0 +1,224 @@
+# WebAssembly spec issue #1673: Questions on oopsla2019.pdf
+# джерело: https://github.com/WebAssembly/spec/issues/1673
+# отримано: 2026-09-30
+
+Issue #1673, opened by yamt on 2023-07-24, closed (completed) on 2024-12-07.
+
+i'm trying to understand https://github.com/WebAssembly/spec/blob/main/papers/oopsla2019.pdf
+and have some questions.
+
+are "local" memory/global/table expected to work as
+thread-local storage?  that is, do they always involve
+TLS overhead even when threads are not used at all?
+(at least for a naive implementation)
+
+why is the "instantiate" opcode included in this same paper?
+to me, it looks like a very separate topic from the rest of the doc.
+
+does a value returned by ref.null have a shared/local distinction?
+
+Fig 2.
+reference types are
+```
+rt ::= sh anyref | sh funcref
+```
+and table types are
+```
+tt ::= sh rt[n]
+```
+does it mean
+```
+tt ::= sh (sh anyref | sh funcref)[n]
+```
+?
+
+Fig 11.
+what's the uplus operator?
+is it same as oplus in
+https://webassembly.github.io/spec/core/syntax/conventions.html#notation-compose
+?
+what's E[]?
+
+Fig 21.
+what's the turnstile operator (⊢) and colon (:) used here?
+eg.
+    ⊢ord:sh
+    ⊢ft:ok
+
+how does eg.
+```
+C ⊢ ex∗ func ft local t∗ e∗ : ex∗ ft
+```
+parse?
+
+p8 says
+```
+concurrent Wasm is explicit about which objects can be shared between threads, a
+nd which ones are only accessed in a thread-local manner
+```
+it made me think shared functions could access (its own copy of) local instance objects.
+otoh, p29 says
+```
+shared functions must only access shared state
+```
+it made me think shared functions couldn't access any local instance objects.
+i'm confused what can access what.
+
+## Comment by conrad-watt, 2023-07-24
+
+> are "local" memory/global/table expected to work as
+thread-local storage? that is, do they always involve
+TLS overhead even when threads are not used at all?
+(at least for a naive implementation)
+
+non-shared memory/table/global don't correspond to source-level TLS, which would have to be implemented using a different mechanism (either in shared linear memory, or using a further language extension). Shared functions are prevented from accessing non-shared state entirely (this hopefully also answers your last question).
+
+> why is the "instantiate" opcode included in this same paper?
+to me, it looks like a very separate topic from the rest of the doc.
+
+Now that we have multiple threads, we need to specify instantiation in a way that lets it interleave with execution in other threads. The approach for doing this in the paper isn't the only possible way.
+
+> Fig 2.
+reference types are...
+
+yes, a shared table (which to be clear is not part of the current spec and only a hypothetical sketch by the paper) could only contain shared references (this would be enforced by validation)
+
+> Fig 11.
+what's the uplus operator?
+
+Apologies, but I can't work out what you're referring to here.
+
+> Fig 21.
+what's the turnstile operator (⊢) and colon (:) used here?
+how does eg.
+>
+>C ⊢ ex∗ func ft local t∗ e∗ : ex∗ ft
+>parse?
+
+Note that the `ex*` here is an outdated way that older versions of the spec used to notate export names. If we strip these, then `C ⊢ func ft local t∗ e∗ : ft` means that "in type context `C`, the object `func ft local t∗ e∗` has type `ft`".
+
+## Comment by conrad-watt, 2023-07-24
+
+Just as a high-level point, that paper presents possible extensions to Wasm threads which are currently not part of the language or the initial threads proposal (e.g. shared functions, tables, references, the `fork` instruction). There have been some early-stage conversations about bringing some of these in as follow-on proposals (e.g. here).
+
+## Comment by yamt, 2023-07-24
+
+> > are "local" memory/global/table expected to work as
+> > thread-local storage? that is, do they always involve
+> > TLS overhead even when threads are not used at all?
+> > (at least for a naive implementation)
+>
+> non-shared memory/table/global don't correspond to source-level TLS, which would have to be implemented using a different mechanism (either in shared linear memory, or using a further language extension). Shared functions are prevented from accessing non-shared state entirely (this hopefully also answers your last question).
+
+right now, wasi-threads etc are relying on globals (like `__stack_pointer`) are thread-local.
+does the extension described in the paper prevent such a usage?
+
+>
+> > why is the "instantiate" opcode included in this same paper?
+> > to me, it looks like a very separate topic from the rest of the doc.
+>
+> Now that we have multiple threads, we need to specify instantiation in a way that lets it interleave with execution in other threads. The approach for doing this in the paper isn't the only possible way.
+>
+> > Fig 2.
+> > reference types are...
+>
+> yes, a shared table (which to be clear is not part of the current spec and only a hypothetical sketch by the paper) could only contain shared references (this would be enforced by validation)
+>
+> > Fig 11.
+> > what's the uplus operator?
+>
+> Apologies, but I can't work out what you're referring to here.
+
+the symbol used in the paper, which looks like tex \uplus to me.
+https://www.tutorialspoint.com/tex_commands/uplus.htm
+
+> > Fig 21.
+> > what's the turnstile operator (⊢) and colon (:) used here?
+> > how does eg.
+> > C ⊢ ex∗ func ft local t∗ e∗ : ex∗ ft
+> > parse?
+>
+> Note that the `ex*` here is an outdated way that older versions of the spec used to notate export names. If we strip these, then `C ⊢ func ft local t∗ e∗ : ft` means that "in type context `C`, the object `func ft local t∗ e∗` has type `ft`".
+
+ok.
+
+how about ⊢ without C on the left-side?
+eg. "⊢ft:ok"
+
+## Comment by yamt, 2023-07-24
+
+> Just as a high-level point, that paper presents possible extensions to Wasm threads which are currently not part of the language or the initial threads proposal (e.g. shared functions, tables, references, the `fork` instruction). There have been some early-stage conversations about bringing some of these in as follow-on proposals (e.g. here).
+
+i'm reading the paper in the context of https://github.com/WebAssembly/wasi-threads/issues/48
+
+## Comment by conrad-watt, 2023-07-24
+
+> right now, wasi-threads etc are relying on globals (like __stack_pointer) are thread-local.
+does the extension described the paper prevent such a usage?
+
+The compilation scheme assumed by wasi-threads would still work, because that scheme creates a separate Wasm instance for each thread. The `shared` annotations in the paper are there to facilitate sharing a _single_ instance between multiple threads, which isn't currently possible without further language extensions (i.e. shared functions).
+
+> the symbol used in the paper, which looks like tex \uplus to me.
+
+Ah ok. It's been a while since I wrote it, but I'm pretty sure it's intended to mean that the two concurrent (sets of) actions being merged must have non-equal timestamps. If so, I probably should have used a more standard disjoint union symbol. Sorry! Note though that this section of the paper is really deep in the weeds of the formal specification and there isn't too connection to the "language design" question of the threads feature.
+
+> how about ⊢ without C on the left-side?
+eg. "⊢ft:ok"
+
+That would mean "the object `ft` is well-formed". The same conventions are used in the spec (https://webassembly.github.io/spec/core/valid/modules.html).
+
+## Comment by yamt, 2023-07-24
+
+> > right now, wasi-threads etc are relying on globals (like __stack_pointer) are thread-local.
+> > does the extension described the paper prevent such a usage?
+>
+> The compilation scheme assumed by wasi-threads would still work, because that scheme creates a separate Wasm instance for each thread. The `shared` annotations in the paper are there to facilitate sharing a _single_ instance between multiple threads, which isn't currently possible without further language extensions (i.e. shared functions).
+
+well, my question is that, if we want to use the language extension described in the paper
+to implement C with pthread, we no longer can use the current C ABI, which uses a global
+as C stack pointer for the threaded code?
+
+> > the symbol used in the paper, which looks like tex \uplus to me.
+>
+> Ah ok. It's been a while since I wrote it, but I'm pretty sure it's intended to mean that the two concurrent (sets of) actions being merged must have non-equal timestamps. If so, I probably should have used a more standard disjoint union symbol. Sorry! Note though that this section of the paper is really deep in the weeds of the formal specification and there isn't too connection to the "language design" question of the threads feature.
+
+ok.
+
+> > how about ⊢ without C on the left-side?
+> > eg. "⊢ft:ok"
+>
+> That would mean "the object `ft` is well-formed". The same conventions are used in the spec (https://webassembly.github.io/spec/core/valid/modules.html).
+
+ok. i haven't noticed "ok" was a english word. :-)
+
+## Comment by conrad-watt, 2023-07-24
+
+> well, my question is that, if we want to use the language extension described in the paper
+to implement C with pthread, we no longer can use the current C ABI, which uses a global
+as C stack pointer for the threaded code?
+
+Yes, you'd need to use a different strategy, unless the core Wasm language was also extended with thread-local globals. See here for some recent discussions on this topic https://github.com/abrown/thread-spawn/discussions/12.
+
+## Comment by yamt, 2023-07-24
+
+> > well, my question is that, if we want to use the language extension described in the paper
+> > to implement C with pthread, we no longer can use the current C ABI, which uses a global
+> > as C stack pointer for the threaded code?
+>
+> Yes, you'd need to use a different strategy, unless the core Wasm language was also extended with thread-local globals. See here for some recent discussions on this topic abrown/thread-spawn#12.
+
+ok.
+just curious: what was the supposed use case at that time, if it wasn't pthread?
+
+## Comment by conrad-watt, 2023-07-24
+
+> just curious: what was the supposed use case at that time, if it wasn't pthread?
+
+It is possible to compile pthreads to a hypothetical "Wasm with shared instances", just not using a scheme that puts the stack pointer in a global, without even further language extensions such as "thread-local global".
+
+At the time the paper was written, the idea was just that shared functions/instances are the immediate next generalisation after shared memories (i.e. the current threads proposal), so it made sense to write about them. If we did add thread-local globals, that would still be building on top of shared functions/instances - the paper just didn't go that far.
+
+## Comment by sunfishcode, 2024-12-07
+
+The questions here appear to be answered; please file new issues if there are further questions.
+

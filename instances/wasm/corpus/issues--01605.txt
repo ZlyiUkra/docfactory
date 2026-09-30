@@ -1,0 +1,44 @@
+# WebAssembly spec issue #1605: Incorrect reduction rule for exiting a block normally
+# джерело: https://github.com/WebAssembly/spec/issues/1605
+# отримано: 2026-09-30
+
+Issue #1605, opened by HMPerson1 on 2023-02-18, closed (completed) on 2023-02-22.
+
+The spec currently lists a reduction rule: https://github.com/WebAssembly/spec/blob/51ff50a1f4f580e8d3bc185fd83479fdbb62ca7a/document/core/exec/instructions.rst#L2878 (i.e. there *must* be exactly `n` values on the stack)
+This line was recently changed in #1564.
+
+In the WebAssembly paper (Bringing the Web up to Speed with WebAssembly), this rule is listed as:
+image
+(i.e. leave stack untouched)
+(This matches the copy of this rule in the runtime section (#1152) and in both formalizations of the spec (coq, isabelle))
+
+My understanding is that the arity of a `label` describes the number of values that should be kept on the stack when *breaking*, not when exiting normally, since a `loop` reduces to a `label` whose arity is the `loop`'s *input* value count.
+
+This is the same conclusion reached in:
+- #608
+  - #609
+
+## Comment by rossberg, 2023-02-21
+
+The arity must of course be maintained on every exit from the block, including reaching the end regularly. But soundness of the type system ensures that there are exactly n values in that case. So the formulation of this rule doesn't matter one way or the other. I've gone a bit back and forth on which version I prefer, thus the differences. :)
+
+## Comment by HMPerson1, 2023-02-22
+
+This program
+```wast
+(loop (result i32) (i32.const 7))
+```
+reduces to (m=0, n=1)
+```wast
+(label_0 {(loop (result i32) (i32.const 7))} (i32.const 7))
+```
+According to the spec as currently written, this program is now stuck: there is 1 value on the stack but the `label`'s arity is 0.
+
+## Comment by conrad-watt, 2023-02-22
+
+Oops, I agree the current spec text isn't right and I probably should have caught this change in https://github.com/WebAssembly/spec/pull/1564.
+
+## Comment by rossberg, 2023-02-22
+
+Ouch, you are right, I missed that. Will fix.
+

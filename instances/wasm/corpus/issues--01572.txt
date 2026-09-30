@@ -1,0 +1,65 @@
+# WebAssembly spec issue #1572: Spec is unclear on label shadowing
+# джерело: https://github.com/WebAssembly/spec/issues/1572
+# отримано: 2026-09-30
+
+Issue #1572, opened by tomstuart on 2023-01-06, closed (completed) on 2023-01-26.
+
+As discussed in #210 and #303, it’s not clear from the spec whether a nested block may redefine (“shadow”) a label from one of its ancestors, although the test introduced by #216 makes it unambiguous that this is allowed in practice.
+
+Subjectively, I got the impression from reading the spec that label shadowing is explicitly _not_ allowed, because:
+
+1. the production which synthesises an updated identifier context for labels has a side condition which prevents the use of any identifier which already appears in the labels index space of the current context; and
+2. well-formedness of identifier contexts prevents duplicate identifiers in all index spaces.
+
+I can explain away point 2 by noting that — itself somewhat counterintuitively — well-formedness appears to be asserted only selectively, i.e. in special circumstances where we expect the labels index space to be empty anyway, but I have no explanation for point 1.
+
+It’s entirely possible I’ve misunderstood the spec, but either way, might it be clarified to make the situation more explicit?
+
+## Comment by rossberg, 2023-01-19
+
+Yes, the places in the spec that you cite the side condition you cite should actually be rather unambiguous about this. In particular, the condition in (1) rejects a symbolic label if it already exists in the context, so that any program attempting shadowing won't parse.
+
+Do you have any specific clarification in mind?
+
+## Comment by tomstuart, 2023-01-19
+
+I certainly feel that the incorrect side condition should be removed, and perhaps the prose updated to say explicitly that label shadowing is syntactically permitted.
+
+A question about clarity in principle (if not in practice) is whether the definition of well-formedness should exempt the `labels` index space from the uniqueness requirement, since duplicate labels are in general permitted and do not violate the spirit of a well-formed identifier context. Well-formedness is asserted infrequently enough that I believe this choice doesn’t affect the correctness of the specification, but informally it may be less surprising for a reader to be reassured that it is not an error to include duplicate labels in an otherwise well-formed context.
+
+## Comment by rossberg, 2023-01-19
+
+I think there is a misunderstanding: side condition and well-formedness _are_ correct. Rejecting shadowing is intended.
+
+## Comment by tomstuart, 2023-01-19
+
+Oh, apologies, I certainly have misunderstood then.
+
+The discussion in #210, for example, suggests that shadowing is permitted (“[Labels […] scope over the labelled expression, and can be shadowed within their scope](https://github.com/WebAssembly/spec/issues/210#issuecomment-173490935)”); #303 reiterates that suggestion (“labels simply use ordinary lexical scoping”); and an assertion in `labels.wast` (introduced in #216) is checking that the `redefinition` function correctly allows the outer `$l1` label to be shadowed by another definition of the same label by the inner `block`.
+
+Am I just not thinking about this correctly? Is there a reason why reuse of labels is not prevented by the side condition and well-formedness constraint?
+
+(Here’s a video of me being confused, if that helps to clarify my confusion.)
+
+## Comment by rossberg, 2023-01-19
+
+I'm sorry, you are right: the spec does not match test suite or prior discussion. So while it probably defines what it does intentionally (to be honest, I don't remember), that intent does not match prior intent.
+
+I'll prepare a fix. Thanks for bearing with me. :)
+
+## Comment by tomstuart, 2023-01-19
+
+Not at all, I’m just relieved I wasn’t missing something obvious! Thanks very much for explaining.
+
+## Comment by rossberg, 2023-01-19
+
+Please see #1579.
+
+## Comment by tomstuart, 2023-01-19
+
+Fantastic. This exactly matches what I was initially expecting to see. 🙏🏻
+
+## Comment by tomstuart, 2023-01-19
+
+(It’s particularly nice that this, by removing the old label from the context, doesn’t compromise well-formedness.)
+

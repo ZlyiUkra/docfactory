@@ -1,0 +1,103 @@
+# WebAssembly spec issue #1672: [Spec] Please do not use MathML for non-mathematical items
+# джерело: https://github.com/WebAssembly/spec/issues/1672
+# отримано: 2026-09-30
+
+Issue #1672, opened by ethindp on 2023-07-19, open.
+
+As it currently stands, the specification uses MathML for things like abstract syntax notation and such. Though this works for screen readers, most screen readers treat MathML as a single element, and not a set of characters, without entering certain navigation submodes which don't always provide the necessary visibility. MathML was also not designed for writing abstract syntax; it was designed for mathematical expressions. Thus, it makes it difficult to understand the grammar; for example, when I (a blind individual) read the notation for conventions for the binary format, my screen reader reads the conventions like what follows, which I don't believe was intended:
+
+* Terminal symbols are bytes expressed in hexadecimal notation: 0x0 capital F.
+* Nonterminal symbols are written in typewriter font: Val Type comma instr.
+* B to the nth power is a sequence of n is greater than or equal to 0 iterations of B.
+* B raised to the times power is a possibly empty sequence of iterations of B.
+
+You get the idea. So, to summarize, using MathML in this way (where the expression is not mathematically oriented) only adds superfluous noise and complexity that I have to wade through to understand the specification. In place of MathML where it isn't strictly necessary, I'd strongly consider BNF or a variant, such as EBNF, or PEG notation. I'd be happy to try to submit a PR making these changes, though given the size of the spec that'd be a lot for just one person to do.
+
+## Comment by rossberg, 2023-07-20
+
+The use of MathML is a rendering option, and not currently turned on by default, because it still is rather buggy on all browsers. I believe what you observe is the direct MathJax rendering? Though I have to say that the reader output that you quote is relatively accurate. I'd read these bullets as:
+
+* Terminal symbols are bytes expressed in hexadecimal notation: 0x0f.
+* Nonterminal symbols are written in typewriter font: valtype, or instr.
+* B to the nth is a sequence of n iterations of B, where n is greater than or equal to 0.
+* B star is a possibly empty sequence of iterations of B.
+
+As already mentioned on #1494, the grammars in the spec are attribute grammars that specify a translation in terms of semantic actions and with sometimes complex side conditions, both of which contain mathematical expressions defining meaning and connecting up to the rest of the spec. I'm afraid something simplistic as EBNF/PEG is insufficient here.
+
+To be honest, I don't have a good idea how the binary grammar could be accurately expressed without this. Without the translation, it wouldn't even say what any of the opcodes represent (as opposed to textual syntax, where you can usually guess from keywords).
+
+So I believe that the only feasible option for a more accessible binary grammar would be to create some separate, informal alternative that hand-waves over some of the mathematical details.
+
+## Comment by ethindp, 2023-07-20
+
+@rossberg Looking at the output example in #1494, whatever Python does makes reading the grammar perfectly fine. I attempted to use the accessibility features, but that introduced even more noise; for example, when reading the sentence "The recommended extension for files containing WebAssembly modules in binary format is...", my screen reader read it as "The recommended extension for files containing WebAssembly modules in binary format is left quote application monospace period W A S M right quote". With MathJax I can instruct it to show math differently (either as MathML code or as TeX commands) but I'm not sure how to just tell it "render this as text". (The TeX Commands option pops up a dialog and I have to do it for *every* MathML element.) For further evidence of how annoying the accessibility features are, I'm finding them impossible to configure (e.g., none of the verbosity options seem to do anything). So when I navigate the sections, e.g., with a vector, the accessibility features add in all this extraneous noise, turning a vector into "Application StartLayout 1st Row StartLayout 1st Row 1st Column Blank 2nd Column monospace v e c left parenthesis monospace upper B right parenthesis 3rd Column colon colon equals 4th Column n colon monospace u Baseline monospace 32 left parenthesis x colon monospace upper B right parenthesis Superscript n Baseline 5th Column right double arrow 6th Column x Superscript n EndLayout EndLayout".
+
+## Comment by ethindp, 2023-07-20
+
+As a possible alternative, have you looked at how the UEFI forum does it with ACPI machine language? (You can find that grammar here for ASL, and here for AML.) That's entirely byte-oriented, just as Wasm is, and they've modified BNF to incorporate information like "X should evaluate to Y at runtime" via things like `production ::= X => Y`. So when I was asking about EBNF earlier, and in issue #1494, I was asking if you could take what EBNF/PEG provides and modify it, and use that as a textual notation (e.g. For bytes you might do `IfOp ::= '0x0D'`). Then you just document your alterations, and that eliminates this problem entirely. As an example of what I mean, you could extend BNF with attributes and semantic actions, similar to how you might do it in a parser generator: as an example, you might write an arithmetic parser like this:
+
+```
+<expr> ::= <number>
+  { <expr>.val = <number>.val }
+| <expr> "+" <term>
+  { <expr>.val = <expr>.val + <term>.val }
+| <expr> "-" <term>
+  { <expr>.val = <expr>.val - <term>.val }
+;
+
+<term> ::= <number>
+  { <term>.val = <number>.val }
+| <term> "*" <factor>
+  { <term>.val = <term>.val * <factor>.val }
+| <term> "/" <factor>
+  { <term>.val = <term>.val / <factor>.val }
+;
+
+<factor> ::= "(" <expr> ")"
+  { <factor>.val = <expr>.val }
+| <number>
+  { <factor>.val = <number>.val }
+;
+
+<number> ::= "[0-9]+"
+  { <number>.val = parseInt(<number>.text) }
+;
+```
+
+Where items in `{` and `} are semantic actions, and `<`...`>` are attributes. (Obviously, this needs refinement, but this was just a conceptual example.) You might want the things that EBNF/PEG provides, so you could add those in, and then for semantic actions you just use pseudocode.
+
+## Comment by rossberg, 2023-07-21
+
+Thanks for the pointers! Unfortunately, we'd still need to connect to the math macros from the rest of the spec in the semantic actions and side conditions. I don't understand how that would be possible under that approach. Moreover, the document is already produced through a centralistic toolchain (Sphinx), and it's not clear how to compose that with another HTML-gen tool.
+
+That is to say, I do understand the value in producing something like that, but I don't see how it can _replace_ what's in the spec right now. The grammar in there is not an isolated thing. Creating a complementary grammar summary is the best bet for the time being, I'm afraid.
+
+## Comment by ethindp, 2023-07-21
+
+I'm not sure what else to provide then, and a complimentar grammar summary would mean you'd have to maintain two grammars unless you wanted the community to do that. The MathML use for just math is fine and you can merge the two when you need them but theoretically you shouldn't?
+
+## Comment by ethindp, 2023-07-31
+
+Commenting here to post another issue with this format: there are parts of the MathML that aren't readable by my assistive technology. For instance, this Latex:
+
+```tex
+\begin{split}\begin{array}{llll}
+\def\mathdef3995#1{{}}\mathdef3995{context} & C &::=&
+  \begin{array}[t]{l@{~}ll}
+  \{ & \href{../valid/conventions.html#context}{\mathsf{types}} & \href{../syntax/types.html#syntax-functype}{\mathit{functype}}^\ast, \\
+     & \href{../valid/conventions.html#context}{\mathsf{funcs}} & \href{../syntax/types.html#syntax-functype}{\mathit{functype}}^\ast, \\
+     & \href{../valid/conventions.html#context}{\mathsf{tables}} & \href{../syntax/types.html#syntax-tabletype}{\mathit{tabletype}}^\ast, \\
+     & \href{../valid/conventions.html#context}{\mathsf{mems}} & \href{../syntax/types.html#syntax-memtype}{\mathit{memtype}}^\ast, \\
+     & \href{../valid/conventions.html#context}{\mathsf{globals}} & \href{../syntax/types.html#syntax-globaltype}{\mathit{globaltype}}^\ast, \\
+     & \href{../valid/conventions.html#context}{\mathsf{elems}} & \href{../syntax/types.html#syntax-reftype}{\mathit{reftype}}^\ast, \\
+     & \href{../valid/conventions.html#context}{\mathsf{datas}} & {\mathrel{\mbox{ok}}}^\ast, \\
+     & \href{../valid/conventions.html#context}{\mathsf{locals}} & \href{../syntax/types.html#syntax-valtype}{\mathit{valtype}}^\ast, \\
+     & \href{../valid/conventions.html#context}{\mathsf{labels}} & \href{../syntax/types.html#syntax-resulttype}{\mathit{resulttype}}^\ast, \\
+     & \href{../valid/conventions.html#context}{\mathsf{return}} & \href{../syntax/types.html#syntax-resulttype}{\mathit{resulttype}}^?, \\
+     & \href{../valid/conventions.html#context}{\mathsf{refs}} & \href{../syntax/modules.html#syntax-funcidx}{\mathit{funcidx}}^\ast ~\} \\
+  \end{array}
+\end{array}\end{split}
+```
+
+Is completely unreadable by my screen reader (it just says that it couldn't read the math). It's an internal problem in the add-on I'm using that translates the math to decently comprehensible English, but I think this underscores the significance of this problem and that a solution should be found if at all possible.
+

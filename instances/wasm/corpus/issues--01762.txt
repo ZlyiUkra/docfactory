@@ -1,0 +1,51 @@
+# WebAssembly spec issue #1762: A question about the order of exports
+# джерело: https://github.com/WebAssembly/spec/issues/1762
+# отримано: 2026-09-30
+
+Issue #1762, opened by yamt on 2024-07-01, closed (completed) on 2024-12-06.
+
+does the order of exports in a module have any significance on the semantics of the module?
+
+in the spec, i couldn't find anything based on the order.
+
+otoh, some of wasm-c-api examples seem to rely on the order of exports:
+https://github.com/WebAssembly/wasm-c-api/blob/2ce1367c9d1271c83fb63bef26d896a2f290cd23/example/global.c#L136-L151
+
+toywasm has an option to sort exports in-place to speed up export uniqueness check and later lookup.
+https://github.com/yamt/toywasm/blob/fce8455ae4adf73d99f7e9f8893122e536c4a63c/lib/module.c#L2294
+(toywasm doesn't provide wasm-c-api.)
+
+## Comment by rossberg, 2024-07-01
+
+Semantically, it doesn't matter for the module itself. This is in fact the case for the internal order of any section in the binary format — except for globals, where validation has recently been relaxed to allow initialisation dependencies in definition order.
+
+But yes, the order of imports and exports is reflected in the module type, and some interfaces, such as the C API, use that order for simplicity.
+
+## Comment by yamt, 2024-07-01
+
+i thought users of wasm-c-api were supposed to iterate over the list of exports to find relevant entries by their names/types/etc.
+so, i got a bit surprised to see there are wasm-c-api samples using the order as if there is externally visible "export index".
+is it even a valid use? if so, i suspect eg. wast should have a way to use the "export index" to test it.
+
+## Comment by rossberg, 2024-07-01
+
+Users of the C API can still look up by name using the export types of the module. Just iterate both lists together, they don't _have to_ assume a particular order. But if they happen to know the positional order then they can use that directly.
+
+In other words, imports/exports can be viewed as both named and positional parameters/results.
+
+Not sure how we could add a test for positional order to wast, though, since the JS API does not currently expose the order.
+
+## Comment by yamt, 2024-07-01
+
+> Not sure how we could add a test for positional order to wast, though, since the JS API does not currently expose the order.
+
+ok.
+
+i guess it's probably just one of cases where some api allow lower-level investigations than others.
+in an extreme case, an api can provide a way for users to perform byte-to-byte processing.
+well, it's even reasonable for things like custom sections.
+
+## Comment by sunfishcode, 2024-12-06
+
+The question here seems answered. If there are any further questions, please file new issues!
+

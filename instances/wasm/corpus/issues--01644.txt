@@ -1,0 +1,40 @@
+# WebAssembly spec issue #1644: Not enough unreachability/side-effects tests
+# джерело: https://github.com/WebAssembly/spec/issues/1644
+# отримано: 2026-09-30
+
+Issue #1644, opened by SoniEx2 on 2023-04-24, open.
+
+While a real compiler should never emit code like
+
+```wast
+(module
+  (global $a (mut i32) (i32.const 0))
+
+  (func (export "get-a") (result i32) (global.get $a))
+
+  (func $set-and-return-a (result i32) (global.set $a (i32.const 1)) (global.get $a))
+
+  (func (export "call-unreachable") (result i32)
+    (call $set-and-return-a)
+    (unreachable)
+  )
+)
+
+(assert_trap (invoke "call-unreachable") "unreachable")
+(assert_return (invoke "get-a") (i32.const 1))
+```
+
+it would be nice to see more tests like this.
+
+## Comment by rossberg, 2023-04-25
+
+Agreed. The tests in unreachable.wast do not currently test for order of effects.
+
+There are quite a few tests for stack polymorphism, which are in unreached-[in]valid.wast. Your example above is unrelated to stack polymorphism, however, so I don't know what you have in mind in that regard.
+
+## Comment by SoniEx2, 2023-04-25
+
+hmm we thought we had reported a stack polymorphism bug somewhere but now we don't see it either... :woman_shrugging:
+
+edit: ah, it was in the exception handling proposal.
+

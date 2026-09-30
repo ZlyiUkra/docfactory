@@ -1,0 +1,116 @@
+# WebAssembly spec issue #1620: js-api tests for externref
+# джерело: https://github.com/WebAssembly/spec/issues/1620
+# отримано: 2026-09-30
+
+Issue #1620, opened by yurydelendik on 2023-03-08, open.
+
+I'm trying to find (and add?) tests for init arguments for Table/Global constructors/methods that were introduced by reference-types proposal.
+
+The https://webassembly.github.io/spec/js-api/index.html#dom-table-table defines the initial ref value to be `ToWebAssemblyValue(undefined, externref)`, which is resolved to some `ref.extern` (not `null`).
+
+Is this a mistake and the above default value has to be `null`? If it is not a mistake, what the following test must produce?
+
+```
+  const argument = { "element": "externref", "initial": 3 };
+  const table = new WebAssembly.Table(argument);
+  assert_equals(table.length, 3);
+  assert_equals(table.get(0), null); // ??
+```
+
+## Comment by eqrion, 2023-03-08
+
+There's also a test case here for default JS-API values for globals:
+```
+const global = new WebAssembly.Global({value: "externref", mutable: true});
+assert_equals(global.value, ???);
+```
+
+My reading of the JS-API spec is that the default value of externref is 'undefined' because that's what omitted parameters in JS give, and that's a valid non-null externref value. So I'd expect in both of these test cases that the default value would be undefined, not null.
+
+However Chrome/Firefox/Safari currently give different results:
+
+|        | V8        | SM        | JSC       |
+|--------|-----------|-----------|-----------|
+| Global | null      | null      | undefined |
+| Table  | undefined | undefined | undefined |
+
+## Comment by Ms2ger, 2023-03-09
+
+Let's look at the spec: both Global and Table have:
+
+> 1. If v is missing,
+>     1. Let value be DefaultValue(valuetype).
+
+DefaultValue:
+
+> 6. If valuetype equals externref, return ToWebAssemblyValue(undefined, valuetype).
+
+and ToWebAssemblyValue returns a non-null externref for `undefined`.
+
+Unless there's a compelling reason to change, I'd say this seems fine and the bugs in implementation should be fixed.
+
+I'm surprised to see there's no tests for either case; they should be in `global/constructor.any.js` and `table/constructor.any.js`. It would be good to add them regardless of the behavior we decide upon.
+
+## Comment by rossberg, 2023-03-15
+
+I'd argue this definition of DefaultValue is a bug, because it doesn't match what the core spec defines as default value.
+
+## Comment by Ms2ger, 2023-03-15
+
+Oh, I recalled one good reason to keep the current behavior - the following are defined to be equivalent in IDL:
+```js
+  const table = new WebAssembly.Table(argument);
+  const table = new WebAssembly.Table(argument, undefined);
+```
+so if you treated `undefined` as `ref.null`, you couldn't create a table (global) with initial value `undefined`.
+
+## Comment by rossberg, 2023-03-15
+
+Yes, that's why the `undefined` value is such a broken concept. One shouldn't ever be using it as a first-class thing. Once you assume that's a thing, default arguments of generic type basically become impossible.
+
+## Comment by bvisness, 2024-06-28
+
+The default value of `externref` really is absurd, especially in light of the GC proposal:
+
+image
+
+This is very strange and inconsistent behavior. @Ms2ger's point about the second param being implicitly `undefined` is incongruent with the behavior of `anyref` today, which produces `null`, not `undefined`.
+
+For example, this gist produces this output. Hopefully the results in each section are self-explanatory.
+
+```
+===== funcref =====
+f.grow(1): ok
+f.grow(1, null): ok
+f.grow(1, undefined): fail (TypeError: can only pass WebAssembly exported functions to funcref)
+(table.grow $f): ok
+[null, null, null]
+
+===== externref =====
+e.grow(1): ok
+e.grow(1, null): ok
+e.grow(1, undefined): ok
+(table.grow $e): ok
+[undefined, null, undefined, null]
+
+===== anyref =====
+a.grow(1): ok
+a.grow(1, null): ok
+a.grow(1, undefined): ok
+(table.grow $a): ok
+[null, null, undefined, null]
+
+===== structref =====
+s.grow(1): ok
+s.grow(1, null): ok
+s.grow(1, undefined): fail (TypeError: can only pass a WebAssembly struct object to a structref)
+(table.grow $s): ok
+[null, null, null]
+```
+
+Key things to note:
+- `e.grow(1)` produces `undefined`, while `a.grow(1)` produces `null`.
+- `a.grow(1)` produces `null`, while `a.grow(1, undefined)` produces `undefined`.
+
+If `anyref` tables can make the distinction between omitted and explicitly undefined, why can't `externref` tables?
+
