@@ -1,0 +1,249 @@
+# WebAssembly spec issue #780: [spec] My notes from WASM Bikeshed Spec Review
+# джерело: https://github.com/WebAssembly/spec/issues/780
+# отримано: 2026-09-30
+
+Issue #780, opened by aardappel on 2018-04-12, closed (completed) on 2018-05-03.
+
+Resulting from light reading of the whole document, and careful reading of:
+5 - Binary Format.
+http://webassembly.github.io/spec/core/bikeshed/index.html#binary-format%E2%91%A0
+
+2.1.2
+swith[i]=A probably needs different typesetting to be clear (same with "with" below). Appears to be fixed in recent versions.
+2.5
+Should "types" be "functypes" for clarity? If a future spec adds support for other kinds of types, wouldn't they sit in a different table?
+2.5.9
+Are there limitations to the signature of this function worth mentioning here?
+3.3
+The typing rules for "unreachable" seem to make a conformant verifier more complicated, as opposed to allowing an implementation to ignore instructions that can't be reached entirely.
+4.1.2
+Replacing an explicit stack with corresponding const instructions is nice and simple, but also quite verbose and harder to read. I personally think an explicit stack representation would help readers parse these rules, e.g. instead of:
+(i32.const n1​) (i32.const n2​) i32.add↪(i32.const (n1​+n2​)mod232)
+Something along the lines of:
+[n1:i32, n2:​:i32] i32.add↪[(n1​+n2​)mod232]
+Especially since 4.2.13 then ends up adding pseudo instructions which are not part of wasm, to fit this "everything is an instruction" model. This seems confusing when mixed with actual wasm instructions. A more explicit distinction could be helpful.
+4.2.2
+Since the doc mentions likely future expansions frequently, worth mentioning exceptions here?
+4.2.12.3
+"Hold a reference to the function’s own module instance" seems almost too implementation specific language, given that implementations may end up omitting such values.
+5.1
+Would it be more natural to say that this implicitly defines a parsing function? It took me a little thinking how this is different from most grammars until I understood it wasn't :) Or maybe call it "parsing and decoding" if parsing alone does not entail construction of the AST.
+6.1 calls it "parsing" as well, and is otherwise similar in structure.
+5.2.4
+I know this is already implicitly defined by the grammar, but worth a mention that these are not 0-terminated, as that is so common in file formats.
+5.3.1
+The note is unclear to me. The byte values for valtype are not negative in two's complement as the note appears to suggest.
+5.3.7
+It is clear from the choice of byte values that some of them (like the 0x00 and 0x01 here) are only ever used in a local context (where they won't clash with other bytes of the same value), whereas others have more complex values (like 0x70 just above here) that seems to signal that they may be used in contexts where they must not clash with other values. It would be nice if that was somehow more explicitly indicated.
+5.4.1
+Why not encode the note about the "else" directly into the grammar? Something like:
+(0x05  (in2​:instr)∗)?
+Off-topic: why allow multiple encodings of "else" being present or not? Disallowing it makes the de-coder simpler and forces encoders not to be sub-optimal.
+5.5.13
+It has been specified elsewhere that a "vector" means u32-prefixed elements, so repeating that definition here for locals seems redundant. Same possibly elsewhere.
+The use of (t*)* is not clear to me, it appears to indicate a vector of vectors of locals, whereas in the text above it is merely a vector of locals.
+5.5.15
+Is it worth mentioning that the magic is "\0asm" in text, just for interest?
+The customsec's make this a bit unreadable. Any way to refactor, e.g. with
+sec(S) ::= customsec* s*:S customsec* => s*
+6.2.2
+The use of "ifoccurringasaliteralterminalinthegrammar" seems odd to me. This tried to be formal about the fact that identifiers cannot be keywords, yet is unable to express it precisely. Might as well put the whole distinction in prose then. Most grammars I have seen do not explicitly enumerate what identifiers cannot be.
+And since "id" always starts with a "$", it will never clash with a keyword, so I do not see how this is even necessary to specify.
+"idchar" is defined much further down, it should probably be explicitly referred/linked to, or maybe the definitions can be reordered such that idchar comes earlier.
+Is it worth definining tokens with regexp instead of grammar rules? The latter seem very verbose for this purpose.
+6.5.7
+Give maybe one example of a folded to unfolded equivalent expression.
+6.6.5.1
+Rather than this abbreviation for "local" it would be a lot easier to follow if the actual rule for local directly had a valtype* in it. Same elsewhere.
+7.1
+In general, I do not understand the purpose of this section. It seems to me most content is either trivial ("looking up an item by name may return the item or error"), we have no business of specifying (the names/signatures of various operations, how an embedder should behave), or belong in one of the other chapters. If I am wrong about that (likely), then this could be better explained.
+Put differently, any embedder implementation behavior that is invisible to the code inside the wasm module being executed does not seem to need specification to me.
+7.3.1
+Seems this section is missing typesetting (and indentation) for the code.
+
+General:
+De-emphasize notes?
+Refer to external doc for UTF-8, IEEE floats etc?
+Repetition between the sections.
+
+Todo:
+Check opcodes in section 5 vs v8 sources. wasm-opcodes.h
+
+Brad's random items:
+* Remove underline on links
+* Add a better example of LEBs
+* Why do we need to spell out utf8 + IEEE754
+* Do we want something other than a NOTE for many of the lower impact asides.
+* Footnote marks for notes on things like indirect calls having left room for table indices.
+* load8_u, why only highlight part
+
+## Comment by rossberg, 2018-05-03
+
+Thanks for the review! PTAL at #795.
+
+> 2.5
+> Should "types" be "functypes" for clarity? If a future spec adds support for other kinds of types, wouldn't they sit in a different table?
+
+This anticipates that in future extensions the type section will define a wider variety of types (e.g. struct types).
+
+> 2.5.9
+> Are there limitations to the signature of this function worth mentioning here?
+
+This section is intended to only describe the structure and role of different constructs. How they work and what semantic constraints apply is defined in the sections on validation and execution.
+
+> 3.3
+> The typing rules for "unreachable" seem to make a conformant verifier more complicated, as opposed to allowing an implementation to ignore instructions that can't be reached entirely.
+
+That indeed was an earlier design, but engines fuse decoding and validation, and it turned out that in such a setting skipping unreachable code necessitates mode flags and lots of special cases that ultimately made it more work to implement. Without wanting to repeat a long and painful discussion, a rationale for the current design is summarised here.
+
+> 4.1.2
+> Replacing an explicit stack with corresponding const instructions is nice and simple, but also quite verbose and harder to read. I personally think an explicit stack representation would help readers parse these rules, e.g. instead of:
+> (i32.const n1​) (i32.const n2​) i32.add↪(i32.const (n1​+n2​)mod232)
+> Something along the lines of:
+> [n1:i32, n2:​:i32] i32.add↪[(n1​+n2​)mod232]
+> Especially since 4.2.13 then ends up adding pseudo instructions which are not part of wasm, to fit this "everything is an instruction" model. This seems confusing when mixed with actual wasm instructions. A more explicit distinction could be helpful.
+
+It may not be obvious, but separating stack and instruction stream is not that easy, since they are interleaved, i.e., reduction must keep track of positions in the operand stack that correspond to block starts as well as positions in the instruction stream where currently active blocks end (moreover, what their continuation is). I tried many formulations but found that the current set-up is the simplest way of handling this and allows direct application of standard meta-theory techniques.
+
+> 4.2.2
+> Since the doc mentions likely future expansions frequently, worth mentioning exceptions here?
+> 4.2.12.3
+> "Hold a reference to the function’s own module instance" seems almost too implementation specific language, given that implementations may end up omitting such values.
+
+Well, it's an abstract machine. The prose just describes what the purpose of the definition of frame below.
+
+> 5.1
+> Would it be more natural to say that this implicitly defines a parsing function? It took me a little thinking how this is different from most grammars until I understood it wasn't :) Or maybe call it "parsing and decoding" if parsing alone does not entail construction of the AST.
+> 6.1 calls it "parsing" as well, and is otherwise similar in structure.
+
+Exactly, that it isn't different from other grammars is the point of this formulation (cf. the design docs, which use ad-hoc tables for describing the binary format). I call it decoding here because that's what we have always called it. But I added a parenthesis explaining that decoding = parsing a binary format.
+
+> 5.2.4
+> I know this is already implicitly defined by the grammar, but worth a mention that these are not 0-terminated, as that is so common in file formats.
+
+Done.
+
+> 5.3.1
+> The note is unclear to me. The byte values for valtype are not negative in two's complement as the note appears to suggest.
+
+They are negative when interpreted as an *encoding* of signed values. I added an explicit mention of Signed LEB128.
+
+> 5.3.7
+> It is clear from the choice of byte values that some of them (like the 0x00 and 0x01 here) are only ever used in a local context (where they won't clash with other bytes of the same value), whereas others have more complex values (like 0x70 just above here) that seems to signal that they may be used in contexts where they must not clash with other values. It would be nice if that was somehow more explicitly indicated.
+
+Is this surprising? Like in textual grammars, parsing typically is LR(1) only because various productions are restricted to specific contexts. What sort of indication do you have in mind?
+
+> 5.4.1
+> Why not encode the note about the "else" directly into the grammar? Something like:
+> (0x05 (in2​:instr)∗)?
+
+The main reason is that this would make the attribute synthesis somewhat more clumsy. Defining things as sugar generally helps factorising details of concrete syntax from constructing the AST.
+
+> Off-topic: why allow multiple encodings of "else" being present or not? Disallowing it makes the de-coder simpler and forces encoders not to be sub-optimal.
+
+I only can speak for the V8 decoder, but there it would actually be *more* work to enforce that restrictions because it would require treating the empty instruction sequence as a special case after an `else` (they are allows everywhere else). In general, introducing ad-hoc restrictions and special cases is not really beneficial.
+
+> 5.5.13
+> It has been specified elsewhere that a "vector" means u32-prefixed elements, so repeating that definition here for locals seems redundant. Same possibly elsewhere.
+
+Oh, but it's not encoded as a vector in this case! There is only one element given, to be duplicated n times.
+
+> The use of (t*)* is not clear to me, it appears to indicate a vector of vectors of locals, whereas in the text above it is merely a vector of locals.
+
+`locals` itself returns a vector of types, and it is a vector of those.
+
+> 5.5.15
+> Is it worth mentioning that the magic is "\0asm" in text, just for interest?
+
+Done.
+
+> The customsec's make this a bit unreadable. Any way to refactor, e.g. with
+> sec(S) ::= customsec* s*:S customsec* => s*
+
+Unfortunately, that would technically make it an ambiguous production (shift/reduce conflict). Moreover, it would suggest that each custom section "belongs" to a specific known section, which I find a bit misleading.
+
+> 6.2.2
+> The use of "ifoccurringasaliteralterminalinthegrammar" seems odd to me. This tried to be formal about the fact that identifiers cannot be keywords, yet is unable to express it precisely. Might as well put the whole distinction in prose then. Most grammars I have seen do not explicitly enumerate what identifiers cannot be.
+> And since "id" always starts with a "$", it will never clash with a keyword, so I do not see how this is even necessary to specify.
+
+The reason we need to enumerate even unused tokens here is so that white space is properly enforced. There was a bug about this against an earlier draft of the spec, see here.
+
+Also, the annotations proposal makes more concrete use of the definition of `token`.
+
+The rendering of "ifoccurringasaliteralterminalinthegrammar" is a Bikeshed/Katex issue, I reopened #669.
+
+> "idchar" is defined much further down, it should probably be explicitly referred/linked to, or maybe the definitions can be reordered such that idchar comes earlier.
+
+The lack of hyper links is another Bikeshed/Katex issue. Should be fixed by now.
+
+> Is it worth definining tokens with regexp instead of grammar rules? The latter seem very verbose for this purpose.
+
+Aren't these essentially (named) regexps? What would change?
+
+> 6.5.7
+> Give maybe one example of a folded to unfolded equivalent expression.
+
+Done.
+
+> 6.6.5.1
+> Rather than this abbreviation for "local" it would be a lot easier to follow if the actual rule for local directly had a valtype* in it. Same elsewhere.
+
+Unfortunately, it doesn't combine with the optional id, so would require two separate rules, at which point it is often simpler to define one as sugar to avoid repetition. For consistency, also using that factorisation in this case.
+
+> 7.1
+> In general, I do not understand the purpose of this section. It seems to me most content is either trivial ("looking up an item by name may return the item or error"), we have no business of specifying (the names/signatures of various operations, how an embedder should behave), or belong in one of the other chapters. If I am wrong about that (likely), then this could be better explained.
+> Put differently, any embedder implementation behavior that is invisible to the code inside the wasm module being executed does not seem to need specification to me.
+
+This doesn't define embedder behaviour, it defines the functionality that embedder specs can *use* to access Wasm (e.g. the JS API does so). As an analogy, consider the Wasm spec a module, its main body the implementation, and this section its "public" interface. It abstracts from "implementation details" (which may change in future versions) and clarifies that an embedder has no business interfering with internals other than what's provided here.
+
+The intro paragraphs of the section was meant to explain this. Can you say more concretely what is missing from that explanation?
+
+> 7.3.1
+> Seems this section is missing typesetting (and indentation) for the code.
+
+Seems like this got fixed by now.
+
+## Comment by aardappel, 2018-05-03
+
+> Is this surprising? Like in textual grammars, parsing typically is LR(1) only because various productions are restricted to specific contexts. What sort of indication do you have in mind?
+
+Sure, though the grammar is so spread-out, that following its structure (and tracking context) is non-trivial. If I was to write a dis-assembler, say, I'd like to be able to see at a glance which bytes are the start of an instruction. Though maybe this isn't the place for that.
+
+> The intro paragraphs of the section was meant to explain this. Can you say more concretely what is missing from that explanation?
+
+I guess that intro (and your analogy right now) are fairly abstract and don't tell me why we need this. You say:
+
+> An embedder implements the connection between such a host environment and the WebAssembly semantics as defined in the main body of this specification. An embedder is expected to interact with the semantics in well-defined ways.
+
+Why? Or maybe as an example, what can go wrong if an embedder does not adhere to what is specified in this section? The way I picture it is that an embedder can do whatever it wants. In the extreme, if it wants to give me a function that can overwrite any byte of embedder memory, it can. Or if it provided an API that looks nothing like the functions in this section, it can, as long as the actual execution of WASM code still adheres to this spec.
+
+## Comment by rossberg, 2018-05-03
+
+> If I was to write a dis-assembler, say, I'd like to be able to see at a glance which bytes are the start of an instruction.
+
+Does the instruction index in the Appendix not address that?
+
+> Why? Or maybe as an example, what can go wrong if an embedder does not adhere to what is specified in this section?
+
+For one, a third-party spec referring to random internals of this spec might quickly go out of date when we move stuff around or change internal definitions for the next proposal. The embedder interface OTOH is expected to be fairly stable.
+
+Also, by sticking to this interface, an embedder cannot accidentally corrupt internal invariants of Wasm that could e.g. create unsoundness or break memory safety or encapsulation properties.
+
+The other important purpose is simplifying the lives of authors (and readers) of such third-party specs. If you want to write (or use) e.g. an embedder spec, then this section is pretty much all you need to know and care about regarding core Wasm. Having such a clearly-defined abstraction boundary for the JS API was what motivated including this interface.
+
+> The way I picture it is that an embedder can do whatever it wants.
+
+They still can, technically there is no way to prevent that. But they should not need to. Nor should they be encouraged to, for the sake of discouraging undesirable portability hazards for users.
+
+Does that make sense?
+
+## Comment by aardappel, 2018-05-03
+
+> Does the instruction index in the Appendix not address that?
+
+It does yes.
+
+> Does that make sense?
+
+Sure, I guess it doesn't hurt.
+

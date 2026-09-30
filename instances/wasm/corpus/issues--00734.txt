@@ -1,0 +1,38 @@
+# WebAssembly spec issue #734: BinaryFormat.md: Should value/table/func types be single byte (uint8) or LEB (varint7)
+# джерело: https://github.com/WebAssembly/spec/issues/734
+# отримано: 2026-09-30
+
+Issue #734, opened by sbc100 on 2018-03-01, closed (completed) on 2018-03-01.
+
+BinaryFormat.md uses varint7 in a bunch of places where the official spec used a single byte value.
+
+I'm in the process of changing wabt and llvm to match the official spec:
+https://github.com/WebAssembly/wabt/pull/782/files
+https://reviews.llvm.org/D43921
+
+Wanted to double check that the spec is correct here.
+
+Should I also update BinaryFormat.md?  .. on that note are we still maintaining that document? If not we should mark it old.
+
+## Comment by rossberg, 2018-03-01
+
+Note that varuint7 is required to be single byte, too. Moreover, for any value that is within range for varuint7, the representation is the same as uint8. So there is no difference.
+
+## Comment by sbc100, 2018-03-01
+
+So is there any reason to choose one over the other when specifying the types for these fields in the spec?   I'm not advocating for one or the other, only consistency.
+
+Would you mind taking a quick look over the two changes I linked to?  To me, it makes sense that the enum values in the source code should match the spec.    These changes are essentially non-functional, as you say, but I think they are an improvement because it seems wrong (for example) to use LEB128 encode/decode routines for things that the spec says are single byte values.
+
+## Comment by rossberg, 2018-03-01
+
+Well, the spec always represent opcodes by their bare bytes, because going through integers would simply be a clumsy indirection in terms of specifying the format. That the chosen bytes may have certain interpretations as LEBs is a more like a meta consideration for future proofness.
+
+For example, we picked these "negative" opcodes because I was envisioning future extensions where type opcodes may overlap with uses of type indices, so that you want to be able to distinguish the cases. This comes up with block types in the multi-value proposal, for example, but I could imagine other places e.g., when we introduce reference types.
+
+Changes look reasonable to me.
+
+## Comment by sbc100, 2018-03-01
+
+Thanks for the clarification.  This confirms my initial understanding.
+

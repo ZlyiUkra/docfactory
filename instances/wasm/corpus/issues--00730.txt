@@ -1,0 +1,251 @@
+# WebAssembly spec issue #730: [spec review] JS API
+# джерело: https://github.com/WebAssembly/spec/issues/730
+# отримано: 2026-09-30
+
+Issue #730, opened by flagxor on 2018-02-28, closed (completed) on 2019-01-24. Labels: wasm-js-api-1, editorial.
+
+Detail oriented review of draft text:
+https://webassembly.github.io/spec/js-api/index.html
+
+Please try to be ready to discuss issues by the in person spec meeting.
+
+## Comment by erights, 2018-03-27
+
+The `instantiate` overloading is bad JS style. Type overloading on an input argument is fine as a way to get coercion-like functionality. In this case, if given `bytes`, compile it to a `moduleObject` so the client needn't bother. However, having the output type depend on the input type, in a dynamically typed language, means that a reader does not know, looking at the call site, which output type to expect unless they know what input type is being provided.
+
+In this case, the full signature of each of these overloadings is adequately motivated. But they should not be overloads. They should have different names. (This is one of many ways that WebIDL and its ancestry in statically typed CorbaIDL systematically leads to the design of bad JS APIs.)
+
+## Comment by chicoxyzzy, 2018-03-27
+
+Should `grow_mem` and `size_mem` be renamed to `grow_memory` and `size_memory` to be consistent with core spec?
+https://github.com/WebAssembly/spec/issues/627#issuecomment-374846498
+
+## Comment by rossberg, 2018-03-27
+
+@chicoxyzzy, these are from the core spec. The core spec uses "mem" for internal naming throughout, since it occurs a lot and therefore cuts down verbosity notably.
+
+## Comment by chicoxyzzy, 2018-03-27
+
+@rossberg in @binji's comment I mentioned above it said that CG
+
+> decided to go with memory
+
+## Comment by chicoxyzzy, 2018-03-27
+
+> for internal naming
+
+Ah, now I got it, sorry
+
+## Comment by erights, 2018-03-27
+
+(Comment deleted as mistaken and irrelevant)
+
+## Comment by littledan, 2018-04-01
+
+@erights Thanks for the review. I don't think it would be possible to change the signature at this point, given that this API has already shipped to the web in several browsers some time ago.
+
+## Comment by erights, 2018-04-02
+
+This document suffers from standing between different spec worlds written in different spec styles:
+   * The wasm spec
+   * The w3c spec conventions
+   * The EcmaScript spec
+
+The two main ways this shows up:
+   * Treatment of mutable state
+   * Terminology and distinctions
+
+## Treatment of mutable state
+
+The wasm spec is written in a purely functional store-passing style, where there's a global (per agent) synchronous store mapping from (abstract?) addresses to (locations containing?) values. Each mutating operation is written to accept a store as input and to emit the mutated store as output, which then gets threaded through the subsequent operations. This encodes the imperative notion of a naive sequence of operations in time into a position along the thread of threaded store passing.
+
+The EcmaScript spec, and the general w3c spec style, is to use the same imperative sequence in the spec metalanguage as is used in the language being described. State change in the described language is described directly as change of semantic state in the meta language.
+
+Mixing the two is a bit incoherent, and worse, accident prone. It is incoherent because a change to the state of a JavaScript object is specified in the EcmaScript or general w3c imperative style, thereby omitting this state from the global (per agent) synchronous being threaded forward. For example, in the steps under
+
+> The ***grow(d)*** method, when invoked, performs the following steps:
+
+where it says
+
+> Set the surrounding agent's associated store to *store*.
+
+we would thereby wipeout the changes to the store caused within the call to `grow_table` immediately above. The good news is that this is so clearly not the intention that there is little danger anyone will misunderstand the spec to mean what it literally says ;). Nevertheless, we should find a way to avoid straddling the two ways to model state in the meta-language.
+
+Attn @flagxor @rossberg @littledan
+
+## Terminology and Distinctions
+
+This spec uses phrases like "queue a task", linking to https://html.spec.whatwg.org/multipage/webappapis.html#queue-a-task as the definition. However, this "task" notion is specific to browsers and has no relevance to JavaScript in general. The most closely corresponded EcmaScript spec concept is the (horribly named) "job", which is the unit of work queued on EcmaScript's "job queues". Unlike a browser "task", a job is serviced by a single turn of the event loop. EcmaScript has no "task" vs "microtask" dichotomy and instead has multiple job queues. The browser concepts of "task" and "microtask" are mapped into a structure of jobs; but this decomposition is by no means universal. Other embeddings of wasm into JavaScript outside the browser may very well have no browser-like "task" concept.
+
+Attn @domenic @littledan @flagxor
+
+## Comment by erights, 2018-04-02
+
+This spec introduces a bunch of new Error types that are true subclasses of Error. Besides having all behavior associated with `NativeError`, the spec is also clear that it should have whatever stack behavior is associated with other Errors. This is all good I think.
+
+I note here that we've avoided introducing new Error types in tc39, perhaps not for any good reason. Now that classes can genuinely extend, by subclassing, built in types, perhaps such new Error types can even be accurately polyfilled by such user-written subclasses. I think these options should be raised on the tc39 side as a general issue. Just noting it here.
+
+## Comment by erights, 2018-04-02
+
+The spec makes clear that each imported `(moduleName, componentName)` pair is looked up on the two level importObject by redundantly looking up the `moduleName` each time. It seems both more intuitive and more efficient, though requires more mechanism to spec, for any one `moduleName` to be looked up only once, to obtain the object on which all associated `componentName`s will be looked up.
+
+## Comment by erights, 2018-04-02
+
+In that instantiating section, where it says
+
+> If externtype is of the form 𝖿𝗎𝗇𝖼 *functype*,
+
+the bound `functype` is not subsequently used. It would be nice if some convention were used to ease the burden on spec readers of fruitlessly searching for such uses. In code we often use underbar or "unused" for such things.
+
+This comes up several times.
+
+## Comment by erights, 2018-04-02
+
+> Let index be the number of external functions in imports. This value index is known as the index of the host function funcaddr.
+
+That `index` is not used. Since this step has no other purpose, it should be removed.
+
+## Comment by erights, 2018-04-02
+
+I did not follow the cross-language error semantics here; so I am not confident it represents our current intentions.
+
+## Comment by erights, 2018-04-02
+
+> Instantiate promiseOfModule with imports importObject and return the result.
+
+Referring back to the definition of the instantiation operation at https://webassembly.github.io/spec/js-api/index.html#instantiate-a-promise-of-a-module we see that the result it returns is a promise, as it must be of course. It would be nice to choose a name for the result at the call site here that suggests this.
+
+## Comment by erights, 2018-04-02
+
+The steps of instantiate are specified as
+
+> 1. Let *stableBytes* be a copy of the bytes held by the buffer bytes.
+> 1. Let *promiseOfModule* be a new promise.
+> 1. Asynchronously compile a WebAssembly module from *stableBytes* with *promiseOfModule*.
+> 1. Instantiate *promiseOfModule* with imports *importObject* and return the result.
+
+Reading this, it seems that `promiseOfModule` gets created as a new promise and then used, but never resolved. However, the spec is actually correct because step 3 passes `promiseOfModule` in to a compilation step which resolves that promise. It is confusing because in the described language you cannot resolve a promise using just the promise itself. When the resolution step is within the procedure where the promise is created, I've never had this confusion. But it arises when a promise is passed as an argument.
+
+## Comment by erights, 2018-04-02
+
+How does JS get the tables needed to hook up cyclic imports? Either I misunderstood the spec, or the needed operations are absent.
+
+## Comment by erights, 2018-04-02
+
+> The ***string value of the extern type*** *type* is
+
+the enumeration that follows are the elements of `ImportExportKind`. Should the text above refer to "kind" rather than "type"?
+
+## Comment by erights, 2018-04-02
+
+> If name equals secondName as string values,
+
+Looks like a typo. Was "sectionName" intended?
+
+## Comment by erights, 2018-04-02
+
+> 1. Let ***stableBytes*** be a copy of the bytes held by the buffer bytes.
+> 1. Compile the WebAssembly module stableBytes and store the result as module.
+> 1. If module is error, throw a CompileError exception.
+> 1. Construct a WebAssembly module object from module and ***bytes***, and return the result.
+>
+> [highlighting altered]
+
+That last reference to "bytes" should clearly be "stableBytes"!
+
+## Comment by erights, 2018-04-02
+
+wasm memories are growable. wasm memories correspond to JS DataBlocks, which are not growable. The shenanigans the spec (and presumably the implementation) goes through to cope with this mismatch may be correct. But these shenanigans are complex, substantial, and not clearly correct, all to cope with a problem of our own making. Can we change the abstractions on the JS side of this correspondence to be primitively growable in place, to avoid this mismatch?
+
+## Comment by erights, 2018-04-02
+
+> Let [arguments] → [results] be functype.
+
+"arguments" and "results" sounds like lists of values rather than lists of types. How about "paramTypes" and "resultTypes"?
+
+Btw, this is the first time I've noticed a destructuring pattern match in the meta-language. Is this valid?
+
+## Comment by erights, 2018-04-02
+
+> If parameters or results contains an 𝗂𝟨𝟦, throw a TypeError.
+
+can we add a note that BigInt is expected, which will repair these unpleasant error cases?
+
+## Comment by erights, 2018-04-02
+
+> Note: Implementations may optionally replace the NaN payload with any other NaN payload at this point in the f32 or f64 cases; such a change would not be observable through NumberToRawBytes.
+
+Why would this not be observable? The relevant EcmaScript spec language for NumberToRawBytes is
+
+> An implementation must always choose the same encoding for each implementation distinguishable NaN value.
+
+for which I apologize. Rereading it, I can't quite even remember what we intended it to mean. We should also think about what implementations actually do.
+
+## Comment by erights, 2018-04-02
+
+Stack Overflow and Out of Memory should abort rather than throwing.
+
+Just noting it here. We really need to address this in tc39. Following such an error, there is no way for user code to restore the agent to a consistent state. Any kind of catchable throw, even by a `finally`, would be corrupt. Erlang got this one right. Abort the agent without running any more user code within that agent, since the agent must be assumed to be irreparably corrupted.
+
+## Comment by rossberg, 2018-04-02
+
+> How does JS get the tables needed to hook up cyclic imports? Either I misunderstood the spec, or the needed operations are absent.
+
+Neither. ;) There is not currently any way to construct cyclic imports in Wasm.
+
+## Comment by littledan, 2018-04-04
+
+Thanks again for the review. I've uploaded a PR (#762) to fix several of the issues you've raised. Here, I'll explain the things that weren't changed, and why.
+
+> This document suffers from standing between different spec worlds written in different spec styles:
+
+This is sort of by design--as this specification is combining these three worlds, referring to each of them, it needs to combine all three styles
+
+> The wasm spec is written in a purely functional store-passing style, where there's a global (per agent) synchronous store mapping from (abstract?) addresses to (locations containing?) values. ... The EcmaScript spec, and the general w3c spec style, is to use the same imperative sequence in the spec metalanguage as is used in the language being described.
+
+This is definitely a mismatch. I've fixed the error you pointed out, but it's broader than that. For example, there's some fuzzy wording about how the Data Blocks in the ECMAScript world "correspond" to part of the WebAssembly store, and as you point out, it gets even fuzzier when Data Blocks grow. Another path would be to put the WebAssembly specification more in terms that are similar to the JS and Web specifications, more imperative than state passing--my understanding is that @rossberg has considered and rejected this option. Maybe you have some third idea for how to organize things.
+
+> This spec uses phrases like "queue a task"
+
+I don't see a way in the JS specification to express doing a bunch of work in another thread and then coming back and then queueing some more work. The Web Platform uses task queues for this purpose. Node has a similar (but different) queue system on top of JS's (micro)task queues. My understanding is that the Web's model requires a "task" to kick off starting executing JS, and that this can't be initiated from a newly queued "microtask" from the outside. This specification is referencing the only thing I know of that describes a usable system here. I'd be happy to integrate all of this better with the JS specification, maybe building on https://github.com/tc39/ecma262/pull/735 , but I'd like to make sure that it's not done in a way which doesn't layer cleanly with how the web platform works.
+
+> It seems both more intuitive and more efficient, though requires more mechanism to spec, for any one moduleName to be looked up only once, to obtain the object on which all associated componentNames will be looked up.
+
+It seems like, in the Wasm binary format, imports individually include moduleNames in an unordered way. Reducing the number of lookups would basically require a caching system. This seems like it'd add extra complexity. I don't really understand the benefit of this caching--I don't think it'll be too inefficient to do the multiple property accesses.
+
+> That index is not used. Since this step has no other purpose, it should be removed.
+
+That line defines the "index of the host function"; if you click on the definition, it includes a link to the usage.
+
+> I did not follow the cross-language error semantics here; so I am not confident it represents our current intentions.
+
+I don't understand the concern. Could you be more specific?
+
+> It would be nice to choose a name for the result at the call site here that suggests this.
+
+Any name suggestions? I chose something that seemed intuitive to me. You can also click on the link to see the definition which clarifies things further.
+
+> the enumeration that follows are the elements of ImportExportKind. Should the text above refer to "kind" rather than "type"?
+
+Unfortunately, there's a mismatch between two things: The WebAssembly/JS API that shipped to multiple browsers uses a property called `"kind"`, but the WebAssembly specification refers to these things as "type"s. At some point in this document, which is bridging the gap, that mismatch has to come up. Do you have an idea of a prettier place to put it?
+
+> Data Block ... shenanigans the spec
+
+Yeah, this is part of the mismatch that I was describing. Not sure if it's worse or less bad than the other one about small step vs big step semantics, but maybe this is fixable in the JS spec. I'll think about how to integrate this better some more. One aspect which might or might not be relevant: WebAssembly's design with respect to Memory and growing was done as an explicit decision to *not* expose `ArrayBuffer.transfer` as a way to grow WebAssembly memory. Anyway, cleaning up the specs seems like a good goal, but I doubt this will change or improve implementations' internal interfaces.
+
+> can we add a note that BigInt is expected, which will repair these unpleasant error cases?
+
+In the past, @rossberg has advised me not to include these notes about related proposals; that's why I left it out here. I agree that it would help understanding, though. What do you think, @rossberg ?
+
+> for which I apologize. Rereading it, I can't quite even remember what we intended it to mean. We should also think about what implementations actually do.
+
+If you want to go back and revisit the invariants that the JS spec has for NaN, I'd be happy for that. Waldemar has been advocating just saying that the NaN payload is unspecified, and I agree with him: I think that'd bring us closer to implementation reality (@jfbastien has pointed out that the invariants we have not be true) without really making a significant change in programmer mental model for Numbers. My understanding of was that you have been sort of the champion for going with more restrictive invariants here.
+
+## Comment by binji, 2019-01-24
+
+I'm not sure whether there's further work to do on this issue. Can this issue be closed?
+
+## Comment by littledan, 2019-01-24
+
+I believe these issues are all fixed. Please open another issue if you still have concerns about the JS API spec.
+

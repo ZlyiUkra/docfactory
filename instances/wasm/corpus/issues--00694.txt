@@ -1,0 +1,62 @@
+# WebAssembly spec issue #694: where are instantiation-time initializers documented?
+# джерело: https://github.com/WebAssembly/spec/issues/694
+# отримано: 2026-09-30
+
+Issue #694, opened by ColinEberhardt on 2018-02-15, closed (completed) on 2018-02-15.
+
+The syntax for data segments includes an offset expression:
+
+> data::={𝖽𝖺𝗍𝖺 memidx, 𝗈𝖿𝖿𝗌𝖾𝗍 expr, 𝗂𝗇𝗂𝗍 vec(byte)}
+
+Which is described as:
+
+> The offset is given by a constant expression.
+
+However, in practice, this can either be a constant, or an (imported) global:
+
+```
+(global $a (import "m" "a") i32)
+(data (get_global $a) "abc")
+(data (i32.const 25) "abc")
+```
+
+I cannot find the this documented anywhere other than in the unofficial spec:
+
+https://github.com/sunfishcode/wasm-reference-manual/blob/master/WebAssembly.md#instantiation-time-initializers
+
+## Comment by rossberg, 2018-02-15
+
+Hm, I'm not sure what you mean. The description states that:
+
+> [...] initialize a range of memory at a given offset with a static vector of bytes.
+
+That's why you have a byte vector, not an expression.
+
+## Comment by ColinEberhardt, 2018-02-15
+
+My apologies, I mixed up some of the terminology - please see the updated issue text which just focusses on the offset for data segments.
+
+## Comment by rossberg, 2018-02-15
+
+That is checked as part of validation. When you click on "constant" in that sentence it takes you to the rules defining it, which enforce the constraints you mentioned.
+
+## Comment by ColinEberhardt, 2018-02-15
+
+Ah, fantastic - thanks.
+
+## Comment by NWilson, 2018-02-15
+
+The constant expressions are somewhat underspecified, I have to agree. The spec says what one _is_, but not really how to evaluate it at runtime.
+
+There is a sentence describing how instantiation works, that says "evaluate the expression representing the global's initializer" (which must be single instruction due to prior type validation). Yet, the execution context is hazy here.
+
+For example, what if two globals are each initialized to each other's value with a get-global opcode? Or what if a global references itself? And finally, what if there are no recursive or self-referential initializers, but the first global references the second one (which seems to be ruled out by the spec describing the globals being initialized one by one in order).
+
+Edit: or is it saying actually that the get-global instructions can only reference imported globals, to rule out any dependency problems among the initializers for defined globals?
+
+## Comment by rossberg, 2018-02-16
+
+@NWilson, yes, what your edit says. Global initializers cannot access other non-imported globals, which is already ensured by module validation, specifically through the introduction of a restricted context C' for validating these initializer expressions. Correspondingly, during module instantiation, steps 5a-c set up a frame for evaluating the initializers with an auxiliary module instance that only gives access to imported globals.
+
+For evaluation of constant expressions in segments the full module instance is already in place and a frame set up, see steps 6-8 of instantiation.
+

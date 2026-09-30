@@ -1,0 +1,83 @@
+# WebAssembly spec issue #826: [test] imports.wast unlinkable issue (js-spec)
+# джерело: https://github.com/WebAssembly/spec/issues/826
+# отримано: 2026-09-30
+
+Issue #826, opened by Cellule on 2018-06-20, closed (completed) on 2019-05-17.
+
+In the imports.wast line:571 there is the following module
+```wast
+;; This module is required to validate, regardless of whether it can be
+;; linked. Overloading is not possible in wasm itself, but it is possible
+;; in modules from which wasm can import.
+(assert_unlinkable
+  (module
+    (import "not wasm" "overloaded" (func))
+    (import "not wasm" "overloaded" (func (param i32)))
+    (import "not wasm" "overloaded" (func (param i32 i32)))
+    (import "not wasm" "overloaded" (func (param i64)))
+    (import "not wasm" "overloaded" (func (param f32)))
+    (import "not wasm" "overloaded" (func (param f64)))
+    (import "not wasm" "overloaded" (func (result i32)))
+    (import "not wasm" "overloaded" (func (result i64)))
+    (import "not wasm" "overloaded" (func (result f32)))
+    (import "not wasm" "overloaded" (func (result f64)))
+    (import "not wasm" "overloaded" (global i32))
+    (import "not wasm" "overloaded" (global i64))
+    (import "not wasm" "overloaded" (global f32))
+    (import "not wasm" "overloaded" (global f64))
+    (import "not wasm" "overloaded" (table 0 anyfunc))
+    (import "not wasm" "overloaded" (memory 0))
+  )
+  "unknown import"
+)
+```
+The javascript test runner defines `assert_unlinkable` as a test that should throw `WebAssembly.LinkError` when trying to instantiate. (See spec/js.ml)
+However, according to the Javascript Spec
+```
+For each (moduleName, componentName, externtype) in module_imports(module), do
+Let o be ? Get(importObject, moduleName).
+If Type(o) is not Object, throw a TypeError exception.
+```
+
+Since the test runner doesn't provide `not wasm` object, we should throw a TypeError and not a WebAssembly.LinkError.
+
+Providing import `{"not wasm": {}}` would cause a `LinkError` but I'm not sure if that's what we are trying to test here.
+
+## Comment by binji, 2018-06-26
+
+@littledan do you have thoughts on the JS behavior here?
+
+## Comment by littledan, 2018-06-27
+
+I think the JS semantics were intended here, though @rossberg has stronger opinions than me about the classification of the errors in the Wasm/JS API and could speak better to the original intentions.
+
+To fix this test, @Cellule's suggestion makes sense to me. The comment at the top says that the test is to show that validation passes, which it still would be showing.
+
+IIRC there was a similar other bug in the tests with a missing import, which was resolved similarly; I am not sure where to find it at the moment.
+
+## Comment by rossberg, 2018-06-27
+
+This is related to #684. I see three possible fixes, in increasing order of niceness but also intrusiveness:
+
+1. Either change the test so that it uses a known module name (e.g., "spectest" or a module it registers itself).
+2. Or change the test runner so that assert_unlinkable allows both a TypeError and a LinkError.
+3. Or change the spec to make this a LinkError, too, as @gahaas proposed in #684.
+
+## Comment by rossberg, 2018-06-27
+
+PS: Given that it is probably too late for 3 I would suggest 2.
+
+## Comment by littledan, 2018-06-27
+
+I'm not sure it's too late for 3; although this code has shipped to the web, I bet it would be web-compatible to change, as lots of error handling code doesn't look at the error type, and also this is a pretty "static" sort of error that's likely to be caught during development rather than due to runtime conditions.
+
+Anyway, 1 and 2 sound like fine options to me.
+
+## Comment by binji, 2019-01-24
+
+I went for option 1, see https://github.com/WebAssembly/spec/pull/951.
+
+## Comment by binji, 2019-01-25
+
+Landed option 1, but I haven't confirmed that this fixes the issue.
+

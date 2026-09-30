@@ -1,0 +1,57 @@
+# WebAssembly spec issue #646: JS API Spec for grow memory and detaching array buffers
+# джерело: https://github.com/WebAssembly/spec/issues/646
+# отримано: 2026-09-30
+
+Issue #646, opened by titzer on 2018-01-12, closed (completed) on 2018-03-05.
+
+The JS API spec definitively states that growing a memory through the `WebAssembly.Memory.grow()` operation detaches the array buffer and allocates a new one. However, the core spec has no notion of the JS API, and thus the specification for `grow_memory` does not mention detachment of any array buffers as a result of executing a `grow_memory` bytecode.
+
+I think the reasonable interpretation is that the `grow_memory` bytecode does indeed detach a JS-level array buffer for a memory, and I started to update our implementation to do this. However this is underspecified in a way since this is a case of additional behavior being added to a core bytecode by an embedding spec.
+
+1.) is the interpretation reasonable (i.e. that the `grow_memory` should have a JS API side-effect)?
+2.) how should we handle this at the specification level?
+
+## Comment by rossberg, 2018-01-12
+
+Good question. I agree with your interpretation. Right now the best we can do for spec probably is to add some (hand-wavy) language to the JS API's Memory, saying how grow_memory affects it. The memory model for threads will eventually expose grow_memory as a memory event, which might enable a more rigid specification later.
+
+## Comment by jfbastien, 2018-01-12
+
+Do we have a notion of "callback" from core to embedder? That's literally how I implemented things, so it would fit pretty naturally from my POV. An embedder spec then needs to specify each callback that the core spec defines.
+
+To be specific, the JS embedder has the following callback: https://github.com/WebKit/webkit/blob/d9f999e/Source/JavaScriptCore/wasm/js/JSWebAssemblyMemory.cpp#L117
+
+It's called from the "core" part of WebAssembly here: https://github.com/WebKit/webkit/blob/6834e28/Source/JavaScriptCore/wasm/WasmMemory.cpp#L385
+
+## Comment by lukewagner, 2018-01-12
+
+Agreed; that's what FF has implemented too.
+
+## Comment by rossberg, 2018-01-12
+
+Hm, I'm not very fond of starting to add explicit embedder hooks if we can avoid it. There is no canonical set of such hooks. Other embeddings might have different needs -- for example, the Dfinity embedding would likewise want a hook for every call instruction, plus some others. It seems infeasible to have something suitably general here -- a hook for every instruction?
+
+Isn't it equivalent to universally say that every instruction may cause some specific action specified by an embedder? Then an embedder just lists the respective instructions and the actions they cause.
+
+(Plus, as mentioned, the memory model is likely to soon solve this particular case anyway.)
+
+## Comment by jfbastien, 2018-01-12
+
+@rossberg good point. It does seem like we want to figure out a uniform way that embedders can specify their hooks.
+
+## Comment by littledan, 2018-01-13
+
+The ECMAScript spec does have embedding hooks like this. It doesn't require hooks for every single instruction, just for the instructions that are actually useful for embedders. We can add these hooks on a case-by-case basis, as they are useful and reasonable (just like we make all other specification changes).
+
+What's hard, though, is reconciling a concept of hooks with the WebAssembly specification's "small step"/"purely functional" semantic style, which describes operations as a function from global state to global state, with imperatively calling embedder hooks.
+
+We deal with this correspondence of WebAssembly memory and JS ArrayBuffers in a pretty unprincipled way, just using language to say that they correspond to each other. An alternative would be to, in spec land, copy the state back and forth between the Wasm and JS specification structures when mode-switching between the languages. With threads, this doesn't work anymore--we have to actually explain the semantics of interleaving JS and Wasm operations on the same SharedArrayBuffer.
+
+I don't see a huge problem using similarly vague wording for these memory hooks for now. We might want to add a note in the core spec indicating that embedders may perform some action here and to check the appropriate embedder spec for details.
+
+I've assigned the issue to myself to write the specification text and conformance tests for this along the lines of what @rossberg suggested. I expect to have something in 1-2 months. If anyone is more eager to get this done and wants to take it on themselves, feel free, just let me know so we don't duplicate work.
+
+## Comment by titzer, 2018-01-16
+
+Agreed with the above. Sounds like hooks are a good approach here. I will fix our implementation to match JSC and SpiderMonkey, which is what I would have expected.
+

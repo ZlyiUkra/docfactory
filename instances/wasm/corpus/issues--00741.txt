@@ -1,0 +1,109 @@
+# WebAssembly spec issue #741: [js-api] Allow optional asynchronous steps after instantiation?
+# джерело: https://github.com/WebAssembly/spec/issues/741
+# отримано: 2026-09-30
+
+Issue #741, opened by littledan on 2018-03-04, closed (completed) on 2023-02-21. Labels: wasm-js-api-1.
+
+The previous JS.md includes this phrase in a the definition of instantiation:
+
+> After the instantiation task runs and before any subsequent steps are taken, other unspecified asynchronous tasks may be run.
+
+The current JS API spec doesn't include this delay in its definition of instantiation. In #webkit, @domenic and @kmiller68 discussed this change. @kmiller68 raised the concern that this is a change over what was previously agreed, and that JSC does make this kind of delay, though it'd be possible to remove it. (Anyone know where the #webkit logs are?)
+
+My misunderstanding when writing the spec initially was that, because things were "in parallel", any  more delays would be unobservable and don't need specific spec text. However, the current text has moved to more specific "queue a task" language, and instantiation actually executes JS code just before resolving a promise.
+
+I see three ways we could specify things now:
+1. Prohibit additional asynchronous work, as in the current spec text
+1. "Queue a task" to resolve the Promise
+1. Permit either of 1. and 2.
+
+Because the execution order of task queues and Promises is pretty tightly specified, there's an observable difference possible between 1. and 2. The current spec text immediately resolves the Promise, so no HTML tasks will run in between reading the properties of the import object and calling then `then` callbacks that are attached to the Promise for the instantiated module. Further, the microtask queue order is specified, so there is even more detail. By contrast, in the semantics of 2., the microtask queue would be drained and some HTML tasks may run before going back and calling the `then` callbacks for the Promise.
+
+I think option 3 corresponds to the previously documented semantics in JS.md, but at the same time, the trend among modern JS/web specifications seems to be to very tightly specify the ordering one way or the other.
+
+Which of these three options should we choose?
+
+## Comment by lukewagner, 2018-03-05
+
+I think your general question is valid, but it's a bit more nuanced than this:
+
+> The current spec text immediately resolves the Promise, so no HTML tasks will run in between reading the properties of the import object and calling then `then` callbacks that are attached to the Promise for the instantiated module.
+
+The current spec text says to *resolve* the promise when means calling the promise's internal [[Resolve]] function.  The normal [[Resolve]] function, created by CreateResolvingFunctions takes these steps which *enqueues* reaction jobs which means HTML tasks *can* run before the `then` callbacks according to the current JS API spec.
+
+However, in a subtle corner case (which I think involves subclassing `Promise`?), it appears the function stored in `promise.[[Resolve]]` can be a plain JS function.  Thus, I think your basic question of "do we enqueue a task between instantiation and resolving the promise" stands, but it's for a far more subtle corner case.
+
+In SM, we synchronously resolve the promise after instantiation.  Queuing a separate task is possible, but it seems like unnecessary latency and complexity.  I wonder if JSC is really doing this or if there was confusion in the discussion over the difference between calling the *resolve* function vs. *reaction* functions?
+
+## Comment by littledan, 2018-03-05
+
+> which enqueues reaction jobs which means HTML tasks can run before the then callbacks according to the current JS API spec.
+
+Are you sure about that? Promise Reaction Jobs are microtasks. My understanding of HTML was that the microtask queue is drained before the tasks run. Looks like Firefox is upgrading to match the spec.
+
+> However, in a subtle corner case (which I think involves subclassing Promise?), it appears the function stored in promise.[[Resolve]] can be a plain JS function.
+
+I don't really see how this can occur, since we're vending the Promise.
+
+> In SM, we synchronously resolve the promise after instantiation. Queuing a separate task is possible, but it seems like unnecessary latency and complexity. I wonder if JSC is really doing this or if there was confusion in the discussion over the difference between calling the resolve function vs. reaction functions?
+
+Good to know. Can we hear from V8 (@flagxor), JSC (@kmiller68) and ChakraCore (@MikeHolman) for more details here?
+
+## Comment by lukewagner, 2018-03-05
+
+> Are you sure about that? Promise Reaction Jobs are microtasks. My understanding of HTML was that the microtask queue is drained before the tasks run.
+
+Ah hah, I was interpreting your question as a distinction between running callbacks synchronously and asynchronously (ignoring the difference between task and microtask).
+
+> I don't really see how this can occur, since we're vending the Promise.
+
+Oops, I went down the rabbit hole trying to understand what can happen in the general case of the resolve function and forgot this basic point.  So yes, agreed, this is a non-issue.
+
+So in that case, in SM, our reaction jobs simply get enqueued in the same queue as all other promise reactions (whatever that is).
+
+## Comment by tschneidereit, 2018-03-05
+
+> I think option 3 corresponds to the previously documented semantics in JS.md
+
+If I'm not misunderstanding something, that's not really the case: at most it delays resolving the promise by one turn of the event loop (in case a task is enqueued), whereas the previous language allowed for arbitrarily long delays. It's not clear to me what kind of work would benefit from being allowed to span until the end of the current turn that couldn't also just be executed within the current turn, or even synchronously.
+
+If at least one implementation absolutely *needs* the ability to arbitrarily delay resolution after instantiation, the spec could leave it implementation-defined when exactly the task to resolve the promise is queued. (Perhaps that is what option 2, and hence part of option 3, is meant to be?)
+
+## Comment by kmiller68, 2018-03-05
+
+Our implementation currently compiles only when it already has the imports for the module. If we already have code ready then, I believe, we will resolve the promise on the same turn of the event loop. Otherwise, we will queue a job concurrently that will compile the code then queue a task to finish the instantiation (run the start function). The wording I originally used was wrong with respect to my original intention (I didn't really know the spec language at the time).
+
+I don't think this behavior is essential and we could probably implement something different with enough effort. However, I can't say when that would happen... Since we, in some cases, basically have the same behavior as other engines, I think going with (3) seems like the best solution.
+
+## Comment by littledan, 2018-03-06
+
+@kmiller68 Interesting. Does that mean caching Modules in IndexedDB is not useful on JSC? I thought the hope was that this would cache compiled code.
+
+>  ~~Since we, in some cases, basically have the same behavior as other engines~~
+
+~~I'm not sure what you mean by this; so far, we've heard that other engines will compile to have a module instance, and instantiation won't do compilation. I'm not sure, but you might be the only ones that delay the compilation like this.~~ EDIT: I guess you are talking about the case where it already happens to be compiled.
+
+Anyway, thanks for explaining, sounds like we should go with option 3 (modulo @tschneidereit 's correction).
+
+## Comment by littledan, 2018-03-06
+
+@tschneidereit You are right, thanks for the correction.
+
+## Comment by jfbastien, 2018-03-06
+
+> @kmiller68 Interesting. Does that mean caching Modules in IndexedDB is not useful on JSC? I thought the hope was that this would cache compiled code.
+
+Caching to IDB is not implemented in JSC. Bug.
+
+## Comment by ericprud, 2019-05-17
+
+@littledan, @lukewagner, @jfbastien, can this issue be closed?
+
+## Comment by littledan, 2019-05-17
+
+This issue is waiting on more implementation feedback on https://github.com/WebAssembly/spec/pull/745 to proceed.
+
+## Comment by rossberg, 2022-08-04
+
+@littledan, @Ms2ger, can this be closed now?
+

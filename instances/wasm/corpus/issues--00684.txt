@@ -1,0 +1,47 @@
+# WebAssembly spec issue #684: [spec] TypeError during instantiation
+# джерело: https://github.com/WebAssembly/spec/issues/684
+# отримано: 2026-09-30
+
+Issue #684, opened by gahaas on 2018-02-14, closed (completed) on 2018-02-28.
+
+Hi,
+I found an inconsistency between the JS API spec and the core spec tests and wonder how it can be resolved properly.
+In the JS API spec in https://webassembly.github.io/spec/js-api/index.html#instantiate-a-webassembly-module it says in Step 4.2 that "If Type(o) is not Object, throw a TypeError exception."
+The spec test in https://github.com/WebAssembly/spec/blob/master/test/core/imports.wast#L563, however, requires a LinkError. First I thought it's an issue with the spec test, and I wanted to change it to expect a TypeError. However, the core spec tests don't even have the concept of TypeErrors. In my opinion this makes sense, so I wonder why the JS API spec requires a TypeError in Step 4.2.
+
+I think it would be best if we change the JS API and require a LinkError in Step 4.2 instead of the TypeError.
+
+## Comment by rossberg, 2018-02-14
+
+This was specced as a TypeError because it is a JS-side issue: the import object that you pass to instantiate must have objects as its properties, to represent the inner namespaces. The core semantics does not care how the two-level names are interpreted, a LinkError only occurs if the module is given something of the wrong type. Arguably that is a subtle distinction, and another design choice might have been just as appropriate.
+
+The problem actually is with the JS test harness that the interpreter generates, and how it simply uses the registry as the import object. An easy fix would be to wrap a proxy around it that raises TypeError instead of returning undefined for an unknown property.
+
+## Comment by gahaas, 2018-02-14
+
+I don't understand what you mean with this easy fix. Did you actually want to write
+"An easy fix would be to wrap a proxy around it that returns an EMPTY OBJECT instead of returning undefined for an unknown property."? I don't see how it would help to raise a TypeError.
+
+## Comment by rossberg, 2018-02-14
+
+Yes, you are right, sorry. Specifically, try adding these two lines after the declaration of `registry`:
+```
+let handler = {get(name) { return (name in registry) ? registry[name] : {}}
+let imports = new Proxy(registry, handler)
+```
+and then replace uses of `registry` with `imports`.
+
+## Comment by gahaas, 2018-02-14
+
+I created a PR: https://github.com/WebAssembly/spec/pull/685
+
+## Comment by littledan, 2018-03-02
+
+I'd be fine with making this a LinkError rather than a TypeError. JS always throws TypeErrors for these sorts of things because there just aren't many error classes. I don't think there's any sort of general convention that JS things which are outside of the ES specification always throw one of the built-in error  types.
+
+I don't quite understand why it's OK to use the JS API to create a module in these tests, but then it's not OK to expect a TypeError in these error cases.
+
+## Comment by rossberg, 2018-03-02
+
+@littledan, conceptually it's totally okay (and perhaps cleanest). However, the test suite example suggests that the distinction is not necessarily convenient for clients. OTOH, the this use case is obscure enough that it alone doesn't justify a change.
+

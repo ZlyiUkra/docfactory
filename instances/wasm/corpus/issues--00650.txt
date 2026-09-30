@@ -1,0 +1,142 @@
+# WebAssembly spec issue #650: spectest module not implementable in wasm
+# джерело: https://github.com/WebAssembly/spec/issues/650
+# отримано: 2026-09-30
+
+Issue #650, opened by sunfishcode on 2018-01-18, closed (completed) on 2018-02-07.
+
+The testsuite uses functions named `print` which are overloaded by their argument type. For example:
+
+https://github.com/WebAssembly/spec/blob/a7e226a92e660a3d5413cfea4269824f513259d2/test/core/imports.wast#L36
+
+This limits the ways in which the testsuite can be used. A non-Web wasm engine may not otherwise need a JS interpreter, function overloading (which would require name mangling in some implementations), or a `spectest` builtin module (which would be extra needless surface area in production). It would be useful to have the option to implement `spectest` in wasm itself, however that's currently not possible with the current interface (as discussed in https://github.com/WebAssembly/spec/issues/622).
+
+Replacing `spectest`'s `print` with `print_i32`, `print_i64`, and so on would eliminate these issues.
+
+## Comment by binji, 2018-01-18
+
+Agreed this would be nice. Also, as currently defined here, `"global"` is also overloaded. It seems that the tests don't actually make use of this, however.
+
+## Comment by rossberg, 2018-01-18
+
+Hm, the idea was that this allows testing that engines can actually handle that case, because it's legal from the Wasm perspective -- at least it needs to validate, even if it cannot be linked in all embeddings.
+
+Any suggestion how we can serve both purposes? Perhaps isolate the overloaded case in a separate test?
+
+## Comment by sunfishcode, 2018-01-18
+
+Requiring that in core wasm would require an otherwise needless feature in a wasm engine that only intends to run wasm modules.
+
+It seems like this is something that should apply to specific embeddings, such as the Web embedding, and it can be tested for there as well.
+
+## Comment by rossberg, 2018-01-18
+
+Well, validation is supposed to be the same everywhere.
+
+## Comment by rossberg, 2018-01-18
+
+But I guess we could turn that into a validation-only test.
+
+## Comment by jfbastien, 2018-01-18
+
+This forces an embedder to call functions with an explicit signature. Is the objection that this is more than what's needed, or that it can cause a double-dispatch, or can't use native calling conventions? I implemented some of this and it doesn't seem overly burdensome.
+
+## Comment by sunfishcode, 2018-01-18
+
+@rossberg I think that's right; a module with two imports with the same name and different signatures can still pass validation, but engines can issue a link error if they don't support it. A validation-only test for this sounds fine, and then we can remove the overloading in `print` and `global`.
+
+## Comment by sunfishcode, 2018-01-19
+
+@jfbastien Could I ask you to clarify what you're responding to here, and what you implemented?
+
+## Comment by jfbastien, 2018-01-19
+
+I'm speaking of having imported functions be overloaded. At least in my experiments for a non-JS embedding it doesn't seem particularly difficult, so I'd like to understand if anything you've tried has significant downside.
+
+From your example, we import `print`, name is `print_i32` for signature `(i32)`. The embedding just needs to be asked "give me function `print` and tell it I have a single `i32` for it. It seems like passing a signature + arguments buffer (and return buffer so multi-returns can just work) would be simple for a variety of non-JS embeddings.
+
+Did I misunderstand your concern?
+
+## Comment by sunfishcode, 2018-01-19
+
+@jfbastien I'm thinking of two use cases:
+
+ - My implementation doesn't want to expose `spectest` in its production surface area, but it does have other host functions that can do I/O. And I want to be able to run the testsuite on it. Implementing `spectest` as a wasm module would be an elegant solution. Except that it's impossible.
+
+ - My other implementation has `spectest` as a builtin module. I (conceptually) represent the linking environment as a single `map<string, map<string, entity>>`. You're right that it's not hard to put a signature in there somewhere, and now functions now have signatures that affect lookup, while other entities don't [0], and so on, but it's not hard. It's also not hard to just fix the testsuite :-).
+
+[0] this probably isn't universally true either, but `spectest` happens to only use overloading of functions, and not globals or other things, nor does it happen to overload on external kind (eg. having a function and a global with the same name).
+
+## Comment by jfbastien, 2018-01-19
+
+You'd never expose any imports by default, right? Like JS embeddings, any non-JS embedding should expose things through opt-in capabilities. So `spectest` is only ever available when you've asked for it, and the other host I/O functions should just be unavailable unless you ask for them too.
+
+Agreed it would be neat to expose `spectest` or similar as wasm module, and it's not possible.
+
+I don't really care, but I agree with @rossberg that having things set up this way forces embedder to expose APIs polymorphically. Put another way, if these tests don't do it then embedders can easily diverge on supporting this, and users would be worse off.
+
+Maybe that's what we want though (non-polymorphic imports). In that case I wouldn't just fix the tests, I'd also explicitly make it part of core wasm that multiple imports of the same `module:field` tuple have to do so with the same signature.
+
+WDYT?
+
+## Comment by sunfishcode, 2018-01-20
+
+I think @rossberg already found the solution and I agreed.
+
+There's an unbounded amount of information that could theoretically be overloaded on; function argument types are just the tip of the iceberg. But in practice, the only kinds that a given engine needs to support are those used by its own embedding. For example, the Web embedding could test for this, but there's no portability to be gained by requiring all non-Web engines support the same kind of polymorphism, because any code using that polymorphism on the Web is necessarily also using JS, because only JS can implement the other side of it.
+
+## Comment by jfbastien, 2018-01-20
+
+I'm not sure my description was clear enough to be understood, but I also don't think this is important enough to get right at this point in time.
+
+## Comment by sunfishcode, 2018-01-26
+
+I posted a PR updating the testsuite here: https://github.com/WebAssembly/spec/pull/652.
+
+## Comment by icefoxen, 2018-02-03
+
+Can we update the spec to make this sort of silliness invalid?  As I read it there's currently nothing preventing a module from claiming that a host function type matches whatever the importer asks for, even though doing so seems obviously bogus.
+
+edit: ...actually I suppose the spec might not need to be updated after all; the definition of a host function instance in a module is:
+
+```
+    {type functype,hostcode hostfunc}
+```
+
+So you can't have a `hostfunc` that doesn't have a defined `functype`
+
+## Comment by rossberg, 2018-02-03
+
+@icefoxen, It is natural to allow this in an untyped embedding like JavaScript. There are also some cute use cases, such as enabling generic host functionality. (Disallowing it would require additional side conditions in the validation rule for modules. The definition you cite does not imply what you think it does, quite the contrary: it implies that the same hostfunc can be paired with different function types to form different function instances.)
+
+## Comment by icefoxen, 2018-02-04
+
+> It is natural to allow this in an untyped embedding like JavaScript.
+
+But it seems very strange in an otherwise entirely-statically-typed setting like wasm.
+
+> There are also some cute use cases, such as enabling generic host functionality.
+
+Yes, but to use generic host functionality you have to make it look exactly like non-generic host functionality (by saying `(func $print_i32 (import "spectest" "print") (param i32))`, `(func $print_i64 (import "spectest" "print") (param i64))`, etc, so I'm unconvinced that this is actually useful.  At *some* level you have to define a single function signature for a generic function instance, either on the host side or the wasm side.
+
+> Disallowing it would require additional side conditions in the validation rule for modules...
+
+It seems like it would make validation easier, since you have fewer edge cases to handle.
+
+> it implies that the same hostfunc can be paired with different function types to form different function instances.
+
+Oh, that makes perfect sense.  It's just rather non-obvious that this is allowed since it's impossible to write a webassembly function that has more than one valid type signature, as far as I am aware.  However, my personal grumpiness aside because this is annoying to implement...  allowing host functions to have multiple type signatures when a webassembly function can only have one means you can write host functions that are impossible to polyfill in webassembly, as this issue demonstrates.  Is that a power we want host functions to have?
+
+## Comment by rossberg, 2018-02-04
+
+> It seems like it would make validation easier, since you have fewer edge cases to handle.
+
+It may seem that way, but that's not the case, there are no edge cases. The Wasm semantics simply does not care about import names at all, they are merely labels for the convenience of hosts (and even hosts may ignore them and instead supply imports positionally).
+
+> I'm unconvinced that this is actually useful. At some level you have to define a single function signature for a generic function instance, either on the host side or the wasm side.
+
+I don't know what you mean by the latter, but let me assure you that it is useful. At Dfinity we are making essential use of it in a (yet undisclosed) API right now -- without it, we would be forced to define an infinite number of host functions identified through name mangling.
+
+## Comment by sunfishcode, 2018-02-07
+
+#652 is now merged, so this is fixed.
+

@@ -1,0 +1,111 @@
+# WebAssembly spec issue #838: [jsapi] Should MemoryDescriptor["initial"] be required?
+# джерело: https://github.com/WebAssembly/spec/issues/838
+# отримано: 2026-09-30
+
+Issue #838, opened by Ms2ger on 2018-07-26, closed (completed) on 2018-12-06.
+
+Somewhat simplified, the spec has:
+```
+dictionary MemoryDescriptor {
+  required [EnforceRange] unsigned long initial;
+};
+
+[Constructor(MemoryDescriptor descriptor)]
+interface Memory {
+};
+```
+
+but then the prose goes on to say
+
+> If descriptor["initial"] is present, let initial be descriptor["initial"]; otherwise, let initial be 0.
+
+while this line is unreached if descriptor["initial"] is not present, because IDL will throw an exception before calling into the spec's prose.
+
+## Comment by binji, 2018-10-04
+
+Yes, I think initial should be required. So I suppose it makes sense to remove the `If descriptor["initial"] is present,` part.
+
+## Comment by littledan, 2018-10-10
+
+To be clear here, I believe this was optional in the previous informal spec, and marked as required because bikeshed's WebIDL linter was complaining. I don't know if it is web-compatible to be required.
+
+## Comment by Ms2ger, 2018-10-10
+
+SpiderMonkey throws, V8 and JSC don't.
+
+The linter was likely complaining about the lack of `optional` on the `descriptor` argument. (WebIDL insists that web developers are not required to pass a trailing empty object argument, so requires the `optional` keyword on a dictionary argument if there's no required fields.)
+
+## Comment by littledan, 2018-10-10
+
+I see. If that's the current web reality, maybe we should add the optional and make this not required, then.
+
+## Comment by lukewagner, 2018-10-10
+
+From my reading of the SM code, we don't throw when we see the property is missing, but rather due to the [EnforceRange] attribute which fails because `undefined` gets coerced via ToNumber to `NaN` which fails the IsFinite check.
+
+## Comment by lukewagner, 2018-10-10
+
+Oh, and to finish that thought: as long as we still have [EnforceRange], I think we should make the attribute required.
+
+## Comment by Ms2ger, 2018-10-11
+
+Note that the same applies to `maximum`. If we remove the `required` keyword, you'll have to add a check for `undefined` before coercing the value with `ToNumber`.
+
+## Comment by lukewagner, 2018-10-11
+
+Ah, interesting.  If a property is marked as `optional`, will the [EnforceRange] only take effect when the property is present?  That's the semantics we need.
+
+## Comment by Ms2ger, 2018-10-11
+
+Yes, exactly.
+
+## Comment by lukewagner, 2018-10-11
+
+Great, so then to summarize it seems like `initial` would stay `required` and `maximum` would be changed to `optional`.
+
+## Comment by Ms2ger, 2018-10-12
+
+`maximum` is already optional. Why should `initial` be required?
+
+## Comment by lars-t-hansen, 2018-10-12
+
+> `maximum` is already optional. Why should `initial` be required?
+
+Because while it's common to create a memory without a maximum, creating a memory without an initial size is almost certainly an error.  IMO the descriptor argument should be required for the same reason.  (Of course web compat may preclude that, but that's incidental.)  The "convenience" of the optional descriptor argument and optional initial property is in reality just a footgun.
+
+## Comment by lukewagner, 2018-10-12
+
+> maximum is already optional. Why should initial be required?
+
+Ah, maybe I'm looking at a stale doc then, but in https://webassembly.github.io/spec/js-api/index.html#memories, `initial` is already `required` and I didn't see `optional` on `maximum` (but maybe that's the default if you don't say `required`?).
+
+## Comment by littledan, 2018-10-15
+
+@lukewagner That's right--in WebIDL, I believe dictionaries default to optional and note required, whereas parameters default to required and note optional.
+
+## Comment by xtuc, 2018-12-03
+
+In JS if `initial` is now required that would be a breaking change but, for consistency, in Wasm's Memory Type, it's required.
+
+Following @lars-t-hansen comment about footgun; when you import a WebAssembly.Memory and the initial is smaller that the one declared in Wasm, it throws. So I think this kind of the errors will be catched.
+
+Also, I would be happy to send a PR if once we have a resolution.
+
+PS: the Table constructor has the same issue.
+
+## Comment by littledan, 2018-12-05
+
+Is a PR needed? Maybe we should stick with the current semantics, per the comments from @lars-t-hansen . Otherwise, if we want to stick with WebIDL conventions while preserving the optionality, I guess we would make the dictionary field optional *and* the existence of the dictionary parameter optional.
+
+## Comment by xtuc, 2018-12-05
+
+A PR is need in all cases because the spec has the two conflicting behaviors.
+
+## Comment by littledan, 2018-12-06
+
+Right, of course. Does anyone want to make a PR to delete the dead line that @Ms2ger mentions?
+
+## Comment by xtuc, 2018-12-06
+
+I can do it, for Memory and Table. I'm also updating the v8 implementation by the way.
+

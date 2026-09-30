@@ -1,0 +1,49 @@
+# WebAssembly spec issue #744: Text for more than one function/code section
+# джерело: https://github.com/WebAssembly/spec/issues/744
+# отримано: 2026-09-30
+
+Issue #744, opened by NWilson on 2018-03-06, closed (completed) on 2018-03-07.
+
+It appears that it's legal to have more than one function & code section?
+
+In Binary encoding/Modules, there is a sentence:
+> The lengths of vectors produced by the (possibly empty) function and code section must match up.
+
+Should it say, "The length of the vectors produced by each (possibly emtpy) pair of function and code sections must match up"?
+
+How I think I'm reading the spec: you can have any number (including zero) of function sections, each having any possible size (including zero). After that, there must be an exactly matching number of code sections, the n-th of which must have the same length as the n-th function section (and so a zero-length function section must have a corresponding zero-length code section).
+
+If I'm reading it correctly, the informal text could be extended to be offer a more positive explanation of those constraints.
+
+(Aside: I believe the code sections are the only _required_ sections? All others are optional, it's only code sections that need to match the function sections to make the module valid. Or to put another way, an error during parsing of the form "expected section XYZ" will always refer to a code section.)
+
+## Comment by rossberg, 2018-03-06
+
+No, any of the current sections can appear at most once; all are optional (though the side condition you quote enforces that function and code section can only be omitted simultaneously, except if either is empty).
+
+Can you clarify where you got the impression that multiple function or code sections are allowed? I would have hoped that the binary module grammar is unambiguous in that regard.
+
+## Comment by NWilson, 2018-03-06
+
+Thanks - my impression was from (mis)reading the binary module grammar.
+
+It has productions of the form `x : X` to mean "match the non-terminal X and destructure its contents to variable x". But I must have just messed up the conventions in my mind. Where it says `start^? : startsec` I thought, "that's funny, shouldn't it be `start^? : startsec^?`, so I deduced that the syntax `start^? : startsec` actually means `(start : startsec)?`. And from that I deduced that `code^n : codesec` means `(code : codesec)^n`.
+
+I did check the conventions, which define `x : B` and `B^n` and `(x : B)^n`, but not `x^n : B`.
+
+Based on your comment, I now understand that in the module grammar `start^? : startsec` means `(start : startsec)^?` and `code^n : codesec` means `(code^n : codesec)^?`, but I can't quite work out why in a formal sense. To match `(anything) : B` you surely have to match `B` (ie capturing/destructuring shouldn't change what you match), so if we take out the captures the module grammar is just patterns like `... customsec^* startsec customsec^* ...`. And yet each section is clearly intended to be optional.
+
+## Comment by binji, 2018-03-06
+
+The way I understand it is that `start^?: startsec` just binds the result of `startsec`. Since `startsec` is defined as `startsec ::= st^?:section_8(start) => st^?`, it's binding the result of that production. `startsec` doesn't need to be `startsec^?` because all sections are already optional, from the definition of `section_N(B)`. But perhaps @rossberg has a better explanation.
+
+## Comment by rossberg, 2018-03-07
+
+@binji is right: the LHS of x:Y just pattern-matches the synthesised attribute resulting from the RHS. In this case, that attribute is an optional thing. There are various other places where you'll see something like x*:Y because Y itself generates a list of something. The option in this case is analogous.
+
+The admittedly slightly weird way in which optionality of sections is factored in the grammar is so that defaulting their attribute to an empty sequence is factored to only one generic place. Otherwise the attribute computation for the module production would become rather cluttered.
+
+## Comment by NWilson, 2018-03-07
+
+Oh - I missed that every section matches ϵ. OK, it's all valid!
+

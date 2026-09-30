@@ -1,0 +1,61 @@
+# WebAssembly spec issue #823: Is it possible to have more than 2^32 locals per function?
+# джерело: https://github.com/WebAssembly/spec/issues/823
+# отримано: 2026-09-30
+
+Issue #823, opened by pepyakin on 2018-06-15, closed (completed) on 2018-06-18.
+
+The only thing I found in the spec is that the limitation of locals count is determined by the embedder.
+
+However, I believe, that this is not accurate. For one, you can't access locals with indices greater than 2^32. This is because `{get,set,tee}_local` has a 32-bit immediate index.
+
+I inspected only one implementation for this matter, wabt, and it turned out it is susceptible for integer overflow. (cc/ @binji )
+
+So, is it possible for **any** implementation to have more than 2^^32?
+If no, should we add the test for that case?
+
+## Comment by rossberg, 2018-06-15
+
+No, it's not. You can see this in the spec in two places:
+
+* The abstract syntax of functions represents the list of locals as a vector, and vectors are defined to have at most 2^32 elements.
+
+* The grammar of the binary format for functions has an explicit side condition also enforcing this:
+
+Edit: And yes, there should probably be a test. I think the main reason there isn't one is that you cannot write it in the text format.
+
+## Comment by pepyakin, 2018-06-15
+
+I see, thanks.
+
+But still, do we have tests for this condition?
+
+## Comment by pepyakin, 2018-06-15
+
+I think I can provide one.
+
+## Comment by binji, 2018-06-15
+
+@pepyakin thanks, fix here!
+
+Though I noticed that this means that it is valid to have locals that are inaccessible via `get_local` et. al. since the 2**32 limit in the spec only applies only to locals and not to function parameters.
+
+## Comment by pepyakin, 2018-06-16
+
+> Though I noticed that this means that it is valid to have locals that are inaccessible via get_local et. al. since the 2**32 limit in the spec only applies only to locals and not to function parameters.
+
+Good point.
+
+I've filed the PR https://github.com/WebAssembly/spec/pull/824 but it turns out that the spec interpreter crashes on this input reporting stack overflow on my machine.
+
+## Comment by rossberg, 2018-06-18
+
+@binji, good point. I'd be fine with disallowing that, although it won't affect any real-world implementation either way I suppose.
+
+## Comment by binji, 2018-06-18
+
+Yeah, I don't think it needs to change, but it is a bit odd.
+
+## Comment by rossberg, 2018-06-18
+
+Closing via #825.
+

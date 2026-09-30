@@ -1,0 +1,40 @@
+# WebAssembly spec issue #878: Is TableDescriptor's TableKind really an enum?
+# джерело: https://github.com/WebAssembly/spec/issues/878
+# отримано: 2026-09-30
+
+Issue #878, opened by lars-t-hansen on 2018-09-17, closed (completed) on 2018-10-15.
+
+The background here is a bug that was filed against Firefox.  The TableDescriptor's TableKind (ie the value of the "element" property of the descriptor) is typed as a WebIDL "enum", which means that it shall first be converted to string by ToString and then checked against one of the known string enumeration values.  This strikes me as not necessarily forward-compatible, as we may wish in the future to have strongly typed tables where the value of the element property is itself some kind of type descriptor or reference into the module's type table to express (ref T) or complex function types.
+
+The reftypes proposal already suggests adding "anyref" and "nullref" types, though these are expressible in the enumeration.  At the very end of the proposal, though, it also speculates about some unification of table types and value types.  See here.
+
+If we go for an "enum" solution here a future expansion may break existing content as the ToString operation cannot be applied blindly to a type that expresses eg a reference into the module's type table.
+
+A lighter-weight solution would be to recognize the string "anyfunc" but to reject every other type at this time.  Don't know what this would look like in WebIDL, but it feels less restrictive.
+
+@rossberg @littledan @binji
+
+## Comment by lukewagner, 2018-09-17
+
+Great question!  In the future, when we want to allow compound types, could we use a Web IDL union between the existing enum and whatever "type descriptor object" we have in the future?  I'm assuming (but please check me) that with a union there would be a dynamic type test *before* the ToString().
+
+## Comment by littledan, 2018-09-17
+
+I agree with @lukewagner in that I expect such an update to be a low risk to web compatibility (especially since the ToString() of a type descriptor object wouldn't be in the union anyway). Aside from that, I'm not sure what the right way would be to express this stricter concept, besides using `any` or `object` as an escape hatch, which doesn't feel quite right. cc @domenic
+
+## Comment by domenic, 2018-09-17
+
+Changing to a union type in the future seems like it would work.
+
+## Comment by rossberg, 2018-09-17
+
+If we can later generalise to union then that should be fine.
+
+## Comment by littledan, 2018-10-15
+
+Is there any update to be made for this issue, or can it be closed?
+
+## Comment by lars-t-hansen, 2018-10-15
+
+A union type should be just fine.
+
