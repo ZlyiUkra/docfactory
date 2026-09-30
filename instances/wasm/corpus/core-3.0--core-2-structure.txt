@@ -1,0 +1,1060 @@
+# WebAssembly Core 3.0: 2 Structure
+# джерело: https://raw.githubusercontent.com/WebAssembly/spec/0f70bfa44615ca9f499801ca27ca6ca2bca1e8bc/core/bikeshed/index.html#structure①
+# отримано: 2026-09-30
+# версія: 3.0
+
+## 2.1 Conventions
+
+WebAssembly is a programming language that has multiple concrete representations (its binary format and the text format). Both map to a common structure. For conciseness, this structure is described in the form of an abstract syntax. All parts of this specification are defined in terms of this abstract syntax.
+
+### 2.1.1 Grammar Notation
+
+The following conventions are adopted in defining grammar rules for abstract syntax.
+
+- Terminal symbols (atoms) are written in sans-serif font or in symbolic form: i32, nop, →, [, ].
+
+- Nonterminal symbols are written in italic font: valtype, instr.
+
+- A^n is a sequence of n ≥ 0 iterations of A.
+
+- A∗ is a possibly empty sequence of iterations of A. (This is a shorthand for A^n used where n is not relevant.)
+
+- A+ is a non-empty sequence of iterations of A. (This is a shorthand for A^n where n ≥ 1.)
+
+- A? is an optional occurrence of A. (This is a shorthand for A^n where n ≤ 1.)
+
+- Productions are written sym::= A_1 ∣ … ∣ A_n.
+
+- Large productions may be split into multiple definitions, indicated by ending the first one with explicit ellipses, sym::= A_1 ∣ …, and starting continuations with ellipses, sym::= … ∣ A_2.
+
+- Some productions are augmented with side conditions, “ if condition ”, that provide a shorthand for a combinatorial expansion of the production into many separate cases.
+
+- If the same meta variable or non-terminal symbol appears multiple times in a production, then all those occurrences must have the same instantiation. (This is a shorthand for a side condition requiring multiple different variables to be equal.)
+
+### 2.1.2 Auxiliary Notation
+
+When dealing with syntactic constructs the following notation is also used:
+
+- ϵ denotes the empty sequence.
+
+- ∣s∣ denotes the length of a sequence s.
+
+- s[i] denotes the i -th element of a sequence s, starting from 0.
+
+- s[i: n] denotes the sub-sequence s[i] … s[i + n − 1] of a sequence s.
+
+- s[[i] = A] denotes the same sequence as s, except that the i -th element is replaced with A.
+
+- s[[i: n] = A^n] denotes the same sequence as s, except that the sub-sequence s[i: n] is replaced with A^n.
+
+- s_1 ⊕ s_2 denotes the sequence s_1 concatenated with s_2; this is equivalent to s_1 s_2, but used for clarity.
+
+- ⨁ s∗ denotes the flattened sequence, formed by concatenating all sequences s_i in s∗.
+
+- A ∈ s denotes that A is a member of the sequence s, that is, s is of the form s_1 A s_2 for some sequences s_1, s_2.
+
+Moreover, the following conventions are employed:
+
+- The notation x^n, where x is a non-terminal symbol, is treated as a meta variable ranging over respective sequences of x (similarly for x∗, x+, x?).
+
+- When given a sequence x^n, then the occurrences of x in an iterated sequence (… x …)^n are assumed to denote the individual elements of x^n, respectively (similarly for x∗, x+, x?). This implicitly expresses a form of mapping syntactic constructions over a sequence.
+
+- e^(i<n) denotes the same sequence as e^n, but implicitly also defines i^n to be the sequence of values 0 to (n − 1).
+
+Note
+
+For example, if x^n is the sequence a b c, then (f(x) + 1)^n denotes the sequence (f(a) + 1) (f(b) + 1) (f(c) + 1).
+
+The form e^(i<n) additionally gives access to an index variable inside the iteration. For example, (f(x) + i)^(i<n) denotes the sequence (f(a) + 0) (f(b) + 1) (f(c) + 2).
+
+Productions of the following form are interpreted as records that map a fixed set of fields field_i to “values” A_i, respectively:
+
+r::= {field_1 A_1, field_2 A_2, … }
+
+The following notation is adopted for manipulating such records:
+
+- Where the type of a record is clear from context, empty fields with value ϵ are often omitted.
+
+- r.field denotes the contents of the field component of r.
+
+- r[.field = A] denotes the same record as r, except that the value of the field component is replaced with A.
+
+- r[.field =⊕ A∗] denotes the same record as r, except that A∗ is appended to the sequence value of the field component, that is, it is short for r[.field = r.field ⊕ A∗].
+
+- r_1 ⊕ r_2 denotes the composition of two identically shaped records by concatenating each field of sequences point-wise:
+
+   {field_1 A_1∗, field_2 A_2∗, …} ⊕ {field_1 B_1∗, field_2 B_2∗, …} = {field_1 (A_1∗ ⊕ B_1∗), field_2 (A_2∗ ⊕ B_2∗), …}
+
+- ⨁ r∗ denotes the composition of a sequence of records, respectively; if the sequence is empty, then all fields of the resulting record are empty.
+
+The update notation for sequences and records generalizes recursively to nested components accessed by “paths” pth::= ([i] ∣.field)+:
+
+- s[[i]pth = A] is short for s[[i] = s[i][pth = A]],
+
+- r[.field pth = A] is short for r[.field = r.field[pth = A]].
+
+### 2.1.3 Lists
+
+Lists are bounded sequences of the form A^n (or A∗), where the A can either be values or complex constructions. A list can have at most 2^(32) − 1 elements.
+
+list(X)::= X∗ if ∣X∗∣ < 2^(32)
+
+## 2.2 Values
+
+WebAssembly programs operate on primitive numeric values. Moreover, in the definition of programs, immutable sequences of values occur to represent more complex data, such as text strings or other vectors.
+
+### 2.2.1 Bytes
+
+The simplest form of value are raw uninterpreted bytes. In the abstract syntax they are represented as hexadecimal literals.
+
+byte::= 0x00 ∣ … ∣ 0xFF
+
+#### 2.2.1.1 Conventions
+
+- The meta variable b ranges over bytes.
+
+- Bytes are sometimes interpreted as natural numbers n < 256.
+
+### 2.2.2 Integers
+
+Different classes of integers with different value ranges are distinguished by their bit width N and by whether they are unsigned or signed.
+
+    u N ::= 0 ∣ … ∣ 2^N − 1
+    s N ::= −2^(N−1) ∣ … ∣ −1 ∣ 0 ∣ +1 ∣ … ∣ +2^(N−1) − 1
+    i N ::= u N
+
+The class i defines uninterpreted integers, whose signedness interpretation can vary depending on context. In the abstract syntax, they are represented as unsigned values. However, some operations convert them to signed based on a two’s complement interpretation.
+
+Note
+
+The main integer types occurring in this specification are u 8, u 32, u 64, and u 128. However, other sizes occur as auxiliary constructions, e.g., in the definition of floating-point numbers.
+
+#### 2.2.2.1 Conventions
+
+- The meta variables m, n, i, j range over integers.
+
+- Numbers may be denoted by simple arithmetics, as in the grammar above. In order to distinguish arithmetics like 2^N from sequences like (1)^N, the latter is distinguished with parentheses.
+
+### 2.2.3 Floating-Point
+
+Floating-point data represents 32 or 64 bit values that correspond to the respective binary formats of the [IEEE-754-2019] standard (Section 3.3).
+
+Every value has a sign and a magnitude. Magnitudes can either be expressed as normal numbers of the form m_0. m_1 m_2 … m_m ⋅ 2^e, where e is the exponent and m is the significand whose most significant bit m_0 is 1, or as a subnormal number where the exponent is fixed to the smallest possible value and m_0 is 0; among the subnormals are positive and negative zero values. Since the significands are binary values, normals are represented in the form (1 + m ⋅ 2^(−M)) ⋅ 2^e in the abstract syntax, where M is the bit width of m; similarly for subnormals.
+
+Possible magnitudes also include the special values ∞ (infinity) and nan (NaN, not a number). NaN values have a payload that describes the mantissa bits in the underlying binary representation. No distinction is made between signalling and quiet NaNs.
+
+    f N ::= +fmag N ∣ −fmag N
+    fmag N ::= (1 + m ⋅ 2^(−M)) ⋅ 2^e if m < 2^M ∧ 2 − 2^(E−1) ≤ e ≤ 2^(E−1) − 1
+    ∣ (0 + m ⋅ 2^(−M)) ⋅ 2^e if m < 2^M ∧ 2 − 2^(E−1) = e
+    ∣ ∞
+    ∣ nan(m) if 1 ≤ m < 2^M
+
+where M = signif(N) and E = expon(N) with
+
+    signif(32) = 23
+    signif(64) = 52
+    0.8ex]expon(32) = 8
+    expon(64) = 11
+
+A canonical NaN is a floating-point value ±nan(canon_N) where canon_N is a payload whose most significant bit is 1 while all others are 0:
+
+canon_N = 2^(signif(N)−1)
+
+An arithmetic NaN is a floating-point value ±nan(m) with m ≥ canon_N, such that the most significant bit is 1 while all others are arbitrary.
+
+Note
+
+In the abstract syntax, subnormals are distinguished by the leading 0 of the significand. The exponent of subnormals has the same value as the smallest possible exponent of a normal number. Only in the binary representation the exponent of a subnormal is encoded differently than the exponent of any normal number.
+
+The notion of canonical NaN defined here is unrelated to the notion of canonical NaN that the [IEEE-754-2019] standard (Section 3.5.2) defines for decimal interchange formats.
+
+#### 2.2.3.1 Conventions
+
+- The meta variable z ranges over floating-point values where clear from context.
+
+- Where clear from context, shorthands like +1 denote floating point values like +(1 + 0 ⋅ 2^(−M)) ⋅ 2^0.
+
+### 2.2.4 Vectors
+
+Numeric vectors are 128-bit values that are processed by vector instructions (also known as SIMD instructions, single instruction multiple data). They are represented in the abstract syntax using u 128. The interpretation of lane types (integer or floating-point numbers) and lane sizes are determined by the specific instruction operating on them.
+
+### 2.2.5 Names
+
+Names are sequences of characters, which are scalar values as defined by [UNICODE] (Section 2.4).
+
+    name ::= char∗ if ∣utf8(char∗)∣ < 2^(32)
+    char ::= U+00 ∣ … ∣ U+D7FF ∣ U+E000 ∣ … ∣ U+10FFFF
+
+Due to the limitations of the binary format, the length of a name is bounded by the length of its UTF-8 encoding.
+
+#### 2.2.5.1 Convention
+
+- Characters (Unicode scalar values) are sometimes used interchangeably with natural numbers n < 1114112.
+
+## 2.3 Types
+
+Various entities in WebAssembly are classified by types. Types are checked during validation, instantiation, and possibly execution.
+
+### 2.3.1 Number Types
+
+Number types classify numeric values.
+
+numtype::= i32 ∣ i64 ∣ f32 ∣ f64
+
+The types i32 and i64 classify 32 and 64 bit integers, respectively. Integers are not inherently signed or unsigned, their interpretation is determined by individual operations.
+
+The types f32 and f64 classify 32 and 64 bit floating-point data, respectively. They correspond to the respective binary floating-point representations, also known as single and double precision, as defined by the [IEEE-754-2019] standard (Section 3.3).
+
+Number types are transparent, meaning that their bit patterns can be observed. Values of number type can be stored in memories.
+
+#### 2.3.1.1 Conventions
+
+- The notation ∣t∣ denotes the bit width of a number type t. That is, ∣i32∣ = ∣f32∣ = 32 and ∣i64∣ = ∣f64∣ = 64.
+
+### 2.3.2 Vector Types
+
+Vector types classify vectors of numeric values processed by vector instructions (also known as SIMD instructions, single instruction multiple data).
+
+vectype::= v128
+
+The type v128 corresponds to a 128 bit vector of packed integer or floating-point data. The packed data can be interpreted as signed or unsigned integers, single or double precision floating-point values, or a single 128 bit type. The interpretation is determined by individual operations.
+
+Vector types, like number types are transparent, meaning that their bit patterns can be observed. Values of vector type can be stored in memories.
+
+#### 2.3.2.1 Conventions
+
+- The notation ∣t∣ for bit width extends to vector types as well, that is, ∣v128∣ = 128.
+
+### 2.3.3 Type Uses
+
+A type use is the use site of a type index referencing a composite type defined in a module. It classifies objects of the respective type.
+
+typeuse::= typeidx ∣ …
+
+The syntax of type uses is extended with additional forms for the purpose of specifying validation and execution.
+
+### 2.3.4 Heap Types
+
+Heap types classify objects in the runtime store. There are three disjoint hierarchies of heap types:
+
+- function types classify functions,
+
+- aggregate types classify dynamically allocated managed data, such as structures, arrays, or unboxed scalars,
+
+- external types classify external references possibly owned by the embedder.
+
+The values from the latter two hierarchies are interconvertible by ways of the extern.convert_any and any.convert_extern instructions. That is, both type hierarchies are inhabited by an isomorphic set of values, but may have different, incompatible representations in practice.
+
+    absheaptype ::= any ∣ eq ∣ i31 ∣ struct ∣ array ∣ none
+    ∣ func ∣ nofunc
+    ∣ exn ∣ noexn
+    ∣ extern ∣ noextern
+    ∣ …
+    heaptype ::= absheaptype ∣ typeuse
+
+A heap type is either abstract or concrete. A concrete heap type consists of a type use that classifies an object of the respective type defined in a module. Abstract types are denoted by individual keywords.
+
+The type func denotes the common supertype of all function types, regardless of their concrete definition. Dually, the type nofunc denotes the common subtype of all function types, regardless of their concrete definition. This type has no values.
+
+The type exn denotes the common supertype of all exception references. This type has no concrete subtypes. Dually, the type noexn denotes the common subtype of all forms of exception references. This type has no values.
+
+The type extern denotes the common supertype of all external references received through the embedder. This type has no concrete subtypes. Dually, the type noextern denotes the common subtype of all forms of external references. This type has no values.
+
+The type any denotes the common supertype of all aggregate types, as well as possibly abstract values produced by internalizing an external reference of type extern. Dually, the type none denotes the common subtype of all forms of aggregate types. This type has no values.
+
+The type eq is a subtype of any that includes all types for which references can be compared, i.e., aggregate values and i31.
+
+The types struct and array denote the common supertypes of all structure and array aggregates, respectively.
+
+The type i31 denotes unboxed scalars, that is, integers injected into references. Their observable value range is limited to 31 bits.
+
+Note
+
+Values of type i31 are not actually allocated in the store, but represented in a way that allows them to be mixed with actual references into the store without ambiguity. Engines need to perform some form of pointer tagging to achieve this, which is why one bit is reserved. Since this type is to be reliably unboxed on all hardware platforms supported by WebAssembly, it cannot be wider than 32 bits minus the tag bit.
+
+Although the types none, nofunc, noexn, and noextern are not inhabited by any values, they can be used to form the types of all null references in their respective hierarchy. For example, (ref null nofunc) is the generic type of a null reference compatible with all function reference types.
+
+The syntax of abstract heap types is extended with additional forms for the purpose of specifying validation and execution.
+
+### 2.3.5 Reference Types
+
+Reference types classify values that are first-class references to objects in the runtime store.
+
+reftype::= ref null? heaptype
+
+A reference type is characterised by the heap type it points to.
+
+In addition, a reference type of the form ref null ht is nullable, meaning that it can either be a proper reference to ht or null. Other references are non-null.
+
+Reference types are opaque, meaning that neither their size nor their bit pattern can be observed. Values of reference type can be stored in tables but not in memories.
+
+#### 2.3.5.1 Conventions
+
+- The reference type anyref is an abbreviation for (ref null any).
+
+- The reference type eqref is an abbreviation for (ref null eq).
+
+- The reference type i31ref is an abbreviation for (ref null i31).
+
+- The reference type structref is an abbreviation for (ref null struct).
+
+- The reference type arrayref is an abbreviation for (ref null array).
+
+- The reference type funcref is an abbreviation for (ref null func).
+
+- The reference type exnref is an abbreviation for (ref null exn).
+
+- The reference type externref is an abbreviation for (ref null extern).
+
+- The reference type nullref is an abbreviation for (ref null none).
+
+- The reference type nullfuncref is an abbreviation for (ref null nofunc).
+
+- The reference type nullexnref is an abbreviation for (ref null noexn).
+
+- The reference type nullexternref is an abbreviation for (ref null noextern).
+
+### 2.3.6 Value Types
+
+Value types classify the individual values that WebAssembly code can compute with and the values that a variable accepts. They are either number types, vector types, or reference types.
+
+    consttype ::= numtype ∣ vectype
+    valtype ::= numtype ∣ vectype ∣ reftype ∣ …
+
+The syntax of value types is extended with additional forms for the purpose of specifying validation.
+
+#### 2.3.6.1 Conventions
+
+- The meta variable t ranges over value types or subclasses thereof where clear from context.
+
+### 2.3.7 Result Types
+
+Result types classify the result of executing instructions or functions, which is a sequence of values, written with brackets.
+
+resulttype::= list(valtype)
+
+### 2.3.8 Block Types
+
+Block types classify the input and output of structured control instructions delimiting blocks of instructions.
+
+    blocktype ::= valtype?
+    ∣ typeidx
+
+They are given either as a type index that refers to a suitable function type reinterpreted as an instruction type, or as an optional value type inline, which is a shorthand for the instruction type ϵ → valtype?.
+
+### 2.3.9 Composite Types
+
+Composite types are all types composed from simpler types, including function types, structure types and array types.
+
+    comptype ::= struct list(fieldtype)
+    ∣ array fieldtype
+    ∣ func resulttype → resulttype
+    0.8ex] fieldtype ::= mut? storagetype
+    storagetype ::= valtype ∣ packtype
+    packtype ::= i8 ∣ i16
+
+Function types classify the signature of functions, mapping a list of parameters to a list of results. They are also used to classify the inputs and outputs of instructions.
+
+Aggregate types like structure or array types consist of a list of possibly mutable, possibly packed field types describing their components. Structures are heterogeneous, but require static indexing, while arrays need to be homogeneous, but allow dynamic indexing.
+
+#### 2.3.9.1 Conventions
+
+- The notation ∣t∣ for the bit width of a value type t extends to packed types as well, that is, ∣i8∣ = 8 and ∣i16∣ = 16.
+
+- The auxiliary function unpack maps a storage type to the value type obtained when accessing a field:
+
+### 2.3.10 Recursive Types
+
+Recursive types denote a group of mutually recursive composite types, each of which can optionally declare a list of type uses of supertypes that it matches. Each type can also be declared final, preventing further subtyping.
+
+    rectype ::= rec list(subtype)
+    subtype ::= sub final? typeuse∗ comptype
+
+In a module, each member of a recursive type is assigned a separate type index.
+
+### 2.3.11 Address Types
+
+Address types are a subset of number types that classify the values that can be used as offsets into memories and tables.
+
+addrtype::= i32 ∣ i64
+
+#### 2.3.11.1 Conventions
+
+The minimum of two address types is defined as the address type whose bit width is the minimum of the two.
+
+    min(at_1, at_2) = at_1 if ∣at_1∣ ≤ ∣at_2∣
+    min(at_1, at_2) = at_2 otherwise
+
+### 2.3.12 Limits
+
+Limits classify the size range of resizeable storage associated with memory types and table types.
+
+limits::= [u 64.. u 64?]
+
+If no maximum is present, then the respective storage can grow to any valid size.
+
+### 2.3.13 Tag Types
+
+Tag types classify the signature tags with a type use referring to the definition of a function type that declares the types of parameter and result values associated with the tag. The result type is empty for exception tags.
+
+tagtype::= typeuse
+
+### 2.3.14 Global Types
+
+Global types classify global variables, which hold a value and can either be mutable or immutable.
+
+globaltype::= mut? valtype
+
+### 2.3.15 Memory Types
+
+Memory types classify linear memories and their size range.
+
+memtype::= addrtype limits page
+
+The limits constrain the minimum and optionally the maximum size of a memory. The limits are given in units of page size.
+
+### 2.3.16 Table Types
+
+Table types classify tables over elements of reference type within a size range.
+
+tabletype::= addrtype limits reftype
+
+Like memories, tables are constrained by limits for their minimum and optionally maximum size. The limits are given in numbers of entries.
+
+### 2.3.17 Data Types
+
+Data types classify data segments. Since the contents of a data segment requires no further classification, they merely consist of a universal marker ok indicating well-formedness.
+
+datatype::= ok
+
+### 2.3.18 Element Types
+
+Element types classify element segments by the reference type of its elements.
+
+elemtype::= reftype
+
+### 2.3.19 External Types
+
+External types classify imports and external addresses with their respective types.
+
+externtype::= tag tagtype ∣ global globaltype ∣ mem memtype ∣ table tabletype ∣ func typeuse
+
+For functions, the type use has to refer to the definition of a function type.
+
+Note
+
+Future versions of WebAssembly may have additional uses for tags, and may allow non-empty result types in the function types of tags.
+
+#### 2.3.19.1 Conventions
+
+The following auxiliary notation is defined for sequences of external types. It filters out entries of a specific kind in an order-preserving fashion:
+
+    funcs(ϵ) = ϵ
+    funcs((func dt) xt∗) = dt funcs(xt∗)
+    funcs(externtype xt∗) = funcs(xt∗) otherwise
+    0.8ex]tables(ϵ) = ϵ
+    tables((table tt) xt∗) = tt tables(xt∗)
+    tables(externtype xt∗) = tables(xt∗) otherwise
+    0.8ex]mems(ϵ) = ϵ
+    mems((mem mt) xt∗) = mt mems(xt∗)
+    mems(externtype xt∗) = mems(xt∗) otherwise
+    0.8ex]globals(ϵ) = ϵ
+    globals((global gt) xt∗) = gt globals(xt∗)
+    globals(externtype xt∗) = globals(xt∗) otherwise
+    0.8ex]tags(ϵ) = ϵ
+    tags((tag jt) xt∗) = jt tags(xt∗)
+    tags(externtype xt∗) = tags(xt∗) otherwise
+
+## 2.4 Instructions
+
+WebAssembly code consists of sequences of instructions. Its computational model is based on a stack machine in that instructions manipulate values on an implicit operand stack, consuming (popping) argument values and producing or returning (pushing) result values.
+
+In addition to dynamic operands from the stack, some instructions also have static immediate arguments, typically indices or type annotations, which are part of the instruction itself.
+
+Some instructions are structured in that they contain nested sequences of instructions.
+
+The following sections group instructions into a number of different categories.
+
+The syntax of instruction is further extended with additional forms for the purpose of specifying execution.
+
+### 2.4.1 Parametric Instructions
+
+Instructions in this group can operate on operands of any value type.
+
+    instr ::= nop
+    ∣ unreachable
+    ∣ drop
+    ∣ select (valtype∗)?
+    ∣ …
+
+The nop instruction does nothing.
+
+The unreachable instruction causes an unconditional trap.
+
+The drop instruction simply throws away a single operand.
+
+The select instruction selects one of its first two operands based on whether its third operand is zero or not. It may include a value type determining the type of these operands. If missing, the operands must be of numeric or vector type.
+
+Note
+
+In future versions of WebAssembly, the type annotation on select may allow for more than a single value being selected at the same time.
+
+### 2.4.2 Control Instructions
+
+Instructions in this group affect the flow of control.
+
+    instr ::= …
+    ∣ block blocktype instr∗
+    ∣ loop blocktype instr∗
+    ∣ if blocktype instr∗ else instr∗
+    ∣ br labelidx
+    ∣ br_if labelidx
+    ∣ br_table labelidx∗ labelidx
+    ∣ br_on_null labelidx
+    ∣ br_on_non_null labelidx
+    ∣ br_on_cast labelidx reftype reftype
+    ∣ br_on_cast_fail labelidx reftype reftype
+    ∣ call funcidx
+    ∣ call_ref typeuse
+    ∣ call_indirect tableidx typeuse
+    ∣ return
+    ∣ return_call funcidx
+    ∣ return_call_ref typeuse
+    ∣ return_call_indirect tableidx typeuse
+    ∣ throw tagidx
+    ∣ throw_ref
+    ∣ try_table blocktype list(catch) instr∗
+    ∣ …
+    0.8ex] catch ::= catch tagidx labelidx
+    ∣ catch_ref tagidx labelidx
+    ∣ catch_all labelidx
+    ∣ catch_all_ref labelidx
+
+The block, loop, if and try_table instructions are structured instructions. They bracket nested sequences of instructions, called blocks. As the grammar prescribes, they must be well-nested.
+
+A structured instruction can consume input and produce output on the operand stack according to its annotated block type.
+
+Each structured control instruction introduces an implicit label. Labels are targets for branch instructions that reference them with label indices. Unlike with other index spaces, indexing of labels is relative by nesting depth, that is, label 0 refers to the innermost structured control instruction enclosing the referring branch instruction, while increasing indices refer to those farther out. Consequently, labels can only be referenced from within the associated structured control instruction. This also implies that branches can only be directed outwards, “breaking” from the block of the control construct they target. The exact effect depends on that control construct. In case of block or if it is a forward jump, resuming execution after the end of the block. In case of loop it is a backward jump to the beginning of the loop.
+
+Note
+
+This enforces structured control flow. Intuitively, a branch targeting a block or if behaves like a break statement in most C-like languages, while a branch targeting a loop behaves like a continue statement.
+
+Branch instructions come in several flavors: br performs an unconditional branch, br_if performs a conditional branch, and br_table performs an indirect branch through an operand indexing into the label list that is an immediate to the instruction, or to a default target if the operand is out of bounds. The br_on_null and br_on_non_null instructions check whether a reference operand is null and branch if that is the case or not the case, respectively. Similarly, br_on_cast and br_on_cast_fail attempt a downcast on a reference operand and branch if that succeeds, or fails, respectively.
+
+The return instruction is a shortcut for an unconditional branch to the outermost block, which implicitly is the body of the current function. Taking a branch unwinds the operand stack up to the height where the targeted structured control instruction was entered. However, branches may additionally consume operands themselves, which they push back on the operand stack after unwinding. Forward branches require operands according to the output of the targeted block’s type, i.e., represent the values produced by the terminated block. Backward branches require operands according to the input of the targeted block’s type, i.e., represent the values consumed by the restarted block.
+
+The call instruction invokes another function, consuming the necessary arguments from the stack and returning the result values of the call. The call_ref instruction invokes a function indirectly through a function reference operand. The call_indirect instruction calls a function indirectly through an operand indexing into a table that is denoted by a table index and must contain function references. Since it may contain functions of heterogeneous type, the callee is dynamically checked against the function type indexed by the instruction’s second immediate, and the call is aborted with a trap if it does not match.
+
+The return_call, return_call_ref, and return_call_indirect instructions are tail-call variants of the previous ones. That is, they first return from the current function before actually performing the respective call. It is guaranteed that no sequence of nested calls using only these instructions can cause resource exhaustion due to hitting an implementation’s limit on the number of active calls.
+
+The instructions throw, throw_ref, and try_table are concerned with exceptions. The throw and throw_ref instructions raise and reraise an exception, respectively, and transfers control to the innermost enclosing exception handler that has a matching catch clause. The try_table instruction installs an exception handler that handles exceptions as specified by its catch clauses.
+
+### 2.4.3 Variable Instructions
+
+Variable instructions are concerned with access to local or global variables.
+
+    instr ::= …
+    ∣ local.get localidx
+    ∣ local.set localidx
+    ∣ local.tee localidx
+    ∣ global.get globalidx
+    ∣ global.set globalidx
+    ∣ …
+
+These instructions get or set the values of respective variables. The local.tee instruction is like local.set but also returns its argument.
+
+### 2.4.4 Table Instructions
+
+Instructions in this group are concerned with tables table.
+
+    instr ::= …
+    ∣ table.get tableidx
+    ∣ table.set tableidx
+    ∣ table.size tableidx
+    ∣ table.grow tableidx
+    ∣ table.fill tableidx
+    ∣ table.copy tableidx tableidx
+    ∣ table.init tableidx elemidx
+    ∣ elem.drop elemidx
+    ∣ …
+
+The table.get and table.set instructions load or store an element in a table, respectively.
+
+The table.size instruction returns the current size of a table. The table.grow instruction grows table by a given delta and returns the previous size, or −1 if enough space cannot be allocated. It also takes an initialization value for the newly allocated entries.
+
+The table.fill instruction sets all entries in a range to a given value. The table.copy instruction copies elements from a source table region to a possibly overlapping destination region; the first index denotes the destination. The table.init instruction copies elements from a passive element segment into a table.
+
+The elem.drop instruction prevents further use of a passive element segment. This instruction is intended to be used as an optimization hint. After an element segment is dropped its elements can no longer be retrieved, so the memory used by this segment may be freed.
+
+Note
+
+An additional instruction that accesses a table is the control instruction call_indirect.
+
+### 2.4.5 Memory Instructions
+
+Instructions in this group are concerned with linear memory.
+
+    memarg ::= {align u 32, offset u 32}
+    0.8ex] loadop_(i N) ::= sz_sx if sz < N
+    0.8ex] storeop_(i N) ::= sz if sz < N
+    0.8ex] vloadop_(vectype) ::= szxM_sx if sz ⋅ M = ∣vectype∣/2
+    ∣ sz_splat
+    ∣ sz_zero if sz ≥ 32
+    0.8ex] instr ::= …
+    ∣ numtype.loadloadop_(numtype)? memidx memarg
+    ∣ numtype.storestoreop_(numtype)? memidx memarg
+    ∣ vectype.loadvloadop_(vectype)? memidx memarg
+    ∣ vectype.loadsz_lane memidx memarg laneidx
+    ∣ vectype.store memidx memarg
+    ∣ vectype.storesz_lane memidx memarg laneidx
+    ∣ memory.size memidx
+    ∣ memory.grow memidx
+    ∣ memory.fill memidx
+    ∣ memory.copy memidx memidx
+    ∣ memory.init memidx dataidx
+    ∣ data.drop dataidx
+    ∣ …
+
+Memory is accessed with load and store instructions for the different number types and vector types <syntax-vectype>. They all take a memory index and a memory argument memarg that contains an address offset and the expected alignment (expressed as the exponent of a power of 2).
+
+Integer loads and stores can optionally specify a storage size sz that is smaller than the bit width of the respective value type. In the case of loads, a sign extension mode sx is then required to select appropriate behavior.
+
+Vector loads can specify a shape that is half the bit width of v128. Each lane is half its usual size, and the sign extension mode sx then specifies how the smaller lane is extended to the larger lane. Alternatively, vector loads can perform a splat, such that only a single lane of the specified storage size is loaded, and the result is duplicated to all lanes.
+
+The static address offset is added to the dynamic address operand, yielding a 33-bit or 65-bit effective address that is the zero-based index at which the memory is accessed. All values are read and written in little endian byte order. A trap results if any of the accessed memory bytes lies outside the address range implied by the memory’s current size.
+
+The memory.size instruction returns the current size of a memory. The memory.grow instruction grows a memory by a given delta and returns the previous size, or −1 if enough memory cannot be allocated. Both instructions operate in units of page size.
+
+The memory.fill instruction sets all values in a regionof a memory to a given byte. The memory.copy instruction copies data from a source memory region to a possibly overlapping destination region in another or the same memory; the first index denotes the destination The memory.init instruction copies data from a passive data segment into a memory.
+
+The data.drop instruction prevents further use of a passive data segment. This instruction is intended to be used as an optimization hint. After a data segment is dropped its data can no longer be retrieved, so the memory used by this segment may be freed.
+
+### 2.4.6 Reference Instructions
+
+Instructions in this group are concerned with accessing references.
+
+    instr ::= …
+    ∣ ref.func funcidx
+    ∣ ref.null heaptype
+    ∣ ref.is_null
+    ∣ ref.as_non_null
+    ∣ ref.eq
+    ∣ ref.test reftype
+    ∣ ref.cast reftype
+    ∣ …
+
+The ref.null and ref.func instructions produce a null reference or a reference to a given function, respectively.
+
+The instruction ref.is_null checks for null, while ref.as_non_null converts a nullable to a non-null one, and traps if it encounters null.
+
+The ref.eq compares two references.
+
+The instructions ref.test and ref.cast test the dynamic type of a reference operand. The former merely returns the result of the test, while the latter performs a downcast and traps if the operand’s type does not match.
+
+Note
+
+The br_on_null and br_on_non_null instructions provide versions of ref.as_null that branch depending on the success of failure of a null test instead of trapping. Similarly, the br_on_cast and br_on_cast_fail instructions provides versions of ref.cast that branch depending on the success of the downcast instead of trapping.
+
+An additional instruction operating on function references is the control instruction call_ref.
+
+### 2.4.7 Aggregate Instructions
+
+Instructions in this group are concerned with creating and accessing references to aggregate types.
+
+    instr ::= …
+    ∣ struct.new typeidx
+    ∣ struct.new_default typeidx
+    ∣ struct.get_sx? typeidx u 32
+    ∣ struct.set typeidx u 32
+    ∣ array.new typeidx
+    ∣ array.new_default typeidx
+    ∣ array.new_fixed typeidx u 32
+    ∣ array.new_data typeidx dataidx
+    ∣ array.new_elem typeidx elemidx
+    ∣ array.get_sx? typeidx
+    ∣ array.set typeidx
+    ∣ array.len
+    ∣ array.fill typeidx
+    ∣ array.copy typeidx typeidx
+    ∣ array.init_data typeidx dataidx
+    ∣ array.init_elem typeidx elemidx
+    ∣ ref.i31
+    ∣ i31.get_sx
+    ∣ extern.convert_any
+    ∣ any.convert_extern
+    ∣ …
+
+The instructions struct.new and struct.new_default allocate a new structure, initializing them either with operands or with default values. The remaining instructions on structs access individual fields, allowing for different sign extension modes in the case of packed storage types.
+
+Similarly, arrays can be allocated either with an explicit initialization operand or a default value. Furthermore, array.new_fixed allocates an array with statically fixed size, and array.new_data and array.new_elem allocate an array and initialize it from a data or element segment, respectively. The instructions array.get, array.get sx, and array.set access individual slots, again allowing for different sign extension modes in the case of a packed storage type; array.len produces the length of an array; array.fill fills a specified slice of an array with a given value and array.copy, array.init_data, and array.init_elem copy elements to a specified slice of an array from a given array, data segment, or element segment, respectively.
+
+The instructions ref.i31 and i31.get sx convert between type i32 and an unboxed scalar.
+
+The instructions any.convert_extern and extern.convert_any allow lossless conversion between references represented as type (ref null extern) and as (ref null any).
+
+### 2.4.8 Numeric Instructions
+
+Numeric instructions provide basic operations over numeric values of specific type. These operations closely match respective operations available in hardware.
+
+    sz ::= 8 ∣ 16 ∣ 32 ∣ 64
+    sx ::= u ∣ s
+    0.8ex] num_(i N) ::= i N
+    num_(f N) ::= f N
+    0.8ex] instr ::= …
+    ∣ numtype.const num_(numtype)
+    ∣ numtype.unop_(numtype)
+    ∣ numtype.binop_(numtype)
+    ∣ numtype.testop_(numtype)
+    ∣ numtype.relop_(numtype)
+    ∣ numtype_1.cvtop_(numtype_2,numtype_1)_numtype_2
+    ∣ …
+    0.8ex] unop_(i N) ::= clz ∣ ctz ∣ popcnt ∣ extendsz_s if sz < N
+    unop_(f N) ::= abs ∣ neg ∣ sqrt ∣ ceil ∣ floor ∣ trunc ∣ nearest
+    0.8ex] binop_(i N) ::= add ∣ sub ∣ mul ∣ div_sx ∣ rem_sx
+    ∣ and ∣ or ∣ xor ∣ shl ∣ shr_sx ∣ rotl ∣ rotr
+    binop_(f N) ::= add ∣ sub ∣ mul ∣ div ∣ min ∣ max ∣ copysign
+    0.8ex] testop_(i N) ::= eqz
+    0.8ex] relop_(i N) ::= eq ∣ ne ∣ lt_sx ∣ gt_sx ∣ le_sx ∣ ge_sx
+    relop_(f N) ::= eq ∣ ne ∣ lt ∣ gt ∣ le ∣ ge
+    0.8ex] cvtop_(i N_1,i N_2) ::= extend_sx if N_1 < N_2
+    ∣ wrap if N_1 > N_2
+    cvtop_(i N_1,f N_2) ::= convert_sx
+    ∣ reinterpret if N_1 = N_2
+    cvtop_(f N_1,i N_2) ::= trunc_sx
+    ∣ trunc_sat_sx
+    ∣ reinterpret if N_1 = N_2
+    cvtop_(f N_1,f N_2) ::= promote if N_1 < N_2
+    ∣ demote if N_1 > N_2
+
+Numeric instructions are divided by number type. For each type, several subcategories can be distinguished:
+
+- Constants: return a static constant.
+
+- Unary Operations: consume one operand and produce one result of the respective type.
+
+- Binary Operations: consume two operands and produce one result of the respective type.
+
+- Tests: consume one operand of the respective type and produce a Boolean integer result.
+
+- Comparisons: consume two operands of the respective type and produce a Boolean integer result.
+
+- Conversions: consume a value of one type and produce a result of another (the source type of the conversion is the one after the “ _ ”).
+
+Some integer instructions come in two flavors, where a signedness annotation sx distinguishes whether the operands are to be interpreted as unsigned or signed integers. For the other integer instructions, the use of two’s complement for the signed interpretation means that they behave the same regardless of signedness.
+
+### 2.4.9 Vector Instructions
+
+Vector instructions (also known as SIMD instructions, single instruction multiple data) provide basic operations over values of vector type.
+
+    lanetype ::= numtype ∣ packtype
+    dim ::= 1 ∣ 2 ∣ 4 ∣ 8 ∣ 16
+    shape ::= lanetypexdim if ∣lanetype∣ ⋅ dim = 128
+    ishape ::= shape if lanetype(shape) = i N
+    bshape ::= shape if lanetype(shape) = i8
+    0.8ex] half ::= low ∣ high
+    0.8ex] zero ::= zero
+    0.8ex] laneidx ::= u 8
+    0.8ex] instr ::= …
+    ∣ vectype.const vec_(vectype)
+    ∣ vectype.vvunop
+    ∣ vectype.vvbinop
+    ∣ vectype.vvternop
+    ∣ vectype.vvtestop
+    ∣ shape.vunop_(shape)
+    ∣ shape.vbinop_(shape)
+    ∣ shape.vternop_(shape)
+    ∣ shape.vtestop_(shape)
+    ∣ shape.vrelop_(shape)
+    ∣ ishape.vshiftop_(ishape)
+    ∣ ishape.bitmask
+    ∣ bshape.vswizzlop_(bshape)
+    ∣ bshape.shuffle laneidx∗ if ∣laneidx∗∣ = dim(bshape)
+    ∣ ishape_1.vextunop_(ishape_2,ishape_1)_ishape_2
+    ∣ ishape_1.vextbinop_(ishape_2,ishape_1)_ishape_2
+    ∣ ishape_1.vextternop_(ishape_2,ishape_1)_ishape_2
+    ∣ ishape_1.narrow_ishape_2_sx if ∣lanetype(ishape_2)∣ = 2 ⋅ ∣lanetype(ishape_1)∣ ≤ 32
+    ∣ shape_1.vcvtop_(shape_2,shape_1)_shape_2
+    ∣ shape.splat
+    ∣ shape.extract_lane_sx? laneidx if sx? = ϵ ⇔ lanetype(shape) ∈ i32 i64 f32 f64
+    ∣ shape.replace_lane laneidx
+    ∣ …
+
+Vector instructions have a naming convention involving a shape prefix that determines how their operands will be interpreted, written txN, and consisting of a lane type t, a possibly packed numeric type, and its dimension N, which denotes the number of lanes of that type. Operations are performed point-wise on the values of each lane.
+
+Instructions prefixed with v128 do not involve a specific interpretation, and treat the v128 as either an i 128 value or a vector of 128 individual bits.
+
+Note
+
+For example, the shape i32x4 interprets the operand as four i 32 values, packed into an i 128. The bit width of the lane type t times N always is 128.
+
+    vvunop ::= not
+    0.8ex] vvbinop ::= and ∣ andnot ∣ or ∣ xor
+    0.8ex] vvternop ::= bitselect
+    0.8ex] vvtestop ::= any_true
+    0.8ex] vunop_(i NxM) ::= abs ∣ neg
+    ∣ popcnt if N = 8
+    vunop_(f NxM) ::= abs ∣ neg ∣ sqrt ∣ ceil ∣ floor ∣ trunc ∣ nearest
+    0.8ex] vbinop_(i NxM) ::= add
+    ∣ sub
+    ∣ add_sat_sx if N ≤ 16
+    ∣ sub_sat_sx if N ≤ 16
+    ∣ mul if N ≥ 16
+    ∣ avgr_u if N ≤ 16
+    ∣ q15mulr_sat_s if N = 16
+    ∣ relaxed_q15mulr_s if N = 16
+    ∣ min_sx if N ≤ 32
+    ∣ max_sx if N ≤ 32
+    vbinop_(f NxM) ::= add ∣ sub ∣ mul ∣ div ∣ min ∣ max ∣ pmin ∣ pmax
+    ∣ relaxed_min ∣ relaxed_max
+    0.8ex] vternop_(i NxM) ::= relaxed_laneselect
+    vternop_(f NxM) ::= relaxed_madd ∣ relaxed_nmadd
+    0.8ex] vtestop_(i NxM) ::= all_true
+    0.8ex] vrelop_(i NxM) ::= eq ∣ ne
+    ∣ lt_sx if N = 64 ∨ sx = s
+    ∣ gt_sx if N = 64 ∨ sx = s
+    ∣ le_sx if N = 64 ∨ sx = s
+    ∣ ge_sx if N = 64 ∨ sx = s
+    vrelop_(f NxM) ::= eq ∣ ne ∣ lt ∣ gt ∣ le ∣ ge
+    0.8ex] vswizzlop_(i8xM) ::= swizzle ∣ relaxed_swizzle
+    0.8ex] vshiftop_(i NxM) ::= shl ∣ shr_sx
+    0.8ex] vextunop_(i N_1xM_1,i N_2xM_2) ::= extadd_pairwise_sx if 16 ≤ 2 ⋅ N_1 = N_2 ≤ 32
+    0.8ex] vextbinop_(i N_1xM_1,i N_2xM_2) ::= extmul_half_sx if 2 ⋅ N_1 = N_2 ≥ 16
+    ∣ dot_s if 2 ⋅ N_1 = N_2 = 32
+    ∣ relaxed_dot_s if 2 ⋅ N_1 = N_2 = 16
+    0.8ex] vextternop_(i N_1xM_1,i N_2xM_2) ::= relaxed_dot_add_s if 4 ⋅ N_1 = N_2 = 32
+    0.8ex] vcvtop_(i N_1xM_1,i N_2xM_2) ::= extend_half_sx if N_2 = 2 ⋅ N_1
+    vcvtop_(i N_1xM_1,f N_2xM_2) ::= convert_half? sx if N_2 = N_1 = 32 ∧ half? = ϵ ∨ N_2 = 2 ⋅ N_1 ∧ half? = low
+    vcvtop_(f N_1xM_1,i N_2xM_2) ::= trunc_sat_sx zero? if N_1 = N_2 = 32 ∧ zero? = ϵ ∨ N_1 = 2 ⋅ N_2 ∧ zero? = zero
+    ∣ relaxed_trunc_sx zero? if N_1 = N_2 = 32 ∧ zero? = ϵ ∨ N_1 = 2 ⋅ N_2 ∧ zero? = zero
+    vcvtop_(f N_1xM_1,f N_2xM_2) ::= demote_zero if N_1 = 2 ⋅ N_2
+    ∣ promote_low if 2 ⋅ N_1 = N_2
+
+Vector instructions can be grouped into several subcategories:
+
+- Constants: return a static constant.
+
+- Unary Operations: consume one v128 operand and produce one v128 result.
+
+- Binary Operations: consume two v128 operands and produce one v128 result.
+
+- Ternary Operations: consume three v128 operands and produce one v128 result.
+
+- Tests: consume one v128 operand and produce a Boolean integer result.
+
+- Shifts: consume a v128 operand and an i32 operand, producing one v128 result.
+
+- Splats: consume a value of numeric type and produce a v128 result of a specified shape.
+
+- Extract lanes: consume a v128 operand and return the numeric value in a given lane.
+
+- Replace lanes: consume a v128 operand and a numeric value for a given lane, and produce a v128 result.
+
+Some vector instructions have a signedness annotation sx which distinguishes whether the elements in the operands are to be interpreted as unsigned or signed integers. For the other vector instructions, the use of two’s complement for the signed interpretation means that they behave the same regardless of signedness.
+
+#### 2.4.9.1 Conventions
+
+- The function lanetype(shape) extracts the lane type of a shape.
+
+- The function dim(shape) extracts the dimension of a shape.
+
+- The function zeroop(vcvtop) extracts the zero flag from a vector conversion operator, or returns ϵ if it does not contain any.
+
+- The function halfop(vcvtop) extracts the half flag from a vector conversion operator, or returns ϵ if it does not contain any.
+
+### 2.4.10 Expressions
+
+Function bodies, initialization values for globals, elements and offsets of element segments, and offsets of data segments are given as expressions, which are sequences of instructions.
+
+expr::= instr∗
+
+In some places, validation restricts expressions to be constant, which limits the set of allowable instructions.
+
+## 2.5 Modules
+
+WebAssembly programs are organized into modules, which are the unit of deployment, loading, and compilation. A module collects definitions for types, tags, and globals, memories, tables, functions. In addition, it can declare imports and exports and provide initialization in the form of data and element segments, or a start function.
+
+module::= module type∗ import∗ tag∗ global∗ mem∗ table∗ func∗ data∗ elem∗ start? export∗
+
+Each of the lists — and thus the entire module — may be empty.
+
+### 2.5.1 Indices
+
+Definitions are referenced with zero-based indices. Each class of definition has its own index space, as distinguished by the following classes.
+
+    typeidx ::= idx
+    funcidx ::= idx
+    globalidx ::= idx
+    tableidx ::= idx
+    memidx ::= idx
+    tagidx ::= idx
+    elemidx ::= idx
+    dataidx ::= idx
+    labelidx ::= idx
+    localidx ::= idx
+    fieldidx ::= idx
+
+The index space for tags, globals, memories, tables, and functions includes respective imports declared in the same module. The indices of these imports precede the indices of other definitions in the same index space.
+
+Data indices reference data segments and element indices reference element segments.
+
+The index space for locals is only accessible inside a function and includes the parameters of that function, which precede the local variables.
+
+Label indices reference structured control instructions inside an instruction sequence.
+
+Each aggregate type provides an index space for its fields.
+
+#### 2.5.1.1 Conventions
+
+- The meta variable l ranges over label indices.
+
+- The meta variables x, y range over indices in any of the other index spaces.
+
+- For every index space abcidx, the notation abcidx(A) denotes the set of indices from that index space occurring free in A. Sometimes this set is reinterpreted as the list of its elements.
+
+Note
+
+For example, if instr∗ is (data.drop 1) (memory.init 2 3), then dataidx_(instrs)(instr∗) = 1 3, or equivalently, the set {1, 3}.
+
+### 2.5.2 Types
+
+The type section of a module defines a list of recursive types, each consisting of a list of sub types referenced by individual type indices. All function, structure, or array types used in a module must be defined in this section.
+
+type::= type rectype
+
+### 2.5.3 Tags
+
+The tag section of a module defines a list of tags:
+
+tag::= tag tagtype
+
+The type index of a tag must refer to a function type that declares its tag type.
+
+Tags are referenced through tag indices, starting with the smallest index not referencing a tag import.
+
+### 2.5.4 Globals
+
+The global section of a module defines a list of global variables (or globals for short):
+
+global::= global globaltype expr
+
+Each global stores a single value of the type specified in the global type. It also specifies whether a global is immutable or mutable. Moreover, each global is initialized with a value given by a constant initializer expression.
+
+Globals are referenced through global indices, starting with the smallest index not referencing a global import.
+
+### 2.5.5 Memories
+
+The mem section of a module defines a list of linear memories (or memories for short) as described by their memory type:
+
+mem::= memory memtype
+
+A memory is a list of raw uninterpreted bytes. The minimum size in the limits of its memory type specifies the initial size of that memory, while its maximum, if present, restricts the size to which it can grow later. Both are in units of page size.
+
+Memories can be initialized through data segments.
+
+Memories are referenced through memory indices, starting with the smallest index not referencing a memory import. Most constructs implicitly reference memory index 0.
+
+### 2.5.6 Tables
+
+The table section of a module defines a list of tables described by their table type:
+
+table::= table tabletype expr
+
+A table is an array of opaque values of a particular reference type that is specified by the table type. Each table slot is initialized with a value given by a constant initializer expression. Tables can further be initialized through element segments.
+
+The minimum size in the limits of the table type specifies the initial size of that table, while its maximum restricts the size to which it can grow later.
+
+Tables are referenced through table indices, starting with the smallest index not referencing a table import. Most constructs implicitly reference table index 0.
+
+### 2.5.7 Functions
+
+The func section of a module defines a list of functions with the following structure:
+
+    func ::= func typeidx local∗ expr
+    local ::= local valtype
+
+The type index of a function declares its signature by reference to a function type defined in the module. The parameters of the function are referenced through 0-based local indices in the function’s body; they are mutable.
+
+The locals declare a list of mutable local variables and their types. These variables are referenced through local indices in the function’s body. The index of the first local is the smallest index not referencing a parameter.
+
+A function’s expression is an instruction sequence that represents the body of the function. Upon termination it must produce a stack matching the function type’s result type.
+
+Functions are referenced through function indices, starting with the smallest index not referencing a function import.
+
+### 2.5.8 Data Segments
+
+The data section of a module defines a list of data segments, which can be used to initialize a range of memory from a static list of bytes.
+
+    data ::= data byte∗ datamode
+    datamode ::= active memidx expr ∣ passive
+
+Similar to element segments, data segments have a mode that identifies them as either active or passive. A passive data segment’s contents can be copied into a memory using the memory.init instruction. An active data segment copies its contents into a memory during instantiation, as specified by a memory index and a constant expression defining an offset into that memory.
+
+Data segments are referenced through data indices.
+
+### 2.5.9 Element Segments
+
+The elem section of a module defines a list of element segments, which can be used to initialize a subrange of a table from a static list of elements.
+
+    elem ::= elem reftype expr∗ elemmode
+    elemmode ::= active tableidx expr ∣ passive ∣ declare
+
+Each element segment defines a reference type and a corresponding list of constant element expressions.
+
+Element segments have a mode that identifies them as either active, passive, or declarative. A passive element segment’s elements can be copied to a table using the table.init instruction. An active element segment copies its elements into a table during instantiation, as specified by a table index and a constant expression defining an offset into that table. A declarative element segment is not available at runtime but merely serves to forward-declare references that are formed in code with instructions like ref.func. The offset is given by another constant expression.
+
+Element segments are referenced through element indices.
+
+### 2.5.10 Start Function
+
+The start section of a module declares the function index of a start function that is automatically invoked when the module is instantiated, after tables and memories have been initialized.
+
+start::= start funcidx
+
+Note
+
+The start function is intended for initializing the state of a module. The module and its exports are not accessible externally before this initialization has completed.
+
+### 2.5.11 Imports
+
+The import section of a module defines a set of imports that are required for instantiation.
+
+import::= import name name externtype
+
+Each import is labeled by a two-level name space, consisting of a module name and an item name for an entity within that module. Importable definitions are tags, globals, memories, tables, and functions. Each import is specified by a respective external type that a definition provided during instantiation is required to match.
+
+Every import defines an index in the respective index space. In each index space, the indices of imports go before the first index of any definition contained in the module itself.
+
+Note
+
+Unlike export names, import names are not necessarily unique. It is possible to import the same module/item name pair multiple times; such imports may even have different type descriptions, including different kinds of entities. A module with such imports can still be instantiated depending on the specifics of how an embedder allows resolving and supplying imports. However, embedders are not required to support such overloading, and a WebAssembly module itself cannot implement an overloaded name.
+
+### 2.5.12 Exports
+
+The export section of a module defines a set of exports that become accessible to the host environment once the module has been instantiated.
+
+    export ::= export name externidx
+    0.8ex] externidx ::= func funcidx ∣ global globalidx ∣ table tableidx ∣ memory memidx ∣ tag tagidx
+
+Each export is labeled by a unique name. Exportable definitions are tags, globals, memories, tables, and functions, which are referenced through a respective index.
+
+#### 2.5.12.1 Conventions
+
+The following auxiliary notation is defined for sequences of exports, filtering out indices of a specific kind in an order-preserving fashion:
+
+    funcs(ϵ) = ϵ
+    funcs((func x) xx∗) = x funcs(xx∗)
+    funcs(externidx xx∗) = funcs(xx∗) otherwise
+    0.8ex]tables(ϵ) = ϵ
+    tables((table x) xx∗) = x tables(xx∗)
+    tables(externidx xx∗) = tables(xx∗) otherwise
+    0.8ex]mems(ϵ) = ϵ
+    mems((memory x) xx∗) = x mems(xx∗)
+    mems(externidx xx∗) = mems(xx∗) otherwise
+    0.8ex]globals(ϵ) = ϵ
+    globals((global x) xx∗) = x globals(xx∗)
+    globals(externidx xx∗) = globals(xx∗) otherwise
+    0.8ex]tags(ϵ) = ϵ
+    tags((tag x) xx∗) = x tags(xx∗)
+    tags(externidx xx∗) = tags(xx∗) otherwise
+

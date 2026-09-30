@@ -1,0 +1,4374 @@
+# WebAssembly Core 2.0: 4 Execution
+# джерело: https://www.w3.org/TR/2024/CR-wasm-core-2-20241217/#execution②
+# отримано: 2026-09-30
+# версія: 2.0
+
+## 4.1 Conventions
+
+WebAssembly code is executed when instantiating a module or invoking an exported function on the resulting module instance.
+
+Execution behavior is defined in terms of an abstract machine that models the program state. It includes a stack, which records operand values and control constructs, and an abstract store containing global state.
+
+For each instruction, there is a rule that specifies the effect of its execution on the program state. Furthermore, there are rules describing the instantiation of a module. As with validation, all rules are given in two equivalent forms:
+
+1. In prose, describing the execution in intuitive form.
+
+2. In formal notation, describing the rule in mathematical form. [1]
+
+Note
+
+As with validation, the prose and formal rules are equivalent, so that understanding of the formal notation is not required to read this specification. The formalism offers a more concise description in notation that is used widely in programming languages semantics and is readily amenable to mathematical proof.
+
+### 4.1.1 Prose Notation
+
+Execution is specified by stylised, step-wise rules for each instruction of the abstract syntax. The following conventions are adopted in stating these rules.
+
+- The execution rules implicitly assume a given store S.
+
+- The execution rules also assume the presence of an implicit stack that is modified by pushing or popping values, labels, and frames.
+
+- Certain rules require the stack to contain at least one frame. The most recent frame is referred to as the current frame.
+
+- Both the store and the current frame are mutated by replacing some of their components. Such replacement is assumed to apply globally.
+
+- The execution of an instruction may trap, in which case the entire computation is aborted and no further modifications to the store are performed by it. (Other computations can still be initiated afterwards.)
+
+- The execution of an instruction may also end in a jump to a designated target, which defines the next instruction to execute.
+
+- Execution can enter and exit instruction sequences that form blocks.
+
+- Instruction sequences are implicitly executed in order, unless a trap or jump occurs.
+
+- In various places the rules contain assertions expressing crucial invariants about the program state.
+
+### 4.1.2 Formal Notation
+
+Note
+
+This section gives a brief explanation of the notation for specifying execution formally. For the interested reader, a more thorough introduction can be found in respective text books. [2]
+
+The formal execution rules use a standard approach for specifying operational semantics, rendering them into reduction rules. Every rule has the following general form:
+
+configuration ↪ configuration
+
+A configuration is a syntactic description of a program state. Each rule specifies one step of execution. As long as there is at most one reduction rule applicable to a given configuration, reduction – and thereby execution – is deterministic. WebAssembly has only very few exceptions to this, which are noted explicitly in this specification.
+
+For WebAssembly, a configuration typically is a tuple (S; F; instr∗) consisting of the current store S, the call frame F of the current function, and the sequence of instructions that is to be executed. (A more precise definition is given later.)
+
+To avoid unnecessary clutter, the store S and the frame F are omitted from reduction rules that do not touch them.
+
+There is no separate representation of the stack. Instead, it is conveniently represented as part of the configuration’s instruction sequence. In particular, values are defined to coincide with const instructions, and a sequence of const instructions can be interpreted as an operand “stack” that grows to the right.
+
+Note
+
+For example, the reduction rule for the i32.add instruction can be given as follows:
+
+(i32.const n_1) (i32.const n_2) i32.add ↪ (i32.const (n_1 + n_2) mod 2^(32))
+
+Per this rule, two const instructions and the add instruction itself are removed from the instruction stream and replaced with one new const instruction. This can be interpreted as popping two values off the stack and pushing the result.
+
+When no result is produced, an instruction reduces to the empty sequence:
+
+nop ↪ ϵ
+
+Labels and frames are similarly defined to be part of an instruction sequence.
+
+The order of reduction is determined by the definition of an appropriate evaluation context.
+
+Reduction terminates when no more reduction rules are applicable. Soundness of the WebAssembly type system guarantees that this is only the case when the original instruction sequence has either been reduced to a sequence of const instructions, which can be interpreted as the values of the resulting operand stack, or if a trap occurred.
+
+Note
+
+For example, the following instruction sequence,
+
+(f64.const x_1) (f64.const x_2) f64.neg (f64.const x_3) f64.add f64.mul
+
+terminates after three steps:
+
+    (f64.const x_1) (f64.const x_2) f64.neg (f64.const x_3) f64.add f64.mul
+    ↪ (f64.const x_1) (f64.const x_4) (f64.const x_3) f64.add f64.mul
+    ↪ (f64.const x_1) (f64.const x_5) f64.mul
+    ↪ (f64.const x_6)
+
+where x_4 = −x_2 and x_5 = −x_2 + x_3 and x_6 = x_1 ⋅ (−x_2 + x_3).
+
+[1]
+
+The semantics is derived from the following article: Andreas Haas, Andreas Rossberg, Derek Schuff, Ben Titzer, Dan Gohman, Luke Wagner, Alon Zakai, JF Bastien, Michael Holman. Bringing the Web up to Speed with WebAssembly. Proceedings of the 38th ACM SIGPLAN Conference on Programming Language Design and Implementation (PLDI 2017). ACM 2017.
+
+[2]
+
+For example: Benjamin Pierce. Types and Programming Languages. The MIT Press 2002
+
+## 4.2 Runtime Structure
+
+Store, stack, and other runtime structure forming the WebAssembly abstract machine, such as values or module instances, are made precise in terms of additional auxiliary syntax.
+
+### 4.2.1 Values
+
+WebAssembly computations manipulate values of either the four basic number types, i.e., integers and floating-point data of 32 or 64 bit width each, or vectors of 128 bit width, or of reference type.
+
+In most places of the semantics, values of different types can occur. In order to avoid ambiguities, values are therefore represented with an abstract syntax that makes their type explicit. It is convenient to reuse the same notation as for the const instructions and ref.null producing them.
+
+References other than null are represented with additional administrative instructions. They either are function references, pointing to a specific function address, or external references pointing to an uninterpreted form of extern address that can be defined by the embedder to represent its own objects.
+
+    num ::= i32.const i32
+    ∣ i64.const i64
+    ∣ f32.const f32
+    ∣ f64.const f64
+    vec ::= v128.const i128
+    ref ::= ref.null t
+    ∣ ref funcaddr
+    ∣ ref.extern externaddr
+    val ::= num ∣ vec ∣ ref
+
+Note
+
+Future versions of WebAssembly may add additional forms of reference.
+
+Each value type has an associated default value; it is the respective value 0 for number types, 0 for vector types, and null for reference types.
+
+    default_t = t.const 0 (if t = numtype)
+    default_t = t.const 0 (if t = vectype)
+    default_t = ref.null t (if t = reftype)
+
+#### 4.2.1.1 Convention
+
+- The meta variable r ranges over reference values where clear from context.
+
+### 4.2.2 Results
+
+A result is the outcome of a computation. It is either a sequence of values or a trap.
+
+    result ::= val∗
+    ∣ trap
+
+### 4.2.3 Store
+
+The store represents all global state that can be manipulated by WebAssembly programs. It consists of the runtime representation of all instances of functions, tables, memories, and globals, element segments, and data segments that have been allocated during the life time of the abstract machine. [1]
+
+It is an invariant of the semantics that no element or data instance is addressed from anywhere else but the owning module instances.
+
+Syntactically, the store is defined as a record listing the existing instances of each category:
+
+    store ::= { funcs funcinst∗,
+    tables tableinst∗,
+    mems meminst∗,
+    globals globalinst∗,
+    elems eleminst∗,
+    datas datainst∗ }
+
+[1]
+
+In practice, implementations may apply techniques like garbage collection to remove objects from the store that are no longer referenced. However, such techniques are not semantically observable, and hence outside the scope of this specification.
+
+#### 4.2.3.1 Convention
+
+- The meta variable S ranges over stores where clear from context.
+
+### 4.2.4 Addresses
+
+Function instances, table instances, memory instances, and global instances, element instances, and data instances in the store are referenced with abstract addresses. These are simply indices into the respective store component. In addition, an embedder may supply an uninterpreted set of host addresses.
+
+    addr ::= 0 ∣ 1 ∣ 2 ∣ …
+    funcaddr ::= addr
+    tableaddr ::= addr
+    memaddr ::= addr
+    globaladdr ::= addr
+    elemaddr ::= addr
+    dataaddr ::= addr
+    externaddr ::= addr
+
+An embedder may assign identity to exported store objects corresponding to their addresses, even where this identity is not observable from within WebAssembly code itself (such as for function instances or immutable globals).
+
+Note
+
+Addresses are dynamic, globally unique references to runtime objects, in contrast to indices, which are static, module-local references to their original definitions. A memory address memaddr denotes the abstract address of a memory instance in the store, not an offset inside a memory instance.
+
+There is no specific limit on the number of allocations of store objects, hence logical addresses can be arbitrarily large natural numbers.
+
+### 4.2.5 Module Instances
+
+A module instance is the runtime representation of a module. It is created by instantiating a module, and collects runtime representations of all entities that are imported, defined, or exported by the module.
+
+    moduleinst ::= {types functype∗,
+    funcaddrs funcaddr∗,
+    tableaddrs tableaddr∗,
+    memaddrs memaddr∗,
+    globaladdrs globaladdr∗,
+    elemaddrs elemaddr∗,
+    dataaddrs dataaddr∗,
+    exports exportinst∗ }
+
+Each component references runtime instances corresponding to respective declarations from the original module – whether imported or defined – in the order of their static indices. Function instances, table instances, memory instances, and global instances are referenced with an indirection through their respective addresses in the store.
+
+It is an invariant of the semantics that all export instances in a given module instance have different names.
+
+### 4.2.6 Function Instances
+
+A function instance is the runtime representation of a function. It effectively is a closure of the original function over the runtime module instance of its originating module. The module instance is used to resolve references to other definitions during execution of the function.
+
+    funcinst ::= {type functype, module moduleinst, code func}
+    ∣ {type functype, hostcode hostfunc}
+    hostfunc ::= …
+
+A host function is a function expressed outside WebAssembly but passed to a module as an import. The definition and behavior of host functions are outside the scope of this specification. For the purpose of this specification, it is assumed that when invoked, a host function behaves non-deterministically, but within certain constraints that ensure the integrity of the runtime.
+
+Note
+
+Function instances are immutable, and their identity is not observable by WebAssembly code. However, the embedder might provide implicit or explicit means for distinguishing their addresses.
+
+### 4.2.7 Table Instances
+
+A table instance is the runtime representation of a table. It records its type and holds a vector of reference values.
+
+tableinst::= {type tabletype, elem vec(ref)}
+
+Table elements can be mutated through table instructions, the execution of an active element segment, or by external means provided by the embedder.
+
+It is an invariant of the semantics that all table elements have a type equal to the element type of tabletype. It also is an invariant that the length of the element vector never exceeds the maximum size of tabletype, if present.
+
+### 4.2.8 Memory Instances
+
+A memory instance is the runtime representation of a linear memory. It records its type and holds a vector of bytes.
+
+meminst::= {type memtype, data vec(byte)}
+
+The length of the vector always is a multiple of the WebAssembly page size, which is defined to be the constant 65536 – abbreviated 64 Ki.
+
+The bytes can be mutated through memory instructions, the execution of an active data segment, or by external means provided by the embedder.
+
+It is an invariant of the semantics that the length of the byte vector, divided by page size, never exceeds the maximum size of memtype, if present.
+
+### 4.2.9 Global Instances
+
+A global instance is the runtime representation of a global variable. It records its type and holds an individual value.
+
+globalinst::= {type globaltype, value val}
+
+The value of mutable globals can be mutated through variable instructions or by external means provided by the embedder.
+
+It is an invariant of the semantics that the value has a type equal to the value type of globaltype.
+
+### 4.2.10 Element Instances
+
+An element instance is the runtime representation of an element segment. It holds a vector of references and their common type.
+
+eleminst::= {type reftype, elem vec(ref)}
+
+### 4.2.11 Data Instances
+
+An data instance is the runtime representation of a data segment. It holds a vector of bytes.
+
+datainst::= {data vec(byte)}
+
+### 4.2.12 Export Instances
+
+An export instance is the runtime representation of an export. It defines the export’s name and the associated external value.
+
+exportinst::= {name name, value externval}
+
+### 4.2.13 External Values
+
+An external value is the runtime representation of an entity that can be imported or exported. It is an address denoting either a function instance, table instance, memory instance, or global instances in the shared store.
+
+    externval ::= func funcaddr
+    ∣ table tableaddr
+    ∣ mem memaddr
+    ∣ global globaladdr
+
+#### 4.2.13.1 Conventions
+
+The following auxiliary notation is defined for sequences of external values. It filters out entries of a specific kind in an order-preserving fashion:
+
+- funcs(externval∗) = [funcaddr ∣ (func funcaddr) ∈ externval∗]
+
+- tables(externval∗) = [tableaddr ∣ (table tableaddr) ∈ externval∗]
+
+- mems(externval∗) = [memaddr ∣ (mem memaddr) ∈ externval∗]
+
+- globals(externval∗) = [globaladdr ∣ (global globaladdr) ∈ externval∗]
+
+### 4.2.14 Stack
+
+Besides the store, most instructions interact with an implicit stack. The stack contains three kinds of entries:
+
+- Values: the operands of instructions.
+
+- Labels: active structured control instructions that can be targeted by branches.
+
+- Activations: the call frames of active function calls.
+
+These entries can occur on the stack in any order during the execution of a program. Stack entries are described by abstract syntax as follows.
+
+Note
+
+It is possible to model the WebAssembly semantics using separate stacks for operands, control constructs, and calls. However, because the stacks are interdependent, additional book keeping about associated stack heights would be required. For the purpose of this specification, an interleaved representation is simpler.
+
+#### 4.2.14.1 Values
+
+Values are represented by themselves.
+
+#### 4.2.14.2 Labels
+
+Labels carry an argument arity n and their associated branch target, which is expressed syntactically as an instruction sequence:
+
+label::= label_n{instr∗}
+
+Intuitively, instr∗ is the continuation to execute when the branch is taken, in place of the original control construct.
+
+Note
+
+For example, a loop label has the form
+
+label_n{loop … end}
+
+When performing a branch to this label, this executes the loop, effectively restarting it from the beginning. Conversely, a simple block label has the form
+
+label_n{ϵ}
+
+When branching, the empty continuation ends the targeted block, such that execution can proceed with consecutive instructions.
+
+#### 4.2.14.3 Activation Frames
+
+Activation frames carry the return arity n of the respective function, hold the values of its locals (including arguments) in the order corresponding to their static local indices, and a reference to the function’s own module instance:
+
+    frame ::= frame_n{framestate}
+    framestate ::= {locals val∗, module moduleinst}
+
+The values of the locals are mutated by respective variable instructions.
+
+#### 4.2.14.4 Conventions
+
+- The meta variable L ranges over labels where clear from context.
+
+- The meta variable F ranges over frame states where clear from context.
+
+- The following auxiliary definition takes a block type and looks up the function type that it denotes in the current frame:
+
+    expand_F(typeidx) = F.module.types[typeidx]
+    expand_F([valtype?]) = [] → [valtype?]
+
+### 4.2.15 Administrative Instructions
+
+Note
+
+This section is only relevant for the formal notation.
+
+In order to express the reduction of traps, calls, and control instructions, the syntax of instructions is extended to include the following administrative instructions:
+
+    instr ::= …
+    ∣ trap
+    ∣ ref funcaddr
+    ∣ ref.extern externaddr
+    ∣ invoke funcaddr
+    ∣ label_n{instr∗} instr∗ end
+    ∣ frame_n{framestate} instr∗ end
+
+The trap instruction represents the occurrence of a trap. Traps are bubbled up through nested instruction sequences, ultimately reducing the entire program to a single trap instruction, signalling abrupt termination.
+
+The ref instruction represents function reference values. Similarly, ref.extern represents external references.
+
+The invoke instruction represents the imminent invocation of a function instance, identified by its address. It unifies the handling of different forms of calls.
+
+The label and frame instructions model labels and frames “on the stack”. Moreover, the administrative syntax maintains the nesting structure of the original structured control instruction or function body and their instruction sequences with an end marker. That way, the end of the inner instruction sequence is known when part of an outer sequence.
+
+Note
+
+For example, the reduction rule for block is:
+
+block [t^n] instr∗ end ↪ label_n{ϵ} instr∗ end
+
+This replaces the block with a label instruction, which can be interpreted as “pushing” the label on the stack. When end is reached, i.e., the inner instruction sequence has been reduced to the empty sequence – or rather, a sequence of n const instructions representing the resulting values – then the label instruction is eliminated courtesy of its own reduction rule:
+
+label_m{instr∗} val^n end ↪ val^n
+
+This can be interpreted as removing the label from the stack and only leaving the locally accumulated operand values.
+
+#### 4.2.15.1 Block Contexts
+
+In order to specify the reduction of branches, the following syntax of block contexts is defined, indexed by the count k of labels surrounding a hole [_] that marks the place where the next step of computation is taking place:
+
+    B^0 ::= val∗ [_] instr∗
+    B^(k+1) ::= val∗ label_n{instr∗} B^k end instr∗
+
+This definition allows to index active labels surrounding a branch or return instruction.
+
+Note
+
+For example, the reduction of a simple branch can be defined as follows:
+
+label_0{instr∗} B^l[br l] end ↪ instr∗
+
+Here, the hole [_] of the context is instantiated with a branch instruction. When a branch occurs, this rule replaces the targeted label and associated instruction sequence with the label’s continuation. The selected label is identified through the label index l, which corresponds to the number of surrounding label instructions that must be hopped over – which is exactly the count encoded in the index of a block context.
+
+#### 4.2.15.2 Configurations
+
+A configuration consists of the current store and an executing thread.
+
+A thread is a computation over instructions that operates relative to the state of a current frame referring to the module instance in which the computation runs, i.e., where the current function originates from.
+
+    config ::= store; thread
+    thread ::= framestate; instr∗
+
+Note
+
+The current version of WebAssembly is single-threaded, but configurations with multiple threads may be supported in the future.
+
+#### 4.2.15.3 Evaluation Contexts
+
+Finally, the following definition of evaluation context and associated structural rules enable reduction inside instruction sequences and administrative forms as well as the propagation of traps:
+
+E::= [_] ∣ val∗ E instr∗ ∣ label_n{instr∗} E end
+
+    S; F; E[instr∗] ↪ S′; F′; E[instr′∗]
+    (if S; F; instr∗ ↪ S′; F′; instr′∗)
+    S; F; frame_n{F′} instr∗ end ↪ S′; F; frame_n{F^(′′)} instr^(′∗) end
+    (if S; F′; instr∗ ↪ S′; F^(′′); instr′∗)
+    S; F; E[trap] ↪ S; F; trap (if E = [_])
+    S; F; frame_n{F′} trap end ↪ S; F; trap
+
+Reduction terminates when a thread’s instruction sequence has been reduced to a result, that is, either a sequence of values or to a trap.
+
+Note
+
+The restriction on evaluation contexts rules out contexts like [_] and ϵ [_] ϵ for which E[trap] = trap.
+
+For an example of reduction under evaluation contexts, consider the following instruction sequence.
+
+(f64.const x_1) (f64.const x_2) f64.neg (f64.const x_3) f64.add f64.mul
+
+This can be decomposed into E[(f64.const x_2) f64.neg] where
+
+[E = (f64.const x_1) [_] (f64.const x_3) f64.add f64.mul
+
+Moreover, this is the only possible choice of evaluation context where the contents of the hole matches the left-hand side of a reduction rule.
+
+## 4.3 Numerics
+
+Numeric primitives are defined in a generic manner, by operators indexed over a bit width N.
+
+Some operators are non-deterministic, because they can return one of several possible results (such as different NaN values). Technically, each operator thus returns a set of allowed values. For convenience, deterministic results are expressed as plain values, which are assumed to be identified with a respective singleton set.
+
+Some operators are partial, because they are not defined on certain inputs. Technically, an empty set of results is returned for these inputs.
+
+In formal notation, each operator is defined by equational clauses that apply in decreasing order of precedence. That is, the first clause that is applicable to the given arguments defines the result. In some cases, similar clauses are combined into one by using the notation ± or ∓. When several of these placeholders occur in a single clause, then they must be resolved consistently: either the upper sign is chosen for all of them or the lower sign.
+
+Note
+
+For example, the fcopysign operator is defined as follows:
+
+    fcopysign_N(±p_1, ±p_2) = ±p_1
+    fcopysign_N(±p_1, ∓p_2) = ∓p_1
+
+This definition is to be read as a shorthand for the following expansion of each clause into two separate ones:
+
+    fcopysign_N(+p_1, +p_2) = +p_1
+    fcopysign_N(−p_1, −p_2) = −p_1
+    fcopysign_N(+p_1, −p_2) = −p_1
+    fcopysign_N(−p_1, +p_2) = +p_1
+
+Numeric operators are lifted to input sequences by applying the operator element-wise, returning a sequence of results. When there are multiple inputs, they must be of equal length.
+
+op(c_1^n, …, c_k^n) = op(c_1^n[0], …, c_k^n[0]) … op(c_1^n[n − 1], …, c_k^n[n − 1])
+
+Note
+
+For example, the unary operator fabs, when given a sequence of floating-point values, return a sequence of floating-point results:
+
+fabs_N(z^n) = fabs_N(z[0]) … fabs_N(z[n])
+
+The binary operator iadd, when given two sequences of integers of the same length, n, return a sequence of integer results:
+
+iadd_N(i_1^n, i_2^n) = iadd_N(i_1[0], i_2[0]) … iadd_N(i_1[n], i_2[n])
+
+Conventions:
+
+- The meta variable d is used to range over single bits.
+
+- The meta variable p is used to range over (signless) magnitudes of floating-point values, including nan and ∞.
+
+- The meta variable q is used to range over (signless) rational magnitudes, excluding nan or ∞.
+
+- The notation f^(−1) denotes the inverse of a bijective function f.
+
+- Truncation of rational values is written trunc(±q), with the usual mathematical definition:
+
+   trunc(±q) = ±i (if i ∈ N ∧ +q − 1 < i ≤ +q)
+
+- Saturation of integers is written sat_u_N(i) and sat_s_N(i). The arguments to these two functions range over arbitrary signed integers.
+
+   - Unsigned saturation, sat_u_N(i) clamps i to between 0 and 2^N − 1:
+
+    sat_u_N(i) = 2^N − 1 (if i > 2^N − 1)
+    sat_u_N(i) = 0 (if i < 0)
+    sat_u_N(i) = i (otherwise)
+
+   - Signed saturation, sat_s_N(i) clamps i to between −2^(N−1) and 2^(N−1) − 1:
+
+    sat_s_N(i) = signed_N^(−1)(−2^(N−1)) (if i < −2^(N−1))
+    sat_s_N(i) = signed_N^(−1)(2^(N−1) − 1) (if i > 2^(N−1) − 1)
+    sat_s_N(i) = i (otherwise)
+
+### 4.3.1 Representations
+
+Numbers and numeric vectors have an underlying binary representation as a sequence of bits:
+
+    bits_(iN)(i) = ibits_N(i)
+    bits_(fN)(z) = fbits_N(z)
+    bits_(vN)(i) = ibits_N(i)
+
+Each of these functions is a bijection, hence they are invertible.
+
+#### 4.3.1.1 Integers
+
+Integers are represented as base two unsigned numbers:
+
+ibits_N(i) = d_(N−1) … d_0 (i = 2^(N−1) ⋅ d_(N−1) + ⋯ + 2^0 ⋅ d_0)
+
+Boolean operators like ∧, ∨, or ⊻ are lifted to bit sequences of equal length by applying them pointwise.
+
+#### 4.3.1.2 Floating-Point
+
+Floating-point values are represented in the respective binary format defined by [IEEE-754-2019] (Section 3.4):
+
+    fbits_N(±(1 + m ⋅ 2^(−M)) ⋅ 2^e) = fsign(±) ibits_E(e + fbias_N) ibits_M(m)
+    fbits_N(±(0 + m ⋅ 2^(−M)) ⋅ 2^e) = fsign(±) (0)^E ibits_M(m)
+    fbits_N(±∞) = fsign(±) (1)^E (0)^M
+    fbits_N(±nan(n)) = fsign(±) (1)^E ibits_M(n)
+    fbias_N = 2^(E−1) − 1
+    fsign(+) = 0
+    fsign(−) = 1
+
+where M = signif(N) and E = expon(N).
+
+#### 4.3.1.3 Vectors
+
+Numeric vectors of type vN have the same underlying representation as an iN. They can also be interpreted as a sequence of numeric values packed into a vN with a particular shape txM, provided that N = ∣t∣ ⋅ M.
+
+    lanes_(txM)(c) = c_0 … c_(M−1)
+    (where w = ∣t∣/8
+    ∧ b∗ = bytes_(iN)(c)
+    ∧ c_i = bytes_t^(−1)(b∗[i ⋅ w : w]))
+
+This function is a bijection on iN, hence it is invertible.
+
+#### 4.3.1.4 Storage
+
+When a number is stored into memory, it is converted into a sequence of bytes in little endian byte order:
+
+    bytes_t(i) = littleendian(bits_t(i))
+    littleendian(ϵ) = ϵ
+    littleendian(d^8 d′∗ ) = littleendian(d′∗) ibits_8^(−1)(d^8)
+
+Again these functions are invertible bijections.
+
+### 4.3.2 Integer Operations
+
+#### 4.3.2.1 Sign Interpretation
+
+Integer operators are defined on iN values. Operators that use a signed interpretation convert the value using the following definition, which takes the two’s complement when the value lies in the upper half of the value range (i.e., its most significant bit is 1):
+
+    signed_N(i) = i (0 ≤ i < 2^(N−1))
+    signed_N(i) = i − 2^N (2^(N−1) ≤ i < 2^N)
+
+This function is bijective, and hence invertible.
+
+#### 4.3.2.2 Boolean Interpretation
+
+The integer result of predicates – i.e., tests and relational operators – is defined with the help of the following auxiliary function producing the value 1 or 0 depending on a condition.
+
+    bool(C) = 1 (if C)
+    bool(C) = 0 (otherwise)
+
+#### 4.3.2.3 iadd_N(i_1, i_2)
+
+- Return the result of adding i_1 and i_2 modulo 2^N.
+
+iadd_N(i_1, i_2) = (i_1 + i_2) mod 2^N
+
+#### 4.3.2.4 isub_N(i_1, i_2)
+
+- Return the result of subtracting i_2 from i_1 modulo 2^N.
+
+isub_N(i_1, i_2) = (i_1 − i_2 + 2^N) mod 2^N
+
+#### 4.3.2.5 imul_N(i_1, i_2)
+
+- Return the result of multiplying i_1 and i_2 modulo 2^N.
+
+imul_N(i_1, i_2) = (i_1 ⋅ i_2) mod 2^N
+
+#### 4.3.2.6 idiv_u_N(i_1, i_2)
+
+- If i_2 is 0, then the result is undefined.
+
+- Else, return the result of dividing i_1 by i_2, truncated toward zero.
+
+    idiv_u_N(i_1, 0) = {}
+    idiv_u_N(i_1, i_2) = trunc(i_1/i_2)
+
+Note
+
+This operator is partial.
+
+#### 4.3.2.7 idiv_s_N(i_1, i_2)
+
+- Let j_1 be the signed interpretation of i_1.
+
+- Let j_2 be the signed interpretation of i_2.
+
+- If j_2 is 0, then the result is undefined.
+
+- Else if j_1 divided by j_2 is 2^(N−1), then the result is undefined.
+
+- Else, return the result of dividing j_1 by j_2, truncated toward zero.
+
+    idiv_s_N(i_1, 0) = {}
+    idiv_s_N(i_1, i_2) = {} (if signed_N(i_1)/signed_N(i_2) = 2^(N−1))
+    idiv_s_N(i_1, i_2) = signed_N^(−1)(trunc(signed_N(i_1)/signed_N(i_2)))
+
+Note
+
+This operator is partial. Besides division by 0, the result of (−2^(N−1))/(−1) = +2^(N−1) is not representable as an N -bit signed integer.
+
+#### 4.3.2.8 irem_u_N(i_1, i_2)
+
+- If i_2 is 0, then the result is undefined.
+
+- Else, return the remainder of dividing i_1 by i_2.
+
+    irem_u_N(i_1, 0) = {}
+    irem_u_N(i_1, i_2) = i_1 − i_2 ⋅ trunc(i_1/i_2)
+
+Note
+
+This operator is partial.
+
+As long as both operators are defined, it holds that i_1 = i_2 ⋅ idiv_u(i_1, i_2) + irem_u(i_1, i_2).
+
+#### 4.3.2.9 irem_s_N(i_1, i_2)
+
+- Let j_1 be the signed interpretation of i_1.
+
+- Let j_2 be the signed interpretation of i_2.
+
+- If i_2 is 0, then the result is undefined.
+
+- Else, return the remainder of dividing j_1 by j_2, with the sign of the dividend j_1.
+
+    irem_s_N(i_1, 0) = {}
+    irem_s_N(i_1, i_2) = signed_N^(−1)(j_1 − j_2 ⋅ trunc(j_1/j_2))
+    (where j_1 = signed_N(i_1) ∧ j_2 = signed_N(i_2))
+
+Note
+
+This operator is partial.
+
+As long as both operators are defined, it holds that i_1 = i_2 ⋅ idiv_s(i_1, i_2) + irem_s(i_1, i_2).
+
+#### 4.3.2.10 inot_N(i)
+
+- Return the bitwise negation of i.
+
+inot_N(i) = ibits_N^(−1)(ibits_N(i) ⊻ ibits_N(2^N − 1))
+
+#### 4.3.2.11 iand_N(i_1, i_2)
+
+- Return the bitwise conjunction of i_1 and i_2.
+
+iand_N(i_1, i_2) = ibits_N^(−1)(ibits_N(i_1) ∧ ibits_N(i_2))
+
+#### 4.3.2.12 iandnot_N(i_1, i_2)
+
+- Return the bitwise conjunction of i_1 and the bitwise negation of i_2.
+
+iandnot_N(i_1, i_2) = iand_N(i_1, inot_N(i_2))
+
+#### 4.3.2.13 ior_N(i_1, i_2)
+
+- Return the bitwise disjunction of i_1 and i_2.
+
+ior_N(i_1, i_2) = ibits_N^(−1)(ibits_N(i_1) ∨ ibits_N(i_2))
+
+#### 4.3.2.14 ixor_N(i_1, i_2)
+
+- Return the bitwise exclusive disjunction of i_1 and i_2.
+
+ixor_N(i_1, i_2) = ibits_N^(−1)(ibits_N(i_1) ⊻ ibits_N(i_2))
+
+#### 4.3.2.15 ishl_N(i_1, i_2)
+
+- Let k be i_2 modulo N.
+
+- Return the result of shifting i_1 left by k bits, modulo 2^N.
+
+ishl_N(i_1, i_2) = ibits_N^(−1)(d_2^(N−k) 0^k) (if ibits_N(i_1) = d_1^k d_2^(N−k) ∧ k = i_2 mod N)
+
+#### 4.3.2.16 ishr_u_N(i_1, i_2)
+
+- Let k be i_2 modulo N.
+
+- Return the result of shifting i_1 right by k bits, extended with 0 bits.
+
+ishr_u_N(i_1, i_2) = ibits_N^(−1)(0^k d_1^(N−k)) (if ibits_N(i_1) = d_1^(N−k) d_2^k ∧ k = i_2 mod N)
+
+#### 4.3.2.17 ishr_s_N(i_1, i_2)
+
+- Let k be i_2 modulo N.
+
+- Return the result of shifting i_1 right by k bits, extended with the most significant bit of the original value.
+
+ishr_s_N(i_1, i_2) = ibits_N^(−1)(d_0^(k+1) d_1^(N−k−1)) (if ibits_N(i_1) = d_0 d_1^(N−k−1) d_2^k ∧ k = i_2 mod N)
+
+#### 4.3.2.18 irotl_N(i_1, i_2)
+
+- Let k be i_2 modulo N.
+
+- Return the result of rotating i_1 left by k bits.
+
+irotl_N(i_1, i_2) = ibits_N^(−1)(d_2^(N−k) d_1^k) (if ibits_N(i_1) = d_1^k d_2^(N−k) ∧ k = i_2 mod N)
+
+#### 4.3.2.19 irotr_N(i_1, i_2)
+
+- Let k be i_2 modulo N.
+
+- Return the result of rotating i_1 right by k bits.
+
+irotr_N(i_1, i_2) = ibits_N^(−1)(d_2^k d_1^(N−k)) (if ibits_N(i_1) = d_1^(N−k) d_2^k ∧ k = i_2 mod N)
+
+#### 4.3.2.20 iclz_N(i)
+
+- Return the count of leading zero bits in i; all bits are considered leading zeros if i is 0.
+
+iclz_N(i) = k (if ibits_N(i) = 0^k (1 d∗)?)
+
+#### 4.3.2.21 ictz_N(i)
+
+- Return the count of trailing zero bits in i; all bits are considered trailing zeros if i is 0.
+
+ictz_N(i) = k (if ibits_N(i) = (d∗ 1)? 0^k)
+
+#### 4.3.2.22 ipopcnt_N(i)
+
+- Return the count of non-zero bits in i.
+
+ipopcnt_N(i) = k (if ibits_N(i) = (0∗ 1)^k 0∗)
+
+#### 4.3.2.23 ieqz_N(i)
+
+- Return 1 if i is zero, 0 otherwise.
+
+ieqz_N(i) = bool(i = 0)
+
+#### 4.3.2.24 ieq_N(i_1, i_2)
+
+- Return 1 if i_1 equals i_2, 0 otherwise.
+
+ieq_N(i_1, i_2) = bool(i_1 = i_2)
+
+#### 4.3.2.25 ine_N(i_1, i_2)
+
+- Return 1 if i_1 does not equal i_2, 0 otherwise.
+
+ine_N(i_1, i_2) = bool(i_1 = i_2)
+
+#### 4.3.2.26 ilt_u_N(i_1, i_2)
+
+- Return 1 if i_1 is less than i_2, 0 otherwise.
+
+ilt_u_N(i_1, i_2) = bool(i_1 < i_2)
+
+#### 4.3.2.27 ilt_s_N(i_1, i_2)
+
+- Let j_1 be the signed interpretation of i_1.
+
+- Let j_2 be the signed interpretation of i_2.
+
+- Return 1 if j_1 is less than j_2, 0 otherwise.
+
+ilt_s_N(i_1, i_2) = bool(signed_N(i_1) < signed_N(i_2))
+
+#### 4.3.2.28 igt_u_N(i_1, i_2)
+
+- Return 1 if i_1 is greater than i_2, 0 otherwise.
+
+igt_u_N(i_1, i_2) = bool(i_1 > i_2)
+
+#### 4.3.2.29 igt_s_N(i_1, i_2)
+
+- Let j_1 be the signed interpretation of i_1.
+
+- Let j_2 be the signed interpretation of i_2.
+
+- Return 1 if j_1 is greater than j_2, 0 otherwise.
+
+igt_s_N(i_1, i_2) = bool(signed_N(i_1) > signed_N(i_2))
+
+#### 4.3.2.30 ile_u_N(i_1, i_2)
+
+- Return 1 if i_1 is less than or equal to i_2, 0 otherwise.
+
+ile_u_N(i_1, i_2) = bool(i_1 ≤ i_2)
+
+#### 4.3.2.31 ile_s_N(i_1, i_2)
+
+- Let j_1 be the signed interpretation of i_1.
+
+- Let j_2 be the signed interpretation of i_2.
+
+- Return 1 if j_1 is less than or equal to j_2, 0 otherwise.
+
+ile_s_N(i_1, i_2) = bool(signed_N(i_1) ≤ signed_N(i_2))
+
+#### 4.3.2.32 ige_u_N(i_1, i_2)
+
+- Return 1 if i_1 is greater than or equal to i_2, 0 otherwise.
+
+ige_u_N(i_1, i_2) = bool(i_1 ≥ i_2)
+
+#### 4.3.2.33 ige_s_N(i_1, i_2)
+
+- Let j_1 be the signed interpretation of i_1.
+
+- Let j_2 be the signed interpretation of i_2.
+
+- Return 1 if j_1 is greater than or equal to j_2, 0 otherwise.
+
+ige_s_N(i_1, i_2) = bool(signed_N(i_1) ≥ signed_N(i_2))
+
+#### 4.3.2.34 iextendM_s_N(i)
+
+- Let j be the result of computing wrap_(N,M)(i).
+
+- Return extend^s_(M,N)(j).
+
+iextendM_s_N(i) = extend^s_(M,N)(wrap_(N,M)(i))
+
+#### 4.3.2.35 ibitselect_N(i_1, i_2, i_3)
+
+- Let j_1 be the bitwise conjunction of i_1 and i_3.
+
+- Let j_3′ be the bitwise negation of i_3.
+
+- Let j_2 be the bitwise conjunction of i_2 and j_3′.
+
+- Return the bitwise disjunction of j_1 and j_2.
+
+ibitselect_N(i_1, i_2, i_3) = ior_N(iand_N(i_1, i_3), iand_N(i_2, inot_N(i_3)))
+
+#### 4.3.2.36 iabs_N(i)
+
+- Let j be the signed interpretation of i.
+
+- If j is greater than or equal to 0, then return i.
+
+- Else return the negation of j, modulo 2^N.
+
+    iabs_N(i) = i (if signed_N(i) ≥ 0)
+    iabs_N(i) = −signed_N(i) mod 2^N (otherwise)
+
+#### 4.3.2.37 ineg_N(i)
+
+- Return the result of negating i, modulo 2^N.
+
+ineg_N(i) = (2^N − i) mod 2^N
+
+#### 4.3.2.38 imin_u_N(i_1, i_2)
+
+- Return i_1 if ilt_u_N(i_1, i_2) is 1, return i_2 otherwise.
+
+    imin_u_N(i_1, i_2) = i_1 (if ilt_u_N(i_1, i_2) = 1)
+    imin_u_N(i_1, i_2) = i_2 (otherwise)
+
+#### 4.3.2.39 imin_s_N(i_1, i_2)
+
+- Return i_1 if ilt_s_N(i_1, i_2) is 1, return i_2 otherwise.
+
+    imin_s_N(i_1, i_2) = i_1 (if ilt_s_N(i_1, i_2) = 1)
+    imin_s_N(i_1, i_2) = i_2 (otherwise)
+
+#### 4.3.2.40 imax_u_N(i_1, i_2)
+
+- Return i_1 if igt_u_N(i_1, i_2) is 1, return i_2 otherwise.
+
+    imax_u_N(i_1, i_2) = i_1 (if igt_u_N(i_1, i_2) = 1)
+    imax_u_N(i_1, i_2) = i_2 (otherwise)
+
+#### 4.3.2.41 imax_s_N(i_1, i_2)
+
+- Return i_1 if igt_s_N(i_1, i_2) is 1, return i_2 otherwise.
+
+    imax_s_N(i_1, i_2) = i_1 (if igt_s_N(i_1, i_2) = 1)
+    imax_s_N(i_1, i_2) = i_2 (otherwise)
+
+#### 4.3.2.42 iadd_sat_u_N(i_1, i_2)
+
+- Let i be the result of adding i_1 and i_2.
+
+- Return sat_u_N(i).
+
+iadd_sat_u_N(i_1, i_2) = sat_u_N(i_1 + i_2)
+
+#### 4.3.2.43 iadd_sat_s_N(i_1, i_2)
+
+- Let j_1 be the signed interpretation of i_1
+
+- Let j_2 be the signed interpretation of i_2
+
+- Let j be the result of adding j_1 and j_2.
+
+- Return sat_s_N(j).
+
+iadd_sat_s_N(i_1, i_2) = sat_s_N(signed_N(i_1) + signed_N(i_2))
+
+#### 4.3.2.44 isub_sat_u_N(i_1, i_2)
+
+- Let i be the result of subtracting i_2 from i_1.
+
+- Return sat_u_N(i).
+
+isub_sat_u_N(i_1, i_2) = sat_u_N(i_1 − i_2)
+
+#### 4.3.2.45 isub_sat_s_N(i_1, i_2)
+
+- Let j_1 be the signed interpretation of i_1
+
+- Let j_2 be the signed interpretation of i_2
+
+- Let j be the result of subtracting j_2 from j_1.
+
+- Return sat_s_N(j).
+
+isub_sat_s_N(i_1, i_2) = sat_s_N(signed_N(i_1) − signed_N(i_2))
+
+#### 4.3.2.46 iavgr_u_N(i_1, i_2)
+
+- Let j be the result of adding i_1, i_2, and 1.
+
+- Return the result of dividing j by 2, truncated toward zero.
+
+iavgr_u_N(i_1, i_2) = trunc((i_1 + i_2 + 1)/2)
+
+#### 4.3.2.47 iq15mulrsat_s_N(i_1, i_2)
+
+- Return the result of sat_s_N(ishr_s_N(i_1 ⋅ i_2 + 2^(14), 15)).
+
+iq15mulrsat_s_N(i_1, i_2) = sat_s_N(ishr_s_N(i_1 ⋅ i_2 + 2^(14), 15))
+
+### 4.3.3 Floating-Point Operations
+
+Floating-point arithmetic follows the [IEEE-754-2019] standard, with the following qualifications:
+
+- All operators use round-to-nearest ties-to-even, except where otherwise specified. Non-default directed rounding attributes are not supported.
+
+- Following the recommendation that operators propagate NaN payloads from their operands is permitted but not required.
+
+- All operators use “non-stop” mode, and floating-point exceptions are not otherwise observable. In particular, neither alternate floating-point exception handling attributes nor operators on status flags are supported. There is no observable difference between quiet and signalling NaNs.
+
+Note
+
+Some of these limitations may be lifted in future versions of WebAssembly.
+
+#### 4.3.3.1 Rounding
+
+Rounding always is round-to-nearest ties-to-even, in correspondence with [IEEE-754-2019] (Section 4.3.1).
+
+An exact floating-point number is a rational number that is exactly representable as a floating-point number of given bit width N.
+
+A limit number for a given floating-point bit width N is a positive or negative number whose magnitude is the smallest power of 2 that is not exactly representable as a floating-point number of width N (that magnitude is 2^(128) for N = 32 and 2^(1024) for N = 64).
+
+A candidate number is either an exact floating-point number or a positive or negative limit number for the given bit width N.
+
+A candidate pair is a pair z_1, z_2 of candidate numbers, such that no candidate number exists that lies between the two.
+
+A real number r is converted to a floating-point value of bit width N as follows:
+
+- If r is 0, then return +0.
+
+- Else if r is an exact floating-point number, then return r.
+
+- Else if r greater than or equal to the positive limit, then return +∞.
+
+- Else if r is less than or equal to the negative limit, then return −∞.
+
+- Else if z_1 and z_2 are a candidate pair such that z_1 < r < z_2, then:
+
+   - If ∣r − z_1∣ < ∣r − z_2∣, then let z be z_1.
+
+   - Else if ∣r − z_1∣ > ∣r − z_2∣, then let z be z_2.
+
+   - Else if ∣r − z_1∣ = ∣r − z_2∣ and the significand of z_1 is even, then let z be z_1.
+
+   - Else, let z be z_2.
+
+- If z is 0, then:
+
+   - If r < 0, then return −0.
+
+   - Else, return +0.
+
+- Else if z is a limit number, then:
+
+   - If r < 0, then return −∞.
+
+   - Else, return +∞.
+
+- Else, return z.
+
+    float_N(0) = +0
+    float_N(r) = r (if r ∈ exact_N)
+    float_N(r) = +∞ (if r ≥ +limit_N)
+    float_N(r) = −∞ (if r ≤ −limit_N)
+    float_N(r) = closest_N(r, z_1, z_2) (if z_1 < r < z_2 ∧ (z_1, z_2) ∈ candidatepair_N)
+    closest_N(r, z_1, z_2) = rectify_N(r, z_1) (if ∣r − z_1∣ < ∣r − z_2∣)
+    closest_N(r, z_1, z_2) = rectify_N(r, z_2) (if ∣r − z_1∣ > ∣r − z_2∣)
+    closest_N(r, z_1, z_2) = rectify_N(r, z_1) (if ∣r − z_1∣ = ∣r − z_2∣ ∧ even_N(z_1))
+    closest_N(r, z_1, z_2) = rectify_N(r, z_2) (if ∣r − z_1∣ = ∣r − z_2∣ ∧ even_N(z_2))
+    rectify_N(r, ±limit_N) = ±∞
+    rectify_N(r, 0) = +0 (r ≥ 0)
+    rectify_N(r, 0) = −0 (r < 0)
+    rectify_N(r, z) = z
+
+where:
+
+    exact_N = fN ∩ Q
+    limit_N = 2^(2^(expon(N)−1))
+    candidate_N = exact_N ∪ {+limit_N, −limit_N}
+    candidatepair_N = {(z_1, z_2) ∈ candidate_N^2 ∣ z_1 < z_2 ∧ ∀z ∈ candidate_N, z ≤ z_1 ∨ z ≥ z_2}
+    even_N((d + m ⋅ 2^(−M)) ⋅ 2^e) ⇔ m mod 2 = 0
+    even_N(±limit_N) ⇔ true
+
+#### 4.3.3.2 NaN Propagation
+
+When the result of a floating-point operator other than fneg, fabs, or fcopysign is a NaN, then its sign is non-deterministic and the payload is computed as follows:
+
+- If the payload of all NaN inputs to the operator is canonical (including the case that there are no NaN inputs), then the payload of the output is canonical as well.
+
+- Otherwise the payload is picked non-deterministically among all arithmetic NaNs; that is, its most significant bit is 1 and all others are unspecified.
+
+This non-deterministic result is expressed by the following auxiliary function producing a set of allowed outputs from a set of inputs:
+
+    nans_N{z∗} = {+nan(n), −nan(n) ∣ n = canon_N} (if ∀nan(n) ∈ z∗, n = canon_N)
+    nans_N{z∗} = {+nan(n), −nan(n) ∣ n ≥ canon_N} (otherwise)
+
+#### 4.3.3.3 fadd_N(z_1, z_2)
+
+- If either z_1 or z_2 is a NaN, then return an element of nans_N{z_1, z_2}.
+
+- Else if both z_1 and z_2 are infinities of opposite signs, then return an element of nans_N{}.
+
+- Else if both z_1 and z_2 are infinities of equal sign, then return that infinity.
+
+- Else if either z_1 or z_2 is an infinity, then return that infinity.
+
+- Else if both z_1 and z_2 are zeroes of opposite sign, then return positive zero.
+
+- Else if both z_1 and z_2 are zeroes of equal sign, then return that zero.
+
+- Else if either z_1 or z_2 is a zero, then return the other operand.
+
+- Else if both z_1 and z_2 are values with the same magnitude but opposite signs, then return positive zero.
+
+- Else return the result of adding z_1 and z_2, rounded to the nearest representable value.
+
+    fadd_N(±nan(n), z_2) = nans_N{±nan(n), z_2}
+    fadd_N(z_1, ±nan(n)) = nans_N{±nan(n), z_1}
+    fadd_N(±∞, ∓∞) = nans_N{}
+    fadd_N(±∞, ±∞) = ±∞
+    fadd_N(z_1, ±∞) = ±∞
+    fadd_N(±∞, z_2) = ±∞
+    fadd_N(±0, ∓0) = +0
+    fadd_N(±0, ±0) = ±0
+    fadd_N(z_1, ±0) = z_1
+    fadd_N(±0, z_2) = z_2
+    fadd_N(±q, ∓q) = +0
+    fadd_N(z_1, z_2) = float_N(z_1 + z_2)
+
+#### 4.3.3.4 fsub_N(z_1, z_2)
+
+- If either z_1 or z_2 is a NaN, then return an element of nans_N{z_1, z_2}.
+
+- Else if both z_1 and z_2 are infinities of equal signs, then return an element of nans_N{}.
+
+- Else if both z_1 and z_2 are infinities of opposite sign, then return z_1.
+
+- Else if z_1 is an infinity, then return that infinity.
+
+- Else if z_2 is an infinity, then return that infinity negated.
+
+- Else if both z_1 and z_2 are zeroes of equal sign, then return positive zero.
+
+- Else if both z_1 and z_2 are zeroes of opposite sign, then return z_1.
+
+- Else if z_2 is a zero, then return z_1.
+
+- Else if z_1 is a zero, then return z_2 negated.
+
+- Else if both z_1 and z_2 are the same value, then return positive zero.
+
+- Else return the result of subtracting z_2 from z_1, rounded to the nearest representable value.
+
+    fsub_N(±nan(n), z_2) = nans_N{±nan(n), z_2}
+    fsub_N(z_1, ±nan(n)) = nans_N{±nan(n), z_1}
+    fsub_N(±∞, ±∞) = nans_N{}
+    fsub_N(±∞, ∓∞) = ±∞
+    fsub_N(z_1, ±∞) = ∓∞
+    fsub_N(±∞, z_2) = ±∞
+    fsub_N(±0, ±0) = +0
+    fsub_N(±0, ∓0) = ±0
+    fsub_N(z_1, ±0) = z_1
+    fsub_N(±0, ±q_2) = ∓q_2
+    fsub_N(±q, ±q) = +0
+    fsub_N(z_1, z_2) = float_N(z_1 − z_2)
+
+Note
+
+Up to the non-determinism regarding NaNs, it always holds that fsub_N(z_1, z_2) = fadd_N(z_1, fneg_N(z_2)).
+
+#### 4.3.3.5 fmul_N(z_1, z_2)
+
+- If either z_1 or z_2 is a NaN, then return an element of nans_N{z_1, z_2}.
+
+- Else if one of z_1 and z_2 is a zero and the other an infinity, then return an element of nans_N{}.
+
+- Else if both z_1 and z_2 are infinities of equal sign, then return positive infinity.
+
+- Else if both z_1 and z_2 are infinities of opposite sign, then return negative infinity.
+
+- Else if either z_1 or z_2 is an infinity and the other a value with equal sign, then return positive infinity.
+
+- Else if either z_1 or z_2 is an infinity and the other a value with opposite sign, then return negative infinity.
+
+- Else if both z_1 and z_2 are zeroes of equal sign, then return positive zero.
+
+- Else if both z_1 and z_2 are zeroes of opposite sign, then return negative zero.
+
+- Else return the result of multiplying z_1 and z_2, rounded to the nearest representable value.
+
+    fmul_N(±nan(n), z_2) = nans_N{±nan(n), z_2}
+    fmul_N(z_1, ±nan(n)) = nans_N{±nan(n), z_1}
+    fmul_N(±∞, ±0) = nans_N{}
+    fmul_N(±∞, ∓0) = nans_N{}
+    fmul_N(±0, ±∞) = nans_N{}
+    fmul_N(±0, ∓∞) = nans_N{}
+    fmul_N(±∞, ±∞) = +∞
+    fmul_N(±∞, ∓∞) = −∞
+    fmul_N(±q_1, ±∞) = +∞
+    fmul_N(±q_1, ∓∞) = −∞
+    fmul_N(±∞, ±q_2) = +∞
+    fmul_N(±∞, ∓q_2) = −∞
+    fmul_N(±0, ±0) = +0
+    fmul_N(±0, ∓0) = −0
+    fmul_N(z_1, z_2) = float_N(z_1 ⋅ z_2)
+
+#### 4.3.3.6 fdiv_N(z_1, z_2)
+
+- If either z_1 or z_2 is a NaN, then return an element of nans_N{z_1, z_2}.
+
+- Else if both z_1 and z_2 are infinities, then return an element of nans_N{}.
+
+- Else if both z_1 and z_2 are zeroes, then return an element of nans_N{z_1, z_2}.
+
+- Else if z_1 is an infinity and z_2 a value with equal sign, then return positive infinity.
+
+- Else if z_1 is an infinity and z_2 a value with opposite sign, then return negative infinity.
+
+- Else if z_2 is an infinity and z_1 a value with equal sign, then return positive zero.
+
+- Else if z_2 is an infinity and z_1 a value with opposite sign, then return negative zero.
+
+- Else if z_1 is a zero and z_2 a value with equal sign, then return positive zero.
+
+- Else if z_1 is a zero and z_2 a value with opposite sign, then return negative zero.
+
+- Else if z_2 is a zero and z_1 a value with equal sign, then return positive infinity.
+
+- Else if z_2 is a zero and z_1 a value with opposite sign, then return negative infinity.
+
+- Else return the result of dividing z_1 by z_2, rounded to the nearest representable value.
+
+    fdiv_N(±nan(n), z_2) = nans_N{±nan(n), z_2}
+    fdiv_N(z_1, ±nan(n)) = nans_N{±nan(n), z_1}
+    fdiv_N(±∞, ±∞) = nans_N{}
+    fdiv_N(±∞, ∓∞) = nans_N{}
+    fdiv_N(±0, ±0) = nans_N{}
+    fdiv_N(±0, ∓0) = nans_N{}
+    fdiv_N(±∞, ±q_2) = +∞
+    fdiv_N(±∞, ∓q_2) = −∞
+    fdiv_N(±q_1, ±∞) = +0
+    fdiv_N(±q_1, ∓∞) = −0
+    fdiv_N(±0, ±q_2) = +0
+    fdiv_N(±0, ∓q_2) = −0
+    fdiv_N(±q_1, ±0) = +∞
+    fdiv_N(±q_1, ∓0) = −∞
+    fdiv_N(z_1, z_2) = float_N(z_1/z_2)
+
+#### 4.3.3.7 fmin_N(z_1, z_2)
+
+- If either z_1 or z_2 is a NaN, then return an element of nans_N{z_1, z_2}.
+
+- Else if either z_1 or z_2 is a negative infinity, then return negative infinity.
+
+- Else if either z_1 or z_2 is a positive infinity, then return the other value.
+
+- Else if both z_1 and z_2 are zeroes of opposite signs, then return negative zero.
+
+- Else return the smaller value of z_1 and z_2.
+
+    fmin_N(±nan(n), z_2) = nans_N{±nan(n), z_2}
+    fmin_N(z_1, ±nan(n)) = nans_N{±nan(n), z_1}
+    fmin_N(+∞, z_2) = z_2
+    fmin_N(−∞, z_2) = −∞
+    fmin_N(z_1, +∞) = z_1
+    fmin_N(z_1, −∞) = −∞
+    fmin_N(±0, ∓0) = −0
+    fmin_N(z_1, z_2) = z_1 (if z_1 ≤ z_2)
+    fmin_N(z_1, z_2) = z_2 (if z_2 ≤ z_1)
+
+#### 4.3.3.8 fmax_N(z_1, z_2)
+
+- If either z_1 or z_2 is a NaN, then return an element of nans_N{z_1, z_2}.
+
+- Else if either z_1 or z_2 is a positive infinity, then return positive infinity.
+
+- Else if either z_1 or z_2 is a negative infinity, then return the other value.
+
+- Else if both z_1 and z_2 are zeroes of opposite signs, then return positive zero.
+
+- Else return the larger value of z_1 and z_2.
+
+    fmax_N(±nan(n), z_2) = nans_N{±nan(n), z_2}
+    fmax_N(z_1, ±nan(n)) = nans_N{±nan(n), z_1}
+    fmax_N(+∞, z_2) = +∞
+    fmax_N(−∞, z_2) = z_2
+    fmax_N(z_1, +∞) = +∞
+    fmax_N(z_1, −∞) = z_1
+    fmax_N(±0, ∓0) = +0
+    fmax_N(z_1, z_2) = z_1 (if z_1 ≥ z_2)
+    fmax_N(z_1, z_2) = z_2 (if z_2 ≥ z_1)
+
+#### 4.3.3.9 fcopysign_N(z_1, z_2)
+
+- If z_1 and z_2 have the same sign, then return z_1.
+
+- Else return z_1 with negated sign.
+
+    fcopysign_N(±p_1, ±p_2) = ±p_1
+    fcopysign_N(±p_1, ∓p_2) = ∓p_1
+
+#### 4.3.3.10 fabs_N(z)
+
+- If z is a NaN, then return z with positive sign.
+
+- Else if z is an infinity, then return positive infinity.
+
+- Else if z is a zero, then return positive zero.
+
+- Else if z is a positive value, then z.
+
+- Else return z negated.
+
+    fabs_N(±nan(n)) = +nan(n)
+    fabs_N(±∞) = +∞
+    fabs_N(±0) = +0
+    fabs_N(±q) = +q
+
+#### 4.3.3.11 fneg_N(z)
+
+- If z is a NaN, then return z with negated sign.
+
+- Else if z is an infinity, then return that infinity negated.
+
+- Else if z is a zero, then return that zero negated.
+
+- Else return z negated.
+
+    fneg_N(±nan(n)) = ∓nan(n)
+    fneg_N(±∞) = ∓∞
+    fneg_N(±0) = ∓0
+    fneg_N(±q) = ∓q
+
+#### 4.3.3.12 fsqrt_N(z)
+
+- If z is a NaN, then return an element of nans_N{z}.
+
+- Else if z is negative infinity, then return an element of nans_N{}.
+
+- Else if z is positive infinity, then return positive infinity.
+
+- Else if z is a zero, then return that zero.
+
+- Else if z has a negative sign, then return an element of nans_N{}.
+
+- Else return the square root of z.
+
+    fsqrt_N(±nan(n)) = nans_N{±nan(n)}
+    fsqrt_N(−∞) = nans_N{}
+    fsqrt_N(+∞) = +∞
+    fsqrt_N(±0) = ±0
+    fsqrt_N(−q) = nans_N{}
+    fsqrt_N(+q) = float_N (q )
+
+#### 4.3.3.13 fceil_N(z)
+
+- If z is a NaN, then return an element of nans_N{z}.
+
+- Else if z is an infinity, then return z.
+
+- Else if z is a zero, then return z.
+
+- Else if z is smaller than 0 but greater than −1, then return negative zero.
+
+- Else return the smallest integral value that is not smaller than z.
+
+    fceil_N(±nan(n)) = nans_N{±nan(n)}
+    fceil_N(±∞) = ±∞
+    fceil_N(±0) = ±0
+    fceil_N(−q) = −0 (if −1 < −q < 0)
+    fceil_N(±q) = float_N(i) (if ±q ≤ i < ±q + 1)
+
+#### 4.3.3.14 ffloor_N(z)
+
+- If z is a NaN, then return an element of nans_N{z}.
+
+- Else if z is an infinity, then return z.
+
+- Else if z is a zero, then return z.
+
+- Else if z is greater than 0 but smaller than 1, then return positive zero.
+
+- Else return the largest integral value that is not larger than z.
+
+    ffloor_N(±nan(n)) = nans_N{±nan(n)}
+    ffloor_N(±∞) = ±∞
+    ffloor_N(±0) = ±0
+    ffloor_N(+q) = +0 (if 0 < +q < 1)
+    ffloor_N(±q) = float_N(i) (if ±q − 1 < i ≤ ±q)
+
+#### 4.3.3.15 ftrunc_N(z)
+
+- If z is a NaN, then return an element of nans_N{z}.
+
+- Else if z is an infinity, then return z.
+
+- Else if z is a zero, then return z.
+
+- Else if z is greater than 0 but smaller than 1, then return positive zero.
+
+- Else if z is smaller than 0 but greater than −1, then return negative zero.
+
+- Else return the integral value with the same sign as z and the largest magnitude that is not larger than the magnitude of z.
+
+    ftrunc_N(±nan(n)) = nans_N{±nan(n)}
+    ftrunc_N(±∞) = ±∞
+    ftrunc_N(±0) = ±0
+    ftrunc_N(+q) = +0 (if 0 < +q < 1)
+    ftrunc_N(−q) = −0 (if −1 < −q < 0)
+    ftrunc_N(±q) = float_N(±i) (if +q − 1 < i ≤ +q)
+
+#### 4.3.3.16 fnearest_N(z)
+
+- If z is a NaN, then return an element of nans_N{z}.
+
+- Else if z is an infinity, then return z.
+
+- Else if z is a zero, then return z.
+
+- Else if z is greater than 0 but smaller than or equal to 0.5, then return positive zero.
+
+- Else if z is smaller than 0 but greater than or equal to −0.5, then return negative zero.
+
+- Else return the integral value that is nearest to z; if two values are equally near, return the even one.
+
+    fnearest_N(±nan(n)) = nans_N{±nan(n)}
+    fnearest_N(±∞) = ±∞
+    fnearest_N(±0) = ±0
+    fnearest_N(+q) = +0 (if 0 < +q ≤ 0.5)
+    fnearest_N(−q) = −0 (if −0.5 ≤ −q < 0)
+    fnearest_N(±q) = float_N(±i) (if ∣i − q∣ < 0.5)
+    fnearest_N(±q) = float_N(±i) (if ∣i − q∣ = 0.5 ∧ i even)
+
+#### 4.3.3.17 feq_N(z_1, z_2)
+
+- If either z_1 or z_2 is a NaN, then return 0.
+
+- Else if both z_1 and z_2 are zeroes, then return 1.
+
+- Else if both z_1 and z_2 are the same value, then return 1.
+
+- Else return 0.
+
+    feq_N(±nan(n), z_2) = 0
+    feq_N(z_1, ±nan(n)) = 0
+    feq_N(±0, ∓0) = 1
+    feq_N(z_1, z_2) = bool(z_1 = z_2)
+
+#### 4.3.3.18 fne_N(z_1, z_2)
+
+- If either z_1 or z_2 is a NaN, then return 1.
+
+- Else if both z_1 and z_2 are zeroes, then return 0.
+
+- Else if both z_1 and z_2 are the same value, then return 0.
+
+- Else return 1.
+
+    fne_N(±nan(n), z_2) = 1
+    fne_N(z_1, ±nan(n)) = 1
+    fne_N(±0, ∓0) = 0
+    fne_N(z_1, z_2) = bool(z_1 = z_2)
+
+#### 4.3.3.19 flt_N(z_1, z_2)
+
+- If either z_1 or z_2 is a NaN, then return 0.
+
+- Else if z_1 and z_2 are the same value, then return 0.
+
+- Else if z_1 is positive infinity, then return 0.
+
+- Else if z_1 is negative infinity, then return 1.
+
+- Else if z_2 is positive infinity, then return 1.
+
+- Else if z_2 is negative infinity, then return 0.
+
+- Else if both z_1 and z_2 are zeroes, then return 0.
+
+- Else if z_1 is smaller than z_2, then return 1.
+
+- Else return 0.
+
+    flt_N(±nan(n), z_2) = 0
+    flt_N(z_1, ±nan(n)) = 0
+    flt_N(z, z) = 0
+    flt_N(+∞, z_2) = 0
+    flt_N(−∞, z_2) = 1
+    flt_N(z_1, +∞) = 1
+    flt_N(z_1, −∞) = 0
+    flt_N(±0, ∓0) = 0
+    flt_N(z_1, z_2) = bool(z_1 < z_2)
+
+#### 4.3.3.20 fgt_N(z_1, z_2)
+
+- If either z_1 or z_2 is a NaN, then return 0.
+
+- Else if z_1 and z_2 are the same value, then return 0.
+
+- Else if z_1 is positive infinity, then return 1.
+
+- Else if z_1 is negative infinity, then return 0.
+
+- Else if z_2 is positive infinity, then return 0.
+
+- Else if z_2 is negative infinity, then return 1.
+
+- Else if both z_1 and z_2 are zeroes, then return 0.
+
+- Else if z_1 is larger than z_2, then return 1.
+
+- Else return 0.
+
+    fgt_N(±nan(n), z_2) = 0
+    fgt_N(z_1, ±nan(n)) = 0
+    fgt_N(z, z) = 0
+    fgt_N(+∞, z_2) = 1
+    fgt_N(−∞, z_2) = 0
+    fgt_N(z_1, +∞) = 0
+    fgt_N(z_1, −∞) = 1
+    fgt_N(±0, ∓0) = 0
+    fgt_N(z_1, z_2) = bool(z_1 > z_2)
+
+#### 4.3.3.21 fle_N(z_1, z_2)
+
+- If either z_1 or z_2 is a NaN, then return 0.
+
+- Else if z_1 and z_2 are the same value, then return 1.
+
+- Else if z_1 is positive infinity, then return 0.
+
+- Else if z_1 is negative infinity, then return 1.
+
+- Else if z_2 is positive infinity, then return 1.
+
+- Else if z_2 is negative infinity, then return 0.
+
+- Else if both z_1 and z_2 are zeroes, then return 1.
+
+- Else if z_1 is smaller than or equal to z_2, then return 1.
+
+- Else return 0.
+
+    fle_N(±nan(n), z_2) = 0
+    fle_N(z_1, ±nan(n)) = 0
+    fle_N(z, z) = 1
+    fle_N(+∞, z_2) = 0
+    fle_N(−∞, z_2) = 1
+    fle_N(z_1, +∞) = 1
+    fle_N(z_1, −∞) = 0
+    fle_N(±0, ∓0) = 1
+    fle_N(z_1, z_2) = bool(z_1 ≤ z_2)
+
+#### 4.3.3.22 fge_N(z_1, z_2)
+
+- If either z_1 or z_2 is a NaN, then return 0.
+
+- Else if z_1 and z_2 are the same value, then return 1.
+
+- Else if z_1 is positive infinity, then return 1.
+
+- Else if z_1 is negative infinity, then return 0.
+
+- Else if z_2 is positive infinity, then return 0.
+
+- Else if z_2 is negative infinity, then return 1.
+
+- Else if both z_1 and z_2 are zeroes, then return 1.
+
+- Else if z_1 is smaller than or equal to z_2, then return 1.
+
+- Else return 0.
+
+    fge_N(±nan(n), z_2) = 0
+    fge_N(z_1, ±nan(n)) = 0
+    fge_N(z, z) = 1
+    fge_N(+∞, z_2) = 1
+    fge_N(−∞, z_2) = 0
+    fge_N(z_1, +∞) = 0
+    fge_N(z_1, −∞) = 1
+    fge_N(±0, ∓0) = 1
+    fge_N(z_1, z_2) = bool(z_1 ≥ z_2)
+
+#### 4.3.3.23 fpmin_N(z_1, z_2)
+
+- If z_2 is less than z_1 then return z_2.
+
+- Else return z_1.
+
+    fpmin_N(z_1, z_2) = z_2 (if flt_N(z_2, z_1) = 1)
+    fpmin_N(z_1, z_2) = z_1 (otherwise)
+
+#### 4.3.3.24 fpmax_N(z_1, z_2)
+
+- If z_1 is less than z_2 then return z_2.
+
+- Else return z_1.
+
+    fpmax_N(z_1, z_2) = z_2 (if flt_N(z_1, z_2) = 1)
+    fpmax_N(z_1, z_2) = z_1 (otherwise)
+
+### 4.3.4 Conversions
+
+#### 4.3.4.1 extend^u_(M,N)(i)
+
+- Return i.
+
+extend^u_(M,N)(i) = i
+
+Note
+
+In the abstract syntax, unsigned extension just reinterprets the same value.
+
+#### 4.3.4.2 extend^s_(M,N)(i)
+
+- Let j be the signed interpretation of i of size M.
+
+- Return the two’s complement of j relative to size N.
+
+extend^s_(M,N)(i) = signed_N^(−1)(signed_M(i))
+
+#### 4.3.4.3 wrap_(M,N)(i)
+
+- Return i modulo 2^N.
+
+wrap_(M,N)(i) = i mod 2^N
+
+#### 4.3.4.4 trunc^u_(M,N)(z)
+
+- If z is a NaN, then the result is undefined.
+
+- Else if z is an infinity, then the result is undefined.
+
+- Else if z is a number and trunc(z) is a value within range of the target type, then return that value.
+
+- Else the result is undefined.
+
+    trunc^u_(M,N)(±nan(n)) = {}
+    trunc^u_(M,N)(±∞) = {}
+    trunc^u_(M,N)(±q) = trunc(±q) (if −1 < trunc(±q) < 2^N)
+    trunc^u_(M,N)(±q) = {} (otherwise)
+
+Note
+
+This operator is partial. It is not defined for NaNs, infinities, or values for which the result is out of range.
+
+#### 4.3.4.5 trunc^s_(M,N)(z)
+
+- If z is a NaN, then the result is undefined.
+
+- Else if z is an infinity, then the result is undefined.
+
+- If z is a number and trunc(z) is a value within range of the target type, then return that value.
+
+- Else the result is undefined.
+
+    trunc^s_(M,N)(±nan(n)) = {}
+    trunc^s_(M,N)(±∞) = {}
+    trunc^s_(M,N)(±q) = trunc(±q) (if −2^(N−1) − 1 < trunc(±q) < 2^(N−1))
+    trunc^s_(M,N)(±q) = {} (otherwise)
+
+Note
+
+This operator is partial. It is not defined for NaNs, infinities, or values for which the result is out of range.
+
+#### 4.3.4.6 trunc_sat_u_(M,N)(z)
+
+- If z is a NaN, then return 0.
+
+- Else if z is negative infinity, then return 0.
+
+- Else if z is positive infinity, then return 2^N − 1.
+
+- Else, return sat_u_N(trunc(z)).
+
+    trunc_sat_u_(M,N)(±nan(n)) = 0
+    trunc_sat_u_(M,N)(−∞) = 0
+    trunc_sat_u_(M,N)(+∞) = 2^N − 1
+    trunc_sat_u_(M,N)(z) = sat_u_N(trunc(z))
+
+#### 4.3.4.7 trunc_sat_s_(M,N)(z)
+
+- If z is a NaN, then return 0.
+
+- Else if z is negative infinity, then return −2^(N−1).
+
+- Else if z is positive infinity, then return 2^(N−1) − 1.
+
+- Else, return sat_s_N(trunc(z)).
+
+    trunc_sat_s_(M,N)(±nan(n)) = 0
+    trunc_sat_s_(M,N)(−∞) = −2^(N−1)
+    trunc_sat_s_(M,N)(+∞) = 2^(N−1) − 1
+    trunc_sat_s_(M,N)(z) = sat_s_N(trunc(z))
+
+#### 4.3.4.8 promote_(M,N)(z)
+
+- If z is a canonical NaN, then return an element of nans_N{} (i.e., a canonical NaN of size N).
+
+- Else if z is a NaN, then return an element of nans_N{±nan(1)} (i.e., any arithmetic NaN of size N).
+
+- Else, return z.
+
+    promote_(M,N)(±nan(n)) = nans_N{} (if n = canon_N)
+    promote_(M,N)(±nan(n)) = nans_N{+nan(1)} (otherwise)
+    promote_(M,N)(z) = z
+
+#### 4.3.4.9 demote_(M,N)(z)
+
+- If z is a canonical NaN, then return an element of nans_N{} (i.e., a canonical NaN of size N).
+
+- Else if z is a NaN, then return an element of nans_N{±nan(1)} (i.e., any NaN of size N).
+
+- Else if z is an infinity, then return that infinity.
+
+- Else if z is a zero, then return that zero.
+
+- Else, return float_N(z).
+
+    demote_(M,N)(±nan(n)) = nans_N{} (if n = canon_N)
+    demote_(M,N)(±nan(n)) = nans_N{+nan(1)} (otherwise)
+    demote_(M,N)(±∞) = ±∞
+    demote_(M,N)(±0) = ±0
+    demote_(M,N)(±q) = float_N(±q)
+
+#### 4.3.4.10 convert^u_(M,N)(i)
+
+- Return float_N(i).
+
+convert^u_(M,N)(i) = float_N(i)
+
+#### 4.3.4.11 convert^s_(M,N)(i)
+
+- Let j be the signed interpretation of i.
+
+- Return float_N(j).
+
+convert^s_(M,N)(i) = float_N(signed_M(i))
+
+#### 4.3.4.12 reinterpret_(t_1,t_2)(c)
+
+- Let d∗ be the bit sequence bits_(t_1)(c).
+
+- Return the constant c′ for which bits_(t_2)(c′) = d∗.
+
+reinterpret_(t_1,t_2)(c) = bits_(t_2)^(−1)(bits_(t_1)(c))
+
+#### 4.3.4.13 narrow^s_(M,N)(i)
+
+- Let j be the signed interpretation of i of size M.
+
+- Return sat_s_N(j).
+
+narrow^s_(M,N)(i) = sat_s_N(signed_M(i))
+
+#### 4.3.4.14 narrow^u_(M,N)(i)
+
+- Let j be the signed interpretation of i of size M.
+
+- Return sat_u_N(j).
+
+narrow^u_(M,N)(i) = sat_u_N(signed_M(i))
+
+## 4.4 Instructions
+
+WebAssembly computation is performed by executing individual instructions.
+
+### 4.4.1 Numeric Instructions
+
+Numeric instructions are defined in terms of the generic numeric operators. The mapping of numeric instructions to their underlying operators is expressed by the following definition:
+
+    op_(iN)(i_1, … , i_k) = iop_N(i_1, … , i_k)
+    op_(fN)(z_1, … , z_k) = fop_N(z_1, … , z_k)
+
+And for conversion operators:
+
+cvtop_(t_1,t_2)^(sx?)(c) = cvtop_(∣t_1∣,∣t_2∣)^(sx?)(c)
+
+Where the underlying operators are partial, the corresponding instruction will trap when the result is not defined. Where the underlying operators are non-deterministic, because they may return one of multiple possible NaN values, so are the corresponding instructions.
+
+Note
+
+For example, the result of instruction i32.add applied to operands i_1, i_2 invokes add_(i32)(i_1, i_2), which maps to the generic iadd_(32)(i_1, i_2) via the above definition. Similarly, i64.trunc_f32_s applied to z invokes trunc_(f32,i64)^s(z), which maps to the generic trunc^s_(32,64)(z).
+
+#### 4.4.1.1 t.const c
+
+1. Push the value t.const c to the stack.
+
+Note
+
+No formal reduction rule is required for this instruction, since const instructions already are values.
+
+#### 4.4.1.2 t.unop
+
+1. Assert: due to validation, a value of value type t is on the top of the stack.
+
+2. Pop the value t.const c_1 from the stack.
+
+3. If unop_t(c_1) is defined, then:
+
+   1. Let c be a possible result of computing unop_t(c_1).
+
+   2. Push the value t.const c to the stack.
+
+4. Else:
+
+   1. Trap.
+
+    (t.const c_1) t.unop ↪ (t.const c) (if c ∈ unop_t(c_1))
+    (t.const c_1) t.unop ↪ trap (if unop_t(c_1) = {})
+
+#### 4.4.1.3 t.binop
+
+1. Assert: due to validation, two values of value type t are on the top of the stack.
+
+2. Pop the value t.const c_2 from the stack.
+
+3. Pop the value t.const c_1 from the stack.
+
+4. If binop_t(c_1, c_2) is defined, then:
+
+   1. Let c be a possible result of computing binop_t(c_1, c_2).
+
+   2. Push the value t.const c to the stack.
+
+5. Else:
+
+   1. Trap.
+
+    (t.const c_1) (t.const c_2) t.binop ↪ (t.const c) (if c ∈ binop_t(c_1, c_2))
+    (t.const c_1) (t.const c_2) t.binop ↪ trap (if binop_t(c_1, c_2) = {})
+
+#### 4.4.1.4 t.testop
+
+1. Assert: due to validation, a value of value type t is on the top of the stack.
+
+2. Pop the value t.const c_1 from the stack.
+
+3. Let c be the result of computing testop_t(c_1).
+
+4. Push the value i32.const c to the stack.
+
+(t.const c_1) t.testop ↪ (i32.const c) (if c = testop_t(c_1))
+
+#### 4.4.1.5 t.relop
+
+1. Assert: due to validation, two values of value type t are on the top of the stack.
+
+2. Pop the value t.const c_2 from the stack.
+
+3. Pop the value t.const c_1 from the stack.
+
+4. Let c be the result of computing relop_t(c_1, c_2).
+
+5. Push the value i32.const c to the stack.
+
+(t.const c_1) (t.const c_2) t.relop ↪ (i32.const c) (if c = relop_t(c_1, c_2))
+
+#### 4.4.1.6 t_2.cvtop_t_1_sx?
+
+1. Assert: due to validation, a value of value type t_1 is on the top of the stack.
+
+2. Pop the value t_1.const c_1 from the stack.
+
+3. If cvtop_(t_1,t_2)^(sx?)(c_1) is defined:
+
+   1. Let c_2 be a possible result of computing cvtop_(t_1,t_2)^(sx?)(c_1).
+
+   2. Push the value t_2.const c_2 to the stack.
+
+4. Else:
+
+   1. Trap.
+
+    (t_1.const c_1) t_2.cvtop_t_1_sx? ↪ (t_2.const c_2) (if c_2 ∈ cvtop_(t_1,t_2)^(sx?)(c_1))
+    (t_1.const c_1) t_2.cvtop_t_1_sx? ↪ trap (if cvtop_(t_1,t_2)^(sx?)(c_1) = {})
+
+### 4.4.2 Reference Instructions
+
+#### 4.4.2.1 ref.null t
+
+1. Push the value ref.null t to the stack.
+
+Note
+
+No formal reduction rule is required for this instruction, since the ref.null instruction is already a value.
+
+#### 4.4.2.2 ref.is_null
+
+1. Assert: due to validation, a reference value is on the top of the stack.
+
+2. Pop the value val from the stack.
+
+3. If val is ref.null t, then:
+
+   1. Push the value i32.const 1 to the stack.
+
+4. Else:
+
+   1. Push the value i32.const 0 to the stack.
+
+    val ref.is_null ↪ (i32.const 1) (if val = ref.null t)
+    val ref.is_null ↪ (i32.const 0) (otherwise)
+
+#### 4.4.2.3 ref.func x
+
+1. Let F be the current frame.
+
+2. Assert: due to validation, F.module.funcaddrs[x] exists.
+
+3. Let a be the function address F.module.funcaddrs[x].
+
+4. Push the value ref a to the stack.
+
+F; (ref.func x) ↪ F; (ref a) (if a = F.module.funcaddrs[x])
+
+### 4.4.3 Vector Instructions
+
+Vector instructions that operate bitwise are handled as integer operations of respective width.
+
+op_(vN)(i_1, …, i_k) = iop_N(i_1, …, i_k)
+
+Most other vector instructions are defined in terms of numeric operators that are applied lane-wise according to the given shape.
+
+op_(txN)(n_1, …, n_k) = lanes_(txN)^(−1)(op_t(i_1, …, i_k)∗) (if i_1∗ = lanes_(txN)(n_1) ∧ ⋯ ∧ i_k∗ = lanes_(txN)(n_k)
+
+Note
+
+For example, the result of instruction i32x4.add applied to operands v_1, v_2 invokes add_(i32x4)(v_1, v_2), which maps to lanes_(i32x4)^(−1)(add_(i32)(i_1, i_2)∗), where i_1∗ and i_2∗ are sequences resulting from invoking lanes_(i32x4)(v_1) and lanes_(i32x4)(v_2) respectively.
+
+#### 4.4.3.1 v128.const c
+
+1. Push the value v128.const c to the stack.
+
+Note
+
+No formal reduction rule is required for this instruction, since const instructions coincide with values.
+
+#### 4.4.3.2 v128.vvunop
+
+1. Assert: due to validation, a value of value type v128 is on the top of the stack.
+
+2. Pop the value v128.const c_1 from the stack.
+
+3. Let c be the result of computing vvunop_(v128)(c_1).
+
+4. Push the value v128.const c to the stack.
+
+(v128.const c_1) v128.vvunop ↪ (v128.const c) (if c = vvunop_(v128)(c_1))
+
+#### 4.4.3.3 v128.vvbinop
+
+1. Assert: due to validation, two values of value type v128 are on the top of the stack.
+
+2. Pop the value v128.const c_2 from the stack.
+
+3. Pop the value v128.const c_1 from the stack.
+
+4. Let c be the result of computing vvbinop_(v128)(c_1, c_2).
+
+5. Push the value v128.const c to the stack.
+
+(v128.const c_1) (v128.const c_2) v128.vvbinop ↪ (v128.const c) (if c = vvbinop_(v128)(c_1, c_2))
+
+#### 4.4.3.4 v128.vvternop
+
+1. Assert: due to validation, three values of value type v128 are on the top of the stack.
+
+2. Pop the value v128.const c_3 from the stack.
+
+3. Pop the value v128.const c_2 from the stack.
+
+4. Pop the value v128.const c_1 from the stack.
+
+5. Let c be the result of computing vvternop_(v128)(c_1, c_2, c_3).
+
+6. Push the value v128.const c to the stack.
+
+(v128.const c_1) (v128.const c_2) (v128.const c_3) v128.vvternop ↪ (v128.const c) (if c = vvternop_(v128)(c_1, c_2, c_3))
+
+#### 4.4.3.5 v128.any_true
+
+1. Assert: due to validation, a value of value type v128 is on the top of the stack.
+
+2. Pop the value v128.const c_1 from the stack.
+
+3. Let i be the result of computing ine_(128)(c_1, 0).
+
+4. Push the value i32.const i onto the stack.
+
+(v128.const c_1) v128.any_true ↪ (i32.const i) (if i = ine_(128)(c_1, 0))
+
+#### 4.4.3.6 i8x16.swizzle
+
+1. Assert: due to validation, two values of value type v128 are on the top of the stack.
+
+2. Pop the value v128.const c_2 from the stack.
+
+3. Let i∗ be the result of computing lanes_(i8x16)(c_2).
+
+4. Pop the value v128.const c_1 from the stack.
+
+5. Let j∗ be the result of computing lanes_(i8x16)(c_1).
+
+6. Let c∗ be the concatenation of the two sequences j∗ and 0^(240).
+
+7. Let c′ be the result of computing lanes_(i8x16)^(−1)(c∗[i∗[0]] … c∗[i∗[15]]).
+
+8. Push the value v128.const c′ onto the stack.
+
+    (v128.const c_1) (v128.const c_2) i8x16.swizzle ↪ (v128.const c′)
+    (if i∗ = lanes_(i8x16)(c_2)
+    ∧ c∗ = lanes_(i8x16)(c_1) 0^(240)
+    ∧ c′ = lanes_(i8x16)^(−1)(c∗[i∗[0]] … c∗[i∗[15]]))
+
+#### 4.4.3.7 i8x16.shuffle x∗
+
+1. Assert: due to validation, two values of value type v128 are on the top of the stack.
+
+2. Assert: due to validation, for all x_i in x∗ it holds that x_i < 32.
+
+3. Pop the value v128.const c_2 from the stack.
+
+4. Let i_2∗ be the result of computing lanes_(i8x16)(c_2).
+
+5. Pop the value v128.const c_1 from the stack.
+
+6. Let i_1∗ be the result of computing lanes_(i8x16)(c_1).
+
+7. Let i∗ be the concatenation of the two sequences i_1∗ and i_2∗.
+
+8. Let c be the result of computing lanes_(i8x16)^(−1)(i∗[x∗[0]] … i∗[x∗[15]]).
+
+9. Push the value v128.const c onto the stack.
+
+    (v128.const c_1) (v128.const c_2) (i8x16.shuffle x∗) ↪ (v128.const c)
+    (if i∗ = lanes_(i8x16)(c_1) lanes_(i8x16)(c_2)
+    ∧ c = lanes_(i8x16)^(−1)(i∗[x∗[0]] … i∗[x∗[15]]))
+
+#### 4.4.3.8 shape.splat
+
+1. Let t be the type unpacked(shape).
+
+2. Assert: due to validation, a value of value type t is on the top of the stack.
+
+3. Pop the value t.const c_1 from the stack.
+
+4. Let N be the integer dim(shape).
+
+5. Let c be the result of computing lanes_(shape)^(−1)(c_1^N).
+
+6. Push the value v128.const c to the stack.
+
+(t.const c_1) shape.splat ↪ (v128.const c) (if t = unpacked(shape) ∧ c = lanes_(shape)^(−1)(c_1^(dim(shape))))
+
+#### 4.4.3.9 t_1xN.extract_lane_sx? x
+
+1. Assert: due to validation, x < N.
+
+2. Assert: due to validation, a value of value type v128 is on the top of the stack.
+
+3. Pop the value v128.const c_1 from the stack.
+
+4. Let i∗ be the result of computing lanes_(t_1xN)(c_1).
+
+5. Let t_2 be the type unpacked(t_1xN).
+
+6. Let c_2 be the result of computing extend_(t_1,t_2)^(sx?)(i∗[x]).
+
+7. Push the value t_2.const c_2 to the stack.
+
+    (v128.const c_1) (t_1xN.extract_lane x) ↪ (t_2.const c_2)
+    (if t_2 = unpacked(t_1xN)
+    ∧ c_2 = extend_(t_1,t_2)^(sx?)(lanes_(t_1xN)(c_1)[x]))
+
+#### 4.4.3.10 shape.replace_lane x
+
+1. Assert: due to validation, x < dim(shape).
+
+2. Let t_2 be the type unpacked(shape).
+
+3. Assert: due to validation, a value of value type t_1 is on the top of the stack.
+
+4. Pop the value t_2.const c_2 from the stack.
+
+5. Assert: due to validation, a value of value type v128 is on the top of the stack.
+
+6. Pop the value v128.const c_1 from the stack.
+
+7. Let i∗ be the result of computing lanes_(shape)(c_1).
+
+8. Let c be the result of computing lanes_(shape)^(−1)(i∗ with [x] = c_2).
+
+9. Push v128.const c on the stack.
+
+    (v128.const c_1) (t_2.const c_2) (shape.replace_lane x) ↪ (v128.const c)
+    (if i∗ = lanes_(shape)(c_1)
+    ∧ c = lanes_(shape)^(−1)(i∗ with [x] = c_2))
+
+#### 4.4.3.11 shape.vunop
+
+1. Assert: due to validation, a value of value type v128 is on the top of the stack.
+
+2. Pop the value v128.const c_1 from the stack.
+
+3. Let c be the result of computing vunop_(shape)(c_1).
+
+4. Push the value v128.const c to the stack.
+
+(v128.const c_1) shape.vunop ↪ (v128.const c) (if c = vunop_(shape)(c_1))
+
+#### 4.4.3.12 shape.vbinop
+
+1. Assert: due to validation, two values of value type v128 are on the top of the stack.
+
+2. Pop the value v128.const c_2 from the stack.
+
+3. Pop the value v128.const c_1 from the stack.
+
+4. If vbinop_(shape)(c_1, c_2) is defined:
+
+   1. Let c be a possible result of computing vbinop_(shape)(c_1, c_2).
+
+   2. Push the value v128.const c to the stack.
+
+5. Else:
+
+   1. Trap.
+
+    (v128.const c_1) (v128.const c_2) shape.vbinop ↪ (v128.const c) (if c ∈ vbinop_(shape)(c_1, c_2))
+    (v128.const c_1) (v128.const c_2) shape.vbinop ↪ trap (if vbinop_(shape)(c_1, c_2) = {})
+
+#### 4.4.3.13 txN.vrelop
+
+1. Assert: due to validation, two values of value type v128 are on the top of the stack.
+
+2. Pop the value v128.const c_2 from the stack.
+
+3. Pop the value v128.const c_1 from the stack.
+
+4. Let i_1∗ be the result of computing lanes_(txN)(c_1).
+
+5. Let i_2∗ be the result of computing lanes_(txN)(c_2).
+
+6. Let i∗ be the result of computing vrelop_t(i_1∗, i_2∗).
+
+7. Let j∗ be the result of computing extend^s_(1,∣t∣)(i∗).
+
+8. Let c be the result of computing lanes_(txN)^(−1)(j∗).
+
+9. Push the value v128.const c to the stack.
+
+    (v128.const c_1) (v128.const c_2) txN.vrelop ↪ (v128.const c)
+    (if c = lanes_(txN)^(−1)(extend^s_(1,∣t∣)(vrelop_t(lanes_(txN)(c_1), lanes_(txN)(c_2)))))
+
+#### 4.4.3.14 txN.vishiftop
+
+1. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+2. Pop the value i32.const s from the stack.
+
+3. Assert: due to validation, a value of value type v128 is on the top of the stack.
+
+4. Pop the value v128.const c_1 from the stack.
+
+5. Let i∗ be the result of computing lanes_(txN)(c_1).
+
+6. Let j∗ be the result of computing vishiftop_t(i∗, s^N).
+
+7. Let c be the result of computing lanes_(txN)^(−1)(j∗).
+
+8. Push the value v128.const c to the stack.
+
+    (v128.const c_1) (i32.const s) txN.vishiftop ↪ (v128.const c)
+    (if i∗ = lanes_(txN)(c_1)
+    ∧ c = lanes_(txN)^(−1)(vishiftop_t(i∗, s^N)))
+
+#### 4.4.3.15 shape.all_true
+
+1. Assert: due to validation, a value of value type v128 is on the top of the stack.
+
+2. Pop the value v128.const c from the stack.
+
+3. Let i_1∗ be the result of computing lanes_(shape)(c).
+
+4. Let i be the result of computing bool(⋀(i_1 = 0)∗).
+
+5. Push the value i32.const i onto the stack.
+
+    (v128.const c) shape.all_true ↪ (i32.const i)
+    (if i_1∗ = lanes_(shape)(c)
+    ∧ i = bool(⋀(i_1 = 0)∗))
+
+#### 4.4.3.16 txN.bitmask
+
+1. Assert: due to validation, a value of value type v128 is on the top of the stack.
+
+2. Pop the value v128.const c from the stack.
+
+3. Let i_1^N be the result of computing lanes_(txN)(c).
+
+4. Let B be the bit width ∣t∣ of value type t.
+
+5. Let i_2^N be the result of computing ilt_s_B(i_1^N, 0^N).
+
+6. Let j∗ be the concatenation of the two sequences i_2^N and 0^(32−N).
+
+7. Let i be the result of computing ibits_(32)^(−1)(j∗).
+
+8. Push the value i32.const i onto the stack.
+
+(v128.const c) txN.bitmask ↪ (i32.const i) (if i = ibits_(32)^(−1)(ilt_s_(∣t∣)(lanes_(txN)(c), 0^N)))
+
+#### 4.4.3.17 t_2xN.narrow_t_1xM_sx
+
+1. Assert: due to syntax, N = 2 ⋅ M.
+
+2. Assert: due to validation, two values of value type v128 are on the top of the stack.
+
+3. Pop the value v128.const c_2 from the stack.
+
+4. Let i_2^M be the result of computing lanes_(t_1xM)(c_2).
+
+5. Let d_2^M be the result of computing narrow_(∣t_1∣,∣t_2∣)^(sx)(i_2^M).
+
+6. Pop the value v128.const c_1 from the stack.
+
+7. Let i_1^M be the result of computing lanes_(t_1xM)(c_1).
+
+8. Let d_1^M be the result of computing narrow_(∣t_1∣,∣t_2∣)^(sx)(i_1^M).
+
+9. Let j^N be the concatenation of the two sequences d_1^M and d_2^M.
+
+10. Let c be the result of computing lanes_(t_2xN)^(−1)(j^N).
+
+11. Push the value v128.const c onto the stack.
+
+    (v128.const c_1) (v128.const c_2) t_2xN.narrow_t_1xM_sx ↪ (v128.const c)
+    (if d_1^M = narrow_(∣t_1∣,∣t_2∣)^(sx)(lanes_(t_1xM)(c_1))
+    ∧ d_2^M = narrow_(∣t_1∣,∣t_2∣)^(sx)(lanes_(t_1xM)(c_2))
+    ∧ c = lanes_(t_2xN)^(−1)(d_1^M d_2^M))
+
+#### 4.4.3.18 t_2xN.vcvtop_t_1xM_sx
+
+1. Assert: due to syntax, N = M.
+
+2. Assert: due to validation, a value of value type v128 is on the top of the stack.
+
+3. Pop the value v128.const c_1 from the stack.
+
+4. Let i∗ be the result of computing lanes_(t_1xM)(c_1).
+
+5. Let j∗ be the result of computing vcvtop_(∣t_1∣,∣t_2∣)^(sx)(i∗).
+
+6. Let c be the result of computing lanes_(t_2xN)^(−1)(j∗).
+
+7. Push the value v128.const c onto the stack.
+
+    (v128.const c_1) t_2xN.vcvtop_t_1xM_sx ↪ (v128.const c)
+    (if c = lanes_(t_2xN)^(−1)(vcvtop_(∣t_1∣,∣t_2∣)^(sx)(lanes_(t_1xM)(c_1))))
+
+#### 4.4.3.19 t_2xN.vcvtop_half_t_1xM_sx?
+
+1. Assert: due to syntax, N = M/2.
+
+2. Assert: due to validation, a value of value type v128 is on the top of the stack.
+
+3. Pop the value v128.const c_1 from the stack.
+
+4. Let i∗ be the result of computing lanes_(t_1xM)(c_1).
+
+5. If half is low, then:
+
+   1. Let j∗ be the sequence i∗[0: N].
+
+6. Else:
+
+   1. Let j∗ be the sequence i∗[N: N].
+
+7. Let k∗ be the result of computing vcvtop_(∣t_1∣,∣t_2∣)^(sx?)(j∗).
+
+8. Let c be the result of computing lanes_(t_2xN)^(−1)(k∗).
+
+9. Push the value v128.const c onto the stack.
+
+    (v128.const c_1) t_2xN.vcvtop_half_t_1xM_sx? ↪ (v128.const c)
+    (if c = lanes_(t_2xN)^(−1)(vcvtop_(∣t_1∣,∣t_2∣)^(sx?)(lanes_(t_1xM)(c_1)[half(0, N) : N])))
+
+where:
+
+    low(x, y) = x
+    high(x, y) = y
+
+#### 4.4.3.20 t_2xN.vcvtop_t_1xM_sx?_zero
+
+1. Assert: due to syntax, N = 2 ⋅ M.
+
+2. Assert: due to validation, a value of value type v128 is on the top of the stack.
+
+3. Pop the value v128.const c_1 from the stack.
+
+4. Let i∗ be the result of computing lanes_(t_1xM)(c_1).
+
+5. Let j∗ be the result of computing vcvtop_(∣t_1∣,∣t_2∣)^(sx?)(i∗).
+
+6. Let k∗ be the concatenation of the two sequences j∗ and 0^M.
+
+7. Let c be the result of computing lanes_(t_2xN)^(−1)(k∗).
+
+8. Push the value v128.const c onto the stack.
+
+    (v128.const c_1) t_2xN.vcvtop_t_1xM_sx?_zero ↪ (v128.const c)
+    (if c = lanes_(t_2xN)^(−1)(vcvtop_(∣t_1∣,∣t_2∣)^(sx?)(lanes_(t_1xM)(c_1)) 0^M))
+
+#### 4.4.3.21 i32x4.dot_i16x8_s
+
+1. Assert: due to validation, two values of value type v128 are on the top of the stack.
+
+2. Pop the value v128.const c_2 from the stack.
+
+3. Pop the value v128.const c_1 from the stack.
+
+4. Let i_1∗ be the result of computing lanes_(i16x8)(c_1).
+
+5. Let j_1∗ be the result of computing extend^s_(16,32)(i_1∗).
+
+6. Let i_2∗ be the result of computing lanes_(i16x8)(c_2).
+
+7. Let j_2∗ be the result of computing extend^s_(16,32)(i_2∗).
+
+8. Let (k_1 k_2)∗ be the result of computing imul_(32)(j_1∗, j_2∗).
+
+9. Let k∗ be the result of computing iadd_(32)(k_1, k_2)∗.
+
+10. Let c be the result of computing lanes_(i32x4)^(−1)(k∗).
+
+11. Push the value v128.const c onto the stack.
+
+    (v128.const c_1) (v128.const c_2) i32x4.dot_i16x8_s ↪ (v128.const c)
+    (if (i_1 i_2)∗ = imul_(32)(extend^s_(16,32)(lanes_(i16x8)(c_1)), extend^s_(16,32)(lanes_(i16x8)(c_2)))
+    ∧ j∗ = iadd_(32)(i_1, i_2)∗
+    ∧ c = lanes_(i32x4)^(−1)(j∗))
+
+#### 4.4.3.22 t_2xN.extmul_half_t_1xM_sx
+
+1. Assert: due to syntax, N = M/2.
+
+2. Assert: due to validation, two values of value type v128 are on the top of the stack.
+
+3. Pop the value v128.const c_2 from the stack.
+
+4. Pop the value v128.const c_1 from the stack.
+
+5. Let i_1∗ be the result of computing lanes_(t_1xM)(c_1).
+
+6. Let i_2∗ be the result of computing lanes_(t_1xM)(c_2).
+
+7. If half is low, then:
+
+   1. Let j_1∗ be the sequence i_1∗[0: N].
+
+   2. Let j_2∗ be the sequence i_2∗[0: N].
+
+8. Else:
+
+   1. Let j_1∗ be the sequence i_1∗[N: N].
+
+   2. Let j_2∗ be the sequence i_2∗[N: N].
+
+9. Let k_1∗ be the result of computing extend_(∣t_1∣,∣t_2∣)^(sx)(j_1∗).
+
+10. Let k_2∗ be the result of computing extend_(∣t_1∣,∣t_2∣)^(sx)(j_2∗).
+
+11. Let k∗ be the result of computing imul_(∣t_2∣)(k_1∗, k_2∗).
+
+12. Let c be the result of computing lanes_(t_2xN)^(−1)(k∗).
+
+13. Push the value v128.const c onto the stack.
+
+    (v128.const c_1) (v128.const c_2) t_2xN.extmul_half_t_1xM_sx ↪ (v128.const c)
+    (if i∗ = lanes_(t_1xM)(c_1)[half(0, N) : N]
+    ∧ j∗ = lanes_(t_1xM)(c_2)[half(0, N) : N]
+    ∧ c = lanes_(t_2xN)^(−1)(imul_(∣t_2∣)(extend_(∣t_1∣,∣t_2∣)^(sx)(i∗), extend_(∣t_1∣,∣t_2∣)^(sx)(j∗))))
+
+where:
+
+    low(x, y) = x
+    high(x, y) = y
+
+#### 4.4.3.23 t_2xN.extadd_pairwise_t_1xM_sx
+
+1. Assert: due to syntax, N = M/2.
+
+2. Assert: due to validation, a value of value type v128 is on the top of the stack.
+
+3. Pop the value v128.const c_1 from the stack.
+
+4. Let i∗ be the result of computing lanes_(t_1xM)(c_1).
+
+5. Let (j_1 j_2)∗ be the result of computing extend_(∣t_1∣,∣t_2∣)^(sx)(i∗).
+
+6. Let k∗ be the result of computing iadd_(∣t_2∣)(j_1, j_2)∗.
+
+7. Let c be the result of computing lanes_(t_2xN)^(−1)(k∗).
+
+8. Push the value v128.const c to the stack.
+
+    (v128.const c_1) t_2xN.extadd_pairwise_t_1xM_sx ↪ (v128.const c)
+    (if (i_1 i_2)∗ = extend_(∣t_1∣,∣t_2∣)^(sx)(lanes_(t_1xM)(c_1))
+    ∧ j∗ = iadd_(∣t_2∣)(i_1, i_2)∗
+    ∧ c = lanes_(t_2xN)^(−1)(j∗))
+
+### 4.4.4 Parametric Instructions
+
+#### 4.4.4.1 drop
+
+1. Assert: due to validation, a value is on the top of the stack.
+
+2. Pop the value val from the stack.
+
+val drop ↪ ϵ
+
+#### 4.4.4.2 select (t∗)?
+
+1. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+2. Pop the value i32.const c from the stack.
+
+3. Assert: due to validation, two more values (of the same value type) are on the top of the stack.
+
+4. Pop the value val_2 from the stack.
+
+5. Pop the value val_1 from the stack.
+
+6. If c is not 0, then:
+
+   1. Push the value val_1 back to the stack.
+
+7. Else:
+
+   1. Push the value val_2 back to the stack.
+
+    val_1 val_2 (i32.const c) (select t?) ↪ val_1 (if c = 0)
+    val_1 val_2 (i32.const c) (select t?) ↪ val_2 (if c = 0)
+
+Note
+
+In future versions of WebAssembly, select may allow more than one value per choice.
+
+### 4.4.5 Variable Instructions
+
+#### 4.4.5.1 local.get x
+
+1. Let F be the current frame.
+
+2. Assert: due to validation, F.locals[x] exists.
+
+3. Let val be the value F.locals[x].
+
+4. Push the value val to the stack.
+
+F; (local.get x) ↪ F; val (if F.locals[x] = val)
+
+#### 4.4.5.2 local.set x
+
+1. Let F be the current frame.
+
+2. Assert: due to validation, F.locals[x] exists.
+
+3. Assert: due to validation, a value is on the top of the stack.
+
+4. Pop the value val from the stack.
+
+5. Replace F.locals[x] with the value val.
+
+F; val (local.set x) ↪ F′; ϵ (if F′ = F with locals[x] = val)
+
+#### 4.4.5.3 local.tee x
+
+1. Assert: due to validation, a value is on the top of the stack.
+
+2. Pop the value val from the stack.
+
+3. Push the value val to the stack.
+
+4. Push the value val to the stack.
+
+5. Execute the instruction local.set x.
+
+val (local.tee x) ↪ val val (local.set x)
+
+#### 4.4.5.4 global.get x
+
+1. Let F be the current frame.
+
+2. Assert: due to validation, F.module.globaladdrs[x] exists.
+
+3. Let a be the global address F.module.globaladdrs[x].
+
+4. Assert: due to validation, S.globals[a] exists.
+
+5. Let glob be the global instance S.globals[a].
+
+6. Let val be the value glob.value.
+
+7. Push the value val to the stack.
+
+    S; F; (global.get x) ↪ S; F; val
+    (if S.globals[F.module.globaladdrs[x]].value = val)
+
+#### 4.4.5.5 global.set x
+
+1. Let F be the current frame.
+
+2. Assert: due to validation, F.module.globaladdrs[x] exists.
+
+3. Let a be the global address F.module.globaladdrs[x].
+
+4. Assert: due to validation, S.globals[a] exists.
+
+5. Let glob be the global instance S.globals[a].
+
+6. Assert: due to validation, a value is on the top of the stack.
+
+7. Pop the value val from the stack.
+
+8. Replace glob.value with the value val.
+
+    S; F; val (global.set x) ↪ S′; F; ϵ
+    (if S′ = S with globals[F.module.globaladdrs[x]].value = val)
+
+Note
+
+Validation ensures that the global is, in fact, marked as mutable.
+
+### 4.4.6 Table Instructions
+
+#### 4.4.6.1 table.get x
+
+1. Let F be the current frame.
+
+2. Assert: due to validation, F.module.tableaddrs[x] exists.
+
+3. Let a be the table address F.module.tableaddrs[x].
+
+4. Assert: due to validation, S.tables[a] exists.
+
+5. Let tab be the table instance S.tables[a].
+
+6. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+7. Pop the value i32.const i from the stack.
+
+8. If i is not smaller than the length of tab.elem, then:
+
+   1. Trap.
+
+9. Let val be the value tab.elem[i].
+
+10. Push the value val to the stack.
+
+    S; F; (i32.const i) (table.get x) ↪ S; F; val
+    (if S.tables[F.module.tableaddrs[x]].elem[i] = val)
+    S; F; (i32.const i) (table.get x) ↪ S; F; trap
+    (otherwise)
+
+#### 4.4.6.2 table.set x
+
+1. Let F be the current frame.
+
+2. Assert: due to validation, F.module.tableaddrs[x] exists.
+
+3. Let a be the table address F.module.tableaddrs[x].
+
+4. Assert: due to validation, S.tables[a] exists.
+
+5. Let tab be the table instance S.tables[a].
+
+6. Assert: due to validation, a reference value is on the top of the stack.
+
+7. Pop the value val from the stack.
+
+8. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+9. Pop the value i32.const i from the stack.
+
+10. If i is not smaller than the length of tab.elem, then:
+
+   1. Trap.
+
+11. Replace the element tab.elem[i] with val.
+
+    S; F; (i32.const i) val (table.set x) ↪ S′; F; ϵ
+    (if S′ = S with tables[F.module.tableaddrs[x]].elem[i] = val)
+    S; F; (i32.const i) val (table.set x) ↪ S; F; trap
+    (otherwise)
+
+#### 4.4.6.3 table.size x
+
+1. Let F be the current frame.
+
+2. Assert: due to validation, F.module.tableaddrs[x] exists.
+
+3. Let a be the table address F.module.tableaddrs[x].
+
+4. Assert: due to validation, S.tables[a] exists.
+
+5. Let tab be the table instance S.tables[a].
+
+6. Let sz be the length of tab.elem.
+
+7. Push the value i32.const sz to the stack.
+
+    S; F; (table.size x) ↪ S; F; (i32.const sz)
+    (if ∣S.tables[F.module.tableaddrs[x]].elem∣ = sz)
+
+#### 4.4.6.4 table.grow x
+
+1. Let F be the current frame.
+
+2. Assert: due to validation, F.module.tableaddrs[x] exists.
+
+3. Let a be the table address F.module.tableaddrs[x].
+
+4. Assert: due to validation, S.tables[a] exists.
+
+5. Let tab be the table instance S.tables[a].
+
+6. Let sz be the length of S.tables[a].
+
+7. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+8. Pop the value i32.const n from the stack.
+
+9. Assert: due to validation, a reference value is on the top of the stack.
+
+10. Pop the value val from the stack.
+
+11. Let err be the i32 value 2^(32) − 1, for which signed_(32)(err) is −1.
+
+12. Either:
+
+1. If growing tab by n entries with initialization value val succeeds, then:
+
+   1. Push the value i32.const sz to the stack.
+
+2. Else:
+
+   1. Push the value i32.const err to the stack.
+
+1. Or:
+
+1. push the value i32.const err to the stack.
+
+    S; F; val (i32.const n) (table.grow x) ↪ S′; F; (i32.const sz)
+    (if F.module.tableaddrs[x] = a
+    ∧ sz = ∣S.tables[a].elem∣
+    ∧ S′ = S with tables[a] = growtable(S.tables[a], n, val))1ex]S; F; val (i32.const n) (table.grow x) ↪ S; F; (i32.const signed_(32)^(−1)(−1))
+
+Note
+
+The table.grow instruction is non-deterministic. It may either succeed, returning the old table size sz, or fail, returning −1. Failure must occur if the referenced table instance has a maximum size defined that would be exceeded. However, failure can occur in other cases as well. In practice, the choice depends on the resources available to the embedder.
+
+#### 4.4.6.5 table.fill x
+
+1. Let F be the current frame.
+
+2. Assert: due to validation, F.module.tableaddrs[x] exists.
+
+3. Let ta be the table address F.module.tableaddrs[x].
+
+4. Assert: due to validation, S.tables[ta] exists.
+
+5. Let tab be the table instance S.tables[ta].
+
+6. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+7. Pop the value i32.const n from the stack.
+
+8. Assert: due to validation, a reference value is on the top of the stack.
+
+9. Pop the value val from the stack.
+
+10. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+11. Pop the value i32.const i from the stack.
+
+12. If i + n is larger than the length of tab.elem, then:
+
+   1. Trap.
+
+1. If n is 0, then:
+
+   1. Return.
+
+2. Push the value i32.const i to the stack.
+
+3. Push the value val to the stack.
+
+4. Execute the instruction table.set x.
+
+5. Push the value i32.const (i + 1) to the stack.
+
+6. Push the value val to the stack.
+
+7. Push the value i32.const (n − 1) to the stack.
+
+8. Execute the instruction table.fill x.
+
+    S; F; (i32.const i) val (i32.const n) (table.fill x) ↪ S; F; trap
+    (if i + n > ∣S.tables[F.module.tableaddrs[x]].elem∣)1ex]S; F; (i32.const i) val (i32.const 0) (table.fill x) ↪ S; F; ϵ
+    (otherwise)1ex]S; F; (i32.const i) val (i32.const n + 1) (table.fill x) ↪
+    S; F; (i32.const i) val (table.set x)
+    (i32.const i + 1) val (i32.const n) (table.fill x)
+    (otherwise)
+
+#### 4.4.6.6 table.copy x y
+
+1. Let F be the current frame.
+
+2. Assert: due to validation, F.module.tableaddrs[x] exists.
+
+3. Let ta_x be the table address F.module.tableaddrs[x].
+
+4. Assert: due to validation, S.tables[ta_x] exists.
+
+5. Let tab_x be the table instance S.tables[ta_x].
+
+6. Assert: due to validation, F.module.tableaddrs[y] exists.
+
+7. Let ta_y be the table address F.module.tableaddrs[y].
+
+8. Assert: due to validation, S.tables[ta_y] exists.
+
+9. Let tab_y be the table instance S.tables[ta_y].
+
+10. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+11. Pop the value i32.const n from the stack.
+
+12. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+13. Pop the value i32.const s from the stack.
+
+14. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+15. Pop the value i32.const d from the stack.
+
+16. If s + n is larger than the length of tab_y.elem or d + n is larger than the length of tab_x.elem, then:
+
+   1. Trap.
+
+17. If n = 0, then:
+
+1. Return.
+
+1. If d ≤ s, then:
+
+1. Push the value i32.const d to the stack.
+
+2. Push the value i32.const s to the stack.
+
+3. Execute the instruction table.get y.
+
+4. Execute the instruction table.set x.
+
+5. Assert: due to the earlier check against the table size, d + 1 < 2^(32).
+
+6. Push the value i32.const (d + 1) to the stack.
+
+7. Assert: due to the earlier check against the table size, s + 1 < 2^(32).
+
+8. Push the value i32.const (s + 1) to the stack.
+
+1. Else:
+
+1. Assert: due to the earlier check against the table size, d + n − 1 < 2^(32).
+
+2. Push the value i32.const (d + n − 1) to the stack.
+
+3. Assert: due to the earlier check against the table size, s + n − 1 < 2^(32).
+
+4. Push the value i32.const (s + n − 1) to the stack.
+
+1. Execute the instruction table.get y.
+
+1. Execute the instruction table.set x.
+
+2. Push the value i32.const d to the stack.
+
+3. Push the value i32.const s to the stack.
+
+1. Push the value i32.const (n − 1) to the stack.
+
+2. Execute the instruction table.copy x y.
+
+    S; F; (i32.const d) (i32.const s) (i32.const n) (table.copy x y) ↪ S; F; trap
+    (if s + n > ∣S.tables[F.module.tableaddrs[y]].elem∣
+    ∨ d + n > ∣S.tables[F.module.tableaddrs[x]].elem∣)1ex]S; F; (i32.const d) (i32.const s) (i32.const 0) (table.copy x y) ↪ S; F; ϵ
+    (otherwise)1ex]S; F; (i32.const d) (i32.const s) (i32.const n + 1) (table.copy x y) ↪
+    S; F; (i32.const d) (i32.const s) (table.get y) (table.set x)
+    (i32.const d + 1) (i32.const s + 1) (i32.const n) (table.copy x y)
+    (otherwise, if d ≤ s)1ex]S; F; (i32.const d) (i32.const s) (i32.const n + 1) (table.copy x y) ↪
+    S; F; (i32.const d + n) (i32.const s + n) (table.get y) (table.set x)
+    (i32.const d) (i32.const s) (i32.const n) (table.copy x y)
+    (otherwise, if d > s)
+
+#### 4.4.6.7 table.init x y
+
+1. Let F be the current frame.
+
+2. Assert: due to validation, F.module.tableaddrs[x] exists.
+
+3. Let ta be the table address F.module.tableaddrs[x].
+
+4. Assert: due to validation, S.tables[ta] exists.
+
+5. Let tab be the table instance S.tables[ta].
+
+6. Assert: due to validation, F.module.elemaddrs[y] exists.
+
+7. Let ea be the element address F.module.elemaddrs[y].
+
+8. Assert: due to validation, S.elems[ea] exists.
+
+9. Let elem be the element instance S.elems[ea].
+
+10. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+11. Pop the value i32.const n from the stack.
+
+12. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+13. Pop the value i32.const s from the stack.
+
+14. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+15. Pop the value i32.const d from the stack.
+
+16. If s + n is larger than the length of elem.elem or d + n is larger than the length of tab.elem, then:
+
+   1. Trap.
+
+17. If n = 0, then:
+
+   1. Return.
+
+18. Let val be the reference value elem.elem[s].
+
+19. Push the value i32.const d to the stack.
+
+20. Push the value val to the stack.
+
+21. Execute the instruction table.set x.
+
+22. Assert: due to the earlier check against the table size, d + 1 < 2^(32).
+
+23. Push the value i32.const (d + 1) to the stack.
+
+24. Assert: due to the earlier check against the segment size, s + 1 < 2^(32).
+
+25. Push the value i32.const (s + 1) to the stack.
+
+26. Push the value i32.const (n − 1) to the stack.
+
+27. Execute the instruction table.init x y.
+
+    S; F; (i32.const d) (i32.const s) (i32.const n) (table.init x y) ↪ S; F; trap
+    (if s + n > ∣S.elems[F.module.elemaddrs[y]].elem∣
+    ∨ d + n > ∣S.tables[F.module.tableaddrs[x]].elem∣)1ex]S; F; (i32.const d) (i32.const s) (i32.const 0) (table.init x y) ↪ S; F; ϵ
+    (otherwise)1ex]S; F; (i32.const d) (i32.const s) (i32.const n + 1) (table.init x y) ↪
+    S; F; (i32.const d) val (table.set x)
+    (i32.const d + 1) (i32.const s + 1) (i32.const n) (table.init x y)
+    (otherwise, if val = S.elems[F.module.elemaddrs[y]].elem[s])
+
+#### 4.4.6.8 elem.drop x
+
+1. Let F be the current frame.
+
+2. Assert: due to validation, F.module.elemaddrs[x] exists.
+
+3. Let a be the element address F.module.elemaddrs[x].
+
+4. Assert: due to validation, S.elems[a] exists.
+
+5. Replace S.elems[a].elem with ϵ.
+
+    S; F; (elem.drop x) ↪ S′; F; ϵ
+    (if S′ = S with elems[F.module.elemaddrs[x]].elem = ϵ)
+
+### 4.4.7 Memory Instructions
+
+Note
+
+The alignment memarg.align in load and store instructions does not affect the semantics. It is an indication that the offset ea at which the memory is accessed is intended to satisfy the property ea mod 2^(memarg.align) = 0. A WebAssembly implementation can use this hint to optimize for the intended use. Unaligned access violating that property is still allowed and must succeed regardless of the annotation. However, it may be substantially slower on some hardware.
+
+#### 4.4.7.1 t.load memarg and t.loadN_sx memarg
+
+1. Let F be the current frame.
+
+2. Assert: due to validation, F.module.memaddrs[0] exists.
+
+3. Let a be the memory address F.module.memaddrs[0].
+
+4. Assert: due to validation, S.mems[a] exists.
+
+5. Let mem be the memory instance S.mems[a].
+
+6. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+7. Pop the value i32.const i from the stack.
+
+8. Let ea be the integer i + memarg.offset.
+
+9. If N is not part of the instruction, then:
+
+   1. Let N be the bit width ∣t∣ of number type t.
+
+10. If ea + N/8 is larger than the length of mem.data, then:
+
+   1. Trap.
+
+11. Let b∗ be the byte sequence mem.data[ea: N/8].
+
+12. If N and sx are part of the instruction, then:
+
+   1. Let n be the integer for which bytes_(iN)(n) = b∗.
+
+   2. Let c be the result of computing extend_(N,∣t∣)^(sx)(n).
+
+13. Else:
+
+   1. Let c be the constant for which bytes_t(c) = b∗.
+
+14. Push the value t.const c to the stack.
+
+    S; F; (i32.const i) (t.load memarg) ↪ S; F; (t.const c)
+    (if ea = i + memarg.offset
+    ∧ ea + ∣t∣/8 ≤ ∣S.mems[F.module.memaddrs[0]].data∣
+    ∧ bytes_t(c) = S.mems[F.module.memaddrs[0]].data[ea : ∣t∣/8])1ex]S; F; (i32.const i) (t.loadN_sx memarg) ↪ S; F; (t.const extend_(N,∣t∣)^(sx)(n))
+    (if ea = i + memarg.offset
+    ∧ ea + N/8 ≤ ∣S.mems[F.module.memaddrs[0]].data∣
+    ∧ bytes_(iN)(n) = S.mems[F.module.memaddrs[0]].data[ea : N/8])1ex]S; F; (i32.const i) (t.load(N_sx)? memarg) ↪ S; F; trap
+    (otherwise)
+
+#### 4.4.7.2 v128.loadMxN_sx memarg
+
+1. Let F be the current frame.
+
+2. Assert: due to validation, F.module.memaddrs[0] exists.
+
+3. Let a be the memory address F.module.memaddrs[0].
+
+4. Assert: due to validation, S.mems[a] exists.
+
+5. Let mem be the memory instance S.mems[a].
+
+6. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+7. Pop the value i32.const i from the stack.
+
+8. Let ea be the integer i + memarg.offset.
+
+9. If ea + M ⋅ N/8 is larger than the length of mem.data, then:
+
+   1. Trap.
+
+10. Let b∗ be the byte sequence mem.data[ea: M ⋅ N/8].
+
+11. Let m_k be the integer for which bytes_(iM)(m_k) = b∗[k ⋅ M/8: M/8].
+
+12. Let W be the integer M ⋅ 2.
+
+13. Let n_k be the result of computing extend_(M,W)^(sx)(m_k).
+
+14. Let c be the result of computing lanes_(iWxN)^(−1)(n_0 … n_(N−1)).
+
+15. Push the value v128.const c to the stack.
+
+    S; F; (i32.const i) (v128.loadMxN_sx memarg) ↪ S; F; (v128.const c)
+    (if ea = i + memarg.offset
+    ∧ ea + M ⋅ N/8 ≤ ∣S.mems[F.module.memaddrs[0]].data∣
+    ∧ bytes_(iM)(m_k) = S.mems[F.module.memaddrs[0]].data[ea + k ⋅ M/8 : M/8]
+    ∧ W = M ⋅ 2
+    ∧ c = lanes_(iWxN)^(−1)(extend_(M,W)^(sx)(m_0) … extend_(M,W)^(sx)(m_(N−1))))1ex]S; F; (i32.const i) (v128.loadMxN_sx memarg) ↪ S; F; trap
+    (otherwise)
+
+#### 4.4.7.3 v128.loadN_splat memarg
+
+1. Let F be the current frame.
+
+2. Assert: due to validation, F.module.memaddrs[0] exists.
+
+3. Let a be the memory address F.module.memaddrs[0].
+
+4. Assert: due to validation, S.mems[a] exists.
+
+5. Let mem be the memory instance S.mems[a].
+
+6. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+7. Pop the value i32.const i from the stack.
+
+8. Let ea be the integer i + memarg.offset.
+
+9. If ea + N/8 is larger than the length of mem.data, then:
+
+   1. Trap.
+
+10. Let b∗ be the byte sequence mem.data[ea: N/8].
+
+11. Let n be the integer for which bytes_(iN)(n) = b∗.
+
+12. Let L be the integer 128/N.
+
+13. Let c be the result of computing lanes_(iNxL)^(−1)(n^L).
+
+14. Push the value v128.const c to the stack.
+
+    S; F; (i32.const i) (v128.loadN_splat memarg) ↪ S; F; (v128.const c)
+    (if ea = i + memarg.offset
+    ∧ ea + N/8 ≤ ∣S.mems[F.module.memaddrs[0]].data∣
+    ∧ bytes_(iN)(n) = S.mems[F.module.memaddrs[0]].data[ea : N/8]
+    ∧ c = lanes_(iNxL)^(−1)(n^L))1ex]S; F; (i32.const i) (v128.loadN_splat memarg) ↪ S; F; trap
+    (otherwise)
+
+#### 4.4.7.4 v128.loadN_zero memarg
+
+1. Let F be the current frame.
+
+2. Assert: due to validation, F.module.memaddrs[0] exists.
+
+3. Let a be the memory address F.module.memaddrs[0].
+
+4. Assert: due to validation, S.mems[a] exists.
+
+5. Let mem be the memory instance S.mems[a].
+
+6. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+7. Pop the value i32.const i from the stack.
+
+8. Let ea be the integer i + memarg.offset.
+
+9. If ea + N/8 is larger than the length of mem.data, then:
+
+   1. Trap.
+
+10. Let b∗ be the byte sequence mem.data[ea: N/8].
+
+11. Let n be the integer for which bytes_(iN)(n) = b∗.
+
+12. Let c be the result of computing extend^u_(N,128)(n).
+
+13. Push the value v128.const c to the stack.
+
+    S; F; (i32.const i) (v128.loadN_zero memarg) ↪ S; F; (v128.const c)
+    (if ea = i + memarg.offset
+    ∧ ea + N/8 ≤ ∣S.mems[F.module.memaddrs[0]].data∣
+    ∧ bytes_(iN)(n) = S.mems[F.module.memaddrs[0]].data[ea : N/8]
+    ∧ c = extend^u_(N,128)(n))1ex]S; F; (i32.const i) (v128.loadN_zero memarg) ↪ S; F; trap
+    (otherwise)
+
+#### 4.4.7.5 v128.loadN_lane memarg x
+
+1. Let F be the current frame.
+
+2. Assert: due to validation, F.module.memaddrs[0] exists.
+
+3. Let a be the memory address F.module.memaddrs[0].
+
+4. Assert: due to validation, S.mems[a] exists.
+
+5. Let mem be the memory instance S.mems[a].
+
+6. Assert: due to validation, a value of value type v128 is on the top of the stack.
+
+7. Pop the value v128.const v from the stack.
+
+8. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+9. Pop the value i32.const i from the stack.
+
+10. Let ea be the integer i + memarg.offset.
+
+11. If ea + N/8 is larger than the length of mem.data, then:
+
+   1. Trap.
+
+12. Let b∗ be the byte sequence mem.data[ea: N/8].
+
+13. Let r be the constant for which bytes_(iN)(r) = b∗.
+
+14. Let L be 128/N.
+
+15. Let j∗ be the result of computing lanes_(iNxL)(v).
+
+16. Let c be the result of computing lanes_(iNxL)^(−1)(j∗ with [x] = r).
+
+17. Push the value v128.const c to the stack.
+
+    S; F; (i32.const i) (v128.const v) (v128.loadN_lane memarg x) ↪ S; F; (v128.const c)
+    (if ea = i + memarg.offset
+    ∧ ea + N/8 ≤ ∣S.mems[F.module.memaddrs[0]].data∣
+    ∧ bytes_(iN)(r) = S.mems[F.module.memaddrs[0]].data[ea : N/8]
+    ∧ L = 128/N
+    ∧ c = lanes_(iNxL)^(−1)(lanes_(iNxL)(v) with [x] = r))1ex]S; F; (i32.const i) (v128.const v) (v128.loadN_lane memarg x) ↪ S; F; trap
+    (otherwise)
+
+#### 4.4.7.6 t.store memarg and t.storeN memarg
+
+1. Let F be the current frame.
+
+2. Assert: due to validation, F.module.memaddrs[0] exists.
+
+3. Let a be the memory address F.module.memaddrs[0].
+
+4. Assert: due to validation, S.mems[a] exists.
+
+5. Let mem be the memory instance S.mems[a].
+
+6. Assert: due to validation, a value of value type t is on the top of the stack.
+
+7. Pop the value t.const c from the stack.
+
+8. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+9. Pop the value i32.const i from the stack.
+
+10. Let ea be the integer i + memarg.offset.
+
+11. If N is not part of the instruction, then:
+
+   1. Let N be the bit width ∣t∣ of number type t.
+
+12. If ea + N/8 is larger than the length of mem.data, then:
+
+   1. Trap.
+
+13. If N is part of the instruction, then:
+
+   1. Let n be the result of computing wrap_(∣t∣,N)(c).
+
+   2. Let b∗ be the byte sequence bytes_(iN)(n).
+
+14. Else:
+
+   1. Let b∗ be the byte sequence bytes_t(c).
+
+15. Replace the bytes mem.data[ea: N/8] with b∗.
+
+    S; F; (i32.const i) (t.const c) (t.store memarg) ↪ S′; F; ϵ
+    (if ea = i + memarg.offset
+    ∧ ea + ∣t∣/8 ≤ ∣S.mems[F.module.memaddrs[0]].data∣
+    ∧ S′ = S with mems[F.module.memaddrs[0]].data[ea : ∣t∣/8] = bytes_t(c))1ex]S; F; (i32.const i) (t.const c) (t.storeN memarg) ↪ S′; F; ϵ
+    (if ea = i + memarg.offset
+    ∧ ea + N/8 ≤ ∣S.mems[F.module.memaddrs[0]].data∣
+    ∧ S′ = S with mems[F.module.memaddrs[0]].data[ea : N/8] = bytes_(iN)(wrap_(∣t∣,N)(c)))1ex]S; F; (i32.const i) (t.const c) (t.storeN? memarg) ↪ S; F; trap
+    (otherwise)
+
+#### 4.4.7.7 v128.storeN_lane memarg x
+
+1. Let F be the current frame.
+
+2. Assert: due to validation, F.module.memaddrs[0] exists.
+
+3. Let a be the memory address F.module.memaddrs[0].
+
+4. Assert: due to validation, S.mems[a] exists.
+
+5. Let mem be the memory instance S.mems[a].
+
+6. Assert: due to validation, a value of value type v128 is on the top of the stack.
+
+7. Pop the value v128.const c from the stack.
+
+8. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+9. Pop the value i32.const i from the stack.
+
+10. Let ea be the integer i + memarg.offset.
+
+11. If ea + N/8 is larger than the length of mem.data, then:
+
+   1. Trap.
+
+12. Let L be 128/N.
+
+13. Let j∗ be the result of computing lanes_(iNxL)(c).
+
+14. Let b∗ be the result of computing bytes_(iN)(j∗[x]).
+
+15. Replace the bytes mem.data[ea: N/8] with b∗.
+
+    S; F; (i32.const i) (v128.const c) (v128.storeN_lane memarg x) ↪ S′; F; ϵ
+    (if ea = i + memarg.offset
+    ∧ ea + N ≤ ∣S.mems[F.module.memaddrs[0]].data∣
+    ∧ L = 128/N
+    ∧ S′ = S with mems[F.module.memaddrs[0]].data[ea : N/8] = bytes_(iN)(lanes_(iNxL)(c)[x]))1ex]S; F; (i32.const i) (v128.const c) (v128.storeN_lane memarg x) ↪ S; F; trap
+    (otherwise)
+
+#### 4.4.7.8 memory.size
+
+1. Let F be the current frame.
+
+2. Assert: due to validation, F.module.memaddrs[0] exists.
+
+3. Let a be the memory address F.module.memaddrs[0].
+
+4. Assert: due to validation, S.mems[a] exists.
+
+5. Let mem be the memory instance S.mems[a].
+
+6. Let sz be the length of mem.data divided by the page size.
+
+7. Push the value i32.const sz to the stack.
+
+    S; F; memory.size ↪ S; F; (i32.const sz)
+    (if ∣S.mems[F.module.memaddrs[0]].data∣ = sz ⋅ 64 Ki)
+
+#### 4.4.7.9 memory.grow
+
+1. Let F be the current frame.
+
+2. Assert: due to validation, F.module.memaddrs[0] exists.
+
+3. Let a be the memory address F.module.memaddrs[0].
+
+4. Assert: due to validation, S.mems[a] exists.
+
+5. Let mem be the memory instance S.mems[a].
+
+6. Let sz be the length of S.mems[a] divided by the page size.
+
+7. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+8. Pop the value i32.const n from the stack.
+
+9. Let err be the i32 value 2^(32) − 1, for which signed_(32)(err) is −1.
+
+10. Either:
+
+1. If growing mem by n pages succeeds, then:
+
+   1. Push the value i32.const sz to the stack.
+
+2. Else:
+
+   1. Push the value i32.const err to the stack.
+
+1. Or:
+
+1. Push the value i32.const err to the stack.
+
+    S; F; (i32.const n) memory.grow ↪ S′; F; (i32.const sz)
+    (if F.module.memaddrs[0] = a
+    ∧ sz = ∣S.mems[a].data∣/64 Ki
+    ∧ S′ = S with mems[a] = growmem(S.mems[a], n))1ex]S; F; (i32.const n) memory.grow ↪ S; F; (i32.const signed_(32)^(−1)(−1))
+
+Note
+
+The memory.grow instruction is non-deterministic. It may either succeed, returning the old memory size sz, or fail, returning −1. Failure must occur if the referenced memory instance has a maximum size defined that would be exceeded. However, failure can occur in other cases as well. In practice, the choice depends on the resources available to the embedder.
+
+#### 4.4.7.10 memory.fill
+
+1. Let F be the current frame.
+
+2. Assert: due to validation, F.module.memaddrs[0] exists.
+
+3. Let ma be the memory address F.module.memaddrs[0].
+
+4. Assert: due to validation, S.mems[ma] exists.
+
+5. Let mem be the memory instance S.mems[ma].
+
+6. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+7. Pop the value i32.const n from the stack.
+
+8. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+9. Pop the value val from the stack.
+
+10. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+11. Pop the value i32.const d from the stack.
+
+12. If d + n is larger than the length of mem.data, then:
+
+   1. Trap.
+
+13. If n = 0, then:
+
+   1. Return.
+
+14. Push the value i32.const d to the stack.
+
+15. Push the value val to the stack.
+
+16. Execute the instruction i32.store8 {offset 0, align 0}.
+
+17. Assert: due to the earlier check against the memory size, d + 1 < 2^(32).
+
+18. Push the value i32.const (d + 1) to the stack.
+
+19. Push the value val to the stack.
+
+20. Push the value i32.const (n − 1) to the stack.
+
+21. Execute the instruction memory.fill.
+
+    S; F; (i32.const d) val (i32.const n) memory.fill ↪ S; F; trap
+    (if d + n > ∣S.mems[F.module.memaddrs[0]].data∣)1ex]S; F; (i32.const d) val (i32.const 0) memory.fill ↪ S; F; ϵ
+    (otherwise)1ex]S; F; (i32.const d) val (i32.const n + 1) memory.fill ↪
+    S; F; (i32.const d) val (i32.store8 {offset 0, align 0})
+    (i32.const d + 1) val (i32.const n) memory.fill
+    (otherwise)
+
+#### 4.4.7.11 memory.copy
+
+1. Let F be the current frame.
+
+2. Assert: due to validation, F.module.memaddrs[0] exists.
+
+3. Let ma be the memory address F.module.memaddrs[0].
+
+4. Assert: due to validation, S.mems[ma] exists.
+
+5. Let mem be the memory instance S.mems[ma].
+
+6. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+7. Pop the value i32.const n from the stack.
+
+8. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+9. Pop the value i32.const s from the stack.
+
+10. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+11. Pop the value i32.const d from the stack.
+
+12. If s + n is larger than the length of mem.data or d + n is larger than the length of mem.data, then:
+
+   1. Trap.
+
+13. If n = 0, then:
+
+1. Return.
+
+1. If d ≤ s, then:
+
+1. Push the value i32.const d to the stack.
+
+2. Push the value i32.const s to the stack.
+
+3. Execute the instruction i32.load8_u {offset 0, align 0}.
+
+4. Execute the instruction i32.store8 {offset 0, align 0}.
+
+5. Assert: due to the earlier check against the memory size, d + 1 < 2^(32).
+
+6. Push the value i32.const (d + 1) to the stack.
+
+7. Assert: due to the earlier check against the memory size, s + 1 < 2^(32).
+
+8. Push the value i32.const (s + 1) to the stack.
+
+1. Else:
+
+1. Assert: due to the earlier check against the memory size, d + n − 1 < 2^(32).
+
+2. Push the value i32.const (d + n − 1) to the stack.
+
+3. Assert: due to the earlier check against the memory size, s + n − 1 < 2^(32).
+
+4. Push the value i32.const (s + n − 1) to the stack.
+
+5. Execute the instruction i32.load8_u {offset 0, align 0}.
+
+6. Execute the instruction i32.store8 {offset 0, align 0}.
+
+7. Push the value i32.const d to the stack.
+
+8. Push the value i32.const s to the stack.
+
+1. Push the value i32.const (n − 1) to the stack.
+
+2. Execute the instruction memory.copy.
+
+    S; F; (i32.const d) (i32.const s) (i32.const n) memory.copy ↪ S; F; trap
+    (if s + n > ∣S.mems[F.module.memaddrs[0]].data∣
+    ∨ d + n > ∣S.mems[F.module.memaddrs[0]].data∣)1ex]S; F; (i32.const d) (i32.const s) (i32.const 0) memory.copy ↪ S; F; ϵ
+    (otherwise)1ex]S; F; (i32.const d) (i32.const s) (i32.const n + 1) memory.copy ↪
+    S; F; (i32.const d)
+    (i32.const s) (i32.load8_u {offset 0, align 0})
+    (i32.store8 {offset 0, align 0})
+    (i32.const d + 1) (i32.const s + 1) (i32.const n) memory.copy
+    (otherwise, if d ≤ s)1ex]S; F; (i32.const d) (i32.const s) (i32.const n + 1) memory.copy ↪
+    S; F; (i32.const d + n)
+    (i32.const s + n) (i32.load8_u {offset 0, align 0})
+    (i32.store8 {offset 0, align 0})
+    (i32.const d) (i32.const s) (i32.const n) memory.copy
+    (otherwise, if d > s)
+
+#### 4.4.7.12 memory.init x
+
+1. Let F be the current frame.
+
+2. Assert: due to validation, F.module.memaddrs[0] exists.
+
+3. Let ma be the memory address F.module.memaddrs[0].
+
+4. Assert: due to validation, S.mems[ma] exists.
+
+5. Let mem be the memory instance S.mems[ma].
+
+6. Assert: due to validation, F.module.dataaddrs[x] exists.
+
+7. Let da be the data address F.module.dataaddrs[x].
+
+8. Assert: due to validation, S.datas[da] exists.
+
+9. Let data be the data instance S.datas[da].
+
+10. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+11. Pop the value i32.const n from the stack.
+
+12. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+13. Pop the value i32.const s from the stack.
+
+14. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+15. Pop the value i32.const d from the stack.
+
+16. If s + n is larger than the length of data.data or d + n is larger than the length of mem.data, then:
+
+   1. Trap.
+
+17. If n = 0, then:
+
+   1. Return.
+
+18. Let b be the byte data.data[s].
+
+19. Push the value i32.const d to the stack.
+
+20. Push the value i32.const b to the stack.
+
+21. Execute the instruction i32.store8 {offset 0, align 0}.
+
+22. Assert: due to the earlier check against the memory size, d + 1 < 2^(32).
+
+23. Push the value i32.const (d + 1) to the stack.
+
+24. Assert: due to the earlier check against the memory size, s + 1 < 2^(32).
+
+25. Push the value i32.const (s + 1) to the stack.
+
+26. Push the value i32.const (n − 1) to the stack.
+
+27. Execute the instruction memory.init x.
+
+    S; F; (i32.const d) (i32.const s) (i32.const n) (memory.init x) ↪ S; F; trap
+    (if s + n > ∣S.datas[F.module.dataaddrs[x]].data∣
+    ∨ d + n > ∣S.mems[F.module.memaddrs[0]].data∣)1ex]S; F; (i32.const d) (i32.const s) (i32.const 0) (memory.init x) ↪ S; F; ϵ
+    (otherwise)1ex]S; F; (i32.const d) (i32.const s) (i32.const n + 1) (memory.init x) ↪
+    S; F; (i32.const d) (i32.const b) (i32.store8 {offset 0, align 0})
+    (i32.const d + 1) (i32.const s + 1) (i32.const n) (memory.init x)
+    (otherwise, if b = S.datas[F.module.dataaddrs[x]].data[s])
+
+#### 4.4.7.13 data.drop x
+
+1. Let F be the current frame.
+
+2. Assert: due to validation, F.module.dataaddrs[x] exists.
+
+3. Let a be the data address F.module.dataaddrs[x].
+
+4. Assert: due to validation, S.datas[a] exists.
+
+5. Replace S.datas[a] with the data instance {data ϵ}.
+
+    S; F; (data.drop x) ↪ S′; F; ϵ
+    (if S′ = S with datas[F.module.dataaddrs[x]] = {data ϵ})
+
+### 4.4.8 Control Instructions
+
+#### 4.4.8.1 nop
+
+1. Do nothing.
+
+nop ↪ ϵ
+
+#### 4.4.8.2 unreachable
+
+1. Trap.
+
+unreachable ↪ trap
+
+#### 4.4.8.3 block blocktype instr∗ end
+
+1. Let F be the current frame.
+
+2. Assert: due to validation, expand_F(blocktype) is defined.
+
+3. Let [t_1^m] → [t_2^n] be the function type expand_F(blocktype).
+
+4. Let L be the label whose arity is n and whose continuation is the end of the block.
+
+5. Assert: due to validation, there are at least m values on the top of the stack.
+
+6. Pop the values val^m from the stack.
+
+7. Enter the block val^m instr∗ with label L.
+
+    F; val^m block bt instr∗ end ↪ F; label_n{ϵ} val^m instr∗ end
+    (if expand_F(bt) = [t_1^m] → [t_2^n])
+
+#### 4.4.8.4 loop blocktype instr∗ end
+
+1. Let F be the current frame.
+
+2. Assert: due to validation, expand_F(blocktype) is defined.
+
+3. Let [t_1^m] → [t_2^n] be the function type expand_F(blocktype).
+
+4. Let L be the label whose arity is m and whose continuation is the start of the loop.
+
+5. Assert: due to validation, there are at least m values on the top of the stack.
+
+6. Pop the values val^m from the stack.
+
+7. Enter the block val^m instr∗ with label L.
+
+    F; val^m loop bt instr∗ end ↪ F; label_m{loop bt instr∗ end} val^m instr∗ end
+    (if expand_F(bt) = [t_1^m] → [t_2^n])
+
+#### 4.4.8.5 if blocktype instr_1∗ else instr_2∗ end
+
+1. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+2. Pop the value i32.const c from the stack.
+
+3. If c is non-zero, then:
+
+   1. Execute the block instruction block blocktype instr_1∗ end.
+
+4. Else:
+
+   1. Execute the block instruction block blocktype instr_2∗ end.
+
+    (i32.const c) if bt instr_1∗ else instr_2∗ end ↪ block bt instr_1∗ end
+    (if c = 0)
+    (i32.const c) if bt instr_1∗ else instr_2∗ end ↪ block bt instr_2∗ end
+    (if c = 0)
+
+#### 4.4.8.6 br l
+
+1. Assert: due to validation, the stack contains at least l + 1 labels.
+
+2. Let L be the l -th label appearing on the stack, starting from the top and counting from zero.
+
+3. Let n be the arity of L.
+
+4. Assert: due to validation, there are at least n values on the top of the stack.
+
+5. Pop the values val^n from the stack.
+
+6. Repeat l + 1 times:
+
+   1. While the top of the stack is a value, do:
+
+      1. Pop the value from the stack.
+
+   2. Assert: due to validation, the top of the stack now is a label.
+
+   3. Pop the label from the stack.
+
+7. Push the values val^n to the stack.
+
+8. Jump to the continuation of L.
+
+label_n{instr∗} B^l[val^n (br l)] end ↪ val^n instr∗
+
+#### 4.4.8.7 br_if l
+
+1. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+2. Pop the value i32.const c from the stack.
+
+3. If c is non-zero, then:
+
+   1. Execute the instruction br l.
+
+4. Else:
+
+   1. Do nothing.
+
+    (i32.const c) (br_if l) ↪ (br l) (if c = 0)
+    (i32.const c) (br_if l) ↪ ϵ (if c = 0)
+
+#### 4.4.8.8 br_table l∗ l_N
+
+1. Assert: due to validation, a value of value type i32 is on the top of the stack.
+
+2. Pop the value i32.const i from the stack.
+
+3. If i is smaller than the length of l∗, then:
+
+   1. Let l_i be the label l∗[i].
+
+   2. Execute the instruction br l_i.
+
+4. Else:
+
+   1. Execute the instruction br l_N.
+
+    (i32.const i) (br_table l∗ l_N) ↪ (br l_i) (if l∗[i] = l_i)
+    (i32.const i) (br_table l∗ l_N) ↪ (br l_N) (if ∣l∗∣ ≤ i)
+
+#### 4.4.8.9 return
+
+1. Let F be the current frame.
+
+2. Let n be the arity of F.
+
+3. Assert: due to validation, there are at least n values on the top of the stack.
+
+4. Pop the results val^n from the stack.
+
+5. Assert: due to validation, the stack contains at least one frame.
+
+6. While the top of the stack is not a frame, do:
+
+   1. Pop the top element from the stack.
+
+7. Assert: the top of the stack is the frame F.
+
+8. Pop the frame from the stack.
+
+9. Push val^n to the stack.
+
+10. Jump to the instruction after the original call that pushed the frame.
+
+frame_n{F} B^k[val^n return] end ↪ val^n
+
+#### 4.4.8.10 call x
+
+1. Let F be the current frame.
+
+2. Assert: due to validation, F.module.funcaddrs[x] exists.
+
+3. Let a be the function address F.module.funcaddrs[x].
+
+4. Invoke the function instance at address a.
+
+F; (call x) ↪ F; (invoke a) (if F.module.funcaddrs[x] = a)
+
+#### 4.4.8.11 call_indirect x y
+
+1. Let F be the current frame.
+
+2. Assert: due to validation, F.module.tableaddrs[x] exists.
+
+3. Let ta be the table address F.module.tableaddrs[x].
+
+4. Assert: due to validation, S.tables[ta] exists.
+
+5. Let tab be the table instance S.tables[ta].
+
+6. Assert: due to validation, F.module.types[y] exists.
+
+7. Let ft_(expect) be the function type F.module.types[y].
+
+8. Assert: due to validation, a value with value type i32 is on the top of the stack.
+
+9. Pop the value i32.const i from the stack.
+
+10. If i is not smaller than the length of tab.elem, then:
+
+   1. Trap.
+
+11. Let r be the reference tab.elem[i].
+
+12. If r is ref.null t, then:
+
+   1. Trap.
+
+13. Assert: due to validation of table mutation, r is a function reference.
+
+14. Let ref a be the function reference r.
+
+15. Assert: due to validation of table mutation, S.funcs[a] exists.
+
+16. Let f be the function instance S.funcs[a].
+
+17. Let ft_(actual) be the function type f.type.
+
+18. If ft_(actual) and ft_(expect) differ, then:
+
+   1. Trap.
+
+19. Invoke the function instance at address a.
+
+    S; F; (i32.const i) (call_indirect x y) ↪ S; F; (invoke a)
+    (if S.tables[F.module.tableaddrs[x]].elem[i] = ref a
+    ∧ S.funcs[a] = f
+    ∧ F.module.types[y] = f.type)1ex]S; F; (i32.const i) (call_indirect x y) ↪ S; F; trap
+    (otherwise)
+
+### 4.4.9 Blocks
+
+The following auxiliary rules define the semantics of executing an instruction sequence that forms a block.
+
+#### 4.4.9.1 Entering instr∗ with label L
+
+1. Push L to the stack.
+
+2. Jump to the start of the instruction sequence instr∗.
+
+Note
+
+No formal reduction rule is needed for entering an instruction sequence, because the label L is embedded in the administrative instruction that structured control instructions reduce to directly.
+
+#### 4.4.9.2 Exiting instr∗ with label L
+
+When the end of a block is reached without a jump or trap aborting it, then the following steps are performed.
+
+1. Pop all values val∗ from the top of the stack.
+
+2. Assert: due to validation, the label L is now on the top of the stack.
+
+3. Pop the label from the stack.
+
+4. Push val∗ back to the stack.
+
+5. Jump to the position after the end of the structured control instruction associated with the label L.
+
+label_n{instr∗} val∗ end ↪ val∗
+
+Note
+
+This semantics also applies to the instruction sequence contained in a loop instruction. Therefore, execution of a loop falls off the end, unless a backwards branch is performed explicitly.
+
+### 4.4.10 Function Calls
+
+The following auxiliary rules define the semantics of invoking a function instance through one of the call instructions and returning from it.
+
+#### 4.4.10.1 Invocation of function address a
+
+1. Assert: due to validation, S.funcs[a] exists.
+
+2. Let f be the function instance, S.funcs[a].
+
+3. Let [t_1^n] → [t_2^m] be the function type f.type.
+
+4. Let t∗ be the list of value types f.code.locals.
+
+5. Let instr∗ end be the expression f.code.body.
+
+6. Assert: due to validation, n values are on the top of the stack.
+
+7. Pop the values val^n from the stack.
+
+8. Let F be the frame {module f.module, locals val^n (default_t)∗}.
+
+9. Push the activation of F with arity m to the stack.
+
+10. Let L be the label whose arity is m and whose continuation is the end of the function.
+
+11. Enter the instruction sequence instr∗ with label L.
+
+    S; val^n (invoke a) ↪ S; frame_m{F} label_m{} instr∗ end end
+    (if S.funcs[a] = f
+    ∧ f.type = [t_1^n] → [t_2^m]
+    ∧ f.code = {type x, locals t^k, body instr∗ end}
+    ∧ F = {module f.module, locals val^n (default_t)^k})
+
+#### 4.4.10.2 Returning from a function
+
+When the end of a function is reached without a jump (i.e., return) or trap aborting it, then the following steps are performed.
+
+1. Let F be the current frame.
+
+2. Let n be the arity of the activation of F.
+
+3. Assert: due to validation, there are n values on the top of the stack.
+
+4. Pop the results val^n from the stack.
+
+5. Assert: due to validation, the frame F is now on the top of the stack.
+
+6. Pop the frame from the stack.
+
+7. Push val^n back to the stack.
+
+8. Jump to the instruction after the original call.
+
+frame_n{F} val^n end ↪ val^n
+
+#### 4.4.10.3 Host Functions
+
+Invoking a host function has non-deterministic behavior. It may either terminate with a trap or return regularly. However, in the latter case, it must consume and produce the right number and types of WebAssembly values on the stack, according to its function type.
+
+A host function may also modify the store. However, all store modifications must result in an extension of the original store, i.e., they must only modify mutable contents and must not have instances removed. Furthermore, the resulting store must be valid, i.e., all data and code in it is well-typed.
+
+    S; val^n (invoke a) ↪ S′; result
+    (if S.funcs[a] = {type [t_1^n] → [t_2^m], hostcode hf}
+    ∧ (S′; result) ∈ hf(S; val^n))
+    S; val^n (invoke a) ↪ S; val^n (invoke a)
+    (if S.funcs[a] = {type [t_1^n] → [t_2^m], hostcode hf}
+    ∧ ⊥ ∈ hf(S; val^n))
+
+Here, hf(S; val^n) denotes the implementation-defined execution of host function hf in current store S with arguments val^n. It yields a set of possible outcomes, where each element is either a pair of a modified store S′ and a result or the special value ⊥ indicating divergence. A host function is non-deterministic if there is at least one argument for which the set of outcomes is not singular.
+
+For a WebAssembly implementation to be sound in the presence of host functions, every host function instance must be valid, which means that it adheres to suitable pre- and post-conditions: under a valid store S, and given arguments val^n matching the ascribed parameter types t_1^n, executing the host function must yield a non-empty set of possible outcomes each of which is either divergence or consists of a valid store S′ that is an extension of S and a result matching the ascribed return types t_2^m. All these notions are made precise in the Appendix.
+
+Note
+
+A host function can call back into WebAssembly by invoking a function exported from a module. However, the effects of any such call are subsumed by the non-deterministic behavior allowed for the host function.
+
+### 4.4.11 Expressions
+
+An expression is evaluated relative to a current frame pointing to its containing module instance.
+
+1. Jump to the start of the instruction sequence instr∗ of the expression.
+
+2. Execute the instruction sequence.
+
+3. Assert: due to validation, the top of the stack contains a value.
+
+4. Pop the value val from the stack.
+
+The value val is the result of the evaluation.
+
+[S; F; instr∗ ↪ S′; F′; instr^(′∗) (if S; F; instr∗ end ↪ S′; F′; instr^(′∗) end)
+
+Note
+
+Evaluation iterates this reduction rule until reaching a value. Expressions constituting function bodies are executed during function invocation.
+
+## 4.5 Modules
+
+For modules, the execution semantics primarily defines instantiation, which allocates instances for a module and its contained definitions, initializes tables and memories from contained element and data segments, and invokes the start function if present. It also includes invocation of exported functions.
+
+Instantiation depends on a number of auxiliary notions for type-checking imports and allocating instances.
+
+### 4.5.1 External Typing
+
+For the purpose of checking external values against imports, such values are classified by external types. The following auxiliary typing rules specify this typing relation relative to a store S in which the referenced instances live.
+
+#### 4.5.1.1 func a
+
+- The store entry S.funcs[a] must exist.
+
+- Then func a is valid with external type func S.funcs[a].type.
+
+    ⟹ S ⊢ func a : func S.funcs[a].type
+
+#### 4.5.1.2 table a
+
+- The store entry S.tables[a] must exist.
+
+- Then table a is valid with external type table S.tables[a].type.
+
+    ⟹ S ⊢ table a : table S.tables[a].type
+
+#### 4.5.1.3 mem a
+
+- The store entry S.mems[a] must exist.
+
+- Then mem a is valid with external type mem S.mems[a].type.
+
+    ⟹ S ⊢ mem a : mem S.mems[a].type
+
+#### 4.5.1.4 global a
+
+- The store entry S.globals[a] must exist.
+
+- Then global a is valid with external type global S.globals[a].type.
+
+    ⟹ S ⊢ global a : global S.globals[a].type
+
+### 4.5.2 Value Typing
+
+For the purpose of checking argument values against the parameter types of exported functions, values are classified by value types. The following auxiliary typing rules specify this typing relation relative to a store S in which possibly referenced addresses live.
+
+#### 4.5.2.1 Numeric Values t.const c
+
+- The value is valid with number type t.
+
+    ⟹ S ⊢ t.const c : t
+
+#### 4.5.2.2 Null References ref.null t
+
+- The value is valid with reference type t.
+
+    ⟹ S ⊢ ref.null t : t
+
+#### 4.5.2.3 Function References ref a
+
+- The external value func a must be valid.
+
+- Then the value is valid with reference type funcref.
+
+    S ⊢ func a : func functype ⟹ S ⊢ ref a : funcref
+
+#### 4.5.2.4 External References ref.extern a
+
+- The value is valid with reference type externref.
+
+    ⟹ S ⊢ ref.extern a : externref
+
+### 4.5.3 Allocation
+
+New instances of functions, tables, memories, and globals are allocated in a store S, as defined by the following auxiliary functions.
+
+#### 4.5.3.1 Functions
+
+1. Let func be the function to allocate and moduleinst its module instance.
+
+2. Let a be the first free function address in S.
+
+3. Let functype be the function type moduleinst.types[func.type].
+
+4. Let funcinst be the function instance {type functype, module moduleinst, code func}.
+
+5. Append funcinst to the funcs of S.
+
+6. Return a.
+
+    allocfunc(S, func, moduleinst) = S′, funcaddr
+    where:
+    funcaddr = ∣S.funcs∣
+    functype = moduleinst.types[func.type]
+    funcinst = {type functype, module moduleinst, code func}
+    S′ = S ⊕ {funcs funcinst}
+
+#### 4.5.3.2 Host Functions
+
+1. Let hostfunc be the host function to allocate and functype its function type.
+
+2. Let a be the first free function address in S.
+
+3. Let funcinst be the function instance {type functype, hostcode hostfunc}.
+
+4. Append funcinst to the funcs of S.
+
+5. Return a.
+
+    allochostfunc(S, functype, hostfunc) = S′, funcaddr
+    where:
+    funcaddr = ∣S.funcs∣
+    funcinst = {type functype, hostcode hostfunc}
+    S′ = S ⊕ {funcs funcinst}
+
+Note
+
+Host functions are never allocated by the WebAssembly semantics itself, but may be allocated by the embedder.
+
+#### 4.5.3.3 Tables
+
+1. Let tabletype be the table type to allocate and ref the initialization value.
+
+2. Let ({min n, max m?} reftype) be the structure of table type tabletype.
+
+3. Let a be the first free table address in S.
+
+4. Let tableinst be the table instance {type tabletype, elem ref^n} with n elements set to ref.
+
+5. Append tableinst to the tables of S.
+
+6. Return a.
+
+    alloctable(S, tabletype, ref) = S′, tableaddr
+    where:
+    tabletype = {min n, max m?} reftype
+    tableaddr = ∣S.tables∣
+    tableinst = {type tabletype, elem ref^n}
+    S′ = S ⊕ {tables tableinst}
+
+#### 4.5.3.4 Memories
+
+1. Let memtype be the memory type to allocate.
+
+2. Let {min n, max m?} be the structure of memory type memtype.
+
+3. Let a be the first free memory address in S.
+
+4. Let meminst be the memory instance {type memtype, data (0x00)^(n⋅64 Ki)} that contains n pages of zeroed bytes.
+
+5. Append meminst to the mems of S.
+
+6. Return a.
+
+    allocmem(S, memtype) = S′, memaddr
+    where:
+    memtype = {min n, max m?}
+    memaddr = ∣S.mems∣
+    meminst = {type memtype, data (0x00)^(n⋅64 Ki)}
+    S′ = S ⊕ {mems meminst}
+
+#### 4.5.3.5 Globals
+
+1. Let globaltype be the global type to allocate and val the value to initialize the global with.
+
+2. Let a be the first free global address in S.
+
+3. Let globalinst be the global instance {type globaltype, value val}.
+
+4. Append globalinst to the globals of S.
+
+5. Return a.
+
+    allocglobal(S, globaltype, val) = S′, globaladdr
+    where:
+    globaladdr = ∣S.globals∣
+    globalinst = {type globaltype, value val}
+    S′ = S ⊕ {globals globalinst}
+
+#### 4.5.3.6 Element segments
+
+1. Let reftype be the elements’ type and ref∗ the vector of references to allocate.
+
+2. Let a be the first free element address in S.
+
+3. Let eleminst be the element instance {type reftype, elem ref∗}.
+
+4. Append eleminst to the elems of S.
+
+5. Return a.
+
+    allocelem(S, reftype, ref∗) = S′, elemaddr
+    where:
+    elemaddr = ∣S.elems∣
+    eleminst = {type reftype, elem ref∗}
+    S′ = S ⊕ {elems eleminst}
+
+#### 4.5.3.7 Data segments
+
+1. Let b∗ be the vector of bytes to allocate.
+
+2. Let a be the first free data address in S.
+
+3. Let datainst be the data instance {data b∗}.
+
+4. Append datainst to the datas of S.
+
+5. Return a.
+
+    allocdata(S, b∗) = S′, dataaddr
+    where:
+    dataaddr = ∣S.datas∣
+    datainst = {data b∗}
+    S′ = S ⊕ {datas datainst}
+
+#### 4.5.3.8 Growing tables
+
+1. Let tableinst be the table instance to grow, n the number of elements by which to grow it, and ref the initialization value.
+
+2. Let len be n added to the length of tableinst.elem.
+
+3. If len is larger than or equal to 2^(32), then fail.
+
+4. Let limits t be the structure of table type tableinst.type.
+
+5. Let limits′ be limits with min updated to len.
+
+6. If limits′ is not valid, then fail.
+
+7. Append ref^n to tableinst.elem.
+
+8. Set tableinst.type to the table type limits′ t.
+
+    growtable(tableinst, n, ref) = tableinst with type = limits′ t with elem = tableinst.elem ref^n
+    (if len = n + ∣tableinst.elem∣
+    ∧ len < 2^(32)
+    ∧ limits t = tableinst.type
+    ∧ limits′ = limits with min = len
+    ∧ ⊢ limits′ ok)
+
+#### 4.5.3.9 Growing memories
+
+1. Let meminst be the memory instance to grow and n the number of pages by which to grow it.
+
+2. Assert: The length of meminst.data is divisible by the page size 64 Ki.
+
+3. Let len be n added to the length of meminst.data divided by the page size 64 Ki.
+
+4. If len is larger than 2^(16), then fail.
+
+5. Let limits be the structure of memory type meminst.type.
+
+6. Let limits′ be limits with min updated to len.
+
+7. If limits′ is not valid, then fail.
+
+8. Append n times 64 Ki bytes with value 0x00 to meminst.data.
+
+9. Set meminst.type to the memory type limits′.
+
+    growmem(meminst, n) = meminst with type = limits′ with data = meminst.data (0x00)^(n⋅64 Ki)
+    (if len = n + ∣meminst.data∣/64 Ki
+    ∧ len ≤ 2^(16)
+    ∧ limits = meminst.type
+    ∧ limits′ = limits with min = len
+    ∧ ⊢ limits′ ok)
+
+#### 4.5.3.10 Modules
+
+The allocation function for modules requires a suitable list of external values that are assumed to match the import vector of the module, a list of initialization values for the module’s globals, and list of reference vectors for the module’s element segments.
+
+1. Let module be the module to allocate and externval_(im)∗ the vector of external values providing the module’s imports, val∗ the initialization values of the module’s globals, and (ref∗)∗ the reference vectors of the module’s element segments.
+
+2. For each function func_i in module.funcs, do:
+
+   1. Let funcaddr_i be the function address resulting from allocating func_i for the module instance moduleinst defined below.
+
+3. For each table table_i in module.tables, do:
+
+   1. Let limits_i t_i be the table type table_i.type.
+
+   2. Let tableaddr_i be the table address resulting from allocating table_i.type with initialization value ref.null t_i.
+
+4. For each memory mem_i in module.mems, do:
+
+   1. Let memaddr_i be the memory address resulting from allocating mem_i.type.
+
+5. For each global global_i in module.globals, do:
+
+   1. Let globaladdr_i be the global address resulting from allocating global_i.type with initializer value val∗[i].
+
+6. For each element segment elem_i in module.elems, do:
+
+   1. Let elemaddr_i be the element address resulting from allocating an element instance of reference type elem_i.type with contents (ref∗)∗[i].
+
+7. For each data segment data_i in module.datas, do:
+
+   1. Let dataaddr_i be the data address resulting from allocating a data instance with contents data_i.init.
+
+8. Let funcaddr∗ be the concatenation of the function addresses funcaddr_i in index order.
+
+9. Let tableaddr∗ be the concatenation of the table addresses tableaddr_i in index order.
+
+10. Let memaddr∗ be the concatenation of the memory addresses memaddr_i in index order.
+
+11. Let globaladdr∗ be the concatenation of the global addresses globaladdr_i in index order.
+
+12. Let elemaddr∗ be the concatenation of the element addresses elemaddr_i in index order.
+
+13. Let dataaddr∗ be the concatenation of the data addresses dataaddr_i in index order.
+
+14. Let funcaddr_(mod)∗ be the list of function addresses extracted from externval_(im)∗, concatenated with funcaddr∗.
+
+15. Let tableaddr_(mod)∗ be the list of table addresses extracted from externval_(im)∗, concatenated with tableaddr∗.
+
+16. Let memaddr_(mod)∗ be the list of memory addresses extracted from externval_(im)∗, concatenated with memaddr∗.
+
+17. Let globaladdr_(mod)∗ be the list of global addresses extracted from externval_(im)∗, concatenated with globaladdr∗.
+
+18. For each export export_i in module.exports, do:
+
+   1. If export_i is a function export for function index x, then let externval_i be the external value func (funcaddr_(mod)∗[x]).
+
+   2. Else, if export_i is a table export for table index x, then let externval_i be the external value table (tableaddr_(mod)∗[x]).
+
+   3. Else, if export_i is a memory export for memory index x, then let externval_i be the external value mem (memaddr_(mod)∗[x]).
+
+   4. Else, if export_i is a global export for global index x, then let externval_i be the external value global (globaladdr_(mod)∗[x]).
+
+   5. Let exportinst_i be the export instance {name (export_i.name), value externval_i}.
+
+19. Let exportinst∗ be the concatenation of the export instances exportinst_i in index order.
+
+20. Let moduleinst be the module instance {types (module.types), funcaddrs funcaddr_(mod)∗, tableaddrs tableaddr_(mod)∗, memaddrs memaddr_(mod)∗, globaladdrs globaladdr_(mod)∗, exports exportinst∗}.
+
+21. Return moduleinst.
+
+allocmodule(S, module, externval_(im)∗, val∗, (ref∗)∗) = S′, moduleinst
+
+where:
+
+    table∗ = module.tables
+    mem∗ = module.mems
+    global∗ = module.globals
+    elem∗ = module.elems
+    data∗ = module.datas
+    export∗ = module.exports
+    moduleinst = { types module.types,
+    funcaddrs funcs(externval_(im)∗) funcaddr∗,
+    tableaddrs tables(externval_(im)∗) tableaddr∗,
+    memaddrs mems(externval_(im)∗) memaddr∗,
+    globaladdrs globals(externval_(im)∗) globaladdr∗,
+    elemaddrs elemaddr∗,
+    dataaddrs dataaddr∗,
+    exports exportinst∗ }
+    S_1, funcaddr∗ = allocfunc∗(S, module.funcs, moduleinst)
+    S_2, tableaddr∗ = alloctable∗(S_1, (table.type)∗, (ref.null t)∗) (where (table.type)∗ = (limits t)∗)
+    S_3, memaddr∗ = allocmem∗(S_2, (mem.type)∗)
+    S_4, globaladdr∗ = allocglobal∗(S_3, (global.type)∗, val∗)
+    S_5, elemaddr∗ = allocelem∗(S_4, (elem.type)∗, (ref∗)∗)
+    S′, dataaddr∗ = allocdata∗(S_5, (data.init)∗)
+    exportinst∗ = {name (export.name), value externval_(ex)}∗
+    funcs(externval_(ex)∗) = (moduleinst.funcaddrs[x])∗ (where x∗ = funcs(export∗))
+    tables(externval_(ex)∗) = (moduleinst.tableaddrs[x])∗ (where x∗ = tables(export∗))
+    mems(externval_(ex)∗) = (moduleinst.memaddrs[x])∗ (where x∗ = mems(export∗))
+    globals(externval_(ex)∗) = (moduleinst.globaladdrs[x])∗ (where x∗ = globals(export∗))
+
+Here, the notation allocx∗ is shorthand for multiple allocations of object kind X, defined as follows:
+
+    allocx∗(S_0, X^n, … ) = S_n, a^n
+    where for all i < n:
+    S_(i+1), a^n[i] = allocx(S_i, X^n[i], … )
+
+Moreover, if the dots … are a sequence A^n (as for globals or tables), then the elements of this sequence are passed to the allocation function pointwise.
+
+Note
+
+The definition of module allocation is mutually recursive with the allocation of its associated functions, because the resulting module instance moduleinst is passed to the function allocator as an argument, in order to form the necessary closures. In an implementation, this recursion is easily unraveled by mutating one or the other in a secondary step.
+
+### 4.5.4 Instantiation
+
+Given a store S, a module module is instantiated with a list of external values externval^n supplying the required imports as follows.
+
+Instantiation checks that the module is valid and the provided imports match the declared types, and may fail with an error otherwise. Instantiation can also result in a trap from initializing a table or memory from an active segment or from executing the start function. It is up to the embedder to define how such conditions are reported.
+
+1. If module is not valid, then:
+
+   1. Fail.
+
+2. Assert: module is valid with external types externtype_(im)^m classifying its imports.
+
+3. If the number m of imports is not equal to the number n of provided external values, then:
+
+   1. Fail.
+
+4. For each external value externval_i in externval^n and external type externtype_i′ in externtype_(im)^n, do:
+
+   1. If externval_i is not valid with an external type externtype_i in store S, then:
+
+      1. Fail.
+
+   2. If externtype_i does not match externtype_i′, then:
+
+      1. Fail.
+
+1. Let moduleinst_(init) be the auxiliary module instance {globaladdrs globals(externval^n), funcaddrs moduleinst.funcaddrs} that only consists of the imported globals and the imported and allocated functions from the final module instance moduleinst, defined below.
+
+2. Let F_(init) be the auxiliary frame {module moduleinst_(init), locals ϵ}.
+
+3. Push the frame F_(init) to the stack.
+
+4. Let val∗ be the vector of global initialization values determined by module and externval^n. These may be calculated as follows.
+
+   1. For each global global_i in module.globals, do:
+
+      1. Let val_i be the result of evaluating the initializer expression global_i.init.
+
+   2. Assert: due to validation, the frame F_(init) is now on the top of the stack.
+
+   3. Let val∗ be the concatenation of val_i in index order.
+
+5. Let (ref∗)∗ be the list of reference vectors determined by the element segments in module. These may be calculated as follows.
+
+   1. For each element segment elem_i in module.elems, and for each element expression expr_(ij) in elem_i.init, do:
+
+      1. Let ref_(ij) be the result of evaluating the initializer expression expr_(ij).
+
+   2. Let ref_i∗ be the concatenation of function elements ref_(ij) in order of index j.
+
+   3. Let (ref∗)∗ be the concatenation of function element vectors ref_i∗ in order of index i.
+
+6. Pop the frame F_(init) from the stack.
+
+7. Let moduleinst be a new module instance allocated from module in store S with imports externval^n, global initializer values val∗, and element segment contents (ref∗)∗, and let S′ be the extended store produced by module allocation.
+
+8. Let F be the auxiliary frame {module moduleinst, locals ϵ}.
+
+9. Push the frame F to the stack.
+
+10. For each element segment elem_i in module.elems whose mode is of the form active {table tableidx_i, offset einstr_i∗ end}, do:
+
+   1. Let n be the length of the vector elem_i.init.
+
+   2. Execute the instruction sequence einstr_i∗.
+
+   3. Execute the instruction i32.const 0.
+
+   4. Execute the instruction i32.const n.
+
+   5. Execute the instruction table.init tableidx_i i.
+
+   6. Execute the instruction elem.drop i.
+
+11. For each element segment elem_i in module.elems whose mode is of the form declarative, do:
+
+   1. Execute the instruction elem.drop i.
+
+12. For each data segment data_i in module.datas whose mode is of the form active {memory memidx_i, offset dinstr_i∗ end}, do:
+
+   1. Assert: memidx_i is 0.
+
+   2. Let n be the length of the vector data_i.init.
+
+   3. Execute the instruction sequence dinstr_i∗.
+
+   4. Execute the instruction i32.const 0.
+
+   5. Execute the instruction i32.const n.
+
+   6. Execute the instruction memory.init i.
+
+   7. Execute the instruction data.drop i.
+
+13. If the start function module.start is not empty, then:
+
+   1. Let start be the start function module.start.
+
+   2. Execute the instruction call start.func.
+
+14. Assert: due to validation, the frame F is now on the top of the stack.
+
+15. Pop the frame F from the stack.
+
+    instantiate(S, module, externval^k) = S′; F; runelem_0(elem^n[0]) … runelem_(n−1)(elem^n[n − 1])
+    rundata_0(data^m[0]) … rundata_(m−1)(data^m[m − 1])
+    (call start.func)?
+    (if ⊢ module : externtype_(im)^k → externtype_(ex)∗
+    ∧ (S ⊢ externval : externtype)^k
+    ∧ (⊢ externtype ≤ externtype_(im))^k
+    ∧ module.globals = global∗
+    ∧ module.elems = elem^n
+    ∧ module.datas = data^m
+    ∧ module.start = start?
+    ∧ (expr_g = global.init)∗
+    ∧ (expr_e∗ = elem.init)^n
+    ∧ S′, moduleinst = allocmodule(S, module, externval^k, val∗, (ref∗)^n)
+    ∧ F = {module moduleinst, locals ϵ}
+    ∧ (S′; F; expr_g ↪∗ S′; F; val end)∗
+    ∧ ((S′; F; expr_e ↪∗ S′; F; ref end)∗)^n)
+
+where:
+
+    runelem_i({type et, init expr^n, mode passive}) = ϵ
+    runelem_i({type et, init expr^n, mode active{table x, offset instr∗ end}}) =
+    instr∗ (i32.const 0) (i32.const n) (table.init x i) (elem.drop i)
+    runelem_i({type et, init expr^n, mode declarative}) =
+    (elem.drop i)
+    rundata_i({init b^n, mode passive}) = ϵ
+    rundata_i({init b^n, mode active{memory 0, offset instr∗ end}}) =
+    instr∗ (i32.const 0) (i32.const n) (memory.init i) (data.drop i)
+
+Note
+
+Module allocation and the evaluation of global initializers and element segments are mutually recursive because the global initialization values val∗ and element segment contents (ref∗)∗ are passed to the module allocator while depending on the module instance moduleinst and store S′ returned by allocation. However, this recursion is just a specification device. In practice, the initialization values can be determined beforehand by staging module allocation such that first, the module’s own function instances are pre-allocated in the store, then the initializer expressions are evaluated, then the rest of the module instance is allocated, and finally the new function instances’ module fields are set to that module instance. This is possible because validation ensures that initialization expressions cannot actually call a function, only take their reference.
+
+All failure conditions are checked before any observable mutation of the store takes place. Store mutation is not atomic; it happens in individual steps that may be interleaved with other threads.
+
+Evaluation of constant expressions does not affect the store.
+
+### 4.5.5 Invocation
+
+Once a module has been instantiated, any exported function can be invoked externally via its function address funcaddr in the store S and an appropriate list val∗ of argument values.
+
+Invocation may fail with an error if the arguments do not fit the function type. Invocation can also result in a trap. It is up to the embedder to define how such conditions are reported.
+
+Note
+
+If the embedder API performs type checks itself, either statically or dynamically, before performing an invocation, then no failure other than traps can occur.
+
+The following steps are performed:
+
+1. Assert: S.funcs[funcaddr] exists.
+
+2. Let funcinst be the function instance S.funcs[funcaddr].
+
+3. Let [t_1^n] → [t_2^m] be the function type funcinst.type.
+
+4. If the length ∣val∗∣ of the provided argument values is different from the number n of expected arguments, then:
+
+   1. Fail.
+
+5. For each value type t_i in t_1^n and corresponding value val_i in val∗, do:
+
+   1. If val_i is not valid with value type t_i, then:
+
+      1. Fail.
+
+6. Let F be the dummy frame {module {}, locals ϵ}.
+
+7. Push the frame F to the stack.
+
+8. Push the values val∗ to the stack.
+
+9. Invoke the function instance at address funcaddr.
+
+Once the function has returned, the following steps are executed:
+
+1. Assert: due to validation, m values are on the top of the stack.
+
+2. Pop val_(res)^m from the stack.
+
+3. Assert: due to validation, the frame F is now on the top of the stack.
+
+4. Pop the frame F from the stack.
+
+The values val_(res)^m are returned as the results of the invocation.
+
+    invoke(S, funcaddr, val^n) = S; F; val^n (invoke funcaddr)
+    (if S.funcs[funcaddr].type = [t_1^n] → [t_2^m]
+    ∧ (S ⊢ val : t_1)^n
+    ∧ F = {module {}, locals ϵ})
+

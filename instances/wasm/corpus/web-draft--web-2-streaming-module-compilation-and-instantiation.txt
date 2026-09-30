@@ -1,0 +1,71 @@
+# WebAssembly Web API 3.0.draft: 2 Streaming Module Compilation and Instantiation
+# джерело: https://webassembly.github.io/spec/web-api/#streaming-modules
+# отримано: 2026-09-30
+# версія: 3.0.draft
+
+```
+[Exposed=(Window,Worker)]
+partial namespace WebAssembly {
+  Promise<Module> compileStreaming(Promise<Response> source, optional WebAssemblyCompileOptions options = {});
+  Promise<WebAssemblyInstantiatedSource> instantiateStreaming(
+      Promise<Response> source, optional object importObject, optional WebAssemblyCompileOptions options = {});
+};
+
+```
+
+The `compileStreaming(source, options)` method, when invoked, returns the result of compiling a potential WebAssembly response with source using options.
+
+The `instantiateStreaming(source, importObject, options)` method, when invoked, performs the following steps:
+
+1. Let promiseOfModule be the result of compiling a potential WebAssembly response with source using options.
+
+2. Return the result of instantiating the promise of a module promiseOfModule with imports importObject.
+
+To compile a potential WebAssembly response with a promise of a `Response` source and `WebAssemblyCompileOptions` options, perform the following steps:
+
+Note: This algorithm accepts a `Response` object, or a promise for one, and compiles and instantiates the resulting bytes of the response. This compilation can be performed in the background and in a streaming manner. If the `Response` is not CORS-same-origin, does not represent an ok status, or does not match the ``application/wasm`` MIME type, the returned promise will be rejected with a `TypeError`; if compilation or instantiation fails, the returned promise will be rejected with a `CompileError` or other relevant error type, depending on the cause of failure.
+
+1. Let returnValue be a new promise.
+
+2. React to source:
+
+   - If source was fulfilled with value unwrappedSource:
+
+      1. Let response be unwrappedSource’s response.
+
+      2. Let mimeType be the result of getting ``Content-Type`` from response’s header list.
+
+      3. If mimeType is null, reject returnValue with a `TypeError` and abort these substeps.
+
+      4. Remove all HTTP tab or space byte from the start and end of mimeType.
+
+      5. If mimeType is not a byte-case-insensitive match for ``application/wasm``, reject returnValue with a `TypeError` and abort these substeps.
+
+         Note: extra parameters are not allowed, including the empty ``application/wasm;``.
+
+      6. If response is not CORS-same-origin, reject returnValue with a `TypeError` and abort these substeps.
+
+      7. If response’s status is not an ok status, reject returnValue with a `TypeError` and abort these substeps.
+
+      8. Consume response’s body as an `ArrayBuffer`, and let bodyPromise be the result.
+
+         Note: Although it is specified here that the response is consumed entirely before compilation proceeds, that is purely for ease of specification; implementations are likely to instead perform processing in a streaming fashion. The difference is unobservable, and thus the simpler model is specified.
+
+      9. React to bodyPromise:
+
+         - If bodyPromise was fulfilled with value bodyArrayBuffer:
+
+            1. Let stableBytes be a copy of the bytes held by the buffer bodyArrayBuffer.
+
+            2. Asynchronously compile the WebAssembly module stableBytes using the networking task source and options and resolve returnValue with the result.
+
+         - If bodyPromise was rejected with reason reason:
+
+            1. Reject returnValue with reason.
+
+   - If source was rejected with reason reason:
+
+      1. Reject returnValue with reason.
+
+3. Return returnValue.
+

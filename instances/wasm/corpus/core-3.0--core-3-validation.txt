@@ -1,0 +1,2893 @@
+# WebAssembly Core 3.0: 3 Validation
+# джерело: https://raw.githubusercontent.com/WebAssembly/spec/0f70bfa44615ca9f499801ca27ca6ca2bca1e8bc/core/bikeshed/index.html#validation②
+# отримано: 2026-09-30
+# версія: 3.0
+
+## 3.1 Conventions
+
+Validation checks that a WebAssembly module is well-formed. Only valid modules can be instantiated.
+
+Validity is defined by a type system over the abstract syntax of a module and its contents. For each piece of abstract syntax, there is a typing rule that specifies the constraints that apply to it. All rules are given in two equivalent forms:
+
+1. In prose, describing the meaning in intuitive form.
+
+2. In formal notation, describing the rule in mathematical form. [1]
+
+Note
+
+The prose and formal rules are equivalent, so that understanding of the formal notation is not required to read this specification. The formalism offers a more concise description in notation that is used widely in programming languages semantics and is readily amenable to mathematical proof.
+
+In both cases, the rules are formulated in a declarative manner. That is, they only formulate the constraints, they do not define an algorithm. The skeleton of a sound and complete algorithm for type-checking instruction sequences according to this specification is provided in the appendix.
+
+### 3.1.1 Types
+
+To define the semantics, the definition of some sorts of types is extended to include additional forms. By virtue of not being representable in either the binary format or the text format, these forms cannot be used in a program; they only occur during validation or execution.
+
+    valtype ::= … ∣ bot
+    absheaptype ::= … ∣ bot
+    typeuse ::= … ∣ deftype ∣ rec.n
+
+The unique value type bot is a bottom type that matches all value types. Similarly, bot is also used as a bottom type of all heap types.
+
+Note
+
+No validation rule uses bottom types explicitly, but various rules can pick any value or heap type, including bottom. This ensures the existence of principal types, and thus a validation algorithm without back tracking.
+
+A type use can consist directly of a defined type. This occurs as the result of substituting a type index with its definition.
+
+A type use may also be a recursive type index. Such an index refers to the i -th component of a surrounding recursive type. It occurs as the result of rolling up the definition of a recursive type.
+
+Both extensions affect occurrences of type uses in concrete heap types, in sub types and in instructions.
+
+A type of any form is closed when it does not contain a heap type that is a type index or a recursive type index without a surrounding recursive type, i.e., all type indices have been substituted with their defined type and all free recursive type indices have been unrolled.
+
+Note
+
+It is an invariant of the semantics that sub types occur only in one of two forms: either as “syntactic” types as in a source module, where all supertypes are type indices, or as “semantic” types, where all supertypes are resolved to either defined types or recursive type indices.
+
+Recursive type indices are local to a recursive type. They are distinguished from regular type indices and represented such that two closed types are syntactically equal if and only if they have the same recursive structure.
+
+#### 3.1.1.1 Convention
+
+- The difference rt_1 ∖ rt_2 between two reference types is defined as follows:
+
+    (ref null_1? ht_1) ∖ (ref null ht_2) = (ref ht_1)
+    (ref null_1? ht_1) ∖ (ref ht_2) = (ref null_1? ht_1)
+
+Note
+
+This definition computes an approximation of the reference type that is inhabited by all values from rt_1 except those from rt_2. Since the type system does not have general union types, the defnition only affects the presence of null and cannot express the absence of other values.
+
+### 3.1.2 Defined Types
+
+Defined types denote the individual types defined in a module. Each such type is represented as a projection from the recursive type group it originates from, indexed by its position in that group.
+
+deftype::= rectype.n
+
+Defined types do not occur in the binary or text format, but are formed by rolling up the recursive types defined in a module.
+
+Note
+
+It is an invariant of the semantics that all recursive types occurring in defined types are rolled up.
+
+#### 3.1.2.1 Conventions
+
+- t[x∗:= dt∗] denotes the parallel substitution of type indices x∗ with corresponding defined types dt∗ in type t, provided ∣x∗∣ = ∣dt∗∣.
+
+- t[(rec i)∗:= dt∗] denotes the parallel substitution of recursive type indices (rec i)∗ with defined types dt∗ in type t, provided ∣(rec i)∗∣ = ∣dt∗∣. This substitution does not proceed under recursive types, since they are considered local binders for all recursive type indices.
+
+- t[:= dt∗] is shorthand for the substitution t[x∗:= dt∗], where x∗ = 0 … (∣dt∗∣ − 1).
+
+Note
+
+All recursive types formed by the semantics are closed with respect to recursive type indices that occur inside them. Hence, substitution of recursive type indices never needs to modify the bodies of recursive types. In addition, all types used for substitution are closed with respect to recursive type indices, such that name capture of recursive type indices cannot occur.
+
+### 3.1.3 Rolling and Unrolling
+
+In order to allow comparing recursive types for equivalence, their representation is changed such that all type indices internal to the same recursive type are replaced by recursive type indices.
+
+Note
+
+This representation is independent of the type index space, so that it is meaningful across module boundaries. Moreover, this representation ensures that types with equivalent recursive structure are also syntactically equal, hence allowing a simple equality check on (closed) types. It gives rise to an iso-recursive interpretation of types.
+
+The representation change is performed by two auxiliary operations on the syntax of recursive types:
+
+- Rolling up a recursive type substitutes its internal type indices with corresponding recursive type indices.
+
+- Unrolling a recursive type substitutes its recursive type indices with the corresponding defined types.
+
+These operations are extended to defined types and defined as follows:
+
+    roll_x(rectype) = rec (subtype[(x + i)^(i<n) := (rec.i)^(i<n)])^n if rectype = rec subtype^n
+    0.8ex]unroll(rectype) = rec (subtype[(rec.i)^(i<n) := (rectype.i)^(i<n)])^n if rectype = rec subtype^n
+    0.8ex]roll_x∗(rectype) = ((rec subtype^n).i)^(i<n) if roll_x(rectype) = rec subtype^n
+    0.8ex]unroll(rectype.i) = subtype∗[i] if unroll(rectype) = rec subtype∗
+
+In addition, the following auxiliary relation denotes the expansion of a defined type or type use:
+
+    deftype ≈ comptype if expand(deftype) = comptype
+    0.8ex] deftype ≈_C comptype if deftype ≈ comptype
+    typeidx ≈_C comptype if C.types[typeidx] ≈ comptype
+
+### 3.1.4 Instruction Types
+
+Instruction types classify the behaviour of instructions or instruction sequences, by describing how they manipulate the operand stack and the initialization status of locals:
+
+instrtype::= resulttype →_(localidx∗) resulttype
+
+An instruction type t_1∗ →_(x∗) t_2∗ describes the required input stack with argument values of types t_1∗ that an instruction pops off and the provided output stack with result values of types t_2∗ that it pushes back. Moreover, it enumerates the indices x∗ of locals that have been set by the instruction or sequence.
+
+Note
+
+Instruction types are only used for validation, they do not occur in programs.
+
+### 3.1.5 Local Types
+
+Local types classify locals, by describing their value type as well as their initialization status:
+
+    localtype ::= init valtype
+    init ::= set ∣ unset
+
+Note
+
+Local types are only used for validation, they do not occur in programs.
+
+### 3.1.6 Contexts
+
+Validity of an individual definition is specified relative to a context, which collects relevant information about the surrounding module and the definitions in scope:
+
+- Types: the list of types defined in the current module.
+
+- Recursive Types: the list of sub types in the current group of recursive types.
+
+- Functions: the list of functions declared in the current module, represented by a defined type that expands to their function type.
+
+- Tables: the list of tables declared in the current module, represented by their table type.
+
+- Memories: the list of memories declared in the current module, represented by their memory type.
+
+- Globals: the list of globals declared in the current module, represented by their global type.
+
+- Tags: the list of tags declared in the current module, represented by their tag type.
+
+- Element Segments: the list of element segments declared in the current module, represented by the elements’ reference type.
+
+- Data Segments: the list of data segments declared in the current module, each represented by an ok entry.
+
+- Locals: the list of locals declared in the current function (including parameters), represented by their local type.
+
+- Labels: the stack of labels accessible from the current position, represented by their result type.
+
+- Return: the return type of the current function, represented as an optional result type that is absent when no return is allowed, as in free-standing expressions.
+
+- References: the list of function indices that occur in the module outside functions and can hence be used to form references inside them.
+
+In other words, a context contains a sequence of suitable types for each index space, describing each defined entry in that space. Locals, labels and return type are only used for validating instructions in function bodies, and are left empty elsewhere. The label stack is the only part of the context that changes as validation of an instruction sequence proceeds.
+
+More concretely, contexts are defined as records C with abstract syntax:
+
+    context ::= {types deftype∗
+    recs subtype∗
+    tags tagtype∗
+    globals globaltype∗
+    mems memtype∗
+    tables tabletype∗
+    funcs deftype∗
+    datas datatype∗
+    elems elemtype∗
+    locals localtype∗
+    labels resulttype∗
+    return resulttype?
+    refs funcidx∗}
+
+#### 3.1.6.1 Convention
+
+A type of any shape can be closed to bring it into closed form relative to a context it is valid in, by substituting each type index x occurring in it with its own corresponding defined type C.types[x], after first closing the types in C.types themselves.
+
+    clos_C(t) = t[:= dt∗] if dt∗ = clos∗(C.types)
+    0.8ex]clos∗(ϵ) = ϵ
+    clos∗(dt∗ dt_n) = dt′∗ dt_n[:= dt′∗] if dt′∗ = clos∗(dt∗)
+
+Note
+
+Free type indices referring to types within the same recursive type are handled separately by rolling up recursive types before closing them.
+
+### 3.1.7 Prose Notation
+
+Validation is specified by stylised rules for each relevant part of the abstract syntax. The rules not only state constraints defining when a phrase is valid, they also classify it with a type. The following conventions are adopted in stating these rules.
+
+- A phrase A is said to be “valid with type T ” if and only if all constraints expressed by the respective rules are met. The form of T depends on the syntactic class of A.
+
+   Note
+
+   For example, if A is a function, then T is a defined function type; for an A that is a global, T is a global type; and so on.
+
+- The rules implicitly assume a given context C.
+
+- In some places, this context is locally extended to a context C′ with additional entries. The formulation “Under context C′, … statement …” is adopted to express that the following statement must apply under the assumptions embodied in the extended context.
+
+### 3.1.8 Formal Notation
+
+Note
+
+This section gives a brief explanation of the notation for specifying typing rules formally. For the interested reader, a more thorough introduction can be found in respective text books. [2]
+
+The proposition that a phrase A has a respective type T is written A: T. In general, however, typing is dependent on a context C. To express this explicitly, the complete form is a judgement C ⊢ A: T, which says that A: T holds under the assumptions encoded in C.
+
+The formal typing rules use a standard approach for specifying type systems, rendering them into deduction rules. Every rule has the following general form:
+
+    premise_1 premise_2 … premise_n ⟹ conclusion
+
+Such a rule is read as a big implication: if all premises hold, then the conclusion holds. Some rules have no premises; they are axioms whose conclusion holds unconditionally. The conclusion always is a judgment C ⊢ A: T, and there usually is one respective rule for each relevant construct A of the abstract syntax.
+
+Note
+
+For example, the typing rule for the i32.add instruction can be given as an axiom:
+
+    ⟹ C ⊢ i32.add : i32 i32 → i32
+
+The instruction is always valid with type i32 i32 → i32 (saying that it consumes two i32 values and produces one), independent of any side conditions.
+
+An instruction like global.get can be typed as follows:
+
+    C.globals[x] = mut t ⟹ C ⊢ global.get x : ϵ → t
+
+Here, the premise enforces that the immediate global index x exists in the context. The instruction produces a value of its respective type t (and does not consume any values). If C.globals[x] does not exist then the premise does not hold, and the instruction is ill-typed.
+
+Finally, a structured instruction requires a recursive rule, where the premise is itself a typing judgement:
+
+    C ⊢ blocktype : t_1∗ → t_2∗ {labels (t_2∗)} ⊕ C ⊢ instr∗ : t_1∗ → t_2∗ ⟹ C ⊢ block blocktype instr∗ : t_1∗ → t_2∗
+
+A block instruction is only valid when the instruction sequence in its body is. Moreover, the result type must match the block’s annotation blocktype. If so, then the block instruction has the same type as the body. Inside the body an additional label of the corresponding result type is available, which is expressed by extending the context C with the additional label information for the premise.
+
+[1]
+
+The semantics is derived from the following article: Andreas Haas, Andreas Rossberg, Derek Schuff, Ben Titzer, Dan Gohman, Luke Wagner, Alon Zakai, JF Bastien, Michael Holman. Bringing the Web up to Speed with WebAssembly. Proceedings of the 38th ACM SIGPLAN Conference on Programming Language Design and Implementation (PLDI 2017). ACM 2017.
+
+[2]
+
+For example: Benjamin Pierce. Types and Programming Languages. The MIT Press 2002
+
+## 3.2 Types
+
+Simple types, such as number types are universally valid. However, restrictions apply to most other types, such as reference types, function types, as well as the limits of table types and memory types, which must be checked during validation.
+
+Moreover, block types are converted to instruction types for ease of processing.
+
+### 3.2.1 Number Types
+
+The number type numtype is always valid.
+
+    ⟹ C ⊢ numtype : ok
+
+### 3.2.2 Vector Types
+
+The vector type vectype is always valid.
+
+    ⟹ C ⊢ vectype : ok
+
+### 3.2.3 Type Uses
+
+The type use typeidx is valid if:
+
+- The type C.types[typeidx] exists.
+
+    C.types[typeidx] = dt ⟹ C ⊢ typeidx : ok
+
+### 3.2.4 Heap Types
+
+The heap type absheaptype is always valid.
+
+    ⟹ C ⊢ absheaptype : ok
+
+### 3.2.5 Reference Types
+
+The reference type (ref null? heaptype) is valid if:
+
+- The heap type heaptype is valid.
+
+    C ⊢ heaptype : ok ⟹ C ⊢ ref null? heaptype : ok
+
+### 3.2.6 Value Types
+
+The value type valtype is valid if:
+
+- Either:
+
+   - The value type valtype is of the form numtype.
+
+   - The number type numtype is valid.
+
+- Or:
+
+   - The value type valtype is of the form vectype.
+
+   - The vector type vectype is valid.
+
+- Or:
+
+   - The value type valtype is of the form reftype.
+
+   - The reference type reftype is valid.
+
+- Or:
+
+   - The value type valtype is of the form bot.
+
+### 3.2.7 Result Types
+
+The result type t∗ is valid if:
+
+- For all t in t∗:
+
+   - The value type t is valid.
+
+    (C ⊢ t : ok)∗ ⟹ C ⊢ t∗ : ok
+
+### 3.2.8 Block Types
+
+Block types may be expressed in one of two forms, both of which are converted to instruction types by the following rules.
+
+The block type typeidx is valid as the instruction type t_1∗ → t_2∗ if:
+
+- The type C.types[typeidx] exists.
+
+- The expansion of C.types[typeidx] is (func t_1∗ → t_2∗).
+
+    C.types[typeidx] ≈ func t_1∗ → t_2∗ ⟹ C ⊢ typeidx : t_1∗ → t_2∗
+
+The block type valtype? is valid as the instruction type ϵ → valtype? if:
+
+- If valtype is defined, then:
+
+   - The value type valtype is valid.
+
+    (C ⊢ valtype : ok)? ⟹ C ⊢ valtype? : ϵ → valtype?
+
+### 3.2.9 Instruction Types
+
+The instruction type t_1∗ →_(x∗) t_2∗ is valid if:
+
+- The result type t_1∗ is valid.
+
+- The result type t_2∗ is valid.
+
+- For all x in x∗:
+
+   - The local C.locals[x] exists.
+
+    C ⊢ t_1∗ : ok C ⊢ t_2∗ : ok (C.locals[x] = lt)∗ ⟹ C ⊢ t_1∗ →_(x∗) t_2∗ : ok
+
+### 3.2.10 Composite Types
+
+The composite type (struct fieldtype∗) is valid if:
+
+- For all fieldtype in fieldtype∗:
+
+   - The field type fieldtype is valid.
+
+    (C ⊢ fieldtype : ok)∗ ⟹ C ⊢ struct fieldtype∗ : ok
+
+The composite type (array fieldtype) is valid if:
+
+- The field type fieldtype is valid.
+
+    C ⊢ fieldtype : ok ⟹ C ⊢ array fieldtype : ok
+
+The composite type (func t_1∗ → t_2∗) is valid if:
+
+- The result type t_1∗ is valid.
+
+- The result type t_2∗ is valid.
+
+    C ⊢ t_1∗ : ok C ⊢ t_2∗ : ok ⟹ C ⊢ func t_1∗ → t_2∗ : ok
+
+The field type (mut? storagetype) is valid if:
+
+- The storage type storagetype is valid.
+
+    C ⊢ storagetype : ok ⟹ C ⊢ mut? storagetype : ok
+
+The packed type packtype is always valid.
+
+    ⟹ C ⊢ packtype : ok
+
+### 3.2.11 Recursive Types
+
+Recursive types are validated with respect to the first type index defined by the recursive group.
+
+#### 3.2.11.1 rec subtype∗
+
+The recursive type (rec subtype∗) is valid for the type index x if:
+
+- Either:
+
+   - The sub type sequence subtype∗ is empty.
+
+- Or:
+
+   - The sub type sequence subtype∗ is of the form subtype_1 subtype′∗.
+
+   - The sub type subtype_1 is valid for the type index x.
+
+   - The recursive type (rec subtype′∗) is valid for the type index x + 1.
+
+    ⟹ C ⊢ rec ϵ : ok(x) C ⊢ subtype_1 : ok(x) C ⊢ rec subtype∗ : ok(x + 1) ⟹ C ⊢ rec (subtype_1 subtype∗) : ok(x)
+
+#### 3.2.11.2 sub final? y∗ comptype
+
+The sub type (sub final? x∗ comptype) is valid for the type index x_0 if:
+
+- The length of x∗ is less than or equal to 1.
+
+- For all x in x∗:
+
+   - The index x is less than x_0.
+
+   - The type C.types[x] exists.
+
+   - The sub type unroll(C.types[x]) is of the form (sub x′∗ comptype′).
+
+- comptype′∗ is the concatenation of all such comptype′.
+
+- The composite type comptype is valid.
+
+- For all comptype′ in comptype′∗:
+
+   - The composite type comptype matches the composite type comptype′.
+
+    ∣x∗∣ ≤ 1 (x < x_0)∗ (unroll(C.types[x]) = sub x′∗ comptype′)∗
+    C ⊢ comptype : ok (C ⊢ comptype ≤ comptype′)∗ ⟹ C ⊢ sub final? x∗ comptype : ok(x_0)
+
+Note
+
+The side condition on the index ensures that a declared supertype is a previously defined types, preventing cyclic subtype hierarchies.
+
+Future versions of WebAssembly may allow more than one supertype.
+
+### 3.2.12 Limits
+
+Limits must have meaningful bounds that are within a given range.
+
+The limits range [n.. m?] is valid within k if:
+
+- n is less than or equal to k.
+
+- If m is defined, then:
+
+   - n is less than or equal to m.
+
+   - m is less than or equal to k.
+
+    n ≤ k (n ≤ m ≤ k)? ⟹ C ⊢ [n .. m?] : k
+
+### 3.2.13 Tag Types
+
+The tag type typeuse is valid if:
+
+- The type use typeuse is valid.
+
+- The expansion of C is (func t_1∗ → t_2∗).
+
+    C ⊢ typeuse : ok typeuse ≈_C func t_1∗ → t_2∗ ⟹ C ⊢ typeuse : ok
+
+### 3.2.14 Global Types
+
+The global type (mut? t) is valid if:
+
+- The value type t is valid.
+
+    C ⊢ t : ok ⟹ C ⊢ mut? t : ok
+
+### 3.2.15 Memory Types
+
+The memory type (addrtype limits page) is valid if:
+
+- The limits range limits is valid within 2^(16).
+
+    C ⊢ limits : 2^(16) ⟹ C ⊢ addrtype limits page : ok
+
+### 3.2.16 Table Types
+
+The table type (addrtype limits reftype) is valid if:
+
+- The limits range limits is valid within 2^(32) − 1.
+
+- The reference type reftype is valid.
+
+    C ⊢ limits : 2^(32) − 1 C ⊢ reftype : ok ⟹ C ⊢ addrtype limits reftype : ok
+
+### 3.2.17 External Types
+
+The external type (tag tagtype) is valid if:
+
+- The tag type tagtype is valid.
+
+    C ⊢ tagtype : ok ⟹ C ⊢ tag tagtype : ok
+
+The external type (global globaltype) is valid if:
+
+- The global type globaltype is valid.
+
+    C ⊢ globaltype : ok ⟹ C ⊢ global globaltype : ok
+
+The external type (mem memtype) is valid if:
+
+- The memory type memtype is valid.
+
+    C ⊢ memtype : ok ⟹ C ⊢ mem memtype : ok
+
+The external type (table tabletype) is valid if:
+
+- The table type tabletype is valid.
+
+    C ⊢ tabletype : ok ⟹ C ⊢ table tabletype : ok
+
+The external type (func typeuse) is valid if:
+
+- The type use typeuse is valid.
+
+- The expansion of C is (func t_1∗ → t_2∗).
+
+    C ⊢ typeuse : ok typeuse ≈_C func t_1∗ → t_2∗ ⟹ C ⊢ func typeuse : ok
+
+## 3.3 Matching
+
+On most types, a notion of subtyping is defined that is applicable in validation rules, during module instantiation when checking the types of imports, or during execution, when performing casts.
+
+### 3.3.1 Number Types
+
+The number type numtype matches only itself.
+
+    ⟹ C ⊢ numtype ≤ numtype
+
+### 3.3.2 Vector Types
+
+The vector type vectype matches only itself.
+
+    ⟹ C ⊢ vectype ≤ vectype
+
+### 3.3.3 Heap Types
+
+The heap type heaptype_1 matches the heap type heaptype_2 if:
+
+- Either:
+
+   - The heap type heaptype_2 is of the form heaptype_1.
+
+- Or:
+
+   - The heap type heaptype′ is valid.
+
+   - The heap type heaptype_1 matches the heap type heaptype′.
+
+   - The heap type heaptype′ matches the heap type heaptype_2.
+
+- Or:
+
+   - The heap type heaptype_1 is of the form eq.
+
+   - The heap type heaptype_2 is of the form any.
+
+- Or:
+
+   - The heap type heaptype_1 is of the form i31.
+
+   - The heap type heaptype_2 is of the form eq.
+
+- Or:
+
+   - The heap type heaptype_1 is of the form struct.
+
+   - The heap type heaptype_2 is of the form eq.
+
+- Or:
+
+   - The heap type heaptype_1 is of the form array.
+
+   - The heap type heaptype_2 is of the form eq.
+
+- Or:
+
+   - The heap type heaptype_1 is of the form deftype.
+
+   - The heap type heaptype_2 is of the form struct.
+
+   - The expansion of deftype is (struct fieldtype∗).
+
+- Or:
+
+   - The heap type heaptype_1 is of the form deftype.
+
+   - The heap type heaptype_2 is of the form array.
+
+   - The expansion of deftype is (array fieldtype).
+
+- Or:
+
+   - The heap type heaptype_1 is of the form deftype.
+
+   - The heap type heaptype_2 is of the form func.
+
+   - The expansion of deftype is (func t_1∗ → t_2∗).
+
+- Or:
+
+   - The heap type heaptype_1 is of the form deftype_1.
+
+   - The heap type heaptype_2 is of the form deftype_2.
+
+   - The defined type deftype_1 matches the defined type deftype_2.
+
+- Or:
+
+   - The heap type heaptype_1 is of the form typeidx.
+
+   - The type C.types[typeidx] exists.
+
+   - The type C.types[typeidx] matches the heap type heaptype_2.
+
+- Or:
+
+   - The heap type heaptype_2 is of the form typeidx.
+
+   - The type C.types[typeidx] exists.
+
+   - The heap type heaptype_1 matches the type C.types[typeidx].
+
+- Or:
+
+   - The heap type heaptype_1 is of the form (rec.i).
+
+   - The length of typeuse∗ is greater than j.
+
+   - The heap type heaptype_2 is of the form typeuse∗[j].
+
+   - The recursive type C.recs[i] exists.
+
+   - The recursive type C.recs[i] is of the form (sub final? typeuse∗ ct).
+
+- Or:
+
+   - The heap type heaptype_1 is of the form none.
+
+   - The heap type heaptype_2 matches the heap type any.
+
+- Or:
+
+   - The heap type heaptype_1 is of the form nofunc.
+
+   - The heap type heaptype_2 matches the heap type func.
+
+- Or:
+
+   - The heap type heaptype_1 is of the form noexn.
+
+   - The heap type heaptype_2 matches the heap type exn.
+
+- Or:
+
+   - The heap type heaptype_1 is of the form noextern.
+
+   - The heap type heaptype_2 matches the heap type extern.
+
+- Or:
+
+   - The heap type heaptype_1 is of the form bot.
+
+    ⟹ C ⊢ heaptype ≤ heaptype C ⊢ heaptype′ : ok C ⊢ heaptype_1 ≤ heaptype′ C ⊢ heaptype′ ≤ heaptype_2 ⟹ C ⊢ heaptype_1 ≤ heaptype_2
+    3ex]⟹ C ⊢ eq ≤ any ⟹ C ⊢ i31 ≤ eq ⟹ C ⊢ struct ≤ eq ⟹ C ⊢ array ≤ eq
+    3ex]deftype ≈ struct fieldtype∗ ⟹ C ⊢ deftype ≤ struct deftype ≈ array fieldtype ⟹ C ⊢ deftype ≤ array deftype ≈ func t_1∗ → t_2∗ ⟹ C ⊢ deftype ≤ func
+    3ex]C ⊢ C.types[typeidx] ≤ heaptype ⟹ C ⊢ typeidx ≤ heaptype C ⊢ heaptype ≤ C.types[typeidx] ⟹ C ⊢ heaptype ≤ typeidx
+    3ex]C.recs[i] = sub final? typeuse∗ ct ⟹ C ⊢ rec.i ≤ typeuse∗[j]
+    3ex]C ⊢ heaptype ≤ any ⟹ C ⊢ none ≤ heaptype C ⊢ heaptype ≤ func ⟹ C ⊢ nofunc ≤ heaptype C ⊢ heaptype ≤ exn ⟹ C ⊢ noexn ≤ heaptype C ⊢ heaptype ≤ extern ⟹ C ⊢ noextern ≤ heaptype
+    3ex]⟹ C ⊢ bot ≤ heaptype
+
+### 3.3.4 Reference Types
+
+The reference type (ref null_1? ht_1) matches the reference type (ref null_2? ht_2) if:
+
+- The heap type ht_1 matches the heap type ht_2.
+
+- Either:
+
+   - null_1? is absent.
+
+   - null_2? is absent.
+
+- Or:
+
+   - null_1? is of the form null?.
+
+   - null_2? is of the form null.
+
+    C ⊢ ht_1 ≤ ht_2 ⟹ C ⊢ ref ht_1 ≤ ref ht_2 C ⊢ ht_1 ≤ ht_2 ⟹ C ⊢ ref null? ht_1 ≤ ref null ht_2
+
+### 3.3.5 Value Types
+
+The value type valtype_1 matches the value type valtype_2 if:
+
+- Either:
+
+   - The value type valtype_1 is of the form numtype_1.
+
+   - The value type valtype_2 is of the form numtype_2.
+
+   - The number type numtype_1 matches the number type numtype_2.
+
+- Or:
+
+   - The value type valtype_1 is of the form vectype_1.
+
+   - The value type valtype_2 is of the form vectype_2.
+
+   - The vector type vectype_1 matches the vector type vectype_2.
+
+- Or:
+
+   - The value type valtype_1 is of the form reftype_1.
+
+   - The value type valtype_2 is of the form reftype_2.
+
+   - The reference type reftype_1 matches the reference type reftype_2.
+
+- Or:
+
+   - The value type valtype_1 is of the form bot.
+
+    ⟹ C ⊢ bot ≤ valtype
+
+### 3.3.6 Result Types
+
+Subtyping is lifted to result types in a pointwise manner.
+
+The result type t_1∗ matches the result type t_2∗ if:
+
+- For all t_1 in t_1∗, and corresponding t_2 in t_2∗:
+
+   - The value type t_1 matches the value type t_2.
+
+    (C ⊢ t_1 ≤ t_2)∗ ⟹ C ⊢ t_1∗ ≤ t_2∗
+
+### 3.3.7 Instruction Types
+
+Subtyping is further lifted to instruction types.
+
+The instruction type t_(11)∗ →_(x_1∗) t_(12)∗ matches the instruction type t_(21)∗ →_(x_2∗) t_(22)∗ if:
+
+- The result type t_(21)∗ matches the result type t_(11)∗.
+
+- The result type t_(12)∗ matches the result type t_(22)∗.
+
+- The local index sequence x∗ is of the form x_2∗ ∖ x_1∗.
+
+- For all x in x∗:
+
+   - The local C.locals[x] exists.
+
+   - The local C.locals[x] is of the form (set t).
+
+    C ⊢ t_(21)∗ ≤ t_(11)∗ C ⊢ t_(12)∗ ≤ t_(22)∗ x∗ = x_2∗ ∖ x_1∗ (C.locals[x] = set t)∗ ⟹ C ⊢ t_(11)∗ →_(x_1∗) t_(12)∗ ≤ t_(21)∗ →_(x_2∗) t_(22)∗
+
+Note
+
+Instruction types are contravariant in their input and covariant in their output. Moreover, the supertype may ignore variables from the init set x_1∗. It may also add variables to the init set, provided these are already set in the context, i.e., are vacuously initialized.
+
+### 3.3.8 Composite Types
+
+The composite type comptype_1 matches the composite type comptype_2 if:
+
+- Either:
+
+   - The composite type comptype_1 is of the form (struct ft_1∗ ft′_1∗).
+
+   - The composite type comptype_2 is of the form (struct ft_2∗).
+
+   - For all ft_1 in ft_1∗, and corresponding ft_2 in ft_2∗:
+
+      - The field type ft_1 matches the field type ft_2.
+
+- Or:
+
+   - The composite type comptype_1 is of the form (array ft_1).
+
+   - The composite type comptype_2 is of the form (array ft_2).
+
+   - The field type ft_1 matches the field type ft_2.
+
+- Or:
+
+   - The composite type comptype_1 is of the form (func t_(11)∗ → t_(12)∗).
+
+   - The composite type comptype_2 is of the form (func t_(21)∗ → t_(22)∗).
+
+   - The result type t_(21)∗ matches the result type t_(11)∗.
+
+   - The result type t_(12)∗ matches the result type t_(22)∗.
+
+    (C ⊢ ft_1 ≤ ft_2)∗ ⟹ C ⊢ struct (ft_1∗ ft′_1∗) ≤ struct ft_2∗ C ⊢ ft_1 ≤ ft_2 ⟹ C ⊢ array ft_1 ≤ array ft_2 C ⊢ t_(21)∗ ≤ t_(11)∗ C ⊢ t_(12)∗ ≤ t_(22)∗ ⟹ C ⊢ func t_(11)∗ → t_(12)∗ ≤ func t_(21)∗ → t_(22)∗
+
+### 3.3.9 Field Types
+
+The field type (mut_1? zt_1) matches the field type (mut_2? zt_2) if:
+
+- The storage type zt_1 matches the storage type zt_2.
+
+- Either:
+
+   - mut_1? is absent.
+
+   - mut_2? is absent.
+
+- Or:
+
+   - mut_1? is of the form mut.
+
+   - mut_2? is of the form mut.
+
+   - The storage type zt_2 matches the storage type zt_1.
+
+    C ⊢ zt_1 ≤ zt_2 ⟹ C ⊢ zt_1 ≤ zt_2 C ⊢ zt_1 ≤ zt_2 C ⊢ zt_2 ≤ zt_1 ⟹ C ⊢ mut zt_1 ≤ mut zt_2
+
+The storage type storagetype_1 matches the storage type storagetype_2 if:
+
+- Either:
+
+   - The storage type storagetype_1 is of the form valtype_1.
+
+   - The storage type storagetype_2 is of the form valtype_2.
+
+   - The value type valtype_1 matches the value type valtype_2.
+
+- Or:
+
+   - The storage type storagetype_1 is of the form packtype_1.
+
+   - The storage type storagetype_2 is of the form packtype_2.
+
+   - The packed type packtype_1 matches the packed type packtype_2.
+
+The packed type packtype matches only itself.
+
+    ⟹ C ⊢ packtype ≤ packtype
+
+### 3.3.10 Defined Types
+
+The defined type deftype_1 matches the defined type deftype_2 if:
+
+- Either:
+
+   - The defined type clos_C(deftype_1) is of the form clos_C(deftype_2).
+
+- Or:
+
+   - The sub type unroll(deftype_1) is of the form (sub final? typeuse∗ ct).
+
+   - The length of typeuse∗ is greater than i.
+
+   - The type use typeuse∗[i] matches the heap type deftype_2.
+
+    clos_C(deftype_1) = clos_C(deftype_2) ⟹ C ⊢ deftype_1 ≤ deftype_2
+    3ex]unroll(deftype_1) = sub final? typeuse∗ ct C ⊢ typeuse∗[i] ≤ deftype_2 ⟹ C ⊢ deftype_1 ≤ deftype_2
+
+Note
+
+Note that there is no explicit definition of type equivalence, since it coincides with syntactic equality, as used in the premise of the former rule above.
+
+### 3.3.11 Limits
+
+The limits range [n_1.. m_1] matches the limits range [n_2.. m_2] if:
+
+- n_1 is greater than or equal to n_2.
+
+- m_1 is less than or equal to m_2.
+
+    n_1 ≥ n_2 m_1 ≤ m_2 ⟹ C ⊢ [n_1 .. m_1] ≤ [n_2 .. m_2]
+
+### 3.3.12 Tag Types
+
+The tag type deftype_1 matches the tag type deftype_2 if:
+
+- The defined type deftype_1 matches the defined type deftype_2.
+
+- The defined type deftype_2 matches the defined type deftype_1.
+
+    C ⊢ deftype_1 ≤ deftype_2 C ⊢ deftype_2 ≤ deftype_1 ⟹ C ⊢ deftype_1 ≤ deftype_2
+
+Note
+
+Although the conclusion of this rule looks identical to its premise, they in fact describe different relations: the premise invokes subtyping on defined types, while the conclusion defines it on tag types that happen to be expressed as defined types.
+
+### 3.3.13 Global Types
+
+The global type (mut_1? valtype_1) matches the global type (mut_2? valtype_2) if:
+
+- The value type valtype_1 matches the value type valtype_2.
+
+- Either:
+
+   - mut_1? is absent.
+
+   - mut_2? is absent.
+
+- Or:
+
+   - mut_1? is of the form mut.
+
+   - mut_2? is of the form mut.
+
+   - The value type valtype_2 matches the value type valtype_1.
+
+    C ⊢ valtype_1 ≤ valtype_2 ⟹ C ⊢ valtype_1 ≤ valtype_2 C ⊢ valtype_1 ≤ valtype_2 C ⊢ valtype_2 ≤ valtype_1 ⟹ C ⊢ mut valtype_1 ≤ mut valtype_2
+
+### 3.3.14 Memory Types
+
+The memory type (addrtype limits_1 page) matches the memory type (addrtype limits_2 page) if:
+
+- The limits range limits_1 matches the limits range limits_2.
+
+    C ⊢ limits_1 ≤ limits_2 ⟹ C ⊢ addrtype limits_1 page ≤ addrtype limits_2 page
+
+### 3.3.15 Table Types
+
+The table type (addrtype limits_1 reftype_1) matches the table type (addrtype limits_2 reftype_2) if:
+
+- The limits range limits_1 matches the limits range limits_2.
+
+- The reference type reftype_1 matches the reference type reftype_2.
+
+- The reference type reftype_2 matches the reference type reftype_1.
+
+    C ⊢ limits_1 ≤ limits_2 C ⊢ reftype_1 ≤ reftype_2 C ⊢ reftype_2 ≤ reftype_1 ⟹ C ⊢ addrtype limits_1 reftype_1 ≤ addrtype limits_2 reftype_2
+
+### 3.3.16 External Types
+
+The external type (tag tagtype_1) matches the external type (tag tagtype_2) if:
+
+- The tag type tagtype_1 matches the tag type tagtype_2.
+
+    C ⊢ tagtype_1 ≤ tagtype_2 ⟹ C ⊢ tag tagtype_1 ≤ tag tagtype_2
+
+The external type (global globaltype_1) matches the external type (global globaltype_2) if:
+
+- The global type globaltype_1 matches the global type globaltype_2.
+
+    C ⊢ globaltype_1 ≤ globaltype_2 ⟹ C ⊢ global globaltype_1 ≤ global globaltype_2
+
+The external type (mem memtype_1) matches the external type (mem memtype_2) if:
+
+- The memory type memtype_1 matches the memory type memtype_2.
+
+    C ⊢ memtype_1 ≤ memtype_2 ⟹ C ⊢ mem memtype_1 ≤ mem memtype_2
+
+The external type (table tabletype_1) matches the external type (table tabletype_2) if:
+
+- The table type tabletype_1 matches the table type tabletype_2.
+
+    C ⊢ tabletype_1 ≤ tabletype_2 ⟹ C ⊢ table tabletype_1 ≤ table tabletype_2
+
+The external type (func deftype_1) matches the external type (func deftype_2) if:
+
+- The defined type deftype_1 matches the defined type deftype_2.
+
+    C ⊢ deftype_1 ≤ deftype_2 ⟹ C ⊢ func deftype_1 ≤ func deftype_2
+
+## 3.4 Instructions
+
+Instructions are classified by instruction types that describe how they manipulate the operand stack and initialize locals: A type t_1∗ →_(x∗) t_2∗ describes the required input stack with argument values of types t_1∗ that an instruction pops off and the provided output stack with result values of types t_2∗ that it pushes back. Moreover, it enumerates the indices x∗ of locals that have been set by the instruction. In most cases, this is empty.
+
+Note
+
+For example, the instruction i32.add has type i32 i32 → i32, consuming two i32 values and producing one. The instruction (local.set x) has type t →_x ϵ, provided t is the type declared for the local x.
+
+Typing extends to instruction sequences instr∗. Such a sequence has an instruction type t_1∗ →_(x∗) t_2∗ if the accumulative effect of executing the instructions is consuming values of types t_1∗ off the operand stack, pushing new values of types t_2∗, and setting all locals x∗.
+
+For some instructions, the typing rules do not fully constrain the type, and therefore allow for multiple types. Such instructions are called polymorphic. Two degrees of polymorphism can be distinguished:
+
+- value-polymorphic: the value type t of one or several individual operands is unconstrained. That is the case for all parametric instructions like drop and select.
+
+- stack-polymorphic: the entire (or most of the) instruction type t_1∗ → t_2∗ of the instruction is unconstrained. That is the case for all control instructions that perform an unconditional control transfer, such as unreachable, br, or return.
+
+In both cases, the unconstrained types or type sequences can be chosen arbitrarily, as long as they meet the constraints imposed for the surrounding parts of the program.
+
+Note
+
+For example, the select instruction is valid with type t t i32 → t, for any possible number type t. Consequently, both instruction sequences
+
+(i32.const 1) (i32.const 2) (i32.const 3) (select)
+
+and
+
+(f64.const +64) (f64.const +64) (f64.const +64) (select)
+
+are valid, with t in the typing of select being instantiated to i32 or f64, respectively.
+
+The unreachable instruction is stack-polymorphic, and hence valid with type t_1∗ → t_2∗ for any possible sequences of value types t_1∗ and t_2∗. Consequently,
+
+(unreachable) (i32.add)
+
+is valid by assuming type ϵ → i32 for the unreachable instruction. In contrast,
+
+(unreachable) (i64.const 0) (i32.add)
+
+is invalid, because there is no possible type to pick for the unreachable instruction that would make the sequence well-typed.
+
+The Appendix describes a type checking algorithm that efficiently implements validation of instruction sequences as prescribed by the rules given here.
+
+### 3.4.1 Parametric Instructions
+
+#### 3.4.1.1 nop
+
+The instruction nop is valid with the instruction type ϵ → ϵ.
+
+    ⟹ C ⊢ nop : ϵ → ϵ
+
+#### 3.4.1.2 unreachable
+
+The instruction unreachable is valid with the instruction type t_1∗ → t_2∗ if:
+
+- The instruction type t_1∗ → t_2∗ is valid.
+
+    C ⊢ t_1∗ → t_2∗ : ok ⟹ C ⊢ unreachable : t_1∗ → t_2∗
+
+Note
+
+The unreachable instruction is stack-polymorphic.
+
+#### 3.4.1.3 drop
+
+The instruction drop is valid with the instruction type t → ϵ if:
+
+- The value type t is valid.
+
+    C ⊢ t : ok ⟹ C ⊢ drop : t → ϵ
+
+Note
+
+Both drop and select without annotation are value-polymorphic instructions.
+
+#### 3.4.1.4 select (t∗)?
+
+The instruction (select valtype?) is valid with the instruction type t t i32 → t if:
+
+- The value type t is valid.
+
+- Either:
+
+   - The value type sequence valtype? is of the form t.
+
+- Or:
+
+   - The value type sequence valtype? is absent.
+
+   - The value type t matches the value type t′.
+
+   - The value type t′ is of the form numtype or t′ is of the form vectype.
+
+    C ⊢ t : ok ⟹ C ⊢ select t : t t i32 → t C ⊢ t : ok C ⊢ t ≤ t′ t′ = numtype ∨ t′ = vectype ⟹ C ⊢ select : t t i32 → t
+
+Note
+
+In future versions of WebAssembly, select may allow more than one value per choice.
+
+### 3.4.2 Control Instructions
+
+#### 3.4.2.1 block blocktype instr∗
+
+The instruction (block bt instr∗) is valid with the instruction type t_1∗ → t_2∗ if:
+
+- The block type bt is valid as the instruction type t_1∗ → t_2∗.
+
+- Let C′ be the same context as C, but with the result type sequence t_2∗ prepended to the field labels.
+
+- Under the context C′, the instruction sequence instr∗ is valid with the instruction type t_1∗ →_(x∗) t_2∗.
+
+    C ⊢ bt : t_1∗ → t_2∗ {labels (t_2∗)} ⊕ C ⊢ instr∗ : t_1∗ →_(x∗) t_2∗ ⟹ C ⊢ block bt instr∗ : t_1∗ → t_2∗
+
+Note
+
+The notation {labels (t∗)} ⊕ C inserts the new label type at index 0, shifting all others. The same applies to all other block instructions.
+
+#### 3.4.2.2 loop blocktype instr∗
+
+The instruction (loop bt instr∗) is valid with the instruction type t_1∗ → t_2∗ if:
+
+- The block type bt is valid as the instruction type t_1∗ → t_2∗.
+
+- Let C′ be the same context as C, but with the result type sequence t_1∗ prepended to the field labels.
+
+- Under the context C′, the instruction sequence instr∗ is valid with the instruction type t_1∗ →_(x∗) t_2∗.
+
+    C ⊢ bt : t_1∗ → t_2∗ {labels (t_1∗)} ⊕ C ⊢ instr∗ : t_1∗ →_(x∗) t_2∗ ⟹ C ⊢ loop bt instr∗ : t_1∗ → t_2∗
+
+#### 3.4.2.3 if blocktype instr_1∗ else instr_2∗
+
+The instruction (if bt instr_1∗ else instr_2∗) is valid with the instruction type t_1∗ i32 → t_2∗ if:
+
+- The block type bt is valid as the instruction type t_1∗ → t_2∗.
+
+- Let C′ be the same context as C, but with the result type sequence t_2∗ prepended to the field labels.
+
+- Under the context C′, the instruction sequence instr_1∗ is valid with the instruction type t_1∗ →_(x_1∗) t_2∗.
+
+- Under the context C′, the instruction sequence instr_2∗ is valid with the instruction type t_1∗ →_(x_2∗) t_2∗.
+
+    C ⊢ bt : t_1∗ → t_2∗ {labels (t_2∗)} ⊕ C ⊢ instr_1∗ : t_1∗ →_(x_1∗) t_2∗ {labels (t_2∗)} ⊕ C ⊢ instr_2∗ : t_1∗ →_(x_2∗) t_2∗ ⟹ C ⊢ if bt instr_1∗ else instr_2∗ : t_1∗ i32 → t_2∗
+
+#### 3.4.2.4 br l
+
+The instruction (br l) is valid with the instruction type t_1∗ t∗ → t_2∗ if:
+
+- The label C.labels[l] exists.
+
+- The label C.labels[l] is of the form t∗.
+
+- The instruction type t_1∗ → t_2∗ is valid.
+
+    C.labels[l] = t∗ C ⊢ t_1∗ → t_2∗ : ok ⟹ C ⊢ br l : t_1∗ t∗ → t_2∗
+
+Note
+
+The label index space in the context C contains the most recent label first, so that C.labels[l] performs a relative lookup as expected. This applies to other branch instructions as well.
+
+The br instruction is stack-polymorphic.
+
+#### 3.4.2.5 br_if l
+
+The instruction (br_if l) is valid with the instruction type t∗ i32 → t∗ if:
+
+- The label C.labels[l] exists.
+
+- The label C.labels[l] is of the form t∗.
+
+    C.labels[l] = t∗ ⟹ C ⊢ br_if l : t∗ i32 → t∗
+
+#### 3.4.2.6 br_table l∗ l_N
+
+The instruction (br_table l∗ l′) is valid with the instruction type t_1∗ t∗ i32 → t_2∗ if:
+
+- For all l in l∗:
+
+   - The label C.labels[l] exists.
+
+   - The result type t∗ matches the label C.labels[l].
+
+- The label C.labels[l′] exists.
+
+- The result type t∗ matches the label C.labels[l′].
+
+- The instruction type t_1∗ t∗ i32 → t_2∗ is valid.
+
+    (C ⊢ t∗ ≤ C.labels[l])∗ C ⊢ t∗ ≤ C.labels[l′] C ⊢ t_1∗ t∗ i32 → t_2∗ : ok ⟹ C ⊢ br_table l∗ l′ : t_1∗ t∗ i32 → t_2∗
+
+Note
+
+The br_table instruction is stack-polymorphic.
+
+Furthermore, the result type t∗ is also chosen non-deterministically in this rule. Although it may seem necessary to compute t∗ as the greatest lower bound of all label types in practice, a simple sequential algorithm does not require this.
+
+#### 3.4.2.7 br_on_null l
+
+The instruction (br_on_null l) is valid with the instruction type t∗ (ref null ht) → t∗ (ref ht) if:
+
+- The label C.labels[l] exists.
+
+- The label C.labels[l] is of the form t∗.
+
+- The heap type ht is valid.
+
+    C.labels[l] = t∗ C ⊢ ht : ok ⟹ C ⊢ br_on_null l : t∗ (ref null ht) → t∗ (ref ht)
+
+#### 3.4.2.8 br_on_non_null l
+
+The instruction (br_on_non_null l) is valid with the instruction type t∗ (ref null ht) → t∗ if:
+
+- The label C.labels[l] exists.
+
+- The label C.labels[l] is of the form t∗ (ref null? ht).
+
+    C.labels[l] = t∗ (ref null? ht) ⟹ C ⊢ br_on_non_null l : t∗ (ref null ht) → t∗
+
+#### 3.4.2.9 br_on_cast l rt_1 rt_2
+
+The instruction (br_on_cast l rt_1 rt_2) is valid with the instruction type t∗ rt_1 → t∗ reftype if:
+
+- The label C.labels[l] exists.
+
+- The label C.labels[l] is of the form t∗ rt.
+
+- The reference type rt_1 is valid.
+
+- The reference type rt_2 is valid.
+
+- The reference type rt_2 matches the reference type rt_1.
+
+- The reference type rt_2 matches the reference type rt.
+
+- The reference type reftype is rt_1 ∖ rt_2.
+
+    C.labels[l] = t∗ rt C ⊢ rt_1 : ok C ⊢ rt_2 : ok C ⊢ rt_2 ≤ rt_1 C ⊢ rt_2 ≤ rt ⟹ C ⊢ br_on_cast l rt_1 rt_2 : t∗ rt_1 → t∗ (rt_1 ∖ rt_2)
+
+#### 3.4.2.10 br_on_cast_fail l rt_1 rt_2
+
+The instruction (br_on_cast_fail l rt_1 rt_2) is valid with the instruction type t∗ rt_1 → t∗ rt_2 if:
+
+- The label C.labels[l] exists.
+
+- The label C.labels[l] is of the form t∗ rt.
+
+- The reference type rt_1 is valid.
+
+- The reference type rt_2 is valid.
+
+- The reference type rt_2 matches the reference type rt_1.
+
+- The reference type rt_1 ∖ rt_2 matches the reference type rt.
+
+    C.labels[l] = t∗ rt C ⊢ rt_1 : ok C ⊢ rt_2 : ok C ⊢ rt_2 ≤ rt_1 C ⊢ rt_1 ∖ rt_2 ≤ rt ⟹ C ⊢ br_on_cast_fail l rt_1 rt_2 : t∗ rt_1 → t∗ rt_2
+
+#### 3.4.2.11 call x
+
+The instruction (call x) is valid with the instruction type t_1∗ → t_2∗ if:
+
+- The function C.funcs[x] exists.
+
+- The expansion of C.funcs[x] is (func t_1∗ → t_2∗).
+
+    C.funcs[x] ≈ func t_1∗ → t_2∗ ⟹ C ⊢ call x : t_1∗ → t_2∗
+
+#### 3.4.2.12 call_ref x
+
+The instruction (call_ref x) is valid with the instruction type t_1∗ (ref null x) → t_2∗ if:
+
+- The type C.types[x] exists.
+
+- The expansion of C.types[x] is (func t_1∗ → t_2∗).
+
+    C.types[x] ≈ func t_1∗ → t_2∗ ⟹ C ⊢ call_ref x : t_1∗ (ref null x) → t_2∗
+
+#### 3.4.2.13 call_indirect x y
+
+The instruction (call_indirect x y) is valid with the instruction type t_1∗ at → t_2∗ if:
+
+- The table C.tables[x] exists.
+
+- The table C.tables[x] is of the form (at lim rt).
+
+- The reference type rt matches the reference type (ref null func).
+
+- The type C.types[y] exists.
+
+- The expansion of C.types[y] is (func t_1∗ → t_2∗).
+
+    C.tables[x] = at lim rt C ⊢ rt ≤ (ref null func) C.types[y] ≈ func t_1∗ → t_2∗ ⟹ C ⊢ call_indirect x y : t_1∗ at → t_2∗
+
+#### 3.4.2.14 return
+
+The instruction return is valid with the instruction type t_1∗ t∗ → t_2∗ if:
+
+- The result type C.return is of the form t∗.
+
+- The instruction type t_1∗ → t_2∗ is valid.
+
+    C.return = (t∗) C ⊢ t_1∗ → t_2∗ : ok ⟹ C ⊢ return : t_1∗ t∗ → t_2∗
+
+Note
+
+The return instruction is stack-polymorphic.
+
+C.return is absent (set to ϵ) when validating an expression that is not a function body. This differs from it being set to the empty result type [ϵ], which is the case for functions not returning anything.
+
+#### 3.4.2.15 return_call x
+
+The instruction (return_call x) is valid with the instruction type t_3∗ t_1∗ → t_4∗ if:
+
+- The function C.funcs[x] exists.
+
+- The expansion of C.funcs[x] is (func t_1∗ → t_2∗).
+
+- The result type C.return is of the form t′_2∗.
+
+- The result type t_2∗ matches the result type t′_2∗.
+
+- The instruction type t_3∗ → t_4∗ is valid.
+
+    C.funcs[x] ≈ func t_1∗ → t_2∗ C.return = (t′_2∗) C ⊢ t_2∗ ≤ t′_2∗ C ⊢ t_3∗ → t_4∗ : ok ⟹ C ⊢ return_call x : t_3∗ t_1∗ → t_4∗
+
+Note
+
+The return_call instruction is stack-polymorphic.
+
+#### 3.4.2.16 return_call_ref x
+
+The instruction (return_call_ref x) is valid with the instruction type t_3∗ t_1∗ (ref null x) → t_4∗ if:
+
+- The type C.types[x] exists.
+
+- The expansion of C.types[x] is (func t_1∗ → t_2∗).
+
+- The result type C.return is of the form t′_2∗.
+
+- The result type t_2∗ matches the result type t′_2∗.
+
+- The instruction type t_3∗ → t_4∗ is valid.
+
+    C.types[x] ≈ func t_1∗ → t_2∗ C.return = (t′_2∗) C ⊢ t_2∗ ≤ t′_2∗ C ⊢ t_3∗ → t_4∗ : ok ⟹ C ⊢ return_call_ref x : t_3∗ t_1∗ (ref null x) → t_4∗
+
+Note
+
+The return_call_ref instruction is stack-polymorphic.
+
+#### 3.4.2.17 return_call_indirect x y
+
+The instruction (return_call_indirect x y) is valid with the instruction type t_3∗ t_1∗ at → t_4∗ if:
+
+- The table C.tables[x] exists.
+
+- The table C.tables[x] is of the form (at lim rt).
+
+- The reference type rt matches the reference type (ref null func).
+
+- The type C.types[y] exists.
+
+- The expansion of C.types[y] is (func t_1∗ → t_2∗).
+
+- The result type C.return is of the form t′_2∗.
+
+- The result type t_2∗ matches the result type t′_2∗.
+
+- The instruction type t_3∗ → t_4∗ is valid.
+
+    C.tables[x] = at lim rt C ⊢ rt ≤ (ref null func)
+    C.types[y] ≈ func t_1∗ → t_2∗ C.return = (t′_2∗) C ⊢ t_2∗ ≤ t′_2∗ C ⊢ t_3∗ → t_4∗ : ok ⟹ C ⊢ return_call_indirect x y : t_3∗ t_1∗ at → t_4∗
+
+Note
+
+The return_call_indirect instruction is stack-polymorphic.
+
+#### 3.4.2.18 throw x
+
+The instruction (throw x) is valid with the instruction type t_1∗ t∗ → t_2∗ if:
+
+- The tag C.tags[x] exists.
+
+- The expansion of C.tags[x] is (func t∗ →).
+
+- The instruction type t_1∗ → t_2∗ is valid.
+
+    C.tags[x] ≈ func t∗ → ϵ C ⊢ t_1∗ → t_2∗ : ok ⟹ C ⊢ throw x : t_1∗ t∗ → t_2∗
+
+Note
+
+The throw instruction is stack-polymorphic.
+
+#### 3.4.2.19 throw_ref
+
+The instruction throw_ref is valid with the instruction type t_1∗ (ref null exn) → t_2∗ if:
+
+- The instruction type t_1∗ → t_2∗ is valid.
+
+    C ⊢ t_1∗ → t_2∗ : ok ⟹ C ⊢ throw_ref : t_1∗ (ref null exn) → t_2∗
+
+Note
+
+The throw_ref instruction is stack-polymorphic.
+
+#### 3.4.2.20 try_table blocktype catch∗ instr∗
+
+The instruction (try_table bt catch∗ instr∗) is valid with the instruction type t_1∗ → t_2∗ if:
+
+- The block type bt is valid as the instruction type t_1∗ → t_2∗.
+
+- Let C′ be the same context as C, but with the result type sequence t_2∗ prepended to the field labels.
+
+- Under the context C′, the instruction sequence instr∗ is valid with the instruction type t_1∗ →_(x∗) t_2∗.
+
+- For all catch in catch∗:
+
+   - The catch clause catch is valid.
+
+    C ⊢ bt : t_1∗ → t_2∗ {labels (t_2∗)} ⊕ C ⊢ instr∗ : t_1∗ →_(x∗) t_2∗ (C ⊢ catch : ok)∗ ⟹ C ⊢ try_table bt catch∗ instr∗ : t_1∗ → t_2∗
+
+#### 3.4.2.21 catch x l
+
+The catch clause (catch x l) is valid if:
+
+- The tag C.tags[x] exists.
+
+- The expansion of C.tags[x] is (func t∗ →).
+
+- The label C.labels[l] exists.
+
+- The result type t∗ matches the label C.labels[l].
+
+    C.tags[x] ≈ func t∗ → ϵ C ⊢ t∗ ≤ C.labels[l] ⟹ C ⊢ catch x l : ok
+
+#### 3.4.2.22 catch_ref x l
+
+The catch clause (catch_ref x l) is valid if:
+
+- The tag C.tags[x] exists.
+
+- The expansion of C.tags[x] is (func t∗ →).
+
+- The label C.labels[l] exists.
+
+- The result type t∗ (ref exn) matches the label C.labels[l].
+
+    C.tags[x] ≈ func t∗ → ϵ C ⊢ t∗ (ref exn) ≤ C.labels[l] ⟹ C ⊢ catch_ref x l : ok
+
+#### 3.4.2.23 catch_all l
+
+The catch clause (catch_all l) is valid if:
+
+- The label C.labels[l] exists.
+
+- The result type ϵ matches the label C.labels[l].
+
+    C ⊢ ϵ ≤ C.labels[l] ⟹ C ⊢ catch_all l : ok
+
+#### 3.4.2.24 catch_all_ref l
+
+The catch clause (catch_all_ref l) is valid if:
+
+- The label C.labels[l] exists.
+
+- The result type (ref exn) matches the label C.labels[l].
+
+    C ⊢ (ref exn) ≤ C.labels[l] ⟹ C ⊢ catch_all_ref l : ok
+
+### 3.4.3 Variable Instructions
+
+#### 3.4.3.1 local.get x
+
+The instruction (local.get x) is valid with the instruction type ϵ → t if:
+
+- The local C.locals[x] exists.
+
+- The local C.locals[x] is of the form (set t).
+
+    C.locals[x] = set t ⟹ C ⊢ local.get x : ϵ → t
+
+#### 3.4.3.2 local.set x
+
+The instruction (local.set x) is valid with the instruction type t →_x ϵ if:
+
+- The local C.locals[x] exists.
+
+- The local C.locals[x] is of the form (init t).
+
+    C.locals[x] = init t ⟹ C ⊢ local.set x : t →_x ϵ
+
+#### 3.4.3.3 local.tee x
+
+The instruction (local.tee x) is valid with the instruction type t →_x t if:
+
+- The local C.locals[x] exists.
+
+- The local C.locals[x] is of the form (init t).
+
+    C.locals[x] = init t ⟹ C ⊢ local.tee x : t →_x t
+
+#### 3.4.3.4 global.get x
+
+The instruction (global.get x) is valid with the instruction type ϵ → t if:
+
+- The global C.globals[x] exists.
+
+- The global C.globals[x] is of the form (mut? t).
+
+    C.globals[x] = mut? t ⟹ C ⊢ global.get x : ϵ → t
+
+#### 3.4.3.5 global.set x
+
+The instruction (global.set x) is valid with the instruction type t → ϵ if:
+
+- The global C.globals[x] exists.
+
+- The global C.globals[x] is of the form (mut t).
+
+    C.globals[x] = mut t ⟹ C ⊢ global.set x : t → ϵ
+
+### 3.4.4 Table Instructions
+
+#### 3.4.4.1 table.get x
+
+The instruction (table.get x) is valid with the instruction type at → rt if:
+
+- The table C.tables[x] exists.
+
+- The table C.tables[x] is of the form (at lim rt).
+
+    C.tables[x] = at lim rt ⟹ C ⊢ table.get x : at → rt
+
+#### 3.4.4.2 table.set x
+
+The instruction (table.set x) is valid with the instruction type at rt → ϵ if:
+
+- The table C.tables[x] exists.
+
+- The table C.tables[x] is of the form (at lim rt).
+
+    C.tables[x] = at lim rt ⟹ C ⊢ table.set x : at rt → ϵ
+
+#### 3.4.4.3 table.size x
+
+The instruction (table.size x) is valid with the instruction type ϵ → at if:
+
+- The table C.tables[x] exists.
+
+- The table C.tables[x] is of the form (at lim rt).
+
+    C.tables[x] = at lim rt ⟹ C ⊢ table.size x : ϵ → at
+
+#### 3.4.4.4 table.grow x
+
+The instruction (table.grow x) is valid with the instruction type rt at → i32 if:
+
+- The table C.tables[x] exists.
+
+- The table C.tables[x] is of the form (at lim rt).
+
+    C.tables[x] = at lim rt ⟹ C ⊢ table.grow x : rt at → i32
+
+#### 3.4.4.5 table.fill x
+
+The instruction (table.fill x) is valid with the instruction type at rt at → ϵ if:
+
+- The table C.tables[x] exists.
+
+- The table C.tables[x] is of the form (at lim rt).
+
+    C.tables[x] = at lim rt ⟹ C ⊢ table.fill x : at rt at → ϵ
+
+#### 3.4.4.6 table.copy x y
+
+The instruction (table.copy x_1 x_2) is valid with the instruction type at_1 at_2 addrtype → ϵ if:
+
+- The table C.tables[x_1] exists.
+
+- The table C.tables[x_1] is of the form (at_1 lim_1 rt_1).
+
+- The table C.tables[x_2] exists.
+
+- The table C.tables[x_2] is of the form (at_2 lim_2 rt_2).
+
+- The reference type rt_2 matches the reference type rt_1.
+
+- The address type addrtype is min(at_1, at_2).
+
+    C.tables[x_1] = at_1 lim_1 rt_1 C.tables[x_2] = at_2 lim_2 rt_2 C ⊢ rt_2 ≤ rt_1 ⟹ C ⊢ table.copy x_1 x_2 : at_1 at_2 min(at_1, at_2) → ϵ
+
+#### 3.4.4.7 table.init x y
+
+The instruction (table.init x y) is valid with the instruction type at i32 i32 → ϵ if:
+
+- The table C.tables[x] exists.
+
+- The table C.tables[x] is of the form (at lim rt_1).
+
+- The element segment C.elems[y] exists.
+
+- The element segment C.elems[y] is of the form rt_2.
+
+- The reference type rt_2 matches the reference type rt_1.
+
+    C.tables[x] = at lim rt_1 C.elems[y] = rt_2 C ⊢ rt_2 ≤ rt_1 ⟹ C ⊢ table.init x y : at i32 i32 → ϵ
+
+#### 3.4.4.8 elem.drop x
+
+The instruction (elem.drop x) is valid with the instruction type ϵ → ϵ if:
+
+- The element segment C.elems[x] exists.
+
+    C.elems[x] = rt ⟹ C ⊢ elem.drop x : ϵ → ϵ
+
+### 3.4.5 Memory Instructions
+
+#### 3.4.5.1 t.load x memarg
+
+The instruction (nt.load x memarg) is valid with the instruction type at → nt if:
+
+- The memory C.mems[x] exists.
+
+- The memory C.mems[x] is of the form (at lim page).
+
+- 2^(memarg.align) is less than or equal to ∣nt∣/8.
+
+    C.mems[x] = at lim page 2^(memarg.align) ≤ ∣nt∣/8 ⟹ C ⊢ nt.load x memarg : at → nt
+
+#### 3.4.5.2 t.loadN_sx x memarg
+
+The instruction (i N.loadM_sx x memarg) is valid with the instruction type at → i N if:
+
+- The memory C.mems[x] exists.
+
+- The memory C.mems[x] is of the form (at lim page).
+
+- 2^(memarg.align) is less than or equal to M/8.
+
+    C.mems[x] = at lim page 2^(memarg.align) ≤ M/8 ⟹ C ⊢ i N.loadM_sx x memarg : at → i N
+
+#### 3.4.5.3 t.store x memarg
+
+The instruction (nt.store x memarg) is valid with the instruction type at nt → ϵ if:
+
+- The memory C.mems[x] exists.
+
+- The memory C.mems[x] is of the form (at lim page).
+
+- 2^(memarg.align) is less than or equal to ∣nt∣/8.
+
+    C.mems[x] = at lim page 2^(memarg.align) ≤ ∣nt∣/8 ⟹ C ⊢ nt.store x memarg : at nt → ϵ
+
+#### 3.4.5.4 t.storeN x memarg
+
+The instruction (i N.storeM x memarg) is valid with the instruction type at i N → ϵ if:
+
+- The memory C.mems[x] exists.
+
+- The memory C.mems[x] is of the form (at lim page).
+
+- 2^(memarg.align) is less than or equal to M/8.
+
+    C.mems[x] = at lim page 2^(memarg.align) ≤ M/8 ⟹ C ⊢ i N.storeM x memarg : at i N → ϵ
+
+#### 3.4.5.5 v128.load x memarg
+
+The instruction (v128.load x memarg) is valid with the instruction type at → v128 if:
+
+- The memory C.mems[x] exists.
+
+- The memory C.mems[x] is of the form (at lim page).
+
+- 2^(memarg.align) is less than or equal to ∣v128∣/8.
+
+    C.mems[x] = at lim page 2^(memarg.align) ≤ ∣v128∣/8 ⟹ C ⊢ v128.load x memarg : at → v128
+
+#### 3.4.5.6 v128.loadNxM_sx x memarg
+
+The instruction (v128.loadMxN_sx x memarg) is valid with the instruction type at → v128 if:
+
+- The memory C.mems[x] exists.
+
+- The memory C.mems[x] is of the form (at lim page).
+
+- 2^(memarg.align) is less than or equal to M/8 ⋅ N.
+
+    C.mems[x] = at lim page 2^(memarg.align) ≤ M/8 ⋅ N ⟹ C ⊢ v128.loadMxN_sx x memarg : at → v128
+
+#### 3.4.5.7 v128.loadN_splat x memarg
+
+The instruction (v128.loadN_splat x memarg) is valid with the instruction type at → v128 if:
+
+- The memory C.mems[x] exists.
+
+- The memory C.mems[x] is of the form (at lim page).
+
+- 2^(memarg.align) is less than or equal to N/8.
+
+    C.mems[x] = at lim page 2^(memarg.align) ≤ N/8 ⟹ C ⊢ v128.loadN_splat x memarg : at → v128
+
+#### 3.4.5.8 v128.loadN_zero x memarg
+
+The instruction (v128.loadN_zero x memarg) is valid with the instruction type at → v128 if:
+
+- The memory C.mems[x] exists.
+
+- The memory C.mems[x] is of the form (at lim page).
+
+- 2^(memarg.align) is less than or equal to N/8.
+
+    C.mems[x] = at lim page 2^(memarg.align) ≤ N/8 ⟹ C ⊢ v128.loadN_zero x memarg : at → v128
+
+#### 3.4.5.9 v128.loadN_lane x memarg laneidx
+
+The instruction (v128.loadN_lane x memarg i) is valid with the instruction type at v128 → v128 if:
+
+- The memory C.mems[x] exists.
+
+- The memory C.mems[x] is of the form (at lim page).
+
+- 2^(memarg.align) is less than or equal to N/8.
+
+- i is less than 128/N.
+
+    C.mems[x] = at lim page 2^(memarg.align) ≤ N/8 i < 128/N ⟹ C ⊢ v128.loadN_lane x memarg i : at v128 → v128
+
+#### 3.4.5.10 v128.store x memarg
+
+The instruction (v128.store x memarg) is valid with the instruction type at v128 → ϵ if:
+
+- The memory C.mems[x] exists.
+
+- The memory C.mems[x] is of the form (at lim page).
+
+- 2^(memarg.align) is less than or equal to ∣v128∣/8.
+
+    C.mems[x] = at lim page 2^(memarg.align) ≤ ∣v128∣/8 ⟹ C ⊢ v128.store x memarg : at v128 → ϵ
+
+#### 3.4.5.11 v128.storeN_lane x memarg laneidx
+
+The instruction (v128.storeN_lane x memarg i) is valid with the instruction type at v128 → ϵ if:
+
+- The memory C.mems[x] exists.
+
+- The memory C.mems[x] is of the form (at lim page).
+
+- 2^(memarg.align) is less than or equal to N/8.
+
+- i is less than 128/N.
+
+    C.mems[x] = at lim page 2^(memarg.align) ≤ N/8 i < 128/N ⟹ C ⊢ v128.storeN_lane x memarg i : at v128 → ϵ
+
+#### 3.4.5.12 memory.size x
+
+The instruction (memory.size x) is valid with the instruction type ϵ → at if:
+
+- The memory C.mems[x] exists.
+
+- The memory C.mems[x] is of the form (at lim page).
+
+    C.mems[x] = at lim page ⟹ C ⊢ memory.size x : ϵ → at
+
+#### 3.4.5.13 memory.grow x
+
+The instruction (memory.grow x) is valid with the instruction type at → at if:
+
+- The memory C.mems[x] exists.
+
+- The memory C.mems[x] is of the form (at lim page).
+
+    C.mems[x] = at lim page ⟹ C ⊢ memory.grow x : at → at
+
+#### 3.4.5.14 memory.fill x
+
+The instruction (memory.fill x) is valid with the instruction type at i32 at → ϵ if:
+
+- The memory C.mems[x] exists.
+
+- The memory C.mems[x] is of the form (at lim page).
+
+    C.mems[x] = at lim page ⟹ C ⊢ memory.fill x : at i32 at → ϵ
+
+#### 3.4.5.15 memory.copy x y
+
+The instruction (memory.copy x_1 x_2) is valid with the instruction type at_1 at_2 addrtype → ϵ if:
+
+- The memory C.mems[x_1] exists.
+
+- The memory C.mems[x_1] is of the form (at_1 lim_1 page).
+
+- The memory C.mems[x_2] exists.
+
+- The memory C.mems[x_2] is of the form (at_2 lim_2 page).
+
+- The address type addrtype is min(at_1, at_2).
+
+    C.mems[x_1] = at_1 lim_1 page C.mems[x_2] = at_2 lim_2 page ⟹ C ⊢ memory.copy x_1 x_2 : at_1 at_2 min(at_1, at_2) → ϵ
+
+#### 3.4.5.16 memory.init x y
+
+The instruction (memory.init x y) is valid with the instruction type at i32 i32 → ϵ if:
+
+- The memory C.mems[x] exists.
+
+- The memory C.mems[x] is of the form (at lim page).
+
+- The data segment C.datas[y] exists.
+
+- The data segment C.datas[y] is of the form ok.
+
+    C.mems[x] = at lim page C.datas[y] = ok ⟹ C ⊢ memory.init x y : at i32 i32 → ϵ
+
+#### 3.4.5.17 data.drop x
+
+The instruction (data.drop x) is valid with the instruction type ϵ → ϵ if:
+
+- The data segment C.datas[x] exists.
+
+- The data segment C.datas[x] is of the form ok.
+
+    C.datas[x] = ok ⟹ C ⊢ data.drop x : ϵ → ϵ
+
+### 3.4.6 Reference Instructions
+
+#### 3.4.6.1 ref.null ht
+
+The instruction (ref.null ht) is valid with the instruction type ϵ → (ref null ht) if:
+
+- The heap type ht is valid.
+
+    C ⊢ ht : ok ⟹ C ⊢ ref.null ht : ϵ → (ref null ht)
+
+#### 3.4.6.2 ref.func x
+
+The instruction (ref.func x) is valid with the instruction type ϵ → (ref dt) if:
+
+- The function C.funcs[x] exists.
+
+- The function C.funcs[x] is of the form dt.
+
+- x is contained in C.refs.
+
+    C.funcs[x] = dt x ∈ C.refs ⟹ C ⊢ ref.func x : ϵ → (ref dt)
+
+#### 3.4.6.3 ref.is_null
+
+The instruction ref.is_null is valid with the instruction type (ref null ht) → i32 if:
+
+- The heap type ht is valid.
+
+    C ⊢ ht : ok ⟹ C ⊢ ref.is_null : (ref null ht) → i32
+
+#### 3.4.6.4 ref.as_non_null
+
+The instruction ref.as_non_null is valid with the instruction type (ref null ht) → (ref ht) if:
+
+- The heap type ht is valid.
+
+    C ⊢ ht : ok ⟹ C ⊢ ref.as_non_null : (ref null ht) → (ref ht)
+
+#### 3.4.6.5 ref.eq
+
+The instruction ref.eq is valid with the instruction type (ref null eq) (ref null eq) → i32.
+
+    ⟹ C ⊢ ref.eq : (ref null eq) (ref null eq) → i32
+
+#### 3.4.6.6 ref.test rt
+
+The instruction (ref.test rt) is valid with the instruction type rt′ → i32 if:
+
+- The reference type rt is valid.
+
+- The reference type rt′ is valid.
+
+- The reference type rt matches the reference type rt′.
+
+    C ⊢ rt : ok C ⊢ rt′ : ok C ⊢ rt ≤ rt′ ⟹ C ⊢ ref.test rt : rt′ → i32
+
+Note
+
+The liberty to pick a supertype rt′ allows typing the instruction with the least precise super type of rt as input, that is, the top type in the corresponding heap subtyping hierarchy.
+
+#### 3.4.6.7 ref.cast rt
+
+The instruction (ref.cast rt) is valid with the instruction type rt′ → rt if:
+
+- The reference type rt is valid.
+
+- The reference type rt′ is valid.
+
+- The reference type rt matches the reference type rt′.
+
+    C ⊢ rt : ok C ⊢ rt′ : ok C ⊢ rt ≤ rt′ ⟹ C ⊢ ref.cast rt : rt′ → rt
+
+Note
+
+The liberty to pick a supertype rt′ allows typing the instruction with the least precise super type of rt as input, that is, the top type in the corresponding heap subtyping hierarchy.
+
+### 3.4.7 Aggregate Reference Instructions
+
+#### 3.4.7.1 struct.new x
+
+The instruction (struct.new x) is valid with the instruction type t∗ → (ref x) if:
+
+- The type C.types[x] exists.
+
+- The expansion of C.types[x] is (struct (mut? zt)∗).
+
+- The value type sequence t∗ is unpack(zt)∗.
+
+    C.types[x] ≈ struct (mut? zt)∗ ⟹ C ⊢ struct.new x : unpack(zt)∗ → (ref x)
+
+#### 3.4.7.2 struct.new_default x
+
+The instruction (struct.new_default x) is valid with the instruction type ϵ → (ref x) if:
+
+- The type C.types[x] exists.
+
+- The expansion of C.types[x] is (struct (mut? zt)∗).
+
+- For all zt in zt∗:
+
+   - A default value for unpack(zt) is defined.
+
+    C.types[x] ≈ struct (mut? zt)∗ (default_(unpack(zt)) = ϵ)∗ ⟹ C ⊢ struct.new_default x : ϵ → (ref x)
+
+#### 3.4.7.3 struct.get_sx? x y
+
+The instruction (struct.get_sx? x i) is valid with the instruction type (ref null x) → t if:
+
+- The type C.types[x] exists.
+
+- The expansion of C.types[x] is (struct ft∗).
+
+- The length of ft∗ is greater than i.
+
+- The field type ft∗[i] is of the form (mut? zt).
+
+- The signedness sx? is absent if and only if zt is a packed type.
+
+- The value type t is unpack(zt).
+
+    C.types[x] ≈ struct ft∗ ft∗[i] = mut? zt sx? = ϵ ⇔ zt = unpack(zt) ⟹ C ⊢ struct.get_sx? x i : (ref null x) → unpack(zt)
+
+#### 3.4.7.4 struct.set x y
+
+The instruction (struct.set x i) is valid with the instruction type (ref null x) t → ϵ if:
+
+- The type C.types[x] exists.
+
+- The expansion of C.types[x] is (struct ft∗).
+
+- The length of ft∗ is greater than i.
+
+- The field type ft∗[i] is of the form (mut zt).
+
+- The value type t is unpack(zt).
+
+    C.types[x] ≈ struct ft∗ ft∗[i] = mut zt ⟹ C ⊢ struct.set x i : (ref null x) unpack(zt) → ϵ
+
+#### 3.4.7.5 array.new x
+
+The instruction (array.new x) is valid with the instruction type t i32 → (ref x) if:
+
+- The type C.types[x] exists.
+
+- The expansion of C.types[x] is (array (mut? zt)).
+
+- The value type t is unpack(zt).
+
+    C.types[x] ≈ array (mut? zt) ⟹ C ⊢ array.new x : unpack(zt) i32 → (ref x)
+
+#### 3.4.7.6 array.new_default x
+
+The instruction (array.new_default x) is valid with the instruction type i32 → (ref x) if:
+
+- The type C.types[x] exists.
+
+- The expansion of C.types[x] is (array (mut? zt)).
+
+- A default value for unpack(zt) is defined.
+
+    C.types[x] ≈ array (mut? zt) default_(unpack(zt)) = ϵ ⟹ C ⊢ array.new_default x : i32 → (ref x)
+
+#### 3.4.7.7 array.new_fixed x n
+
+The instruction (array.new_fixed x n) is valid with the instruction type t^n → (ref x) if:
+
+- The type C.types[x] exists.
+
+- The expansion of C.types[x] is (array (mut? zt)).
+
+- The value type t is unpack(zt).
+
+    C.types[x] ≈ array (mut? zt) ⟹ C ⊢ array.new_fixed x n : unpack(zt)^n → (ref x)
+
+#### 3.4.7.8 array.new_elem x y
+
+The instruction (array.new_elem x y) is valid with the instruction type i32 i32 → (ref x) if:
+
+- The type C.types[x] exists.
+
+- The expansion of C.types[x] is (array (mut? rt)).
+
+- The element segment C.elems[y] exists.
+
+- The element segment C.elems[y] matches the reference type rt.
+
+    C.types[x] ≈ array (mut? rt) C ⊢ C.elems[y] ≤ rt ⟹ C ⊢ array.new_elem x y : i32 i32 → (ref x)
+
+#### 3.4.7.9 array.new_data x y
+
+The instruction (array.new_data x y) is valid with the instruction type i32 i32 → (ref x) if:
+
+- The type C.types[x] exists.
+
+- The expansion of C.types[x] is (array (mut? zt)).
+
+- The value type unpack(zt) is of the form numtype or unpack(zt) is of the form vectype.
+
+- The data segment C.datas[y] exists.
+
+- The data segment C.datas[y] is of the form ok.
+
+    C.types[x] ≈ array (mut? zt) unpack(zt) = numtype ∨ unpack(zt) = vectype C.datas[y] = ok ⟹ C ⊢ array.new_data x y : i32 i32 → (ref x)
+
+#### 3.4.7.10 array.get_sx? x
+
+The instruction (array.get_sx? x) is valid with the instruction type (ref null x) i32 → t if:
+
+- The type C.types[x] exists.
+
+- The expansion of C.types[x] is (array (mut? zt)).
+
+- The signedness sx? is absent if and only if zt is a packed type.
+
+- The value type t is unpack(zt).
+
+    C.types[x] ≈ array (mut? zt) sx? = ϵ ⇔ zt = unpack(zt) ⟹ C ⊢ array.get_sx? x : (ref null x) i32 → unpack(zt)
+
+#### 3.4.7.11 array.set x
+
+The instruction (array.set x) is valid with the instruction type (ref null x) i32 t → ϵ if:
+
+- The type C.types[x] exists.
+
+- The expansion of C.types[x] is (array (mut zt)).
+
+- The value type t is unpack(zt).
+
+    C.types[x] ≈ array (mut zt) ⟹ C ⊢ array.set x : (ref null x) i32 unpack(zt) → ϵ
+
+#### 3.4.7.12 array.len
+
+The instruction array.len is valid with the instruction type (ref null array) → i32.
+
+    ⟹ C ⊢ array.len : (ref null array) → i32
+
+#### 3.4.7.13 array.fill x
+
+The instruction (array.fill x) is valid with the instruction type (ref null x) i32 t i32 → ϵ if:
+
+- The type C.types[x] exists.
+
+- The expansion of C.types[x] is (array (mut zt)).
+
+- The value type t is unpack(zt).
+
+    C.types[x] ≈ array (mut zt) ⟹ C ⊢ array.fill x : (ref null x) i32 unpack(zt) i32 → ϵ
+
+#### 3.4.7.14 array.copy x y
+
+The instruction (array.copy x_1 x_2) is valid with the instruction type (ref null x_1) i32 (ref null x_2) i32 i32 → ϵ if:
+
+- The type C.types[x_1] exists.
+
+- The expansion of C.types[x_1] is (array (mut zt_1)).
+
+- The type C.types[x_2] exists.
+
+- The expansion of C.types[x_2] is (array (mut? zt_2)).
+
+- The storage type zt_2 matches the storage type zt_1.
+
+    C.types[x_1] ≈ array (mut zt_1) C.types[x_2] ≈ array (mut? zt_2) C ⊢ zt_2 ≤ zt_1 ⟹ C ⊢ array.copy x_1 x_2 : (ref null x_1) i32 (ref null x_2) i32 i32 → ϵ
+
+#### 3.4.7.15 array.init_elem x y
+
+The instruction (array.init_elem x y) is valid with the instruction type (ref null x) i32 i32 i32 → ϵ if:
+
+- The type C.types[x] exists.
+
+- The expansion of C.types[x] is (array (mut zt)).
+
+- The element segment C.elems[y] exists.
+
+- The element segment C.elems[y] matches the storage type zt.
+
+    C.types[x] ≈ array (mut zt) C ⊢ C.elems[y] ≤ zt ⟹ C ⊢ array.init_elem x y : (ref null x) i32 i32 i32 → ϵ
+
+#### 3.4.7.16 array.init_data x y
+
+The instruction (array.init_data x y) is valid with the instruction type (ref null x) i32 i32 i32 → ϵ if:
+
+- The type C.types[x] exists.
+
+- The expansion of C.types[x] is (array (mut zt)).
+
+- The value type unpack(zt) is of the form numtype or unpack(zt) is of the form vectype.
+
+- The data segment C.datas[y] exists.
+
+- The data segment C.datas[y] is of the form ok.
+
+    C.types[x] ≈ array (mut zt) unpack(zt) = numtype ∨ unpack(zt) = vectype C.datas[y] = ok ⟹ C ⊢ array.init_data x y : (ref null x) i32 i32 i32 → ϵ
+
+### 3.4.8 Scalar Reference Instructions
+
+#### 3.4.8.1 ref.i31
+
+The instruction ref.i31 is valid with the instruction type i32 → (ref i31).
+
+    ⟹ C ⊢ ref.i31 : i32 → (ref i31)
+
+#### 3.4.8.2 i31.get_sx
+
+The instruction (i31.get_sx) is valid with the instruction type (ref null i31) → i32.
+
+    ⟹ C ⊢ i31.get_sx : (ref null i31) → i32
+
+### 3.4.9 External Reference Instructions
+
+#### 3.4.9.1 any.convert_extern
+
+The instruction any.convert_extern is valid with the instruction type (ref null_1? extern) → (ref null_2? any) if:
+
+- null_1? is of the form null_2?.
+
+    null_1? = null_2? ⟹ C ⊢ any.convert_extern : (ref null_1? extern) → (ref null_2? any)
+
+#### 3.4.9.2 extern.convert_any
+
+The instruction extern.convert_any is valid with the instruction type (ref null_1? any) → (ref null_2? extern) if:
+
+- null_1? is of the form null_2?.
+
+    null_1? = null_2? ⟹ C ⊢ extern.convert_any : (ref null_1? any) → (ref null_2? extern)
+
+### 3.4.10 Numeric Instructions
+
+#### 3.4.10.1 t.const c
+
+The instruction (nt.const c_(nt)) is valid with the instruction type ϵ → nt.
+
+    ⟹ C ⊢ nt.const c_(nt) : ϵ → nt
+
+#### 3.4.10.2 t.unop
+
+The instruction (nt.unop_(nt)) is valid with the instruction type nt → nt.
+
+    ⟹ C ⊢ nt.unop_(nt) : nt → nt
+
+#### 3.4.10.3 t.binop
+
+The instruction (nt.binop_(nt)) is valid with the instruction type nt nt → nt.
+
+    ⟹ C ⊢ nt.binop_(nt) : nt nt → nt
+
+#### 3.4.10.4 t.testop
+
+The instruction (nt.testop_(nt)) is valid with the instruction type nt → i32.
+
+    ⟹ C ⊢ nt.testop_(nt) : nt → i32
+
+#### 3.4.10.5 t.relop
+
+The instruction (nt.relop_(nt)) is valid with the instruction type nt nt → i32.
+
+    ⟹ C ⊢ nt.relop_(nt) : nt nt → i32
+
+#### 3.4.10.6 t_1.cvtop_t_2_sx?
+
+The instruction (nt_1.cvtop_nt_2) is valid with the instruction type nt_2 → nt_1.
+
+    ⟹ C ⊢ nt_1.cvtop_nt_2 : nt_2 → nt_1
+
+### 3.4.11 Vector Instructions
+
+Vector instructions can have a prefix to describe the shape of the operand. Packed numeric types, i8 and i16, are not value types. An auxiliary function maps such packed type shapes to value types:
+
+unpack(i NxN) = unpack(i N)
+
+#### 3.4.11.1 v128.const c
+
+The instruction (v128.const c) is valid with the instruction type ϵ → v128.
+
+    ⟹ C ⊢ v128.const c : ϵ → v128
+
+#### 3.4.11.2 v128.vvunop
+
+The instruction (v128.vvunop) is valid with the instruction type v128 → v128.
+
+    ⟹ C ⊢ v128.vvunop : v128 → v128
+
+#### 3.4.11.3 v128.vvbinop
+
+The instruction (v128.vvbinop) is valid with the instruction type v128 v128 → v128.
+
+    ⟹ C ⊢ v128.vvbinop : v128 v128 → v128
+
+#### 3.4.11.4 v128.vvternop
+
+The instruction (v128.vvternop) is valid with the instruction type v128 v128 v128 → v128.
+
+    ⟹ C ⊢ v128.vvternop : v128 v128 v128 → v128
+
+#### 3.4.11.5 v128.vvtestop
+
+The instruction (v128.vvtestop) is valid with the instruction type v128 → i32.
+
+    ⟹ C ⊢ v128.vvtestop : v128 → i32
+
+#### 3.4.11.6 shape.vunop
+
+The instruction (sh.vunop) is valid with the instruction type v128 → v128.
+
+    ⟹ C ⊢ sh.vunop : v128 → v128
+
+#### 3.4.11.7 shape.vbinop
+
+The instruction (sh.vbinop) is valid with the instruction type v128 v128 → v128.
+
+    ⟹ C ⊢ sh.vbinop : v128 v128 → v128
+
+#### 3.4.11.8 shape.vternop
+
+The instruction (sh.vternop) is valid with the instruction type v128 v128 v128 → v128.
+
+    ⟹ C ⊢ sh.vternop : v128 v128 v128 → v128
+
+#### 3.4.11.9 shape.vtestop
+
+The instruction (sh.vtestop) is valid with the instruction type v128 → i32.
+
+    ⟹ C ⊢ sh.vtestop : v128 → i32
+
+#### 3.4.11.10 shape.vrelop
+
+The instruction (sh.vrelop) is valid with the instruction type v128 v128 → v128.
+
+    ⟹ C ⊢ sh.vrelop : v128 v128 → v128
+
+#### 3.4.11.11 ishape.vishiftop
+
+The instruction (sh.vshiftop) is valid with the instruction type v128 i32 → v128.
+
+    ⟹ C ⊢ sh.vshiftop : v128 i32 → v128
+
+#### 3.4.11.12 ishape.bitmask
+
+The instruction (sh.bitmask) is valid with the instruction type v128 → i32.
+
+    ⟹ C ⊢ sh.bitmask : v128 → i32
+
+#### 3.4.11.13 i8x16.vswizzlop
+
+The instruction (sh.vswizzlop) is valid with the instruction type v128 v128 → v128.
+
+    ⟹ C ⊢ sh.vswizzlop : v128 v128 → v128
+
+#### 3.4.11.14 i8x16.shuffle laneidx^(16)
+
+The instruction (sh.shuffle i∗) is valid with the instruction type v128 v128 → v128 if:
+
+- For all i in i∗:
+
+   - The lane index i is less than 2 ⋅ dim(sh).
+
+    (i < 2 ⋅ dim(sh))∗ ⟹ C ⊢ sh.shuffle i∗ : v128 v128 → v128
+
+#### 3.4.11.15 shape.splat
+
+The instruction (sh.splat) is valid with the instruction type numtype → v128 if:
+
+- The number type numtype is unpack(sh).
+
+    ⟹ C ⊢ sh.splat : unpack(sh) → v128
+
+#### 3.4.11.16 shape.extract_lane_sx? laneidx
+
+The instruction (sh.extract_lane_sx? i) is valid with the instruction type v128 → numtype if:
+
+- The lane index i is less than dim(sh).
+
+- The number type numtype is unpack(sh).
+
+    i < dim(sh) ⟹ C ⊢ sh.extract_lane_sx? i : v128 → unpack(sh)
+
+#### 3.4.11.17 shape.replace_lane laneidx
+
+The instruction (sh.replace_lane i) is valid with the instruction type v128 numtype → v128 if:
+
+- The lane index i is less than dim(sh).
+
+- The number type numtype is unpack(sh).
+
+    i < dim(sh) ⟹ C ⊢ sh.replace_lane i : v128 unpack(sh) → v128
+
+#### 3.4.11.18 ishape_1.vextunop_ishape_2
+
+The instruction (sh_1.vextunop_sh_2) is valid with the instruction type v128 → v128.
+
+    ⟹ C ⊢ sh_1.vextunop_sh_2 : v128 → v128
+
+#### 3.4.11.19 ishape_1.vextbinop_ishape_2
+
+The instruction (sh_1.vextbinop_sh_2) is valid with the instruction type v128 v128 → v128.
+
+    ⟹ C ⊢ sh_1.vextbinop_sh_2 : v128 v128 → v128
+
+#### 3.4.11.20 ishape_1.vextternop_ishape_2
+
+The instruction (sh_1.vextternop_sh_2) is valid with the instruction type v128 v128 v128 → v128.
+
+    ⟹ C ⊢ sh_1.vextternop_sh_2 : v128 v128 v128 → v128
+
+#### 3.4.11.21 ishape_1.narrow_ishape_2_sx
+
+The instruction (sh_1.narrow_sh_2_sx) is valid with the instruction type v128 v128 → v128.
+
+    ⟹ C ⊢ sh_1.narrow_sh_2_sx : v128 v128 → v128
+
+#### 3.4.11.22 shape.vcvtop_half?_shape_sx?_zero?
+
+The instruction (sh_1.vcvtop_sh_2) is valid with the instruction type v128 → v128.
+
+    ⟹ C ⊢ sh_1.vcvtop_sh_2 : v128 → v128
+
+### 3.4.12 Instruction Sequences
+
+Typing of instruction sequences is defined recursively.
+
+#### 3.4.12.1 Empty Instruction Sequence: ϵ
+
+The instruction sequence instr∗ is valid with the instruction type it if:
+
+- Either:
+
+   - The instruction sequence instr∗ is empty.
+
+   - The instruction type it is of the form ϵ → ϵ.
+
+- Or:
+
+   - The instruction sequence instr∗ is of the form instr_1 instr_2∗.
+
+   - The instruction type it is of the form t_1∗ →_(x_1∗ x_2∗) t_3∗.
+
+   - The instruction instr_1 is valid with the instruction type t_1∗ →_(x_1∗) t_2∗.
+
+   - For all x_1 in x_1∗:
+
+      - The local C.locals[x_1] exists.
+
+      - The local C.locals[x_1] is of the form (init t).
+
+   - Under the context C with the local types of x_1∗ updated to (set t)∗, the instruction sequence instr_2∗ is valid with the instruction type t_2∗ →_(x_2∗) t_3∗.
+
+- Or:
+
+   - The instruction sequence instr∗ is valid with the instruction type it^(′′).
+
+   - The instruction type it^(′′) matches the instruction type it.
+
+   - The instruction type it is valid.
+
+- Or:
+
+   - The instruction type it is of the form t∗ t_1∗ →_(x∗) t∗ t_2∗.
+
+   - The instruction sequence instr∗ is valid with the instruction type t_1∗ →_(x∗) t_2∗.
+
+   - The result type t∗ is valid.
+
+    ⟹ C ⊢ ϵ : ϵ → ϵ
+
+    C ⊢ instr_1 : t_1∗ →_(x_1∗) t_2∗ (C.locals[x_1] = init t)∗ C[.local[x_1∗] = (set t)∗] ⊢ instr_2∗ : t_2∗ →_(x_2∗) t_3∗ ⟹ C ⊢ instr_1 instr_2∗ : t_1∗ →_(x_1∗ x_2∗) t_3∗
+
+    C ⊢ instr∗ : it C ⊢ it ≤ it′ C ⊢ it′ : ok ⟹ C ⊢ instr∗ : it′ C ⊢ instr∗ : t_1∗ →_(x∗) t_2∗ C ⊢ t∗ : ok ⟹ C ⊢ instr∗ : (t∗ t_1∗) →_(x∗) (t∗ t_2∗)
+
+Note
+
+In combination with the previous rule, subsumption allows to compose instructions whose types would not directly fit otherwise. For example, consider the instruction sequence
+
+(i32.const 1) (i32.const 2) (i32.add)
+
+To type this sequence, its subsequence (i32.const 2) (i32.add) needs to be valid with an intermediate type. But the direct type of (i32.const 2) is ϵ → i32, not matching the two inputs expected by i32.add. The subsumption rule allows to weaken the type of (const i32 2) to the supertype i32 → i32 i32, such that it can be composed with i32.add and yields the intermediate type i32 → i32 i32 for the subsequence. That can in turn be composed with the first constant.
+
+Furthermore, subsumption allows to drop init variables x∗ from the instruction type in a context where they are not needed, for example, at the end of the body of a block.
+
+### 3.4.13 Expressions
+
+Expressions expr are classified by result types t∗.
+
+The expression instr∗ is valid with the result type t∗ if:
+
+- The instruction sequence instr∗ is valid with the instruction type ϵ → t∗.
+
+    C ⊢ instr∗ : ϵ →_ϵ t∗ ⟹ C ⊢ instr∗ : t∗
+
+#### 3.4.13.1 Constant Expressions
+
+In a constant expression, all instructions must be constant.
+
+instr∗ is constant if:
+
+- For all instr in instr∗:
+
+   - instr is constant.
+
+val is constant if:
+
+- Either:
+
+   - The value val is of the form (nt.const c_(nt)).
+
+- Or:
+
+   - The value val is of the form (vt.const c_(vt)).
+
+- Or:
+
+   - The value val is of the form (ref.null ht).
+
+- Or:
+
+   - The value val is of the form ref.i31.
+
+- Or:
+
+   - The value val is of the form (ref.func x).
+
+- Or:
+
+   - The value val is of the form (struct.new x).
+
+- Or:
+
+   - The value val is of the form (struct.new_default x).
+
+- Or:
+
+   - The value val is of the form (array.new x).
+
+- Or:
+
+   - The value val is of the form (array.new_default x).
+
+- Or:
+
+   - The value val is of the form (array.new_fixed x n).
+
+- Or:
+
+   - The value val is of the form any.convert_extern.
+
+- Or:
+
+   - The value val is of the form extern.convert_any.
+
+- Or:
+
+   - The value val is of the form (global.get x).
+
+   - The global C.globals[x] exists.
+
+   - The global C.globals[x] is of the form (ϵ t).
+
+- Or:
+
+   - The value val is of the form (i N.binop).
+
+   - i N is contained in [ i32; i64 ].
+
+   - binop is contained in [ add; sub; mul ].
+
+    (C ⊢ instr const)∗ ⟹ C ⊢ instr∗ const
+
+    ⟹ C ⊢ (nt.const c_(nt)) const ⟹ C ⊢ (vt.const c_(vt)) const i N ∈ i32 i64 binop ∈ add sub mul ⟹ C ⊢ (i N.binop) const
+    3ex]⟹ C ⊢ (ref.null ht) const ⟹ C ⊢ (ref.i31) const ⟹ C ⊢ (ref.func x) const
+    3ex]⟹ C ⊢ (struct.new x) const ⟹ C ⊢ (struct.new_default x) const
+    3ex]⟹ C ⊢ (array.new x) const ⟹ C ⊢ (array.new_default x) const ⟹ C ⊢ (array.new_fixed x n) const
+    3ex]⟹ C ⊢ (any.convert_extern) const ⟹ C ⊢ (extern.convert_any) const
+    3ex]C.globals[x] = t ⟹ C ⊢ (global.get x) const
+
+Note
+
+Currently, constant expressions occurring in globals are further constrained in that contained global.get instructions are only allowed to refer to imported or previously defined globals. Constant expressions occurring in tables may only have global.get instructions that refer to imported globals. This is enforced in the validation rule for modules by constraining the context C accordingly.
+
+The definition of constant expression may be extended in future versions of WebAssembly.
+
+## 3.5 Modules
+
+Modules are valid when all the components they contain are valid. To verify this, most definitions are themselves classified with a suitable type.
+
+### 3.5.1 Types
+
+The sequence of types defined in a module is validated incrementally, yielding a sequence of defined types representing them individually.
+
+The type definition (type rectype) is valid with the defined type sequence dt∗ if:
+
+- The length of C.types is equal to x.
+
+- The defined type sequence dt∗ is of the form roll_x∗(rectype).
+
+- Let C′ be the same context as C, but with the defined type sequence dt∗ appended to the field types.
+
+- Under the context C′, the recursive type rectype is valid for the type index x.
+
+    x = ∣C.types∣ dt∗ = roll_x∗(rectype) C ⊕ {types dt∗} ⊢ rectype : ok(x) ⟹ C ⊢ type rectype : dt∗
+
+The type definition sequence type∗ is valid with the defined type sequence deftype∗ if:
+
+- Either:
+
+   - The type definition sequence type∗ is empty.
+
+   - The defined type sequence deftype∗ is empty.
+
+- Or:
+
+   - The type definition sequence type∗ is of the form type_1 type′∗.
+
+   - The defined type sequence deftype∗ is of the form dt_1∗ dt∗.
+
+   - The type definition type_1 is valid with the defined type sequence dt_1∗.
+
+   - Let C′ be the same context as C, but with the defined type sequence dt_1∗ appended to the field types.
+
+   - Under the context C′, the type definition sequence type′∗ is valid with the defined type sequence dt∗.
+
+    ⟹ C ⊢ ϵ : ϵ C ⊢ type_1 : dt_1∗ C ⊕ {types dt_1∗} ⊢ type∗ : dt∗ ⟹ C ⊢ type_1 type∗ : dt_1∗ dt∗
+
+### 3.5.2 Tags
+
+Tags tag are classified by their tag types, which are defined types expanding to function types.
+
+The tag (tag tagtype) is valid with the tag type tagtype′ if:
+
+- The tag type tagtype is valid.
+
+- The tag type tagtype′ is clos_C(tagtype).
+
+    C ⊢ tagtype : ok ⟹ C ⊢ tag tagtype : clos_C(tagtype)
+
+### 3.5.3 Globals
+
+Globals global are classified by global types.
+
+The global (global globaltype expr) is valid with the global type globaltype if:
+
+- The global type globaltype is valid.
+
+- The global type globaltype is of the form (mut? t).
+
+- The expression expr is valid with the value type t.
+
+- expr is constant.
+
+    C ⊢ globaltype : ok globaltype = mut? t C ⊢ expr : t const ⟹ C ⊢ global globaltype expr : globaltype
+
+Sequences of globals are handled incrementally, such that each definition has access to previous definitions.
+
+The global sequence global∗ is valid with the global type sequence globaltype∗ if:
+
+- Either:
+
+   - The global sequence global∗ is empty.
+
+   - The global type sequence globaltype∗ is empty.
+
+- Or:
+
+   - The global sequence global∗ is of the form global_1 global′∗.
+
+   - The global type sequence globaltype∗ is of the form gt_1 gt∗.
+
+   - The global global_1 is valid with the global type gt_1.
+
+   - Let C′ be the same context as C, but with the global type sequence gt_1 appended to the field globals.
+
+   - Under the context C′, the global sequence global′∗ is valid with the global type sequence gt∗.
+
+    ⟹ C ⊢ ϵ : ϵ C ⊢ global_1 : gt_1 C ⊕ {globals gt_1} ⊢ global∗ : gt∗ ⟹ C ⊢ global_1 global∗ : gt_1 gt∗
+
+### 3.5.4 Memories
+
+Memories mem are classified by memory types.
+
+The memory (memory memtype) is valid with the memory type memtype if:
+
+- The memory type memtype is valid.
+
+    C ⊢ memtype : ok ⟹ C ⊢ memory memtype : memtype
+
+### 3.5.5 Tables
+
+Tables table are classified by table types.
+
+The table (table tabletype expr) is valid with the table type tabletype if:
+
+- The table type tabletype is valid.
+
+- The table type tabletype is of the form (at lim rt).
+
+- The expression expr is valid with the value type rt.
+
+- expr is constant.
+
+    C ⊢ tabletype : ok tabletype = at lim rt C ⊢ expr : rt const ⟹ C ⊢ table tabletype expr : tabletype
+
+### 3.5.6 Functions
+
+Functions func are classified by defined types that expand to function types of the form func t_1∗ → t_2∗.
+
+The function (func x local∗ expr) is valid with the type C.types[x] if:
+
+- The type C.types[x] exists.
+
+- The expansion of C.types[x] is (func t_1∗ → t_2∗).
+
+- For all local in local∗:
+
+   - The local local is valid with the local type lt.
+
+- lt∗ is the concatenation of all such lt.
+
+- Under the context C with the field locals appended by (set t_1)∗ lt∗ and the field labels appended by t_2∗ and the field return appended by t_2∗, the expression expr is valid with the result type t_2∗.
+
+    C.types[x] ≈ func t_1∗ → t_2∗ (C ⊢ local : lt)∗
+    C ⊕ {locals (set t_1)∗ lt∗, labels (t_2∗), return (t_2∗)} ⊢ expr : t_2∗ ⟹ C ⊢ func x local∗ expr : C.types[x]
+
+### 3.5.7 Locals
+
+Locals local are classified with local types.
+
+The local (local t) is valid with the local type (init t) if:
+
+- Either:
+
+   - The initialization status init is of the form set.
+
+   - A default value for t is defined.
+
+- Or:
+
+   - The initialization status init is of the form unset.
+
+   - A default value for t is not defined.
+
+    default_t = ϵ ⟹ C ⊢ local t : set t default_t = ϵ ⟹ C ⊢ local t : unset t
+
+Note
+
+For cases where both rules are applicable, the former yields the more permissable type.
+
+### 3.5.8 Data Segments
+
+Data segments data are classified by the singleton data type, which merely expresses well-formedness.
+
+The memory segment (data b∗ datamode) is valid if:
+
+- The data mode datamode is valid.
+
+    C ⊢ datamode : ok ⟹ C ⊢ data b∗ datamode : ok
+
+The data mode datamode is valid if:
+
+- Either:
+
+   - The data mode datamode is of the form passive.
+
+- Or:
+
+   - The data mode datamode is of the form (active x expr).
+
+   - The memory C.mems[x] exists.
+
+   - The memory C.mems[x] is of the form (at lim page).
+
+   - The expression expr is valid with the value type at.
+
+   - expr is constant.
+
+    ⟹ C ⊢ passive : ok C.mems[x] = at lim page C ⊢ expr : at const ⟹ C ⊢ active x expr : ok
+
+### 3.5.9 Element Segments
+
+Element segments elem are classified by their element type.
+
+The table segment (elem elemtype expr∗ elemmode) is valid with the element type elemtype if:
+
+- The reference type elemtype is valid.
+
+- For all expr in expr∗:
+
+   - The expression expr is valid with the value type elemtype.
+
+   - expr is constant.
+
+- The element mode elemmode is valid with the element type elemtype.
+
+    C ⊢ elemtype : ok (C ⊢ expr : elemtype const)∗ C ⊢ elemmode : elemtype ⟹ C ⊢ elem elemtype expr∗ elemmode : elemtype
+
+The element mode elemmode is valid with the element type rt if:
+
+- Either:
+
+   - The element mode elemmode is of the form passive.
+
+- Or:
+
+   - The element mode elemmode is of the form declare.
+
+- Or:
+
+   - The element mode elemmode is of the form (active x expr).
+
+   - The table C.tables[x] exists.
+
+   - The table C.tables[x] is of the form (at lim rt′).
+
+   - The reference type rt matches the reference type rt′.
+
+   - The expression expr is valid with the value type at.
+
+   - expr is constant.
+
+    ⟹ C ⊢ passive : rt ⟹ C ⊢ declare : rt
+    3ex]C.tables[x] = at lim rt′ C ⊢ rt ≤ rt′ C ⊢ expr : at const ⟹ C ⊢ active x expr : rt
+
+### 3.5.10 Start Function
+
+The start function (start x) is valid if:
+
+- The function C.funcs[x] exists.
+
+- The expansion of C.funcs[x] is (func →).
+
+    C.funcs[x] ≈ func ϵ → ϵ ⟹ C ⊢ start x : ok
+
+### 3.5.11 Imports
+
+Imports import are classified by external types.
+
+The import (import name_1 name_2 xt) is valid with the external type externtype if:
+
+- The external type xt is valid.
+
+- The external type externtype is clos_C(xt).
+
+    C ⊢ xt : ok ⟹ C ⊢ import name_1 name_2 xt : clos_C(xt)
+
+### 3.5.12 Exports
+
+Exports export are classified by their external type.
+
+The export (export name externidx) is valid with the name name and the external type xt if:
+
+- The external index externidx is valid with the external type xt.
+
+    C ⊢ externidx : xt ⟹ C ⊢ export name externidx : name xt
+
+#### 3.5.12.1 tag x
+
+The external index (tag x) is valid with the external type (tag jt) if:
+
+- The tag C.tags[x] exists.
+
+- The tag C.tags[x] is of the form jt.
+
+    C.tags[x] = jt ⟹ C ⊢ tag x : tag jt
+
+#### 3.5.12.2 global x
+
+The external index (global x) is valid with the external type (global gt) if:
+
+- The global C.globals[x] exists.
+
+- The global C.globals[x] is of the form gt.
+
+    C.globals[x] = gt ⟹ C ⊢ global x : global gt
+
+#### 3.5.12.3 memory x
+
+The external index (memory x) is valid with the external type (mem mt) if:
+
+- The memory C.mems[x] exists.
+
+- The memory C.mems[x] is of the form mt.
+
+    C.mems[x] = mt ⟹ C ⊢ memory x : mem mt
+
+#### 3.5.12.4 table x
+
+The external index (table x) is valid with the external type (table tt) if:
+
+- The table C.tables[x] exists.
+
+- The table C.tables[x] is of the form tt.
+
+    C.tables[x] = tt ⟹ C ⊢ table x : table tt
+
+#### 3.5.12.5 func x
+
+The external index (func x) is valid with the external type (func dt) if:
+
+- The function C.funcs[x] exists.
+
+- The function C.funcs[x] is of the form dt.
+
+    C.funcs[x] = dt ⟹ C ⊢ func x : func dt
+
+### 3.5.13 Modules
+
+Modules are classified by their mapping from the external types of their imports to those of their exports.
+
+A module is entirely closed, that is, its components can only refer to definitions that appear in the module itself. Consequently, no initial context is required. Instead, the context C for validation of the module’s content is constructed from the definitions in the module.
+
+The module (module type∗ import∗ tag∗ global∗ mem∗ table∗ func∗ data∗ elem∗ start? export∗) is valid with the module type moduletype if:
+
+- Under the context {return ϵ}, the type definition sequence type∗ is valid with the defined type sequence dt′∗.
+
+- For all import in import∗:
+
+   - Under the context {types dt′∗, return ϵ}, the import import is valid with the external type xt_i.
+
+- xt_i∗ is the concatenation of all such xt_i.
+
+- For all tag in tag∗:
+
+   - Under the context C′, the tag tag is valid with the tag type jt.
+
+- jt∗ is the concatenation of all such jt.
+
+- Under the context C′, the global sequence global∗ is valid with the global type sequence gt∗.
+
+- For all mem in mem∗:
+
+   - Under the context C′, the memory mem is valid with the memory type mt.
+
+- mt∗ is the concatenation of all such mt.
+
+- For all table in table∗:
+
+   - Under the context C′, the table table is valid with the table type tt.
+
+- tt∗ is the concatenation of all such tt.
+
+- For all func in func∗:
+
+   - The function func is valid with the defined type dt.
+
+- dt∗ is the concatenation of all such dt.
+
+- For all data in data∗:
+
+   - The memory segment data is valid.
+
+- ok∗ is the concatenation of all such ok.
+
+- For all elem in elem∗:
+
+   - The table segment elem is valid with the element type rt.
+
+- rt∗ is the concatenation of all such rt.
+
+- If start is defined, then:
+
+   - The start function start is valid.
+
+- For all export in export∗:
+
+   - The export export is valid with the name nm and the external type xt_e.
+
+- nm∗ is the concatenation of all such nm.
+
+- xt_e∗ is the concatenation of all such xt_e.
+
+- nm∗ disjoint is true.
+
+- The context C is of the form C′ with the field tags appended by jt_i∗ jt∗ and the field globals appended by gt∗ and the field mems appended by mt_i∗ mt∗ and the field tables appended by tt_i∗ tt∗ and the field datas appended by ok∗ and the field elems appended by rt∗.
+
+- The context C′ is of the form {types dt′∗, globals gt_i∗, funcs dt_i∗ dt∗, return ϵ, refs x∗}.
+
+- The function index sequence x∗ is of the form funcidx(global∗ mem∗ table∗ elem∗).
+
+- The tag type sequence jt_i∗ is of the form tags(xt_i∗).
+
+- The global type sequence gt_i∗ is of the form globals(xt_i∗).
+
+- The memory type sequence mt_i∗ is of the form mems(xt_i∗).
+
+- The table type sequence tt_i∗ is of the form tables(xt_i∗).
+
+- The defined type sequence dt_i∗ is of the form funcs(xt_i∗).
+
+- The module type moduletype is clos_C(xt_i∗ → xt_e∗).
+
+    {} ⊢ type∗ : dt′∗ ({types dt′∗} ⊢ import : xt_i)∗
+    (C′ ⊢ tag : jt)∗ C′ ⊢ global∗ : gt∗ (C′ ⊢ mem : mt)∗ (C′ ⊢ table : tt)∗ (C ⊢ func : dt)∗
+    (C ⊢ data : ok)∗ (C ⊢ elem : rt)∗ (C ⊢ start : ok)? (C ⊢ export : nm xt_e)∗ nm∗ disjoint
+    C = C′ ⊕ {tags jt_i∗ jt∗, globals gt∗, mems mt_i∗ mt∗, tables tt_i∗ tt∗, datas ok∗, elems rt∗}
+    C′ = {types dt′∗, globals gt_i∗, funcs dt_i∗ dt∗, refs x∗} x∗ = funcidx(global∗ mem∗ table∗ elem∗)
+    jt_i∗ = tags(xt_i∗) gt_i∗ = globals(xt_i∗) mt_i∗ = mems(xt_i∗) tt_i∗ = tables(xt_i∗) dt_i∗ = funcs(xt_i∗) ⟹ ⊢ module type∗ import∗ tag∗ global∗ mem∗ table∗ func∗ data∗ elem∗ start? export∗ : clos_C(xt_i∗ → xt_e∗)
+
+Note
+
+All functions in a module are mutually recursive. Consequently, the definition of the context C in this rule is recursive: it depends on the outcome of validation of the function, table, memory, and global definitions contained in the module, which itself depends on C. However, this recursion is just a specification device. All types needed to construct C can easily be determined from a simple pre-pass over the module that does not perform any actual validation.
+
+Globals, however, are not recursive but evaluated sequentially, such that each constant expressions only has access to imported or previously defined globals.
+

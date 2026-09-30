@@ -1,0 +1,339 @@
+# WebAssembly JavaScript Interface 3.0: 6 Builtins
+# джерело: https://raw.githubusercontent.com/WebAssembly/spec/0f70bfa44615ca9f499801ca27ca6ca2bca1e8bc/js-api/index.html#builtins
+# отримано: 2026-09-30
+# версія: 3.0
+
+The JS-API defines sets of builtin functions which can be imported through `options` when compiling a module. WebAssembly builtin functions mirror existing JavaScript builtins, but adapt them to be useable directly as WebAssembly functions with minimal overhead.
+
+All builtin functions are grouped into sets. Every builtin set has a name that is used in `WebAssemblyCompileOptions`, and a qualified name with a `wasm:` prefix that is used during import lookup.
+
+To get the builtins for a builtin set with builtinSetName, perform the following steps:
+
+1. Return a list of (name, funcType, steps) for the set with name builtinSetName defined within this section.
+
+To find a builtin with import and enabled builtins builtinSetNames, perform the following steps:
+
+1. Assert: validate builtin set names builtinSetNames is true.
+
+2. Let importModuleName be import[0].
+
+3. Let importName be import[1].
+
+4. For each builtinSetName of builtinSetNames,
+
+   1. If builtinSetName does not refer to a builtin set, then continue.
+
+   2. Let builtinSetQualifiedName be builtinSetName prefixed with "wasm:".
+
+   3. If importModuleName equals builtinSetQualifiedName,
+
+      1. Let builtins be the result of get the builtins for a builtin set builtinSetName.
+
+      2. For each builtin of builtins,
+
+         1. Let builtinName be builtin[0].
+
+         2. If importName equals builtinName, return (builtinSetName, builtin).
+
+5. Return null.
+
+To validate builtin set names with builtinSetNames, perform the following steps:
+
+1. If builtinSetNames contains any duplicates, return false.
+
+2. Return true.
+
+To create a builtin function from type funcType and execution steps steps, perform the following steps:
+
+1. Let hostfunc be a host function which executes steps when called.
+
+2. Let (store, funcaddr) be func_alloc(store, functype, hostfunc).
+
+3. Set the surrounding agent’s associated store to store.
+
+4. Return funcaddr.
+
+To instantiate a builtin set with name builtinSetName, perform the following steps:
+
+1. Let builtins be the result of get the builtins for a builtin set builtinSetName.
+
+2. Let exportsObject be! OrdinaryObjectCreate(null).
+
+3. For each (name, funcType, steps) of builtins,
+
+   1. Let funcaddr be the result fo create a builtin function with funcType and steps.
+
+   2. Let func be the result of creating a new Exported Function from funcaddr.
+
+   3. Let value be func.
+
+   4. Let status be! CreateDataProperty(exportsObject, name, value).
+
+   5. Assert: status is true.
+
+4. Return exportsObject.
+
+To validate an import for builtins with import, enabled builtins builtinSetNames, perform the following steps:
+
+1. Assert: validate builtin set names builtinSetNames is true.
+
+2. Let maybeBuiltin be the result of finding a builtin for import and builtinSetNames.
+
+3. If maybeBuiltin is null, return true.
+
+4. Let importExternType be import[2].
+
+5. Let builtinFuncType be maybeBuiltin[0][1].
+
+6. Let builtinExternType be `func |builtinFuncType|`.
+
+7. Return match_externtype(builtinExternType, importExternType).
+
+## 6.1 String Builtins
+
+String builtins adapt the interface of the String builtin object. The name for this set is `js-string`, and the qualified name is `wasm:js-string`.
+
+Note: The algorithms in this section refer to JS builtins defined on String. These refer to the actual builtin and do not perform a dynamic lookup on the String object.
+
+### 6.1.1 Abstract operations
+
+The UnwrapString(v) abstract operation, when invoked, performs the following steps:
+
+1. If v is not a String,
+
+   1. Throw a `RuntimeError` exception as if a trap was executed.
+
+2. Return v
+
+The FromCharCode(v) abstract operation, when invoked, performs the following steps:
+
+1. Assert: v is of type i32.
+
+2. Return! Call(String.fromCharCode, undefined, « ToJSValue(v) »).
+
+The CharCodeAt(string, index) abstract operation, when invoked, performs the following steps:
+
+1. Assert: index is of type i32.
+
+2. Return! Call(String.prototype.charCodeAt, string, « ToJSValue(index) »).
+
+### 6.1.2 cast
+
+The funcType of this builtin is `(rec (type (func (param externref) (result externref)))).0`.
+
+When this builtin is invoked with parameter v, the following steps must be run:
+
+1. Return? UnwrapString(v)
+
+### 6.1.3 test
+
+The funcType of this builtin is `(rec (type (func (param externref) (result i32)))).0`.
+
+When this builtin is invoked with parameter v, the following steps must be run:
+
+1. If v is not a String,
+
+   1. Return 0.
+
+2. Return 1.
+
+### 6.1.4 fromCharCodeArray
+
+Let arrayType be `(rec (type (array (mut i16)))).0`.
+
+The funcType of this builtin is `(rec (type (func (param (ref null arrayType) i32 i32) (result externref)))).0`.
+
+When this builtin is invoked with parameters array, start, and end, the following steps must be run:
+
+1. If array is null,
+
+   1. Throw a `RuntimeError` exception as if a trap was executed.
+
+2. Let length be the number of elements in array.
+
+3. If start > end or end > length,
+
+   1. Throw a `RuntimeError` exception as if a trap was executed.
+
+4. Let result be the empty string.
+
+5. Let i be start.
+
+6. While i < end:
+
+   1. Let charCode be the value of the element stored at index i in array.
+
+   2. Let charCodeString be FromCharCode(charCode).
+
+   3. Let result be the concatenation of result and charCodeString.
+
+   4. Set i to i + 1.
+
+7. Return result.
+
+### 6.1.5 intoCharCodeArray
+
+Let arrayType be `(rec (type (array (mut i16)))).0`.
+
+The funcType of this builtin is `(rec (type (func (param externref (ref null arrayType) i32) (result i32)))).0`.
+
+When this builtin is invoked with parameters string, array, and start, the following steps must be run:
+
+1. If array is null,
+
+   1. Throw a `RuntimeError` exception as if a trap was executed.
+
+2. Let string be? UnwrapString(string).
+
+3. Let stringLength be the length of string.
+
+4. Let arrayLength be the number of elements in array.
+
+5. If start + stringLength > arrayLength,
+
+   1. Throw a `RuntimeError` exception as if a trap was executed.
+
+6. Let i be 0.
+
+7. While i < stringLength:
+
+   1. Let charCode be CharCodeAt(string, i).
+
+   2. Set the element at index start + i in array to ToWebAssemblyValue(charCode).
+
+   3. Set i to i + 1.
+
+8. Return stringLength.
+
+### 6.1.6 fromCharCode
+
+The funcType of this builtin is `(rec (type (func (param i32) (result externref)))).0`.
+
+When this builtin is invoked with parameter v, the following steps must be run:
+
+1. Return FromCharCode(v).
+
+### 6.1.7 fromCodePoint
+
+The funcType of this builtin is `(rec (type (func (param i32) (result externref)))).0`.
+
+When this builtin is invoked with parameter v, the following steps must be run:
+
+1. If v > 0x10ffff,
+
+   1. Throw a `RuntimeError` exception as if a trap was executed.
+
+2. Return! Call(String.fromCodePoint, undefined, « ToJSValue(v) »).
+
+### 6.1.8 charCodeAt
+
+The type of this function is `(rec (type (func (param externref i32) (result i32)))).0`.
+
+When this builtin is invoked with parameters string and index, the following steps must be run:
+
+1. Let string be? UnwrapString(string).
+
+2. Let length be the length of string.
+
+3. If index >= length,
+
+   1. Throw a `RuntimeError` exception as if a trap was executed.
+
+4. Return CharCodeAt(string, index).
+
+### 6.1.9 codePointAt
+
+The type of this function is `(rec (type (func (param externref i32) (result i32)))).0`.
+
+When this builtin is invoked with parameters string and index, the following steps must be run:
+
+1. Let string be? UnwrapString(string).
+
+2. Let length be the length of string.
+
+3. If index >= length,
+
+   1. Throw a `RuntimeError` exception as if a trap was executed.
+
+4. Return! Call(String.prototype.codePointAt, string, « ToJSValue(index) »).
+
+### 6.1.10 length
+
+The funcType of this builtin is `(rec (type (func (param externref) (result i32)))).0`.
+
+When this builtin is invoked with parameter v, the following steps must be run:
+
+1. Let string be? UnwrapString(v).
+
+2. Return the length of string.
+
+### 6.1.11 concat
+
+The funcType of this builtin is `(rec (type (func (param externref externref) (result externref)))).0`.
+
+When this builtin is invoked with parameters first and second, the following steps must be run:
+
+1. Let first be? UnwrapString(first).
+
+2. Let second be? UnwrapString(second).
+
+3. Return! Call(String.prototype.concat, first, « second »).
+
+### 6.1.12 substring
+
+The funcType of this builtin is `(rec (type (func (param externref i32 i32) (result externref)))).0`.
+
+When this builtin is invoked with parameters string, start, and end, the following steps must be run:
+
+1. Let string be? UnwrapString(string).
+
+2. Let length be the length of string.
+
+3. If start > end or start > length,
+
+   1. Return the empty string.
+
+4. Return! Call(String.prototype.substring, string, « ToJSValue(start), ToJSValue(end) »).
+
+### 6.1.13 equals
+
+The funcType of this builtin is `(rec (type (func (param externref externref) (result i32)))).0`.
+
+Note: Explicitly allow null strings to be compared for equality as that is meaningful.
+
+When this builtin is invoked with parameters first and second, the following steps must be run:
+
+1. If first is not null and first is not a String,
+
+   1. Throw a `RuntimeError` exception as if a trap was executed.
+
+2. If second is not null and second is not a String,
+
+   1. Throw a `RuntimeError` exception as if a trap was executed.
+
+3. If! IsStrictlyEqual(first, second) is true,
+
+   1. Return 1.
+
+4. Return 0.
+
+### 6.1.14 compare
+
+The funcType of this builtin is `(rec (type (func (param externref externref) (result i32)))).0`.
+
+When this builtin is invoked with parameters first and second, the following steps must be run:
+
+1. Let first be? UnwrapString(first).
+
+2. Let second be? UnwrapString(second).
+
+3. If! IsStrictlyEqual(first, second) is true,
+
+   1. Return 0.
+
+4. If! IsLessThan(first, second, true) is true,
+
+   1. Return -1.
+
+5. Return 1.
+

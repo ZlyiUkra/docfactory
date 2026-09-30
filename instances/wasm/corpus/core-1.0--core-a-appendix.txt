@@ -1,0 +1,1675 @@
+# WebAssembly Core 1.0: A Appendix
+# джерело: https://www.w3.org/TR/2019/REC-wasm-core-1-20191205/#a-appendix
+# отримано: 2026-09-30
+# версія: 1.0
+
+## A.1 Embedding
+
+A WebAssembly implementation will typically be embedded into a host environment. An embedder implements the connection between such a host environment and the WebAssembly semantics as defined in the main body of this specification. An embedder is expected to interact with the semantics in well-defined ways.
+
+This section defines a suitable interface to the WebAssembly semantics in the form of entry points through which an embedder can access it. The interface is intended to be complete, in the sense that an embedder does not need to reference other functional parts of the WebAssembly specification directly.
+
+Note
+
+On the other hand, an embedder does not need to provide the host environment with access to all functionality defined in this interface. For example, an implementation may not support parsing of the text format.
+
+### Types
+
+In the description of the embedder interface, syntactic classes from the abstract syntax and the runtime’s abstract machine are used as names for variables that range over the possible objects from that class. Hence, these syntactic classes can also be interpreted as types.
+
+For numeric parameters, notation like n: u32 is used to specify a symbolic name in addition to the respective value range.
+
+### Errors
+
+Failure of an interface operation is indicated by an auxiliary syntactic class:
+
+error::= error
+
+In addition to the error conditions specified explicitly in this section, implementations may also return errors when specific implementation limitations are reached.
+
+Note
+
+Errors are abstract and unspecific with this definition. Implementations can refine it to carry suitable classifications and diagnostic messages.
+
+### Pre- and Post-Conditions
+
+Some operations state pre-conditions about their arguments or post-conditions about their results. It is the embedder’s responsibility to meet the pre-conditions. If it does, the post conditions are guaranteed by the semantics.
+
+In addition to pre- and post-conditions explicitly stated with each operation, the specification adopts the following conventions for runtime objects ( store, moduleinst, externval, addresses):
+
+- Every runtime object passed as a parameter must be valid per an implicit pre-condition.
+
+- Every runtime object returned as a result is valid per an implicit post-condition.
+
+Note
+
+As long as an embedder treats runtime objects as abstract and only creates and manipulates them through the interface defined here, all implicit pre-conditions are automatically met.
+
+### Store
+
+#### store_init() : store
+
+1. Return the empty store.
+
+store_init() = {funcs ϵ, mems ϵ, tables ϵ, globals ϵ}
+
+### Modules
+
+#### module_decode(byte∗) : module ∣ error
+
+1. If there exists a derivation for the byte sequence byte∗ as a module according to the binary grammar for modules, yielding a module m, then return m.
+
+2. Else, return error.
+
+    module_decode(b∗) = m (if module ∗ ⟹ m:b∗)
+    module_decode(b∗) = error (otherwise)
+
+#### module_parse(char∗) : module ∣ error
+
+1. If there exists a derivation for the source char∗ as a module according to the text grammar for modules, yielding a module m, then return m.
+
+2. Else, return error.
+
+    module_parse(c∗) = m (if module ∗ ⟹ m:c∗)
+    module_parse(c∗) = error (otherwise)
+
+#### module_validate(module) : error?
+
+1. If module is valid, then return nothing.
+
+2. Else, return error.
+
+    module_validate(m) = ϵ (if ⊢ m : externtype∗ → externtype′∗)
+    module_validate(m) = error (otherwise)
+
+#### module_instantiate(store, module, externval∗) : (store, moduleinst ∣ error)
+
+1. Try instantiating module in store with external values externval∗ as imports:
+
+1. If it succeeds with a module instance moduleinst, then let result be moduleinst.
+
+2. Else, let result be error.
+
+1. Return the new store paired with result.
+
+    module_instantiate(S, m, ev∗) = (S′, F.module) (if instantiate(S, m, ev∗) ↪∗ S′; F; ϵ)
+    module_instantiate(S, m, ev∗) = (S′, error) (if instantiate(S, m, ev∗) ↪∗ S′; F; trap)
+
+Note
+
+The store may be modified even in case of an error.
+
+#### module_imports(module) : (name, name, externtype)∗
+
+1. Pre-condition: module is valid with external import types externtype∗ and external export types externtype′∗.
+
+2. Let import∗ be the imports module.imports.
+
+3. Assert: the length of import∗ equals the length of externtype∗.
+
+4. For each import_i in import∗ and corresponding externtype_i in externtype∗, do:
+
+1. Let result_i be the triple (import_i.module, import_i.name, externtype_i).
+
+1. Return the concatenation of all result_i, in index order.
+
+2. Post-condition: each externtype_i is valid.
+
+    module_imports(m) = (im.module, im.name, externtype)∗
+    (if im∗ = m.imports ∧ ⊢ m : externtype∗ → externtype′∗)
+
+#### module_exports(module) : (name, externtype)∗
+
+1. Pre-condition: module is valid with external import types externtype∗ and external export types externtype′∗.
+
+2. Let export∗ be the exports module.exports.
+
+3. Assert: the length of export∗ equals the length of externtype′∗.
+
+4. For each export_i in export∗ and corresponding externtype_i′ in externtype′∗, do:
+
+1. Let result_i be the pair (export_i.name, externtype_i′).
+
+1. Return the concatenation of all result_i, in index order.
+
+2. Post-condition: each externtype_i′ is valid.
+
+    module_exports(m) = (ex.name, externtype′)∗
+    (if ex∗ = m.exports ∧ ⊢ m : externtype∗ → externtype′∗)
+
+### Module Instances
+
+#### instance_export(moduleinst, name) : externval ∣ error
+
+1. Assert: due to validity of the module instance moduleinst, all its export names are different.
+
+2. If there exists an exportinst_i in moduleinst.exports such that name exportinst_i.name equals name, then:
+
+   1. Return the external value exportinst_i.value.
+
+3. Else, return error.
+
+    instance_export(m, name) = m.exports[i].value (if m.exports[i].name = name)
+    instance_export(m, name) = error (otherwise)
+
+### Functions
+
+#### func_alloc(store, functype, hostfunc) : (store, funcaddr)
+
+1. Pre-condition: functype is valid < valid − functype >.
+
+2. Let funcaddr be the result of allocating a host function in store with function type functype and host function code hostfunc.
+
+3. Return the new store paired with funcaddr.
+
+func_alloc(S, ft, code) = (S′, a) (if allochostfunc(S, ft, code) = S′, a)
+
+Note
+
+This operation assumes that hostfunc satisfies the pre- and post-conditions required for a function instance with type functype.
+
+Regular (non-host) function instances can only be created indirectly through module instantiation.
+
+#### func_type(store, funcaddr) : functype
+
+1. Assert: the external value func funcaddr is valid with external type func functype.
+
+2. Return functype.
+
+3. Post-condition: functype is valid.
+
+func_type(S, a) = ft (if S ⊢ func a: func ft)
+
+#### func_invoke(store, funcaddr, val∗) : (store, val∗ ∣ error)
+
+1. Try invoking the function funcaddr in store with values val∗ as arguments:
+
+1. If it succeeds with values val′∗ as results, then let result be val′∗.
+
+2. Else it has trapped, hence let result be error.
+
+1. Return the new store paired with result.
+
+    func_invoke(S, a, v∗) = (S′, v′∗) (if invoke(S, a, v∗) ↪∗ S′; F; v′∗)
+    func_invoke(S, a, v∗) = (S′, error) (if invoke(S, a, v∗) ↪∗ S′; F; trap)
+
+Note
+
+The store may be modified even in case of an error.
+
+### Tables
+
+#### table_alloc(store, tabletype) : (store, tableaddr)
+
+1. Pre-condition: tabletype is valid < valid − tabletype >.
+
+2. Let tableaddr be the result of allocating a table in store with table type tabletype.
+
+3. Return the new store paired with tableaddr.
+
+table_alloc(S, tt) = (S′, a) (if alloctable(S, tt) = S′, a)
+
+#### table_type(store, tableaddr) : tabletype
+
+1. Assert: the external value table tableaddr is valid with external type table tabletype.
+
+2. Return tabletype.
+
+3. Post-condition: tabletype is valid < valid − tabletype >.
+
+table_type(S, a) = tt (if S ⊢ table a: table tt)
+
+#### table_read(store, tableaddr, i : u32) : funcaddr? ∣ error
+
+1. Let ti be the table instance store.tables[tableaddr].
+
+2. If i is larger than or equal to the length of ti.elem, then return error.
+
+3. Else, return ti.elem[i].
+
+    table_read(S, a, i) = fa? (if S.tables[a].elem[i] = fa?)
+    table_read(S, a, i) = error (otherwise)
+
+#### table_write(store, tableaddr, i : u32, funcaddr?) : store ∣ error
+
+1. Let ti be the table instance store.tables[tableaddr].
+
+2. If i is larger than or equal to the length of ti.elem, then return error.
+
+3. Replace ti.elem[i] with the optional function address fa?.
+
+4. Return the updated store.
+
+    table_write(S, a, i, fa?) = S′ (if S′ = S with tables[a].elem[i] = fa?)
+    table_write(S, a, i, fa?) = error (otherwise)
+
+#### table_size(store, tableaddr) : u32
+
+1. Return the length of store.tables[tableaddr].elem.
+
+table_size(S, a) = n (if ∣S.tables[a].elem∣ = n)
+
+#### table_grow(store, tableaddr, n : u32) : store ∣ error
+
+1. Try growing the table instance store.tables[tableaddr] by n elements:
+
+   1. If it succeeds, return the updated store.
+
+   2. Else, return error.
+
+    table_grow(S, a, n) = S′ (if S′ = S with tables[a] = growtable(S.tables[a], n))
+    table_grow(S, a, n) = error (otherwise)
+
+### Memories
+
+#### mem_alloc(store, memtype) : (store, memaddr)
+
+1. Pre-condition: memtype is valid < valid − memtype >.
+
+2. Let memaddr be the result of allocating a memory in store with memory type memtype.
+
+3. Return the new store paired with memaddr.
+
+mem_alloc(S, mt) = (S′, a) (if allocmem(S, mt) = S′, a)
+
+#### mem_type(store, memaddr) : memtype
+
+1. Assert: the external value mem memaddr is valid with external type mem memtype.
+
+2. Return memtype.
+
+3. Post-condition: memtype is valid < valid − memtype >.
+
+mem_type(S, a) = mt (if S ⊢ mem a: mem mt)
+
+#### mem_read(store, memaddr, i : u32) : byte ∣ error
+
+1. Let mi be the memory instance store.mems[memaddr].
+
+2. If i is larger than or equal to the length of mi.data, then return error.
+
+3. Else, return the byte mi.data[i].
+
+    mem_read(S, a, i) = b (if S.mems[a].data[i] = b)
+    mem_read(S, a, i) = error (otherwise)
+
+#### mem_write(store, memaddr, i : u32, byte) : store ∣ error
+
+1. Let mi be the memory instance store.mems[memaddr].
+
+2. If u32 is larger than or equal to the length of mi.data, then return error.
+
+3. Replace mi.data[i] with byte.
+
+4. Return the updated store.
+
+    mem_write(S, a, i, b) = S′ (if S′ = S with mems[a].data[i] = b)
+    mem_write(S, a, i, b) = error (otherwise)
+
+#### mem_size(store, memaddr) : u32
+
+1. Return the length of store.mems[memaddr].data divided by the page size.
+
+mem_size(S, a) = n (if ∣S.mems[a].data∣ = n ⋅ 64 Ki)
+
+#### mem_grow(store, memaddr, n : u32) : store ∣ error
+
+1. Try growing the memory instance store.mems[memaddr] by n pages:
+
+   1. If it succeeds, return the updated store.
+
+   2. Else, return error.
+
+    mem_grow(S, a, n) = S′ (if S′ = S with mems[a] = growmem(S.mems[a], n))
+    mem_grow(S, a, n) = error (otherwise)
+
+### Globals
+
+#### global_alloc(store, globaltype, val) : (store, globaladdr)
+
+1. Pre-condition: globaltype is valid < valid − globaltype >.
+
+2. Let globaladdr be the result of allocating a global in store with global type globaltype and initialization value val.
+
+3. Return the new store paired with globaladdr.
+
+global_alloc(S, gt, v) = (S′, a) (if allocglobal(S, gt, v) = S′, a)
+
+#### global_type(store, globaladdr) : globaltype
+
+1. Assert: the external value global globaladdr is valid with external type global globaltype.
+
+2. Return globaltype.
+
+3. Post-condition: globaltype is valid < valid − globaltype >.
+
+global_type(S, a) = gt (if S ⊢ global a: global gt)
+
+#### global_read(store, globaladdr) : val
+
+1. Let gi be the global instance store.globals[globaladdr].
+
+2. Return the value gi.value.
+
+global_read(S, a) = v (if S.globals[a].value = v)
+
+#### global_write(store, globaladdr, val) : store ∣ error
+
+1. Let gi be the global instance store.globals[globaladdr].
+
+2. If gi.mut is not var, then return error.
+
+3. Replace gi.value with the value val.
+
+4. Return the updated store.
+
+    global_write(S, a, v) = S′ (if S.globals[a].mut = var ∧ S′ = S with globals[a].value = v)
+    global_write(S, a, v) = error (otherwise)
+
+## A.2 Implementation Limitations
+
+Implementations typically impose additional restrictions on a number of aspects of a WebAssembly module or execution. These may stem from:
+
+- physical resource limits,
+
+- constraints imposed by the embedder or its environment,
+
+- limitations of selected implementation strategies.
+
+This section lists allowed limitations. Where restrictions take the form of numeric limits, no minimum requirements are given, nor are the limits assumed to be concrete, fixed numbers. However, it is expected that all implementations have “reasonably” large limits to enable common applications.
+
+Note
+
+A conforming implementation is not allowed to leave out individual features. However, designated subsets of WebAssembly may be specified in the future.
+
+### Syntactic Limits
+
+#### Structure
+
+An implementation may impose restrictions on the following dimensions of a module:
+
+- the number of types in a module
+
+- the number of functions in a module, including imports
+
+- the number of tables in a module, including imports
+
+- the number of memories in a module, including imports
+
+- the number of globals in a module, including imports
+
+- the number of element segments in a module
+
+- the number of data segments in a module
+
+- the number of imports to a module
+
+- the number of exports from a module
+
+- the number of parameters in a function type
+
+- the number of results in a function type
+
+- the number of locals in a function
+
+- the size of a function body
+
+- the size of a structured control instruction
+
+- the number of structured control instructions in a function
+
+- the nesting depth of structured control instructions
+
+- the number of label indices in a br_table instruction
+
+- the length of an element segment
+
+- the length of a data segment
+
+- the length of a name
+
+- the range of characters in a name
+
+If the limits of an implementation are exceeded for a given module, then the implementation may reject the validation, compilation, or instantiation of that module with an embedder-specific error.
+
+Note
+
+The last item allows embedders that operate in limited environments without support for [UNICODE] to limit the names of imports and exports to common subsets like ASCII.
+
+#### Binary Format
+
+For a module given in binary format, additional limitations may be imposed on the following dimensions:
+
+- the size of a module
+
+- the size of any section
+
+- the size of an individual function’s code
+
+- the number of sections
+
+#### Text Format
+
+For a module given in text format, additional limitations may be imposed on the following dimensions:
+
+- the size of the source text
+
+- the size of any syntactic element
+
+- the size of an individual token
+
+- the nesting depth of folded instructions
+
+- the length of symbolic identifiers
+
+- the range of literal characters allowed in the source text
+
+### Validation
+
+An implementation may defer validation of individual functions until they are first invoked.
+
+If a function turns out to be invalid, then the invocation, and every consecutive call to the same function, results in a trap.
+
+Note
+
+This is to allow implementations to use interpretation or just-in-time compilation for functions. The function must still be fully validated before execution of its body begins.
+
+### Execution
+
+Restrictions on the following dimensions may be imposed during execution of a WebAssembly program:
+
+- the number of allocated module instances
+
+- the number of allocated function instances
+
+- the number of allocated table instances
+
+- the number of allocated memory instances
+
+- the number of allocated global instances
+
+- the size of a table instance
+
+- the size of a memory instance
+
+- the number of frames on the stack
+
+- the number of labels on the stack
+
+- the number of values on the stack
+
+If the runtime limits of an implementation are exceeded during execution of a computation, then it may terminate that computation and report an embedder-specific error to the invoking code.
+
+Some of the above limits may already be verified during instantiation, in which case an implementation may report exceedance in the same manner as for syntactic limits.
+
+Note
+
+Concrete limits are usually not fixed but may be dependent on specifics, interdependent, vary over time, or depend on other implementation- or embedder-specific situations or events.
+
+## A.3 Validation Algorithm
+
+The specification of WebAssembly validation is purely declarative. It describes the constraints that must be met by a module or instruction sequence to be valid.
+
+This section sketches the skeleton of a sound and complete algorithm for effectively validating code, i.e., sequences of instructions. (Other aspects of validation are straightforward to implement.)
+
+In fact, the algorithm is expressed over the flat sequence of opcodes as occurring in the binary format, and performs only a single pass over it. Consequently, it can be integrated directly into a decoder.
+
+The algorithm is expressed in typed pseudo code whose semantics is intended to be self-explanatory.
+
+### Data Structures
+
+The algorithm uses two separate stacks: the operand stack and the control stack. The former tracks the types of operand values on the stack, the latter surrounding structured control instructions and their associated blocks.
+
+```
+type val_type = I32 | I64 | F32 | F64
+
+type opd_stack = stack(val_type | Unknown)
+
+type ctrl_stack = stack(ctrl_frame)
+type ctrl_frame = {
+  label_types : list(val_type)
+  end_types : list(val_type)
+  height : nat
+  unreachable : bool
+}
+
+```
+
+For each value, the operand stack records its value type, or `Unknown` when the type is not known.
+
+For each entered block, the control stack records a control frame with the type of the associated label (used to type-check branches), the result type of the block (used to check its result), the height of the operand stack at the start of the block (used to check that operands do not underflow the current block), and a flag recording whether the remainder of the block is unreachable (used to handle stack-polymorphic typing after branches).
+
+Note
+
+In the presentation of this algorithm, multiple values are supported for the result types classifying blocks and labels. With the current version of WebAssembly, the `list` could be simplified to an optional value.
+
+For the purpose of presenting the algorithm, the operand and control stacks are simply maintained as global variables:
+
+```
+var opds : opd_stack
+var ctrls : ctrl_stack
+
+```
+
+However, these variables are not manipulated directly by the main checking function, but through a set of auxiliary functions:
+
+```
+func push_opd(type : val_type | Unknown) =
+  opds.push(type)
+
+func pop_opd() : val_type | Unknown =
+  if (opds.size() = ctrls[0].height && ctrls[0].unreachable) return Unknown
+  error_if(opds.size() = ctrls[0].height)
+  return opds.pop()
+
+func pop_opd(expect : val_type | Unknown) : val_type | Unknown =
+  let actual = pop_opd()
+  if (actual = Unknown) return expect
+  if (expect = Unknown) return actual
+  error_if(actual =/= expect)
+  return actual
+
+func push_opds(types : list(val_type)) = foreach (t in types) push_opd(t)
+func pop_opds(types : list(val_type)) = foreach (t in reverse(types)) pop_opd(t)
+
+```
+
+Pushing an operand simply pushes the respective type to the operand stack.
+
+Popping an operand checks that the operand stack does not underflow the current block and then removes one type. But first, a special case is handled where the block contains no known operands, but has been marked as unreachable. That can occur after an unconditional branch, when the stack is typed polymorphically. In that case, an unknown type is returned.
+
+A second function for popping an operand takes an expected type, which the actual operand type is checked against. The types may differ in case one of them is Unknown. The more specific type is returned.
+
+Finally, there are accumulative functions for pushing or popping multiple operand types.
+
+Note
+
+The notation `stack[i]` is meant to index the stack from the top, so that `ctrls[0]` accesses the element pushed last.
+
+The control stack is likewise manipulated through auxiliary functions:
+
+```
+func push_ctrl(label : list(val_type), out : list(val_type)) =
+  let frame = ctrl_frame(label, out, opds.size(), false)
+  ctrls.push(frame)
+
+func pop_ctrl() : list(val_type) =
+  error_if(ctrls.is_empty())
+  let frame = ctrls[0]
+  pop_opds(frame.end_types)
+  error_if(opds.size() =/= frame.height)
+  ctrls.pop()
+  return frame.end_types
+
+func unreachable() =
+  opds.resize(ctrls[0].height)
+  ctrls[0].unreachable := true
+
+```
+
+Pushing a control frame takes the types of the label and result values. It allocates a new frame record recording them along with the current height of the operand stack and marks the block as reachable.
+
+Popping a frame first checks that the control stack is not empty. It then verifies that the operand stack contains the right types of values expected at the end of the exited block and pops them off the operand stack. Afterwards, it checks that the stack has shrunk back to its initial height.
+
+Finally, the current frame can be marked as unreachable. In that case, all existing operand types are purged from the operand stack, in order to allow for the stack-polymorphism logic in `pop_opd` to take effect.
+
+Note
+
+Even with the unreachable flag set, consecutive operands are still pushed to and popped from the operand stack. That is necessary to detect invalid examples like (unreachable (i32.const) i64.add). However, a polymorphic stack cannot underflow, but instead generates `Unknown` types as needed.
+
+### Validation of Opcode Sequences
+
+The following function shows the validation of a number of representative instructions that manipulate the stack. Other instructions are checked in a similar manner.
+
+Note
+
+Various instructions not shown here will additionally require the presence of a validation context for checking uses of indices. That is an easy addition and therefore omitted from this presentation.
+
+```
+func validate(opcode) =
+  switch (opcode)
+    case (i32.add)
+      pop_opd(I32)
+      pop_opd(I32)
+      push_opd(I32)
+
+   case (drop)
+      pop_opd()
+
+   case (select)
+      pop_opd(I32)
+      let t1 = pop_opd()
+      let t2 = pop_opd(t1)
+      push_opd(t2)
+
+   case (unreachable)
+      unreachable()
+
+   case (block t*)
+      push_ctrl([t*], [t*])
+
+   case (loop t*)
+      push_ctrl([], [t*])
+
+   case (if t*)
+      pop_opd(I32)
+      push_ctrl([t*], [t*])
+
+   case (end)
+      let results = pop_ctrl()
+      push_opds(results)
+
+   case (else)
+      let results = pop_ctrl()
+      push_ctrl(results, results)
+
+   case (br n)
+      error_if(ctrls.size() < n)
+      pop_opds(ctrls[n].label_types)
+      unreachable()
+
+   case (br_if n)
+      error_if(ctrls.size() < n)
+      pop_opd(I32)
+      pop_opds(ctrls[n].label_types)
+      push_opds(ctrls[n].label_types)
+
+   case (br_table n* m)
+      error_if(ctrls.size() < m)
+      foreach (n in n*)
+        error_if(ctrls.size() < n || ctrls[n].label_types =/= ctrls[m].label_types)
+      pop_opd(I32)
+      pop_opds(ctrls[m].label_types)
+      unreachable()
+
+```
+
+Note
+
+It is an invariant under the current WebAssembly instruction set that an operand of `Unknown` type is never duplicated on the stack. This would change if the language were extended with stack operators like `dup`. Under such an extension, the above algorithm would need to be refined by replacing the `Unknown` type with proper type variables to ensure that all uses are consistent.
+
+## A.4 Custom Sections
+
+This appendix defines dedicated custom sections for WebAssembly’s binary format. Such sections do not contribute to, or otherwise affect, the WebAssembly semantics, and like any custom section they may be ignored by an implementation. However, they provide useful meta data that implementations can make use of to improve user experience or take compilation hints.
+
+Currently, only one dedicated custom section is defined, the name section.
+
+### Name Section
+
+The name section is a custom section whose name string is itself ‘name’. The name section should appear only once in a module, and only after the data section.
+
+The purpose of this section is to attach printable names to definitions in a module, which e.g. can be used by a debugger or when parts of the module are to be rendered in text form.
+
+Note
+
+All names are represented in [UNICODE] encoded in UTF-8. Names need not be unique.
+
+#### Subsections
+
+The data of a name section consists of a sequence of subsections. Each subsection consists of a
+
+- a one-byte subsection id,
+
+- the u32 size of the contents, in bytes,
+
+- the actual contents, whose structure is depended on the subsection id.
+
+    namesec ::= section_0(namedata)
+    namedata ::= n:name (if n = ‘name’)
+    modulenamesubsec?
+    funcnamesubsec?
+    localnamesubsec?
+    namesubsection_N(B) ::= N:byte size:u32 B (if size = ∣∣B∣∣)
+
+The following subsection ids are used:
+
+| Id | Subsection
+
+| 0 | module name
+
+| 1 | function names
+
+| 2 | local names
+
+Each subsection may occur at most once, and in order of increasing id.
+
+#### Name Maps
+
+A name map assigns names to indices in a given index space. It consists of a vector of index/name pairs in order of increasing index value. Each index must be unique, but the assigned names need not be.
+
+    namemap ::= vec(nameassoc)
+    nameassoc ::= idx name
+
+An indirect name map assigns names to a two-dimensional index space, where secondary indices are grouped by primary indices. It consists of a vector of primary index/name map pairs in order of increasing index value, where each name map in turn maps secondary indices to names. Each primary index must be unique, and likewise each secondary index per individual name map.
+
+    indirectnamemap ::= vec(indirectnameassoc)
+    indirectnameassoc ::= idx namemap
+
+#### Module Names
+
+The module name subsection has the id 0. It simply consists of a single name that is assigned to the module itself.
+
+modulenamesubsec::= namesubsection_0(name)
+
+#### Function Names
+
+The function name subsection has the id 1. It consists of a name map assigning function names to function indices.
+
+funcnamesubsec::= namesubsection_1(namemap)
+
+#### Local Names
+
+The local name subsection has the id 2. It consists of an indirect name map assigning local names to local indices grouped by function indices.
+
+localnamesubsec::= namesubsection_2(indirectnamemap)
+
+## A.5 Soundness
+
+The type system of WebAssembly is sound, implying both type safety and memory safety with respect to the WebAssembly semantics. For example:
+
+- All types declared and derived during validation are respected at run time; e.g., every local or global variable will only contain type-correct values, every instruction will only be applied to operands of the expected type, and every function invocation always evaluates to a result of the right type (if it does not trap or diverge).
+
+- No memory location will be read or written except those explicitly defined by the program, i.e., as a local, a global, an element in a table, or a location within a linear memory.
+
+- There is no undefined behavior, i.e., the execution rules cover all possible cases that can occur in a valid program, and the rules are mutually consistent.
+
+Soundness also is instrumental in ensuring additional properties, most notably, encapsulation of function and module scopes: no locals can be accessed outside their own function and no module components can be accessed outside their own module unless they are explicitly exported or imported.
+
+The typing rules defining WebAssembly validation only cover the static components of a WebAssembly program. In order to state and prove soundness precisely, the typing rules must be extended to the dynamic components of the abstract runtime, that is, the store, configurations, and administrative instructions. [1]
+
+### Values and Results
+
+Values and results can be classified by value types and result types as follows.
+
+#### Values t.const c
+
+- The value is valid with value type t.
+
+    ⟹ ⊢ t.const c : t
+
+#### Results val∗
+
+- For each value val_i in val∗:
+
+   - The value val_i is valid with some value type t_i.
+
+- Let t∗ be the concatenation of all t_i.
+
+- Then the result is valid with result type [t∗].
+
+    (⊢ val : t)∗ ⟹ ⊢ val∗ : [t∗]
+
+#### Results trap
+
+- The result is valid with result type [t∗], for any sequence t∗ of value types.
+
+    ⟹ ⊢ trap : [t∗]
+
+### Store Validity
+
+The following typing rules specify when a runtime store S is valid. A valid store must consist of function, table, memory, global, and module instances that are themselves valid, relative to S.
+
+To that end, each kind of instance is classified by a respective function, table, memory, or global type. Module instances are classified by module contexts, which are regular contexts repurposed as module types describing the index spaces defined by a module.
+
+#### Store S
+
+- Each function instance funcinst_i in S.funcs must be valid with some function type functype_i.
+
+- Each table instance tableinst_i in S.tables must be valid with some table type tabletype_i.
+
+- Each memory instance meminst_i in S.mems must be valid with some memory type memtype_i.
+
+- Each global instance globalinst_i in S.globals must be valid with some global type globaltype_i.
+
+- Then the store is valid.
+
+    (S ⊢ funcinst : functype)∗ (S ⊢ tableinst : tabletype)∗
+    (S ⊢ meminst : memtype)∗ (S ⊢ globalinst : globaltype)∗
+    S = {funcs funcinst∗, tables tableinst∗, mems meminst∗, globals globalinst∗} ⟹ ⊢ S ok
+
+#### Function Instances {type functype, module moduleinst, code func}
+
+- The function type functype must be valid.
+
+- The module instance moduleinst must be valid with some context C.
+
+- Under context C, the function func must be valid with function type functype.
+
+- Then the function instance is valid with function type functype.
+
+    ⊢ functype ok S ⊢ moduleinst : C C ⊢ func : functype ⟹ S ⊢ {type functype, module moduleinst, code func} : functype
+
+#### Host Function Instances {type functype, hostcode hf}
+
+- The function type functype must be valid.
+
+- Let [t_1∗] → [t_2∗] be the function type functype.
+
+- For every valid store S_1 extending S and every sequence val∗ of values whose types coincide with t_1∗:
+
+   - Executing hf in store S_1 with arguments val∗ has a non-empty set of possible outcomes.
+
+   - For every element R of this set:
+
+      - Either R must be ⊥ (i.e., divergence).
+
+      - Or R consists of a valid store S_2 extending S_1 and a result result whose type coincides with [t_2∗].
+
+- Then the function instance is valid with function type functype.
+
+    ⊢ [t_1∗] → [t_2∗] ok ∀S_1, val∗, ⊢ S_1 ok ∧ ⊢ S ⪯ S_1 ∧ ⊢ val∗ : [t_1∗] ⟹
+    hf(S_1; val∗) ⊃ ∅ ∧
+    ∀R ∈ hf(S_1; val∗), R = ⊥ ∨
+    ∃S_2, result, ⊢ S_2 ok ∧ ⊢ S_1 ⪯ S_2 ∧ ⊢ result : [t_2∗] ∧ R = (S_2; result) ⟹ S ⊢ {type [t_1∗] → [t_2∗], hostcode hf} : [t_1∗] → [t_2∗]
+
+Note
+
+This rule states that, if appropriate pre-conditions about store and arguments are satisfied, then executing the host function must satisfy appropriate post-conditions about store and results. The post-conditions match the ones in the execution rule for invoking host functions.
+
+Any store under which the function is invoked is assumed to be an extension of the current store. That way, the function itself is able to make sufficient assumptions about future stores.
+
+#### Table Instances {elem (fa?)^n, max m?}
+
+- For each optional function address fa_i? in the table elements (fa?)^n:
+
+   - Either fa_i? is empty.
+
+   - Or the external value func fa must be valid with some external type func ft.
+
+- The limits {min n, max m?} must be valid.
+
+- Then the table instance is valid with table type {min n, max m?} funcref.
+
+    ((S ⊢ func fa : func functype)?)^n ⊢ {min n, max m?} ok ⟹ S ⊢ {elem (fa?)^n, max m?} : {min n, max m?} funcref
+
+#### Memory Instances {data b^n, max m?}
+
+- The limits {min n, max m?} must be valid.
+
+- Then the memory instance is valid with memory type {min n, max m?}.
+
+    ⊢ {min n, max m?} ok ⟹ S ⊢ {data b^n, max m?} : {min n, max m?}
+
+#### Global Instances {value (t.const c), mut mut}
+
+- The global instance is valid with global type mut t.
+
+    ⟹ S ⊢ {value (t.const c), mut mut} : mut t
+
+#### Export Instances {name name, value externval}
+
+- The external value externval must be valid with some external type externtype.
+
+- Then the export instance is valid.
+
+    S ⊢ externval : externtype ⟹ S ⊢ {name name, value externval} ok
+
+#### Module Instances moduleinst
+
+- Each function type functype_i in moduleinst.types must be valid.
+
+- For each function address funcaddr_i in moduleinst.funcaddrs, the external value func funcaddr_i must be valid with some external type func functype_i′.
+
+- For each table address tableaddr_i in moduleinst.tableaddrs, the external value table tableaddr_i must be valid with some external type table tabletype_i.
+
+- For each memory address memaddr_i in moduleinst.memaddrs, the external value mem memaddr_i must be valid with some external type mem memtype_i.
+
+- For each global address globaladdr_i in moduleinst.globaladdrs, the external value global globaladdr_i must be valid with some external type global globaltype_i.
+
+- Each export instance exportinst_i in moduleinst.exports must be valid.
+
+- For each export instance exportinst_i in moduleinst.exports, the name exportinst_i.name must be different from any other name occurring in moduleinst.exports.
+
+- Let functype′∗ be the concatenation of all functype_i′ in order.
+
+- Let tabletype∗ be the concatenation of all tabletype_i in order.
+
+- Let memtype∗ be the concatenation of all memtype_i in order.
+
+- Let globaltype∗ be the concatenation of all globaltype_i in order.
+
+- Then the module instance is valid with context {types functype∗, funcs functype′∗, tables tabletype∗, mems memtype∗, globals globaltype∗}.
+
+    (⊢ functype ok)∗
+    (S ⊢ func funcaddr : func functype′)∗ (S ⊢ table tableaddr : table tabletype)∗
+    (S ⊢ mem memaddr : mem memtype)∗ (S ⊢ global globaladdr : global globaltype)∗
+    (S ⊢ exportinst ok)∗ (exportinst.name)∗ disjoint ⟹ S ⊢ {types functype∗,
+    funcaddrs funcaddr∗,
+    tableaddrs tableaddr∗,
+    memaddrs memaddr∗,
+    globaladdrs globaladdr∗
+    exports exportinst∗ } : {types functype∗,
+    funcs functype′∗,
+    tables tabletype∗,
+    mems memtype∗,
+    globals globaltype∗ }
+
+### Configuration Validity
+
+To relate the WebAssembly type system to its execution semantics, the typing rules for instructions must be extended to configurations S; T, which relates the store to execution threads.
+
+Configurations and threads are classified by their result type. In addition to the store S, threads are typed under a return type resulttype?, which controls whether and with which type a return instruction is allowed. This type is absent ( ϵ) except for instruction sequences inside an administrative frame instruction.
+
+Finally, frames are classified with frame contexts, which extend the module contexts of a frame’s associated module instance with the locals that the frame contains.
+
+#### Configurations S; T
+
+- The store S must be valid.
+
+- Under no allowed return type, the thread T must be valid with some result type [t?].
+
+- Then the configuration is valid with the result type [t?].
+
+    ⊢ S ok S; ϵ ⊢ T : [t?] ⟹ ⊢ S; T : [t?]
+
+#### Threads F; instr∗
+
+- Let resulttype? be the current allowed return type.
+
+- The frame F must be valid with a context C.
+
+- Let C′ be the same context as C, but with return set to resulttype?.
+
+- Under context C′, the instruction sequence instr∗ must be valid with some type [] → [t?].
+
+- Then the thread is valid with the result type [t?].
+
+    S ⊢ F : C S; C, return resulttype? ⊢ instr∗ : [] → [t?] ⟹ S; resulttype? ⊢ F; instr∗ : [t?]
+
+#### Frames {locals val∗, module moduleinst}
+
+- The module instance moduleinst must be valid with some module context C.
+
+- Each value val_i in val∗ must be valid with some value type t_i.
+
+- Let t∗ the concatenation of all t_i in order.
+
+- Let C′ be the same context as C, but with the value types t∗ prepended to the locals vector.
+
+- Then the frame is valid with frame context C′.
+
+    S ⊢ moduleinst : C (⊢ val : t)∗ ⟹ S ⊢ {locals val∗, module moduleinst} : (C, locals t∗)
+
+### Administrative Instructions
+
+Typing rules for administrative instructions are specified as follows. In addition to the context C, typing of these instructions is defined under a given store S. To that end, all previous typing judgements C ⊢ prop are generalized to include the store, as in S; C ⊢ prop, by implicitly adding S to all rules – S is never modified by the pre-existing rules, but it is accessed in the extra rules for administrative instructions given below.
+
+#### trap
+
+- The instruction is valid with type [t_1∗] → [t_2∗], for any sequences of value types t_1∗ and t_2∗.
+
+    ⟹ S; C ⊢ trap : [t_1∗] → [t_2∗]
+
+#### invoke funcaddr
+
+- The external function value func funcaddr must be valid with external function type func([t_1∗] → [t_2∗]).
+
+- Then the instruction is valid with type [t_1∗] → [t_2∗].
+
+    S ⊢ func funcaddr : func [t_1∗] → [t_2∗] ⟹ S; C ⊢ invoke funcaddr : [t_1∗] → [t_2∗]
+
+#### init_elem tableaddr o x^n
+
+- The external table value table tableaddr must be valid with some external table type table limits funcref.
+
+- The index o + n must be smaller than or equal to limits.min.
+
+- The module instance moduleinst must be valid with some context C.
+
+- Each function index x_i in x^n must be defined in the context C.
+
+- Then the instruction is valid.
+
+    S ⊢ table tableaddr : table limits funcref o + n ≤ limits.min (C.funcs[x] = functype)^n ⟹ S; C ⊢ init_elem tableaddr o x^n ok
+
+#### init_data memaddr o b^n
+
+- The external memory value mem memaddr must be valid with some external memory type mem limits.
+
+- The index o + n must be smaller than or equal to limits.min divided by the page size 64 Ki.
+
+- Then the instruction is valid.
+
+    S ⊢ mem memaddr : mem limits o + n ≤ limits.min ⋅ 64 Ki ⟹ S; C ⊢ init_data memaddr o b^n ok
+
+#### label_n{instr_0∗} instr∗ end
+
+- The instruction sequence instr_0∗ must be valid with some type [t_1^n] → [t_2?].
+
+- Let C′ be the same context as C, but with the result type [t_1^n] prepended to the labels vector.
+
+- Under context C′, the instruction sequence instr∗ must be valid with type [] → [t_2?].
+
+- Then the compound instruction is valid with type [] → [t_2?].
+
+    S; C ⊢ instr_0∗ : [t_1^n] → [t_2?] S; C, labels [t_1^n] ⊢ instr∗ : [] → [t_2?] ⟹ S; C ⊢ label_n{instr_0∗} instr∗ end : [] → [t_2?]
+
+#### frame_n{F} instr∗ end
+
+- Under the return type [t^n], the thread F; instr∗ must be valid with result type [t^n].
+
+- Then the compound instruction is valid with type [] → [t^n].
+
+    S; [t^n] ⊢ F; instr∗ : [t^n] ⟹ S; C ⊢ frame_n{F} instr∗ end : [] → [t^n]
+
+### Store Extension
+
+Programs can mutate the store and its contained instances. Any such modification must respect certain invariants, such as not removing allocated instances or changing immutable definitions. While these invariants are inherent to the execution semantics of WebAssembly instructions and modules, host functions do not automatically adhere to them. Consequently, the required invariants must be stated as explicit constraints on the invocation of host functions. Soundness only holds when the embedder ensures these constraints.
+
+The necessary constraints are codified by the notion of store extension: a store state S′ extends state S, written S ⪯ S′, when the following rules hold.
+
+Note
+
+Extension does not imply that the new store is valid, which is defined separately above.
+
+#### Store S
+
+- The length of S.funcs must not shrink.
+
+- The length of S.tables must not shrink.
+
+- The length of S.mems must not shrink.
+
+- The length of S.globals must not shrink.
+
+- For each function instance funcinst_i in the original S.funcs, the new function instance must be an extension of the old.
+
+- For each table instance tableinst_i in the original S.tables, the new table instance must be an extension of the old.
+
+- For each memory instance meminst_i in the original S.mems, the new memory instance must be an extension of the old.
+
+- For each global instance globalinst_i in the original S.globals, the new global instance must be an extension of the old.
+
+    S_1.funcs = funcinst_1∗ S_2.funcs = funcinst_1′∗ funcinst_2∗ (funcinst_1 ⪯ funcinst_1′)∗
+    S_1.tables = tableinst_1∗ S_2.tables = tableinst_1′∗ tableinst_2∗ (tableinst_1 ⪯ tableinst_1′)∗
+    S_1.mems = meminst_1∗ S_2.mems = meminst_1′∗ meminst_2∗ (meminst_1 ⪯ meminst_1′)∗
+    S_1.globals = globalinst_1∗ S_2.globals = globalinst_1′∗ globalinst_2∗ (globalinst_1 ⪯ globalinst_1′)∗ ⟹ ⊢ S_1 ⪯ S_2
+
+#### Function Instance funcinst
+
+- A function instance must remain unchanged.
+
+    ⟹ ⊢ funcinst ⪯ funcinst
+
+#### Table Instance tableinst
+
+- The length of tableinst.elem must not shrink.
+
+- The value of tableinst.max must remain unchanged.
+
+    n_1 ≤ n_2 ⟹ ⊢ {elem (fa_1?)^(n_1), max m} ⪯ {elem (fa_2?)^(n_2), max m}
+
+#### Memory Instance meminst
+
+- The length of meminst.data must not shrink.
+
+- The value of meminst.max must remain unchanged.
+
+    n_1 ≤ n_2 ⟹ ⊢ {data b_1^(n_1), max m} ⪯ {data b_2^(n_2), max m}
+
+#### Global Instance globalinst
+
+- The mutability globalinst.mut must remain unchanged.
+
+- The value type of the value globalinst.value must remain unchanged.
+
+- If globalinst.mut is const, then the value globalinst.value must remain unchanged.
+
+    mut = var ∨ c_1 = c_2 ⟹ ⊢ {value (t.const c_1), mut mut} ⪯ {value (t.const c_2), mut mut}
+
+### Theorems
+
+Given the definition of valid configurations, the standard soundness theorems hold. [2]
+
+Theorem (Preservation). If a configuration S; T is valid with result type [t∗] (i.e., ⊢ S; T: [t∗]), and steps to S′; T′ (i.e., S; T ↪ S′; T′), then S′; T′ is a valid configuration with the same result type (i.e., ⊢ S′; T′: [t∗]). Furthermore, S′ is an extension of S (i.e., ⊢ S ⪯ S′).
+
+A terminal thread is one whose sequence of instructions is a result. A terminal configuration is a configuration whose thread is terminal.
+
+Theorem (Progress). If a configuration S; T is valid (i.e., ⊢ S; T: [t∗] for some result type [t∗]), then either it is terminal, or it can step to some configuration S′; T′ (i.e., S; T ↪ S′; T′).
+
+From Preservation and Progress the soundness of the WebAssembly type system follows directly.
+
+Corollary (Soundness). If a configuration S; T is valid (i.e., ⊢ S; T: [t∗] for some result type [t∗]), then it either diverges or takes a finite number of steps to reach a terminal configuration S′; T′ (i.e., S; T ↪∗ S′; T′) that is valid with the same result type (i.e., ⊢ S′; T′: [t∗]) and where S′ is an extension of S (i.e., ⊢ S ⪯ S′).
+
+In other words, every thread in a valid configuration either runs forever, traps, or terminates with a result that has the expected type. Consequently, given a valid store, no computation defined by instantiation or invocation of a valid module can “crash” or otherwise (mis)behave in ways not covered by the execution semantics given in this specification.
+
+| [1] | The formalization and theorems are derived from the following article: Andreas Haas, Andreas Rossberg, Derek Schuff, Ben Titzer, Dan Gohman, Luke Wagner, Alon Zakai, JF Bastien, Michael Holman. Bringing the Web up to Speed with WebAssembly. Proceedings of the 38th ACM SIGPLAN Conference on Programming Language Design and Implementation (PLDI 2017). ACM 2017.
+
+| [2] | A machine-verified version of the formalization and soundness proof is described in the following article: Conrad Watt. Mechanising and Verifying the WebAssembly Specification. Proceedings of the 7th ACM SIGPLAN Conference on Certified Programs and Proofs (CPP 2018). ACM 2018.
+
+## A.6 Index of Types
+
+| Category | Constructor | Binary Opcode
+
+| Type index | x | (positive number as s32 or u32)
+
+| Value type | i32 | 0x7F (-1 as s7)
+
+| Value type | i64 | 0x7E (-2 as s7)
+
+| Value type | f32 | 0x7D (-3 as s7)
+
+| Value type | f64 | 0x7C (-4 as s7)
+
+| (reserved) | | 0x7B.. 0x71
+
+| Element type | funcref | 0x70 (-16 as s7)
+
+| (reserved) | | 0x6F.. 0x61
+
+| Function type | [valtype∗] → [valtype∗] | 0x60 (-32 as s7)
+
+| (reserved) | | 0x5F.. 0x41
+
+| Result type | [ϵ] | 0x40 (-64 as s7)
+
+| Table type | limits elemtype | (none)
+
+| Memory type | limits | (none)
+
+| Global type | mut valtype | (none)
+
+## A.7 Index of Instructions
+
+| Instruction | Binary Opcode | Type | Validation | Execution
+
+| unreachable | 0x00 | [t_1∗] → [t_2∗] | validation | execution
+
+| nop | 0x01 | [] → [] | validation | execution
+
+| block [t?] | 0x02 | [] → [t∗] | validation | execution
+
+| loop [t?] | 0x03 | [] → [t∗] | validation | execution
+
+| if [t?] | 0x04 | [i32] → [t∗] | validation | execution
+
+| else | 0x05 | | |
+
+| (reserved) | 0x06 | | |
+
+| (reserved) | 0x07 | | |
+
+| (reserved) | 0x08 | | |
+
+| (reserved) | 0x09 | | |
+
+| (reserved) | 0x0A | | |
+
+| end | 0x0B | | |
+
+| br l | 0x0C | [t_1∗ t?] → [t_2∗] | validation | execution
+
+| br_if l | 0x0D | [t? i32] → [t?] | validation | execution
+
+| br_table l∗ l | 0x0E | [t_1∗ t? i32] → [t_2∗] | validation | execution
+
+| return | 0x0F | [t_1∗ t?] → [t_2∗] | validation | execution
+
+| call x | 0x10 | [t_1∗] → [t_2∗] | validation | execution
+
+| call_indirect x | 0x11 | [t_1∗ i32] → [t_2∗] | validation | execution
+
+| (reserved) | 0x12 | | |
+
+| (reserved) | 0x13 | | |
+
+| (reserved) | 0x14 | | |
+
+| (reserved) | 0x15 | | |
+
+| (reserved) | 0x16 | | |
+
+| (reserved) | 0x17 | | |
+
+| (reserved) | 0x18 | | |
+
+| (reserved) | 0x19 | | |
+
+| drop | 0x1A | [t] → [] | validation | execution
+
+| select | 0x1B | [t t i32] → [t] | validation | execution
+
+| (reserved) | 0x1C | | |
+
+| (reserved) | 0x1D | | |
+
+| (reserved) | 0x1E | | |
+
+| (reserved) | 0x1F | | |
+
+| local.get x | 0x20 | [] → [t] | validation | execution
+
+| local.set x | 0x21 | [t] → [] | validation | execution
+
+| local.tee x | 0x22 | [t] → [t] | validation | execution
+
+| global.get x | 0x23 | [] → [t] | validation | execution
+
+| global.set x | 0x24 | [t] → [] | validation | execution
+
+| (reserved) | 0x25 | | |
+
+| (reserved) | 0x26 | | |
+
+| (reserved) | 0x27 | | |
+
+| i32.load memarg | 0x28 | [i32] → [i32] | validation | execution
+
+| i64.load memarg | 0x29 | [i32] → [i64] | validation | execution
+
+| f32.load memarg | 0x2A | [i32] → [f32] | validation | execution
+
+| f64.load memarg | 0x2B | [i32] → [f64] | validation | execution
+
+| i32.load8_s memarg | 0x2C | [i32] → [i32] | validation | execution
+
+| i32.load8_u memarg | 0x2D | [i32] → [i32] | validation | execution
+
+| i32.load16_s memarg | 0x2E | [i32] → [i32] | validation | execution
+
+| i32.load16_u memarg | 0x2F | [i32] → [i32] | validation | execution
+
+| i64.load8_s memarg | 0x30 | [i32] → [i64] | validation | execution
+
+| i64.load8_u memarg | 0x31 | [i32] → [i64] | validation | execution
+
+| i64.load16_s memarg | 0x32 | [i32] → [i64] | validation | execution
+
+| i64.load16_u memarg | 0x33 | [i32] → [i64] | validation | execution
+
+| i64.load32_s memarg | 0x34 | [i32] → [i64] | validation | execution
+
+| i64.load32_u memarg | 0x35 | [i32] → [i64] | validation | execution
+
+| i32.store memarg | 0x36 | [i32 i32] → [] | validation | execution
+
+| i64.store memarg | 0x37 | [i32 i64] → [] | validation | execution
+
+| f32.store memarg | 0x38 | [i32 f32] → [] | validation | execution
+
+| f64.store memarg | 0x39 | [i32 f64] → [] | validation | execution
+
+| i32.store8 memarg | 0x3A | [i32 i32] → [] | validation | execution
+
+| i32.store16 memarg | 0x3B | [i32 i32] → [] | validation | execution
+
+| i64.store8 memarg | 0x3C | [i32 i64] → [] | validation | execution
+
+| i64.store16 memarg | 0x3D | [i32 i64] → [] | validation | execution
+
+| i64.store32 memarg | 0x3E | [i32 i64] → [] | validation | execution
+
+| memory.size | 0x3F | [] → [i32] | validation | execution
+
+| memory.grow | 0x40 | [i32] → [i32] | validation | execution
+
+| i32.const i32 | 0x41 | [] → [i32] | validation | execution
+
+| i64.const i64 | 0x42 | [] → [i64] | validation | execution
+
+| f32.const f32 | 0x43 | [] → [f32] | validation | execution
+
+| f64.const f64 | 0x44 | [] → [f64] | validation | execution
+
+| i32.eqz | 0x45 | [i32] → [i32] | validation | execution, operator
+
+| i32.eq | 0x46 | [i32 i32] → [i32] | validation | execution, operator
+
+| i32.ne | 0x47 | [i32 i32] → [i32] | validation | execution, operator
+
+| i32.lt_s | 0x48 | [i32 i32] → [i32] | validation | execution, operator
+
+| i32.lt_u | 0x49 | [i32 i32] → [i32] | validation | execution, operator
+
+| i32.gt_s | 0x4A | [i32 i32] → [i32] | validation | execution, operator
+
+| i32.gt_u | 0x4B | [i32 i32] → [i32] | validation | execution, operator
+
+| i32.le_s | 0x4C | [i32 i32] → [i32] | validation | execution, operator
+
+| i32.le_u | 0x4D | [i32 i32] → [i32] | validation | execution, operator
+
+| i32.ge_s | 0x4E | [i32 i32] → [i32] | validation | execution, operator
+
+| i32.ge_u | 0x4F | [i32 i32] → [i32] | validation | execution, operator
+
+| i64.eqz | 0x50 | [i64] → [i32] | validation | execution, operator
+
+| i64.eq | 0x51 | [i64 i64] → [i32] | validation | execution, operator
+
+| i64.ne | 0x52 | [i64 i64] → [i32] | validation | execution, operator
+
+| i64.lt_s | 0x53 | [i64 i64] → [i32] | validation | execution, operator
+
+| i64.lt_u | 0x54 | [i64 i64] → [i32] | validation | execution, operator
+
+| i64.gt_s | 0x55 | [i64 i64] → [i32] | validation | execution, operator
+
+| i64.gt_u | 0x56 | [i64 i64] → [i32] | validation | execution, operator
+
+| i64.le_s | 0x57 | [i64 i64] → [i32] | validation | execution, operator
+
+| i64.le_u | 0x58 | [i64 i64] → [i32] | validation | execution, operator
+
+| i64.ge_s | 0x59 | [i64 i64] → [i32] | validation | execution, operator
+
+| i64.ge_u | 0x5A | [i64 i64] → [i32] | validation | execution, operator
+
+| f32.eq | 0x5B | [f32 f32] → [i32] | validation | execution, operator
+
+| f32.ne | 0x5C | [f32 f32] → [i32] | validation | execution, operator
+
+| f32.lt | 0x5D | [f32 f32] → [i32] | validation | execution, operator
+
+| f32.gt | 0x5E | [f32 f32] → [i32] | validation | execution, operator
+
+| f32.le | 0x5F | [f32 f32] → [i32] | validation | execution, operator
+
+| f32.ge | 0x60 | [f32 f32] → [i32] | validation | execution, operator
+
+| f64.eq | 0x61 | [f64 f64] → [i32] | validation | execution, operator
+
+| f64.ne | 0x62 | [f64 f64] → [i32] | validation | execution, operator
+
+| f64.lt | 0x63 | [f64 f64] → [i32] | validation | execution, operator
+
+| f64.gt | 0x64 | [f64 f64] → [i32] | validation | execution, operator
+
+| f64.le | 0x65 | [f64 f64] → [i32] | validation | execution, operator
+
+| f64.ge | 0x66 | [f64 f64] → [i32] | validation | execution, operator
+
+| i32.clz | 0x67 | [i32] → [i32] | validation | execution, operator
+
+| i32.ctz | 0x68 | [i32] → [i32] | validation | execution, operator
+
+| i32.popcnt | 0x69 | [i32] → [i32] | validation | execution, operator
+
+| i32.add | 0x6A | [i32 i32] → [i32] | validation | execution, operator
+
+| i32.sub | 0x6B | [i32 i32] → [i32] | validation | execution, operator
+
+| i32.mul | 0x6C | [i32 i32] → [i32] | validation | execution, operator
+
+| i32.div_s | 0x6D | [i32 i32] → [i32] | validation | execution, operator
+
+| i32.div_u | 0x6E | [i32 i32] → [i32] | validation | execution, operator
+
+| i32.rem_s | 0x6F | [i32 i32] → [i32] | validation | execution, operator
+
+| i32.rem_u | 0x70 | [i32 i32] → [i32] | validation | execution, operator
+
+| i32.and | 0x71 | [i32 i32] → [i32] | validation | execution, operator
+
+| i32.or | 0x72 | [i32 i32] → [i32] | validation | execution, operator
+
+| i32.xor | 0x73 | [i32 i32] → [i32] | validation | execution, operator
+
+| i32.shl | 0x74 | [i32 i32] → [i32] | validation | execution, operator
+
+| i32.shr_s | 0x75 | [i32 i32] → [i32] | validation | execution, operator
+
+| i32.shr_u | 0x76 | [i32 i32] → [i32] | validation | execution, operator
+
+| i32.rotl | 0x77 | [i32 i32] → [i32] | validation | execution, operator
+
+| i32.rotr | 0x78 | [i32 i32] → [i32] | validation | execution, operator
+
+| i64.clz | 0x79 | [i64] → [i64] | validation | execution, operator
+
+| i64.ctz | 0x7A | [i64] → [i64] | validation | execution, operator
+
+| i64.popcnt | 0x7B | [i64] → [i64] | validation | execution, operator
+
+| i64.add | 0x7C | [i64 i64] → [i64] | validation | execution, operator
+
+| i64.sub | 0x7D | [i64 i64] → [i64] | validation | execution, operator
+
+| i64.mul | 0x7E | [i64 i64] → [i64] | validation | execution, operator
+
+| i64.div_s | 0x7F | [i64 i64] → [i64] | validation | execution, operator
+
+| i64.div_u | 0x80 | [i64 i64] → [i64] | validation | execution, operator
+
+| i64.rem_s | 0x81 | [i64 i64] → [i64] | validation | execution, operator
+
+| i64.rem_u | 0x82 | [i64 i64] → [i64] | validation | execution, operator
+
+| i64.and | 0x83 | [i64 i64] → [i64] | validation | execution, operator
+
+| i64.or | 0x84 | [i64 i64] → [i64] | validation | execution, operator
+
+| i64.xor | 0x85 | [i64 i64] → [i64] | validation | execution, operator
+
+| i64.shl | 0x86 | [i64 i64] → [i64] | validation | execution, operator
+
+| i64.shr_s | 0x87 | [i64 i64] → [i64] | validation | execution, operator
+
+| i64.shr_u | 0x88 | [i64 i64] → [i64] | validation | execution, operator
+
+| i64.rotl | 0x89 | [i64 i64] → [i64] | validation | execution, operator
+
+| i64.rotr | 0x8A | [i64 i64] → [i64] | validation | execution, operator
+
+| f32.abs | 0x8B | [f32] → [f32] | validation | execution, operator
+
+| f32.neg | 0x8C | [f32] → [f32] | validation | execution, operator
+
+| f32.ceil | 0x8D | [f32] → [f32] | validation | execution, operator
+
+| f32.floor | 0x8E | [f32] → [f32] | validation | execution, operator
+
+| f32.trunc | 0x8F | [f32] → [f32] | validation | execution, operator
+
+| f32.nearest | 0x90 | [f32] → [f32] | validation | execution, operator
+
+| f32.sqrt | 0x91 | [f32] → [f32] | validation | execution, operator
+
+| f32.add | 0x92 | [f32 f32] → [f32] | validation | execution, operator
+
+| f32.sub | 0x93 | [f32 f32] → [f32] | validation | execution, operator
+
+| f32.mul | 0x94 | [f32 f32] → [f32] | validation | execution, operator
+
+| f32.div | 0x95 | [f32 f32] → [f32] | validation | execution, operator
+
+| f32.min | 0x96 | [f32 f32] → [f32] | validation | execution, operator
+
+| f32.max | 0x97 | [f32 f32] → [f32] | validation | execution, operator
+
+| f32.copysign | 0x98 | [f32 f32] → [f32] | validation | execution, operator
+
+| f64.abs | 0x99 | [f64] → [f64] | validation | execution, operator
+
+| f64.neg | 0x9A | [f64] → [f64] | validation | execution, operator
+
+| f64.ceil | 0x9B | [f64] → [f64] | validation | execution, operator
+
+| f64.floor | 0x9C | [f64] → [f64] | validation | execution, operator
+
+| f64.trunc | 0x9D | [f64] → [f64] | validation | execution, operator
+
+| f64.nearest | 0x9E | [f64] → [f64] | validation | execution, operator
+
+| f64.sqrt | 0x9F | [f64] → [f64] | validation | execution, operator
+
+| f64.add | 0xA0 | [f64 f64] → [f64] | validation | execution, operator
+
+| f64.sub | 0xA1 | [f64 f64] → [f64] | validation | execution, operator
+
+| f64.mul | 0xA2 | [f64 f64] → [f64] | validation | execution, operator
+
+| f64.div | 0xA3 | [f64 f64] → [f64] | validation | execution, operator
+
+| f64.min | 0xA4 | [f64 f64] → [f64] | validation | execution, operator
+
+| f64.max | 0xA5 | [f64 f64] → [f64] | validation | execution, operator
+
+| f64.copysign | 0xA6 | [f64 f64] → [f64] | validation | execution, operator
+
+| i32.wrap_i64 | 0xA7 | [i64] → [i32] | validation | execution, operator
+
+| i32.trunc_f32_s | 0xA8 | [f32] → [i32] | validation | execution, operator
+
+| i32.trunc_f32_u | 0xA9 | [f32] → [i32] | validation | execution, operator
+
+| i32.trunc_f64_s | 0xAA | [f64] → [i32] | validation | execution, operator
+
+| i32.trunc_f64_u | 0xAB | [f64] → [i32] | validation | execution, operator
+
+| i64.extend_i32_s | 0xAC | [i32] → [i64] | validation | execution, operator
+
+| i64.extend_i32_u | 0xAD | [i32] → [i64] | validation | execution, operator
+
+| i64.trunc_f32_s | 0xAE | [f32] → [i64] | validation | execution, operator
+
+| i64.trunc_f32_u | 0xAF | [f32] → [i64] | validation | execution, operator
+
+| i64.trunc_f64_s | 0xB0 | [f64] → [i64] | validation | execution, operator
+
+| i64.trunc_f64_u | 0xB1 | [f64] → [i64] | validation | execution, operator
+
+| f32.convert_i32_s | 0xB2 | [i32] → [f32] | validation | execution, operator
+
+| f32.convert_i32_u | 0xB3 | [i32] → [f32] | validation | execution, operator
+
+| f32.convert_i64_s | 0xB4 | [i64] → [f32] | validation | execution, operator
+
+| f32.convert_i64_u | 0xB5 | [i64] → [f32] | validation | execution, operator
+
+| f32.demote_f64 | 0xB6 | [f64] → [f32] | validation | execution, operator
+
+| f64.convert_i32_s | 0xB7 | [i32] → [f64] | validation | execution, operator
+
+| f64.convert_i32_u | 0xB8 | [i32] → [f64] | validation | execution, operator
+
+| f64.convert_i64_s | 0xB9 | [i64] → [f64] | validation | execution, operator
+
+| f64.convert_i64_u | 0xBA | [i64] → [f64] | validation | execution, operator
+
+| f64.promote_f32 | 0xBB | [f32] → [f64] | validation | execution, operator
+
+| i32.reinterpret_f32 | 0xBC | [f32] → [i32] | validation | execution, operator
+
+| i64.reinterpret_f64 | 0xBD | [f64] → [i64] | validation | execution, operator
+
+| f32.reinterpret_i32 | 0xBE | [i32] → [f32] | validation | execution, operator
+
+| f64.reinterpret_i64 | 0xBF | [i64] → [f64] | validation | execution, operator
+
+## A.8 Index of Semantic Rules
+
+### Typing of Static Constructs
+
+| Construct | Judgement
+
+| Limits | ⊢ limits: k
+
+| Function type | ⊢ functype ok
+
+| Table type | ⊢ tabletype ok
+
+| Memory type | ⊢ memtype ok
+
+| Global type | ⊢ globaltype ok
+
+| External type | ⊢ externtype ok
+
+| Instruction | S; C ⊢ instr: functype
+
+| Instruction sequence | S; C ⊢ instr∗: functype
+
+| Expression | C ⊢ expr: resulttype
+
+| Function | C ⊢ func: functype
+
+| Table | C ⊢ table: tabletype
+
+| Memory | C ⊢ mem: memtype
+
+| Global | C ⊢ global: globaltype
+
+| Element segment | C ⊢ elem ok
+
+| Data segment | C ⊢ data ok
+
+| Start function | C ⊢ start ok
+
+| Export | C ⊢ export: externtype
+
+| Export description | C ⊢ exportdesc: externtype
+
+| Import | C ⊢ import: externtype
+
+| Import description | C ⊢ importdesc: externtype
+
+| Module | ⊢ module: externtype∗ → externtype∗
+
+### Typing of Runtime Constructs
+
+| Construct | Judgement
+
+| Value | ⊢ val: valtype
+
+| Result | ⊢ result: resulttype
+
+| External value | S ⊢ externval: externtype
+
+| Function instance | S ⊢ funcinst: functype
+
+| Table instance | S ⊢ tableinst: tabletype
+
+| Memory instance | S ⊢ meminst: memtype
+
+| Global instance | S ⊢ globalinst: globaltype
+
+| Export instance | S ⊢ exportinst ok
+
+| Module instance | S ⊢ moduleinst: C
+
+| Store | ⊢ store ok
+
+| Configuration | ⊢ config ok
+
+| Thread | S; resulttype? ⊢ thread: resulttype
+
+| Frame | S ⊢ frame: C
+
+### Constantness
+
+| Construct | Judgement
+
+| Constant expression | C ⊢ expr const
+
+| Constant instruction | C ⊢ instr const
+
+### Import Matching
+
+| Construct | Judgement
+
+| Limits | ⊢ limits_1 ≤ limits_2
+
+| External type | ⊢ externtype_1 ≤ externtype_2
+
+### Store Extension
+
+| Construct | Judgement
+
+| Function instance | ⊢ funcinst_1 ⪯ funcinst_2
+
+| Table instance | ⊢ tableinst_1 ⪯ tableinst_2
+
+| Memory instance | ⊢ meminst_1 ⪯ meminst_2
+
+| Global instance | ⊢ globalinst_1 ⪯ globalinst_2
+
+| Store | ⊢ store_1 ⪯ store_2
+
+### Execution
+
+| Construct | Judgement
+
+| Instruction | S; F; instr∗ ↪ S′; F′; instr′∗
+
+| Expression | S; F; expr ↪ S′; F′; expr′
+

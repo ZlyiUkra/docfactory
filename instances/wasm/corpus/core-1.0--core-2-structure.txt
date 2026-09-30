@@ -1,0 +1,607 @@
+# WebAssembly Core 1.0: 2 Structure
+# джерело: https://www.w3.org/TR/2019/REC-wasm-core-1-20191205/#structure①
+# отримано: 2026-09-30
+# версія: 1.0
+
+## 2.1 Conventions
+
+WebAssembly is a programming language that has multiple concrete representations (its binary format and the text format). Both map to a common structure. For conciseness, this structure is described in the form of an abstract syntax. All parts of this specification are defined in terms of this abstract syntax.
+
+### 2.1.1 Grammar Notation
+
+The following conventions are adopted in defining grammar rules for abstract syntax.
+
+- Terminal symbols (atoms) are written in sans-serif font: i32, end.
+
+- Nonterminal symbols are written in italic font: valtype, instr.
+
+- A^n is a sequence of n ≥ 0 iterations of A.
+
+- A∗ is a possibly empty sequence of iterations of A. (This is a shorthand for A^n used where n is not relevant.)
+
+- A+ is a non-empty sequence of iterations of A. (This is a shorthand for A^n where n ≥ 1.)
+
+- A? is an optional occurrence of A. (This is a shorthand for A^n where n ≤ 1.)
+
+- Productions are written sym::= A_1 ∣ … ∣ A_n.
+
+- Large productions may be split into multiple definitions, indicated by ending the first one with explicit ellipses, sym::= A_1 ∣ …, and starting continuations with ellipses, sym::= … ∣ A_2.
+
+- Some productions are augmented with side conditions in parentheses, “ (if condition) ”, that provide a shorthand for a combinatorial expansion of the production into many separate cases.
+
+### 2.1.2 Auxiliary Notation
+
+When dealing with syntactic constructs the following notation is also used:
+
+- ϵ denotes the empty sequence.
+
+- ∣s∣ denotes the length of a sequence s.
+
+- s[i] denotes the i -th element of a sequence s, starting from 0.
+
+- s[i: n] denotes the sub-sequence s[i] … s[i + n − 1] of a sequence s.
+
+- s with [i] = A denotes the same sequence as s, except that the i -th element is replaced with A.
+
+- s with [i: n] = A^n denotes the same sequence as s, except that the sub-sequence s[i: n] is replaced with A^n.
+
+- concat(s∗) denotes the flat sequence formed by concatenating all sequences s_i in s∗.
+
+Moreover, the following conventions are employed:
+
+- The notation x^n, where x is a non-terminal symbol, is treated as a meta variable ranging over respective sequences of x (similarly for x∗, x+, x?).
+
+- When given a sequence x^n, then the occurrences of x in a sequence written (A_1 x A_2)^n are assumed to be in point-wise correspondence with x^n (similarly for x∗, x+, x?). This implicitly expresses a form of mapping syntactic constructions over a sequence.
+
+Productions of the following form are interpreted as records that map a fixed set of fields field_i to “values” A_i, respectively:
+
+r::= {field_1 A_1, field_2 A_2, … }
+
+The following notation is adopted for manipulating such records:
+
+- r.field denotes the contents of the field component of r.
+
+- r with field = A denotes the same record as r, except that the contents of the field component is replaced with A.
+
+- r_1 ⊕ r_2 denotes the composition of two records with the same fields of sequences by appending each sequence point-wise:
+
+   {field_1 A_1∗, field_2 A_2∗, … } ⊕ {field_1 B_1∗, field_2 B_2∗, … } = {field_1 A_1∗ B_1∗, field_2 A_2∗ B_2∗, … }
+
+- ⨁ r∗ denotes the composition of a sequence of records, respectively; if the sequence is empty, then all fields of the resulting record are empty.
+
+The update notation for sequences and records generalizes recursively to nested components accessed by “paths” pth::= ([… ] ∣.field)+:
+
+- s with [i] pth = A is short for s with [i] = (s[i] with pth = A).
+
+- r with field pth = A is short for r with field = (r.field with pth = A).
+
+where r with.field = A is shortened to r with field = A.
+
+### 2.1.3 Vectors
+
+Vectors are bounded sequences of the form A^n (or A∗), where the A can either be values or complex constructions. A vector can have at most 2^(32) − 1 elements.
+
+vec(A)::= A^n (if n < 2^(32))
+
+## 2.2 Values
+
+WebAssembly programs operate on primitive numeric values. Moreover, in the definition of programs, immutable sequences of values occur to represent more complex data, such as text strings or other vectors.
+
+### 2.2.1 Bytes
+
+The simplest form of value are raw uninterpreted bytes. In the abstract syntax they are represented as hexadecimal literals.
+
+byte::= 0x00 ∣ … ∣ 0xFF
+
+#### 2.2.1.1 Conventions
+
+- The meta variable b ranges over bytes.
+
+- Bytes are sometimes interpreted as natural numbers n < 256.
+
+### 2.2.2 Integers
+
+Different classes of integers with different value ranges are distinguished by their bit width N and by whether they are unsigned or signed.
+
+    uN ::= 0 ∣ 1 ∣ … ∣ 2^N−1
+    sN ::= −2^(N−1) ∣ … ∣ −1 ∣ 0 ∣ 1 ∣ … ∣ 2^(N−1)−1
+    iN ::= uN
+
+The latter class defines uninterpreted integers, whose signedness interpretation can vary depending on context. In the abstract syntax, they are represented as unsigned values. However, some operations convert them to signed based on a two’s complement interpretation.
+
+Note
+
+The main integer types occurring in this specification are u32, u64, s32, s64, i8, i16, i32, i64. However, other sizes occur as auxiliary constructions, e.g., in the definition of floating-point numbers.
+
+#### 2.2.2.1 Conventions
+
+- The meta variables m, n, i range over integers.
+
+- Numbers may be denoted by simple arithmetics, as in the grammar above. In order to distinguish arithmetics like 2^N from sequences like (1)^N, the latter is distinguished with parentheses.
+
+### 2.2.3 Floating-Point
+
+Floating-point data represents 32 or 64 bit values that correspond to the respective binary formats of the [IEEE-754-2019] standard (Section 3.3).
+
+Every value has a sign and a magnitude. Magnitudes can either be expressed as normal numbers of the form m_0.m_1m_2 … m_M ⋅ 2^e, where e is the exponent and m is the significand whose most signifcant bit m_0 is 1, or as a subnormal number where the exponent is fixed to the smallest possible value and m_0 is 0; among the subnormals are positive and negative zero values. Since the significands are binary values, normals are represented in the form (1 + m ⋅ 2^(−M)) ⋅ 2^e, where M is the bit width of m; similarly for subnormals.
+
+Possible magnitudes also include the special values ∞ (infinity) and nan (NaN, not a number). NaN values have a payload that describes the mantissa bits in the underlying binary representation. No distinction is made between signalling and quiet NaNs.
+
+    fN ::= +fNmag ∣ −fNmag
+    fNmag ::= (1 + uM ⋅ 2^(−M)) ⋅ 2^e (if −2^(E−1) + 2 ≤ e ≤ 2^(E−1) − 1)
+    ∣ (0 + uM ⋅ 2^(−M)) ⋅ 2^e (if e = −2^(E−1) + 2)
+    ∣ ∞
+    ∣ nan(n) (if 1 ≤ n < 2^M)
+
+where M = signif(N) and E = expon(N) with
+
+    signif(32) = 23 expon(32) = 8
+    signif(64) = 52 expon(64) = 11
+
+A canonical NaN is a floating-point value ±nan(canon_N) where canon_N is a payload whose most significant bit is 1 while all others are 0:
+
+canon_N = 2^(signif(N)−1)
+
+An arithmetic NaN is a floating-point value ±nan(n) with n ≥ canon_N, such that the most significant bit is 1 while all others are arbitrary.
+
+Note
+
+In the abstract syntax, subnormals are distinguished by the leading 0 of the significand. The exponent of subnormals has the same value as the smallest possible exponent of a normal number. Only in the binary representation the exponent of a subnormal is encoded differently than the exponent of any normal number.
+
+#### 2.2.3.1 Conventions
+
+- The meta variable z ranges over floating-point values where clear from context.
+
+### 2.2.4 Names
+
+Names are sequences of characters, which are scalar values as defined by [UNICODE] (Section 2.4).
+
+    name ::= char∗ (if ∣utf8(char∗)∣ < 2^(32))
+    char ::= U+00 ∣ … ∣ U+D7FF ∣ U+E000 ∣ … ∣ U+10FFFF
+
+Due to the limitations of the binary format, the length of a name is bounded by the length of its UTF-8 encoding.
+
+#### 2.2.4.1 Convention
+
+- Characters (Unicode scalar values) are sometimes used interchangeably with natural numbers n < 1114112.
+
+## 2.3 Types
+
+Various entities in WebAssembly are classified by types. Types are checked during validation, instantiation, and possibly execution.
+
+### 2.3.1 Value Types
+
+Value types classify the individual values that WebAssembly code can compute with and the values that a variable accepts.
+
+valtype::= i32 ∣ i64 ∣ f32 ∣ f64
+
+The types i32 and i64 classify 32 and 64 bit integers, respectively. Integers are not inherently signed or unsigned, their interpretation is determined by individual operations.
+
+The types f32 and f64 classify 32 and 64 bit floating-point data, respectively. They correspond to the respective binary floating-point representations, also known as single and double precision, as defined by the [IEEE-754-2019] standard (Section 3.3).
+
+#### 2.3.1.1 Conventions
+
+- The meta variable t ranges over value types where clear from context.
+
+- The notation ∣t∣ denotes the bit width of a value type. That is, ∣i32∣ = ∣f32∣ = 32 and ∣i64∣ = ∣f64∣ = 64.
+
+### 2.3.2 Result Types
+
+Result types classify the result of executing instructions or blocks, which is a sequence of values written with brackets.
+
+resulttype::= [valtype?]
+
+Note
+
+In the current version of WebAssembly, at most one value is allowed as a result. However, this may be generalized to sequences of values in future versions.
+
+### 2.3.3 Function Types
+
+Function types classify the signature of functions, mapping a vector of parameters to a vector of results, written as follows.
+
+functype::= [vec(valtype)] → [vec(valtype)]
+
+Note
+
+In the current version of WebAssembly, the length of the result type vector of a valid function type may be at most 1. This restriction may be removed in future versions.
+
+### 2.3.4 Limits
+
+Limits classify the size range of resizeable storage associated with memory types and table types.
+
+limits::= {min u32, max u32?}
+
+If no maximum is given, the respective storage can grow to any size.
+
+### 2.3.5 Memory Types
+
+Memory types classify linear memories and their size range.
+
+memtype::= limits
+
+The limits constrain the minimum and optionally the maximum size of a memory. The limits are given in units of page size.
+
+### 2.3.6 Table Types
+
+Table types classify tables over elements of element types within a size range.
+
+    tabletype ::= limits elemtype
+    elemtype ::= funcref
+
+Like memories, tables are constrained by limits for their minimum and optionally maximum size. The limits are given in numbers of entries.
+
+The element type funcref is the infinite union of all function types. A table of that type thus contains references to functions of heterogeneous type.
+
+Note
+
+In future versions of WebAssembly, additional element types may be introduced.
+
+### 2.3.7 Global Types
+
+Global types classify global variables, which hold a value and can either be mutable or immutable.
+
+    globaltype ::= mut valtype
+    mut ::= const ∣ var
+
+### 2.3.8 External Types
+
+External types classify imports and external values with their respective types.
+
+externtype::= func functype ∣ table tabletype ∣ mem memtype ∣ global globaltype
+
+#### 2.3.8.1 Conventions
+
+The following auxiliary notation is defined for sequences of external types. It filters out entries of a specific kind in an order-preserving fashion:
+
+- funcs(externtype∗) = [functype ∣ (func functype) ∈ externtype∗]
+
+- tables(externtype∗) = [tabletype ∣ (table tabletype) ∈ externtype∗]
+
+- mems(externtype∗) = [memtype ∣ (mem memtype) ∈ externtype∗]
+
+- globals(externtype∗) = [globaltype ∣ (global globaltype) ∈ externtype∗]
+
+## 2.4 Instructions
+
+WebAssembly code consists of sequences of instructions. Its computational model is based on a stack machine in that instructions manipulate values on an implicit operand stack, consuming (popping) argument values and producing or returning (pushing) result values.
+
+Note
+
+In the current version of WebAssembly, at most one result value can be pushed by a single instruction. This restriction may be lifted in future versions.
+
+In addition to dynamic operands from the stack, some instructions also have static immediate arguments, typically indices or type annotations, which are part of the instruction itself.
+
+Some instructions are structured in that they bracket nested sequences of instructions.
+
+The following sections group instructions into a number of different categories.
+
+### 2.4.1 Numeric Instructions
+
+Numeric instructions provide basic operations over numeric values of specific type. These operations closely match respective operations available in hardware.
+
+    nn, mm ::= 32 ∣ 64
+    sx ::= u ∣ s
+    instr ::= inn.const inn ∣ fnn.const fnn
+    ∣ inn.iunop ∣ fnn.funop
+    ∣ inn.ibinop ∣ fnn.fbinop
+    ∣ inn.itestop
+    ∣ inn.irelop ∣ fnn.frelop
+    ∣ i32.wrap_i64 ∣ i64.extend_i32_sx ∣ inn.trunc_fmm_sx
+    ∣ f32.demote_f64 ∣ f64.promote_f32 ∣ fnn.convert_imm_sx
+    ∣ inn.reinterpret_fnn ∣ fnn.reinterpret_inn
+    ∣ …
+    iunop ::= clz ∣ ctz ∣ popcnt
+    ibinop ::= add ∣ sub ∣ mul ∣ div_sx ∣ rem_sx
+    ∣ and ∣ or ∣ xor ∣ shl ∣ shr_sx ∣ rotl ∣ rotr
+    funop ::= abs ∣ neg ∣ sqrt ∣ ceil ∣ floor ∣ trunc ∣ nearest
+    fbinop ::= add ∣ sub ∣ mul ∣ div ∣ min ∣ max ∣ copysign
+    itestop ::= eqz
+    irelop ::= eq ∣ ne ∣ lt_sx ∣ gt_sx ∣ le_sx ∣ ge_sx
+    frelop ::= eq ∣ ne ∣ lt ∣ gt ∣ le ∣ ge
+
+Numeric instructions are divided by value type. For each type, several subcategories can be distinguished:
+
+- Constants: return a static constant.
+
+- Unary Operators: consume one operand and produce one result of the respective type.
+
+- Binary Operators: consume two operands and produce one result of the respective type.
+
+- Tests: consume one operand of the respective type and produce a Boolean integer result.
+
+- Comparisons: consume two operands of the respective type and produce a Boolean integer result.
+
+- Conversions: consume a value of one type and produce a result of another (the source type of the conversion is the one after the “ _ ”).
+
+Some integer instructions come in two flavors, where a signedness annotation sx distinguishes whether the operands are to be interpreted as unsigned or signed integers. For the other integer instructions, the use of two’s complement for the signed interpretation means that they behave the same regardless of signedness.
+
+#### 2.4.1.1 Conventions
+
+Occasionally, it is convenient to group operators together according to the following grammar shorthands:
+
+    unop ::= iunop ∣ funop
+    binop ::= ibinop ∣ fbinop
+    testop ::= itestop
+    relop ::= irelop ∣ frelop
+    cvtop ::= wrap ∣ extend ∣ trunc ∣ convert ∣ demote ∣ promote ∣ reinterpret
+
+### 2.4.2 Parametric Instructions
+
+Instructions in this group can operate on operands of any value type.
+
+    instr ::= …
+    ∣ drop
+    ∣ select
+
+The drop operator simply throws away a single operand.
+
+The select operator selects one of its first two operands based on whether its third operand is zero or not.
+
+### 2.4.3 Variable Instructions
+
+Variable instructions are concerned with access to local or global variables.
+
+    instr ::= …
+    ∣ local.get localidx
+    ∣ local.set localidx
+    ∣ local.tee localidx
+    ∣ global.get globalidx
+    ∣ global.set globalidx
+
+These instructions get or set the values of variables, respectively. The local.tee instruction is like local.set but also returns its argument.
+
+### 2.4.4 Memory Instructions
+
+Instructions in this group are concerned with linear memory.
+
+    memarg ::= {offset u32, align u32}
+    instr ::= …
+    ∣ inn.load memarg ∣ fnn.load memarg
+    ∣ inn.store memarg ∣ fnn.store memarg
+    ∣ inn.load8_sx memarg ∣ inn.load16_sx memarg ∣ i64.load32_sx memarg
+    ∣ inn.store8 memarg ∣ inn.store16 memarg ∣ i64.store32 memarg
+    ∣ memory.size
+    ∣ memory.grow
+
+Memory is accessed with load and store instructions for the different value types. They all take a memory immediate memarg that contains an address offset and the expected alignment (expressed as the exponent of a power of 2). Integer loads and stores can optionally specify a storage size that is smaller than the bit width of the respective value type. In the case of loads, a sign extension mode sx is then required to select appropriate behavior.
+
+The static address offset is added to the dynamic address operand, yielding a 33 bit effective address that is the zero-based index at which the memory is accessed. All values are read and written in little endian byte order. A trap results if any of the accessed memory bytes lies outside the address range implied by the memory’s current size.
+
+Note
+
+Future version of WebAssembly might provide memory instructions with 64 bit address ranges.
+
+The memory.size instruction returns the current size of a memory. The memory.grow instruction grows memory by a given delta and returns the previous size, or −1 if enough memory cannot be allocated. Both instructions operate in units of page size.
+
+Note
+
+In the current version of WebAssembly, all memory instructions implicitly operate on memory index 0. This restriction may be lifted in future versions.
+
+### 2.4.5 Control Instructions
+
+Instructions in this group affect the flow of control.
+
+    instr ::= …
+    ∣ nop
+    ∣ unreachable
+    ∣ block resulttype instr∗ end
+    ∣ loop resulttype instr∗ end
+    ∣ if resulttype instr∗ else instr∗ end
+    ∣ br labelidx
+    ∣ br_if labelidx
+    ∣ br_table vec(labelidx) labelidx
+    ∣ return
+    ∣ call funcidx
+    ∣ call_indirect typeidx
+
+The nop instruction does nothing.
+
+The unreachable instruction causes an unconditional trap.
+
+The block, loop and if instructions are structured instructions. They bracket nested sequences of instructions, called blocks, terminated with, or separated by, end or else pseudo-instructions. As the grammar prescribes, they must be well-nested. A structured instruction can produce a value as described by the annotated result type.
+
+Each structured control instruction introduces an implicit label. Labels are targets for branch instructions that reference them with label indices. Unlike with other index spaces, indexing of labels is relative by nesting depth, that is, label 0 refers to the innermost structured control instruction enclosing the referring branch instruction, while increasing indices refer to those farther out. Consequently, labels can only be referenced from within the associated structured control instruction. This also implies that branches can only be directed outwards, “breaking” from the block of the control construct they target. The exact effect depends on that control construct. In case of block or if it is a forward jump, resuming execution after the matching end. In case of loop it is a backward jump to the beginning of the loop.
+
+Note
+
+This enforces structured control flow. Intuitively, a branch targeting a block or if behaves like a break statement in most C-like languages, while a branch targeting a loop behaves like a continue statement.
+
+Branch instructions come in several flavors: br performs an unconditional branch, br_if performs a conditional branch, and br_table performs an indirect branch through an operand indexing into the label vector that is an immediate to the instruction, or to a default target if the operand is out of bounds. The return instruction is a shortcut for an unconditional branch to the outermost block, which implicitly is the body of the current function. Taking a branch unwinds the operand stack up to the height where the targeted structured control instruction was entered. However, forward branches that target a control instruction with a non-empty result type consume matching operands first and push them back on the operand stack after unwinding, as a result for the terminated structured instruction.
+
+The call instruction invokes another function, consuming the necessary arguments from the stack and returning the result values of the call. The call_indirect instruction calls a function indirectly through an operand indexing into a table. Since tables may contain function elements of heterogeneous type funcref, the callee is dynamically checked against the function type indexed by the instruction’s immediate, and the call aborted with a trap if it does not match.
+
+Note
+
+In the current version of WebAssembly, call_indirect implicitly operates on table index 0. This restriction may be lifted in future versions.
+
+### 2.4.6 Expressions
+
+Function bodies, initialization values for globals, and offsets of element or data segments are given as expressions, which are sequences of instructions terminated by an end marker.
+
+expr::= instr∗ end
+
+In some places, validation restricts expressions to be constant, which limits the set of allowable instructions.
+
+## 2.5 Modules
+
+WebAssembly programs are organized into modules, which are the unit of deployment, loading, and compilation. A module collects definitions for types, functions, tables, memories, and globals. In addition, it can declare imports and exports and provide initialization logic in the form of data and element segments or a start function.
+
+    module ::= { types vec(functype),
+    funcs vec(func),
+    tables vec(table),
+    mems vec(mem),
+    globals vec(global),
+    elem vec(elem),
+    data vec(data),
+    start start?,
+    imports vec(import),
+    exports vec(export) }
+
+Each of the vectors – and thus the entire module – may be empty.
+
+### 2.5.1 Indices
+
+Definitions are referenced with zero-based indices. Each class of definition has its own index space, as distinguished by the following classes.
+
+    typeidx ::= u32
+    funcidx ::= u32
+    tableidx ::= u32
+    memidx ::= u32
+    globalidx ::= u32
+    localidx ::= u32
+    labelidx ::= u32
+
+The index space for functions, tables, memories and globals includes respective imports declared in the same module. The indices of these imports precede the indices of other definitions in the same index space.
+
+The index space for locals is only accessible inside a function and includes the parameters of that function, which precede the local variables.
+
+Label indices reference structured control instructions inside an instruction sequence.
+
+#### 2.5.1.1 Conventions
+
+- The meta variable l ranges over label indices.
+
+- The meta variables x, y range over indices in any of the other index spaces.
+
+### 2.5.2 Types
+
+The types component of a module defines a vector of function types.
+
+All function types used in a module must be defined in this component. They are referenced by type indices.
+
+Note
+
+Future versions of WebAssembly may add additional forms of type definitions.
+
+### 2.5.3 Functions
+
+The funcs component of a module defines a vector of functions with the following structure:
+
+func::= {type typeidx, locals vec(valtype), body expr}
+
+The type of a function declares its signature by reference to a type defined in the module. The parameters of the function are referenced through 0-based local indices in the function’s body; they are mutable.
+
+The locals declare a vector of mutable local variables and their types. These variables are referenced through local indices in the function’s body. The index of the first local is the smallest index not referencing a parameter.
+
+The body is an instruction sequence that upon termination must produce a stack matching the function type’s result type.
+
+Functions are referenced through function indices, starting with the smallest index not referencing a function import.
+
+### 2.5.4 Tables
+
+The tables component of a module defines a vector of tables described by their table type:
+
+table::= {type tabletype}
+
+A table is a vector of opaque values of a particular table element type. The min size in the limits of the table type specifies the initial size of that table, while its max, if present, restricts the size to which it can grow later.
+
+Tables can be initialized through element segments.
+
+Tables are referenced through table indices, starting with the smallest index not referencing a table import. Most constructs implicitly reference table index 0.
+
+Note
+
+In the current version of WebAssembly, at most one table may be defined or imported in a single module, and all constructs implicitly reference this table 0. This restriction may be lifted in future versions.
+
+### 2.5.5 Memories
+
+The mems component of a module defines a vector of linear memories (or memories for short) as described by their memory type:
+
+mem::= {type memtype}
+
+A memory is a vector of raw uninterpreted bytes. The min size in the limits of the memory type specifies the initial size of that memory, while its max, if present, restricts the size to which it can grow later. Both are in units of page size.
+
+Memories can be initialized through data segments.
+
+Memories are referenced through memory indices, starting with the smallest index not referencing a memory import. Most constructs implicitly reference memory index 0.
+
+Note
+
+In the current version of WebAssembly, at most one memory may be defined or imported in a single module, and all constructs implicitly reference this memory 0. This restriction may be lifted in future versions.
+
+### 2.5.6 Globals
+
+The globals component of a module defines a vector of global variables (or globals for short):
+
+global::= {type globaltype, init expr}
+
+Each global stores a single value of the given global type. Its type also specifies whether a global is immutable or mutable. Moreover, each global is initialized with an init value given by a constant initializer expression.
+
+Globals are referenced through global indices, starting with the smallest index not referencing a global import.
+
+### 2.5.7 Element Segments
+
+The initial contents of a table is uninitialized. The elem component of a module defines a vector of element segments that initialize a subrange of a table, at a given offset, from a static vector of elements.
+
+elem::= {table tableidx, offset expr, init vec(funcidx)}
+
+The offset is given by a constant expression.
+
+Note
+
+In the current version of WebAssembly, at most one table is allowed in a module. Consequently, the only valid tableidx is 0.
+
+### 2.5.8 Data Segments
+
+The initial contents of a memory are zero-valued bytes. The data component of a module defines a vector of data segments that initialize a range of memory, at a given offset, with a static vector of bytes.
+
+data::= {data memidx, offset expr, init vec(byte)}
+
+The offset is given by a constant expression.
+
+Note
+
+In the current version of WebAssembly, at most one memory is allowed in a module. Consequently, the only valid memidx is 0.
+
+### 2.5.9 Start Function
+
+The start component of a module declares the function index of a start function that is automatically invoked when the module is instantiated, after tables and memories have been initialized.
+
+start::= {func funcidx}
+
+Note
+
+The start function is intended for initializing the state of a module. The module and its exports are not accessible before this initialization has completed.
+
+### 2.5.10 Exports
+
+The exports component of a module defines a set of exports that become accessible to the host environment once the module has been instantiated.
+
+    export ::= {name name, desc exportdesc}
+    exportdesc ::= func funcidx
+    ∣ table tableidx
+    ∣ mem memidx
+    ∣ global globalidx
+
+Each export is labeled by a unique name. Exportable definitions are functions, tables, memories, and globals, which are referenced through a respective descriptor.
+
+#### 2.5.10.1 Conventions
+
+The following auxiliary notation is defined for sequences of exports, filtering out indices of a specific kind in an order-preserving fashion:
+
+- funcs(export∗) = [funcidx ∣ func funcidx ∈ (export.desc)∗]
+
+- tables(export∗) = [tableidx ∣ table tableidx ∈ (export.desc)∗]
+
+- mems(export∗) = [memidx ∣ mem memidx ∈ (export.desc)∗]
+
+- globals(export∗) = [globalidx ∣ global globalidx ∈ (export.desc)∗]
+
+### 2.5.11 Imports
+
+The imports component of a module defines a set of imports that are required for instantiation.
+
+    import ::= {module name, name name, desc importdesc}
+    importdesc ::= func typeidx
+    ∣ table tabletype
+    ∣ mem memtype
+    ∣ global globaltype
+
+Each import is labeled by a two-level name space, consisting of a module name and a name for an entity within that module. Importable definitions are functions, tables, memories, and globals. Each import is specified by a descriptor with a respective type that a definition provided during instantiation is required to match.
+
+Every import defines an index in the respective index space. In each index space, the indices of imports go before the first index of any definition contained in the module itself.
+
+Note
+
+Unlike export names, import names are not necessarily unique. It is possible to import the same module / name pair multiple times; such imports may even have different type descriptions, including different kinds of entities. A module with such imports can still be instantiated depending on the specifics of how an embedder allows resolving and supplying imports. However, embedders are not required to support such overloading, and a WebAssembly module itself cannot implement an overloaded name.
+

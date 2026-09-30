@@ -1,0 +1,1958 @@
+# WebAssembly JavaScript Interface 3.0.draft: 5 The WebAssembly Namespace
+# джерело: https://webassembly.github.io/spec/js-api/#webassembly-namespace
+# отримано: 2026-09-30
+# версія: 3.0.draft
+
+```
+dictionary WebAssemblyInstantiatedSource {
+    required Module module;
+    required Instance instance;
+};
+
+dictionary WebAssemblyCompileOptions {
+    USVString? importedStringConstants;
+    sequence<USVString> builtins;
+};
+
+[Exposed=*]
+namespace WebAssembly {
+    boolean validate([AllowResizable] AllowSharedBufferSource bytes, optional WebAssemblyCompileOptions options = {});
+    Promise<Module> compile([AllowResizable] AllowSharedBufferSource bytes, optional WebAssemblyCompileOptions options = {});
+
+    Promise<WebAssemblyInstantiatedSource> instantiate(
+        [AllowResizable] AllowSharedBufferSource bytes, optional object importObject, optional WebAssemblyCompileOptions options = {});
+
+    Promise<Instance> instantiate(
+        Module moduleObject, optional object importObject);
+
+    readonly attribute Tag JSTag;
+};
+
+```
+
+To compile a WebAssembly module from source bytes bytes, perform the following steps:
+
+1. Let module be module_decode(bytes). If module is error, return error.
+
+2. If module_validate(module) is error, return error.
+
+3. Return module.
+
+To validate builtins and imported string for a WebAssembly module from module module, enabled builtins builtinSetNames, and importedStringModule, perform the following steps:
+
+1. If validating builtin set names for builtinSetNames is false, return false.
+
+2. For each import of module_imports(module),
+
+   1. If importedStringModule is not null and import[0] equals importedStringModule,
+
+      1. Let importExternType be import[2].
+
+      2. Let stringExternType be `global const (ref extern)`.
+
+      3. If match_externtype(stringExternType, importExternType) is false, return false
+
+   2. Else,
+
+      1. If validating an import for builtins with import and builtinSetNames is false, return false.
+
+3. Return true.
+
+The `validate(bytes, options)` method, when invoked, performs the following steps:
+
+1. Let stableBytes be a copy of the bytes held by the buffer bytes.
+
+2. Compile stableBytes as a WebAssembly module and store the results as module.
+
+3. If module is error, return false.
+
+4. Let builtinSetNames be options["builtins"].
+
+5. Let importedStringModule be options["importedStringConstants"].
+
+6. If validating builtins and imported strings for module with builtinSetNames and importedStringModule returns false, return false.
+
+7. Return true.
+
+A `Module` object represents a single WebAssembly module. Each `Module` object has the following internal slots:
+
+- [[Module]]: a WebAssembly module
+
+- [[Bytes]]: the source bytes of [[Module]].
+
+- [[BuiltinSets]]: an ordered set of names of builtin sets
+
+- [[ImportedStringModule]]: an optional module specifier string where any string constant can be imported from.
+
+To construct a WebAssembly module object from a module module, source bytes bytes, enabled builtins builtinSetNames, and importedStringModule, perform the following steps:
+
+1. Let moduleObject be a new `Module`.
+
+2. Set moduleObject.[[Module]] to module.
+
+3. Set moduleObject.[[Bytes]] to bytes.
+
+4. Set moduleObject.[[BuiltinSets]] to builtinSetNames.
+
+5. Set moduleObject.[[ImportedStringModule]] to importedStringModule.
+
+6. Return moduleObject.
+
+To asynchronously compile a WebAssembly module from source bytes bytes and `WebAssemblyCompileOptions` options using optional task source taskSource, perform the following steps:
+
+1. Let promise be a new promise.
+
+2. Run the following steps in parallel:
+
+   1. Compile the WebAssembly module bytes and store the result as module.
+
+   2. Queue a task on taskSource, if provided, to perform the following steps:
+
+      1. If module is error, reject promise with a `CompileError` exception and return.
+
+      2. Let builtinSetNames be options["builtins"].
+
+      3. Let importedStringModule be options["importedStringConstants"].
+
+      4. If validating builtins and imported strings for module with builtinSetNames and importedStringModule is false, reject promise with a `CompileError` exception.
+
+      5. Otherwise,
+
+         1. Construct a WebAssembly module object from module, bytes, builtinSetNames, importedStringModule, and let moduleObject be the result.
+
+         2. Resolve promise with moduleObject.
+
+3. Return promise.
+
+The `compile(bytes, options)` method, when invoked, performs the following steps:
+
+1. Let stableBytes be a copy of the bytes held by the buffer bytes.
+
+2. Asynchronously compile a WebAssembly module from stableBytes using options and return the result.
+
+To instantiate imported strings with module module and importedStringModule, perform the following steps:
+
+1. Assert: importedStringModule is not null.
+
+2. Let exportsObject be OrdinaryObjectCreate(null).
+
+3. For each (moduleName, componentName, externtype) of module_imports(module),
+
+   1. If moduleName does not equal importedStringModule, then continue.
+
+   2. Let stringConstant be componentName.
+
+   3. Let status be! CreateDataProperty(exportsObject, stringConstant, stringConstant).
+
+   4. Assert: status is true.
+
+4. Return exportsObject.
+
+To read the imports from a WebAssembly module module from imports object importObject, enabled builtins builtinSetNames, and importedStringModule, perform the following steps:
+
+1. If module_imports(module) is not empty, and importObject is undefined, throw a `TypeError` exception.
+
+2. Let builtinOrStringImports be the ordered map « ».
+
+3. For each builtinSetName of builtinSetNames,
+
+   1. Let builtinSetQualifiedName be builtinSetName prefixed with "wasm:"
+
+   2. Assert: builtinOrStringImports does not contain builtinSetQualifiedName
+
+   3. If builtinSetName does not refer to a builtin set, then continue.
+
+   4. Let exportsObject be the result of instantiate a builtin set with builtinSetName
+
+   5. Set builtinOrStringImports[builtinSetQualifiedName] to exportsObject
+
+4. If importedStringModule is not null,
+
+   1. Let exportsObject be the result of instantiate imported strings with module and importedStringModule
+
+   2. Set builtinOrStringImports[importedStringModule] to exportsObject
+
+5. Let imports be « ».
+
+6. For each (moduleName, componentName, externtype) of module_imports(module),
+
+   1. If builtinOrStringImports contains moduleName,
+
+      1. Let o be builtinOrStringImports[moduleName].
+
+      2. If o is not an Object or if? HasProperty(o, componentName) is false,
+
+         1. Set o to? Get(importObject, moduleName).
+
+   2. Else,
+
+      1. Let o be? Get(importObject, moduleName).
+
+   3. If o is not an Object, throw a `TypeError` exception.
+
+   4. Let v be? Get(o, componentName).
+
+   5. If externtype is of the form func functype,
+
+      1. If IsCallable(v) is false, throw a `LinkError` exception.
+
+      2. If v has a [[FunctionAddress]] internal slot, and therefore is an Exported Function,
+
+         1. Let funcaddr be the value of v’s [[FunctionAddress]] internal slot.
+
+      3. Otherwise,
+
+         1. Create a host function from v and functype, and let funcaddr be the result.
+
+         2. Let index be the number of external functions in imports. This value index is known as the index of the host function funcaddr.
+
+      4. Let externfunc be the external value func funcaddr.
+
+      5. Append externfunc to imports.
+
+   6. If externtype is of the form global mut valtype,
+
+      1. If v implements `Global`,
+
+         1. Let globaladdr be v.[[Global]].
+
+      2. Otherwise,
+
+         1. If valtype is i64 and v is not a BigInt,
+
+            1. Throw a `LinkError` exception.
+
+         2. If valtype is one of i32, f32 or f64 and v is not a Number,
+
+            1. Throw a `LinkError` exception.
+
+         3. If valtype is v128,
+
+            1. Throw a `LinkError` exception.
+
+         4. Let value be ToWebAssemblyValue(v, valtype). If this operation throws a `TypeError`, catch it, and throw a `LinkError` exception.
+
+         5. Let store be the surrounding agent’s associated store.
+
+         6. Let (store, globaladdr) be global_alloc(store, const valtype, value).
+
+         7. Set the surrounding agent’s associated store to store.
+
+      3. Let externglobal be global globaladdr.
+
+      4. Append externglobal to imports.
+
+   7. If externtype is of the form mem memtype,
+
+      1. If v does not implement `Memory`, throw a `LinkError` exception.
+
+      2. Let externmem be the external value mem v.[[Memory]].
+
+      3. Append externmem to imports.
+
+   8. If externtype is of the form table tabletype,
+
+      1. If v does not implement `Table`, throw a `LinkError` exception.
+
+      2. Let tableaddr be v.[[Table]].
+
+      3. Let externtable be the external value table tableaddr.
+
+      4. Append externtable to imports.
+
+   9. If externtype is of the form tag functype,
+
+      1. If v does not implement `Tag`, throw a `LinkError` exception.
+
+      2. Let tagaddr be v.[[Address]].
+
+      3. Let externtag be the external value tag tagaddr.
+
+      4. Append externtag to imports.
+
+7. Return imports.
+
+Note: This algorithm only verifies the right kind of JavaScript values are passed. The verification of WebAssembly type requirements is deferred to the "instantiate the core of a WebAssembly module" algorithm.
+
+To create an exports object from a WebAssembly module module and instance instance, perform the following steps:
+
+1. Let exportsObject be OrdinaryObjectCreate(null).
+
+2. For each (name, externtype) of module_exports(module),
+
+   1. Let externval be instance_export(instance, name).
+
+   2. Assert: externval is not error.
+
+   3. If externtype is of the form func functype,
+
+      1. Assert: externval is of the form func funcaddr.
+
+      2. Let func funcaddr be externval.
+
+      3. Let func be the result of creating a new Exported Function from funcaddr.
+
+      4. Let value be func.
+
+   4. If externtype is of the form global mut globaltype,
+
+      1. Assert: externval is of the form global globaladdr.
+
+      2. Let global globaladdr be externval.
+
+      3. Let global be a new Global object created from globaladdr.
+
+      4. Let value be global.
+
+   5. If externtype is of the form mem memtype,
+
+      1. Assert: externval is of the form mem memaddr.
+
+      2. Let mem memaddr be externval.
+
+      3. Let memory be a new Memory object created from memaddr.
+
+      4. Let value be memory.
+
+   6. If externtype is of the form table tabletype,
+
+      1. Assert: externval is of the form table tableaddr.
+
+      2. Let table tableaddr be externval.
+
+      3. Let table be a new Table object created from tableaddr.
+
+      4. Let value be table.
+
+   7. If externtype is of the form tag functype,
+
+      1. Assert: externval is of the form tag tagaddr.
+
+      2. Let tag tagaddr be externval.
+
+      3. Let tag be a new Tag object created from tagaddr.
+
+      4. Let value be tag.
+
+   8. Let status be! CreateDataProperty(exportsObject, name, value).
+
+   9. Assert: status is true.
+
+   Note: the validity and uniqueness checks performed during WebAssembly module validation ensure that each property name is valid and no properties are defined twice.
+
+3. Perform! SetIntegrityLevel(exportsObject, `"frozen"`).
+
+4. Return exportsObject.
+
+To initialize an instance object instanceObject from a WebAssembly module module and instance instance, perform the following steps:
+
+1. Create an exports object from module and instance and let exportsObject be the result.
+
+2. Set instanceObject.[[Instance]] to instance.
+
+3. Set instanceObject.[[Exports]] to exportsObject.
+
+To instantiate the core of a WebAssembly module from a module module and imports imports, perform the following steps:
+
+1. Let store be the surrounding agent’s associated store.
+
+2. Let (store, result) be module_instantiate(store, module, imports).
+
+3. If result is error, throw an appropriate exception type:
+
+   - A `LinkError` exception for most cases which occur during linking.
+
+   - If the error came when running the start function, throw a `RuntimeError` for most errors which occur from WebAssembly, or the error object propagated from inner ECMAScript code.
+
+   - Another error type if appropriate, for example an out-of-memory exception, as documented in the WebAssembly error mapping.
+
+4. Set the surrounding agent’s associated store to store.
+
+5. Return result.
+
+To asynchronously instantiate a WebAssembly module from a `Module` moduleObject and imports importObject, perform the following steps:
+
+1. Let promise be a new promise.
+
+2. Let module be moduleObject.[[Module]].
+
+3. Let builtinSetNames be moduleObject.[[BuiltinSets]].
+
+4. Let importedStringModule be moduleObject.[[ImportedStringModule]].
+
+5. Read the imports of module with imports importObject, builtinSetNames and importedStringModule, and let imports be the result. If this operation throws an exception, catch it, reject promise with the exception, and return promise.
+
+6. Run the following steps in parallel:
+
+   1. Queue a task to perform the following steps: Note: Implementation-specific work may be performed here.
+
+      1. Instantiate the core of a WebAssembly module module with imports, and let instance be the result. If this throws an exception, catch it, reject promise with the exception, and terminate these substeps.
+
+      2. Let instanceObject be a new `Instance`.
+
+      3. Initialize instanceObject from module and instance. If this throws an exception, catch it, reject promise with the exception, and terminate these substeps.
+
+      4. Resolve promise with instanceObject.
+
+7. Return promise.
+
+To instantiate a promise of a module promiseOfModule with imports importObject, perform the following steps:
+
+1. Let promise be a new promise.
+
+2. React to promiseOfModule:
+
+   - If promiseOfModule was fulfilled with value module:
+
+      1. Instantiate the WebAssembly module module importing importObject, and let innerPromise be the result.
+
+      2. React to innerPromise:
+
+         - If innerPromise was fulfilled with value instance.
+
+            1. Let result be the `WebAssemblyInstantiatedSource` value «[ "`module`" → module, "`instance`" → instance ]».
+
+            2. Resolve promise with result.
+
+         - If innerPromise was rejected with reason reason:
+
+            1. Reject promise with reason.
+
+   - If promiseOfModule was rejected with reason reason:
+
+      1. Reject promise with reason.
+
+3. Return promise.
+
+The `instantiate(bytes, importObject, options)` method, when invoked, performs the following steps:
+
+1. Let stableBytes be a copy of the bytes held by the buffer bytes.
+
+2. Asynchronously compile a WebAssembly module from stableBytes using options and let promiseOfModule be the result.
+
+3. Instantiate promiseOfModule with imports importObject and return the result.
+
+The `instantiate(moduleObject, importObject)` method, when invoked, performs the following steps:
+
+1. Asynchronously instantiate the WebAssembly module moduleObject importing importObject, and return the result.
+
+Note: A follow-on streaming API is documented in the WebAssembly Web API.
+
+The getter of the `JSTag` attribute of the `WebAssembly` Namespace, when invoked, performs the following steps:
+
+1. Let JSTagAddr be the result of getting the JavaScript exception tag.
+
+2. Let JSTagObject be the result of creating a Tag object from JSTagAddr.
+
+3. Return JSTagObject.
+
+## 5.1 Modules
+
+```
+enum ImportExportKind {
+  "function",
+  "table",
+  "memory",
+  "global",
+  "tag"
+};
+
+enum AddressType {
+  "i32",
+  "i64",
+};
+
+typedef any AddressValue;
+
+dictionary ModuleExportDescriptor {
+  required USVString name;
+  required ImportExportKind kind;
+  // Note: Other fields such as signature may be added in the future.
+};
+
+dictionary ModuleImportDescriptor {
+  required USVString module;
+  required USVString name;
+  required ImportExportKind kind;
+};
+
+[LegacyNamespace=WebAssembly, Exposed=*]
+interface Module {
+  constructor([AllowResizable] AllowSharedBufferSource bytes, optional WebAssemblyCompileOptions options = {});
+  static sequence<ModuleExportDescriptor> exports(Module moduleObject);
+  static sequence<ModuleImportDescriptor> imports(Module moduleObject);
+  static sequence<ArrayBuffer> customSections(Module moduleObject, DOMString sectionName);
+};
+
+```
+
+The string value of the extern type type is
+
+- "function" if type is of the form func functype
+
+- "table" if type is of the form table tabletype
+
+- "memory" if type is of the form mem memtype
+
+- "global" if type is of the form global globaltype
+
+- "tag" if type is of the form tag tag
+
+The `exports(moduleObject)` method, when invoked, performs the following steps:
+
+1. Let module be moduleObject.[[Module]].
+
+2. Let exports be « ».
+
+3. For each (name, type) of module_exports(module),
+
+   1. Let kind be the string value of the extern type type.
+
+   2. Let obj be «[ "`name`" → name, "`kind`" → kind ]».
+
+   3. Append obj to exports.
+
+4. Return exports.
+
+The `imports(moduleObject)` method, when invoked, performs the following steps:
+
+1. Let module be moduleObject.[[Module]].
+
+2. Let builtinSetNames be moduleObject.[[BuiltinSets]].
+
+3. Let importedStringModule be moduleObject.[[ImportedStringModule]].
+
+4. Let imports be « ».
+
+5. For each (moduleName, name, type) of module_imports(module),
+
+   1. If find a builtin for (moduleName, name, type) and builtinSetNames is not null, then continue.
+
+   2. If importedStringModule is not null and moduleName equals importedStringModule, then continue.
+
+   3. Let kind be the string value of the extern type type.
+
+   4. Let obj be «[ "`module`" → moduleName, "`name`" → name, "`kind`" → kind ]».
+
+   5. Append obj to imports.
+
+6. Return imports.
+
+The `customSections(moduleObject, sectionName)` method, when invoked, performs the following steps:
+
+1. Let bytes be moduleObject.[[Bytes]].
+
+2. Let customSections be « ».
+
+3. For each custom section customSection of bytes, interpreted according to the module grammar,
+
+   1. Let name be the `name` of customSection, decoded as UTF-8.
+
+   2. Assert: name is not failure (moduleObject.[[Module]] is valid).
+
+   3. If name equals sectionName as string values,
+
+      1. Append a new `ArrayBuffer` containing a copy of the bytes in bytes for the range matched by this customsec production to customSections.
+
+4. Return customSections.
+
+The `Module(bytes, options)` constructor, when invoked, performs the following steps:
+
+1. Let stableBytes be a copy of the bytes held by the buffer bytes.
+
+2. Compile the WebAssembly module stableBytes and store the result as module.
+
+3. If module is error, throw a `CompileError` exception.
+
+4. Let builtinSetNames be options["builtins"].
+
+5. Let importedStringModule be options["importedStringConstants"].
+
+6. If validating builtins and imported strings for module with builtinSetNames and importedStringModule returns false, throw a `CompileError` exception.
+
+7. Set this.[[Module]] to module.
+
+8. Set this.[[Bytes]] to stableBytes.
+
+9. Set this.[[BuiltinSets]] to builtinSetNames.
+
+10. Set this.[[ImportedStringModule]] to importedStringModule.
+
+Note: Some implementations enforce a size limitation on bytes. Use of this API is discouraged, in favor of asynchronous APIs.
+
+## 5.2 Instances
+
+```
+[LegacyNamespace=WebAssembly, Exposed=*]
+interface Instance {
+  constructor(Module module, optional object importObject);
+  readonly attribute object exports;
+};
+
+```
+
+The `Instance(moduleObject, importObject)` constructor, when invoked, runs the following steps:
+
+1. Let builtinSetNames be moduleObject.[[BuiltinSets]].
+
+2. Let importedStringModule be moduleObject.[[ImportedStringModule]].
+
+3. Let module be moduleObject.[[Module]].
+
+4. Read the imports of module with imports importObject, builtinSetNames, and importedStringModule, and let imports be the result.
+
+5. Instantiate the core of a WebAssembly module module with imports, and let instance be the result.
+
+6. Initialize this from module and instance.
+
+Note: The use of this synchronous API is discouraged, as some implementations sometimes do long-running compilation work when instantiating.
+
+The getter of the `exports` attribute of `Instance` returns this.[[Exports]].
+
+## 5.3 Memories
+
+```
+dictionary MemoryDescriptor {
+  required AddressValue initial;
+  AddressValue maximum;
+  AddressType address;
+};
+
+[LegacyNamespace=WebAssembly, Exposed=*]
+interface Memory {
+  constructor(MemoryDescriptor descriptor);
+  AddressValue grow(AddressValue delta);
+  ArrayBuffer toFixedLengthBuffer();
+  ArrayBuffer toResizableBuffer();
+  readonly attribute ArrayBuffer buffer;
+};
+
+```
+
+A `Memory` object represents a single memory instance which can be simultaneously referenced by multiple `Instance` objects. Each `Memory` object has the following internal slots:
+
+- [[Memory]]: a memory address
+
+- [[BufferObject]]: an `ArrayBuffer` whose Data Block is identified with the above memory address
+
+To create a fixed length memory buffer from a memory address memaddr, perform the following steps:
+
+1. Let block be a Data Block which is identified with the underlying memory of memaddr.
+
+2. Let buffer be a new `ArrayBuffer` with the internal slots [[ArrayBufferData]], [[ArrayBufferByteLength]], and [[ArrayBufferDetachKey]].
+
+3. Set buffer.[[ArrayBufferData]] to block.
+
+4. Set buffer.[[ArrayBufferByteLength]] to the length of block.
+
+5. Set buffer.[[ArrayBufferDetachKey]] to "WebAssembly.Memory".
+
+6. Return buffer.
+
+To create a resizable memory buffer from a memory address memaddr and a maxsize, perform the following steps:
+
+1. Let block be a Data Block which is identified with the underlying memory of memaddr.
+
+2. Let length be the length of block.
+
+3. Let buffer be a new `ArrayBuffer` with the internal slots [[ArrayBufferData]], [[ArrayBufferByteLength]], [[ArrayBufferMaxByteLength]], and [[ArrayBufferDetachKey]].
+
+4. Set buffer.[[ArrayBufferData]] to block.
+
+5. Set buffer.[[ArrayBufferByteLength]] to length.
+
+6. Set buffer.[[ArrayBufferMaxByteLength]] to maxsize.
+
+7. Set buffer.[[ArrayBufferDetachKey]] to "WebAssembly.Memory".
+
+8. Return buffer.
+
+To initialize a memory object memory from a memory address memaddr, perform the following steps:
+
+1. Let map be the surrounding agent’s associated Memory object cache.
+
+2. Assert: map[memaddr] doesn’t exist.
+
+3. Let buffer be the result of creating a fixed length memory buffer from memaddr.
+
+4. Set memory.[[Memory]] to memaddr.
+
+5. Set memory.[[BufferObject]] to buffer.
+
+6. Set map[memaddr] to memory.
+
+To create a memory object from a memory address memaddr, perform the following steps:
+
+1. Let map be the surrounding agent’s associated Memory object cache.
+
+2. If map[memaddr] exists,
+
+   1. Return map[memaddr].
+
+3. Let memory be a new `Memory`.
+
+4. Initialize memory from memaddr.
+
+5. Return memory.
+
+The `Memory(descriptor)` constructor, when invoked, performs the following steps:
+
+1. If descriptor["address"] exists, let addrtype be descriptor["address"]; otherwise, let addrtype be "i32".
+
+2. Let initial be? AddressValueToU64(descriptor["initial"], addrtype).
+
+3. If descriptor["maximum"] exists, let maximum be? AddressValueToU64(descriptor["maximum"], addrtype); otherwise, let maximum be empty.
+
+4. Let memtype be memory type addrtype { min initial, max maximum }.
+
+5. If memtype is not valid, throw a `RangeError` exception.
+
+6. Let store be the surrounding agent’s associated store.
+
+7. Let (store, memaddr) be mem_alloc(store, memtype). If allocation fails, throw a `RangeError` exception.
+
+8. Set the surrounding agent’s associated store to store.
+
+9. Initialize this from memaddr.
+
+To refresh the Memory buffer of memaddr, perform the following steps:
+
+1. Let map be the surrounding agent’s associated Memory object cache.
+
+2. Assert: map[memaddr] exists.
+
+3. Let memory be map[memaddr].
+
+4. Let buffer be memory.[[BufferObject]].
+
+5. If IsFixedLengthArrayBuffer(buffer) is true,
+
+   1. Perform! DetachArrayBuffer(buffer, "WebAssembly.Memory").
+
+   2. Let buffer be the result of creating a fixed length memory buffer from memaddr.
+
+   3. Set memory.[[BufferObject]] to buffer.
+
+6. Otherwise,
+
+   1. Let block be a Data Block which is identified with the underlying memory of memaddr.
+
+   2. Set buffer.[[ArrayBufferData]] to block.
+
+   3. Set buffer.[[ArrayBufferByteLength]] to the length of block.
+
+To grow the memory buffer associated with a memory address memaddr by delta, perform the following steps:
+
+1. Let store be the surrounding agent’s associated store.
+
+2. Let ret be the mem_size(store, memaddr).
+
+3. Let store be mem_grow(store, memaddr, delta).
+
+4. If store is error, throw a `RangeError` exception.
+
+5. Set the surrounding agent’s associated store to store.
+
+6. Refresh the memory buffer of memaddr.
+
+7. Return ret.
+
+The `grow(delta)` method, when invoked, performs the following steps:
+
+1. Let memaddr be this.[[Memory]].
+
+2. Let store be the surrounding agent’s associated store.
+
+3. Let addrtype be the address type in mem_type(store, memaddr).
+
+4. Let delta64 be? AddressValueToU64(delta, addrtype).
+
+5. Let ret be the result of growing the memory buffer associated with memaddr by delta64.
+
+6. Return U64ToAddressValue(ret, addrtype).
+
+Immediately after a WebAssembly memory.grow x instruction executes, perform the following steps:
+
+1. If the top of the stack is not i32.const (−1) and the top of the stack is not i64.const (−1),
+
+   1. Let frame be the current frame.
+
+   2. Assert: due to validation, frame.module.memaddrs[x] exists.
+
+   3. Let memaddr be the memory address frame.module.memaddrs[x].
+
+   4. Refresh the memory buffer of memaddr.
+
+The `toFixedLengthBuffer()` method, when invoked, performs the following steps:
+
+1. Let buffer be this.[[BufferObject]].
+
+2. If IsFixedLengthArrayBuffer(buffer) is true, return buffer.
+
+3. Let memaddr be this.[[Memory]].
+
+4. Let fixedBuffer be the result of creating a fixed length memory buffer from memaddr.
+
+5. Perform! DetachArrayBuffer(buffer, "WebAssembly.Memory").
+
+6. Set this.[[BufferObject]] to fixedBuffer.
+
+7. Return fixedBuffer.
+
+The `toResizableBuffer()` method, when invoked, performs the following steps:
+
+1. Let memaddr be this.[[Memory]].
+
+2. Let store be the surrounding agent’s associated store.
+
+3. Let memtype be mem_type(store, memaddr).
+
+4. If memtype does not have a max,
+
+   1. Throw a `TypeError` exception.
+
+5. Let buffer be this.[[BufferObject]].
+
+6. If IsFixedLengthArrayBuffer(buffer) is false, return buffer.
+
+7. Assert: memtype has a max.
+
+8. Let maxsize be the max value in memtype * 65536.
+
+9. Let resizableBuffer be the result of creating a resizable memory buffer from memaddr and maxsize.
+
+10. Perform! DetachArrayBuffer(buffer, "WebAssembly.Memory").
+
+11. Set this.[[BufferObject]] to resizableBuffer.
+
+12. Return resizableBuffer.
+
+`ArrayBuffer` objects returned by a `Memory` object must have a size that is a multiple of a WebAssembly page size (the constant 65536). For this reason HostResizeArrayBuffer is redefined as follows.
+
+The abstract operation HostResizeArrayBuffer takes arguments buffer (an `ArrayBuffer`) and newLength. It performs the following steps when called.
+
+1. If buffer.[[ArrayBufferDetachKey]] is "WebAssembly.Memory",
+
+   1. Let map be the surrounding agent’s associated Memory object cache.
+
+   2. Assert: buffer is the [[BufferObject]] of exactly one value in map.
+
+   3. For each memaddr → mem in map,
+
+      1. If SameValue(mem.[[BufferObject]], buffer) is true,
+
+         1. Assert: buffer.[[ArrayBufferByteLength]] modulo 65536 is 0.
+
+         2. Let lengthDelta be newLength - buffer.[[ArrayBufferByteLength]].
+
+         3. If lengthDelta < 0 or lengthDelta modulo 65536 is not 0,
+
+            1. Throw a `RangeError` exception.
+
+         4. Let delta be lengthDelta ÷ 65536.
+
+         5. Grow the memory buffer associated with memaddr by delta.
+
+   4. Return handled.
+
+2. Otherwise, return unhandled.
+
+The getter of the `buffer` attribute of `Memory` returns this.[[BufferObject]].
+
+## 5.4 Tables
+
+```
+enum TableKind {
+  "externref",
+  "anyfunc",
+  // Note: More values may be added in future iterations,
+  // e.g., typed function references, typed GC references
+};
+
+dictionary TableDescriptor {
+  required TableKind element;
+  required AddressValue initial;
+  AddressValue maximum;
+  AddressType address;
+};
+
+[LegacyNamespace=WebAssembly, Exposed=*]
+interface Table {
+  constructor(TableDescriptor descriptor, optional any value);
+  AddressValue grow(AddressValue delta, optional any value);
+  any get(AddressValue index);
+  undefined set(AddressValue index, optional any value);
+  readonly attribute AddressValue length;
+};
+
+```
+
+A `Table` object represents a single table instance which can be simultaneously referenced by multiple `Instance` objects. Each `Table` object has a [[Table]] internal slot, which is a table address.
+
+To initialize a table object table from a table address tableaddr, perform the following steps:
+
+1. Let map be the surrounding agent’s associated Table object cache.
+
+2. Assert: map[tableaddr] doesn’t exist.
+
+3. Set table.[[Table]] to tableaddr.
+
+4. Set map[tableaddr] to table.
+
+To create a table object from a table address tableaddr, perform the following steps:
+
+1. Let map be the surrounding agent’s associated Table object cache.
+
+2. If map[tableaddr] exists,
+
+   1. Return map[tableaddr].
+
+3. Let table be a new `Table`.
+
+4. Initialize table from tableaddr.
+
+5. Return table.
+
+The `Table(descriptor, value)` constructor, when invoked, performs the following steps:
+
+1. Let elementtype be ToValueType(descriptor["element"]).
+
+2. If elementtype is not a reftype,
+
+   1. Throw a `TypeError` exception.
+
+3. If descriptor["address"] exists, let addrtype be descriptor["address"]; otherwise, let addrtype be "i32".
+
+4. Let initial be? AddressValueToU64(descriptor["initial"], addrtype).
+
+5. If descriptor["maximum"] exists, let maximum be? AddressValueToU64(descriptor["maximum"], addrtype); otherwise, let maximum be empty.
+
+6. Let type be the table type addrtype { min initial, max maximum } elementtype.
+
+7. If type is not valid, throw a `RangeError` exception.
+
+8. If value is missing,
+
+   1. Let ref be DefaultValue(elementtype).
+
+   2. Assert: ref is not error.
+
+9. Otherwise,
+
+   1. Let ref be? ToWebAssemblyValue(value, elementtype).
+
+10. Let store be the surrounding agent’s associated store.
+
+11. Let (store, tableaddr) be table_alloc(store, type, ref). If allocation fails, throw a `RangeError` exception.
+
+12. Set the surrounding agent’s associated store to store.
+
+13. Initialize this from tableaddr.
+
+The `grow(delta, value)` method, when invoked, performs the following steps:
+
+1. Let tableaddr be this.[[Table]].
+
+2. Let store be the surrounding agent’s associated store.
+
+3. Let initialSize be table_size(store, tableaddr).
+
+4. Let (addrtype, limits, elementtype) be table_type(store, tableaddr).
+
+5. Let delta64 be? AddressValueToU64(delta, addrtype).
+
+6. If value is missing,
+
+   1. Let ref be DefaultValue(elementtype).
+
+   2. If ref is error, throw a `TypeError` exception.
+
+7. Otherwise,
+
+   1. Let ref be? ToWebAssemblyValue(value, elementtype).
+
+8. Let result be table_grow(store, tableaddr, delta64, ref).
+
+9. If result is error, throw a `RangeError` exception.
+
+   Note: The above exception can happen due to either insufficient memory or an invalid size parameter.
+
+10. Set the surrounding agent’s associated store to result.
+
+11. Return U64ToAddressValue(initialSize, addrtype).
+
+The getter of the `length` attribute of `Table`, when invoked, performs the following steps:
+
+1. Let tableaddr be this.[[Table]].
+
+2. Let store be the surrounding agent’s associated store.
+
+3. Let addrtype be the address type in table_type(store, tableaddr).
+
+4. Let length64 be table_size(store, tableaddr).
+
+5. Return U64ToAddressValue(length64, addrtype).
+
+The `get(index)` method, when invoked, performs the following steps:
+
+1. Let tableaddr be this.[[Table]].
+
+2. Let store be the surrounding agent’s associated store.
+
+3. Let (addrtype, limits, elementtype) be table_type(store, tableaddr).
+
+4. If elementtype matches exnref,
+
+   1. Throw a `TypeError` exception.
+
+5. Let index64 be? AddressValueToU64(index, addrtype).
+
+6. Let result be table_read(store, tableaddr, index64).
+
+7. If result is error, throw a `RangeError` exception.
+
+8. Return ToJSValue(result).
+
+The `set(index, value)` method, when invoked, performs the following steps:
+
+1. Let tableaddr be this.[[Table]].
+
+2. Let store be the surrounding agent’s associated store.
+
+3. Let (addrtype, limits, elementtype) be table_type(store, tableaddr).
+
+4. If elementtype matches exnref,
+
+   1. Throw a `TypeError` exception.
+
+5. Let index64 be? AddressValueToU64(index, addrtype).
+
+6. If value is missing,
+
+   1. Let ref be DefaultValue(elementtype).
+
+   2. If ref is error, throw a `TypeError` exception.
+
+7. Otherwise,
+
+   1. Let ref be? ToWebAssemblyValue(value, elementtype).
+
+8. Let store be table_write(store, tableaddr, index64, ref).
+
+9. If store is error, throw a `RangeError` exception.
+
+10. Set the surrounding agent’s associated store to store.
+
+## 5.5 Globals
+
+```
+enum ValueType {
+  "i32",
+  "i64",
+  "f32",
+  "f64",
+  "v128",
+  "externref",
+  "anyfunc",
+};
+
+```
+
+Note: this type may be extended with additional cases in future versions of WebAssembly.
+
+```
+dictionary GlobalDescriptor {
+  required ValueType value;
+  boolean mutable = false;
+};
+
+[LegacyNamespace=WebAssembly, Exposed=*]
+interface Global {
+  constructor(GlobalDescriptor descriptor, optional any v);
+  any valueOf();
+  attribute any value;
+};
+
+```
+
+A `Global` object represents a single global instance which can be simultaneously referenced by multiple `Instance` objects. Each `Global` object has one internal slot:
+
+- [[Global]]: a global address
+
+To initialize a global object global from a global address globaladdr, perform the following steps:
+
+1. Let map be the surrounding agent’s associated Global object cache.
+
+2. Assert: map[globaladdr] doesn’t exist.
+
+3. Set global.[[Global]] to globaladdr.
+
+4. Set map[globaladdr] to global.
+
+To create a global object from a global address globaladdr, perform the following steps:
+
+1. Let map be the surrounding agent’s associated Global object cache.
+
+2. If map[globaladdr] exists,
+
+   1. Return map[globaladdr].
+
+3. Let global be a new `Global`.
+
+4. Initialize global from globaladdr.
+
+5. Return global.
+
+The algorithm ToValueType(s) performs the following steps:
+
+1. If s equals "i32", return i32.
+
+2. If s equals "i64", return i64.
+
+3. If s equals "f32", return f32.
+
+4. If s equals "f64", return f64.
+
+5. If s equals "v128", return v128.
+
+6. If s equals "anyfunc", return funcref.
+
+7. If s equals "externref", return externref.
+
+8. Assert: This step is not reached.
+
+The algorithm DefaultValue(valuetype) performs the following steps:
+
+1. If valuetype equals externref, return! ToWebAssemblyValue(undefined, valuetype).
+
+2. Return val_default(valuetype).
+
+The `Global(descriptor, v)` constructor, when invoked, performs the following steps:
+
+1. Let mutable be descriptor["mutable"].
+
+2. Let valuetype be ToValueType(descriptor["value"]).
+
+3. If valuetype matches v128 or exnref,
+
+   1. Throw a `TypeError` exception.
+
+4. If v is missing,
+
+   1. Let value be DefaultValue(valuetype).
+
+   2. Assert: value is not error.
+
+5. Otherwise,
+
+   1. Let value be? ToWebAssemblyValue(v, valuetype).
+
+6. If mutable is true, let globaltype be var valuetype; otherwise, let globaltype be const valuetype.
+
+7. Let store be the surrounding agent’s associated store.
+
+8. Let (store, globaladdr) be global_alloc(store, globaltype, value).
+
+9. Set the surrounding agent’s associated store to store.
+
+10. Initialize this from globaladdr.
+
+The algorithm GetGlobalValue(`Global` global) performs the following steps:
+
+1. Let store be the surrounding agent’s associated store.
+
+2. Let globaladdr be global.[[Global]].
+
+3. Let globaltype be global_type(store, globaladdr).
+
+4. If globaltype is of the form mut valuetype where valuetype matches v128 or exnref, throw a `TypeError`.
+
+5. Let value be global_read(store, globaladdr).
+
+6. Return ToJSValue(value).
+
+The getter of the `value` attribute of `Global`, when invoked, performs the following steps:
+
+1. Return GetGlobalValue(this).
+
+The setter of the value attribute of `Global`, when invoked, performs the following steps:
+
+1. Let store be the surrounding agent’s associated store.
+
+2. Let globaladdr be this.[[Global]].
+
+3. Let mut valuetype be global_type(store, globaladdr).
+
+4. If valuetype matches v128 or exnref, throw a `TypeError`.
+
+5. If mut is const, throw a `TypeError`.
+
+6. Let value be? ToWebAssemblyValue(the given value, valuetype).
+
+7. Let store be global_write(store, globaladdr, value).
+
+8. If store is error, throw a `RangeError` exception.
+
+9. Set the surrounding agent’s associated store to store.
+
+The `valueOf()` method, when invoked, performs the following steps:
+
+1. Return GetGlobalValue(this).
+
+## 5.6 Exported Functions
+
+A WebAssembly function is made available in JavaScript as an Exported Function. Exported Functions are Built-in Function Objects which are not constructors, and which have a [[FunctionAddress]] internal slot. This slot holds a function address relative to the surrounding agent’s associated store.
+
+The name of the WebAssembly function funcaddr is found by performing the following steps:
+
+1. Let store be the surrounding agent’s associated store.
+
+2. Let funcinst be store.funcs[funcaddr].
+
+3. If funcinst is of the form {type functype, hostcode hostfunc},
+
+   1. Assert: hostfunc is a JavaScript object and IsCallable(hostfunc) is true.
+
+   2. Let index be the index of the host function funcaddr.
+
+4. Otherwise,
+
+   1. Let moduleinst be funcinst.module.
+
+   2. Assert: funcaddr is contained in moduleinst.funcs.
+
+   3. Let index be the index of moduleinst.funcs where funcaddr is found.
+
+5. Return! ToString(index).
+
+To create a new Exported Function from a WebAssembly function address funcaddr, perform the following steps:
+
+1. Let map be the surrounding agent’s associated Exported Function cache.
+
+2. If map[funcaddr] exists,
+
+   1. Return map[funcaddr].
+
+3. Let steps be "call the Exported Function funcaddr with arguments."
+
+4. Let realm be the current Realm.
+
+5. Let store be the surrounding agent’s associated store.
+
+6. Let functype be func_type(store, funcaddr).
+
+7. Let [paramTypes] → [resultTypes] be functype.
+
+8. Let arity be paramTypes’s size.
+
+9. Let name be the name of the WebAssembly function funcaddr.
+
+10. Let function be CreateBuiltinFunction(steps, arity, name, « [[FunctionAddress]] », realm).
+
+11. Set function.[[FunctionAddress]] to funcaddr.
+
+12. Set map[funcaddr] to function.
+
+13. Return function.
+
+To call an Exported Function with function address funcaddr and a list of JavaScript arguments argValues, perform the following steps:
+
+1. Let store be the surrounding agent’s associated store.
+
+2. Let functype be func_type(store, funcaddr).
+
+3. Let [parameters] → [results] be functype.
+
+4. If any type in parameters or results matches v128 or exnref, throw a `TypeError`.
+
+   Note: the above error is thrown each time the [[Call]] method is invoked.
+
+5. Let args be « ».
+
+6. Let i be 0.
+
+7. For each t of parameters,
+
+   1. If argValues’s size > i, let arg be argValues[i].
+
+   2. Otherwise, let arg be undefined.
+
+   3. Append? ToWebAssemblyValue(arg, t) to args.
+
+   4. Set i to i + 1.
+
+8. Let (store, ret) be the result of func_invoke(store, funcaddr, args).
+
+9. Set the surrounding agent’s associated store to store.
+
+10. If ret is error, throw an exception. This exception should be a WebAssembly `RuntimeError` exception, unless otherwise indicated by the WebAssembly error mapping.
+
+11. If ret is exception exnaddr, then
+
+   1. Let tagaddr be exn_tag(store, exnaddr).
+
+   2. Let payload be exn_read(store, exnaddr).
+
+   3. Let jsTagAddr be the result of getting the JavaScript exception tag.
+
+   4. If tagaddr is equal to jsTagAddr,
+
+      1. Throw ToJSValue(payload[0]).
+
+   5. Otherwise,
+
+      1. Let exception be a new Exception created from exnaddr.
+
+      2. Throw exception.
+
+12. Let outArity be the size of ret.
+
+13. If outArity is 0, return undefined.
+
+14. Otherwise, if outArity is 1, return ToJSValue(ret[0]).
+
+15. Otherwise,
+
+   1. Let values be « ».
+
+   2. For each r of ret,
+
+      1. Append ToJSValue(r) to values.
+
+   3. Return CreateArrayFromList(values).
+
+Note: Calling an Exported Function executes in the [[Realm]] of the callee Exported Function, as per the definition of built-in function objects.
+
+Note: Exported Functions do not have a [[Construct]] method and thus it is not possible to call one with the `new` operator.
+
+To run a host function from the JavaScript object func, type functype, and list of WebAssembly values arguments, perform the following steps:
+
+1. Let [parameters] → [results] be functype.
+
+2. If any type in parameters or results matches v128 or exnref, throw a `TypeError`.
+
+3. Let jsArguments be « ».
+
+4. For each arg of arguments,
+
+   1. Append ToJSValue(arg) to jsArguments.
+
+5. Let ret be? Call(func, undefined, jsArguments).
+
+6. Let resultsSize be results’s size.
+
+7. If resultsSize is 0, return « ».
+
+8. Otherwise, if resultsSize is 1, return «? ToWebAssemblyValue(ret, results[0]) ».
+
+9. Otherwise,
+
+   1. Let method be? GetMethod(ret, `%Symbol.iterator%`).
+
+   2. If method is undefined, throw a `TypeError`.
+
+   3. Let values be? IteratorToList(? GetIteratorFromMethod(ret, method)).
+
+   4. Let wasmValues be a new, empty list.
+
+   5. If values’s size is not resultsSize, throw a `TypeError` exception.
+
+   6. For each value and resultType in values and results, paired linearly,
+
+      1. Append? ToWebAssemblyValue(value, resultType) to wasmValues.
+
+   7. Return wasmValues.
+
+To create a host function from the JavaScript object func and type functype, perform the following steps:
+
+1. Assert: IsCallable(func).
+
+2. Let stored settings be the incumbent settings object.
+
+3. Let hostfunc be a host function which performs the following steps when called with arguments arguments:
+
+   1. Let realm be func’s associated Realm.
+
+   2. Let relevant settings be realm’s settings object.
+
+   3. Prepare to run script with relevant settings.
+
+   4. Prepare to run a callback with stored settings.
+
+   5. Let result be the result of running a host function from func, functype, and arguments.
+
+   6. Clean up after running a callback with stored settings.
+
+   7. Clean up after running script with relevant settings.
+
+   8. Assert: result.[[Type]] is throw or normal.
+
+   9. Let store be the surrounding agent’s associated store.
+
+   10. If result.[[Type]] is throw, then:
+
+      1. Let v be result.[[Value]].
+
+      2. If v implements `Exception`,
+
+         1. Let address be v.[[Address]].
+
+      3. Otherwise,
+
+         1. Let type be the result of getting the JavaScript exception tag.
+
+         2. Let payload be! ToWebAssemblyValue(v, externref).
+
+         3. Let (store, address) be exn_alloc(store, type, « payload »).
+
+         4. Set the surrounding agent’s associated store to store.
+
+      4. Execute the WebAssembly instructions (ref.exn address) (throw_ref).
+
+   11. Otherwise, return result.[[Value]].
+
+4. Let store be the surrounding agent’s associated store.
+
+5. Let (store, funcaddr) be func_alloc(store, functype, hostfunc).
+
+6. Set the surrounding agent’s associated store to store.
+
+7. Return funcaddr.
+
+The algorithm ToJSValue(w) coerces a WebAssembly value to a JavaScript value by performing the following steps:
+
+1. Assert: w is not of the form v128.const v128.
+
+2. Assert: w is not of the form ref.exn exnaddr.
+
+3. If w is of the form i64.const u64,
+
+   1. Let i64 be signed_64(u64).
+
+   2. Return ℤ(i64 interpreted as a mathematical value).
+
+4. If w is of the form i32.const u32,
+
+   1. Let i32 be signed_32(u32).
+
+   2. Return 𝔽(i32 interpreted as a mathematical value).
+
+5. If w is of the form f32.const f32,
+
+   1. If f32 is +∞ or −∞, return +∞𝔽 or -∞𝔽, respectively.
+
+   2. If f32 is nan, return NaN.
+
+   3. Return 𝔽(f32 interpreted as a mathematical value).
+
+6. If w is of the form f64.const f64,
+
+   1. If f64 is +∞ or −∞, return +∞𝔽 or -∞𝔽, respectively.
+
+   2. If f64 is nan, return NaN.
+
+   3. Return 𝔽(f64 interpreted as a mathematical value).
+
+7. If w is of the form ref.null, return null.
+
+8. If w is of the form ref.i31 u31,
+
+   1. Let i31 be signed_31(u31).
+
+   2. Return 𝔽(i31).
+
+9. If w is of the form ref.struct structaddr, return the result of creating a new Exported GC Object from structaddr and "struct".
+
+10. If w is of the form ref.array arrayaddr, return the result of creating a new Exported GC Object from arrayaddr and "array".
+
+11. If w is of the form ref.func funcaddr, return the result of creating a new Exported Function from funcaddr.
+
+12. If w is of the form ref.host hostaddr, return the result of retrieving a host value from hostaddr.
+
+13. If w is of the form ref.extern ref, return ToJSValue(ref).
+
+Note: Number values which are equal to NaN may have various observable NaN payloads; see NumericToRawBytes for details.
+
+For retrieving a host value from an host address hostaddr, perform the following steps:
+
+1. Let map be the surrounding agent’s associated host value cache.
+
+2. Assert: map[hostaddr] exists.
+
+3. Return map[hostaddr].
+
+The algorithm ToWebAssemblyValue(v, type) coerces a JavaScript value to a WebAssembly value by performing the following steps:
+
+1. Assert: type is not v128.
+
+2. Assert: type does not match exnref.
+
+3. If type is i64,
+
+   1. Let i64 be? ToBigInt64(v).
+
+   2. Let u64 be the unsigned integer such that i64 is signed_64(u64).
+
+   3. Return i64.const u64.
+
+4. If type is i32,
+
+   1. Let i32 be? ToInt32(v).
+
+   2. Let u32 be the unsigned integer such that i32 is signed_32(u32).
+
+   3. Return i32.const u32.
+
+5. If type is f32,
+
+   1. Let number be? ToNumber(v).
+
+   2. If number is NaN,
+
+      1. Let n be an implementation-defined integer such that canon32 ≤ n < 2signif(32).
+
+      2. Let f32 be nan(n).
+
+   3. Otherwise,
+
+      1. Let f32 be number rounded to the nearest representable value using IEEE 754-2019 round to nearest, ties to even mode. [IEEE-754]
+
+   4. Return f32.const f32.
+
+6. If type is f64,
+
+   1. Let number be? ToNumber(v).
+
+   2. If number is NaN,
+
+      1. Let n be an implementation-defined integer such that canon64 ≤ n < 2signif(64).
+
+      2. Let f64 be nan(n).
+
+   3. Otherwise,
+
+      1. Let f64 be number.
+
+   4. Return f64.const f64.
+
+7. If type is of the form ref null heaptype,
+
+   1. If v is null,
+
+      1. Let r be ref.null.
+
+   2. Else if match_valtype(type, ref null extern),
+
+      1. Let ref be! ToWebAssemblyValue(v, ref any).
+
+      2. Let r be ref.extern ref.
+
+   3. Else if v is an Exported Function and match_valtype(type, ref null func),
+
+      1. Let funcaddr be the value of v’s [[FunctionAddress]] internal slot.
+
+      2. Let r be ref.func funcaddr.
+
+   4. Else if v is a Number and v is equal to? ToInt32(v) and ℝ(v) < 230 and ℝ(v) ⩾ -230,
+
+      1. Let i31 be? ToInt32(v).
+
+      2. Let u31 be the unsigned integer such that i31 is signed_31(u31).
+
+      3. Let r be ref.i31 u31.
+
+   5. Else if v is an Exported GC Object,
+
+      1. Let objectaddr be the value of v’s [[ObjectAddress]] internal slot.
+
+      2. Let objectkind be the value of v’s [[ObjectKind]] internal slot.
+
+      3. If objectkind is "array",
+
+         1. Let r be ref.array objectaddr.
+
+      4. Else if objectkind is "struct",
+
+         1. Let r be ref.struct objectaddr.
+
+   6. Else,
+
+      1. Let map be the surrounding agent’s associated host value cache.
+
+      2. If a host address hostaddr exists such that map[hostaddr] is the same as v,
+
+         1. Return ref.host hostaddr.
+
+      3. Let host address hostaddr be the smallest address such that map[hostaddr] exists is false.
+
+      4. Set map[hostaddr] to v.
+
+      5. Let r be ref.host hostaddr.
+
+   7. Let store be the surrounding agent’s associated store.
+
+   8. Let actualtype be ref_type(store, r).
+
+   9. If match_valtype(actualtype, type) is false,
+
+      1. Throw a `TypeError`.
+
+   10. Return r.
+
+8. Assert: This step is not reached.
+
+The algorithm AddressValueToU64(v, addrtype) converts a JavaScript value to a WebAssembly u64 for use in embedding operations. It is designed to act like [EnforceRange] unsigned long for `AddressType` "i32", and to extend these semantics to `AddressType` "i64", by performing the following steps:
+
+1. If addrtype is "i32",
+
+   1. Let n be? ConvertToInt(v, 32, "unsigned"), where the destination type is associated with [EnforceRange].
+
+      Note: This is equivalent to the JS conversion rules for [EnforceRange] unsigned long.
+
+   2. Return ℝ(n) as a WebAssembly u64.
+
+2. If addrtype is "i64",
+
+   1. Let n be? ToBigInt(v).
+
+   2. If n < 0 or n > 264 − 1, throw a `TypeError`.
+
+      Note: This operation is designed to emulate [EnforceRange].
+
+   3. Return ℝ(n) as a WebAssembly u64.
+
+3. Assert: This step is not reached.
+
+The algorithm U64ToAddressValue(v, addrtype) converts a u64 value from a WebAssembly embedding operation to the correct variant of `AddressValue` for an `AddressType`, by performing the following steps:
+
+1. If addrtype is "i32", return 𝔽(v interpreted as a mathematical value).
+
+2. Else if addrtype is "i64", return ℤ(v interpreted as a mathematical value).
+
+3. Assert: This step is not reached.
+
+## 5.7 Tags
+
+### 5.7.1 Tag types
+
+```
+dictionary TagType {
+  required sequence<ValueType> parameters;
+};
+
+[LegacyNamespace=WebAssembly, Exposed=(Window,Worker,Worklet)]
+interface Tag {
+  constructor(TagType type);
+};
+
+```
+
+A `Tag` value represents an exception tag.
+
+To initialize a Tag object tag from a tag address tagAddress, perform the following steps:
+
+1. Let map be the surrounding agent’s associated Tag object cache.
+
+2. Assert: map[tagAddress] doesn’t exist.
+
+3. Set tag.[[Address]] to tagAddress.
+
+4. Set map[tagAddress] to tag.
+
+To create a Tag object from a tag address tagAddress, perform the following steps:
+
+1. Let map be the surrounding agent’s associated Tag object cache.
+
+2. If map[tagAddress] exists,
+
+   1. Return map[tagAddress].
+
+3. Let tag be a new `Tag`.
+
+4. Initialize tag from tagAddress.
+
+5. Return tag.
+
+The `new Tag(type)` constructor steps are:
+
+1. Let parameters be type["parameters"].
+
+2. Let wasmParameters be «».
+
+3. For each paramType of parameters,
+
+   1. Append ToValueType(paramType) to wasmParameters.
+
+4. Let store be the surrounding agent’s associated store.
+
+5. Let (store, tagAddress) be tag_alloc(store, wasmParameters → « »).
+
+6. Set the surrounding agent’s associated store to store.
+
+7. Initialize this from tagAddress.
+
+## 5.8 Garbage Collected Objects
+
+A WebAssembly struct or array is made available in JavaScript as an Exported GC Object. An Exported GC Object is an exotic object that wraps a garbage collected WebAssembly reference value. Most JavaScript operations on an Exported GC Object will throw an exception or return undefined.
+
+Note: These operations may be refined in the future to allow richer interactions in JavaScript with WebAssembly structs and arrays.
+
+An Exported GC Object contains an [[ObjectAddress]] internal slot, which holds a object address relative to the surrounding agent’s associated store, and an [[ObjectKind]] internal slot, which holds the string value "struct" or "array".
+
+The internal methods of an Exported GC Object use the following implementations.
+
+The [[GetPrototypeOf]] internal method of an Exported GC Object O takes no arguments and returns null. It performs the following steps when called:
+
+1. Return null.
+
+The [[SetPrototypeOf]] internal method of an Exported GC Object O takes argument V (an Object or null) and returns a boolean. It performs the following steps when called:
+
+1. Return false.
+
+The [[IsExtensible]] internal method of an Exported GC Object O takes no arguments and returns a boolean. It performs the following steps when called:
+
+1. Return false.
+
+The [[PreventExtensions]] internal method of an Exported GC Object O takes no arguments and returns a boolean. It performs the following steps when called:
+
+1. Return false.
+
+The [[GetOwnProperty]] internal method of an Exported GC Object O takes argument P (a property key) and returns undefined. It performs the following steps when called:
+
+1. Return undefined.
+
+The [[DefineOwnProperty]] internal method of an Exported GC Object O takes arguments P (a property key) and Desc (a property descriptor) and returns a boolean. It performs the following steps when called:
+
+1. Return false.
+
+The [[HasProperty]] internal method of an Exported GC Object O takes argument P (a property key) and returns a boolean. It performs the following steps when called:
+
+1. Return false.
+
+The [[Get]] internal method of an Exported GC Object O takes arguments P (a property key) and Receiver (an ECMAScript language value) and returns undefined. It performs the following steps when called:
+
+1. Return undefined.
+
+The [[Set]] internal method of an Exported GC Object O takes arguments P (a property key), V (an ECMAScript language value), and Receiver (an ECMAScript language value) and throws an exception. It performs the following steps when called:
+
+1. Throw a `TypeError`.
+
+The [[Delete]] internal method of an Exported GC Object O takes argument P (a property key) and throws an exception. It performs the following steps when called:
+
+1. Throw a `TypeError`.
+
+The [[OwnPropertyKeys]] internal method of an Exported GC Object O takes no arguments and returns a list. It performs the following steps when called:
+
+1. Let keys be a new empty list.
+
+2. Return keys.
+
+To create a new Exported GC Object from a WebAssembly object address objectaddr and a string objectkind, perform the following steps:
+
+1. Assert: objectkind is either "array" or "struct".
+
+2. Let map be the surrounding agent’s associated exported GC object cache.
+
+3. If map[objectaddr] exists,
+
+   1. Return map[objectaddr].
+
+4. Let object be MakeBasicObject(« [[ObjectAddress]], [[ObjectKind]] »).
+
+5. Set object.[[ObjectAddress]] to objectaddr.
+
+6. Set object.[[ObjectKind]] to objectkind.
+
+7. Set object.[[GetPrototypeOf]] as specified in [[GetPrototypeOf]] internal method of an Exported GC Object.
+
+8. Set object.[[SetPrototypeOf]] as specified in [[SetPrototypeOf]] internal method of an Exported GC Object.
+
+9. Set object.[[IsExtensible]] as specified in [[IsExtensible]] internal method of an Exported GC Object.
+
+10. Set object.[[PreventExtensions]] as specified in [[PreventExtensions]] internal method of an Exported GC Object.
+
+11. Set object.[[GetOwnProperty]] as specified in [[GetOwnProperty]] internal method of an Exported GC Object.
+
+12. Set object.[[DefineOwnProperty]] as specified in [[DefineOwnProperty]] internal method of an Exported GC Object.
+
+13. Set object.[[HasProperty]] as specified in [[HasProperty]] internal method of an Exported GC Object.
+
+14. Set object.[[Get]] as specified in [[Get]] internal method of an Exported GC Object.
+
+15. Set object.[[Set]] as specified in [[Set]] internal method of an Exported GC Object.
+
+16. Set object.[[Delete]] as specified in [[Delete]] internal method of an Exported GC Object.
+
+17. Set object.[[OwnPropertyKeys]] as specified in [[OwnPropertyKeys]] internal method of an Exported GC Object.
+
+18. Set map[objectaddr] to object.
+
+19. Return object.
+
+## 5.9 Exceptions
+
+```
+dictionary ExceptionOptions {
+  boolean traceStack = false;
+};
+
+[LegacyNamespace=WebAssembly, Exposed=(Window,Worker,Worklet)]
+interface Exception {
+  constructor(Tag exceptionTag, sequence<any> payload, optional ExceptionOptions options = {});
+  any getArg(Tag exceptionTag, [EnforceRange] unsigned long index);
+  boolean is(Tag exceptionTag);
+  readonly attribute (DOMString or undefined) stack;
+};
+
+```
+
+An `Exception` value represents an exception.
+
+To initialize an Exception object exn from an Exception address exnAddress, perform the following steps:
+
+1. Let map be the surrounding agent’s associated Exception object cache.
+
+2. Assert: map[exnAddress] doesn’t exist.
+
+3. Set exn.[[Address]] to exnAddress.
+
+4. Set map[exnAddress] to exn.
+
+5. Let store be the surrounding agent’s associated store.
+
+6. Let tagaddr be exn_tag(store, exnAddress).
+
+7. Let payload be exn_read(store, exnAddress).
+
+8. Set exn.[[Type]] to tagaddr.
+
+9. Set exn.[[Payload]] to payload.
+
+10. Set exn.[[Stack]] to undefined.
+
+To create an Exception object from a exception address exnAddress, perform the following steps:
+
+1. Let map be the surrounding agent’s associated Exception object cache.
+
+2. If map[exnAddress] exists,
+
+   1. Return map[exnAddress].
+
+3. Let exn be a new `Exception`.
+
+4. Initialize exn from exnAddress.
+
+5. Return exn.
+
+The `new Exception(exceptionTag, payload, options)` constructor steps are:
+
+1. Let JSTagAddr be the result of getting the JavaScript exception tag.
+
+2. If exceptionTag.[[Address]] is equal to JSTagAddr,
+
+   1. Throw a `TypeError`.
+
+3. Let store be the surrounding agent’s associated store.
+
+4. Let [types] → [] be tag_type(store, exceptionTag.[[Address]]).
+
+5. If types’s size is not payload’s size,
+
+   1. Throw a `TypeError`.
+
+6. Let wasmPayload be « ».
+
+7. For each value and resultType of payload and types, paired linearly,
+
+   1. If resultType matches v128 or exnref,
+
+      1. Throw a `TypeError`.
+
+   2. Append? ToWebAssemblyValue(value, resultType) to wasmPayload.
+
+8. Let (store, exceptionAddr) be exn_alloc(store, exceptionTag.[[Address]], wasmPayload).
+
+9. Set the surrounding agent’s associated store to store.
+
+10. Initialize this from exceptionAddr.
+
+11. If options["traceStack"] is true,
+
+   1. Set this.[[Stack]] to either a `DOMString` representation of the current call stack or undefined.
+
+The `getArg(exceptionTag, index)` method steps are:
+
+1. Let store be the surrounding agent’s associated store.
+
+2. If this.[[Type]] is not equal to exceptionTag.[[Address]],
+
+   1. Throw a `TypeError`.
+
+3. Let tagaddr be exn_tag(store, this.[[Address]]).
+
+4. Let payload be exn_read(store, this.[[Address]]).
+
+5. Assert: tagaddr is equal to this.[[Type]].
+
+6. If index ≥ payload’s size,
+
+   1. Throw a `RangeError`.
+
+7. Let [types] → [] be tag_type(store, tagaddr).
+
+8. If types[index] matches v128 or exnref,
+
+   1. Throw a `TypeError`.
+
+9. Return ToJSValue(payload[index]).
+
+The `is(exceptionTag)` method steps are:
+
+1. If this.[[Type]] is not equal to exceptionTag.[[Address]],
+
+   1. Return false.
+
+2. Return true.
+
+The `stack` getter steps are:
+
+1. Return this.[[Stack]].
+
+### 5.9.1 JavaScript exceptions
+
+The JavaScript exception tag is a tag address associated with the surrounding agent. It is allocated in the agent’s associated store on first use and cached. It always has the tag type « externref » → « ».
+
+To get the JavaScript exception tag, perform the following steps:
+
+1. If the surrounding agent’s associated JavaScript exception tag has been initialized,
+
+   1. return the surrounding agent’s associated JavaScript exception tag
+
+2. Let store be the surrounding agent’s associated store.
+
+3. Let (store, tagAddress) be tag_alloc(store, « externref » → « »).
+
+4. Set the surrounding agent’s associated store to store.
+
+5. Set the surrounding agent’s associated JavaScript exception tag to tagAddress.
+
+6. return tagAddress.
+
+## 5.10 Error Objects
+
+WebAssembly defines the following Error classes: `CompileError`, `LinkError`, and `RuntimeError`.
+
+When the namespace object for the `WebAssembly` namespace is created, the following steps must be run:
+
+1. Let namespaceObject be the namespace object.
+
+2. For each error of « "CompileError", "LinkError", "RuntimeError" »,
+
+   1. Let constructor be a new object, implementing the NativeError Object Structure, with NativeError set to error.
+
+   2. ! DefineMethodProperty(namespaceObject, error, constructor, false).
+
+Note: This defines `CompileError`, `LinkError`, and `RuntimeError` classes on the `WebAssembly` namespace, which are produced by the APIs defined in this specification. They expose the same interface as native JavaScript errors like `TypeError` and `RangeError`.
+
+Note: It is not currently possible to define this behavior using Web IDL.
+
