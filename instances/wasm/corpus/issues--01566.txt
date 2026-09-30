@@ -1,0 +1,48 @@
+# WebAssembly spec issue #1566: interpreter: fails to parse a valid-looking wat
+# джерело: https://github.com/WebAssembly/spec/issues/1566
+# отримано: 2026-09-30
+
+Issue #1566, opened by nagisa on 2022-12-12, closed (completed) on 2022-12-12.
+
+```wast
+(module
+  (type (func (param i32) (result i32)))
+  (func (type 0) (param i32) (result i32)
+    i32.const 2
+    i32.const 3
+    i32.const 0
+    i32.const 1
+    local.get 0
+    select
+    select
+  )
+)
+```
+
+is a different, but equivalent, way to write https://github.com/WebAssembly/spec/blob/937fc7d63efb9e18f36334a9e761a8a040ac44b7/test/core/select.wast#L47-L49
+
+but it fails to parse with the following error when fed to the reference interpreter
+
+```
+11.3-11.4: syntax error: unexpected token
+```
+
+If we parenthesize the last select, the parse succeeds. This appears to be the only such function in the spec-test suite where such an equivalent rewrite fails to parse in the test suite, as far as I can tell.
+
+## Comment by rossberg, 2022-12-12
+
+Darn, this is due to the hack necessary to parse the optional result signature. In fact, call_indirect has the same problem, none of the following work:
+```
+(func select select)
+(func select call_indirect)
+(func call_indirect select)
+(func call_indirect call_indirect)
+```
+It works if you add another instruction at the end.
+
+Unfortunately, the fix is rather non-obvious, it is easy to get shift/reduce conflicts here. Will have a look.
+
+## Comment by rossberg, 2022-12-12
+
+Please see #1567.
+

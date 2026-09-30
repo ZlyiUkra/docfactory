@@ -1,0 +1,257 @@
+# WebAssembly spec issue #1428: Require implementations, in order to be compliant, to be able to constrain to the actual spec
+# джерело: https://github.com/WebAssembly/spec/issues/1428
+# отримано: 2026-09-30
+
+Issue #1428, opened by codefromthecrypt on 2022-03-12, closed (completed) on 2022-03-14.
+
+Here and elsewhere I've noticed that when a spec is authored by dominant implementer, the result can easily become drift and confusion. I believe one reason for this here specifically, is that there's no incentive I can tell to keep 1.0 working while moving to various proposals of various states. There are many here who are doing good work, but probably know too much, and I do think a check and balance, which is that you must be able to support the spec defined .. that's the right balance!
+
+Not only does that add the right pressure to not drift (causing people less vocal or who haven't arrived to the spec yet pain), but it also adds the right incentive to not abandon work (like name section additions) or leave too many things unfinished. At the point a new spec is released, then you can dump 1.0 and still be compliant, but until then the pressure to keep 1.0 working is a good Jiminy Cricket.
+
+Concretely, I am wildly surprised I can find no tool that actually has a flag to constrain to 1.0! OTOH there are "specs" implemented sometimes later having flags to turn them off. I hope even people very close to this topic can understand this is not a good setup for outsiders to work. Not only do they have the confusion of vague specs, but no good role models that would encourage the spec having any value. If no one actually follows it, then why should the newcomer? The result is a surprisingly wild ecosystem oddly wearing a standard as a badge.
+
+## Comment by conrad-watt, 2022-03-13
+
+Like JavaScript (and many other Web standards), we operate under a very strong backwards compatibility requirement, so in some sense we are permanently bound to keep 1.0 "working". I agree that some proposals end up being abandoned or changed significantly part-way through standardisation, but one should always be able to trust in the stability of features which are actually fully standardised.
+
+It could be valuable for a producer to expose flags which restrict the emitted Wasm from using any in-progress features, but this wouldn't be something we could properly force them to do via the spec (strictly speaking, producers which target in-progress features are already not emitting "Wasm-as-standardised"). IIUC Clang actually provides Wasm feature flags already, and unsetting all of these should result in the production of Wasm 1.0.
+
+IIUC your concerns here were at least partially inspired by your observations in https://github.com/WebAssembly/spec/issues/1427, which doesn't involve any post-MVP feature, so I'll make a separate comment there to explain the rationale behind that design decision. Are there any other issues you've run into (especially involving backwards compatibility) that you'd like to bring up here?
+
+## Comment by codefromthecrypt, 2022-03-13
+
+I'll be more precise about the marketing angle. I think right now, the focus is about what extra features are supported, vs that 1.0 is supported. For example, look at this and also the idea present where if you know all the flags to turn off maybe you end up with 1.0 https://webassembly.org/roadmap/
+
+In short the standard is promoting "after the standard" more than compliance with the standard. If another checkbox was available.. that 1.0 is achievable this would be more like what I'm suggesting, for example you can imagine it shouldn't be complex ask to say "use the most compatible eg what's in the standard aka `--wasm-version 1.0` vs having to know N flags and trusting that when they are off that is actually compatible with 1.0 vs just a hope.
+
+The root problem is not just #1427 it is that the culture as a whole values and optimizes for not 1.0, vs for 1.0. This has already resulted in many user complaints and raises the level of effort to even start WebAssembly. I would be surprised if the lack of ability to pin down what WebAssembly is.. if that isn't why so many projects have been abandoned. However, in concrete terms, many compilers *default* to using things not in the spec. That creates an environment whereas to enter as a runtime you have to depth first implement anything. There's no way for me to easily tell someone to "only use 1.0" as I've not found any compiler yet that has such a knob. If the marketing aspect of WebAssembly included some tension to "keep 1.0 usable" I feel it would be less piles of work to enter the ecosystem.
+
+## Comment by codefromthecrypt, 2022-03-13
+
+in case it isn't obvious.. the problem with a disallow list (knowing which flags to turn off) is that flags are added always. People have to keep up with them in order to make a compatible impl. Otherwise on upgrade, they maybe are only disabling 7/9 flags now. similar to `javac --release` you could imagine some way of being able to express: 1.0 and not more if I upgrade.
+
+## Comment by sbc100, 2022-03-13
+
+I'm not sure where your assertion that "many compilers default to using things not in the spec" comes from.  IIUC the most common producers of WebAssembly today are emscripten and llvm/clang.   By default, neither of these tools produce anything that is not in the WebAssembly MVP / v1.0 [see caveats below].    All non-MVP proposals currently require opt-in via command line arguments.  In llvm the default wasm CPU is "mvp" unless otherwise specified and all the features are off by default. See:
+https://github.com/llvm/llvm-project/blob/d2baefae6846765eef6a6dd69d4fdf1082ce29ad/clang/lib/Basic/Targets/WebAssembly.h#L33-L42
+
+Even if we ever do decide to make some features enabled by default there will always be that single flag to revert to only generating MVP code (`-mcpu=mvp`).  As of today (llvm 15) that is the default and therefore not needed.
+
+Binaryen also has a similar flag (`--mvp-features/-mvp`) in all its tools that will limit it to just outputing MVP features.  AFAICT this is also the default feature set:
+https://github.com/WebAssembly/binaryen/blob/6247e7cd9be619d53c926975690981aa267917f9/src/wasm-features.h#L100
+
+So I would argue that:
+(a) The dominant tools to default to only MVP features today
+(b) The dominant tools already have flags in flag to force MVP-only output in case this ever changes
+
+Perhaps there is some confusion caused by the MVP vs 1.0 terminology and perhaps that is something that could be addressed in the tools.
+
+Going forward, there is discussion about having tools start to default to enabling some stage 5 features.  There is ongoing discussion about that here: https://github.com/WebAssembly/tool-conventions/issues/158.
+
+A couple of caveats:
+1. For llvm/emscripten, certain features are automatically enabled by command line flags that require them.  For example, building with `-pthread` will implicitly enable features such as shared memory and bulk memory.  Perhaps this could be better communicated?
+2. In the specific case of the name section most tools do now emit the non-standard extension.   This is one place I know of where the MVP default is not honored in the tools, but at the same time its custom section and so, by definition, does not limit the portability of the binary.  If we to argue that the tools should require an opt-in to the extended name section I think there could be reasonable argument to be made there.   But its probably one that should happen in the tool-conventions repo and not here in the spec repo.
+
+## Comment by codefromthecrypt, 2022-03-14
+
+> I'm not sure where your assertion that "many compilers default to using things not in the spec" comes from.
+
+I'll help. https://github.com/tetratelabs/wazero/issues/66 has a number of whack-a-mole things from end users where one or another tool opts into something post 1.0 by default, most recently Grainlang.
+
+There's conflation of single implementation and spec which probably makes thing hard to empathize with. Even if many use the same backends, the point of the specification is for multiple options to exist compatibly. Large existing backends I would have no surprise if they felt comfortable with the status quo as they've already implemented most post MVP things.
+
+As far as moving to this to another repo, that didn't much on things I've noticed (ex dwarf). However, worth a shot to transfer this to another repo and see. I would love to see something actioned in a way that helps compat vs explanations that summarize as "everything is fine.. move along"
+
+## Comment by codefromthecrypt, 2022-03-14
+
+closing this as I don't think it will be actioned.
+
+## Comment by conrad-watt, 2022-03-14
+
+> I would love to see something actioned in a way that helps compat vs explanations that summarize as "everything is fine.. move along"
+
+It seems from the linked issue above that, given your OP, you want Grain and AssemblyScript to have better flags to ensure they constrain themselves to emitting 1.0/MVP code. As @sbc100 pointed out above, it looks like these flags already exist for projects using binaryen/emscripten.
+
+I personally think implementing these flags in Grain and AS would be a good idea, but as I said above it's a decision for the tools to make and can't really be mandated at the spec level.
+
+## Comment by codefromthecrypt, 2022-03-14
+
+I'll be clear. Remember this is a W3C repo about a standard. It is confusing that the marketing focuses on features not standardized and doesn't even have a row to indicate who complies with what's actually published.
+
+*I believe that websites run by w3c should include data on which compilers and runtimes are tested to comply with 1.0.*
+
+This doesn't mean removing all the things about the extra and not yet features. However, I believe that encouraging focus on what's actually a standard will help reduce confusion and incentivize implementors to keep 1.0 possible to use.
+
+## Comment by sbc100, 2022-03-14
+
+The roadmap document (https://webassembly.org/roadmap/) if focused purely on runtimes and makes no mention of producers (tools or compilers).   Perhaps we could add a separate page or section for producers?   Would something like that alleviate your concerns?
+
+Out of interest, have you come across examples of runtimes somehow removing support for 1.0 binaries?   I'm not aware of how this would even be possible, given the test suite.
+
+## Comment by codefromthecrypt, 2022-03-14
+
+Indeed there are producers and consumers and sometimes they are both. For example, wasm-tools is a producer if we define that as something that can compile what's defined in the spec (ex. %.wat). It is also a consumer as it is a part of wasmtime..
+
+The problems I find more often summarizes as `1.0 is disabled by default` on compilers.
+
+I am surprised at the amount of claims that everything is 1.0 already. It could be a lack of understanding that even if something was 1.0 at some point, it is easy to drift in new features. It would be easy to find things around this if interested vs asking me, but here's an example where "default" continues to grow in Wasm-tools https://github.com/bytecodealliance/wasm-tools/pull/482 and there are no flags to turn them off via CLI. This is not to pick on Wasm-tools, just I am feeling a sentiment that I am crazy and everything is fine, yet I can find issues like this easily. It makes me wonder why others who have more experience in wasm cannot.
+
+```
+     // TODO: we should have CLI flags for each Wasm proposal.
+            reference_types: true,
+            multi_value: true,
+            bulk_memory: true,
+            module_linking: false,
+            simd: true,
+            threads: true,
+            tail_call: true,
+            multi_memory: true,
+            exceptions: true,
+            memory64: true,
+            relaxed_simd: true,
+            extended_const: true,
+            mutable_global: true,
+            saturating_float_to_int: true,
+            sign_extension: true,
+```
+
+That spec tests pass implying 1.0 still works may be possible in some cases, but suspect in others because some specs require behavior changes. I would expect folks in this area to know much more than me about this reality and empathize with it by accepting that at least this is a problem for compatibility.
+
+One option I proposed is have a way to run spectests from 1.0 even if guarded by a flag on compilers against a runtime known to be pinnacle to 1.0. Right now the focus is > 1.0 and also not the things that produce the code. The supply side should be fixed even if the consumer side is ok (that consumer side is ok is a big "if" if we are talking about constraining to 1.0).
+
+## Comment by conrad-watt, 2022-03-15
+
+I think `wasm-tools` is more justified in enabling features by default than most producers in the case that it's processing an already-produced Wasm module - really you need the original producer of the module to limit the features that it uses, in which case it doesn't matter whether `wasm-tools` itself accepts modules with more features (see below).
+
+> That spec tests pass implying 1.0 still works may be possible in some cases, but suspect in others because some specs require behavior changes.
+
+As I was trying to allude to earlier, we specifically ensure that new language features never cause the behaviour of any previously-deployed (valid) code to change. This is a hard requirement for most Web spec processes (you may have heard of JavaScript's smooshgate?). It will _always_ be possible for producers to target the 1.0 feature-set and have confidence that it has stable behaviour - the only question is whether they'd prefer to voluntarily target post-MVP features (because of e.g. implementation convenience or user demand).
+
+I'm not trying to suggest "everything is fine" - clearly Grain and AS's choice to produce sign-extension ops has caused some friction for you, but IMO the likely solutions for this problem are for you to either (1) support the feature, (2) convince Grain and AS to add some `-mvp` flag to ensure the feature isn't used, or (3) implement some Wasm -> Wasm-MVP re-writer. Is there a different solution you're proposing here?
+
+## Comment by codefromthecrypt, 2022-03-15
+
+It isn't just grain, and not just sign-extension. Also bulk-memory and other features have to be explicitly turned off. There is a culture of adding things into a bucket and PS using the word MVP is a confusing way to say 1.0. It only works in the insider culture who know one means another thing.
+
+I think we are going in circles and the signal isn't getting stronger. I believe that a W3C group should emphasize and promote their published spec and highly caveat anything that isn't formalized yet. That isn't the case now. The roadmap markets beyond 1.0 and there's no place to suggest what does 1.0 much less split consumer from producer. https://webassembly.org/roadmap/
+
+There's an assumption that when new specs are implemented, old spectests still pass. I feel that verification requires being proven, as spec tests themselves can have bugs. I can't tell you what you think, but the sentiment I'm getting from our ping-pong is that you feel things are ok and I think they should be verified. That verification would imply adding at least a flag, if not a default, that says 1.0 (not MVP jargon which is not a W3C concept). With that flag on, those who default beyond can at least in some objective way say they still are capable of verification against the only published version of WebAssembly.
+
+I don't think what I've written just now is different than before. Verification that tools can produce 1.0 implies a flag that can constrain to that. Verification being a badge for the website (possibly a new page) is the incentive.
+
+You may or may not want this, but I also assume the W3C community is larger than you and me. If someone else is trying to use this spec whose only purpose is to make a compatible impl, and finds trouble doing that due to almost all things defaulting beyond 1.0. They might be able to view this issue and see they are also not crazy.
+
+If that's the only gain raising this issue, I'm ok with that! However, I don't think there's value cycling back and forth. I'm proposing a structure of promotion that implies a flag that constrains to the only published version of W3C WebAssembly. I gather you do not want this, and your opinion is just as weighty as mine!
+
+I understand that all I can do is suggest a change until someone in W3C decides to action this or not. I've done my part and I closed this, but happy for some champion to re-open it. I am not setting a goal to convince anymore.
+
+## Comment by codefromthecrypt, 2022-03-15
+
+I'm only writing the below as I honestly think folks aren't aware of ecosystem impact. Here's how I would use this information.
+
+User: Hi, XXX is crashing on your runtime!
+Me: hmm that's interesting XXX is on the chart and that is generated automatically. via https://api.github.com/repos/WebAssembly/spec/contents/test/core?ref=wg-1.0 Are you using the same flags it uses? Are you using a different version?
+User: Ah no, I'm using a fork of XXX let me look into this.
+
+Instead, it is a murder mystery each time.
+
+## Comment by codefromthecrypt, 2022-03-15
+
+This comment is also not for existing large impls or spec authors, but also for people trying to implement the spec:
+
+step 1: pass https://api.github.com/repos/WebAssembly/spec/contents/test/core?ref=wg-1.0
+step 2: inventory all "finished" features and their corresponding opcodes, make forward feature flags to fail on nice error messages.
+
+Until step 2 is done, the murder mystery will take a lot longer as the end user has no way to figure out which of the post 1.0 features is crashing anything. They'll still need to find a way to turn off that flag in the compiler targeting wasm. It may not exist yet, but at least you'll be giving that user information they can use to help.
+
+The insight is all about step 2.. basically everything writes past 1.0 by default, this forces you to be able to catalog those opcodes and features in order to efficiently troubleshoot compatibility. Implementing those >1.0 features is in other words less important than identifying they are being used.
+
+TL;DR; Implementing 1.0 without >1.0 feature detection is not enough due to ecosystem norms.
+
+## Comment by titzer, 2022-03-15
+
+@codefromthecrypt you wrote above:
+
+> That spec tests pass implying 1.0 still works may be possible in some cases, but suspect in others because some specs require behavior changes. I would expect folks in this area to know much more than me about this reality and empathize with it by accepting that at least this is a problem for compatibility.
+
+As @conrad-watt points out, a testcase that passes *any* version of the Wasm spec will pass on any future version of the spec. An application should have exactly the same behavior on any engine, regardless of what version of the spec that engine implements, as long as it implements all of the features used by the application. Thus "1.0 still works" should at least be true for all engines. That's what is meant by backwards compatibility.
+
+I am having trouble distilling everything you wrote down to a single point, but the best I can do, is that you are asking for tools better support the notion of a semantic version, and that "1.0" (what we typically refer to as the MVP) is the default for most, if not all, things. Certainly that "1.0" is an option that can be selected by everything in the ecosystem.
+
+Unfortunately this will not scale well for engines. In particular, having written an engine that is more or less the sum of all current proposals, it is actually quite tricky to maintain all those feature flags! The code is littered with `if (extensions.FEATURE) { ... } else { ... }`. Clearly those melt away when a feature can no longer be turned off. I *had* in fact planned to maintain the flippability of all flags for my engine, but it got unwieldy. So I think we should continue to allow engines to deprecate flags that turn off features once those features are integrated into the Wasm spec.
+
+I do have a suggestion that will help here tho: a linter tool that will check a module's feature usage and enforce a specific set. The linter tool can then be integrated into a build system, as part of a deployment, or anywhere it would be useful to limit modules to a specific feature set (e.g. 1.0). That relieves engines and other tools from doing so. At least you'd be able to detect feature creep.
+
+Should we be a little more explicit and note more prominently what proposals have gone into what version of the spec? YES!
+
+## Comment by codefromthecrypt, 2022-03-15
+
+I'll try again to split the issues into specific actions to accept or dismiss. I think there's a runtime-only camp, but remember the spec covers both sides and producers are the ones who end up forcing things past 1.0 as a norm.
+
+## top-level runtime 1.0 compatibility
+
+In addition to the "roadmap" page that focuses on (only a few) implementations, add a page for 1.0 compat. This page is required to be re-verified to avoid drift and confusion. When >1.0 is specified by W3C another column can be added for that and identify things that only work with 1.X if that's not implied.
+
+### Runtime compatibility
+
+If we feel runtimes always will pass https://api.github.com/repos/WebAssembly/spec/contents/test/core?ref=wg-1.0, by virtue of passing a forked feature spec, there's no risk running these tests to say something remains compatible with 1.0. So, run it and if pass update the page.
+
+### Producer compatibility
+
+Things that compile the text format are easy as they can use the same tests which are a pretty good proxy to say that all %.wat are compilable. Alternative mechanisms could be used (ex round tripping) and the resulting wasm checked that it only uses 1.0 constructs. Same as above, refreshed because new impls can drift. this is the part that implies a flag
+
+## Comment by keithw, 2022-03-15
+
+@titzer wrote:
+> As @conrad-watt points out, a testcase that passes _any_ version of the Wasm spec will pass on any future version of the spec. An application should have exactly the same behavior on any engine, regardless of what version of the spec that engine implements, as long as it implements all of the features used by the application. Thus "1.0 still works" should at least be true for all engines. That's what is meant by backwards compatibility.
+
+Hmm, it had been my understanding that for the text format specifically, some 1.0-era modules and spec tests are no longer valid after the bulk-memory proposal was merged. See, e.g., https://github.com/WebAssembly/wabt/pull/1853#discussion_r822338282 for an example.
+
+## Comment by codefromthecrypt, 2022-03-15
+
+PS I accept that the only thing we can check 1-for-1 producer side is compiling text format. That's a good thing though as at least that is verifiable objectively.
+
+While I know the actual design would be more to it, you can imagine producers (ex tinygo -> wasm) being trickier to pin down. It could be a looser contract where the producer supplies a non-standard input in the source language, and passing is verifying the wasm produced only uses 1.0 things. While imperfect that would be a win.
+
+## Comment by titzer, 2022-03-15
+
+@keithw Thanks for the reference. That looks like a text format change only. I deal almost exclusively with binaries these days.
+
+## Comment by conrad-watt, 2022-03-15
+
+@keithw oof, I forgot about this. FWIW I think our handling of the text format has been uniquely messy. We've not given it the same back-compat respect that we give the rest of the language, and I think we've implicitly justified this with the idea that "deployed" code shouldn't be represented using the text format. I do think it would be good to formalise our expectations for the text format and communicate them more clearly, especially we if plan to keep breaking it in the future.
+
+## Comment by rossberg, 2022-03-15
+
+I believe the essence of @codefromthecrypt's criticism is our choice of "live document" model – as opposed to versioned releases – as the primary means of defining what "the standard" is. Technically, we have the W3C version as well, but that has never been viewed as more than a technicality.
+
+And I have some sympathy for this criticism. I think proper versioning is valuable and more scalable, as it allows for much easier communication than enumerating a non-linear mess of random features, or build dates of a spec document. We should perhaps reconsider our process in this regard – meaning, that we should make "official" W3C releases more frequently, and encourage vendors to primarily follow these versions instead of cherry-picking proposals out of order.
+
+Regarding backwards-compatibility, Wasm semantics and binary format have super-strict backwards-compatibility requirements – stricter than almost any other comparable software product that I am aware of. As for the text format, AFAIR, we made one incompatible change after 1.0, because it was difficult to generalise consistently otherwise. The text format does not affect engines, and the change was small, so we thought we could get away with it. On all other occasions, we have kept the text format backwards-compatible as well, AFAICT.
+
+## Comment by conrad-watt, 2022-03-15
+
+> Technically, we have the W3C version as well, but that has never been viewed as more than a technicality.
+
+> we should make "official" W3C releases more frequently, and encourage vendors to primarily follow these versions instead of cherry-picking proposals out of order.
+
+I definitely agree that we're due a new W3C cut! However, the JS spec also has yearly cuts, and IIUC most engines and tools still add/announce support feature-by-feature. IIRC Babel deprecated its "yearly" config flags for this reason.
+
+## Comment by rossberg, 2022-03-15
+
+Yeah, but JS and the messy Web ecosystem perhaps are the worst role models to pick when it comes to questions of versioning.
+
+## Comment by titzer, 2022-03-15
+
+I could really get behind a yearly spec release if we label it prominently. "WebAssembly 22", or even whole-hog "WebAssembly 2022" has a nice ring to it. I'm not sure if the W3C standardization process would create friction there.
+
+For the ecosystem, an engine with long term support for exactly one snapshot of the standard (kind of like Java 8) could be valuable.
+
+## Comment by codefromthecrypt, 2022-04-01
+
+ps ran into spec incompatibility again today https://github.com/WebAssembly/wabt/issues/1878#issuecomment-1085487840
+
+## Comment by codefromthecrypt, 2022-04-01
+
+status quo is basically like I wrote before. know somehow, either on your own or by asking someone, what features things might enable by default and wind those back. I doubt I'd change my mind that passing a flag like to indicate a spec version is simpler that stubbing toes * N people.
+

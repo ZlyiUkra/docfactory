@@ -1,0 +1,88 @@
+# WebAssembly spec issue #1549: [js-api] Constructor requirements for Error Objects violate ecma262 assertions
+# джерело: https://github.com/WebAssembly/spec/issues/1549
+# отримано: 2026-09-30
+
+Issue #1549, opened by ADKaster on 2022-10-10, open.
+
+In https://webassembly.github.io/spec/js-api/#error-objects the constructor steps say to "implement the NativeError Object Structure"
+
+> 2. For each error of « "CompileError", "LinkError", "RuntimeError" »,
+>    1. Let constructor be a new object, implementing the NativeError Object Structure, with NativeError set to error.
+
+In the NativeError() steps in ecma262 https://tc39.es/ecma262/#sec-nativeerror , it says to call OrdinaryCreateFromConstructor:
+
+> 2 Let O be ? OrdinaryCreateFromConstructor(newTarget, "%NativeError.prototype%", « [[ErrorData]] »).
+
+ This implies that we're supposed to call OrdinaryCreateFromConstructor with intrinsicDefaultProto set to "%CompileError.prototype%", "%LinkError.prototype%", and "%RuntimeError.prototype%", like so:
+
+ ``OrdinaryCreateFromConstructor(newTarget, "%CompleError.prototype%", <<[[ErrorData]]>>)``
+
+ However, step 1 of OrdinaryCreateFromConstructor https://tc39.es/ecma262/#sec-ordinarycreatefromconstructor says:
+
+ > Assert: intrinsicDefaultProto is this specification's name of an intrinsic object. The corresponding object must be an intrinsic that is intended to be used as the [[Prototype]] value of an object.
+
+Seeing as we're in the ecma262 specification, and "%CompileError.prototype%" is not "this specification"'s name of an intrinsic object, we've failed the assertion.
+
+Also , the note for NativeError() states:
+
+> The actual value of the string passed in step 2 is either "%EvalError.prototype%", "%RangeError.prototype%", "%ReferenceError.prototype%", "%SyntaxError.prototype%", "%TypeError.prototype%", or "%URIError.prototype%" corresponding to which NativeError constructor is being defined.
+
+This implies (to me) that the ecma262 authors intended for NativeError to be a closed set of types.
+
+Is the intent of the WebAssembly spec steps to "duck type" these 3 error types so that they look like NativeError? Or are implementers supposed to actually implement all of the spec steps for NativeError, and disregard the note, and the spec assertions in both OrdinaryCreateFromConstructor and GetPrototypeFromConstructor that it calls? Or is this a more general ecma262 problem that a bunch of the spec AOs assume that extension specs are not a thing?
+
+This came up when trying to implement the Error types in SerenityOS's LibWeb and LibJS here: https://github.com/SerenityOS/serenity/pull/15248#issuecomment-1255018611 where the assertion is enforced at compile time by passing a function pointer to one of JS::Intrinsics's member functions:
+
+ LibJS implementation of OrdinaryCreateFromConstructor and GetPrototypeFromConstructor
+
+```c++
+// 10.1.13 OrdinaryCreateFromConstructor ( constructor, intrinsicDefaultProto [ , internalSlotsList ] ), https://tc39.es/ecma262/#sec-ordinarycreatefromconstructor
+template<typename T, typename... Args>
+ThrowCompletionOr<T*> ordinary_create_from_constructor(VM& vm, FunctionObject const& constructor, Object* (Intrinsics::*intrinsic_default_prototype)(), Args&&... args)
+{
+    auto& realm = *vm.current_realm();
+    auto* prototype = TRY(get_prototype_from_constructor(vm, constructor, intrinsic_default_prototype));
+    return realm.heap().allocate<T>(realm, forward<Args>(args)..., *prototype);
+}
+
+// 10.1.14 GetPrototypeFromConstructor ( constructor, intrinsicDefaultProto ), https://tc39.es/ecma262/#sec-getprototypefromconstructor
+ThrowCompletionOr<Object*> get_prototype_from_constructor(VM& vm, FunctionObject const& constructor, Object* (Intrinsics::*intrinsic_default_prototype)())
+{
+    // 1. Assert: intrinsicDefaultProto is this specification's name of an intrinsic object. The corresponding object must be an intrinsic that is intended to be used as the [[Prototype]] value of an object.
+
+    // 2. Let proto be ? Get(constructor, "prototype").
+    auto prototype = TRY(constructor.get(vm.names.prototype));
+
+    // 3. If Type(proto) is not Object, then
+    if (!prototype.is_object()) {
+        // a. Let realm be ? GetFunctionRealm(constructor).
+        auto* realm = TRY(get_function_realm(vm, constructor));
+
+        // b. Set proto to realm's intrinsic object named intrinsicDefaultProto.
+        prototype = (realm->intrinsics().*intrinsic_default_prototype)();
+    }
+
+    // 4. Return proto.
+    return &prototype.as_object();
+}
+
+```
+
+## Comment by Ms2ger, 2022-11-04
+
+Good points. There's two questions here: the first is what the behaviour should be, and the second is how to spec it.
+
+For (1), I think the current implementation consensus is "do whatever NativeError does, except expose the constructors on `WebAssembly` rather than `globalThis`". I would be interested to hear if there's any observable difference from that. (For better or worse, implementers seem to treat WebAssembly as more of a "JS" than "Web" feature.)
+
+For (2), I guess I could add an explicit delta to the intrinsics table and the note, or we could talk to the ES editors to loosen the language.
+
+My personal preference would be to sidestep all this and remove these exception APIs altogether, but I fear it's too late for that.
+
+## Comment by ADKaster, 2025-05-08
+
+I think the thing that should be done here is to ask the ES editors to un-close that set of errors to let other specs extend the list of intrinsic errors. That's what I expect other implementations that blur the lines between their JS engine and WebAssembly impl more are actually doing.
+
+I think there's sufficient hand-waving in the 'behave like a NativeError' language and approach that implementations have been using that this is only a feel good about the spec language sort of issue though.
+
+We could always try to replace these with some sort of TypeError or SyntaxError and see what breaks on the web, but as was mentioned 18 months ago that's probably not feasible.
+

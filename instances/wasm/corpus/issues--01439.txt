@@ -1,0 +1,160 @@
+# WebAssembly spec issue #1439: Encoding of prefix in data segment entries
+# джерело: https://github.com/WebAssembly/spec/issues/1439
+# отримано: 2026-09-30
+
+Issue #1439, opened by nagisa on 2022-03-31, closed (completed) on 2022-05-05.
+
+Hi,
+
+In WebAssembly 1.0 the data segment encoding was specified as
+
+```
+datasec ::= vec(data)
+data ::= memidx expr vec(byte)
+```
+
+and with the merge of `bulk-memory` proposal (AFAIU) it has become
+
+```
+datasec ::= vec(data)
+data ::= 0x00 expr vec(byte)
+       | 0x01 vec(byte)
+       | 0x02 memidx expr vec(byte)
+```
+
+This sort of seems backwards-compatible at a first glance, but it isn't actually due to `memidx` using the LEB128 encoding. This means that in the original specification `00`, `80 00`, `80 80 00`, `80 80 80 00`, `80 80 80 80 00` were all valid prefix bitstream patterns for the `data`. As a result binary encoded modules that were valid as per the currently published WebAssembly specification are no longer valid in the draft.
+
+I wonder if it would make sense to adjust the description of the `data` as such:
+
+```
+datasec ::= vec(data)
+data ::= 0x00 expr vec(byte)
+       | 0x01 vec(byte)
+       | 0x02 memidx expr vec(byte)
+       | 0x80 0x00 expr vec(byte)
+       | 0x80 0x80 0x00 expr vec(byte)
+       | 0x80 0x80 0x80 0x00 expr vec(byte)
+       | 0x80 0x80 0x80 0x80 0x00 expr vec(byte)
+```
+
+or perhaps even
+
+```
+datasec ::= vec(data)
+data ::= 0x00 expr vec(byte)
+       | 0x01 vec(byte)
+       | 0x02 memidx expr vec(byte)
+       | 0x80 memidx expr vec(byte) // note, though that it ends up accepting `80 80 80 80 80 00` as an additional valid encoding.
+```
+
+in order to maintain the backwards compatibility? Seems like it'd be a pretty painless change to make.
+
+## Comment by nagisa, 2022-03-31
+
+I haven't checked too closely if there are other occurrences of this, but at least the element section entries are also effected in much the same way.
+
+## Comment by titzer, 2022-04-01
+
+AFAIR, all implementations were enforcing not just that the `memidx` be LEB `0`, but that it was actually a zero byte.
+
+## Comment by nagisa, 2022-04-01
+
+All implementations of what, specifically? Producers, Consumers or Both? On the consumer side of things the wasm-tools' wasmparser will happily validate any LEB encoding of `0` for `memidx` since the very first iterations of the project, as far as I can tell. On the producer side… a fuzzer comes to mind as something that could produce arbitrary LEB encoding of `0`.
+
+## Comment by rossberg, 2022-04-05
+
+The interpreter actually maintains backwards compatibility by deliberately using the equivalent of
+```
+data ::= i:u32 expr vec(byte)          (if i = 0)
+      |  i:u32 vec(byte)               (if i = 1)
+      |  i:u32 memidx expr vec(byte)   (if i = 2)
+```
+But I hadn't noticed the discrepancy with the spec, which uses single bytes. Not sure if that was intentional. I'm fine resolving it either way, though I would generally be hesitant to break backwards compatibility if there isn't a strong reason?
+
+## Comment by alexcrichton, 2022-04-05
+
+My recollection was that this was intentional breakage in the reference types and bulk memory proposals. I found https://github.com/WebAssembly/bulk-memory-operations/issues/153 as an example of historical discussion, although I am unable to find more references.
+
+I figured it'd be good to look at what implementations do. I'm not familiar with all of these so I'm not 100% sure these classifications are correct:
+
+| engine | data | element |
+|---------|-----|----------|
+| v8 | 32-bit leb |  32-bit leb
+| spidermonkey | 32-bit leb | 32-bit leb |
+| jsc | 32-bit leb | single byte |
+| wasmtime | 32-bit leb | 32-bit leb |
+
+This sort of makes sense to me in that to pass spec tests prior to bulk memory and reference types data/element segments had to decode a 32-bit leb, and so it's unlikely to go back and remove that (also spec tests currently still require it). I can say that at least for Wasmtime's implementation it was my intention to eventually go back and remove the 32-bit leb support to match with the spec, but I hadn't gotten around to that.
+
+## Comment by nagisa, 2022-04-05
+
+I personally want to push for maintaining the compatibility. There are a few use-cases that I've encountered/came up with since filing of this issue:
+
+1. **Reputational damage.** Today there are a number of claims of strong backwards compatibility guarantees. Were this stay as is, it'd become a perfect example that these claims are to be taken with a grain of salt and that the compatibility violations won't always be resolved even after they are pointed out (at least twice for this particular one).
+2. **Differential fuzzing** between different consumers becomes infeasible if the set of valid binary encodings of a module for an older implementation isn't a strict subset of an implementation of a more recent implementation.
+3. This can become an attack-vector against systems that rely on the guarantee. An example could be an implementation of a blockchain where strict backwards compatibility guarantees are required in order to make it possible to validate the history of the chain. This would become especially difficult to deal with if the `0x80` flag was reused for some other purpose. Then the decision as to whether use the old interpretation or the new one becomes impossible to make.
+    * In this particular scenario it doesn't matter if typical producers don't use the long-form encoding. It isn't terribly difficult to write a `(module binary)` test case by hand.
+
+My feeling overall is that there are two or three ways to introduce a change to the binary encoding such that the claim of strong backward compatibility is maintained:
+
+1. Use encoding space that was not valid as per the grammar specified so far;
+2. Use the encoding space that was specified as a valid encoding, but would never result in a valid module (as specified by the specification at the time, and not select implementations);
+    * I could see others debating that this is not actually valid.
+3. Increase the `version` field.
+
+I'd personally be fine with any of these 3, and the merge of the bulk-memory proposal does neither.
+
+## Comment by alexcrichton, 2022-04-05
+
+I don't believe this was the only breakage relative to the original spec in the bulk memory proposal. This module:
+
+```wasm
+(module
+  (import "" "" (memory 0))
+  (data (i32.const 0) "abc")
+  (data (i32.const -1) "123")
+)
+```
+
+is semantically different today than it was historically. The original version of the spec would have this module fail instantiation altogether with no writes happening to the imported memory. The current version of the spec writes the first data segment into memory and then fails instantiation on the second one.
+
+IIRC the discussions at the time about this concluded that the "breakage" was acceptable since it was deemed to never actually happen in practice so changing the spec seemed fine. I don't recall, though, how this was evaluated.
+
+## Comment by rossberg, 2022-05-04
+
+@alexcrichton, I see what you mean, but technically, allowing a previously invalid module to become valid isn't regarded a breaking change. If it was, we could never extend Wasm at all.
+
+## Comment by rossberg, 2022-05-04
+
+During an attempt to adapt the interpreter to match the spec, I noticed that the current test suite actually contains multiple tests (in binary.wast and binary-leb128.wast) for allowing multi-byte LEB values as data and element segment tags.
+
+That made me question the claim made earlier in this thread that most engines rejected multi-byte encodings before or do now. So I did a couple of experiments with both Safari and Chrome, and they both allow multi-byte encodings of the section kind.
+
+(I didn't test Firefox, since I don't have it installed, but I assume it passes the current test suite as well? @lars-t-hansen)
+
+So it seems like the spec indeed should be fixed to match test suite and (major) implementations, and thereby also restore proper backwards compatibility.
+
+## Comment by lars-t-hansen, 2022-05-04
+
+@rossberg, Weirdly we do not have those test cases in our test suite, but we do read data and element segment flags as VarU32 - up to five bytes.  I think this corresponds to what @alexcrichton says above.
+
+## Comment by rossberg, 2022-05-04
+
+Okay, great, thanks for checking @lars-t-hansen.
+
+## Comment by rossberg, 2022-05-04
+
+> I think this corresponds to what @alexcrichton says above.
+
+Indeed, thanks for pointing out. I somehow had managed to overlook his reply. Thanks @alexcrichton for testing!
+
+So I guess we can treat #1461 as fixing an oversight in the spec.
+
+## Comment by tlively, 2022-05-04
+
+Fixing the spec to restore back compat sounds good to me.
+
+## Comment by rossberg, 2022-05-05
+
+Okay, I'll land #1461 then.
+

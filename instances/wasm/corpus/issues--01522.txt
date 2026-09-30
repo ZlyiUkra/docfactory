@@ -1,0 +1,61 @@
+# WebAssembly spec issue #1522: Validation of internal globals in const expressions is inconsistent between interpreter and spec
+# джерело: https://github.com/WebAssembly/spec/issues/1522
+# отримано: 2026-09-30
+
+Issue #1522, opened by binji on 2022-08-18, closed (completed) on 2022-08-30.
+
+The following WebAssembly module is invalid in the reference interpreter:
+```wat
+(memory 1)
+(global i32 (i32.const 0)
+(data (global.get 0) "")
+```
+
+This was originally disallowed in https://github.com/WebAssembly/spec/pull/383. However, the test added in that PR was commented out.
+
+However, the spec currently explicitly mentions that global initializers can only reference imported globals, but does not mention anything about the same for data and element segments. Module validation also seems to use `C` instead of `C'` when validating data/element segments too, indicating that they can access both internal and imported globals.
+
+## Comment by rossberg, 2022-08-23
+
+Indeed. Please see #1525 for a fix.
+
+## Comment by binji, 2022-08-23
+
+Interesting, I would have assumed the spec should be changed, not the interpreter! I guess I should mention that AFAIK all browser engines currently treat using an internal global in a segment initializer as an error. But I suppose it's safe to extend the functionality.
+
+## Comment by rossberg, 2022-08-23
+
+I see! I wasn't aware that browsers agree with the interpreter instead of the spec. I'm also totally fine changing the spec. Since that's just codifying reality then it would be the simpler change. I'll prepare an alternative PR.
+
+## Comment by binji, 2022-08-23
+
+I just tested Chrome, Safari, Firefox and they all seem to agree. Here's the test I was using segment-init-global.zip. It might be worthwhile to see what the other engines do in this case, since I seem to remember @cyborus04 (who originally discovered this issue) mentioning a few that had a different result.
+
+## Comment by Cyborus04, 2022-08-23
+
+Hi! My testing showed that wasm3 and wasmtime agree with the spec, while wasmer agrees with the tests
+
+## Comment by rossberg, 2022-08-23
+
+Thanks @Cyborus04. That makes the issue somewhat less clear-cut. Though arguably, there is a clear majority of implementations agreeing with the tests, so I would still tend towards tweaking the spec. Do you agree?
+
+## Comment by binji, 2022-08-24
+
+Yeah, I think it makes sense to update the spec. I suppose it's worth notifying those two projects too. I've opened new bugs on those projects to track.
+
+## Comment by Cyborus04, 2022-08-24
+
+> I would still tend towards tweaking the spec. Do you agree?
+
+Coming from the very strong backwards compatibility guarantees of Rust, my instinct says to go for the less restrictive option of aligning with the spec. I don't feel too strongly either way, though, and would not consider my thoughts an "expert opinion" by any stretch of the imagination.
+
+## Comment by rossberg, 2022-08-25
+
+Well, in fact, the backwards compatibility requirements for Wasm are even stronger than Rust's. But in this case, even the test suite said otherwise, so one could argue that the spec merely has a typo for saying something else.
+
+In any case, I put it on the agenda for the next meeting.
+
+## Comment by Cyborus04, 2022-08-25
+
+Oh, are they? Interesting. I guess then, it's a question of which one is prescriptive and which is descriptive.
+

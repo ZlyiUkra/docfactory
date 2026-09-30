@@ -1,0 +1,70 @@
+# WebAssembly spec issue #1487: Note in element section binary encoding is incorrect/incomplete?
+# джерело: https://github.com/WebAssembly/spec/issues/1487
+# отримано: 2026-09-30
+
+Issue #1487, opened by osa1 on 2022-06-06, closed (completed) on 2022-06-07.
+
+https://webassembly.github.io/spec/core/binary/modules.html#element-section
+
+The note says this about bit 2 of the initial integer of an element section segment:
+
+> ... bit 2 indicates the use of element type and element expressions instead of element kind and element indices.
+
+My understanding of this is, if bit 2 is unset (0), the segment contains element kind and element indices.
+
+However in the segment grammar when the initial integer is 0b000 we don't have an element kind, just an offset and element indices.
+
+Grammar productions with integers 0b001, 0b010, 0b011 have `elemkind` as expected. 0b000 seems to be an exception to the rule given in the note.
+
+## Comment by rossberg, 2022-06-07
+
+Well, in the 0bX00 cases, the type is implicit, so only the "element indices" part of the sentence applies. But that doesn't make it incorrect, does it?
+
+## Comment by osa1, 2022-06-07
+
+I think it might make sense to clarify that the type is implicit in some cases (and list those cases).
+
+Maybe it's just me, but when I read this note in the spec, I implement a parser like this:
+
+```
+if (<bit 2 is set>) {
+    segment.element_type = parse_ref_type();
+    segment.init = parse_exprs();
+} else {
+    segment.element_type = parse_elem_kind().to_ref_type();
+    segment.init = parse_func_indices().to_exprs();
+}
+```
+
+Which doesn't work because of this exception. I need to do:
+
+```
+if (<bit 2 is set>) {
+    segment.element_type = parse_ref_type();
+    segment.init = parse_exprs();
+} else {
+    if (<bit 1 is set OR bit 2 is set>) {
+        segment.element_type = parse_elem_kind().to_ref_type();
+    } else {
+        segment.element_type = funcref;
+    }
+    segment.init = parse_func_indices().to_exprs();
+}
+```
+
+Which is fine, but I need to discover this exception first as the note that describes meanings of bits in the first byte does not mention it. In my case I had to do this by debugging a failure when I run my parser on the spec test suite.
+
+I guess it's not incorrect, but it seems to be missing some important information.
+
+## Comment by rossberg, 2022-06-07
+
+Well, it's just a complementary note to explain the design, not a concrete definition. I created #1489 using plural to make it more obvious that the "instead of" means replacing things by things, not the presence of things. PTAL. I wouldn't want to overload a note like that with too much redundancy.
+
+## Comment by osa1, 2022-06-07
+
+Reading the note again, I notice that it uses the word "presence" when describing bit 0 ("bit 1 indicates the presence ..."), but "use" when describing bit 2 ("bit 2 indicates the use ...").
+
+So if you read carefully enough, and assume that the words are carefully selected, then you might conclude that "use" does not necessarily mean "presence" in the binary format, and look at the `elem` production above the note.
+
+So I guess this is fine. Closing.
+

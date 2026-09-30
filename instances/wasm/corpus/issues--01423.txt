@@ -1,0 +1,81 @@
+# WebAssembly spec issue #1423: Section size in a test cast of spec tests
+# джерело: https://github.com/WebAssembly/spec/issues/1423
+# отримано: 2026-09-30
+
+Issue #1423, opened by q82419 on 2022-02-21, closed (completed) on 2022-02-22.
+
+In a test case of `binary.wast`:
+https://github.com/WebAssembly/spec/blob/main/test/core/binary.wast#L1777
+
+The code section size is `0x12`, which is 18.
+But the content size of the code section is 19.
+
+Is this an error and the correct value is `0x13`?
+If the `0x12` is correct, can you explain that why the error message is `unexpected end`, not `section size mismatch`?
+Thanks.
+
+## Comment by rossberg, 2022-02-22
+
+I think you're right, the section size should be 19. See #1424 for a fix.
+
+There are often multiple ways in which an error can manifest itself, depending on how decoder and validator operate. The concrete error messages in the test suite are mainly sanity checks, not mandatory outcome.
+
+The full error message the interpreter generates is "unexpected end of section or function". That occurs when the binary ends where an opcode is still expected during parsing. The interpreter parses the section contents before checking its size. And while doing so it runs into the (intentionally) malformed br_table instruction, which causes the last `\02` byte to be interpreted not as a label but as a `block` instruction, and the following `\0b` as its block type. Consequently, there are now at least two `\0b` opcodes missing before the section could legally end. That is regardless of the also incorrect section size.
+
+The "section size mismatch" message occurs when a section could be parsed successfully, but the resulting end position does not sync with the previously declared section size.
+
+## Comment by q82419, 2022-02-22
+
+Hi @rossberg ,
+Thanks for your reply, it makes the behavior more cleared.
+
+Then there's another wired case here:
+https://github.com/WebAssembly/spec/blob/main/test/core/binary.wast#L1599
+
+After parsing the first export description, the interpreter should expect to read the second one.
+Then the interpreter will read the export name, which starts with the UTF-8 string size: `0x0a` (which is 10 in decimal).
+But the remained binary size is 8.
+According to the implementation of reading the export name:
+https://github.com/WebAssembly/spec/blob/main/interpreter/binary/decode.ml#L114
+I think the error message should be `length out of bounds`?
+
+Thanks.
+
+## Comment by q82419, 2022-02-22
+
+> I think you're right, the section size should be 19. See #1424 for a fix.
+>
+> There are often multiple ways in which an error can manifest itself, depending on how decoder and validator operate. The concrete error messages in the test suite are mainly sanity checks, not mandatory outcome.
+>
+> The full error message the interpreter generates is "unexpected end of section or function". That occurs when the binary ends where an opcode is still expected during parsing. The interpreter parses the section contents before checking its size. And while doing so it runs into the (intentionally) malformed br_table instruction, which causes the last `\02` byte to be interpreted not as a label but as a `block` instruction, and the following `\0b` as its block type. Consequently, there are now at least two `\0b` opcodes missing before the section could legally end. That is regardless of the also incorrect section size.
+>
+> The "section size mismatch" message occurs when a section could be parsed successfully, but the resulting end position does not sync with the previously declared section size.
+
+As the same reason, the case here:
+https://github.com/WebAssembly/spec/blob/main/test/core/binary.wast#L1665
+
+The content size of the element section is 10, so the binary of line 1665 should be `"\09\0a\02"`?
+Or it doesn't matter even if the byte is `\07`?
+Thanks.
+
+## Comment by rossberg, 2022-02-22
+
+> I think the error message should be `length out of bounds`?
+
+Yes, I suppose so. It was checking against the total length of the binary, not the remaining bytes, which would make more sense. Changed (affected a couple more tests, see #1424).
+
+> The content size of the element section is 10, so the binary of line 1665 should be `"\09\0a\02"`?
+
+Fixed as well.
+
+I wouldn't be surprised if there are more mistakes like that. It is difficult to get negative tests "right", since you don't notice when a secondary bug is masked.
+
+If you find more of those, would you be interested in creating a PR to fix them?
+
+## Comment by q82419, 2022-02-22
+
+> If you find more of those, would you be interested in creating a PR to fix them?
+
+Sure. It takes time and I’m keeping overviewing on the test cases.
+Thanks.
+

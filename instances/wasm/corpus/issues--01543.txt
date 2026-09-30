@@ -1,0 +1,58 @@
+# WebAssembly spec issue #1543: Initialization of externref-type tables by an element segment
+# джерело: https://github.com/WebAssembly/spec/issues/1543
+# отримано: 2026-09-30
+
+Issue #1543, opened by keithw on 2022-10-03, closed (completed) on 2022-10-04.
+
+The spec says, "In the current version of WebAssembly, only tables of element type funcref can be initialized with an element segment. This limitation may be lifted in the future." (https://webassembly.github.io/spec/core/syntax/modules.html#element-segments)
+
+I'm confused how to interpret this. E.g., the below test seems to demonstrate initializing a table of element type externref from an element segment. It passes in the reference interpreter, but fails in WABT and maybe elsewhere. (I don't think there are any nonempty externref-type element segments in the current core testsuite, either valid or invalid.) What's the intended behavior?
+
+```wast
+(module $m
+	(table $t (export "table") 2 externref)
+	(func (export "get") (param $i i32) (result externref)
+	      (table.get $t (local.get $i)))
+	(func (export "set") (param $i i32) (param $x externref)
+	      (table.set $t (local.get $i) (local.get $x))))
+
+(register "exporter" $m)
+
+(assert_return (invoke $m "get" (i32.const 0)) (ref.null extern))
+(assert_return (invoke $m "get" (i32.const 1)) (ref.null extern))
+
+(assert_return (invoke $m "set" (i32.const 0) (ref.extern 42)))
+(assert_return (invoke $m "set" (i32.const 1) (ref.extern 137)))
+
+(assert_return (invoke $m "get" (i32.const 0)) (ref.extern 42))
+(assert_return (invoke $m "get" (i32.const 1)) (ref.extern 137))
+
+;; The table (of element type externref) can
+;; be initialized with an element segment,
+;; which seems to contradict the note at
+;; https://webassembly.github.io/spec/core/syntax/modules.html#element-segments
+
+(module
+ (import "exporter" "table" (table $t 2 externref))
+ (elem (i32.const 0) externref (ref.null extern)))
+
+(assert_return (invoke $m "get" (i32.const 0)) (ref.null extern))
+(assert_return (invoke $m "get" (i32.const 1)) (ref.extern 137))
+```
+
+## Comment by rossberg, 2022-10-04
+
+You are right, this note is wrong, see #1545. (I don't remember where it came from, perhaps because we didn't have the generalised element syntax at first.)
+
+## Comment by keithw, 2022-10-04
+
+Thanks much. If this is the case, though, I think the spec should definitely have tests for:
+- nonempty element segments of type externref (valid)
+- attempts to initialize a funcref-typed table with an externref-typed element segment or vice versa (invalid)
+
+I don't think it has either right now (and I believe WABT and probably other implementations wouldn't pass these tests today).
+
+## Comment by rossberg, 2022-10-05
+
+Well, happy to take a PR. ;)
+

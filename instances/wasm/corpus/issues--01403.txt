@@ -1,0 +1,40 @@
+# WebAssembly spec issue #1403: [Bug Report] Incorrect formula for LEB128 encoding
+# джерело: https://github.com/WebAssembly/spec/issues/1403
+# отримано: 2026-09-30
+
+Issue #1403, opened by asukakenji on 2021-12-04, closed (completed) on 2021-12-04.
+
+In https://webassembly.github.io/spec/core/binary/values.html#integers, the formula for `uN` and `sN` are incorrect.
+
+The formula for the recursive case says:
+
+```
+| n:byte m:u(N-7) ⇒ 2⁷⋅m + (n - 2⁷)
+```
+
+However, `(n - 2⁷)` does not extract the least significant 7 bits from the number `n`. The correct term should be `(n mod 2⁷)` where `mod` is the modulo (remainder) function. Hence, the formula should look:
+
+```
+| k:byte m:u(N-7) ⇒ 2⁷⋅m + (n mod 2⁷), where k = (n mod 2⁷) bitwise_or 2⁷
+```
+
+The formula for `sN` is also incorrect for the same reason.
+
+---
+
+For instance, the number `389` (`3 ⋅ 2⁷ + 5`) should be encoded as `[133 3]` (`[0x85 0x03]` or `[0b10000101 0b00000011]`) in `LEB128`. It is obvious that the `5` (which becomes `0x85` since the most significant bit of the byte is turned on to signal continuation) comes from `389 mod 2⁷`, but not `389 - 2⁷` (which is `261`).
+
+## Comment by rossberg, 2021-12-04
+
+I suspect you are interpreting the definition the wrong way round. It describes decoding, not encoding.
+
+When decoding `0x85 0x03`, then n=133 and m=3. Hence, 2^7·m + (n - 2^7) = 128·3 + (133 - 128) = 384 + 5 = 389.
+
+> However, `(n - 2⁷)` does not extract the least significant 7 bits from the number n.
+
+Note that n is (a) the result of parsing a byte, so known to be < 256, and (b) it is >= 128 (= 2^7), per the side condition. So subtracting 128 is sufficient to clear the upper bit.
+
+## Comment by asukakenji, 2021-12-04
+
+I see. That makes sense to me now. Thanks!
+

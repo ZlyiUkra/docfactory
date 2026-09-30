@@ -1,0 +1,115 @@
+# WebAssembly spec issue #1317: Spec Readability
+# джерело: https://github.com/WebAssembly/spec/issues/1317
+# отримано: 2026-09-30
+
+Issue #1317, opened by NicholasLYang on 2021-05-04, closed (completed) on 2021-05-05.
+
+I've been reading the spec lately and I've been finding it a little hard to read. Here's some examples:
+
+- For the table instructions, we write them as:
+    𝟶𝚡𝙵𝙲  12:𝚞𝟹𝟸  𝑦:𝚎𝚕𝚎𝚖𝚒𝚍𝚡  𝑥:𝚝𝚊𝚋𝚕𝚎𝚒𝚍𝚡
+However this is confusing as `12:u32` is saying that there should be the number 12 encoded as a u32, but `y:elemidx` is saying that there's an `elemidx` with the *name* `y`. Basically two productions that look quite similar mean different things
+
+- It's quite frustrating that the MathJax links aren't actual browser links. I can't open up a MathJax link in a new tab for instance. Also on Firefox you can't search in MathJax text
+
+- Also is it just me or is this rather confusing?
+> Here, code ranges over pairs (valtype∗,expr). The meta function concat((𝑡∗)∗) concatenates all sequences 𝑡_𝑖^* in (𝑡∗)∗
+
+  After reading it a couple times and cross referencing with the old BinaryEncoding doc, I get that this means we flatten out the vector of locals and concatenate them. But it's a little hard to parse.
+
+In general I've found the BinaryEncoding doc way easier to understand because it uses proper browser links, it spells out stuff like vectors in a dead simple manner and it explains what each part of the binary encoding actually does. It also doesn't use any grammar notation which I appreciate. Unfortunately it's out of date with the latest proposals. I totally understand if the spec isn't the right place to cater to beginners such as me, but perhaps we could consider another document that spells out the format in a more accessible fashion?
+
+Thanks,
+Nicholas
+
+## Comment by ngzhian, 2021-05-04
+
+Thank you for the feedback, you are not alone in finding the spec difficult to parse in some places.
+
+For the table instructions, another way of writing that same sentence could be:
+
+> 𝟶𝚡𝙵𝙲 i:𝚞𝟹𝟸 𝑦:𝚎𝚕𝚎𝚖𝚒𝚍𝚡 𝑥:𝚝𝚊𝚋𝚕𝚎𝚒𝚍𝚡 where i == 12
+
+When presented this way, it follows your way of reading more closely: "there is a u32 with the name i, there is a elemidx with the name y, there is a tableidx with the name x, and i must be 12".
+
+This way of writing it is an abbreviation:
+
+> 𝟶𝚡𝙵𝙲 12:𝚞𝟹𝟸 𝑦:𝚎𝚕𝚎𝚖𝚒𝚍𝚡 𝑥:𝚝𝚊𝚋𝚕𝚎𝚒𝚍𝚡
+
+Maybe it will help if you read this as:
+- 0xFC, followed by
+- 12, which is a u32
+- y, which is an elemidx
+- x, which is a tableidx
+
+The `:` matches its use as to specify a type in various languages, e.g. in OCaml `let x : int = 6;;`.
+
+> It's quite frustrating that the MathJax links aren't actual browser links. I can't open up a MathJax link in a new tab for instance. Also on Firefox you can't search in MathJax text
+
+Are you referring to links such as the `{ min, max }` in https://webassembly.github.io/spec/core/valid/types.html? Right click doesn't work, but control or command click does.
+
+> Here, code ranges over pairs (valtype∗,expr). The meta function concat((𝑡∗)∗) concatenates all sequences 𝑡_𝑖^* in (𝑡∗)∗
+
+Where is this? It could do with an example to make it a bit clearer. E.g. there is a note in https://webassembly.github.io/spec/core/exec/instructions.html#numeric-instructions to illustrate the tricky case of mapping Wasm instructions to numeric operators over certain types.
+
+## Comment by NicholasLYang, 2021-05-04
+
+Yeah the issue with `:` is that `12:u32` and `x:tableidx` mean respectively that the constant 12 is a u32 and that the variable x is a u32. I think of the former as an expression and the latter as a binding. But your explanation does make sense, thanks.
+
+What's additionally confusing is that IMO, it'd make more sense to just express the `12:u32` as a hex value. Is there a particular reason we're not expressing the instruction as: `0xFC 0x0c`? 12 in LEB128 is just 12, and it maps to a mental model of 1 byte opcodes vs 2 byte opcodes.
+
+Command click working is very helpful. However I'd still prefer having right click work normally. It's a little surprising to have what's clearly a non-native, MathJax-added interface pop up.
+
+The concat description comes from the code section binary encoding.
+
+Thanks for your fast response!
+
+## Comment by conrad-watt, 2021-05-04
+
+I believe we also allow "long encodings" of integer constants, so `12:u32` could be encoded as `0x0c` or `0x8c 0x00`. See the note here.
+
+This has bitten us in the past, and I can see some inconsistent documentation here in the spec. The English explainer for the saturating truncation instructions correctly notes that the opcodes use variable length integer encoding. However the English explainer for table instructions seems to incorrectly state that opcodes are always one or two bytes, even though the constant (12-17) parameter has a variable length integer encoding. I do wonder what is actually intended.
+
+EDIT: I have no justification as to why we allow trailing zeros in LEBs :)
+
+EDIT2: I've also observed a couple of examples where engines reject long encodings of immediates despite them seeming technically allowed by the spec
+
+## Comment by ngzhian, 2021-05-04
+
+> I believe we also allow "long encodings" of integer constants, so `12:u32` could be encoded as `0x0c` or `0x8c 0x00`. See the note here.
+
+Exactly this. If specified in hex, we would have to specify the various allowed LEB encodings.
+
+> This has bitten us in the past, and I can see some inconsistent documentation here in the spec. The English explainer for the saturating truncation instructions correctly notes that the opcodes use variable length integer encoding. However the English explainer for table instructions seems to incorrectly state that opcodes are always one or two bytes, even though the constant (12-17) parameter has a variable length integer encoding. I do wonder what is actually intended.
+
+LEB encoding. Table get/set is 1 byte, the rest should be LEB encoded. Prefixed opcodes are LEB encoded, see https://github.com/WebAssembly/meetings/blob/master/main/2020/CG-08-04.md#poll-should-we-update-the-spec-to-use-leb128-encoding-for-prefixed-opcodes-10-min. The English text should be fixed (see #1320).
+
+>
+> EDIT: I have no justification as to why we allow trailing zeros in LEBs :)
+>
+> EDIT2: I've also observed a couple of examples where engines reject long encodings of immediates despite them seeming technically allowed by the spec
+
+This is a bug in the engines, please file issues (and if you see it in V8, send me a note, thanks!)
+
+## Comment by rossberg, 2021-05-05
+
+@NicholasLYang
+> Yeah the issue with `:` is that `12:u32` and `x:tableidx` mean respectively that the constant 12 is a u32 and that the variable x is a u32. I think of the former as an expression and the latter as a binding. But your explanation does make sense, thanks.
+
+Perhaps it also helps to think of it as a form of pattern matching, like you e.g. have in various programming languages.
+
+More technically, variables in rules are always meta variables, and the rules in fact describe rule _templates_, which then can be instantiated with any concrete value for these meta variables. This is standard practice in formal systems, but I can see why it can be confusing at first.
+
+> Command click working is very helpful. However I'd still prefer having right click work normally. It's a little surprising to have what's clearly a non-native, MathJax-added interface pop up.
+
+I wish we could get rid of MathJax and all similar kludges. I really hope that MathML comes back soon.
+
+@conrad-watt:
+> I have no justification as to why we allow trailing zeros in LEBs :)
+
+To support back-patching. This is relied upon in most encoders, for the LEBs representing section or function sizes: they want to work in a single pass, so when they encode a section, they first write out a 5-byte zero as its size, and after done with the section and knowing its actual size, they patch it with the correct value.
+
+## Comment by NicholasLYang, 2021-05-05
+
+Ah thanks for the explanation @rossberg. Having spent some time with the spec, I am starting to get a hang of the syntax and general style. Unless there's anything else I'll close this issue. I might explore the possibility of making a WebAssembly Specification "for Dummies" as a way to encourage more people to learn WASM and to learn the spec fully.
+

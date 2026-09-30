@@ -1,0 +1,51 @@
+# WebAssembly spec issue #1427: Define purpose of elements lacking indices
+# джерело: https://github.com/WebAssembly/spec/issues/1427
+# отримано: 2026-09-30
+
+Issue #1427, opened by codefromthecrypt on 2022-03-12, closed (completed) on 2022-03-12.
+
+One confusing thing about the spec is that it seems elements are only used during initialization, yet not only is an empty `funcidx` allowed, it is tested to ensure it doesn't crash.
+
+Ex.
+```
+(elem (offset (i32.const 0)))
+```
+
+This is very confusing, if I understand correctly and deserves clarity in the spec and comments in the spectests. For example, it seems this is a nop element, confusingly indicating an offset with nothing to apply it to. My guess is that this was an oversight to allow an empty vector, and the ship has sailed about crashing on what's very likely a bug. OTOH, I may be missing something? Is there any purpose whatsoever to an element with no indices to apply to its declared offset?
+
+## Comment by codefromthecrypt, 2022-03-12
+
+best guess I can make was this was a toehold for bulk-memory added later, ex for "passive" elements later used in a table.init. Even if that were the case, forward-based support that results in something intuitive for the version it is defined in deserves a comment, if anywhere, at least in the tests.
+
+There seem to be no tools available that can parse only 1.0 (ex not allowing things not defined after that per flag), which means the only references available are the spec, which are vague on things like this, and spectests which are not really documented. This can drive the urge to punt sloppily the spec entirely.. just implement everything with no feature segmentation between what's actually specified and what might be one day, because basically everyone does this. Doing that begs the question why is there a spec anyway? What point is there to a 1.0 if no one follows it and aspects of it are only defined for things that weren't defined then? The end result is a lot of time loss on things that shouldn't be.
+
+I wish there was a way to work in this ecosystem easier than reading the minds and a complete review of all potential specs in order to get enough context to understand the spec defined.
+
+end rant. I give up on trying to figure out why things are made like they are, I just hope someone can write comments more in the actual spectests as that at least can change moving forward. If initializing something that has no point, that's exactly when to write a comment in normal code and especially in specs for others to follow.
+
+## Comment by conrad-watt, 2022-03-13
+
+Note that this isn't entirely a no-op, because if the offset is OOB, a trap will occur - so an engine still needs to do some work to handle zero-length segments correctly.
+
+We allow zero-length segments simply because it makes the semantics a tiny bit more regular (i.e. neither the spec nor an engine is forced to explicitly distinguish between the 0 and >0 case, although an engine could still choose to do so as an optimisation). Because we expect the vast majority of Wasm to be generated/produced mechanically rather than be hand-written, we're not particularly concerned with specifying explicit errors for the user in such harmless edge-cases - the Wasm producer can choose whether it emits such edge-case code (and presumably it would have a reason for doing so).
+
+The motivation above holds even if we don't consider any post-MVP features. I agree that the tip-of-main tests aren't good at distinguishing whether a feature is post-MVP or not, and maybe this is something we should find a way to improve on (although we do have a tagged commit for the W3C 1.0 version of the repository). I think this is orthogonal to your concerns about intuitiveness though - in general, the spec and tests are mainly concerned with documenting _how_ Wasm behaves, rather than _why_ it behaves as it does. Keeping a record of the latter is often a difficulty for language standards bodies - currently we mainly do this through our meeting transcripts and scattered github issues. I quite like C++'s system of standards committee papers as a way of preserving something with more structure, although it would place a much larger burden on anyone wanting to bring a proposal for discussion.
+
+## Comment by codefromthecrypt, 2022-03-13
+
+FWIW I agree and have implemented a trap on invalid offset even if it is pointless as they probably made a bug defining an offset without anything to apply it to.
+
+If all else on this issue is forgotten, I hope that one thing that can start at some point are comments.
+
+```
+;; ensure even if there are no indices, an erroneous offset traps
+```
+
+that would be a good comment on a spec test that had an erroneous offset.. it is of course more confusing the test that isn't an erroneous offset! I think the act of writing comments can help make the spec better as having to think through them has the effect of maybe preventing strange things in the first place. IOTW I don't agree that a non-empty vector is difficult grammar wise especially vs other things in the spec. However, I also ack that we can only change things forward and hope that more rigor in writing tests.. ex. it is possible to write something besides just "Basic Usage" as a comment. Maybe someone can agree that is a more empathetic way to write spec tests.
+
+my 2p
+
+## Comment by rossberg, 2022-03-15
+
+To clarify, there is no "purpose" to empty element segments, other than avoiding making 0 a special case. That in turn can help both producers and consumers to avoid extra logic. Other than that, an empty segment is no more useful than, say, the instruction sequence `(i32.const 0) (i32.add)`, which is legal as well.
+

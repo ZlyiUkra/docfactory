@@ -1,0 +1,105 @@
+# WebAssembly spec issue #1341: [test] Tests for custom sections
+# джерело: https://github.com/WebAssembly/spec/issues/1341
+# отримано: 2026-09-30
+
+Issue #1341, opened by yuri91 on 2021-07-06, open.
+
+I am the champion of the Branch Hinting proposal, and I am thinking about the requirement of adding tests for entering phase 3.
+
+There is currently no infrastructure in the reference interpreter (or any other Wasm engine I think) to validate the parsing of custom section payloads. Not even for the `names` section (I was hoping I could take inspiration from how that is handled, but all the tests for the name section are about the names themselves, not the binary format).
+
+The Instrument Tracing proposal is also going to use a custom section, so this discussion should be relevant for it too.
+
+I am not familiar with OCaml, nor the interpreter codebase specifically, but I think that a solution could be to add new "commands" to the extended wast syntax used in the tests:
+
+- `assert_custom_valid <custom section content>` : assert given well-known custom section parses successfully
+- `assert_custom_invalid <custom section content>` : assert given well-known custom section parses unsuccessfully
+
+This would allow to add tests for the names section binary format, in addition to the Branch Hinting and Instrument Tracing proposals (of course for each of these, we will need to write the validation logic in the interpreter).
+
+Before trying to experiment with this idea I would like to hear what people think about it, and if there are alternatives.
+
+As added context, here is an extract from the CG-06-08 meeting where we briefly talked about this:
+
+> DS: in general sense, there’s no good way for end-to-end test, non-observable behavior in the engine. One way in the standard unit testing system is to design a system with some other kind of side entry api that will let you observe these differences. In this case that could mean providing some way in the reference interpreter to observe some of these expected effects, not sure if that’s something we want.
+>
+> YI: right now, for names section, it’s kind of similar, how is that handled in the test.
+>
+> DS: having no test is another answer
+>
+> DP (chat): Well, you could run all tests with and without hinting to ensure (1) same behavior and (2) branch hinting isn't slower
+>
+> KM: is there a flag to tell the interpret to treat custom section failures as failures? Can give you an idea of how the custom section is parsed, you won’t test the actual feature of emitting the hints. I can see parsing tests, not sure about code-gen tests. Engines probably have a way to check these, e.g. assembler. Not really portable.
+>
+> YI: will open issue, and see if there is easy way to add parsing test
+
+## Comment by rossberg, 2021-07-06
+
+The reference interpreter does not currently deal with the contents of custom sections, since they are outside the scope of the actual specification, by definition.
+
+No custom section is required to be recognised or handled by any implementation of Wasm, nor are they allowed to reject a module due to a malformed custom section. So respective tests can't be part of the mandatory test suite.
+
+We could introduce some sort of "custom" test suite. Not sure how much benefit there would be in using the reference interpreter for that, though. We could teach it to decode custom sections mentioned in the non-normative spec appendix. I wouldn't be opposed to that, but from first glance, that would be almost entirely orthogonal to everything else it does, so could probably just as well be run by a separate tool.
+
+## Comment by yuri91, 2021-07-07
+
+If a custom section test can't be part of the mandatory test suite, and the reference interpreter in your opinion is not the best place to implement the decoding of custom sections, how should I interpret the phase 3 entry requirements for the Branch Hinting proposal (and I suppose the Instrument Tracing proposal as well)?
+
+> Entry requirements:
+>
+>    - **Test suite has been updated to cover the feature in its forked repo.**
+>    - The test suite should run against some implementation, though it need not be the reference interpreter.
+>    - Formal notation in the spec need not be updated.
+>
+> During this phase, the following proceeds in parallel:
+>
+>    - Embedders implement the feature.
+>    - The forked repo is updated to include revisions to the formalization.
+>    - **The forked repo spec is updated to include implementation of the feature in the reference interpreter.**
+>    - The feature is implemented in toolchains.
+
+If, let's say, I add a "custom" directory to the tests with a bunch of modules with valid and invalid branchHints sections, and add branch hinting validation to `wasm-validate` (from `wabt`) or some other tool, do I satisfy the requirements?
+
+On this matter, @dschuff said in the CG meeting that "having no test is another answer". Is that really an option?
+
+## Comment by rossberg, 2021-07-07
+
+Good question. Not all criteria are applicable to all features or proposals -- e.g., the reference interpreter doesn't apply to JS API features.
+
+In general, the CG needs to decide what to request in such cases. Personally, I think it would be good to have `test/custom`, ideally with a reference implementation within the repo to run it against.
+
+## Comment by yuri91, 2021-07-15
+
+I think that it would be better to use an existing tool than to rewrite a wasm binary parser from scratch just for validating custom sections.
+Wabt and Wasp are two options already under the WebAssembly organization.
+Wasp is a library, so we could write a small tool with it and keep it in this repo, but Wabt seems more actively maintained and already has a way to run the wast spec tests.
+
+To get more familiar with the Wabt codebase and evaluate the possibility of using it for validating the custom section tests, I added support for the branch hints section to it (see PR).
+
+I will also start writing some tests in the wast format under `test/custom` in the proposal forked repo.
+
+I am not sure what the best way to write a script to run the above tests with wabt is: assume that the wabt tools are available somewhere or clone the repo, compile the tools and use them.
+I can see that it would be nice if there was a "self-contained" way to run the tests within this repo.
+
+## Comment by rossberg, 2021-07-15
+
+Hm, you shouldn't need anything close to a full Wasm binary parser for a syntactic check of custom sections -- it only needs to recognise the section structure, which is fairly trivial.
+
+Unless you also want to have _semantic_ checks, which may include checking the well-formedness relative to the module proper. It's not clear from the above if you also plan on doing that?
+
+In the latter case, it's indeed probably easiest to put it into the reference interpreter -- it seems a bit undesirable to create more dependencies on external tools, especially since that will lose the ability to do holistic PRs that ensure consistency of both tool and tests.
+
+Either way, it would be great if this infrastructure was pluggable somehow, i.e., custom sections can be added in a modular manner. But I don't have a concrete idea how to do that exactly. I'll try to think about that.
+
+## Comment by yuri91, 2021-07-15
+
+Yeah sorry, it is unclear to me too if I am supposed to add semantic checks or not.
+My concern is that if I write a tool to parse just the custom section, and then it comes up that for my proposal (or a future one also using custom section) we do want semantic checks, then we added this extra tool(s) for nothing.
+
+For Branch Hinting in particular it may end up that the semantic checks are not really meaningful:
+The current spec says that the hints must refer to actual branching instructions in the code, but I already got some feedback from the V8 team that they are unlikely to actually perform such check (it is both costly and not really useful, since the module is not going to fail anyway, and hints to non existing branches are not harmful).
+
+While we figure out the best way to proceed (and I will bring up this issue again in a CG meeting) I will add the tests in the proposal repo under `test/custom`, without a way of running them (for now), and keep working on wabt support (so there is at least one tool that validates them).
+
+For phase 3 it may even be enough already(?) since the tests just need to exist and be able to pass on some implementation (V8, but it does not report errors, and soon wabt).
+

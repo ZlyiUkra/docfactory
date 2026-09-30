@@ -1,0 +1,96 @@
+# WebAssembly spec issue #1413: Strongly advocate re-coding the vector instructions to separate function from shape
+# джерело: https://github.com/WebAssembly/spec/issues/1413
+# отримано: 2026-09-30
+
+Issue #1413, opened by ghghost on 2022-01-30, closed (completed) on 2022-08-04.
+
+The current encoding of the vector instructions:
+
+- Uses a tremendous amount of opcode space, in some cases requiring a third byte to encode an opcode index >= 128.
+- Does not generalize to vectors wider than 128 bits.
+- Does not generalize to scalars wider than 64 bits.
+
+I strongly advocate re-coding these instructions as follows:
+
+- The opcode should encode neither the scalar width nor the shape. These should be encoded in following bytes (one byte for log2(scalar width / 8), one byte for log2(# of scalars)).
+- The lane index should be changed from a byte to a u32. Vectors of more than 2,048 bits with 8-bit scalars cannot encode a lane index in a single byte; while this is unlikely to be an issue any time soon, avoiding this limit has negligible cost.
+
+Of course the spec should document the current limits on the scalar width and scalar count, with a note that these might be expanded in the future.
+
+## Comment by penzn, 2022-01-31
+
+Flexible vectors proposal takes the approach you are advocating for:
+
+https://github.com/WebAssembly/flexible-vectors/blob/main/proposals/flexible-vectors/BinaryFlexibleVectors.md
+
+Lane indices need to be converted to integer values, rather than immediates, that has been on my list for some time.
+
+## Comment by ghghost, 2022-02-03
+
+> Flexible vectors proposal takes the approach you are advocating for:
+>
+> https://github.com/WebAssembly/flexible-vectors/blob/main/proposals/flexible-vectors/BinaryFlexibleVectors.md
+
+As I read it, the Flexible vectors proposal combines three ideas that are
+different from the current (2022-01-28) "WebAssembly 1.1" draft:
+
+* Encode vector operation, scalar size, and vector size separately from each
+other within a single instruction.  That is what I was advocating, and I
+think it is extremely important that some version of this replace the
+current draft before the current spec becomes implemented significantly.
+
+* Encode the scalar size first, and then the function.  This is backwards
+from what I had in mind, but equivalent.  (I assume that the .md draft,
+which shows the first byte of the instruction as being 0x75-0x7A, simply
+omits the 0xFD prefix for all vector operations.)
+
+* Do not encode the vector size statically, but provide a separate "vector
+length" instruction, implying the possibility of changing it dynamically and
+even having vector values of multiple different sizes existing on the stack
+and elsewhere.  This is a philosophical difference from the entire rest of
+WebAssembly, which assumes that the sizes of all data objects can be
+declared, determined, and checked statically: it opens up questions beyond
+instruction encoding, such as how (if at all) initial vector values for
+global variables can be specified in a module.
+
+The last of these points reflects a tension between SIMD and vector
+processing that I've also seen in the RISC-V project, with which I'm lightly
+involved.  That project currently has two ISA extension proposals on the
+table for this domain.  The one for vector processing with settable widths,
+similar in spirit to the Flexible vectors proposal, is the result of an
+extensive design process by a public working group: a large part of this
+design was frozen in November (2021) for ratification.  The other is for
+fixed-width SIMD operations, similar to the proposal in the 2022-01-28
+"WebAssembly 1.1" draft: this has not been frozen or ratified, perhaps
+partly for the same reasons I brought up here in my previous posting.
+
+I don't have experience in vector processing, but based on what I saw in the
+RISC-V vector design processI would strongly encourage those working on the
+Flexible vectors proposal to familiarize themselves with the RISC-V design,
+which can be found at
+https://github.com/riscv/riscv-v-spec/releases/tag/v1.0 .
+
+--
+
+L Peter Deutsch ***@***.***> :: Aladdin Enterprises :: Burnaby, BC
+
+## Comment by rossberg, 2022-02-03
+
+While I don't necessarily disagree that the binary encoding for vector instructions might have been better, please be aware that it is way too late to change now. Such changes would perhaps have been possible 2 years ago. The proposal has reached phase 5 and was merged into the main spec. No more changes are possible at this point, other than bug fixes. For all practical purposes, that document is considered the "live" standard by the WG.
+
+## Comment by ghghost, 2022-02-03
+
+Thank you for helping me understand the WebAssembly 1.1 spec evolution
+process better.  What I had observed was that the "WebAssembly 1.1 core
+specification" document changes frequently -- I have versions dated
+2020-07-01, 2021-07-27, 2021-11-03, and 2022-01-28, all identified as "draft
+1.1" with no other versioning information other than the date -- and does
+not include an incremental change history (the History section only
+summarizes the entire list of changes from 1.0, not the changes in each
+"1.1" draft revision separately), so I assumed incorrectly it represented
+work in progress that was still open to discussion.
+
+--
+
+L Peter Deutsch ***@***.***> :: Aladdin Enterprises :: Burnaby, BC
+
