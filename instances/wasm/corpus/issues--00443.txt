@@ -1,0 +1,57 @@
+# WebAssembly spec issue #443: ELF machine identifier etc.
+# джерело: https://github.com/WebAssembly/spec/issues/443
+# отримано: 2026-09-30
+
+Issue #443, opened by pipcet on 2017-03-15, closed (completed) on 2017-05-18.
+
+Hi,
+I'm working on a backend for wasm based on the GNU utilities at https://github.com/pipcet/asmjs.
+
+I think it would make sense to standardize (in the spec or informally) on at least a few things related to that:
+ - an ELF machine identifier (assigned by SCO/Xinuos, but needs contact info)
+ - an architecture name (right now, we suggest "wasm32", but "wasm" or "webassembly" would also work)
+ - an architecture triplet (right now, I'm using wasm32-virtual-wasm32, since there is no real OS to use for the last part)
+
+SCO need the following information to register an architecture:
+ - Organization
+ - Name of Contact
+ - Telephone number
+ - Email address
+
+As both the LLVM backend and the GNU backend use an ELF machine identifier, it's probably best for someone official to act as such contact (@lukewagner, maybe?).
+
+(I thought I'd opened this issue before, but can't find it now. Sorry if it's a dup.)
+
+## Comment by sunfishcode, 2017-03-15
+
+A good place to discuss these topics is the tool-conventions repository, as these are independent of the actual wasm spec.
+
+In the LLVM toolchain, we switched away from ELF, because
+ - wasm's imports and exports mechanisms are fairly high-level, which means that the platform has a builtin way of doing basic dynamic linking that does not involve ELF. It doesn't have all the fancy features that ELF dynamic linking has, but those could be implemented on top of it relatively easily. One could also implement an entire ELF dynamic loader on top of it too, but that would add a fair amount of duplication and complicate interoperability with non-ELF (and in particular, non-C/C++) wasm tools and libraries.
+ - wasm code sections are not loaded into the address space of the program, which breaks numerous assumptions and conventions of ELF and common ELF tools
+ - we have a desire for a two-level symbol namespace, and while there are extensions to do this within ELF, they're not widely supported by existing tools
+
+Consequently, we're in the process of designing a new ABI oriented around the wasm binary format rather than ELF, which you can see the beginnings of here and here.
+
+Would you be interested in working with us on this new ABI? It's quite early still, so we'd be open to making changes.
+
+## Comment by pipcet, 2017-03-15
+
+I think the issue of an ELF machine identifier is relevant even if ELF doesn't end up being used for wasm at all: it's the standard ID for enumerating architectures. I'm surprised LLVM doesn't actually appear to be using it for that purpose, since we found it in the LLVM header files :-)
+
+I think the ELF vs non-ELF issue is best discussed in full in another place, but I would like to point out that the two approaches are not mutually exclusive: we can have both ELF and non-ELF toolchains with similar (albeit not quite identical) behavior, until we figure out definitely which approach is better.
+
+So, yes, I'd be very interested in working with you on the new ABI; I'd also like to continue work on the ELF ABI, and, where possible, I'd like the two not to differ needlessly.
+
+## Comment by sunfishcode, 2017-03-15
+
+LLVM doesn't use the ELF machine codes for anything other than encoding ELF. Are there any other tools that use the ELF machine codes for other purposes?
+
+We did initially add a temporary EM_WEBASSEMBLY value in LLVM's Elf.h back before we decided to start a new ABI. And, as the comment in that file says, we did actually make an official request to Xinuous for an official code at the time, however we never got a response (this may have been due to unlucky timing; it's not clear). But I'm now expecting to remove EM_WEBASSEMBLY from LLVM's Elf.h, as we migrate our ELF code to the new ABI.
+
+Yes, I agree that we can have ELF and non-ELF toolchains. I also agree that it's desirable to work together when we can. There's room in the tool-conventions repo for multiple convention documents (we can rename or reorganize existing documents as needed), so let's continue the discussion in that repo.
+
+## Comment by rossberg, 2017-05-18
+
+No activity in a while, and it seems outside the scope of the core Wasm spec. Closing, please reopen if you disagree.
+

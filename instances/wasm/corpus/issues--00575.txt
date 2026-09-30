@@ -1,0 +1,58 @@
+# WebAssembly spec issue #575: Unreachable in select values
+# джерело: https://github.com/WebAssembly/spec/issues/575
+# отримано: 2026-09-30
+
+Issue #575, opened by Jiboo on 2017-10-09, closed (completed) on 2017-10-09.
+
+Hello, I was wondering if select_trap_l/r from test/core/select.wast shouldn't be invalid, or at least fail validation?
+
+    ;; Check that both sides of the select are evaluated
+    (func (export "select_trap_l") (param $cond i32) (result i32)
+      (select (unreachable) (i32.const 0) (get_local $cond))
+    )
+    (assert_trap (invoke "select_trap_l" (i32.const 1)) "unreachable executed")
+    (assert_trap (invoke "select_trap_l" (i32.const 0)) "unreachable executed")
+
+"unreachable" and i32.const are different types, also when select is evaluated only two values are on the stack.
+
+Thanks, JB.
+
+## Comment by binji, 2017-10-09
+
+The test is correct, `unreachable` is not a type but instead makes the type stack polymorphic. You can read more about it in the Validation Algorithm appendix of the spec. I also wrote a blog post about WebAssembly type-checking earlier this year.
+
+It's usually easier to see if we use the flat format instead of the folded format, so:
+```wasm
+(select (unreachable) (i32.const 0) (get_local $cond))
+```
+becomes:
+```wasm
+unreachable
+i32.const 0
+get_local $cond
+select
+```
+
+So the stack looks like this (using `*` for the polymorphic part of the stack):
+
+| instruction | type stack (after instruction) |
+| --- | --- |
+| `unreachable` | `*` |
+| `i32.const 0` | `*` `i32` |
+| `get_local $cond` | `*` `i32` `i32` |
+| `select` | `*` `i32` |
+
+The basic idea is this: if `*` can be substituted for any non-polymorphic stack and the validation succeeds, then the instruction sequence is valid (as far as type-checking is concerned). The type signature of `select` is `[t t i32] -> [t]` (see the handy appendix here). So we can match that with `[i32 i32 i32] -> [i32]` in our example, where the `*` is substituted for `[i32]`.
+
+Hope that helps!
+
+## Comment by Jiboo, 2017-10-09
+
+More than helpful, thanks a lot. I saw something related but didn't get what polymorphism had to do in this case as it's equivalent to an unreachable anyway.
+
+I loosely based my impl on https://github.com/WebAssembly/wasm-jit-prototype/blob/master/Source/Runtime/LLVMEmitIR.cpp#L622 they probably stop parsing after the unreachable somehow.
+
+## Comment by binji, 2017-10-09
+
+Yeah, looks like it happens in `enterUnreachable`: https://github.com/WebAssembly/wasm-jit-prototype/blob/master/Source/Runtime/LLVMEmitIR.cpp#L504
+

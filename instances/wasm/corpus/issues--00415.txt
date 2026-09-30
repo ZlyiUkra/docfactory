@@ -1,0 +1,116 @@
+# WebAssembly spec issue #415: [test] JS API tests should have a stable test ID
+# джерело: https://github.com/WebAssembly/spec/issues/415
+# отримано: 2026-09-30
+
+Issue #415, opened by eholk on 2017-01-31, closed (completed) on 2019-01-25.
+
+The in-progress tests at https://github.com/bnjbvr/wasm-spec/blob/gh-pages/test/js-api/jsapi.js should include a unique identifier that won't change as we add more tests. This will make it easier to track and talk about correctness across different engines by being able to precisely say something like "test 114 is failing."
+
+## Comment by sunfishcode, 2017-01-31
+
+Are the description strings passed to test calls, such as "'WebAssembly' object", sufficient?
+
+## Comment by eholk, 2017-01-31
+
+As long as they are unique, I suppose these would work. A more concise identifier might be nice though. At the moment, we have a bunch of tests whose description is "unexpected success in assertInstantiateError".
+
+@mtrofin - Do you have any thoughts on this?
+
+## Comment by mtrofin, 2017-01-31
+
+(If I understand @sunfishcode's proposal correctly) the "WebAssembly object" description string covers a bunch of asserts that may fail independently.
+
+Suppose there is a point in time when an engine is non-compliant. They want to whitelist failing tests (presumably having a tracking number for the respective issue) until the fix the non-compliance. While that happens, someone unintentionally introduces a new regression which trips a different assert in the same group. That would go undetected until the first regression is addressed.
+
+I feel that, ideally, we would track this external to the tests themselves, but I can't figure out how.
+
+A proposal:
+- change assert to accept a mandatory parameter which is a description (e.g. TestWasmInstanceExportsIsRO)
+- assert is implemented on the official side and dynamically checks test IDs are unique
+- assert requires an assert_impl to be provided by host.
+
+## Comment by bnjbvr, 2017-01-31
+
+Another idea: tests could be split up in "groups" or "sections" (I don't know if `testharness.js` has this notion of grouping, but if it has not, we could add it), and we don't bulk tests under a single `test()` or `promise_test()` call; instead, each test has its own `test()` call and a description.
+
+That is, instead of:
+```
+test(() => {
+  assert_something();
+  assert_something_else();
+  f();
+}, "A summary of the tests group");
+```
+
+we'd have
+
+```
+section(() => {
+  test(() => assert_something(...), "something");
+  test(() => assert_something_else(...), "something else");
+  test(() => f(), "random function call");
+}, "A summary of the tests group");
+```
+
+The nice side effect would be that `section()` could be rendered differently in the front page, nicely grouping tests (and hiding all those which pass).
+
+I agree with @mtrofin that grouping tests can be undesirable, for the exact reason he mentioned. My initial grouping in `jsapi.js` was more to illustrate the fact that the same test harness can be used across runtimes (browser, shells, front page) and implementations (v8, sm).
+
+## Comment by jfbastien, 2017-01-31
+
+Make the tests as small as possible, just like test262 does. The file's name is the test's name, is what you would mark as "broken" if it doesn't pass.
+
+## Comment by bnjbvr, 2017-01-31
+
+Some JS tests are automatically generated from the wast test cases, which can be pretty huge already: for instance, `f32.wast` contains 4789 tests. If we'd want to have the smallest test unit, we'd have to split the wast test cases too?
+
+## Comment by titzer, 2017-01-31
+
+On Tue, Jan 31, 2017 at 11:34 AM, JF Bastien <notifications@github.com>
+wrote:
+
+> Make the tests as small as possible, just like test262 does. The file's
+> name is the test's name, is what you would mark as "broken" if it doesn't
+> pass.
+>
+
++1 for many small test files. That pinpoints finding bugs and helps
+parallelization.
+
+—
+> You are receiving this because you are subscribed to this thread.
+> Reply to this email directly, view it on GitHub
+> <https://github.com/WebAssembly/spec/issues/415#issuecomment-276467482>,
+> or mute the thread
+> <https://github.com/notifications/unsubscribe-auth/ALnq1BoJh7SoKfPs_M_xkPRr2k1J_m1-ks5rX4zSgaJpZM4Ly7QF>
+> .
+>
+
+## Comment by jfbastien, 2017-01-31
+
+> Some JS tests are automatically generated from the wast test cases, which can be pretty huge already: for instance, f32.wast contains 4789 tests. If we'd want to have the smallest test unit, we'd have to split the wast test cases too?
+
+Is this inherent to what is being tested, or a side-effect of the previous approach?
+
+In fact, could WebAssembly conformance tests basically be a subfolder in test262?
+
+## Comment by bnjbvr, 2017-02-01
+
+> In fact, could WebAssembly conformance tests basically be a subfolder in test262?
+
+More information here. The goal is to have pure JS test cases (that can just run in a plain JS shell, think node) and HTML test cases (which need a DOM environment, e.g. for testing compilation and instantiation in workers, postMessage, indexeddb), ideally using the same testing harness. The Web Platform Test API is general, covers all of our needs and is pretty simple to polyfill in a pure JS environment.
+
+Test262 would be nice for pure JS, but not for HTML test cases. Thus using test262 would imply needing several, different test harnesses. Happy to discuss this more in the associated pull request.
+
+## Comment by rossberg, 2017-02-01
+
+Test262 is notorious for poor coverage and very superficial testing. That is no coincidence but a direct effect of the tons-of-primitive-micro-tests approach. Writing more extensive tests is extremely tedious, and testing cases combinatorially becomes infeasible. It also produces significant increase in runtime for the test suite.
+
+So while I agree that it would be good to split up various tests, I strongly recommend against the test262 approach.
+
+## Comment by binji, 2019-01-25
+
+The JS and web API tests have now been separated into their own files (see WPT tests here). The JS API tests have also been copied to the spec repo here. I assume the web API tests will be copied as well.
+
+Given that, I think this issue is resolved.
+

@@ -1,0 +1,74 @@
+# WebAssembly spec issue #590: Split up instantiation for better integration with JS spec?
+# джерело: https://github.com/WebAssembly/spec/issues/590
+# отримано: 2026-09-30
+
+Issue #590, opened by littledan on 2017-10-20, closed (completed) on 2018-01-09.
+
+JS.md has some steps that it executes to set up the JS representation of table objects, which occurs after most of instantiation but before the start function is executed. Error reporting of the start function also differs from previous error handling. Would it be reasonable to split off start function execution from the rest of instantiation, so that the integration can be cleaner here? For now, I can use rough language to express the same thing (as JS.md does now), but it's a little sub-optimal given how precise everything else is.
+
+## Comment by jfbastien, 2017-10-20
+
+I don't understand what you suggest changing. Not that I think JS.md is great! It's pretty messy and cleaning it up would be great.
+
+Maybe you could outline the steps you suggest, and which are different?
+
+Maybe my misunderstanding is what you call "instantiation". For me that involves resolving imports / exports (in our implementation, as an ES6 module), setting up memory / table, then applying segments / elements, and finally calling start before returning (IIRC that's what it is...). Is that not what you mean by "instantiation"?
+
+## Comment by littledan, 2017-10-20
+
+I'd be interested to know more in what should be cleaned up about JS.md. I made a first draft of JS.bs, and an idea I had for a next step would be to break up the monster instantiation algorithm on the JS.bs side.
+
+There's another side, which is within WebAssembly. Unfortunately, the JS bindings can't just call this directly--they need to do something between step 16 and 17. I was suggesting to refactor this to have the Wasm spec expose a function which does steps 1-16 instead of including 17, for cleanness.
+
+I think I could make a patch to do this; I was asking if it would be a good idea, but probably this would be clearer as a PR.
+
+## Comment by rossberg, 2017-10-23
+
+Ideally, we wouldn't need to do that, since the spec was meant to enforce that the notion of "instantiation" is treated as indivisible by embedders, in the way @jfbastien mentions.
+
+Is error classification the only reason to propose this?
+
+FWIW, if we were to split it up then the logical point would be after step 14, since that is were observable changes start happening.
+
+## Comment by littledan, 2017-10-23
+
+@rossberg The error classifying is the smaller part of it; the bigger part is to set up the Table objects on the JS side before the start function runs, in the second Step 1 of the WebAssembly.Instance constructor.
+
+## Comment by rossberg, 2017-10-23
+
+@littledan, why does that need to be set up beforehand? AFAICT, it won't be observable until after the start function (successfully) returns.
+
+## Comment by littledan, 2017-10-23
+
+@rossberg I'm not sure; this is what JS.md was doing before, and I was trying to translate it. I thought it might be visible somehow if the start function looked into the right tables, but really, I don't see how it can be observed.
+
+There's another reason you might want to split them up, though: In a real implementation, the module instantiation could be run on another thread, but the start function should be run on the same thread. @domenic 's wording in the Web.md spec tries to make this more explicit in some ways, though it doesn't seem to call out the start function. I'm not sure to what degree we want the specs to call out explicitly about parallelism and what not, though.
+
+## Comment by littledan, 2017-10-23
+
+Oh, I see, the language was introduced in ac774caee41ba5b5c7c6ecf99c777ae99be4151e to avoid duplication in language between imports and exports in the exported function de-duplication logic. The logic here goes back and de-duplicates exported functions which are found on imported tables. Maybe you could observe this if the start function calls back into JS. An easy fix is to just move the table de-duplication logic to both before instantiation (for imports) and after (for exports) like what happens for everything else.
+
+## Comment by rossberg, 2017-10-23
+
+I now recall the problem: element segments can mutate *imported* tables before the start function runs. Becasue the start function can call back into JS and observe these through Table#get, these mutations have to be reflected properly on the JS side _before_ start, but _after_ the table segments have been executed (because that's when you know them). Step 20.3.3 in the current draft is the key piece.
+
+Of course, the problem with that setup is that it won't extend to Wasm-internal ways of mutating the table anyway. So maybe the right way to deal with table.[[Values]] is to do the update lazily as part of Table#get. Then it always works, and the logic for updating tables early during instantiation is unnecessary. However, that would require keeping a more global funcaddr->JSFunction mapping around.
+
+## Comment by littledan, 2017-10-23
+
+Such a mapping would be per-realm, I imagine? If we do things that way, it could clean up module instantiation a bit, to frame it more positively, and I guess we'd just eliminate the \[\[Values]] internal slot.
+
+The Wasm-internal ways of mutating the table were why I was bringing the correspondence up here, but I had trouble finding those ways--I don't see an instruction for table mutation.
+
+## Comment by binji, 2017-10-23
+
+There aren't currently any wasm instructions to mutate a table, but we've discussed some: https://github.com/WebAssembly/design/blob/master/FutureFeatures.md#more-table-operators-and-types
+
+## Comment by rossberg, 2017-10-26
+
+I think I have an idea for a refactoring, but it's probably easiest if I create a PR after the current JS thing has landed.
+
+## Comment by littledan, 2018-01-09
+
+This isn't needed anymore, as @rossberg and I agreed to switch to specifying this based on a global association of Wasm addresses to JS objects, eliminating the need for inserting spec text between these steps.
+

@@ -1,0 +1,61 @@
+# WebAssembly spec issue #478: [spec+interpreter] Accepts "i32.const0" (missing space)
+# джерело: https://github.com/WebAssembly/spec/issues/478
+# отримано: 2026-09-30
+
+Issue #478, opened by sunfishcode on 2017-05-15, closed (completed) on 2017-06-29.
+
+The interpreter currently accepts the following:
+
+```
+(module (func (export "foo") (result i32) (i32.const0)))
+
+(assert_return (invoke "foo") (i32.const0))
+```
+
+Note that there's no space between the `i32.const` and the `0`. This doesn't create any actual ambiguity, but it doesn't seem to add meaningful flexibility either, and it's surprising.
+
+For reference, wabt and binaryen both issue errors on this code.
+
+## Comment by rossberg, 2017-05-16
+
+Hm, interesting. That is a normal result of the usual longest match rule for lexing. But it seems that for an S-expression format that is not actually a desirable logic to use.
+
+## Comment by binji, 2017-05-16
+
+I don't remember doing it, but it looks like I added a rule a while back that prevented this in the wabt lexer: https://github.com/WebAssembly/wabt/blob/master/src/wast-lexer.cc#L464
+
+Removing that rule makes wabt work the same, allowing you to parse modules like: `(module(func(resulti32)i32.const0))` :-)
+
+## Comment by rossberg, 2017-05-16
+
+@binji, yes, I just implemented the same rule. It's a bit more interesting how to specify it, though. Probably gonna do a similar trick in the spec itself, defining a general syntax for atoms, wth all other ones being "reserved".
+
+## Comment by rossberg, 2017-05-16
+
+Okay, I refined PR #471 to rule out such cases and adjust the interpreter accordingly.
+
+## Comment by AndrewScheidecker, 2017-05-17
+
+@rossberg-chromium I don't think your change rejects a keyword following a number:
+`offset=1align=1`
+
+## Comment by rossberg, 2017-05-17
+
+@AndrewScheidecker, works for me. Note that the sequence `offset=1align=1` forms a single "keyword" under the given grammar. There is no number.
+
+## Comment by rossberg, 2017-05-17
+
+Ah, but you are right nevertheless! `(module (func br 0nop))` is still accepted. Hm, darn, not sure how to solve this.
+
+## Comment by AndrewScheidecker, 2017-05-17
+
+I'm thinking about fixing this in WAVM by only matching a keyword or number if it's followed by a token separating character (without consuming that character).
+
+## Comment by rossberg, 2017-05-17
+
+Actually, it seems easy to fix by just removing the bit that a bogus "keyword" starts with a letter. See latest patch, which also adjusts the spec text.
+
+## Comment by rossberg, 2017-06-29
+
+This has been resolved as part of PR #471.
+

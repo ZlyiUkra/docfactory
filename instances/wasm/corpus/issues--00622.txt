@@ -1,0 +1,169 @@
+# WebAssembly spec issue #622: Multiple exports under same name
+# джерело: https://github.com/WebAssembly/spec/issues/622
+# отримано: 2026-09-30
+
+Issue #622, opened by pepyakin on 2017-12-12, closed (completed) on 2018-05-03.
+
+Spec states that each export should have a different name.
+
+However, it looks like spec tests are relying on that module `spectest` publishes several functions with different signatures under the same name.
+
+https://github.com/WebAssembly/spec/blob/fb7e7e1e381ffc283c923a87fdfea5ebbd213737/test/core/imports.wast#L36-L39
+
+Why is that? Is `spectest` module is sort of magic?
+
+## Comment by binji, 2017-12-12
+
+It's only as magic as JavaScript :-)
+
+`spectest.print` is just one export, but it happens to be a function that can print as many arguments as it is given with whichever types it is given. You could provide it in the import object as:
+
+```
+let importObj = {spectest: {print: console.log}};
+```
+
+## Comment by eholk, 2017-12-12
+
+You can only have one export of a given name, but you can something as many times as you want.
+
+This is useful especially in the case of importing JavaScript functions, as these will accept values of different types. For example, `console.info` can log any type object, but Wasm requires the types to match when you call a function. That means if you want to call `console.info` at different types, you must import it for each type you want.
+
+That's what's going on here with `spectest` as well.
+
+## Comment by pepyakin, 2017-12-12
+
+Ah, I see.
+
+I'm working on a WebAssembly interpreter implementation and it is not related to JS at all. This implementation enforces all the exports that is provided by any module (including "host" modules). I thought that I can implement `spectest` as ordinary module, but apparently I can't.
+
+It seems that I had a wrong model of wasm: I thought that every import should be satisfied by somekind of a module (even if derived from `importObj` in JS), but it seems that is not the case.
+
+## Comment by jfbastien, 2017-12-12
+
+Internal to wasm you're correct, all named functions have to be strictly typed. That's not the case for imports from the embedder, as evidenced by the spec interpreter and JS, but your embedder could force that restriction if you wanted. It just seems fairly restrictive to do so, even for a C++ embedding I'd allow variadic things like this by passing arguments / returns arrays along with a signature.
+
+## Comment by pepyakin, 2017-12-12
+
+That makes sense, thank you!
+
+Currently API I working on roughly works like
+
+```
+vm.add_host_module("env", env_host_module);
+vm.add_module("main", main_module);
+```
+
+Now it became clear to me, that I probably want something similar to JS:
+
+```
+vm.instantiate(
+  main_module,
+  {
+    "env": env_host_module_instance
+  }
+);
+```
+
+I'm wondering why spec avoids name matching stuff?
+
+## Comment by binji, 2017-12-13
+
+I ended up using a delegate class in wabt. The `spectest` module can then be implemented like this.
+
+> I'm wondering why spec avoids name matching stuff?
+
+I guess because it's mostly the responsibility of the embedder to provide an external value that maps to the requested import. There's not much the wasm core spec could really say about it. The JS API spec describes this in  better detail, but I'm not sure if there is a formatted version of the document available.
+
+## Comment by pepyakin, 2017-12-21
+
+Spec states
+
+```
+Each import is identified by a two-level name space, consisting of a module name and a unique name for an entity within that module.
+```
+
+so I guess this is not a correct statement, because different entities can share one name in embedder's module, isn't it?
+
+## Comment by rossberg, 2017-12-22
+
+@pepyakin, the entity names must be unique within each module. For example, there cannot be both a an import for a function "g" and a global "g" with the same module name, if that's what you mean.
+
+## Comment by pepyakin, 2017-12-22
+
+@rossberg
+
+But as said earlier
+
+> Internal to wasm you're correct, all named functions have to be strictly typed. That's not the case for imports from the embedder, as evidenced by the spec interpreter and JS, but your embedder could force that restriction if you wanted.
+
+this might not be the case for imports from the embedder?
+
+For example:
+
+```WebAssembly
+(module
+  (import "env" "derp" (func $derp))
+  (import "env" "derp" (func $derp (param i32)))
+)
+```
+
+So if "env" is an "embedder's module" (is this is a correct term?), then it seems that "derp" isn't an unique name within that "embedder module".
+
+So this statement
+
+> Each import is identified by a two-level name space, consisting of a module name and a unique name for an entity within that module.
+
+sounds not accurate to me (unless embedder's module (i.e. "env") can't be called a module)
+
+## Comment by eholk, 2017-12-22
+
+@pepyakin For you example to work, you'd have to give a different name to each imported version of the function. For example:
+
+```
+(module
+  (import "env" "derp" (func $derp))
+  (import "env" "derp" (func $derp_i32 (param i32)))
+)
+```
+
+I think the spec is still technically correct, because the names `$derp` and `$derp_i32` aren't really names, but get translated to numeric indices instead (so `$derp` is shorthand for 0 here, and `$derp_i32` for 1).
+
+## Comment by rossberg, 2017-12-23
+
+The spec only requires *export* names to be unique. It does not require *import* names to be unique. What that means is that you can import the same entity several times. If the host environment is loose with typing (like JavaScript) that also implies that you can import e.g. the same function under different types. However, it still conceptually is the same function. (Strictly speaking, though, it is up to the embedder to resolve imports, so other embeddings might handle that slightly differently and perform type-dependent resolution.)
+
+## Comment by pepyakin, 2017-12-23
+
+@eholk oh, sorry, I didn't check my example with wast/wat tools. Anyway, these `$derp/$derp_i32` names aren't relevant for my point.
+
+@rossberg yeah, I see.
+
+This statement
+Each import is identified by a two-level name space, consisting of a module name and a unique name for an entity within that module. just sounds for me a little misleading, because upon resolving imports from embedder's (host?) module, you can either return different entities under same name
+
+```
+import_func "derp" = funcaddr1
+import_func "derp" = funcaddr2
+```
+
+or return same entity under different names
+
+```
+import_func "derp1" = funcaddr1
+import_func "derp2" = funcaddr1
+```
+
+I understand that it might be desired to ephasize that export names have to be unique, but this makes sense only for wasm modules and breaks apart for imports made from embedder.
+
+## Comment by sunfishcode, 2018-02-13
+
+I agree. I believe this sentence in the spec is incorrect:
+
+> Each import is identified by a two-level name space, consisting of a module name and a unique name for an entity within that module.
+
+Specifically, the word "unique" here seems incorrect. The same name can be resolved to two different entities within the same module, with or without different signatures, as discussed in #650 etc., and two imports within a module can have the same names.
+
+## Comment by rossberg, 2018-02-14
+
+@sunfishcode, good point. I created #687, which removes the "unique" and adds a note clarifying the possibility of "overloaded" imports. PTAL
+

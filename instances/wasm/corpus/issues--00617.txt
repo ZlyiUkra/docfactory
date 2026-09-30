@@ -1,0 +1,63 @@
+# WebAssembly spec issue #617: [feature] Roundtrip names with strange symbols in text format
+# джерело: https://github.com/WebAssembly/spec/issues/617
+# отримано: 2026-09-30
+
+Issue #617, opened by binji on 2017-12-06, closed (completed) on 2024-09-19. Labels: future feature.
+
+See https://github.com/WebAssembly/wabt/issues/685#issue-278801340. We currently generate a name section using the name provided like `$foo`. This doesn't work for all names that are allowed by the binary format. Should we have a way to represent these names in the text format?
+
+## Comment by AndrewScheidecker, 2017-12-07
+
+How about allowing quoted names: `$"arbitrary\00string"`?
+
+## Comment by binji, 2017-12-07
+
+Good idea. Seems like a simple enough change, and matches what the text format already does for quoted strings. What do you think, @rossberg?
+
+## Comment by rossberg, 2017-12-08
+
+Identifiers are semantically relevant in the text format. Allowing random
+strings would thus have undesirable implications. In particular, it would
+pull in Unicode into a central piece of the text semantics and get us into
+the business of defining the right equivalence on arbitrary Unicode strings
+or their (possibly malformed?) encodings. I'd rather not go there, IME it's
+a rabbit hole.
+
+Just for round-tripping the easier solution IMO would be the annotation
+mechanism we discussed earlier. We could easily allow annotations of the
+form (@name "...") on binders that you can fall back to. Unlike
+identifiers, their role is limited to mapping the name section, so they
+don't interfere with semantics. WDYT?
+
+## Comment by AndrewScheidecker, 2017-12-08
+
+> In particular, it would pull in Unicode into a central piece of the text semantics and get us into the business of defining the right equivalence on arbitrary Unicode strings or their (possibly malformed?) encodings. I'd rather not go there, IME it's a rabbit hole.
+
+It does make sense to apply the same well-formed UTF-8 constraint as the import/export strings, but why would it be necessary to define equivalence as anything other than byte-wise comparison? If we allow imports/exports to be distinguished by equivalent UTF-8 strings, why not these names?
+
+## Comment by binji, 2017-12-08
+
+I agree w/ @AndrewScheidecker that this seems to be a similar situation to import/export names. That said, I also think that if we have the general mechanism for custom section annotations, that would work fine too. That seems like it requires more design work than extending the syntax for identifiers though.
+
+## Comment by rossberg, 2017-12-14
+
+@AndrewScheidecker, fair enough, but we would still introduce the situation where there are many different ways to spell the same identifier, e.g., using unicode escapes, raw UTF-8 hex escapes, quotes vs no quotes, etc., which is undesirable IMO.
+
+Unlike import/export names, which are string *labels* for external interaction so that they have to be language-agnostic and universal (and don't have any meaning inside Wasm itself), free form quoting is not something typically found for internal *identifiers*. I can see the temptation to view symbolic identifiers as a reflection of the name section, but that wasn't the intended purpose.
+
+## Comment by AndrewScheidecker, 2018-03-12
+
+> @AndrewScheidecker, fair enough, but we would still introduce the situation where there are many different ways to spell the same identifier, e.g., using unicode escapes, raw UTF-8 hex escapes, quotes vs no quotes, etc., which is undesirable IMO.
+
+I think it's acceptable if the same identifier can be written multiple ways: e.g. $f as $"\66". It would make it possible to write confusing or misleading WAT code, but the purpose of these names is to make disassembly/callstacks useful, and in those cases the names will be printed in a consistent way.
+
+> Unlike import/export names, which are string *labels* for external interaction so that they have to be language-agnostic and universal (and don't have any meaning inside Wasm itself), free form quoting is not something typically found for internal *identifiers*.
+
+We want to disassemble names from languages with arbitrary syntax, and produce valid WAT syntax. The simplest way to do that is to allow arbitrary strings in WAT identifier syntax.
+
+The annotation proposal tries to avoid the issue by adding a name annotation that takes an arbitrary string, but as I mentioned here, that doesn't replace a good WAT identifier that can be used as an argument of `call`, `get_local`, etc.
+
+## Comment by rossberg, 2024-09-19
+
+This is now supported with string-style identifiers, closing.
+

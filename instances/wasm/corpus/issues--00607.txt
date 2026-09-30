@@ -1,0 +1,284 @@
+# WebAssembly spec issue #607: Aligning on implementation-specific limits.
+# джерело: https://github.com/WebAssembly/spec/issues/607
+# отримано: 2026-09-30
+
+Issue #607, opened by titzer on 2017-11-28, closed (completed) on 2019-01-24.
+
+From the November in-person meeting, we had an action item to reach consensus on implementation-defined limits such as the maximum size of a function or the maximum number of functions in a module.
+
+Implementations need to converge on this and decide on the right limits. I believe that other than the function size (accidently not enforced in V8, e.g., but later enforced to 7654321 bytes), 4 browser implementations have adopted the same limits. This limits are not implemented in the reference interpreter.
+
+We need to decide if these limits are part of the official Web embedding, and if so, add tests for them.
+
+## Comment by jfbastien, 2017-11-28
+
+FWIW we don't implement all the limits from V8's header because they're not all sensible for us. It would be good to list all the ones we want to standardize here. Our list is: https://github.com/WebKit/webkit/blob/master/Source/JavaScriptCore/wasm/WasmLimits.h
+
+## Comment by rossberg, 2017-11-29
+
+Just to check that we are on the same page: these would be web API tests and don't affect the reference interpreter, because embedder-specific restrictions don't belong there, right?
+
+## Comment by jfbastien, 2017-11-29
+
+@rossberg undecided.
+
+The precise action item is: https://github.com/WebAssembly/meetings/issues/100
+
+Polls to take at the next meeting are:
+
+* POLL: do we only want to discuss only static limits, or dynamic ones as well?
+* POLL: do we want to standardize this?
+* POLL: Should the limits be Web-embedding specific, or standardized for all of WebAssembly?
+
+Also, tooling would warn: https://github.com/WebAssembly/design/issues/1509
+
+## Comment by RyanLamansky, 2017-12-16
+
+> POLL: Should the limits be Web-embedding specific, or standardized for all of WebAssembly?
+
+Given that non-web embeddings may have considerably greater hardware resources and exotic use cases, it seems audacious to extend web browser limitations to them.
+
+## Comment by lars-t-hansen, 2018-01-10
+
+There is an open question about how to interpret the limit on the number of locals.  It appears that WebKit and v8 account separately for the number of parameters and locals (so, up to 10000 parameters; up to 50000 non-parameter locals).  Firefox instead limits parameters (10000) and then the total number of locals+parameters to 50000 [sic].  This is probably a Firefox bug but it would be nice to settle this explicitly.
+
+https://bugzil.la/1423952 is our tracker for this.
+
+## Comment by littledan, 2018-03-08
+
+Should making a cross-browser decision on main thread synchronous compilation limits be part of this effort? In https://github.com/webpack/webpack/issues/6433, we can see that WebAssembly packaging authors are hitting it; there's also a stack overflow thread where it looks like someone was reading a tutorial written for Firefox, and found it wouldn't work in Chrome. Is there a particular reason why the limit is applied in some browsers and not in others? I imagine users would benefit in terms of compatibility if we could come to agreement here.
+
+## Comment by erights, 2018-03-09
+
+On Tue, Nov 28, 2017 at 9:45 AM, Ben L. Titzer <notifications@github.com>
+wrote:
+
+> We need to decide if these limits are part of the official Web embedding,
+> and if so, add tests for them.
+
+What does "web embedding" mean? Does this imply that it would apply to v8
+in Chrome but not in Node? What about Atom? What makes a host a browser?
+
+## Comment by rossberg, 2018-03-09
+
+@erights, I suppose it's up to clients to decide what standards they implement, and whether they want to consider themselves a full "web browser" in the common sense of the term. Strictly speaking, we can only put out recommendations.
+
+## Comment by littledan, 2018-03-12
+
+For context, Node implements some web standards, such as URL, and is considering more. On a practical level, these limits are implemented in JS engines, and, unless special support were added to bypass them, I think Node would get the same limits as the browser where the engine is embedded (whether we are talking about Chrome or Edge).
+
+## Comment by littledan, 2018-04-18
+
+We discussed this issue in the April 12 Wasm WG meeting. The group agreed that we want to move forward on these limits, and that the next step is to write patches against the JS API and Web API for these limits, working out the details on GitHub.
+
+## Comment by titzer, 2018-05-02
+
+I have now written some tests for these limits and run them against existing engines. I uploaded them to a branch and I'll have a PR ready soon.
+
+Outcome so far: all engines agree on the limits which are written in the tests, except for two:
+
+* The maximum number of pages a module may specify for either initial or maximum memory size
+  (V8 enforces a smaller number than 64Ki, but probably shouldn't)
+* The enforcement of the maximum number of local variables
+  (JSC enforces the maximum number of local variables independent of the number of parameters, whereas the other 3 engines consider the parameters to be included).
+
+## Comment by titzer, 2018-05-02
+
+The branch can be seen here: https://github.com/WebAssembly/spec/tree/embedding_limits
+
+## Comment by titzer, 2018-05-24
+
+Hello,
+
+I have updated the limits test in that branch with what I believe to be a now-final set of tests. The results are that all engines fail one or more minor checks, which I will summarize below.
+
+For reference I have a CL ready for V8 that fixes our previous problem with enforcing a too-small memory pages size (both initial and maximum), while cleaning up the names in the code and making it clear what is specified. For the failures outlined below, I don't expect any engine's changes to be more involved.
+
+(V8 CL: https://chromium-review.googlesource.com/c/v8/v8/+/1063755)
+
+The test is here: https://github.com/WebAssembly/spec/blob/embedding_limits/test/js-api/limits.js
+
+To run it:
+`% cat ../harness/wasm-constants.js ../harness/wasm-module-builder.js limits.js > /tmp/test.js && wasm-engine /tmp/test.js`
+
+@littledan The test above has a small bit of harness inlined, and I didn't try to get it to run in the browser. It might need to be adjusted to make it nice to run on a spec compliance page. Is that something you can handle?
+
+V8:
+ With the above CL, V8 fully complies with the limits.
+
+SpiderMonkey:
+  - Enforces a smaller "initial memory pages" implementation-specific limit (should be 65536)
+  - Allows a maximum table size over the limit (should be maximum 10000000)
+
+Chakra:
+  - Enforces a smaller "initial memory pages" implementation-specific limit (should be 65536)
+  - Does not enforce the maximum locals = 50000 limit (or enforces a higher one, interestingly, only in the compile path, not the validation path)
+
+JSC:
+ - Enforces the limit of locals and parameters independently (i.e. parameters do not contribute to the limit of 50000 locals)
+ - Allows a maximum table size over the limit (should be maximum 10000000)
+
+As for enforcing a smaller "initial memory pages" value, IMO I think the engine should not make this a validation error, but should simply be an OOM condition when trying to instantiate the module.
+
+As for the "maximum table size over the limit" issue, I think this is due to the existing js-api.js test attempting to instantiate a table with MaxUint32 entries. IMO the `new WebAssembly.Table()` constructor and the "binary way" of creating such a table with just a module should enforce the same limit.
+@lukewagner @jfbastien @MikeHolman thoughts?
+
+I didn't test Chrome's synchronous 4KiB module compilation limitation. I guess this should come with a test somehow, but it was complicated, since Chrome doesn't enforce this limit, e.g. in some worker contexts. IMO that 4KiB limit isn't particularly useful but that's a different discussion.
+
+I also did not test the overall 1GiB maximum module size limitation since it might hard to make a reliable test for this that doesn't already OOM just due to having a 1GiB typed array.
+
+## Comment by julian-seward1, 2018-06-06
+
+@titzer:
+> SpiderMonkey:
+> Allows a maximum table size over the limit (should be maximum 10000000)
+
+I fixed this in SpiderMonkey.  One result of doing so is that the following test
+in jsapi.js (at or around line 560) now fails.
+
+assert_equals(new Table({initial:1, maximum:Math.pow(2,32)-1, element:"anyfunc"}) instanceof Table, true);
+
+It seems reasonable to me that it now fails.  What I don't understand is: that test
+exists unchanged in the implementation_limits branch.  So I would have thought it
+would now fail on all engines.  Either that, or I misunderstood something.  Can you
+clarify?
+
+## Comment by julian-seward1, 2018-06-20
+
+@titzer: your limits.js test doesn't seem to have a check for the maximum number of element segments in a module.  Is that intended (or did I miss it) ?  If there should be a check, what should the limit be?
+
+## Comment by Cellule, 2018-06-21
+
+> Chakra:
+Enforces a smaller "initial memory pages" implementation-specific limit (should be 65536)
+Does not enforce the maximum locals = 50000 limit (or enforces a higher one, interestingly, only in the compile path, not the validation path)
+
+For the memory pages, we were incorrectly allowing only 16384 pages for the initial size.
+However, currently we are bound by a limit of ~2GB (32767 pages) for the maximum size of the memory.
+This made me realize that even though we were accepting a higher Max size, growing past 32767 pages would have an error. We'll still accept up to 65536 pages for the maximum pages for compatibility reasons. We'll check if we can increase that limit in the future.
+
+For the maximum number of locals, I don't understand your results. We have almost the exact same test https://github.com/Microsoft/ChakraCore/blob/master/test/wasm/limits.js#L225
+We should not validate functions with more than 50000 locals
+
+>I fixed this in SpiderMonkey. One result of doing so is that the following test
+in jsapi.js (at or around line 560) now fails.
+assert_equals(new Table({initial:1, maximum:Math.pow(2,32)-1, element:"anyfunc"}) instanceof Table, true);
+
+We had the same issue, where currently, we just allow a bigger table size for that test only. Would be nice to update that test to respect the limit
+
+## Comment by titzer, 2018-06-25
+
+@julian-seward1
+
+You're right in that the change to the limits causes a spec test to fail. I think the spec test should be fixed to align it with the limits. There is a test for the maximum number of table element segments, but not one for the number of elements in a single table element initialization. Do you think we should add one?
+
+@Cellule Were you able to replicate my results with the locals verification test? There are two tests; one with and one without parameters. I observed a difference between validation and compilation in Chakra (perhaps due to lazy validation with Chakra?).
+
+## Comment by binji, 2018-06-26
+
+We discussed increasing the import/export limit to 1,000,000 in the June 26th CG meeting. Some developers with large modules are hitting the 100,000 limit currently. There were some concerns that increasing the limit doesn't address the underlying issue, which could be resolved w/ some emscripten work. But there was also general agreement that it could be OK to both increase the limit, and implement the emscripten feature, if the engine implementations were OK with the higher limit.
+
+cc @kripken
+
+## Comment by awtcode, 2018-07-10
+
+@binji , this is Kevin from Autodesk. At this point in time, are we good to go with increasing the import/export limit to 1,000,000? Thanks.
+
+## Comment by lars-t-hansen, 2018-07-23
+
+@awtcode, @binji took an action item in that meeting to create a ticket for this, as a locus for polling the implementers etc.  I don't think that has happened yet.  I'll raise the issue internally at Mozilla.
+
+## Comment by binji, 2018-07-23
+
+Sorry, I misunderstood the AI, I believe. I added the comment above here, not on the implementers individual bug-trackers. That said, I spoke to @awtcode recently and it sounds as though they have a work-around that doesn't require increasing the limit. Is that correct, @awtcode?
+
+## Comment by lars-t-hansen, 2018-07-24
+
+We've discussed this internally and we're OK with raising the limit from 1e5 to 1e6.  A hazard is that there are now released implementations that have a limit of 1e5, so some new content will not work on those older implementations; however this seems manageable and will just be similar to the case where we add a new opcode anyway.  And it creates a slightly troubling precedent for somewhat arbitrarily raising limits.
+
+@binji, will defer to you re when to bring this up at a meeting again, I guess we still need input from other implementers.
+
+## Comment by awtcode, 2018-08-01
+
+@binji and @lars-t-hansen , I will still need the limit to be raised to 1e6 as the workaround still exceeds the limit with Emscripten 1.38.10. fyi @kripken .
+
+## Comment by lars-t-hansen, 2018-08-01
+
+I guess we're blocking on input from other implementations before pulling the trigger.  @jfbastien, @titzer, @MikeHolman ?  Any concerns?
+
+## Comment by jfbastien, 2018-08-01
+
+Raising the limit is easy, but it seems extremely bloated to import / export a million things, no? Are there really a million things that JS <-> wasm needs, or should tooling improve?
+
+## Comment by kripken, 2018-08-03
+
+@jfbastien I'd be in favor of doing both: tooling should definitely improve (I just landed https://github.com/kripken/emscripten/pull/6939 which helps), but as real-world users are hitting this limitation now, and it's just an arbitrary constant in VMs, it would be nice to increase it.
+
+To fully fix this in tooling would require more focus on dynamic linking than I think anyone has time for right now - it's just lower-priority compared to other stuff - that's why this is still an issue there. But dynamic linking is already useful in practice, by @awtcode and also https://github.com/iodide-project/pyodide (although the latter has not hit the export limit, as it's a smaller codebase).
+
+## Comment by jfbastien, 2018-08-03
+
+My thinking is rather that arbitrary limits are a good way to prevent undesirably bloaty code from making it to the Web. I realize that it's frustrating, yet it seems like hitting this limit means that some of the tooling and codebases aren't really mature enough, and we don't want to paper over that fact. Once something ships on the Web it's there approximately forever.
+
+## Comment by binji, 2018-08-03
+
+I see your point about preventing bloat on the web, but the 1e5 limit was just a number plucked from the air. If we had plucked 1e6 earlier, would you have pushed back then? The original purpose of aligning on implementation limits was to provide a better cross-browser user and developer experience. This goal you've described here  seems like a new one.
+
+## Comment by jfbastien, 2018-08-03
+
+Right: we chose a random number and we can keep it, or bump it. I say we take the opportunity to think about whether we should bump it. It really seems like we're doing users of the Web a disservice if tooling generates bloat and we just shrug and bump an arbitrary limit.
+
+Put another way, will @slightlyoff frown at our decision?
+
+## Comment by awtcode, 2018-08-04
+
+@jfbastien , exporting a function with Emscripten only increases the size of the Wasm binary by around 30 bytes so I don't think we will see a lot of code bloat by increasing the export limit?
+
+## Comment by kmiller68, 2018-08-06
+
+I don't remember how I voted in the CG discussion but I think I've revised my decision on this issue towards @jfbastien's position. Even though we picked that number semi-randomly it'd be good have a compelling reason to increase the number of exports. Exporting functions carries costs in WASM that it doesn't in native code.
+
+Each export is "expensive" to download and "expensive" to keep in memory. If you have 1e6 exports you're going to have: (export string bytes * 2) + export kind byte + index bytes in source. This is probably like 10-30 bytes per export. So that's like 10-30MB passed down the wire and some multiple of that in RAM. Maybe that's fine on a desktop but on a phone with 1GB of memory that's a lot of space/bandwidth. Am I missing something?
+
+As far as I can tell, the only reason why we need this change is because it's work on the tooling side? I understand the desire to get things working now and fix them up later but I'm not sure this is worth that trade off...
+
+P.S. I also don't understand how projects are exporting over 100,000 functions... WebCore on Mac, for example, only exports 10,000 **symbols**. Are they exporting every symbol?
+
+## Comment by dead-claudia, 2018-08-27
+
+Just to clarify, is this a *must* or *should* support that many exports - on sufficiently resource-constrained devices (anywhere from embedded to mid-range mobile), the device might not have that much memory available, or in some cases, that much memory at all. And near the upper end of the infeasibility, you do have full JS environments with all the recent stuff, so it's not like you can assume most browsers have that much available.
+
+IMHO, the branch adding the limits should specify web implementations "should, if sufficient memory exists", implement those limits, so this isn't an issue.
+
+## Comment by titzer, 2018-09-03
+
+I'd be OK bumping the export limit to 1e6, simply because it matches the per-module function limit of 1e6. In some sense, it'd be odd to allow a module to have K functions but only be allowed to export K/10 of them.
+
+There is a per-export cost when embedding in JS, since the engine must materialize JS functions for every export, though this can be done lazily. Currently V8 does this eagerly. The cost of an exported function is basically a JSFunction instance + a machine code thunk, but the machine code thunks are per-signature. We currently pay more for imports because (reasons: thunks specialized to import index because a lookup is still needed).
+
+I hate bloat, too, and I don't look forward to needing to parallelize wrapper generation in V8, but I can justify 1e6 by the consistency with module size.
+
+## Comment by binji, 2018-09-06
+
+Is the embedding limits branch ready to be a PR? If we're planning to include this in the v1 spec, I'd like to add it as soon as possible.
+
+## Comment by titzer, 2018-09-13
+
+PR created; PTAL.
+
+## Comment by titzer, 2018-09-13
+
+AFAICT from reading back in the thread, the only thing missing here is:
+
+1. A test for the maximum number of table elements in a table initializer. (I did not add this, because doing so requires creating a module that has >1e7 elements, which is enormous and slow, at least with the JS module builder. It might be necessary to drop down to raw bytes to make these non-prohibitively slow/large).
+
+2. No resolution on the 1e6 module export limitation, retaining current limit of 1e5.
+
+## Comment by littledan, 2018-12-13
+
+Now that WebAssembly/meetings#873 is merged, is there anything else to handle in this issue? It seems like an automated test for 1. is impractical, and 2. is a well-understood state for now (at least it's aligned, which is what this issue is about).
+
+## Comment by binji, 2019-01-24
+
+Yes, I think this issue is resolved.
+

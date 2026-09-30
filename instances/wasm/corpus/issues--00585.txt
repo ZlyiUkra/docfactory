@@ -1,0 +1,30 @@
+# WebAssembly spec issue #585: Preferred notation for correspondence between Memory/Tables and JS objects
+# джерело: https://github.com/WebAssembly/spec/issues/585
+# отримано: 2026-09-30
+
+Issue #585, opened by littledan on 2017-10-17, closed (completed) on 2017-10-23.
+
+Wasm Memory and Tables can be manipulated by Wasm instructions, and these manipulations are later reflected by objects exposed in the JS interface. How should the JS integration spec formalize this? The line between Wasm's small step semantics and JS's big step semantics seems hard to cross.
+
+One way which would "work for now" would be to scan the JS heap and update the Wasm store correspondingly whenever calling into Wasm, and then when Wasm returns, scan the Wasm heap and update the JS heap appropriately. (There would be notes in the spec to tell implementations to not actually do this.) However, when threads are introduced, this will give the false impression that Wasm has an atomic view of the Memories and doesn't interleave with JS, which I don't think we want to do. (cc @binji)
+
+Another way would be to vaguely say that JS \[Shared] Data Blocks and Wasm Memory in the store are "identifed with" each other, and that an update to one updates another. This phrasing isn't really compatible with the way the entire Wasm spec is phrased. However, it has the advantage of being less likely to mislead implementers or users.
+
+Most other programming language specifications are phrased imperatively, analogously to JS's (except often even more vague), so I imagine this will be an issue for other embedding environments as well.
+
+Any recommendations here?
+
+## Comment by rossberg, 2017-10-17
+
+For memories vs data blocks saying that they are identified seems fine to me. The prose in the Wasm spec actually leaves the threading of the store implicit and thus pretends sort-of imperative mutation as well. No need to worry about threads just yet, that will require more substantial changes anyway. For now, shared data blocks simply cannot be accessed by Wasm, so no interleaving is observable.
+
+For tables I see no problem, since they can only be created through the Wasm API. So a JS table object simply has an internal field that records the "address" of the backing table in the Wasm store.
+
+## Comment by littledan, 2017-10-17
+
+Thanks for the clarification. For tables, I was mistakenly imagining that there would be some way to modify tables from Wasm, but it seems that this is not the case. So this should only come up for memory.
+
+## Comment by littledan, 2017-10-23
+
+The new JS.bs spec uses this sort of language.
+

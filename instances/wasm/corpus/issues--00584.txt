@@ -1,0 +1,97 @@
+# WebAssembly spec issue #584: Memory allocation/growth failure
+# джерело: https://github.com/WebAssembly/spec/issues/584
+# отримано: 2026-09-30
+
+Issue #584, opened by littledan on 2017-10-16, closed (completed) on 2017-10-18.
+
+I'm probably reading the specification wrong, but it seems like allocating memory is specified to be infallable, but growing memory is specified to allow failure. Is this intentional?
+
+If memory allocation fails during module instantiation, should the generated exception be LinkError, the browser-specific OOM error/crash, or RangeError?
+
+If memory growth triggered by the Wasm executable code fails, should the generated JavaScript exception be RuntimeError, the browser-specific OOM error/crash, or RangeError?
+
+(I was expecting all of these to be the browser-specific OOM error, but I see different things in the spec documents. I'm not sure if this is intentional or not.)
+
+## Comment by lukewagner, 2017-10-17
+
+Memory allocation during instantiation is fallible and should throw.  `WebAssembly.Memory.prototype.grow` throws a `RangeError` and IIRC that was chosen intentionally for symmetry with other JS builtins, so I think instantiation should throw a `RangeError`.  (FF gets that wrong, atm, but easy to fix.)
+
+> If memory growth triggered by the Wasm executable code fails, should the generated JavaScript
+> exception be RuntimeError, the browser-specific OOM error/crash, or RangeError?
+
+ `grow_memory` in executable code never throws, but is defined to return -1 (so that wasm can test and handle).
+
+## Comment by lukewagner, 2017-10-17
+
+Actually, I could see the argument for either `RangeError` or whatever the engine normally does for a failed GC allocation (e.g., when `new WebAssembly.Memory(x)` fails) which seems to be different in FF.
+
+## Comment by rossberg, 2017-10-17
+
+The fallibility of allocating memory is supposed to be covered by the Appendix on implementation limitations. The grow_memory instruction is special because as @lukewagner mentions, it does not actually cause failure but returns regularly in that case. So that's why it has to make that case explicit (in the form of non-determinism).
+
+## Comment by littledan, 2017-10-17
+
+@rossberg Thanks for the pointer to that appendix. The wording there is a bit more specific than I was expecting. Under the execution heading, I see that an implementation can place limits on the number of allocated modules or the size of an allocated module. This sounds a little like there's a fixed number for each of these limits, that a user might discover by a bunch of testing (which isn't quite how running out of memory works; I imagine trying to implement that would reduce the available memory/memories). Is that the intention?
+
+I see that the specification has framed grow_memory as non-terminism and allocation as an implementation limitation, but should they be treated analogously from a JS user perspective?
+
+Throwing a RangeError is something that the JS spec requires for ArrayBuffers but I don't think all implementations reliably do it (at least V8 didn't last time I looked into it; it sometimes decided to crash instead). I'm wondering, should these all permit implementation-specific OOM behavior?
+
+## Comment by rossberg, 2017-10-17
+
+>
+> @rossberg <https://github.com/rossberg> Thanks for the pointer to that
+> appendix. The wording there is a bit more specific than I was expecting.
+> Under the execution heading, I see that an implementation can place limits
+> on the number of allocated modules or the size of an allocated module. This
+> sounds a little like there's a fixed number for each of these limits, that
+> a user might discover by a bunch of testing (which isn't quite how running
+> out of memory works; I imagine trying to implement that would reduce the
+> available memory/memories). Is that the intention?
+>
+
+No, it's not implied that any of these limits is fixed or stable.
+
+I see that the specification has framed grow_memory as non-terminism and
+> allocation as an implementation limitation, but should they be treated
+> analogously from a JS user perspective?
+>
+
+Not sure what you are suggesting, can you elaborate?
+
+> Throwing a RangeError is something that the JS spec requires for
+> ArrayBuffers but I don't think all implementations reliably do it (at least
+> V8 didn't last time I looked into it; it sometimes decided to crash
+> instead). I'm wondering, should these all permit implementation-specific
+> OOM behavior?
+>
+
+Yeah, we made a similar concession regarding stack overflow, but that
+doesn't exist in the Ecma spec.
+
+## Comment by littledan, 2017-10-17
+
+> Not sure what you are suggesting, can you elaborate?
+
+There are two different events we're talking about, grow_memory failing and allocation failing. They are specified differently, but at a high level, it's the same condition for a user (running out of memory). Should we give them the same error, or should one be RangeError and the other the unspecified OOM error?
+
+What are implementations comfortable guaranteeing for these two cases?
+
+## Comment by rossberg, 2017-10-18
+
+All memory exhaustion conditions reported on the JS side are supposed to materialise as consistent exceptions (including Memory#grow). The grow_memory instruction does not cause an error, however, to enable handling the condition inside Wasm code. What alternative do you see without Wasm having exception handling?
+
+## Comment by littledan, 2017-10-18
+
+I was being sloppy when I said grow_memory above. I meant, Memory.prototype.grow vs instantiating a module. It seems like, in the current JS.md spec, they have different exception behavior, with grow throwing a RangeError and allocation doing an engine-specific OOM. I was wondering wither this divergence was intended, and if not, which of the two behaviors should apply for both?
+
+## Comment by rossberg, 2017-10-18
+
+I see, fair question. I agree that they should behave consistently on OOM. I think as long as EcmaScript specifies a RangeError for similar cases we should follow that. Should TC39 decide to change that because it does not match web reality then we should move along.
+
+However, Memory#grow has another, more explicit failure case, which is when the grow exceeds a user-specified maximum for the memory. I think that should throw a RangeError regardless.
+
+## Comment by littledan, 2017-10-18
+
+OK, thanks for the clarification.
+

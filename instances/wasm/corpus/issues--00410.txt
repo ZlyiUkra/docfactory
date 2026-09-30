@@ -1,0 +1,126 @@
+# WebAssembly spec issue #410: [test] JS: make top-level calls to call() compatible with async
+# джерело: https://github.com/WebAssembly/spec/issues/410
+# отримано: 2026-09-30
+
+Issue #410, opened by bnjbvr on 2017-01-24, closed (completed) on 2017-05-23.
+
+After the recent changes to the wast-to-JS converter, `call()` will return a `Promise`; for testing non-canonical NaNs and `i64`, temporary modules are created that emulate the behavior of `assert_return`, but these modules do create top-level `call()`. In an async context, this may create an unhandled rejected Promise, generating a warning in the developers console but there's no way a test harness could catch this; a test harness doesn't know if the Promise returned by `call()` will be used or not, and if it expects to be resolved or rejected.
+
+Could we just add a check that they return `undefined` (that is, wrap these top level calls in `assert_return`), or have a dedicated `top_level_call` function in the generated JS harness, please?
+
+## Comment by rossberg, 2017-01-25
+
+Please see #413, should provide the necessary abstraction.
+
+## Comment by bnjbvr, 2017-01-25
+
+Thanks!
+
+I've noticed another issue: since the variable `$$` is reused all the way and assigned synchronously, in async code, the callbacks/Promises may be referencing a former `$$` which is not the one defined in the global (JS is terrible). For instance:
+
+```
+let $$;
+$$ = new Promise(resolve => resolve(42));
+promise_test(() => {
+  // 1
+  return $$.then(x => assert_equal(x, 42));
+});
+// 2
+$$ = new Promise(resolve => resolve('hello'));
+```
+
+1 may be executed after 2, in which case the assertion will fail.
+
+Could we also fix this, by using either an IIFE to which we pass the `$$` variable (yuck), or using different names (e.g. adding a counter prefix to `$$`)? (Pretty sure I could do the former)
+
+## Comment by rossberg, 2017-01-26
+
+I extended PR #413 to generate unique module names, since it is better for hygiene anyway.
+
+However, I'm not sure I follow why it is necessary. It looks like `test.step(func, test, test)` invokes the `func` passed to promise_test. Hence, e.g. in your example, `$$` itself is only used synchronously, so there shouldn't be a problem. Or am I missing something?
+
+In fact, it seems to me that the harness needs to make sure that that is the case, and that all promise handlers containing test actions are installed synchronously. Otherwise, it would likely not maintain the order in which the test actions are executed, which would break various tests.
+
+## Comment by bnjbvr, 2017-01-26
+
+> However, I'm not sure I follow why it is necessary. It looks like test.step(func, test, test) invokes the func passed to promise_test. Hence, e.g. in your example, $$ itself is only used synchronously, so there shouldn't be a problem. Or am I missing something?
+
+You're right, I think one more Promise indirection was needed in my example.
+
+I understand how losing order could make tests fail. If so, we'll have to manage our own queue of jobs in the emulated wast JS test harness itself.
+
+## Comment by bnjbvr, 2017-01-30
+
+Keeping this issue to track reminding items: (please let me know if this is fine to keep items here or if I should open new issues)
+
+- there are top-level calls to instance() or modules(), which just ensure that something doesn't trigger a CompileError or LinkError. Could we wrap these in `run()` too?
+- since comments are not included in the binary, we could avoid converting `comments.wast` (it also generates an empty WPT test case). We can pattern-match this test's name in the spec interpreter itself, or the `build.py` test script can do that.
+
+Adding new items as I find them.
+
+## Comment by rossberg, 2017-01-30
+
+>
+> Keeping this issue to track reminding items: (please let me know if this
+> is fine to keep items here or if I should open new issues)
+>
+
+Keeping it here sounds fine to me.
+
+>
+>    - there are top-level calls to instance() or modules(), which just
+>    ensure that something doesn't trigger a CompileError or LinkError. Could we
+>    wrap these too?
+>
+>
+Hm, not sure which ones you mean. The only ones I see are in the harness
+itself.
+
+>
+>    - since comments are not included in the binary, we could avoid
+>    converting comments.wast (it also generates an empty WPT test case).
+>    We can pattern-match this test's name in the spec interpreter itself, or
+>    the build.py test script can do that.
+>
+>
+Nothing wrong with that, but why bother?
+
+## Comment by bnjbvr, 2017-01-30
+
+> Hm, not sure which ones you mean. The only ones I see are in the harness
+itself.
+
+For instance, `memory.wast` has a few of them. (Note that in particular, one memory's size is too big for Spidermonkey, leading to a CompileError, but then the Promise returned is never caught, leading to an unhandled reject Promise error that doesn't show up in the test report). There are a few other examples across files.
+
+> Nothing wrong with that, but why bother?
+
+Note that `comments.wast` is another example of file where top-level `instances` are not used. At the moment, since there are only top-level `instance()` calls, and all of them are never caught, then no assertions are generated. WPT just displays a blank page in this case. I am not sure how the Python WPT harness will handle this, my guess is that it would time out (still waiting for a test case to be appended to the test harness).
+
+## Comment by rossberg, 2017-01-30
+
+I think I'm still missing something. The toplevel calls to `instance` are the let-bindings for the modules. How do you suggest to wrap these calls, and why can't the implementation of `instance` do that itself?
+
+## Comment by bnjbvr, 2017-01-30
+
+`instance()` returns a Promise that's completed when the binary code is compiled and instantiated, so the variables are bound to `Promises`. If they're not explicitly handled by the harness, they won't be handled at all and the unhandled callback will be invoked, at the top level. Since `instance()` is used in situations where it is supposed to fail (`assert_unlinkable` for instance) and in others it is supposed to succeed (e.g. `call`), we can't assume in the impl of `instance()` that it will succeed or fail. Does it make sense?
+
+I think the top level calls could just be as simple as `run(() => instance(...));`.
+
+## Comment by rossberg, 2017-01-30
+
+All uses of `instance` in the generated JS are supposed to succeed. The uses inside `assert_unlinkable` and friends are internal to the harness, you can implement them differently in the async variant (i.e., not go through the error-checking wrapper).
+
+## Comment by bnjbvr, 2017-01-30
+
+> All uses of instance in the generated JS are supposed to succeed.
+
+Oh, that's probably going to make my life easier. Thanks.
+
+## Comment by rossberg, 2017-05-18
+
+@bnjbvr, is there anything remaining to be done, or can this issue be closed?
+
+## Comment by bnjbvr, 2017-05-23
+
+I think everything is done in this issue (or I could open new ones if needed), so I'll close it. Thanks!
+

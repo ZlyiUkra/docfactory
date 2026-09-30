@@ -1,0 +1,39 @@
+# WebAssembly spec issue #409: Table uncaught exception Table.Bounds
+# джерело: https://github.com/WebAssembly/spec/issues/409
+# отримано: 2026-09-30
+
+Issue #409, opened by Cellule on 2017-01-24, closed (completed) on 2017-01-25. Labels: bug.
+
+The following module
+```
+(module
+  (table 10 anyfunc)
+  (func $f (result i32) (i32.const 0))
+  (elem (i32.const -1) $f)
+)
+```
+causes the exception
+```bash
+d:\Projects\wasm-spec\interpreter\wasm.exe: uncaught exception Table.Bounds
+Raised at file "spec/table.ml", line 58, characters 35-41
+Called from file "list.ml", line 73, characters 12-15
+Called from file "spec/eval.ml", line 447, characters 2-38
+Called from file "host/run.ml", line 407, characters 17-36
+Called from file "list.ml", line 73, characters 12-15
+```
+
+The interpreter correctly reports a `link failure: elements segment does not fit table` if we change `(elem (i32.const -1))`
+So I guess the problem occurs when using the negative offset.
+I do remember there was a discussion a long time ago why we decided to use signed values for offset, but I don't remember what was the result of that discussion though.
+In Chakra, we interpret the offset as unsigned to avoid these problems (because we don't allow 4Gb tables anyway) and I was wondering if it was valid to do so.
+
+I also tested real quick the same pattern on data segment and it seems fine in the interpreter
+
+## Comment by rossberg, 2017-01-25
+
+Thanks for reporting, fixed.
+
+## Comment by Cellule, 2017-01-25
+
+Thanks for the quick fix
+
