@@ -1,0 +1,35 @@
+# WebAssembly spec issue #2060: Textual rendering of packed types seems to be inverted
+# джерело: https://github.com/WebAssembly/spec/issues/2060
+# отримано: 2026-09-30
+
+Issue #2060, opened by wingo on 2026-01-28, closed (completed) on 2026-01-28.
+
+On https://github.com/WebAssembly/spec/blob/main/specification/wasm-3.0/2.3-validation.instructions.spectec#L262, we have the validation rule for `struct.get`, possibly with a sign extension:
+
+```
+rule Instr_ok/struct.get:
+  C |- STRUCT.GET sx? x i : (REF NULL (_IDX x)) -> $unpack(zt)
+  -- Expand: C.TYPES[x] ~~ STRUCT ft*
+  -- if ft*[i] = mut? zt
+  -- if sx? = eps <=> $is_packtype(zt)
+```
+
+And `$is_packtype` is defined as (https://github.com/WebAssembly/spec/blob/main/specification/wasm-3.0/2.3-validation.instructions.spectec#L255):
+
+```
+def $is_packtype(storagetype) : bool             hint(show %1 = $unpack(%1)) hint(prose "%1 is a packed type")
+def $is_packtype(zt) = zt = $unpack(zt)
+```
+
+Which, I think is exactly the opposite according to the definition of `packtype` in https://github.com/WebAssembly/spec/blob/main/specification/wasm-3.0/1.2-syntax.types.spectec#L88-L92.  `i8` and `i16` are the only packed types: the only types for which `zt != $unpack(zt)`.
+
+In the semantics there is no bug AFAIU.  However when translated to text, https://webassembly.github.io/spec/core/valid/instructions.html#aggregate-reference-instructions says that *The signedness sx? is absent if and only if zt is a packed type* where it should actually be something like "sx is present if and only if zt is a packed type".
+
+## Comment by wingo, 2026-01-28
+
+(Obviously I may have misunderstood something; happy to be corrected.)
+
+## Comment by rossberg, 2026-01-28
+
+Thanks, you are right. Two bugs cancelling each other out. Please see #2061 for a fix.
+

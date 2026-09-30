@@ -1,0 +1,160 @@
+# WebAssembly spec issue #2141: [spec] Extended subtype validity relation missing validity on supertype
+# джерело: https://github.com/WebAssembly/spec/issues/2141
+# отримано: 2026-09-30
+
+Issue #2141, opened by raoxiaojia on 2026-04-16, closed (completed) on 2026-04-22.
+
+The spec defines the following generalised version for validity of `subtype` that allow the supertype to be a general `typeuse` instead of just a type index `_IDX` (this corresponds to the extension of `typeuse` from just an index to also include `rec n` and `deftype`).:
+```
+rule Subtype_ok2:
+  C |- SUB FINAL? typeuse* compttype : OK x i
+  -- if |typeuse*| <= 1
+  -- (if $before(typeuse, x, i))*
+  -- (if $unrollht(C, typeuse) = SUB typeuse'* comptype')*
+  ----
+  -- Comptype_ok: C |- comptype : OK
+  -- (Comptype_sub: C |- comptype <: comptype')*
+```
+But the rule is missing a check that the `typeuse` itself needs to be valid (`(Typeuse_ok: C |- typeuse : OK)*`). Note that the original version of `subtype_ok` does not require such a check, since only a type index `_IDX` is allowed.
+
+This only affects the metatheoretic soundness proofs, since the extended supertype definition cannot appear in real modules, and the above definition is only involved in the soundness proofs. I noticed that this definition is rendered in the appendix despite being formulated in 2.1, so maybe it can be fixed as a part of #2125 .
+
+The specific soundness proof that got me stuck and raise this issue is a bit involved -- I include a description of the issue below.
+
+Long text of explanation
+
+I've crafted a mechanised interpreter and have been trying to proving interpreter correctness against the opsem. Several instructions (e.g. ref.test, ref.cast, br_on_cast) require the matching relation to be dynamically checked at runtime and return different results depending on whether the matching holds. The interpreter calls a computable matching oracle (following the design of the reference interpreter's match.ml), and correctness of the "else" branch requires oracle completeness: if the declarative relation Heaptype_sub C ht1 ht2 holds, then the oracle returns true.
+
+The completeness proof is by structural induction on Heaptype_sub. The critical case is Heaptype_sub/trans:
+```
+rule Heaptype_sub/trans:
+  C |- ht_1 <: ht_2
+  -- Heaptype_ok: C |- ht' : OK
+  -- Heaptype_sub: C |- ht_1 <: ht'
+  -- Heaptype_sub: C |- ht' <: ht_2
+```
+The inductive hypotheses give oracle results for ht_1 <: ht' and ht' <: ht_2, but combining them requires proving oracle transitivity -- which in turn requires Heaptype_ok on both endpoints (instead of just the middle heaptype) -- otherwise there are counterexamples with ill-formed heaptypes where the oracle is not transitive while the declarative rules are transitive (see below). Nevertheless, I don't consider this to be a bug for the declarative rules of heaptype matching, since it only manifests for ill-typed heaptypes at the endpoints. However, this forces the completeness theorem to carry Heaptype_ok as a precondition on both endpoints.
+
+Now, Deftype_sub/super says:
+```
+rule Deftype_sub/super:
+  C |- deftype_1 <: deftype_2
+  -- if $unrolldt(deftype_1) = SUB final? typeuse* ct
+  -- Heaptype_sub: C |- typeuse*[i] <: deftype_2
+```
+To prove oracle completeness for this case, it is needed to invoke the completeness result on the `Heaptype_sub` premise, which requires `Heaptype_ok C (.typeuse (typeuse*[i]))`. Since `typeuse*[i]` comes from `$unrolldt(deftype_1)`, this can only be from `Deftype_ok C deftype_1`. This is the case for `_IDX` supertypes (validity from context lookup) and `REC` supertypes (validity from the same `Rectype_ok`). But for inline `deftype` supertypes, `Subtype_ok2` only checks `$unrollht` (unrollability) without checking `Typeuse_ok` (validity), so `Deftype_ok` does not guarantee `Heaptype_ok` for the supertype. Compounded with the above requirement of heaptype_ok in the completeness proof, a counterexample can be crafted by plugging in the above ill-typed transitivity example into the supertype of a deftype.
+
+Note that there's no concrete module-level counterexample, because the module format does not support generalised supertypes. The following is an encoding of the counterexample directly in the OCaml AST.
+```ocaml
+let debug_inline_supertype_witness () =
+    let open Types in
+    let open Match in
+
+    let show_bool label b =
+      Printf.printf "%s = %b\n" label b
+    in
+
+    let dt_func : deftype =
+      DefT (RecT [
+        SubT (NoFinal, [], FuncT ([], []))
+      ], 0l)
+    in
+
+    let dt_bad : deftype =
+      DefT (RecT [
+        SubT (NoFinal, [Def dt_func], StructT [])
+      ], 0l)
+    in
+
+    let dt_outer : deftype =
+      DefT (RecT [
+        SubT (NoFinal, [Def dt_bad], StructT [])
+      ], 0l)
+    in
+
+    let c : Match.context = [] in
+
+    let rt_func : reftype =
+      (Null, UseHT (Def dt_func))
+    in
+
+    let rt_outer : reftype =
+      (Null, UseHT (Def dt_outer))
+    in
+
+    let rt_abs_func : reftype =
+      (Null, FuncHT)
+    in
+
+    let bad_sub_func =
+      match_deftype c dt_bad dt_func
+    in
+
+    let outer_sub_func =
+      match_deftype c dt_outer dt_func
+    in
+
+    let func_sub_abs =
+      match_reftype c rt_func rt_abs_func
+    in
+
+    let outer_sub_abs =
+      match_reftype c rt_outer rt_abs_func
+    in
+
+    Printf.printf "dt_func  = %s\n" (string_of_deftype dt_func);
+    Printf.printf "dt_bad   = %s\n" (string_of_deftype dt_bad);
+    Printf.printf "dt_outer = %s\n\n" (string_of_deftype dt_outer);
+
+    show_bool "match_deftype [] dt_outer dt_func" outer_sub_func;
+    show_bool "match_reftype [] (Null, UseHT (Def dt_func)) (Null, FuncHT)" func_sub_abs;
+    show_bool "match_reftype [] (Null, UseHT (Def dt_outer)) (Null, FuncHT)" outer_sub_abs;
+
+    print_endline "";
+```
+The first two matchings are true while the last one is false, and `dt_outer/dt_func` are both valid deftypes given the definition in the current appendix (as subtype validity does not check supertype validity).
+
+## Comment by rossberg, 2026-04-17
+
+Ah right, I only thought of type indices, whose validity is implicitly covered by the $before premise. But deftypes indeed need a proper check. Thanks for the find!
+
+I sneaked in a fix with the other PR, PTAL.
+
+FWIW, the type-theoretic basis for this nasty stuff is in my OOPSLA '23 paper, where perhaps the basic construction is a bit easier to follow, because it's in a standard Fω<: setting (even though it defines a much more general system with higher-order subtyping).
+
+## Comment by raoxiaojia, 2026-04-17
+
+(@rossberg I was just typing up a further comment in fact)
+Having worked on some related proofs a bit more, I'm unsure if the above is sufficient (or the correct addition) -- in particular, the `$before` predicate gives no guarantee about the case where a subtype defines an inlined `deftype` as its supertype, so this version of `subtype` validity itself is not strong enough to guarantee that the matching oracle terminate at all. I'm considering if `$before` for `deftype` should not only require validity of the `deftype` (which corresponds to the `typeuse` validity above), but also requires that if the unrolled version of `deftype` declares any further supertype `tu`, then that supertype needs to satisfy `$before(tu, x, i)` themselves as well. But I'm not sure if even that is sufficient. The reason I ran into this is that I'd like to prove that the matching oracle always terminate on well-formed types, but the generalisation as stated currently doesn't seem sufficient to support the result immediately.
+
+I'm currently trying to strengthen the `before` predicate as I stated above to prove termination -- I might have more updates later when I find out if it works; but I thought it's good to consult if you think that is a reasonable condition to add to `before` in the mean time.
+
+## Comment by rossberg, 2026-04-17
+
+My paper has a proof of termination via cut elimination (transitivity elimination) of the subtyping judgement, although the difficulty is primarily with Fω type reduction and mostly just inherited from the classic papers on Fω<:. Not sure how it exactly relates to your factorisation. Steven Keuchel is currently finishing up a Coq mechanisation of that paper, so I'm confident it can be proved in principle. That wasn't easy and required quite some creative stratification on his part, though most of the technical difficulty again came from the ω-part, which Wasm does not have (turns out nobody has mechanised decidability of Fω<: before :) ).
+
+That all said, I may well have screwed up some details in transferring the rules over from the nice paper calculus to Wasm's more baroque setup. Let me know if you find out something.
+
+In the meantime, I suppose landing that PR is at least progress in the right direction?
+
+## Comment by raoxiaojia, 2026-04-17
+
+I think the paper proof is fine -- the obstacle I'm facing is specific to the current way it's formulated in the spec only.
+
+After some discoveries I felt that it's fine to not strengthen `before` to recursively check for indices -- the validity condition was necessary though (I saw that you've already added it in #2125 and it looks good to me!). Originally I was thinking of some counterexamples in the following line:
+```
+C.types = [dt_x, dt1]
+
+dt_x = _DEF (REC [SUB [deftype dt1] (STRUCT [])]) 0
+dt1  = _DEF (REC [SUB [_IDX 0]      (STRUCT [])]) 0
+```
+which tries to use inlined deftype as supertype to bypass the acyclicity check. This does not work, but only for very specific reasons -- note that we can actually prove that `C |- dt_x : ok` and `C |- dt1 : ok` (`dt1` is obviously valid; `dt_x` is valid because `dt1` is valid under C). This was the example that motivated my proposal to strengthen the `before` condition. But later I realised that the context well-formedness condition prevents this, because it verified C.types incrementally -- in particular, it not only requires dt1 to be valid wrt [dt_x] (which would have been fine), but also to be valid wrt the empty type list [], because that was required by dt_x's validation (after we added the validity requirement on the supertype).
+
+In fact, I think the strengthening of `before` I proposed above is provable from context well-formedness and the new version of `subtype` validity. But regardless, we don't need anything further than adding the validity of the `typeuse` supertype, which was already done.
+
+I'm hoping I can close the proof with the current validity condition added -- I'll come back if I have more updates.
+
+> In the meantime, I suppose landing that PR is at least progress in the right direction?
+
+Exactly, the context wf condition was clutch in ruling out the counterexamples above.
+

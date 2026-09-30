@@ -1,0 +1,52 @@
+# WebAssembly spec issue #2182: [spec] Missing/over-lenient context for resulttype validity for admin `frame` block
+# джерело: https://github.com/WebAssembly/spec/issues/2182
+# отримано: 2026-09-30
+
+Issue #2182, opened by raoxiaojia on 2026-06-08, closed (completed) on 2026-06-08.
+
+In the typing rule of `frame`, the current two different versions of it (formulated slightly differently in the spectec source and spec's soundness appendix) are both slightly too lenient (copied below).
+```
+rule Instr_ok2/frame:
+  s; C |- FRAME_ n `{f} instr* : eps -> t^n
+  -- Frame_ok: s |- f : C'
+  -- Expr_ok2: s; C' |- instr* : t^n
+```
+
+The spectec version doesn't check the validity of the result type `t^n`. Note that this does not outright allow ill-formed resulttype `t^n`, because each individual `instr_ok` does carry a guard on the validity of the produced type.
+
+The actual issue is in the lifting of the body type to the `frame` block itself, which used to be fine in pre-3.0 but is too lenient now, since `t^n` can carry context-aware indices such as `IDX` that can mean different things inside the body's context (C') and the outer context (C). This allows a closed struct reference to be re-described as an `IDX` type under the inner context, smuggled across the frame, and then re-interpreted as a different type under the outer context.
+
+The prose version does the validity check, but it checks `t^n` under `C`, which does not prevent the above issue. Adding a validity check for `t^n` under the inner context `C'` doesn't help either, as the same smuggling goes through.
+
+imo the fix should be to require `resulttype_ok: {} |- t^n : OK` under an empty context, which forces the body to type itself with a closed type. This seems correct design-wise as well, as a function's result type should be context-agnostic when used by other entities.
+
+(I didn't create a PR as I didn't actually find where to fix the prose only.)
+
+## Comment by rossberg, 2026-06-08
+
+Good catch. The fix you suggest seems right to me. The typing rules for instructions don't currently derive closed t^n in all cases, but I believe Instrs_ok/sub is enough as a conversion rule to get one in all cases. Do you agree?
+
+The prose is written out in document/core/appendix/properties.rst.
+
+## Comment by raoxiaojia, 2026-06-08
+
+> The typing rules for instructions don't currently derive closed t^n in all cases, but I believe Instrs_ok/sub is enough as a conversion rule to get one in all cases. Do you agree?
+
+I think `instrs_ok/sub` is indeed sufficient to serve as a conversion that performs a 'closure' step, so this fix should not be overly strict either. ~~That brings an interesting point though -- do the instruction types actually have to be typed under the same context as the instructions themselves, i.e. what would actually go wrong if I just require the types to be valid under the empty context {} during instruction typing? I don't see an immediate issue, as the types can always close themselves.~~ nvm, it would be a nightmare to write the rules in that form, as every rule dealing with reference types now needs to close their types.
+
+> The prose is written out in document/core/appendix/properties.rst.
+
+Ah I see it now, thanks for the pointer. Will send a fix shortly.
+
+## Comment by rossberg, 2026-06-08
+
+Right, the subsumption rule only applies to instruction sequences. For individual instructions (Instr_ok) there is no rule that enables closing their types.
+
+## Comment by raoxiaojia, 2026-06-08
+
+Yes, hmm that was actually a very convenient design, as there's no longer a need to normalise the derivation tree to the canonical principal-subsumption form.
+
+## Comment by rossberg, 2026-06-08
+
+Yes, that property also is rather useful for animation.
+

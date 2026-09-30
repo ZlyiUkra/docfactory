@@ -1,0 +1,47 @@
+# WebAssembly spec issue #2115: [spec] Matching relation for specialised bottom heap types collapses them into equivalence via transitivity
+# джерело: https://github.com/WebAssembly/spec/issues/2115
+# отримано: 2026-09-30
+
+Issue #2115, opened by raoxiaojia on 2026-03-14, closed (completed) on 2026-03-16.
+
+There's a seemingly unintended interaction between the transitivity in the matching relation for heap types and the several specialised bottom heap types (`none/nofunc/noexn/noextern`) that renders them all equivalent.
+
+E.g. consider the current rule for `nofunc` matching, which basically says that `nofunc` matches anything that matches `func`:
+```
+rule Heaptype_sub/nofunc:
+  C |- NOFUNC <: heaptype
+  -- Heaptype_sub: C |- heaptype <: FUNC
+```
+but `BOT <: FUNC` as well, so `NOFUNC <: BOT`. Now `BOT` is a subtype of all types. So by transitivity, `NOFUNC` is also a subtype of everything. Similarly the other specialised bottom types for each hierarchy are also subtype of all types. Transitivity rule is attached below, and it seems there's nothing that excludes `BOT` here (3.1.1 states that `BOT` is an `absheaptype`, so it is always valid).
+```
+rule Heaptype_sub/trans:
+  C |- heaptype_1 <: heaptype_2
+  -- Heaptype_ok: C |- heaptype' : OK
+  -- Heaptype_sub: C |- heaptype_1 <: heaptype'
+  -- Heaptype_sub: C |- heaptype' <: heaptype_2
+```
+This means that all the various specialised bottom types are basically equivalent to `BOT` due to bidirectional matching. This seems unintended because a (prose) note in Section 4.5.1 explicitly stated that there are separate heap type hierarchies.
+
+The behaviour of the reference interpreter is also quite interesting here: `match_heaptype` agrees that `NOFUNC <: BOT` (and similarly for other specialised bottom types) and has a case saying `BOT <: all`, but the function is actually not transitive because
+```
+  match_heaptype NoFuncHT NoExternHT
+= match_heaptype NoExternHT FuncHT
+= match_heaptype FuncHT ExternHT
+= false.
+```
+This does not agree with the declarative rules, as the above should match by transitivity via `BOT`.
+
+The following example is rejected by the reference interpreter, while it should be accepted following the declarative rules:
+```wat
+(module
+  (func (param (ref null nofunc)) (result (ref null none))
+    local.get 0
+  )
+)
+```
+but this might be a bit contrived because the function can only take in `null` references and return a `null` reference anyway, and afaik null references are actually indeed castable between each other.
+
+## Comment by rossberg, 2026-03-16
+
+Ha, excellent catch! There should be side conditions that heaptype =/= BOT in these rules. I'll prepare a fix.
+

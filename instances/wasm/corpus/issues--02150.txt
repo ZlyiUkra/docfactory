@@ -1,0 +1,33 @@
+# WebAssembly spec issue #2150: Double rounding fix is (still) wrong in Windows
+# джерело: https://github.com/WebAssembly/spec/issues/2150
+# отримано: 2026-09-30
+
+Issue #2150, opened by lifthrasiir on 2026-04-23, open.
+
+Found during the development of WAH with a binary script converted from `const.wast`. Minimal reproduction:
+
+```
+(module (func (export "f") (result f32) (f32.const +8.8817847263968443574e-16)))
+(assert_return (invoke "f") (f32.const +0x1.000002p-50))
+```
+
+(Note that a similar construction in hexadecimal literals, `(f32.const +0x1.00000100000000001p-50)`, correctly rounds to 0x1.000002p-50.)
+
+The value in question is almost in the middle of two consecutive binary32 fp number 0x1.0p-50 and 0x1.000002p-50, but it is not the exact middle and in fact very slightly closer to 0x1.000002p-50:
+
+```
+d=8.88178419700125232338905334472656250000000000e-16
+ +0.00000052939559203401094665527343750000000000e-16
+----------------------------------------------------
+n=8.88178472639684435740000000000000000000000000e-16
+ +0.000000529395592033864477180129688349552452..e-16
+----------------------------------------------------
+u=8.881785255792436391264477180129688349552452..e-16
+```
+
+The root cause is the inaccuracy of fxx.ml line 285. `String.length s` here is 25 (20 significant digits + `.` + `e-16`), so the format string is `%.25g`, but *`%g` is platform-dependent!* (source) In my experience, msvcrt's printf notably does not give any more significant digits than the type's own limit (even `%.100f` gives ~18 significant digits followed by zeroes), so `%.25g` actually doesn't make any difference with msvcrt. The correct approach would be to use an actual bigint (scaled by, say, 5^1100 to elide fractional digits).
+
+## Comment by rossberg, 2026-04-23
+
+Interesting. Oh well. The best fix would probably be to either implement custom parsing and/or rounding, or call strtof through the FFI. But given that this is such a niche problem, and does not seem to affect the current test suite, I'm not sure who'd volunteer.
+

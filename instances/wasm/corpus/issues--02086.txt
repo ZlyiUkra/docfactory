@@ -1,0 +1,48 @@
+# WebAssembly spec issue #2086: Should (ref.is_null (ref.extern 0)) not be implementation-defined?
+# джерело: https://github.com/WebAssembly/spec/issues/2086
+# отримано: 2026-09-30
+
+Issue #2086, opened by Sainan on 2026-02-17, closed (completed) on 2026-02-17.
+
+Currently, ref_is_null.wast explicitly checks that this evaluates to false, which seems a bit weird to me because `externref` is supposed to be an opaque type, and using the `nullptr` bit pattern for a null value makes sense to me.
+
+## Comment by rossberg, 2026-02-17
+
+Ah, no.
+
+1. `(ref.extern 𝑖)` in the wast format is not meant to represent a bare address 𝑖. It merely is an abstract external reference with some "payload" 𝑖 to identify it. So even for 𝑖 = 0 (or whatever bit pattern a host uses) it has no overlap with null pointers. How it is represented, is up to the host and must not affect Wasm's semantics.
+2.  OTOH, external null references are deterministically recognised as such and must be handled correctly by reference instructions checking for null. They must also be mapped correctly by `extern.convert_any`/`any.convert_extern`.
+
+Generally, Wasm avoids implementation-dependent behaviour like the plague (because it is a plague), including wrt references.
+
+## Comment by Sainan, 2026-02-17
+
+I see, so `(ref.extern 0)` really means I should allocate a 0 value and then the `externref` should be a pointer/reference to that 0 value?
+
+But then I'm not sure what's really being tested here. How well the wast runner can bend the semantics?
+
+## Comment by rossberg, 2026-02-17
+
+It is testing that the instruction correctly differentiates null from non-null external references.
+
+## Comment by Sainan, 2026-02-17
+
+Yeah, but that could also be tested with `(ref.extern 1)` or any other value...
+
+## Comment by rossberg, 2026-02-17
+
+It could, but as this issues demonstrates, it appears to be useful that it's testing the 0 case in particular. :)
+
+## Comment by Sainan, 2026-02-17
+
+I mean, my options for resolving this assertion failure are:
+1. Ignore ref_is_null.wast. This is what I currently do.
+2. Change my wast runner to abstract away externrefs (`push(value)` -> `push(new int64_t(value))`). This would be cheating, imo.
+3. Add an extra bit to explicitly flag externrefs as non-null, which would allow all users of my runtime (including the wast runner) to push a non-null externref that points to `nullptr`. I'm not sure this would greatly improve my API or be worth its complexity.
+
+## Comment by rossberg, 2026-02-17
+
+The ref.extern pseudo instruction models acquiring a proper foreign pointer, e.g., as produced by a host-side allocation or by taking the static address of something. As such it shouldn't produce null. The only other constraint is that it can be mapped back to 𝑖. There are various ways to implement these two requirements, depending on your engine and its API for external/foreign pointers. Performing an actual allocation is one obvious possibility.
+
+FWIW, this is not specific to this one test either. If your implementation of ref.extern doesn't model that minimal semantics correctly, then I'm sure multiple other tests will fail as well.
+

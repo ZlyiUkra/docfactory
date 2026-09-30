@@ -1,0 +1,71 @@
+# WebAssembly spec issue #2166: [interpreter] Bug in subtype matching for types with equal closures after deep `IDX` substitution
+# джерело: https://github.com/WebAssembly/spec/issues/2166
+# отримано: 2026-09-30
+
+Issue #2166, opened by raoxiaojia on 2026-05-12, closed (completed) on 2026-05-13.
+
+The reference interpreter's matching/validation algorithm seems to reject certain subtyping relations between types that have the same closure -- therefore valid under `deftype_sub/refl` -- but contains `IDX` references at depth >= 2.
+
+Consider this example:
+```wat
+(module
+  (type $a (sub (struct)))
+  (type $b (sub (struct)))
+  (type $c (sub $a (struct)))
+  (type $d (sub $b (struct)))
+  (type $e (sub $c (struct)))
+  (type $f (sub $d (struct)))
+  (type $g (sub (struct (field (ref $e)))))
+  (type $h (sub $g (struct (field (ref $f)))))
+)
+```
+Or in AST:
+```
+dt_a = dt_b = [(SUB [] struct)].0
+dt_c = [(SUB [IDX 0] struct)].0
+dt_d = [(SUB [IDX 1] struct)].0
+dt_e = [(SUB [IDX 2] struct)].0
+dt_f = [(SUB [IDX 3] struct)].0
+dt_g = [(SUB [] (struct (ref (IDX 4))))].0
+dt_h = [(SUB [IDX 6] (struct (ref (IDX 5))))].0
+
+C := { TYPES := [dt_a, dt_b, ..., dt_h] }
+```
+`dt_h` declares `dt_g` as a supertype, which triggers a subtyping check of their component types, which eventually comes down to a check of whether `IDX 5 <: IDX 4` as heaptypes. That should be true from the declarative rules, as their closures are equal. However, the reference interpreter rejects this module, claiming that `sub type 7 does not match super type 6`.
+
+I think this is because `match_deftype` only performs a shallow substitution against `C.types`, which is only correct wrt `clos_deftypes` if the substitution table is already IDX-free. The reference interpreter only rolls up the intra-group `IDX` to `rec`: https://github.com/WebAssembly/spec/blob/aed61c2b5efb8240e8d4343bf5db5409b7509874/interpreter/valid/valid.ml#L178-L185
+But it doesn't substitute the cross-group IDX references, which then leak through the roll and remain in the context returned.
+
+The most plausible fix seems to be adding a substitution after the roll at `check_rectype` -- so something like this:
+```ocaml
+let check_rectype (c : context) (rt : rectype) at : context =
+  let RecT sts = rt in
+  let x = Lib.List32.length c.types in
+  let rolled = roll_deftypes x rt in
+  let closed = List.map (subst_deftype (subst_of c.types)) rolled in
+  let c' = {c with types = c.types @ closed} in
+  List.iter (fun st -> check_subtype c' st at) sts;
+  Lib.List32.iteri
+    (fun i st -> check_subtype_sub c' st (Int32.add x i) at) sts;
+  c'
+```
+This will maintain an invariant that `C.types` is IDX-free, which is quite a strong invariant, and will limit the usefulness of the matching functions (they are only correct wrt IDX-free C.types); but it seems to be required if `match_deftype` wants to use a shallow substitution only. This is relatively cheap as the cost is one-off during validation. The other option is to change `match_deftype` to use `clos_deftypes` instead of the current shallow substitution, but that is quite inefficient as the function can be called at runtime (and also due to mutual recursion with match_heaptype).
+
+For curiosity, I've also tested wasmtime's interpreter, which correctly accepts the above module by canonicalizing all types at validation. My original matching function was pre-closing `C.types` before doing the check and hence avoided this; I found out about this when I was trying to drop the pre-closing phase.
+
+## Comment by rossberg, 2026-05-13
+
+Great find! Unfortunately, your suggested fix breaks several negative tests (that intentionally use an invalid type index), which now crash the eager substitution instead of producing an error message. I have to think how to reconcile that...
+
+## Comment by raoxiaojia, 2026-05-13
+
+To be fair I don't like the fix I suggested either even if it didn't break the tests, as it means that match_*type functions are only correct when C.types is IDX-free (which seems like an unnecessary restriction, given that `context_ok` explicitly allows the context to be not closed in general). But this seems to be the intended 'fragment with shallow subtyping' you're suggesting in the paper which carries certain restrictions.
+
+## Comment by raoxiaojia, 2026-05-13
+
+Actually, reading Section 5.2 of the paper again, it seems that pre-closing is indeed intended. Perhaps `subst_of` could add a bound check on the `Idx` arm to throw a good error message if it's OOB.
+
+## Comment by rossberg, 2026-05-13
+
+Yeah, that's what I ended up doing, please see #2167.
+

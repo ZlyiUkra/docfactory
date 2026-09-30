@@ -1,0 +1,68 @@
+# WebAssembly spec issue #2209: some scripts expect an "unknown operator" for negative alignment
+# джерело: https://github.com/WebAssembly/spec/issues/2209
+# отримано: 2026-09-30
+
+Issue #2209, opened by redianthus on 2026-07-13, closed (completed) on 2026-07-27.
+
+Hi,
+
+I'm currently adding SIMD support in Owi. I'm using the reference test suite, which contains some test cases where a `"unknown operator"` error is expected when a module contains `v128.load align=-1` (a negative alignment). Is it on purpose? Wouldn't it be better to switch to "alignment must be positive" or something similar?
+
+## Comment by rossberg, 2026-07-13
+
+That's just the generic error message produced by the lexer when encountering a character sequence that is not recognised as a token (`align=n` is a single token). It would require a special case in the lexer to produce another message.
+
+## Comment by redianthus, 2026-07-20
+
+OK, thanks, I understand.
+
+I just found out another case I'm not sure about. In the `simd_lane.wast` file, there are two tests:
+
+```wast
+(assert_malformed (module quote "(func (result v128)"
+  "(i8x16.shuffle 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 -1"
+  "(v128.const i8x16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0)"
+  "(v128.const i8x16 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15)))") "i8 constant out of range")
+```
+
+And
+
+```wast
+(assert_malformed (module quote "(func (result i32) (i8x16.extract_lane_s  -1 (v128.const i8x16 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))") "unexpected token")
+```
+
+Why in one case the negative lane index is being considered as an "i8 constant out of range" and as an "unexpected token" in the other one?
+
+## Comment by redianthus, 2026-07-20
+
+And a second one similar:
+
+```wast
+(assert_malformed (module quote "(func (result v128) "
+  "(i8x16.shuffle 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15.0 "
+  "(v128.const i8x16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0) "
+  "(v128.const i8x16 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15)))") "i8 constant out of range")
+```
+
+Here, 15.0 fails with "i8 constant out of range", whereas here:
+
+```wast
+(assert_malformed (module quote "(func (result i32) (i8x16.extract_lane_s 1.5 (v128.const i8x16 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))") "unexpected token")
+```
+
+The 1.5 fails with "unexpected token".
+
+## Comment by rossberg, 2026-07-22
+
+The immediates of `v128.const` are arbitrary numbers syntactically, since they can be negative or floats depending on the lane type.
+
+Lane indices OTOH are natural numbers, so a negatives or floats are not expected in their syntax.
+
+## Comment by redianthus, 2026-07-26
+
+Yes but here I'm only talking about lanes indices. Or do you mean the immediate of `i8x16.shuffle` are not lane indices?
+
+## Comment by rossberg, 2026-07-27
+
+Ah, yes. Apparently, somebody thought to parse those differently. Please see #2214 for a tweak.
+

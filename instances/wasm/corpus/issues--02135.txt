@@ -1,0 +1,64 @@
+# WebAssembly spec issue #2135: [spec] Typo in `select` example of instructions validation
+# джерело: https://github.com/WebAssembly/spec/issues/2135
+# отримано: 2026-09-30
+
+Issue #2135, opened by alessiofaieta on 2026-04-07, closed (completed) on 2026-04-08.
+
+In the section about the validation of instructions (https://webassembly.github.io/spec/core/valid/instructions.html#instructions), there is a note that contains an example using instruction `select` with `f64` consts. The example is rendered as:
+
+> `(f64.const +64) (f64.const +64) (f64.const +64) (select)`
+
+but it should contain 1, 2 and 3 instead of the three +64, as it is suggested by the previous example (which uses `i32`) and by the fact that the source code contains instructions `$fnat(64, 1)`, `$fnat(64, 2)` and `$fnat(64, 3)`. Maybe the problem is in the rendering of these instructions.
+
+Moreover, I think that the third parameter should still be an `i32` instead of an `f64`, as the type of the `select` instruction is `t t i32 -> t`.
+
+## Comment by rossberg, 2026-04-07
+
+You are right on both accounts. The show hint on `$fnat` should use `%2` instead of `%`.
+
+## Comment by alessiofaieta, 2026-04-07
+
+Got it, I can try to fix that, if you didn't do it yet :)
+
+## Comment by rossberg, 2026-04-07
+
+Please, go ahead! :)
+
+## Comment by alessiofaieta, 2026-04-07
+
+I managed to fix it, but I noticed that `$fnat` is defined in two files, one in the `wasm-latest` directory and one in the `wasm-3.0` directory. Do I have to change the second one too?
+
+Also, `$fnat` is referenced in some `TEST.md` files, I'm not sure if I have to change something in those.
+
+## Comment by rossberg, 2026-04-07
+
+Ah, yes. wasm-latest (currently) is a copy of wasm-3.0. You can run `make sync-diff` in the specification/ dir to sync them up.
+
+Test expectations in TEST.md files may need updating. Go to spectec/ and run `make test`. If it complains, run `make testpromote` and repeat.
+
+## Comment by alessiofaieta, 2026-04-07
+
+Ok, almost there ahah
+
+I did as you said, and I had to `make testpromote` a couple of times. Now, among the changed files, there are a couple of them which I'm not sure I have to commit:
+1. `spectec/test-latex/test-test.el`, which did not exist previously, and is not gitignored, but it seems to contain just some logs; do I have to commit it?
+2. `spectec/doc/example/output/NanoWasm.pdf`, in which the only difference seems to be the date in the first page, which was set to "Jan 01, 1980" for some reason; do I commit it with that date or leave it unchanged?
+
+## Comment by rossberg, 2026-04-07
+
+Oops, yes, test-test.el should be git-ignored. Please ignore it.
+
+The pdf you can just commit. I should figure out a way for it to not differ across builds.
+
+## Comment by rossberg, 2026-04-07
+
+FYI, I just pushed a commit that addresses both of the above.
+
+## Comment by alessiofaieta, 2026-04-07
+
+Thank you for the commit!
+
+The test-test.el file is now correctly git-ignored, but unfortunately the NanoWasm.pdf file still comes out different. I checked by eye, and it seems that the only differences are in the alignment of some elements (for example some typing rules). Even if that was not the case, I guess it's just difficult to ensure bit-by-bit reproducibility of pdf files...
+
+In the pull request I'm committing the new pdf.
+

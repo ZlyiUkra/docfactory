@@ -1,0 +1,88 @@
+# WebAssembly spec issue #2191: [spectec] Moduleinst validity defines potentially oversized indices for C.refs
+# джерело: https://github.com/WebAssembly/spec/issues/2191
+# отримано: 2026-09-30
+
+Issue #2191, opened by raoxiaojia on 2026-06-18, closed (completed) on 2026-06-19.
+
+Module instance validity populates 0..|funcaddr*|-1 as the accessible function references in the context C (as C.refs) (https://github.com/WebAssembly/spec/blob/da036ca7e33278b5c8901085ba73ec279f63bec8/specification/wasm-3.0/7.1-soundness.configurations.spectec#L175). However, `C.refs` is an (unbounded) sequence of `funcinst`, which implies a coercion from `funcaddr` (unbounded) to `funcinst` (u32). This is lossy when the module instance contains more than 2^32 function addresses (yes, a bit contrived).
+
+I've checked the binary format's limits as well -- each field is a `list`, which is implicitly bounded to 2^32 elements in spectec. However, this fails to guard against the above issue, as the module can also import more functions into the module instance, which therefore allows up to 2^33 function addresses in the module instance.
+
+It's unclear what the best fix to this is. Constraining the lengths of various lists by 2^32 in the validity relations seem possible, but it needs to propagate through several layers. A relatively clean fix is to change C.refs to a list of unbounded types, but that sounds a bit wrong, because the entries should really be `idx`.
+
+## Comment by rossberg, 2026-06-18
+
+C.REFS is a sequence of function indices, which are u32's. The moduleinstance rule converts the count of functions in the instance into this. This injection isn't defined in the case that the instance contains more than 2^32 functions (including imports). Which in turn implies that such instances aren't well-formed, because the rule cannot be applied. But that's working as intended, since it is not possible to write a module with more than 2^32 functions (including imports) either, so instantiation can never produce such a thing.
+
+## Comment by rossberg, 2026-06-18
+
+Ah, hold on. You are right that both module definitions and instances can legally have more than 2^32 functions, because imports are in fact counted separately. Of course, none of the functions beyond index 2^32-1 can ever be accessed, but they can still be defined.
+
+The simplest fix would probably be to change the iteration to (i)^(i<min(2^32, |funcaddr*|)). But that's a bit ugly.
+
+## Comment by raoxiaojia, 2026-06-18
+
+Yes, this is just a soundness nit tbf, but it's giving me some headaches to represent the index bound in a systematic way. I haven't found a 'clean' fix to this that feels satisfying either. An alternate is to put a binary format guard saying that a module's import functions and defined functions cannot sum up to above 2^32, but that doesn't seem very clean either.
+
+## Comment by rossberg, 2026-06-18
+
+Morally, limiting the total in the validation rules actually makes sense, because every definition should be "nameable" and not just junk.
+
+For modules, one concise way of imposing that constraint on all namespaces would be to define the syntax of contexts to use lists and not arbitrary sequences. Then the attempt to construct an out-of-bounds C in the Module_ok rule would be undefined, and hence such a module cannot be typed. Similarly, moduleinst could be defined with list, syntactically ruling out junk module instances.
+
+But I don't know what repercussions such a constraint on contexts would have. Might inject a proof obligation in all places extending the context.
+
+## Comment by raoxiaojia, 2026-06-18
+
+> But I don't know what repercussions such a constraint on contexts would have. Might inject a proof obligation in all places extending the context.
+
+Right, and one thing I can see is that context extensions might be tedious to handle, because now pushing labels can actually fail (due to exceeding the size limit of lists). This might actually make some proofs impossible, since `instrs_ok C es` will no longer imply `instr_ok C' es` when C' is a context extension of C. This sounds quite bad for preservation etc (actually, is preservation still true if we change C's fields from general sequences to bounded lists?).
+
+Note that interestingly, `labelidx = u32` is indeed bounded, so currently labels at depth `>= 2^32` (if someone really wants to write a >> 4GB wasm binary) are not directly accessible in one step. However, the outer labels are still accessible by chaining `br`s, so the outer labels are not entirely junk despite `labelidx` being `u32`.
+
+Perhaps making the fix-sized fields (i.e. the ones populated from frame_ok) as lists and keeping `C.labels` as sequences would be an acceptable middleland? I personally do not like this very much as it makes the container types inconsistent across C's fields, but that seems to be a choice that satisfies the 'every definition is nameable and not junk'.
+
+I actually think `(i)^(i<min(2^32, |funcaddr*|))` is not too bad either, but I'm wearing the proof maker's hat, so I'm probably a bit biased here, as it should make the proofs trivial to fix.
+
+## Comment by rossberg, 2026-06-18
+
+Well, it is impossible by construction to have even close to 2^32 labels. Each label originates from a block, and every block takes at least 3 bytes to encode. At the same time, the total code size of a function is also bounded by 2^32 bytes. Hence you cannot even get to a third of that number of labels. Not to mention that in practice the limits are set much smaller anyway.
+
+## Comment by raoxiaojia, 2026-06-18
+
+Oh right, I missed the code size of function as well -- that does enforce the bound.
+
+I've also mistakenly put my first paragraph under quotes where it shouldn't have been. to summarise, this means the only slight issue is the metatheoretical concern the preservation of instruction types under context extension then (due to the 2^32 bound issue on labels), depending on if that is a property that is desired to hold in the first place. I think the proofs might actually get away with using a weaker version of it, so changing contexts to use bounded `list` could already be correct.
+
+## Comment by rossberg, 2026-06-19
+
+It turns out that concatenation, as well as omitting an empty field, is not currently allowed by SpecTec for a type that isn't a direct iteration type. I could extend SpecTec, but that may affect other passes. So changing the field to lists isn't straightforward.
+
+So at least for now, I'd go with the more local fix like using max. I somewhat dislike the abstraction leak it implies (what if we were to generalise idx to u64 at some point?). An alternative formulation may be
+```
+(i)^(i<k)
+```
+with the side condition
+```
+k <= |funcaddr*|
+```
+Technically, `k` would be a locally non-deterministic guess, but `max(2^32, |funcaddr*|)` would always work as a principal choice.
+
+WDYT?
+
+## Comment by raoxiaojia, 2026-06-19
+
+I think this works, and avoids hardcoding the `2^32` (as a sanity check, the principal choice probably should be `min(2^32, |funcaddr*|)` as you said in the earlier post?). This makes the rule slightly harder to understand but `moduleinst` validity is in the soundness part anyway.
+
+I was also thinking of defining a named constant such as `IDX_MAX` (thinking of C's `INT_MAX` etc) which should be automatically derived from the definition of `idx` in some way, that we can universally use in spectec in all places where such a MAX is needed, although this requires introducing additional constants. To be clear -- your suggested version is easy to work with as well, so I'm happy with just simply using that version.
+
+## Comment by rossberg, 2026-06-19
+
+Ah yes, I meant min.
+
+I'll add a note to the spec document explaining the purpose of k.
+
+## Comment by rossberg, 2026-06-19
+
+PTAL at #2192.
+

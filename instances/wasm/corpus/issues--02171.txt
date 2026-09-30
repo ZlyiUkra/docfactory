@@ -1,0 +1,177 @@
+# WebAssembly spec issue #2171: [spectec] Reftype subtyping premises in opsem
+# джерело: https://github.com/WebAssembly/spec/issues/2171
+# отримано: 2026-09-30
+
+Issue #2171, opened by raoxiaojia on 2026-05-21, closed (completed) on 2026-05-26.
+
+I noticed that the reference instructions allow an additional `reftype_sub` at their premises, e.g.: https://github.com/WebAssembly/spec/blob/d34a973e70ab127476b5d8591c6f558be289b929/specification/wasm-3.0/4.3-execution.instructions.spectec#L149-153. But `Ref_ok` already has a `sub` rule that allows the same subtyping.
+
+It seems that the idea is to making subtyping the responsibility of `Ref_ok`, as I see that other uses of `Ref_ok` such as `elem/tableinst_ok` no longer has a separate subtyping step. There are also inlined TODO comments suggesting the version without the rules, which seems fine to me.
+
+I wonder if the extra subtyping premise in the opsem rules can be dropped -- unless there's a pass in spectec that requires them to be explicitly present in the rules?
+
+## Comment by rossberg, 2026-05-21
+
+Yeah, IIRC, some of the animation currently depends on it. Is that right, @zilinc, @f52985?
+
+## Comment by zilinc, 2026-05-22
+
+> Yeah, IIRC, some of the animation currently depends on it. Is that right, @zilinc, @f52985?
+
+I learnt it from you, and my understanding is that some part of AL depends on it. IL animation doesn't need it though. In fact, it's easier without it. Currently, depending on which way it's written (a single `Ref_ok` vs `Ref_ok` + `Reftype_sub`), it flips the mode of the `Ref_ok` rule, which is a bit annoying.
+
+## Comment by f52985, 2026-05-22
+
+Yes, AL depends on it.
+Here is the AL for the corresponding rule:
+```
+...
+4. Let rt be $Ref_ok(ref).
+5. If rt matches $inst_reftype(f.MODULE, rt_2), then:
+  a. ...
+6. Else:
+  a. ...
+...
+```
+
+Backend-interpreter manually defines `$Ref_ok` as a function that returns the most specific type for the given ref, so  it requires the explicit variable that will store the `return` of the function.
+
+I think it might be possible to refactor this behavior by making `$Ref_ok` as a predicate function that requires a ref and a reftype, and returns a boolean value to be directly used in the `if` instruction.
+
+## Comment by raoxiaojia, 2026-05-22
+
+> Backend-interpreter manually defines $Ref_ok as a function that returns the most specific type for the given ref, so it requires the explicit variable that will store the return of the function.
+>
+> I think it might be possible to refactor this behavior by making $Ref_ok as a predicate function that requires a ref and a reftype, and returns a boolean value to be directly used in the if instruction.
+
+I agree that the implementation is correct. The decision here is more about the design principles, on whether it is the duty of the typing predicate to allow subtyping, or if the use sites have to explicit state that matching is allowed.
+
+There are several different instances of this decision in the spec, and I think what feels 'right' can be different per instance. E.g. stack types/function types certainly want the subtyping rules to be part of the relation as well (else the definition needs a lot of boilerplate `<:` in many places), where as for import matching it feels right that the imports simply have whatever type it 'declares' to have, and the importing module should perform the matching check. For this particular instance, it seems that the decision was to move the subtyping obligation to the predicate (given the TODOs)?
+
+Having redundant checks used to be fine, because matching is supposed to be transitive anyway. But with Wasm 3.0 where types themselves can be invalid, this becomes more subtle, as the double subtyping by `Ref_ok/sub` and the explicit matching in the opsem rule allows transitivity without the validity of the intermediate type (basically, the existential in the opsem rule), which is a requirement in `heaptype_sub/trans`. So having a double matching here would appear more permissive than what the relational rules actually define.
+
+Incidentally, it is actually not more permissive for now, because it happens that the set of types that can be returned by `ref_ok` seems to be disjoint with the valid LHS of counterexamples for heaptype_sub/trans without validity of the intermediate.
+
+## Comment by raoxiaojia, 2026-05-22
+
+(removing a previous comment as it was incorrect)
+Actually, I realised that this is an issue of the `Ref_ok` relation itself, as `Ref_ok/sub` itself can be applied recursively to permit transitivity with invalid intermediate type, even in a valid store, because there's no validity guard on the RHS. Compared to `Instrs_ok/sub` which has a RHS validity guard:
+```
+rule Instrs_ok/sub:
+  C |- instr* : it'
+  -- Instrs_ok: C |- instr* : it
+  -- Instrtype_sub: C |- it <: it'
+  -- Instrtype_ok: C |- it' : OK
+```
+Compared to `Ref_ok/sub`:
+```
+rule Ref_ok/sub:
+  s |- ref : rt
+  -- Ref_ok: s |- ref : rt'
+  -- Reftype_sub: {} |- rt' <: rt
+```
+
+Note also that `rt` is fully arbitrary via this rule, so store validity doesn't prove that it is valid.
+
+So dropping the redundant side condition in the opsem rule wouldn't fix this. If `Ref_ok/sub` is intended to be part of the relation itself, then it seems correct to similarly add a RHS validity guard, similar to what `instrs_ok/sub` does. But that seems verbose; perhaps in this case it's better if `Ref_ok/sub` isn't part of the `Ref_ok` relation to avoid this unwanted transitivity issue, and make it the duty of the use site to state the matching premises?
+
+I noticed that there are potentially other places which is missing such a guard that allows unrestricted transitivity, such as `externaddr_ok/sub`; they might need to be addressed similarly.
+
+## Comment by rossberg, 2026-05-23
+
+@raoxiaojia, I agree that there is a guard missing on the Ref_ok/sub rule.
+
+As for resolving the Ref_ok/sub vs reftype_sub premise redundancy: usually I'd prefer the former for consistency, but there is value in having a definition for extracting "the" type of a value. Perhaps the name shouldn't be *_ok then, though. Perhaps it should even be defined as a function.
+
+## Comment by raoxiaojia, 2026-05-23
+
+@rossberg I agree, there's a point of making it as a function since the opsem requires to compute it at runtime. The reference interpreter contains an implementation of it anyway. From @f52985 's comment, it seems that defining it as a function removes a hard-coded definition from the AL as well?
+
+I believe dropping the `Ref_ok/sub` rule also makes the RHS guard unnecessary, as the other constructors' RHS are all either absheaptype or from the store. But it probably should then get a rename as you suggested).
+
+This does have a consequence that the other use sites such as `tableinst_ok` (I think a few others as well) needs to add the matching premise now, although it feels correct (and makes the matching visible).
+
+## Comment by rossberg, 2026-05-24
+
+Okay, I have looked at all use sites of Ref_ok and Val_ok. There are more than half a dozen besides the 4 cast rules. All of them would require an additional subtyping premise if we removed Ref_ok/sub. That suggests that the right factorisation is keeping this rule and removing the (redundant) subtype premise from the cast rules.
+
+@f52985, if I created a PR making this change, would you be able to contribute the change of Ref_ok into a predicate along the lines you described above?
+
+## Comment by raoxiaojia, 2026-05-24
+
+@rossberg Alternatively, how about factoring out the 'decide the canonical type of a ref' as a function still (with a different name), and then define Ref_ok as a reftype_sub between the result of that function and the RHS?
+
+This avoids the need of the RHS guard in the rule (no recursive application of Ref_ok), allows the AL backend to use the generated function (so the redundant premises  can be removed), and provides cut-elimination for free to the proofs.
+
+Actually the new `Ref_ok` can also be stated as a boolean-returning function with a premise on the `reftype_sub` relation (which makes it a relation in spirit, but captures the idea that `Ref_ok` needs to be computable at runtime).
+
+I'm happy to update the AL if @f52985 is busy atm, although if we take the approach above then the AL refactoring is minimal (actually simplified).
+
+## Comment by rossberg, 2026-05-24
+
+@raoxiaojia, there's also Val_ok, and we'd then need the same layering there. So that would require additional auxiliary wrappers with some duplication, a bit ugly.
+
+Stating Ref_ok as a predicate (i.e., a Boolean function) is the possible change @f52985 suggested above, I believe. Thanks for offering to implement that. Let's see what Dongjun says.
+
+## Comment by raoxiaojia, 2026-05-24
+
+I thought `Val_ok` would be fine, as it simply uses `Ref_ok` in the `ref` arm, which should allow subtyping in my suggested version. Maybe there's something I missed when you said a similar duplication is required for `Val_ok`?
+
+More concretely, I was suggesting factoring out the base cases of `Ref_ok` into a function, something like the following:
+```
+def $canonical_reftype (store, ref) : reftype
+def $canonical_reftype (REF.NULL_ADDR) = (REF NULL BOT)
+def $canonical_reftype (REF.I31_NUM) = (REF I31)
+(etc)
+```
+and then `Ref_ok` becomes a single subtype matching:
+```
+relation Ref_ok: store |- ref: reftype
+
+rule Ref_ok/match:
+  s |- ref : rt
+  -- if $canonical_reftype (s, ref) = rt'
+  -- Reftype_sub: {} |- rt' <: rt
+```
+This preserves the semantics of `Ref_ok` completely (both versions allow matching), so downstream uses of `Ref_ok` do not have to state the matching. The RHS guard can be avoided in this way, as there's no recursive application of `Ref_ok` in the premise now.
+
+## Comment by rossberg, 2026-05-24
+
+Well, if we wanted to split Ref_ok into a principal and subtyping-agnosting version, then by the same argument, we'd want to do that for values in general and hence all of Val_ok. For that, you'd need more extra functions/relations and at least two separate rules applying subtyping.
+
+(But since there is no actual use-case for the principal versions of either in the spec, there is no real motivation for introducing the extra complexity.)
+
+## Comment by raoxiaojia, 2026-05-24
+
+I see -- I agree that consistency across different categories of values is important as well, and the spec doesn't need principal types to be stated, so not splitting the principal parts out is fine. I guess we just need to add a RHS validity guard to `Ref_ok/sub` and everything is good then.
+
+One genuine question though: should `Num_ok/Vec_ok` be interpreted as stating the principal type or the subtyping-agnostic rule in this case? Both interpretations work, since numeric types have no supertypes. I read them as stating the principal type previously, given that the type is literally from the value's syntax:
+```
+rule Num_ok:
+  s |- CONST nt c : nt
+
+rule Vec_ok:
+  s |- VCONST vt c : vt
+```
+But from the consistency view, it seems that they should be interpreted as the subtyping-agnostic rule instead (similar to `Ref_ok`), which also makes sense since only reference types have non-trivial subtyping.
+
+## Comment by rossberg, 2026-05-24
+
+Yes, I'd use the latter interpretation. If there ever was subtyping for these types, then subsumption would be included in those rules. And the other interpretation wouldn't be consistent with Val_ok as subtyping-agnostic.
+
+But does it actually matter?
+
+## Comment by raoxiaojia, 2026-05-24
+
+Nice to know that, thanks for the clarification!
+
+No, it doesn't matter for the spec at all. But I have some proofs that previously assumed that those two provide the principal types (for building instruction types), so the above clarification is useful in case the spec changes.
+
+## Comment by rossberg, 2026-05-26
+
+OK, I committed a change adding the missing WF-premise. And I created PR #2174 which removes the redundant subtype check from the branch rules. As discussed, this requires changing the interpreter, so could either of you please take a look?
+
+## Comment by rossberg, 2026-05-26
+
+Closed via #2175
+

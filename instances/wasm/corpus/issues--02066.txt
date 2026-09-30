@@ -1,0 +1,44 @@
+# WebAssembly spec issue #2066: Backwards-compatibility question regarding dropped `reftype` in Element section (v3)
+# джерело: https://github.com/WebAssembly/spec/issues/2066
+# отримано: 2026-09-30
+
+Issue #2066, opened by agis on 2026-01-31, closed (completed) on 2026-02-02.
+
+Hello!
+
+I'm currently implementing support for v3 in my decoder and ran into a test failure while implementing the changes for the `Element` section, which was passing in my v2 implementation.
+
+v2 defined one of the possible variants of the `elem` item in the `Element` section):
+
+```
+elem ::= ...
+         | 6:u32 𝑥:tableidx 𝑒:expr et:reftype el *:vec(expr) ⇒ {type 𝑒𝑡, init el *, mode active {table 𝑥, offset 𝑒}}
+         ...
+```
+
+If I understand correctly, as per the v2 spec, an explicit `reftype` is expected. Essentially after `e` either `0x70` or `0x6F` is expected.
+
+However, v3 changed the above definition to omit the `reftype` segment:
+
+```
+elem ::= ...
+         | 6:u32 𝑥:tableidx 𝑒o:expr 𝑒*:list(expr) ⇒ elem (ref null func) 𝑒* (active 𝑥 𝑒o)
+         ...
+```
+
+Therefore, a module that was previously valid in v2 becomes invalid in v3, given that after `𝑒o`, the byte `0x70` (or `0x6F`) would be interpreted as the `e` list's length.
+
+Is this not a backwards-incompatible change? I'm probably missing something and it's not, given that both `wasm-tools` and `wasm-validate` accept the above module. But nevertheless I wanted to understand what actually a conformant decoder has to do in this case.
+
+In case it helps, the test that failed in my suite uses the following module: https://github.com/agis/wadec/blob/85d9f6dc1035978263303f4e5e81b0bef25a6072/tests/fixtures/element_section_all_alts.wasm.
+
+Thanks in advance!
+
+## Comment by bvisness, 2026-01-31
+
+This looks like a spec bug to me as well. SpiderMonkey also parses a ref type in the (expression encoding) + (active with table index) path. The hardcoded `(ref null func)` case 6 produces is also therefore wrong, I think.
+
+## Comment by agis, 2026-02-01
+
+Thanks for explaining, makes sense now. In any case, I created a (draft) PR with what I understand to be the fix for this. (Not sure if that change is sufficient or there are additional files that need to be changed.)
+

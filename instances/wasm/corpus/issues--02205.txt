@@ -1,0 +1,21 @@
+# WebAssembly spec issue #2205: [spec] `Localval_ok`'s rule for uninitialised locals prevents typing of `local.set`
+# джерело: https://github.com/WebAssembly/spec/issues/2205
+# отримано: 2026-09-30
+
+Issue #2205, opened by raoxiaojia on 2026-07-07, closed (completed) on 2026-07-07.
+
+`Localval_ok`'s current rule for uninitialised values (used by `Frame_ok` later) types it at `BOT`:
+https://github.com/WebAssembly/spec/blob/ef4771a0b2fc1fc2f33b917640705f8e8a9a0315/specification/wasm-3.0/7.1-soundness.configurations.spectec#L341-L352
+
+It seems that the intention is so that an uninitialised value cannot be read (prevented by the `UNSET` flag), but can match the value type that a later `local.set` would want to set. However this doesn't actually work, because `local.set x`'s typing rule is contravariant on `C.locals[x]`, and putting `BOT` as the type of local prevents writing any value to the local. Similarly putting a `top` wouldn't work (and Wasm has no top type anyway) because the value then can't be used.
+
+I think the correct fix is to let `Localval_ok/unset` be typed at an arbitrary `UNSET t` instead of `UNSET BOT` (probably need a validity guard on the type `t` being valid as well?), basically giving the rule freedom to choose the precise type it needs for the later `get/set` operations.
+
+## Comment by rossberg, 2026-07-07
+
+Agreed, that was a brainfart. Your proposed fix sounds right, can you create a PR?
+
+## Comment by raoxiaojia, 2026-07-07
+
+Sure, will do it shortly.
+

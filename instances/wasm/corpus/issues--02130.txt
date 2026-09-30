@@ -1,0 +1,104 @@
+# WebAssembly spec issue #2130: Simplify JS-API test syncing
+# джерело: https://github.com/WebAssembly/spec/issues/2130
+# отримано: 2026-09-30
+
+Issue #2130, opened by eqrion on 2026-03-31, open.
+
+The JS-API testing situation is complicated. We've got diverging copies in spec/proposals and WPT. I'd like to simplify this to make contributing new tests easier.
+
+Here's my understanding:
+1. We have JS-API tests in `test/js-api` of this repo. These are just WPTs and use the same harness setup.
+2. Proposals add their own JS-API tests to their forks of this repo.
+3. The web-platform-test repo has copies of the tests from the spec and proposal repos in `tests/wasm/jsapi`.
+4. Right now there is no automation between any of these repos, and so of course they've diverged over time.
+  a. Spec contains about 7 tests that have never been pushed to WPT
+  b. WPT has 'tentative' tests from the various proposals that are not yet in spec (this is expected)
+  c. WPT has 4 non-tentative tests that have never been pushed to spec (this is not expected)
+  d. Older proposals are also stale and have diverging harnesses and other infrastructure (like wasm module builder).
+
+The core issue is that there's no canonical repo to prevent divergence over time.
+
+Here are the two options I can think of:
+
+## 1. Make 'spec' repo canonical
+
+New JS-API tests must land in 'spec' first. We then automate a sync from 'spec' to 'wpt'.
+
+This solves the divergence problem for 'spec' but not for the proposal repos.
+
+Maybe they continue to be manually pushed to WPT? And then when a proposal gets merged, we manually remove them from WPT and replace them with automatically synced version.
+
+## 2. Make 'wpt' repo canonical.
+
+New JS-API tests must land in 'WPT' first, including tentative ones.
+
+We then automate a sync from 'wpt' to 'spec'. The sync process needs to filter out 'tentative' tests from other proposals.
+
+We could also have an automated sync from 'wpt' to individual proposals that preserves the 'tentative' tests from their proposal (maybe use subfolders for this).
+
+### 2.a And only have JS-API tests in 'wpt'
+
+Go even further than option 2, and just drop the JS-API copies from spec/proposals. Only use the WPT repo for tests.
+
+Firefox only uses the WPT repo. We never directly use the JS-API tests from the spec/proposal repos. Maybe other browsers are different?
+
+This would let us get rid of any complicated syncing, and just have one canonical location.
+
+I have a preference for option 2.a, but I'm interested in what others think.
+
+## Comment by rossberg, 2026-03-31
+
+The original idea was that the spec repo would be the primary "source of truth" for tests, i.e., option 1 is the plan of record. Practically, that ensures that the test suite is always in sync with the spec, and that merging proposals and accompanying tests is a single process and not a mess. And conceptually, for everything non-Web in particular (which includes the JS API — we made the whole effort of separating it from the Web API spec after all), it would be odd to have the corresponding tests owned by a Web platform repo.
+
+## Comment by eqrion, 2026-03-31
+
+> And conceptually, for everything non-Web in particular (which includes the JS API — we made the whole effort of separating it from the Web API spec after all), it would be odd to have the corresponding tests owned by a Web platform repo.
+
+I'd be interested to know if Node/V8/JSC are running the tests directly from this repo, or are relying on the WPT repo tests. If people are using this repo directly for the JS-API tests, then we should definitely keep them here. At least for SM/Firefox, we only use WPT.
+
+I agree that conceptually it's ideal to have the spec be the canonical home of these tests.
+
+Practically though we'll need:
+  1. CI support for the js-api and web-api tests in this repo (and proposals)
+  2. Sync from this repo to WPT
+  3. Some sort of sync from proposal repos to WPT
+  4. Some sort of automated way of preventing people from directly contributing tests to WPT directly
+    - WPT does bidi sync with browser engines repos, so it's not just PRs on WPT
+
+Whereas we can avoid all of that if we make WPT the canonical repo.
+
+I'm happy to do that work, but I'd just like to make sure there's a benefit.
+
+## Comment by Liedtke, 2026-04-01
+
+> I'd be interested to know if Node/V8/JSC are running the tests directly from this repo, or are relying on the WPT repo tests.
+
+V8: We have a script to import the test cases from both WPT as well as the `WebAssembly/spec` repository.
+As it used to take a long time for proposals to be merged back into the spec and we often ship proposals in stage 4, we also import proposal tests (trying to filter out duplicate tests), currently the following:
+`repos='js-promise-integration threads stack-switching custom-descriptors'`
+
+On Chrome (which is a separate repository) the Web Platform Tests get run again, just this time via full Chrome (headless_shell / content_shell), not just `d8`.
+This makes it somewhat painful when the different versions of a test in different sources get out of sync, especially when the different versions are contradicting (e.g. due to new features).
+
+## Comment by rossberg, 2026-04-01
+
+@eqrion, it looks to me like this is just a question of pushing the burden around, particularly between consumers of the wpt repo and producers of specs and proposals. With two repos, somebody inevitably has to do extra work. It seems natural that the users of the more client-specific repo own it.
+
+(I think the bigger issue are the use of proposal tests, and sometimes version differences wrt negative tests, that @Liedtke mentions. But that's perhaps a problem separate from mere syncing.)
+
+## Comment by eqrion, 2026-04-02
+
+@rossberg. Yeah, it's a similar amount of work in either direction if you have both repos. The biggest benefit would be moving to a single repo, but from @Liedtke's comment that doesn't seem feasible.
+
+I'm fine with keeping the spec/proposal repos canonical, and WPT just a consumer of that.
+
+Here's a potential plan:
+  1. Merge the standard JS-API tests that erroneously only are in WPT back into spec
+    a. Add some sort of 'autogenerated' warning to the `wasm/js-api/` directory in WPT to prevent that from happening again
+  3. Add basic CI to spec to actually run the JS-API tests (I couldn't find it if it exists already)
+  4. Extend the 'testsuite' repo to pull the JS-API tests from all proposals into a merged format. (just like how it's done for core tests)
+  5. Add a CI workflow to WPT to pull the JS-API tests from 'testsuite'
+    a. Warn if any new JS-API tests were added directly to WPT by the browser vendor bidi sync.
+
+What do folks think of that?
+

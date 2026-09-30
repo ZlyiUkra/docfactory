@@ -1,0 +1,58 @@
+# WebAssembly spec issue #2131: Spec bypasses instantiation of types for default values of local variables at `call_ref`
+# джерело: https://github.com/WebAssembly/spec/issues/2131
+# отримано: 2026-09-30
+
+Issue #2131, opened by raoxiaojia on 2026-04-02, closed (completed) on 2026-04-02.
+
+The reference interpreter currently additionally performs a substitution of the local type before producing the default values at a function call (which is still using the old name `Invoke`) where the spec does not. Compare the following:
+exec/eval.ml, L1117-1130:
+```OCaml
+| Invoke f, vs ->
+      let (ts1, ts2) = functype_of_comptype (expand_deftype (Func.type_of f)) in
+      let n1, n2 = List.length ts1, List.length ts2 in
+      let args, vs' = split n1 vs e.at in
+      (match f with
+      | Func.AstFunc (_, inst', func) ->
+        let Func (_x, ls, es) = func.it in
+        let m = Lib.Promise.value inst' in
+        let s = subst_of m in
+        let ts = List.map (fun {it = Local t; _} -> subst_valtype s t) ls in
+        let lvs = List.(rev (map Option.some args) @ map default_value ts) in
+        let frame' = {inst = m; locals = List.map ref lvs} in
+        let instr' = [Label (n2, [], ([], List.map plain es)) @@ func.at] in
+        vs', [Frame (n2, frame', ([], instr')) @@ e.at]
+```
+4.3-execution.instrutions.spectec, L180-186:
+```
+rule Step_read/call_ref-func:
+  z; val^n (REF.FUNC_ADDR a) (CALL_REF yy)  ~>  (FRAME_ m `{f} (LABEL_ m `{eps} instr*))
+  ----
+  -- if $funcinst(z)[a] = fi
+  -- Expand: fi.TYPE ~~ FUNC t_1^n -> t_2^m
+  -- if fi.CODE = FUNC x (LOCAL t)* (instr*)
+  -- if f = {LOCALS val^n ($default_(t))*, MODULE fi.MODULE}
+```
+Note that the interpreter performs a substitution of `ls` (which is the local types declared by the function) before mapping it by `default_value`, but the spec directly uses `default_(t)*` instead of a similar substitution such as `default_(inst_valtype(fi.MODULE, t))*`. Actually, the type instantiation definition `inst_valtype` seems to be unused in all later files.
+
+An interesting part is that this mismatch used to be observable before the narrowing of null references (when ref.null carried a heaptype), as there could be type indices that were not closed and need substitution to resolve them to concrete deftypes. However, after #2093 simplified null references to be a `ref.null_addr` only, this mismatch was incidentally fixed, because `inst_valtype` is a noop for generating the default values anyway (numeric/vector values don't care about substitution, null references don't carry a type anymore), so one can argue that this substitution is no longer necessary now. I'm not sure if this was a deliberate fix or not, as `inst_valtype` seems to be already unused before #2093 was merged. The simpler fix is to add the substitution to the spec I guess.
+
+Also, among all the `inst_*type` definitions in 4.2, currently only `inst_reftype` is used (in ref casting/testing rules). I see in the module instantiation spec file that there's a TODO comment for using these `inst_global/mem/tabletype` definitions though, so I understand that they are planned to replace the current `subst_all_*type` usages eventually.
+
+## Comment by rossberg, 2026-04-02
+
+Interesting catch. Yeah, the "fix" here was not intentional, though of course convenient. But it feels okay to drop the substitution in the interpreter at this point. Please see #2132.
+
+(The reason that the inst functions are not currently used in allocmodule is that this would require handling a recursion between their applications and the definition of moduleinst, which would be very difficult to handle for the interpreter, and probably other backends. But I'd like to refactor instantiation anyway.)
+
+## Comment by raoxiaojia, 2026-04-02
+
+Right -- the latter part sounds like the same old circularity issue in instantiation, so I agree it's fine to leave it as is.
+
+## Comment by raoxiaojia, 2026-04-02
+
+Actually, I wasn't aware of #2128 and #2129 when I posted this issue, which seems to have partially rolled back #2093 for wast scripts. This doesn't matter for the concrete spec AST, but I thought it's good to make a note here that substitutions need to be brought back if #2093 is somehow reverted in the future. The current fix #2132 is good for now.
+
+## Comment by rossberg, 2026-04-02
+
+Yes, no intent of rolling back #2093 itself — #2129 is entirely a wast assertion-level syntax hack, it does not affect the actual Wasm semantics.
+
