@@ -1,0 +1,135 @@
+# WebAssembly spec issue #1892: wasm64: support memory larger than 16 GB
+# джерело: https://github.com/WebAssembly/spec/issues/1892
+# отримано: 2026-09-30
+
+Issue #1892, opened by jspanchu on 2025-04-17, open.
+
+I asked this question at https://github.com/emscripten-core/emscripten/discussions/23966 and was told it's a limitation imposed by the spec.
+
+In wasm64, the spec caps the maximum memory to 16 GB in https://github.com/WebAssembly/memory64/blob/9003cd5e24e53b84cd9027ea3dd7ae57159a6db1/document/js-api/index.bs#L1785.
+
+Could we please get wasm64 to support as much memory available from the host machine's RAM? I'd also like to understand reasons behind the 16GB limit when technically 64-bit integers can be used to index memories much larger than 16GB.
+
+@sbc100
+
+## Comment by titzer, 2025-04-17
+
+Note this is a standard limit imposed by the JS API, it's not necessarily the same limit in other embedding contexts. Any limit is subject to future revision, but if your use case is outside of the web, then an engine could provide more memory.
+
+## Comment by jspanchu, 2025-04-17
+
+> Note this is a standard limit imposed by the JS API
+
+Is this documented somewhere?
+
+## Comment by titzer, 2025-04-17
+
+Yes, the link you provided was into the JS-API documentation, which is technically separate from the core Wasm specification.
+
+## Comment by jspanchu, 2025-04-17
+
+Ah, I see. Is this due to a limitation of JS execution engines like browsers/node? Where do I lobby to increase the JS-API limit?
+
+## Comment by sbc100, 2025-04-17
+
+I believe you have found the correct forum.   The JS-API spec is maintained alongside the wasm core spec here: https://github.com/WebAssembly/spec/blob/main/document/js-api/index.bs.
+
+## Comment by duolanda, 2025-04-21
+
+I encountered the same issue as you did, and I discovered that the 16GB memory limit is also documented in the source code of the V8 engine. :  src/wasm/wasm-limits.h - v8/v8 - Git at Google
+Does this imply that increasing the memory limit is difficult unless the V8 engine is updated? Or is it possible for browsers using the V8 engine to allocate more than 16GB of memory now?
+
+## Comment by eqrion, 2025-10-02
+
+This is the right place to ask for the JS-API limit to be increased. SpiderMonkey/Firefox shares the same restriction (taken from the JS-API) that you cannot ever grow a wasm memory above 16GiB.
+
+In practice it's unlikely that you'll be able to even grow to 16GiB. On 32-bit systems we have a much lower limit, and 16GiB of memory is relatively rare in the Firefox user base. Any web experience that requires more than 16GiB is unlikely to run for most users.
+
+I'm open to raising the limit someday, but I'm skeptical it's going be used that often. It also really makes browsers tests of large memories difficult to do, as we've noticed that our test runners get OOM killed frequently once they start using that much memory.
+
+## Comment by kripken, 2025-10-02
+
+@eqrion
+
+> Any web experience that requires more than 16GiB is unlikely to run for most users. I'm open to raising the limit someday, but I'm skeptical it's going be used that often.
+
+I definitely agree this would be used by few people, and rarely.
+
+But as I see it, the request here is for that small use case. That is, this isn't for something like a game that we want everyone to run. It is for something like a graphical editor, and the rare users of it that have huge data files that actually need more than 16 GB of RAM.
+
+## Comment by eqrion, 2025-10-06
+
+> But as I see it, the request here is for that small use case. That is, this isn't for something like a game that we want everyone to run. It is for something like a graphical editor, and the rare users of it that have huge data files that actually need more than 16 GB of RAM.
+
+That's fair enough. I guess what I was trying to say is that it's not as simple as just raising the limit, because it complicates our test infrastructure. We had a hard time getting 16GiB tests working reliably. So that needs to be balanced with the number of users.
+
+But I'm open to doing it someday.
+
+## Comment by bvisness, 2025-10-07
+
+In my opinion it would be foolish to continue to increase the memory size limit without also adding new APIs that give you better control over memory. We still don't even have a way to release memory back to the operating system when you're done with it, for example.
+
+Also, my impression is that those who want large address spaces actually want to do more sophisticated things with that address space, e.g. memory mapping or reserve/commit for their allocators. I would be hesitant to increase the limit, only to find out that it still lacks critical features for memory-hungry applications.
+
+## Comment by tzarebczan, 2025-11-22
+
+This feels like the age old question when it comes to wasm in browser. Can you use a different engine?
+
+Is anyone actually running something with >16GB ram? If so, how?
+
+You mention it's "...because it complicates our test infrastructure. We had a hard time getting 16GiB tests working reliably." - Can you elaborate?
+
+also +1 to the last comment about additional APIs, e.g. release mem. Where do we start for that?
+
+edit: just read https://github.com/sqlite/sqlite-wasm/issues/119 too - will take a closer look.
+
+## Comment by bvisness, 2025-11-22
+
+The main thing to understand is that when you instantiate a 16GB WASM memory, you are asking the operating system to not just reserve, but _commit_ 16GB of read/write contiguous memory. It is like a 16GB call to `malloc`. On many, many devices, such a call will simply fail.
+
+I know that people think they want to just have WASM use all the memory on their machine, somehow. But until such a time as WASM gets a more advanced memory model, it probably doesn't make sense to raise the limit in browsers.
+
+If you are interested in what those more advanced memory APIs might be, I encourage you to check out the memory control proposal and the discussions there.
+
+## Comment by tzarebczan, 2025-11-22
+
+Yeah, totally understood. Didn't know so much work went into the memory management discussion, thank you.
+
+There's just some use cases developers have where they know they need it and have the memory available. Definitely not a default, but a dangerously flagged override.
+
+## Comment by jspanchu, 2025-12-15
+
+@bvisness Thank your for your replies. I understand that wasm needs better control of it's memory before we can raise that limit safely.
+
+In the meantime, there are definitely a number of data reduction methods (like level of detail reduction, slicing 3D voxels, etc) our team can adopt before visualizing large data in the browser through WASM.
+
+## Comment by bilgehanyilmaz, 2026-03-22
+
+Real-world use case: Browser-based engineering simulation
+I'm developing a browser-native engineering analysis tool using Rust/WASM + WebGPU. The 16 GB memory limit is the primary bottleneck we face.
+Why this matters
+Engineering simulation (FEA, structural analysis, CFD) involves solving large sparse linear systems. Typical memory requirements:
+
+Problem scale | Memory needed (solver + results)
+-- | --
+Small (educational/residential) | 1–3 GB
+Medium (commercial buildings) | 5–10 GB
+Large (high-rise, infrastructure) | 15–30 GB
+Complex (stadiums, bridges, industrial) | 30–60+ GB
+
+The first two tiers work within the current limit. The last two — which represent the most valuable professional use cases — do not.
+Current workarounds and their cost
+We use out-of-core streaming via OPFS to stay within the limit. This works but adds substantial architectural complexity. Every workaround for the memory ceiling is engineering effort not spent on the actual product.
+Competitive context
+Desktop engineering tools (ETABS, SAP2000, ANSYS, etc.) are limited only by the user's physical RAM — typically 32–128 GB on engineering workstations. The 16 GB cap is the single largest gap between browser-based and native engineering software.
+Proposal
+
+Raise the limit to at least 32 GB — this would cover ~95% of professional engineering workloads. 64 GB would effectively close the gap with desktop tools entirely.
+If a blanket increase isn't feasible, an opt-in mechanism (higher memory at the cost of slower access due to bounds checking) would be a practical alternative.
+A progressive approach (32 GB now, evaluate further later) would also be welcome.
+
+Timing
+With WebGPU reaching all major browsers (Jan 2026) and WASM 3.0 shipping memory64, threads, and SIMD as production features, the browser is now a viable platform for serious scientific and engineering computation. The 16 GB memory cap is the one remaining hard barrier preventing full desktop parity for these use cases.
+Raising this limit would unlock an entire category of professional applications that are currently unable to go fully browser-native.
+Happy to provide memory profiles or benchmarks if that would help the discussion.
+

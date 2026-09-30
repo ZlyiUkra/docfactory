@@ -1,0 +1,60 @@
+# WebAssembly spec issue #2034: [js-api] Ambiguity in `WebAssembly.instantiate(bytes)` if `WebAssembly.Module` is a thenable
+# джерело: https://github.com/WebAssembly/spec/issues/2034
+# отримано: 2026-09-30
+
+Issue #2034, opened by backes on 2025-11-26, open.
+
+I believe the current JS-API spec underspecifies the behavior of `WebAssembly.instantiate(bytes)` when `WebAssembly.Module` has been modified to include a `then` method (making the module a "thenable").
+
+Reproducer:
+```
+const bytes = new Uint8Array([0,97,115,109,1,0,0,0]);  // Minimal Wasm bytes.
+WebAssembly.Module.prototype.then = resolve => resolve(17);
+WebAssembly.instantiate(bytes).then(v => print(`Resolved to ${v} / ${v.instance}`), e => print(`Rejected: ${e}`));
+```
+
+(to be run in a `d8`, `jsc`, or `sm` shell; on the Web replace `print` by `console.log`).
+
+**The issue:**
+According to the JS-API spec, `instantiate(bytes)` performs the following steps:
+1. Asynchronously compile the bytes into a WebAssembly module, let `promiseOfModule` be the result.
+2. Instantiate that `promiseOfModule`.
+
+The second step creates a new promise which reacts to the first promise.
+
+At the end of the first step (when compilation finishes), the internal promise is `resolve`d with the `module` object. According to the ECMAScript spec for promise resolution, if the resolution value (the Module) has a `then` method, that method is invoked to determine the final resolution.
+
+In the reproducer above, the user-provided `then` resolves the promise to `17`. Consequently, the next step, `instantiate-a-promise-of-a-module` receives `17` instead of a `WebAssembly.Module`.
+
+Currently, the spec does not define what should happen if the promise resolves to a value that is not a `WebAssembly.Module`.
+
+**Current Implementation Behavior:**
+- **SpiderMonkey & JavaScriptCore**: Seem to ignore the `then` property on the prototype, resolving with the Module object regardless.
+- **V8:** Historically ignored it. However, after refactoring `WebAssembly.instantiate` to use chained promises for stricter spec compliance, we encountered this edge case. We currently reject with a TypeError, but we are unsure if this is the intended behavior.
+
+**Proposal:** The spec should explicitly handle this case. I propose we add a check to `instantiate` that rejects the promise with a `TypeError` if the `promiseOfModule` resolves to anything that is not a `WebAssembly.Module`.
+
+Alternatively, if the intention is that `WebAssembly.Module` instances should never be treated as thenables during this process, the spec needs to clarify how the internal promise resolution bypasses the standard `then` check.
+
+## Comment by eqrion, 2026-03-25
+
+Thanks for filing this, I agree this is underspecified.
+
+There's another odd case here too. Async instantiate a module: 6.1.4 resolves a promise with an Instance object. If that instance prototype also has a 'then' we need to run that to determine the final value. Which then gets returned here as the 'instance' field of the final record. I don't think there is ambiguity here because the value is just returned, but it's the same problem.
+
+I have a preference to avoid the standard `then` check in these cases. I think there is some emerging precedent to avoid `thenables` in internal spec operations where they serve no purpose and complicate the implementation (https://github.com/tc39/proposal-defer-import-eval/pull/77) (thenable curtailment), although I don't know all the nuances here. I'm refreshing myself on the promises spec now.
+
+## Comment by LeszekSwirski, 2026-03-25
+
+> I think there is some emerging precedent to avoid thenables in internal spec operations where they serve no purpose and complicate the implementation
+
+As far as I'm aware, the Thenable curtailment proposal doesn't remove Thenables entirely, but rather makes the lookup of `then` slightly more secure (prevent it from triggering side effects if in the middle of other spec operations). IIUC it would still eventually call the user `then`.
+
+## Comment by eqrion, 2026-03-25
+
+@LeszekSwirski Yes you're correct. That wouldn't help here.
+
+One thing we could do would be to refactor the spec so that we don't create the intermediate promises.
+
+We could do this by inlining 'instantiate a promise of a module' (only used for this op anyways) into 'asynchronously compile a WebAssembly module' to get a new 'asyncronously compile and instantiate a WebAssembly module'. Which is how it seems all implementations actually implemented this previously.
+

@@ -1,0 +1,74 @@
+# WebAssembly spec issue #2020: Inconsistencies across multiple pages of instruction lists
+# джерело: https://github.com/WebAssembly/spec/issues/2020
+# отримано: 2026-09-30
+
+Issue #2020, opened by tadd on 2025-10-25, open.
+
+Hello, I'm beginning to study Wasm as a hobby. I think I've found some editorial bugs.
+
+As a first step in learning, I wanted to know what kind of instructions Wasm has, so I searched and found wasm-ops. That chart was a great help, but I noticed it was a bit outdated, so I next tried to create a new chart.
+
+Since I was at it, I thought I'd automate the table creation and started writing a script. But now, as a beginner, I'm a bit confused.
+
+When I generated a table from the instruction list, I realized multiple name inconsistencies within the specification pages themselves.
+
+I found such inconsistencies on (at least) three pages. I believe that each pages provide a comprehensive list of Wasm instructions.
+
+1. Index of Instructions[^1]
+2. Instructions in Binary Format section[^2]
+3. Instructions in Structure section[^3]
+
+The following are examples of contradiction. I'm not sure which one is correct, but could you fix the inconsistencies?
+
+* [^1] contains `end` (0x0B), but [^3] does not, and [^2] does not refer to it in `instr :: =` definition
+* [^1] and [^3] contain `call_ref` (0x14), but [^2] does not
+* [^1] contains instructions that end with `{name}_{numtype}_{sx}` (like `i32.trunc_f32_u`), but others contain `{name}_{sx}_{numtype}` (`i32.trunc_u_f32`) with the same `{name}`
+* [^2] says `0xBB` is `f32.promote_f64` but others say it's `f64.promote_f32`
+* _[Update]_ [^2] and Text Format[^6] categorizes `struct.*`/`array.*` as "Reference Instructions," as the same as `ref.*`, but [^3] categorizes them as a separate "Aggregate Instructions"
+  * In addition, Validation[^4] categorizes them as "Aggregate Reference Instructions" (another different name)
+
+However, I don't believe the above is complete. For example, there seem to be at least three other pages titled "Instructions,"^4[^6] but I haven't investigated those yet.
+
+I would appreciate it if they could be corrected.
+
+[^1]: https://webassembly.github.io/spec/core/appendix/index-instructions.html
+[^2]: https://webassembly.github.io/spec/core/binary/instructions.html
+[^3]: https://webassembly.github.io/spec/core/syntax/instructions.html
+[^4]: https://webassembly.github.io/spec/core/valid/instructions.html
+[^5]: https://webassembly.github.io/spec/core/exec/instructions.html
+[^6]: https://webassembly.github.io/spec/core/text/instructions.html
+
+## Comment by rossberg, 2025-10-27
+
+Thanks for pointing out these bugs. Quick reply to some of your points:
+
+> * 1 contains `end` (0x0B), but 3 does not, and 2 does not refer to it in `instr :: =` definition
+
+That's actually correct, because `end` is not an instruction in its own right, just an opcode that is part of another instruction (similarly `else`).
+
+> * 1 and 3 contain `call_ref` (0x14), but 2 does not
+
+`call_ref` (and `return_call_ref`) missing from the binary format section are oversights. Will fix.
+
+> * 1 contains instructions that end with `{name}_{numtype}_{sx}` (like `i32.trunc_f32_u`), but others contain `{name}_{sx}_{numtype}` (`i32.trunc_u_f32`) with the same `{name}`
+
+Yes, the naming inconsistency is a bug.
+
+> * 2 says `0xBB` is `f32.promote_f64` but others say it's `f64.promote_f32`
+
+That also looks like a typo. It should certainly be f64.promote_f32.
+
+> * _[Update]_ 2 and Text Format4 categorizes `struct.*`/`array.*` as "Reference Instructions," as the same as `ref.*`, but 3 categorizes them as a separate "Aggregate Instructions"
+
+Yeah, not really a bug, just some (longer) chapters make a more fine-grained categorisation. I'll look into making this more uniform.
+
+## Comment by rossberg, 2025-11-02
+
+Most of the above should be fixed now, except for the naming inconsistencies in conversion instructions. These will be fixed automatically once we have ported the instruction index to SpecTec.
+
+## Comment by tadd, 2025-11-19
+
+Thank you, I've confirmed all fixes but the naming inconsistencies.
+
+As for SpecTec, I learned about it for the first time. (Shame on me, I hadn't read the PLDI paper) It sounds promising, so I'll wait for the fix with that.
+

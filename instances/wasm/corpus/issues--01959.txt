@@ -1,0 +1,43 @@
+# WebAssembly spec issue #1959: [js-api] Informal description about "the index of the host function"
+# джерело: https://github.com/WebAssembly/spec/issues/1959
+# отримано: 2026-09-30
+
+Issue #1959, opened by ShinWonho on 2025-08-18, open.
+
+The definition and use of "the index of the host function" seems to be somewhat informal, and I'm curious whether it is intentional.
+
+Being algorithmic in nature, js-api specification should explicitly describe **how** something is computed, rather than merely **what** it is. However, Fig.1 defines "the index of the host function" by specifying **what** it is. As a consequence, **how** to obtain "the index of the host function" (line 3.2) of Fig.2 is ambiguous. I'd like to ask for a step-by-step description of how “the name of the host function” is defined and used.
+
+Fig.1: JS API step to define "the index of the host function"
+
+Fig.2: JS API algorithm for the name of the WebAssembly function
+
+## Comment by rossberg, 2025-09-02
+
+I agree this is bogus. Fig. 1 doesn't even make sense: Why is the index of an individual function set to the number of imported functions? Wouldn't that imply that all host functions are assigned the same index, which in turn is the index of the first internal function?
+
+In Fig. 2, why is the special case for host functions needed in the first place? Can't they be treated exactly like regular functions, by looking up funcaddr in the module instance? Then the whole "index of a host function" concept could just be removed.
+
+## Comment by Ms2ger, 2025-09-02
+
+The rest of the step is omitted in fig. 1:
+> 3. Otherwise,
+>    1.  Create a host function from v and functype, and let funcaddr be the result.
+>    2. Let index be the number of external functions in imports. This value index is known as the index of the host function funcaddr.
+> 4. Let externfunc be the external value func funcaddr.
+> 5. Append externfunc to imports.
+
+So in each step of the loop that encounters a func, you take the number of funcs you've seen before, and that's the index of the next one.
+
+Now, if the output of module_imports is stable, it's trivial to spec the algorithm - just run through the list, counting up until you find the funcaddr. That's O(n) in the number of imports, but that's fine for the spec. Anything else sounds like more of a hassle.
+
+I'm not sure if I'll have time to write it up myself, but can probably find a moment to review a PR.
+
+## Comment by rossberg, 2025-09-02
+
+Ah, thanks @Ms2ger, that makes sense. I still wonder why we need this at all, though, see my second question.
+
+## Comment by Ms2ger, 2025-09-02
+
+I don't recall off the top of my head
+

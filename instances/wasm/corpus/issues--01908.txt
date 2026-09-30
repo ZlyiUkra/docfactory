@@ -1,0 +1,47 @@
+# WebAssembly spec issue #1908: Questions Related to WasmGC Specification and Wasm-JS API Documentation
+# джерело: https://github.com/WebAssembly/spec/issues/1908
+# отримано: 2026-09-30
+
+Issue #1908, opened by mobsceneZ on 2025-05-15, closed (completed) on 2025-05-16.
+
+Recently, I would like to incorporate the *WasmGC type matching* into my own project and I have implemented the type canonicalization by referencing the *wasmparser* code. However, when I tried to implement type matching on this basis, I encountered a problem: *How to achieve cross-module type matching?*
+
+To solve this problem, I started browsing through the official documentation which led me to the **Instantiation** section. To determine if an external value **$`externval_i`$** from a module $`M_1`$ is suitable for an import type **$`externtype_i'`$** from current module $`M_0`$, the instantiation process resorts to **match-externtype**:
+
+And here comes the question: ***Which context C is referring to?*** I mean $`M_0`$ and $`M_1`$ have their respective contexts $`C_0`$ and $`C_1`$, should we merge these two contexts only to determine if two types match?
+
+Another question is regarding to **match-valtype**, it mentions in the pre-condition that *"the value types valtype1 and valtype2 are valid* ***under the empty context**"*, which makes me wondering:
+
+- ***How to validate defined type under the empty context?***
+- According to the Wasm-JS API documentation, **read-the-imports** may pass the `externtype` returned from **module_imports** to **ToWebAssemblyValue**, which in turn passes the type to **match-valtype**. However, **module_imports** still returns types containing free type indices, as per the documentation *"The external types classifying a module may contain free type indices that refer to types defined within the module"*, so there is a chance that the value type passed to **match-valtype** contains free type indices and fails the validation under empty context. ***Is this behavior intended?***
+
+I am still a rookie to the WasmGC standard, so please forgive me if any of my questions seem obvious or have already been addressed :grimacing:.
+
+## Comment by rossberg, 2025-05-15
+
+All good questions!
+
+In cross-module situations, all involved types are assumed to be instantiated and hence closed, because all local type indices are expanded / substituted. Such types are valid (or can be) under an empty context.
+
+Consequently, note that the definition of module instantiation closes the imports' types and checks subtyping under the empty context (it still uses the state S', but that actually is redundant and could be dropped here). In the same spirit, the embedding interface requires closed types.
+
+But you are absolutely correct that there was an inconsistency wrt the types returned by module validation not being closed. Fortunately, that bug has been fixed in more recent drafts.
+
+## Comment by mobsceneZ, 2025-05-15
+
+> All good questions!
+>
+> In cross-module situations, all involved types are assumed to be instantiated and hence closed, because all local type indices are expanded / substituted. Such types are valid (or can be) under an empty context.
+>
+> Consequently, note that the definition of module instantiation closes the imports' types and checks subtyping under the empty context (it still uses the state S', but that actually is redundant and could be dropped here). In the same spirit, the embedding interface requires closed types.
+>
+> But you are absolutely correct that there was an inconsistency wrt the types returned by module validation not being closed. Fortunately, that bug has been fixed in more recent drafts.
+
+Many thanks for the quick and clear reply! Please let me restate your point to see if I understand it correctly: every closed type is in some kind of "self-contained" form such that it does not require any additional type context to validate and allows cross-module type matching, is that right?
+
+## Comment by rossberg, 2025-05-15
+
+> every closed type is in some kind of "self-contained" form that it does not require any additional type context
+
+Yes. Containing no free variables/indices is in fact is the very definition of "closed".
+

@@ -1,0 +1,46 @@
+# WebAssembly spec issue #1907: Should JS-API compile methods accept shared buffers?
+# джерело: https://github.com/WebAssembly/spec/issues/1907
+# отримано: 2026-09-30
+
+Issue #1907, opened by eqrion on 2025-05-14, closed (completed) on 2026-04-02.
+
+The JS-API for compiling modules takes a `BufferSource` for accepting bytecode [1]. This does not allow shared array buffers or shared array buffer views [2]. Firefox until Fx138 actually supported shared array buffers/views, but I removed this to be compliant with the spec here [3]. This also made some optimizations easier as you can assume there are no racing writes to the buffer.
+
+We have since gotten bug reports that while Chrome doesn't support shared array buffers (which is why I thought it was a safe change to make in Firefox), it does support views of shared array buffers. Safari supports boths shared array buffers and view of shared array buffers.
+
+[1] https://webassembly.github.io/spec/js-api/index.html#modules
+[2] https://webidl.spec.whatwg.org/#BufferSource
+[3] https://bugzilla.mozilla.org/show_bug.cgi?id=1931407
+
+## Comment by eqrion, 2025-10-02
+
+cc @kmiller68 @jakobkummerow @tlively as other browser vendors.
+
+We also should define if we accept immutable array buffers, as those are now (or soon to be) a thing too.
+
+## Comment by jakobkummerow, 2025-10-02
+
+Interesting. I wonder why all three browsers originally decided to implement something that the spec didn't even require. Because it seemed obvious to support it? Or perhaps some earlier draft of some proposal mentioned it?
+
+I don't see a reason to incur the risk of regressions here (i.e. breaking websites that worked before). Seems more prudent to update the spec to reflect implementation reality.
+
+From a simplicity perspective, this doesn't change anything for us either way, because with our sandbox threat model we can no longer assume that even non-shared ArrayBuffers remain unmodified, so we always copy the bytes and will continue to do so.
+
+## Comment by eqrion, 2025-10-02
+
+> Interesting. I wonder why all three browsers originally decided to implement something that the spec didn't even require. Because it seemed obvious to support it? Or perhaps some earlier draft of some proposal mentioned it?
+
+I'm not sure. From the revision history I see, it looks like it just required an extra check that we never added. It didn't look like a conscious decision. One difficulty is that the JS-API is defined in WebIDL, but the WebIDL system is in Firefox proper and not SpiderMonkey. So we have to hand write the behaviors and that sometimes leads to gaps.
+
+I'm fine with changing this to `AllowSharedBufferSource` if others are.
+
+I re-reviewed the WebIDL spec and other thing to decide is if we want to add [AllowResizable]. I'm guessing we probably should?
+
+Also it's not yet decided what WebIDL attribute is require (if any) for immutable array buffers. See https://github.com/whatwg/webidl/issues/1487. I think we definitely should support immutable array buffers.
+
+## Comment by eqrion, 2026-02-13
+
+Because Safari already supports SAB and Jakob is okay with it too, then I think we should update the spec. I opened a PR to do that.
+
+I also included [AllowResizable] while I was at it. If there's not consensus for that we can drop it.
+

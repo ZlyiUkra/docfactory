@@ -1,0 +1,79 @@
+# WebAssembly spec issue #1863: [js-api] Ambiguous and inconsistent handling of implementation limits
+# джерело: https://github.com/WebAssembly/spec/issues/1863
+# отримано: 2026-09-30
+
+Issue #1863, opened by bvisness on 2025-01-13, open.
+
+The JS API's implementation limits were introduced in https://github.com/WebAssembly/spec/pull/873 and modified in https://github.com/WebAssembly/spec/pull/1195 to include runtime limits. However, the JS API spec's current handling of implementation limits still has many issues:
+
+- Lack of clarity on which limits should be checked during `WebAssembly.validate`, `new WebAssembly.Module` (and other "compilation" paths), and `new WebAssembly.Instance` (and other "instantiation" paths).
+- Lack of clarity on which limits are enforced when doing `new WebAssembly.Memory`, `new WebAssembly.Table`, or otherwise constructing a wasm object directly.
+- Lack of clarity on which errors are thrown for grow operations (the method specs say `RangeError`, but the Limits section says `RuntimeError`).
+- Redundant and imprecise conditions throughout the limits section:
+  - The `CompileError` section has both "The maximum size of a table is 10,000,000" and "The maximum number of table entries in any table initialization is 10,000,000". What is the difference, and how can any "table initialization" exist at compile time?
+  - The "maximum size of a table" condition is present in both the `CompileError` and `RuntimeError` sections, leading to confusion about which error should be thrown.
+  - What does "size" mean anyway? Are we referring to the table type's initial (min) size? To the table type's max size? To the actual runtime size of the table?
+- Limits that are impossible to exceed (e.g. "The maximum number of pages of a memory is 65,536").
+
+This has led to confusion in these other issues:
+- https://github.com/WebAssembly/memory64/pull/103
+- https://github.com/WebAssembly/spec/issues/1864
+
+And this is actually implemented quite differently across engines:
+- V8 treats modules with oversize tables as invalid and will not compile them, but SpiderMonkey will compile the module and fail on instantiation.
+- V8 throws RangeError when constructing an oversize table directly, but SpiderMonkey throws RuntimeError.
+
+I'm sure there are other inconsistencies too.
+
+Overall I would suggest the following changes:
+
+- Remove the prescribed `CompileError` and `RuntimeError` from the Implementation Limits section, and instead describe each list as "syntactic limits" and "execution limits" in keeping with the core spec. Move the specific types of errors into the descriptions of the methods that can trigger them.
+  - Update the "compile a WebAssembly module" section to explicitly refer to the syntactic limits and return `error` if they are violated. This avoids the ambiguity of whether a valid wasm module is actually "valid" under the JS API (as `WebAssembly.validate` triggers this compilation anyway).
+  - Change `Memory.grow` and `Table.grow` to explicitly refer to the execution limits and throw RangeError like they do for any other kind of failed grow. (To my knowledge, a grow is the only way to trigger these runtime conditions.)
+- Remove the line about "table initialization".
+- Remove limits asserting that the size of a 32-bit memory must be less than 4GiB.
+- Update any notes about memory or table size in the syntactic limits section to explicitly refer to _initial_ size.
+- Update any notes about memory or table size in the execution limits section to explicitly refer to the size of a memory or table instance's data.
+
+I can put this work together at some point if people agree that this is the way to go.
+
+cc @backes, @evicy
+
+## Comment by Ms2ger, 2025-01-14
+
+I imagine something like this would make sense. I probably won't have time in the near future to investigate the details of what should be checked where. We should also make sure to extend the test suite.
+
+## Comment by backes, 2025-01-14
+
+Thanks, Ben, for compiling this surprisingly large list of problems. I agree to everything, so feel free to go ahead and propose the actual change.
+
+About the "table initialization" line: Is this supposed to limit the size of element segments? It would still make sense to limit their size, because `table.init` only reads a subsection of them. So I would propose to replace this by "The maximum size of any element segment is 10,000,000.".
+
+## Comment by rossberg, 2025-09-29
+
+As noted on #1989 (comment), the situation is worse: some of the items in the current JS API spec actively violate the core spec! This leads to JS engines failing the core test suite.
+
+The definition of possible limits in the core spec is based on a simple and natural criterion for differentiating between limits treated as validation (i.e., Compile) vs execution (i.e., Runtime) errors:
+
+* Syntactic limits are those related to the _size_ of the source program_, i.e., limit the resources needed to compile a module. These are flagged at compile time.
+
+* Execution limits are those related to the _memory usage_ at runtime, i.e., they limit the resources needed to execute a module. These are flagged at run time.
+
+It is inconsistent with this to treat limit violations of certain constants (such as initial memory/table size) as validation errors, like the JS API currently does, since they do not affect the program size, only runtime memory usage.
+
+Consequently, all notes about memory or table sizes in the syntactic limits section of the JS API spec ought to be removed altogether. (That seems to match SpiderMonkey's behaviour.) Other than that, I agree with @bvisness's suggested changes.
+
+## Comment by eqrion, 2025-10-02
+
+@rossberg
+
+> It is inconsistent with this to treat limit violations of certain constants (such as initial memory/table size) as validation errors, like the JS API currently does, since they do not affect the program size, only runtime memory usage.
+
+The consensus to resolve the `.maxByteLength` issue for ResizableArrayBuffer required being able to set a syntactic limit on the max field of a wasm memory so that the JS-API can assume a memories max length in bytes always fits in a double.
+
+We maybe could rework that to a runtime limit that must happen at instantiation. But we'd still need to handle type reflection on the uninstantiated module. I think we use bigints in that case, and so it could work.
+
+## Comment by rossberg, 2025-10-03
+
+@eqrion, good point, but I agree: it doesn't look like that solution is dependent on the limit being a validation time error, instantiation time would work as well.
+

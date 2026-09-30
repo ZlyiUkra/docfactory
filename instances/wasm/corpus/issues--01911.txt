@@ -1,0 +1,255 @@
+# WebAssembly spec issue #1911: [wasm-3.0 branch] WebAssembly Garbage Collection type validation
+# джерело: https://github.com/WebAssembly/spec/issues/1911
+# отримано: 2026-09-30
+
+Issue #1911, opened by zherczeg on 2025-05-20, closed (completed) on 2025-05-30.
+
+This is a summary for the discussion below. The aim is making easier to understand what is happening.
+
+WebAssembly 3.0 has two type relations: sub-typing (base-derived classes in OOP languages)  and type equivalence.
+
+Sub typing: The syntax is `(sub [final] [type-id] (...))`. When a sub type is non `final`, it can be the super type of other types. It means it is more generic (less limitations) than its sub types. I.e. `(struct (field i32))` can be the super type of `(struct (field i32 i32))`, `(struct (field i32 f64))` or `(struct (field i32))`. Super types must precede their sub types in the type list. When two types are equivalent, they are implicitly sub-types of each other.
+
+Type equivalence: this is the really complex part. WebAssembly 3.0 introduces `(rec ...)` recursive blocks, and they can have references to other types in the recursive block. For type checking, these references are replaced by `(rec.i)` forms (called rolling), which means they are relative references. If a rec block has 5 types, and there is a `(ref id)` absolute reference to the third item, it is replaced by `(ref rec.2)` The point is, relative and absolute references are never equal, even if they represent the same type index. Now type equivalence can be defined.
+
+Two types are equivalent if:
+- Their relative reference in their corresponding recursive block  is the same, and the two recursive blocks are equal.
+- Two recursive blocks are equal, if the number of types in the recursive blocks are equal, and all types in the same order are equal.
+- The relative references must be equal. That is easy. The absolute references must refer to equal types (so their corresponding recursive blocks are equal).
+
+As you can see type checking is a complex recursive problem, but performance can be improved by "canonicalising" types, i.e., hash-consing their representation internally, after replacing (rolling) all inner references with (rec.i) and replacing (substituting) all outer references with the (canonicalised) type they refer to. On canonicalised types, equivalence is just a pointer comparison.
+
+Notes:
+
+WebAssembly 3.0 defines subtyping, written `≤`, on all forms of types.
+
+Type equivalence and sub-typing interact. If an A super type of C type is equal to B type, then B type is also a super type of C.
+
+----------------------------------------------
+Old Text
+----------------------------------------------
+
+I would like to ask some questions about type system of WebAssembly 3.0. It is hard for me to understand the specification (or the interpreter). I am sorry, it is a bit long.
+
+Q: In the function reference proposal `(type $t (func (result (ref $t))))` was an invalid type:
+https://github.com/WebAssembly/function-references/blob/main/test/core/type-equivalence.wast#L32
+
+This test is disappeared:
+https://github.com/WebAssembly/spec/blob/wasm-3.0/test/core/type-equivalence.wast#L74
+
+Since gc is based on the function references proposal, is this a backward incompatible change?
+
+Q: Forward references:
+https://github.com/WebAssembly/spec/blob/wasm-3.0/test/core/gc/struct.wast#L31
+
+I suspect this test wants to declare a forward reference called `$forward`, but this is not a forward reference. The function has an implicit type, and that is appended at the end of the type list, and the forward reference becomes backward. If I declare a type with a forward reference to another type, should it work?
+
+Q: Recursive declarations.
+https://github.com/WebAssembly/spec/blob/wasm-3.0/test/core/gc/type-subtyping.wast#L124
+
+If I understand correctly, there is a "unrolling" operation, which is applied to recursive blocks. The absolute index of types is replaced by an index pair. As for the example above:
+
+```
+  (rec
+    (type $g1 (sub $f1 (func)))
+    (type (sub $s1 (struct (field (ref $f1) (ref $f1) (ref $f2) (ref $f2) (ref $g1)))))
+  )
+```
+
+`$g1` is `2.0` since this is the third recursive block (2 = 3 -1) , and the first type (0 = 1 - 1) declaration. What happens with $f2? Is it unrolled to `1.0` or kept as `1` (absolute index)?
+
+When `(global (ref $g1) (ref.func $g))` is validated, the whole recursive group is compared or only $g1 and $g2 types? It seems to me the whole recursive group must match, otherwise these are rejected by the validator. The matching only checks the second number (local index) for references inside the currently checked recursive groups.
+
+What about references to other groups?
+```
+(module
+  (rec (type $t1 (struct)) (type (func)))
+  (rec (type $t2 (struct)) (type (func)))
+  (rec (type $t3 (func (param (ref $t1)))) (type (struct)))
+  (rec (type $t4 (func (param (ref $t2)))) (type (struct)))
+  (func $f (type $t3))
+  (global (ref $t4) (ref.func $f))
+)
+```
+Should this test case work as well?
+
+```
+(module
+  (rec (type $t1 (func (param (ref $t3)))) (type (struct)))
+  (rec (type $t2 (func (param (ref $t4)))) (type (struct)))
+  (rec (type $t3 (struct)) (type (func)))
+  (rec (type $t4 (struct)) (type (func)))
+  (func $f (type $t1))
+  (global (ref $t2) (ref.func $f))
+)
+```
+Should it work with forward references as well?
+
+Q: nested recursions (rec blocks) are not supported, am I right? I.e. `(rec (rec))` is malformed.
+
+Bonus Q:
+https://github.com/WebAssembly/spec/blob/wasm-3.0/test/core/bulk.wast#L222
+What is `2` doing in `uninitialized element 2` No other expected error string has any number arguments.
+
+## Comment by rossberg, 2025-05-20
+
+> Since gc is based on the function references proposal, is this a backward incompatible change?
+
+The func-ref proposal introduced refined reference types, while the GC proposal added type recursion. It also reinterprets a singular type definition as a singular recursive definition, which is why the test must no longer fail.
+
+This progression is backwards-compatible, since it only makes previously invalid programs valid. *Negative* tests can always become obsolete in future versions of the language, otherwise we could never extend it. See here for more details on Wasm's backwards-compatibility constraints.
+
+> Q: Forward references
+
+This specific test is purely concerned with the binding structure of symbolic indices in the text format. That is required to be sequential, modulo recursive type definitions and function bodies. Allowing arbitrary back and forth on the symbolic names would lead to much more complicated desugaring.
+
+> If I understand correctly, there is a "unrolling" operation, which is applied to recursive blocks.
+
+It is a bit more complicated. For the purpose of validation, recursive types are "rolled up" after their definition has been validated. That replaces inner recursive indices with special internal indices of the form (rec.𝑖), where 𝑖 is the position in its recursion group. For example,
+```
+(rec
+  (type $t1 (struct (field $t2 $other)))
+  (type $t2 (struct (field $other $t1)))
+)
+```
+the recursive occurrences of $t1 and $t2 are replaced with (rec.0) and (rec.1), respectively. Others are not touched by this specific operation, but see below. This is so that equivalent recursive types become equal syntactically, by using relative internal indices. Externally, the types $t1 and $t2 are then represented as projections from the recursive block, i.e., $t1 = (rec ...).0 and $t2 = (rec ...).1, where (rec ...) is the whole recursive group above, after substituting internal indices.
+
+When validation later needs to look at an individual type of a recursive group, it "unrolls" the (rec ...).𝑗 to extract the 𝑗-th type. That not just takes out the 𝑗-th type from the group, it also replaces all internal (rec.𝑖) with their respective external (rec ...).𝑖, so that they can be treated as any other external type.
+
+So there are no index pairs, though (rec ...).𝑗 can be viewed as a pair of a rec-block and an inner index into that.
+
+> When (global (ref $g1) (ref.func $g)) is validated, the whole recursive group is compared or only $g1 and $g2 types?
+
+Yes, the whole groups must match. (rec ...).𝑖 and (rec ...).𝑗 are only considered equivalent if 𝑖 = 𝑗 and the entire ... are equivalent. That is the sole reason thy we are using this representation.
+
+> What about references to other groups?
+
+Essentially, two types are equivalent iff they are syntactically equal after rolling them *and then* transitively replacing *all* other (external) type indices with their respective (rec ...).𝑗 representation. So your first example is fine (you can always check with the reference interpreter). Roughly, the recursion groups become
+
+```
+$t1 = r1.0  where r1 = (rec (type (struct)) (type (func)))
+$t2 = r2.0  where r2 = (rec (type (struct)) (type (func)))
+$t3 = r3.0  where r3 = (rec (type (func (param (ref r1.0)))) (type (struct)))
+$t4 = r4.0  where r4 = (rec (type (func (param (ref r2.0)))) (type (struct)))
+```
+and because r1 = r2, it follows that r3 = r4 and hence $t3 = $t4.
+
+In an actual implementation, this will often be handled by canonicalising the types, i.e., hash-consing their rolled-up definitions. That is easy, because rolling turns all types into simple expression trees that can be built bottom-up (which would not be possible with more liberal definitions of type recursion). Then type equivalence becomes pointer equality.
+
+> Should it work with forward references as well?
+
+No, type definitions cannot mention later types, except those in the current rec-group. If they could, that would allow uncontrolled type recursion through the backdoor.
+
+> Q: nested recursions (rec blocks) are not supported, am I right?
+
+Yes, rec can only contain type definitions.
+
+> What is 2 doing in uninitialized element 2
+
+Call_indirect is accessing table slot 2, which is not out of bounds, but null. Where possible, the error messages give such info, but often are not included in the assertions (which only checks for a mesage prefix).
+
+## Comment by zherczeg, 2025-05-20
+
+Thank you for the explanation! You helped me a lot!
+
+I thought I need to handle any kind of type dependencies, not just referring to earlier ones. The description of subtypes explicitly says this and I am happy this is true in general.
+
+In other words:
+https://github.com/WebAssembly/function-references/blob/main/test/core/type-equivalence.wast#L39
+
+the reason why this test is invalid is that $t2 is a future reference, not because this is a circular reference. And this is also true:
+```
+(assert_invalid
+  (module
+    (type $t1 (func (param (ref $t2))))
+    (type $t2 (func))
+  )
+  "unknown type"
+)
+```
+
+Btw is this also the rule for function references proposal? If yes, I need to simplify my code.
+
+## Comment by zherczeg, 2025-05-20
+
+> Call_indirect is accessing table slot 2, which is not out of bounds, but null. Where possible, the error messages give such info, but often are not included in the assertions (which only checks for a mesage prefix).
+
+It was the only error message in the spec test system, which provided an extra info, so I though "2" was an unintended typo.
+
+## Comment by rossberg, 2025-05-20
+
+> The description of subtypes explicitly says this and I am happy this is true in general.
+
+For subtypes, the restriction is stronger: its supertype clauses must be earlier *even within its rec-group*. That is to prevent circular hierarchies within a recursive group.
+
+Yes to the other questions.
+
+## Comment by zherczeg, 2025-05-23
+
+I am sorry, I still have another question:
+```
+(module
+  (rec
+    (type $t1 (sub (func (param (ref $t4)))))
+    (type $t2 (sub $t1 (func (param (ref $t3)))))
+    (type $t3 (sub (func (param i32))))
+    (type $t4 (sub $t3 (func (param i32))))
+  )
+
+  (func $f (type $t2))
+  (global $g (ref $t1) (ref.func $f))
+)
+```
+This test looks valid. My understand is, that the `(rec)` group is validated in one step, so all types ($t1 - $t4) are known. Otherwise $t2 cannot be validated since the subtype dependency between $t3 and $t4 is not known. When `(sub $t1)` is validated, we need to compare the arguments of $t1 and $t2, since they need to be equal. The references are differ, so we compare their structure. The $t3 is `(rec ...).2` and $t4 is `(rec ...).3` which differs so they don't match. Then we try the subtype of $t4, which is $t3, and we have a match now. At this point we don't know that $t4 is a valid supertype of $t3, since that part has not been validated yet, but we assume it is based on the type declaration.
+
+Am I right?
+
+## Comment by zherczeg, 2025-05-25
+
+This is an even more complex variant of the previous example:
+```
+(module
+  (rec
+    (type $t1 (sub (struct (field (ref $t3)))))
+    (type $t2 (sub $t1 (struct (field (ref $t4) i32))))
+    (type $t3 (sub (struct (field (ref $t1)))))
+    (type $t4 (sub $t3 (struct (field (ref $t2) i32 i32))))
+  )
+
+  (func $f (param (ref $t2)) (result (ref $t1)) local.get 0)
+)
+```
+If the types are evaluated in declaration order, the t3 - t4 subtype relation must be used before $t3 and $t4 types are validated. If my assumptions are correct.
+
+## Comment by rossberg, 2025-05-26
+
+Yes, by a quick eyeball check, these snippets look valid to me. Did you try them with the reference interpreter?
+
+When validating a recursive type, first, all defined types in it are added to the validation context. That includes their supertype declarations, which are assumed to be valid for the time being. Then, all right-hand-sides are validated in sequence. If that does not fail, then the previous assumptions were okay as well.
+
+That is a mild form of "coinductive" reasoning. It isn't specific to Wasm, many OO-languages work in a similar way (at least those that allow overrides to have narrower types, which is most these days).
+
+## Comment by zherczeg, 2025-05-26
+
+Yes, the ocaml interpreter (wasm-3.0 branch) compiles this test. However, it is hard for me to understand the source code, it is very different from c++.
+
+"which are assumed to be valid for the time being" this was my assumption, I just wanted to know if this is true.
+
+Thank you for the help!
+
+## Comment by zherczeg, 2025-05-26
+
+Btw, what is the purpose of empty `(rec)` blocks? It seems they are part of the binary. Do they have any practical use case?
+
+## Comment by rossberg, 2025-05-26
+
+No specific purpose, they just exist as a border case, like many other such things, e.g. (block) or (data). We avoid making special cases for empty or otherwise useless things, since irregularity can get in the way of simple tooling.
+
+## Comment by zherczeg, 2025-05-30
+
+I have added a summary for others. I hope it will be useful for others.
+
+## Comment by rossberg, 2025-05-30
+
+Thanks. I made a few corrections (in particular, substitution is not type equivalence, `<` denotes subtyping, and optimising type equivalence via canonicalisation).
+

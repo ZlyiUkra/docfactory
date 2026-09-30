@@ -1,0 +1,36 @@
+# WebAssembly spec issue #1909: Unclear meaning of "is exnref" in JS API
+# джерело: https://github.com/WebAssembly/spec/issues/1909
+# отримано: 2026-09-30
+
+Issue #1909, opened by bvisness on 2025-05-19, closed (completed) on 2026-03-09.
+
+ToJSValue asserts that the input type is neither v128 nor `ref.exn exnaddr`. To enforce this, there are several places in the spec that say something like "If resultType is v128 or exnref, throw a TypeError." Unfortunately it's not really clear what "exnref" encompasses here.
+
+Specifically, a bug was submitted to SpiderMonkey expecting that the following function would result in `unreachable executed` instead of TypeError:
+
+```
+(func (result nullexnref)
+  unreachable
+)
+```
+
+There's a case to be made for this, because ToJSValue asserts that no values are of the form `ref.exn exnaddr` and states that any value of the form `ref.null t` should be converted to JS `null`.  `nullexnref` (and technically `(ref noexn)`) would therefore work fine. But neither Firefox nor Chrome currently allows `noexn` in parameters or results. (I haven't tested in other engines.)
+
+Should we clarify that "is exnref" means "is a subtype of exnref" or "is a reference type in the exn hierarchy" or something to that effect? It doesn't seem worth it to support `nullexnref` but not `exnref`, especially when major engines already consider this an error.
+
+## Comment by rossberg, 2025-05-19
+
+The type exnref is defined to be a shorthand for (ref null exn) by the core spec. But it may be worth expanding it out explicitly here. The same probably goes for uses of funcref in the JS API, which got redefined to (ref null func) in Wasm 3.0.
+
+There was consensus that we do not try to support new types in the JS API. I would interpret that as not including subtypes either, because that might be a can of worms. So the TypeError seems reasonable to me.
+
+Do catch-alls like the above also need to be extended to cover other reference types that Wasm 3.0 adds? @Ms2ger
+
+## Comment by bvisness, 2025-05-19
+
+To be clear, I agree that the TypeError is reasonable, but it is unclear how types based on `noexn` should be handled. I am basically just proposing that we update the JS API to explicitly forbid any reference type based on `exn` or `noexn`. (How we phrase that is a separate matter.)
+
+## Comment by tlively, 2026-03-09
+
+Looks like this was resolved. Not sure why the issue wasn't automatically closed.
+

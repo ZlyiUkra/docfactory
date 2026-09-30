@@ -1,0 +1,58 @@
+# WebAssembly spec issue #1921: Declarative element segments are not available at runtime, but used in runtime in a test
+# джерело: https://github.com/WebAssembly/spec/issues/1921
+# отримано: 2026-09-30
+
+Issue #1921, opened by osa1 on 2025-06-16, closed (completed) on 2025-06-17.
+
+From https://webassembly.github.io/spec/core/syntax/modules.html#element-segments:
+
+> A declarative element segment is not available at runtime but merely serves to forward-declare references that are formed in code with instructions like.
+
+`table.init` requires an element segment in runtime: https://webassembly.github.io/spec/core/exec/instructions.html#xref-syntax-instructions-syntax-instr-table-mathsf-table-init-x-y
+
+So my understanding it a `elem declare` section cannot be named, or at least cannot be referred to in a `table.init`.
+
+But we have this that names a declarative elem segment, and then initializes a table in runtime using it:
+
+https://github.com/WebAssembly/spec/blob/abc8d16dcb4b36f818af9ee2fa9b1bf0b50503cb/test/core/elem.wast#L352-L360
+
+Should the test be updated?
+
+## Comment by rossberg, 2025-06-16
+
+They are not available in the sense that they are immediately dropped, similar to active segments. You can name them, but they'll simply behave like already dropped passive segments. The test is checking exactly that.
+
+## Comment by osa1, 2025-06-17
+
+I suspect "not available at runtime" won't be read as "available in runtime, but as empty" by most readers.
+
+Also, we don't say "not available at runtime" for active segments, even though their elements are dropped the same way.
+
+I would probably say something like: (changing the last sentence)
+
+> ... A declarative element segment merely serves to forward-declare references that are formed in code with instructions like `ref.func`. Active and declarative segment elements are dropped after instantiation, in runtime they are always empty.
+
+I also noticed that in https://webassembly.github.io/spec/core/syntax/instructions.html#table-instructions we say
+
+> The `elem.drop` instruction prevents further use of a passive element segment.
+
+But it's used on other kinds of segments in instantiation: https://webassembly.github.io/spec/core/exec/modules.html#instantiation where we say
+
+> Execute the instruction `elem.drop i`.
+
+In active and declarative segments.
+
+Execution of `elem.drop` also doesn't mention segment types: https://webassembly.github.io/spec/core/exec/instructions.html#xref-syntax-instructions-syntax-instr-table-mathsf-elem-drop-x
+
+Should this part be updated? I would just say "... clears contents of an element segment" (instead of "prevents further use of a passive segment").
+
+I reworded "prevents" part because you can still use the segment, but it will be empty. E.g. if I do `(table.init $table $elem n 0 0)` that wouldn't trap.
+
+## Comment by rossberg, 2025-06-17
+
+Well, I guess this comes down to interpretation, but I would claim that it's accurate that one can no longer "use a segment" after it's dropped. One can still use the _index_, but not the original segment itself, which becomes unavailable. In that sense all the wording is consistent and conveys the essentials.
+
+Keep in mind that the syntax chapter is not the place to describe semantics in any detail, only give a brief high-level intuition of what a construct is for.
+
+(FWIW, module instantiation is runtime, so it wouldn't be quite correct to say that active segments are not available at runtime.)
+

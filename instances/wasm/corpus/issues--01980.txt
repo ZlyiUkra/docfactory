@@ -1,0 +1,110 @@
+# WebAssembly spec issue #1980: [js-api] Are Wasm-gc abstract heap types included in the JS API of e.g. WebAssembly.Global?
+# джерело: https://github.com/WebAssembly/spec/issues/1980
+# отримано: 2026-09-30
+
+Issue #1980, opened by Liedtke on 2025-09-22, open.
+
+The WebAssembly JS-API spec mentions the following types for globals:
+```
+enum ValueType {
+  "i32",
+  "i64",
+  "f32",
+  "f64",
+  "v128",
+  "externref",
+  "anyfunc",
+};
+```
+However, both V8 and SpiderMonkey support multiple more values like `"anyref"` or `"i31ref"`.
+After some code-search in V8, I found my commit which added it in 2022 when `anyref` was introduced for wasm-gc as a separate type hierarchy vs. the existing `externref`.
+In later changes we added more of these new types like `i31ref` probably assuming some kind of consistency to the already present `anyref`.
+
+It seems that JavaScriptCore doesn't accept these values.
+
+The wasm-gc JS API document does not list any extensions to these existing APIs.
+So from a spec perspective, it looks like this is a bug in V8 and SpiderMonkey?
+Was it a conscious decision to not add support for the new abstract heap types to the existing JS APIs?
+
+## Comment by tlively, 2025-09-22
+
+I don't think this was a conscious decision, and I do think it would make sense to add the other abstract heap types. Supporting non-nullable references and references to defined heap types would require much more design work, of course, but I don't think that's a good reason to hold off on making the obvious extensions to the current scheme.
+
+## Comment by Liedtke, 2025-09-22
+
+Notably I didn't find `"externref"` as a new value in the JS-API documented anywhere in the typed function references proposal.
+
+The proposals also don't seem to link a js-api spec with their proposed changes?
+So while we probably shouldn't have added `anyref`, I'm wondering whether there was any documentation that advised us to add `externref` in the first place?
+I also couldn't find a spec test for an externref-global defined via the JS API.
+
+A few more notes:
+1) A similar issue applies to tables where `new WebAssembly.Table({element: 'anyref', initial: 4, maximum: 4})` will just pass in V8 as well and produce a table of anyref. And yes, for the same assumed consistency, also tables of `i31ref` and other abstract heap types are possible.
+2) While my proposal would be to add "the other abstract heap types" to the APIs, this does *not* include the null types! There isn't any use case for things like `new WebAssembly.Table({element: 'nullref', initial: 4, maximum: 4})`, so we shouldn't spec it.
+
+## Comment by bvisness, 2025-09-22
+
+This whole space is further muddied by the type reflection proposal, which is still languishing in phase 3. I think we are probably long overdue to revisit it.
+
+FWIW, this is the function in Firefox that handles this.
+
+## Comment by tlively, 2025-09-22
+
+> 2. While my proposal would be to add "the other abstract heap types" to the APIs, this does _not_ include the null types! There isn't any use case for things like `new WebAssembly.Table({element: 'nullref', initial: 4, maximum: 4})`, so we shouldn't spec it.
+
+Yes, that seems fine. I assume that whatever long-term type reflection mechanism we end up with would be general enough to allow creating tables and globals of nulls, but no need to support them eagerly.
+
+## Comment by rossberg, 2025-09-23
+
+I have a vague recollection that we discussed supporting the respective top types, i.e., add anyref, as part of the minimal JS API MVP, but defer the rest to later.
+
+@Liedtke:
+> Notably I didn't find `"externref"` as a new value in the JS-API documented anywhere in the typed function references proposal.
+
+The externref type was already part of Wasm 2.0, so is independent of typed func refs or GC types.
+
+## Comment by Liedtke, 2025-09-23
+
+> The externref type was already part of Wasm 2.0, so is independent of typed func refs or GC types.
+
+Thanks for clarifying!
+I added a spec test for externref globals in the JS API as that is already spec'ed.
+
+Would it be realistic to add more reference-types outside a completely new proposal?
+The spec is in a weird state right now, where e.g. the algorithm references `exnref` but it isn't an accepted `ValueType`, so it seems like the assumption was that `exnref` would be allowed as `value`, but then be explicitly rejected, similar to `new WebAssembly.Global({value: "v128"})`, so arguably there seem to be some assumptions also by spec authors that more abstract heap types would be allowed as `ValueType`?
+
+> 2. Let valuetype be ToValueType(descriptor["value"]).
+> 3. If valuetype matches v128 or exnref,
+> 3.1. Throw a TypeError exception.
+
+Really sounds to me like the expectation is that `exnref` was accepted by `ToValueType` .
+
+## Comment by rossberg, 2025-09-23
+
+The latter probably is the result of semi-mechanically adding exnref to all the places where v128 is ruled out. In some of them it is redundant (though harmless, and potentially a bit more robust wrt future additions?).
+
+## Comment by eqrion, 2025-10-02
+
+I think we definitely should support the top-types defined by wasm-gc in the `ValueType` enum. I think it was just an oversight that these weren't added to the JS-API spec. We use them quite a bit in our internal testing, so I'd really not want to remove them unless there is a good reason to.
+
+## Comment by tlively, 2025-10-15
+
+So what is the full set of strings we should accept after fixing these oversights?
+
+Definitely these:
+
+- externref ✅
+- anyfunc ✅
+- anyref
+- exnref
+
+Should we add "funcref" as an alias of "anyfunc"?
+
+Should we add "i31ref", "eqref", "structref", and "arrayref" as well?
+
+## Comment by rossberg, 2025-10-16
+
+I'd definitely include anyref and funcref. Not sure about exnref, given that it cannot be passed to JS in the first place, but I guess it would be consistent with v128?
+
+I'd avoid adding anything else without consolidating the JS type reflection proposal.
+

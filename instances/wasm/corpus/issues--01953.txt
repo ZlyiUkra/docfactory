@@ -1,0 +1,54 @@
+# WebAssembly spec issue #1953: [jsapi] Does the specification mandate buffers referenced by `WebAssembly.Memory` objects, be [non-]transferable?
+# джерело: https://github.com/WebAssembly/spec/issues/1953
+# отримано: 2026-09-30
+
+Issue #1953, opened by amn on 2025-07-26, closed (completed) on 2025-08-12.
+
+## Background
+
+For efficiently feeding WASM routines with [larger] bodies of data, the _on-paper_ useful candidate, `ReadableStreamBYOBReader`'s `read` method eventually attempts to _transfer_ (implying detachment) the [BYOB] buffer backing the view passed to the call, this is specified following the list of steps to step 10 of `ReadableByteStreamControllerPullInto(controller, view, min, readIntoRequest)`:
+
+> 10. Let bufferResult be TransferArrayBuffer(view.[[ViewedArrayBuffer]]).
+
+...which boils down to invoking ECMAScript's `DetachArrayBuffer` operation.
+
+## The issue
+
+In practice, however, BYOB through `read` doesn't work for specifically buffers held by `WebAssembly.Memory` objects, which on several WASM platforms (Firefox, Chrome) gives me variants on the following error when passing views wrapping these buffers, to the aforementioned `read` method, e.g. `await new Blob([ "Hello world" ]).stream().getReader({ mode: "byob"}).read(new DataView(new WebAssembly.Memory({ initial: 1 }).buffer))`:
+
+> Uncaught (in promise) TypeError: cannot transfer WebAssembly/asm.js ArrayBuffer
+
+Calling the `transfer` method on the buffer held by `WebAssembly.Memory` object produces the same error message (for at least Firefox 141 that I am using for illustrating the example).
+
+I have been unable to locate in [what I think is] the relevant WebAssembly specification where it does say that `Memory` objects are to initialize specifically transferable or non-transferable buffers, the closest I got was https://webassembly.github.io/spec/js-api/#dom-memory-memory which in my understanding basically defines the `Memory` constructor behaviour.
+
+So I would like to ask -- does the specification de-facto allow implementations to use transferable buffers for backing WebAssembly _memories_, or is it that I simply haven't found the clause?
+
+The reason I believe this is an issue is because currently all of WASM implementations I have tested, do not permit passing buffers backing WASM memory to the aforementioned `read` method, because they are unable to transfer the buffer. This issue leaves another otherwise potentially attractive zero-copy strategy dead in the water (by the spec., directly or indirectly, I suspect).
+
+I don't think a transferable buffer backing WASM memory is a realistic possibility the way the rest of it is designed because that would imply the buffer may be left detached, and since there's no API to swap out a memory [with a since detached buffer] for a given WASM instance -- to another with a non-detached (and thus usable) buffer -- no "sane" WASM implementation would allow that. So the non-transferability is currently either "implied" by the WASM spec., or outright explicitly specified (which I haven't been able to find).
+
+As for loading WASM memory from a [BYOB] stream reader, such facilitating would indeed be most desirable IMO, since it's not ill-conceived that copying data unnecessarily for consumption by WASM procedures may be a major bottleneck in using WASM in the first place. The fact that this isn't possible to utilize with current APIs, is at the heart of this issue. To facilitate discussion and resolution of the latter: are amendments on the roadmap, for WASM specifically (not the Streams API), and if there are, what do these look like? Otherwise, is this as good as it gets, and are there ideas at least for how to facilitate _less_ data copying for using WASM?
+
+Related, because I am trying to get a "full" picture of how/if the APIs were designed in tandem or if the issue is just a coincidence of distributed API design: https://github.com/whatwg/streams/issues/1348
+
+## Comment by eqrion, 2025-07-29
+
+I believe the JS-API spec mandates that array buffers given from a WebAssembly.Memory object are cannot be detached. The ArrayBufferDetachKey should always be "WebAssembly.Memory", which will cause a detach operation to always fail unless that key is provided by the spec internal caller. So in effect, only the Wasm JS-API can detach these buffers and only does that in the "refresh the buffer" step.
+
+If the spec does not say that, then there's a bug in the spec. It's not feasible to actually really detach a wasm memory, because it's always able to be accessed by any wasm function that references a memory.
+
+## Comment by amn, 2025-08-03
+
+> It's not feasible to actually really detach a wasm memory, because it's always able to be accessed by any wasm function that references a memory.
+
+This particular part I don't understand in depth -- does WASM not mandate a single execution stack per routine invoked? Meaning that between invocation of any two procedures [exported by a WASM module], there shouldn't be any issues effectively pointing the "memory" to different actual memory regions (implied in detaching/transferring buffers backing the WASM memory)? Or is there a need for the actual [start] address to stay immutable for the lifetime of a [WASM] instance?
+
+If the "refresh the buffer" step allows re-allocation of the backing buffer, then it kinds of supports my above idea -- that memory per se _can_ be re-allocated during the lifetime of an instance? Which means in principle nothing prohibits the spec. to be amended for some hypothetical "reset an instance's memory to another memory object" step, codified with e.g. `WebAssembly.Memory.prototype.reallocate(buffer)` procedure, to reset the buffer of the memory object as exported from / imported by a WASM module instance? This is of course just a very coarse attempt at a counter-argument for "not feasible to actually really detach a wasm memory" since the "refresh" step does seem to define exactly that (detachment), although it's obviously "gated" behind said step (i.e. for a subset of procedures defined by the spec.)
+
+## Comment by Ms2ger, 2025-08-12
+
+Answering the question in the OP: yes, the js-api spec uses "Set buffer.[[ArrayBufferDetachKey]] to "WebAssembly.Memory"." steps to ensure the ArrayBuffers it exposes can only be detached directly from the spec itself. Maybe it's theoretically possible to remove that restriction, but I'm not aware of any interest to do so.
+
+I'll close this issue as answered; if you want to propose changing the currently specified behavior, that's a different point.
+

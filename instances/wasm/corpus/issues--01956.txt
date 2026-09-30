@@ -1,0 +1,50 @@
+# WebAssembly spec issue #1956: [js-api] Abstraction layer bypasses and non-algorithmic definitions
+# джерело: https://github.com/WebAssembly/spec/issues/1956
+# отримано: 2026-09-30
+
+Issue #1956, opened by ShinWonho on 2025-08-11, closed (completed) on 2025-08-18.
+
+I found some potential issues in JS API specification, and I have questions about them.
+
+## Bypassing the Abstraction Boundary
+
+> This section defines a suitable interface to the WebAssembly semantics in the form of entry points through which an embedder can access it. The interface is intended to be complete, in the sense that an embedder does not need to reference other functional parts of the WebAssembly specification directly.
+
+This excerpt is from the embedding section of Core WebAssembly Specification. If I understand this correctly, the functions defined in this section provide abstraction of Wasm's mechanics to embedders. However, I found two cases in JS API specification that break this abstraction, and I'm curious whether these are inevitable or intentional.
+
+### 1. Monitoring the execution of Wasm
+
+Abstraction over the mechanics of Wasm execution is achieved by the embedding function `func_invoke`. As shown in Fig. 1, it takes a function address, invokes the corresponding function, and returns the result. By using this function, the embedder does not need to understand how execution of Wasm is performed.
+
+Fig. 1: Embedding function `func_invoke`
+
+However, there is an algorithm that must run immediately after a WebAssembly memory.grow instruction executes, which requires monitoring the Wasm execution context. Not only that, this algorithm inspects the value at the top of the stack (line 1) and accesses the current frame (line 1.1-1.3). These steps even require knowledge of the composition of the Wasm state and direct access to its internal structures.
+
+These requirements significantly breaks the abstraction layer established by `func_invoke`. Could the algorithm be reformulated in a way that preserves this abstraction?
+
+Fig.2: JS API algorithm which is performed "immediately after a WebAssembly memory.grow instruction executes"
+
+### 2. Exposing Wasm-specific internal structure
+
+Some embedding functions abstract over the internal structure of the Wasm store. Fig.3 provides a representative example. It takes a store `S` and an address `a`, and returns `S.funcs[a].type`. When the embedder tries to retrieve the function type, the unnecessary details about the Wasm store can be abstracted away using the embedding function.
+
+Fig.3: Embedding function `func_type`
+
+However, Fig.4 is the algorithm that breaks this abstraction layer. It accesses the store directly to get a function instance (line 2).
+
+Not only that, this algorithm checks whether the function instance is a host function (line 3) and accesses its fields (line 3.1). This also undermines the abstraction, because, as I understand it, the internal structure of Wasm-specific structures are intended to be exposed only for error, values(val, externval), or types(externtype, memtype, globaltype, valtype).
+
+Fig.4: JS API algorithm for the name of the WebAssembly function
+
+The abstraction over the internal structure of the store and the function instance should be enforced by accessing them only through embedding functions; however, this abstraction is currently not maintained. These exposures might result from accessing Wasm's functionality beyond what the embedding functions provide. I'd like to ask whether this exposure is intentional, and whether it would be possible to add new embedding functions to eliminate it.
+
+## Informal Description
+
+The definition and use of "the index of the host function" seems to be somewhat informal. Being algorithmic in nature, the specification should explicitly describe **how** something is computed, rather than merely **what** it is. However, Fig.5 defines "the index of the host function" by specifying **what** it is. As a consequence, **how** to obtain "the index of the host function" (line 3.2) of Fig.4 is ambiguous. I'd like to ask for a step-by-step description of how “the name of the host function” is defined and used.
+
+Fig.5: JS API step to define "the index of the host function"
+
+## Comment by Ms2ger, 2025-08-11
+
+These are probably better as individual issues; I wouldn't mind seeing an improved integration here.
+

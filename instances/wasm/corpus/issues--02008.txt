@@ -1,0 +1,86 @@
+# WebAssembly spec issue #2008: gc-exotic-objects `[[PreventExtensions]]` should return `true`.
+# джерело: https://github.com/WebAssembly/spec/issues/2008
+# отримано: 2026-09-30
+
+Issue #2008, opened by mhofman on 2025-10-09, open.
+
+GC object are already non-extensible (`[[IsExtensible]]` returns `true`). Preventing extensions on a non-extensible object should be an no-op.
+
+By returning `false` to `[[PreventExtensions]]`, any caller to `Object.preventExtensions()` would get a thrown `TypeError` even though the object is already non-extensible, which is surprising (even though it is not technically a violation of the object invariants).
+
+To avoid this surprising behavior, WASM Garbage Collected Objects should return `true` for `[[PreventExtensions]]`.
+
+## Comment by tlively, 2025-10-10
+
+Having Wasm GC objects throw for as many JS operations as possible is intentional. See https://github.com/WebAssembly/gc/issues/353 and the discussions linked from there. The intent is to give us flexibility to give these operations more meaningful behavior in the future without it being as much of a breaking change.
+
+## Comment by bakkot, 2025-10-10
+
+These are very far from throwing for as many operations as possible. Try using a revoked Proxy object to see what throwing for as many JS operations as possible looks like.
+
+It's really just the mutating methods which throw, which is fine. I assume that the intention of having `[[PreventExtensions]]` return `false` was to indicate that you can't mutate the object to cause it to become non-extensible, but because `[[IsExtensible]]` already returns false (and does not throw) that doesn't really make sense - returning `true` for `[[PreventExtensions]]` just means that the object is now not extensible, not that it was before. I think that's just a misunderstanding of what `[[PreventExtensions]]` is supposed to indicate.
+
+## Comment by mhofman, 2025-10-10
+
+Right, also in the same sense, `[[SetPrototypeOf]]` should likely use the `SetImmutablePrototype` abstract operation to return `true` when setting the prototype to the same value (which also is meant to be a no-op).
+
+## Comment by mhofman, 2025-10-10
+
+Also until proposal-nonextensible-applies-to-private is part of the JS spec, you likely want to somehow specify that wasm gc objects throw for `HostEnsureCanAddPrivateElement`, assuming you don't want private field stamping onto these objects. That said that hook is technically only meant for browser hosts. See https://github.com/tc39/ecma262/pull/2807
+
+## Comment by tlively, 2025-10-10
+
+@takikawa is the best person to say whether anything here is unintentional.
+
+@mhofman and @bakkot, it would be helpful if you could tease out things that are underspecified or clear bugs from things that are simply counterintuitive or that you think should be changed.
+
+I understand what you're both saying about having `[[PreventExtensions]]` returning `true` and similar changes making more sense, but at the time this was written, the intention of the Wasm Community Group was not for the API to make sense or be self-consistent, but rather to throw a whole lot.
+
+Maybe it's time to reconsider these choices, but that should be handled as a discussion with the Community Group, not as a bug fix. Specifically, we would want to consider, among other things:
+
+ 1) What is the long-term desired behavior of Wasm GC objects in JS? Do we want them to be opaque forever?
+ 2) Which of the desired changes would help or hinder us in eventually specifying that behavior?
+ 3) What are the practical problems with the current status quo?
+
+## Comment by bakkot, 2025-10-10
+
+I don't think this is a bug, precisely, in that it is not a violation of the object invariants. I do think it's very counterintuitive even from the perspective of wanting things to throw a lot; this is not how you'd accomplish that.
+
+The other direction which would make things consistent is to change `[[IsExtensible]]` to return `true`. This doesn't mean _the user_ can add properties; rather, it just means that there are no guarantees about whether additional properties might appear. Given the intention is to leave room for future changes, providing as few guarantees as possible would make sense. The only reason to have `[[IsExtensible]]` return `false` as it currently does is so that users can rely on a guarantee that no additional properties will ever appear.
+
+I think it's reasonable to have the larger discussion about what behavior you want, but I don't think that needs to prevent small updates to make the existing state more consistent now. I think changing `[[IsExtensible]]` to return `true` would accomplish the goal of making the methods internally consistent while also preserving the goal of throwing in all the places that currently throw, and is the right way to maintain optionality for pretty much any future behavior you might want (including just keeping roughly the current behavior).
+
+## Comment by mhofman, 2025-10-10
+
+I don't think that having opaque objects return `true` for `[[IsExtensible]]` should be used to indicate that in a future version, using a different implementation of the runtime, these objects may have own properties. That future is very likely to also have non-extensible objects, just with pre-existing properties as defined by their wasm definition. It's also not breaking to make future versions object be born extensible.
+
+## Comment by bakkot, 2025-10-10
+
+> I don't think that having opaque objects return `true` for `[[IsExtensible]]` should be used to indicate that in a future version, using a different implementation of the runtime, these objects may have own properties.
+
+Sorry, I didn't mean to suggest that it was? It's just about what `[[IsExtensible]]` returning `false` indicates to users. The reason to return `false` is to provide them a guarantee about the behavior of the object. If you don't want to provide users such guarantees, even if they happen to hold, then you should not return `false`.
+
+## Comment by mhofman, 2025-10-10
+
+I think this is mostly a question of behavior somewhat inconsistent with other JS objects, even exotic one. While with Proxies, a user can always build an object with surprising behavior, all objects defined by web spec or other integrators of the language have behaviors that go beyond what is ascribed by the object invariants.
+
+I don't think that indicating these object are extensible accomplishes much when the current runtime implementation will not make properties appear (as indicated by own keys always returning an empty list).
+
+Regarding consistency, there are afaik no host objects today that return false to `[[PreventExtensions]]` for a non-extensible object. Similarly, I am not aware of any host object that will return `false` to `[[SetPrototypeOf]]` if the value is the same as the current prototype value. While these are not strictly specified object invariants, they are usual behaviors that may be relied on user code because of their prevalence. Specifying such usual behaviors for wasm-gc objects does not IMO prevent making wasm-gc objects less opaque in the future.
+
+Regarding preventing the addition of private elements, this is a recommendation to reflect my understanding of implementation constraints. I know that v8 already throws for those cases, and I remember discussions in the context of shared structs that wasm wanted fixed shapes objects and that stamping of private fields was a problem, which is one of the reason proposal-nonextensible-applies-to-private came up to be. I think specifying this is a way to ensure people don't start relying on behavior which you don't want to provide long term.
+
+## Comment by jakobkummerow, 2025-10-13
+
+> a way to ensure people don't start relying on behavior which you don't want to provide long term.
+
+That's the key idea @tlively was describing, and which led to the general concept of "throwing a whole lot".
+
+> These are very far from throwing for as many operations as possible.
+
+Yes. The original plan was for them to throw a whole lot more. But then we found that making `[[Get]]` and, by extension, `[[GetPrototypeOf]]` throw was just too restrictive because it even blocked some harmless use cases of just passing things around as opaque handles. Specifically, you can't resolve a Promise with a value whose `[[Get]]` throws, due to step 9 of https://tc39.es/ecma262/#sec-promise-resolve-functions: `9. Let then be Completion(Get(resolution, "then"))`. So the behavior of those two internal methods was relaxed to not throw.
+
+I don't mind changing the details. I guess there simply was no reason to think twice about `[[PreventExtensions]]` so far. It's probably not very urgent, since the current state shouldn't be a problem in practice, because (1) there can be no legacy code that calls `Object.preventExtensions` on a Wasm object, because Wasm objects used to not exist at all, and (2) there is no reason to write such code now.
+
+I would object to tracking a mutable extensibility bit for Wasm objects. I.e. having objects start out with `[[IsExtensible]] == true` by default, and providing an observable way to make them non-extensible, would be very annoying to implement. The way we implement that for JS objects isn't applicable to Wasm objects for very fundamental design reasons, which have important benefits the way they are, so would be very costly to have to change. So in that sense, promising (to users and in particular to engines) that Wasm objects won't ever become extensible in the future sounds great.
+

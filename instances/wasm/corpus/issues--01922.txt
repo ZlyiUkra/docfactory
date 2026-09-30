@@ -1,0 +1,53 @@
+# WebAssembly spec issue #1922: [bikeshed] Bikeshed breaking Wasm spec build again
+# джерело: https://github.com/WebAssembly/spec/issues/1922
+# отримано: 2026-09-30
+
+Issue #1922, opened by rossberg on 2025-06-17, closed (completed) on 2025-06-18.
+
+Since #1916 around June 6, the spec 3.0 build fails, due to an error from the Bikeshed run:
+
+   https://github.com/WebAssembly/spec/actions/runs/15701342573/job/44236643013
+
+However, this failure obviously has nothing to do with that specific PR, and the offending lines have been in the doc for much longer. The last successful CI run including them was on May 22.
+
+So I suspect that Bikeshed got upgraded with some feature that clobbers more syntax in conflict with embedded Latex. Digging into Bikeshed's commit history, and given the timeline, I suspect https://github.com/speced/bikeshed/pull/3108 to be the culprit, but I can't tell for sure, nor infer what the offending syntax is.
+
+I tried some shots in the dark to work around it, but they did not help. @tabatkins, can you perhaps give some advice?
+
+## Comment by rossberg, 2025-06-18
+
+Looks like my latest attempt at a workaround was successful, so I'm closing this for now.
+
+I'd still be interested in knowing the actual cause. Is there any up-to-date documentation on Bikeshed that describes precisely what syntax it "recognises"?
+
+## Comment by tabatkins, 2025-06-18
+
+Ah, yes, the CDDL autolink syntax was added in version 5.2.0, released at the end of May.  If you're not using cddl and have conflicting usage of that syntax, you can turn that autolink syntax off with `Markup Shorthands: cddl off`.
+
+The Bikeshed docs describe Bikeshed's syntax.
+
+## Comment by rossberg, 2025-06-23
+
+The docs are fine, but I was wondering if there was a more concise summary of the syntax that Bikeshed intercepts, and where. Background: The Wasm spec embeds math/Latex via MathJax, and Bikeshed barfs on some of that when not "obfuscated" carefully; it also steamrolls over it with its substitutions. We maintain a brittle script that attempts to revert the latter (while also making some adjustments for Katex limitations). That breaks once in a while when Bikeshed or Sphinx update, and it's always an adventure to figure out why.
+
+I assume there is no way to instruct Bikeshed to disable most text modifications, or at least ignore certain elements (e.g. those with class `math`)?
+
+## Comment by tabatkins, 2025-06-23
+
+Actually the answer is yes to both of those questions.
+
+* You can turn off any inline link shorthands you don't want with the `Markup Shorthands` metadata (as I suggested above for the cddl category specifically, but there are a bunch more categories you can turn off if you don't want them; I suspect you can remove nearly all of them for wasm)
+* There are two ways to mark an element as "opaque" so it won't process any of the markup shorthands: `Opaque Elements` to list custom element names that shouldn't process anything in their contents, or adding the `bs-opaque` boolean attribute (which, I now realize, isn't documented, sorry about that...) to an element for a one-off skip of their contents. `pre`/`xmp`/`script`/`style` are all opaque by default in HTML. And then you can opt a particular shorthand back in to being processed within an opaque element by wrapping it in an `<l>` element.
+
+The only inline thing beyond basic HTML you *can't* turn off is Markdown code spans (`` `foo` ``). That's kinda a chicken-and-egg thing, since they can contain markup themselves which would change the document's meaning, up to potentially changing what metadata is recognized.
+
+## Comment by rossberg, 2025-06-24
+
+> Opaque Elements to list custom element names that shouldn't process anything in their contents
+
+Ah, nice, that looks like it almost does what we need. What does "custom element" mean in this context? MathJax source is embedded in regular divs and spans with class "math". Can I use this to just make all divs and spans opaque?
+
+## Comment by tabatkins, 2025-06-24
+
+Heh, the *intention* is that it only be used for HTML custom elements (aka author-defined tag names with a dash in them), but yes, it works with any tag name at all. If you set `Opaque Elements: div, span` it will turn off autolink processing within the contents of any div or span in the document.
+

@@ -1,0 +1,73 @@
+# WebAssembly spec issue #1894: Wast script command AssertUninstantiable printed as `assert_trap`
+# джерело: https://github.com/WebAssembly/spec/issues/1894
+# отримано: 2026-09-30
+
+Issue #1894, opened by raoxiaojia on 2025-04-22, closed (completed) on 2025-05-06.
+
+I'm referring to the file `arrange.ml` that is partly responsible for printing wast scripts at L762. In particular, it prints the `AssertUninstantiable` command as `assert_trap` instead.
+
+```
+  | AssertInvalid (def, re) ->
+    [Node ("assert_invalid", [definition mode None def; Atom (string re)])]
+  | AssertUnlinkable (def, re) ->
+    [Node ("assert_unlinkable", [definition mode None def; Atom (string re)])]
+  | AssertUninstantiable (def, re) ->
+    [Node ("assert_trap", [definition mode None def; Atom (string re)])]
+  | AssertReturn (act, results) ->
+    [Node ("assert_return", action mode act :: List.map (result mode) results)]
+  | AssertTrap (act, re) ->
+    [Node ("assert_trap", [action mode act; Atom (string re)])]
+  | AssertExhaustion (act, re) ->
+    [Node ("assert_exhaustion", [action mode act; Atom (string re)])]
+```
+
+Is this an error, or an intentional choice hinting that the module must specifically not be instantiable due to its start function trapping?
+
+## Comment by rossberg, 2025-04-22
+
+This should be the inverse of parsing, so definitely an error. Are you interested in creating a PR to fix it? :)
+
+## Comment by raoxiaojia, 2025-04-22
+
+@rossberg Sure! Will do it shortly.
+
+## Comment by raoxiaojia, 2025-04-22
+
+@rossberg Actually the parser and the lexer have some design that might require further inspection. Check https://github.com/WebAssembly/spec/blob/main/interpreter/text/parser.mly#L1018:
+
+```
+assertion :
+  | LPAR ASSERT_MALFORMED script_module STRING RPAR
+    { AssertMalformed (snd $3, $4) @@ $sloc }
+  | LPAR ASSERT_INVALID script_module STRING RPAR
+    { AssertInvalid (snd $3, $4) @@ $sloc }
+  | LPAR ASSERT_UNLINKABLE script_module STRING RPAR
+    { AssertUnlinkable (snd $3, $4) @@ $sloc }
+  | LPAR ASSERT_TRAP script_module STRING RPAR
+    { AssertUninstantiable (snd $3, $4) @@ $sloc }
+  | LPAR ASSERT_RETURN action list(result) RPAR { AssertReturn ($3, $4) @@ $sloc }
+  | LPAR ASSERT_TRAP action STRING RPAR { AssertTrap ($3, $4) @@ $sloc }
+  | LPAR ASSERT_EXHAUSTION action STRING RPAR { AssertExhaustion ($3, $4) @@ $sloc }
+```
+
+The assert_uninstantiable command is obtained from the same `ASSERT_TRAP` lexer token. Then in https://github.com/WebAssembly/spec/blob/main/interpreter/text/lexer.mll#L687:
+```
+      | "assert_malformed" -> ASSERT_MALFORMED
+      | "assert_invalid" -> ASSERT_INVALID
+      | "assert_unlinkable" -> ASSERT_UNLINKABLE
+      | "assert_return" -> ASSERT_RETURN
+      | "assert_trap" -> ASSERT_TRAP
+      | "assert_exhaustion" -> ASSERT_EXHAUSTION
+```
+It appears that there's no lexer token called `ASSERT_UNINSTANTIABLE` at all. As a result, in some sense the current printer _is_ the inverse of parser + lexer, just that the variant name in OCaml disagrees with the parser/lexer/printer (`AssertUninstantiable` in OCaml simply corresponds to `assert_trap` text with some different arguments from the actual `AssertTrap`).
+
+This must mean that the text `assert_uninstantiable` doesn't actually appear in any of the test suites (else there would be a parser error). Instead, the script command AssertUninstantiable is parsed from a different structure of `assert_trap ...`.
+
+I guess the above implies that it's fine to not fix it for now, as fixing this would require updating all the wast test suites which might have further implications. Perhaps the wast documentation could add a note on this naming mismatch.
+
+## Comment by rossberg, 2025-04-22
+
+Ah, yes, sorry. Taking it back then. :)  This is written assert_trap in the surface syntax, so the implementation is correct. And yes, this was intentional, because it is also testing for a trap (though it has to use a different AST node internally because the argument type differs).
+
+So I think we can close this.
+

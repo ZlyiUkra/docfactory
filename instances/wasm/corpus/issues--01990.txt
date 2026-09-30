@@ -1,0 +1,68 @@
+# WebAssembly spec issue #1990: [spec] Latest spec does not properly define the semantics of `all_true`
+# джерело: https://github.com/WebAssembly/spec/issues/1990
+# отримано: 2026-09-30
+
+Issue #1990, opened by d0sboots on 2025-09-28, closed (completed) on 2025-10-01.
+
+I am looking at the current version of https://webassembly.github.io/spec/core/bikeshed/, dated "Editor’s Draft, 26 September 2025" and documented as release 3.0.
+
+In it, there are 18 hits for "all_true", but none in the execution section. The semantics for `shape.vtestop` are defined based on vtestop_sh where vtestop is instantiated as all_true, but there is no all_true numeric defined. (I'm also not sure if all_true can be defined implicitly as a lanes-expansion of a numeric this way; at the very least, it's not the most understandable way to do it.)
+
+In contrast, https://www.w3.org/TR/wasm-core-2/ explicitly defines `shape.all_true` in 4.4.3.15.
+
+## Comment by rossberg, 2025-09-29
+
+Indeed, that connection got lost in one of the SIMD spec refactorings. Thanks for reporting, will fix.
+
+## Comment by rossberg, 2025-10-01
+
+Should be fixed now. I renamed the inez operator to iall_true for the correct name mangling.
+
+## Comment by d0sboots, 2025-10-01
+
+AFAICT, this is still not fixed. The new "iall_true" numeric will return a value of size N, the same size as its input. (I think - the numerics aren't explicit about this, especially when using the bool helper, so it's confusing.) Regardless, the way this is currently specced vtestop will definitely work the same way as vrelop, which is to perform the underlying op lanewise. But the types are mismatched - the return type would need to be v128 for that. Also (more importantly), that's not how all_true works - there's an extra global "and" step that is missing.
+
+I'm not sure why there's this desire to define it in terms of a numeric when that's fundamentally not how it operates - it's much more straightforward to just define the semantics in the instruction, similar to any_true.
+
+An additional factor in this is that, taken in isolation, the iall_true numeric is *extremely* confusing, to the point of looking like a bug. The name is "all_true", but it returns 1 if *any* bits are true, so from the perspective of the operation itself it seems like it should be called "iany_true". This would also be a terrible name though, given the existence of v128.any_true and how this is used for all_true. That is why the original name of ineqz was the best, and using it explicitly instead of implicitly.
+
+## Comment by rossberg, 2025-10-01
+
+You are right, I wasn't thinking straight. The all_true instruction is not a map but a fold over the lanes, unlike any of the other lane-wise ops. It looks like we have to add yet another form to the zoo of vector instructions.
+
+## Comment by rossberg, 2025-10-01
+
+Okay, should be fixed for real now. I defined the instruction directly. That's okay in this case, because there is only one of its kind (most of the factorisation into ops is to avoid duplication).
+
+(New version may take some time to propagate.)
+
+## Comment by d0sboots, 2025-10-02
+
+> (New version may take some time to propagate.)
+
+Are you sure? Looking at https://github.com/WebAssembly/spec/commits/refs/heads/main/, I don't actually see any changes aside from the first one that didn't work. I can't count the number of times I've forgotten to push at the very end...
+
+## Comment by rossberg, 2025-10-03
+
+Oh dear, you are right, I was on the wrong branch. It's up now, can you please check again?
+
+## Comment by d0sboots, 2025-10-03
+
+There's a minor issue that the instruction appendix links to exec-vtestop, which no longer exists, but otherwise looks good!
+
+## Comment by d0sboots, 2025-10-03
+
+>  It looks like we have to add yet another form to the zoo of vector instructions.
+
+Random comment about this: Vector instructions are always destined to be a complete zoo of random stuff. XD WASM already has a much cleaner API than any real SIMD instruction set, because it hides a world of complexity behind i8x16.shuffle. But, those of us who want our code to run fast still need to understand that complexity.
+
+## Comment by rossberg, 2025-10-04
+
+> There's a minor issue that the instruction appendix links to exec-vtestop, which no longer exists, but otherwise looks good!
+
+Well, that link still exists, and links to the all_true instruction (which is a vtestop). It just doesn't literally occur in the heading.
+
+## Comment by d0sboots, 2025-10-04
+
+OK yeah, it's working. I got confused because it was jumping to the wrong section, but on further investigation it appears to be a chrome bug triggered by clicking a link while find-in-page is active.
+
