@@ -1,0 +1,46 @@
+# `this.environment` in Hooks
+# джерело: https://github.com/vitejs/vite/blob/v8.3.2/docs/changes/this-environment-in-hooks.md
+# отримано: 2026-10-01
+# версія: 8.3.2, 8.3.1, 8.3.0, 8.3.0-beta.1, 8.3.0-beta.0, 8.2.2, 8.2.1, 8.2.0, 8.2.0-beta.0, 8.1.5, 8.1.4, 8.1.3, 8.1.2, 8.1.1, 8.1.0, 8.1.0-beta.0, 8.0.16, 8.0.15, 8.0.14, 8.0.13, 8.0.12, 8.0.11, 8.0.10, 8.0.9, 8.0.8, 8.0.7, 8.0.6, 8.0.5, 8.0.4, 8.0.3, 8.0.2, 8.0.1, 8.0.0, 8.0.0-beta.18, 8.0.0-beta.17, 8.0.0-beta.16, 8.0.0-beta.15, 8.0.0-beta.14, 8.0.0-beta.13, 8.0.0-beta.12, 8.0.0-beta.11, 8.0.0-beta.10, 8.0.0-beta.9, 8.0.0-beta.8, 8.0.0-beta.7, 8.0.0-beta.6, 8.0.0-beta.5, 8.0.0-beta.4, 8.0.0-beta.3, 8.0.0-beta.2, 8.0.0-beta.1, 8.0.0-beta.0, 7.3.6, 7.3.5, 7.3.3, 7.3.2, 7.3.1, 7.3.0, 7.2.7, 7.2.6, 7.2.5, 7.2.4, 7.2.3, 7.2.2, 7.2.1, 7.2.0, 7.2.0-beta.1, 7.2.0-beta.0, 7.1.12, 7.1.11, 7.1.10, 7.1.9, 7.1.8, 7.1.7, 7.1.6, 7.1.5, 7.1.4, 7.1.3, 7.1.2, 7.1.1, 7.1.0, 7.1.0-beta.1, 7.1.0-beta.0, 7.0.8, 7.0.7, 7.0.6, 7.0.5, 7.0.4, 7.0.3, 7.0.2, 7.0.1
+
+::: tip Feedback
+Give us feedback at Environment API feedback discussion
+:::
+
+Before Vite 6, only two environments were available: `client` and `ssr`. A single `options.ssr` plugin hook argument in `resolveId`, `load` and `transform` allowed plugin authors to differentiate between these two environments when processing modules in plugin hooks. In Vite 6, a Vite application can define any number of named environments as needed. We're introducing `this.environment` in the plugin context to interact with the environment of the current module in hooks.
+
+Affected scope: `Vite Plugin Authors`
+
+::: warning Future Deprecation
+`this.environment` was introduced in `v6.0`. The deprecation of `options.ssr` is planned for a future major. At that point we'll start recommending migrating your plugins to use the new API. To identify your usage, set `future.removePluginHookSsrArgument` to `"warn"` in your vite config.
+:::
+
+## Motivation
+
+`this.environment` not only allow the plugin hook implementation to know the current environment name, it also gives access to the environment config options, module graph information, and transform pipeline (`environment.config`, `environment.moduleGraph`, `environment.transformRequest()`). Having the environment instance available in the context allows plugin authors to avoid the dependency of the whole dev server (typically cached at startup through the `configureServer` hook).
+
+## Migration Guide
+
+For the existing plugin to do a quick migration, replace the `options.ssr` argument with `this.environment.config.consumer === 'server'` in the `resolveId`, `load` and `transform` hooks:
+
+```ts
+import { Plugin } from 'vite'
+
+export function myPlugin(): Plugin {
+  return {
+    name: 'my-plugin',
+    resolveId(id, importer, options) {
+      const isSSR = options.ssr // [!code --]
+      const isSSR = this.environment.config.consumer === 'server' // [!code ++]
+
+      if (isSSR) {
+        // SSR specific logic
+      } else {
+        // Client specific logic
+      }
+    },
+  }
+}
+```
+
+For a more robust long term implementation, the plugin hook should handle for multiple environments using fine-grained environment options instead of relying on the environment name.

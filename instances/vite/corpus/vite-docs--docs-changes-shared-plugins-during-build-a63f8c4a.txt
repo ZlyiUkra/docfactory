@@ -1,0 +1,84 @@
+# Shared Plugins during Build
+# джерело: https://github.com/vitejs/vite/blob/v8.2.0-beta.0/docs/changes/shared-plugins-during-build.md
+# отримано: 2026-10-01
+# версія: 8.2.0-beta.0, 8.1.5, 8.1.4, 8.1.3, 8.1.2, 8.1.1, 8.1.0, 8.1.0-beta.0, 8.0.16, 8.0.15, 8.0.14, 8.0.13, 8.0.12, 8.0.11, 8.0.10, 8.0.9, 8.0.8, 8.0.7, 8.0.6, 8.0.5, 8.0.4, 8.0.3, 8.0.2, 8.0.1, 8.0.0, 8.0.0-beta.18, 8.0.0-beta.17, 8.0.0-beta.16, 8.0.0-beta.15, 8.0.0-beta.14, 8.0.0-beta.13, 8.0.0-beta.12, 8.0.0-beta.11, 8.0.0-beta.10, 8.0.0-beta.9, 8.0.0-beta.8, 8.0.0-beta.7, 8.0.0-beta.6, 8.0.0-beta.5, 8.0.0-beta.4, 8.0.0-beta.3, 8.0.0-beta.2, 8.0.0-beta.1, 8.0.0-beta.0, 7.3.6, 7.3.5, 7.3.3, 7.3.2, 7.3.1, 7.3.0, 7.2.7, 7.2.6, 7.2.5, 7.2.4, 7.2.3, 7.2.2, 7.2.1, 7.2.0, 7.2.0-beta.1, 7.2.0-beta.0, 7.1.12, 7.1.11, 7.1.10, 7.1.9, 7.1.8, 7.1.7, 7.1.6, 7.1.5, 7.1.4, 7.1.3, 7.1.2, 7.1.1, 7.1.0, 7.1.0-beta.1, 7.1.0-beta.0, 7.0.8, 7.0.7, 7.0.6, 7.0.5, 7.0.4, 7.0.3, 7.0.2, 7.0.1
+
+::: tip Feedback
+Give us feedback at Environment API feedback discussion
+:::
+
+See Shared plugins during build.
+
+Affected scope: `Vite Plugin Authors`
+
+::: warning Future Default Change
+`builder.sharedConfigBuild` was first introduced in `v6.0`. You can set it true to check how your plugins work with a shared config. We're looking for feedback about changing the default in a future major once the plugin ecosystem is ready.
+:::
+
+## Motivation
+
+Align dev and build plugin pipelines.
+
+## Migration Guide
+
+To be able to share plugins across environments, plugin state must be keyed by the current environment. A plugin of the following form will count the number of transformed modules across all environments.
+
+```js
+function CountTransformedModulesPlugin() {
+  let transformedModules
+  return {
+    name: 'count-transformed-modules',
+    buildStart() {
+      transformedModules = 0
+    },
+    transform(id) {
+      transformedModules++
+    },
+    buildEnd() {
+      console.log(transformedModules)
+    },
+  }
+}
+```
+
+If we instead want to count the number of transformed modules for each environment, we need to keep a map:
+
+```js
+function PerEnvironmentCountTransformedModulesPlugin() {
+  const state = new Map<Environment, { count: number }>()
+  return {
+    name: 'count-transformed-modules',
+    perEnvironmentStartEndDuringDev: true,
+    buildStart() {
+      state.set(this.environment, { count: 0 })
+    }
+    transform(id) {
+      state.get(this.environment).count++
+    },
+    buildEnd() {
+      console.log(this.environment.name, state.get(this.environment).count)
+    }
+  }
+}
+```
+
+To simplify this pattern, Vite exports a `perEnvironmentState` helper:
+
+```js
+function PerEnvironmentCountTransformedModulesPlugin() {
+  const state = perEnvironmentState<{ count: number }>(() => ({ count: 0 }))
+  return {
+    name: 'count-transformed-modules',
+    perEnvironmentStartEndDuringDev: true,
+    buildStart() {
+      state(this).count = 0
+    }
+    transform(id) {
+      state(this).count++
+    },
+    buildEnd() {
+      console.log(this.environment.name, state(this).count)
+    }
+  }
+}
+```

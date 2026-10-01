@@ -1,0 +1,43 @@
+# Move to Per-environment APIs
+# джерело: https://github.com/vitejs/vite/blob/v8.3.2/docs/changes/per-environment-apis.md
+# отримано: 2026-10-01
+# версія: 8.3.2, 8.3.1, 8.3.0, 8.3.0-beta.1, 8.3.0-beta.0, 8.2.2, 8.2.1, 8.2.0, 8.2.0-beta.0, 8.1.5, 8.1.4, 8.1.3, 8.1.2, 8.1.1, 8.1.0, 8.1.0-beta.0, 8.0.16, 8.0.15, 8.0.14, 8.0.13, 8.0.12, 8.0.11, 8.0.10, 8.0.9, 8.0.8, 8.0.7, 8.0.6, 8.0.5, 8.0.4, 8.0.3, 8.0.2, 8.0.1, 8.0.0, 8.0.0-beta.18, 8.0.0-beta.17, 8.0.0-beta.16, 8.0.0-beta.15, 8.0.0-beta.14, 8.0.0-beta.13, 8.0.0-beta.12, 8.0.0-beta.11, 8.0.0-beta.10, 8.0.0-beta.9, 8.0.0-beta.8, 8.0.0-beta.7, 8.0.0-beta.6, 8.0.0-beta.5, 8.0.0-beta.4, 8.0.0-beta.3, 8.0.0-beta.2, 8.0.0-beta.1, 8.0.0-beta.0, 7.3.6, 7.3.5, 7.3.3, 7.3.2, 7.3.1, 7.3.0, 7.2.7, 7.2.6, 7.2.5, 7.2.4, 7.2.3, 7.2.2, 7.2.1, 7.2.0, 7.2.0-beta.1, 7.2.0-beta.0, 7.1.12, 7.1.11, 7.1.10, 7.1.9, 7.1.8, 7.1.7, 7.1.6, 7.1.5, 7.1.4, 7.1.3, 7.1.2, 7.1.1, 7.1.0, 7.1.0-beta.1, 7.1.0-beta.0
+
+::: tip Feedback
+Give us feedback at Environment API feedback discussion
+:::
+
+Multiple APIs from `ViteDevServer` related to module graph and modules transforms have been moved to the `DevEnvironment` instances.
+
+Affected scope: `Vite Plugin Authors`
+
+::: warning Future Deprecation
+The `Environment` instance was first introduced at `v6.0`. The deprecation of `server.moduleGraph` and other methods that are now in environments is planned for a future major. We don't recommend moving away from server methods yet. To identify your usage, set these in your vite config.
+
+```ts
+future: {
+  removeServerModuleGraph: 'warn',
+  removeServerReloadModule: 'warn',
+  removeServerPluginContainer: 'warn',
+  removeServerHot: 'warn',
+  removeServerTransformRequest: 'warn',
+  removeServerWarmupRequest: 'warn',
+}
+```
+
+:::
+
+## Motivation
+
+In Vite v5 and before, a single Vite dev server always had two environments (`client` and `ssr`). The `server.moduleGraph` had mixed modules from both of these environments. Nodes were connected through `clientImportedModules` and `ssrImportedModules` lists (but a single `importers` list was maintained for each). A transformed module was represented by an `id` and a `ssr` boolean. This boolean needed to be passed to APIs, for example `server.moduleGraph.getModuleByUrl(url, ssr)` and `server.transformRequest(url, { ssr })`.
+
+In Vite v6, it is now possible to create any number of custom environments (`client`, `ssr`, `edge`, etc). A single `ssr` boolean isn't enough anymore. Instead of changing the APIs to be of the form `server.transformRequest(url, { environment })`, we moved these methods to the environment instance allowing them to be called without a Vite dev server.
+
+## Migration Guide
+
+- `server.moduleGraph` -> `environment.moduleGraph`
+- `server.reloadModule(module)` -> `environment.reloadModule(module)`
+- `server.pluginContainer` -> `environment.pluginContainer`
+- `server.transformRequest(url, ssr)` -> `environment.transformRequest(url)`
+- `server.warmupRequest(url, ssr)` -> `environment.warmupRequest(url)`
+- `server.hot` -> `server.client.environment.hot`
