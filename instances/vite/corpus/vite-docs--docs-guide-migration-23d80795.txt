@@ -1,0 +1,136 @@
+# Migration from v1
+# джерело: https://github.com/vitejs/vite/blob/v3.0.0-alpha.8/docs/guide/migration.md
+# отримано: 2026-10-01
+# версія: 3.0.0-alpha.8, 3.0.0-alpha.7, 3.0.0-alpha.6, 3.0.0-alpha.5, 3.0.0-alpha.4, 3.0.0-alpha.3, 3.0.0-alpha.2, 3.0.0-alpha.1, 3.0.0-alpha.0, 2.9.18, 2.9.17, 2.9.16, 2.9.15, 2.9.14, 2.9.13, 2.9.12, 2.9.11, 2.9.10, 2.9.9, 2.9.8, 2.9.7, 2.9.6, 2.9.5, 2.9.4, 2.9.3, 2.9.2, 2.9.1, 2.9.0, 2.9.0-beta.11, 2.9.0-beta.10, 2.9.0-beta.9, 2.9.0-beta.8, 2.9.0-beta.7, 2.9.0-beta.6, 2.9.0-beta.5, 2.9.0-beta.4, 2.9.0-beta.3, 2.9.0-beta.2, 2.9.0-beta.1, 2.9.0-beta.0, 2.8.6, 2.8.5, 2.8.4, 2.8.3, 2.8.2, 2.8.1, 2.8.0, 2.8.0-beta.7, 2.8.0-beta.6, 2.8.0-beta.5, 2.8.0-beta.4, 2.8.0-beta.3, 2.8.0-beta.2, 2.8.0-beta.1, 2.8.0-beta.0, 2.7.13, 2.7.12, 2.7.11, 2.7.10, 2.7.9, 2.7.8, 2.7.7, 2.7.6, 2.7.5, 2.7.4, 2.7.3, 2.7.2, 2.7.1, 2.7.0, 2.7.0-beta.11, 2.7.0-beta.10
+
+## Config Options Change
+
+- The following options have been removed and should be implemented via plugins:
+
+  - `resolvers`
+  - `transforms`
+  - `indexHtmlTransforms`
+
+- `jsx` and `enableEsbuild` have been removed; Use the new `esbuild` option instead.
+
+- CSS related options are now nested under `css`.
+
+- All build-specific options are now nested under `build`.
+
+  - `rollupInputOptions` and `rollupOutputOptions` are replaced by `build.rollupOptions`.
+  - `esbuildTarget` is now `build.target`.
+  - `emitManifest` is now `build.manifest`.
+  - The following build options have been removed since they can be achieved via plugin hooks or other options:
+    - `entry`
+    - `rollupDedupe`
+    - `emitAssets`
+    - `emitIndex`
+    - `shouldPreload`
+    - `configureBuild`
+
+- All server-specific options are now nested under
+  `server`.
+
+  - `hostname` is now `server.host`.
+  - `httpsOptions` has been removed. `server.https` can directly accept the options object.
+  - `chokidarWatchOptions` is now `server.watch`.
+
+- `assetsInclude` now expects `string | RegExp | (string | RegExp)[]` instead of a function.
+
+- All Vue specific options are removed; Pass options to the Vue plugin instead.
+
+## Alias Behavior Change
+
+`alias` is now being passed to `@rollup/plugin-alias` and no longer require start/ending slashes. The behavior is now a direct replacement, so 1.0-style directory alias key should remove the ending slash:
+
+```diff
+- alias: { '/@foo/': path.resolve(__dirname, 'some-special-dir') }
++ alias: { '/@foo': path.resolve(__dirname, 'some-special-dir') }
+```
+
+Alternatively, you can use the `[{ find: RegExp, replacement: string }]` option format for more precise control.
+
+## Vue Support
+
+Vite 2.0 core is now framework agnostic. Vue support is now provided via `@vitejs/plugin-vue`. Simply install it and add it in the Vite config:
+
+```js
+import vue from '@vitejs/plugin-vue'
+import { defineConfig } from 'vite'
+
+export default defineConfig({
+  plugins: [vue()]
+})
+```
+
+### Custom Blocks Transforms
+
+A custom plugin can be used to transform Vue custom blocks like the one below:
+
+```ts
+// vite.config.js
+import vue from '@vitejs/plugin-vue'
+import { defineConfig } from 'vite'
+
+const vueI18nPlugin = {
+  name: 'vue-i18n',
+  transform(code, id) {
+    if (!/vue&type=i18n/.test(id)) {
+      return
+    }
+    if (/\.ya?ml$/.test(id)) {
+      code = JSON.stringify(require('js-yaml').load(code.trim()))
+    }
+    return `export default Comp => {
+      Comp.i18n = ${code}
+    }`
+  }
+}
+
+export default defineConfig({
+  plugins: [vue(), vueI18nPlugin]
+})
+```
+
+## React Support
+
+React Fast Refresh support is now provided via `@vitejs/plugin-react`.
+
+## HMR API Change
+
+`import.meta.hot.acceptDeps()` have been deprecated. `import.meta.hot.accept()` can now accept single or multiple deps.
+
+## Manifest Format Change
+
+The build manifest now uses the following format:
+
+```json
+{
+  "index.js": {
+    "file": "assets/index.acaf2b48.js",
+    "imports": [...]
+  },
+  "index.css": {
+    "file": "assets/index.7b7dbd85.css"
+  }
+  "asset.png": {
+    "file": "assets/asset.0ab0f9cd.png"
+  }
+}
+```
+
+For entry JS chunks, it also lists its imported chunks which can be used to render preload directives.
+
+## For Plugin Authors
+
+Vite 2 uses a completely redesigned plugin interface which extends Rollup plugins. Please read the new Plugin Development Guide.
+
+Some general pointers on migrating a v1 plugin to v2:
+
+- `resolvers` -> use the `resolveId` hook
+- `transforms` -> use the `transform` hook
+- `indexHtmlTransforms` -> use the `transformIndexHtml` hook
+- Serving virtual files -> use `resolveId` + `load` hooks
+- Adding `alias`, `define` or other config options -> use the `config` hook
+
+Since most of the logic should be done via plugin hooks instead of middlewares, the need for middlewares is greatly reduced. The internal server app is now a good old connect instance instead of Koa.
