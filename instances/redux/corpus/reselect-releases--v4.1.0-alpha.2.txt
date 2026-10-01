@@ -1,0 +1,145 @@
+# reselect release: v4.1.0-alpha.2
+# джерело: https://github.com/reduxjs/reselect/releases/tag/v4.1.0-alpha.2
+# отримано: 2026-10-01
+# версія: 4.1.0-alpha.2
+
+Tag v4.1.0-alpha.2, published 2021-10-20, pre-release.
+
+This alpha release updates `defaultMemoize` to accept new options for cache size > 1 and a result equality check, updates `createSelector` to accept an options object containing options for the provided `memoize` function, improves some error messages, and adds `memoizedResultFunc` and `lastResult` to the fields attached to the selector.
+
+These changes enable major improvements in functionality for `createSelector`, and **should resolve almost all the concerns and pain points experienced by our users**.
+
+Although marked as an alpha, **the code should be stable and be ready to ship as 4.1.0 in the very near future** pending feedback on any potential upgrade issues.
+
+```bash
+npm i reselect@next
+
+yarn add reselect@next
+```
+
+## Changelog
+
+### New `defaultMemoize` Options
+
+`defaultMemoize` has always been fairly limited. Its signature was `(func: Function, equalityCheck?: EqualityFn) => Function`, and only ever had a cache size of 1.  This has led to many annoyances and workarounds, typically involving calling `createSelectorCreator()` with a custom memoization function that has a larger cache size or more options for customizing comparisons.
+
+We've updated `defaultMemoize` to **allow cache sizes > 1**, as well as customize comparisons of the newly generated result value to improve cache hits.
+
+The signature for `defaultMemoize` is now:
+
+```ts
+interface DefaultMemoizeOptions {
+  equalityCheck?: EqualityFn
+  resultEqualityCheck?: EqualityFn
+  maxSize?: number
+}
+
+// defaultMemoize now supports a configurable cache size with LRU behavior,
+// and optional comparison of the result value with existing values
+export function defaultMemoize<F extends (...args: any[]) => any>(
+  func: F,
+  equalityCheckOrOptions?: EqualityFn | DefaultMemoizeOptions
+): F
+```
+
+In other words, you can still pass `equalityCheck` as its one additional arg, or you may pass an object containing several possible options.
+
+**If the `maxSize` value is greater than 1, `defaultMemoize` will now use an LRU cache** based on https://github.com/erikras/lru-memoize internally.
+
+If `resultEqualityCheck` is provided, it will be used to compare the newly-generated value from `func` against all other values in the cache, in LRU order.  If a cached value is found to be equal, that value will be returned.  **This addresses the common `todos.map(todo => todo.id)` use case**, where a change to any field in any `todo` object creates a new `todos` array and thus causes the output to be recalculated, but the generated IDs array is still shallow-equal to the last result.  You can now pass an equality function like `shallowEqual` as the `resultEqualityCheck` argument, and it will reuse the old IDs array instead.
+
+### `createSelector` Options
+
+Previously, the only way to customize behavior of `createSelector` was to generate a customized version with `createSelectorCreator`. By far the most common use case was customizing the `equalityCheck` option used with `defaultMemoize`, or using a different memoizer entirely.  This usually looked like:
+
+```js
+const createShallowEqualSelector = createSelectorCreator(defaultMemoize, shallowEqual)
+const createDeepEqualSelector = createSelectorCreator(defaultMemoize, _.isEqual)
+const createCustomComparisonSelector = createSelector(_.memoize, hashFn)
+```
+
+`createSelectorCreator` also accepted additional positional parameters, and forwarded all of them to the provided `memoize` function, so `defaultMemoize` ultimately gets called internally as `defaultMemoize(actualFunction, shallowEqual)`.
+
+This added an annoying level of indirection to common customization use cases.
+
+**`createSelector` now accepts an options object as its last argument**, after the output selector.  Currently, that object only includes one field: `memoizeOptions`:
+
+```ts
+interface CreateSelectorOptions<MemoizeOptions extends unknown[]> {
+  memoizeOptions: MemoizeOptions[0] | MemoizeOptions
+}
+```
+
+Similar to how `createSelectorCreator` accepts additional "options args" that get forwarded to the memoization function, the `memoizeOptions` field accepts an array of those "options args" as well. If provided, these override what was given to `createSelectorCreator`.
+
+That means that **you can now customize memoization behavior with direct options to `createSelector`**.  And, because `defaultMemoize` now accepts more options, **you can directly customize `defaultMemoize`'s behavior without using `createSelectorCreator`**.
+
+Additionally, because it's very common to only need to pass one options arg to the memoization function, `memoizeOptions` may also be _just_ that first options arg by itself, without any array.
+
+Example usages of this look like:
+
+```ts
+  const createSelectorAcceptsArgsAsArray = createSelector(
+    (state: StateAB) => state.a,
+    (state: StateAB) => state.b,
+    (a, b) => a + b,
+    {
+      // Pass `equalityCheck`, the first options arg of `defaultMemoize`, in an array
+      memoizeOptions: [(a, b) => a === b]
+    }
+  )
+
+  const createSelectorFirstArgDirectly = createSelector(
+    (state: StateAB) => state.a,
+    (state: StateAB) => state.b,
+    (a, b) => a + b,
+    {
+      // Pass `equalityCheck`, the first options arg of `defaultMemoize`, directly
+      memoizeOptions: (a, b) => a === b
+    }
+  )
+
+  const defaultMemoizeAcceptsFirstArgAsObject = createSelector(
+    (state: StateAB) => state.a,
+    (state: StateAB) => state.b,
+    (a, b) => a + b,
+    {
+      // Pass `options`, the _alternate_ first arg of `defaultMemoize`, directly
+      memoizeOptions: {
+        equalityCheck: (a, b) => a === b,
+        maxSize: 10,
+        resultEqualityCheck: shallowEqual
+      }
+    }
+  )
+
+  // Can still create custom selectors by passing args to `createSelectorCreator`
+  const customSelectorCreatorMicroMemoize = createSelectorCreator(
+    microMemoize,
+    {
+      maxSize: 42
+    }
+  )
+```
+
+This should make it much easier to customize behavior.
+
+All of this is fully TypeScript-typed, and the possible values for `memoizeOptions` should be fully inferred from the provided `memoize` function.
+
+### Additional Tweaks
+
+We've improved the error messages thrown when invalid selectors are provided.
+
+Generated selectors now include `selector.memoizedResultFunc` and `selector.lastResult` for later access if needed.
+
+## What's Changed
+
+* Added missing return types to a couple of functions by @nialldbarber in https://github.com/reduxjs/reselect/pull/512
+* Update createSelector and `defaultMemoize` to accept options (maxSize, equalityCheck, resultEqualityCheck) by @markerikson in https://github.com/reduxjs/reselect/pull/513
+* Additional 4.1 tweaks based on existing PRs by @markerikson in https://github.com/reduxjs/reselect/pull/514
+
+## New Contributors
+
+* @nialldbarber made their first contribution in https://github.com/reduxjs/reselect/pull/512
+
+**Full Changelog**: https://github.com/reduxjs/reselect/compare/v4.1.0-alpha.1...v4.1.0-alpha.2

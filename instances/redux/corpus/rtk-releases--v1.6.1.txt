@@ -1,0 +1,50 @@
+# redux-toolkit release: v1.6.1
+# джерело: https://github.com/reduxjs/redux-toolkit/releases/tag/v1.6.1
+# отримано: 2026-10-01
+# версія: 1.6.1
+
+Tag v1.6.1, published 2021-07-17.
+
+This release improves several edge cases in RTK Query behavior and implementation, deprecates a lesser-used API, and reverts an internal compatability change from 1.6.
+
+## Changelog
+
+### RTK Query Tweaks
+
+We've made several small tweaks to the RTK Query implementation:
+
+- `fetchBaseQuery` now provides a more meaningful error if the response can't be parsed successfully
+- `fetchBaseQuery` has been tweaked to always read `fetch` from the global scope, rather than closing over it at creation time. This improves usage with test tools that mock or override `fetch` at the system level, such as Mirage.
+- The `skipToken` symbol is now created using `Symbol.for()`, to get a consistent reference
+- API slices now warn if you try to add more than one reducer with the same `reducerPath` name
+- An internal hook usage was tweaked to avoid the "don't call `useLayoutEffect` on the server" warning being printed in SSR
+
+Also, mutations no longer track the `originalArgs` value in the store. That value is needed to re-run queries, but since mutations are not re-run, it wasn't needed. This change resolves cases where users were passing a non-serializable value as the mutation argument and then seeing warnings about it being put into the store.
+
+Technically, this is a breaking change (removes a store property what would have been returned by a selector), but it is a necessary bugfix, and it does not appear anyone was actively using that property.  So, we're keeping this as a patch release.
+
+Generally, the information removed is still available as:
+
+- a property on the promise returned by `dispatch`
+- part of the thunk action `meta`
+- return value of the `useMutation` hook
+
+### Other Changes
+
+The typings for `createAction` and `createAsyncThunk` have been tweaked to avoid lint warnings about "unbound methods".
+
+The exported version of `getDefaultMiddleware` is now marked as deprecated, and will be removed in a future 2.0 release. Use the function passed as the `middleware` callback instead, which has the correct store types anyway.
+
+In 1.6, we moved the Immer `enableES5` plugin init call from `index.ts` to be inside of `createReducer` instead, in an effort to maybe save a few bytes for some users. This has caused some issues for users who still support IE11, possibly due to build config issues.  Realistically, we expect that everyone who uses RTK will be calling `createReducer`, `createSlice`, or `createApi` at some point, so there's no real situations where this _wouldn't_ be called anyway. So, we've moved the `enableES5` call back to `index.ts` for consistency.  In a future 2.0 release, we will remove that call entirely, and users that still support IE11 will need to call that themselves.
+
+## Changes
+
+- Error handling of fetchBaseQuery (#1250 - @phryneas)
+- Warn on duplicate `reducerPath` (#1252 - @phryneas)
+- Deprecate `getDefaultMiddleware` export (#1258 - @Shrugsy)
+- Typing for unbound functions (#1263 - @ajcrites)
+- Prevent closing over `fetch` (#1267 - @Shrugsy)
+- Put `enableES5` back in `index.ts` (#1305 - @komar94)
+- Use `Symbol.for('skipToken')` (#1317 - @phryneas)
+- Remove `originalArgs` (#1318 - @phryneas)
+- Call useIsomorphicLayoutEffect to fix warnings (#1319 - @markerikson)

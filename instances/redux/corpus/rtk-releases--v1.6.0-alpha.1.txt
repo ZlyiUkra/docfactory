@@ -1,0 +1,120 @@
+# redux-toolkit release: v1.6.0-alpha.1
+# джерело: https://github.com/reduxjs/redux-toolkit/releases/tag/v1.6.0-alpha.1
+# отримано: 2026-10-01
+# версія: 1.6.0-alpha.1
+
+Tag v1.6.0-alpha.1, published 2021-04-24, pre-release.
+
+This pre-1.6 alpha release integrates the RTK Query source code into the Redux Toolkit repo, publishes the RTK Query APIs as nested endpoints in the  `@reduxjs/toolkit` package, and publishes a docs preview containing the RTK Query API and usage guide docs integrated into the RTK docs site.  We've also bumped our Redux dependency to 4.1.0.
+
+This release also contains the changes from 1.6.0-alpha.0, including Immer 9.x and the improvements to `createAsyncThunk` and `createEntityAdapter`.
+
+**Note: we have published additional bugfixes since `alpha.1`. Please see the releases list for details and be sure to update to `@reduxjs/toolkit@next`**.
+
+Installation:
+
+```bash
+npm i @reduxjs/toolkit@next
+
+yarn add @reduxjs/toolkit@next
+```
+
+## Changelog
+
+### RTK Query Integration
+
+RTK Query is a data fetching and caching library built for Redux. It's most similar to React Query, Apollo, Urql, and SWR. The idea is that you just say "here's my URL endpoint and some query params", and it handles the entire process of:
+
+- Starting to fetch the data when needed
+- Managing loading state
+- Caching the data
+- Re-rendering your component when the loading state changes or the data is available
+- Clearing the cache when the last component that needs the data is unmounted
+- Enabling automatic polling of the data if desired
+
+So, instead of having to write a bunch of thunks, action creators, reducers, `useEffects`, and dispatching yourself, you just do:
+
+```js
+// src/services/pokemon.ts
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
+
+// Define a service using a base URL and expected endpoints
+export const pokemonApi = createApi({
+  reducerPath: 'pokemonApi',
+  baseQuery: fetchBaseQuery({ baseUrl: 'https://pokeapi.co/api/v2/' }),
+  endpoints: (builder) => ({
+	getPokemonByName: builder.query({
+	  query: (name: string) => `pokemon/${name}`,
+	}),
+  }),
+})
+
+// Export hooks for usage in functional components, which are
+// auto-generated based on the defined endpoints
+export const { useGetPokemonByNameQuery } = pokemonApi
+
+
+// src/App.tsx
+import { useGetPokemonByNameQuery } from './services/pokemon'
+
+export default function App() {
+  // Using a query hook automatically fetches data and returns query values
+  const { data, error, isLoading } = useGetPokemonByNameQuery('bulbasaur')
+
+  // render logic here
+}
+```
+
+We originally developed RTK Query as a standalone package at https://github.com/rtk-incubator/rtk-query in order to enable faster iteration during the alpha process.
+
+Now that the RTK Query APIs have stabilized, we've merged all of the RTK Query source code and docs content back into the main RTK repo.  From there, we've updated our build tooling and package publishing to include the RTK Query code inside the `@reduxjs/toolkit` package, but as separate nested entry points.
+
+```js
+// Existing RTK APIs
+import { createSlice } from '@reduxjs/toolkit'
+// RTK Query APIs, with UI-agnostic logic
+import { createApi } from '@reduxjs/toolkit/query'
+// Same RTK Query APIs, but with React-specific functionality built in
+import { createApi } from '@reduxjs/toolkit/query/react'
+```
+
+If you've been using RTK Query in its standalone alpha package, you should be able to migrate by installing this RTK alpha, and just switching your imports to match the examples above.
+
+Since these are separate entry points from the root package, you won't pay any bundle size cost unless you specifically import the RTK Query APIs.
+
+We have not yet done extensive testing of the merged package - that's why this is an alpha!  That said, we've successfully been able to locally publish a preview version of the package and use it in a standalone version of the RTKQ "kitchen sink with React" demo app, which is a standard CRA project.  We've also verified that the app builds correctly with both TS 4.1 (including named hooks exports using string literal syntax) and TS 4.0 (with just the per-endpoint hook subfields).
+
+For visualization purposes, here's what the bundle size analysis for that app looks like:
+
+image
+
+In general, we believe that this alpha _should_ run correctly in varying environments, but we specifically request that users try this out and let us know if you run into any problems.
+
+We also expect some additional final tweaks to the RTKQ APIs before 1.6 is released, but do not expect any large breaking changes.
+
+### RTK Query Docs
+
+We've also merged the RTK Query docs content and added it to a preview version of the RTK docs site.  We'll leave this preview up during the RTK 1.6 pre-release process.  Here's the links to the primary new docs pages:
+
+- Tutorial: https://deploy-preview-1016--redux-starter-kit-docs.netlify.app/tutorials/rtk-query
+- Usage guide: https://deploy-preview-1016--redux-starter-kit-docs.netlify.app/usage/rtk-query/queries
+- API reference: https://deploy-preview-1016--redux-starter-kit-docs.netlify.app/api/rtk-query/createApi
+
+Note that **we still need to fill out additional docs content for the RTK APIs and update some of the examples!**  We'll be working to finish that before the final release.
+
+### Redux 4.1.0
+
+Since we just released Redux 4.1.0, this release also bumps our Redux dependency to match that. This will shave about 1K off your existing min+gz bundle sizes.
+
+## Changes
+
+- chore(build): improved build tools (#981 - @hardfist)
+- Migrate RTK Query contents into the RTK repo (#1006 - @markerikson)
+- Restructure RTK files (#1007 - @markerikson)
+- Try to build bundles for RTK Query (core and React) (#1011 - @markerikson)
+- Integrate RTKQ tests (#1012 - @markerikson)
+- Attempt to get TS version selection working (#1013 - @markerikson)
+- Add full types to useMutation's returned callback (#1014 - @Shrugsy)
+- Move RTKQ API docs over (#1015 - @markerikson)
+
+https://github.com/reduxjs/redux-toolkit/compare/v1.6.0-alpha.0..v1.6.0-alpha.1

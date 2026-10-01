@@ -1,0 +1,102 @@
+# redux-toolkit release: v2.13.0
+# джерело: https://github.com/reduxjs/redux-toolkit/releases/tag/v2.13.0
+# отримано: 2026-10-01
+# версія: 2.13.0
+
+Tag v2.13.0, published 2026-09-29.
+
+This **feature release** updates our build tooling to TSDown and PNPM, adds official TypeScript 7 support, and includes a long list of bugfixes across RTK Query, `createAsyncThunk`, `createEntityAdapter`, and `combineSlices`.
+
+## Changelog
+
+### Build Tooling Updates
+
+We've fully modernizing modernized our build tooling across all of the Redux repos. That included switching from Yarn to PNPM, ESLint to Oxlint, Prettier to Oxfmt, and TSUp to TSDown.
+
+The part that matters for users is that we now build the package with TSDown instead of `tsup`. The package layout, `exports` definitions, and exported APIs are all unchanged from 2.12. We've checked the new build with `attw`, and verified that CJS and ESM entry points load in both dev and prod builds, and that the `legacy-esm` artifacts still target ES2017. The contents of the bundles do look a bit different (smaller CJS artifacts, slightly different helper output in the `legacy-esm` files). If you see any behavior differences that look build-related, please file an issue!
+
+This is also our first release published via the updated PNPM-based workflow, still using NPM Trusted Publishing. We've also added `pkg.pr.new` previews for every commit, so you can try out a PR build before it's released.
+
+### Docs Updates
+
+We've shipped a new combined Redux libraries docs site!  The core docs site at https://redux.js.org now contains the docs for _all_ of our libraries: Redux core and usage guides, Redux Toolkit, React Redux, and Reselect.  The prior standalone docs sites for RTK, R-R, and Reselect now redirect to their respective sections of the combined docs.  We've also done a major cleanup pass on the docs, deduplicating pages that had similarities (like the Next.js or RTK2 migration pages that lived in both the core and RTK docs), and updating outdated content (modernizing example code snippets, deleting dead links, and making RTK and hooks the default patterns shown).  The RTK content now lives at https://redux.js.org/toolkit/ .
+
+### TypeScript 7 Support
+
+TS 7.0 (the native Go port) is now out! We fixed the remaining type errors in RTK when checked by TS 7.0 and 7.1, and TS 7.0 is now part of our CI test matrix.
+
+Per our TS support policy of matching DefinitelyTyped's support window, we've also updated our support matrix to TS 5.6+. As always, RTK may still work with earlier versions, but we no longer test against them.
+
+### RTK Query Fixes
+
+`useQueryState` (and thus `useQuery`) was passing a new inline selector to `useSelector` on every render, and also reading the store directly during render. The selector is now memoized, and the direct store read is gone. This also fixes a bug where `isSuccess` could flip from `false` to `true` on an unrelated re-render while a query was refetching after an error. `isSuccess` now correctly stays `false` in that case.
+
+`data` now reflects cache updates made via `updateQueryData` while a refetch is in flight, instead of showing the previous result.
+
+Polling now reads the current cache state when each poll fires, rather than the state at the time the poll was scheduled. This means `skipPollingIfUnfocused` respects focus loss that happens after scheduling, and polls stop if their cache entry was removed.
+
+We fixed a race where a duplicate query request rejected by the thunk condition could cause queued tag invalidations to run too early and be lost, leaving stale data in the cache.
+
+Tags with falsy ids like `0` now invalidate and clean up correctly.
+
+Lazy query hooks now re-subscribe correctly when effects restart while the hook state is preserved, such as with Fast Refresh or `<Activity>`.
+
+Infinite queries no longer trigger `onQueryStarted` when fetching past the end of the list, and the infinite query hook result type now includes the page error flags.
+
+`fetchBaseQuery` only treats a URL as absolute if it starts with a scheme.
+
+We also fixed an error when rehydrating state for an endpoint name that has no definition.
+
+### Other Fixes
+
+`createAsyncThunk` no longer swallows aborts that happen before the `pending` action is dispatched, and now correctly sets `rejectedWithValue` when `rejectWithValue` is called with a falsy payload.
+
+`createEntityAdapter`'s `setAll` now keeps the last item when given duplicate IDs, matching `setMany`. The sorted adapter's `updateMany` now merges multiple updates for the same ID before applying them.
+
+`combineSlices` now keeps its internal state proxy cache per instance, so multiple combined reducers no longer interfere with each other.
+
+The immutability check middleware now handles circular references in state.
+
+The dynamic middleware now caches its composed middleware chains when the list of middleware hasn't changed.
+
+## What's Changed
+
+* Additional publishing hardening by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/5297
+* ci: fix Playwright e2e tests in publish-ci examples by @aryaemami59 in https://github.com/reduxjs/redux-toolkit/pull/5310
+* ci: publish preview packages on every commit via `pkg.pr.new` by @aryaemami59 in https://github.com/reduxjs/redux-toolkit/pull/5256
+* feat(codegen): migrate to oazapfts v7  by @Suto-Michimasa in https://github.com/reduxjs/redux-toolkit/pull/5228
+* fix(combineSlices): scope stateProxyMap per instance to prevent cross-instance proxy collisions by @JSap0914 in https://github.com/reduxjs/redux-toolkit/pull/5319
+* fix(entityAdapter): pre-merge same-ID updates in sorted adapter's updateMany by @JSap0914 in https://github.com/reduxjs/redux-toolkit/pull/5323
+* fix(`entityAdapter`): `setAll` with duplicate IDs keeps last occurrence (consistent with `setMany`) by @JSap0914 in https://github.com/reduxjs/redux-toolkit/pull/5321
+* fix(query): reflect cache updates in hook data by @jtiret in https://github.com/reduxjs/redux-toolkit/pull/5327
+* fix: don't swallow `createAsyncThunk` aborts that happen before pending by @chatman-media in https://github.com/reduxjs/redux-toolkit/pull/5314
+* Simplify `useRef<T | undefined>(undefined)` usages in RTK Query hooks by @DucMinhNe in https://github.com/reduxjs/redux-toolkit/pull/5315
+* fix(query): prevent `onQueryStarted` from triggering at end-of-list by @joseph0926 in https://github.com/reduxjs/redux-toolkit/pull/5182
+* fix(types): fix tsgo (TS 7.0) type errors and re-enable the native-preview CI job by @veksa in https://github.com/reduxjs/redux-toolkit/pull/5344
+* ci: bump GitHub Actions to their latest versions by @aryaemami59 in https://github.com/reduxjs/redux-toolkit/pull/5358
+* chore(toolkit): remove redundant and unused type declarations by @aryaemami59 in https://github.com/reduxjs/redux-toolkit/pull/5356
+* Modernize CI examples by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/5363
+* fix(rtk-query): only treat a url as absolute when it starts with a scheme by @MahinAnowar in https://github.com/reduxjs/redux-toolkit/pull/5428
+* Modern Tooling, Part 1: Oxlint by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/5384
+* Modern Tooling, Part 2: Oxfmt by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/5385
+* Modern Tooling, Part 3: TSDown and TS6 by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/5386
+* Modern Tooling, Part 4: Vitest type assertions by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/5387
+* Modern Tooling, Part 5: PNPM by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/5388
+* Modern Tooling, Part 6: TS7 by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/5389
+* Modern Tooling, Part 7: vendor `remark-typescript-tools` and update to TS7 by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/5390
+* Modern Tooling, Part 8: Vitest 5 by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/5436
+* Remove redundant RTK Query example projects by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/5443
+* Type the reducer builder implementation explicitly for TS 7.1 by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/5446
+* fix(toolkit): flag `rejectedWithValue` for falsy `rejectWithValue` payloads by @dfedoryshchev in https://github.com/reduxjs/redux-toolkit/pull/5395
+* Cache unchanged dynamic middleware chains by @OskarEichler in https://github.com/reduxjs/redux-toolkit/pull/5415
+* Preserve delayed invalidations after duplicate query rejection by @OskarEichler in https://github.com/reduxjs/redux-toolkit/pull/5406
+* Read current query state when scheduled polls fire by @OskarEichler in https://github.com/reduxjs/redux-toolkit/pull/5412
+* fix(toolkit): prevent undefined endpoint reference by @adamaveray in https://github.com/reduxjs/redux-toolkit/pull/5377
+* fix(toolkit): tag with a falsy id invalidation and cleanup by @petr-kratochvil in https://github.com/reduxjs/redux-toolkit/pull/5398
+* fix(rtk-query): add infinite query page error flags to hook result type by @mvpowers in https://github.com/reduxjs/redux-toolkit/pull/5441
+* Reinstate lazy queries after preserved effects restart by @OskarEichler in https://github.com/reduxjs/redux-toolkit/pull/5424
+* fix(toolkit): handle circular references in `immutableStateInvariantMiddleware` by @hamed-bavar in https://github.com/reduxjs/redux-toolkit/pull/5433
+* Fix TS7 errors and update TS matrix by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/5455
+* Fix unstable selector reference inside of `useQueryState` and `isSuccess` during refetch-after-error by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/5456
+
+**Full Changelog**: https://github.com/reduxjs/redux-toolkit/compare/v2.12.0...v2.13.0

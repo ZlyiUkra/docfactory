@@ -1,0 +1,43 @@
+# redux-toolkit release: v2.9.2
+# джерело: https://github.com/reduxjs/redux-toolkit/releases/tag/v2.9.2
+# отримано: 2026-10-01
+# версія: 2.9.2
+
+Tag v2.9.2, published 2025-10-23.
+
+This **bugfix release** fixes a potential internal data leak in SSR environments, improves handling of headers in `fetchBaseQuery`, improves `retry` handling for unexpected errors and request aborts, and fixes a longstanding issue with `prefetch` leaving an unused subscription.  We've also shipped a new `graphqlRequestBaseQuery` release with updated dependencies and better error handling.
+
+## Changelog
+
+### Internal Subscription Handling
+
+We had a report that a Redux SSR app had internal subscription data showing up across different requests.  After investigation, this was a bug introduced by the recent RTKQ perf optimizations, where the internal subscription fields were hoisted outside of the middleware setup and into `createApi` itself.  This meant they existed outside of the per-store-instance lifecycle.  We've reworked the logic to ensure the data is per-store again.  We also fixed another issue that miscalculated when there was an active request while checking for cache entry cleanup.
+
+Note that no actual app data was leaked in this case, just the internal subscription IDs that RTKQ uses in its own middleware to track the existence of subscriptions per cache entry.
+
+### `fetchBaseQuery` Headers
+
+We've updated `fetchBaseQuery` to avoid setting `content-type` in cases where a non-JSONifiable value like `FormData` is being passed as the request body, so that the browser can set that content type itself.  It also now sets the `accept` header based on the selected `responseHandler` (JSON or text).
+
+### `retry` Behavior and Cleanup
+
+The `retry` util now respects the `maxRetries` option when catching unknown errors in addition to the existing known errors logic.  It also now checks the request's `AbortSignal` and will stop retrying if aborted.
+
+In conjunction with that, dispatching `resetApiState` will now abort all in-flight requests.
+
+The `prefetch` util and `usePrefetch` hook had a long-standing issue where they would create a subscription for a cache entry, but there was no way to clean up that subscription.  This meant that the cache entry was effectively permanent.  They now initiate the request without adding a subscription.  This will fetch the cache entry and leave it in the store for the `keepUnusedDataFor` period as intended, giving your app time to actually subscribe to the value (such as prefetching the cache entry in a route handler, and then subscribing in a component).
+
+### `graphqlRequestBaseQuery`
+
+We've published `@rtk-query/graphql-request-base-query` v2.3.2, which updates the `graphql-request` dep to ^7.  We also fixed an issue where the error handling rethrew unknown errors - it now returns `{error}` as a base query is supposed to.
+
+## What's Changed
+
+* Fix potential subscription leakage in SSR environments by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/5111
+* Improve `fetchBaseQuery` default headers handling by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/5112
+* Respect maxRetries for unexpected errors by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/5113
+* fix: update graphql-request dependency to include version ^7.0.0 by @eyesfocus in https://github.com/reduxjs/redux-toolkit/pull/4987
+* Add `retry` abort handling and abort on `resetApiState` by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/5114
+* Don't create subscriptions for prefetch calls by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/5116
+
+**Full Changelog**: https://github.com/reduxjs/redux-toolkit/compare/v2.9.1...v2.9.2

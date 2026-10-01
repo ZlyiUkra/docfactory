@@ -1,0 +1,59 @@
+# redux-toolkit release: v0.6.3
+# джерело: https://github.com/reduxjs/redux-toolkit/releases/tag/v0.6.3
+# отримано: 2026-10-01
+# версія: 0.6.3
+
+Tag v0.6.3, published 2019-07-29.
+
+One of the major limitations of RSK thus far is that the generated action creators _only_ accept a single argument, which becomes the `payload` of the action.  There's been no way to do things like:
+
+- add a field like `meta`, which is commonly used as part of the "Flux Standard Action" convention
+- pass in multiple function parameters to the action creator, and process them to set up the payload
+- Encapsulate setup work like generating unique IDs before returning the action object
+
+That also means that the code dispatching the action has been entirely responsible for determining the correct shape of the payload.
+
+This release adds the ability to pass in a "prepare" callback to `createAction`.  The prepare callback _must_ return an object containing a `payload` field, and _may_ include a `meta` field as well.  All arguments that were passed to the action creator will be passed into the prepare callback:
+
+```ts
+const testAction = createAction(
+    "TEST_ACTION",
+    (a: string, b: string, c: string) => ({
+        payload: a + b + c,
+        meta: "d"
+    })
+)
+
+console.log(testAction("1", "2", "3"))
+// {type: "TEST_ACTION", payload: "123", meta: "d"}
+```
+
+`createSlice` has also been updated to enable customizing the auto-generated action creators as well.  Instead of passing a reducer function directly as the value inside the `reducers` object, pass an object containing `{reducer, prepare}`:
+
+```js
+const counterSlice = createSlice({
+	slice: 'counter',
+	initialState: 0,
+	reducers: {
+	    setValue: {
+		  reducer: (state, action: PayloadAction<number>) => {
+		      return state + action.payload
+		  },
+		  prepare: (amount: number) => {
+		      if(amount < 0) {
+		          throw new Error("Must be a positive number!");
+		      }
+		      return {payload: amount}
+		  }
+	  }
+	}
+})
+```
+
+This resolves the related issues of #146 and #148 .
+
+### Changes
+
+- add prepareAction option to createAction (@phryneas - #149)  c033b99
+
+https://github.com/reduxjs/redux-starter-kit/compare/v0.6.2...v0.6.3

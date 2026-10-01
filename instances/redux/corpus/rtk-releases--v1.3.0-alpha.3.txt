@@ -1,0 +1,55 @@
+# redux-toolkit release: v1.3.0-alpha.3
+# джерело: https://github.com/reduxjs/redux-toolkit/releases/tag/v1.3.0-alpha.3
+# отримано: 2026-10-01
+# версія: 1.3.0-alpha.3
+
+Tag v1.3.0-alpha.3, published 2020-02-15, pre-release.
+
+This alpha release alters the error-handling behavior of `createAsyncThunk` (again! :grin: )
+
+## Changes
+
+### `createAsyncThunk` Error Handling
+
+In `alpha.2`, we tried having the thunk always re-throw caught errors.  That didn't work out, because they always show up in the browser's console as unhandled exceptions.
+
+Instead, the thunk now always returns a resolved promise containing the last action dispatched, which will be either the `fulfilled` action or the `rejected` action.  We also export an `unwrapAction` utility that will either return `action.payload` if fulfilled or throw `action.error` if rejected, allowing the dispatching code to chain off the promise if desired:
+
+```js
+import { unwrapResult } from '@reduxjs/toolkit'
+
+// in the component
+const onClick = () => {
+  dispatch(fetchUserById(userId))
+    .then(unwrapResult)
+    .then(originalPromiseResult => {})
+    .catch(serializedError => {})
+}
+```
+
+### Aborting Requests
+
+Since `createAsyncThunk` accepts a promise callback, we have no way of knowing if or how the async logic can be canceled.  However, we now provide a way for your logic to signal that cancellation needs to occur.  An `AbortController` instance will be created for each request, and `abort` method will be attached to the returned promise that calls `abortController.abort()` and rejects the promise.  The corresponding `abortController.signal` object will be passed in to your payload creator callback in the `thunkAPI` object as `thunkAPI.signal`, allowing your async logic to check if a cancellation has been requested.
+
+### Meta Field Names
+
+The `action.meta` field in each action object previously looked like: `{args, requestId}`
+
+The `args` field was renamed to `arg` to indicate it's only one value.
+
+For the `pending` and `fulfilled` actions, `action.meta` is now: `{arg, requestId}`
+
+The `rejected` action now includes details on whether the request was aborted, and
+`action.meta` is now: `{arg, requestId, aborted, abortReason}`
+
+## Documentation
+
+A first draft of API documentation for `createAsyncThunk` is now available:
+
+`createAsyncThunk` draft API reference
+
+## Changes
+
+https://github.com/reduxjs/redux-toolkit/compare/v1.3.0-alpha.2...v1.3.0-alpha.3
+
+See PR #352: Port ngrx/entity and add createAsyncThunk for the complete alpha changes.

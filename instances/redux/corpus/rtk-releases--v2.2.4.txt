@@ -1,0 +1,58 @@
+# redux-toolkit release: v2.2.4
+# джерело: https://github.com/reduxjs/redux-toolkit/releases/tag/v2.2.4
+# отримано: 2026-10-01
+# версія: 2.2.4
+
+Tag v2.2.4, published 2024-05-09.
+
+This **bugfix release** improves sorting performance in `createEntityAdapter`, shrinks the code size in matcher utilities, fixes assorted issues with query hooks, and makes several TS tweaks.
+
+## Changelog
+
+### Entity Adapter Sorting Performance
+
+Users reported in #4252 that the sorting performance of `createEntityAdapter` seemed abnormally bad - the provided comparison functions were being called far more times than expected.
+
+Upon investigation, we had a couple of problems. We were always starting from an array that was in insertion order, not the existing sorted order, and that would always require significant effort to re-sort even if there weren't any _actual_ changes to the sorted results. Also, the sorting checks required frequent access to Immer's Proxy-wrapped values, even in cases where all we needed was the plain state values for comparison purposes.
+
+We've reworked the internal sorting logic to always start from the existing sorted array, do reads against a plain value to avoid the Proxy getter overhead where possible, and optimized inserts into existing sorted arrays.  This should significantly speed up sorted entity adapter behavior.
+
+### Matcher Code Size Optimization
+
+We've reworked the internals of the thunk-related matchers to deduplicate some of the logic, shaving a few bytes off the final bundle size.
+
+### RTK Query Hook Updates
+
+`defaultSerializeQueryArgs` can now handle `BigInt` values safely.
+
+The `isLoading` flag logic was improved to handle errors when a query hook tries to subscribe.
+
+### TS Updates
+
+`create.asyncThunk`'s types were improved to avoid cases where it might infer `any`.
+
+We've made several internal types changes to work correctly with React 19's upcoming types.
+
+The `retryCondition` method now receives `unknown` as an argument, instead of always assuming the user is using `fetchBaseQuery`.
+
+### Other Changes
+
+The Reselect dep has been bumped to 5.1.0 to match the expected internal usage of `createSelector.withTypes()`.
+
+## What's Changed
+
+* Update remaining `Context` references to match the new nullable `Context` by @aryaemami59 in https://github.com/reduxjs/redux-toolkit/pull/4336
+* types: export `GetThunkAPI` type by @shrouxm in https://github.com/reduxjs/redux-toolkit/pull/4289
+* Inline the deprecated `React.ReactChild` type by @aryaemami59 in https://github.com/reduxjs/redux-toolkit/pull/4382
+* Replace usage of deprecated `JSX` global namespace with `React.JSX` by @aryaemami59 in https://github.com/reduxjs/redux-toolkit/pull/4381
+* Fix `useRef` usages to be called with an explicit argument of `undefined`. by @aryaemami59 in https://github.com/reduxjs/redux-toolkit/pull/4380
+* Bump `reselect` dependency to 5.1.0 to resolve #4200 by @aryaemami59 in https://github.com/reduxjs/redux-toolkit/pull/4400
+* Improve sorted entity adapter sorting performance by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/4361
+* Prevent inference of any in create.asyncThunk by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/4389
+* try out simplifying matcher code by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/4386
+* Handle bigint in useQuerySubscription by @rkofman in https://github.com/reduxjs/redux-toolkit/pull/4315
+* fix: ensure hook subscription failures do not reset isLoading state by @smacpherson64 in https://github.com/reduxjs/redux-toolkit/pull/4364
+* Improve usability of the `initiate()` action for mutations. by @jared-ca in https://github.com/reduxjs/redux-toolkit/pull/4337
+* Make retryCondition receive unknown error, as the user may not be using fetchBaseQuery by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/3957
+
+**Full Changelog**: https://github.com/reduxjs/redux-toolkit/compare/v2.2.3...v2.2.4

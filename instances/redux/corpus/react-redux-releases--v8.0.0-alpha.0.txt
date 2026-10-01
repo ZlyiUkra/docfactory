@@ -1,0 +1,76 @@
+# react-redux release: v8.0.0-alpha.0
+# джерело: https://github.com/reduxjs/react-redux/releases/tag/v8.0.0-alpha.0
+# отримано: 2026-10-01
+# версія: 8.0.0-alpha.0
+
+Tag v8.0.0-alpha.0, published 2021-10-03, pre-release.
+
+This is **the initial alpha preview release** for React-Redux v8.
+
+This alpha release reworks `useSelector` and `connect` for compatibility with React 18, rewrites the React-Redux codebase to TypeScript (obsoleting use of `@types/react-redux`), modernizes build output, and removes the deprecated `connectAdvanced` API and the `pure` option for `connect`.
+
+```
+npm i react-redux@next
+
+yarn add react-redux@next
+```
+
+## Overview and Compatibility
+
+**This alpha release is intended for initial compatibility testing with React 18 and TypeScript**.  For general discussion of this release, see the associated thread in the Discussions section.
+
+Our public API is still the same ( `connect` and `useSelector/useDispatch`), all of our tests pass, and apps _should_ run okay.  It's very possible that the only migration needed is to bump the package version.
+
+However, it's likely that there will be types breakage due to the TypeScript migration, and runtime bugs are also possible due to the amount of internal refactoring and changes.
+
+React-Redux now requires the new experimental `useSyncExternalStore` API in React 18.  This release is using the "shim" package which backfills that API in earlier React versions, and currently lists `'react': '^16 || ^17 || 18'` as its acceptable peer dependencies, so in theory it could run with React 16 and 17.  However, we're planning to remove use of the shim and have a hard dependency on React 18 by the time version 8.0 goes final, so you are enouraged to try out this build with an "experimental" build of React 18 that contains `useSyncExternalStore`, such as version `0.0.0-experimental-7d38e4fd8-20210930`, and follow the React 18 upgrade instructions.
+
+React 18 will be introducing new APIs related to SSR and hydration, and React-Redux will likely need further updates to support those. This release stubs out the `getServerSnapshot` argument to `useSyncExternalStore` - we'll tackle this in a future alpha release.
+
+## Changelog
+
+### TypeScript Migration
+
+The React-Redux library source has always been written in plain JS, and the community maintained the TS typings separately as `@types/react-redux`.
+
+We've (finally!) migrated the React-Redux codebase to TypeScript, using the existing typings as a starting point. We've tried to maintain the same external type signatures as much as possible, but there will most likely be some compile breakages from the changes, and we may have missed some bits along the way. Please file issues with any apparent TS-related problems so we can review them.
+
+The TS migration was a great collaborative effort, with many community members contributing migrated files. Thank you to everyone who helped out!
+
+As part of the process, we also updated the repo to use Yarn 2, copied the typetests files from DefinitelyTyped and expanded them, and improved our CI setup to test against multiple TS versions.
+
+> **Note** When testing this out, you should remove the `@types/react-redux` package and ensure that any installed copies of `redux` are de-duped. You are also encouraged to update to the latest versions of Redux Toolkit (1.6.1+) or Redux (4.1.1), to ensure consistency between installed types and avoid problems from types mismatches.
+
+### React 18 Compatibility
+
+Per the React 18 announcement overview, React 18 will include new capabilities like automatic render batching and opt-in support for "concurrent rendering".  In order for external state libraries like Redux to take advantage of those, we need to use the new `useSyncExternalStore` API to let React better coordinate renders caused by external updates.
+
+We've reworked both `connect` and `useSelector` to call `useSyncExternalStore` internally. This process is purely internal refactoring, and should require no changes to your own code.
+
+Early performance benchmarks show parity with React-Redux v7.2.5 for both `connect` and `useSelector`, so we do not anticipate any meaningful performance regressions.
+
+### Modernized Build Output
+
+We've always targeted ES5 syntax in our published build artifacts as the lowest common denominator. Even the "ES module" artifacts with `import/export` keywords still were compiled to ES5 syntax otherwise.
+
+With IE11 now effectively dead and many sites no longer supporting it, we've updated our build tooling to target a more modern syntax equivalent to ES2017, which shrinks the bundle size slightly.
+
+If you still need to support ES5-only environments, please compile your own dependencies as needed for your target environment.
+
+### Removal of Legacy APIs
+
+We announced in 2019 that the legacy `connectAdvanced` API would be removed in the next major version, as it was rarely used, added internal complexity, and was also basically irrelevant with the introduction of hooks.  As promised, we've removed that API.
+
+We've also removed the `pure` option for `connect`, which forced components to re-render regardless of whether props/state had actually changed if it was set to `false`. This option was needed in some cases in the early days of the React ecosystem, when components sometimes relied on external mutable data sources that could change outside of rendering. Today, no one writes components that way, the option was barely used, and React 18's `useSyncExternalStore` strictly requires immutable updates.  So, we've removed the `pure` flag.
+
+Given that both of these options were almost never used, this shouldn't meaningfully affect anyone.
+
+## Changes
+
+Due to the TS migration effort and number of contributors, this list covers just the major changes:
+
+- #1739: Integrate TypeScript port
+- #1808: Initial experimental React 18 compat prototyping
+- #1817: Fix compatibility with React 18 strict effects
+
+https://github.com/reduxjs/react-redux/compare/v7.2.4...v8.0.0-alpha.0

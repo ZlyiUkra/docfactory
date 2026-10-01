@@ -1,0 +1,102 @@
+# redux-toolkit release: v1.7.2
+# джерело: https://github.com/reduxjs/redux-toolkit/releases/tag/v1.7.2
+# отримано: 2026-10-01
+# версія: 1.7.2
+
+Tag v1.7.2, published 2022-02-03.
+
+This release fixes a TS types bug with RTK Query generated selectors, makes the RTKQ structural sharing behavior configurable, adds an option to have the serializability middleware ignore all actions, and has several minor bugfixes and enhancements to RTK Query.
+
+## Changelog
+
+### RTK Query Selector TS Types Fix
+
+Several users had reported that as of 1.7.0 selectors generated via `apiSlice.endpoint.select()` were failing to compile when used, with TS errors that looked like `Type '{}' is missing the following properties from type 'CombinedState<>`.
+
+We've fixed the issue, and selectors should now compile correctly when used with TS.
+
+### Additional Configuration Options
+
+RTK Query implements a technique called "structural sharing" to preserve existing object references if possible when data for an endpoint is re-fetched. RTKQ recurses over both data structures, and if the contents appear to be the same, keeps the existing values. That helps avoid potential unnecessary re-renders in the UI, because otherwise the _entire_ re-fetched result would be new object references.
+
+However, this update process can potentially take time depending on the size of the response.  Endpoints can now be given a `structuralSharing` option that will turn that off to save on processing time:
+
+```ts
+    const api = createApi({
+      baseQuery: fetchBaseQuery({ baseUrl: "https://example.com" }),
+      endpoints: (build) => ({
+        getEveryEntityInADatabase: build.query({
+          query: () => ({ url: "/i-cant-paginate-data" }),
+          structuralSharing: false,
+        }),
+      }),
+    });
+```
+
+Additionally, the serializability check middleware can now be customized with an `ignoreActions` option to exempt _all_ actions from being checked.  This is an escape hatch and isn't recommended for most apps:
+
+```ts
+    const store = configureStore({
+      reducer: rootReducer,
+      middleware: (getDefaultMiddleware) =>
+        getDefaultMiddleware({
+          serializableCheck: {
+            ignoreActions: true,
+          },
+        }),
+    });
+```
+
+### Other API Improvements
+
+If an `extraArgument` was provided to the thunk middleware during store configuration, that value is now passed along to the `prepareHeaders()` function:
+
+```ts
+  const store = configureStore({
+	reducer: rootReducer,
+	middleware: (getDefaultMiddleware) =>
+	  getDefaultMiddleware({
+		thunk: {
+		  extraArgument: { myCustomApiService },
+		},
+	  }),
+  });
+
+  // ..later on
+  const api = createApi({
+	baseQuery: fetchBaseQuery({
+	  baseUrl: "https://example.com",
+	  prepareHeaders: async (headers, { getState, extra }) => {
+		const token = getState().auth.token;
+		const somethingElse = await extra.myCustomApiService.someMethod();
+		// do things with somethingElse
+		return headers;
+	  },
+	}),
+  });
+```
+
+The `invalidatesTags/providesTags` functions now receive the `action.meta` field as an argument, to help with potentially invalidating based on request/response headers.
+
+### Bug Fixes
+
+`refetchOnFocus` now cleans up cache entries if a focus event is received and there are no active subscriptions, to avoid unnecessary requests.
+
+Active polls are cleaned up when the last component for a given subscription unsubscribes.
+
+The types for `builder.addMatcher` have been updated to support inference of guards without a `type` property.
+
+## What's Changed
+
+* feat(meta): Passes meta to result description functions [#1904] by @bever1337 in https://github.com/reduxjs/redux-toolkit/pull/1910
+* Fix `addMatcher` typings by @crcarrick in https://github.com/reduxjs/redux-toolkit/pull/1895
+* Pass baseQueryMeta into calculateProvidedBy by @msutkowski in https://github.com/reduxjs/redux-toolkit/pull/1926
+* Cleanup polls on unsubscribeQueryResult by @msutkowski in https://github.com/reduxjs/redux-toolkit/pull/1933
+* Add `extra` to `prepareHeaders`, update documentation + tests by @msutkowski in https://github.com/reduxjs/redux-toolkit/pull/1922
+* fix `reducerPath` for query definitions by @phryneas in https://github.com/reduxjs/redux-toolkit/pull/1977
+* Update serialize documentation link by @wuweiweiwu in https://github.com/reduxjs/redux-toolkit/pull/1983
+* Refetch should not happen if no active subscribers by @AlexanderArvidsson in https://github.com/reduxjs/redux-toolkit/pull/1974
+* Add `ignoreActions` flag to serializable state middleware by @msutkowski in https://github.com/reduxjs/redux-toolkit/pull/1984
+* RTKQ: configurable `structuralSharing` on endpoints/queries/createApi by @msutkowski in https://github.com/reduxjs/redux-toolkit/pull/1954
+
+**Full Changelog**: https://github.com/reduxjs/redux-toolkit/compare/v1.7.1...v1.7.2

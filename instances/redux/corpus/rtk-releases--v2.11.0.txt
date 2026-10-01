@@ -1,0 +1,46 @@
+# redux-toolkit release: v2.11.0
+# джерело: https://github.com/reduxjs/redux-toolkit/releases/tag/v2.11.0
+# отримано: 2026-10-01
+# версія: 2.11.0
+
+Tag v2.11.0, published 2025-11-23.
+
+This **feature release** upgrades our Immer dependency to v11 to pick up the additional recent performance optimizations, adds a new `refetchCachedPages` option to allow only fetching the first cached page, and fixes an issue with regex ignore paths in the immutability middleware.
+
+## Changelog
+
+### Immer v11 Performance Improvements
+
+As described in the release notes for v2.10.0, we recently put significant effort into profiling Immer, and contributed several PRs that aimed to optimize its update performance.
+
+v2.10.0 updated to use Immer 10.2.0, which added the first smaller set of perf updates.  That included a new Immer option to disable "strict iteration" to speed up iterating copied objects, and we specifically applied that change in RTK under the assumption that standard plain JS objects as Redux state shouldn't have unusual keys anyway.  Overall, this appears to boost Immer update perf by ~+20% over v10.1 depending on update scenario.
+
+Immer v11.0.0 was just released and contains the second perf PR, a major internal architectural rewrite to change the update finalization implementation from a recursive tree traversal to a set of targeted updates based on accessed and updated fields.  Based on the benchmarks in the PR,  this adds another ~+5% perf boost over the improvements in v10.2, again with variations depending on update scenario.  In practice, the actual improvement may be better than that - the benchmarks list includes some array update cases which actually got a bit slower (and thus drag down the overall average), and a majority of update scenarios show anywhere from **+25% to +60% faster than Immer v10.1**!
+
+As a practical example, we have an RTK Query stress test benchmark where we mount 1000 components with query hooks at once, unmount, then remount them.  We ran the same benchmark steps for RTK 2.9 and Immer 10.1, and then RTK 2.10+ and Immer 11.  The overall scripting time dropped by about 30% (3330ms -> 2350ms), and the amount of time spent in Immer methods and the RTK reducers dropped significantly:
+
+Based on this, it appears to be a major improvement overall.
+
+As with the instructions in v2.10.0: _if_ by some chance your Redux app state relies on non-string keys, you can still manually call `setUseStrictIteration(true)` in your app code to retain compatibility there, but we don't expect that standard Redux apps will have to worry about that.
+
+There are still two outstanding Immer perf PRs that may offer further improvements: one that adds an optional plugin to override array methods to avoid proxy creation overhead, and another experimental tweak to shallow copying that may be better with larger object sizes.
+
+### New `refetchCachedPages` Option
+
+RTK Query's infinite query API was directly based on React Query's approach, including the pages cache structure and refetching behavior.  By default, that means that when you trigger a refetch, both R-Q and RTKQ will try to sequentially refetch _all_ pages currently in that cache entry.  So, if there were 5 pages cached for an entry, they will try to fetch pages 0...4, in turn.
+
+Some users have asked for the ability to _only_ refetch the first page.  This can be accomplished somewhat manually by directly updating the cache entry to eliminate the old pages and then triggering a refetch, but that's admittedly not very ergonomic.
+
+We've merged a contributed PR that adds a new `refetchCachedPages` flag.  This can be defined as part of infinite query endpoints, passed as an option to infinite query hooks, or passed as an option in `initiate()` calls or hook `refetch()` methods.  If set to `refetchCachedPages: false`, it will only refetch the _first_ page in the cache and not the remaining pages, thus shrinking the cache from N pages to 1 page.
+
+### Other Fixes
+
+We merged a fix to the immutability dev middleware where it was treating `ignoredPath` regexes as strings and not actually testing them correctly.
+
+## What's Changed
+
+* Update Immer to v11 for better update performance by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/5141
+* fix: compare paths against Regex instances in ignoredPaths by @johnste in https://github.com/reduxjs/redux-toolkit/pull/5124
+* Add refetchCachedPages option for infinite query by @rossmartin in https://github.com/reduxjs/redux-toolkit/pull/5016
+
+**Full Changelog**: https://github.com/reduxjs/redux-toolkit/compare/v2.10.1...v2.11.0

@@ -1,0 +1,47 @@
+# redux-toolkit release: v1.7.0-beta.1
+# джерело: https://github.com/reduxjs/redux-toolkit/releases/tag/v1.7.0-beta.1
+# отримано: 2026-10-01
+# версія: 1.7.0-beta.1
+
+Tag v1.7.0-beta.1, published 2021-11-05, pre-release.
+
+This beta release updates `createSlice` to avoid potential circular dependency issues by lazy-building its reducer, and updates our runtime dependencies to their latest versions.
+
+```bash
+npm i @reduxjs/toolkit@next
+
+yarn add @reduxjs/toolkit@next
+```
+
+## Changelog
+
+### `createSlice` Lazy Reducers and Circular Dependencies
+
+For the last couple years we've specifically recommended using a "feature folder" structure with a single "slice" file of logic per feature, and `createSlice` makes that pattern really easy - no need to have separate folders and files for `/actions` and `/constants` any more.
+
+The one downside to the "slice file" pattern is in cases when slice A needs to import actions from slice B to respond to them, and slice B also needs to listen to slice A.  This circular import then causes runtime errors, because one of the modules will not have finished initializing by the time the other executes the module body.  That causes the exports to be undefined, and `createSlice` throws an error because you can't pass `undefined` to `builder.addCase()` in `extraReducers`.  (Or, worse, there's no obvious error and things break later.)
+
+There are well-known patterns for breaking circular dependencies, typically requiring extracting shared logic into a separate file.  For RTK, this usually means calling `createAction` separately, and importing those action creators into both slices.
+
+While this is a rarer problem, it's one that _can_ happen in real usage, and it's also been a semi-frequently listed concern from users who didn't want to use RTK.
+
+We've updated `createSlice` to now lazily create its reducer function _the first time you try to call it_.  That delay in instantiation should **eliminate circular dependencies as a runtime error in `createSlice`**.
+
+We'd appreciate users trying this out and seeing if it successfully fixes that problem.  If you previously extracted some separate actions due to circular dep issues, please try re-consolidating those into the actual slices and see how it works.
+
+### Dependency Updates
+
+We've updated our deps to the latest versions:
+
+- **Reselect 4.1.x**: Reselect has brand-new customization capabilities for selectors, including configuring cache sizes > 1 and the ability to run equality checks on selector results.  It also now has completely rewritten TS types that do a much better job of inferring arguments and catch previously broken patterns.
+- **Redux Thunk 2.4.0**: The thunk middleware also has improved types, as well as an optional "global override" import to modify the type of `Dispatch` everywhere in the app
+
+We've also lowered RTK's peer dependency on React from `^16.14` to `^16.9`, as we just need hooks to be available.
+
+## What's Changed
+
+* Update Yarn from 2.4 to 3.1 by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/1688
+* allow for circular references by building reducer lazily on first reducer call by @phryneas in https://github.com/reduxjs/redux-toolkit/pull/1686
+* Update deps for 1.7 by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/1692
+
+**Full Changelog**: https://github.com/reduxjs/redux-toolkit/compare/v1.7.0-beta.0...v1.7.0-beta.1

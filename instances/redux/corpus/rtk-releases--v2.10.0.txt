@@ -1,0 +1,58 @@
+# redux-toolkit release: v2.10.0
+# джерело: https://github.com/reduxjs/redux-toolkit/releases/tag/v2.10.0
+# отримано: 2026-10-01
+# версія: 2.10.0
+
+Tag v2.10.0, published 2025-11-04.
+
+This **feature release** updates our Immer dep to 10.2 to pick up its performance improvements, has additional byte-shaving and internal performance updates, and fixes a `combineSlices` type issue.
+
+## Changelog
+
+### Immer Performance Improvements
+
+Redux Toolkit has been built around Immer since the very first prototype in 2018.  Use of Immer as the default in `createSlice` directly eliminated accidental mutations as a class of errors in Redux apps, and drastically simplified writing immutable updates in reducers.
+
+We've had various issues filed over the years asking to make Immer optional, or raising concerns about Immer's perf.  Immer is indeed slower than writing immutable updates by hand, but our stance has always been that Immer's DX is absolutely worth whatever modest perf cost it might incur, and that reducers are usually not the bottleneck in Redux apps anyway - it's usually the cost of updating the UI that's more expensive.
+
+However, a year ago an issue was filed with some specific complaints about Immer perf being very slow.  We investigated, ran benchmarks, and filed an Immer issue confirming that it had gotten noticeably slower over time.  Immer author Michel Weststrate agreed, and said there were some potential tweaks and architectural changes that could be made, but didn't have time to look into them himself.
+
+A couple months ago, we started investigating possible Immer perf improvements ourselves, including profiling various scenarios and comparing implementations of other similar immutable update libraries.  After extensive research and development, we were able to file several PRs to improve Immer's perf: a set of smaller tweaks around iteration and caching, a couple much larger architectural changes, and a potential change to copying objects.
+
+Immer 10.2.0 contains the first set of smaller perf improvements, and this RTK release updates our dependency to 10.2 to pick up those changes.
+
+One important behavior note here: Earlier versions of Immer (8, 9, 10.1) added more handling for edge cases like symbol keys in objects.  These changes made sense for correctness, but also contributed to the slowdown.  Immer 10.2 now includes a new `setUseStrictIteration` option to allow only copying string keys in objects (using `Object.keys()` instead of `Reflect.ownKeys()`), but keeps the option as `strict: true` for compatibility with its own users.  That default will likely change in Immer 11.
+
+**For RTK 2.10.0, we specifically import and call `setUseStrictIteration(false)`, under the assumption that standard Redux state usage only involves string keys in plain JS objects!**  This should provide a ~10% speedup for Immer update operations.  Given that expectation, we believe this is a reasonable feature change and only needs a minor version bump.
+
+**_If_ by some chance you are using symbol keys in your Redux state, or in other Immer-powered updates in your Redux app, you can easily revert to the previous behavior by calling `setUseStrictIteration(true)` in your own app code**.
+
+Based on discussions with Michel, Immer v11 should come out in the near future with additional architectural changes for better perf, including optional support for faster array methods that would be available as an Immer plugin adding ~2KB bundle size.  We will likely _not_ turn that plugin on by default, but recommend that users enable it if they do frequent array ops in reducers.
+
+We're happy to have contributed these perf improvements to Immer, and that they will benefit not just RTK users but _all_ Immer users everywhere!
+
+You can follow the additional discussion and progress updates in the main Immer perf update tracking issue.
+
+### Additional RTK Perf Improvements
+
+We've tweaked some places where we were doing repeated `filter().map().map()` calls to micro-optimize those loops.
+
+RTKQ tag invalidation was always reading from proxy-wrapped arrays when rewriting provided tags.  It now reads from the plain arrays instead, providing a modest speedup.
+
+We previously found that ESBuild wasn't deduplicating imports from the same libraries in separate files bundled together (ie `import { useEffect as useEffect2/3/4/ } from 'react'`).  We've restructured our internals to ensure all external imports are only pulled in once.
+
+We've done some extensive byte-shaving in various places in the codebase.  The byte-shaving and import deduplication saves about 0.6K min from the RTKQ core, and 0.2K min from the RTKQ React bundle.
+
+### Other Changes
+
+`combineSlices` now better handles cases where `PreloadedState` might not match the incoming type, such as persisted values.
+
+## What's Changed
+
+* Improve perf for internal map/filter ops by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/5126
+* Update Immer dep to 10.2 and disable strict iteration for perf by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/5127
+* Deduplicate imports by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/5128
+* Byte-shave various chunks of code by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/5129
+* fix(combineSlices): Infer PreloadedState properly from provided slice by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/5125
+
+**Full Changelog**: https://github.com/reduxjs/redux-toolkit/compare/v2.9.2...v2.10.0

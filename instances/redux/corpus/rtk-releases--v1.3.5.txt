@@ -1,0 +1,54 @@
+# redux-toolkit release: v1.3.5
+# джерело: https://github.com/reduxjs/redux-toolkit/releases/tag/v1.3.5
+# отримано: 2026-10-01
+# версія: 1.3.5
+
+Tag v1.3.5, published 2020-04-19.
+
+This release adds the ability to cancel async thunks before execution, improves TS thunk types, and fixes a broken middleware option name change.
+
+## Changes
+
+### Async Thunk Cancellation
+
+The `createAsyncThunk` API already had support for signaling cancellation of in-progress requests via an `AbortController`.  However, there was no way to skip executing the payload creator callback itself, or skip dispatching the `pending` action.
+
+We've added a `condition` option to `createAsyncThunk` that allows you to run checks before the payload creator is executed, and bail out of the thunk entirely if desired by returning `false`:
+
+```js
+const fetchUserById = createAsyncThunk(
+  'users/fetchByIdStatus',
+  async (userId, thunkAPI) => {
+    const response = await userAPI.fetchById(userId)
+    return response.data
+  },
+  {
+    condition: (userId, { getState, extra }) => {
+      const { users } = getState()
+      const fetchStatus = users.requests[userId]
+      if (fetchStatus === 'fulfilled' || fetchStatus === 'loading') {
+        // Already fetched or in progress, don't need to re-fetch
+        return false
+      }
+    }
+  }
+)
+```
+
+### Thunk Typing Improvements
+
+We've updated the `createAsyncThunk` TS types to fix an issue when there is no thunk argument, and to make it easier to wrap `createAsyncThunk` in your own abstractions.  See #486 / #489 for the issues and #502 / #512 for the updates.
+
+### Immutable Middleware Options
+
+When we inlined the immutable check middleware, we ended up changing the `ignore` option name to `ignoredPaths`.  We've added handling for `ignore` for backwards compatibility just in case anyone was relying on that.  We've also better documented the options for the serializable check middleware.  See #491, #492, and #510 .
+
+## Changelog
+
+- allow to skip AsyncThunks using a condition callback (@phryneas - #513)
+- payloadCreator arg argument => asyncThunk arg type (@phryneas - #502)
+- export AsyncThunkPayloadCreator type (@phryneas - #512)
+- Update docs, add test, alias ignore->ignoredPaths (@msutkowski - #492)
+- Add missing parameters to docs for serializable middleware (@msutkowski - #510)
+
+https://github.com/reduxjs/redux-toolkit/compare/v1.3.4...v1.3.5

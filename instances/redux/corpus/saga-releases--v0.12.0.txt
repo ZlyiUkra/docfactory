@@ -1,0 +1,43 @@
+# redux-saga release: v0.12.0
+# джерело: https://github.com/redux-saga/redux-saga/releases/tag/v0.12.0
+# отримано: 2026-10-01
+# версія: 0.12.0
+
+Tag v0.12.0, published 2016-10-02, pre-release.
+
+## Changes
+
+- Added new effect `flush` (API docs). It can be used to clear buffered items in the channel and geting them back in a batch in the saga (thanks to @Andarist)
+- Added a new helper `throttle` (API docs)(thanks to @Andarist)
+- Added a new buffer type `expanding` (API docs) (thanks to @Andarist) . This new type also fixes the breaking change that was introduced by v0.11.1 with the new internal buffer implementation (see #511 [only if you need more details]).
+
+  TL/DR: Use `buffer.fixed(limit)` when you need a bounded buffer (will throw an error when the untaked messages exceed the buffer limit). Use `buffer.expanding(limit)` when you need an auto expanding buffer.
+- createSagaMiddleware supports a new (optional) option: `onError` API docs to detect uncaught exceptions from Sagas (thanks to @secobarbital)
+- Saga helpers (`takeEvery`, `takeLatest`, `throttle`) are now non blocking (thanks to @Andarist).
+
+Saga helpers return Iterator objects. In previous versions they were treated just like other Iterators and Promises in redux-saga, the Saga calling a helper (either via `yield` or `yield*`) will block until the Iterator returns. But since Saga helpers never return (because they are looping forever ) this will also cause the calling Saga to block forever. So in previous versions, if you wanted to call a helper in a non blocking way you had to use the `fork` effect
+
+```js
+function* saga1() { ... }
+
+function* saga2() { ... }
+
+function* mainSaga() {
+  yield fork(takeEvery, 'ACTION_1', saga1)
+  yield fork(takeLatest, 'ACTION_2', saga2)
+}
+```
+
+With this change, redux-saga handles the helpers like forks when used with `yield` which mean you can call them directly like this
+
+```js
+
+function* mainSaga() {
+  const task1 = yield takeEvery('ACTION_1', saga1)
+  const task2 = yield takeLatest('ACTION_2', saga2)
+}
+```
+
+**Note this will not work when used with the delegation form `yield*`: eg `yield* takeEvery(...)` will block the Generator. This is due to how `yield*` works in Generators in JavaScript and can't be handled by redux-saga.**
+- Add Chinese Traditional translation (thanks to @neighborhood999)
+- fixed bug log() not compatible with IE9 (thanks to @cyrilluce)

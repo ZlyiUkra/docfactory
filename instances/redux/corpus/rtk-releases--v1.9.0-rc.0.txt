@@ -1,0 +1,95 @@
+# redux-toolkit release: v1.9.0-rc.0
+# джерело: https://github.com/reduxjs/redux-toolkit/releases/tag/v1.9.0-rc.0
+# отримано: 2026-10-01
+# версія: 1.9.0-rc.0
+
+Tag v1.9.0-rc.0, published 2022-10-30, pre-release.
+
+This **release candidate** includes a new "auto-batching" store enhancer, support for passing some global options to `fetchBaseQuery`, a fix for `forceRefetch` behavior, and internal tweaks to checks for missing RTKQ middleware setup.
+
+**Please try this out and give us feedback** (even if it's just "tried updating and everything's fine")!  If no further issues come up we intend to publish 1.9 in the next few days.
+
+```bash
+npm i @reduxjs/toolkit@next
+
+yarn add @reduxjs/toolkit@next
+```
+
+Docs updates for 1.9 are complete, and can be viewed here:
+
+https://deploy-preview-2401--redux-starter-kit-docs.netlify.app/
+
+## Changelog
+
+### New Auto-Batching Store Enhancer
+
+There are several different ways to "batch actions" with Redux stores, ranging from reducers to debounced subscriber notifications.
+
+RTK now includes a new `autoBatchEnhancer()` store enhancer that uses a variation on the "debounced notification" approach, inspired by React's technique of batching renders and determining if an update is low-priority or high-priority.
+
+The enhancer looks for any actions tagged with an `action.meta[SHOULD_AUTOBATCH] = true` flag, and delays notifying subscribers until the end of the event loop tick. This means that if multiple "auto-batched" actions are dispatched in a row, there will be only one subscriber notification.  However, if any "normal-priority" action without that flag is dispatched in the same tick, the enhancer will notify subscribers immediately.
+
+This allows Redux users to selectively tag certain actions for effective batching behavior, making this purely opt-in on a per-action basis, while retaining normal notification behavior for all other actions.
+
+RTK Query's internals have been updated to mark several key actions as batchable.  While the enhancer is purely opt-in, benchmarks indicate that it can help speed up UI performance with RTK Query, especially when rendering many components with query hooks.  We recommend adding it to your store setup:
+
+```ts
+  const store = configureStore({
+  reducer,
+  enhancers: (existingEnhancers) => {
+    // Add the autobatch enhancer to the store setup
+    return existingEnhancers.concat(autoBatchEnhancer())
+  },
+})
+```
+
+Additionally, there's a `prepareAutoBatched` util that can be used to help add the `SHOULD_AUTOBATCH` flag to actions, designed for use with `createSlice`:
+
+```ts
+const counterSlice = createSlice({
+  name: 'counter',
+  initialState: { value: 0 } as CounterState,
+  reducers: {
+    incrementBatched: {
+      // Batched, low-priority
+      reducer(state) {
+        state.value += 1
+      },
+      // Use the `prepareAutoBatched` utility to automatically
+      // add the `action.meta[SHOULD_AUTOBATCH]` field the enhancer needs
+      prepare: prepareAutoBatched<void>(),
+    },
+    // Not batched, normal priority
+    decrementUnbatched(state) {
+      state.value -= 1
+    },
+  },
+})
+```
+
+### `fetchBaseQuery` Global Options
+
+`fetchBaseQuery` now supports passing the `responseHandler`, `validateStatus`, and `timeout` options directly to `fetchBaseQuery` itself, in addition to accepting it as part of specific endpoints.  If provided, these options will be applied as defaults to _all_ requests for that API, which simplifies using them on many endpoints.
+
+### Other Changes
+
+Providing `serializeQueryArgs` and `forceRefetch` options for an endpoint now works correctly when you pass an object as the cache key argument to a query hook.
+
+The `defaultSerializeQueryArgs` util is now exported.
+
+The endpoint-specific `serializeQueryArgs` option now allows returning an object or a number instead of just a string.  If a string is returned, it will be used as-is for the serialized cache key.  If an object or number is returned, that value will be passed to `defaultSerializeQueryArgs`.  This simplifies the common case of wanting to remove a couple fields from the cache key, without needing to call `defaultSerializeQueryArgs` yourself.
+
+Internal tweaks to the RTKQ middleware behavior for detecting cases where the middleware has not been added to the store.
+
+The API docs for the 1.9 preview are fully updated.
+
+## What's Changed
+
+* Fill out v1.9 remaining docs by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/2804
+* Rework endpoint serializeQueryArgs to allow object/number returns by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/2835
+* allow for global `responseHandler` and `validateStatus` configuration by @phryneas in https://github.com/reduxjs/redux-toolkit/pull/2823
+* Fix refetches when sQA returns same value and queryArgs are object by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/2844
+* Add an auto-batching enhancer that delays low-pri notifications and use with RTKQ by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/2846
+* Check middleware registration directly to avoid persistence issues by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/2850
+
+**Full Changelog**: https://github.com/reduxjs/redux-toolkit/compare/v1.9.0-beta.0...v1.9.0-rc.0

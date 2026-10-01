@@ -1,0 +1,194 @@
+# redux-toolkit release: v1.3.0
+# джерело: https://github.com/reduxjs/redux-toolkit/releases/tag/v1.3.0
+# отримано: 2026-10-01
+# версія: 1.3.0
+
+Tag v1.3.0, published 2020-03-24.
+
+This release adds two new APIs: `createEntityAdapter` to help manage normalized state, and `createAsyncThunk` to abstract common data fetching behavior.
+
+It also improves bundle size by inlining some of our prior dependencies and fixing cases where dev APIs were accidentally being included in production, as well as using a new version of Immer that tree-shakes better.
+
+Finally, we've improved the developer experience by tweaking our TS typings for better inference and updating the dev check middleware to warn if checks are taking too much time.
+
+## New APIs
+
+One of the primary goals for Redux Toolkit has always been to simplify common use cases and reduce "boilerplate" by providing APIs that can replace code you were previously writing out by hand.
+
+To that end, v1.3.0 adds two new APIs for the common use cases of async data fetching and managing normalized data in the store.
+
+### `createAsyncThunk`
+
+The Redux docs have taught that async logic should typically dispatch "three-phase async actions" while doing data fetching: a "start" action before the request is made so that loading UI can be displayed, and then a "success" or "failure" action to handle loading the data or showing an error message.  Writing these extra action types is tedious, as is writing thunks that dispatch these actions and differ only by what the async request is.
+
+Given that this is a very common pattern, we've added a `createAsyncThunk` API that abstracts this out.  It accepts a base action type string and a callback function that returns a Promise, which is primarily intended to be a function that does a data fetch and returns a Promise containing the results.  It then auto-generates the request lifecycle action types / creators, and generates a thunk that dispatches those lifecycle actions and runs the fetching callback.
+
+From there, you can listen for those generated action types in your reducers, and handle loading state as desired.
+
+### `createEntityAdapter`
+
+The Redux docs have also advised storing data in a "normalized" state shape, which typically means keeping each type of item in a structure that looks like `{ids: [], entities: {} }`.  However, the Redux core provides no APIs to help manage storing and updating your data using this approach.  Many community libraries exist, with varying tradeoffs, but so far we haven't officially recommended any of them.
+
+Caching data is a hard problem, and not one that we are interested in trying to solve ourselves.  However, given that we do recommend this specific pattern, and that Redux Toolkit is intended to help simplify common use cases, we want to provide a minimal set of functionality to help users manage normalized state.
+
+To help solve this, we've specifically ported the `@ngrx/entity` library to work with Redux Toolkit, with some modifications.
+
+The core API function is `createEntityAdapter`.  It generates a set of reducer functions and selectors that know how to work with data that has been stored in that normalized `{ids: [], entities: {} }` format, and can be customized by passing in a function that returns the ID field for a given item.  If you want to keep the item IDs in a sorted order, a comparison function can also be passed in.
+
+The returned `EntityAdapter` object contains generated CRUD functions for manipulating items within that state, and generated selector functions that know how to read from that state.  You can then use the generated CRUD functions and selectors within your own code.
+
+There is one very important difference between RTK's implementation and the original `@ngrx/entity` implementation.  With `@ngrx/entity`, methods like `addOne(item, state)` accept the data argument first and the state second.  With RTK, the argument order has been flipped, so that the methods look like `addOne(state, item)`, and the methods can also accept a standard Redux Toolkit `PayloadAction` containing the data as the second argument.  This allows them to be used as Redux case reducers directly, such as passing them in the `reducers` argument for `createSlice`.  They can also be used as "mutating" helper functions inside `createReducer` and `createSlice` as well, thanks to use of Immer internally.
+
+### Documentation
+
+We've added new API reference and usage guide sections to the Redux Toolkit docs to cover these new APIs:
+
+- Usage:
+  - Usage Guide
+  - Usage with TypeScript
+- API reference:
+  - `createAsyncThunk`
+  - `createEntityAdapter`
+
+## Bundle Size Improvements and Dependency Updates
+
+### Immer 6.0
+
+Immer has always been the largest chunk of code added to your bundle from using RTK.  Until now, RTK specifically depended on Immer 4.x, since 5.x added support for handling `Map`s and `Set`s (which aren't useful in a Redux app) and that support added to its bundle size.
+
+Immer's code was written in a way that kept it from tree-shaking properly.  Fortunately, Immer author Michel Weststrate put in some amazing work refactoring the code to better support tree-shaking, and his efforts are now available as Immer 6.0.
+
+Per the Immer documentation on customizing Immer's capabilities, Immer now uses a plugin architecture internally, and additional functionality has to be explicitly enabled as an opt-in.  There are currently three Immer plugins that can be enabled: ES5 support (for environments without ES6 Proxies), `Map/Set` support, and JSON Patch support.
+
+Redux Toolkit force-enables ES5 support.  This is because we expect RTK to be used in multiple environments that do not support Proxies, such as Internet Explorer and React Native.  It's also how Immer previously behaved, so we want to keep that behavior consistent and not break code given that this is a minor release of RTK.  (In a hypothetical future major release, we may stop force-enabling the ES5 plugin and ask you to do it if necessary.)
+
+Overall, this should drop a couple KB off your app's minified bundle size.
+
+You may choose to enable the other plugins in your app code if that functionality is desired.
+
+### Store Configuration Dependencies
+
+Since its creation, RTK has depended on `leoasis/redux-immutable-state-invariant` to throw errors if accidental mutations are detected, and the `zalmoxisus/redux-devtools-extension` NPM package to handle setup and configuration of the Redux DevTools Extension as the store is created.
+
+Unfortunately, neither of these dependencies is currently published as ES Modules, and we recently found out that the immutable middleware was actually being included in production bundles despite our attempts to ensure it is excluded.
+
+Given that the repo for the immutable middleware has had no activity in the last 3 years, we've opted to fork the package and include the code directly inside Redux Toolkit.  We've also inlined the `tiny-invariant` and `json-stringify-safe` packages that the immutable middleware depended on.
+
+The DevTools setup package, while tiny, suffers from the same issue, and so we've forked it as well.
+
+Based on tests locally, these changes should reduce your production bundle sizes by roughly 2.5K minified.
+
+During the development process, we found that the serializable invariant middleware was partly being included in production.  We've decided that both the immutable and serializable middleware should always be no-ops in prod if they're ever included, both to ensure minimum bundle size, and to eliminate any unwanted slowdowns.
+
+## Other Changes
+
+### Type Inference Improvements
+
+Users reported that it was possible to pass an entity adapter update method as a case reducer even if the slice state type didn't match what the update method expected (#434 ).  We've updated the TS types to prevent that from being possible.
+
+We've also had a number of cases where users had issues with the typings for action payloads depending on whether `strictNullChecks: false` was set.  We've altered our action creator types to improve that behavior.
+
+### Dev Check Middleware Timings
+
+The immutability and serializability dev check middleware both do deep checks of state on every dispatch in dev mode.  With a large state tree, this can sometimes noticeably slow down the app, and it's not immediately clear that the dev check middleware are responsible for this.
+
+We've updated both middleware to record how much time is spent actually performing the state checks, and they will now log warning messages if the checks take too long to give you a heads-up that you might want to alter the middleware settings or disable them entirely.  The delay is configurable, and defaults to 32ms (two UI frames).
+
+In addition, the serializable middleware now ignores `meta.args` in every action by default.  This is because `createAsyncThunk` automatically takes any arguments to its payload creator function and inserts them into dispatched actions.  Since a user may be reasonably passing non-serializable values as arguments, and they're not intentionally inserting those into actions themselves, it seems sensible to ignore any potential non-serializable values in that field.
+
+### TypeScript Support
+
+We've dropped support for TS versions earlier than 3.5.  Given that 3.8 is out, this shouldn't be a major problem for users.
+
+Meanwhile, we've also re-exported the TS types from Reselect for convenience.
+
+## Example Usage
+
+This example demonstrates the typical intended usage of both `createEntityAdapter` and `createAsyncThunk`.
+
+```js
+import { createAsyncThunk, createSlice, unwrapResult, createEntityAdapter } from '@reduxjs/toolkit'
+import { userAPI } from './userAPI'
+
+const fetchUserById = createAsyncThunk(
+  'users/fetchByIdStatus',
+  async (userId) => {
+    const response = await userAPI.fetchById(userId)
+    return response.data
+  }
+)
+
+const usersAdapter = createEntityAdapter()
+
+const usersSlice = createSlice({
+  name: 'users',
+  initialState: usersAdapter.getInitialState({
+    loading: 'idle',
+    error: null
+  }),
+  reducers: {
+      usersLoaded: usersAdapter.setAll,
+      userDeleted: usersAdapter.removeOne,
+  },
+  extraReducers: {
+    [fetchUserById.pending]: (state, action) => {
+      if (state.loading === 'idle') {
+        state.loading = 'pending'
+      }
+    },
+    [fetchUserById.fulfilled]: (state, action) => {
+      if (state.loading === 'pending') {
+        state.loading = 'idle'
+        usersAdapter.addOne(state, action.payload)
+      }
+    },
+    [fetchUserById.rejected]: (state, action) => {
+      if (state.loading === 'pending') {
+        state.loading = 'idle'
+        state.error = action.error
+      }
+    }
+  }
+})
+
+const UsersComponent = () => {
+  const { users, loading, error } = useSelector(state => state.users)
+  const dispatch = useDispatch()
+
+  const fetchOneUser = async userId => {
+    try {
+      const resultAction = await dispatch(fetchUserById(userId))
+      const user = unwrapResult(resultAction)
+      showToast('success', `Fetched ${user.name}`)
+    } catch (err) {
+      showToast('error', `Fetch failed: ${err.message}`)
+    }
+  }
+
+  // render UI here
+}
+```
+
+## Thanks
+
+We'd like to thank the many people who contributed and made this release possible:
+
+- @jonjaques : created the initial version of `createAsyncThunk` that we based our implementation on
+- The entire NgRx team, particularly @brandonroberts and @MikeRyanDev , for creating `@ngrx/entity` and allowing us to port it to Redux Toolkit
+- @phryneas: our resident TS wizard, who made innumerable improvements to the TS behavior and `createAsyncThunk` implementation
+- @msutkowski : lots of feedback on the error handling design for `createAsyncThunk`
+- @Ethan-Arrowood: pointed us to a novel technique he'd developed for optional overriding of TS generic arguments
+- @mweststrate: the creator of Immer, who made massive improvements to its tree shaking and bundle size capabilities, published a utility for tracking tree shaking sizes of exports, and kept in touch with us on the status of Immer 6
+- All the users who actually tried out the alphas and betas and gave us feedback on bug reports and API design.
+
+## Changelog
+
+For the complete set of code changes, see:
+
+- PR #374: v1.3.0 Integration
+
+and this diff:
+
+https://github.com/reduxjs/redux-toolkit/compare/v1.2.5...v1.3.0
+
+For the iterative changes as this release was developed, see the Releases page for the individual release notes.

@@ -1,0 +1,83 @@
+# reselect release: v5.3.0
+# джерело: https://github.com/reduxjs/reselect/releases/tag/v5.3.0
+# отримано: 2026-10-01
+# версія: 5.3.0
+
+Tag v5.3.0, published 2026-08-22.
+
+This **feature release** adds a `maxSize` option to `weakMapMemoize` to bound cache growth, adds a new development-mode check that warns when a selector's cache grows without bound, improves memoization performance, removes the experimental `unstable_autotrackMemoize`, and updates our TypeScript support matrix and documentation.
+
+## Changelog
+
+### `maxSize` Option for `weakMapMemoize`
+
+`weakMapMemoize` has been the default memoizer since v5.0, and its main benefit is the infinite cache size.  Prior to v5, selector instances had a default cache size of 1, which meant having to create unique selector instances per component when sharing selectors that took varying arguments like IDs.  `weakMapMemoize` memoizes based on all arguments, so it eliminated the extra setup work and just stores all cached values.
+
+However, that behavior can also effectively turn into a memory leak depending on what state and arguments are passed in and how they're used in the UI.
+
+ `weakMapMemoize` now accepts a `maxSize` option that bounds this growth:
+
+```ts
+const getVisibleItems = weakMapMemoize(
+  (items, from, to) => items.slice(from, to),
+  { maxSize: 100 }
+)
+```
+
+This shares the same `maxSize` option name as the earlier `lruMemoize`, but has different behavior.  Rather than an LRU eviction, this is a "generational" swap (kind of like a double buffer).  When the cache hits its max size, it's swapped out with an empty version and starts over at 0 entries.  So, there's effectively at most 2 * `maxSize` items in memory at any time.  If `maxSize` is not enabled, there's no additional logic or performance overhead.  If you do need LRU-style behavior, use `lruMemoize` instead.
+
+Note that bounding a `createSelector` selector requires passing `maxSize` in **both** `memoizeOptions` and `argsMemoizeOptions`, since the two memoization levels have separate caches. See the `maxSize` docs for details.
+
+Thanks to @veksa for proposing this in PR #761 and providing memory test infrastructure that helped verify this behavior.
+
+### New `cacheSizeCheck` Dev-Mode Check
+
+We've also added an additional dev-mode check alongside the existing `inputStabilityCheck` and `identityFunctionCheck`.  If a memoized function has accumulated over 1000 values for the same args, it logs a warning with the function name and stack trace. By default this runs once per function.  Unlike the other two checks, it can only be configured globally, via `setGlobalDevModeChecks({ cacheSizeCheck: 'always' | 'once' | 'never' })`
+
+### Performance Improvements
+
+We've revamped our own performance benchmark suite to give better results with more precision and less noise.  That's helped verify some additional performance improvements.
+
+- `weakMapMemoize` now returns early on a cache hit instead of continuing through bookkeeping
+- `lruMemoize`'s cache lookup was simplified to eliminate unnecessary allocations
+
+These are small wins on already-fast paths, but did show modest improvements.
+
+### Removal of `unstable_autotrackMemoize`
+
+We've removed the experimental `unstable_autotrackMemoize` export. It was added in v5.0 as an experiment in Glimmer-style dependency tracking, never left `unstable_`, and as far as we can tell never saw real adoption. If you were using it, switch to `weakMapMemoize` (the default) or `lruMemoize`.
+
+### TypeScript Support
+
+Our TypeScript support matrix is now **5.6 and up**, matching DefinitelyTyped, and CI now tests against TS 6.0.
+
+We've documented on the selector fields that a full cache reset requires clearing both memoization levels: `selector.clearCache()` plus `selector.memoizedResultFunc.clearCache()`.
+
+We improved types handling in cases where TS strict mode is off (but please migrate to strict behavior as soon as possible!)
+
+### Docs Improvements
+
+The API docs got a structural overhaul: every API page now follows a consistent "API Reference / Usage Guide" layout, the dev-checks page was rewritten, and the docs reflect that `weakMapMemoize` is the default memoizer since v5.  We've also added some additional usage guidance as well.
+
+## What's Changed
+
+* Additional publishing hardening by @markerikson in https://github.com/reduxjs/reselect/pull/755
+* Bump arethetypeswrong CLI to 0.18.3 to fix fflate tarball crash by @veksa in https://github.com/reduxjs/reselect/pull/764
+* Don't widen an all-optional selector result to any by @veksa in https://github.com/reduxjs/reselect/pull/776
+* Fix assorted memoization correctness issues by @markerikson in https://github.com/reduxjs/reselect/pull/777
+* test: add benchmarks for cache fill cost and retained cache size by @veksa in https://github.com/reduxjs/reselect/pull/769
+* test: paired hot-path benchmark for `createSelector` by @veksa in https://github.com/reduxjs/reselect/pull/770
+* perf(createSelector): gather input selector results without extra allocations by @veksa in https://github.com/reduxjs/reselect/pull/772
+* perf(createSelector): stop allocating dev-check bookkeeping on every call by @veksa in https://github.com/reduxjs/reselect/pull/773
+* perf(weakMapMemoize): return on a cache hit instead of rewriting the node by @veksa in https://github.com/reduxjs/reselect/pull/771
+* Improve perf harness by @markerikson in https://github.com/reduxjs/reselect/pull/778
+* Optimize lruMemoize cache lookups by @markerikson in https://github.com/reduxjs/reselect/pull/779
+* Add regression test for `resultEqualityCheck` receiving a cleared `WeakRef` by @veksa in https://github.com/reduxjs/reselect/pull/763
+* Update test infra and add additional memory tests by @markerikson in https://github.com/reduxjs/reselect/pull/780
+* Add weakMap cache size dev check and revamp docs by @markerikson in https://github.com/reduxjs/reselect/pull/782
+* Add a `maxSize` option for `weakMapMemoize` by @markerikson in https://github.com/reduxjs/reselect/pull/783
+* docs: clarify how to fully clear a selector's cache (#569) by @veksa in https://github.com/reduxjs/reselect/pull/760
+* Remove experimental autoTrackMemoize by @markerikson in https://github.com/reduxjs/reselect/pull/784
+* Add docs note on complex selectors and state by @markerikson in https://github.com/reduxjs/reselect/pull/785
+
+**Full Changelog**: https://github.com/reduxjs/reselect/compare/v5.2.0...v5.3.0

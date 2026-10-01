@@ -1,0 +1,51 @@
+# reselect release: v5.0.0-alpha.2
+# джерело: https://github.com/reduxjs/reselect/releases/tag/v5.0.0-alpha.2
+# отримано: 2026-10-01
+# версія: 5.0.0-alpha.2
+
+Tag v5.0.0-alpha.2, published 2023-05-14, pre-release.
+
+This **alpha release** updates `createSelector` to run an extra one-time check for input selector stability in development builds, and updates the build artifacts to include sourcemaps and a browser-ready ESM production bundle.
+
+## Changelog
+
+### Development Input Stability Checks
+
+Reselect uses two levels of memoization.  The first level checks if any of the actual arguments have changed, and the second sees if the values extracted by the input functions have changed.
+
+If an input function always returns a new reference, like `(state) => ({a: state.a, b: state.b})` or `(state) => state.items.map()`, that will cause the selector to never memoize properly.  This is a bug, similar conceptually to always returning a new reference in `useSelector()`, or always including a new reference in `useEffect`'s dependencies array.
+
+Since this is a common mistake, we've added a development mode check to catch this.  By default, `createSelector` will now run try executing the memoization function twice during the first call to the selector.  If the result appears to be different, it will log a warning with the arguments and the two different sets of extracted input values.
+
+You can configure this behavior in two ways: by passing an `inputStabilityCheck` option directly to `createSelector`, or by importing the global `setInputStabilityCheckEnabled()` function:
+
+```ts
+type StabilityCheck = 'always' | 'once' | 'never'
+
+const unstableInput = (a: number, b: number) => ({ a, b })
+
+// Create a selector that double-checks the inputs every time it runs
+const selector = createSelector(
+  unstableInput,
+  ({ a, b }) => a + b,
+  {inputStabilityCheck: 'always'}
+)
+
+// Set all selectors to never double-check by default (unless given a specific option)
+import { setInputStabilityCheckEnabled } from 'reselect'
+
+setInputStabilityCheckEnabled('never')
+```
+
+### Build Artifact Changes
+
+We now include a `reselect.browser.mjs` ESM artifact has been compiled for production settings and is ready for use as an ES module in browsers.
+
+We also have updated the `reselect.legacy-esm.js` artifact to transpile syntax for compat with Webpack 4.
+
+## What's Changed
+
+* Run input selectors twice, to check stability. by @EskiMojo14 in https://github.com/reduxjs/reselect/pull/612
+* Build browser ESM and Webpack 4 compat artifacts, and add sourcemaps by @markerikson in https://github.com/reduxjs/reselect/pull/613
+
+**Full Changelog**: https://github.com/reduxjs/reselect/compare/v5.0.0-alpha.1...v5.0.0-alpha.2

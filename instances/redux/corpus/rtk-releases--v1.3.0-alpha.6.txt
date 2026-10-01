@@ -1,0 +1,47 @@
+# redux-toolkit release: v1.3.0-alpha.6
+# джерело: https://github.com/reduxjs/redux-toolkit/releases/tag/v1.3.0-alpha.6
+# отримано: 2026-10-01
+# версія: 1.3.0-alpha.6
+
+Tag v1.3.0-alpha.6, published 2020-02-17, pre-release.
+
+This release alters the internal behavior of the `createEntityAdapter` CRUD methods to allow them to work as "mutating helper functions" when not directly used as case reducers, and adds initial API reference documentation for `createEntityAdapter`.
+
+## Changes
+
+### `createEntityAdapter` and Immer
+
+The original version of `createEntityAdapter` that we ported from the `@ngrx/entity` library used hand-written immutable update logic internally.  We replaced that with use of Immer, as it made it consistent with how `createReducer` and `createSlice` work, and simplified some of the logic.
+
+Previously, the CRUD methods such as `addOne()` always called Immer's `createNextState()` internally to wrap the updating logic.  This worked okay when the CRUD method was used as a case reducer directly.
+
+However, when called manually as a helper function inside an existing case reducer, the behavior was confusing.  The case reducer had already received `state` as an Immer `Draft` value, but that draft was being passed into `createNextState` again.  In theory, updates to the nested draft are supposed to propagate back to the parent draft, but we didn't see updates propagating upwards as expected.
+
+We've updated the CRUD methods to first check whether the incoming `state` value is an Immer `Draft`, or just a plain JS value.  If it's already a `Draft`, we pass that draft to the mutating internal update logic, so the changes are applied correctly.  If it's a plain object, we still call `createNextState()` and return a plain value.
+
+So, when using the CRUD methods as helper functions, treat them as mutating the existing `state` value:
+
+```js
+const booksSlice = createSlice({
+    name: "books",
+    initialState: booksAdapter.getInitialState({totalBooks: 0),
+    reducers: {
+        bookAdded(state, action) {
+            // Ignore return value here, and "mutate" state
+            booksAdapter.addOne(state, action.payload.book)
+            // can continue to mutate state here
+            state.totalBooks++
+        }
+    }
+})
+```
+
+## Documentation
+
+A first draft of API documentation for `createEntityAdapter` is now available:
+
+`createEntityAdapter` draft API reference
+
+## Changelog
+
+https://github.com/reduxjs/redux-toolkit/compare/v1.3.0-alpha.5...v1.3.0-alpha.6

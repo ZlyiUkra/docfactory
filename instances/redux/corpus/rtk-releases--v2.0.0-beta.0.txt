@@ -1,0 +1,120 @@
+# redux-toolkit release: v2.0.0-beta.0
+# джерело: https://github.com/reduxjs/redux-toolkit/releases/tag/v2.0.0-beta.0
+# отримано: 2026-10-01
+# версія: 2.0.0-beta.0
+
+Tag v2.0.0-beta.0, published 2023-05-30, pre-release.
+
+This **beta release** updates many of our TS types for improved type safety and behavior, updates `entityAdapter.getSelectors()` to accept a `createSelector` option, depends on the latest `redux@5.0-beta.0` release, and includes all prior changes from the 2.0 alphas.  This release has **breaking changes**.
+
+```bash
+npm i @reduxjs/toolkit@next
+
+yarn add @reduxjs/toolkit@next
+```
+
+The 2.0 integration branch contains the docs preview for the 2.0 changes.  Not all changes are documented yet, but you can see API reference pages for most of the new features here:
+
+- **RTK 2.0 beta preview documentation**
+
+## Changelog
+
+### Store Configuration Tweaks and Type Safety
+
+We've seen many cases where users passing the `middleware` parameter to `configureStore` have tried spreading the array returned by `getDefaultMiddleware()`, or passed an alternate plain array. This unfortunately loses the exact TS types from the individual middleware, and often causes TS problems down the road (such as `dispatch` being typed as `Dispatch<AnyAction>` and not knowing about thunks).
+
+`getDefaultMiddleware()` already used an internal `MiddlewareArray` class, an `Array` subclass that had strongly typed `.concat/prepend()` methods to correctly capture and retain the middleware types.
+
+We've renamed that type to `Tuple`, and `configureStore`'s TS types now require that you _must_ use `Tuple` if you want to pass your own array of middleware:
+
+```ts
+import { configureStore, Tuple } from '@reduxjs/toolkit'
+
+configureStore({
+  reducer: rootReducer,
+  middleware: new Tuple(additionalMiddleware, logger),
+})
+```
+
+(Note that this has no effect if you're using RTK with plain JS, and you could still pass a plain array here.)
+
+Similarly, the `enhancers` field used to accept an array directly. It now is a callback that receives a `getDefaultEnhancers` method, equivalent to `getDefaultMiddleware()`:
+
+```ts
+const store = configureStore({
+  reducer,
+  middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(logger),
+  enhancers: (getDefaultEnhancers) =>
+    getDefaultEnhancers({
+      autoBatch: false,
+    }).concat(batchedSubscribe(debounceNotify)),
+})
+```
+
+It too expects a `Tuple` return value if you're using TS.
+
+### Entity Adapter Updates
+
+`entityAdapter.getSelectors()` now accepts an options object as its second argument.  This allows you to pass in your own preferred `createSelector` method, which will be used to memoize the generated selectors.  This could be useful if you want to use one of Reselect's new alternate memoizers, or some other memoization library with an equivalent signature.
+
+`createEntityAdapter` now has an `Id` generic argument, which will be used to strongly type the item IDs anywhere those are exposed.  Previously, the ID field type was always `string | number`.  TS will now try to infer the exact type from either the `.id` field of your entity type, or the `selectId` return type.  You could also fall back to passing that generic type directly.
+
+The `.entities` lookup table is now defined to use a standard TS `Record<Id, MyEntityType>`, which assumes that each item lookup exists by default.  Previously, it used a `Dictionary<MyEntityType>` type, which assumed the result was `MyEntityType | undefined`.  The `Dictionary` type has been removed.
+
+If you prefer to assume that the lookups _might_ be undefined, use TypeScript's `noUncheckedIndexedAccess` configuration option to control that.
+
+### New `UnknownAction` Type
+
+The Redux core TS types have always exported an `AnyAction` type, which is defined to have `{type: string}` and treat any other field as `any`. This makes it easy to write uses like `console.log(action.whatever)`, but unfortunately does not provide any meaningful type safety.
+
+We now export an `UnknownAction` type, which treats all fields other than `action.type` as `unknown`.  This encourages users to write type guards that check the action object and assert its _specific_ TS type.  Inside of those checks, you can access a field with better type safety.
+
+`UnknownAction` is now the default any place in the Redux and RTK source that expects an action object.
+
+`AnyAction` still exists for compatibility, but has been marked as deprecated.
+
+Note that Redux Toolkit's action creators have a `.match()` method that acts as a useful type guard:
+
+```ts
+if (todoAdded.match(someUnknownAction)) {
+  // action is now typed as a PayloadAction<Todo>
+}
+```
+
+### Earlier Alpha Changes
+
+Summarizing the changes from earlier alphas:
+
+#### New Features
+
+- `combineSlices` API with built-in support for slice reducer injection for code-splitting
+- `selectors` field in `createSlice`
+- Callback form of `createSlice.reducers`, which allows defining thunks inside `createSlice`
+- "Dynamic middleware" middleware
+- `configureStore` adds `autoBatchEnhancer` by default
+- Reselect v5 runs selectors an additional time on first call in dev to check for improper memoization, and includes new optional `autotrack` and `weakmap` memoizers with different tradeoffs
+
+#### Breaking Changes
+
+- Object argument for `createReducer` and `createSlice.extraReducers` has been removed
+- Packaging converted to have full ESM/CJS compatibility
+- Dropped UMD build artifacts
+- JS build output is now "modern" and not transpiled for IE11 compatibility
+- Updated to Immer 10, and dropped the legacy ES5 compat option
+- Updated Redux core dep to `5.0-beta`
+- `actionCreator.toString()` override removed (although we're reconsidering this)
+- Standalone `getDefaultMiddleware` removed
+- Other deprecated fields removed
+
+## What's Changed
+
+* Add Id type parameter in createEntityAdapter by @Matt-Ord in https://github.com/reduxjs/redux-toolkit/pull/3187
+* Require usage of Tuple in TS by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/3460
+* Require that enhancers is a callback by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/3461
+* fix invalid createEntityAdapter call by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/3490
+* Use Record<EntityId, T> instead of Dictionary by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/3424
+* Fix inference for reducers without actions specified by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/3475
+* Prefer UnknownAction and Action to AnyAction by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/3363
+* Allow passing a `createSelector` instance to adapter.getSelectors by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/3481
+
+**Full Changelog**: https://github.com/reduxjs/redux-toolkit/compare/v2.0.0-alpha.6...v2.0.0-beta.0

@@ -1,0 +1,119 @@
+# redux-toolkit release: v1.6.0-beta.0
+# джерело: https://github.com/reduxjs/redux-toolkit/releases/tag/v1.6.0-beta.0
+# отримано: 2026-10-01
+# версія: 1.6.0-beta.0
+
+Tag v1.6.0-beta.0, published 2021-05-22, pre-release.
+
+**This beta release improves the in-progress RTK Query APIs**.  It adds a new `onCacheEntryAdded` lifecycle callback to enable streaming cache updates, adds per-endpoint cache timeout overrides and additional options for skipping queries, and fixes issues with query arg serialization and build output, We've also fleshed out the RTKQ preview docs with significant new content.
+
+**We are hopeful that this will be the final pre-release with any meaningful API changes**, and that the remaining work _should_ just be final polish of the documentation before this goes live.
+
+The preview docs are located at **https://deploy-preview-1016--redux-starter-kit-docs.netlify.app** .
+
+Installation:
+
+```bash
+npm i @reduxjs/toolkit@next
+
+yarn add @reduxjs/toolkit@next
+```
+
+## Changelog
+
+### Cache Entry Lifecycle
+
+RTK Query is built around standard HTTP endpoint request/response-style API calls. However, today's applications often use a hybrid approach, where initial data is fetched via a request, but then further updates are streamed via a websocket or other persistent connection.
+
+Endpoint definitions now support an `onCacheEntryAdded` lifeycle callback.  This callback will be executed whenever a new endpoint subscription entry is added to the cache (ie, when a component requests a specific endpoint+params combination that is not currently being loaded).
+
+The `onCacheEntryAdded` callback allows you to run additional logic after the initial fetch completes and after the entry is removed from the cache, and provides tools to update the existing cache for this query as needed.  The intended use case is to open a websocket-type connection, and update the cached data over time as messages are received.  A typical usage might look like:
+
+```js
+export const api = createApi({
+  baseQuery: fetchBaseQuery({ baseUrl: "/" }),
+  endpoints: (build) => ({
+    getMessages: build.query({
+      query: (channel) => `messages/${channel}`,
+      async onCacheEntryAdded(
+        arg,
+        { updateCachedData, cacheDataLoaded, cacheEntryRemoved }
+      ) {
+        // wait for the initial query to resolve before proceeding
+        await cacheDataLoaded;
+        // Update our query result when messages are received
+        const unsubscribe = ChatAPI.subscribeToChannel(
+          arg.channelId,
+          (message) => {
+            // Dispatches an update action with the diff
+            updateCachedData((draft) => {
+              draft.push(message);
+            });
+          }
+        );
+
+        // Clean up when cache subscription is removed
+        await cacheEntryRemoved;
+        unsubscribe();
+      },
+    }),
+  }),
+});
+```
+
+This adds significant additional flexibility in interacting with cached data.
+
+### Additional API Polish
+
+`createApi` supports a `keepUnusedDataFor` option to modify the default cache expiration time, but that can now be overridden on a per-endpoint basis as well.
+
+The `selectFromResult` option has been reworked so that it receives the standard hook result structure as its input, and you can extract and return whatever pieces of that data are actually needed by this component.
+
+RTKQ now exports a `skipToken` value that can be passed to queries as an indicator that the query should be skipped for now, in addition to the existing `skip` flag option.  This is primarily useful for working around some TS inference issues with hook return types.
+
+The `copyWithStructuralSharing` util is now exported.
+
+The `updateQueryResult` and `pathQueryResult` util methods have been renamed to `updateQueryData` and `patchQueryData`.
+
+Optimistic updates can now be reverted by calling `.undo()`, which automatically dispatches the appropriate inverse patch update action.
+
+### Fixes
+
+The `MiddlewareArray` type has been tweaked to produce correct behavior when transpiled.
+
+The default query arg serialization logic now handles nested values correctly.
+
+### Docs Updates
+
+We've significantly improved the preview RTK Query documentation.  We've added pages on "Streaming Updates", "Cached Data", "Customizing Queries", and "Migrating to RTK Query".  We've also fleshed out the API references for the generated React hooks, added more details to descriptions of queries and endpoints, and filled out info on how cache lifetime behavior works.  Thanks to @Shrugsy for writing most of the docs updates!
+
+## Changes
+
+### Code
+
+- export Result Definition types (#1022 - @phryneas)
+- add export for `copyWithStructuralSharing` (#1026 - @phryneas)
+- fix/default serialize query args (#1029 - @phryneas)
+- split up middleware, add OptionalPromise, add cache entry lifecycle (#1034 -  - @phryneas)
+- simplify `selectFromResult` usage (#1035 - @phryneas)
+- fix MiddlewareArray for new build (#1038 - @phryneas)
+- remove last traces of TSDX (#1039 - @phryneas)
+- prevent badly typed `Middleware<any>` from casting `dispatch` to `any` (#1042 - @phryneas)
+- remove alpha.2 deprecation fallbacks (#1051 - @phryneas)
+- add a per-endpoint keepUnusedDataFor option (#1053 - @phryneas)
+- `BaseQueryApi.signal` is not optional (#1058 - @phryneas)
+- allow using skipSymbol as arg in hooks (#1056 - @phryneas)
+- nest data structure for `cacheDataLoaded` and `queryFulfilled` (#1078 - @phryneas)
+
+### Docs
+
+- Docs - add 'Cached data' concept page (#1036 - @Shrugsy)
+- Docs - RTKQ - Convert codeblocks to TS & enable codeblock transpilation (#1042 - @Shrugsy)
+- Docs - add Streaming Updates page (#1049 - @Shrugsy)
+- Docs - add "Customizing Queries" page (#1057 - @Shrugsy)
+- Docs - Add "Migrating to RTK Query" page (#1060 - @Shrugsy)
+- Docs - add RTK Query content to "Getting Started" page (#1066 - @Shrugsy)
+- Docs - expand explanation of cache lifetime and subscription behavior (#1071 - @Shrugsy)
+- Docs - extend detail for Queries and Endpoints (#1074 - @Shrugsy)
+
+https://github.com/reduxjs/redux-toolkit/compare/v1.6.0-alpha.2...v1.6.0-beta.0

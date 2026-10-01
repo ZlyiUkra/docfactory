@@ -1,0 +1,150 @@
+# redux-toolkit release: v1.9.0-beta.0
+# джерело: https://github.com/reduxjs/redux-toolkit/releases/tag/v1.9.0-beta.0
+# отримано: 2026-10-01
+# версія: 1.9.0-beta.0
+
+Tag v1.9.0-beta.0, published 2022-10-19, pre-release.
+
+This **feature-complete preview release** includes several new options for RTK Query API endpoints as well as the ability to "upsert" data, performance improvements to the RTK Query middleware, improvements to `fetchBaseQuery` behavior, several TS types tweaks and additional type exports, a runtime deprecation warning for the object argument form of `createReducer` and `createSlice.extraReducers`, and codemods to update those methods.
+
+**Please try this out and give us feedback** (even if it's just "tried updating and everything's fine")!  We believe that all changes intended for 1.9 are stable and should work, but as always we'd appreciate real-world checks to confirm that.
+
+```bash
+npm i @reduxjs/toolkit@next
+
+yarn add @reduxjs/toolkit@next
+```
+
+Docs updates for 1.9 are in progress and can be viewed here:
+
+https://deploy-preview-2401--redux-starter-kit-docs.netlify.app/
+
+## Changes Since Alpha
+
+### Codemods for Deprecated Object Reducer Syntax
+
+Per the description in `1.9.0-alpha.0`, we plan to remove the "object" argument from `createReducer` and `createSlice.extraReducers` in the future RTK 2.0 major version.  In `1.9.0-alpha.0`, we added a one-shot runtime warning to each of those APIs.
+
+To simplify upgrading codebases, we've published a set of codemods that will automatically transform the deprecated "object" syntax into the equivalent "builder" syntax.
+
+The codemods package is available on NPM as **`@reduxjs/rtk-codemods`**.  It currently contains two codemods: `createReducerBuilder` and `createSliceBuilder`.
+
+To run the codemods against your codebase, run `npx @reduxjs/rtk-codemods <TRANSFORM NAME> path/of/files/ or/some**/*glob.js`.
+
+Examples:
+
+```bash
+npx @reduxjs/rtk-codemods createReducerBuilder ./src
+
+npx @reduxjs/rtk-codemods createSliceBuilder ./packages/my-app/**/*.ts
+```
+
+We also recommend re-running Prettier on the codebase before committing the changes.
+
+**These codemods _should_ work, but we would greatly appreciate testing and feedback on more real-world codebases!**
+
+Before:
+
+```js
+createReducer(initialState, {
+  [todoAdded1a]: (state, action) => {
+    // stuff
+  },
+  [todoAdded1b]: (state, action) => action.payload,
+});
+
+const slice1 = createSlice({
+  name: "a",
+  initialState: {},
+  extraReducers: {
+    [todoAdded1a]: (state, action) => {
+      // stuff
+    },
+    [todoAdded1b]: (state, action) => action.payload,
+  }
+})
+```
+
+After:
+
+```js
+createReducer(initialState, (builder) => {
+  builder.addCase(todoAdded1a, (state, action) => {
+    // stuff
+  });
+
+  builder.addCase(todoAdded1b, (state, action) => action.payload);
+})
+
+const slice1 = createSlice({
+  name: "a",
+  initialState: {},
+
+  extraReducers: (builder) => {
+    builder.addCase(todoAdded1a, (state, action) => {
+      // stuff
+    });
+
+    builder.addCase(todoAdded1b, (state, action) => action.payload);
+  }
+})
+```
+
+### `getRunningOperationPromises` Deprecation and Replacement
+
+In `v1.7.0`, we added an `api.util.getRunningOperationPromises()` method for use with SSR scenarios, as well as a singular `getRunningOperationPromise()` method intended for possible use with React Suspense.
+
+Unfortunately, in #2477 we realized that **both those methods have a fatal flaw - they do not work with multiple stores in SSR**.
+
+As of this release, **we are immediately marking `getRunningOperationPromises()` as deprecated and discouraging its use before we remove it completely in RTK 2.0!**  It will **now throw both runtime and compile errors in development** to enforce moving away from using it.  However, we are leaving its existing behavior in production builds to avoid actual breakage.
+
+The `getRunningOperationPromise()` util was experimental, and as far as we can tell not actually being used by anyone, so **we are removing `getRunningOperationPromise` completely in this release**.
+
+As replacements, RTKQ now includes four new thunks attached to `api.util`:
+
+- `getRunningQueryThunk(endpointName, queryArgs)`
+- `getRunningMutationThunk(endpointName, fixedCacheKeyOrRequestId)`
+- `getRunningQueriesThunk()`
+- `getRunningMutationsThunk()`
+
+Usages would typically change like this:
+
+```diff
+-await Promise.all(api.util.getRunningOperationPromises())
++await Promise.all(dispatch(api.util.getRunningQueriesThunk()))
+```
+
+## Summary of Alpha Changes
+
+See the previous release notes for more details.
+
+### RTK Query Options
+
+- API endpoints:
+  - `serializeQueryArgs` option ( #2493 )
+  - `merge` option ( #1059 )
+  - `forceRefetch` option ( #2663 )
+  - `transformErrorResponse` option ( #1841
+- `upsertQueryData` util ( #2266 )
+- RTKQ middleware optimization ( #2641, #2759 )
+- `fetchBaseQuery` options:
+  - `jsonContentType` ( #2403 )
+  - `timeout` ( #2363 )
+  - `content-type` response handler ( #2363 )
+  - `prepareHeaders` can return void ( #2775 )
+- hook triggers return promises ( #2212 )
+- retry conditions by response ( #2239 )
+
+### TS Types
+
+- action types are now template literals ( #2250 )
+- Store enhancer types ( #2550 )
+- `createAsyncThunk.withTypes` ( #2604 )
+- Several additional exported types:
+  - #2276
+  - #1646
+  - #2740
+
+### TS Support Matrix
+
+Redux Toolkit now requires TypeScript 4.2 or higher, and works correctly with TS 4.8.

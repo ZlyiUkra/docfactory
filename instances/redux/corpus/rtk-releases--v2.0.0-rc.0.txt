@@ -1,0 +1,109 @@
+# redux-toolkit release: v2.0.0-rc.0
+# джерело: https://github.com/reduxjs/redux-toolkit/releases/tag/v2.0.0-rc.0
+# отримано: 2026-10-01
+# версія: 2.0.0-rc.0
+
+Tag v2.0.0-rc.0, published 2023-11-17, pre-release.
+
+This **release candidate** modifies the approach for defining async thunks inside of `createSlice`, and improves several bits of usage and implementation around selectors.
+
+Note that **we hope to release Redux Toolkit 2.0, Redux core 5.0, and React-Redux 9.0 by the start of December!**  (If we don't hit that, we'll aim for January, after the holidays.)
+
+See the preview **Redux Toolkit 2.0 + Redux core 5.0 Migration Guide** for an overview of breaking changes in RTK 2.0 and Redux core.
+
+The 2.0 integration branch contains the docs preview for the 2.0 changes.  Not all changes are documented yet, but you can see API reference pages for most of the new features here:
+
+- **RTK 2.0 beta preview documentation**
+
+```bash
+npm install @reduxjs/toolkit@next
+
+yarn add @reduxjs/toolkit@next
+```
+
+## Changelog
+
+### Async Thunk and `createSlice` changes
+
+In earlier alphas, we added the ability to define async thunks directly inside of `createSlice.reducers`, using a callback syntax.  However, that meant that `createSlice` had a hard dependency on `createAsyncThunk`, and importing `createSlice` would _always_ include `createAsyncThunk` in an app bundle even if it wasn't being used.
+
+In practice, we expect that most RTK users _will_ use `createAsyncThunk`, either directly or as part of RTK Query.  But, we take bundle size seriously, and didn't want to force _all_ uses of `createSlice` to add the 2K for `createAsyncThunk` to a bundle if it isn't actually being used.
+
+Since we expect that defining thunks inside of `createSlice` is a less-common use case, we've settled on a compromise.  **The standard `createSlice` method does _not_ support calling `create.asyncThunk()` inside even if you use the callback syntax**.  Instead, you need to **call `buildCreateSlice()` to create a customized version of `createSlice` with the async thunk capabilities built in**, and use that:
+
+```ts
+const createSliceWithThunks = buildCreateSlice({
+  creators: { asyncThunk: asyncThunkCreator },
+})
+
+const todosSlice = createSliceWithThunks ({
+  name: 'todos',
+  initialState: {
+    loading: false,
+    todos: [],
+    error: null,
+  } as TodoState,
+  reducers: (create) => ({
+    // A normal "case reducer", same as always
+    deleteTodo: create.reducer((state, action: PayloadAction<number>) => {
+      state.todos.splice(action.payload, 1)
+    }),
+    // A case reducer with a "prepare callback" to customize the action
+    addTodo: create.preparedReducer(
+      (text: string) => {
+        const id = nanoid()
+        return { payload: { id, text } }
+      },
+      // action type is inferred from prepare callback
+      (state, action) => {
+        state.todos.push(action.payload)
+      }
+    ),
+    // An async thunk
+    fetchTodo: create.asyncThunk(
+      // Async payload function as the first argument
+      async (id: string, thunkApi) => {
+        const res = await fetch(`myApi/todos?id=${id}`)
+        return (await res.json()) as Item
+      },
+      // An object containing `{pending?, rejected?, fulfilled?, settled?, options?}` second
+      {
+        pending: (state) => {
+          state.loading = true
+        },
+        rejected: (state, action) => {
+          state.error = action.payload ?? action.error
+        },
+        fulfilled: (state, action) => {
+          state.todos.push(action.payload)
+        },
+        // settled is called for both rejected and fulfilled actions
+        settled: (state, action) => {
+          state.loading = false
+        },
+      }
+    ),
+  }),
+})
+```
+
+### Selector Changes
+
+`createSlice` now adds a `selectSlice` field to all slice objects.  This simple selector assumes that the slice has been added at `rootState[slice.name]` (or `rootState[slice.reducerPath]` if defined).  This is useful for basic lookups of the slice's state.
+
+`entityAdapter.getSelectors()` now accepts alternate selector creators with customized memoization options.
+
+## What's Changed
+
+* [RTK v2.0] output selector fields are currently missing in selector functions created using `createDraftSafeSelector`. by @aryaemami59 in https://github.com/reduxjs/redux-toolkit/pull/3722
+* createDynamicMiddleware bike shedding by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/3763
+* Allow passing selector creators with different memoize options to getSelectors by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/3833
+* Add selectSlice to slice instance by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/3838
+* Throw an error if ApiProvider is nested inside a normal Provider. by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/3855
+* Create standardised methods of modifying reducer handler context. by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/3872
+* Require calling buildCreateSlice to use create.asyncThunk by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/3867
+* Restore the toString override, but keep it out of the docs. by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/3877
+* Selector housekeeping - emplace and unwrapped by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/3878
+* Update deps for RC by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/3883
+
+**Full Changelog**: https://github.com/reduxjs/redux-toolkit/compare/v2.0.0-beta.4...v2.0.0-rc.0

@@ -1,0 +1,153 @@
+# redux-toolkit release: v2.0.0-alpha.5
+# джерело: https://github.com/reduxjs/redux-toolkit/releases/tag/v2.0.0-alpha.5
+# отримано: 2026-10-01
+# версія: 2.0.0-alpha.5
+
+Tag v2.0.0-alpha.5, published 2023-04-18, pre-release.
+
+This is an **alpha release** for Redux Toolkit 2.0.  This release adds a new `combineSlices` API for reducer injection, has many changes to our build setup and published package contents, updates the `redux` dep to the latest alpha, updates the `immer` dep to 10.0 final,  includes the latest changes from 1.9.x, and **has breaking changes**.
+
+## Changelog
+
+### New `combineSlices` API
+
+The Redux core has always included `combineReducers`, which takes an object full of "slice reducer" functions and generates a reducer that calls those slice reducers.  RTK's `createSlice` generates slice reducers + associated action creators, and we've taught the pattern of exporting individual action creators as named exports and the slice reducer as a default export.  Meanwhile, we've never had official support for lazy-loading reducers, although we've had sample code for some "reducer injection" patterns in our docs.
+
+This release includes **a new `combineSlices` API that is designed to enable lazy-loading of reducers at runtime**.  It accepts individual slices or an object full of slices as arguments, and automatically calls `combineReducers` using the `sliceObject.name` field as the key for each state field.  The generated reducer function has an additional `.inject()` method attached that can be used to dynamically inject additional slices at runtime.  It also includes a `.withLazyLoadedSlices()` method that can be used to generate TS types for reducers that will be added later.  See https://github.com/reduxjs/redux-toolkit/issues/2776 for the original discussion around this idea.
+
+For now, we are _not_ building this into `configureStore`, so you'll need to call `const rootReducer = combineSlices(.....)` yourself and pass that to `configureStore({reducer: rootReducer})`.
+
+We don't have documentation added for these features yet, but here's example usages from the `combineSlices` PR tests:
+
+##### Basic usage: a mixture of slices and standalone reducers passed to `combineSlices`
+
+```ts
+
+const stringSlice = createSlice({
+  name: 'string',
+  initialState: '',
+  reducers: {},
+})
+
+const numberSlice = createSlice({
+  name: 'number',
+  initialState: 0,
+  reducers: {},
+})
+
+const booleanReducer = createReducer(false, () => {})
+
+const api = createApi(/*  */)
+
+const combinedReducer = combineSlices(
+  stringSlice,
+  {
+    num: numberSlice.reducer,
+    boolean: booleanReducer,
+  },
+  api
+)
+expect(combinedReducer(undefined, dummyAction())).toEqual({
+  string: stringSlice.getInitialState(),
+  num: numberSlice.getInitialState(),
+  boolean: booleanReducer.getInitialState(),
+  api: api.reducer.getInitialState(),
+})
+```
+
+##### Basic slice reducer injection
+
+```ts
+// Create a reducer with a TS type that knows `numberSlice` will be injected
+const combinedReducer =
+  combineSlices(stringSlice).withLazyLoadedSlices<
+    WithSlice<typeof numberSlice>
+  >()
+
+// `state.number` doesn't exist initially
+expect(combinedReducer(undefined, dummyAction()).number).toBe(undefined)
+
+// Create a new reducer with `numberSlice` injected
+const injectedReducer = combinedReducer.inject(numberSlice)
+
+// `state.number` now exists
+expect(injectedReducer(undefined, dummyAction()).number).toBe(
+  numberSlice.getInitialState()
+)
+```
+
+### Selectors support in `createSlice`
+
+The existing `createSlice` API now has support for defining `selectors` directly as part of the slice.  By default, these will be generated with the assumption that the slice is mounted in the root state using `slice.name` as the field, such as `name: "todos"` -> `rootState.todos`.  You can call `sliceObject.getSelectors(selectSliceState)` to generate the selectors with an alternate location, similar to how `entityAdapter.getSelectors()` works.
+
+##### Slice selectors
+
+```ts
+const slice = createSlice({
+  name: 'counter',
+  initialState: 42,
+  reducers: {},
+  selectors: {
+    selectSlice: (state) => state,
+    selectMultiple: (state, multiplier: number) => state * multiplier,
+  },
+})
+
+// Basic usage
+const testState = {
+  [slice.name]: slice.getInitialState(),
+}
+const { selectSlice, selectMultiple } = slice.selectors
+expect(selectSlice(testState)).toBe(slice.getInitialState())
+expect(selectMultiple(testState, 2)).toBe(slice.getInitialState() * 2)
+
+// Usage with the slice reducer mounted under a different key
+const customState = {
+  number: slice.getInitialState(),
+}
+const { selectSlice, selectMultiple } = slice.getSelectors(
+  (state: typeof customState) => state.number
+)
+expect(selectSlice(customState)).toBe(slice.getInitialState())
+expect(selectMultiple(customState, 2)).toBe(slice.getInitialState() * 2)
+```
+
+### Build Setup Updates
+
+We've switched our build setup to use `tsup`, an ESBuild-powered build framework.  This release should have identical build artifacts to `2.0.0-alpha.4`, but let us know if there are any issues!
+
+### Immer 10.0
+
+Immer 10.0 is now final, and has several major improvements and updates:
+
+- Much faster update perf
+- Much smaller bundle size
+- Better ESM/CJS package formatting
+- No default export
+- No ES5 fallback
+
+We've updated RTK to depend on the final Immer 10.0 release .
+
+### Redux 5.0 alpha and TS types updates
+
+We've updated RTK to use the latest Redux `5.0-alpha.5` release, which tweaks the `Reducer` type, drops the internal `$CombinedState` type, and updates middleware types to default to `unknown` for actions.
+
+For RTK, we've improved type inference for store enhancers, especially those that add additional fields to the state or store.
+
+## What's Changed
+
+* Switch build setup from a custom ESBuild+TS script to `tsup` by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/3362
+* Use original instead of immer draft for perf by @GeorchW in https://github.com/reduxjs/redux-toolkit/pull/3270
+* enable enhanceEndpoints.transformResponse to override ResultType by @dmitrigrabov in https://github.com/reduxjs/redux-toolkit/pull/2953
+* Fix global `responseHandler` being used in `fetchBaseQuery` by @praxxis in https://github.com/reduxjs/redux-toolkit/pull/3137
+* reset internalState.currentSubscriptions on `resetApiState` by @phryneas in https://github.com/reduxjs/redux-toolkit/pull/3333
+* Bump deps and mark `subscriptionUpdated` as autobatched by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/3364
+* Redux 5alpha5 by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/3367
+* add isAction helper function, and ensure listener middleware only runs for actions by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/3372
+* Allow inference of enhancer state extensions, and fix inference when using callback form by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/3207
+* combineSlices implementation by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/3297
+* Merge 1.9.4/5 into v2.0-integration by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/3375
+* Bump Immer to 10.0 final by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/3376
+* Allow partial preloaded state for combined slice reducer and update devDeps by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/3381
+
+**Full Changelog**: https://github.com/reduxjs/redux-toolkit/compare/v2.0.0-alpha.4...v2.0.0-alpha.5

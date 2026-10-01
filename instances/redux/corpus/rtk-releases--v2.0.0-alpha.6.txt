@@ -1,0 +1,241 @@
+# redux-toolkit release: v2.0.0-alpha.6
+# джерело: https://github.com/reduxjs/redux-toolkit/releases/tag/v2.0.0-alpha.6
+# отримано: 2026-10-01
+# версія: 2.0.0-alpha.6
+
+Tag v2.0.0-alpha.6, published 2023-05-16, pre-release.
+
+This is an **alpha release** for Redux Toolkit 2.0, and **has breaking changes**.  This release updates `createSlice` to allow declaring thunks directly inside the `reducers` field using a callback syntax, adds a new "dynamic middleware" middleware, updates `configureStore` to add the `autoBatchEnhancer` by default, removes the `.toString()` override from action creators, updates Reselect from v4.x to v5.0-alpha, updates the Redux core to v5.0-alpha.6, and includes the latest changes from 1.9.x.
+
+```bash
+npm i @reduxjs/toolkit@alpha
+
+yarn add @reduxjs/toolkit@alpha
+```
+
+The 2.0 integration branch contains the docs preview for the 2.0 changes.  Not all changes are documented yet, but you can see API reference pages for some of the new features here:
+
+- **RTK 2.0 alpha preview documentation**
+
+## Changelog
+
+### Declaring Thunks Inside `createSlice.reducers`
+
+One of the oldest feature requests we've had is the ability to declare thunks directly inside of `createSlice`. Until now, you've always had to declare them separately, give the thunk a string action prefix, and handle the actions via `createSlice.extraReducers`:
+
+```ts
+// Declare the thunk separately
+const fetchUserById = createAsyncThunk(
+  'users/fetchByIdStatus',
+  async (userId: number, thunkAPI) => {
+    const response = await userAPI.fetchById(userId)
+    return response.data
+  }
+)
+
+const usersSlice = createSlice({
+  name: 'users',
+  initialState,
+  reducers: {
+    // standard reducer logic, with auto-generated action types per reducer
+  },
+  extraReducers: (builder) => {
+    // Add reducers for additional action types here, and handle loading state as needed
+    builder.addCase(fetchUserById.fulfilled, (state, action) => {
+      state.entities.push(action.payload)
+    })
+  },
+})
+```
+
+Many users have told us that this separation feels awkward.
+
+We've _wanted_ to include a way to define thunks directly inside of `createSlice`, and have played around with various prototypes. There were always two major blocking issues, and a secondary concern:
+
+1 It wasn't clear what the syntax for declaring a thunk inside should look like.
+2. Thunks have access to `getState` and `dispatch`, but the `RootState` and `AppDispatch` types are normally inferred from the store, which in turn infers it from the slice state types.  Declaring thunks inside `createSlice` would cause circular type inference errors, as the store needs the slice types but the slice needs the store types.  We weren't willing to ship an API that would work okay for our JS users but not for our TS users, especially since we _want_ people to use TS with RTK.
+3. You can't do synchronous conditional imports in ES modules, and there's no good way to make the `createAsyncThunk` import optional.  Either `createSlice` always depends on it (and adds that to the bundle size), or it can't use `createAsyncThunk` at all.
+
+We've settled on these compromises:
+
+- You can declare thunks inside of `createSlice.reducers`, by using a "creator callback" syntax for the `reducers` field that is similar to the `build` callback syntax in RTK Query's `createApi` (using typed functions to create fields in an object). Doing this does look a bit different than the existing "object" syntax for the `reducers` field, but is still fairly similar.
+- You can customize _some_ of the types for thunks inside of `createSlice`, but you _cannot_ customize the `state` or `dispatch` types.  _If_ those are needed, you can manually do an `as` cast, like `getState() as RootState`.
+- `createSlice` _does_ now always depend on `createAsyncThunk`, so the `createAsyncThunk` implementation _will_ get added to the bundle.
+
+In practice, we hope these are reasonable tradeoffs.  Creating thunks inside of `createSlice` has been widely asked for, so we think it's an API that will see usage. If the TS customization options are a limitation, you can still declare thunks outside of `createSlice` as always, and _most_ async thunks don't need `dispatch` or `getState` - they just fetch data and return.  And finally, `createAsyncThunk` is already being used in many apps, either directly or as part of RTK Query, so in that case there's no _additional_ bundle size increase - you've already paid that cost.
+
+Here's what the new callback syntax looks like:
+
+```ts
+const todosSlice = createSlice({
+  name: 'todos',
+  initialState: {
+    loading: false,
+    todos: [],
+  } as TodoState,
+  reducers: (create) => ({
+    // A normal "case reducer", same as always
+    deleteTodo: create.reducer((state, action: PayloadAction<number>) => {
+      state.todos.splice(action.payload, 1)
+    }),
+    // A case reducer with a "prepare callback" to customize the action
+    addTodo: create.preparedReducer(
+      (text: string) => {
+        const id = nanoid()
+        return { payload: { id, text } }
+      },
+      // action type is inferred from prepare callback
+      (state, action) => {
+        state.todos.push(action.payload)
+      }
+    ),
+    // An async thunk
+    fetchTodo: create.asyncThunk(
+      // Async payload function as the first argument
+      async (id: string, thunkApi) => {
+        const res = await fetch(`myApi/todos?id=${id}`)
+        return (await res.json()) as Item
+      },
+      // An object containing `{pending?, rejected?, fulfilled?, options?}` second
+      {
+        pending: (state) => {
+          state.loading = true
+        },
+        rejected: (state, action) => {
+          state.loading = false
+        },
+        fulfilled: (state, action) => {
+          state.loading = false
+          state.todos.push(action.payload)
+        },
+      }
+    ),
+  }),
+})
+
+// `addTodo` and `deleteTodo` are normal action creators.
+// `fetchTodo` is the async thunk
+export const { addTodo, deleteTodo, fetchTodo } = todosSlice.actions
+```
+
+### "Dynamic Middleware" Middleware
+
+A Redux store's middleware pipeline is fixed at store creation time and can't be changed later.  We _have_ seen ecosystem libraries that tried to allow dynamically adding and removing middleware, potentially useful for things like code splitting.
+
+This is a relatively niche use case, but we've built our own version of a "dynamic middleware" middleware.  Add it to the Redux store at setup time, and it lets you add and remove middleware later at runtime.  It also comes with a React hook integration that will automatically add a middleware to the store and return the updated `dispatch` method.
+
+```ts
+import { createDynamicMiddleware, configureStore } from '@reduxjs/toolkit'
+
+const dynamicMiddleware = createDynamicMiddleware()
+
+const store = configureStore({
+  reducer: {
+    todos: todosReducer,
+  },
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware().prepend(dynamicMiddleware.middleware),
+})
+
+// later
+dynamicMiddleware.addMiddleware(someOtherMiddleware)
+```
+
+### Store Adds `autoBatchEnhancer` By Default
+
+In v1.9.0, we added a new `autoBatchEnhancer` that delays notifying subscribers briefly when multiple "low-priority" actions are dispatched in a row.  This improves perf, as UI updates are typically the most expensive part of the update process.  RTK Query marks most of its own internal actions as "low-pri" by default, but you have to have the `autoBatchEnhancer` added to the store to benefit from that.
+
+We've updated `configureStore` to add the `autoBatchEnhancer` to the store setup by default, so that users can benefit from the improved perf without needing to manually tweak the store config themselves.
+
+`configureStore` now also accepts a callback for the `enhancers` option that receives a `getDefaultEnhancers()` param, equivalent to how the `middleware` callback receives `getDefaultMiddleware()`:
+
+```ts
+const store = configureStore({
+    reducer: rootReducer,
+    middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware().concat(loggerMiddleware),
+    preloadedState,
+    enhancers: (getDefaultEnhancers) =>
+      getDefaultEnhancers().concat(anotherEnhancer),
+  })
+```
+
+### Deprecation Removals
+
+When we first released the early alphas of RTK, one of the main selling points was that you could reuse RTK's action creators as "computed key" fields in the object argument to `createReducer`, like:
+
+```js
+const todoAdded = createAction("todos/todoAdded");
+
+const reducer = createReducer([], {
+  [todoAdded]: (state, action) => {}
+})
+```
+
+This was possible because `createAction` overrides the `fn.toString()` field on these action creators to return the action type string.  When JS sees the function, it implicitly calls `todoAdded.toString()`, which returns `"todos/todoAdded"`, and that string is used as the key.
+
+While this capability was useful early on, it's not useful today. Most users never call `createAction`, because `createSlice` automatically generates action creators.  Additionally, it has _no_ TS type safety.  TS only sees that the key is a `string`, and has no idea what the correct TS type for `action` is.  We later created the "builder callback" syntax for both `createReducer` and `createSlice.extraReducers`, started teaching that as the default, and removed the "object" argument to both of those in an earlier RTK 2.0 alpha.
+
+Because of this, we've now removed the `fn.toString()` override.  If you need to access the type string from an action creator function, those still have a `.type` field attached:
+
+```ts
+const todoAdded = createAction("todos/todoAdded");
+console.log(todoAdded.type) // "todos/todoAdded"
+```
+
+We've also removed the standalone export of `getDefaultMiddleware`, which has been deprecated ever since we added the callback for the `configureStore.middleware` field that has correct types attached.
+
+Finally, we've removed all other fields or type exports that were marked as deprecated in 1.9.x.
+
+### Reselect v5 Alpha
+
+We've updated Reselect with the same ESM/CJS package formatting updates as the rest of the Redux libraries.
+
+Reselect v5 alpha now includes a pair of new memoizers: `autotrackMemoize`, which uses signal-style field tracking, and `weakmapMemoize`, which has an effectively infinite cache size thanks to use of `WeakMap`s for tracking arguments.
+
+**We'd appreciate it if users would try out the new memoizers in their apps and give us feedback on their usefulness and any problems or suggestions!**
+
+You can use these by creating a customized version of `createSelector`, and RTK now exports `createSelectorCreator` and all three memoizers:
+
+```ts
+import { createSelectorCreator, autotrackMemoize} from "@reduxjs/toolkit"
+const createSelectorAutotrack = createSelectorCreator(autotrackMemoize);
+```
+
+See the Reselect v5 alpha release notes for details on the tradeoffs with each memoizer:
+
+- https://github.com/reduxjs/reselect/releases/tag/v5.0.0-alpha.1
+
+Reselect also now automatically calls each selector twice on first execution in development builds, in order to detect cases where input selectors accidentally return new references too often (which would cause memoization to fail):
+
+- https://github.com/reduxjs/reselect/releases/tag/v5.0.0-alpha.2
+
+This can be configured on a per-selector basis.  There's also a global `setInputStabilityCheckEnabled()` override method that is exported from the `reselect` package, but is _not_ re-exported from RTK, as we think the check-once behavior is the right default.  If you really want to override that globally, add `reselect` as an explicit dependency and import the override from there.
+
+### Redux v2.0-alpha.6
+
+We've updated to Redux core v2.0-alpha.6, which enforces that `action.type` _must_ be a string. In practice this shouldn't affect any of our users - action type strings are mostly an implementation detail now, and RTK uses strings for all actions.
+
+### TS Minimum Version Updated to 4.7
+
+We've updated all the Redux libraries to requires TS 4.7 as a minimum version.  Some of our new types require this anyway, and it also simplifies the maintenance of our type definitions.
+
+## What's Changed
+
+* ensure it's only possible to pass all or none of the hooks to reactHooksModule by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/3400
+* Fix docs build by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/3419
+* Remove remaining deprecated exports by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/3398
+* create action creator middleware by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/3414
+* Restore query status types by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/3420
+* Implement auto fork joining by @ericanderson in https://github.com/reduxjs/redux-toolkit/pull/3407
+* Change type tests to test from 4.7 to 5.0 by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/3421
+* types: make it easier to wrap createAsyncThunk by @shrouxm in https://github.com/reduxjs/redux-toolkit/pull/3393
+* Fixed Stackoverflow bug if children prop is a ref to root/parent object by @cheprasov in https://github.com/reduxjs/redux-toolkit/pull/3428
+* Add getDefaultEnhancers callback, and add autoBatchEnhancer to defaults. by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/3347
+* Update to Redux alpha 6 by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/3442
+* Remove toString override from action creators, in favour of explicit .type field. by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/3425
+* Add "creator callback" syntax to slice reducer field, to allow for async thunk creation by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/3388
+* API for adding middleware dynamically by @EskiMojo14 in https://github.com/reduxjs/redux-toolkit/pull/3292
+* Bump deps for 2.0-alpha.6 by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/3446
+
+**Full Changelog**: https://github.com/reduxjs/redux-toolkit/compare/v2.0.0-alpha.5...v2.0.0-alpha.6

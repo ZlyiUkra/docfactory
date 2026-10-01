@@ -1,0 +1,63 @@
+# reselect release: v5.0.0-beta.0
+# джерело: https://github.com/reduxjs/reselect/releases/tag/v5.0.0-beta.0
+# отримано: 2026-10-01
+# версія: 5.0.0-beta.0
+
+Tag v5.0.0-beta.0, published 2023-10-28, pre-release.
+
+This **beta release** updates `createSelector` to accept additional memoization functions and memoizer options directly (without needing to use `createSelectorCreator` first), renames an experimental memoizer to `unstable_autotrackMemoizer` for clarity, and drops support for TS 4.6 and earlier.
+
+```bash
+npm i reselect@beta
+
+yarn add reselect@beta
+```
+
+This is part of the in-progress Redux Toolkit 2.0 beta work, and Reselect 5.0 will be included with Redux Toolkit 2.0 when it is released.  Please try out RTK 2.0 beta and give us feedback!
+
+## Changelog
+
+### New / Improved `createSelector` Memoization Options
+
+Originally, the _only_ way to customize `createSelector`'s behavior (such as using an alternate memoization function) was to first create a customized version via `createSelectorCreator(memoizerFunction, memoizerOptions)`.  This was typically used for creating use cases like deep equality comparisons with `_.equal` instead of shallow equality, as well as alternate memoizers that had a notion of cache size.
+
+With Reselect 4.1.0,  we added the ability to pass memoizer options directly to `createSelector`, and also updated `defaultMemoize` to accept several options such as a max cache size.  This meant that you could call `createSelector(...inputFns, outputFn, {memoizeOptions: {maxSize: 100}}), but you couldn't change the memoizer _function_ being used directly - that still required use of `createSelectorCreator`.
+
+Additionally, Reselect internally uses the provided memoizer function twice internally: once on the overall arguments passed to `selectSomeValue(a, b, c)`, and a second time on the values extracted by the input functions such as `state => state.a`.  There have been multiple issues over the years where users wanted to provide separate memoization functions for the arguments vs the extracted values, such as a reference equality check for the arguments and a shallow check for the extracted values.
+
+With this release, **you can now pass alternate memoizer functions directly to `createSelector`, and _both_ `createSelector` and `createSelectorCreator` accept separate options for `memoize` and `argsMemoize` (along with any options for those)**:
+
+```ts
+const selectTodoIds = createSelector(
+  (state: TodoState) => state.todos,
+  todos => todos.map(({ id }) => id),
+  {
+    memoize: defaultMemoize,
+    memoizeOptions: {
+      resultEqualityCheck: (a, b) => a === b
+    }
+    argsMemoize: microMemoize,
+    argsMemoizeOptions: {
+      isEqual: (a, b) => a === b
+    },
+  }
+)
+```
+
+This should mostly eliminate the need to use `createSelectorCreator` for customization.  (You _can_ still use it for encapsulation / reuse if you want to create many selectors with the same customization options.)
+
+Thanks to @aryaemami59 for some incredibly comprehensive efforts reworking the internals of `createSelector`, our TS types, and the codebase structure in order to make this possible!
+
+### Other Changes
+
+We've dropped support for TS 4.6 and earlier.  Our current TS support matrix is TS 4.7+.
+
+The experimental `autotrackMemoize` function has been renamed to `unstable_autotrackeMemoize`.  It will still be exported, but it needs significant further testing before we consider it ready.
+
+## What's Changed
+
+* Drop support for TS 4.6 and earlier, and update CI to use latest RTK betas by @markerikson in https://github.com/reduxjs/reselect/pull/630
+* Allow passing in memoize functions directly to `createSelector`. by @aryaemami59 in https://github.com/reduxjs/reselect/pull/626
+* Rename to `unstable_autotrackMemoize` and bump Vitest version by @markerikson in https://github.com/reduxjs/reselect/pull/631
+
+**Full Changelog**: https://github.com/reduxjs/reselect/compare/v5.0.0-alpha.2...v5.0.0-beta.0

@@ -1,0 +1,64 @@
+# redux-toolkit release: v1.9.0-alpha.2
+# джерело: https://github.com/reduxjs/redux-toolkit/releases/tag/v1.9.0-alpha.2
+# отримано: 2026-10-01
+# версія: 1.9.0-alpha.2
+
+Tag v1.9.0-alpha.2, published 2022-10-09, pre-release.
+
+This **feature preview** release fixes broken behavior in the new `upsertQueryData` API, fixes behavior with the `serializeQueryArgs+merge` combination by adding a new `forceRefetch` option, rewrites the internal subscription tracking to speed up mount/update times, adds new TS type exports, and includes the bug fixes from 1.8.6.
+
+## Changelog
+
+### `upsertQueryData` Fix
+
+We released the new `upsertQueryData` util in `1.9.0-alpha.1`, but the behavior didn't actually work as intended in some cases.  We've tweaked the implementation and it now _should_ work correctly.  Please try it out and let us know!
+
+### New `forceRefresh` option and Infinite Loading Usages
+
+In earlier alphas, we added a new `serializeQueryArgs` endpoint option to allow customization of cache keys.  This serves two purposes: leaving out values that are passed in to an endpoint but not really part of the "key" conceptually (like a socket or client instance), and altering cache key behavior to use a single entry for the endpoint such as in an infinite loading / pagination scenario.
+
+Along with that, we also added a `merge` option that lets you modify the contents of an existing cache entry when new data is received, instead always replacing it.
+
+Due to the existing internal logic, these two options are insufficient for the infinite loading / pagination case.  For example, changing `useGetItemsQuery(pageNum)` from `1` to `2` starts the checks for fetching new data, but it bails out internally because there's already a cache entry that is `status: fulfilled` for that endpoint and cache key.
+
+We've added an additional `forceRefresh` call back that receives `{currentArg, previousArg, state, endpointState}` as arguments.  Use this in combination with the other options to force this endpoint to refetch when args change despite a single cache entry already existing, such as this example:
+
+```ts
+forceRefetch({currentArg, previousArg}) {
+  // Assume these are page numbers
+  return currentArg !== previousArg
+},
+serializeQueryArgs({endpointName}) {
+  // Will only have one cache entry for this endpoint, because of the consistent name
+  return endpointName
+},
+merge(currentCacheData, responseData) {
+  // Always add incoming data to the existing cache entry
+  currentCacheData.push(...responseData)
+}
+```
+
+The `forceRefresh` option may also be useful in other app-specific scenarios as well.
+
+### Internal Subscription Logic Rewrite
+
+RTKQ tracks subscription entries, and thus far has done so by saving them in the Redux state and updating that by dispatching actions as each query hook loads.  We've seen that this can be a performance bottleneck in edge cases where hundreds of query hooks are being mounted at once.  (This shouldn't be a concern in most apps, but some users were stress-testing things :)  )
+
+We've reworked the internal RTKQ middleware logic to track most of the subscription data inside the middleware and sync it to the Redux store at the end of an event loop tick.  This should speed up those large list edge cases by cutting 90% of the startup time.
+
+## What's Changed
+
+* fix `upsertQueryData` race situations by @phryneas in https://github.com/reduxjs/redux-toolkit/pull/2646
+* Fix upsert by @phryneas in https://github.com/reduxjs/redux-toolkit/pull/2669
+* Export the BaseQueryApi interface from rtk-query so it can be used as a type in TypeScript without importing from dist/. by @nsthorat in https://github.com/reduxjs/redux-toolkit/pull/2740
+* Fix retryCondition `error`. by @phryneas in https://github.com/reduxjs/redux-toolkit/pull/2743
+* fix: export ToolkitStore interface from configureStore by @adamhari in https://github.com/reduxjs/redux-toolkit/pull/2750
+* Fix the `dispatch` type inference to correctly handle read-only middleware arrays by @dokmic in https://github.com/reduxjs/redux-toolkit/pull/2629
+* fix(toolkit): export "ThunkMiddleware" from redux-thunk by @VinceOPS in https://github.com/reduxjs/redux-toolkit/pull/2745
+* Remove previous api tags before adding new provided tags by @Bezmehrabi in https://github.com/reduxjs/redux-toolkit/pull/2702
+* reset `dispatchQueued` variable after flushing by @phryneas in https://github.com/reduxjs/redux-toolkit/pull/2757
+* Fix invalidateTags by @manceau-jb in https://github.com/reduxjs/redux-toolkit/pull/2721
+* Add `forceRefetch` to `QueryExtraOptions` by @schadenn in https://github.com/reduxjs/redux-toolkit/pull/2663
+* Speed up subscription behavior by tracking state in middleware by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/2759
+
+**Full Changelog**: https://github.com/reduxjs/redux-toolkit/compare/v1.9.0-alpha.1...v1.9.0-alpha.2

@@ -1,0 +1,106 @@
+# reselect release: v5.0.0-alpha.1
+# джерело: https://github.com/reduxjs/reselect/releases/tag/v5.0.0-alpha.1
+# отримано: 2026-10-01
+# версія: 5.0.0-alpha.1
+
+Tag v5.0.0-alpha.1, published 2023-05-10, pre-release.
+
+This **alpha release** adds two experimental new memoizers with different capabilities and tradeoffs.
+
+```bash
+npm i reselect@alpha
+
+yarn add reselect@alpha
+```
+
+See the release notes for v5.0.0-alpha.0 for details on previous ESM/CJS build compat changes.
+
+## Changelog
+
+### New Experimental `autotrack` and `weakmap` Memoizers
+
+Reselect has always allowed swapping out the function memoizer used inside of `createSelector`.  Reselect's existing `defaultMemoize` memoizer is based on shallow equality checks for arguments.  This is simple and fast, but also has limitations.
+
+The most common limitation with `defaultMemoize` and shallow equality checks is that it can produce "false positive" recalculations.  A classic example of this would be a selector that extracts an array of todo IDs:
+
+```ts
+const selectTodoIds = createSelector(
+  (state: RootState) => state.todos,
+  (todos) => todos.map(t => t.id)
+)
+```
+
+If you dispatch a `todoToggled()` action that flips `state.todos[3].completed`, that will produce a new `todo` object at index 3 and a new `todos` array, because it's an immutable update.  However, `selectTodoIds` will see that `todos` is a new reference and recalculate the result, even though none of the `todo.id` fields have changed.  This creates a new IDs array that is shallow-equal to the last one.  This is both a waste of computation time, and a new result reference that could cause a component to re-render even though the array hasn't _conceptually_ changed.
+
+`createSelector` has also always defaulted to a cache size of 1.  With Reselect 4.1, we added a `maxSize` option to `defaultMemoize`, but this requires a known fixed cache size value at creation time.  It's hard to estimate how many cache entries you _might_ need in the future (will my list have 10 items? 100? 1000?).
+
+This release includes two new experimental memoizers that have differing tradeoffs, with the goal of addressing these issues in different ways.
+
+For now, both of these can be used by calling `createSelectorCreator` and generating a customized version of `createSelector`:
+
+```ts
+import { createSelectorCreator, autotrackMemoize, weakmapMemoize } from 'reselect'
+
+const createSelectorAutotrack = createSelectorCreator(autotrackMemoize)
+const createSelectorWeakmap = createSelectorCreator(weakmapMemoize)
+```
+
+In future 5.0-alpha releases, we'd like to investigate passing these directly to `createSelector()` calls.
+
+#### `autotrackMemoize`
+
+`autotrackMemoize` uses an "auto-tracking" approach inspired by the work of the Ember Glimmer team.  It uses a `Proxy` to wrap arguments and track accesses to nested fields in your selector on first read.  Later, when the selector is called with new arguments, it identifies which accessed fields have changed and only recalculates the result if one or more of those accessed fields have changed.
+
+This allows it to be more precise than the shallow equality checks in `defaultMemoize`.  In fact, with that exact same `selectTodoIds` code above, **a selector that uses `autotrackMemoize` will _not_ recalculate if you flip a `todo.completed` field, because it can see that you only accessed the `todo.id` fields.**
+
+This memoizer is directly based on the code and concepts from these articles and examples:
+
+- https://github.com/simonihmig/tracked-redux
+- https://www.pzuraq.com/blog/how-autotracking-works
+- https://gist.github.com/pzuraq/79bf862e0f8cd9521b79c4b6eccdc4f9
+- https://github.com/lifeart/glimmerx-workshop
+- https://v5.chriskrycho.com/journal/autotracking-elegant-dx-via-cutting-edge-cs/
+- https://github.com/glimmerjs/glimmer-vm/blob/master/packages/%2540glimmer/validator/
+
+##### Design Tradeoffs for `autotrackMemoize`
+
+- It only has a cache size of 1
+- It _is_ slower than `defaultMemoize`, because it has to do more work.  (How much slower is dependent on the number of accessed fields in a selector, number of calls, frequency of input changes, etc)
+- It _can_ have some unexpected behavior.  Because it tracks _nested field accesses_, cases where you _don't_ access a field will not recalculate properly.  For example, a badly-written selector like `createSelector(state => state.todos, todos => todos)` that just immediately returns the extracted value will never update, because it doesn't see any field accesses to check. (You _shouldn't_ write selectors like that to begin with :)  But we've seen them in the wild.)
+- It is likely to avoid excess calculations and recalculate fewer times than `defaultMemoize` will, which may also result in fewer component re-renders
+
+##### Use Cases for `autotrackMemoize`
+
+`autotrackMemoize` is likely best used for cases where you need to access specific nested fields in data, and avoid recalculating if _other_ fields in the same data objects are immutably updated.
+
+#### `weakmapMemoize`
+
+`defaultMemoize` has to be explicitly configured to have a cache size larger than 1, and uses an LRU cache internally.
+
+`weakmapMemoize` creates a tree of `WeakMap`-based cache nodes based on the identity of the arguments it's been called with (in this case, the extracted values from your input functions).  **This allows `weakmapMemoize` to have an effectively infinite cache size**.  Cache results will be kept in memory as long as references to the arguments still exist, and then cleared out as the arguments are garbage-collected.
+
+This memoizer is directly based on code from the React codebase:
+
+- `packages/react/src/ReactCache.js`
+
+##### Design Tradeoffs for `weakmapMemoize`
+
+- There's currently no way to alter the argument comparisons - they're based on strict reference equality
+- It's _roughly_ the same speed as `defaultMemoize`, although likely a fraction slower
+- It has an effectively infinite cache size, but you have no control over how long values are kept in cache as it's based on garbage collection and `WeakMap`s
+
+##### Use Cases for `weakmapMemoize`
+
+This memoizer is likely best used for cases where you need to call the same selector instance with many different arguments, such as a single selector instance that is used in a list item component and called with item IDs like `useSelector(state => selectSomeData(state, props.category))`.
+
+### Argument Memoization Uses `defaultMemoize`
+
+Back in PR #297, the outer argument memoization was changed to use the same provided memoization function as the inner extracted values memoization.  For performance reasons, we've flipped this back to use `defaultMemoize` and shallow equality checks for the outer argument memoization.  In most cases this should have no change at all for end users, because the memoizer is rarely overridden anyway.
+
+We'd like to investigate allowing customization of _both_ arguments and extracted values memoizers in a later 5.0-alpha release
+
+## What's Changed
+
+* Add experimental new memoizers: autotrack and weakmap by @markerikson in https://github.com/reduxjs/reselect/pull/605
+
+**Full Changelog**: https://github.com/reduxjs/reselect/compare/v5.0.0-alpha.0...v5.0.0-alpha.1

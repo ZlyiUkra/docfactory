@@ -1,0 +1,37 @@
+# immer release: v11.1.0
+# джерело: https://github.com/immerjs/immer/releases/tag/v11.1.0
+# отримано: 2026-10-01
+# версія: 11.1.0
+
+Tag v11.1.0, published 2025-12-23.
+
+## 11.1.0 (2025-12-20)
+
+This **feature release** adds a new optional "array method overrides" plugin that significantly speeds up array methods when accessing drafts.
+
+## Changelog
+
+### Performance Improvements
+
+As part of the recent performance optimization work, our benchmarks showed that all Proxy-based immutable update libraries were drastically slower than vanilla JS when calling both mutating and non-mutating array methods.  After investigation, it turns out that an array method like `arr.filter()` causes the Proxy's `get` trap to trigger for every single item in the array.  This in turn forces creation of a new Proxy and internal Immer metadata for every item, even though this was just a read operation and no items were being updated.
+
+This release adds a new `enableArrayMethods` plugin that will override draft array methods to bypass the draft and directly operate on the underlying wrapped array instance.  This _significantly_ speeds up array operations.
+
+When enabled, the plugin overrides these array methods:
+
+- Mutating: `push`, `pop`, `shift`, `unshift`, `splice`, `reverse`, `sort`
+- Non-mutating: `filter`, `slice`, `concat`, `flat`, `find`, `findIndex`, `findLast`, `findLastIndex`, `some`, `every`, `indexOf`, `lastIndexOf`, `includes`, `join`, `toString`, `toLocaleString`
+
+Our benchmarks show that the overridden methods (plus the other perf changes in Immer 10.2 and 11.0) are 50-80% faster than the baseline behavior of Immer 10.1.
+
+The plugin adds about 1.5-2K minified to Immer's bundle size.
+
+It's important to note that **the plugin does change the "safe to mutate a draft" semantics of Immer**.  Any of these methods that receives an array item as a callback argument **_will not_ automatically wrap that item in a Proxy!**.  That means that if you try to mutate an argument in a method such as `filter`, it _will_ actually mutate the real underlying object, which _will_ cause bugs in your app.  This is an intentional design tradeoff.  Semantically, all of these methods imply read-only access to array values, so if your code tries to mutate an array item in a callback, that is a bug in your code.
+
+Note that this does _not_ override `map`, `flatMap`, `forEach`, or `reduce` / `reduceRight`.  Those methods do imply either side effects and potential mutations, or returning arbitrary values.  Given that, we determined it was both safest and simplest to keep their behavior as-is.
+
+See the Array Methods Plugin docs page for further details on the behavior of the overridden methods.
+
+## What's Changed
+
+* Override array methods to avoid proxy creation while iterating and updating by @markerikson in https://github.com/immerjs/immer/pull/1184

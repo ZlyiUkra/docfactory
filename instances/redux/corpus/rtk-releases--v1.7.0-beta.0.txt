@@ -1,0 +1,93 @@
+# redux-toolkit release: v1.7.0-beta.0
+# джерело: https://github.com/reduxjs/redux-toolkit/releases/tag/v1.7.0-beta.0
+# отримано: 2026-10-01
+# версія: 1.7.0-beta.0
+
+Tag v1.7.0-beta.0, published 2021-10-29, pre-release.
+
+This release updates RTK Query with support for SSR and rehydration, allows sharing mutation results across components, adds a new `currentData` field to query results, adds several new options for customizing endpoints and base queries, adds support for async `condition` options in `createAsyncThunk`, and updates `createSlice/createReducer` to accept a "lazy state initializer" function.
+
+```bash
+npm i @reduxjs/toolkit@next
+
+yarn add @reduxjs/toolkit@next
+```
+
+See the v1.7 beta docs for updated usage guides and API references:
+
+- https://deploy-preview-1565--redux-starter-kit-docs.netlify.app/
+
+## Changelog
+
+### RTK Query SSR and Rehydration Support
+
+RTK Query now has support for SSR scenarios, such as the `getStaticProps/getServerSideProps` APIs in Next.js.  Queries can be executed on the server using the existing `dispatch(someEndpoint.initiate())` thunks, and then collected using the new `await Promise.all(api.getRunningOperationPromises())` method.
+
+API definitions can then provide an `extractRehydrationInfo` method that looks for a specific action type containing the fetched data, and return the data to initialize the API cache section of the store state.
+
+The related `api.util.getRunningOperationPromise()` API adds a building block that may enable future support for React Suspense as well, and we'd encourage users to experiment with this idea.
+
+### Sharing Mutation Results Across Components
+
+Mutation hooks provide status of in-progress requests, but as originally designed that information was unique per-component - there was no way for another component to see that request status data.  But, we had several requests to enable this use case.
+
+`useMutation` hooks now support a `fixedCacheKey` option that will store the result status in a common location, so multiple components can read the request status if needed.
+
+This does mean that the data cannot easily be cleaned up automatically, so the mutation status object now includes a `reset()` function that can be used to clear that data.
+
+### Data Loading Updates
+
+Query results now include a `currentData` field, which contains the latest data cached from the server for the _current_ query arg. Additionally, `transformResponse` now receives the query arg as a parameter.  These can be used to add additional derivation logic in cases when a hooks query arg has changed to represent a different value and the existing data no longer conceptually makes sense to keep displaying.
+
+### Data Serialization and Base Query Improvements
+
+RTK Query originally only did shallow checks for query arg fields to determine if values had changed.  This caused issues with infinite loops depending on user input.
+
+The query hooks now use a "serialized stable value" hook internally to do more consistent comparisons of query args and eliminate those problems.
+
+Also, `fetchBaseQuery` now supports a `paramsSerializer` option that allows customization of query string generation from the provided arguments, which enables better interaction with some backend APIs.
+
+The `BaseQueryApi` and `prepareheaders` args now include fields for `endpoint` name, `type` to indicate if it's a query or mutation, and `forced` to indicate a re-fetch even if there was already a cache entry.  These can be used to help determine headers like `Cache-Control: no-cache`.
+
+### `createAsyncThunk` Improvements
+
+The `condition` option may now be `async`, which enables scenarios like checking if an existing operation is running and resolving the promise when the other instance is done.
+
+If an `idGenerator` function is provided, it will now be given the `thunkArg` value as a parameter, which enables generating custom IDs based on the request data.
+
+The `createAsyncThunk` types were updated to correctly handle type inference when using `rejectWithValue()`.
+
+### Other Improvements
+
+`createSlice` and `createReducer` now accept a "lazy state initializer" function as the `initialState` argument.  If provided, the initializer will be called to produce a new initial state value any time the reducer is given `undefined` as its state argument.  This can be useful for cases like reading from `localStorage`, as well as testing.
+
+API objects now have a `selectInvalidatedBy` function that accepts a root state object and an array of query tag objects, and returns a list of details on endpoints that would be invalidated.  This can be used to help implement optimistic updates of paginated lists.
+
+### Related Libraries
+
+The Redux team has also recently released Reselect 4.1 and Redux Thunk 2.4.  Reselect 4.1 contains major improvements to selector options, including cache sizes > 1, and both libraries have improved TS types.  We'll update 1.7 to depend on those new versions before release, but you can update your own projects to make sure you have the new functionality and types available as well:
+
+- https://github.com/reduxjs/reselect/releases/tag/v4.1.0
+- https://github.com/reduxjs/redux-thunk/releases/tag/v2.4.0
+
+## What's Changed
+
+* fix "isLoading briefly flips back to `true`" #1519 by @phryneas in https://github.com/reduxjs/redux-toolkit/pull/1520
+* feat(createAsyncThunk): async condition by @thorn0 in https://github.com/reduxjs/redux-toolkit/pull/1496
+* add `arg` to `transformResponse` by @phryneas in https://github.com/reduxjs/redux-toolkit/pull/1521
+* add `currentData` property to hook results. by @phryneas in https://github.com/reduxjs/redux-toolkit/pull/1500
+* use `useSerializedStableValue` for value comparison by @phryneas in https://github.com/reduxjs/redux-toolkit/pull/1533
+* fix(useLazyQuery): added docs for preferCache option by @akashshyamdev in https://github.com/reduxjs/redux-toolkit/pull/1541
+* correctly handle console logs in tests by @phryneas in https://github.com/reduxjs/redux-toolkit/pull/1567
+* add `reset` method to useMutation hook by @phryneas in https://github.com/reduxjs/redux-toolkit/pull/1476
+* allow for "shared component results" using the `useMutation` hook by @phryneas in https://github.com/reduxjs/redux-toolkit/pull/1477
+* 🐛 Fix bug with `useMutation` shared results by @Shrugsy in https://github.com/reduxjs/redux-toolkit/pull/1616
+* pass the ThunkArg to the idGenerator function by @loursbourg in https://github.com/reduxjs/redux-toolkit/pull/1600
+* Support a custom paramsSerializer on fetchBaseQuery by @msutkowski in https://github.com/reduxjs/redux-toolkit/pull/1594
+* SSR & rehydration support, suspense foundations by @phryneas in https://github.com/reduxjs/redux-toolkit/pull/1277
+* add `endpoint`, `type` and `forced` to `BaseQueryApi` and `prepareHeaders` by @phryneas in https://github.com/reduxjs/redux-toolkit/pull/1656
+* split off signature without `AsyncThunkConfig` for better inference by @phryneas in https://github.com/reduxjs/redux-toolkit/pull/1644
+* Update createReducer to accept a lazy state init function by @markerikson in https://github.com/reduxjs/redux-toolkit/pull/1662
+* add `selectInvalidatedBy` by @phryneas in https://github.com/reduxjs/redux-toolkit/pull/1665
+
+**Full Changelog**: https://github.com/reduxjs/redux-toolkit/compare/v1.6.2...v1.7.0-beta.0

@@ -1,0 +1,130 @@
+# redux-saga release: v0.10.0
+# джерело: https://github.com/redux-saga/redux-saga/releases/tag/v0.10.0
+# отримано: 2026-10-01
+# версія: 0.10.0
+
+Tag v0.10.0, published 2016-04-22, pre-release.
+
+This is a major release. Make sure to read the following notes because there are some breaking changes
+
+## Middleware API
+
+It's no longer possible to start the Sagas in the `applyMiddleware` phase. Starting from this version Sagas must be started using the `sagaMiddleware.run(saga, ...args)` method. For a background see #235
+
+Before this release, we used the following to start Sagas
+
+```javascript
+import { createStore, applyMiddleware } from 'redux'
+import createSagaMiddleware from 'redux-saga'
+
+import reducer from './reducers'
+import rootSaga from './sagas'
+
+
+const store = createStore(
+  reducer,
+  applyMiddleware(createSagaMiddleware(rootSaga))
+)
+```
+
+**This is no longer valid**. Instead you'll have to use the following
+
+```javascript
+import { createStore, applyMiddleware } from 'redux'
+import createSagaMiddleware from 'redux-saga'
+
+import reducer from './reducers'
+import rootSaga from './sagas'
+
+
+const sagaMiddleware = createSagaMiddleware()
+const store = createStore(
+  reducer,
+  applyMiddleware(sagaMiddleware)
+)
+sagaMiddleware.run(rootSaga)
+```
+
+Also see examples for an alternative way which enahnces the store with a `runSaga` method
+
+#### Other changes
+
+Removed deprecated `getState` argument passed to Sagas. You can use the `select` Effect to get the store state
+
+## New fork model
+
+In prior release, all forked tasks were _detached_ from their parents. The parent Saga terminates as soon as its own body of instructions is fully executed and errors from forked tasks do not propagate up to their parents which in some situations caused errors from forks to be swallowed. Also cancellation of a Parent task do not automatically propagate to child tasks, which means one have to maintain the list of running tasks manually and take care of cancelling them if the parent was cancelled
+
+This new release includes a new fork model. By default, all forked tasks are attached to their parents. The whole parent + direct and indirect children form an _execution tree_ (vs _execution path_ in sequential programming). This implies new semantics from the prior releases
+- A parent task will terminate only if : 1- it terminates its own body and 2- all forked tasks are terminated (this can be handy for Server Side rendering scenarios, see real-world example in the repo)
+- Cancellation of a parent automatically propagates to child tasks, this means effectively the cancellation of the whole execution tree.
+- Errors can now also bubble from forked tasks: Any uncaught error from a fork will propagate up to the parent and aborts the whole execution tree. The benefit is that errors are no longer swallowed. Also errors are now logged with entire execution tree
+
+error-rep
+
+To create detached forks which follow the old model. You can use the new effect `spawn`.
+
+## Cancellation as a 'third State' (no longer throw on the Generator)
+
+The release introduces a new model for Cancellation propagation. In prior releases, Cancellation of a task throws a `SagaCancellationException` inside the cancelled task. Starting from this release, Cancellations no longer throw inside cancelled tasks. This means that special cancellation handling no longer interfere with Error handling. In prior release, any try/catch block needed this chek
+
+```javascript
+function* saga() {
+  try {
+     yield call(someApi)
+     yield put(SuccessAction())
+  } catch(err) {
+    // ensure this is not a Cancellation error before handling the error
+    // We do not want to dispatch an Error on cancellations
+    if(!isCancel(err))
+      yield put(ErrorAction())
+  }
+}
+```
+
+Starting with this release; the check is no longer necessary. If you want to react to cancellations, you can do it inside finally block. A new effect `cancelled()` is provided to check if the Saga has been cancelled
+
+```javascript
+function* saga() {
+  try {
+     yield call(someApi)
+     yield put(SuccessAction())
+  } catch(err) {
+     yield put(ErrorAction())
+  } finally {
+     if(yield cancelled()) {
+       // logic proper to cancellation
+    }
+  }
+}
+```
+
+So `SagaCancellationException` class and `isCancelError` function were removed.
+
+Also Cancellation are now simply logged using `console.info` in dev mode instead of warnings
+
+For background see #266
+
+## Support for Channels and Event channels
+
+The redux-saga concurrency model introduces a new abstraction channel. You can now use `take` and `put` with other sources than the Store actions. Esp. `eventChannel` allows sagas to take from external event sources. You can find a simple example in the cancellable-counter repo example. For more info see API docs.
+
+## Introdcution of the special action `END` (support SSR and Universal Sagas)
+
+This release introduces a special action `END` which can be used to notify that an event source has terminated. You can also dispatch an `END` to notify Sagas that no more Store actions will be fired. This can be handy in Server Side rendering to break the `while(true)` loop inside watchers.The real-world example in the repo shows a possible ways to implement universal Sagas and SSR.
+
+`END` actions are automatically handled by the middleware and cause a Saga blocked on a take effect to automatically terminate (but it'll still wait for its forked tasks which provides support for SSR). To catch `END` values you can use the new Effect `takem` (aka takeMaybe). Using `takem` you get the explicit `END` so you can handle it manually. See #255 for more infos
+
+## Changes in the Monitoring API
+
+Monitor actions are no longer fired by default in dev mode. To activate monitoring, you'll have to pass the `{sagaMonitor}` option explicitly to the middleware factory. Also monitor events are now dispatched to the Saga monitor via direct method calls instead of dispatching actions to the Store. See repo examples for usage examples.
+
+## Other changes
+
+- It's now possible to have parallel takes (`yield [take(...), take(...)]`
+- Added `delay(ms, [val])` function
+- Fixed issue with interleaved synchronous dispatches (see #235)
+- `runSaga`: remove deprecated `StoreIO`
+- `Task` object gets a new property:`isCancelled`
+- Fixed Regenerator runtime in lib/dist #252
+- Fixed takeEvery doesn't work when action type is a Symbol #246

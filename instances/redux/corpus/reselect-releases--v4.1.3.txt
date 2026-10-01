@@ -1,0 +1,71 @@
+# reselect release: v4.1.3
+# джерело: https://github.com/reduxjs/reselect/releases/tag/v4.1.3
+# отримано: 2026-10-01
+# версія: 4.1.3
+
+Tag v4.1.3, published 2021-11-16.
+
+This release rewrites the TS type inference of input selector parameters for correctness, fixes inference of `createStructuredSelector` inputs, and fixes an issue with the `OutputSelectorFields` type not being exported.
+
+## Changelog
+
+### Input Selector Parameter Inference Improvements
+
+Reselect's types have always been extremely tricky, because it involves passing multiple input selectors with potentially heterogeneous, and then nested function composition of multiple selectors.  Additionally, the input selectors can be passed as individual arguments or a single array of input selectors.
+
+The 4.0.0 typedefs dealt with this by hand-writing dozens of overloads, which was absolutely impossible to maintain.
+
+In 4.1, we took advantage of TS's improved abilities to infer array/tuple types to consolidate the typedefs.
+
+One of the issues that happened as a result was that arguments at the same input parameter index were being "unioned" together, rather than "intersectioned".  For example, in this complex selector:
+
+```ts
+  const input1 = (
+    _: StateA,
+    { testNumber }: { testNumber: number },
+    c: number,
+    d: string
+  ) => testNumber
+
+  const input2 = (
+    _: StateA,
+    { testString }: { testString: string },
+    c: number | string
+  ) => testString
+
+  const input3 = (
+    _: StateA,
+    { testBoolean }: { testBoolean: boolean },
+    c: number | string,
+    d: string
+  ) => testBoolean
+
+  const input4 = (_: StateA, { testString2 }: { testString2: string }) =>
+    testString2
+
+  const testSelector = createSelector(
+    input1,
+    input2,
+    input3,
+    input4,
+    (testNumber, testString, testBoolean) => testNumber + testString
+  )
+```
+
+The second arg _should_ end up as an object like `{testNumber: number, testString: string, testBoolean: boolean, testString2: string}`.  However, it was ending up as four separate one-field objects.  Similarly, the combination of `number` and `number | string` should be narrowed down to just `number` as an acceptable value.
+
+We've rewritten the types to successfully accomplish that (although it took a _lot_ of collective effort and headbanging to actually pull this off!)  This should now give much more correct results when determining the final parameters that can be passed to a selector.
+
+### `createStructuredSelector` Fixes
+
+Similarly, `createStructuredSelector` wasn't always inferring its arguments properly.  We were able to reuse the parameter inference work here as well.
+
+### `OutputSelectorFields` Exported
+
+The public `OutputSelector` type depended on an internal `OutputSelectorFields` type, but since `OSF` wasn't being exported, TS would throw errors when trying to generate declaration files that exported selectors.  That is now public as well.
+
+## What's Changed
+
+* Rewrite function parameter type inference to fix assorted issues by @markerikson in https://github.com/reduxjs/reselect/pull/549
+
+**Full Changelog**: https://github.com/reduxjs/reselect/compare/v4.1.2...v4.1.3
