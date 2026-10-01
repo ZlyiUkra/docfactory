@@ -180,7 +180,7 @@ cd ../..                        # назад у корінь: усі кроки 
 ```
 
 Порт береться з `config.json` примірника (у ecmascript — `8760`, адреса `http://127.0.0.1:8760/mcp`; у react — `8761`;
-у nestjs — `8762`; у astro — `8763`; у supabase — `8764`; у react-router — `8765`; у clerk — `8766`; у tanstack-query — `8767`; у react-hook-form — `8768`; у zod — `8770`; у zustand — `8771`; у typescript — `8772`; у v8 — `8773`; у wasm — `8774`; у tailwind — `8775`). Від запуску до першої відповіді —
+у nestjs — `8762`; у astro — `8763`; у supabase — `8764`; у react-router — `8765`; у clerk — `8766`; у tanstack-query — `8767`; у react-hook-form — `8768`; у zod — `8770`; у zustand — `8771`; у typescript — `8772`; у v8 — `8773`; у wasm — `8774`; у tailwind — `8775`; у redux — `8776`). Від запуску до першої відповіді —
 секунди: стільки збирається індекс по словах. Виняток — astro: його корпус утричі більший за інші разом, і холодний
 старт із диска Windows триває близько трьох хвилин, поки термінал мовчить. Готовим сервер стає тоді, коли надрукував
 рядок з адресою.
@@ -540,6 +540,23 @@ tailwind-merge, daisyUI, Flowbite, shadcn, spartan/ui, `@astrojs/tailwind`), —
   вкладками);
 - приклад питання агентові: `./df tailwind ask "How do I install Tailwind CSS with Astro?"`;
 - докладніше — у [instances/tailwind/README.md](instances/tailwind/README.md).
+
+### redux
+
+Документація Redux і бібліотек поруч усіх версій: тека документації Redux, Redux Toolkit з RTK Query, React Redux,
+Reselect, Immer і redux-saga на кожному тегу релізу (кожен неповторний текст один раз, з усіма версіями), поточна
+документація Redux DevTools і архівна redux-devtools-extension; плюс нотатки релізів GitHub, README усіх версій
+пакетів (зокрема redux-thunk і redux-persist) і реєстр версій npm з peer-залежностями — що з чим сумісне. 3 368
+документів.
+
+- порт `8776`; запис у Claude Code — `redux-docs`, адреса `http://127.0.0.1:8776/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-redux`, модель векторів — `bge-small`;
+- версія — номер свого пакета (`"2"` — Toolkit 2.x, але й Redux 2.x; назва документа каже, чий він); без `version` —
+  історія, міграції, сумісність;
+- нових читачів немає: `ghdocs-history`, `ghreleases`, `npm-readme`, `npm-versions`;
+- приклад питання агентові: `./df redux ask "How do I migrate from createStore to configureStore?"`;
+- докладніше — у [instances/redux/README.md](instances/redux/README.md).
 
 ## Захист
 
