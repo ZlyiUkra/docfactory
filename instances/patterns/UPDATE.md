@@ -34,6 +34,8 @@
 - **PatternsDev/skills, Вікіпедія, блог Мартіна** — перелік поіменний: нова сторінка — нова адреса в `pages` і
   `within` (Вікіпедія, блог) або нове джерело `mdfile` (skills).
 - **Статті Мартіна, Liskov & Wing** — знімки, що не змінюються.
+- **Глави книг** (`corpus/book-*.txt`, README, «Книги») — не джерела `sources.json`: `refresh` їх не тягне й не
+  чіпає, `manifest` і `vectors` беруть їх разом з усім корпусом.
 
 Internet Archive часом відповідає «Temporarily Offline»: `refresh` тоді повторює запит, а якщо не вийшло — документ
 лишається як був. Повторити пізніше: `./df patterns refresh --missing`.

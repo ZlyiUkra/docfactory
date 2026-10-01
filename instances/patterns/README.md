@@ -3,7 +3,8 @@
 Сімнадцятий примірник фабрики: захищений MCP-сервер, що відповідає на питання про патерни проєктування,
 рефакторинг і принципи SOLID та GRASP: сайт [refactoring.guru](https://refactoring.guru/) (англійська версія),
 [patterns.dev](https://www.patterns.dev/) (патерни JavaScript, React і Vue), оригінальні статті й блог Роберта
-Мартіна, стаття Лісков і Вінг та статті Вікіпедії. Код спільний і лежить у
+Мартіна, стаття Лісков і Вінг, статті Вікіпедії і глави чотирьох книг про GRASP і SOLID (див. «Книги»). Код
+спільний і лежить у
 `../../engine/`, `../../server/` та `../../common/`; ця тека тримає самі дані домену. Загальний устрій фабрики — у
 [../../README.md](../../README.md).
 
@@ -39,7 +40,9 @@
 | LSP: «A Behavioral Notion of Subtyping», Liskov & Wing, 1994 | 1 | PDF з cs.cmu.edu |
 | Вікіпедія: SOLID і п'ять принципів, GRASP, Coupling, Cohesion, Law of Demeter, Composition over inheritance | 11 | en.wikipedia.org |
 
-Разом 444 документи; фрагментів в індексі — 3 470 (`expected_passages` у `checks.json`). Фрагменти — це шматки
+| Глави книг Ларманa й Мартіна про GRASP, SOLID і принципи компонентів | 19 | локальні копії книг, разово (див. «Книги») |
+
+Разом 463 документи; фрагментів в індексі — 3 931 (`expected_passages` у `checks.json`). Фрагменти — це шматки
 документів між заголовками, по яких іде пошук.
 
 Замір `quality` (01.10.2026, після додавання SOLID, GRASP і patterns.dev; три цілі з десяти — SRP, GRASP Creator,
@@ -48,9 +51,24 @@
 вживають і інші патерни («Creator» — клас Factory Method), тож промпт велить додавати до запиту «GRASP» і те, що
 патерн вирішує.
 
-**GRASP — коротко.** Вільного детального тексту про GRASP немає: першоджерело — книга Крейга Ларманa «Applying UML
-and Patterns», а Вікіпедія дає по абзацу на кожен із дев'яти патернів. Промпт велить казати про це, коли питання
-потребує більшого.
+## Книги
+
+Глави книг додано разово з локальних копій користувача: вони збагачують корпус першоджерелами GRASP і SOLID, яких
+в інтернеті у вільному доступі немає. `refresh` їх не тягне й не чіпає — це не джерела `sources.json`, а файли
+`corpus/book-*.txt`, видобуті скриптом поза рушієм. Кожен документ — одна глава; назва документа й рядок шапки
+`# джерело:` кажуть главу, книгу, автора й рік, тож відповідь посилається на них замість адреси.
+
+| Книга | Автор, рік | Глави |
+|-------|-----------|-------|
+| «Applying UML and Patterns: An Introduction to Object-Oriented Analysis and Design and Iterative Development», 3rd ed., Prentice Hall | Craig Larman, 2004 | 17 «GRASP: Designing Objects with Responsibilities», 18 «Object Design Examples with GRASP», 25 «GRASP: More Objects with Responsibilities», підрозділ 26.2 «Some GRASP Principles as a Generalization of Other Patterns» |
+| «Agile Principles, Patterns, and Practices in C#», Prentice Hall | Robert C. Martin, Micah Martin, 2006 | 7 «What Is Agile Design?», 8 SRP, 9 OCP, 10 LSP, 11 DIP, 12 ISP, 28 «Principles of Package and Component Design» |
+| «Clean Architecture: A Craftsman's Guide to Software Structure and Design», Prentice Hall | Robert C. Martin, 2017 | 7 SRP, 8 OCP, 9 LSP, 10 ISP, 11 DIP, 12 «Components», 13 «Component Cohesion», 14 «Component Coupling» |
+
+Як видобуто: Larman — файл CHM, розпакований 7-Zip, текст із HTML розділів у порядку змісту; підписи рисунків і
+врізки («Key Point») — звичайним текстом, а не заголовками. Книги Мартіна — PDF: межі глав зі змісту PDF, заголовки
+— за шрифтом (у «Clean Architecture» вони набрані капітеллю, і шматки слів склеюються). Рисунки й діаграми в текст
+не потрапляють, лише їхні підписи. Видання «Agile Software Development, Principles, Patterns, and Practices» 2002
+року не взято: ті самі глави, що у виданні C#, з прикладами на Java і C++.
 
 **Мова.** Лише англійська. Українська версія сайту повна, але спільний пошук фабрики англійський: індекс слів бере
 лише латиницю, моделі векторів англійські, тож українські документи пошук не знаходив би. Переклад термінів, коли
@@ -110,8 +128,9 @@ refactoring.guru — читач `sitemap-html` (`engine/readers/sitemaphtml.py`)
 ## Межі, про які треба пам'ятати
 
 Тут 22 класичні патерни (GoF), запахи коду й техніки за Фаулером, патерни JS/React/Vue з patterns.dev, SOLID і
-GRASP. Немає архітектурних патернів (MVC, мікросервіси, CQRS), патернів інших фреймворків (NestJS, Angular, Redux)
-і самих книг: Gang of Four, Фаулера, Ларманa, «Clean Architecture» Мартіна.
+GRASP, з главами книг Ларманa й Мартіна. Немає архітектурних патернів (MVC, мікросервіси, CQRS), патернів інших
+фреймворків (NestJS, Angular, Redux), книг Gang of Four і Фаулера, а з книг Ларманa й Мартіна — решти глав (зокрема
+архітектурних частин «Clean Architecture»).
 
 ## Установка venv
 
@@ -126,7 +145,8 @@ cd ../..
 
 ## Збирання корпусу
 
-Корпусу в git немає, тож на новій машині (і після клонування) його треба зібрати:
+Корпусу в git немає, тож на новій машині (і після клонування) його треба зібрати. Глави книг (див. «Книги») так
+не відтворюються — лише разовим видобуванням із тих самих копій книг.
 
 ```
 ./df patterns sources --why   # перелік джерел і білий список
