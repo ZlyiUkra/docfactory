@@ -1,0 +1,231 @@
+# App Router: taint
+# джерело: https://github.com/vercel/next.js/blob/v16.3.2/docs/01-app/03-api-reference/05-config/01-next-config-js/taint.mdx
+# отримано: 2026-10-01
+# версія: 16.3.2, 16.3.1, 16.3.1-canary, 16.3.0, 16.3.0-preview.10, 16.3.0-preview.9, 16.3.0-preview.8, 16.3.0-preview.7, 16.3.0-preview.6, 16.3.0-preview.5, 16.3.0-preview.4, 16.3.0-preview.3, 16.3.0-preview.2, 16.3.0-preview.1, 16.3.0-preview.0, 16.3.0-canary, 16.2.12, 16.2.11, 16.2.10, 16.2.9, 16.2.8, 16.2.7, 16.2.6, 16.2.5, 16.2.4, 16.2.3, 16.2.2, 16.2.1, 16.2.1-canary, 16.2.0, 16.2.0-canary, 16.1.7, 16.1.6, 16.1.5, 16.1.4, 16.1.3, 16.1.2, 16.1.1, 16.1.1-canary, 16.1.0, 16.1.0-canary, 16.0.11, 16.0.10, 16.0.9, 16.0.8, 16.0.7, 16.0.6, 16.0.5, 16.0.4, 16.0.3, 16.0.2, 16.0.2-canary, 16.0.1, 16.0.1-canary, 16.0.0, 16.0.0-canary, 16.0.0-beta.0, 15.6.0-canary, 15.5.27, 15.5.26, 15.5.25, 15.5.24, 15.5.23, 15.5.22, 15.5.21, 15.5.20, 15.5.20-canary, 15.5.19, 15.5.18, 15.5.17, 15.5.16, 15.5.15, 15.5.14, 15.5.13, 15.5.12, 15.5.11, 15.5.10, 15.5.9, 15.5.8, 15.5.7, 15.5.6, 15.5.5, 15.5.4, 15.5.3, 15.5.2, 15.5.1, 15.5.1-canary, 15.5.0, 15.4.11, 15.4.10, 15.4.9, 15.4.8, 15.4.7, 15.4.6, 15.4.5, 15.4.4, 15.4.3, 15.4.2, 15.4.2-canary, 15.4.1, 15.4.0, 15.4.0-canary
+
+Enable tainting Objects and Values.
+
+## Usage
+
+The `taint` option enables support for experimental React APIs for tainting objects and values. This feature helps prevent sensitive data from being accidentally passed to the client. When enabled, you can use:
+
+- `experimental_taintObjectReference` taint objects references.
+- `experimental_taintUniqueValue` to taint unique values.
+
+> **Good to know**: Activating this flag also enables the React `experimental` channel for `app` directory.
+
+`next.config.ts`
+
+```ts
+import type { NextConfig } from 'next'
+
+const nextConfig: NextConfig = {
+  experimental: {
+    taint: true,
+  },
+}
+
+export default nextConfig
+```
+
+`next.config.js`
+
+```js
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  experimental: {
+    taint: true,
+  },
+}
+
+module.exports = nextConfig
+```
+
+> **Warning:** Do not rely on the taint API as your only mechanism to prevent exposing sensitive data to the client. See our security recommendations.
+
+The taint APIs allows you to be defensive, by declaratively and explicitly marking data that is not allowed to pass through the Server-Client boundary. When an object or value, is passed through the Server-Client boundary, React throws an error.
+
+This is helpful for cases where:
+
+- The methods to read data are out of your control
+- You have to work with sensitive data shapes not defined by you
+- Sensitive data is accessed during Server Component rendering
+
+It is recommended to model your data and APIs so that sensitive data is not returned to contexts where it is not needed.
+
+## Caveats
+
+- Tainting can only keep track of objects by reference. Copying an object creates an untainted version, which loses all guarantees given by the API. You'll need to taint the copy.
+- Tainting cannot keep track of data derived from a tainted value. You also need to taint the derived value.
+- Values are tainted for as long as their lifetime reference is within scope. See the `experimental_taintUniqueValue` parameters reference, for more information.
+
+## Examples
+
+### Tainting an object reference
+
+In this case, the `getUserDetails` function returns data about a given user. We taint the user object reference, so that it cannot cross a Server-Client boundary. For example, assuming `UserCard` is a Client Component.
+
+```ts
+import { experimental_taintObjectReference } from 'react'
+
+function getUserDetails(id: string): UserDetails {
+  const user = await db.queryUserById(id)
+
+  experimental_taintObjectReference(
+    'Do not use the entire user info object. Instead, select only the fields you need.',
+    user
+  )
+
+  return user
+}
+```
+
+```js
+import { experimental_taintObjectReference } from 'react'
+
+function getUserDetails(id) {
+  const user = await db.queryUserById(id)
+
+  experimental_taintObjectReference(
+    'Do not use the entire user info object. Instead, select only the fields you need.',
+    user
+  )
+
+  return user
+}
+```
+
+We can still access individual fields from the tainted `userDetails` object.
+
+```tsx
+export async function ContactPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id } = await params
+  const userDetails = await getUserDetails(id)
+
+  return (
+    <UserCard
+      firstName={userDetails.firstName}
+      lastName={userDetails.lastName}
+    />
+  )
+}
+```
+
+```jsx
+export async function ContactPage({ params }) {
+  const { id } = await params
+  const userDetails = await getUserDetails(id)
+
+  return (
+    <UserCard
+      firstName={userDetails.firstName}
+      lastName={userDetails.lastName}
+    />
+  )
+}
+```
+
+Now, passing the entire object to the Client Component will throw an error.
+
+```tsx
+export async function ContactPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const userDetails = await getUserDetails(id)
+
+  // Throws an error
+  return <UserCard user={userDetails} />
+}
+```
+
+```jsx
+export async function ContactPage({ params }) {
+  const { id } = await params
+  const userDetails = await getUserDetails(id)
+
+  // Throws an error
+  return <UserCard user={userDetails} />
+}
+```
+
+### Tainting a unique value
+
+In this case, we can access the server configuration by awaiting calls to `config.getConfigDetails`. However, the system configuration contains the `SERVICE_API_KEY` that we don't want to expose to clients.
+
+We can taint the `config.SERVICE_API_KEY` value.
+
+```ts
+import { experimental_taintUniqueValue } from 'react'
+
+function getSystemConfig(): SystemConfig {
+  const config = await config.getConfigDetails()
+
+  experimental_taintUniqueValue(
+    'Do not pass configuration tokens to the client',
+    config,
+    config.SERVICE_API_KEY
+  )
+
+  return config
+}
+```
+
+```js
+import { experimental_taintUniqueValue } from 'react'
+
+function getSystemConfig() {
+  const config = await config.getConfigDetails()
+
+  experimental_taintUniqueValue(
+    'Do not pass configuration tokens to the client',
+    config,
+    config.SERVICE_API_KEY
+  )
+
+  return config
+}
+```
+
+We can still access other properties of the `systemConfig` object.
+
+```tsx
+export async function Dashboard() {
+  const systemConfig = await getSystemConfig()
+
+  return <ClientDashboard version={systemConfig.SERVICE_API_VERSION} />
+}
+```
+
+However, passing `SERVICE_API_KEY` to `ClientDashboard` throws an error.
+
+```tsx
+export async function Dashboard() {
+  const systemConfig = await getSystemConfig()
+  // Someone makes a mistake in a PR
+  const version = systemConfig.SERVICE_API_KEY
+
+  return <ClientDashboard version={version} />
+}
+```
+
+Note that, even though, `systemConfig.SERVICE_API_KEY` is reassigned to a new variable. Passing it to a Client Component still throws an error.
+
+Whereas, a value derived from a tainted unique value, will be exposed to the client.
+
+```tsx
+export async function Dashboard() {
+  const systemConfig = await getSystemConfig()
+  // Someone makes a mistake in a PR
+  const version = `version::${systemConfig.SERVICE_API_KEY}`
+
+  return <ClientDashboard version={version} />
+}
+```
+
+A better approach is to remove `SERVICE_API_KEY` from the data returned by `getSystemConfig`.

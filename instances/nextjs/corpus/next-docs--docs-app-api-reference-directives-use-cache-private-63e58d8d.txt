@@ -1,0 +1,175 @@
+# App Router: use cache: private
+# джерело: https://github.com/vercel/next.js/blob/v16.3.2/docs/01-app/03-api-reference/01-directives/use-cache-private.mdx
+# отримано: 2026-10-01
+# версія: 16.3.2, 16.3.1, 16.3.1-canary, 16.3.0, 16.3.0-canary
+
+Learn how to use the "use cache: private" directive to cache functions that access runtime request APIs.
+
+The `'use cache: private'` directive allows functions to access runtime request APIs like `cookies()`, `headers()`, and `searchParams` within a cached scope. However, results are **never stored on the server**, they're cached only in the browser's memory and do not persist across page reloads.
+
+Reach for `'use cache: private'` when:
+
+- You want to cache a function that already accesses runtime data, and refactoring to move the runtime access outside and pass values as arguments is not practical.
+- Compliance requirements prevent storing certain data on the server, even temporarily
+
+Because this directive accesses runtime data, the function executes on every server render and is excluded from running during static shell generation.
+
+It is **not** possible to configure custom cache handlers for `'use cache: private'`.
+
+For a comparison of the different cache directives, see How `use cache: remote` differs from `use cache` and `use cache: private`.
+
+## Usage
+
+To use `'use cache: private'`, enable the `cacheComponents` flag in your `next.config.ts` file:
+
+`next.config.ts`
+
+```tsx
+import type { NextConfig } from 'next'
+
+const nextConfig: NextConfig = {
+  cacheComponents: true,
+}
+
+export default nextConfig
+```
+
+`next.config.js`
+
+```jsx
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  cacheComponents: true,
+}
+
+export default nextConfig
+```
+
+Then add `'use cache: private'` to your function along with a `cacheLife` configuration.
+
+> **Good to know**: This directive is not available in Route Handlers.
+
+### Basic example
+
+In this example, we demonstrate that you can access cookies within a `'use cache: private'` scope:
+
+`app/product/[id]/page.tsx`
+
+```tsx
+import { Suspense } from 'react'
+import { cookies } from 'next/headers'
+import { cacheLife, cacheTag } from 'next/cache'
+
+export async function generateStaticParams() {
+  return [{ id: '1' }]
+}
+
+export default async function ProductPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id } = await params
+
+  return (
+    <div>
+      <ProductDetails id={id} />
+      <Suspense fallback={<div>Loading recommendations...</div>}>
+        <Recommendations productId={id} />
+      </Suspense>
+    </div>
+  )
+}
+
+async function Recommendations({ productId }: { productId: string }) {
+  const recommendations = await getRecommendations(productId)
+
+  return (
+    <div>
+      {recommendations.map((rec) => (
+        <ProductCard key={rec.id} product={rec} />
+      ))}
+    </div>
+  )
+}
+
+async function getRecommendations(productId: string) {
+  'use cache: private'
+  cacheTag(`recommendations-${productId}`)
+  cacheLife({ stale: 60 })
+
+  // Access cookies within private cache functions
+  const sessionId = (await cookies()).get('session-id')?.value || 'guest'
+
+  return getPersonalizedRecommendations(productId, sessionId)
+}
+```
+
+`app/product/[id]/page.js`
+
+```jsx
+import { Suspense } from 'react'
+import { cookies } from 'next/headers'
+import { cacheLife, cacheTag } from 'next/cache'
+
+export async function generateStaticParams() {
+  return [{ id: '1' }]
+}
+
+export default async function ProductPage({ params }) {
+  const { id } = await params
+
+  return (
+    <div>
+      <ProductDetails id={id} />
+      <Suspense fallback={<div>Loading recommendations...</div>}>
+        <Recommendations productId={id} />
+      </Suspense>
+    </div>
+  )
+}
+
+async function Recommendations({ productId }) {
+  const recommendations = await getRecommendations(productId)
+
+  return (
+    <div>
+      {recommendations.map((rec) => (
+        <ProductCard key={rec.id} product={rec} />
+      ))}
+    </div>
+  )
+}
+
+async function getRecommendations(productId) {
+  'use cache: private'
+  cacheTag(`recommendations-${productId}`)
+  cacheLife({ stale: 60 })
+
+  // Access cookies within private cache functions
+  const sessionId = (await cookies()).get('session-id')?.value || 'guest'
+
+  return getPersonalizedRecommendations(productId, sessionId)
+}
+```
+
+> **Good to know**: The `stale` time must be at least 30 seconds for runtime prefetching to work, and at least 5 minutes for the content to be included in the route's App Shell. See `cacheLife` prerendering behavior for details.
+
+## Request APIs allowed in private caches
+
+The following request-specific APIs can be used inside `'use cache: private'` functions:
+
+| API            | Allowed in `use cache` | Allowed in `'use cache: private'` |
+| -------------- | ---------------------- | --------------------------------- |
+| `cookies()`    | No                     | Yes                               |
+| `headers()`    | No                     | Yes                               |
+| `searchParams` | No                     | Yes                               |
+| `connection()` | No                     | No                                |
+
+> **Note:** The `connection()` API is prohibited in both `use cache` and `'use cache: private'` as it provides connection-specific information that cannot be safely cached.
+
+## Version History
+
+| Version   | Changes                                                              |
+| --------- | -------------------------------------------------------------------- |
+| `v16.0.0` | `"use cache: private"` is enabled with the Cache Components feature. |

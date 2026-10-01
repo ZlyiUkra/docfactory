@@ -1,0 +1,57 @@
+# Pages Router: assetPrefix
+# джерело: https://github.com/vercel/next.js/blob/v16.4.0-canary.6/docs/02-pages/04-api-reference/04-config/01-next-config-js/assetPrefix.mdx
+# отримано: 2026-10-01
+# версія: 16.4.0-canary, 16.3.2, 16.3.1, 16.3.1-canary, 16.3.0, 16.3.0-preview.10, 16.3.0-preview.9, 16.3.0-preview.8, 16.3.0-preview.7, 16.3.0-preview.6, 16.3.0-preview.5, 16.3.0-preview.4, 16.3.0-preview.3, 16.3.0-preview.2, 16.3.0-preview.1, 16.3.0-preview.0, 16.3.0-canary, 16.2.12, 16.2.11, 16.2.10, 16.2.9, 16.2.8, 16.2.7, 16.2.6, 16.2.5, 16.2.4, 16.2.3, 16.2.2, 16.2.1, 16.2.1-canary, 16.2.0, 16.2.0-canary, 16.1.7, 16.1.6, 16.1.5, 16.1.4, 16.1.3, 16.1.2, 16.1.1, 16.1.1-canary, 16.1.0, 16.1.0-canary, 16.0.11, 16.0.10, 16.0.9, 16.0.8, 16.0.7, 16.0.6, 16.0.5, 16.0.4, 16.0.3, 16.0.2, 16.0.2-canary, 16.0.1, 16.0.1-canary, 16.0.0, 16.0.0-canary, 16.0.0-beta.0, 15.6.0-canary, 15.5.27, 15.5.26, 15.5.25, 15.5.24, 15.5.23, 15.5.22, 15.5.21, 15.5.20, 15.5.20-canary, 15.5.19, 15.5.18, 15.5.17, 15.5.16, 15.5.15, 15.5.14, 15.5.13, 15.5.12, 15.5.11, 15.5.10, 15.5.9, 15.5.8, 15.5.7, 15.5.6, 15.5.5, 15.5.4, 15.5.3, 15.5.2, 15.5.1, 15.5.1-canary, 15.5.0, 15.4.11, 15.4.10, 15.4.9, 15.4.8, 15.4.7, 15.4.6, 15.4.5, 15.4.4, 15.4.3, 15.4.2, 15.4.2-canary, 15.4.1, 15.4.0, 15.4.0-canary
+
+Learn how to use the assetPrefix config option to configure your CDN.
+
+> **Attention**: Deploying to Vercel automatically configures a global CDN for your Next.js project.
+> You do not need to manually setup an Asset Prefix.
+
+> **Good to know**: Next.js 9.5+ added support for a customizable Base Path, which is better
+> suited for hosting your application on a sub-path like `/docs`.
+> We do not suggest you use a custom Asset Prefix for this use case.
+
+## Set up a CDN
+
+To set up a CDN, you can set up an asset prefix and configure your CDN's origin to resolve to the domain that Next.js is hosted on.
+
+Open `next.config.mjs` and add the `assetPrefix` config based on the phase:
+
+`next.config.mjs`
+
+```js
+// @ts-check
+import { PHASE_DEVELOPMENT_SERVER } from 'next/constants'
+
+export default (phase) => {
+  const isDev = phase === PHASE_DEVELOPMENT_SERVER
+  /**
+   * @type {import('next').NextConfig}
+   */
+  const nextConfig = {
+    assetPrefix: isDev ? undefined : 'https://cdn.mydomain.com',
+  }
+  return nextConfig
+}
+```
+
+Next.js will automatically use your asset prefix for the JavaScript and CSS files it loads from the `/_next/` path (`.next/static/` folder). For example, with the above configuration, the following request for a JS chunk:
+
+```
+/_next/static/chunks/4b9b41aaa062cbbfeff4add70f256968c51ece5d.4d708494b3aed70c04f0.js
+```
+
+Would instead become:
+
+```
+https://cdn.mydomain.com/_next/static/chunks/4b9b41aaa062cbbfeff4add70f256968c51ece5d.4d708494b3aed70c04f0.js
+```
+
+The exact configuration for uploading your files to a given CDN will depend on your CDN of choice. The only folder you need to host on your CDN is the contents of `.next/static/`, which should be uploaded as `_next/static/` as the above URL request indicates. **Do not upload the rest of your `.next/` folder**, as you should not expose your server code and other configuration to the public.
+
+While `assetPrefix` covers requests to `_next/static`, it does not influence the following paths:
+
+- Files in the public folder; if you want to serve those assets over a CDN, you'll have to introduce the prefix yourself
+- `/_next/data/` requests for `getServerSideProps` pages. These requests will always be made against the main domain since they're not static.
+- `/_next/data/` requests for `getStaticProps` pages. These requests will always be made against the main domain to support Incremental Static Generation, even if you're not using it (for consistency).

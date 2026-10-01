@@ -1,0 +1,82 @@
+# No location.assign or location.href navigation to relative URLs
+# джерело: https://github.com/vercel/next.js/blob/v16.3.0-preview.5/errors/no-location-assign-relative-destination.mdx
+# отримано: 2026-10-01
+# версія: 16.3.0-preview.5, 16.3.0-preview.4, 16.3.0-preview.3, 16.3.0-preview.2, 16.3.0-preview.1, 16.3.0-preview.0, 16.3.0-canary
+
+> Prevent usage of `location.assign()` or `location.href` assignment to navigate to internal Next.js pages.
+
+## Why This Error Occurred
+
+`location.assign()` or `location.href = ...` was used to navigate to a relative URL. In Next.js, this bypasses the client-side router, causing a full page reload and losing any prefetched data or state managed by the framework.
+
+## Possible Ways to Fix It
+
+### During the render phase
+
+Use `redirect()` from `next/navigation`:
+
+`app/page.tsx`
+
+```tsx
+import { redirect } from 'next/navigation'
+
+export default function Page() {
+  redirect('/dashboard')
+}
+```
+
+`app/components/my-component.tsx`
+
+```tsx
+'use client'
+
+import { redirect } from 'next/navigation'
+
+export default function MyComponent({
+  isAuthorized,
+}: {
+  isAuthorized: boolean
+}) {
+  if (!isAuthorized) {
+    redirect('/login')
+  }
+  return <div>Protected content</div>
+}
+```
+
+### In Client Components (event handlers)
+
+Use `useRouter().push()` from `next/navigation`:
+
+`app/components/my-button.tsx`
+
+```tsx
+'use client'
+
+import { useRouter } from 'next/navigation'
+
+export default function MyButton() {
+  const router = useRouter()
+
+  return (
+    <button onClick={() => router.push('/dashboard')}>Go to Dashboard</button>
+  )
+}
+```
+
+### External URLs
+
+If you are navigating to an external URL (one with a protocol, e.g. `https://`), `location.assign()` and `location.href` are acceptable and will not trigger this rule:
+
+```js
+// Allowed — navigating to an external site
+location.href = 'https://example.com'
+window.location.assign('https://example.org/path')
+```
+
+## Useful Links
+
+- Redirecting in Next.js
+- Linking and Navigating in Next.js
+- `redirect` API Reference
+- `useRouter` API Reference

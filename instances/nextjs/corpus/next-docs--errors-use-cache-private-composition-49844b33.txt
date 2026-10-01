@@ -1,0 +1,51 @@
+# Invalid `use cache: private` composition
+# джерело: https://github.com/vercel/next.js/blob/v16.4.0-canary.55/errors/use-cache-private-composition.mdx
+# отримано: 2026-10-01
+# версія: 16.4.0-canary
+
+## Why This Error Occurred
+
+The `use cache: private` directive lets a cached function access request-specific data. Next.js stores its results only in the browser's memory. Private cached functions cannot run inside shared caches or without an active request. This error occurs when a private cached function is:
+
+- **Nested inside a public `use cache` directive.** A shared cached function can reuse its result across users, so it cannot contain a private cached function. Nest a private cached function only inside another private cached function.
+- **Used inside `unstable_cache()`.** `unstable_cache()` is a shared cache and has the same restriction.
+- **Used without an active request.** A private cached function depends on the current request, so it cannot run during build-time contexts such as `generateStaticParams`.
+
+`app/page.js`
+
+```jsx
+async function PrivateSegment() {
+  'use cache: private'
+  return <p>Private</p>
+}
+
+export default async function Page() {
+  'use cache' // A public cache cannot contain a private one
+  return <PrivateSegment />
+}
+```
+
+## Possible Ways to Fix It
+
+Nest a private cached function only inside another private cached function. You can also call it directly from a component or function that runs during a request. Do not place it inside a public cached function, `unstable_cache()`, or a build-time context.
+
+`app/page.js`
+
+```jsx
+async function PrivateSegment() {
+  'use cache: private'
+  return <p>Private</p>
+}
+
+export default async function Page() {
+  // No surrounding "use cache". The private segment runs per request.
+  return <PrivateSegment />
+}
+```
+
+If the data is the same for every user, use the `use cache` directive so Next.js can prerender and reuse the result. If you need per-user data, read it during the request instead of in `generateStaticParams`.
+
+## Useful Links
+
+- `use cache: private` directive
+- `use cache` directive

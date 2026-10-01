@@ -1,0 +1,151 @@
+# Prerender Error with Next.js
+# джерело: https://github.com/vercel/next.js/blob/v16.4.0-canary.55/errors/prerender-error.mdx
+# отримано: 2026-10-01
+# версія: 16.4.0-canary, 16.3.8, 16.3.7, 16.3.6, 16.3.5, 16.3.4, 16.3.3, 16.3.2, 16.3.1, 16.3.1-canary, 16.3.0, 16.3.0-preview.10, 16.3.0-preview.9, 16.3.0-preview.8, 16.3.0-preview.7, 16.3.0-preview.6, 16.3.0-preview.5, 16.3.0-preview.4, 16.3.0-preview.3, 16.3.0-preview.2, 16.3.0-preview.1, 16.3.0-preview.0, 16.3.0-canary, 16.2.12, 16.2.11, 16.2.10, 16.2.9, 16.2.8, 16.2.7, 16.2.6, 16.2.5, 16.2.4, 16.2.3, 16.2.2, 16.2.1, 16.2.1-canary, 16.2.0, 16.2.0-canary, 16.1.7, 16.1.6, 16.1.5, 16.1.4, 16.1.3, 16.1.2, 16.1.1, 16.1.1-canary, 16.1.0, 16.1.0-canary, 16.0.2-canary
+
+## Why This Error Occurred
+
+While prerendering a page during `next build`, an error occurred. This can happen for various reasons, including:
+
+1. Incorrect file structure or non-page files in the `pages/` directory
+2. Expecting props to be populated which are not available during prerendering
+3. Using browser-only APIs in components without proper checks
+4. Incorrect configuration in `getStaticProps` or `getStaticPaths`
+
+## Possible Ways to Fix It
+
+### 1. Ensure correct file structure and use App Router for colocation
+
+#### Pages Router
+
+In the Pages Router, only special files are allowed to generate pages. You cannot colocate other files (e.g., components, styles) within the `pages` directory.
+
+Correct structure:
+
+```txt
+  .
+  ├── components/
+  │   └── Header.js
+  ├── pages/
+  │   ├── about.js
+  │   └── index.js
+  └── styles/
+      └── globals.css
+```
+
+#### App Router (Next.js 13+)
+
+The App Router allows colocation of pages and other files in the same folder. This provides a more intuitive project structure.
+
+Example folder structure:
+
+```txt
+  .
+  └── app/
+      ├── about/
+      │   └── page.tsx
+      ├── blog/
+      │   ├── page.tsx
+      │   └── PostCard.tsx
+      ├── layout.tsx
+      └── page.tsx
+```
+
+### 2. Handle undefined props and missing data
+
+#### Pages Router
+
+For the Pages Router, use conditional checks and return appropriate props or a 404 page:
+
+```jsx
+export async function getStaticProps(context) {
+  const data = await fetchData(context.params.id)
+  if (!data) {
+    return {
+      notFound: true,
+    }
+  }
+  return {
+    props: { data },
+  }
+}
+```
+
+### 3. Handle fallback in dynamic routes
+
+If you're using `fallback: true` or `fallback: 'blocking'` in `getStaticPaths`, ensure your page component can handle the loading state:
+
+```jsx
+import { useRouter } from 'next/router'
+
+function Post({ post }) {
+  const router = useRouter()
+
+  if (router.isFallback) {
+    return <div>Loading...</div>
+  }
+
+  return (
+    <article>
+      <h1>{post.title}</h1>
+      <p>{post.content}</p>
+    </article>
+  )
+}
+```
+
+### 4. Avoid exporting pages with server-side rendering
+
+If you're using `next export` or `output: 'export'` in your `next.config.js`, ensure that none of your pages use `getServerSideProps`. Instead, use `getStaticProps` for data fetching:
+
+```jsx
+export async function getStaticProps() {
+  const res = await fetch('https://api.vercel.app/blog')
+  const data = await res.json()
+
+  return {
+    props: { data },
+    revalidate: 60,
+  }
+}
+```
+
+### 5. Disable server-side rendering for components using browser APIs
+
+If a component relies on browser-only APIs like `window`, you can disable server-side rendering for that component:
+
+```jsx
+import dynamic from 'next/dynamic'
+
+const DynamicComponentWithNoSSR = dynamic(
+  () => import('../components/BrowserOnlyComponent'),
+  { ssr: false }
+)
+
+export default function Page() {
+  return (
+    <div>
+      <h1>My page</h1>
+      <DynamicComponentWithNoSSR />
+    </div>
+  )
+}
+```
+
+## Debugging
+
+For additional debugging information when troubleshooting prerender errors, you can run:
+
+```bash
+next build --debug-prerender
+```
+
+This provides unminified stack traces with source maps, making it easier to pinpoint the exact component and route causing the issue.
+
+## Additional Resources
+
+- Handling Errors in Next.js
+- Data Fetching in Next.js
+- Debugging prerender errors
+
+If you continue to experience issues after trying these solutions, consider checking your server logs for more detailed error messages or reaching out to the Next.js community for support.

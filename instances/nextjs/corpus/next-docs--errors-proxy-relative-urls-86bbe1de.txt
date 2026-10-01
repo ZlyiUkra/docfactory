@@ -1,0 +1,45 @@
+# Proxy Relative URLs
+# джерело: https://github.com/vercel/next.js/blob/v16.4.0-canary.55/errors/proxy-relative-urls.mdx
+# отримано: 2026-10-01
+# версія: 16.4.0-canary, 16.3.8, 16.3.7, 16.3.6, 16.3.5, 16.3.4, 16.3.3, 16.3.2, 16.3.1, 16.3.1-canary, 16.3.0, 16.3.0-preview.10, 16.3.0-preview.9, 16.3.0-preview.8, 16.3.0-preview.7, 16.3.0-preview.6, 16.3.0-preview.5, 16.3.0-preview.4, 16.3.0-preview.3, 16.3.0-preview.2, 16.3.0-preview.1, 16.3.0-preview.0, 16.3.0-canary, 16.2.12, 16.2.11, 16.2.10, 16.2.9, 16.2.8, 16.2.7, 16.2.6, 16.2.5, 16.2.4, 16.2.3, 16.2.2, 16.2.1, 16.2.1-canary, 16.2.0, 16.2.0-canary, 16.1.7, 16.1.6, 16.1.5, 16.1.4, 16.1.3, 16.1.2, 16.1.1, 16.1.1-canary, 16.1.0, 16.1.0-canary, 16.0.11, 16.0.10, 16.0.9, 16.0.8, 16.0.7, 16.0.6, 16.0.5, 16.0.4, 16.0.3, 16.0.2, 16.0.2-canary, 16.0.1, 16.0.1-canary, 16.0.0, 16.0.0-canary
+
+## Why This Error Occurred
+
+You are using a Proxy function that uses `Response.redirect(url)`, `NextResponse.redirect(url)` or `NextResponse.rewrite(url)` where `url` is a relative or an invalid URL. Prior to Next.js 12.1, we allowed passing relative URLs. However, constructing a request with `new Request(url)` or running `fetch(url)` when `url` is a relative URL **does not** work. For this reason and to bring consistency to Next.js Proxy, this behavior has been deprecated and now removed.
+
+## Possible Ways to Fix It
+
+To fix this error you must always pass absolute URL for redirecting and rewriting. There are several ways to get the absolute URL but the recommended way is to clone `NextURL` and mutate it:
+
+`proxy.ts`
+
+```ts
+import type { NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
+
+export function proxy(request: NextRequest) {
+  const url = request.nextUrl.clone()
+  url.pathname = '/dest'
+  return NextResponse.rewrite(url)
+}
+```
+
+Another way to fix this error could be to use the original URL as the base but this will not consider configuration like `basePath` or `locale`:
+
+`proxy.ts`
+
+```ts
+import type { NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
+
+export function proxy(request: NextRequest) {
+  return NextResponse.rewrite(new URL('/dest', request.url))
+}
+```
+
+You can also pass directly a string containing a valid absolute URL.
+
+## Useful Links
+
+- URL Documentation
+- Response Documentation
