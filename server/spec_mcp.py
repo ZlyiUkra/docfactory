@@ -734,6 +734,13 @@ def _serve_port() -> int:
     return port if isinstance(port, int) else 8000
 
 
+# Скільки секунд після Ctrl+C сервер чекає, поки клієнти самі закриють з'єднання.
+# Без межі uvicorn чекає необмежено: клієнт, який тримає запит відкритим, лишав
+# сервер висіти на «Waiting for connections to close» — порт уже не слухає, а
+# процес живий. Після межі незавершені запити скасовуються, і сервер виходить.
+STOP_GRACE_SEC = 2
+
+
 if __name__ == "__main__":
     # Без аргументів — stdio: клієнт (Mode A, Inspector) сам запускає цей процес
     # і говорить у труби. З --serve — довгий HTTP-сервер на порту примірника, до
@@ -745,7 +752,16 @@ if __name__ == "__main__":
         print(f"spec_mcp: HTTP-сервер на http://127.0.0.1:{_port}/mcp "
               f"(Ctrl+C спиняє)", file=sys.stderr)
         try:
-            mcp.run(transport="streamable-http", host="127.0.0.1", port=_port)
+            # Не mcp.run(): той сам складає конфіг uvicorn, і межу зупинки в нього
+            # не передати. Усе інше тут те саме, що mcp.run робить для цього
+            # транспорту.
+            import uvicorn
+            uvicorn.Server(uvicorn.Config(
+                mcp.streamable_http_app(host="127.0.0.1"),
+                host="127.0.0.1", port=_port,
+                log_level=mcp.settings.log_level.lower(),
+                timeout_graceful_shutdown=STOP_GRACE_SEC,
+            )).run()
         except KeyboardInterrupt:
             # Ctrl+C — штатна зупинка: uvicorn уже закрив сесії, тож traceback,
             # який anyio підіймає слідом, нічого не каже, окрім «зупинили».
