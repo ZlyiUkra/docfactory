@@ -1,0 +1,62 @@
+# Cannot access request data in `use cache`
+# джерело: https://github.com/vercel/next.js/blob/v16.4.0-canary.55/errors/next-request-in-use-cache.mdx
+# отримано: 2026-10-01
+# версія: 16.4.0-canary
+
+## Why This Error Occurred
+
+A cached function tried to access the incoming request. APIs such as `cookies()`, `headers()`, `searchParams`, and `connection()` depend on the request and cannot be called inside a function that uses the `use cache` directive. This error can also occur when you pass unresolved request data into a cached function during prerendering. You can read draft mode inside a cached function, but enable or disable it outside.
+
+A cached function can also stall if it awaits a promise stored outside the function, such as one kept in a module-scoped `Map` for deduplication.
+
+## Possible Ways to Fix It
+
+Read and resolve request data outside the cached function, then pass only the values you need as arguments. Call `connection()` and enable or disable draft mode outside the cached function as well.
+
+If a module-scoped cache or deduplication layer stores promises, remove it. The `use cache` directive already deduplicates calls with the same arguments within a render pass and across requests for as long as the cache entry lasts.
+
+Before:
+
+`app/page.js`
+
+```jsx
+import { cookies } from 'next/headers'
+
+async function getGreeting() {
+  'use cache'
+  const isLoggedIn = (await cookies()).has('token')
+  return isLoggedIn ? 'Welcome back' : 'Welcome'
+}
+
+export default async function Page() {
+  const greeting = await getGreeting()
+  return <p>{greeting}</p>
+}
+```
+
+After:
+
+`app/page.js`
+
+```jsx
+import { cookies } from 'next/headers'
+
+async function getGreeting(isLoggedIn) {
+  'use cache'
+  return isLoggedIn ? 'Welcome back' : 'Welcome'
+}
+
+export default async function Page() {
+  const isLoggedIn = (await cookies()).has('token')
+  const greeting = await getGreeting(isLoggedIn)
+  return <p>{greeting}</p>
+}
+```
+
+## Useful Links
+
+- `headers()` function
+- `cookies()` function
+- `connection()` function
+- `draftMode()` function
+- `use cache` directive

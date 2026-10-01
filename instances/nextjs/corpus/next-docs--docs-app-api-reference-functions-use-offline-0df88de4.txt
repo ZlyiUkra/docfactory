@@ -1,0 +1,205 @@
+# App Router: useOffline
+# джерело: https://github.com/vercel/next.js/blob/v16.4.0-canary.55/docs/01-app/03-api-reference/04-functions/use-offline.mdx
+# отримано: 2026-10-01
+# версія: 16.4.0-canary, 16.3.8, 16.3.7, 16.3.6, 16.3.5, 16.3.4, 16.3.3, 16.3.2, 16.3.1, 16.3.1-canary, 16.3.0, 16.3.0-canary
+
+API Reference for the useOffline hook.
+
+The `useOffline` hook returns a boolean indicating whether the app is currently offline. Use it to render connectivity-aware UI, such as a banner when the user loses their network connection, or an offline-aware Suspense fallback.
+
+The hook is one piece of a larger feature. Enabling the `experimental.useOffline` config option turns on offline connectivity detection and automatic retry of blocked navigation, prefetch, and Server Action requests, and exposes this hook so Client Components can read the state.
+
+Without the flag, this hook always returns `false`.
+
+`next.config.js`
+
+```js
+module.exports = {
+  experimental: {
+    useOffline: true,
+  },
+}
+```
+
+`app/offline-status.tsx`
+
+```tsx
+'use client'
+
+import { useOffline } from 'next/offline'
+
+export function OfflineStatus() {
+  const isOffline = useOffline()
+  return <div>{isOffline ? 'Offline' : 'Online'}</div>
+}
+```
+
+`app/offline-status.js`
+
+```jsx
+'use client'
+
+import { useOffline } from 'next/offline'
+
+export function OfflineStatus() {
+  const isOffline = useOffline()
+  return <div>{isOffline ? 'Offline' : 'Online'}</div>
+}
+```
+
+For details on how connectivity is detected and requests retried, see How retry works.
+
+## Parameters
+
+```tsx
+const isOffline = useOffline()
+```
+
+`useOffline` does not take any parameters.
+
+## Returns
+
+`useOffline` returns a `boolean`:
+
+| Value   | Meaning                                                                                                   |
+| ------- | --------------------------------------------------------------------------------------------------------- |
+| `true`  | The app is offline. A network request has failed, or the browser has fired an `offline` event.            |
+| `false` | The app is online, or rendering on the server. This is also the initial value before hydration completes. |
+
+## Examples
+
+### Show an offline banner
+
+Render a persistent banner whenever the user loses connectivity.
+
+`app/components/offline-banner.tsx`
+
+```tsx
+'use client'
+
+import { useOffline } from 'next/offline'
+
+export function OfflineBanner() {
+  const isOffline = useOffline()
+
+  if (!isOffline) {
+    return null
+  }
+
+  return (
+    <div role="status" className="offline-banner">
+      You are offline. Some content may be unavailable.
+    </div>
+  )
+}
+```
+
+`app/components/offline-banner.js`
+
+```jsx
+'use client'
+
+import { useOffline } from 'next/offline'
+
+export function OfflineBanner() {
+  const isOffline = useOffline()
+
+  if (!isOffline) {
+    return null
+  }
+
+  return (
+    <div role="status" className="offline-banner">
+      You are offline. Some content may be unavailable.
+    </div>
+  )
+}
+```
+
+Render it in the root layout so the banner shows on every route:
+
+`app/layout.tsx`
+
+```tsx
+import { OfflineBanner } from './components/offline-banner'
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html>
+      <body>
+        <OfflineBanner />
+        {children}
+      </body>
+    </html>
+  )
+}
+```
+
+`app/layout.js`
+
+```jsx
+import { OfflineBanner } from './components/offline-banner'
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        <OfflineBanner />
+        {children}
+      </body>
+    </html>
+  )
+}
+```
+
+### Offline-aware Suspense fallback
+
+When a user navigates to a route while offline, the prefetched static shell renders immediately but the dynamic content behind a `<Suspense>` boundary blocks on the network. For example, use `useOffline` inside a `loading.tsx` file to explain why the content is taking longer than expected.
+
+`app/destination/loading.tsx`
+
+```tsx
+'use client'
+
+import { useOffline } from 'next/offline'
+
+export default function Loading() {
+  const isOffline = useOffline()
+
+  return (
+    <div>
+      {isOffline ? 'Waiting for connection to load this page...' : 'Loading...'}
+    </div>
+  )
+}
+```
+
+`app/destination/loading.js`
+
+```jsx
+'use client'
+
+import { useOffline } from 'next/offline'
+
+export default function Loading() {
+  const isOffline = useOffline()
+
+  return (
+    <div>
+      {isOffline ? 'Waiting for connection to load this page...' : 'Loading...'}
+    </div>
+  )
+}
+```
+
+When connectivity is restored, Next.js retries the blocked request and the dynamic content streams in automatically.
+
+## Version History
+
+| Version   | Changes                       |
+| --------- | ----------------------------- |
+| `v16.x.0` | `useOffline` hook introduced. |

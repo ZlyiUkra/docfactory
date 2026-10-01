@@ -1,0 +1,67 @@
+# App Router: Client-side data fetching
+# джерело: https://github.com/vercel/next.js/blob/v16.4.0-canary.55/docs/01-app/02-guides/client-side-data-fetching/index.mdx
+# отримано: 2026-10-01
+# версія: 16.4.0-canary, 16.3.8, 16.3.7, 16.3.6, 16.3.5, 16.3.4, 16.3.3, 16.3.1-canary
+
+Fetch data in Client Components with a data-fetching library, optionally provide initial data from a Server Component, and coordinate server and client caches.
+
+Many apps can provide responsive interactions without a client data-fetching library. If a Client Component only needs to read server data once, pass it a Promise and unwrap it with React's `use()`.
+
+This avoids adding a library for data that never revalidates on the client. See Building interactive apps for patterns using Server Functions, transitions, optimistic UI, and pending feedback.
+
+Use a client data-fetching library such as SWR, TanStack Query, or Apollo Client when Client Components need a shared browser cache. These libraries can add focus revalidation, interval polling, request deduplication, or optimistic updates across components.
+
+## Choose a client fetching pattern
+
+First decide whether the initial view needs data from the server or can wait for a browser request after hydration. Client data-fetching libraries support three common patterns:
+
+| Pattern                 | SWR                            | TanStack Query        | When data becomes available            |
+| ----------------------- | ------------------------------ | --------------------- | -------------------------------------- |
+| Inline loading states   | `useSWR`                       | `useQuery`            | Browser request after hydration        |
+| Suspense loading states | `useSWR` with `suspense: true` | `useSuspenseQuery`    | Browser request after hydration        |
+| Provided by the server  | `<SWRConfig fallback>`         | `<HydrationBoundary>` | Initial render or streamed from server |
+
+Use inline loading states when each component should render its own loading UI. Use Suspense to define loading UI at a boundary and coordinate which parts of the interface reveal together or progressively. For client-only fetching, choose the pattern that matches the loading experience you want. Suspense coordinates rendering, while the data library and component structure determine when requests start.
+
+For browser-driven interactions such as autocomplete, you can use either client-only pattern. The initial result waits for hydration and a browser request, which is often the right tradeoff for data that is not needed until an interaction.
+
+Provide initial data from a Server Component when the server knows what the initial render needs. The value can be included in the initial render or streamed through Suspense. The library receives it in the React Server Component payload and can continue managing it in the browser.
+
+## Cache server data with Cache Components (optional)
+
+Providing initial data and caching it on the server are independent choices. Add Cache Components when the server read or rendered view should be reused. When both are enabled, three cache layers can hold related data:
+
+| Layer                        | What it stores                                                    | Freshness control                                                                    |
+| ---------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Next.js server cache         | Cached data and Server Component output                           | `cacheLife` `revalidate` and `expire` |
+| Next.js client cache         | React Server Component payloads for visited and prefetched routes | `cacheLife` `stale`                   |
+| Client data-fetching library | Browser data stored under an SWR key or TanStack query key        | The library's revalidation options and mutations                                     |
+
+Next.js prefetching can place a route's React Server Component payload in the client cache before navigation.
+
+The cache layers keep independent freshness policies and do not need matching durations. Cache identities and mutation invalidation must stay coordinated across layers.
+
+## Coordinate mutations
+
+Server Components, data-fetching libraries, and mutations manage different parts of the data flow:
+
+- **Server Components** provide the initial data, scoped to the segment that owns it.
+- **The data-fetching library** stores the browser value under a shared cache identity.
+- **Mutations** can update the browser cache immediately and invalidate cached server data so the next render can read a fresh value.
+
+An optimistic update should restore the previous browser value if the write fails. If the server read is not cached, there is no server tag to invalidate.
+
+After a mutation, invalidate any cached server read that provided the initial data:
+
+| Method                                                                                 | Use when                                                   | Next server read                     |
+| -------------------------------------------------------------------------------------- | ---------------------------------------------------------- | ------------------------------------ |
+| `updateTag(tag)`                        | A Server Action must make its update visible immediately   | Waits for fresh data                 |
+| `revalidateTag(tag, 'max')`         | The update is passive or stale data is acceptable          | Serves stale data while revalidating |
+| `revalidateTag(tag, { expire: 0 })` | A webhook or external system requires immediate expiration | Waits for fresh data                 |
+
+## Apply these patterns with SWR or TanStack Query
+
+- Client-side data fetching with SWR
+- Client-side data fetching with TanStack Query
+
+See both patterns in the live `next-spa-patterns` demo and its source code.

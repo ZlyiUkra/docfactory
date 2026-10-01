@@ -1,0 +1,403 @@
+# App Router: Prefetching
+# джерело: https://github.com/vercel/next.js/blob/v16.4.0-canary.55/docs/01-app/02-guides/prefetching.mdx
+# отримано: 2026-10-01
+# версія: 16.4.0-canary, 16.3.8, 16.3.7, 16.3.6, 16.3.5, 16.3.4, 16.3.3, 16.3.1-canary
+
+Learn how to configure prefetching in Next.js
+
+Prefetching makes navigating between routes feel instant. By default, Next.js prefetches routes based on the links in your application code.
+
+This guide explains how prefetching works, what Next.js prefetches for you, and how to control it:
+
+- How does prefetching work?
+- What Next.js prefetches automatically
+- Controlling prefetching
+- Troubleshooting
+
+> **Using Partial Prefetching?** With `partialPrefetching` enabled, `<Link>` defaults to prefetching a per-route App Shell rather than the full page. See Partial Prefetching below and Adopting Partial Prefetching for the adoption path.
+
+## How does prefetching work?
+
+When navigating between routes, the browser requests assets for the page like HTML and JavaScript files. Prefetching is the process of fetching these resources _ahead_ of time, before you navigate to a new route.
+
+Next.js automatically splits your application into smaller JavaScript chunks based on routes. Instead of loading all the code upfront like traditional SPAs, only the code needed for the current route is loaded. This reduces the initial load time while other parts of the app are loaded in the background. By the time you click the link, the resources for the new route have already been loaded into the browser cache.
+
+When navigating to the new page, there's no full page reload or browser loading spinner. Instead, Next.js performs a client-side transition, making the page navigation feel instant.
+
+## What Next.js prefetches automatically
+
+Next.js prefetches automatically in production. As each `<Link>` enters the viewport, Next.js prefetches the route behind it and schedules the work so a page full of links doesn't flood the network. How much of each route it prefetches depends on whether the route is static or dynamic, and changes when Partial Prefetching is enabled.
+
+### Prefetching static vs. dynamic routes
+
+Without Cache Components, a static route is prefetched in full, while a dynamic route is skipped unless it has a `loading.js` boundary.
+
+|                                                         | **Static page** | **Dynamic page**                                                                |
+| ------------------------------------------------------- | --------------- | ------------------------------------------------------------------------------- |
+| **Prefetched**                                          | Yes, full route | No, unless `loading.js`     |
+| **Client Cache TTL** | 5 min (default) | Off, unless enabled |
+| **Server roundtrip on click**                           | No              | Yes, streamed after shell                  |
+
+> **Good to know:** During the initial navigation, the browser fetches the HTML, JavaScript, and React Server Components (RSC) Payload. For subsequent navigations, the browser will fetch the RSC Payload for Server Components and JS bundle for Client Components.
+
+### Automatic prefetch
+
+`app/ui/nav-link.tsx`
+
+```tsx
+import Link from 'next/link'
+
+export default function NavLink() {
+  return <Link href="/about">About</Link>
+}
+```
+
+`app/ui/nav-link.js`
+
+```jsx
+import Link from 'next/link'
+
+export default function NavLink() {
+  return <Link href="/about">About</Link>
+}
+```
+
+| **Context**       | **Prefetched payload**           | **Client Cache TTL**                                                                              |
+| ----------------- | -------------------------------- | ------------------------------------------------------------------------------------------------- |
+| No `loading.js`   | Entire page                      | 5 min (`staleTimes.static`)           |
+| With `loading.js` | Layout to first loading boundary | Off by default (`staleTimes.dynamic`) |
+
+Automatic prefetching runs only in production. Disable with `prefetch={false}` or use the wrapper in Disabled Prefetch.
+
+### Prefetch scheduling
+
+Next.js maintains a small task queue, which prefetches in the following order:
+
+1. Links in the viewport
+2. Links showing user intent (hover or touch)
+3. Newer links replace older ones
+4. Links scrolled off-screen are discarded
+
+The scheduler prioritizes likely navigations while minimizing unused downloads.
+
+> **Good to know**: With the **experimental** `useOffline` config enabled, pending prefetches resume through this queue when the app recovers from a connectivity drop.
+
+### Client cache
+
+Next.js stores prefetched React Server Component payloads in memory, keyed by route segments. When navigating between sibling routes (e.g. `/dashboard/settings` → `/dashboard/analytics`), Next.js reuses the parent layout and only fetches the updated leaf page.
+
+### Partial Prefetching
+
+With Partial Prefetching enabled via the `partialPrefetching` config (which requires Cache Components), prefetching switches from the all-or-nothing model above to a per-route App Shell:
+
+- **One shell per route, shared across links.** `<Link>` prefetches the route's App Shell, which holds its static and session output. Any number of links to the same route reuse that one shell, fetched once as the first link enters the viewport, so a page with many links makes fewer prefetch requests than prefetching each route in full.
+- **The rest streams in.** Uncached data streams in after navigation, behind the shell's `<Suspense>` boundaries. A link can also resolve its URL data (`searchParams`, `params`) at prefetch time with `prefetch={true}`.
+- **Invalidations refresh prefetches.** Data invalidations (`revalidateTag`, `revalidatePath`) silently refresh associated prefetches.
+
+See Adopting Partial Prefetching for the behavior change and the recommended adoption path. See Optimizing prefetching to resolve cached URL-specific content before navigation with `prefetch={true}`.
+
+## Controlling prefetching
+
+Next.js prefetches with defaults you can tune per link when they don't fit your resource budget or navigation patterns.
+
+### Manual prefetch
+
+To prefetch manually, import the `useRouter` hook from `next/navigation`, then call `router.prefetch()` to warm routes outside the viewport or in response to analytics, hover, or scroll.
+
+```tsx
+'use client'
+
+import { useRouter } from 'next/navigation'
+import { CustomLink } from '@components/link'
+
+export function PricingCard() {
+  const router = useRouter()
+
+  return (
+    <div onMouseEnter={() => router.prefetch('/pricing')}>
+      {/* other UI elements */}
+      <CustomLink href="/pricing">View Pricing</CustomLink>
+    </div>
+  )
+}
+```
+
+To prefetch a URL when a component loads, see Extending or ejecting link.
+
+### Hover-triggered prefetch
+
+> **Proceed with caution:** Extending `Link` opts you into maintaining prefetching, cache invalidation, and accessibility concerns. Do this only when the defaults are insufficient.
+
+By default, `<Link>` prefetches when it enters the viewport. To prefetch only the links a user is likely to visit, defer prefetching until they hover over a link:
+
+```tsx
+'use client'
+
+import Link from 'next/link'
+import { useState } from 'react'
+
+export function HoverPrefetchLink({
+  href,
+  children,
+}: {
+  href: string
+  children: React.ReactNode
+}) {
+  const [active, setActive] = useState(false)
+
+  return (
+    <Link
+      href={href}
+      prefetch={active ? null : false}
+      onMouseEnter={() => setActive(true)}
+    >
+      {children}
+    </Link>
+  )
+}
+```
+
+`prefetch={null}` restores default (static) prefetching once the user shows intent.
+
+### Extending or ejecting link
+
+You can extend the `<Link>` component to create your own custom prefetching strategy. For example, using the ForesightJS library which prefetches links by predicting the direction of the user's cursor.
+
+Alternatively, you can use `useRouter` to recreate some of the native `<Link>` behavior. However, be aware this opts you into maintaining prefetching and cache invalidation.
+
+```tsx
+'use client'
+
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
+
+function ManualPrefetchLink({
+  href,
+  children,
+}: {
+  href: string
+  children: React.ReactNode
+}) {
+  const router = useRouter()
+
+  useEffect(() => {
+    let cancelled = false
+    const poll = () => {
+      if (!cancelled) router.prefetch(href, { onInvalidate: poll })
+    }
+    poll()
+    return () => {
+      cancelled = true
+    }
+  }, [href, router])
+
+  return (
+    <a
+      href={href}
+      onClick={(event) => {
+        event.preventDefault()
+        router.push(href)
+      }}
+    >
+      {children}
+    </a>
+  )
+}
+```
+
+Next.js invokes `onInvalidate` when it suspects cached data is stale, so you can refresh the prefetch.
+
+> **Good to know:** An `a` tag triggers a full page navigation. Use `onClick` to prevent it, then call `router.push` to navigate on the client.
+
+### Disabled prefetch
+
+You can fully disable prefetching for certain routes for more fine-grained control over resource consumption.
+
+```tsx
+'use client'
+
+import Link, { LinkProps } from 'next/link'
+
+function NoPrefetchLink({
+  prefetch,
+  ...rest
+}: LinkProps & { children: React.ReactNode }) {
+  return <Link {...rest} prefetch={false} />
+}
+```
+
+For example, you may still want to have consistent usage of `<Link>` in your application, but links in your footer might not need to be prefetched when entering the viewport.
+
+## Troubleshooting
+
+### Triggering unwanted side-effects during prefetching
+
+If your layouts or pages are not pure and have side-effects (e.g. tracking analytics), Next.js might run them when the route is prefetched, not when the user visits the page.
+
+To avoid this, move side-effects to a `useEffect` hook or a Server Action triggered from a Client Component.
+
+**Before**:
+
+`app/dashboard/layout.tsx`
+
+```tsx
+import { trackPageView } from '@/lib/analytics'
+
+export default function Layout({ children }: { children: React.ReactNode }) {
+  // This runs during prefetch
+  trackPageView()
+
+  return <div>{children}</div>
+}
+```
+
+`app/dashboard/layout.js`
+
+```jsx
+import { trackPageView } from '@/lib/analytics'
+
+export default function Layout({ children }) {
+  // This runs during prefetch
+  trackPageView()
+
+  return <div>{children}</div>
+}
+```
+
+**After**:
+
+`app/ui/analytics-tracker.tsx`
+
+```tsx
+'use client'
+
+import { useEffect } from 'react'
+import { trackPageView } from '@/lib/analytics'
+
+export function AnalyticsTracker() {
+  useEffect(() => {
+    trackPageView()
+  }, [])
+
+  return null
+}
+```
+
+`app/ui/analytics-tracker.js`
+
+```jsx
+'use client'
+
+import { useEffect } from 'react'
+import { trackPageView } from '@/lib/analytics'
+
+export function AnalyticsTracker() {
+  useEffect(() => {
+    trackPageView()
+  }, [])
+
+  return null
+}
+```
+
+`app/dashboard/layout.tsx`
+
+```tsx
+import { AnalyticsTracker } from '@/app/ui/analytics-tracker'
+
+export default function Layout({ children }: { children: React.ReactNode }) {
+  return (
+    <div>
+      <AnalyticsTracker />
+      {children}
+    </div>
+  )
+}
+```
+
+`app/dashboard/layout.js`
+
+```jsx
+import { AnalyticsTracker } from '@/app/ui/analytics-tracker'
+
+export default function Layout({ children }) {
+  return (
+    <div>
+      <AnalyticsTracker />
+      {children}
+    </div>
+  )
+}
+```
+
+### Preventing too many prefetches
+
+Next.js automatically prefetches links in the viewport when using the `<Link>` component.
+
+You might want to prevent this to avoid unnecessary resource usage, such as when rendering a large list of links (e.g. an infinite scroll table).
+
+You can disable prefetching by setting the `prefetch` prop of the `<Link>` component to `false`.
+
+`app/ui/no-prefetch-link.tsx`
+
+```tsx
+<Link prefetch={false} href={`/blog/${post.id}`}>
+  {post.title}
+</Link>
+```
+
+However, this means static routes will only be fetched on click, and dynamic routes will wait for the server to render before navigating.
+
+To reduce resource usage without disabling prefetch entirely, you can defer prefetching until the user hovers over a link. This targets only links the user is likely to visit.
+
+`app/ui/hover-prefetch-link.tsx`
+
+```tsx
+'use client'
+
+import Link from 'next/link'
+import { useState } from 'react'
+
+export function HoverPrefetchLink({
+  href,
+  children,
+}: {
+  href: string
+  children: React.ReactNode
+}) {
+  const [active, setActive] = useState(false)
+
+  return (
+    <Link
+      href={href}
+      prefetch={active ? null : false}
+      onMouseEnter={() => setActive(true)}
+    >
+      {children}
+    </Link>
+  )
+}
+```
+
+`app/ui/hover-prefetch-link.js`
+
+```jsx
+'use client'
+
+import Link from 'next/link'
+import { useState } from 'react'
+
+export function HoverPrefetchLink({ href, children }) {
+  const [active, setActive] = useState(false)
+
+  return (
+    <Link
+      href={href}
+      prefetch={active ? null : false}
+      onMouseEnter={() => setActive(true)}
+    >
+      {children}
+    </Link>
+  )
+}
+```

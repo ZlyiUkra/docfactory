@@ -1,0 +1,264 @@
+# Pages Router: useParams
+# джерело: https://github.com/vercel/next.js/blob/v16.4.0-canary.55/docs/02-pages/04-api-reference/03-functions/use-params.mdx
+# отримано: 2026-10-01
+# версія: 16.4.0-canary, 16.3.8, 16.3.7, 16.3.6, 16.3.5, 16.3.4, 16.3.3, 16.3.2, 16.3.1, 16.3.1-canary, 16.3.0, 16.3.0-preview.10, 16.3.0-preview.9, 16.3.0-preview.8, 16.3.0-preview.7, 16.3.0-preview.6, 16.3.0-preview.5, 16.3.0-preview.4, 16.3.0-preview.3, 16.3.0-preview.2, 16.3.0-preview.1, 16.3.0-preview.0, 16.3.0-canary, 16.2.12, 16.2.11, 16.2.10, 16.2.9, 16.2.8, 16.2.7, 16.2.6, 16.2.5, 16.2.4, 16.2.3, 16.2.2, 16.2.1, 16.2.1-canary, 16.2.0, 16.2.0-canary
+
+API Reference for the useParams hook in the Pages Router.
+
+`useParams` is a hook that lets you read a route's dynamic params filled in by the current URL.
+
+`pages/shop/[slug].tsx`
+
+```tsx
+import { useParams } from 'next/navigation'
+
+export default function ShopPage() {
+  const params = useParams<{ slug: string }>()
+
+  if (!params) {
+    // Render fallback UI while params are not yet available
+    return null
+  }
+
+  // Route -> /shop/[slug]
+  // URL -> /shop/shoes
+  // `params` -> { slug: 'shoes' }
+  return <>Shop: {params.slug}</>
+}
+```
+
+`pages/shop/[slug].js`
+
+```jsx
+import { useParams } from 'next/navigation'
+
+export default function ShopPage() {
+  const params = useParams()
+
+  if (!params) {
+    // Render fallback UI while params are not yet available
+    return null
+  }
+
+  // Route -> /shop/[slug]
+  // URL -> /shop/shoes
+  // `params` -> { slug: 'shoes' }
+  return <>Shop: {params.slug}</>
+}
+```
+
+## Parameters
+
+```tsx
+const params = useParams()
+```
+
+`useParams` does not take any parameters.
+
+## Returns
+
+`useParams` returns an object containing the current route's filled in dynamic parameters, or `null` during prerendering.
+
+- Each property in the object is an active dynamic segment.
+- The property name is the segment's name, and the property value is what the segment is filled in with.
+- The property value will either be a `string` or array of `string`s depending on the type of dynamic segment.
+- If the route contains no dynamic parameters, `useParams` returns an empty object.
+
+For example:
+
+| Route                        | URL         | `useParams()`             |
+| ---------------------------- | ----------- | ------------------------- |
+| `pages/shop/page.js`         | `/shop`     | `{}`                      |
+| `pages/shop/[slug].js`       | `/shop/1`   | `{ slug: '1' }`           |
+| `pages/shop/[tag]/[item].js` | `/shop/1/2` | `{ tag: '1', item: '2' }` |
+| `pages/shop/[...slug].js`    | `/shop/1/2` | `{ slug: ['1', '2'] }`    |
+
+> **Good to know**: `useParams` is a React Hook and cannot be used with classes.
+
+## Behavior
+
+### Behavior during prerendering
+
+For pages that are statically optimized, `useParams` will return `null` on the initial render. After hydration, the value will be updated to the actual params once the router is ready.
+
+This is because params cannot be known during static generation for dynamic routes.
+
+`pages/shop/[slug].tsx`
+
+```tsx
+import { useParams } from 'next/navigation'
+
+export default function ShopPage() {
+  const params = useParams<{ slug: string }>()
+
+  if (!params) {
+    // Return a fallback UI while params are loading
+    // This prevents hydration mismatches
+    return <ShopPageSkeleton />
+  }
+
+  return <>Shop: {params.slug}</>
+}
+```
+
+`pages/shop/[slug].js`
+
+```jsx
+import { useParams } from 'next/navigation'
+
+export default function ShopPage() {
+  const params = useParams()
+
+  if (!params) {
+    // Return a fallback UI while params are loading
+    // This prevents hydration mismatches
+    return <ShopPageSkeleton />
+  }
+
+  return <>Shop: {params.slug}</>
+}
+```
+
+### Using with `getServerSideProps`
+
+When using `getServerSideProps`, the page is server-rendered on each request and `useParams` will return the actual params immediately:
+
+`pages/shop/[slug].tsx`
+
+```tsx
+import { useParams } from 'next/navigation'
+
+export default function ShopPage() {
+  const params = useParams<{ slug: string }>()
+
+  // With getServerSideProps, this fallback is never rendered because
+  // params is always available on the server. However, keeping
+  // the fallback allows this component to be reused on other pages
+  // that may not use getServerSideProps.
+  if (!params) {
+    return null
+  }
+
+  return <>Shop: {params.slug}</>
+}
+
+export async function getServerSideProps() {
+  return { props: {} }
+}
+```
+
+`pages/shop/[slug].js`
+
+```jsx
+import { useParams } from 'next/navigation'
+
+export default function ShopPage() {
+  const params = useParams()
+
+  // With getServerSideProps, this fallback is never rendered because
+  // params is always available on the server. However, keeping
+  // the fallback allows this component to be reused on other pages
+  // that may not use getServerSideProps.
+  if (!params) {
+    return null
+  }
+
+  return <>Shop: {params.slug}</>
+}
+
+export async function getServerSideProps() {
+  return { props: {} }
+}
+```
+
+### Comparison with `router.query`
+
+`useParams` only returns the dynamic route parameters, whereas `router.query` from `useRouter` includes both dynamic parameters and query string parameters.
+
+`pages/shop/[slug].tsx`
+
+```tsx
+import { useRouter } from 'next/router'
+import { useParams } from 'next/navigation'
+
+export default function ShopPage() {
+  const router = useRouter()
+  const params = useParams()
+
+  // URL -> /shop/shoes?color=red
+
+  // router.query -> { slug: 'shoes', color: 'red' }
+  // params -> { slug: 'shoes' }
+
+  // ...
+}
+```
+
+`pages/shop/[slug].js`
+
+```jsx
+import { useRouter } from 'next/router'
+import { useParams } from 'next/navigation'
+
+export default function ShopPage() {
+  const router = useRouter()
+  const params = useParams()
+
+  // URL -> /shop/shoes?color=red
+
+  // router.query -> { slug: 'shoes', color: 'red' }
+  // params -> { slug: 'shoes' }
+
+  // ...
+}
+```
+
+## Examples
+
+### Sharing components with App Router
+
+`useParams` from `next/navigation` works in both the Pages Router and App Router. This allows you to create shared components that work in either context:
+
+`components/breadcrumb.tsx`
+
+```tsx
+import { useParams } from 'next/navigation'
+
+// This component works in both pages/ and app/
+export function Breadcrumb() {
+  const params = useParams<{ slug: string }>()
+
+  if (!params) {
+    // Fallback for Pages Router during prerendering
+    return <nav>Home / ...</nav>
+  }
+
+  return <nav>Home / {params.slug}</nav>
+}
+```
+
+`components/breadcrumb.js`
+
+```jsx
+import { useParams } from 'next/navigation'
+
+// This component works in both pages/ and app/
+export function Breadcrumb() {
+  const params = useParams()
+
+  if (!params) {
+    // Fallback for Pages Router during prerendering
+    return <nav>Home / ...</nav>
+  }
+
+  return <nav>Home / {params.slug}</nav>
+}
+```
+
+> **Good to know**: When using this component in the App Router, `useParams` never returns `null`, so the fallback branch will not be rendered.
+
+## Version History
+
+| Version   | Changes                 |
+| --------- | ----------------------- |
+| `v13.3.0` | `useParams` introduced. |

@@ -1,0 +1,103 @@
+# `next/image` Un-configured localPatterns
+# джерело: https://github.com/vercel/next.js/blob/v16.4.0-canary.55/errors/next-image-unconfigured-localpatterns.mdx
+# отримано: 2026-10-01
+# версія: 16.4.0-canary, 16.3.8, 16.3.7, 16.3.6, 16.3.5, 16.3.4, 16.3.3, 16.3.2, 16.3.1, 16.3.1-canary, 16.3.0, 16.3.0-preview.10, 16.3.0-preview.9, 16.3.0-preview.8, 16.3.0-preview.7, 16.3.0-preview.6, 16.3.0-preview.5, 16.3.0-preview.4, 16.3.0-preview.3, 16.3.0-preview.2, 16.3.0-preview.1, 16.3.0-preview.0, 16.3.0-canary, 16.2.12, 16.2.11, 16.2.10, 16.2.9, 16.2.8, 16.2.7, 16.2.6, 16.2.5, 16.2.4, 16.2.3, 16.2.2, 16.2.1, 16.2.1-canary, 16.2.0, 16.2.0-canary
+
+## Why This Error Occurred
+
+One of your pages that leverages the `next/image` component, passed a `src` value that uses a local path that isn't allowed by the `images.localPatterns` configuration in `next.config.js`.
+
+Each part of the `src` value is matched against your `images.localPatterns` definitions:
+
+- **Pathname**: The path must be covered by your glob pattern, e.g. `/**` or `/assets/**`. Single `*` matches a single path segment, while double `**` matches any number of path segments.
+- **Search**: If specified in a pattern, it must match the full search string exactly (including the leading `?`). Globs are not supported for search.
+
+If any of these differ from the actual `src`, the image will be rejected.
+
+Common pitfalls that cause this error:
+
+- A too-narrow pathname pattern (e.g. `/assets/` instead of `/assets/**`).
+- Setting `search: ''` when your images include query strings like `?v=123` or `?t=timestamp`. An empty string means only URLs **without** query strings are allowed.
+- Forgetting that pathname patterns are case-sensitive and must match exactly.
+
+See the Local Patterns reference for details.
+
+## Possible Ways to Fix It
+
+Add the pathname to the `images.localPatterns` config in `next.config.js`:
+
+`next.config.js`
+
+```js
+module.exports = {
+  images: {
+    localPatterns: [
+      {
+        pathname: '/assets/**',
+      },
+    ],
+  },
+}
+```
+
+### Any search params (default)
+
+To allow any search params, omit the `search` key:
+
+`next.config.js`
+
+```js
+module.exports = {
+  images: {
+    localPatterns: [
+      {
+        pathname: '/api/images/**',
+        // search is omitted, so ?v=123, ?t=456, or no query string are all allowed
+      },
+    ],
+  },
+}
+```
+
+### With specific search params
+
+To allow only a specific search param value:
+
+`next.config.js`
+
+```js
+module.exports = {
+  images: {
+    localPatterns: [
+      {
+        pathname: '/assets/**',
+        search: '?v=1',
+      },
+    ],
+  },
+}
+```
+
+### No search params
+
+To disallow query strings entirely, use an empty string:
+
+`next.config.js`
+
+```js
+module.exports = {
+  images: {
+    localPatterns: [
+      {
+        pathname: '/assets/**',
+        search: '',
+      },
+    ],
+  },
+}
+```
+
+## Useful Links
+
+- Image Optimization Documentation
+- Local Patterns Documentation

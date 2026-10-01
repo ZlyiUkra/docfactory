@@ -1,0 +1,263 @@
+# Next.js encountered the unstable value crypto.randomUUID() in a Client Component
+# джерело: https://github.com/vercel/next.js/blob/v16.4.0-canary.55/errors/blocking-prerender-crypto-client.mdx
+# отримано: 2026-10-01
+# версія: 16.4.0-canary, 16.3.8, 16.3.7, 16.3.6, 16.3.5, 16.3.4, 16.3.3, 16.3.1-canary
+
+<div
+  style={{
+    padding: '1.25rem 1.5rem',
+    border: '1px solid var(--ds-gray-400)',
+    borderRadius: '12px',
+    background: 'var(--ds-background-200)',
+    margin: '1.5rem 0 2rem',
+    fontSize: '0.95rem',
+    lineHeight: '1.6',
+  }}
+>
+  This Insight is part of the [Instant
+  Navigations](https://nextjs.org/blog/next-16-3-instant-navigations) feature
+  introduced in Next.js 16.3. If you're new to it, start with the [Ensuring
+  instant navigations](/docs/app/guides/instant-navigation) guide for an
+  overview of what instant navigations are and how Next.js validates them, then
+  come back here for the specific fix.
+
+A Client Component called a synchronous Web Crypto API that produces a random value (`crypto.randomUUID()`, `crypto.getRandomValues()`) inline during render, and the surrounding tree had no `<Suspense>` boundary. Client Components are server-side rendered on first load, so Next.js can't bake an unpredictable value into the prerendered HTML. The SSR value won't match the value the client computes on hydration, so you need to choose: defer the value behind a `<Suspense>` boundary so SSR can stream it, or move the call into `useEffect` (or an event handler) so it only runs on the client.
+
+The Server Component case is handled at Crypto APIs during prerendering. Other unpredictable client-side APIs (`Math.random()`, `Date.now()`) have parallel error pages: `Math.random()` in a Client Component and `Date.now()` in a Client Component.
+
+## Ways to fix this
+
+Wrap in or move into Suspense
+
+      { text: '  ' },
+      { text: '', highlight: true },
+    ]}
+  />
+
+Move into effect or event handler
+
+      { text: '  setId(crypto.randomUUID())' },
+      { text: '}} />' },
+    ]}
+  />
+
+## Wrap in or move into Suspense
+
+Choose this fix when the generated value is part of the rendered output and a brief fallback during SSR is acceptable. Wrap the consuming Client Component in `<Suspense>` from its parent. The fallback ships in the prerendered HTML, and Next.js fills in the real component when the browser hydrates.
+
+### Patterns
+
+#### Wrap from a Server Component parent
+
+Place the `<Suspense>` boundary in the Server Component that renders the Client Component.
+
+`app/page.js`
+
+```jsx
+import { Suspense } from 'react'
+import { CorrelationId } from './correlation-id'
+
+export default function Page() {
+  return (
+    <PageShell>
+      <Suspense fallback={null}>
+        <CorrelationId />
+      </Suspense>
+    </PageShell>
+  )
+}
+```
+
+`app/correlation-id.js`
+
+```jsx
+'use client'
+
+export function CorrelationId() {
+  return <input type="hidden" name="trace" value={crypto.randomUUID()} />
+}
+```
+
+Learn more: Streaming.
+
+### Trade-off
+
+The component shows the fallback during SSR and the first paint. For above-the-fold UI this can be visible. Pick a fallback that matches the final layout so it doesn't cause a layout shift when the component hydrates. See minimizing layout shift.
+
+### Gotchas
+
+- Any UI rendered as part of the prerender shell must be deterministic, including `<Suspense>` fallbacks, `loading.js`, `error.js`, `not-found.js`, and `global-error.js`. Calling a crypto API in any of them raises this same error. Use stable placeholder content.
+- The inner Client Component still runs during SSR, behind the boundary. If you need to guarantee the value only runs in the browser, use Move into effect or event handler instead.
+- A `<Suspense>` boundary only fixes the prerender/hydration mismatch, not client re-renders. If the component using the crypto API re-renders on the client (a parent state change, a context update), it produces a new value each time. To stabilize the value across re-renders, call the crypto API once in a `useState` initializer or `useRef`, or compute it on the server and pass it down as a prop.
+
+## Move into effect or event handler
+
+Choose this fix when the generated value isn't needed for the first paint. Move the crypto call into `useEffect` (for first-paint-after-mount values) or an event handler (for interaction values). The initial render uses a deterministic placeholder, so SSR and hydration agree.
+
+### Patterns
+
+#### Use `useEffect` to initialize after mount
+
+For client-side IDs that should appear shortly after the page loads (a draft key in `localStorage`, a UI correlation ID).
+
+`app/draft.js`
+
+```jsx
+'use client'
+
+import { startTransition, useEffect, useState } from 'react'
+
+export function Draft() {
+  const [key, setKey] = useState(null)
+  useEffect(() => {
+    // Wrap in startTransition so that if any component below suspends
+    // during this update, React keeps the existing UI visible instead
+    // of flashing the nearest outer <Suspense> fallback.
+    startTransition(() => {
+      setKey(crypto.randomUUID())
+    })
+  }, [])
+  return <input type="hidden" value={key ?? ''} />
+}
+```
+
+Learn more: `useEffect`.
+
+#### Generate on user interaction
+
+When the value is in response to a click (a new draft, a fresh nonce on submit), compute it in the event handler.
+
+`app/new-draft.js`
+
+```jsx
+'use client'
+
+import { useState } from 'react'
+
+export function NewDraft() {
+  const [id, setId] = useState(null)
+  return (
+    <button onClick={() => setId(crypto.randomUUID())}>
+      {id ? `Draft ${id.slice(0, 8)}` : 'Start a draft'}
+    </button>
+  )
+}
+```
+
+#### Lazy-initialize a stable ID with `useRef`
+
+When a component needs a stable secure ID for the lifetime of its mount (a tracking ID, a session correlation key), produce it lazily inside a `useRef` getter. The ref initializer runs after mount, so SSR sees `null` and the browser fills in the value. Subsequent renders read the same ref so the ID stays stable.
+
+`app/workflow.js`
+
+```jsx
+'use client'
+
+import { useRef } from 'react'
+
+function createSecureId() {
+  const array = new Uint8Array(16)
+  crypto.getRandomValues(array)
+  return Array.from(array, (b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+function getOrCreateId(ref) {
+  if (!ref.current) {
+    ref.current = createSecureId()
+  }
+  return ref.current
+}
+
+export function Workflow({ onNext }) {
+  const idRef = useRef(null)
+  return (
+    <button
+      onClick={() => {
+        trackEvent(getOrCreateId(idRef), 'forward')
+        onNext()
+      }}
+    >
+      Next
+    </button>
+  )
+}
+```
+
+Learn more: `useRef`.
+
+### Trade-off
+
+The user sees the placeholder briefly before the real value. For interactions the wait is invisible, but for `useEffect`-based values there's a flash of the initial state. See Preventing flash before hydration for techniques that eliminate the flash.
+
+### Gotchas
+
+- Don't compute the value inline during render with a lazy initializer like `useState(() => crypto.randomUUID())`. The initializer still runs during SSR and triggers the error.
+- If the value needs to be hydration-stable, use Wrap in or move into Suspense instead.
+- Only Web Crypto ships to the browser. Node-only APIs (`crypto.randomBytes`, `crypto.generateKeyPairSync`) are not available on the client. If you're seeing this error for one of those, the call lives on the server: see Crypto APIs during prerendering.
+- When you call `setState` from inside `useEffect`, wrap it in `startTransition`. Cascading state updates during hydration can cause an outer `<Suspense>` boundary's fallback to briefly flash. `startTransition` marks the update as non-blocking so React keeps the existing UI in place while the new value resolves.
+
+## Other options
+
+### Suspend with `use(io())`
+
+When the read genuinely needs to happen per visit and you can't move it to an effect or event, call `io()` from `next/cache` before the read with React's `use` hook. Client Components prerender on the server during SSR, where the read would otherwise be included in the static shell. `use(io())` suspends the prerender so the component is excluded from the shell and rendered on every request from the nearest `<Suspense>` boundary.
+
+`app/components/request-id.js`
+
+```jsx
+'use client'
+import { use } from 'react'
+import { io } from 'next/cache'
+
+export function RequestId() {
+  use(io())
+  return <span>Request {crypto.randomUUID()}</span>
+}
+```
+
+Wrap the component in `<Suspense>` so the surrounding shell stays prerendered.
+
+`app/page.js`
+
+```jsx
+import { Suspense } from 'react'
+import { RequestId } from './components/request-id'
+
+export default function Page() {
+  return (
+    <Suspense fallback={null}>
+      <RequestId />
+    </Suspense>
+  )
+}
+```
+
+Learn more: `io`.
+
+## Verifying the fix
+
+After applying a fix, reload the route and confirm the page immediately paints meaningful UI, with any `<Suspense>` fallbacks covering only the regions that stream in. A `<Suspense>` boundary placed around the whole page body can pass validation with an empty shell, which defeats the point of an instant navigation.
+
+In `next dev`, the error overlay points at the failing component with file paths and line numbers. When working from a build instead, the default `next build` output is more abbreviated. Run `next build --debug-prerender` for full user-frame stack traces and `next build --debug-build-paths /dashboard /settings` to iterate on specific routes.
+
+## Why `instant = false` doesn't clear this error
+
+This error fires from the prerender, not from instant-navigation validation. `crypto.randomUUID()` and related APIs return a different value on every call, so the prerender can't bake them into a static shell regardless of the segment's `instant` config or `experimental.instantInsights.validationLevel`. Use one of the fixes above.
+
+## Related Insights
+
+- Runtime data during prerendering
+- Uncached data during prerendering
+- URL data in a Client Component outside of Suspense
+- Runtime data in `generateMetadata()`
+- Uncached data in `generateMetadata()`
+- Runtime data in `generateViewport()`
+- Uncached data in `generateViewport()`
+- `Math.random()` while prerendering
+- `Math.random()` in a Client Component
+- `Date.now()` while prerendering
+- `Date.now()` in a Client Component
+- Crypto APIs while prerendering
+- Dynamic data during prefetching
+- URL data outside of Suspense
+- Unrendered segment

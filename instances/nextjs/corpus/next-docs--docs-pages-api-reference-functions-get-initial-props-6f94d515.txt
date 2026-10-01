@@ -1,0 +1,64 @@
+# Pages Router: getInitialProps
+# джерело: https://github.com/vercel/next.js/blob/v16.4.0-canary.55/docs/02-pages/04-api-reference/03-functions/get-initial-props.mdx
+# отримано: 2026-10-01
+# версія: 16.4.0-canary, 16.3.8, 16.3.7, 16.3.6, 16.3.5, 16.3.4, 16.3.3, 16.3.2, 16.3.1, 16.3.1-canary, 16.3.0, 16.3.0-preview.10, 16.3.0-preview.9, 16.3.0-preview.8, 16.3.0-preview.7, 16.3.0-preview.6, 16.3.0-preview.5, 16.3.0-preview.4, 16.3.0-preview.3, 16.3.0-preview.2, 16.3.0-preview.1, 16.3.0-preview.0, 16.3.0-canary, 16.2.12, 16.2.11, 16.2.10, 16.2.9, 16.2.8, 16.2.7, 16.2.6, 16.2.5, 16.2.4, 16.2.3, 16.2.2, 16.2.1, 16.2.1-canary, 16.2.0, 16.2.0-canary, 16.1.7, 16.1.6, 16.1.5, 16.1.4, 16.1.3, 16.1.2, 16.1.1, 16.1.1-canary, 16.1.0, 16.1.0-canary
+
+Fetch dynamic data on the server for your React component with getInitialProps.
+
+> **Good to know**: `getInitialProps` is a legacy API. We recommend using `getStaticProps` or `getServerSideProps` instead.
+
+`getInitialProps` is an `async` function that can be added to the default exported React component for the page. It will run on both the server-side and again on the client-side during page transitions. The result of the function will be forwarded to the React component as `props`.
+
+`pages/index.tsx`
+
+```tsx
+import { NextPageContext } from 'next'
+
+Page.getInitialProps = async (ctx: NextPageContext) => {
+  const res = await fetch('https://api.github.com/repos/vercel/next.js')
+  const json = await res.json()
+  return { stars: json.stargazers_count }
+}
+
+export default function Page({ stars }: { stars: number }) {
+  return stars
+}
+```
+
+`pages/index.js`
+
+```jsx
+Page.getInitialProps = async (ctx) => {
+  const res = await fetch('https://api.github.com/repos/vercel/next.js')
+  const json = await res.json()
+  return { stars: json.stargazers_count }
+}
+
+export default function Page({ stars }) {
+  return stars
+}
+```
+
+> **Good to know**:
+>
+> - Data returned from `getInitialProps` is serialized when server rendering. Ensure the returned object from `getInitialProps` is a plain `Object`, and not using `Date`, `Map` or `Set`.
+> - For the initial page load, `getInitialProps` will run on the server only. `getInitialProps` will then also run on the client when navigating to a different route with the `next/link` component or by using `next/router`.
+> - If `getInitialProps` is used in a custom `_app.js`, and the page being navigated to is using `getServerSideProps`, then `getInitialProps` will **only** run on the server.
+
+## Context Object
+
+`getInitialProps` receives a single argument called `context`, which is an object with the following properties:
+
+| Name       | Description                                                                                           |
+| ---------- | ----------------------------------------------------------------------------------------------------- |
+| `pathname` | Current route, the path of the page in `/pages`                                                       |
+| `query`    | Query string of the URL, parsed as an object                                                          |
+| `asPath`   | `String` of the actual path (including the query) shown in the browser                                |
+| `req`      | HTTP request object (server only) |
+| `res`      | HTTP response object (server only) |
+| `err`      | Error object if any error is encountered during the rendering                                         |
+
+## Caveats
+
+- `getInitialProps` can only be used in `pages/` top level files, and not in nested components. To have nested data fetching at the component level, consider exploring the App Router.
+- Regardless of whether your route is static or dynamic, any data returned from `getInitialProps` as `props` will be able to be examined on the client-side in the initial HTML. This is to allow the page to be hydrated correctly. Make sure that you don't pass any sensitive information that shouldn't be available on the client in `props`.
