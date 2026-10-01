@@ -734,10 +734,11 @@ def _serve_port() -> int:
     return port if isinstance(port, int) else 8000
 
 
-# Скільки секунд після Ctrl+C сервер чекає, поки клієнти самі закриють з'єднання.
+# Скільки секунд після Ctrl+C сервер чекає, поки завершаться відкриті запити.
 # Без межі uvicorn чекає необмежено: клієнт, який тримає запит відкритим, лишав
 # сервер висіти на «Waiting for connections to close» — порт уже не слухає, а
-# процес живий. Після межі незавершені запити скасовуються, і сервер виходить.
+# процес живий. З'єднання сервер розриває сам (нижче), тож ця межа — запобіжник
+# на випадок, коли запит не завершився й після розриву: тоді його скасовують.
 STOP_GRACE_SEC = 2
 
 
@@ -756,7 +757,19 @@ if __name__ == "__main__":
             # не передати. Усе інше тут те саме, що mcp.run робить для цього
             # транспорту.
             import uvicorn
-            uvicorn.Server(uvicorn.Config(
+
+            class _Server(uvicorn.Server):
+                async def shutdown(self, sockets=None):
+                    # Ctrl+C розриває з'єднання клієнтів одразу, не чекаючи на них.
+                    # Claude Code тримає відкритим довгий запит subscriptions/listen,
+                    # який сам не закінчується ніколи; розрив він бачить як «клієнт
+                    # від'єднався» і завершується штатно. Якщо натомість дочекатися
+                    # межі, uvicorn скасовує задачу й друкує traceback на пів екрана.
+                    for connection in list(self.server_state.connections):
+                        connection.transport.close()
+                    await super().shutdown(sockets=sockets)
+
+            _Server(uvicorn.Config(
                 mcp.streamable_http_app(host="127.0.0.1"),
                 host="127.0.0.1", port=_port,
                 log_level=mcp.settings.log_level.lower(),
