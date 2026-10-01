@@ -9,6 +9,8 @@
                               вкладене поле пишеться через крапку (`links.repository`);
                     `end`   — вирази, на яких тіло закінчується (хвіст, спільний для всіх
                               сторінок сайту).
+                    `skip`  — вирази для адрес, які в межах `within` лежать, але сторінками
+                              змісту не є (сторінка мітки блогу: двійника «.md» вона не має).
 
 Навіщо. `sitemap-md` бере з шапки лише назву й дату з полів `date` чи `published`. Блог
 nextjs.org пише дату в `publishedAt` («October 21st 2025»), і без неї запис «Next.js 13» не
@@ -70,10 +72,13 @@ def sitemap_md_meta(source: dict, ctx) -> list[Item]:
     if not within:
         raise SystemExit(f"{source['id']}: читач sitemap-md-meta вимагає поле `within` — "
                          f"інакше сайтмап потягнув би весь сайт.")
+    skips = [re.compile(r) for r in source.get("skip") or ()]
     pages: list[str] = []
     for loc in _LOC.findall(ctx.text(source["url"])):
         page = loc.rstrip("/")
         md = page + ".md"
+        if any(r.search(page) for r in skips):
+            continue
         if page not in pages and _inside(md, within) and ctx.allowed(md):
             pages.append(page)
     if not pages:
