@@ -1,0 +1,118 @@
+# Cannot access Request information or uncached data in `generateViewport()`
+# джерело: https://github.com/vercel/next.js/blob/v16.0.11/errors/next-prerender-dynamic-viewport.mdx
+# отримано: 2026-10-01
+# версія: 16.0.11, 16.0.10, 16.0.9, 16.0.8, 16.0.7, 16.0.6, 16.0.5, 16.0.4, 16.0.3, 16.0.2, 16.0.2-canary, 16.0.1, 16.0.1-canary, 16.0.0, 16.0.0-canary, 16.0.0-beta.0, 15.6.0-canary, 15.5.27, 15.5.26, 15.5.25, 15.5.24, 15.5.23, 15.5.22, 15.5.21, 15.5.20, 15.5.20-canary, 15.5.19, 15.5.18, 15.5.17, 15.5.16, 15.5.15, 15.5.14, 15.5.13, 15.5.12, 15.5.11, 15.5.10, 15.5.9, 15.5.8, 15.5.7, 15.5.6, 15.5.5, 15.5.4, 15.5.3, 15.5.2, 15.5.1, 15.5.1-canary, 15.5.0, 15.4.2-canary
+
+## Why This Error Occurred
+
+When `cacheComponents` is enabled, Next.js requires that `generateViewport()` not depend on uncached data or Request data unless you explicitly opt into having a fully dynamic page. If you encountered this error, it means that `generateViewport` depends on one of these types of data and you have not specifically indicated that the affected route should be entirely dynamic.
+
+## Possible Ways to Fix It
+
+To fix this issue, you must first determine your goal for the affected route.
+
+Normally, the way you indicate to Next.js that you want to allow reading Request data or uncached external data is by performing this data access inside a component with an ancestor Suspense boundary. With Viewport, however, you aren't directly in control of wrapping the location where this metadata will be rendered, and even if you could wrap it in a Suspense boundary, it would not be correct to render it with a fallback. This is because this metadata is critical to properly loading resources such as images and must be part of the initial App Shell (the initial HTML containing the document head as well as the first paintable UI).
+
+### If you must access Request Data or your external data is uncacheable
+
+The only way to use Request data or uncacheable external data within `generateViewport` is to make this route entirely dynamic. While Next.js can operate in this mode, it does preclude future use of the prerendering capabilities of Next.js, so you should be certain this is necessary for your use case. To indicate the route should be entirely dynamic, you must add a Suspense boundary above where you render the document body.
+
+Before:
+
+`app/layout.tsx`
+
+```jsx
+import { cookies } from 'next/headers'
+
+export async function generateViewport() {
+  const cookieJar = await cookies()
+  return {
+    themeColor: cookieJar.get('theme-color'),
+  }
+}
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>{children}</body>
+    </html>
+  )
+}
+```
+
+After:
+
+`app/layout.tsx`
+
+```jsx
+import { Suspense } from 'react'
+import { cookies } from 'next/headers'
+
+export async function generateViewport() {
+  const cookieJar = await cookies()
+  return {
+    themeColor: cookieJar.get('theme-color'),
+  }
+}
+
+export default function RootLayout({ children }) {
+  return (
+    <Suspense>
+      <html>
+        <body>{children}</body>
+      </html>
+    </Suspense>
+  )
+}
+```
+
+### Caching External Data
+
+When external data is cached, Next.js can prerender with it, which ensures that the App Shell always has the complete viewport metadata available. Consider using `"use cache"` to mark the function producing the external data as cacheable.
+
+Before:
+
+`app/.../layout.tsx`
+
+```jsx
+import { db } from './db'
+
+export async function generateViewport() {
+  const { width, initialScale } = await db.query('viewport-size')
+  return {
+    width,
+    initialScale,
+  }
+}
+
+export default async function Layout({ children }) {
+  return ...
+}
+```
+
+After:
+
+`app/.../layout.tsx`
+
+```jsx
+import { db } from './db'
+
+export async function generateViewport() {
+  "use cache"
+  const { width, initialScale } = await db.query('viewport-size')
+  return {
+    width,
+    initialScale,
+  }
+}
+
+export default async function Layout({ children }) {
+  return ...
+}
+```
+
+## Useful Links
+
+- `generateViewport()`
+- `cookies()`
+- `"use cache"`
