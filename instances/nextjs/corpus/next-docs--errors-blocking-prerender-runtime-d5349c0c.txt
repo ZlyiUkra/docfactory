@@ -1,0 +1,309 @@
+# Next.js encountered runtime data during prerendering or a navigation
+# джерело: https://github.com/vercel/next.js/blob/v16.3.0-preview.2/errors/blocking-prerender-runtime.mdx
+# отримано: 2026-10-01
+# версія: 16.3.0-preview.2, 16.3.0-preview.1, 16.3.0-preview.0
+
+During prerendering, `cookies()`, `headers()`, `params`, or `searchParams` was read outside of `<Suspense>`. With Cache Components enabled, Next.js can't prerender any part of the tree that depends on a per-request value, so navigations to this route block instead of being instant.
+
+Uncached data accesses (`fetch()`, database calls, `await connection()`) have different fixes. See Next.js encountered uncached data during prerendering.
+
+This error can also appear during a client-side navigation when the data access sits inside a `<Suspense>` boundary from a parent layout but that boundary is too high. It wraps the entire segment instead of only the dynamic part, so the navigation still blocks. Push the boundary closer to the data access so the rest of the segment stays in the static shell. See Choosing where to place the boundary.
+
+> **Good to know**: In `next dev`, the error overlay points at the failing component. Run `next build --debug-prerender` to get the full list of blocking routes with stack traces. When iterating on specific routes, use `next build --debug-build-paths /dashboard /settings` to rebuild only those pages.
+
+## Ways to fix this
+
+  title="Wrap in or move into Suspense"
+>
+  Wrap the component that reads the request-time value in a Suspense boundary,
+  or push the read down to the leaf that needs it.
+
+For known params, prerender
+
+  Tell Next.js the full set of valid params ahead of time. Each one becomes a
+  prerendered route.
+
+Allow blocking route
+
+  Opt this segment out of instant navigation. The route has no static shell and
+  every navigation blocks until the render completes.
+
+## Wrap in or move into Suspense
+
+Choose this fix when the value really is per-request, but the page has parts that don't depend on it. A `<Suspense>` boundary lets the static shell ship instantly while the dynamic region streams in once the request value resolves.
+
+### Patterns
+
+#### Wrap the existing component in place
+
+Keep the component that reads the runtime API intact and add a `<Suspense>` boundary around its usage in the parent.
+
+`app/dashboard/page.js`
+
+```jsx
+import { Suspense } from 'react'
+import { UserHeader } from './user-header'
+import { HeaderSkeleton } from './header-skeleton'
+
+export default function Page() {
+  return (
+    <DashboardShell>
+      <Suspense fallback={<HeaderSkeleton />}>
+        <UserHeader />
+      </Suspense>
+      <CachedStats />
+    </DashboardShell>
+  )
+}
+```
+
+Learn more: Streaming with Suspense.
+
+#### Push the access down to the leaf
+
+When the value is read at the top of the tree but only consumed by a small piece of UI, move the read down. The parent stays prerenderable and only the leaf needs a boundary.
+
+`app/dashboard/page.js`
+
+```jsx
+import { Suspense } from 'react'
+
+export default function Page() {
+  return (
+    <DashboardShell>
+      <Suspense fallback={<HeaderSkeleton />}>
+        <UserHeader />
+      </Suspense>
+      <CachedStats />
+    </DashboardShell>
+  )
+}
+```
+
+`app/dashboard/user-header.js`
+
+```jsx
+import { cookies } from 'next/headers'
+
+export async function UserHeader() {
+  const session = (await cookies()).get('session')
+  return <header>Signed in as {session?.value}</header>
+}
+```
+
+Learn more: Streaming patterns and boundary placement.
+
+#### Pass `searchParams` without awaiting
+
+When the consumer is a child component, pass the promise down instead of awaiting it at the top. The child wraps its own consumption in `<Suspense>`, which keeps the parent prerenderable.
+
+`app/dashboard/page.js`
+
+```jsx
+import { Suspense } from 'react'
+import { Results } from './results'
+
+export default function Page({ searchParams }) {
+  return (
+    <DashboardShell>
+      <DashboardHeader />
+      <Suspense fallback={<ResultsSkeleton />}>
+        <Results searchParams={searchParams} />
+      </Suspense>
+    </DashboardShell>
+  )
+}
+```
+
+`app/dashboard/results.js`
+
+```jsx
+export async function Results({ searchParams }) {
+  const { q } = await searchParams
+  const widgets = await searchWidgets(q)
+  return <WidgetList widgets={widgets} />
+}
+```
+
+Learn more: Using `searchParams` in the App Router.
+
+#### Forward `searchParams` as a promise chain
+
+A variant of the previous pattern when you want to derive a value without awaiting at the top. Treat `searchParams` as a promise and `.then()` it to project the shape the child needs.
+
+`app/dashboard/map/page.js`
+
+```jsx
+export default function Page({ searchParams }) {
+  const coords = searchParams.then((sp) => ({
+    lat: Number(sp.lat),
+    lng: Number(sp.lng),
+  }))
+  return <Map coords={coords} />
+}
+```
+
+Learn more: Using `searchParams` in the App Router.
+
+#### Use `loading.js` for the whole segment
+
+When every component in the segment reads the same request value and there's nothing static to render above it, a `loading.js` file in the segment is the shorthand. Next.js wraps `{children}` of the layout in `<Suspense>` automatically.
+
+`app/dashboard/loading.js`
+
+```jsx
+export default function Loading() {
+  return <DashboardSkeleton />
+}
+```
+
+> **Good to know**: A `loading.js` file wraps the segment's `{children}` in one Suspense boundary. Parent layouts above it still prerender, but everything inside the segment sits behind the fallback. If page-level content could be prerendered (a static intro, a known title), use explicit `<Suspense>` boundaries inside `page.js` around only the dynamic parts.
+
+Learn more: `loading.js` and instant loading states.
+
+### Trade-off
+
+The shell ships immediately, but the user sees a loading state for the streamed region on every request. Design the fallback so it approximates the final layout. A generic spinner causes the page to visibly jump when content arrives. See CLS-safe skeleton fallback guidance.
+
+### Choosing where to place the boundary
+
+The location of the boundary controls what the user sees during the navigation:
+
+- A high boundary (around the whole page) gives one loading state for everything. Less work to set up, but the user loses context about where they were going.
+- A low boundary (around the specific component that reads the runtime API) keeps surrounding content visible and only shows a fallback for the per-request part. Preferred when the surrounding shell has cached content.
+
+A useful rule: **push the boundary as low as possible** while keeping the fallback meaningful. The cached content above the boundary becomes part of the static shell on navigation. Wrapping individual pieces or wrapping the whole page in one boundary stream the same way, but a lower boundary keeps more prerendered content visible during the navigation. See Maximizing the static shell for the canonical pattern.
+
+### Gotchas
+
+- The fallback must be deterministic. Calling `Math.random()` or `Date.now()` inside the fallback raises a separate Cache Components error during prerendering.
+- Do not pass `{children}` through in the fallback. Child pages may include dynamic reads (for example, `/_not-found` calling `cookies()` or `headers()`) that propagate into what should be a static fallback. Render a placeholder that doesn't include `{children}`.
+- Boundary placement affects client navigations between sibling routes differently than initial page loads. Validation surfaces this in the dev server and at build time. See Ensuring instant navigations for the full model.
+- The function returned by `cookies()` and `headers()` is async. Make sure the component reading them is async too, and `await` the call.
+- The `params` and `searchParams` props are also async promises. Treat them like any other awaited value when deciding where the boundary goes.
+
+## For known params, prerender
+
+Choose this fix when the route has a closed set of valid params and you know them at build time. Adding `generateStaticParams` tells Next.js to prerender each one, so the per-request `params` value becomes a build-time constant for those entries.
+
+### Patterns
+
+#### Return a fixed list
+
+Return the full list of params from the export. Use this for routes whose param space is small and known.
+
+`app/dashboard/[team]/page.js`
+
+```jsx
+export function generateStaticParams() {
+  return [{ team: 'marketing' }, { team: 'sales' }, { team: 'ops' }]
+}
+
+export default async function Page({ params }) {
+  const { team } = await params
+  return <TeamDashboard team={team} />
+}
+```
+
+Learn more: `generateStaticParams` basics.
+
+#### Fetch the list at build time
+
+When the param values come from a content source, fetch them inside `generateStaticParams`. Next.js calls the function once at build time.
+
+`app/dashboard/[team]/page.js`
+
+```jsx
+export async function generateStaticParams() {
+  const teams = await db.teams.findMany({ select: { slug: true } })
+  return teams.map((team) => ({ team: team.slug }))
+}
+
+export default async function Page({ params }) {
+  const { team } = await params
+  const dashboard = await getDashboard(team)
+  return <TeamDashboard dashboard={dashboard} />
+}
+```
+
+Learn more: ISR with Cache Components.
+
+### Trade-off
+
+The list of params is decided at build time. See `generateStaticParams` for rebuild and cache-invalidation patterns when the list changes. A request for a param not in the returned list falls through to runtime rendering, so the runtime data read still needs a `<Suspense>` boundary or Allow blocking route.
+
+### Gotchas
+
+- The `generateStaticParams` function only handles `params`. It does not solve `cookies()`, `headers()`, or `searchParams`. If the page also reads any of those, you still need a `<Suspense>` boundary.
+- The function runs at build time, so it can't depend on per-request values. Reading `cookies()` or `headers()` inside it throws.
+- The `dynamicParams` config isn't available in this model. If you're migrating an existing page, use `<Suspense>`, `notFound()`, or Allow blocking route instead.
+
+## Allow blocking route
+
+Choose this fix when the route renders per-request and there's no useful static shell. Setting `unstable_instant` to `false` exempts the segment from instant-navigation validation. The page renders on every request and the navigation blocks until that render completes.
+
+### Patterns
+
+#### Opt the page out
+
+Add the export to the page that triggered the error. Only that route blocks.
+
+`app/dashboard/page.js`
+
+```jsx
+export const unstable_instant = false
+
+export default async function Page() {
+  const session = (await cookies()).get('session')
+  return <Dashboard session={session?.value} />
+}
+```
+
+Learn more: Ensuring instant navigations.
+
+#### Opt the layout out
+
+When the shared layout itself can't ship instantly (it reads `cookies()` or `headers()` of its own), set `unstable_instant` to `false` on the layout. The layout and every route in the subtree are exempted from instant-navigation validation.
+
+`app/dashboard/layout.js`
+
+```jsx
+export const unstable_instant = false
+
+export default function DashboardLayout({ children }) {
+  return <DashboardShell>{children}</DashboardShell>
+}
+```
+
+Learn more: Route segment `instant` config.
+
+Use either pattern when:
+
+- The route needs request-time data high in the tree to decide what to render (for example auth, tenant, or other gating in a layout), so there is no meaningful static shell worth showing first.
+- You're migrating a route incrementally and want to defer the lifetime decision without changing how the page renders today.
+
+Don't use this to dismiss the error. Choose Wrap in or move into Suspense or For known params, prerender when either is feasible.
+
+### Trade-off
+
+Navigations to this route are not instant. The user waits for the full server render before any HTML arrives. Use this only when that latency is necessary for the route to function.
+
+### Gotchas
+
+- Setting `unstable_instant` to `false` opts only the segment that exports it out. Descendant segments are still validated by the global default. See Don't want this validation? for the subtree-wide opt-out.
+- This export does not disable prerendering. The route still prerenders if it can. It only silences the instant-navigation validation error.
+
+## Don't want this validation?
+
+Instant-navigation validation runs by default in Cache Components apps and is what surfaces this error.
+
+- **One segment**: add `export const unstable_instant = false` to the page or layout file. This opts out the segment itself. Child segments are still validated during client navigations.
+- **Layout and its children**: add `export const unstable_instant = { unstable_disableValidation: true }` to a layout. This disables validation for that layout and every segment below it.
+- **Entire app**: set `experimental.instantInsights.validationLevel` to `'manual-warning'` in `next.config`. This limits validation to segments that explicitly export `unstable_instant`.
+
+See Ensuring instant navigations for the full model.
+
+## Useful links
+
+- Ensuring instant navigations
+- Next.js encountered uncached data during prerendering

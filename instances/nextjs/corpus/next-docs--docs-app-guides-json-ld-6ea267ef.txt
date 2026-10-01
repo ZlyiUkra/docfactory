@@ -1,0 +1,90 @@
+# App Router: How to implement JSON-LD in your Next.js application
+# джерело: https://github.com/vercel/next.js/blob/v16.2.0-canary.70/docs/01-app/02-guides/json-ld.mdx
+# отримано: 2026-10-01
+# версія: 16.2.0-canary, 16.1.7, 16.1.6, 16.1.5, 16.1.4, 16.1.3, 16.1.2, 16.1.1, 16.1.1-canary, 16.1.0, 16.1.0-canary, 16.0.11, 16.0.10, 16.0.9, 16.0.8, 16.0.7, 16.0.6, 16.0.5, 16.0.4, 16.0.3, 16.0.2, 16.0.2-canary, 16.0.1, 16.0.1-canary, 16.0.0, 16.0.0-canary, 16.0.0-beta.0, 15.6.0-canary, 15.5.27, 15.5.26, 15.5.25, 15.5.24, 15.5.23, 15.5.22, 15.5.21, 15.5.20, 15.5.20-canary, 15.5.19, 15.5.18, 15.5.17, 15.5.16, 15.5.15, 15.5.14, 15.5.13, 15.5.12, 15.5.11, 15.5.10, 15.5.9, 15.5.8, 15.5.7, 15.5.6, 15.5.5
+
+Learn how to add JSON-LD to your Next.js application to describe your content to search engines and AI.
+
+JSON-LD is a format for structured data that can be used by search engines and AI to help them understand the structure of the page beyond pure content. For example, you can use it to describe a person, an event, an organization, a movie, a book, a recipe, and many other types of entities.
+
+Our current recommendation for JSON-LD is to render structured data as a `<script>` tag in your `layout.js` or `page.js` components.
+
+The following snippet uses `JSON.stringify`, which does not sanitize malicious strings used in XSS injection. To prevent this type of vulnerability, you can scrub `HTML` tags from the `JSON-LD` payload, for example, by replacing the character, `<`, with its unicode equivalent, `\u003c`.
+
+Review your organization's recommended approach to sanitize potentially dangerous strings, or use community maintained alternatives for `JSON.stringify` such as, serialize-javascript.
+
+`app/products/[id]/page.tsx`
+
+```tsx
+export default async function Page({ params }) {
+  const { id } = await params
+  const product = await getProduct(id)
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.name,
+    image: product.image,
+    description: product.description,
+  }
+
+  return (
+    <section>
+      {/* Add JSON-LD to your page */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c'),
+        }}
+      />
+      {/* ... */}
+    </section>
+  )
+}
+```
+
+`app/products/[id]/page.js`
+
+```jsx
+export default async function Page({ params }) {
+  const { id } = await params
+  const product = await getProduct(id)
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.name,
+    image: product.image,
+    description: product.description,
+  }
+
+  return (
+    <section>
+      {/* Add JSON-LD to your page */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c'),
+        }}
+      />
+      {/* ... */}
+    </section>
+  )
+}
+```
+
+You can validate and test your structured data with the Rich Results Test for Google or the generic Schema Markup Validator.
+
+You can type your JSON-LD with TypeScript using community packages like `schema-dts`:
+
+```tsx
+import { Product, WithContext } from 'schema-dts'
+
+const jsonLd: WithContext<Product> = {
+  '@context': 'https://schema.org',
+  '@type': 'Product',
+  name: 'Next.js Sticker',
+  image: 'https://nextjs.org/imgs/sticker.png',
+  description: 'Dynamic at the speed of static.',
+}
+```

@@ -1,0 +1,146 @@
+# Pages Router: getServerSideProps
+# джерело: https://github.com/vercel/next.js/blob/v16.2.0-canary.73/docs/02-pages/04-api-reference/03-functions/get-server-side-props.mdx
+# отримано: 2026-10-01
+# версія: 16.2.0-canary, 16.1.7, 16.1.6, 16.1.5, 16.1.4, 16.1.3, 16.1.2, 16.1.1, 16.1.1-canary, 16.1.0, 16.1.0-canary, 16.0.11, 16.0.10, 16.0.9, 16.0.8, 16.0.7, 16.0.6, 16.0.5, 16.0.4, 16.0.3, 16.0.2, 16.0.2-canary, 16.0.1, 16.0.1-canary, 16.0.0, 16.0.0-canary, 16.0.0-beta.0, 15.6.0-canary, 15.5.27, 15.5.26, 15.5.25, 15.5.24, 15.5.23, 15.5.22, 15.5.21, 15.5.20, 15.5.20-canary, 15.5.19, 15.5.18, 15.5.17, 15.5.16, 15.5.15, 15.5.14, 15.5.13, 15.5.12, 15.5.11, 15.5.10, 15.5.9, 15.5.8, 15.5.7, 15.5.6, 15.5.5, 15.5.4, 15.5.3, 15.5.2, 15.5.1, 15.5.1-canary, 15.5.0, 15.4.11, 15.4.10, 15.4.9, 15.4.8, 15.4.7, 15.4.6, 15.4.5, 15.4.4, 15.4.3, 15.4.2, 15.4.2-canary, 15.4.1, 15.4.0, 15.4.0-canary
+
+API reference for `getServerSideProps`. Learn how to fetch data on each request with Next.js.
+
+When exporting a function called `getServerSideProps` (Server-Side Rendering) from a page, Next.js will pre-render this page on each request using the data returned by `getServerSideProps`. This is useful if you want to fetch data that changes often, and have the page update to show the most current data.
+
+`pages/index.tsx`
+
+```tsx
+import type { InferGetServerSidePropsType, GetServerSideProps } from 'next'
+
+type Repo = {
+  name: string
+  stargazers_count: number
+}
+
+export const getServerSideProps = (async () => {
+  // Fetch data from external API
+  const res = await fetch('https://api.github.com/repos/vercel/next.js')
+  const repo: Repo = await res.json()
+  // Pass data to the page via props
+  return { props: { repo } }
+}) satisfies GetServerSideProps<{ repo: Repo }>
+
+export default function Page({
+  repo,
+}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  return (
+    <main>
+      <p>{repo.stargazers_count}</p>
+    </main>
+  )
+}
+```
+
+`pages/index.js`
+
+```jsx
+export async function getServerSideProps() {
+  // Fetch data from external API
+  const res = await fetch('https://api.github.com/repos/vercel/next.js')
+  const repo = await res.json()
+  // Pass data to the page via props
+  return { props: { repo } }
+}
+
+export default function Page({ repo }) {
+  return (
+    <main>
+      <p>{repo.stargazers_count}</p>
+    </main>
+  )
+}
+```
+
+You can import modules in top-level scope for use in `getServerSideProps`. Imports used will **not be bundled for the client-side**. This means you can write **server-side code directly in `getServerSideProps`**, including fetching data from your database.
+
+## Context parameter
+
+The `context` parameter is an object containing the following keys:
+
+| Name            | Description                                                                                                                                                                                                           |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `params`        | If this page uses a dynamic route, `params` contains the route parameters. If the page name is `[id].js`, then `params` will look like `{ id: ... }`. |
+| `req`           | The `HTTP` IncomingMessage object, with an additional `cookies` prop, which is an object with string keys mapping to string values of cookies.    |
+| `res`           | The `HTTP` response object.                                                                                                                        |
+| `query`         | An object representing the query string, including dynamic route parameters.                                                                                                                                          |
+| `preview`       | (Deprecated for `draftMode`) `preview` is `true` if the page is in the Preview Mode and `false` otherwise.                                                                         |
+| `previewData`   | (Deprecated for `draftMode`) The preview data set by `setPreviewData`.                                                                                                             |
+| `draftMode`     | `draftMode` is `true` if the page is in the Draft Mode and `false` otherwise.                                                                                                        |
+| `resolvedUrl`   | A normalized version of the request `URL` that strips the `_next/data` prefix for client transitions and includes original query values.                                                                              |
+| `locale`        | Contains the active locale (if enabled).                                                                                                                                                                              |
+| `locales`       | Contains all supported locales (if enabled).                                                                                                                                                                          |
+| `defaultLocale` | Contains the configured default locale (if enabled).                                                                                                                                                                  |
+
+## getServerSideProps return values
+
+The `getServerSideProps` function should return an object with **any one of the following** properties:
+
+### `props`
+
+The `props` object is a key-value pair, where each value is received by the page component. It should be a serializable object so that any props passed, could be serialized with `JSON.stringify`.
+
+```jsx
+export async function getServerSideProps(context) {
+  return {
+    props: { message: `Next.js is awesome` }, // will be passed to the page component as props
+  }
+}
+```
+
+### `notFound`
+
+The `notFound` boolean allows the page to return a `404` status and 404 Page. With `notFound: true`, the page will return a `404` even if there was a successfully generated page before. This is meant to support use cases like user-generated content getting removed by its author.
+
+```js
+export async function getServerSideProps(context) {
+  const res = await fetch(`https://.../data`)
+  const data = await res.json()
+
+  if (!data) {
+    return {
+      notFound: true,
+    }
+  }
+
+  return {
+    props: { data }, // will be passed to the page component as props
+  }
+}
+```
+
+### `redirect`
+
+The `redirect` object allows redirecting to internal and external resources. It should match the shape of `{ destination: string, permanent: boolean }`. In some rare cases, you might need to assign a custom status code for older `HTTP` clients to properly redirect. In these cases, you can use the `statusCode` property instead of the `permanent` property, but not both.
+
+```js
+export async function getServerSideProps(context) {
+  const res = await fetch(`https://.../data`)
+  const data = await res.json()
+
+  if (!data) {
+    return {
+      redirect: {
+        destination: '/',
+        permanent: false,
+      },
+    }
+  }
+
+  return {
+    props: {}, // will be passed to the page component as props
+  }
+}
+```
+
+## Version History
+
+| Version   | Changes                                                                                           |
+| --------- | ------------------------------------------------------------------------------------------------- |
+| `v13.4.0` | App Router is now stable with simplified data fetching |
+| `v10.0.0` | `locale`, `locales`, `defaultLocale`, and `notFound` options added.                               |
+| `v9.3.0`  | `getServerSideProps` introduced.                                                                  |
