@@ -1,0 +1,798 @@
+# Example: with-apivideo
+# джерело: https://github.com/vercel/next.js/tree/v16.3.8/examples/with-apivideo
+# отримано: 2026-10-01
+# версія: 16.3.8
+
+## api.video video uploader
+
+This video uploader and playback app is built with Next.js and api.video, the video first API.
+
+## Demo
+
+https://with-apivideo.vercel.app/videos
+
+## Deploy your own
+
+Deploy with Vercel
+
+## How to use
+
+Execute `create-next-app` with npm, Yarn, or pnpm to bootstrap the example:
+
+```bash
+npx create-next-app --example with-apivideo with-apivideo-app
+```
+
+```bash
+yarn create next-app --example with-apivideo with-apivideo-app
+```
+
+```bash
+pnpm create next-app --example with-apivideo with-apivideo-app
+```
+
+Deploy it to the cloud with Vercel (Documentation).
+
+## Getting started
+
+### 1. Create an api.video free account
+
+1. Go to dashboard.api.video, log in or create a free account.
+2. You can choose to stay in sandbox and have watermark over your videos, or enter in production mode and take advantage of all the features without limitations.
+
+### 2. Get you API key
+
+1. Once in the dashboard, find your API keys directly in the `/overview` or navigate to `/apikeys` with the "API Keys" button in the side navigation.
+2. Copy your API key, and paste it in `.env.local.example` as value for `API_KEY`.
+3. Rename `.env.local.example` to `.env.local`.
+4. Install the packages by running `npm install`, `yarn install` or `pnpm install`.
+5. You can now try the application locally by running `npm run dev`, `yarn dev` or `pnpm dev` from the root directory.
+
+### 3. Deployment
+
+1. First, push your app to GitHub/GitLab or Bitbucket
+2. Then, go to Vercel and import your new repository.
+3. Add an environment variable with name `API_KEY` and your API key for value.
+4. Click on deploy 🎉
+
+## components/Card/index.tsx
+
+```tsx
+import React from "react";
+import Image from "next/image";
+import styles from "./Card.module.css";
+
+interface ICardProps {
+  content: string;
+  url: string;
+  method: "get" | "post";
+}
+
+const Card: React.FC<ICardProps> = ({ content, url, method }): JSX.Element => (
+  <a className={styles.container} target="_blank" href={url} rel="noreferrer">
+    <div className={`${method === "get" ? styles.get : styles.post}`}>
+      {method.toUpperCase()}
+    </div>
+    <p>{content}</p>
+    <div className={styles.image_container}>
+      <Image src="/arrow.png" alt="Sketch arrow" width={20} height={20} />
+      <p>Try it out with our API!</p>
+    </div>
+  </a>
+);
+
+export default Card;
+```
+
+## components/Loader/index.tsx
+
+```tsx
+import Image from "next/image";
+import React from "react";
+import styles from "./Loader.module.css";
+
+interface ILoaderProps {
+  done: boolean;
+}
+const Loader: React.FC<ILoaderProps> = ({ done }): JSX.Element =>
+  done ? (
+    <Image src="/check.png" alt="Loader" width={30} height={30} />
+  ) : (
+    <div className={styles.spinner} />
+  );
+
+export default Loader;
+```
+
+## components/Status/index.tsx
+
+```tsx
+import React from "react";
+import Loader from "../Loader";
+import styles from "./Status.module.css";
+
+interface IStatusProps {
+  done: boolean;
+  title: string;
+}
+const Status: React.FC<IStatusProps> = ({ done, title }): JSX.Element => (
+  <div className={styles.container}>
+    <p>{title}</p>
+    <Loader done={done} />
+  </div>
+);
+
+export default Status;
+```
+
+## package.json
+
+```json
+{
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@api.video/nodejs-client": "2.2.5",
+    "@api.video/react-player": "^1.0.1",
+    "@api.video/video-uploader": "^1.1.3",
+    "next": "latest",
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "17.0.23",
+    "@types/react": "17.0.43",
+    "@types/react-dom": "17.0.14",
+    "eslint-config-next": "latest",
+    "typescript": "4.6.3"
+  }
+}
+```
+
+## pages/_app.tsx
+
+```tsx
+import "../style/index.css";
+import "../style/common.css";
+
+function MyApp({ Component, pageProps }: any) {
+  return <Component {...pageProps} />;
+}
+
+export default MyApp;
+```
+
+## pages/api/[videoId].ts
+
+```ts
+import type { NextApiRequest, NextApiResponse } from "next";
+import ApiVideoClient from "@api.video/nodejs-client";
+
+const getVideoStatus = async (req: NextApiRequest, res: NextApiResponse) => {
+  try {
+    const { videoId } = req.query;
+    const client = new ApiVideoClient({ apiKey: process.env.API_KEY });
+    const status = await client.videos.getStatus(videoId as string);
+    res.status(200).json({ status });
+  } catch (error) {
+    res.status(400).end();
+  }
+};
+
+export default getVideoStatus;
+```
+
+## pages/api/uploadToken.ts
+
+```ts
+import type { NextApiRequest, NextApiResponse } from "next";
+import ApiVideoClient from "@api.video/nodejs-client";
+
+const getUploadToken = async (req: NextApiRequest, res: NextApiResponse) => {
+  try {
+    const client = new ApiVideoClient({ apiKey: process.env.API_KEY });
+    const uploadToken = await client.uploadTokens.createToken();
+    res.status(200).json(uploadToken);
+  } catch (error) {
+    res.status(400).end();
+  }
+};
+
+export default getUploadToken;
+```
+
+## pages/api/videos.ts
+
+```ts
+import type { NextApiRequest, NextApiResponse } from "next";
+import ApiVideoClient from "@api.video/nodejs-client";
+
+const getVideoStatus = async (req: NextApiRequest, res: NextApiResponse) => {
+  try {
+    const client = new ApiVideoClient({ apiKey: process.env.API_KEY });
+    const videos = await client.videos.list();
+    res.status(200).json({ videos });
+  } catch (error) {
+    res.status(400).end();
+  }
+};
+
+export default getVideoStatus;
+```
+
+## pages/index.tsx
+
+```tsx
+import Head from "next/head";
+import Image from "next/image";
+import React from "react";
+
+export default function Home() {
+  return (
+    <div className="global-container">
+      <Head>
+        <title>api.video sample app</title>
+        <meta
+          name="description"
+          content="Generated by create next app & created by api.video"
+        />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+
+      <header>
+        <span>api.video sample app</span>
+      </header>
+
+      <main>
+        <div className="texts-container">
+          <p>
+            Hey fellow dev! 👋 <br />
+            In this basic sample app, you will find{" "}
+            <a
+              href="https://api.video"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              api.video
+            </a>{" "}
+            features examples such as <a href="/uploader">video uploader</a>,{" "}
+            <a href="/videos">videos list</a> and player components.
+          </p>
+          <p>
+            api.video provides APIs and clients to handle all your video needs.
+            <br />
+            This app is built with the api.video{" "}
+            <a
+              href="https://github.com/apivideo/api.video-nodejs-client"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Node.js client
+            </a>
+            ,{" "}
+            <a
+              href="https://github.com/apivideo/api.video-typescript-uploader"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Typescript uploader
+            </a>{" "}
+            and{" "}
+            <a
+              target="_blank"
+              rel="noopener noreferrer"
+              href="https://github.com/apivideo/api.video-react-player"
+            >
+              React player component
+            </a>
+            .
+          </p>
+          <p>
+            You can{" "}
+            <a
+              href="https://github.com/vercel/next.js/tree/canary/examples/with-apivideo"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              check the source code on GitHub
+            </a>
+            .
+          </p>
+          <p>Please, choose a feature to explore.</p>
+        </div>
+
+        <div className="status-container">
+          <a className="button" href="/uploader">
+            Upload a video
+          </a>
+          <a className="button" href="/videos">
+            See my videos
+          </a>
+        </div>
+      </main>
+
+      <footer>
+        <a
+          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Powered by{" "}
+          <span>
+            <Image src="/vercel.svg" alt="Vercel Logo" width={72} height={16} />
+          </span>
+        </a>
+        <span>and</span>
+        <a href="https://api.video" target="_blank" rel="noopener noreferrer">
+          api.video
+        </a>
+      </footer>
+    </div>
+  );
+}
+```
+
+## pages/uploader/index.tsx
+
+```tsx
+import Head from "next/head";
+import Image from "next/image";
+import React, { ChangeEvent, useEffect, useRef, useState } from "react";
+import Card from "../../components/Card";
+import { VideoUploader, VideoUploadResponse } from "@api.video/video-uploader";
+import Status from "../../components/Status";
+import { useRouter } from "next/router";
+
+export default function Uploader() {
+  const [uploadToken, setUploadToken] = useState<{ token: string } | undefined>(
+    undefined,
+  );
+  const [uploadProgress, setUploadProgress] = useState<number | undefined>(
+    undefined,
+  );
+  const [video, setVideo] = useState<VideoUploadResponse | undefined>(
+    undefined,
+  );
+  const [ready, setReady] = useState<boolean>(false);
+  const [playable, setPlayable] = useState<boolean>(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    fetch("/api/uploadToken")
+      .then((res) => res.json())
+      .then((res) => setUploadToken(res));
+  }, []);
+
+  const handleSelectFile = async (
+    e: ChangeEvent<HTMLInputElement>,
+  ): Promise<void> => {
+    e.preventDefault();
+    if (!uploadToken || !uploadToken.token) return;
+    const clearState = (): void => {
+      setReady(false);
+      setPlayable(false);
+      setVideo(undefined);
+      setUploadProgress(undefined);
+    };
+    clearState();
+    if (!e.target.files || !uploadToken) return;
+    const file = e.target.files[0];
+    const uploader = new VideoUploader({
+      file,
+      uploadToken: uploadToken.token,
+    });
+    uploader.onProgress((e) =>
+      setUploadProgress(Math.round((e.uploadedBytes * 100) / e.totalBytes)),
+    );
+    uploader.onPlayable(() => {
+      setPlayable(true);
+      setReady(true);
+    });
+    const video = await uploader.upload();
+    setVideo(video);
+  };
+
+  const handleNavigate = (): void => {
+    if (!video) return;
+    router.push(`/videos/${video.videoId}?uploaded=1`);
+  };
+
+  return (
+    <div className="global-container">
+      <Head>
+        <title>Video Uploader</title>
+        <meta
+          name="description"
+          content="Generated by create next app & created by api.video"
+        />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+
+      <header>
+        <span>api.video uploader</span> 🚀
+      </header>
+
+      <main>
+        <div className="texts-container">
+          <p>
+            Hey fellow dev! 👋 <br />
+            Welcome to this basic example of video uploader provided by{" "}
+            <a
+              href="https://api.video"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              api.video
+            </a>{" "}
+            and powered by{" "}
+            <a
+              href="https://nextjs.org/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Vercel & Next.js
+            </a>
+            .
+          </p>
+          <p>
+            api.video provides APIs and clients to handle all your video needs.
+            <br />
+            This app is built with the{" "}
+            <a
+              href="https://github.com/apivideo/api.video-nodejs-client"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              api.video Node.js client
+            </a>{" "}
+            and the{" "}
+            <a
+              href="https://github.com/apivideo/api.video-typescript-uploader"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Typescript uploader
+            </a>
+            .
+          </p>
+          <p>
+            You can{" "}
+            <a
+              href="https://github.com/vercel/next.js/tree/canary/examples/with-apivideo-upload"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              check the source code on GitHub
+            </a>
+            .
+          </p>
+          <p>
+            Please add a video to upload and let the power of the API do the
+            rest 🎩
+          </p>
+        </div>
+
+        {!uploadProgress ? (
+          <>
+            <button
+              className="upload"
+              onClick={() => inputRef.current?.click()}
+            >
+              Select a file
+            </button>
+            <input
+              ref={inputRef}
+              hidden
+              type="file"
+              accept="mp4"
+              onChange={handleSelectFile}
+            />
+          </>
+        ) : (
+          <>
+            <div className="status-container">
+              <Status title="Uploaded" done={uploadProgress >= 100} />
+              <span />
+              <Status title="Ingested" done={uploadProgress >= 100} />
+              <span />
+              <Status title="Playable" done={playable} />
+            </div>
+            <Card
+              content="https://ws.api.video/videos/{videoId}/source"
+              url="https://docs.api.video/reference/post_videos-videoid-source"
+              method="post"
+            />
+          </>
+        )}
+
+        {ready && video && (
+          <button className="upload" onClick={handleNavigate}>
+            Watch it 🍿
+          </button>
+        )}
+      </main>
+
+      <footer>
+        <a
+          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Powered by{" "}
+          <span>
+            <Image src="/vercel.svg" alt="Vercel Logo" width={72} height={16} />
+          </span>
+        </a>
+        <span>and</span>
+        <a href="https://api.video" target="_blank" rel="noopener noreferrer">
+          api.video
+        </a>
+      </footer>
+    </div>
+  );
+}
+```
+
+## pages/videos/[videoId].tsx
+
+```tsx
+import { GetServerSideProps, NextPage } from "next";
+import Head from "next/head";
+import Image from "next/image";
+import { useRouter } from "next/router";
+import React, { ChangeEvent, useState } from "react";
+import ApiVideoPlayer, { PlayerTheme } from "@api.video/react-player";
+
+interface IVideoViewProps {
+  children: React.ReactNode;
+  videoId: string;
+  uploaded: string;
+}
+const VideoView: NextPage<IVideoViewProps> = ({
+  videoId,
+  uploaded,
+}): JSX.Element => {
+  const [playerTheme, setPlayerTheme] = useState<PlayerTheme>({
+    link: "rgb(235, 137, 82)",
+    linkHover: "rgb(240, 95, 12)",
+  });
+  const [hideControls, setHideControls] = useState<boolean>(false);
+  const router = useRouter();
+
+  const handleChangeSetting = (e: ChangeEvent<HTMLInputElement>) =>
+    setPlayerTheme({
+      ...playerTheme,
+      [e.currentTarget.id]: e.currentTarget.value,
+    });
+
+  return (
+    <div className="global-container">
+      <Head>
+        <title>Video view</title>
+        <meta
+          name="description"
+          content="Generated by create next app & created by api.video"
+        />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+      <header>
+        {uploaded ? (
+          <>
+            <span>Already there</span> 🎉
+          </>
+        ) : (
+          <>
+            <span>Here's your player</span> 👀
+          </>
+        )}
+      </header>
+
+      <main>
+        <div className="texts-container">
+          <p>
+            This player is generated by the{" "}
+            <a
+              target="_blank"
+              rel="noopener noreferrer"
+              href="https://github.com/apivideo/api.video-react-player"
+            >
+              api.video's React player component
+            </a>
+            .<br />
+            It provides multiple properties to customize your video player.
+          </p>
+          <p>Try 3 of them just below 👇</p>
+        </div>
+
+        <div className="inputs-container">
+          <div>
+            <label>Play button color</label>
+            <input
+              id="link"
+              type="text"
+              placeholder="Play button color"
+              value={playerTheme.link}
+              onChange={handleChangeSetting}
+            />
+          </div>
+          <div>
+            <label>Buttons hover color</label>
+            <input
+              id="linkHover"
+              type="text"
+              placeholder="Buttons hover color"
+              value={playerTheme.linkHover}
+              onChange={handleChangeSetting}
+            />
+          </div>
+          <div>
+            <input
+              type="checkbox"
+              checked={hideControls}
+              onChange={(e) => {
+                setHideControls(e.currentTarget.checked);
+              }}
+            />
+            <label>Hide controls</label>
+          </div>
+        </div>
+        <ApiVideoPlayer
+          video={{ id: videoId }}
+          style={{ width: "75%", height: 300 }}
+          theme={playerTheme}
+          chromeless={hideControls}
+        />
+
+        <button
+          className="upload"
+          onClick={() => router.push(uploaded ? "/uploader" : "/videos")}
+        >
+          {uploaded ? "Another video?" : "Videos list"}
+        </button>
+      </main>
+
+      <footer>
+        <a
+          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Powered by{" "}
+          <span>
+            <Image src="/vercel.svg" alt="Vercel Logo" width={72} height={16} />
+          </span>
+        </a>
+        <span>and</span>
+        <a href="https://api.video" target="_blank" rel="noopener noreferrer">
+          api.video
+        </a>
+      </footer>
+    </div>
+  );
+};
+
+export default VideoView;
+
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const { videoId, uploaded } = context.query;
+  return { props: { videoId, uploaded: uploaded ?? null } };
+};
+```
+
+## pages/videos/index.tsx
+
+```tsx
+import Head from "next/head";
+import Image from "next/image";
+import React, { useEffect, useState } from "react";
+import VideosListResponse from "@api.video/nodejs-client/lib/model/VideosListResponse";
+
+export default function Videos() {
+  const [videosResponse, setVideosResponse] = useState<
+    VideosListResponse | undefined
+  >(undefined);
+  const [error, setError] = useState<boolean>(false);
+  useEffect(() => {
+    fetch("/api/videos")
+      .then((res) => res.json())
+      .then((res: { videos: VideosListResponse }) =>
+        setVideosResponse(res.videos),
+      )
+      .catch((_) => setError(true));
+  }, []);
+
+  return (
+    <div className="global-container">
+      <Head>
+        <title>Videos List</title>
+        <meta
+          name="description"
+          content="Generated by create next app & created by api.video"
+        />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+
+      <header>
+        <span>api.video videos list</span> 📚
+      </header>
+
+      <main>
+        <div className="texts-container">
+          <p>
+            Welcome to this basic example of videos list provided by{" "}
+            <a
+              href="https://api.video"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              api.video
+            </a>
+            .
+          </p>
+          <p>
+            Please, add your api.video API key in your <i>.env</i> file and let
+            the power of the API do the rest 🎩
+          </p>
+        </div>
+
+        {!videosResponse && !error && <div>Loading...</div>}
+        {error && (
+          <div className="error">
+            An error occurred trying to fetch your videos. Be sure to have you
+            API key set in your .env file this way: <i>API_KEY=YOUR_API_KEY</i>
+          </div>
+        )}
+        {videosResponse && videosResponse.data?.length > 0 && (
+          <div className="videos-list">
+            {videosResponse.data.map((video) => (
+              <a
+                className="video-card"
+                href={`/videos/${video.videoId}`}
+                key={video.videoId}
+              >
+                <h3>{video.title}</h3>
+                <Image
+                  src={video.assets?.thumbnail ?? "/vercel.svg"}
+                  alt="Video thumbmail"
+                  width={150}
+                  height={80}
+                />
+              </a>
+            ))}
+          </div>
+        )}
+        {videosResponse && videosResponse.data?.length === 0 && (
+          <>
+            <p>You don't have any video yet 🧐</p>
+            <a className="button" href="/uploader">
+              Upload my first video
+            </a>
+          </>
+        )}
+      </main>
+
+      <footer>
+        <a
+          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Powered by{" "}
+          <span>
+            <Image src="/vercel.svg" alt="Vercel Logo" width={72} height={16} />
+          </span>
+        </a>
+        <span>and</span>
+        <a href="https://api.video" target="_blank" rel="noopener noreferrer">
+          api.video
+        </a>
+      </footer>
+    </div>
+  );
+}
+```

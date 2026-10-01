@@ -1,0 +1,428 @@
+# Example: with-clerk
+# джерело: https://github.com/vercel/next.js/tree/v16.3.8/examples/with-clerk
+# отримано: 2026-10-01
+# версія: 16.3.8
+
+## Clerk and Next.js Example
+
+This example shows how to use Clerk with Next.js. The example features adding sign up, sign in, profile management, and an authenticated API route to your Next.js application.
+
+## Demo
+
+A hosted demo of this example is available at clerk-app-router.clerkpreview.com.
+
+## Deploy your own
+
+Deploy with Vercel
+
+## How to use
+
+Execute `create-next-app` with npm, Yarn, or pnpm to bootstrap the example:
+
+```bash
+npx create-next-app --example with-clerk with-clerk-app
+```
+
+```bash
+yarn create next-app --example with-clerk with-clerk-app
+```
+
+```bash
+pnpm create next-app --example with-clerk with-clerk-app
+```
+
+To run the example locally you need to:
+
+1. Sign up at Clerk.dev.
+2. Go to Clerk's dashboard and create an application.
+3. Set the required Clerk environment variables from your Clerk project as shown at the example env file.
+4. `yarn` to install the required dependencies.
+5. `yarn dev` to launch the development server.
+
+## Learn More
+
+To learn more about Clerk.dev and Next.js, take a look at the following resources:
+
+- Quick start
+- Clerk.dev Documentation - learn about Clerk.dev features and API.
+- Next.js Documentation - learn about Next.js features and API.
+
+## app/api-request.tsx
+
+```tsx
+"use client";
+
+import { SignedIn, SignedOut } from "@clerk/nextjs";
+import { useEffect, useState } from "react";
+import styles from "../styles/Home.module.css";
+import "../styles/prism.css";
+
+declare global {
+  interface Window {
+    Prism: any;
+  }
+}
+
+const apiSample = `import { auth } from "@clerk/nextjs";
+import { NextResponse } from "next/server";
+
+export async function GET(request: Request) {
+  const { userId, sessionId } = auth()
+  if(!sessionId) {
+    return NextResponse.json({ id: null }, { status: 401 })
+  }
+  return NextResponse.json({ id: userId }, { status: 200 })
+}`;
+
+export const APIRequest = () => {
+  useEffect(() => {
+    if (window.Prism) {
+      window.Prism.highlightAll();
+    }
+  });
+
+  const [response, setResponse] = useState("// Click above to run the request");
+
+  const makeRequest = async () => {
+    setResponse("// Loading...");
+
+    try {
+      const res = await fetch("/api/getAuthenticatedUserId");
+      const body = await res.json();
+      setResponse(JSON.stringify(body, null, "  "));
+    } catch (e) {
+      setResponse(
+        "// There was an error with the request. Please contact support@clerk.dev",
+      );
+    }
+  };
+
+  return (
+    <div className={styles.backend}>
+      <h2>API request example</h2>
+      <div className={styles.card}>
+        <button
+          rel="noreferrer"
+          className={styles.cardContent}
+          onClick={() => makeRequest()}
+        >
+          <img src="/icons/server.svg" />
+          <div>
+            <h3>fetch('/api/getAuthenticatedUserId')</h3>
+            <p>
+              Retrieve the user ID of the signed in user, or null if there is no
+              user
+            </p>
+          </div>
+          <div className={styles.arrow}>
+            <img src="/icons/download.svg" />
+          </div>
+        </button>
+      </div>
+      <h4>
+        Response
+        <em>
+          <SignedIn>
+            You are signed in, so the request will return your user ID
+          </SignedIn>
+          <SignedOut>
+            You are signed out, so the request will return null
+          </SignedOut>
+        </em>
+      </h4>
+      <pre>
+        <code className="language-js">{response}</code>
+      </pre>
+      <h4>app/api/getAuthenticatedUserId/route.ts</h4>
+      <pre>
+        <code className="language-js">{apiSample}</code>
+      </pre>
+    </div>
+  );
+};
+```
+
+## app/api/getAuthenticatedUserId/route.ts
+
+```ts
+import { auth } from "@clerk/nextjs";
+import { NextResponse } from "next/server";
+
+export async function GET(request: Request) {
+  const { userId, sessionId } = auth();
+  if (!sessionId) {
+    return NextResponse.json({ id: null }, { status: 401 });
+  }
+  return NextResponse.json({ id: userId }, { status: 200 });
+}
+```
+
+## app/layout.tsx
+
+```tsx
+import "../styles/globals.css";
+import { ClerkProvider, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import { Inter } from "next/font/google";
+import Image from "next/image";
+import Script from "next/script";
+import styles from "../styles/Header.module.css";
+import Link from "next/link";
+import type { Metadata } from "next";
+
+const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: "Clerk with App Router",
+  description: "Power your Next.js application with Clerk ",
+};
+
+const Header = () => (
+  <header className={styles.header}>
+    <div className={styles.left}>
+      <Link href="/" className={styles.logo}>
+        <Image src="/logo.svg" width="32" height="32" alt="Logo" />
+        <span className={styles.appName}>Your application</span>
+      </Link>
+    </div>
+    <div className={styles.right}>
+      <SignedOut>
+        <Link href="/sign-in">Sign in</Link>
+      </SignedOut>
+      <SignedIn>
+        <UserButton afterSignOutUrl="/" />
+      </SignedIn>
+    </div>
+  </header>
+);
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <ClerkProvider>
+        <body className={inter.className}>
+          <Header />
+          <main>{children}</main>
+        </body>
+      </ClerkProvider>
+      <Script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-core.min.js" />
+      <Script src="https://cdn.jsdelivr.net/npm/prismjs@1/plugins/autoloader/prism-autoloader.min.js" />
+    </html>
+  );
+}
+```
+
+## app/page.tsx
+
+```tsx
+import { SignedIn, SignedOut } from "@clerk/nextjs";
+import styles from "../styles/Home.module.css";
+import Link from "next/link";
+import { APIRequest } from "./api-request";
+
+const ClerkFeatures = () => (
+  <Link href="/user" className={styles.cardContent}>
+    <img src="/icons/layout.svg" />
+    <div>
+      <h3>Explore features provided by Clerk</h3>
+      <p>
+        Interact with the user button, user profile, and more to preview what
+        your users will see
+      </p>
+    </div>
+    <div className={styles.arrow}>
+      <img src="/icons/arrow-right.svg" />
+    </div>
+  </Link>
+);
+
+const SignupLink = () => (
+  <Link href="/sign-up" className={styles.cardContent}>
+    <img src="/icons/user-plus.svg" />
+    <div>
+      <h3>Sign up for an account</h3>
+      <p>
+        Sign up and sign in to explore all the features provided by Clerk
+        out-of-the-box
+      </p>
+    </div>
+    <div className={styles.arrow}>
+      <img src="/icons/arrow-right.svg" />
+    </div>
+  </Link>
+);
+
+// Main component using <SignedIn> & <SignedOut>.
+//
+// The SignedIn and SignedOut components are used to control rendering depending
+// on whether or not a visitor is signed in.
+//
+// https://docs.clerk.dev/frontend/react/signedin-and-signedout
+const Main = () => (
+  <main className={styles.main}>
+    <h1 className={styles.title}>Welcome to your new app</h1>
+    <p className={styles.description}>Sign up for an account to get started</p>
+
+    <div className={styles.cards}>
+      <div className={styles.card}>
+        <SignedIn>
+          <ClerkFeatures />
+        </SignedIn>
+        <SignedOut>
+          <SignupLink />
+        </SignedOut>
+      </div>
+
+      <div className={styles.card}>
+        <Link
+          href="https://dashboard.clerk.dev"
+          target="_blank"
+          rel="noreferrer"
+          className={styles.cardContent}
+        >
+          <img src="/icons/settings.svg" />
+          <div>
+            <h3>Configure settings for your app</h3>
+            <p>
+              Visit Clerk to manage instances and configure settings for user
+              management, theme, and more
+            </p>
+          </div>
+          <div className={styles.arrow}>
+            <img src="/icons/arrow-right.svg" />
+          </div>
+        </Link>
+      </div>
+    </div>
+
+    <APIRequest />
+
+    <div className={styles.links}>
+      <Link
+        href="https://docs.clerk.dev"
+        target="_blank"
+        rel="noreferrer"
+        className={styles.link}
+      >
+        <span className={styles.linkText}>Read Clerk documentation</span>
+      </Link>
+      <Link
+        href="https://nextjs.org/docs"
+        target="_blank"
+        rel="noreferrer"
+        className={styles.link}
+      >
+        <span className={styles.linkText}>Read Next.js documentation</span>
+      </Link>
+    </div>
+  </main>
+);
+
+// Footer component
+const Footer = () => (
+  <footer className={styles.footer}>
+    Powered by{" "}
+    <a href="https://clerk.dev" target="_blank" rel="noopener noreferrer">
+      <img src="/clerk.svg" alt="Clerk.dev" className={styles.logo} />
+    </a>
+    +
+    <a href="https://nextjs.org/" target="_blank" rel="noopener noreferrer">
+      <img src="/nextjs.svg" alt="Next.js" className={styles.logo} />
+    </a>
+  </footer>
+);
+
+export default function Home() {
+  return (
+    <div className={styles.container}>
+      <Main />
+      <Footer />
+    </div>
+  );
+}
+```
+
+## app/sign-in/[[...sign-in]]/page.tsx
+
+```tsx
+import { SignIn } from "@clerk/nextjs";
+import styles from "../../../styles/Auth.module.css";
+
+export default function Page() {
+  return (
+    <div className={styles.auth}>
+      <SignIn />
+    </div>
+  );
+}
+```
+
+## app/sign-up/[[...sign-up]]/page.tsx
+
+```tsx
+import { SignUp } from "@clerk/nextjs";
+import styles from "../../../styles/Auth.module.css";
+
+export default function Page() {
+  return (
+    <div className={styles.auth}>
+      <SignUp />
+    </div>
+  );
+}
+```
+
+## app/user/[[...index]]/page.tsx
+
+```tsx
+import { UserProfile } from "@clerk/nextjs";
+import styles from "../../../styles/User.module.css";
+
+export default function Page() {
+  return (
+    <div className={styles.user}>
+      <UserProfile />
+    </div>
+  );
+}
+```
+
+## middleware.ts
+
+```ts
+import { authMiddleware } from "@clerk/nextjs";
+
+export default authMiddleware({
+  publicRoutes: ["/", "/api/getAuthenticatedUserId"],
+});
+
+export const config = {
+  matcher: ["/((?!.*\\..*|_next).*)", "/"],
+};
+```
+
+## package.json
+
+```json
+{
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@clerk/nextjs": "^4.17.3",
+    "@types/node": "20.5.7",
+    "@types/react": "18.2.8",
+    "@types/react-dom": "18.2.7",
+    "next": "13.4.2",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "typescript": "5.2.2"
+  }
+}
+```

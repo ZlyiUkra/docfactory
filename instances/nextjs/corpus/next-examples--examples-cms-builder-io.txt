@@ -1,0 +1,937 @@
+# Example: cms-builder-io
+# джерело: https://github.com/vercel/next.js/tree/v16.3.8/examples/cms-builder-io
+# отримано: 2026-10-01
+# версія: 16.3.8
+
+## A statically generated blog example using Next.js and Builder.io
+
+This example showcases Next.js's Static Generation feature using Builder.io as the data source.
+
+## Demo
+
+https://cms-builder-io.vercel.app/
+
+## How to use
+
+Execute `create-next-app` with npm, Yarn, or pnpm to bootstrap the example:
+
+```bash
+npx create-next-app --example cms-builder-io cms-builder-io-app
+```
+
+```bash
+yarn create next-app --example cms-builder-io cms-builder-io-app
+```
+
+```bash
+pnpm create next-app --example cms-builder-io cms-builder-io-app
+```
+
+## Configuration
+
+### Step 1 Install the Builder.io cli
+
+```
+npm install @builder.io/cli -g
+```
+
+### Step 2 Generate a space
+
+Signup for Builder.io, then go to your organization settings page, create a private key and copy it and supply it for `[private-key]` below. For `[space-name]` create a name for your space, such as "Blog"
+
+```
+cd cms-builder-io-app
+builder create -k [private-key] -n [space-name] -d
+```
+
+This command when done it'll print your new space's public api key, copy it and add as the value for `NEXT_PUBLIC_BUILDER_API_KEY` into the .env files (`.env.production` and `.env.development`)
+
+```
+BUILDER_PUBLIC_KEY=...
+```
+
+### Step 3 Run Next.js in development mode
+
+```bash
+npm install
+npm run dev
+
+# or
+
+yarn install
+yarn dev
+```
+
+Your blog should be up and running on http://localhost:3000! If it doesn't work, you can post on GitHub discussions.
+
+### Step 4 Try preview mode
+
+To try preview mode at any time while editing in Builder.io press `view current draft`, if you changed the secret defined in constants.js you'll need to also change it in your `Post` model settings.
+
+To exit the preview mode, you can click **Click here to exit preview mode** at the top.
+
+### Step 5 Deploy on Vercel
+
+You can deploy this app to the cloud with Vercel (Documentation).
+
+#### Deploy Your Local Project
+
+To deploy your local project to Vercel, push it to GitHub/GitLab/Bitbucket and import to Vercel.
+
+**Important**: When you import your project on Vercel, make sure to click on **Environment Variables** and set them to match your `.env.local` file.
+
+#### Deploy from Our Template
+
+Alternatively, you can deploy using our template by clicking on the Deploy button below.
+
+Deploy with Vercel
+
+### Related examples
+
+- AgilityCMS
+- Builder.io
+- ButterCMS
+- Contentful
+- Cosmic
+- DatoCMS
+- DotCMS
+- Drupal
+- Enterspeed
+- Ghost
+- GraphCMS
+- Kontent.ai
+- MakeSwift
+- Payload
+- Plasmic
+- Prepr
+- Prismic
+- Sanity
+- Sitecore XM Cloud
+- Sitefinity
+- Storyblok
+- TakeShape
+- Tina
+- Umbraco
+- Umbraco heartcore
+- Webiny
+- WordPress
+- Blog Starter
+
+## components/alert.js
+
+```js
+import Container from "./container";
+import cn from "classnames";
+import { EXAMPLE_PATH } from "../lib/constants";
+
+export default function Alert({ preview }) {
+  return (
+    <div
+      className={cn("border-b", {
+        "bg-accent-7 border-accent-7 text-white": preview,
+        "bg-accent-1 border-accent-2": !preview,
+      })}
+    >
+      <Container>
+        <div className="py-2 text-center text-sm">
+          {preview ? (
+            <>
+              This page is a preview.{" "}
+              <a
+                href="/api/exit-preview"
+                className="underline hover:text-cyan duration-200 transition-colors"
+              >
+                Click here
+              </a>{" "}
+              to exit preview mode.
+            </>
+          ) : (
+            <>
+              The source code for this blog is{" "}
+              <a
+                href={`https://github.com/vercel/next.js/tree/canary/examples/${EXAMPLE_PATH}`}
+                className="underline hover:text-success duration-200 transition-colors"
+              >
+                available on GitHub
+              </a>
+              .
+            </>
+          )}
+        </div>
+      </Container>
+    </div>
+  );
+}
+```
+
+## components/avatar.js
+
+```js
+import BuilderImage from "./builder-image";
+
+export default function Avatar({ name, picture }) {
+  return (
+    <div className="flex items-center">
+      <div className="relative w-12 h-12 mr-4">
+        <BuilderImage
+          src={picture}
+          layout="fill"
+          className="rounded-full"
+          alt={name}
+        />
+      </div>
+      <div className="text-xl font-bold">{name}</div>
+    </div>
+  );
+}
+```
+
+## components/builder-image.js
+
+```js
+import Image from "next/image";
+
+const builderLoader = ({ src, width, quality }) => {
+  return `${src}?width=${width}&quality=${quality || 75}`;
+};
+
+const BuilderImage = (props) => {
+  return <Image loader={builderLoader} {...props} />;
+};
+
+export default BuilderImage;
+```
+
+## components/container.js
+
+```js
+export default function Container({ children }) {
+  return <div className="container mx-auto px-5">{children}</div>;
+}
+```
+
+## components/cover-image.js
+
+```js
+import BuilderImage from "./builder-image";
+import Link from "next/link";
+import cn from "classnames";
+
+export default function CoverImage({ title, url, slug }) {
+  const image = (
+    <BuilderImage
+      width={2000}
+      height={1000}
+      alt={`Cover Image for ${title}`}
+      className={cn("shadow-small", {
+        "hover:shadow-medium transition-shadow duration-200": slug,
+      })}
+      src={url}
+    />
+  );
+
+  return (
+    <div className="sm:mx-0">
+      {slug ? (
+        <Link href={`/posts/${slug}`} aria-label={title}>
+          {image}
+        </Link>
+      ) : (
+        image
+      )}
+    </div>
+  );
+}
+```
+
+## components/date.js
+
+```js
+import { format } from "date-fns";
+
+export default function DateComponent({ dateString }) {
+  return (
+    <time dateTime={new Date(dateString)}>
+      {format(new Date(dateString), "LLLL	d, yyyy")}
+    </time>
+  );
+}
+```
+
+## components/footer.js
+
+```js
+import Container from "./container";
+import { EXAMPLE_PATH } from "../lib/constants";
+
+export default function Footer() {
+  return (
+    <footer className="bg-accent-1 border-t border-accent-2">
+      <Container>
+        <div className="py-28 flex flex-col lg:flex-row items-center">
+          <h3 className="text-4xl lg:text-5xl font-bold tracking-tighter leading-tight text-center lg:text-left mb-10 lg:mb-0 lg:pr-4 lg:w-1/2">
+            Statically Generated with Next.js.
+          </h3>
+          <div className="flex flex-col lg:flex-row justify-center items-center lg:pl-4 lg:w-1/2">
+            <a
+              href="https://nextjs.org/docs/basic-features/pages"
+              className="mx-3 bg-black hover:bg-white hover:text-black border border-black text-white font-bold py-3 px-12 lg:px-8 duration-200 transition-colors mb-6 lg:mb-0"
+            >
+              Read Documentation
+            </a>
+            <a
+              href={`https://github.com/vercel/next.js/tree/canary/examples/${EXAMPLE_PATH}`}
+              className="mx-3 font-bold hover:underline"
+            >
+              View on GitHub
+            </a>
+          </div>
+        </div>
+      </Container>
+    </footer>
+  );
+}
+```
+
+## components/header.js
+
+```js
+import Link from "next/link";
+
+export default function Header() {
+  return (
+    <h2 className="text-2xl md:text-4xl font-bold tracking-tight md:tracking-tighter leading-tight mb-20 mt-8">
+      <Link href="/" className="hover:underline">
+        Blog
+      </Link>
+      .
+    </h2>
+  );
+}
+```
+
+## components/hero-post.js
+
+```js
+import Link from "next/link";
+import Avatar from "../components/avatar";
+import DateComponent from "../components/date";
+import CoverImage from "../components/cover-image";
+
+export default function HeroPost({
+  title,
+  coverImage,
+  date,
+  excerpt,
+  author,
+  slug,
+}) {
+  return (
+    <section>
+      <div className="mb-8 md:mb-16">
+        <CoverImage title={title} slug={slug} url={coverImage} />
+      </div>
+      <div className="md:grid md:grid-cols-2 md:gap-x-16 lg:gap-x-8 mb-20 md:mb-28">
+        <div>
+          <h3 className="mb-4 text-4xl lg:text-6xl leading-tight">
+            <Link href={`/posts/${slug}`} className="hover:underline">
+              {title}
+            </Link>
+          </h3>
+          <div className="mb-4 md:mb-0 text-lg">
+            <DateComponent dateString={date} />
+          </div>
+        </div>
+        <div>
+          <p className="text-lg leading-relaxed mb-4">{excerpt}</p>
+          {author && <Avatar name={author.name} picture={author.image} />}
+        </div>
+      </div>
+    </section>
+  );
+}
+```
+
+## components/intro.js
+
+```js
+import { CMS_NAME, CMS_URL } from "../lib/constants";
+
+export default function Intro() {
+  return (
+    <section className="flex-col md:flex-row flex items-center md:justify-between mt-16 mb-16 md:mb-12">
+      <h1 className="text-6xl md:text-8xl font-bold tracking-tighter leading-tight md:pr-8">
+        Blog.
+      </h1>
+      <h4 className="text-center md:text-left text-lg mt-5 md:pl-8">
+        A statically generated blog example using{" "}
+        <a
+          href="https://nextjs.org/"
+          className="underline hover:text-success duration-200 transition-colors"
+        >
+          Next.js
+        </a>{" "}
+        and{" "}
+        <a
+          href={CMS_URL}
+          className="underline hover:text-success duration-200 transition-colors"
+        >
+          {CMS_NAME}
+        </a>
+        .
+      </h4>
+    </section>
+  );
+}
+```
+
+## components/layout.js
+
+```js
+import Alert from "../components/alert";
+import Footer from "../components/footer";
+import Meta from "../components/meta";
+
+export default function Layout({ preview, children }) {
+  return (
+    <>
+      <Meta />
+      <div className="min-h-screen">
+        <Alert preview={preview} />
+        <main>{children}</main>
+      </div>
+      <Footer />
+    </>
+  );
+}
+```
+
+## components/meta.js
+
+```js
+import Head from "next/head";
+import { CMS_NAME, HOME_OG_IMAGE_URL } from "../lib/constants";
+
+export default function Meta() {
+  return (
+    <Head>
+      <link
+        rel="apple-touch-icon"
+        sizes="180x180"
+        href="/favicon/apple-touch-icon.png"
+      />
+      <link
+        rel="icon"
+        type="image/png"
+        sizes="32x32"
+        href="/favicon/favicon-32x32.png"
+      />
+      <link
+        rel="icon"
+        type="image/png"
+        sizes="16x16"
+        href="/favicon/favicon-16x16.png"
+      />
+      <link rel="manifest" href="/favicon/site.webmanifest" />
+      <link
+        rel="mask-icon"
+        href="/favicon/safari-pinned-tab.svg"
+        color="#000000"
+      />
+      <link rel="shortcut icon" href="/favicon/favicon.ico" />
+      <meta name="msapplication-TileColor" content="#000000" />
+      <meta name="msapplication-config" content="/favicon/browserconfig.xml" />
+      <meta name="theme-color" content="#000" />
+      <link rel="alternate" type="application/rss+xml" href="/feed.xml" />
+      <meta
+        name="description"
+        content={`A statically generated blog example using Next.js and ${CMS_NAME}.`}
+      />
+      <meta property="og:image" content={HOME_OG_IMAGE_URL} />
+    </Head>
+  );
+}
+```
+
+## components/more-stories.js
+
+```js
+import PostPreview from "./post-preview";
+
+export default function MoreStories({ posts }) {
+  return (
+    <section>
+      <h2 className="mb-8 text-6xl md:text-7xl font-bold tracking-tighter leading-tight">
+        More Stories
+      </h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 md:gap-x-16 lg:gap-x-32 gap-y-20 md:gap-y-32 mb-32">
+        {posts.map((post) => (
+          <PostPreview
+            key={post.data.slug}
+            title={post.data.title}
+            coverImage={post.data.image}
+            date={post.lastUpdated}
+            author={post.data.author.value?.data}
+            slug={post.data.slug}
+            excerpt={post.data.intro}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+```
+
+## components/post-body.js
+
+```js
+import { BUILDER_CONFIG } from "@/lib/constants";
+import { BuilderComponent } from "@builder.io/react";
+export default function PostBody({ content }) {
+  return (
+    <div className="max-w-2xl mx-auto">
+      <BuilderComponent
+        options={{ includeRefs: true }}
+        model={BUILDER_CONFIG.postsModel}
+        content={content}
+      />
+    </div>
+  );
+}
+```
+
+## components/post-header.js
+
+```js
+import Avatar from "../components/avatar";
+import DateComponent from "../components/date";
+import CoverImage from "../components/cover-image";
+import PostTitle from "../components/post-title";
+
+export default function PostHeader({ title, coverImage, date, author }) {
+  return (
+    <>
+      <PostTitle>{title}</PostTitle>
+      <div className="hidden md:block md:mb-12">
+        {author && <Avatar name={author.name} picture={author.image} />}
+      </div>
+      <div className="mb-8 md:mb-16 sm:mx-0">
+        <CoverImage title={title} url={coverImage} />
+      </div>
+      <div className="max-w-2xl mx-auto">
+        <div className="block md:hidden mb-6">
+          {author && <Avatar name={author.name} picture={author.image} />}
+        </div>
+        <div className="mb-6 text-lg">
+          <DateComponent dateString={date} />
+        </div>
+      </div>
+    </>
+  );
+}
+```
+
+## components/post-preview.js
+
+```js
+import Link from "next/link";
+import Avatar from "../components/avatar";
+import DateComponent from "../components/date";
+import CoverImage from "./cover-image";
+
+export default function PostPreview({
+  title,
+  coverImage,
+  date,
+  excerpt,
+  author,
+  slug,
+}) {
+  return (
+    <div className="mx-3">
+      <div className="mb-5">
+        <CoverImage title={title} slug={slug} url={coverImage} />
+      </div>
+      <h3 className="text-3xl mb-3 leading-snug">
+        <Link href={`/posts/${slug}`} className="hover:underline">
+          {title}
+        </Link>
+      </h3>
+      <div className="text-lg mb-4">
+        <DateComponent dateString={date} />
+      </div>
+      <p className="text-lg leading-relaxed mb-4">{excerpt}</p>
+      {author && <Avatar name={author.name} picture={author.image} />}
+    </div>
+  );
+}
+```
+
+## components/post-title.js
+
+```js
+export default function PostTitle({ children }) {
+  return (
+    <h1 className="text-6xl md:text-7xl lg:text-8xl font-bold tracking-tighter leading-tight md:leading-none mb-12 text-center md:text-left">
+      {children}
+    </h1>
+  );
+}
+```
+
+## components/section-separator.js
+
+```js
+export default function SectionSeparator() {
+  return <hr className="border-accent-2 mt-28 mb-24" />;
+}
+```
+
+## lib/api.js
+
+```js
+import { Builder, builder } from "@builder.io/react";
+import { BUILDER_CONFIG } from "./constants";
+
+builder.init(BUILDER_CONFIG.apiKey);
+Builder.isStatic = true;
+
+export function getAllPostsWithSlug() {
+  return builder.getAll(BUILDER_CONFIG.postsModel, {
+    options: { noTargeting: true },
+    apiKey: BUILDER_CONFIG.apiKey,
+  });
+}
+
+export function getDraftPost(id) {
+  return fetch(
+    `https://builder.io/api/v2/content/${BUILDER_CONFIG.postsModel}/${id}?apiKey=${BUILDER_CONFIG.apiKey}&preview=true&noCache=true&cachebust=tru&includeRefs=true`,
+  )
+    .then((res) => res.json())
+    .then((res) => res || null);
+}
+
+export async function searchPosts(query, preview, limit = 20, offset = 0) {
+  let posts = await builder.getAll(BUILDER_CONFIG.postsModel, {
+    limit,
+    offset,
+    includeRefs: true,
+    preview: BUILDER_CONFIG.postsModel,
+    staleCacheSeconds: preview ? 1 : 200,
+    apiKey: BUILDER_CONFIG.apiKey,
+    ...(preview && { includeUnpublished: true }),
+    options: {
+      noTargeting: true,
+    },
+    query,
+  });
+
+  if (preview) {
+    posts = await Promise.all(posts.map((post) => getDraftPost(post.id)));
+  }
+
+  return posts;
+}
+
+export function getAllPostsForHome(preview) {
+  return searchPosts(
+    { "data.slug": { $exists: true }, "data.author": { $exists: true } },
+    preview,
+  );
+}
+
+export async function getPost(mongoQuery, preview) {
+  let post = preview
+    ? (await searchPosts(mongoQuery, true))?.[0]
+    : await builder
+        .get(BUILDER_CONFIG.postsModel, {
+          includeRefs: true,
+          staleCacheSeconds: 20,
+          apiKey: BUILDER_CONFIG.apiKey,
+          preview: BUILDER_CONFIG.postsModel,
+          options: {
+            noTargeting: true,
+          },
+          query: mongoQuery,
+        })
+        .toPromise();
+
+  return post || null;
+}
+
+export async function getPostAndMorePosts(slug, preview, previewData) {
+  const post =
+    preview && previewData
+      ? await getDraftPost(previewData.postDraftId)
+      : await getPost(
+          {
+            "data.slug": { $eq: slug },
+          },
+          preview,
+        );
+
+  const morePosts = await searchPosts(
+    {
+      "data.slug": { $ne: slug, $exists: true },
+      "data.author": { $exists: true },
+    },
+    preview,
+    2,
+  );
+
+  return {
+    post,
+    morePosts,
+  };
+}
+```
+
+## lib/constants.js
+
+```js
+export const EXAMPLE_PATH = "cms-builder-io";
+export const CMS_NAME = "Builder.io";
+export const CMS_URL = "https://builder.io/";
+export const HOME_OG_IMAGE_URL =
+  "https://og-image.vercel.app/Next.js%20Blog%20example%20with%20**Builder.io**.png?theme=light&md=1&fontSize=100px&images=https%3A%2F%2Fassets.vercel.com%2Fimage%2Fupload%2Ffront%2Fassets%2Fdesign%2Fnextjs-black-logo.svg&images=https%3A%2F%2Fcdn.builder.io%2Fapi%2Fv1%2Fimage%2Fassets%252FYJIGb4i01jvw0SRdL5Bt%252F79c8b61740bc41d5ae722c000ddb5915";
+export const BUILDER_CONFIG = {
+  apiKey: process.env.NEXT_PUBLIC_BUILDER_API_KEY,
+  postsModel: "post",
+  previewSecret: "micky-mouse",
+};
+```
+
+## package.json
+
+```json
+{
+  "private": true,
+  "scripts": {
+    "dev": "next",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@builder.io/react": "^2.0.0",
+    "@builder.io/widgets": "^1.2.21",
+    "classnames": "2.3.1",
+    "date-fns": "2.28.0",
+    "next": "latest",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.1",
+    "postcss": "^8.4.5",
+    "tailwindcss": "^3.0.11"
+  }
+}
+```
+
+## pages/_app.js
+
+```js
+import "@/styles/index.css";
+
+function MyApp({ Component, pageProps }) {
+  return <Component {...pageProps} />;
+}
+
+export default MyApp;
+```
+
+## pages/api/exit-preview.js
+
+```js
+export default async function exit(_, res) {
+  // Exit Draft Mode by removing the cookie
+  res.setDraftMode({ enable: false });
+
+  // Redirect the user back to the index page.
+  res.writeHead(307, { Location: "/" });
+  res.end();
+}
+```
+
+## pages/api/preview.js
+
+```js
+import { getDraftPost } from "@/lib/api";
+import { BUILDER_CONFIG } from "@/lib/constants";
+import querystring from "querystring";
+
+export default async function preview(req, res) {
+  const postId = req.query[`builder.overrides.${BUILDER_CONFIG.postsModel}`];
+  if (req.query.secret !== BUILDER_CONFIG.previewSecret || !postId) {
+    return res.status(401).json({ message: "Invalid request" });
+  }
+
+  // Check if the post with the given `slug` exists
+  const post = await getDraftPost(postId);
+
+  // If the slug doesn't exist prevent preview mode from being enabled
+  if (!post) {
+    return res.status(401).json({ message: "Invalid post" });
+  }
+
+  // Enable Preview Mode by setting the cookies
+  res.setPreviewData({
+    postDraftId: postId,
+  });
+
+  // Redirect to the path from the fetched post
+  // We don't redirect to req.query.slug as that might lead to open redirect vulnerabilities
+  res.writeHead(307, {
+    Location: `/posts/${post.data.slug}?${querystring.stringify(req.query)}`,
+  });
+  res.end();
+}
+```
+
+## pages/index.js
+
+```js
+import Container from "@/components/container";
+import MoreStories from "@/components/more-stories";
+import HeroPost from "@/components/hero-post";
+import Intro from "@/components/intro";
+import Layout from "@/components/layout";
+import { getAllPostsForHome } from "@/lib/api";
+import Head from "next/head";
+import { CMS_NAME } from "@/lib/constants";
+
+export default function Index({ allPosts, preview }) {
+  const heroPost = allPosts[0];
+  const morePosts = allPosts.slice(1);
+  return (
+    <>
+      <Layout preview={preview}>
+        <Head>
+          <title>{`Next.js Blog Example with ${CMS_NAME}`}</title>
+        </Head>
+        <Container>
+          <Intro />
+          {heroPost && (
+            <HeroPost
+              title={heroPost.data.title}
+              coverImage={heroPost.data.image}
+              date={heroPost.lastUpdated}
+              author={heroPost.data.author.value?.data}
+              slug={heroPost.data.slug}
+              excerpt={heroPost.data.intro}
+            />
+          )}
+          {morePosts.length > 0 && <MoreStories posts={morePosts} />}
+        </Container>
+      </Layout>
+    </>
+  );
+}
+
+export async function getStaticProps({ preview = null }) {
+  const allPosts = (await getAllPostsForHome(preview)) || [];
+  return {
+    props: { allPosts, preview },
+    revalidate: 20,
+  };
+}
+```
+
+## pages/posts/[slug].js
+
+```js
+import { useRouter } from "next/router";
+import ErrorPage from "next/error";
+import Container from "@/components/container";
+import PostBody from "@/components/post-body";
+import MoreStories from "@/components/more-stories";
+import Header from "@/components/header";
+import PostHeader from "@/components/post-header";
+import SectionSeparator from "@/components/section-separator";
+import Layout from "@/components/layout";
+import { getAllPostsWithSlug, getPostAndMorePosts } from "@/lib/api";
+import PostTitle from "@/components/post-title";
+import Head from "next/head";
+import { CMS_NAME, BUILDER_CONFIG } from "@/lib/constants";
+import { Builder, builder, BuilderContent } from "@builder.io/react";
+import "@builder.io/widgets";
+
+builder.init(BUILDER_CONFIG.apiKey);
+Builder.isStatic = true;
+
+export default function Post({ post, morePosts, preview }) {
+  const router = useRouter();
+  const isLive = !Builder.isEditing && !Builder.isPreviewing && !preview;
+  if (!router.isFallback && !post && isLive) {
+    return <ErrorPage statusCode={404} />;
+  }
+  return (
+    <Layout preview={preview}>
+      <Container>
+        <Header />
+        {router.isFallback ? (
+          <PostTitle>Loading…</PostTitle>
+        ) : (
+          <>
+            <BuilderContent
+              {...(!Builder.isEditing && { content: post })}
+              modelName={BUILDER_CONFIG.postsModel}
+              options={{ includeRefs: true, model: BUILDER_CONFIG.postsModel }}
+              isStatic
+            >
+              {(data) =>
+                data && (
+                  <article>
+                    <Head>
+                      <title>
+                        {data.title} | Next.js Blog Example with {CMS_NAME}
+                      </title>
+                      <meta property="og:image" content={data.image} />
+                    </Head>
+                    {data.author?.value && (
+                      <PostHeader
+                        title={data.title}
+                        coverImage={data.image}
+                        date={post.lastUpdated}
+                        author={data.author.value?.data}
+                      />
+                    )}
+                    <PostBody content={post} />
+                  </article>
+                )
+              }
+            </BuilderContent>
+            <SectionSeparator />
+            {morePosts.length > 0 && <MoreStories posts={morePosts} />}
+          </>
+        )}
+      </Container>
+    </Layout>
+  );
+}
+
+export async function getStaticProps({ params, preview = false, previewData }) {
+  let { post, morePosts } = await getPostAndMorePosts(
+    params.slug,
+    preview,
+    previewData,
+  );
+
+  return {
+    props: {
+      key: post?.id + post?.data.slug + params.slug,
+      preview,
+      post,
+      morePosts,
+    },
+  };
+}
+
+export async function getStaticPaths() {
+  const allPosts = await getAllPostsWithSlug();
+  return {
+    paths: allPosts?.map((post) => `/posts/${post.data.slug}`) || [],
+    fallback: true,
+  };
+}
+```

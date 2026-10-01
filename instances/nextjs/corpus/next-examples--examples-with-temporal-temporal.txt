@@ -1,0 +1,133 @@
+# Example: with-temporal/temporal
+# джерело: https://github.com/vercel/next.js/tree/v16.3.8/examples/with-temporal/temporal
+# отримано: 2026-10-01
+# версія: 16.3.8
+
+## package.json
+
+```json
+{
+  "type": "module"
+}
+```
+
+## src/activities.ts
+
+```ts
+import fetch from "node-fetch";
+
+export type ChargeResult = {
+  status: string;
+  errorMessage?: string;
+};
+
+export async function chargeUser(
+  userId: string,
+  itemId: string,
+  quantity: number,
+): Promise<ChargeResult> {
+  // TODO send request to the payments service that looks up the user's saved
+  // payment info and the cost of the item and attempts to charge their payment
+  // method.
+  console.log(`Charging user ${userId} for ${quantity} of item ${itemId}`);
+  try {
+    const response = await fetch("http://httpbin.org/get?status=success");
+    const body: any = await response.json();
+    return { status: body.args.status };
+  } catch (e: any) {
+    return { status: "failure", errorMessage: e.message };
+  }
+}
+
+export async function checkAndDecrementInventory(
+  itemId: string,
+  quantity: number,
+): Promise<boolean> {
+  // TODO a database request that—in a single operation or transaction—checks
+  // whether there are `quantity` items remaining, and if so, decreases the
+  // total. Something like:
+  // const result = await db.collection('items').updateOne(
+  //   { _id: itemId, numAvailable: { $gte: quantity } },
+  //   { $inc: { numAvailable: -quantity } }
+  // )
+  // return result.modifiedCount === 1
+  console.log(`Reserving ${quantity} of item ${itemId}`);
+  return true;
+}
+
+export async function incrementInventory(
+  itemId: string,
+  quantity: number,
+): Promise<boolean> {
+  // TODO increment inventory:
+  // const result = await db.collection('items').updateOne(
+  //   { _id: itemId },
+  //   { $inc: { numAvailable: quantity } }
+  // )
+  // return result.modifiedCount === 1
+  console.log(`Incrementing ${itemId} inventory by ${quantity}`);
+  return true;
+}
+```
+
+## src/worker.ts
+
+```ts
+import { Worker } from "@temporalio/worker";
+import { URL } from "url";
+import path from "path";
+import * as activities from "./activities.js";
+
+// Support running both complied code and ts-node/esm loader
+const workflowsPath = new URL(
+  `./workflows${path.extname(import.meta.url)}`,
+  import.meta.url,
+).pathname;
+
+const worker = await Worker.create({
+  workflowsPath,
+  activities,
+  taskQueue: "my-nextjs-project",
+});
+
+await worker.run();
+```
+
+## src/workflows.ts
+
+```ts
+import { proxyActivities } from "@temporalio/workflow";
+// Only import the activity types
+import type * as activities from "./activities.js";
+
+const { chargeUser, checkAndDecrementInventory, incrementInventory } =
+  proxyActivities<typeof activities>({
+    startToCloseTimeout: "1 minute",
+  });
+
+export async function order(
+  userId: string,
+  itemId: string,
+  quantity: number,
+): Promise<string> {
+  const haveEnoughInventory: boolean = await checkAndDecrementInventory(
+    itemId,
+    quantity,
+  );
+  if (haveEnoughInventory) {
+    const result: activities.ChargeResult = await chargeUser(
+      userId,
+      itemId,
+      quantity,
+    );
+    if (result.status === "success") {
+      return `Order successful!`;
+    } else {
+      await incrementInventory(itemId, quantity);
+      return `Unable to complete payment. Error: ${result.errorMessage}`;
+    }
+  } else {
+    return `Sorry, we don't have enough items in stock to fulfill your order.`;
+  }
+}
+```

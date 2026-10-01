@@ -1,0 +1,832 @@
+# Example: with-grafbase
+# джерело: https://github.com/vercel/next.js/tree/v16.3.8/examples/with-grafbase
+# отримано: 2026-10-01
+# версія: 16.3.8
+
+## Next.js with Grafbase
+
+This example shows to use Grafbase with Next.js. This example features fetching from a local GraphQL backend powered by the Grafbase CLI, and GraphQL Code Generator for making type-safe queries.
+
+## Demo
+
+You can see a demo of this online at https://nextjs-rsc-demo.grafbase-vercel.dev.
+
+## Deploy to Vercel
+
+Make sure to provide your `GRAFBASE_API_URL` and `GRAFBASE_API_KEY` to Vercel as environment variables when deploying.
+
+Deploy with Vercel
+
+## How to use
+
+Execute `create-next-app` with npm, Yarn, or pnpm to bootstrap the example:
+
+```bash
+npx create-next-app --example with-grafbase with-grafbase-app
+```
+
+```bash
+yarn create next-app --example with-grafbase with-grafbase-app
+```
+
+```bash
+pnpm create next-app --example with-grafbase with-grafbase-app
+```
+
+To run the example locally you need to:
+
+1. Copy the `.env.local.example` to `.env.local` and provide your API URL and API Key: `cp .env.local.example .env.local` — the defaults will be fine for development mode.
+
+2. Run the Grafbase CLI using `npx grafbase@latest dev`
+
+3. Populate the backend with some `Post` entries using a GraphQL mutation:
+
+```graphql
+mutation {
+  postCreate(
+    input: {
+      title: "I love Next.js!"
+      slug: "i-love-nextjs"
+      comments: [{ create: { message: "me too!" } }]
+    }
+  ) {
+    post {
+      id
+      slug
+    }
+  }
+}
+```
+
+4. Run the app locally and go to http://localhost:3000 to navigate to each post page! This data is fetched from the local backend.
+
+5. Optionally run `npm run codegen` to watch for any changes to queries inside of the app and automatically generate types.
+
+## Learn more
+
+- Grafbase Quickstart — get started with Grafbase, quickly!
+- Create an account — deploy to the edge with Grafbase!
+- Next.js Documentation — learn more about Next.js
+
+## app/layout.tsx
+
+```tsx
+import "./globals.css";
+import Link from "next/link";
+import { graphql } from "../gql";
+import { grafbase } from "../lib/grafbase";
+import type { Metadata } from "next";
+
+export const revalidate = 0;
+
+export const metadata: Metadata = {
+  title: "Grafbase + Next.js",
+  description: "Grafbase + Next.js",
+};
+
+const GetAllPostsDocument = graphql(/* GraphQL */ `
+  query GetAllPosts($first: Int!) {
+    postCollection(first: $first) {
+      edges {
+        node {
+          id
+          title
+          slug
+        }
+      }
+    }
+  }
+`);
+
+export default async function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { postCollection } = await grafbase.request(GetAllPostsDocument, {
+    first: 50,
+  });
+
+  return (
+    <html lang="en">
+      <body>
+        <div className="flex">
+          <nav className="w-[350px] flex flex-col justify-between h-screen overflow-y-auto bg-gray-100">
+            <ul className="p-8 space-y-2">
+              <li className="mb-6">
+                <Link
+                  href="/"
+                  className="py-2 rounded-md shadow-sm block px-3 text-gray-600 hover:text-gray-800 transition bg-white"
+                >
+                  Home
+                </Link>
+              </li>
+              <li className="px-3 py-2 uppercase text-xs text-gray-800 font-semibold">
+                Posts
+              </li>
+              {postCollection?.edges?.map((edge) =>
+                edge?.node ? (
+                  <li key={edge.node.id}>
+                    <Link
+                      href={`/posts/${edge.node.slug}`}
+                      className="py-2 rounded-md shadow-sm block px-3 text-gray-600 hover:text-gray-800 transition bg-white"
+                    >
+                      {edge.node.title}
+                    </Link>
+                  </li>
+                ) : null,
+              )}
+              <li>
+                <Link
+                  href="/posts/not-found"
+                  className="py-2 rounded-md shadow-sm block px-3 text-gray-600 hover:text-gray-800 transition bg-white"
+                >
+                  Show 404 page
+                </Link>
+              </li>
+            </ul>
+          </nav>
+          <main className="flex-1 p-6 md:p-24">
+            <div className="max-w-3xl mx-auto">
+              <div className="prose max-w-none">{children}</div>
+            </div>
+          </main>
+        </div>
+      </body>
+    </html>
+  );
+}
+```
+
+## app/page.tsx
+
+```tsx
+export default function Page() {
+  return (
+    <>
+      <h1>Next.js 13 + Grafbase</h1>
+      <p>
+        Once you've added some posts using the GraphQL Playground, you can
+        explore each post by clicking the link in the nav.
+      </p>
+    </>
+  );
+}
+```
+
+## app/posts/[slug]/page.tsx
+
+```tsx
+import { graphql } from "@/gql";
+import { grafbase } from "@/lib/grafbase";
+
+const GetPostBySlugDocument = graphql(/* GraphQL */ `
+  query GetPostBySlug($slug: String!) {
+    post(by: { slug: $slug }) {
+      id
+      title
+      slug
+    }
+  }
+`);
+
+export default async function Page({ params }: { params: { slug: string } }) {
+  const { post } = await grafbase.request(GetPostBySlugDocument, {
+    slug: params.slug,
+  });
+
+  if (!post) {
+    // optionally import notFound from next/navigation
+    return <h1>404: Not Found</h1>;
+  }
+
+  return (
+    <>
+      <h1>{post.title}</h1>
+      <pre>{JSON.stringify(post, null, 2)}</pre>
+    </>
+  );
+}
+```
+
+## codegen.ts
+
+```ts
+import { CodegenConfig } from "@graphql-codegen/cli";
+
+const url = process.env.GRAFBASE_API_URL as string;
+const xApiKey = process.env.GRAFBASE_API_KEY as string;
+
+const config: CodegenConfig = {
+  schema: [
+    {
+      [url]: {
+        headers: {
+          "x-api-key": xApiKey,
+        },
+      },
+    },
+  ],
+  documents: ["app/**/*.tsx", "app/**/*.ts"],
+  ignoreNoDocuments: true,
+  generates: {
+    "./gql/": {
+      preset: "client",
+      plugins: [],
+    },
+  },
+};
+
+export default config;
+```
+
+## gql/fragment-masking.ts
+
+```ts
+import { TypedDocumentNode as DocumentNode } from "@graphql-typed-document-node/core";
+
+export type FragmentType<TDocumentType extends DocumentNode<any, any>> =
+  TDocumentType extends DocumentNode<infer TType, any>
+    ? TType extends { " $fragmentName"?: infer TKey }
+      ? TKey extends string
+        ? { " $fragmentRefs"?: { [key in TKey]: TType } }
+        : never
+      : never
+    : never;
+
+// return non-nullable if `fragmentType` is non-nullable
+export function useFragment<TType>(
+  _documentNode: DocumentNode<TType, any>,
+  fragmentType: FragmentType<DocumentNode<TType, any>>,
+): TType;
+// return nullable if `fragmentType` is nullable
+export function useFragment<TType>(
+  _documentNode: DocumentNode<TType, any>,
+  fragmentType: FragmentType<DocumentNode<TType, any>> | null | undefined,
+): TType | null | undefined;
+// return array of non-nullable if `fragmentType` is array of non-nullable
+export function useFragment<TType>(
+  _documentNode: DocumentNode<TType, any>,
+  fragmentType: ReadonlyArray<FragmentType<DocumentNode<TType, any>>>,
+): ReadonlyArray<TType>;
+// return array of nullable if `fragmentType` is array of nullable
+export function useFragment<TType>(
+  _documentNode: DocumentNode<TType, any>,
+  fragmentType:
+    | ReadonlyArray<FragmentType<DocumentNode<TType, any>>>
+    | null
+    | undefined,
+): ReadonlyArray<TType> | null | undefined;
+export function useFragment<TType>(
+  _documentNode: DocumentNode<TType, any>,
+  fragmentType:
+    | FragmentType<DocumentNode<TType, any>>
+    | ReadonlyArray<FragmentType<DocumentNode<TType, any>>>
+    | null
+    | undefined,
+): TType | ReadonlyArray<TType> | null | undefined {
+  return fragmentType as any;
+}
+```
+
+## gql/gql.ts
+
+```ts
+/* eslint-disable */
+import * as types from "./graphql";
+import { TypedDocumentNode as DocumentNode } from "@graphql-typed-document-node/core";
+
+const documents = {
+  "\n  query GetAllPosts($first: Int!) {\n    postCollection(first: $first) {\n      edges {\n        node {\n          id\n          title\n          slug\n        }\n      }\n    }\n  }\n":
+    types.GetAllPostsDocument,
+  "\n  query GetPostBySlug($slug: String!) {\n    post(by: { slug: $slug }) {\n      id\n      title\n      slug\n    }\n  }\n":
+    types.GetPostBySlugDocument,
+};
+
+export function graphql(
+  source: "\n  query GetAllPosts($first: Int!) {\n    postCollection(first: $first) {\n      edges {\n        node {\n          id\n          title\n          slug\n        }\n      }\n    }\n  }\n",
+): (typeof documents)["\n  query GetAllPosts($first: Int!) {\n    postCollection(first: $first) {\n      edges {\n        node {\n          id\n          title\n          slug\n        }\n      }\n    }\n  }\n"];
+export function graphql(
+  source: "\n  query GetPostBySlug($slug: String!) {\n    post(by: { slug: $slug }) {\n      id\n      title\n      slug\n    }\n  }\n",
+): (typeof documents)["\n  query GetPostBySlug($slug: String!) {\n    post(by: { slug: $slug }) {\n      id\n      title\n      slug\n    }\n  }\n"];
+
+export function graphql(source: string): unknown;
+export function graphql(source: string) {
+  return (documents as any)[source] ?? {};
+}
+
+export type DocumentType<TDocumentNode extends DocumentNode<any, any>> =
+  TDocumentNode extends DocumentNode<infer TType, any> ? TType : never;
+```
+
+## gql/graphql.ts
+
+```ts
+/* eslint-disable */
+import { TypedDocumentNode as DocumentNode } from "@graphql-typed-document-node/core";
+export type Maybe<T> = T | null;
+export type InputMaybe<T> = Maybe<T>;
+export type Exact<T extends { [key: string]: unknown }> = {
+  [K in keyof T]: T[K];
+};
+export type MakeOptional<T, K extends keyof T> = Omit<T, K> & {
+  [SubKey in K]?: Maybe<T[SubKey]>;
+};
+export type MakeMaybe<T, K extends keyof T> = Omit<T, K> & {
+  [SubKey in K]: Maybe<T[SubKey]>;
+};
+/** All built-in and custom scalars, mapped to their actual values */
+export type Scalars = {
+  ID: string;
+  String: string;
+  Boolean: boolean;
+  Int: number;
+  Float: number;
+  /**
+   * A date-time string at UTC, such as 2007-12-03T10:15:30Z, is compliant with the date-time format outlined in section 5.6 of the RFC 3339
+   * profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.
+   *
+   * This scalar is a description of an exact instant on the timeline such as the instant that a user account was created.
+   *
+   * # Input Coercion
+   *
+   * When expected as an input type, only RFC 3339 compliant date-time strings are accepted. All other input values raise a query error indicating an incorrect type.
+   *
+   * # Result Coercion
+   *
+   * Where an RFC 3339 compliant date-time string has a time-zone other than UTC, it is shifted to UTC.
+   * For example, the date-time string 2016-01-01T14:10:20+01:00 is shifted to 2016-01-01T13:10:20Z.
+   */
+  DateTime: any;
+};
+
+export type Comment = {
+  __typename?: "Comment";
+  /** when the model was created */
+  createdAt: Scalars["DateTime"];
+  id: Scalars["ID"];
+  message: Scalars["String"];
+  post?: Maybe<Post>;
+  /** when the model was updated */
+  updatedAt: Scalars["DateTime"];
+};
+
+export type CommentByInput = {
+  id?: InputMaybe<Scalars["ID"]>;
+};
+
+/** Input to create a new CommentCommentRelatePostPost */
+export type CommentCommentRelatePostPostCreateInput = {
+  slug: Scalars["String"];
+  title: Scalars["String"];
+};
+
+/** Input to create a new CommentCommentRelatePostPost relation */
+export type CommentCommentRelatePostPostCreateRelationInput = {
+  create?: InputMaybe<CommentCommentRelatePostPostCreateInput>;
+  link?: InputMaybe<Scalars["ID"]>;
+};
+
+/** Input to update a CommentCommentRelatePostPost relation */
+export type CommentCommentRelatePostPostUpdateRelationInput = {
+  create?: InputMaybe<CommentCommentRelatePostPostCreateInput>;
+  link?: InputMaybe<Scalars["ID"]>;
+  unlink?: InputMaybe<Scalars["ID"]>;
+};
+
+export type CommentConnection = {
+  __typename?: "CommentConnection";
+  edges?: Maybe<Array<Maybe<CommentEdge>>>;
+  /** Information to aid in pagination */
+  pageInfo: PageInfo;
+};
+
+/** Input to create a new Comment */
+export type CommentCreateInput = {
+  message: Scalars["String"];
+  post?: InputMaybe<CommentCommentRelatePostPostCreateRelationInput>;
+};
+
+export type CommentCreatePayload = {
+  __typename?: "CommentCreatePayload";
+  comment?: Maybe<Comment>;
+};
+
+export type CommentDeletePayload = {
+  __typename?: "CommentDeletePayload";
+  deletedId: Scalars["ID"];
+};
+
+export type CommentEdge = {
+  __typename?: "CommentEdge";
+  cursor: Scalars["String"];
+  node: Comment;
+};
+
+/** Input to create a new Comment */
+export type CommentUpdateInput = {
+  message?: InputMaybe<Scalars["String"]>;
+  post?: InputMaybe<CommentCommentRelatePostPostUpdateRelationInput>;
+};
+
+export type CommentUpdatePayload = {
+  __typename?: "CommentUpdatePayload";
+  comment?: Maybe<Comment>;
+};
+
+export type Mutation = {
+  __typename?: "Mutation";
+  /** Create a Comment */
+  commentCreate?: Maybe<CommentCreatePayload>;
+  /** Delete a Comment by ID or unique field */
+  commentDelete?: Maybe<CommentDeletePayload>;
+  /** Update a Comment */
+  commentUpdate?: Maybe<CommentUpdatePayload>;
+  /** Create a Post */
+  postCreate?: Maybe<PostCreatePayload>;
+  /** Delete a Post by ID or unique field */
+  postDelete?: Maybe<PostDeletePayload>;
+  /** Update a Post */
+  postUpdate?: Maybe<PostUpdatePayload>;
+};
+
+export type MutationCommentCreateArgs = {
+  input: CommentCreateInput;
+};
+
+export type MutationCommentDeleteArgs = {
+  by: CommentByInput;
+};
+
+export type MutationCommentUpdateArgs = {
+  by: CommentByInput;
+  input: CommentUpdateInput;
+};
+
+export type MutationPostCreateArgs = {
+  input: PostCreateInput;
+};
+
+export type MutationPostDeleteArgs = {
+  by: PostByInput;
+};
+
+export type MutationPostUpdateArgs = {
+  by: PostByInput;
+  input: PostUpdateInput;
+};
+
+export type PageInfo = {
+  __typename?: "PageInfo";
+  endCursor?: Maybe<Scalars["String"]>;
+  hasNextPage: Scalars["Boolean"];
+  hasPreviousPage: Scalars["Boolean"];
+  startCursor?: Maybe<Scalars["String"]>;
+};
+
+export type Post = {
+  __typename?: "Post";
+  comments?: Maybe<CommentConnection>;
+  /** when the model was created */
+  createdAt: Scalars["DateTime"];
+  id: Scalars["ID"];
+  slug: Scalars["String"];
+  title: Scalars["String"];
+  /** when the model was updated */
+  updatedAt: Scalars["DateTime"];
+};
+
+export type PostCommentsArgs = {
+  after?: InputMaybe<Scalars["String"]>;
+  before?: InputMaybe<Scalars["String"]>;
+  first?: InputMaybe<Scalars["Int"]>;
+  last?: InputMaybe<Scalars["Int"]>;
+};
+
+export type PostByInput = {
+  id?: InputMaybe<Scalars["ID"]>;
+  slug?: InputMaybe<Scalars["String"]>;
+};
+
+/** Input to create a new PostCommentRelatePostComment */
+export type PostCommentRelatePostCommentCreateInput = {
+  message: Scalars["String"];
+};
+
+/** Input to create a new PostCommentRelatePostComment relation */
+export type PostCommentRelatePostCommentCreateRelationInput = {
+  create?: InputMaybe<PostCommentRelatePostCommentCreateInput>;
+  link?: InputMaybe<Scalars["ID"]>;
+};
+
+/** Input to update a PostCommentRelatePostComment relation */
+export type PostCommentRelatePostCommentUpdateRelationInput = {
+  create?: InputMaybe<PostCommentRelatePostCommentCreateInput>;
+  link?: InputMaybe<Scalars["ID"]>;
+  unlink?: InputMaybe<Scalars["ID"]>;
+};
+
+export type PostConnection = {
+  __typename?: "PostConnection";
+  edges?: Maybe<Array<Maybe<PostEdge>>>;
+  /** Information to aid in pagination */
+  pageInfo: PageInfo;
+};
+
+/** Input to create a new Post */
+export type PostCreateInput = {
+  comments?: InputMaybe<
+    Array<InputMaybe<PostCommentRelatePostCommentCreateRelationInput>>
+  >;
+  slug: Scalars["String"];
+  title: Scalars["String"];
+};
+
+export type PostCreatePayload = {
+  __typename?: "PostCreatePayload";
+  post?: Maybe<Post>;
+};
+
+export type PostDeletePayload = {
+  __typename?: "PostDeletePayload";
+  deletedId: Scalars["ID"];
+};
+
+export type PostEdge = {
+  __typename?: "PostEdge";
+  cursor: Scalars["String"];
+  node: Post;
+};
+
+/** Input to create a new Post */
+export type PostUpdateInput = {
+  comments?: InputMaybe<
+    Array<InputMaybe<PostCommentRelatePostCommentUpdateRelationInput>>
+  >;
+  slug?: InputMaybe<Scalars["String"]>;
+  title?: InputMaybe<Scalars["String"]>;
+};
+
+export type PostUpdatePayload = {
+  __typename?: "PostUpdatePayload";
+  post?: Maybe<Post>;
+};
+
+export type Query = {
+  __typename?: "Query";
+  /** Query a single Comment by an ID or a unique field */
+  comment?: Maybe<Comment>;
+  /** Paginated query to fetch the whole list of `Comment`. */
+  commentCollection?: Maybe<CommentConnection>;
+  /** Query a single Post by an ID or a unique field */
+  post?: Maybe<Post>;
+  /** Paginated query to fetch the whole list of `Post`. */
+  postCollection?: Maybe<PostConnection>;
+};
+
+export type QueryCommentArgs = {
+  by: CommentByInput;
+};
+
+export type QueryCommentCollectionArgs = {
+  after?: InputMaybe<Scalars["String"]>;
+  before?: InputMaybe<Scalars["String"]>;
+  first?: InputMaybe<Scalars["Int"]>;
+  last?: InputMaybe<Scalars["Int"]>;
+};
+
+export type QueryPostArgs = {
+  by: PostByInput;
+};
+
+export type QueryPostCollectionArgs = {
+  after?: InputMaybe<Scalars["String"]>;
+  before?: InputMaybe<Scalars["String"]>;
+  first?: InputMaybe<Scalars["Int"]>;
+  last?: InputMaybe<Scalars["Int"]>;
+};
+
+export type GetAllPostsQueryVariables = Exact<{
+  first: Scalars["Int"];
+}>;
+
+export type GetAllPostsQuery = {
+  __typename?: "Query";
+  postCollection?: {
+    __typename?: "PostConnection";
+    edges?: Array<{
+      __typename?: "PostEdge";
+      node: { __typename?: "Post"; id: string; title: string; slug: string };
+    } | null> | null;
+  } | null;
+};
+
+export type GetPostBySlugQueryVariables = Exact<{
+  slug: Scalars["String"];
+}>;
+
+export type GetPostBySlugQuery = {
+  __typename?: "Query";
+  post?: {
+    __typename?: "Post";
+    id: string;
+    title: string;
+    slug: string;
+  } | null;
+};
+
+export const GetAllPostsDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "GetAllPosts" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "first" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "postCollection" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "first" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "first" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "edges" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "node" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "id" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "title" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "slug" },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<GetAllPostsQuery, GetAllPostsQueryVariables>;
+export const GetPostBySlugDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "GetPostBySlug" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "slug" } },
+          type: {
+            kind: "NonNullType",
+            type: {
+              kind: "NamedType",
+              name: { kind: "Name", value: "String" },
+            },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "post" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "by" },
+                value: {
+                  kind: "ObjectValue",
+                  fields: [
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "slug" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "slug" },
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "title" } },
+                { kind: "Field", name: { kind: "Name", value: "slug" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<GetPostBySlugQuery, GetPostBySlugQueryVariables>;
+```
+
+## gql/index.ts
+
+```ts
+export * from "./gql";
+export * from "./fragment-masking";
+```
+
+## lib/grafbase.ts
+
+```ts
+import { GraphQLClient } from "graphql-request";
+export { gql } from "graphql-request";
+
+export const grafbase = new GraphQLClient(
+  process.env.GRAFBASE_API_URL as string,
+  {
+    headers: {
+      "x-api-key": process.env.GRAFBASE_API_KEY as string,
+    },
+    fetch,
+  },
+);
+```
+
+## package.json
+
+```json
+{
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "backend": "npx grafbase@latest dev & yarn codegen",
+    "build": "next build",
+    "start": "next start",
+    "codegen": "graphql-codegen --watch -r dotenv/config"
+  },
+  "dependencies": {
+    "@types/node": "18.11.9",
+    "@types/react": "18.2.8",
+    "@types/react-dom": "18.2.7",
+    "graphql": "16.8.1",
+    "graphql-request": "5.0.0",
+    "next": "latest",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "typescript": "4.8.4"
+  },
+  "devDependencies": {
+    "@graphql-codegen/cli": "2.13.12",
+    "@graphql-codegen/client-preset": "1.1.3",
+    "@tailwindcss/typography": "0.5.8",
+    "autoprefixer": "10.4.13",
+    "postcss": "8.4.19",
+    "tailwindcss": "3.2.4"
+  }
+}
+```

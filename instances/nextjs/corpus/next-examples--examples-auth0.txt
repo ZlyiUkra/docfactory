@@ -1,0 +1,486 @@
+# Example: auth0
+# джерело: https://github.com/vercel/next.js/tree/v16.3.8/examples/auth0
+# отримано: 2026-10-01
+# версія: 16.3.8
+
+## Next.js and Auth0 Example
+
+This example shows how you can use `@auth0/nextjs-auth` to easily add authentication support to your Next.js application. It tries to cover a few topics:
+
+- Signing in
+- Signing out
+- Loading the user on the server side and adding it as part of SSR (`pages/advanced/ssr-profile.tsx`)
+- Loading the user on the client side and using fast/cached SSR pages (`pages/index.tsx`)
+- Loading the user on the client side and checking authentication CSR pages (`pages/profile.tsx`)
+- Loading the user on the client side by accessing API (Serverless function) CSR pages (`pages/advanced/api-profile.tsx`)
+- Creates route handlers under the hood that perform different parts of the authentication flow ([`pages/auth/[...auth0].tsx`](pages/auth/[...auth0].tsx))
+
+Read more: https://auth0.com/blog/ultimate-guide-nextjs-authentication-auth0/
+
+## How to use
+
+Execute `create-next-app` with npm, Yarn, or pnpm to bootstrap the example:
+
+```bash
+npx create-next-app --example auth0 auth0-app
+```
+
+```bash
+yarn create next-app --example auth0 auth0-app
+```
+
+```bash
+pnpm create next-app --example auth0 auth0-app
+```
+
+## Configuring Auth0
+
+1. Go to the Auth0 dashboard and create a new application of type _Regular Web Applications_ and make sure to configure the following
+2. Go to the settings page of the application
+3. Configure the following settings:
+
+- _Allowed Callback URLs_: Should be set to `http://localhost:3000/api/auth/callback` when testing locally or typically to `https://myapp.com/api/auth/callback` when deploying your application.
+- _Allowed Logout URLs_: Should be set to `http://localhost:3000/` when testing locally or typically to `https://myapp.com/` when deploying your application.
+
+4. Save the settings
+
+### Set up environment variables
+
+To connect the app with Auth0, you'll need to add the settings from your Auth0 application as environment variables
+
+Copy the `.env.local.example` file in this directory to `.env.local` (which will be ignored by Git):
+
+```bash
+cp .env.local.example .env.local
+```
+
+Then, open `.env.local` and add the missing environment variables:
+
+- `AUTH0_ISSUER_BASE_URL` - Can be found in the Auth0 dashboard under `settings`. (Should be prefixed with `https://`)
+- `AUTH0_CLIENT_ID` - Can be found in the Auth0 dashboard under `settings`.
+- `AUTH0_CLIENT_SECRET` - Can be found in the Auth0 dashboard under `settings`.
+- `AUTH0_BASE_URL` - The base url of the application.
+- `AUTH0_SECRET` - Has to be at least 32 characters. You can use this generator to generate a value.
+
+## Deploy on Vercel
+
+You can deploy this app to the cloud with Vercel (Documentation).
+
+### Deploy Your Local Project
+
+To deploy your local project to Vercel, push it to GitHub/GitLab/Bitbucket and import to Vercel.
+
+**Important**: When you import your project on Vercel, make sure to click on **Environment Variables** and set them to match your `.env.local` file.
+
+## components/header.tsx
+
+```tsx
+import Link from "next/link";
+
+type HeaderProps = {
+  user?: any;
+  loading: boolean;
+};
+
+const Header = ({ user, loading }: HeaderProps) => {
+  return (
+    <header>
+      <nav>
+        <ul>
+          <li>
+            <Link href="/">Home</Link>
+          </li>
+          <li>
+            <Link href="/about">About</Link>
+          </li>
+          <li>
+            <Link href="/advanced/api-profile">
+              API rendered profile (advanced)
+            </Link>
+          </li>
+          {!loading &&
+            (user ? (
+              <>
+                <li>
+                  <Link href="/profile">Client rendered profile</Link>
+                </li>
+                <li>
+                  <Link href="/advanced/ssr-profile">
+                    Server rendered profile (advanced)
+                  </Link>
+                </li>
+                <li>
+                  <a href="/api/auth/logout">Logout</a>
+                </li>
+              </>
+            ) : (
+              <li>
+                <a href="/api/auth/login">Login</a>
+              </li>
+            ))}
+        </ul>
+      </nav>
+
+      <style jsx>{`
+        header {
+          padding: 0.2rem;
+          color: #fff;
+          background-color: #333;
+        }
+        nav {
+          max-width: 42rem;
+          margin: 1.5rem auto;
+        }
+        ul {
+          display: flex;
+          list-style: none;
+          margin-left: 0;
+          padding-left: 0;
+        }
+        li {
+          margin-right: 1rem;
+          padding-right: 2rem;
+        }
+        li:nth-child(3) {
+          margin-right: auto;
+        }
+        a {
+          color: #fff;
+          text-decoration: none;
+        }
+        button {
+          font-size: 1rem;
+          color: #fff;
+          cursor: pointer;
+          border: none;
+          background: none;
+        }
+      `}</style>
+    </header>
+  );
+};
+
+export default Header;
+```
+
+## components/layout.tsx
+
+```tsx
+import Head from "next/head";
+import Header from "./header";
+
+type LayoutProps = {
+  user?: any;
+  loading?: boolean;
+  children: React.ReactNode;
+};
+
+const Layout = ({ user, loading = false, children }: LayoutProps) => {
+  return (
+    <>
+      <Head>
+        <title>Next.js with Auth0</title>
+      </Head>
+
+      <Header user={user} loading={loading} />
+
+      <main>
+        <div className="container">{children}</div>
+      </main>
+
+      <style jsx>{`
+        .container {
+          max-width: 42rem;
+          margin: 1.5rem auto;
+        }
+      `}</style>
+      <style jsx global>{`
+        body {
+          margin: 0;
+          color: #333;
+          font-family:
+            -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+            Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+        }
+      `}</style>
+    </>
+  );
+};
+
+export default Layout;
+```
+
+## interfaces/index.ts
+
+```ts
+export type User = {
+  email: string;
+  email_verified: boolean;
+  name: string;
+  nickname: string;
+  picture: string;
+  sub: string;
+  updated_at: string;
+};
+```
+
+## package.json
+
+```json
+{
+  "private": true,
+  "scripts": {
+    "dev": "next",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@auth0/nextjs-auth0": "^2.2.0",
+    "next": "latest",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@types/react": "^18.0.14",
+    "@types/react-dom": "^18.0.5",
+    "typescript": "^4.7.4"
+  }
+}
+```
+
+## pages/_app.tsx
+
+```tsx
+import { UserProvider } from "@auth0/nextjs-auth0/client";
+
+export default function App({ Component, pageProps }) {
+  // optionally pass the 'user' prop from pages that require server-side
+  // rendering to prepopulate the 'useUser' hook.
+
+  const { user } = pageProps;
+
+  return (
+    <UserProvider user={user}>
+      <Component {...pageProps} />
+    </UserProvider>
+  );
+}
+```
+
+## pages/about.tsx
+
+```tsx
+import { useUser } from "@auth0/nextjs-auth0/client";
+import Layout from "../components/layout";
+
+const About = () => {
+  const { user, isLoading } = useUser();
+
+  return (
+    <Layout user={user} loading={isLoading}>
+      <h1>About</h1>
+      <p>
+        This project shows different ways to display Profile info: using{" "}
+        <i>Client rendered</i>, <i>Server rendered</i>, and <i>API rendered</i>
+      </p>
+      <p>
+        Navigating between this page and <i>Home</i> is always pretty fast.
+        However, when you navigate to the <i>Server rendered profile</i> page it
+        takes more time because it uses SSR to fetch the user and then to
+        display it
+      </p>
+    </Layout>
+  );
+};
+
+export default About;
+```
+
+## pages/advanced/api-profile.tsx
+
+```tsx
+import { useEffect, useState } from "react";
+import { useUser } from "@auth0/nextjs-auth0/client";
+import Layout from "../../components/layout";
+
+const ApiProfile = () => {
+  const { user, isLoading } = useUser();
+
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      const res = await fetch("/api/protected-api");
+
+      const data = await res.json();
+
+      setData(data);
+    })();
+  }, []);
+
+  return (
+    <Layout user={user} loading={isLoading}>
+      <h1>Profile</h1>
+
+      <div>
+        <h3>Public page (client rendered)</h3>
+        <p>We are fetching data on the client-side :</p>
+        <p>By making request to '/api/protected-api' serverless function</p>
+        <p>so without a valid session cookie will fail</p>
+        <p>{JSON.stringify(data)}</p>
+      </div>
+    </Layout>
+  );
+};
+
+// Public route.(CSR) also accessing API from the client-side.
+// data is not cached when redirecting between pages.
+export default ApiProfile;
+```
+
+## pages/advanced/ssr-profile.tsx
+
+```tsx
+import { withPageAuthRequired } from "@auth0/nextjs-auth0";
+import Layout from "../../components/layout";
+import { User } from "../../interfaces";
+
+type ProfileProps = {
+  user: User;
+};
+
+export default function Profile({ user }: ProfileProps) {
+  return (
+    <Layout user={user}>
+      <h1>Profile</h1>
+
+      <div>
+        <h3>Profile (server rendered)</h3>
+        <img src={user.picture} alt="user picture" />
+        <p>nickname: {user.nickname}</p>
+        <p>name: {user.name}</p>
+      </div>
+    </Layout>
+  );
+}
+
+// Protected route, checking authentication status before rendering the page.(SSR)
+// It's slower than a static page with client side authentication
+export const getServerSideProps = withPageAuthRequired();
+```
+
+## pages/api/auth/[...auth0].tsx
+
+```tsx
+import { handleAuth } from "@auth0/nextjs-auth0";
+
+export default handleAuth();
+```
+
+## pages/api/protected-api.ts
+
+```ts
+import { withApiAuthRequired, getSession } from "@auth0/nextjs-auth0";
+
+// Serverless function
+// Protected API, requests to '/api/protected-api' without a valid session cookie will fail
+
+async function handle(req, res) {
+  const { user } = await getSession(req, res);
+
+  try {
+    res.status(200).json({
+      session: "true",
+      id: user.sub,
+      nickname: user.nickname,
+    });
+  } catch (e) {
+    res.status(500).json({ error: "Unable to fetch", description: e });
+  }
+}
+
+export default withApiAuthRequired(handle);
+```
+
+## pages/index.tsx
+
+```tsx
+import { useUser } from "@auth0/nextjs-auth0/client";
+import Layout from "../components/layout";
+
+const Home = () => {
+  const { user, isLoading } = useUser();
+
+  return (
+    <Layout user={user} loading={isLoading}>
+      <h1>Next.js and Auth0 Example</h1>
+
+      {isLoading && <p>Loading login info...</p>}
+
+      {!isLoading && !user && (
+        <>
+          <p>
+            To test the login click in <i>Login</i>
+          </p>
+          <p>
+            Once you have logged in you should be able to navigate between
+            protected routes: client rendered, server rendered profile pages,
+            and <i>Logout</i>
+          </p>
+        </>
+      )}
+
+      {user && (
+        <>
+          <h4>Rendered user info on the client</h4>
+          <img src={user.picture} alt="user picture" />
+          <p>nickname: {user.nickname}</p>
+          <p>name: {user.name}</p>
+        </>
+      )}
+    </Layout>
+  );
+};
+
+// fast/cached SSR page
+export default Home;
+```
+
+## pages/profile.tsx
+
+```tsx
+import { withPageAuthRequired } from "@auth0/nextjs-auth0/client";
+import Layout from "../components/layout";
+import { User } from "../interfaces";
+
+type ProfileCardProps = {
+  user: User;
+};
+
+const ProfileCard = ({ user }: ProfileCardProps) => {
+  return (
+    <>
+      <h1>Profile</h1>
+
+      <div>
+        <h3>Profile (client rendered)</h3>
+        <img src={user.picture} alt="user picture" />
+        <p>nickname: {user.nickname}</p>
+        <p>name: {user.name}</p>
+      </div>
+    </>
+  );
+};
+
+const Profile = ({ user, isLoading }) => {
+  return (
+    <Layout user={user} loading={isLoading}>
+      {isLoading ? <>Loading...</> : <ProfileCard user={user} />}
+    </Layout>
+  );
+};
+
+// Protected route, checking user authentication client-side.(CSR)
+export default withPageAuthRequired(Profile);
+```

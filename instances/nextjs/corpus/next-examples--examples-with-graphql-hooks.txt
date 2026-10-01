@@ -1,0 +1,151 @@
+# Example: with-graphql-hooks
+# джерело: https://github.com/vercel/next.js/tree/v16.3.8/examples/with-graphql-hooks
+# отримано: 2026-10-01
+# версія: 16.3.8
+
+## GraphQL Hooks Example
+
+GraphQL Hooks is a library from NearForm that intends to be a minimal hooks-first GraphQL client, providing a similar API to Apollo.
+
+You'll see this shares the same layout as the `with-apollo` example, this is so you can compare the two side by side. The app itself should also look identical.
+
+This started life as a copy of the `with-apollo` example. We then stripped out Apollo and replaced it with `graphql-hooks`. This was mostly as an exercise in ensuring basic functionality could be achieved in a similar way to Apollo. The bundle size of `graphql-hooks` is tiny in comparison to Apollo and should cover a fair amount of use cases.
+
+## Deploy your own
+
+Deploy with Vercel
+
+## How to use
+
+Execute `create-next-app` with npm, yarn, or pnpm to bootstrap the example:
+
+```bash
+npx create-next-app --example with-graphql-hooks with-graphql-hooks-app
+```
+
+```bash
+yarn create next-app --example with-graphql-hooks with-graphql-hooks-app
+```
+
+```bash
+pnpm create next-app --example with-graphql-hooks with-graphql-hooks-app
+```
+
+Deploy it to the cloud with Vercel (Documentation).
+
+## package.json
+
+```json
+{
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "graphql-hooks": "^7.0.0",
+    "next": "^14.1.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.5",
+    "@types/react": "^18.2.74",
+    "@types/react-dom": "^18.2.24",
+    "typescript": "^5.4.4"
+  }
+}
+```
+
+## src/app/layout.tsx
+
+```tsx
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+
+const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: "Next.js with GraphQL Hooks",
+  description: "Next.js example with GraphQL Hooks",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <body className={inter.className}>{children}</body>
+    </html>
+  );
+}
+```
+
+## src/app/page.tsx
+
+```tsx
+import { ClientContextProvider, RepoList } from "@/client-components";
+
+export default async function Home() {
+  return (
+    <ClientContextProvider>
+      <RepoList />
+    </ClientContextProvider>
+  );
+}
+```
+
+## src/client-components/client-context-provider.tsx
+
+```tsx
+import { GraphQLClient, ClientContext } from "graphql-hooks";
+
+export const client = new GraphQLClient({
+  url: "https://main--spacex-l4uc6p.apollographos.net/graphql",
+});
+
+export function ClientContextProvider({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <ClientContext.Provider value={client}>{children}</ClientContext.Provider>
+  );
+}
+```
+
+## src/client-components/index.ts
+
+```ts
+"use client";
+export { ClientContextProvider } from "./client-context-provider";
+export { RepoList } from "./repo-list";
+```
+
+## src/client-components/repo-list.tsx
+
+```tsx
+import { useQuery } from "graphql-hooks";
+
+const getRepo = /* GraphQL */ `
+  query {
+    launchLatest {
+      mission_name
+    }
+  }
+`;
+
+export function RepoList() {
+  const { loading, error, data } = useQuery(getRepo);
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error: {JSON.stringify(error)}</p>;
+
+  return <div>{data.launchLatest.mission_name}</div>;
+}
+```

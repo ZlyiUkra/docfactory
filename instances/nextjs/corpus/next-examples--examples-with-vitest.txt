@@ -1,0 +1,328 @@
+# Example: with-vitest
+# джерело: https://github.com/vercel/next.js/tree/v16.3.8/examples/with-vitest
+# отримано: 2026-10-01
+# версія: 16.3.8
+
+## Vitest
+
+This example shows how to use Vitest with Next.js.
+
+This includes Next.js' built-in support for Global CSS, CSS Modules and TypeScript. This example also shows how to use Vitest with the App Router and React Server Components.
+
+> **Note:** Since tests can be co-located alongside other files inside the App Router, we have placed those tests in `app/` to demonstrate this behavior (which is different than `pages/`). You can still place all tests in `__tests__` if you prefer.
+
+## Deploy your own
+
+Deploy with Vercel
+
+## How to use
+
+Execute `create-next-app` with npm, Yarn, or pnpm to bootstrap the example:
+
+```bash
+npx create-next-app --example with-vitest with-vitest-app
+```
+
+```bash
+yarn create next-app --example with-vitest with-vitest-app
+```
+
+```bash
+pnpm create next-app --example with-vitest with-vitest-app
+```
+
+Deploy it to the cloud with Vercel (Documentation).
+
+## Running Tests
+
+```bash
+npm test
+```
+
+```bash
+yarn test
+```
+
+```bash
+pnpm test
+```
+
+Deploy it to the cloud with Vercel (Documentation).
+
+## __tests__/Home.test.tsx
+
+```tsx
+import { expect, test } from "vitest";
+import { render, screen, within } from "@testing-library/react";
+import Home from "../pages/home";
+
+test("Pages Router", () => {
+  render(<Home />);
+  const main = within(screen.getByRole("main"));
+  expect(
+    main.getByRole("heading", { level: 1, name: /welcome to next\.js!/i }),
+  ).toBeDefined();
+
+  const footer = within(screen.getByRole("contentinfo"));
+  const link = within(footer.getByRole("link"));
+  expect(link.getByRole("img", { name: /vercel logo/i })).toBeDefined();
+});
+```
+
+## app/blog/[slug]/page.test.tsx
+
+```tsx
+import { expect, test } from "vitest";
+import { render, screen } from "@testing-library/react";
+import Page from "./page";
+
+test("App Router: Works with dynamic route segments", () => {
+  render(<Page params={{ slug: "Test" }} />);
+  expect(
+    screen.getByRole("heading", { level: 1, name: "Slug: Test" }),
+  ).toBeDefined();
+});
+```
+
+## app/blog/[slug]/page.tsx
+
+```tsx
+type Params = {
+  params: {
+    slug: string;
+  };
+};
+
+export async function generateMetadata({ params }: Params) {
+  return { title: `Post: ${params.slug}` };
+}
+
+export default function Page({ params }: Params) {
+  return <h1>Slug: {params.slug}</h1>;
+}
+```
+
+## app/counter.test.tsx
+
+```tsx
+import { expect, test } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import Counter from "./counter";
+
+test("App Router: Works with Client Components", () => {
+  render(<Counter />);
+  expect(screen.getByRole("heading", { level: 2, name: "0" })).toBeDefined();
+  fireEvent.click(screen.getByRole("button"));
+  expect(screen.getByRole("heading", { level: 2, name: "1" })).toBeDefined();
+});
+```
+
+## app/counter.tsx
+
+```tsx
+"use client";
+
+import { useState } from "react";
+
+export default function Counter() {
+  const [count, setCount] = useState(0);
+  return (
+    <>
+      <h2>{count}</h2>
+      <button type="button" onClick={() => setCount(count + 1)}>
+        +
+      </button>
+    </>
+  );
+}
+```
+
+## app/layout.tsx
+
+```tsx
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+## app/page.test.tsx
+
+```tsx
+import { expect, test } from "vitest";
+import { render, screen } from "@testing-library/react";
+import Page from "./page";
+
+test("App Router: Works with Server Components", () => {
+  render(<Page />);
+  expect(
+    screen.getByRole("heading", { level: 1, name: "App Router" }),
+  ).toBeDefined();
+});
+```
+
+## app/page.tsx
+
+```tsx
+export const metadata = {
+  title: "App Router",
+};
+
+export default function Page() {
+  return <h1>App Router</h1>;
+}
+```
+
+## app/utils/add.test.ts
+
+```ts
+import { expect, test, vi } from "vitest";
+import { add } from "./add";
+
+// Disables a package that checks that code is only executed on the server side.
+// Also, this mock can be defined in the Vitest setup file.
+vi.mock("server-only", () => {
+  return {};
+});
+
+test("Test functions that import server-only", () => {
+  expect(add(1, 2)).toBe(3);
+});
+```
+
+## app/utils/add.ts
+
+```ts
+import "server-only";
+
+export function add(a: number, b: number) {
+  return a + b;
+}
+```
+
+## package.json
+
+```json
+{
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "next": "latest",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "server-only": "^0.0.1"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.3.0",
+    "@types/node": "^20.19.11",
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "@vitejs/plugin-react": "^5.0.1",
+    "jsdom": "^26.1.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}
+```
+
+## pages/_app.tsx
+
+```tsx
+import "../styles/globals.css";
+import type { AppProps } from "next/app";
+
+export default function MyApp({ Component, pageProps }: AppProps) {
+  return <Component {...pageProps} />;
+}
+```
+
+## pages/home/index.tsx
+
+```tsx
+import type { NextPage } from "next";
+import Head from "next/head";
+import Image from "next/image";
+import styles from "../../styles/Home.module.css";
+
+const Home: NextPage = () => {
+  return (
+    <div className={styles.container}>
+      <Head>
+        <title>Create Next App</title>
+        <meta name="description" content="Generated by create next app" />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+
+      <main className={styles.main}>
+        <h1 className={styles.title}>
+          Welcome to <a href="https://nextjs.org">Next.js!</a>
+        </h1>
+
+        <p className={styles.description}>
+          Get started by editing{" "}
+          <code className={styles.code}>pages/index.tsx</code>
+        </p>
+
+        <div className={styles.grid}>
+          <a href="https://nextjs.org/docs" className={styles.card}>
+            <h2>Documentation &rarr;</h2>
+            <p>Find in-depth information about Next.js features and API.</p>
+          </a>
+
+          <a href="https://nextjs.org/learn" className={styles.card}>
+            <h2>Learn &rarr;</h2>
+            <p>Learn about Next.js in an interactive course with quizzes!</p>
+          </a>
+
+          <a
+            href="https://github.com/vercel/next.js/tree/canary/examples"
+            className={styles.card}
+          >
+            <h2>Examples &rarr;</h2>
+            <p>Discover and deploy boilerplate example Next.js projects.</p>
+          </a>
+
+          <a
+            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.card}
+          >
+            <h2>Deploy &rarr;</h2>
+            <p>
+              Instantly deploy your Next.js site to a public URL with Vercel.
+            </p>
+          </a>
+        </div>
+      </main>
+
+      <footer className={styles.footer}>
+        <a
+          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Powered by{" "}
+          <span className={styles.logo}>
+            <Image src="/vercel.svg" alt="Vercel Logo" width={72} height={16} />
+          </span>
+        </a>
+      </footer>
+    </div>
+  );
+};
+
+export default Home;
+```

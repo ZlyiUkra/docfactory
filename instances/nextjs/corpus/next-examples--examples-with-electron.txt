@@ -1,0 +1,175 @@
+# Example: with-electron
+# джерело: https://github.com/vercel/next.js/tree/v16.3.8/examples/with-electron
+# отримано: 2026-10-01
+# версія: 16.3.8
+
+## Electron application example
+
+This example shows how you can use Next.js inside an Electron application to avoid a lot of configuration. It uses the Next.js router as view and server-render to speed up the initial render of the application.
+
+For development it's going to run an HTTP server and let Next.js handle routing. In production it uses `output: 'export'` to pre-generate HTML static files and uses them in your app instead of running an HTTP server.
+
+**For detailed documentation about how to build Electron apps with Next.js, see this blog post!**
+
+## How to use
+
+Execute `create-next-app` with npm, Yarn, or pnpm to bootstrap the example:
+
+```bash
+npx create-next-app --example with-electron with-electron-app
+```
+
+```bash
+yarn create next-app --example with-electron with-electron-app
+```
+
+```bash
+pnpm create next-app --example with-electron with-electron-app
+```
+
+You can create the production app using `npm run dist`.
+
+## main/index.js
+
+```js
+// Native
+const { join } = require("path");
+const { format } = require("url");
+
+// Packages
+const { BrowserWindow, app, ipcMain } = require("electron");
+const isDev = require("electron-is-dev");
+const prepareNext = require("electron-next");
+
+// Prepare the renderer once the app is ready
+app.on("ready", async () => {
+  await prepareNext("./renderer");
+
+  const mainWindow = new BrowserWindow({
+    width: 800,
+    height: 600,
+    webPreferences: {
+      nodeIntegration: false,
+      preload: join(__dirname, "preload.js"),
+    },
+  });
+
+  const url = isDev
+    ? "http://localhost:8000"
+    : format({
+        pathname: join(__dirname, "../renderer/out/index.html"),
+        protocol: "file:",
+        slashes: true,
+      });
+
+  mainWindow.loadURL(url);
+});
+
+// Quit the app once all windows are closed
+app.on("window-all-closed", app.quit);
+
+// listen the channel `message` and resend the received message to the renderer process
+ipcMain.on("message", (event, message) => {
+  event.sender.send("message", message);
+});
+```
+
+## main/preload.js
+
+```js
+const { ipcRenderer, contextBridge } = require("electron");
+
+contextBridge.exposeInMainWorld("electron", {
+  message: {
+    send: (payload) => ipcRenderer.send("message", payload),
+    on: (handler) => ipcRenderer.on("message", handler),
+    off: (handler) => ipcRenderer.off("message", handler),
+  },
+});
+```
+
+## package.json
+
+```json
+{
+  "private": true,
+  "productName": "ElectronNext",
+  "main": "main/index.js",
+  "scripts": {
+    "clean": "rimraf dist renderer/.next renderer/out",
+    "start": "electron .",
+    "build": "next build renderer",
+    "pack-app": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder"
+  },
+  "build": {
+    "asar": true,
+    "files": [
+      "main",
+      "renderer/out"
+    ]
+  },
+  "devDependencies": {
+    "electron": "^12.0.2",
+    "electron-builder": "^23.0.3",
+    "next": "latest",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "dependencies": {
+    "electron-is-dev": "^1.1.0",
+    "electron-next": "^3.1.5"
+  }
+}
+```
+
+## renderer/pages/index.js
+
+```js
+import { useState, useEffect } from "react";
+
+const Home = () => {
+  const [input, setInput] = useState("");
+  const [message, setMessage] = useState(null);
+
+  useEffect(() => {
+    const handleMessage = (event, message) => setMessage(message);
+    window.electron.message.on(handleMessage);
+
+    return () => {
+      window.electron.message.off(handleMessage);
+    };
+  }, []);
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    window.electron.message.send(input);
+    setMessage(null);
+  };
+
+  return (
+    <div>
+      <h1>Hello Electron!</h1>
+
+      {message && <p>{message}</p>}
+
+      <form onSubmit={handleSubmit}>
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+        />
+      </form>
+
+      <style jsx>{`
+        h1 {
+          color: red;
+          font-size: 50px;
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default Home;
+```

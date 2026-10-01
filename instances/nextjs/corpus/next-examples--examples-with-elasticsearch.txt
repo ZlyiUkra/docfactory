@@ -1,0 +1,313 @@
+# Example: with-elasticsearch
+# джерело: https://github.com/vercel/next.js/tree/v16.3.8/examples/with-elasticsearch
+# отримано: 2026-10-01
+# версія: 16.3.8
+
+## Example app using Elasticsearch
+
+Elasticsearch is a distributed, RESTful search and analytics engine. As the heart of the Elastic Stack, it centrally stores your data for lightning fast search, fine‑tuned relevancy, and powerful analytics that scale with ease. This example will show you how to connect to and use Elasticsearch as your search backend for your Next.js app.
+
+If you want to learn more about Elasticsearch, visit the following pages:
+
+- Elastic Stack
+- Elastic Documentation
+
+## Deploy your own
+
+Deploy with Vercel
+
+## How to use
+
+Execute `create-next-app` with npm, Yarn, or pnpm to bootstrap the example:
+
+```bash
+npx create-next-app --example with-elasticsearch with-elasticsearch-app
+```
+
+```bash
+yarn create next-app --example with-elasticsearch with-elasticsearch-app
+```
+
+```bash
+pnpm create next-app --example with-elasticsearch with-elasticsearch-app
+```
+
+## Configuration
+
+### Set up Elasticsearch
+
+Set up a Elasticsearch either locally or with Elastic Cloud for free.
+
+### Set up environment variables
+
+Copy the `env.local.example` file in this directory to `.env.local` (which will be ignored by Git):
+
+```bash
+cp .env.local.example .env.local
+```
+
+Set each variable on `.env.local`:
+
+- `ESS_CLOUD_ID` - URL for the Elasticsearch instance, if you are using Elastic Cloud you can find this in the Elastic Cloud console.
+- `ESS_CLOUD_USERNAME` - The username for the Elasticsearch instance you have created, if you are using default user it would be `elastic`.
+- `ESS_CLOUD_PASSWORD` - Password for the Elasticsearch instance
+
+### Run Next.js in development mode
+
+```bash
+npm install
+npm run dev
+
+# or
+
+yarn install
+yarn dev
+```
+
+Your app should be up and running on http://localhost:3000! If it doesn't work, post on GitHub discussions.
+
+Please ensure that you have configured the env variables in the `.env.local`, if not you will see the message "You are not connected to Elasticsearch!" in the main page.
+
+If you see that you are connected, you can refer to the Elasticsearch NodeJS language client docs for further instructions on querying Elasticsearch.
+
+## Deploy on Vercel
+
+You can deploy this app to the cloud with Vercel (Documentation).
+
+#### Deploy Your Local Project
+
+To deploy your local project to Vercel, push it to GitHub/GitLab/Bitbucket and import to Vercel.
+
+**Important**: When you import your project on Vercel, make sure to click on **Environment Variables** and set them to match your `.env.local` file.
+
+#### Deploy from Our Template
+
+Alternatively, you can deploy using our template by clicking on the Deploy button below.
+
+Deploy with Vercel
+
+## lib/elasticsearch.ts
+
+```ts
+import { Client } from "@elastic/elasticsearch";
+
+export async function connectToElasticsearch() {
+  const ESS_CLOUD_ID = process.env.ESS_CLOUD_ID;
+  const ESS_CLOUD_USERNAME = process.env.ESS_CLOUD_USERNAME;
+  const ESS_CLOUD_PASSWORD = process.env.ESS_CLOUD_PASSWORD;
+
+  if (!ESS_CLOUD_ID || !ESS_CLOUD_USERNAME || !ESS_CLOUD_PASSWORD) {
+    return "ERR_ENV_NOT_DEFINED";
+  }
+
+  return new Client({
+    cloud: {
+      id: ESS_CLOUD_ID,
+    },
+    auth: {
+      username: ESS_CLOUD_USERNAME,
+      password: ESS_CLOUD_PASSWORD,
+    },
+  });
+}
+```
+
+## package.json
+
+```json
+{
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@elastic/elasticsearch": "^8.6.0",
+    "next": "latest",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.18",
+    "@types/react": "^18.0.26",
+    "@types/react-dom": "^18.0.10",
+    "typescript": "^4.8.2"
+  }
+}
+```
+
+## pages/_app.tsx
+
+```tsx
+import type { AppProps } from "next/app";
+import "@/styles/globals.css";
+
+export default function App({ Component, pageProps }: AppProps) {
+  return <Component {...pageProps} />;
+}
+```
+
+## pages/index.tsx
+
+```tsx
+import type { InferGetServerSidePropsType } from "next";
+import Head from "next/head";
+import Image from "next/image";
+import styles from "@/styles/Home.module.css";
+import { Inter } from "next/font/google";
+import { connectToElasticsearch } from "@/lib/elasticsearch";
+
+const inter = Inter({ subsets: ["latin"] });
+
+type HomePageProps = InferGetServerSidePropsType<typeof getServerSideProps>;
+
+export default function Home({ isConnected }: HomePageProps) {
+  const connectionStatus = isConnected ? (
+    <p>You are connected to Elasticsearch</p>
+  ) : (
+    <p>
+      You are NOT connected to Elasticsearch. Check the{" "}
+      <code className={styles.code}>README.md</code> for instructions.
+    </p>
+  );
+
+  return (
+    <>
+      <Head>
+        <title>Create Next App</title>
+        <meta name="description" content="Generated by create next app" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+      <main className={styles.main}>
+        <div className={styles.description}>
+          <p>
+            Get started by editing&nbsp;
+            <code className={styles.code}>pages/index.tsx</code>
+          </p>
+          <div>
+            <a
+              href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              By{" "}
+              <Image
+                src="/vercel.svg"
+                alt="Vercel Logo"
+                className={styles.vercelLogo}
+                width={100}
+                height={24}
+                priority
+              />
+            </a>
+          </div>
+        </div>
+
+        <div className={styles.center} style={{ paddingBottom: 0 }}>
+          <Image
+            className={styles.logo}
+            src="/next.svg"
+            alt="Next.js Logo"
+            width={180}
+            height={37}
+            priority
+          />
+          <div className={styles.thirteen}>
+            <Image
+              src="/thirteen.svg"
+              alt="13"
+              width={40}
+              height={31}
+              priority
+            />
+          </div>
+        </div>
+
+        <div
+          className={`${styles.center} ${inter.className}`}
+          style={{ paddingBlock: 20 }}
+        >
+          <h2>with Elasticsearch</h2>
+        </div>
+
+        <div className={`${styles.center} ${styles.status}`}>
+          {connectionStatus}
+        </div>
+
+        <div className={styles.grid}>
+          <a
+            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
+            className={styles.card}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <h2 className={inter.className}>
+              Docs <span>-&gt;</span>
+            </h2>
+            <p className={inter.className}>
+              Find in-depth information about Next.js features and&nbsp;API.
+            </p>
+          </a>
+
+          <a
+            href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
+            className={styles.card}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <h2 className={inter.className}>
+              Learn <span>-&gt;</span>
+            </h2>
+            <p className={inter.className}>
+              Learn about Next.js in an interactive course with&nbsp;quizzes!
+            </p>
+          </a>
+
+          <a
+            href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
+            className={styles.card}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <h2 className={inter.className}>
+              Templates <span>-&gt;</span>
+            </h2>
+            <p className={inter.className}>
+              Discover and deploy boilerplate example Next.js&nbsp;projects.
+            </p>
+          </a>
+
+          <a
+            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
+            className={styles.card}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <h2 className={inter.className}>
+              Deploy <span>-&gt;</span>
+            </h2>
+            <p className={inter.className}>
+              Instantly deploy your Next.js site to a shareable URL
+              with&nbsp;Vercel.
+            </p>
+          </a>
+        </div>
+      </main>
+    </>
+  );
+}
+
+export const getServerSideProps = async () => {
+  let isConnected: boolean = false;
+  const client = await connectToElasticsearch();
+  if (client !== "ERR_ENV_NOT_DEFINED") {
+    isConnected = true;
+  }
+  return {
+    props: { isConnected },
+  };
+};
+```

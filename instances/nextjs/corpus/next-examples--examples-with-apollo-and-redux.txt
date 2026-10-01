@@ -1,0 +1,850 @@
+# Example: with-apollo-and-redux
+# джерело: https://github.com/vercel/next.js/tree/v16.3.8/examples/with-apollo-and-redux
+# отримано: 2026-10-01
+# версія: 16.3.8
+
+## Apollo & Redux Example
+
+This example serves as a conduit if you were using Apollo 1.X with Redux, and are migrating to Apollo 3.x, however, you have chosen not to manage your entire application state within Apollo (`apollo-link-state`).
+
+In 3.0.0, Apollo serves out-of-the-box support for redux in favor of Apollo's state management. This example aims to be an amalgamation of the `with-apollo` and `with-redux` examples.
+
+To inspect the GraphQL API, use its web IDE.
+
+## Deploy your own
+
+Deploy with Vercel
+
+## How to use
+
+Execute `create-next-app` with npm, Yarn, or pnpm to bootstrap the example:
+
+```bash
+npx create-next-app --example with-apollo-and-redux with-apollo-and-redux-app
+```
+
+```bash
+yarn create next-app --example with-apollo-and-redux with-apollo-and-redux-app
+```
+
+```bash
+pnpm create next-app --example with-apollo-and-redux with-apollo-and-redux-app
+```
+
+Deploy it to the cloud with Vercel (Documentation).
+
+## components/Counter.js
+
+```js
+import { useSelector, useDispatch } from "react-redux";
+
+const useCounter = () => {
+  const count = useSelector((state) => state.count);
+  const dispatch = useDispatch();
+  const increment = () =>
+    dispatch({
+      type: "INCREMENT",
+    });
+  const decrement = () =>
+    dispatch({
+      type: "DECREMENT",
+    });
+  const reset = () =>
+    dispatch({
+      type: "RESET",
+    });
+  return { count, increment, decrement, reset };
+};
+
+const Counter = () => {
+  const { count, increment, decrement, reset } = useCounter();
+  return (
+    <div>
+      <h1>
+        Count: <span>{count}</span>
+      </h1>
+      <button onClick={increment}>+1</button>
+      <button onClick={decrement}>-1</button>
+      <button onClick={reset}>Reset</button>
+    </div>
+  );
+};
+
+export default Counter;
+```
+
+## components/ErrorMessage.js
+
+```js
+import PropTypes from "prop-types";
+
+const ErrorMessage = ({ message }) => (
+  <aside>
+    {message}
+    <style jsx>{`
+      aside {
+        padding: 1.5em;
+        font-size: 14px;
+        color: white;
+        background-color: red;
+      }
+    `}</style>
+  </aside>
+);
+
+ErrorMessage.propTypes = {
+  message: PropTypes.string.isRequired,
+};
+
+export default ErrorMessage;
+```
+
+## components/Layout.js
+
+```js
+import Nav from "./Nav";
+import PropTypes from "prop-types";
+
+const Layout = ({ children }) => (
+  <main>
+    <Nav />
+    {children}
+    <style jsx global>{`
+      * {
+        font-family:
+          Menlo, Monaco, "Lucida Console", "Liberation Mono",
+          "DejaVu Sans Mono", "Bitstream Vera Sans Mono", "Courier New",
+          monospace, serif;
+      }
+      body {
+        margin: 0;
+        padding: 25px 50px;
+      }
+      a {
+        color: #22bad9;
+      }
+      p {
+        font-size: 14px;
+        line-height: 24px;
+      }
+      article {
+        margin: 0 auto;
+        max-width: 650px;
+      }
+      button {
+        align-items: center;
+        background-color: #22bad9;
+        border: 0;
+        color: white;
+        display: inline-flex;
+        padding: 5px 7px;
+        margin-right: 1px;
+      }
+      button:active {
+        background-color: #1b9db7;
+        transition: background-color 0.3s;
+      }
+      button:focus {
+        outline: none;
+      }
+
+      hr {
+        height: 1px;
+        border: none;
+        background: #ececec;
+        margin: 20px 0;
+      }
+    `}</style>
+  </main>
+);
+
+Layout.propTypes = {
+  children: PropTypes.node.isRequired,
+};
+
+export default Layout;
+```
+
+## components/Nav.js
+
+```js
+import Link from "next/link";
+import { useRouter } from "next/router";
+
+export default function Nav() {
+  const { pathname } = useRouter();
+
+  return (
+    <header>
+      <Link href="/" className={pathname === "/" ? "is-active" : ""}>
+        Home
+      </Link>
+      <Link
+        href="/apollo"
+        className={pathname === "/apollo" ? "is-active" : ""}
+      >
+        Apollo
+      </Link>
+      <Link href="/redux" className={pathname === "/redux" ? "is-active" : ""}>
+        Redux
+      </Link>
+      <style jsx>{`
+        header {
+          margin-bottom: 25px;
+        }
+        a {
+          font-size: 14px;
+          margin-right: 15px;
+          text-decoration: none;
+        }
+        .is-active {
+          text-decoration: underline;
+        }
+      `}</style>
+    </header>
+  );
+}
+```
+
+## components/PostList.js
+
+```js
+import { gql, useQuery, NetworkStatus } from "@apollo/client";
+import ErrorMessage from "./ErrorMessage";
+import PostUpvoter from "./PostUpvoter";
+
+export const ALL_POSTS_QUERY = gql`
+  query allPosts($first: Int!, $skip: Int!) {
+    allPosts(orderBy: { createdAt: desc }, first: $first, skip: $skip) {
+      id
+      title
+      votes
+      url
+      createdAt
+    }
+    _allPostsMeta {
+      count
+    }
+  }
+`;
+export const allPostsQueryVars = {
+  skip: 0,
+  first: 10,
+};
+
+export default function PostList() {
+  const { loading, error, data, fetchMore, networkStatus } = useQuery(
+    ALL_POSTS_QUERY,
+    {
+      variables: allPostsQueryVars,
+      // Setting this value to true will make the component rerender when
+      // the "networkStatus" changes, so we are able to know if it is fetching
+      // more data
+      notifyOnNetworkStatusChange: true,
+    },
+  );
+
+  const loadingMorePosts = networkStatus === NetworkStatus.fetchMore;
+
+  if (error) return <ErrorMessage message="Error loading posts." />;
+  if (loading && !loadingMorePosts) return <div>Loading</div>;
+  if (!data) return null;
+
+  const { allPosts, _allPostsMeta } = data;
+
+  const loadMorePosts = () => {
+    fetchMore({
+      variables: {
+        skip: allPosts.length,
+      },
+    });
+  };
+
+  const areMorePosts = allPosts.length < _allPostsMeta.count;
+
+  return (
+    <section>
+      <ul>
+        {allPosts.map((post, index) => (
+          <li key={post.id}>
+            <div>
+              <span>{index + 1}. </span>
+              <a href={post.url}>{post.title}</a>
+              <PostUpvoter id={post.id} votes={post.votes} />
+            </div>
+          </li>
+        ))}
+      </ul>
+      {areMorePosts && (
+        <button onClick={() => loadMorePosts()} disabled={loadingMorePosts}>
+          {loadingMorePosts ? "Loading..." : "Show More"}
+        </button>
+      )}
+      <style jsx>{`
+        section {
+          padding-bottom: 20px;
+        }
+        li {
+          display: block;
+          margin-bottom: 10px;
+        }
+        div {
+          align-items: center;
+          display: flex;
+        }
+        a {
+          font-size: 14px;
+          margin-right: 10px;
+          text-decoration: none;
+          padding-bottom: 0;
+          border: 0;
+        }
+        span {
+          font-size: 14px;
+          margin-right: 5px;
+        }
+        ul {
+          margin: 0;
+          padding: 0;
+        }
+        button:before {
+          align-self: center;
+          border-style: solid;
+          border-width: 6px 4px 0 4px;
+          border-color: #ffffff transparent transparent transparent;
+          content: "";
+          height: 0;
+          margin-right: 5px;
+          width: 0;
+        }
+      `}</style>
+    </section>
+  );
+}
+```
+
+## components/PostUpvoter.js
+
+```js
+import { gql, useMutation } from "@apollo/client";
+import PropTypes from "prop-types";
+
+const VOTE_POST = gql`
+  mutation votePost($id: String!) {
+    votePost(id: $id) {
+      __typename
+      id
+      votes
+    }
+  }
+`;
+
+const PostUpvoter = ({ votes, id }) => {
+  const [votePost] = useMutation(VOTE_POST);
+
+  const upvotePost = () => {
+    votePost({
+      variables: {
+        id,
+      },
+      optimisticResponse: {
+        __typename: "Mutation",
+        updatePost: {
+          __typename: "Post",
+          id,
+          votes: votes + 1,
+        },
+      },
+    });
+  };
+
+  return (
+    <button onClick={() => upvotePost()}>
+      {votes}
+      <style jsx>{`
+        button {
+          background-color: transparent;
+          border: 1px solid #e4e4e4;
+          color: #000;
+        }
+        button:active {
+          background-color: transparent;
+        }
+        button:before {
+          align-self: center;
+          border-color: transparent transparent #000000 transparent;
+          border-style: solid;
+          border-width: 0 4px 6px 4px;
+          content: "";
+          height: 0;
+          margin-right: 5px;
+          width: 0;
+        }
+      `}</style>
+    </button>
+  );
+};
+
+PostUpvoter.propTypes = {
+  id: PropTypes.string.isRequired,
+  votes: PropTypes.number.isRequired,
+};
+
+export default PostUpvoter;
+```
+
+## components/Submit.js
+
+```js
+import { gql, useMutation } from "@apollo/client";
+
+const CREATE_POST_MUTATION = gql`
+  mutation createPost($title: String!, $url: String!) {
+    createPost(title: $title, url: $url) {
+      id
+      title
+      votes
+      url
+      createdAt
+    }
+  }
+`;
+
+const Submit = () => {
+  const [createPost, { loading }] = useMutation(CREATE_POST_MUTATION);
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new window.FormData(form);
+    const title = formData.get("title");
+    const url = formData.get("url");
+    form.reset();
+
+    createPost({
+      variables: { title, url },
+      update: (cache, { data: { createPost } }) => {
+        cache.modify({
+          fields: {
+            allPosts(existingPosts = []) {
+              const newPostRef = cache.writeFragment({
+                data: createPost,
+                fragment: gql`
+                  fragment NewPost on allPosts {
+                    id
+                    type
+                  }
+                `,
+              });
+              return [newPostRef, ...existingPosts];
+            },
+          },
+        });
+      },
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <h1>Submit</h1>
+      <input placeholder="title" name="title" type="text" required />
+      <input placeholder="url" name="url" type="url" required />
+      <button type="submit" disabled={loading}>
+        Submit
+      </button>
+      <style jsx>{`
+        form {
+          padding-bottom: 20px;
+          margin-bottom: 20px;
+        }
+        h1 {
+          font-size: 20px;
+        }
+        input {
+          display: block;
+          margin-bottom: 10px;
+        }
+      `}</style>
+    </form>
+  );
+};
+
+export default Submit;
+```
+
+## lib/apollo.js
+
+```js
+import { useMemo } from "react";
+import { ApolloClient, HttpLink, InMemoryCache } from "@apollo/client";
+import { concatPagination } from "@apollo/client/utilities";
+import merge from "deepmerge";
+import isEqual from "lodash/isEqual";
+
+let apolloClient;
+
+function createApolloClient() {
+  return new ApolloClient({
+    ssrMode: typeof window === "undefined",
+    link: new HttpLink({
+      uri: "https://nextjs-graphql-with-prisma-simple-foo.vercel.app/api", // Server URL (must be absolute)
+      credentials: "same-origin", // Additional fetch() options like `credentials` or `headers`
+    }),
+    cache: new InMemoryCache({
+      typePolicies: {
+        Query: {
+          fields: {
+            allPosts: concatPagination(),
+          },
+        },
+      },
+    }),
+  });
+}
+
+export function initializeApollo(initialState = null) {
+  const _apolloClient = apolloClient ?? createApolloClient();
+
+  // If your page has Next.js data fetching methods that use Apollo Client, the initial state
+  // get hydrated here
+  if (initialState) {
+    // Get existing cache, loaded during client side data fetching
+    const existingCache = _apolloClient.extract();
+
+    // Merge the existing cache into data passed from getStaticProps/getServerSideProps
+    const data = merge(initialState, existingCache, {
+      // combine arrays using object equality (like in sets)
+      arrayMerge: (destinationArray, sourceArray) => [
+        ...sourceArray,
+        ...destinationArray.filter((d) =>
+          sourceArray.every((s) => !isEqual(d, s)),
+        ),
+      ],
+    });
+
+    // Restore the cache with the merged data
+    _apolloClient.cache.restore(data);
+  }
+  // For SSG and SSR always create a new Apollo Client
+  if (typeof window === "undefined") return _apolloClient;
+  // Create the Apollo Client once in the client
+  if (!apolloClient) apolloClient = _apolloClient;
+
+  return _apolloClient;
+}
+
+export function useApollo(initialState) {
+  const store = useMemo(() => initializeApollo(initialState), [initialState]);
+  return store;
+}
+```
+
+## lib/redux.js
+
+```js
+import { useMemo } from "react";
+import { createStore, applyMiddleware } from "redux";
+import { composeWithDevTools } from "redux-devtools-extension";
+
+let store;
+
+const initialState = {
+  lastUpdate: 0,
+  light: false,
+  count: 0,
+};
+
+const reducer = (state = initialState, action) => {
+  switch (action.type) {
+    case "TICK":
+      return {
+        ...state,
+        lastUpdate: action.lastUpdate,
+        light: !!action.light,
+      };
+    case "INCREMENT":
+      return {
+        ...state,
+        count: state.count + 1,
+      };
+    case "DECREMENT":
+      return {
+        ...state,
+        count: state.count - 1,
+      };
+    case "RESET":
+      return {
+        ...state,
+        count: initialState.count,
+      };
+    default:
+      return state;
+  }
+};
+
+function initStore(preloadedState = initialState) {
+  return createStore(
+    reducer,
+    preloadedState,
+    composeWithDevTools(applyMiddleware()),
+  );
+}
+
+export const initializeStore = (preloadedState) => {
+  let _store = store ?? initStore(preloadedState);
+
+  // After navigating to a page with an initial Redux state, merge that state
+  // with the current state in the store, and create a new store
+  if (preloadedState && store) {
+    _store = initStore({
+      ...store.getState(),
+      ...preloadedState,
+    });
+    // Reset the current store
+    store = undefined;
+  }
+
+  // For SSG and SSR always create a new store
+  if (typeof window === "undefined") return _store;
+  // Create the store once in the client
+  if (!store) store = _store;
+
+  return _store;
+};
+
+export function useStore(initialState) {
+  const store = useMemo(() => initializeStore(initialState), [initialState]);
+  return store;
+}
+```
+
+## lib/useInterval.js
+
+```js
+import { useEffect, useRef } from "react";
+
+// https://overreacted.io/making-setinterval-declarative-with-react-hooks/
+const useInterval = (callback, delay) => {
+  const savedCallback = useRef();
+
+  useEffect(() => {
+    savedCallback.current = callback;
+  }, [callback]);
+
+  useEffect(() => {
+    const handler = (...args) => savedCallback.current(...args);
+
+    if (delay !== null) {
+      const id = setInterval(handler, delay);
+      return () => clearInterval(id);
+    }
+  }, [delay]);
+};
+
+export default useInterval;
+```
+
+## package.json
+
+```json
+{
+  "private": true,
+  "scripts": {
+    "dev": "next",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@apollo/client": "^3.0.0",
+    "deepmerge": "^4.2.2",
+    "graphql": "16.13.1",
+    "lodash": "4.17.23",
+    "next": "latest",
+    "prop-types": "^15.6.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-redux": "^7.1.1",
+    "redux": "^4.0.1",
+    "redux-devtools-extension": "2.13.8"
+  }
+}
+```
+
+## pages/_app.js
+
+```js
+import { ApolloProvider } from "@apollo/client";
+import { Provider } from "react-redux";
+import { useStore } from "../lib/redux";
+import { useApollo } from "../lib/apollo";
+
+export default function App({ Component, pageProps }) {
+  const store = useStore(pageProps.initialReduxState);
+  const apolloClient = useApollo(pageProps.initialApolloState);
+
+  return (
+    <Provider store={store}>
+      <ApolloProvider client={apolloClient}>
+        <Component {...pageProps} />
+      </ApolloProvider>
+    </Provider>
+  );
+}
+```
+
+## pages/apollo.js
+
+```js
+import { initializeApollo } from "../lib/apollo";
+import Layout from "../components/Layout";
+import Submit from "../components/Submit";
+import PostList, {
+  ALL_POSTS_QUERY,
+  allPostsQueryVars,
+} from "../components/PostList";
+
+const ApolloPage = () => (
+  <Layout>
+    <Submit />
+    <PostList />
+  </Layout>
+);
+
+export async function getStaticProps() {
+  const apolloClient = initializeApollo();
+
+  await apolloClient.query({
+    query: ALL_POSTS_QUERY,
+    variables: allPostsQueryVars,
+  });
+
+  return {
+    props: {
+      initialApolloState: apolloClient.cache.extract(),
+    },
+    revalidate: 1,
+  };
+}
+
+export default ApolloPage;
+```
+
+## pages/index.js
+
+```js
+import { useDispatch } from "react-redux";
+import { initializeStore } from "../lib/redux";
+import { initializeApollo } from "../lib/apollo";
+import useInterval from "../lib/useInterval";
+import Layout from "../components/Layout";
+import Clock from "../components/Clock";
+import Counter from "../components/Counter";
+import Submit from "../components/Submit";
+import PostList, {
+  ALL_POSTS_QUERY,
+  allPostsQueryVars,
+} from "../components/PostList";
+
+const IndexPage = () => {
+  // Tick the time every second
+  const dispatch = useDispatch();
+
+  useInterval(() => {
+    dispatch({
+      type: "TICK",
+      light: true,
+      lastUpdate: Date.now(),
+    });
+  }, 1000);
+
+  return (
+    <Layout>
+      {/* Redux */}
+      <Clock />
+      <Counter />
+      <hr />
+      {/* Apollo */}
+      <Submit />
+      <PostList />
+    </Layout>
+  );
+};
+
+export async function getStaticProps() {
+  const reduxStore = initializeStore();
+  const apolloClient = initializeApollo();
+  const { dispatch } = reduxStore;
+
+  dispatch({
+    type: "TICK",
+    light: true,
+    lastUpdate: Date.now(),
+  });
+
+  await apolloClient.query({
+    query: ALL_POSTS_QUERY,
+    variables: allPostsQueryVars,
+  });
+
+  return {
+    props: {
+      initialReduxState: reduxStore.getState(),
+      initialApolloState: apolloClient.cache.extract(),
+    },
+    revalidate: 1,
+  };
+}
+
+export default IndexPage;
+```
+
+## pages/redux.js
+
+```js
+import { useDispatch } from "react-redux";
+import { initializeStore } from "../lib/redux";
+import useInterval from "../lib/useInterval";
+import Layout from "../components/Layout";
+import Clock from "../components/Clock";
+import Counter from "../components/Counter";
+
+const ReduxPage = () => {
+  // Tick the time every second
+  const dispatch = useDispatch();
+
+  useInterval(() => {
+    dispatch({
+      type: "TICK",
+      light: true,
+      lastUpdate: Date.now(),
+    });
+  }, 1000);
+
+  return (
+    <Layout>
+      <Clock />
+      <Counter />
+    </Layout>
+  );
+};
+
+export async function getStaticProps() {
+  const reduxStore = initializeStore();
+  const { dispatch } = reduxStore;
+
+  dispatch({
+    type: "TICK",
+    light: true,
+    lastUpdate: Date.now(),
+  });
+
+  return {
+    props: {
+      initialReduxState: reduxStore.getState(),
+    },
+    revalidate: 1,
+  };
+}
+
+export default ReduxPage;
+```

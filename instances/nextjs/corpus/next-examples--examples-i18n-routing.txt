@@ -1,0 +1,270 @@
+# Example: i18n-routing
+# джерело: https://github.com/vercel/next.js/tree/v16.3.8/examples/i18n-routing
+# отримано: 2026-10-01
+# версія: 16.3.8
+
+## Internationalized Routing
+
+Next.js doesn't support internationalized routing in `app` directory out of the box. But you can easily implement it yourself. This example shows how to implement internationalized routing on the Edge.
+
+## Deploy your own
+
+Deploy with Vercel
+
+## How to use
+
+Execute `create-next-app` with npm, Yarn, or pnpm to bootstrap the example:
+
+```bash
+npx create-next-app --example i18n-routing i18n-routing-app
+```
+
+```bash
+yarn create next-app --example i18n-routing i18n-routing-app
+```
+
+```bash
+pnpm create next-app --example i18n-routing i18n-routing-app
+```
+
+Deploy it to the cloud with Vercel (Documentation).
+
+## app/[lang]/components/counter.tsx
+
+```tsx
+"use client";
+
+import { useState } from "react";
+import { type getDictionary } from "@/get-dictionary";
+
+export default function Counter({
+  dictionary,
+}: {
+  dictionary: Awaited<ReturnType<typeof getDictionary>>["counter"];
+}) {
+  const [count, setCount] = useState(0);
+  return (
+    <p>
+      This component is rendered on client:
+      <button onClick={() => setCount((n) => n - 1)}>
+        {dictionary.decrement}
+      </button>
+      {count}
+      <button onClick={() => setCount((n) => n + 1)}>
+        {dictionary.increment}
+      </button>
+    </p>
+  );
+}
+```
+
+## app/[lang]/components/locale-switcher.tsx
+
+```tsx
+"use client";
+
+import { usePathname } from "next/navigation";
+import Link from "next/link";
+import { i18n, type Locale } from "@/i18n-config";
+
+export default function LocaleSwitcher() {
+  const pathname = usePathname();
+  const redirectedPathname = (locale: Locale) => {
+    if (!pathname) return "/";
+    const segments = pathname.split("/");
+    segments[1] = locale;
+    return segments.join("/");
+  };
+
+  return (
+    <div>
+      <p>Locale switcher:</p>
+      <ul>
+        {i18n.locales.map((locale) => {
+          return (
+            <li key={locale}>
+              <Link href={redirectedPathname(locale)}>{locale}</Link>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+```
+
+## app/[lang]/layout.tsx
+
+```tsx
+import { i18n, type Locale } from "@/i18n-config";
+
+export const metadata = {
+  title: "i18n within app router - Vercel Examples",
+  description: "How to do i18n in Next.js 15 within app router",
+};
+
+export async function generateStaticParams() {
+  return i18n.locales.map((locale) => ({ lang: locale }));
+}
+
+export default async function Root(props: {
+  children: React.ReactNode;
+  params: Promise<{ lang: Locale }>;
+}) {
+  const params = await props.params;
+
+  const { children } = props;
+
+  return (
+    <html lang={params.lang}>
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+## app/[lang]/page.tsx
+
+```tsx
+import { getDictionary } from "@/get-dictionary";
+import { Locale } from "@/i18n-config";
+import Counter from "./components/counter";
+import LocaleSwitcher from "./components/locale-switcher";
+
+export default async function IndexPage(props: {
+  params: Promise<{ lang: Locale }>;
+}) {
+  const { lang } = await props.params;
+
+  const dictionary = await getDictionary(lang);
+
+  return (
+    <div>
+      <LocaleSwitcher />
+      <div>
+        <p>Current locale: {lang}</p>
+        <p>
+          This text is rendered on the server:{" "}
+          {dictionary["server-component"].welcome}
+        </p>
+        <Counter dictionary={dictionary.counter} />
+      </div>
+    </div>
+  );
+}
+```
+
+## get-dictionary.ts
+
+```ts
+import "server-only";
+import type { Locale } from "./i18n-config";
+
+// We enumerate all dictionaries here for better linting and typescript support
+// We also get the default import for cleaner types
+const dictionaries = {
+  en: () => import("./dictionaries/en.json").then((module) => module.default),
+  de: () => import("./dictionaries/de.json").then((module) => module.default),
+  cs: () => import("./dictionaries/cs.json").then((module) => module.default),
+};
+
+export const getDictionary = async (locale: Locale) =>
+  dictionaries[locale]?.() ?? dictionaries.en();
+```
+
+## middleware.ts
+
+```ts
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+
+import { i18n } from "./i18n-config";
+
+import { match as matchLocale } from "@formatjs/intl-localematcher";
+import Negotiator from "negotiator";
+
+function getLocale(request: NextRequest): string | undefined {
+  // Negotiator expects plain object so we need to transform headers
+  const negotiatorHeaders: Record<string, string> = {};
+  request.headers.forEach((value, key) => (negotiatorHeaders[key] = value));
+
+  const locales = Array.from(i18n.locales);
+
+  // Use negotiator and intl-localematcher to get best locale
+  let languages = new Negotiator({ headers: negotiatorHeaders }).languages(
+    locales,
+  );
+
+  const locale = matchLocale(languages, locales, i18n.defaultLocale);
+
+  return locale;
+}
+
+export function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  // // `/_next/` and `/api/` are ignored by the watcher, but we need to ignore files in `public` manually.
+  // // If you have one
+  // if (
+  //   [
+  //     '/manifest.json',
+  //     '/favicon.ico',
+  //     // Your other files in `public`
+  //   ].includes(pathname)
+  // )
+  //   return
+
+  // Check if there is any supported locale in the pathname
+  const pathnameIsMissingLocale = i18n.locales.every(
+    (locale) =>
+      !pathname.startsWith(`/${locale}/`) && pathname !== `/${locale}`,
+  );
+
+  // Redirect if there is no locale
+  if (pathnameIsMissingLocale) {
+    const locale = getLocale(request);
+
+    // e.g. incoming request is /products
+    // The new URL is now /en-US/products
+    return NextResponse.redirect(
+      new URL(
+        `/${locale}${pathname.startsWith("/") ? "" : "/"}${pathname}`,
+        request.url,
+      ),
+    );
+  }
+}
+
+export const config = {
+  // Matcher ignoring `/_next/` and `/api/`
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+};
+```
+
+## package.json
+
+```json
+{
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@formatjs/intl-localematcher": "0.5.7",
+    "negotiator": "1.0.0",
+    "next": "latest",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "server-only": "0.0.1"
+  },
+  "devDependencies": {
+    "@types/negotiator": "0.6.3",
+    "@types/node": "^22.9.0",
+    "@types/react": "^18.0.23",
+    "@types/react-dom": "^18.0.7",
+    "typescript": "^5.6.3"
+  }
+}
+```

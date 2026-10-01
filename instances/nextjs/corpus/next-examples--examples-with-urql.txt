@@ -1,0 +1,187 @@
+# Example: with-urql
+# джерело: https://github.com/vercel/next.js/tree/v16.3.8/examples/with-urql
+# отримано: 2026-10-01
+# версія: 16.3.8
+
+## Next.js and urql
+
+Use urql with Next.js using SSG.
+
+## Deploy your own
+
+Deploy with Vercel
+
+## How to use
+
+Execute `create-next-app` with npm, Yarn, or pnpm to bootstrap the example:
+
+```bash
+npx create-next-app --example with-urql with-urql-app
+```
+
+```bash
+yarn create next-app --example with-urql with-urql-app
+```
+
+```bash
+pnpm create next-app --example with-urql with-urql-app
+```
+
+Deploy it to the cloud with Vercel (Documentation).
+
+## app/layout.tsx
+
+```tsx
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "With urql",
+  description: "Next.js example with urql",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+## app/page.tsx
+
+```tsx
+import Link from "next/link";
+import { getPokemons } from "@/graphql/getPokemons";
+
+type Pokemon = {
+  image: string;
+  name: string;
+  __typename: string;
+};
+
+export default async function Home() {
+  const pokemons = await getPokemons();
+
+  return (
+    <ul>
+      {pokemons.map((pokemon: Pokemon) => (
+        <li key={pokemon.name}>
+          <Link href={`/pokemon/${pokemon.name}`}>
+            <h2 style={{ textTransform: "capitalize" }}>{pokemon.name}</h2>
+            <img src={pokemon.image} alt={`${pokemon.name} picture`} />
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+
+## app/pokemon/[name]/page.tsx
+
+```tsx
+import { getPokemon as getPokemonByName } from "@/graphql/getPokemon";
+
+export default async function PokemonPage({
+  params,
+}: {
+  params: { name?: string };
+}) {
+  const pokemon = await getPokemonByName(params.name);
+  return (
+    <div>
+      <h1 style={{ textTransform: "capitalize" }}>{pokemon.name}</h1>
+      <img src={pokemon.image} alt={pokemon.name} />
+    </div>
+  );
+}
+```
+
+## graphql/client.js
+
+```js
+import { cacheExchange, createClient, fetchExchange } from "urql";
+
+export const client = createClient({
+  url: "https://graphql-pokemon2.vercel.app/",
+  exchanges: [cacheExchange, fetchExchange],
+});
+```
+
+## graphql/getPokemon.js
+
+```js
+import { client } from "./client";
+
+const pokemonQuery = `
+  query firstTwentyPokemons($name: String!) {
+    pokemon(name: $name) {
+      name
+      image
+    }
+  }
+`;
+
+export const getPokemon = async (name) => {
+  const {
+    data: { pokemon },
+  } = await client.query(pokemonQuery, { name }).toPromise();
+
+  return pokemon;
+};
+```
+
+## graphql/getPokemons.js
+
+```js
+import { client } from "./client";
+
+const firstTwentyPokemonsQuery = `
+  query firstTwentyPokemons {
+    pokemons(first: 20) {
+      image
+      name
+    }
+  }
+`;
+
+export const getPokemons = async () => {
+  const {
+    data: { pokemons },
+  } = await client.query(firstTwentyPokemonsQuery).toPromise();
+
+  return pokemons.map((pokemon) => ({
+    ...pokemon,
+    name: pokemon.name.toLowerCase(),
+  }));
+};
+```
+
+## package.json
+
+```json
+{
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "latest",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "urql": "^4.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.5",
+    "@types/react": "^19.0.10",
+    "typescript": "^5.7.3"
+  }
+}
+```

@@ -1,0 +1,666 @@
+# Example: with-typescript-graphql
+# джерело: https://github.com/vercel/next.js/tree/v16.3.8/examples/with-typescript-graphql
+# отримано: 2026-10-01
+# версія: 16.3.8
+
+## TypeScript and GraphQL Example
+
+One of the strengths of GraphQL is enforcing data types on runtime. Further, TypeScript and GraphQL Code Generator (graphql-codegen) make it safer by typing data statically, so you can write truly type-protected code with rich IDE assists.
+
+This template gives you the best start to use GraphQL with fully typed queries (client-side) and resolvers (server-side), all this with minimum bundle size 📦
+
+```tsx
+import { useQuery } from "@apollo/client";
+import { ViewerDocument } from "lib/graphql-operations";
+
+const News = () => {
+  // Typed already️⚡️
+  const {
+    data: { viewer },
+  } = useQuery(ViewerDocument);
+
+  return <div>{viewer.name}</div>;
+};
+```
+
+## Deploy your own
+
+Deploy with Vercel
+
+## How to use
+
+Execute `create-next-app` with npm, Yarn, or pnpm to bootstrap the example:
+
+```bash
+npx create-next-app --example with-typescript-graphql with-typescript-graphql-app
+```
+
+```bash
+yarn create next-app --example with-typescript-graphql with-typescript-graphql-app
+```
+
+```bash
+pnpm create next-app --example with-typescript-graphql with-typescript-graphql-app
+```
+
+Deploy it to the cloud with Vercel (Documentation).
+
+## codegen.ts
+
+```ts
+import type { CodegenConfig } from "@graphql-codegen/cli";
+
+const config: CodegenConfig = {
+  schema: [
+    {
+      "lib/schema.ts": {
+        noRequire: true,
+      },
+    },
+  ],
+  documents: "./pages/**/*.tsx",
+  generates: {
+    "./lib/gql/": {
+      preset: "client",
+      plugins: [],
+    },
+    "./lib/resolvers-types.ts": {
+      plugins: ["typescript", "typescript-resolvers"],
+    },
+  },
+};
+
+export default config;
+```
+
+## lib/apollo.ts
+
+```ts
+import { IncomingMessage, ServerResponse } from "http";
+import { useMemo } from "react";
+import {
+  ApolloClient,
+  InMemoryCache,
+  NormalizedCacheObject,
+} from "@apollo/client";
+import resolvers from "./resolvers";
+import typeDefs from "./schema";
+
+let apolloClient: ApolloClient<NormalizedCacheObject> | undefined;
+
+export type ResolverContext = {
+  req?: IncomingMessage;
+  res?: ServerResponse;
+};
+
+function createIsomorphLink(context: ResolverContext = {}) {
+  if (typeof window === "undefined") {
+    const { SchemaLink } = require("@apollo/client/link/schema");
+    const { makeExecutableSchema } = require("@graphql-tools/schema");
+
+    const schema = makeExecutableSchema({
+      typeDefs,
+      resolvers,
+    });
+    return new SchemaLink({ schema, context });
+  } else {
+    const { HttpLink } = require("@apollo/client");
+    return new HttpLink({
+      uri: "/api/graphql",
+      credentials: "same-origin",
+    });
+  }
+}
+
+function createApolloClient(context?: ResolverContext) {
+  return new ApolloClient({
+    ssrMode: typeof window === "undefined",
+    link: createIsomorphLink(context),
+    cache: new InMemoryCache(),
+  });
+}
+
+export function initializeApollo(
+  initialState: any = null,
+  // Pages with Next.js data fetching methods, like `getStaticProps`, can send
+  // a custom context which will be used by `SchemaLink` to server render pages
+  context?: ResolverContext,
+) {
+  const _apolloClient = apolloClient ?? createApolloClient(context);
+
+  // If your page has Next.js data fetching methods that use Apollo Client, the initial state
+  // get hydrated here
+  if (initialState) {
+    _apolloClient.cache.restore(initialState);
+  }
+  // For SSG and SSR always create a new Apollo Client
+  if (typeof window === "undefined") return _apolloClient;
+  // Create the Apollo Client once in the client
+  if (!apolloClient) apolloClient = _apolloClient;
+
+  return _apolloClient;
+}
+
+export function useApollo(initialState: any) {
+  const store = useMemo(() => initializeApollo(initialState), [initialState]);
+  return store;
+}
+```
+
+## lib/gql/fragment-masking.ts
+
+```ts
+import { TypedDocumentNode as DocumentNode } from "@graphql-typed-document-node/core";
+
+export type FragmentType<TDocumentType extends DocumentNode<any, any>> =
+  TDocumentType extends DocumentNode<infer TType, any>
+    ? TType extends { " $fragmentName"?: infer TKey }
+      ? TKey extends string
+        ? { " $fragmentRefs"?: { [key in TKey]: TType } }
+        : never
+      : never
+    : never;
+
+// return non-nullable if `fragmentType` is non-nullable
+export function useFragment<TType>(
+  _documentNode: DocumentNode<TType, any>,
+  fragmentType: FragmentType<DocumentNode<TType, any>>,
+): TType;
+// return nullable if `fragmentType` is nullable
+export function useFragment<TType>(
+  _documentNode: DocumentNode<TType, any>,
+  fragmentType: FragmentType<DocumentNode<TType, any>> | null | undefined,
+): TType | null | undefined;
+// return array of non-nullable if `fragmentType` is array of non-nullable
+export function useFragment<TType>(
+  _documentNode: DocumentNode<TType, any>,
+  fragmentType: ReadonlyArray<FragmentType<DocumentNode<TType, any>>>,
+): ReadonlyArray<TType>;
+// return array of nullable if `fragmentType` is array of nullable
+export function useFragment<TType>(
+  _documentNode: DocumentNode<TType, any>,
+  fragmentType:
+    | ReadonlyArray<FragmentType<DocumentNode<TType, any>>>
+    | null
+    | undefined,
+): ReadonlyArray<TType> | null | undefined;
+export function useFragment<TType>(
+  _documentNode: DocumentNode<TType, any>,
+  fragmentType:
+    | FragmentType<DocumentNode<TType, any>>
+    | ReadonlyArray<FragmentType<DocumentNode<TType, any>>>
+    | null
+    | undefined,
+): TType | ReadonlyArray<TType> | null | undefined {
+  return fragmentType as any;
+}
+```
+
+## lib/gql/gql.ts
+
+```ts
+/* eslint-disable */
+import * as types from "./graphql";
+import { TypedDocumentNode as DocumentNode } from "@graphql-typed-document-node/core";
+
+const documents = {
+  "\n  mutation UpdateName($name: String!) {\n    updateName(name: $name) {\n      id\n      name\n      status\n    }\n  }\n":
+    types.UpdateNameDocument,
+  "\n  query Viewer {\n    viewer {\n      id\n      name\n      status\n    }\n  }\n":
+    types.ViewerDocument,
+};
+
+export function graphql(
+  source: "\n  mutation UpdateName($name: String!) {\n    updateName(name: $name) {\n      id\n      name\n      status\n    }\n  }\n",
+): (typeof documents)["\n  mutation UpdateName($name: String!) {\n    updateName(name: $name) {\n      id\n      name\n      status\n    }\n  }\n"];
+export function graphql(
+  source: "\n  query Viewer {\n    viewer {\n      id\n      name\n      status\n    }\n  }\n",
+): (typeof documents)["\n  query Viewer {\n    viewer {\n      id\n      name\n      status\n    }\n  }\n"];
+
+export function graphql(source: string): unknown;
+export function graphql(source: string) {
+  return (documents as any)[source] ?? {};
+}
+
+export type DocumentType<TDocumentNode extends DocumentNode<any, any>> =
+  TDocumentNode extends DocumentNode<infer TType, any> ? TType : never;
+```
+
+## lib/gql/graphql.ts
+
+```ts
+/* eslint-disable */
+import { TypedDocumentNode as DocumentNode } from "@graphql-typed-document-node/core";
+export type Maybe<T> = T | null;
+export type InputMaybe<T> = Maybe<T>;
+export type Exact<T extends { [key: string]: unknown }> = {
+  [K in keyof T]: T[K];
+};
+export type MakeOptional<T, K extends keyof T> = Omit<T, K> & {
+  [SubKey in K]?: Maybe<T[SubKey]>;
+};
+export type MakeMaybe<T, K extends keyof T> = Omit<T, K> & {
+  [SubKey in K]: Maybe<T[SubKey]>;
+};
+/** All built-in and custom scalars, mapped to their actual values */
+export type Scalars = {
+  ID: string;
+  String: string;
+  Boolean: boolean;
+  Int: number;
+  Float: number;
+};
+
+export type Mutation = {
+  __typename?: "Mutation";
+  updateName: User;
+};
+
+export type MutationUpdateNameArgs = {
+  name: Scalars["String"];
+};
+
+export type Query = {
+  __typename?: "Query";
+  viewer: User;
+};
+
+export type User = {
+  __typename?: "User";
+  id: Scalars["ID"];
+  name: Scalars["String"];
+  status: Scalars["String"];
+};
+
+export type UpdateNameMutationVariables = Exact<{
+  name: Scalars["String"];
+}>;
+
+export type UpdateNameMutation = {
+  __typename?: "Mutation";
+  updateName: { __typename?: "User"; id: string; name: string; status: string };
+};
+
+export type ViewerQueryVariables = Exact<{ [key: string]: never }>;
+
+export type ViewerQuery = {
+  __typename?: "Query";
+  viewer: { __typename?: "User"; id: string; name: string; status: string };
+};
+
+export const UpdateNameDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "UpdateName" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "name" } },
+          type: {
+            kind: "NonNullType",
+            type: {
+              kind: "NamedType",
+              name: { kind: "Name", value: "String" },
+            },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "updateName" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "name" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "name" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "name" } },
+                { kind: "Field", name: { kind: "Name", value: "status" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<UpdateNameMutation, UpdateNameMutationVariables>;
+export const ViewerDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "Viewer" },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "viewer" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "name" } },
+                { kind: "Field", name: { kind: "Name", value: "status" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<ViewerQuery, ViewerQueryVariables>;
+```
+
+## lib/gql/index.ts
+
+```ts
+export * from "./gql";
+export * from "./fragment-masking";
+```
+
+## lib/resolvers.ts
+
+```ts
+import { Resolvers } from "./resolvers-types";
+
+const userProfile = {
+  id: String(1),
+  name: "John Smith",
+  status: "cached",
+};
+
+const resolvers: Resolvers = {
+  Query: {
+    viewer(_parent, _args, _context, _info) {
+      return userProfile;
+    },
+  },
+  Mutation: {
+    updateName(_parent, _args, _context, _info) {
+      userProfile.name = _args.name;
+      return userProfile;
+    },
+  },
+};
+
+export default resolvers;
+```
+
+## lib/schema.ts
+
+```ts
+const typeDefs = /* GraphQL */ `
+  type User {
+    id: ID!
+    name: String!
+    status: String!
+  }
+
+  type Query {
+    viewer: User!
+  }
+
+  type Mutation {
+    updateName(name: String!): User!
+  }
+`;
+
+export default typeDefs;
+```
+
+## package.json
+
+```json
+{
+  "private": true,
+  "scripts": {
+    "codegen": "graphql-codegen -w",
+    "dev": "yarn graphql-codegen && next",
+    "build": "yarn graphql-codegen && next build",
+    "test": "yarn graphql-codegen && jest",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@apollo/client": "^3.5.10",
+    "graphql-tag": "^2.12.6",
+    "@graphql-tools/load-files": "6.0.18",
+    "graphql-yoga": "three",
+    "@graphql-tools/merge": "6.0.18",
+    "@graphql-tools/schema": "6.0.18",
+    "graphql": "15.8.0",
+    "next": "^12.1.5",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@graphql-codegen/typed-document-node": "^2.2.8",
+    "@graphql-codegen/cli": "2.13.7",
+    "@graphql-codegen/client-preset": "1.1.0",
+    "@graphql-codegen/typescript-resolvers": "^2.6.1",
+    "@types/jest": "^27.0.2",
+    "@types/mocha": "^9.0.0",
+    "@types/react": "^16.9.46",
+    "@types/react-dom": "^16.9.8",
+    "@types/react-test-renderer": "^17.0.1",
+    "babel-jest": "27.2.5",
+    "jest": "^27.2.5",
+    "react-test-renderer": "^17.0.1",
+    "typescript": "^4.6.3",
+    "yaml-loader": "0.6.0",
+    "ts-node": "10.8.0"
+  }
+}
+```
+
+## pages/_app.tsx
+
+```tsx
+import { AppProps } from "next/app";
+import { ApolloProvider } from "@apollo/client";
+import { useApollo } from "../lib/apollo";
+
+export default function App({ Component, pageProps }: AppProps) {
+  const apolloClient = useApollo(pageProps.initialApolloState);
+
+  return (
+    <ApolloProvider client={apolloClient}>
+      <Component {...pageProps} />
+    </ApolloProvider>
+  );
+}
+```
+
+## pages/about.tsx
+
+```tsx
+import Link from "next/link";
+
+export default function About() {
+  return (
+    <div>
+      Welcome to the about page. Go to the <Link href="/">Home</Link> page.
+    </div>
+  );
+}
+```
+
+## pages/api/graphql.ts
+
+```ts
+import { createSchema, createYoga } from "graphql-yoga";
+import gql from "graphql-tag";
+
+import resolvers from "lib/resolvers";
+import typeDefs from "lib/schema";
+import { NextApiRequest, NextApiResponse } from "next";
+
+const schema = createSchema({
+  typeDefs: gql(typeDefs),
+  resolvers,
+});
+
+export default createYoga<{
+  req: NextApiRequest;
+  res: NextApiResponse;
+}>({
+  schema,
+  // Needed to be defined explicitly because our endpoint lives at a different path other than `/graphql`
+  graphqlEndpoint: "/api/graphql",
+});
+```
+
+## pages/index.tsx
+
+```tsx
+import { useMutation, useQuery } from "@apollo/client";
+import { graphql } from "lib/gql";
+import Link from "next/link";
+import { useState } from "react";
+import { initializeApollo } from "../lib/apollo";
+
+const updateNameDocument = graphql(/* GraphQL */ `
+  mutation UpdateName($name: String!) {
+    updateName(name: $name) {
+      id
+      name
+      status
+    }
+  }
+`);
+
+const viewerDocument = graphql(/* GraphQL */ `
+  query Viewer {
+    viewer {
+      id
+      name
+      status
+    }
+  }
+`);
+
+const Index = () => {
+  const { data } = useQuery(viewerDocument);
+  const [newName, setNewName] = useState("");
+  const [updateNameMutation] = useMutation(updateNameDocument);
+
+  const onChangeName = () => {
+    updateNameMutation({
+      variables: {
+        name: newName,
+      },
+      // Follow apollo suggestion to update cache
+      //  https://www.apollographql.com/docs/angular/features/cache-updates/#update
+      update: (cache, mutationResult) => {
+        const { data } = mutationResult;
+        if (!data) return; // Cancel updating name in cache if no data is returned from mutation.
+        // Read the data from our cache for this query.
+        const result = cache.readQuery({
+          query: viewerDocument,
+        });
+
+        const newViewer = result ? { ...result.viewer } : null;
+        // Add our comment from the mutation to the end.
+        // Write our data back to the cache.
+        if (newViewer) {
+          newViewer.name = data.updateName.name;
+          cache.writeQuery({
+            query: viewerDocument,
+            data: { viewer: newViewer },
+          });
+        }
+      },
+    });
+  };
+
+  const viewer = data.viewer;
+
+  return viewer ? (
+    <div>
+      You're signed in as {viewer.name} and you're {viewer.status}. Go to the{" "}
+      <Link href="/about">about</Link> page.
+      <div>
+        <input
+          type="text"
+          placeholder="your new name..."
+          onChange={(e) => setNewName(e.target.value)}
+        />
+        <input type="button" value="change" onClick={onChangeName} />
+      </div>
+    </div>
+  ) : null;
+};
+
+export async function getStaticProps() {
+  const apolloClient = initializeApollo();
+
+  await apolloClient.query({
+    query: viewerDocument,
+  });
+
+  return {
+    props: {
+      initialApolloState: apolloClient.cache.extract(),
+    },
+  };
+}
+
+export default Index;
+```
+
+## test/index.test.tsx
+
+```tsx
+import { InMemoryCache, gql } from "@apollo/client";
+import React from "react";
+import Index from "../pages";
+import renderer from "react-test-renderer";
+import { MockedProvider } from "@apollo/client/testing";
+
+const cache = new InMemoryCache();
+cache.writeQuery({
+  query: gql`
+    query Viewer {
+      viewer {
+        id
+        name
+        status
+      }
+    }
+  `,
+  data: {
+    viewer: {
+      __typename: "User",
+      id: "Baa",
+      name: "Baa",
+      status: "Healthy",
+    },
+  },
+});
+
+describe("Index", () => {
+  it("renders the html we want", async () => {
+    const component = renderer.create(
+      <MockedProvider cache={cache}>
+        <Index />
+      </MockedProvider>,
+    );
+    expect(component.toJSON()).toMatchSnapshot();
+  });
+});
+```

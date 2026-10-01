@@ -1,0 +1,1031 @@
+# Example: cms-sitefinity
+# джерело: https://github.com/vercel/next.js/tree/v16.3.8/examples/cms-sitefinity
+# отримано: 2026-10-01
+# версія: 16.3.8
+
+## A statically generated blog example using Next.js and Sitefinity CMS
+
+This is the existing cms-sitefinity plus TypeScript.
+This example showcases Next.js's Static Generation feature using Sitefinity CMS as the data source.
+
+## Demo
+
+https://next-cms-sitefinity.vercel.app/
+
+## Deploy your own
+
+Deploy with Vercel
+
+### Related examples
+
+- AgilityCMS
+- Builder.io
+- ButterCMS
+- Contentful
+- Cosmic
+- DatoCMS
+- DotCMS
+- Drupal
+- Enterspeed
+- Ghost
+- GraphCMS
+- Kontent.ai
+- MakeSwift
+- Payload
+- Plasmic
+- Prepr
+- Prismic
+- Sanity
+- Sitecore XM Cloud
+- Sitefinity
+- Storyblok
+- TakeShape
+- Tina
+- Umbraco
+- Umbraco heartcore
+- Webiny
+- WordPress
+- Blog Starter
+
+## How to use
+
+Execute `create-next-app` with npm, Yarn, or pnpm to bootstrap the example:
+
+```bash
+npx create-next-app --example cms-sitefinity cms-sitefinity-app
+```
+
+```bash
+yarn create next-app --example cms-sitefinity cms-sitefinity-app
+```
+
+```bash
+pnpm create next-app --example cms-sitefinity cms-sitefinity-app
+```
+
+## Configuration
+
+### Step 1. Setup the CMS locally (version >=14.27922)
+
+First, install and run the CMS Locally.
+
+### Step 2. Import the ready to use dynamic module 'Posts'
+
+For the purpose of this demo a ready to use dynamic module was build containing two types - 'Post' and 'Author'.
+
+In order to install it:
+
+1. Open the CMS Administration under (/Sitefinity)
+2. Open the Export/Import screen under (/Sitefinity/Administration/Packaging)
+3. Click on Import Zip file and import the file from the sitefinity folder
+
+### Step 3. Enable the web service
+
+By default the web services are not allowed for anonymous users, so the yhave to be enabled.
+
+Go to /sitefinity/Administration/WebServices and edit the 'Default' web service to allow it to be accessible by 'Everyone'
+
+### Step 4. Install the GraphQL package
+
+1. Add the Sitefinity CMS nugget source
+2. Install the Progress.Sitefinity.GraphQL package (enable prerelease filter).
+
+### Step 5. Set up environment variables
+
+Copy the `.env.local.example` file in this directory to `.env.local` (which will be ignored by Git):
+
+```bash
+cp .env.local.example .env.local
+```
+
+Then set each variable on `.env.local`
+
+- `SF_API_URL` - This is the url of the 'Default' web service that we configured earlier. E.g. http://locahost/api/default/
+- `SF_URL` - This is the URL of the CMS itself. E.g. http://localhost/
+
+### Step 6. Run Next.js in development mode
+
+```bash
+npm install
+npm run dev
+
+# or
+
+yarn
+yarn dev
+```
+
+Your blog should be up and running on http://localhost:3000! If it doesn't work, post on GitHub discussions.
+
+## components/alert.tsx
+
+```tsx
+import Container from "./container";
+import cn from "classnames";
+import { EXAMPLE_PATH } from "../lib/constants";
+
+type Props = {
+  preview?: boolean;
+};
+
+const Alert = ({ preview }: Props) => {
+  return (
+    <div
+      className={cn("border-b", {
+        "bg-neutral-800 border-neutral-800 text-white": preview,
+        "bg-neutral-50 border-neutral-200": !preview,
+      })}
+    >
+      <Container>
+        <div className="py-2 text-center text-sm">
+          {preview ? (
+            <>
+              This page is a preview.{" "}
+              <a
+                href="/api/exit-preview"
+                className="underline hover:text-teal-300 duration-200 transition-colors"
+              >
+                Click here
+              </a>{" "}
+              to exit preview mode.
+            </>
+          ) : (
+            <>
+              The source code for this blog is{" "}
+              <a
+                href={`https://github.com/vercel/next.js/tree/canary/examples/${EXAMPLE_PATH}`}
+                className="underline hover:text-blue-600 duration-200 transition-colors"
+              >
+                available on GitHub
+              </a>
+              .
+            </>
+          )}
+        </div>
+      </Container>
+    </div>
+  );
+};
+
+export default Alert;
+```
+
+## components/avatar.tsx
+
+```tsx
+type Props = {
+  name: string;
+  picture: string;
+};
+
+const Avatar = ({ name, picture }: Props) => {
+  return (
+    <div className="flex items-center">
+      <img src={picture} className="w-12 h-12 rounded-full mr-4" alt={name} />
+      <div className="text-xl font-bold">{name}</div>
+    </div>
+  );
+};
+
+export default Avatar;
+```
+
+## components/container.tsx
+
+```tsx
+type Props = {
+  children?: React.ReactNode;
+};
+
+const Container = ({ children }: Props) => {
+  return <div className="container mx-auto px-5">{children}</div>;
+};
+
+export default Container;
+```
+
+## components/cover-image.tsx
+
+```tsx
+import cn from "classnames";
+import Link from "next/link";
+
+type Props = {
+  title: string;
+  src: string;
+  slug?: string;
+};
+
+const CoverImage = ({ title, src, slug }: Props) => {
+  const image = (
+    <img
+      src={src}
+      alt={`Cover Image for ${title}`}
+      className={cn("shadow-sm", {
+        "hover:shadow-lg transition-shadow duration-200": slug,
+      })}
+    />
+  );
+  return (
+    <div className="sm:mx-0">
+      {slug ? (
+        <Link as={`/posts${slug}`} href="/posts[slug]" aria-label={title}>
+          {image}
+        </Link>
+      ) : (
+        image
+      )}
+    </div>
+  );
+};
+
+export default CoverImage;
+```
+
+## components/date-formatter.tsx
+
+```tsx
+import { parseISO, format } from "date-fns";
+
+type Props = {
+  dateString: string;
+};
+
+const DateFormatter = ({ dateString }: Props) => {
+  const date = parseISO(dateString);
+  return <time dateTime={dateString}>{format(date, "LLLL	d, yyyy")}</time>;
+};
+
+export default DateFormatter;
+```
+
+## components/footer.tsx
+
+```tsx
+import Container from "./container";
+import { EXAMPLE_PATH } from "../lib/constants";
+
+const Footer = () => {
+  return (
+    <footer className="bg-neutral-50 border-t border-neutral-200">
+      <Container>
+        <div className="py-28 flex flex-col lg:flex-row items-center">
+          <h3 className="text-4xl lg:text-[2.5rem] font-bold tracking-tighter leading-tight text-center lg:text-left mb-10 lg:mb-0 lg:pr-4 lg:w-1/2">
+            Statically Generated with Next.js.
+          </h3>
+          <div className="flex flex-col lg:flex-row justify-center items-center lg:pl-4 lg:w-1/2">
+            <a
+              href="https://nextjs.org/docs/basic-features/pages"
+              className="mx-3 bg-black hover:bg-white hover:text-black border border-black text-white font-bold py-3 px-12 lg:px-8 duration-200 transition-colors mb-6 lg:mb-0"
+            >
+              Read Documentation
+            </a>
+            <a
+              href={`https://github.com/vercel/next.js/tree/canary/examples/${EXAMPLE_PATH}`}
+              className="mx-3 font-bold hover:underline"
+            >
+              View on GitHub
+            </a>
+          </div>
+        </div>
+      </Container>
+    </footer>
+  );
+};
+
+export default Footer;
+```
+
+## components/header.tsx
+
+```tsx
+import Link from "next/link";
+
+const Header = () => {
+  return (
+    <h2 className="text-2xl md:text-4xl font-bold tracking-tight md:tracking-tighter leading-tight mb-20 mt-8">
+      <Link href="/" className="hover:underline">
+        Blog
+      </Link>
+      .
+    </h2>
+  );
+};
+
+export default Header;
+```
+
+## components/hero-post.tsx
+
+```tsx
+import Avatar from "./avatar";
+import DateFormatter from "./date-formatter";
+import CoverImage from "./cover-image";
+import Link from "next/link";
+import type Author from "../interfaces/author";
+
+type Props = {
+  title: string;
+  coverImage: string;
+  date: string;
+  excerpt: string;
+  author: Author;
+  slug: string;
+};
+
+const HeroPost = ({
+  title,
+  coverImage,
+  date,
+  excerpt,
+  author,
+  slug,
+}: Props) => {
+  return (
+    <section>
+      <div className="mb-8 md:mb-16">
+        <CoverImage title={title} src={coverImage} slug={slug} />
+      </div>
+      <div className="md:grid md:grid-cols-2 md:gap-x-16 lg:gap-x-8 mb-20 md:mb-28">
+        <div>
+          <h3 className="mb-4 text-4xl lg:text-5xl leading-tight">
+            <Link
+              as={`/posts${slug}`}
+              href="/posts[slug]"
+              className="hover:underline"
+            >
+              {title}
+            </Link>
+          </h3>
+          <div className="mb-4 md:mb-0 text-lg">
+            <DateFormatter dateString={date} />
+          </div>
+        </div>
+        <div>
+          <p className="text-lg leading-relaxed mb-4">{excerpt}</p>
+          <Avatar name={author.name} picture={author.picture} />
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export default HeroPost;
+```
+
+## components/intro.tsx
+
+```tsx
+import { CMS_NAME } from "../lib/constants";
+
+const Intro = () => {
+  return (
+    <section className="flex-col md:flex-row flex items-center md:justify-between mt-16 mb-16 md:mb-12">
+      <h1 className="text-5xl md:text-8xl font-bold tracking-tighter leading-tight md:pr-8">
+        Blog.
+      </h1>
+      <h4 className="text-center md:text-left text-lg mt-5 md:pl-8">
+        A statically generated blog example using{" "}
+        <a
+          href="https://nextjs.org/"
+          className="underline hover:text-blue-600 duration-200 transition-colors"
+        >
+          Next.js
+        </a>{" "}
+        and {CMS_NAME}.
+      </h4>
+    </section>
+  );
+};
+
+export default Intro;
+```
+
+## components/layout.tsx
+
+```tsx
+import Alert from "./alert";
+import Footer from "./footer";
+import Meta from "./meta";
+
+type Props = {
+  preview?: boolean;
+  children: React.ReactNode;
+};
+
+const Layout = ({ preview, children }: Props) => {
+  return (
+    <>
+      <Meta />
+      <div className="min-h-screen">
+        <Alert preview={preview} />
+        <main>{children}</main>
+      </div>
+      <Footer />
+    </>
+  );
+};
+
+export default Layout;
+```
+
+## components/meta.tsx
+
+```tsx
+import Head from "next/head";
+import { CMS_NAME, HOME_OG_IMAGE_URL } from "../lib/constants";
+
+const Meta = () => {
+  return (
+    <Head>
+      <link
+        rel="apple-touch-icon"
+        sizes="180x180"
+        href="/favicon/apple-touch-icon.png"
+      />
+      <link
+        rel="icon"
+        type="image/png"
+        sizes="32x32"
+        href="/favicon/favicon-32x32.png"
+      />
+      <link
+        rel="icon"
+        type="image/png"
+        sizes="16x16"
+        href="/favicon/favicon-16x16.png"
+      />
+      <link rel="manifest" href="/favicon/site.webmanifest" />
+      <link
+        rel="mask-icon"
+        href="/favicon/safari-pinned-tab.svg"
+        color="#000000"
+      />
+      <link rel="shortcut icon" href="/favicon/favicon.ico" />
+      <meta name="msapplication-TileColor" content="#000000" />
+      <meta name="msapplication-config" content="/favicon/browserconfig.xml" />
+      <meta name="theme-color" content="#000" />
+      <link rel="alternate" type="application/rss+xml" href="/feed.xml" />
+      <meta
+        name="description"
+        content={`A statically generated blog example using Next.js and ${CMS_NAME}.`}
+      />
+      <meta property="og:image" content={HOME_OG_IMAGE_URL} />
+    </Head>
+  );
+};
+
+export default Meta;
+```
+
+## components/more-stories.tsx
+
+```tsx
+import PostPreview from "./post-preview";
+import type Post from "../interfaces/post";
+
+type Props = {
+  posts: Post[];
+};
+
+const MoreStories = ({ posts }: Props) => {
+  return (
+    <section>
+      <h2 className="mb-8 text-5xl md:text-7xl font-bold tracking-tighter leading-tight">
+        More Stories
+      </h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 md:gap-x-16 lg:gap-x-32 gap-y-20 md:gap-y-32 mb-32">
+        {posts.map((post) => (
+          <PostPreview
+            key={post.slug}
+            title={post.title}
+            coverImage={post.coverImage}
+            date={post.date}
+            author={post.author}
+            slug={post.slug}
+            excerpt={post.excerpt}
+          />
+        ))}
+      </div>
+    </section>
+  );
+};
+
+export default MoreStories;
+```
+
+## components/post-body.tsx
+
+```tsx
+import markdownStyles from "./markdown-styles.module.css";
+
+type Props = {
+  content: string;
+};
+
+const PostBody = ({ content }: Props) => {
+  return (
+    <div className="max-w-2xl mx-auto">
+      <div
+        className={markdownStyles["markdown"]}
+        dangerouslySetInnerHTML={{ __html: content }}
+      />
+    </div>
+  );
+};
+
+export default PostBody;
+```
+
+## components/post-header.tsx
+
+```tsx
+import Avatar from "./avatar";
+import DateFormatter from "./date-formatter";
+import CoverImage from "./cover-image";
+import PostTitle from "./post-title";
+import type Author from "../interfaces/author";
+
+type Props = {
+  title: string;
+  coverImage: string;
+  date: string;
+  author: Author;
+};
+
+const PostHeader = ({ title, coverImage, date, author }: Props) => {
+  return (
+    <>
+      <PostTitle>{title}</PostTitle>
+      <div className="hidden md:block md:mb-12">
+        <Avatar name={author.name} picture={author.picture} />
+      </div>
+      <div className="mb-8 md:mb-16 sm:mx-0">
+        <CoverImage title={title} src={coverImage} />
+      </div>
+      <div className="max-w-2xl mx-auto">
+        <div className="block md:hidden mb-6">
+          <Avatar name={author.name} picture={author.picture} />
+        </div>
+        <div className="mb-6 text-lg">
+          <DateFormatter dateString={date} />
+        </div>
+      </div>
+    </>
+  );
+};
+
+export default PostHeader;
+```
+
+## components/post-preview.tsx
+
+```tsx
+import Avatar from "./avatar";
+import DateFormatter from "./date-formatter";
+import CoverImage from "./cover-image";
+import Link from "next/link";
+import type Author from "../interfaces/author";
+
+type Props = {
+  title: string;
+  coverImage: string;
+  date: string;
+  excerpt: string;
+  author: Author;
+  slug: string;
+};
+
+const PostPreview = ({
+  title,
+  coverImage,
+  date,
+  excerpt,
+  author,
+  slug,
+}: Props) => {
+  return (
+    <div>
+      <div className="mb-5">
+        <CoverImage slug={slug} title={title} src={coverImage} />
+      </div>
+      <h3 className="text-3xl mb-3 leading-snug">
+        <Link
+          as={`/posts${slug}`}
+          href="/posts[slug]"
+          className="hover:underline"
+        >
+          {title}
+        </Link>
+      </h3>
+      <div className="text-lg mb-4">
+        <DateFormatter dateString={date} />
+      </div>
+      <p className="text-lg leading-relaxed mb-4">{excerpt}</p>
+      <Avatar name={author.name} picture={author.picture} />
+    </div>
+  );
+};
+
+export default PostPreview;
+```
+
+## components/post-title.tsx
+
+```tsx
+import { ReactNode } from "react";
+
+type Props = {
+  children?: ReactNode;
+};
+
+const PostTitle = ({ children }: Props) => {
+  return (
+    <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter leading-tight md:leading-none mb-12 text-center md:text-left">
+      {children}
+    </h1>
+  );
+};
+
+export default PostTitle;
+```
+
+## components/section-separator.tsx
+
+```tsx
+const SectionSeparator = () => {
+  return <hr className="border-neutral-200 mt-28 mb-24" />;
+};
+
+export default SectionSeparator;
+```
+
+## interfaces/author.ts
+
+```ts
+type Author = {
+  name: string;
+  picture: string;
+};
+
+export default Author;
+```
+
+## interfaces/post.ts
+
+```ts
+import type Author from "./author";
+
+type PostType = {
+  slug: string;
+  title: string;
+  date: string;
+  coverImage: string;
+  author: Author;
+  excerpt: string;
+  ogImage: {
+    url: string;
+  };
+  content: string;
+};
+
+export default PostType;
+```
+
+## lib/api.ts
+
+```ts
+import PostType from "../interfaces/post";
+
+export async function executeGraphQLForBlogPosts(
+  query: string,
+): Promise<CmsPost[]> {
+  const graphQLEndpoint = `${process.env.SF_API_URL}graphql`;
+  const response = await fetch(graphQLEndpoint, {
+    method: "POST",
+    body: JSON.stringify({ query }),
+    headers: { "Content-Type": "application/json" },
+  }).then((x) => x.json());
+  return response["data"]["posts"];
+}
+
+export async function getAllPostSlugsFromCms(): Promise<string[]> {
+  var query = `
+        query {
+            posts {
+                itemDefaultUrl
+            }
+        }
+    `;
+
+  const blogPosts = await executeGraphQLForBlogPosts(query);
+  const slugs = blogPosts.map((x) => x.itemDefaultUrl);
+  return slugs;
+}
+
+function transformImageUrl(url: string) {
+  if (!url.startsWith("http")) {
+    url = process.env.SF_URL + url.substring(1);
+  }
+
+  return url;
+}
+
+function mapCmsBlog(source: CmsPost): PostType {
+  return {
+    content: source.content,
+    excerpt: source.excerpt,
+    date: source.dateCreated,
+    slug: source.itemDefaultUrl,
+    title: source.title,
+    author: {
+      name: source.authorOfPost[0].title,
+      picture: transformImageUrl(source.authorOfPost[0].picture[0].url),
+    },
+    coverImage: transformImageUrl(source.coverImage[0].url),
+    ogImage: {
+      url: transformImageUrl(source.openGraphImage[0].url),
+    },
+  };
+}
+
+export async function getPostBySlugFromCms(slug: string): Promise<PostType> {
+  const modifiedSlug = slug;
+  var query = `
+        query {
+            posts(_filter: {itemDefaultUrl: {_eq: "${modifiedSlug}"}}) {
+                id
+                title
+                excerpt
+                content
+                dateCreated
+                itemDefaultUrl
+                openGraphImage {
+                    url
+                }
+                coverImage {
+                    url
+                }
+                authorOfPost {
+                    title
+                    picture {
+                        url
+                    }
+                }
+            }
+        }
+    `;
+
+  const blogPosts = (await executeGraphQLForBlogPosts(query)).map((x) =>
+    mapCmsBlog(x),
+  );
+  if (blogPosts.length > 0) return blogPosts[0];
+
+  return null;
+}
+
+export async function getAllPostsFromCms(): Promise<PostType[]> {
+  var query = `
+        query {
+            posts {
+                id
+                title
+                excerpt
+                content
+                dateCreated
+                itemDefaultUrl
+                openGraphImage {
+                    url
+                }
+                coverImage {
+                    url
+                }
+                authorOfPost {
+                    title
+                    picture {
+                        url
+                    }
+                }
+            }
+        }
+    `;
+
+  const blogPosts = (await executeGraphQLForBlogPosts(query)).map((x) =>
+    mapCmsBlog(x),
+  );
+  return blogPosts;
+}
+
+interface CmsPost {
+  title: string;
+  excerpt: string;
+  dateCreated: string;
+  content: string;
+  itemDefaultUrl: string;
+  openGraphImage: {
+    url: string;
+  };
+  coverImage: {
+    url: string;
+  };
+  authorOfPost: {
+    title: string;
+    picture: {
+      url: string;
+    };
+  };
+}
+```
+
+## lib/constants.ts
+
+```ts
+export const EXAMPLE_PATH = "blog-starter";
+export const CMS_NAME = "Sitefinity";
+export const HOME_OG_IMAGE_URL =
+  "https://og-image.vercel.app/Next.js%20Blog%20Starter%20Example.png?theme=light&md=1&fontSize=100px&images=https%3A%2F%2Fassets.vercel.com%2Fimage%2Fupload%2Ffront%2Fassets%2Fdesign%2Fnextjs-black-logo.svg";
+```
+
+## package.json
+
+```json
+{
+  "private": true,
+  "scripts": {
+    "dev": "next",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "classnames": "^2.3.1",
+    "date-fns": "^2.28.0",
+    "next": "latest",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.3",
+    "@types/react": "^18.0.15",
+    "@types/react-dom": "^18.0.6",
+    "autoprefixer": "^10.4.7",
+    "postcss": "^8.4.14",
+    "tailwindcss": "^3.1.4",
+    "typescript": "^4.7.4"
+  }
+}
+```
+
+## pages/_app.tsx
+
+```tsx
+import { AppProps } from "next/app";
+import "../styles/index.css";
+
+export default function MyApp({ Component, pageProps }: AppProps) {
+  return <Component {...pageProps} />;
+}
+```
+
+## pages/index.tsx
+
+```tsx
+import Container from "../components/container";
+import MoreStories from "../components/more-stories";
+import HeroPost from "../components/hero-post";
+import Intro from "../components/intro";
+import Layout from "../components/layout";
+import { getAllPostsFromCms } from "../lib/api";
+import Head from "next/head";
+import { CMS_NAME } from "../lib/constants";
+import Post from "../interfaces/post";
+
+type Props = {
+  allPosts: Post[];
+};
+
+export default function Index({ allPosts }: Props) {
+  const heroPost = allPosts[0];
+  const morePosts = allPosts.slice(1);
+  return (
+    <>
+      <Layout>
+        <Head>
+          <title>{`Next.js Blog Example with ${CMS_NAME}`}</title>
+        </Head>
+        <Container>
+          <Intro />
+          {heroPost && (
+            <HeroPost
+              title={heroPost.title}
+              coverImage={heroPost.coverImage}
+              date={heroPost.date}
+              author={heroPost.author}
+              slug={heroPost.slug}
+              excerpt={heroPost.excerpt}
+            />
+          )}
+          {morePosts.length > 0 && <MoreStories posts={morePosts} />}
+        </Container>
+      </Layout>
+    </>
+  );
+}
+
+export const getStaticProps = async () => {
+  const allPosts = await getAllPostsFromCms();
+
+  return {
+    props: { allPosts },
+  };
+};
+```
+
+## pages/posts/[...slug].tsx
+
+```tsx
+import { useRouter } from "next/router";
+import ErrorPage from "next/error";
+import Container from "../../components/container";
+import PostBody from "../../components/post-body";
+import Header from "../../components/header";
+import PostHeader from "../../components/post-header";
+import Layout from "../../components/layout";
+import { getAllPostSlugsFromCms, getPostBySlugFromCms } from "../../lib/api";
+import PostTitle from "../../components/post-title";
+import Head from "next/head";
+import { CMS_NAME } from "../../lib/constants";
+import type PostType from "../../interfaces/post";
+
+type Props = {
+  post: PostType;
+  morePosts: PostType[];
+  preview?: boolean;
+};
+
+export default function Post({ post, morePosts, preview }: Props) {
+  const router = useRouter();
+  if (!router.isFallback && !post?.slug) {
+    return <ErrorPage statusCode={404} />;
+  }
+  return (
+    <Layout preview={preview}>
+      <Container>
+        <Header />
+        {router.isFallback ? (
+          <PostTitle>Loading…</PostTitle>
+        ) : (
+          <>
+            <article className="mb-32">
+              <Head>
+                <title>
+                  {`${post.title} | Next.js Blog Example with ${CMS_NAME}`}
+                </title>
+                <meta property="og:image" content={post.ogImage.url} />
+              </Head>
+              <PostHeader
+                title={post.title}
+                coverImage={post.coverImage}
+                date={post.date}
+                author={post.author}
+              />
+              <PostBody content={post.content} />
+            </article>
+          </>
+        )}
+      </Container>
+    </Layout>
+  );
+}
+
+type Params = {
+  params: {
+    slug: string[];
+  };
+};
+
+export async function getStaticProps({ params }: Params) {
+  debugger;
+  const post = await getPostBySlugFromCms("/" + params.slug.join("/"));
+
+  return {
+    props: {
+      post,
+    },
+  };
+}
+
+export async function getStaticPaths() {
+  const slugs = await getAllPostSlugsFromCms();
+
+  return {
+    paths: slugs.map((slug) => {
+      return {
+        params: {
+          slug: slug.split("/").splice(1),
+        },
+      };
+    }),
+    fallback: false,
+  };
+}
+```

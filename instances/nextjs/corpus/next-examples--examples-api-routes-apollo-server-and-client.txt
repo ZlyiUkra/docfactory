@@ -1,0 +1,255 @@
+# Example: api-routes-apollo-server-and-client
+# джерело: https://github.com/vercel/next.js/tree/v16.3.8/examples/api-routes-apollo-server-and-client
+# отримано: 2026-10-01
+# версія: 16.3.8
+
+## Apollo Server and Client Example
+
+Apollo is a GraphQL client that allows you to easily query the exact data you need from a GraphQL server. In addition to fetching and mutating data, Apollo analyzes your queries and their results to construct a client-side cache of your data, which is kept up to date as further queries and mutations are run. The integration with Next and Apollo Server is implemented using the apollo-server-integration-next community package.
+
+In this simple example, we integrate Apollo seamlessly with Next.js data fetching methods to fetch queries in the server and hydrate them in the browser.
+
+## Deploy your own
+
+Deploy with Vercel
+
+## How to use
+
+Execute `create-next-app` with npm, Yarn, or pnpm to bootstrap the example:
+
+```bash
+npx create-next-app --example api-routes-apollo-server-and-client api-routes-apollo-server-and-client-app
+```
+
+```bash
+yarn create next-app --example api-routes-apollo-server-and-client api-routes-apollo-server-and-client-app
+```
+
+```bash
+pnpm create next-app --example api-routes-apollo-server-and-client api-routes-apollo-server-and-client-app
+```
+
+Deploy it to the cloud with Vercel (Documentation).
+
+## apollo/client.tsx
+
+```tsx
+import { useMemo } from "react";
+import { ApolloClient, InMemoryCache, HttpLink } from "@apollo/client";
+import { SchemaLink } from "@apollo/client/link/schema";
+import { schema } from "../apollo/schema";
+import merge from "deepmerge";
+
+let apolloClient;
+
+function createIsomorphLink() {
+  if (typeof window === "undefined") {
+    return new SchemaLink({ schema });
+  } else {
+    return new HttpLink({
+      uri: "/api/graphql",
+      credentials: "same-origin",
+    });
+  }
+}
+
+function createApolloClient() {
+  return new ApolloClient({
+    ssrMode: typeof window === "undefined",
+    link: createIsomorphLink(),
+    cache: new InMemoryCache(),
+  });
+}
+
+export function initializeApollo(initialState = null) {
+  const _apolloClient = apolloClient ?? createApolloClient();
+
+  // If your page has Next.js data fetching methods that use Apollo Client, the initial state
+  // gets hydrated here
+  if (initialState) {
+    // Get existing cache, loaded during client side data fetching
+    const existingCache = _apolloClient.extract();
+
+    // Merge the existing cache into data passed from getStaticProps/getServerSideProps
+    const data = merge(initialState, existingCache);
+
+    // Restore the cache with the merged data
+    _apolloClient.cache.restore(data);
+  }
+  // For SSG and SSR always create a new Apollo Client
+  if (typeof window === "undefined") return _apolloClient;
+  // Create the Apollo Client once in the client
+  if (!apolloClient) apolloClient = _apolloClient;
+
+  return _apolloClient;
+}
+
+export function useApollo(initialState) {
+  const store = useMemo(() => initializeApollo(initialState), [initialState]);
+  return store;
+}
+```
+
+## apollo/resolvers.ts
+
+```ts
+export const resolvers = {
+  Query: {
+    viewer() {
+      return { id: 1, name: "John Smith", status: "cached" };
+    },
+  },
+};
+```
+
+## apollo/schema.ts
+
+```ts
+import { makeExecutableSchema } from "@graphql-tools/schema";
+import { typeDefs } from "./type-defs";
+import { resolvers } from "./resolvers";
+
+export const schema = makeExecutableSchema({
+  typeDefs,
+  resolvers,
+});
+```
+
+## apollo/type-defs.ts
+
+```ts
+import { gql } from "@apollo/client";
+
+export const typeDefs = gql`
+  type User {
+    id: ID!
+    name: String!
+    status: String!
+  }
+
+  type Query {
+    viewer: User
+  }
+`;
+```
+
+## package.json
+
+```json
+{
+  "private": true,
+  "scripts": {
+    "dev": "next",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@apollo/client": "^3.7.1",
+    "@apollo/server": "^4.1.1",
+    "@as-integrations/next": "^1.1.0",
+    "@graphql-tools/schema": "^9.0.9",
+    "deepmerge": "4.2.2",
+    "graphql": "^16.6.0",
+    "next": "latest",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.2",
+    "@types/react": "^18.0.15",
+    "@types/react-dom": "^18.0.6",
+    "typescript": "^4.7.4"
+  }
+}
+```
+
+## pages/_app.tsx
+
+```tsx
+import { ApolloProvider } from "@apollo/client";
+import { useApollo } from "../apollo/client";
+
+export default function App({ Component, pageProps }) {
+  const apolloClient = useApollo(pageProps.initialApolloState);
+
+  return (
+    <ApolloProvider client={apolloClient}>
+      <Component {...pageProps} />
+    </ApolloProvider>
+  );
+}
+```
+
+## pages/about.tsx
+
+```tsx
+import Link from "next/link";
+
+export default function About() {
+  return (
+    <div>
+      This is a static page goto <Link href="/">dynamic</Link> page.
+    </div>
+  );
+}
+```
+
+## pages/api/graphql.ts
+
+```ts
+import { ApolloServer } from "@apollo/server";
+import { startServerAndCreateNextHandler } from "@as-integrations/next";
+import { schema } from "../../apollo/schema";
+
+const apolloServer = new ApolloServer({ schema });
+
+export default startServerAndCreateNextHandler(apolloServer);
+```
+
+## pages/index.tsx
+
+```tsx
+import gql from "graphql-tag";
+import Link from "next/link";
+import { useQuery } from "@apollo/client";
+import { initializeApollo } from "../apollo/client";
+
+const ViewerQuery = gql`
+  query ViewerQuery {
+    viewer {
+      id
+      name
+      status
+    }
+  }
+`;
+
+const Index = () => {
+  const {
+    data: { viewer },
+  } = useQuery(ViewerQuery);
+
+  return (
+    <div>
+      You're signed in as {viewer.name} and you're {viewer.status} goto{" "}
+      <Link href="/about">static</Link> page.
+    </div>
+  );
+};
+
+export async function getStaticProps() {
+  const apolloClient = initializeApollo();
+
+  await apolloClient.query({
+    query: ViewerQuery,
+  });
+
+  return {
+    props: {
+      initialApolloState: apolloClient.cache.extract(),
+    },
+  };
+}
+
+export default Index;
+```

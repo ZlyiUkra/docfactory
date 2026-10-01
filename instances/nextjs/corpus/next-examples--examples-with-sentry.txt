@@ -1,0 +1,690 @@
+# Example: with-sentry
+# джерело: https://github.com/vercel/next.js/tree/v16.3.8/examples/with-sentry
+# отримано: 2026-10-01
+# версія: 16.3.8
+
+## Sentry
+
+This is an example showing how to use Sentry to catch and report errors and monitor the performance of both the front and back ends, using the official Sentry SDK for Next.js. This example contains the following:
+
+- `sentry.server.config.js` and `sentry.client.config.js` are used to configure and initialize Sentry
+- `next.config.js` automatically injects Sentry into your app using `withSentryConfig`
+- `_error.js` (which is rendered by Next.js when handling certain types of exceptions) is overridden so those exceptions can be passed along to Sentry
+
+## Deploy your own
+
+It only takes a few steps to create and deploy your own version of this example app. Before you begin, make sure you have linked your Vercel account to GitHub, and set up a project in Sentry.
+
+### Option 1: Deploy directly to Vercel
+
+Deploy with Vercel
+
+This will clone this example to your GitHub org, create a linked project in Vercel, and prompt you to install the Vercel Sentry Integration. (You can read more about the integration on Vercel and in the Sentry docs.)
+
+### Option 2: Create locally before deploying
+
+Alternatively, you can create a copy of this example app locally so you can configure and customize it before you deploy it.
+
+#### Create and configure your app
+
+To begin, execute `create-next-app` with npx or Yarn, to create the app and install dependencies:
+
+```bash
+npx create-next-app --example with-sentry nextjs-sentry-example
+```
+
+```bash
+yarn create next-app --example with-sentry nextjs-sentry-example
+```
+
+```bash
+pnpm create next-app --example with-sentry nextjs-sentry-example
+```
+
+Next, run `sentry-wizard`, which will create and populate the settings files needed by `@sentry/nextjs` to initialize the SDK and upload source maps to Sentry:
+
+```bash
+npx @sentry/wizard -i nextjs
+```
+
+_Beware that above command creates files extended with `.wizardcopy.js` as the example already contains the config files. Thus after running the wizard, replace example files with those newly created._
+
+Once the files are created, you can further configure your app by adding SDK settings to `sentry.server.config.js` and `sentry.client.config.js`, and `SentryWebpackPlugin` settings to `next.config.js`.
+
+(If you'd rather do the SDK set-up manually, you can do that, too.)
+
+You should now be able to build and run your app locally, upload source maps, and send errors and performance data to Sentry. For more details, check out the Sentry Next.js SDK docs.
+
+#### Deploy your app to Vercel
+
+Vercel reads you code from GitHub, so you first need to create an empty GitHub repo for your project and then add it to your local repo as a remote:
+
+```bash
+git remote add origin https://github.com/<org>/<repo>.git
+```
+
+Next, create a project in Vercel and link it to your GitHub repo.
+
+In order for Vercel to upload source maps to Sentry when building your app, it needs a Sentry auth token. The wizard automatically sets up your personal token locally; to use that token on Vercel, add an environment variable to your Vercel project with the key `SENTRY_AUTH_TOKEN` and the value you'll find in `.sentryclirc` at the root level of your project. To use an org-wide token instead, set up the Vercel Sentry Integration. (You can read more about the integration on Vercel and in the Sentry docs.)
+
+Finally, commit your app and push it to GitHub:
+
+```bash
+git add .
+git commit -m "Initial commit"
+git push
+```
+
+This will trigger a deployment in Vercel. Head over to your Vercel dashboard, click on your project, and then click "Visit" to see the results!
+
+_Note: The `@sentry/nextjs` SDK is only intended to be used with Next.js versions 10.0.8 and higher_
+
+## package.json
+
+```json
+{
+  "private": true,
+  "scripts": {
+    "dev": "next",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@sentry/nextjs": "^7.60.1",
+    "next": "latest",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^18.15.11",
+    "@types/react": "^18.2.17",
+    "typescript": "^5.1.6"
+  }
+}
+```
+
+## pages/404.tsx
+
+```tsx
+import Error from "next/error";
+
+export default function NotFound() {
+  // Opinionated: do not record an exception in Sentry for 404
+  return <Error statusCode={404} />;
+}
+```
+
+## pages/_app.tsx
+
+```tsx
+import "../styles/globals.css";
+
+export default function App({ Component, pageProps }) {
+  return <Component {...pageProps} />;
+}
+```
+
+## pages/_document.tsx
+
+```tsx
+import { Html, Head, Main, NextScript } from "next/document";
+
+export default function Document() {
+  return (
+    <Html lang="en">
+      <Head />
+      <body>
+        <Main />
+        <NextScript />
+      </body>
+    </Html>
+  );
+}
+```
+
+## pages/_error.tsx
+
+```tsx
+/**
+ * This page is loaded by Nextjs:
+ *  - on the server, when data-fetching methods throw or reject
+ *  - on the client, when `getInitialProps` throws or rejects
+ *  - on the client, when a React lifecycle method throws or rejects, and it's
+ *    caught by the built-in Nextjs error boundary
+ *
+ * See:
+ *  - https://nextjs.org/docs/basic-features/data-fetching/overview
+ *  - https://nextjs.org/docs/api-reference/data-fetching/get-initial-props
+ *  - https://react.dev/reference/react/Component#catching-rendering-errors-with-an-error-boundary
+ */
+
+import * as Sentry from "@sentry/nextjs";
+import NextErrorComponent from "next/error";
+
+const CustomErrorComponent = (props) => (
+  <NextErrorComponent statusCode={props.statusCode} />
+);
+
+CustomErrorComponent.getInitialProps = async (contextData) => {
+  // In case this is running in a serverless function, await this in order to give Sentry
+  // time to send the error before the lambda exits
+  await Sentry.captureUnderscoreErrorException(contextData);
+
+  // This will contain the status code of the response
+  return NextErrorComponent.getInitialProps(contextData);
+};
+
+export default CustomErrorComponent;
+```
+
+## pages/api/test1.ts
+
+```ts
+const doAsyncWork = () => Promise.reject(new Error("API Test 1"));
+doAsyncWork();
+
+export default function handler(req, res) {
+  res.status(200).json({ name: "John Doe" });
+}
+```
+
+## pages/api/test2.ts
+
+```ts
+function work() {
+  throw new Error("API Test 2");
+}
+
+work();
+
+export default function handler(req, res) {
+  res.status(200).json({ name: "John Doe" });
+}
+```
+
+## pages/api/test3.ts
+
+```ts
+function work() {
+  throw new Error("API Test 3");
+}
+
+export default function handler(req, res) {
+  work();
+
+  res.status(200).json({ name: "John Doe" });
+}
+```
+
+## pages/api/test4.ts
+
+```ts
+import * as Sentry from "@sentry/nextjs";
+
+export default function handler(req, res) {
+  try {
+    throw new Error("API Test 4");
+  } catch (error) {
+    Sentry.captureException(error);
+  }
+
+  res.status(200).json({ name: "John Doe" });
+}
+```
+
+## pages/client/test1.tsx
+
+```tsx
+const doAsyncWork = () => Promise.reject(new Error("Client Test 1"));
+doAsyncWork();
+
+const Test1 = () => <h1>Client Test 1</h1>;
+
+export default Test1;
+```
+
+## pages/client/test2.tsx
+
+```tsx
+// This code will run just fine on the server in Node.js, but process will be
+// undefined in a browser. Note that `isProd = process.env.NODE_ENV` would have
+// worked because Webpack's DefinePlugin will replace it with a string at build
+// time
+const env = process.env;
+const isProd = env.NODE_ENV === "production";
+
+const Test2 = () => (
+  <>
+    <h1>Client Test 2</h1>
+    <p>isProd: {isProd}</p>
+  </>
+);
+
+export default Test2;
+```
+
+## pages/client/test3.tsx
+
+```tsx
+import { useEffect } from "react";
+
+const Test3 = () => {
+  useEffect(() => {
+    throw new Error("Client Test 3");
+  }, []);
+
+  return <h1>Client Test 3</h1>;
+};
+
+export default Test3;
+```
+
+## pages/client/test4.tsx
+
+```tsx
+import { useEffect } from "react";
+
+const Test4 = () => {
+  useEffect(function () {
+    async function doTest() {
+      const doAsyncWork = () => Promise.reject(new Error("Client Test 4"));
+      await doAsyncWork();
+    }
+    doTest();
+  }, []);
+
+  return <h1>Client Test 4</h1>;
+};
+
+export default Test4;
+```
+
+## pages/client/test5.tsx
+
+```tsx
+import * as Sentry from "@sentry/nextjs";
+
+const Test5 = () => (
+  <>
+    <h1>Client Test 5</h1>
+    <button
+      onClick={() => {
+        const transaction = Sentry.startTransaction({
+          name: "Testing performance",
+        });
+        Sentry.configureScope((scope) => {
+          scope.setSpan(transaction);
+        });
+
+        try {
+          // Some operation the button does, but fails
+          throw new Error("Client Test 5");
+        } catch (error) {
+          Sentry.captureException(error);
+        } finally {
+          transaction.finish();
+        }
+      }}
+    >
+      Click me to create a transaction and throw an Error
+    </button>
+  </>
+);
+
+export default Test5;
+```
+
+## pages/index.tsx
+
+```tsx
+import Link from "next/link";
+
+import Image from "next/image";
+import { Inter } from "next/font/google";
+import styles from "../styles/Home.module.css";
+
+const inter = Inter({ subsets: ["latin"] });
+
+export default function Home() {
+  return (
+    <main className={styles.main}>
+      <div className={styles.description}>
+        <p>
+          New users instrument with:&nbsp;
+          <code className={styles.code}>npx @sentry/wizard -s -i nextjs</code>
+        </p>
+        <div>
+          <a
+            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            By{" "}
+            <Image
+              src="/vercel.svg"
+              alt="Vercel Logo"
+              className={styles.vercelLogo}
+              width={100}
+              height={24}
+              priority
+            />
+          </a>
+        </div>
+      </div>
+
+      <div className={styles.center}>
+        <Image
+          className={styles.logo}
+          src="/next.svg"
+          alt="Next.js Logo"
+          width={180}
+          height={37}
+          priority
+        />
+        <div className={styles.thirteen}>
+          <Image src="/thirteen.svg" alt="13" width={40} height={31} priority />
+        </div>
+      </div>
+      <Image
+        src="/sentry.svg"
+        alt="Sentry Logo"
+        width={360}
+        height={74}
+        priority
+      />
+      <div
+        className={styles.justCenter}
+        style={{ display: "flex", flexDirection: "column", rowGap: "1rem" }}
+      >
+        <p className={inter.className}>
+          See how Sentry records unhandled exceptions in your code.
+        </p>
+        <div className={styles.description}>
+          <p className={inter.className}>
+            <strong>Important:</strong> exceptions in development mode take a
+            different path than in production. These tests should be run on a
+            production build (i.e.{" "}
+            <code className={styles.code}>next build</code>
+            ).{" "}
+            <Link
+              className={styles.link}
+              target="_blank"
+              href="https://nextjs.org/docs/advanced-features/custom-error-page#customizing-the-error-page"
+            >
+              Read more
+            </Link>
+          </p>
+        </div>
+      </div>
+      <br />
+      <div className={styles.grid}>
+        <div className={styles.card}>
+          <h2 className={inter.className}>
+            API routes <span>-&gt;</span>
+          </h2>
+          <p className={inter.className}>
+            The following examples are Sentry tests. Note that 1 and 2 are not
+            expected to work if deployed to Vercel yet.
+          </p>
+          <p className={inter.className}>
+            Top-of-module promise that rejects, but its result is not awaited.
+            {"  "}
+            <code className={styles.code}>
+              <a className={styles.link} href="/api/test1" target="_blank">
+                API Test 1
+              </a>
+            </code>
+          </p>
+          <p className={inter.className}>
+            API has a top-of-module exception.{" "}
+            <code className={styles.code}>
+              <a className={styles.link} href="/api/test2" target="_blank">
+                API Test 2
+              </a>
+            </code>
+          </p>
+          <p className={inter.className}>
+            API with an exception in its request handler.{" "}
+            <code className={styles.code}>
+              <a className={styles.link} href="/api/test3" target="_blank">
+                API Test 3
+              </a>
+            </code>
+          </p>
+          <p className={inter.className}>
+            API uses a try/catch to handle an exception and records it.{" "}
+            <code className={styles.code}>
+              <a className={styles.link} href="/api/test4" target="_blank">
+                API Test 4
+              </a>
+            </code>
+          </p>
+        </div>
+        <div className={styles.card}>
+          <h2 className={inter.className}>
+            SSR <span>-&gt;</span>
+          </h2>
+          <p className={inter.className}>
+            There are currently two known bugs with respect to SSR transactions:
+            they don't get recorded on Vercel, and ones that are recorded and
+            have an error are grouped in the Sentry UI by the error page name
+            rather than the requested page name.
+          </p>
+
+          <p className={inter.className}>
+            <code className={styles.code}>getServerSideProps </code>
+            &nbsp;throws an Error. This should cause _error.js to render and
+            record and Error in Sentry.{" "}
+            <code className={styles.code}>
+              <Link className={styles.link} href="/ssr/test1">
+                SSR Test 1
+              </Link>
+            </code>
+          </p>
+          <p className={inter.className}>
+            <code className={styles.code}>getServerSideProps </code>
+            returns a Promise that rejects. This should cause _error.js to
+            render and record an Error in Sentry.{" "}
+            <code className={styles.code}>
+              <Link className={styles.link} href="/ssr/test2">
+                SSR Test 2
+              </Link>
+            </code>
+          </p>
+          <p className={inter.className}>
+            <code className={styles.code}>getServerSideProps </code>
+            calls a Promise that rejects, but does not handle the rejection or
+            await its result (returning synchronously). Sentry records an Error
+            but <strong>will not</strong> when deployed to Vercel because the
+            serverless function will already have exited.{" "}
+            <code className={styles.code}>
+              <Link className={styles.link} href="/ssr/test3">
+                SSR Test 3
+              </Link>
+            </code>
+          </p>
+          <p className={inter.className}>
+            <code className={styles.code}>getServerSideProps </code>
+            manually captures an exception from a try/catch. This should record
+            Error in Sentry.{" "}
+            <code className={styles.code}>
+              <Link className={styles.link} href="/ssr/test4">
+                SSR Test 4
+              </Link>
+            </code>
+          </p>
+        </div>
+
+        <div className={styles.card}>
+          <h2 className={inter.className}>
+            Client exceptions <span>-&gt;</span>
+          </h2>
+          <p className={inter.className}>
+            There is a top-of-module Promise that rejects, but its result is not
+            awaited. Sentry records an Error.{" "}
+            <code className={styles.code}>
+              <Link className={styles.link} href="/client/test1">
+                Client Test 1
+              </Link>
+            </code>
+          </p>
+          <p className={inter.className}>
+            There is a top-of-module exception. _error.js should render and
+            record ReferenceError('process is not defined') in Sentry.{" "}
+            <code className={styles.code}>
+              <Link className={styles.link} href="/client/test2">
+                Client Test 2
+              </Link>
+            </code>
+          </p>
+          <p className={inter.className}>
+            There is an exception during React lifecycle that is caught by
+            Next.js's React Error Boundary. In this case, when the component
+            mounts. This causes _error.js to render and records Error in Sentry.{" "}
+            <code className={styles.code}>
+              <Link className={styles.link} href="/client/test3">
+                Client Test 3
+              </Link>
+            </code>
+          </p>
+          <p className={inter.className}>
+            There is an unhandled Promise rejection during React lifecycle. In
+            this case, when the component mounts. Sentry records an Error.{" "}
+            <code className={styles.code}>
+              <Link className={styles.link} href="/client/test4">
+                {" "}
+                Client Test 4
+              </Link>
+            </code>
+          </p>
+          <p className={inter.className}>
+            An Error is thrown from an event handler. Sentry records an Error.
+            (This page also demonstrates how to manually instrument your code
+            for performance monitoring.){" "}
+            <code className={styles.code}>
+              <Link className={styles.link} href="/client/test5">
+                Client Test 5
+              </Link>
+            </code>
+          </p>
+        </div>
+        <div className={styles.card}>
+          <h2 className={inter.className}>
+            Next.js 13 Features <span>-&gt;</span>
+          </h2>
+          <p className={inter.className}>
+            Next.js 13 continues to bring many new features to developers,
+            especially those deploying on Vercel. We are trying to keep up, we
+            promise!
+          </p>
+        </div>
+        <div className={styles.card}>
+          <h2 className={inter.className}>
+            Performance <span>-&gt;</span>
+          </h2>
+          <p className={inter.className}>
+            <strong>Why should I care about Performance?</strong>
+          </p>
+          <p className={inter.className}>
+            Front-end transactions are recorded for each pageload or navigation.
+          </p>
+          <p className={inter.className}>
+            Backend transactions are recorded for each API or page route.
+          </p>
+          <p className={inter.className}>
+            Sentry creates links between errors and transactions, and can be
+            seen in the{" "}
+            <strong>
+              <Link
+                className={styles.link}
+                href="https://docs.sentry.io/product/sentry-basics/tracing/trace-view/"
+              >
+                trace navigator docs
+              </Link>
+            </strong>
+            .
+          </p>
+          <p className={inter.className}>
+            Manual performance instrumentation is demonstrated in the final
+            example below (throwing an error from an event handler).
+          </p>
+          <p className={inter.className}>
+            Add Edge Function example
+            <br />
+            <code className={styles.code}>
+              <Link className={styles.link} href="/client/test5">
+                Trigger Edge Function
+              </Link>
+            </code>
+          </p>
+        </div>
+      </div>
+    </main>
+  );
+}
+```
+
+## pages/ssr/test1.tsx
+
+```tsx
+const Test1 = () => <h1>SSR Test 1</h1>;
+
+export function getServerSideProps() {
+  throw new Error("SSR Test 1");
+}
+
+export default Test1;
+```
+
+## pages/ssr/test2.tsx
+
+```tsx
+const Test2 = () => <h1>SSR Test 2</h1>;
+
+export async function getServerSideProps() {
+  return Promise.reject(Error("SSR Test 2"));
+}
+
+export default Test2;
+```
+
+## pages/ssr/test3.tsx
+
+```tsx
+const Test3 = () => <h1>SSR Test 3</h1>;
+
+export async function getServerSideProps() {
+  const doAsyncWork = () => Promise.reject(new Error("SSR Test 3"));
+
+  doAsyncWork();
+
+  return { props: {} };
+}
+
+export default Test3;
+```
+
+## pages/ssr/test4.tsx
+
+```tsx
+import * as Sentry from "@sentry/nextjs";
+
+const Test4 = () => <h1>SSR Test 4</h1>;
+
+export async function getServerSideProps() {
+  try {
+    throw new Error("SSR Test 4");
+  } catch (error) {
+    Sentry.captureException(error);
+
+    // Flushing before returning is necessary if deploying to Vercel, see
+    // https://vercel.com/docs/platform/limits#streaming-responses
+    await Sentry.flush(2000);
+  }
+
+  return { props: {} };
+}
+
+export default Test4;
+```

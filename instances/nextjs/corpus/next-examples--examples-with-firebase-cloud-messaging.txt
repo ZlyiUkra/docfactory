@@ -1,0 +1,112 @@
+# Example: with-firebase-cloud-messaging
+# джерело: https://github.com/vercel/next.js/tree/v16.3.8/examples/with-firebase-cloud-messaging
+# отримано: 2026-10-01
+# версія: 16.3.8
+
+## With Firebase Cloud Messaging example
+
+To demo how to implement firebase cloud messaging to send web push notification in next.js.
+
+## How to use
+
+Execute `create-next-app` with npm, Yarn, or pnpm to bootstrap the example:
+
+```bash
+npx create-next-app --example with-firebase-cloud-messaging with-firebase-cloud-messaging-app
+```
+
+```bash
+yarn create next-app --example with-firebase-cloud-messaging with-firebase-cloud-messaging-app
+```
+
+```bash
+pnpm create next-app --example with-firebase-cloud-messaging with-firebase-cloud-messaging-app
+```
+
+## Set your send id
+
+set your `messagingSenderId` in `public/firebase-messaging-sw.js` and `utils/webPush.js`
+
+Deploy it to the cloud with Vercel (Documentation).
+
+## How to send a notification
+
+https://firebase.google.com/docs/cloud-messaging/js/first-message,
+
+## package.json
+
+```json
+{
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "firebase": "^7.6.2",
+    "localforage": "^1.7.3",
+    "next": "latest",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {}
+}
+```
+
+## pages/index.js
+
+```js
+import { useEffect } from "react";
+import { firebaseCloudMessaging } from "../utils/webPush";
+
+const Index = () => {
+  useEffect(() => {
+    firebaseCloudMessaging.init();
+  }, []);
+
+  return <div>Next.js with firebase cloud messaging.</div>;
+};
+
+export default Index;
+```
+
+## utils/webPush.js
+
+```js
+import "firebase/messaging";
+import firebase from "firebase/app";
+import localforage from "localforage";
+
+const firebaseCloudMessaging = {
+  tokenInlocalforage: async () => {
+    return localforage.getItem("fcm_token");
+  },
+
+  init: async function () {
+    firebase.initializeApp({
+      apiKey: "YOUR-API-KEY",
+      projectId: "YOUR-PROJECT-ID",
+      messagingSenderId: "YOUR-SENDER-ID",
+      appId: "YOUR-APP-ID",
+    });
+
+    try {
+      if ((await this.tokenInlocalforage()) !== null) {
+        return false;
+      }
+
+      const messaging = firebase.messaging();
+      await Notification.requestPermission();
+      const token = await messaging.getToken();
+
+      localforage.setItem("fcm_token", token);
+      console.log("fcm_token", token);
+    } catch (error) {
+      console.error(error);
+    }
+  },
+};
+
+export { firebaseCloudMessaging };
+```

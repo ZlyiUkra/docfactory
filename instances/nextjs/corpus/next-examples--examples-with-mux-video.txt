@@ -1,0 +1,662 @@
+# Example: with-mux-video
+# джерело: https://github.com/vercel/next.js/tree/v16.3.8/examples/with-mux-video
+# отримано: 2026-10-01
+# версія: 16.3.8
+
+## Mux Video
+
+This example uses Mux Video, an API-first platform for video. The example features video uploading and playback in a Next.js application.
+
+## Try it out
+
+- https://with-mux-video.vercel.app/
+- This project was used to create stream.new
+
+## Deploy your own
+
+### New to Mux
+
+If you do not already have a Mux account, the easiest way to get started with Mux is through the native integration in the Vercel Marketplace. Vercel Marketplace users will get $20 of usage/month for $0. Learn more.
+
+Deploy with Vercel
+
+### Existing Mux user
+
+If you have an existing Mux account, you can still deploy easily with Vercel:
+
+Deploy with Vercel
+
+Once deployed, continue with step 3 below.
+
+## How to use
+
+If you deployed with the native Mux integration, you're all set! However, if you have your own Mux account already, or want to set up things manually, you can follow the following steps.
+
+### Step 1. Create your Mux account
+
+The easiest way to get started with Mux is through the native integration in the Vercel Marketplace. Vercel Marketplace users will get $20 of usage/month for $0. Learn more.
+
+You can also get started by creating an account directly in Mux.
+
+### Step 2. Create a Next app with this example
+
+Execute `create-next-app` with npm, Yarn, pnpm, or Bun to bootstrap the example:
+
+```bash
+npx create-next-app --example with-mux-video with-mux-video-app
+```
+
+```bash
+yarn create next-app --example with-mux-video with-mux-video-app
+```
+
+```bash
+pnpm create next-app --example with-mux-video with-mux-video-app
+```
+
+```bash
+bunx create-next-app --example with-mux-video with-mux-video-app
+```
+
+### Step 3. Set up environment variables
+
+Copy the `.env.local.example` file in this directory to `.env.local` (which will be ignored by Git):
+
+```bash
+cp .env.local.example .env.local
+```
+
+Then, go to the settings page in your Mux dashboard, get a new **API Access Token**. Use that token to set the variables in `.env.local`:
+
+- `MUX_TOKEN_ID` should be the `TOKEN ID` of your new token
+- `MUX_TOKEN_SECRET` should be `TOKEN SECRET`
+
+At this point, you're good to `npm run dev` or `yarn dev` or `pnpm dev`. However, if you want to deploy, read on:
+
+### Step 4. Deploy on Vercel
+
+You can deploy this app to the cloud with Vercel (Documentation).
+
+To deploy on Vercel, you need to set the `MUX_TOKEN_ID` and `MUX_TOKEN_SECRET` environment variables using either the Vercel Dashboard or the Vercel CLI
+
+Then push the project to GitHub/GitLab/Bitbucket and import to Vercel to deploy.
+
+## Notes
+
+### Preparing for Production
+
+**Important:** When creating uploads, this demo sets `cors_origin: "*"` in the `app/(upload)/page.tsx` file. For extra security, you should update this value to be something like `cors_origin: 'https://your-app.com'`, to restrict uploads to only be allowed from your application.
+
+### How it works
+
+1. Users land on the home page, `app/(upload)/page.tsx`. The Mux Direct Uploads API provides an endpoint to Mux Uploader React.
+1. The user uploads a video with Mux Uploader. When their upload is complete, Mux Uploader calls a server action that redirects to...
+1. `app/(upload)/asset/[assetId]/page.tsx`, which polls the Asset API via server action, waiting for the asset to be ready. Once the asset is ready, it redirects to...
+1. `app/v/[assetId]/page.tsx`, where users can watch their video using Mux Player React. This page uses the Mux Image API and the Next.js Metadata API to provide an og images tailored to each video.
+
+## app/(upload)/MuxUploader.tsx
+
+```tsx
+"use client";
+
+import { type ComponentPropsWithoutRef } from "react";
+
+import LibMuxUploader from "@mux/mux-uploader-react";
+
+type Props = {
+  endpoint: ComponentPropsWithoutRef<typeof LibMuxUploader>["endpoint"];
+  onSuccess: () => void;
+};
+export default function MuxUploader({ endpoint, onSuccess }: Props) {
+  return <LibMuxUploader endpoint={endpoint} onSuccess={() => onSuccess()} />;
+}
+```
+
+## app/(upload)/asset/[assetId]/AssetStatusPoll.tsx
+
+```tsx
+"use client";
+
+import { useEffect, useState } from "react";
+
+import { Status } from "./types";
+import Link from "@/app/_components/Link";
+
+const Oops = () => (
+  <p>
+    This is awkward. Let's <Link href="/">refresh</Link> and try again.
+  </p>
+);
+
+type Props = {
+  initialStatus: Status;
+  checkAssetStatus: () => Promise<Status>;
+};
+export default function AssetStatusPoll({
+  initialStatus,
+  checkAssetStatus,
+}: Props) {
+  const [{ status, errors }, setStatus] = useState<Status>(() => initialStatus);
+
+  useEffect(() => {
+    const poll = async () => setStatus(await checkAssetStatus());
+    const interval = setInterval(poll, 1000);
+    return () => clearInterval(interval);
+  }, [checkAssetStatus]);
+
+  switch (status) {
+    case "preparing":
+      return <p className="animate-pulse">Asset is preparing...</p>;
+    case "errored":
+      return (
+        <div>
+          <p className="mb-4">Asset encountered an error.</p>
+          {Array.isArray(errors) && (
+            <ul className="mb-4">
+              {errors.map((error, key) => (
+                <li key={key}>{JSON.stringify(error)}</li>
+              ))}
+            </ul>
+          )}
+          <Oops />
+        </div>
+      );
+    case "ready":
+      return (
+        <div>
+          <p className="mb-4">
+            Asset is ready. The app really should've redirected you to it by
+            now.
+          </p>
+          <Oops />
+        </div>
+      );
+    default:
+      return (
+        <div>
+          <p className="mb-4">Asset is in an unknown state.</p>
+          <pre className="mb-4">{JSON.stringify({ status, errors })}</pre>
+          <Oops />
+        </div>
+      );
+  }
+}
+```
+
+## app/(upload)/asset/[assetId]/layout.tsx
+
+```tsx
+export default function Layout({ children }: { children: React.ReactNode }) {
+  return <div className="font-mono text-sm">{children}</div>;
+}
+```
+
+## app/(upload)/asset/[assetId]/loading.tsx
+
+```tsx
+export default function Loading() {
+  return <div>Checking asset status...</div>;
+}
+```
+
+## app/(upload)/asset/[assetId]/page.tsx
+
+```tsx
+import Mux from "@mux/mux-node";
+import { redirect } from "next/navigation";
+import { Status } from "./types";
+import AssetStatusPoll from "./AssetStatusPoll";
+
+// reads MUX_TOKEN_ID and MUX_TOKEN_SECRET from your environment
+const mux = new Mux();
+
+const checkAssetStatus = async (assetId: string): Promise<Status> => {
+  const asset = await mux.video.assets.retrieve(assetId);
+
+  // if the asset is ready and it has a public playback ID,
+  // (which it should, considering the upload settings we used)
+  // redirect to its playback page
+  if (asset.status === "ready") {
+    const playbackIds = asset.playback_ids;
+    if (Array.isArray(playbackIds)) {
+      const playbackId = playbackIds.find((id) => id.policy === "public");
+      if (playbackId) {
+        redirect(`/v/${playbackId.id}`);
+      }
+    }
+  }
+
+  return {
+    status: asset.status,
+    errors: asset.errors,
+  };
+};
+
+// For better performance, we could cache and use a Mux webhook to invalidate the cache.
+// https://docs.mux.com/guides/listen-for-webhooks
+// For this example, calling the Mux API on each request and then polling is sufficient.
+export const dynamic = "force-dynamic";
+
+export default async function Page(props: {
+  params: Promise<{ assetId: string }>;
+}) {
+  const params = await props.params;
+
+  const { assetId } = params;
+
+  const initialStatus = await checkAssetStatus(assetId);
+  return (
+    <AssetStatusPoll
+      initialStatus={initialStatus}
+      checkAssetStatus={async () => {
+        "use server";
+        return await checkAssetStatus(assetId);
+      }}
+    />
+  );
+}
+```
+
+## app/(upload)/asset/[assetId]/types.ts
+
+```ts
+import type Mux from "@mux/mux-node";
+
+export type Status = {
+  status: Mux.Video.Assets.Asset["status"];
+  errors: Mux.Video.Assets.Asset["errors"];
+};
+```
+
+## app/(upload)/layout.tsx
+
+```tsx
+import Link from "../_components/Link";
+import { MUX_HOME_PAGE_URL } from "../constants";
+
+export default function Layout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <>
+      <header className="mb-8">
+        <h1 className="font-bold text-4xl lg:text-5xl mb-2">
+          Welcome to Mux + Next.js
+        </h1>
+        <p className="italic">Get started by uploading a video</p>
+      </header>
+      <p className="mb-4">
+        <Link
+          href={MUX_HOME_PAGE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Mux
+        </Link>{" "}
+        provides APIs for developers working with video.
+        <br />
+        This example is useful if you want to build:
+      </p>
+      <ul className="list-disc pl-8 mb-4">
+        <li>A video on demand service like Youtube or Netflix</li>
+        <li>
+          A platform that supports user uploaded videos like TikTok or Instagram
+        </li>
+        <li>Video into your custom CMS</li>
+      </ul>
+      <p className="mb-4">
+        Uploading a video uses the Mux{" "}
+        <Link href="https://docs.mux.com/docs/direct-upload">
+          direct upload API
+        </Link>
+        . When the upload is complete your video will be processed by Mux and
+        available for playback on a sharable URL.
+      </p>
+      <p>
+        To learn more,{" "}
+        <Link
+          href="https://github.com/vercel/next.js/tree/canary/examples/with-mux-video"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          check out the source code on GitHub
+        </Link>
+        .
+      </p>
+      <hr className="my-8 bg-gray-500" />
+      {children}
+    </>
+  );
+}
+```
+
+## app/(upload)/loading.tsx
+
+```tsx
+export default function Loading() {
+  return <div>Preparing upload...</div>;
+}
+```
+
+## app/(upload)/page.tsx
+
+```tsx
+import Mux from "@mux/mux-node";
+import MuxUploader from "./MuxUploader";
+import { redirect } from "next/navigation";
+
+// reads MUX_TOKEN_ID and MUX_TOKEN_SECRET from your environment
+const mux = new Mux();
+
+const createUpload = async () => {
+  const upload = await mux.video.uploads.create({
+    new_asset_settings: {
+      playback_policy: ["public"],
+      encoding_tier: "baseline",
+    },
+    // in production, you'll want to change this origin to your-domain.com
+    cors_origin: "*",
+  });
+
+  return upload;
+};
+
+const waitForThreeSeconds = () =>
+  new Promise((resolve) => setTimeout(resolve, 3000));
+
+const redirectToAsset = async (uploadId: string) => {
+  let attempts = 0;
+  while (attempts <= 10) {
+    const upload = await mux.video.uploads.retrieve(uploadId);
+    if (upload.asset_id) {
+      redirect(`/asset/${upload.asset_id}`);
+    } else {
+      // while onSuccess is a strong indicator that Mux has received the file
+      // and created the asset, this isn't a guarantee.
+      // In production, you might listen for the video.upload.asset_created webhook
+      // https://docs.mux.com/guides/listen-for-webhooks
+      // To keep things simple here,
+      // we'll just poll the API at an interval for a few seconds.
+      await waitForThreeSeconds();
+      attempts++;
+    }
+  }
+  throw new Error("No asset_id found for upload");
+};
+
+// since we want to create a new upload for each visitor,
+// we disable caching
+export const dynamic = "force-dynamic";
+
+export default async function Page() {
+  const upload = await createUpload();
+
+  return (
+    <MuxUploader
+      onSuccess={async () => {
+        "use server";
+        await redirectToAsset(upload.id);
+      }}
+      endpoint={upload.url}
+    />
+  );
+}
+```
+
+## app/_components/Link.tsx
+
+```tsx
+import LibLink from "next/link";
+
+/**
+ *
+ * @param className this component does not merge className with the default classes -- it only appends -- so beware of duplicates
+ */
+const Link = ({ className, ...rest }: React.ComponentProps<typeof LibLink>) => (
+  <LibLink
+    className={`underline hover:no-underline focus-visible:no-underline text-red-600 ${className}`}
+    {...rest}
+  />
+);
+
+export default Link;
+```
+
+## app/constants.ts
+
+```ts
+export const MUX_HOME_PAGE_URL =
+  "https://www.mux.com?utm_source=create-next-app&utm_medium=with-mux-video&utm_campaign=create-next-app";
+```
+
+## app/layout.tsx
+
+```tsx
+import type { Metadata } from "next";
+import { DM_Sans, JetBrains_Mono } from "next/font/google";
+import Image from "next/image";
+
+import { MUX_HOME_PAGE_URL } from "./constants";
+import MuxLogo from "./mux.svg";
+
+import "./globals.css";
+
+const dmSans = DM_Sans({ subsets: ["latin"], variable: "--sans" });
+const jetBrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--mono",
+});
+
+const title = "Mux + Next.js";
+const description = "Upload and view a video with Mux and Next.js";
+export const metadata: Metadata = {
+  metadataBase: process.env.VERCEL_URL
+    ? new URL(`https://${process.env.VERCEL_URL}`)
+    : new URL(`http://localhost:${process.env.PORT || 3000}`),
+  title,
+  description,
+  openGraph: {
+    title,
+    description,
+  },
+  twitter: {
+    title,
+    description,
+    card: "summary_large_image",
+  },
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <body
+        className={`min-h-screen flex flex-col font-sans ${dmSans.variable} ${jetBrainsMono.variable}`}
+      >
+        <main className="px-4 py-8 sm:px-8 lg:py-16 w-full max-w-2xl mx-auto">
+          {children}
+        </main>
+        <footer className="mt-auto w-full h-24 border-t border-gray-500 flex items-center justify-center">
+          Powered by
+          <a href={MUX_HOME_PAGE_URL} target="_blank" rel="noopener noreferrer">
+            <Image src={MuxLogo} alt="Mux" className="ml-2 w-16" />
+          </a>
+        </footer>
+      </body>
+    </html>
+  );
+}
+```
+
+## app/v/[playbackId]/MuxPlayer.tsx
+
+```tsx
+"use client";
+
+export { default } from "@mux/mux-player-react";
+```
+
+## app/v/[playbackId]/page.tsx
+
+```tsx
+import Link from "@/app/_components/Link";
+import MuxPlayer from "./MuxPlayer";
+import { MUX_HOME_PAGE_URL } from "@/app/constants";
+import Script from "next/script";
+
+type Params = {
+  playbackId: string;
+};
+
+const title = "View this video created with Mux + Next.js";
+export const generateMetadata = async (props: { params: Promise<Params> }) => {
+  const params = await props.params;
+
+  return {
+    title,
+    description: undefined,
+    openGraph: {
+      title,
+      images: [
+        {
+          url: `https://image.mux.com/${params.playbackId}/thumbnail.png?width=1200&height=630&fit_mode=pad`,
+          width: 1200,
+          height: 630,
+        },
+      ],
+    },
+    twitter: {
+      title,
+      card: "summary_large_image",
+      images: [
+        {
+          url: `https://image.mux.com/${params.playbackId}/thumbnail.png?width=1200&height=600&fit_mode=pad`,
+          width: 1200,
+          height: 600,
+        },
+      ],
+    },
+  };
+};
+
+const Code = ({ children }: { children: React.ReactNode }) => (
+  <code className="text-mono text-sm bg-red-500/10 px-1 py-0.5 rounded-sm">
+    {children}
+  </code>
+);
+
+export default async function Page(props: { params: Promise<Params> }) {
+  const params = await props.params;
+
+  const { playbackId } = params;
+
+  return (
+    <>
+      <div className="px-8 py-4 mb-8 text-center bg-green-500/30 rounded-full">
+        This video is ready for playback
+      </div>
+      <div className="bg-black aspect-video mb-8 -mx-4 flex">
+        <MuxPlayer
+          className="w-full"
+          playbackId={playbackId}
+          metadata={{ player_name: "with-mux-video" }}
+          accentColor="rgb(220 38 38)"
+        />
+      </div>
+      <p>
+        Go <Link href="/">back home</Link> to upload another video.
+      </p>
+      <hr className="my-8 bg-gray-500" />
+      <p className="mb-4">
+        This video was uploaded and processed by{" "}
+        <Link
+          href={MUX_HOME_PAGE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Mux
+        </Link>
+        . This page was rendered with{" "}
+        <Link
+          href="https://nextjs.org/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Next.js
+        </Link>
+        .
+      </p>
+      <p className="mb-4">
+        Thanks to the Next.js{" "}
+        <Link href="https://nextjs.org/docs/app/building-your-application/optimizing/metadata">
+          Metadata API
+        </Link>
+        , this page is easily sharable on social and has an{" "}
+        <Code>og:image</Code> thumbnail generated by Mux. Try clicking the
+        Twitter button below to share:
+      </p>
+      <p className="mb-4 min-h-7">
+        <Link
+          className="twitter-share-button"
+          data-size="large"
+          target="_blank"
+          rel="noopener noreferrer"
+          href="https://twitter.com/intent/tweet?text=Check%20out%20the%20video%20I%20uploaded%20with%20Next.js%2C%20%40Vercel%2C%20and%20%40muxhq%20"
+        >
+          Tweet this
+        </Link>
+      </p>
+      <Script
+        strategy="lazyOnload"
+        async
+        src="https://platform.twitter.com/widgets.js"
+      />
+      <p>
+        To learn more,{" "}
+        <Link
+          href="https://github.com/vercel/next.js/tree/canary/examples/with-mux-video"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          check out the source code on GitHub
+        </Link>
+        .
+      </p>
+    </>
+  );
+}
+```
+
+## package.json
+
+```json
+{
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@mux/mux-node": "^8",
+    "@mux/mux-player-react": "^2",
+    "@mux/mux-uploader-react": "^1.0.0-beta.15",
+    "next": "latest",
+    "react": "^18",
+    "react-dom": "^18",
+    "swr": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.10",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "typescript": "^5",
+    "autoprefixer": "^10",
+    "postcss": "^8",
+    "tailwindcss": "^3.4"
+  }
+}
+```

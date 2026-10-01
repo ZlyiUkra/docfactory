@@ -1,0 +1,336 @@
+# Example: with-jest
+# джерело: https://github.com/vercel/next.js/tree/v16.3.8/examples/with-jest
+# отримано: 2026-10-01
+# версія: 16.3.8
+
+## Next.js + Jest
+
+This example shows how to configure Jest to work with Next.js.
+
+This includes Next.js' built-in support for Global CSS, CSS Modules and TypeScript. This example also shows how to use Jest with the App Router and React Server Components.
+
+> **Note:** Since tests can be co-located alongside other files inside the App Router, we have placed those tests in `app/` to demonstrate this behavior (which is different than `pages/`). You can still place all tests in `__tests__` if you prefer.
+
+## Deploy your own
+
+Deploy with Vercel
+
+## How to Use
+
+Execute `create-next-app` with npm, Yarn, or pnpm to bootstrap the example:
+
+```bash
+npx create-next-app --example with-jest with-jest-app
+```
+
+```bash
+yarn create next-app --example with-jest with-jest-app
+```
+
+```bash
+pnpm create next-app --example with-jest with-jest-app
+```
+
+## Running Tests
+
+```bash
+npm test
+```
+
+```bash
+yarn test
+```
+
+```bash
+pnpm test
+```
+
+Deploy it to the cloud with Vercel (Documentation).
+
+## __tests__/index.test.tsx
+
+```tsx
+/**
+ * @jest-environment jsdom
+ */
+import { render, screen } from "@testing-library/react";
+import Home from "@/pages/home/index";
+
+describe("Home", () => {
+  it("renders a heading", () => {
+    render(<Home />);
+
+    const heading = screen.getByRole("heading", {
+      name: /welcome to next\.js!/i,
+    });
+
+    expect(heading).toBeInTheDocument();
+  });
+});
+```
+
+## __tests__/snapshot.tsx
+
+```tsx
+/**
+ * @jest-environment jsdom
+ */
+import { render } from "@testing-library/react";
+import Home from "@/pages/home/index";
+
+it("renders homepage unchanged", () => {
+  const { container } = render(<Home />);
+  expect(container).toMatchSnapshot();
+});
+```
+
+## app/blog/[slug]/page.test.tsx
+
+```tsx
+/**
+ * @jest-environment jsdom
+ */
+import { render, screen } from "@testing-library/react";
+import "@testing-library/jest-dom";
+import Page from "./page";
+
+it("App Router: Works with dynamic route segments", () => {
+  render(<Page params={{ slug: "Test" }} />);
+  expect(screen.getByRole("heading")).toHaveTextContent("Slug: Test");
+});
+```
+
+## app/blog/[slug]/page.tsx
+
+```tsx
+type Params = {
+  params: {
+    slug: string;
+  };
+};
+
+export async function generateMetadata({ params }: Params) {
+  return { title: `Post: ${params.slug}` };
+}
+
+export default function Page({ params }: Params) {
+  return <h1>Slug: {params.slug}</h1>;
+}
+```
+
+## app/counter.test.tsx
+
+```tsx
+/**
+ * @jest-environment jsdom
+ */
+import { fireEvent, render, screen } from "@testing-library/react";
+import Counter from "./counter";
+
+it("App Router: Works with Client Components (React State)", () => {
+  render(<Counter />);
+  expect(screen.getByRole("heading")).toHaveTextContent("0");
+  fireEvent.click(screen.getByRole("button"));
+  expect(screen.getByRole("heading")).toHaveTextContent("1");
+});
+```
+
+## app/counter.tsx
+
+```tsx
+"use client";
+
+import { useState } from "react";
+
+export default function Counter() {
+  const [count, setCount] = useState(0);
+  return (
+    <>
+      <h2>{count}</h2>
+      <button type="button" onClick={() => setCount(count + 1)}>
+        +
+      </button>
+    </>
+  );
+}
+```
+
+## app/layout.tsx
+
+```tsx
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+## app/page.test.tsx
+
+```tsx
+/**
+ * @jest-environment jsdom
+ */
+import { render, screen } from "@testing-library/react";
+import Page from "./page";
+
+it("App Router: Works with Server Components", () => {
+  render(<Page />);
+  expect(screen.getByRole("heading")).toHaveTextContent("App Router");
+});
+```
+
+## app/page.tsx
+
+```tsx
+export const metadata = {
+  title: "App Router",
+};
+
+export default function Page() {
+  return <h1>App Router</h1>;
+}
+```
+
+## app/utils/add.test.ts
+
+```ts
+import { add } from "./add";
+
+test("Test functions that import server-only", () => {
+  expect(add(1, 2)).toBe(3);
+});
+```
+
+## app/utils/add.ts
+
+```ts
+import "server-only";
+
+export function add(a: number, b: number) {
+  return a + b;
+}
+```
+
+## jest.setup.js
+
+```js
+// Learn more: https://github.com/testing-library/jest-dom
+import "@testing-library/jest-dom";
+```
+
+## package.json
+
+```json
+{
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "jest --watch",
+    "test:ci": "jest --ci"
+  },
+  "dependencies": {
+    "next": "latest",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "server-only": "^0.0.1"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "6.1.5",
+    "@testing-library/react": "14.1.2",
+    "@types/jest": "29.5.11",
+    "@types/react": "18.2.45",
+    "jest": "29.7.0",
+    "jest-environment-jsdom": "29.7.0",
+    "typescript": "5.3.3"
+  }
+}
+```
+
+## pages/_app.tsx
+
+```tsx
+import "@/styles/global.css";
+import type { AppProps } from "next/app";
+
+export default function MyApp({ Component, pageProps }: AppProps) {
+  return <Component {...pageProps} />;
+}
+```
+
+## pages/home/index.tsx
+
+```tsx
+import Head from "next/head";
+import Image from "next/image";
+import styles from "@/pages/index.module.css";
+
+export default function Home() {
+  return (
+    <div className={styles.container}>
+      <Head>
+        <title>Create Next App</title>
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+
+      <main>
+        <h1 className={styles.title}>
+          Welcome to <a href="https://nextjs.org">Next.js!</a>
+        </h1>
+
+        <p className={styles.description}>
+          Get started by editing <code>pages/index.js</code>
+        </p>
+
+        <div className={styles.grid}>
+          <a href="https://nextjs.org/docs" className={styles.card}>
+            <h3>Documentation &rarr;</h3>
+            <p>Find in-depth information about Next.js features and API.</p>
+          </a>
+
+          <a href="https://nextjs.org/learn" className={styles.card}>
+            <h3>Learn &rarr;</h3>
+            <p>Learn about Next.js in an interactive course with quizzes!</p>
+          </a>
+
+          <a
+            href="https://github.com/vercel/next.js/tree/canary/examples"
+            className={styles.card}
+          >
+            <h3>Examples &rarr;</h3>
+            <p>Discover and deploy boilerplate example Next.js projects.</p>
+          </a>
+
+          <a href="https://vercel.com/new" className={styles.card}>
+            <h3>Deploy &rarr;</h3>
+            <p>
+              Instantly deploy your Next.js site to a public URL with Vercel.
+            </p>
+          </a>
+        </div>
+      </main>
+
+      <footer className={styles.footer}>
+        <a
+          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Powered by{" "}
+          <span className={styles.logo}>
+            <Image src="/vercel.svg" alt="Vercel Logo" width={72} height={16} />
+          </span>
+        </a>
+      </footer>
+    </div>
+  );
+}
+```

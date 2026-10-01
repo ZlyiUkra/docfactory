@@ -1,0 +1,469 @@
+# Example: with-redis
+# джерело: https://github.com/vercel/next.js/tree/v16.3.8/examples/with-redis
+# отримано: 2026-10-01
+# версія: 16.3.8
+
+## Redis Example (with Upstash)
+
+This example showcases how to use Redis as a data store in a Next.js project.
+
+The example is a roadmap voting application where users can enter and vote for feature requests. It features the following:
+
+- Users can add and upvote items (features in the roadmap)
+- Users can enter their email addresses to be notified about the released items.
+
+## Demo
+
+- https://roadmap-redis.vercel.app/
+
+## Deploy Your Own
+
+This examples uses Upstash (Serverless Redis Database) as its data storage. During deployment. The integration will help you create a free Redis database and link it to your Vercel project automatically.
+
+Deploy with Vercel
+
+## How to use
+
+Execute `create-next-app` with npm, Yarn, or pnpm to bootstrap the example:
+
+```bash
+npx create-next-app --example with-redis roadmap
+```
+
+```bash
+yarn create next-app --example with-redis roadmap
+```
+
+```bash
+pnpm create next-app --example with-redis roadmap
+```
+
+Deploy it to the cloud with Vercel (Documentation).
+
+## app/actions.tsx
+
+```tsx
+"use server";
+
+import { kv } from "@vercel/kv";
+import { revalidatePath } from "next/cache";
+import { Feature } from "./types";
+
+export async function saveFeature(feature: Feature, formData: FormData) {
+  let newFeature = {
+    ...feature,
+    title: formData.get("feature") as string,
+  };
+  await kv.hset(`item:${newFeature.id}`, newFeature);
+  await kv.zadd("items_by_score", {
+    score: Number(newFeature.score),
+    member: newFeature.id,
+  });
+
+  revalidatePath("/");
+}
+
+export async function saveEmail(formData: FormData) {
+  const email = formData.get("email");
+
+  function validateEmail(email: FormDataEntryValue) {
+    const re =
+      /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+    return re.test(String(email).toLowerCase());
+  }
+
+  if (email && validateEmail(email)) {
+    await kv.sadd("emails", email);
+    revalidatePath("/");
+  }
+}
+
+export async function upvote(feature: Feature) {
+  const newScore = Number(feature.score) + 1;
+  await kv.hset(`item:${feature.id}`, {
+    ...feature,
+    score: newScore,
+  });
+
+  await kv.zadd("items_by_score", { score: newScore, member: feature.id });
+
+  revalidatePath("/");
+}
+```
+
+## app/form.tsx
+
+```tsx
+"use client";
+
+import clsx from "clsx";
+import { useOptimistic, useRef, useTransition } from "react";
+import { saveFeature, upvote } from "./actions";
+import { Feature } from "./types";
+
+function Item({
+  isFirst,
+  isLast,
+  isReleased,
+  hasVoted,
+  feature,
+  pending,
+  mutate,
+}: {
+  isFirst: boolean;
+  isLast: boolean;
+  isReleased: boolean;
+  hasVoted: boolean;
+  feature: Feature;
+  pending: boolean;
+  mutate: any;
+}) {
+  let upvoteWithId = upvote.bind(null, feature);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  let [isPending, startTransition] = useTransition();
+
+  return (
+    <form
+      action={upvoteWithId}
+      onSubmit={(event) => {
+        event.preventDefault();
+
+        startTransition(async () => {
+          mutate({
+            updatedFeature: {
+              ...feature,
+              score: Number(feature.score) + 1,
+            },
+            pending: true,
+          });
+          await upvote(feature);
+        });
+      }}
+      className={clsx(
+        "p-6 mx-8 flex items-center border-t border-l border-r",
+        isFirst && "rounded-t-md",
+        isLast && "border-b rounded-b-md",
+      )}
+    >
+      <button
+        className={clsx(
+          "ring-1 ring-gray-200 rounded-full w-8 min-w-[2rem] h-8 mr-4 focus:outline-none focus:ring focus:ring-blue-300",
+          (isReleased || hasVoted) &&
+            "bg-green-100 cursor-not-allowed ring-green-300",
+          pending && "bg-gray-100 cursor-not-allowed",
+        )}
+        disabled={isReleased || hasVoted || pending}
+        type="submit"
+      >
+        {isReleased ? "✅" : "👍"}
+      </button>
+      <h3 className="text font-semibold w-full text-left">{feature.title}</h3>
+      <div className="bg-gray-200 text-gray-700 text-sm rounded-xl px-2 ml-2">
+        {feature.score}
+      </div>
+    </form>
+  );
+}
+
+type FeatureState = {
+  newFeature: Feature;
+  updatedFeature?: Feature;
+  pending: boolean;
+};
+
+export default function FeatureForm({ features }: { features: Feature[] }) {
+  let formRef = useRef<HTMLFormElement>(null);
+  let [state, mutate] = useOptimistic(
+    { features, pending: false },
+    function createReducer(state, newState: FeatureState) {
+      if (newState.newFeature) {
+        return {
+          features: [...state.features, newState.newFeature],
+          pending: newState.pending,
+        };
+      } else {
+        return {
+          features: [
+            ...state.features.filter(
+              (f) => f.id !== newState.updatedFeature!.id,
+            ),
+            newState.updatedFeature,
+          ] as Feature[],
+          pending: newState.pending,
+        };
+      }
+    },
+  );
+
+  let sortedFeatures = state.features.sort((a, b) => {
+    // First, compare by score in descending order
+    if (Number(a.score) > Number(b.score)) return -1;
+    if (Number(a.score) < Number(b.score)) return 1;
+
+    // If scores are equal, then sort by created_at in ascending order
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+  });
+
+  let featureStub = {
+    id: crypto.randomUUID(),
+    title: "", // will used value from form
+    created_at: new Date().toISOString(),
+    score: "1",
+  };
+  let saveWithNewFeature = saveFeature.bind(null, featureStub);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  let [isPending, startTransition] = useTransition();
+
+  return (
+    <>
+      <div className="mx-8 w-full">
+        <form
+          className="relative my-8"
+          ref={formRef}
+          action={saveWithNewFeature}
+          onSubmit={(event) => {
+            event.preventDefault();
+            let formData = new FormData(event.currentTarget);
+            let newFeature = {
+              ...featureStub,
+              title: formData.get("feature") as string,
+            };
+
+            formRef.current?.reset();
+            startTransition(async () => {
+              mutate({
+                newFeature,
+                pending: true,
+              });
+
+              await saveFeature(newFeature, formData);
+            });
+          }}
+        >
+          <input
+            aria-label="Suggest a feature for our roadmap"
+            className="pl-3 pr-28 py-3 mt-1 text-lg block w-full border border-gray-200 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring focus:ring-blue-300"
+            maxLength={150}
+            placeholder="I want..."
+            required
+            type="text"
+            name="feature"
+            disabled={state.pending}
+          />
+          <button
+            className={clsx(
+              "flex items-center justify-center absolute right-2 top-2 px-4 h-10 text-lg border bg-black text-white rounded-md w-24 focus:outline-none focus:ring focus:ring-blue-300 focus:bg-gray-800",
+              state.pending && "bg-gray-700 cursor-not-allowed",
+            )}
+            type="submit"
+            disabled={state.pending}
+          >
+            Request
+          </button>
+        </form>
+      </div>
+      <div className="w-full">
+        {sortedFeatures.map((feature: any, index: number) => (
+          <Item
+            key={feature.id}
+            isFirst={index === 0}
+            isLast={index === sortedFeatures.length - 1}
+            isReleased={false}
+            hasVoted={false}
+            feature={feature}
+            pending={state.pending}
+            mutate={mutate}
+          />
+        ))}
+      </div>
+    </>
+  );
+}
+```
+
+## app/layout.tsx
+
+```tsx
+import "./globals.css";
+import { GeistSans } from "geist/font/sans";
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en" className={GeistSans.variable}>
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+## app/page.tsx
+
+```tsx
+import { kv } from "@vercel/kv";
+import { saveEmail } from "./actions";
+import FeatureForm from "./form";
+import { Feature } from "./types";
+
+export let metadata = {
+  title: "Next.js and Redis Example",
+  description: "Feature roadmap example with Next.js with Redis.",
+};
+
+function VercelLogo(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      aria-label="Vercel Logo"
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 19"
+      {...props}
+    >
+      <path
+        clipRule="evenodd"
+        d="M12.04 2L2.082 18H22L12.04 2z"
+        fill="#000"
+        fillRule="evenodd"
+        stroke="#000"
+        strokeWidth="1.5"
+      />
+    </svg>
+  );
+}
+
+async function getFeatures() {
+  try {
+    let itemIds = await kv.zrange("items_by_score", 0, 100, {
+      rev: true,
+    });
+
+    if (!itemIds.length) {
+      return [];
+    }
+
+    let multi = kv.multi();
+    itemIds.forEach((id) => {
+      multi.hgetall(`item:${id}`);
+    });
+
+    let items: Feature[] = await multi.exec();
+    return items.map((item) => {
+      return {
+        ...item,
+        score: item.score,
+        created_at: item.created_at,
+      };
+    });
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
+export default async function Page() {
+  let features = await getFeatures();
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen py-2">
+      <main className="flex flex-col items-center justify-center flex-1 px-4 sm:px-20 text-center">
+        <div className="flex justify-center items-center bg-black rounded-full w-16 sm:w-24 h-16 sm:h-24 my-8">
+          <VercelLogo className="h-8 sm:h-16 invert p-3 mb-1" />
+        </div>
+        <h1 className="text-lg sm:text-2xl font-bold mb-2">
+          Help us prioritize our roadmap
+        </h1>
+        <h2 className="text-md sm:text-xl mx-4">
+          Create or vote up features you want to see in our product.
+        </h2>
+        <div className="flex flex-wrap items-center justify-around max-w-4xl my-8 sm:w-full bg-white rounded-md shadow-xl h-full border border-gray-100">
+          <FeatureForm features={features} />
+          <hr className="border-1 border-gray-200 my-8 mx-8 w-full" />
+          <div className="mx-8 w-full">
+            <p className="flex text-gray-500">
+              Leave your email address here to be notified when feature requests
+              are released.
+            </p>
+            <form className="relative my-4" action={saveEmail}>
+              <input
+                name="email"
+                aria-label="Email for updates"
+                placeholder="Email Address"
+                type="email"
+                autoComplete="email"
+                maxLength={60}
+                required
+                className="px-3 py-3 mt-1 text-lg block w-full border border-gray-200 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring focus:ring-blue-300"
+              />
+              <button
+                className="flex items-center justify-center absolute right-2 top-2 px-4 h-10 border border-gray-200 text-gray-900 rounded-md w-14 focus:outline-none focus:ring focus:ring-blue-300 focus:bg-gray-100"
+                type="submit"
+              >
+                OK
+              </button>
+            </form>
+            <div className="flex flex-col sm:flex-row justify-between items-center">
+              <p className="flex items-center my-8 w-full justify-center sm:justify-start">
+                Powered by
+                <VercelLogo className="h-5 mx-2" />
+              </p>
+              <a
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex rounded focus:outline-none focus:ring focus:ring-blue-300 mb-4 sm:mb-0 min-w-max"
+                href={`https://vercel.com/new/git/external?repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-redis&project-name=redis-roadmap&repository-name=redis-roadmap&demo-title=Redis%20Roadmap&demo-description=Create%20and%20upvote%20features%20for%20your%20product.&demo-url=https%3A%2F%2Froadmap-redis.vercel.app%2F&stores=%5B%7B"type"%3A"kv"%7D%5D&`}
+              >
+                <img
+                  src="https://vercel.com/button"
+                  alt="Vercel Deploy Button"
+                />
+              </a>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+```
+
+## app/types.tsx
+
+```tsx
+export type Feature = {
+  id: string;
+  title: string;
+  score: string;
+  created_at: string;
+};
+```
+
+## package.json
+
+```json
+{
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@types/node": "20.11.0",
+    "@types/react": "18.2.47",
+    "@types/react-dom": "18.2.18",
+    "@vercel/kv": "^1.0.1",
+    "autoprefixer": "10.4.16",
+    "clsx": "^2.1.0",
+    "geist": "^1.2.1",
+    "next": "latest",
+    "postcss": "^8.4.33",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "tailwindcss": "3.4.1",
+    "typescript": "5.3.3"
+  }
+}
+```

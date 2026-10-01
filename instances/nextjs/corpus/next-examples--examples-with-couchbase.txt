@@ -1,0 +1,282 @@
+# Example: with-couchbase
+# джерело: https://github.com/vercel/next.js/tree/v16.3.8/examples/with-couchbase
+# отримано: 2026-10-01
+# версія: 16.3.8
+
+## Example app using Couchbase
+
+Couchbase is a modern database for enterprise applications. This example will show you how to connect to and use Couchbase in your Next.js app.
+
+If you want to learn more about Couchbase, visit the following pages:
+
+- Couchbase Docs
+- Couchbase Developer Portal
+- Couchbase Cloud
+
+## Deploy your own
+
+Deploy with Vercel
+
+## How to use
+
+Execute `create-next-app` with npm, Yarn, or pnpm to bootstrap the example:
+
+```bash
+npx create-next-app --example with-couchbase with-couchbase-app
+```
+
+```bash
+yarn create next-app --example with-couchbase with-couchbase-app
+```
+
+```bash
+pnpm create next-app --example with-couchbase with-couchbase-app
+```
+
+Deploy it to the cloud with Vercel (Documentation).
+
+## Configuration
+
+### Set up a Couchbase database
+
+Set up a Couchbase database either locally or with Couchbase Cloud.
+
+Local installation can be accomplished through a variety of methods, but Docker is the simplest.
+
+After Couchbase is installed, set up a cluster by following this tutorial.
+
+- _NOTE:_ the **eventing** and **analytics** services can be unchecked if memory is a constraint (this is often the case with docker and other local installations).
+
+A variety of sample buckets can be installed to get up and running with a data model quickly.
+
+### Set up environment variables
+
+Copy the `env.local.example` file in this directory to `.env.local` (which will be ignored by Git):
+
+```bash
+cp .env.local.example .env.local
+```
+
+Set each variable on `.env.local`:
+
+- `COUCHBASE_USERNAME` - The username of an authorized user on your Couchbase instance
+- `COUCHBASE_PASSWORD` - The corresponding password for the username specified above
+- `COUCHBASE_ENDPOINT` - The endpoint to connect to. Use `localhost` for a local instance of Couchbase, or the Wide Area Network address for a cloud instance.
+- `COUCHBASE_BUCKET` - The bucket you'd like to connect to for testing.
+- `IS_CLOUD_INSTANCE` - `true` if you are trying to connect to an instance of Couchbase Cloud, `false` otherwise.
+
+### Run Next.js in development mode
+
+```bash
+npm install
+npm run dev
+# or
+yarn install
+yarn dev
+```
+
+Your app should be up and running on http://localhost:3000! If it doesn't work, post on GitHub discussions.
+
+You will either see a message stating "You are connected to Couchbase" or "You are NOT connected to Couchbase". Ensure that you have provided the correct environment variables.
+
+When you are successfully connected, you can refer to the Couchbase Node.js SDK docs for further instructions on how to query your database.
+
+## Deploy on Vercel
+
+You can deploy this app to the cloud with Vercel (Documentation).
+
+#### Deploy Your Local Project
+
+To deploy your local project to Vercel, push it to GitHub/GitLab/Bitbucket and import to Vercel.
+
+## Notes
+
+- When you import your project on Vercel, make sure to click on **Environment Variables** and set the keys to match your `.env.local` file.
+
+- For a cloud deployment on Vercel, the **Environment Variables** values will need to **correspond to a cloud instance of Couchbase** (localhost will **NOT** connect from a remote server such as Vercel). Find info on getting started with Couchbase cloud.
+
+  - _Important:_ you will have to allowlist 0.0.0.0/0 as the IP address, since Vercel's serverless deployments use dynamic IP addresses
+
+## package.json
+
+```json
+{
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "couchbase": "^3.1.3",
+    "next": "latest",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}
+```
+
+## pages/_app.js
+
+```js
+import "../styles/globals.css";
+
+function MyApp({ Component, pageProps }) {
+  return <Component {...pageProps} />;
+}
+
+export default MyApp;
+```
+
+## pages/index.js
+
+```js
+import Head from "next/head";
+import styles from "../styles/Home.module.css";
+import { connectToDatabase } from "../util/couchbase";
+
+export default function Home({ isConnected }) {
+  return (
+    <div className={styles.container}>
+      <Head>
+        <title>Create Next App</title>
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+
+      <main className={styles.main}>
+        <h1 className={styles.title}>
+          Welcome to <a href="https://nextjs.org">Next.js with Couchbase!</a>
+        </h1>
+
+        {isConnected ? (
+          <h2 className={`${styles.subtitle} ${styles.green}`}>
+            You are connected to Couchbase
+          </h2>
+        ) : (
+          <>
+            <h2 className={`${styles.subtitle} ${styles.red}`}>
+              You are NOT connected to Couchbase. Try refreshing the page, and
+              if this error persists check the <code>README.md</code> for
+              instructions.
+            </h2>
+            <em className={styles.center}>
+              Note: if the database was recently started, you might have to
+              re-start the app (in dev mode) or re-deploy to your serverless
+              environment for changes to take effect.
+            </em>
+          </>
+        )}
+
+        <p className={styles.description}>
+          Get started by editing{" "}
+          <code className={styles.code}>pages/index.js</code>
+        </p>
+      </main>
+
+      <footer className={styles.footer}>
+        <a
+          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Powered by{" "}
+          <img src="/vercel.svg" alt="Vercel Logo" className={styles.logo} />
+        </a>
+      </footer>
+    </div>
+  );
+}
+
+export async function getServerSideProps(context) {
+  let connection = await connectToDatabase();
+
+  const { collection } = connection;
+
+  // Check connection with a KV GET operation for a key that doesn't exist
+  let isConnected = false;
+  try {
+    await collection.get("testingConnectionKey");
+  } catch (err) {
+    // error message will return 'document not found' if and only if we are connected
+    // (but this document is not present, we're only trying to test the connection here)
+    if (err.message === "document not found") {
+      isConnected = true;
+    }
+    // if the error message is anything OTHER THAN 'document not found', the connection is broken
+  }
+
+  return {
+    props: { isConnected },
+  };
+}
+```
+
+## util/couchbase.js
+
+```js
+import * as couchbase from "couchbase";
+
+const COUCHBASE_USER = process.env.COUCHBASE_USER;
+const COUCHBASE_PASSWORD = process.env.COUCHBASE_PASSWORD;
+const COUCHBASE_ENDPOINT = process.env.COUCHBASE_ENDPOINT || "localhost";
+const COUCHBASE_BUCKET = process.env.COUCHBASE_BUCKET || "travel-sample";
+let IS_CLOUD_INSTANCE = process.env.IS_CLOUD_INSTANCE || "false";
+
+if (!COUCHBASE_USER) {
+  throw new Error(
+    "Please define the COUCHBASE_USER environment variable inside .env.local",
+  );
+}
+
+if (!COUCHBASE_PASSWORD) {
+  throw new Error(
+    "Please define the COUCHBASE_PASSWORD environment variable inside .env.local",
+  );
+}
+
+/**
+ * Global is used here to maintain a cached connection across hot reloads
+ * in development. This prevents connections growing exponentially
+ * during API Route usage.
+ */
+let cached = global.couchbase;
+
+if (!cached) {
+  cached = global.couchbase = { conn: null };
+}
+
+async function createCouchbaseCluster() {
+  if (cached.conn) {
+    return cached.conn;
+  }
+
+  cached.conn = await couchbase.connect(
+    "couchbase://" +
+      COUCHBASE_ENDPOINT +
+      (IS_CLOUD_INSTANCE === "true"
+        ? "?ssl=no_verify&console_log_level=5"
+        : ""),
+    {
+      username: COUCHBASE_USER,
+      password: COUCHBASE_PASSWORD,
+    },
+  );
+
+  return cached.conn;
+}
+
+export async function connectToDatabase() {
+  const cluster = await createCouchbaseCluster();
+
+  const bucket = cluster.bucket(COUCHBASE_BUCKET);
+  const collection = bucket.defaultCollection();
+
+  let dbConnection = {
+    cluster,
+    bucket,
+    collection,
+  };
+
+  return dbConnection;
+}
+```

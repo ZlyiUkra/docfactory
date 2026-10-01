@@ -1,0 +1,493 @@
+# Example: with-electron-typescript
+# джерело: https://github.com/vercel/next.js/tree/v16.3.8/examples/with-electron-typescript
+# отримано: 2026-10-01
+# версія: 16.3.8
+
+## Electron with Typescript application example
+
+This example shows how to use Next.js inside an Electron application. To avoid a lot of configuration, we use Next.js as a router for pages, and use server rendering to speed up the initial render of the application. Both Next.js and Electron layers are written in TypeScript and compiled to JavaScript during the build process.
+
+| Part       | Source code (Typescript) | Builds (JavaScript) |
+| ---------- | ------------------------ | ------------------- |
+| Next.js    | `/renderer`              | `/renderer`         |
+| Electron   | `/electron-src`          | `/main`             |
+| Production |                          | `/dist`             |
+
+For development it's going to run a HTTP server and let Next.js handle routing. In production it will use `output: 'export'` to pre-generate HTML static files and use them in your app (instead of running a HTTP server).
+
+## How to use
+
+Execute `create-next-app` with npm, Yarn, or pnpm to bootstrap the example:
+
+```bash
+npx create-next-app --example with-electron-typescript with-electron-typescript-app
+```
+
+```bash
+yarn create next-app --example with-electron-typescript with-electron-typescript-app
+```
+
+```bash
+pnpm create next-app --example with-electron-typescript with-electron-typescript-app
+```
+
+Available commands:
+
+```bash
+"build-renderer": build and transpile Next.js layer
+"build-electron": transpile electron layer
+"build": build both layers
+"dev": start dev version
+"dist": create production electron build
+"type-check": check TypeScript in project
+```
+
+## Notes
+
+You can create the production app using `npm run dist`.
+
+_note regarding types:_
+
+- Electron provides its own type definitions, so you don't need @types/electron installed!
+  source: https://www.npmjs.com/package/@types/electron
+- There were no types available for `electron-next` at the time of creating this example, so until they are available there is a file `electron-next.d.ts` in `electron-src` directory.
+
+## electron-src/index.ts
+
+```ts
+// Native
+import { join } from "path";
+import { format } from "url";
+
+// Packages
+import { BrowserWindow, app, ipcMain, IpcMainEvent } from "electron";
+import isDev from "electron-is-dev";
+import prepareNext from "electron-next";
+
+// Prepare the renderer once the app is ready
+app.on("ready", async () => {
+  await prepareNext("./renderer");
+
+  const mainWindow = new BrowserWindow({
+    width: 800,
+    height: 600,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: join(__dirname, "preload.js"),
+    },
+  });
+
+  const url = isDev
+    ? "http://localhost:8000/"
+    : format({
+        pathname: join(__dirname, "../renderer/out/index.html"),
+        protocol: "file:",
+        slashes: true,
+      });
+
+  mainWindow.loadURL(url);
+});
+
+// Quit the app once all windows are closed
+app.on("window-all-closed", app.quit);
+
+// listen the channel `message` and resend the received message to the renderer process
+ipcMain.on("message", (event: IpcMainEvent, message: any) => {
+  console.log(message);
+  setTimeout(() => event.sender.send("message", "hi from electron"), 500);
+});
+```
+
+## electron-src/preload.ts
+
+```ts
+/* eslint-disable @typescript-eslint/no-namespace */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { contextBridge, ipcRenderer } from "electron";
+import { IpcRendererEvent } from "electron/main";
+
+// We are using the context bridge to securely expose NodeAPIs.
+// Please note that many Node APIs grant access to local system resources.
+// Be very cautious about which globals and APIs you expose to untrusted remote content.
+contextBridge.exposeInMainWorld("electron", {
+  sayHello: () => ipcRenderer.send("message", "hi from next"),
+  receiveHello: (handler: (event: IpcRendererEvent, ...args: any[]) => void) =>
+    ipcRenderer.on("message", handler),
+  stopReceivingHello: (
+    handler: (event: IpcRendererEvent, ...args: any[]) => void,
+  ) => ipcRenderer.removeListener("message", handler),
+});
+```
+
+## package.json
+
+```json
+{
+  "private": true,
+  "main": "main/index.js",
+  "productName": "ElectronTypescriptNext",
+  "scripts": {
+    "clean": "rimraf dist main renderer/out renderer/.next",
+    "dev": "npm run build-electron && electron .",
+    "build-renderer": "next build renderer",
+    "build-electron": "tsc -p electron-src",
+    "build": "npm run build-renderer && npm run build-electron",
+    "pack-app": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder",
+    "type-check": "tsc -p ./renderer/tsconfig.json && tsc -p ./electron-src/tsconfig.json"
+  },
+  "dependencies": {
+    "electron-is-dev": "^1.2.0",
+    "electron-next": "^3.1.5",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^14.18.63",
+    "@types/react": "^16.14.52",
+    "@types/react-dom": "^16.9.24",
+    "electron": "^27.1.2",
+    "electron-builder": "^24.9.1",
+    "next": "latest",
+    "rimraf": "^3.0.2",
+    "typescript": "^4.9.5"
+  },
+  "build": {
+    "asar": true,
+    "files": [
+      "main",
+      "renderer/out"
+    ]
+  }
+}
+```
+
+## renderer/components/Layout.tsx
+
+```tsx
+import React, { ReactNode } from "react";
+import Link from "next/link";
+import Head from "next/head";
+
+type Props = {
+  children: ReactNode;
+  title?: string;
+};
+
+const Layout = ({ children, title = "This is the default title" }: Props) => (
+  <div>
+    <Head>
+      <title>{title}</title>
+      <meta charSet="utf-8" />
+      <meta name="viewport" content="initial-scale=1.0, width=device-width" />
+    </Head>
+    <header>
+      <nav>
+        <Link href="/">Home</Link> | <Link href="/about">About</Link> |{" "}
+        <Link href="/initial-props">With Initial Props</Link>
+      </nav>
+    </header>
+    {children}
+    <footer>
+      <hr />
+      <span>I'm here to stay (Footer)</span>
+    </footer>
+  </div>
+);
+
+export default Layout;
+```
+
+## renderer/components/List.tsx
+
+```tsx
+import React from "react";
+import ListItem from "./ListItem";
+import { User } from "../interfaces";
+
+type Props = {
+  items: User[];
+};
+
+const List = ({ items }: Props) => (
+  <ul>
+    {items.map((item) => (
+      <li key={item.id}>
+        <ListItem data={item} />
+      </li>
+    ))}
+  </ul>
+);
+
+export default List;
+```
+
+## renderer/components/ListDetail.tsx
+
+```tsx
+import * as React from "react";
+
+import { User } from "../interfaces";
+
+type ListDetailProps = {
+  item: User;
+};
+
+const ListDetail = ({ item: user }: ListDetailProps) => (
+  <div>
+    <h1>Detail for {user.name}</h1>
+    <p>ID: {user.id}</p>
+  </div>
+);
+
+export default ListDetail;
+```
+
+## renderer/components/ListItem.tsx
+
+```tsx
+import React from "react";
+import Link from "next/link";
+
+import { User } from "../interfaces";
+
+type Props = {
+  data: User;
+};
+
+const ListItem = ({ data }: Props) => (
+  <Link href="/detail/[id]" as={`/detail/${data.id}`}>
+    {data.id}:{data.name}
+  </Link>
+);
+
+export default ListItem;
+```
+
+## renderer/interfaces/index.ts
+
+```ts
+// You can include shared interfaces/types in a separate file
+// and then use them in any component by importing them. For
+// example, to import the interface below do:
+//
+// import User from 'path/to/interfaces';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  interface Window {
+    electron: {
+      sayHello: () => void;
+      receiveHello: (handler: (event, args) => void) => void;
+      stopReceivingHello: (handler: (event, args) => void) => void;
+    };
+  }
+}
+
+export type User = {
+  id: number;
+  name: string;
+};
+```
+
+## renderer/pages/about.tsx
+
+```tsx
+import Link from "next/link";
+import Layout from "../components/Layout";
+
+const AboutPage = () => (
+  <Layout title="About | Next.js + TypeScript + Electron Example">
+    <h1>About</h1>
+    <p>This is the about page</p>
+    <p>
+      <Link href="/">Go home</Link>
+    </p>
+  </Layout>
+);
+
+export default AboutPage;
+```
+
+## renderer/pages/detail/[id].tsx
+
+```tsx
+// import { NextPageContext } from 'next'
+import Layout from "../../components/Layout";
+import { User } from "../../interfaces";
+import { findAll, findData } from "../../utils/sample-api";
+import ListDetail from "../../components/ListDetail";
+import { GetStaticPaths, GetStaticProps } from "next";
+
+type Params = {
+  id?: string;
+};
+
+type Props = {
+  item?: User;
+  errors?: string;
+};
+
+const InitialPropsDetail = ({ item, errors }: Props) => {
+  if (errors) {
+    return (
+      <Layout title={`Error | Next.js + TypeScript + Electron Example`}>
+        <p>
+          <span style={{ color: "red" }}>Error:</span> {errors}
+        </p>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout
+      title={`${item ? item.name : "Detail"} | Next.js + TypeScript Example`}
+    >
+      {item && <ListDetail item={item} />}
+    </Layout>
+  );
+};
+
+export const getStaticPaths: GetStaticPaths = async () => {
+  const items: User[] = await findAll();
+  const paths = items.map((item) => `/detail/${item.id}`);
+  return { paths, fallback: false };
+};
+
+export const getStaticProps: GetStaticProps = async ({ params }) => {
+  const { id } = params as Params;
+
+  try {
+    const item = await findData(Array.isArray(id) ? id[0] : id);
+    return {
+      props: {
+        item,
+      },
+    };
+  } catch (err) {
+    return {
+      props: {
+        errors: err.message,
+      },
+    };
+  }
+};
+
+export default InitialPropsDetail;
+```
+
+## renderer/pages/index.tsx
+
+```tsx
+import { useEffect } from "react";
+import Link from "next/link";
+import Layout from "../components/Layout";
+
+const IndexPage = () => {
+  useEffect(() => {
+    const handleMessage = (_event, args) => alert(args);
+
+    // listen to the 'message' channel
+    window.electron.receiveHello(handleMessage);
+
+    return () => {
+      window.electron.stopReceivingHello(handleMessage);
+    };
+  }, []);
+
+  const onSayHiClick = () => {
+    window.electron.sayHello();
+  };
+
+  return (
+    <Layout title="Home | Next.js + TypeScript + Electron Example">
+      <h1>Hello Next.js 👋</h1>
+      <button onClick={onSayHiClick}>Say hi to electron</button>
+      <p>
+        <Link href="/about">About</Link>
+      </p>
+    </Layout>
+  );
+};
+
+export default IndexPage;
+```
+
+## renderer/pages/initial-props.tsx
+
+```tsx
+import Link from "next/link";
+import { useRouter } from "next/router";
+import Layout from "../components/Layout";
+import List from "../components/List";
+import { User } from "../interfaces";
+import { findAll } from "../utils/sample-api";
+
+type Props = {
+  items: User[];
+  pathname: string;
+};
+
+const WithInitialProps = ({ items }: Props) => {
+  const router = useRouter();
+  return (
+    <Layout title="List Example (as Function Component) | Next.js + TypeScript + Electron Example">
+      <h1>List Example (as Function Component)</h1>
+      <p>You are currently on: {router.pathname}</p>
+      <List items={items} />
+      <p>
+        <Link href="/">Go home</Link>
+      </p>
+    </Layout>
+  );
+};
+
+export async function getStaticProps() {
+  const items: User[] = await findAll();
+
+  return { props: { items } };
+}
+
+export default WithInitialProps;
+```
+
+## renderer/utils/sample-api.ts
+
+```ts
+import { User } from "../interfaces";
+
+/** Dummy user data. */
+export const dataArray: User[] = [
+  { id: 101, name: "Alice" },
+  { id: 102, name: "Bob" },
+  { id: 103, name: "Caroline" },
+  { id: 104, name: "Dave" },
+];
+
+/**
+ * Calls a mock API which finds a user by ID from the list above.
+ *
+ * Throws an error if not found.
+ */
+export async function findData(id: number | string) {
+  const selected = dataArray.find((data) => data.id === Number(id));
+
+  if (!selected) {
+    throw new Error("Cannot find user");
+  }
+
+  return selected;
+}
+
+/** Calls a mock API which returns the above array to simulate "get all". */
+export async function findAll() {
+  // Throw an error, just for example.
+  if (!Array.isArray(dataArray)) {
+    throw new Error("Cannot find users");
+  }
+
+  return dataArray;
+}
+```

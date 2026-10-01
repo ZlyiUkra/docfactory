@@ -1,0 +1,1392 @@
+# Example: cms-wordpress
+# джерело: https://github.com/vercel/next.js/tree/v16.3.8/examples/cms-wordpress
+# отримано: 2026-10-01
+# версія: 16.3.8
+
+## A Feature Rich App Router WordPress Example
+
+This is an example on how you can build a Next.js 14 project (with App Router), using WordPress as the data source.
+
+## Key features:
+
+- `robots.ts`: This automatically gets the robots.txt of the API route and serves it on the `/robots.txt` route.
+- `sitemap.ts`: This automatically gets all paths from the API and generates a sitemap to serve on the `/sitemap.xml` route.
+- `middleware.ts`: This contains a middleware function that checks the users path for stored redirects, and redirects the user if a match is found.
+- `[[...slug]]`: This is the catch-all route that is used to render all pages. It is important that this route is not removed, as it is used to render all pages. It fetches the ContentType and renders the corresponding
+- `not-found.tsx`: This page is used for dynamic 404 handling - adjust the database id to match your decired WordPress page, and make sure the WordPress slug is "not-found", your 404 page will then be editable from your CMS.
+- `codegen.ts`: Automatic type generation for your WordPress installation
+- `Draft Mode`: Seamless Preview / Draft Preview support, using authentication through WPGraphQL JWT Authentication and Next.js Draft Mode
+- `On Demand Cache Revalidation`: Including a bare minimum WordPress theme that implements cache revalidation, WordPress link rewrites and other utils for integrating with Next.js
+
+## Deploy your own
+
+Deploy with Vercel
+
+### Related examples
+
+- AgilityCMS
+- Builder.io
+- ButterCMS
+- Contentful
+- Cosmic
+- DatoCMS
+- DotCMS
+- Drupal
+- Enterspeed
+- Ghost
+- GraphCMS
+- Kontent.ai
+- MakeSwift
+- Payload
+- Plasmic
+- Prepr
+- Prismic
+- Sanity
+- Sitecore XM Cloud
+- Sitefinity
+- Storyblok
+- TakeShape
+- Tina
+- Umbraco
+- Umbraco heartcore
+- Webiny
+- WordPress
+- Blog Starter
+
+## How to use
+
+Execute `create-next-app` with npm, Yarn, pnpm, or Bun to bootstrap the example:
+
+```bash
+npx create-next-app --example cms-wordpress cms-wordpress-app
+```
+
+```bash
+yarn create next-app --example cms-wordpress cms-wordpress-app
+```
+
+```bash
+pnpm create next-app --example cms-wordpress cms-wordpress-app
+```
+
+```bash
+bunx create-next-app --example cms-wordpress cms-wordpress-app
+```
+
+Deploy it to the cloud with Vercel (Documentation).
+
+## Configuration
+
+### WordPress
+
+1. Set `Site Address (URL)` to your frontend URL, e.g. `https://localhost:3000` in Settings -> General
+2. Make sure Permalinks are set to `Post name` in Settings -> Permalinks
+3. Set `Sample page` as `Static page` in Settings -> Reading
+4. Create a new page called `404 not found` ensuring the slug is `404-not-found`
+5. Install and activate following plugins:
+   - Add WPGraphQL SEO
+   - Classic Editor
+   - Redirection
+   - WPGraphQL
+   - WPGraphQL JWT Authentication
+   - Yoast SEO
+   - Advanced Custom Fields PRO (optional)
+   - WPGraphQL for ACF (optional)
+6. Do first-time install of Redirection. Recommended to enable monitor of changes
+7. Configure Yoast SEO with:
+
+   - Disable XML Sitemaps under Yoast SEO -> Settings
+   - If you did not change the `Site Address (URL)` before installing Yoast, it will ask you to run optimize SEO data after changing permalinks, do so
+   - Generate a robots.txt file under Yoast SEO -> Tools -> File Editor
+   - Modify robots.txt sitemap reference from `wp-sitemap.xml` to `sitemap.xml`
+
+8. `Enable Public Introspection` under GraphQL -> Settings
+9. Add following constants to `wp-config.php`
+```php
+   define('HEADLESS_SECRET', 'INSERT_RANDOM_SECRET_KEY');
+   define('HEADLESS_URL', 'INSERT_LOCAL_DEVELOPMENT_URL'); // http://localhost:3000 for local development
+   define('GRAPHQL_JWT_AUTH_SECRET_KEY', 'INSERT_RANDOM_SECRET_KEY');
+   define('GRAPHQL_JWT_AUTH_CORS_ENABLE', true);
+```
+10. Create a bare minimum custom WordPress theme, consisting of only 2 files:
+
+- style.css
+- functions.php (see the bottom of this README)
+
+### Next.js
+
+1. Clone the repository
+2. Run `npm install` to install dependencies
+3. Create `.env` file in the root directory and add the following variables:
+
+| Name                                 | Value                                                                   | Example                  | Description                                                                                                                                                         |
+| ------------------------------------ | ----------------------------------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_BASE_URL`               | Insert base url of frontend                                             | http://localhost:3000    | Used for generating sitemap, redirects etc.                                                                                                                         |
+| `NEXT_PUBLIC_WORDPRESS_API_URL`      | Insert base url of your WordPress installation                          | http://wp-domain.com     | Used when requesting wordpress for data                                                                                                                             |
+| `NEXT_PUBLIC_WORDPRESS_API_HOSTNAME` | The hostname without protocol for your WordPress installation           | wp-domain.com            | Used for dynamically populating the next.config images remotePatterns                                                                                               |
+| `HEADLESS_SECRET`                    | Insert the same random key, that you generated for your `wp-config.php` | INSERT_RANDOM_SECRET_KEY | Used for public exchanges between frontend and backend                                                                                                               |
+| `WP_USER`                            | Insert a valid WordPress username                                       | username                 | Username for a system user created specifically for interacting with your WordPress installation                                                                    |
+| `WP_APP_PASS`                        | Insert application password                                             | 1234 5678 abcd efgh      | Generate an application password for the WordPress user defined in `WP_USER` |
+
+> [!WARNING] > `WP_USER` and `WP_APP_PASS` are critical for making preview and redirection work
+
+4. Adjust the ID in `not-found.tsx` to match the post id of your "404 Not Found" page in WordPress
+
+5. `npm run dev` and build an awesome application with WordPress!
+
+> [!NOTE] > Running `npm run dev` will automatically generate typings from the WordPress installation found on the url provided in your environment variable: `NEXT_PUBLIC_WORDPRESS_API_URL`
+
+## GraphQL and typescript types
+
+We are generating typescript types from the provided schema with Codegen.
+
+### Enabling Auto Completion for graphql queries
+
+If you want to add auto completion for your queries, you can do this by installing the "Apollo GraphQL" extension in VS Code and adding an `apollo.config.js` file, next to the `next.config.js`, and add the following to it:
+
+```javascript
+module.exports = {
+  client: {
+    service: {
+      name: "WordPress",
+      localSchemaFile: "./src/gql/schema.gql",
+    },
+  },
+};
+```
+
+## Advanced Custom Fields PRO (optional, but recommended)
+
+I will recommend building your page content by using the Flexible Content data type in ACF Pro.
+This will make you able to create a "Block Builder" editor experience, but still having everything automatically type generated, and receiving the data in a structured way.
+The default "Gutenberg" editor returns a lot of HTML, which makes you loose a lot of the advantages of using GraphQL with type generation.
+
+## Redirection setup
+
+The example supports the WordPress "Redirection" plugin. the `WP_USER` and `WP_APP_PASS` environment variables are required, for this to work. By implementing this you can manage redirects for your content, through your WordPress CMS
+
+## Draft / Preview support
+
+The example supports WordPress preview (also draft preview), when enabling `draftMode` in the `api/preview/route.ts` it logs the `WP_USER` in with the `WP_APP_PASS` and requests the GraphQL as an authenticated user. This makes draft and preview available. If a post is in "draft" status, it doesn't have a real slug. In this case we redirect to a "fake" route called `/preview/${id}` and uses the supplied id for fetching data for the post.
+
+## Cache Revalidation
+
+All our GraphQL requests has the cache tag `wordpress` - when we update anything in WordPress, we call our `/api/revalidate` route, and revalidates the `wordpress` tag. In this way we ensure that everything is up to date, but only revalidate the cache when there actually are updates.
+
+## Template handling
+
+We use an "Optional Catch-all Segment" for handling all WordPress content.
+When rendering this component we simply ask GraphQL "what type of content is this route?" and fetch the corresponding template.
+Each template can then have their own queries for fetching specific content for that template.
+
+## SEO
+
+We are using Yoast SEO for handling SEO in WordPress, and then all routes are requesting the Yoast SEO object, and parsing this to a dynamic `generateMetadata()` function
+
+## Folder structure
+
+The boilerplate is structured as follows:
+
+- `app`: Contains the routes and pages of the application
+- `assets`: Contains helpful styles such as the variables
+- `components`: Contains the components used in the application
+- `gql`: Contains auto-generated types from GraphQL via CodeGen
+- `queries`: Contains reusable data fetch requests to GraphQL
+- `utils`: Contains helpful functions used across the application
+
+## WordPress theme functions.php
+
+This `functions.php` is implementing different useful features for using WordPress with Next.js:
+
+- Setting up a primary menu (fetched in `Navigation..tsx`)
+- Rewriting preview and rest links to match the frontend instead of the WordPress installation
+- Implementing cache tag revalidation every time you update a post in WordPress
+- Implementing rest endpoints for sitemap generation
+
+```php
+<?php
+/**
+ * Registers new menus
+ *
+ * @return void
+ */
+add_action('init', 'register_new_menu');
+function register_new_menu()
+{
+  register_nav_menus(
+    array(
+      'primary-menu' => __('Primary menu')
+    )
+  );
+}
+
+/**
+ * Changes the REST API root URL to use the home URL as the base.
+ *
+ * @param string $url The complete URL including scheme and path.
+ * @return string The REST API root URL.
+ */
+add_filter('rest_url', 'home_url_as_api_url');
+function home_url_as_api_url($url)
+{
+  $url = str_replace(home_url(), site_url(), $url);
+  return $url;
+}
+
+/**
+ * Customize the preview button in the WordPress admin.
+ *
+ * This function modifies the preview link for a post to point to a headless client setup.
+ *
+ * @param string  $link Original WordPress preview link.
+ * @param WP_Post $post Current post object.
+ * @return string Modified headless preview link.
+ */
+add_filter( 'preview_post_link', 'set_headless_preview_link', 10, 2 );
+function set_headless_preview_link( string $link, WP_Post $post ): string {
+	// Set the front-end preview route.
+  $frontendUrl = HEADLESS_URL;
+
+	// Update the preview link in WordPress.
+  return add_query_arg(
+    [
+      'secret' => HEADLESS_SECRET,
+      'id' => $post->ID,
+    ],
+    esc_url_raw( esc_url_raw( "$frontendUrl/api/preview" ))
+  );
+}
+
+add_filter( 'rest_prepare_page', 'set_headless_rest_preview_link', 10, 2 );
+add_filter( 'rest_prepare_post', 'set_headless_rest_preview_link' , 10, 2 );
+function set_headless_rest_preview_link( WP_REST_Response $response, WP_Post $post ): WP_REST_Response {
+  // Check if the post status is 'draft' and set the preview link accordingly.
+  if ( 'draft' === $post->post_status ) {
+    $response->data['link'] = get_preview_post_link( $post );
+    return $response;
+  }
+
+  // For published posts, modify the permalink to point to the frontend.
+  if ( 'publish' === $post->post_status ) {
+
+    // Get the post permalink.
+    $permalink = get_permalink( $post );
+
+    // Check if the permalink contains the site URL.
+    if ( false !== stristr( $permalink, get_site_url() ) ) {
+
+      $frontendUrl = HEADLESS_URL;
+
+      // Replace the site URL with the frontend URL.
+      $response->data['link'] = str_ireplace(
+        get_site_url(),
+        $frontendUrl,
+        $permalink
+      );
+    }
+  }
+
+  return $response;
+}
+
+
+/**
+ * Adds the headless_revalidate function to the save_post action hook.
+ * This function makes a PUT request to the headless site' api/revalidate endpoint with JSON body: paths = ['/path/to/page', '/path/to/another/page']
+ * Requires HEADLESS_URL and HEADLESS_SECRET to be defined in wp-config.php
+ *
+ * @param int $post_ID The ID of the post being saved.
+ * @return void
+ */
+add_action('transition_post_status', 'headless_revalidate', 10, 3);
+function headless_revalidate(string $new_status, string $old_status, object $post ): void
+{
+  if ( ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) || ( defined( 'DOING_CRON' ) && DOING_CRON ) ) {
+    return;
+  }
+
+  // Ignore drafts and inherited posts.
+  if ( ( 'draft' === $new_status && 'draft' === $old_status ) || 'inherit' === $new_status ) {
+    return;
+  }
+
+  $frontendUrl = HEADLESS_URL;
+  $headlessSecret = HEADLESS_SECRET;
+
+  $data = json_encode([
+    'tags'  => ['wordpress'],
+  ]);
+
+  $response = wp_remote_request("$frontendUrl/api/revalidate/", [
+    'method'  => 'PUT',
+    'body'    => $data,
+    'headers' => [
+      'X-Headless-Secret-Key' => $headlessSecret,
+      'Content-Type'  => 'application/json',
+    ],
+  ]);
+
+  // Check if the request was successful
+  if (is_wp_error($response)) {
+    // Handle error
+    error_log($response->get_error_message());
+  }
+}
+
+function wsra_get_user_inputs()
+{
+  $pageNo = sprintf("%d", $_GET['pageNo']);
+  $perPage = sprintf("%d", $_GET['perPage']);
+  // Check for array key taxonomyType
+  if (array_key_exists('taxonomyType', $_GET)) {
+    $taxonomy = $_GET['taxonomyType'];
+  } else {
+    $taxonomy = 'category';
+  }
+  $postType = $_GET['postType'];
+  $paged = $pageNo ? $pageNo : 1;
+  $perPage = $perPage ? $perPage : 100;
+  $offset = ($paged - 1) * $perPage;
+  $args = array(
+    'number' => $perPage,
+    'offset' => $offset,
+  );
+  $postArgs = array(
+    'posts_per_page' => $perPage,
+    'post_type' => strval($postType ? $postType : 'post'),
+    'paged' => $paged,
+  );
+
+  return [$args, $postArgs, $taxonomy];
+}
+
+function wsra_generate_author_api()
+{
+  [$args] = wsra_get_user_inputs();
+  $author_urls = array();
+  $authors =  get_users($args);
+  foreach ($authors as $author) {
+    $fullUrl = esc_url(get_author_posts_url($author->ID));
+    $url = str_replace(home_url(), '', $fullUrl);
+    $tempArray = [
+      'url' => $url,
+    ];
+    array_push($author_urls, $tempArray);
+  }
+  return array_merge($author_urls);
+}
+
+function wsra_generate_taxonomy_api()
+{
+  [$args,, $taxonomy] = wsra_get_user_inputs();
+  $taxonomy_urls = array();
+  $taxonomys = $taxonomy == 'tag' ? get_tags($args) : get_categories($args);
+  foreach ($taxonomys as $taxonomy) {
+    $fullUrl = esc_url(get_category_link($taxonomy->term_id));
+    $url = str_replace(home_url(), '', $fullUrl);
+    $tempArray = [
+      'url' => $url,
+    ];
+    array_push($taxonomy_urls, $tempArray);
+  }
+  return array_merge($taxonomy_urls);
+}
+
+function wsra_generate_posts_api()
+{
+  [, $postArgs] = wsra_get_user_inputs();
+  $postUrls = array();
+  $query = new WP_Query($postArgs);
+
+  while ($query->have_posts()) {
+    $query->the_post();
+    $uri = str_replace(home_url(), '', get_permalink());
+    $tempArray = [
+      'url' => $uri,
+      'post_modified_date' => get_the_modified_date(),
+    ];
+    array_push($postUrls, $tempArray);
+  }
+  wp_reset_postdata();
+  return array_merge($postUrls);
+}
+
+function wsra_generate_totalpages_api()
+{
+  $args = array(
+    'exclude_from_search' => false
+  );
+  $argsTwo = array(
+    'publicly_queryable' => true
+  );
+  $post_types = get_post_types($args, 'names');
+  $post_typesTwo = get_post_types($argsTwo, 'names');
+  $post_types = array_merge($post_types, $post_typesTwo);
+  unset($post_types['attachment']);
+  $defaultArray = [
+    'category' => count(get_categories()),
+    'tag' => count(get_tags()),
+    'user' => (int)count_users()['total_users'],
+  ];
+  $tempValueHolder = array();
+  foreach ($post_types as $postType) {
+    $tempValueHolder[$postType] = (int)wp_count_posts($postType)->publish;
+  }
+  return array_merge($defaultArray, $tempValueHolder);
+}
+
+add_action('rest_api_init', function () {
+  register_rest_route('sitemap/v1', '/posts', array(
+    'methods' => 'GET',
+    'callback' => 'wsra_generate_posts_api',
+  ));
+});
+add_action('rest_api_init', function () {
+  register_rest_route('sitemap/v1', '/taxonomy', array(
+    'methods' => 'GET',
+    'callback' => 'wsra_generate_taxonomy_api',
+  ));
+});
+add_action('rest_api_init', function () {
+  register_rest_route('sitemap/v1', '/author', array(
+    'methods' => 'GET',
+    'callback' => 'wsra_generate_author_api',
+  ));
+});
+add_action('rest_api_init', function () {
+  register_rest_route('sitemap/v1', '/totalpages', array(
+    'methods' => 'GET',
+    'callback' => 'wsra_generate_totalpages_api',
+  ));
+});
+
+```
+
+## add-ts-nocheck.js
+
+```js
+const fs = require("fs");
+
+const generatedFilePath = "src/gql/gql.ts";
+
+fs.readFile(generatedFilePath, "utf8", (err, data) => {
+  if (err) {
+    console.error("Error reading file:", err);
+    return;
+  }
+
+  const updatedContent = `// @ts-nocheck\n${data}`;
+
+  fs.writeFile(generatedFilePath, updatedContent, "utf8", (err) => {
+    if (err) {
+      console.error("Error writing file:", err);
+    } else {
+      console.log(`Added "// @ts-nocheck" to ${generatedFilePath}`);
+    }
+  });
+});
+```
+
+## codegen.ts
+
+```ts
+import type { CodegenConfig } from "@graphql-codegen/cli";
+import { loadEnvConfig } from "@next/env";
+
+const projectDir = process.cwd();
+loadEnvConfig(projectDir);
+
+const config: CodegenConfig = {
+  overwrite: true,
+  schema: {
+    [`${process.env.NEXT_PUBLIC_WORDPRESS_API_URL}/graphql`]: {
+      headers: {
+        "User-Agent": "Codegen",
+      },
+    },
+  },
+  generates: {
+    "src/gql/": {
+      preset: "client",
+    },
+    "src/gql/schema.gql": {
+      plugins: ["schema-ast"],
+    },
+  },
+};
+
+export default config;
+```
+
+## package.json
+
+```json
+{
+  "private": true,
+  "scripts": {
+    "dev": "graphql-codegen --config codegen.ts && node ./add-ts-nocheck.js && next dev",
+    "build": "graphql-codegen --config codegen.ts && node ./add-ts-nocheck.js && next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "codegen": "graphql-codegen --config codegen.ts && node ./add-ts-nocheck.js"
+  },
+  "dependencies": {
+    "graphql": "^16.9.0",
+    "graphql-tag": "^2.12.6",
+    "next": "latest",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@graphql-codegen/cli": "5.0.0",
+    "@graphql-codegen/client-preset": "4.3.3",
+    "@graphql-codegen/schema-ast": "^4.1.0",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "eslint": "^9",
+    "eslint-config-next": "latest",
+    "typescript": "^5"
+  }
+}
+```
+
+## src/app/[[...slug]]/page.tsx
+
+```tsx
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { print } from "graphql/language/printer";
+
+import { setSeoData } from "@/utils/seoData";
+
+import { fetchGraphQL } from "@/utils/fetchGraphQL";
+import { ContentInfoQuery } from "@/queries/general/ContentInfoQuery";
+import { ContentNode } from "@/gql/graphql";
+import PageTemplate from "@/components/Templates/Page/PageTemplate";
+import { nextSlugToWpSlug } from "@/utils/nextSlugToWpSlug";
+import PostTemplate from "@/components/Templates/Post/PostTemplate";
+import { SeoQuery } from "@/queries/general/SeoQuery";
+
+type Props = {
+  params: { slug: string };
+};
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const slug = nextSlugToWpSlug(params.slug);
+  const isPreview = slug.includes("preview");
+
+  const { contentNode } = await fetchGraphQL<{ contentNode: ContentNode }>(
+    print(SeoQuery),
+    {
+      slug: isPreview ? slug.split("preview/")[1] : slug,
+      idType: isPreview ? "DATABASE_ID" : "URI",
+    },
+  );
+
+  if (!contentNode) {
+    return notFound();
+  }
+
+  const metadata = setSeoData({ seo: contentNode.seo });
+
+  return {
+    ...metadata,
+    alternates: {
+      canonical: `${process.env.NEXT_PUBLIC_BASE_URL}${slug}`,
+    },
+  } as Metadata;
+}
+
+export function generateStaticParams() {
+  return [];
+}
+
+export default async function Page({ params }: Props) {
+  const slug = nextSlugToWpSlug(params.slug);
+  const isPreview = slug.includes("preview");
+  const { contentNode } = await fetchGraphQL<{ contentNode: ContentNode }>(
+    print(ContentInfoQuery),
+    {
+      slug: isPreview ? slug.split("preview/")[1] : slug,
+      idType: isPreview ? "DATABASE_ID" : "URI",
+    },
+  );
+
+  if (!contentNode) return notFound();
+
+  switch (contentNode.contentTypeName) {
+    case "page":
+      return <PageTemplate node={contentNode} />;
+    case "post":
+      return <PostTemplate node={contentNode} />;
+    default:
+      return <p>{contentNode.contentTypeName} not implemented</p>;
+  }
+}
+```
+
+## src/app/api/exit-preview/route.ts
+
+```ts
+import { draftMode } from "next/headers";
+import { NextResponse } from "next/server";
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const path = searchParams.get("path");
+
+  draftMode().disable();
+
+  const response = NextResponse.redirect(
+    `${process.env.NEXT_PUBLIC_BASE_URL}${path}`,
+  );
+  response.headers.set(
+    "Set-Cookie",
+    `wp_jwt=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;`,
+  );
+
+  return response;
+}
+```
+
+## src/app/api/preview/route.ts
+
+```ts
+import { print } from "graphql/language/printer";
+
+import { ContentNode, LoginPayload } from "@/gql/graphql";
+import { fetchGraphQL } from "@/utils/fetchGraphQL";
+import { draftMode } from "next/headers";
+import { NextResponse } from "next/server";
+import gql from "graphql-tag";
+
+export const dynamic = "force-dynamic";
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const secret = searchParams.get("secret");
+  const id = searchParams.get("id");
+
+  if (secret !== process.env.HEADLESS_SECRET || !id) {
+    return new Response("Invalid token", { status: 401 });
+  }
+
+  const mutation = gql`
+  mutation LoginUser {
+    login( input: {
+      clientMutationId: "uniqueId",
+      username: "${process.env.WP_USER}",
+      password: "${process.env.WP_APP_PASS}"
+    } ) {
+      authToken
+      user {
+        id
+        name
+      }
+    }
+  }
+`;
+
+  const { login } = await fetchGraphQL<{ login: LoginPayload }>(
+    print(mutation),
+  );
+
+  const authToken = login.authToken;
+
+  draftMode().enable();
+
+  const query = gql`
+    query GetContentNode($id: ID!) {
+      contentNode(id: $id, idType: DATABASE_ID) {
+        uri
+        status
+        databaseId
+      }
+    }
+  `;
+
+  const { contentNode } = await fetchGraphQL<{ contentNode: ContentNode }>(
+    print(query),
+    {
+      id,
+    },
+    { Authorization: `Bearer ${authToken}` },
+  );
+
+  if (!contentNode) {
+    return new Response("Invalid id", { status: 401 });
+  }
+
+  const response = NextResponse.redirect(
+    `${process.env.NEXT_PUBLIC_BASE_URL}${
+      contentNode.status === "draft"
+        ? `/preview/${contentNode.databaseId}`
+        : contentNode.uri
+    }`,
+  );
+
+  response.headers.set("Set-Cookie", `wp_jwt=${authToken}; path=/;`);
+
+  return response;
+}
+```
+
+## src/app/api/revalidate/route.ts
+
+```ts
+import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath, revalidateTag } from "next/cache";
+
+export async function PUT(request: NextRequest) {
+  const requestBody = await request.text();
+  const { paths, tags } = requestBody
+    ? JSON.parse(requestBody)
+    : { paths: [], tags: [] };
+  let revalidated = false;
+
+  if (
+    request.headers.get("X-Headless-Secret-Key") !== process.env.HEADLESS_SECRET
+  ) {
+    return NextResponse.json({ message: "Invalid secret" }, { status: 401 });
+  }
+
+  try {
+    if (paths && Array.isArray(paths) && paths.length > 0) {
+      Promise.all(paths.map((path) => revalidatePath(path)));
+      console.log("Revalidated paths:", paths);
+      revalidated = true;
+    }
+
+    if (tags && Array.isArray(tags) && tags.length > 0) {
+      Promise.all(tags.map((tag) => revalidateTag(tag)));
+      console.log("Revalidated tags:", tags);
+      revalidated = true;
+    }
+
+    return NextResponse.json({
+      revalidated,
+      now: Date.now(),
+      paths,
+      tags: tags,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { message: "Error revalidating paths or tags" },
+      { status: 500 },
+    );
+  }
+}
+```
+
+## src/app/layout.tsx
+
+```tsx
+import { draftMode } from "next/headers";
+import { Inter } from "next/font/google";
+
+import "@/app/globals.css";
+
+import Navigation from "@/components/Globals/Navigation/Navigation";
+import { PreviewNotice } from "@/components/Globals/PreviewNotice/PreviewNotice";
+
+const inter = Inter({ subsets: ["latin"] });
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { isEnabled } = draftMode();
+
+  return (
+    <html lang="en">
+      <body className={inter.className}>
+        {isEnabled && <PreviewNotice />}
+        <Navigation />
+        {children}
+      </body>
+    </html>
+  );
+}
+```
+
+## src/app/not-found.tsx
+
+```tsx
+import type { Metadata } from "next";
+import { print } from "graphql/language/printer";
+
+import { setSeoData } from "@/utils/seoData";
+
+import { fetchGraphQL } from "@/utils/fetchGraphQL";
+import { ContentNode, Page } from "@/gql/graphql";
+import { PageQuery } from "@/components/Templates/Page/PageQuery";
+import { SeoQuery } from "@/queries/general/SeoQuery";
+
+const notFoundPageWordPressId = 501;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { contentNode } = await fetchGraphQL<{ contentNode: ContentNode }>(
+    print(SeoQuery),
+    { slug: notFoundPageWordPressId, idType: "DATABASE_ID" },
+  );
+
+  const metadata = setSeoData({ seo: contentNode.seo });
+
+  return {
+    ...metadata,
+    alternates: {
+      canonical: `${process.env.NEXT_PUBLIC_BASE_URL}/404-not-found/`,
+    },
+  } as Metadata;
+}
+
+export default async function NotFound() {
+  const { page } = await fetchGraphQL<{ page: Page }>(print(PageQuery), {
+    id: notFoundPageWordPressId,
+  });
+
+  return <div dangerouslySetInnerHTML={{ __html: page.content || " " }} />;
+}
+```
+
+## src/app/robots.ts
+
+```ts
+import { MetadataRoute } from "next";
+
+export const revalidate = 0;
+
+export default async function robots(): Promise<MetadataRoute.Robots> {
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_WORDPRESS_API_URL}/robots.txt`,
+    { cache: "no-store" },
+  );
+
+  const text = await res.text();
+
+  const lines = text.split("\n");
+
+  const userAgent = lines
+    .find((line) => line.startsWith("User-agent: "))
+    ?.replace("User-agent: ", "");
+  const allow = lines
+    .find((line) => line.startsWith("Allow: "))
+    ?.replace("Allow: ", "");
+  const disallow = lines
+    .find((line) => line.startsWith("Disallow: "))
+    ?.replace("Disallow: ", "");
+  const sitemap = lines
+    .find((line) => line.startsWith("Sitemap: "))
+    ?.replace("Sitemap: ", "");
+
+  const robots: MetadataRoute.Robots = {
+    rules: {
+      userAgent,
+      allow,
+      disallow,
+    },
+    sitemap,
+  };
+
+  return robots;
+}
+```
+
+## src/app/sitemap.ts
+
+```ts
+import { MetadataRoute } from "next";
+
+export const revalidate = 0;
+
+async function getTotalCounts() {
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_WORDPRESS_API_URL}/wp-json/sitemap/v1/totalpages`,
+  );
+  const data = await response.json();
+  if (!data) return [];
+  const propertyNames = Object.keys(data);
+
+  const excludeItems = ["page", "user", "category", "tag"];
+  let totalArray = propertyNames
+    .filter((name) => !excludeItems.includes(name))
+    .map((name) => {
+      return { name, total: data[name] };
+    });
+
+  return totalArray;
+}
+
+async function getPostsUrls({
+  page,
+  type,
+  perPage,
+}: {
+  page: number;
+  type: string;
+  perPage: number;
+}) {
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_WORDPRESS_API_URL}/wp-json/sitemap/v1/posts?pageNo=${page}&postType=${type}&perPage=${perPage}`,
+  );
+
+  const data = await response.json();
+
+  if (!data) return [];
+
+  const posts = data.map((post: any) => {
+    return {
+      url: `${process.env.NEXT_PUBLIC_BASE_URL}${post.url}`,
+      lastModified: new Date(post.post_modified_date)
+        .toISOString()
+        .split("T")[0],
+    };
+  });
+
+  return posts;
+}
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const sitemap = [];
+
+  const details = await getTotalCounts();
+
+  const postsUrls = await Promise.all(
+    details.map(async (detail) => {
+      const { name, total } = detail;
+      const perPage = 50;
+      const totalPages = Math.ceil(total / perPage);
+
+      const urls = await Promise.all(
+        Array.from({ length: totalPages }, (_, i) => i + 1).map((page) =>
+          getPostsUrls({ page, type: name, perPage }),
+        ),
+      );
+
+      return urls.flat();
+    }),
+  );
+
+  const posts = postsUrls.flat();
+
+  sitemap.push(...posts);
+
+  return sitemap;
+}
+```
+
+## src/components/Globals/Navigation/Navigation.tsx
+
+```tsx
+import Link from "next/link";
+import { print } from "graphql/language/printer";
+
+import styles from "./Navigation.module.css";
+
+import { MenuItem, RootQueryToMenuItemConnection } from "@/gql/graphql";
+import { fetchGraphQL } from "@/utils/fetchGraphQL";
+import gql from "graphql-tag";
+
+async function getData() {
+  const menuQuery = gql`
+    query MenuQuery {
+      menuItems(where: { location: PRIMARY_MENU }) {
+        nodes {
+          uri
+          target
+          label
+        }
+      }
+    }
+  `;
+
+  const { menuItems } = await fetchGraphQL<{
+    menuItems: RootQueryToMenuItemConnection;
+  }>(print(menuQuery));
+
+  if (menuItems === null) {
+    throw new Error("Failed to fetch data");
+  }
+
+  return menuItems;
+}
+
+export default async function Navigation() {
+  const menuItems = await getData();
+
+  return (
+    <nav
+      className={styles.navigation}
+      role="navigation"
+      itemScope
+      itemType="http://schema.org/SiteNavigationElement"
+    >
+      {menuItems.nodes.map((item: MenuItem, index: number) => {
+        if (!item.uri) return null;
+
+        return (
+          <Link
+            itemProp="url"
+            href={item.uri}
+            key={index}
+            target={item.target || "_self"}
+          >
+            <span itemProp="name">{item.label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+```
+
+## src/components/Globals/PreviewNotice/PreviewNotice.tsx
+
+```tsx
+"use client";
+import styles from "./PreviewNotice.module.css";
+import { usePathname } from "next/navigation";
+
+export const PreviewNotice = () => {
+  const pathname = usePathname();
+
+  return (
+    <aside className={styles.preview}>
+      Preview mode enabled
+      <a
+        className={styles.link}
+        href={`/api/exit-preview?path=${encodeURIComponent(pathname)}`}
+      >
+        Exit
+      </a>
+    </aside>
+  );
+};
+```
+
+## src/components/Templates/Page/PageQuery.ts
+
+```ts
+import gql from "graphql-tag";
+
+export const PageQuery = gql`
+  query PageQuery($id: ID!, $preview: Boolean = false) {
+    page(id: $id, idType: DATABASE_ID, asPreview: $preview) {
+      content
+    }
+  }
+`;
+```
+
+## src/components/Templates/Page/PageTemplate.tsx
+
+```tsx
+import { print } from "graphql/language/printer";
+import { ContentNode, Page } from "@/gql/graphql";
+import { fetchGraphQL } from "@/utils/fetchGraphQL";
+import { PageQuery } from "./PageQuery";
+
+interface TemplateProps {
+  node: ContentNode;
+}
+
+export default async function PageTemplate({ node }: TemplateProps) {
+  const { page } = await fetchGraphQL<{ page: Page }>(print(PageQuery), {
+    id: node.databaseId,
+  });
+
+  return <div dangerouslySetInnerHTML={{ __html: page?.content || "" }} />;
+}
+```
+
+## src/components/Templates/Post/PostQuery.ts
+
+```ts
+import gql from "graphql-tag";
+
+export const PostQuery = gql`
+  query PostQuery($id: ID!, $preview: Boolean = false) {
+    post(id: $id, idType: DATABASE_ID, asPreview: $preview) {
+      content
+      date
+      title
+      author {
+        node {
+          name
+        }
+      }
+    }
+  }
+`;
+```
+
+## src/components/Templates/Post/PostTemplate.tsx
+
+```tsx
+import { print } from "graphql/language/printer";
+
+import { ContentNode, Post } from "@/gql/graphql";
+import { fetchGraphQL } from "@/utils/fetchGraphQL";
+
+import styles from "./PostTemplate.module.css";
+import { PostQuery } from "./PostQuery";
+
+interface TemplateProps {
+  node: ContentNode;
+}
+
+export default async function PostTemplate({ node }: TemplateProps) {
+  const { post } = await fetchGraphQL<{ post: Post }>(print(PostQuery), {
+    id: node.databaseId,
+  });
+
+  return (
+    <div className={styles.post}>
+      <h1 className={styles.title}>{post.title}</h1>
+      <div className={styles.author}>By {post.author?.node.name}</div>
+
+      <div dangerouslySetInnerHTML={{ __html: post.content || "" }} />
+    </div>
+  );
+}
+```
+
+## src/middleware.ts
+
+```ts
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+
+export async function middleware(request: NextRequest) {
+  if (!process.env.WP_USER || !process.env.WP_APP_PASS) {
+    return NextResponse.next();
+  }
+
+  const basicAuth = `${process.env.WP_USER}:${process.env.WP_APP_PASS}`;
+
+  const pathnameWithoutTrailingSlash = request.nextUrl.pathname.replace(
+    /\/$/,
+    "",
+  );
+
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_WORDPRESS_API_URL}/wp-json/redirection/v1/redirect/?filterBy%5Burl-match%5D=plain&filterBy%5Burl%5D=${pathnameWithoutTrailingSlash}`,
+    {
+      headers: {
+        Authorization: `Basic ${Buffer.from(basicAuth).toString("base64")}`,
+        "Content-Type": "application/json",
+      },
+    },
+  );
+
+  const data = await response.json();
+
+  if (data?.items?.length > 0) {
+    const redirect = data.items.find(
+      (item: any) => item.url === pathnameWithoutTrailingSlash,
+    );
+
+    if (!redirect) {
+      return NextResponse.next();
+    }
+
+    const newUrl = new URL(
+      redirect.action_data.url,
+      process.env.NEXT_PUBLIC_BASE_URL,
+    ).toString();
+
+    return NextResponse.redirect(newUrl, {
+      status: redirect.action_code === 301 ? 308 : 307,
+    });
+  }
+}
+```
+
+## src/queries/general/ContentInfoQuery.ts
+
+```ts
+import gql from "graphql-tag";
+
+export const ContentInfoQuery = gql`
+  query ContentInfo($slug: ID!, $idType: ContentNodeIdTypeEnum!) {
+    contentNode(id: $slug, idType: $idType) {
+      contentTypeName
+      databaseId
+      status
+      uri
+    }
+  }
+`;
+```
+
+## src/queries/general/SeoQuery.ts
+
+```ts
+import gql from "graphql-tag";
+
+export const SeoQuery = gql`
+  query SeoQuery(
+    $slug: ID!
+    $idType: ContentNodeIdTypeEnum
+    $preview: Boolean = false
+  ) {
+    contentNode(id: $slug, idType: $idType, asPreview: $preview) {
+      seo {
+        canonical
+        cornerstone
+        focuskw
+        metaDesc
+        metaKeywords
+        metaRobotsNofollow
+        metaRobotsNoindex
+        opengraphAuthor
+        opengraphDescription
+        opengraphModifiedTime
+        opengraphPublishedTime
+        opengraphPublisher
+        opengraphSiteName
+        opengraphTitle
+        opengraphType
+        opengraphUrl
+        readingTime
+        title
+        twitterDescription
+        twitterTitle
+        opengraphImage {
+          altText
+          mediaDetails {
+            height
+            width
+          }
+          sourceUrl
+        }
+        twitterImage {
+          altText
+          mediaDetails {
+            width
+            height
+          }
+          sourceUrl
+        }
+      }
+    }
+  }
+`;
+```
+
+## src/utils/fetchGraphQL.ts
+
+```ts
+import { draftMode, cookies } from "next/headers";
+
+export async function fetchGraphQL<T = any>(
+  query: string,
+  variables?: { [key: string]: any },
+  headers?: { [key: string]: string },
+): Promise<T> {
+  const { isEnabled: preview } = draftMode();
+
+  try {
+    let authHeader = "";
+    if (preview) {
+      const auth = cookies().get("wp_jwt")?.value;
+      if (auth) {
+        authHeader = `Bearer ${auth}`;
+      }
+    }
+
+    const body = JSON.stringify({
+      query,
+      variables: {
+        preview,
+        ...variables,
+      },
+    });
+
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_WORDPRESS_API_URL}/graphql`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(authHeader && { Authorization: authHeader }),
+          ...headers,
+        },
+        body,
+        cache: preview ? "no-cache" : "default",
+        next: {
+          tags: ["wordpress"],
+        },
+      },
+    );
+
+    if (!response.ok) {
+      console.error("Response Status:", response);
+      throw new Error(response.statusText);
+    }
+
+    const data = await response.json();
+
+    if (data.errors) {
+      console.error("GraphQL Errors:", data.errors);
+      throw new Error("Error executing GraphQL query");
+    }
+
+    return data.data;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+}
+```
+
+## src/utils/nextSlugToWpSlug.ts
+
+```ts
+export const nextSlugToWpSlug = (nextSlug: string) =>
+  nextSlug && Array.isArray(nextSlug) ? nextSlug.join("/") : (nextSlug ?? "/");
+```
+
+## src/utils/seoData.ts
+
+```ts
+import { Page } from "@/gql/graphql";
+
+export const setSeoData = ({ seo }: { seo: Page["seo"] }) => {
+  if (!seo) return {};
+
+  return {
+    metadataBase: new URL(`${process.env.NEXT_PUBLIC_BASE_URL}`),
+    title: seo.title || "",
+    description: seo.metaDesc || "",
+    robots: {
+      index: seo.metaRobotsNoindex === "index" ? true : false,
+      follow: seo.metaRobotsNofollow === "follow" ? true : false,
+    },
+    openGraph: {
+      title: seo.opengraphTitle || "",
+      description: seo.opengraphDescription || "",
+      url: seo.opengraphUrl || "",
+      siteName: seo.opengraphSiteName || "",
+      images: [
+        {
+          url: seo.opengraphImage?.sourceUrl || "",
+          width: seo.opengraphImage?.mediaDetails?.width || 1200,
+          height: seo.opengraphImage?.mediaDetails?.height || 630,
+          alt: seo.opengraphImage?.altText || "",
+        },
+      ],
+      locale: "da_DK",
+      type: seo.opengraphType || "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: seo.twitterTitle || "",
+      description: seo.twitterDescription || "",
+      images: [seo.twitterImage?.sourceUrl || ""],
+    },
+  };
+};
+```

@@ -1,0 +1,663 @@
+# Example: with-redux
+# джерело: https://github.com/vercel/next.js/tree/v16.3.8/examples/with-redux
+# отримано: 2026-10-01
+# версія: 16.3.8
+
+## Redux Toolkit TypeScript Example
+
+This example shows how to integrate Next.js with Redux Toolkit.
+
+**Redux Toolkit**(also known as "RTK" for short) provides a standardized way to write Redux logic. It includes utilities that help simplify many common use cases, including store setup, creating reducers and writing immutable update logic, and even creating entire "slices" of state at once. This example showcases each of these features in conjunction with Next.js.
+
+## Deploy Your Own
+
+Deploy with Vercel
+
+## How to Use
+
+Execute `create-next-app` with npm, Yarn, or pnpm to bootstrap the example:
+
+```bash
+npx create-next-app --example with-redux with-redux-app
+```
+
+```bash
+yarn create next-app --example with-redux with-redux-app
+```
+
+```bash
+pnpm create next-app --example with-redux with-redux-app
+```
+
+Deploy it to the cloud with Vercel (Documentation).
+
+## app/StoreProvider.tsx
+
+```tsx
+"use client";
+import type { AppStore } from "@/lib/store";
+import { makeStore } from "@/lib/store";
+import { setupListeners } from "@reduxjs/toolkit/query";
+import type { ReactNode } from "react";
+import { useEffect, useRef } from "react";
+import { Provider } from "react-redux";
+
+interface Props {
+  readonly children: ReactNode;
+}
+
+export const StoreProvider = ({ children }: Props) => {
+  const storeRef = useRef<AppStore | null>(null);
+
+  if (!storeRef.current) {
+    // Create the store instance the first time this renders
+    storeRef.current = makeStore();
+  }
+
+  useEffect(() => {
+    if (storeRef.current != null) {
+      // configure listeners using the provided defaults
+      // optional, but required for `refetchOnFocus`/`refetchOnReconnect` behaviors
+      const unsubscribe = setupListeners(storeRef.current.dispatch);
+      return unsubscribe;
+    }
+  }, []);
+
+  return <Provider store={storeRef.current}>{children}</Provider>;
+};
+```
+
+## app/api/counter/route.ts
+
+```ts
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+
+interface Context {
+  params: undefined;
+}
+
+export async function POST(request: NextRequest, context: Context) {
+  const body: { amount: number } = await request.json();
+  const { amount = 1 } = body;
+
+  // simulate IO latency
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
+  return NextResponse.json({ data: amount });
+}
+```
+
+## app/components/Nav.tsx
+
+```tsx
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+import styles from "../styles/layout.module.css";
+
+export const Nav = () => {
+  const pathname = usePathname();
+
+  return (
+    <nav className={styles.nav}>
+      <Link
+        className={`${styles.link} ${pathname === "/" ? styles.active : ""}`}
+        href="/"
+      >
+        Home
+      </Link>
+      <Link
+        className={`${styles.link} ${
+          pathname === "/verify" ? styles.active : ""
+        }`}
+        href="/verify"
+      >
+        Verify
+      </Link>
+      <Link
+        className={`${styles.link} ${
+          pathname === "/quotes" ? styles.active : ""
+        }`}
+        href="/quotes"
+      >
+        Quotes
+      </Link>
+    </nav>
+  );
+};
+```
+
+## app/components/counter/Counter.tsx
+
+```tsx
+"use client";
+
+import { useState } from "react";
+
+import {
+  decrement,
+  increment,
+  incrementAsync,
+  incrementByAmount,
+  incrementIfOdd,
+  selectCount,
+  selectStatus,
+} from "@/lib/features/counter/counterSlice";
+
+import { useAppDispatch, useAppSelector } from "@/lib/hooks";
+import styles from "./Counter.module.css";
+
+export const Counter = () => {
+  const dispatch = useAppDispatch();
+  const count = useAppSelector(selectCount);
+  const status = useAppSelector(selectStatus);
+  const [incrementAmount, setIncrementAmount] = useState("2");
+
+  const incrementValue = Number(incrementAmount) || 0;
+
+  return (
+    <div>
+      <div className={styles.row}>
+        <button
+          className={styles.button}
+          aria-label="Decrement value"
+          onClick={() => dispatch(decrement())}
+        >
+          -
+        </button>
+        <span aria-label="Count" className={styles.value}>
+          {count}
+        </span>
+        <button
+          className={styles.button}
+          aria-label="Increment value"
+          onClick={() => dispatch(increment())}
+        >
+          +
+        </button>
+      </div>
+      <div className={styles.row}>
+        <input
+          className={styles.textbox}
+          aria-label="Set increment amount"
+          value={incrementAmount}
+          type="number"
+          onChange={(e) => {
+            setIncrementAmount(e.target.value);
+          }}
+        />
+        <button
+          className={styles.button}
+          onClick={() => dispatch(incrementByAmount(incrementValue))}
+        >
+          Add Amount
+        </button>
+        <button
+          className={styles.asyncButton}
+          disabled={status !== "idle"}
+          onClick={() => dispatch(incrementAsync(incrementValue))}
+        >
+          Add Async
+        </button>
+        <button
+          className={styles.button}
+          onClick={() => {
+            dispatch(incrementIfOdd(incrementValue));
+          }}
+        >
+          Add If Odd
+        </button>
+      </div>
+    </div>
+  );
+};
+```
+
+## app/components/quotes/Quotes.tsx
+
+```tsx
+"use client";
+import { useGetQuotesQuery } from "@/lib/features/quotes/quotesApiSlice";
+import { useState } from "react";
+import styles from "./Quotes.module.css";
+
+const options = [5, 10, 20, 30];
+
+export const Quotes = () => {
+  const [numberOfQuotes, setNumberOfQuotes] = useState(10);
+  // Using a query hook automatically fetches data and returns query values
+  const { data, isError, isLoading, isSuccess } =
+    useGetQuotesQuery(numberOfQuotes);
+
+  if (isError) {
+    return (
+      <div>
+        <h1>There was an error!!!</h1>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div>
+        <h1>Loading...</h1>
+      </div>
+    );
+  }
+
+  if (isSuccess) {
+    return (
+      <div className={styles.container}>
+        <h3>Select the Quantity of Quotes to Fetch:</h3>
+        <select
+          className={styles.select}
+          value={numberOfQuotes}
+          onChange={(e) => {
+            setNumberOfQuotes(Number(e.target.value));
+          }}
+        >
+          {options.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+        {data.quotes.map(({ author, quote, id }) => (
+          <blockquote key={id}>
+            &ldquo;{quote}&rdquo;
+            <footer>
+              <cite>{author}</cite>
+            </footer>
+          </blockquote>
+        ))}
+      </div>
+    );
+  }
+
+  return null;
+};
+```
+
+## app/layout.tsx
+
+```tsx
+import Image from "next/image";
+import type { ReactNode } from "react";
+import { StoreProvider } from "./StoreProvider";
+import { Nav } from "./components/Nav";
+
+import "./styles/globals.css";
+import styles from "./styles/layout.module.css";
+
+interface Props {
+  readonly children: ReactNode;
+}
+
+export default function RootLayout({ children }: Props) {
+  return (
+    <StoreProvider>
+      <html lang="en">
+        <body>
+          <section className={styles.container}>
+            <Nav />
+
+            <header className={styles.header}>
+              <Image
+                src="/logo.svg"
+                className={styles.logo}
+                alt="logo"
+                width={100}
+                height={100}
+              />
+            </header>
+
+            <main className={styles.main}>{children}</main>
+
+            <footer className={styles.footer}>
+              <span>Learn </span>
+              <a
+                className={styles.link}
+                href="https://reactjs.org"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                React
+              </a>
+              <span>, </span>
+              <a
+                className={styles.link}
+                href="https://redux.js.org"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Redux
+              </a>
+              <span>, </span>
+              <a
+                className={styles.link}
+                href="https://redux-toolkit.js.org"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Redux Toolkit
+              </a>
+              <span>, </span>
+              <a
+                className={styles.link}
+                href="https://react-redux.js.org"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                React Redux
+              </a>
+              ,<span> and </span>
+              <a
+                className={styles.link}
+                href="https://reselect.js.org"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Reselect
+              </a>
+            </footer>
+          </section>
+        </body>
+      </html>
+    </StoreProvider>
+  );
+}
+```
+
+## app/page.tsx
+
+```tsx
+import type { Metadata } from "next";
+import { Counter } from "./components/counter/Counter";
+
+export default function IndexPage() {
+  return <Counter />;
+}
+
+export const metadata: Metadata = {
+  title: "Redux Toolkit",
+};
+```
+
+## app/quotes/page.tsx
+
+```tsx
+import { Quotes } from "../components/quotes/Quotes";
+
+export default function QuotesPage() {
+  return (
+    <>
+      <h1>Quotes page</h1>
+      <p>This page is intended to showcase RTK Query.</p>
+      <Quotes />
+    </>
+  );
+}
+```
+
+## app/verify/page.tsx
+
+```tsx
+export default function VerifyPage() {
+  return (
+    <>
+      <h1>Verify page</h1>
+      <p>
+        This page is intended to verify that Redux state is persisted across
+        page navigations.
+      </p>
+    </>
+  );
+}
+```
+
+## lib/createAppSlice.ts
+
+```ts
+import { asyncThunkCreator, buildCreateSlice } from "@reduxjs/toolkit";
+
+// `buildCreateSlice` allows us to create a slice with async thunks.
+export const createAppSlice = buildCreateSlice({
+  creators: { asyncThunk: asyncThunkCreator },
+});
+```
+
+## lib/features/counter/counterAPI.ts
+
+```ts
+// A mock function to mimic making an async request for data
+export const fetchCount = async (amount = 1) => {
+  const response = await fetch("http://localhost:3000/api/counter", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ amount }),
+  });
+  const result: { data: number } = await response.json();
+
+  return result;
+};
+```
+
+## lib/features/counter/counterSlice.ts
+
+```ts
+import { createAppSlice } from "@/lib/createAppSlice";
+import type { AppThunk } from "@/lib/store";
+import type { PayloadAction } from "@reduxjs/toolkit";
+import { fetchCount } from "./counterAPI";
+
+export interface CounterSliceState {
+  value: number;
+  status: "idle" | "loading" | "failed";
+}
+
+const initialState: CounterSliceState = {
+  value: 0,
+  status: "idle",
+};
+
+// If you are not using async thunks you can use the standalone `createSlice`.
+export const counterSlice = createAppSlice({
+  name: "counter",
+  // `createSlice` will infer the state type from the `initialState` argument
+  initialState,
+  // The `reducers` field lets us define reducers and generate associated actions
+  reducers: (create) => ({
+    increment: create.reducer((state) => {
+      // Redux Toolkit allows us to write "mutating" logic in reducers. It
+      // doesn't actually mutate the state because it uses the Immer library,
+      // which detects changes to a "draft state" and produces a brand new
+      // immutable state based off those changes
+      state.value += 1;
+    }),
+    decrement: create.reducer((state) => {
+      state.value -= 1;
+    }),
+    // Use the `PayloadAction` type to declare the contents of `action.payload`
+    incrementByAmount: create.reducer(
+      (state, action: PayloadAction<number>) => {
+        state.value += action.payload;
+      },
+    ),
+    // The function below is called a thunk and allows us to perform async logic. It
+    // can be dispatched like a regular action: `dispatch(incrementAsync(10))`. This
+    // will call the thunk with the `dispatch` function as the first argument. Async
+    // code can then be executed and other actions can be dispatched. Thunks are
+    // typically used to make async requests.
+    incrementAsync: create.asyncThunk(
+      async (amount: number) => {
+        const response = await fetchCount(amount);
+        // The value we return becomes the `fulfilled` action payload
+        return response.data;
+      },
+      {
+        pending: (state) => {
+          state.status = "loading";
+        },
+        fulfilled: (state, action) => {
+          state.status = "idle";
+          state.value += action.payload;
+        },
+        rejected: (state) => {
+          state.status = "failed";
+        },
+      },
+    ),
+  }),
+  // You can define your selectors here. These selectors receive the slice
+  // state as their first argument.
+  selectors: {
+    selectCount: (counter) => counter.value,
+    selectStatus: (counter) => counter.status,
+  },
+});
+
+// Action creators are generated for each case reducer function.
+export const { decrement, increment, incrementByAmount, incrementAsync } =
+  counterSlice.actions;
+
+// Selectors returned by `slice.selectors` take the root state as their first argument.
+export const { selectCount, selectStatus } = counterSlice.selectors;
+
+// We can also write thunks by hand, which may contain both sync and async logic.
+// Here's an example of conditionally dispatching actions based on current state.
+export const incrementIfOdd =
+  (amount: number): AppThunk =>
+  (dispatch, getState) => {
+    const currentValue = selectCount(getState());
+
+    if (currentValue % 2 === 1 || currentValue % 2 === -1) {
+      dispatch(incrementByAmount(amount));
+    }
+  };
+```
+
+## lib/features/quotes/quotesApiSlice.ts
+
+```ts
+// Need to use the React-specific entry point to import `createApi`
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+
+interface Quote {
+  id: number;
+  quote: string;
+  author: string;
+}
+
+interface QuotesApiResponse {
+  quotes: Quote[];
+  total: number;
+  skip: number;
+  limit: number;
+}
+
+// Define a service using a base URL and expected endpoints
+export const quotesApiSlice = createApi({
+  baseQuery: fetchBaseQuery({ baseUrl: "https://dummyjson.com/quotes" }),
+  reducerPath: "quotesApi",
+  // Tag types are used for caching and invalidation.
+  tagTypes: ["Quotes"],
+  endpoints: (build) => ({
+    // Supply generics for the return type (in this case `QuotesApiResponse`)
+    // and the expected query argument. If there is no argument, use `void`
+    // for the argument type instead.
+    getQuotes: build.query<QuotesApiResponse, number>({
+      query: (limit = 10) => `?limit=${limit}`,
+      // `providesTags` determines which 'tag' is attached to the
+      // cached data returned by the query.
+      providesTags: (result, error, id) => [{ type: "Quotes", id }],
+    }),
+  }),
+});
+
+// Hooks are auto-generated by RTK-Query
+// Same as `quotesApiSlice.endpoints.getQuotes.useQuery`
+export const { useGetQuotesQuery } = quotesApiSlice;
+```
+
+## lib/hooks.ts
+
+```ts
+// This file serves as a central hub for re-exporting pre-typed Redux hooks.
+import { useDispatch, useSelector, useStore } from "react-redux";
+import type { AppDispatch, AppStore, RootState } from "./store";
+
+// Use throughout your app instead of plain `useDispatch` and `useSelector`
+export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
+export const useAppSelector = useSelector.withTypes<RootState>();
+export const useAppStore = useStore.withTypes<AppStore>();
+```
+
+## lib/store.ts
+
+```ts
+import type { Action, ThunkAction } from "@reduxjs/toolkit";
+import { combineSlices, configureStore } from "@reduxjs/toolkit";
+import { counterSlice } from "./features/counter/counterSlice";
+import { quotesApiSlice } from "./features/quotes/quotesApiSlice";
+
+// `combineSlices` automatically combines the reducers using
+// their `reducerPath`s, therefore we no longer need to call `combineReducers`.
+const rootReducer = combineSlices(counterSlice, quotesApiSlice);
+// Infer the `RootState` type from the root reducer
+export type RootState = ReturnType<typeof rootReducer>;
+
+// `makeStore` encapsulates the store configuration to allow
+// creating unique store instances, which is particularly important for
+// server-side rendering (SSR) scenarios. In SSR, separate store instances
+// are needed for each request to prevent cross-request state pollution.
+export const makeStore = () => {
+  return configureStore({
+    reducer: rootReducer,
+    // Adding the api middleware enables caching, invalidation, polling,
+    // and other useful features of `rtk-query`.
+    middleware: (getDefaultMiddleware) => {
+      return getDefaultMiddleware().concat(quotesApiSlice.middleware);
+    },
+  });
+};
+
+// Infer the return type of `makeStore`
+export type AppStore = ReturnType<typeof makeStore>;
+// Infer the `AppDispatch` type from the store itself
+export type AppDispatch = AppStore["dispatch"];
+export type AppThunk<ThunkReturnType = void> = ThunkAction<
+  ThunkReturnType,
+  RootState,
+  unknown,
+  Action
+>;
+```
+
+## package.json
+
+```json
+{
+  "private": true,
+  "scripts": {
+    "dev": "next",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@reduxjs/toolkit": "^2.2.0",
+    "next": "latest",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-redux": "^9.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "20.2.5",
+    "@types/react": "18.2.37",
+    "@types/react-dom": "^18.2.18",
+    "typescript": "^5.3.3"
+  }
+}
+```

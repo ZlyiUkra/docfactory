@@ -1,0 +1,146 @@
+# Example: with-joi
+# джерело: https://github.com/vercel/next.js/tree/v16.3.8/examples/with-joi
+# отримано: 2026-10-01
+# версія: 16.3.8
+
+## Example application using `joi` and `next-joi`
+
+This example shows how to validate Next.js API routes by using the `joi` and `next-joi` packages. It contains samples for both API routes using a Connect middleware (see `/api/people`) and regular API routes (see `/api/cars`).
+
+## Deploy your own
+
+Deploy with Vercel
+
+## How to use
+
+Execute `create-next-app` with npm, Yarn, or pnpm to bootstrap the example:
+
+```bash
+npx create-next-app --example with-joi with-joi-app
+```
+
+```bash
+yarn create next-app --example with-joi with-joi-app
+```
+
+```bash
+pnpm create next-app --example with-joi with-joi-app
+```
+
+Deploy it to the cloud with Vercel (Documentation).
+
+## package.json
+
+```json
+{
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "joi": "latest",
+    "next": "latest",
+    "next-connect": "latest",
+    "next-joi": "latest",
+    "react": "latest",
+    "react-dom": "latest"
+  }
+}
+```
+
+## pages/api/cars.js
+
+```js
+import Joi from "joi";
+import { validate } from "../../server/api/middlewares/validate";
+
+const carSchema = Joi.object({
+  brand: Joi.string().required(),
+  model: Joi.string().required(),
+});
+
+export default validate({ body: carSchema }, (req, res) => {
+  const car = req.body;
+
+  return res.status(201).json({ data: car });
+});
+```
+
+## pages/api/people.js
+
+```js
+import Joi from "joi";
+import { createRouter } from "next-connect";
+import { validate } from "../../server/api/middlewares/validate";
+
+const router = createRouter();
+
+const personSchema = Joi.object({
+  age: Joi.number().required(),
+  name: Joi.string().required(),
+});
+
+router.post(validate({ body: personSchema }), (req, res) => {
+  const person = req.body;
+
+  return res.status(201).json({ data: person });
+});
+
+export default router.handler({
+  onError: (err, req, res) => {
+    console.error(err.stack);
+    res.status(err.statusCode || 500).end(err.message);
+  },
+});
+```
+
+## pages/api/people/[id].js
+
+```js
+import Joi from "joi";
+import { createRouter } from "next-connect";
+import { validate } from "../../../server/api/middlewares/validate";
+
+const router = createRouter();
+router.get(
+  validate({
+    query: Joi.object({
+      id: Joi.string().uuid().required(),
+    }),
+  }),
+  (req, res) => {
+    const id = req.query.id;
+
+    return res.status(200).json({
+      data: {
+        id,
+      },
+    });
+  },
+);
+
+export default router.handler({
+  onError: (err, req, res) => {
+    console.error(err.stack);
+    res.status(err.statusCode || 500).end(err.message);
+  },
+});
+```
+
+## server/api/middlewares/validate.js
+
+```js
+import withJoi from "next-joi";
+
+export const validate = withJoi({
+  /**
+   * By default, `next-joi` will return a 400 HTTP error code but
+   * we can customize the error response.
+   */
+  onValidationError: (_, res) => {
+    return res.status(418).json({ message: "I'm a Teapot" });
+  },
+});
+```

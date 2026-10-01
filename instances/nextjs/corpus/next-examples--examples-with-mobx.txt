@@ -1,0 +1,268 @@
+# Example: with-mobx
+# джерело: https://github.com/vercel/next.js/tree/v16.3.8/examples/with-mobx
+# отримано: 2026-10-01
+# версія: 16.3.8
+
+## MobX V6 with Mobx React Lite
+
+Usually splitting your app state into `pages` feels natural but sometimes you'll want to have global state for your app. This is an example on how you can use mobx that also works with our universal rendering approach.
+
+In this example we are going to display a digital clock that updates every second. The first render is happening in the server and then the browser will take over. To illustrate this, the server rendered clock will have a different background color than the client one.
+
+To illustrate SSG and SSR, go to `/ssg` and `/ssr`, those pages are using Next.js data fetching methods to get the date in the server and return it as props to the page, and then the browser will hydrate the store and continue updating the date.
+
+The trick here for supporting universal mobx is to separate the cases for the client and the server. When we are on the server we want to create a new store every time, otherwise different users data will be mixed up. If we are in the client we want to use always the same store. That's what we accomplish on `store.js`.
+
+Page.js component is using the clock store to start and stop the store clock.
+
+Clock.js component is using the clock store to read the time.
+
+StoreProvider.js component is used to instantiate the `Store` both on the server and on the client.
+
+Both components are using a custom hook `useStore` to pull in the `Store` from the provider.
+
+## Deploy your own
+
+Deploy with Vercel
+
+## How to use
+
+Execute `create-next-app` with npm, Yarn, or pnpm to bootstrap the example:
+
+```bash
+npx create-next-app --example with-mobx with-mobx-app
+```
+
+```bash
+yarn create next-app --example with-mobx with-mobx-app
+```
+
+```bash
+pnpm create next-app --example with-mobx with-mobx-app
+```
+
+Deploy it to the cloud with Vercel (Documentation).
+
+## components/Page.js
+
+```js
+import { observer } from "mobx-react-lite";
+import Link from "next/link";
+import { useEffect } from "react";
+import Clock from "./Clock";
+import { useStore } from "./StoreProvider";
+
+const Page = observer(function Page(props) {
+  // use store from the store context
+  const store = useStore();
+
+  //start the clock when the component is mounted
+  useEffect(() => {
+    store.start();
+
+    // stop the clock when the component unmounts
+    return () => {
+      store.stop();
+    };
+  }, [store]);
+
+  return (
+    <div>
+      <h1>{props.title}</h1>
+      <Clock />
+      <nav>
+        <Link href={props.linkTo}>Navigate</Link>
+      </nav>
+    </div>
+  );
+});
+
+export default Page;
+```
+
+## components/StoreProvider.js
+
+```js
+import { createContext, useContext } from "react";
+import { Store } from "../store";
+
+let store;
+export const StoreContext = createContext();
+
+export function useStore() {
+  const context = useContext(StoreContext);
+  if (context === undefined) {
+    throw new Error("useStore must be used within StoreProvider");
+  }
+
+  return context;
+}
+
+function initializeStore(initialData = null) {
+  const _store = store ?? new Store();
+
+  // If your page has Next.js data fetching methods that use a Mobx store, it will
+  // get hydrated here, check `pages/ssg.js` and `pages/ssr.js` for more details
+  if (initialData) {
+    _store.hydrate(initialData);
+  }
+  // For SSG and SSR always create a new store
+  if (typeof window === "undefined") return _store;
+  // Create the store once in the client
+  if (!store) store = _store;
+
+  return _store;
+}
+
+export function StoreProvider({ children, initialState: initialData }) {
+  const store = initializeStore(initialData);
+
+  return (
+    <StoreContext.Provider value={store}>{children}</StoreContext.Provider>
+  );
+}
+```
+
+## package.json
+
+```json
+{
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "mobx": "^6.6.1",
+    "mobx-react-lite": "^3.4.0",
+    "next": "latest",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}
+```
+
+## pages/_app.js
+
+```js
+import { StoreProvider } from "../components/StoreProvider";
+
+export default function App({ Component, pageProps }) {
+  return (
+    <StoreProvider {...pageProps}>
+      <Component {...pageProps} />
+    </StoreProvider>
+  );
+}
+```
+
+## pages/index.js
+
+```js
+import Page from "../components/Page";
+
+export default function Index() {
+  return <Page title="Index Page" linkTo="/other" />;
+}
+```
+
+## pages/other.js
+
+```js
+import Page from "../components/Page";
+
+export default function Other() {
+  return <Page title="Other Page" linkTo="/" />;
+}
+```
+
+## pages/ssg.js
+
+```js
+import Page from "../components/Page";
+
+export default function SSG() {
+  return <Page title="Index Page" linkTo="/other" />;
+}
+
+// If you build and start the app, the date returned here will have the same
+// value for all requests, as this method gets executed at build time.
+export function getStaticProps() {
+  return { props: { initialState: { lastUpdate: Date.now() } } };
+}
+```
+
+## pages/ssr.js
+
+```js
+import Page from "../components/Page";
+
+export default function SSR() {
+  return <Page title="Index Page" linkTo="/other" />;
+}
+
+// The date returned here will be different for every request that hits the page,
+// that is because the page becomes a serverless function instead of being statically
+// exported when you use `getServerSideProps` or `getInitialProps`
+export function getServerSideProps() {
+  return { props: { initialState: { lastUpdate: Date.now() } } };
+}
+```
+
+## store.js
+
+```js
+import {
+  action,
+  observable,
+  computed,
+  runInAction,
+  makeObservable,
+} from "mobx";
+import { enableStaticRendering } from "mobx-react-lite";
+
+enableStaticRendering(typeof window === "undefined");
+
+export class Store {
+  lastUpdate = 0;
+  light = false;
+
+  constructor() {
+    makeObservable(this, {
+      lastUpdate: observable,
+      light: observable,
+      start: action,
+      hydrate: action,
+      timeString: computed,
+    });
+  }
+
+  start = () => {
+    this.timer = setInterval(() => {
+      runInAction(() => {
+        this.lastUpdate = Date.now();
+        this.light = true;
+      });
+    }, 1000);
+  };
+
+  get timeString() {
+    const pad = (n) => (n < 10 ? `0${n}` : n);
+    const format = (t) =>
+      `${pad(t.getUTCHours())}:${pad(t.getUTCMinutes())}:${pad(
+        t.getUTCSeconds(),
+      )}`;
+    return format(new Date(this.lastUpdate));
+  }
+
+  stop = () => clearInterval(this.timer);
+
+  hydrate = (data) => {
+    if (!data) return;
+
+    this.lastUpdate = data.lastUpdate !== null ? data.lastUpdate : Date.now();
+    this.light = !!data.light;
+  };
+}
+```

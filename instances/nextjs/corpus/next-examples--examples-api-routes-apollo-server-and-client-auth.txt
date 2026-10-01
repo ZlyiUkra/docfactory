@@ -1,0 +1,695 @@
+# Example: api-routes-apollo-server-and-client-auth
+# джерело: https://github.com/vercel/next.js/tree/v16.3.8/examples/api-routes-apollo-server-and-client-auth
+# отримано: 2026-10-01
+# версія: 16.3.8
+
+## Apollo Server and Client Auth Example
+
+Apollo is a GraphQL client that allows you to easily query the exact data you need from a GraphQL server. In addition to fetching and mutating data, Apollo analyzes your queries and their results to construct a client-side cache of your data, which is kept up to date as further queries and mutations are run. The integration with Next and Apollo Server is implemented using the apollo-server-integration-next community package.
+
+In this simple example, we integrate Apollo seamlessly with Next.js data fetching methods to fetch queries in the server and hydrate them in the browser.
+
+## Deploy your own
+
+Deploy with Vercel
+
+## How to use
+
+Execute `create-next-app` with npm, Yarn, or pnpm to bootstrap the example:
+
+```bash
+npx create-next-app --example api-routes-apollo-server-and-client-auth api-routes-apollo-server-and-client-auth-app
+```
+
+```bash
+yarn create next-app --example api-routes-apollo-server-and-client-auth api-routes-apollo-server-and-client-auth-app
+```
+
+```bash
+pnpm create next-app --example api-routes-apollo-server-and-client-auth api-routes-apollo-server-and-client-auth-app
+```
+
+Deploy it to the cloud with Vercel (Documentation).
+
+## apollo/client.tsx
+
+```tsx
+import { useMemo } from "react";
+import { ApolloClient, InMemoryCache, HttpLink } from "@apollo/client";
+import { SchemaLink } from "@apollo/client/link/schema";
+import { schema } from "../apollo/schema";
+import merge from "deepmerge";
+
+let apolloClient;
+
+function createIsomorphLink() {
+  if (typeof window === "undefined") {
+    return new SchemaLink({ schema });
+  } else {
+    return new HttpLink({
+      uri: "/api/graphql",
+      credentials: "same-origin",
+    });
+  }
+}
+
+function createApolloClient() {
+  return new ApolloClient({
+    ssrMode: typeof window === "undefined",
+    link: createIsomorphLink(),
+    cache: new InMemoryCache(),
+  });
+}
+
+export function initializeApollo(initialState = null) {
+  const _apolloClient = apolloClient ?? createApolloClient();
+
+  // If your page has Next.js data fetching methods that use Apollo Client, the initial state
+  // get hydrated here
+  if (initialState) {
+    // Get existing cache, loaded during client side data fetching
+    const existingCache = _apolloClient.extract();
+
+    // Merge the existing cache into data passed from getStaticProps/getServerSideProps
+    const data = merge(initialState, existingCache);
+
+    // Restore the cache with the merged data
+    _apolloClient.cache.restore(data);
+  }
+  // For SSG and SSR always create a new Apollo Client
+  if (typeof window === "undefined") return _apolloClient;
+  // Create the Apollo Client once in the client
+  if (!apolloClient) apolloClient = _apolloClient;
+
+  return _apolloClient;
+}
+
+export function useApollo(initialState) {
+  const store = useMemo(() => initializeApollo(initialState), [initialState]);
+  return store;
+}
+```
+
+## apollo/resolvers.ts
+
+```ts
+import { createUser, findUser, validatePassword } from "../lib/user";
+import { setLoginSession, getLoginSession } from "../lib/auth";
+import { removeTokenCookie } from "../lib/auth-cookies";
+import { GraphQLError } from "graphql";
+
+export const resolvers = {
+  Query: {
+    async viewer(_root, _args, context, _info) {
+      try {
+        const session = await getLoginSession(context.req);
+
+        if (session) {
+          return findUser({ email: session.email });
+        }
+      } catch (error) {
+        throw new GraphQLError(
+          "Authentication token is invalid, please log in",
+          {
+            extensions: {
+              code: "UNAUTHENTICATED",
+            },
+          },
+        );
+      }
+    },
+  },
+  Mutation: {
+    async signUp(_parent, args, _context, _info) {
+      const user = await createUser(args.input);
+      return { user };
+    },
+    async signIn(_parent, args, context, _info) {
+      const user = await findUser({ email: args.input.email });
+
+      if (user && (await validatePassword(user, args.input.password))) {
+        const session = {
+          id: user.id,
+          email: user.email,
+        };
+
+        await setLoginSession(context.res, session);
+
+        return { user };
+      }
+
+      throw new GraphQLError("Invalid email and password combination");
+    },
+    async signOut(_parent, _args, context, _info) {
+      removeTokenCookie(context.res);
+      return true;
+    },
+  },
+};
+```
+
+## apollo/schema.ts
+
+```ts
+import { makeExecutableSchema } from "@graphql-tools/schema";
+import { typeDefs } from "./type-defs";
+import { resolvers } from "./resolvers";
+
+export const schema = makeExecutableSchema({
+  typeDefs,
+  resolvers,
+});
+```
+
+## apollo/type-defs.ts
+
+```ts
+import { gql } from "@apollo/client";
+
+export const typeDefs = gql`
+  type User {
+    id: ID!
+    email: String!
+    createdAt: Int!
+  }
+
+  input SignUpInput {
+    email: String!
+    password: String!
+  }
+
+  input SignInInput {
+    email: String!
+    password: String!
+  }
+
+  type SignUpPayload {
+    user: User!
+  }
+
+  type SignInPayload {
+    user: User!
+  }
+
+  type Query {
+    user(id: ID!): User!
+    users: [User]!
+    viewer: User
+  }
+
+  type Mutation {
+    signUp(input: SignUpInput!): SignUpPayload!
+    signIn(input: SignInInput!): SignInPayload!
+    signOut: Boolean!
+  }
+`;
+```
+
+## components/field.tsx
+
+```tsx
+export default function Field({ name, label, type, autoComplete, required }) {
+  return (
+    <div>
+      <label id={[name, "label"].join("-")} htmlFor={[name, "input"].join("-")}>
+        {label} {required ? <span title="Required">*</span> : undefined}
+      </label>
+      <br />
+      <input
+        autoComplete={autoComplete}
+        id={[name, "input"].join("-")}
+        name={name}
+        required={required}
+        type={type}
+      />
+    </div>
+  );
+}
+```
+
+## lib/auth-cookies.ts
+
+```ts
+import { serialize, parse } from "cookie";
+
+const TOKEN_NAME = "token";
+
+export const MAX_AGE = 60 * 60 * 8; // 8 hours
+
+export function setTokenCookie(res, token) {
+  const cookie = serialize(TOKEN_NAME, token, {
+    maxAge: MAX_AGE,
+    expires: new Date(Date.now() + MAX_AGE * 1000),
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    sameSite: "lax",
+  });
+
+  res.setHeader("Set-Cookie", cookie);
+}
+
+export function removeTokenCookie(res) {
+  const cookie = serialize(TOKEN_NAME, "", {
+    maxAge: -1,
+    path: "/",
+  });
+
+  res.setHeader("Set-Cookie", cookie);
+}
+
+export function parseCookies(req) {
+  // For API Routes we don't need to parse the cookies.
+  if (req.cookies) return req.cookies;
+
+  // For pages we do need to parse the cookies.
+  const cookie = req.headers?.cookie;
+  return parse(cookie || "");
+}
+
+export function getTokenCookie(req) {
+  const cookies = parseCookies(req);
+  return cookies[TOKEN_NAME];
+}
+```
+
+## lib/auth.ts
+
+```ts
+import Iron from "@hapi/iron";
+import { MAX_AGE, setTokenCookie, getTokenCookie } from "./auth-cookies";
+
+const TOKEN_SECRET = process.env.TOKEN_SECRET;
+
+export async function setLoginSession(res, session) {
+  const createdAt = Date.now();
+  // Create a session object with a max age that we can validate later
+  const obj = { ...session, createdAt, maxAge: MAX_AGE };
+  const token = await Iron.seal(obj, TOKEN_SECRET, Iron.defaults);
+
+  setTokenCookie(res, token);
+}
+
+export async function getLoginSession(req) {
+  const token = getTokenCookie(req);
+
+  if (!token) return;
+
+  const session = await Iron.unseal(token, TOKEN_SECRET, Iron.defaults);
+  const expiresAt = session.createdAt + session.maxAge * 1000;
+
+  // Validate the expiration date of the session
+  if (Date.now() > expiresAt) {
+    throw new Error("Session expired");
+  }
+
+  return session;
+}
+```
+
+## lib/form.ts
+
+```ts
+export function getErrorMessage(error) {
+  if (error.graphQLErrors) {
+    for (const graphQLError of error.graphQLErrors) {
+      if (
+        graphQLError.extensions &&
+        graphQLError.extensions.code === "BAD_USER_INPUT"
+      ) {
+        return graphQLError.message;
+      }
+    }
+  }
+  return error.message;
+}
+```
+
+## lib/user.ts
+
+```ts
+import crypto from "crypto";
+
+/**
+ * User methods. The example doesn't contain a DB, but for real applications you must use a
+ * db here, such as MongoDB, Fauna, SQL, etc.
+ */
+
+const users = [];
+
+export async function createUser({ email, password }) {
+  // Here you should create the user and save the salt and hashed password (some dbs may have
+  // authentication methods that will do it for you so you don't have to worry about it):
+  const salt = crypto.randomBytes(16).toString("hex");
+  const hash = crypto
+    .pbkdf2Sync(password, salt, 1000, 64, "sha512")
+    .toString("hex");
+  const user = {
+    id: crypto.randomUUID(),
+    createdAt: Date.now(),
+    email,
+    hash,
+    salt,
+  };
+
+  // This is an in memory store for users, there is no data persistence without a proper DB
+  users.push(user);
+
+  return user;
+}
+
+// Here you should lookup for the user in your DB
+export async function findUser({ email }) {
+  // This is an in memory store for users, there is no data persistence without a proper DB
+  return users.find((user) => user.email === email);
+}
+
+// Compare the password of an already fetched user (using `findUser`) and compare the
+// password for a potential match
+export async function validatePassword(user, inputPassword) {
+  const inputHash = crypto
+    .pbkdf2Sync(inputPassword, user.salt, 1000, 64, "sha512")
+    .toString("hex");
+  const passwordsMatch = user.hash === inputHash;
+  return passwordsMatch;
+}
+```
+
+## package.json
+
+```json
+{
+  "private": true,
+  "scripts": {
+    "dev": "next",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@apollo/client": "^3.7.1",
+    "@apollo/server": "^4.1.1",
+    "@as-integrations/next": "^1.1.0",
+    "@graphql-tools/schema": "^9.0.9",
+    "graphql": "^16.6.0",
+    "@hapi/iron": "6.0.0",
+    "cookie": "^0.4.1",
+    "deepmerge": "4.2.2",
+    "next": "latest",
+    "prop-types": "^15.6.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.2",
+    "@types/react": "^18.0.15",
+    "@types/react-dom": "^18.0.6",
+    "typescript": "^4.7.4"
+  }
+}
+```
+
+## pages/_app.tsx
+
+```tsx
+import { ApolloProvider } from "@apollo/client";
+import { useApollo } from "../apollo/client";
+
+export default function App({ Component, pageProps }) {
+  const apolloClient = useApollo(pageProps.initialApolloState);
+
+  return (
+    <ApolloProvider client={apolloClient}>
+      <Component {...pageProps} />
+    </ApolloProvider>
+  );
+}
+```
+
+## pages/about.tsx
+
+```tsx
+import Link from "next/link";
+
+export default function About() {
+  return (
+    <div>
+      Welcome to the about page. Go to the <Link href="/">Home</Link> page.
+    </div>
+  );
+}
+```
+
+## pages/api/graphql.ts
+
+```ts
+import { ApolloServer } from "@apollo/server";
+import { startServerAndCreateNextHandler } from "@as-integrations/next";
+import { NextApiRequest, NextApiResponse } from "next";
+import { schema } from "../../apollo/schema";
+
+type ExampleContext = {
+  req: NextApiRequest;
+  res: NextApiResponse;
+};
+
+const apolloServer = new ApolloServer<ExampleContext>({ schema });
+
+export default startServerAndCreateNextHandler(apolloServer, {
+  context: async (req, res) => ({ req, res }),
+});
+```
+
+## pages/index.tsx
+
+```tsx
+import { useEffect } from "react";
+import { useRouter } from "next/router";
+import Link from "next/link";
+import { gql, useQuery } from "@apollo/client";
+
+const ViewerQuery = gql`
+  query ViewerQuery {
+    viewer {
+      id
+      email
+    }
+  }
+`;
+
+const Index = () => {
+  const router = useRouter();
+  const { data, loading, error } = useQuery(ViewerQuery);
+  const viewer = data?.viewer;
+  const shouldRedirect = !(loading || error || viewer);
+
+  useEffect(() => {
+    if (shouldRedirect) {
+      router.push("/signin");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldRedirect]);
+
+  if (error) {
+    return <p>{error.message}</p>;
+  }
+
+  if (viewer) {
+    return (
+      <div>
+        You're signed in as {viewer.email}. Go to{" "}
+        <Link href="/about">about</Link> page or{" "}
+        <Link href="/signout">signout</Link>.
+      </div>
+    );
+  }
+
+  return <p>Loading...</p>;
+};
+
+export default Index;
+```
+
+## pages/signin.tsx
+
+```tsx
+import { useState } from "react";
+import { useRouter } from "next/router";
+import Link from "next/link";
+import { gql } from "@apollo/client";
+import { useMutation, useApolloClient } from "@apollo/client";
+import { getErrorMessage } from "../lib/form";
+import Field from "../components/field";
+
+const SignInMutation = gql`
+  mutation SignInMutation($email: String!, $password: String!) {
+    signIn(input: { email: $email, password: $password }) {
+      user {
+        id
+        email
+      }
+    }
+  }
+`;
+
+function SignIn() {
+  const client = useApolloClient();
+  const [signIn] = useMutation(SignInMutation);
+  const [errorMsg, setErrorMsg] = useState();
+  const router = useRouter();
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+
+    const emailElement = event.currentTarget.elements.email;
+    const passwordElement = event.currentTarget.elements.password;
+
+    try {
+      await client.resetStore();
+      const { data } = await signIn({
+        variables: {
+          email: emailElement.value,
+          password: passwordElement.value,
+        },
+      });
+      if (data.signIn.user) {
+        await router.push("/");
+      }
+    } catch (error) {
+      setErrorMsg(getErrorMessage(error));
+    }
+  }
+
+  return (
+    <>
+      <h1>Sign In</h1>
+      <form onSubmit={handleSubmit}>
+        {errorMsg && <p>{errorMsg}</p>}
+        <Field
+          name="email"
+          type="email"
+          autoComplete="email"
+          required
+          label="Email"
+        />
+        <Field
+          name="password"
+          type="password"
+          autoComplete="password"
+          required
+          label="Password"
+        />
+        <button type="submit">Sign in</button> or{" "}
+        <Link href="/signup">Sign up</Link>
+      </form>
+    </>
+  );
+}
+
+export default SignIn;
+```
+
+## pages/signout.tsx
+
+```tsx
+import { useEffect } from "react";
+import { useRouter } from "next/router";
+import { gql, useMutation, useApolloClient } from "@apollo/client";
+
+const SignOutMutation = gql`
+  mutation SignOutMutation {
+    signOut
+  }
+`;
+
+function SignOut() {
+  const client = useApolloClient();
+  const router = useRouter();
+  const [signOut] = useMutation(SignOutMutation);
+
+  useEffect(() => {
+    signOut().then(() => {
+      client.resetStore().then(() => {
+        router.push("/signin");
+      });
+    });
+  }, [signOut, router, client]);
+
+  return <p>Signing out...</p>;
+}
+
+export default SignOut;
+```
+
+## pages/signup.tsx
+
+```tsx
+import { useState } from "react";
+import { useRouter } from "next/router";
+import Link from "next/link";
+import { gql, useMutation } from "@apollo/client";
+import { getErrorMessage } from "../lib/form";
+import Field from "../components/field";
+
+const SignUpMutation = gql`
+  mutation SignUpMutation($email: String!, $password: String!) {
+    signUp(input: { email: $email, password: $password }) {
+      user {
+        id
+        email
+      }
+    }
+  }
+`;
+
+function SignUp() {
+  const [signUp] = useMutation(SignUpMutation);
+  const [errorMsg, setErrorMsg] = useState();
+  const router = useRouter();
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    const emailElement = event.currentTarget.elements.email;
+    const passwordElement = event.currentTarget.elements.password;
+
+    try {
+      await signUp({
+        variables: {
+          email: emailElement.value,
+          password: passwordElement.value,
+        },
+      });
+
+      router.push("/signin");
+    } catch (error) {
+      setErrorMsg(getErrorMessage(error));
+    }
+  }
+
+  return (
+    <>
+      <h1>Sign Up</h1>
+      <form onSubmit={handleSubmit}>
+        {errorMsg && <p>{errorMsg}</p>}
+        <Field
+          name="email"
+          type="email"
+          autoComplete="email"
+          required
+          label="Email"
+        />
+        <Field
+          name="password"
+          type="password"
+          autoComplete="password"
+          required
+          label="Password"
+        />
+        <button type="submit">Sign up</button> or{" "}
+        <Link href="/signin">Sign in</Link>
+      </form>
+    </>
+  );
+}
+
+export default SignUp;
+```

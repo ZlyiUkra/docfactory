@@ -1,0 +1,456 @@
+# Example: with-ably
+# джерело: https://github.com/vercel/next.js/tree/v16.3.8/examples/with-ably
+# отримано: 2026-10-01
+# версія: 16.3.8
+
+## Realtime messaging with Ably
+
+**Demo:** https://next-and-ably.vercel.app/
+
+Add realtime data and interactive multi-user experiences to your Next.js apps with Ably, without the infrastructure overhead.
+
+Use Ably in your Next.js App Router application with the `ably/react` hooks.
+
+Using this demo you can:
+
+- Send and receive realtime messages
+- Get notifications of user presence on channels
+- Send presence updates when a new client joins or leaves the demo
+
+This demo uses the Ably React hooks that ship with the `ably` package, which manages the lifecycle of the Ably SDK instances for you, subscribing and unsubscribing to channels and events as your components mount and unmount.
+
+## Deploy your own
+
+**You will need an Ably API key to run this demo. See below for details.**
+
+Deploy with Vercel
+
+## How to use
+
+Execute `create-next-app` with npm, Yarn, or pnpm to bootstrap the example:
+
+```bash
+npx create-next-app --example with-ably with-ably-app
+```
+
+```bash
+yarn create next-app --example with-ably with-ably-app
+```
+
+```bash
+pnpm create next-app --example with-ably with-ably-app
+```
+
+Deploy it to the cloud with Vercel (Documentation).
+
+**When deployed, ensure that you set your `ABLY_API_KEY` environment variable in your Vercel project settings.**
+
+## Notes
+
+### Ably setup
+
+In order to send and receive messages you will need an Ably API key.
+If you are not already signed up, you can sign up now for a free Ably account. Once you have an Ably account:
+
+1. Log into your app dashboard.
+2. Under **"Your apps"**, click on **"Manage app"** for any app you wish to use for this tutorial, or create a new one with the "Create New App" button.
+3. Click on the **"API Keys"** tab.
+4. Copy the secret **"API Key"** value from your Root key.
+5. Create a `.env.local` file in the root of the project.
+6. Paste the API key into your new env file:
+
+```bash
+ABLY_API_KEY=your-ably-api-key:goes-here
+```
+
+### How it works
+
+#### Client provider
+
+`app/ably-client-provider.tsx` is a Client Component that creates the Ably Realtime client inside a `useEffect`, so no connection is attempted during SSR. It wraps its children in `AblyProvider` (and `ChannelProvider`) from `ably/react`, making the hooks available to descendant Client Components:
+
+```tsx
+"use client";
+
+import { useEffect, useState, type ReactNode } from "react";
+import * as Ably from "ably";
+import { AblyProvider, ChannelProvider } from "ably/react";
+
+export default function AblyClientProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const [clientId] = useState(
+    () =>
+      Math.random().toString(36).substring(2, 15) +
+      Math.random().toString(36).substring(2, 15),
+  );
+  const [client, setClient] = useState<Ably.Realtime | null>(null);
+
+  useEffect(() => {
+    const ably = new Ably.Realtime({
+      authUrl: `/api/createTokenRequest?clientId=${clientId}`,
+      clientId,
+    });
+    setClient(ably);
+    return () => {
+      ably.close();
+    };
+  }, [clientId]);
+
+  if (!client) {
+    return <p>Connecting to Ably...</p>;
+  }
+
+  return (
+    <AblyProvider client={client}>
+      <ChannelProvider channelName="some-channel-name">
+        {children}
+      </ChannelProvider>
+    </AblyProvider>
+  );
+}
+```
+
+`children` only mount once the client exists, so descendants can call `useChannel` / `usePresence` unconditionally without checking a readiness flag — `AblyProvider` is guaranteed to be above the tree.
+
+Wrap `AblyClientProvider` around only the subtree that uses Ably, not your root layout. In this example the static page chrome (heading, intro paragraph, footer) lives outside the provider and renders immediately; only the chat panel waits behind the `Connecting to Ably...` placeholder. Mounting the provider at the root would force your whole app to wait on the WebSocket handshake before anything is visible.
+
+The client is authenticated via a token request served by a Route Handler at `app/api/createTokenRequest/route.ts`, so your `ABLY_API_KEY` is never exposed to the browser.
+
+#### useChannel (publishing and subscribing to messages)
+
+The `useChannel` hook lets you subscribe to a channel and receive messages from it:
+
+```tsx
+"use client";
+
+import { useState } from "react";
+import { useChannel } from "ably/react";
+import type * as Ably from "ably";
+
+export default function ChatArea() {
+  const [messages, setMessages] = useState<Ably.Message[]>([]);
+
+  const { channel } = useChannel("some-channel-name", (message) => {
+    console.log("Received Ably message", message);
+    setMessages((prev) => [...prev, message]);
+  });
+
+  // publish a message
+  const send = () => channel.publish("test-message", { text: "hello" });
+
+  return <button onClick={send}>Send</button>;
+}
+```
+
+#### usePresence and usePresenceListener
+
+`usePresence` enters presence and lets you update your presence data. `usePresenceListener` subscribes to presence changes on a channel:
+
+```tsx
+"use client";
+
+import { usePresence, usePresenceListener } from "ably/react";
+
+export default function Presence() {
+  const { updateStatus } = usePresence("some-channel-name");
+  const { presenceData } = usePresenceListener("some-channel-name");
+
+  return (
+    <>
+      <button onClick={() => updateStatus("hello")}>
+        Update status to hello
+      </button>
+      <ul>
+        {presenceData.map((msg, i) => (
+          <li key={i}>
+            {msg.clientId}: {String(msg.data ?? "")}
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+```
+
+You can read more about the hooks in the Ably React docs.
+
+## app/ably-client-provider.tsx
+
+```tsx
+"use client";
+
+import { useEffect, useState, type ReactNode } from "react";
+import * as Ably from "ably";
+import { AblyProvider, ChannelProvider } from "ably/react";
+
+function randomClientId() {
+  return (
+    Math.random().toString(36).substring(2, 15) +
+    Math.random().toString(36).substring(2, 15)
+  );
+}
+
+export default function AblyClientProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const [clientId] = useState(() => randomClientId());
+  const [client, setClient] = useState<Ably.Realtime | null>(null);
+
+  useEffect(() => {
+    const ably = new Ably.Realtime({
+      authUrl: `/api/createTokenRequest?clientId=${clientId}`,
+      clientId,
+    });
+    setClient(ably);
+    return () => {
+      ably.close();
+    };
+  }, [clientId]);
+
+  if (!client) {
+    return <p>Connecting to Ably...</p>;
+  }
+
+  return (
+    <AblyProvider client={client}>
+      <ChannelProvider channelName="some-channel-name">
+        {children}
+      </ChannelProvider>
+    </AblyProvider>
+  );
+}
+```
+
+## app/api/createTokenRequest/route.ts
+
+```ts
+import * as Ably from "ably";
+import { type NextRequest, NextResponse } from "next/server";
+
+export async function GET(request: NextRequest) {
+  if (!process.env.ABLY_API_KEY) {
+    return NextResponse.json(
+      { error: "Missing ABLY_API_KEY environment variable" },
+      { status: 500 },
+    );
+  }
+
+  const clientId = request.nextUrl.searchParams.get("clientId");
+  if (!clientId) {
+    return NextResponse.json(
+      { error: "Missing clientId query parameter" },
+      { status: 400 },
+    );
+  }
+
+  const client = new Ably.Rest(process.env.ABLY_API_KEY);
+  const tokenRequestData = await client.auth.createTokenRequest({ clientId });
+  return NextResponse.json(tokenRequestData);
+}
+```
+
+## app/api/send-message/route.ts
+
+```ts
+import * as Ably from "ably";
+import { type NextRequest, NextResponse } from "next/server";
+import type { ProxyMessage, TextMessage } from "../../../types";
+
+export async function POST(request: NextRequest) {
+  if (!process.env.ABLY_API_KEY) {
+    return NextResponse.json(
+      { error: "Missing ABLY_API_KEY environment variable" },
+      { status: 500 },
+    );
+  }
+
+  const body = (await request.json()) as ProxyMessage;
+  const client = new Ably.Rest(process.env.ABLY_API_KEY);
+  const channel = client.channels.get("some-channel-name");
+
+  const message: TextMessage = {
+    text: `Server sent a message on behalf of ${body.sender}`,
+  };
+  await channel.publish("test-message", message);
+
+  return NextResponse.json({ ok: true });
+}
+```
+
+## app/home-client.tsx
+
+```tsx
+"use client";
+
+import { useState } from "react";
+import Image from "next/image";
+import * as Ably from "ably";
+import { useChannel, usePresence, usePresenceListener } from "ably/react";
+import type { ProxyMessage, TextMessage } from "../types";
+import AblyClientProvider from "./ably-client-provider";
+
+function ChatArea() {
+  const [messages, setMessages] = useState<TextMessage[]>([]);
+
+  const { channel, ably } = useChannel(
+    "some-channel-name",
+    (message: Ably.Message) => {
+      console.log("Received Ably message", message);
+      setMessages((prev) => [...prev, message.data as TextMessage]);
+    },
+  );
+
+  const { updateStatus } = usePresence("some-channel-name");
+  const { presenceData } = usePresenceListener("some-channel-name");
+
+  const messageList = messages.map((message, index) => (
+    <li key={index}>{message.text}</li>
+  ));
+
+  const presentClients = presenceData.map((msg, index) => (
+    <li key={index}>
+      {msg.clientId}: {String(msg.data ?? "")}
+    </li>
+  ));
+
+  return (
+    <main className="main">
+      <h2>Present Clients</h2>
+      <button onClick={() => updateStatus("hello")}>
+        Update status to hello
+      </button>
+      <ul>{presentClients}</ul>
+
+      <h2>Ably Message Data</h2>
+      <button
+        onClick={() => {
+          const message: TextMessage = {
+            text: `${ably.auth.clientId} sent a message`,
+          };
+          channel.publish("test-message", message);
+        }}
+      >
+        Send A Message
+      </button>
+      <button
+        onClick={() => {
+          const proxyMessage: ProxyMessage = {
+            sender: `${ably.auth.clientId}`,
+          };
+
+          fetch("/api/send-message", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(proxyMessage),
+          });
+        }}
+      >
+        Send A Message From the Server
+      </button>
+      <ul>{messageList}</ul>
+    </main>
+  );
+}
+
+export default function HomeClient() {
+  return (
+    <div className="container">
+      <h1>Realtime messaging with Next.js and Ably</h1>
+      <p>
+        Use the buttons below to send and receive messages or to update your
+        status.
+      </p>
+      <AblyClientProvider>
+        <ChatArea />
+      </AblyClientProvider>
+      <footer className="footer">
+        Powered by
+        <a
+          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Image src="/vercel.svg" alt="Vercel Logo" width={100} height={32} />
+        </a>
+        and
+        <a href="https://ably.com/">
+          <Image
+            src="/ably.svg"
+            alt="Ably Realtime"
+            width={204}
+            height={64}
+            className="logo"
+          />
+        </a>
+      </footer>
+    </div>
+  );
+}
+```
+
+## app/layout.tsx
+
+```tsx
+import "../styles/globals.css";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Realtime messaging with Next.js and Ably",
+  description:
+    "Next.js App Router example using Ably for pub/sub messaging and presence.",
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+## app/page.tsx
+
+```tsx
+import HomeClient from "./home-client";
+
+export default function Home() {
+  return <HomeClient />;
+}
+```
+
+## package.json
+
+```json
+{
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "ably": "^2.21.0",
+    "next": "latest",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^5.5.3"
+  }
+}
+```
