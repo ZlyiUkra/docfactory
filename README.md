@@ -577,6 +577,24 @@ TypeScript), patterns.dev (патерни JS, React, Vue, рендерингу �
 - приклад питання агентові: `./df patterns ask "When should I use Strategy instead of State?"`;
 - докладніше — у [instances/patterns/README.md](instances/patterns/README.md).
 
+### vite
+
+Документація Vite і його офіційних плагінів усіх версій: тека `docs/` vitejs/vite на кожному тегу релізу з 2.0 до
+8.x (гайд, усі опції конфігурації, API плагінів, JavaScript API, Environment API, SSR, міграції між версіями, блог з
+анонсами — кожен неповторний текст один раз, з усіма версіями); нотатки релізів GitHub Vite з 2.7, create-vite і
+плагінів React (Babel, SWC, Oxc, RSC), Vue, Vue JSX, legacy та basic-ssl; README усіх версій дванадцяти пакетів і
+реєстр версій npm з peer-залежностями — що з чим сумісне. Лише пакети організації vitejs, лише англійською. 2 821
+документ.
+
+- порт `8778`; запис у Claude Code — `vite-docs`, адреса `http://127.0.0.1:8778/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-vite`, модель векторів — `bge-small`;
+- версія — номер свого пакета (`"8"` — Vite 8.x, але й plugin-legacy 8.x; назва документа каже, чий він); без
+  `version` — історія, міграції, сумісність;
+- нових читачів немає: `ghdocs-history`, `ghreleases-tagged`, `ghreleases`, `npm-readme`, `npm-versions`;
+- приклад питання агентові: `./df vite ask "How do I proxy API requests to the backend in dev?"`;
+- докладніше — у [instances/vite/README.md](instances/vite/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
