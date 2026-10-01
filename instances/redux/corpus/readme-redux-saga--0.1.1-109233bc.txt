@@ -1,0 +1,114 @@
+# redux-saga README 0.1.0 … 0.1.1: redux-saga
+# джерело: https://raw.githubusercontent.com/redux-saga/redux-saga/65ed999c596a2faceae70e8878fb0a7d0c1ed2c5/README.md
+# отримано: 2026-10-01
+# версія: 0.1.1, 0.1.0
+
+Exploration of an alternative side effect model for Redux applications.
+
+Instead of dispatching thunks which get handled by the redux-thunk middleware. You create *Sagas*
+(not sure if the term applies correctly)
+
+A Saga is a generator function that takes `(getState, action)` and can yield side effects as well as
+other actions.
+
+Example
+
+```javascript
+function* checkout(getState) {
+  const cart = getState().cart
+  try {
+    // yield a side effect : an api call that returns a promise
+    const cart1 = yield [api.buyProducts, cart]
+
+    // yield an action with the response from the api call
+    yield actions.checkoutSuccess(cart1)
+  } catch(error) {
+    // catch errors from a rejected promise
+    yield actions.checkoutFailure(error)
+  }
+}
+
+function* getAllProducts() {
+  // you can also yield thunks
+  const products = yield () => api.getProducts()
+  yield actions.receiveProducts(products)
+}
+
+export default function* rootSaga(getState, action) {
+  switch (action.type) {
+    case types.GET_ALL_PRODUCTS:
+      yield* getAllProducts(getState)
+      break
+
+    case types.CHECKOUT_REQUEST:
+      yield* checkout(getState)
+  }
+}
+```
+
+plug redux-saga in the middleware pipeline
+```javascript
+const createStoreWithSaga = applyMiddleware(
+  // ...,
+  sagaMiddleware(rootSaga)
+)(createStore)
+
+export default function configureStore(initialState) {
+  return createStoreWithSaga(reducer, initialState)
+}
+```
+
+The difference from redux-thunk, is that the decision of what to dispatch is not scattered throughout
+the action creators, but instead centralized in one place that is an integrated part of you domain logic.
+
+## How does it work
+
+- No application logic inside action creators. All action creators are pure factories of raw-data actions
+
+- All the actions hit the reducers; even "asynchronous" ones. All actions hit also the Saga.
+
+- Reducers are responsible of transitioning state between actions
+
+- Sagas are responsible of orchestrating operations (side effects or actions)
+
+- Sagas are generator functions that can yield
+  - a thunk of the side effet (e.g. `yield () => api.buyProducts(cart)`)
+  - an array `[fn, ...args]` (e.g. `yield () => [api.buyProducts, cart]`)
+  - a dispatch item which will get dispatched and handled by a dedicated middleware (e.g. `yield {[API_CALL]: { endpoint: 'getProducts', payload: [cart] }}`)
+
+Sagas don't execute side effects themselves, they *create* the intended side effect.
+Then the side effect gets executed later by the appropriate service (either a middleware or a simple function).
+Services return Promise to denote their future results.
+
+The saga middleware takes the service response and resumes the Saga generator with the resolved response. This way
+Sagas can describe complex workflows with a simple synchronous style. And since they are side-effect free, they can
+be tested simply by driving the generator function and testing the successive results.
+
+You can get the response returned from services inside your Saga, and use it
+to yield further side effects or other actions. If the service responds with a rejected
+promise, an exception is thrown inside the generator and can be handled by a normal
+`try/catch` block.
+
+Here the Saga code from the Shopping cart example. Note that Sagas compose using the `yield *` operator.
+
+```javascript
+
+```
+
+## setup and run the examples
+
+`npm install`
+
+There are 2 examples ported from the Redux repos. You can observe the logged actions/effects
+into the console (logged via the redux-logger middleware).
+
+Counter example
+`npm run build-counter`
+
+Shopping Cart example
+`npm run build-shop`
+
+There are also specs samples that test the Saga generators
+`npm run test-counter`
+
+`npm run test-shop`
