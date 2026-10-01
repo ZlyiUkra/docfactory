@@ -57,6 +57,8 @@ _ROUTER = {"AppOnly": "app", "PagesOnly": "pages"}
 _ROUTER_LABEL = {"app": "App Router:", "pages": "Pages Router:"}
 _TITLE_PREFIX = {"app": "App Router: ", "pages": "Pages Router: "}
 _FOLDED = (">", ">-", "|", "|-")
+_TAG_OPEN = re.compile(r"^\s*<([A-Za-z][A-Za-z0-9.]*)(?=\s|$)")
+_TAG_TITLE = re.compile(r'\btitle="([^"]*)"')
 
 # Заглушка — шапка з кількох рядків; найдовші (з блоком `related`) не дотягують і до
 # кілобайта. Файл, більший за цю межу, заглушкою бути не може, і його шапку під час
@@ -64,6 +66,9 @@ _FOLDED = (">", ">-", "|", "|-")
 _STUB_MAX = 2000
 # Обхід тисяч тегів триває години, і без рядка поступу його не відрізнити від зависання.
 _PROGRESS = 250
+# Найдовший відкривний тег у документації — два з половиною десятки рядків. Якщо «>» не
+# знайшовся й за вісімдесят, це не тег, а текст, де рядок почався з «<», і чіпати його не можна.
+_TAG_MAX = 80
 
 
 def _plain(path: str) -> str:
@@ -136,6 +141,65 @@ def _blocks(text: str, keep: str) -> str:
                 out.extend(["", _ROUTER_LABEL[which], ""])
         if kept.strip() or not tagged:
             out.append(kept)
+    return "\n".join(out)
+
+
+def _tag_end(lines: list[str], start: int, pos: int) -> tuple[int, int] | None:
+    """Де закривається тег, відкритий у рядку `start`: (рядок, позиція «>»); `pos` — позиція
+    одразу за іменем тегу. «>» у лапках чи фігурних дужках тег не закриває: значення атрибута
+    — довільний JavaScript, і стрілка функції чи JSX рядком там звичайні. None — це не тег:
+    до «>» трапився другий «<» чи огорожа коду, або кінця немає й за `_TAG_MAX` рядків."""
+    quote, depth = "", 0
+    for i in range(start, min(start + _TAG_MAX, len(lines))):
+        if i > start and _FENCE.match(lines[i]):
+            return None
+        for j in range(pos, len(lines[i])):
+            ch = lines[i][j]
+            if quote:
+                quote = "" if ch == quote else quote
+            elif ch in "'\"`":
+                quote = ch
+            elif ch in "{}":
+                depth += 1 if ch == "{" else -1
+            elif ch in "<>" and depth <= 0:
+                return (i, j) if ch == ">" else None
+        pos = 0
+    return None
+
+
+def _multiline_tags(text: str) -> str:
+    """Текст без відкривних тегів JSX на кілька рядків, з якими не дає ради спільний розбір
+    markdown. Той знає лише компонент з великої літери й закриває тег на першому ж рядку з
+    «>»: від `<div style={{…}}>` у тексті лишалися рядки CSS, від `<FixCard snippets={[…]} />`
+    — хвіст масиву за першим «>» у рядку-значенні. Від такого тегу тут лишається `title`
+    окремим рядком і те, що стоїть за «>». Тег, який спільний розбір знімає сам
+    (`<Image … />`), не чіпається: що з нього лишати, вирішено там. Код між огорожами — теж."""
+    lines = text.split("\n")
+    out: list[str] = []
+    fence, i = "", 0
+    while i < len(lines):
+        ln = lines[i]
+        m = _FENCE.match(ln)
+        if fence:
+            if m and m.group(1).startswith(fence) and not m.group(2).strip():
+                fence = ""
+        elif m:
+            fence = m.group(1)
+        else:
+            tag = _TAG_OPEN.match(ln)
+            last, pos = (_tag_end(lines, i, tag.end()) if tag else None) or (i, 0)
+            # Спільний розбір дає раду, лише коли ім'я з великої літери, за ним у першому
+            # рядку немає «<» і «>», а далі «>» уперше трапляється в останньому рядку тегу.
+            if last > i and (tag.group(1)[0].islower() or re.search("[<>]", ln[tag.end():])
+                             or any(">" in x for x in lines[i + 1:last])):
+                title = _TAG_TITLE.search("\n".join(lines[i:last] + [lines[last][:pos]]))
+                if title:
+                    out.extend(["", title.group(1), ""])
+                out.append(lines[last][pos + 1:])
+                i = last + 1
+                continue
+        out.append(ln)
+        i += 1
     return "\n".join(out)
 
 
@@ -252,7 +316,7 @@ def nextdocs_history(source: dict, ctx) -> list[Item]:
             if path.endswith(".mdx"):
                 # Імпорти й експорти MDX — код сторінки, а не її текст.
                 rest = _markup.mdx_statements_out(rest)
-            rest = _blocks(_atx(rest), router)
+            rest = _multiline_tags(_blocks(_atx(rest), router))
             title = meta.get("title", "")
             if not title:
                 title, rest = _split_title(rest)
