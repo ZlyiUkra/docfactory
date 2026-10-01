@@ -1,0 +1,54 @@
+# Server Side Rendering
+# джерело: https://github.com/reduxjs/redux-toolkit/blob/v1.9.0-alpha.2/docs/rtk-query/usage/server-side-rendering.mdx
+# отримано: 2026-10-01
+# версія: 1.9.0-alpha.2, 1.9.0-alpha.1, 1.9.0-alpha.0, 1.8.6, 1.8.5, 1.8.4, 1.8.3, 1.8.2, 1.8.1, 1.8.0
+
+## Server Side Rendering
+
+## Server Side Rendering with Next.js
+
+RTK Query supports Server Side Rendering (SSR) with Next.js via
+rehydration in combination with
+next-redux-wrapper.
+
+The workflow is as follows:
+
+- Set up `next-redux-wrapper`
+- In `getStaticProps` or `getServerSideProps`:
+  - Pre-fetch all queries via the `initiate` actions, e.g. `store.dispatch(api.endpoints.getPokemonByName.initiate(name))`
+  - Wait for each query to finish using `await Promise.all(api.util.getRunningOperationPromises())`
+- In your `createApi` call, configure rehydration using the `extractRehydrationInfo` option:
+
+  examples
+
+An example repo using `next.js` is available here.
+
+:::tip
+While memory leaks are not anticipated, once a render is sent to the client and the store is being
+removed from memory, you may wish to also call `store.dispatch(api.util.resetApiState())` to
+ensure that no rogue timers are left running.
+:::
+
+:::tip
+In order to avoid providing stale data with Static Site Generation (SSG), you may wish to set
+`refetchOnMountOrArgChange` to a reasonable value
+such as 900 (seconds) in order to allow data to be re-fetched when accessed if it has been that
+long since the page was generated.
+:::
+
+## Server Side Rendering elsewhere
+
+If you are not using `next.js`, and the example above cannot be adapted to your SSR framework,
+an `unstable__` marked approach is available to support SSR scenarios where you need to execute
+async code during render and not safely in an effect.
+This is a similar approach to using `getDataFromTree`
+with Apollo.
+
+The workflow is as follows:
+
+- Create a version of `createApi` that performs asynchronous work during render:
+
+  examples
+
+- Use your custom `createApi` when calling `const api = createApi({...})`
+- Wait for all queries to finish using `await Promise.all(api.util.getRunningOperationPromises())` before performing the next render cycle

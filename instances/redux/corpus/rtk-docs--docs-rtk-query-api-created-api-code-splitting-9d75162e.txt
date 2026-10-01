@@ -1,0 +1,106 @@
+# API Slices: Code Splitting and Generation
+# джерело: https://github.com/reduxjs/redux-toolkit/blob/v2.0.0-beta.0/docs/rtk-query/api/created-api/code-splitting.mdx
+# отримано: 2026-10-01
+# версія: 2.0.0-beta.0, 2.0.0-alpha.6, 2.0.0-alpha.5, 2.0.0-alpha.4, 2.0.0-alpha.3, 2.0.0-alpha.2, 2.0.0-alpha.1, 2.0.0-alpha.0, 1.9.7, 1.9.6, 1.9.5, 1.9.4, 1.9.3, 1.9.2, 1.9.1, 1.9.0, 1.9.0-rc.1, 1.9.0-rc.0, 1.9.0-beta.0, 1.9.0-alpha.2, 1.8.6
+
+## API Slices: Code Splitting and Generation
+
+Each API slice allows additional endpoint definitions to be injected at runtime after the initial API slice has been defined. This can be beneficial for apps that may have _many_ endpoints.
+
+The individual API slice endpoint definitions can also be split across multiple files. This is primarily useful for working with API slices that were code-generated from an API schema file, allowing you to add additional custom behavior and configuration to a set of automatically-generated endpoint definitions.
+
+Each API slice object has `injectEndpoints` and `enhanceEndpoints` functions to support these use cases.
+
+## `injectEndpoints`
+
+#### Signature
+
+```ts
+const injectEndpoints = (endpointOptions: InjectedEndpointOptions) =>
+  EnhancedApiSlice
+
+interface InjectedEndpointOptions {
+  endpoints: (build: EndpointBuilder) => NewEndpointDefinitions
+  overrideExisting?: boolean
+}
+```
+
+#### Description
+
+Accepts an options object containing the same `endpoints` builder callback you would pass to `createApi.endpoints`. Any endpoint definitions defined using that builder will be merged into the existing endpoint definitions for this API slice using a shallow merge, so any new endpoint definitions will override existing endpoints with the same name.
+
+Returns an updated and enhanced version of the API slice object, containing the combined endpoint definitions.
+
+In development, endpoints will not be overridden unless `overrideExisting` is set to `true`. If not, a warning will be shown to notify you if there is a name clash between endpoint definitions.
+
+This method is primarily useful for code splitting and hot reloading.
+
+## `enhanceEndpoints`
+
+#### Signature
+
+```ts
+const enhanceEndpoints = (endpointOptions: EnhanceEndpointsOptions) =>
+  EnhancedApiSlice
+
+interface EnhanceEndpointsOptions {
+  addTagTypes?: readonly string[]
+  endpoints?: Record<string, Partial<EndpointDefinition>>
+}
+```
+
+#### Description
+
+Any provided tag types or endpoint definitions will be merged into the existing endpoint definitions for this API slice. Unlike `injectEndpoints`, the partial endpoint definitions will not _replace_ existing definitions, but are rather merged together on a per-definition basis (ie, `Object.assign(existingEndpoint, newPartialEndpoint)`).
+
+Returns an updated and enhanced version of the API slice object, containing the combined endpoint definitions.
+
+This is primarily useful for taking an API slice object that was code-generated from an API schema file like OpenAPI, and adding additional specific hand-written configuration for cache invalidation management on top of the generated endpoint definitions.
+
+For example, `enhanceEndpoints` can be used to modify caching behavior by changing the values of `providesTags`, `invalidatesTags`, and `keepUnusedDataFor`:
+
+```ts
+// file: api.ts noEmit
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
+
+export const api = createApi({
+  baseQuery: fetchBaseQuery({ baseUrl: '/' }),
+  endpoints: (builder) => ({
+    getUserByUserId: builder.query({
+      query() {
+        return ''
+      },
+    }),
+    patchUserByUserId: builder.mutation({
+      query() {
+        return ''
+      },
+    }),
+    getUsers: builder.query({
+      query() {
+        return ''
+      },
+    }),
+  }),
+})
+
+// file: enhanceEndpoints.ts
+import { api } from './api'
+
+const enhancedApi = api.enhanceEndpoints({
+  addTagTypes: ['User'],
+  endpoints: {
+    getUserByUserId: {
+      providesTags: ['User'],
+    },
+    patchUserByUserId: {
+      invalidatesTags: ['User'],
+    },
+    // alternatively, define a function which is called with the endpoint definition as an argument
+    getUsers(endpoint) {
+      endpoint.providesTags = ['User']
+      endpoint.keepUnusedDataFor = 120
+    },
+  },
+})
+```
