@@ -1,0 +1,109 @@
+# unstable_autotrackMemoize
+# джерело: https://github.com/reduxjs/reselect/blob/v5.0.1/website/docs/api/unstable_autotrackMemoize.mdx
+# отримано: 2026-10-01
+# версія: 5.0.1, 5.0.0-rc.1
+
+## `unstable_autotrackMemoize`
+
+Uses an "auto-tracking" approach inspired by the work of the Ember Glimmer team. It uses a Proxy to wrap arguments and track accesses to nested fields in your selector on first read. Later, when the selector is called with new arguments, it identifies which accessed fields have changed and only recalculates the result if one or more of those accessed fields have changed. This allows it to be more precise than the shallow equality checks in `lruMemoize`.
+
+:::danger
+
+This API is still experimental and undergoing testing.
+
+:::
+
+## Design Tradeoffs
+
+- Pros:
+
+  - It is likely to avoid excess calculations and recalculate fewer times than `lruMemoize` will, which may also result in fewer component re-renders.
+
+- Cons:
+
+  - It only has a cache size of 1.
+  - It is slower than `lruMemoize`, because it has to do more work. (How much slower is dependent on the number of accessed fields in a selector, number of calls, frequency of input changes, etc)
+  - It can have some unexpected behavior. Because it tracks nested field accesses, cases where you don't access a field will not recalculate properly. For example, a badly-written selector like:
+
+```ts
+  createSelector([state => state.todos], todos => todos)
+```
+
+  that just immediately returns the extracted value will never update, because it doesn't see any field accesses to check.
+
+## Use Cases
+
+- It is likely best used for cases where you need to access specific nested fields in data, and avoid recalculating if other fields in the same data objects are immutably updated.
+
+## Parameters
+
+| Name   | Description                  |
+| :----- | :--------------------------- |
+| `func` | The function to be memoized. |
+
+## Returns
+
+A memoized function with a `.clearCache()` method attached.
+
+## Type Parameters
+
+| Name   | Description                                |
+| :----- | :----------------------------------------- |
+| `Func` | The type of the function that is memoized. |
+
+## Examples
+
+### Using `unstable_autotrackMemoize` with `createSelector`
+
+```ts
+import { createSelector, unstable_autotrackMemoize } from 'reselect'
+
+export interface RootState {
+  todos: { id: number; completed: boolean }[]
+  alerts: { id: number; read: boolean }[]
+}
+
+const selectTodoIds = createSelector(
+  [(state: RootState) => state.todos],
+  todos => todos.map(todo => todo.id),
+  { memoize: unstable_autotrackMemoize }
+)
+```
+
+```js
+import { createSelector, unstable_autotrackMemoize } from 'reselect'
+
+const selectTodoIds = createSelector(
+  [state => state.todos],
+  todos => todos.map(todo => todo.id),
+  { memoize: unstable_autotrackMemoize }
+)
+```
+
+### Using `unstable_autotrackMemoize` with `createSelectorCreator`
+
+```ts
+import { createSelectorCreator, unstable_autotrackMemoize } from 'reselect'
+import type { RootState } from './usingWithCreateSelector'
+
+const createSelectorAutotrack = createSelectorCreator({
+  memoize: unstable_autotrackMemoize
+})
+
+const selectTodoIds = createSelectorAutotrack(
+  [(state: RootState) => state.todos],
+  todos => todos.map(todo => todo.id)
+)
+```
+
+```js
+import { createSelectorCreator, unstable_autotrackMemoize } from 'reselect'
+
+const createSelectorAutotrack = createSelectorCreator({
+  memoize: unstable_autotrackMemoize
+})
+
+const selectTodoIds = createSelectorAutotrack([state => state.todos], todos =>
+  todos.map(todo => todo.id)
+)
+```
