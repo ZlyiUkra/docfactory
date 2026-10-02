@@ -1,0 +1,236 @@
+# App Router: generateImageMetadata
+# джерело: https://github.com/vercel/next.js/blob/v13.5.11/docs/02-app/02-api-reference/04-functions/generate-image-metadata.mdx
+# отримано: 2026-10-01
+# версія: 13.5.11, 13.5.10, 13.5.9, 13.5.8, 13.5.7, 13.5.6, 13.5.6-canary, 13.5.5, 13.5.5-canary, 13.5.4, 13.5.4-canary, 13.5.3, 13.5.3-canary, 13.5.2, 13.5.2-canary, 13.5.1, 13.5.1-canary, 13.5.0, 13.4.20-canary, 13.4.19, 13.4.19-canary, 13.4.18, 13.4.18-canary, 13.4.17, 13.4.17-canary, 13.4.16, 13.4.16-canary, 13.4.15, 13.4.15-canary, 13.4.14, 13.4.14-canary, 13.4.13, 13.4.13-canary, 13.4.12, 13.4.12-canary, 13.4.11, 13.4.11-canary, 13.4.10, 13.4.10-canary, 13.4.9, 13.4.9-canary
+
+Learn how to generate multiple images in a single Metadata API special file.
+
+You can use `generateImageMetadata` to generate different versions of one image or return multiple images for one route segment. This is useful for when you want to avoid hard-coding metadata values, such as for icons.
+
+## Parameters
+
+`generateImageMetadata` function accepts the following parameters:
+
+#### `params` (optional)
+
+An object containing the dynamic route parameters object from the root segment down to the segment `generateImageMetadata` is called from.
+
+`icon.tsx`
+
+```tsx
+export function generateImageMetadata({
+  params,
+}: {
+  params: { slug: string }
+}) {
+  // ...
+}
+```
+
+`icon.js`
+
+```jsx
+export function generateImageMetadata({ params }) {
+  // ...
+}
+```
+
+| Route                           | URL         | `params`                  |
+| ------------------------------- | ----------- | ------------------------- |
+| `app/shop/icon.js`              | `/shop`     | `undefined`               |
+| `app/shop/[slug]/icon.js`       | `/shop/1`   | `{ slug: '1' }`           |
+| `app/shop/[tag]/[item]/icon.js` | `/shop/1/2` | `{ tag: '1', item: '2' }` |
+| `app/shop/[...slug]/icon.js`    | `/shop/1/2` | `{ slug: ['1', '2'] }`    |
+
+## Returns
+
+The `generateImageMetadata` function should return an `array` of objects containing the image's metadata such as `alt` and `size`. In addition, each item **must** include an `id` value will be passed to the props of the image generating function.
+
+| Image Metadata Object | Type                                |
+| --------------------- | ----------------------------------- |
+| `id`                  | `string` (required)                 |
+| `alt`                 | `string`                            |
+| `size`                | `{ width: number; height: number }` |
+| `contentType`         | `string`                            |
+
+`icon.tsx`
+
+```tsx
+import { ImageResponse } from 'next/server'
+
+export function generateImageMetadata() {
+  return [
+    {
+      contentType: 'image/png',
+      size: { width: 48, height: 48 },
+      id: 'small',
+    },
+    {
+      contentType: 'image/png',
+      size: { width: 72, height: 72 },
+      id: 'medium',
+    },
+  ]
+}
+
+export default function Icon({ id }: { id: string }) {
+  return new ImageResponse(
+    (
+      <div
+        style={{
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 88,
+          background: '#000',
+          color: '#fafafa',
+        }}
+      >
+        Icon {id}
+      </div>
+    )
+  )
+}
+```
+
+`icon.js`
+
+```jsx
+import { ImageResponse } from 'next/server'
+
+export function generateImageMetadata() {
+  return [
+    {
+      contentType: 'image/png',
+      size: { width: 48, height: 48 },
+      id: 'small',
+    },
+    {
+      contentType: 'image/png',
+      size: { width: 72, height: 72 },
+      id: 'medium',
+    },
+  ]
+}
+
+export default function Icon({ id }) {
+  return new ImageResponse(
+    (
+      <div
+        style={{
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 88,
+          background: '#000',
+          color: '#fafafa',
+        }}
+      >
+        Icon {id}
+      </div>
+    )
+  )
+}
+```
+
+### Examples
+
+#### Using external data
+
+This example uses the `params` object and external data to generate multiple Open Graph images for a route segment.
+
+`app/products/[id]/opengraph-image.tsx`
+
+```tsx
+import { ImageResponse } from 'next/server'
+import { getCaptionForImage, getOGImages } from '@/app/utils/images'
+
+export async function generateImageMetadata({
+  params,
+}: {
+  params: { id: string }
+}) {
+  const images = await getOGImages(params.id)
+
+  return images.map((image, idx) => ({
+    id: idx,
+    size: { width: 1200, height: 600 },
+    alt: image.text,
+    contentType: 'image/png',
+  }))
+}
+
+export default async function Image({
+  params,
+  id,
+}: {
+  params: { id: string }
+  id: number
+}) {
+  const productId = params.id
+  const imageId = id
+  const text = await getCaptionForImage(productId, imageId)
+
+  return new ImageResponse(
+    (
+      <div
+        style={
+          {
+            // ...
+          }
+        }
+      >
+        {text}
+      </div>
+    )
+  )
+}
+```
+
+`app/products/[id]/opengraph-image.js`
+
+```jsx
+import { ImageResponse } from 'next/server'
+import { getCaptionForImage, getOGImages } from '@/app/utils/images'
+
+export async function generateImageMetadata({ params }) {
+  const images = await getOGImages(params.id)
+
+  return images.map((image, idx) => ({
+    id: idx,
+    size: { width: 1200, height: 600 },
+    alt: image.text,
+    contentType: 'image/png',
+  }))
+}
+
+export default async function Image({ params, id }) {
+  const productId = params.id
+  const imageId = id
+  const text = await getCaptionForImage(productId, imageId)
+
+  return new ImageResponse(
+    (
+      <div
+        style={
+          {
+            // ...
+          }
+        }
+      >
+        {text}
+      </div>
+    )
+  )
+}
+```
+
+## Version History
+
+| Version   | Changes                             |
+| --------- | ----------------------------------- |
+| `v13.3.0` | `generateImageMetadata` introduced. |
