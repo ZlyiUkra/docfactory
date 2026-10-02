@@ -1,0 +1,53 @@
+# Dynamic code evaluation is not available in Middlewares or Edge API Routes
+# джерело: https://github.com/vercel/next.js/blob/v14.3.0-canary.6/errors/edge-dynamic-code-evaluation.mdx
+# отримано: 2026-10-01
+# версія: 14.3.0-canary, 14.2.20, 14.2.19, 14.2.18, 14.2.17, 14.2.16, 14.2.15, 14.2.14, 14.2.13, 14.2.12, 14.2.11, 14.2.10, 14.2.9, 14.2.8, 14.2.7, 14.2.6, 14.2.5, 14.2.4, 14.2.3, 14.2.2, 14.2.1, 14.2.1-canary, 14.2.0, 14.2.0-canary, 14.1.4, 14.1.3, 14.1.2, 14.1.2-canary, 14.1.1, 14.1.1-canary, 14.1.0, 14.0.5-canary, 14.0.4, 14.0.4-canary, 14.0.3, 14.0.3-canary, 14.0.2, 14.0.2-canary, 14.0.1, 14.0.1-canary, 14.0.0, 13.5.11, 13.5.10, 13.5.9, 13.5.8, 13.5.7, 13.5.7-canary, 13.5.6, 13.5.6-canary, 13.5.5, 13.5.5-canary, 13.5.4, 13.5.4-canary, 13.5.3, 13.5.3-canary, 13.5.2, 13.5.2-canary, 13.5.1, 13.5.1-canary, 13.5.0, 13.4.20-canary
+
+## Why This Error Occurred
+
+`eval()`, `new Function()` or compiling WASM binaries dynamically is not allowed in Middlewares or Edge API Routes.
+Specifically, the following APIs are not supported:
+
+- `eval()`
+- `new Function()`
+- `WebAssembly.compile`
+- `WebAssembly.instantiate` with a buffer parameter
+
+## Possible Ways to Fix It
+
+You can bundle your WASM binaries using `import`:
+
+`middleware.ts`
+
+```ts
+import { NextResponse } from 'next/server'
+import squareWasm from './square.wasm?module'
+
+export default async function middleware() {
+  const m = await WebAssembly.instantiate(squareWasm)
+  const answer = m.exports.square(9)
+
+  const response = NextResponse.next()
+  response.headers.set('x-square', answer.toString())
+  return response
+}
+```
+
+In rare cases, your code could contain (or import) some dynamic code evaluation statements which _can not be reached at runtime_ and which can not be removed by tree-shaking.
+You can relax the check to allow specific files with your Middleware or Edge API Route exported configuration:
+
+`pages/api/example.ts`
+
+```tsx
+export const config = {
+  runtime: 'edge', // for Edge API Routes only
+  unstable_allowDynamic: [
+    '/lib/utilities.js', // allows a single file
+    '/node_modules/function-bind/**', // use a glob to allow anything in the function-bind 3rd party module
+  ],
+}
+```
+
+`unstable_allowDynamic` is a glob, or an array of globs, ignoring dynamic code evaluation for specific files. The globs are relative to your application root folder.
+
+Be warned that if these statements are executed on the Edge, _they will throw and cause a runtime error_.

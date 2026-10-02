@@ -1,0 +1,63 @@
+# Shallow Routing
+# джерело: https://github.com/vercel/next.js/blob/v13.2.5-canary.29/docs/routing/shallow-routing.md
+# отримано: 2026-10-01
+# версія: 13.2.5-canary, 13.2.4, 13.2.4-canary, 13.2.3, 13.2.3-canary, 13.2.2, 13.2.2-canary, 13.2.1, 13.2.1-canary, 13.2.0, 13.1.7-canary, 13.1.6, 13.1.6-canary, 13.1.5, 13.1.5-canary, 13.1.4, 13.1.4-canary, 13.1.3, 13.1.3-canary, 13.1.2, 13.1.2-canary, 13.1.1, 13.1.1-canary, 13.1.0, 13.0.8-canary, 13.0.7, 13.0.7-canary, 13.0.6, 13.0.6-canary, 13.0.5, 13.0.5-canary, 13.0.4, 13.0.4-canary, 13.0.3, 13.0.3-canary, 13.0.2, 13.0.2-canary, 13.0.1, 13.0.1-canary, 13.0.0, 12.3.7, 12.3.6, 12.3.5, 12.3.4, 12.3.3, 12.3.2, 12.3.2-canary, 12.3.1, 12.3.1-canary, 12.3.0, 12.2.6, 12.2.6-canary, 12.2.5, 12.2.5-canary, 12.2.4, 12.2.4-canary
+
+You can use shallow routing to change the URL without triggering a new page change. Learn more here.
+
+  Examples
+
+    Shallow Routing
+
+Shallow routing allows you to change the URL without running data fetching methods again, that includes `getServerSideProps`, `getStaticProps`, and `getInitialProps`.
+
+You'll receive the updated `pathname` and the `query` via the `router` object (added by `useRouter` or `withRouter`), without losing state.
+
+To enable shallow routing, set the `shallow` option to `true`. Consider the following example:
+
+```jsx
+import { useEffect } from 'react'
+import { useRouter } from 'next/router'
+
+// Current URL is '/'
+function Page() {
+  const router = useRouter()
+
+  useEffect(() => {
+    // Always do navigations after the first render
+    router.push('/?counter=10', undefined, { shallow: true })
+  }, [])
+
+  useEffect(() => {
+    // The counter changed!
+  }, [router.query.counter])
+}
+
+export default Page
+```
+
+The URL will get updated to `/?counter=10`. and the page won't get replaced, only the state of the route is changed.
+
+You can also watch for URL changes via `componentDidUpdate` as shown below:
+
+```jsx
+componentDidUpdate(prevProps) {
+  const { pathname, query } = this.props.router
+  // verify props have changed to avoid an infinite loop
+  if (query.counter !== prevProps.router.query.counter) {
+    // fetch data based on the new query
+  }
+}
+```
+
+## Caveats
+
+Shallow routing **only** works for URL changes in the current page. For example, let's assume we have another page called `pages/about.js`, and you run this:
+
+```jsx
+router.push('/?counter=10', '/about?counter=10', { shallow: true })
+```
+
+Since that's a new page, it'll unload the current page, load the new one and wait for data fetching even though we asked to do shallow routing.
+
+When shallow routing is used with middleware it will not ensure the new page matches the current page like previously done without middleware. This is due to middleware being able to rewrite dynamically and can't be verified client-side without a data fetch which is skipped with shallow, so a shallow route change must always be treated as shallow.
