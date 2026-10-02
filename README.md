@@ -194,7 +194,7 @@ git config bash.showDirtyState false
 ```
 
 Порт береться з `config.json` примірника (у ecmascript — `8760`, адреса `http://127.0.0.1:8760/mcp`; у react — `8761`;
-у nestjs — `8762`; у astro — `8763`; у supabase — `8764`; у react-router — `8765`; у clerk — `8766`; у tanstack-query — `8767`; у react-hook-form — `8768`; у zod — `8770`; у zustand — `8771`; у typescript — `8772`; у v8 — `8773`; у wasm — `8774`; у tailwind — `8775`; у redux — `8776`; у patterns — `8777`). Від запуску до першої відповіді —
+у nestjs — `8762`; у astro — `8763`; у supabase — `8764`; у react-router — `8765`; у clerk — `8766`; у tanstack-query — `8767`; у react-hook-form — `8768`; у zod — `8770`; у zustand — `8771`; у typescript — `8772`; у v8 — `8773`; у wasm — `8774`; у tailwind — `8775`; у redux — `8776`; у patterns — `8777`; у vite — `8778`; у nextjs — `8779`; у docker — `8780`). Від запуску до першої відповіді —
 секунди: стільки збирається індекс по словах. Виняток — astro: його корпус утричі більший за інші разом, і холодний
 старт із диска Windows триває близько трьох хвилин, поки термінал мовчить. Готовим сервер стає тоді, коли надрукував
 рядок з адресою.
@@ -631,6 +631,23 @@ TypeScript), patterns.dev (патерни JS, React, Vue, рендерингу �
 - корпус в архіві, як в astro: текстів у теці немає, сервер підіймається з кешу фрагментів (`index/`, у git —
   стиснений) і Qdrant; перед оновленням тексти повертають;
 - докладніше — у [instances/nextjs/README.md](instances/nextjs/README.md).
+
+### docker
+
+Документація Docker з docs.docker.com — те, що потрібно, щоб пакувати й запускати застосунки: початок роботи,
+Docker Engine, збірка й buildx, compose, Docker Hub, безпека, посібники, довідники Dockerfile і compose-файлу,
+командний рядок `docker`, `docker buildx`, `docker compose` і `dockerd`. Сайт віддає кожну сторінку ще й markdown-ом,
+тож корпус — це рівно сторінки сайту, без розбору шаблонів. Поруч — нотатки релізів Engine 27–29 і релізи GitHub
+moby, compose та buildx. Desktop, AI, Scout та інші продукти не взято. Лише англійською. 1 264 документи.
+
+- порт `8780`; запис у Claude Code — `docker-docs`, адреса `http://127.0.0.1:8780/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-docker`, модель векторів — `bge-small`;
+- документація сайту є лише в поточній версії, тож міток версій не має; версії продуктів — у нотатках релізів
+  (`"29"` — Engine 29.x);
+- нових читачів немає: `sitemap-md-meta`, `changelog`, `ghreleases-tagged`, `ghreleases`;
+- приклад питання агентові: `./df docker ask "How do I build an image for both amd64 and arm64?"`;
+- докладніше — у [instances/docker/README.md](instances/docker/README.md).
 
 ## Захист
 
