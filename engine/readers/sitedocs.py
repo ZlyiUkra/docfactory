@@ -9,7 +9,8 @@
                              версія», коли версії лежать теками на одній гілці (тоді в `refs`
                              одна гілка, а її мітка не важить);
                  `format`  — `hugo` (шорткоди Hugo/Docsy), `mkdocs` (mkdocs-material),
-                             `docusaurus` або `markdown` (звичайний markdown GitHub);
+                             `docusaurus`, `markdown` (звичайний markdown GitHub) або `rst`
+                             (reStructuredText; типове розширення тоді `.rst`);
                  `label`   — префікс назви документа («Traefik», «Helm»): версії різних
                              інструментів у корпусі — числа, і назва каже, чия це версія.
                  Необов'язкові: `files` — окремі файли від кореня (README.md), `extensions`
@@ -21,7 +22,7 @@
                  `variables` — файл змінних `[[VAR::ім'я]]` у теці версії (docusaurus).
 
 Навіщо. Документацію Traefik, k3d, Gateway API, cert-manager, Helm, k3s, Kustomize, SOPS, age,
-metrics-server і Let's Encrypt пишуть чотирма різними розмітками, і жодну з них спільний розбір
+metrics-server і Let's Encrypt пишуть п'ятьма різними розмітками, і жодну з них спільний розбір
 не розгортає. Без цього в корпус лягло б:
 
 - mkdocs-material: виноска `!!! warning "Заголовок"` з тілом під відступом у чотири пробіли —
@@ -37,7 +38,11 @@ metrics-server і Let's Encrypt пишуть чотирма різними ро�
   (приклад YAML з теки examples/) і `def` (термін глосарію Let's Encrypt, назва якого — лише в
   атрибуті);
 - ronn (сторінки man для age): `<INPUT>`, `<RECIPIENT>` спільний розбір приймав за теги HTML і
-  стирав, і речення «encrypts or decrypts INPUT to OUTPUT» ставало «encrypts or decrypts  to».
+  стирав, і речення «encrypts or decrypts INPUT to OUTPUT» ставало «encrypts or decrypts  to»;
+- reStructuredText (старий посібник SOPS, README.rst до 3.13.0): markdown-розбір не бачив у ньому
+  ні заголовків (підкреслення «~~~~» лишалися рядками тексту, і посібник на 90 КБ ставав одним
+  розділом), ні коду (`.. code:: yaml` і тіло під відступом розсипалися в абзаци), а посилання
+  `` `текст <url>`_ `` лишалися з адресою й підкресленням.
 
 Одиниця та сама, що в `k8s-docs`: сторінка у версії, текст файла — раз на хеш. Вставки й змінні
 залежать від версії (приклад Gateway API v1beta1 став v1), тож той самий файл у двох версіях дає
@@ -55,7 +60,7 @@ from engine.readers import Item, _markup, register
 from engine.readers.ghhistory import _atx, _split_title
 from engine.readers.k8sdocs import Page, _Site, _blobs, front, hugo
 
-_FORMATS = ("hugo", "mkdocs", "docusaurus", "markdown")
+_FORMATS = ("hugo", "mkdocs", "docusaurus", "markdown", "rst")
 _DEPTH = 3
 
 # ── mkdocs-material ───────────────────────────────────────────────────────────
@@ -237,6 +242,210 @@ def plain(text: str) -> str:
     return "\n".join(out)
 
 
+# ── reStructuredText ──────────────────────────────────────────────────────────
+
+# Рядок підкреслення чи надкреслення заголовка: один і той самий знак пунктуації не менше
+# трьох разів. Рівень заголовка в rst задає не знак, а порядок, у якому стилі вперше
+# трапилися в документі, — тому рівні рахуються на кожен документ окремо.
+_RST_ADORN = re.compile(r"^([=\-~^\"'`#*+_.:<>])\1{2,}\s*$")
+_RST_DIRECTIVE = re.compile(r"^(\s*)\.\.\s+(?:\|[^|]+\|\s+)?([\w-]+)::(?:\s+(.*))?$")
+_RST_TARGET = re.compile(r"^\s*\.\.\s+_(`[^`]+`|[^:]+):\s*(\S*)\s*$")
+_RST_COMMENT = re.compile(r"^\s*\.\.(?:\s|$)")
+_RST_OPTION = re.compile(r"^\s*:[\w-]+:")
+_RST_ENUM = re.compile(r"^(\s*)(?:#\.|\(?\d+\))(\s+)")
+_RST_TABLE = re.compile(r"^\s*\+[-=]+(?:\+[-=]+)*\+\s*$")
+_RST_CODE_SPAN = re.compile(r"``(.+?)``")
+_RST_LINK = re.compile(r"`([^`<]*?)\s*<([^<>`]+)>`__?")
+_RST_LINK_WRAPPED = re.compile(r"(?<!`)`(?!`)[^`]*?\n[^`]*?<[^<>`\s]+>`__?")
+# Адреса в кутових дужках поза посиланням — у rst просто адреса; дужки лише відділяють її
+# від тексту.
+_RST_BARE_URL = re.compile(r"<(https?://[^<>\s`]+)>")
+_RST_ROLE = re.compile(r":[\w.+-]+(?::[\w.+-]+)?:`([^`]+)`")
+_RST_REF = re.compile(r"`([^`<]+)`__?(?!\w)")
+_RST_CODE = ("code", "code-block", "sourcecode")
+_RST_ADMONITIONS = ("note", "warning", "tip", "important", "caution", "attention", "danger",
+                    "hint", "error", "seealso", "admonition")
+# Картинки, зміст, нумерація розділів, сирий HTML: тексту в них немає, а лишені як є вони
+# давали б у корпусі «.. image:: https://…» рядком посеред розділу.
+_RST_DROP = ("image", "figure", "contents", "sectnum", "raw", "include", "meta", "class",
+             "highlight", "role", "default-role", "only", "replace", "unicode")
+
+
+def _indent(ln: str) -> int:
+    return len(ln) - len(ln.lstrip())
+
+
+def _rst_block(lines: list[str], i: int, indent: int) -> tuple[list[str], int]:
+    """Тіло блоку з рядка `i`: порожні рядки й рядки з відступом, більшим за `indent`.
+    Порожні рядки в кінці — не тіло, а відступ до наступного абзацу."""
+    j = i
+    while j < len(lines) and (not lines[j].strip() or _indent(lines[j]) > indent):
+        j += 1
+    while j > i and not lines[j - 1].strip():
+        j -= 1
+    return lines[i:j], j
+
+
+def _rst_dedent(block: list[str]) -> list[str]:
+    width = min((_indent(ln) for ln in block if ln.strip()), default=0)
+    lines = [ln[width:] for ln in block]
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    return lines
+
+
+def _rst_inline(line: str, targets: dict) -> str:
+    """Вбудована розмітка rst → markdown: ``код`` → `код`, `текст <url>`_ → [текст](url),
+    :роль:`x` → `x`, `назва`_ — посилання за ціллю `.. _назва: url` або просто назва
+    (посилання на розділ того самого файла). Код не чіпається."""
+    def text(part: str) -> str:
+        part = _RST_LINK.sub(lambda m: (f"[{m.group(1)}]({m.group(2)})" if m.group(1)
+                                        and not m.group(2).startswith("#")
+                                        else m.group(1) or m.group(2)), part)
+        part = _RST_ROLE.sub(r"`\1`", part)
+        part = _RST_BARE_URL.sub(r"\1", part)
+
+        def ref(m):
+            url = targets.get(m.group(1).strip().lower())
+            return f"[{m.group(1)}]({url})" if url else m.group(1)
+        return _RST_REF.sub(ref, part)
+
+    parts, pos = [], 0
+    for m in _RST_CODE_SPAN.finditer(line):
+        parts.append(text(line[pos:m.start()]))
+        code = m.group(1)
+        parts.append(f"`` {code} ``" if "`" in code else f"`{code}`")
+        pos = m.end()
+    parts.append(text(line[pos:]))
+    return "".join(parts)
+
+
+def _padded(pad: str, lines: list[str]) -> list[str]:
+    return [pad + x if x else x for x in lines]
+
+
+def rst(text: str, targets: dict | None = None, styles: list | None = None) -> str:
+    """reStructuredText у markdown: заголовки з підкресленням (і надкресленням) — «#» за
+    порядком появи стилю, `.. code:: мова` і абзац на «::» — код між огорожами, виноски
+    `.. note::` — підпис і тіло без відступу, картинки й зміст — геть, вбудована розмітка —
+    як у markdown, таблиця-сітка — текстом між огорожами, щоб рядки не злиплися в абзац.
+
+    Розбір свідомо неповний: лише те, що трапляється в посібниках інструментів (README.rst
+    SOPS). Чого розбір не знає, лишається текстом, а не зникає."""
+    text = text.replace("\r\n", "\n").expandtabs(8)
+    # Посилання `текст <url>`_ часто перенесене на інший рядок, а розбір іде рядками —
+    # розірване, воно лишалося б у тексті з `_ і голою адресою. Порожній рядок посередині —
+    # уже не посилання, а два абзаци.
+    text = _RST_LINK_WRAPPED.sub(lambda m: m.group(0) if "\n\n" in m.group(0)
+                                 else re.sub(r"\s*\n\s*", " ", m.group(0)), text)
+    lines = text.split("\n")
+    if targets is None:
+        # Ціль посилання `.. _назва: url` може стояти після першого вжитку — збирається
+        # наперед.
+        targets = {}
+        for ln in lines:
+            t = _RST_TARGET.match(ln)
+            if t and t.group(2):
+                targets[t.group(1).strip("`").strip().lower()] = t.group(2)
+    styles = [] if styles is None else styles
+    out: list[str] = []
+
+    def heading(title: str, style: tuple) -> None:
+        if style not in styles:
+            styles.append(style)
+        level = min(styles.index(style) + 1, 6)
+        out.extend(["", "#" * level + " " + _rst_inline(title.strip(), targets), ""])
+
+    def blank_before() -> bool:
+        return not out or not out[-1].strip()
+
+    i = 0
+    while i < len(lines):
+        ln = lines[i]
+        nxt = lines[i + 1] if i + 1 < len(lines) else ""
+        after = lines[i + 2] if i + 2 < len(lines) else ""
+        if not ln.strip():
+            out.append("")
+            i += 1
+            continue
+        a = _RST_ADORN.match(ln)
+        if a and blank_before():
+            # Надкреслення, назва, підкреслення тим самим знаком.
+            if nxt.strip() and _RST_ADORN.match(after) and after.strip()[0] == a.group(1):
+                heading(nxt, (a.group(1), True))
+                i += 3
+                continue
+            if not nxt.strip():
+                i += 1  # перехід (риска між абзацами) — тексту не несе
+                continue
+        if _RST_TABLE.match(ln) and blank_before():
+            j = i
+            while j < len(lines) and lines[j].strip():
+                j += 1
+            out.extend(["```", *lines[i:j], "```"])
+            i = j
+            continue
+        u = _RST_ADORN.match(nxt)
+        if u and not a and _indent(ln) == 0 and blank_before() \
+                and len(nxt.strip()) >= min(len(ln.strip()), 3):
+            heading(ln, (u.group(1), False))
+            i += 2
+            continue
+        d = _RST_DIRECTIVE.match(ln)
+        if d:
+            indent, name, arg = len(d.group(1)), d.group(2).lower(), (d.group(3) or "").strip()
+            block, j = _rst_block(lines, i + 1, indent)
+            # Параметри директиви (`:target:`, `:width:`) — одразу під нею, до тіла.
+            while block and _RST_OPTION.match(block[0]):
+                block = block[1:]
+            body = _rst_dedent(block)
+            pad = " " * indent
+            if name in _RST_CODE:
+                lang = arg.split()[0] if arg else ""
+                out.extend([f"{pad}```{lang}", *_padded(pad, body), f"{pad}```"])
+            elif name in _RST_ADMONITIONS:
+                label = arg if name == "admonition" else name.capitalize()
+                if name != "admonition" and arg:
+                    body = [arg, ""] + body
+                inner = rst("\n".join(body), targets, styles).strip("\n")
+                out.extend(["", f"{pad}{label.rstrip(':')}:", ""])
+                out.extend(_padded(pad, inner.split("\n")))
+                out.append("")
+            elif name not in _RST_DROP:
+                inner = rst("\n".join(([arg, ""] if arg else []) + body), targets, styles)
+                out.extend(_padded(pad, inner.split("\n")))
+            i = j
+            continue
+        if _RST_TARGET.match(ln) or _RST_COMMENT.match(ln):
+            # Ціль посилання вже зібрано; решта «..» — коментар із тілом під відступом.
+            _, i = _rst_block(lines, i + 1, _indent(ln))
+            continue
+        if ln.rstrip().endswith("::"):
+            # Абзац на «::» — далі буквальний блок. «Текст::» лишає одну двокрапку,
+            # «Текст ::» і самотнє «::» — жодної.
+            line = ln.rstrip()[:-2]
+            line = line.rstrip() if not line.strip() or line.endswith(" ") else line + ":"
+            if line.strip():
+                out.append(_rst_inline(line, targets))
+            k = i + 1
+            while k < len(lines) and not lines[k].strip():
+                k += 1
+            if k < len(lines) and _indent(lines[k]) > _indent(ln):
+                block, j = _rst_block(lines, k, _indent(ln))
+                pad = " " * _indent(ln)
+                out.extend(["", f"{pad}```", *_padded(pad, _rst_dedent(block)), f"{pad}```"])
+                i = j
+            else:
+                i += 1
+            continue
+        e = _RST_ENUM.match(ln)
+        if e:
+            ln = f"{e.group(1)}1.{e.group(2)}{ln[e.end():]}"
+        out.append(_rst_inline(ln, targets))
+        i += 1
+    return "\n".join(out)
+
+
 # ── читач ─────────────────────────────────────────────────────────────────────
 
 
@@ -287,8 +496,8 @@ def site_history(source: dict, ctx) -> list[Item]:
                          f"гілці.")
     files = [f.strip("/") for f in source.get("files") or ()]
     assets = [a.strip("/") for a in source.get("assets") or ()]
-    exts = tuple(source.get("extensions") or ((".md", ".mdx") if fmt == "docusaurus"
-                                              else (".md",)))
+    exts = tuple(source.get("extensions") or {"docusaurus": (".md", ".mdx"),
+                                              "rst": (".rst",)}.get(fmt, (".md",)))
     exclude = [re.compile(r) for r in source.get("exclude") or ()]
     label = source.get("label", "")
     site = _Site(source, ctx)
@@ -346,7 +555,7 @@ def site_history(source: dict, ctx) -> list[Item]:
             raw = site.raw(unit.ref, path)
             if not ctx.allowed(raw):
                 continue
-            stem = re.sub(r"\.(mdx?|ronn)$", "", rel)
+            stem = re.sub(r"\.(mdx?|ronn|rst)$", "", rel)
             stem = re.sub(r"(^|/)_?index$", "", stem) or "index"
             key = f"{path}\0{sha}\0{unit.ref}\0{unit.folder}"
             name = f"{_markup.slug(stem)}-{hashlib.sha1(key.encode()).hexdigest()[:8]}"
@@ -373,6 +582,8 @@ def site_history(source: dict, ctx) -> list[Item]:
                         except ValueError:
                             variables = {}
                     rest = docusaurus(rest, page, variables)
+                elif fmt == "rst":
+                    rest = plain(rst(rest))
                 else:
                     rest = plain(rest)
                 rest = _atx(rest)

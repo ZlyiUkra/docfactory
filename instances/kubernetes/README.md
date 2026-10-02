@@ -41,11 +41,12 @@ v1alpha2 до v1.
 | Kustomize 1.0–5.8: сайт, docs, examples, релізи | 2 585 | kubernetes-sigs/kustomize |
 | Книга kubectl | 160 | kubernetes-sigs/cli-experimental |
 | SOPS: документація, журнал змін, релізи | 98 | getsops/docs, getsops/sops |
+| Старий посібник SOPS 1.13–3.13.0 (README.rst) | 18 | getsops/sops, теги |
 | age 1.0.0–1.3.2: README, сторінки man, релізи | 49 | FiloSottile/age |
 | metrics-server 0.1–0.9: README, FAQ, відомі проблеми, чарт, релізи | 83 | kubernetes-sigs/metrics-server |
 | Let's Encrypt | 26 | letsencrypt/website |
 
-Разом 44 974 документи. Документ тут — сторінка у версії, тож документів більше, ніж різних текстів: файлів, які
+Разом 44 992 документи. Документ тут — сторінка у версії, тож документів більше, ніж різних текстів: файлів, які
 справді тягнуться (раз на хеш), — близько 24 тисяч разом із прикладами й врізками. Фрагментів в індексі, за оцінкою
 з трьох гілок сайту, — 105–135 тисяч (вдвічі більше, ніж у nextjs): однаковий текст сусідніх гілок зливається в один
 фрагмент, і кожна старіша гілка додає лише 12–15% нового. Найважчі частини — документація Kubernetes (~65 тисяч
@@ -64,8 +65,8 @@ API теж є лінії 1.x, а «3» — і Helm 3, і Traefik 3. Тому н�
   і документацію лінії, і всі її патчі.
 - **Гілка в розробці** має мітку з `-dev` (`1.8-dev` у Gateway API, чий сайт збирається з `main`); Gateway API 1.7
   станом на 02.10.2026 ще не випущено.
-- **Без версії:** k3s, книга kubectl, SOPS і Let's Encrypt — одна, остання документація; з фільтром `version` їх не
-  знайти.
+- **Без версії:** k3s, книга kubectl, SOPS (getsops.io) і Let's Encrypt — одна, остання документація; з фільтром
+  `version` їх не знайти. Старий посібник SOPS (README.rst) має мітки ліній, `1.13`–`3.13`.
 
 ## Що в цій теці
 
@@ -101,6 +102,7 @@ API теж є лінії 1.x, а «3» — і Helm 3, і Traefik 3. Тому н�
 | Kustomize 1.0–5.8 | kubernetes-sigs/kustomize: `site/content/en`, `docs/`, `examples/` на тегах | `site-history` |
 | книга kubectl | kubernetes-sigs/cli-experimental `site/content/en` | `site-history` |
 | SOPS | getsops/docs; журнал змін getsops/sops | `site-history`, `changelog` |
+| старий посібник SOPS 1.13–3.13.0 | getsops/sops: `README.rst` на тегах (reStructuredText) | `site-history` |
 | age 1.0.0–1.3.2 | FiloSottile/age: README і сторінки man `doc/*.ronn` | `site-history` |
 | metrics-server 0.1–0.9 | kubernetes-sigs/metrics-server: README, FAQ, відомі проблеми, Helm-чарт | `site-history` |
 | Let's Encrypt | letsencrypt/website `content/en/docs` | `site-history` |
@@ -120,11 +122,13 @@ API теж є лінії 1.x, а «3» — і Helm 3, і Traefik 3. Тому н�
   `changelog` і `changelog-v` знають лише «## »), без таблиць завантажень з хешами; і розклад релізів документом на
   лінію.
 - **`site-history`** (`engine/readers/sitedocs.py`) — сайт документації інструмента на кожній гілці, тезі чи в
-  кожній теці версії, у чотирьох розмітках: Hugo/Docsy (ті самі шорткоди, плюс `readfile` — приклад YAML з
+  кожній теці версії, у п'яти розмітках: Hugo/Docsy (ті самі шорткоди, плюс `readfile` — приклад YAML з
   `examples/` — і `def` глосарію Let's Encrypt), mkdocs-material (виноски `!!!` і вкладки `===` з тілом під
   відступом, підпис вкладки огорожі коду `tab="File (YAML)"`, вставки `--8<--` і `{% include %}` з тієї ж гілки),
-  Docusaurus (виноски з назвою `:::info Version Gate`, вкладки `<TabItem label>`, змінні `[[VAR::…]]` теки версії) і
-  звичайний markdown (заповнювачі `<INPUT>` сторінок man age лишаються кодом, а не стираються як теги).
+  Docusaurus (виноски з назвою `:::info Version Gate`, вкладки `<TabItem label>`, змінні `[[VAR::…]]` теки версії),
+  звичайний markdown (заповнювачі `<INPUT>` сторінок man age лишаються кодом, а не стираються як теги) і
+  reStructuredText старого посібника SOPS (заголовки з підкресленням, `.. code::` і абзаци на `::` — блоки коду,
+  `.. note::` — підпис і абзац, посилання `` `текст <url>`_ `` — текст).
 
 **Одиниця — сторінка у версії, а текст — раз на хеш.** Те, що сторінка показує, залежить не лише від її файла: номер
 у `skew` — від версії гілки, приклад — від файла прикладу тієї ж гілки, стан feature gate — від його сторінки. Той
@@ -152,8 +156,8 @@ API теж є лінії 1.x, а «3» — і Helm 3, і Traefik 3. Тому н�
 
 Тут немає Docker, buildx і реєстрів образів (окремий примірник `docker`), Prometheus, Grafana, Loki, Argo CD, Flux,
 Sealed Secrets, сервісних мереж і консолей хмарних провайдерів — план навчання лише згадує їх. Блог kubernetes.io
-(71 МБ) не взято: анонси версій дублюють журнал змін і сторінки документації. Старий посібник SOPS (README.rst до
-3.12) — reStructuredText, читача для нього немає; поточна документація getsops.io тут є.
+(71 МБ) не взято: анонси версій дублюють журнал змін і сторінки документації. Старий посібник SOPS (README.rst)
+узято лише з останнього патча кожної лінії, 1.13–3.13.0; з 3.13.1 README лише відсилає на getsops.io.
 
 Сторінки `contribute/` сайту Kubernetes (як писати документацію) лишаються з шорткодами в тексті там, де самі їх
 показують як приклад розмітки.
