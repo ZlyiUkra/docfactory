@@ -1,0 +1,283 @@
+# kubernetes — примірник фабрики docfactory
+
+Двадцять перший примірник фабрики: захищений MCP-сервер, що відповідає на питання про Kubernetes і інструменти
+навколо кластера за офіційною документацією всіх версій — kubernetes.io від 1.0 до 1.37 з прикладами й
+згенерованими довідниками, журнал змін кожного патча, розклад релізів, а поруч — Gateway API, k3s, k3d, Traefik,
+cert-manager, Helm, Kustomize і книга kubectl, SOPS, age, metrics-server і документація Let's Encrypt, кожен із
+нотатками релізів. Код спільний і лежить у `../../engine/`, `../../server/` та `../../common/`; ця тека тримає самі
+дані домену. Загальний устрій фабрики — у [../../README.md](../../README.md).
+
+## Навіщо
+
+Kubernetes виходить тричі на рік, і за десять років майже кожен об'єкт змінив або версію API (`extensions/v1beta1`
+→ `apps/v1`, `autoscaling/v2beta2` → `autoscaling/v2`), або стан можливості (sidecar-контейнери: alpha у 1.28, beta
+у 1.29, stable у 1.33), а дещо зникло зовсім (PodSecurityPolicy у 1.25, dockershim у 1.24). Відповідь «як це
+зробити» залежить від версії кластера, а кластер користувача майже ніколи не найновіший. Те саме з інструментами:
+Traefik 1 і Traefik 3 конфігуруються по-різному, Helm 2 мав Tiller, а Gateway API за три роки пройшов шлях від
+v1alpha2 до v1.
+
+Тому тут документація кожної лінії, а не лише поточна: текст, що не змінювався між версіями, у пошуку лежить один
+раз із переліком усіх версій, де він був таким. Для «коли це з'явилося» — журнал змін кожного патча і рядок
+«Feature state» на сторінці; для «чи ще підтримується» — розклад релізів із кінцем підтримки.
+
+## Скільки цього
+
+Корпус ще не зібрано; нижче — перелік (`list`, 02.10.2026) і оцінка. Справжні числа ляжуть сюди після першого
+`refresh`.
+
+| Шар | Документів (`list`) | Звідки |
+|-----|-----------:|--------|
+| Документація Kubernetes 1.2–1.37: сторінка на кожній гілці, з прикладами й згенерованими довідниками | 30 304 | kubernetes/website, 36 гілок і комітів |
+| Документація Kubernetes 1.0–1.1 | 1 225 | kubernetes/kubernetes, теги v1.0.0–v1.1.8 |
+| Згенеровані довідники HTML: API 1.10–1.19, kubectl-commands до 1.28 | 35 | `static/docs/reference/generated` |
+| Журнал змін: кожен патч, alpha, beta, rc з 1.2.0 | 741 | `CHANGELOG/CHANGELOG-1.N.md` |
+| Розклад релізів і кінець підтримки, документ на лінію | 36 | `data/releases/*.yaml` |
+| Gateway API: документація 0.1–1.7, GEP, релізи | 1 367 | kubernetes-sigs/gateway-api |
+| k3s: документація, релізи з rc | 1 118 | k3s-io/docs, k3s-io/k3s |
+| k3d 3.0–5.9: документація, релізи | 765 | k3d-io/k3d |
+| Traefik 1.0–3.7: документація, релізи | 3 609 | traefik/traefik |
+| cert-manager 1.0–1.21: документація, релізи | 2 178 | cert-manager/website, cert-manager/cert-manager |
+| Helm 2, 3, 4: документація, релізи | 595 | helm/helm-www, helm/helm |
+| Kustomize 1.0–5.8: сайт, docs, examples, релізи | 2 585 | kubernetes-sigs/kustomize |
+| Книга kubectl | 160 | kubernetes-sigs/cli-experimental |
+| SOPS: документація, журнал змін, релізи | 98 | getsops/docs, getsops/sops |
+| age 1.0.0–1.3.2: README, сторінки man, релізи | 49 | FiloSottile/age |
+| metrics-server 0.1–0.9: README, FAQ, відомі проблеми, чарт, релізи | 83 | kubernetes-sigs/metrics-server |
+| Let's Encrypt | 26 | letsencrypt/website |
+
+Разом 44 974 документи. Документ тут — сторінка у версії, тож документів більше, ніж різних текстів: файлів, які
+справді тягнуться (раз на хеш), — близько 24 тисяч разом із прикладами й врізками. Фрагментів в індексі, за оцінкою
+з трьох гілок сайту, — 105–135 тисяч (вдвічі більше, ніж у nextjs): однаковий текст сусідніх гілок зливається в один
+фрагмент, і кожна старіша гілка додає лише 12–15% нового. Найважчі частини — документація Kubernetes (~65 тисяч
+фрагментів), HTML-довідники API (~20 тисяч), Traefik і cert-manager (~10 і ~7 тисяч). На диску корпус займе близько
+0,4 ГБ.
+
+## Мітки версій
+
+Версія в кожного інструмента своя, і числа перетинаються: «1.36» — це Kubernetes 1.36, але в cert-manager і Gateway
+API теж є лінії 1.x, а «3» — і Helm 3, і Traefik 3. Тому назва документа каже, чий він: сторінки Kubernetes — без
+префікса, решта — з назвою інструмента («Traefik: Routers», «Helm: Charts», «cert-manager: ACME»), журнали —
+«Kubernetes changelog: v1.37.1», релізи — «K3s release: v1.37.1+k3s1».
+
+- **Документація — мітка лінії:** `1.36` (Kubernetes), `3.7` (Traefik), `4` (Helm), `1.21` (cert-manager).
+- **Журнали змін і релізи — точний номер:** `1.36.5`, `1.37.0-rc.1`, `1.37.1+k3s1`. Фільтр `version: "1.36"` бере
+  і документацію лінії, і всі її патчі.
+- **Гілка в розробці** має мітку з `-dev` (`1.8-dev` у Gateway API, чий сайт збирається з `main`); Gateway API 1.7
+  станом на 02.10.2026 ще не випущено.
+- **Без версії:** k3s, книга kubectl, SOPS і Let's Encrypt — одна, остання документація; з фільтром `version` їх не
+  знайти.
+
+## Що в цій теці
+
+- `corpus/` — паспорт `index.json`: адреса, дата завантаження й сума тексту кожного документа. Самих текстів тут не
+  буде: корпус в архіві від самого початку (розділ «Архівний режим» нижче).
+- `index/` — кеш фрагментів, з якого сервер підіймається: у git — стиснений `passages.json.gz`, розпакований
+  `passages.json` лежить поруч і в git не потрапляє.
+- `sources.json` — звідки корпус будується, і водночас білий список для оновлювача.
+- `config.json` — порт, колекція Qdrant, модель векторів, пауза між зверненнями і профіль домену.
+- `prompts/` — описи інструментів для моделі, системний промпт власного агента, текст відмови.
+- `checks.json` — чим `smoke` і `quality` перевіряють саме цей корпус (поки заготовка).
+- `.env` — ключ Anthropic (лише для кроку `ask`) і токен GitHub (для завантаження обов'язковий); `.mcp.json` —
+  запис HTTP-сервера для Claude Code.
+- `.venv/` — власний venv примірника; `requirements.txt` — його склад.
+
+Кроки нижче, окрім установки venv, запускаються з кореня фабрики (`docfactory/`) через `./df kubernetes <крок>`.
+
+## Звідки документація
+
+| Що | Джерело | Читач |
+|----|---------|-------|
+| kubernetes.io/docs 1.2–1.37 | kubernetes/website: гілки `release-1.4`…`release-1.36`, `main` (1.37), два коміти 2016 року (1.2, 1.3) | `k8s-docs` |
+| документація 1.0 і 1.1 | kubernetes/kubernetes: теки `docs/` і `examples/` на тегах v1.0.0–v1.1.8 | `k8s-docs` |
+| згенеровані довідники HTML (API 1.10–1.19, kubectl до 1.28) | `static/docs/reference/generated` сайту | `k8s-docs` |
+| журнал змін кожного патча, alpha, beta, rc | kubernetes/kubernetes `CHANGELOG/CHANGELOG-1.N.md` | `k8s-changelog` |
+| розклад релізів і кінець підтримки | `data/releases/schedule.yaml`, `eol.yaml` сайту | `k8s-releases` |
+| Gateway API 0.1–1.7 і GEP | kubernetes-sigs/gateway-api: mkdocs до 1.5, Hugo з 1.6 | `site-history` |
+| k3s | k3s-io/docs (Docusaurus) | `site-history` |
+| k3d 3.0–5.9 | k3d-io/k3d `docs/` (mkdocs) | `site-history` |
+| Traefik 1.0–3.7 | traefik/traefik `docs/` гілок `v1.0`…`v3.7` (mkdocs) | `site-history` |
+| cert-manager 1.0–1.21 | cert-manager/website: теки `content/docs`, `content/v1.N-docs` | `site-history` |
+| Helm 2, 3, 4 | helm/helm-www: `docs/`, `versioned_docs/version-3`, `version-2` | `site-history` |
+| Kustomize 1.0–5.8 | kubernetes-sigs/kustomize: `site/content/en`, `docs/`, `examples/` на тегах | `site-history` |
+| книга kubectl | kubernetes-sigs/cli-experimental `site/content/en` | `site-history` |
+| SOPS | getsops/docs; журнал змін getsops/sops | `site-history`, `changelog` |
+| age 1.0.0–1.3.2 | FiloSottile/age: README і сторінки man `doc/*.ronn` | `site-history` |
+| metrics-server 0.1–0.9 | kubernetes-sigs/metrics-server: README, FAQ, відомі проблеми, Helm-чарт | `site-history` |
+| Let's Encrypt | letsencrypt/website `content/en/docs` | `site-history` |
+| нотатки релізів кожного інструмента | GitHub API | `ghreleases`, `ghreleases-tagged` |
+
+Нових читачів чотири, у двох окремих модулях; спільні читачі не чіпано:
+
+- **`k8s-docs`** (`engine/readers/k8sdocs.py`) — сторінки сайту Kubernetes на кожній гілці. Сайт за десять років
+  тричі міняв устрій, і читач знає всі три: markdown GitHub (1.0–1.1), Jekyll з Liquid (1.2–1.9: блоки `capture`, що
+  шаблон сторінки збирає з заголовками «Before you begin» і «What's next», приклади `include code.html`, вкладки) і
+  Hugo з шорткодами (1.10–1.37). Шорткоди розгорнуто в текст: `note`, `caution`, `warning` — підпис і абзац;
+  `glossary_tooltip` — слово; `feature-state` — рядок «Feature state: Kubernetes v1.33 [stable]» (для
+  `feature_gate_name` — зі сторінки цього feature gate тієї ж гілки); `code_sample` — файл із
+  `content/en/examples` блоком коду з ім'ям файла; `include` — врізка; `heading` — англійський заголовок; `skew` і
+  `param` — номер версії гілки; вкладки — підписані розділи; mermaid — блок коду.
+- **`k8s-changelog`** і **`k8s-releases`** (там же) — журнал змін, поділений за заголовком «# v1.37.1» (наявні
+  `changelog` і `changelog-v` знають лише «## »), без таблиць завантажень з хешами; і розклад релізів документом на
+  лінію.
+- **`site-history`** (`engine/readers/sitedocs.py`) — сайт документації інструмента на кожній гілці, тезі чи в
+  кожній теці версії, у чотирьох розмітках: Hugo/Docsy (ті самі шорткоди, плюс `readfile` — приклад YAML з
+  `examples/` — і `def` глосарію Let's Encrypt), mkdocs-material (виноски `!!!` і вкладки `===` з тілом під
+  відступом, підпис вкладки огорожі коду `tab="File (YAML)"`, вставки `--8<--` і `{% include %}` з тієї ж гілки),
+  Docusaurus (виноски з назвою `:::info Version Gate`, вкладки `<TabItem label>`, змінні `[[VAR::…]]` теки версії) і
+  звичайний markdown (заповнювачі `<INPUT>` сторінок man age лишаються кодом, а не стираються як теги).
+
+**Одиниця — сторінка у версії, а текст — раз на хеш.** Те, що сторінка показує, залежить не лише від її файла: номер
+у `skew` — від версії гілки, приклад — від файла прикладу тієї ж гілки, стан feature gate — від його сторінки. Той
+самий файл на двох гілках дає різний текст («kubeadm upgrade apply v1.36.x» і «… v1.30.x»), тож документ — пара
+«сторінка, гілка» з версією гілки. Сам файл тягнеться раз на хеш: документи однієї пари «шлях, вміст» ідуть у
+переліку підряд, і текст береться з пам'яті попереднього; приклади, врізки й глосарій — так само, раз на хеш. Однакові
+фрагменти сусідніх гілок зливаються вже в корпусі (`revision_suffix`), з переліком усіх версій. Де від гілки нічого не
+залежить — сторінки 1.0–1.1, HTML, згенеровані довідники з версією в шляху — документ один на вміст, як у
+`ghdocs-history`.
+
+Особливості, які варто знати:
+
+- **1.2 і 1.3 — не гілки, а коміти.** Окремих гілок для них на сайті немає; взято стан `master` перед виходом 1.3
+  (30.06.2016) і перед відгалуженням `release-1.4` (25.09.2016). Межа між документацією двох ліній тут — дата, а не
+  гілка.
+- **Згенеровані довідники — повністю.** У markdown (у `content`): API з 1.20, kubectl з 1.29, kubeadm, прапорці
+  компонентів, сторінки feature gates зі стадіями. Те, що лишилося лише в HTML, — API 1.10–1.19 і перелік команд
+  kubectl до 1.28 — окремим джерелом `k8s-reference-html`; це найважча частина корпусу, кілька мегабайтів тексту на
+  версію.
+- **Стадії feature gate.** Сторінка кожного gate несе стадії в шапці; тут вони стають першими рядками тексту:
+  «- beta: Kubernetes 1.29–1.32 (enabled by default)».
+- **Лише офіційне й лише англійською.** Переклади сайтів (зокрема українські сторінки Helm) не беруться.
+
+## Межі, про які треба пам'ятати
+
+Тут немає Docker, buildx і реєстрів образів (окремий примірник `docker`), Prometheus, Grafana, Loki, Argo CD, Flux,
+Sealed Secrets, сервісних мереж і консолей хмарних провайдерів — план навчання лише згадує їх. Блог kubernetes.io
+(71 МБ) не взято: анонси версій дублюють журнал змін і сторінки документації. Старий посібник SOPS (README.rst до
+3.12) — reStructuredText, читача для нього немає; поточна документація getsops.io тут є.
+
+Сторінки `contribute/` сайту Kubernetes (як писати документацію) лишаються з шорткодами в тексті там, де самі їх
+показують як приклад розмітки.
+
+## Архівний режим: сервер без корпусу
+
+Як у nextjs, але від самого початку: тексти корпусу в git не потрапляють ніколи. Примірник працює з кешу фрагментів
+(`index/passages.json`) і колекції Qdrant; відповіді ті самі до символа — кеш тримає повний текст кожного фрагмента.
+
+**Навіщо.** Документ тут — сторінка на гілці: тридцять шість гілок сайту Kubernetes дають десятки тисяч файлів, більше
+за весь nextjs. Під git на диску Windows кожен перерахунок стану репозиторію обходив би їх усі через міст між WSL і
+Windows, і кожен клік у редакторі чекав би десятки секунд.
+
+**Після першого збирання** — коли `vectors` і `smoke` пройшли (вони ж збирають свіжий кеш):
+
+```
+ls -l instances/kubernetes/index/passages.json                 # кеш має бути на місці й свіжий
+tar -czf ~/archives/docfactory/kubernetes-corpus-РРРР-ММ-ДД.tar.gz -C instances/kubernetes corpus
+find instances/kubernetes/corpus -maxdepth 1 -name '*.txt' -delete
+gzip -9 -c instances/kubernetes/index/passages.json > instances/kubernetes/index/passages.json.gz
+```
+
+і закомітити паспорт `corpus/index.json` та `index/passages.json.gz`. Видаляти тексти — лише після того, як архів
+звірено з диском (поіменно, за розміром і за вмістом кожного файла).
+
+**Як повернути тексти** — перед будь-яким оновленням корпусу:
+
+```
+tar -xzf ~/archives/docfactory/kubernetes-corpus-РРРР-ММ-ДД.tar.gz -C instances/kubernetes
+./df kubernetes smoke
+```
+
+`git status` після розпакування покаже тексти як «нові» файли; комітити їх не треба — досить оновити корпус,
+перепакувати архів і знову винести тексти.
+
+**Чому кеш у git стиснений.** Сервер читає лише розпакований `passages.json`, а в git лежить `passages.json.gz`:
+переліки версій, що повторюються від фрагмента до фрагмента, gzip стискає в рази, і файл не впирається в межу GitHub
+у 100 МБ. Після клонування кеш треба розпакувати (розділ «На іншій машині»).
+
+**Що перестає працювати без текстів.** `check`, `refresh` і `manifest` читають файли. Дві перевірки `smoke`
+пропускаються («корпус в архіві»): звірка індексу з документами і звірка паспорта з файлами.
+
+## Установка venv
+
+```
+cd instances/kubernetes
+python3 -m venv .venv
+.venv/bin/python -m pip install -U pip
+.venv/bin/python -m pip install -r requirements.txt
+cp .env.example .env          # впишіть GITHUB_TOKEN і, якщо потрібен крок ask, ANTHROPIC_API_KEY
+cd ../..
+```
+
+Без `GITHUB_TOKEN` збирання не пройде: обхід гілок — сотні звернень до GitHub API, а без токена їх шістдесят на
+годину.
+
+## Збирання корпусу
+
+```
+./df kubernetes sources --why   # перелік джерел і білий список
+./df kubernetes list            # що завантажилося б, без запису (~30 хвилин обходу дерев)
+./df kubernetes refresh         # завантажити все задеклароване (оцінка нижче)
+./df kubernetes manifest        # оновити паспорт
+./df kubernetes setup           # Qdrant чи пошук лише по словах
+./df kubernetes vectors         # залити корпус у docs-kubernetes
+./df kubernetes smoke           # перевірки
+```
+
+Оцінка за числами nextjs (8 годин на 15 332 документи з обходом тегів, 2,5 години векторів на 60 882 фрагменти):
+`refresh` — близько 10 годин (обхід дерев ~35 хвилин, далі ~24 тисячі завантажень із паузою в секунду), `vectors` —
+4,5–5,5 години. Джерело `k8s-docs` — дві третини часу, тому решту варто пускати другим процесом:
+
+```
+./df kubernetes refresh --missing k8s-docs
+./df kubernetes refresh --missing k8s-docs-legacy k8s-reference-html k8s-changelog k8s-releases traefik-docs   # і решта id
+```
+
+Із Claude Code довгі кроки треба запускати окремим процесом (`setsid nohup …`), інакше фонову задачу обірве оболонка.
+Обірваний `refresh` продовжується з `--missing`: уже записане він не тягне вдруге, але обхід гілок повторює.
+
+Порядок оновлення — у [UPDATE.md](UPDATE.md). Після будь-якого оновлення корпусу `serve` треба перезапустити.
+
+## Сервер під Claude Code
+
+**1. Підняти сервер** в окремому терміналі WSL і лишити жити:
+
+```
+cd /mnt/c/Projects/fwdays/docfactory
+./df kubernetes serve           # порт 8781
+```
+
+Готовий він тоді, коли надрукував кількість фрагментів і адресу `http://127.0.0.1:8781/mcp`.
+
+**2. Додати сервер у Claude Code** — у тому середовищі, де відкрито вікно:
+
+```
+claude mcp add --transport http --scope user kubernetes-docs http://127.0.0.1:8781/mcp
+```
+
+У WSL і у Windows Claude Code тримає окремі налаштування — так само, як у
+[README примірника nextjs](../nextjs/README.md#сервер-під-claude-code).
+
+**3. Перевірити.** `/mcp` — має бути `kubernetes-docs` і два інструменти `search_docs`, `read_section`.
+
+## На іншій машині
+
+На іншій машині (теж WSL) бракує трьох речей, яких немає в git: venv примірника, `.env` і векторів у Qdrant.
+
+**1. Код і кеш.** Отримати репозиторій зі свіжими комітами, перейти в його корінь і розпакувати кеш фрагментів —
+текстів корпусу в репозиторії немає, сервер підіймається з нього:
+
+```
+gunzip -k instances/kubernetes/index/passages.json.gz
+```
+
+**2. Venv примірника** — за розділом «Установка venv» вище. `.env` для пошуку не потрібен: токен GitHub треба лише
+для `refresh`, ключ Anthropic — лише для `ask`.
+
+**3. Спосіб пошуку.**
+
+```
+./df kubernetes setup --vectors      # з Qdrant: потрібен Docker
+./df kubernetes setup --no-vectors   # лише пошук по словах: без Docker, одразу
+```
+
+**4. Перевірка й сервер.** `./df kubernetes smoke`, потім `./df kubernetes serve` і кроки 2–3 розділу «Сервер під
+Claude Code».
