@@ -97,6 +97,13 @@ K_MIN, K_MAX = 1, 10
 # символів, а довше за сорок — уже не версія, а текст не в тому полі.
 VERSION_MAX = 40
 
+# Скільки версій фрагмента показувати у відповіді пошуку. Текст, що не мінявся сотні
+# версій, несе їх усі, а оглядовий документ реєстру npm — усі версії пакета: у nextjs це
+# 3 968 міток і 73 тисячі символів на один уривок, і відповідь із десятьма уривками
+# (147 тисяч символів) не влазила в ліміт клієнта — виклик падав. Повний перелік
+# лишається в read_section; тут — найновіші, загальна кількість і найстаріша.
+VERSIONS_SHOWN = 40
+
 # Індекс будується один раз при завантаженні модуля, а не на кожен виклик:
 # уся ECMA-262 читається з файлів і індексується приблизно за секунду, але
 # робити це щоразу означало б платити цією секундою за кожен запит.
@@ -349,7 +356,28 @@ def _degraded() -> str:
             f"documentation is silent.")
 
 
-def _format_hits(passages: list[Passage], how: str) -> dict:
+def _put_versions(item: dict, versions: list, want: str = "") -> None:
+    """Кладе у відповідь пошуку перелік версій фрагмента — цілим, поки він короткий.
+
+    Довший за VERSIONS_SHOWN обрізається до найновіших, а поруч стають два поля:
+    `versions_total` — скільки їх усього, і `versions_oldest` — найстаріша. Без
+    другого обрізаний перелік не відповідав би на питання «з якої версії це так».
+
+    Коли пошук ішов із фільтром версії, показуються версії саме тієї лінії: фрагмент
+    знайдено як текст лінії 12, і перелік із самих 16.x казав би моделі, що фільтр не
+    спрацював."""
+    shown = versions
+    if len(versions) > VERSIONS_SHOWN:
+        if want:
+            shown = [v for v in versions if version_within(v, want)] or versions
+        shown = shown[:VERSIONS_SHOWN]
+    item["versions"] = list(shown)
+    if len(versions) > VERSIONS_SHOWN:
+        item["versions_total"] = len(versions)
+        item["versions_oldest"] = versions[-1]
+
+
+def _format_hits(passages: list[Passage], how: str, want: str = "") -> dict:
     """Відповідь пошуку. Формат той самий, що в common/search.py практики модуля 4,
     плюс поле `search` і обрізаний текст.
 
@@ -358,8 +386,9 @@ def _format_hits(passages: list[Passage], how: str) -> dict:
     лежить, порожня відповідь означає інше, ніж коли він працює, і модель має
     змогу це врахувати.
 
-    Поле `versions` є лише в корпусі з версіями: усі версії, в документах яких
-    цей текст стоїть дослівно, від найновішої."""
+    Поле `versions` є лише в корпусі з версіями: версії, в документах яких цей
+    текст стоїть дослівно, від найновішої; довгий перелік обрізається (див.
+    _put_versions). `want` — версія з фільтра пошуку, якщо він був."""
     why = _degraded()
     if not passages:
         note = "Nothing in the available excerpts matches this query."
@@ -374,7 +403,7 @@ def _format_hits(passages: list[Passage], how: str) -> dict:
         item = {"id": _UID[p], "section": p.label,
                 "document": p.doc_title, "text": _preview(clean)}
         if p.versions:
-            item["versions"] = list(p.versions)
+            _put_versions(item, p.versions, want)
         items.append(item)
     out = {"found": len(passages), "search": how, "passages": items}
     if why:
@@ -594,7 +623,7 @@ def _search(query: str, k: int, version: str | None = None) -> dict:
         _log(tool, f"query={query!r} k={k!r}{tail}", "помилка: k поза межами")
         return {"error": f"k має бути від {K_MIN} до {K_MAX}"}
 
-    keep = None
+    keep, want = None, ""
     if version is not None:
         if not isinstance(version, str) or len(version) > VERSION_MAX:
             _log(tool, f"query={query!r} k={k}{tail}", "помилка: версія не рядок чи задовга")
@@ -631,7 +660,7 @@ def _search(query: str, k: int, version: str | None = None) -> dict:
 
     hits, how = _find(query, k, keep)
     _log(tool, f"query={query!r} k={k}{tail}", f"знайдено {len(hits)} ({how})")
-    return _format_hits(hits, how)
+    return _format_hits(hits, how, want)
 
 
 def search_spec(query: str, k: int = 3) -> dict:

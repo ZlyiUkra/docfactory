@@ -610,6 +610,27 @@ def main(argv: list[str]) -> int:
         # версію несе кожен документ — і сайт, і знімки, і нотатки релізів. Тому
         # очікування оголошується примірником; змовчання — «є», як було до появи
         # поля, тож перевірка в react лишається тією самою.
+        # Перелік версій у видачі пошуку обмежений: фрагмент, що не мінявся сотні версій,
+        # інакше ніс би їх усі, і відповідь не влазила б у ліміт клієнта. Обрізаний перелік
+        # мусить казати, скільки версій усього і яка найстаріша; з фільтром — показувати
+        # версії саме тієї лінії. Короткий перелік лишається цілим і без зайвих полів.
+        shown = spec_mcp.VERSIONS_SHOWN
+        longest = max(spec_mcp._INDEX.passages, key=lambda p: len(p.versions))
+        item = spec_mcp._format_hits([longest], "words")["passages"][0]
+        if len(longest.versions) > shown:
+            line = longest.versions[-1].split(".")[0]
+            lined = spec_mcp._format_hits([longest], "words", line)["passages"][0]
+            check("довгий перелік версій у видачі обрізано, і сказано скільки їх і яка найстаріша",
+                  item["versions"] == list(longest.versions[:shown])
+                  and item.get("versions_total") == len(longest.versions)
+                  and item.get("versions_oldest") == longest.versions[-1]
+                  and all(version_within(v, line) for v in lined["versions"]),
+                  f"{len(longest.versions)} версій, показано {len(item['versions'])}")
+        else:
+            check("короткий перелік версій у видачі цілий і без зайвих полів",
+                  item["versions"] == list(longest.versions)
+                  and "versions_total" not in item and "versions_oldest" not in item,
+                  f"найдовший — {len(longest.versions)} версій")
         if C.get("expect_unversioned", True):
             check("пошук без версії бачить і документи без версії (блог)",
                   any(not p.versions for p in spec_mcp._INDEX.passages))
