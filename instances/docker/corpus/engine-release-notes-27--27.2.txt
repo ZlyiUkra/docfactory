@@ -1,0 +1,96 @@
+# Docker Engine release notes: 27.2
+# джерело: https://docs.docker.com/engine/release-notes/27/#272
+# отримано: 2026-10-02
+# версія: 27.2
+
+Release notes for Docker Engine version 27.2 releases.
+
+### 27.2.1
+
+2024-09-09
+
+#### Bug fixes and enhancements
+
+- containerd image store: Fix non-container images being hidden in the `docker image ls` output. moby/moby#48402
+- containerd image store: Improve `docker pull` error message when the image platform doesn't match. moby/moby#48415
+- CLI: Fix issue causing `docker login` to not remove repository names from passed in registry addresses, resulting in credentials being stored under the wrong key. docker/cli#5385
+- CLI: Fix issue that will sometimes cause the browser-login flow to fail if the CLI process is suspended and then resumed while waiting for the user to authenticate. docker/cli#5376
+- CLI: `docker login` now returns an error instead of hanging if called non-interactively with `--password` or `--password-stdin` but without `--user`. docker/cli#5402
+
+#### Packaging updates
+
+- Update runc to v1.1.14, which contains a fix for CVE-2024-45310. moby/moby#48426
+- Update Go runtime to 1.22.7. moby/moby#48433, docker/cli#5411, docker/docker-ce-packaging#1068
+
+### 27.2.0
+
+2024-08-27
+
+For a full list of pull requests and changes in this release, refer to the relevant GitHub milestones:
+
+- docker/cli, 27.2.0 milestone
+- moby/moby, 27.2.0 milestone
+- Deprecated and removed features, see Deprecated Features.
+- Changes to the Engine API, see API version history.
+
+#### New
+
+The new features in this release are:
+
+- Device code login
+- Multi-platform support for `docker image ls`
+
+##### Device code login
+
+This release adds support for using device code login when authenticating to
+Docker Hub.
+
+You can still use the old method of logging in with a username and password or
+access token, but device code login is more secure and doesn't require you to
+enter your password in the CLI.
+
+device-code-login
+
+To use the old method, use `docker login -u <username>`.
+
+##### Multi-platform support for `docker image ls`
+
+> **Experimental**
+>
+>
+This is experimental and may change at any time without any backward compatibility.
+
+With the containerd image store enabled, the `docker image ls` command (or
+`docker images` shorthand) now supports a `--tree` flag that now shows
+if an image is a multi-platform image.
+
+#### API
+
+- `GET /images/json` response now includes `Manifests` field, which contains information about the sub-manifests included in the image index. This includes things like platform-specific manifests and build attestations.
+
+  The new field will only be populated if the request also sets the `manifests` query parameter to `true`.
+
+  > **Experimental**
+>
+>
+This is experimental and may change at any time without any backward compatibility.
+
+#### Bug fixes and enhancements
+
+- CLI: Fix issue with remote contexts over SSH where the CLI would allocate a pseudo-TTY when connecting to the remote host, which causes issues in rare situations. docker/cli#5351
+- Fix an issue that prevented network creation with a `--ip-range` ending on a 64-bit boundary. moby/moby#48326
+- CLI: IPv6 addresses shown by `docker ps` in port bindings are now bracketed. docker/cli#5365
+- containerd image store: Fix early error exit from `docker load` in cases where unpacking the image would fail. moby/moby#48376
+- containerd image store: Fix the previous image not being persisted as dangling after `docker pull`. moby/moby#48380
+
+#### Packaging updates
+
+- Update BuildKit to v0.15.2. moby/moby#48341
+- Update Compose to v2.29.2. docker/docker-ce-packaging#1050
+- Update containerd to v1.7.21. moby/moby#48383, docker/containerd-packaging#389
+
+### Known Issues
+
+- There is a known issue when authenticating against a registry in the Docker CLI (`docker login [registry address]`) where, if the provided registry address includes a repository/image name (such as `docker login index.docker.io/docker/welcome-to-docker`), the repository part (`docker/welcome-to-docker`) is not normalized and results in credentials being stored incorrectly, which causes subsequent pulls from the registry (`docker pull index.docker.io/docker/welcome-to-docker`) to not be authenticated. To prevent this, don't include any extraneous suffix in the registry address when running `docker login`.
+  > [!NOTE]
+  > Using `docker login` with an address that includes URL path segments is not a documented use case and is considered unsupported. The recommended usage is to specify only a registry hostname, and optionally a port, as the address for `docker login`.
