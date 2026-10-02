@@ -14,7 +14,7 @@ Buildx і Engine на GitHub і нові версії на сторінці но
 
 ```
 ./df docker check                  # що змінилося нагорі, нічого не записує
-./df docker refresh                # повний — DOCS_REFRESH_TIME
+./df docker refresh                # повний — ~20 хвилин
 ./df docker manifest
 ./df docker vectors
 ./df docker smoke

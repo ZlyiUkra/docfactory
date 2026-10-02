@@ -19,17 +19,21 @@ Docker — інструмент, який бекенд-розробник бач
 
 | Шар | Документів | Звідки |
 |-----|-----------:|--------|
-| Посібники: Get started, Engine, Build, Compose, Docker Hub, безпека облікового запису | 363 | docs.docker.com |
-| Довідники: Dockerfile, файл Compose, перевірки збирання, Engine API SDK, глосарій | 46 | docs.docker.com |
-| Довідник CLI: `docker`, `docker buildx`, `docker compose`, `dockerd` | 241 | docs.docker.com |
+| Посібники: Get started, Engine, Build, Compose, Docker Hub, безпека облікового запису | 362 | docs.docker.com |
+| Довідники: Dockerfile, файл Compose, перевірки збирання, Engine API SDK | 45 | docs.docker.com |
+| Довідник CLI: `docker`, `docker buildx`, `docker compose`, `dockerd` | 233 | docs.docker.com |
 | Гайди за мовами й задачами | 96 | docs.docker.com |
 | Нотатки релізів Engine 27, 28, 29 — по документу на версію | 56 | docs.docker.com |
 | Релізи GitHub: Engine (`docker-v…`, з 29.0), Compose, Buildx | 472 | GitHub API |
 
-Разом 1 274 документи; фрагментів в індексі — EXPECTED_PASSAGES (`expected_passages` у `checks.json`). Фрагменти —
+Разом 1 264 документи; фрагментів в індексі — 10 111 (`expected_passages` у `checks.json`). Фрагменти —
 це шматки документів між заголовками, по яких іде пошук.
 
-QUALITY_PARAGRAPH
+Замір `quality` на першому корпусі: перша десятка (питання своїми словами, без назв команд і інструкцій) — по
+словах 7 із 10, за змістом 6, разом 7; друга, «як модель» (назви інструкцій, команд і ключів, як велить промпт), —
+10 із 10. Промахи першої десятки — питання, де своїх слів документація не вживає: «set the owner of files» не
+знаходить `COPY --chown`, «reachable from the host on a chosen number» — публікацію портів, «leave files out of what
+is sent to the builder» за змістом — `.dockerignore`. Тому промпт велить писати запит назвами самої документації.
 
 **Версія у відповіді.** Документація без версії — це завжди чинна редакція, і відповідь «як зробити» спирається на
 неї. Коли питання про версії — що змінилося, з якого релізу, що застаріло, — відповідь називає продукт і реліз:
@@ -70,7 +74,10 @@ docker/docs лежить YAML-ом, — готовою сторінкою з о�
   із текою, а не в ній.
 - **Сторінки-заглушки пропущено** (поле `skip`). Нотатки релізів Compose і Build та Dockerfile frontend на сайті
   лише ведуть на GitHub, і їхній markdown — сам заголовок без тексту; сторінки окремих версій Engine API
-  (`/reference/api/engine/version/v1.40` … `v1.56`) — обгортки інтерактивної специфікації. Нотатки релізів Engine
+  (`/reference/api/engine/version/v1.40` … `v1.56`) — обгортки інтерактивної специфікації; коренева сторінка
+  Get started і глосарій — markdown без тексту (сайт будує їх із даних). Короткі псевдоніми CLI (`docker run`,
+  `docker ps`, `docker build`, `exec`, `images`, `info`, `pull`, `push`) markdown-двійника не мають (404): їхній
+  текст лежить на сторінках повних команд (`docker container run`, `docker buildx build`…). Нотатки релізів Engine
   пропущено в посібнику Engine, бо вони йдуть окремими джерелами, поділені на версії.
 - **Нотатки релізів Engine 27 і 28 поділені на мінорні версії** (`## 27.5`, а патчі `27.5.1` — підрозділи
   всередині), 29 — на патчі (`## 29.8.2`). Тож мітка документа — `27.5` чи `29.8.2`; фільтр `"29"` бере всю лінію.
@@ -108,10 +115,10 @@ cd ../..
 
 ```
 ./df docker sources --why   # перелік джерел і білий список
-./df docker refresh         # завантажити все задеклароване (REFRESH_TIME)
+./df docker refresh         # завантажити все задеклароване (~20 хвилин)
 ./df docker manifest        # оновити паспорт
 ./df docker setup           # Qdrant чи пошук лише по словах
-./df docker vectors         # залити корпус у docs-docker (VECTORS_TIME)
+./df docker vectors         # залити корпус у docs-docker (~50 хвилин)
 ./df docker smoke           # перевірки
 ```
 
