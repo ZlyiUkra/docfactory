@@ -1,0 +1,574 @@
+# App Router: Forms and Mutations
+# джерело: https://github.com/vercel/next.js/blob/v13.5.4-canary.0/docs/02-app/01-building-your-application/02-data-fetching/03-forms-and-mutations.mdx
+# отримано: 2026-10-01
+# версія: 13.5.4-canary, 13.5.3, 13.5.3-canary
+
+Learn how to handle form submissions and data mutations with Next.js.
+
+Forms enable you to create and update data in web applications. Next.js provides a powerful way to handle form submissions and data mutations using **Server Actions**.
+
+## How Server Actions Work
+
+With Server Actions, you don't need to manually create API endpoints. Instead, you define asynchronous server functions that can be called directly from your components.
+
+Server Actions can be defined in Server Components or called from Client Components. Defining the action in a Server Component allows the form to function without JavaScript, providing progressive enhancement.
+
+Enable Server Actions in your `next.config.js` file:
+
+`next.config.js`
+
+```js
+module.exports = {
+  experimental: {
+    serverActions: true,
+  },
+}
+```
+
+> **Good to know:**
+>
+> - Forms calling Server Actions from Server Components can function without JavaScript.
+> - Forms calling Server Actions from Client Components will queue submissions if JavaScript isn't loaded yet, prioritizing client hydration.
+> - Server Actions inherit the runtime from the page or layout they are used on.
+> - Server Actions work with fully static routes (including revalidating data with ISR).
+
+## Revalidating Cached Data
+
+Server Actions integrate deeply with the Next.js caching and revalidation architecture. When a form is submitted, the Server Action can update cached data and revalidate any cache keys that should change.
+
+Rather than being limited to a single form per route like traditional applications, Server Actions enable having multiple actions per route. Further, the browser does not need to refresh on form submission. In a single network roundtrip, Next.js can return both the updated UI and the refreshed data.
+
+View the examples below for revalidating data from Server Actions.
+
+## Examples
+
+### Server-only Forms
+
+To create a server-only form, define the Server Action in a Server Component. The action can either be defined inline with the `"use server"` directive at the top of the function, or in a separate file with the directive at the top of the file.
+
+`app/page.tsx`
+
+```tsx
+export default function Page() {
+  async function create(formData: FormData) {
+    'use server'
+
+    // mutate data
+    // revalidate cache
+  }
+
+  return <form action={create}>...</form>
+}
+```
+
+`app/page.jsx`
+
+```jsx
+export default function Page() {
+  async function create(formData) {
+    'use server'
+
+    // mutate data
+    // revalidate cache
+  }
+
+  return <form action={create}>...</form>
+}
+```
+
+> **Good to know**: `<form action={create}>` takes the FormData data type. In the example above, the FormData submitted via the HTML `form` is accessible in the server action `create`.
+
+### Revalidating Data
+
+Server Actions allow you to invalidate the Next.js Cache on demand. You can invalidate an entire route segment with `revalidatePath`:
+
+`app/actions.ts`
+
+```ts
+'use server'
+
+import { revalidatePath } from 'next/cache'
+
+export default async function submit() {
+  await submitForm()
+  revalidatePath('/')
+}
+```
+
+`app/actions.js`
+
+```js
+'use server'
+
+import { revalidatePath } from 'next/cache'
+
+export default async function submit() {
+  await submitForm()
+  revalidatePath('/')
+}
+```
+
+Or invalidate a specific data fetch with a cache tag using `revalidateTag`:
+
+`app/actions.ts`
+
+```ts
+'use server'
+
+import { revalidateTag } from 'next/cache'
+
+export default async function submit() {
+  await addPost()
+  revalidateTag('posts')
+}
+```
+
+`app/actions.js`
+
+```js
+'use server'
+
+import { revalidateTag } from 'next/cache'
+
+export default async function submit() {
+  await addPost()
+  revalidateTag('posts')
+}
+```
+
+### Redirecting
+
+If you would like to redirect the user to a different route after the completion of a Server Action, you can use `redirect` and any absolute or relative URL:
+
+`app/actions.ts`
+
+```ts
+'use server'
+
+import { redirect } from 'next/navigation'
+import { revalidateTag } from 'next/cache'
+
+export default async function submit() {
+  const id = await addPost()
+  revalidateTag('posts') // Update cached posts
+  redirect(`/post/${id}`) // Navigate to new route
+}
+```
+
+`app/actions.js`
+
+```js
+'use server'
+
+import { redirect } from 'next/navigation'
+import { revalidateTag } from 'next/cache'
+
+export default async function submit() {
+  const id = await addPost()
+  revalidateTag('posts') // Update cached posts
+  redirect(`/post/${id}`) // Navigate to new route
+}
+```
+
+### Form Validation
+
+We recommend using HTML validation like `required` and `type="email"` for basic form validation.
+
+For more advanced server-side validation, use a schema validation library like zod to validate the structure of the parsed form data:
+
+`app/actions.ts`
+
+```tsx
+import { z } from 'zod'
+
+const schema = z.object({
+  // ...
+})
+
+export default async function submit(formData: FormData) {
+  const parsed = schema.parse({
+    id: formData.get('id'),
+  })
+  // ...
+}
+```
+
+`app/actions.js`
+
+```jsx
+import { z } from 'zod'
+
+const schema = z.object({
+  // ...
+})
+
+export default async function submit(formData) {
+  const parsed = schema.parse({
+    id: formData.get('id'),
+  })
+  // ...
+}
+```
+
+### Displaying Loading State
+
+Use the `useFormStatus` hook to show a loading state when a form is submitting on the server. The `useFormStatus` hook can only be used as a child of a `form` element using a Server Action.
+
+For example, the following submit button:
+
+`app/submit-button.tsx`
+
+```tsx
+'use client'
+
+import { experimental_useFormStatus as useFormStatus } from 'react-dom'
+
+export function SubmitButton() {
+  const { pending } = useFormStatus()
+
+  return (
+    <button disabled={pending}>{pending ? 'Submitting...' : 'Submit'}</button>
+  )
+}
+```
+
+`app/submit-button.jsx`
+
+```jsx
+'use client'
+
+import { experimental_useFormStatus as useFormStatus } from 'react-dom'
+
+export function SubmitButton() {
+  const { pending } = useFormStatus()
+
+  return (
+    <button disabled={pending}>{pending ? 'Submitting...' : 'Submit'}</button>
+  )
+}
+```
+
+`<SubmitButton />` can then be used in a form with a Server Action:
+
+`app/page.tsx`
+
+```tsx
+import { SubmitButton } from '@/app/submit-button'
+
+export default async function Home() {
+  return (
+    <form action={...}>
+      <input type="text" name="field-name" />
+      <SubmitButton />
+    </form>
+  )
+}
+```
+
+`app/page.jsx`
+
+```jsx
+import { SubmitButton } from '@/app/submit-button'
+
+export default async function Home() {
+  return (
+    <form action={...}>
+      <input type="text" name="field-name" />
+      <SubmitButton />
+    </form>
+  )
+}
+```
+
+  Examples
+
+- Form with Loading & Error States
+
+### Error Handling
+
+Server Actions can also return serializable objects. For example, your Server Action might handle errors from creating a new item:
+
+`app/actions.ts`
+
+```ts
+'use server'
+
+export async function create(prevState: any, formData: FormData) {
+  try {
+    await createItem(formData.get('todo'))
+    return revalidatePath('/')
+  } catch (e) {
+    return { message: 'Failed to create' }
+  }
+}
+```
+
+`app/actions.js`
+
+```js
+'use server'
+
+export async function createTodo(prevState, formData) {
+  try {
+    await createItem(formData.get('todo'))
+    return revalidatePath('/')
+  } catch (e) {
+    return { message: 'Failed to create' }
+  }
+}
+```
+
+Then, from a Client Component, you can read this value and display an error message.
+
+`app/add-form.tsx`
+
+```tsx
+'use client'
+
+import { experimental_useFormState as useFormState } from 'react-dom'
+import { experimental_useFormStatus as useFormStatus } from 'react-dom'
+import { createTodo } from '@/app/actions'
+
+const initialState = {
+  message: null,
+}
+
+function SubmitButton() {
+  const { pending } = useFormStatus()
+
+  return (
+    <button type="submit" aria-disabled={pending}>
+      Add
+    </button>
+  )
+}
+
+export function AddForm() {
+  const [state, formAction] = useFormState(createTodo, initialState)
+
+  return (
+    <form action={formAction}>
+      <label htmlFor="todo">Enter Task</label>
+      <input type="text" id="todo" name="todo" required />
+      <SubmitButton />
+      <p aria-live="polite" className="sr-only">
+        {state?.message}
+      </p>
+    </form>
+  )
+}
+```
+
+`app/add-form.jsx`
+
+```jsx
+'use client'
+
+import { experimental_useFormState as useFormState } from 'react-dom'
+import { experimental_useFormStatus as useFormStatus } from 'react-dom'
+import { createTodo } from '@/app/actions'
+
+const initialState = {
+  message: null,
+}
+
+function SubmitButton() {
+  const { pending } = useFormStatus()
+
+  return (
+    <button type="submit" aria-disabled={pending}>
+      Add
+    </button>
+  )
+}
+
+export function AddForm() {
+  const [state, formAction] = useFormState(createTodo, initialState)
+
+  return (
+    <form action={formAction}>
+      <label htmlFor="todo">Enter Task</label>
+      <input type="text" id="todo" name="todo" required />
+      <SubmitButton />
+      <p aria-live="polite" className="sr-only">
+        {state?.message}
+      </p>
+    </form>
+  )
+}
+```
+
+  Examples
+
+- Form with Loading & Error States
+
+### Optimistic Updates
+
+Use `useOptimistic` to optimistically update the UI before the Server Action finishes, rather than waiting for the response:
+
+`app/page.tsx`
+
+```tsx
+'use client'
+
+import { experimental_useOptimistic as useOptimistic } from 'react'
+import { send } from './actions'
+
+type Message = {
+  message: string
+}
+
+export function Thread({ messages }: { messages: Message[] }) {
+  const [optimisticMessages, addOptimisticMessage] = useOptimistic<Message[]>(
+    messages,
+    (state: Message[], newMessage: string) => [
+      ...state,
+      { message: newMessage },
+    ]
+  )
+
+  return (
+    <div>
+      {optimisticMessages.map((m, k) => (
+        <div key={k}>{m.message}</div>
+      ))}
+      <form
+        action={async (formData: FormData) => {
+          const message = formData.get('message')
+          addOptimisticMessage(message)
+          await send(message)
+        }}
+      >
+        <input type="text" name="message" />
+        <button type="submit">Send</button>
+      </form>
+    </div>
+  )
+}
+```
+
+`app/page.jsx`
+
+```jsx
+'use client'
+
+import { experimental_useOptimistic as useOptimistic } from 'react'
+import { send } from './actions'
+
+export function Thread({ messages }) {
+  const [optimisticMessages, addOptimisticMessage] = useOptimistic(
+    messages,
+    (state, newMessage) => [...state, { message: newMessage }]
+  )
+
+  return (
+    <div>
+      {optimisticMessages.map((m) => (
+        <div>{m.message}</div>
+      ))}
+      <form
+        action={async (formData) => {
+          const message = formData.get('message')
+          addOptimisticMessage(message)
+          await send(message)
+        }}
+      >
+        <input type="text" name="message" />
+        <button type="submit">Send</button>
+      </form>
+    </div>
+  )
+}
+```
+
+### Setting Cookies
+
+You can set cookies inside a Server Action using the `cookies` function:
+
+`app/actions.ts`
+
+```ts
+'use server'
+
+import { cookies } from 'next/headers'
+
+export async function create() {
+  const cart = await createCart()
+  cookies().set('cartId', cart.id)
+}
+```
+
+`app/actions.js`
+
+```js
+'use server'
+
+import { cookies } from 'next/headers'
+
+export async function create() {
+  const cart = await createCart()
+  cookies().set('cartId', cart.id)
+}
+```
+
+### Reading Cookies
+
+You can read cookies inside a Server Action using the `cookies` function:
+
+`app/actions.ts`
+
+```ts
+'use server'
+
+import { cookies } from 'next/headers'
+
+export async function read() {
+  const auth = cookies().get('authorization')?.value
+  // ...
+}
+```
+
+`app/actions.js`
+
+```js
+'use server'
+
+import { cookies } from 'next/headers'
+
+export async function read() {
+  const auth = cookies().get('authorization')?.value
+  // ...
+}
+```
+
+### Deleting Cookies
+
+You can delete cookies inside a Server Action using the `cookies` function:
+
+`app/actions.ts`
+
+```ts
+'use server'
+
+import { cookies } from 'next/headers'
+
+export async function delete() {
+  cookies().delete('name')
+  // ...
+}
+```
+
+`app/actions.js`
+
+```js
+'use server'
+
+import { cookies } from 'next/headers'
+
+export async function delete() {
+  cookies().delete('name')
+  // ...
+}
+```
+
+See additional examples for deleting cookies from Server Actions.
