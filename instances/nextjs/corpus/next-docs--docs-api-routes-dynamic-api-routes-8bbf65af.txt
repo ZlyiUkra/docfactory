@@ -1,0 +1,102 @@
+# Dynamic API Routes
+# джерело: https://github.com/vercel/next.js/blob/v13.4.5-canary.7/docs/api-routes/dynamic-api-routes.md
+# отримано: 2026-10-01
+# версія: 13.4.5-canary, 13.4.4, 13.4.4-canary, 13.4.3, 13.4.3-canary, 13.4.2, 13.4.2-canary, 13.4.1, 13.4.1-canary, 13.4.0, 13.3.5-canary, 13.3.4, 13.3.4-canary, 13.3.3, 13.3.3-canary, 13.3.2, 13.3.2-canary, 13.3.1, 13.3.1-canary, 13.3.0, 13.2.5-canary, 13.2.4, 13.2.4-canary, 13.2.3, 13.2.3-canary, 13.2.2, 13.2.2-canary, 13.2.1, 13.2.1-canary, 13.2.0, 13.1.7-canary, 13.1.6, 13.1.6-canary, 13.1.5, 13.1.5-canary, 13.1.4, 13.1.4-canary, 13.1.3, 13.1.3-canary, 13.1.2, 13.1.2-canary, 13.1.1, 13.1.1-canary, 13.1.0, 13.0.8-canary, 13.0.7, 13.0.7-canary, 13.0.6, 13.0.6-canary, 13.0.5, 13.0.5-canary, 13.0.4, 13.0.4-canary, 13.0.3, 13.0.3-canary, 13.0.2, 13.0.2-canary, 13.0.1, 13.0.1-canary, 13.0.0, 12.3.7, 12.3.6, 12.3.5, 12.3.4, 12.3.3, 12.3.2, 12.3.2-canary, 12.3.1, 12.3.1-canary, 12.3.0, 12.2.6, 12.2.6-canary, 12.2.5, 12.2.5-canary, 12.2.4, 12.2.4-canary, 12.2.3, 12.2.3-canary, 12.2.2, 12.2.2-canary, 12.2.1, 12.2.1-canary, 12.2.0, 12.1.7-canary, 12.1.6, 12.1.6-canary, 12.1.5, 12.1.5-canary, 12.1.4, 12.1.4-canary, 12.1.3, 12.1.3-canary, 12.1.2, 12.1.2-canary, 12.1.1, 12.1.1-canary, 12.1.0, 12.0.11-canary, 12.0.10, 12.0.10-canary, 12.0.9, 12.0.9-canary, 12.0.8, 12.0.8-canary, 12.0.7, 12.0.7-canary, 12.0.6, 12.0.6-canary, 12.0.5, 12.0.5-canary, 12.0.4, 12.0.4-canary, 12.0.3, 12.0.3-canary, 12.0.2, 12.0.2-canary, 12.0.1, 12.0.1-canary, 12.0.0, 11.1.4, 11.1.3, 11.1.3-canary, 11.1.2, 11.1.2-canary, 11.1.1, 11.1.1-canary, 11.1.0, 11.0.2-canary, 11.0.1, 11.0.1-canary, 11.0.0, 10.2.4-canary, 10.2.3, 10.2.3-canary, 10.2.2, 10.2.2-canary, 10.2.1, 10.2.1-canary, 10.2.0, 10.1.4-canary, 10.1.3, 10.1.3-canary, 10.1.2, 10.1.2-canary, 10.1.1, 10.1.1-canary, 10.1.0, 10.0.10-canary, 10.0.9, 10.0.9-canary, 10.0.8, 10.0.8-canary
+
+You can add the dynamic routes used for pages to API Routes too. Learn how it works here.
+
+  Examples
+
+    Basic API Routes
+
+API routes support dynamic routes, and follow the same file naming rules used for `pages`.
+
+For example, the API route `pages/api/post/[pid].js` has the following code:
+
+```js
+export default function handler(req, res) {
+  const { pid } = req.query
+  res.end(`Post: ${pid}`)
+}
+```
+
+Now, a request to `/api/post/abc` will respond with the text: `Post: abc`.
+
+### Index routes and Dynamic API routes
+
+A very common RESTful pattern is to set up routes like this:
+
+- `GET api/posts` - gets a list of posts, probably paginated
+- `GET api/posts/12345` - gets post id 12345
+
+We can model this in two ways:
+
+- Option 1:
+  - `/api/posts.js`
+  - `/api/posts/[postId].js`
+- Option 2:
+  - `/api/posts/index.js`
+  - `/api/posts/[postId].js`
+
+Both are equivalent. A third option of only using `/api/posts/[postId].js` is not valid because Dynamic Routes (including Catch-all routes - see below) do not have an `undefined` state and `GET api/posts` will not match `/api/posts/[postId].js` under any circumstances.
+
+### Catch all API routes
+
+API Routes can be extended to catch all paths by adding three dots (`...`) inside the brackets. For example:
+
+- `pages/api/post/[...slug].js` matches `/api/post/a`, but also `/api/post/a/b`, `/api/post/a/b/c` and so on.
+
+> **Note**: You can use names other than `slug`, such as: `[...param]`
+
+Matched parameters will be sent as a query parameter (`slug` in the example) to the page, and it will always be an array, so, the path `/api/post/a` will have the following `query` object:
+
+```json
+{ "slug": ["a"] }
+```
+
+And in the case of `/api/post/a/b`, and any other matching path, new parameters will be added to the array, like so:
+
+```json
+{ "slug": ["a", "b"] }
+```
+
+An API route for `pages/api/post/[...slug].js` could look like this:
+
+```js
+export default function handler(req, res) {
+  const { slug } = req.query
+  res.end(`Post: ${slug.join(', ')}`)
+}
+```
+
+Now, a request to `/api/post/a/b/c` will respond with the text: `Post: a, b, c`.
+
+### Optional catch all API routes
+
+Catch all routes can be made optional by including the parameter in double brackets (`[[...slug]]`).
+
+For example, `pages/api/post/[[...slug]].js` will match `/api/post`, `/api/post/a`, `/api/post/a/b`, and so on.
+
+The main difference between catch all and optional catch all routes is that with optional, the route without the parameter is also matched (`/api/post` in the example above).
+
+The `query` objects are as follows:
+
+```json
+{ } // GET `/api/post` (empty object)
+{ "slug": ["a"] } // `GET /api/post/a` (single-element array)
+{ "slug": ["a", "b"] } // `GET /api/post/a/b` (multi-element array)
+```
+
+## Caveats
+
+- Predefined API routes take precedence over dynamic API routes, and dynamic API routes over catch all API routes. Take a look at the following examples:
+  - `pages/api/post/create.js` - Will match `/api/post/create`
+  - `pages/api/post/[pid].js` - Will match `/api/post/1`, `/api/post/abc`, etc. But not `/api/post/create`
+  - `pages/api/post/[...slug].js` - Will match `/api/post/1/2`, `/api/post/a/b/c`, etc. But not `/api/post/create`, `/api/post/abc`
+
+## Related
+
+For more information on what to do next, we recommend the following sections:
+
+    Dynamic Routes:
+    Learn more about the built-in dynamic routes.
