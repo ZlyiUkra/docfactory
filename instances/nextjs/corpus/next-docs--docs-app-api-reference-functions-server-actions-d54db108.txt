@@ -1,0 +1,147 @@
+# App Router: Server Actions
+# джерело: https://github.com/vercel/next.js/blob/v13.5.4-canary.0/docs/02-app/02-api-reference/04-functions/server-actions.mdx
+# отримано: 2026-10-01
+# версія: 13.5.4-canary, 13.5.3, 13.5.3-canary, 13.5.2, 13.5.2-canary, 13.5.1, 13.5.1-canary, 13.5.0, 13.4.20-canary
+
+API Reference for Next.js Server Actions.
+
+Next.js integrates with React Actions to provide a built-in solution for server mutations.
+
+## Convention
+
+You can enable Server Actions in your Next.js project by enabling the **experimental** `serverActions` flag.
+
+`next.config.js`
+
+```js
+module.exports = {
+  experimental: {
+    serverActions: true,
+  },
+}
+```
+
+Server Actions can be defined in two places:
+
+- Inside the component that uses it (Server Components only).
+- In a separate file (Client and Server Components), for reusability. You can define multiple Server Actions in a single file.
+
+### With Server Components
+
+Create a Server Action by defining an asynchronous function with the `"use server"` directive at the top of the function body. `"use server"` ensures this function is only ever executed on the server.
+
+This function should have serializable arguments and a serializable return value.
+
+`app/page.js`
+
+```jsx
+export default function ServerComponent() {
+  async function myAction() {
+    'use server'
+    // ...
+  }
+}
+```
+
+### With Client Components
+
+#### Import
+
+Create your Server Action in a separate file with the `"use server"` directive at the top of the file. Then, import the Server Action into your Client Component:
+
+`app/actions.js`
+
+```js
+'use server'
+
+export async function myAction() {
+  // ...
+}
+```
+
+`app/client-component.jsx`
+
+```jsx
+'use client'
+
+import { myAction } from './actions'
+
+export default function ClientComponent() {
+  return (
+    <form action={myAction}>
+      <button type="submit">Add to Cart</button>
+    </form>
+  )
+}
+```
+
+> **Good to know**: When using a top-level `"use server"` directive, all exports below will be considered Server Actions. You can have multiple Server Actions in a single file.
+
+#### Props
+
+In some cases, you might want to pass down a Server Action to a Client Component as a prop.
+
+```jsx
+<ClientComponent updateItem={updateItem} />
+```
+
+`app/client-component.jsx`
+
+```jsx
+'use client'
+
+export default function ClientComponent({ myAction }) {
+  return (
+    <form action={myAction}>
+      <input type="text" name="name" />
+      <button type="submit">Update Item</button>
+    </form>
+  )
+}
+```
+
+## Invocation
+
+You can invoke Server Actions using the following methods:
+
+- Using `action`: React's `action` prop allows invoking a Server Action on a `<form>` element.
+- Using `formAction`: React's `formAction` prop allows handling `<button>`, `<input type="submit">`, and `<input type="image">` elements in a `<form>`.
+- Custom Invocation with `startTransition`: Invoke Server Actions without using `action` or `formAction` by using `startTransition`. This method **disables Progressive Enhancement**.
+
+## Progressive Enhancement
+
+Progressive enhancement allows a `<form>` to function properly without JavaScript, or with JavaScript disabled. This allows users to interact with the form and submit data even if the JavaScript for the form hasn't been loaded yet or if it fails to load.
+
+React Actions (both server and client) support progressive enhancement, using one of two strategies:
+
+- If a **Server Action** is passed directly to a `<form>`, the form is interactive **even if JavaScript is disabled**.
+- If a **Client Action** is passed to a `<form>`, the form is still interactive, but the action will be placed in a queue until the form has hydrated. React prioritizes the action, so it still happens quickly.
+
+In both cases, the form is interactive before hydration occurs. Although Server Actions have the additional benefit of not relying on client JavaScript, you can still compose additional behavior with Client Actions where desired without sacrificing interactivity.
+
+## Size Limitation
+
+By default, the maximum size of the request body sent to a Server Action is 1MB, to prevent the consumption of excessive server resources in parsing large amounts of data.
+
+However, you can configure this limit using the `serverActionsBodySizeLimit` option. It can take the number of bytes or any string format supported by bytes, for example `1000`, `'500kb'` or `'3mb'`.
+
+`next.config.js`
+
+```js
+module.exports = {
+  experimental: {
+    serverActions: true,
+    serverActionsBodySizeLimit: '2mb',
+  },
+}
+```
+
+## Additional Resources
+
+The following React API pages are currently being documented:
+
+- React Actions (🚧)
+- `action` (🚧)
+- `formAction` (🚧)
+- `useFormStatus` (🚧)
+- `useOptimistic` (🚧)

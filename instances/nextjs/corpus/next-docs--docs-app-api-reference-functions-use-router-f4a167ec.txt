@@ -1,0 +1,176 @@
+# App Router: useRouter
+# джерело: https://github.com/vercel/next.js/blob/v15.3.9/docs/01-app/05-api-reference/04-functions/use-router.mdx
+# отримано: 2026-10-01
+# версія: 15.3.9, 15.3.8, 15.3.7, 15.3.6, 15.3.5, 15.3.4, 15.3.3, 15.3.2, 15.3.1, 15.3.1-canary, 15.3.0, 15.3.0-canary, 15.2.9, 15.2.8, 15.2.7, 15.2.6, 15.2.5, 15.2.4, 15.2.3, 15.2.2, 15.2.2-canary, 15.2.1, 15.2.1-canary, 15.2.0, 15.2.0-canary, 15.1.12, 15.1.11, 15.1.10, 15.1.9, 15.1.8, 15.1.7, 15.1.6, 15.1.5, 15.1.4, 15.1.3, 15.1.2, 15.1.1, 15.1.1-canary, 15.1.0, 15.0.8, 15.0.7, 15.0.6, 15.0.5, 15.0.4, 15.0.4-canary, 15.0.3, 15.0.3-canary
+
+API reference for the useRouter hook.
+
+The `useRouter` hook allows you to programmatically change routes inside Client Components.
+
+> **Recommendation:** Use the `<Link>` component for navigation unless you have a specific requirement for using `useRouter`.
+
+`app/example-client-component.tsx`
+
+```tsx
+'use client'
+
+import { useRouter } from 'next/navigation'
+
+export default function Page() {
+  const router = useRouter()
+
+  return (
+    <button type="button" onClick={() => router.push('/dashboard')}>
+      Dashboard
+    </button>
+  )
+}
+```
+
+`app/example-client-component.js`
+
+```jsx
+'use client'
+
+import { useRouter } from 'next/navigation'
+
+export default function Page() {
+  const router = useRouter()
+
+  return (
+    <button type="button" onClick={() => router.push('/dashboard')}>
+      Dashboard
+    </button>
+  )
+}
+```
+
+## `useRouter()`
+
+- `router.push(href: string, { scroll: boolean })`: Perform a client-side navigation to the provided route. Adds a new entry into the browser’s history stack.
+- `router.replace(href: string, { scroll: boolean })`: Perform a client-side navigation to the provided route without adding a new entry into the browser’s history stack.
+- `router.refresh()`: Refresh the current route. Making a new request to the server, re-fetching data requests, and re-rendering Server Components. The client will merge the updated React Server Component payload without losing unaffected client-side React (e.g. `useState`) or browser state (e.g. scroll position).
+- `router.prefetch(href: string)`: Prefetch the provided route for faster client-side transitions.
+- `router.back()`: Navigate back to the previous route in the browser’s history stack.
+- `router.forward()`: Navigate forwards to the next page in the browser’s history stack.
+
+> **Good to know**:
+>
+> - You must not send untrusted or unsanitized URLs to `router.push` or `router.replace`, as this can open your site to cross-site scripting (XSS) vulnerabilities. For example, `javascript:` URLs sent to `router.push` or `router.replace` will be executed in the context of your page.
+> - The `<Link>` component automatically prefetch routes as they become visible in the viewport.
+> - `refresh()` could re-produce the same result if fetch requests are cached. Other Dynamic APIs like `cookies` and `headers` could also change the response.
+
+### Migrating from `next/router`
+
+- The `useRouter` hook should be imported from `next/navigation` and not `next/router` when using the App Router
+- The `pathname` string has been removed and is replaced by `usePathname()`
+- The `query` object has been removed and is replaced by `useSearchParams()`
+- `router.events` has been replaced. See below.
+
+View the full migration guide.
+
+## Examples
+
+### Router events
+
+You can listen for page changes by composing other Client Component hooks like `usePathname` and `useSearchParams`.
+
+`app/components/navigation-events.js`
+
+```jsx
+'use client'
+
+import { useEffect } from 'react'
+import { usePathname, useSearchParams } from 'next/navigation'
+
+export function NavigationEvents() {
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const url = `${pathname}?${searchParams}`
+    console.log(url)
+    // You can now use the current URL
+    // ...
+  }, [pathname, searchParams])
+
+  return '...'
+}
+```
+
+Which can be imported into a layout.
+
+`app/layout.js`
+
+```jsx
+import { Suspense } from 'react'
+import { NavigationEvents } from './components/navigation-events'
+
+export default function Layout({ children }) {
+  return (
+    <html lang="en">
+      <body>
+        {children}
+
+        <Suspense fallback={null}>
+          <NavigationEvents />
+        </Suspense>
+      </body>
+    </html>
+  )
+}
+```
+
+> **Good to know**: `<NavigationEvents>` is wrapped in a `Suspense` boundary because`useSearchParams()` causes client-side rendering up to the closest `Suspense` boundary during static rendering. Learn more.
+
+### Disabling scroll to top
+
+By default, Next.js will scroll to the top of the page when navigating to a new route. You can disable this behavior by passing `scroll: false` to `router.push()` or `router.replace()`.
+
+`app/example-client-component.tsx`
+
+```tsx
+'use client'
+
+import { useRouter } from 'next/navigation'
+
+export default function Page() {
+  const router = useRouter()
+
+  return (
+    <button
+      type="button"
+      onClick={() => router.push('/dashboard', { scroll: false })}
+    >
+      Dashboard
+    </button>
+  )
+}
+```
+
+`app/example-client-component.jsx`
+
+```jsx
+'use client'
+
+import { useRouter } from 'next/navigation'
+
+export default function Page() {
+  const router = useRouter()
+
+  return (
+    <button
+      type="button"
+      onClick={() => router.push('/dashboard', { scroll: false })}
+    >
+      Dashboard
+    </button>
+  )
+}
+```
+
+## Version History
+
+| Version   | Changes                                        |
+| --------- | ---------------------------------------------- |
+| `v13.0.0` | `useRouter` from `next/navigation` introduced. |

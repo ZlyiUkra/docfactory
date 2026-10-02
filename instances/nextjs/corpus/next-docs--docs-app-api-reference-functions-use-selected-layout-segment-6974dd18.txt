@@ -1,0 +1,186 @@
+# App Router: useSelectedLayoutSegment
+# джерело: https://github.com/vercel/next.js/blob/v15.4.0-canary.35/docs/01-app/05-api-reference/04-functions/use-selected-layout-segment.mdx
+# отримано: 2026-10-01
+# версія: 15.4.0-canary, 15.3.9, 15.3.8, 15.3.7, 15.3.6, 15.3.5, 15.3.4, 15.3.3, 15.3.2, 15.3.1, 15.3.1-canary, 15.3.0, 15.3.0-canary, 15.2.9, 15.2.8, 15.2.7, 15.2.6, 15.2.5, 15.2.4, 15.2.3, 15.2.2, 15.2.2-canary, 15.2.1, 15.2.1-canary, 15.2.0, 15.2.0-canary, 15.1.12, 15.1.11, 15.1.10, 15.1.9, 15.1.8, 15.1.7, 15.1.6, 15.1.5, 15.1.4, 15.1.3, 15.1.2, 15.1.1, 15.1.1-canary, 15.1.0, 15.0.8, 15.0.7, 15.0.6, 15.0.5, 15.0.4, 15.0.4-canary, 15.0.3, 15.0.3-canary, 15.0.2, 15.0.2-canary, 15.0.1, 15.0.1-canary, 15.0.0, 15.0.0-rc.1, 15.0.0-rc.0, 15.0.0-canary, 14.3.0-canary, 14.2.35, 14.2.34, 14.2.33, 14.2.32, 14.2.31, 14.2.30, 14.2.29, 14.2.28, 14.2.27, 14.2.26, 14.2.25, 14.2.24, 14.2.23, 14.2.22, 14.2.21, 14.2.20, 14.2.19, 14.2.18, 14.2.17, 14.2.16, 14.2.15, 14.2.14, 14.2.13, 14.2.12, 14.2.11, 14.2.10, 14.2.9, 14.2.8, 14.2.7, 14.2.6, 14.2.5, 14.2.4, 14.2.3, 14.2.2, 14.2.1, 14.2.1-canary, 14.2.0, 14.2.0-canary, 14.1.4, 14.1.3, 14.1.2, 14.1.2-canary, 14.1.1, 14.1.1-canary, 14.1.0, 14.0.5-canary, 14.0.4, 14.0.4-canary, 14.0.3, 14.0.3-canary, 14.0.2, 14.0.2-canary, 14.0.1, 14.0.1-canary, 14.0.0, 13.5.11, 13.5.10, 13.5.9, 13.5.8, 13.5.7, 13.5.7-canary, 13.5.6, 13.5.6-canary, 13.5.5, 13.5.5-canary, 13.5.4, 13.5.4-canary, 13.5.3, 13.5.3-canary, 13.5.2, 13.5.2-canary, 13.5.1, 13.5.1-canary, 13.5.0, 13.4.20-canary
+
+API Reference for the useSelectedLayoutSegment hook.
+
+`useSelectedLayoutSegment` is a **Client Component** hook that lets you read the active route segment **one level below** the Layout it is called from.
+
+It is useful for navigation UI, such as tabs inside a parent layout that change style depending on the active child segment.
+
+`app/example-client-component.tsx`
+
+```tsx
+'use client'
+
+import { useSelectedLayoutSegment } from 'next/navigation'
+
+export default function ExampleClientComponent() {
+  const segment = useSelectedLayoutSegment()
+
+  return <p>Active segment: {segment}</p>
+}
+```
+
+`app/example-client-component.js`
+
+```jsx
+'use client'
+
+import { useSelectedLayoutSegment } from 'next/navigation'
+
+export default function ExampleClientComponent() {
+  const segment = useSelectedLayoutSegment()
+
+  return <p>Active segment: {segment}</p>
+}
+```
+
+> **Good to know**:
+>
+> - Since `useSelectedLayoutSegment` is a Client Component hook, and Layouts are Server Components by default, `useSelectedLayoutSegment` is usually called via a Client Component that is imported into a Layout.
+> - `useSelectedLayoutSegment` only returns the segment one level down. To return all active segments, see `useSelectedLayoutSegments`
+
+## Parameters
+
+```tsx
+const segment = useSelectedLayoutSegment(parallelRoutesKey?: string)
+```
+
+`useSelectedLayoutSegment` _optionally_ accepts a `parallelRoutesKey`, which allows you to read the active route segment within that slot.
+
+## Returns
+
+`useSelectedLayoutSegment` returns a string of the active segment or `null` if one doesn't exist.
+
+For example, given the Layouts and URLs below, the returned segment would be:
+
+| Layout                    | Visited URL                    | Returned Segment |
+| ------------------------- | ------------------------------ | ---------------- |
+| `app/layout.js`           | `/`                            | `null`           |
+| `app/layout.js`           | `/dashboard`                   | `'dashboard'`    |
+| `app/dashboard/layout.js` | `/dashboard`                   | `null`           |
+| `app/dashboard/layout.js` | `/dashboard/settings`          | `'settings'`     |
+| `app/dashboard/layout.js` | `/dashboard/analytics`         | `'analytics'`    |
+| `app/dashboard/layout.js` | `/dashboard/analytics/monthly` | `'analytics'`    |
+
+## Examples
+
+### Creating an active link component
+
+You can use `useSelectedLayoutSegment` to create an active link component that changes style depending on the active segment. For example, a featured posts list in the sidebar of a blog:
+
+`app/blog/blog-nav-link.tsx`
+
+```tsx
+'use client'
+
+import Link from 'next/link'
+import { useSelectedLayoutSegment } from 'next/navigation'
+
+// This *client* component will be imported into a blog layout
+export default function BlogNavLink({
+  slug,
+  children,
+}: {
+  slug: string
+  children: React.ReactNode
+}) {
+  // Navigating to `/blog/hello-world` will return 'hello-world'
+  // for the selected layout segment
+  const segment = useSelectedLayoutSegment()
+  const isActive = slug === segment
+
+  return (
+    <Link
+      href={`/blog/${slug}`}
+      // Change style depending on whether the link is active
+      style={{ fontWeight: isActive ? 'bold' : 'normal' }}
+    >
+      {children}
+    </Link>
+  )
+}
+```
+
+`app/blog/blog-nav-link.js`
+
+```jsx
+'use client'
+
+import Link from 'next/link'
+import { useSelectedLayoutSegment } from 'next/navigation'
+
+// This *client* component will be imported into a blog layout
+export default function BlogNavLink({ slug, children }) {
+  // Navigating to `/blog/hello-world` will return 'hello-world'
+  // for the selected layout segment
+  const segment = useSelectedLayoutSegment()
+  const isActive = slug === segment
+
+  return (
+    <Link
+      href={`/blog/${slug}`}
+      // Change style depending on whether the link is active
+      style={{ fontWeight: isActive ? 'bold' : 'normal' }}
+    >
+      {children}
+    </Link>
+  )
+}
+```
+
+`app/blog/layout.tsx`
+
+```tsx
+// Import the Client Component into a parent Layout (Server Component)
+import { BlogNavLink } from './blog-nav-link'
+import getFeaturedPosts from './get-featured-posts'
+
+export default async function Layout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  const featuredPosts = await getFeaturedPosts()
+  return (
+    <div>
+      {featuredPosts.map((post) => (
+        <div key={post.id}>
+          <BlogNavLink slug={post.slug}>{post.title}</BlogNavLink>
+        </div>
+      ))}
+      <div>{children}</div>
+    </div>
+  )
+}
+```
+
+`app/blog/layout.js`
+
+```jsx
+// Import the Client Component into a parent Layout (Server Component)
+import { BlogNavLink } from './blog-nav-link'
+import getFeaturedPosts from './get-featured-posts'
+
+export default async function Layout({ children }) {
+  const featuredPosts = await getFeaturedPosts()
+  return (
+    <div>
+      {featuredPosts.map((post) => (
+        <div key={post.id}>
+          <BlogNavLink slug={post.slug}>{post.title}</BlogNavLink>
+        </div>
+      ))}
+      <div>{children}</div>
+    </div>
+  )
+}
+```
+
+## Version History
+
+| Version   | Changes                                |
+| --------- | -------------------------------------- |
+| `v13.0.0` | `useSelectedLayoutSegment` introduced. |
