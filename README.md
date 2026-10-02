@@ -614,6 +614,8 @@ TypeScript), patterns.dev (патерни JS, React, Vue, рендерингу �
 - нові читачі: `nextdocs-history` (два роутери з одного файла, номери порядку в шляхах, піддерево теки раз на хеш) і
   `sitemap-md-meta` (сторінки, де дата й посилання лежать у шапці YAML);
 - приклад питання агентові: `./df nextjs ask "How do I set the page title in the App Router?"`;
+- корпус в архіві, як в astro: текстів у теці немає, сервер підіймається з кешу фрагментів (`index/`, у git —
+  стиснений) і Qdrant; перед оновленням тексти повертають;
 - докладніше — у [instances/nextjs/README.md](instances/nextjs/README.md).
 
 ## Захист
