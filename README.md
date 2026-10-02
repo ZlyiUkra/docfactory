@@ -595,6 +595,27 @@ TypeScript), patterns.dev (патерни JS, React, Vue, рендерингу �
 - приклад питання агентові: `./df vite ask "How do I proxy API requests to the backend in dev?"`;
 - докладніше — у [instances/vite/README.md](instances/vite/README.md).
 
+### nextjs
+
+Документація Next.js усіх версій для обох роутерів: теки `docs/` і `errors/` vercel/next.js на 3 935 тегах — від
+5.x (пояснення помилок) і 9.1.7 (документація) до 16.x з canary, beta, rc і preview; кожен неповторний текст один
+раз, з усіма версіями, а сторінки App Router і Pages Router — окремими документами з підписом роутера в назві.
+Поруч — нотатки релізів GitHub з кожною canary, README пакета `next` (для 1.0–9.1 він і був документацією) і дев'яти
+пакетів навколо, реєстр версій npm чотирнадцяти пакетів з peer-залежностями, блог nextjs.org з датами, приклади з
+теки `examples/` на 16.3.8 з кодом, шаблони Next.js з галереї Vercel і сторінка showcase. Лише офіційне, лише
+англійською. 15 332 документи.
+
+- порт `8779`; запис у Claude Code — `nextjs-docs`, адреса `http://127.0.0.1:8779/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-nextjs`, модель векторів — `bge-small`;
+- версія — номер Next.js (`"16"` — лінія 16.x); canary має одну мітку на цикл (`16.4.0-canary`), бо сервер віддає з
+  уривком увесь перелік його версій; блог, шаблони й showcase міток не мають — їх шукають без `version`;
+- без названого роутера відповідь — для App Router; назва документа каже, чий він («App Router: …», «Pages Router: …»);
+- нові читачі: `nextdocs-history` (два роутери з одного файла, номери порядку в шляхах, піддерево теки раз на хеш) і
+  `sitemap-md-meta` (сторінки, де дата й посилання лежать у шапці YAML);
+- приклад питання агентові: `./df nextjs ask "How do I set the page title in the App Router?"`;
+- докладніше — у [instances/nextjs/README.md](instances/nextjs/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
