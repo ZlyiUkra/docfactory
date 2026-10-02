@@ -1,0 +1,154 @@
+# Module Not Found
+# джерело: https://github.com/vercel/next.js/blob/v13.4.9-canary.2/errors/module-not-found.md
+# отримано: 2026-10-01
+# версія: 13.4.9-canary, 13.4.8, 13.4.8-canary, 13.4.7, 13.4.7-canary, 13.4.6, 13.4.6-canary, 13.4.5, 13.4.5-canary, 13.4.4, 13.4.4-canary, 13.4.3, 13.4.3-canary, 13.4.2, 13.4.2-canary, 13.4.1, 13.4.1-canary, 13.4.0, 13.3.5-canary, 13.3.4, 13.3.4-canary, 13.3.3, 13.3.3-canary, 13.3.2, 13.3.2-canary, 13.3.1, 13.3.1-canary, 13.3.0, 13.2.5-canary, 13.2.4, 13.2.4-canary, 13.2.3, 13.2.3-canary, 13.2.2, 13.2.2-canary, 13.2.1, 13.2.1-canary, 13.2.0, 13.1.7-canary, 13.1.6, 13.1.6-canary, 13.1.5, 13.1.5-canary, 13.1.4, 13.1.4-canary, 13.1.3, 13.1.3-canary, 13.1.2, 13.1.2-canary, 13.1.1, 13.1.1-canary, 13.1.0, 13.0.8-canary, 13.0.7, 13.0.7-canary, 13.0.6, 13.0.6-canary, 13.0.5, 13.0.5-canary, 13.0.4, 13.0.4-canary, 13.0.3, 13.0.3-canary, 13.0.2, 13.0.2-canary, 13.0.1, 13.0.1-canary, 13.0.0, 12.3.7, 12.3.6, 12.3.5, 12.3.4, 12.3.3, 12.3.2, 12.3.2-canary, 12.3.1, 12.3.1-canary, 12.3.0, 12.2.6, 12.2.6-canary, 12.2.5, 12.2.5-canary, 12.2.4, 12.2.4-canary, 12.2.3, 12.2.3-canary, 12.2.2, 12.2.2-canary, 12.2.1, 12.2.1-canary, 12.2.0, 12.1.7-canary, 12.1.6, 12.1.6-canary, 12.1.5, 12.1.5-canary, 12.1.4, 12.1.4-canary, 12.1.3, 12.1.3-canary, 12.1.2, 12.1.2-canary, 12.1.1, 12.1.1-canary, 12.1.0, 12.0.11-canary, 12.0.10, 12.0.10-canary, 12.0.9, 12.0.9-canary, 12.0.8, 12.0.8-canary, 12.0.7, 12.0.7-canary, 12.0.6, 12.0.6-canary, 12.0.5, 12.0.5-canary, 12.0.4, 12.0.4-canary, 12.0.3, 12.0.3-canary, 12.0.2, 12.0.2-canary, 12.0.1, 12.0.1-canary, 12.0.0, 11.1.4, 11.1.3, 11.1.3-canary, 11.1.2, 11.1.2-canary, 11.1.1, 11.1.1-canary, 11.1.0, 11.0.2-canary
+
+#### Why This Error Occurred
+
+A module not found error can occur for many different reasons:
+
+- The module you're trying to import is not installed in your dependencies
+- The module you're trying to import is in a different directory
+- The module you're trying to import has a different casing
+- The module you're trying to import uses Node.js specific modules, for example `dns`, outside of `getStaticProps` / `getStaticPaths` / `getServerSideProps`
+
+#### Possible Ways to Fix It
+
+##### The module you're trying to import is not installed in your dependencies
+
+When importing a module from npm this module has to be installed locally.
+
+For example when importing the `swr` package:
+
+```js
+import useSWR from 'swr'
+```
+
+The `swr` module has to be installed using a package manager.
+
+- When using `npm`: `npm install swr`
+- When using `yarn`: `yarn add swr`
+
+##### The module you're trying to import is in a different directory
+
+Make sure that the path you're importing refers to the right directory and file.
+
+##### The module you're trying to import has a different casing
+
+Make sure the casing of the file is correct.
+
+Example:
+
+```js
+// components/MyComponent.js
+export default function MyComponent() {
+  return <h1>Hello</h1>
+}
+```
+
+```js
+// pages/index.js
+// Note how `components/MyComponent` exists but `Mycomponent` without the capital `c` is imported
+import MyComponent from '../components/Mycomponent'
+```
+
+Incorrect casing will lead to build failures on case-sensitive environments like most Linux-based continuous integration and can cause issues with Fast Refresh.
+
+##### The module you're trying to import uses Node.js specific modules
+
+`getStaticProps`, `getStaticPaths`, and `getServerSideProps` allow for using modules that can only run in the Node.js environment. This allows you to do direct database queries or reading data from Redis to name a few examples.
+
+The tree shaking only runs on top level pages, so it can't be relied on in separate React components.
+
+You can verify the tree shaking on next-code-elimination.vercel.app.
+
+Example of correctly tree shaken code:
+
+```js
+// lib/redis.js
+import Redis from 'ioredis'
+
+const redis = new Redis(process.env.REDIS_URL)
+
+export default redis
+```
+
+```js
+// pages/index.js
+import redis from '../lib/redis'
+
+export async function getStaticProps() {
+  const message = await redis.get('message')
+  return {
+    message,
+  }
+}
+
+export default function Home({ message }) {
+  return <h1>{message}</h1>
+}
+```
+
+Example of code that would break:
+
+```js
+// lib/redis.js
+import Redis from 'ioredis'
+
+const redis = new Redis(process.env.REDIS_URL)
+
+export default redis
+```
+
+```js
+// pages/index.js
+// Redis is a Node.js specific library that can't run in the browser
+// Trying to use it in code that runs on both Node.js and the browser will result in a module not found error for modules that ioredis relies on
+// If you run into such an error it's recommended to move the code to `getStaticProps` or `getServerSideProps` as those methods guarantee that the code is only run in Node.js.
+import redis from '../lib/redis'
+import { useEffect, useState } from 'react'
+
+export default function Home() {
+  const [message, setMessage] = useState()
+  useEffect(() => {
+    redis.get('message').then((result) => {
+      setMessage(result)
+    })
+  }, [])
+  return <h1>{message}</h1>
+}
+```
+
+Example of code that would break:
+
+```js
+// lib/redis.js
+import Redis from 'ioredis'
+
+// Modules that hold Node.js-only code can't also export React components
+// Tree shaking of getStaticProps/getStaticPaths/getServerSideProps is ran only on page files
+const redis = new Redis(process.env.REDIS_URL)
+
+export function MyComponent() {
+  return <h1>Hello</h1>
+}
+
+export default redis
+```
+
+```js
+// pages/index.js
+// In practice you'll want to refactor the `MyComponent` to be a separate file so that tree shaking ensures that specific import is not included for the browser compilation
+import redis, { MyComponent } from '../lib/redis'
+
+export async function getStaticProps() {
+  const message = await redis.get('message')
+  return {
+    message,
+  }
+}
+
+export default function Home() {
+  return <MyComponent />
+}
+```

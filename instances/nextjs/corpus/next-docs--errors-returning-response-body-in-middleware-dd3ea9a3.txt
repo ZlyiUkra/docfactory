@@ -1,0 +1,70 @@
+# Returning response body in Middleware
+# джерело: https://github.com/vercel/next.js/blob/v13.4.9-canary.2/errors/returning-response-body-in-middleware.md
+# отримано: 2026-10-01
+# версія: 13.4.9-canary, 13.4.8, 13.4.8-canary, 13.4.7, 13.4.7-canary, 13.4.6, 13.4.6-canary, 13.4.5, 13.4.5-canary, 13.4.4, 13.4.4-canary, 13.4.3, 13.4.3-canary, 13.4.2, 13.4.2-canary, 13.4.1, 13.4.1-canary, 13.4.0, 13.3.5-canary, 13.3.4, 13.3.4-canary, 13.3.3, 13.3.3-canary, 13.3.2, 13.3.2-canary, 13.3.1, 13.3.1-canary, 13.3.0, 13.2.5-canary, 13.2.4, 13.2.4-canary, 13.2.3, 13.2.3-canary, 13.2.2, 13.2.2-canary, 13.2.1, 13.2.1-canary, 13.2.0, 13.1.7-canary, 13.1.6, 13.1.6-canary, 13.1.5, 13.1.5-canary, 13.1.4, 13.1.4-canary, 13.1.3, 13.1.3-canary, 13.1.2, 13.1.2-canary, 13.1.1, 13.1.1-canary, 13.1.0, 13.0.8-canary, 13.0.7, 13.0.7-canary
+
+> Note: In Next.js v13.0.0 you can now respond to Middleware directly by returning a `NextResponse`. For more information, see Producing a Response.
+
+#### Why This Error Occurred
+
+Middleware can no longer produce a response body as of `v12.2+`.
+
+#### Possible Ways to Fix It
+
+Migrate to using `rewrite`/`redirect` to Pages/API Routes handling a response.
+
+#### Explanation
+
+To respect the differences in client-side and server-side navigation, and to help ensure that developers do not build insecure Middleware, Middleware can no longer produce a response body. This ensures that Middleware is only used to `rewrite`, `redirect`, or modify the incoming request (e.g. setting cookies).
+
+The following patterns will no longer work:
+
+```js
+new Response('a text value')
+new Response(streamOrBuffer)
+new Response(JSON.stringify(obj), { headers: 'application/json' })
+NextResponse.json()
+```
+
+### How to upgrade
+
+For cases where Middleware is used to respond (such as authorization), you should migrate to use `rewrite`/`redirect` to pages that show an authorization error, login forms, or to an API Route.
+
+#### Before
+
+```typescript
+// pages/_middleware.ts
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+import { isAuthValid } from './lib/auth'
+
+export function middleware(request: NextRequest) {
+  // Example function to validate auth
+  if (isAuthValid(request)) {
+    return NextResponse.next()
+  }
+
+  return NextResponse.json({ message: 'Auth required' }, { status: 401 })
+}
+```
+
+#### After
+
+```typescript
+// middleware.ts
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+import { isAuthValid } from './lib/auth'
+
+export function middleware(request: NextRequest) {
+  // Example function to validate auth
+  if (isAuthValid(request)) {
+    return NextResponse.next()
+  }
+
+  request.nextUrl.searchParams.set('from', request.nextUrl.pathname)
+  request.nextUrl.pathname = '/login'
+
+  return NextResponse.redirect(request.nextUrl)
+}
+```

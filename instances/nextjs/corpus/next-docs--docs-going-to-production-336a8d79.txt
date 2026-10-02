@@ -1,0 +1,114 @@
+# Going to Production
+# джерело: https://github.com/vercel/next.js/blob/v11.0.2-canary.13/docs/going-to-production.md
+# отримано: 2026-10-01
+# версія: 11.0.2-canary
+
+Before taking your Next.js application to production, here are some recommendations to ensure the best user experience.
+
+Before taking your Next.js application to production, here are some recommendations to ensure the best user experience.
+
+## In General
+
+- Use caching wherever possible.
+- Ensure your database and backend are deployed in the same region.
+- Aim to ship the least amount of JavaScript possible.
+- Defer loading heavy JavaScript bundles until needed.
+- Ensure logging is set up.
+- Ensure error handling is set up.
+- Configure the 404 (Not Found) and 500 (Error) pages.
+- Ensure you are measuring performance.
+- Run Lighthouse to check for performance, best practices, accessibility, and SEO. For best results, use a production build of Next.js and use incognito in your browser so results aren't affected by extensions.
+- Review Supported Browsers and Features.
+- Improve performance using:
+  - `next/image` and Automatic Image Optimization
+  - Automatic Font Optimization
+  - Script Optimization
+
+## Caching
+
+  Examples
+
+    ssr-caching
+
+Caching improves response times and reduces the number of requests to external services. Next.js automatically adds caching headers to immutable assets served from `/_next/static` including JavaScript, CSS, static images, and other media.
+
+```
+Cache-Control: public, max-age=31536000, immutable
+```
+
+`Cache-Control` headers set in `next.config.js` will be overwritten in production to ensure that static assets can be cached effectively. If you need to revalidate the cache of a page that has been statically generated, you can do so by setting `revalidate` in the page's `getStaticProps` function. If you're using `next/image`, there are also specific caching rules for the default Image Optimization loader.
+
+**Note:** When running your application locally with `next dev`, your headers are overwritten to prevent caching locally.
+
+```
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+```
+
+You can also use caching headers inside `getServerSideProps` and API Routes for dynamic responses. For example, using `stale-while-revalidate`.
+
+```jsx
+// This value is considered fresh for ten seconds (s-maxage=10).
+// If a request is repeated within the next 10 seconds, the previously
+// cached value will still be fresh. If the request is repeated before 59 seconds,
+// the cached value will be stale but still render (stale-while-revalidate=59).
+//
+// In the background, a revalidation request will be made to populate the cache
+// with a fresh value. If you refresh the page, you will see the new value.
+export async function getServerSideProps({ req, res }) {
+  res.setHeader(
+    'Cache-Control',
+    'public, s-maxage=10, stale-while-revalidate=59'
+  )
+
+  return {
+    props: {},
+  }
+}
+```
+
+**Note:** Your deployment provider must support edge caching for dynamic responses. If you are self-hosting, you will need to add this logic to the edge yourself using a key/value store. If you are using Vercel, edge caching works without configuration.
+
+## Reducing JavaScript Size
+
+  Examples
+
+    with-dynamic-import
+
+To reduce the amount of JavaScript sent to the browser, you can use the following tools to understand what is included inside each JavaScript bundle:
+
+- Import Cost – Display the size of the imported package inside VSCode.
+- Package Phobia – Find the cost of adding a new dev dependency to your project.
+- Bundle Phobia - Analyze how much a dependency can increase bundle sizes.
+- Webpack Bundle Analyzer – Visualize size of webpack output files with an interactive, zoomable treemap.
+
+Each file inside your `pages/` directory will automatically be code split into its own JavaScript bundle during `next build`. You can also use Dynamic Imports to lazy-load components and libraries. For example, you might want to defer loading your modal code until a user clicks the open button.
+
+## Logging
+
+  Examples
+
+    with-logging
+
+Since Next.js runs on both the client and server, there are multiple forms of logging supported:
+
+- `console.log` in the browser
+- `stdout` on the server
+
+If you want a structured logging package, we recommend Pino. If you're using Vercel, there are pre-built logging integrations compatible with Next.js.
+
+## Error Handling
+
+  Examples
+
+    with-sentry
+
+When an unhandled exception occurs, you can control the experience for your users with the 500 page. We recommend customizing this to your brand instead of the default Next.js theme.
+
+You can also log and track exceptions with a tool like Sentry. This example shows how to catch & report errors on both the client and server-side, using the Sentry SDK for Next.js. There's also a Sentry integration for Vercel.
+
+## Related
+
+For more information on what to do next, we recommend the following sections:
+
+    Deployment:
+    Take your Next.js application to production.

@@ -1,0 +1,56 @@
+# Cannot access `Math.random()` while prerendering
+# джерело: https://github.com/vercel/next.js/blob/v15.0.8/errors/next-prerender-random.mdx
+# отримано: 2026-10-01
+# версія: 15.0.8, 15.0.7, 15.0.6, 15.0.5, 15.0.4, 15.0.4-canary, 15.0.3, 15.0.3-canary
+
+## Why This Error Occurred
+
+A function is calling `Math.random()`. Random values are not prerenderable and must be excluded. The correct solution depends on your use case. You can find more information below about possible ways to resolves this issue.
+
+## Possible Ways to Fix It
+
+If your random value is intended to be unique per Request add `await connection()` before you call `Math.random()` and ensure there is a Suspense boundary somewhere above this component. This will inform Next.js that this component should be excluded from prerendering and communicate the necessary fallback UI that should be rendered while the component renders on each Request.
+
+Before:
+
+`app/page.js`
+
+```jsx
+export default async function Page() {
+  const products = await getCachedProducts()
+  const randomSeed = Math.random()
+  const randomizedProducts = randomize(products, randomSeed)
+  return <ProductsView products={randomizedProducts} />
+}
+```
+
+After:
+
+`app/page.js`
+
+```jsx
+import { connection } from 'next/server'
+
+async function ProductsSkeleton() {
+  ...
+}
+
+export default async function Page() {
+  const products = await getCachedProducts();
+  return <Suspense fallback={<ProductsSkeleton />}>
+    <DynamicProductsView products={products} />
+  </Suspense>
+}
+
+async function DynamicProductsView() {
+  await connection();
+  const randomSeed = Math.random()
+  const randomizedProducts = randomize(products, randomSeed)
+  return <ProductsView products={randomizedProducts} />
+}
+```
+
+## Useful Links
+
+- `connection` function
+- `Suspense` React API

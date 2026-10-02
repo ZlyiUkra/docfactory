@@ -1,0 +1,64 @@
+# Removed page from Middleware API
+# джерело: https://github.com/vercel/next.js/blob/v13.4.9-canary.2/errors/middleware-request-page.md
+# отримано: 2026-10-01
+# версія: 13.4.9-canary, 13.4.8, 13.4.8-canary, 13.4.7, 13.4.7-canary, 13.4.6, 13.4.6-canary, 13.4.5, 13.4.5-canary, 13.4.4, 13.4.4-canary, 13.4.3, 13.4.3-canary, 13.4.2, 13.4.2-canary, 13.4.1, 13.4.1-canary, 13.4.0, 13.3.5-canary, 13.3.4, 13.3.4-canary, 13.3.3, 13.3.3-canary, 13.3.2, 13.3.2-canary, 13.3.1, 13.3.1-canary, 13.3.0, 13.2.5-canary, 13.2.4, 13.2.4-canary, 13.2.3, 13.2.3-canary, 13.2.2, 13.2.2-canary, 13.2.1, 13.2.1-canary, 13.2.0, 13.1.7-canary, 13.1.6, 13.1.6-canary, 13.1.5, 13.1.5-canary, 13.1.4, 13.1.4-canary, 13.1.3, 13.1.3-canary, 13.1.2, 13.1.2-canary, 13.1.1, 13.1.1-canary, 13.1.0, 13.0.8-canary, 13.0.7, 13.0.7-canary, 13.0.6, 13.0.6-canary, 13.0.5, 13.0.5-canary, 13.0.4, 13.0.4-canary, 13.0.3, 13.0.3-canary, 13.0.2, 13.0.2-canary, 13.0.1, 13.0.1-canary, 13.0.0, 12.3.7, 12.3.6, 12.3.5, 12.3.4, 12.3.3, 12.3.2, 12.3.2-canary, 12.3.1, 12.3.1-canary, 12.3.0, 12.2.6, 12.2.6-canary, 12.2.5, 12.2.5-canary
+
+#### Why This Error Occurred
+
+Your application is interacting with `request.page` which has been deprecated.
+
+```typescript
+// middleware.ts
+import { NextRequest, NextResponse } from 'next/server'
+
+export function middleware(request: NextRequest) {
+  const { params } = event.request.page
+  const { locale, slug } = params
+
+  if (locale && slug) {
+    const { search, protocol, host } = request.nextUrl
+    const url = new URL(`${protocol}//${locale}.${host}/${slug}${search}`)
+    return NextResponse.redirect(url)
+  }
+}
+```
+
+#### Possible Ways to Fix It
+
+You can use URLPattern instead to have the same behavior:
+
+```typescript
+// middleware.ts
+import { NextRequest, NextResponse } from 'next/server'
+
+const PATTERNS = [
+  [
+    new URLPattern({ pathname: '/:locale/:slug' }),
+    ({ pathname }) => pathname.groups,
+  ],
+]
+
+const params = (url) => {
+  const input = url.split('?')[0]
+  let result = {}
+
+  for (const [pattern, handler] of PATTERNS) {
+    const patternResult = pattern.exec(input)
+    if (patternResult !== null && 'pathname' in patternResult) {
+      result = handler(patternResult)
+      break
+    }
+  }
+  return result
+}
+
+export function middleware(request: NextRequest) {
+  const { locale, slug } = params(request.url)
+
+  if (locale && slug) {
+    const { search, protocol, host } = request.nextUrl
+    const url = new URL(`${protocol}//${locale}.${host}/${slug}${search}`)
+    return NextResponse.redirect(url)
+  }
+}
+```
