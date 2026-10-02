@@ -1,0 +1,75 @@
+# Custom Webpack Config
+# джерело: https://github.com/vercel/next.js/blob/v10.2.1-canary.2/docs/api-reference/next.config.js/custom-webpack-config.md
+# отримано: 2026-10-01
+# версія: 10.2.1-canary, 10.2.0, 10.1.4-canary, 10.1.3, 10.1.3-canary, 10.1.2, 10.1.2-canary, 10.1.1, 10.1.1-canary, 10.1.0, 10.0.10-canary, 10.0.9, 10.0.9-canary, 10.0.8, 10.0.8-canary, 10.0.7, 10.0.7-canary, 10.0.6, 10.0.6-canary, 10.0.5, 10.0.5-canary, 10.0.4, 10.0.4-canary, 10.0.3, 10.0.3-canary, 10.0.2, 10.0.2-canary, 10.0.1, 10.0.1-canary, 10.0.0, 9.5.6-canary, 9.5.5, 9.5.5-canary, 9.5.4, 9.5.4-canary, 9.5.3, 9.5.3-canary
+
+Extend the default webpack config added by Next.js.
+
+Before continuing to add custom webpack configuration to your application make sure Next.js doesn't already support your use-case:
+
+- CSS imports
+- CSS modules
+- Sass/SCSS imports
+- Sass/SCSS modules
+- preact
+- Customizing babel configuration
+
+Some commonly asked for features are available as plugins:
+
+- @zeit/next-less
+- @next/mdx
+- @next/bundle-analyzer
+
+In order to extend our usage of `webpack`, you can define a function that extends its config inside `next.config.js`, like so:
+
+```js
+module.exports = {
+  webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
+    // Note: we provide webpack above so you should not `require` it
+    // Perform customizations to webpack config
+    config.plugins.push(new webpack.IgnorePlugin(/\/__tests__\//))
+
+    // Important: return the modified config
+    return config
+  },
+}
+```
+
+> The `webpack` function is executed twice, once for the server and once for the client. This allows you to distinguish between client and server configuration using the `isServer` property.
+
+The second argument to the `webpack` function is an object with the following properties:
+
+- `buildId`: `String` - The build id, used as a unique identifier between builds
+- `dev`: `Boolean` - Indicates if the compilation will be done in development
+- `isServer`: `Boolean` - It's `true` for server-side compilation, and `false` for client-side compilation
+- `defaultLoaders`: `Object` - Default loaders used internally by Next.js:
+  - `babel`: `Object` - Default `babel-loader` configuration
+
+Example usage of `defaultLoaders.babel`:
+
+```js
+// Example config for adding a loader that depends on babel-loader
+// This source was taken from the @next/mdx plugin source:
+// https://github.com/vercel/next.js/tree/canary/packages/next-mdx
+module.exports = {
+  webpack: (config, options) => {
+    config.module.rules.push({
+      test: /\.mdx/,
+      use: [
+        options.defaultLoaders.babel,
+        {
+          loader: '@mdx-js/loader',
+          options: pluginOptions.options,
+        },
+      ],
+    })
+
+    return config
+  },
+}
+```
+
+## Related
+
+    Introduction to next.config.js:
+    Learn more about the configuration file used by Next.js.

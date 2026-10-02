@@ -1,0 +1,134 @@
+# Customizing PostCSS Config
+# джерело: https://github.com/vercel/next.js/blob/v9.3.7-canary.0/docs/advanced-features/customizing-postcss-config.md
+# отримано: 2026-10-01
+# версія: 9.3.7-canary, 9.3.6, 9.3.6-canary
+
+Extend the PostCSS config and plugins added by Next.js with your own.
+
+  Examples
+
+    Tailwind CSS Example
+
+## Default Behavior
+
+Next.js compiles CSS for its built-in CSS support using PostCSS.
+
+Out of the box, with no configuration, Next.js compiles CSS with the following transformations:
+
+1. Autoprefixer automatically adds vendor prefixes to CSS rules (back to IE11).
+1. Cross-browser Flexbox bugs are corrected to behave like the spec.
+1. New CSS features are automatically compiled for Internet Explorer 11 compatibility:
+   - `all` Property
+   - Break Properties
+   - `font-variant` Property
+   - Gap Properties
+   - Media Query Ranges
+
+By default, Custom Properties (CSS variables) are **not compiled** for IE11 support.
+
+CSS variables are not compiled because it is not possible to safely do so.
+If you must use variables, consider using something like Sass variables which are compiled away by Sass.
+
+> **Note**: To support Grid Layout, you need to enable `grid: "autoplace"` for Autoprefixer. See "Customizing Plugins" below.
+
+## Customizing Target Browsers
+
+Next.js allows you to configure the target browsers (for Autoprefixer and compiled css features) through Browserslist.
+
+To customize browserslist, create a `browserslist` key in your `package.json` like so:
+
+```json
+{
+  "browserslist": [">0.3%", "not ie 11", "not dead", "not op_mini all"]
+}
+```
+
+You can use the browserl.ist tool to visualize what browsers you are targeting.
+
+## CSS Modules
+
+No configuration is needed to support CSS Modules. To enable CSS Modules for a file, rename the file to have the extension `.module.css`.
+
+You can learn more about Next.js' CSS Module support here.
+
+## Customizing Plugins
+
+> **Warning**: When you define a custom PostCSS configuration file, Next.js **completely disables** the default behavior.
+> Be sure to manually configure all the features you need compiled, including Autoprefixer.
+> You also need to install any plugins included in your custom configuration manually, i.e. `npm install postcss-flexbugs-fixes`.
+
+To customize the PostCSS configuration, create a `postcss.config.json` file in the root of your project.
+
+This is the default configuration used by Next.js:
+
+```json
+{
+  "plugins": [
+    "postcss-flexbugs-fixes",
+    [
+      "postcss-preset-env",
+      {
+        "autoprefixer": {
+          "flexbox": "no-2009"
+        },
+        "stage": 3,
+        "features": {
+          "custom-properties": false
+        }
+      }
+    ]
+  ]
+}
+```
+
+> **Note**: Next.js also allows the file to be named `.postcssrc.json`, or, to be read from the `postcss` key in `package.json`.
+
+It is also possible to configure PostCSS with a `postcss.config.js` file, which is useful when you want to conditionally include plugins based on environment:
+
+```js
+module.exports = {
+  plugins:
+    process.env.NODE_ENV === 'production'
+      ? [
+          'postcss-flexbugs-fixes',
+          [
+            'postcss-preset-env',
+            {
+              autoprefixer: {
+                flexbox: 'no-2009',
+              },
+              stage: 3,
+              features: {
+                'custom-properties': false,
+              },
+            },
+          ],
+        ]
+      : [
+          // No transformations in development
+        ],
+}
+```
+
+> **Note**: Next.js also allows the file to be named `.postcssrc.js`.
+
+Do **not use `require()`** to import the PostCSS Plugins. Plugins must be provided as strings.
+
+> **Note**: If your `postcss.config.js` needs to support other non-Next.js tools in the same project, you must use the interoperable object-based format instead:
+>
+> ```js
+> module.exports = {
+>   plugins: {
+>     'postcss-flexbugs-fixes': {},
+>     'postcss-preset-env': {
+>       autoprefixer: {
+>         flexbox: 'no-2009',
+>       },
+>       stage: 3,
+>       features: {
+>         'custom-properties': false,
+>       },
+>     },
+>   },
+> }
+> ```
