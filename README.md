@@ -194,7 +194,7 @@ git config bash.showDirtyState false
 ```
 
 Порт береться з `config.json` примірника (у ecmascript — `8760`, адреса `http://127.0.0.1:8760/mcp`; у react — `8761`;
-у nestjs — `8762`; у astro — `8763`; у supabase — `8764`; у react-router — `8765`; у clerk — `8766`; у tanstack-query — `8767`; у react-hook-form — `8768`; у zod — `8770`; у zustand — `8771`; у typescript — `8772`; у v8 — `8773`; у wasm — `8774`; у tailwind — `8775`; у redux — `8776`; у patterns — `8777`; у vite — `8778`; у nextjs — `8779`; у docker — `8780`). Від запуску до першої відповіді —
+у nestjs — `8762`; у astro — `8763`; у supabase — `8764`; у react-router — `8765`; у clerk — `8766`; у tanstack-query — `8767`; у react-hook-form — `8768`; у zod — `8770`; у zustand — `8771`; у typescript — `8772`; у v8 — `8773`; у wasm — `8774`; у tailwind — `8775`; у redux — `8776`; у patterns — `8777`; у vite — `8778`; у nextjs — `8779`; у docker — `8780`; у kubernetes — `8781`). Від запуску до першої відповіді —
 секунди: стільки збирається індекс по словах. Виняток — astro: його корпус утричі більший за інші разом, і холодний
 старт із диска Windows триває близько трьох хвилин, поки термінал мовчить. Готовим сервер стає тоді, коли надрукував
 рядок з адресою.
@@ -648,6 +648,27 @@ moby, compose та buildx. Desktop, AI, Scout та інші продукти н�
 - нових читачів немає: `sitemap-md-meta`, `changelog`, `ghreleases-tagged`, `ghreleases`;
 - приклад питання агентові: `./df docker ask "How do I build an image for both amd64 and arm64?"`;
 - докладніше — у [instances/docker/README.md](instances/docker/README.md).
+
+### kubernetes
+
+Документація Kubernetes усіх версій, 1.0–1.37, сторінка на кожній гілці сайту, з прикладами, згенерованими
+довідниками API і kubectl, журналом змін кожного патча й розкладом релізів. Поруч — інструменти, з якими кластер
+піднімають і обслуговують у планах вивчення, теж усіх версій: k3s, k3d, Gateway API, Traefik, cert-manager, Helm,
+Kustomize, книга kubectl, metrics-server, SOPS (і старий посібник 1.13–3.13), age, Let's Encrypt. І програми іспитів
+CNCF (CKA, CKAD, CKS та інші) з репозиторію cncf/curriculum. Лише англійською. 45 056 документів, 143 839 фрагментів.
+
+- порт `8781`; запис у Claude Code — `kubernetes-docs`, адреса `http://127.0.0.1:8781/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-kubernetes`, модель векторів — `bge-small`;
+- версія — номер свого інструмента (`"1.36"` — Kubernetes 1.36, але й cert-manager чи Gateway API 1.x; назва
+  документа каже, чий він); k3s, книга kubectl, SOPS і Let's Encrypt міток не мають;
+- нові читачі: `k8s-docs`, `k8s-changelog`, `k8s-releases` (сайт Kubernetes трьох епох — markdown, Jekyll, Hugo),
+  `site-history` (сайти Hugo, MkDocs, Docusaurus, markdown і reStructuredText по тегах) і `cncf-curriculum` (PDF
+  програм іспитів: колонки, розсипані літери, OCR для сторінок без тексту);
+- приклад питання агентові: `./df kubernetes ask "How do I upgrade a kubeadm cluster to the next minor version?"`;
+- корпус в архіві від самого початку: текстів у теці немає, сервер підіймається з кешу фрагментів (`index/`, у git
+  — стиснений) і Qdrant;
+- докладніше — у [instances/kubernetes/README.md](instances/kubernetes/README.md).
 
 ## Захист
 
