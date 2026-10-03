@@ -321,6 +321,9 @@ claude mcp add --transport http --scope user kubernetes-docs http://127.0.0.1:87
 У WSL і у Windows Claude Code тримає окремі налаштування — так само, як у
 [README примірника nextjs](../nextjs/README.md#сервер-під-claude-code).
 
+Claude Code обрізає опис інструмента до 2 048 символів; як зняти межу і чому обережно — абзац «Межа опису
+інструмента» в [кореневому README](../../README.md#як-підняти-локальний-mcp-сервер).
+
 **3. Перевірити.** `/mcp` — має бути `kubernetes-docs` і два інструменти `search_docs`, `read_section`.
 
 ## На іншій машині
