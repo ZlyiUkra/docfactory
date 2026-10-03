@@ -4,7 +4,11 @@
              `package`  — ім'я архіву («coreutils» → coreutils-9.12.tar.xz);
              `info`     — ім'я посібника в теці doc/ архіву («coreutils», «bashref», «find»);
              `versions` — перелік випусків, від найновішого;
-             `label`    — префікс назви документа («GNU coreutils»).
+             `label`    — префікс назви документа («GNU coreutils»);
+             `mirrors`  — запасні теки того самого пакета на офіційних дзеркалах GNU
+                          (…/gnu/coreutils/): коли ftp.gnu.org не відповідає, перелік і
+                          архіви беруться з першого дзеркала, що відповіло. Кожне дзеркало
+                          мусить стояти й у `within` — інакше білий список його не пустить.
 
 Навіщо. Повний посібник GNU — не man-сторінка: man coreutils лише відсилає до info, і
 пояснення режимів chmod, опцій find чи розгортань bash є тільки там. На gnu.org лежить
@@ -122,6 +126,20 @@ def _info_text(tar: tarfile.TarFile, info: str) -> str:
                    for _, m in parts)
 
 
+def _listing(source: dict, ctx) -> tuple[str, str]:
+    """(тека, сторінка-каталог) першої теки, що відповіла: ftp.gnu.org, тоді дзеркала.
+    Сервери GNU бувають недосяжні годинами, а архіви на дзеркалах побайтово ті самі."""
+    bases = [source["url"]] + list(source.get("mirrors") or ())
+    failure = None
+    for base in (b.rstrip("/") + "/" for b in bases):
+        try:
+            return base, ctx.text(base)
+        except (SystemExit, OSError) as e:
+            failure = e
+            print(f"  {base}: {e}; пробую наступне дзеркало", flush=True)
+    raise SystemExit(f"{source['id']}: жодна тека не відповіла ({failure}).")
+
+
 @register("gnu-info")
 def gnu_info(source: dict, ctx) -> list[Item]:
     package, info = source.get("package"), source.get("info")
@@ -129,8 +147,7 @@ def gnu_info(source: dict, ctx) -> list[Item]:
     if not package or not info or not versions:
         raise SystemExit(f"{source['id']}: читач gnu-info потребує полів package, info і "
                          f"versions.")
-    base = source["url"].rstrip("/") + "/"
-    listing = ctx.text(base)
+    base, listing = _listing(source, ctx)
     have = set(re.findall(rf'href="({re.escape(package)}-[0-9][0-9.]*\.tar\.(?:xz|gz))"',
                           listing))
     label = source.get("label", "")
