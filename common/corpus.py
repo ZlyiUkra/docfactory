@@ -129,10 +129,17 @@ def version_within(version: str, want: str) -> bool:
     return version == want or version.startswith(want + ".")
 
 
-def version_line(version: str) -> str:
-    """Лінія версії для переліку в описі: «18.3.1» → «18», «0.14.8» → «0.14»."""
+def version_line(version: str, depth: int = 1) -> str:
+    """Лінія версії для переліку в описі: «18.3.1» → «18», «0.14.8» → «0.14».
+
+    Глибина — скільки чисел складають лінію; її оголошує примірник полем
+    version_line_depth. У корпусі одного інструмента лінія — мажор, але в
+    kubernetes усі релізи 1.0–1.37 злилися б в одну «1», і перелік не казав би
+    моделі нічого. «0.x» має два числа за будь-якої глибини: там мажор — нуль."""
     parts = version.split(".")
-    return ".".join(parts[:2]) if parts[0] == "0" and len(parts) > 1 else parts[0]
+    if parts[0] == "0" and len(parts) > 1:
+        depth = max(depth, 2)
+    return ".".join(parts[:depth])
 
 
 def _slug(title: str) -> str:

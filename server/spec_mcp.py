@@ -130,7 +130,8 @@ _DOCS = len({p.doc_id for p in _INDEX.passages})
 # Версії, які несуть документи, від найновішої. Порожньо — корпус версій не має.
 _VERSIONS = sorted({v for p in _INDEX.passages for v in p.versions},
                    key=version_key, reverse=True)
-_LINES = sorted({version_line(v) for v in _VERSIONS}, key=version_key, reverse=True)
+_LINES = sorted({version_line(v, profile.VERSION_LINE_DEPTH) for v in _VERSIONS},
+                key=version_key, reverse=True)
 
 # Що саме зараз завантажено — одним реченням для моделі. Це не можна написати в
 # описі наперед: набір обирає той, хто запускає сервер, і лише сам сервер знає,

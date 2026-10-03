@@ -398,6 +398,15 @@ def main(argv: list[str]) -> int:
           and not within("9.2.10", "9.2.1") and not within("9.2.15", "9.2.1")
           and within("learn-refs#a/b", "learn-refs") and within("learn-refs#", "learn-refs")
           and not within("learn-refs-2#a", "learn-refs"))
+    # Лінія версії: мажор, «0.x» — два числа; глибина 2 (корпус із багатьох
+    # інструментів) дає «1.37» замість «1», а «0.x» лишається тим самим.
+    from common.corpus import version_line
+
+    check("лінія версії: мажор, «0.x» — два числа, глибина 2 — два числа",
+          version_line("18.3.1") == "18" and version_line("0.14.8") == "0.14"
+          and version_line("1.37.2") == "1" and version_line("1.37.2", 2) == "1.37"
+          and version_line("0.14.8", 2) == "0.14" and version_line("4", 2) == "4"
+          and version_line("1.37.0-rc.1", 2) == "1.37")
     # Цілі заміру — розділи, а номери в ECMA-262 між редакціями зсуваються, як і
     # заголовки документації між версіями сайту. Ціль, якої в корпусі немає, не
     # влучає жодним способом, і замір мовчки міряє дев'ять запитів, а каже про

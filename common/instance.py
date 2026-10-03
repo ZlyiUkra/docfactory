@@ -81,6 +81,11 @@ def config() -> dict:
         raise SystemExit(f"{path}: поле answer_hosts — список доменів, а не {hosts!r}")
     if not isinstance(data.get("example_label", ""), str):
         raise SystemExit(f"{path}: поле example_label мусить бути рядком")
+    depth = data.get("version_line_depth")
+    if depth is not None and (isinstance(depth, bool) or not isinstance(depth, int)
+                              or not 1 <= depth <= 2):
+        raise SystemExit(f"{path}: поле version_line_depth мусить бути цілим 1–2, "
+                         f"а не {depth!r}")
     port = data.get("port")
     if port is not None and (not isinstance(port, int)
                              or not 1 <= port <= 65535):
