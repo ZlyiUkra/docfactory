@@ -412,18 +412,29 @@ def main(argv: list[str]) -> int:
     # влучає жодним способом, і замір мовчки міряє дев'ять запитів, а каже про
     # десять: так «7.2.15» стояв мертвим від першого дня (у цій редакції
     # IsLooselyEqual — 7.2.13). Розділ мусить мати власний текст: рубрику без
-    # тексту пошук не поверне.
+    # тексту пошук не поверне. Запис із версією вимагає цілі в цій версії:
+    # сторінки переїжджають між лініями (HPA у kubernetes 1.35 змінила ім'я), і
+    # після оновлення корпусу мертва під версією ціль інакше з'явилася б мовчки.
     from server.quality import CASES
+    from common.corpus import version_within
 
-    def known(want: str) -> bool:
+    def pool(version: str) -> set:
+        if not version:
+            return with_text
+        return {p.anchor for p in spec_mcp._INDEX.passages if p.section
+                and any(version_within(v, version) for v in p.versions)}
+
+    def known(want: str, anchors: set) -> bool:
         """Ціль-документ (без «#», лише в режимі markdown) існує, коли в корпусі є
         хоч один її розділ із текстом; помилка в одній цілі списку не сховається
         за влучанням у сусідню."""
         if "#" in want or not any("#" in a for a in with_text):
-            return want in with_text
-        return any(a.startswith(want + "#") for a in with_text)
+            return want in anchors
+        return any(a.startswith(want + "#") for a in anchors)
 
-    missing = [w for _, wants in CASES for w in wants if not known(w)]
+    pools = {v: pool(v) for v in {v for _, _, v in CASES}}
+    missing = [w + (f" ({v})" if v else "")
+               for _, wants, v in CASES for w in wants if not known(w, pools[v])]
     check("замір якості: кожна ціль існує в корпусі як розділ із текстом",
           not missing, f"цілей {len(CASES)}"
           + (f", немає: {', '.join(missing)}" if missing else ""))

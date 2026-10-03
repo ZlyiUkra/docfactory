@@ -49,17 +49,28 @@ from common import profile
 # Добирається вона з документації, а не з видачі: ціль, дописана під те, що
 # пошук знайшов, робить замір зеленим і порожнім. Якщо правильних сторінок
 # виходить пʼять, розмите питання — переписують запит, а не розширюють ціль.
-CASES = [(q, [w] if isinstance(w, str) else list(w))
-         for q, w in profile.checks()["quality"]]
+#
+# Третій елемент запису — версія, необов'язкова. Без неї перша десятка міряє
+# найгірший випадок, людину своїми словами повз промпт. Але в корпусі, де та сама
+# сторінка живе в десятках редакцій (kubernetes), запит без версії віддає місця
+# старим поколінням сторінки, і промпт саме тому велить моделі шукати з поточною
+# лінією; там переказ іде з версією, і число такого примірника з рештою не
+# порівнюється.
+def _cases(rows: list) -> list[tuple[str, list[str], str]]:
+    """Записи поля checks.json: (запит, цілі, версія або "")."""
+    return [(c[0], [c[1]] if isinstance(c[1], str) else list(c[1]),
+             c[2] if len(c) > 2 else "")
+            for c in rows]
+
+
+CASES = _cases(profile.checks()["quality"])
 
 # Друга десятка — поле quality_model: ті самі теми, записані так, як їх поставить
 # модель за промптом примірника, — назвами документації, з фреймворком і, де треба,
 # з version. Перша десятка міряє найгірший випадок (людина своїми словами, повз
 # промпт), друга — те, що сервер віддасть моделі насправді. Проганяється самим
 # spec_mcp._find, без розкладу на способи. Без поля — лише перша десятка.
-MODEL_CASES = [(c[0], [c[1]] if isinstance(c[1], str) else list(c[1]),
-                c[2] if len(c) > 2 else "")
-               for c in profile.checks().get("quality_model") or []]
+MODEL_CASES = _cases(profile.checks().get("quality_model") or [])
 
 K = 5
 WARMUP_SEC = 90
@@ -129,11 +140,12 @@ def main(argv: list[str]) -> int:
     # Глибина злиття — та сама, що в сервері (spec_mcp._find): без поля fusion_depth
     # у config.json це K, і кожен спосіб окремо міряється своїми першими K місцями.
     fuse = profile.FUSION_DEPTH or K
-    for query, wants in CASES:
+    for query, wants, version in CASES:
         deep = max(K * spec_mcp.DEPTH, fuse)
         t0 = time.perf_counter()
-        # Той самий відсів варіантів, що в spec_mcp._find; без variant_strict — None.
-        keep = spec_mcp._only_wanted(query)
+        # Той самий відсів варіантів і версії, що в spec_mcp._find; без
+        # variant_strict і без версії — None, видача та сама, що й була.
+        keep = spec_mcp._only_wanted(query, _version_keep(spec_mcp, version))
         words = spec_mcp._dedup(spec_mcp._INDEX.retrieve(query, deep, keep), fuse, query)
         t_words += time.perf_counter() - t0
         found = {"по словах": spec_mcp._pin(query, words[:K], K, keep)}
@@ -161,7 +173,8 @@ def main(argv: list[str]) -> int:
             score[way] += hit
             marks.append(f"{way} {'+' if hit else '-'}")
         want = " | ".join(wants)
-        print(f"· {query}\n    треба {want:<11} {'   '.join(marks)}")
+        tail = f"  version={version}" if version else ""
+        print(f"· {query}{tail}\n    треба {want:<11} {'   '.join(marks)}")
         if show:
             for way in ways:
                 names = ", ".join(p.anchor for p in found[way])
@@ -183,16 +196,22 @@ def main(argv: list[str]) -> int:
     return 0
 
 
+def _version_keep(spec_mcp, version: str):
+    """Фільтр версії, як у пошуку з version; без версії — None."""
+    if not version:
+        return None
+
+    def keep(p) -> bool:
+        return any(spec_mcp.version_within(v, version) for v in p.versions)
+    return keep
+
+
 def model(spec_mcp, show: bool) -> None:
     """Друга десятка: запити «як модель», тим самим шляхом, що й сервер."""
     print(f"\nяк модель — {len(MODEL_CASES)} запитів назвами документації:")
     hits = 0
     for query, wants, version in MODEL_CASES:
-        keep = None
-        if version:
-            def keep(p, want=version):
-                return any(spec_mcp.version_within(v, want) for v in p.versions)
-        found, _ = spec_mcp._find(query, K, keep)
+        found, _ = spec_mcp._find(query, K, _version_keep(spec_mcp, version))
         hit = any(within(p.anchor, w) for p in found for w in wants)
         hits += hit
         tail = f"  version={version}" if version else ""
