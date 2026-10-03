@@ -23,6 +23,7 @@ systemctl, apt), документуються в десятку різних п�
 
 import hashlib
 import re
+import time
 
 from engine.readers import Item, _markup, register
 
@@ -31,6 +32,19 @@ _H1 = re.compile(r"<h1>(.*?)</h1>", re.S)
 _LEAD = re.compile(r'<p class="p-heading--4">(.*?)</p>', re.S)
 _PROVIDED = re.compile(r"Provided by:\s*<a[^>]*>([^<]+)</a>", re.S)
 _BODY = re.compile(r'id="manpage-content"[^>]*>(.*?)</main>', re.S)
+
+
+def _sitemap(ctx, url: str) -> str:
+    """Мапа сайту з трьох спроб. Сервер віддає її по 8–13 с, і з двох десятків мап
+    перелік раз у раз втрачав одну на обірваному з'єднанні — а з нею й увесь перелік."""
+    for wait in (30, 120, None):
+        try:
+            return ctx.text(url)
+        except (SystemExit, OSError) as e:
+            if wait is None:
+                raise
+            print(f"  {url}: {e}; повторю за {wait} с", flush=True)
+            time.sleep(wait)
 
 
 @register("ubuntu-man")
@@ -47,7 +61,7 @@ def ubuntu_man(source: dict, ctx) -> list[Item]:
             raise SystemExit(f"{source['id']}: сторінка «{p}» — не «ім'я.розділ».")
         wanted[(name, sec)] = p
     label = source.get("label", "")
-    maps = _LOC.findall(ctx.text(source["url"]))
+    maps = _LOC.findall(_sitemap(ctx, source["url"]))
 
     items = []
     for release, version in releases.items():
@@ -59,7 +73,7 @@ def ubuntu_man(source: dict, ctx) -> list[Item]:
             for m in (u for u in maps if pattern.search(u)):
                 if not ctx.allowed(m):
                     continue
-                for url in _LOC.findall(ctx.text(m)):
+                for url in _LOC.findall(_sitemap(ctx, m)):
                     hit = re.search(rf"/manpages/{re.escape(release)}/man\w+/(.+)\.(\w+)\.html$",
                                     url)
                     if hit and (hit.group(1), hit.group(2)) in wanted:
