@@ -68,6 +68,9 @@ _OCR_DPI = 200
 _OCR_MIN_SCORE = 0.5
 OCR_NOTE = "Увага: текст розпізнано з зображення (OCR), можливі помилки."
 
+# Гліфа з пробілом-здогадкою попереду, як її віддає pypdf 6.
+_GLYPH = re.compile(r"\s+(\S)")
+
 Frag = collections.namedtuple("Frag", "x y size text")
 Row = collections.namedtuple("Row", "x y size text column")
 
@@ -107,10 +110,25 @@ def text_fragments(page) -> list:
             if nxt is None or nxt[0].strip() or _identity(nxt[1], nxt[2]):
                 continue
             cm, tm = nxt[1], nxt[2]
+        # pypdf 6 ставить перед кожною гліфою файла, набраного по гліфі, власний
+        # пробіл-здогадку («C», « e», « r»…). Пробіли між словами такі файли несуть
+        # окремими гліфами, тож здогадка лише розриває слова — її прибрано.
+        glyph = _GLYPH.fullmatch(text)
+        if glyph:
+            text = glyph.group(1)
         x = tm[4] * cm[0] + tm[5] * cm[2] + cm[4]
         y = tm[4] * cm[1] + tm[5] * cm[3] + cm[5]
         size = abs(tm[3] * cm[3]) * fs or 1.0
         out.append(Frag(x, y, size, text))
+    # Сусідні в потоці сторінки гліфи, що стоять упритул по горизонталі, — один рядок.
+    # pypdf 6 подекуди віддає першу гліфу рядка на ~0,8 кегля вище («1» у «18%» над
+    # «8%»), і без цього вона відходила б в інший рядок або губилася.
+    for i in range(len(out) - 1):
+        a, b = out[i], out[i + 1]
+        if (len(a.text) == 1 and len(b.text.strip()) == 1 and a.y != b.y
+                and 0 < b.x - a.x <= 1.5 * max(a.size, b.size)
+                and abs(a.y - b.y) <= max(a.size, b.size)):
+            out[i] = a._replace(y=b.y)
     return out
 
 
