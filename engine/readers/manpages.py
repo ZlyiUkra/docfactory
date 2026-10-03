@@ -23,6 +23,7 @@ import io
 import lzma
 import re
 import tarfile
+import zlib
 
 from engine.readers import Item, _markup, register
 
@@ -371,14 +372,20 @@ def man_pages(source: dict, ctx) -> list[Item]:
                 if not member.isfile() or not m or m.group(1) not in sections:
                     continue
                 raw = tar.extractfile(member).read().decode("utf-8", errors="replace")
+                # До 6.0 кожна сторінка кінчалася розділом COLOPHON «This page is part of
+                # release X» — він міняє текст щовипуску, і без зрізання жодна сторінка не
+                # злилася б із сусідньою версією.
+                raw = re.sub(r"^\.SH\s+\"?COLOPHON\"?\s*\n.*\Z", "", raw, flags=re.M | re.S)
                 body = re.sub(r"^\.TH .*$", "", raw, count=1, flags=re.M)
-                if re.match(r"\s*\.so\s", re.sub(r"^\.\\\".*\n", "", body, flags=re.M)):
+                # Коментарі (авторські права, дати правок) теж не міняють змісту.
+                body = re.sub(r"^\.\\\".*\n", "", body, flags=re.M)
+                if re.match(r"\s*\.so\s", body):
                     continue
                 page = f"{m.group(2)}.{m.group(3)}"
                 key = (page, hashlib.sha256(body.encode()).hexdigest())
                 if key not in seen:
                     seen[key] = []
-                    texts[key] = raw
+                    texts[key] = zlib.compress(raw.encode(), 6)   # тисячі текстів — у стиску
                 seen[key].append(v)
         del data
 
@@ -392,7 +399,7 @@ def man_pages(source: dict, ctx) -> list[Item]:
 
         def make(page=page, raw=texts[(page, digest)], found=found, url=url,
                  name=name, sec=sec):
-            lead, body = to_markdown(raw)
+            lead, body = to_markdown(zlib.decompress(raw).decode())
             what = lead.split(" - ", 1)[1].strip() if " - " in lead else ""
             title = f"{name}({sec})" + (f" — {what}" if what else "")
             if label:
