@@ -8,6 +8,8 @@
                  перетворення в текст (бічна навігація всередині статті).
                  `start` — вираз, після якого шукається `<h1>` статті (коли раніше
                  стоїть `<h1>` шапки сайту). `version` — версія всіх документів джерела.
+                 `doc_title` — назва документа для сторінки без `<h1>`; тоді текст іде
+                 від `start` (поле обов'язкове в парі з ним).
 `html-list`    — явний перелік: документом стає `url` і кожна адреса з `pages`; решта
                  полів ті самі. Для окремих статей на сайтах, де брати треба кілька
                  сторінок, а не розділ: Вікіпедія, блог.
@@ -40,13 +42,17 @@ _LI_P = re.compile(r"<li>\s*<p>(.*?)</p>\s*</li>", re.S)
 
 
 def _text(html: str, url: str, stamp: str, version: str, ends: list, drops: list,
-          start_at=None) -> str:
+          start_at=None, fixed_title: str = "") -> str:
     at = start_at.search(html) if start_at else None
-    m = _H1.search(html, at.end() if at else 0)
-    if not m:
-        raise SystemExit(f"На сторінці немає <h1> ({url}) — документ не записую.")
-    title = _markup.html_body(m.group(1)).strip()
-    start = m.end()
+    if fixed_title and at:
+        # Сторінка без <h1> (лендинг курсу): назва — з оголошення, текст — від `start`.
+        title, start = fixed_title, at.end()
+    else:
+        m = _H1.search(html, at.end() if at else 0)
+        if not m:
+            raise SystemExit(f"На сторінці немає <h1> ({url}) — документ не записую.")
+        title = _markup.html_body(m.group(1)).strip()
+        start = m.end()
     stop = min((e.start() for e in (r.search(html, start) for r in ends) if e),
                default=len(html))
     part = html[start:stop]
@@ -106,7 +112,7 @@ def _items(source: dict, ctx, pages: list, ends: list, drops: list, start_at) ->
 
         def make(page=page):
             return _text(ctx.text(page), page, ctx.stamp, source.get("version", ""),
-                         ends, drops, start_at)
+                         ends, drops, start_at, source.get("doc_title", ""))
 
         items.append(Item(id=f"{source['id']}/{name}",
                           file=f"{source['id']}--{name}.txt", make=make))
