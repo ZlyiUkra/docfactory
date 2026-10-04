@@ -657,6 +657,7 @@ moby, compose та buildx. Desktop, AI, Scout та інші продукти н�
   (`"29"` — Engine 29.x);
 - нових читачів немає: `sitemap-md-meta`, `changelog`, `ghreleases-tagged`, `ghreleases`;
 - приклад питання агентові: `./df docker ask "How do I build an image for both amd64 and arm64?"`;
+- план вивчення, другий у лінії Linux → Docker → Kubernetes, — [instances/docker/LEARNING.md](instances/docker/LEARNING.md);
 - докладніше — у [instances/docker/README.md](instances/docker/README.md).
 
 ### kubernetes
