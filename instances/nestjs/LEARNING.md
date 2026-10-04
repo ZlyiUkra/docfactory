@@ -329,13 +329,13 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 | TypeORM або Prisma | ORM: сутності чи схема, міграції, запити | Ф3 Д1–10 |
 | `@nestjs/jwt`, Passport | токени й стратегії входу | Ф4 Д2–5 |
 | bcrypt або argon2 | хешування паролів | Ф4 Д1 |
-| Vitest і supertest | юніт- і наскрізні тести | Ф5 |
+| Vitest і supertest | юніт- і наскрізні тести | Ф5; є примірник `vitest` (supertest — поза корпусом) |
 | `@nestjs/terminus` | перевірки стану для Docker і оркестраторів | Ф6 Д3, Д8 |
 | helmet, `@nestjs/throttler` | заголовки безпеки, обмеження частоти | Ф4 Д12 |
 | RxJS, мінімум | `map`, `tap`, `catchError` у перехоплювачах; потік для `@Sse` | Ф1 Д7, Ф7 Д6 |
 | `@nestjs/websockets`, `@nestjs/platform-socket.io` | gateway: вебсокети з DI, кімнатами й підтвердженнями | Ф7 Д2–7 |
 | socket.io-client | клієнт gateway у SPA, тестах і заміра навантаження (поза корпусом) | Ф7 Д2–3, Д7 |
-| Kubernetes: `kubectl`, k3s | продакшн родини: бекенд, база й Redis подами в кластері з плану React (поза корпусом) | Ф6 Д8–9, Ф7 Д6 |
+| Kubernetes: `kubectl`, k3s | продакшн родини: бекенд, база й Redis подами в кластері з плану React | Ф6 Д8–9, Ф7 Д6; є примірник `kubernetes` |
 
 **Варто знати** — трапляється в більшості проєктів, вчиться за день, коли знадобилося.
 
@@ -366,8 +366,30 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 | NestJS Observe | траси й помилки продакшну; глава `Distributed tracing` (12) | не вчиться |
 | Supabase, Clerk | база чи вхід як послуга; є примірники `supabase`, `clerk` | не вчиться |
 
-Про `nestjs-pino`, orval, autocannon, socket.io-client і Kubernetes: у корпусі Nest їх немає (або вони лише згадані),
-це порада з практики, а не висновок із документації.
+Про `nestjs-pino`, orval, autocannon і socket.io-client: у корпусі Nest їх немає (або вони лише згадані), це порада
+з практики, а не висновок із документації. Kubernetes має власний примірник `kubernetes`.
+
+### Документація у фабриці
+
+**Є примірник** — питати його сервер документації:
+
+- NestJS — `nestjs`, разом із главами пакетів `@nestjs/config`, `@nestjs/swagger`, `@nestjs/jwt`,
+  `@nestjs/terminus`, `@nestjs/throttler`, `@nestjs/websockets`, `@nestjs/event-emitter`, `@nestjs/schedule`,
+  `@nestjs/cache-manager`;
+- TypeScript — `typescript`; zod — `zod`; Vitest — `vitest`;
+- Docker — `docker`; Kubernetes, k3s і `kubectl` — `kubernetes`;
+- SPA-бік: Vite — `vite`, React Hook Form — `react-hook-form`, TanStack Query — `tanstack-query`;
+- Supabase — `supabase`; Clerk — `clerk`.
+
+**Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
+глава про інтеграцію (TypeORM, Prisma, Passport, helmet, BullMQ, class-validator), але не документація самої
+бібліотеки:
+
+- з «треба знати»: PostgreSQL, TypeORM, Prisma, Passport, bcrypt, argon2, class-validator, class-transformer,
+  supertest, helmet, RxJS, socket.io і socket.io-client;
+- з «варто знати»: BullMQ, Redis, `@socket.io/redis-adapter`, `ws`, nestjs-cls, nestjs-pino, cookie-parser,
+  csrf-csrf, CASL, orval, openapi-typescript;
+- з «знати, що існує»: Mongoose, MikroORM, Drizzle, Kafka, RabbitMQ, NATS, `@socket.io/redis-streams-adapter`.
 
 ---
 
@@ -767,7 +789,8 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   руками. Порядок усього разом описує глава про життєвий цикл запиту (схема нижче): на прямому шляху — від
   глобальних до маршруту; на зворотному (перехоплювачі «після» й фільтри) — навпаки, від маршруту до глобальних.
   Виняток ловить перший фільтр, що підійшов, і далі не передається; помилку з middleware бачать лише глобальні.
-- **Читати:** `Interceptors`, `Custom decorators`; у розділі FAQ — `Request lifecycle`, розділ Summary.
+- **Читати:** `Interceptors`, `Custom decorators`; у розділі FAQ — `Request lifecycle`, розділ Summary; поза корпусом
+  — документація RxJS: «Operators» (`map`, `tap`, `catchError`).
 - **Зробити:** 1) перехоплювач, що міряє тривалість і загортає відповідь у `{ data, tookMs }`; 2) декоратор
   `@CurrentUser()`, що дістає користувача з запиту (поки — з заголовка); 3) намалювати ланцюг по пам'яті й звірити
   з главою.
@@ -851,7 +874,7 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   старих статей працює лише з версії 18. Змінні завжди приходять рядками, тож порт — `z.coerce.number()`.
   Значення, яке повернула схема, і є тим, що віддає `ConfigService`.
 - **Читати:** розділ Techniques, глава `Configuration`, розділи Getting started, Schema validation, Using the
-  ConfigService; у `Migration guide` — розділ Config module.
+  ConfigService; у `Migration guide` — розділ Config module; у примірнику `zod` — `Basic usage`.
 - **Зробити:** 1) схема оточення: `PORT`, `NODE_ENV`, `DATABASE_URL`, `JWT_SECRET` (мінімум 32 символи);
   2) `ConfigService` замість `process.env` у коді; 3) `.env.example` із заглушками в репозиторії.
 - **Перевірити себе:** запуск без `JWT_SECRET` падає одразу з назвою змінної; із коротким секретом — теж.
@@ -881,8 +904,8 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   ланцюжка цього запиту, — `AsyncLocalStorage`, у Nest через пакет `nestjs-cls`. Тоді будь-який сервіс бере
   ідентифікатор зі сховища, не протягуючи його параметром через усі виклики і не роблячи сервіс запитним
   (фаза 5, день 6).
-- **Читати:** розділ Techniques, глава `Logging`, розділи Structured logging params і JSON logging; розділ
-  Recipes, глава `Async local storage`, розділ NestJS CLS.
+- **Читати:** розділ Techniques, глава `Logging`, розділи Structured logging params і JSON logging; розділ Recipes,
+  глава `Async local storage`, розділ NestJS CLS; поза корпусом — README `nestjs-cls`.
 - **Зробити:** 1) `ClsModule` з middleware, що бере `x-request-id` або генерує новий; 2) ідентифікатор у
   відповіді заголовком; 3) сервіс записів пише в лог через `Logger` із полем `requestId` зі сховища;
   4) два паралельні запити.
@@ -1018,7 +1041,8 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 - **Що це.** `TypeOrmModule.forFeature([Post])` у модулі і `@InjectRepository(Post)` у сервісі дають репозиторій:
   `find`, `findOne`, `save`, `remove`, умови `where`. Відповідь не повинна містити того, що клієнтові не треба, —
   передусім хеша пароля (фаза 4, день 1).
-- **Читати:** розділ Techniques, глава `Database`, розділ Repository pattern.
+- **Читати:** розділ Techniques, глава `Database`, розділ Repository pattern; поза корпусом — документація TypeORM:
+  «Working with Repository» або Prisma Client: «CRUD».
 - **Зробити:** 1) `PostsService` на репозиторії замість масиву; 2) 404 з кодом, коли запису немає; 3) прогнати
   ті самі `curl` і SPA, що в фазі 2.
 - **Перевірити себе:** жоден маршрут ззовні не змінився: SPA працює без правок, згенерований клієнт той самий.
@@ -1199,7 +1223,7 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   зайнятий email дає 409 — це свідомий компроміс: так можна перевірити, чи зареєстрована адреса, тому обмеження
   частоти на реєстрацію обов'язкове (день 12).
 - **Читати:** розділ Security, глава `Encryption and Hashing`, розділ Hashing; розділ Techniques, глава
-  `Serialization`, розділ Exclude properties.
+  `Serialization`, розділ Exclude properties; поза корпусом — README argon2 або bcrypt.
 - **Зробити:** 1) `UNIQUE` на email у міграції; 2) `POST /auth/register` зі схемою zod (email, пароль від 12
   символів); 3) хешування bcrypt або argon2; 4) жодна відповідь API не містить пароля чи хеша.
 - **Перевірити себе:** у базі — лише хеші; `curl` на реєстрацію, `GET /users/me` і список авторів — у жодній
@@ -1311,8 +1335,8 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   `SameSite=Strict` уже не пускає куку з чужих сайтів, але піддомен того самого сайту (`evil.example.com` поруч із
   `app.example.com`) — той самий сайт. Додатковий рубіж — перевірка заголовка `Origin` на `/api/auth/refresh` і
   `/auth/logout` зі списку дозволених або CSRF-токен пакетом `csrf-csrf`.
-- **Читати:** розділ Security, глава `CSRF Protection`; OWASP — «Cross-Site Request Forgery Prevention Cheat
-  Sheet», розділ про перевірку `Origin`.
+- **Читати:** розділ Security, глава `CSRF Protection`; OWASP — «Cross-Site Request Forgery Prevention Cheat Sheet»,
+  розділ про перевірку `Origin`; поза корпусом — README csrf-csrf і cookie-parser.
 - **Зробити:** 1) вихід і «вийти всюди»; 2) guard або middleware, що на двох маршрутах вимагає `Origin` зі
   списку; 3) `curl` з чужим `Origin` і без нього.
 - **Перевірити себе:** після виходу старий refresh дає 401; запит із `Origin: https://evil.example` — 403; SPA через
@@ -1418,7 +1442,7 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   потрібних класів; `moduleRef.get(PostsService)` дає екземпляр. Найпростіше й найцінніше — правило доступу як
   чиста функція: `canEdit(user, post)` без бази, без Nest, без моків.
 - **Читати:** розділ Fundamentals, глава `Testing` — розділи Installation, Unit testing, Testing utilities; у
-  `Migration guide` — розділ Testing stack.
+  `Migration guide` — розділ Testing stack; у примірнику `vitest` — `Getting Started | Guide`, `Mocking | Guide`.
 - **Зробити:** 1) винести правило з фази 4, дня 11, у `canEdit`; 2) три тести: автор, чужий, адмін; 3) перший
   тест сервісу через `createTestingModule`.
 - **Перевірити себе:** `npx vitest run` зелений; зміна правила ламає рівно один тест.
@@ -1526,7 +1550,8 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 # Фаза 6. Продакшн — 9 днів
 
 Сервер, який треба зібрати, запустити, тримати живим, міряти й вміти оновити. Глави Nest тут — лише те, що Nest
-вимагає від Docker, проксі й CI; документації Docker, nginx, Redis, GitHub Actions і Kubernetes у корпусі немає.
+вимагає від Docker, проксі й CI. Docker і Compose мають примірник `docker`, Kubernetes, k3s і Traefik — примірник
+`kubernetes`; документації nginx, Redis і GitHub Actions у фабриці немає.
 Дні 1–7 робляться на своєму комп'ютері й на тому самому хості (PaaS), куди ви викотили застосунок у фазі 2:
 `docker compose` лишається способом розробки до кінця родини. Дні 8–9 переносять продакшн у кластер k3s, який ви
 підняли в плані React (фаза 5, дні 7–9): бекенд, база й Redis стають подами поруч із подом SPA, а хост із фази 2
@@ -1560,8 +1585,8 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   SPA і пересилає `/api` на `api`. Для браузера SPA й API — одне походження, як із проксі Vite: кука refresh
   працює, CORS не потрібен. API за nginx вмикає `trust proxy`. Міграції не запускають на старті застосунку: два
   екземпляри API почнуть накочувати їх одночасно, а невдала міграція покладе застосунок у цикл перезапусків.
-- **Читати:** документація Docker Compose, nginx — «proxy_pass» (поза корпусом); розділ Security, глава
-  `Rate limiting`, розділ Proxies.
+- **Читати:** у примірнику `docker` — `Docker Compose`, `Compose file reference`, `Networking in Compose`;
+  документація nginx — «proxy_pass» (поза корпусом); розділ Security, глава `Rate limiting`, розділ Proxies.
 - **Зробити:** 1) чотири сервіси; 2) `docker compose up` на чистій машині; 3) SPA на `http://localhost` входить,
   оновлює токен і створює запис; 4) повторити вправу з обмеженням частоти з фази 4, дня 12, з `trust proxy` і без.
 - **Перевірити себе:** `docker compose down -v && docker compose up` — застосунок працює з порожньою, але
@@ -1578,8 +1603,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   JSON (`ConsoleLogger({ json: true })` або `nestjs-pino`, поза корпусом), рівень зі змінної оточення,
   `requestId` з фази 2 у кожному рядку, і **жодного** заголовка `Authorization`, пароля чи токена.
 - **Читати:** розділ Recipes, глава `Health checks` — розділи Setting up a Healthcheck, TypeOrm health indicator,
-  Custom health indicator, Graceful shutdown timeout; у `Migration guide` — розділ Terminus module; розділ
-  Techniques, глава `Logging`, розділ JSON logging; `Deployment`, розділи Health checks і Logging.
+  Custom health indicator, Graceful shutdown timeout; у `Migration guide` — розділ Terminus module; розділ Techniques,
+  глава `Logging`, розділ JSON logging; `Deployment`, розділи Health checks і Logging; поза корпусом — README
+  `nestjs-pino`.
 - **Зробити:** 1) `/health/live` і `/health/ready` з перевіркою бази (для Prisma — власний індикатор);
   2) `healthcheck` у compose на `ready`; 3) JSON-логи з рівнем зі змінної; 4) пошук по логах після
   сценарію входу.
@@ -1650,10 +1676,11 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   Registry), одразу для двох архітектур, amd64 і arm64 (`docker buildx`, як для SPA в плані React): машина кластера,
   куди образ поїде в день 8, — arm64. Типовий збирач Docker arm64 не вміє — потрібен окремий (`docker buildx create
   --use`; у GitHub Actions — дія `docker/setup-buildx-action`), а щоб емульована збірка arm64 не тривала щоразу з
-  нуля, шари кешують у кеші GitHub Actions: `--cache-from type=gha --cache-to type=gha,mode=max` (поза корпусом,
-  звірте з документацією `docker/build-push-action`). Хост із фази 2 тим часом запускає образ, а міграції — окремим
-  кроком перед ним, як у compose. Секрети — у сховищі секретів CI й платформи, не в YAML. Автоматичний викот у кластер
-  з CI — тема плану Next.js, фаза 9; у цьому плані в кластер викочують руками, щоб бачити кожен крок.
+  нуля, шари кешують у кеші GitHub Actions: `--cache-from type=gha --cache-to type=gha,mode=max` (у примірнику
+  `docker` — `Cache management with GitHub Actions`, `Multi-platform image with GitHub Actions`). Хост із фази 2 тим
+  часом запускає образ, а міграції — окремим кроком перед ним, як у compose. Секрети — у сховищі секретів CI й
+  платформи, не в YAML. Автоматичний викот у кластер з CI — тема плану Next.js, фаза 9; у цьому плані в кластер
+  викочують руками, щоб бачити кожен крок.
 - **Читати:** документація GitHub Actions і Dependabot (поза корпусом); `Deployment`, розділи Scaling up or out і
   Some other tips.
 - **Зробити:** 1) робочий процес на кожен pull request; 2) свідомо зламати тест безпеки з фази 5 — процес
@@ -1686,9 +1713,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   лише для amd64 там не стартує; нативні модулі (bcrypt, argon2, рушії Prisma) теж мусять мати збірку під arm64 —
   це перевіряє перший же запуск.
 - **Читати:** розділ Recipes, глава `Health checks`, розділи Setting up a Healthcheck і Graceful shutdown timeout;
-  `Deployment`, розділи Health checks і Scaling up or out; документація Kubernetes на kubernetes.io —
-  «Deployments», «Service», «ConfigMaps», «Secrets», «StatefulSets», «Persistent Volumes», «Jobs», «Configure
-  Liveness, Readiness and Startup Probes» (поза корпусом).
+  `Deployment`, розділи Health checks і Scaling up or out; у примірнику `kubernetes` — `Deployments`, `Service`,
+  `ConfigMaps`, `Secrets`, `StatefulSets`, `Persistent Volumes`, `Jobs`,
+  `Configure Liveness, Readiness and Startup Probes`.
 - **Зробити:** усі файли — у теці `k8s/` репозиторію, застосовуються командою `kubectl apply -f <файл>` («зроби в
   кластері так, як написано у файлі»: створює, а при повторі — оновлює); простір імен — той, де живе под SPA (нижче
   він названий `app`, ключ `-n app` у командах).
@@ -1860,35 +1887,33 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 - **Навіщо.** Модель токенів із фази 4 вимагає, щоб SPA і API були одним сайтом: інакше куку refresh із
   `SameSite=Strict` браузер не надішле. А база без перевіреної резервної копії — це база, яку ви одного дня
   втратите.
-- **Що це.** HTTPRoute — правило Gateway API: «запити на це ім'я з таким шляхом віддати такому Service». Gateway
-  `web` (вхідну точку Traefik зі слухачами `http` і `https`) ви створили в плані React; маршрут `spa` прив'язаний
-  лише до слухача `https` (`sectionName: https`), а слухач `http` належить маршруту `spa-redirect`, що
-  перенаправляє на HTTPS. Тепер маршрут `spa` отримує друге правило: `/api` → Service `api`, решта → Service `spa`.
-  Для браузера все — одне походження `https://<ім'я>`, як із проксі Vite і nginx у compose: CORS не потрібен,
-  кука — того самого сайту. Порядок правил не важить: Gateway API бере найдовший збіжний префікс, тож `/api/posts`
-  іде в API, а `/about` — у SPA; `PathPrefix /api` збігається з `/api` і `/api/…`, але не з `/apix`. Маршрут шляху
-  не переписує: префікс `api` Nest ставить сам (фаза 2, день 7), а перевірки стану без префікса ззовні не видно.
-  Адреса клієнта: перед Nest тепер два проміжні вузли — балансувальник k3s і Traefik. Типово балансувальник
-  підміняє адресу клієнта своєю, і обмежувач частоти бачить усіх з однієї IP; `externalTrafficPolicy: Local` у
-  сервісі Traefik зберігає справжню адресу (документація k3s, «Networking Services», поза корпусом). Traefik кладе
-  її в `X-Forwarded-For`, а `trust proxy` у Nest — це **точна кількість** довірених проміжних вузлів перед
-  застосунком (тут — 1, Traefik), ніколи не `true`: з `true` Express повірить першій адресі в заголовку, яку
-  клієнт може написати сам. Ім'я: sslip.io не входить у Public Suffix List (перевірено 02.10.2026), тож для
-  браузера всі `*.sslip.io` — **один сайт**. Чужа сторінка на будь-якому `*.sslip.io` — «той самий сайт» для
-  `SameSite` і може поставити куку на весь `sslip.io`. Тому sslip.io — лише для навчальних днів; до першого
-  справжнього користувача й до демо — власний домен (~$10 на рік) або безкоштовний піддомен DuckDNS
-  (`duckdns.org` у списку є, тож кожен піддомен — окремий сайт). Оновлення токена в Nest і так перевіряє точний
-  `Origin` (фаза 4, день 8) — це той рубіж, що тримає, поки ім'я навчальне. Резервна копія: `pg_dump -Fc` пише
-  базу в один стиснений файл, який `pg_restore` розгортає в будь-яку порожню базу. CronJob — Job за розкладом у
-  форматі cron: `0 3 * * *` — щодня о 03:00 за годинником кластера (зазвичай UTC). Копія на тому самому диску, що
-  й база, від втрати машини не рятує — тому її ще й забирають із машини, зашифрованою: `age` — маленька утиліта
-  шифрування за відкритим ключем (поза корпусом); шифрує будь-хто з відкритим ключем, розшифровує лише власник
-  приватного. І копія, з якої ніколи не відновлювались, — не копія: відновлення відпрацьовують в окрему базу, не
-  чіпаючи робочу.
+- **Що це.** HTTPRoute — правило Gateway API: «запити на це ім'я з таким шляхом віддати такому Service». Gateway `web`
+  (вхідну точку Traefik зі слухачами `http` і `https`) ви створили в плані React; маршрут `spa` прив'язаний лише до
+  слухача `https` (`sectionName: https`), а слухач `http` належить маршруту `spa-redirect`, що перенаправляє на HTTPS.
+  Тепер маршрут `spa` отримує друге правило: `/api` → Service `api`, решта → Service `spa`. Для браузера все — одне
+  походження `https://<ім'я>`, як із проксі Vite і nginx у compose: CORS не потрібен, кука — того самого сайту.
+  Порядок правил не важить: Gateway API бере найдовший збіжний префікс, тож `/api/posts` іде в API, а `/about` — у
+  SPA; `PathPrefix /api` збігається з `/api` і `/api/…`, але не з `/apix`. Маршрут шляху не переписує: префікс `api`
+  Nest ставить сам (фаза 2, день 7), а перевірки стану без префікса ззовні не видно. Адреса клієнта: перед Nest тепер
+  два проміжні вузли — балансувальник k3s і Traefik. Типово балансувальник підміняє адресу клієнта своєю, і обмежувач
+  частоти бачить усіх з однієї IP; `externalTrafficPolicy: Local` у сервісі Traefik зберігає справжню адресу (у
+  примірнику `kubernetes` — `K3s: Networking Services`). Traefik кладе її в `X-Forwarded-For`, а `trust proxy` у Nest
+  — це **точна кількість** довірених проміжних вузлів перед застосунком (тут — 1, Traefik), ніколи не `true`: з `true`
+  Express повірить першій адресі в заголовку, яку клієнт може написати сам. Ім'я: sslip.io не входить у Public Suffix
+  List (перевірено 02.10.2026), тож для браузера всі `*.sslip.io` — **один сайт**. Чужа сторінка на будь-якому
+  `*.sslip.io` — «той самий сайт» для `SameSite` і може поставити куку на весь `sslip.io`. Тому sslip.io — лише для
+  навчальних днів; до першого справжнього користувача й до демо — власний домен (~$10 на рік) або безкоштовний
+  піддомен DuckDNS (`duckdns.org` у списку є, тож кожен піддомен — окремий сайт). Оновлення токена в Nest і так
+  перевіряє точний `Origin` (фаза 4, день 8) — це той рубіж, що тримає, поки ім'я навчальне. Резервна копія: `pg_dump
+  -Fc` пише базу в один стиснений файл, який `pg_restore` розгортає в будь-яку порожню базу. CronJob — Job за
+  розкладом у форматі cron: `0 3 * * *` — щодня о 03:00 за годинником кластера (зазвичай UTC). Копія на тому самому
+  диску, що й база, від втрати машини не рятує — тому її ще й забирають із машини, зашифрованою: `age` — маленька
+  утиліта шифрування за відкритим ключем (у примірнику `kubernetes`); шифрує будь-хто з відкритим ключем, розшифровує
+  лише власник приватного. І копія, з якої ніколи не відновлювались, — не копія: відновлення відпрацьовують в окрему
+  базу, не чіпаючи робочу.
 - **Читати:** розділ FAQ, глава `Global path prefix`; розділ Security, глава `Rate limiting`, розділ Proxies;
-  документація Gateway API (gateway-api.sigs.k8s.io) — «HTTPRoute», розділ про пріоритет збігів; документація k3s —
-  «Networking Services»; документація Kubernetes — «CronJob»; документація PostgreSQL — «pg_dump», «pg_restore»;
-  README `age` (поза корпусом).
+  у примірнику `kubernetes` — `Gateway API: HTTPRoute` (розділ про пріоритет збігів), `K3s: Networking Services`,
+  `CronJob`, `age: README`; документація PostgreSQL — «pg_dump», «pg_restore» (поза корпусом).
 - **Зробити:**
   1) Нагадування з фази 2, дня 7: префікс `api` з винятком для перевірок стану вже стоїть у спільній функції
   `setupApp`; проксі `/api` у Vite й nginx шляху не переписують, `Path` куки refresh — `/api/auth/refresh`.
@@ -2060,8 +2085,8 @@ Techniques. Сам протокол, socket.io і біржа — поза кор
   з'єднання. Шлях socket.io план ставить під `/api` — `path: '/api/socket.io'` в опціях gateway і клієнта, — тоді
   проксі Vite (з `ws: true`), nginx і маршрут кластера з фази 6, дня 9 пропускають його тим самим правилом `/api`.
 - **Читати:** розділ WebSockets — глава `Gateways` (розділи Installation, Overview, Lifecycle hooks, Server and
-  Namespace, Request-scoped gateways) і глава `Adapters` (розділ Ws library); у примірнику `vite` — `Server
-  Options`, розділ `server.proxy` (приклад із `ws: true`).
+  Namespace, Request-scoped gateways) і глава `Adapters` (розділ Ws library); у примірнику `vite` — `Server Options`,
+  розділ `server.proxy` (приклад із `ws: true`); поза корпусом — документація socket.io: «Client API».
 - **Зробити:** 1) `npm i @nestjs/websockets @nestjs/platform-socket.io`; 2) `PricesGateway` з
   `path: '/api/socket.io'` і `@SubscribeMessage('ping')`, що повертає `{ t: Date.now() }`; 3) `handleConnection` і
   `handleDisconnect` пишуть у лог `socket.id` і кількість з'єднань; 4) скрипт на socket.io-client шле `ping` з
@@ -2098,7 +2123,8 @@ Techniques. Сам протокол, socket.io і біржа — поза кор
   Частота: лічильник повідомлень на сокет за секунду в `socket.data`; хто перевищив — отримує помилку, а злісний —
   розрив. Кількість: кожне з'єднання тримає пам'ять сервера, тож потрібна стеля одночасних з'єднань на IP і на
   користувача — лічильник у застосунку (перевіряють у тому самому middleware, тобто ще на рукостисканні) або
-  middleware Traefik `inFlightReq` перед застосунком (поза корпусом). Стеля діє й на самі рукостискання: тисяча спроб
+  middleware Traefik `inFlightReq` перед застосунком (у примірнику `kubernetes` —
+  `Traefik: Traefik InFlightReq Documentation`). Стеля діє й на самі рукостискання: тисяча спроб
   під'єднатися без токена теж коштує процесора.
 - **Читати:** розділ WebSockets — глави `Guards`, `Pipes`, `Exception filters`; `Gateways`, розділ Lifecycle hooks;
   розділ Security, глава `Rate limiting`, розділ Websockets; документація socket.io — «Middlewares», «Handling
@@ -2174,7 +2200,7 @@ Techniques. Сам протокол, socket.io і біржа — поза кор
   Остання ціна кожної пари — у Redis (ключ `price:BTCUSDT`): новий підписник отримує її одразу в підтвердженні, а
   екземпляри з дня 6 читають той самий ключ.
 - **Читати:** документація Binance — «WebSocket Streams» (spot) і «Market Data Only» (поза корпусом); розділ
-  Fundamentals, глави `Lifecycle events` і `Custom providers`.
+  Fundamentals, глави `Lifecycle events` і `Custom providers`; поза корпусом — README `ws`, документація Redis.
 - **Зробити:** 1) `MarketStreamService` з одним з'єднанням і набором пар, що перераховується на `subscribe` і
   `unsubscribe`; 2) приведення до `PriceTick` і розсилка в кімнати зі склеюванням із дня 4 — фейковий генератор
   іде в тести; 3) перепідключення із затримкою й джитером і сторож живості на 30 секунд; 4) планове
@@ -2220,8 +2246,8 @@ Techniques. Сам протокол, socket.io і біржа — поза кор
   не більше стелі, а запит SSE **ніколи** не змінює підписку на біржі — він лише читає ціни, які сервер і так отримує.
 - **Читати:** розділ WebSockets, глава `Adapters`, розділ Extend socket.io (з попередженням про кілька екземплярів);
   розділ Techniques, глава `Server-Sent Events`; `Deployment`, розділ Scaling up or out; документація socket.io —
-  «Using multiple nodes», «Redis adapter», документація Traefik — «EntryPoints», розділ respondingTimeouts (поза
-  корпусом).
+  «Using multiple nodes», «Redis adapter» (поза корпусом); у примірнику `kubernetes` —
+  `Traefik: Traefik EntryPoints Documentation`, розділ respondingTimeouts.
 - **Зробити:** 1) `RedisIoAdapter` з адресою Redis із `ConfigService`, а не `localhost`, як у прикладі глави;
   2) у клієнтах — `transports: ['websocket']`; 3) ціни з біржі — через `server.local`, персональні події — через
   адаптер; на з'єднання сервер шле `hello` з `os.hostname()`, щоб було видно, на якому екземплярі сокет;
@@ -2325,9 +2351,9 @@ Techniques. Сам протокол, socket.io і біржа — поза кор
   навчання відновлення із секундоміром: копія, з якої не відновлювались, — не копія. **Сторінка «для клієнта».**
   Розділ README: що це, як увійти гостем, що спробувати за дві хвилини, відомі обмеження.
 - **Читати:** розділ Security, глави `Authorization` і `Rate limiting`; розділ Overview, глава `Guards`, розділ
-  Setting roles per handler; розділ WebSockets, глава `Guards`; поза корпусом — publicsuffix.org (пошук імені в
-  списку), duckdns.org, uptimerobot.com (умови безкоштовного тарифу), letsencrypt.org — «Rate Limits»,
-  документація Kubernetes — «CronJob».
+  Setting roles per handler; розділ WebSockets, глава `Guards`; у примірнику `kubernetes` —
+  `Let's Encrypt: Rate Limits`, `CronJob`; поза корпусом — publicsuffix.org (пошук імені в списку), duckdns.org,
+  uptimerobot.com (умови безкоштовного тарифу).
 - **Зробити:**
   1) Ім'я. На duckdns.org — вхід через наявний обліковий запис (GitHub чи Google), піддомен
   `<назва>.duckdns.org` з публічною IP машини; токен DuckDNS — у менеджер паролів, ніколи в репозиторій. Або
@@ -2609,10 +2635,11 @@ Redis-адаптером і числами навантаження в журн�
 У корпусі цього примірника — **лише NestJS**: документація ліній від 4 до 12 з усіма розділами, включно з
 рецептами, розділом FAQ, посібником з міграції й главами про NestJS Observe. Глави про TypeORM, Prisma, Passport,
 BullMQ і Terminus описують **лише інтеграційний шар Nest** — модуль, декоратор, спосіб підключення. Саму TypeORM,
-Prisma, Passport, Redis, PostgreSQL, Docker, nginx, GitHub Actions, Kubernetes, Traefik, socket.io, viem і Foundry
-доведеться вчити з їхньої власної документації: питати про них сервер марно, він поверне уривки Nest, де вони лише
-згадані. Те саме з RxJS, який раптово з'являється в перехоплювачах: `map` і `tap` там — не з Nest. Для zod,
-TypeScript, Vite, React, React Router, React Hook Form і TanStack Query у фабриці є власні примірники.
+Prisma, Passport, Redis, PostgreSQL, nginx, GitHub Actions, socket.io, viem і Foundry доведеться вчити з їхньої
+власної документації: питати про них сервер марно, він поверне уривки Nest, де вони лише згадані. Те саме з RxJS,
+який раптово з'являється в перехоплювачах: `map` і `tap` там — не з Nest. Для zod, TypeScript, Vite, Vitest, React,
+React Router, React Hook Form, TanStack Query, Supabase і Clerk у фабриці є власні примірники; Docker і Compose —
+у примірнику `docker`, Kubernetes, k3s, Traefik, Let's Encrypt і age — у примірнику `kubernetes`.
 
 **Версії в главах.** Глава з тією самою назвою на лініях 11 і 12 може казати різне: `Prisma` (генератор і
 адаптер), `Configuration` (Joi чи Standard Schema), `Caching` (одиниці `ttl`), `Health checks` (API індикаторів).
@@ -2623,7 +2650,7 @@ TypeScript, Vite, React, React Router, React Hook Form і TanStack Query у фа
 Protection` — без налаштувань. План щоразу каже, що з прикладу брати, а що ні.
 
 **Поза корпусом.** Усе, що позначено «поза корпусом», — порада з практики: autocannon, orval і openapi-typescript,
-`nestjs-pino`, платформи викоту, підпис вебхука, тест на справжній базі як головний, маніфести Kubernetes,
-таймаути Traefik, ліміти й адреси Binance, факультатив «крипта» цілком. Звіряйте з документацією самих
-інструментів: безкоштовні тарифи, ліміти бірж і статус тестових мереж змінюються, і все, що в плані позначено
-«на 02.10.2026», перед днем варто перевірити ще раз.
+`nestjs-pino`, платформи викоту, підпис вебхука, тест на справжній базі як головний, ліміти й адреси Binance,
+факультатив «крипта» цілком. Маніфести Kubernetes і таймаути Traefik звіряйте з примірником `kubernetes`. Звіряйте з
+документацією самих інструментів: безкоштовні тарифи, ліміти бірж і статус тестових мереж змінюються, і все, що в
+плані позначено «на 02.10.2026», перед днем варто перевірити ще раз.

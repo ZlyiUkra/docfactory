@@ -318,7 +318,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 | React Router (режим даних) | маршрути, лоадери, дії, розділення коду за маршрутами | Ф3 Д1–2, Ф5 Д1; є примірник `react-router` |
 | TanStack Query | серверний стан: кеш, повтори, інвалідація, оптимістичні оновлення, знімок для живих даних | Ф3 Д3–5, Д8; є примірник `tanstack-query` |
 | React Hook Form + zod | великі форми з однією схемою перевірки для фронту й бекенду | Ф3 Д10; є примірники `react-hook-form`, `zod` |
-| Vitest + React Testing Library | швидкі тести компонентів за поведінкою (поза корпусом) | Ф3 Д12–13 |
+| Vitest + React Testing Library | швидкі тести компонентів за поведінкою | Ф3 Д12–13; є примірник `vitest` (Testing Library — поза корпусом) |
 | ESLint з `eslint-plugin-react-hooks` | правила хуків і діагностика компілятора | Ф0 Д11, Ф2 Д4 |
 | Tailwind CSS | стилі класами в розмітці; підключається плагіном Vite | Ф0 Д11; план Next.js Ф1 Д10; є примірник `tailwind` |
 
@@ -333,7 +333,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 | react-window або TanStack Virtual | віртуалізація довгих списків (поза корпусом) | Ф2 Д7 |
 | Sentry | збір помилок із картами коду (поза корпусом) | точка підключення — Ф2 Д8; сам збір — план Next.js Ф7 Д9 |
 | shadcn/ui на Radix UI | готові доступні компоненти, що копіюються в проєкт (поза корпусом) | план Next.js Ф5 Д5 |
-| Docker, k3d і k3s, `kubectl` | образ SPA і викот у кластер Kubernetes (поза корпусом) | Ф5 Д7–9; далі — плани NestJS і Next.js |
+| Docker, k3d і k3s, `kubectl` | образ SPA і викот у кластер Kubernetes | Ф5 Д7–9; далі — плани NestJS і Next.js; є примірники `docker`, `kubernetes` |
 
 **Знати, що існує** — беруть під конкретну задачу; план їх не вчить.
 
@@ -353,6 +353,24 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 `Comparison | React Query vs SWR vs Apollo vs RTK Query vs React Router` (з погляду авторів TanStack, зважайте на
 це). Про react-window, TanStack Virtual, Storybook, Motion, i18next і partysocket корпусів у фабриці немає — це
 порада з практики. Бібліотеки факультативу (графіки, гаманці) — у його власній таблиці інструментів.
+
+### Документація у фабриці
+
+**Є примірник** — питати його сервер документації:
+
+- React, разом із React Compiler — `react`;
+- Vite — `vite`; TypeScript — `typescript`; Vitest — `vitest`;
+- React Router — `react-router`; TanStack Query — `tanstack-query`;
+- React Hook Form — `react-hook-form`; zod — `zod`;
+- Tailwind CSS — `tailwind`; Zustand — `zustand`; Redux Toolkit і RTK Query — `redux`;
+- Docker — `docker`; k3d, k3s і `kubectl` — `kubernetes`.
+
+**Примірника ще немає** — відповідь лише з практики або з чужого сайту:
+
+- з «треба знати»: React Testing Library, ESLint і `eslint-plugin-react-hooks`;
+- з «варто знати»: MSW, Playwright, react-window, TanStack Virtual, Sentry, shadcn/ui і Radix UI;
+- з «знати, що існує»: SWR, TanStack Router, Storybook, React Native і Expo, Motion, i18next, partysocket,
+  socket.io-client.
 
 ---
 
@@ -971,7 +989,7 @@ React — бібліотека поверх мови й браузера. Усе
   `onCaughtError` і `onUncaughtError` — точка, куди підключають збирач помилок (сам збір, Sentry, — у плані
   Next.js, фаза 7, день 9).
 - **Читати:** `<Suspense>`, `lazy`, `Component` (розділ «Catching rendering errors with an Error Boundary»),
-  `createRoot` (розділ «Error logging in production»).
+  `createRoot` (розділ «Error logging in production»); поза корпусом — документація Sentry для React.
 - **Зробити:** 1) важкий компонент через `lazy` під `<Suspense>`; 2) межа помилок навколо; 3) кинути помилку в
   рендері; 4) кинути помилку в `onClick`; 5) у `createRoot` передати `onCaughtError`, що пише помилку й
   `componentStack` у консоль.
@@ -1244,8 +1262,8 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
   'Зберегти' })`. Тест перевіряє поведінку (що на екрані після дії), а не реалізацію (стан, внутрішні функції).
   Пошук за ролями заодно перевіряє доступність. `act` — обгортка, що дає React завершити оновлення до перевірок;
   бібліотека викликає його сама.
-- **Читати:** `act`; документацію Vitest і React Testing Library, зокрема «Which query should I use?» (поза
-  корпусом).
+- **Читати:** `act`; у примірнику `vitest` — `Getting Started | Guide`, `Component Testing | Guide`; документацію
+  React Testing Library, зокрема «Which query should I use?» (поза корпусом).
 - **Зробити:** 1) налаштувати Vitest з jsdom; 2) тест форми: заповнити, надіслати, побачити помилку валідації;
   3) перейменувати CSS-клас кнопки; 4) змінити текст кнопки.
 - **Перевірити себе:** після кроку 3 тест зелений, після кроку 4 — червоний: текст кнопки — контракт із
@@ -1262,7 +1280,8 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
   документацією своєї версії), а експоненційну затримку проходять фальшивими таймерами Vitest — хвилини очікування
   минають за мілісекунди.
 - **Читати:** у примірнику `tanstack-query` — `Testing` (фреймворк React); у примірнику `react-router` — `Testing`
-  (розділ Data Mode); документацію MSW і Vitest, розділ про фальшиві таймери (поза корпусом).
+  (розділ Data Mode); у примірнику `vitest` — `Mocking | Guide`, `Timers` (фальшиві таймери); документацію MSW
+  (поза корпусом).
 - **Зробити:** 1) три тести одного екрана: завантаження, помилка сервера, успіх — через обробники MSW; 2) тест стора з
   дня 7: підроблений `WebSocket` закривається кодом 1006, фальшиві таймери прокручують затримку, і стор
   перепідключається.
@@ -1455,7 +1474,7 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
   Playwright проти `vite preview`. Кеш залежностей між запусками прискорює все. Dependabot або Renovate щотижня
   пропонують оновлення залежностей — латки безпеки приходять самі.
 - **Читати:** документацію GitHub Actions і Dependabot (поза корпусом); у примірнику `vite` — `Command Line
-  Interface`.
+  Interface`; поза корпусом — документація Playwright: «Continuous Integration».
 - **Зробити:** 1) робочий процес із п'ятьма кроками; 2) захист головної гілки: злиття лише із зеленим CI;
   3) запит на злиття з навмисно червоним тестом; 4) бот оновлень.
 - **Перевірити себе:** червоний запит не зливається; у журналі — два числа: тривалість першого запуску й
@@ -1491,9 +1510,10 @@ Docker, запускається подами в Kubernetes — спершу н�
 поставить SPA та API під одне ім'я і зробить перше демо для клієнта (фаза 7, день 8), а план Next.js замінить под
 SPA подом Next.js (фаза 7) і оновить демо під Next.js (фаза 9).
 
-Документації Docker, Kubernetes, k3s, Traefik, cert-manager і Oracle Cloud у корпусах фабрики немає: джерела —
-їхні офіційні сайти, і кожен день називає глави. Факти про безкоштовний хостинг тут — на 02.10.2026. Безкоштовні
-тарифи змінюються, буває й без оголошення, тож перед днем 8 звірте їх зі сторінкою Oracle «Always Free Resources».
+Docker має примірник `docker`; Kubernetes, k3s, k3d, Traefik, cert-manager і Let's Encrypt — примірник `kubernetes`;
+кожен день називає глави. Документації Oracle Cloud у фабриці немає — джерело її офіційний сайт. Факти про
+безкоштовний хостинг тут — на 02.10.2026. Безкоштовні тарифи змінюються, буває й без оголошення, тож перед днем 8
+звірте їх зі сторінкою Oracle «Always Free Resources».
 
 ### Що треба мати до викоту
 
@@ -1659,9 +1679,9 @@ Let's Encrypt (кластер створюють із пробросом пор�
   `selector` — трафік іде на всі поди з міткою `app: spa`; `port` — порт самого Service, `targetPort` — порт
   контейнера. k3d запускає справжній кластер k3s у контейнерах Docker на вашому комп'ютері — той самий дистрибутив,
   що буде на сервері, тож маніфести завтра не зміняться.
-- **Читати:** документація Docker — «Multi-stage builds», «Dockerfile reference», «Multi-platform builds» (поза
-  корпусом); kubernetes.io — «Deployments», «Service», «Configure Liveness, Readiness and Startup Probes» (поза
-  корпусом); документація k3d — «Quick Start» (поза корпусом); у примірнику `vite` — `static-deploy`.
+- **Читати:** у примірнику `docker` — `Multi-stage builds`, `Dockerfile reference`, `Multi-platform builds`; у
+  примірнику `kubernetes` — `Deployments`, `Service`, `Configure Liveness, Readiness and Startup Probes`,
+  `k3d: Overview`, `k3d: k3d cluster create`; у примірнику `vite` — `static-deploy`.
 - **Зробити:** 1) Docker Engine у WSL за інструкцією для Ubuntu з docs.docker.com, далі `sudo usermod -aG docker
   $USER` (запускати `docker` без `sudo`), перезайти в WSL і `docker run hello-world`; 2) `Dockerfile`, `.dockerignore`
   і `nginx.conf` у корені проєкту, як вище; 3) `docker build -t spa:0.1.0 .` — зібрати образ з тегом, крапка — «рецепт
@@ -1762,7 +1782,8 @@ Let's Encrypt (кластер створюють із пробросом пор�
 
   `gatewayClassName` — яка реалізація обслуговує ці ворота; точне ім'я класу покаже `kubectl get gatewayclass`.
   Слухач `http` з портом 8000 — не помилка: у Traefik порт слухача — це внутрішній порт його точки входу, а назовні
-  він відкритий як 80 (звірте з документацією Traefik про Kubernetes Gateway API, поза корпусом). HTTPRoute `spa` —
+  він відкритий як 80 (звірте в примірнику `kubernetes` — `Traefik: Traefik Kubernetes Gateway API Documentation`
+  для лінії Traefik 3). HTTPRoute `spa` —
   той самий, що буде до кінця родини, лише сьогодні він чіпляється до слухача `http`:
 
   ```yaml
@@ -1806,11 +1827,11 @@ Let's Encrypt (кластер створюють із пробросом пор�
   з'являються два рядки — `imagePullSecrets:` і під ним `- name: ghcr`: «тягни образи з цим входом». Secret
   створюють командою, а не файлом у репозиторії: токен у git — уже не секрет; пробіл на початку рядка команди — і
   bash в Ubuntu не запише її в історію.
-- **Читати:** документація Oracle Cloud — «Always Free Resources», «Creating an Instance» (поза корпусом);
-  документація k3s — «Quick-Start Guide», «Networking Services» (розділ про Traefik і HelmChartConfig), «Secrets
-  Encryption» (поза корпусом); kubernetes.io — «Gateway API» (поза корпусом); документація Traefik — «Kubernetes
-  Gateway API» (поза корпусом); документація GitHub — «Working with the Container registry» (поза корпусом); сайт
-  Public Suffix List (поза корпусом).
+- **Читати:** у примірнику `kubernetes` — `K3s: Quick-Start Guide`, `K3s: Networking Services` (розділ про Traefik і
+  HelmChartConfig), `K3s: Secrets Encryption`, `Gateway API`,
+  `Traefik: Traefik Kubernetes Gateway API Documentation`; поза корпусом — документація Oracle Cloud: «Always Free
+  Resources», «Creating an Instance»; документація GitHub: «Working with the Container registry»; сайт Public Suffix
+  List.
 - **Зробити:** 1) у WSL `ssh-keygen -t ed25519` — пара ключів, публічна половина в `~/.ssh/id_ed25519.pub`;
   2) у консолі Oracle створити машину: форма VM.Standard.A1.Flex, 2 OCPU, 12 ГБ, образ Ubuntu для arm64
   (aarch64), ваш публічний ключ; запишіть публічну адресу; 3) у списку безпеки (Security List) мережі машини
@@ -1864,8 +1885,8 @@ Let's Encrypt (кластер створюють із пробросом пор�
   стоїть — оновити: ту саму команду можна повторювати, тому вона й іде в `infra/README.md`. `--namespace` і
   `--create-namespace` — окремий простір імен для cert-manager. `crds.enabled=true` — поставити разом із чартом
   власні типи об'єктів cert-manager (Certificate, ClusterIssuer); `config.gatewayAPI.enabled=true` — увімкнути
-  роботу з Gateway API (для cert-manager 1.15 і новіших; точні імена параметрів звірте зі сторінкою «Gateway API»
-  документації cert-manager, поза корпусом). CRD Gateway API мусять бути в кластері **до** встановлення
+  роботу з Gateway API (для cert-manager 1.15 і новіших; точні імена параметрів звірте в примірнику `kubernetes` —
+  `cert-manager: Annotated Gateway resource`). CRD Gateway API мусять бути в кластері **до** встановлення
   cert-manager: він перевіряє їх на старті. Якщо поставили в іншому порядку — `kubectl rollout restart deployment
   cert-manager -n cert-manager`. Видавець:
 
@@ -1937,10 +1958,10 @@ Let's Encrypt (кластер створюють із пробросом пор�
   `kubectl rollout status` стежить за оновленням, `kubectl rollout history` показує ревізії, `kubectl rollout undo`
   повертає попередню. Анотація `kubernetes.io/change-cause` на Deployment робить історію читабельною: замість
   порожньої колонки — ваш опис версії.
-- **Читати:** документація cert-manager — «Helm», «HTTP01», «Gateway API» (поза корпусом); Let's Encrypt — «Rate
-  Limits», «Staging Environment» (поза корпусом); kubernetes.io — «Deployments», розділи «Updating a Deployment» і
-  «Rolling Back a Deployment» (поза корпусом); документація Gateway API — «HTTP redirects and rewrites» (поза
-  корпусом); у примірнику `vite` — `static-deploy`.
+- **Читати:** у примірнику `kubernetes` — `cert-manager: Helm`, `cert-manager: HTTP01`,
+  `cert-manager: Annotated Gateway resource`, `Let's Encrypt: Rate Limits`, `Let's Encrypt: Staging Environment`,
+  `Deployments` (розділи «Updating a Deployment» і «Rolling Back a Deployment»),
+  `Gateway API: HTTP path redirects and rewrites`; у примірнику `vite` — `static-deploy`.
 - **Зробити:** 1) Helm у WSL (сторінка «Installing Helm» його документації), cert-manager командою вище, `kubectl
   get pods -n cert-manager` — усі `Running`; 2) обидва ClusterIssuer — `kubectl apply -f`; 3) у Gateway — анотація
   з `letsencrypt-staging` і слухач `https`, застосувати, `kubectl get certificate -w` — дочекатися `READY True`;
@@ -2279,11 +2300,11 @@ NestJS і Next.js.
 
 У корпусі цього примірника — **лише сама React**, зате всіх версій від 0.3 до 19.3 разом із CHANGELOG, нотатками
 релізів і блогом, включно з оголошеннями про вразливості. Для React Router, TanStack Query, React Hook Form, zod,
-Zustand, Redux Toolkit, Tailwind, Vite і TypeScript у фабриці є власні примірники — питайте їх, а не цей.
-Vitest, React Testing Library, MSW, Playwright, web-vitals, react-window, TanStack Virtual, GitHub Actions і
+Zustand, Redux Toolkit, Tailwind, Vite, TypeScript і Vitest у фабриці є власні примірники — питайте їх, а не цей.
+Docker має примірник `docker`; Kubernetes, k3s, k3d, Traefik, cert-manager і Let's Encrypt — примірник
+`kubernetes`. React Testing Library, MSW, Playwright, web-vitals, react-window, TanStack Virtual, GitHub Actions і
 хостинги в жодному корпусі фабрики немає: для них — сайти самих інструментів. Так само поза корпусами — API
-WebSocket (MDN), Binance і Kraken, Docker, Kubernetes, k3s, k3d, Traefik, cert-manager, Let's Encrypt, Oracle
-Cloud, а у факультативі — lightweight-charts, wagmi, viem і Foundry.
+WebSocket (MDN), Binance і Kraken, Oracle Cloud, а у факультативі — lightweight-charts, wagmi, viem і Foundry.
 
 **Дати.** Усе, що в плані про безкоштовні тарифи, ліміти бірж, версії пакетів факультативу й стан тестових мереж,
 сказано на 02.10.2026. Ці речі змінюються швидше за документацію React: перед днем, що на них спирається,

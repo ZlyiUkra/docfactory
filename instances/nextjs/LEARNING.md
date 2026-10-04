@@ -308,10 +308,10 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 | Auth.js або Better Auth | вхід, сесії, сторонні провайдери | 19 і 6 | Ф4 Д9 |
 | TanStack Query або SWR | дані в клієнтських компонентах: стрічки, опитування | 4 і 1 | Ф4 Д11; є примірник `tanstack-query` |
 | Playwright | наскрізні тести; єдиний спосіб перевірити `async`-компонент | 5 | Ф4 Д14 |
-| Vitest | швидкі тести функцій і клієнтських компонентів | 2 | Ф4 Д13 |
+| Vitest | швидкі тести функцій і клієнтських компонентів | 2 | Ф4 Д13; є примірник `vitest` |
 | ESLint або Biome | лінт; у 16 запускається напряму, без `next lint` | 12 і 3 | Ф1 Д1 |
-| Docker | образ застосунку для будь-якого сервера | 17 | Ф7 Д2 |
-| Kubernetes: `kubectl`, k3s, Kustomize | под Next.js у кластері, викот без простою, відкат | — | Ф7 Д12, Ф9 |
+| Docker | образ застосунку для будь-якого сервера | 17 | Ф7 Д2; є примірник `docker` |
+| Kubernetes: `kubectl`, k3s, Kustomize | под Next.js у кластері, викот без простою, відкат | — | Ф7 Д12, Ф9; є примірник `kubernetes` |
 
 **Варто знати** — трапляється в більшості проєктів, вчиться за день, коли знадобилося.
 
@@ -329,7 +329,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 | Sentry | збір помилок із картами коду | 1 | Ф7 Д9 |
 | OpenTelemetry | траси запитів: хто скільки чекав | 3 | Ф7 Д9 |
 | socket.io-client | з'єднання клієнтського компонента з gateway NestJS | — | Ф8 Д6–7 |
-| SOPS і age | секрети кластера в git лише зашифрованими | — | Ф9 Д6 |
+| SOPS і age | секрети кластера в git лише зашифрованими | — | Ф9 Д6; є примірник `kubernetes` |
 
 **Знати, що існує** — беруть під конкретну задачу; план їх не вчить.
 
@@ -349,6 +349,25 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 Про nuqs, iron-session, jose, next-safe-action і UploadThing: у шаблонах корпусу їх майже немає, це порада з
 практики, а не висновок із документації. Документація Next.js називає бібліотеки автентифікації й сесій у главі
 `How to implement authentication in Next.js`, а бібліотеки даних — у `Fetching Data`.
+
+### Документація у фабриці
+
+**Є примірник** — питати його сервер документації:
+
+- Next.js — `nextjs`; React — `react`;
+- Tailwind CSS — `tailwind`; zod — `zod`; TanStack Query — `tanstack-query`; Vitest — `vitest`;
+- React Hook Form — `react-hook-form`; Zustand — `zustand`; Clerk — `clerk`; Supabase Auth — `supabase`;
+- Docker — `docker`; Kubernetes, k3s, Kustomize, SOPS, age і Helm — `kubernetes`.
+
+**Примірника ще немає** — відповідь лише з практики або з чужого сайту:
+
+- з «треба знати»: shadcn/ui і Radix UI, PostgreSQL, Drizzle, Prisma, Auth.js, Better Auth, SWR, Playwright,
+  ESLint, Biome;
+- з «варто знати»: iron-session, jose, Motion, next-themes, nuqs, next-intl, Redis (Upstash), Sentry,
+  OpenTelemetry, socket.io-client;
+- з «знати, що існує»: Stripe, Resend і React Email, Vercel AI SDK, UploadThing, Sanity, Payload, Contentful,
+  tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Grafana, Loki, Storybook, MSW,
+  Testing Library.
 
 ---
 
@@ -466,8 +485,9 @@ Next.js — надбудова над HTTP, Node і серверним React. У
   іменами: `page`, `layout`, `loading`, `error`, `not-found`, `route` — Next.js упізнає їх за назвою. Збирає
   проєкт Turbopack. Лінт запускається напряму (`eslint` або `biome`): команди `next lint`, яку показують
   старі статті, у 16 немає.
-- **Читати:** `Installation`, `Project structure and organization`. Якщо пишете з помічником-агентом —
-  `How to set up your Next.js project for AI coding agents`.
+- **Читати:** `Installation`, `Project structure and organization`. Якщо пишете з помічником-агентом — `How to set up
+  your Next.js project for AI coding agents`; поза корпусом — документація ESLint: «Configuration Files» або Biome:
+  «Getting Started».
 - **Зробити:** 1) `npx create-next-app@latest`, усі типові відповіді; 2) `npm run dev`, відкрити сторінку;
   3) змінити текст у `app/page.tsx` і побачити оновлення без перезавантаження; 4) записати в README, за що
   відповідає кожна тека й кожен файл кореня.
@@ -912,7 +932,7 @@ Next.js — надбудова над HTTP, Node і серверним React. У
   можна замінити своїм через `cacheHandlers` — наприклад, Redis, щоб кілька серверів мали один кеш.
   `Example: cache-handler-redis` — для попередньої моделі (`cacheHandler` в однині); для `use cache` зразок
   лежить у самій сторінці `cacheHandlers`, розділ «Examples › External storage pattern».
-- **Читати:** `Using a CDN with Next.js`, `cacheHandlers`.
+- **Читати:** `Using a CDN with Next.js`, `cacheHandlers`; поза корпусом — документація Redis (Upstash).
 - **Зробити:** схема на папері: браузер, CDN, Next.js, база; на кожному рівні — що лежить, скільки живе і чим
   скидається.
 - **Перевірити себе:** для будь-якого блоку вашої сторінки ви показуєте пальцем рівень, де він застаріє.
@@ -939,8 +959,9 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 - **Що це.** PostgreSQL у контейнері Docker, ORM поверх нього — Drizzle або Prisma: схема описується кодом,
   міграції створюють таблиці, запити типізовані. У режимі розробки Next.js перезавантажує модулі при кожній
   правці, тож клієнт бази тримають один на процес, а не створюють на кожен імпорт.
-- **Читати:** документацію обраної ORM (розділ про Next.js); `Example: prisma-postgres` — лише схему й
-  створення клієнта: його серверні дії навмисно без перевірок, і копіювати їх не можна.
+- **Читати:** документацію обраної ORM (розділ про Next.js); `Example: prisma-postgres` — лише схему й створення
+  клієнта: його серверні дії навмисно без перевірок, і копіювати їх не можна; поза корпусом — документація PostgreSQL:
+  «Tutorial» і документація обраної ORM, Drizzle або Prisma.
 - **Зробити:** 1) `docker run` з PostgreSQL; 2) схема наскрізного проєкту й перша міграція; 3) `lib/data.ts`
   переходить на ORM, сторінки не змінюються; 4) увімкнути лог запитів ORM.
 - **Перевірити себе:** для сторінки списку на 50 записів ви записали в журнал, скільки запитів до бази робить
@@ -966,7 +987,8 @@ Next.js — надбудова над HTTP, Node і серверним React. У
   ідентифікатор запису в базі. Опції — `httpOnly`, `secure`, `sameSite: 'lax'`, термін дії. Читають її
   `cookies()` у серверному коді. Записати куку можна лише в серверній дії, Route Handler або Proxy — **не**
   під час рендеру серверного компонента.
-- **Читати:** той самий гайд, розділ Session Management; `cookies`.
+- **Читати:** той самий гайд, розділ Session Management; `cookies`; поза корпусом — README iron-session і документація
+  jose.
 - **Зробити:** вхід ставить куку; вихід її стирає; функція `getSession()` у `lib/session.ts` з
   `import 'server-only'`.
 - **Перевірити себе:** у вкладці «Сховище» кука з прапорцями `HttpOnly` і `Secure`; `document.cookie` її не
@@ -1007,7 +1029,8 @@ Next.js — надбудова над HTTP, Node і серверним React. У
   після помилки. Форма працює без JavaScript, а з ним — без перезавантаження. Для довгої форми з перевіркою
   під час набору беруть React Hook Form з тією самою схемою zod. `<Form>` з `next/form` — для форм пошуку,
   що міняють рядок адреси.
-- **Читати:** `How to create forms with Server Actions`, `Form Component`.
+- **Читати:** `How to create forms with Server Actions`, `Form Component`; у примірнику `react-hook-form` — `useForm
+  (content/docs/useform)`.
 - **Зробити:** форма на десять полів; вимкнути JavaScript у браузері й надіслати її.
 - **Перевірити себе:** без JavaScript — помилки біля полів після перезавантаження; з ним — миттєво.
 - **Пастка:** дві різні схеми перевірки для клієнта й сервера — розійдуться за тиждень.
@@ -1043,8 +1066,10 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 - **Навіщо.** У роботі власні сесії пишуть рідко: беруть бібліотеку або послугу.
 - **Що це.** Auth.js або Better Auth — вхід через Google чи GitHub (OAuth), сесії, таблиці в вашій базі.
   Clerk і Supabase Auth — те саме як послуга. Перевірка прав лишається у вашому шарі даних.
-- **Читати:** документацію обраної бібліотеки (розділ про App Router); `Example: auth` — це Auth.js із
-  захистом лише в Proxy: беріть звідти налаштування провайдера, а не схему захисту.
+- **Читати:** документацію обраної бібліотеки (розділ про App Router); `Example: auth` — це Auth.js із захистом лише в
+  Proxy: беріть звідти налаштування провайдера, а не схему захисту; у примірнику `clerk` — `Next.js Quickstart (App
+  Router)`, `clerkMiddleware()`; у примірнику `supabase` — `Use Supabase Auth with Next.js`, `Creating a Supabase
+  client for SSR`; Auth.js і Better Auth — поза корпусом.
 - **Зробити:** вхід через GitHub поруч із власним.
 - **Перевірити себе:** обидва способи входу дають того самого користувача в `getSession()`.
 - **Пастка:** вважати, що бібліотека захищає дані. Вона каже, хто прийшов; що йому можна — досі ваш код.
@@ -1094,7 +1119,8 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 - **Що це.** Vitest — швидкі тести чистих функцій і клієнтських компонентів. `async`-серверні компоненти він
   не підтримує: їх перевіряють наскрізними тестами (завтра). Найцінніше — тест правила доступу як чистої
   функції, без бази й підмін.
-- **Читати:** `Testing`, `How to set up Vitest with Next.js`.
+- **Читати:** `Testing`, `How to set up Vitest with Next.js`; у примірнику `vitest` — `Getting Started | Guide`,
+  `Mocking | Guide`.
 - **Зробити:** функція `canEdit(user, post)` і три тести: автор, чужий, адмін; схема zod — тест на хибний ввід.
 - **Перевірити себе:** `npx vitest run` зелений; зміна правила ламає рівно один тест.
 - **Пастка:** намагатися відрендерити `async`-компонент у Vitest і витратити на це день.
@@ -1208,8 +1234,8 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 - **Навіщо.** Двомовний інтерфейс і статті в markdown трапляються в кожному другому замовленні.
 - **Що це.** Мова в адресі (`/uk/…`, `/en/…`) — динамічний сегмент `[lang]` над маршрутами; переклади —
   словники або next-intl. MDX — markdown з компонентами React у файлах проєкту.
-- **Читати:** `Internationalization`, `How to use markdown and MDX in Next.js`; `Example: i18n-routing`,
-  `Example: mdx`.
+- **Читати:** `Internationalization`, `How to use markdown and MDX in Next.js`; `Example: i18n-routing`, `Example:
+  mdx`; поза корпусом — документація next-intl: «App Router».
 - **Зробити:** дві мови для одного публічного розділу (не всього застосунку); сторінка «про проєкт» на MDX.
 - **Перевірити себе:** перемикач мови зберігає поточну сторінку; MDX-сторінка в таблиці збірки статична `○`.
 - **Пастка:** переносити весь `app/` під `[lang]` в останній день фази — це переїзд на тиждень.
@@ -1280,8 +1306,9 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 # Фаза 7. DevOps: від збірки до продакшну — 12 днів
 
 Next.js — не тека статики: це сервер, який треба зібрати, запустити, тримати живим і вміти відкотити.
-Документації Docker, nginx, Kubernetes і GitHub Actions у корпусі немає; є те, чого Next.js вимагає від них, і
-готові приклади з кодом. Дні 1–11 — на своєму комп'ютері: образ, compose, проксі, CI, спостереження вчать
+Документації Docker, nginx, Kubernetes і GitHub Actions у корпусі Next.js немає; є те, чого Next.js вимагає від них,
+і готові приклади з кодом. Docker і Compose мають примірник `docker`, Kubernetes — примірник `kubernetes`; nginx і
+GitHub Actions — поза фабрикою. Дні 1–11 — на своєму комп'ютері: образ, compose, проксі, CI, спостереження вчать
 локально, бо так дешевше помилятися. Продакшн при цьому вже існує: кластер k3s на машині Oracle Cloud з'явився в
 плані React (фаза 5, дні 7–9), бекенд, база й gateway приїхали туди з плану NestJS (фаза 6, дні 8–9; фаза 7,
 день 6). День 12 викочує в той самий кластер под Next.js на місце поду SPA. Платний сервер, домен і CDN не
@@ -1306,7 +1333,7 @@ Next.js — не тека статики: це сервер, який треба
 - **Що це.** Багатоетапний `Dockerfile`: етап залежностей, етап збірки, етап запуску з самою текою
   standalone. Запуск не від root, `.dockerignore` без `.env` і `node_modules`.
 - **Читати:** `Example: with-docker`; для порівняння — `Example: with-docker-export-output` (статичний
-  експорт за nginx).
+  експорт за nginx); у примірнику `docker` — `Multi-stage builds`, `Dockerfile reference`.
 - **Зробити:** образ свого застосунку; запустити `docker run -p 3000:3000`.
 - **Перевірити себе:** `docker image ls` — розмір образу; `docker run … whoami` — не root.
 - **Пастка:** `COPY . .` разом із `.env` — секрети залишаються в шарі образу назавжди.
@@ -1329,7 +1356,7 @@ Next.js — не тека статики: це сервер, який треба
 - **Що це.** `compose.yml` описує сервіси: застосунок, PostgreSQL, міграції окремим кроком перед запуском,
   перевірки стану. База не відкриває порт назовні. `Example: with-docker-compose/next-app` — лише сам
   застосунок; базу й міграції додаєте самі.
-- **Читати:** документацію Docker Compose; приклад вище.
+- **Читати:** у примірнику `docker` — `Docker Compose`, `Compose file reference`; приклад вище.
 - **Зробити:** `docker compose up` на чистій машині підіймає застосунок, базу й накочує міграції.
 - **Перевірити себе:** видалити томи, `docker compose up` — застосунок працює з порожньою базою.
 - **Пастка:** застосунок стартує раніше за базу — потрібна перевірка стану й залежність.
@@ -1351,8 +1378,8 @@ Next.js — не тека статики: це сервер, який треба
   Лікується заголовком `X-Accel-Buffering: no` з боку Next.js. Стиснення теж буферизує: якщо стискає nginx,
   у Next.js ставлять `compress: false`. Персональні сторінки Next.js віддає з `Cache-Control: private` —
   проксі не має їх кешувати. TLS локально — сертифікатом mkcert.
-- **Читати:** `How to self-host your Next.js application`, розділ про зворотний проксі; `Streaming`, розділ
-  «Reverse proxies»; `compress`.
+- **Читати:** `How to self-host your Next.js application`, розділ про зворотний проксі; `Streaming`, розділ «Reverse
+  proxies»; `compress`; поза корпусом — документація Upstash Ratelimit.
 - **Зробити:** 1) nginx у compose перед застосунком; 2) `curl -N --compressed` — стрімінг дожив; 3) увімкнути
   кеш nginx і зайти двома користувачами в кабінет; 4) обмеження частоти на адресі входу.
 - **Перевірити себе:** шматки стріму приходять із проміжками; кожен користувач бачить свій кабінет.
@@ -1390,7 +1417,7 @@ Next.js — не тека статики: це сервер, який треба
   Збір помилок із картами коду — Sentry або подібний збирач (порада з практики); помилки React він бере з опцій
   `onCaughtError` і `onUncaughtError` у `createRoot` (план React, фаза 2, день 8).
 - **Читати:** `How to set up instrumentation`, `How to set up instrumentation with OpenTelemetry`,
-  `useReportWebVitals`; `Example: with-opentelemetry`.
+  `useReportWebVitals`; `Example: with-opentelemetry`; поза корпусом — документація Sentry для Next.js.
 - **Зробити:** локальний колектор (Jaeger у compose); штучна затримка 500 мс у запиті до бази.
 - **Перевірити себе:** у Jaeger спан на 500 мс знайдено за тривалістю, з `NEXT_OTEL_VERBOSE=1`.
 - **Пастка:** писати в траси тіла запитів разом із паролями.
@@ -1442,8 +1469,8 @@ Next.js — не тека статики: це сервер, який треба
   зразком плану NestJS (фаза 6, день 8). До фази 8, дня 7 живих цін у версії Next.js немає — це відома втрата
   на кілька тижнів; SPA при цьому не видаляють, а лишають з 0 реплік, і повернення до неї — одна команда.
 - **Читати:** `output`, `deploymentId`; `How to self-host your Next.js application`, розділ «Multi-Server
-  Deployments»; `Route Handlers`, розділ «With Cache Components»; поза корпусом — kubernetes.io: «Deployments»,
-  «Configure Liveness, Readiness and Startup Probes»; gateway-api.sigs.k8s.io: «HTTPRoute».
+  Deployments»; `Route Handlers`, розділ «With Cache Components»; у примірнику `kubernetes` — `Deployments`,
+  `Configure Liveness, Readiness and Startup Probes`, `Gateway API: HTTPRoute`.
 - **Зробити:** 1) перевірка стану, яку кластер питатиме, чи живий под, — окремо від `/api`, бо цю адресу назовні
   забирає NestJS:
   ```ts
@@ -1733,8 +1760,8 @@ Next.js — не тека статики: це сервер, який треба
 Кластер уже працює: SPA з'явилася в ньому в плані React, бекенд — у плані NestJS, Next.js — у фазі 7 цього плану.
 Але викочує його досі людина з терміналом, ресурси взято навмання, секрети живуть у файлах на диску, а демо для
 клієнта, зібране в плані NestJS (фаза 7, день 8), досі показує SPA, а не Next.js. Ця фаза доводить кластер до
-стану, який не соромно дати клієнту, і переводить демо на Next.js. Документації Kubernetes, Traefik, Kustomize і
-GitHub Actions у корпусі немає — джерела поза корпусом названі в кожному дні.
+стану, який не соромно дати клієнту, і переводить демо на Next.js. Kubernetes, Traefik, Kustomize, Helm, SOPS і age
+мають примірник `kubernetes`; документації GitHub Actions у фабриці немає — її джерела названі в кожному дні.
 
 **Про факти хостингу.** Усе, що сказано тут про Oracle Cloud, DigitalOcean, GitHub, Let's Encrypt і UptimeRobot,
 перевірено на 02.10.2026. Безкоштовні тарифи міняються без попередження — Oracle, наприклад, у червні 2026 року
@@ -1779,8 +1806,8 @@ TLS і сертифікат, зворотний проксі, підніманн
   План бере Kustomize для власного коду, бо маніфести вже написані, а Helm додає мову шаблонів і другий інструмент
   без нової користі; Helm лишається для чужих чартів — cert-manager ви ставили саме ним. Helm 4 вийшов у листопаді
   2025 року; статті про Helm 2 з Tiller — історія.
-- **Читати:** поза корпусом — kubernetes.io: «Declarative Management of Kubernetes Objects Using Kustomize»;
-  helm.sh: «Quickstart Guide» (лише щоб знати різницю).
+- **Читати:** у примірнику `kubernetes` — `Declarative Management of Kubernetes Objects Using Kustomize`;
+  `Helm: Quickstart Guide` (лише щоб знати різницю).
 - **Зробити:** 1) `k8s/base/` — Deployment, Service і HTTPRoute для `web-next`, NestJS, PostgreSQL, Redis і
   CronJob копії, усе з попередніх планів; `kustomization.yaml` перелічує їх у `resources`. Job міграцій у базу
   **не** кладуть: шаблон Job після створення змінити не можна, і `apply -k` з новим тегом образу впаде; міграція —
@@ -1803,7 +1830,7 @@ TLS і сертифікат, зворотний проксі, підніманн
   процесора — пригальмовано. Для Node пам'ять — головне: купа V8 росте, доки її не обмежити, тож
   `NODE_OPTIONS=--max-old-space-size` ставлять помітно нижче за ліміт контейнера, щоб збирач сміття встиг раніше за
   ядро. `kubectl top` бере числа з metrics-server, який у k3s іде в комплекті.
-- **Читати:** поза корпусом — kubernetes.io: «Resource Management for Pods and Containers»; у корпусі —
+- **Читати:** у примірнику `kubernetes` — `Resource Management for Pods and Containers`; у корпусі —
   `cacheMaxMemorySize` (внутрішній кеш Next.js теж займає пам'ять пода).
 - **Зробити:** 1) `kubectl top nodes` і `kubectl top pods -A` у спокої та під навантаженням
   (`npx autocannon -c 50 -d 30` на сторінку й на API); 2) таблиця бюджету в README: под → виміряно в спокої → під
@@ -1831,7 +1858,7 @@ TLS і сертифікат, зворотний проксі, підніманн
   більше одного пода цього застосунку одночасно» при плановому обслуговуванні; на одному вузлі вона майже нічого не
   дає, але слово треба знати.
 - **Читати:** `How to self-host your Next.js application`, розділ «Multi-Server Deployments»; `cacheHandlers`;
-  поза корпусом — kubernetes.io: «Horizontal Pod Autoscaling», «HorizontalPodAutoscaler Walkthrough».
+  у примірнику `kubernetes` — `Horizontal Pod Autoscaling`, `HorizontalPodAutoscaler Walkthrough`.
 - **Зробити:** 1) згенерувати ключ (`openssl rand -base64 32`) і додати в секрет `web-next-env`; 2) оверлей prod:
   `replicas: 2` у `web-next`, `requests` — з таблиці бюджету дня 2; 3) HPA: `minReplicas: 2`, `maxReplicas: 3`,
   ціль — 70 % процесора; 4) навантаження `npx autocannon -c 100 -d 120` і в другому терміналі `kubectl get hpa -w`;
@@ -1856,7 +1883,7 @@ TLS і сертифікат, зворотний проксі, підніманн
   міряти треба. Відкат — `kubectl rollout undo`, і він повертає код, а не базу: міграції пишуть так, щоб стара
   версія коду працювала з новою схемою (спершу додати колонку, потім код, і лише наступним викотом прибрати стару).
 - **Читати:** `How to self-host your Next.js application`, розділи про `after` і «Multi-Server Deployments»;
-  `deploymentId`; поза корпусом — kubernetes.io: «Performing a Rolling Update», «Pod Lifecycle» (розділ
+  `deploymentId`; у примірнику `kubernetes` — `Performing a Rolling Update`, `Pod Lifecycle` (розділ
   «Termination of Pods»).
 - **Зробити:** 1) у другому терміналі цикл `while true; do curl -s -o /dev/null -w '%{http_code}\n' https://<ім'я>/;
   sleep 0.2; done | sort | uniq -c` (зупиняєте Ctrl+C після викоту); 2) викот нової версії `web-next` без `preStop` —
@@ -1888,9 +1915,10 @@ TLS і сертифікат, зворотний проксі, підніманн
   оболонки. Відбиток сервера — `known_hosts` у секреті CI з `StrictHostKeyChecking=yes`, щоб раннер не повірив
   підміненій машині. Kubeconfig у CI — не `k3s.yaml` (це повний адміністратор кластера), а ServiceAccount
   `deployer` з Role, що дає правити лише простір `app`. Сторонні дії закріплені за SHA коміту, не за тегом.
-- **Читати:** `How to configure Continuous Integration (CI) build caching`; поза корпусом — docs.github.com:
-  «Using environments for deployment», «Publishing Docker images», «Security hardening for GitHub Actions»;
-  kubernetes.io: «Using RBAC Authorization»; man-сторінка sshd (розділ «AUTHORIZED_KEYS FILE FORMAT»).
+- **Читати:** `How to configure Continuous Integration (CI) build caching`; у примірнику `kubernetes` —
+  `Using RBAC Authorization`; у примірнику `linux` — `Ubuntu man: sshd(8) — OpenSSH daemon` (розділ
+  «AUTHORIZED_KEYS FILE FORMAT»); поза корпусом — docs.github.com: «Using environments for deployment», «Publishing
+  Docker images», «Security hardening for GitHub Actions».
 - **Зробити:** 1) на машині — користувач `deploy` без пароля, ключ CI з обмеженнями вище, перевірка `sshd`, що
   паролі й root вимкнено; 2) ServiceAccount `deployer`, Role в `app` (Deployment, Job, Service, HTTPRoute,
   Secret, ConfigMap) і RoleBinding; kubeconfig із токеном цього облікового запису й адресою
@@ -1920,8 +1948,8 @@ TLS і сертифікат, зворотний проксі, підніманн
   `-l app=web-next` для всіх подів одразу; події — `kubectl get events --sort-by=.lastTimestamp`. Метрики —
   `kubectl top`. Повний стек Prometheus і Grafana на 12 ГБ поруч із застосунком — розкіш; його знають, але тут
   не ставлять.
-- **Читати:** поза корпусом — kubernetes.io: «Secrets» (розділ про ризики), «Good practices for Kubernetes
-  Secrets»; getsops.io: «Getting started» (розділ про age).
+- **Читати:** у примірнику `kubernetes` — `Secrets` (розділ про ризики), `Good practices for Kubernetes Secrets`,
+  `SOPS: Age`, `age: README`.
 - **Зробити:** 1) `age-keygen`, публічний ключ — у `.sops.yaml`, приватний — у менеджер паролів і в секрет
   GitHub; 2) `sops -e` для секретів `web-next-env` і NestJS, `.env.production` прибрати з диска лише після того, як
   розшифрування в CI спрацювало; 3) крок CI розшифровує й застосовує; 4) README «що робити, якщо впало»: п'ять
@@ -1950,7 +1978,7 @@ TLS і сертифікат, зворотний проксі, підніманн
   машину — забрали й копії. Ще один запасний шлях завжди під рукою — k3d на своєму комп'ютері з тими самими
   маніфестами: без публічної адреси, але з усім іншим.
 - **Читати:** поза корпусом — docs.oracle.com: «Always Free Resources» (розділ про повернення бездіяльних
-  машин); digitalocean.com: «Kubernetes pricing»; docs.k3s.io: «Requirements».
+  машин); digitalocean.com: «Kubernetes pricing»; у примірнику `kubernetes` — `K3s: Requirements`.
 - **Зробити:** 1) дописати й перевірити `infra/README.md` з плану React («від порожньої машини до робочого
   кластера»): додати все, що з'явилося відтоді, — бекенд і базу з плану NestJS, `web-next`, SOPS, `deployer`,
   далі `kubectl apply -k`; 2) копія бази поза машиною, зашифрована ще до виходу з неї, тим самим ключем age, що в
@@ -2164,8 +2192,9 @@ README з описом запуску й одним абзацом про ухв
 репозиторію з кодом і шаблони з галереї Vercel. Самого React, PostgreSQL, Drizzle, Prisma, Auth.js, Motion,
 shadcn/ui, Docker, nginx, GitHub Actions, Kubernetes, Traefik, Kustomize, SOPS, socket.io, viem, wagmi і Foundry
 тут немає, і питати про них сервер марно: він поверне уривки Next.js, де вони лише згадані. Для React, NestJS,
-zod, TanStack Query, React Hook Form, Zustand, Tailwind, Supabase, Clerk і TypeScript у фабриці є власні
-примірники; для решти — сайти самих інструментів.
+zod, TanStack Query, React Hook Form, Zustand, Tailwind, Supabase, Clerk, TypeScript і Vitest у фабриці є власні
+примірники; Docker — примірник `docker`; Kubernetes, k3s, Traefik, Kustomize, Helm, SOPS і age — примірник
+`kubernetes`; sshd — примірник `linux`; для решти — сайти самих інструментів.
 
 **Приклади й шаблони.** Код прикладу чи шаблону — ілюстрація однієї можливості, а не рекомендація
 документації: частина з них на старих версіях і без перевірок. Звіряйте їх із главами плану.

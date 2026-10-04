@@ -285,6 +285,10 @@ ecma-international.org, unicode.org і rfc-editor.org). Оригінали на 
 
 ## Примірники
 
+Карта навчання — які примірники потрібні кожній фазі планів обох ліній (React → NestJS → Next.js і
+Linux → Docker → Kubernetes) і для чого документації ще немає — у [docs/learning-map.md](docs/learning-map.md).
+Оновлюється з кожним новим примірником.
+
 ### ecmascript
 
 Специфікація ECMAScript: ECMA-262 плюс ECMA-402, 404, 414 і вільні документи, на які спирається 402.
@@ -704,6 +708,25 @@ Administrator's Handbook для Debian 6–13, документація Ubuntu S
 - план вивчення, перший у лінії Linux → Docker → Kubernetes (LFCS — факультатив), —
   [instances/linux/LEARNING.md](instances/linux/LEARNING.md);
 - докладніше — у [instances/linux/README.md](instances/linux/README.md).
+
+### vitest
+
+Документація тестового фреймворку Vitest усіх версій від 0.1 до 5.x разом із beta й rc: гайд, опції конфігурації, API
+тестів, `expect` і `vi`, браузерний режим із провайдерами, покриття, знімки, проєкти, міграції з попередніх версій і
+з Jest; правила `@vitest/eslint-plugin` на кожному тегу; README кожної версії чотирнадцяти пакетів (`vitest`,
+`@vitest/ui`, `@vitest/browser` і провайдери, `coverage-v8`, `coverage-istanbul`, `web-worker`, vite-node до 3.x та
+інші), нотатки релізів і реєстр npm двадцяти одного пакета. Лише англійською. 3 679 документів, 10 879 фрагментів.
+
+- порт `8783`; запис у Claude Code — `vitest-docs`, адреса `http://127.0.0.1:8783/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-vitest`, модель векторів — `bge-small`;
+- версія — номер свого пакета (`"4"` — Vitest 4.x і пакети `@vitest/*` 4.x; у eslint-plugin і vite-node номери
+  свої); без названої відповідь — для Vitest 4, найпопулярнішої лінії за завантаженнями npm;
+- нових читачів немає;
+- приклад питання агентові: `./df vitest ask "How do I mock a module with vi.mock and keep some real exports?"`;
+- корпус в архіві від самого початку, як у kubernetes і linux;
+- вивчається в планах React, NestJS і Next.js — див. карту навчання вище;
+- докладніше — у [instances/vitest/README.md](instances/vitest/README.md).
 
 ## Захист
 
