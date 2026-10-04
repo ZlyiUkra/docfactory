@@ -1216,8 +1216,7 @@ systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва �
   `upperdir` — зміни контейнера). `pivot_root` (чи простіший `chroot`) робить її коренем процесу. Плюс простори
   імен з дня 1, cgroup з дня 2, і зняті можливості (capabilities) root-а. `runc` робить рівно це за специфікацією
   OCI; Docker і Podman готують для нього теку й конфіг.
-- **Читати:** `pivot_root(2)`; `chroot(8)`; `mount_namespaces(7)`; `capabilities(7)`; документ ядра `Overlay
-  Filesystem`; `runc(8)`.
+- **Читати:** `pivot_root(2)`; `chroot(8)`; `mount_namespaces(7)`; `capabilities(7)`; документ ядра `overlayfs`; `runc(8)`.
 - **Зробити:** 1) розпакувати кореневу файлову систему Alpine (`minirootfs`) у `/srv/ct/lower`; 2) змонтувати
   overlay з `upper` і `work`; 3) `unshare` з просторами pid, mnt, uts, net + `chroot` у змонтовану теку, змонтувати
   `/proc`, задати ім'я машини; 4) покласти процес у cgroup з лімітом пам'яті; 5) змінити файл усередині й знайти
