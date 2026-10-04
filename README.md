@@ -683,11 +683,11 @@ CNCF (CKA, CKAD, CKS та інші) з репозиторію cncf/curriculum. �
 ### linux
 
 Документація, з якої працює адміністратор Linux, — перший крок лінії «Linux → Docker → Kubernetes» і підготовка до
-іспиту LFCS: man-сторінки Ubuntu 26.04, 24.04 і 22.04 (~560 команд і файлів налаштувань, з пакетом), проєкт
+іспиту LFCS: man-сторінки Ubuntu 26.04, 24.04 і 22.04 (554 команди й файли налаштувань, з пакетом), проєкт
 man-pages 2.00–6.19 (системні виклики, файли, огляди ядра), admin-guide ядра 5.10–7.2, systemd 183–262 (документація
 й man-сторінки), посібники GNU bash, coreutils, grep, sed, findutils і tar усіх випусків, довідка vim 7.0–9.2, Debian
 Administrator's Handbook для Debian 6–13, документація Ubuntu Server і Rocky Linux і сторінка іспиту LFCS. Лише
-англійською. 31 480 документів.
+англійською. 31 534 документи, 134 661 фрагмент.
 
 - порт `8782`; запис у Claude Code — `linux-docs`, адреса `http://127.0.0.1:8782/mcp`; інструменти `search_docs` і
   `read_section`;
@@ -696,6 +696,9 @@ Administrator's Handbook для Debian 6–13, документація Ubuntu S
   каже, чий він); Ubuntu Server, Rocky Linux і сторінка LFCS міток не мають;
 - нові читачі: `ubuntu-man`, `man-pages` (groff → markdown), `gnu-info`, `docbook-gh` і `docbook-gitlab`, `vim-help`;
 - приклад питання агентові: `./df linux ask "How do I extend an LVM logical volume and its file system?"`;
+- корпус в архіві від самого початку, як у kubernetes: текстів у теці немає, сервер підіймається з кешу фрагментів
+  (`index/`, у git — стиснений) і Qdrant;
+- план вивчення до іспиту LFCS — [instances/linux/LEARNING.md](instances/linux/LEARNING.md);
 - докладніше — у [instances/linux/README.md](instances/linux/README.md).
 
 ## Захист
