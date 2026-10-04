@@ -120,3 +120,12 @@ PostgreSQL, Node.js, nginx, Redis, socket.io, GitHub Actions, MDN і Playwright 
 5. HAProxy з keepalived — балансувальник для кластера з HA.
 6. Podman — у Linux як альтернатива Docker.
 7. Дрібне: MetalLB, CloudNativePG, Trivy, Prometheus.
+
+## На потім
+
+Не потрібне жодному плану зараз, але варте окремого примірника, коли знадобиться глибина нижче за довідку.
+
+- **Вебстандарти.** Тексти стандартів, які MDN переказує: з WHATWG — HTML (цикл подій, навігація), DOM, Fetch
+  (CORS, preflight, куки в запиті), URL, Streams, WebSockets; з IETF — RFC 9110 (семантика HTTP), RFC 9111
+  (кешування), RFC 6265bis (куки), RFC 6455 (WebSocket). Для питань «як саме це виконується за стандартом» — як
+  примірник `ecmascript` для самої мови. Читач RFC у фабриці вже є. Записано 04.10.2026.
