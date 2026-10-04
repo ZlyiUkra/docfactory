@@ -302,17 +302,24 @@ def docbook_gh(source: dict, ctx) -> list[Item]:
     exclude = [re.compile(r) for r in source.get("exclude") or ()]
     site = _Site(source, ctx)
     groups: dict = {}
+    present: dict = {}      # тег → шляхи файлів теки, що справді лежать у репозиторії
     for ref, version in refs.items():
         sha = site.subtree(site.entries(ref), folder)
         if not sha:
             continue
+        present[ref] = set()
         for e in site.entries(sha):
             path = f"{folder}/{e.get('path')}"
+            present[ref].add(path)
             if (e.get("type") == "blob" and path.endswith(".xml")
                     and not any(r.search(path) for r in exclude)):
                 groups.setdefault((path, e["sha"]), []).append((ref, str(version)))
 
     def fetch(ref, path, sha=""):
+        # Вставку з файла, якого в дереві тегу немає, systemd генерує під час збирання
+        # (bpf-delegate.xml у systemd.exec з v258): її пропускаємо, а не валимо сторінку.
+        if path not in present.get(ref, ()):
+            return ""
         return site.text(ref, path, sha) or ""
     return _items(source, ctx, groups, fetch, site.raw)
 
