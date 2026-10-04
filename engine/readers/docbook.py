@@ -258,6 +258,36 @@ def _includes(load):
     return get
 
 
+def _bpf_delegate(header: str) -> str:
+    """bpf-delegate.xml так, як його збирає src/core/generate-bpf-delegate-configs.py
+    systemd: чотири переліки з enum bpf_cmd, bpf_map_type, bpf_prog_type і bpf_attach_type
+    заголовка linux/bpf.h, кожне значення — «BPF_MAP_CREATE» → «BPFMapCreate»."""
+    out, name, values = ["<para>"], "", []
+    for line in header.splitlines():
+        line = line.strip()
+        if name:
+            if re.match(r"}", line):
+                out.append(f'<para id="{name}">')
+                for v in values:
+                    words = v.split("_")
+                    camel = words[0] + "".join(w.capitalize() for w in words[1:])
+                    out.append(f"<constant>{camel}</constant>")
+                out.append("</para>")
+                name, values = "", []
+            else:
+                m = re.fullmatch(r"(\w+)\b,", line)
+                if m and not m.group(1).startswith("__"):
+                    values.append(m.group(1))
+        elif m := re.match(r"enum\s+bpf_(cmd|map_type|prog_type|attach_type)+\s*{", line):
+            name = f"bpf_delegate_{m.group(1)}"
+    out.append("</para>")
+    return "\n".join(out)
+
+
+# Файли, які systemd генерує під час збирання сторінок: ім'я → як скласти з джерела.
+_GENERATORS = {"bpf-delegate.xml": _bpf_delegate}
+
+
 def _vkey(v: str) -> tuple:
     return tuple(int(n) for n in re.findall(r"\d+", v))
 
@@ -315,12 +345,18 @@ def docbook_gh(source: dict, ctx) -> list[Item]:
                     and not any(r.search(path) for r in exclude)):
                 groups.setdefault((path, e["sha"]), []).append((ref, str(version)))
 
+    generated = source.get("generated") or {}
+
     def fetch(ref, path, sha=""):
-        # Вставку з файла, якого в дереві тегу немає, systemd генерує під час збирання
-        # (bpf-delegate.xml у systemd.exec з v258): її пропускаємо, а не валимо сторінку.
-        if path not in present.get(ref, ()):
-            return ""
-        return site.text(ref, path, sha) or ""
+        if path in present.get(ref, ()):
+            return site.text(ref, path, sha) or ""
+        # Файла в дереві тегу немає: systemd генерує його під час збирання. Якщо джерело
+        # оголосило, з чого (поле `generated`), вставка складається тут тим самим способом;
+        # інакше — пропускається, а не валить сторінку.
+        name = path.rsplit("/", 1)[-1]
+        if name in generated:
+            return _GENERATORS[name](site.text(ref, generated[name]) or "")
+        return ""
     return _items(source, ctx, groups, fetch, site.raw)
 
 
