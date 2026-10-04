@@ -679,6 +679,8 @@ CNCF (CKA, CKAD, CKS та інші) з репозиторію cncf/curriculum. �
 - приклад питання агентові: `./df kubernetes ask "How do I upgrade a kubeadm cluster to the next minor version?"`;
 - корпус в архіві від самого початку: текстів у теці немає, сервер підіймається з кешу фрагментів (`index/`, у git
   — стиснений) і Qdrant;
+- план вивчення, третій у лінії Linux → Docker → Kubernetes, з обов'язковими CKAD і CKA, —
+  [instances/kubernetes/LEARNING.md](instances/kubernetes/LEARNING.md);
 - докладніше — у [instances/kubernetes/README.md](instances/kubernetes/README.md).
 
 ### linux
@@ -699,7 +701,8 @@ Administrator's Handbook для Debian 6–13, документація Ubuntu S
 - приклад питання агентові: `./df linux ask "How do I extend an LVM logical volume and its file system?"`;
 - корпус в архіві від самого початку, як у kubernetes: текстів у теці немає, сервер підіймається з кешу фрагментів
   (`index/`, у git — стиснений) і Qdrant;
-- план вивчення до іспиту LFCS — [instances/linux/LEARNING.md](instances/linux/LEARNING.md);
+- план вивчення, перший у лінії Linux → Docker → Kubernetes (LFCS — факультатив), —
+  [instances/linux/LEARNING.md](instances/linux/LEARNING.md);
 - докладніше — у [instances/linux/README.md](instances/linux/README.md).
 
 ## Захист
