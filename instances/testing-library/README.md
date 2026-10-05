@@ -131,10 +131,6 @@ happy-dom. Пакетів обгорток, окрім React, поки нема�
 паспорт; перед видаленням розпакований окремо й звірений із диском — нуль розбіжностей). В історії git текстів немає
 ніде. Архів лежить лише на цій машині.
 
-**Зайві точки.** У колекції `docs-testing-library` 17 237 точок на 16 717 фрагментів: 520 лишилися від першого
-прогону `vectors`, ще до злиття версій. Пошук їх не показує; прибрати фізично можна лише знесенням колекції й новим
-`vectors`.
-
 **Як винести знову** — після оновлення, коли `vectors` і `smoke` пройшли:
 
 ```
@@ -155,7 +151,7 @@ tar -xzf ~/archives/docfactory/testing-library-corpus-РРРР-ММ-ДД.tar.gz 
 ```
 
 **На іншій машині** після клонування кеш треба розпакувати: `gunzip -k instances/testing-library/index/passages.json.gz`,
-далі `./df testing-library vectors` заллє колекцію Qdrant (35 хвилин на цій машині).
+далі `./df testing-library vectors` заллє колекцію Qdrant (43 хвилини на цій машині).
 
 ## Установка venv
 
@@ -175,7 +171,7 @@ cd ../..
 ./df testing-library refresh         # завантажити все задеклароване (~40 хвилин)
 ./df testing-library manifest        # оновити паспорт
 ./df testing-library setup           # Qdrant чи пошук лише по словах
-./df testing-library vectors         # залити корпус у docs-testing-library (~35 хвилин)
+./df testing-library vectors         # залити корпус у docs-testing-library (~45 хвилин)
 ./df testing-library smoke           # перевірки
 ```
 
