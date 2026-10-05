@@ -5,8 +5,8 @@
 із підрозділами «Документація у фабриці» самих планів.
 
 Стан на 05.10.2026. Примірники: astro, clerk, docker, ecmascript, kubernetes, linux, mdn, nestjs, nextjs,
-patterns, react, react-hook-form, react-router, redux, supabase, tailwind, tanstack-query, typescript, v8, vite,
-vitest, wasm, webstandards, zod, zustand.
+patterns, react, react-hook-form, react-router, redux, supabase, tailwind, tanstack-query, testing-library,
+typescript, v8, vite, vitest, wasm, webstandards, zod, zustand.
 
 ## Як читати таблиці
 
@@ -25,7 +25,7 @@ vitest, wasm, webstandards, zod, zustand.
 | 0. База, якої React не дає | `mdn` (вступ, 1–8), `webstandards` (1, 5–8), `typescript` (вступ, 9–10), `vite` (11–12), `tailwind` (11) |
 | 1. Ядро React | `vite` (20) |
 | 2. Як React працює зсередини | — |
-| 3. Екосистема | `react-router` (1–2, 13), `tanstack-query` (3–5, 8, 13), `react-hook-form` і `zod` (10), `zustand` і `redux` (11), `vitest` (12–13), `mdn` (6–8, 15), `webstandards` (6, 15) |
+| 3. Екосистема | `react-router` (1–2, 13), `tanstack-query` (3–5, 8, 13), `react-hook-form` і `zod` (10), `zustand` і `redux` (11), `vitest` і `testing-library` (12–13), `mdn` (6–8, 15), `webstandards` (6, 15) |
 | 4. Сервер: SSR, стрімінг, серверні компоненти | — |
 | 5. Продакшн і викот у кластер | `vite` (1–2, 5–7, 9), `react-router` (1), `docker` (6–7), `kubernetes` (6–9), `mdn` (4), `webstandards` (6) |
 | Факультатив «крипта» | `tanstack-query`, `zod`, `vite`, `docker` |
@@ -52,7 +52,7 @@ vitest, wasm, webstandards, zod, zustand.
 | 1. Ядро App Router | `tailwind` (10) |
 | 2. Як Next.js працює зсередини | — |
 | 3. Кешування | — |
-| 4. Фулстек: дані, автентифікація, дії, тести | `webstandards` (2–3, 5, 9–10, 12), `zod` (5), `react-hook-form` (6), `clerk` і `supabase` (9), `tanstack-query` (11), `vitest` (13) |
+| 4. Фулстек: дані, автентифікація, дії, тести | `webstandards` (2–3, 5, 9–10, 12), `zod` (5), `react-hook-form` (6), `clerk` і `supabase` (9), `tanstack-query` (11), `vitest` і `testing-library` (13) |
 | 5. Інтерфейс із характером | `mdn` (4), `zustand` (5), `webstandards` (5, 7) |
 | 6. Чужий код | — |
 | 7. DevOps: від збірки до продакшну | `docker` (вступ, 2, 4), `webstandards` (6), `kubernetes` (вступ, 12) |
@@ -80,7 +80,7 @@ vitest, wasm, webstandards, zod, zustand.
 
 ### React
 
-1. React Testing Library, MSW, Playwright (фаза 3, дні 12–14).
+1. MSW, Playwright (фаза 3, дні 13–14).
 2. npm — `package.json`, `npm ci` (фаза 0).
 3. web.dev і web-vitals (фази 2 і 5).
 4. react-window або TanStack Virtual, Sentry, ESLint з `eslint-plugin-react-hooks`.

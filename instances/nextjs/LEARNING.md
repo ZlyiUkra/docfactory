@@ -363,6 +363,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - Next.js — `nextjs`; React — `react`; вебплатформа (HTTP, кеш, куки, Streams, CSS) — `mdn`;
 - тексти стандартів: WHATWG, CSP, WCAG, RFC HTTP, кешування й кук, OpenID Connect, ERC — `webstandards`;
 - Tailwind CSS — `tailwind`; zod — `zod`; TanStack Query — `tanstack-query`; Vitest — `vitest`;
+- Testing Library (React Testing Library, user-event, jest-dom) — `testing-library`;
 - React Hook Form — `react-hook-form`; Zustand — `zustand`; Clerk — `clerk`; Supabase Auth — `supabase`;
 - Docker — `docker`; Kubernetes, k3s, Kustomize, SOPS, age і Helm — `kubernetes`.
 
@@ -373,8 +374,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - з «варто знати»: iron-session, jose, Motion, next-themes, nuqs, next-intl, Redis (Upstash), Sentry,
   OpenTelemetry, socket.io-client;
 - з «знати, що існує»: Stripe, Resend і React Email, Vercel AI SDK, UploadThing, Sanity, Payload, Contentful,
-  tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Grafana, Loki, Storybook, MSW,
-  Testing Library.
+  tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Grafana, Loki, Storybook, MSW.
 
 ---
 
@@ -1005,7 +1005,7 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 # Фаза 4. Фулстек: дані, автентифікація, дії, безпека, тести — 14 днів
 
 **Сервери MCP фази:** `nextjs-docs`, `webstandards-docs`, `zod-docs`, `react-hook-form-docs`, `clerk-docs`,
-`supabase-docs`, `tanstack-query-docs`, `vitest-docs`.
+`supabase-docs`, `tanstack-query-docs`, `vitest-docs`, `testing-library-docs`.
 
 Тут фронтендер стає фулстеком: застосунок сам ходить у базу, сам упізнає користувача, сам перевіряє права й
 сам відповідає за те, що не віддав зайвого. Порядок навмисний: спершу база, потім хто ви (автентифікація),
@@ -1201,8 +1201,9 @@ Next.js — надбудова над HTTP, Node і серверним React. У
   не підтримує: їх перевіряють наскрізними тестами (завтра). Найцінніше — тест правила доступу як чистої
   функції, без бази й підмін.
 - **Читати:** `Testing`, `How to set up Vitest with Next.js`; у примірнику `vitest` — `Getting Started | Guide`,
-  `Mocking | Guide`.
-- **Сервери MCP:** `nextjs-docs`, `vitest-docs`.
+  `Mocking | Guide`; у примірнику `testing-library` — `React Testing Library: Setup`, `About Queries` (розділ
+  Priority), `user-event: Introduction`.
+- **Сервери MCP:** `nextjs-docs`, `vitest-docs`, `testing-library-docs`.
 - **Зробити:** функція `canEdit(user, post)` і три тести: автор, чужий, адмін; схема zod — тест на хибний ввід.
 - **Перевірити себе:** `npx vitest run` зелений; зміна правила ламає рівно один тест.
 - **Пастка:** намагатися відрендерити `async`-компонент у Vitest і витратити на це день.

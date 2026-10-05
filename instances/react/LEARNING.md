@@ -324,7 +324,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 | React Router (режим даних) | маршрути, лоадери, дії, розділення коду за маршрутами | Ф3 Д1–2, Ф5 Д1; є примірник `react-router` |
 | TanStack Query | серверний стан: кеш, повтори, інвалідація, оптимістичні оновлення, знімок для живих даних | Ф3 Д3–5, Д8; є примірник `tanstack-query` |
 | React Hook Form + zod | великі форми з однією схемою перевірки для фронту й бекенду | Ф3 Д10; є примірники `react-hook-form`, `zod` |
-| Vitest + React Testing Library | швидкі тести компонентів за поведінкою | Ф3 Д12–13; є примірник `vitest` (Testing Library — поза корпусом) |
+| Vitest + React Testing Library | швидкі тести компонентів за поведінкою | Ф3 Д12–13; є примірники `vitest` і `testing-library` |
 | ESLint з `eslint-plugin-react-hooks` | правила хуків і діагностика компілятора | Ф0 Д11, Ф2 Д4 |
 | Tailwind CSS | стилі класами в розмітці; підключається плагіном Vite | Ф0 Д11; план Next.js Ф1 Д10; є примірник `tailwind` |
 
@@ -368,7 +368,8 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 - вебплатформа: JavaScript, Web API, CSS, HTML, HTTP, доступність — `mdn`;
 - тексти стандартів: WHATWG (HTML, DOM, Fetch, Streams), WCAG, WAI-ARIA і APG, CSP, RFC HTTP і WebSocket,
   ERC — `webstandards`;
-- Vite — `vite`; TypeScript — `typescript`; Vitest — `vitest`;
+- Vite — `vite`; TypeScript — `typescript`; Vitest — `vitest`; React Testing Library, user-event і jest-dom —
+  `testing-library`;
 - React Router — `react-router`; TanStack Query — `tanstack-query`;
 - React Hook Form — `react-hook-form`; zod — `zod`;
 - Tailwind CSS — `tailwind`; Zustand — `zustand`; Redux Toolkit і RTK Query — `redux`;
@@ -376,7 +377,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «треба знати»: React Testing Library, ESLint і `eslint-plugin-react-hooks`;
+- з «треба знати»: ESLint і `eslint-plugin-react-hooks`;
 - з «варто знати»: MSW, Playwright, react-window, TanStack Virtual, Sentry, shadcn/ui і Radix UI;
 - з «знати, що існує»: SWR, TanStack Router, Storybook, React Native і Expo, Motion, i18next, partysocket,
   socket.io-client.
@@ -1066,7 +1067,7 @@ React — бібліотека поверх мови й браузера. Усе
 # Фаза 3. Екосистема — 15 днів
 
 **Сервери MCP фази:** `react-docs`, `react-router-docs`, `tanstack-query-docs`, `mdn-docs`, `webstandards-docs`,
-`react-hook-form-docs`, `zod-docs`, `zustand-docs`, `redux-docs`, `vitest-docs`.
+`react-hook-form-docs`, `zod-docs`, `zustand-docs`, `redux-docs`, `vitest-docs`, `testing-library-docs`.
 
 React не має нічого з цього в коробці. Документація сама каже, що брати: глава `Build a React app from Scratch`,
 крок 2 — маршрути, дані, розділення коду. Про дані там пряма порада: «fetching data directly in components can
@@ -1340,9 +1341,10 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
   'Зберегти' })`. Тест перевіряє поведінку (що на екрані після дії), а не реалізацію (стан, внутрішні функції).
   Пошук за ролями заодно перевіряє доступність. `act` — обгортка, що дає React завершити оновлення до перевірок;
   бібліотека викликає його сама.
-- **Читати:** `act`; у примірнику `vitest` — `Getting Started | Guide`, `Component Testing | Guide`; документацію
-  React Testing Library, зокрема «Which query should I use?» (поза корпусом).
-- **Сервери MCP:** `react-docs`, `vitest-docs`.
+- **Читати:** `act`; у примірнику `vitest` — `Getting Started | Guide`, `Component Testing | Guide`; у примірнику
+  `testing-library` — `React Testing Library: Setup`, `React Testing Library: API`, `About Queries` (розділ
+  Priority), `ByRole`, `user-event: Introduction`, `jest-dom`.
+- **Сервери MCP:** `react-docs`, `vitest-docs`, `testing-library-docs`.
 - **Зробити:** 1) налаштувати Vitest з jsdom; 2) тест форми: заповнити, надіслати, побачити помилку валідації;
   3) перейменувати CSS-клас кнопки; 4) змінити текст кнопки.
 - **Перевірити себе:** після кроку 3 тест зелений, після кроку 4 — червоний: текст кнопки — контракт із
@@ -1359,9 +1361,10 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
   документацією своєї версії), а експоненційну затримку проходять фальшивими таймерами Vitest — хвилини очікування
   минають за мілісекунди.
 - **Читати:** у примірнику `tanstack-query` — `Testing` (фреймворк React); у примірнику `react-router` — `Testing`
-  (розділ Data Mode); у примірнику `vitest` — `Mocking | Guide`, `Timers` (фальшиві таймери); документацію MSW
-  (поза корпусом).
-- **Сервери MCP:** `tanstack-query-docs`, `react-router-docs`, `vitest-docs`.
+  (розділ Data Mode); у примірнику `vitest` — `Mocking | Guide`, `Timers` (фальшиві таймери); у примірнику
+  `testing-library` — `DOM Testing Library: Async Methods`, `Appearance and Disappearance`; документацію MSW (поза
+  корпусом).
+- **Сервери MCP:** `tanstack-query-docs`, `react-router-docs`, `vitest-docs`, `testing-library-docs`.
 - **Зробити:** 1) три тести одного екрана: завантаження, помилка сервера, успіх — через обробники MSW; 2) тест стора з
   дня 7: підроблений `WebSocket` закривається кодом 1006, фальшиві таймери прокручують затримку, і стор
   перепідключається.
@@ -2411,10 +2414,10 @@ NestJS і Next.js.
 релізів і блогом, включно з оголошеннями про вразливості. Для React Router, TanStack Query, React Hook Form, zod,
 Zustand, Redux Toolkit, Tailwind, Vite, TypeScript і Vitest у фабриці є власні примірники — питайте їх, а не цей.
 JavaScript, Web API (WebSocket, Fetch, події) і доступність має примірник `mdn`; Docker — примірник `docker`;
-Kubernetes, k3s, k3d, Traefik, cert-manager і Let's Encrypt — примірник `kubernetes`. React Testing Library, MSW,
-Playwright, web-vitals, react-window, TanStack Virtual, GitHub Actions і хостинги в жодному корпусі фабрики немає:
-для них — сайти самих інструментів. Так само поза корпусами — API Binance і Kraken, Oracle Cloud, а у факультативі —
-lightweight-charts, wagmi, viem і Foundry.
+Kubernetes, k3s, k3d, Traefik, cert-manager і Let's Encrypt — примірник `kubernetes`; React Testing Library,
+user-event і jest-dom — примірник `testing-library`. MSW, Playwright, web-vitals, react-window, TanStack Virtual,
+GitHub Actions і хостинги в жодному корпусі фабрики немає: для них — сайти самих інструментів. Так само поза
+корпусами — API Binance і Kraken, Oracle Cloud, а у факультативі — lightweight-charts, wagmi, viem і Foundry.
 
 **Дати.** Усе, що в плані про безкоштовні тарифи, ліміти бірж, версії пакетів факультативу й стан тестових мереж,
 сказано на 02.10.2026. Ці речі змінюються швидше за документацію React: перед днем, що на них спирається,
