@@ -2,6 +2,7 @@
 
 `npm-versions` — `url` — опис пакета в реєстрі (https://registry.npmjs.org/ПАКЕТ); `label` — назва
                  пакета в заголовках. Одне звернення: опис пакета вже містить усі версії.
+                 Необов'язкове `skip_versions` — вираз версій, що не беруться (як у `npm-readme`).
 
 Навіщо. Документація каже, як працює API, але рідко — з якої версії він є і як перейти з однієї
 версії на іншу. Реєстр npm знає це точно для кожної версії, яку можна встановити, зокрема canary,
@@ -9,6 +10,11 @@ alpha, beta й next: дату публікації, мітку поширенн�
 точки входу пакета (`exports`: з якої версії імпортується `zod/v4` чи `zod/mini`), залежності,
 peer-залежності й вимоги до Node. Тому реєстр — база для питань «з якої версії», «що
 змінилося», «що встановити», і з нього читаються всі версії без відсіву.
+
+Виняток — `skip_versions`. Playwright публікує alpha-збірку щодня: понад п'ять тисяч версій проти
+двохсот стабільних. Огляд і документ лінії несуть перелік усіх своїх версій, і кожен фрагмент
+документа повторює його — у Playwright це 230 МБ із 258 у кеші фрагментів. Для такого пакета
+щоденні збірки відсіваються; для решти поле не задають, і читаються всі версії, як раніше.
 
 Документи:
 - огляд пакета: поточні мітки, перелік ліній з першою й останньою версією та датами, і для кожної
@@ -173,13 +179,16 @@ def npm_versions(source: dict, ctx) -> list[Item]:
     label = source.get("label") or url.rstrip("/").rsplit("/", 1)[-1]
     cite = f"https://www.npmjs.com/package/{url.split('registry.npmjs.org/', 1)[-1]}?activeTab=versions"
 
+    skip = re.compile(source["skip_versions"]) if source.get("skip_versions") else None
+
     def load() -> dict:
         try:
             pack = json.loads(ctx.text(url))
         except ValueError as exc:
             raise SystemExit(f"{url}: відповідь не JSON ({exc}).")
         times = pack.get("time") or {}
-        versions = sorted((v for v in pack.get("versions") or {} if v in times),
+        versions = sorted((v for v in pack.get("versions") or {}
+                           if v in times and not (skip and skip.search(v))),
                           key=lambda v: times[v])
         if not versions:
             raise SystemExit(f"{url}: жодної версії.")
