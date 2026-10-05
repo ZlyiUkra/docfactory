@@ -354,7 +354,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 
 **Є примірник** — питати його сервер документації:
 
-- Next.js — `nextjs`; React — `react`;
+- Next.js — `nextjs`; React — `react`; вебплатформа (HTTP, кеш, куки, Streams, CSS) — `mdn`;
 - Tailwind CSS — `tailwind`; zod — `zod`; TanStack Query — `tanstack-query`; Vitest — `vitest`;
 - React Hook Form — `react-hook-form`; Zustand — `zustand`; Clerk — `clerk`; Supabase Auth — `supabase`;
 - Docker — `docker`; Kubernetes, k3s, Kustomize, SOPS, age і Helm — `kubernetes`.
@@ -374,7 +374,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 # Фаза 0. База, якої Next.js не дає — 6 днів
 
 Next.js — надбудова над HTTP, Node і серверним React. Усе, що тут, його документація вважає відомим; саме на
-цих речах, а не на файлових угодах, застрягає фронтендер. Джерела — MDN і примірник `react` цієї фабрики
+цих речах, а не на файлових угодах, застрягає фронтендер. Джерела — примірники `mdn` і `react` цієї фабрики
 ([../react/LEARNING.md](../react/LEARNING.md), фаза 4, дні 1–3). Корпусу Next.js тут ще немає.
 
 ### День 1. HTTP наскрізь
@@ -383,7 +383,7 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 - **Що це.** Запит — це метод (`GET`, `POST`), адреса, заголовки й тіло; відповідь — статус, заголовки й тіло.
   У браузері й на сервері вони описані тими самими об'єктами: `Request`, `Response`, `Headers`, `FormData`,
   `URL`. Route Handlers і Proxy в Next.js працюють саме з ними, без власних обгорток.
-- **Читати:** MDN — «HTTP overview», «Request», «Response», «FormData».
+- **Читати:** у примірнику `mdn` — `Overview of HTTP`, `Request`, `Response`, `FormData`.
 - **Зробити:** 1) сервер на голому `node:http`, без фреймворку; 2) `GET /items` віддає JSON зі статусом 200;
   3) `POST /items` приймає форму й відповідає 201; 4) на невідому адресу — 404.
 - **Перевірити себе:** `curl -i` показує статус і заголовки кожної з трьох відповідей, і ви можете пояснити
@@ -398,7 +398,7 @@ Next.js — надбудова над HTTP, Node і серверним React. У
   `s-maxage=60` — спільному кешу (CDN), `stale-while-revalidate=300` — «віддай старе й онови у фоні». `ETag` —
   відбиток, за яким сервер відповідає «не змінилося» (304) без тіла. `private` забороняє спільному кешу
   зберігати відповідь — так позначають усе персональне.
-- **Читати:** MDN — «HTTP caching», «Cache-Control».
+- **Читати:** у примірнику `mdn` — `HTTP caching`, `Cache-Control header`.
 - **Зробити:** 1) один ендпойнт учорашнього сервера з трьома політиками по черзі; 2) для кожної — оновити
   сторінку тричі з відкритою вкладкою «Мережа»; 3) записати, звідки прийшла відповідь: мережа, кеш, 304.
 - **Перевірити себе:** ви кажете, хто і скільки тримає відповідь із
@@ -415,7 +415,8 @@ Next.js — надбудова над HTTP, Node і серверним React. У
   `SameSite` обмежує надсилання з чужих сайтів. Сесія буває двох видів: ідентифікатор, за яким сервер шукає
   запис у базі, або підписаний токен, який несе дані сам. CSRF — чужий сайт змушує браузер жертви надіслати
   запит із її кукою.
-- **Читати:** MDN — «Using HTTP cookies», «Set-Cookie»; OWASP — «Session Management Cheat Sheet».
+- **Читати:** у примірнику `mdn` — `Using HTTP cookies`, `Set-Cookie header`; OWASP — «Session Management Cheat
+  Sheet».
 - **Зробити:** 1) `POST /login` перевіряє пароль і ставить куку сесії; 2) `GET /me` читає куку й каже, хто
   ви; 3) `POST /logout` стирає куку.
 - **Перевірити себе:** у консолі браузера `document.cookie` не показує куку сесії, а `GET /me` вас упізнає.
@@ -457,7 +458,7 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 - **Що це.** Змінні оточення (`process.env`) — спосіб передати процесу налаштування й секрети, не вписуючи їх
   у код. Сигнал `SIGTERM` — прохання завершитися, яке шле Docker; чемний процес доробляє поточні запити й
   виходить. Потоки (streams) — спосіб віддавати дані шматками, не тримаючи все в пам'яті.
-- **Читати:** документація Node — «process», «Stream»; MDN — «Streams API».
+- **Читати:** документація Node — «process», «Stream»; у примірнику `mdn` — `Streams API`.
 - **Зробити:** 1) скрипт читає налаштування з `.env`; 2) віддає великий файл потоком; 3) на `SIGTERM`
   дописує відповідь і виходить з кодом 0.
 - **Перевірити себе:** `kill <pid>` під час завантаження файла не обриває його на півдорозі.
@@ -1187,7 +1188,8 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 - **Що це.** Сучасний CSS: `@starting-style` — анімація появи елемента; анімації за прокручуванням
   (`animation-timeline: scroll()`); переходи властивостей. Медіа-запит `prefers-reduced-motion` — людям, яким
   рух шкодить, анімації вимикають.
-- **Читати:** MDN — «@starting-style», «Scroll-driven animations», «prefers-reduced-motion».
+- **Читати:** у примірнику `mdn` — `@starting-style CSS at-rule`, `CSS scroll-driven animations`,
+  `prefers-reduced-motion CSS media feature`.
 - **Зробити:** поява модального вікна на `@starting-style`; індикатор прочитання статті за прокручуванням;
   усе вимикається при `prefers-reduced-motion`.
 - **Перевірити себе:** у налаштуваннях системи «зменшити рух» — і жодна анімація застосунку не рухається.
@@ -1729,9 +1731,9 @@ GitHub Actions — поза фабрикою. Дні 1–11 — на своєм�
   `Content-Type: text/event-stream`, браузер слухає через `EventSource`. Це одностороння дорога (сервер → браузер),
   звичайний HTTP, перепідключення вбудоване в браузер; але кожен глядач тримає відкритий запит до процесу Next.js. Для
   цін при окремому NestJS лишаємо сокет; SSE — для сповіщень на кшталт «ваш експорт готовий».
-- **Читати:** `cacheLife`, розділ «Prerendering behavior»; `Streaming`, розділ «Streaming in Route Handlers»;
-  `Route Handlers`, розділ «With Cache Components»; пояснення помилки `Next.js encountered uncached data during
-  prerendering or a navigation`, розділ «Short-lived caches»; поза корпусом — MDN: «Using server-sent events».
+- **Читати:** `cacheLife`, розділ «Prerendering behavior»; `Streaming`, розділ «Streaming in Route Handlers»; `Route
+  Handlers`, розділ «With Cache Components»; пояснення помилки `Next.js encountered uncached data during prerendering
+  or a navigation`, розділ «Short-lived caches»; у примірнику `mdn` — `Using server-sent events`.
 - **Зробити:** 1) `getPriceSnapshot()` у шарі даних з `'use cache'`, `cacheLife('seconds')`, `cacheTag('prices')`
   — без аргументів: знімок усіх дозволених пар (перелік — у конфігу), тож ключ кешу один на всіх; 2) серверний
   компонент у `<Suspense>` читає список користувача поза кешем, фільтрує знімок до його пар і передає
@@ -2015,8 +2017,8 @@ TLS і сертифікат, зворотний проксі, підніманн
   сторінку зі словом, яке там мусить бути. І ще: вебсокет через Traefik мусить жити довше за хвилину — таймаути
   HelmChartConfig `traefik` із плану NestJS (фаза 7, день 6) перевірте на демо-адресі з `web-next` попереду.
 - **Читати:** у корпусі — `Server Actions and Mutations`, розділ Security; `cookies` (опції куки); `Metadata and
-  OG images` (картинка посилання в месенджері); поза корпусом — MDN: «Set-Cookie», розділ Cookie prefixes;
-  letsencrypt.org: «Rate Limits» (не перевидавайте сертифікат без потреби).
+  OG images` (картинка посилання в месенджері); у примірнику `mdn` — `Set-Cookie header`, розділ Cookie
+  prefixes; у примірнику `kubernetes` — `Let's Encrypt: Rate Limits` (не перевидавайте сертифікат без потреби).
 - **Зробити:** 1) нова кука сесії `__Host-…` (старі сесії під попереднім іменем просто закінчаться — гостю досить
   увійти знову); 2) серверна дія гостьового входу з перенаправленням у кабінет, кнопку SPA прибрати;
   3) `@DemoAllowed()` на `POST /api/ws/ticket` у NestJS і e2e-тест: гість отримує квиток, а на решту змінювальних

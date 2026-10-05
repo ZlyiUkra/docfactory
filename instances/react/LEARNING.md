@@ -359,6 +359,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 **Є примірник** — питати його сервер документації:
 
 - React, разом із React Compiler — `react`;
+- вебплатформа: JavaScript, Web API, CSS, HTML, HTTP, доступність — `mdn`;
 - Vite — `vite`; TypeScript — `typescript`; Vitest — `vitest`;
 - React Router — `react-router`; TanStack Query — `tanstack-query`;
 - React Hook Form — `react-hook-form`; zod — `zod`;
@@ -377,7 +378,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 # Фаза 0. База, якої React не дає — 12 днів
 
 React — бібліотека поверх мови й браузера. Усе, що тут, документація React вважає відомим і не пояснює; саме на
-цих речах, а не на хуках, застрягає більшість новачків. Джерела — MDN і примірник `typescript` цієї фабрики;
+цих речах, а не на хуках, застрягає більшість новачків. Джерела — примірники `mdn` і `typescript` цієї фабрики;
 корпус React з'являється наприкінці фази, у дні про інструменти.
 
 ## Блок A. Мова — дні 1–5
@@ -390,7 +391,7 @@ React — бібліотека поверх мови й браузера. Усе
   два однакові на вигляд об'єкти не рівні. Розгортання `{ ...user }` робить нову обгортку, але лише на один рівень:
   вкладені об'єкти спільні. Глибоку копію дає `structuredClone`. React порівнює стан через `Object.is` — по суті
   той самий `===`.
-- **Читати:** MDN — «Object.is()», «Spread syntax», «structuredClone()».
+- **Читати:** у примірнику `mdn` — `Object.is()`, `Spread syntax (...)`, `Window: structuredClone() method`.
 - **Зробити:** 1) функція `addItem(list, item)`, що повертає новий масив і не чіпає вхідний; 2) `console.log`
   порівнянь `===` до й після; 3) змінити `user.address.city`, розгорнувши два рівні; 4) показати, що після
   `{ ...user }` поле `address` спільне з оригіналом.
@@ -402,7 +403,7 @@ React — бібліотека поверх мови й браузера. Усе
 - **Навіщо.** Кожне оновлення списку в стані React — перетворення масиву без мутації.
 - **Що це.** `map`, `filter`, `reduce`, `find`, `some` повертають нове й не чіпають вхідне. `sort`, `reverse`,
   `splice` і `push` змінюють масив на місці. Для них є немутуючі пари: `toSorted`, `toReversed`, `toSpliced`, `with`.
-- **Читати:** MDN — «Array», розділ про копіювальні й мутуючі методи; «Object.freeze()».
+- **Читати:** у примірнику `mdn` — `Array`, розділ про копіювальні й мутуючі методи; `Object.freeze()`.
 - **Зробити:** 1) список із тисячі об'єктів-задач; 2) `Object.freeze` на масиві й кожному елементі; 3) набір
   перетворень: відфільтрувати, відсортувати за датою, перейменувати одне поле, порахувати суму.
 - **Перевірити себе:** у суворому режимі модуля жодне перетворення не кинуло `TypeError` — отже, жодне не мутувало
@@ -416,7 +417,7 @@ React — бібліотека поверх мови й браузера. Усе
 - **Що це.** Функція пам'ятає змінні з того місця, де її створили, а не з того, де її викликали. Обробник, створений
   у першому рендері, бачить значення першого рендеру назавжди. `let` у циклі створює нову змінну на кожен оберт,
   `var` — одну на всіх.
-- **Читати:** MDN — «Closures», «let».
+- **Читати:** у примірнику `mdn` — `Closures`, `let`.
 - **Зробити:** 1) лічильник на замиканні; 2) кнопка, що через три секунди показує значення змінної, яку ви
   встигли змінити тричі; 3) цикл із `setTimeout` на `var` і на `let`.
 - **Перевірити себе:** ви пояснюєте, яке значення покаже кожен `setTimeout` і чому, до того як запустили.
@@ -429,7 +430,7 @@ React — бібліотека поверх мови й браузера. Усе
 - **Що це.** ESM: `import` і `export`, іменований і типовий експорт. `package.json` описує залежності; `^19.3.0`
   дозволяє будь-яку 19.x не нижче 19.3.0, `~19.3.0` — лише 19.3.x. Файл блокування (`package-lock.json`) фіксує
   точні версії всього дерева; `npm ci` ставить рівно їх. `npx` запускає пакет, не встановлюючи його в проєкт.
-- **Читати:** MDN — «JavaScript modules»; документацію npm — «package.json», «npm ci» (поза корпусом).
+- **Читати:** у примірнику `mdn` — `JavaScript modules`; документацію npm — «package.json», «npm ci» (поза корпусом).
 - **Зробити:** 1) розбити код днів 1–3 на модулі; 2) підключити одну зовнішню бібліотеку; 3) `npm ls` і
   знайти її залежності.
 - **Перевірити себе:** ви кажете, яку версію поставить `npm install` для `^19.3.0` і чим `npm ci` відрізняється.
@@ -442,7 +443,7 @@ React — бібліотека поверх мови й браузера. Усе
 - **Що це.** Проміс — значення, яке буде. `async`/`await` — синтаксис поверх промісів. `Promise.all` чекає всіх
   паралельно і падає з першою помилкою; `Promise.allSettled` чекає всіх і повертає кожен результат. `await` у циклі
   для незалежних запитів виконує їх по черзі.
-- **Читати:** MDN — «Using promises», «async function», «Promise.all()», «Promise.allSettled()».
+- **Читати:** у примірнику `mdn` — `Using promises`, `async function`, `Promise.all()`, `Promise.allSettled()`.
 - **Зробити:** 1) три фейкові запити із затримками 300, 500 і 700 мс; 2) послідовно через `await`;
   3) паралельно через `Promise.all`; 4) час кожного варіанта через `performance.now()`.
 - **Перевірити себе:** два числа: близько 1500 мс і близько 700 мс.
@@ -457,7 +458,7 @@ React — бібліотека поверх мови й браузера. Усе
 - **Що це.** `fetch` повертає відповідь навіть на 404 і 500: проміс відхиляється лише при мережевій помилці, тож
   статус перевіряють через `res.ok`. Тіло читається один раз (`res.json()`). `AbortController` скасовує запит:
   його сигнал передають у `fetch`, а `abort()` обриває запит, що ще летить.
-- **Читати:** MDN — «Using the Fetch API», «Response.ok», «AbortController».
+- **Читати:** у примірнику `mdn` — `Using the Fetch API`, `Response: ok property`, `AbortController`.
 - **Зробити:** 1) поле пошуку, що на кожну літеру питає публічний API; 2) кожна нова літера скасовує попередній
   запит; 3) у вкладці «Мережа» ввімкнути повільну мережу й набрати слово швидко.
 - **Перевірити себе:** у вкладці «Мережа» скасовані запити позначені як скасовані, а на екрані завжди результат
@@ -471,7 +472,7 @@ React — бібліотека поверх мови й браузера. Усе
   вводу змінюється, атрибут `value` — ні). Подія спливає від цілі вгору до кореня; делегування — один обробник на
   батькові замість сотні на дітях. `event.target` — де клацнули, `event.currentTarget` — чий обробник працює.
   `preventDefault` скасовує дію браузера (відправлення форми), `stopPropagation` — спливання.
-- **Читати:** MDN — «Introduction to events», «Event bubbling», «Event.preventDefault()».
+- **Читати:** у примірнику `mdn` — `Introduction to events`, `Event bubbling`, `Event: preventDefault() method`.
 - **Зробити:** список на сто елементів без React з одним обробником на батьківському `<ul>`, що видаляє елемент,
   по якому клацнули.
 - **Перевірити себе:** в інструментах розробника на вкладці слухачів подій — один обробник, а не сто.
@@ -483,7 +484,7 @@ React — бібліотека поверх мови й браузера. Усе
 - **Що це.** Після зміни DOM браузер рахує стилі, компонування (де що стоїть), малювання й композицію шарів.
   Прочитати `offsetHeight` після запису стилю — змусити браузер перерахувати компонування негайно (примусове
   перекомпонування); у циклі це дуже дорого. Анімація `transform` і `opacity` обходиться без компонування.
-- **Читати:** MDN — «Populating the page: how browsers work», «Window.requestAnimationFrame()».
+- **Читати:** у примірнику `mdn` — `Populating the page: how browsers work`, `Window: requestAnimationFrame() method`.
 - **Зробити:** 1) сторінка, що в циклі на тисячу елементів по черзі читає `offsetHeight` і пише `style.height`;
   2) записати профіль у вкладці «Продуктивність»; 3) переписати: спершу всі читання, потім усі записи;
   4) записати профіль знову.
@@ -1120,8 +1121,8 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
   (тут — список пар). Binance складає кілька потоків в одне з'єднання адресою
   `/stream?streams=btcusdt@miniTicker/ethusdt@miniTicker` і загортає кожне повідомлення в `{ stream, data }`; потік
   `@miniTicker` шле зведення по парі раз на секунду.
-- **Читати:** `Synchronizing with Effects` (розділ «Subscribing to events»), `Lifecycle of Reactive Effects`;
-  MDN — «WebSocket», «CloseEvent» (поза корпусом); документація Binance — «WebSocket Streams» (поза корпусом).
+- **Читати:** `Synchronizing with Effects` (розділ «Subscribing to events»), `Lifecycle of Reactive Effects`; у
+  примірнику `mdn` — `WebSocket`, `CloseEvent`; документація Binance — «WebSocket Streams» (поза корпусом).
 - **Зробити:** 1) модуль «список монет»: додати, видалити й перейменувати пару (`BTCUSDT`, `ETHUSDT`…) через фейковий
   API і `useQuery`, як інші записи; 2) компонент, що в ефекті відкриває одне з'єднання на весь список (адреса — з
   відсортованих пар у нижньому регістрі; кожну пару з даних користувача перед цим перевірити виразом
@@ -1154,8 +1155,8 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
   `offline` на `window` — підказка, а не гарантія). Binance закриває кожне з'єднання через 24 години, тож
   перепідключення — не рідкісна аварія, а щоденна подія.
 - **Читати:** `useSyncExternalStore` (розділи «Subscribing to an external store», «Subscribing to a browser API»,
-  «Extracting the logic to a custom Hook» і обидва розділи Troubleshooting), `Reusing Logic with Custom Hooks`;
-  MDN — «Navigator.onLine», «Page Visibility API» (поза корпусом); блог AWS Architecture — «Exponential Backoff
+  «Extracting the logic to a custom Hook» і обидва розділи Troubleshooting), `Reusing Logic with Custom Hooks`; у
+  примірнику `mdn` — `Navigator: onLine property`, `Page Visibility API`; блог AWS Architecture — «Exponential Backoff
   And Jitter» (поза корпусом).
 - **Зробити:** 1) модуль `priceStore` з `subscribe`, `getSnapshot`, станом з'єднання й незмінними записами;
   2) хуки `usePrice(symbol)` і `useConnectionStatus()`; 3) перепідключення з повним джитером і стелею, кожна
@@ -1185,9 +1186,9 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
   кілька секунд шле поточну свічку з прапорцем `x` — «свічка закрита». Свічка, що ще формується, живе в сторі;
   закрита дописується в кеш через `queryClient.setQueryData` — раз на хвилину, а не на кожне повідомлення. Після
   перепідключення історію перезапитують (`invalidateQueries`): поки з'єднання не було, свічки закривалися без вас.
-- **Читати:** `<Profiler>`, `React Performance tracks`, `memo`; MDN — «Window.requestAnimationFrame()»; у
-  примірнику `tanstack-query` — `Updates from Mutation Responses` (той самий `setQueryData`, лише джерело інше),
-  `QueryClient` (метод `setQueryData`), `Important Defaults`; блог TkDodo — «Using WebSockets with React Query»
+- **Читати:** `<Profiler>`, `React Performance tracks`, `memo`; у примірнику `mdn` — `Window: requestAnimationFrame()
+  method`; у примірнику `tanstack-query` — `Updates from Mutation Responses` (той самий `setQueryData`, лише джерело
+  інше), `QueryClient` (метод `setQueryData`), `Important Defaults`; блог TkDodo — «Using WebSockets with React Query»
   (поза корпусом).
 - **Зробити:** 1) перевести список на потік `@trade` для п'яти пар; 2) на збірці для профілювання з уповільненням
   процесора 4× заміряти за десять секунд кількість повідомлень і комітів (`<Profiler>`) і INP набору в поле фільтра
@@ -1310,8 +1311,8 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
   через Tab, Enter, Esc; фокус видно. Після переходу на інший екран фокус переходить на заголовок нової сторінки.
   `aria-` атрибути — лише там, де семантики HTML забракло. `useId` дає стабільні ідентифікатори для зв'язку
   `label` і `aria-describedby`.
-- **Читати:** `useId`; `Common components (e.g. <div>)` (атрибути `aria-*` і `role`); MDN — «Accessibility»;
-  розширення axe DevTools (поза корпусом).
+- **Читати:** `useId`; `Common components (e.g. <div>)` (атрибути `aria-*` і `role`); у примірнику `mdn` —
+  `Accessibility`; розширення axe DevTools (поза корпусом).
 - **Зробити:** 1) пройти весь застосунок без миші; 2) axe DevTools на трьох головних екранах; 3) полагодити
   знайдене; 4) повторити.
 - **Перевірити себе:** два числа проблем axe до й після; кожна дія застосунку доступна з клавіатури.
@@ -1460,8 +1461,8 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
   зображенні LCP і `loading="lazy"` на тих, що нижче першого екрана. `font-display: swap` показує текст одразу
   запасним шрифтом. React 19 уміє підказувати браузеру ресурси з будь-якого компонента: `preload`, `preconnect`,
   `prefetchDNS`, і сам піднімає `<link>` та `<title>` у `<head>`.
-- **Читати:** `preload`, `preconnect`, `prefetchDNS`, `<link>`; MDN — «HTMLImageElement.fetchPriority»,
-  «font-display».
+- **Читати:** `preload`, `preconnect`, `prefetchDNS`, `<link>`; у примірнику `mdn` — `HTMLImageElement: fetchPriority
+  property`, `font-display CSS at-rule descriptor`.
 - **Зробити:** 1) розміри всім зображенням; 2) `fetchpriority="high"` на зображенні LCP; 3) `preconnect` до
   домену зображень чи API; 4) шрифт з `font-display: swap` і `preload`; 5) Lighthouse до й після.
 - **Перевірити себе:** дві пари чисел LCP і CLS у журналі.
@@ -2165,8 +2166,8 @@ NestJS і Next.js.
   «How to manage a local order book correctly». Сама книга живе поза React — у `Map` «ціна-рядок → обсяг» для кожного
   боку, а на екран раз на кадр (фаза 3, день 8) іде лише верх: 20 найкращих рівнів. Ключ — рядок ціни рівно таким,
   як прислала біржа: `"0.1"` і `"0.10000000"` для `Map` — різні ключі.
-- **Читати:** `useSyncExternalStore`; MDN — «Window.requestAnimationFrame()» (поза корпусом); документація Binance —
-  «WebSocket Streams», розділ про потік змін книги й локальну книгу (поза корпусом).
+- **Читати:** `useSyncExternalStore`; у примірнику `mdn` — `Window: requestAnimationFrame() method`; документація
+  Binance — «WebSocket Streams», розділ про потік змін книги й локальну книгу (поза корпусом).
 - **Зробити:** 1) модуль `orderBook` з буфером, знімком і застосуванням змін за процедурою; 2) виявлення дірки й
   повторна синхронізація з записом у лог; 3) екран: 20 рівнів з кожного боку, спред, смужки обсягу; 4) поруч —
   потік `@bookTicker`, що шле лише найкращу ціну купівлі й продажу; 5) вимкнути мережу на хвилину й увімкнути.
@@ -2301,10 +2302,11 @@ NestJS і Next.js.
 У корпусі цього примірника — **лише сама React**, зате всіх версій від 0.3 до 19.3 разом із CHANGELOG, нотатками
 релізів і блогом, включно з оголошеннями про вразливості. Для React Router, TanStack Query, React Hook Form, zod,
 Zustand, Redux Toolkit, Tailwind, Vite, TypeScript і Vitest у фабриці є власні примірники — питайте їх, а не цей.
-Docker має примірник `docker`; Kubernetes, k3s, k3d, Traefik, cert-manager і Let's Encrypt — примірник
-`kubernetes`. React Testing Library, MSW, Playwright, web-vitals, react-window, TanStack Virtual, GitHub Actions і
-хостинги в жодному корпусі фабрики немає: для них — сайти самих інструментів. Так само поза корпусами — API
-WebSocket (MDN), Binance і Kraken, Oracle Cloud, а у факультативі — lightweight-charts, wagmi, viem і Foundry.
+JavaScript, Web API (WebSocket, Fetch, події) і доступність має примірник `mdn`; Docker — примірник `docker`;
+Kubernetes, k3s, k3d, Traefik, cert-manager і Let's Encrypt — примірник `kubernetes`. React Testing Library, MSW,
+Playwright, web-vitals, react-window, TanStack Virtual, GitHub Actions і хостинги в жодному корпусі фабрики немає:
+для них — сайти самих інструментів. Так само поза корпусами — API Binance і Kraken, Oracle Cloud, а у факультативі —
+lightweight-charts, wagmi, viem і Foundry.
 
 **Дати.** Усе, що в плані про безкоштовні тарифи, ліміти бірж, версії пакетів факультативу й стан тестових мереж,
 сказано на 02.10.2026. Ці речі змінюються швидше за документацію React: перед днем, що на них спирається,

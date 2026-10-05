@@ -377,6 +377,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   `@nestjs/terminus`, `@nestjs/throttler`, `@nestjs/websockets`, `@nestjs/event-emitter`, `@nestjs/schedule`,
   `@nestjs/cache-manager`;
 - TypeScript — `typescript`; zod — `zod`; Vitest — `vitest`;
+- HTTP, куки, CORS, WebSocket API — `mdn`;
 - Docker — `docker`; Kubernetes, k3s і `kubectl` — `kubernetes`;
 - SPA-бік: Vite — `vite`, React Hook Form — `react-hook-form`, TanStack Query — `tanstack-query`;
 - Supabase — `supabase`; Clerk — `clerk`.
@@ -397,7 +398,8 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 
 Виглядає як відступ від теми, але саме вона визначає, чи будете ви фулстеком, чи людиною, яка копіює приклади з
 документації. Nest — обгортка над TypeScript, HTTP і базою даних; обгортку без нутрощів вивчити не можна. Корпусу
-Nest тут ще немає: джерела — TypeScript Handbook (примірник `typescript`), MDN, OWASP і документація PostgreSQL.
+Nest тут ще немає: джерела — TypeScript Handbook (примірник `typescript`), MDN (примірник `mdn`), OWASP і
+документація PostgreSQL.
 
 ## Блок A. TypeScript поза React — дні 1–5
 
@@ -490,7 +492,7 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   запит, 401 — не знаю, хто ви, 403 — знаю, але не можна, 404 — немає (або вам не можна знати, що є), 409 —
   конфлікт зі станом (email уже зайнятий), 422 — синтаксично правильно, але за змістом не годиться, 429 —
   забагато запитів.
-- **Читати:** MDN — «An overview of HTTP», «HTTP request methods», «HTTP response status codes».
+- **Читати:** у примірнику `mdn` — `Overview of HTTP`, `HTTP request methods`, `HTTP response status codes`.
 - **Зробити:** таблиця «дія → метод → адреса → успішний статус → можливі помилки» для всього майбутнього API
   вашого проєкту: реєстрація, вхід, список записів, один запис, створення, зміна, видалення.
 - **Перевірити себе:** для кожного рядка таблиці ви кажете, чому саме цей статус, а не сусідній: 401 чи 403,
@@ -505,8 +507,8 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   `application/x-www-form-urlencoded` (класична форма). `Accept` — що клієнт хоче отримати. `Authorization` несе
   токен. `Cache-Control` каже, хто й скільки може тримати відповідь: `no-store` — ніхто, `private` — лише браузер
   користувача, `max-age=60` — хвилину. Персональні відповіді завжди `private` або `no-store`.
-- **Читати:** MDN — «HTTP headers», «HTTP caching», «Cache-Control»; погляд із клієнта — день плану React про
-  мережу.
+- **Читати:** у примірнику `mdn` — `HTTP headers`, `HTTP caching`, `Cache-Control header`; погляд із клієнта — день
+  плану React про мережу.
 - **Зробити:** 1) відкрити вкладку «Мережа» на своєму SPA; 2) для трьох реальних запитів пояснити кожен заголовок
   запиту й відповіді; 3) записати, які з них ставитиме ваш бекенд.
 - **Перевірити себе:** ви пояснюєте, чому відповідь `GET /me` не можна віддавати з `Cache-Control: public`.
@@ -554,9 +556,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   прочитати — можна. Сесія буває двох видів: ідентифікатор, за яким сервер шукає запис у базі, або підписаний
   токен, що несе дані сам. CSRF — чужий сайт змушує браузер жертви надіслати запит із її кукою; захист — `SameSite`,
   перевірка заголовка `Origin` і CSRF-токен (схема «подвійного надсилання»: значення і в куці, і в заголовку).
-- **Читати:** MDN — «Using HTTP cookies», «Set-Cookie»; OWASP — «Session Management Cheat Sheet», «Cross-Site
-  Request Forgery Prevention Cheat Sheet». Наперед, у корпусі Nest: розділ Techniques, глава `Cookies` (підписані
-  куки, `cookie-parser`); розділ Security, глава `CSRF Protection` (`csrf-csrf`).
+- **Читати:** у примірнику `mdn` — `Using HTTP cookies`, `Set-Cookie header`; OWASP — «Session Management Cheat
+  Sheet», «Cross-Site Request Forgery Prevention Cheat Sheet». Наперед, у корпусі Nest: розділ Techniques, глава
+  `Cookies` (підписані куки, `cookie-parser`); розділ Security, глава `CSRF Protection` (`csrf-csrf`).
 - **Зробити:** на Express з учорашнього дня: 1) `POST /login` ставить куку сесії з
   `HttpOnly; SameSite=Strict`; 2) `GET /me` читає куку й каже, хто ви; 3) `POST /logout` стирає куку;
   4) сторінка на іншому порту з формою, що шле `POST` на ваш сервер.
@@ -575,8 +577,8 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   передавати куки; тоді `*` у дозволеному походженні заборонене. Інший шлях — проксі Vite: SPA звертається до
   `/api` на своєму ж походженні, а сервер розробки Vite пересилає запит на `:3000`. Для браузера це одне
   походження — CORS не потрібен узагалі. У продакшні те саме робить nginx (фаза 6, день 2).
-- **Читати:** MDN — «Cross-Origin Resource Sharing (CORS)»; у примірнику `vite` — `Server Options`, розділ
-  `server.proxy`; наперед — розділ Security, глава `CORS`.
+- **Читати:** у примірнику `mdn` — `Cross-Origin Resource Sharing (CORS)`; у примірнику `vite` — `Server Options`,
+  розділ `server.proxy`; наперед — розділ Security, глава `CORS`.
 - **Зробити:** 1) SPA з плану React робить `fetch('http://localhost:3000/items')` — прочитати помилку в консолі й
   запит `OPTIONS` у вкладці «Мережа»; 2) полагодити заголовком на сервері для одного походження; 3) прибрати
   заголовок і натомість налаштувати `server.proxy` у `vite.config` на `/api`; 4) SPA ходить на `/api/items`.
@@ -2025,14 +2027,14 @@ SPA під одним іменем, викочується й відкочуєт
 біржі напряму; тут цю роль бере ваш сервер: одне з'єднання з біржею на весь сервер, розсилка лише тим, хто дивиться
 пару, вхід і права в самому з'єднанні, кілька екземплярів у кластері. Наприкінці SPA бере ціни з вашого сервера, а
 не з біржі, і останній день фази робить із цього демо, яке можна надіслати клієнтові.
-
 Корпус Nest тут — розділ WebSockets: глави `Gateways` і `Adapters`, а також `Guards`, `Pipes` і `Exception filters`
-цього розділу (у розділі Overview є глави з тими самими назвами); глава `Server-Sent Events` — у розділі
-Techniques. Сам протокол, socket.io і біржа — поза корпусом: RFC 6455, MDN, документація socket.io і Binance. Джерело
-цін — ринкові ендпойнти Binance лише для даних, без ключа: `wss://data-stream.binance.vision` для потоку і
-`https://data-api.binance.vision` для REST; запасне — Kraken WS v2 (`wss://ws.kraken.com/v2`). Ліміти нижче — з
-документації Binance на 02.10.2026. Чи відкриваються ці адреси з вашої країни й від вашого провайдера, перевірте
-першого ж дня: доступність бірж залежить від країни, і перевіряти це наприкінці фази пізно.
+цього розділу (у розділі Overview є глави з тими самими назвами); глава `Server-Sent Events` — у розділі Techniques.
+Сам протокол, socket.io і біржа — поза корпусом: RFC 6455, документація socket.io і Binance; WebSocket API — у
+примірнику `mdn`. Джерело цін — ринкові ендпойнти Binance лише для даних, без ключа:
+`wss://data-stream.binance.vision` для потоку і `https://data-api.binance.vision` для REST; запасне — Kraken WS v2
+(`wss://ws.kraken.com/v2`). Ліміти нижче — з документації Binance на 02.10.2026. Чи відкриваються ці адреси з вашої
+країни й від вашого провайдера, перевірте першого ж дня: доступність бірж залежить від країни, і перевіряти це
+наприкінці фази пізно.
 
 ### День 1. Протокол і голий `ws`
 
@@ -2046,9 +2048,9 @@ Techniques. Сам протокол, socket.io і біржа — поза кор
   1000 — нормально, 1001 — бік іде (вкладку закрили, сервер перезапускається), 1008 — порушення правил, 1011 —
   помилка сервера, 1006 — з'єднання обірвалось без кадру close (цей код ніколи не надсилається, його вигадує бік,
   що лишився). Бік браузера — API `WebSocket` — ви бачили в плані React; тут — бік сервера на бібліотеці `ws`.
-- **Читати:** RFC 6455 — розділи 1.3 Opening Handshake, 5 Data Framing, 7.4 Status Codes; MDN — «The WebSocket API
-  (WebSockets)», «Writing WebSocket servers»; README бібліотеки `ws`, розділ про перевірку розірваних з'єднань (поза
-  корпусом).
+- **Читати:** RFC 6455 — розділи 1.3 Opening Handshake, 5 Data Framing, 7.4 Status Codes; у примірнику `mdn` —
+  `WebSocket API (WebSockets)`, `Writing WebSocket servers`; README бібліотеки `ws`, розділ про перевірку розірваних
+  з'єднань (поза корпусом).
 - **Зробити:** в окремій теці, без Nest: 1) `npm i ws`; сервер на тридцять рядків: на з'єднання — привітання, на
   повідомлення — відповідь луною, лог коду й причини закриття; 2) ping кожні 10 секунд і `terminate()` тим, хто не
   відповів pong з минулого разу; 3) рукостискання очима curl:

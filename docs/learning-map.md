@@ -4,9 +4,9 @@
 однієї бібліотеки чи інструмента (тека `instances/<ім'я>`). Файл оновлюється після кожного нового примірника, разом
 із підрозділами «Документація у фабриці» самих планів.
 
-Стан на 04.10.2026. Примірники: astro, clerk, docker, ecmascript, kubernetes, linux, nestjs, nextjs, patterns,
-react, react-hook-form, react-router, redux, supabase, tailwind, tanstack-query, typescript, v8, vite, vitest,
-wasm, zod, zustand.
+Стан на 04.10.2026. Примірники: astro, clerk, docker, ecmascript, kubernetes, linux, mdn, nestjs, nextjs,
+patterns, react, react-hook-form, react-router, redux, supabase, tailwind, tanstack-query, typescript, v8, vite,
+vitest, wasm, zod, zustand.
 
 ## Як читати таблиці
 
@@ -20,42 +20,42 @@ wasm, zod, zustand.
 
 | Фаза | Примірники (дні) |
 |------|------------------|
-| 0. База, якої React не дає | `typescript` (вступ, 9–10), `vite` (11–12), `tailwind` (11) |
+| 0. База, якої React не дає | `mdn` (вступ, 1–8), `typescript` (вступ, 9–10), `vite` (11–12), `tailwind` (11) |
 | 1. Ядро React | `vite` (20) |
 | 2. Як React працює зсередини | — |
-| 3. Екосистема | `react-router` (1–2, 13), `tanstack-query` (3–5, 8, 13), `react-hook-form` і `zod` (10), `zustand` і `redux` (11), `vitest` (12–13) |
+| 3. Екосистема | `react-router` (1–2, 13), `tanstack-query` (3–5, 8, 13), `react-hook-form` і `zod` (10), `zustand` і `redux` (11), `vitest` (12–13), `mdn` (6–8, 15) |
 | 4. Сервер: SSR, стрімінг, серверні компоненти | — |
-| 5. Продакшн і викот у кластер | `vite` (1–2, 5–7, 9), `react-router` (1), `docker` (6–7), `kubernetes` (6–9) |
+| 5. Продакшн і викот у кластер | `vite` (1–2, 5–7, 9), `react-router` (1), `docker` (6–7), `kubernetes` (6–9), `mdn` (4) |
 | Факультатив «крипта» | `tanstack-query`, `zod`, `vite`, `docker` |
 
 ### План NestJS — [instances/nestjs/LEARNING.md](../instances/nestjs/LEARNING.md)
 
 | Фаза | Примірники (дні) |
 |------|------------------|
-| 0. База, якої Nest не дає | `typescript` (вступ, 1–4), `vite` (11) |
+| 0. База, якої Nest не дає | `typescript` (вступ, 1–4), `mdn` (вступ, 6–7, 10–11), `vite` (11) |
 | 1. Ядро Nest | — |
 | 2. Робочий API | `zod` (1, 3, 8), `tanstack-query` (7), `react-hook-form` (8) |
 | 3. Дані: TypeORM, Prisma | — (у документації Nest лише інтеграція) |
 | 4. Автентифікація й авторизація | `react-router` (9) |
 | 5. Якість: тести й DI | `vitest` (1) |
 | 6. Продакшн | `docker` (вступ, 2), `kubernetes` (8–9) |
-| 7. Живі дані: WebSockets | `vite` (2), `kubernetes` (3, 6, 8) |
+| 7. Живі дані: WebSockets | `mdn` (вступ, 1), `vite` (2), `kubernetes` (3, 6, 8) |
 | Факультатив «крипта» | `docker`, `kubernetes` |
 
 ### План Next.js — [instances/nextjs/LEARNING.md](../instances/nextjs/LEARNING.md)
 
 | Фаза | Примірники (дні) |
 |------|------------------|
-| 0. База, якої Next.js не дає | `react` (вступ, 4–5) |
+| 0. База, якої Next.js не дає | `mdn` (вступ, 1–3, 6), `react` (вступ, 4–5) |
 | 1. Ядро App Router | `tailwind` (10) |
 | 2. Як Next.js працює зсередини | — |
 | 3. Кешування | — |
 | 4. Фулстек: дані, автентифікація, дії, тести | `zod` (5), `react-hook-form` (6), `clerk` і `supabase` (9), `tanstack-query` (11), `vitest` (13) |
-| 5. Інтерфейс із характером | `zustand` (5) |
+| 5. Інтерфейс із характером | `mdn` (4), `zustand` (5) |
 | 6. Чужий код | — |
 | 7. DevOps: від збірки до продакшну | `docker` (вступ, 2, 4), `kubernetes` (вступ, 12) |
-| 8. Next.js поруч з окремим бекендом | — (за змістом — `nestjs`) |
-| 9. Kubernetes глибше і демо | `kubernetes` (вступ, 1–7), `linux` (5) |
+| 8. Next.js поруч з окремим бекендом | `mdn` (7); за змістом — `nestjs` |
+| 9. Kubernetes глибше і демо | `kubernetes` (вступ, 1–8), `linux` (5), `mdn` (8) |
 | Факультатив «крипта» | `docker`, `linux` |
 
 ## Лінія 2. Linux → Docker → Kubernetes
@@ -76,12 +76,11 @@ wasm, zod, zustand.
 
 ### React
 
-1. MDN — Web API: DOM, події, fetch, WebSocket, доступність (16 згадок; фаза 0, день вебсокетів).
-2. React Testing Library, MSW, Playwright (фаза 3, дні 12–14).
-3. npm — `package.json`, `npm ci` (фаза 0).
-4. web.dev і web-vitals (фази 2 і 5).
-5. react-window або TanStack Virtual, Sentry, ESLint з `eslint-plugin-react-hooks`.
-6. Факультатив: wagmi, viem, lightweight-charts, decimal.js, Foundry.
+1. React Testing Library, MSW, Playwright (фаза 3, дні 12–14).
+2. npm — `package.json`, `npm ci` (фаза 0).
+3. web.dev і web-vitals (фази 2 і 5).
+4. react-window або TanStack Virtual, Sentry, ESLint з `eslint-plugin-react-hooks`.
+5. Факультатив: wagmi, viem, lightweight-charts, decimal.js, Foundry.
 
 ### NestJS
 
@@ -99,7 +98,7 @@ wasm, zod, zustand.
 
 1. nginx (15), Redis (14), Node.js (13), PostgreSQL (12).
 2. socket.io-client (11; фаза 8).
-3. GitHub Actions (8), MDN (8).
+3. GitHub Actions (8).
 4. shadcn/ui і Radix UI, Playwright, Auth.js або Better Auth, Drizzle або Prisma.
 5. nuqs, next-themes, next-intl, Motion, iron-session, jose.
 6. Sentry, OpenTelemetry, Prometheus і Grafana.
@@ -107,7 +106,7 @@ wasm, zod, zustand.
 
 ### Спільне для лінії 1
 
-PostgreSQL, Node.js, nginx, Redis, socket.io, GitHub Actions, MDN і Playwright потрібні двом-трьом планам
+PostgreSQL, Node.js, nginx, Redis, socket.io, GitHub Actions і Playwright потрібні двом-трьом планам
 одразу: кожен такий примірник закриває найбільше.
 
 ### Лінія 2
