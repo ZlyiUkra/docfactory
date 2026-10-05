@@ -322,17 +322,32 @@ Astro — фреймворк, що працює з HTML і мережею нап
 
 # Застереження про документацію
 
-У корпусі цього примірника — **лише сама Astro**, зате всіх ліній від 0.23 до 7.3 разом із нотатками
-релізів, блогом і каталогами. React, Vue, Svelte, Vite, Tailwind, Starlight, Prisma, платформи
-розгортання — їх тут немає, і питати про них сервер марно: він чесно відмовить.
-
-Для частини з них у фабриці є власні примірники — питайте їх: React — `react`, Vite — `vite`, Tailwind CSS —
-`tailwind`, TypeScript — `typescript`, zod — `zod`, вебплатформа (HTML, CSS, HTTP, доступність) — `mdn`, тексти
-стандартів — `webstandards`, Clerk — `clerk`, Supabase — `supabase`, Vitest — `vitest`, Playwright — `playwright`,
-Docker — `docker`, Next.js — `nextjs`, NestJS — `nestjs`. Vue, Svelte, Starlight, Prisma і платформи розгортання
-лишаються поза фабрикою.
+У корпусі цього примірника — **лише сама Astro**, зате вся: документація кожної мінорної лінії від 0.23 до 7.3 і
+поточна гілка `main`, нотатки релізів `astro@`, блог із розборами впроваджень, каталоги інтеграцій, тем і вітрини
+сайтів, реєстр версій npm. Про інші бібліотеки сервер `astro-docs` відмовить — питайте їхні примірники.
 
 Окремо про інтеграції: глави `Integrations Guide` описують **шар підключення**, а не саму бібліотеку.
 `@astrojs/react` розповість, як вставити React-компонент у сторінку, і жодного слова про сам React. Це
 стосується і адаптерів: глава про Cloudflare — про те, як Astro на ньому збирається, а не про сам
 Cloudflare.
+
+## Документація у фабриці
+
+**Є примірник** — питати його сервер документації:
+
+- Astro — `astro`; React (острови на React) — `react`; Vite — `vite`; TypeScript — `typescript`;
+- вебплатформа (HTML, CSS, HTTP, кеш, куки, доступність) — `mdn`; тексти стандартів (WHATWG, RFC HTTP, кешування й
+  кук, WCAG, Fetch Metadata, Argon2, OpenAPI) — `webstandards`;
+- Tailwind CSS — `tailwind`; zod (схеми колекцій і дій) — `zod`;
+- Clerk — `clerk`; Supabase Auth — `supabase`;
+- Vitest — `vitest`; Playwright — `playwright`;
+- Docker і `docker compose` — `docker`;
+- Next.js (для порівняння у фазі 7) — `nextjs`; NestJS (окремий бекенд) — `nestjs`.
+
+**Примірника ще немає** — відповідь лише з практики або з чужого сайту:
+
+- фреймворки островів, окрім React: Vue, Svelte, Solid, Preact;
+- дані: PostgreSQL, Drizzle, Prisma;
+- платформи розгортання: Cloudflare, Vercel, Netlify; Node.js як середовище виконання;
+- CI і спостереження: GitHub Actions, Sentry; Lighthouse і web-vitals;
+- контент: Starlight, CMS, Shiki, remark і rehype поза документацією Astro.
