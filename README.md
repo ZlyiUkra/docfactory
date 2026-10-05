@@ -728,6 +728,23 @@ Administrator's Handbook для Debian 6–13, документація Ubuntu S
 - вивчається в планах React, NestJS і Next.js — див. карту навчання вище;
 - докладніше — у [instances/vitest/README.md](instances/vitest/README.md).
 
+### mdn
+
+Документація самої вебплатформи — MDN Web Docs англійською, двадцять розділів developer.mozilla.org: Web API,
+JavaScript, CSS, HTML, HTTP, доступність, курс Learn web development, глосарій, продуктивність, безпека, приватність,
+PWA, медіа, URI, SVG, WebAssembly, WebDriver, XML, MathML і ігри. Кожна сторінка — з розділом специфікацій і
+підсумком Baseline (підтримка браузерами, дати й перші версії). 13 608 документів, 115 196 фрагментів.
+
+- порт `8784`; запис у Claude Code — `mdn-docs`, адреса `http://127.0.0.1:8784/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-mdn`, модель векторів — `bge-small`;
+- версій немає: MDN — один безперервно оновлюваний текст; підтримку браузерами описує підсумок Baseline;
+- новий читач `mdn-json` (мапа сайту + `index.json` кожної сторінки);
+- приклад питання агентові: `./df mdn ask "How do I cancel a fetch request with AbortController?"`;
+- корпус в архіві від самого початку, як у kubernetes, linux і vitest;
+- джерело фаз «База» всіх трьох планів фулстек-лінії — див. карту навчання вище;
+- докладніше — у [instances/mdn/README.md](instances/mdn/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
