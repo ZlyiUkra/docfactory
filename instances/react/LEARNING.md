@@ -334,7 +334,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 |------------|--------|------------|
 | Zustand або Redux Toolkit | справді глобальний клієнтський стан | Ф3 Д11; є примірники `zustand`, `redux` |
 | MSW | підміна мережі в тестах і в розробці | Ф3 Д13; є примірник `msw` |
-| Playwright | наскрізні тести в справжньому браузері (поза корпусом) | Ф3 Д14, Ф5 Д5 |
+| Playwright | наскрізні тести в справжньому браузері | Ф3 Д14, Ф5 Д5; є примірник `playwright` |
 | React Compiler | автоматична мемоізація на збірці | Ф2 Д4 |
 | react-window або TanStack Virtual | віртуалізація довгих списків (поза корпусом) | Ф2 Д7 |
 | Sentry | збір помилок із картами коду (поза корпусом) | точка підключення — Ф2 Д8; сам збір — план Next.js Ф7 Д9 |
@@ -369,7 +369,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 - тексти стандартів: WHATWG (HTML, DOM, Fetch, Streams), WCAG, WAI-ARIA і APG, CSP, RFC HTTP і WebSocket,
   ERC — `webstandards`;
 - Vite — `vite`; TypeScript — `typescript`; Vitest — `vitest`; React Testing Library, user-event і jest-dom —
-  `testing-library`; MSW — `msw`;
+  `testing-library`; MSW — `msw`; Playwright — `playwright`;
 - React Router — `react-router`; TanStack Query — `tanstack-query`;
 - React Hook Form — `react-hook-form`; zod — `zod`;
 - Tailwind CSS — `tailwind`; Zustand — `zustand`; Redux Toolkit і RTK Query — `redux`;
@@ -378,7 +378,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
 - з «треба знати»: ESLint і `eslint-plugin-react-hooks`;
-- з «варто знати»: Playwright, react-window, TanStack Virtual, Sentry, shadcn/ui і Radix UI;
+- з «варто знати»: react-window, TanStack Virtual, Sentry, shadcn/ui і Radix UI;
 - з «знати, що існує»: SWR, TanStack Router, Storybook, React Native і Expo, Motion, i18next, partysocket,
   socket.io-client.
 
@@ -1067,7 +1067,8 @@ React — бібліотека поверх мови й браузера. Усе
 # Фаза 3. Екосистема — 15 днів
 
 **Сервери MCP фази:** `react-docs`, `react-router-docs`, `tanstack-query-docs`, `mdn-docs`, `webstandards-docs`,
-`react-hook-form-docs`, `zod-docs`, `zustand-docs`, `redux-docs`, `vitest-docs`, `testing-library-docs`, `msw-docs`.
+`react-hook-form-docs`, `zod-docs`, `zustand-docs`, `redux-docs`, `vitest-docs`, `testing-library-docs`, `msw-docs`,
+`playwright-docs`.
 
 React не має нічого з цього в коробці. Документація сама каже, що брати: глава `Build a React app from Scratch`,
 крок 2 — маршрути, дані, розділення коду. Про дані там пряма порада: «fetching data directly in components can
@@ -1380,8 +1381,9 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
   справжня збірка.
 - **Що це.** Playwright відкриває браузер і проходить сценарій. Перевірки Playwright самі чекають, доки
   елемент з'явиться. Трасування показує кожен крок з екраном і мережею — так розбирають падіння на CI.
-- **Читати:** документацію Playwright, розділи про першочергові перевірки й трасування (поза корпусом).
-- **Сервери MCP:** жодного — джерела дня поза фабрикою.
+- **Читати:** у примірнику `playwright` — `Writing tests`, `Locators`, `Assertions`, `Web server`, `Trace viewer`
+  (без названої версії відповідь — для Playwright 1.63).
+- **Сервери MCP:** `playwright-docs`.
 - **Зробити:** 1) сценарій «вхід, створення запису, запис у списку, вихід» проти `vite preview`; 2) зламати
   маршрут сторінки створення; 3) відкрити трасування падіння.
 - **Перевірити себе:** тест зелений на збірці; після кроку 2 — червоний, і трасування показує крок, де зламалося.
@@ -1490,7 +1492,7 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
 # Фаза 5. Продакшн: збірка, безпека, метрики, CI, викот у кластер — 9 днів
 
 **Сервери MCP фази:** `react-docs`, `vite-docs`, `react-router-docs`, `mdn-docs`, `webstandards-docs`, `docker-docs`,
-`kubernetes-docs`.
+`kubernetes-docs`, `playwright-docs`.
 
 Застосунок уже в інтернеті з фази 1. У блоці A він стає легшим, безпечнішим, вимірюваним і перевіряється сам на
 кожному запиті на злиття. У блоці B він переїжджає зі статичного хостингу у власний кластер Kubernetes — той самий,
@@ -1574,8 +1576,8 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
   Playwright проти `vite preview`. Кеш залежностей між запусками прискорює все. Dependabot або Renovate щотижня
   пропонують оновлення залежностей — латки безпеки приходять самі.
 - **Читати:** документацію GitHub Actions і Dependabot (поза корпусом); у примірнику `vite` — `Command Line
-  Interface`; поза корпусом — документація Playwright: «Continuous Integration».
-- **Сервери MCP:** `vite-docs`.
+  Interface`; у примірнику `playwright` — `Setting up CI`, `Continuous Integration`.
+- **Сервери MCP:** `vite-docs`, `playwright-docs`.
 - **Зробити:** 1) робочий процес із п'ятьма кроками; 2) захист головної гілки: злиття лише із зеленим CI;
   3) запит на злиття з навмисно червоним тестом; 4) бот оновлень.
 - **Перевірити себе:** червоний запит не зливається; у журналі — два числа: тривалість першого запуску й
@@ -2416,10 +2418,10 @@ NestJS і Next.js.
 Zustand, Redux Toolkit, Tailwind, Vite, TypeScript і Vitest у фабриці є власні примірники — питайте їх, а не цей.
 JavaScript, Web API (WebSocket, Fetch, події) і доступність має примірник `mdn`; Docker — примірник `docker`;
 Kubernetes, k3s, k3d, Traefik, cert-manager і Let's Encrypt — примірник `kubernetes`; React Testing Library,
-user-event і jest-dom — примірник `testing-library`; MSW — примірник `msw`. Playwright, web-vitals, react-window,
-TanStack Virtual, GitHub Actions і хостинги в жодному корпусі фабрики немає: для них — сайти самих інструментів. Так
-само поза корпусами — API Binance і Kraken, Oracle Cloud, а у факультативі — lightweight-charts, wagmi, viem і
-Foundry.
+user-event і jest-dom — примірник `testing-library`; MSW — примірник `msw`; Playwright — примірник `playwright`.
+web-vitals, react-window, TanStack Virtual, GitHub Actions і хостинги в жодному корпусі фабрики немає: для них — сайти
+самих інструментів. Так само поза корпусами — API Binance і Kraken, Oracle Cloud, а у факультативі —
+lightweight-charts, wagmi, viem і Foundry.
 
 **Дати.** Усе, що в плані про безкоштовні тарифи, ліміти бірж, версії пакетів факультативу й стан тестових мереж,
 сказано на 02.10.2026. Ці речі змінюються швидше за документацію React: перед днем, що на них спирається,

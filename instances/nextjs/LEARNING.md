@@ -313,7 +313,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 | zod | схема перевірки вводу — одна для форми й для сервера | 11 | Ф4 Д5; є примірник `zod` |
 | Auth.js або Better Auth | вхід, сесії, сторонні провайдери | 19 і 6 | Ф4 Д9 |
 | TanStack Query або SWR | дані в клієнтських компонентах: стрічки, опитування | 4 і 1 | Ф4 Д11; є примірник `tanstack-query` |
-| Playwright | наскрізні тести; єдиний спосіб перевірити `async`-компонент | 5 | Ф4 Д14 |
+| Playwright | наскрізні тести; єдиний спосіб перевірити `async`-компонент | 5 | Ф4 Д14; є примірник `playwright` |
 | Vitest | швидкі тести функцій і клієнтських компонентів | 2 | Ф4 Д13; є примірник `vitest` |
 | ESLint або Biome | лінт; у 16 запускається напряму, без `next lint` | 12 і 3 | Ф1 Д1 |
 | Docker | образ застосунку для будь-якого сервера | 17 | Ф7 Д2; є примірник `docker` |
@@ -363,14 +363,15 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - Next.js — `nextjs`; React — `react`; вебплатформа (HTTP, кеш, куки, Streams, CSS) — `mdn`;
 - тексти стандартів: WHATWG, CSP, WCAG, RFC HTTP, кешування й кук, OpenID Connect, ERC — `webstandards`;
 - Tailwind CSS — `tailwind`; zod — `zod`; TanStack Query — `tanstack-query`; Vitest — `vitest`;
-- Testing Library (React Testing Library, user-event, jest-dom) — `testing-library`; MSW — `msw`;
+- Testing Library (React Testing Library, user-event, jest-dom) — `testing-library`; MSW — `msw`; Playwright —
+  `playwright`;
 - React Hook Form — `react-hook-form`; Zustand — `zustand`; Clerk — `clerk`; Supabase Auth — `supabase`;
 - Docker — `docker`; Kubernetes, k3s, Kustomize, SOPS, age і Helm — `kubernetes`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «треба знати»: shadcn/ui і Radix UI, PostgreSQL, Drizzle, Prisma, Auth.js, Better Auth, SWR, Playwright,
-  ESLint, Biome;
+- з «треба знати»: shadcn/ui і Radix UI, PostgreSQL, Drizzle, Prisma, Auth.js, Better Auth, SWR, ESLint,
+  Biome;
 - з «варто знати»: iron-session, jose, Motion, next-themes, nuqs, next-intl, Redis (Upstash), Sentry,
   OpenTelemetry, socket.io-client;
 - з «знати, що існує»: Stripe, Resend і React Email, Vercel AI SDK, UploadThing, Sanity, Payload, Contentful,
@@ -1005,7 +1006,7 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 # Фаза 4. Фулстек: дані, автентифікація, дії, безпека, тести — 14 днів
 
 **Сервери MCP фази:** `nextjs-docs`, `webstandards-docs`, `zod-docs`, `react-hook-form-docs`, `clerk-docs`,
-`supabase-docs`, `tanstack-query-docs`, `vitest-docs`, `testing-library-docs`.
+`supabase-docs`, `tanstack-query-docs`, `vitest-docs`, `testing-library-docs`, `playwright-docs`.
 
 Тут фронтендер стає фулстеком: застосунок сам ходить у базу, сам упізнає користувача, сам перевіряє права й
 сам відповідає за те, що не віддав зайвого. Порядок навмисний: спершу база, потім хто ви (автентифікація),
@@ -1213,8 +1214,9 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 - **Навіщо.** Лише наскрізний тест перевіряє застосунок так, як його бачить користувач.
 - **Що це.** Playwright відкриває справжній браузер і проходить сценарій. Документація радить ганяти його
   проти продакшн-збірки: `next build && next start`.
-- **Читати:** `How to set up Playwright with Next.js`; `Example: with-playwright`.
-- **Сервери MCP:** `nextjs-docs`.
+- **Читати:** `How to set up Playwright with Next.js`; `Example: with-playwright`; у примірнику `playwright` —
+  `Writing tests`, `Web server`, `Authentication`, `Trace viewer`.
+- **Сервери MCP:** `nextjs-docs`, `playwright-docs`.
 - **Зробити:** сценарій «реєстрація, вхід, створення запису, вихід»; другий — «чужий користувач не бачить
   кнопки редагування і не може відкрити адресу редагування».
 - **Перевірити себе:** прибрати перевірку прав у шарі даних — другий тест падає.
@@ -1409,7 +1411,7 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 
 # Фаза 7. DevOps: від збірки до продакшну — 12 днів
 
-**Сервери MCP фази:** `nextjs-docs`, `docker-docs`, `webstandards-docs`, `kubernetes-docs`.
+**Сервери MCP фази:** `nextjs-docs`, `docker-docs`, `webstandards-docs`, `kubernetes-docs`, `playwright-docs`.
 
 Next.js — не тека статики: це сервер, який треба зібрати, запустити, тримати живим і вміти відкотити.
 Документації Docker, nginx, Kubernetes і GitHub Actions у корпусі Next.js немає; є те, чого Next.js вимагає від них,
@@ -1507,8 +1509,9 @@ GitHub Actions — поза фабрикою. Дні 1–11 — на своєм�
   перевіряє), тести Vitest і Playwright, `next build`, збірка образу. Кеш `.next/cache` між запусками
   прискорює збірку. Оновлення залежностей — Dependabot або Renovate; латки `next` ставлять тим самим
   тижнем.
-- **Читати:** `How to configure Continuous Integration (CI) build caching`, `next CLI` (розділ про typegen).
-- **Сервери MCP:** `nextjs-docs`.
+- **Читати:** `How to configure Continuous Integration (CI) build caching`, `next CLI` (розділ про typegen); у
+  примірнику `playwright` — `Setting up CI`.
+- **Сервери MCP:** `nextjs-docs`, `playwright-docs`.
 - **Зробити:** робочий процес, що падає на впалому тесті; бот оновлень залежностей.
 - **Перевірити себе:** два числа з логу Actions — перша збірка й друга, з кешем.
 - **Пастка:** секрети в лозі CI через `echo` для налагодження.

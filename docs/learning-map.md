@@ -5,8 +5,8 @@
 із підрозділами «Документація у фабриці» самих планів.
 
 Стан на 05.10.2026. Примірники: astro, clerk, docker, ecmascript, kubernetes, linux, mdn, msw, nestjs, nextjs,
-patterns, react, react-hook-form, react-router, redux, supabase, tailwind, tanstack-query, testing-library,
-typescript, v8, vite, vitest, wasm, webstandards, zod, zustand.
+patterns, playwright, react, react-hook-form, react-router, redux, supabase, tailwind, tanstack-query,
+testing-library, typescript, v8, vite, vitest, wasm, webstandards, zod, zustand.
 
 ## Як читати таблиці
 
@@ -25,9 +25,9 @@ typescript, v8, vite, vitest, wasm, webstandards, zod, zustand.
 | 0. База, якої React не дає | `mdn` (вступ, 1–8), `webstandards` (1, 5–8), `typescript` (вступ, 9–10), `vite` (11–12), `tailwind` (11) |
 | 1. Ядро React | `vite` (20) |
 | 2. Як React працює зсередини | — |
-| 3. Екосистема | `react-router` (1–2, 13), `tanstack-query` (3–5, 8, 13), `react-hook-form` і `zod` (10), `zustand` і `redux` (11), `vitest` і `testing-library` (12–13), `msw` (13), `mdn` (6–8, 15), `webstandards` (6, 15) |
+| 3. Екосистема | `react-router` (1–2, 13), `tanstack-query` (3–5, 8, 13), `react-hook-form` і `zod` (10), `zustand` і `redux` (11), `vitest` і `testing-library` (12–13), `msw` (13), `playwright` (14), `mdn` (6–8, 15), `webstandards` (6, 15) |
 | 4. Сервер: SSR, стрімінг, серверні компоненти | — |
-| 5. Продакшн і викот у кластер | `vite` (1–2, 5–7, 9), `react-router` (1), `docker` (6–7), `kubernetes` (6–9), `mdn` (4), `webstandards` (6) |
+| 5. Продакшн і викот у кластер | `vite` (1–2, 5–7, 9), `react-router` (1), `docker` (6–7), `kubernetes` (6–9), `mdn` (4), `webstandards` (6), `playwright` (5) |
 | Факультатив «крипта» | `tanstack-query`, `zod`, `vite`, `docker` |
 
 ### План NestJS — [instances/nestjs/LEARNING.md](../instances/nestjs/LEARNING.md)
@@ -52,10 +52,10 @@ typescript, v8, vite, vitest, wasm, webstandards, zod, zustand.
 | 1. Ядро App Router | `tailwind` (10) |
 | 2. Як Next.js працює зсередини | — |
 | 3. Кешування | — |
-| 4. Фулстек: дані, автентифікація, дії, тести | `webstandards` (2–3, 5, 9–10, 12), `zod` (5), `react-hook-form` (6), `clerk` і `supabase` (9), `tanstack-query` (11), `vitest` і `testing-library` (13) |
+| 4. Фулстек: дані, автентифікація, дії, тести | `webstandards` (2–3, 5, 9–10, 12), `zod` (5), `react-hook-form` (6), `clerk` і `supabase` (9), `tanstack-query` (11), `vitest` і `testing-library` (13), `playwright` (14) |
 | 5. Інтерфейс із характером | `mdn` (4), `zustand` (5), `webstandards` (5, 7) |
 | 6. Чужий код | — |
-| 7. DevOps: від збірки до продакшну | `docker` (вступ, 2, 4), `webstandards` (6), `kubernetes` (вступ, 12) |
+| 7. DevOps: від збірки до продакшну | `docker` (вступ, 2, 4), `webstandards` (6), `kubernetes` (вступ, 12), `playwright` (7) |
 | 8. Next.js поруч з окремим бекендом | `webstandards` (2, 6–7), `mdn` (7); за змістом — `nestjs` |
 | 9. Kubernetes глибше і демо | `kubernetes` (вступ, 1–8), `linux` (5), `mdn` (8), `webstandards` (8) |
 | Факультатив «крипта» | `docker`, `linux`, `webstandards` |
@@ -80,11 +80,10 @@ typescript, v8, vite, vitest, wasm, webstandards, zod, zustand.
 
 ### React
 
-1. Playwright (фаза 3, день 14).
-2. npm — `package.json`, `npm ci` (фаза 0).
-3. web.dev і web-vitals (фази 2 і 5).
-4. react-window або TanStack Virtual, Sentry, ESLint з `eslint-plugin-react-hooks`.
-5. Факультатив: wagmi, viem, lightweight-charts, decimal.js, Foundry.
+1. npm — `package.json`, `npm ci` (фаза 0).
+2. web.dev і web-vitals (фази 2 і 5).
+3. react-window або TanStack Virtual, Sentry, ESLint з `eslint-plugin-react-hooks`.
+4. Факультатив: wagmi, viem, lightweight-charts, decimal.js, Foundry.
 
 ### NestJS
 
@@ -103,14 +102,14 @@ typescript, v8, vite, vitest, wasm, webstandards, zod, zustand.
 1. nginx (15), Redis (14), Node.js (13), PostgreSQL (12).
 2. socket.io-client (11; фаза 8).
 3. GitHub Actions (8).
-4. shadcn/ui і Radix UI, Playwright, Auth.js або Better Auth, Drizzle або Prisma.
+4. shadcn/ui і Radix UI, Auth.js або Better Auth, Drizzle або Prisma.
 5. nuqs, next-themes, next-intl, Motion, iron-session, jose.
 6. Sentry, OpenTelemetry, Prometheus і Grafana.
 7. Факультатив: viem, wagmi, OpenZeppelin, Foundry.
 
 ### Спільне для лінії 1
 
-PostgreSQL, Node.js, nginx, Redis, socket.io, GitHub Actions і Playwright потрібні двом-трьом планам
+PostgreSQL, Node.js, nginx, Redis, socket.io і GitHub Actions потрібні двом-трьом планам
 одразу: кожен такий примірник закриває найбільше.
 
 ### Лінія 2
