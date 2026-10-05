@@ -2777,9 +2777,8 @@ Prisma, Passport, Redis, PostgreSQL, nginx, GitHub Actions, socket.io, viem і F
 `react`, React Router — `react-router`, React Hook Form — `react-hook-form`, TanStack Query — `tanstack-query`,
 Supabase — `supabase`, Clerk — `clerk`, вебплатформа (HTTP, куки, WebSocket) — `mdn`, тексти стандартів (RFC HTTP,
 JWT, OAuth, Problem Details, Argon2) — `webstandards`, Docker і Compose — `docker`, Kubernetes, k3s, Traefik, Let's
-Encrypt і age — `kubernetes`. Поза фабрикою лишаються TypeORM, Prisma, Passport, Redis,
-PostgreSQL, nginx, GitHub Actions, socket.io, RxJS, viem і Foundry (повний перелік — у підрозділі «Документація у
-фабриці»).
+Encrypt і age — `kubernetes`. Поза фабрикою лишаються TypeORM, Prisma, Passport, Redis, PostgreSQL, nginx, GitHub
+Actions, socket.io, RxJS, viem і Foundry (повний перелік — у підрозділі «Документація у фабриці»).
 
 **Версії в главах.** Глава з тією самою назвою на лініях 11 і 12 може казати різне: `Prisma` (генератор і
 адаптер), `Configuration` (Joi чи Standard Schema), `Caching` (одиниці `ttl`), `Health checks` (API індикаторів).
