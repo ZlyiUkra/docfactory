@@ -2340,12 +2340,15 @@ README з описом запуску й одним абзацом про ухв
 
 У корпусі цього примірника — **лише Next.js**, зате кожної версії: документація обох роутерів від 9.1.7 до 16.x
 з canary, пояснення помилок, README пакета `next` і пакетів поруч, нотатки релізів, реєстр npm, блог, приклади
-репозиторію з кодом і шаблони з галереї Vercel. Самого React, PostgreSQL, Drizzle, Prisma, Auth.js, Motion,
-shadcn/ui, Docker, nginx, GitHub Actions, Kubernetes, Traefik, Kustomize, SOPS, socket.io, viem, wagmi і Foundry
-тут немає, і питати про них сервер марно: він поверне уривки Next.js, де вони лише згадані. Для React, NestJS,
-zod, TanStack Query, React Hook Form, Zustand, Tailwind, Supabase, Clerk, TypeScript і Vitest у фабриці є власні
-примірники; Docker — примірник `docker`; Kubernetes, k3s, Traefik, Kustomize, Helm, SOPS і age — примірник
-`kubernetes`; sshd — примірник `linux`; для решти — сайти самих інструментів.
+репозиторію з кодом і шаблони з галереї Vercel. Інших бібліотек і інструментів тут немає, і питати про них сервер
+`nextjs-docs` марно: він поверне уривки Next.js, де вони лише згадані. Для багатьох із них у фабриці є власні
+примірники — питайте їх: React — `react`, NestJS — `nestjs`, TypeScript — `typescript`, zod — `zod`, TanStack Query —
+`tanstack-query`, React Hook Form — `react-hook-form`, Zustand — `zustand`, Tailwind CSS — `tailwind`, Supabase —
+`supabase`, Clerk — `clerk`, Vitest — `vitest`, Testing Library — `testing-library`, MSW — `msw`, Playwright —
+`playwright`, вебплатформа — `mdn`, тексти стандартів — `webstandards`, Docker — `docker`, Kubernetes, k3s, Traefik,
+Kustomize, Helm, SOPS і age — `kubernetes`, sshd — `linux`. Поза фабрикою лишаються PostgreSQL, Drizzle, Prisma,
+Auth.js, Motion, shadcn/ui, nginx, GitHub Actions, socket.io, viem, wagmi і Foundry: для них — сайти самих
+інструментів (повний перелік — у підрозділі «Документація у фабриці»).
 
 **Приклади й шаблони.** Код прикладу чи шаблону — ілюстрація однієї можливості, а не рекомендація
 документації: частина з них на старих версіях і без перевірок. Звіряйте їх із главами плану.

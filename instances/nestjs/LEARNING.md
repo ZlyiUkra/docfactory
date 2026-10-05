@@ -387,7 +387,8 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 - тексти стандартів: RFC HTTP, кук і WebSocket, JWT, OAuth 2.0 і PKCE, Argon2, OpenAPI, JSON Schema,
   ERC-4361 — `webstandards`;
 - Docker — `docker`; Kubernetes, k3s і `kubectl` — `kubernetes`;
-- SPA-бік: Vite — `vite`, React Hook Form — `react-hook-form`, TanStack Query — `tanstack-query`;
+- SPA-бік: React — `react`, React Router — `react-router`, Vite — `vite`, React Hook Form — `react-hook-form`,
+  TanStack Query — `tanstack-query`;
 - Supabase — `supabase`; Clerk — `clerk`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
@@ -2771,9 +2772,14 @@ Redis-адаптером і числами навантаження в журн�
 BullMQ і Terminus описують **лише інтеграційний шар Nest** — модуль, декоратор, спосіб підключення. Саму TypeORM,
 Prisma, Passport, Redis, PostgreSQL, nginx, GitHub Actions, socket.io, viem і Foundry доведеться вчити з їхньої
 власної документації: питати про них сервер марно, він поверне уривки Nest, де вони лише згадані. Те саме з RxJS,
-який раптово з'являється в перехоплювачах: `map` і `tap` там — не з Nest. Для zod, TypeScript, Vite, Vitest, React,
-React Router, React Hook Form, TanStack Query, Supabase і Clerk у фабриці є власні примірники; Docker і Compose —
-у примірнику `docker`, Kubernetes, k3s, Traefik, Let's Encrypt і age — у примірнику `kubernetes`.
+який раптово з'являється в перехоплювачах: `map` і `tap` там — не з Nest. Для частини інших бібліотек у фабриці є
+власні примірники — питайте їх: zod — `zod`, TypeScript — `typescript`, Vite — `vite`, Vitest — `vitest`, React —
+`react`, React Router — `react-router`, React Hook Form — `react-hook-form`, TanStack Query — `tanstack-query`,
+Supabase — `supabase`, Clerk — `clerk`, вебплатформа (HTTP, куки, WebSocket) — `mdn`, тексти стандартів (RFC HTTP,
+JWT, OAuth, Problem Details, Argon2) — `webstandards`, Docker і Compose — `docker`, Kubernetes, k3s, Traefik, Let's
+Encrypt і age — `kubernetes`. Поза фабрикою лишаються TypeORM, Prisma, Passport, Redis,
+PostgreSQL, nginx, GitHub Actions, socket.io, RxJS, viem і Foundry (повний перелік — у підрозділі «Документація у
+фабриці»).
 
 **Версії в главах.** Глава з тією самою назвою на лініях 11 і 12 може казати різне: `Prisma` (генератор і
 адаптер), `Configuration` (Joi чи Standard Schema), `Caching` (одиниці `ttl`), `Health checks` (API індикаторів).
