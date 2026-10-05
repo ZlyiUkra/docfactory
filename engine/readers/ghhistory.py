@@ -8,7 +8,15 @@
                    окремі файли поза ними (напр. кореневий FAQ.md).
                    Необов'язкові: `extensions` — розширення файлів документації (типово
                    лише `.md`; сайт на MDX додає `.mdx`), `exclude` — вирази шляхів, що не
-                   беруться (переклади, службові файли теки).
+                   беруться (переклади, службові файли теки), `title_prefix` — об'єкт
+                   «початок шляху → назва» (тека пишеться з «/» у кінці, окремий файл —
+                   повним шляхом): такий документ дістає назву «Назва: заголовок», якщо
+                   заголовок цієї назви ще не містить.
+
+Навіщо `title_prefix`. Сайт, що описує кілька обгорток однієї бібліотеки, дає сторінкам
+кожної обгортки ті самі заголовки: у Testing Library «API», «Setup», «Example» є і в
+React, і у Vue, і у Svelte — тридцять дві сторінки «API». На сайті їх розрізняє бічне
+меню, у корпусі — нічого, а назва документа йде в контекст кожного його фрагмента.
 
 Навіщо. `ghdocs` дає знімок на тег: кожен тег — повна копія теки документації. У
 React Router 820 тегів, у кожному 100–200 файлів, разом 88 тисяч файлів, а різних
@@ -102,6 +110,7 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
     recursive = source.get("recursive") is True
     exts = tuple(source.get("extensions") or (".md",))
     exclude = [re.compile(r) for r in source.get("exclude") or ()]
+    prefixes = dict(source.get("title_prefix") or {})
 
     # ім'я документа → [шлях, [теги]]; порядок ключів — порядок першої появи, тобто
     # від найновішого тегу, бо `tags` оголошено від найновішого. Ключ — ім'я, а не
@@ -163,6 +172,11 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
                 title = re.sub(r"\.mdx?$", "", path.rsplit("/", 1)[-1])
             # У 4.x–5.x назва пишеться «# &lt;Route>»: на сайті це «<Route>».
             title = unescape(title)
+            # Найдовший початок виграє: вкладена тека може належати іншій обгортці.
+            owner_name = max(((k, v) for k, v in prefixes.items() if path.startswith(k)),
+                             key=lambda kv: len(kv[0]), default=("", ""))[1]
+            if owner_name and owner_name.lower() not in title.lower():
+                title = f"{owner_name}: {title}"
             body = _markup.markdown_body(rest)
             # Файл на закріпленому тезі — не сторінка помилки (від HTML захищає
             # refuse_html), тож і коротке тіло («сторінку перенесено»), і порожнє —

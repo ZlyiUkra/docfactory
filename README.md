@@ -765,6 +765,26 @@ OpenAPI 3.1.1, JSON Schema 2020-12 і ERC-20, ERC-721, ERC-4361. 1 175 доку�
 - для питань «як це виконується за стандартом» — те, чим `ecmascript` є для мови; підтримка браузерами — у `mdn`;
 - докладніше — у [instances/webstandards/README.md](instances/webstandards/README.md).
 
+### testing-library
+
+Сімейство Testing Library англійською: увесь сайт testing-library.com з усіма обгортками (React, React Native, Vue,
+Angular, Svelte, Preact, Solid, Qwik, Marko, Cypress, Puppeteer, Nightwatch, TestCafe, WebdriverIO) — поточний і
+чотири знімки 2020–2024 для старого коду; правила eslint-plugin-testing-library і eslint-plugin-jest-dom на кожному
+мажорі; документація застарілого `@testing-library/react-hooks`; для пакетів React-лінії — README кожної версії й
+гілки main, нотатки релізів і реєстр npm. 2 320 документів, 16 717 фрагментів.
+
+- порт `8786`; запис у Claude Code — `testing-library-docs`, адреса `http://127.0.0.1:8786/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-testing-library`, модель векторів — `bge-small`;
+- примірник загальний: для іншого фреймворку його пакети докачуються сюди ж, а не в новий примірник; промпти велять
+  називати обгортку в запиті («React Testing Library …»), за замовчуванням — React;
+- фільтра версій немає: шапка кожного уривка каже версію (`current`, місяць знімка, номер версії, `main`);
+- нове поле читача `ghdocs-history` — `title_prefix`: сторінки обгорток з однаковими назвами («API», «Setup») дістають
+  назву обгортки;
+- приклад питання агентові: `./df testing-library ask "How do I test a custom hook with React Testing Library?"`;
+- корпус в архіві від самого початку, як у kubernetes, linux, vitest, mdn і webstandards;
+- докладніше — у [instances/testing-library/README.md](instances/testing-library/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
