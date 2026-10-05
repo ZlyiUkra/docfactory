@@ -120,10 +120,6 @@ GitHub Discussions свідомо не взято.
 Архів лежить лише на цій машині. Поруч — `…-before-npm-filter.tar.gz`: перше видання з повним реєстром npm, до відсіву
 щоденних збірок.
 
-**Зайві точки.** У колекції `docs-playwright` 26 948 точок на 25 200 фрагментів: 1 748 лишилися від першого видання
-документів реєстру npm (до відсіву alpha-збірок). Пошук їх не показує; прибрати фізично можна лише знесенням колекції
-й новим `vectors`.
-
 **Як винести знову** — після оновлення, коли `vectors` і `smoke` пройшли:
 
 ```
@@ -144,7 +140,7 @@ tar -xzf ~/archives/docfactory/playwright-corpus-РРРР-ММ-ДД.tar.gz -C in
 ```
 
 **На іншій машині** після клонування кеш треба розпакувати: `gunzip -k instances/playwright/index/passages.json.gz`, далі
-`./df playwright vectors` заллє колекцію Qdrant (70 хвилин на цій машині).
+`./df playwright vectors` заллє колекцію Qdrant (75 хвилин на цій машині).
 
 ## Установка venv
 
@@ -164,7 +160,7 @@ cd ../..
 ./df playwright refresh         # завантажити все задеклароване (~1 година 20 хвилин)
 ./df playwright manifest        # оновити паспорт
 ./df playwright setup           # Qdrant чи пошук лише по словах
-./df playwright vectors         # залити корпус у docs-playwright (~70 хвилин)
+./df playwright vectors         # залити корпус у docs-playwright (~75 хвилин)
 ./df playwright smoke           # перевірки
 ```
 
