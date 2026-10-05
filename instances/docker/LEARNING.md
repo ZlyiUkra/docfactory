@@ -63,8 +63,14 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
 
 ## Як користуватися планом
 
-У кожного дня шість рядків — як у плані Linux: **Навіщо**, **Що це**, **Читати**, **Зробити**, **Перевірити
-себе**, **Пастка**. День — одиниця умовна; небезпечний не пропущений день, а пропущена вправа.
+У кожного дня сім рядків — як у плані Linux: **Навіщо**, **Що це**, **Читати**, **Сервери MCP**, **Зробити**,
+**Перевірити себе**, **Пастка**. День — одиниця умовна; небезпечний не пропущений день, а пропущена вправа.
+
+**Сервери MCP.** Імена — як у Claude Code: сервер примірника `x` зветься `x-docs` (`react-docs`, `mdn-docs`,
+`webstandards-docs`). Під заголовком кожної фази — усі сервери фази разом: їх варто підняти до її початку (`./df
+<примірник> serve` з кореня фабрики) і додати в Claude Code командою з README примірника. Сервер відповідає з тих
+самих глав, що названі в рядку «Читати», і дає адресу джерела, за якою відповідь можна перевірити. «Жодного» — джерела
+дня поза фабрикою; чого бракує — у [карті навчання](../../docs/learning-map.md).
 
 **Журнал вимірів.** З фази 1 у README живе таблиця: дата, що змінили, розмір образу (`docker image ls`), час
 холодної збірки і збірки з кешем, кількість шарів. Кожна вправа-замір дає число в таблицю. «Образ став менший» без
@@ -111,6 +117,8 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
 
 # Фаза 0. Робоче місце й перший контейнер — 5 днів
 
+**Сервери MCP фази:** `docker-docs`.
+
 ### День 1. Встановлення
 
 - **Навіщо.** Рушій з офіційного репозиторію — те, що описує документація і що стоїть на серверах.
@@ -119,6 +127,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   встановлення — група `docker` (дає права root на машині — свідомо!), автозапуск служби, перевірка.
 - **Читати:** `Install Docker Engine on Ubuntu`; `Linux post-installation steps for Docker Engine`; `Docker
   Engine`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** 1) видалити пакети `docker.io` і `containerd`, якщо стоять; 2) поставити Engine, `buildx` і
   `compose` з репозиторію Docker; 3) додати себе в групу `docker` і зрозуміти, що це означає; 4) `docker run
   hello-world`.
@@ -134,6 +143,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   -a` — контейнери, зокрема зупинені, `docker image ls` — образи. Ім'я образу — `реєстр/репозиторій:тег`; без
   реєстру — Docker Hub, без тегу — `latest`.
 - **Читати:** `What is a container?`; `What is an image?`; `What is a registry?`; `docker container run`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** 1) запустити `nginx` у фоні з іменем і портом; 2) запустити ще два контейнери з того самого образу —
   подивитися, скільки місця займають образ і контейнери (`docker system df`); 3) зупинити, запустити знову,
   видалити; 4) знайти образ за дайджестом і запустити саме його.
@@ -151,6 +161,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   у `inspect`. Контейнер живе, поки живе його PID 1.
 - **Читати:** `Running containers`; `View container logs`; `docker container exec`; `docker inspect`; `Format command
   and log output`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** 1) контейнер, що завершується з кодом 3, — знайти код і останні рядки журналу; 2) зайти в nginx і
   змінити сторінку; 3) знайти PID контейнера на господарі й порівняти з `ps` всередині (зв'язок з фазою 7 плану
   Linux); 4) вивести IP-адреси всіх контейнерів одним `docker inspect --format`.
@@ -167,6 +178,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   (JSON-масив) проти shell-форми — від неї залежить, хто PID 1.
 - **Читати:** `Set environment variables within your container's environment`; у `Dockerfile reference` — розділи
   про `CMD`, `ENTRYPOINT` і їхню взаємодію (таблиця «Understand how CMD and ENTRYPOINT interact»).
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** 1) запустити `postgres` з паролем і базою через змінні; 2) перекрити команду образу `alpine` хвостом
   `run`; 3) з'ясувати `ENTRYPOINT` і `CMD` образу `postgres` через `inspect` і пояснити, як вони складаються.
 - **Перевірити себе:** `docker exec` у postgres і `psql -U користувач -d база -c 'select 1'` — 1.
@@ -180,6 +192,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   не лише безіменні), `volume prune`, `builder prune`, `system prune`. Журнали контейнерів за замовчуванням ростуть
   без меж (фаза 5).
 - **Читати:** `docker system df`; `docker system prune`; `docker image prune`; `Build garbage collection`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** 1) набрати мотлоху (кілька збірок, зупинені контейнери, том) і подивитися `system df -v`;
   2) прибрати все, крім томів; 3) налаштувати автоматичне прибирання кешу збірки за розміром.
 - **Перевірити себе:** `docker system df` після кроку 2 — RECLAIMABLE близько нуля для образів і контейнерів.
@@ -187,6 +200,8 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   більше немає. Томи прибирають лише руками й поіменно.
 
 # Фаза 1. Образи й Dockerfile — 9 днів
+
+**Сервери MCP фази:** `docker-docs`.
 
 Головна фаза плану й головне, що з Docker питає CKAD: зібрати образ, змінити його, зробити маленьким і безпечним.
 
@@ -197,6 +212,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   порту), `USER`, `CMD`. `docker build -t ім'я:тег .` — `.` тут контекст збірки, а не місце Dockerfile.
 - **Читати:** `Dockerfile overview`; `Writing a Dockerfile`; `Build, tag, and publish an image`; `docker buildx
   build` (вона стоїть за `docker build`).
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** 1) Dockerfile для API наскрізного проєкту в один етап; 2) зібрати, запустити, відкрити в браузері;
   3) записати в журнал розмір образу й час збірки.
 - **Перевірити себе:** `curl localhost:порт/health` відповідає з контейнера; рядок у журналі вимірів.
@@ -210,6 +226,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
 - **Що це.** Клієнт передає контекст збирачеві перед збиранням; `COPY` бачить лише його. `.dockerignore` — шаблони
   того, що не передавати. Контекстом може бути й віддалений репозиторій git чи архів.
 - **Читати:** `Build context`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** 1) покласти в теку проєкту `.env` з «секретом» і переконатися, що `COPY . .` заносить його в образ
   (`docker run … cat .env`); 2) `.dockerignore`, після якого `.env`, `.git` і залежності не потрапляють у контекст;
   3) порівняти розмір контексту в виводі збирача до й після.
@@ -225,6 +242,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   --mount=type=cache` тримає кеш менеджера пакетів між збірками. `docker image history` показує шари й розміри.
 - **Читати:** `Understanding the image layers`; `Docker build cache`; `Build cache invalidation`; `Optimize cache
   usage in builds`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** 1) переставити інструкції так, щоб зміна коду не перевстановлювала залежності; 2) кеш менеджера
   пакетів через `--mount=type=cache`; 3) виміряти збірку після зміни одного файла коду — до й після.
 - **Перевірити себе:** у виводі збірки після зміни коду крок встановлення залежностей — `CACHED`; час — у журналі.
@@ -237,6 +255,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
 - **Що це.** Кілька `FROM … AS етап` в одному Dockerfile: етап збирання ставить усе й компілює, фінальний етап
   копіює лише результат (`COPY --from=build`). `--target` збирає лише до вказаного етапу — зручно для тестів.
 - **Читати:** `Multi-stage builds`; `Building best practices` — розділ про багатоетапну збірку.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** 1) фронт: етап збирання на Node, фінальний — `nginx` зі статикою; 2) API: етап збирання й фінальний
   етап лише з production-залежностями; 3) етап `test` і `docker build --target test`.
 - **Перевірити себе:** розмір фінального образу фронту — десятки мегабайт, а не сотні; цифри до й після — у журналі.
@@ -250,6 +269,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   бувають несумісності), distroless і Docker Hardened Images (лише застосунок і рантайм, без оболонки), `scratch`
   (нічого — для статичних бінарників). Офіційні образи Docker Hub і закріплення бази дайджестом.
 - **Читати:** `Base images`; `Docker Official Images`; `Building best practices` — розділ про вибір бази.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** 1) зібрати API на трьох базах (повна, slim, alpine або distroless) і записати розміри; 2) закріпити
   базу дайджестом; 3) для distroless — пояснити, як тепер налагоджувати без оболонки (окремий етап з
   оболонкою через `--target`, або сусідній контейнер у тих самих просторах: `docker run -it --pid container:api
@@ -266,6 +286,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   зомбі. `HEALTHCHECK` — команда перевірки стану з інтервалом і кількістю спроб; стан видно в `docker ps`.
 - **Читати:** у `Dockerfile reference` — розділи `USER`, `HEALTHCHECK`, `STOPSIGNAL`; `Run multiple processes in a
   container` — чому один процес на контейнер.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** 1) API від користувача з UID 10001; 2) застосунок, що на `SIGTERM` закриває з'єднання й пише в журнал
   «shutdown»; 3) `HEALTHCHECK` на `/health`; 4) порівняти час `docker stop` для shell- і exec-форми `CMD`.
 - **Перевірити себе:** `docker exec api id` — не 0; `docker ps` — `(healthy)`; `docker stop api` — менше секунди й
@@ -281,6 +302,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   (`--mount=type=ssh`) — для приватних репозиторіїв. Перевірки збірки (`docker build --check`) ловлять секрети в
   `ARG` і `ENV`.
 - **Читати:** `Build variables`; `Build secrets`; `Build checks`; `SecretsUsedInArgOrEnv`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** 1) версія застосунку через `ARG` у мітку образу й змінну; 2) приватний реєстр пакетів з токеном через
   `--secret`; 3) спершу «погано» — через `ARG` — і знайти токен у `docker image history`; 4) `docker build --check`.
 - **Перевірити себе:** `docker image history --no-trunc` правильного образу не містить токена; `--check` без
@@ -295,6 +317,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   `docker inspect` і `buildx imagetools inspect` їх показують; GHCR за міткою `source` прив'язує образ до
   репозиторію.
 - **Читати:** `Docker object labels`; `Annotations`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** мітки OCI з версією й комітом (через `ARG` з дня 7) на всіх трьох образах проєкту.
 - **Перевірити себе:** `docker inspect -f '{{json .Config.Labels}}' api` — коміт, версія, джерело.
 - **Пастка:** мітка з датою збірки «зараз» робить кожну збірку унікальною — і ламає відтворюваність і кеш шару з
@@ -306,6 +329,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
 - **Що це.** Перелік з `Building best practices` як чек-лист: мінімальна база, багатоетапна збірка, `.dockerignore`,
   кеш, один процес, не root, закріплені версії, `HEALTHCHECK`, без секретів у шарах.
 - **Читати:** `Building best practices` повністю.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** пройти чек-лист по трьох образах проєкту і виправити все, що не так; у журнал — розміри й час
   збірки «на початку фази» і «тепер».
 - **Перевірити себе:** `docker build --check` по всіх трьох — чисто; таблиця «до і після».
@@ -314,6 +338,8 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
 
 # Фаза 2. Дані й мережа — 6 днів
 
+**Сервери MCP фази:** `docker-docs`.
+
 ### День 1. Томи
 
 - **Навіщо.** База, завантажені файли, черги — усе, що має пережити контейнер.
@@ -321,6 +347,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   контейнера, ним керує Docker (`docker volume ls`, `inspect`). Резервна копія тому — через тимчасовий контейнер з
   `tar`. Нові томи заповнюються вмістом теки образу.
 - **Читати:** `Volumes`; `docker volume create`; `docker volume inspect`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** 1) PostgreSQL з іменованим томом; записати дані, видалити контейнер, підняти новий — дані на місці;
   2) резервна копія тому в архів і відновлення в новий том; 3) з'ясувати, де том лежить на диску господаря.
 - **Перевірити себе:** дані пережили видалення контейнера; з відновленого тому база стартує з тими самими рядками.
@@ -333,6 +360,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   господаря; `:ro` — лише читання. tmpfs — тека в пам'яті, зникає з контейнером. Права файлів bind: UID усередині і
   зовні ті самі числа.
 - **Читати:** `Bind mounts`; `tmpfs mounts`; `Sharing local files with containers`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** 1) API в режимі розробки з кодом через bind і автоперезапуском; 2) конфіг nginx через bind `:ro`;
   3) контейнер з UID 10001 пише в bind-теку, що належить вашому користувачу, — отримати відмову і виправити правами
   теки, а не root-ом.
@@ -348,6 +376,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   вбудованим DNS: контейнер `db` доступний як `db`. Драйвери: `host` (мережа господаря, без ізоляції), `none`,
   `macvlan`/`ipvlan` (адреса в мережі господаря), `overlay` (Swarm). Контейнер може бути в кількох мережах.
 - **Читати:** `Networking overview`; `Bridge network driver`; `Network drivers`; `Host network driver`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** 1) мережа `app`, у ній `db` і `api`; API підключається до бази за іменем `db`; 2) контейнер у
   типовій мережі не бачить `db` за іменем; 3) знайти міст мережі `app` на господарі (`ip link`, `bridge link`).
 - **Перевірити себе:** `docker exec api getent hosts db` повертає адресу; з контейнера поза мережею — нічого.
@@ -361,6 +390,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   У Engine 29 є і бекенд nftables, але він експериментальний.
 - **Читати:** `Port publishing and mapping`; `Packet filtering and firewalls`; `Docker with iptables`; `Docker with
   nftables`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** 1) `ufw default deny incoming`, опублікувати `-p 5432:5432` і з машини `rocky` підключитися до бази;
   2) переопублікувати на `127.0.0.1`; 3) правило в `DOCKER-USER`, що пускає порт лише з `10.10.0.0/24`; 4) знайти
   правило DNAT Docker у `nft list ruleset`.
@@ -374,6 +404,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
 - **Що це.** Мережа з `--ipv6` і підмережею; контейнери отримують адреси IPv6. DNS контейнера у власній мережі —
   вбудований сервер Docker (`127.0.0.11`), що пересилає зовнішні імена на DNS господаря; `--dns` перекриває.
 - **Читати:** `Use IPv6 networking`; у `Networking overview` — розділ про DNS.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** 1) мережа з IPv6 (`fd00:20::/64`), пінг між контейнерами по IPv6; 2) подивитися `/etc/resolv.conf` у
   контейнері типової й власної мережі і пояснити різницю.
 - **Перевірити себе:** `docker exec api ping -6 -c1 db` — відповідь.
@@ -387,6 +418,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   Linux). Перевищення пам'яті — OOM-kill усередині контейнера; `docker inspect` покаже `OOMKilled: true`.
   `docker update` змінює ліміти на ходу.
 - **Читати:** `Resource constraints`; `docker container update`; `Runtime metrics`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** 1) API з `--memory 256m --cpus 0.5`; 2) навантажити пам'ять і дочекатися OOM; 3) знайти cgroup
   контейнера на господарі й порівняти `memory.max` з лімітом.
 - **Перевірити себе:** `docker inspect -f '{{.State.OOMKilled}}' api` — `true`; `memory.max` — 268435456.
@@ -394,6 +426,8 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   розганяють купу понад нього — OOM без помилки в журналі застосунку.
 
 # Фаза 3. Compose — 7 днів
+
+**Сервери MCP фази:** `docker-docs`.
 
 Увесь проєкт однією командою. Compose — і щоденний інструмент розробки, і цілком придатний спосіб запуску на
 одній машині.
@@ -407,6 +441,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   іменами.
 - **Читати:** `What is Docker Compose?`; `How Compose works`; `Compose file reference`; `Define services in Docker
   Compose`; `docker compose up`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** `compose.yaml` наскрізного проєкту: `web`, `api`, `db` з томом; `api` збирається з Dockerfile фази 1.
 - **Перевірити себе:** `docker compose up -d` з нуля піднімає все; сторінка відкривається й читає дані з бази;
   `docker compose down && docker compose up -d` — дані на місці.
@@ -421,6 +456,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   політика перезапуску.
 - **Читати:** `Control startup and shutdown order in Compose`; у `Compose file reference` — `healthcheck`,
   `depends_on`, `restart`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** 1) `healthcheck` для `db` (`pg_isready`) і `api`; 2) `api` чекає здорову базу; 3) сервіс `migrate`,
   що запускає міграції й завершується, а `api` чекає його успішного кінця.
 - **Перевірити себе:** `docker compose up` з нуля стартує без жодного перезапуску `api`; `docker compose ps` —
@@ -437,6 +473,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
 - **Читати:** `Environment variables in Compose`; `Set, use, and manage variables in a Compose file with
   interpolation`; `Environment variables precedence in Docker Compose`; `Best practices for working with
   environment variables in Docker Compose`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** 1) тег образів і порт — через змінні з типовими значеннями; 2) `.env` для розробки, не в git;
   3) з'ясувати через `docker compose config`, яке значення перемогло, коли змінна задана і в оболонці, і в `.env`.
 - **Перевірити себе:** `TAG=1.2.3 docker compose config | grep image` показує 1.2.3.
@@ -451,6 +488,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   (`-f compose.yaml -f compose.prod.yaml`) зливаються; `include` — підключити чужий compose-файл.
 - **Читати:** `Use Compose Watch`; `Using profiles with Compose`; `Merge Compose files`; `Use multiple Compose files`;
   `Include`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** 1) watch для API: зміна коду синхронізується, зміна залежностей — перезбирає; 2) профіль `tools` з
   pgAdmin; 3) `compose.prod.yaml`, що прибирає bind-монтування й публікацію бази.
 - **Перевірити себе:** `docker compose -f compose.yaml -f compose.prod.yaml config` — без bind і без порту бази.
@@ -464,6 +502,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   проєкту, зовнішні томи (`external: true`), що переживають `down -v`.
 - **Читати:** `Networking in Compose`; `Define and manage networks in Docker Compose`; `Define and manage volumes in
   Docker Compose`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** 1) розділити мережі так, щоб `web` не мав маршруту до `db`; 2) мережа `back` — internal; 3) том бази —
   external, створений руками.
 - **Перевірити себе:** `docker compose exec web getent hosts db` — нічого; `docker compose down -v` не чіпає
@@ -477,6 +516,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
 - **Що це.** `secrets:` верхнього рівня (з файла чи змінної оточення) і `secrets:` сервісу — файл у
   `/run/secrets/ім'я`. Офіційні образи (postgres) читають `*_FILE`-змінні; свій застосунок читає файл сам.
 - **Читати:** `Manage secrets securely in Docker Compose`; `Secrets` (у довіднику Compose).
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** пароль бази — секретом з файла, `POSTGRES_PASSWORD_FILE` для бази і читання файла в API.
 - **Перевірити себе:** `docker inspect` контейнерів не містить пароля; `docker compose exec api cat
   /run/secrets/db_password` — є.
@@ -490,6 +530,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   ресурсів (`deploy.resources`), журнали з ротацією, без bind-монтувань коду; оновлення — `docker compose pull && up
   -d`. Docker-контекст дає керувати віддаленою машиною зі свого терміналу по SSH.
 - **Читати:** `Use Compose in production`; `Docker contexts`; у `Compose Deploy Specification` — `resources`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** 1) контекст `rocky` по SSH; 2) підняти проєкт на `rocky` з вашого терміналу продакшн-файлом;
   3) оновити один сервіс на новий тег без простою інших.
 - **Перевірити себе:** `docker --context rocky compose ps` — усе `healthy`; після оновлення — новий тег в `docker
@@ -499,6 +540,8 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
 
 # Фаза 4. Кілька архітектур, реєстри, CI, ланцюг постачання — 6 днів
 
+**Сервери MCP фази:** `docker-docs`.
+
 ### День 1. Реєстр і теги
 
 - **Навіщо.** Образ, якого немає в реєстрі, не потрапить на сервер і в кластер.
@@ -507,6 +550,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   короткий коміт, `latest` лише як зручність. Дайджест — незмінний.
 - **Читати:** `Build, tag, and publish an image`; `Docker Hub usage and limits`; `Docker Hub pull usage and limits`;
   `docker image push`; `docker login`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** 1) опублікувати три образи проєкту в GHCR з тегами версії й коміту; 2) на `rocky` стягнути образ за
   дайджестом; 3) з'ясувати свій поточний ліміт завантажень Docker Hub.
 - **Перевірити себе:** `docker buildx imagetools inspect ghcr.io/…/api:1.0.0` — той самий дайджест, що локально.
@@ -523,6 +567,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   кількох платформ, якщо не ввімкнено containerd image store.
 - **Читати:** `Multi-platform builds`; `Builders`; `Build drivers`; `Docker container driver`; `docker buildx
   create`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** 1) емуляція QEMU на `ubu` і збірка API під обидві платформи; 2) порівняти час з крос-компіляцією для
   Go чи з нативною збіркою залежностей; 3) запустити arm64-образ на amd64 машині через емуляцію.
 - **Перевірити себе:** `docker buildx imagetools inspect` показує дві платформи; `docker run --platform
@@ -536,6 +581,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
 - **Що це.** Бекенди кешу: `inline` (у самому образі), `registry` (окремий образ кешу), `gha` (кеш GitHub Actions),
   `local`. `--cache-to type=registry,ref=…,mode=max` зберігає і проміжні етапи.
 - **Читати:** `Cache storage backends`; `Registry cache`; `GitHub Actions cache`; `Inline cache`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** збірка з `--cache-from` і `--cache-to` у реєстр; виміряти другу збірку на чистому будівнику.
 - **Перевірити себе:** друга збірка з порожнього будівника бере шари з кешу реєстру — число в журналі.
 - **Пастка:** `mode=min` (типовий) не кешує проміжні етапи багатоетапної збірки — кеш є, а встановлення
@@ -550,6 +596,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
 - **Читати:** `Introduction to GitHub Actions with Docker`; `Docker Build GitHub Actions`; `Manage tags and labels
   with GitHub Actions`; `Multi-platform image with GitHub Actions`; `Cache management with GitHub Actions`; `Test
   before push with GitHub Actions`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** workflow: на PR — збірка й тести без публікації; на тег `v*` — образи під дві платформи з тегами з
   `metadata` у GHCR, кеш `gha`.
 - **Перевірити себе:** тег `v1.1.0` у репозиторії дає образи `1.1.0`, `1.1` і `sha-…` у GHCR під дві платформи.
@@ -563,6 +610,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   поруч з образом. `--sbom=true --provenance=mode=max`. Сканування образу на вразливості — Docker Scout чи Trivy.
 - **Читати:** `Build attestations`; `SBOM attestations`; `Provenance attestations`; `Add SBOM and provenance
   attestations with GitHub Actions`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** 1) SBOM і provenance в CI; 2) прочитати SBOM з реєстру через `imagetools inspect --format`;
   3) просканувати образ і виправити хоч одну вразливість зміною бази.
 - **Перевірити себе:** `docker buildx imagetools inspect ghcr.io/…/api:1.1.0 --format '{{json .SBOM}}'` повертає
@@ -576,11 +624,14 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
 - **Що це.** Закріплені бази (дайджест), закріплені залежності (lock-файли), `SOURCE_DATE_EPOCH` для часу у файлах;
   політики збирання buildx — перевірки, що база з довіреного джерела.
 - **Читати:** `Reproducible builds with GitHub Actions`; `Introduction to build policies`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** зібрати той самий коміт двічі з різницею в годину і порівняти дайджести; домогтися однакових.
 - **Перевірити себе:** два однакові дайджести в журналі.
 - **Пастка:** `apt-get install` без версій у Dockerfile — дві збірки одного коміту в різні дні дають різні образи.
 
 # Фаза 5. Експлуатація й безпека рушія — 6 днів
+
+**Сервери MCP фази:** `docker-docs`.
 
 ### День 1. Налаштування рушія
 
@@ -591,6 +642,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   через `systemctl edit docker` (фаза 3 плану Linux).
 - **Читати:** `Docker daemon configuration overview`; `dockerd` (довідник опцій); `Daemon proxy configuration`;
   `Live restore`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** 1) `daemon.json` з ротацією журналів, власним пулом адрес і `live-restore`; 2) перезапустити `docker`
   і переконатися, що контейнери пережили перезапуск рушія.
 - **Перевірити себе:** `docker info` показує ваш драйвер журналів і `Live Restore Enabled: true`.
@@ -605,6 +657,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   `journald`.
 - **Читати:** `Configure logging drivers`; `Local file logging driver`; `JSON File logging driver`; `Journald logging
   driver`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** 1) переключити рушій на `local` з лімітом; 2) один контейнер — у `journald`, знайти його записи через
   `journalctl CONTAINER_NAME=…`; 3) переконатися, що нові налаштування не діють на старі контейнери.
 - **Перевірити себе:** `docker inspect -f '{{.HostConfig.LogConfig}}'` нового контейнера — ваш драйвер.
@@ -617,6 +670,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
 - **Що це.** Політики перезапуску: `no`, `on-failure[:N]`, `always`, `unless-stopped`; різниця між двома останніми
   після ручної зупинки. Контейнер як служба systemd — альтернатива (фаза 6 плану Linux, Quadlet для Podman).
 - **Читати:** `Start containers automatically`; `docker container update` (зміна політики).
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** 1) проєкт з `unless-stopped`; 2) перезавантажити машину — усе піднялося; 3) зупинити руками один
   контейнер, перезавантажити — він лишився зупиненим.
 - **Перевірити себе:** після кроку 2 `docker compose ps` — усе `healthy` без вашого втручання.
@@ -631,6 +685,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   ніколи `--privileged` і не монтувати `/var/run/docker.sock` у контейнер.
 - **Читати:** `Docker Engine security`; `Seccomp security profiles for Docker`; `AppArmor security profiles for
   Docker`; `Antivirus software and Docker`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** API з `--read-only`, `--cap-drop ALL`, `no-new-privileges` і tmpfs для `/tmp`; переконатися, що
   працює; спробувати з контейнера змінити час машини чи змонтувати файлову систему — відмова.
 - **Перевірити себе:** `docker inspect` показує `ReadonlyRootfs: true` і порожній перелік можливостей; спроби кроку —
@@ -646,6 +701,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   господаря (несумісний з containerd image store).
 - **Читати:** `Rootless mode`; `Isolate containers with a user namespace`; `containerd image store with Docker
   Engine` — розділ про обмеження.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** 1) rootless-рушій для окремого користувача на `rocky`; 2) запустити проєкт у ньому; 3) з'ясувати, яким
   UID на господарі працює «root» контейнера.
 - **Перевірити себе:** `ps -o user,cmd -C nginx` на господарі — ваш користувач, а не root.
@@ -659,6 +715,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   `docker system df`; мережа — `nsenter` у простір контейнера (фаза 7 плану Linux); сховище — `containerd image store`
   чи overlay2.
 - **Читати:** `Troubleshooting the Docker daemon`; `docker system events`; `docker system info`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** три поломки самому собі й знайти кожну: зламаний `daemon.json`, перетин пулу адрес Docker з
   мережею машини, контейнер без DNS.
 - **Перевірити себе:** для кожної поломки — команда, що показала причину, у журналі.
@@ -666,6 +723,8 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   тягнути знову.
 
 # Фаза 6. Міст до Kubernetes — 3 дні
+
+**Сервери MCP фази:** `docker-docs`, `kubernetes-docs`.
 
 ### День 1. Що з Docker переходить у Kubernetes
 
@@ -677,6 +736,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   замість `docker`.
 - **Читати:** `containerd image store with Docker Engine`; `Alternative container runtimes`; документація
   Kubernetes про контейнерні рантайми — у примірнику `kubernetes`.
+- **Сервери MCP:** `docker-docs`, `kubernetes-docs`.
 - **Зробити:** таблиця в README: кожен рядок вашого `compose.yaml` → як це буде в Kubernetes (або «не переходить»).
 - **Перевірити себе:** у таблиці немає рядка без відповіді.
 - **Пастка:** покладатися в застосунку на `depends_on` — у Kubernetes порядку запуску подів немає, і застосунок має
@@ -689,6 +749,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
 - **Що це.** Завершення за `SIGTERM` за кілька секунд, без стану на диску контейнера, конфіг через змінні, журнал у
   stdout, не root з числовим UID (`runAsNonRoot` перевіряє число, не ім'я), ендпоінти `/healthz` і `/readyz` окремо.
 - **Читати:** `Building best practices` — ще раз; `Run multiple processes in a container`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** привести образи проєкту до переліку: числовий UID, два ендпоінти здоров'я, журнали лише в stdout,
   чисте завершення за `SIGTERM` менш ніж за 5 секунд.
 - **Перевірити себе:** `docker run --user 10001 … ` працює; `docker stop -t 5` — завершення без `KILL` у
@@ -703,6 +764,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   — чернетка, а не продакшн, але добре показує відповідність понять.
 - **Читати:** `Overview of Compose Bridge`; `Use the default Compose Bridge transformation`; `docker compose bridge
   convert`.
+- **Сервери MCP:** `docker-docs`.
 - **Зробити:** перетворити `compose.yaml` проєкту й прочитати кожен згенерований маніфест: що з чого вийшло і що
   загубилося (перевірки стану, секрети, порядок).
 - **Перевірити себе:** у README — перелік того, що перетворення загубило, — з ним ви починаєте план Kubernetes.

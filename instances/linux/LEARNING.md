@@ -104,10 +104,16 @@ CKAD легший, тому перший. LFCS — за бажанням. Пла
 
 ## Як користуватися планом
 
-**Як влаштований день.** У кожного дня шість рядків. **Навіщо** — яку задачу тема розв'язує. **Що це** —
-пояснення простими словами. **Читати** — сторінки документації. **Зробити** — вправа по кроках. **Перевірити
-себе** — що має вийти, якщо все правильно; майже завжди це команда й результат, який видно. **Пастка** — помилка,
-яку на цьому місці роблять майже всі.
+**Як влаштований день.** У кожного дня сім рядків. **Навіщо** — яку задачу тема розв'язує. **Що це** — пояснення
+простими словами. **Читати** — сторінки документації. **Сервери MCP** — які сервери документації фабрики про це
+питати. **Зробити** — вправа по кроках. **Перевірити себе** — що має вийти, якщо все правильно; майже завжди це
+команда й результат, який видно. **Пастка** — помилка, яку на цьому місці роблять майже всі.
+
+**Сервери MCP.** Імена — як у Claude Code: сервер примірника `x` зветься `x-docs` (`react-docs`, `mdn-docs`,
+`webstandards-docs`). Під заголовком кожної фази — усі сервери фази разом: їх варто підняти до її початку (`./df
+<примірник> serve` з кореня фабрики) і додати в Claude Code командою з README примірника. Сервер відповідає з тих
+самих глав, що названі в рядку «Читати», і дає адресу джерела, за якою відповідь можна перевірити. «Жодного» — джерела
+дня поза фабрикою; чого бракує — у [карті навчання](../../docs/learning-map.md).
 
 **Читати — це man.** Назви на кшталт `systemctl(1)` чи `fstab(5)` — man-сторінки: ім'я і розділ (1 — команди, 5 —
 формати файлів, 7 — огляди, 8 — команди адміністратора). На машині це `man 5 fstab`, у сервері документації — документ
@@ -179,6 +185,8 @@ man-pages (`man-pages: namespaces(7) — …`). Посібники GNU назв�
 
 # Фаза 0. Робоче місце, довідка й оболонка — 6 днів
 
+**Сервери MCP фази:** `linux-docs`.
+
 Те, що на іспиті не перевіряють окремою задачею, але без чого не розв'язується жодна: знайти відповідь у man,
 зрозуміти, що зробить оболонка з вашим рядком, і написати короткий скрипт. Дні 1–6 можна робити ще у WSL; машини
 мають бути готові до фази 1.
@@ -191,6 +199,7 @@ man-pages (`man-pages: namespaces(7) — …`). Посібники GNU назв�
   server — погодьтеся. Rocky Linux — так само, профіль «Minimal Install». Після встановлення машина отримує адресу
   в мережі гіпервізора, і `ssh користувач@адреса` відкриває на ній термінал.
 - **Читати:** `ssh(1)` — розділ DESCRIPTION і опції `-i`, `-p`; `hostnamectl(1)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) встановити обидві машини, Ubuntu — з трьома додатковими порожніми дисками по 5 ГБ; 2) дати їм
   імена `ubu` і `rocky` (`hostnamectl set-hostname`); 3) записати їхні адреси в `~/.ssh/config` вашого терміналу
   (`Host ubu`, `HostName`, `User`), щоб заходити як `ssh ubu`; 4) зробити знімок обох машин «чиста».
@@ -210,6 +219,7 @@ man-pages (`man-pages: namespaces(7) — …`). Посібники GNU назв�
   програми.
 - **Читати:** `man(1)` — розділи DESCRIPTION і перелік розділів; `apropos(1)`; `info(1)`; `mandb(8)` — звідки
   береться індекс для `man -k`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) знайти через `man -k`, яка команда змінює термін дії пароля, і яка показує блокові пристрої;
   2) у `man 5 crontab` знайти, як записати «щопонеділка о 3:15»; 3) у `info coreutils` знайти розділ про `chmod`
   і прочитати, що таке «symbolic modes»; 4) на Rocky перевірити, чи `man -k` працює одразу, і якщо ні — `mandb`.
@@ -227,6 +237,7 @@ man-pages (`man-pages: namespaces(7) — …`). Посібники GNU назв�
   на слова. Пробіл в імені файла без лапок робить із нього два аргументи.
 - **Читати:** `glob(7)`; посібник GNU Bash — розділи `Quoting` і `Shell Expansions` (у ньому — `Filename
   Expansion`); `bash(1)` — розділ QUOTING.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) створити файли `a b.txt`, `c.txt`, `.hidden` і подивитися, що дають `ls *`, `ls "*"`, `echo
   *.log` (збігів немає); 2) порахувати аргументи: `printf '[%s]\n' $x` і `printf '[%s]\n' "$x"` при `x='a b'`;
   3) скопіювати всі `*.conf` з `/etc` у теку `~/conf-backup`, жодного не пропустивши.
@@ -243,6 +254,7 @@ man-pages (`man-pages: namespaces(7) — …`). Посібники GNU назв�
   помилки окремо, `&>` чи `> f 2>&1` — обидва в один файл (порядок важливий). `|` передає вивід однієї команди на
   ввід іншої; `tee` пише і в файл, і далі; `xargs` перетворює рядки вводу на аргументи команди.
 - **Читати:** посібник GNU Bash — розділи `Redirections` і `Pipelines`; `tee(1)`; `xargs(1)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) `find /etc -name '*.conf'` так, щоб список ішов у файл, а помилки «Permission denied» — в інший;
   2) те саме, але помилки викинути в `/dev/null`; 3) знайти п'ять найбільших файлів у `/var/log` конвеєром з
   `du`, `sort` і `head`; 4) `sudo tee` замість `sudo echo ... > /etc/файл` — дописати рядок у системний файл.
@@ -260,6 +272,7 @@ man-pages (`man-pages: namespaces(7) — …`). Посібники GNU назв�
   двокрапку, де шукаються команди; `type` і `which` кажуть, що саме запуститься.
 - **Читати:** `environ(7)`; `env(1)`; посібник GNU Bash — розділи `Shell Parameters` і `Environment`, про `type` —
   `Bash Builtin Commands`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) задати `X=1` і перевірити, чи бачить її `bash -c 'echo $X'`, потім з `export`; 2) покласти
   скрипт у `~/bin` і зробити так, щоб він запускався за ім'ям; 3) з'ясувати, що запускається на `ls` (`type ls` —
   псевдонім).
@@ -277,6 +290,7 @@ man-pages (`man-pages: namespaces(7) — …`). Посібники GNU назв�
   зупиняє скрипт на першій помилці, на незаданій змінній і на помилці всередині конвеєра.
 - **Читати:** посібник GNU Bash — розділи `Conditional Constructs`, `Looping Constructs`, `Shell Functions` і
   `The Set Builtin`; `test(1)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** скрипт `backup-etc.sh`: архівує `/etc` у `/var/backups/etc-ДАТА.tar.gz`, лишає лише сім
   останніх архівів, пише в журнал (`logger`) і повертає не нуль, якщо архів не створився. Запускається з `sudo`.
 - **Перевірити себе:** після трьох запусків — три архіви; `journalctl -t backup-etc` показує три записи; запуск
@@ -285,6 +299,8 @@ man-pages (`man-pages: namespaces(7) — …`). Посібники GNU назв�
   розкладу пишіть повні шляхи або задавайте `PATH` на початку.
 
 # Фаза 1. Основні команди — 10 днів
+
+**Сервери MCP фази:** `linux-docs`.
 
 Розділ Essential Commands програми LFCS — 20 % іспиту. Дні 1–7 — класика будь-якої співбесіди на адміністратора;
 дні 8–10 — компетенції, яких немає в старих посібниках: `Basic Git Operations`, `Work with SSL certificates` і
@@ -300,6 +316,7 @@ man-pages (`man-pages: namespaces(7) — …`). Посібники GNU назв�
   показує inode, кількість посилань і три часи файла.
 - **Читати:** `ln(1)`; `symlink(7)`; `inode(7)`; `stat(1)`; посібник GNU coreutils — розділ
   `‘cp’: Copy files and directories`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) файл, жорстке й символьне посилання на нього; видалити оригінал — що лишилося доступним;
   2) `stat` усіх трьох: номери inode і кількість посилань; 3) скопіювати `/etc/ssh` з правами й власниками в
   `/root/ssh-copy`.
@@ -317,6 +334,7 @@ man-pages (`man-pages: namespaces(7) — …`). Посібники GNU назв�
   команди), sticky на теці — видаляти файл може лише власник (`/tmp`).
 - **Читати:** посібник GNU coreutils — розділ `File permissions` (у ньому `Structure of File Mode Bits`,
   `Symbolic Modes`, `Numeric Modes`) і `‘chmod’: Change access permissions`; `umask(2)`; `chown(1)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) тека `/srv/team` для групи `devs`: учасники пишуть, нові файли належать групі `devs`, чужі файли
   видалити не можна, решта не бачить нічого; 2) знайти всі програми з setuid у `/usr/bin`; 3) змінити `umask` так,
   щоб нові файли були `640`, і перевірити.
@@ -335,6 +353,7 @@ man-pages (`man-pages: namespaces(7) — …`). Посібники GNU назв�
   оновлення бази.
 - **Читати:** `find(1)` — розділи TESTS, ACTIONS і EXAMPLES; посібник GNU findutils — розділ `Finding Files`;
   `plocate(1)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) усі файли в `/etc`, змінені за останню добу; 2) усі файли з setgid у системі, без помилок про
   права на екрані; 3) файли розміром понад 10 МБ у `/var` — у список `/root/big.txt` з розмірами; 4) скопіювати
   всі файли користувача `alice` у `/root/alice-files`, зберігши права.
@@ -350,6 +369,7 @@ man-pages (`man-pages: namespaces(7) — …`). Посібники GNU назв�
   кількість, `-l` лише імена файлів, `-E` розширені вирази (`+`, `?`, `|`, групи без зворотних скісних). Якорі `^`
   і `$`, класи `[[:digit:]]`, повтори `{2,3}`.
 - **Читати:** `grep(1)`; посібник GNU grep — розділи `Regular Expressions` і `Usage`; `regex(7)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) усі рядки `/etc/ssh/sshd_config`, що не коментарі й не порожні; 2) усі адреси IPv4 з
   `ip addr` одним виразом `grep -oE`; 3) скільки разів у журналі сьогодні були невдалі входи SSH
   (`journalctl -u ssh` чи `sshd`); 4) у яких файлах `/etc` згадано ім'я вашої машини.
@@ -366,6 +386,7 @@ man-pages (`man-pages: namespaces(7) — …`). Посібники GNU назв�
   `cut -d: -f1`, `sort` (`-n`, `-k`, `-u`), `uniq -c`, `tr`, `wc`, `head`, `tail -f`.
 - **Читати:** `sed(1)` і посібник GNU sed — розділи `The ‘s’ Command` і `‘sed’ scripts`; `mawk(1)` і `gawk(1)`;
   `sort(1)`; `uniq(1)`; `cut(1)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) у копії `sshd_config` замінити `#PermitRootLogin ...` на `PermitRootLogin no` однією командою
   `sed`; 2) з `/etc/passwd` вивести імена користувачів з оболонкою `/bin/bash`; 3) десять найчастіших IP-адрес у
   журналі доступу nginx (зразок файла — будь-який, з колонкою адрес); 4) у файлі з рядками `ключ=значення`
@@ -384,6 +405,7 @@ man-pages (`man-pages: namespaces(7) — …`). Посібники GNU назв�
   машину, і пересилає лише різницю.
 - **Читати:** `tar(1)`; посібник GNU tar — розділи `Tutorial Introduction to ‘tar’` (`Creating the Archive`,
   `Extracting an Entire Archive`) і `Choosing and Naming Archive Files`; `rsync(1)`; `xz(1)`, `zstd(1)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) архів `/etc` у трьох стисненнях і порівняти розміри й час; 2) переглянути архів і розпакувати
   з нього один файл у `/tmp`; 3) `rsync` теки `/srv/team` на машину `rocky` зі збереженням прав; другий запуск
   має нічого не передати.
@@ -401,6 +423,7 @@ man-pages (`man-pages: namespaces(7) — …`). Посібники GNU назв�
   Вихід: `:wq`, `:q!`.
 - **Читати:** довідка vim — `usr_02.txt` (перші кроки) і `change.txt` (розділ про `:substitute`); `vimtutor`
   на машині.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) пройти `vimtutor` повністю; 2) у копії `sshd_config` знайти `Port`, змінити на 2222, видалити
   всі коментарі однією командою `:g/^#/d`, зберегти; 3) те саме в nano — щоб знати запасний шлях.
 - **Перевірити себе:** крок 2 займає менше двох хвилин без підглядання.
@@ -416,6 +439,7 @@ man-pages (`man-pages: namespaces(7) — …`). Посібники GNU назв�
   штовхають по SSH.
 - **Читати:** `git(1)`; `git-clone(1)`; `git-commit(1)`; `git-branch(1)`; `git-merge(1)`; `git-push(1)`;
   `gitignore(5)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) на `rocky` — голий репозиторій `/srv/git/infra.git`; 2) на `ubu` — клонувати його по SSH,
   закомітити скрипт з фази 0, штовхнути; 3) гілка, зміна, злиття в `main`, конфлікт і його розв'язання;
   4) `.gitignore` для файлів `*.bak`.
@@ -433,6 +457,7 @@ man-pages (`man-pages: namespaces(7) — …`). Посібники GNU назв�
   Довірені центри Ubuntu — `/usr/local/share/ca-certificates/` плюс `update-ca-certificates`.
 - **Читати:** `openssl-genpkey(1ssl)`; `openssl-req(1ssl)`; `openssl-x509(1ssl)`; `openssl-s_client(1ssl)`;
   `update-ca-certificates(8)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) власний центр сертифікації (ключ і самопідписаний сертифікат на рік); 2) ключ і CSR для
   `ubu.lab` з SAN; 3) підписати CSR своїм центром; 4) додати центр у довірені на `ubu` і перевірити ланцюжок
   `openssl verify`.
@@ -449,6 +474,7 @@ man-pages (`man-pages: namespaces(7) — …`). Посібники GNU назв�
   тримає відкритим процес, місце не звільняє: `lsof +L1` покаже такі. Журнал systemd обрізається
   `journalctl --vacuum-size`.
 - **Читати:** `df(1)`; `du(1)`; `lsof(8)`; `journalctl(1)` — опції `--disk-usage` і `--vacuum-size`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) заповнити тестову теку файлом на 1 ГБ (`fallocate`), знайти його через `du`; 2) відкрити файл
   процесом (`tail -f`), видалити, переконатися, що `df` місця не повернув, знайти процес через `lsof`;
   3) створити 100 000 порожніх файлів на маленькій файловій системі (loop-пристрій) і отримати «No space left» при
@@ -458,6 +484,8 @@ man-pages (`man-pages: namespaces(7) — …`). Посібники GNU назв�
   його `: > файл` або `truncate -s 0`, а не `rm`.
 
 # Фаза 2. Користувачі й групи — 7 днів
+
+**Сервери MCP фази:** `linux-docs`.
 
 Розділ Users and Groups — 10 % іспиту, але без нього не працюють права, sudo, служби й SSH. П'ять компетенцій
 розділу — п'ять днів; ще два — паролі й sudo, без яких перші не мають сенсу.
@@ -472,6 +500,7 @@ man-pages (`man-pages: namespaces(7) — …`). Посібники GNU назв�
   обгортка з власними налаштуваннями.
 - **Читати:** `useradd(8)` (зокрема `-k` і `/etc/skel`); `usermod(8)`; `userdel(8)`; `passwd(5)`; `shadow(5)`;
   `login.defs(5)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) користувачі `alice` і `bob` з теками й bash; 2) група `devs`, обидва в ній додатково до своєї;
   3) системний користувач `app` без теки й без входу; 4) змінити `bob` UID на 2001 і знайти файли зі старим UID.
 - **Перевірити себе:** `id alice` показує групу `devs`; `getent passwd app` — оболонка `/usr/sbin/nologin`;
@@ -488,6 +517,7 @@ man-pages (`man-pages: namespaces(7) — …`). Посібники GNU назв�
   `sudo`, у Rocky — `wheel`.
 - **Читати:** `sudoers(5)` — розділи SUDOERS FILE FORMAT і EXAMPLES; `visudo(8)`; `sudo(8)`; `groupadd(8)`;
   `group(5)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) `alice` — повний sudo через групу; 2) `bob` — лише `systemctl restart nginx` і
   `systemctl status nginx`, без пароля, файлом `/etc/sudoers.d/bob`; 3) свідомо зробити синтаксичну помилку через
   `visudo -f` і подивитися, що він не дасть зберегти.
@@ -503,6 +533,7 @@ man-pages (`man-pages: namespaces(7) — …`). Посібники GNU назв�
   — строк дії облікового запису. `chage` керує старінням: мінімум і максимум днів між змінами, попередження,
   змусити змінити на наступному вході (`chage -d 0`). Типові значення для нових користувачів — `login.defs`.
 - **Читати:** `chage(1)`; `passwd(1)`; `shadow(5)` — значення полів; `login.defs(5)` — `PASS_MAX_DAYS` і сусіди.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) `bob` має змінити пароль на першому вході; 2) пароль `alice` діє 90 днів, попередження за 7;
   3) заблокувати `bob` двома способами і пояснити різницю (`-L` не зупиняє вхід за ключем SSH, `-e 1` — зупиняє);
   4) нові користувачі отримують максимум 90 днів автоматично.
@@ -520,6 +551,7 @@ man-pages (`man-pages: namespaces(7) — …`). Посібники GNU назв�
   `/etc/environment` читає PAM, не оболонка: там лише `ІМ'Я=значення`, без `export` і `$`. Нові користувачі
   отримують копії файлів з `/etc/skel`.
 - **Читати:** посібник GNU Bash — розділ `Bash Startup Files`; `bash(1)` — розділ INVOCATION; `environ(7)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) змінна `COMPANY=lab` для всіх через `/etc/profile.d/company.sh`; 2) псевдонім `ll` лише для
   `alice`; 3) у `/etc/skel` — `.bashrc` з вашим запрошенням (PS1), і новий користувач його отримує; 4) змінна,
   видима службам systemd, — ні через профіль, а через `Environment=` (нагадування на фазу 3).
@@ -537,6 +569,7 @@ man-pages (`man-pages: namespaces(7) — …`). Посібники GNU назв�
   у юніті.
 - **Читати:** `limits.conf(5)`; `pam_limits(8)`; `ulimit(3)` і розділ про `ulimit` у посібнику GNU Bash (`Bash
   Builtin Commands`); `prlimit(1)`; у `systemd.exec(5)` — таблиця `LimitNOFILE=` і сусідів.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) група `devs` — не більше 200 процесів і 4096 відкритих файлів (м'який ліміт 1024); 2) перевірити
   в новій сесії; 3) упертися в ліміт процесів простим циклом і подивитися на помилку; 4) подивитися ліміти
   працюючої служби через `prlimit --pid`.
@@ -552,6 +585,7 @@ man-pages (`man-pages: namespaces(7) — …`). Посібники GNU назв�
   файлами. Маска — стеля для всіх записів ACL, крім власника й «решти»; `chmod` групи на файлі з ACL змінює саме
   маску. `+` у кінці прав у `ls -l` означає, що ACL є.
 - **Читати:** `acl(5)` — розділ про маску й алгоритм перевірки; `setfacl(1)`; `getfacl(1)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) на `/srv/team`: користувач `auditor` лише читає, зокрема нові файли; 2) `chmod g-w` на файлі з
   ACL і подивитися, що сталося з ефективними правами auditor-а; 3) скопіювати файл з ACL `cp` і `cp -a` і
   порівняти.
@@ -568,6 +602,7 @@ man-pages (`man-pages: namespaces(7) — …`). Посібники GNU назв�
   Після цього `getent passwd` бачить користувачів каталогу, а PAM пускає їх у систему; теку на першому вході
   створює `pam_mkhomedir` (в Ubuntu вмикається `pam-auth-update --enable mkhomedir`).
 - **Читати:** `sssd.conf(5)`; `sssd(8)`; `nsswitch.conf(5)`; `ldapsearch(1)`; `ldapadd(1)`; `ldap.conf(5)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) на `ubu` поставити `slapd` (`dpkg-reconfigure slapd` — домен `lab`), додати через `ldapadd`
   групу й двох користувачів з `posixAccount`; 2) на `rocky` налаштувати SSSD на цей каталог; 3) увійти на `rocky`
   користувачем із каталогу.
@@ -577,6 +612,8 @@ man-pages (`man-pages: namespaces(7) — …`). Посібники GNU назв�
   в журналі (`journalctl -u sssd`).
 
 # Фаза 3. Процеси, служби, пакети, ядро, відновлення — 10 днів
+
+**Сервери MCP фази:** `linux-docs`.
 
 Розділ Operations Deployment — 25 % іспиту, найбільший разом із мережею. Тут же — дві компетенції розділу
 Essential Commands про служби й продуктивність. SELinux, віртуальні машини й контейнери з того самого розділу
@@ -595,6 +632,7 @@ Essential Commands про служби й продуктивність. SELinux,
   `fg`, `bg`, `nohup`.
 - **Читати:** `ps(1)` — розділи STANDARD FORMAT SPECIFIERS і PROCESS STATE CODES; `signal(7)` — таблиця
   стандартних сигналів; `kill(1)`; `nice(1)`; `renice(1)`; `top(1)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) запустити `yes > /dev/null` тричі у фоні, знайти їх, понизити пріоритет одному, вбити решту
   одним `pkill`; 2) знайти батька вашої оболонки до PID 1 (`pstree -p`); 3) показати 5 процесів з найбільшою
   пам'яттю одним `ps --sort`.
@@ -613,6 +651,7 @@ Essential Commands про служби й продуктивність. SELinux,
   перевизначення — `/etc/systemd/system/` (перемагає).
 - **Читати:** `systemctl(1)`; `systemd.unit(5)` — розділи про шляхи пошуку й залежності (`Wants=`, `Requires=`,
   `After=`); `systemd.special(7)` — `multi-user.target`, `graphical.target`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) поставити `nginx`, увімкнути одним рядком; 2) замаскувати і спробувати запустити; 3) знайти, з
   якого файла юніт завантажено (`systemctl cat`); 4) змінити типову ціль на `multi-user.target` і назад.
 - **Перевірити себе:** після перезавантаження `systemctl is-enabled nginx` — `enabled`, `is-active` — `active`.
@@ -631,6 +670,7 @@ Essential Commands про служби й продуктивність. SELinux,
 - **Читати:** `systemd.service(5)` — `Type=`, `ExecStart=`, `Restart=`; `systemd.exec(5)` — `User=`,
   `Environment=`, `WorkingDirectory=`; `systemctl(1)` — `edit`, `daemon-reload`; `systemd.unit(5)` — абзаци
   про теки drop-in (`*.service.d/`).
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) служба `ticker`: скрипт, що щосекунди пише час у журнал, від користувача `app`, з перезапуском;
   2) вбити її процес і подивитися, як systemd піднімає знову; 3) через `systemctl edit nginx` додати
   `Restart=always`, не чіпаючи файла пакета; 4) зламати `ExecStart` і знайти причину за `status` і журналом.
@@ -648,6 +688,7 @@ Essential Commands про служби й продуктивність. SELinux,
   (ядро). Журнал постійний, лише якщо існує `/var/log/journal` або `Storage=persistent` у `journald.conf`. Поруч
   може жити rsyslog з файлами `/var/log/syslog` (Ubuntu) чи `/var/log/messages` (Rocky), а їх обрізає logrotate.
 - **Читати:** `journalctl(1)`; `journald.conf(5)` — `Storage=`, `SystemMaxUse=`; `logrotate(8)`; `logger(1)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) зробити журнал постійним і обмежити 200 МБ; 2) після перезавантаження знайти помилки
   попереднього завантаження; 3) правило logrotate для `/var/log/ticker.log`: щодня, 7 копій, стискати.
 - **Перевірити себе:** `journalctl --list-boots` показує більше одного завантаження; `logrotate -d
@@ -665,6 +706,7 @@ Essential Commands про служби й продуктивність. SELinux,
   вимкнена). `systemctl list-timers` показує наступні запуски.
 - **Читати:** `crontab(5)`; `crontab(1)`; `cron(8)`; `at(1)`; `systemd.timer(5)`; `systemd.time(7)` — формат
   `OnCalendar` і `systemd-analyze calendar`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) скрипт резервної копії з фази 0 — щоночі о 2:30 через cron від root; 2) те саме таймером
   systemd з `Persistent=true`, cron вимкнути; 3) `at` — перезапуск nginx через 5 хвилин; 4) дозволити cron лише
   користувачам з `/etc/cron.allow`.
@@ -683,6 +725,7 @@ Essential Commands про служби й продуктивність. SELinux,
   `/etc/apt/keyrings/` і `signed-by=`.
 - **Читати:** `apt(8)`; `apt-get(8)`; `apt-mark(8)`; `dpkg(1)`; `sources.list(5)` — формат deb822;
   `apt_preferences(5)` — закріплення версій.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) знайти, з якого пакета `/usr/bin/dig`; 2) додати сторонній репозиторій (наприклад, офіційний
   nginx.org) з ключем у `keyrings` і поставити з нього; 3) заборонити оновлення nginx; 4) зіпсувати файл пакета
   і знайти це через `dpkg -V`, полагодити перевстановленням.
@@ -700,6 +743,7 @@ Essential Commands про служби й продуктивність. SELinux,
   EPEL — популярний додатковий. `rpm -qa`, `rpm -ql`, `rpm -qf`, `rpm -V` — перевірка файлів пакета, `rpm -K` —
   підпису.
 - **Читати:** `dnf(8)`; `rpm(8)` — розділ VERIFY OPTIONS; у документації Rocky Linux — `DNF package manager`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) знайти, який пакет дає `semanage`, і поставити; 2) увімкнути EPEL і поставити з нього `htop`;
   3) відкотити встановлення через `dnf history undo`; 4) перевірити всі файли пакета `openssh-server` через
   `rpm -V`.
@@ -719,6 +763,7 @@ Essential Commands про служби й продуктивність. SELinux,
 - **Читати:** `sysctl(8)`; `sysctl.d(5)`; `proc(5)` — розділ про `/proc/sys`; admin-guide ядра — документи
   `Documentation for /proc/sys/vm/` і `Documentation for /proc/sys/net/`; `modprobe(8)`;
   `modprobe.d(5)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) `net.ipv4.ip_forward=1` зараз і назавжди, двома різними кроками; 2) `vm.swappiness=10`
   назавжди; 3) заборонити завантаження модуля `usb_storage` і перевірити, що `modprobe` його не вантажить.
 - **Перевірити себе:** після перезавантаження `sysctl net.ipv4.ip_forward vm.swappiness` — 1 і 10; `modprobe -n -v
@@ -737,6 +782,7 @@ Essential Commands про служби й продуктивність. SELinux,
   `grub2-mkconfig`/`grubby` (Rocky). Файлову систему перевіряють незмонтованою: `fsck`, `xfs_repair`.
 - **Читати:** `bootparam(7)`; `kernel-command-line(7)`; `systemd.special(7)` — `rescue.target`,
   `emergency.target`; `update-grub(8)`; `grub-mkconfig(8)`; `fsck(8)`; `xfs_repair(8)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити (кожен крок — після знімка):** 1) скинути забутий пароль root на `ubu` через меню GRUB; 2) те саме на
   `rocky` (`rd.break`, і не забути про SELinux: `touch /.autorelabel`); 3) зіпсувати рядок у `/etc/fstab` і
   підняти машину з emergency; 4) зробити видимим меню GRUB з таймаутом 5 секунд назавжди.
@@ -756,6 +802,7 @@ Essential Commands про служби й продуктивність. SELinux,
   порті служба слухає; `systemd-analyze security служба` — від чого вона ізольована.
 - **Читати:** `vmstat(8)`; `free(1)`; `iostat(1)`; `sar.sysstat(1)`; `systemd.resource-control(5)` — `MemoryMax=`,
   `CPUQuota=`, `TasksMax=`; `systemd-cgtop(1)`; `systemd-analyze(1)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) навантажити процесор і диск (`stress-ng` або `dd`) і знайти винного трьома різними
   інструментами; 2) служба `ticker` — не більше 50 МБ пам'яті й 20 % процесора, через drop-in; 3) з'ясувати для
   nginx: користувач, порти, ліміт файлів, cgroup; 4) `systemd-run --scope -p MemoryMax=50M` запустити програму,
@@ -766,6 +813,8 @@ Essential Commands про служби й продуктивність. SELinux,
   «available» і на swap in/out у `vmstat`.
 
 # Фаза 4. Сховища — 9 днів
+
+**Сервери MCP фази:** `linux-docs`.
 
 Розділ Storage — 20 % іспиту. Усе — на трьох додаткових дисках машини `ubu` (`/dev/sdb`, `/dev/sdc`, `/dev/sdd`;
 у Hyper-V вони можуть зватися інакше — дивіться `lsblk`). Знімок перед кожним днем: помилка в номері диска тут
@@ -779,6 +828,7 @@ Essential Commands про служби й продуктивність. SELinux,
   зручні для скриптів. Після зміни таблиці на диску, що використовується, — `partprobe`. `wipefs` стирає підписи
   старих файлових систем.
 - **Читати:** `lsblk(8)`; `blkid(8)`; `fdisk(8)`; `gdisk(8)`; `parted(8)`; `wipefs(8)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) на `/dev/sdb` — GPT і два розділи по 2 ГБ; 2) те саме на `/dev/sdc` однією командою `sfdisk` чи
   `parted -s` (скриптом); 3) видалити розділи й підписи з `/dev/sdc`.
 - **Перевірити себе:** `lsblk -o NAME,SIZE,TYPE,PARTTYPENAME /dev/sdb` — два розділи по 2G.
@@ -795,6 +845,7 @@ Essential Commands про служби й продуктивність. SELinux,
   (`xfs_growfs`). `tune2fs` змінює параметри ext4, `dumpe2fs` показує їх.
 - **Читати:** `fstab(5)`; `mount(8)` — розділ FILESYSTEM-INDEPENDENT MOUNT OPTIONS; `findmnt(8)` — `--verify`;
   `mkfs.ext4(8)`; `mkfs.xfs(8)`; `tune2fs(8)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) ext4 на `sdb1` з міткою `data`, xfs на `sdb2`; 2) змонтувати в `/data` і `/logs` через `fstab` з
   UUID, `/logs` — з `noatime,nofail`; 3) `findmnt --verify`, `mount -a`, перезавантаження; 4) зіпсувати UUID у
   fstab для `/logs` і переконатися, що завдяки `nofail` машина завантажилась.
@@ -810,6 +861,7 @@ Essential Commands про служби й продуктивність. SELinux,
   ім'я група` чи `-l 100%FREE` нарізає логічний том `/dev/група/ім'я`. `pvs`, `vgs`, `lvs` — коротко,
   `*display` — докладно. На LV створюють файлову систему й монтують, як звичайний розділ.
 - **Читати:** `lvm(8)` — огляд; `pvcreate(8)`; `vgcreate(8)`; `lvcreate(8)` — розділ EXAMPLES; `lvs(8)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) `pvcreate` на `/dev/sdc` і `/dev/sdd` (цілі диски); 2) група `vgdata`; 3) томи `lvweb` 2 ГБ
   (xfs, `/srv/web`) і `lvdb` 3 ГБ (ext4, `/srv/db`), у fstab; 4) переглянути, на яких PV лежать екстенти кожного LV
   (`lvs -o +devices`).
@@ -827,6 +879,7 @@ Essential Commands про служби й продуктивність. SELinux,
   (`lvcreate -s`) — копія тому на мить, для резервної копії чи відкату.
 - **Читати:** `lvextend(8)`; `lvreduce(8)`; `lvresize(8)`; `vgextend(8)`; `pvmove(8)`; `vgreduce(8)`; `lvcreate(8)`
   — розділ про знімки; `xfs_growfs(8)`; `resize2fs(8)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) збільшити `lvweb` на 1 ГБ, не відмонтовуючи; 2) зменшити `lvdb` до 2 ГБ; 3) додати в групу
   `sdb` (після очищення), перенести все з `sdd` і вийняти його з групи; 4) знімок `lvdb`, зіпсувати файл, відкотити
   знімком (`lvconvert --merge`).
@@ -841,6 +894,7 @@ Essential Commands про служби й продуктивність. SELinux,
   Файл — `fallocate -l 1G /swapfile`, права `600`. Постійно — рядок у fstab з типом `swap`. `pri=` — пріоритет:
   спершу використовується більший. Скільки ядро охоче свопить — `vm.swappiness` з фази 3.
 - **Читати:** `mkswap(8)`; `swapon(8)`; `swapoff(8)`; `fstab(5)` — запис swap.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) swap-файл 1 ГБ, постійно; 2) swap на LV `lvswap` 512 МБ з пріоритетом вищим за файл;
   3) вимкнути swap-файл і прибрати його повністю.
 - **Перевірити себе:** `swapon --show` після перезавантаження — LV з більшим `PRIO`.
@@ -856,6 +910,7 @@ Essential Commands про служби й продуктивність. SELinux,
   `--remove`, заміна — `--add`. Щоб масив зібрався після перезавантаження — `mdadm --detail --scan >>
   /etc/mdadm/mdadm.conf` і `update-initramfs -u`. LVM уміє RAID і сам (`lvmraid`).
 - **Читати:** `mdadm(8)` — розділи про режими й EXAMPLES; `mdadm.conf(5)`; `lvmraid(7)` — огляд.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) RAID1 з двох розділів, ext4, змонтувати, записати файли; 2) «зламати» один диск (`--fail`),
   переконатися, що дані читаються; 3) замінити диск і дочекатися відновлення; 4) масив переживає
   перезавантаження.
@@ -875,6 +930,7 @@ Essential Commands про служби й продуктивність. SELinux,
 - **Читати:** `exports(5)`; `exportfs(8)`; `nfs(5)` — опції клієнта; `mount.nfs(8)`; `showmount(8)`;
   `nbd-server(1)`; `nbd-client(8)`; у документації Ubuntu Server —
   `install-nfs`; у документації Rocky Linux — `Lab 5: NFS`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) на `ubu` експорт `/srv/share` лише для `rocky`, `rw`; 2) на `rocky` змонтувати назавжди; файл,
   створений root-ом клієнта, — подивитися, чий він на сервері; 3) відкрити брандмауер для NFS на обох (фаза 5 —
   якщо ще не вмієте, повернутися після неї); 4) NBD: віддати файл-образ 1 ГБ і відформатувати його з клієнта.
@@ -892,6 +948,7 @@ Essential Commands про служби й продуктивність. SELinux,
   опціях fstab або пара юнітів `.mount` + `.automount`.
 - **Читати:** `auto.master(5)`; `autofs(5)`; `automount(8)`; `systemd.automount(5)`; `systemd.mount(5)` — опції
   `x-systemd.*` у fstab.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) autofs на `rocky`: `/mnt/nfs/share` монтується зі `ubu` при першому `ls`; 2) таймаут
   відмонтування 60 секунд; 3) те саме для `/data2` з fstab через `x-systemd.automount`.
 - **Перевірити себе:** `mount | grep share` — порожньо; `ls /mnt/nfs/share`; знову `mount | grep share` — є;
@@ -909,6 +966,7 @@ Essential Commands про служби й продуктивність. SELinux,
 - **Читати:** `proc(5)`; `sysfs(5)`; `mount(8)` — розділ про bind; `losetup(8)`; `iostat(1)`; `iotop-c(8)`;
   `fio(1)`; документи ядра `The /proc Filesystem` і `Tmpfs`; `tmpfs(5)`
   проєкту man-pages.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) tmpfs на 256 МБ у `/scratch`, постійно; 2) bind-монтування `/srv/web` у `/var/www/html`
   назавжди; 3) файл-образ через `losetup`, файлова система, монтування; 4) `fio` — випадковий запис 4k на LV і на
   tmpfs, порівняти IOPS; під час тесту знайти навантаження в `iostat -x 1`.
@@ -917,6 +975,8 @@ Essential Commands про служби й продуктивність. SELinux,
   перезавантаження її немає.
 
 # Фаза 5. Мережа — 10 днів
+
+**Сервери MCP фази:** `linux-docs`, `webstandards-docs`.
 
 Розділ Networking — 25 % іспиту. Ubuntu Server налаштовує мережу через netplan (який пише конфіг для
 systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва шляхи — у кожному дні, де вони різні. Перед
@@ -932,6 +992,7 @@ systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва �
   (`fe80::`) є завжди, глобальну задають так само, як IPv4.
 - **Читати:** `ip-address(8)`; `ip-link(8)`; `netplan(5)`; `netplan-try(8)`; `nmcli(1)` — розділ EXAMPLES;
   `nm-settings(5)` — `ipv4.method`; у документації Ubuntu Server — `about-netplan` і `configuring-networks`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) на внутрішньому інтерфейсі `ubu` — статичні `10.10.0.1/24` і `fd00:10::1/64` через netplan;
   2) на `rocky` — `10.10.0.2/24` і `fd00:10::2/64` через nmcli; 3) пінг в обидва боки по IPv4 і IPv6;
   4) перезавантажити обидві.
@@ -949,6 +1010,7 @@ systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва �
   напряму, `getent hosts` — як побачить ім'я програма.
 - **Читати:** `hostnamectl(1)`; `hosts(5)`; `nsswitch.conf(5)`; `resolv.conf(5)`; `resolvectl(1)`;
   `systemd-resolved.service(8)`; `dig(1)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) `ubu` і `rocky` знають одна одну за іменами `ubu.lab` і `rocky.lab` через `/etc/hosts`; 2) DNS
   `1.1.1.1` і `9.9.9.9` для `ubu` через netplan; 3) знайти, чим `getent hosts example.com` відрізняється від
   `dig example.com` після запису `example.com` в `/etc/hosts`.
@@ -967,6 +1029,7 @@ systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва �
   `chronyc sources -v`, `chronyc tracking`. Chrony може бути й сервером для локальної мережі (`allow`).
 - **Читати:** `timedatectl(1)`; `chrony.conf(5)` — `server`, `pool`, `allow`, `makestep`; `chronyc(1)`;
   `chronyd(8)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) на `ubu` замінити timesyncd на chrony, пул `pool.ntp.org`; 2) `ubu` — сервер часу для мережі
   `10.10.0.0/24`; 3) `rocky` синхронізується лише з `ubu`; 4) часовий пояс `Europe/Kyiv` на обох.
 - **Перевірити себе:** `chronyc sources` на `rocky` — `ubu.lab` з позначкою `^*`; `timedatectl` — «System clock
@@ -984,6 +1047,7 @@ systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва �
   (помилки й відкинуті), `ethtool` (швидкість, лінк).
 - **Читати:** `ss(8)`; `ip-route(8)` — `ip route get`; `tracepath(8)`; `mtr(8)`; `tcpdump(8)` — розділ EXAMPLES;
   `nc.openbsd(1)`; `ethtool(8)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) nginx на `ubu` слухає лише `127.0.0.1` — знайти це з `rocky` і на `ubu`; 2) три зламані
   сценарії, створені самому собі (неправильний шлюз, неіснуючий DNS, служба на іншому порті), — кожен знайти й
   назвати однією командою; 3) `tcpdump` на `ubu` під час `curl` з `rocky`: побачити рукостискання TCP.
@@ -1005,6 +1069,7 @@ systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва �
   `ssh(1)` — `-L`, `-R`, `-J`; `ssh-keygen(1)`; `ssh-copy-id(1)`; у документації Ubuntu Server — `openssh-server`. Про
   `ssh.socket` — поза корпусом: в Ubuntu 24.04 генератор systemd читає `Port` з `sshd_config`, тож після зміни
   порту потрібні `systemctl daemon-reload` і `systemctl restart ssh.socket`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) ключ ed25519 з вашого терміналу на обидві машини; 2) на обох — без паролів і без root,
   `AllowGroups` для адміністраторів; 3) порт 2222 на `ubu` (з урахуванням `ssh.socket`); 4) `ssh -J ubu rocky`
   і запис `ProxyJump` у конфігу; 5) тунель `-L 8080:localhost:80` до nginx на `ubu`, що слухає лише localhost.
@@ -1023,6 +1088,7 @@ systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва �
   `--reload` (без `--permanent` — до перезапуску). Дві обгортки одночасно на одній машині — погана ідея.
 - **Читати:** `nft(8)` — розділи про таблиці, ланцюги й EXAMPLES; `ufw(8)`; `firewall-cmd(1)` — зони, `--permanent`;
   у документації Rocky Linux — `firewalld for Beginners`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) `ubu`: ufw — вхідне заборонено, дозволено SSH (2222), HTTP і NFS лише з `10.10.0.0/24`;
   2) `rocky`: firewalld — зона `internal` для `10.10.0.0/24` зі службами ssh і nfs; 3) на третьому ланцюжку
   (наприклад, у мережевому просторі імен — фаза 7, або на `ubu` з вимкненим ufw) — те саме чистим `nft` у файлі
@@ -1042,6 +1108,7 @@ systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва �
   `postrouting`; у firewalld — `--add-masquerade` і `--add-forward-port`; ufw — правила в `/etc/ufw/before.rules`.
 - **Читати:** `nft(8)` — розділ про NAT-оператори (`masquerade`, `dnat`, `snat`); `firewall-cmd(1)` —
   `--add-masquerade`, `--add-forward-port`; `ip(7)` і `sysctl(8)` для пересилання.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) відрізати `rocky` від інтернету (лише внутрішня мережа), шлюзом зробити `ubu`; 2) masquerade на
   `ubu` — `rocky` знову бачить інтернет; 3) `ubu:8080` → `rocky:80` (nginx на `rocky`); 4) усе — постійно.
 - **Перевірити себе:** з `rocky` `curl -I https://example.com` — 200 через `ubu` (`tracepath` показує
@@ -1057,6 +1124,7 @@ systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва �
   перемагає, далі — метрика. Правила маршрутизації (`ip rule`) — коли маршрут залежить від джерела.
 - **Читати:** `ip-route(8)`; `ip-rule(8)`; `netplan(5)` — розділ про `routes`; `nm-settings(5)` —
   `ipv4.routes`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) на `rocky` — другий інтерфейс-пустушка (`dummy0`) з `10.20.0.1/24`, увімкнене пересилання;
   2) на `ubu` — постійний маршрут до `10.20.0.0/24` через `rocky`; 3) з `ubu` — пінг `10.20.0.1`.
 - **Перевірити себе:** `ip route get 10.20.0.1` на `ubu` — `via 10.10.0.2`, і так само після перезавантаження.
@@ -1074,6 +1142,7 @@ systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва �
 - **Читати:** `bridge(8)`; `ip-link(8)` — типи `bridge` і `bond`; `netplan(5)` — `bridges`, `bonds`; `nmcli(1)` —
   приклади bridge і bond; документ ядра `Linux Ethernet Bonding Driver HOWTO` — розділ
   про режими.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) додати `rocky` дві додаткові мережеві карти в ту ж внутрішню мережу; 2) bond `active-backup` з
   них з адресою `10.10.0.3/24`; 3) вимкнути один порт у гіпервізорі — пінг не обривається; 4) на `ubu` — міст
   `br0` (для фази 6), на який перейде внутрішня адреса.
@@ -1090,8 +1159,11 @@ systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва �
   `location / { proxy_pass http://upstream; }`, блок `upstream` з кількома серверами — балансування (по черзі,
   `least_conn`, `ip_hash`), заголовки `X-Forwarded-For`. TLS на проксі — `ssl_certificate` (сертифікат з фази 1,
   день 9). HAProxy — те саме як окремий балансувальник з перевірками стану бекендів.
-- **Читати:** `nginx(8)` — опції командного рядка (`-t`, `-s reload`); `haproxy(1)`; документація самого nginx
-  (модулі `ngx_http_proxy_module`, `ngx_http_upstream_module`) — поза корпусом, на машині в `/usr/share/doc/nginx`.
+- **Читати:** `nginx(8)` — опції командного рядка (`-t`, `-s reload`); `haproxy(1)`; документація самого nginx (модулі
+  `ngx_http_proxy_module`, `ngx_http_upstream_module`) — поза корпусом, на машині в `/usr/share/doc/nginx`; у
+  примірнику `webstandards` — `RFC 9110 HTTP Semantics: 7 Routing HTTP Messages`, `RFC 9112 HTTP/1.1: 9 Connection
+  Management`.
+- **Сервери MCP:** `linux-docs`, `webstandards-docs`.
 - **Зробити:** 1) на `rocky` — дві «служби» на портах 8001 і 8002 (`python3 -m http.server` у різних теках);
   2) nginx на `ubu` балансує між ними по черзі; 3) TLS на nginx сертифікатом вашого центру; 4) те саме через
   HAProxy з перевіркою стану — вимкнена служба випадає з ротації.
@@ -1101,6 +1173,8 @@ systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва �
   (`setsebool -P httpd_can_network_connect 1` — фаза 6).
 
 # Фаза 6. Безпека й віртуалізація — 4 дні
+
+**Сервери MCP фази:** `linux-docs`, `docker-docs`.
 
 Решта розділу Operations Deployment: `Create and enforce MAC using SELinux`, `Manage Virtual Machines (libvirt)`
 і `Configure container engines, create and manage containers`. Ці теми спираються на мережу й сховища, тому
@@ -1118,6 +1192,7 @@ systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва �
   `setsebool -P`. Відмови — у журналі аудиту (`ausearch -m avc`, `journalctl -t setroubleshoot`).
 - **Читати:** `selinux(8)`; `sestatus(8)`; `getenforce(8)`; `setenforce(8)`; `semanage(8)`; `restorecon(8)`;
   `chcon(1)`; у документації Rocky Linux — `SELinux Security`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити (на `rocky`):** 1) nginx віддає сайт з `/srv/site` — отримати 403, знайти відмову, виправити міткою
   назавжди; 2) nginx на порту 8081 — дозволити порт у політиці; 3) проксі з фази 5, день 10 — дозволити через
   boolean; 4) перемаркувати всю систему після перезавантаження і переконатися, що ваші виправлення пережили.
@@ -1135,6 +1210,7 @@ systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва �
   перемкнути; профілі — `/etc/apparmor.d/`, `apparmor_parser -r` — перезавантажити. Відмови — у журналі ядра
   (`journalctl -k | grep apparmor="DENIED"`).
 - **Читати:** `apparmor(7)`; `aa-status(8)`; `aa-complain(8)`; `aa-enforce(8)`; `apparmor_parser(8)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити (на `ubu`):** 1) знайти профілі в режимі enforce; 2) профіль для `tcpdump` (є в пакеті) —
   примусити `tcpdump` записати файл у заборонене місце і знайти відмову; 3) перевести профіль у complain і
   назад.
@@ -1151,6 +1227,7 @@ systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва �
   `resize`). Мережа ВМ — `default` (NAT) або міст `br0` з фази 5.
 - **Читати:** `virsh(1)` — розділи DOMAIN COMMANDS і SNAPSHOT COMMANDS; `virt-install(1)` — EXAMPLES;
   `qemu-img(1)`; `libvirtd(8)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити (на `ubu`, з вкладеною віртуалізацією):** 1) поставити `qemu-kvm`, `libvirt-daemon-system`,
   `virtinst`; перевірити `virt-host-validate`; 2) створити маленьку ВМ з хмарного образу (Cirros чи Ubuntu cloud
   image) з диском qcow2; 3) автозапуск, знімок, зупинка, відкат до знімка; 4) додати ВМ другий диск на ходу.
@@ -1170,6 +1247,7 @@ systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва �
   `registries.conf`.
 - **Читати:** `podman(1)`; `podman-run(1)`; `podman-build(1)`; `containers.conf(5)`; `docker(1)`; для деталей
   Docker — примірник `docker` фабрики (`./df docker serve`).
+- **Сервери MCP:** `linux-docs`, `docker-docs`.
 - **Зробити:** 1) на `rocky` — `podman run` nginx з теки сайту (позначка `:Z` для SELinux!) на порту 8080;
   2) той самий контейнер як служба systemd через Quadlet, стартує з машиною; 3) на `ubu` — Docker Engine з
   офіційного репозиторію і той самий nginx з `--restart`; 4) образ з власного `Containerfile`.
@@ -1179,6 +1257,8 @@ systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва �
   `ls -l` показує, що права в порядку.
 
 # Фаза 7. Міст до контейнерів — 4 дні
+
+**Сервери MCP фази:** `linux-docs`, `docker-docs`.
 
 Не з програми LFCS, а з наступного плану: як Docker і Kubernetes зроблені з того, що ви вже вмієте. Після цих
 чотирьох днів `docker run` — не магія, а `unshare`, cgroup, overlayfs і `pivot_root`, зібрані за вас.
@@ -1192,6 +1272,7 @@ systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва �
   контейнери без привілеїв (Podman).
 - **Читати:** `namespaces(7)`; `pid_namespaces(7)`; `network_namespaces(7)`; `user_namespaces(7)`; `unshare(1)`;
   `nsenter(1)`; `lsns(8)`; `ip-netns(8)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) `sudo unshare --pid --fork --mount-proc bash` — `ps aux` усередині; 2) мережевий простір
   `lab1`, пара `veth` між ним і господарем, адреси, пінг; 3) `nsenter` у мережевий простір працюючого контейнера
   з фази 6 і `ss -tlnp` звідти; 4) `unshare --user --map-root-user` без sudo — `id` усередині.
@@ -1209,6 +1290,7 @@ systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва �
   групи, а не на всій машині.
 - **Читати:** `cgroups(7)`; admin-guide ядра — документ про cgroup v2 (`Control Group v2`);
   `systemd.resource-control(5)`; `systemd-cgls(1)`; `systemd-run(1)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) знайти cgroup служби nginx і прочитати її `memory.current`; 2) руками — тека в
   `/sys/fs/cgroup`, `memory.max` 50M, перенести туди оболонку (`echo $$ > cgroup.procs`) і запустити програму,
   що їсть пам'ять; 3) знайти cgroup контейнера з фази 6 і порівняти `memory.max` з `docker run -m`.
@@ -1226,6 +1308,7 @@ systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва �
   OCI; Docker і Podman готують для нього теку й конфіг.
 - **Читати:** `pivot_root(2)`; `chroot(8)`; `mount_namespaces(7)`; `capabilities(7)`; документ ядра `overlayfs`;
   `runc(8)`.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** 1) розпакувати кореневу файлову систему Alpine (`minirootfs`) у `/srv/ct/lower`; 2) змонтувати
   overlay з `upper` і `work`; 3) `unshare` з просторами pid, mnt, uts, net + `chroot` у змонтовану теку, змонтувати
   `/proc`, задати ім'я машини; 4) покласти процес у cgroup з лімітом пам'яті; 5) змінити файл усередині й знайти
@@ -1245,6 +1328,7 @@ systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва �
   профіль seccomp та AppArmor/SELinux.
 - **Читати:** `seccomp(2)` — огляд; `capabilities(7)` — перелік; документація Docker про мережу й сховища
   (примірник `docker`).
+- **Сервери MCP:** `linux-docs`, `docker-docs`.
 - **Зробити:** для одного контейнера знайти кожен з механізмів на господарі: PID процесу (`docker inspect`),
   його простори (`lsns -p`), cgroup і `memory.max`, `veth` і міст (`bridge link`), правило DNAT (`nft list
   ruleset`), overlay (`findmnt -t overlay`), можливості (`grep Cap /proc/PID/status`). Записати таблицею в README
@@ -1254,6 +1338,8 @@ systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва �
   і вразливість ядра діють на господаря і всі контейнери разом.
 
 # Факультатив. Іспит LFCS — 5 днів
+
+**Сервери MCP фази:** `linux-docs`.
 
 Для тих, хто вирішив складати іспит; без нього план закінчено фазою 7. Не нові теми, а швидкість і впевненість. На
 іспиті 2 години на 17–20 задач; задачі різної ваги, частково зараховані теж приносять бали. Головне вміння — не
@@ -1269,6 +1355,7 @@ systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва �
 - **Читати:** документ `LFCS exam: domains, competencies and exam details` — компетенції ще раз, із
   позначкою, яку ви почуваєтесь слабкою; Candidate Handbook і Important Instructions — на сайті Linux Foundation
   (поза корпусом).
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** скласти собі пробний іспит — 18 задач, по 3–4 з кожного розділу пропорційно вагам, сформульованих
   як на іспиті («On node ubu, configure…»), — і розв'язати на чистих знімках за 2 години.
 - **Перевірити себе:** результат у балах (задача зарахована, якщо пережила перезавантаження) і список задач, що
@@ -1282,6 +1369,7 @@ systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва �
 - **Що це.** Повтор днів плану, що відповідають задачам понад 10 хвилин; для кожної — коротка послідовність
   команд у README і місце в man-сторінці, де лежить те, що ви забули.
 - **Читати:** man-сторінки задач, що забрали найбільше часу — розділ EXAMPLES першим.
+- **Сервери MCP:** `linux-docs`.
 - **Зробити:** кожну слабку задачу — тричі з чистого знімка, поки не вкладеться в 6 хвилин.
 - **Перевірити себе:** другий пробний іспит з новими формулюваннями тих самих компетенцій — понад 75 %.
 - **Пастка:** вчити напам'ять синтаксис файлів налаштувань. Пам'ятати треба, де він описаний (`man 5 …`,
@@ -1293,6 +1381,7 @@ systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва �
 - **Що це.** 36 годин доступу на кожну спробу від активації; середовище, схоже на іспитове; після — розбір кожної
   задачі з розв'язком.
 - **Читати:** розбори симулятора після кожної спроби.
+- **Сервери MCP:** жодного — джерела дня поза фабрикою.
 - **Зробити:** день 3 — перша спроба за 2 години, як на іспиті, потім розбір і повтор незарахованого в тому
   самому середовищі, поки доступ не скінчився; день 4 — друга спроба (задачі ті самі — міряйте швидкість) і
   перелік тем, що досі гальмують.
@@ -1306,6 +1395,7 @@ systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва �
 - **Що це.** Іспит під наглядом через браузер: чистий стіл, одна камера, документ із фото, перевірка системи
   заздалегідь. Результат приходить на пошту протягом доби-двох.
 - **Читати:** Important Instructions для LFCS — у день реєстрації, бо правила середовища змінюються.
+- **Сервери MCP:** жодного — джерела дня поза фабрикою.
 - **Зробити:** 1) перевірка системи на сайті проктора за кілька днів до іспиту; 2) іспит; 3) якщо не склали —
   повторна спроба включена: перелік розділів із балами в листі показує, які фази повторити.
 - **Перевірити себе:** сертифікат LFCS у профілі Linux Foundation і в резюме — з датою, до якої він дійсний.
