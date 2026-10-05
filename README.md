@@ -745,6 +745,26 @@ PWA, медіа, URI, SVG, WebAssembly, WebDriver, XML, MathML і ігри. Ко
 - джерело фаз «База» всіх трьох планів фулстек-лінії — див. карту навчання вище;
 - докладніше — у [instances/mdn/README.md](instances/mdn/README.md).
 
+### webstandards
+
+Тексти самих вебстандартів англійською: WHATWG (HTML, DOM, Fetch, URL, Streams, WebSockets та ще одинадцять), W3C
+(CSP 3, Fetch Metadata, Referrer Policy, Permissions Policy, Secure Contexts, Mixed Content, Service Workers,
+Manifest, Push API, WAI-ARIA 1.2, ARIA in HTML, WCAG 2.2 з Understanding, Techniques і APG), RFC та чернетки IETF
+(HTTP, кешування, куки, WebSocket, 429, HSTS, Problem Details, JWT, OAuth 2.0, PKCE, Argon2), OpenID Connect,
+OpenAPI 3.1.1, JSON Schema 2020-12 і ERC-20, ERC-721, ERC-4361. 1 175 документів, 15 161 фрагмент.
+
+- порт `8785`; запис у Claude Code — `webstandards-docs`, адреса `http://127.0.0.1:8785/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-webstandards`, модель векторів — `bge-small`;
+- версій немає: кожен стандарт — в одному виданні; RFC 6265bis і JSON Schema 2020-12 — чернетки, і відповідь
+  каже про це;
+- нові читачі `spec-html` (Bikeshed і ReSpec), `whatwg-html` (стандарт HTML сторінками), `ietf-text` (RFC,
+  чернетки, OpenID), `erc-md`; кроки алгоритмів пронумеровано, як у тексті стандарту;
+- приклад питання агентові: `./df webstandards ask "When does the browser send a CORS preflight request?"`;
+- корпус в архіві від самого початку, як у kubernetes, linux, vitest і mdn;
+- для питань «як це виконується за стандартом» — те, чим `ecmascript` є для мови; підтримка браузерами — у `mdn`;
+- докладніше — у [instances/webstandards/README.md](instances/webstandards/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
