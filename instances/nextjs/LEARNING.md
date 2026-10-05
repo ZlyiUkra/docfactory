@@ -360,13 +360,14 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 
 **Є примірник** — питати його сервер документації:
 
-- Next.js — `nextjs`; React — `react`; вебплатформа (HTTP, кеш, куки, Streams, CSS) — `mdn`;
+- Next.js — `nextjs`; React — `react`; NestJS — `nestjs`; TypeScript — `typescript`;
+- вебплатформа (HTTP, кеш, куки, Streams, CSS) — `mdn`;
 - тексти стандартів: WHATWG, CSP, WCAG, RFC HTTP, кешування й кук, OpenID Connect, ERC — `webstandards`;
 - Tailwind CSS — `tailwind`; zod — `zod`; TanStack Query — `tanstack-query`; Vitest — `vitest`;
 - Testing Library (React Testing Library, user-event, jest-dom) — `testing-library`; MSW — `msw`; Playwright —
   `playwright`;
 - React Hook Form — `react-hook-form`; Zustand — `zustand`; Clerk — `clerk`; Supabase Auth — `supabase`;
-- Docker — `docker`; Kubernetes, k3s, Kustomize, SOPS, age і Helm — `kubernetes`.
+- Docker — `docker`; Kubernetes, k3s, Traefik, Kustomize, SOPS, age і Helm — `kubernetes`; sshd — `linux`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
@@ -375,7 +376,8 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - з «варто знати»: iron-session, jose, Motion, next-themes, nuqs, next-intl, Redis (Upstash), Sentry,
   OpenTelemetry, socket.io-client;
 - з «знати, що існує»: Stripe, Resend і React Email, Vercel AI SDK, UploadThing, Sanity, Payload, Contentful,
-  tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Grafana, Loki, Storybook.
+  tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Grafana, Loki, Storybook;
+- поза таблицями: nginx, GitHub Actions, socket.io; у факультативі — viem, wagmi і Foundry.
 
 ---
 
@@ -2340,15 +2342,9 @@ README з описом запуску й одним абзацом про ухв
 
 У корпусі цього примірника — **лише Next.js**, зате кожної версії: документація обох роутерів від 9.1.7 до 16.x
 з canary, пояснення помилок, README пакета `next` і пакетів поруч, нотатки релізів, реєстр npm, блог, приклади
-репозиторію з кодом і шаблони з галереї Vercel. Інших бібліотек і інструментів тут немає, і питати про них сервер
-`nextjs-docs` марно: він поверне уривки Next.js, де вони лише згадані. Для багатьох із них у фабриці є власні
-примірники — питайте їх: React — `react`, NestJS — `nestjs`, TypeScript — `typescript`, zod — `zod`, TanStack Query —
-`tanstack-query`, React Hook Form — `react-hook-form`, Zustand — `zustand`, Tailwind CSS — `tailwind`, Supabase —
-`supabase`, Clerk — `clerk`, Vitest — `vitest`, Testing Library — `testing-library`, MSW — `msw`, Playwright —
-`playwright`, вебплатформа — `mdn`, тексти стандартів — `webstandards`, Docker — `docker`, Kubernetes, k3s, Traefik,
-Kustomize, Helm, SOPS і age — `kubernetes`, sshd — `linux`. Поза фабрикою лишаються PostgreSQL, Drizzle, Prisma,
-Auth.js, Motion, shadcn/ui, nginx, GitHub Actions, socket.io, viem, wagmi і Foundry: для них — сайти самих
-інструментів (повний перелік — у підрозділі «Документація у фабриці»).
+репозиторію з кодом і шаблони з галереї Vercel. Про інші бібліотеки й інструменти сервер `nextjs-docs` відмовить
+або поверне лише уривки, де їх згадано. Для яких із них у фабриці є власний примірник, а для яких його ще немає, — у
+підрозділі «Документація у фабриці» (розділ «Екосистема»); там же — що беруть із сайтів самих інструментів.
 
 **Приклади й шаблони.** Код прикладу чи шаблону — ілюстрація однієї можливості, а не рекомендація
 документації: частина з них на старих версіях і без перевірок. Звіряйте їх із главами плану.

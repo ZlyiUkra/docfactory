@@ -1247,12 +1247,27 @@ Kustomize.
 
 У корпусі цього примірника — документація Kubernetes усіх ліній 1.0–1.37 з журналами змін і розкладом релізів, а
 поруч — k3s, k3d, Gateway API, Traefik, cert-manager, Helm, Kustomize, книга kubectl, SOPS, age, metrics-server,
-Let's Encrypt і програми іспитів CNCF. Чого тут **немає**: документації CNI-плагінів (Calico, Cilium, Flannel),
-MetalLB, ingress-nginx, Envoy Gateway, local-path-provisioner, операторів баз, Prometheus і Grafana, Candidate
-Handbook і Important Instructions іспитів — звіряйте з їхніми сайтами. Docker — у примірнику `docker`, Linux — у
-примірнику `linux`.
+Let's Encrypt і програми іспитів CNCF. Про інші бібліотеки й інструменти сервер `kubernetes-docs` відмовить або
+поверне лише уривки, де їх згадано. Для яких із них у фабриці є власний примірник, а для яких його ще немає, — у
+підрозділі «Документація у фабриці» нижче; там же — що беруть із сайтів самих інструментів.
 
 **Версії.** Сторінка тієї самої теми на різних лініях каже різне (sidecar-контейнери — beta у 1.29, stable з 1.33;
 `autoscaling/v2` — з 1.23). Сервер документації каже версію кожного уривка; у питанні передавайте `version: "1.37"`
 або лінію свого кластера. Усе, що позначено «на 04.10.2026» — формат, ціна, умови й версії іспитів, — звіряйте на
 сторінках іспитів перед реєстрацією.
+
+## Документація у фабриці
+
+**Є примірник** — питати його сервер документації:
+
+- Kubernetes 1.0–1.37, k3s, k3d, Gateway API, Traefik, cert-manager, Helm, Kustomize, книга kubectl, SOPS, age,
+  metrics-server, Let's Encrypt, програми іспитів CNCF — `kubernetes`;
+- тексти стандартів (OpenID Connect для входу в кластер) — `webstandards`;
+- Docker і Compose — `docker`; Linux: man-сторінки, systemd, мережа — `linux`.
+
+**Примірника ще немає** — відповідь лише з практики або з чужого сайту:
+
+- CNI-плагіни: Calico, Cilium, Flannel;
+- MetalLB, ingress-nginx, Envoy Gateway, local-path-provisioner;
+- оператори баз; Prometheus і Grafana;
+- Candidate Handbook і Important Instructions іспитів.

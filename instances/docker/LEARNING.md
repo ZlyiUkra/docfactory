@@ -799,11 +799,27 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
 
 У корпусі цього примірника — **лише Docker**: docs.docker.com (Engine, збірка, Compose, Docker Hub, безпека,
 посібники, довідники Dockerfile, compose-файлу й командного рядка), нотатки релізів Engine 27–29 і релізи moby,
-compose та buildx. Docker Desktop, Docker AI, Scout як продукт і інші платні продукти не взято. Чого тут **немає**:
-документації nginx, PostgreSQL, GitHub Actions поза діями Docker, GHCR, Trivy, QEMU — звіряйте з їхніми сайтами.
-Linux — у примірнику `linux`, Kubernetes — у примірнику `kubernetes`.
+compose та buildx. Docker Desktop, Docker AI, Scout як продукт і інші платні продукти не взято. Про інші бібліотеки
+й інструменти сервер `docker-docs` відмовить або поверне лише уривки, де їх згадано. Для яких із них у фабриці є
+власний примірник, а для яких його ще немає, — у підрозділі «Документація у фабриці» нижче; там же — що беруть із
+сайтів самих інструментів.
 
 **Версія.** Документація сайту одна — поточна; на 04.10.2026 це Engine 29. Нотатки релізів кажуть, з якої версії що
 з'явилося: containerd image store типовий з Engine 29 на нових установках, бекенд nftables з 29.0 —
 експериментальний. Статті й відповіді в інтернеті часто описують Compose v1 (`docker-compose`, поле `version`) і
 класичний збирач без BuildKit — звіряйте з корпусом.
+
+## Документація у фабриці
+
+**Є примірник** — питати його сервер документації:
+
+- Docker Engine, збірка, Compose, Docker Hub, безпека, релізи moby, compose і buildx — `docker`;
+- Linux: man-сторінки, systemd, ядро, мережа, права — `linux`;
+- Kubernetes, k3s і контейнерні рантайми з боку кластера (фаза 6) — `kubernetes`.
+
+**Примірника ще немає** — відповідь лише з практики або з чужого сайту:
+
+- nginx, PostgreSQL;
+- GitHub Actions поза діями Docker, GHCR;
+- Trivy, QEMU;
+- Docker Desktop, Docker AI, Scout як продукт і інші платні продукти Docker.

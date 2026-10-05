@@ -373,14 +373,16 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 - React Router — `react-router`; TanStack Query — `tanstack-query`;
 - React Hook Form — `react-hook-form`; zod — `zod`;
 - Tailwind CSS — `tailwind`; Zustand — `zustand`; Redux Toolkit і RTK Query — `redux`;
-- Docker — `docker`; k3d, k3s і `kubectl` — `kubernetes`.
+- Docker — `docker`; Kubernetes, k3d, k3s, `kubectl`, Traefik, cert-manager і Let's Encrypt — `kubernetes`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
 - з «треба знати»: ESLint і `eslint-plugin-react-hooks`;
 - з «варто знати»: react-window, TanStack Virtual, Sentry, shadcn/ui і Radix UI;
 - з «знати, що існує»: SWR, TanStack Router, Storybook, React Native і Expo, Motion, i18next, partysocket,
-  socket.io-client.
+  socket.io-client;
+- поза таблицями: web-vitals, GitHub Actions, хостинги, API Binance і Kraken, Oracle Cloud; у факультативі —
+  lightweight-charts, wagmi, viem і Foundry.
 
 ---
 
@@ -2414,14 +2416,10 @@ NestJS і Next.js.
 # Застереження про документацію
 
 У корпусі цього примірника — **лише сама React**, зате всіх версій від 0.3 до 19.3 разом із CHANGELOG, нотатками
-релізів і блогом, включно з оголошеннями про вразливості. Для React Router, TanStack Query, React Hook Form, zod,
-Zustand, Redux Toolkit, Tailwind, Vite, TypeScript і Vitest у фабриці є власні примірники — питайте їх, а не цей.
-JavaScript, Web API (WebSocket, Fetch, події) і доступність має примірник `mdn`; Docker — примірник `docker`;
-Kubernetes, k3s, k3d, Traefik, cert-manager і Let's Encrypt — примірник `kubernetes`; React Testing Library,
-user-event і jest-dom — примірник `testing-library`; MSW — примірник `msw`; Playwright — примірник `playwright`.
-web-vitals, react-window, TanStack Virtual, GitHub Actions і хостинги в жодному корпусі фабрики немає: для них — сайти
-самих інструментів. Так само поза корпусами — API Binance і Kraken, Oracle Cloud, а у факультативі —
-lightweight-charts, wagmi, viem і Foundry.
+релізів і блогом, включно з оголошеннями про вразливості. Про інші бібліотеки й інструменти сервер `react-docs`
+відмовить або поверне лише уривки, де їх згадано. Для яких із них у фабриці є власний примірник, а для яких його ще
+немає, — у підрозділі «Документація у фабриці» (розділ «Екосистема»); там же — що беруть із сайтів самих
+інструментів.
 
 **Дати.** Усе, що в плані про безкоштовні тарифи, ліміти бірж, версії пакетів факультативу й стан тестових мереж,
 сказано на 02.10.2026. Ці речі змінюються швидше за документацію React: перед днем, що на них спирається,

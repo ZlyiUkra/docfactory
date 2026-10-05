@@ -384,9 +384,9 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   `@nestjs/cache-manager`;
 - TypeScript — `typescript`; zod — `zod`; Vitest — `vitest`;
 - HTTP, куки, CORS, WebSocket API — `mdn`;
-- тексти стандартів: RFC HTTP, кук і WebSocket, JWT, OAuth 2.0 і PKCE, Argon2, OpenAPI, JSON Schema,
-  ERC-4361 — `webstandards`;
-- Docker — `docker`; Kubernetes, k3s і `kubectl` — `kubernetes`;
+- тексти стандартів: RFC HTTP, кук і WebSocket, Problem Details, JWT, OAuth 2.0 і PKCE, Argon2, OpenAPI, JSON
+  Schema, ERC-4361 — `webstandards`;
+- Docker і Compose — `docker`; Kubernetes, k3s, `kubectl`, Traefik, Let's Encrypt і age — `kubernetes`;
 - SPA-бік: React — `react`, React Router — `react-router`, Vite — `vite`, React Hook Form — `react-hook-form`,
   TanStack Query — `tanstack-query`;
 - Supabase — `supabase`; Clerk — `clerk`.
@@ -399,7 +399,8 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   supertest, helmet, RxJS, socket.io і socket.io-client;
 - з «варто знати»: BullMQ, Redis, `@socket.io/redis-adapter`, `ws`, nestjs-cls, nestjs-pino, cookie-parser,
   csrf-csrf, CASL, orval, openapi-typescript;
-- з «знати, що існує»: Mongoose, MikroORM, Drizzle, Kafka, RabbitMQ, NATS, `@socket.io/redis-streams-adapter`.
+- з «знати, що існує»: Mongoose, MikroORM, Drizzle, Kafka, RabbitMQ, NATS, `@socket.io/redis-streams-adapter`;
+- поза таблицями: nginx, GitHub Actions; у факультативі — viem і Foundry.
 
 ---
 
@@ -2769,16 +2770,11 @@ Redis-адаптером і числами навантаження в журн�
 
 У корпусі цього примірника — **лише NestJS**: документація ліній від 4 до 12 з усіма розділами, включно з
 рецептами, розділом FAQ, посібником з міграції й главами про NestJS Observe. Глави про TypeORM, Prisma, Passport,
-BullMQ і Terminus описують **лише інтеграційний шар Nest** — модуль, декоратор, спосіб підключення. Саму TypeORM,
-Prisma, Passport, Redis, PostgreSQL, nginx, GitHub Actions, socket.io, viem і Foundry доведеться вчити з їхньої
-власної документації: питати про них сервер марно, він поверне уривки Nest, де вони лише згадані. Те саме з RxJS,
-який раптово з'являється в перехоплювачах: `map` і `tap` там — не з Nest. Для частини інших бібліотек у фабриці є
-власні примірники — питайте їх: zod — `zod`, TypeScript — `typescript`, Vite — `vite`, Vitest — `vitest`, React —
-`react`, React Router — `react-router`, React Hook Form — `react-hook-form`, TanStack Query — `tanstack-query`,
-Supabase — `supabase`, Clerk — `clerk`, вебплатформа (HTTP, куки, WebSocket) — `mdn`, тексти стандартів (RFC HTTP,
-JWT, OAuth, Problem Details, Argon2) — `webstandards`, Docker і Compose — `docker`, Kubernetes, k3s, Traefik, Let's
-Encrypt і age — `kubernetes`. Поза фабрикою лишаються TypeORM, Prisma, Passport, Redis, PostgreSQL, nginx, GitHub
-Actions, socket.io, RxJS, viem і Foundry (повний перелік — у підрозділі «Документація у фабриці»).
+BullMQ і Terminus описують **лише інтеграційний шар Nest** — модуль, декоратор, спосіб підключення, а не саму
+бібліотеку. Те саме з RxJS, який раптово з'являється в перехоплювачах: `map` і `tap` там — не з Nest. Про інші
+бібліотеки й інструменти сервер `nestjs-docs` відмовить або поверне лише уривки, де їх згадано. Для яких із них у
+фабриці є власний примірник, а для яких його ще немає, — у підрозділі «Документація у фабриці» (розділ
+«Екосистема»); там же — що беруть із сайтів самих інструментів.
 
 **Версії в главах.** Глава з тією самою назвою на лініях 11 і 12 може казати різне: `Prisma` (генератор і
 адаптер), `Configuration` (Joi чи Standard Schema), `Caching` (одиниці `ttl`), `Health checks` (API індикаторів).
