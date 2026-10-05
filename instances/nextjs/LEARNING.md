@@ -363,7 +363,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - Next.js — `nextjs`; React — `react`; вебплатформа (HTTP, кеш, куки, Streams, CSS) — `mdn`;
 - тексти стандартів: WHATWG, CSP, WCAG, RFC HTTP, кешування й кук, OpenID Connect, ERC — `webstandards`;
 - Tailwind CSS — `tailwind`; zod — `zod`; TanStack Query — `tanstack-query`; Vitest — `vitest`;
-- Testing Library (React Testing Library, user-event, jest-dom) — `testing-library`;
+- Testing Library (React Testing Library, user-event, jest-dom) — `testing-library`; MSW — `msw`;
 - React Hook Form — `react-hook-form`; Zustand — `zustand`; Clerk — `clerk`; Supabase Auth — `supabase`;
 - Docker — `docker`; Kubernetes, k3s, Kustomize, SOPS, age і Helm — `kubernetes`.
 
@@ -374,7 +374,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - з «варто знати»: iron-session, jose, Motion, next-themes, nuqs, next-intl, Redis (Upstash), Sentry,
   OpenTelemetry, socket.io-client;
 - з «знати, що існує»: Stripe, Resend і React Email, Vercel AI SDK, UploadThing, Sanity, Payload, Contentful,
-  tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Grafana, Loki, Storybook, MSW.
+  tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Grafana, Loki, Storybook.
 
 ---
 
