@@ -785,6 +785,23 @@ Angular, Svelte, Preact, Solid, Qwik, Marko, Cypress, Puppeteer, Nightwatch, Tes
 - корпус в архіві від самого початку, як у kubernetes, linux, vitest, mdn і webstandards;
 - докладніше — у [instances/testing-library/README.md](instances/testing-library/README.md).
 
+### msw
+
+Mock Service Worker англійською: сайт mswjs.io для MSW 3, 2 і 1 (HTTP, GraphQL, WebSocket, SSE, API, гайди, рецепти,
+інтеграції, міграції, екосистема, блог), записані рішення команди, а для `msw`, `@mswjs/interceptors`, `@msw/data`,
+`@msw/source` і `@msw/serve` (зі старими іменами `@mswjs/*`) — README кожної версії, нотатки релізів і реєстр npm.
+1 066 документів, 5 912 фрагментів.
+
+- порт `8787`; запис у Claude Code — `msw-docs`, адреса `http://127.0.0.1:8787/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-msw`, модель векторів — `bge-small`;
+- версії: мітка сторінки сайту — мажор MSW (`3`, `2`, `1`), фільтр `version` розводить їх; без названої версії
+  відповідь — для MSW 2, найпопулярнішої лінії;
+- нових читачів немає; три версії сайту — три джерела `ghdocs-history` з полем `title_prefix`;
+- приклад питання агентові: `./df msw ask "How do I override a request handler in a single test?"`;
+- корпус в архіві від самого початку, як у testing-library;
+- докладніше — у [instances/msw/README.md](instances/msw/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
