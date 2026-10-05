@@ -355,6 +355,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 **Є примірник** — питати його сервер документації:
 
 - Next.js — `nextjs`; React — `react`; вебплатформа (HTTP, кеш, куки, Streams, CSS) — `mdn`;
+- тексти стандартів: WHATWG, CSP, WCAG, RFC HTTP, кешування й кук, OpenID Connect, ERC — `webstandards`;
 - Tailwind CSS — `tailwind`; zod — `zod`; TanStack Query — `tanstack-query`; Vitest — `vitest`;
 - React Hook Form — `react-hook-form`; Zustand — `zustand`; Clerk — `clerk`; Supabase Auth — `supabase`;
 - Docker — `docker`; Kubernetes, k3s, Kustomize, SOPS, age і Helm — `kubernetes`.

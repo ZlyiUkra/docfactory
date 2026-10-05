@@ -378,6 +378,8 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   `@nestjs/cache-manager`;
 - TypeScript — `typescript`; zod — `zod`; Vitest — `vitest`;
 - HTTP, куки, CORS, WebSocket API — `mdn`;
+- тексти стандартів: RFC HTTP, кук і WebSocket, JWT, OAuth 2.0 і PKCE, Argon2, OpenAPI, JSON Schema,
+  ERC-4361 — `webstandards`;
 - Docker — `docker`; Kubernetes, k3s і `kubectl` — `kubernetes`;
 - SPA-бік: Vite — `vite`, React Hook Form — `react-hook-form`, TanStack Query — `tanstack-query`;
 - Supabase — `supabase`; Clerk — `clerk`.
@@ -1319,8 +1321,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 - **Що це.** Кожне оновлення гасить використаний refresh і видає новий у тій самій сім'ї. Якщо прийшов уже
   погашений refresh, хтось має його копію: сервер відкликає **всю** сім'ю, і обидва — і зловмисник, і власник —
   мусять увійти знову. Оновлення й гасіння — в одній транзакції.
-- **Читати:** IETF — «OAuth 2.0 Security Best Current Practice», розділ про refresh token rotation (поза
-  корпусом); розділ Techniques, глава `Database`, розділ TypeORM Transactions.
+- **Читати:** у примірнику `webstandards` — `RFC 9700 Best Current Practice for OAuth 2.0 Security: 4 Attacks and
+  Mitigations`, розділ 4.14 Refresh Token Protection; розділ Techniques, глава `Database`, розділ TypeORM
+  Transactions.
 - **Зробити:** 1) ротація на кожен `/api/auth/refresh`; 2) зберегти куку з першого оновлення; 3) оновитися вдруге, а
   потім надіслати збережену стару куку.
 - **Перевірити себе:** крок 3 — 401, і після нього не працює вже й найновіший refresh цієї сім'ї; інший вхід того
@@ -2029,8 +2032,8 @@ SPA під одним іменем, викочується й відкочуєт
 не з біржі, і останній день фази робить із цього демо, яке можна надіслати клієнтові.
 Корпус Nest тут — розділ WebSockets: глави `Gateways` і `Adapters`, а також `Guards`, `Pipes` і `Exception filters`
 цього розділу (у розділі Overview є глави з тими самими назвами); глава `Server-Sent Events` — у розділі Techniques.
-Сам протокол, socket.io і біржа — поза корпусом: RFC 6455, документація socket.io і Binance; WebSocket API — у
-примірнику `mdn`. Джерело цін — ринкові ендпойнти Binance лише для даних, без ключа:
+Сам протокол (RFC 6455) — у примірнику `webstandards`, WebSocket API — у `mdn`; socket.io і біржа — поза
+корпусом. Джерело цін — ринкові ендпойнти Binance лише для даних, без ключа:
 `wss://data-stream.binance.vision` для потоку і `https://data-api.binance.vision` для REST; запасне — Kraken WS v2
 (`wss://ws.kraken.com/v2`). Ліміти нижче — з документації Binance на 02.10.2026. Чи відкриваються ці адреси з вашої
 країни й від вашого провайдера, перевірте першого ж дня: доступність бірж залежить від країни, і перевіряти це
@@ -2048,7 +2051,9 @@ SPA під одним іменем, викочується й відкочуєт
   1000 — нормально, 1001 — бік іде (вкладку закрили, сервер перезапускається), 1008 — порушення правил, 1011 —
   помилка сервера, 1006 — з'єднання обірвалось без кадру close (цей код ніколи не надсилається, його вигадує бік,
   що лишився). Бік браузера — API `WebSocket` — ви бачили в плані React; тут — бік сервера на бібліотеці `ws`.
-- **Читати:** RFC 6455 — розділи 1.3 Opening Handshake, 5 Data Framing, 7.4 Status Codes; у примірнику `mdn` —
+- **Читати:** у примірнику `webstandards` — `RFC 6455 The WebSocket Protocol: 1 Introduction` (розділ 1.3 Opening
+  Handshake), `RFC 6455 The WebSocket Protocol: 5 Data Framing`,
+  `RFC 6455 The WebSocket Protocol: 7 Closing the Connection` (розділ 7.4 Status Codes); у примірнику `mdn` —
   `WebSocket API (WebSockets)`, `Writing WebSocket servers`; README бібліотеки `ws`, розділ про перевірку розірваних
   з'єднань (поза корпусом).
 - **Зробити:** в окремій теці, без Nest: 1) `npm i ws`; сервер на тридцять рядків: на з'єднання — привітання, на
@@ -2527,9 +2532,9 @@ Ethereum Foundation: на 02.10.2026 статус Sepolia непевний — �
   прив'язаної адреси — нового облікового запису з незнайомої адреси він не створює (так само в плані Next.js,
   факультатив, день К3). Адресу зберігають у нормалізованому вигляді. Пакет `siwe` не потрібен — усе вбудовано у viem.
   Nonce SIWE і nonce транзакції — різні речі з однаковою назвою.
-- **Читати:** EIP-4361; документація viem — розділ SIWE (`createSiweMessage`, `parseSiweMessage`,
-  `verifySiweMessage`, `generateSiweNonce`) (поза корпусом); розділ Security, глава `Authentication`; модель токенів —
-  вступ до фази 4.
+- **Читати:** у примірнику `webstandards` — `ERC-4361: Sign-In with Ethereum`; документація viem — розділ SIWE
+  (`createSiweMessage`, `parseSiweMessage`, `verifySiweMessage`, `generateSiweNonce`) (поза корпусом); розділ
+  Security, глава `Authentication`; модель токенів — вступ до фази 4.
 - **Зробити:** 1) `GET /api/auth/siwe/nonce` з жорстким обмеженням частоти; 2) `POST /api/auth/siwe/link`;
   3) `POST /api/auth/siwe/login` — та сама пара токенів, що й після входу паролем; 4) у SPA — підпис через
   під'єднаний гаманець із плану React (факультатив, день К4) — на локальному ланцюгу Anvil або на тій тестовій

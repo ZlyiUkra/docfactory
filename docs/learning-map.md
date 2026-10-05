@@ -4,9 +4,9 @@
 однієї бібліотеки чи інструмента (тека `instances/<ім'я>`). Файл оновлюється після кожного нового примірника, разом
 із підрозділами «Документація у фабриці» самих планів.
 
-Стан на 04.10.2026. Примірники: astro, clerk, docker, ecmascript, kubernetes, linux, mdn, nestjs, nextjs,
+Стан на 05.10.2026. Примірники: astro, clerk, docker, ecmascript, kubernetes, linux, mdn, nestjs, nextjs,
 patterns, react, react-hook-form, react-router, redux, supabase, tailwind, tanstack-query, typescript, v8, vite,
-vitest, wasm, zod, zustand.
+vitest, wasm, webstandards, zod, zustand.
 
 ## Як читати таблиці
 
@@ -36,11 +36,11 @@ vitest, wasm, zod, zustand.
 | 1. Ядро Nest | — |
 | 2. Робочий API | `zod` (1, 3, 8), `tanstack-query` (7), `react-hook-form` (8) |
 | 3. Дані: TypeORM, Prisma | — (у документації Nest лише інтеграція) |
-| 4. Автентифікація й авторизація | `react-router` (9) |
+| 4. Автентифікація й авторизація | `react-router` (9), `webstandards` (7) |
 | 5. Якість: тести й DI | `vitest` (1) |
 | 6. Продакшн | `docker` (вступ, 2), `kubernetes` (8–9) |
-| 7. Живі дані: WebSockets | `mdn` (вступ, 1), `vite` (2), `kubernetes` (3, 6, 8) |
-| Факультатив «крипта» | `docker`, `kubernetes` |
+| 7. Живі дані: WebSockets | `mdn` (вступ, 1), `webstandards` (вступ, 1), `vite` (2), `kubernetes` (3, 6, 8) |
+| Факультатив «крипта» | `docker`, `kubernetes`, `webstandards` |
 
 ### План Next.js — [instances/nextjs/LEARNING.md](../instances/nextjs/LEARNING.md)
 
@@ -119,12 +119,3 @@ PostgreSQL, Node.js, nginx, Redis, socket.io, GitHub Actions і Playwright по�
 5. HAProxy з keepalived — балансувальник для кластера з HA.
 6. Podman — у Linux як альтернатива Docker.
 7. Дрібне: MetalLB, CloudNativePG, Trivy, Prometheus.
-
-## На потім
-
-Не потрібне жодному плану зараз, але варте окремого примірника, коли знадобиться глибина нижче за довідку.
-
-- **Вебстандарти.** Тексти стандартів, які MDN переказує: з WHATWG — HTML (цикл подій, навігація), DOM, Fetch
-  (CORS, preflight, куки в запиті), URL, Streams, WebSockets; з IETF — RFC 9110 (семантика HTTP), RFC 9111
-  (кешування), RFC 6265bis (куки), RFC 6455 (WebSocket). Для питань «як саме це виконується за стандартом» — як
-  примірник `ecmascript` для самої мови. Читач RFC у фабриці вже є. Записано 04.10.2026.

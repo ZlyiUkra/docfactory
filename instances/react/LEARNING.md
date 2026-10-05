@@ -360,6 +360,8 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 
 - React, разом із React Compiler — `react`;
 - вебплатформа: JavaScript, Web API, CSS, HTML, HTTP, доступність — `mdn`;
+- тексти стандартів: WHATWG (HTML, DOM, Fetch, Streams), WCAG, WAI-ARIA і APG, CSP, RFC HTTP і WebSocket,
+  ERC — `webstandards`;
 - Vite — `vite`; TypeScript — `typescript`; Vitest — `vitest`;
 - React Router — `react-router`; TanStack Query — `tanstack-query`;
 - React Hook Form — `react-hook-form`; zod — `zod`;
