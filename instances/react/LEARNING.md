@@ -378,7 +378,8 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
   typescript-eslint — `eslint`;
 - Docker — `docker`; Kubernetes, k3d, k3s, `kubectl`, Traefik, cert-manager і Let's Encrypt — `kubernetes`;
 - socket.io-client (живі ціни з власного сервера, план NestJS, фаза 7) — `socketio`;
-- GitHub Actions, Dependabot, Container registry (ghcr.io) і GitHub Pages, офіційні дії — `github-actions`.
+- GitHub Actions, Dependabot, Container registry (ghcr.io) і GitHub Pages, офіційні дії — `github-actions`;
+- безпека: шпаргалки OWASP Cheat Sheet Series (XSS, CSP, React Security), Top 10 — `owasp`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
@@ -1501,7 +1502,7 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
 # Фаза 5. Продакшн: збірка, безпека, метрики, CI, викот у кластер — 9 днів
 
 **Сервери MCP фази:** `react-docs`, `vite-docs`, `react-router-docs`, `mdn-docs`, `webstandards-docs`, `docker-docs`,
-`kubernetes-docs`, `playwright-docs`, `github-actions-docs`.
+`kubernetes-docs`, `playwright-docs`, `github-actions-docs`, `owasp-docs`.
 
 Застосунок уже в інтернеті з фази 1. У блоці A він стає легшим, безпечнішим, вимірюваним і перевіряється сам на
 кожному запиті на злиття. У блоці B він переїжджає зі статичного хостингу у власний кластер Kubernetes — той самий,
@@ -1537,8 +1538,10 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
   куці `HttpOnly` (JavaScript її не бачить), сервер обмінює його на новий при кожному оновленні. `localStorage` для
   токенів — ні: будь-який XSS його читає. Захищений маршрут — зручність, дані закриває бекенд.
 - **Читати:** у примірнику `vite` — `Env Variables and Modes`; `Common components (e.g. <div>)` (проп
-  `dangerouslySetInnerHTML`).
-- **Сервери MCP:** `react-docs`, `vite-docs`.
+  `dangerouslySetInnerHTML`); у примірнику `owasp` — `Cross Site Scripting Prevention Cheat Sheet` (розділи Framework
+  Security, HTML Sanitization) і чернетка `React Security Cheat Sheet` (`dangerouslySetInnerHTML`, перевірка адрес,
+  токени в куках `HttpOnly`, секрети в змінних оточення).
+- **Сервери MCP:** `react-docs`, `vite-docs`, `owasp-docs`.
 - **Зробити:** 1) `VITE_SECRET=abc123`, зібрати й знайти рядок `abc123` у `dist` пошуком; 2) пошук по коду
   `dangerouslySetInnerHTML` і `localStorage` — кожне входження обґрунтувати або прибрати; 3) функція `safeUrl`,
   що пропускає лише `http:` і `https:`, — на всі `href` з даних.

@@ -396,6 +396,8 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 - Socket.IO 2.x–4.x — сервер, клієнт, адаптери Redis, Redis Streams, Postgres і MongoDB, Admin UI, протоколи й
   приклади (зокрема з NestJS) — `socketio`;
 - GitHub Actions, Dependabot, Container registry (ghcr.io), офіційні дії — `github-actions`;
+- безпека: шпаргалки OWASP Cheat Sheet Series, Top 10 (2013–2025), API Security Top 10, вимоги ASVS, Proactive
+  Controls — `owasp`;
 - Supabase — `supabase`; Clerk — `clerk`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
@@ -413,12 +415,12 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 # Фаза 0. База, якої Nest не дає — 18 днів
 
 **Сервери MCP фази:** `nestjs-docs`, `typescript-docs`, `mdn-docs`, `webstandards-docs`, `express-docs`, `vite-docs`,
-`postgresql-docs`.
+`postgresql-docs`, `owasp-docs`.
 
 Виглядає як відступ від теми, але саме вона визначає, чи будете ви фулстеком, чи людиною, яка копіює приклади з
 документації. Nest — обгортка над TypeScript, HTTP і базою даних; обгортку без нутрощів вивчити не можна. Корпусу
-Nest тут ще немає: джерела — TypeScript Handbook (примірник `typescript`), MDN (примірник `mdn`), OWASP і
-документація PostgreSQL (примірник `postgresql`).
+Nest тут ще немає: джерела — TypeScript Handbook (примірник `typescript`), MDN (примірник `mdn`), OWASP (примірник
+`owasp`) і документація PostgreSQL (примірник `postgresql`).
 
 ## Блок A. TypeScript поза React — дні 1–5
 
@@ -587,14 +589,14 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   прочитати — можна. Сесія буває двох видів: ідентифікатор, за яким сервер шукає запис у базі, або підписаний
   токен, що несе дані сам. CSRF — чужий сайт змушує браузер жертви надіслати запит із її кукою; захист — `SameSite`,
   перевірка заголовка `Origin` і CSRF-токен (схема «подвійного надсилання»: значення і в куці, і в заголовку).
-- **Читати:** у примірнику `mdn` — `Using HTTP cookies`, `Set-Cookie header`; OWASP — «Session Management Cheat
-  Sheet», «Cross-Site Request Forgery Prevention Cheat Sheet». Наперед, у корпусі Nest: розділ Techniques, глава
-  `Cookies` (підписані куки, `cookie-parser`); розділ Security, глава `CSRF Protection` (`csrf-csrf`); у примірнику
-  `webstandards` — `RFC 6265bis (draft 22) Cookies: HTTP State Management Mechanism: 4 Server Requirements`, `RFC
-  6265bis (draft 22) Cookies: HTTP State Management Mechanism: 8 Security Considerations`, `Fetch Metadata Request
-  Headers: 2 Fetch Metadata Headers`; для вправи на Express у примірнику `express` — `Response` (`res.cookie`,
-  `res.clearCookie`) і `cookie-parser middleware`.
-- **Сервери MCP:** `nestjs-docs`, `mdn-docs`, `webstandards-docs`, `express-docs`.
+- **Читати:** у примірнику `mdn` — `Using HTTP cookies`, `Set-Cookie header`; у примірнику `owasp` — `Session
+  Management Cheat Sheet`, `Cross-Site Request Forgery Prevention Cheat Sheet`. Наперед, у корпусі Nest: розділ
+  Techniques, глава `Cookies` (підписані куки, `cookie-parser`); розділ Security, глава `CSRF Protection`
+  (`csrf-csrf`); у примірнику `webstandards` — `RFC 6265bis (draft 22) Cookies: HTTP State Management Mechanism: 4
+  Server Requirements`, `RFC 6265bis (draft 22) Cookies: HTTP State Management Mechanism: 8 Security Considerations`,
+  `Fetch Metadata Request Headers: 2 Fetch Metadata Headers`; для вправи на Express у примірнику `express` —
+  `Response` (`res.cookie`, `res.clearCookie`) і `cookie-parser middleware`.
+- **Сервери MCP:** `nestjs-docs`, `mdn-docs`, `webstandards-docs`, `express-docs`, `owasp-docs`.
 - **Зробити:** на Express з учорашнього дня: 1) `POST /login` ставить куку сесії з
   `HttpOnly; SameSite=Strict`; 2) `GET /me` читає куку й каже, хто ви; 3) `POST /logout` стирає куку;
   4) сторінка на іншому порту з формою, що шле `POST` на ваш сервер.
@@ -1069,7 +1071,7 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 
 # Фаза 3. Дані: TypeORM, Prisma і продуктивність запитів — 12 днів
 
-**Сервери MCP фази:** `nestjs-docs`, `postgresql-docs`.
+**Сервери MCP фази:** `nestjs-docs`, `postgresql-docs`, `owasp-docs`.
 
 Головна глава — розділ Techniques, глава `Database`. Обидві ORM, одна за одною, на тому самому домені: TypeORM
 першою, бо її більше у вакансіях; Prisma другою і швидше, бо модель уже продумана. Останні два дні — продуктивність
@@ -1146,9 +1148,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   `skip`. Значення — **лише** параметрами: `.where('post.title ILIKE :q', { q: '%' + q + '%' })`; база отримує їх
   окремо від тексту запиту, і жодне значення не стане SQL. Назву колонки параметром передати не можна — тому поле
   сортування береться лише зі списку дозволених, а все інше дає 400 ще в схемі.
-- **Читати:** документація TypeORM — «Select using Query Builder» (поза корпусом); OWASP — «SQL Injection
-  Prevention Cheat Sheet».
-- **Сервери MCP:** жодного — джерела дня поза фабрикою.
+- **Читати:** документація TypeORM — «Select using Query Builder» (поза корпусом); у примірнику `owasp` — `SQL
+  Injection Prevention Cheat Sheet`, `Query Parameterization Cheat Sheet`.
+- **Сервери MCP:** `owasp-docs`.
 - **Зробити:** 1) `GET /posts?q=&author=&sort=createdAt&order=desc&page=` з необов'язковими фільтрами;
   2) `sort` у схемі запиту — `z.enum([...])`; 3) запит `?sort=id;DROP TABLE posts` і `?q=' OR 1=1 --`.
 - **Перевірити себе:** перший зловмисний запит — 400 від схеми; другий — порожній список, а не всі записи; у лозі
@@ -1280,7 +1282,7 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 
 # Фаза 4. Автентифікація й авторизація — 13 днів
 
-**Сервери MCP фази:** `nestjs-docs`, `webstandards-docs`, `express-docs`, `react-router-docs`.
+**Сервери MCP фази:** `nestjs-docs`, `webstandards-docs`, `express-docs`, `react-router-docs`, `owasp-docs`.
 
 Точка, де сходяться всі глави фази 1: guard, декоратор, pipe, фільтр. Спершу руками, потім через Passport — так
 видно, що саме Passport робить за вас. Модель токенів одна на всю родину планів, і власник її — ця фаза:
@@ -1311,8 +1313,10 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   частоти на реєстрацію обов'язкове (день 12).
 - **Читати:** розділ Security, глава `Encryption and Hashing`, розділ Hashing; розділ Techniques, глава
   `Serialization`, розділ Exclude properties; поза корпусом — README argon2 або bcrypt; у примірнику `webstandards` —
-  `RFC 9106 Argon2 Memory-Hard Function for Password Hashing and Proof-of-Work Applications: 4 Parameter Choice`.
-- **Сервери MCP:** `nestjs-docs`, `webstandards-docs`.
+  `RFC 9106 Argon2 Memory-Hard Function for Password Hashing and Proof-of-Work Applications: 4 Parameter Choice`; у
+  примірнику `owasp` — `Password Storage Cheat Sheet` (розділ Password Hashing Algorithms: параметри Argon2id і
+  bcrypt).
+- **Сервери MCP:** `nestjs-docs`, `webstandards-docs`, `owasp-docs`.
 - **Зробити:** 1) `UNIQUE` на email у міграції; 2) `POST /auth/register` зі схемою zod (email, пароль від 12
   символів); 3) хешування bcrypt або argon2; 4) жодна відповідь API не містить пароля чи хеша.
 - **Перевірити себе:** у базі — лише хеші; `curl` на реєстрацію, `GET /users/me` і список авторів — у жодній
@@ -1396,10 +1400,10 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   користувач, сім'я (ідентифікатор входу), термін. `POST /api/auth/refresh` читає куку, знаходить хеш і видає новий
   access. Куку ставлять через `@Res({ passthrough: true })` і `response.cookie(…)`, читають — через
   `cookie-parser`.
-- **Читати:** розділ Techniques, глава `Cookies`; модель токенів — вступ до цієї фази; OWASP — «Session Management
-  Cheat Sheet» (поза корпусом); у примірнику `webstandards` — `RFC 6265bis (draft 22) Cookies: HTTP State Management
+- **Читати:** розділ Techniques, глава `Cookies`; модель токенів — вступ до цієї фази; у примірнику `owasp` — `Session
+  Management Cheat Sheet`; у примірнику `webstandards` — `RFC 6265bis (draft 22) Cookies: HTTP State Management
   Mechanism: 4 Server Requirements` (атрибути HttpOnly, Secure, SameSite, префікс `__Host-`).
-- **Сервери MCP:** `nestjs-docs`, `webstandards-docs`.
+- **Сервери MCP:** `nestjs-docs`, `webstandards-docs`, `owasp-docs`.
 - **Зробити:** 1) таблиця `refresh_tokens` міграцією; 2) вхід ставить куку й пише хеш; 3) `POST /api/auth/refresh`
   повертає новий access.
 - **Перевірити себе:** `curl -i` на вхід показує `Set-Cookie` з усіма чотирма атрибутами; у базі — хеш, а не сам
@@ -1434,10 +1438,11 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   `SameSite=Strict` уже не пускає куку з чужих сайтів, але піддомен того самого сайту (`evil.example.com` поруч із
   `app.example.com`) — той самий сайт. Додатковий рубіж — перевірка заголовка `Origin` на `/api/auth/refresh` і
   `/auth/logout` зі списку дозволених або CSRF-токен пакетом `csrf-csrf`.
-- **Читати:** розділ Security, глава `CSRF Protection`; OWASP — «Cross-Site Request Forgery Prevention Cheat Sheet»,
-  розділ про перевірку `Origin`; поза корпусом — README csrf-csrf; у примірнику `express` — `cookie-parser
-  middleware`; у примірнику `webstandards` — `Fetch Metadata Request Headers: 2 Fetch Metadata Headers`.
-- **Сервери MCP:** `nestjs-docs`, `webstandards-docs`, `express-docs`.
+- **Читати:** розділ Security, глава `CSRF Protection`; у примірнику `owasp` — `Cross-Site Request Forgery Prevention
+  Cheat Sheet`, розділ Using Standard Headers to Verify Origin; поза корпусом — README csrf-csrf; у примірнику
+  `express` — `cookie-parser middleware`; у примірнику `webstandards` — `Fetch Metadata Request Headers: 2 Fetch
+  Metadata Headers`.
+- **Сервери MCP:** `nestjs-docs`, `webstandards-docs`, `express-docs`, `owasp-docs`.
 - **Зробити:** 1) вихід і «вийти всюди»; 2) guard або middleware, що на двох маршрутах вимагає `Origin` зі
   списку; 3) `curl` з чужим `Origin` і без нього.
 - **Перевірити себе:** після виходу старий refresh дає 401; запит із `Origin: https://evil.example` — 403; SPA через
@@ -1514,8 +1519,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   примірнику `webstandards` — `RFC 6585 Additional HTTP Status Codes: 4 429 Too Many Requests`, `RFC 6797 HTTP Strict
   Transport Security (HSTS): 6 Syntax`, `Content Security Policy Level 3: 6 Content Security Policy Directives`; у
   примірнику `express` — README `helmet` вашої версії (які заголовки ставить типово, як налаштувати CSP) і
-  `Production Best Practices: Security` (розділи «Use Helmet», «Prevent brute-force attacks against authorization»).
-- **Сервери MCP:** `nestjs-docs`, `webstandards-docs`, `express-docs`.
+  `Production Best Practices: Security` (розділи «Use Helmet», «Prevent brute-force attacks against authorization»);
+  у примірнику `owasp` — `HTTP Security Response Headers Cheat Sheet` (які заголовки ставити і які вже застаріли).
+- **Сервери MCP:** `nestjs-docs`, `webstandards-docs`, `express-docs`, `owasp-docs`.
 - **Зробити:** 1) глобальний ліміт і жорсткий — на вхід, реєстрацію й `/api/auth/refresh`; 2) helmet першим рядком
   після `NestFactory.create`; 3) `trust proxy` під змінну оточення (знадобиться у фазі 6).
 - **Перевірити себе:** одинадцятий вхід за хвилину — 429; `curl -I` показує заголовки helmet; без `trust proxy` за
@@ -2153,7 +2159,8 @@ SPA під одним іменем, викочується й відкочуєт
 
 # Фаза 7. Живі дані: WebSockets — 8 днів
 
-**Сервери MCP фази:** `nestjs-docs`, `webstandards-docs`, `mdn-docs`, `vite-docs`, `kubernetes-docs`, `socketio-docs`.
+**Сервери MCP фази:** `nestjs-docs`, `webstandards-docs`, `mdn-docs`, `vite-docs`, `kubernetes-docs`, `socketio-docs`,
+`owasp-docs`.
 
 Досі сервер лише відповідав: клієнт спитав — сервер відповів. Живі ціни так не працюють: сервер сам штовхає дані,
 щойно вони з'явилися, через з'єднання, яке живе годинами. У плані React (фаза 3, дні 6–8) SPA слухала ринковий стрім
@@ -2268,10 +2275,10 @@ SPA під одним іменем, викочується й відкочуєт
   під'єднатися без токена теж коштує процесора.
 - **Читати:** розділ WebSockets — глави `Guards`, `Pipes`, `Exception filters`; `Gateways`, розділ Lifecycle hooks;
   розділ Security, глава `Rate limiting`, розділ Websockets; у примірнику `socketio` — `Middlewares`, `Handling CORS`,
-  `Server options` (розділи `allowRequest`, `maxHttpBufferSize`), `How-to: How to use with JSON Web Tokens`; OWASP —
-  «WebSocket Security Cheat Sheet» (поза корпусом); у примірнику `webstandards` — `RFC 6455 The WebSocket Protocol: 10
-  Security Considerations` (розділ 10.2 Origin Considerations).
-- **Сервери MCP:** `nestjs-docs`, `webstandards-docs`, `kubernetes-docs`, `socketio-docs`.
+  `Server options` (розділи `allowRequest`, `maxHttpBufferSize`), `How-to: How to use with JSON Web Tokens`; у
+  примірнику `owasp` — `WebSocket Security Cheat Sheet`; у примірнику `webstandards` — `RFC 6455 The WebSocket
+  Protocol: 10 Security Considerations` (розділ 10.2 Origin Considerations).
+- **Сервери MCP:** `nestjs-docs`, `webstandards-docs`, `kubernetes-docs`, `socketio-docs`, `owasp-docs`.
 - **Зробити:** 1) middleware сокета з перевіркою токена, користувач — у `socket.data.user`; 2) розрив за `exp`;
   3) у SPA — `auth` функцією і повторне підключення після оновлення токена; 4) `allowRequest` зі списком походжень
   із конфігу (схема оточення з фази 2, дня 3); 5) схема zod для повідомлення `subscribe` (`symbol` — великі латинські

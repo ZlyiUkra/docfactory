@@ -370,6 +370,8 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - React Hook Form — `react-hook-form`; Zustand — `zustand`; Clerk — `clerk`; Supabase Auth — `supabase`;
 - PostgreSQL 9.0–19 — `postgresql`; Socket.IO, сервер і клієнт — `socketio`;
 - GitHub Actions, Dependabot, Container registry (ghcr.io), офіційні дії — `github-actions`;
+- безпека: шпаргалки OWASP Cheat Sheet Series, Top 10 (2013–2025), API Security Top 10, вимоги ASVS, Proactive
+  Controls — `owasp`;
 - Docker — `docker`; Kubernetes, k3s, Traefik, Kustomize, SOPS, age і Helm — `kubernetes`; sshd — `linux`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
@@ -385,7 +387,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 
 # Фаза 0. База, якої Next.js не дає — 6 днів
 
-**Сервери MCP фази:** `mdn-docs`, `webstandards-docs`, `react-docs`.
+**Сервери MCP фази:** `mdn-docs`, `webstandards-docs`, `react-docs`, `owasp-docs`.
 
 Next.js — надбудова над HTTP, Node і серверним React. Усе, що тут, його документація вважає відомим; саме на
 цих речах, а не на файлових угодах, застрягає фронтендер. Джерела — примірники `mdn` і `react` цієї фабрики
@@ -434,10 +436,11 @@ Next.js — надбудова над HTTP, Node і серверним React. У
   `SameSite` обмежує надсилання з чужих сайтів. Сесія буває двох видів: ідентифікатор, за яким сервер шукає
   запис у базі, або підписаний токен, який несе дані сам. CSRF — чужий сайт змушує браузер жертви надіслати
   запит із її кукою.
-- **Читати:** у примірнику `mdn` — `Using HTTP cookies`, `Set-Cookie header`; OWASP — «Session Management Cheat
-  Sheet»; у примірнику `webstandards` — `RFC 6265bis (draft 22) Cookies: HTTP State Management Mechanism: 4 Server
-  Requirements`, `RFC 6265bis (draft 22) Cookies: HTTP State Management Mechanism: 8 Security Considerations`.
-- **Сервери MCP:** `mdn-docs`, `webstandards-docs`.
+- **Читати:** у примірнику `mdn` — `Using HTTP cookies`, `Set-Cookie header`; у примірнику `owasp` — `Session
+  Management Cheat Sheet`; у примірнику `webstandards` — `RFC 6265bis (draft 22) Cookies: HTTP State Management
+  Mechanism: 4 Server Requirements`, `RFC 6265bis (draft 22) Cookies: HTTP State Management Mechanism: 8 Security
+  Considerations`.
+- **Сервери MCP:** `mdn-docs`, `webstandards-docs`, `owasp-docs`.
 - **Зробити:** 1) `POST /login` перевіряє пароль і ставить куку сесії; 2) `GET /me` читає куку й каже, хто
   ви; 3) `POST /logout` стирає куку.
 - **Перевірити себе:** у консолі браузера `document.cookie` не показує куку сесії, а `GET /me` вас упізнає.
@@ -1010,7 +1013,8 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 # Фаза 4. Фулстек: дані, автентифікація, дії, безпека, тести — 14 днів
 
 **Сервери MCP фази:** `nextjs-docs`, `webstandards-docs`, `zod-docs`, `react-hook-form-docs`, `clerk-docs`,
-`supabase-docs`, `tanstack-query-docs`, `vitest-docs`, `testing-library-docs`, `playwright-docs`, `postgresql-docs`.
+`supabase-docs`, `tanstack-query-docs`, `vitest-docs`, `testing-library-docs`, `playwright-docs`, `postgresql-docs`,
+`owasp-docs`.
 
 Тут фронтендер стає фулстеком: застосунок сам ходить у базу, сам упізнає користувача, сам перевіряє права й
 сам відповідає за те, що не віддав зайвого. Порядок навмисний: спершу база, потім хто ви (автентифікація),
@@ -1192,8 +1196,10 @@ Next.js — надбудова над HTTP, Node і серверним React. У
   репозиторію; текст користувачів — markdown з очищенням.
 - **Читати:** `How to set a Content Security Policy (CSP) for your Next.js application`, `How to use environment
   variables in Next.js`, `headers`, `taint`; у примірнику `webstandards` — `Content Security Policy Level 3: 6 Content
-  Security Policy Directives`, `Content Security Policy Level 3: 8 Authoring Considerations`.
-- **Сервери MCP:** `nextjs-docs`, `webstandards-docs`.
+  Security Policy Directives`, `Content Security Policy Level 3: 8 Authoring Considerations`; у примірнику `owasp` —
+  `Next.js Security Cheat Sheet` (серверні дії як публічні ендпойнти, дані, що йдуть у браузер, CSP під модель
+  рендерингу).
+- **Сервери MCP:** `nextjs-docs`, `webstandards-docs`, `owasp-docs`.
 - **Зробити:** 1) політика CSP без nonce для публічної частини; 2) пошук свого секрету в зібраному
   JavaScript (`grep -r` по `.next/static`).
 - **Перевірити себе:** `curl -I` показує заголовок політики; пошук секрету в бандлі нічого не знаходить.
