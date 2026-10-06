@@ -863,6 +863,22 @@ Frontend Олександра Беспоясова, Vertical Slice Architecture 
 - приклад питання агентові: `./df frontend-architecture ask "Should I use Feature-Sliced Design or Clean Architecture for a React app?"`;
 - докладніше — у [instances/frontend-architecture/README.md](instances/frontend-architecture/README.md).
 
+### express
+
+Express англійською: сайт expressjs.com для 5.x і 4.x (початок роботи, посібники, довідник API), довідник API 3.x,
+документація 2.x з останнього коміту старого сайту, спільні сторінки (найкращі практики безпеки й продуктивності,
+міграції на 4 і 5, офіційні middleware), блог, журнал змін `History.md`, README кожної стабільної версії, нотатки
+релізів і реєстр npm. 341 документ, 2 534 фрагменти.
+
+- порт `8791`; запис у Claude Code — `express-docs`, адреса `http://127.0.0.1:8791/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-express`, модель векторів — `bge-small`;
+- версії: мітка — мажор (`5`, `4`, `3`, `2`), спільні сторінки — `site`; без названої версії відповідь — для 5 і 4
+  разом, бо їх завантажують майже порівну;
+- приклад питання агентові: `./df express ask "How do I handle async errors in Express 5?"`;
+- корпус в архіві від самого початку, як у eslint;
+- докладніше — у [instances/express/README.md](instances/express/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
