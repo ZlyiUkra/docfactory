@@ -45,6 +45,7 @@ config.json, а Claude Code під'єднується за адресою (ди�
     npx -y @modelcontextprotocol/inspector .venv/bin/python server/spec_mcp.py
 """
 
+import collections
 import datetime
 import os
 import pathlib
@@ -518,8 +519,13 @@ def _dedup(passages: list[Passage], k: int, query: str = "") -> list[Passage]:
     текст, і згортати їх в одну не можна. З variant_pattern варіанти однієї
     сторінки для різних SDK — теж один розділ, і якщо запит називає SDK, місце
     дістається його варіантові.
+
+    З полем max_per_doc одна родина документів (slug) займає не більше стількох
+    місць: редакції README з різним поділом на частини мають різні ключі розділу й
+    інакше заповнювали всю видачу. Без поля обмеження немає.
     """
     want = _wanted_variant(query)
+    per_doc = collections.Counter()
     newest: dict = {}
     for p in passages:
         key = _page_key(p)
@@ -530,9 +536,10 @@ def _dedup(passages: list[Passage], k: int, query: str = "") -> list[Passage]:
     seen, out = set(), []
     for p in passages:
         key = _page_key(p)
-        if key in seen:
+        if key in seen or (profile.MAX_PER_DOC and per_doc[p.slug] >= profile.MAX_PER_DOC):
             continue
         seen.add(key)
+        per_doc[p.slug] += 1
         p = newest[key]
         if want:
             p = _TWINS.get(key, {}).get(want, p)
