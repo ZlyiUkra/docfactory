@@ -870,7 +870,7 @@ Express англійською: сайт expressjs.com для 5.x і 4.x (поч
 міграції на 4 і 5, офіційні middleware), блог, журнал змін `History.md`, README кожної стабільної версії, нотатки
 релізів і реєстр npm. Поруч — README кожної стабільної версії й журнали змін п'ятнадцяти офіційних middleware,
 `router`, `path-to-regexp`, `helmet` і `express-rate-limit` та документація express-rate-limit. 842 документи,
-11 961 фрагмент.
+4 823 фрагменти.
 
 - порт `8791`; запис у Claude Code — `express-docs`, адреса `http://127.0.0.1:8791/mcp`; інструменти `search_docs` і
   `read_section`;
