@@ -815,11 +815,12 @@ compose та buildx. Docker Desktop, Docker AI, Scout як продукт і і�
 
 - Docker Engine, збірка, Compose, Docker Hub, безпека, релізи moby, compose і buildx — `docker`;
 - Linux: man-сторінки, systemd, ядро, мережа, права — `linux`;
-- Kubernetes, k3s і контейнерні рантайми з боку кластера (фаза 6) — `kubernetes`.
+- Kubernetes, k3s і контейнерні рантайми з боку кластера (фаза 6) — `kubernetes`;
+- PostgreSQL — `postgresql`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- nginx, PostgreSQL;
+- nginx;
 - GitHub Actions поза діями Docker, GHCR;
 - Trivy, QEMU;
 - Docker Desktop, Docker AI, Scout як продукт і інші платні продукти Docker.

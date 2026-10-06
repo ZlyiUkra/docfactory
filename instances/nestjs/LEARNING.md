@@ -331,7 +331,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 | class-validator, class-transformer | DTO-класи з декораторами — у більшості чужих проєктів | Ф2 Д2 |
 | `@nestjs/config` | змінні оточення з перевіркою схемою на старті | Ф2 Д3 |
 | `@nestjs/swagger` і CLI plugin | документ OpenAPI, сторінка `/docs`, джерело клієнта для SPA | Ф2 Д6–7 |
-| PostgreSQL | база даних | Ф0 Д13–18, Ф3 |
+| PostgreSQL | база даних | Ф0 Д13–18, Ф3; є примірник `postgresql` |
 | TypeORM або Prisma | ORM: сутності чи схема, міграції, запити | Ф3 Д1–10 |
 | `@nestjs/jwt`, Passport | токени й стратегії входу | Ф4 Д2–5 |
 | bcrypt або argon2 | хешування паролів | Ф4 Д1 |
@@ -391,13 +391,15 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   TanStack Query — `tanstack-query`;
 - Express 2.x–5.x, офіційні middleware (cookie-parser, cors, express-session, multer, morgan та інші), `router`,
   `path-to-regexp`, helmet і express-rate-limit — README кожної версії й журнали змін — `express`;
+- PostgreSQL 9.0–19: посібник, довідник SQL-команд і програм (`psql`, `pg_dump`, `pg_restore`), нотатки релізів —
+  `postgresql`;
 - Supabase — `supabase`; Clerk — `clerk`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
 глава про інтеграцію (TypeORM, Prisma, Passport, BullMQ, class-validator), але не документація самої
 бібліотеки:
 
-- з «треба знати»: PostgreSQL, TypeORM, Prisma, Passport, bcrypt, argon2, class-validator, class-transformer,
+- з «треба знати»: TypeORM, Prisma, Passport, bcrypt, argon2, class-validator, class-transformer,
   supertest, RxJS, socket.io і socket.io-client;
 - з «варто знати»: BullMQ, Redis, `@socket.io/redis-adapter`, `ws`, nestjs-cls, nestjs-pino, csrf-csrf, CASL, orval, openapi-typescript;
 - з «знати, що існує»: Mongoose, MikroORM, Drizzle, Kafka, RabbitMQ, NATS, `@socket.io/redis-streams-adapter`;
@@ -407,12 +409,13 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 
 # Фаза 0. База, якої Nest не дає — 18 днів
 
-**Сервери MCP фази:** `nestjs-docs`, `typescript-docs`, `mdn-docs`, `webstandards-docs`, `express-docs`, `vite-docs`.
+**Сервери MCP фази:** `nestjs-docs`, `typescript-docs`, `mdn-docs`, `webstandards-docs`, `express-docs`, `vite-docs`,
+`postgresql-docs`.
 
 Виглядає як відступ від теми, але саме вона визначає, чи будете ви фулстеком, чи людиною, яка копіює приклади з
 документації. Nest — обгортка над TypeScript, HTTP і базою даних; обгортку без нутрощів вивчити не можна. Корпусу
 Nest тут ще немає: джерела — TypeScript Handbook (примірник `typescript`), MDN (примірник `mdn`), OWASP і
-документація PostgreSQL.
+документація PostgreSQL (примірник `postgresql`).
 
 ## Блок A. TypeScript поза React — дні 1–5
 
@@ -643,8 +646,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 - **Що це.** PostgreSQL — сервер бази; таблиця — набір рядків однієї форми. Колонка має тип (`integer`, `text`,
   `timestamptz`, `boolean`) і обмеження: `PRIMARY KEY` — унікальний ідентифікатор рядка, `NOT NULL` — значення
   обов'язкове, `UNIQUE` — без повторів, `DEFAULT` — значення, якщо не передали.
-- **Читати:** документація PostgreSQL — «Tutorial», розділи 1–2; «Data Definition» (поза корпусом).
-- **Сервери MCP:** жодного — джерела дня поза фабрикою.
+- **Читати:** у примірнику `postgresql` (з `version: "18"`) — `Getting Started`, `The SQL Language` (розділ
+  Creating a New Table), `Data Definition`.
+- **Сервери MCP:** `postgresql-docs`.
 - **Зробити:** 1) `docker run` з образом `postgres` і паролем зі змінної; 2) під'єднатися `psql` або будь-яким
   клієнтом; 3) намалювати схему свого домену (користувачі, записи); 4) `CREATE TABLE` руками.
 - **Перевірити себе:** `\d posts` у `psql` показує колонки, типи й обмеження, які ви задумали.
@@ -656,8 +660,8 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 - **Навіщо.** Список, картка, створення, зміна, видалення — п'ять запитів, з яких складається будь-який CRUD.
 - **Що це.** `INSERT`, `SELECT`, `UPDATE`, `DELETE`; фільтр `WHERE`, сортування `ORDER BY`, обмеження
   `LIMIT`/`OFFSET`. `RETURNING` повертає змінений рядок одразу, без другого запиту.
-- **Читати:** документація PostgreSQL — «Queries», «Data Manipulation» (поза корпусом).
-- **Сервери MCP:** жодного — джерела дня поза фабрикою.
+- **Читати:** у примірнику `postgresql` — `Queries`, `Data Manipulation`.
+- **Сервери MCP:** `postgresql-docs`.
 - **Зробити:** 1) по запиту на кожну дію з таблиці дня 6; 2) пагінація сторінками по десять записів руками;
   3) `UPDATE` без `WHERE` — на копії таблиці, щоб побачити наслідок.
 - **Перевірити себе:** друга сторінка списку не перетинається з першою, бо в `ORDER BY` є унікальна колонка.
@@ -670,8 +674,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 - **Що це.** Зовнішній ключ (`REFERENCES`) — колонка, що вказує на рядок іншої таблиці, і база не дає послатися на
   неіснуючий. `INNER JOIN` повертає лише пари, що знайшлися з обох боків; `LEFT JOIN` — усі рядки лівої таблиці,
   навіть без пари (тоді праворуч `NULL`). `ON DELETE` вирішує, що буде із записами, коли видалили автора.
-- **Читати:** документація PostgreSQL — «Joins Between Tables», «Constraints», розділ Foreign Keys (поза корпусом).
-- **Сервери MCP:** жодного — джерела дня поза фабрикою.
+- **Читати:** у примірнику `postgresql` — `The SQL Language`, розділ Joins Between Tables; `Data Definition`,
+  розділ Constraints › Foreign Keys.
+- **Сервери MCP:** `postgresql-docs`.
 - **Зробити:** користувачі й записи; вибрати записи разом з іменем автора **одним** запитом; користувачі з
   кількістю записів, включно з тими, у кого їх нуль.
 - **Перевірити себе:** користувач без записів є в результаті з `LEFT JOIN` і зникає з `INNER JOIN` — ви кажете
@@ -684,8 +689,8 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 - **Навіщо.** Лічильники, суми, рейтинги — те, що інтерфейс показує в шапці кожної адмінки.
 - **Що це.** `GROUP BY` складає рядки в групи, `COUNT`, `SUM`, `AVG` рахують по групі. `WHERE` фільтрує рядки до
   групування, `HAVING` — групи після.
-- **Читати:** документація PostgreSQL — «Aggregate Functions» (поза корпусом).
-- **Сервери MCP:** жодного — джерела дня поза фабрикою.
+- **Читати:** у примірнику `postgresql` — `The SQL Language`, розділ Aggregate Functions.
+- **Сервери MCP:** `postgresql-docs`.
 - **Зробити:** кількість записів на користувача; п'ятірка найактивніших; лише ті, у кого більше трьох записів.
 - **Перевірити себе:** ви пояснюєте, чому умову «більше трьох записів» не можна поставити у `WHERE`.
 - **Пастка:** `COUNT(*)` з `LEFT JOIN` рахує одиницю для користувача без записів. Рахуйте `COUNT(posts.id)`.
@@ -697,8 +702,8 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   колонки за кілька кроків (Index Scan). `EXPLAIN ANALYZE` показує план запиту й справжній час. Індекс не
   допоможе, якщо колонка в умові обгорнута функцією (`lower(email)`) — тоді потрібен індекс на вираз — або якщо
   запит повертає більшість таблиці. Кожен індекс сповільнює запис.
-- **Читати:** документація PostgreSQL — «Indexes», «Using EXPLAIN» (поза корпусом).
-- **Сервери MCP:** жодного — джерела дня поза фабрикою.
+- **Читати:** у примірнику `postgresql` — `Indexes`; `Performance Tips`, розділ Using EXPLAIN.
+- **Сервери MCP:** `postgresql-docs`.
 - **Зробити:** 1) згенерувати сто тисяч рядків (`generate_series`); 2) заміряти пошук за автором через
   `EXPLAIN ANALYZE`; 3) додати індекс; 4) заміряти знову.
 - **Перевірити себе:** у плані Seq Scan змінився на Index Scan, а час — у рази; обидва числа записані.
@@ -711,8 +716,8 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 - **Що це.** `BEGIN` відкриває транзакцію, `COMMIT` фіксує, `ROLLBACK` скасовує все. Поки транзакцію не
   зафіксовано, інші її змін не бачать. Багато-до-багатьох — таблиця-зв'язка з двома зовнішніми ключами: записи й
   теги, користувачі й групи.
-- **Читати:** документація PostgreSQL — «Transactions» (поза корпусом).
-- **Сервери MCP:** жодного — джерела дня поза фабрикою.
+- **Читати:** у примірнику `postgresql` — `Advanced Features`, розділ Transactions.
+- **Сервери MCP:** `postgresql-docs`.
 - **Зробити:** 1) переказ між рахунками, що падає посередині (`CHECK (balance >= 0)`); 2) переконатися, що гроші не
   зникли; 3) записи й теги через таблицю-зв'язку, запит «усі записи з тегом».
 - **Перевірити себе:** після невдалого переказу сума на двох рахунках та сама, що до нього.
@@ -1061,7 +1066,7 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 
 # Фаза 3. Дані: TypeORM, Prisma і продуктивність запитів — 12 днів
 
-**Сервери MCP фази:** `nestjs-docs`.
+**Сервери MCP фази:** `nestjs-docs`, `postgresql-docs`.
 
 Головна глава — розділ Techniques, глава `Database`. Обидві ORM, одна за одною, на тому самому домені: TypeORM
 першою, бо її більше у вакансіях; Prisma другою і швидше, бо модель уже продумана. Останні два дні — продуктивність
@@ -1255,9 +1260,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   міграцію. `EXPLAIN ANALYZE` на запиті, який згенерувала ORM, показує Seq Scan чи Index Scan. `OFFSET 90000`
   змушує базу пройти й викинути дев'яносто тисяч рядків; пагінація за ключем («keyset»: `WHERE id < :last ORDER
   BY id DESC LIMIT 20`) іде індексом одразу до місця.
-- **Читати:** документація PostgreSQL — «Indexes», «Using EXPLAIN»; документація обраної ORM про індекси (поза
-  корпусом).
-- **Сервери MCP:** жодного — джерела дня поза фабрикою.
+- **Читати:** у примірнику `postgresql` — `Indexes`; `Performance Tips`, розділ Using EXPLAIN; документація обраної
+  ORM про індекси (поза корпусом).
+- **Сервери MCP:** `postgresql-docs`.
 - **Зробити:** 1) сто тисяч записів seed-скриптом; 2) запит списку автора з логу ORM — `EXPLAIN ANALYZE` без
   індексу й з ним; 3) остання сторінка через `OFFSET` і через keyset — час обох; 4) рядки в журнал.
 - **Перевірити себе:** у журналі Seq Scan → Index Scan з мілісекундами й два часи пагінації, що відрізняються в
@@ -1660,7 +1665,7 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 
 # Фаза 6. Продакшн — 9 днів
 
-**Сервери MCP фази:** `nestjs-docs`, `docker-docs`, `kubernetes-docs`, `express-docs`.
+**Сервери MCP фази:** `nestjs-docs`, `docker-docs`, `kubernetes-docs`, `express-docs`, `postgresql-docs`.
 
 Сервер, який треба зібрати, запустити, тримати живим, міряти й вміти оновити. Глави Nest тут — лише те, що Nest
 вимагає від Docker, проксі й CI. Docker і Compose мають примірник `docker`, Kubernetes, k3s і Traefik — примірник
@@ -2035,8 +2040,8 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 - **Читати:** розділ FAQ, глава `Global path prefix`; розділ Security, глава `Rate limiting`, розділ Proxies;
   у примірнику `kubernetes` — `Gateway API: HTTPRoute` (розділ про пріоритет збігів), `K3s: Networking Services`,
   `CronJob`, `age: README`; у примірнику `express` — `Express behind proxies` (що саме вмикає `trust proxy`);
-  документація PostgreSQL — «pg_dump», «pg_restore» (поза корпусом).
-- **Сервери MCP:** `nestjs-docs`, `kubernetes-docs`, `express-docs`.
+  у примірнику `postgresql` — `pg_dump`, `pg_restore` (розділи Options і Examples).
+- **Сервери MCP:** `nestjs-docs`, `kubernetes-docs`, `express-docs`, `postgresql-docs`.
 - **Зробити:**
   1) Нагадування з фази 2, дня 7: префікс `api` з винятком для перевірок стану вже стоїть у спільній функції
   `setupApp`; проксі `/api` у Vite й nginx шляху не переписують, `Path` куки refresh — `/api/auth/refresh`.

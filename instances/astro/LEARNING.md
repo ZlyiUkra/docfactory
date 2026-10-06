@@ -207,14 +207,14 @@ Astro — фреймворк, що працює з HTML і мережею нап
 
 # Фаза 4. Дані й авторизація — 10 днів
 
-**Сервери MCP фази:** `astro-docs`, `clerk-docs`, `supabase-docs`, `webstandards-docs`, `mdn-docs`.
+**Сервери MCP фази:** `astro-docs`, `clerk-docs`, `supabase-docs`, `webstandards-docs`, `mdn-docs`, `postgresql-docs`.
 
 - **День 1 — вибір сховища.** Коли досить файлів, коли потрібна база, що дає `@astrojs/db`. *Вправа:* записати
   рішення для свого проєкту й обґрунтувати. *Сервери MCP:* `astro-docs`.
 - **День 2 — база.** Підключення Postgres через адаптер Node, пул з'єднань, змінні оточення. *Вправа:* таблиця
-  й найпростіший запит зі сторінки на вимогу. *Сервери MCP:* `astro-docs`.
+  й найпростіший запит зі сторінки на вимогу. *Сервери MCP:* `astro-docs`, `postgresql-docs`.
 - **День 3 — схема й міграції.** *Вправа:* дві таблиці зі зв'язком, міграція, відкат. *Сервери MCP:*
-  `astro-docs`.
+  `astro-docs`, `postgresql-docs`.
 - **День 4 — дії пишуть у базу.** *Вправа:* форма → дія → запис → перенаправлення на створену сутність.
   *Сервери MCP:* `astro-docs`.
 - **День 5 — `Environment Variables`.** `astro:env`, типобезпечні змінні, секретні проти публічних. *Вправа:*
@@ -341,7 +341,7 @@ Cloudflare.
 - вебплатформа (HTML, CSS, HTTP, кеш, куки, доступність) — `mdn`; тексти стандартів (WHATWG, RFC HTTP, кешування й
   кук, WCAG, Fetch Metadata, Argon2, OpenAPI) — `webstandards`;
 - Tailwind CSS — `tailwind`; zod (схеми колекцій і дій) — `zod`;
-- Clerk — `clerk`; Supabase Auth — `supabase`;
+- Clerk — `clerk`; Supabase Auth — `supabase`; PostgreSQL — `postgresql`;
 - Vitest — `vitest`; Playwright — `playwright`;
 - Docker і `docker compose` — `docker`;
 - Next.js (для порівняння у фазі 7) — `nextjs`; NestJS (окремий бекенд) — `nestjs`.
@@ -349,7 +349,7 @@ Cloudflare.
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
 - фреймворки островів, окрім React: Vue, Svelte, Solid, Preact;
-- дані: PostgreSQL, Drizzle, Prisma;
+- дані: Drizzle, Prisma;
 - платформи розгортання: Cloudflare, Vercel, Netlify; Node.js як середовище виконання;
 - CI і спостереження: GitHub Actions, Sentry; Lighthouse і web-vitals;
 - контент: Starlight, CMS, Shiki, remark і rehype поза документацією Astro.

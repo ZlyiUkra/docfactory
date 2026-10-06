@@ -5,7 +5,7 @@
 із підрозділами «Документація у фабриці» самих планів.
 
 Стан на 06.10.2026. Примірники: astro, clerk, docker, ecmascript, eslint, express, frontend-architecture, kubernetes,
-linux, mdn, msw, nestjs, nextjs, patterns, playwright, react, react-hook-form, react-router, redux, supabase,
+linux, mdn, msw, nestjs, nextjs, patterns, playwright, postgresql, react, react-hook-form, react-router, redux, supabase,
 tailwind, tanstack-query, testing-library, typescript, v8, vite, vitest, wasm, webstandards, zod, zustand.
 
 ## Як читати таблиці
@@ -34,13 +34,13 @@ tailwind, tanstack-query, testing-library, typescript, v8, vite, vitest, wasm, w
 
 | Фаза | Примірники (дні) |
 |------|------------------|
-| 0. База, якої Nest не дає | `typescript` (вступ, 1–4), `mdn` (вступ, 6–7, 10–11), `webstandards` (6–7, 10–11), `express` (9–10), `vite` (11) |
+| 0. База, якої Nest не дає | `typescript` (вступ, 1–4), `mdn` (вступ, 6–7, 10–11), `webstandards` (6–7, 10–11), `express` (9–10), `vite` (11), `postgresql` (вступ, 13–18) |
 | 1. Ядро Nest | — |
 | 2. Робочий API | `zod` (1, 3, 8), `webstandards` (4, 6), `tanstack-query` (7), `react-hook-form` (8) |
-| 3. Дані: TypeORM, Prisma | — (у документації Nest лише інтеграція) |
+| 3. Дані: TypeORM, Prisma | `postgresql` (12); TypeORM і Prisma — у документації Nest лише інтеграція |
 | 4. Автентифікація й авторизація | `webstandards` (1–2, 6–8, 12), `express` (8, 12), `react-router` (9) |
 | 5. Якість: тести й DI | `vitest` (1) |
-| 6. Продакшн | `docker` (вступ, 2), `kubernetes` (8–9), `express` (9) |
+| 6. Продакшн | `docker` (вступ, 2), `kubernetes` (8–9), `express` (9), `postgresql` (9) |
 | 7. Живі дані: WebSockets | `mdn` (вступ, 1), `webstandards` (вступ, 1, 3, 6), `vite` (2), `kubernetes` (3, 6, 8) |
 | Факультатив «крипта» | `docker`, `kubernetes`, `webstandards` |
 
@@ -52,7 +52,7 @@ tailwind, tanstack-query, testing-library, typescript, v8, vite, vitest, wasm, w
 | 1. Ядро App Router | `eslint` (1), `tailwind` (10) |
 | 2. Як Next.js працює зсередини | — |
 | 3. Кешування | — |
-| 4. Фулстек: дані, автентифікація, дії, тести | `webstandards` (2–3, 5, 9–10, 12), `zod` (5), `react-hook-form` (6), `clerk` і `supabase` (9), `tanstack-query` (11), `vitest` і `testing-library` (13), `playwright` (14) |
+| 4. Фулстек: дані, автентифікація, дії, тести | `webstandards` (2–3, 5, 9–10, 12), `zod` (5), `react-hook-form` (6), `postgresql` (1), `clerk` і `supabase` (9), `tanstack-query` (11), `vitest` і `testing-library` (13), `playwright` (14) |
 | 5. Інтерфейс із характером | `mdn` (4), `zustand` (5), `webstandards` (5, 7) |
 | 6. Чужий код | — |
 | 7. DevOps: від збірки до продакшну | `docker` (вступ, 2, 4), `webstandards` (6), `kubernetes` (вступ, 12), `playwright` (7) |
@@ -90,16 +90,15 @@ tailwind, tanstack-query, testing-library, typescript, v8, vite, vitest, wasm, w
 1. socket.io, сервер і клієнт (42 згадки; уся фаза 7).
 2. Prisma (40) і TypeORM (29): у документації Nest — лише інтеграційний шар.
 3. Redis (29) і BullMQ (8).
-4. PostgreSQL (20; фаза 0, дні 13–18, і фаза 3).
-5. Node.js (14; фаза 0).
-6. nginx (15; compose у фазі 6).
-7. Passport (13), class-validator і class-transformer (7), RxJS (4).
-8. GitHub Actions (7), OWASP Cheat Sheets (6).
-9. Факультатив: viem, decimal.js, Foundry.
+4. Node.js (14; фаза 0).
+5. nginx (15; compose у фазі 6).
+6. Passport (13), class-validator і class-transformer (7), RxJS (4).
+7. GitHub Actions (7), OWASP Cheat Sheets (6).
+8. Факультатив: viem, decimal.js, Foundry.
 
 ### Next.js
 
-1. nginx (15), Redis (14), Node.js (13), PostgreSQL (12).
+1. nginx (15), Redis (14), Node.js (13).
 2. socket.io-client (11; фаза 8).
 3. GitHub Actions (8).
 4. shadcn/ui і Radix UI, Auth.js або Better Auth, Drizzle або Prisma.
@@ -109,14 +108,13 @@ tailwind, tanstack-query, testing-library, typescript, v8, vite, vitest, wasm, w
 
 ### Спільне для лінії 1
 
-PostgreSQL, Node.js, nginx, Redis, socket.io і GitHub Actions потрібні двом-трьом планам
+Node.js, nginx, Redis, socket.io і GitHub Actions потрібні двом-трьом планам
 одразу: кожен такий примірник закриває найбільше.
 
 ### Лінія 2
 
 1. nginx — 30 згадок у Linux, 7 у Docker, 3 у Kubernetes; найбільша прогалина лінії, стоїть у черзі першочергових.
 2. GitHub Actions і GHCR — CI і реєстр образів у плані Docker (9 і 8 згадок); у черзі першочергових.
-3. PostgreSQL — база в compose плану Docker і в кластері Kubernetes; у черзі.
 
 Свідомо без примірника — план їх лише згадує або ставить однією командою: CNI (Calico, Cilium, Flannel), HAProxy,
 Podman, libvirt і QEMU, MetalLB, CloudNativePG, Trivy, Prometheus. etcd і containerd з `crictl` окремого примірника

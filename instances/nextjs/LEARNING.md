@@ -308,7 +308,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 |------------|-----------------------|---------:|------------|
 | Tailwind CSS | стилі класами прямо в розмітці; ставиться з `create-next-app` | 120 | Ф1 Д10; є примірник `tailwind` |
 | shadcn/ui (на Radix UI) | готові доступні компоненти, які копіюються у ваш проєкт | 59 | Ф5 Д5 |
-| PostgreSQL | база даних | 41 | Ф4 Д1; SQL — у плані NestJS |
+| PostgreSQL | база даних | 41 | Ф4 Д1; SQL — у плані NestJS; є примірник `postgresql` |
 | Drizzle або Prisma | ORM: схема, міграції, типізовані запити | 16 і 9 | Ф4 Д1 |
 | zod | схема перевірки вводу — одна для форми й для сервера | 11 | Ф4 Д5; є примірник `zod` |
 | Auth.js або Better Auth | вхід, сесії, сторонні провайдери | 19 і 6 | Ф4 Д9 |
@@ -368,11 +368,12 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - Testing Library (React Testing Library, user-event, jest-dom) — `testing-library`; MSW — `msw`; Playwright —
   `playwright`;
 - React Hook Form — `react-hook-form`; Zustand — `zustand`; Clerk — `clerk`; Supabase Auth — `supabase`;
+- PostgreSQL 9.0–19 — `postgresql`;
 - Docker — `docker`; Kubernetes, k3s, Traefik, Kustomize, SOPS, age і Helm — `kubernetes`; sshd — `linux`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «треба знати»: shadcn/ui і Radix UI, PostgreSQL, Drizzle, Prisma, Auth.js, Better Auth, SWR, Biome;
+- з «треба знати»: shadcn/ui і Radix UI, Drizzle, Prisma, Auth.js, Better Auth, SWR, Biome;
 - з «варто знати»: iron-session, jose, Motion, next-themes, nuqs, next-intl, Redis (Upstash), Sentry,
   OpenTelemetry, socket.io-client;
 - з «знати, що існує»: Stripe, Resend і React Email, Vercel AI SDK, UploadThing, Sanity, Payload, Contentful,
@@ -1008,7 +1009,7 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 # Фаза 4. Фулстек: дані, автентифікація, дії, безпека, тести — 14 днів
 
 **Сервери MCP фази:** `nextjs-docs`, `webstandards-docs`, `zod-docs`, `react-hook-form-docs`, `clerk-docs`,
-`supabase-docs`, `tanstack-query-docs`, `vitest-docs`, `testing-library-docs`, `playwright-docs`.
+`supabase-docs`, `tanstack-query-docs`, `vitest-docs`, `testing-library-docs`, `playwright-docs`, `postgresql-docs`.
 
 Тут фронтендер стає фулстеком: застосунок сам ходить у базу, сам упізнає користувача, сам перевіряє права й
 сам відповідає за те, що не віддав зайвого. Порядок навмисний: спершу база, потім хто ви (автентифікація),
@@ -1025,9 +1026,9 @@ Next.js — надбудова над HTTP, Node і серверним React. У
   міграції створюють таблиці, запити типізовані. У режимі розробки Next.js перезавантажує модулі при кожній
   правці, тож клієнт бази тримають один на процес, а не створюють на кожен імпорт.
 - **Читати:** документацію обраної ORM (розділ про Next.js); `Example: prisma-postgres` — лише схему й створення
-  клієнта: його серверні дії навмисно без перевірок, і копіювати їх не можна; поза корпусом — документація PostgreSQL:
-  «Tutorial» і документація обраної ORM, Drizzle або Prisma.
-- **Сервери MCP:** `nextjs-docs`.
+  клієнта: його серверні дії навмисно без перевірок, і копіювати їх не можна; у примірнику `postgresql` (з `version:
+  "18"`) — `Getting Started`, `The SQL Language`; поза корпусом — документація обраної ORM, Drizzle або Prisma.
+- **Сервери MCP:** `nextjs-docs`, `postgresql-docs`.
 - **Зробити:** 1) `docker run` з PostgreSQL; 2) схема наскрізного проєкту й перша міграція; 3) `lib/data.ts`
   переходить на ORM, сторінки не змінюються; 4) увімкнути лог запитів ORM.
 - **Перевірити себе:** для сторінки списку на 50 записів ви записали в журнал, скільки запитів до бази робить
