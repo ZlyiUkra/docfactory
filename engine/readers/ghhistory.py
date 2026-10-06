@@ -19,7 +19,13 @@
                    `site` — об'єкт «вираз шляху → адреса сторінки сайту» (`\\1` — група
                    виразу): документ, чий шлях цілком збігся з виразом, дістає в шапку
                    адресу сайту, решта — blob на GitHub. Сайт не читається: текст і далі
-                   береться з raw.githubusercontent.com, адреса лише цитується.
+                   береться з raw.githubusercontent.com, адреса лише цитується. `{version}`
+                   в адресі — мітка найновішого тегу, де файл такий був (сайт Node.js
+                   тримає документацію кожного мажору за своєю адресою);
+                   `yaml_history: true` — блоки `<!-- YAML … -->` (так документація API
+                   Node.js записує, з якої версії функція є, коли застаріла і що в ній
+                   мінялося) стають видимим текстом «Added in / History»; інакше разом з
+                   іншими коментарями HTML вони зникали б, і примірник не знав би версій.
 
 Навіщо `name_prefix`. Ключ розділу будується з імені документа, а ім'я — зі шляху файла.
 Журнали змін кількох репозиторіїв в одному примірнику (HISTORY.md body-parser, cors,
@@ -75,7 +81,41 @@ _SETEXT = re.compile(r"^(=+|-+)[ \t]*$")
 _NOT_TITLE = re.compile(r"^\s*([-*+>|#]|\d+[.)]\s|```|~~~)")
 _IMAGE = re.compile(r"!\[[^\]]*\]\([^)]*\)")
 _ATTRS = re.compile(r"\{:[^}]*\}")
+_YAML_BLOCK = re.compile(r"<!--\s*YAML\s*\n(.*?)-->", re.S)
 _IMAGE_LINE = re.compile(r"^[ \t]*!\[[^\]]*\]\([^)]*\)[ \t]*(\{:[^}]*\})?[ \t]*$", re.M)
+
+
+def _versions(value) -> str:
+    return ", ".join(str(v) for v in value) if isinstance(value, list) else str(value)
+
+
+def _yaml_history(text: str) -> str:
+    """Блоки `<!-- YAML … -->` документації Node.js → рядки тексту. Блок, який не
+    розбирається як YAML, лишається як був (і зникне разом з коментарями): вигадувати
+    версій читач не стане."""
+    import yaml
+
+    def render(m):
+        try:
+            meta = yaml.safe_load(m.group(1))
+        except yaml.YAMLError:
+            return m.group(0)
+        if not isinstance(meta, dict):
+            return m.group(0)
+        lines = []
+        for key, label in (("added", "Added in"), ("deprecated", "Deprecated since"),
+                           ("removed", "Removed in"), ("napiVersion", "N-API version")):
+            if meta.get(key) is not None:
+                lines.append(f"{label}: {_versions(meta[key])}.")
+        changes = [c for c in meta.get("changes") or () if isinstance(c, dict)]
+        if changes:
+            lines.append("History:")
+            for c in changes:
+                what = " ".join(str(c.get("description", "")).split())
+                lines.append(f"- {_versions(c.get('version', ''))}: {what}")
+        return "\n".join(lines) + "\n" if lines else ""
+
+    return _YAML_BLOCK.sub(render, text)
 
 
 def _atx(text: str) -> str:
@@ -174,7 +214,7 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
         blob = f"https://github.com/{owner}/{repo}/blob/{where.split('/', 2)[2]}"
         # Відповідь має вести туди, де людина читає документ, — на сайт, а не в репозиторій.
         hit = next((m.expand(v) for r, v in sites if (m := r.fullmatch(path))), "")
-        blob = hit or blob
+        blob = hit.replace("{version}", str(tags[tag])) or blob
         # Кілька тегів з однією міткою (усі experimental-збірки) — одна версія.
         version = ", ".join(dict.fromkeys(tags[t] for t in found))
 
@@ -187,6 +227,8 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
                 rest = _markup.mdx_statements_out(rest)
             # Рядок із самою картинкою (логотип над заголовком) тексту не несе, а стоячи
             # першим, ховав від _split_title справжню назву сторінки.
+            if source.get("yaml_history") is True:
+                rest = _yaml_history(rest)
             rest = _atx(_IMAGE_LINE.sub("", rest))
             title = meta.get("title", "") if meta else ""
             if not title:
