@@ -823,6 +823,26 @@ playwright.dev для Node.js (поточний реліз, лише JS/TS), Pla
 - корпус в архіві від самого початку, як у testing-library і msw;
 - докладніше — у [instances/playwright/README.md](instances/playwright/README.md).
 
+### eslint
+
+ESLint англійською: тека `docs/` репозиторію eslint/eslint на останньому тезі кожної мінорної лінії 8, 9 і 10 і
+кожного старшого мажору 0–7 (використання й конфіг, довідник кожного правила, розширення, інтеграція, посібники з
+міграції), блог eslint.org, README кожної стабільної версії, нотатки релізів і реєстр npm `eslint` та `@eslint/js`;
+поруч — README і CHANGELOG `eslint-plugin-react-hooks`, а typescript-eslint, `eslint-plugin-react` і
+`eslint-plugin-jsx-a11y` — на останньому тезі кожного мажору з релізами й реєстром. 9 059 документів, 33 244
+фрагменти.
+
+- порт `8789`; запис у Claude Code — `eslint-docs`, адреса `http://127.0.0.1:8789/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-eslint`, модель векторів — `bge-small`;
+- версії: мітка — мінорна лінія (`9.39`), фільтр `version` теж мінорний (`version_line_depth: 2`); без названої
+  версії відповідь — для ESLint 9, найпопулярнішої лінії; плагіни мають власні номери, назва документа каже чий він;
+- однакові назви правил ядра й typescript-eslint розводить `title_prefix` («@typescript-eslint: no-unused-vars»);
+- репозиторій React переїхав у `react/react`: джерело `eslint-plugin-react-hooks` читає вже нове ім'я;
+- приклад питання агентові: `./df eslint ask "How do I migrate from .eslintrc to eslint.config.js?"`;
+- корпус в архіві від самого початку, як у playwright;
+- докладніше — у [instances/eslint/README.md](instances/eslint/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
