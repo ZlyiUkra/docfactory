@@ -93,6 +93,13 @@ PASSAGE_CONTEXT = bool(instance.config().get("passage_context"))
 REVISION_SUFFIX = bool(instance.config().get("revision_suffix"))
 _REVISION = re.compile(r"-[0-9a-f]{8}$")
 
+# Правила перейменування ключа сторінки — поле slug_rewrite у config.json: список пар
+# [вираз, заміна], застосованих по черзі. Сайт, що між версіями переклав файли, дає тій
+# самій сторінці різні імена: у msw «websites-mswjs-io-src-content-docs-api-delay» (MSW 2)
+# і «src-content-api-delay» (MSW 3). Без спільного ключа редакції не зливаються, і
+# видачу займають пари тієї самої сторінки. Без поля ключ той самий, що й до його появи.
+SLUG_REWRITE = [(re.compile(a), b) for a, b in instance.config().get("slug_rewrite") or []]
+
 # Тека документів — у примірнику, з яким працює цей запуск (див. instance.py):
 # код тепер спільний на всі домени, а corpus/ у кожного домену свій.
 DOCS_DIRS = [instance.root() / "corpus"]
@@ -204,6 +211,8 @@ class Document:
         self.slug = path.stem.partition("--")[2] or path.stem
         if REVISION_SUFFIX:
             self.slug = _REVISION.sub("", self.slug)
+        for pattern, repl in SLUG_REWRITE:
+            self.slug = pattern.sub(repl, self.slug)
         self.path = path
         self.title = head[0] if head else path.stem  # напр. 22.1 String Objects
         self.url = ""
@@ -507,6 +516,9 @@ def _corpus_stamp() -> str:
     # архіві, кеш — єдине, з чого індекс узагалі збирається.
     if REVISION_SUFFIX:
         parts.append("revision_suffix")
+    # Так само лише з полем: без нього відбиток не змінюється ні на байт.
+    if SLUG_REWRITE:
+        parts.append(["slug_rewrite", [[p.pattern, r] for p, r in SLUG_REWRITE]])
     for folder in DOCS_DIRS:
         try:
             with os.scandir(folder) as entries:
