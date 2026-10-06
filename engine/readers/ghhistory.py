@@ -12,7 +12,10 @@
                    «початок шляху → назва» (тека пишеться з «/» у кінці, окремий файл —
                    повним шляхом): такий документ дістає назву «Назва: заголовок», якщо
                    заголовок цієї назви ще не містить; `name_prefix` — рядок, що стає
-                   перед іменем документа («helmet» → «helmet-changelog-290249f0»).
+                   перед іменем документа («helmet» → «helmet-changelog-290249f0»);
+                   `mdx: true` — і файли `.md` читаються як MDX: без `import`/`export`
+                   верхнього рівня (Docusaurus так і збирає `.md`, тож сторінки socket.io
+                   з вкладками починаються з `import Tabs from '@theme/Tabs'`).
 
 Навіщо `name_prefix`. Ключ розділу будується з імені документа, а ім'я — зі шляху файла.
 Журнали змін кількох репозиторіїв в одному примірнику (HISTORY.md body-parser, cors,
@@ -168,7 +171,7 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
             text = ctx.text(raw)
             _markup.refuse_html(text, raw)
             meta, rest = _markup.front_matter(text)
-            if path.endswith(".mdx"):
+            if path.endswith(".mdx") or source.get("mdx") is True:
                 # Імпорти й експорти MDX — код сторінки, а не її текст.
                 rest = _markup.mdx_statements_out(rest)
             rest = _atx(rest)
