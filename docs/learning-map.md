@@ -4,9 +4,9 @@
 однієї бібліотеки чи інструмента (тека `instances/<ім'я>`). Файл оновлюється після кожного нового примірника, разом
 із підрозділами «Документація у фабриці» самих планів.
 
-Стан на 06.10.2026. Примірники: astro, clerk, docker, ecmascript, eslint, frontend-architecture, kubernetes, linux,
-mdn, msw, nestjs, nextjs, patterns, playwright, react, react-hook-form, react-router, redux, supabase, tailwind,
-tanstack-query, testing-library, typescript, v8, vite, vitest, wasm, webstandards, zod, zustand.
+Стан на 06.10.2026. Примірники: astro, clerk, docker, ecmascript, eslint, express, frontend-architecture, kubernetes,
+linux, mdn, msw, nestjs, nextjs, patterns, playwright, react, react-hook-form, react-router, redux, supabase,
+tailwind, tanstack-query, testing-library, typescript, v8, vite, vitest, wasm, webstandards, zod, zustand.
 
 ## Як читати таблиці
 
@@ -34,13 +34,13 @@ tanstack-query, testing-library, typescript, v8, vite, vitest, wasm, webstandard
 
 | Фаза | Примірники (дні) |
 |------|------------------|
-| 0. База, якої Nest не дає | `typescript` (вступ, 1–4), `mdn` (вступ, 6–7, 10–11), `webstandards` (6–7, 10–11), `vite` (11) |
+| 0. База, якої Nest не дає | `typescript` (вступ, 1–4), `mdn` (вступ, 6–7, 10–11), `webstandards` (6–7, 10–11), `express` (9–10), `vite` (11) |
 | 1. Ядро Nest | — |
 | 2. Робочий API | `zod` (1, 3, 8), `webstandards` (4, 6), `tanstack-query` (7), `react-hook-form` (8) |
 | 3. Дані: TypeORM, Prisma | — (у документації Nest лише інтеграція) |
-| 4. Автентифікація й авторизація | `webstandards` (1–2, 6–8, 12), `react-router` (9) |
+| 4. Автентифікація й авторизація | `webstandards` (1–2, 6–8, 12), `express` (8), `react-router` (9) |
 | 5. Якість: тести й DI | `vitest` (1) |
-| 6. Продакшн | `docker` (вступ, 2), `kubernetes` (8–9) |
+| 6. Продакшн | `docker` (вступ, 2), `kubernetes` (8–9), `express` (9) |
 | 7. Живі дані: WebSockets | `mdn` (вступ, 1), `webstandards` (вступ, 1, 3, 6), `vite` (2), `kubernetes` (3, 6, 8) |
 | Факультатив «крипта» | `docker`, `kubernetes`, `webstandards` |
 
@@ -91,7 +91,7 @@ tanstack-query, testing-library, typescript, v8, vite, vitest, wasm, webstandard
 2. Prisma (40) і TypeORM (29): у документації Nest — лише інтеграційний шар.
 3. Redis (29) і BullMQ (8).
 4. PostgreSQL (20; фаза 0, дні 13–18, і фаза 3).
-5. Express (15) і Node.js (14; фаза 0).
+5. Node.js (14; фаза 0).
 6. nginx (15; compose у фазі 6).
 7. Passport (13), class-validator і class-transformer (7), RxJS (4).
 8. GitHub Actions (7), OWASP Cheat Sheets (6).

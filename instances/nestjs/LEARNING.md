@@ -389,6 +389,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 - Docker і Compose — `docker`; Kubernetes, k3s, `kubectl`, Traefik, Let's Encrypt і age — `kubernetes`;
 - SPA-бік: React — `react`, React Router — `react-router`, Vite — `vite`, React Hook Form — `react-hook-form`,
   TanStack Query — `tanstack-query`;
+- Express 2.x–5.x і офіційні middleware (cookie-parser, cors, express-session, multer, morgan) — `express`;
 - Supabase — `supabase`; Clerk — `clerk`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
@@ -397,8 +398,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 
 - з «треба знати»: PostgreSQL, TypeORM, Prisma, Passport, bcrypt, argon2, class-validator, class-transformer,
   supertest, helmet, RxJS, socket.io і socket.io-client;
-- з «варто знати»: BullMQ, Redis, `@socket.io/redis-adapter`, `ws`, nestjs-cls, nestjs-pino, cookie-parser,
-  csrf-csrf, CASL, orval, openapi-typescript;
+- з «варто знати»: BullMQ, Redis, `@socket.io/redis-adapter`, `ws`, nestjs-cls, nestjs-pino, csrf-csrf, CASL, orval, openapi-typescript;
 - з «знати, що існує»: Mongoose, MikroORM, Drizzle, Kafka, RabbitMQ, NATS, `@socket.io/redis-streams-adapter`;
 - поза таблицями: nginx, GitHub Actions; у факультативі — viem і Foundry.
 
@@ -406,7 +406,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 
 # Фаза 0. База, якої Nest не дає — 18 днів
 
-**Сервери MCP фази:** `nestjs-docs`, `typescript-docs`, `mdn-docs`, `webstandards-docs`, `vite-docs`.
+**Сервери MCP фази:** `nestjs-docs`, `typescript-docs`, `mdn-docs`, `webstandards-docs`, `express-docs`, `vite-docs`.
 
 Виглядає як відступ від теми, але саме вона визначає, чи будете ви фулстеком, чи людиною, яка копіює приклади з
 документації. Nest — обгортка над TypeScript, HTTP і базою даних; обгортку без нутрощів вивчити не можна. Корпусу
@@ -557,9 +557,10 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   з чотирма аргументами, реєструється останньою). Nest 12 працює з Express 5: шаблони шляхів суворіші —
   «зірочка» в чистому Express має бути іменованою (`/files/*splat`), хоча в маршрутах Nest шар сумісності
   дозволяє звичайне `*`.
-- **Читати:** документація Express — «Routing», «Using middleware», «Error handling» (поза корпусом); у корпусі
-  Nest — глава `Controllers`, розділ Route wildcards (про Express 5).
-- **Сервери MCP:** `nestjs-docs`.
+- **Читати:** у примірнику `express` (з `version: "5"`) — `Routing`, `Using middleware`, `Error Handling`, «`Upgrade
+  to Express v5`» (розділ про синтаксис шляхів); у корпусі Nest — глава `Controllers`, розділ Route wildcards (про
+  Express 5).
+- **Сервери MCP:** `nestjs-docs`, `express-docs`.
 - **Зробити:** той самий сервер, що вчора, на Express: middleware логування (метод, шлях, тривалість), обробник
   помилок, `express.json()` для тіла.
 - **Перевірити себе:** ви кажете, скільки рядків зникло проти голого Node і що саме взяв на себе фреймворк; запит
@@ -584,8 +585,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   `Cookies` (підписані куки, `cookie-parser`); розділ Security, глава `CSRF Protection` (`csrf-csrf`); у примірнику
   `webstandards` — `RFC 6265bis (draft 22) Cookies: HTTP State Management Mechanism: 4 Server Requirements`, `RFC
   6265bis (draft 22) Cookies: HTTP State Management Mechanism: 8 Security Considerations`, `Fetch Metadata Request
-  Headers: 2 Fetch Metadata Headers`.
-- **Сервери MCP:** `nestjs-docs`, `mdn-docs`, `webstandards-docs`.
+  Headers: 2 Fetch Metadata Headers`; для вправи на Express у примірнику `express` — `Response` (`res.cookie`,
+  `res.clearCookie`) і `cookie-parser middleware`.
+- **Сервери MCP:** `nestjs-docs`, `mdn-docs`, `webstandards-docs`, `express-docs`.
 - **Зробити:** на Express з учорашнього дня: 1) `POST /login` ставить куку сесії з
   `HttpOnly; SameSite=Strict`; 2) `GET /me` читає куку й каже, хто ви; 3) `POST /logout` стирає куку;
   4) сторінка на іншому порту з формою, що шле `POST` на ваш сервер.
@@ -1269,7 +1271,7 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 
 # Фаза 4. Автентифікація й авторизація — 13 днів
 
-**Сервери MCP фази:** `nestjs-docs`, `webstandards-docs`, `react-router-docs`.
+**Сервери MCP фази:** `nestjs-docs`, `webstandards-docs`, `express-docs`, `react-router-docs`.
 
 Точка, де сходяться всі глави фази 1: guard, декоратор, pipe, фільтр. Спершу руками, потім через Passport — так
 видно, що саме Passport робить за вас. Модель токенів одна на всю родину планів, і власник її — ця фаза:
@@ -1424,9 +1426,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   `app.example.com`) — той самий сайт. Додатковий рубіж — перевірка заголовка `Origin` на `/api/auth/refresh` і
   `/auth/logout` зі списку дозволених або CSRF-токен пакетом `csrf-csrf`.
 - **Читати:** розділ Security, глава `CSRF Protection`; OWASP — «Cross-Site Request Forgery Prevention Cheat Sheet»,
-  розділ про перевірку `Origin`; поза корпусом — README csrf-csrf і cookie-parser; у примірнику `webstandards` —
-  `Fetch Metadata Request Headers: 2 Fetch Metadata Headers`.
-- **Сервери MCP:** `nestjs-docs`, `webstandards-docs`.
+  розділ про перевірку `Origin`; поза корпусом — README csrf-csrf; у примірнику `express` — `cookie-parser
+  middleware`; у примірнику `webstandards` — `Fetch Metadata Request Headers: 2 Fetch Metadata Headers`.
+- **Сервери MCP:** `nestjs-docs`, `webstandards-docs`, `express-docs`.
 - **Зробити:** 1) вихід і «вийти всюди»; 2) guard або middleware, що на двох маршрутах вимагає `Origin` зі
   списку; 3) `curl` з чужим `Origin` і без нього.
 - **Перевірити себе:** після виходу старий refresh дає 401; запит із `Origin: https://evil.example` — 403; SPA через
@@ -1655,7 +1657,7 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 
 # Фаза 6. Продакшн — 9 днів
 
-**Сервери MCP фази:** `nestjs-docs`, `docker-docs`, `kubernetes-docs`.
+**Сервери MCP фази:** `nestjs-docs`, `docker-docs`, `kubernetes-docs`, `express-docs`.
 
 Сервер, який треба зібрати, запустити, тримати живим, міряти й вміти оновити. Глави Nest тут — лише те, що Nest
 вимагає від Docker, проксі й CI. Docker і Compose мають примірник `docker`, Kubernetes, k3s і Traefik — примірник
@@ -2029,8 +2031,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   базу, не чіпаючи робочу.
 - **Читати:** розділ FAQ, глава `Global path prefix`; розділ Security, глава `Rate limiting`, розділ Proxies;
   у примірнику `kubernetes` — `Gateway API: HTTPRoute` (розділ про пріоритет збігів), `K3s: Networking Services`,
-  `CronJob`, `age: README`; документація PostgreSQL — «pg_dump», «pg_restore» (поза корпусом).
-- **Сервери MCP:** `nestjs-docs`, `kubernetes-docs`.
+  `CronJob`, `age: README`; у примірнику `express` — `Express behind proxies` (що саме вмикає `trust proxy`);
+  документація PostgreSQL — «pg_dump», «pg_restore» (поза корпусом).
+- **Сервери MCP:** `nestjs-docs`, `kubernetes-docs`, `express-docs`.
 - **Зробити:**
   1) Нагадування з фази 2, дня 7: префікс `api` з винятком для перевірок стану вже стоїть у спільній функції
   `setupApp`; проксі `/api` у Vite й nginx шляху не переписують, `Path` куки refresh — `/api/auth/refresh`.
