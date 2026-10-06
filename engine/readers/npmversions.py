@@ -2,7 +2,10 @@
 
 `npm-versions` — `url` — опис пакета в реєстрі (https://registry.npmjs.org/ПАКЕТ); `label` — назва
                  пакета в заголовках. Одне звернення: опис пакета вже містить усі версії.
-                 Необов'язкове `skip_versions` — вираз версій, що не беруться (як у `npm-readme`).
+                 Необов'язкове `skip_versions` — вираз версій, що не беруться (як у `npm-readme`);
+                 `name_prefix` — рядок перед іменем документа: «overview» і «line-2» кількох
+                 пакетів одного примірника інакше мали б спільний ключ розділу, і пошук згортав
+                 би огляд одного пакета як повтор огляду іншого. Без поля імена ті самі.
 
 Навіщо. Документація каже, як працює API, але рідко — з якої версії він є і як перейти з однієї
 версії на іншу. Реєстр npm знає це точно для кожної версії, яку можна встановити, зокрема canary,
@@ -215,7 +218,11 @@ def npm_versions(source: dict, ctx) -> list[Item]:
     store = tempfile.mkdtemp(prefix=f"npm-versions-{source['id']}-")
     items = []
 
+    lead = (re.sub(r"[^\w.-]+", "-", source["name_prefix"]).strip("-") + "-"
+            if source.get("name_prefix") else "")
+
     def keep(name: str, text: str) -> Item:
+        name = lead + name
         path = os.path.join(store, name)
         with open(path, "w", encoding="utf-8") as fh:
             fh.write(text)

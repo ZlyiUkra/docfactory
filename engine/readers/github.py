@@ -18,7 +18,10 @@
                номер із тегу: `v18.2.0`, а також `v5.0-beta` і `v1.4` без третього
                числа (так тегує TypeScript) і тег із префіксом `typescript/v7.0.2` чи
                пакетом монорепозиторію `socket.io@4.8.1`, `@socket.io/cluster-adapter@0.3.0`.
-               Поле `skip` — вираз тегів, що не беруться (тестові релізи).
+               Поле `skip` — вираз тегів, що не беруться (тестові релізи). Поле
+               `name_prefix` стає перед іменем документа: реліз «v2.0.0» двох
+               репозиторіїв одного примірника інакше мав би один ключ розділу, і пошук
+               згортав би один реліз як повтор іншого. Без поля ім'я те саме, що й було.
 `ghcommit`   — один коміт через API (…/repos/ВЛАСНИК/РЕПО/commits/SHA): повідомлення,
                автор, дата, склад файлів; поле `files` — шляхи, текст яких на цьому
                коміті додається в документ (напр. тодішній README.md).
@@ -160,6 +163,8 @@ def ghreleases(source: dict, ctx) -> list[Item]:
         raise SystemExit(f"{base}: жодного релізу.")
     label = source.get("label", "Release")
     skip = re.compile(source["skip"]) if source.get("skip") else None
+    lead = (re.sub(r"[^\w.-]+", "-", source["name_prefix"]).strip("-") + "-"
+            if source.get("name_prefix") else "")
     items = []
     for rel in releases:
         if not isinstance(rel, dict) or rel.get("draft") or not rel.get("tag_name"):
@@ -168,7 +173,7 @@ def ghreleases(source: dict, ctx) -> list[Item]:
             continue
         tag = str(rel["tag_name"])
         m = _RELEASE_TAG.match(tag)
-        name = re.sub(r"[^\w.-]+", "-", tag).strip("-")
+        name = lead + re.sub(r"[^\w.-]+", "-", tag).strip("-")
 
         def make(rel=rel, tag=tag, version=m.group(1) if m else ""):
             day = str(rel.get("published_at") or rel.get("created_at") or "")[:10]
