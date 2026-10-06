@@ -11,7 +11,13 @@
                    беруться (переклади, службові файли теки), `title_prefix` — об'єкт
                    «початок шляху → назва» (тека пишеться з «/» у кінці, окремий файл —
                    повним шляхом): такий документ дістає назву «Назва: заголовок», якщо
-                   заголовок цієї назви ще не містить.
+                   заголовок цієї назви ще не містить; `name_prefix` — рядок, що стає
+                   перед іменем документа («helmet» → «helmet-changelog-290249f0»).
+
+Навіщо `name_prefix`. Ключ розділу будується з імені документа, а ім'я — зі шляху файла.
+Журнали змін кількох репозиторіїв в одному примірнику (HISTORY.md body-parser, cors,
+express-session…) мали б усі ім'я «history», і розділ «1.19.0» одного пакета пошук згортав
+би як повтор того самого розділу іншого. Без поля ім'я те саме, що й було.
 
 Навіщо `title_prefix`. Сайт, що описує кілька обгорток однієї бібліотеки, дає сторінкам
 кожної обгортки ті самі заголовки: у Testing Library «API», «Setup», «Example» є і в
@@ -111,6 +117,7 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
     exts = tuple(source.get("extensions") or (".md",))
     exclude = [re.compile(r) for r in source.get("exclude") or ()]
     prefixes = dict(source.get("title_prefix") or {})
+    lead = f"{_markup.slug(source['name_prefix'])}-" if source.get("name_prefix") else ""
 
     # ім'я документа → [шлях, [теги]]; порядок ключів — порядок першої появи, тобто
     # від найновішого тегу, бо `tags` оголошено від найновішого. Ключ — ім'я, а не
@@ -139,7 +146,7 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
                     and not _LOCALE.search(leaf) and entry.get("size", 1) > 0
                     and not any(r.search(path) for r in exclude)):
                 stem = re.sub(r"\.mdx?$", "", path)
-                name = f"{_markup.slug(stem)}-{entry['sha'][:8]}"
+                name = f"{lead}{_markup.slug(stem)}-{entry['sha'][:8]}"
                 seen.setdefault(name, [path, []])[1].append(tag)
 
     order = {t: i for i, t in enumerate(tags)}
