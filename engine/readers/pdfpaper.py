@@ -7,11 +7,19 @@
               `heading` — вираз рядка-заголовка розділу (скан, текст суцільними
               рядками); типово — номер і слова великими літерами («3 MODEL OF
               COMPUTATION»). `layout: true` — текст із розкладкою сторінки: заголовок
-              — короткий рядок з першої колонки між порожніми рядками.
+              — короткий рядок з першої колонки між порожніми рядками. Третя форма —
+              `page_titles`: об'єкт «номер сторінки (з 1) → назва»; кожна названа
+              сторінка починає розділ із цією назвою, неназвана дописується до
+              попереднього.
 
 Навіщо. Читач `pdf` розрахований на стандарти Ecma і без розділу «1 Scope»
 відмовляє. Стаття — інша форма: заголовки розділів, колонтитули журналу з номером
 сторінки, переноси слів у кінці рядка.
+
+Навіщо `page_titles`. Буклет на кшталт OWASP Top 10 2013 верстає одну тему на сторінку,
+а назву теми ставить картинкою чи в кутку, тож у витягнутому тексті вона опиняється в
+кінці сторінки. За виразом заголовка «Example Attack Scenarios» ризику A2 потрапив би в
+розділ A1. Межа сторінки там і є межею розділу, а назву дає джерело.
 
 Скан (Liskov & Wing, 1994) несе помилки розпізнавання («supert ype», «Llskov») і
 зіпсовані формули; читач їх не лагодить, щоб не вигадувати слова. Абзацом там
@@ -107,6 +115,20 @@ def _layout(lines: list[str], skips: list) -> str:
     return re.sub(r"\n{3,}", "\n\n", "\n".join(out)).strip("\n")
 
 
+def _titled_pages(data: bytes, titles: dict) -> list[str]:
+    try:
+        import pypdf
+    except ImportError:
+        raise SystemExit("Потрібен pypdf: .venv/bin/pip install pypdf")
+    reader = pypdf.PdfReader(io.BytesIO(data))
+    lines = []
+    for n, page in enumerate(reader.pages, 1):
+        if n in titles:
+            lines.append(titles[n])
+        lines.extend((page.extract_text() or "").splitlines())
+    return lines
+
+
 @register("pdf-paper")
 def pdf_paper(source: dict, ctx) -> list[Item]:
     url = source["url"]
@@ -117,7 +139,12 @@ def pdf_paper(source: dict, ctx) -> list[Item]:
 
     def make():
         data = ctx.bytes(url)
-        if source.get("layout"):
+        if source.get("page_titles"):
+            titles = {int(k): v for k, v in source["page_titles"].items()}
+            # Заголовком стає лише вставлена назва: власні рядки сторінки — текст.
+            named = re.compile("|".join(re.escape(t) + "$" for t in titles.values()))
+            body = _paper(_titled_pages(data, titles), named, skips)
+        elif source.get("layout"):
             body = _layout(_layout_text(data), skips)
         else:
             body = _paper(_pdf_text(data), heading, skips)
