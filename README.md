@@ -790,7 +790,7 @@ Angular, Svelte, Preact, Solid, Qwik, Marko, Cypress, Puppeteer, Nightwatch, Tes
 Mock Service Worker англійською: сайт mswjs.io для MSW 3, 2 і 1 (HTTP, GraphQL, WebSocket, SSE, API, гайди, рецепти,
 інтеграції, міграції, екосистема, блог), записані рішення команди, а для `msw`, `@mswjs/interceptors`, `@msw/data`,
 `@msw/source` і `@msw/serve` (зі старими іменами `@mswjs/*`) — README кожної версії, нотатки релізів і реєстр npm.
-1 066 документів, 5 912 фрагментів.
+1 066 документів, 3 568 фрагментів.
 
 - порт `8787`; запис у Claude Code — `msw-docs`, адреса `http://127.0.0.1:8787/mcp`; інструменти `search_docs` і
   `read_section`;
