@@ -4,9 +4,9 @@
 однієї бібліотеки чи інструмента (тека `instances/<ім'я>`). Файл оновлюється після кожного нового примірника, разом
 із підрозділами «Документація у фабриці» самих планів.
 
-Стан на 06.10.2026. Примірники: astro, clerk, docker, ecmascript, eslint, kubernetes, linux, mdn, msw, nestjs,
-nextjs, patterns, playwright, react, react-hook-form, react-router, redux, supabase, tailwind, tanstack-query,
-testing-library, typescript, v8, vite, vitest, wasm, webstandards, zod, zustand.
+Стан на 06.10.2026. Примірники: astro, clerk, docker, ecmascript, eslint, frontend-architecture, kubernetes, linux,
+mdn, msw, nestjs, nextjs, patterns, playwright, react, react-hook-form, react-router, redux, supabase, tailwind,
+tanstack-query, testing-library, typescript, v8, vite, vitest, wasm, webstandards, zod, zustand.
 
 ## Як читати таблиці
 

@@ -843,6 +843,26 @@ ESLint англійською: тека `docs/` репозиторію eslint/es
 - корпус в архіві від самого початку, як у playwright;
 - докладніше — у [instances/eslint/README.md](instances/eslint/README.md).
 
+### frontend-architecture
+
+Архітектура фронтенду англійською: документація Feature-Sliced Design (сайт fsd.how) з CHANGELOG, блог
+feature-sliced.design, лінтер Steiger з правилами плагіна FSD, Bulletproof React, Flux, книга Atomic Design,
+micro-frontends.org і першоджерела архітектурних стилів — GUI Architectures, шари, мікрофронтенди й DDD Мартіна
+Фаулера, Hexagonal Architecture Алістера Кокберна, The Clean Architecture і Screaming Architecture Роберта Мартіна,
+The Onion Architecture Джеффрі Палермо, The Software Architecture Chronicles Герберто Граси, Clean Architecture on
+Frontend Олександра Беспоясова, Vertical Slice Architecture Джиммі Богарда, Islands Architecture Джейсона Міллера.
+223 документи, 4 687 фрагментів.
+
+- порт `8790`; запис у Claude Code — `frontend-architecture-docs`, адреса `http://127.0.0.1:8790/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-frontend-architecture`, модель векторів — `bge-small`; версій немає;
+- корпус і індекс лише локально, як у `patterns`: статті й книга не мають вільної ліцензії, `refresh` відтворює їх
+  за кілька хвилин;
+- промпт велить порівнювати підходи за критеріями джерел і називати автора кожного аргументу; блог FSD — погляд
+  авторів однієї методології;
+- приклад питання агентові: `./df frontend-architecture ask "Should I use Feature-Sliced Design or Clean Architecture for a React app?"`;
+- докладніше — у [instances/frontend-architecture/README.md](instances/frontend-architecture/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
