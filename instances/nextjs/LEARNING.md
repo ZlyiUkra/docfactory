@@ -315,7 +315,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 | TanStack Query або SWR | дані в клієнтських компонентах: стрічки, опитування | 4 і 1 | Ф4 Д11; є примірник `tanstack-query` |
 | Playwright | наскрізні тести; єдиний спосіб перевірити `async`-компонент | 5 | Ф4 Д14; є примірник `playwright` |
 | Vitest | швидкі тести функцій і клієнтських компонентів | 2 | Ф4 Д13; є примірник `vitest` |
-| ESLint або Biome | лінт; у 16 запускається напряму, без `next lint` | 12 і 3 | Ф1 Д1 |
+| ESLint або Biome | лінт; у 16 запускається напряму, без `next lint` | 12 і 3 | Ф1 Д1; є примірник `eslint` |
 | Docker | образ застосунку для будь-якого сервера | 17 | Ф7 Д2; є примірник `docker` |
 | Kubernetes: `kubectl`, k3s, Kustomize | под Next.js у кластері, викот без простою, відкат | — | Ф7 Д12, Ф9; є примірник `kubernetes` |
 
@@ -364,6 +364,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - вебплатформа (HTTP, кеш, куки, Streams, CSS) — `mdn`;
 - тексти стандартів: WHATWG, CSP, WCAG, RFC HTTP, кешування й кук, OpenID Connect, ERC — `webstandards`;
 - Tailwind CSS — `tailwind`; zod — `zod`; TanStack Query — `tanstack-query`; Vitest — `vitest`;
+- ESLint, `eslint-plugin-react-hooks`, `eslint-plugin-react`, `eslint-plugin-jsx-a11y`, typescript-eslint — `eslint`;
 - Testing Library (React Testing Library, user-event, jest-dom) — `testing-library`; MSW — `msw`; Playwright —
   `playwright`;
 - React Hook Form — `react-hook-form`; Zustand — `zustand`; Clerk — `clerk`; Supabase Auth — `supabase`;
@@ -371,8 +372,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «треба знати»: shadcn/ui і Radix UI, PostgreSQL, Drizzle, Prisma, Auth.js, Better Auth, SWR, ESLint,
-  Biome;
+- з «треба знати»: shadcn/ui і Radix UI, PostgreSQL, Drizzle, Prisma, Auth.js, Better Auth, SWR, Biome;
 - з «варто знати»: iron-session, jose, Motion, next-themes, nuqs, next-intl, Redis (Upstash), Sentry,
   OpenTelemetry, socket.io-client;
 - з «знати, що існує»: Stripe, Resend і React Email, Vercel AI SDK, UploadThing, Sanity, Payload, Contentful,
@@ -494,7 +494,7 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 
 # Фаза 1. Ядро App Router — 14 днів
 
-**Сервери MCP фази:** `nextjs-docs`, `tailwind-docs`.
+**Сервери MCP фази:** `nextjs-docs`, `eslint-docs`, `tailwind-docs`.
 
 Розділ `Getting Started` цілком, у порядку самої документації: вона вибудувана правильно. Усі глави тут і далі
 мають у корпусі префікс «App Router: …», версія 16. Дані до фази 4 живуть у простому модулі `lib/data.ts` —
@@ -512,9 +512,9 @@ Next.js — надбудова над HTTP, Node і серверним React. У
   проєкт Turbopack. Лінт запускається напряму (`eslint` або `biome`): команди `next lint`, яку показують
   старі статті, у 16 немає.
 - **Читати:** `Installation`, `Project structure and organization`. Якщо пишете з помічником-агентом — `How to set up
-  your Next.js project for AI coding agents`; поза корпусом — документація ESLint: «Configuration Files» або Biome:
-  «Getting Started».
-- **Сервери MCP:** `nextjs-docs`.
+  your Next.js project for AI coding agents`; у примірнику `eslint` — `Configuration Files` (файл
+  `eslint.config.mjs`, який створив `create-next-app`); поза корпусом — документація Biome: «Getting Started».
+- **Сервери MCP:** `nextjs-docs`, `eslint-docs`.
 - **Зробити:** 1) `npx create-next-app@latest`, усі типові відповіді; 2) `npm run dev`, відкрити сторінку;
   3) змінити текст у `app/page.tsx` і побачити оновлення без перезавантаження; 4) записати в README, за що
   відповідає кожна тека й кожен файл кореня.

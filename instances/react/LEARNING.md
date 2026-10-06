@@ -79,6 +79,7 @@ access-токен у пам'яті, refresh-токен у куці `HttpOnly` з
 | `react` | увесь план |
 | `typescript` | фаза 0, дні 9–10; фаза 1, день 6 |
 | `vite` | фаза 0, дні 11–12; фаза 1, день 20; фаза 5 |
+| `eslint` | фаза 0, день 11; фаза 1, день 19; фаза 2, день 4 |
 | `react-router` | фаза 3, дні 1–2 і 13; фаза 5, день 1 |
 | `tanstack-query` | фаза 3, дні 3–8 і 13; факультатив |
 | `react-hook-form`, `zod` | фаза 3, день 10 |
@@ -325,7 +326,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 | TanStack Query | серверний стан: кеш, повтори, інвалідація, оптимістичні оновлення, знімок для живих даних | Ф3 Д3–5, Д8; є примірник `tanstack-query` |
 | React Hook Form + zod | великі форми з однією схемою перевірки для фронту й бекенду | Ф3 Д10; є примірники `react-hook-form`, `zod` |
 | Vitest + React Testing Library | швидкі тести компонентів за поведінкою | Ф3 Д12–13; є примірники `vitest` і `testing-library` |
-| ESLint з `eslint-plugin-react-hooks` | правила хуків і діагностика компілятора | Ф0 Д11, Ф2 Д4 |
+| ESLint з `eslint-plugin-react-hooks` | правила хуків і діагностика компілятора | Ф0 Д11, Ф1 Д19, Ф2 Д4; є примірник `eslint` |
 | Tailwind CSS | стилі класами в розмітці; підключається плагіном Vite | Ф0 Д11; план Next.js Ф1 Д10; є примірник `tailwind` |
 
 **Варто знати** — трапляється в більшості проєктів, вчиться за день, коли знадобилося.
@@ -373,11 +374,12 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 - React Router — `react-router`; TanStack Query — `tanstack-query`;
 - React Hook Form — `react-hook-form`; zod — `zod`;
 - Tailwind CSS — `tailwind`; Zustand — `zustand`; Redux Toolkit і RTK Query — `redux`;
+- ESLint, README і CHANGELOG `eslint-plugin-react-hooks`, `eslint-plugin-react`, `eslint-plugin-jsx-a11y`,
+  typescript-eslint — `eslint`;
 - Docker — `docker`; Kubernetes, k3d, k3s, `kubectl`, Traefik, cert-manager і Let's Encrypt — `kubernetes`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «треба знати»: ESLint і `eslint-plugin-react-hooks`;
 - з «варто знати»: react-window, TanStack Virtual, Sentry, shadcn/ui і Radix UI;
 - з «знати, що існує»: SWR, TanStack Router, Storybook, React Native і Expo, Motion, i18next, partysocket,
   socket.io-client;
@@ -388,7 +390,8 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 
 # Фаза 0. База, якої React не дає — 12 днів
 
-**Сервери MCP фази:** `react-docs`, `mdn-docs`, `webstandards-docs`, `typescript-docs`, `vite-docs`, `tailwind-docs`.
+**Сервери MCP фази:** `react-docs`, `mdn-docs`, `webstandards-docs`, `typescript-docs`, `vite-docs`, `eslint-docs`,
+`tailwind-docs`.
 
 React — бібліотека поверх мови й браузера. Усе, що тут, документація React вважає відомим і не пояснює; саме на
 цих речах, а не на хуках, застрягає більшість новачків. Джерела — примірники `mdn` і `typescript` цієї фабрики;
@@ -564,10 +567,11 @@ React — бібліотека поверх мови й браузера. Усе
   ESLint: правила хуків, повнота залежностей ефектів і діагностика React Compiler навіть без самого компілятора.
   Prettier форматує код; `tsconfig` з `strict: true` вмикає всі суворі перевірки.
 - **Читати:** `Build a React app from Scratch` (крок 1 — Vite; крок 2 прогляньте як карту фаз 3 і 5),
-  `Editor Setup`, `eslint-plugin-react-hooks`; у примірнику `vite` — `Getting Started`, `Features`. Якщо проєкт
-  буде на Tailwind — у примірнику `tailwind` глава `Get started with Tailwind CSS`, розділ «Installing Tailwind
-  CSS as a Vite plugin».
-- **Сервери MCP:** `react-docs`, `vite-docs`, `tailwind-docs`.
+  `Editor Setup`, `eslint-plugin-react-hooks`; у примірнику `vite` — `Getting Started`, `Features`; у примірнику
+  `eslint` — `Configuration Files` (файл `eslint.config.js`, який створив шаблон) і README
+  `` `eslint-plugin-react-hooks` `` (пресети `recommended` і `recommended-latest`). Якщо проєкт буде на Tailwind — у
+  примірнику `tailwind` глава `Get started with Tailwind CSS`, розділ «Installing Tailwind CSS as a Vite plugin».
+- **Сервери MCP:** `react-docs`, `vite-docs`, `eslint-docs`, `tailwind-docs`.
 - **Зробити:** 1) `npm create vite@latest my-app -- --template react-ts`; 2) `git init` і перший коміт;
   3) переконатися, що лінт має пресет `recommended` з `eslint-plugin-react-hooks`; 4) свідомо викликати хук
   усередині `if` і запустити лінт; 5) змінити текст у компоненті з лічильником, не перезавантажуючи сторінку.
@@ -599,7 +603,7 @@ React — бібліотека поверх мови й браузера. Усе
 
 # Фаза 1. Ядро React — 20 днів
 
-**Сервери MCP фази:** `react-docs`, `vite-docs`.
+**Сервери MCP фази:** `react-docs`, `vite-docs`, `eslint-docs`.
 
 Розділ Learn на react.dev у порядку самої документації: вона вибудувана правильно, і скорочувати її — найпоширеніша
 помилка самоучок. Глави `Quick Start` і `Tutorial: Tic-Tac-Toe` — для тих, хто бачить React уперше; мідлу їх
@@ -884,8 +888,9 @@ React — бібліотека поверх мови й браузера. Усе
   змінити код — перенести об'єкт чи функцію всередину ефекту, прочитати значення через оновлювач стану, винести
   нереактивне в `useEffectEvent`. Власний хук — функція з префіксом `use`, що ділиться **логікою**, а не станом:
   кожен виклик має свій стан.
-- **Читати:** `Removing Effect Dependencies`, `Reusing Logic with Custom Hooks`.
-- **Сервери MCP:** `react-docs`.
+- **Читати:** `Removing Effect Dependencies`, `Reusing Logic with Custom Hooks`; у примірнику `eslint` — README
+  `` `eslint-plugin-react-hooks` ``: як правило `exhaustive-deps` перевіряє залежності власних хуків.
+- **Сервери MCP:** `react-docs`, `eslint-docs`.
 - **Зробити:** 1) знайти ефект з об'єктом чи функцією в залежностях і прибрати їх, змінивши код; 2) винести
   повторювану логіку у власні хуки `useOnlineStatus` і `useDebouncedValue` з типами.
 - **Перевірити себе:** пошук `eslint-disable` по проєкту нічого не знаходить; два компоненти з тим самим хуком
@@ -918,7 +923,7 @@ React — бібліотека поверх мови й браузера. Усе
 
 # Фаза 2. Як React працює зсередини — 8 днів
 
-**Сервери MCP фази:** `react-docs`.
+**Сервери MCP фази:** `react-docs`, `eslint-docs`.
 
 Фаза, після якої зникає слово «магія». Головне правило: жодна оптимізація без заміру до неї. Міряйте на
 продакшн-збірці або на спеціальній збірці для профілювання, з уповільненням процесора в чотири рази, — режим
@@ -984,8 +989,9 @@ React — бібліотека поверх мови й браузера. Усе
   it can change compilation output». Компілятор працює лише з кодом, що дотримується `Rules of React`; де правила
   порушено, він компонент пропускає, а `eslint-plugin-react-hooks` показує де.
 - **Читати:** `memo`, `useMemo`, `useCallback`, «`Introduction` (React Compiler)», «`Installation` (React
-  Compiler)» (розділи «Basic Setup › Vite» і «Check React DevTools»), `Rules of React`, `eslint-plugin-react-hooks`.
-- **Сервери MCP:** `react-docs`.
+  Compiler)» (розділи «Basic Setup › Vite» і «Check React DevTools»), `Rules of React`, `eslint-plugin-react-hooks`;
+  у примірнику `eslint` — CHANGELOG плагіна: з якої версії в ньому правила компілятора.
+- **Сервери MCP:** `react-docs`, `eslint-docs`.
 - **Зробити:** один і той самий екран — список на дві тисячі елементів із фільтром і лічильником в іншому кутку —
   у трьох гілках: 1) без мемоізації; 2) з ручними `memo`, `useMemo`, `useCallback`; 3) без ручної мемоізації, з
   увімкненим компілятором. Для кожної на збірці для профілювання: скільки елементів списку рендериться на клік

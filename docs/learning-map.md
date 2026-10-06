@@ -4,8 +4,8 @@
 однієї бібліотеки чи інструмента (тека `instances/<ім'я>`). Файл оновлюється після кожного нового примірника, разом
 із підрозділами «Документація у фабриці» самих планів.
 
-Стан на 05.10.2026. Примірники: astro, clerk, docker, ecmascript, kubernetes, linux, mdn, msw, nestjs, nextjs,
-patterns, playwright, react, react-hook-form, react-router, redux, supabase, tailwind, tanstack-query,
+Стан на 06.10.2026. Примірники: astro, clerk, docker, ecmascript, eslint, kubernetes, linux, mdn, msw, nestjs,
+nextjs, patterns, playwright, react, react-hook-form, react-router, redux, supabase, tailwind, tanstack-query,
 testing-library, typescript, v8, vite, vitest, wasm, webstandards, zod, zustand.
 
 ## Як читати таблиці
@@ -22,9 +22,9 @@ testing-library, typescript, v8, vite, vitest, wasm, webstandards, zod, zustand.
 
 | Фаза | Примірники (дні) |
 |------|------------------|
-| 0. База, якої React не дає | `mdn` (вступ, 1–8), `webstandards` (1, 5–8), `typescript` (вступ, 9–10), `vite` (11–12), `tailwind` (11) |
-| 1. Ядро React | `vite` (20) |
-| 2. Як React працює зсередини | — |
+| 0. База, якої React не дає | `mdn` (вступ, 1–8), `webstandards` (1, 5–8), `typescript` (вступ, 9–10), `vite` (11–12), `eslint` (11), `tailwind` (11) |
+| 1. Ядро React | `vite` (20), `eslint` (19) |
+| 2. Як React працює зсередини | `eslint` (4) |
 | 3. Екосистема | `react-router` (1–2, 13), `tanstack-query` (3–5, 8, 13), `react-hook-form` і `zod` (10), `zustand` і `redux` (11), `vitest` і `testing-library` (12–13), `msw` (13), `playwright` (14), `mdn` (6–8, 15), `webstandards` (6, 15) |
 | 4. Сервер: SSR, стрімінг, серверні компоненти | — |
 | 5. Продакшн і викот у кластер | `vite` (1–2, 5–7, 9), `react-router` (1), `docker` (6–7), `kubernetes` (6–9), `mdn` (4), `webstandards` (6), `playwright` (5) |
@@ -49,7 +49,7 @@ testing-library, typescript, v8, vite, vitest, wasm, webstandards, zod, zustand.
 | Фаза | Примірники (дні) |
 |------|------------------|
 | 0. База, якої Next.js не дає | `mdn` (вступ, 1–3, 6), `webstandards` (1–3, 6), `react` (вступ, 4–5) |
-| 1. Ядро App Router | `tailwind` (10) |
+| 1. Ядро App Router | `eslint` (1), `tailwind` (10) |
 | 2. Як Next.js працює зсередини | — |
 | 3. Кешування | — |
 | 4. Фулстек: дані, автентифікація, дії, тести | `webstandards` (2–3, 5, 9–10, 12), `zod` (5), `react-hook-form` (6), `clerk` і `supabase` (9), `tanstack-query` (11), `vitest` і `testing-library` (13), `playwright` (14) |
@@ -82,7 +82,7 @@ testing-library, typescript, v8, vite, vitest, wasm, webstandards, zod, zustand.
 
 1. npm — `package.json`, `npm ci` (фаза 0).
 2. web.dev і web-vitals (фази 2 і 5).
-3. react-window або TanStack Virtual, Sentry, ESLint з `eslint-plugin-react-hooks`.
+3. react-window або TanStack Virtual, Sentry.
 4. Факультатив: wagmi, viem, lightweight-charts, decimal.js, Foundry.
 
 ### NestJS
