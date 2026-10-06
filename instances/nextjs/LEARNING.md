@@ -369,6 +369,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
   `playwright`;
 - React Hook Form — `react-hook-form`; Zustand — `zustand`; Clerk — `clerk`; Supabase Auth — `supabase`;
 - PostgreSQL 9.0–19 — `postgresql`; Socket.IO, сервер і клієнт — `socketio`;
+- GitHub Actions, Dependabot, Container registry (ghcr.io), офіційні дії — `github-actions`;
 - Docker — `docker`; Kubernetes, k3s, Traefik, Kustomize, SOPS, age і Helm — `kubernetes`; sshd — `linux`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
@@ -378,7 +379,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
   OpenTelemetry;
 - з «знати, що існує»: Stripe, Resend і React Email, Vercel AI SDK, UploadThing, Sanity, Payload, Contentful,
   tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Grafana, Loki, Storybook;
-- поза таблицями: nginx, GitHub Actions; у факультативі — viem, wagmi і Foundry.
+- поза таблицями: nginx; у факультативі — viem, wagmi і Foundry.
 
 ---
 
@@ -1414,15 +1415,16 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 
 # Фаза 7. DevOps: від збірки до продакшну — 12 днів
 
-**Сервери MCP фази:** `nextjs-docs`, `docker-docs`, `webstandards-docs`, `kubernetes-docs`, `playwright-docs`.
+**Сервери MCP фази:** `nextjs-docs`, `docker-docs`, `webstandards-docs`, `kubernetes-docs`, `playwright-docs`,
+`github-actions-docs`.
 
-Next.js — не тека статики: це сервер, який треба зібрати, запустити, тримати живим і вміти відкотити.
-Документації Docker, nginx, Kubernetes і GitHub Actions у корпусі Next.js немає; є те, чого Next.js вимагає від них,
-і готові приклади з кодом. Docker і Compose мають примірник `docker`, Kubernetes — примірник `kubernetes`; nginx і
-GitHub Actions — поза фабрикою. Дні 1–11 — на своєму комп'ютері: образ, compose, проксі, CI, спостереження вчать
-локально, бо так дешевше помилятися. Продакшн при цьому вже існує: кластер k3s на машині Oracle Cloud з'явився в
-плані React (фаза 5, дні 7–9), бекенд, база й gateway приїхали туди з плану NestJS (фаза 6, дні 8–9; фаза 7,
-день 6). День 12 викочує в той самий кластер под Next.js на місце поду SPA. Платний сервер, домен і CDN не
+Next.js — не тека статики: це сервер, який треба зібрати, запустити, тримати живим і вміти відкотити. Документації
+Docker, nginx, Kubernetes і GitHub Actions у корпусі Next.js немає; є те, чого Next.js вимагає від них, і готові
+приклади з кодом. Docker і Compose мають примірник `docker`, Kubernetes — примірник `kubernetes`, GitHub Actions —
+примірник `github-actions`; nginx — поза фабрикою. Дні 1–11 — на своєму комп'ютері: образ, compose, проксі, CI,
+спостереження вчать локально, бо так дешевше помилятися. Продакшн при цьому вже існує: кластер k3s на машині Oracle
+Cloud з'явився в плані React (фаза 5, дні 7–9), бекенд, база й gateway приїхали туди з плану NestJS (фаза 6, дні 8–9;
+фаза 7, день 6). День 12 викочує в той самий кластер под Next.js на місце поду SPA. Платний сервер, домен і CDN не
 потрібні.
 
 ## Блок A. Від збірки до образу й проксі — дні 1–6
@@ -1513,8 +1515,9 @@ GitHub Actions — поза фабрикою. Дні 1–11 — на своєм�
   прискорює збірку. Оновлення залежностей — Dependabot або Renovate; латки `next` ставлять тим самим
   тижнем.
 - **Читати:** `How to configure Continuous Integration (CI) build caching`, `next CLI` (розділ про typegen); у
-  примірнику `playwright` — `Setting up CI`.
-- **Сервери MCP:** `nextjs-docs`, `playwright-docs`.
+  примірнику `playwright` — `Setting up CI`; у примірнику `github-actions` — `Building and testing Node.js`,
+  `Dependency caching`, `Keeping your actions up to date with Dependabot`.
+- **Сервери MCP:** `nextjs-docs`, `playwright-docs`, `github-actions-docs`.
 - **Зробити:** робочий процес, що падає на впалому тесті; бот оновлень залежностей.
 - **Перевірити себе:** два числа з логу Actions — перша збірка й друга, з кешем.
 - **Пастка:** секрети в лозі CI через `echo` для налагодження.
@@ -1894,13 +1897,14 @@ GitHub Actions — поза фабрикою. Дні 1–11 — на своєм�
 
 # Фаза 9. Kubernetes глибше і демо для клієнта — 8 днів
 
-**Сервери MCP фази:** `nextjs-docs`, `kubernetes-docs`, `linux-docs`, `mdn-docs`, `webstandards-docs`.
+**Сервери MCP фази:** `nextjs-docs`, `kubernetes-docs`, `linux-docs`, `mdn-docs`, `webstandards-docs`,
+`github-actions-docs`.
 
 Кластер уже працює: SPA з'явилася в ньому в плані React, бекенд — у плані NestJS, Next.js — у фазі 7 цього плану.
 Але викочує його досі людина з терміналом, ресурси взято навмання, секрети живуть у файлах на диску, а демо для
 клієнта, зібране в плані NestJS (фаза 7, день 8), досі показує SPA, а не Next.js. Ця фаза доводить кластер до
 стану, який не соромно дати клієнту, і переводить демо на Next.js. Kubernetes, Traefik, Kustomize, Helm, SOPS і age
-мають примірник `kubernetes`; документації GitHub Actions у фабриці немає — її джерела названі в кожному дні.
+мають примірник `kubernetes`, GitHub Actions — примірник `github-actions`.
 
 **Про факти хостингу.** Усе, що сказано тут про Oracle Cloud, DigitalOcean, GitHub, Let's Encrypt і UptimeRobot,
 перевірено на 02.10.2026. Безкоштовні тарифи міняються без попередження — Oracle, наприклад, у червні 2026 року
@@ -2060,9 +2064,10 @@ TLS і сертифікат, зворотний проксі, підніманн
   `deployer` з Role, що дає правити лише простір `app`. Сторонні дії закріплені за SHA коміту, не за тегом.
 - **Читати:** `How to configure Continuous Integration (CI) build caching`; у примірнику `kubernetes` —
   `Using RBAC Authorization`; у примірнику `linux` — `Ubuntu man: sshd(8) — OpenSSH daemon` (розділ
-  «AUTHORIZED_KEYS FILE FORMAT»); поза корпусом — docs.github.com: «Using environments for deployment», «Publishing
-  Docker images», «Security hardening for GitHub Actions».
-- **Сервери MCP:** `nextjs-docs`, `kubernetes-docs`, `linux-docs`.
+  «AUTHORIZED_KEYS FILE FORMAT»); у примірнику `github-actions` — `Managing environments for deployment`,
+  `Deploying to a specific environment`, `Publishing Docker images`, `Secure use reference` (закріплення дій за SHA),
+  `Using secrets in GitHub Actions`.
+- **Сервери MCP:** `nextjs-docs`, `kubernetes-docs`, `linux-docs`, `github-actions-docs`.
 - **Зробити:** 1) на машині — користувач `deploy` без пароля, ключ CI з обмеженнями вище, перевірка `sshd`, що
   паролі й root вимкнено; 2) ServiceAccount `deployer`, Role в `app` (Deployment, Job, Service, HTTPRoute,
   Secret, ConfigMap) і RoleBinding; kubeconfig із токеном цього облікового запису й адресою

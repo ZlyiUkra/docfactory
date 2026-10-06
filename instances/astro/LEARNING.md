@@ -343,7 +343,7 @@ Cloudflare.
 - Tailwind CSS — `tailwind`; zod (схеми колекцій і дій) — `zod`;
 - Clerk — `clerk`; Supabase Auth — `supabase`; PostgreSQL — `postgresql`;
 - Vitest — `vitest`; Playwright — `playwright`;
-- Docker і `docker compose` — `docker`;
+- Docker і `docker compose` — `docker`; GitHub Actions і GitHub Pages — `github-actions`;
 - Next.js (для порівняння у фазі 7) — `nextjs`; NestJS (окремий бекенд) — `nestjs`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
@@ -351,5 +351,5 @@ Cloudflare.
 - фреймворки островів, окрім React: Vue, Svelte, Solid, Preact;
 - дані: Drizzle, Prisma;
 - платформи розгортання: Cloudflare, Vercel, Netlify; Node.js як середовище виконання;
-- CI і спостереження: GitHub Actions, Sentry; Lighthouse і web-vitals;
+- спостереження: Sentry; Lighthouse і web-vitals;
 - контент: Starlight, CMS, Shiki, remark і rehype поза документацією Astro.

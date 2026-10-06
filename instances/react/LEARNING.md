@@ -377,13 +377,14 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 - ESLint, README і CHANGELOG `eslint-plugin-react-hooks`, `eslint-plugin-react`, `eslint-plugin-jsx-a11y`,
   typescript-eslint — `eslint`;
 - Docker — `docker`; Kubernetes, k3d, k3s, `kubectl`, Traefik, cert-manager і Let's Encrypt — `kubernetes`;
-- socket.io-client (живі ціни з власного сервера, план NestJS, фаза 7) — `socketio`.
+- socket.io-client (живі ціни з власного сервера, план NestJS, фаза 7) — `socketio`;
+- GitHub Actions, Dependabot, Container registry (ghcr.io) і GitHub Pages, офіційні дії — `github-actions`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
 - з «варто знати»: react-window, TanStack Virtual, Sentry, shadcn/ui і Radix UI;
 - з «знати, що існує»: SWR, TanStack Router, Storybook, React Native і Expo, Motion, i18next, partysocket;
-- поза таблицями: web-vitals, GitHub Actions, хостинги, API Binance і Kraken, Oracle Cloud; у факультативі —
+- поза таблицями: web-vitals, хостинги, API Binance і Kraken, Oracle Cloud; у факультативі —
   lightweight-charts, wagmi, viem і Foundry.
 
 ---
@@ -1500,7 +1501,7 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
 # Фаза 5. Продакшн: збірка, безпека, метрики, CI, викот у кластер — 9 днів
 
 **Сервери MCP фази:** `react-docs`, `vite-docs`, `react-router-docs`, `mdn-docs`, `webstandards-docs`, `docker-docs`,
-`kubernetes-docs`, `playwright-docs`.
+`kubernetes-docs`, `playwright-docs`, `github-actions-docs`.
 
 Застосунок уже в інтернеті з фази 1. У блоці A він стає легшим, безпечнішим, вимірюваним і перевіряється сам на
 кожному запиті на злиття. У блоці B він переїжджає зі статичного хостингу у власний кластер Kubernetes — той самий,
@@ -1583,9 +1584,11 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
 - **Що це.** GitHub Actions запускає на кожен запит на злиття: лінт, `tsc --noEmit`, тести Vitest, збірку,
   Playwright проти `vite preview`. Кеш залежностей між запусками прискорює все. Dependabot або Renovate щотижня
   пропонують оновлення залежностей — латки безпеки приходять самі.
-- **Читати:** документацію GitHub Actions і Dependabot (поза корпусом); у примірнику `vite` — `Command Line
-  Interface`; у примірнику `playwright` — `Setting up CI`, `Continuous Integration`.
-- **Сервери MCP:** `vite-docs`, `playwright-docs`.
+- **Читати:** у примірнику `github-actions` — `Building and testing Node.js`, `Workflow syntax for GitHub Actions`
+  (розділи `on.pull_request`, `jobs.<job_id>.steps`), `Dependency caching`, `Keeping your actions up to date with
+  Dependabot`, `Dependabot options reference`; у примірнику `vite` — `Command Line Interface`; у примірнику
+  `playwright` — `Setting up CI`, `Continuous Integration`.
+- **Сервери MCP:** `github-actions-docs`, `vite-docs`, `playwright-docs`.
 - **Зробити:** 1) робочий процес із п'ятьма кроками; 2) захист головної гілки: злиття лише із зеленим CI;
   3) запит на злиття з навмисно червоним тестом; 4) бот оновлень.
 - **Перевірити себе:** червоний запит не зливається; у журналі — два числа: тривалість першого запуску й

@@ -395,6 +395,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   `postgresql`;
 - Socket.IO 2.x–4.x — сервер, клієнт, адаптери Redis, Redis Streams, Postgres і MongoDB, Admin UI, протоколи й
   приклади (зокрема з NestJS) — `socketio`;
+- GitHub Actions, Dependabot, Container registry (ghcr.io), офіційні дії — `github-actions`;
 - Supabase — `supabase`; Clerk — `clerk`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
@@ -405,7 +406,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   supertest, RxJS;
 - з «варто знати»: BullMQ, Redis, `ws`, nestjs-cls, nestjs-pino, csrf-csrf, CASL, orval, openapi-typescript;
 - з «знати, що існує»: Mongoose, MikroORM, Drizzle, Kafka, RabbitMQ, NATS;
-- поза таблицями: nginx, GitHub Actions; у факультативі — viem і Foundry.
+- поза таблицями: nginx; у факультативі — viem і Foundry.
 
 ---
 
@@ -1667,11 +1668,12 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 
 # Фаза 6. Продакшн — 9 днів
 
-**Сервери MCP фази:** `nestjs-docs`, `docker-docs`, `kubernetes-docs`, `express-docs`, `postgresql-docs`.
+**Сервери MCP фази:** `nestjs-docs`, `docker-docs`, `kubernetes-docs`, `express-docs`, `postgresql-docs`,
+`github-actions-docs`.
 
 Сервер, який треба зібрати, запустити, тримати живим, міряти й вміти оновити. Глави Nest тут — лише те, що Nest
 вимагає від Docker, проксі й CI. Docker і Compose мають примірник `docker`, Kubernetes, k3s і Traefik — примірник
-`kubernetes`; документації nginx, Redis і GitHub Actions у фабриці немає.
+`kubernetes`, GitHub Actions — примірник `github-actions`; документації nginx і Redis у фабриці немає.
 Дні 1–7 робляться на своєму комп'ютері й на тому самому хості (PaaS), куди ви викотили застосунок у фазі 2:
 `docker compose` лишається способом розробки до кінця родини. Дні 8–9 переносять продакшн у кластер k3s, який ви
 підняли в плані React (фаза 5, дні 7–9): бекенд, база й Redis стають подами поруч із подом SPA, а хост із фази 2
@@ -1807,9 +1809,10 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   часом запускає образ, а міграції — окремим кроком перед ним, як у compose. Секрети — у сховищі секретів CI й
   платформи, не в YAML. Автоматичний викот у кластер з CI — тема плану Next.js, фаза 9; у цьому плані в кластер
   викочують руками, щоб бачити кожен крок.
-- **Читати:** документація GitHub Actions і Dependabot (поза корпусом); `Deployment`, розділи Scaling up or out і
-  Some other tips.
-- **Сервери MCP:** `nestjs-docs`, `docker-docs`.
+- **Читати:** у примірнику `github-actions` — `Building and testing Node.js`, `Creating PostgreSQL service containers`,
+  `Publishing Docker images`, `Working with the Container registry`, `Keeping your actions up to date with
+  Dependabot`; `Deployment`, розділи Scaling up or out і Some other tips.
+- **Сервери MCP:** `nestjs-docs`, `docker-docs`, `github-actions-docs`.
 - **Зробити:** 1) робочий процес на кожен pull request; 2) свідомо зламати тест безпеки з фази 5 — процес
   червоний; 3) злиття в `main` збирає образ для двох архітектур із кешем шарів і викочує його на хост;
   4) `dependabot.yml`.

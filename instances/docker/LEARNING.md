@@ -540,7 +540,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
 
 # Фаза 4. Кілька архітектур, реєстри, CI, ланцюг постачання — 6 днів
 
-**Сервери MCP фази:** `docker-docs`.
+**Сервери MCP фази:** `docker-docs`, `github-actions-docs`.
 
 ### День 1. Реєстр і теги
 
@@ -549,8 +549,8 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   користувачів), GHCR (`ghcr.io/власник/образ`, токен GitHub з правом пакетів). Схема тегів: версія semver,
   короткий коміт, `latest` лише як зручність. Дайджест — незмінний.
 - **Читати:** `Build, tag, and publish an image`; `Docker Hub usage and limits`; `Docker Hub pull usage and limits`;
-  `docker image push`; `docker login`.
-- **Сервери MCP:** `docker-docs`.
+  `docker image push`; `docker login`; у примірнику `github-actions` — `Working with the Container registry`.
+- **Сервери MCP:** `docker-docs`, `github-actions-docs`.
 - **Зробити:** 1) опублікувати три образи проєкту в GHCR з тегами версії й коміту; 2) на `rocky` стягнути образ за
   дайджестом; 3) з'ясувати свій поточний ліміт завантажень Docker Hub.
 - **Перевірити себе:** `docker buildx imagetools inspect ghcr.io/…/api:1.0.0` — той самий дайджест, що локально.
@@ -595,8 +595,10 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   Збірка на кожен PR (без публікації), публікація — на тег.
 - **Читати:** `Introduction to GitHub Actions with Docker`; `Docker Build GitHub Actions`; `Manage tags and labels
   with GitHub Actions`; `Multi-platform image with GitHub Actions`; `Cache management with GitHub Actions`; `Test
-  before push with GitHub Actions`.
-- **Сервери MCP:** `docker-docs`.
+  before push with GitHub Actions`; у примірнику `github-actions` — `Workflow syntax for GitHub Actions` (розділи
+  `on.push.tags`, `permissions`), `Publishing Docker images`, `Working with the Container registry`, README дій
+  `docker/metadata-action` і `docker/build-push-action`.
+- **Сервери MCP:** `docker-docs`, `github-actions-docs`.
 - **Зробити:** workflow: на PR — збірка й тести без публікації; на тег `v*` — образи під дві платформи з тегами з
   `metadata` у GHCR, кеш `gha`.
 - **Перевірити себе:** тег `v1.1.0` у репозиторії дає образи `1.1.0`, `1.1` і `sha-…` у GHCR під дві платформи.
@@ -816,11 +818,11 @@ compose та buildx. Docker Desktop, Docker AI, Scout як продукт і і�
 - Docker Engine, збірка, Compose, Docker Hub, безпека, релізи moby, compose і buildx — `docker`;
 - Linux: man-сторінки, systemd, ядро, мережа, права — `linux`;
 - Kubernetes, k3s і контейнерні рантайми з боку кластера (фаза 6) — `kubernetes`;
-- PostgreSQL — `postgresql`.
+- PostgreSQL — `postgresql`;
+- GitHub Actions, Container registry (ghcr.io), офіційні дії Docker і GitHub — `github-actions`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
 - nginx;
-- GitHub Actions поза діями Docker, GHCR;
 - Trivy, QEMU;
 - Docker Desktop, Docker AI, Scout як продукт і інші платні продукти Docker.
