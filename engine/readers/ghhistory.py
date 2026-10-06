@@ -15,7 +15,11 @@
                    перед іменем документа («helmet» → «helmet-changelog-290249f0»);
                    `mdx: true` — і файли `.md` читаються як MDX: без `import`/`export`
                    верхнього рівня (Docusaurus так і збирає `.md`, тож сторінки socket.io
-                   з вкладками починаються з `import Tabs from '@theme/Tabs'`).
+                   з вкладками починаються з `import Tabs from '@theme/Tabs'`);
+                   `site` — об'єкт «вираз шляху → адреса сторінки сайту» (`\\1` — група
+                   виразу): документ, чий шлях цілком збігся з виразом, дістає в шапку
+                   адресу сайту, решта — blob на GitHub. Сайт не читається: текст і далі
+                   береться з raw.githubusercontent.com, адреса лише цитується.
 
 Навіщо `name_prefix`. Ключ розділу будується з імені документа, а ім'я — зі шляху файла.
 Журнали змін кількох репозиторіїв в одному примірнику (HISTORY.md body-parser, cors,
@@ -69,6 +73,9 @@ _SETEXT = re.compile(r"^(=+|-+)[ \t]*$")
 # Рядок, що підкресленням заголовка бути не може: пункт списку, цитата, таблиця,
 # інший заголовок. Інакше «---» під пунктом списку став би заголовком із пункту.
 _NOT_TITLE = re.compile(r"^\s*([-*+>|#]|\d+[.)]\s|```|~~~)")
+_IMAGE = re.compile(r"!\[[^\]]*\]\([^)]*\)")
+_ATTRS = re.compile(r"\{:[^}]*\}")
+_IMAGE_LINE = re.compile(r"^[ \t]*!\[[^\]]*\]\([^)]*\)[ \t]*(\{:[^}]*\})?[ \t]*$", re.M)
 
 
 def _atx(text: str) -> str:
@@ -121,6 +128,7 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
     exclude = [re.compile(r) for r in source.get("exclude") or ()]
     prefixes = dict(source.get("title_prefix") or {})
     lead = f"{_markup.slug(source['name_prefix'])}-" if source.get("name_prefix") else ""
+    sites = [(re.compile(k), v) for k, v in (source.get("site") or {}).items()]
 
     # ім'я документа → [шлях, [теги]]; порядок ключів — порядок першої появи, тобто
     # від найновішого тегу, бо `tags` оголошено від найновішого. Ключ — ім'я, а не
@@ -164,6 +172,9 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
         if not ctx.allowed(raw):
             continue
         blob = f"https://github.com/{owner}/{repo}/blob/{where.split('/', 2)[2]}"
+        # Відповідь має вести туди, де людина читає документ, — на сайт, а не в репозиторій.
+        hit = next((m.expand(v) for r, v in sites if (m := r.fullmatch(path))), "")
+        blob = hit or blob
         # Кілька тегів з однією міткою (усі experimental-збірки) — одна версія.
         version = ", ".join(dict.fromkeys(tags[t] for t in found))
 
@@ -174,10 +185,15 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
             if path.endswith(".mdx") or source.get("mdx") is True:
                 # Імпорти й експорти MDX — код сторінки, а не її текст.
                 rest = _markup.mdx_statements_out(rest)
-            rest = _atx(rest)
+            # Рядок із самою картинкою (логотип над заголовком) тексту не несе, а стоячи
+            # першим, ховав від _split_title справжню назву сторінки.
+            rest = _atx(_IMAGE_LINE.sub("", rest))
             title = meta.get("title", "") if meta else ""
             if not title:
                 title, rest = _split_title(rest)
+            # Картинка в заголовку — шапка чи іконка сторінки («# ![OWASPHeader](…)», «# A01:2025
+            # … ![icon](…){: style=…}»), а не слова назви: інакше назвою ставала розмітка.
+            title = _ATTRS.sub("", _IMAGE.sub("", title)).strip()
             if not title:
                 title = re.sub(r"\.mdx?$", "", path.rsplit("/", 1)[-1])
             # У 4.x–5.x назва пишеться «# &lt;Route>»: на сайті це «<Route>».
