@@ -38,7 +38,7 @@ tailwind, tanstack-query, testing-library, typescript, v8, vite, vitest, wasm, w
 | 1. Ядро Nest | — |
 | 2. Робочий API | `zod` (1, 3, 8), `webstandards` (4, 6), `tanstack-query` (7), `react-hook-form` (8) |
 | 3. Дані: TypeORM, Prisma | — (у документації Nest лише інтеграція) |
-| 4. Автентифікація й авторизація | `webstandards` (1–2, 6–8, 12), `express` (8), `react-router` (9) |
+| 4. Автентифікація й авторизація | `webstandards` (1–2, 6–8, 12), `express` (8, 12), `react-router` (9) |
 | 5. Якість: тести й DI | `vitest` (1) |
 | 6. Продакшн | `docker` (вступ, 2), `kubernetes` (8–9), `express` (9) |
 | 7. Живі дані: WebSockets | `mdn` (вступ, 1), `webstandards` (вступ, 1, 3, 6), `vite` (2), `kubernetes` (3, 6, 8) |

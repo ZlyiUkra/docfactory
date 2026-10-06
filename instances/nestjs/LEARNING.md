@@ -389,15 +389,16 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 - Docker і Compose — `docker`; Kubernetes, k3s, `kubectl`, Traefik, Let's Encrypt і age — `kubernetes`;
 - SPA-бік: React — `react`, React Router — `react-router`, Vite — `vite`, React Hook Form — `react-hook-form`,
   TanStack Query — `tanstack-query`;
-- Express 2.x–5.x і офіційні middleware (cookie-parser, cors, express-session, multer, morgan) — `express`;
+- Express 2.x–5.x, офіційні middleware (cookie-parser, cors, express-session, multer, morgan та інші), `router`,
+  `path-to-regexp`, helmet і express-rate-limit — README кожної версії й журнали змін — `express`;
 - Supabase — `supabase`; Clerk — `clerk`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
-глава про інтеграцію (TypeORM, Prisma, Passport, helmet, BullMQ, class-validator), але не документація самої
+глава про інтеграцію (TypeORM, Prisma, Passport, BullMQ, class-validator), але не документація самої
 бібліотеки:
 
 - з «треба знати»: PostgreSQL, TypeORM, Prisma, Passport, bcrypt, argon2, class-validator, class-transformer,
-  supertest, helmet, RxJS, socket.io і socket.io-client;
+  supertest, RxJS, socket.io і socket.io-client;
 - з «варто знати»: BullMQ, Redis, `@socket.io/redis-adapter`, `ws`, nestjs-cls, nestjs-pino, csrf-csrf, CASL, orval, openapi-typescript;
 - з «знати, що існує»: Mongoose, MikroORM, Drizzle, Kafka, RabbitMQ, NATS, `@socket.io/redis-streams-adapter`;
 - поза таблицями: nginx, GitHub Actions; у факультативі — viem і Foundry.
@@ -1503,8 +1504,10 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   подіє.
 - **Читати:** розділ Security, глави `Rate limiting` (розділи Configuration, Customization, Proxies) і `Helmet`; у
   примірнику `webstandards` — `RFC 6585 Additional HTTP Status Codes: 4 429 Too Many Requests`, `RFC 6797 HTTP Strict
-  Transport Security (HSTS): 6 Syntax`, `Content Security Policy Level 3: 6 Content Security Policy Directives`.
-- **Сервери MCP:** `nestjs-docs`, `webstandards-docs`.
+  Transport Security (HSTS): 6 Syntax`, `Content Security Policy Level 3: 6 Content Security Policy Directives`; у
+  примірнику `express` — README `helmet` вашої версії (які заголовки ставить типово, як налаштувати CSP) і
+  `Production Best Practices: Security` (розділи «Use Helmet», «Prevent brute-force attacks against authorization»).
+- **Сервери MCP:** `nestjs-docs`, `webstandards-docs`, `express-docs`.
 - **Зробити:** 1) глобальний ліміт і жорсткий — на вхід, реєстрацію й `/api/auth/refresh`; 2) helmet першим рядком
   після `NestFactory.create`; 3) `trust proxy` під змінну оточення (знадобиться у фазі 6).
 - **Перевірити себе:** одинадцятий вхід за хвилину — 429; `curl -I` показує заголовки helmet; без `trust proxy` за
