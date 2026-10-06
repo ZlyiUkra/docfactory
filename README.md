@@ -905,7 +905,7 @@ Socket.IO англійською: сайт socket.io для 4.x, 3.x і 2.x (д�
 посібники Get started і How-to, сторінки змін і блог; журнали змін і README пакетів монорепозиторію socketio/socket.io,
 специфікації протоколів Engine.IO і Socket.IO, README прикладів (кластери, NestJS, Next.js, Passport); адаптери Redis,
 Redis Streams, Postgres і MongoDB та Admin UI; README кожної стабільної версії `socket.io` і `socket.io-client`,
-нотатки релізів і реєстр npm. 553 документи, 3 781 фрагменти.
+нотатки релізів і реєстр npm. 553 документи, 3 781 фрагмент.
 
 - порт `8793`; запис у Claude Code — `socketio-docs`, адреса `http://127.0.0.1:8793/mcp`; інструменти `search_docs` і
   `read_section`;
