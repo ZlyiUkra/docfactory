@@ -114,11 +114,11 @@ PostgreSQL, Node.js, nginx, Redis, socket.io і GitHub Actions потрібні 
 
 ### Лінія 2
 
-1. nginx — 34 згадки в Linux, ще в Docker і Kubernetes; найбільша прогалина лінії.
-2. etcd з etcdctl і etcdutl — 25 згадок у Kubernetes, частина CKA. Глави про резервні копії etcd є в документації
-   Kubernetes, власної документації etcd немає.
-3. containerd і crictl — 17 згадок у Docker і Kubernetes.
-4. CNI: Calico, Cilium, Flannel — фаза 11, CKA.
-5. HAProxy з keepalived — балансувальник для кластера з HA.
-6. Podman — у Linux як альтернатива Docker.
-7. Дрібне: MetalLB, CloudNativePG, Trivy, Prometheus.
+1. nginx — 30 згадок у Linux, 7 у Docker, 3 у Kubernetes; найбільша прогалина лінії, стоїть у черзі першочергових.
+2. GitHub Actions і GHCR — CI і реєстр образів у плані Docker (9 і 8 згадок); у черзі першочергових.
+3. PostgreSQL — база в compose плану Docker і в кластері Kubernetes; у черзі.
+
+Свідомо без примірника — план їх лише згадує або ставить однією командою: CNI (Calico, Cilium, Flannel), HAProxy,
+Podman, libvirt і QEMU, MetalLB, CloudNativePG, Trivy, Prometheus. etcd і containerd з `crictl` окремого примірника
+не потребують: їх покриває примірник `kubernetes` — `Operating etcd clusters for Kubernetes`, `Debugging Kubernetes
+nodes with crictl`, `Container Runtimes`.
