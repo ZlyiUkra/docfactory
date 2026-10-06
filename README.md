@@ -917,6 +917,22 @@ Redis Streams, Postgres і MongoDB та Admin UI; README кожної стабі
 - корпус в архіві від самого початку, як у express;
 - докладніше — у [instances/socketio/README.md](instances/socketio/README.md).
 
+### github-actions
+
+GitHub Actions англійською: розділи Actions, Pages і Packages (з Container registry) GitHub Docs, сторінки Dependabot
+про оновлення дій і ціни хвилин — з розібраним шаблоном Liquid новим читачем `github-docs`; README кожного мажору й
+нотатки релізів 21 офіційної дії (`checkout`, `setup-*`, `cache`, артефакти, `github-script`, дії Pages, `pnpm`, дії
+Docker) і релізи раннера. 1 538 документів, 8 362 фрагменти.
+
+- порт `8794`; запис у Claude Code — `github-actions-docs`, адреса `http://127.0.0.1:8794/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-github-actions`, модель векторів — `bge-small`;
+- версії: сторінки GitHub Docs — `docs` (поточний github.com), README дії — номер мажору, релізи — точна версія дії чи
+  раннера; без названого мажору відповідь — для найновішого README дії;
+- приклад питання агентові: `./df github-actions ask "How do I cache npm dependencies in a workflow?"`;
+- корпус в архіві від самого початку, як у express;
+- докладніше — у [instances/github-actions/README.md](instances/github-actions/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
