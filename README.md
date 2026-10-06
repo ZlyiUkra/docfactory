@@ -899,6 +899,24 @@ SGML, з 11 — XML), їх читає новий читач `pg-sgml`; файл,
 - корпус в архіві від самого початку, як у eslint;
 - докладніше — у [instances/postgresql/README.md](instances/postgresql/README.md).
 
+### socketio
+
+Socket.IO англійською: сайт socket.io для 4.x, 3.x і 2.x (документація, підручник, API й опції сервера й клієнта),
+посібники Get started і How-to, сторінки змін і блог; журнали змін і README пакетів монорепозиторію socketio/socket.io,
+специфікації протоколів Engine.IO і Socket.IO, README прикладів (кластери, NestJS, Next.js, Passport); адаптери Redis,
+Redis Streams, Postgres і MongoDB та Admin UI; README кожної стабільної версії `socket.io` і `socket.io-client`,
+нотатки релізів і реєстр npm. 553 документи, 3 753 фрагменти.
+
+- порт `8793`; запис у Claude Code — `socketio-docs`, адреса `http://127.0.0.1:8793/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-socketio`, модель векторів — `bge-small`;
+- версії: мітка — мажор (`4`, `3`, `2`), сторінки змін і журнали змін — `changelog`, блог — `blog`, протоколи —
+  `protocol`, README пакетів — версія самого пакета; без названої версії відповідь — для 4 (92% завантажень), а 3 і 2
+  згадуються лише тоді, коли їх назвав користувач;
+- приклад питання агентові: `./df socketio ask "How do I authenticate a socket with a JWT?"`;
+- корпус в архіві від самого початку, як у express;
+- докладніше — у [instances/socketio/README.md](instances/socketio/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
