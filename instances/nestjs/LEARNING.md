@@ -340,7 +340,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 | helmet, `@nestjs/throttler` | заголовки безпеки, обмеження частоти | Ф4 Д12 |
 | RxJS, мінімум | `map`, `tap`, `catchError` у перехоплювачах; потік для `@Sse` | Ф1 Д7, Ф7 Д6 |
 | `@nestjs/websockets`, `@nestjs/platform-socket.io` | gateway: вебсокети з DI, кімнатами й підтвердженнями | Ф7 Д2–7 |
-| socket.io-client | клієнт gateway у SPA, тестах і заміра навантаження (поза корпусом) | Ф7 Д2–3, Д7 |
+| socket.io-client | клієнт gateway у SPA, тестах і заміра навантаження | Ф7 Д2–3, Д7; є примірник `socketio` |
 | Kubernetes: `kubectl`, k3s | продакшн родини: бекенд, база й Redis подами в кластері з плану React | Ф6 Д8–9, Ф7 Д6; є примірник `kubernetes` |
 
 **Варто знати** — трапляється в більшості проєктів, вчиться за день, коли знадобилося.
@@ -348,7 +348,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 | Бібліотека | Навіщо | Де в плані |
 |------------|--------|------------|
 | BullMQ і Redis | черги задач із повторами; Redis — ще й остання ціна й адаптер вебсокетів | Ф6 Д6, Ф7 Д5–6 |
-| `@socket.io/redis-adapter` | розсилка socket.io між кількома екземплярами через Redis | Ф7 Д6 |
+| `@socket.io/redis-adapter` | розсилка socket.io між кількома екземплярами через Redis | Ф7 Д6; є примірник `socketio` |
 | `ws`, `@nestjs/platform-ws` | голий протокол WebSocket: сервер для навчання й клієнт до біржі; `WsAdapter` | Ф7 Д1, Д2, Д5 |
 | `@nestjs/event-emitter` | події всередині застосунку | Ф6 Д6 |
 | `@nestjs/schedule` | задачі за розкладом | Ф6 Д6, згадкою |
@@ -368,12 +368,12 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 | GraphQL (`@nestjs/graphql`) | клієнтів багато, і кожен хоче свою форму даних | не вчиться |
 | мікросервіси: Kafka, RabbitMQ, NATS | кілька сервісів обмінюються повідомленнями | не вчиться |
 | CQRS | складний домен, читання й запис розділені | не вчиться |
-| `@socket.io/redis-streams-adapter` | адаптер, що переживає короткий обрив Redis без втрати повідомлень (поза корпусом) | Ф7 Д6, згадкою |
+| `@socket.io/redis-streams-adapter` | адаптер, що переживає короткий обрив Redis без втрати повідомлень; є примірник `socketio` | Ф7 Д6, згадкою |
 | NestJS Observe | траси й помилки продакшну; глава `Distributed tracing` (12) | не вчиться |
 | Supabase, Clerk | база чи вхід як послуга; є примірники `supabase`, `clerk` | не вчиться |
 
-Про `nestjs-pino`, orval, autocannon і socket.io-client: у корпусі Nest їх немає (або вони лише згадані), це порада
-з практики, а не висновок із документації. Kubernetes має власний примірник `kubernetes`.
+Про `nestjs-pino`, orval і autocannon: у корпусі Nest їх немає (або вони лише згадані), це порада з практики, а не
+висновок із документації. Kubernetes має власний примірник `kubernetes`.
 
 ### Документація у фабриці
 
@@ -393,6 +393,8 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   `path-to-regexp`, helmet і express-rate-limit — README кожної версії й журнали змін — `express`;
 - PostgreSQL 9.0–19: посібник, довідник SQL-команд і програм (`psql`, `pg_dump`, `pg_restore`), нотатки релізів —
   `postgresql`;
+- Socket.IO 2.x–4.x — сервер, клієнт, адаптери Redis, Redis Streams, Postgres і MongoDB, Admin UI, протоколи й
+  приклади (зокрема з NestJS) — `socketio`;
 - Supabase — `supabase`; Clerk — `clerk`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
@@ -400,9 +402,9 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 бібліотеки:
 
 - з «треба знати»: TypeORM, Prisma, Passport, bcrypt, argon2, class-validator, class-transformer,
-  supertest, RxJS, socket.io і socket.io-client;
-- з «варто знати»: BullMQ, Redis, `@socket.io/redis-adapter`, `ws`, nestjs-cls, nestjs-pino, csrf-csrf, CASL, orval, openapi-typescript;
-- з «знати, що існує»: Mongoose, MikroORM, Drizzle, Kafka, RabbitMQ, NATS, `@socket.io/redis-streams-adapter`;
+  supertest, RxJS;
+- з «варто знати»: BullMQ, Redis, `ws`, nestjs-cls, nestjs-pino, csrf-csrf, CASL, orval, openapi-typescript;
+- з «знати, що існує»: Mongoose, MikroORM, Drizzle, Kafka, RabbitMQ, NATS;
 - поза таблицями: nginx, GitHub Actions; у факультативі — viem і Foundry.
 
 ---
@@ -2148,7 +2150,7 @@ SPA під одним іменем, викочується й відкочуєт
 
 # Фаза 7. Живі дані: WebSockets — 8 днів
 
-**Сервери MCP фази:** `nestjs-docs`, `webstandards-docs`, `mdn-docs`, `vite-docs`, `kubernetes-docs`.
+**Сервери MCP фази:** `nestjs-docs`, `webstandards-docs`, `mdn-docs`, `vite-docs`, `kubernetes-docs`, `socketio-docs`.
 
 Досі сервер лише відповідав: клієнт спитав — сервер відповів. Живі ціни так не працюють: сервер сам штовхає дані,
 щойно вони з'явилися, через з'єднання, яке живе годинами. У плані React (фаза 3, дні 6–8) SPA слухала ринковий стрім
@@ -2157,8 +2159,8 @@ SPA під одним іменем, викочується й відкочуєт
 не з біржі, і останній день фази робить із цього демо, яке можна надіслати клієнтові.
 Корпус Nest тут — розділ WebSockets: глави `Gateways` і `Adapters`, а також `Guards`, `Pipes` і `Exception filters`
 цього розділу (у розділі Overview є глави з тими самими назвами); глава `Server-Sent Events` — у розділі Techniques.
-Сам протокол (RFC 6455) — у примірнику `webstandards`, WebSocket API — у `mdn`; socket.io і біржа — поза
-корпусом. Джерело цін — ринкові ендпойнти Binance лише для даних, без ключа:
+Сам протокол (RFC 6455) — у примірнику `webstandards`, WebSocket API — у `mdn`, socket.io — у `socketio`; біржа —
+поза корпусом. Джерело цін — ринкові ендпойнти Binance лише для даних, без ключа:
 `wss://data-stream.binance.vision` для потоку і `https://data-api.binance.vision` для REST; запасне — Kraken WS v2
 (`wss://ws.kraken.com/v2`). Ліміти нижче — з документації Binance на 02.10.2026. Чи відкриваються ці адреси з вашої
 країни й від вашого провайдера, перевірте першого ж дня: доступність бірж залежить від країни, і перевіряти це
@@ -2219,8 +2221,9 @@ SPA під одним іменем, викочується й відкочуєт
   проксі Vite (з `ws: true`), nginx і маршрут кластера з фази 6, дня 9 пропускають його тим самим правилом `/api`.
 - **Читати:** розділ WebSockets — глава `Gateways` (розділи Installation, Overview, Lifecycle hooks, Server and
   Namespace, Request-scoped gateways) і глава `Adapters` (розділ Ws library); у примірнику `vite` — `Server Options`,
-  розділ `server.proxy` (приклад із `ws: true`); поза корпусом — документація socket.io: «Client API».
-- **Сервери MCP:** `nestjs-docs`, `vite-docs`.
+  розділ `server.proxy` (приклад із `ws: true`); у примірнику `socketio` (з `version: "4"`) — `Client API`,
+  `Server options` (розділ `path`).
+- **Сервери MCP:** `nestjs-docs`, `vite-docs`, `socketio-docs`.
 - **Зробити:** 1) `npm i @nestjs/websockets @nestjs/platform-socket.io`; 2) `PricesGateway` з
   `path: '/api/socket.io'` і `@SubscribeMessage('ping')`, що повертає `{ t: Date.now() }`; 3) `handleConnection` і
   `handleDisconnect` пишуть у лог `socket.id` і кількість з'єднань; 4) скрипт на socket.io-client шле `ping` з
@@ -2261,11 +2264,11 @@ SPA під одним іменем, викочується й відкочуєт
   `Traefik: Traefik InFlightReq Documentation`). Стеля діє й на самі рукостискання: тисяча спроб
   під'єднатися без токена теж коштує процесора.
 - **Читати:** розділ WebSockets — глави `Guards`, `Pipes`, `Exception filters`; `Gateways`, розділ Lifecycle hooks;
-  розділ Security, глава `Rate limiting`, розділ Websockets; документація socket.io — «Middlewares», «Handling CORS»,
-  «Server options» (`allowRequest`, `maxHttpBufferSize`); OWASP — «WebSocket Security Cheat Sheet» (поза корпусом); у
-  примірнику `webstandards` — `RFC 6455 The WebSocket Protocol: 10 Security Considerations` (розділ 10.2 Origin
-  Considerations).
-- **Сервери MCP:** `nestjs-docs`, `webstandards-docs`, `kubernetes-docs`.
+  розділ Security, глава `Rate limiting`, розділ Websockets; у примірнику `socketio` — `Middlewares`, `Handling CORS`,
+  `Server options` (розділи `allowRequest`, `maxHttpBufferSize`), `How-to: How to use with JSON Web Tokens`; OWASP —
+  «WebSocket Security Cheat Sheet» (поза корпусом); у примірнику `webstandards` — `RFC 6455 The WebSocket Protocol: 10
+  Security Considerations` (розділ 10.2 Origin Considerations).
+- **Сервери MCP:** `nestjs-docs`, `webstandards-docs`, `kubernetes-docs`, `socketio-docs`.
 - **Зробити:** 1) middleware сокета з перевіркою токена, користувач — у `socket.data.user`; 2) розрив за `exp`;
   3) у SPA — `auth` функцією і повторне підключення після оновлення токена; 4) `allowRequest` зі списком походжень
   із конфігу (схема оточення з фази 2, дня 3); 5) схема zod для повідомлення `subscribe` (`symbol` — великі латинські
@@ -2299,9 +2302,9 @@ SPA під одним іменем, викочується й відкочуєт
   сокетів: `server.in('user:<id>').disconnectSockets()` закриває всі його з'єднання, інакше вкладка після виходу
   далі отримує персональні події.
 - **Читати:** розділ WebSockets, глава `Gateways` — розділи Overview (підтвердження, `@Ack()`) і Multiple responses;
-  розділ Security, глава `Authorization`; документація socket.io — «Rooms», «Emitting events» (підтвердження,
-  `volatile`) (поза корпусом).
-- **Сервери MCP:** `nestjs-docs`.
+  розділ Security, глава `Authorization`; у примірнику `socketio` — `Rooms`, `Emitting events` (розділи
+  Acknowledgements, With timeout, Volatile events).
+- **Сервери MCP:** `nestjs-docs`, `socketio-docs`.
 - **Зробити:** 1) міграція й REST списку з перевіркою власника плюс e2e-тест на чужий запис (як у фазі 5, дні 4);
   2) на з'єднання — кімнати з бази й `user:<id>`; 3) `subscribe` і `unsubscribe` з підтвердженням, лише для пар зі
   списку дозволених у конфігу; 4) поки біржі немає — генератор фейкових цін за таймером із склеюванням і
@@ -2383,10 +2386,11 @@ SPA під одним іменем, викочується й відкочуєт
   сама поверхня атаки: `symbol` з рядка запиту перевіряє схема zod і список дозволених пар, з'єднань SSE теж має бути
   не більше стелі, а запит SSE **ніколи** не змінює підписку на біржі — він лише читає ціни, які сервер і так отримує.
 - **Читати:** розділ WebSockets, глава `Adapters`, розділ Extend socket.io (з попередженням про кілька екземплярів);
-  розділ Techniques, глава `Server-Sent Events`; `Deployment`, розділ Scaling up or out; документація socket.io —
-  «Using multiple nodes», «Redis adapter» (поза корпусом); у примірнику `kubernetes` — `Traefik: Traefik EntryPoints
-  Documentation`, розділ respondingTimeouts; у примірнику `webstandards` — `HTML Standard: 9.2 Server-sent events`.
-- **Сервери MCP:** `nestjs-docs`, `kubernetes-docs`, `webstandards-docs`.
+  розділ Techniques, глава `Server-Sent Events`; `Deployment`, розділ Scaling up or out; у примірнику `socketio` —
+  `Using multiple nodes`, `Redis adapter`, `Redis Streams adapter`, `Behind a reverse proxy`; у примірнику
+  `kubernetes` — `Traefik: Traefik EntryPoints Documentation`, розділ respondingTimeouts; у примірнику `webstandards` —
+  `HTML Standard: 9.2 Server-sent events`.
+- **Сервери MCP:** `nestjs-docs`, `kubernetes-docs`, `webstandards-docs`, `socketio-docs`.
 - **Зробити:** 1) `RedisIoAdapter` з адресою Redis із `ConfigService`, а не `localhost`, як у прикладі глави;
   2) у клієнтах — `transports: ['websocket']`; 3) ціни з біржі — через `server.local`, персональні події — через
   адаптер; на з'єднання сервер шле `hello` з `os.hostname()`, щоб було видно, на якому екземплярі сокет;
@@ -2442,9 +2446,8 @@ SPA під одним іменем, викочується й відкочуєт
   продакшн-секретом на ноутбуці. Журнал вимірів отримує для цієї фази колонки: з'єднань, пам'ять у МБ, p50 і p99
   доставки в мілісекундах, процесор клієнта. Готові інструменти навантаження теж уміють socket.io (Artillery, поза
   корпусом), але свій скрипт на сорок рядків показує більше.
-- **Читати:** розділ Fundamentals, глава `Testing`, розділ End-to-end testing; документація socket.io — «Testing»
-  (поза корпусом).
-- **Сервери MCP:** `nestjs-docs`.
+- **Читати:** розділ Fundamentals, глава `Testing`, розділ End-to-end testing; у примірнику `socketio` — `Testing`.
+- **Сервери MCP:** `nestjs-docs`, `socketio-docs`.
 - **Зробити:** 1) e2e-файл із п'ятьма сценаріями: без токена — `connect_error`; чужий `Origin` — відмова;
   `subscribe` — підтвердження з останньою ціною; два клієнти в різних кімнатах отримують лише свої пари; протухлий
   токен — розрив; 2) фейкове джерело цін; 3) скрипт навантаження з N з аргументу, темпом підключення 50 за секунду

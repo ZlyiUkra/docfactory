@@ -334,7 +334,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 | Redis (Upstash) | обмеження частоти запитів, спільний кеш | 37 | Ф7 Д6, Ф3 Д9 |
 | Sentry | збір помилок із картами коду | 1 | Ф7 Д9 |
 | OpenTelemetry | траси запитів: хто скільки чекав | 3 | Ф7 Д9 |
-| socket.io-client | з'єднання клієнтського компонента з gateway NestJS | — | Ф8 Д6–7 |
+| socket.io-client | з'єднання клієнтського компонента з gateway NestJS | — | Ф8 Д6–7; є примірник `socketio` |
 | SOPS і age | секрети кластера в git лише зашифрованими | — | Ф9 Д6; є примірник `kubernetes` |
 
 **Знати, що існує** — беруть під конкретну задачу; план їх не вчить.
@@ -368,17 +368,17 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - Testing Library (React Testing Library, user-event, jest-dom) — `testing-library`; MSW — `msw`; Playwright —
   `playwright`;
 - React Hook Form — `react-hook-form`; Zustand — `zustand`; Clerk — `clerk`; Supabase Auth — `supabase`;
-- PostgreSQL 9.0–19 — `postgresql`;
+- PostgreSQL 9.0–19 — `postgresql`; Socket.IO, сервер і клієнт — `socketio`;
 - Docker — `docker`; Kubernetes, k3s, Traefik, Kustomize, SOPS, age і Helm — `kubernetes`; sshd — `linux`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
 - з «треба знати»: shadcn/ui і Radix UI, Drizzle, Prisma, Auth.js, Better Auth, SWR, Biome;
 - з «варто знати»: iron-session, jose, Motion, next-themes, nuqs, next-intl, Redis (Upstash), Sentry,
-  OpenTelemetry, socket.io-client;
+  OpenTelemetry;
 - з «знати, що існує»: Stripe, Resend і React Email, Vercel AI SDK, UploadThing, Sanity, Payload, Contentful,
   tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Grafana, Loki, Storybook;
-- поза таблицями: nginx, GitHub Actions, socket.io; у факультативі — viem, wagmi і Foundry.
+- поза таблицями: nginx, GitHub Actions; у факультативі — viem, wagmi і Foundry.
 
 ---
 
@@ -1725,7 +1725,7 @@ GitHub Actions — поза фабрикою. Дні 1–11 — на своєм�
 
 # Фаза 8. Next.js поруч з окремим бекендом — 7 днів
 
-**Сервери MCP фази:** `nextjs-docs`, `webstandards-docs`, `mdn-docs`.
+**Сервери MCP фази:** `nextjs-docs`, `webstandards-docs`, `mdn-docs`, `socketio-docs`.
 
 Продовження плану NestJS ([../nestjs/LEARNING.md](../nestjs/LEARNING.md)): там SPA з плану React уже отримала
 бекенд — контракт і помилки полів (фаза 2, дні 7–8), токени (фаза 4, дні 6–9), compose (фаза 6, день 2), живі
@@ -1815,10 +1815,11 @@ GitHub Actions — поза фабрикою. Дні 1–11 — на своєм�
   й журнали NestJS бачили справжнього користувача, Next.js передає його IP у `X-Forwarded-For`, а NestJS довіряє
   цьому заголовку лише від мережі подів (`trust proxy` — точна кількість хопів, план NestJS, фаза 6, день 9).
 - **Читати:** `Route Handlers`, `Server and Client Components`, `How to use Next.js as a backend for your frontend`;
-  поза корпусом — документація socket.io: «Client options» (розділи auth і transports), «Middlewares»; обговорення RFC
-  про NextResponse.upgrade() у GitHub Discussions репозиторію vercel/next.js — лише щоб знати, що воно є; у примірнику
-  `webstandards` — `RFC 6455 The WebSocket Protocol: 10 Security Considerations` (розділ 10.2 Origin Considerations).
-- **Сервери MCP:** `nextjs-docs`, `webstandards-docs`.
+  у примірнику `socketio` (з `version: "4"`) — `Client options` (розділи auth і transports), `Middlewares`, `How-to:
+  How to use with Next.js`; поза корпусом — обговорення RFC про NextResponse.upgrade() у GitHub Discussions
+  репозиторію vercel/next.js — лише щоб знати, що воно є; у примірнику `webstandards` — `RFC 6455 The WebSocket
+  Protocol: 10 Security Considerations` (розділ 10.2 Origin Considerations).
+- **Сервери MCP:** `nextjs-docs`, `webstandards-docs`, `socketio-docs`.
 - **Зробити:** 1) у NestJS — ендпойнт `POST /api/ws/ticket` за звичайним guard'ом входу: квиток `randomUUID()` →
   Redis з терміном 30 с → відповідь; у middleware gateway — прийняти або access-токен (SPA), або квиток; походження
   Next.js — у `ALLOWED`; 2) у Next.js — `app/ws-ticket/route.ts`: `getSession()`, без сесії — 401, інакше виклик

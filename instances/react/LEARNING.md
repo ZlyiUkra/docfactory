@@ -376,13 +376,13 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 - Tailwind CSS — `tailwind`; Zustand — `zustand`; Redux Toolkit і RTK Query — `redux`;
 - ESLint, README і CHANGELOG `eslint-plugin-react-hooks`, `eslint-plugin-react`, `eslint-plugin-jsx-a11y`,
   typescript-eslint — `eslint`;
-- Docker — `docker`; Kubernetes, k3d, k3s, `kubectl`, Traefik, cert-manager і Let's Encrypt — `kubernetes`.
+- Docker — `docker`; Kubernetes, k3d, k3s, `kubectl`, Traefik, cert-manager і Let's Encrypt — `kubernetes`;
+- socket.io-client (живі ціни з власного сервера, план NestJS, фаза 7) — `socketio`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
 - з «варто знати»: react-window, TanStack Virtual, Sentry, shadcn/ui і Radix UI;
-- з «знати, що існує»: SWR, TanStack Router, Storybook, React Native і Expo, Motion, i18next, partysocket,
-  socket.io-client;
+- з «знати, що існує»: SWR, TanStack Router, Storybook, React Native і Expo, Motion, i18next, partysocket;
 - поза таблицями: web-vitals, GitHub Actions, хостинги, API Binance і Kraken, Oracle Cloud; у факультативі —
   lightweight-charts, wagmi, viem і Foundry.
 
