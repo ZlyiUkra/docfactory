@@ -32,7 +32,13 @@
                    опцій та полів таблиць; `component_labels` — об'єкт «тег → підпис»:
                    рядок-тег вкладки (`<Code.Next>`) стає підписом («Next.js:»);
                    `admonitions: true` — виноски Docusaurus (`:::tip Назва` … `:::`) стають
-                   підписом «Tip: Назва» замість рядків із двокрапками.
+                   підписом «Tip: Назва» замість рядків із двокрапками;
+                   `nginx_xml: true` — файли `.xml` (документація nginx.org у власному словнику
+                   XML) перед розбором стають markdown (див. `_nginxxml`): директиви з рядками
+                   «Syntax / Default / Context», приклади — блоками коду;
+                   `hugo` — об'єкт `{"includes": тека, "shortcodes": тека}`: вставки Hugo сайту
+                   (docs.nginx.com) розгортаються — `include` спільних шматків, `ghcode`
+                   прикладів, номери версій із файлів шаблонів, підписи виносок і вкладок.
 
 Навіщо `name_prefix`. Ключ розділу будується з імені документа, а ім'я — зі шляху файла.
 Журнали змін кількох репозиторіїв в одному примірнику (HISTORY.md body-parser, cors,
@@ -76,7 +82,7 @@ import re
 from html import unescape
 from urllib.parse import quote, urlsplit
 
-from engine.readers import Item, _markup, register
+from engine.readers import Item, _markup, _nginxxml, register
 
 _TREES = re.compile(r"^/repos/([^/]+)/([^/]+)/git/trees/$")
 _LOCALE = re.compile(r"\.[a-z]{2}-[A-Z]{2}\.md$")
@@ -396,6 +402,66 @@ def _admonitions(text: str) -> str:
     return "\n".join(out)
 
 
+_HUGO_INCLUDE = re.compile(r'\{\{<\s*include\s+"([^"]+)"\s*>\}\}')
+_HUGO_GHCODE = re.compile(r'\{\{<\s*ghcode\s+"([^"]+)"[^}]*>\}\}')
+_HUGO_CALLOUT = re.compile(r'\{\{<\s*call-out\b([^}]*)>\}\}')
+_HUGO_LABEL = re.compile(r'\{\{[<%]\s*(?:tab\s+name|details\s+summary)="([^"]*)"[^}]*[>%]\}\}')
+_HUGO_BARE = re.compile(r"\{\{<\s*([a-z][\w-]*)\s*/?>\}\}")
+_HUGO_ANY = re.compile(r"\{\{[<%].*?[>%]\}\}")
+
+
+def _hugo(text: str, ctx, base: str, conf: dict, depth: int = 0) -> str:
+    """Вставки Hugo сайту docs.nginx.com → текст.
+
+    `{{< include "nic/…md" >}}` — шматок спільної теки (`conf["includes"]`), що стоїть на
+    місці вставки: без нього кроки встановлення й цілі абзаци застережень зникали б.
+    `{{< ghcode "https://raw…" >}}` — приклад коду з іншого репозиторію, якщо адреса є в
+    білому списку. Виноски `call-out` — підпис «Note:», вкладки й розгортки — підпис зі своєю
+    назвою. Порожня вставка на кшталт `{{< nic-version >}}` — номер поточного випуску: файл
+    шаблону (`conf["shortcodes"]`) у цьому сайті — сам номер, і він стає на її місце. Решта
+    вставок (`ref`, `nb`, `table`, `icon`, `img`) знімаються, а текст між ними лишається.
+    Вставка, якої не вдалося прочитати, просто випадає: ціле завантаження через неї не
+    обривається."""
+    def fetch(url: str) -> str:
+        if not ctx.allowed(url):
+            return ""
+        code, data = ctx.fetch(url)
+        return data.decode("utf-8", errors="replace") if code == "200" else ""
+
+    def include(m):
+        path = m.group(1) if m.group(1).endswith(".md") else m.group(1) + ".md"
+        piece = fetch(f"{base}{conf.get('includes', 'content/includes')}/{path}")
+        if not piece or depth >= 3:
+            return ""
+        return "\n" + _hugo(_markup.front_matter(piece)[1], ctx, base, conf, depth + 1) + "\n"
+
+    def ghcode(m):
+        code = fetch(m.group(1))
+        return f"\n```\n{code.strip()}\n```\n" if code else ""
+
+    def callout(m):
+        args = re.findall(r'"([^"]*)"', m.group(1))
+        kind = (re.search(r'class="([^"]*)"', m.group(1)) or [None, args[0] if args else "note"])[1]
+        title = re.search(r'title="([^"]*)"', m.group(1))
+        label = kind.split()[0].capitalize() if kind else "Note"
+        rest = title.group(1) if title else (args[1] if len(args) > 1 and "class=" not in m.group(1) else "")
+        return f"\n\n{label}: {rest}".rstrip() + "\n\n"
+
+    def bare(m):
+        if m.group(1) not in cache:
+            value = fetch(f"{base}{conf.get('shortcodes', 'layouts/shortcodes')}/{m.group(1)}.html").strip()
+            cache[m.group(1)] = value if value and len(value) <= 40 and "{{" not in value and "<" not in value else ""
+        return cache[m.group(1)]
+
+    cache: dict = conf.setdefault("_cache", {})
+    text = _HUGO_INCLUDE.sub(include, text)
+    text = _HUGO_GHCODE.sub(ghcode, text)
+    text = _HUGO_CALLOUT.sub(callout, text)
+    text = _HUGO_LABEL.sub(lambda m: f"\n\n{m.group(1)}:\n\n", text)
+    text = _HUGO_BARE.sub(bare, text)
+    return _HUGO_ANY.sub("", text)
+
+
 def _split_title(text: str) -> tuple[str, str]:
     """(назва з заголовка першого непорожнього рядка, текст без нього). Заголовок
     далі в тексті — підрозділ, а не назва."""
@@ -430,6 +496,8 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
     lead = f"{_markup.slug(source['name_prefix'])}-" if source.get("name_prefix") else ""
     sites = [(re.compile(k), v) for k, v in (source.get("site") or {}).items()]
     labels = dict(source.get("component_labels") or {})
+    nginx_xml = source.get("nginx_xml") is True
+    hugo = dict(source["hugo"]) if isinstance(source.get("hugo"), dict) else None
 
     # ім'я документа → [шлях, [теги]]; порядок ключів — порядок першої появи, тобто
     # від найновішого тегу, бо `tags` оголошено від найновішого. Ключ — ім'я, а не
@@ -479,10 +547,17 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
         # Кілька тегів з однією міткою (усі experimental-збірки) — одна версія.
         version = ", ".join(dict.fromkeys(tags[t] for t in found))
 
-        def make(raw=raw, blob=blob, path=path, version=version):
+        def make(raw=raw, blob=blob, path=path, version=version, tag=tag):
             text = ctx.text(raw)
+            if nginx_xml and path.endswith(".xml"):
+                # XML nginx.org буває, що починається з `<!DOCTYPE module`, — це не сторінка
+                # помилки, тож перевірку на HTML робить уже перетворений текст.
+                text = _nginxxml.to_markdown(text)
             _markup.refuse_html(text, raw)
             meta, rest = _markup.front_matter(text)
+            if hugo:
+                rest = _hugo(rest, ctx, f"https://raw.githubusercontent.com/{owner}/{repo}/"
+                                        f"{quote(tag, safe='@')}/", hugo)
             # Обидва — до викидання `export`: таблиці беруть дані саме з них.
             if source.get("jsx_props") is True:
                 rest = _jsx_props(rest)
