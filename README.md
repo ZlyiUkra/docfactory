@@ -808,7 +808,7 @@ Playwright англійською: тека `docs/` репозиторію micro
 0.10 до 1.63 (гайди, Playwright Test, довідник API по класах із версією появи кожного члена, нотатки релізів JS), сайт
 playwright.dev для Node.js (поточний реліз, лише JS/TS), Playwright MCP і Playwright CLI для агентів, а для
 `playwright`, `@playwright/mcp` і `@playwright/cli` — README кожної стабільної версії, нотатки релізів і реєстр npm
-(плюс реєстр `@playwright/test`). 3 371 документ, 25 205 фрагментів.
+(плюс реєстр `@playwright/test`). 3 371 документ, 22 392 фрагменти.
 
 - порт `8788`; запис у Claude Code — `playwright-docs`, адреса `http://127.0.0.1:8788/mcp`; інструменти
   `search_docs` і `read_section`;
