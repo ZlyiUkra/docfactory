@@ -25,7 +25,14 @@
                    `yaml_history: true` — блоки `<!-- YAML … -->` (так документація API
                    Node.js записує, з якої версії функція є, коли застаріла і що в ній
                    мінялося) стають видимим текстом «Added in / History»; інакше разом з
-                   іншими коментарями HTML вони зникали б, і примірник не знав би версій.
+                   іншими коментарями HTML вони зникали б, і примірник не знав би версій;
+                   `jsx_props: true` — компоненти, чий зміст лежить у властивостях
+                   (`<APIMethod path method>`, `<TypeTable type>`, `<DatabaseTable fields>`
+                   документації Better Auth), стають текстом: рядком ендпоінта і списками
+                   опцій та полів таблиць; `component_labels` — об'єкт «тег → підпис»:
+                   рядок-тег вкладки (`<Code.Next>`) стає підписом («Next.js:»);
+                   `admonitions: true` — виноски Docusaurus (`:::tip Назва` … `:::`) стають
+                   підписом «Tip: Назва» замість рядків із двокрапками.
 
 Навіщо `name_prefix`. Ключ розділу будується з імені документа, а ім'я — зі шляху файла.
 Журнали змін кількох репозиторіїв в одному примірнику (HISTORY.md body-parser, cors,
@@ -82,7 +89,9 @@ _NOT_TITLE = re.compile(r"^\s*([-*+>|#]|\d+[.)]\s|```|~~~)")
 _IMAGE = re.compile(r"!\[[^\]]*\]\([^)]*\)")
 _ATTRS = re.compile(r"\{:[^}]*\}")
 _YAML_BLOCK = re.compile(r"<!--\s*YAML\s*\n(.*?)-->", re.S)
-_IMAGE_LINE = re.compile(r"^[ \t]*!\[[^\]]*\]\([^)]*\)[ \t]*(\{:[^}]*\})?[ \t]*$", re.M)
+# Рядок із самою картинкою: markdown (`![logo](…){: …}`) або тег HTML (`<img align="right" …/>` —
+# так іконка адаптера стоїть над заголовком кожної сторінки authjs.dev).
+_IMAGE_LINE = re.compile(r"^[ \t]*(?:!\[[^\]]*\]\([^)]*\)[ \t]*(\{:[^}]*\})?|<img\b[^<>]*>)[ \t]*$", re.M)
 
 
 def _versions(value) -> str:
@@ -136,6 +145,257 @@ def _atx(text: str) -> str:
     return "\n".join(out)
 
 
+_JS_NAME = re.compile(r"[A-Za-z_$][\w$]*")
+_JS_NUMBER = re.compile(r"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?")
+_JS_EXPORT = re.compile(r"^export\s+const\s+([A-Za-z_$][\w$]*)\s*=\s*", re.M)
+_PROP_TABLE = re.compile(r"<(TypeTable|DatabaseTable)\b")
+_API_METHOD = re.compile(r"^[ \t]*<APIMethod\b((?:[^<>\"{}]|\"[^\"]*\"|\{[^{}]*\})*)>[ \t]*$", re.M)
+_JSX_ATTR = re.compile(r"(\w+)(?:\s*=\s*(?:\"([^\"]*)\"|\{([^{}]*)\}))?")
+_JSX_SPACE = re.compile(r"\{\s*([\"'])\s*\1\s*\}")
+_SHIKI_MARK = re.compile(r"[ \t]*(?://|#)?[ \t]*\[!code [^\]]*\]")
+_ADMONITION = re.compile(r"^:::(\w+)(?:\[([^\]]*)\]|[ \t]+(.+?))?[ \t]*$")
+_ADMONITION_END = re.compile(r"^:::[ \t]*$")
+_DB_FLAGS = (("isPrimaryKey", "primary key"), ("isForeignKey", "foreign key"),
+             ("isUnique", "unique"), ("isOptional", "optional"), ("isRequired", "required"))
+
+
+class _NotLiteral(ValueError):
+    """Значення JS — не дані (функція, JSX, виклик): таблицю не відтворити."""
+
+
+def _js_skip(s: str, i: int) -> int:
+    while i < len(s):
+        if s[i].isspace():
+            i += 1
+        elif s.startswith("//", i):
+            j = s.find("\n", i)
+            i = len(s) if j < 0 else j
+        elif s.startswith("/*", i):
+            j = s.find("*/", i)
+            i = len(s) if j < 0 else j + 2
+        else:
+            break
+    return i
+
+
+def _js_string(s: str, i: int) -> tuple[str, int]:
+    quote_, out, i = s[i], [], i + 1
+    while i < len(s) and s[i] != quote_:
+        if s[i] == "\\" and i + 1 < len(s):
+            i += 1
+            out.append({"n": "\n", "t": "\t"}.get(s[i], s[i]))
+        else:
+            out.append(s[i])
+        i += 1
+    if i >= len(s):
+        raise _NotLiteral
+    return "".join(out), i + 1
+
+
+def _js_value(s: str, i: int):
+    """(значення, позиція після нього) для літерала JS: об'єкт, масив, рядок, число, ім'я.
+    Скаляри лишаються рядками так, як записані («false», «128»): у таблицю вони й ідуть
+    текстом."""
+    i = _js_skip(s, i)
+    if i >= len(s):
+        raise _NotLiteral
+    c = s[i]
+    if c == "{":
+        out: dict = {}
+        i = _js_skip(s, i + 1)
+        while s[i:i + 1] != "}":
+            if s[i:i + 1] in ("'", '"'):
+                key, i = _js_string(s, i)
+            else:
+                m = _JS_NAME.match(s, i)
+                if not m:
+                    raise _NotLiteral
+                key, i = m.group(0), m.end()
+            i = _js_skip(s, i)
+            if s[i:i + 1] == ":":
+                out[key], i = _js_value(s, i + 1)
+            else:
+                out[key] = key
+            i = _js_skip(s, i)
+            if s[i:i + 1] == ",":
+                i = _js_skip(s, i + 1)
+            elif s[i:i + 1] != "}":
+                raise _NotLiteral
+        return out, i + 1
+    if c == "[":
+        items: list = []
+        i = _js_skip(s, i + 1)
+        while s[i:i + 1] != "]":
+            value, i = _js_value(s, i)
+            items.append(value)
+            i = _js_skip(s, i)
+            if s[i:i + 1] == ",":
+                i = _js_skip(s, i + 1)
+            elif s[i:i + 1] != "]":
+                raise _NotLiteral
+        return items, i + 1
+    if c in "\"'`":
+        text, i = _js_string(s, i)
+        j = _js_skip(s, i)
+        # «"довгий опис " + "продовження"» — так у джерелі розривають довгі рядки.
+        while s[j:j + 1] == "+":
+            more, i = _js_value(s, j + 1)
+            if not isinstance(more, str):
+                raise _NotLiteral
+            text += more
+            j = _js_skip(s, i)
+        return text, i
+    m = _JS_NUMBER.match(s, i) or _JS_NAME.match(s, i)
+    if not m:
+        raise _NotLiteral
+    after = _js_skip(s, m.end())
+    if s[after:after + 1] in ("(", ".") or s.startswith("=>", after):
+        raise _NotLiteral
+    return m.group(0), m.end()
+
+
+def _type_rows(table: dict, depth: int = 0) -> list[str]:
+    rows = []
+    for key, spec in table.items():
+        if not isinstance(spec, dict):
+            continue
+        bits = [str(spec["type"])] if isinstance(spec.get("type"), str) and spec["type"] else []
+        if spec.get("required") == "true":
+            bits.append("required")
+        if isinstance(spec.get("default"), str) and spec["default"] not in ("", "undefined"):
+            bits.append(f"default: {spec['default']}")
+        if spec.get("deprecated") == "true":
+            bits.append("deprecated")
+        desc = " ".join(str(spec.get("description") or "").split())
+        head = f"{'  ' * depth}- `{key}`" + (f" ({', '.join(bits)})" if bits else "")
+        rows.append(head + (f" — {desc}" if desc else ""))
+        if isinstance(spec.get("properties"), dict):
+            rows += _type_rows(spec["properties"], depth + 1)
+    return rows
+
+
+def _db_rows(fields: list) -> list[str]:
+    rows = []
+    for f in fields:
+        if not isinstance(f, dict) or not f.get("name"):
+            continue
+        bits = [str(f["type"])] if isinstance(f.get("type"), str) and f["type"] else []
+        bits += [label for key, label in _DB_FLAGS if f.get(key) == "true"]
+        ref = f.get("references")
+        if isinstance(ref, dict) and ref.get("model"):
+            bits.append(f"references `{ref['model']}.{ref.get('field', 'id')}`")
+        if isinstance(f.get("defaultValue"), str):
+            bits.append(f"default: {f['defaultValue']}")
+        desc = " ".join(str(f.get("description") or "").split())
+        rows.append(f"- `{f['name']}`" + (f" ({', '.join(bits)})" if bits else "")
+                    + (f" — {desc}" if desc else ""))
+    return rows
+
+
+def _jsx_props(text: str) -> str:
+    """Компоненти, чий зміст лежить у властивостях, а не між тегами, → текст.
+
+    Так пише Better Auth: метод і шлях ендпоінта — атрибути `<APIMethod path="/sign-in/email"
+    method="POST">`, опції — об'єкт `export const …Type = {…}` для `<TypeTable type={…} />`, поля
+    таблиць бази — масив для `<DatabaseTable fields={…} />`. Розмітка `_markup` бере лише текст між
+    тегами, а рядки `export` MDX викидаються як код сторінки, тож без цього в корпус не дійшли б
+    ні адреси ендпоінтів, ні жодна опція, ні жодна схема таблиці. Значення, що не є даними
+    (функція, JSX), таблицю не відтворює — тоді вона випадає, як і без цього поля.
+    Заодно: `{" "}` — пробіл JSX, а `[!code highlight]` (після `//`, `#` або коментаря) — позначка
+    підсвічування рядка коду."""
+    # Розібраний експорт вирізається цілком: `mdx_statements_out` знімає лише його перший
+    # рядок, і решта масиву лишалася б у тексті сирим кодом.
+    names: dict = {}
+    kept, i = [], 0
+    for m in _JS_EXPORT.finditer(text):
+        if m.start() < i:
+            continue
+        try:
+            names[m.group(1)], end = _js_value(text, m.end())
+        except _NotLiteral:
+            continue
+        end = _js_skip(text, end)
+        kept.append(text[i:m.start()])
+        i = end + 1 if text[end:end + 1] == ";" else end
+    text = "".join(kept) + text[i:]
+
+    def api(m):
+        attrs = {k: (a if a is not None else b if b is not None else "true")
+                 for k, a, b in _JSX_ATTR.findall(m.group(1))}
+        if not attrs.get("path"):
+            return m.group(0)
+        line = f"Endpoint: `{attrs.get('method', 'GET').upper()} {attrs['path']}`"
+        flags = [label for key, label in (("requireSession", "requires a session"),
+                                          ("requireHeaders", "requires request headers"),
+                                          ("isServerOnly", "server only"),
+                                          ("isClientOnly", "client only")) if key in attrs]
+        notes = [" ".join(attrs[k].split()) for k in ("note", "serverOnlyNote", "clientOnlyNote")
+                 if attrs.get(k) and attrs[k] != "true"]
+        return "\n".join([line + (f" ({', '.join(flags)})" if flags else "") + ".", ""]
+                         + [n + "\n" for n in notes])
+
+    out, i = [], 0
+    for m in _PROP_TABLE.finditer(text):
+        if m.start() < i:
+            continue
+        kind = m.group(1)
+        prop = "type" if kind == "TypeTable" else "fields"
+        end = text.find("/>", m.end())
+        attr = re.compile(rf"\b{prop}\s*=\s*\{{").search(text, m.end(), end if end > 0 else None)
+        if not attr:
+            continue
+        try:
+            value, j = _js_value(text, attr.end())
+            j = _js_skip(text, j)
+            if text[j:j + 1] != "}":
+                raise _NotLiteral
+            close = text.index("/>", j)
+        except (_NotLiteral, ValueError):
+            continue
+        if isinstance(value, str):
+            value = names.get(value)
+        named = re.search(r'\bname\s*=\s*"([^"]+)"', text[m.end():close])
+        if kind == "TypeTable" and isinstance(value, dict):
+            rows = _type_rows(value)
+        elif kind == "DatabaseTable" and isinstance(value, list):
+            rows = ([f"Table `{named.group(1)}`:", ""] if named else []) + _db_rows(value)
+        else:
+            continue
+        out += [text[i:m.start()], "\n".join(rows) + "\n"]
+        i = close + 2
+    text = "".join(out) + text[i:]
+    text = _API_METHOD.sub(api, text)
+    text = _JSX_SPACE.sub(" ", text)
+    return _SHIKI_MARK.sub("", text)
+
+
+def _component_labels(text: str, labels: dict) -> str:
+    """Рядок-тег вкладки (`<Code.Next>`) → підпис «Next.js:». Auth.js показує той самий
+    приклад для кожного фреймворку окремою вкладкою; без підпису в тексті лишалися б
+    чотири блоки коду поспіль, і відповідь про Next.js могла б процитувати SvelteKit."""
+    tags = re.compile(r"^[ \t]*<(" + "|".join(re.escape(t) for t in labels) + r")>[ \t]*$", re.M)
+    return tags.sub(lambda m: f"\n{labels[m.group(1)]}:\n", text)
+
+
+def _admonitions(text: str) -> str:
+    """Виноски Docusaurus (`:::tip Назва` … `:::`) → підпис «Tip: Назва» і абзаци. Інакше
+    двокрапки лишалися б у тексті окремими рядками. Код не чіпається."""
+    out, fence = [], False
+    for line in text.split("\n"):
+        if _FENCE.match(line):
+            fence = not fence
+        elif not fence and (m := _ADMONITION.match(line.strip())):
+            label = m.group(1).capitalize()
+            title = (m.group(2) or m.group(3) or "").strip()
+            out += ["", f"{label}: {title}" if title else f"{label}:", ""]
+            continue
+        elif not fence and _ADMONITION_END.match(line.strip()):
+            out.append("")
+            continue
+        out.append(line)
+    return "\n".join(out)
+
+
 def _split_title(text: str) -> tuple[str, str]:
     """(назва з заголовка першого непорожнього рядка, текст без нього). Заголовок
     далі в тексті — підрозділ, а не назва."""
@@ -169,6 +429,7 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
     prefixes = dict(source.get("title_prefix") or {})
     lead = f"{_markup.slug(source['name_prefix'])}-" if source.get("name_prefix") else ""
     sites = [(re.compile(k), v) for k, v in (source.get("site") or {}).items()]
+    labels = dict(source.get("component_labels") or {})
 
     # ім'я документа → [шлях, [теги]]; порядок ключів — порядок першої появи, тобто
     # від найновішого тегу, бо `tags` оголошено від найновішого. Ключ — ім'я, а не
@@ -222,6 +483,13 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
             text = ctx.text(raw)
             _markup.refuse_html(text, raw)
             meta, rest = _markup.front_matter(text)
+            # Обидва — до викидання `export`: таблиці беруть дані саме з них.
+            if source.get("jsx_props") is True:
+                rest = _jsx_props(rest)
+            if labels:
+                rest = _component_labels(rest, labels)
+            if source.get("admonitions") is True:
+                rest = _admonitions(rest)
             if path.endswith(".mdx") or source.get("mdx") is True:
                 # Імпорти й експорти MDX — код сторінки, а не її текст.
                 rest = _markup.mdx_statements_out(rest)
