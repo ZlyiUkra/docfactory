@@ -967,6 +967,23 @@ Node.js і npm англійською: довідник API Node.js парних
 - корпус в архіві від самого початку, як у express;
 - докладніше — у [instances/nodejs/README.md](instances/nodejs/README.md).
 
+### auth
+
+Better Auth і NextAuth.js / Auth.js англійською, якомога більше версій: Better Auth 0.0–1.7 (кожна мінорна), NextAuth.js
+1.1–4.24 (кожна мінорна; 4.0–4.2 — з архівного репозиторію `nextauthjs/docs`, 1.x — README на мить релізу), Auth.js v5
+на кожній беті 5.0.0-beta.4–32 і довідник API authjs.dev. Ендпоінти, опції й таблиці бази Better Auth лежать у
+властивостях компонентів MDX — їх розгортає в текст поле `jsx_props` читача `ghdocs-history`; вкладки прикладів Auth.js
+для різних фреймворків підписані (`component_labels`). 2 640 документів, 16 597 фрагментів.
+
+- порт `8797`; запис у Claude Code — `auth-docs`, адреса `http://127.0.0.1:8797/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-auth`, модель векторів — `bge-small`;
+- версії: бібліотека й номер — `better-auth-1.7`, `next-auth-4.24`, `next-auth-5.0.0-beta.32`; без названої версії
+  відповідь — для Better Auth 1.7 і 1.6, для NextAuth.js — окремо для v5 і v4;
+- приклад питання агентові: `./df auth ask "How do I enable two-factor authentication in Better Auth?"`;
+- корпус в архіві від самого початку, як у express;
+- докладніше — у [instances/auth/README.md](instances/auth/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
