@@ -4,7 +4,7 @@
 однієї бібліотеки чи інструмента (тека `instances/<ім'я>`). Файл оновлюється після кожного нового примірника, разом
 із підрозділами «Документація у фабриці» самих планів.
 
-Стан на 06.10.2026. Примірники: astro, clerk, docker, ecmascript, eslint, express, frontend-architecture,
+Стан на 07.10.2026. Примірники: astro, auth, clerk, docker, ecmascript, eslint, express, frontend-architecture,
 github-actions, kubernetes, linux, mdn, msw, nestjs, nextjs, nodejs, owasp, patterns, playwright, postgresql, react,
 react-hook-form, react-router, redux, socketio, supabase, tailwind, tanstack-query, testing-library, typescript, v8,
 vite, vitest, wasm, webstandards, zod, zustand.
@@ -53,7 +53,7 @@ vite, vitest, wasm, webstandards, zod, zustand.
 | 1. Ядро App Router | `eslint` (1), `tailwind` (10) |
 | 2. Як Next.js працює зсередини | — |
 | 3. Кешування | — |
-| 4. Фулстек: дані, автентифікація, дії, тести | `webstandards` (2–3, 5, 9–10, 12), `zod` (5), `react-hook-form` (6), `postgresql` (1), `clerk` і `supabase` (9), `tanstack-query` (11), `vitest` і `testing-library` (13), `playwright` (14), `owasp` (12) |
+| 4. Фулстек: дані, автентифікація, дії, тести | `webstandards` (2–3, 5, 9–10, 12), `zod` (5), `react-hook-form` (6), `postgresql` (1), `auth`, `clerk` і `supabase` (9), `tanstack-query` (11), `vitest` і `testing-library` (13), `playwright` (14), `owasp` (12) |
 | 5. Інтерфейс із характером | `mdn` (4), `zustand` (5), `webstandards` (5, 7) |
 | 6. Чужий код | — |
 | 7. DevOps: від збірки до продакшну | `docker` (вступ, 2, 4), `webstandards` (6), `kubernetes` (вступ, 12), `playwright` (7), `github-actions` (вступ, 7) |
@@ -97,7 +97,7 @@ vite, vitest, wasm, webstandards, zod, zustand.
 ### Next.js
 
 1. nginx (15), Redis (14).
-2. shadcn/ui і Radix UI, Auth.js або Better Auth, Drizzle або Prisma.
+2. shadcn/ui і Radix UI, Drizzle або Prisma.
 3. nuqs, next-themes, next-intl, Motion, iron-session, jose.
 4. Sentry, OpenTelemetry, Prometheus і Grafana.
 5. Факультатив: viem, wagmi, OpenZeppelin, Foundry.

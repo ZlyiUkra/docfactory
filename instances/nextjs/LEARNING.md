@@ -311,7 +311,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 | PostgreSQL | база даних | 41 | Ф4 Д1; SQL — у плані NestJS; є примірник `postgresql` |
 | Drizzle або Prisma | ORM: схема, міграції, типізовані запити | 16 і 9 | Ф4 Д1 |
 | zod | схема перевірки вводу — одна для форми й для сервера | 11 | Ф4 Д5; є примірник `zod` |
-| Auth.js або Better Auth | вхід, сесії, сторонні провайдери | 19 і 6 | Ф4 Д9 |
+| Auth.js або Better Auth | вхід, сесії, сторонні провайдери | 19 і 6 | Ф4 Д9; є примірник `auth` |
 | TanStack Query або SWR | дані в клієнтських компонентах: стрічки, опитування | 4 і 1 | Ф4 Д11; є примірник `tanstack-query` |
 | Playwright | наскрізні тести; єдиний спосіб перевірити `async`-компонент | 5 | Ф4 Д14; є примірник `playwright` |
 | Vitest | швидкі тести функцій і клієнтських компонентів | 2 | Ф4 Д13; є примірник `vitest` |
@@ -368,6 +368,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - Testing Library (React Testing Library, user-event, jest-dom) — `testing-library`; MSW — `msw`; Playwright —
   `playwright`;
 - React Hook Form — `react-hook-form`; Zustand — `zustand`; Clerk — `clerk`; Supabase Auth — `supabase`;
+- Better Auth (0.0–1.7) і NextAuth.js / Auth.js (1.1–4.24, бети v5, довідник API authjs.dev) — `auth`;
 - PostgreSQL 9.0–19 — `postgresql`; Socket.IO, сервер і клієнт — `socketio`;
 - GitHub Actions, Dependabot, Container registry (ghcr.io), офіційні дії — `github-actions`;
 - безпека: шпаргалки OWASP Cheat Sheet Series, Top 10 (2013–2025), API Security Top 10, вимоги ASVS, Proactive
@@ -377,7 +378,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «треба знати»: shadcn/ui і Radix UI, Drizzle, Prisma, Auth.js, Better Auth, SWR, Biome;
+- з «треба знати»: shadcn/ui і Radix UI, Drizzle, Prisma, SWR, Biome;
 - з «варто знати»: iron-session, jose, Motion, next-themes, nuqs, next-intl, Redis (Upstash), Sentry,
   OpenTelemetry;
 - з «знати, що існує»: Stripe, Resend і React Email, Vercel AI SDK, UploadThing, Sanity, Payload, Contentful,
@@ -1013,9 +1014,9 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 
 # Фаза 4. Фулстек: дані, автентифікація, дії, безпека, тести — 14 днів
 
-**Сервери MCP фази:** `nextjs-docs`, `webstandards-docs`, `zod-docs`, `react-hook-form-docs`, `clerk-docs`,
-`supabase-docs`, `tanstack-query-docs`, `vitest-docs`, `testing-library-docs`, `playwright-docs`, `postgresql-docs`,
-`owasp-docs`.
+**Сервери MCP фази:** `nextjs-docs`, `webstandards-docs`, `zod-docs`, `react-hook-form-docs`, `auth-docs`,
+`clerk-docs`, `supabase-docs`, `tanstack-query-docs`, `vitest-docs`, `testing-library-docs`, `playwright-docs`,
+`postgresql-docs`, `owasp-docs`.
 
 Тут фронтендер стає фулстеком: застосунок сам ходить у базу, сам упізнає користувача, сам перевіряє права й
 сам відповідає за те, що не віддав зайвого. Порядок навмисний: спершу база, потім хто ви (автентифікація),
@@ -1149,13 +1150,15 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 - **Навіщо.** У роботі власні сесії пишуть рідко: беруть бібліотеку або послугу.
 - **Що це.** Auth.js або Better Auth — вхід через Google чи GitHub (OAuth), сесії, таблиці в вашій базі.
   Clerk і Supabase Auth — те саме як послуга. Перевірка прав лишається у вашому шарі даних.
-- **Читати:** документацію обраної бібліотеки (розділ про App Router); `Example: auth` — це Auth.js із захистом лише в
-  Proxy: беріть звідти налаштування провайдера, а не схему захисту; у примірнику `clerk` — `Next.js Quickstart (App
-  Router)`, `clerkMiddleware()`; у примірнику `supabase` — `Use Supabase Auth with Next.js`, `Creating a Supabase
-  client for SSR`; Auth.js і Better Auth — поза корпусом; у примірнику `webstandards` — `OpenID Connect Core 1.0: 3
-  Authentication`, `RFC 6749 The OAuth 2.0 Authorization Framework: 4 Obtaining Authorization`, `RFC 7636 Proof Key
-  for Code Exchange by OAuth Public Clients: 4 Protocol`.
-- **Сервери MCP:** `nextjs-docs`, `clerk-docs`, `supabase-docs`, `webstandards-docs`.
+- **Читати:** документацію обраної бібліотеки (розділ про App Router): у примірнику `auth` — Auth.js v5:
+  `installation`, `OAuth Providers`, `GitHub Provider`, `Get Session`, `Protecting Resources`; Better Auth:
+  `Installation`, `Next.js integration`, `Basic Usage`, `GitHub`, `Session Management`; перехід між ними — `Migrating
+  from Auth.js to Better Auth`; `Example: auth` — це Auth.js із захистом лише в Proxy: беріть звідти налаштування
+  провайдера, а не схему захисту; у примірнику `clerk` — `Next.js Quickstart (App Router)`, `clerkMiddleware()`; у
+  примірнику `supabase` — `Use Supabase Auth with Next.js`, `Creating a Supabase client for SSR`; у примірнику
+  `webstandards` — `OpenID Connect Core 1.0: 3 Authentication`, `RFC 6749 The OAuth 2.0 Authorization Framework: 4
+  Obtaining Authorization`, `RFC 7636 Proof Key for Code Exchange by OAuth Public Clients: 4 Protocol`.
+- **Сервери MCP:** `nextjs-docs`, `auth-docs`, `clerk-docs`, `supabase-docs`, `webstandards-docs`.
 - **Зробити:** вхід через GitHub поруч із власним.
 - **Перевірити себе:** обидва способи входу дають того самого користувача в `getSession()`.
 - **Пастка:** вважати, що бібліотека захищає дані. Вона каже, хто прийшов; що йому можна — досі ваш код.
