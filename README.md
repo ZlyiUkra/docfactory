@@ -984,6 +984,24 @@ Better Auth і NextAuth.js / Auth.js англійською, якомога бі
 - корпус в архіві від самого початку, як у express;
 - докладніше — у [instances/auth/README.md](instances/auth/README.md).
 
+### nginx
+
+nginx англійською: документація nginx.org — поточна (`1.31`) і знімки на мить випуску кожної стабільної гілки 1.0–1.30
+(коміти репозиторію `nginx/nginx.org`; XML сайту розбирає поле `nginx_xml` читача `ghdocs-history`), журнали змін
+кожного випуску 0.1.0–1.31 (читач `nginx-changes`, документ на випуск), NGINX Admin Guide, NGINX Ingress Controller
+(поточний і LTS) і NGINX Gateway Fabric з docs.nginx.com (вставки й короткі коди Hugo підставляє поле `hugo`) та
+контролер ingress-nginx спільноти Kubernetes кожної мінорної 0.34–1.15. 2 181 документ, 11 390 фрагментів.
+
+- порт `8798`; запис у Claude Code — `nginx-docs`, адреса `http://127.0.0.1:8798/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-nginx`, модель векторів — `bge-small`;
+- версії: nginx.org — гілка (`1.31`, `1.30` … `1.0`), журнали — випуск (`1.27.3`), docs.nginx.com — `admin-guide`,
+  `nic`, `nic-lts`, `ngf`, ingress-nginx — `ingress-nginx-1.15` … `ingress-nginx-0.34`; без названої версії відповідь —
+  з поточної документації nginx.org, з версією появи директиви;
+- приклад питання агентові: `./df nginx ask "How do I proxy WebSocket connections with nginx?"`;
+- корпус в архіві від самого початку, як у express;
+- докладніше — у [instances/nginx/README.md](instances/nginx/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
