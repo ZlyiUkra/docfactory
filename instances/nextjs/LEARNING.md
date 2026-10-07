@@ -372,6 +372,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - GitHub Actions, Dependabot, Container registry (ghcr.io), офіційні дії — `github-actions`;
 - безпека: шпаргалки OWASP Cheat Sheet Series, Top 10 (2013–2025), API Security Top 10, вимоги ASVS, Proactive
   Controls — `owasp`;
+- Node.js (API парних мажорів 12–26, посібники nodejs.org/learn) і npm (CLI 6–12) — `nodejs`;
 - Docker — `docker`; Kubernetes, k3s, Traefik, Kustomize, SOPS, age і Helm — `kubernetes`; sshd — `linux`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
@@ -387,7 +388,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 
 # Фаза 0. База, якої Next.js не дає — 6 днів
 
-**Сервери MCP фази:** `mdn-docs`, `webstandards-docs`, `react-docs`, `owasp-docs`.
+**Сервери MCP фази:** `mdn-docs`, `webstandards-docs`, `react-docs`, `owasp-docs`, `nodejs-docs`.
 
 Next.js — надбудова над HTTP, Node і серверним React. Усе, що тут, його документація вважає відомим; саме на
 цих речах, а не на файлових угодах, застрягає фронтендер. Джерела — примірники `mdn` і `react` цієї фабрики
@@ -484,9 +485,9 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 - **Що це.** Змінні оточення (`process.env`) — спосіб передати процесу налаштування й секрети, не вписуючи їх
   у код. Сигнал `SIGTERM` — прохання завершитися, яке шле Docker; чемний процес доробляє поточні запити й
   виходить. Потоки (streams) — спосіб віддавати дані шматками, не тримаючи все в пам'яті.
-- **Читати:** документація Node — «process», «Stream»; у примірнику `mdn` — `Streams API`; у примірнику `webstandards`
-  — `Streams Standard: 4 Readable streams`.
-- **Сервери MCP:** `mdn-docs`, `webstandards-docs`.
+- **Читати:** у примірнику `nodejs` — `Process`, `Stream`; у примірнику `mdn` — `Streams API`; у примірнику
+  `webstandards` — `Streams Standard: 4 Readable streams`.
+- **Сервери MCP:** `mdn-docs`, `webstandards-docs`, `nodejs-docs`.
 - **Зробити:** 1) скрипт читає налаштування з `.env`; 2) віддає великий файл потоком; 3) на `SIGTERM`
   дописує відповідь і виходить з кодом 0.
 - **Перевірити себе:** `kill <pid>` під час завантаження файла не обриває його на півдорозі.

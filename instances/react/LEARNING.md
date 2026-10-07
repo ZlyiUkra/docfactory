@@ -379,7 +379,9 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 - Docker — `docker`; Kubernetes, k3d, k3s, `kubectl`, Traefik, cert-manager і Let's Encrypt — `kubernetes`;
 - socket.io-client (живі ціни з власного сервера, план NestJS, фаза 7) — `socketio`;
 - GitHub Actions, Dependabot, Container registry (ghcr.io) і GitHub Pages, офіційні дії — `github-actions`;
-- безпека: шпаргалки OWASP Cheat Sheet Series (XSS, CSP, React Security), Top 10 — `owasp`.
+- безпека: шпаргалки OWASP Cheat Sheet Series (XSS, CSP, React Security), Top 10 — `owasp`;
+- Node.js (API парних мажорів 12–26, посібники nodejs.org/learn) і npm (CLI 6–12, `package.json`, `npm ci`) —
+  `nodejs`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
@@ -393,7 +395,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 # Фаза 0. База, якої React не дає — 12 днів
 
 **Сервери MCP фази:** `react-docs`, `mdn-docs`, `webstandards-docs`, `typescript-docs`, `vite-docs`, `eslint-docs`,
-`tailwind-docs`.
+`tailwind-docs`, `nodejs-docs`.
 
 React — бібліотека поверх мови й браузера. Усе, що тут, документація React вважає відомим і не пояснює; саме на
 цих речах, а не на хуках, застрягає більшість новачків. Джерела — примірники `mdn` і `typescript` цієї фабрики;
@@ -452,8 +454,9 @@ React — бібліотека поверх мови й браузера. Усе
 - **Що це.** ESM: `import` і `export`, іменований і типовий експорт. `package.json` описує залежності; `^19.3.0`
   дозволяє будь-яку 19.x не нижче 19.3.0, `~19.3.0` — лише 19.3.x. Файл блокування (`package-lock.json`) фіксує
   точні версії всього дерева; `npm ci` ставить рівно їх. `npx` запускає пакет, не встановлюючи його в проєкт.
-- **Читати:** у примірнику `mdn` — `JavaScript modules`; документацію npm — «package.json», «npm ci» (поза корпусом).
-- **Сервери MCP:** `mdn-docs`.
+- **Читати:** у примірнику `mdn` — `JavaScript modules`; у примірнику `nodejs` — `package.json` (розділи dependencies,
+  devDependencies), `package-lock.json`, `npm-ci`, `npx`, посібник `About semantic versioning` (`^` і `~`).
+- **Сервери MCP:** `mdn-docs`, `nodejs-docs`.
 - **Зробити:** 1) розбити код днів 1–3 на модулі; 2) підключити одну зовнішню бібліотеку; 3) `npm ls` і
   знайти її залежності.
 - **Перевірити себе:** ви кажете, яку версію поставить `npm install` для `^19.3.0` і чим `npm ci` відрізняється.

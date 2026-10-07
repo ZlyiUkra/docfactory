@@ -5,7 +5,7 @@
 із підрозділами «Документація у фабриці» самих планів.
 
 Стан на 06.10.2026. Примірники: astro, clerk, docker, ecmascript, eslint, express, frontend-architecture,
-github-actions, kubernetes, linux, mdn, msw, nestjs, nextjs, owasp, patterns, playwright, postgresql, react,
+github-actions, kubernetes, linux, mdn, msw, nestjs, nextjs, nodejs, owasp, patterns, playwright, postgresql, react,
 react-hook-form, react-router, redux, socketio, supabase, tailwind, tanstack-query, testing-library, typescript, v8,
 vite, vitest, wasm, webstandards, zod, zustand.
 
@@ -23,7 +23,7 @@ vite, vitest, wasm, webstandards, zod, zustand.
 
 | Фаза | Примірники (дні) |
 |------|------------------|
-| 0. База, якої React не дає | `mdn` (вступ, 1–8), `webstandards` (1, 5–8), `typescript` (вступ, 9–10), `vite` (11–12), `eslint` (11), `tailwind` (11) |
+| 0. База, якої React не дає | `mdn` (вступ, 1–8), `webstandards` (1, 5–8), `typescript` (вступ, 9–10), `vite` (11–12), `eslint` (11), `tailwind` (11), `nodejs` (4) |
 | 1. Ядро React | `vite` (20), `eslint` (19) |
 | 2. Як React працює зсередини | `eslint` (4) |
 | 3. Екосистема | `react-router` (1–2, 13), `tanstack-query` (3–5, 8, 13), `react-hook-form` і `zod` (10), `zustand` і `redux` (11), `vitest` і `testing-library` (12–13), `msw` (13), `playwright` (14), `mdn` (6–8, 15), `webstandards` (6, 15) |
@@ -35,7 +35,7 @@ vite, vitest, wasm, webstandards, zod, zustand.
 
 | Фаза | Примірники (дні) |
 |------|------------------|
-| 0. База, якої Nest не дає | `typescript` (вступ, 1–4), `mdn` (вступ, 6–7, 10–11), `webstandards` (6–7, 10–11), `express` (9–10), `vite` (11), `postgresql` (вступ, 13–18), `owasp` (вступ, 10) |
+| 0. База, якої Nest не дає | `typescript` (вступ, 1–4), `mdn` (вступ, 6–7, 10–11), `webstandards` (6–7, 10–11), `express` (9–10), `vite` (11), `postgresql` (вступ, 13–18), `owasp` (вступ, 10), `nodejs` (5, 8, 12) |
 | 1. Ядро Nest | — |
 | 2. Робочий API | `zod` (1, 3, 8), `webstandards` (4, 6), `tanstack-query` (7), `react-hook-form` (8) |
 | 3. Дані: TypeORM, Prisma | `postgresql` (12), `owasp` (5); TypeORM і Prisma — у документації Nest лише інтеграція |
@@ -49,7 +49,7 @@ vite, vitest, wasm, webstandards, zod, zustand.
 
 | Фаза | Примірники (дні) |
 |------|------------------|
-| 0. База, якої Next.js не дає | `mdn` (вступ, 1–3, 6), `webstandards` (1–3, 6), `react` (вступ, 4–5), `owasp` (3) |
+| 0. База, якої Next.js не дає | `mdn` (вступ, 1–3, 6), `webstandards` (1–3, 6), `react` (вступ, 4–5), `owasp` (3), `nodejs` (6) |
 | 1. Ядро App Router | `eslint` (1), `tailwind` (10) |
 | 2. Як Next.js працює зсередини | — |
 | 3. Кешування | — |
@@ -82,23 +82,21 @@ vite, vitest, wasm, webstandards, zod, zustand.
 
 ### React
 
-1. npm — `package.json`, `npm ci` (фаза 0).
-2. web.dev і web-vitals (фази 2 і 5).
-3. react-window або TanStack Virtual, Sentry.
-4. Факультатив: wagmi, viem, lightweight-charts, decimal.js, Foundry.
+1. web.dev і web-vitals (фази 2 і 5).
+2. react-window або TanStack Virtual, Sentry.
+3. Факультатив: wagmi, viem, lightweight-charts, decimal.js, Foundry.
 
 ### NestJS
 
 1. Prisma (40) і TypeORM (29): у документації Nest — лише інтеграційний шар.
 2. Redis (29) і BullMQ (8).
-3. Node.js (14; фаза 0).
-4. nginx (15; compose у фазі 6).
-5. Passport (13), class-validator і class-transformer (7), RxJS (4).
-6. Факультатив: viem, decimal.js, Foundry.
+3. nginx (15; compose у фазі 6).
+4. Passport (13), class-validator і class-transformer (7), RxJS (4).
+5. Факультатив: viem, decimal.js, Foundry.
 
 ### Next.js
 
-1. nginx (15), Redis (14), Node.js (13).
+1. nginx (15), Redis (14).
 2. shadcn/ui і Radix UI, Auth.js або Better Auth, Drizzle або Prisma.
 3. nuqs, next-themes, next-intl, Motion, iron-session, jose.
 4. Sentry, OpenTelemetry, Prometheus і Grafana.
@@ -106,8 +104,7 @@ vite, vitest, wasm, webstandards, zod, zustand.
 
 ### Спільне для лінії 1
 
-Node.js, nginx і Redis потрібні двом-трьом планам
-одразу: кожен такий примірник закриває найбільше.
+nginx і Redis потрібні двом-трьом планам одразу: кожен такий примірник закриває найбільше.
 
 ### Лінія 2
 
