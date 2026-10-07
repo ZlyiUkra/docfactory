@@ -71,7 +71,7 @@
 
 # Фаза 0. База, якої Astro не дає — 6 днів
 
-**Сервери MCP фази:** `astro-docs`, `mdn-docs`, `webstandards-docs`, `typescript-docs`, `vite-docs`.
+**Сервери MCP фази:** `astro-docs`, `mdn-docs`, `webstandards-docs`, `typescript-docs`, `vite-docs`, `nodejs-docs`.
 
 Astro — фреймворк, що працює з HTML і мережею напряму, а не ховає їх за шаром абстракції. Тому дірки в
 базі тут видно одразу, на відміну від React, де їх довго не помітно. Якщо ви проходили нульову фазу
@@ -92,9 +92,10 @@ Astro — фреймворк, що працює з HTML і мережею нап
 - **День 5 — TypeScript для шаблонів.** Типізація пропсів, `Astro.props`, дженерики в утилітах, `satisfies`.
   Глава `TypeScript`. *Вправа:* типізувати три утиліти без жодного `any`. *Сервери MCP:* `astro-docs`,
   `typescript-docs`.
-- **День 6 — Node та інструменти.** Vite у режимі розробки, змінні оточення, npm-скрипти, що таке збірка.
-  *Вправа:* порожній проєкт `npm create astro@latest`, без шаблону, з робочим лінтом. *Сервери MCP:*
-  `vite-docs`, `astro-docs`.
+- **День 6 — Node та інструменти.** Vite у режимі розробки, змінні оточення, npm-скрипти, що таке збірка. У
+  примірнику `nodejs` — `scripts`, `npm-run-script`, `How to read environment variables from Node.js`. *Вправа:*
+  порожній проєкт `npm create astro@latest`, без шаблону, з робочим лінтом. *Сервери MCP:* `vite-docs`,
+  `astro-docs`, `nodejs-docs`.
 
 # Фаза 1. Ядро Astro — 14 днів
 
@@ -344,12 +345,13 @@ Cloudflare.
 - Clerk — `clerk`; Supabase Auth — `supabase`; PostgreSQL — `postgresql`;
 - Vitest — `vitest`; Playwright — `playwright`;
 - Docker і `docker compose` — `docker`; GitHub Actions і GitHub Pages — `github-actions`;
+- Node.js (API парних мажорів 12–26, посібники nodejs.org/learn) і npm (CLI 6–12) — `nodejs`;
 - Next.js (для порівняння у фазі 7) — `nextjs`; NestJS (окремий бекенд) — `nestjs`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
 - фреймворки островів, окрім React: Vue, Svelte, Solid, Preact;
 - дані: Drizzle, Prisma;
-- платформи розгортання: Cloudflare, Vercel, Netlify; Node.js як середовище виконання;
+- платформи розгортання: Cloudflare, Vercel, Netlify;
 - спостереження: Sentry; Lighthouse і web-vitals;
 - контент: Starlight, CMS, Shiki, remark і rehype поза документацією Astro.
