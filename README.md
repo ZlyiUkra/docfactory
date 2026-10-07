@@ -953,9 +953,10 @@ Docker) і релізи раннера. 1 538 документів, 8 362 фра
 ### nodejs
 
 Node.js і npm англійською: довідник API Node.js парних мажорів 26–12 з історією кожної функції (блоки `<!-- YAML -->`
-стають текстом «Added in / History», поле `yaml_history` читача `ghdocs-history`), посібники nodejs.org/learn, CLI
-npm 12–6 (команди, `package.json`, `package-lock.json`, `.npmrc`, scripts, workspaces) і посібники docs.npmjs.com.
-Посилання ведуть на сторінку свого мажору nodejs.org і на docs.npmjs.com. 1 277 документів, 24 877 фрагментів.
+стають текстом «Added in / History», поле `yaml_history` читача `ghdocs-history`), посібники nodejs.org/learn, CLI npm
+12–6 (команди, `package.json`, `package-lock.json`, `.npmrc`, scripts, workspaces) і посібники docs.npmjs.com.
+Посилання ведуть на сторінку свого мажору nodejs.org і на docs.npmjs.com. 1 277 документів, 19 920 фрагментів
+(сторінки npm різних версій зливаються, поле `slug_rewrite`).
 
 - порт `8796`; запис у Claude Code — `nodejs-docs`, адреса `http://127.0.0.1:8796/mcp`; інструменти `search_docs` і
   `read_section`;
