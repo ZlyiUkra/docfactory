@@ -339,7 +339,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 | React Compiler | автоматична мемоізація на збірці | Ф2 Д4 |
 | react-window або TanStack Virtual | віртуалізація довгих списків (поза корпусом) | Ф2 Д7 |
 | Sentry | збір помилок із картами коду (поза корпусом) | точка підключення — Ф2 Д8; сам збір — план Next.js Ф7 Д9 |
-| shadcn/ui на Radix UI | готові доступні компоненти, що копіюються в проєкт (поза корпусом) | план Next.js Ф5 Д5 |
+| shadcn/ui на Radix UI | готові доступні компоненти, що копіюються в проєкт | Ф3 Д15; план Next.js Ф5 Д5; є примірник `shadcn` |
 | Docker, k3d і k3s, `kubectl` | образ SPA і викот у кластер Kubernetes | Ф5 Д7–9; далі — плани NestJS і Next.js; є примірники `docker`, `kubernetes` |
 
 **Знати, що існує** — беруть під конкретну задачу; план їх не вчить.
@@ -378,6 +378,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
   typescript-eslint — `eslint`;
 - Docker — `docker`; Kubernetes, k3d, k3s, `kubectl`, Traefik, cert-manager і Let's Encrypt — `kubernetes`;
 - nginx: конфіг роздачі SPA в образі (фаза 5, день 7) — `nginx`;
+- shadcn/ui (кожна мінорна CLI, сайти для Tailwind CSS v4 і v3) і Radix UI — Primitives, Themes, Colors — `shadcn`;
 - socket.io-client (живі ціни з власного сервера, план NestJS, фаза 7) — `socketio`;
 - GitHub Actions, Dependabot, Container registry (ghcr.io) і GitHub Pages, офіційні дії — `github-actions`;
 - безпека: шпаргалки OWASP Cheat Sheet Series (XSS, CSP, React Security), Top 10 — `owasp`;
@@ -386,7 +387,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «варто знати»: react-window, TanStack Virtual, Sentry, shadcn/ui і Radix UI;
+- з «варто знати»: react-window, TanStack Virtual, Sentry;
 - з «знати, що існує»: SWR, TanStack Router, Storybook, React Native і Expo, Motion, i18next, partysocket;
 - поза таблицями: web-vitals, хостинги, API Binance і Kraken, Oracle Cloud; у факультативі —
   lightweight-charts, wagmi, viem і Foundry.
@@ -1082,7 +1083,7 @@ React — бібліотека поверх мови й браузера. Усе
 
 **Сервери MCP фази:** `react-docs`, `react-router-docs`, `tanstack-query-docs`, `mdn-docs`, `webstandards-docs`,
 `react-hook-form-docs`, `zod-docs`, `zustand-docs`, `redux-docs`, `vitest-docs`, `testing-library-docs`, `msw-docs`,
-`playwright-docs`.
+`playwright-docs`, `shadcn-docs`.
 
 React не має нічого з цього в коробці. Документація сама каже, що брати: глава `Build a React app from Scratch`,
 крок 2 — маршрути, дані, розділення коду. Про дані там пряма порада: «fetching data directly in components can
@@ -1414,8 +1415,9 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
 - **Читати:** `useId`; `Common components (e.g. <div>)` (атрибути `aria-*` і `role`); у примірнику `mdn` —
   `Accessibility`; розширення axe DevTools (поза корпусом); у примірнику `webstandards` — `ARIA in HTML: 3 Author
   guidance to avoid incorrect use of ARIA`, `Developing a Keyboard Interface`, `Providing Accessible Names and
-  Descriptions`, `WCAG 2.2: 2 Operable`.
-- **Сервери MCP:** `react-docs`, `mdn-docs`, `webstandards-docs`.
+  Descriptions`, `WCAG 2.2: 2 Operable`; у примірнику `shadcn` — `Accessibility` (Radix Primitives: як готові
+  компоненти тримають фокус, клавіатуру й ARIA за вас).
+- **Сервери MCP:** `react-docs`, `mdn-docs`, `webstandards-docs`, `shadcn-docs`.
 - **Зробити:** 1) пройти весь застосунок без миші; 2) axe DevTools на трьох головних екранах; 3) полагодити
   знайдене; 4) повторити.
 - **Перевірити себе:** два числа проблем axe до й після; кожна дія застосунку доступна з клавіатури.

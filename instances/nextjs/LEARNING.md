@@ -307,7 +307,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 | Бібліотека | Навіщо вона з Next.js | Шаблонів | Де в плані |
 |------------|-----------------------|---------:|------------|
 | Tailwind CSS | стилі класами прямо в розмітці; ставиться з `create-next-app` | 120 | Ф1 Д10; є примірник `tailwind` |
-| shadcn/ui (на Radix UI) | готові доступні компоненти, які копіюються у ваш проєкт | 59 | Ф5 Д5 |
+| shadcn/ui (на Radix UI) | готові доступні компоненти, які копіюються у ваш проєкт | 59 | Ф4 Д6, Ф5 Д5; є примірник `shadcn` |
 | PostgreSQL | база даних | 41 | Ф4 Д1; SQL — у плані NestJS; є примірник `postgresql` |
 | Drizzle або Prisma | ORM: схема, міграції, типізовані запити | 16 і 9 | Ф4 Д1 |
 | zod | схема перевірки вводу — одна для форми й для сервера | 11 | Ф4 Д5; є примірник `zod` |
@@ -375,11 +375,12 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
   Controls — `owasp`;
 - Node.js (API парних мажорів 12–26, посібники nodejs.org/learn) і npm (CLI 6–12) — `nodejs`;
 - Docker — `docker`; Kubernetes, k3s, Traefik, Kustomize, SOPS, age і Helm — `kubernetes`; sshd — `linux`;
-- nginx: зворотний проксі, буферизація й стрімінг, кеш, обмеження частоти, вебсокети — `nginx`.
+- nginx: зворотний проксі, буферизація й стрімінг, кеш, обмеження частоти, вебсокети — `nginx`;
+- shadcn/ui (кожна мінорна CLI, сайти для Tailwind CSS v4 і v3) і Radix UI — Primitives, Themes, Colors — `shadcn`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «треба знати»: shadcn/ui і Radix UI, Drizzle, Prisma, SWR, Biome;
+- з «треба знати»: Drizzle, Prisma, SWR, Biome;
 - з «варто знати»: iron-session, jose, Motion, next-themes, nuqs, next-intl, Redis (Upstash), Sentry,
   OpenTelemetry;
 - з «знати, що існує»: Stripe, Resend і React Email, Vercel AI SDK, UploadThing, Sanity, Payload, Contentful,
@@ -1017,7 +1018,7 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 
 **Сервери MCP фази:** `nextjs-docs`, `webstandards-docs`, `zod-docs`, `react-hook-form-docs`, `auth-docs`,
 `clerk-docs`, `supabase-docs`, `tanstack-query-docs`, `vitest-docs`, `testing-library-docs`, `playwright-docs`,
-`postgresql-docs`, `owasp-docs`.
+`postgresql-docs`, `owasp-docs`, `shadcn-docs`.
 
 Тут фронтендер стає фулстеком: застосунок сам ходить у базу, сам упізнає користувача, сам перевіряє права й
 сам відповідає за те, що не віддав зайвого. Порядок навмисний: спершу база, потім хто ви (автентифікація),
@@ -1112,8 +1113,8 @@ Next.js — надбудова над HTTP, Node і серверним React. У
   під час набору беруть React Hook Form з тією самою схемою zod. `<Form>` з `next/form` — для форм пошуку,
   що міняють рядок адреси.
 - **Читати:** `How to create forms with Server Actions`, `Form Component`; у примірнику `react-hook-form` — `useForm
-  (content/docs/useform)`.
-- **Сервери MCP:** `nextjs-docs`, `react-hook-form-docs`.
+  (content/docs/useform)`; у примірнику `shadcn` — `Next.js` (форми shadcn/ui на Server Actions) і `React Hook Form`.
+- **Сервери MCP:** `nextjs-docs`, `react-hook-form-docs`, `shadcn-docs`.
 - **Зробити:** форма на десять полів; вимкнути JavaScript у браузері й надіслати її.
 - **Перевірити себе:** без JavaScript — помилки біля полів після перезавантаження; з ним — миттєво.
 - **Пастка:** дві різні схеми перевірки для клієнта й сервера — розійдуться за тиждень.
@@ -1244,7 +1245,7 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 
 # Фаза 5. Інтерфейс із характером — 8 днів
 
-**Сервери MCP фази:** `nextjs-docs`, `mdn-docs`, `zustand-docs`, `webstandards-docs`.
+**Сервери MCP фази:** `nextjs-docs`, `mdn-docs`, `zustand-docs`, `webstandards-docs`, `shadcn-docs`.
 
 Те, що відрізняє «працює» від «приємно користуватися». Частина можливостей з'явилася в 16.2–16.3, а дещо
 ще експериментальне — дивіться на версії у відповіді сервера. Дні 1–4 можна брати одразу після фази 2.
@@ -1308,9 +1309,10 @@ Next.js — надбудова над HTTP, Node і серверним React. У
   next-themes — темна тема без миготіння при завантаженні. Стан, який має жити в адресі (фільтри,
   сортування, сторінка), — у `searchParams`; бібліотека nuqs робить це зручним і типізованим. Справді
   глобальний клієнтський стан — Zustand.
-- **Читати:** документацію shadcn/ui (розділ про Next.js), next-themes, nuqs; примірник `zustand`; у примірнику
-  `webstandards` — `Developing a Keyboard Interface`.
-- **Сервери MCP:** `zustand-docs`, `webstandards-docs`.
+- **Читати:** у примірнику `shadcn` — `Next.js` (встановлення і темний режим), `Alert Dialog`, `Theming`, у
+  документації Radix там само — `Dialog`; next-themes, nuqs; примірник `zustand`; у примірнику `webstandards` —
+  `Developing a Keyboard Interface`.
+- **Сервери MCP:** `shadcn-docs`, `zustand-docs`, `webstandards-docs`.
 - **Зробити:** діалог підтвердження видалення з shadcn/ui; перемикач теми; фільтр списку в адресі.
 - **Перевірити себе:** фільтр переживає оновлення сторінки й копіювання посилання; при завантаженні темної
   теми немає білого спалаху; діалог закривається клавішею Esc і повертає фокус.

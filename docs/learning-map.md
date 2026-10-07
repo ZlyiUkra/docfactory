@@ -6,8 +6,8 @@
 
 Стан на 07.10.2026. Примірники: astro, auth, clerk, docker, ecmascript, eslint, express, frontend-architecture,
 github-actions, kubernetes, linux, mdn, msw, nestjs, nextjs, nginx, nodejs, owasp, patterns, playwright, postgresql,
-react, react-hook-form, react-router, redux, socketio, supabase, tailwind, tanstack-query, testing-library, typescript,
-v8, vite, vitest, wasm, webstandards, zod, zustand.
+react, react-hook-form, react-router, redux, shadcn, socketio, supabase, tailwind, tanstack-query, testing-library,
+typescript, v8, vite, vitest, wasm, webstandards, zod, zustand.
 
 ## Як читати таблиці
 
@@ -26,7 +26,7 @@ v8, vite, vitest, wasm, webstandards, zod, zustand.
 | 0. База, якої React не дає | `mdn` (вступ, 1–8), `webstandards` (1, 5–8), `typescript` (вступ, 9–10), `vite` (11–12), `eslint` (11), `tailwind` (11), `nodejs` (4) |
 | 1. Ядро React | `vite` (20), `eslint` (19) |
 | 2. Як React працює зсередини | `eslint` (4) |
-| 3. Екосистема | `react-router` (1–2, 13), `tanstack-query` (3–5, 8, 13), `react-hook-form` і `zod` (10), `zustand` і `redux` (11), `vitest` і `testing-library` (12–13), `msw` (13), `playwright` (14), `mdn` (6–8, 15), `webstandards` (6, 15) |
+| 3. Екосистема | `react-router` (1–2, 13), `tanstack-query` (3–5, 8, 13), `react-hook-form` і `zod` (10), `zustand` і `redux` (11), `vitest` і `testing-library` (12–13), `msw` (13), `playwright` (14), `mdn` (6–8, 15), `webstandards` (6, 15), `shadcn` (15) |
 | 4. Сервер: SSR, стрімінг, серверні компоненти | — |
 | 5. Продакшн і викот у кластер | `vite` (1–2, 5–7, 9), `react-router` (1), `docker` (6–7), `kubernetes` (6–9), `mdn` (4), `webstandards` (6), `playwright` (5), `github-actions` (5), `owasp` (2), `nginx` (7) |
 | Факультатив «крипта» | `tanstack-query`, `zod`, `vite`, `docker` |
@@ -53,8 +53,8 @@ v8, vite, vitest, wasm, webstandards, zod, zustand.
 | 1. Ядро App Router | `eslint` (1), `tailwind` (10) |
 | 2. Як Next.js працює зсередини | — |
 | 3. Кешування | — |
-| 4. Фулстек: дані, автентифікація, дії, тести | `webstandards` (2–3, 5, 9–10, 12), `zod` (5), `react-hook-form` (6), `postgresql` (1), `auth`, `clerk` і `supabase` (9), `tanstack-query` (11), `vitest` і `testing-library` (13), `playwright` (14), `owasp` (12) |
-| 5. Інтерфейс із характером | `mdn` (4), `zustand` (5), `webstandards` (5, 7) |
+| 4. Фулстек: дані, автентифікація, дії, тести | `webstandards` (2–3, 5, 9–10, 12), `zod` (5), `react-hook-form` і `shadcn` (6), `postgresql` (1), `auth`, `clerk` і `supabase` (9), `tanstack-query` (11), `vitest` і `testing-library` (13), `playwright` (14), `owasp` (12) |
+| 5. Інтерфейс із характером | `mdn` (4), `zustand` (5), `webstandards` (5, 7), `shadcn` (5) |
 | 6. Чужий код | — |
 | 7. DevOps: від збірки до продакшну | `docker` (вступ, 2, 4), `webstandards` (6), `kubernetes` (вступ, 12), `playwright` (7), `github-actions` (вступ, 7), `nginx` (вступ, 6) |
 | 8. Next.js поруч з окремим бекендом | `webstandards` (2, 6–7), `mdn` (7), `socketio` (6), `nginx` (6); за змістом — `nestjs` |
@@ -100,7 +100,7 @@ v8, vite, vitest, wasm, webstandards, zod, zustand.
 ### Next.js
 
 1. Redis (14).
-2. shadcn/ui і Radix UI, Drizzle або Prisma.
+2. Drizzle або Prisma.
 3. nuqs, next-themes, next-intl, Motion, iron-session, jose.
 4. Sentry, OpenTelemetry, Prometheus і Grafana.
 5. Факультатив: viem, wagmi, OpenZeppelin, Foundry.
