@@ -443,15 +443,17 @@ DEPTH = 6
 _VARIANT = re.compile(profile.VARIANT_PATTERN) if profile.VARIANT_PATTERN else None
 
 
-def _page_key(p: Passage) -> tuple[str, int]:
-    """Ключ згортання: розділ разом із номером частини, а ім'я варіанта в ньому
-    заміняється «*». Саме заміняється, а не вирізається: інакше
+def _page_key(p: Passage) -> tuple[str, str, int]:
+    """Ключ згортання: родина джерела, розділ і номер частини, а ім'я варіанта в
+    розділі заміняється «*». Саме заміняється, а не вирізається: інакше
     docs-astro-reference-hooks-use-auth збігся б із reference-hooks-use-auth —
-    сторінкою іншої лінії, яка мусить лишитися у видачі окремо."""
+    сторінкою іншої лінії, яка мусить лишитися у видачі окремо. Родина
+    (profile.family) — щоб однаковий шлях різних продуктів не згортався як повтор."""
+    fam = profile.family(p.doc_id)
     m = _VARIANT.match(p.anchor) if _VARIANT else None
     if not m:
-        return p.anchor, p.part
-    return p.anchor[:m.start(1)] + "*" + p.anchor[m.end(1):], p.part
+        return fam, p.anchor, p.part
+    return fam, p.anchor[:m.start(1)] + "*" + p.anchor[m.end(1):], p.part
 
 
 # Сторінка → {варіант: фрагмент}: щоб на запит, що називає SDK, віддати саме його

@@ -86,6 +86,14 @@ def config() -> dict:
                               or not 1 <= depth <= 2):
         raise SystemExit(f"{path}: поле version_line_depth мусить бути цілим 1–2, "
                          f"а не {depth!r}")
+    families = data.get("families")
+    if families is not None:
+        lists = list(families.values()) if isinstance(families, dict) else [None]
+        ids = [i for v in lists if isinstance(v, list) for i in v]
+        if (any(not isinstance(v, list) or not v for v in lists)
+                or any(not isinstance(i, str) for i in ids) or len(ids) != len(set(ids))):
+            raise SystemExit(f"{path}: поле families — {{\"родина\": [\"id джерела\", …]}}, "
+                             f"кожне джерело щонайбільше в одній родині")
     port = data.get("port")
     if port is not None and (not isinstance(port, int)
                              or not 1 <= port <= 65535):
