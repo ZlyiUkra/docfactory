@@ -771,7 +771,7 @@ OpenAPI 3.1.1, JSON Schema 2020-12 і ERC-20, ERC-721, ERC-4361. 1 175 доку�
 Angular, Svelte, Preact, Solid, Qwik, Marko, Cypress, Puppeteer, Nightwatch, TestCafe, WebdriverIO) — поточний і
 чотири знімки 2020–2024 для старого коду; правила eslint-plugin-testing-library і eslint-plugin-jest-dom на кожному
 мажорі; документація застарілого `@testing-library/react-hooks`; для пакетів React-лінії — README кожної версії й
-гілки main, нотатки релізів і реєстр npm. 2 320 документів, 16 724 фрагменти.
+гілки main, нотатки релізів і реєстр npm. 2 320 документів, 6 105 фрагментів.
 
 - порт `8786`; запис у Claude Code — `testing-library-docs`, адреса `http://127.0.0.1:8786/mcp`; інструменти
   `search_docs` і `read_section`;
