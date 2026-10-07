@@ -29,8 +29,9 @@ knowledge_qdrant.py. Практика його не імпортує і кори
 ЩО ЦЕЙ МОДУЛЬ НЕ РОБИТЬ
 
 Не видаляє колекцій, не чистить томів, не зупиняє контейнерів. Створити,
-дописати, прочитати — усе. Прибирання лишається людині, і команди для нього
-названі в README практики.
+дописати, прочитати — і прибрати зайві точки власної колекції (`delete`, його
+кличе лише `vectors` для точок, чиїх фрагментів у корпусі вже немає). Решта
+прибирання лишається людині, і команди для нього названі в README практики.
 """
 
 import json
@@ -225,6 +226,19 @@ def all_ids(name: str = COLLECTION) -> set:
         offset = res.get("next_page_offset")
         if offset is None:
             return ids
+
+
+def delete(ids: list, name: str = COLLECTION) -> int:
+    """Видаляє названі точки пачками. Кличе його лише `vectors` — для точок
+    власної колекції, чиїх фрагментів у корпусі вже немає (server/setup.py,
+    _keep_orphans каже, коли не можна). Колекцію не чіпає."""
+    gone = 0
+    for start in range(0, len(ids), BATCH):
+        chunk = ids[start:start + BATCH]
+        _request("POST", f"/collections/{name}/points/delete?wait=true",
+                 {"points": chunk})
+        gone += len(chunk)
+    return gone
 
 
 def search(vector: list[float], limit: int, name: str = COLLECTION) -> list[dict]:

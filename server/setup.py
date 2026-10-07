@@ -38,6 +38,15 @@
 рахує лише ті фрагменти, що додалися чи змінилися, незмінні не чіпає, і перервана
 робота не пропадає. `--vectors --refill` рахує все наново, поверх наявних точок;
 наявні точки при цьому не видаляються, а перезаписуються тими самими номерами.
+
+Єдине, що `--vectors` видаляє, — зайві точки власної колекції: ті, чийого фрагмента
+в корпусі вже немає. Номер точки береться з ідентифікатора фрагмента, тож кожна
+зміна імені (перейменування документа, префікс джерела, злиття однакових текстів
+під іншою редакцією) дає нову точку, а стара лишається двійником з тим самим
+вектором. У відповідь вона не потрапляє, але займає місця серед найближчих і з
+кожним оновленням таких більшає. Тому наприкінці прогону вони прибираються — крім
+двох випадків, коли «зайва» може бути не зайвою: корпус неповний (архів
+розпакований не до кінця) або жодну наявну точку не впізнано (чужий корпус).
 """
 
 import hashlib
@@ -307,6 +316,28 @@ def _orphans(want_ids: set) -> list:
     return [sid for sid in vectorstore.all_ids() if sid not in want_ids]
 
 
+def _keep_orphans(have: int, recognized: bool) -> str:
+    """Чому зайві точки цього разу лишити, або порожній рядок, якщо їх можна прибрати.
+
+    Зайвою точка вважається, коли її номера немає серед поточних фрагментів. Це
+    судження вірне лише за повного набору фрагментів у своїй колекції, тож два
+    випадки, де воно хибне, перевіряються окремо: неповний корпус (архів ще
+    розпаковується — і видалення забрало б точки половини документів, які потім
+    рахувати годинами) і колекція, жодну точку якої не впізнано до заливання
+    (чужий корпус чи стара схема номерів — її точки не зайві, а чужі).
+    """
+    from common import corpus
+
+    if have and not recognized:
+        return ("до заливання жодну наявну точку не впізнано — колекція може\n"
+                "  належати іншому корпусу")
+    short = None if corpus.corpus_archived() else corpus._corpus_short()
+    if short:
+        return (f"корпус неповний: у corpus/ {short[0]} документів, а паспорт "
+                f"описує {short[1]}")
+    return ""
+
+
 def _fill(todo: list) -> int:
     """Рахує вектори і заливає їх пачками, друкуючи поступ.
 
@@ -443,7 +474,7 @@ def _report(spent: float | None = None) -> None:
 
 
 def enable_vectors(refill: bool = False) -> int:
-    """Піднімає Qdrant, заливає фрагменти і записує рішення."""
+    """Піднімає Qdrant, заливає фрагменти, прибирає зайві точки і записує рішення."""
     from common import embed, nform, vectorstore
     from common.corpus import DOC_SET, load_passages
     from common.idmap import assign_ids
@@ -476,6 +507,9 @@ def enable_vectors(refill: bool = False) -> int:
 
     new, changed, unchanged, want_ids = _plan(passages, uid_of)
     have = vectorstore.count()
+    # Чи впізнано бодай одну наявну точку — до заливання, поки --refill не
+    # переписав колекцію: від цього залежить, чи можна прибирати зайві.
+    recognized = bool(unchanged or changed)
 
     # Жоден поточний фрагмент не впізнано, а точки в колекції є: або вона під
     # старою схемою номерів (номер-позиція з попередньої версії практики), або в
@@ -509,15 +543,16 @@ def enable_vectors(refill: bool = False) -> int:
         print(f"  залито точок: {sent}, у колекції тепер {vectorstore.count()}")
 
     orphans = _orphans(want_ids)
-    if orphans:
+    keep = _keep_orphans(have, recognized) if orphans else ""
+    if keep:
         m = len(orphans)
-        print(f"\n  {m} {nform(m, 'точка', 'точки', 'точок')} описують текст,\n"
-              f"  якого в документах уже немає. Пошук їх не показує (їхній фрагмент\n"
-              f"  не входить у набір). Прибрати фізично можна лише знесенням\n"
-              f"  колекції — робите це ви самі:\n"
-              f"    curl -X DELETE {vectorstore.QDRANT_URL}/collections/"
-              f"{vectorstore.COLLECTION}\n"
-              f"    python -m server.setup --vectors")
+        print(f"\n  {m} {nform(m, 'зайва точка', 'зайві точки', 'зайвих точок')} "
+              f"(їхніх фрагментів у наборі немає) — не видаляю:\n  {keep}")
+    elif orphans:
+        gone = vectorstore.delete(sorted(orphans))
+        print(f"  видалено {gone} {nform(gone, 'зайву точку', 'зайві точки', 'зайвих точок')}"
+              f" — їхніх фрагментів у корпусі вже немає; у колекції тепер "
+              f"{vectorstore.count()}")
 
     write_mode({"search": "vectors", "docs": DOC_SET, "model": embed.MODEL_KEY,
                 "collection": vectorstore.COLLECTION, "points": vectorstore.count()})
