@@ -154,7 +154,15 @@ def _atx(text: str) -> str:
 _JS_NAME = re.compile(r"[A-Za-z_$][\w$]*")
 _JS_NUMBER = re.compile(r"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?")
 _JS_EXPORT = re.compile(r"^export\s+const\s+([A-Za-z_$][\w$]*)\s*=\s*", re.M)
-_PROP_TABLE = re.compile(r"<(TypeTable|DatabaseTable)\b")
+_PROP_TABLE = re.compile(r"<(TypeTable|DatabaseTable|PropsTable|DataAttributesTable|KeyboardTable"
+                         r"|CssVariablesTable|Highlights)\b")
+_TABLE_PROP = {"TypeTable": "type", "DatabaseTable": "fields", "Highlights": "features"}
+_PACKAGE_RELEASE = re.compile(r'^[ \t]*<PackageRelease\s+name="([^"]+)"\s+version="([^"]+)"'
+                              r'\s*/>[ \t]*$', re.M)
+_PR_LINK = re.compile(r"<PRLink\s+id=\{(\d+)\}\s*/>")
+_CODE_TAG = re.compile(r"<Code>([^<>{}]*)</Code>")
+_HERO = re.compile(r"^[ \t]*<HeroContainer>.*?</HeroContainer>[ \t]*$"
+                   r"|^[ \t]*<(?:HeroCodeBlock|ThemesPropsTable)\b[^>]*/>[ \t]*$", re.M | re.S)
 _API_METHOD = re.compile(r"^[ \t]*<APIMethod\b((?:[^<>\"{}]|\"[^\"]*\"|\{[^{}]*\})*)>[ \t]*$", re.M)
 _JSX_ATTR = re.compile(r"(\w+)(?:\s*=\s*(?:\"([^\"]*)\"|\{([^{}]*)\}))?")
 _JSX_SPACE = re.compile(r"\{\s*([\"'])\s*\1\s*\}")
@@ -198,14 +206,75 @@ def _js_string(s: str, i: int) -> tuple[str, int]:
     return "".join(out), i + 1
 
 
+_JSX_OPEN = re.compile(r"<([A-Za-z][\w.]*)?((?:[^<>\"'{}]|\"[^\"]*\"|'[^']*'|\{[^{}]*\})*?)(/?)>")
+_JSX_CLOSE = re.compile(r"</([A-Za-z][\w.]*)?\s*>")
+
+
+def _jsx_text(s: str, i: int) -> tuple[str, int]:
+    """(текст, позиція після елемента) для елемента JSX у значенні властивості: так Radix
+    пише опис пропса — `description: (<span>Must be used with <Code>onOpenChange</Code>.</span>)`.
+    `<Code>` стає `кодом`, `<br />` — пробілом, решта тегів знімається, а з виразів `{…}`
+    лишаються лише рядки (`{" "}`, `{"…"}`)."""
+    # Стек відкритих тегів і буфер кожного: вміст `<Code>` збирається окремо, щоб стати
+    # `кодом` без пробілів усередині лапок.
+    stack: list[tuple[str, list[str]]] = [("", [])]
+    while i < len(s):
+        if s[i] == "<":
+            m = _JSX_CLOSE.match(s, i)
+            if m:
+                if len(stack) < 2:
+                    raise _NotLiteral
+                tag, buf = stack.pop()
+                inner = " ".join("".join(buf).split())
+                stack[-1][1].append(f"`{inner}`" if tag == "Code" and inner else inner)
+                i = m.end()
+                if len(stack) == 1:
+                    break
+                continue
+            m = _JSX_OPEN.match(s, i)
+            if not m:
+                raise _NotLiteral
+            i = m.end()
+            if m.group(3):
+                stack[-1][1].append(" " if m.group(1) == "br" else "")
+                if len(stack) == 1:
+                    break
+            else:
+                stack.append((m.group(1) or "", []))
+        elif s[i] == "{":
+            j = _js_skip(s, i + 1)
+            if s[j:j + 1] in ("'", '"', "`"):
+                text, j = _js_string(s, j)
+                stack[-1][1].append(text)
+                j = _js_skip(s, j)
+            close = s.find("}", j)
+            if close < 0:
+                raise _NotLiteral
+            i = close + 1
+        else:
+            stack[-1][1].append(s[i])
+            i += 1
+    if len(stack) != 1:
+        raise _NotLiteral
+    return " ".join("".join(stack[0][1]).split()), i
+
+
 def _js_value(s: str, i: int):
-    """(значення, позиція після нього) для літерала JS: об'єкт, масив, рядок, число, ім'я.
-    Скаляри лишаються рядками так, як записані («false», «128»): у таблицю вони й ідуть
-    текстом."""
+    """(значення, позиція після нього) для літерала JS: об'єкт, масив, рядок, число, ім'я,
+    а також елемент JSX (його текст, див. `_jsx_text`), зокрема в дужках. Скаляри лишаються
+    рядками так, як записані («false», «128»): у таблицю вони й ідуть текстом."""
     i = _js_skip(s, i)
     if i >= len(s):
         raise _NotLiteral
     c = s[i]
+    if c == "<":
+        return _jsx_text(s, i)
+    if c == "(":
+        value, i = _js_value(s, i + 1)
+        i = _js_skip(s, i)
+        if s[i:i + 1] != ")":
+            raise _NotLiteral
+        return value, i + 1
     if c == "{":
         out: dict = {}
         i = _js_skip(s, i + 1)
@@ -298,6 +367,37 @@ def _db_rows(fields: list) -> list[str]:
     return rows
 
 
+def _radix_rows(kind: str, data: list) -> list[str]:
+    """Рядки таблиць Radix: пропси, атрибути `data-*`, клавіші, змінні CSS, можливості."""
+    if kind == "Highlights":
+        return ["Features:", ""] + [f"- {' '.join(str(f).split())}" for f in data if str(f).strip()]
+    head = {"PropsTable": "Props:", "DataAttributesTable": "Data attributes:",
+            "KeyboardTable": "Keyboard interactions:", "CssVariablesTable": "CSS variables:"}[kind]
+    rows = [head, ""]
+    for row in data:
+        if not isinstance(row, dict):
+            continue
+        desc = " ".join(str(row.get("description") or "").split())
+        if kind == "PropsTable" and row.get("name"):
+            bits = [str(row["type"])] if isinstance(row.get("type"), str) and row["type"] else []
+            if row.get("required") == "true":
+                bits.append("required")
+            if isinstance(row.get("default"), str) and row["default"] not in ("", "undefined"):
+                bits.append(f"default: {row['default']}")
+            rows.append(f"- `{row['name']}`" + (f" ({', '.join(bits)})" if bits else "")
+                        + (f" — {desc}" if desc else ""))
+        elif kind == "DataAttributesTable" and row.get("attribute"):
+            values = row.get("values")
+            values = " | ".join(f"`{v}`" for v in values) if isinstance(values, list) else values
+            rows.append(f"- `{row['attribute']}`" + (f": {values}" if values else ""))
+        elif kind == "KeyboardTable" and row.get("keys"):
+            keys = row["keys"] if isinstance(row["keys"], list) else [row["keys"]]
+            rows.append(f"- {' + '.join(str(k) for k in keys)}" + (f" — {desc}" if desc else ""))
+        elif kind == "CssVariablesTable" and row.get("cssVariable"):
+            rows.append(f"- `{row['cssVariable']}`" + (f" — {desc}" if desc else ""))
+    return rows if len(rows) > 2 else []
+
+
 def _jsx_props(text: str) -> str:
     """Компоненти, чий зміст лежить у властивостях, а не між тегами, → текст.
 
@@ -306,7 +406,14 @@ def _jsx_props(text: str) -> str:
     таблиць бази — масив для `<DatabaseTable fields={…} />`. Розмітка `_markup` бере лише текст між
     тегами, а рядки `export` MDX викидаються як код сторінки, тож без цього в корпус не дійшли б
     ні адреси ендпоінтів, ні жодна опція, ні жодна схема таблиці. Значення, що не є даними
-    (функція, JSX), таблицю не відтворює — тоді вона випадає, як і без цього поля.
+    (функція, виклик), таблицю не відтворює — тоді вона випадає, як і без цього поля.
+
+    Так само пише Radix: пропси частини компонента — масив `<PropsTable data={[…]} />` з описом
+    у JSX, атрибути стану — `<DataAttributesTable>`, клавіші — `<KeyboardTable>`, змінні CSS —
+    `<CssVariablesTable>`, можливості — `<Highlights features={[…]} />`; у журналі випусків пакет
+    і версія — `<PackageRelease name version />` (стає підзаголовком), номер PR — `<PRLink id>`.
+    Демо (`<HeroContainer>`, `<HeroCodeBlock>`) знімається: це живий компонент сайту, а не
+    текст; `<ThemesPropsTable defs>` теж — його дані лежать у коді Radix Themes, не на сторінці.
     Заодно: `{" "}` — пробіл JSX, а `[!code highlight]` (після `//`, `#` або коментаря) — позначка
     підсвічування рядка коду."""
     # Розібраний експорт вирізається цілком: `mdx_statements_out` знімає лише його перший
@@ -345,7 +452,7 @@ def _jsx_props(text: str) -> str:
         if m.start() < i:
             continue
         kind = m.group(1)
-        prop = "type" if kind == "TypeTable" else "fields"
+        prop = _TABLE_PROP.get(kind, "data")
         end = text.find("/>", m.end())
         attr = re.compile(rf"\b{prop}\s*=\s*\{{").search(text, m.end(), end if end > 0 else None)
         if not attr:
@@ -365,11 +472,17 @@ def _jsx_props(text: str) -> str:
             rows = _type_rows(value)
         elif kind == "DatabaseTable" and isinstance(value, list):
             rows = ([f"Table `{named.group(1)}`:", ""] if named else []) + _db_rows(value)
+        elif kind not in ("TypeTable", "DatabaseTable") and isinstance(value, list):
+            rows = _radix_rows(kind, value)
         else:
             continue
         out += [text[i:m.start()], "\n".join(rows) + "\n"]
         i = close + 2
     text = "".join(out) + text[i:]
+    text = _HERO.sub("", text)
+    text = _PACKAGE_RELEASE.sub(lambda m: f"### {m.group(1)} {m.group(2)}", text)
+    text = _PR_LINK.sub(lambda m: f"(#{m.group(1)})", text)
+    text = _CODE_TAG.sub(lambda m: f"`{m.group(1).strip()}`", text)
     text = _API_METHOD.sub(api, text)
     text = _JSX_SPACE.sub(" ", text)
     return _SHIKI_MARK.sub("", text)
@@ -462,6 +575,60 @@ def _hugo(text: str, ctx, base: str, conf: dict, depth: int = 0) -> str:
     return _HUGO_ANY.sub("", text)
 
 
+_SOURCE_TAG = re.compile(r"<(ComponentPreview|ComponentExample|ComponentSource)\b"
+                         r"((?:[^<>\"{}]|\"[^\"]*\"|\{[^{}]*\})*?)/?>")
+_SOURCE_KIND = {"ComponentPreview": "example", "ComponentExample": "example",
+                "ComponentSource": "source"}
+_BASES = ("radix", "base", "aria")
+
+
+def _template_rx(template: str) -> re.Pattern:
+    """Шаблон шляху (`{root}/examples/{base}/{name}.tsx`) → вираз, яким тека тегу
+    відбирає файли, що можуть знадобитися: усіх файлів дерева в пам'яті не тримаємо."""
+    parts = re.split(r"(\{root\}|\{base\}|\{name\})", template)
+    slots = {"{root}": ".+?", "{base}": "[^/]+", "{name}": ".+"}
+    return re.compile("^" + "".join(slots.get(p, re.escape(p)) for p in parts) + "$")
+
+
+def _sources(text: str, meta: dict, path: str, files: dict, conf: dict, fetch) -> str:
+    """Вставки коду shadcn/ui → блоки коду. Сторінка компонента показує приклади тегом
+    `<ComponentPreview name="dialog-demo" />`, а сам компонент —
+    `<ComponentSource name="dialog" />`; код лежить у файлах реєстру того самого тегу
+    (`apps/v4/examples/radix/dialog-demo.tsx`, `apps/www/registry/new-york/ui/dialog.tsx`).
+    Без нього на сторінці лишався б заголовок «Custom Close Button» без жодного рядка коду.
+    Шлях — перший із шаблонів `conf`, що є в дереві тегу; `{root}` — тека сайту (частина
+    шляху до `/content/`), `{base}` — бібліотека примітивів сторінки (`radix`, `base`,
+    `aria`: префікс `styleName` або поле `base` шапки). Вставка, якої не знайдено, лишає
+    назву прикладу текстом."""
+    root = path.split("/content/", 1)[0]
+
+    def put(m):
+        attrs = {k: (a if a is not None else b if b is not None else "true")
+                 for k, a, b in _JSX_ATTR.findall(m.group(2))}
+        kind = _SOURCE_KIND[m.group(1)]
+        name = (attrs.get("fileName") if kind == "source" and attrs.get("fileName")
+                else attrs.get("name", ""))
+        style = attrs.get("styleName", "").split("-", 1)[0]
+        base = (style if style in _BASES
+                else meta.get("base") if meta.get("base") in _BASES else "radix")
+        if attrs.get("src"):
+            candidates = [f"{root}/{attrs['src'].lstrip('/')}"]
+            name = name or re.sub(r"\.tsx?$", "", "/".join(attrs["src"].rsplit("/", 2)[-2:]))
+        else:
+            candidates = [t.format(root=root, base=base, name=name) for t in conf.get(kind) or ()]
+        found = next((c for c in candidates if c in files), "")
+        code = fetch(found, files[found]) if found else ""
+        label = attrs.get("title") or name
+        desc = attrs.get("description", "").rstrip(".")
+        head = (f"Example `{name}`" + (f" — {desc}" if desc else "") if kind == "example"
+                else f"`{label}`")
+        if not code:
+            return f"\n\n{head}.\n\n" if name else ""
+        return f"\n\n{head}:\n\n```tsx\n{code.strip()}\n```\n\n"
+
+    return _SOURCE_TAG.sub(put, text)
+
+
 def _split_title(text: str) -> tuple[str, str]:
     """(назва з заголовка першого непорожнього рядка, текст без нього). Заголовок
     далі в тексті — підрозділ, а не назва."""
@@ -498,6 +665,12 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
     labels = dict(source.get("component_labels") or {})
     nginx_xml = source.get("nginx_xml") is True
     hugo = dict(source["hugo"]) if isinstance(source.get("hugo"), dict) else None
+    path_version = [(re.compile(a), b) for a, b in source.get("path_version") or ()]
+    sources = dict(source["jsx_sources"]) if isinstance(source.get("jsx_sources"), dict) else None
+    wanted = [_template_rx(t) for k in ("example", "source") for t in (sources or {}).get(k) or ()]
+    # тег → {шлях файла реєстру: sha}; вміст за sha — один раз на весь прогін
+    registry: dict = {}
+    code_cache: dict = {}
 
     # ім'я документа → [шлях, [теги]]; порядок ключів — порядок першої появи, тобто
     # від найновішого тегу, бо `tags` оголошено від найновішого. Ключ — ім'я, а не
@@ -515,6 +688,9 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
             raise SystemExit(f"{url}: у відповіді немає дерева файлів.")
         if tree.get("truncated"):
             raise SystemExit(f"{url}: GitHub обрізав дерево — перелік був би неповним.")
+        if wanted:
+            registry[tag] = {e["path"]: e["sha"] for e in tree["tree"] if e.get("type") == "blob"
+                             and any(r.match(e.get("path", "")) for r in wanted)}
         for entry in tree["tree"]:
             path = entry.get("path", "")
             folder, _, leaf = path.rpartition("/")
@@ -546,6 +722,9 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
         blob = hit.replace("{version}", str(tags[tag])) or blob
         # Кілька тегів з однією міткою (усі experimental-збірки) — одна версія.
         version = ", ".join(dict.fromkeys(tags[t] for t in found))
+        # Сайт, що тримав окремий файл на кожну версію (`components/dialog/1.1.2.mdx`), — версія
+        # в імені файла, а не в тезі, на якому файл знайшовся.
+        version = next((m.expand(v) for r, v in path_version if (m := r.search(path))), version)
 
         def make(raw=raw, blob=blob, path=path, version=version, tag=tag):
             text = ctx.text(raw)
@@ -558,6 +737,17 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
             if hugo:
                 rest = _hugo(rest, ctx, f"https://raw.githubusercontent.com/{owner}/{repo}/"
                                         f"{quote(tag, safe='@')}/", hugo)
+            if sources is not None:
+                def fetch(where, sha, tag=tag):
+                    if sha not in code_cache:
+                        url = (f"https://raw.githubusercontent.com/{owner}/{repo}/"
+                               f"{quote(tag, safe='@')}/{quote(where)}")
+                        code, data = ctx.fetch(url) if ctx.allowed(url) else ("", b"")
+                        code_cache[sha] = (data.decode("utf-8", errors="replace")
+                                           if code == "200" else "")
+                    return code_cache[sha]
+
+                rest = _sources(rest, meta or {}, path, registry.get(tag, {}), sources, fetch)
             # Обидва — до викидання `export`: таблиці беруть дані саме з них.
             if source.get("jsx_props") is True:
                 rest = _jsx_props(rest)
