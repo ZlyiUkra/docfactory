@@ -377,6 +377,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 - ESLint, README і CHANGELOG `eslint-plugin-react-hooks`, `eslint-plugin-react`, `eslint-plugin-jsx-a11y`,
   typescript-eslint — `eslint`;
 - Docker — `docker`; Kubernetes, k3d, k3s, `kubectl`, Traefik, cert-manager і Let's Encrypt — `kubernetes`;
+- nginx: конфіг роздачі SPA в образі (фаза 5, день 7) — `nginx`;
 - socket.io-client (живі ціни з власного сервера, план NestJS, фаза 7) — `socketio`;
 - GitHub Actions, Dependabot, Container registry (ghcr.io) і GitHub Pages, офіційні дії — `github-actions`;
 - безпека: шпаргалки OWASP Cheat Sheet Series (XSS, CSP, React Security), Top 10 — `owasp`;
@@ -1505,7 +1506,7 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
 # Фаза 5. Продакшн: збірка, безпека, метрики, CI, викот у кластер — 9 днів
 
 **Сервери MCP фази:** `react-docs`, `vite-docs`, `react-router-docs`, `mdn-docs`, `webstandards-docs`, `docker-docs`,
-`kubernetes-docs`, `playwright-docs`, `github-actions-docs`, `owasp-docs`.
+`kubernetes-docs`, `playwright-docs`, `github-actions-docs`, `owasp-docs`, `nginx-docs`.
 
 Застосунок уже в інтернеті з фази 1. У блоці A він стає легшим, безпечнішим, вимірюваним і перевіряється сам на
 кожному запиті на злиття. У блоці B він переїжджає зі статичного хостингу у власний кластер Kubernetes — той самий,
@@ -1803,8 +1804,10 @@ Let's Encrypt (кластер створюють із пробросом пор�
   що буде на сервері, тож маніфести завтра не зміняться.
 - **Читати:** у примірнику `docker` — `Multi-stage builds`, `Dockerfile reference`, `Multi-platform builds`; у
   примірнику `kubernetes` — `Deployments`, `Service`, `Configure Liveness, Readiness and Startup Probes`,
-  `k3d: Overview`, `k3d: k3d cluster create`; у примірнику `vite` — `static-deploy`.
-- **Сервери MCP:** `docker-docs`, `kubernetes-docs`, `vite-docs`.
+  `k3d: Overview`, `k3d: k3d cluster create`; у примірнику `vite` — `static-deploy`; у примірнику `nginx` — `Serve
+  Static Content`, `Module ngx_http_core_module` (директиви `location`, `root`, `try_files`), `Module
+  ngx_http_headers_module` (директива `add_header`).
+- **Сервери MCP:** `docker-docs`, `kubernetes-docs`, `vite-docs`, `nginx-docs`.
 - **Зробити:** 1) Docker Engine у WSL за інструкцією для Ubuntu з docs.docker.com, далі `sudo usermod -aG docker
   $USER` (запускати `docker` без `sudo`), перезайти в WSL і `docker run hello-world`; 2) `Dockerfile`, `.dockerignore`
   і `nginx.conf` у корені проєкту, як вище; 3) `docker build -t spa:0.1.0 .` — зібрати образ з тегом, крапка — «рецепт

@@ -613,7 +613,7 @@ man-pages (`man-pages: namespaces(7) — …`). Посібники GNU назв�
 
 # Фаза 3. Процеси, служби, пакети, ядро, відновлення — 10 днів
 
-**Сервери MCP фази:** `linux-docs`.
+**Сервери MCP фази:** `linux-docs`, `nginx-docs`.
 
 Розділ Operations Deployment — 25 % іспиту, найбільший разом із мережею. Тут же — дві компетенції розділу
 Essential Commands про служби й продуктивність. SELinux, віртуальні машини й контейнери з того самого розділу
@@ -724,8 +724,9 @@ Essential Commands про служби й продуктивність. SELinux,
   `/etc/apt/sources.list.d/` (в 24.04 — формат deb822, `ubuntu.sources`); сторонні репозиторії — з ключем у
   `/etc/apt/keyrings/` і `signed-by=`.
 - **Читати:** `apt(8)`; `apt-get(8)`; `apt-mark(8)`; `dpkg(1)`; `sources.list(5)` — формат deb822;
-  `apt_preferences(5)` — закріплення версій.
-- **Сервери MCP:** `linux-docs`.
+  `apt_preferences(5)` — закріплення версій; у примірнику `nginx` — `Installing NGINX Open Source: Official
+  repository` (репозиторій nginx.org з ключем у `keyrings` і `signed-by`).
+- **Сервери MCP:** `linux-docs`, `nginx-docs`.
 - **Зробити:** 1) знайти, з якого пакета `/usr/bin/dig`; 2) додати сторонній репозиторій (наприклад, офіційний
   nginx.org) з ключем у `keyrings` і поставити з нього; 3) заборонити оновлення nginx; 4) зіпсувати файл пакета
   і знайти це через `dpkg -V`, полагодити перевстановленням.
@@ -976,7 +977,7 @@ Essential Commands про служби й продуктивність. SELinux,
 
 # Фаза 5. Мережа — 10 днів
 
-**Сервери MCP фази:** `linux-docs`, `webstandards-docs`.
+**Сервери MCP фази:** `linux-docs`, `webstandards-docs`, `nginx-docs`.
 
 Розділ Networking — 25 % іспиту. Ubuntu Server налаштовує мережу через netplan (який пише конфіг для
 systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва шляхи — у кожному дні, де вони різні. Перед
@@ -1159,11 +1160,11 @@ systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва �
   `location / { proxy_pass http://upstream; }`, блок `upstream` з кількома серверами — балансування (по черзі,
   `least_conn`, `ip_hash`), заголовки `X-Forwarded-For`. TLS на проксі — `ssl_certificate` (сертифікат з фази 1,
   день 9). HAProxy — те саме як окремий балансувальник з перевірками стану бекендів.
-- **Читати:** `nginx(8)` — опції командного рядка (`-t`, `-s reload`); `haproxy(1)`; документація самого nginx (модулі
-  `ngx_http_proxy_module`, `ngx_http_upstream_module`) — поза корпусом, на машині в `/usr/share/doc/nginx`; у
-  примірнику `webstandards` — `RFC 9110 HTTP Semantics: 7 Routing HTTP Messages`, `RFC 9112 HTTP/1.1: 9 Connection
-  Management`.
-- **Сервери MCP:** `linux-docs`, `webstandards-docs`.
+- **Читати:** `nginx(8)` — опції командного рядка (`-t`, `-s reload`); `haproxy(1)`; у примірнику `nginx` —
+  `Module ngx_http_proxy_module`, `Module ngx_http_upstream_module`, `Using nginx as HTTP load balancer`,
+  `Configuring HTTPS servers`, `Controlling nginx`; у примірнику `webstandards` — `RFC 9110 HTTP Semantics: 7 Routing
+  HTTP Messages`, `RFC 9112 HTTP/1.1: 9 Connection Management`.
+- **Сервери MCP:** `linux-docs`, `nginx-docs`, `webstandards-docs`.
 - **Зробити:** 1) на `rocky` — дві «служби» на портах 8001 і 8002 (`python3 -m http.server` у різних теках);
   2) nginx на `ubu` балансує між ними по черзі; 3) TLS на nginx сертифікатом вашого центру; 4) те саме через
   HAProxy з перевіркою стану — вимкнена служба випадає з ротації.
@@ -1462,9 +1463,11 @@ Server і Rocky Linux і сторінка іспиту LFCS. Про інші б�
 - man-сторінки Ubuntu 22.04, 24.04 і 26.04, man-pages, admin-guide ядра, systemd, посібники GNU, vim, Debian
   Handbook, Ubuntu Server, Rocky Linux, сторінка іспиту LFCS — `linux`;
 - тексти стандартів (RFC HTTP) — `webstandards`;
+- nginx: документація nginx.org (поточна й знімки стабільних гілок 1.0–1.30), журнали змін, NGINX Admin Guide —
+  `nginx`;
 - Docker (фази 6 і 7) — `docker`; Kubernetes — `kubernetes`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- nginx, HAProxy, OpenLDAP, libvirt і Podman поза їхніми man-сторінками;
+- HAProxy, OpenLDAP, libvirt і Podman поза їхніми man-сторінками;
 - Candidate Handbook і Important Instructions LFCS, розбори Killer.sh.

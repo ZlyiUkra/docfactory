@@ -374,7 +374,8 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - безпека: шпаргалки OWASP Cheat Sheet Series, Top 10 (2013–2025), API Security Top 10, вимоги ASVS, Proactive
   Controls — `owasp`;
 - Node.js (API парних мажорів 12–26, посібники nodejs.org/learn) і npm (CLI 6–12) — `nodejs`;
-- Docker — `docker`; Kubernetes, k3s, Traefik, Kustomize, SOPS, age і Helm — `kubernetes`; sshd — `linux`.
+- Docker — `docker`; Kubernetes, k3s, Traefik, Kustomize, SOPS, age і Helm — `kubernetes`; sshd — `linux`;
+- nginx: зворотний проксі, буферизація й стрімінг, кеш, обмеження частоти, вебсокети — `nginx`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
@@ -383,7 +384,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
   OpenTelemetry;
 - з «знати, що існує»: Stripe, Resend і React Email, Vercel AI SDK, UploadThing, Sanity, Payload, Contentful,
   tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Grafana, Loki, Storybook;
-- поза таблицями: nginx; у факультативі — viem, wagmi і Foundry.
+- у факультативі — viem, wagmi і Foundry.
 
 ---
 
@@ -1426,12 +1427,12 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 # Фаза 7. DevOps: від збірки до продакшну — 12 днів
 
 **Сервери MCP фази:** `nextjs-docs`, `docker-docs`, `webstandards-docs`, `kubernetes-docs`, `playwright-docs`,
-`github-actions-docs`.
+`github-actions-docs`, `nginx-docs`.
 
 Next.js — не тека статики: це сервер, який треба зібрати, запустити, тримати живим і вміти відкотити. Документації
 Docker, nginx, Kubernetes і GitHub Actions у корпусі Next.js немає; є те, чого Next.js вимагає від них, і готові
 приклади з кодом. Docker і Compose мають примірник `docker`, Kubernetes — примірник `kubernetes`, GitHub Actions —
-примірник `github-actions`; nginx — поза фабрикою. Дні 1–11 — на своєму комп'ютері: образ, compose, проксі, CI,
+примірник `github-actions`, nginx — примірник `nginx`. Дні 1–11 — на своєму комп'ютері: образ, compose, проксі, CI,
 спостереження вчать локально, бо так дешевше помилятися. Продакшн при цьому вже існує: кластер k3s на машині Oracle
 Cloud з'явився в плані React (фаза 5, дні 7–9), бекенд, база й gateway приїхали туди з плану NestJS (фаза 6, дні 8–9;
 фаза 7, день 6). День 12 викочує в той самий кластер под Next.js на місце поду SPA. Платний сервер, домен і CDN не
@@ -1508,8 +1509,10 @@ Cloud з'явився в плані React (фаза 5, дні 7–9), бекен
   проксі не має їх кешувати. TLS локально — сертифікатом mkcert.
 - **Читати:** `How to self-host your Next.js application`, розділ про зворотний проксі; `Streaming`, розділ «Reverse
   proxies»; `compress`; поза корпусом — документація Upstash Ratelimit; у примірнику `webstandards` — `RFC 9110 HTTP
-  Semantics: 7 Routing HTTP Messages`, `RFC 9112 HTTP/1.1: 9 Connection Management`.
-- **Сервери MCP:** `nextjs-docs`, `webstandards-docs`.
+  Semantics: 7 Routing HTTP Messages`, `RFC 9112 HTTP/1.1: 9 Connection Management`; у примірнику `nginx` — `NGINX
+  Reverse Proxy` (розділ Configuring Buffers), `Module ngx_http_proxy_module` (директиви `proxy_buffering`,
+  `proxy_cache`), `NGINX Content Caching`, `Module ngx_http_limit_req_module`, `Configuring HTTPS servers`.
+- **Сервери MCP:** `nextjs-docs`, `webstandards-docs`, `nginx-docs`.
 - **Зробити:** 1) nginx у compose перед застосунком; 2) `curl -N --compressed` — стрімінг дожив; 3) увімкнути
   кеш nginx і зайти двома користувачами в кабінет; 4) обмеження частоти на адресі входу.
 - **Перевірити себе:** шматки стріму приходять із проміжками; кожен користувач бачить свій кабінет.
@@ -1738,7 +1741,7 @@ Cloud з'явився в плані React (фаза 5, дні 7–9), бекен
 
 # Фаза 8. Next.js поруч з окремим бекендом — 7 днів
 
-**Сервери MCP фази:** `nextjs-docs`, `webstandards-docs`, `mdn-docs`, `socketio-docs`.
+**Сервери MCP фази:** `nextjs-docs`, `webstandards-docs`, `mdn-docs`, `socketio-docs`, `nginx-docs`.
 
 Продовження плану NestJS ([../nestjs/LEARNING.md](../nestjs/LEARNING.md)): там SPA з плану React уже отримала
 бекенд — контракт і помилки полів (фаза 2, дні 7–8), токени (фаза 4, дні 6–9), compose (фаза 6, день 2), живі
@@ -1831,8 +1834,9 @@ Cloud з'явився в плані React (фаза 5, дні 7–9), бекен
   у примірнику `socketio` (з `version: "4"`) — `Client options` (розділи auth і transports), `Middlewares`, `How-to:
   How to use with Next.js`; поза корпусом — обговорення RFC про NextResponse.upgrade() у GitHub Discussions
   репозиторію vercel/next.js — лише щоб знати, що воно є; у примірнику `webstandards` — `RFC 6455 The WebSocket
-  Protocol: 10 Security Considerations` (розділ 10.2 Origin Considerations).
-- **Сервери MCP:** `nextjs-docs`, `webstandards-docs`, `socketio-docs`.
+  Protocol: 10 Security Considerations` (розділ 10.2 Origin Considerations); у примірнику `nginx` — `WebSocket
+  proxying`.
+- **Сервери MCP:** `nextjs-docs`, `webstandards-docs`, `socketio-docs`, `nginx-docs`.
 - **Зробити:** 1) у NestJS — ендпойнт `POST /api/ws/ticket` за звичайним guard'ом входу: квиток `randomUUID()` →
   Redis з терміном 30 с → відповідь; у middleware gateway — прийняти або access-токен (SPA), або квиток; походження
   Next.js — у `ALLOWED`; 2) у Next.js — `app/ws-ticket/route.ts`: `getSession()`, без сесії — 401, інакше виклик

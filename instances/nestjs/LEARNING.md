@@ -399,6 +399,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 - безпека: шпаргалки OWASP Cheat Sheet Series, Top 10 (2013–2025), API Security Top 10, вимоги ASVS, Proactive
   Controls — `owasp`;
 - Node.js (API парних мажорів 12–26, посібники nodejs.org/learn) і npm (CLI 6–12) — `nodejs`;
+- nginx: проксі перед API, стиснення, вебсокети через проксі — `nginx`;
 - Supabase — `supabase`; Clerk — `clerk`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
@@ -409,7 +410,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   supertest, RxJS;
 - з «варто знати»: BullMQ, Redis, `ws`, nestjs-cls, nestjs-pino, csrf-csrf, CASL, orval, openapi-typescript;
 - з «знати, що існує»: Mongoose, MikroORM, Drizzle, Kafka, RabbitMQ, NATS;
-- поза таблицями: nginx; у факультативі — viem і Foundry.
+- у факультативі — viem і Foundry.
 
 ---
 
@@ -1678,11 +1679,12 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 # Фаза 6. Продакшн — 9 днів
 
 **Сервери MCP фази:** `nestjs-docs`, `docker-docs`, `kubernetes-docs`, `express-docs`, `postgresql-docs`,
-`github-actions-docs`.
+`github-actions-docs`, `nginx-docs`.
 
 Сервер, який треба зібрати, запустити, тримати живим, міряти й вміти оновити. Глави Nest тут — лише те, що Nest
 вимагає від Docker, проксі й CI. Docker і Compose мають примірник `docker`, Kubernetes, k3s і Traefik — примірник
-`kubernetes`, GitHub Actions — примірник `github-actions`; документації nginx і Redis у фабриці немає.
+`kubernetes`, GitHub Actions — примірник `github-actions`, nginx — примірник `nginx`; документації Redis у фабриці
+немає.
 Дні 1–7 робляться на своєму комп'ютері й на тому самому хості (PaaS), куди ви викотили застосунок у фазі 2:
 `docker compose` лишається способом розробки до кінця родини. Дні 8–9 переносять продакшн у кластер k3s, який ви
 підняли в плані React (фаза 5, дні 7–9): бекенд, база й Redis стають подами поруч із подом SPA, а хост із фази 2
@@ -1717,9 +1719,10 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   SPA і пересилає `/api` на `api`. Для браузера SPA й API — одне походження, як із проксі Vite: кука refresh
   працює, CORS не потрібен. API за nginx вмикає `trust proxy`. Міграції не запускають на старті застосунку: два
   екземпляри API почнуть накочувати їх одночасно, а невдала міграція покладе застосунок у цикл перезапусків.
-- **Читати:** у примірнику `docker` — `Docker Compose`, `Compose file reference`, `Networking in Compose`;
-  документація nginx — «proxy_pass» (поза корпусом); розділ Security, глава `Rate limiting`, розділ Proxies.
-- **Сервери MCP:** `nestjs-docs`, `docker-docs`.
+- **Читати:** у примірнику `docker` — `Docker Compose`, `Compose file reference`, `Networking in Compose`; у
+  примірнику `nginx` — `NGINX Reverse Proxy`, `Module ngx_http_proxy_module` (директиви `proxy_pass` і
+  `proxy_set_header`); розділ Security, глава `Rate limiting`, розділ Proxies.
+- **Сервери MCP:** `nestjs-docs`, `docker-docs`, `nginx-docs`.
 - **Зробити:** 1) чотири сервіси; 2) `docker compose up` на чистій машині; 3) SPA на `http://localhost` входить,
   оновлює токен і створює запис; 4) повторити вправу з обмеженням частоти з фази 4, дня 12, з `trust proxy` і без.
 - **Перевірити себе:** `docker compose down -v && docker compose up` — застосунок працює з порожньою, але
@@ -1775,8 +1778,8 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   (у драйвера `pg` типово десять, поза корпусом): за `-c 100` запити стають у чергу пулу, і це видно в p99.
   Серіалізація `ClassSerializerInterceptor` теж коштує часу на великих списках.
 - **Читати:** розділ Techniques, глави `Performance (Fastify)` і `Compression`; розділ Techniques, глава
-  `Serialization`.
-- **Сервери MCP:** `nestjs-docs`.
+  `Serialization`; у примірнику `nginx` — `Compression and Decompression`, `Module ngx_http_gzip_module`.
+- **Сервери MCP:** `nestjs-docs`, `nginx-docs`.
 - **Зробити:** 1) той самий маршрут списку на Express і на Fastify (в окремій гілці) — req/s і p99; 2) gzip у
   nginx — розмір відповіді до й після; 3) autocannon `-c 100` при пулі 10 і 30; 4) список із тисячі записів із
   серіалізацією й без.
@@ -2163,7 +2166,7 @@ SPA під одним іменем, викочується й відкочуєт
 # Фаза 7. Живі дані: WebSockets — 8 днів
 
 **Сервери MCP фази:** `nestjs-docs`, `webstandards-docs`, `mdn-docs`, `vite-docs`, `kubernetes-docs`, `socketio-docs`,
-`owasp-docs`.
+`owasp-docs`, `nginx-docs`.
 
 Досі сервер лише відповідав: клієнт спитав — сервер відповів. Живі ціни так не працюють: сервер сам штовхає дані,
 щойно вони з'явилися, через з'єднання, яке живе годинами. У плані React (фаза 3, дні 6–8) SPA слухала ринковий стрім
@@ -2402,8 +2405,9 @@ SPA під одним іменем, викочується й відкочуєт
   розділ Techniques, глава `Server-Sent Events`; `Deployment`, розділ Scaling up or out; у примірнику `socketio` —
   `Using multiple nodes`, `Redis adapter`, `Redis Streams adapter`, `Behind a reverse proxy`; у примірнику
   `kubernetes` — `Traefik: Traefik EntryPoints Documentation`, розділ respondingTimeouts; у примірнику `webstandards` —
-  `HTML Standard: 9.2 Server-sent events`.
-- **Сервери MCP:** `nestjs-docs`, `kubernetes-docs`, `webstandards-docs`, `socketio-docs`.
+  `HTML Standard: 9.2 Server-sent events`; у примірнику `nginx` — `WebSocket proxying`, `Module ngx_http_proxy_module`
+  (директива `proxy_read_timeout`).
+- **Сервери MCP:** `nestjs-docs`, `kubernetes-docs`, `webstandards-docs`, `socketio-docs`, `nginx-docs`.
 - **Зробити:** 1) `RedisIoAdapter` з адресою Redis із `ConfigService`, а не `localhost`, як у прикладі глави;
   2) у клієнтах — `transports: ['websocket']`; 3) ціни з біржі — через `server.local`, персональні події — через
   адаптер; на з'єднання сервер шле `hello` з `os.hostname()`, щоб було видно, на якому екземплярі сокет;

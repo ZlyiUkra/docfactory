@@ -1039,7 +1039,7 @@ Kustomize.
 
 # Фаза 11. Мережа кластера — 4 дні
 
-**Сервери MCP фази:** `kubernetes-docs`.
+**Сервери MCP фази:** `kubernetes-docs`, `nginx-docs`.
 
 Розділ Servicing and Networking — 20 % CKA. Сервіси, Ingress, Gateway API і NetworkPolicy з частини A — тепер на
 власному кластері, де контролер і CNI ставите ви.
@@ -1074,8 +1074,10 @@ Kustomize.
 - **Що це.** Контролер Ingress/Gateway (Traefik, ingress-nginx, Envoy Gateway) чартом; сервіс контролера як NodePort
   чи LoadBalancer (MetalLB — поза корпусом); IngressClass і GatewayClass.
 - **Читати:** `Ingress Controllers`; `Gateway API: Deploying a simple Gateway`; `Gateway API: Getting started with
-  Gateway API`.
-- **Сервери MCP:** `kubernetes-docs`.
+  Gateway API`; у примірнику `nginx` — `Install NGINX Gateway Fabric with Helm`, `Gateway API compatibility`,
+  `Secure traffic using Let's Encrypt and cert-manager` (NGINX Gateway Fabric як контролер Gateway API), `Bare-metal
+  considerations` (ingress-nginx: сервіс контролера на кластері без хмарного балансувальника).
+- **Сервери MCP:** `kubernetes-docs`, `nginx-docs`.
 - **Зробити:** контролер з підтримкою Gateway API, Gateway з TLS (cert-manager з власним CA), HTTPRoute проєкту.
 - **Перевірити себе:** `curl --cacert ca.crt https://app.lab` через NodePort чи адресу балансувальника — 200.
 - **Пастка:** Gateway без контролера, що реалізує його GatewayClass, — об'єкт створено, але `status` порожній.
@@ -1264,11 +1266,13 @@ Let's Encrypt і програми іспитів CNCF. Про інші бібл�
   metrics-server, Let's Encrypt, програми іспитів CNCF — `kubernetes`;
 - тексти стандартів (OpenID Connect для входу в кластер) — `webstandards`;
 - Docker і Compose — `docker`; Linux: man-сторінки, systemd, мережа — `linux`;
-- PostgreSQL — база наскрізного проєкту (`psql`, `pg_dump`, налаштування сервера) — `postgresql`.
+- PostgreSQL — база наскрізного проєкту (`psql`, `pg_dump`, налаштування сервера) — `postgresql`;
+- NGINX Gateway Fabric, NGINX Ingress Controller, ingress-nginx 0.34–1.15 (закрито в березні 2026), сам nginx —
+  `nginx`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
 - CNI-плагіни: Calico, Cilium, Flannel;
-- MetalLB, ingress-nginx, Envoy Gateway, local-path-provisioner;
+- MetalLB, Envoy Gateway, local-path-provisioner;
 - оператори баз; Prometheus і Grafana;
 - Candidate Handbook і Important Instructions іспитів.

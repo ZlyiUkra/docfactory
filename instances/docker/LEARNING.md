@@ -201,7 +201,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
 
 # Фаза 1. Образи й Dockerfile — 9 днів
 
-**Сервери MCP фази:** `docker-docs`.
+**Сервери MCP фази:** `docker-docs`, `nginx-docs`.
 
 Головна фаза плану й головне, що з Docker питає CKAD: зібрати образ, змінити його, зробити маленьким і безпечним.
 
@@ -254,8 +254,9 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
 - **Навіщо.** Компілятор, dev-залежності й вихідний код не потрібні в образі, який працює в продакшні.
 - **Що це.** Кілька `FROM … AS етап` в одному Dockerfile: етап збирання ставить усе й компілює, фінальний етап
   копіює лише результат (`COPY --from=build`). `--target` збирає лише до вказаного етапу — зручно для тестів.
-- **Читати:** `Multi-stage builds`; `Building best practices` — розділ про багатоетапну збірку.
-- **Сервери MCP:** `docker-docs`.
+- **Читати:** `Multi-stage builds`; `Building best practices` — розділ про багатоетапну збірку; у примірнику
+  `nginx` — `Serve Static Content` (конфіг фінального етапу фронту).
+- **Сервери MCP:** `docker-docs`, `nginx-docs`.
 - **Зробити:** 1) фронт: етап збирання на Node, фінальний — `nginx` зі статикою; 2) API: етап збирання й фінальний
   етап лише з production-залежностями; 3) етап `test` і `docker build --target test`.
 - **Перевірити себе:** розмір фінального образу фронту — десятки мегабайт, а не сотні; цифри до й після — у журналі.
@@ -338,7 +339,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
 
 # Фаза 2. Дані й мережа — 6 днів
 
-**Сервери MCP фази:** `docker-docs`.
+**Сервери MCP фази:** `docker-docs`, `nginx-docs`.
 
 ### День 1. Томи
 
@@ -359,8 +360,9 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
 - **Що це.** Bind (`-v $(pwd)/src:/app/src` чи `--mount type=bind`) — тека господаря всередині, з правами
   господаря; `:ro` — лише читання. tmpfs — тека в пам'яті, зникає з контейнером. Права файлів bind: UID усередині і
   зовні ті самі числа.
-- **Читати:** `Bind mounts`; `tmpfs mounts`; `Sharing local files with containers`.
-- **Сервери MCP:** `docker-docs`.
+- **Читати:** `Bind mounts`; `tmpfs mounts`; `Sharing local files with containers`; у примірнику `nginx` —
+  `Deploying NGINX and NGINX Plus with Docker: Managing Content and Configuration Files`.
+- **Сервери MCP:** `docker-docs`, `nginx-docs`.
 - **Зробити:** 1) API в режимі розробки з кодом через bind і автоперезапуском; 2) конфіг nginx через bind `:ro`;
   3) контейнер з UID 10001 пише в bind-теку, що належить вашому користувачу, — отримати відмову і виправити правами
   теки, а не root-ом.
@@ -819,10 +821,10 @@ compose та buildx. Docker Desktop, Docker AI, Scout як продукт і і�
 - Linux: man-сторінки, systemd, ядро, мережа, права — `linux`;
 - Kubernetes, k3s і контейнерні рантайми з боку кластера (фаза 6) — `kubernetes`;
 - PostgreSQL — `postgresql`;
-- GitHub Actions, Container registry (ghcr.io), офіційні дії Docker і GitHub — `github-actions`.
+- GitHub Actions, Container registry (ghcr.io), офіційні дії Docker і GitHub — `github-actions`;
+- nginx: конфіг фронту й проксі, nginx у Docker — `nginx`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- nginx;
 - Trivy, QEMU;
 - Docker Desktop, Docker AI, Scout як продукт і інші платні продукти Docker.
