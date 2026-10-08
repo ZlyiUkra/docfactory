@@ -1076,6 +1076,7 @@ README плагінів Vite, webpack, Rollup й esbuild з усіма опці�
   інтеграції й REST API версій не мають;
 - копії сторінки для різних фреймворків займають у видачі одне місце; фреймворк, названий у запиті, дістає свою;
 - приклад питання агентові: `./df sentry ask "How do I upload source maps for a Next.js app?"`;
+- корпус в архіві від самого початку, як у binance-spot;
 - докладніше — у [instances/sentry/README.md](instances/sentry/README.md).
 
 ## Захист
