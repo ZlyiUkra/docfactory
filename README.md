@@ -1042,6 +1042,22 @@ Performance, PWA, Design, Testing, Privacy, AI), статті — серед н�
 - корпус в архіві від самого початку, як у express;
 - докладніше — у [instances/webdev/README.md](instances/webdev/README.md).
 
+### binance-spot
+
+Документація API споту Binance англійською з репозиторію `binance/binance-spot-api-docs`: REST API (`/api/v3`),
+WebSocket API, потоки ринкових даних і потік даних користувача, коди помилок, фільтри, переліки значень, короткі
+довідки про SBE, 14 довідок FAQ і два журнали змін — API споту (записи за датами від 2018 року) і тестової мережі.
+Читач `mdfile` з двома новими полями: `cut_doctoc` прибирає згенерований зміст на початку файла, `list_fences` —
+маркер пункту списку перед огорожею коду. 24 документи, 1 042 фрагменти.
+
+- порт `8801`; запис у Claude Code — `binance-spot-docs`, адреса `http://127.0.0.1:8801/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-binance-spot`, модель векторів — `bge-small`;
+- версій немає: документація описує API як він є зараз, а журнал змін — його історію; фільтр `version` вимкнено;
+- приклад питання агентові: `./df binance-spot ask "How do I keep a local order book in sync?"`;
+- корпус в архіві від самого початку, як у express;
+- докладніше — у [instances/binance-spot/README.md](instances/binance-spot/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
