@@ -338,7 +338,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 | Playwright | наскрізні тести в справжньому браузері | Ф3 Д14, Ф5 Д5; є примірник `playwright` |
 | React Compiler | автоматична мемоізація на збірці | Ф2 Д4 |
 | react-window або TanStack Virtual | віртуалізація довгих списків (поза корпусом) | Ф2 Д7 |
-| Sentry | збір помилок із картами коду (поза корпусом) | точка підключення — Ф2 Д8; сам збір — план Next.js Ф7 Д9 |
+| Sentry | збір помилок із картами коду | точка підключення — Ф2 Д8; сам збір — план Next.js Ф7 Д9; є примірник `sentry` |
 | shadcn/ui на Radix UI | готові доступні компоненти, що копіюються в проєкт | Ф3 Д15; план Next.js Ф5 Д5; є примірник `shadcn` |
 | Docker, k3d і k3s, `kubectl` | образ SPA і викот у кластер Kubernetes | Ф5 Д7–9; далі — плани NestJS і Next.js; є примірники `docker`, `kubernetes` |
 
@@ -384,6 +384,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
   Colors), Base UI, React Aria — `shadcn`;
 - socket.io-client (живі ціни з власного сервера, план NestJS, фаза 7) — `socketio`;
 - GitHub Actions, Dependabot, Container registry (ghcr.io) і GitHub Pages, офіційні дії — `github-actions`;
+- Sentry: SDK для React, межі помилок і хуки помилок React 19, карти коду, плагін Vite — `sentry`;
 - безпека: шпаргалки OWASP Cheat Sheet Series (XSS, CSP, React Security), Top 10 — `owasp`;
 - Node.js (API парних мажорів 12–26, посібники nodejs.org/learn) і npm (CLI 6–12, `package.json`, `npm ci`) —
   `nodejs`;
@@ -391,7 +392,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «варто знати»: react-window, TanStack Virtual, Sentry;
+- з «варто знати»: react-window, TanStack Virtual;
 - з «знати, що існує»: SWR, TanStack Router, Storybook, React Native і Expo, Motion, i18next, partysocket;
 - поза таблицями: хостинги, API Kraken, Oracle Cloud; у факультативі —
   lightweight-charts, wagmi, viem і Foundry.
@@ -935,7 +936,7 @@ React — бібліотека поверх мови й браузера. Усе
 
 # Фаза 2. Як React працює зсередини — 8 днів
 
-**Сервери MCP фази:** `react-docs`, `eslint-docs`, `webdev-docs`.
+**Сервери MCP фази:** `react-docs`, `eslint-docs`, `webdev-docs`, `sentry-docs`.
 
 Фаза, після якої зникає слово «магія». Головне правило: жодна оптимізація без заміру до неї. Міряйте на
 продакшн-збірці або на спеціальній збірці для профілювання, з уповільненням процесора в чотири рази, — режим
@@ -1072,8 +1073,9 @@ React — бібліотека поверх мови й браузера. Усе
   `onCaughtError` і `onUncaughtError` — точка, куди підключають збирач помилок (сам збір, Sentry, — у плані
   Next.js, фаза 7, день 9).
 - **Читати:** `<Suspense>`, `lazy`, `Component` (розділ «Catching rendering errors with an Error Boundary»),
-  `createRoot` (розділ «Error logging in production»); поза корпусом — документація Sentry для React.
-- **Сервери MCP:** `react-docs`.
+  `createRoot` (розділ «Error logging in production»); у примірнику `sentry` — `Sentry for React` (розділ «Capture
+  React Errors (React 19+)») і `React Error Boundary` (розділ «Error Hooks vs ErrorBoundary»).
+- **Сервери MCP:** `react-docs`, `sentry-docs`.
 - **Зробити:** 1) важкий компонент через `lazy` під `<Suspense>`; 2) межа помилок навколо; 3) кинути помилку в
   рендері; 4) кинути помилку в `onClick`; 5) у `createRoot` передати `onCaughtError`, що пише помилку й
   `componentStack` у консоль.

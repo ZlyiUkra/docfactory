@@ -285,8 +285,8 @@ ecma-international.org, unicode.org і rfc-editor.org). Оригінали на 
 
 ## Примірники
 
-Карта навчання — які примірники потрібні кожній фазі планів обох ліній (React → NestJS → Next.js і
-Linux → Docker → Kubernetes) і для чого документації ще немає — у [docs/learning-map.md](docs/learning-map.md).
+Карта навчання — які примірники потрібні кожній фазі планів трьох ліній (React → NestJS → Next.js,
+Linux → Docker → Kubernetes і Astro) і для чого документації ще немає — у [docs/learning-map.md](docs/learning-map.md).
 Оновлюється з кожним новим примірником.
 
 ### ecmascript

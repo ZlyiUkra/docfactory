@@ -332,7 +332,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 | Zustand | невеликий глобальний стан у клієнтських компонентах | 1 | Ф5 Д5; є примірник `zustand` |
 | next-intl | переклади й адреси з мовою | 3 | Ф5 Д8 |
 | Redis (Upstash) | обмеження частоти запитів, спільний кеш | 37 | Ф7 Д6, Ф3 Д9 |
-| Sentry | збір помилок із картами коду | 1 | Ф7 Д9 |
+| Sentry | збір помилок із картами коду | 1 | Ф7 Д9; є примірник `sentry` |
 | OpenTelemetry | траси запитів: хто скільки чекав | 3 | Ф7 Д9 |
 | socket.io-client | з'єднання клієнтського компонента з gateway NestJS | — | Ф8 Д6–7; є примірник `socketio` |
 | SOPS і age | секрети кластера в git лише зашифрованими | — | Ф9 Д6; є примірник `kubernetes` |
@@ -373,6 +373,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - Better Auth (0.0–1.7) і NextAuth.js / Auth.js (1.1–4.24, бети v5, довідник API authjs.dev) — `auth`;
 - PostgreSQL 9.0–19 — `postgresql`; Socket.IO, сервер і клієнт — `socketio`;
 - GitHub Actions, Dependabot, Container registry (ghcr.io), офіційні дії — `github-actions`;
+- Sentry: SDK для Next.js, `instrumentation.ts` і `onRequestError`, карти коду, sentry-cli — `sentry`;
 - безпека: шпаргалки OWASP Cheat Sheet Series, Top 10 (2013–2025), API Security Top 10, вимоги ASVS, Proactive
   Controls — `owasp`;
 - Node.js (API парних мажорів 12–26, посібники nodejs.org/learn) і npm (CLI 6–12) — `nodejs`;
@@ -384,8 +385,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
 - з «треба знати»: Drizzle, Prisma, SWR, Biome;
-- з «варто знати»: iron-session, jose, Motion, next-themes, nuqs, next-intl, Redis (Upstash), Sentry,
-  OpenTelemetry;
+- з «варто знати»: iron-session, jose, Motion, next-themes, nuqs, next-intl, Redis (Upstash), OpenTelemetry;
 - з «знати, що існує»: Stripe, Resend і React Email, Vercel AI SDK, UploadThing, Sanity, Payload, Contentful,
   tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Grafana, Loki, Storybook;
 - у факультативі — viem, wagmi і Foundry.
@@ -1439,7 +1439,7 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 # Фаза 7. DevOps: від збірки до продакшну — 12 днів
 
 **Сервери MCP фази:** `nextjs-docs`, `docker-docs`, `webstandards-docs`, `kubernetes-docs`, `playwright-docs`,
-`github-actions-docs`, `nginx-docs`, `webdev-docs`.
+`github-actions-docs`, `nginx-docs`, `webdev-docs`, `sentry-docs`.
 
 Next.js — не тека статики: це сервер, який треба зібрати, запустити, тримати живим і вміти відкотити. Документації
 Docker, nginx, Kubernetes і GitHub Actions у корпусі Next.js немає; є те, чого Next.js вимагає від них, і готові
@@ -1567,8 +1567,9 @@ Cloud з'явився в плані React (фаза 5, дні 7–9), бекен
   `onCaughtError` і `onUncaughtError` у `createRoot` (план React, фаза 2, день 8).
 - **Читати:** `How to set up instrumentation`, `How to set up instrumentation with OpenTelemetry`,
   `useReportWebVitals`; `Example: with-opentelemetry`; у примірнику `webdev` — `Best practices for measuring Web
-  Vitals in the field` (коли й як відправляти, чому не середнє); поза корпусом — документація Sentry для Next.js.
-- **Сервери MCP:** `nextjs-docs`, `webdev-docs`.
+  Vitals in the field` (коли й як відправляти, чому не середнє); у примірнику `sentry` — `Sentry for Next.js`,
+  `Capturing Errors for Next.js`, `Source Maps for Next.js`.
+- **Сервери MCP:** `nextjs-docs`, `webdev-docs`, `sentry-docs`.
 - **Зробити:** локальний колектор (Jaeger у compose); штучна затримка 500 мс у запиті до бази.
 - **Перевірити себе:** у Jaeger спан на 500 мс знайдено за тривалістю, з `NEXT_OTEL_VERBOSE=1`.
 - **Пастка:** писати в траси тіла запитів разом із паролями.

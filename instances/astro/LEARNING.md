@@ -356,12 +356,13 @@ Cloudflare.
 - Vitest — `vitest`; Playwright — `playwright`;
 - Docker і `docker compose` — `docker`; GitHub Actions і GitHub Pages — `github-actions`;
 - Node.js (API парних мажорів 12–26, посібники nodejs.org/learn) і npm (CLI 6–12) — `nodejs`;
-- Next.js (для порівняння у фазі 7) — `nextjs`; NestJS (окремий бекенд) — `nestjs`.
+- Next.js (для порівняння у фазі 7) — `nextjs`; NestJS (окремий бекенд) — `nestjs`;
+- Sentry: SDK для Astro, карти коду — `sentry`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
 - фреймворки островів, окрім React: Vue, Svelte, Solid, Preact;
 - дані: Drizzle, Prisma;
 - платформи розгортання: Cloudflare, Vercel, Netlify;
-- спостереження: Sentry, Lighthouse;
+- спостереження: Lighthouse;
 - контент: Starlight, CMS, Shiki, remark і rehype поза документацією Astro.
