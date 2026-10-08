@@ -1025,6 +1025,23 @@ Aria — поточний сайт react-aria.adobe.com з таблицями AP
 - корпус в архіві від самого початку, як у express;
 - докладніше — у [instances/shadcn/README.md](instances/shadcn/README.md).
 
+### webdev
+
+web.dev і бібліотека `web-vitals` англійською: курси Learn (CSS, JavaScript, HTML, Accessibility, Forms, Images,
+Performance, PWA, Design, Testing, Privacy, AI), статті — серед них метрики Core Web Vitals з порогами — і блог web.dev
+(новий читач `devsite-md`: перелік — зі стиснутого сайтмапа, текст — markdown сторінки за адресою з «.md.txt», назва —
+з HTML); README кожного стабільного випуску `web-vitals` 0.1.0–6.2.3 (`npm-readme`), журнал змін (`changelog-v` з
+полем `heading`: версії там під «###») і настанови з переходу на v4, v5, v6. 1 407 документів, 16 148 фрагментів.
+
+- порт `8800`; запис у Claude Code — `webdev-docs`, адреса `http://127.0.0.1:8800/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-webdev`, модель векторів — `bge-small`;
+- версії: лише `web-vitals` — випуск (`6.2.3`), мажор (`6`) чи мінорна (`6.2`); сторінки web.dev версій не мають, і
+  будь-який фільтр їх відкидає; без названої версії відповідь — з поточного web.dev і найновішої `web-vitals`;
+- приклад питання агентові: `./df webdev ask "What is a good INP score and how do I measure it?"`;
+- корпус в архіві від самого початку, як у express;
+- докладніше — у [instances/webdev/README.md](instances/webdev/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
