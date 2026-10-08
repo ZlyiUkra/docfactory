@@ -309,8 +309,12 @@ def main(argv: list[str]) -> int:
     if own.exists() and own.resolve() not in {p.resolve() for p in readmes}:
         readmes.append(own)
     for md in readmes:
-        for target in re.findall(r"\]\(([^)#]+)\)",
-                                 md.read_text(encoding="utf-8")):
+        # Код у зворотних лапках — не посилання: README github-actions показує
+        # синтаксис Liquid «[AUTOTITLE](/шлях)» як приклад, і його не звіряють.
+        # Відрізок коду закривається рівно такою ж серією лапок, огорожа ``` теж.
+        text = re.sub(r"(?<!`)(`+)(?!`).+?(?<!`)\1(?!`)", "",
+                      md.read_text(encoding="utf-8"), flags=re.S)
+        for target in re.findall(r"\]\(([^)#]+)\)", text):
             if target.startswith("http"):
                 continue
             if not (md.parent / target).exists():
