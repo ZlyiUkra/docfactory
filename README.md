@@ -1058,6 +1058,26 @@ WebSocket API, потоки ринкових даних і потік даних
 - корпус в архіві від самого початку, як у express;
 - докладніше — у [instances/binance-spot/README.md](instances/binance-spot/README.md).
 
+### sentry
+
+Документація Sentry для JavaScript англійською: розділ JavaScript сайту docs.sentry.io — браузерний SDK і посібники 39
+фреймворків і середовищ (Next.js, React, Node.js, NestJS, Express, Vue, SvelteKit, Astro, Cloudflare, AWS Lambda …) зі
+сторінками старших ліній SDK, — загальні розділи (продукт, поняття, sentry-cli, організація, акаунт, безпека й PII),
+інтеграції й REST API; README, посібники міграції й журнали змін SDK (лінії 4–11), плагінів збирачів і sentry-cli;
+README плагінів Vite, webpack, Rollup й esbuild з усіма опціями й версії 41 пакета `@sentry/*` з реєстру npm. Новий
+модуль читачів `engine/readers/sentry.py`: `sentry-md` (версія сторінки — із суфікса адреси `__v10.x`),
+`sentry-changelog` (заголовок версії з назвою продукту), `npm-readme-latest` (README з реєстру npm). 7 958 документів,
+67 112 фрагментів.
+
+- порт `8802`; запис у Claude Code — `sentry-docs`, адреса `http://127.0.0.1:8802/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-sentry`, модель векторів — `bge-small`;
+- версія — лінія SDK для сторінок розділу JavaScript («11» поточна), точна версія для журналів змін; загальні розділи,
+  інтеграції й REST API версій не мають;
+- копії сторінки для різних фреймворків займають у видачі одне місце; фреймворк, названий у запиті, дістає свою;
+- приклад питання агентові: `./df sentry ask "How do I upload source maps for a Next.js app?"`;
+- докладніше — у [instances/sentry/README.md](instances/sentry/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
