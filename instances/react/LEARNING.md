@@ -386,13 +386,14 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 - GitHub Actions, Dependabot, Container registry (ghcr.io) і GitHub Pages, офіційні дії — `github-actions`;
 - безпека: шпаргалки OWASP Cheat Sheet Series (XSS, CSP, React Security), Top 10 — `owasp`;
 - Node.js (API парних мажорів 12–26, посібники nodejs.org/learn) і npm (CLI 6–12, `package.json`, `npm ci`) —
-  `nodejs`.
+  `nodejs`;
+- API споту Binance (REST, WebSocket API, потоки ринкових даних, ліміти, журнал змін) — `binance-spot`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
 - з «варто знати»: react-window, TanStack Virtual, Sentry;
 - з «знати, що існує»: SWR, TanStack Router, Storybook, React Native і Expo, Motion, i18next, partysocket;
-- поза таблицями: хостинги, API Binance і Kraken, Oracle Cloud; у факультативі —
+- поза таблицями: хостинги, API Kraken, Oracle Cloud; у факультативі —
   lightweight-charts, wagmi, viem і Foundry.
 
 ---
@@ -1088,7 +1089,7 @@ React — бібліотека поверх мови й браузера. Усе
 
 **Сервери MCP фази:** `react-docs`, `react-router-docs`, `tanstack-query-docs`, `mdn-docs`, `webstandards-docs`,
 `react-hook-form-docs`, `zod-docs`, `zustand-docs`, `redux-docs`, `vitest-docs`, `testing-library-docs`, `msw-docs`,
-`playwright-docs`, `shadcn-docs`, `webdev-docs`.
+`playwright-docs`, `shadcn-docs`, `webdev-docs`, `binance-spot-docs`.
 
 React не має нічого з цього в коробці. Документація сама каже, що брати: глава `Build a React app from Scratch`,
 крок 2 — маршрути, дані, розділення коду. Про дані там пряма порада: «fetching data directly in components can
@@ -1184,10 +1185,12 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
 сервер щосекунди — марна витрата мережі й батареї. Три дні блоку дають проєкту модуль «список монет»: користувач
 веде власний список криптопар — записи з власником, через той самий фейковий API і TanStack Query, що й решта
 записів, — а екран показує їхні живі ціни. Джерело — ринкові ендпойнти Binance лише для даних: стрім
-`wss://data-stream.binance.vision` і REST `https://data-api.binance.vision`. Ключ і реєстрація не потрібні, ціни
-приходять рядками, REST дозволяє запити з будь-якого походження (CORS відкритий).
+`wss://data-stream.binance.vision` і REST `https://data-api.binance.vision` (у примірнику `binance-spot` —
+`Market Data Only URLs`). Ключ і реєстрація не потрібні, ціни приходять рядками, REST дозволяє запити з будь-якого
+походження (CORS відкритий).
 
-Правила з документації Binance (поза корпусом), на 02.10.2026: з'єднання живе не довше 24 годин, далі сервер його
+Правила з документації Binance (у примірнику `binance-spot` — `WebSocket Streams for Binance`, розділи «General WSS
+information» і «WebSocket Limits»), на 02.10.2026: з'єднання живе не довше 24 годин, далі сервер його
 закриває; сервер шле ping кожні 20 секунд, і браузер відповідає на нього сам; клієнт може надіслати не більше
 5 повідомлень на секунду на одне з'єднання; з однієї адреси — не більше 300 нових з'єднань за 5 хвилин. За
 порушення відключають, за повторні — блокують адресу. **Першого ж дня перевірте, що стрім відповідає з вашої
@@ -1213,10 +1216,11 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
   `/stream?streams=btcusdt@miniTicker/ethusdt@miniTicker` і загортає кожне повідомлення в `{ stream, data }`; потік
   `@miniTicker` шле зведення по парі раз на секунду.
 - **Читати:** `Synchronizing with Effects` (розділ «Subscribing to events»), `Lifecycle of Reactive Effects`; у
-  примірнику `mdn` — `WebSocket`, `CloseEvent`; документація Binance — «WebSocket Streams» (поза корпусом); у
+  примірнику `mdn` — `WebSocket`, `CloseEvent`; у примірнику `binance-spot` — `WebSocket Streams for Binance` (розділи
+  «General WSS information», «WebSocket Limits», «Individual Symbol Mini Ticker Stream»); у
   примірнику `webstandards` — `WebSockets Standard: 3 The WebSocket interface`, `WebSockets Standard: 6 The CloseEvent
   interface`, `RFC 6455 The WebSocket Protocol: 7 Closing the Connection`.
-- **Сервери MCP:** `react-docs`, `mdn-docs`, `webstandards-docs`.
+- **Сервери MCP:** `react-docs`, `mdn-docs`, `webstandards-docs`, `binance-spot-docs`.
 - **Зробити:** 1) модуль «список монет»: додати, видалити й перейменувати пару (`BTCUSDT`, `ETHUSDT`…) через фейковий
   API і `useQuery`, як інші записи; 2) компонент, що в ефекті відкриває одне з'єднання на весь список (адреса — з
   відсортованих пар у нижньому регістрі; кожну пару з даних користувача перед цим перевірити виразом
@@ -1251,8 +1255,9 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
 - **Читати:** `useSyncExternalStore` (розділи «Subscribing to an external store», «Subscribing to a browser API»,
   «Extracting the logic to a custom Hook» і обидва розділи Troubleshooting), `Reusing Logic with Custom Hooks`; у
   примірнику `mdn` — `Navigator: onLine property`, `Page Visibility API`; блог AWS Architecture — «Exponential Backoff
-  And Jitter» (поза корпусом).
-- **Сервери MCP:** `react-docs`, `mdn-docs`.
+  And Jitter» (поза корпусом); у примірнику `binance-spot` — `WebSocket Streams for Binance` (розділ «General WSS
+  information»).
+- **Сервери MCP:** `react-docs`, `mdn-docs`, `binance-spot-docs`.
 - **Зробити:** 1) модуль `priceStore` з `subscribe`, `getSnapshot`, станом з'єднання й незмінними записами;
   2) хуки `usePrice(symbol)` і `useConnectionStatus()`; 3) перепідключення з повним джитером і стелею, кожна
   затримка — у лог; 4) індикатор стану в шапці; 5) ціна BTC у списку й у шапці одночасно; 6) службова функція,
@@ -1285,8 +1290,9 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
   method`; у примірнику `tanstack-query` — `Updates from Mutation Responses` (той самий `setQueryData`, лише джерело
   інше), `QueryClient` (метод `setQueryData`), `Important Defaults`; блог TkDodo — «Using WebSockets with React Query»
   (поза корпусом); у примірнику `webdev` — `Optimize input delay` (затримка перед обробником, поки головний потік
-  зайнятий іншою роботою).
-- **Сервери MCP:** `react-docs`, `mdn-docs`, `tanstack-query-docs`, `webdev-docs`.
+  зайнятий іншою роботою); у примірнику `binance-spot` — `Public Rest API for Binance` (розділ «Kline/Candlestick
+  data»), `WebSocket Streams for Binance` (розділи «Trade Streams», «Kline/Candlestick Streams for UTC»).
+- **Сервери MCP:** `react-docs`, `mdn-docs`, `tanstack-query-docs`, `webdev-docs`, `binance-spot-docs`.
 - **Зробити:** 1) перевести список на потік `@trade` для п'яти пар; 2) на збірці для профілювання з уповільненням
   процесора 4× заміряти за десять секунд кількість повідомлень і комітів (`<Profiler>`) і INP набору в поле фільтра
   поруч; 3) буфер і скидання раз на кадр; 4) заміряти знову; 5) таблиця останніх шістдесяти хвилинних свічок: історія
@@ -2138,7 +2144,7 @@ HTTPS, нова версія викочується без простою, а п
 
 # Факультатив: крипта — 5 днів
 
-**Сервери MCP фази:** `react-docs`, `tanstack-query-docs`, `mdn-docs`, `zod-docs`.
+**Сервери MCP фази:** `react-docs`, `tanstack-query-docs`, `mdn-docs`, `zod-docs`, `binance-spot-docs`.
 
 Мета факультативу — розуміти, як влаштована крипта, і вміти написати щось із нею: читати ринкові дані біржі,
 малювати графік, підключати гаманець і надсилати транзакцію. Для роботи фулстеком він не потрібен, і основний
@@ -2264,9 +2270,10 @@ NestJS і Next.js.
   використану вагу показує заголовок `x-mbx-used-weight-1m`. Спред — найнижча ціна в `asks` мінус найвища в `bids`.
   Прослизання для купівлі обсягу X — пройти `asks` знизу вгору, поки не набрано X, і порівняти середню ціну з
   найкращою.
-- **Читати:** у примірнику `tanstack-query` — `Infinite Queries`, `Query Keys`; документація Binance — «Market Data
-  endpoints», «Market Data Only» (поза корпусом); документація decimal.js (поза корпусом).
-- **Сервери MCP:** `tanstack-query-docs`.
+- **Читати:** у примірнику `tanstack-query` — `Infinite Queries`, `Query Keys`; у примірнику `binance-spot` —
+  `Public Rest API for Binance` (розділи «General API Information», «IP Limits», «Kline/Candlestick data», «Order
+  book»), `Market Data Only URLs`; документація decimal.js (поза корпусом).
+- **Сервери MCP:** `tanstack-query-docs`, `binance-spot-docs`.
 - **Зробити:** 1) `useQuery` для 500 хвилинних свічок BTCUSDT і таблиця з них; 2) `useInfiniteQuery` з кнопкою
   «старіші»; 3) знімок книги на 20 рівнів з обох боків; 4) спред і прослизання для купівлі 0,5 і 5 BTC — через
   decimal.js; 5) те саме для порівняння через `parseFloat` у консоль.
@@ -2290,8 +2297,9 @@ NestJS і Next.js.
   авторство TradingView з посиланням на їхній сайт; у версії 5 це робить логотип на графіку, увімкнений за
   замовчуванням.
 - **Читати:** `Synchronizing with Effects` (розділ «Controlling non-React widgets»), `useRef`; документація
-  lightweight-charts — «Getting started», «Series», розділ про авторство (поза корпусом).
-- **Сервери MCP:** `react-docs`.
+  lightweight-charts — «Getting started», «Series», розділ про авторство (поза корпусом); у примірнику `binance-spot`
+  — `WebSocket Streams for Binance` (розділ «Kline/Candlestick Streams for UTC»).
+- **Сервери MCP:** `react-docs`, `binance-spot-docs`.
 - **Зробити:** 1) компонент `CandleChart` з `createChart` в ефекті й `chart.remove()` у прибиранні; 2) історія з
   дня К1 через `setData`; 3) живі свічки з потоку `@kline_1m` через `update`; 4) перемикач інтервалу 1m / 15m / 1h
   (новий ключ запиту, новий потік); 5) записати профіль React за хвилину живого графіка.
@@ -2313,9 +2321,10 @@ NestJS і Next.js.
   «How to manage a local order book correctly». Сама книга живе поза React — у `Map` «ціна-рядок → обсяг» для кожного
   боку, а на екран раз на кадр (фаза 3, день 8) іде лише верх: 20 найкращих рівнів. Ключ — рядок ціни рівно таким,
   як прислала біржа: `"0.1"` і `"0.10000000"` для `Map` — різні ключі.
-- **Читати:** `useSyncExternalStore`; у примірнику `mdn` — `Window: requestAnimationFrame() method`; документація
-  Binance — «WebSocket Streams», розділ про потік змін книги й локальну книгу (поза корпусом).
-- **Сервери MCP:** `react-docs`, `mdn-docs`.
+- **Читати:** `useSyncExternalStore`; у примірнику `mdn` — `Window: requestAnimationFrame() method`; у примірнику
+  `binance-spot` — `WebSocket Streams for Binance` (розділи «Diff. Depth Stream», «How to manage a local order book
+  correctly», «Individual Symbol Book Ticker Streams»).
+- **Сервери MCP:** `react-docs`, `mdn-docs`, `binance-spot-docs`.
 - **Зробити:** 1) модуль `orderBook` з буфером, знімком і застосуванням змін за процедурою; 2) виявлення дірки й
   повторна синхронізація з записом у лог; 3) екран: 20 рівнів з кожного боку, спред, смужки обсягу; 4) поруч —
   потік `@bookTicker`, що шле лише найкращу ціну купівлі й продажу; 5) вимкнути мережу на хвилину й увімкнути.

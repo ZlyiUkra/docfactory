@@ -400,7 +400,8 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   Controls — `owasp`;
 - Node.js (API парних мажорів 12–26, посібники nodejs.org/learn) і npm (CLI 6–12) — `nodejs`;
 - nginx: проксі перед API, стиснення, вебсокети через проксі — `nginx`;
-- Supabase — `supabase`; Clerk — `clerk`.
+- Supabase — `supabase`; Clerk — `clerk`;
+- API споту Binance (REST, WebSocket API, потоки ринкових даних, ліміти, журнал змін) — `binance-spot`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
 глава про інтеграцію (TypeORM, Prisma, Passport, BullMQ, class-validator), але не документація самої
@@ -2166,7 +2167,7 @@ SPA під одним іменем, викочується й відкочуєт
 # Фаза 7. Живі дані: WebSockets — 8 днів
 
 **Сервери MCP фази:** `nestjs-docs`, `webstandards-docs`, `mdn-docs`, `vite-docs`, `kubernetes-docs`, `socketio-docs`,
-`owasp-docs`, `nginx-docs`.
+`owasp-docs`, `nginx-docs`, `binance-spot-docs`.
 
 Досі сервер лише відповідав: клієнт спитав — сервер відповів. Живі ціни так не працюють: сервер сам штовхає дані,
 щойно вони з'явилися, через з'єднання, яке живе годинами. У плані React (фаза 3, дні 6–8) SPA слухала ринковий стрім
@@ -2176,7 +2177,7 @@ SPA під одним іменем, викочується й відкочуєт
 Корпус Nest тут — розділ WebSockets: глави `Gateways` і `Adapters`, а також `Guards`, `Pipes` і `Exception filters`
 цього розділу (у розділі Overview є глави з тими самими назвами); глава `Server-Sent Events` — у розділі Techniques.
 Сам протокол (RFC 6455) — у примірнику `webstandards`, WebSocket API — у `mdn`, socket.io — у `socketio`; біржа —
-поза корпусом. Джерело цін — ринкові ендпойнти Binance лише для даних, без ключа:
+у `binance-spot`. Джерело цін — ринкові ендпойнти Binance лише для даних, без ключа:
 `wss://data-stream.binance.vision` для потоку і `https://data-api.binance.vision` для REST; запасне — Kraken WS v2
 (`wss://ws.kraken.com/v2`). Ліміти нижче — з документації Binance на 02.10.2026. Чи відкриваються ці адреси з вашої
 країни й від вашого провайдера, перевірте першого ж дня: доступність бірж залежить від країни, і перевіряти це
@@ -2355,9 +2356,11 @@ SPA під одним іменем, викочується й відкочуєт
   джерело Kraken WS v2 має інший формат і шле числа, а не рядки, — і це лише інша реалізація того самого класу.
   Остання ціна кожної пари — у Redis (ключ `price:BTCUSDT`): новий підписник отримує її одразу в підтвердженні, а
   екземпляри з дня 6 читають той самий ключ.
-- **Читати:** документація Binance — «WebSocket Streams» (spot) і «Market Data Only» (поза корпусом); розділ
-  Fundamentals, глави `Lifecycle events` і `Custom providers`; поза корпусом — README `ws`, документація Redis.
-- **Сервери MCP:** `nestjs-docs`.
+- **Читати:** у примірнику `binance-spot` — `WebSocket Streams for Binance` (розділи General WSS information,
+  WebSocket Limits, Live Subscribing/Unsubscribing to streams, Individual Symbol Mini Ticker Stream),
+  `Market Data Only URLs`; розділ Fundamentals, глави `Lifecycle events` і `Custom providers`; поза корпусом — README
+  `ws`, документація Redis.
+- **Сервери MCP:** `nestjs-docs`, `binance-spot-docs`.
 - **Зробити:** 1) `MarketStreamService` з одним з'єднанням і набором пар, що перераховується на `subscribe` і
   `unsubscribe`; 2) приведення до `PriceTick` і розсилка в кімнати зі склеюванням із дня 4 — фейковий генератор
   іде в тести; 3) перепідключення із затримкою й джитером і сторож живості на 30 секунд; 4) планове
@@ -2587,7 +2590,7 @@ SPA під одним іменем, викочується й відкочуєт
 
 # Факультатив: крипта — 4 дні
 
-**Сервери MCP фази:** `nestjs-docs`, `webstandards-docs`.
+**Сервери MCP фази:** `nestjs-docs`, `webstandards-docs`, `binance-spot-docs`.
 
 Мета — розуміти крипту з боку бекенду й уміти написати з нею щось справжнє. Для роботи фулстеком факультатив не
 потрібен, основний проєкт від нього не залежить. **Повний вступ — у плані React, факультатив** (на початку
@@ -2629,10 +2632,11 @@ Ethereum Foundation: на 02.10.2026 статус Sepolia непевний — �
   показує заголовок `x-mbx-used-weight-1m`. Живу свічку дає потік `btcusdt@kline_1m` (поле `k.x` — чи свічку
   закрито). Запис — `INSERT … ON CONFLICT (symbol, interval, open_time) DO UPDATE`: повторне завантаження нічого не
   дублює.
-- **Читати:** розділ Techniques, глава `Database`; документація PostgreSQL — «Numeric Types»; документація Binance —
-  «Market Data endpoints», розділ Kline/Candlestick data; README decimal.js (поза корпусом); вступ факультативу в
-  плані React, частина про гроші.
-- **Сервери MCP:** `nestjs-docs`.
+- **Читати:** розділ Techniques, глава `Database`; документація PostgreSQL — «Numeric Types»; у примірнику
+  `binance-spot` — `Public Rest API for Binance` (розділи IP Limits, Kline/Candlestick data),
+  `WebSocket Streams for Binance` (розділ Kline/Candlestick Streams for UTC); README decimal.js (поза корпусом); вступ
+  факультативу в плані React, частина про гроші.
+- **Сервери MCP:** `nestjs-docs`, `binance-spot-docs`.
 - **Зробити:** 1) тест: сума тисячі цін як `number` і як `Decimal` — порівняти з точною; 2) міграція `candles` з
   `NUMERIC` і первинним ключем `(symbol, interval, open_time)`; 3) завантажувач свічок за добу сторінками з оглядом
   на заголовок ваги; 4) потік `@kline_1m` оновлює поточну свічку через те саме з'єднання з біржею з фази 7;
@@ -2816,7 +2820,7 @@ BullMQ і Terminus описують **лише інтеграційний шар
 Protection` — без налаштувань. План щоразу каже, що з прикладу брати, а що ні.
 
 **Поза корпусом.** Усе, що позначено «поза корпусом», — порада з практики: autocannon, orval і openapi-typescript,
-`nestjs-pino`, платформи викоту, підпис вебхука, тест на справжній базі як головний, ліміти й адреси Binance,
-факультатив «крипта» цілком. Маніфести Kubernetes і таймаути Traefik звіряйте з примірником `kubernetes`. Звіряйте з
-документацією самих інструментів: безкоштовні тарифи, ліміти бірж і статус тестових мереж змінюються, і все, що в
-плані позначено «на 02.10.2026», перед днем варто перевірити ще раз.
+`nestjs-pino`, платформи викоту, підпис вебхука, тест на справжній базі як головний, факультатив «крипта», крім
+ринкових даних Binance. Маніфести Kubernetes і таймаути Traefik звіряйте з примірником `kubernetes`, ліміти й адреси
+Binance — з примірником `binance-spot`. Звіряйте з документацією самих інструментів: безкоштовні тарифи, ліміти бірж і
+статус тестових мереж змінюються, і все, що в плані позначено «на 02.10.2026», перед днем варто перевірити ще раз.
