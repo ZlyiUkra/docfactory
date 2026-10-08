@@ -431,6 +431,8 @@ api.reactrouter.com для 8.4.0 і 7.18.4, нотатки релізів з CHA
 - архіви бере новий читач `clerk-mdx`: розгортає вставки `_partials` і згенерований довідник `clerk-typedoc`, а
   блоки для окремих SDK підписує рядком «SDK: …»;
 - приклад питання агентові: `./df clerk ask "How do I protect routes in Core 2 with Next.js?"`;
+- корпус в архіві з 09.10.2026, як у nextjs: текстів у теці немає, сервер підіймається з кешу фрагментів (`index/`, у
+  git — стиснений) і Qdrant; перед оновленням тексти повертають;
 - докладніше — у [instances/clerk/README.md](instances/clerk/README.md).
 
 ### tanstack-query
