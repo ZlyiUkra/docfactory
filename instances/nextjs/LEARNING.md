@@ -376,7 +376,8 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - Node.js (API парних мажорів 12–26, посібники nodejs.org/learn) і npm (CLI 6–12) — `nodejs`;
 - Docker — `docker`; Kubernetes, k3s, Traefik, Kustomize, SOPS, age і Helm — `kubernetes`; sshd — `linux`;
 - nginx: зворотний проксі, буферизація й стрімінг, кеш, обмеження частоти, вебсокети — `nginx`;
-- shadcn/ui (кожна мінорна CLI, сайти для Tailwind CSS v4 і v3) і Radix UI — Primitives, Themes, Colors — `shadcn`.
+- shadcn/ui (кожна мінорна CLI, сайти для Tailwind CSS v4 і v3) і примітиви під ним: Radix UI (Primitives, Themes,
+  Colors), Base UI, React Aria — `shadcn`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 

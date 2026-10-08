@@ -378,7 +378,8 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
   typescript-eslint — `eslint`;
 - Docker — `docker`; Kubernetes, k3d, k3s, `kubectl`, Traefik, cert-manager і Let's Encrypt — `kubernetes`;
 - nginx: конфіг роздачі SPA в образі (фаза 5, день 7) — `nginx`;
-- shadcn/ui (кожна мінорна CLI, сайти для Tailwind CSS v4 і v3) і Radix UI — Primitives, Themes, Colors — `shadcn`;
+- shadcn/ui (кожна мінорна CLI, сайти для Tailwind CSS v4 і v3) і примітиви під ним: Radix UI (Primitives, Themes,
+  Colors), Base UI, React Aria — `shadcn`;
 - socket.io-client (живі ціни з власного сервера, план NestJS, фаза 7) — `socketio`;
 - GitHub Actions, Dependabot, Container registry (ghcr.io) і GitHub Pages, офіційні дії — `github-actions`;
 - безпека: шпаргалки OWASP Cheat Sheet Series (XSS, CSP, React Security), Top 10 — `owasp`;
@@ -1415,8 +1416,8 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
 - **Читати:** `useId`; `Common components (e.g. <div>)` (атрибути `aria-*` і `role`); у примірнику `mdn` —
   `Accessibility`; розширення axe DevTools (поза корпусом); у примірнику `webstandards` — `ARIA in HTML: 3 Author
   guidance to avoid incorrect use of ARIA`, `Developing a Keyboard Interface`, `Providing Accessible Names and
-  Descriptions`, `WCAG 2.2: 2 Operable`; у примірнику `shadcn` — `Accessibility` (Radix Primitives: як готові
-  компоненти тримають фокус, клавіатуру й ARIA за вас).
+  Descriptions`, `WCAG 2.2: 2 Operable`; у примірнику `shadcn` — `Accessibility` Radix Primitives і `React Aria:
+  Accessibility` (як готові компоненти тримають фокус, клавіатуру й ARIA за вас).
 - **Сервери MCP:** `react-docs`, `mdn-docs`, `webstandards-docs`, `shadcn-docs`.
 - **Зробити:** 1) пройти весь застосунок без миші; 2) axe DevTools на трьох головних екранах; 3) полагодити
   знайдене; 4) повторити.
