@@ -82,7 +82,9 @@ def _within(candidate: str, base: str) -> bool:
     if ".." in cand.split("/"):
         return False
     base_norm = posixpath.normpath(base if base.endswith("/") else base + "/")
-    return cand == base_norm or cand.startswith(base_norm + "/")
+    # Корінь сайту («https://react-aria.adobe.com/») — теж тека: без цього межа «//» не
+    # збігалася б ні з чим, і оголошений сайт не дозволяв би жодної сторінки.
+    return cand == base_norm or cand.startswith(base_norm.rstrip("/") + "/")
 
 
 def allowed(url: str, sources) -> bool:

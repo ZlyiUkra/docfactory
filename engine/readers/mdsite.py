@@ -1,7 +1,9 @@
 """Читачі сайтів, що віддають сторінки markdown-ом за тією самою адресою з «.md».
 
 `llms`   — перелік сторінок у форматі llms.txt: посилання на `.md` кожної
-           сторінки документації; кожна стає документом.
+           сторінки документації; кожна стає документом. З `relative_links: true`
+           посилання пунктів можуть бути відносними — тоді від адреси переліку;
+           `title_prefix` — рядок перед назвою кожної сторінки («React Aria: Button»).
 `mdblog` — сторінка-перелік блогу (HTML): з неї беруться адреси записів виду
            …/РРРР/ММ/ДД/назва, а текст кожного запису — з тієї ж адреси з «.md».
 `mdpage` — одна сторінка: `url` — її адреса з «.md». З `keep_links: true`
@@ -19,6 +21,8 @@ from urllib.parse import urljoin, urlsplit
 from engine.readers import Item, _markup, register
 
 _MD_LINK = re.compile(r"\((https://[^)\s]+\.md)\)")
+_MD_ITEM = re.compile(r"^- \[[^\]]*\]\(([^)\s]+\.md)\)", re.M)
+_TITLE = re.compile(r"\s*# (.+)\n")
 _HREF = re.compile(r'href="([^"#?]+)"')
 _DATED = re.compile(r"/(\d{4})/(\d{2})/(\d{2})/([^/]+)$")
 # Кожна markdown-сторінка react.dev закінчується тим самим посиланням на мапу сайту.
@@ -34,8 +38,13 @@ def _md_document(ctx, md_url: str, page: str, version: str, prefix: str = "",
     _markup.refuse_html(text, md_url)
     meta, rest = _markup.front_matter(text)
     rest = _SITEMAP.sub("\n", rest)
-    body = _markup.markdown_body(rest, page if keep_links else None)
     title = _markup.title_of(meta, page) if meta else ""
+    if not meta:
+        # Без шапки (react-aria.adobe.com) назва — заголовок першого рівня на початку сторінки.
+        head = _TITLE.match(rest)
+        if head:
+            title, rest = head.group(1).strip(), rest[head.end():]
+    body = _markup.markdown_body(rest, page if keep_links else None)
     _markup.require(title, body, md_url)
     if prefix:
         day = meta.get("date", "").replace("/", "-")
@@ -46,7 +55,15 @@ def _md_document(ctx, md_url: str, page: str, version: str, prefix: str = "",
 @register("llms")
 def llms(source: dict, ctx) -> list[Item]:
     links: list[str] = []
-    for url in _MD_LINK.findall(ctx.text(source["url"])):
+    text = ctx.text(source["url"])
+    if source.get("relative_links") is True:
+        # Перелік react-aria.adobe.com пише адреси відносно себе (`Button.md`, `blog/….md`), а
+        # в описах пунктів трапляються ще й посилання відносно іншої теки — тож береться лише
+        # перше посилання кожного пункту.
+        found = [urljoin(source["url"], u) for u in _MD_ITEM.findall(text)]
+    else:
+        found = _MD_LINK.findall(text)
+    for url in found:
         if url not in links and ctx.allowed(url):
             links.append(url)
     if not links:
@@ -58,7 +75,8 @@ def llms(source: dict, ctx) -> list[Item]:
         name = _markup.slug(urlsplit(page).path)
 
         def make(url=url, page=page):
-            return _md_document(ctx, url, page, source.get("version", ""))
+            return _md_document(ctx, url, page, source.get("version", ""),
+                                source.get("title_prefix", ""))
 
         items.append(Item(id=f"{source['id']}/{name}",
                           file=f"{source['id']}--{name}.txt", make=make))

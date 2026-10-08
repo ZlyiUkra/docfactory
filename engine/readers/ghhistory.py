@@ -38,7 +38,12 @@
                    «Syntax / Default / Context», приклади — блоками коду;
                    `hugo` — об'єкт `{"includes": тека, "shortcodes": тека}`: вставки Hugo сайту
                    (docs.nginx.com) розгортаються — `include` спільних шматків, `ghcode`
-                   прикладів, номери версій із файлів шаблонів, підписи виносок і вкладок.
+                   прикладів, номери версій із файлів шаблонів, підписи виносок і вкладок;
+                   `base_ui: true` — вставки сторінок Base UI (демо, таблиці API з `types.md` чи
+                   довідки JSON) стають кодом і списками (див. `_baseui`);
+                   `react_spectrum: true` — службове зі сторінок репозиторію React Aria знімається:
+                   коментар ліцензії, шапка YAML після імпортів, вирази `{docs.exports.….description}`
+                   і позначки підсвічування `/*- begin highlight -*/` у коді.
 
 Навіщо `name_prefix`. Ключ розділу будується з імені документа, а ім'я — зі шляху файла.
 Журнали змін кількох репозиторіїв в одному примірнику (HISTORY.md body-parser, cors,
@@ -82,7 +87,7 @@ import re
 from html import unescape
 from urllib.parse import quote, urlsplit
 
-from engine.readers import Item, _markup, _nginxxml, register
+from engine.readers import Item, _baseui, _markup, _nginxxml, register
 
 _TREES = re.compile(r"^/repos/([^/]+)/([^/]+)/git/trees/$")
 _LOCALE = re.compile(r"\.[a-z]{2}-[A-Z]{2}\.md$")
@@ -97,6 +102,14 @@ _ATTRS = re.compile(r"\{:[^}]*\}")
 _YAML_BLOCK = re.compile(r"<!--\s*YAML\s*\n(.*?)-->", re.S)
 # Рядок із самою картинкою: markdown (`![logo](…){: …}`) або тег HTML (`<img align="right" …/>` —
 # так іконка адаптера стоїть над заголовком кожної сторінки authjs.dev).
+# Сторінки React Aria в репозиторії: шапка YAML стоїть після імпортів, перед нею — коментар
+# ліцензії, а опис компонента — вираз, який сайт підставляв із коду TypeScript.
+_RS_COMMENT = re.compile(r"^\{/\*.*?\*/\}[ \t]*$\n?", re.M | re.S)
+_RS_FRONT = re.compile(r"^---[ \t]*\n(?:[A-Za-z_]+:.*\n)+---[ \t]*$\n?", re.M)
+_RS_EXPR = re.compile(r"^[ \t]*(?:<PageDescription>)?\{docs\.exports\.[\w.]+\}"
+                      r"(?:</PageDescription>)?[ \t]*$\n?", re.M)
+_RS_HIGHLIGHT = re.compile(r"^[ \t]*\{?/\*- (?:begin|end) highlight -\*/\}?[ \t]*\n"
+                           r"|\{?/\*- (?:begin|end) highlight -\*/\}?", re.M)
 _IMAGE_LINE = re.compile(r"^[ \t]*(?:!\[[^\]]*\]\([^)]*\)[ \t]*(\{:[^}]*\})?|<img\b[^<>]*>)[ \t]*$", re.M)
 
 
@@ -155,7 +168,7 @@ _JS_NAME = re.compile(r"[A-Za-z_$][\w$]*")
 _JS_NUMBER = re.compile(r"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?")
 _JS_EXPORT = re.compile(r"^export\s+const\s+([A-Za-z_$][\w$]*)\s*=\s*", re.M)
 _PROP_TABLE = re.compile(r"<(TypeTable|DatabaseTable|PropsTable|DataAttributesTable|KeyboardTable"
-                         r"|CssVariablesTable|Highlights)\b")
+                         r"|CssVariablesTable|Highlights|PropsReferenceTable)\b")
 _TABLE_PROP = {"TypeTable": "type", "DatabaseTable": "fields", "Highlights": "features"}
 _PACKAGE_RELEASE = re.compile(r'^[ \t]*<PackageRelease\s+name="([^"]+)"\s+version="([^"]+)"'
                               r'\s*/>[ \t]*$', re.M)
@@ -349,6 +362,22 @@ def _type_rows(table: dict, depth: int = 0) -> list[str]:
     return rows
 
 
+def _reference_rows(table: dict) -> list[str]:
+    """`<PropsReferenceTable data={{…}}>` Base UI: параметри й значення хуків та утиліт. Тип і
+    типове значення — кодом: `RenderProp<State>` без лапок розмітка прийняла б за тег."""
+    rows = []
+    for key, spec in table.items():
+        if not isinstance(spec, dict):
+            continue
+        bits = [f"`{' '.join(str(spec['type']).split())}`"] if spec.get("type") else []
+        if isinstance(spec.get("default"), str) and spec["default"] not in ("", "undefined"):
+            bits.append(f"default: `{spec['default']}`")
+        desc = " ".join(str(spec.get("description") or "").split())
+        rows.append(f"- `{key}`" + (f" ({', '.join(bits)})" if bits else "")
+                    + (f" — {desc}" if desc else ""))
+    return rows
+
+
 def _db_rows(fields: list) -> list[str]:
     rows = []
     for f in fields:
@@ -472,6 +501,8 @@ def _jsx_props(text: str) -> str:
             rows = _type_rows(value)
         elif kind == "DatabaseTable" and isinstance(value, list):
             rows = ([f"Table `{named.group(1)}`:", ""] if named else []) + _db_rows(value)
+        elif kind == "PropsReferenceTable" and isinstance(value, dict):
+            rows = _reference_rows(value)
         elif kind not in ("TypeTable", "DatabaseTable") and isinstance(value, list):
             rows = _radix_rows(kind, value)
         else:
@@ -668,6 +699,9 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
     path_version = [(re.compile(a), b) for a, b in source.get("path_version") or ()]
     sources = dict(source["jsx_sources"]) if isinstance(source.get("jsx_sources"), dict) else None
     wanted = [_template_rx(t) for k in ("example", "source") for t in (sources or {}).get(k) or ()]
+    base_ui = source.get("base_ui") is True
+    if base_ui:
+        wanted += _baseui.WANTED
     # тег → {шлях файла реєстру: sha}; вміст за sha — один раз на весь прогін
     registry: dict = {}
     code_cache: dict = {}
@@ -702,7 +736,10 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
                     and not _LOCALE.search(leaf) and entry.get("size", 1) > 0
                     and not any(r.search(path) for r in exclude)):
                 stem = re.sub(r"\.mdx?$", "", path)
-                name = f"{lead}{_markup.slug(stem)}-{entry['sha'][:8]}"
+                sha = entry["sha"]
+                if base_ui:
+                    sha = _baseui.revision(path, sha, registry[tag])
+                name = f"{lead}{_markup.slug(stem)}-{sha[:8]}"
                 seen.setdefault(name, [path, []])[1].append(tag)
 
     order = {t: i for i, t in enumerate(tags)}
@@ -737,17 +774,20 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
             if hugo:
                 rest = _hugo(rest, ctx, f"https://raw.githubusercontent.com/{owner}/{repo}/"
                                         f"{quote(tag, safe='@')}/", hugo)
-            if sources is not None:
-                def fetch(where, sha, tag=tag):
-                    if sha not in code_cache:
-                        url = (f"https://raw.githubusercontent.com/{owner}/{repo}/"
-                               f"{quote(tag, safe='@')}/{quote(where)}")
-                        code, data = ctx.fetch(url) if ctx.allowed(url) else ("", b"")
-                        code_cache[sha] = (data.decode("utf-8", errors="replace")
-                                           if code == "200" else "")
-                    return code_cache[sha]
+            def fetch(where, sha, tag=tag):
+                if sha not in code_cache:
+                    url = (f"https://raw.githubusercontent.com/{owner}/{repo}/"
+                           f"{quote(tag, safe='@')}/{quote(where)}")
+                    code, data = ctx.fetch(url) if ctx.allowed(url) else ("", b"")
+                    code_cache[sha] = (data.decode("utf-8", errors="replace")
+                                       if code == "200" else "")
+                return code_cache[sha]
 
+            if sources is not None:
                 rest = _sources(rest, meta or {}, path, registry.get(tag, {}), sources, fetch)
+            # До викидання `import`: саме з них видно, який файл стоїть за тегом вставки.
+            if base_ui:
+                rest = _baseui.expand(rest, path, registry.get(tag, {}), fetch)
             # Обидва — до викидання `export`: таблиці беруть дані саме з них.
             if source.get("jsx_props") is True:
                 rest = _jsx_props(rest)
@@ -758,6 +798,9 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
             if path.endswith(".mdx") or source.get("mdx") is True:
                 # Імпорти й експорти MDX — код сторінки, а не її текст.
                 rest = _markup.mdx_statements_out(rest)
+            if source.get("react_spectrum") is True:
+                rest = _RS_HIGHLIGHT.sub("", _RS_EXPR.sub("", _RS_FRONT.sub(
+                    "", _RS_COMMENT.sub("", rest), count=1)))
             # Рядок із самою картинкою (логотип над заголовком) тексту не несе, а стоячи
             # першим, ховав від _split_title справжню назву сторінки.
             if source.get("yaml_history") is True:
