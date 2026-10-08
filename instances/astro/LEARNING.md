@@ -354,7 +354,7 @@ Cloudflare.
 - Tailwind CSS — `tailwind`; zod (схеми колекцій і дій) — `zod`;
 - Clerk — `clerk`; Supabase Auth — `supabase`; PostgreSQL — `postgresql`;
 - Vitest — `vitest`; Playwright — `playwright`;
-- Docker і `docker compose` — `docker`; GitHub Actions і GitHub Pages — `github-actions`;
+- Docker і `docker compose` — `docker`;
 - Node.js (API парних мажорів 12–26, посібники nodejs.org/learn) і npm (CLI 6–12) — `nodejs`;
 - Next.js (для порівняння у фазі 7) — `nextjs`; NestJS (окремий бекенд) — `nestjs`;
 - Sentry: SDK для Astro, карти коду — `sentry`.
