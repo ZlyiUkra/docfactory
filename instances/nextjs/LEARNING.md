@@ -363,6 +363,8 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - Next.js — `nextjs`; React — `react`; NestJS — `nestjs`; TypeScript — `typescript`;
 - вебплатформа (HTTP, кеш, куки, Streams, CSS) — `mdn`;
 - тексти стандартів: WHATWG, CSP, WCAG, RFC HTTP, кешування й кук, OpenID Connect, ERC — `webstandards`;
+- web.dev (курси Learn, статті з метриками Core Web Vitals і їхніми порогами, блог) і бібліотека web-vitals (README
+  кожного випуску, журнал змін) — `webdev`;
 - Tailwind CSS — `tailwind`; zod — `zod`; TanStack Query — `tanstack-query`; Vitest — `vitest`;
 - ESLint, `eslint-plugin-react-hooks`, `eslint-plugin-react`, `eslint-plugin-jsx-a11y`, typescript-eslint — `eslint`;
 - Testing Library (React Testing Library, user-event, jest-dom) — `testing-library`; MSW — `msw`; Playwright —
@@ -504,7 +506,7 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 
 # Фаза 1. Ядро App Router — 14 днів
 
-**Сервери MCP фази:** `nextjs-docs`, `eslint-docs`, `tailwind-docs`.
+**Сервери MCP фази:** `nextjs-docs`, `eslint-docs`, `tailwind-docs`, `webdev-docs`.
 
 Розділ `Getting Started` цілком, у порядку самої документації: вона вибудувана правильно. Усі глави тут і далі
 мають у корпусі префікс «App Router: …», версія 16. Дані до фази 4 живуть у простому модулі `lib/data.ts` —
@@ -688,8 +690,9 @@ Next.js — надбудова над HTTP, Node і серверним React. У
   розміри (`width` і `height` або `fill`), щоб зарезервувати місце, і `sizes`, щоб вибрати файл. Картинки з
   чужих адрес дозволяє `images.remotePatterns` — з точним хостом і шляхом. `next/font` завантажує шрифт під
   час збірки й роздає з вашого домену, тому текст не стрибає.
-- **Читати:** `Image Optimization`, `Font Optimization`.
-- **Сервери MCP:** `nextjs-docs`.
+- **Читати:** `Image Optimization`, `Font Optimization`; у примірнику `webdev` — `Learn Performance: Image
+  performance` (розділ «Image size»: що браузер робить із `srcset` і `sizes`), `Best practices for fonts`.
+- **Сервери MCP:** `nextjs-docs`, `webdev-docs`.
 - **Зробити:** 1) головне зображення сторінки через `<Image>` з `sizes`; 2) шрифт через `next/font` у
   кореневому каркасі; 3) Lighthouse в режимі інкогніто на `next start` — до і після.
 - **Перевірити себе:** CLS близький до нуля, LCP записаний двома числами.
@@ -737,8 +740,9 @@ Next.js — надбудова над HTTP, Node і серверним React. У
   кожного: `○` — повністю статичний, `◐` — статична оболонка плюс стрімінг, `ƒ` — малюється на кожен запит.
   `next start` запускає зібране. Викотити можна чотирма способами: сервер Node, образ Docker, статичний
   експорт, адаптер платформи.
-- **Читати:** `Deploying`, `Upgrading`, `Building your application`.
-- **Сервери MCP:** `nextjs-docs`.
+- **Читати:** `Deploying`, `Upgrading`, `Building your application`; у примірнику `webdev` — `Web Vitals`, `Time to
+  First Byte (TTFB)` (що означають числа журналу і які значення вважають добрими).
+- **Сервери MCP:** `nextjs-docs`, `webdev-docs`.
 - **Зробити:** 1) `next build`, для кожного маршруту з таблиці сказати, чому в нього такий символ;
   2) `next start` і Lighthouse в інкогніто; 3) завести в README журнал вимірів: дата, LCP, CLS, час до
   першого байта.
@@ -1019,7 +1023,7 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 
 **Сервери MCP фази:** `nextjs-docs`, `webstandards-docs`, `zod-docs`, `react-hook-form-docs`, `auth-docs`,
 `clerk-docs`, `supabase-docs`, `tanstack-query-docs`, `vitest-docs`, `testing-library-docs`, `playwright-docs`,
-`postgresql-docs`, `owasp-docs`, `shadcn-docs`.
+`postgresql-docs`, `owasp-docs`, `shadcn-docs`, `webdev-docs`.
 
 Тут фронтендер стає фулстеком: застосунок сам ходить у базу, сам упізнає користувача, сам перевіряє права й
 сам відповідає за те, що не віддав зайвого. Порядок навмисний: спершу база, потім хто ви (автентифікація),
@@ -1114,8 +1118,10 @@ Next.js — надбудова над HTTP, Node і серверним React. У
   під час набору беруть React Hook Form з тією самою схемою zod. `<Form>` з `next/form` — для форм пошуку,
   що міняють рядок адреси.
 - **Читати:** `How to create forms with Server Actions`, `Form Component`; у примірнику `react-hook-form` — `useForm
-  (content/docs/useform)`; у примірнику `shadcn` — `Next.js` (форми shadcn/ui на Server Actions) і `React Hook Form`.
-- **Сервери MCP:** `nextjs-docs`, `react-hook-form-docs`, `shadcn-docs`.
+  (content/docs/useform)`; у примірнику `shadcn` — `Next.js` (форми shadcn/ui на Server Actions) і `React Hook Form`;
+  у примірнику `webdev` — `Learn Forms: Help users enter the right data in forms`, `Learn Forms: Accessibility` (як
+  зв'язати помилку з полем, щоб її знайшов і екранний читач).
+- **Сервери MCP:** `nextjs-docs`, `react-hook-form-docs`, `shadcn-docs`, `webdev-docs`.
 - **Зробити:** форма на десять полів; вимкнути JavaScript у браузері й надіслати її.
 - **Перевірити себе:** без JavaScript — помилки біля полів після перезавантаження; з ним — миттєво.
 - **Пастка:** дві різні схеми перевірки для клієнта й сервера — розійдуться за тиждень.
@@ -1246,7 +1252,7 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 
 # Фаза 5. Інтерфейс із характером — 8 днів
 
-**Сервери MCP фази:** `nextjs-docs`, `mdn-docs`, `zustand-docs`, `webstandards-docs`, `shadcn-docs`.
+**Сервери MCP фази:** `nextjs-docs`, `mdn-docs`, `zustand-docs`, `webstandards-docs`, `shadcn-docs`, `webdev-docs`.
 
 Те, що відрізняє «працює» від «приємно користуватися». Частина можливостей з'явилася в 16.2–16.3, а дещо
 ще експериментальне — дивіться на версії у відповіді сервера. Дні 1–4 можна брати одразу після фази 2.
@@ -1296,8 +1302,9 @@ Next.js — надбудова над HTTP, Node і серверним React. У
   (`animation-timeline: scroll()`); переходи властивостей. Медіа-запит `prefers-reduced-motion` — людям, яким
   рух шкодить, анімації вимикають.
 - **Читати:** у примірнику `mdn` — `@starting-style CSS at-rule`, `CSS scroll-driven animations`,
-  `prefers-reduced-motion CSS media feature`.
-- **Сервери MCP:** `mdn-docs`.
+  `prefers-reduced-motion CSS media feature`; у примірнику `webdev` — `Learn Accessibility: Animation and motion`
+  (кому рух шкодить і що вимикати).
+- **Сервери MCP:** `mdn-docs`, `webdev-docs`.
 - **Зробити:** поява модального вікна на `@starting-style`; індикатор прочитання статті за прокручуванням;
   усе вимикається при `prefers-reduced-motion`.
 - **Перевірити себе:** у налаштуваннях системи «зменшити рух» — і жодна анімація застосунку не рухається.
@@ -1339,8 +1346,10 @@ Next.js — надбудова над HTTP, Node і серверним React. У
   поки експериментальний (`experimental.useOffline`).
 - **Читати:** `How to build a Progressive Web Application (PWA) with Next.js`, `Handling connectivity drops`. Згадкою:
   `How to use and optimize videos`, `How to preview content with Draft Mode in Next.js`; у примірнику `webstandards` —
-  `Web Application Manifest: 1 Web Application Manifest`, `Service Workers: 2 Model`, `Service Workers: 5 Caches`.
-- **Сервери MCP:** `nextjs-docs`, `webstandards-docs`.
+  `Web Application Manifest: 1 Web Application Manifest`, `Service Workers: 2 Model`, `Service Workers: 5 Caches`; у
+  примірнику `webdev` — `Learn PWA: Web app manifest`, `Learn PWA: Caching` (що кешувати, а що ні), `Offline UX
+  design guidelines` (як сказати користувачеві, що мережі немає).
+- **Сервери MCP:** `nextjs-docs`, `webstandards-docs`, `webdev-docs`.
 - **Зробити:** маніфест і іконки; банер «немає мережі».
 - **Перевірити себе:** у вкладці «Застосунок» маніфест без помилок; режим «офлайн» показує банер.
 - **Пастка:** service worker, що кешує сторінки кабінету — і показує одному користувачеві дані іншого.
@@ -1430,7 +1439,7 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 # Фаза 7. DevOps: від збірки до продакшну — 12 днів
 
 **Сервери MCP фази:** `nextjs-docs`, `docker-docs`, `webstandards-docs`, `kubernetes-docs`, `playwright-docs`,
-`github-actions-docs`, `nginx-docs`.
+`github-actions-docs`, `nginx-docs`, `webdev-docs`.
 
 Next.js — не тека статики: це сервер, який треба зібрати, запустити, тримати живим і вміти відкотити. Документації
 Docker, nginx, Kubernetes і GitHub Actions у корпусі Next.js немає; є те, чого Next.js вимагає від них, і готові
@@ -1557,8 +1566,9 @@ Cloud з'явився в плані React (фаза 5, дні 7–9), бекен
   Збір помилок із картами коду — Sentry або подібний збирач (порада з практики); помилки React він бере з опцій
   `onCaughtError` і `onUncaughtError` у `createRoot` (план React, фаза 2, день 8).
 - **Читати:** `How to set up instrumentation`, `How to set up instrumentation with OpenTelemetry`,
-  `useReportWebVitals`; `Example: with-opentelemetry`; поза корпусом — документація Sentry для Next.js.
-- **Сервери MCP:** `nextjs-docs`.
+  `useReportWebVitals`; `Example: with-opentelemetry`; у примірнику `webdev` — `Best practices for measuring Web
+  Vitals in the field` (коли й як відправляти, чому не середнє); поза корпусом — документація Sentry для Next.js.
+- **Сервери MCP:** `nextjs-docs`, `webdev-docs`.
 - **Зробити:** локальний колектор (Jaeger у compose); штучна затримка 500 мс у запиті до бази.
 - **Перевірити себе:** у Jaeger спан на 500 мс знайдено за тривалістю, з `NEXT_OTEL_VERBOSE=1`.
 - **Пастка:** писати в траси тіла запитів разом із паролями.
@@ -1572,8 +1582,9 @@ Cloud з'явився в плані React (фаза 5, дні 7–9), бекен
   на webpack). Важкий клієнтський компонент вантажать ліниво. Сторонні скрипти — через `next/script` з
   правильною стратегією. Чекліст продакшну зводить усе разом.
 - **Читати:** `How to optimize your Next.js application for production`, `Optimizing package bundling`,
-  `How to lazy load Client Components and libraries`, `How to optimize third-party libraries`.
-- **Сервери MCP:** `nextjs-docs`.
+  `How to lazy load Client Components and libraries`, `How to optimize third-party libraries`; у примірнику `webdev` —
+  `Optimize Largest Contentful Paint`, `Optimize Cumulative Layout Shift`, `Optimize Interaction to Next Paint`.
+- **Сервери MCP:** `nextjs-docs`, `webdev-docs`.
 - **Зробити:** знайти аналізатором найважчу залежність і прибрати або відкласти її; LCP і CLS — Lighthouse на
   `next start` за проксі; INP — `useReportWebVitals` у консоль після п'яти взаємодій.
 - **Перевірити себе:** рядок у журналі вимірів «до й після» трьома числами.

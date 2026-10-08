@@ -369,6 +369,8 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 - вебплатформа: JavaScript, Web API, CSS, HTML, HTTP, доступність — `mdn`;
 - тексти стандартів: WHATWG (HTML, DOM, Fetch, Streams), WCAG, WAI-ARIA і APG, CSP, RFC HTTP і WebSocket,
   ERC — `webstandards`;
+- web.dev (курси Learn, статті з метриками Core Web Vitals і їхніми порогами, блог) і бібліотека web-vitals (README
+  кожного випуску, журнал змін) — `webdev`;
 - Vite — `vite`; TypeScript — `typescript`; Vitest — `vitest`; React Testing Library, user-event і jest-dom —
   `testing-library`; MSW — `msw`; Playwright — `playwright`;
 - React Router — `react-router`; TanStack Query — `tanstack-query`;
@@ -390,7 +392,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 
 - з «варто знати»: react-window, TanStack Virtual, Sentry;
 - з «знати, що існує»: SWR, TanStack Router, Storybook, React Native і Expo, Motion, i18next, partysocket;
-- поза таблицями: web-vitals, хостинги, API Binance і Kraken, Oracle Cloud; у факультативі —
+- поза таблицями: хостинги, API Binance і Kraken, Oracle Cloud; у факультативі —
   lightweight-charts, wagmi, viem і Foundry.
 
 ---
@@ -398,7 +400,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 # Фаза 0. База, якої React не дає — 12 днів
 
 **Сервери MCP фази:** `react-docs`, `mdn-docs`, `webstandards-docs`, `typescript-docs`, `vite-docs`, `eslint-docs`,
-`tailwind-docs`, `nodejs-docs`.
+`tailwind-docs`, `nodejs-docs`, `webdev-docs`.
 
 React — бібліотека поверх мови й браузера. Усе, що тут, документація React вважає відомим і не пояснює; саме на
 цих речах, а не на хуках, застрягає більшість новачків. Джерела — примірники `mdn` і `typescript` цієї фабрики;
@@ -522,8 +524,9 @@ React — бібліотека поверх мови й браузера. Усе
   перекомпонування); у циклі це дуже дорого. Анімація `transform` і `opacity` обходиться без компонування.
 - **Читати:** у примірнику `mdn` — `Populating the page: how browsers work`, `Window: requestAnimationFrame() method`;
   у примірнику `webstandards` — `HTML Standard: 8 Web application APIs` (розділ 8.1.7.3 Processing model, крок «update
-  the rendering»).
-- **Сервери MCP:** `mdn-docs`, `webstandards-docs`.
+  the rendering»); у примірнику `webdev` — `Avoid large, complex layouts and layout thrashing`, `Stick to
+  Compositor-Only Properties and Manage Layer Count`.
+- **Сервери MCP:** `mdn-docs`, `webstandards-docs`, `webdev-docs`.
 - **Зробити:** 1) сторінка, що в циклі на тисячу елементів по черзі читає `offsetHeight` і пише `style.height`;
   2) записати профіль у вкладці «Продуктивність»; 3) переписати: спершу всі читання, потім усі записи;
   4) записати профіль знову.
@@ -931,7 +934,7 @@ React — бібліотека поверх мови й браузера. Усе
 
 # Фаза 2. Як React працює зсередини — 8 днів
 
-**Сервери MCP фази:** `react-docs`, `eslint-docs`.
+**Сервери MCP фази:** `react-docs`, `eslint-docs`, `webdev-docs`.
 
 Фаза, після якої зникає слово «магія». Головне правило: жодна оптимізація без заміру до неї. Міряйте на
 продакшн-збірці або на спеціальній збірці для профілювання, з уповільненням процесора в чотири рази, — режим
@@ -1017,14 +1020,14 @@ React — бібліотека поверх мови й браузера. Усе
   в `startTransition` оновлення React рендерить у фоні й може перервати заради нового введення. `isPending`
   каже, що перехід ще триває.
 - **Читати:** `useTransition` — зокрема розділ «Troubleshooting › Updating an input in a Transition doesn't work»;
-  `startTransition`.
-- **Сервери MCP:** `react-docs`.
+  `startTransition`; у примірнику `webdev` — `Interaction to Next Paint (INP)`, README `web-vitals` (функція `onINP`).
+- **Сервери MCP:** `react-docs`, `webdev-docs`.
 - **Зробити:** 1) штучно повільний список (кожен рядок рахує щось 1 мс) із фільтром; 2) уповільнення
   процесора 4×, набрати слово; 3) INP взаємодії — у вкладці «Продуктивність» (живі метрики) або через `onINP` з
-  бібліотеки web-vitals (поза корпусом); 4) оновлення списку — в перехід, поле лишається терміновим; 5) заміряти
-  знову.
+  бібліотеки web-vitals; 4) оновлення списку — в перехід, поле лишається терміновим; 5) заміряти знову.
 - **Перевірити себе:** два числа INP у журналі, до й після; поле вводу відгукується одразу. Пороги «добре» й
-  «погано» для INP публікує web.dev (поза корпусом).
+  «погано» для INP публікує web.dev: у примірнику `webdev` — `Interaction to Next Paint (INP)` (розділ «What is a
+  good INP score?»), а як їх вивели — `How the Core Web Vitals metrics thresholds were defined`.
 - **Пастка:** загорнути в перехід стан самого поля вводу. Контрольоване поле перестає встигати за набором.
 
 ### День 6. `useDeferredValue`
@@ -1048,8 +1051,9 @@ React — бібліотека поверх мови й браузера. Усе
 - **Що це.** Віртуалізація малює лише видимі рядки плюс невеликий запас, а решту заміщує порожнім місцем
   потрібної висоти. Кількість DOM-вузлів перестає залежати від довжини списку.
 - **Читати:** `Optimizing Performance`, розділ «Virtualize Long Lists» — легасі-документація React 16–18, у новій
-  документації його немає; документацію react-window або TanStack Virtual (поза корпусом).
-- **Сервери MCP:** `react-docs`.
+  документації його немає; документацію react-window або TanStack Virtual (поза корпусом); у примірнику `webdev` —
+  `How large DOM sizes affect interactivity, and what you can do about it`.
+- **Сервери MCP:** `react-docs`, `webdev-docs`.
 - **Зробити:** 1) список на 10 000 рядків; 2) кількість вузлів: `document.querySelectorAll('*').length`; 3) INP
   набору у фільтр (як у дні 5); 4) віртуалізувати; 5) заміряти обидва числа знову.
 - **Перевірити себе:** дві пари чисел у журналі — вузли й INP до й після.
@@ -1084,7 +1088,7 @@ React — бібліотека поверх мови й браузера. Усе
 
 **Сервери MCP фази:** `react-docs`, `react-router-docs`, `tanstack-query-docs`, `mdn-docs`, `webstandards-docs`,
 `react-hook-form-docs`, `zod-docs`, `zustand-docs`, `redux-docs`, `vitest-docs`, `testing-library-docs`, `msw-docs`,
-`playwright-docs`, `shadcn-docs`.
+`playwright-docs`, `shadcn-docs`, `webdev-docs`.
 
 React не має нічого з цього в коробці. Документація сама каже, що брати: глава `Build a React app from Scratch`,
 крок 2 — маршрути, дані, розділення коду. Про дані там пряма порада: «fetching data directly in components can
@@ -1280,8 +1284,9 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
 - **Читати:** `<Profiler>`, `React Performance tracks`, `memo`; у примірнику `mdn` — `Window: requestAnimationFrame()
   method`; у примірнику `tanstack-query` — `Updates from Mutation Responses` (той самий `setQueryData`, лише джерело
   інше), `QueryClient` (метод `setQueryData`), `Important Defaults`; блог TkDodo — «Using WebSockets with React Query»
-  (поза корпусом).
-- **Сервери MCP:** `react-docs`, `mdn-docs`, `tanstack-query-docs`.
+  (поза корпусом); у примірнику `webdev` — `Optimize input delay` (затримка перед обробником, поки головний потік
+  зайнятий іншою роботою).
+- **Сервери MCP:** `react-docs`, `mdn-docs`, `tanstack-query-docs`, `webdev-docs`.
 - **Зробити:** 1) перевести список на потік `@trade` для п'яти пар; 2) на збірці для профілювання з уповільненням
   процесора 4× заміряти за десять секунд кількість повідомлень і комітів (`<Profiler>`) і INP набору в поле фільтра
   поруч; 3) буфер і скидання раз на кадр; 4) заміряти знову; 5) таблиця останніх шістдесяти хвилинних свічок: історія
@@ -1322,8 +1327,9 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
   схема стане валідацією бекенду — NestJS 12 приймає схеми zod через Standard Schema.
 - **Читати:** у примірнику `react-hook-form` — `Get Started (content/get-started)` (розділ «Schema Validation»),
   `useForm (content/docs/useform)`, `setError (content/docs/useform/seterror)`; у примірнику `zod` — `Basic usage`,
-  `Defining schemas`.
-- **Сервери MCP:** `react-hook-form-docs`, `zod-docs`.
+  `Defining schemas`; у примірнику `webdev` — `Learn Forms: Help users enter the right data in forms` (як повідомити
+  правила перевірки й показати зрозумілу помилку).
+- **Сервери MCP:** `react-hook-form-docs`, `zod-docs`, `webdev-docs`.
 - **Зробити:** 1) схема сутності на десять полів в окремому модулі; 2) форма на React Hook Form із резолвером;
   3) тип форми лише з `z.infer`; 4) імітувати відповідь сервера «ця назва вже зайнята» і показати її біля поля
   через `setError`.
@@ -1414,11 +1420,13 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
   `aria-` атрибути — лише там, де семантики HTML забракло. `useId` дає стабільні ідентифікатори для зв'язку
   `label` і `aria-describedby`.
 - **Читати:** `useId`; `Common components (e.g. <div>)` (атрибути `aria-*` і `role`); у примірнику `mdn` —
-  `Accessibility`; розширення axe DevTools (поза корпусом); у примірнику `webstandards` — `ARIA in HTML: 3 Author
-  guidance to avoid incorrect use of ARIA`, `Developing a Keyboard Interface`, `Providing Accessible Names and
-  Descriptions`, `WCAG 2.2: 2 Operable`; у примірнику `shadcn` — `Accessibility` Radix Primitives і `React Aria:
-  Accessibility` (як готові компоненти тримають фокус, клавіатуру й ARIA за вас).
-- **Сервери MCP:** `react-docs`, `mdn-docs`, `webstandards-docs`, `shadcn-docs`.
+  `Accessibility`; у примірнику `webdev` — `Learn Accessibility: Keyboard focus`, `Learn Accessibility: JavaScript`
+  (розділ «Focus management»: куди переводити фокус після переходу в SPA); розширення axe DevTools (поза корпусом); у
+  примірнику `webstandards` — `ARIA in HTML: 3 Author guidance to avoid incorrect use of ARIA`, `Developing a
+  Keyboard Interface`, `Providing Accessible Names and Descriptions`, `WCAG 2.2: 2 Operable`; у примірнику `shadcn` —
+  `Accessibility` Radix Primitives і `React Aria: Accessibility` (як готові компоненти тримають фокус, клавіатуру й
+  ARIA за вас).
+- **Сервери MCP:** `react-docs`, `mdn-docs`, `webdev-docs`, `webstandards-docs`, `shadcn-docs`.
 - **Зробити:** 1) пройти весь застосунок без миші; 2) axe DevTools на трьох головних екранах; 3) полагодити
   знайдене; 4) повторити.
 - **Перевірити себе:** два числа проблем axe до й після; кожна дія застосунку доступна з клавіатури.
@@ -1509,7 +1517,7 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
 # Фаза 5. Продакшн: збірка, безпека, метрики, CI, викот у кластер — 9 днів
 
 **Сервери MCP фази:** `react-docs`, `vite-docs`, `react-router-docs`, `mdn-docs`, `webstandards-docs`, `docker-docs`,
-`kubernetes-docs`, `playwright-docs`, `github-actions-docs`, `owasp-docs`, `nginx-docs`.
+`kubernetes-docs`, `playwright-docs`, `github-actions-docs`, `owasp-docs`, `nginx-docs`, `webdev-docs`.
 
 Застосунок уже в інтернеті з фази 1. У блоці A він стає легшим, безпечнішим, вимірюваним і перевіряється сам на
 кожному запиті на злиття. У блоці B він переїжджає зі статичного хостингу у власний кластер Kubernetes — той самий,
@@ -1563,8 +1571,10 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
   користувача й наступним кадром за весь візит. CLS — сума несподіваних зсувів макета. Лабораторно (Lighthouse,
   вкладка «Продуктивність») міряють на своєму комп'ютері в контрольованих умовах; польові дані збирають у справжніх
   користувачів бібліотекою web-vitals. Lighthouse не міряє INP — він не клацає; для INP потрібна взаємодія.
-- **Читати:** web.dev — «Web Vitals», «LCP», «INP», «CLS»; документацію web-vitals (поза корпусом).
-- **Сервери MCP:** жодного — джерела дня поза фабрикою.
+- **Читати:** у примірнику `webdev` — `Web Vitals`, `Largest Contentful Paint (LCP)`, `Interaction to Next Paint
+  (INP)`, `Cumulative Layout Shift (CLS)`, `Why lab and field data can be different (and what to do about it)`;
+  README `web-vitals`.
+- **Сервери MCP:** `webdev-docs`.
 - **Зробити:** 1) повний рядок журналу для двох головних сторінок: Lighthouse mobile, три прогони, медіана LCP і
   CLS; INP — ваша типова дія з уповільненням процесора 4×; КБ gzip; 2) `onLCP`, `onINP`, `onCLS` з web-vitals —
   у консоль на викоченій версії.
@@ -1581,8 +1591,9 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
   запасним шрифтом. React 19 уміє підказувати браузеру ресурси з будь-якого компонента: `preload`, `preconnect`,
   `prefetchDNS`, і сам піднімає `<link>` та `<title>` у `<head>`.
 - **Читати:** `preload`, `preconnect`, `prefetchDNS`, `<link>`; у примірнику `mdn` — `HTMLImageElement: fetchPriority
-  property`, `font-display CSS at-rule descriptor`.
-- **Сервери MCP:** `react-docs`, `mdn-docs`.
+  property`, `font-display CSS at-rule descriptor`; у примірнику `webdev` — `Optimize resource loading with the Fetch
+  Priority API`, `The performance effects of too much lazy loading`, `Best practices for fonts`.
+- **Сервери MCP:** `react-docs`, `mdn-docs`, `webdev-docs`.
 - **Зробити:** 1) розміри всім зображенням; 2) `fetchpriority="high"` на зображенні LCP; 3) `preconnect` до
   домену зображень чи API; 4) шрифт з `font-display: swap` і `preload`; 5) Lighthouse до й після.
 - **Перевірити себе:** дві пари чисел LCP і CLS у журналі.
@@ -1618,8 +1629,10 @@ or on the server as much as possible!» (розділ «Data Fetching»). Том
   Стара вкладка після викоту просить чанк, якого вже немає, — це помилка завантаження, яку ловить межа помилок і
   пропонує оновити сторінку.
 - **Читати:** у примірнику `vite` — `static-deploy`, `Build Options` (опція `build.sourcemap`); у примірнику
-  `webstandards` — `RFC 9111 HTTP Caching: 5 Field Definitions` (розділ 5.2 Cache-Control).
-- **Сервери MCP:** `vite-docs`, `webstandards-docs`.
+  `webstandards` — `RFC 9111 HTTP Caching: 5 Field Definitions` (розділ 5.2 Cache-Control); у примірнику `webdev` —
+  `Prevent unnecessary network requests with the HTTP Cache` (хеш в імені файла плюс `immutable`, для HTML —
+  `no-cache`).
+- **Сервери MCP:** `vite-docs`, `webstandards-docs`, `webdev-docs`.
 - **Зробити:** 1) правила кешу для `index.html` і `assets/`; 2) `curl -I` обох; 3) карти коду — `hidden` або
   вимкнені; 4) відкрити вкладку, викотити нову версію, перейти на лінивий маршрут у старій вкладці.
 - **Перевірити себе:** `curl -I` показує два різні `Cache-Control`; запит до `.map` дає 404; стара вкладка

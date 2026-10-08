@@ -71,7 +71,8 @@
 
 # Фаза 0. База, якої Astro не дає — 6 днів
 
-**Сервери MCP фази:** `astro-docs`, `mdn-docs`, `webstandards-docs`, `typescript-docs`, `vite-docs`, `nodejs-docs`.
+**Сервери MCP фази:** `astro-docs`, `mdn-docs`, `webstandards-docs`, `typescript-docs`, `vite-docs`, `nodejs-docs`,
+`webdev-docs`.
 
 Astro — фреймворк, що працює з HTML і мережею напряму, а не ховає їх за шаром абстракції. Тому дірки в
 базі тут видно одразу, на відміну від React, де їх довго не помітно. Якщо ви проходили нульову фазу
@@ -84,11 +85,12 @@ Astro — фреймворк, що працює з HTML і мережею нап
 - **День 2 — CSS без фреймворка.** Каскад, специфічність, `:where`, вкладеність, змінні, сучасне розкладання
   (grid, flex). *Вправа:* сторінка, зверстана без жодного класу-утиліти. *Сервери MCP:* `mdn-docs`.
 - **День 3 — як браузер вантажить сторінку.** Критичний шлях, блокувальні стилі й скрипти, `defer`, `async`,
-  попереднє з'єднання, шрифти. *Вправа:* подивитися водоспад завантаження свого React-застосунку й пояснити
-  кожен блокувальний ресурс. *Сервери MCP:* `mdn-docs`.
+  попереднє з'єднання, шрифти. У примірнику `webdev` — `Learn Performance: Understand the critical path`,
+  `Learn Performance: Assist the browser with resource hints`. *Вправа:* подивитися водоспад завантаження свого
+  React-застосунку й пояснити кожен блокувальний ресурс. *Сервери MCP:* `mdn-docs`, `webdev-docs`.
 - **День 4 — HTTP і кеш.** Методи, статуси, заголовки кешування, `Cache-Control`, ETag, кука проти заголовка.
-  *Вправа:* таблиця «сторінка → чи можна кешувати → на скільки». *Сервери MCP:* `mdn-docs`,
-  `webstandards-docs`.
+  У примірнику `webdev` — `Prevent unnecessary network requests with the HTTP Cache`. *Вправа:* таблиця «сторінка →
+  чи можна кешувати → на скільки». *Сервери MCP:* `mdn-docs`, `webstandards-docs`, `webdev-docs`.
 - **День 5 — TypeScript для шаблонів.** Типізація пропсів, `Astro.props`, дженерики в утилітах, `satisfies`.
   Глава `TypeScript`. *Вправа:* типізувати три утиліти без жодного `any`. *Сервери MCP:* `astro-docs`,
   `typescript-docs`.
@@ -143,7 +145,7 @@ Astro — фреймворк, що працює з HTML і мережею нап
 
 # Фаза 2. Контент — 10 днів
 
-**Сервери MCP фази:** `astro-docs`, `zod-docs`, `mdn-docs`.
+**Сервери MCP фази:** `astro-docs`, `zod-docs`, `mdn-docs`, `webdev-docs`.
 
 Те, заради чого Astro беруть найчастіше.
 
@@ -158,10 +160,13 @@ Astro — фреймворк, що працює з HTML і мережею нап
   пагінацією й тегами. *Сервери MCP:* `astro-docs`.
 - **День 5 — рендер запису.** `render()`, заголовки, зміст сторінки. *Вправа:* автоматичний зміст із
   заголовків статті. *Сервери MCP:* `astro-docs`.
-- **День 6 — `Images`.** `<Image />`, `<Picture />`, локальні проти віддалених, формати, `densities`.
-  *Вправа:* заміряти сторінку до й після оптимізації зображень. *Сервери MCP:* `astro-docs`.
-- **День 7 — `Fonts`.** Локальні шрифти, попереднє завантаження, `font-display`. *Вправа:* прибрати стрибок
-  тексту при завантаженні. *Сервери MCP:* `astro-docs`, `mdn-docs`.
+- **День 6 — `Images`.** `<Image />`, `<Picture />`, локальні проти віддалених, формати, `densities`. У примірнику
+  `webdev` — `Learn Performance: Image performance`, `Learn Images: Descriptive syntaxes` (дескриптори `x` і `w`,
+  атрибут `sizes`). *Вправа:* заміряти сторінку до й після оптимізації зображень. *Сервери MCP:* `astro-docs`,
+  `webdev-docs`.
+- **День 7 — `Fonts`.** Локальні шрифти, попереднє завантаження, `font-display`. У примірнику `webdev` —
+  `Best practices for fonts`. *Вправа:* прибрати стрибок тексту при завантаженні. *Сервери MCP:* `astro-docs`,
+  `mdn-docs`, `webdev-docs`.
 - **День 8 — `Syntax Highlighting`, `Markdown` плагіни.** Shiki, remark, rehype. *Вправа:* свій плагін remark,
   що додає до кожного заголовка якір. *Сервери MCP:* `astro-docs`.
 - **День 9 — `Internationalization`.** Маршрути мов, типові локалі, `astro:i18n`. *Вправа:* дві мови з
@@ -235,7 +240,7 @@ Astro — фреймворк, що працює з HTML і мережею нап
 
 # Фаза 5. Продуктивність і якість — 8 днів
 
-**Сервери MCP фази:** `astro-docs`, `mdn-docs`, `vitest-docs`, `playwright-docs`, `webstandards-docs`.
+**Сервери MCP фази:** `astro-docs`, `mdn-docs`, `vitest-docs`, `playwright-docs`, `webstandards-docs`, `webdev-docs`.
 
 - **День 1 — стратегія островів.** Перегляд свого проєкту: кожен `client:` має бути виправданий. *Вправа:*
   прибрати щонайменше один острів зовсім. *Сервери MCP:* `astro-docs`.
@@ -243,8 +248,10 @@ Astro — фреймворк, що працює з HTML і мережею нап
   між сторінками, що здається миттєвим. *Сервери MCP:* `astro-docs`.
 - **День 3 — `View Transitions`.** Переходи, збереження стану, `transition:persist`. *Вправа:* плеєр, що не
   переривається при переході між сторінками. *Сервери MCP:* `astro-docs`, `mdn-docs`.
-- **День 4 — метрики.** LCP, CLS, INP на своєму проєкті, Lighthouse і реальні заміри. *Вправа:* записати три
-  числа до оптимізації. *Сервери MCP:* `mdn-docs`.
+- **День 4 — метрики.** LCP, CLS, INP на своєму проєкті, Lighthouse і реальні заміри. У примірнику `webdev` —
+  `Web Vitals`, `Largest Contentful Paint (LCP)`, `Cumulative Layout Shift (CLS)`, `Interaction to Next Paint
+  (INP)`, `Why lab and field data can be different (and what to do about it)`; README `web-vitals`. *Вправа:*
+  записати три числа до оптимізації. *Сервери MCP:* `mdn-docs`, `webdev-docs`.
 - **День 5 — вага сторінки.** Аналіз зібраного, що саме тягне JavaScript. *Вправа:* сторінка з нульовим
   JavaScript — довести це переліком запитів. *Сервери MCP:* `astro-docs`.
 - **День 6 — `Testing`.** Vitest для утиліт і дій, Container API для компонентів. *Вправа:* тест дії, що пише
@@ -252,8 +259,9 @@ Astro — фреймворк, що працює з HTML і мережею нап
 - **День 7 — e2e.** Playwright: сценарій входу й створення сутності. У примірнику `playwright` —
   `Writing tests`, `Web server`, `Authentication`, `Trace viewer`. *Вправа:* тест падає, якщо прибрати
   перевірку в middleware. *Сервери MCP:* `playwright-docs`.
-- **День 8 — доступність.** Семантика, фокус, клавіатура, `prefers-reduced-motion` у переходах. *Вправа:*
-  пройти застосунок без миші. *Сервери MCP:* `mdn-docs`, `webstandards-docs`.
+- **День 8 — доступність.** Семантика, фокус, клавіатура, `prefers-reduced-motion` у переходах. У примірнику
+  `webdev` — `Learn Accessibility: Keyboard focus`, `Learn Accessibility: Animation and motion`. *Вправа:* пройти
+  застосунок без миші. *Сервери MCP:* `mdn-docs`, `webstandards-docs`, `webdev-docs`.
 
 # Фаза 6. Продакшн — 7 днів
 
@@ -341,6 +349,8 @@ Cloudflare.
 - Astro — `astro`; React (острови на React) — `react`; Vite — `vite`; TypeScript — `typescript`;
 - вебплатформа (HTML, CSS, HTTP, кеш, куки, доступність) — `mdn`; тексти стандартів (WHATWG, RFC HTTP, кешування й
   кук, WCAG, Fetch Metadata, Argon2, OpenAPI) — `webstandards`;
+- web.dev (курси Learn, статті з метриками Core Web Vitals і їхніми порогами, блог) і бібліотека web-vitals (README
+  кожного випуску, журнал змін) — `webdev`;
 - Tailwind CSS — `tailwind`; zod (схеми колекцій і дій) — `zod`;
 - Clerk — `clerk`; Supabase Auth — `supabase`; PostgreSQL — `postgresql`;
 - Vitest — `vitest`; Playwright — `playwright`;
@@ -353,5 +363,5 @@ Cloudflare.
 - фреймворки островів, окрім React: Vue, Svelte, Solid, Preact;
 - дані: Drizzle, Prisma;
 - платформи розгортання: Cloudflare, Vercel, Netlify;
-- спостереження: Sentry; Lighthouse і web-vitals;
+- спостереження: Sentry, Lighthouse;
 - контент: Starlight, CMS, Shiki, remark і rehype поза документацією Astro.
