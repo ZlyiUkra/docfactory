@@ -17,11 +17,16 @@ import pathlib
 import urllib.error
 import urllib.parse
 import urllib.request
+import zlib
 
 # Стеля однієї відповіді. 20 МБ не вміщали опис @clerk/nextjs у реєстрі npm (25,7 МБ, тисячі
 # snapshot-версій); підіймається за потребою, а не заздалегідь: розібраний у Python, такий опис
 # займає в пам'яті в рази більше.
 MAX_BYTES = 50_000_000
+# Стеля розпакованої відповіді — для звернень із `gzip=True`. Частини сайтмапа web.dev
+# стиснутими важать по 2 МБ, а розпакованими — 78 і 81 МБ: кожна адреса там повторена
+# двадцятьма мовами.
+MAX_UNPACKED = 120_000_000
 TIMEOUT_SEC = 60
 PAUSE_SEC = 1.0
 _UA = "agent0826-docfactory/1.0"
@@ -94,12 +99,21 @@ def since_header(day: str) -> str:
     return email.utils.format_datetime(when, usegmt=True)
 
 
-def fetch(url: str, allow, *, since: str = "") -> tuple[str, bytes]:
+def _gunzip(data: bytes) -> bytes | None:
+    """Розпаковане тіло, або None, коли воно більше за MAX_UNPACKED."""
+    unpack = zlib.decompressobj(wbits=31)
+    out = unpack.decompress(data, MAX_UNPACKED + 1)
+    return None if len(out) > MAX_UNPACKED or unpack.unconsumed_tail else out
+
+
+def fetch(url: str, allow, *, since: str = "", gzip: bool = False) -> tuple[str, bytes]:
     """(код, байти). Код: «200», «304» або рядок «збій: …».
 
     `allow` — функція примірника: недозволена адреса не завантажується взагалі,
     підіймається Refused. `since` вмикає умовний запит: сервер відповість «304»,
-    якщо документ не змінювався з тієї дати, і тіла не надішле.
+    якщо документ не змінювався з тієї дати, і тіла не надішле. `gzip` просить
+    стиснуту відповідь і розпаковує її: сайтмап web.dev без цього відповідає 500.
+    Без поля запит той самий, що й до його появи.
     """
     if not allow(url):
         raise Refused(f"адреса поза оголошенням примірника: {url}")
@@ -112,13 +126,23 @@ def fetch(url: str, allow, *, since: str = "") -> tuple[str, bytes]:
             headers["If-Modified-Since"] = since_header(since)
         except ValueError:
             pass
+    if gzip:
+        headers["Accept-Encoding"] = "gzip"
     req = urllib.request.Request(url, headers=headers)
     opener = urllib.request.build_opener(_GuardedRedirects(allow))
     try:
         with opener.open(req, timeout=TIMEOUT_SEC) as resp:
             data = resp.read(MAX_BYTES + 1)
+            packed = gzip and resp.headers.get("Content-Encoding", "").lower() == "gzip"
         if len(data) > MAX_BYTES:
             return (f"збій: більше за {MAX_BYTES} байтів", b"")
+        if packed:
+            try:
+                data = _gunzip(data)
+            except zlib.error as exc:
+                return (f"збій: стиснута відповідь не розпаковується ({exc})", b"")
+            if data is None:
+                return (f"збій: розпакована відповідь більша за {MAX_UNPACKED} байтів", b"")
         return ("200", data)
     except urllib.error.HTTPError as e:
         return ("304", b"") if e.code == 304 else (f"збій: HTTP {e.code}", b"")
