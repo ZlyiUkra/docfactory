@@ -316,6 +316,8 @@ Linux → Docker → Kubernetes) і для чого документації щ�
 - між зверненнями до сайтів — пауза 5 секунд (`pause_sec` у `config.json`), тож повне оновлення корпусу — години;
 - приклад питання агентові: `./df react ask "Since which version does React have useId, and is it still
   recommended?"`;
+- корпус в архіві з 09.10.2026, як у nextjs: текстів у теці немає, сервер підіймається з кешу фрагментів (`index/`, у
+  git — стиснений) і Qdrant; перед оновленням тексти повертають;
 - докладніше, разом зі звідки взята кожна версія, — у [instances/react/README.md](instances/react/README.md).
 
 ### nestjs
