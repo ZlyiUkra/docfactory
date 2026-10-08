@@ -343,6 +343,7 @@ Linux → Docker → Kubernetes і Astro) і для чого документа�
   Angular того ж коміту (поле `route_map`), тож повне перекачування дає ті самі імена й переназивати нічого не
   треба;
 - приклад питання агентові: `./df nestjs ask "How are durable providers configured, and since which version?"`;
+- корпус в архіві з 09.10.2026, як у react і clerk;
 - докладніше — у [instances/nestjs/README.md](instances/nestjs/README.md).
 
 ### astro
@@ -392,6 +393,7 @@ legacy.
 - довідники налаштувань існують лише як YAML-специфікації в репозиторії документації, і читач `config-spec` робить
   із кожного ключа окремий уривок; для цього в venv примірника стоїть PyYAML — єдина залежність, якої немає в інших;
 - приклад питання агентові: `./df supabase ask "How do I set up server-side auth with @supabase/ssr in Astro?"`;
+- корпус в архіві з 09.10.2026, як у react і clerk;
 - докладніше — у [instances/supabase/README.md](instances/supabase/README.md).
 
 ### react-router
@@ -414,6 +416,7 @@ api.reactrouter.com для 8.4.0 і 7.18.4, нотатки релізів з CHA
 - токен GitHub (`GITHUB_TOKEN` у `.env` примірника) потрібен лише для збирання: перелік 820 тегів — 820 звернень
   до API;
 - приклад питання агентові: `./df react-router ask "How did route matching change between v5 and v6?"`;
+- корпус в архіві з 09.10.2026, як у react і clerk;
 - докладніше — у [instances/react-router/README.md](instances/react-router/README.md).
 
 ### clerk
@@ -451,6 +454,7 @@ api.reactrouter.com для 8.4.0 і 7.18.4, нотатки релізів з CHA
   називає свій, не потрапляє (`variant_pattern`, `variant_strict`);
 - приклади бере новий читач `ghexamples`;
 - приклад питання агентові: `./df tanstack-query ask "How do I invalidate queries after a mutation in React?"`;
+- корпус в архіві з 09.10.2026, як у react і clerk;
 - докладніше — у [instances/tanstack-query/README.md](instances/tanstack-query/README.md).
 
 ### react-hook-form
@@ -470,6 +474,7 @@ TypeScript-сигнатури публічного API з кожного тег�
 - сайт бере новий читач `ghsite-dated` (текст із JSX/TSX — помічник `_jsx`), README — `npm-readme`, журнал змін
   формату Keep a Changelog — `changelog-keep`, Resources — `tsx-catalog`;
 - приклад питання агентові: `./df react-hook-form ask "How do I reset a form after submit?"`;
+- корпус в архіві з 09.10.2026, як у react і clerk;
 - докладніше — у [instances/react-hook-form/README.md](instances/react-hook-form/README.md).
 
 ### zod
@@ -487,6 +492,7 @@ beta й canary (лінія 2 існує лише як передрелізи, і
   шукати з `"4"`, а якщо для 3 і 4 відповідь різна — давати обидві;
 - реєстр версій бере новий читач `npm-versions`;
 - приклад питання агентові: `./df zod ask "How do I validate an object with Zod?"`;
+- корпус в архіві з 09.10.2026, як у react і clerk;
 - докладніше — у [instances/zod/README.md](instances/zod/README.md).
 
 ### zustand
@@ -503,6 +509,7 @@ beta й canary (лінія 2 існує лише як передрелізи, і
   зараз» шукати з `"5"`, а якщо для 4 і 5 відповідь різна — давати обидві;
 - нових читачів немає: ті самі, що в zod;
 - приклад питання агентові: `./df zustand ask "How do I persist a Zustand store to localStorage?"`;
+- корпус в архіві з 09.10.2026, як у react і clerk;
 - докладніше — у [instances/zustand/README.md](instances/zustand/README.md).
 
 ### typescript
@@ -520,6 +527,7 @@ reference, modules reference, declaration files, release notes, довідник
   зараз» шукати з `"5"`, а якщо для 6 чи 7 відповідь інша — давати і її;
 - нових читачів немає; `ghsite-dated` дістав поле `only` — знімки лише на стабільні релізи;
 - приклад питання агентові: `./df typescript ask "Since which version does TypeScript have the satisfies operator?"`;
+- корпус в архіві з 09.10.2026, як у react і clerk;
 - докладніше — у [instances/typescript/README.md](instances/typescript/README.md).
 
 ### v8
@@ -537,6 +545,7 @@ reference, modules reference, declaration files, release notes, довідник
 - новий читач `ghsite-milestones`: знімки сайту без тегів за переліком дат версій у `sources.json`;
 - новий читач `ghcode`: один файл коду репозиторію — один документ (C++, Torque, Rust, Makefile);
 - приклад питання агентові: `./df v8 ask "How does Maglev differ from TurboFan?"`;
+- корпус в архіві з 09.10.2026, як у react і clerk;
 - докладніше — у [instances/v8/README.md](instances/v8/README.md).
 
 ### wasm
@@ -553,6 +562,7 @@ Recommendation, 2019), 2.0 (Candidate Recommendation, 2024), 3.0 (2025) і по�
   знаходяться лише без `version`;
 - нові читачі `bikeshed` (сторінка Bikeshed з формулами KaTeX) і `ghissues` (issues з коментарями);
 - приклад питання агентові: `./df wasm ask "Since which WebAssembly edition does return_call exist?"`;
+- корпус в архіві з 09.10.2026, як у react і clerk;
 - докладніше — у [instances/wasm/README.md](instances/wasm/README.md).
 
 ### tailwind
@@ -571,6 +581,7 @@ tailwind-merge, daisyUI, Flowbite, shadcn, spartan/ui, `@astrojs/tailwind`), —
 - нові читачі `html-pages` (зібраний HTML сторінок сайту) і `guide-steps` (посібники-кроки з коду сайту, з усіма
   вкладками);
 - приклад питання агентові: `./df tailwind ask "How do I install Tailwind CSS with Astro?"`;
+- корпус в архіві з 09.10.2026, як у react і clerk;
 - докладніше — у [instances/tailwind/README.md](instances/tailwind/README.md).
 
 ### redux
@@ -588,6 +599,7 @@ Reselect, Immer і redux-saga на кожному тегу релізу (кож�
   історія, міграції, сумісність;
 - нових читачів немає: `ghdocs-history`, `ghreleases`, `npm-readme`, `npm-versions`;
 - приклад питання агентові: `./df redux ask "How do I migrate from createStore to configureStore?"`;
+- корпус в архіві з 09.10.2026, як у react і clerk;
 - докладніше — у [instances/redux/README.md](instances/redux/README.md).
 
 ### patterns
@@ -625,6 +637,7 @@ TypeScript), patterns.dev (патерни JS, React, Vue, рендерингу �
   `version` — історія, міграції, сумісність;
 - нових читачів немає: `ghdocs-history`, `ghreleases-tagged`, `ghreleases`, `npm-readme`, `npm-versions`;
 - приклад питання агентові: `./df vite ask "How do I proxy API requests to the backend in dev?"`;
+- корпус в архіві з 09.10.2026, як у react і clerk;
 - докладніше — у [instances/vite/README.md](instances/vite/README.md).
 
 ### nextjs
@@ -666,6 +679,7 @@ moby, compose та buildx. Desktop, AI, Scout та інші продукти н�
 - нових читачів немає: `sitemap-md-meta`, `changelog`, `ghreleases-tagged`, `ghreleases`;
 - приклад питання агентові: `./df docker ask "How do I build an image for both amd64 and arm64?"`;
 - план вивчення, другий у лінії Linux → Docker → Kubernetes, — [instances/docker/LEARNING.md](instances/docker/LEARNING.md);
+- корпус в архіві з 09.10.2026, як у react і clerk;
 - докладніше — у [instances/docker/README.md](instances/docker/README.md).
 
 ### kubernetes
