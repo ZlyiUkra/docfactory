@@ -1004,21 +1004,23 @@ nginx англійською: документація nginx.org — поточ�
 
 ### shadcn
 
-shadcn/ui і Radix UI англійською: документація shadcn/ui кожної мінорної CLI 0.1–4.21 — поточний сайт (2.6–4.21,
-компоненти у варіантах Radix, Base UI і React Aria) і сайт для Tailwind CSS v3 (0.1–3.8), з прикладами й кодом
-компонентів, які поле `jsx_sources` читача `ghdocs-history` бере з реєстру того самого тегу; Radix Primitives — кожна
-версія кожного компонента до 2025 року (мітку з шляху файла дає поле `path_version`) і пакет `radix-ui` 1.1–1.7, з
-пропсами, атрибутами `data-*`, клавішами й змінними CSS (таблиці сайту розбирає `jsx_props`), Radix Themes 1.0–3.3 і
-Radix Colors 0.1–3.0. 1 958 документів, 11 396 фрагментів. Перший етап із трьох: власна документація Base UI і React
-Aria — наступні.
+shadcn/ui і бібліотеки примітивів під ним англійською: документація shadcn/ui кожної мінорної CLI 0.1–4.21 — поточний
+сайт (2.6–4.21, компоненти у варіантах Radix, Base UI і React Aria) і сайт для Tailwind CSS v3 (0.1–3.8), з прикладами
+й кодом компонентів, які поле `jsx_sources` читача `ghdocs-history` бере з реєстру того самого тегу; Radix Primitives
+— кожна версія кожного компонента до 2025 року (мітку з шляху файла дає поле `path_version`) і пакет `radix-ui`
+1.1–1.7, з пропсами, атрибутами `data-*`, клавішами й змінними CSS (таблиці сайту розбирає `jsx_props`), Radix Themes
+1.0–3.3 і Radix Colors 0.1–3.0; Base UI 1.0–1.8 з кодом демо й таблицями API (поле `base_ui`, модуль `_baseui`); React
+Aria — поточний сайт react-aria.adobe.com з таблицями API (читач `llms`), React Aria Components 1.0–1.19 і хуки
+`react-aria` 3.0–3.47 з репозиторію. 3 538 документів, 20 985 фрагментів.
 
 - порт `8799`; запис у Claude Code — `shadcn-docs`, адреса `http://127.0.0.1:8799/mcp`; інструменти `search_docs` і
   `read_section`;
 - колекція у Qdrant — `docs-shadcn`, модель векторів — `bge-small`;
 - версії: shadcn/ui — мінорна CLI (`shadcn-4.21` … `shadcn-2.6`, сайт для Tailwind CSS v3 — `shadcn-tw3-3.8` …
   `shadcn-tw3-0.1`), Radix — `radix-ui-1.7` … `radix-ui-1.1`, пакет на компонент — `radix-dialog-1.1.2`, Themes —
-  `radix-themes-3.3` … `radix-themes-1.0`, Colors — `radix-colors-3.0` … `radix-colors-0.1`; без названої версії
-  відповідь — з `shadcn-4.21` і `radix-ui-1.7`;
+  `radix-themes-3.3` … `radix-themes-1.0`, Colors — `radix-colors-3.0` … `radix-colors-0.1`, Base UI — `base-ui-1.8` …
+  `base-ui-1.0`, React Aria Components — `rac-1.21` (сайт) … `rac-1.0`, хуки — `react-aria-3.50` … `react-aria-3.0`; без
+  названої версії відповідь — з поточних сайтів;
 - приклад питання агентові: `./df shadcn ask "How do I control the open state of a shadcn Dialog?"`;
 - корпус в архіві від самого початку, як у express;
 - докладніше — у [instances/shadcn/README.md](instances/shadcn/README.md).
