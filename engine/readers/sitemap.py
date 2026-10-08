@@ -10,6 +10,15 @@
 `mdfile`     — один markdown-файл за будь-якою адресою, не обов'язково з «.md»
                (`llms/js.txt`, README з raw.githubusercontent.com). Людська адреса
                для шапки — поле `page`: із самої адреси файла її не вивести.
+               Поле `cut_doctoc: true` прибирає зміст, який згенерував doctoc
+               (блок між «<!-- START doctoc» і «<!-- END doctoc … -->»): у
+               binance-spot-api-docs він перелічує кожен розділ файла, і головний
+               фрагмент документа відгукувався б на будь-яку назву ендпойнта.
+               Поле `list_fences: true` знімає маркер пункту списку перед
+               огорожею коду («  * ```json» → «  ```json»): такої відкривної
+               огорожі markdown_body не впізнає, закривну бере за відкривну, і в
+               журналі змін Binance понад вісімдесят записів злипалися в один
+               фрагмент.
 
 Поля `sitemap-md` і `mdlinks`: `title_from: "meta"` бере назву з шапки YAML, а не з
 першого заголовка; `label` ставить префікс назви й дату з шапки («Blog: … (2025-08-12)»).
@@ -35,6 +44,8 @@ from engine.readers.mdsite import _SITEMAP
 
 _LOC = re.compile(r"<loc>\s*([^<\s]+)\s*</loc>")
 _LINK = re.compile(r"\]\((https://[^)\s#?]+)[^)]*\)")
+_DOCTOC = re.compile(r"<!-- START doctoc.*?<!-- END doctoc[^>]*-->[ \t]*\n?", re.S)
+_LIST_FENCE = re.compile(r"^([ \t]*)(?:[*+-]|\d+\.)[ \t]+(```+|~~~+)([\w+#.-]*)[ \t]*$", re.M)
 
 
 def _meta_title(text: str, simple: str) -> str:
@@ -158,6 +169,10 @@ def mdfile(source: dict, ctx) -> list[Item]:
         url, version = source["url"], source.get("version", "")
         text = ctx.text(url)
         _markup.refuse_html(text, url)
+        if source.get("cut_doctoc") is True:
+            text = _DOCTOC.sub("", text)
+        if source.get("list_fences") is True:
+            text = _LIST_FENCE.sub(r"\1\2\3", text)
         meta, rest = _markup.front_matter(text)
         if not meta.get("title"):
             # Без назви в шапці — рівно те, що робить _document, лише без другого
