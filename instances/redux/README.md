@@ -166,7 +166,7 @@ cd ../..
 **1. Підняти сервер** в окремому терміналі WSL і лишити жити:
 
 ```
-cd /mnt/c/Projects/fwdays/docfactory
+cd ~/Projects/docfactory
 ./df redux serve          # порт 8776
 ```
 

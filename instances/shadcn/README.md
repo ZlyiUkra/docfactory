@@ -251,7 +251,7 @@ Themes чи Colors**: коміт `radix-ui/website` на мить випуску
 **1. Підняти сервер** в окремому терміналі WSL і лишити жити:
 
 ```
-cd /mnt/c/Projects/fwdays/docfactory
+cd ~/Projects/docfactory
 ./df shadcn serve             # порт 8799
 ```
 

@@ -173,7 +173,7 @@ cd ../..
 **1. Підняти сервер** в окремому терміналі WSL і лишити жити:
 
 ```
-cd /mnt/c/Projects/fwdays/docfactory
+cd ~/Projects/docfactory
 ./df vitest serve           # порт 8783
 ```
 

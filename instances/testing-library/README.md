@@ -186,7 +186,7 @@ cd ../..
 **1. Підняти сервер** в окремому терміналі WSL і лишити жити:
 
 ```
-cd /mnt/c/Projects/fwdays/docfactory
+cd ~/Projects/docfactory
 ./df testing-library serve           # порт 8786
 ```
 

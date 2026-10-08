@@ -167,7 +167,7 @@ cd ../..
 **1. Підняти сервер** в окремому терміналі WSL і лишити жити:
 
 ```
-cd /mnt/c/Projects/fwdays/docfactory
+cd ~/Projects/docfactory
 ./df vite serve           # порт 8778
 ```
 

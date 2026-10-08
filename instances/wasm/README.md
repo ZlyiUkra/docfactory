@@ -129,7 +129,7 @@ cd ../..
 **1. Підняти сервер** в окремому терміналі WSL і лишити жити:
 
 ```
-cd /mnt/c/Projects/fwdays/docfactory
+cd ~/Projects/docfactory
 ./df wasm serve          # порт 8774
 ```
 
