@@ -1154,6 +1154,25 @@ node-postgres.com у стані на кожну з 71 версії `pg` 7.11.0�
 - корпус в архіві від самого початку, як у react-window;
 - докладніше — у [instances/node-postgres/README.md](instances/node-postgres/README.md).
 
+### postgrator
+
+Документація postgrator — бібліотеки міграцій SQL для Node.js (PostgreSQL, MySQL, SQL Server, SQLite) — на кожній з
+65 версій npm, від 0.0.1 (2012) до 8.0.0: окремого сайту в пакета немає, тож документація — це README (37
+неповторних текстів із tarball кожної версії), типи `postgrator.d.ts` версій, що їх мають, приклади `examples/` з
+репозиторію на коміті версії, журнал змін і реєстр npm з вимогами до Node (`engines`) кожної версії — для питань
+«яка версія працює на моєму Node». Нові читачі: `npm-tarball-files` (файл із tarball кожної версії, однакові тексти
+зводяться в один документ) і `npm-githead-files` (файли репозиторію на коміті `gitHead` версії). 104 документи, 264
+фрагменти.
+
+- порт `8806`; запис у Claude Code — `postgrator-docs`, адреса `http://127.0.0.1:8806/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-postgrator`, модель векторів — `bge-small`;
+- версія — номер релізу: `version: "8"` лишає всі 8.x, `"7"` — лінію для Node 14; без названої версії промпт велить
+  відповідати для 8.x і пропонувати назвати свою;
+- приклад питання агентові: `./df postgrator ask "Which postgrator version works with Node 14?"`;
+- корпус в архіві від самого початку, як у node-postgres;
+- докладніше — у [instances/postgrator/README.md](instances/postgrator/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
