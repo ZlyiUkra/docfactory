@@ -300,7 +300,7 @@ man-pages (`man-pages: namespaces(7) — …`). Посібники GNU назв�
 
 # Фаза 1. Основні команди — 10 днів
 
-**Сервери MCP фази:** `linux-docs`.
+**Сервери MCP фази:** `linux-docs`, `certbot-docs`.
 
 Розділ Essential Commands програми LFCS — 20 % іспиту. Дні 1–7 — класика будь-якої співбесіди на адміністратора;
 дні 8–10 — компетенції, яких немає в старих посібниках: `Basic Git Operations`, `Work with SSL certificates` і
@@ -456,8 +456,9 @@ man-pages (`man-pages: namespaces(7) — …`). Посібники GNU назв�
   поля: Subject, Issuer, строк, SAN. `openssl s_client -connect хост:443` показує ланцюжок живого сервера.
   Довірені центри Ubuntu — `/usr/local/share/ca-certificates/` плюс `update-ca-certificates`.
 - **Читати:** `openssl-genpkey(1ssl)`; `openssl-req(1ssl)`; `openssl-x509(1ssl)`; `openssl-s_client(1ssl)`;
-  `update-ca-certificates(8)`.
-- **Сервери MCP:** `linux-docs`.
+  `update-ca-certificates(8)`; у примірнику `certbot` — `Certbot: What is a Certificate?` (ключ, ланцюжок, що
+  лежить у `/etc/letsencrypt/live` і навіщо кожен файл).
+- **Сервери MCP:** `linux-docs`, `certbot-docs`.
 - **Зробити:** 1) власний центр сертифікації (ключ і самопідписаний сертифікат на рік); 2) ключ і CSR для
   `ubu.lab` з SAN; 3) підписати CSR своїм центром; 4) додати центр у довірені на `ubu` і перевірити ланцюжок
   `openssl verify`.
@@ -977,7 +978,7 @@ Essential Commands про служби й продуктивність. SELinux,
 
 # Фаза 5. Мережа — 10 днів
 
-**Сервери MCP фази:** `linux-docs`, `webstandards-docs`, `nginx-docs`.
+**Сервери MCP фази:** `linux-docs`, `webstandards-docs`, `nginx-docs`, `certbot-docs`.
 
 Розділ Networking — 25 % іспиту. Ubuntu Server налаштовує мережу через netplan (який пише конфіг для
 systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва шляхи — у кожному дні, де вони різні. Перед
@@ -1163,8 +1164,10 @@ systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва �
 - **Читати:** `nginx(8)` — опції командного рядка (`-t`, `-s reload`); `haproxy(1)`; у примірнику `nginx` —
   `Module ngx_http_proxy_module`, `Module ngx_http_upstream_module`, `Using nginx as HTTP load balancer`,
   `Configuring HTTPS servers`, `Controlling nginx`; у примірнику `webstandards` — `RFC 9110 HTTP Semantics: 7 Routing
-  HTTP Messages`, `RFC 9112 HTTP/1.1: 9 Connection Management`.
-- **Сервери MCP:** `linux-docs`, `nginx-docs`, `webstandards-docs`.
+  HTTP Messages`, `RFC 9112 HTTP/1.1: 9 Connection Management`; у примірнику `certbot` — `Certbot: User Guide`
+  (розділи `Nginx` і `Renewing certificates`: так сертифікат на проксі ставлять для публічного імені — у лабораторії
+  з `ubu.lab` Let's Encrypt не достукається, тож тут лишається ваш центр).
+- **Сервери MCP:** `linux-docs`, `nginx-docs`, `webstandards-docs`, `certbot-docs`.
 - **Зробити:** 1) на `rocky` — дві «служби» на портах 8001 і 8002 (`python3 -m http.server` у різних теках);
   2) nginx на `ubu` балансує між ними по черзі; 3) TLS на nginx сертифікатом вашого центру; 4) те саме через
   HAProxy з перевіркою стану — вимкнена служба випадає з ротації.
@@ -1465,7 +1468,8 @@ Server і Rocky Linux і сторінка іспиту LFCS. Про інші б�
 - тексти стандартів (RFC HTTP) — `webstandards`;
 - nginx: документація nginx.org (поточна й знімки стабільних гілок 1.0–1.30), журнали змін, NGINX Admin Guide —
   `nginx`;
-- Docker (фази 6 і 7) — `docker`; Kubernetes — `kubernetes`.
+- Docker (фази 6 і 7) — `docker`; Kubernetes — `kubernetes`;
+- Certbot (сертифікати Let's Encrypt для nginx і Apache; фази 1 і 5) — `certbot`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 

@@ -4,7 +4,7 @@
 однієї бібліотеки чи інструмента (тека `instances/<ім'я>`). Файл оновлюється після кожного нового примірника, разом
 із підрозділами «Документація у фабриці» самих планів.
 
-Стан на 09.10.2026. Примірники: astro, auth, binance-spot, clerk, docker, ecmascript, eslint, express,
+Стан на 09.10.2026. Примірники: astro, auth, binance-spot, certbot, clerk, docker, ecmascript, eslint, express,
 frontend-architecture, github-actions, kubernetes, linux, mdn, msw, nestjs, nextjs, nginx, node-postgres, nodejs, owasp,
 patterns, playwright, postgresql, react, react-hook-form, react-router, react-window, redux, sentry, shadcn, socketio,
 supabase, tailwind, tanstack-query, tanstack-virtual, testing-library, typescript, v8, vite, vitest, wasm, webdev,
@@ -66,8 +66,9 @@ webstandards, zod, zustand.
 
 | План | Фаза | Примірники (дні) |
 |------|------|------------------|
-| [Linux](../instances/linux/LEARNING.md) | 3. Процеси, служби, пакети, ядро, відновлення | `nginx` (6) |
-| Linux | 5. Мережа | `webstandards` (10), `nginx` (10) |
+| [Linux](../instances/linux/LEARNING.md) | 1. Основні команди | `certbot` (9) |
+| Linux | 3. Процеси, служби, пакети, ядро, відновлення | `nginx` (6) |
+| Linux | 5. Мережа | `webstandards` (10), `nginx` (10), `certbot` (10) |
 | Linux | 6. Безпека й віртуалізація | `docker` (4) |
 | Linux | 7. Міст до контейнерів | `docker` (4) |
 | [Docker](../instances/docker/LEARNING.md) | 1. Образи й Dockerfile | `nginx` (4) |
