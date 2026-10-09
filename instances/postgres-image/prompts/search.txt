@@ -1,0 +1,82 @@
+Search the documentation of the official Docker image of PostgreSQL ("postgres") -- every revision
+of its Docker Hub page and every revision of the Dockerfiles and scripts that build it -- and return
+the matching excerpts with the versions each one belongs to. Here are the image page
+(docker-library/docs, postgres/README.md and compose.yaml) as it stood in every commit since 2014,
+and the image repository docker-library/postgres: the Dockerfile of every stable PostgreSQL major
+from 8.4 to 18 (variants default Debian, bookworm, trixie, alpine, alpine3.23, alpine3.24) with the
+exact PostgreSQL version of each revision, docker-entrypoint.sh, docker-ensure-initdb.sh, the
+Dockerfile templates, update.sh, versions.sh, apply-templates.sh, generate-stackbrew-library.sh and
+versions.json.
+
+Call this when a question is about running PostgreSQL in a container from the official image --
+environment variables (POSTGRES_PASSWORD, POSTGRES_USER, POSTGRES_DB, POSTGRES_INITDB_ARGS,
+POSTGRES_INITDB_WALDIR, POSTGRES_HOST_AUTH_METHOD, PGDATA and the _FILE variants for Docker
+secrets), initialization scripts in /docker-entrypoint-initdb.d, where data is stored and how to
+mount it (VOLUME, /var/lib/postgresql/data, the layout change in 18), running as an arbitrary user,
+locale and encoding, shared memory (--shm-size), docker compose and docker stack examples, image
+variants (Debian vs alpine), supported tags, extending the image (adding extensions, a custom
+Dockerfile, postgresql.conf and the -c flags), how the entrypoint decides whether to initialize
+the database, how the image is built (gosu, the PGDG apt repository, the alpine build from source,
+JIT, ICU), upgrading between majors (the image has no automatic upgrade), and above all when it is
+about history: since which version of the image something exists, what changed between revisions,
+which OS variants and tags existed when.
+
+Do not call this for PostgreSQL itself (SQL syntax, indexes, replication, server settings in
+postgresql.conf), for Docker or Compose in general, for Kubernetes, or for Node.js clients: their
+documentation is not here, and the search will return image excerpts that merely mention them.
+
+`version` narrows the search to one PostgreSQL line: "17" keeps every 17.x document, "9.6" every
+9.6.x, "17.2" exactly that release; leave it empty to search everything. Every excerpt comes back
+with `versions`: each version whose documents contain this exact text, newest first -- text that
+stayed the same across revisions is returned once, with all of them listed, so the list itself
+shows from which to which version the documentation said exactly this. Dockerfiles carry the exact
+PostgreSQL version of the revision ("14.24"); the entrypoint script of a major carries that major;
+shared files (templates, update.sh, versions.json) carry the list of majors that were current when
+they looked like this; the image page carries the majors that were listed among its supported tags.
+Every excerpt begins with the dates between which that revision was in force in the repository.
+
+Where things live. The Dockerfile of a variant is "<major>/<variant>/Dockerfile" ("17/bookworm",
+"17/alpine3.24"); before the variants were split, "<major>/Dockerfile" (Debian) and
+"<major>/alpine/Dockerfile". The documents are named like "17-bookworm-dockerfile",
+"17-docker-entrypoint-sh", "dockerfile-alpine-template", "versions-json", "readme" (the image
+page). The environment variables and the how-to sections are in "readme".
+
+Which version to search first. For a question about how to do something today, pass `version`
+"18" (the newest stable major) or the major the user runs. Search without `version` when the
+question is about history, about the image in general, or when the line gave nothing.
+
+Name the variable, file or command the way the documentation spells it: "POSTGRES_PASSWORD",
+"docker-entrypoint-initdb.d", "PGDATA", "POSTGRES_INITDB_ARGS", "POSTGRES_HOST_AUTH_METHOD",
+"shm-size", "docker_process_init_files", not "how do I make it start a script". For a question
+about when something appeared, changed or disappeared, search more than once: without `version`
+first, then with the majors around it, and compare the dates at the top of the excerpts.
+
+Write the query in English. Everything here is English -- the excerpts, the word index and the
+meaning index alike -- and the word index keeps only latin letters and digits, so a query written
+in Ukrainian, Russian or any other non-latin script matches nothing at all and comes back with
+`found: 0`. When the user asks in another language, translate the question into image terms first.
+
+The `search` field of the result says how the excerpts were found: "words" means the words of the
+query had to appear in the text; "meaning+words" means a second, meaning-based index answered as
+well, and a paraphrase had a chance.
+
+Every answer says which version it is for. When the user did not name a version, answer for the
+newest stable major, say so in the answer ("for the postgres image 18"), and add that for a precise
+answer about another version the user can name it. When the excerpts behind a statement come only
+from older revisions, name those versions and dates instead of presenting the text as current.
+
+Answer in the language the user wrote in. When the question is about a feature's history or
+support, answer point by point: since which version of the image it exists; what changed in later
+revisions; how it stands now -- supported, changed, removed and replaced by what. Every point
+names the version and the document it rests on; a point the excerpts do not support is left out,
+not guessed. When that language is Ukrainian, write as a Ukrainian engineer writes, not as a
+translation from English: plain technical prose, and the Ukrainian word wherever one exists --
+"уривок", not "ексерпт"; "застарілий", not "депрекейтнутий". Never call this set of documents
+"корпус" -- say "документація образу postgres". Identifiers, variable names and titles stay in
+English, spelled exactly as the documentation spells them. Build the answer out of the excerpts
+that came back, not out of memory: if an excerpt was cut, read the whole of it before describing
+what it says.
+
+Arguments: `query` is free text; `k` is how many excerpts to return, 1 to 10, default 3;
+`version` is optional, see above. Excerpt text is cut at 600 characters -- pass the `id` of an
+excerpt to `read_section` to get the whole thing.
