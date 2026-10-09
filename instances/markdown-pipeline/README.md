@@ -1,8 +1,8 @@
 # markdown-pipeline — примірник фабрики docfactory
 
 Захищений MCP-сервер, що відповідає на питання про конвеєр «Markdown → HTML» екосистеми unified, у тому вигляді, в
-якому його збирає Astro: `@astrojs/markdown-remark`, `remark-rehype`, `rehype-sanitize` з `hast-util-sanitize`,
-`remark-math` з `rehype-katex` і KaTeX, підсвітка коду Shiki, а також увесь сайт unifiedjs.com. Документація — усіх
+якому його збирає Astro: `unified`, `remark-parse`, `remark-rehype`, `rehype-sanitize` з `hast-util-sanitize`,
+`remark-math` з `rehype-katex` і KaTeX, підсвітка коду Shiki з пакетами `@shikijs/*`, а також увесь сайт unifiedjs.com. Документація — усіх
 стабільних версій пакетів, а не лише останньої. Код спільний і лежить у `../../engine/`, `../../server/` та
 `../../common/`; ця тека тримає самі дані домену. Загальний устрій фабрики — у [../../README.md](../../README.md).
 
@@ -19,23 +19,32 @@
 
 | Шар | Документів | Звідки |
 |-----|-----------:|--------|
-| README: кожен неповторний текст один раз, з усіма версіями, де він був таким | 204 | tarball кожної версії npm |
-| Типи TypeScript, розділені за оголошеннями | 98 | tarball кожної версії npm |
+| README: кожен неповторний текст один раз, з усіма версіями, де він був таким | 305 | tarball кожної версії npm |
+| Типи TypeScript, розділені за оголошеннями | 278 | tarball кожної версії npm |
 | Журнал змін `@astrojs/markdown-remark` | 45 | `CHANGELOG.md` із tarball кожної версії |
-| Реєстр npm: огляд і лінії з вимогами до Node, залежностями й датами | 68 | registry.npmjs.org |
+| Реєстр npm: огляд і лінії з вимогами до Node, залежностями й датами | 171 | registry.npmjs.org |
 | Документація Shiki (shiki.style) за знімком на кожен стабільний реліз | 305 | репозиторій `shikijs/shiki`, тека `docs/` |
 | Документація KaTeX (katex.org) за знімком на кожен стабільний реліз | 474 | репозиторій `KaTeX/KaTeX`, тека `docs/` |
-| Сайт unifiedjs.com: навчання, спільнота, каталог пакетів, проєктів і тем | 1320 | sitemap.xml сайту |
+| Сайт unifiedjs.com: навчання, спільнота, каталог пакетів, проєктів і тем | 1326 | sitemap.xml сайту |
 
-Разом 2514 документів; фрагментів в індексі — 15 732 (`expected_passages` у `checks.json`).
+Разом 2904 документи; фрагментів в індексі — 18 362 (`expected_passages` у `checks.json`).
 
-Десять пакетів npm: `@astrojs/markdown-remark` (98 стабільних версій), `remark-rehype` (26), `rehype-sanitize` (10),
-`hast-util-sanitize` (20), `rehype-katex` (22), `remark-math` (24), `micromark-extension-math` (12),
-`mdast-util-math` (9), `katex` (117), `shiki` (191).
+Двадцять шість пакетів npm (кількість стабільних версій у дужках):
 
-Замір `quality`: по словах 6 із 10, за змістом 5, разом 7; десятка «як модель» — 10 із 10. Промахи — це запити
-перефразом про санітизацію («strip dangerous tags»), де відповідь перебивають сторінки каталогу unifiedjs.com: той
-самий README пакета лежить там ще раз, як окремий документ.
+- конвеєр: `unified` (56; версія 2.1.3 зникла з реєстру, пропущена), `remark-parse` (29), `remark-gfm` (6),
+  `remark-rehype` (26), `rehype-raw` (12), `rehype-sanitize` (10), `hast-util-sanitize` (20), `rehype-stringify` (18);
+- формули: `remark-math` (24), `micromark-extension-math` (12), `mdast-util-math` (9), `rehype-katex` (22), `katex` (117);
+- Astro: `@astrojs/markdown-remark` (98);
+- підсвітка коду: `shiki` (191) і 11 пакетів `@shikijs/*` — `core` (140), `types` (93), `engine-oniguruma` (92),
+  `engine-javascript` (93), `rehype` (137), `transformers` (138), `markdown-it` (137), `monaco` (140), `twoslash` (140),
+  `colorized-brackets` (77), `compat` (91). Пакети `@shikijs/langs` і `@shikijs/themes` не беруться: це дані мов і
+  тем, а не документація.
+
+Замір `quality`: по словах 6 із 10, за змістом 6, разом 7; десятка «як модель» — 10 із 10. Промахи — це запити
+перефразом про санітизацію («strip dangerous tags»), де відповідь перебивають сторінки каталогу unifiedjs.com про
+інші пакети. Дев'ять сторінок каталогу, що дублювали README наших пакетів (`unified`, `remark-parse`, `rehype-raw`,
+`rehype-stringify`, `remark-rehype`, `rehype-sanitize`, `hast-util-sanitize`, `rehype-katex`, `remark-math`),
+виключені (`exclude` у `sources.json`), і якість не просіла.
 
 ## Що в цій теці
 
@@ -78,6 +87,8 @@
   тексту (по 400 КБ кожна); їх пропущено за згодою користувача. Решта сайту — навчання (`learn`), спільнота
   (`community`), пакети (`explore/package`, 482 сторінки з README екосистеми remark, rehype, retext, unist, mdast,
   hast), проєкти й теми.
+- **Зайвих дублікатів немає.** Каталог unifiedjs.com містить копії README багатьох пакетів, і дев'ять копій наших
+  пакетів у корпус не беруться — оригінали є з версіями.
 - **`@astrojs/markdown-remark` не має README** у жодній версії пакета; документація — журнал змін, типи й реєстр.
 - **Порожній README `shiki` 0.2.7** (0 символів) у корпус не потрапляє; `refresh` повідомляє про це як про один збій.
 - **Передреліз-мітки.** README, типи й документація беруть лише стабільні версії (`skip_versions: "-"`, `only`);
@@ -86,10 +97,9 @@
 ## Межі, про які треба пам'ятати
 
 Документації Astro поза його markdown-пакетом (маршрутизація, компоненти, колекції контенту), MDX, `markdown-it`,
-`marked` та інших обробників Markdown тут немає; з пакетів Shiki беруться лише `shiki` — без `@shikijs/*`
-(`@shikijs/rehype`, `@shikijs/transformers`, `@shikijs/core`), а їхні сторінки на shiki.style є в документації.
-Пакети екосистеми поза списком (`unified`, `remark-parse`, `remark-gfm`, `rehype-raw`, `rehype-stringify` тощо)
-присутні лише як сторінки каталогу unifiedjs.com — без версій і без історії. Код бібліотек не входить.
+`marked` та інших обробників Markdown тут немає. Решта пакетів екосистеми (`mdast-util-to-hast`, `hast-util-to-html`,
+`unist-util-visit`, `rehype-highlight` тощо) присутні лише як сторінки каталогу unifiedjs.com — без версій і без
+історії. Код бібліотек не входить.
 
 ## Архівний режим: сервер без корпусу
 
@@ -97,7 +107,7 @@
 кешу фрагментів (`index/passages.json`) і колекції Qdrant; відповіді ті самі до символа — кеш тримає повний текст
 кожного фрагмента.
 
-**Де тексти.** В архіві `~/archives/docfactory/markdown-pipeline-corpus-2026-10-09.tar.gz` (2514 текстів і паспорт).
+**Де тексти.** В архіві `~/archives/docfactory/markdown-pipeline-corpus-2026-10-09.tar.gz` (2904 тексти і паспорт).
 В історії git текстів немає ніде. Архів лежить лише на цій машині.
 
 **Як повернути тексти** — перед будь-яким оновленням корпусу:
@@ -124,7 +134,7 @@ gzip -9 -c instances/markdown-pipeline/index/passages.json > instances/markdown-
 
 **На іншій машині** після клонування кеш треба розпакувати:
 `gunzip -k instances/markdown-pipeline/index/passages.json.gz`, далі `./df markdown-pipeline vectors` заллє колекцію
-Qdrant (близько години: 13 тисяч векторів).
+Qdrant (близько години: 18 тисяч векторів).
 
 ## Установка venv
 
