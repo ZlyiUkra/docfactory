@@ -5,10 +5,10 @@
 із підрозділами «Документація у фабриці» самих планів.
 
 Стан на 09.10.2026. Примірники: astro, auth, binance-spot, clerk, docker, ecmascript, eslint, express,
-frontend-architecture, github-actions, kubernetes, linux, mdn, msw, nestjs, nextjs, nginx, nodejs, owasp, patterns,
-playwright, postgresql, react, react-hook-form, react-router, react-window, redux, sentry, shadcn, socketio, supabase,
-tailwind, tanstack-query, tanstack-virtual, testing-library, typescript, v8, vite, vitest, wasm, webdev, webstandards,
-zod, zustand.
+frontend-architecture, github-actions, kubernetes, linux, mdn, msw, nestjs, nextjs, nginx, node-postgres, nodejs, owasp,
+patterns, playwright, postgresql, react, react-hook-form, react-router, react-window, redux, sentry, shadcn, socketio,
+supabase, tailwind, tanstack-query, tanstack-virtual, testing-library, typescript, v8, vite, vitest, wasm, webdev,
+webstandards, zod, zustand.
 
 ## Як читати таблиці
 
@@ -42,9 +42,9 @@ zod, zustand.
 | 3. Дані: TypeORM, Prisma | `postgresql` (12), `owasp` (5); TypeORM і Prisma — у документації Nest лише інтеграція |
 | 4. Автентифікація й авторизація | `webstandards` (1–2, 6–8, 12), `express` (8, 12), `react-router` (9), `owasp` (1, 6, 8, 12) |
 | 5. Якість: тести й DI | `vitest` (1) |
-| 6. Продакшн | `docker` (вступ, 2, 7), `kubernetes` (вступ, 8–9), `express` (9), `postgresql` (9), `github-actions` (вступ, 7), `nginx` (вступ, 2, 5) |
+| 6. Продакшн | `docker` (вступ, 2, 7), `kubernetes` (вступ, 8–9), `express` (9), `postgresql` (9), `github-actions` (вступ, 7), `nginx` (вступ, 2, 5), `node-postgres` (5) |
 | 7. Живі дані: WebSockets | `socketio` (вступ, 2–4, 6–7), `mdn` (вступ, 1), `webstandards` (вступ, 1, 3, 6), `vite` (2), `kubernetes` (3, 6, 8), `owasp` (3), `nginx` (6), `binance-spot` (вступ, 5) |
-| Факультатив «крипта» | `binance-spot` (К1), `webstandards` (К3) |
+| Факультатив «крипта» | `binance-spot` (К1), `webstandards` (К3), `node-postgres` (К1) |
 
 ### План Next.js — [instances/nextjs/LEARNING.md](../instances/nextjs/LEARNING.md)
 

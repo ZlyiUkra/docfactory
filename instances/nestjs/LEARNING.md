@@ -393,6 +393,8 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   `path-to-regexp`, helmet і express-rate-limit — README кожної версії й журнали змін — `express`;
 - PostgreSQL 9.0–19: посібник, довідник SQL-команд і програм (`psql`, `pg_dump`, `pg_restore`), нотатки релізів —
   `postgresql`;
+- драйвер `pg` (node-postgres) з `pg-pool`, `pg-cursor`, `pg-query-stream`, `pg-types`, `pg-copy-streams` і типами
+  `@types/pg`, усі стабільні версії — `node-postgres`;
 - Socket.IO 2.x–4.x — сервер, клієнт, адаптери Redis, Redis Streams, Postgres і MongoDB, Admin UI, протоколи й
   приклади (зокрема з NestJS) — `socketio`;
 - GitHub Actions, Dependabot, Container registry (ghcr.io), офіційні дії — `github-actions`;
@@ -1680,7 +1682,7 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 # Фаза 6. Продакшн — 9 днів
 
 **Сервери MCP фази:** `nestjs-docs`, `docker-docs`, `kubernetes-docs`, `express-docs`, `postgresql-docs`,
-`github-actions-docs`, `nginx-docs`.
+`github-actions-docs`, `nginx-docs`, `node-postgres-docs`.
 
 Сервер, який треба зібрати, запустити, тримати живим, міряти й вміти оновити. Глави Nest тут — лише те, що Nest
 вимагає від Docker, проксі й CI. Docker і Compose мають примірник `docker`, Kubernetes, k3s і Traefik — примірник
@@ -1776,11 +1778,12 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 - **Що це.** Fastify — інший HTTP-адаптер; документація пише «achieving nearly twice the benchmark results»,
   але на маршруті, що чекає базу, різниця менша. Стиснення для навантажених сервісів виносять у nginx, а не в
   застосунок. Розмір відповіді міряє `curl -so /dev/null -w '%{size_download}'`. Пул з'єднань бази обмежений
-  (у драйвера `pg` типово десять, поза корпусом): за `-c 100` запити стають у чергу пулу, і це видно в p99.
+  (у драйвера `pg` типово десять): за `-c 100` запити стають у чергу пулу, і це видно в p99.
   Серіалізація `ClassSerializerInterceptor` теж коштує часу на великих списках.
 - **Читати:** розділ Techniques, глави `Performance (Fastify)` і `Compression`; розділ Techniques, глава
-  `Serialization`; у примірнику `nginx` — `Compression and Decompression`, `Module ngx_http_gzip_module`.
-- **Сервери MCP:** `nestjs-docs`, `nginx-docs`.
+  `Serialization`; у примірнику `nginx` — `Compression and Decompression`, `Module ngx_http_gzip_module`; у
+  примірнику `node-postgres` — `pg.Pool` (розділ «new Pool», опція `max`) і `Pool Sizing`.
+- **Сервери MCP:** `nestjs-docs`, `nginx-docs`, `node-postgres-docs`.
 - **Зробити:** 1) той самий маршрут списку на Express і на Fastify (в окремій гілці) — req/s і p99; 2) gzip у
   nginx — розмір відповіді до й після; 3) autocannon `-c 100` при пулі 10 і 30; 4) список із тисячі записів із
   серіалізацією й без.
@@ -2592,7 +2595,7 @@ SPA під одним іменем, викочується й відкочуєт
 
 # Факультатив: крипта — 4 дні
 
-**Сервери MCP фази:** `nestjs-docs`, `webstandards-docs`, `binance-spot-docs`.
+**Сервери MCP фази:** `nestjs-docs`, `webstandards-docs`, `binance-spot-docs`, `node-postgres-docs`.
 
 Мета — розуміти крипту з боку бекенду й уміти написати з нею щось справжнє. Для роботи фулстеком факультатив не
 потрібен, основний проєкт від нього не залежить. **Повний вступ — у плані React, факультатив** (на початку
@@ -2636,9 +2639,10 @@ Ethereum Foundation: на 02.10.2026 статус Sepolia непевний — �
   дублює.
 - **Читати:** розділ Techniques, глава `Database`; документація PostgreSQL — «Numeric Types»; у примірнику
   `binance-spot` — `Public Rest API for Binance` (розділи IP Limits, Kline/Candlestick data),
-  `WebSocket Streams for Binance` (розділ Kline/Candlestick Streams for UTC); README decimal.js (поза корпусом); вступ
+  `WebSocket Streams for Binance` (розділ Kline/Candlestick Streams for UTC); у примірнику `node-postgres` — `Data
+  Types` (розділ «strings by default»: чому `NUMERIC` приходить рядком); README decimal.js (поза корпусом); вступ
   факультативу в плані React, частина про гроші.
-- **Сервери MCP:** `nestjs-docs`, `binance-spot-docs`.
+- **Сервери MCP:** `nestjs-docs`, `binance-spot-docs`, `node-postgres-docs`.
 - **Зробити:** 1) тест: сума тисячі цін як `number` і як `Decimal` — порівняти з точною; 2) міграція `candles` з
   `NUMERIC` і первинним ключем `(symbol, interval, open_time)`; 3) завантажувач свічок за добу сторінками з оглядом
   на заголовок ваги; 4) потік `@kline_1m` оновлює поточну свічку через те саме з'єднання з біржею з фази 7;
