@@ -1172,6 +1172,22 @@ node-postgres.com у стані на кожну з 71 версії `pg` 7.11.0�
 - приклад питання агентові: `./df postgrator ask "Which postgrator version works with Node 14?"`;
 - корпус в архіві від самого початку, як у node-postgres;
 - докладніше — у [instances/postgrator/README.md](instances/postgrator/README.md).
+### helmet
+
+Документація Helmet — пакета npm, що виставляє заголовки безпеки HTTP у застосунках Node.js, — на кожній зі 128
+стабільних версій (0.0.1–8.3.0): сайт helmetjs.github.io у стані на кожен реліз (Jekyll 2016–2023 і Hugo далі), README
+(73 неповторних тексти із tarball), `SECURITY.md`, `CONTRIBUTING.md`, типи, журнал змін і реєстр npm з вимогами до
+Node (`engines`). README helmet є й в примірнику express, але тут корпус повний і самодостатній. Новий читач
+`changelog-dated` (журнал із заголовками «## 8.3.0 - 2026-07-11»). 374 документи, 1138 фрагментів.
+
+- порт `8809`; запис у Claude Code — `helmet-docs`, адреса `http://127.0.0.1:8809/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-helmet`, модель векторів — `bge-small`;
+- версія — номер релізу: `version: "8"` лишає всі 8.x; без названої версії промпт велить відповідати для 8.x і
+  пропонувати назвати свою;
+- приклад питання агентові: `./df helmet ask "Which Helmet version works with Node 16?"`;
+- корпус в архіві від самого початку, як у postgrator;
+- докладніше — у [instances/helmet/README.md](instances/helmet/README.md).
 
 ## Захист
 
