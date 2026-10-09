@@ -1188,6 +1188,26 @@ Node (`engines`). README helmet є й в примірнику express, але т
 - приклад питання агентові: `./df helmet ask "Which Helmet version works with Node 16?"`;
 - корпус в архіві від самого початку, як у postgrator;
 - докладніше — у [instances/helmet/README.md](instances/helmet/README.md).
+### express-rate-limit
+
+Документація express-rate-limit — проміжного шару Express, що обмежує частоту запитів, — на кожній зі 125 стабільних
+версій (1.0.0–8.7.1) разом із шістьма пакетами його організації: express-slow-down, rate-limit-redis,
+rate-limit-memcached, @acpr/rate-limit-postgresql, @express-rate-limit/cluster-memory-store і
+ratelimit-header-parser. Сайт express-rate-limit.mintlify.app у стані на кожен реліз (тека `docs/`, з 7.x), README
+(72 неповторних тексти із tarball), типи, журнал змін і реєстр npm з вимогами до Node (`engines`); у сусідів — README,
+типи, журнали змін, приклади й реєстр. README і `docs/` main є й в примірнику express, але тут екосистема повна й
+самодостатня. Новий читач `changelog-linked` (журнал, де номер версії — посилання на реліз без дати). 391 документ,
+1098 фрагментів.
+
+- порт `8812`; запис у Claude Code — `express-rate-limit-docs`, адреса `http://127.0.0.1:8812/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-express-rate-limit`, модель векторів — `bge-small`;
+- версія — номер релізу: `version: "8"` лишає всі 8.x; номери ліній у кожного пакета свої, тож питання про сусідів
+  шукаються без версії; без названої версії промпт велить відповідати для express-rate-limit 8.x і пропонувати назвати
+  свою;
+- приклад питання агентові: `./df express-rate-limit ask "Which express-rate-limit version works with Node 14?"`;
+- корпус в архіві від самого початку, як у helmet;
+- докладніше — у [instances/express-rate-limit/README.md](instances/express-rate-limit/README.md).
 
 ## Захист
 
