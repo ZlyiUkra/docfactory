@@ -1225,6 +1225,25 @@ ratelimit-header-parser. Сайт express-rate-limit.mintlify.app у стані 
 - приклад питання агентові: `./df express-rate-limit ask "Which express-rate-limit version works with Node 14?"`;
 - корпус в архіві від самого початку, як у helmet;
 - докладніше — у [instances/express-rate-limit/README.md](instances/express-rate-limit/README.md).
+### argon2
+
+Документація хешування паролів Argon2 для Node.js — двох пакетів npm на кожній стабільній версії: `argon2`
+(node-argon2, прив'язка до еталонної реалізації на C; 78 версій, 0.1.1–0.45.1) і `@node-rs/argon2` (прив'язка на Rust
+із готовими збірками; 28 версій, 1.0.1–2.2.2). У кожного — README із tarball, типи, релізи GitHub і реєстр npm з
+вимогами до Node (`engines`); у `argon2` ще вікі (Options, Migrating from another hash function), у `@node-rs/argon2` —
+журнал змін. Поруч — еталонна реалізація P-H-C/phc-winner-argon2: README на кожному з шести релізів, журнал змін і
+специфікація Argon2 1.3 (PDF). Нові читачі `ghwiki-page` (сторінка вікі GitHub, назва — з імені сторінки) і
+`changelog-conventional` (журнал lerna: `# [2.2.0](…) (дата)`). 222 документи, 595 фрагментів.
+
+- порт `8814`; запис у Claude Code — `argon2-docs`, адреса `http://127.0.0.1:8814/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-argon2`, модель векторів — `bge-small`;
+- версія — номер релізу, один фільтр на обидва пакети: `version: "0.45"` — лінія `argon2`, `"2"` — лінія
+  `@node-rs/argon2`; вікі, специфікація й журнал еталонної реалізації версії не мають; без названого пакета промпт
+  велить відповідати для `argon2` 0.44 і 0.45 (найпопулярніші, майже нарівно) і згадувати `@node-rs/argon2`;
+- приклад питання агентові: `./df argon2 ask "Which argon2 version works with Node 14?"`;
+- корпус в архіві від самого початку, як у helmet;
+- докладніше — у [instances/argon2/README.md](instances/argon2/README.md).
 
 ## Захист
 
