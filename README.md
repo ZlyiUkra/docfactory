@@ -1097,6 +1097,24 @@ README плагінів Vite, webpack, Rollup й esbuild з усіма опці�
 - корпус в архіві від самого початку, як у binance-spot;
 - докладніше — у [instances/sentry/README.md](instances/sentry/README.md).
 
+### tanstack-virtual
+
+Документація TanStack Virtual (до v3 — react-virtual) усієї історії: 201 тег репозиторію TanStack/virtual від v1.0.0
+до `@tanstack/virtual-core@3.17.11`, разом з alpha й beta лінії 3, — кожен неповторний текст файла один раз, з усіма
+версіями, де він був таким. Плюс сторінки адаптерів семи фреймворків (React, Vue, Solid, Svelte, Lit, Angular, Marko),
+приклади на останньому тезі кожної лінії, журнали змін і нотатки релізів восьми пакетів, реєстр npm дев'яти пакетів
+зі старим `react-virtual` і два записи блогу TanStack. Новий читач `changelog-named` — журнал пакета монорепозиторію з
+префіксом у імені документа. 947 документів, 2 115 фрагментів.
+
+- порт `8803`; запис у Claude Code — `tanstack-virtual-docs`, адреса `http://127.0.0.1:8803/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-tanstack-virtual`, модель векторів — `bge-small`;
+- версія — номер релізу: `version: "3"` лишає всі 3.x, `"2"` — react-virtual 2.x з хуком `useVirtual`; після 3.13.2
+  документацію позначають версії ядра, а адаптери нумеруються самі (react-virtual 3.14.x, angular-virtual 4–6);
+- приклад питання агентові: `./df tanstack-virtual ask "How do I virtualize rows of different heights in React?"`;
+- корпус в архіві від самого початку, як у sentry;
+- докладніше — у [instances/tanstack-virtual/README.md](instances/tanstack-virtual/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений

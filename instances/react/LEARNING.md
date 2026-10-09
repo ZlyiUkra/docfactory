@@ -337,7 +337,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 | MSW | підміна мережі в тестах і в розробці | Ф3 Д13; є примірник `msw` |
 | Playwright | наскрізні тести в справжньому браузері | Ф3 Д14, Ф5 Д5; є примірник `playwright` |
 | React Compiler | автоматична мемоізація на збірці | Ф2 Д4 |
-| react-window або TanStack Virtual | віртуалізація довгих списків (поза корпусом) | Ф2 Д7 |
+| react-window або TanStack Virtual | віртуалізація довгих списків | Ф2 Д7; є примірник `tanstack-virtual` |
 | Sentry | збір помилок із картами коду | точка підключення — Ф2 Д8; сам збір — план Next.js Ф7 Д9; є примірник `sentry` |
 | shadcn/ui на Radix UI | готові доступні компоненти, що копіюються в проєкт | Ф3 Д15; план Next.js Ф5 Д5; є примірник `shadcn` |
 | Docker, k3d і k3s, `kubectl` | образ SPA і викот у кластер Kubernetes | Ф5 Д7–9; далі — плани NestJS і Next.js; є примірники `docker`, `kubernetes` |
@@ -358,8 +358,8 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 
 Порівняння TanStack Query з SWR, RTK Query і лоадерами React Router є в примірнику `tanstack-query` — глава
 `Comparison | React Query vs SWR vs Apollo vs RTK Query vs React Router` (з погляду авторів TanStack, зважайте на
-це). Про react-window, TanStack Virtual, Storybook, Motion, i18next і partysocket корпусів у фабриці немає — це
-порада з практики. Бібліотеки факультативу (графіки, гаманці) — у його власній таблиці інструментів.
+це). Про react-window, Storybook, Motion, i18next і partysocket корпусів у фабриці немає — це порада з практики.
+Бібліотеки факультативу (графіки, гаманці) — у його власній таблиці інструментів.
 
 ### Документація у фабриці
 
@@ -373,7 +373,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
   кожного випуску, журнал змін) — `webdev`;
 - Vite — `vite`; TypeScript — `typescript`; Vitest — `vitest`; React Testing Library, user-event і jest-dom —
   `testing-library`; MSW — `msw`; Playwright — `playwright`;
-- React Router — `react-router`; TanStack Query — `tanstack-query`;
+- React Router — `react-router`; TanStack Query — `tanstack-query`; TanStack Virtual — `tanstack-virtual`;
 - React Hook Form — `react-hook-form`; zod — `zod`;
 - Tailwind CSS — `tailwind`; Zustand — `zustand`; Redux Toolkit і RTK Query — `redux`;
 - ESLint, README і CHANGELOG `eslint-plugin-react-hooks`, `eslint-plugin-react`, `eslint-plugin-jsx-a11y`,
@@ -392,7 +392,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «варто знати»: react-window, TanStack Virtual;
+- з «варто знати»: react-window;
 - з «знати, що існує»: SWR, TanStack Router, Storybook, React Native і Expo, Motion, i18next, partysocket;
 - поза таблицями: хостинги, API Kraken, Oracle Cloud; у факультативі —
   lightweight-charts, wagmi, viem і Foundry.
@@ -936,7 +936,7 @@ React — бібліотека поверх мови й браузера. Усе
 
 # Фаза 2. Як React працює зсередини — 8 днів
 
-**Сервери MCP фази:** `react-docs`, `eslint-docs`, `webdev-docs`, `sentry-docs`.
+**Сервери MCP фази:** `react-docs`, `eslint-docs`, `webdev-docs`, `tanstack-virtual-docs`, `sentry-docs`.
 
 Фаза, після якої зникає слово «магія». Головне правило: жодна оптимізація без заміру до неї. Міряйте на
 продакшн-збірці або на спеціальній збірці для профілювання, з уповільненням процесора в чотири рази, — режим
@@ -1053,9 +1053,11 @@ React — бібліотека поверх мови й браузера. Усе
 - **Що це.** Віртуалізація малює лише видимі рядки плюс невеликий запас, а решту заміщує порожнім місцем
   потрібної висоти. Кількість DOM-вузлів перестає залежати від довжини списку.
 - **Читати:** `Optimizing Performance`, розділ «Virtualize Long Lists» — легасі-документація React 16–18, у новій
-  документації його немає; документацію react-window або TanStack Virtual (поза корпусом); у примірнику `webdev` —
-  `How large DOM sizes affect interactivity, and what you can do about it`.
-- **Сервери MCP:** `react-docs`, `webdev-docs`.
+  документації його немає; у примірнику `tanstack-virtual` — `Introduction`, `React Virtual` (розділ
+  «useVirtualizer»), `Virtualizer` (опції `estimateSize`, `overscan`, `measureElement`) і приклади `Example:
+  react/fixed`, `Example: react/dynamic`; у примірнику `webdev` — `How large DOM sizes affect interactivity, and what
+  you can do about it`.
+- **Сервери MCP:** `react-docs`, `tanstack-virtual-docs`, `webdev-docs`.
 - **Зробити:** 1) список на 10 000 рядків; 2) кількість вузлів: `document.querySelectorAll('*').length`; 3) INP
   набору у фільтр (як у дні 5); 4) віртуалізувати; 5) заміряти обидва числа знову.
 - **Перевірити себе:** дві пари чисел у журналі — вузли й INP до й після.
