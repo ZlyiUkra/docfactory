@@ -1135,6 +1135,25 @@ react-window-infinite-loader і react-virtualized-auto-sizer, типи `@types/r
 - корпус в архіві від самого початку, як у tanstack-virtual;
 - докладніше — у [instances/react-window/README.md](instances/react-window/README.md).
 
+### node-postgres
+
+Документація node-postgres — пакета `pg` для роботи з PostgreSQL з Node.js — усіх стабільних версій: сайт
+node-postgres.com у стані на кожну з 71 версії `pg` 7.11.0–8.23.1 (з двох репозиторіїв, де він жив: окремого
+`node-postgres-docs` до 10.2022 і теки `docs/pages/` монорепозиторію далі), README кожної версії `pg`, `pg-pool`,
+`pg-cursor`, `pg-query-stream`, `pg-connection-string`, `pg-native`, `pg-protocol`, `pg-types`, `pg-copy-streams` і
+`pg-format`, журнал змін монорепозиторію, FAQ і Extras з вікі, типи `@types/pg` з DefinitelyTyped у тому вигляді, в
+якому вийшла кожна версія, і реєстр npm одинадцяти пакетів. Новий читач `changelog-scoped` — спільний журнал
+монорепозиторію з заголовками «pg@8.23.0», «pg-pool@3.0.0». 587 документів, 1 551 фрагмент.
+
+- порт `8805`; запис у Claude Code — `node-postgres-docs`, адреса `http://127.0.0.1:8805/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-node-postgres`, модель векторів — `bge-small`;
+- версія — номер релізу: сторінки сайту несуть версії `pg` (`version: "8"` — поточна лінія), README, журнал і типи
+  супутніх пакетів — версії свого пакета; сторінки вікі версії не мають;
+- приклад питання агентові: `./df node-postgres ask "How do I use a transaction with a pooled client?"`;
+- корпус в архіві від самого початку, як у react-window;
+- докладніше — у [instances/node-postgres/README.md](instances/node-postgres/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
