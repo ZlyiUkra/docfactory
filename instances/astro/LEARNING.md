@@ -213,7 +213,8 @@ Astro — фреймворк, що працює з HTML і мережею нап
 
 # Фаза 4. Дані й авторизація — 10 днів
 
-**Сервери MCP фази:** `astro-docs`, `clerk-docs`, `supabase-docs`, `webstandards-docs`, `mdn-docs`, `postgresql-docs`.
+**Сервери MCP фази:** `astro-docs`, `clerk-docs`, `supabase-docs`, `webstandards-docs`, `mdn-docs`, `postgresql-docs`,
+`argon2-docs`.
 
 - **День 1 — вибір сховища.** Коли досить файлів, коли потрібна база, що дає `@astrojs/db`. *Вправа:* записати
   рішення для свого проєкту й обґрунтувати. *Сервери MCP:* `astro-docs`.
@@ -228,8 +229,9 @@ Astro — фреймворк, що працює з HTML і мережею нап
   `astro-docs`.
 - **День 6 — `Authentication`.** Огляд підходів, готові провайдери. *Вправа:* вхід через одного зовнішнього
   провайдера. *Сервери MCP:* `astro-docs`, `clerk-docs`, `supabase-docs`.
-- **День 7 — своя авторизація.** Хеш пароля, сесія в сховищі, кука `httpOnly`. *Вправа:* реєстрація й вхід без
-  зовнішніх сервісів. *Сервери MCP:* `astro-docs`, `webstandards-docs`, `mdn-docs`.
+- **День 7 — своя авторизація.** Хеш пароля, сесія в сховищі, кука `httpOnly`. У примірнику `argon2` — `argon2
+  README 0.45.0 … 0.45.1: node-argon2` (розділ Usage) і `node-argon2 wiki: Options`. *Вправа:* реєстрація й вхід без
+  зовнішніх сервісів. *Сервери MCP:* `astro-docs`, `argon2-docs`, `webstandards-docs`, `mdn-docs`.
 - **День 8 — захист маршрутів.** Перевірка в middleware, ролі в `locals`. *Вправа:* приватна зона, куди не
   пускає без входу, і адмінська, куди не пускає без ролі. *Сервери MCP:* `astro-docs`.
 - **День 9 — безпека форм.** CSRF, обмеження частоти, перевірка вводу на сервері попри перевірку на клієнті.
@@ -357,7 +359,9 @@ Cloudflare.
 - Docker і `docker compose` — `docker`;
 - Node.js (API парних мажорів 12–26, посібники nodejs.org/learn) і npm (CLI 6–12) — `nodejs`;
 - Next.js (для порівняння у фазі 7) — `nextjs`; NestJS (окремий бекенд) — `nestjs`;
-- Sentry: SDK для Astro, карти коду — `sentry`.
+- Sentry: SDK для Astro, карти коду — `sentry`;
+- хешування паролів: пакети npm argon2 і `@node-rs/argon2`, еталонна реалізація Argon2 і його специфікація —
+  `argon2`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 

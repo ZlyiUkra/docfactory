@@ -380,7 +380,9 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - Docker — `docker`; Kubernetes, k3s, Traefik, Kustomize, SOPS, age і Helm — `kubernetes`; sshd — `linux`;
 - nginx: зворотний проксі, буферизація й стрімінг, кеш, обмеження частоти, вебсокети — `nginx`;
 - shadcn/ui (кожна мінорна CLI, сайти для Tailwind CSS v4 і v3) і примітиви під ним: Radix UI (Primitives, Themes,
-  Colors), Base UI, React Aria — `shadcn`.
+  Colors), Base UI, React Aria — `shadcn`;
+- хешування паролів: пакети npm argon2 (node-argon2) і `@node-rs/argon2` усіх стабільних версій, еталонна реалізація
+  Argon2 і його специфікація — `argon2`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
@@ -1023,7 +1025,7 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 
 **Сервери MCP фази:** `nextjs-docs`, `webstandards-docs`, `zod-docs`, `react-hook-form-docs`, `auth-docs`,
 `clerk-docs`, `supabase-docs`, `tanstack-query-docs`, `vitest-docs`, `testing-library-docs`, `playwright-docs`,
-`postgresql-docs`, `owasp-docs`, `shadcn-docs`, `webdev-docs`.
+`postgresql-docs`, `owasp-docs`, `shadcn-docs`, `webdev-docs`, `argon2-docs`.
 
 Тут фронтендер стає фулстеком: застосунок сам ходить у базу, сам упізнає користувача, сам перевіряє права й
 сам відповідає за те, що не віддав зайвого. Порядок навмисний: спершу база, потім хто ви (автентифікація),
@@ -1055,9 +1057,11 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 - **Навіщо.** Щоб розуміти, що бібліотека автентифікації робить за вас, раз зробіть це руками.
 - **Що це.** Реєстрація: перевірити ввід, захешувати пароль повільним алгоритмом (bcrypt або argon2) і
   зберегти лише хеш. Вхід: знайти користувача, порівняти хеш. Обидва — серверні дії.
-- **Читати:** `How to implement authentication in Next.js`, розділ Authentication; у примірнику `webstandards` — `RFC
-  9106 Argon2 Memory-Hard Function for Password Hashing and Proof-of-Work Applications: 4 Parameter Choice`.
-- **Сервери MCP:** `nextjs-docs`, `webstandards-docs`.
+- **Читати:** `How to implement authentication in Next.js`, розділ Authentication; у примірнику `argon2` — `argon2
+  README 0.45.0 … 0.45.1: node-argon2` (розділ Usage: `hash` і `verify`) і `node-argon2 wiki: Options`; у примірнику
+  `webstandards` — `RFC 9106 Argon2 Memory-Hard Function for Password Hashing and Proof-of-Work Applications: 4
+  Parameter Choice`.
+- **Сервери MCP:** `nextjs-docs`, `argon2-docs`, `webstandards-docs`.
 - **Зробити:** таблиця `users`, форма реєстрації й форма входу.
 - **Перевірити себе:** у базі лише хеші; неправильний пароль і неіснуючий користувач дають **однакове**
   повідомлення.

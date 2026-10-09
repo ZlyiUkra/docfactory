@@ -4,11 +4,11 @@
 однієї бібліотеки чи інструмента (тека `instances/<ім'я>`). Файл оновлюється після кожного нового примірника, разом
 із підрозділами «Документація у фабриці» самих планів.
 
-Стан на 09.10.2026. Примірники: astro, auth, binance-spot, certbot, clerk, docker, ecmascript, eslint, express,
-frontend-architecture, github-actions, kubernetes, linux, mdn, msw, nestjs, nextjs, nginx, node-postgres, nodejs, owasp,
-patterns, playwright, postgresql, react, react-hook-form, react-router, react-window, redux, sentry, shadcn, socketio,
-supabase, tailwind, tanstack-query, tanstack-virtual, testing-library, typescript, v8, vite, vitest, wasm, webdev,
-webstandards, zod, zustand.
+Стан на 09.10.2026. Примірники: argon2, astro, auth, binance-spot, certbot, clerk, docker, ecmascript, eslint,
+express, frontend-architecture, github-actions, kubernetes, linux, mdn, msw, nestjs, nextjs, nginx, node-postgres,
+nodejs, owasp, patterns, playwright, postgresql, react, react-hook-form, react-router, react-window, redux, sentry,
+shadcn, socketio, supabase, tailwind, tanstack-query, tanstack-virtual, testing-library, typescript, v8, vite, vitest,
+wasm, webdev, webstandards, zod, zustand.
 
 ## Як читати таблиці
 
@@ -40,9 +40,9 @@ webstandards, zod, zustand.
 | 1. Ядро Nest | — |
 | 2. Робочий API | `zod` (1, 3, 8), `webstandards` (4, 6), `tanstack-query` (7), `react-hook-form` (8) |
 | 3. Дані: TypeORM, Prisma | `postgresql` (12), `owasp` (5); TypeORM і Prisma — у документації Nest лише інтеграція |
-| 4. Автентифікація й авторизація | `webstandards` (1–2, 6–8, 12), `express` (8, 12), `react-router` (9), `owasp` (1, 6, 8, 12) |
+| 4. Автентифікація й авторизація | `webstandards` (1–2, 6–8, 12), `express` (8, 12), `react-router` (9), `owasp` (1, 6, 8, 12), `argon2` (1) |
 | 5. Якість: тести й DI | `vitest` (1) |
-| 6. Продакшн | `docker` (вступ, 2, 7), `kubernetes` (вступ, 8–9), `express` (9), `postgresql` (9), `github-actions` (вступ, 7), `nginx` (вступ, 2, 5), `node-postgres` (5) |
+| 6. Продакшн | `docker` (вступ, 2, 7), `kubernetes` (вступ, 8–9), `express` (9), `postgresql` (9), `github-actions` (вступ, 7), `nginx` (вступ, 2, 5), `node-postgres` (5), `argon2` (8) |
 | 7. Живі дані: WebSockets | `socketio` (вступ, 2–4, 6–7), `mdn` (вступ, 1), `webstandards` (вступ, 1, 3, 6), `vite` (2), `kubernetes` (3, 6, 8), `owasp` (3), `nginx` (6), `binance-spot` (вступ, 5) |
 | Факультатив «крипта» | `binance-spot` (К1), `webstandards` (К3), `node-postgres` (К1) |
 
@@ -54,7 +54,7 @@ webstandards, zod, zustand.
 | 1. Ядро App Router | `eslint` (1), `tailwind` (10), `webdev` (11, 14) |
 | 2. Як Next.js працює зсередини | — |
 | 3. Кешування | — |
-| 4. Фулстек: дані, автентифікація, дії, тести | `webstandards` (2–3, 5, 9–10, 12), `zod` (5), `react-hook-form` і `shadcn` (6), `postgresql` (1), `auth`, `clerk` і `supabase` (9), `tanstack-query` (11), `vitest` і `testing-library` (13), `playwright` (14), `owasp` (12), `webdev` (6) |
+| 4. Фулстек: дані, автентифікація, дії, тести | `webstandards` (2–3, 5, 9–10, 12), `zod` (5), `react-hook-form` і `shadcn` (6), `postgresql` (1), `auth`, `clerk` і `supabase` (9), `tanstack-query` (11), `vitest` і `testing-library` (13), `playwright` (14), `owasp` (12), `webdev` (6), `argon2` (2) |
 | 5. Інтерфейс із характером | `mdn` (4), `zustand` (5), `webstandards` (5, 7), `shadcn` (5), `webdev` (4, 7) |
 | 6. Чужий код | — |
 | 7. DevOps: від збірки до продакшну | `docker` (вступ, 2, 4), `webstandards` (6), `kubernetes` (вступ, 12), `playwright` (7), `github-actions` (вступ, 7), `nginx` (вступ, 6), `webdev` (9–10), `sentry` (9) |
@@ -93,7 +93,7 @@ webstandards, zod, zustand.
 | 1. Ядро Astro | `tailwind` (6), `react` (10), `vite` (14) |
 | 2. Контент | `zod` (2), `webdev` (6–7), `mdn` (7) |
 | 3. Сервер | `mdn` (3–4, 12), `zod` (7), `webstandards` (12) |
-| 4. Дані й авторизація | `postgresql` (2–3), `clerk` (6), `supabase` (6), `mdn` (7, 9), `webstandards` (7, 9) |
+| 4. Дані й авторизація | `postgresql` (2–3), `clerk` (6), `supabase` (6), `mdn` (7, 9), `webstandards` (7, 9), `argon2` (7) |
 | 5. Продуктивність і якість | `mdn` (3–4, 8), `webdev` (4, 8), `vitest` (6), `playwright` (7), `webstandards` (8) |
 | 6. Продакшн | `docker` (3–4), `playwright` (5) |
 | 7. Межі інструмента | `nextjs` (2), `nestjs` (3–4), `webstandards` (4) |

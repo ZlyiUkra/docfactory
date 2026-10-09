@@ -334,7 +334,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 | PostgreSQL | база даних | Ф0 Д13–18, Ф3; є примірник `postgresql` |
 | TypeORM або Prisma | ORM: сутності чи схема, міграції, запити | Ф3 Д1–10 |
 | `@nestjs/jwt`, Passport | токени й стратегії входу | Ф4 Д2–5 |
-| bcrypt або argon2 | хешування паролів | Ф4 Д1 |
+| bcrypt або argon2 | хешування паролів | Ф4 Д1; є примірник `argon2` (argon2 і `@node-rs/argon2`; bcrypt — поза корпусом) |
 | Vitest і supertest | юніт- і наскрізні тести | Ф5; є примірник `vitest` (supertest — поза корпусом) |
 | `@nestjs/terminus` | перевірки стану для Docker і оркестраторів | Ф6 Д3, Д8 |
 | helmet, `@nestjs/throttler` | заголовки безпеки, обмеження частоти | Ф4 Д12 |
@@ -403,14 +403,15 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 - Node.js (API парних мажорів 12–26, посібники nodejs.org/learn) і npm (CLI 6–12) — `nodejs`;
 - nginx: проксі перед API, стиснення, вебсокети через проксі — `nginx`;
 - Supabase — `supabase`; Clerk — `clerk`;
-- API споту Binance (REST, WebSocket API, потоки ринкових даних, ліміти, журнал змін) — `binance-spot`.
+- API споту Binance (REST, WebSocket API, потоки ринкових даних, ліміти, журнал змін) — `binance-spot`;
+- хешування паролів: пакети npm argon2 (node-argon2) і `@node-rs/argon2` усіх стабільних версій, еталонна реалізація
+  Argon2 і його специфікація — `argon2`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
 глава про інтеграцію (TypeORM, Prisma, Passport, BullMQ, class-validator), але не документація самої
 бібліотеки:
 
-- з «треба знати»: TypeORM, Prisma, Passport, bcrypt, argon2, class-validator, class-transformer,
-  supertest, RxJS;
+- з «треба знати»: TypeORM, Prisma, Passport, bcrypt, class-validator, class-transformer, supertest, RxJS;
 - з «варто знати»: BullMQ, Redis, `ws`, nestjs-cls, nestjs-pino, csrf-csrf, CASL, orval, openapi-typescript;
 - з «знати, що існує»: Mongoose, MikroORM, Drizzle, Kafka, RabbitMQ, NATS;
 - у факультативі — viem і Foundry.
@@ -1289,7 +1290,8 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 
 # Фаза 4. Автентифікація й авторизація — 13 днів
 
-**Сервери MCP фази:** `nestjs-docs`, `webstandards-docs`, `express-docs`, `react-router-docs`, `owasp-docs`.
+**Сервери MCP фази:** `nestjs-docs`, `webstandards-docs`, `express-docs`, `react-router-docs`, `owasp-docs`,
+`argon2-docs`.
 
 Точка, де сходяться всі глави фази 1: guard, декоратор, pipe, фільтр. Спершу руками, потім через Passport — так
 видно, що саме Passport робить за вас. Модель токенів одна на всю родину планів, і власник її — ця фаза:
@@ -1319,11 +1321,13 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   зайнятий email дає 409 — це свідомий компроміс: так можна перевірити, чи зареєстрована адреса, тому обмеження
   частоти на реєстрацію обов'язкове (день 12).
 - **Читати:** розділ Security, глава `Encryption and Hashing`, розділ Hashing; розділ Techniques, глава
-  `Serialization`, розділ Exclude properties; поза корпусом — README argon2 або bcrypt; у примірнику `webstandards` —
-  `RFC 9106 Argon2 Memory-Hard Function for Password Hashing and Proof-of-Work Applications: 4 Parameter Choice`; у
-  примірнику `owasp` — `Password Storage Cheat Sheet` (розділ Password Hashing Algorithms: параметри Argon2id і
-  bcrypt).
-- **Сервери MCP:** `nestjs-docs`, `webstandards-docs`, `owasp-docs`.
+  `Serialization`, розділ Exclude properties; у примірнику `argon2` — `argon2 README 0.45.0 … 0.45.1: node-argon2`
+  (розділ Usage: `hash` і `verify`), `node-argon2 wiki: Options` (типові `memoryCost`, `timeCost`, `parallelism`) і
+  README `@node-rs/argon2` 2.2 (розділ API) — котрий із двох пакетів узяти; README bcrypt — поза корпусом; у
+  примірнику `webstandards` — `RFC 9106 Argon2 Memory-Hard Function for Password Hashing and Proof-of-Work
+  Applications: 4 Parameter Choice`; у примірнику `owasp` — `Password Storage Cheat Sheet` (розділ Password Hashing
+  Algorithms: параметри Argon2id і bcrypt).
+- **Сервери MCP:** `nestjs-docs`, `argon2-docs`, `webstandards-docs`, `owasp-docs`.
 - **Зробити:** 1) `UNIQUE` на email у міграції; 2) `POST /auth/register` зі схемою zod (email, пароль від 12
   символів); 3) хешування bcrypt або argon2; 4) жодна відповідь API не містить пароля чи хеша.
 - **Перевірити себе:** у базі — лише хеші; `curl` на реєстрацію, `GET /users/me` і список авторів — у жодній
@@ -1682,7 +1686,7 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 # Фаза 6. Продакшн — 9 днів
 
 **Сервери MCP фази:** `nestjs-docs`, `docker-docs`, `kubernetes-docs`, `express-docs`, `postgresql-docs`,
-`github-actions-docs`, `nginx-docs`, `node-postgres-docs`.
+`github-actions-docs`, `nginx-docs`, `node-postgres-docs`, `argon2-docs`.
 
 Сервер, який треба зібрати, запустити, тримати живим, міряти й вміти оновити. Глави Nest тут — лише те, що Nest
 вимагає від Docker, проксі й CI. Docker і Compose мають примірник `docker`, Kubernetes, k3s і Traefik — примірник
@@ -1861,8 +1865,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 - **Читати:** розділ Recipes, глава `Health checks`, розділи Setting up a Healthcheck і Graceful shutdown timeout;
   `Deployment`, розділи Health checks і Scaling up or out; у примірнику `kubernetes` — `Deployments`, `Service`,
   `ConfigMaps`, `Secrets`, `StatefulSets`, `Persistent Volumes`, `Jobs`,
-  `Configure Liveness, Readiness and Startup Probes`.
-- **Сервери MCP:** `nestjs-docs`, `kubernetes-docs`.
+  `Configure Liveness, Readiness and Startup Probes`; у примірнику `argon2` — `argon2 README 0.45.0 … 0.45.1:
+  node-argon2`, розділ Prebuilt binaries (готові збірки під ARM64 і з якої версії).
+- **Сервери MCP:** `nestjs-docs`, `kubernetes-docs`, `argon2-docs`.
 - **Зробити:** усі файли — у теці `k8s/` репозиторію, застосовуються командою `kubectl apply -f <файл>` («зроби в
   кластері так, як написано у файлі»: створює, а при повторі — оновлює); простір імен — той, де живе под SPA (нижче
   він названий `app`, ключ `-n app` у командах).
