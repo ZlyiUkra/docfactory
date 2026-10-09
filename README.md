@@ -1115,6 +1115,26 @@ README плагінів Vite, webpack, Rollup й esbuild з усіма опці�
 - корпус в архіві від самого початку, як у sentry;
 - докладніше — у [instances/tanstack-virtual/README.md](instances/tanstack-virtual/README.md).
 
+### react-window
+
+Документація react-window обох ліній з різним API — 1.x (`FixedSizeList`, `VariableSizeList`, `FixedSizeGrid`,
+`VariableSizeGrid`) і 2.x (`List`, `Grid`) — на кожній із 54 стабільних версій: README, сторінки сайту 1.x з теки
+`website/` (сам сайт уже не відповідає) і сайту 2.x react-window.vercel.app, кожен неповторний текст один раз, з усіма
+версіями, де він був таким. Плюс журнал змін і нотатки релізів, README і журнали змін супутніх
+react-window-infinite-loader і react-virtualized-auto-sizer, типи `@types/react-window` з DefinitelyTyped у тому
+вигляді, в якому вийшла кожна версія, і реєстр npm чотирьох пакетів. Нові читачі: `react-window-site-v1` і
+`react-window-site-v2` (сторінки, чий текст живе в коді React), `changelog-heading` (заголовок версії будь-якого
+рівня) і `dt-history` (версії пакета `@types` за датами публікації). 357 документів, 666 фрагментів.
+
+- порт `8804`; запис у Claude Code — `react-window-docs`, адреса `http://127.0.0.1:8804/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-react-window`, модель векторів — `bge-small`;
+- версія — номер релізу: `version: "1"` лишає всі 1.x, `"2"` — 2.x; супутні пакети й типи несуть версії свого пакета;
+  без названої версії промпт велить відповідати для обох ліній;
+- приклад питання агентові: `./df react-window ask "How do I render rows of different heights?"`;
+- корпус в архіві від самого початку, як у tanstack-virtual;
+- докладніше — у [instances/react-window/README.md](instances/react-window/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
