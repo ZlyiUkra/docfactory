@@ -1,4 +1,4 @@
-# markdown-pipeline — примірник фабрики docfactory
+# astro-markdown-pipeline — примірник фабрики docfactory
 
 Захищений MCP-сервер, що відповідає на питання про конвеєр «Markdown → HTML» екосистеми unified, у тому вигляді, в
 якому його збирає Astro: `unified`, `remark-parse`, `remark-rehype`, `rehype-sanitize` з `hast-util-sanitize`,
@@ -60,7 +60,7 @@
   запис HTTP-сервера для Claude Code.
 - `.venv/` — власний venv примірника; `requirements.txt` — його склад.
 
-Кроки нижче, окрім установки venv, запускаються з кореня фабрики (`docfactory/`) через `./df markdown-pipeline <крок>`.
+Кроки нижче, окрім установки venv, запускаються з кореня фабрики (`docfactory/`) через `./df astro-markdown-pipeline <крок>`.
 
 ## Звідки документація
 
@@ -107,23 +107,23 @@
 кешу фрагментів (`index/passages.json`) і колекції Qdrant; відповіді ті самі до символа — кеш тримає повний текст
 кожного фрагмента.
 
-**Де тексти.** В архіві `~/archives/docfactory/markdown-pipeline-corpus-2026-10-09.tar.gz` (2904 тексти і паспорт).
+**Де тексти.** В архіві `~/archives/docfactory/astro-markdown-pipeline-corpus-2026-10-09.tar.gz` (2904 тексти і паспорт).
 В історії git текстів немає ніде. Архів лежить лише на цій машині.
 
 **Як повернути тексти** — перед будь-яким оновленням корпусу:
 
 ```
-tar -xzf ~/archives/docfactory/markdown-pipeline-corpus-2026-10-09.tar.gz -C instances/markdown-pipeline
-./df markdown-pipeline smoke
+tar -xzf ~/archives/docfactory/astro-markdown-pipeline-corpus-2026-10-09.tar.gz -C instances/astro-markdown-pipeline
+./df astro-markdown-pipeline smoke
 ```
 
 **Як знову винести** — після оновлення, коли `vectors` і `smoke` пройшли (вони ж збирають свіжий кеш):
 
 ```
-ls -l instances/markdown-pipeline/index/passages.json       # кеш має бути на місці й свіжий
-tar -czf ~/archives/docfactory/markdown-pipeline-corpus-РРРР-ММ-ДД.tar.gz -C instances/markdown-pipeline corpus
-find instances/markdown-pipeline/corpus -maxdepth 1 -name '*.txt' -delete
-gzip -9 -c instances/markdown-pipeline/index/passages.json > instances/markdown-pipeline/index/passages.json.gz
+ls -l instances/astro-markdown-pipeline/index/passages.json       # кеш має бути на місці й свіжий
+tar -czf ~/archives/docfactory/astro-markdown-pipeline-corpus-РРРР-ММ-ДД.tar.gz -C instances/astro-markdown-pipeline corpus
+find instances/astro-markdown-pipeline/corpus -maxdepth 1 -name '*.txt' -delete
+gzip -9 -c instances/astro-markdown-pipeline/index/passages.json > instances/astro-markdown-pipeline/index/passages.json.gz
 ```
 
 і закомітити паспорт `corpus/index.json` та `index/passages.json.gz`. Видаляти тексти — лише після того, як архів
@@ -133,13 +133,13 @@ gzip -9 -c instances/markdown-pipeline/index/passages.json > instances/markdown-
 перевірки `smoke` чесно пропускаються («корпус в архіві»).
 
 **На іншій машині** після клонування кеш треба розпакувати:
-`gunzip -k instances/markdown-pipeline/index/passages.json.gz`, далі `./df markdown-pipeline vectors` заллє колекцію
+`gunzip -k instances/astro-markdown-pipeline/index/passages.json.gz`, далі `./df astro-markdown-pipeline vectors` заллє колекцію
 Qdrant (близько години: 18 тисяч векторів).
 
 ## Установка venv
 
 ```
-cd instances/markdown-pipeline
+cd instances/astro-markdown-pipeline
 python3 -m venv .venv
 .venv/bin/python -m pip install -U pip
 .venv/bin/python -m pip install -r requirements.txt
@@ -153,12 +153,12 @@ cd ../..
 сервера збирати нічого не треба — потрібен лише `vectors`, якщо колекції ще немає.
 
 ```
-./df markdown-pipeline sources --why   # перелік джерел і білий список
-./df markdown-pipeline refresh         # завантажити все задеклароване (хвилини)
-./df markdown-pipeline manifest        # оновити паспорт
-./df markdown-pipeline setup           # Qdrant чи пошук лише по словах
-./df markdown-pipeline vectors         # залити корпус у docs-markdown-pipeline
-./df markdown-pipeline smoke           # перевірки
+./df astro-markdown-pipeline sources --why   # перелік джерел і білий список
+./df astro-markdown-pipeline refresh         # завантажити все задеклароване (хвилини)
+./df astro-markdown-pipeline manifest        # оновити паспорт
+./df astro-markdown-pipeline setup           # Qdrant чи пошук лише по словах
+./df astro-markdown-pipeline vectors         # залити корпус у docs-markdown-pipeline
+./df astro-markdown-pipeline smoke           # перевірки
 ```
 
 Порядок оновлення — у [UPDATE.md](UPDATE.md). Після будь-якого оновлення корпусу `serve` треба перезапустити.
@@ -169,7 +169,7 @@ cd ../..
 
 ```
 cd ~/Projects/docfactory
-./df markdown-pipeline serve          # порт 8808
+./df astro-markdown-pipeline serve          # порт 8808
 ```
 
 Готовий він тоді, коли надрукував кількість фрагментів і адресу `http://127.0.0.1:8808/mcp`.
@@ -177,14 +177,14 @@ cd ~/Projects/docfactory
 **2. Додати сервер у Claude Code** — у тому середовищі, де відкрито вікно:
 
 ```
-claude mcp add --transport http --scope user markdown-pipeline-docs http://127.0.0.1:8808/mcp
+claude mcp add --transport http --scope user astro-markdown-pipeline-docs http://127.0.0.1:8808/mcp
 ```
 
 У WSL і у Windows Claude Code тримає окремі налаштування: вікно VS Code на боці Windows читає
 `C:\Users\<ім'я>\.claude.json`, тож команду треба виконати в PowerShell, або додати сервер кнопкою «Add server»
 у вікні `/mcp` (тип HTTP, рівень User). Сам сервер з Windows доступний за тією ж адресою: WSL2 прокидає порт.
 
-**3. Перевірити.** `/mcp` — має бути `markdown-pipeline-docs` і два інструменти `search_docs`, `read_section`.
+**3. Перевірити.** `/mcp` — має бути `astro-markdown-pipeline-docs` і два інструменти `search_docs`, `read_section`.
 
 Зупинка — Ctrl+C у терміналі сервера. Решта — scope запису, «address already in use» — так само, як у
 [README примірника react-router](../react-router/README.md#спосіб-б--сервер-під-claude-code-http).

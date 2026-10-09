@@ -1,4 +1,4 @@
-# Оновлення корпусу markdown-pipeline
+# Оновлення корпусу astro-markdown-pipeline
 
 Перелік версій тут не оголошується руками: читачі беруть його з опису кожного пакета в реєстрі npm
 (`https://registry.npmjs.org/<пакет>`), тож нова версія потрапляє в корпус сама, коли вийде в npm. Документація
@@ -14,12 +14,12 @@ Shiki й KaTeX береться з їхніх репозиторіїв за зн
 ## Вийшла нова версія пакета
 
 ```
-./df markdown-pipeline check                 # чи змінилося щось нагорі за джерелом
-./df markdown-pipeline refresh               # повне перезавантаження
-./df markdown-pipeline manifest
-./df markdown-pipeline vectors
-./df markdown-pipeline smoke
-# Ctrl+C у терміналі з serve, і знову: ./df markdown-pipeline serve
+./df astro-markdown-pipeline check                 # чи змінилося щось нагорі за джерелом
+./df astro-markdown-pipeline refresh               # повне перезавантаження
+./df astro-markdown-pipeline manifest
+./df astro-markdown-pipeline vectors
+./df astro-markdown-pipeline smoke
+# Ctrl+C у терміналі з serve, і знову: ./df astro-markdown-pipeline serve
 ```
 
 `refresh` повний, не `--missing`: у документі стоять усі версії, де текст був таким, тож нова версія змінює й старі
@@ -48,5 +48,5 @@ Shiki й KaTeX береться з їхніх репозиторіїв за зн
 ## Уточнення відповідей після оновлення
 
 Після кожного оновлення корпусу — цикл із [кроку 7 загального довідника](../../UPDATE.md#крок-7--відновити-уточнення-відповідей):
-`./df markdown-pipeline quality --show`, порівняння обох десяток з попереднім результатом, розбір промахів, правка
+`./df astro-markdown-pipeline quality --show`, порівняння обох десяток з попереднім результатом, розбір промахів, правка
 промпту, знову замір. Останній результат — у README, розділ «Скільки цього».
