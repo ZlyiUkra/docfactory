@@ -41,6 +41,10 @@
                    прикладів, номери версій із файлів шаблонів, підписи виносок і вкладок;
                    `base_ui: true` — вставки сторінок Base UI (демо, таблиці API з `types.md` чи
                    довідки JSON) стають кодом і списками (див. `_baseui`);
+                   `sphinx: true` — сайт Sphinx (див. `_sphinx`): `.rst` розбирається як
+                   reStructuredText із ролями й директивами Sphinx, `.py` дає документ з опису
+                   модуля (сторінка плагіна з `.. automodule::`) під назвою теки пакета, `.txt`
+                   — вивід `--help` з розділом на кожну групу параметрів;
                    `react_spectrum: true` — службове зі сторінок репозиторію React Aria знімається:
                    коментар ліцензії, шапка YAML після імпортів, вирази `{docs.exports.….description}`
                    і позначки підсвічування `/*- begin highlight -*/` у коді.
@@ -700,6 +704,7 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
     sources = dict(source["jsx_sources"]) if isinstance(source.get("jsx_sources"), dict) else None
     wanted = [_template_rx(t) for k in ("example", "source") for t in (sources or {}).get(k) or ()]
     base_ui = source.get("base_ui") is True
+    sphinx = source.get("sphinx") is True
     if base_ui:
         wanted += _baseui.WANTED
     # тег → {шлях файла реєстру: sha}; вміст за sha — один раз на весь прогін
@@ -735,7 +740,7 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
             if (entry.get("type") == "blob" and inside and leaf.endswith(exts)
                     and not _LOCALE.search(leaf) and entry.get("size", 1) > 0
                     and not any(r.search(path) for r in exclude)):
-                stem = re.sub(r"\.mdx?$", "", path)
+                stem = re.sub(r"\.(mdx?|rst|py|txt)$" if sphinx else r"\.mdx?$", "", path)
                 sha = entry["sha"]
                 if base_ui:
                     sha = _baseui.revision(path, sha, registry[tag])
@@ -770,6 +775,18 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
                 # помилки, тож перевірку на HTML робить уже перетворений текст.
                 text = _nginxxml.to_markdown(text)
             _markup.refuse_html(text, raw)
+            if sphinx:
+                # Тут, а не нагорі: _sphinx тягне sitedocs, а той імпортує цей модуль.
+                from engine.readers import _sphinx
+                if path.endswith(".py"):
+                    # Опис модуля назви не має: на Read the Docs плагіна назва — ім'я пакета,
+                    # а розділи опису стоять під нею, на рівень нижче.
+                    body = _sphinx.demote(_sphinx.to_markdown(_sphinx.docstring(text)))
+                    text = f"# {path.split('/', 1)[0]}\n\n{body}"
+                elif path.endswith(".txt"):
+                    text = _sphinx.help_text(text)
+                elif path.endswith(".rst"):
+                    text = _sphinx.to_markdown(text)
             meta, rest = _markup.front_matter(text)
             if hugo:
                 rest = _hugo(rest, ctx, f"https://raw.githubusercontent.com/{owner}/{repo}/"
