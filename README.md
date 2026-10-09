@@ -1188,6 +1188,23 @@ Node (`engines`). README helmet є й в примірнику express, але т
 - приклад питання агентові: `./df helmet ask "Which Helmet version works with Node 16?"`;
 - корпус в архіві від самого початку, як у postgrator;
 - докладніше — у [instances/helmet/README.md](instances/helmet/README.md).
+### certbot
+
+Документація Certbot — клієнта ACME від EFF, що отримує й поновлює сертифікати Let's Encrypt і сам налаштовує Apache
+та nginx, — на кожній зі 133 стабільних версій (0.6.0–5.8.0): сайт eff-certbot.readthedocs.io у стані на кожен реліз
+(з тегів репозиторію, бо Read the Docs тримає лише `latest` і `stable`), сторінки 14 плагінів DNS, журнал змін
+(0.1.1–5.8.0) і реєстр PyPI certbot, acme, certbot-apache, certbot-nginx та всіх `certbot-dns-*` з вимогою до Python
+і залежностями кожної версії. Новий читач `pypi-versions` і поле `sphinx` читача `ghdocs-history` (сайт Sphinx: ролі,
+директиви, прості таблиці, опис модуля Python, вивід `--help`). 740 документів, 3337 фрагментів.
+
+- порт `8811`; запис у Claude Code — `certbot-docs`, адреса `http://127.0.0.1:8811/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-certbot`, модель векторів — `bge-small`;
+- версія — номер релізу: `version: "5"` лишає всі 5.x, `"2.11"` — лише 2.11.x; без названої версії промпт велить
+  відповідати для 5.x і пропонувати назвати свою;
+- приклад питання агентові: `./df certbot ask "Which Certbot version still runs on Python 3.8?"`;
+- корпус в архіві від самого початку, як у helmet;
+- докладніше — у [instances/certbot/README.md](instances/certbot/README.md).
 ### express-rate-limit
 
 Документація express-rate-limit — проміжного шару Express, що обмежує частоту запитів, — на кожній зі 125 стабільних
