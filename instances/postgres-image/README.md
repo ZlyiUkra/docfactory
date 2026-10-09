@@ -23,11 +23,11 @@
 | Шар | Документів | Звідки |
 |-----|-----------:|--------|
 | Сторінка образу (`README.md`, `compose.yaml`) у кожній редакції | 402 | `docker-library/docs`, тека `postgres/`, 610 комітів історії |
-| Dockerfile мажорів 8.4–18, варіанти Debian, alpine, bookworm, trixie, alpine3.23, alpine3.24 | 1 175 | `docker-library/postgres`, 986 комітів |
-| Скрипти входу `docker-entrypoint.sh`, `docker-ensure-initdb.sh` у теках мажорів і в корені | 838 | те саме |
+| Dockerfile мажорів 8.4–18, усі варіанти: Debian (стандартний, wheezy…trixie), alpine і всі alpine3.x | 1 775 | `docker-library/postgres`, 986 комітів |
+| Скрипти входу `docker-entrypoint.sh`, `docker-ensure-initdb.sh` у теках мажорів і в корені | 1 152 | те саме |
 | Шаблони, `update.sh`, `versions.sh`, `apply-templates.sh`, `generate-stackbrew-library.sh`, `versions.json` (194 редакції), `README.md` репозиторію | 466 | те саме |
 
-Разом 2 881 документ; фрагментів в індексі — 5 417 (`expected_passages` у `checks.json`). Точні числа по шарах —
+Разом 3 795 документів; фрагментів в індексі — 7 233 (`expected_passages` у `checks.json`). Точні числа по шарах —
 у `./df postgres-image sources --why` і в паспорті.
 
 **Одиниця корпусу — неповторний вміст файла.** У репозиторію образу немає тегів: Dockerfile змінюється з кожним
@@ -48,15 +48,17 @@
 - **Бета не входить.** Мажор 19 на 09.10.2026 має лише `19beta4`; його Dockerfile, редакції з `beta`/`rc` у
   `PG_VERSION` і мажор без жодної стабільної редакції в цьому коміті в корпус не потрапляють. `versions.json` і
   сторінка образу про 19 згадують, бо так вони й написані.
-- **Варіанти.** Взято стандартний (Debian), `alpine`, `bookworm`, `trixie`, `alpine3.23`, `alpine3.24`. Застарілих
-  випусків ОС (`bullseye`, `buster`, `stretch`, `jessie`, `wheezy`) та старих `alpine3.x` немає: їх додає зміна
-  виразу `include` у `sources.json` і повне перезавантаження.
+- **Варіанти.** Взято всі, що коли-небудь були в репозиторії: стандартний (Debian), `alpine`, `wheezy`, `jessie`,
+  `stretch`, `buster`, `bullseye`, `bookworm`, `trixie` і кожен `alpine3.x`. Спершу корпус зібрано лише з поточними
+  варіантами (2 881 документ), 09.10.2026 — розширено до всіх. Різниця між варіантами — у назві документа:
+  `14-bullseye-dockerfile`, `14-alpine3-17-dockerfile`.
 - **Сторінка образу на Docker Hub** сама не читається: вона будується скриптами й повторює `docker-library/docs`.
   `content.md` окремо не береться: готовий `README.md` — це він плюс шаблони.
 - **Маніфест тегів** (`docker-library/official-images`, файл `library/postgres`) не взято: перелік тегів кожної
   редакції видно в сторінці образу.
 
-Замір `quality` на першому корпусі: по словах 7 із 10, за змістом 10, разом 10; десятка «як модель» — 10 із 10.
+Замір `quality`: по словах 6 із 10, за змістом 10, разом 10; десятка «як модель» — 10 із 10 (на корпусі з поточними
+варіантами по словах було 7).
 Поле `max_per_doc` лишено 0: редакції одного файла різняться текстом, а однакові розділи злиття зводить саме.
 
 ## Що в цій теці
@@ -79,14 +81,14 @@
 кешу фрагментів (`index/passages.json`) і колекції Qdrant; відповіді ті самі до символа — кеш тримає повний текст
 кожного фрагмента.
 
-**Де тексти.** В архіві `~/archives/docfactory/postgres-image-corpus-2026-10-09.tar.gz` (5,2 МБ, 2 881 текст і
+**Де тексти.** В архіві `~/archives/docfactory/postgres-image-corpus-2026-10-09-all-variants.tar.gz` (7 МБ, 3 795 текстів і
 паспорт; перед видаленням розпакований окремо й звірений із диском — нуль розбіжностей). В історії git текстів
 немає. Архів лежить лише на цій машині.
 
 **Як повернути тексти** — перед будь-яким оновленням корпусу:
 
 ```
-tar -xzf ~/archives/docfactory/postgres-image-corpus-2026-10-09.tar.gz -C instances/postgres-image
+tar -xzf ~/archives/docfactory/postgres-image-corpus-2026-10-09-all-variants.tar.gz -C instances/postgres-image
 ./df postgres-image smoke
 ```
 
@@ -105,7 +107,7 @@ gzip -9 -c instances/postgres-image/index/passages.json > instances/postgres-ima
 перевірки `smoke` чесно пропускаються («корпус в архіві»).
 
 **На іншій машині** після клонування кеш треба розпакувати: `gunzip -k instances/postgres-image/index/passages.json.gz`,
-далі `./df postgres-image vectors` заллє колекцію Qdrant (~12 хвилин).
+далі `./df postgres-image vectors` заллє колекцію Qdrant (~18 хвилин).
 
 ## Установка venv
 
@@ -122,16 +124,16 @@ cd ../..
 
 ```
 ./df postgres-image sources --why   # перелік джерел і білий список
-./df postgres-image refresh         # завантажити все задеклароване (~60 хвилин)
+./df postgres-image refresh         # завантажити все задеклароване (~2 години)
 ./df postgres-image manifest        # оновити паспорт
 ./df postgres-image setup           # Qdrant чи пошук лише по словах
-./df postgres-image vectors         # залити корпус у docs-postgres-image (~12 хвилин)
+./df postgres-image vectors         # залити корпус у docs-postgres-image (~18 хвилин)
 ./df postgres-image smoke           # перевірки
 ```
 
 `refresh` довгий не через обсяг, а через перелік: читач бере дерево кожного з 986 комітів `docker-library/postgres`
 і 610 комітів теки `postgres/` у `docker-library/docs` (близько 1 600 звернень до API), а для кожної редакції
-Dockerfile ще й читає її текст, щоб дістати точну версію й відсіяти бета. Перші півгодини журнал мовчить. Запускайте
+Dockerfile ще й читає її текст, щоб дістати точну версію й відсіяти бета (старі варіанти збільшили перелік до 1,5 години). Перші півтори години журнал мовчить. Запускайте
 окремим процесом (`setsid nohup`): довгі фонові команди сесії обриваються через 30 хвилин.
 
 Порядок оновлення — у [UPDATE.md](UPDATE.md). Після будь-якого оновлення корпусу `serve` треба перезапустити.
