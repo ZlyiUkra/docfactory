@@ -1,0 +1,180 @@
+# markdown-pipeline — примірник фабрики docfactory
+
+Захищений MCP-сервер, що відповідає на питання про конвеєр «Markdown → HTML» екосистеми unified, у тому вигляді, в
+якому його збирає Astro: `@astrojs/markdown-remark`, `remark-rehype`, `rehype-sanitize` з `hast-util-sanitize`,
+`remark-math` з `rehype-katex` і KaTeX, підсвітка коду Shiki, а також увесь сайт unifiedjs.com. Документація — усіх
+стабільних версій пакетів, а не лише останньої. Код спільний і лежить у `../../engine/`, `../../server/` та
+`../../common/`; ця тека тримає самі дані домену. Загальний устрій фабрики — у [../../README.md](../../README.md).
+
+## Навіщо
+
+Примірник потрібен для переписування Astro-проєкту на повний стек без зовнішніх сервісів: Markdown, який вводить
+користувач, треба перетворити на HTML, очистити від небезпечного (санітизація — вилучення тегів, атрибутів і посилань,
+що можуть виконати код на сторінці) та підсвітити код і формули. Кожна ланка конвеєра — окремий пакет зі своєю
+версією, і поведінка між мажорними лініями міняється: пакети стали лише ESM, Shiki 1.0 переписано з нуля, KaTeX 0.16
+змінив підтримку функцій. Тому корпус — усі стабільні версії, а питання про сумісність («яка версія `rehype-sanitize`
+працює з моїм `remark-rehype`») дістають відповідь із документації саме тієї версії.
+
+## Скільки цього
+
+| Шар | Документів | Звідки |
+|-----|-----------:|--------|
+| README: кожен неповторний текст один раз, з усіма версіями, де він був таким | 204 | tarball кожної версії npm |
+| Типи TypeScript, розділені за оголошеннями | 98 | tarball кожної версії npm |
+| Журнал змін `@astrojs/markdown-remark` | 45 | `CHANGELOG.md` із tarball кожної версії |
+| Реєстр npm: огляд і лінії з вимогами до Node, залежностями й датами | 68 | registry.npmjs.org |
+| Документація Shiki (shiki.style) за знімком на кожен стабільний реліз | 305 | репозиторій `shikijs/shiki`, тека `docs/` |
+| Документація KaTeX (katex.org) за знімком на кожен стабільний реліз | 474 | репозиторій `KaTeX/KaTeX`, тека `docs/` |
+| Сайт unifiedjs.com: навчання, спільнота, каталог пакетів, проєктів і тем | 1320 | sitemap.xml сайту |
+
+Разом 2514 документів; фрагментів в індексі — 15 732 (`expected_passages` у `checks.json`).
+
+Десять пакетів npm: `@astrojs/markdown-remark` (98 стабільних версій), `remark-rehype` (26), `rehype-sanitize` (10),
+`hast-util-sanitize` (20), `rehype-katex` (22), `remark-math` (24), `micromark-extension-math` (12),
+`mdast-util-math` (9), `katex` (117), `shiki` (191).
+
+Замір `quality`: по словах 6 із 10, за змістом 5, разом 7; десятка «як модель» — 10 із 10. Промахи — це запити
+перефразом про санітизацію («strip dangerous tags»), де відповідь перебивають сторінки каталогу unifiedjs.com: той
+самий README пакета лежить там ще раз, як окремий документ.
+
+## Що в цій теці
+
+- `corpus/` — паспорт `index.json`, тобто опис копії: адреса, дата завантаження й сума тексту кожного документа.
+  Самих текстів тут немає: корпус в архіві (розділ «Архівний режим» нижче).
+- `index/` — кеш фрагментів, з якого сервер підіймається: у git — стиснений `passages.json.gz`, розпакований
+  `passages.json` лежить поруч і в git не потрапляє.
+- `sources.json` — звідки корпус будується, і водночас білий список для оновлювача.
+- `config.json` — порт, колекція Qdrant, модель векторів, пауза між зверненнями і профіль домену.
+- `prompts/` — описи інструментів для моделі, системний промпт власного агента, текст відмови.
+- `checks.json` — чим `smoke` і `quality` перевіряють саме цей корпус.
+- `.env` — ключ Anthropic (лише для кроку `ask`) і токен GitHub (лише для завантаження корпусу); `.mcp.json` —
+  запис HTTP-сервера для Claude Code.
+- `.venv/` — власний venv примірника; `requirements.txt` — його склад.
+
+Кроки нижче, окрім установки venv, запускаються з кореня фабрики (`docfactory/`) через `./df markdown-pipeline <крок>`.
+
+## Звідки документація
+
+| Що | Джерело | Читач |
+|----|---------|-------|
+| README, типи, журнал змін усіх версій | tarball `registry.npmjs.org/<пакет>/-/<пакет>-X.tgz` | `npm-tarball-files` |
+| реєстр npm | registry.npmjs.org, одне звернення на пакет | `npm-versions` |
+| документація Shiki і KaTeX | дерево `docs/` репозиторію на мить перед наступним релізом лінії | `ghsite-dated` |
+| сайт unifiedjs.com | sitemap.xml і HTML сторінок | `sitemap-html` |
+
+Особливості, які варто знати:
+
+- **Чому tarball.** Реєстр записав `gitHead` лише для частини версій (у `shiki` — 38 зі 191, у `rehype-katex` — 4 з 22),
+  тож README з репозиторію на коміті знайшовся б не для всіх. Tarball — це точно те, що отримує `npm install`.
+- **Документація Shiki й KaTeX — з репозиторіїв.** Обидва сайти (VitePress і Docusaurus) показують лише поточний
+  стан, а теки `docs/` репозиторіїв дають стан на кожен реліз. Окремо shiki.style і katex.org не завантажуються: це
+  був би той самий текст ще раз. Для версій до появи `docs/` (Shiki до 1.0, старий KaTeX) документів-сторінок немає —
+  там лишаються README й типи.
+- **Документ — неповторний текст.** Версії, де файл не змінився, ділять один документ; у рядку `# версія:` стоять усі.
+  `revision_suffix` у `config.json` зводить редакції README до спільного ключа розділу.
+- **README `katex` — 116 документів** замість кількох: у кожній версії в тексті зашито її номер (посилання на CDN),
+  тож усі редакції різні. Шуму в пошуку це додає небагато, бо розділи зводяться за ключем.
+- **Сторінки unifiedjs.com — без `explore/keyword`.** Це 710 переліків пакетів за ключовим словом без власного
+  тексту (по 400 КБ кожна); їх пропущено за згодою користувача. Решта сайту — навчання (`learn`), спільнота
+  (`community`), пакети (`explore/package`, 482 сторінки з README екосистеми remark, rehype, retext, unist, mdast,
+  hast), проєкти й теми.
+- **`@astrojs/markdown-remark` не має README** у жодній версії пакета; документація — журнал змін, типи й реєстр.
+- **Порожній README `shiki` 0.2.7** (0 символів) у корпус не потрапляє; `refresh` повідомляє про це як про один збій.
+- **Передреліз-мітки.** README, типи й документація беруть лише стабільні версії (`skip_versions: "-"`, `only`);
+  реєстр npm (`npm-versions`) показує й передрелізи (наприклад, `shiki 0.0.3-next.3`).
+
+## Межі, про які треба пам'ятати
+
+Документації Astro поза його markdown-пакетом (маршрутизація, компоненти, колекції контенту), MDX, `markdown-it`,
+`marked` та інших обробників Markdown тут немає; з пакетів Shiki беруться лише `shiki` — без `@shikijs/*`
+(`@shikijs/rehype`, `@shikijs/transformers`, `@shikijs/core`), а їхні сторінки на shiki.style є в документації.
+Пакети екосистеми поза списком (`unified`, `remark-parse`, `remark-gfm`, `rehype-raw`, `rehype-stringify` тощо)
+присутні лише як сторінки каталогу unifiedjs.com — без версій і без історії. Код бібліотек не входить.
+
+## Архівний режим: сервер без корпусу
+
+Корпус примірника в архіві від самого початку: у `corpus/` лежить лише паспорт `index.json`, а сервер підіймається з
+кешу фрагментів (`index/passages.json`) і колекції Qdrant; відповіді ті самі до символа — кеш тримає повний текст
+кожного фрагмента.
+
+**Де тексти.** В архіві `~/archives/docfactory/markdown-pipeline-corpus-2026-10-09.tar.gz` (2514 текстів і паспорт).
+В історії git текстів немає ніде. Архів лежить лише на цій машині.
+
+**Як повернути тексти** — перед будь-яким оновленням корпусу:
+
+```
+tar -xzf ~/archives/docfactory/markdown-pipeline-corpus-2026-10-09.tar.gz -C instances/markdown-pipeline
+./df markdown-pipeline smoke
+```
+
+**Як знову винести** — після оновлення, коли `vectors` і `smoke` пройшли (вони ж збирають свіжий кеш):
+
+```
+ls -l instances/markdown-pipeline/index/passages.json       # кеш має бути на місці й свіжий
+tar -czf ~/archives/docfactory/markdown-pipeline-corpus-РРРР-ММ-ДД.tar.gz -C instances/markdown-pipeline corpus
+find instances/markdown-pipeline/corpus -maxdepth 1 -name '*.txt' -delete
+gzip -9 -c instances/markdown-pipeline/index/passages.json > instances/markdown-pipeline/index/passages.json.gz
+```
+
+і закомітити паспорт `corpus/index.json` та `index/passages.json.gz`. Видаляти тексти — лише після того, як архів
+звірено з диском. Тоді ж видаляють попередній архів, а ім'я нового пишуть у «Де тексти» і «Як повернути тексти».
+
+**Що перестає працювати.** `check`, `refresh` і `manifest` читають файли, і без текстів їм нема з чим працювати. Дві
+перевірки `smoke` чесно пропускаються («корпус в архіві»).
+
+**На іншій машині** після клонування кеш треба розпакувати:
+`gunzip -k instances/markdown-pipeline/index/passages.json.gz`, далі `./df markdown-pipeline vectors` заллє колекцію
+Qdrant (близько години: 13 тисяч векторів).
+
+## Установка venv
+
+```
+cd instances/markdown-pipeline
+python3 -m venv .venv
+.venv/bin/python -m pip install -U pip
+.venv/bin/python -m pip install -r requirements.txt
+cp .env.example .env          # впишіть GITHUB_TOKEN і, якщо потрібен крок ask, ANTHROPIC_API_KEY
+cd ../..
+```
+
+## Збирання корпусу
+
+Корпус в архіві: щоб оновити чи перезібрати його, тексти спершу повертають (розділ «Архівний режим»). Для роботи
+сервера збирати нічого не треба — потрібен лише `vectors`, якщо колекції ще немає.
+
+```
+./df markdown-pipeline sources --why   # перелік джерел і білий список
+./df markdown-pipeline refresh         # завантажити все задеклароване (хвилини)
+./df markdown-pipeline manifest        # оновити паспорт
+./df markdown-pipeline setup           # Qdrant чи пошук лише по словах
+./df markdown-pipeline vectors         # залити корпус у docs-markdown-pipeline
+./df markdown-pipeline smoke           # перевірки
+```
+
+Порядок оновлення — у [UPDATE.md](UPDATE.md). Після будь-якого оновлення корпусу `serve` треба перезапустити.
+
+## Сервер під Claude Code
+
+**1. Підняти сервер** в окремому терміналі WSL і лишити жити:
+
+```
+cd ~/Projects/docfactory
+./df markdown-pipeline serve          # порт 8808
+```
+
+Готовий він тоді, коли надрукував кількість фрагментів і адресу `http://127.0.0.1:8808/mcp`.
+
+**2. Додати сервер у Claude Code** — у тому середовищі, де відкрито вікно:
+
+```
+claude mcp add --transport http --scope user markdown-pipeline-docs http://127.0.0.1:8808/mcp
+```
+
+У WSL і у Windows Claude Code тримає окремі налаштування: вікно VS Code на боці Windows читає
+`C:\Users\<ім'я>\.claude.json`, тож команду треба виконати в PowerShell, або додати сервер кнопкою «Add server»
+у вікні `/mcp` (тип HTTP, рівень User). Сам сервер з Windows доступний за тією ж адресою: WSL2 прокидає порт.
+
+**3. Перевірити.** `/mcp` — має бути `markdown-pipeline-docs` і два інструменти `search_docs`, `read_section`.
+
+Зупинка — Ctrl+C у терміналі сервера. Решта — scope запису, «address already in use» — так само, як у
+[README примірника react-router](../react-router/README.md#спосіб-б--сервер-під-claude-code-http).

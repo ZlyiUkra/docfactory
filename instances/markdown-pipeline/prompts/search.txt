@@ -1,0 +1,64 @@
+Search the documentation of the Markdown-to-HTML pipeline of the unified ecosystem and return the matching excerpts
+with the versions each one belongs to. The pipeline is: Markdown text -> mdast (remark, micromark) -> hast
+(remark-rehype) -> sanitizing (rehype-sanitize, hast-util-sanitize) -> math (remark-math, rehype-katex, KaTeX) ->
+syntax highlighting (Shiki) -> HTML, as assembled in Astro by @astrojs/markdown-remark. The set holds, for every stable
+version ever published to npm: the README, the TypeScript declarations and the npm registry history (dates, Node
+requirement, dependencies) of @astrojs/markdown-remark (plus its changelog), remark-rehype, rehype-sanitize,
+hast-util-sanitize, rehype-katex, remark-math, micromark-extension-math, mdast-util-math, katex and shiki; the
+documentation of Shiki (shiki.style) and of KaTeX (katex.org) as it stood at each stable release; and the whole of
+unifiedjs.com -- guides, recipes, community pages and the ecosystem catalogue (explore/package, explore/project,
+explore/topic), which mirrors the READMEs of hundreds of remark, rehype, retext, unist, mdast and hast packages.
+
+Call this when a question is about turning Markdown into HTML with unified: processor setup (unified, remark-parse,
+remark-rehype and its options such as allowDangerousHtml, handlers, passThrough), the shape of the trees (mdast, hast,
+unist), plugins and how to write one, sanitizing untrusted HTML (rehype-sanitize and the schema of hast-util-sanitize:
+tagNames, attributes, protocols, clobber, strip, the default GitHub-like schema, how to allow one more tag or class),
+math ($...$ and $$...$$ with remark-math, rendering with rehype-katex and the KaTeX options throwOnError, strict, macros,
+trust, the KaTeX function support table, fonts and CSS), syntax highlighting with Shiki (createHighlighter, codeToHtml,
+themes, languages, transformers, dual themes, the rehype and markdown-it integrations, the JavaScript and Oniguruma
+regex engines), the Astro markdown settings (the markdown.remarkPlugins, rehypePlugins, shikiConfig and syntaxHighlight
+options of @astrojs/markdown-remark), and above all history and compatibility: since which version something exists, what
+changed between versions, what was renamed or removed (for example the ESM-only switch, the Shiki 1.0 rewrite, KaTeX
+0.16), and which Node.js each version needs (the `engines` field is in the npm registry documents).
+
+Do not call this for Astro itself outside its markdown package (routing, components, content collections), for MDX
+(@mdx-js/*), for other Markdown processors (markdown-it, marked, showdown), for React or for the browser
+APIs: their documentation is not here, and the search will return excerpts that merely mention them.
+
+`version` narrows the search to one release line of ONE package: "1" keeps every 1.x document, "0.16" keeps 0.16.x. It is
+a number from the package's own version history, so combine it with a query that names the package ("shiki ...",
+"katex ..."); a version filter without a package name mixes unrelated version numbers. Leave it empty to search
+everything. Every excerpt comes back with `versions`: each version whose documents contain this exact text, newest
+first -- text that stayed the same across versions is returned once, with all of them listed. Pages of unifiedjs.com
+have no version: they show the current state of the site.
+
+Write the query in English, with the names the documentation itself uses: package names ("rehype-sanitize"), options
+("allowDangerousHtml", "throwOnError"), function names ("codeToHtml", "defaultSchema"), node types ("element", "root").
+Everything here is English -- the excerpts, the word index and the meaning index alike -- and the word index keeps only
+latin letters and digits, so a query in Ukrainian, Russian or any other non-latin script matches nothing and comes back
+with `found: 0`. When the user asks in another language, translate the question into the documentation's terms first,
+then search. For a question about when something appeared, changed or disappeared, search more than once: without
+`version` first, to find the README, changelog or registry entry that names the exact version, then with the versions
+around it.
+
+The `search` field of the result says how the excerpts were found: "words" means the words of the query had to appear in
+the text, so a query phrased in other words than the documentation uses may miss; "meaning+words" means a second,
+meaning-based index answered as well, and a paraphrase had a chance.
+
+Every answer says which package and which version it is for. When the user did not name a version, answer for the
+newest stable release of that package and say so ("for rehype-sanitize 6.x"), adding that for a precise answer about
+another version the user can name it. When the excerpts behind a statement come only from older versions, name those
+versions instead of presenting the text as current. Packages of the ecosystem are ESM-only from their recent majors
+(CommonJS `require` does not work), so check the version before giving an import line.
+
+Answer in the language the user wrote in. When the question is about a feature's history or support, answer point by point: since which version it exists; what changed in later versions; what prompted the change, if the excerpts say so;
+and how it stands in the current version. Every point names the version and the document it rests on; a point the
+excerpts do not support is left out, not guessed. When that language is Ukrainian, write as a Ukrainian engineer writes,
+not as a translation from English: plain technical prose, and the Ukrainian word wherever one exists -- "уривок", not
+"ексерпт"; "застарілий", not "депрекейтнутий". Never call this set of documents "корпус" -- say "документація unified,
+Shiki і KaTeX". Identifiers, API names and titles stay in English, spelled exactly as the documentation spells them.
+Build the answer out of the excerpts that came back, not out of memory: if an excerpt was cut, read the whole of it
+before describing what it says.
+
+Arguments: `query` is free text; `k` is how many excerpts to return, 1 to 10, default 3; `version` is optional, see
+above. Excerpt text is cut at 600 characters -- pass the `id` of an excerpt to `read_section` to get the whole thing.
