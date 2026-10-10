@@ -3,6 +3,9 @@
 `ghexamples` — приклади з теки `examples/` на тезі чи коміті. `url` — дерево тегу
                /repos/ВЛАСНИК/РЕПО/git/trees/ТЕГ?recursive=1; прикладом вважається
                кожна тека всередині `examples/`, де лежить власний `package.json`.
+               Необов'язкове поле `folder` — інша тека прикладів (`templates`), а
+               порожній рядок — корінь репозиторію: в expo/examples кожен приклад
+               лежить просто в корені.
 
 Навіщо. Сторінка прикладу на сайті TanStack Query (…/examples/simple) markdown-двійника
 не має: вона показує код, який підтягує з теки прикладу в репозиторії. Тож приклад
@@ -63,8 +66,10 @@ def ghexamples(source: dict, ctx) -> list[Item]:
         raise SystemExit(f"{source['url']}: у відповіді немає дерева файлів.")
     if tree.get("truncated"):
         raise SystemExit(f"{source['url']}: GitHub обрізав дерево — перелік був би неповним.")
+    folder = source.get("folder", "examples").strip("/")
+    prefix = f"{folder}/" if folder else ""
     blobs = {e["path"]: e.get("size", 0) for e in tree["tree"]
-             if e.get("type") == "blob" and e.get("path", "").startswith("examples/")}
+             if e.get("type") == "blob" and e.get("path", "").startswith(prefix)}
     roots = sorted(posixpath.dirname(p) for p in blobs if p.endswith("/package.json"))
     # Тека прикладу всередині іншого прикладу (рідко, але буває) — окремий приклад, і
     # її файли не мусять удруге лягти в зовнішній.
@@ -88,7 +93,7 @@ def ghexamples(source: dict, ctx) -> list[Item]:
         name = _markup.slug(root)
 
         def make(root=root, files=files, raws=raws, page=page):
-            title = f"Example: {root.removeprefix('examples/')}"
+            title = f"Example: {root.removeprefix(prefix)}"
             parts = []
             for (path, lang), raw in zip(files, raws):
                 text = ctx.text(raw)
@@ -109,5 +114,6 @@ def ghexamples(source: dict, ctx) -> list[Item]:
         items.append(Item(id=f"{source['id']}/{name}",
                           file=f"{source['id']}--{name}.txt", make=make))
     if not items:
-        raise SystemExit(f"{source['url']}: у теці examples/ жодного прикладу з package.json.")
+        raise SystemExit(f"{source['url']}: у теці {prefix or '/'} жодного прикладу з "
+                         f"package.json.")
     return items
