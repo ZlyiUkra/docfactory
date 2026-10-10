@@ -1293,8 +1293,11 @@ gh-pages для 0.x–1.x (тоді в npm під ім'ям `i18next` виход
 i18next-node, нотатки 288 релізів, README кожної версії й реєстр npm. Поруч — п'ять супутніх пакетів усіх стабільних
 версій: react-i18next (сайт react.i18next.com на кожен реліз від 4.1.0), next-i18next (з нотатками релізів і
 TROUBLESHOOT.md), i18next-http-backend, i18next-browser-languagedetector та i18next-cli — README кожної версії,
-журнал змін і реєстр npm. Нові читачі `ghsite-dated-html` (знімок зібраного HTML-сайту на кожну версію npm) і
-`changelog-bracket` (номер версії голий або в дужках із посиланням і датою). 3842 документи, 6253 фрагменти.
+журнал змін і реєстр npm. І ще 35 пакетів організації i18next у npm — бекенди, `i18next-http-middleware`, формати
+(ICU, Fluent, MessageFormat 2), постпроцесори, інструменти (scanner, parser, conv), прив'язки (i18next-vue з його
+сайтом для Vue 3 і Vue 2, jQuery, AngularJS), застарілі пакети й i18next-client — тими самими шарами. Нові читачі
+`ghsite-dated-html` (знімок зібраного HTML-сайту на кожну версію npm) і `changelog-bracket` (номер версії голий або в
+дужках із посиланням і датою). 4937 документів, 8445 фрагментів.
 
 - порт `8816`; запис у Claude Code — `i18next-docs`, адреса `http://127.0.0.1:8816/mcp`; інструменти `search_docs` і
   `read_section`;
