@@ -5,6 +5,8 @@
                 заголовок версії, а версією документа стає номер без «v».
                 Необов'язкове поле `heading` — рівень заголовка версії: web-vitals
                 пише «### v6.2.0 (2026-08-24)». Без поля — «##», як і досі.
+                Необов'язкове поле `skip` — вираз версій, що не беруться: журнал
+                React Native пише поруч зі стабільними й «## v0.88.0-rc.4».
 
 Навіщо. React Router пише журнал змін так: «## v8.4.0» у кореневому журналі й
 журналі гілки v6, а в журналі пакета react-router — упереміш «## v8.4.0» і
@@ -34,9 +36,12 @@ def changelog_v(source: dict, ctx) -> list[Item]:
                          f"формат змінився, читача треба поправити.")
     cite = source.get("cite", source["url"])
     label = source.get("label", "Changelog")
+    skip = re.compile(source["skip"]) if source.get("skip") else None
     items = []
     for i, head in enumerate(heads):
         version = head.group(1)
+        if skip and skip.search(version):
+            continue
         heading = head.group(0)[len(level):].strip()
         chunk = text[head.end():heads[i + 1].start() if i + 1 < len(heads) else len(text)]
         name = re.sub(r"[^\w.-]+", "-", version)
