@@ -25,6 +25,9 @@ from engine.readers import Item, _markup, register
 _VERSION = r"v?(\d+\.\d+\.\d+[\w.-]*)"
 _HEAD = re.compile(rf"^## +(?:\[{_VERSION}\](?:\([^)\n]*\))?|{_VERSION})([^\n]*)$", re.M)
 _DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+# Якір GitHub будується з показаного тексту заголовка, а посилання показує лише свій текст:
+# «[1.56.11](адреса) - 2026-05-07» має якір «15611---2026-05-07», без адреси.
+_LINK = re.compile(r"\[([^\]\n]*)\]\([^)\n]*\)")
 
 
 @register("changelog-bracket")
@@ -46,7 +49,7 @@ def changelog_bracket(source: dict, ctx) -> list[Item]:
         heading = f"{version} ({date.group(0)})" if date else version
         chunk = text[head.end():heads[i + 1].start() if i + 1 < len(heads) else len(text)]
         name = lead + re.sub(r"[^\w.-]+", "-", version)
-        anchor = _markup.github_anchor(head.group(0).lstrip("#"))
+        anchor = _markup.github_anchor(_LINK.sub(r"\1", head.group(0).lstrip("#")))
 
         def make(chunk=chunk, heading=heading, version=version, anchor=anchor):
             body = _markup.markdown_body(chunk)
