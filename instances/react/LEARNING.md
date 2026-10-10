@@ -352,13 +352,13 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 | Storybook | компоненти окремо від застосунку, каталог для дизайнерів |
 | React Native, Expo | мобільні застосунки на тих самих знаннях React |
 | Motion | анімації руху: поява, перестановка, жести |
-| i18next | переклади інтерфейсу |
+| i18next | переклади інтерфейсу; у примірнику `i18next` — `overview/getting-started` (саме ядро, без react-i18next) |
 | partysocket | WebSocket із готовим перепідключенням; план пише перепідключення сам (Ф3 Д7), щоб було видно механізм |
 | socket.io-client | клієнт socket.io; з'явиться в плані NestJS, фаза 7, коли ціни підуть через власний сервер |
 
 Порівняння TanStack Query з SWR, RTK Query і лоадерами React Router є в примірнику `tanstack-query` — глава
 `Comparison | React Query vs SWR vs Apollo vs RTK Query vs React Router` (з погляду авторів TanStack, зважайте на
-це). Про Storybook, Motion, i18next і partysocket корпусів у фабриці немає — це порада з практики.
+це). Про Storybook, Motion і partysocket корпусів у фабриці немає — це порада з практики.
 Бібліотеки факультативу (графіки, гаманці) — у його власній таблиці інструментів.
 
 ### Документація у фабриці
@@ -389,11 +389,12 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 - безпека: шпаргалки OWASP Cheat Sheet Series (XSS, CSP, React Security), Top 10 — `owasp`;
 - Node.js (API парних мажорів 12–26, посібники nodejs.org/learn) і npm (CLI 6–12, `package.json`, `npm ci`) —
   `nodejs`;
+- i18next (сайт усіх стабільних версій, журнал змін, реєстр npm; react-i18next там немає) — `i18next`;
 - API споту Binance (REST, WebSocket API, потоки ринкових даних, ліміти, журнал змін) — `binance-spot`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «знати, що існує»: SWR, TanStack Router, Storybook, React Native і Expo, Motion, i18next, partysocket;
+- з «знати, що існує»: SWR, TanStack Router, Storybook, React Native і Expo, Motion, partysocket;
 - поза таблицями: хостинги, API Kraken, Oracle Cloud; у факультативі —
   lightweight-charts, wagmi, viem і Foundry.
 
