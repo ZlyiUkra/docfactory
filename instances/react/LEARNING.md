@@ -346,7 +346,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 
 | Бібліотека | Коли згадати |
 |------------|--------------|
-| SWR | легший за TanStack Query кеш серверного стану |
+| SWR | легший за TanStack Query кеш серверного стану; у примірнику `swr` — `docs/getting-started`, `docs/api` |
 | RTK Query | серверний стан, якщо проєкт уже на Redux Toolkit; у примірнику `redux` — `RTK Query Overview` |
 | TanStack Router | маршрутизатор із суворою типізацією адрес і параметрів |
 | Storybook | компоненти окремо від застосунку, каталог для дизайнерів |
@@ -374,6 +374,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 - Vite — `vite`; TypeScript — `typescript`; Vitest — `vitest`; React Testing Library, user-event і jest-dom —
   `testing-library`; MSW — `msw`; Playwright — `playwright`;
 - React Router — `react-router`; TanStack Query — `tanstack-query`; TanStack Virtual — `tanstack-virtual`;
+- SWR (сайт усіх стабільних версій, README кожної версії, нотатки релізів, приклади) — `swr`;
 - react-window обох ліній (1.x і 2.x), react-window-infinite-loader і react-virtualized-auto-sizer — `react-window`;
 - React Hook Form — `react-hook-form`; zod — `zod`;
 - Tailwind CSS — `tailwind`; Zustand — `zustand`; Redux Toolkit і RTK Query — `redux`;
@@ -395,7 +396,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «знати, що існує»: SWR, TanStack Router, Storybook, React Native і Expo, Motion, partysocket;
+- з «знати, що існує»: TanStack Router, Storybook, React Native і Expo, Motion, partysocket;
 - поза таблицями: хостинги, API Kraken, Oracle Cloud; у факультативі —
   lightweight-charts, wagmi, viem і Foundry.
 

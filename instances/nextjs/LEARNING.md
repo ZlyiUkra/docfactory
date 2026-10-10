@@ -312,7 +312,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 | Drizzle або Prisma | ORM: схема, міграції, типізовані запити | 16 і 9 | Ф4 Д1 |
 | zod | схема перевірки вводу — одна для форми й для сервера | 11 | Ф4 Д5; є примірник `zod` |
 | Auth.js або Better Auth | вхід, сесії, сторонні провайдери | 19 і 6 | Ф4 Д9; є примірник `auth` |
-| TanStack Query або SWR | дані в клієнтських компонентах: стрічки, опитування | 4 і 1 | Ф4 Д11; є примірник `tanstack-query` |
+| TanStack Query або SWR | дані в клієнтських компонентах: стрічки, опитування | 4 і 1 | Ф4 Д11; є примірники `tanstack-query`, `swr` |
 | Playwright | наскрізні тести; єдиний спосіб перевірити `async`-компонент | 5 | Ф4 Д14; є примірник `playwright` |
 | Vitest | швидкі тести функцій і клієнтських компонентів | 2 | Ф4 Д13; є примірник `vitest` |
 | ESLint або Biome | лінт; у 16 запускається напряму, без `next lint` | 12 і 3 | Ф1 Д1; є примірник `eslint` |
@@ -366,6 +366,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - web.dev (курси Learn, статті з метриками Core Web Vitals і їхніми порогами, блог) і бібліотека web-vitals (README
   кожного випуску, журнал змін) — `webdev`;
 - Tailwind CSS — `tailwind`; zod — `zod`; TanStack Query — `tanstack-query`; Vitest — `vitest`;
+- SWR (сайт усіх стабільних версій, README кожної версії, нотатки релізів, приклади) — `swr`;
 - ESLint, `eslint-plugin-react-hooks`, `eslint-plugin-react`, `eslint-plugin-jsx-a11y`, typescript-eslint — `eslint`;
 - Testing Library (React Testing Library, user-event, jest-dom) — `testing-library`; MSW — `msw`; Playwright —
   `playwright`;
@@ -389,7 +390,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «треба знати»: Drizzle, Prisma, SWR, Biome;
+- з «треба знати»: Drizzle, Prisma, Biome;
 - з «варто знати»: iron-session, jose, Motion, next-themes, nuqs, next-intl, Redis (Upstash), OpenTelemetry;
 - з «знати, що існує»: Stripe, Resend і React Email, Vercel AI SDK, UploadThing, Sanity, Payload, Contentful,
   tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Grafana, Loki, Storybook;
@@ -1027,8 +1028,8 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 # Фаза 4. Фулстек: дані, автентифікація, дії, безпека, тести — 14 днів
 
 **Сервери MCP фази:** `nextjs-docs`, `webstandards-docs`, `zod-docs`, `react-hook-form-docs`, `auth-docs`,
-`clerk-docs`, `supabase-docs`, `tanstack-query-docs`, `vitest-docs`, `testing-library-docs`, `playwright-docs`,
-`postgresql-docs`, `owasp-docs`, `shadcn-docs`, `webdev-docs`, `argon2-docs`.
+`clerk-docs`, `supabase-docs`, `tanstack-query-docs`, `swr-docs`, `vitest-docs`, `testing-library-docs`,
+`playwright-docs`, `postgresql-docs`, `owasp-docs`, `shadcn-docs`, `webdev-docs`, `argon2-docs`.
 
 Тут фронтендер стає фулстеком: застосунок сам ходить у базу, сам упізнає користувача, сам перевіряє права й
 сам відповідає за те, що не віддав зайвого. Порядок навмисний: спершу база, потім хто ви (автентифікація),
@@ -1200,8 +1201,9 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 - **Що це.** TanStack Query або SWR у клієнтських компонентах. Першу сторінку даних дає сервер, далі
   довантажує клієнт.
 - **Читати:** `Client-side data fetching`, `How to fetch client-side data with TanStack Query`; примірник
-  `tanstack-query`.
-- **Сервери MCP:** `nextjs-docs`, `tanstack-query-docs`.
+  `tanstack-query`; у примірнику `swr` — `docs/with-nextjs` (App Router, `Pre-rendering with Default Data`),
+  `docs/pagination`.
+- **Сервери MCP:** `nextjs-docs`, `tanstack-query-docs`, `swr-docs`.
 - **Зробити:** стрічка з довантаженням, перша сторінка якої прийшла із сервера.
 - **Перевірити себе:** у «Переглянути код сторінки» є перші записи; решта — запитами при прокручуванні.
 - **Пастка:** переписати на TanStack Query все підряд за звичкою зі SPA.
