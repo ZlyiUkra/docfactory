@@ -184,10 +184,11 @@ def _closes(line: str, fence: str) -> bool:
     return bool(s) and set(s) == {fence[0]} and len(s) >= len(fence)
 
 
-# Власний якір заголовка Gatsby («## Basic Hooks {#basic-hooks}»). Лишений у тексті, він
-# потрапляв у шлях розділу («basic-hooks-basic-hooks») і в підпис, і той самий розділ
-# знімка репозиторію не збігався з розділом сайту, де якоря в заголовку не видно.
-_HEADING_ID = re.compile(r"\s*\{#[\w-]+\}\s*$")
+# Власний якір заголовка Gatsby («## Basic Hooks {#basic-hooks}») чи Fumadocs («## Options
+# [#options]»). Лишений у тексті, він потрапляв у шлях розділу («basic-hooks-basic-hooks») і
+# в підпис, і той самий розділ знімка репозиторію не збігався з розділом сайту, де якоря в
+# заголовку не видно.
+_HEADING_ID = re.compile(r"\s*(?:\{#[\w-]+\}|\[#[\w-]+\])\s*$")
 
 
 def markdown_body(text: str, links_base: str | None = None) -> str:
