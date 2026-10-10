@@ -4,7 +4,8 @@
                       (https://registry.npmjs.org/ПАКЕТ), `match` — вираз шляху файла в пакеті без
                       кореневої теки («package/»), `kind` — `markdown` (README) або `types`
                       (файл .d.ts, поділений на розділи за оголошеннями). Необов'язкові: `label` —
-                      назва документа, `skip_versions` — вираз версій, що не беруться.
+                      назва документа, `skip_versions` — вираз версій, що не беруться, `name_prefix` —
+                      ім'я документа замість імені пакета (файли одного пакета не зливаються).
 `npm-githead-files` — файли дерева репозиторію на коміті `gitHead` кожної версії. `url` — опис
                       пакета, `repo` — «власник/репозиторій», `include` — вираз шляхів, що беруться
                       (напр. `^examples/.*\\.js$`), `label`, `skip_versions` — як вище.
@@ -97,7 +98,10 @@ def npm_tarball_files(source: dict, ctx) -> list[Item]:
               f"{' …' if len(missing) > 12 else ''}")
 
     label = source.get("label", "README" if kind == "markdown" else "Types")
-    package = _package_name(source)
+    # `name_prefix` — ім'я документа замість імені пакета: кілька файлів одного пакета
+    # (README, SECURITY, типи різних модулів) інакше мали б однакову назву, а з нею й ключ розділу.
+    package = re.sub(r"[^\w.-]+", "-", source["name_prefix"]).strip("-") \
+        if source.get("name_prefix") else _package_name(source)
     items = []
     for key, (url, found) in seen.items():
         name = f"{package}-{kind}-{key[:8]}"

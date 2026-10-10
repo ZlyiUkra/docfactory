@@ -2,6 +2,7 @@
 
 `changelog-mixed` — те саме, що `changelog-dated`: CHANGELOG.md, поділений на версії, одна
                     версія — один документ, версією документа стає номер із заголовка.
+                    Необов'язкове поле `name_prefix` — рядок перед номером в імені документа.
 
 Навіщо. Nodemailer міняв формат журналу тричі, і всі три живуть в одному файлі:
 «## [10.0.16](https://…/compare/v10.0.15...v10.0.16) (2026-10-07)» (release-please, від 6.9.5),
@@ -30,6 +31,10 @@ def changelog_mixed(source: dict, ctx) -> list[Item]:
                          f"читача треба поправити.")
     cite = source.get("cite", source["url"])
     label = source.get("label", "Changelog")
+    # `name_prefix` — рядок перед номером в імені документа: журнали супутніх пакетів мають
+    # однакові номери, і без префікса розділ «4.0.0» одного пакета згортався б з іншим.
+    prefix = re.sub(r"[^\w.-]+", "-", source["name_prefix"]).strip("-") + "-" \
+        if source.get("name_prefix") else ""
     # Запис версії може повторитися (виправлений випуск під тим самим номером): окремими
     # документами з одним ім'ям файла другий затер би перший, тож записи зливаються в один.
     entries: dict = {}
@@ -42,7 +47,7 @@ def changelog_mixed(source: dict, ctx) -> list[Item]:
         entries.setdefault(version, []).append((day, chunk))
     items = []
     for version, parts in entries.items():
-        name = re.sub(r"[^\w.-]+", "-", version)
+        name = prefix + re.sub(r"[^\w.-]+", "-", version)
 
         def make(parts=parts, version=version):
             bodies = [f"Released {day}.\n\n{_markup.markdown_body(chunk)}" for day, chunk in parts]
