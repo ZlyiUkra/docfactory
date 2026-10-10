@@ -383,8 +383,9 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
   Colors), Base UI, React Aria — `shadcn`;
 - хешування паролів: пакети npm argon2 (node-argon2) і `@node-rs/argon2` усіх стабільних версій, еталонна реалізація
   Argon2 і його специфікація — `argon2`;
-- переклади: i18next, react-i18next, next-i18next (з 16.x — App Router), i18next-http-backend,
-  i18next-browser-languagedetector, i18next-cli — `i18next`.
+- переклади: i18next і всі пакети його організації в npm — react-i18next, next-i18next (з 16.x — App Router),
+  next-language-detector, i18next-http-backend, i18next-browser-languagedetector, i18next-cli, інші бекенди, формати й
+  інструменти — `i18next`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 

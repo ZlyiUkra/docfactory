@@ -389,8 +389,8 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 - безпека: шпаргалки OWASP Cheat Sheet Series (XSS, CSP, React Security), Top 10 — `owasp`;
 - Node.js (API парних мажорів 12–26, посібники nodejs.org/learn) і npm (CLI 6–12, `package.json`, `npm ci`) —
   `nodejs`;
-- i18next і react-i18next (сайти всіх стабільних версій), i18next-http-backend, i18next-browser-languagedetector,
-  i18next-cli — `i18next`;
+- i18next і всі пакети його організації в npm: react-i18next (сайт усіх стабільних версій), i18next-http-backend,
+  i18next-browser-languagedetector, i18next-cli, інші бекенди, формати й інструменти — `i18next`;
 - API споту Binance (REST, WebSocket API, потоки ринкових даних, ліміти, журнал змін) — `binance-spot`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
