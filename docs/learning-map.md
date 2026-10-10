@@ -4,9 +4,10 @@
 однієї бібліотеки чи інструмента (тека `instances/<ім'я>`). Файл оновлюється після кожного нового примірника, разом
 із підрозділами «Документація у фабриці» самих планів.
 
-Стан на 09.10.2026. Примірники: argon2, astro, auth, binance-spot, certbot, clerk, docker, ecmascript, eslint,
-express, frontend-architecture, github-actions, kubernetes, linux, mdn, msw, nestjs, nextjs, nginx, node-postgres,
-nodejs, owasp, patterns, playwright, postgresql, react, react-hook-form, react-router, react-window, redux, sentry,
+Стан на 10.10.2026. Примірники: alpine, argon2, astro, astro-markdown-pipeline, auth, binance-spot, certbot, clerk,
+docker, ecmascript, eslint, express, express-rate-limit, ffmpeg, frontend-architecture, github-actions, helmet,
+i18next, kubernetes, linux, mdn, msw, nestjs, nextjs, nginx, node-postgres, nodejs, nodemailer, owasp, patterns,
+playwright, postgrator, postgres-image, postgresql, react, react-hook-form, react-router, react-window, redux, sentry,
 shadcn, socketio, supabase, tailwind, tanstack-query, tanstack-virtual, testing-library, typescript, v8, vite, vitest,
 wasm, webdev, webstandards, zod, zustand.
 
@@ -55,7 +56,7 @@ wasm, webdev, webstandards, zod, zustand.
 | 2. Як Next.js працює зсередини | — |
 | 3. Кешування | — |
 | 4. Фулстек: дані, автентифікація, дії, тести | `webstandards` (2–3, 5, 9–10, 12), `zod` (5), `react-hook-form` і `shadcn` (6), `postgresql` (1), `auth`, `clerk` і `supabase` (9), `tanstack-query` (11), `vitest` і `testing-library` (13), `playwright` (14), `owasp` (12), `webdev` (6), `argon2` (2) |
-| 5. Інтерфейс із характером | `mdn` (4), `zustand` (5), `webstandards` (5, 7), `shadcn` (5), `webdev` (4, 7) |
+| 5. Інтерфейс із характером | `mdn` (4), `zustand` (5), `webstandards` (5, 7), `shadcn` (5), `webdev` (4, 7), `i18next` (8) |
 | 6. Чужий код | — |
 | 7. DevOps: від збірки до продакшну | `docker` (вступ, 2, 4), `webstandards` (6), `kubernetes` (вступ, 12), `playwright` (7), `github-actions` (вступ, 7), `nginx` (вступ, 6), `webdev` (9–10), `sentry` (9) |
 | 8. Next.js поруч з окремим бекендом | `webstandards` (2, 6–7), `mdn` (7), `socketio` (6), `nginx` (6); за змістом — `nestjs` |

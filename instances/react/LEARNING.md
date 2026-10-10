@@ -352,7 +352,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 | Storybook | компоненти окремо від застосунку, каталог для дизайнерів |
 | React Native, Expo | мобільні застосунки на тих самих знаннях React |
 | Motion | анімації руху: поява, перестановка, жести |
-| i18next | переклади інтерфейсу; у примірнику `i18next` — `overview/getting-started` (саме ядро, без react-i18next) |
+| i18next | переклади інтерфейсу; у примірнику `i18next` — `overview/getting-started`, для React — `latest/usetranslation-hook` і `latest/trans-component` (react-i18next) |
 | partysocket | WebSocket із готовим перепідключенням; план пише перепідключення сам (Ф3 Д7), щоб було видно механізм |
 | socket.io-client | клієнт socket.io; з'явиться в плані NestJS, фаза 7, коли ціни підуть через власний сервер |
 
@@ -389,7 +389,8 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 - безпека: шпаргалки OWASP Cheat Sheet Series (XSS, CSP, React Security), Top 10 — `owasp`;
 - Node.js (API парних мажорів 12–26, посібники nodejs.org/learn) і npm (CLI 6–12, `package.json`, `npm ci`) —
   `nodejs`;
-- i18next (сайт усіх стабільних версій, журнал змін, реєстр npm; react-i18next там немає) — `i18next`;
+- i18next і react-i18next (сайти всіх стабільних версій), i18next-http-backend, i18next-browser-languagedetector,
+  i18next-cli — `i18next`;
 - API споту Binance (REST, WebSocket API, потоки ринкових даних, ліміти, журнал змін) — `binance-spot`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
