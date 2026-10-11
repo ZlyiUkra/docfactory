@@ -28,7 +28,7 @@ typescript, v8, vite, vitest, wasm, webdev, webstandards, zod, zustand.
 | 0. База, якої React не дає | `mdn` (вступ, 1–8), `webstandards` (1, 5–8), `typescript` (вступ, 9–10), `vite` (11–12), `eslint` (11), `tailwind` (11), `nodejs` (4), `webdev` (8) |
 | 1. Ядро React | `vite` (20), `eslint` (19) |
 | 2. Як React працює зсередини | `eslint` (4), `webdev` (5, 7), `tanstack-virtual` і `react-window` (7), `sentry` (8) |
-| 3. Екосистема | `react-router` (1–2, 13), `tanstack-query` (3–5, 8, 13), `react-hook-form` і `zod` (10), `zustand` і `redux` (11), `vitest` і `testing-library` (12–13), `msw` (13), `playwright` (14), `mdn` (6–8, 15), `webstandards` (6, 15), `shadcn` (15), `webdev` (8, 10, 15), `binance-spot` (вступ, 6–8) |
+| 3. Екосистема | `react-router` (1–2, 13), `tanstack-query` (3–5, 8, 13), `react-hook-form` і `zod` (10), `zustand` і `redux` (11), `vitest` і `testing-library` (12–13), `msw` (13), `playwright` (14), `mdn` (6–8, 15), `webstandards` (6, 15), `shadcn` (15), `webdev` (8, 10, 15), `binance-spot` (вступ, 6–8), `partysocket` (7) |
 | 4. Сервер: SSR, стрімінг, серверні компоненти | — |
 | 5. Продакшн і викот у кластер | `vite` (1–2, 5–7, 9), `react-router` (1), `docker` (вступ, 7), `kubernetes` (вступ, 7–9), `mdn` (4), `webstandards` (6), `playwright` (5), `github-actions` (5), `owasp` (2), `nginx` (7), `webdev` (3–4, 6) |
 | Факультатив «крипта» | `binance-spot` (К1–К3), `tanstack-query` (К1, К4), `mdn` (К3), `zod` (К5) |

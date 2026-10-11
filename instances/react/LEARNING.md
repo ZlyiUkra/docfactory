@@ -353,12 +353,12 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 | React Native, Expo | мобільні застосунки на тих самих знаннях React; у примірнику `react-native` — `Get Started with React Native`, власний нативний код — `Native Modules: Introduction` і `Fabric Native Components Introduction`; у примірнику `expo` — `Tutorial: Using React Native and Expo`, `Expo Modules API: Overview` |
 | Motion | анімації руху: поява, перестановка, жести |
 | i18next | переклади інтерфейсу; у примірнику `i18next` — `overview/getting-started`, для React — `latest/usetranslation-hook` і `latest/trans-component` (react-i18next) |
-| partysocket | WebSocket із готовим перепідключенням; план пише перепідключення сам (Ф3 Д7), щоб було видно механізм |
+| partysocket | WebSocket із готовим перепідключенням; план пише перепідключення сам (Ф3 Д7), щоб було видно механізм; у примірнику `partysocket` — `PartySocket (Client API)`, хук `usePartySocket` — `partykit: packages/partysocket/src/react.ts` |
 | socket.io-client | клієнт socket.io; з'явиться в плані NestJS, фаза 7, коли ціни підуть через власний сервер |
 
 Порівняння TanStack Query з SWR, RTK Query і лоадерами React Router є в примірнику `tanstack-query` — глава
 `Comparison | React Query vs SWR vs Apollo vs RTK Query vs React Router` (з погляду авторів TanStack, зважайте на
-це). Про Storybook, Motion і partysocket корпусів у фабриці немає — це порада з практики.
+це). Про Storybook і Motion корпусів у фабриці немає — це порада з практики.
 Бібліотеки факультативу (графіки, гаманці) — у його власній таблиці інструментів.
 
 ### Документація у фабриці
@@ -395,11 +395,12 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 - React Native (сайт усіх стабільних версій 0.1–0.87 з Turbo Native Modules і Fabric, нотатки релізів, журнал змін) —
   `react-native`; Expo (довідник кожного SDK 23–57 з API модулів і `app.json`, посібники: Expo Router, EAS, Expo
   Modules API) — `expo`;
-- API споту Binance (REST, WebSocket API, потоки ринкових даних, ліміти, журнал змін) — `binance-spot`.
+- API споту Binance (REST, WebSocket API, потоки ринкових даних, ліміти, журнал змін) — `binance-spot`;
+- partysocket (сторінки PartyKit про клієнт, README і код з тестами кожної версії, журнал змін) — `partysocket`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «знати, що існує»: TanStack Router, Storybook, Motion, partysocket;
+- з «знати, що існує»: TanStack Router, Storybook, Motion;
 - поза таблицями: хостинги, API Kraken, Oracle Cloud; у факультативі —
   lightweight-charts, wagmi, viem і Foundry.
 
@@ -1101,7 +1102,7 @@ React — бібліотека поверх мови й браузера. Усе
 
 **Сервери MCP фази:** `react-docs`, `react-router-docs`, `tanstack-query-docs`, `mdn-docs`, `webstandards-docs`,
 `react-hook-form-docs`, `zod-docs`, `zustand-docs`, `redux-docs`, `vitest-docs`, `testing-library-docs`, `msw-docs`,
-`playwright-docs`, `shadcn-docs`, `webdev-docs`, `binance-spot-docs`.
+`playwright-docs`, `shadcn-docs`, `webdev-docs`, `binance-spot-docs`, `partysocket-docs`.
 
 React не має нічого з цього в коробці. Документація сама каже, що брати: глава `Build a React app from Scratch`,
 крок 2 — маршрути, дані, розділення коду. Про дані там пряма порада: «fetching data directly in components can
@@ -1270,8 +1271,11 @@ Kraken WS v2, `wss://ws.kraken.com/v2`: там підписка окремим �
   «Extracting the logic to a custom Hook» і обидва розділи Troubleshooting), `Reusing Logic with Custom Hooks`; у
   примірнику `mdn` — `Navigator: onLine property`, `Page Visibility API`; блог AWS Architecture — «Exponential Backoff
   And Jitter» (поза корпусом); у примірнику `binance-spot` — `WebSocket Streams for Binance` (розділ «General WSS
-  information»).
-- **Сервери MCP:** `react-docs`, `mdn-docs`, `binance-spot-docs`.
+  information»); для порівняння з готовою бібліотекою — у примірнику `partysocket` — `partykit:
+  packages/partysocket/src/ws.ts` (розділи «type Options», «const DEFAULT», «ReconnectingWebSocket._getNextDelay()»:
+  затримка росте множником 1,3 до стелі в 10 с без джитера на кожну спробу; до 1.1.18 випадковою була лише базова
+  затримка, одна на весь модуль, з 1.1.19 вона стала 3 с).
+- **Сервери MCP:** `react-docs`, `mdn-docs`, `binance-spot-docs`, `partysocket-docs`.
 - **Зробити:** 1) модуль `priceStore` з `subscribe`, `getSnapshot`, станом з'єднання й незмінними записами;
   2) хуки `usePrice(symbol)` і `useConnectionStatus()`; 3) перепідключення з повним джитером і стелею, кожна
   затримка — у лог; 4) індикатор стану в шапці; 5) ціна BTC у списку й у шапці одночасно; 6) службова функція,
