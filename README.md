@@ -1346,6 +1346,27 @@ partykit/partykit без тегів сайту), README кожної версі�
 - корпус в архіві від самого початку, як у helmet;
 - докладніше — у [instances/partysocket/README.md](instances/partysocket/README.md).
 
+### storybook
+
+Документація Storybook останньої мінорної кожної мажорної версії — 6.5, 7.6, 8.6, 9.1 і 10.x: сторінки `docs/`
+репозиторію storybookjs/storybook з гілок випусків і `main`, README кожної гілки, чотирнадцять рецептів інтеграцій
+storybook.js.org/recipes, MIGRATION.md (секція переходу — документ), журнали змін 6.0–10.6.1, релізи латок, яких
+немає в журналах, і реєстр npm. Markdown-двійник сайту губить JSX у коді, а 6.5 і 7.6 на сайті вже немає, тому
+сторінки — з репозиторію. Новий читач `storybook-docs` вставляє на місце `<CodeSnippets>` приклади всіх фреймворків
+(TypeScript; JavaScript — де TypeScript немає) з підписом фреймворку й вкладки, а `storybook-migration` ділить
+MIGRATION.md на кроки без змісту-переліку. 1119 документів, 9309 фрагментів.
+
+- порт `8821`; запис у Claude Code — `storybook-docs`, адреса `http://127.0.0.1:8821/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-storybook`, модель векторів — `bge-small`; `slug_rewrite` зводить сторінки, що
+  переїхали між версіями;
+- версія — мажорна лінія: `version: "10"` лишає 10.x, `"8"` — 8.6 і журнали 8.x, `"8.2"` — журнал і крок
+  MIGRATION.md цієї мінорної; рецепти без версії; без названої версії промпт велить відповідати для 10.x —
+  найпоширенішої за завантаженнями npm;
+- приклад питання агентові: `./df storybook ask "How do I add a global decorator in Storybook 10 with React?"`;
+- корпус в архіві від самого початку, як у helmet;
+- докладніше — у [instances/storybook/README.md](instances/storybook/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
