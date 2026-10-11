@@ -4,12 +4,12 @@
 однієї бібліотеки чи інструмента (тека `instances/<ім'я>`). Файл оновлюється після кожного нового примірника, разом
 із підрозділами «Документація у фабриці» самих планів.
 
-Стан на 10.10.2026. Примірники: alpine, argon2, astro, astro-markdown-pipeline, auth, binance-spot, certbot, clerk,
-docker, ecmascript, eslint, express, express-rate-limit, ffmpeg, frontend-architecture, github-actions, helmet,
+Стан на 11.10.2026. Примірники: alpine, argon2, astro, astro-markdown-pipeline, auth, binance-spot, certbot, clerk,
+docker, ecmascript, eslint, expo, express, express-rate-limit, ffmpeg, frontend-architecture, github-actions, helmet,
 i18next, kubernetes, linux, mdn, msw, nestjs, nextjs, nginx, node-postgres, nodejs, nodemailer, owasp, patterns,
-playwright, postgrator, postgres-image, postgresql, react, react-hook-form, react-router, react-window, redux, sentry,
-shadcn, socketio, supabase, swr, tailwind, tanstack-query, tanstack-virtual, testing-library, typescript, v8, vite,
-vitest, wasm, webdev, webstandards, zod, zustand.
+playwright, postgrator, postgres-image, postgresql, react, react-hook-form, react-native, react-router, react-window,
+redux, sentry, shadcn, socketio, supabase, swr, tailwind, tanstack-query, tanstack-virtual, testing-library,
+typescript, v8, vite, vitest, wasm, webdev, webstandards, zod, zustand.
 
 ## Як читати таблиці
 

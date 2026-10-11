@@ -350,7 +350,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 | RTK Query | серверний стан, якщо проєкт уже на Redux Toolkit; у примірнику `redux` — `RTK Query Overview` |
 | TanStack Router | маршрутизатор із суворою типізацією адрес і параметрів |
 | Storybook | компоненти окремо від застосунку, каталог для дизайнерів |
-| React Native, Expo | мобільні застосунки на тих самих знаннях React |
+| React Native, Expo | мобільні застосунки на тих самих знаннях React; у примірнику `react-native` — `Get Started with React Native`, власний нативний код — `Native Modules: Introduction` і `Fabric Native Components Introduction`; у примірнику `expo` — `Tutorial: Using React Native and Expo`, `Expo Modules API: Overview` |
 | Motion | анімації руху: поява, перестановка, жести |
 | i18next | переклади інтерфейсу; у примірнику `i18next` — `overview/getting-started`, для React — `latest/usetranslation-hook` і `latest/trans-component` (react-i18next) |
 | partysocket | WebSocket із готовим перепідключенням; план пише перепідключення сам (Ф3 Д7), щоб було видно механізм |
@@ -392,11 +392,14 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
   `nodejs`;
 - i18next і всі пакети його організації в npm: react-i18next (сайт усіх стабільних версій), i18next-http-backend,
   i18next-browser-languagedetector, i18next-cli, інші бекенди, формати й інструменти — `i18next`;
+- React Native (сайт усіх стабільних версій 0.1–0.87 з Turbo Native Modules і Fabric, нотатки релізів, журнал змін) —
+  `react-native`; Expo (довідник кожного SDK 23–57 з API модулів і `app.json`, посібники: Expo Router, EAS, Expo
+  Modules API) — `expo`;
 - API споту Binance (REST, WebSocket API, потоки ринкових даних, ліміти, журнал змін) — `binance-spot`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «знати, що існує»: TanStack Router, Storybook, React Native і Expo, Motion, partysocket;
+- з «знати, що існує»: TanStack Router, Storybook, Motion, partysocket;
 - поза таблицями: хостинги, API Kraken, Oracle Cloud; у факультативі —
   lightweight-charts, wagmi, viem і Foundry.
 
