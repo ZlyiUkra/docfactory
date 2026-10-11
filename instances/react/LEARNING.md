@@ -351,14 +351,14 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 | TanStack Router | маршрутизатор із суворою типізацією адрес і параметрів; у примірнику `tanstack-router` — `Quick Start`, `Search Params`, `Data Loading`, порівняння з React Router — `Comparison`; повностековий фреймворк на ньому — `TanStack Start (React): Getting Started` |
 | Storybook | компоненти окремо від застосунку, каталог для дизайнерів; у примірнику `storybook` — `Storybook for React with Vite`, `What's a story?`, `Interaction tests` |
 | React Native, Expo | мобільні застосунки на тих самих знаннях React; у примірнику `react-native` — `Get Started with React Native`, власний нативний код — `Native Modules: Introduction` і `Fabric Native Components Introduction`; у примірнику `expo` — `Tutorial: Using React Native and Expo`, `Expo Modules API: Overview` |
-| Motion | анімації руху: поява, перестановка, жести |
+| Motion | анімації руху: поява, перестановка, жести; у примірнику `motion` — `Get started with Motion for React`, `React animation`, зникнення — `AnimatePresence`, перестановка — `Layout animation`, жести — `Gesture animation` |
 | i18next | переклади інтерфейсу; у примірнику `i18next` — `overview/getting-started`, для React — `latest/usetranslation-hook` і `latest/trans-component` (react-i18next) |
 | partysocket | WebSocket із готовим перепідключенням; план пише перепідключення сам (Ф3 Д7), щоб було видно механізм; у примірнику `partysocket` — `PartySocket (Client API)`, хук `usePartySocket` — `partykit: packages/partysocket/src/react.ts` |
 | socket.io-client | клієнт socket.io; з'явиться в плані NestJS, фаза 7, коли ціни підуть через власний сервер |
 
 Порівняння TanStack Query з SWR, RTK Query і лоадерами React Router є в примірнику `tanstack-query` — глава
 `Comparison | React Query vs SWR vs Apollo vs RTK Query vs React Router` (з погляду авторів TanStack, зважайте на
-це). Про Motion корпусу у фабриці немає — це порада з практики.
+це).
 Бібліотеки факультативу (графіки, гаманці) — у його власній таблиці інструментів.
 
 ### Документація у фабриці
@@ -400,11 +400,12 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 - API споту Binance (REST, WebSocket API, потоки ринкових даних, ліміти, журнал змін) — `binance-spot`;
 - partysocket (сторінки PartyKit про клієнт, README і код з тестами кожної версії, журнал змін) — `partysocket`;
 - Storybook (документація 6.5, 7.6, 8.6, 9.1 і 10.x з прикладами коду всіх фреймворків, рецепти інтеграцій,
-  MIGRATION.md, журнали змін) — `storybook`.
+  MIGRATION.md, журнали змін) — `storybook`;
+- Motion, раніше Framer Motion (сайт motion.dev з прикладами, журнал змін і README кожної стабільної версії, Motion
+  One, Motion для Vue, попередник Popmotion) — `motion`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «знати, що існує»: Motion;
 - поза таблицями: хостинги, API Kraken, Oracle Cloud; у факультативі —
   lightweight-charts, wagmi, viem і Foundry.
 

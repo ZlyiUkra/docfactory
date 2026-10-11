@@ -326,7 +326,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 | React Hook Form | великі форми з перевіркою на клієнті | 5 | Ф4 Д6; є примірник `react-hook-form` |
 | iron-session, jose | сесія в зашифрованій куці без бібліотеки автентифікації | 0 | Ф4 Д3 |
 | Clerk, Supabase Auth | вхід і користувачі як послуга | 6 і 16 | Ф4 Д9; є примірники `clerk`, `supabase` |
-| Motion | анімації руху: поява, перестановка, жести | 8 | Ф5 Д3 |
+| Motion | анімації руху: поява, перестановка, жести | 8 | Ф5 Д3–4; є примірник `motion` |
 | next-themes | темна тема без миготіння | 4 | Ф5 Д5 |
 | nuqs | стан у рядку адреси з типами: фільтри, сортування, сторінки | 0 | Ф5 Д5 |
 | Zustand | невеликий глобальний стан у клієнтських компонентах | 1 | Ф5 Д5; є примірник `zustand` |
@@ -388,12 +388,14 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
   next-language-detector, i18next-http-backend, i18next-browser-languagedetector, i18next-cli, інші бекенди, формати й
   інструменти — `i18next`;
 - Storybook (документація 6.5, 7.6, 8.6, 9.1 і 10.x з прикладами коду всіх фреймворків, сторінки фреймворків
-  `nextjs` і `nextjs-vite`, рецепти інтеграцій, MIGRATION.md) — `storybook`.
+  `nextjs` і `nextjs-vite`, рецепти інтеграцій, MIGRATION.md) — `storybook`;
+- Motion, раніше Framer Motion (сайт motion.dev з прикладами, журнал змін і README кожної стабільної версії, Motion
+  One, Motion для Vue, попередник Popmotion) — `motion`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
 - з «треба знати»: Drizzle, Prisma, Biome;
-- з «варто знати»: iron-session, jose, Motion, next-themes, nuqs, next-intl, Redis (Upstash), OpenTelemetry;
+- з «варто знати»: iron-session, jose, next-themes, nuqs, next-intl, Redis (Upstash), OpenTelemetry;
 - з «знати, що існує»: Stripe, Resend і React Email, Vercel AI SDK, UploadThing, Sanity, Payload, Contentful,
   tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Grafana, Loki;
 - у факультативі — viem, wagmi і Foundry.
@@ -1264,7 +1266,7 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 # Фаза 5. Інтерфейс із характером — 8 днів
 
 **Сервери MCP фази:** `nextjs-docs`, `mdn-docs`, `zustand-docs`, `webstandards-docs`, `shadcn-docs`, `webdev-docs`,
-`i18next-docs`.
+`i18next-docs`, `motion-docs`.
 
 Те, що відрізняє «працює» від «приємно користуватися». Частина можливостей з'явилася в 16.2–16.3, а дещо
 ще експериментальне — дивіться на версії у відповіді сервера. Дні 1–4 можна брати одразу після фази 2.
@@ -1301,8 +1303,10 @@ Next.js — надбудова над HTTP, Node і серверним React. У
   перестановки. Працює лише в клієнтських компонентах: анімація — це стан у браузері. Обгортку з `'use
   client'` роблять маленькою, а сторінка лишається серверною. `template.tsx` дає анімацію входу на кожну
   сторінку.
-- **Читати:** документацію Motion, розділ про React; у корпусі — `template.js`.
-- **Сервери MCP:** `nextjs-docs`.
+- **Читати:** у примірнику `motion` — `Get started with Motion for React`, зникнення — `AnimatePresence`,
+  перестановка — `Layout animation`, підключення в Next.js — `Installation guide for Motion for React` (розділ
+  «Next.js»), клієнтська межа — `Motion component` (розділ «Server-side rendering»); у корпусі — `template.js`.
+- **Сервери MCP:** `nextjs-docs`, `motion-docs`.
 - **Зробити:** список задач, де елементи плавно переставляються при сортуванні й зникають при видаленні.
 - **Перевірити себе:** сторінка лишається серверною; `'use client'` лише у файлі анімованого списку.
 - **Пастка:** `'use client'` на всю сторінку заради однієї анімації.
@@ -1315,8 +1319,9 @@ Next.js — надбудова над HTTP, Node і серверним React. У
   рух шкодить, анімації вимикають.
 - **Читати:** у примірнику `mdn` — `@starting-style CSS at-rule`, `CSS scroll-driven animations`,
   `prefers-reduced-motion CSS media feature`; у примірнику `webdev` — `Learn Accessibility: Animation and motion`
-  (кому рух шкодить і що вимикати).
-- **Сервери MCP:** `mdn-docs`, `webdev-docs`.
+  (кому рух шкодить і що вимикати); анімації Motion з дня 3 — у примірнику `motion` — `Accessibility`,
+  `MotionConfig` (властивість `reducedMotion`).
+- **Сервери MCP:** `mdn-docs`, `webdev-docs`, `motion-docs`.
 - **Зробити:** поява модального вікна на `@starting-style`; індикатор прочитання статті за прокручуванням;
   усе вимикається при `prefers-reduced-motion`.
 - **Перевірити себе:** у налаштуваннях системи «зменшити рух» — і жодна анімація застосунку не рухається.
