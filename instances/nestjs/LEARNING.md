@@ -404,6 +404,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 - nginx: проксі перед API, стиснення, вебсокети через проксі — `nginx`;
 - Supabase — `supabase`; Clerk — `clerk`;
 - API споту Binance (REST, WebSocket API, потоки ринкових даних, ліміти, журнал змін) — `binance-spot`;
+- API споту Kraken, запасне джерело цін (REST, WebSocket v2, гайди, журнал змін) — `kraken-spot`;
 - хешування паролів: пакети npm argon2 (node-argon2) і `@node-rs/argon2` усіх стабільних версій, еталонна реалізація
   Argon2 і його специфікація — `argon2`.
 
@@ -2175,7 +2176,7 @@ SPA під одним іменем, викочується й відкочуєт
 # Фаза 7. Живі дані: WebSockets — 8 днів
 
 **Сервери MCP фази:** `nestjs-docs`, `webstandards-docs`, `mdn-docs`, `vite-docs`, `kubernetes-docs`, `socketio-docs`,
-`owasp-docs`, `nginx-docs`, `binance-spot-docs`.
+`owasp-docs`, `nginx-docs`, `binance-spot-docs`, `kraken-spot-docs`.
 
 Досі сервер лише відповідав: клієнт спитав — сервер відповів. Живі ціни так не працюють: сервер сам штовхає дані,
 щойно вони з'явилися, через з'єднання, яке живе годинами. У плані React (фаза 3, дні 6–8) SPA слухала ринковий стрім
@@ -2185,7 +2186,7 @@ SPA під одним іменем, викочується й відкочуєт
 Корпус Nest тут — розділ WebSockets: глави `Gateways` і `Adapters`, а також `Guards`, `Pipes` і `Exception filters`
 цього розділу (у розділі Overview є глави з тими самими назвами); глава `Server-Sent Events` — у розділі Techniques.
 Сам протокол (RFC 6455) — у примірнику `webstandards`, WebSocket API — у `mdn`, socket.io — у `socketio`; біржа —
-у `binance-spot`. Джерело цін — ринкові ендпойнти Binance лише для даних, без ключа:
+у `binance-spot`, запасна — у `kraken-spot`. Джерело цін — ринкові ендпойнти Binance лише для даних, без ключа:
 `wss://data-stream.binance.vision` для потоку і `https://data-api.binance.vision` для REST; запасне — Kraken WS v2
 (`wss://ws.kraken.com/v2`). Ліміти нижче — з документації Binance на 08.10.2026. Чи відкриваються ці адреси з вашої
 країни й від вашого провайдера, перевірте першого ж дня: доступність бірж залежить від країни, і перевіряти це
@@ -2207,8 +2208,9 @@ SPA під одним іменем, викочується й відкочуєт
   Handshake), `RFC 6455 The WebSocket Protocol: 5 Data Framing`,
   `RFC 6455 The WebSocket Protocol: 7 Closing the Connection` (розділ 7.4 Status Codes); у примірнику `mdn` —
   `WebSocket API (WebSockets)`, `Writing WebSocket servers`; README бібліотеки `ws`, розділ про перевірку розірваних
-  з'єднань (поза корпусом).
-- **Сервери MCP:** `webstandards-docs`, `mdn-docs`.
+  з'єднань (поза корпусом); запасна біржа — у примірнику `kraken-spot` — `Spot WebSocket Introduction` (розділ
+  «Connection Details»), `WebSocket v2: Trades`.
+- **Сервери MCP:** `webstandards-docs`, `mdn-docs`, `kraken-spot-docs`.
 - **Зробити:** в окремій теці, без Nest: 1) `npm i ws`; сервер на тридцять рядків: на з'єднання — привітання, на
   повідомлення — відповідь луною, лог коду й причини закриття; 2) ping кожні 10 секунд і `terminate()` тим, хто не
   відповів pong з минулого разу; 3) рукостискання очима curl:
@@ -2368,8 +2370,9 @@ SPA під одним іменем, викочується й відкочуєт
 - **Читати:** у примірнику `binance-spot` — `WebSocket Streams for Binance` (розділи General WSS information,
   WebSocket Limits, Live Subscribing/Unsubscribing to streams, Individual Symbol Mini Ticker Stream),
   `Market Data Only URLs`; розділ Fundamentals, глави `Lifecycle events` і `Custom providers`; поза корпусом — README
-  `ws`, документація Redis.
-- **Сервери MCP:** `nestjs-docs`, `binance-spot-docs`.
+  `ws`, документація Redis; запасне джерело — у примірнику `kraken-spot` — `WebSocket v2: Ticker` (розділ «Snapshot /
+  Update»: `bid`, `ask`, `last` — числа), `Reconnection and resilience`.
+- **Сервери MCP:** `nestjs-docs`, `binance-spot-docs`, `kraken-spot-docs`.
 - **Зробити:** 1) `MarketStreamService` з одним з'єднанням і набором пар, що перераховується на `subscribe` і
   `unsubscribe`; 2) приведення до `PriceTick` і розсилка в кімнати зі склеюванням із дня 4 — фейковий генератор
   іде в тести; 3) перепідключення із затримкою й джитером і сторож живості на 30 секунд; 4) планове

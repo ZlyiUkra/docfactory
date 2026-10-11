@@ -6,11 +6,11 @@
 
 Стан на 11.10.2026. Примірники: alpine, argon2, astro, astro-markdown-pipeline, auth, binance-spot, certbot, clerk,
 docker, ecmascript, eslint, expo, express, express-rate-limit, ffmpeg, frontend-architecture, github-actions, helmet,
-i18next, kubernetes, linux, mdn, motion, msw, nestjs, nextjs, nginx, node-postgres, nodejs, nodemailer, owasp,
-partysocket, patterns, playwright, postgrator, postgres-image, postgresql, react, react-hook-form, react-native,
-react-router, react-window, redux, sentry, shadcn, socketio, storybook, supabase, swr, tailwind, tanstack-query,
-tanstack-router, tanstack-virtual, testing-library, typescript, v8, vite, vitest, wasm, webdev, webstandards, zod,
-zustand.
+i18next, kraken-spot, kubernetes, linux, mdn, motion, msw, nestjs, nextjs, nginx, node-postgres, nodejs, nodemailer,
+owasp, partysocket, patterns, playwright, postgrator, postgres-image, postgresql, react, react-hook-form,
+react-native, react-router, react-window, redux, sentry, shadcn, socketio, storybook, supabase, swr, tailwind,
+tanstack-query, tanstack-router, tanstack-virtual, testing-library, typescript, v8, vite, vitest, wasm, webdev,
+webstandards, zod, zustand.
 
 ## Як читати таблиці
 
@@ -29,7 +29,7 @@ zustand.
 | 0. База, якої React не дає | `mdn` (вступ, 1–8), `webstandards` (1, 5–8), `typescript` (вступ, 9–10), `vite` (11–12), `eslint` (11), `tailwind` (11), `nodejs` (4), `webdev` (8) |
 | 1. Ядро React | `vite` (20), `eslint` (19) |
 | 2. Як React працює зсередини | `eslint` (4), `webdev` (5, 7), `tanstack-virtual` і `react-window` (7), `sentry` (8) |
-| 3. Екосистема | `react-router` (1–2, 13), `tanstack-query` (3–5, 8, 13), `react-hook-form` і `zod` (10), `zustand` і `redux` (11), `vitest` і `testing-library` (12–13), `msw` (13), `playwright` (14), `mdn` (6–8, 15), `webstandards` (6, 15), `shadcn` (15), `webdev` (8, 10, 15), `binance-spot` (вступ, 6–8), `partysocket` (7) |
+| 3. Екосистема | `react-router` (1–2, 13), `tanstack-query` (3–5, 8, 13), `react-hook-form` і `zod` (10), `zustand` і `redux` (11), `vitest` і `testing-library` (12–13), `msw` (13), `playwright` (14), `mdn` (6–8, 15), `webstandards` (6, 15), `shadcn` (15), `webdev` (8, 10, 15), `binance-spot` (вступ, 6–8), `kraken-spot` (вступ, 6–7), `partysocket` (7) |
 | 4. Сервер: SSR, стрімінг, серверні компоненти | — |
 | 5. Продакшн і викот у кластер | `vite` (1–2, 5–7, 9), `react-router` (1), `docker` (вступ, 7), `kubernetes` (вступ, 7–9), `mdn` (4), `webstandards` (6), `playwright` (5), `github-actions` (5), `owasp` (2), `nginx` (7), `webdev` (3–4, 6) |
 | Факультатив «крипта» | `binance-spot` (К1–К3), `tanstack-query` (К1, К4), `mdn` (К3), `zod` (К5) |
@@ -45,7 +45,7 @@ zustand.
 | 4. Автентифікація й авторизація | `webstandards` (1–2, 6–8, 12), `express` (8, 12), `react-router` (9), `owasp` (1, 6, 8, 12), `argon2` (1) |
 | 5. Якість: тести й DI | `vitest` (1) |
 | 6. Продакшн | `docker` (вступ, 2, 7), `kubernetes` (вступ, 8–9), `express` (9), `postgresql` (9), `github-actions` (вступ, 7), `nginx` (вступ, 2, 5), `node-postgres` (5), `argon2` (8) |
-| 7. Живі дані: WebSockets | `socketio` (вступ, 2–4, 6–7), `mdn` (вступ, 1), `webstandards` (вступ, 1, 3, 6), `vite` (2), `kubernetes` (3, 6, 8), `owasp` (3), `nginx` (6), `binance-spot` (вступ, 5) |
+| 7. Живі дані: WebSockets | `socketio` (вступ, 2–4, 6–7), `mdn` (вступ, 1), `webstandards` (вступ, 1, 3, 6), `vite` (2), `kubernetes` (3, 6, 8), `owasp` (3), `nginx` (6), `binance-spot` (вступ, 5), `kraken-spot` (вступ, 1, 5) |
 | Факультатив «крипта» | `binance-spot` (К1), `webstandards` (К3), `node-postgres` (К1) |
 
 ### План Next.js — [instances/nextjs/LEARNING.md](../instances/nextjs/LEARNING.md)

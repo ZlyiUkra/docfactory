@@ -398,6 +398,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
   `react-native`; Expo (довідник кожного SDK 23–57 з API модулів і `app.json`, посібники: Expo Router, EAS, Expo
   Modules API) — `expo`;
 - API споту Binance (REST, WebSocket API, потоки ринкових даних, ліміти, журнал змін) — `binance-spot`;
+- API споту Kraken, запасне джерело цін (REST, WebSocket v2, гайди, журнал змін) — `kraken-spot`;
 - partysocket (сторінки PartyKit про клієнт, README і код з тестами кожної версії, журнал змін) — `partysocket`;
 - Storybook (документація 6.5, 7.6, 8.6, 9.1 і 10.x з прикладами коду всіх фреймворків, рецепти інтеграцій,
   MIGRATION.md, журнали змін) — `storybook`;
@@ -406,7 +407,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- поза таблицями: хостинги, API Kraken, Oracle Cloud; у факультативі —
+- поза таблицями: хостинги, Oracle Cloud; у факультативі —
   lightweight-charts, wagmi, viem і Foundry.
 
 ---
@@ -1107,7 +1108,7 @@ React — бібліотека поверх мови й браузера. Усе
 
 **Сервери MCP фази:** `react-docs`, `react-router-docs`, `tanstack-query-docs`, `mdn-docs`, `webstandards-docs`,
 `react-hook-form-docs`, `zod-docs`, `zustand-docs`, `redux-docs`, `vitest-docs`, `testing-library-docs`, `msw-docs`,
-`playwright-docs`, `shadcn-docs`, `webdev-docs`, `binance-spot-docs`, `partysocket-docs`.
+`playwright-docs`, `shadcn-docs`, `webdev-docs`, `binance-spot-docs`, `kraken-spot-docs`, `partysocket-docs`.
 
 React не має нічого з цього в коробці. Документація сама каже, що брати: глава `Build a React app from Scratch`,
 крок 2 — маршрути, дані, розділення коду. Про дані там пряма порада: «fetching data directly in components can
@@ -1215,9 +1216,10 @@ information» і «WebSocket Limits»), на 08.10.2026: з'єднання з `s
 з'єднання розривають, а адресу, яку розривають раз у раз, можуть заблокувати; що буває після 300 з'єднань,
 документація не пише. **Першого ж дня перевірте, що стрім відповідає з вашої мережі:** Binance обмежує доступ із
 деяких країн, а про `*.binance.vision` документація в цьому сенсі нічого не каже. Якщо не відповідає — запасне джерело
-Kraken WS v2, `wss://ws.kraken.com/v2`: там підписка окремим повідомленням, а ціни приходять числами JSON, тож їх
-треба одразу перетворювати на рядки. У плані NestJS, фаза 7, з'єднання з біржею переїде на ваш сервер, а SPA слухатиме
-вже його, — тому тримайте адресу й розбір повідомлень біржі в одному модулі, щоб потім замінити лише його.
+Kraken WS v2, `wss://ws.kraken.com/v2` (примірник `kraken-spot`): там підписка окремим повідомленням, а ціни приходять
+числами JSON, тож їх треба одразу перетворювати на рядки. У плані NestJS, фаза 7, з'єднання з біржею переїде на ваш
+сервер, а SPA слухатиме вже його, — тому тримайте адресу й розбір повідомлень біржі в одному модулі, щоб потім
+замінити лише його.
 
 ### День 6. WebSocket у браузері
 
@@ -1238,8 +1240,10 @@ Kraken WS v2, `wss://ws.kraken.com/v2`: там підписка окремим �
   примірнику `mdn` — `WebSocket`, `CloseEvent`; у примірнику `binance-spot` — `WebSocket Streams for Binance` (розділи
   «General WSS information», «WebSocket Limits», «Individual Symbol Mini Ticker Stream»); у
   примірнику `webstandards` — `WebSockets Standard: 3 The WebSocket interface`, `WebSockets Standard: 6 The CloseEvent
-  interface`, `RFC 6455 The WebSocket Protocol: 7 Closing the Connection`.
-- **Сервери MCP:** `react-docs`, `mdn-docs`, `webstandards-docs`, `binance-spot-docs`.
+  interface`, `RFC 6455 The WebSocket Protocol: 7 Closing the Connection`; запасна біржа — у примірнику `kraken-spot`
+  — `Spot WebSocket Introduction` (розділ «Connection Details»), `WebSocket v2: Ticker` (розділи «Subscribe»,
+  «Snapshot / Update»).
+- **Сервери MCP:** `react-docs`, `mdn-docs`, `webstandards-docs`, `binance-spot-docs`, `kraken-spot-docs`.
 - **Зробити:** 1) модуль «список монет»: додати, видалити й перейменувати пару (`BTCUSDT`, `ETHUSDT`…) через фейковий
   API і `useQuery`, як інші записи; 2) компонент, що в ефекті відкриває одне з'єднання на весь список (адреса — з
   відсортованих пар у нижньому регістрі; кожну пару з даних користувача перед цим перевірити виразом
@@ -1279,8 +1283,9 @@ Kraken WS v2, `wss://ws.kraken.com/v2`: там підписка окремим �
   information»); для порівняння з готовою бібліотекою — у примірнику `partysocket` — `partykit:
   packages/partysocket/src/ws.ts` (розділи «type Options», «const DEFAULT», «ReconnectingWebSocket._getNextDelay()»:
   затримка росте множником 1,3 до стелі в 10 с без джитера на кожну спробу; до 1.1.18 випадковою була лише базова
-  затримка, одна на весь модуль, з 1.1.19 вона стала 3 с).
-- **Сервери MCP:** `react-docs`, `mdn-docs`, `binance-spot-docs`, `partysocket-docs`.
+  затримка, одна на весь модуль, з 1.1.19 вона стала 3 с); як радить сама біржа — у примірнику `kraken-spot` —
+  `Reconnection and resilience` (розділи «Reconnection with backoff», «Re-subscribing after reconnect»).
+- **Сервери MCP:** `react-docs`, `mdn-docs`, `binance-spot-docs`, `kraken-spot-docs`, `partysocket-docs`.
 - **Зробити:** 1) модуль `priceStore` з `subscribe`, `getSnapshot`, станом з'єднання й незмінними записами;
   2) хуки `usePrice(symbol)` і `useConnectionStatus()`; 3) перепідключення з повним джитером і стелею, кожна
   затримка — у лог; 4) індикатор стану в шапці; 5) ціна BTC у списку й у шапці одночасно; 6) службова функція,
