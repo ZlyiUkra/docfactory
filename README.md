@@ -1328,6 +1328,24 @@ swr.vercel.app у стані на день кожного релізу (репо
 - корпус в архіві від самого початку, як у helmet;
 - докладніше — у [instances/swr/README.md](instances/swr/README.md).
 
+### partysocket
+
+Документація PartySocket, клієнта WebSocket із перепідключенням для PartyKit і PartyServer, усіх стабільних версій,
+0.0.2–1.3.0: чотирнадцять сторінок docs.partykit.io про клієнт у стані на день кожного релізу (репозиторій
+partykit/partykit без тегів сайту), README кожної версії, журнал змін, реєстр npm і код із тестами
+`packages/partysocket/src` на кожну версію з обох репозиторіїв — partykit/partykit до березня 2025 і cloudflare/partykit
+після. Сторінку й README давно не оновлювали, тож опції 1.2–1.3 описані лише в журналі змін і коді. Новий читач
+`ghcode-history-ts` ділить код TypeScript на класи, методи, типи й тести. 257 документів, 1139 фрагментів.
+
+- порт `8820`; запис у Claude Code — `partysocket-docs`, адреса `http://127.0.0.1:8820/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-partysocket`, модель векторів — `bge-small`; `max_per_doc: 1`;
+- версія — номер релізу: `version: "1"` лишає 1.x, `"1.1"` — лінію 1.1, `"0"` — 0.0.x; без названої версії промпт
+  велить відповідати для 1.x — найпоширенішої за завантаженнями npm;
+- приклад питання агентові: `./df partysocket ask "What is the default of maxRetries and how do I stop reconnecting?"`;
+- корпус в архіві від самого початку, як у helmet;
+- докладніше — у [instances/partysocket/README.md](instances/partysocket/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
