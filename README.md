@@ -1416,11 +1416,12 @@ Popmotion разом із Pose — сайт popmotion.io з репозиторі
 Документація API споту Kraken англійською з сайту docs.kraken.com: кожен ендпойнт Spot REST окремою сторінкою (ринкові
 дані, дані рахунку, торгівля, funding, Earn, субакаунти, прозорість), канали й методи Spot WebSocket v2, гайди
 біржового API (огляд, швидкий старт, підпис HMAC-SHA512, ключі, ліміти, помилки, `cl_ord_id`, amend, L3,
-автентифікація WebSocket, контрольні суми книги, перепідключення), журнал змін від 28.11.2018 і короткі сторінки про
-офіційні SDK для Go й Rust, `kraken-cli` і його MCP-сервер. Запасне джерело ринкових даних до `binance-spot` у планах
-React і NestJS. Новий читач `sitemap-mintlify` бере markdown-двійники сайту на Mintlify: поля WebSocket з компонентів
-`<ResponseField>` стають списком, а шматок OpenAPI на сторінці ендпойнта REST — розділами `Request` і `Response`. Без
-деривативів, FIX, WebSocket v1 та інституційних API. 127 документів, 882 фрагменти.
+автентифікація WebSocket, контрольні суми книги, перепідключення), довідник Unified FIX 4.4 — один на спот і
+деривативи — з гайдами FIX, журнал змін від 28.11.2018 і короткі сторінки про офіційні SDK для Go й Rust, `kraken-cli`
+і його MCP-сервер. Запасне джерело ринкових даних до `binance-spot` у планах React і NestJS. Новий читач
+`sitemap-mintlify` бере markdown-двійники сайту на Mintlify: поля WebSocket з компонентів `<ResponseField>` стають
+списком, а шматок OpenAPI на сторінці ендпойнта REST — розділами `Request` і `Response`. Без деривативів (крім
+спільного FIX), WebSocket v1 та інституційних API. 153 документи, 981 фрагмент.
 
 - порт `8824`; запис у Claude Code — `kraken-spot-docs`, адреса `http://127.0.0.1:8824/mcp`; інструменти
   `search_docs` і `read_section`;
