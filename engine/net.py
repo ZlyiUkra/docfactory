@@ -106,14 +106,17 @@ def _gunzip(data: bytes) -> bytes | None:
     return None if len(out) > MAX_UNPACKED or unpack.unconsumed_tail else out
 
 
-def fetch(url: str, allow, *, since: str = "", gzip: bool = False) -> tuple[str, bytes]:
+def fetch(url: str, allow, *, since: str = "", gzip: bool = False,
+          accept: str = "") -> tuple[str, bytes]:
     """(код, байти). Код: «200», «304» або рядок «збій: …».
 
     `allow` — функція примірника: недозволена адреса не завантажується взагалі,
     підіймається Refused. `since` вмикає умовний запит: сервер відповість «304»,
     якщо документ не змінювався з тієї дати, і тіла не надішле. `gzip` просить
     стиснуту відповідь і розпаковує її: сайтмап web.dev без цього відповідає 500.
-    Без поля запит той самий, що й до його появи.
+    `accept` — заголовок Accept: motion.dev віддає markdown прикладів і журналу
+    змін лише на «Accept: text/markdown», двійника з «.md» у них немає.
+    Без полів запит той самий, що й до їхньої появи.
     """
     if not allow(url):
         raise Refused(f"адреса поза оголошенням примірника: {url}")
@@ -128,6 +131,8 @@ def fetch(url: str, allow, *, since: str = "", gzip: bool = False) -> tuple[str,
             pass
     if gzip:
         headers["Accept-Encoding"] = "gzip"
+    if accept:
+        headers["Accept"] = accept
     req = urllib.request.Request(url, headers=headers)
     opener = urllib.request.build_opener(_GuardedRedirects(allow))
     try:

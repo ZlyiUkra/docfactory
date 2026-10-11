@@ -64,7 +64,8 @@ class Ctx:
 
     _allow = allowed
 
-    def fetch(self, url: str, since: str = "", gzip: bool = False) -> tuple[str, bytes]:
+    def fetch(self, url: str, since: str = "", gzip: bool = False,
+              accept: str = "") -> tuple[str, bytes]:
         """net.fetch з паузою між зверненнями і повторами на 429/503."""
         for wait in RETRY_WAITS + (None,):
             gap = self._last + self.pause - time.monotonic()
@@ -73,6 +74,8 @@ class Ctx:
             # `gzip` передається лише тоді, коли його попросили: без нього виклик той
             # самий, що й до появи поля, і заглушки net.fetch у smoke його не знають.
             extra = {"gzip": True} if gzip else {}
+            if accept:
+                extra["accept"] = accept
             code, data = net.fetch(url, self.allowed, since=since, **extra)
             self._last = time.monotonic()
             if wait is None or code not in _RETRY_CODES:
@@ -81,14 +84,14 @@ class Ctx:
             time.sleep(wait)
         return code, data
 
-    def bytes(self, url: str, gzip: bool = False) -> bytes:
-        code, data = self.fetch(url, gzip=gzip)
+    def bytes(self, url: str, gzip: bool = False, accept: str = "") -> bytes:
+        code, data = self.fetch(url, gzip=gzip, accept=accept)
         if code != "200":
             raise SystemExit(f"{url}: {code}")
         return data
 
-    def text(self, url: str, gzip: bool = False) -> str:
-        return self.bytes(url, gzip).decode("utf-8", errors="replace")
+    def text(self, url: str, gzip: bool = False, accept: str = "") -> str:
+        return self.bytes(url, gzip, accept).decode("utf-8", errors="replace")
 
 
 def named(source, targets) -> bool:
