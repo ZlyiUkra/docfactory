@@ -1411,6 +1411,25 @@ Popmotion разом із Pose — сайт popmotion.io з репозиторі
 - корпус в архіві від самого початку, як у helmet;
 - докладніше — у [instances/motion/README.md](instances/motion/README.md).
 
+### kraken-spot
+
+Документація API споту Kraken англійською з сайту docs.kraken.com: кожен ендпойнт Spot REST окремою сторінкою
+(ринкові дані, дані рахунку, торгівля, funding, Earn, субакаунти, прозорість), канали й методи Spot WebSocket v2,
+гайди біржового API (огляд, швидкий старт, підпис HMAC-SHA512, ключі, ліміти, помилки, `cl_ord_id`, amend, L3,
+автентифікація WebSocket, контрольні суми книги, перепідключення) і журнал змін від 28.11.2018. Запасне джерело
+ринкових даних до `binance-spot` у планах React і NestJS. Новий читач `sitemap-mintlify` бере markdown-двійники
+сайту на Mintlify: поля WebSocket з компонентів `<ResponseField>` стають списком, а шматок OpenAPI на сторінці
+ендпойнта REST — розділами `Request` і `Response`. Без деривативів, FIX, WebSocket v1 та інституційних API.
+122 документи, 848 фрагментів.
+
+- порт `8824`; запис у Claude Code — `kraken-spot-docs`, адреса `http://127.0.0.1:8824/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-kraken-spot`, модель векторів — `bge-small`;
+- версій немає: документація описує API як він є зараз, історія — у журналі змін за датами;
+- приклад питання агентові: `./df kraken-spot ask "How do I verify the book checksum on WebSocket v2?"`;
+- корпус в архіві від самого початку, як у binance-spot;
+- докладніше — у [instances/kraken-spot/README.md](instances/kraken-spot/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
