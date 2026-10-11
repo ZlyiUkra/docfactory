@@ -349,7 +349,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 | SWR | легший за TanStack Query кеш серверного стану; у примірнику `swr` — `docs/getting-started`, `docs/api` |
 | RTK Query | серверний стан, якщо проєкт уже на Redux Toolkit; у примірнику `redux` — `RTK Query Overview` |
 | TanStack Router | маршрутизатор із суворою типізацією адрес і параметрів |
-| Storybook | компоненти окремо від застосунку, каталог для дизайнерів |
+| Storybook | компоненти окремо від застосунку, каталог для дизайнерів; у примірнику `storybook` — `Storybook for React with Vite`, `What's a story?`, `Interaction tests` |
 | React Native, Expo | мобільні застосунки на тих самих знаннях React; у примірнику `react-native` — `Get Started with React Native`, власний нативний код — `Native Modules: Introduction` і `Fabric Native Components Introduction`; у примірнику `expo` — `Tutorial: Using React Native and Expo`, `Expo Modules API: Overview` |
 | Motion | анімації руху: поява, перестановка, жести |
 | i18next | переклади інтерфейсу; у примірнику `i18next` — `overview/getting-started`, для React — `latest/usetranslation-hook` і `latest/trans-component` (react-i18next) |
@@ -358,7 +358,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 
 Порівняння TanStack Query з SWR, RTK Query і лоадерами React Router є в примірнику `tanstack-query` — глава
 `Comparison | React Query vs SWR vs Apollo vs RTK Query vs React Router` (з погляду авторів TanStack, зважайте на
-це). Про Storybook і Motion корпусів у фабриці немає — це порада з практики.
+це). Про Motion корпусу у фабриці немає — це порада з практики.
 Бібліотеки факультативу (графіки, гаманці) — у його власній таблиці інструментів.
 
 ### Документація у фабриці
@@ -396,11 +396,13 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
   `react-native`; Expo (довідник кожного SDK 23–57 з API модулів і `app.json`, посібники: Expo Router, EAS, Expo
   Modules API) — `expo`;
 - API споту Binance (REST, WebSocket API, потоки ринкових даних, ліміти, журнал змін) — `binance-spot`;
-- partysocket (сторінки PartyKit про клієнт, README і код з тестами кожної версії, журнал змін) — `partysocket`.
+- partysocket (сторінки PartyKit про клієнт, README і код з тестами кожної версії, журнал змін) — `partysocket`;
+- Storybook (документація 6.5, 7.6, 8.6, 9.1 і 10.x з прикладами коду всіх фреймворків, рецепти інтеграцій,
+  MIGRATION.md, журнали змін) — `storybook`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «знати, що існує»: TanStack Router, Storybook, Motion;
+- з «знати, що існує»: TanStack Router, Motion;
 - поза таблицями: хостинги, API Kraken, Oracle Cloud; у факультативі —
   lightweight-charts, wagmi, viem і Foundry.
 

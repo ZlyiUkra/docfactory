@@ -350,7 +350,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 | Turborepo | кілька застосунків в одному репозиторії |
 | Helm, Argo CD, Flux, Sealed Secrets | чужі чарти в кластері, викот «з репозиторію», секрети контролером; фаза 9 пояснює, чому не тут |
 | Prometheus, Grafana, Loki | метрики й логи з історією, коли кластеру вистачає пам'яті |
-| Storybook, MSW, Testing Library | компоненти окремо, підміна мережі в тестах |
+| Storybook, MSW, Testing Library | компоненти окремо, підміна мережі в тестах; у примірнику `storybook` — `Storybook for Next.js with Vite` |
 
 Про nuqs, iron-session, jose, next-safe-action і UploadThing: у шаблонах корпусу їх майже немає, це порада з
 практики, а не висновок із документації. Документація Next.js називає бібліотеки автентифікації й сесій у главі
@@ -386,14 +386,16 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
   Argon2 і його специфікація — `argon2`;
 - переклади: i18next і всі пакети його організації в npm — react-i18next, next-i18next (з 16.x — App Router),
   next-language-detector, i18next-http-backend, i18next-browser-languagedetector, i18next-cli, інші бекенди, формати й
-  інструменти — `i18next`.
+  інструменти — `i18next`;
+- Storybook (документація 6.5, 7.6, 8.6, 9.1 і 10.x з прикладами коду всіх фреймворків, сторінки фреймворків
+  `nextjs` і `nextjs-vite`, рецепти інтеграцій, MIGRATION.md) — `storybook`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
 - з «треба знати»: Drizzle, Prisma, Biome;
 - з «варто знати»: iron-session, jose, Motion, next-themes, nuqs, next-intl, Redis (Upstash), OpenTelemetry;
 - з «знати, що існує»: Stripe, Resend і React Email, Vercel AI SDK, UploadThing, Sanity, Payload, Contentful,
-  tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Grafana, Loki, Storybook;
+  tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Grafana, Loki;
 - у факультативі — viem, wagmi і Foundry.
 
 ---

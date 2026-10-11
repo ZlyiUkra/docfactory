@@ -8,8 +8,8 @@
 docker, ecmascript, eslint, expo, express, express-rate-limit, ffmpeg, frontend-architecture, github-actions, helmet,
 i18next, kubernetes, linux, mdn, msw, nestjs, nextjs, nginx, node-postgres, nodejs, nodemailer, owasp, patterns,
 playwright, postgrator, postgres-image, postgresql, react, react-hook-form, react-native, react-router, react-window,
-redux, sentry, shadcn, socketio, supabase, swr, tailwind, tanstack-query, tanstack-virtual, testing-library,
-typescript, v8, vite, vitest, wasm, webdev, webstandards, zod, zustand.
+redux, sentry, shadcn, socketio, storybook, supabase, swr, tailwind, tanstack-query, tanstack-virtual,
+testing-library, typescript, v8, vite, vitest, wasm, webdev, webstandards, zod, zustand.
 
 ## Як читати таблиці
 
