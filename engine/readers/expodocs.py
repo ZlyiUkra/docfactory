@@ -58,7 +58,11 @@ _FOLDERS = ("pages/versions/v{sdk}.0.0", "versions/v{sdk}.0.0")
 _DATA = "public/static/data/v{sdk}.0.0/"
 _API = re.compile(r"<APISection\b([^>]*?)/?>", re.S)
 _ATTR = re.compile(r"(\w+)=(?:\"([^\"]*)\"|'([^']*)'|\{([^{}]*)\})")
-_IMPORT = re.compile(r"^import\s+(\w+)\s+from\s+['\"]~/(public/static/[^'\"]+)['\"];?\s*$", re.M)
+_IMPORT = re.compile(r"^import\s+(\w+)\s+from\s+['\"]~/((?:public/static|scripts)/[^'\"]+)['\"];?\s*$",
+                     re.M)
+# Схеми app.json і eas.json: до ~SDK 45 сайт тримав їх у `docs/scripts/schemas/` модулями JS
+# (`export default {…}`), потім — у `docs/public/static/schemas/`.
+_SCHEMAS = ("public/static/schemas/", "scripts/schemas/")
 _SCHEMA_TAG = re.compile(r"<(\w+)\b[^<>]*?\bschema=\{(\w+)\}[^<>]*?/>", re.S)
 _OLD_GUIDES = ("guides/", "workflow/")
 _IMPORT_END = re.compile(r"(\bfrom\s+|^import\s+)['\"][^'\"]+['\"];?[ \t]*$")
@@ -113,7 +117,7 @@ class _Repo:
                     if e.get("type") == "blob" and (
                             (p.startswith(("pages/", "versions/")) and p.endswith(_PAGE))
                             or (p.startswith("public/static/data/") and p.endswith(".json"))
-                            or p.startswith("public/static/schemas/")):
+                            or p.startswith(_SCHEMAS)):
                         files[p] = e["sha"]
             self.snaps[ref] = files
         return self.snaps[ref]
@@ -271,8 +275,9 @@ def _props_table(value) -> str:
     return "\n" + "\n".join(rows) + "\n" if rows else ""
 
 
-def _schema_rows(node, depth: int = 0) -> list[str]:
-    """JSON Schema (`app-config-schema.json`) чи масив властивостей eas.json → вкладений список."""
+def _schema_rows(node, depth: int = 0, heads: bool = False) -> list[str]:
+    """JSON Schema (`app-config-schema.json`) чи масив властивостей eas.json → вкладений список.
+    `heads` — властивості верхнього рівня схеми стають підрозділами `### назва`."""
     rows: list[str] = []
     pad = "  " * depth
     # Схема app.json сайту — уже сама мапа «властивість → опис», без обгортки `properties`.
@@ -297,6 +302,16 @@ def _schema_rows(node, depth: int = 0) -> list[str]:
                 bits.append(f"bare workflow: {' '.join(str(meta['bareWorkflow']).split())}")
             desc = " ".join(str(spec.get("markdownDescription") or spec.get("description")
                                 or "").split())
+            if heads:
+                # Окремий розділ на властивість, як якір на сайті: інакше весь довідник
+                # app.json (~35 тис. символів) — один розділ «Properties», і запит про
+                # ios.bundleIdentifier у ньому тоне.
+                about = " — ".join(x for x in ("; ".join(bits), desc) if x)
+                rows += ["", f"### {name}", ""] + ([about, ""] if about else [])
+                rows += _schema_rows(spec)
+                if isinstance(spec.get("items"), dict):
+                    rows += _schema_rows(spec["items"])
+                continue
             rows.append(f"{pad}- `{name}`" + (f" ({'; '.join(bits)})" if bits else "")
                         + (f" — {desc}" if desc else ""))
             if depth < 4:
@@ -320,11 +335,19 @@ def _schema_rows(node, depth: int = 0) -> list[str]:
     return rows
 
 
+# Модуль схеми eas.json розгортає чужі константи («enum: ['default',
+# ...ResourceClasses.android]»): їхніх значень у знімку немає, а одне розгортання валило
+# розбір усього модуля. Тож розгортання стає рядком «…»: у переліку видно, що значень
+# більше, а серед властивостей рядок пропускається, бо це не опис.
+_JS_SPREAD = re.compile(r"(?<=[\[{,])(\s*)\.\.\.[A-Za-z_$][\w$.]*(?=\s*[,\]}])")
+
+
 def _js_default(text: str):
     """`export default [ … ]` модуля схеми eas.json → значення."""
     m = re.search(r"export\s+default\s+", text)
     if not m:
         return None
+    text = text[:m.end()] + _JS_SPREAD.sub(r"\1'…'", text[m.end():])
     try:
         return _js_value(text, _js_skip(text, m.end()))[0]
     except (_NotLiteral, IndexError):
@@ -388,7 +411,7 @@ def _expand(text: str, meta: dict, api, schemas: dict) -> str:
             repl = f"\n\n{label}:\n\n" if label else "\n\n"
         else:
             name = re.search(r"\bschema=\{(\w+)\}", text[m.start():end])
-            rows = _schema_rows(schemas.get(name.group(1))) if name else []
+            rows = _schema_rows(schemas.get(name.group(1)), heads=True) if name else []
             repl = "\n" + "\n".join(rows) + "\n" if rows else ""
         out += [text[i:m.start()], repl]
         i = end
@@ -497,7 +520,10 @@ def _group(repo: _Repo, source: dict, units: list) -> dict:
             # означало б тягнути кожну двічі. Однакові розділи різних версій усе одно
             # зливаються вже в корпусі.
             key_data: tuple = ()
-            if data and any(r.search(rel) for r in scan):
+            # Окремий документ на версію — лише там, де є дані API чи схеми нового сайту; старі
+            # схеми `scripts/schemas/` стоять у шляху імпорту з номером SDK, тож сторінка з ними
+            # і так своя в кожному SDK.
+            if any(not k.startswith("scripts/") for k in data) and any(r.search(rel) for r in scan):
                 key_data = (("version", version),)
             seen.setdefault((rel, sha, key_data), [ref, folder, [], data])[2].append(version)
     return seen
@@ -539,7 +565,7 @@ def _head(repo: _Repo) -> str:
 
 def _data_of(snap: dict, sdk: str) -> dict:
     prefix = _DATA.format(sdk=sdk)
-    return {p: s for p, s in snap.items() if p.startswith((prefix, "public/static/schemas/"))}
+    return {p: s for p, s in snap.items() if p.startswith((prefix,) + _SCHEMAS)}
 
 
 @register("expo-sdk-history")
@@ -601,7 +627,7 @@ def expo_guides_history(source: dict, ctx) -> list[Item]:
         files = {p[len("pages/"):]: s for p, s in snap.items()
                  if p.startswith("pages/") and not p.startswith("pages/versions/")}
         units.append((sdk, ref, "pages", files,
-                      {p: s for p, s in snap.items() if p.startswith("public/static/schemas/")}))
+                      {p: s for p, s in snap.items() if p.startswith(_SCHEMAS)}))
     seen = _group(repo, source, units)
     site = source.get("site", "")
 

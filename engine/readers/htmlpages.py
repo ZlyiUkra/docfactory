@@ -6,6 +6,8 @@
                `exclude` — вирази адрес, що не беруться (їх дає інше джерело).
                `end` — вирази, на яких текст сторінки закінчується; типово — `<footer`.
                `version` — версія всіх документів джерела.
+               `follow: false` — посилань зі змістів не брати: документи — лише `url`,
+               `index` і `pages` (окремі дописи, де посилання ведуть на сусідні дописи).
 
 Навіщо. Сайти tailwindcss.com усіх версій зібрано з MDX, але головного в MDX немає:
 таблиця класів сторінки («p-4 → padding: 1rem») у v1–v3 генерується з коду самого
@@ -63,12 +65,13 @@ def html_pages(source: dict, ctx) -> list[Item]:
             names.add(name)
             urls.append(url)
 
+    follow = source.get("follow", True)
     for page in index:
         html = ctx.text(page)
         cache[page.rstrip("/")] = html
-        for href in [page] + _HREF.findall(html):
+        for href in [page] + (_HREF.findall(html) if follow else []):
             add(urljoin(page, href))
-    if len(urls) <= len(index):
+    if follow and len(urls) <= len(index):
         raise SystemExit(f"На сторінках-змістах {', '.join(index)} не знайдено "
                          f"посилань на сторінки документації — розмітка змінилася.")
     for page in source.get("pages") or ():
