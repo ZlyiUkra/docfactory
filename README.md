@@ -1388,6 +1388,29 @@ MIGRATION.md на кроки без змісту-переліку. 1119 доку
 - корпус в архіві від самого початку, як у helmet;
 - докладніше — у [instances/tanstack-router/README.md](instances/tanstack-router/README.md).
 
+### motion
+
+Документація Motion (до листопада 2024 — Framer Motion) для React, JavaScript і Vue: кожна сторінка motion.dev у
+теперішній редакції — документація, Motion+, Motion UI, AI Kit, 470 прикладів і посібників, журнал помилок, статті;
+журнал змін від Framer Motion 0.3.0 до 14.1.0; README і реєстр npm кожної стабільної версії `framer-motion`, `motion`
+(разом із Motion One 10.x), `framer-motion-3d`, `motion-v` і `@motionone/*`; релізи Motion для Vue; і попередник
+Popmotion разом із Pose — сайт popmotion.io з репозиторію, README, журнали змін і реєстр npm 11 пакетів. Сайт
+старих редакцій не тримає, тож історію дають журнали змін і README версій. Новий читач `sitemap-accept` бере
+сторінки, що віддають markdown лише на `Accept: text/markdown`, і вирізає з них закриті вставки Motion+. Лише
+стабільні версії. 2 413 документів, 8 350 фрагментів.
+
+- порт `8823`; запис у Claude Code — `motion-docs`, адреса `http://127.0.0.1:8823/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-motion`, модель векторів — `bge-small`;
+- версія — номер випуску пакета: `version: "12"` лишає 12.x журналу змін, README і реєстру; сторінки сайту версії
+  не несуть і описують поточний випуск; номери `framer-motion`, Motion One, `motion-v` і Popmotion перетинаються,
+  тож промпт велить називати пакет у запиті; без названої версії промпт велить відповідати для 12.x —
+  найпоширенішої за завантаженнями npm (61% `framer-motion`, 71% `motion`), звіряючи сторінку сайту з розділами
+  13.0 і 14.0 посібника з оновлення;
+- приклад питання агентові: `./df motion ask "How do I animate a component out with AnimatePresence?"`;
+- корпус в архіві від самого початку, як у helmet;
+- докладніше — у [instances/motion/README.md](instances/motion/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
