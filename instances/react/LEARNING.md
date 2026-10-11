@@ -348,7 +348,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 |------------|--------------|
 | SWR | легший за TanStack Query кеш серверного стану; у примірнику `swr` — `docs/getting-started`, `docs/api` |
 | RTK Query | серверний стан, якщо проєкт уже на Redux Toolkit; у примірнику `redux` — `RTK Query Overview` |
-| TanStack Router | маршрутизатор із суворою типізацією адрес і параметрів |
+| TanStack Router | маршрутизатор із суворою типізацією адрес і параметрів; у примірнику `tanstack-router` — `Quick Start`, `Search Params`, `Data Loading`, порівняння з React Router — `Comparison`; повностековий фреймворк на ньому — `TanStack Start (React): Getting Started` |
 | Storybook | компоненти окремо від застосунку, каталог для дизайнерів; у примірнику `storybook` — `Storybook for React with Vite`, `What's a story?`, `Interaction tests` |
 | React Native, Expo | мобільні застосунки на тих самих знаннях React; у примірнику `react-native` — `Get Started with React Native`, власний нативний код — `Native Modules: Introduction` і `Fabric Native Components Introduction`; у примірнику `expo` — `Tutorial: Using React Native and Expo`, `Expo Modules API: Overview` |
 | Motion | анімації руху: поява, перестановка, жести |
@@ -374,6 +374,8 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 - Vite — `vite`; TypeScript — `typescript`; Vitest — `vitest`; React Testing Library, user-event і jest-dom —
   `testing-library`; MSW — `msw`; Playwright — `playwright`;
 - React Router — `react-router`; TanStack Query — `tanstack-query`; TanStack Virtual — `tanstack-virtual`;
+- TanStack Router і TanStack Start (документація всіх сталих версій 1.x з довідником API, попередник React Location,
+  приклади, журнали змін) — `tanstack-router`;
 - SWR (сайт усіх стабільних версій, README кожної версії, нотатки релізів, приклади) — `swr`;
 - react-window обох ліній (1.x і 2.x), react-window-infinite-loader і react-virtualized-auto-sizer — `react-window`;
 - React Hook Form — `react-hook-form`; zod — `zod`;
@@ -402,7 +404,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «знати, що існує»: TanStack Router, Motion;
+- з «знати, що існує»: Motion;
 - поза таблицями: хостинги, API Kraken, Oracle Cloud; у факультативі —
   lightweight-charts, wagmi, viem і Foundry.
 
