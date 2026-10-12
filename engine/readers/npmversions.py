@@ -6,6 +6,12 @@
                  `name_prefix` — рядок перед іменем документа: «overview» і «line-2» кількох
                  пакетів одного примірника інакше мали б спільний ключ розділу, і пошук згортав
                  би огляд одного пакета як повтор огляду іншого. Без поля імена ті самі.
+                 `lockstep_deps: true` — залежності, що з кожною версією переходять на ту саму
+                 версію, що й пакет, згортаються в одну примітку («152 dependencies moved with
+                 it to 2.0.1»); додані, прибрані й інші зміни лишаються поіменно. oci-sdk — це
+                 збірка з півтори сотні пакетів сервісів, і кожна версія переписувала б їх усі:
+                 таблиця лінії 2 мала 1,7 МБ, з яких змістовні — дати й нові пакети. Без поля
+                 таблиця та сама.
 
 Навіщо. Документація каже, як працює API, але рідко — з якої версії він є і як перейти з однієї
 версії на іншу. Реєстр npm знає це точно для кожної версії, яку можна встановити, зокрема canary,
@@ -130,7 +136,7 @@ def _overview(label, cite, stamp, rows, dist_tags, lines) -> str:
                             "\n".join(out), ", ".join(reversed([r["v"] for r in rows])))
 
 
-def _line_doc(label, cite, stamp, rows, ln) -> str:
+def _line_doc(label, cite, stamp, rows, ln, lockstep: bool = False) -> str:
     out: list[str] = []
     prev = None
     minor = None
@@ -155,7 +161,17 @@ def _line_doc(label, cite, stamp, rows, ln) -> str:
             if gone_e:
                 changes.append("removed import paths: "
                                + ", ".join(_path(label, e) for e in gone_e))
-            changes += _diff(prev["deps"], r["deps"], "dependency")
+            dep_changes = _diff(prev["deps"], r["deps"], "dependency")
+            if lockstep:
+                moved = {k for k, v in r["deps"].items()
+                         if k in prev["deps"] and prev["deps"][k] != v
+                         and v.lstrip("^~=") == r["v"]}
+                if moved:
+                    dep_changes = [c for c in dep_changes
+                                   if c.split(" ")[2] not in moved
+                                   or not c.startswith("dependency changed: ")]
+                    dep_changes.insert(0, f"{len(moved)} dependencies moved with it to {r['v']}")
+            changes += dep_changes
             changes += _diff(prev["peer"], r["peer"], "peer dependency")
             changes += _diff(prev["engines"], r["engines"], "engine")
         else:
@@ -239,6 +255,7 @@ def npm_versions(source: dict, ctx) -> list[Item]:
     for ln in lines:
         items.append(keep(f"line-{ln}.txt", _line_doc(label, cite, ctx.stamp,
                                                       [r for r in rows
-                                                       if r["v"].split(".")[0] == ln], ln)))
+                                                       if r["v"].split(".")[0] == ln], ln,
+                                                      source.get("lockstep_deps") is True)))
     del data, rows
     return items
