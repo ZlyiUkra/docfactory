@@ -405,12 +405,13 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 - Storybook (документація 6.5, 7.6, 8.6, 9.1 і 10.x з прикладами коду всіх фреймворків, рецепти інтеграцій,
   MIGRATION.md, журнали змін) — `storybook`;
 - Motion, раніше Framer Motion (сайт motion.dev з прикладами, журнал змін і README кожної стабільної версії, Motion
-  One, Motion для Vue, попередник Popmotion) — `motion`.
+  One, Motion для Vue, попередник Popmotion) — `motion`;
+- TradingView lightweight-charts (сайт кожної лінії 3.8–5.2 з довідником API, уроки й плагіни, документація й
+  типізації 1.0–3.7, обгортки Android та iOS) — `lightweight-charts`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- поза таблицями: хостинги; у факультативі —
-  lightweight-charts, wagmi, viem і Foundry.
+- поза таблицями: хостинги; у факультативі — wagmi, viem і Foundry.
 
 ---
 
@@ -2177,7 +2178,8 @@ HTTPS, нова версія викочується без простою, а п
 
 # Факультатив: крипта — 5 днів
 
-**Сервери MCP фази:** `react-docs`, `tanstack-query-docs`, `mdn-docs`, `zod-docs`, `binance-spot-docs`.
+**Сервери MCP фази:** `react-docs`, `tanstack-query-docs`, `mdn-docs`, `zod-docs`, `binance-spot-docs`,
+`lightweight-charts-docs`.
 
 Мета факультативу — розуміти, як влаштована крипта, і вміти написати щось із нею: читати ринкові дані біржі,
 малювати графік, підключати гаманець і надсилати транзакцію. Для роботи фулстеком він не потрібен, і основний
@@ -2330,10 +2332,11 @@ NestJS і Next.js.
   обхід стану React: графік оновлюється, а React не рендерить нічого. Ліцензія Apache-2.0 вимагає зазначити
   авторство TradingView з посиланням на їхній сайт; у версії 5 це робить логотип на графіку, увімкнений за
   замовчуванням.
-- **Читати:** `Synchronizing with Effects` (розділ «Controlling non-React widgets»), `useRef`; документація
-  lightweight-charts — «Getting started», «Series», розділ про авторство (поза корпусом); у примірнику `binance-spot`
-  — `WebSocket Streams for Binance` (розділ «Kline/Candlestick Streams for UTC»).
-- **Сервери MCP:** `react-docs`, `binance-spot-docs`.
+- **Читати:** `Synchronizing with Effects` (розділ «Controlling non-React widgets»), `useRef`; у примірнику
+  `lightweight-charts` — `Getting started` (розділи «Creating a series», «Setting and updating a data», «License and
+  attribution»), `Series`, `Advanced React example`; у примірнику `binance-spot` — `WebSocket Streams for Binance`
+  (розділ «Kline/Candlestick Streams for UTC»).
+- **Сервери MCP:** `react-docs`, `lightweight-charts-docs`, `binance-spot-docs`.
 - **Зробити:** 1) компонент `CandleChart` з `createChart` в ефекті й `chart.remove()` у прибиранні; 2) історія з
   дня К1 через `setData`; 3) живі свічки з потоку `@kline_1m` через `update`; 4) перемикач інтервалу 1m / 15m / 1h
   (новий ключ запиту, новий потік); 5) записати профіль React за хвилину живого графіка.
