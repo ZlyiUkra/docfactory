@@ -63,6 +63,11 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   comes out as the site shows it, and its revision counts the inserted files too. Before the full fetch, try the
   reader on a local bare clone of the repository: every tag and file is there offline. Versions released without a
   tag (changesets) are taken from the release commit, its full SHA standing as the key in `tags`.
+- **Generated text inside a page does not make a revision.** A Vocs site (`ghdocs-history` field `vocs`) keeps a
+  twoslash type cache of several kilobytes in every code block (`// @twoslash-cache: …`), rebuilt with the types: a
+  revision hashed from the raw file gives an unchanged page a new document almost every release. Hash the text the
+  reader sees, without such lines; the release commit of an untagged version is the `gitHead` field of that version
+  in the npm registry.
 - **Quality.** The second ten of `quality` («as the model»: queries in the documentation's own names, the way the
   prompt tells the model to write them) is the main goal: 10 of 10. Targets grow only by genuine answers. A target
   must be a section with its own text: a document that is only a header is never found as a section. `ua_query` is
@@ -451,6 +456,11 @@ and what a taken port and a failed connection look like. A domain list in the ro
   такою, як на сайті, а її редакція враховує й вставлені файли. До повного завантаження читача пробують на локальному
   голому клоні репозиторію: усі теги й файли там без мережі. Версії, випущені без тегу (changesets), беруться з коміту
   випуску — його повний SHA стає ключем у `tags`.
+- **Згенерований текст усередині сторінки — не нова редакція.** Сайт на Vocs (поле `vocs` читача `ghdocs-history`)
+  тримає в кожному блоці коду кеш типів twoslash на кілька кілобайтів (`// @twoslash-cache: …`), який перебудовується
+  разом із типами: відбиток із сирого файла давав би незмінній сторінці новий документ ледь не з кожним випуском.
+  Відбиток рахують із тексту, який бачить читач, без таких рядків; коміт випуску версії без тегу — поле `gitHead`
+  цієї версії в реєстрі npm.
 - **Якість.** Друга десятка `quality` («як модель»: запити назвами самої документації, як велить писати промпт) —
   головна мета: 10 із 10. Цілі доповнюють лише справжніми відповідями. Ціль мусить бути розділом із власним текстом:
   документ із самої шапки розділом не знаходиться. `ua_query` — суто кирилицею, без цифр і латиниці.
@@ -839,6 +849,11 @@ errada.
   a página sai como o site a mostra, e a sua revisão conta também os arquivos inseridos. Antes do download completo,
   teste o leitor num clone *bare* local do repositório: todas as tags e arquivos estão ali sem rede. Versões lançadas
   sem tag (changesets) vêm do commit de lançamento, cujo SHA completo serve de chave em `tags`.
+- **Texto gerado dentro da página não é uma nova revisão.** Um site em Vocs (campo `vocs` do leitor
+  `ghdocs-history`) guarda em cada bloco de código um cache de tipos twoslash de vários kilobytes
+  (`// @twoslash-cache: …`), refeito junto com os tipos: uma revisão calculada do arquivo cru daria a uma página
+  inalterada um novo documento quase a cada versão. Calcule a revisão do texto que o leitor vê, sem essas linhas; o
+  commit de lançamento de uma versão sem tag é o campo `gitHead` dessa versão no registro npm.
 - **Qualidade.** A segunda dezena de `quality` («como o modelo»: consultas com os nomes da própria documentação, como
   o prompt manda o modelo escrever) é a meta principal: 10 de 10. Os alvos só crescem com respostas genuínas. Um
   alvo precisa ser uma seção com texto próprio: um documento que é só cabeçalho nunca é encontrado como seção. A
