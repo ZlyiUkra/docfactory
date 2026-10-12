@@ -54,6 +54,10 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   sources that are editions of one site, `max_per_doc` and `fusion_depth` only by measuring `quality`;
   `answer_hosts` lists every host the documents link to, pages outside the documentation site included. The source
   field `name_prefix` keeps the «overview» and «line-2» documents of several packages in one instance apart.
+- **Generated API references** (TypeDoc and the like): the subheadings «Parameters», «Returns», «Default Value»,
+  «Inherited from», «Extends» split every member into one-word excerpts and tear a default value away from its
+  option. The `sitemap-html` field `inline_titles` turns them into labels inside the member's section. Pages of type
+  aliases and variables are genuinely short; `min_chars` keeps them instead of rejecting them as error pages.
 - **Quality.** The second ten of `quality` («as the model»: queries in the documentation's own names, the way the
   prompt tells the model to write them) is the main goal: 10 of 10. Targets grow only by genuine answers. A target
   must be a section with its own text: a document that is only a header is never found as a section. `ua_query` is
@@ -433,6 +437,10 @@ and what a taken port and a failed connection look like. A domain list in the ro
   що є редакціями одного сайту, `max_per_doc` і `fusion_depth` — лише за заміром `quality`; `answer_hosts`
   перелічує всі хости, на які посилаються документи, зокрема сторінки поза сайтом документації. Поле джерела
   `name_prefix` розводить документи «overview» і «line-2» кількох пакетів одного примірника.
+- **Згенерований довідник API** (TypeDoc тощо): підзаголовки «Parameters», «Returns», «Default Value», «Inherited
+  from», «Extends» ділять кожен член на фрагменти з одного слова й відривають значення за замовчуванням від опції.
+  Поле `inline_titles` читача `sitemap-html` робить з них підписи всередині розділу члена. Сторінки псевдонімів
+  типів і змінних справді короткі; `min_chars` лишає їх, а не відкидає як сторінки помилки.
 - **Якість.** Друга десятка `quality` («як модель»: запити назвами самої документації, як велить писати промпт) —
   головна мета: 10 із 10. Цілі доповнюють лише справжніми відповідями. Ціль мусить бути розділом із власним текстом:
   документ із самої шапки розділом не знаходиться. `ua_query` — суто кирилицею, без цифр і латиниці.
@@ -812,6 +820,10 @@ errada.
   `answer_hosts` lista todos os domínios para os quais os documentos apontam, inclusive páginas fora do site de
   documentação. O campo de fonte `name_prefix` separa os documentos «overview» e «line-2» de vários pacotes numa
   mesma instância.
+- **Referência de API gerada** (TypeDoc e afins): os subtítulos «Parameters», «Returns», «Default Value», «Inherited
+  from», «Extends» partem cada membro em trechos de uma palavra e separam o valor padrão da sua opção. O campo
+  `inline_titles` do leitor `sitemap-html` os transforma em rótulos dentro da seção do membro. Páginas de aliases
+  de tipo e de variáveis são curtas de verdade; `min_chars` as mantém em vez de rejeitá-las como páginas de erro.
 - **Qualidade.** A segunda dezena de `quality` («como o modelo»: consultas com os nomes da própria documentação, como
   o prompt manda o modelo escrever) é a meta principal: 10 de 10. Os alvos só crescem com respostas genuínas. Um
   alvo precisa ser uma seção com texto próprio: um documento que é só cabeçalho nunca é encontrado como seção. A
