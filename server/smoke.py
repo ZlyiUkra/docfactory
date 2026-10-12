@@ -283,6 +283,8 @@ def main(argv: list[str]) -> int:
     # в _old — фабрика нічого не видаляє сама. Крок build мережі не торкається, але
     # білий список питає так само: запис, що лишився від ширшого оголошення, текстом
     # корпусу не стане; адреси, якої у сховищі немає, — збій, а не звернення до мережі.
+    # Записане «404» build віддає тим самим кодом: читач, що на 404 пробує наступну
+    # адресу, без мережі мусить піти тим самим шляхом, що й з нею.
     import gzip
 
     from engine import rawstore
@@ -304,6 +306,7 @@ def main(argv: list[str]) -> int:
             raise AssertionError("build звернувся до мережі")
 
         store.put("https://evil.example/guide/intro.md", "", b"stale", {})
+        store.gone("https://docs.example/guide/gone.md", "", "збій: HTTP 404")
         offline = ECtx(wdecl, "2026-10-13", 0, store, offline=True)
         real_full, enet.fetch_full = enet.fetch_full, _no_net
         try:
@@ -313,10 +316,13 @@ def main(argv: list[str]) -> int:
             except enet.Refused:
                 refused = True
             code, _ = offline.fetch("https://docs.example/guide/missing.md")
+            gone, _ = offline.fetch("https://docs.example/guide/gone.md")
         finally:
             enet.fetch_full = real_full
         check("build без мережі: білий список питається, відсутнє у сховищі — збій",
               refused and code.startswith("збій"), code[:60])
+        check("build без мережі: записане 404 повертається тим самим кодом",
+              gone == "збій: HTTP 404", gone)
     finally:
         shutil.rmtree(rs, ignore_errors=True)
 

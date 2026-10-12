@@ -125,14 +125,14 @@ class Ctx:
             if got is None:
                 return ("збій: немає в сховищі сирого (спершу refresh)", b"")
             self._day = got[0].get("day", "")
-            return "200", got[1]
+            return got[0].get("code", "200"), got[1]
         old = self.store.meta(url, accept) or {}
         code, data, valid = self._call(url, lambda: net.fetch_full(
             url, self.allowed, gzip=gzip, accept=accept,
             etag=old.get("etag", ""), modified=old.get("modified", "")))
         if code == "304":
             got = self.store.get(url, accept)
-            if got is not None:
+            if got is not None and got[0].get("code", "200") == "200":
                 self._seen.add((url, accept))
                 return "200", got[1]
             # Запис пошкоджений — сервер про це не знає; питаємо ще раз, без умов.
@@ -143,7 +143,8 @@ class Ctx:
                 self.store.put(url, accept, data, valid)
                 self._seen.add((url, accept))
             elif code in rawstore.GONE:
-                self.store.retire(url, accept)
+                self.store.gone(url, accept, code)
+                self._seen.add((url, accept))
         except OSError as e:
             # Сховище — запас на майбутнє; через нього документ цього прогону не падає.
             print(f"  {url}: сховище сирого не записалося: {e}", flush=True)

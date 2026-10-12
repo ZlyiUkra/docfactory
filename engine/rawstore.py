@@ -19,6 +19,11 @@ Accept: та сама адреса з «Accept: text/markdown» — інша в�
 сторінки більше немає (404, 410), попередній файл переїжджає в
 `raw/_old/<день прогону>/<хост>/` і разом зі сховищем іде в архів примірника.
 
+Відповідь 404 чи 410 теж записується — позначкою без тіла: частина читачів пробує кілька
+адрес і на 404 бере наступну (README пакета, якого в найперших збірках не було). Без
+позначки крок build не відрізнив би «сторінки немає» від «не завантажували» і впав би там,
+де мережевий прогін ішов далі.
+
 У git сховище не йде (`instances/*/raw/` у .gitignore): це чужі сторінки, як і корпус.
 """
 
@@ -90,15 +95,21 @@ class Store:
 
     def get(self, url: str, accept: str = "") -> tuple[dict, bytes] | None:
         """(шапка, тіло) або None. Тіло, що не сходиться з сумою в шапці, — теж None:
-        пошкоджений запис не має права стати текстом корпусу."""
+        пошкоджений запис не має права стати текстом корпусу. Код відповіді — поле
+        `code` шапки: «200» або позначка зникнення з GONE."""
         return self._read(url, accept, whole=True)
 
-    def put(self, url: str, accept: str, data: bytes, validators: dict) -> None:
+    def gone(self, url: str, accept: str, code: str) -> None:
+        """Позначка «сторінки немає»; попереднє тіло, якщо було, — в _old."""
+        self.put(url, accept, b"", {}, code)
+
+    def put(self, url: str, accept: str, data: bytes, validators: dict,
+            code: str = "200") -> None:
         digest = hashlib.sha256(data).hexdigest()
         old = self.meta(url, accept)
-        if old and old.get("sha256") != digest:
+        if old and old.get("code", "200") == "200" and old.get("sha256") != digest:
             self.retire(url, accept)
-        meta = {"url": url, "accept": accept, "day": self.stamp,
+        meta = {"url": url, "accept": accept, "code": code, "day": self.stamp,
                 "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                 "etag": validators.get("etag", ""),
                 "modified": validators.get("modified", ""),
