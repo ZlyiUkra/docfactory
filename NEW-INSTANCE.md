@@ -58,6 +58,11 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   «Inherited from», «Extends» split every member into one-word excerpts and tear a default value away from its
   option. The `sitemap-html` field `inline_titles` turns them into labels inside the member's section. Pages of type
   aliases and variables are genuinely short; `min_chars` keeps them instead of rejecting them as error pages.
+- **A site assembled from repository files** (VitePress: `<!--@include-->`, `<<< @/snippets`, `{{…}}` variables from
+  `<script setup>` and `package.json`) is read from the tags with the `ghdocs-history` field `vitepress`: the page
+  comes out as the site shows it, and its revision counts the inserted files too. Before the full fetch, try the
+  reader on a local bare clone of the repository: every tag and file is there offline. Versions released without a
+  tag (changesets) are taken from the release commit, its full SHA standing as the key in `tags`.
 - **Quality.** The second ten of `quality` («as the model»: queries in the documentation's own names, the way the
   prompt tells the model to write them) is the main goal: 10 of 10. Targets grow only by genuine answers. A target
   must be a section with its own text: a document that is only a header is never found as a section. `ua_query` is
@@ -441,6 +446,11 @@ and what a taken port and a failed connection look like. A domain list in the ro
   from», «Extends» ділять кожен член на фрагменти з одного слова й відривають значення за замовчуванням від опції.
   Поле `inline_titles` читача `sitemap-html` робить з них підписи всередині розділу члена. Сторінки псевдонімів
   типів і змінних справді короткі; `min_chars` лишає їх, а не відкидає як сторінки помилки.
+- **Сайт, зібраний із файлів репозиторію** (VitePress: `<!--@include-->`, `<<< @/snippets`, змінні `{{…}}` з
+  `<script setup>` і `package.json`), береться з тегів полем `vitepress` читача `ghdocs-history`: сторінка виходить
+  такою, як на сайті, а її редакція враховує й вставлені файли. До повного завантаження читача пробують на локальному
+  голому клоні репозиторію: усі теги й файли там без мережі. Версії, випущені без тегу (changesets), беруться з коміту
+  випуску — його повний SHA стає ключем у `tags`.
 - **Якість.** Друга десятка `quality` («як модель»: запити назвами самої документації, як велить писати промпт) —
   головна мета: 10 із 10. Цілі доповнюють лише справжніми відповідями. Ціль мусить бути розділом із власним текстом:
   документ із самої шапки розділом не знаходиться. `ua_query` — суто кирилицею, без цифр і латиниці.
@@ -824,6 +834,11 @@ errada.
   from», «Extends» partem cada membro em trechos de uma palavra e separam o valor padrão da sua opção. O campo
   `inline_titles` do leitor `sitemap-html` os transforma em rótulos dentro da seção do membro. Páginas de aliases
   de tipo e de variáveis são curtas de verdade; `min_chars` as mantém em vez de rejeitá-las como páginas de erro.
+- **Um site montado a partir de arquivos do repositório** (VitePress: `<!--@include-->`, `<<< @/snippets`, variáveis
+  `{{…}}` de `<script setup>` e de `package.json`) é lido das tags com o campo `vitepress` do leitor `ghdocs-history`:
+  a página sai como o site a mostra, e a sua revisão conta também os arquivos inseridos. Antes do download completo,
+  teste o leitor num clone *bare* local do repositório: todas as tags e arquivos estão ali sem rede. Versões lançadas
+  sem tag (changesets) vêm do commit de lançamento, cujo SHA completo serve de chave em `tags`.
 - **Qualidade.** A segunda dezena de `quality` («como o modelo»: consultas com os nomes da própria documentação, como
   o prompt manda o modelo escrever) é a meta principal: 10 de 10. Os alvos só crescem com respostas genuínas. Um
   alvo precisa ser uma seção com texto próprio: um documento que é só cabeçalho nunca é encontrado como seção. A
