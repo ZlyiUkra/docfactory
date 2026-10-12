@@ -9,6 +9,10 @@
 Заморожене джерело (`frozen: true` — знімок на закріпленому тезі чи коміті) не
 питається зовсім, доки його не назвуть: вміст такого знімка змінитися не може, а
 кожен його перелік — звернення до чужого API з лімітом на годину.
+
+Зі сховищем сирого (`raw_store: true` у config.json, див. rawstore) кожна відповідь
+лягає ще й туди, а крок `build` (`offline`) проходить той самий шлях без мережі: тексти
+збираються зі сховища, і правка читача не вимагає нового завантаження.
 """
 
 import json
@@ -16,6 +20,7 @@ import time
 import urllib.error
 
 from engine import net
+from engine import rawstore
 from engine import readers
 from engine import redact as R
 from engine import sources as S
@@ -51,37 +56,97 @@ class Ctx:
     Між будь-якими двома зверненнями — не менше `pause` секунд, хоч би хто їх
     робив: перелік джерела, тіло документа чи звірка. Раніше пауза стояла лише
     після записаного документа, і читач, що складає перелік з кількох сторінок,
-    бив по сайту без неї."""
+    бив по сайту без неї.
 
-    def __init__(self, sources, stamp: str, pause: float | None = None):
+    Зі сховищем сирого (`store`) кожна відповідь 200 лягає туди, і та сама адреса в
+    межах прогону вдруге не питається: дерево toc.json Oracle читають двадцять
+    джерел, а сервер чує його раз. Між прогонами запит умовний — з валідаторами
+    попередньої відповіді, і «304» означає «бери зі сховища». `offline` — крок build:
+    мережі немає зовсім, лише сховище; адреси, якої там немає, — збій, як у мережі."""
+
+    def __init__(self, sources, stamp: str, pause: float | None = None,
+                 store: "rawstore.Store | None" = None, offline: bool = False):
         self._sources = sources
-        self.stamp = stamp
+        self._stamp = stamp
         self.pause = net.PAUSE_SEC if pause is None else pause
         self._last = 0.0
+        self.store = store
+        self.offline = offline
+        self._seen: set = set()
+        self._day = ""
+
+    @property
+    def stamp(self) -> str:
+        """День отримання для шапки документа. Без мережі це день, коли сторінку
+        отримало сховище, а не сьогодні: інакше перезібраний документ казав би
+        «отримано сьогодні», і умовний запит звірки за цією датою міг би
+        пропустити зміну нагорі."""
+        return self._day if self.offline and self._day else self._stamp
 
     def allowed(self, url: str) -> bool:
         return S.allowed(url, self._sources)
 
     _allow = allowed
 
-    def fetch(self, url: str, since: str = "", gzip: bool = False,
-              accept: str = "") -> tuple[str, bytes]:
-        """net.fetch з паузою між зверненнями і повторами на 429/503."""
+    def _call(self, url: str, request):
+        """Звернення `request()` з паузою між зверненнями і повторами на 429/503."""
         for wait in RETRY_WAITS + (None,):
             gap = self._last + self.pause - time.monotonic()
             if gap > 0:
                 time.sleep(gap)
-            # `gzip` передається лише тоді, коли його попросили: без нього виклик той
-            # самий, що й до появи поля, і заглушки net.fetch у smoke його не знають.
-            extra = {"gzip": True} if gzip else {}
-            if accept:
-                extra["accept"] = accept
-            code, data = net.fetch(url, self.allowed, since=since, **extra)
+            result = request()
             self._last = time.monotonic()
-            if wait is None or code not in _RETRY_CODES:
-                return code, data
-            print(f"  {url}: {code}, чекаю {wait} с і пробую знову", flush=True)
+            if wait is None or result[0] not in _RETRY_CODES:
+                return result
+            print(f"  {url}: {result[0]}, чекаю {wait} с і пробую знову", flush=True)
             time.sleep(wait)
+        return result
+
+    def fetch(self, url: str, since: str = "", gzip: bool = False,
+              accept: str = "") -> tuple[str, bytes]:
+        """net.fetch з паузою між зверненнями і повторами на 429/503; зі сховищем —
+        крізь нього."""
+        if self.store is not None and not since:
+            return self._stored(url, gzip, accept)
+        # `gzip` передається лише тоді, коли його попросили: без нього виклик той
+        # самий, що й до появи поля, і заглушки net.fetch у smoke його не знають.
+        extra = {"gzip": True} if gzip else {}
+        if accept:
+            extra["accept"] = accept
+        return self._call(url, lambda: net.fetch(url, self.allowed, since=since, **extra))
+
+    def _stored(self, url: str, gzip: bool, accept: str) -> tuple[str, bytes]:
+        # Білий список питається й тоді, коли мережі не буде: запис, що лишився в
+        # сховищі від ширшого оголошення, не має права стати текстом корпусу.
+        if not self.allowed(url):
+            raise net.Refused(f"адреса поза оголошенням примірника: {url}")
+        if self.offline or (url, accept) in self._seen:
+            got = self.store.get(url, accept)
+            if got is None:
+                return ("збій: немає в сховищі сирого (спершу refresh)", b"")
+            self._day = got[0].get("day", "")
+            return "200", got[1]
+        old = self.store.meta(url, accept) or {}
+        code, data, valid = self._call(url, lambda: net.fetch_full(
+            url, self.allowed, gzip=gzip, accept=accept,
+            etag=old.get("etag", ""), modified=old.get("modified", "")))
+        if code == "304":
+            got = self.store.get(url, accept)
+            if got is not None:
+                self._seen.add((url, accept))
+                return "200", got[1]
+            # Запис пошкоджений — сервер про це не знає; питаємо ще раз, без умов.
+            code, data, valid = self._call(url, lambda: net.fetch_full(
+                url, self.allowed, gzip=gzip, accept=accept))
+        try:
+            if code == "200":
+                self.store.put(url, accept, data, valid)
+                self._seen.add((url, accept))
+            elif code in rawstore.GONE:
+                self.store.retire(url, accept)
+        except OSError as e:
+            # Сховище — запас на майбутнє; через нього документ цього прогону не падає.
+            print(f"  {url}: сховище сирого не записалося: {e}", flush=True)
         return code, data
 
     def bytes(self, url: str, gzip: bool = False, accept: str = "") -> bytes:
@@ -110,13 +175,22 @@ def _wanted(item, source, targets, do_refresh, missing) -> bool:
 
 
 def refresh(instance_dir, targets: set, do_refresh: bool, listing: bool,
-            missing: bool = False) -> int:
+            missing: bool = False, offline: bool = False) -> int:
     data = S.load(instance_dir)
     src = data["sources"]
     corpus = instance_dir / "corpus"
+    stamp = time.strftime("%Y-%m-%d")
+    store = rawstore.of(instance_dir, stamp)
+    if offline:
+        if store is None:
+            raise SystemExit("Крок build збирає тексти зі сховища сирого, а в цьому примірнику "
+                             "його не ввімкнено: поле raw_store у config.json.")
+        if not store.root.is_dir():
+            raise SystemExit(f"Сховище {store.root} порожнє: спершу refresh.")
+        print("── Збираю тексти зі сховища сирого, без мережі ──")
     if not listing:
         corpus.mkdir(exist_ok=True)
-    ctx = Ctx(src, time.strftime("%Y-%m-%d"), pause_of(instance_dir))
+    ctx = Ctx(src, stamp, pause_of(instance_dir), store, offline)
     rules = R.rules(instance_dir)
     written = skipped = failed = 0
 

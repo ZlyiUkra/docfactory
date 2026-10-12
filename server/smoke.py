@@ -279,6 +279,47 @@ def main(argv: list[str]) -> int:
     finally:
         shutil.rmtree(fx, ignore_errors=True)
 
+    # 0f-2. Сховище сирого: нова версія сторінки не затирає попередню, а переносить її
+    # в _old — фабрика нічого не видаляє сама. Крок build мережі не торкається, але
+    # білий список питає так само: запис, що лишився від ширшого оголошення, текстом
+    # корпусу не стане; адреси, якої у сховищі немає, — збій, а не звернення до мережі.
+    import gzip
+
+    from engine import rawstore
+    from engine.refresh import Ctx as ECtx
+
+    rs = pathlib.Path(tempfile.mkdtemp(prefix="zz-smoke-raw-"))
+    try:
+        store = rawstore.Store(rs, "2026-10-12")
+        page = "https://docs.example/guide/a.md"
+        store.put(page, "", b"first", {})
+        store.put(page, "", b"second", {})
+        old = list((rs / rawstore.OLD).rglob("*.gz"))
+        check("сховище сирого: стара версія переїжджає в _old, а не зникає",
+              store.get(page)[1] == b"second" and len(old) == 1
+              and gzip.decompress(old[0].read_bytes()).endswith(b"\nfirst"),
+              f"у _old файлів {len(old)}")
+
+        def _no_net(*args, **kwargs):
+            raise AssertionError("build звернувся до мережі")
+
+        store.put("https://evil.example/guide/intro.md", "", b"stale", {})
+        offline = ECtx(wdecl, "2026-10-13", 0, store, offline=True)
+        real_full, enet.fetch_full = enet.fetch_full, _no_net
+        try:
+            try:
+                offline.fetch("https://evil.example/guide/intro.md")
+                refused = False
+            except enet.Refused:
+                refused = True
+            code, _ = offline.fetch("https://docs.example/guide/missing.md")
+        finally:
+            enet.fetch_full = real_full
+        check("build без мережі: білий список питається, відсутнє у сховищі — збій",
+              refused and code.startswith("збій"), code[:60])
+    finally:
+        shutil.rmtree(rs, ignore_errors=True)
+
     # 0g. Поради, які друкує setup, мусять запускатися так, як надруковані, а
     # посилання в README — вести на наявні файли. Раніше «Далі:» радив
     # .venv/bin/python -m server.check — з теки примірника це

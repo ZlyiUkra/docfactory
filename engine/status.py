@@ -1,4 +1,5 @@
-"""Перевірка «що змінилося нагорі, за джерелом». Нічого не пише.
+"""Перевірка «що змінилося нагорі, за джерелом». Корпусу не пише; зі сховищем сирого
+(`raw_store`) отримані відповіді лягають туди, і наступний refresh їх уже не тягне.
 
 Питає кожне джерело з `sources.json` і порівнює з тим, що вже лежить у `corpus/`:
 чи з'явилися нові документи, чи якісь зникли (сироти), і — де це дешево — чи не
@@ -21,6 +22,7 @@ import urllib.error
 
 from engine import manifest as M
 from engine import net
+from engine import rawstore
 from engine import readers
 from engine import redact as R
 from engine import sources as S
@@ -60,7 +62,8 @@ def status(instance_dir, deep: bool, targets: frozenset = frozenset()) -> int:
         raise SystemExit(f"Невідомі джерела: {', '.join(strangers)}. Звірка приймає id "
                          f"джерел із sources.json.")
     corpus = instance_dir / "corpus"
-    ctx = Ctx(src, time.strftime("%Y-%m-%d"), pause_of(instance_dir))
+    stamp = time.strftime("%Y-%m-%d")
+    ctx = Ctx(src, stamp, pause_of(instance_dir), rawstore.of(instance_dir, stamp))
     # Свіжий текст маскується тими самими правилами, що й при записі: інакше
     # кожен документ із заглушкою токена звірка вважала б зміненим.
     rules = R.rules(instance_dir)

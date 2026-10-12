@@ -118,13 +118,29 @@ def fetch(url: str, allow, *, since: str = "", gzip: bool = False,
     змін лише на «Accept: text/markdown», двійника з «.md» у них немає.
     Без полів запит той самий, що й до їхньої появи.
     """
+    code, data, _ = fetch_full(url, allow, since=since, gzip=gzip, accept=accept)
+    return code, data
+
+
+def fetch_full(url: str, allow, *, since: str = "", gzip: bool = False, accept: str = "",
+               etag: str = "", modified: str = "") -> tuple[str, bytes, dict]:
+    """Те саме, що fetch, плюс валідатори відповіді: {"etag": …, "modified": …} із
+    заголовків ETag і Last-Modified. Ними живе сховище сирого (rawstore): `etag` і
+    `modified` — ті самі значення з попередньої відповіді, і запит стає умовним
+    (If-None-Match, If-Modified-Since дослівно як дав сервер). Незмінна сторінка
+    відповідає «304» без тіла. Дата з `since` і `modified` разом не ставляться:
+    `modified` точніший, бо це час самого сервера, а не день нашого запису."""
     if not allow(url):
         raise Refused(f"адреса поза оголошенням примірника: {url}")
     headers = {"User-Agent": _UA}
     token = _github_token()
     if token and urllib.parse.urlsplit(url).hostname == _TOKEN_HOST:
         headers["Authorization"] = f"Bearer {token}"
-    if since:
+    if etag:
+        headers["If-None-Match"] = etag
+    if modified:
+        headers["If-Modified-Since"] = modified
+    elif since:
         try:
             headers["If-Modified-Since"] = since_header(since)
         except ValueError:
@@ -139,17 +155,19 @@ def fetch(url: str, allow, *, since: str = "", gzip: bool = False,
         with opener.open(req, timeout=TIMEOUT_SEC) as resp:
             data = resp.read(MAX_BYTES + 1)
             packed = gzip and resp.headers.get("Content-Encoding", "").lower() == "gzip"
+            got = {"etag": resp.headers.get("ETag", ""),
+                   "modified": resp.headers.get("Last-Modified", "")}
         if len(data) > MAX_BYTES:
-            return (f"збій: більше за {MAX_BYTES} байтів", b"")
+            return (f"збій: більше за {MAX_BYTES} байтів", b"", {})
         if packed:
             try:
                 data = _gunzip(data)
             except zlib.error as exc:
-                return (f"збій: стиснута відповідь не розпаковується ({exc})", b"")
+                return (f"збій: стиснута відповідь не розпаковується ({exc})", b"", {})
             if data is None:
-                return (f"збій: розпакована відповідь більша за {MAX_UNPACKED} байтів", b"")
-        return ("200", data)
+                return (f"збій: розпакована відповідь більша за {MAX_UNPACKED} байтів", b"", {})
+        return ("200", data, got)
     except urllib.error.HTTPError as e:
-        return ("304", b"") if e.code == 304 else (f"збій: HTTP {e.code}", b"")
+        return ("304", b"", {}) if e.code == 304 else (f"збій: HTTP {e.code}", b"", {})
     except urllib.error.URLError as e:
-        return (f"збій: {e.reason}", b"")
+        return (f"збій: {e.reason}", b"", {})

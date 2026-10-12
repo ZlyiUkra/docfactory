@@ -4,13 +4,16 @@
     .venv/bin/python -m engine --instance <назва> --list
     .venv/bin/python -m engine --instance <назва> --status [--deep] [id...]
     .venv/bin/python -m engine --instance <назва> --refresh [--missing] [id...]
+    .venv/bin/python -m engine --instance <назва> --build [id...]
 
 `--sources` друкує оголошення джерел і білий список, що з нього виводиться;
 `--list` показує, що завантажилося б, нічого не пишучи; `--status` звіряє корпус із
 джерелами (з іменами — лише названі джерела); `--refresh` завантажує корпус у
 `instances/<назва>/corpus/`, тягнучи лише дозволене. Без імен `--refresh` оновлює
 все, крім заморожених джерел, з іменами — лише названі документи чи джерела;
-`--missing` докачує тільки відсутні файли й наявних не перезаписує.
+`--missing` докачує тільки відсутні файли й наявних не перезаписує. `--build` —
+те саме, що `--refresh`, але без мережі: тексти збираються зі сховища сирих відповідей
+(`raw_store` у config.json), куди їх поклали попередні `--refresh`, `--status` чи `--list`.
 
 Кличеться з теки `docfactory/` (щоб `engine` був видимий як пакет), venv-ом самого
 примірника (щоб залежності читачів були на місці).
@@ -76,6 +79,10 @@ def main(argv: list[str]) -> int:
     if "--status" in argv:
         from engine import status as ST
         return ST.status(instance_dir, deep="--deep" in argv, targets=frozenset(targets))
+
+    if "--build" in argv:
+        from engine import refresh as R
+        return R.refresh(instance_dir, targets, do_refresh=True, listing=False, offline=True)
 
     if "--refresh" in argv or "--list" in argv:
         from engine import refresh as R
