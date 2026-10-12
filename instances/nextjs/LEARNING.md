@@ -379,6 +379,8 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
   Controls — `owasp`;
 - Node.js (API парних мажорів 12–26, посібники nodejs.org/learn) і npm (CLI 6–12) — `nodejs`;
 - Docker — `docker`; Kubernetes, k3s, Traefik, Kustomize, SOPS, age і Helm — `kubernetes`; sshd — `linux`;
+- безкоштовна машина Oracle Cloud (Always Free, повернення бездіяльних машин, «out of host capacity», бюджети), OKE —
+  `oracle-cloud`;
 - nginx: зворотний проксі, буферизація й стрімінг, кеш, обмеження частоти, вебсокети — `nginx`;
 - shadcn/ui (кожна мінорна CLI, сайти для Tailwind CSS v4 і v3) і примітиви під ним: Radix UI (Primitives, Themes,
   Colors), Base UI, React Aria — `shadcn`;
@@ -1945,19 +1947,22 @@ Cloud з'явився в плані React (фаза 5, дні 7–9), бекен
 
 # Фаза 9. Kubernetes глибше і демо для клієнта — 8 днів
 
-**Сервери MCP фази:** `nextjs-docs`, `kubernetes-docs`, `linux-docs`, `mdn-docs`, `webstandards-docs`,
-`github-actions-docs`.
+**Сервери MCP фази:** `nextjs-docs`, `kubernetes-docs`, `oracle-cloud-docs`, `linux-docs`, `mdn-docs`,
+`webstandards-docs`, `github-actions-docs`.
 
 Кластер уже працює: SPA з'явилася в ньому в плані React, бекенд — у плані NestJS, Next.js — у фазі 7 цього плану.
 Але викочує його досі людина з терміналом, ресурси взято навмання, секрети живуть у файлах на диску, а демо для
 клієнта, зібране в плані NestJS (фаза 7, день 8), досі показує SPA, а не Next.js. Ця фаза доводить кластер до
 стану, який не соромно дати клієнту, і переводить демо на Next.js. Kubernetes, Traefik, Kustomize, Helm, SOPS і age
-мають примірник `kubernetes`, GitHub Actions — примірник `github-actions`.
+мають примірник `kubernetes`, GitHub Actions — примірник `github-actions`, безкоштовна машина Oracle Cloud — примірник
+`oracle-cloud`.
 
-**Про факти хостингу.** Усе, що сказано тут про Oracle Cloud, DigitalOcean, GitHub, Let's Encrypt і UptimeRobot,
-перевірено на 02.10.2026. Безкоштовні тарифи міняються без попередження — Oracle, наприклад, у червні 2026 року
-вдвічі зменшив безкоштовну машину Arm, а статті й готові скрипти досі пишуть про старі числа. Перед кожним днем,
-де від тарифу щось залежить, гляньте на сторінку самого постачальника.
+**Про факти хостингу.** Факти про Oracle Cloud звірено з примірником `oracle-cloud` на 12.10.2026; сказане про
+DigitalOcean, GitHub, Let's Encrypt і UptimeRobot перевірено на 02.10.2026. Безкоштовні тарифи міняються без
+попередження — Oracle, наприклад, у червні 2026 року вдвічі зменшив безкоштовну машину Arm, а статті й готові скрипти
+досі пишуть про старі числа. Перед кожним днем, де від тарифу щось залежить, гляньте на сторінку самого
+постачальника: для Oracle — `Free Tier: Always Free Resources` через `oracle-cloud-docs`, а якщо примірник давно не
+оновлювали, то й на сайті Oracle.
 
 ## Що треба мати до цієї фази
 
@@ -2014,7 +2019,7 @@ TLS і сертифікат, зворотний проксі, підніманн
 
 ### День 2. Ресурси й ліміти на машині 12 ГБ
 
-- **Навіщо.** На 02.10.2026 безкоштовна машина Oracle Ampere A1 — 2 OCPU і 12 ГБ пам'яті (з 15.06.2026; раніше
+- **Навіщо.** На 12.10.2026 безкоштовна машина Oracle Ampere A1 — 2 OCPU і 12 ГБ пам'яті (з 15.06.2026; раніше
   було 4 і 24, і старі інструкції досі так пишуть). На ній живуть k3s, Traefik, cert-manager, Next.js, NestJS,
   PostgreSQL і Redis. Без чисел планувальник не знає, що куди влазить, а ядро вбиває того, хто зайняв зайве.
 - **Що це.** `requests` — скільки процесора й пам'яті під под резервують: планувальник ставить под лише туди, де
@@ -2023,8 +2028,9 @@ TLS і сертифікат, зворотний проксі, підніманн
   `NODE_OPTIONS=--max-old-space-size` ставлять помітно нижче за ліміт контейнера, щоб збирач сміття встиг раніше за
   ядро. `kubectl top` бере числа з metrics-server, який у k3s іде в комплекті.
 - **Читати:** у примірнику `kubernetes` — `Resource Management for Pods and Containers`; у корпусі —
-  `cacheMaxMemorySize` (внутрішній кеш Next.js теж займає пам'ять пода).
-- **Сервери MCP:** `nextjs-docs`, `kubernetes-docs`.
+  `cacheMaxMemorySize` (внутрішній кеш Next.js теж займає пам'ять пода); у примірнику `oracle-cloud` — `Free Tier:
+  Always Free Resources`, розділ Details of the Always Free compute instances.
+- **Сервери MCP:** `nextjs-docs`, `kubernetes-docs`, `oracle-cloud-docs`.
 - **Зробити:** 1) `kubectl top nodes` і `kubectl top pods -A` у спокої та під навантаженням
   (`npx autocannon -c 50 -d 30` на сторінку й на API); 2) таблиця бюджету в README: под → виміряно в спокої → під
   навантаженням → `requests` → `limits`, і рядок «разом» проти 12 ГБ; ще один рядок — «використано на вузлі
@@ -2175,9 +2181,10 @@ TLS і сертифікат, зворотний проксі, підніманн
   резервна копія — лежати поза машиною. CronJob `pg_dump` з плану NestJS пише на диск того самого вузла: забрали
   машину — забрали й копії. Ще один запасний шлях завжди під рукою — k3d на своєму комп'ютері з тими самими
   маніфестами: без публічної адреси, але з усім іншим.
-- **Читати:** поза корпусом — docs.oracle.com: «Always Free Resources» (розділ про повернення бездіяльних
-  машин); digitalocean.com: «Kubernetes pricing»; у примірнику `kubernetes` — `K3s: Requirements`.
-- **Сервери MCP:** `kubernetes-docs`.
+- **Читати:** у примірнику `oracle-cloud` — `Free Tier: Always Free Resources`, розділ Idle Compute Instances;
+  `Compute: Creating an Instance`, розділ Capacity availability; `Billing: Budgets`; поза корпусом —
+  digitalocean.com: «Kubernetes pricing»; у примірнику `kubernetes` — `K3s: Requirements`.
+- **Сервери MCP:** `kubernetes-docs`, `oracle-cloud-docs`.
 - **Зробити:** 1) дописати й перевірити `infra/README.md` з плану React («від порожньої машини до робочого
   кластера»): додати все, що з'явилося відтоді, — бекенд і базу з плану NestJS, `web-next`, SOPS, `deployer`,
   далі `kubectl apply -k`; 2) копія бази поза машиною, зашифрована ще до виходу з неї, тим самим ключем age, що в
@@ -2348,7 +2355,8 @@ TLS і сертифікат, зворотний проксі, підніманн
 
 - **Решта плану React** — дні повного шляху поза шляхом мідла, якщо контрольні питання ще показують прогалини.
 - **Глибше в експлуатацію** — викот «з репозиторію» (Argo CD або Flux), метрики й логи з історією (Prometheus,
-  Grafana, Loki), керований Kubernetes на кшталт Oracle OKE, коли знадобиться більше одного вузла.
+  Grafana, Loki), керований Kubernetes на кшталт Oracle OKE (примірник `oracle-cloud`), коли знадобиться більше
+  одного вузла.
 - **Глибше в бекенд** — те, що план NestJS лишив у «Знати, що існує»: брокери повідомлень, GraphQL, CQRS — коли
   проєкт до них доросте.
 - **Свіжість знань** — латки `next` щотижня, нотатки релізів і блог Next.js у корпусі; новий мажорний випуск —

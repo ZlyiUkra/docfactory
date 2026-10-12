@@ -96,13 +96,14 @@ access-токен у пам'яті, refresh-токен у куці `HttpOnly` з
 
 **Кластер перевіряють пізніше — перед фазою 6, днем 8**, першим днем, де він потрібен. До нього від кінця шляху
 мідла React минає близько п'ятнадцяти тижнів, а Oracle забирає машину Always Free, яку визнав бездіяльною (правило
-«Reclamation of Idle Compute Instances»: за 7 днів одночасно процесор у 95-му перцентилі, мережа й пам'ять нижче
-20 %). Тож кластер, імовірно, доведеться підняти заново — це нормально, для цього в плані React кожна команда
-записана в `infra/README.md` («від порожньої машини до робочого кластера»). Перевірка перед днем 8: `kubectl get
-nodes` — вузол `Ready`; `kubectl get pods -A` — под SPA `Running`; `kubectl get gateway,httproute -A` — Gateway
-`web` і маршрут `spa` на місці; `curl -I https://<ваше-ім'я>` — 200. Якщо машини немає — підняти за
-`infra/README.md` або перейти на запасний шлях без хмари: усі дні з кластером робляться на k3d тими самими
-маніфестами (ім'я `app.localhost`, без Let's Encrypt). Хмара потрібна лише для публічної адреси й демо.
+«Reclamation of Idle Compute Instances» на сторінці `Free Tier: Always Free Resources` примірника `oracle-cloud`: за
+7 днів одночасно процесор у 95-му перцентилі, мережа й пам'ять нижче 20 %). Тож кластер, імовірно, доведеться
+підняти заново — це нормально, для цього в плані React кожна команда записана в `infra/README.md` («від порожньої
+машини до робочого кластера»). Перевірка перед днем 8: `kubectl get nodes` — вузол `Ready`; `kubectl get pods -A` —
+под SPA `Running`; `kubectl get gateway,httproute -A` — Gateway `web` і маршрут `spa` на місці; `curl -I
+https://<ваше-ім'я>` — 200. Якщо машини немає — підняти за `infra/README.md` або перейти на запасний шлях без хмари:
+усі дні з кластером робляться на k3d тими самими маніфестами (ім'я `app.localhost`, без Let's Encrypt). Хмара
+потрібна лише для публічної адреси й демо.
 
 ## Як користуватися планом
 
@@ -387,6 +388,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 - тексти стандартів: RFC HTTP, кук і WebSocket, Problem Details, JWT, OAuth 2.0 і PKCE, Argon2, OpenAPI, JSON
   Schema, ERC-4361 — `webstandards`;
 - Docker і Compose — `docker`; Kubernetes, k3s, `kubectl`, Traefik, Let's Encrypt і age — `kubernetes`;
+- безкоштовна машина Oracle Cloud (Always Free, повернення бездіяльних машин, Compute, Networking) — `oracle-cloud`;
 - SPA-бік: React — `react`, React Router — `react-router`, Vite — `vite`, React Hook Form — `react-hook-form`,
   TanStack Query — `tanstack-query`;
 - Express 2.x–5.x, офіційні middleware (cookie-parser, cors, express-session, multer, morgan та інші), `router`,
@@ -1686,13 +1688,13 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 
 # Фаза 6. Продакшн — 9 днів
 
-**Сервери MCP фази:** `nestjs-docs`, `docker-docs`, `kubernetes-docs`, `express-docs`, `postgresql-docs`,
-`github-actions-docs`, `nginx-docs`, `node-postgres-docs`, `argon2-docs`.
+**Сервери MCP фази:** `nestjs-docs`, `docker-docs`, `kubernetes-docs`, `oracle-cloud-docs`, `express-docs`,
+`postgresql-docs`, `github-actions-docs`, `nginx-docs`, `node-postgres-docs`, `argon2-docs`.
 
 Сервер, який треба зібрати, запустити, тримати живим, міряти й вміти оновити. Глави Nest тут — лише те, що Nest
 вимагає від Docker, проксі й CI. Docker і Compose мають примірник `docker`, Kubernetes, k3s і Traefik — примірник
-`kubernetes`, GitHub Actions — примірник `github-actions`, nginx — примірник `nginx`; документації Redis у фабриці
-немає.
+`kubernetes`, безкоштовна машина Oracle Cloud — примірник `oracle-cloud`, GitHub Actions — примірник
+`github-actions`, nginx — примірник `nginx`; документації Redis у фабриці немає.
 Дні 1–7 робляться на своєму комп'ютері й на тому самому хості (PaaS), куди ви викотили застосунок у фазі 2:
 `docker compose` лишається способом розробки до кінця родини. Дні 8–9 переносять продакшн у кластер k3s, який ви
 підняли в плані React (фаза 5, дні 7–9): бекенд, база й Redis стають подами поруч із подом SPA, а хост із фази 2
@@ -1867,8 +1869,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   `Deployment`, розділи Health checks і Scaling up or out; у примірнику `kubernetes` — `Deployments`, `Service`,
   `ConfigMaps`, `Secrets`, `StatefulSets`, `Persistent Volumes`, `Jobs`,
   `Configure Liveness, Readiness and Startup Probes`; у примірнику `argon2` — `argon2 README 0.45.0 … 0.45.1:
-  node-argon2`, розділ Prebuilt binaries (готові збірки під ARM64 і з якої версії).
-- **Сервери MCP:** `nestjs-docs`, `kubernetes-docs`, `argon2-docs`.
+  node-argon2`, розділ Prebuilt binaries (готові збірки під ARM64 і з якої версії); у примірнику `oracle-cloud` —
+  `Compute: Arm-Based Compute` (машина A1 — arm64).
+- **Сервери MCP:** `nestjs-docs`, `kubernetes-docs`, `argon2-docs`, `oracle-cloud-docs`.
 - **Зробити:** усі файли — у теці `k8s/` репозиторію, застосовуються командою `kubectl apply -f <файл>` («зроби в
   кластері так, як написано у файлі»: створює, а при повторі — оновлює); простір імен — той, де живе под SPA (нижче
   він названий `app`, ключ `-n app` у командах).

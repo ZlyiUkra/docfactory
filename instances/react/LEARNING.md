@@ -383,6 +383,8 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 - ESLint, README і CHANGELOG `eslint-plugin-react-hooks`, `eslint-plugin-react`, `eslint-plugin-jsx-a11y`,
   typescript-eslint — `eslint`;
 - Docker — `docker`; Kubernetes, k3d, k3s, `kubectl`, Traefik, cert-manager і Let's Encrypt — `kubernetes`;
+- Oracle Cloud: безкоштовна машина Always Free, Compute, Networking (security lists), IAM, OKE, журнали змін —
+  `oracle-cloud`;
 - nginx: конфіг роздачі SPA в образі (фаза 5, день 7) — `nginx`;
 - shadcn/ui (кожна мінорна CLI, сайти для Tailwind CSS v4 і v3) і примітиви під ним: Radix UI (Primitives, Themes,
   Colors), Base UI, React Aria — `shadcn`;
@@ -407,7 +409,7 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- поза таблицями: хостинги, Oracle Cloud; у факультативі —
+- поза таблицями: хостинги; у факультативі —
   lightweight-charts, wagmi, viem і Foundry.
 
 ---
@@ -1551,7 +1553,8 @@ Kraken WS v2, `wss://ws.kraken.com/v2` (примірник `kraken-spot`): та�
 # Фаза 5. Продакшн: збірка, безпека, метрики, CI, викот у кластер — 9 днів
 
 **Сервери MCP фази:** `react-docs`, `vite-docs`, `react-router-docs`, `mdn-docs`, `webstandards-docs`, `docker-docs`,
-`kubernetes-docs`, `playwright-docs`, `github-actions-docs`, `owasp-docs`, `nginx-docs`, `webdev-docs`.
+`kubernetes-docs`, `oracle-cloud-docs`, `playwright-docs`, `github-actions-docs`, `owasp-docs`, `nginx-docs`,
+`webdev-docs`.
 
 Застосунок уже в інтернеті з фази 1. У блоці A він стає легшим, безпечнішим, вимірюваним і перевіряється сам на
 кожному запиті на злиття. У блоці B він переїжджає зі статичного хостингу у власний кластер Kubernetes — той самий,
@@ -1684,9 +1687,10 @@ Docker, запускається подами в Kubernetes — спершу н�
 SPA подом Next.js (фаза 7) і оновить демо під Next.js (фаза 9).
 
 Docker має примірник `docker`; Kubernetes, k3s, k3d, Traefik, cert-manager і Let's Encrypt — примірник `kubernetes`;
-кожен день називає глави. Документації Oracle Cloud у фабриці немає — джерело її офіційний сайт. Факти про
-безкоштовний хостинг тут — на 02.10.2026. Безкоштовні тарифи змінюються, буває й без оголошення, тож перед днем 8
-звірте їх зі сторінкою Oracle «Always Free Resources».
+Oracle Cloud — примірник `oracle-cloud`; кожен день називає глави. Факти про безкоштовну машину Oracle звірено з
+`oracle-cloud` на 12.10.2026, решту фактів про безкоштовний хостинг — на 02.10.2026. Безкоштовні тарифи змінюються,
+буває й без оголошення, тож перед днем 8 звірте їх зі сторінкою `Free Tier: Always Free Resources` через
+`oracle-cloud-docs`, а якщо примірник давно не оновлювали — і на сайті Oracle.
 
 ### Що треба мати до викоту
 
@@ -1887,7 +1891,7 @@ Let's Encrypt (кластер створюють із пробросом пор�
 - **Навіщо.** Кластер на ноутбуці зникає, щойно ноутбук закрили. Продакшн родини — машина в хмарі, що працює
   цілодобово, і до кінця вечора на ній відкривається ваша SPA за власною адресою: поки що по HTTP, HTTPS додасть
   день 9.
-- **Що це.** Безкоштовна машина Oracle Cloud Always Free на 02.10.2026: Ampere A1 — разом 2 OCPU і 12 ГБ пам'яті
+- **Що це.** Безкоштовна машина Oracle Cloud Always Free на 12.10.2026: Ampere A1 — разом 2 OCPU і 12 ГБ пам'яті
   (з 15.06.2026; старі інструкції пишуть «4 і 24» — для безкоштовного облікового запису це вже неправда), процесор
   arm64, тож образи мусять бути мультиархітектурні (день 7); дисків — до 200 ГБ на всі машини. Бездіяльну машину
   Oracle забирає (розділ «Що треба мати до викоту»), а при створенні A1 у популярних регіонах буває «Out of host
@@ -2005,10 +2009,11 @@ Let's Encrypt (кластер створюють із пробросом пор�
   bash в Ubuntu не запише її в історію.
 - **Читати:** у примірнику `kubernetes` — `K3s: Quick-Start Guide`, `K3s: Networking Services` (розділ про Traefik і
   HelmChartConfig), `K3s: Secrets Encryption`, `Gateway API`,
-  `Traefik: Traefik Kubernetes Gateway API Documentation`; поза корпусом — документація Oracle Cloud: «Always Free
-  Resources», «Creating an Instance»; документація GitHub: «Working with the Container registry»; сайт Public Suffix
+  `Traefik: Traefik Kubernetes Gateway API Documentation`; у примірнику `oracle-cloud` — `Free Tier: Always Free
+  Resources`, `Compute: Creating an Instance`, `Compute: Connecting to a Linux Instance`, `Networking: Updating Rules
+  in a Security List`; поза корпусом — документація GitHub: «Working with the Container registry»; сайт Public Suffix
   List.
-- **Сервери MCP:** `kubernetes-docs`.
+- **Сервери MCP:** `kubernetes-docs`, `oracle-cloud-docs`.
 - **Зробити:** 1) у WSL `ssh-keygen -t ed25519` — пара ключів, публічна половина в `~/.ssh/id_ed25519.pub`;
   2) у консолі Oracle створити машину: форма VM.Standard.A1.Flex, 2 OCPU, 12 ГБ, образ Ubuntu для arm64
   (aarch64), ваш публічний ключ; запишіть публічну адресу; 3) у списку безпеки (Security List) мережі машини
