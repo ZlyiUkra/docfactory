@@ -1526,6 +1526,29 @@ Experimental, Circle USDC, Tempo та Tokens; приклади з теки `exam
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/viem/README.md](instances/viem/README.md).
 
+### foundry
+
+Документація Foundry — набору інструментів на Rust від foundry-rs для смартконтрактів Ethereum (forge, cast, anvil,
+chisel) — англійською: Foundry Book (getfoundry.sh) на день виходу кожної стабільної версії 0.3.0–1.8.5 — сайт версій
+не має, тож для кожної береться останній коміт репозиторію foundry-rs/book перед її релізом, у трьох періодах (mdBook
+у `src/`, Vocs у `vocs/docs`, Vocs у `src/pages`) — з посібниками, тестами, фазинг- та інваріантними тестами, форками,
+скриптами й розгортанням, налаштуваннями `foundry.toml`, довідниками читкодів, forge-std і CLI; документація
+репозиторію foundry-rs/foundry на кожному стабільному тезі; нотатки стабільних релізів; forge-std — README, код теки
+`src/` і нотатки релізів кожної версії з міткою «forge-std-…»; таблиця версій npm `@foundry-rs/forge`, `cast`, `anvil`,
+`chisel`. Нове поле `mdbook` читача `ghdocs-history` (модуль `_mdbook`) розкриває вставки `{{#include …}}`; поле
+`outline` читача `ghcode-history` ділить файл Solidity на контракти, групи й члени з NatSpec. Лише стабільні версії.
+4 424 документи, 13 822 фрагменти.
+
+- порт `8829`; запис у Claude Code — `foundry-docs`, адреса `http://127.0.0.1:8829/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-foundry`, модель векторів — `bge-small`; `families` зводить три періоди сайту в один,
+  `slug_rewrite` дає спільний ключ сторінкам, що переїжджали між теками, `max_per_doc` — 1;
+- версія — номер Foundry: `version: "1.8"` лишає всі 1.8.x, `"1"` — усе 1.x; forge-std — `"forge-std-1.17"`; без
+  названої версії промпт велить відповідати для найновішої стабільної, 1.8.5, — її ставить foundryup;
+- приклад питання агентові: `./df foundry ask "How do I test that a call reverts with a custom error in Foundry?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/foundry/README.md](instances/foundry/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
