@@ -15,7 +15,8 @@
 той самий вигляд, що й у решті корпусу, тож фільтр `version: "7"` бере і
 документацію сьомої лінії, і її релізи.
 
-Необов'язкове `version_prefix` ставиться перед версією: в одному примірнику з Foundry нотатки
+Необов'язкове `name_prefix` стає перед іменем документа, як у `ghreleases`: релізи «v1.8.0» Foundry і
+forge-std інакше мали б одне ім'я. Необов'язкове `version_prefix` ставиться перед версією: в одному примірнику з Foundry нотатки
 forge-std мають власну нумерацію (forge-std 1.8.0 вийшов 2024 року, Foundry 1.8.0 — 2026), і
 фільтр `version: "1.8"` без мітки змішав би обидві лінії; з `"forge-std-"` вони розходяться.
 
@@ -53,6 +54,8 @@ def ghreleases_tagged(source: dict, ctx) -> list[Item]:
     if not releases:
         raise SystemExit(f"{base}: жодного релізу.")
     label = source.get("label", "Release")
+    lead = (re.sub(r"[^\w.-]+", "-", source["name_prefix"]).strip("-") + "-"
+            if source.get("name_prefix") else "")
     items = []
     for rel in releases:
         if not isinstance(rel, dict) or rel.get("draft") or not rel.get("tag_name"):
@@ -61,7 +64,7 @@ def ghreleases_tagged(source: dict, ctx) -> list[Item]:
         if not tag.startswith(prefix):
             continue
         version = str(source.get("version_prefix") or "") + tag[len(prefix):].lstrip("v")
-        name = re.sub(r"[^\w.-]+", "-", tag).strip("-")
+        name = lead + re.sub(r"[^\w.-]+", "-", tag).strip("-")
 
         def make(rel=rel, tag=tag, version=version):
             day = str(rel.get("published_at") or rel.get("created_at") or "")[:10]
