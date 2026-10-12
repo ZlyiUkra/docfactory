@@ -45,6 +45,10 @@
                    reStructuredText із ролями й директивами Sphinx, `.py` дає документ з опису
                    модуля (сторінка плагіна з `.. automodule::`) під назвою теки пакета, `.txt`
                    — вивід `--help` з розділом на кожну групу параметрів;
+                   `vitepress` — корінь сайту VitePress у репозиторії (`"site"`): вставки
+                   `<!--@include: …-->` і `<<< @/snippets/…` розкриваються, змінні `{{…}}` з
+                   `<script setup>` підставляються, контейнери `::: tip` стають підписами (див.
+                   `_vitepress`); редакція сторінки враховує й вставлені нею файли;
                    `react_spectrum: true` — службове зі сторінок репозиторію React Aria знімається:
                    коментар ліцензії, шапка YAML після імпортів, вирази `{docs.exports.….description}`
                    і позначки підсвічування `/*- begin highlight -*/` у коді.
@@ -88,10 +92,11 @@ React Router 820 тегів, у кожному 100–200 файлів, разо�
 
 import json
 import re
+import sys
 from html import unescape
 from urllib.parse import quote, urlsplit
 
-from engine.readers import Item, _baseui, _markup, _nginxxml, register
+from engine.readers import Item, _baseui, _markup, _nginxxml, _vitepress, register
 
 _TREES = re.compile(r"^/repos/([^/]+)/([^/]+)/git/trees/$")
 _LOCALE = re.compile(r"\.[a-z]{2}-[A-Z]{2}\.md$")
@@ -707,9 +712,20 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
     sphinx = source.get("sphinx") is True
     if base_ui:
         wanted += _baseui.WANTED
+    vitepress = str(source["vitepress"]).strip("/") if source.get("vitepress") else ""
+    if vitepress:
+        wanted += _vitepress.wanted(vitepress)
     # тег → {шлях файла реєстру: sha}; вміст за sha — один раз на весь прогін
     registry: dict = {}
     code_cache: dict = {}
+
+    def blob_text(where: str, sha: str, tag: str) -> str:
+        if sha not in code_cache:
+            url = (f"https://raw.githubusercontent.com/{owner}/{repo}/"
+                   f"{quote(tag, safe='@')}/{quote(where)}")
+            code, data = ctx.fetch(url) if ctx.allowed(url) else ("", b"")
+            code_cache[sha] = data.decode("utf-8", errors="replace") if code == "200" else ""
+        return code_cache[sha]
 
     # ім'я документа → [шлях, [теги]]; порядок ключів — порядок першої появи, тобто
     # від найновішого тегу, бо `tags` оголошено від найновішого. Ключ — ім'я, а не
@@ -728,7 +744,9 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
         if tree.get("truncated"):
             raise SystemExit(f"{url}: GitHub обрізав дерево — перелік був би неповним.")
         if wanted:
-            registry[tag] = {e["path"]: e["sha"] for e in tree["tree"] if e.get("type") == "blob"
+            # Ті самі шляхи й sha повторюються в сотнях тегів: intern тримає кожен рядок один раз.
+            registry[tag] = {sys.intern(e["path"]): sys.intern(e["sha"]) for e in tree["tree"]
+                             if e.get("type") == "blob"
                              and any(r.match(e.get("path", "")) for r in wanted)}
         for entry in tree["tree"]:
             path = entry.get("path", "")
@@ -744,6 +762,13 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
                 sha = entry["sha"]
                 if base_ui:
                     sha = _baseui.revision(path, sha, registry[tag])
+                if vitepress:
+                    # Вставки видно лише в тексті сторінки, тож його читаємо вже тут, один раз
+                    # на неповторний вміст; make бере його з того самого кешу.
+                    files_now = registry[tag]
+                    files_now.setdefault(path, sha)
+                    sha = _vitepress.revision(path, sha, files_now,
+                                              lambda w, s, t=tag: blob_text(w, s, t), vitepress)
                 name = f"{lead}{_markup.slug(stem)}-{sha[:8]}"
                 seen.setdefault(name, [path, []])[1].append(tag)
 
@@ -792,19 +817,15 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
                 rest = _hugo(rest, ctx, f"https://raw.githubusercontent.com/{owner}/{repo}/"
                                         f"{quote(tag, safe='@')}/", hugo)
             def fetch(where, sha, tag=tag):
-                if sha not in code_cache:
-                    url = (f"https://raw.githubusercontent.com/{owner}/{repo}/"
-                           f"{quote(tag, safe='@')}/{quote(where)}")
-                    code, data = ctx.fetch(url) if ctx.allowed(url) else ("", b"")
-                    code_cache[sha] = (data.decode("utf-8", errors="replace")
-                                       if code == "200" else "")
-                return code_cache[sha]
+                return blob_text(where, sha, tag)
 
             if sources is not None:
                 rest = _sources(rest, meta or {}, path, registry.get(tag, {}), sources, fetch)
             # До викидання `import`: саме з них видно, який файл стоїть за тегом вставки.
             if base_ui:
                 rest = _baseui.expand(rest, path, registry.get(tag, {}), fetch)
+            if vitepress:
+                rest = _vitepress.expand(rest, path, registry.get(tag, {}), fetch, vitepress)
             # Обидва — до викидання `export`: таблиці беруть дані саме з них.
             if source.get("jsx_props") is True:
                 rest = _jsx_props(rest)
