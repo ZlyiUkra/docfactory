@@ -68,6 +68,20 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   revision hashed from the raw file gives an unchanged page a new document almost every release. Hash the text the
   reader sees, without such lines; the release commit of an untagged version is the `gitHead` field of that version
   in the npm registry.
+- **A documentation site without versions** (Foundry Book: one living branch, no tags) gets versions by release day:
+  for each stable release, the last commit of the documentation repository before the release was published
+  (`git rev-list -1 --before=<published_at> master` in a bare clone); its full SHA is the key in `tags`. Two releases
+  on the same commit share one key: `"<sha>": "1.3.4, 1.3.3"`.
+- **Before the full fetch, list what the pages insert.** `git grep` over a bare clone shows every include target and
+  its extension: a reader that took only code extensions silently dropped extension-less command output and
+  `foundry.toml`, and a second fetch was needed. Recorded terminal output carries ANSI colour codes. After the fetch,
+  `grep` the corpus for leftover `[!include` and `{{#include`.
+- **A site that moved its folders** (mdBook `src/` → Vocs `vocs/docs/pages` → `src/pages`): derive the
+  `slug_rewrite` rules with a script that matches document titles across the periods, then check in
+  `index/passages.json` that a section key (`slug` and `section`) is shared only by sources of one family; an old
+  edition under a different key takes a result slot from the new one.
+- **Two numberings in one instance** (Foundry 1.8 and forge-std 1.8): label the second one (`forge-std-1.17.0`, the
+  field `version_prefix` for releases) so the version filter never mixes them.
 - **Quality.** The second ten of `quality` («as the model»: queries in the documentation's own names, the way the
   prompt tells the model to write them) is the main goal: 10 of 10. Targets grow only by genuine answers. A target
   must be a section with its own text: a document that is only a header is never found as a section. `ua_query` is
@@ -461,6 +475,20 @@ and what a taken port and a failed connection look like. A domain list in the ro
   разом із типами: відбиток із сирого файла давав би незмінній сторінці новий документ ледь не з кожним випуском.
   Відбиток рахують із тексту, який бачить читач, без таких рядків; коміт випуску версії без тегу — поле `gitHead`
   цієї версії в реєстрі npm.
+- **Сайт документації без версій** (Foundry Book: одна жива гілка без тегів) дістає версії за днем виходу: для
+  кожного стабільного релізу — останній коміт репозиторію документації перед публікацією релізу
+  (`git rev-list -1 --before=<published_at> master` у голому клоні); його повний SHA стає ключем у `tags`. Два релізи
+  на тому самому коміті ділять один ключ: `"<sha>": "1.3.4, 1.3.3"`.
+- **До повного завантаження — перелік того, що вставляють сторінки.** `git grep` по голому клону показує кожну ціль
+  вставки і її розширення: читач, що брав лише розширення коду, мовчки губив записаний вивід команд без розширення й
+  `foundry.toml`, і знадобилося друге завантаження. Записаний вивід терміналу несе кольори ANSI. Після завантаження
+  корпус перевіряють `grep`-ом на залишки `[!include` і `{{#include`.
+- **Сайт, що переїжджав між теками** (mdBook `src/` → Vocs `vocs/docs/pages` → `src/pages`): правила `slug_rewrite`
+  виводять скриптом, що зіставляє назви документів різних періодів, і перевіряють в `index/passages.json`, що ключ
+  розділу (`slug` і `section`) спільний лише для джерел однієї родини; стара редакція під іншим ключем забирає у
+  видачі місце нової.
+- **Дві нумерації в одному примірнику** (Foundry 1.8 і forge-std 1.8): другу позначають міткою (`forge-std-1.17.0`,
+  для релізів — поле `version_prefix`), щоб фільтр версії їх не змішував.
 - **Якість.** Друга десятка `quality` («як модель»: запити назвами самої документації, як велить писати промпт) —
   головна мета: 10 із 10. Цілі доповнюють лише справжніми відповідями. Ціль мусить бути розділом із власним текстом:
   документ із самої шапки розділом не знаходиться. `ua_query` — суто кирилицею, без цифр і латиниці.
@@ -854,6 +882,20 @@ errada.
   (`// @twoslash-cache: …`), refeito junto com os tipos: uma revisão calculada do arquivo cru daria a uma página
   inalterada um novo documento quase a cada versão. Calcule a revisão do texto que o leitor vê, sem essas linhas; o
   commit de lançamento de uma versão sem tag é o campo `gitHead` dessa versão no registro npm.
+- **Um site de documentação sem versões** (Foundry Book: um único ramo vivo, sem tags) recebe versões pelo dia do
+  lançamento: para cada versão estável, o último commit do repositório da documentação antes da publicação do release
+  (`git rev-list -1 --before=<published_at> master` num clone *bare*); o SHA completo é a chave em `tags`. Duas
+  versões no mesmo commit dividem uma chave: `"<sha>": "1.3.4, 1.3.3"`.
+- **Antes do download completo, liste o que as páginas inserem.** `git grep` num clone *bare* mostra cada alvo de
+  inclusão e a sua extensão: um leitor que aceitava só extensões de código perdeu em silêncio a saída de comandos sem
+  extensão e o `foundry.toml`, e foi preciso um segundo download. A saída gravada do terminal traz cores ANSI. Depois
+  do download, procure no corpus com `grep` restos de `[!include` e `{{#include`.
+- **Um site que mudou de pastas** (mdBook `src/` → Vocs `vocs/docs/pages` → `src/pages`): derive as regras de
+  `slug_rewrite` com um script que casa os títulos dos documentos entre os períodos e confira em
+  `index/passages.json` que uma chave de seção (`slug` e `section`) só é compartilhada por fontes da mesma família;
+  uma edição antiga sob outra chave rouba o lugar da nova nos resultados.
+- **Duas numerações numa instância** (Foundry 1.8 e forge-std 1.8): marque a segunda (`forge-std-1.17.0`, campo
+  `version_prefix` nos releases) para que o filtro de versão não as misture.
 - **Qualidade.** A segunda dezena de `quality` («como o modelo»: consultas com os nomes da própria documentação, como
   o prompt manda o modelo escrever) é a meta principal: 10 de 10. Os alvos só crescem com respostas genuínas. Um
   alvo precisa ser uma seção com texto próprio: um documento que é só cabeçalho nunca é encontrado como seção. A
