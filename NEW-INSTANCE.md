@@ -29,9 +29,48 @@ if the target site needs it, one new reader under `engine/readers/`.
 
 Everything except the first step runs from the repository root `docfactory/` as `./df <instance> <step>`.
 
+## Practices from the instances built so far
+
+What building sixty-odd instances taught. Each line once cost a re-fetch or a wrong answer.
+
+- **Agree the scope before any work.** Sources, in order of trust: the official site, the official repository, the
+  package registry. The npm registry is the base for packages, versions (canary included) and migrations. When the
+  documentation covers several versions, the default is the most downloaded one; when two are close, answer for
+  both.
+- **Environment before corpus.** Build the venv and the instance `.env` first; for GitHub sources add a
+  `GITHUB_TOKEN` line to that `.env` (the anonymous API allows 60 requests an hour). Do not run `refresh`,
+  `vectors`, `smoke` or `quality` before that.
+- **Try the reader on several kinds of pages before the full fetch:** an overview, a task page with tabs or
+  accordions, a reference page, a changelog entry. Two pages are not a sample: a reader that missed tab panels once
+  cost two full re-fetches of a 3 000-page site.
+- **Fix readers offline.** Every response is kept in the raw store `raw/` (step 6); after a reader fix run
+  `./df <domain> build`, not a new `refresh`.
+- **Long runs outlive the terminal.** Start a fetch of hours detached, e.g.
+  `setsid nohup ./df <domain> refresh > refresh.log 2>&1 &`. An interrupted run continues with
+  `refresh <source where it stopped>` and then `refresh --missing`.
+- **Build order:** documents → `vectors` → `smoke` → `quality` → tuning until «as the model» is 10 of 10 →
+  `smoke` and `quality` again → README → learning plans and the map `docs/learning-map.md` last.
+- **`config.json` keys** (step 2): `slug_rewrite` when a site renamed its files between versions, `families` for
+  sources that are editions of one site, `max_per_doc` and `fusion_depth` only by measuring `quality`;
+  `answer_hosts` lists every host the documents link to, pages outside the documentation site included. The source
+  field `name_prefix` keeps the «overview» and «line-2» documents of several packages in one instance apart.
+- **Quality.** The second ten of `quality` («as the model»: queries in the documentation's own names, the way the
+  prompt tells the model to write them) is the main goal: 10 of 10. Targets grow only by genuine answers. A target
+  must be a section with its own text: a document that is only a header is never found as a section. `ua_query` is
+  purely Cyrillic: no digits, no Latin.
+- **Archive mode**, when the texts should not stay in the folder (licence, size):
+  `tar -czf <archive>.tar.gz -C instances/<domain> corpus raw`; unpack it into a separate folder and compare with
+  the disk; only then delete the `.txt` files and `raw/`, compress `index/passages.json` into `passages.json.gz` and
+  commit the passport and the cache. Keep one current archive per instance; unpack it back before an update.
+- **Cosmetic reader fixes** that barely change the result wait for the instance's next update rather than a fetch
+  of their own.
+- **Books and pages** are cited as title, author, publisher, year of the newest edition.
+- **The instance report** ends with the commands to raise and register the server: `./df <domain> serve` and
+  `claude mcp add …` both for WSL and for Windows — Claude Code keeps separate settings in each.
+
 ## Anatomy of an instance
 
-Fourteen files, identical in shape across `ecmascript` and `react`, plus three folders that create themselves.
+Fourteen files, identical in shape across instances, plus five folders that create themselves.
 
 | Path | What it holds | Who writes it |
 |------|---------------|---------------|
@@ -45,11 +84,13 @@ Fourteen files, identical in shape across `ecmascript` and `react`, plus three f
 | `checks.json` | queries and expectations for `smoke`, `check`, `raw` and `quality` | you, after the first corpus |
 | `requirements.txt` | the instance venv contents | copy, then trim |
 | `.env.example` | key placeholder; never commit a real `.env` | copy |
-| `.gitignore` | `.env`, `__pycache__/`, `*.pyc`, `.venv/`, `out/` | copy |
+| `.gitignore` | `.env`, `__pycache__/`, `*.pyc`, `.venv/`, `out/`, `index/passages.json` | copy |
 | `.mcp.json` | HTTP server record for Claude Code | copy, change the port |
 | `README.md` | what this domain is and where its docs come from | you |
 | `UPDATE.md` | how to refresh this corpus when upstream changes | you |
 | `corpus/` | the downloaded documents plus `index.json`, the passport | `refresh`, `manifest` |
+| `index/` | the excerpt cache `passages.json` the server starts from; in archive mode it is committed compressed, `passages.json.gz` | built from `corpus/` by the first step that needs it |
+| `raw/` | raw site responses for `build` without network, old versions in `raw/_old/`; never in git | `refresh`, `check`, `list` |
 | `out/` | the search-mode decision, logs | `setup`, `serve` |
 | `.venv/` | the instance's own virtual environment | step 1 |
 
@@ -116,14 +157,20 @@ Trim `requirements.txt` to what the domain actually needs. `pypdf` belongs there
 | `variant_aliases` | `{variant: [words]}`: how a query names a variant (`"nextjs": ["next.js"]`); without it, the variant name itself with `-` read as a space | none |
 | `variant_strict` | `true`: when the query names a variant, pages of other variants that have no copy for it do not enter the results at all (per-framework API references with their own page names). Without it, variants are only collapsed | `false` |
 | `title_match` | `true`: a section whose identifier-like name (`Object.freeze`, `SameValue`, `[[Get]]`) the query contains verbatim goes first; plain words from headings do not count. Without it results are exactly as before | `false` |
+| `raw_store` | `false` turns off the raw store (step 6) | `true` |
+| `max_per_doc` | how many places in the results one family of documents may take (the same page across versions, a package README across revisions). Chosen by measuring `quality` | no limit |
+| `slug_rewrite` | list of `[regex, replacement]` pairs applied to the page key: a site that renamed its files between versions gives one page different names, and without a common key its editions do not merge | none |
+| `families` | `{"family": ["source id", …]}`: sources that are editions of one site (`tw-v1` … `tw-v4`); the same section of a family takes one place in the results and shows the newest edition. Each source belongs to at most one family | each source alone |
+| `version_line_depth` | how many numbers make a version line for the version filter: 1 (`18`) or 2 (`1.35`, a corpus of many tools) | 1 |
 
-**Ports in use today:** 8760 `ecmascript`, 8761 `react`. Take the next free one.
+**Ports in use:** in each instance's `config.json`; `grep -h '"port"' instances/*/config.json | sort` lists them.
+Take the next free one.
 
 ## Step 3 · `sources.json`
 
 This is not a step, it is the work. Everything else is mechanical.
 
-Find out how the target site serves its documentation, then decide whether one of the sixteen existing readers fits.
+Find out how the target site serves its documentation, then decide whether one of the existing readers fits.
 The whitelist principle is absolute: the updater fetches only what `sources.json` declares, and nothing else, ever.
 
 ```json
@@ -161,7 +208,7 @@ The whitelist principle is absolute: the updater fetches only what `sources.json
 | `keep_links` | keep URLs in the text; for a sitemap page where the links are the content |
 | `expand`, `children`, `alt`, `meta` | specification readers: sub-page expansion and alternate titles |
 
-### The sixteen readers
+### Basic readers
 
 | Reader | Source shape |
 |--------|--------------|
@@ -181,6 +228,11 @@ The whitelist principle is absolute: the updater fetches only what `sources.json
 | `changelog` | `CHANGELOG.md` split into one document per version |
 | `ghreleases` | GitHub release notes through the API |
 | `ghcommit` | a single commit: message, author, date, file list |
+
+These sixteen are only the first: as of 12.10.2026 the factory registers 103 readers in 78 modules — sites on
+Mintlify, Docusaurus, DevSite and Sphinx, the npm and PyPI registries, repository histories and more.
+`grep -h '@register' engine/readers/*.py` lists every name; each module's docstring describes its readers and their
+fields.
 
 If none fits, a new reader in `engine/readers/` comes first, before anything else. Readers register themselves, so
 no shared file needs editing.
@@ -213,7 +265,12 @@ a reader picks up the wrong pages.
 and a checksum for every document. Nothing is ever deleted by these steps.
 
 Useful variants: `./df <domain> refresh --missing` writes only files that are absent, and
-`./df <domain> refresh <id> <id>` limits the run to named sources.
+`./df <domain> refresh <id> <id>` limits the run to named sources — the others are not even listed. An interrupted
+full run continues with `refresh <source where it stopped>` and then `refresh --missing`.
+
+Every response also lands in the raw store `raw/`, compressed and as received. A changed page does not overwrite the
+stored one: the old version moves to `raw/_old/<day>/`. After a reader fix, `./df <domain> build [id…]` rebuilds the
+texts from the store without network, in minutes. `"raw_store": false` in `config.json` turns the store off.
 
 ## Step 7 · `prompts/`
 
@@ -268,7 +325,9 @@ be changed later. `vectors` starts the container, downloads the embedding model 
 CPU, no money, no network beyond the model download.
 
 The container `agent0826-qdrant` is **shared** with other projects. Deleting collections is a human decision and no
-step ever does it: `vectors` reports points whose text no longer exists and prints the command, nothing more.
+step ever does it. Inside its own collection `vectors` removes, at the end of every run, the points whose excerpt is
+no longer in the corpus — except when the corpus is incomplete or no existing point was recognised. Collections,
+volumes and containers it never touches.
 
 ## Step 10 · Verify
 
@@ -316,12 +375,15 @@ and what a taken port and a failed connection look like. A domain list in the ro
 [ ] sources.json: every source declared, whitelist bounded by `within`
 [ ] ./df <domain> sources --why  passes
 [ ] ./df <domain> list           looks right
+[ ] reader tried on several kinds of pages before the full fetch
 [ ] corpus fetched, manifest written
 [ ] prompts/: all five, none carrying another domain's words
 [ ] checks.json: real numbers, targets chosen from documentation
 [ ] smoke, protocol, raw, tools all green
+[ ] quality: «as the model» 10 of 10
 [ ] README.md says how to raise the server and register it in Claude Code
 [ ] README.md and UPDATE.md written; root README lists the domain
+[ ] archive mode: corpus and raw archived, archive verified, texts and raw/ removed
 ```
 
 ---
@@ -347,9 +409,46 @@ and what a taken port and a failed connection look like. A domain list in the ro
 
 Усе, крім першого кроку, біжить із кореня `docfactory/` через `./df <примірник> <крок>`.
 
+## Практики зібраних примірників
+
+Чого навчило збирання шістдесяти з гаком примірників. Кожен рядок колись коштував перекачування або хибної відповіді.
+
+- **Обсяг погоджують до роботи.** Джерела за довірою: офіційний сайт, офіційний репозиторій, реєстр пакетів. Реєстр
+  npm — база пакетів, версій (з canary) і переходів між ними. Коли документація охоплює кілька версій, версія за
+  замовчуванням — найпопулярніша за завантаженнями; якщо дві близькі — відповідь для обох.
+- **Спершу середовище, потім корпус.** Першими — venv і `.env` примірника; для джерел GitHub у цей `.env` дописують
+  рядок `GITHUB_TOKEN` (анонімний API дає 60 звернень на годину). До того `refresh`, `vectors`, `smoke` і `quality`
+  не запускають.
+- **Читача пробують на кількох типах сторінок до повного завантаження:** огляд, завдання з вкладками чи гармошками,
+  довідник, запис журналу змін. Дві сторінки — не вибірка: читач, що не бачив панелей вкладок, якось коштував двох
+  повних перекачувань сайту на 3 000 сторінок.
+- **Читача правлять без мережі.** Кожна відповідь лежить у сховищі сирого `raw/` (крок 6); після правки читача —
+  `./df <домен> build`, а не новий `refresh`.
+- **Довгий прогін переживає термінал.** Завантаження на години запускають відокремлено, напр.
+  `setsid nohup ./df <домен> refresh > refresh.log 2>&1 &`. Перерваний прогін продовжують командою
+  `refresh <джерело, де зупинився>`, а потім `refresh --missing`.
+- **Порядок збирання:** документи → `vectors` → `smoke` → `quality` → дотюнінг, доки «як модель» не дасть 10 із 10 →
+  знову `smoke` і `quality` → README → плани навчання й карта `docs/learning-map.md` останніми.
+- **Ключі `config.json`** (крок 2): `slug_rewrite` — коли сайт між версіями переклав файли, `families` — для джерел,
+  що є редакціями одного сайту, `max_per_doc` і `fusion_depth` — лише за заміром `quality`; `answer_hosts`
+  перелічує всі хости, на які посилаються документи, зокрема сторінки поза сайтом документації. Поле джерела
+  `name_prefix` розводить документи «overview» і «line-2» кількох пакетів одного примірника.
+- **Якість.** Друга десятка `quality` («як модель»: запити назвами самої документації, як велить писати промпт) —
+  головна мета: 10 із 10. Цілі доповнюють лише справжніми відповідями. Ціль мусить бути розділом із власним текстом:
+  документ із самої шапки розділом не знаходиться. `ua_query` — суто кирилицею, без цифр і латиниці.
+- **Архівний режим** — коли текстам не місце в теці (ліцензія, розмір):
+  `tar -czf <архів>.tar.gz -C instances/<домен> corpus raw`; розпакувати в окрему теку й звірити з диском; лише
+  тоді видалити файли `.txt` і `raw/`, стиснути `index/passages.json` у `passages.json.gz` і закомітити паспорт і
+  кеш. Чинний архів у примірника один; перед оновленням його розпаковують назад.
+- **Косметичні правки читача**, що майже не міняють результат, чекають наступного оновлення примірника, а не
+  окремого перекачування.
+- **Книжки й сторінки** цитують як назву, автора, видавництво й рік найновішого видання.
+- **Звіт про примірник** закінчується командами підняти й записати сервер: `./df <домен> serve` і `claude mcp add …`
+  і для WSL, і для Windows — Claude Code тримає там окремі налаштування.
+
 ## З чого складається примірник
 
-Чотирнадцять файлів, однакових за складом у `ecmascript` і `react`, плюс три теки, що створюються самі.
+Чотирнадцять файлів, однакових за складом у всіх примірниках, плюс п'ять тек, що створюються самі.
 
 | Шлях | Що тримає | Хто пише |
 |------|-----------|----------|
@@ -363,11 +462,13 @@ and what a taken port and a failed connection look like. A domain list in the ro
 | `checks.json` | запити й очікування для `smoke`, `check`, `raw` і `quality` | ви, після першого корпусу |
 | `requirements.txt` | склад venv примірника | копія, потім підрізати |
 | `.env.example` | заготовка для ключа; справжній `.env` у git не потрапляє ніколи | копія |
-| `.gitignore` | `.env`, `__pycache__/`, `*.pyc`, `.venv/`, `out/` | копія |
+| `.gitignore` | `.env`, `__pycache__/`, `*.pyc`, `.venv/`, `out/`, `index/passages.json` | копія |
 | `.mcp.json` | запис HTTP-сервера для Claude Code | копія, змінити порт |
 | `README.md` | що це за домен і звідки береться його документація | ви |
 | `UPDATE.md` | як оновлювати корпус, коли нагорі щось змінилося | ви |
 | `corpus/` | завантажені документи плюс `index.json`, паспорт | `refresh`, `manifest` |
+| `index/` | кеш фрагментів `passages.json`, з якого підіймається сервер; в архівному режимі в git іде стисненим, `passages.json.gz` | будується з `corpus/` першим кроком, якому потрібен |
+| `raw/` | сирі відповіді сайтів для `build` без мережі, старі версії — у `raw/_old/`; у git не йде ніколи | `refresh`, `check`, `list` |
 | `out/` | рішення про спосіб пошуку, журнали | `setup`, `serve` |
 | `.venv/` | власне віртуальне середовище примірника | крок 1 |
 
@@ -434,15 +535,21 @@ cd ../..
 | `variant_aliases` | `{варіант: [слова]}`: як запит називає варіант (`"nextjs": ["next.js"]`); без поля — саме ім'я варіанта, «-» як пробіл | немає |
 | `variant_strict` | `true`: коли запит називає варіант, сторінки інших варіантів, що не мають його копії, до видачі не потрапляють зовсім (довідник API кожного фреймворку з власними іменами сторінок). Без поля варіанти лише згортаються | `false` |
 | `title_match` | `true`: розділ, чию назву-ідентифікатор (`Object.freeze`, `SameValue`, `[[Get]]`) запит містить дослівно, стає першим; звичайні слова заголовків не рахуються. Без поля видача та сама, що до його появи | `false` |
+| `raw_store` | `false` вимикає сховище сирого (крок 6) | `true` |
+| `max_per_doc` | скільки місць видачі може зайняти одна родина документів (та сама сторінка всіх версій, README пакета всіх редакцій). Вибирається за виміром `quality` | без обмеження |
+| `slug_rewrite` | перелік пар `[вираз, заміна]` для ключа сторінки: сайт, що між версіями переклав файли, дає одній сторінці різні імена, і без спільного ключа редакції не зливаються | немає |
+| `families` | `{"родина": ["id джерела", …]}`: джерела, що є редакціями одного сайту (`tw-v1` … `tw-v4`); однаковий розділ родини займає у видачі одне місце й показує найновішу редакцію. Кожне джерело — щонайбільше в одній родині | кожне джерело окремо |
+| `version_line_depth` | скільки чисел складають лінію версії для фільтра версій: 1 (`18`) чи 2 (`1.35`, корпус із багатьох інструментів) | 1 |
 
-**Зайняті порти:** 8760 `ecmascript`, 8761 `react`. Беріть наступний вільний.
+**Зайняті порти** — у `config.json` кожного примірника; перелік дає `grep -h '"port"' instances/*/config.json | sort`.
+Беріть наступний вільний.
 
 ## Крок 3 · `sources.json`
 
 Це не крок, це робота. Усе інше механічне.
 
-Треба з'ясувати, як цільовий сайт віддає документацію, і вирішити, чи підходить котрийсь із шістнадцяти наявних
-читачів. Принцип білого списку непорушний: оновлювач тягне рівно те, що оголошено в `sources.json`, і нічого більше.
+Треба з'ясувати, як цільовий сайт віддає документацію, і вирішити, чи підходить котрийсь із наявних читачів. Принцип
+білого списку непорушний: оновлювач тягне рівно те, що оголошено в `sources.json`, і нічого більше.
 
 ```json
 {
@@ -479,7 +586,7 @@ cd ../..
 | `keep_links` | лишити адреси в тексті; для сторінки-мапи, де посилання і є змістом |
 | `expand`, `children`, `alt`, `meta` | читачі специфікацій: розгортання підсторінок і запасні назви |
 
-### Шістнадцять читачів
+### Основні читачі
 
 | Читач | Форма джерела |
 |-------|---------------|
@@ -499,6 +606,10 @@ cd ../..
 | `changelog` | `CHANGELOG.md`, поділений на версії: одна версія — один документ |
 | `ghreleases` | нотатки релізів GitHub через API |
 | `ghcommit` | один коміт: повідомлення, автор, дата, склад файлів |
+
+Ці шістнадцять — лише перші: на 12.10.2026 фабрика реєструє 103 читачі в 78 модулях — сайти на Mintlify, Docusaurus,
+DevSite і Sphinx, реєстри npm і PyPI, історії репозиторіїв тощо. `grep -h '@register' engine/readers/*.py` перелічує
+всі імена; докстрінг кожного модуля описує його читачі та їхні поля.
 
 Якщо не підходить жоден, новий читач в `engine/readers/` йде першим, до всього іншого. Читачі реєструються самі,
 тож жодного спільного файлу правити не треба.
@@ -531,7 +642,12 @@ cd ../..
 тексту кожного документа. Жоден із цих кроків нічого не видаляє.
 
 Корисні варіанти: `./df <домен> refresh --missing` пише лише відсутні файли, а `./df <домен> refresh <id> <id>`
-обмежує прогін названими джерелами.
+обмежує прогін названими джерелами — інших навіть не перелічує. Перерваний повний прогін продовжують командою
+`refresh <джерело, де зупинився>`, а потім `refresh --missing`.
+
+Кожна відповідь лягає ще й у сховище сирого `raw/`, стиснутою й такою, як прийшла. Змінена сторінка не затирає
+збереженої: стара версія переїжджає в `raw/_old/<день>/`. Після правки читача `./df <домен> build [id…]` збирає
+тексти зі сховища без мережі, за хвилини. `"raw_store": false` у `config.json` вимикає сховище.
 
 ## Крок 7 · `prompts/`
 
@@ -584,7 +700,9 @@ cd ../..
 без мережі, окрім завантаження самої моделі.
 
 Контейнер `agent0826-qdrant` **спільний** з іншими проєктами. Видалення колекцій це рішення людини, і жоден крок
-його не робить: `vectors` повідомляє про точки, чий текст уже зник, і друкує команду, не більше.
+його не робить. У своїй колекції `vectors` наприкінці кожного прогону прибирає точки, чиїх фрагментів у корпусі вже
+немає, — крім випадків, коли корпус неповний або жодної наявної точки не впізнано. Колекцій, томів і контейнерів він
+не чіпає ніколи.
 
 ## Крок 10 · Перевірки
 
@@ -633,12 +751,15 @@ claude mcp add --transport http --scope user <server_name> http://127.0.0.1:<п�
 [ ] sources.json: усі джерела оголошено, білий список обмежено через `within`
 [ ] ./df <домен> sources --why  проходить
 [ ] ./df <домен> list           виглядає правильно
+[ ] читача перевірено на кількох типах сторінок до повного завантаження
 [ ] корпус завантажено, паспорт записано
 [ ] prompts/: усі п'ять, у жодному немає слів чужого домену
 [ ] checks.json: справжні числа, цілі дібрані з документації
 [ ] smoke, protocol, raw, tools зелені
+[ ] quality: «як модель» 10 із 10
 [ ] README.md каже, як підняти сервер і записати його в Claude Code
 [ ] README.md і UPDATE.md написані; кореневий README називає домен
+[ ] архівний режим: corpus і raw в архіві, архів звірено, тексти й raw/ прибрано
 ```
 
 ---
@@ -664,9 +785,51 @@ em `instances/` e, somente se o site de destino exigir, um novo leitor em `engin
 
 Tudo, exceto o primeiro passo, roda a partir da raiz `docfactory/` como `./df <instância> <passo>`.
 
+## Práticas das instâncias já montadas
+
+O que a montagem de mais de sessenta instâncias ensinou. Cada linha já custou um novo download ou uma resposta
+errada.
+
+- **Combine o escopo antes de qualquer trabalho.** Fontes, em ordem de confiança: o site oficial, o repositório
+  oficial, o registro de pacotes. O registro do npm é a base para pacotes, versões (canary incluídas) e migrações.
+  Quando a documentação cobre várias versões, a padrão é a mais baixada; se duas estão próximas, responda para
+  ambas.
+- **Ambiente antes do corpus.** Primeiro o venv e o `.env` da instância; para fontes do GitHub acrescente uma linha
+  `GITHUB_TOKEN` a esse `.env` (a API anônima permite 60 requisições por hora). Antes disso não rode `refresh`,
+  `vectors`, `smoke` nem `quality`.
+- **Teste o leitor em vários tipos de página antes do download completo:** uma visão geral, uma página de tarefa com
+  abas ou sanfonas, uma página de referência, uma entrada de changelog. Duas páginas não são amostra: um leitor que
+  não via os painéis das abas já custou dois downloads completos de um site de 3 000 páginas.
+- **Corrija leitores sem rede.** Cada resposta fica no armazenamento bruto `raw/` (passo 6); depois de corrigir um
+  leitor rode `./df <domínio> build`, não um novo `refresh`.
+- **Execuções longas sobrevivem ao terminal.** Um download de horas começa desacoplado, p. ex.
+  `setsid nohup ./df <domínio> refresh > refresh.log 2>&1 &`. Uma execução interrompida continua com
+  `refresh <fonte onde parou>` e depois `refresh --missing`.
+- **Ordem da montagem:** documentos → `vectors` → `smoke` → `quality` → ajustes até «como o modelo» dar 10 de 10 →
+  `smoke` e `quality` de novo → README → planos de estudo e o mapa `docs/learning-map.md` por último.
+- **Chaves do `config.json`** (passo 2): `slug_rewrite` quando o site renomeou arquivos entre versões, `families`
+  para fontes que são edições de um mesmo site, `max_per_doc` e `fusion_depth` só medindo com `quality`;
+  `answer_hosts` lista todos os domínios para os quais os documentos apontam, inclusive páginas fora do site de
+  documentação. O campo de fonte `name_prefix` separa os documentos «overview» e «line-2» de vários pacotes numa
+  mesma instância.
+- **Qualidade.** A segunda dezena de `quality` («como o modelo»: consultas com os nomes da própria documentação, como
+  o prompt manda o modelo escrever) é a meta principal: 10 de 10. Os alvos só crescem com respostas genuínas. Um
+  alvo precisa ser uma seção com texto próprio: um documento que é só cabeçalho nunca é encontrado como seção. A
+  `ua_query` é puramente cirílica: sem dígitos e sem latim.
+- **Modo de arquivo**, quando os textos não devem ficar na pasta (licença, tamanho):
+  `tar -czf <arquivo>.tar.gz -C instances/<domínio> corpus raw`; descompacte numa pasta à parte e compare com o
+  disco; só então apague os `.txt` e `raw/`, comprima `index/passages.json` em `passages.json.gz` e faça commit do
+  passaporte e do cache. Um arquivo vigente por instância; antes de uma atualização, descompacte-o de volta.
+- **Correções cosméticas de leitor**, que quase não mudam o resultado, esperam a próxima atualização da instância
+  em vez de um download próprio.
+- **Livros e páginas** são citados como título, autor, editora e ano da edição mais recente.
+- **O relatório da instância** termina com os comandos para subir e registrar o servidor: `./df <domínio> serve` e
+  `claude mcp add …` tanto para o WSL quanto para o Windows — o Claude Code guarda configurações separadas em cada
+  um.
+
 ## Anatomia de uma instância
 
-Quatorze arquivos, com a mesma composição em `ecmascript` e `react`, mais três pastas que se criam sozinhas.
+Quatorze arquivos, com a mesma composição em todas as instâncias, mais cinco pastas que se criam sozinhas.
 
 | Caminho | O que contém | Quem escreve |
 |---------|--------------|--------------|
@@ -680,11 +843,13 @@ Quatorze arquivos, com a mesma composição em `ecmascript` e `react`, mais trê
 | `checks.json` | consultas e expectativas de `smoke`, `check`, `raw` e `quality` | você, após o primeiro corpus |
 | `requirements.txt` | conteúdo do venv da instância | copiar e depois enxugar |
 | `.env.example` | modelo para a chave; um `.env` real nunca vai para o git | cópia |
-| `.gitignore` | `.env`, `__pycache__/`, `*.pyc`, `.venv/`, `out/` | cópia |
+| `.gitignore` | `.env`, `__pycache__/`, `*.pyc`, `.venv/`, `out/`, `index/passages.json` | cópia |
 | `.mcp.json` | registro do servidor HTTP para o Claude Code | cópia, trocar a porta |
 | `README.md` | o que é este domínio e de onde vem sua documentação | você |
 | `UPDATE.md` | como atualizar o corpus quando a origem mudar | você |
 | `corpus/` | documentos baixados mais `index.json`, o passaporte | `refresh`, `manifest` |
+| `index/` | o cache de trechos `passages.json` do qual o servidor sobe; no modo de arquivo vai para o git comprimido, `passages.json.gz` | montado a partir de `corpus/` pelo primeiro passo que precisa dele |
+| `raw/` | respostas brutas dos sites para o `build` sem rede, versões antigas em `raw/_old/`; nunca vai para o git | `refresh`, `check`, `list` |
 | `out/` | a decisão sobre o modo de busca, logs | `setup`, `serve` |
 | `.venv/` | ambiente virtual próprio da instância | passo 1 |
 
@@ -751,15 +916,21 @@ você quiser busca por significado.
 | `variant_aliases` | `{variante: [palavras]}`: como a consulta nomeia uma variante (`"nextjs": ["next.js"]`); sem ele, o próprio nome da variante com `-` lido como espaço | nenhum |
 | `variant_strict` | `true`: quando a consulta nomeia uma variante, as páginas de outras variantes que não têm cópia dela não entram nos resultados (referências de API por framework com nomes de página próprios). Sem ele, as variantes são apenas agrupadas | `false` |
 | `title_match` | `true`: a seção cujo nome em forma de identificador (`Object.freeze`, `SameValue`, `[[Get]]`) aparece literalmente na consulta vem primeiro; palavras comuns de títulos não contam. Sem o campo os resultados são exatamente como antes | `false` |
+| `raw_store` | `false` desliga o armazenamento bruto (passo 6) | `true` |
+| `max_per_doc` | quantas posições dos resultados uma família de documentos pode ocupar (a mesma página em todas as versões, o README de um pacote em todas as revisões). Escolhido medindo com `quality` | sem limite |
+| `slug_rewrite` | lista de pares `[regex, substituição]` aplicados à chave da página: um site que renomeou arquivos entre versões dá nomes diferentes à mesma página, e sem chave comum as edições não se fundem | nenhum |
+| `families` | `{"família": ["id da fonte", …]}`: fontes que são edições de um mesmo site (`tw-v1` … `tw-v4`); a mesma seção da família ocupa um lugar nos resultados e mostra a edição mais nova. Cada fonte em no máximo uma família | cada fonte sozinha |
+| `version_line_depth` | quantos números formam uma linha de versão para o filtro de versão: 1 (`18`) ou 2 (`1.35`, corpus de muitas ferramentas) | 1 |
 
-**Portas já usadas:** 8760 `ecmascript`, 8761 `react`. Pegue a próxima livre.
+**Portas já usadas:** no `config.json` de cada instância; `grep -h '"port"' instances/*/config.json | sort` lista
+todas. Pegue a próxima livre.
 
 ## Passo 3 · `sources.json`
 
 Isto não é um passo, é o trabalho. Todo o resto é mecânico.
 
-É preciso descobrir como o site de destino entrega a documentação e decidir se algum dos dezesseis leitores
-existentes serve. O princípio da lista branca é inviolável: o atualizador busca exatamente o que está declarado em
+É preciso descobrir como o site de destino entrega a documentação e decidir se algum dos leitores existentes
+serve. O princípio da lista branca é inviolável: o atualizador busca exatamente o que está declarado em
 `sources.json`, e nada mais.
 
 ```json
@@ -797,7 +968,7 @@ existentes serve. O princípio da lista branca é inviolável: o atualizador bus
 | `keep_links` | manter endereços no texto; para uma página-mapa em que os links são o conteúdo |
 | `expand`, `children`, `alt`, `meta` | leitores de especificação: expansão de subpáginas e títulos alternativos |
 
-### Os dezesseis leitores
+### Leitores básicos
 
 | Leitor | Formato da fonte |
 |--------|------------------|
@@ -817,6 +988,11 @@ existentes serve. O princípio da lista branca é inviolável: o atualizador bus
 | `changelog` | `CHANGELOG.md` dividido por versão: uma versão, um documento |
 | `ghreleases` | notas de release do GitHub via API |
 | `ghcommit` | um commit: mensagem, autor, data, lista de arquivos |
+
+Estes dezesseis são só os primeiros: em 12.10.2026 a fábrica registra 103 leitores em 78 módulos — sites em
+Mintlify, Docusaurus, DevSite e Sphinx, os registros do npm e do PyPI, históricos de repositório e outros.
+`grep -h '@register' engine/readers/*.py` lista todos os nomes; a docstring de cada módulo descreve seus leitores e
+os campos deles.
 
 Se nenhum servir, um novo leitor em `engine/readers/` vem primeiro, antes de tudo. Os leitores se registram
 sozinhos, então nenhum arquivo compartilhado precisa ser alterado.
@@ -849,7 +1025,13 @@ leitor está pegando as páginas erradas.
 download e soma de verificação de cada documento. Nenhum destes passos apaga coisa alguma.
 
 Variantes úteis: `./df <domínio> refresh --missing` grava apenas os arquivos ausentes, e
-`./df <domínio> refresh <id> <id>` limita a execução às fontes indicadas.
+`./df <domínio> refresh <id> <id>` limita a execução às fontes indicadas — as outras nem são listadas. Uma execução
+completa interrompida continua com `refresh <fonte onde parou>` e depois `refresh --missing`.
+
+Cada resposta também vai para o armazenamento bruto `raw/`, comprimida e como chegou. Uma página alterada não
+sobrescreve a guardada: a versão antiga passa para `raw/_old/<dia>/`. Depois de corrigir um leitor,
+`./df <domínio> build [id…]` remonta os textos a partir do armazenamento, sem rede, em minutos.
+`"raw_store": false` no `config.json` desliga o armazenamento.
 
 ## Passo 7 · `prompts/`
 
@@ -904,7 +1086,9 @@ vaga: reescreva a consulta em vez de alargar o alvo.
 sem custo e sem rede além do download do modelo.
 
 O contêiner `agent0826-qdrant` é **compartilhado** com outros projetos. Apagar coleções é decisão humana e nenhum
-passo faz isso: `vectors` informa quais pontos descrevem texto que já não existe e imprime o comando, nada além.
+passo faz isso. Dentro da própria coleção, `vectors` remove ao fim de cada execução os pontos cujo trecho já não está
+no corpus — exceto quando o corpus está incompleto ou nenhum ponto existente foi reconhecido. Coleções, volumes e
+contêineres ele nunca toca.
 
 ## Passo 10 · Verificar
 
@@ -953,10 +1137,13 @@ isso.
 [ ] sources.json: todas as fontes declaradas, lista branca limitada por `within`
 [ ] ./df <domínio> sources --why  passa
 [ ] ./df <domínio> list           parece correto
+[ ] leitor testado em vários tipos de página antes do download completo
 [ ] corpus baixado, passaporte escrito
 [ ] prompts/: todos os cinco, nenhum com palavras de outro domínio
 [ ] checks.json: números reais, alvos escolhidos a partir da documentação
 [ ] smoke, protocol, raw, tools todos verdes
+[ ] quality: «como o modelo» 10 de 10
 [ ] README.md diz como subir o servidor e registrá-lo no Claude Code
 [ ] README.md e UPDATE.md escritos; o README da raiz cita o domínio
+[ ] modo de arquivo: corpus e raw arquivados, arquivo conferido, textos e raw/ removidos
 ```
