@@ -1437,6 +1437,27 @@ Popmotion разом із Pose — сайт popmotion.io з репозиторі
 - корпус в архіві від самого початку, як у binance-spot;
 - докладніше — у [instances/kraken-spot/README.md](instances/kraken-spot/README.md).
 
+### oracle-cloud
+
+Документація Oracle Cloud Infrastructure англійською з docs.oracle.com/iaas: Getting Started, Free Tier разом зі
+сторінкою запитань з www.oracle.com, Service Essentials, Compute, Networking, Block Volume, Billing, IAM з доменами
+ідентичності й довідником політик, Kubernetes Engine (OKE), Load Balancer і Network Load Balancer, Object Storage,
+Bastion, Monitoring, Notifications, Certificates, DNS, Email Delivery і Developer Guide без згенерованого довідника
+PL/SQL SDK; журнали змін цих сервісів, консолі й загальних оголошень з 17.10.2016; SDK для TypeScript `oci-sdk` —
+таблиці версій з реєстру npm, README і журнал змін. Безкоштовна машина Ampere A1, на якій плани React, NestJS і
+Next.js тримають кластер k3s, — правила Always Free, повернення бездіяльних машин, security lists. Нові читачі
+`oci-toc` (сторінки за деревом меню `toc.json`, вкладки Console / CLI / API — окремими підрозділами),
+`oci-releasenotes` і `oci-faq`. Перший примірник зі сховищем сирих відповідей (`raw_store`). Без баз даних, AI,
+аналітики та інших сервісів OCI. 4 317 документів, 23 351 фрагмент.
+
+- порт `8825`; запис у Claude Code — `oracle-cloud-docs`, адреса `http://127.0.0.1:8825/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-oracle-cloud`, модель векторів — `bge-small`;
+- версій у документації сайту немає, історія — у журналах змін за датами; фільтр `version` — лише для `oci-sdk`;
+- приклад питання агентові: `./df oracle-cloud ask "What happens to an idle Always Free A1 instance?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/oracle-cloud/README.md](instances/oracle-cloud/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
