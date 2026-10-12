@@ -11,8 +11,8 @@
 питається зовсім, доки його не назвуть: вміст такого знімка змінитися не може, а
 кожен його перелік — звернення до чужого API з лімітом на годину.
 
-Зі сховищем сирого (`raw_store: true` у config.json, див. rawstore) кожна відповідь
-лягає ще й туди, а крок `build` (`offline`) проходить той самий шлях без мережі: тексти
+Кожна відповідь лягає ще й у сховище сирого (див. rawstore; вимикає `"raw_store": false` у
+config.json), а крок `build` (`offline`) проходить той самий шлях без мережі: тексти
 збираються зі сховища, і правка читача не вимагає нового завантаження.
 """
 
@@ -186,9 +186,10 @@ def refresh(instance_dir, targets: set, do_refresh: bool, listing: bool,
     if offline:
         if store is None:
             raise SystemExit("Крок build збирає тексти зі сховища сирого, а в цьому примірнику "
-                             "його не ввімкнено: поле raw_store у config.json.")
+                             "його вимкнено: поле raw_store у config.json.")
         if not store.root.is_dir():
-            raise SystemExit(f"Сховище {store.root} порожнє: спершу refresh.")
+            raise SystemExit(f"Сховища {store.root} немає: поверніть його з архіву разом із "
+                             f"текстами або спершу refresh.")
         print("── Збираю тексти зі сховища сирого, без мережі ──")
     if not listing:
         corpus.mkdir(exist_ok=True)

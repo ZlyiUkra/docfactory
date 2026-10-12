@@ -6,8 +6,10 @@
 зверненнями. Зі сховищем кожна відповідь лягає на диск такою, як прийшла, а крок
 `build` збирає тексти з неї наново, без мережі, за хвилини.
 
-Вмикається полем `raw_store: true` у config.json примірника. Без поля кроки поводяться
-до байта так само, як до появи сховища.
+Увімкнене за замовчуванням у кожного примірника з config.json; `"raw_store": false` вимикає,
+і тоді кроки поводяться до байта так само, як до появи сховища. Зібрані раніше примірники
+заводять сховище з першим же оновленням. Між оновленнями сховище, як і тексти корпусу, лежить
+в архіві примірника: серверу воно не потрібне.
 
 Як лежить. Один файл на адресу: `raw/<хост>/<ключ>.gz`. Ключ — сума адреси й заголовка
 Accept: та сама адреса з «Accept: text/markdown» — інша відповідь. Усередині стиснутого
@@ -42,19 +44,18 @@ GONE = ("збій: HTTP 404", "збій: HTTP 410")
 
 
 def of(instance_dir: pathlib.Path, stamp: str) -> "Store | None":
-    """Сховище примірника, якщо його ввімкнено полем `raw_store` у config.json."""
+    """Сховище примірника; None — коли його вимкнено (`"raw_store": false`) або теки
+    без config.json, яка примірником не є (так виглядають тимчасові примірники smoke)."""
     path = instance_dir / "config.json"
     if not path.exists():
         return None
     try:
-        value = json.loads(path.read_text(encoding="utf-8")).get("raw_store")
+        value = json.loads(path.read_text(encoding="utf-8")).get("raw_store", True)
     except (OSError, ValueError) as exc:
         raise SystemExit(f"{path}: не читається ({exc})")
-    if value is None or value is False:
-        return None
-    if value is not True:
+    if not isinstance(value, bool):
         raise SystemExit(f"{path}: поле raw_store мусить бути true або false, а не {value!r}")
-    return Store(instance_dir / DIR, stamp)
+    return Store(instance_dir / DIR, stamp) if value else None
 
 
 def _host(url: str) -> str:

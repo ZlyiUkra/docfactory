@@ -323,6 +323,20 @@ def main(argv: list[str]) -> int:
               refused and code.startswith("збій"), code[:60])
         check("build без мережі: записане 404 повертається тим самим кодом",
               gone == "збій: HTTP 404", gone)
+
+        # Сховище ввімкнене за замовчуванням, `"raw_store": false` вимикає, а тека без
+        # config.json (тимчасові примірники цих перевірок) сховища не має: інакше
+        # заглушки net.fetch вище обходилися б справжнім зверненням до мережі.
+        def store_of(conf):
+            if conf is not None:
+                (rs / "config.json").write_text(_json.dumps(conf), encoding="utf-8")
+            return rawstore.of(rs, "2026-10-12")
+
+        bare = store_of(None)
+        on = store_of({"port": 1})
+        off = store_of({"raw_store": False})
+        check("сховище сирого: є за замовчуванням, false вимикає, без config.json — немає",
+              bare is None and on is not None and off is None)
     finally:
         shutil.rmtree(rs, ignore_errors=True)
 
