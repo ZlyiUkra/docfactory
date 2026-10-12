@@ -30,6 +30,12 @@ _DATED = re.compile(r"/(\d{4})/(\d{2})/(\d{2})/([^/]+)$")
 # злитися в один вони не можуть: лежать у різних документах.
 _SITEMAP = re.compile(r"\n-{3,}[ \t]*\n+## Sitemap[ \t]*\n+"
                       r"\[Overview of all docs pages\]\([^)\n]*\)\s*\Z")
+# Сторінки Lightweight Charts закінчуються своїм «Sitemap» з посиланнями на llms.txt і
+# docs_map.md, а документація — ще й рядком «Documentation for … v5.2 (latest released
+# version).» перед ним: 68 однакових фрагментів без змісту, а версію документ і так несе в шапці.
+_SITEMAP_VERSIONED = re.compile(r"\n-{3,}[ \t]*\n+(?:Documentation for [^\n]* v\d[^\n]*\n+)?"
+                                r"## Sitemap[ \t]*\n+(?:- \[[^\]\n]*\]\([^)\n]*"
+                                r"(?:llms\.txt|docs_map\.md)\)\s*)+\Z")
 
 
 def _md_document(ctx, md_url: str, page: str, version: str, prefix: str = "",
@@ -37,7 +43,7 @@ def _md_document(ctx, md_url: str, page: str, version: str, prefix: str = "",
     text = ctx.text(md_url)
     _markup.refuse_html(text, md_url)
     meta, rest = _markup.front_matter(text)
-    rest = _SITEMAP.sub("\n", rest)
+    rest = _SITEMAP_VERSIONED.sub("\n", _SITEMAP.sub("\n", rest))
     title = _markup.title_of(meta, page) if meta else ""
     if not meta:
         # Без шапки (react-aria.adobe.com) назва — заголовок першого рівня на початку сторінки.
