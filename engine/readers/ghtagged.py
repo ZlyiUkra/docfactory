@@ -15,6 +15,10 @@
 той самий вигляд, що й у решті корпусу, тож фільтр `version: "7"` бере і
 документацію сьомої лінії, і її релізи.
 
+Необов'язкове `version_prefix` ставиться перед версією: в одному примірнику з Foundry нотатки
+forge-std мають власну нумерацію (forge-std 1.8.0 вийшов 2024 року, Foundry 1.8.0 — 2026), і
+фільтр `version: "1.8"` без мітки змішав би обидві лінії; з `"forge-std-"` вони розходяться.
+
 Чому копія, а не поле в `ghreleases`: примірники `ecmascript`, `react` і `nestjs`
 зібрані й звірені, а правка спільного читача — ризик зсуву в готовій роботі.
 """
@@ -56,7 +60,7 @@ def ghreleases_tagged(source: dict, ctx) -> list[Item]:
         tag = str(rel["tag_name"])
         if not tag.startswith(prefix):
             continue
-        version = tag[len(prefix):].lstrip("v")
+        version = str(source.get("version_prefix") or "") + tag[len(prefix):].lstrip("v")
         name = re.sub(r"[^\w.-]+", "-", tag).strip("-")
 
         def make(rel=rel, tag=tag, version=version):
