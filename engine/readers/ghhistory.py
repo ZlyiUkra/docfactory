@@ -49,6 +49,10 @@
                    `<!--@include: …-->` і `<<< @/snippets/…` розкриваються, змінні `{{…}}` з
                    `<script setup>` підставляються, контейнери `::: tip` стають підписами (див.
                    `_vitepress`); редакція сторінки враховує й вставлені нею файли;
+                   `vocs` — корінь сайту Vocs у репозиторії (`"site"`): вставки `// [!include ~/…]` у
+                   коді й імпортовані шматки MDX (`<WriteParameters />`) розкриваються, службове twoslash
+                   (кеш типів, рядки до `// ---cut---`) знімається, контейнери `:::tip` і картки меню стають
+                   текстом (див. `_vocs`); редакція сторінки — її текст без кешу разом із вставками;
                    `react_spectrum: true` — службове зі сторінок репозиторію React Aria знімається:
                    коментар ліцензії, шапка YAML після імпортів, вирази `{docs.exports.….description}`
                    і позначки підсвічування `/*- begin highlight -*/` у коді.
@@ -96,7 +100,7 @@ import sys
 from html import unescape
 from urllib.parse import quote, urlsplit
 
-from engine.readers import Item, _baseui, _markup, _nginxxml, _vitepress, register
+from engine.readers import Item, _baseui, _markup, _nginxxml, _vitepress, _vocs, register
 
 _TREES = re.compile(r"^/repos/([^/]+)/([^/]+)/git/trees/$")
 _LOCALE = re.compile(r"\.[a-z]{2}-[A-Z]{2}\.md$")
@@ -715,6 +719,13 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
     vitepress = str(source["vitepress"]).strip("/") if source.get("vitepress") else ""
     if vitepress:
         wanted += _vitepress.wanted(vitepress)
+    vocs = str(source["vocs"]).strip("/") if source.get("vocs") else ""
+    if vocs:
+        wanted += _vocs.wanted(vocs)
+    # Для vocs: ім'я документа → адреса, з якої текст сторінки вже прочитано під час переліку.
+    # Тег цієї адреси буває новіший за перший тег документа (сторінка та сама, вставка інша), і
+    # читання з адреси першого тегу тягнуло б ту саму сторінку з мережі вдруге.
+    origin: dict = {}
     # тег → {шлях файла реєстру: sha}; вміст за sha — один раз на весь прогін
     registry: dict = {}
     code_cache: dict = {}
@@ -769,6 +780,19 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
                     files_now.setdefault(path, sha)
                     sha = _vitepress.revision(path, sha, files_now,
                                               lambda w, s, t=tag: blob_text(w, s, t), vitepress)
+                if vocs:
+                    files_now = registry[tag]
+                    files_now.setdefault(path, sha)
+                    page_url = (f"https://raw.githubusercontent.com/{owner}/{repo}/"
+                                f"{quote(tag, safe='@')}/{quote(path)}")
+                    page_key = (path, sha)
+                    if page_key not in origin:
+                        origin[page_key] = page_url
+                    # Текст сторінки в кеш вставок не йде: сторінок тисячі, а вставок — десятки.
+                    sha = _vocs.revision(path, sha, files_now,
+                                         lambda w, s, t=tag: blob_text(w, s, t), vocs,
+                                         lambda u=origin[page_key]: ctx.text(u))
+                    origin.setdefault(f"{lead}{_markup.slug(stem)}-{sha[:8]}", origin[page_key])
                 name = f"{lead}{_markup.slug(stem)}-{sha[:8]}"
                 seen.setdefault(name, [path, []])[1].append(tag)
 
@@ -793,8 +817,8 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
         # в імені файла, а не в тезі, на якому файл знайшовся.
         version = next((m.expand(v) for r, v in path_version if (m := r.search(path))), version)
 
-        def make(raw=raw, blob=blob, path=path, version=version, tag=tag):
-            text = ctx.text(raw)
+        def make(raw=raw, blob=blob, path=path, version=version, tag=tag, read=origin.get(name)):
+            text = ctx.text(read or raw)
             if nginx_xml and path.endswith(".xml"):
                 # XML nginx.org буває, що починається з `<!DOCTYPE module`, — це не сторінка
                 # помилки, тож перевірку на HTML робить уже перетворений текст.
@@ -826,6 +850,8 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
                 rest = _baseui.expand(rest, path, registry.get(tag, {}), fetch)
             if vitepress:
                 rest = _vitepress.expand(rest, path, registry.get(tag, {}), fetch, vitepress)
+            if vocs:
+                rest = _vocs.expand(rest, path, registry.get(tag, {}), fetch, vocs)
             # Обидва — до викидання `export`: таблиці беруть дані саме з них.
             if source.get("jsx_props") is True:
                 rest = _jsx_props(rest)
