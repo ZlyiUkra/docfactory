@@ -1482,6 +1482,27 @@ TypeDoc стають підписами всередині розділу чле
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/lightweight-charts/README.md](instances/lightweight-charts/README.md).
 
+### wagmi
+
+Документація Wagmi — бібліотеки wevm для фронтенду застосунків на Ethereum — англійською: сайт кожної стабільної
+версії з репозиторію wevm/wagmi — 3.x (wagmi.sh) і 2.x (2.x.wagmi.sh) з теки `site/`, 1.x (1.x.wagmi.sh) і 0.x з теки
+`docs/pages` — з хуками React, composables Vue, primitives Solid, діями `@wagmi/core`, з'єднувачами й транспортами,
+CLI з плагінами, посібниками з міграції й хуками та діями Tempo; журнали змін усіх семи пакетів (`wagmi`,
+`@wagmi/core`, `@wagmi/connectors`, `@wagmi/vue`, `@wagmi/solid`, `@wagmi/cli`, `create-wagmi`) від першої версії й
+таблиці їхніх стабільних версій з npm. Нове поле `vitepress` читача `ghdocs-history` (модуль `_vitepress`): вставки
+VitePress (`<!--@include-->`, `<<< @/snippets`), змінні `{{…}}` з `<script setup>` і полів `package.json`, контейнери
+`:::` стають текстом, а редакція сторінки враховує вставлене. Лише стабільні версії. 4 965 документів, 16 981 фрагмент.
+
+- порт `8827`; запис у Claude Code — `wagmi-docs`, адреса `http://127.0.0.1:8827/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-wagmi`, модель векторів — `bge-small`; `families` зводить сторінки всіх ліній сайту в одну;
+- версія — лінія пакета `wagmi`: `version: "3"` лишає всі 3.x, `"2.19"` — лінію 2.19; без названої версії промпт велить
+  відповідати для wagmi 2 — найпоширенішої за завантаженнями npm (73%) — і показувати, як те саме пишеться у wagmi 3;
+  без названого фреймворку — для React з рядком про відповідник у Vue, Solid, Core чи Tempo;
+- приклад питання агентові: `./df wagmi ask "How do I wait for a transaction receipt with confirmations in wagmi 2?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/wagmi/README.md](instances/wagmi/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
