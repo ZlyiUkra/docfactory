@@ -409,11 +409,13 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 - TradingView lightweight-charts (сайт кожної лінії 3.8–5.2 з довідником API, уроки й плагіни, документація й
   типізації 1.0–3.7, обгортки Android та iOS) — `lightweight-charts`;
 - Wagmi (сайт кожної стабільної версії 0.x–3.x: хуки React, Vue, Solid, `@wagmi/core`, з'єднувачі, CLI, Tempo;
-  журнали змін і таблиці версій npm) — `wagmi`.
+  журнали змін і таблиці версій npm) — `wagmi`;
+- Viem (сайт кожної стабільної версії 0.x–2.x: клієнти, транспорти, дії, контракти, акаунти, утиліти, SIWE,
+  EIP-7702, OP Stack, Account Abstraction, Tempo; приклади, журнал змін і таблиця версій npm) — `viem`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- поза таблицями: хостинги; у факультативі — viem і Foundry.
+- поза таблицями: хостинги; у факультативі — Foundry.
 
 ---
 
@@ -2181,7 +2183,7 @@ HTTPS, нова версія викочується без простою, а п
 # Факультатив: крипта — 5 днів
 
 **Сервери MCP фази:** `react-docs`, `tanstack-query-docs`, `mdn-docs`, `zod-docs`, `binance-spot-docs`,
-`lightweight-charts-docs`, `wagmi-docs`.
+`lightweight-charts-docs`, `wagmi-docs`, `viem-docs`.
 
 Мета факультативу — розуміти, як влаштована крипта, і вміти написати щось із нею: читати ринкові дані біржі,
 малювати графік, підключати гаманець і надсилати транзакцію. Для роботи фулстеком він не потрібен, і основний
@@ -2388,9 +2390,8 @@ NestJS і Next.js.
   блозі Ethereum Foundation, яка тестова мережа зараз актуальна**, і лише тоді шукайте для неї кран.
 - **Читати:** у примірнику `tanstack-query` — `QueryClientProvider`; у примірнику `wagmi` — `React: Getting
   Started`, `React: Connect Wallet`, `React: Migrate from v2 to v3` (розділ «Renamed Account Hooks»), `React:
-  injected`, `React: useBalance`; документація viem — «Units» (поза корпусом); Foundry Book — «Anvil» (поза
-  корпусом).
-- **Сервери MCP:** `tanstack-query-docs`, `wagmi-docs`.
+  injected`, `React: useBalance`; у примірнику `viem` — `formatEther`; Foundry Book — «Anvil» (поза корпусом).
+- **Сервери MCP:** `tanstack-query-docs`, `wagmi-docs`, `viem-docs`.
 - **Зробити:** 1) Foundry через `foundryup` у WSL, `anvil` в окремому терміналі; 2) у окремому профілі браузера —
   гаманець, мережа «localhost 8545» з ідентифікатором 31337, імпорт одного тестового рахунку Anvil; 3) конфіг wagmi з
   ланцюгом `foundry` і з'єднувачем `injected`; 4) кнопки «підключити» і «відключити», адреса скорочено, мережа,
@@ -2416,9 +2417,10 @@ NestJS і Next.js.
   збій, а звичайний результат: стандартний код помилки 4001, «користувач відмовився». Anvil за замовчуванням
   включає транзакцію в блок миттєво; `anvil --block-time 12` робить блок раз на 12 секунд — так видно очікування.
 - **Читати:** у примірнику `zod` — `Defining schemas`; у примірнику `wagmi` — `React: Send Transaction`, `React:
-  useSendTransaction`, `React: useWaitForTransactionReceipt`; документація viem — «sendTransaction»,
-  «waitForTransactionReceipt» (поза корпусом); ethereum.org — «Transactions», «Gas and fees» (поза корпусом).
-- **Сервери MCP:** `zod-docs`, `wagmi-docs`.
+  useSendTransaction`, `React: useWaitForTransactionReceipt`; у примірнику `viem` — `sendTransaction`,
+  `waitForTransactionReceipt`, `isAddress`, `parseEther`; ethereum.org — «Transactions», «Gas and fees» (поза
+  корпусом).
+- **Сервери MCP:** `zod-docs`, `wagmi-docs`, `viem-docs`.
 - **Зробити:** 1) форма «адреса й сума» зі схемою zod: адреса перевіряється `isAddress` з viem, сума — рядком,
   `parseEther` лише після перевірки; 2) відправка через `useSendTransaction`, стани «чекаємо підпису», «в черзі»,
   «у блоці», «впала», «відхилено»; 3) перезапустити `anvil --block-time 12` і пройти всі стани; 4) відхилити

@@ -408,7 +408,9 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 - API споту Binance (REST, WebSocket API, потоки ринкових даних, ліміти, журнал змін) — `binance-spot`;
 - API споту Kraken, запасне джерело цін (REST, WebSocket v2, гайди, журнал змін) — `kraken-spot`;
 - хешування паролів: пакети npm argon2 (node-argon2) і `@node-rs/argon2` усіх стабільних версій, еталонна реалізація
-  Argon2 і його специфікація — `argon2`.
+  Argon2 і його специфікація — `argon2`;
+- Viem (сайт кожної стабільної версії 0.x–2.x: клієнти, транспорти, дії, контракти, акаунти, утиліти, SIWE,
+  EIP-7702, OP Stack, Account Abstraction, Tempo; приклади, журнал змін і таблиця версій npm) — `viem`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
 глава про інтеграцію (TypeORM, Prisma, Passport, BullMQ, class-validator), але не документація самої
@@ -417,7 +419,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 - з «треба знати»: TypeORM, Prisma, Passport, bcrypt, class-validator, class-transformer, supertest, RxJS;
 - з «варто знати»: BullMQ, Redis, `ws`, nestjs-cls, nestjs-pino, csrf-csrf, CASL, orval, openapi-typescript;
 - з «знати, що існує»: Mongoose, MikroORM, Drizzle, Kafka, RabbitMQ, NATS;
-- у факультативі — viem і Foundry.
+- у факультативі — Foundry.
 
 ---
 
@@ -2606,7 +2608,7 @@ SPA під одним іменем, викочується й відкочуєт
 
 # Факультатив: крипта — 4 дні
 
-**Сервери MCP фази:** `nestjs-docs`, `webstandards-docs`, `binance-spot-docs`, `node-postgres-docs`.
+**Сервери MCP фази:** `nestjs-docs`, `webstandards-docs`, `binance-spot-docs`, `node-postgres-docs`, `viem-docs`.
 
 Мета — розуміти крипту з боку бекенду й уміти написати з нею щось справжнє. Для роботи фулстеком факультатив не
 потрібен, основний проєкт від нього не залежить. **Повний вступ — у плані React, факультатив** (на початку
@@ -2711,10 +2713,10 @@ Ethereum Foundation: на 02.10.2026 статус Sepolia непевний — �
   прив'язаної адреси — нового облікового запису з незнайомої адреси він не створює (так само в плані Next.js,
   факультатив, день К3). Адресу зберігають у нормалізованому вигляді. Пакет `siwe` не потрібен — усе вбудовано у viem.
   Nonce SIWE і nonce транзакції — різні речі з однаковою назвою.
-- **Читати:** у примірнику `webstandards` — `ERC-4361: Sign-In with Ethereum`; документація viem — розділ SIWE
-  (`createSiweMessage`, `parseSiweMessage`, `verifySiweMessage`, `generateSiweNonce`) (поза корпусом); розділ
-  Security, глава `Authentication`; модель токенів — вступ до фази 4.
-- **Сервери MCP:** `nestjs-docs`, `webstandards-docs`.
+- **Читати:** у примірнику `webstandards` — `ERC-4361: Sign-In with Ethereum`; у примірнику `viem` —
+  `createSiweMessage`, `parseSiweMessage`, `verifySiweMessage`, `generateSiweNonce`; розділ Security, глава
+  `Authentication`; модель токенів — вступ до фази 4.
+- **Сервери MCP:** `nestjs-docs`, `webstandards-docs`, `viem-docs`.
 - **Зробити:** 1) `GET /api/auth/siwe/nonce` з жорстким обмеженням частоти; 2) `POST /api/auth/siwe/link`;
   3) `POST /api/auth/siwe/login` — та сама пара токенів, що й після входу паролем; 4) у SPA — підпис через
   під'єднаний гаманець із плану React (факультатив, день К4) — на локальному ланцюгу Anvil або на тій тестовій
@@ -2743,10 +2745,10 @@ Ethereum Foundation: на 02.10.2026 статус Sepolia непевний — �
   це лише пробний запуск — звірте з `forge create --help`); сам контракт — тема плану Next.js, факультатив, день К2.
   Ліміти: безкоштовні RPC рахують запити чи «кредити» — пачки, пауза й затримка на 429. Індексатор працює в одному
   екземплярі — окремий Deployment із `replicas: 1` у кластері, а не всередині кожного пода API.
-- **Читати:** документація viem — «createPublicClient», «getContractEvents», «getLogs»; Foundry Book — «Anvil»,
-  «forge create», «cast» (поза корпусом); розділ Techniques, глави `Task scheduling` (розділ Declarative intervals)
-  і `Database` (розділ TypeORM Transactions).
-- **Сервери MCP:** `nestjs-docs`.
+- **Читати:** у примірнику `viem` — `Public Client`, `getBlockNumber`, `getContractEvents`, `getLogs`; Foundry Book —
+  «Anvil», «forge create», «cast» (поза корпусом); розділ Techniques, глави `Task scheduling` (розділ Declarative
+  intervals) і `Database` (розділ TypeORM Transactions).
+- **Сервери MCP:** `nestjs-docs`, `viem-docs`.
 - **Зробити:** 1) `anvil` в окремому терміналі; 2) викот токена й п'ять переказів через `cast send`; 3) таблиці
   `transfers` і курсора; 4) індексатор пачками з `CONFIRMATIONS` із конфігу; 5) `GET /api/chain/transfers?address=`
   із сумами рядками; 6) навчальна реорганізація: `cast rpc evm_snapshot`, переказ, індексатор із

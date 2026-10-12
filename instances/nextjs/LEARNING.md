@@ -394,7 +394,9 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - Motion, раніше Framer Motion (сайт motion.dev з прикладами, журнал змін і README кожної стабільної версії, Motion
   One, Motion для Vue, попередник Popmotion) — `motion`;
 - Wagmi (сайт кожної стабільної версії 0.x–3.x: хуки React, Vue, Solid, `@wagmi/core`, з'єднувачі, CLI, Tempo;
-  журнали змін і таблиці версій npm) — `wagmi`.
+  журнали змін і таблиці версій npm) — `wagmi`;
+- Viem (сайт кожної стабільної версії 0.x–2.x: клієнти, транспорти, дії, контракти, акаунти, утиліти, SIWE,
+  EIP-7702, OP Stack, Account Abstraction, Tempo; приклади, журнал змін і таблиця версій npm) — `viem`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
@@ -402,7 +404,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - з «варто знати»: iron-session, jose, next-themes, nuqs, next-intl, Redis (Upstash), OpenTelemetry;
 - з «знати, що існує»: Stripe, Resend і React Email, Vercel AI SDK, UploadThing, Sanity, Payload, Contentful,
   tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Grafana, Loki;
-- у факультативі — viem і Foundry.
+- у факультативі — Foundry.
 
 ---
 
@@ -2253,7 +2255,7 @@ TLS і сертифікат, зворотний проксі, підніманн
 
 # Факультатив: крипта — 3 дні
 
-**Сервери MCP фази:** `nextjs-docs`, `webstandards-docs`, `wagmi-docs`.
+**Сервери MCP фази:** `nextjs-docs`, `webstandards-docs`, `wagmi-docs`, `viem-docs`.
 
 Розуміти крипту й уміти написати з нею щось справжнє — для роботи фулстеком не обов'язково, і основний проєкт від
 цього не залежить. Повний вступ — поняття простими словами, інструменти, правила безпеки й гроші без `float` — у
@@ -2261,8 +2263,8 @@ TLS і сертифікат, зворотний проксі, підніманн
 Блок Next.js — останній: беріть його після фази 9 цього плану і лише після блоків React (К1–К5) і NestJS (К1–К4).
 Порада не фінансова: лише локальний ланцюг і тестова мережа, жодних справжніх грошей.
 
-Інструменти цього боку — у корпусі Next.js їх немає; wagmi — у примірнику `wagmi`, решта джерел названі поруч; версії —
-у вступі плану React.
+Інструменти цього боку — у корпусі Next.js їх немає; wagmi і viem — у примірниках `wagmi` і `viem`, решта джерел
+названі поруч; версії — у вступі плану React.
 
 | Інструмент | Навіщо | Де в факультативі |
 |------------|--------|-------------------|
@@ -2284,10 +2286,10 @@ TLS і сертифікат, зворотний проксі, підніманн
   показу, вартість у доларах — множенням на знімок ціни з фази 8, день 7, у `decimal.js`, не в `number`.
   Результат — у `'use cache'` з `cacheLife('minutes')` і ключем «мережа + адреса»: безкоштовні тарифи RPC
   рахують кожен виклик. Адресу перевіряють до запиту — `isAddress` з viem у схемі zod.
-- **Читати:** у корпусі — `use cache`, `cacheLife`, `The Server and Client Boundary` (що можна передати клієнту); поза
-  корпусом — viem.sh: «Public Client», «getBalance», «readContract»; у примірнику `webstandards` — `ERC-20: Token
-  Standard`.
-- **Сервери MCP:** `nextjs-docs`, `webstandards-docs`.
+- **Читати:** у корпусі — `use cache`, `cacheLife`, `The Server and Client Boundary` (що можна передати клієнту); у
+  примірнику `viem` — `Public Client`, `getBalance`, `readContract`, `formatUnits`, `isAddress`; у примірнику
+  `webstandards` — `ERC-20: Token Standard`.
+- **Сервери MCP:** `nextjs-docs`, `viem-docs`, `webstandards-docs`.
 - **Зробити:** 1) `lib/chain.ts` з `server-only`; 2) сторінка `/portfolio/[address]`: баланс ETH і трьох токенів,
   вартість у доларах; 3) неправильна адреса — `notFound()` або помилка біля поля; 4) лог викликів RPC.
 - **Перевірити себе:** десять перезавантажень сторінки — один виклик RPC у лозі; пошук адреси RPC у `.next/static`
@@ -2334,10 +2336,10 @@ TLS і сертифікат, зворотний проксі, підніманн
   конфігу, а не з `Host` запиту: за BFF там `api.app.svc.cluster.local`. Увійти гаманцем можна лише з адресою,
   яку вже прив'язано до облікового запису; прив'язка — окремий підпис з іншим `statement`, і вона теж
   використовує nonce.
-- **Читати:** у корпусі — `Server Actions and Mutations`, розділ Security; `cookies`; поза корпусом — viem.sh:
-  «createSiweMessage», «verifySiweMessage»; у примірнику `wagmi` — `React: Connect Wallet`, `React: useSignMessage`,
+- **Читати:** у корпусі — `Server Actions and Mutations`, розділ Security; `cookies`; у примірнику `viem` —
+  `createSiweMessage`, `verifySiweMessage`; у примірнику `wagmi` — `React: Connect Wallet`, `React: useSignMessage`,
   `React: SSR`; у примірнику `webstandards` — `ERC-4361: Sign-In with Ethereum`.
-- **Сервери MCP:** `nextjs-docs`, `wagmi-docs`, `webstandards-docs`.
+- **Сервери MCP:** `nextjs-docs`, `viem-docs`, `wagmi-docs`, `webstandards-docs`.
 - **Зробити:** 1) провайдери wagmi і TanStack Query в маленькому клієнтському файлі під кореневим каркасом;
   2) прив'язка гаманця до наявного облікового запису в кабінеті: підключення → nonce → підпис → серверна дія;
   3) кнопка «увійти гаманцем» на сторінці входу тим самим ланцюжком, з перенаправленням у кабінет; 4) показ
