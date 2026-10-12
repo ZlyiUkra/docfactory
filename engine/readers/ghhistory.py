@@ -53,6 +53,9 @@
                    коді й імпортовані шматки MDX (`<WriteParameters />`) розкриваються, службове twoslash
                    (кеш типів, рядки до `// ---cut---`) знімається, контейнери `:::tip` і картки меню стають
                    текстом (див. `_vocs`); редакція сторінки — її текст без кешу разом із вставками;
+                   `mdbook: true` — книжка mdBook (Foundry Book до травня 2025): вставки
+                   `{{#include шлях[:область|:рядки]}}` — спільні шматки опцій, код прикладів, записаний
+                   вивід команд — розкриваються (див. `_mdbook`); редакція враховує й вставлені файли;
                    `react_spectrum: true` — службове зі сторінок репозиторію React Aria знімається:
                    коментар ліцензії, шапка YAML після імпортів, вирази `{docs.exports.….description}`
                    і позначки підсвічування `/*- begin highlight -*/` у коді.
@@ -100,7 +103,8 @@ import sys
 from html import unescape
 from urllib.parse import quote, urlsplit
 
-from engine.readers import Item, _baseui, _markup, _nginxxml, _vitepress, _vocs, register
+from engine.readers import (Item, _baseui, _markup, _mdbook, _nginxxml, _vitepress, _vocs,
+                            register)
 
 _TREES = re.compile(r"^/repos/([^/]+)/([^/]+)/git/trees/$")
 _LOCALE = re.compile(r"\.[a-z]{2}-[A-Z]{2}\.md$")
@@ -722,6 +726,9 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
     vocs = str(source["vocs"]).strip("/") if source.get("vocs") else ""
     if vocs:
         wanted += _vocs.wanted(vocs)
+    mdbook = source.get("mdbook") is True
+    if mdbook:
+        wanted += _mdbook.wanted()
     # Для vocs: ім'я документа → адреса, з якої текст сторінки вже прочитано під час переліку.
     # Тег цієї адреси буває новіший за перший тег документа (сторінка та сама, вставка інша), і
     # читання з адреси першого тегу тягнуло б ту саму сторінку з мережі вдруге.
@@ -793,6 +800,11 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
                                          lambda w, s, t=tag: blob_text(w, s, t), vocs,
                                          lambda u=origin[page_key]: ctx.text(u))
                     origin.setdefault(f"{lead}{_markup.slug(stem)}-{sha[:8]}", origin[page_key])
+                if mdbook:
+                    files_now = registry[tag]
+                    files_now.setdefault(path, sha)
+                    sha = _mdbook.revision(path, sha, files_now,
+                                           lambda w, s, t=tag: blob_text(w, s, t))
                 name = f"{lead}{_markup.slug(stem)}-{sha[:8]}"
                 seen.setdefault(name, [path, []])[1].append(tag)
 
@@ -852,6 +864,8 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
                 rest = _vitepress.expand(rest, path, registry.get(tag, {}), fetch, vitepress)
             if vocs:
                 rest = _vocs.expand(rest, path, registry.get(tag, {}), fetch, vocs)
+            if mdbook:
+                rest = _mdbook.expand(rest, path, registry.get(tag, {}), fetch)
             # Обидва — до викидання `export`: таблиці беруть дані саме з них.
             if source.get("jsx_props") is True:
                 rest = _jsx_props(rest)
