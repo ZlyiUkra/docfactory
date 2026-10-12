@@ -483,11 +483,19 @@ def main(argv: list[str]) -> int:
     from server.quality import CASES
     from common.corpus import version_within
 
+    # Голова документа (текст до першого підзаголовка) — теж відповідь на ціль-документ:
+    # quality.within зараховує і її. Сторінка функції в довіднику API, згенерованому
+    # TypeDoc, підрозділів може не мати зовсім, і без цього живу ціль звали б мертвою.
+    def heads(version: str) -> set:
+        return {p.anchor for p in spec_mcp._INDEX.passages if not p.section
+                and p.text.strip()
+                and (not version or any(version_within(v, version) for v in p.versions))}
+
     def pool(version: str) -> set:
         if not version:
-            return with_text
+            return with_text | heads(version)
         return {p.anchor for p in spec_mcp._INDEX.passages if p.section
-                and any(version_within(v, version) for v in p.versions)}
+                and any(version_within(v, version) for v in p.versions)} | heads(version)
 
     def known(want: str, anchors: set) -> bool:
         """Ціль-документ (без «#», лише в режимі markdown) існує, коли в корпусі є
