@@ -407,11 +407,13 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 - Motion, раніше Framer Motion (сайт motion.dev з прикладами, журнал змін і README кожної стабільної версії, Motion
   One, Motion для Vue, попередник Popmotion) — `motion`;
 - TradingView lightweight-charts (сайт кожної лінії 3.8–5.2 з довідником API, уроки й плагіни, документація й
-  типізації 1.0–3.7, обгортки Android та iOS) — `lightweight-charts`.
+  типізації 1.0–3.7, обгортки Android та iOS) — `lightweight-charts`;
+- Wagmi (сайт кожної стабільної версії 0.x–3.x: хуки React, Vue, Solid, `@wagmi/core`, з'єднувачі, CLI, Tempo;
+  журнали змін і таблиці версій npm) — `wagmi`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- поза таблицями: хостинги; у факультативі — wagmi, viem і Foundry.
+- поза таблицями: хостинги; у факультативі — viem і Foundry.
 
 ---
 
@@ -2179,7 +2181,7 @@ HTTPS, нова версія викочується без простою, а п
 # Факультатив: крипта — 5 днів
 
 **Сервери MCP фази:** `react-docs`, `tanstack-query-docs`, `mdn-docs`, `zod-docs`, `binance-spot-docs`,
-`lightweight-charts-docs`.
+`lightweight-charts-docs`, `wagmi-docs`.
 
 Мета факультативу — розуміти, як влаштована крипта, і вміти написати щось із нею: читати ринкові дані біржі,
 малювати графік, підключати гаманець і надсилати транзакцію. Для роботи фулстеком він не потрібен, і основний
@@ -2384,10 +2386,11 @@ NestJS і Next.js.
   по 10 000 тестових ETH. Тестова мережа — лише налаштуванням у конфігу. Яка саме: Ethereum Foundation оголошувала
   завершення Sepolia на 30.09.2026 і заміну їй, а на 02.10.2026 Sepolia ще працює — тож **перед днем перевірте в
   блозі Ethereum Foundation, яка тестова мережа зараз актуальна**, і лише тоді шукайте для неї кран.
-- **Читати:** у примірнику `tanstack-query` — `QueryClientProvider`; документація wagmi — «Getting Started»,
-  «Connect Wallet», «Migrate from v2 to v3» (поза корпусом); документація viem — «Units» (поза корпусом); Foundry
-  Book — «Anvil» (поза корпусом).
-- **Сервери MCP:** `tanstack-query-docs`.
+- **Читати:** у примірнику `tanstack-query` — `QueryClientProvider`; у примірнику `wagmi` — `React: Getting
+  Started`, `React: Connect Wallet`, `React: Migrate from v2 to v3` (розділ «Renamed Account Hooks»), `React:
+  injected`, `React: useBalance`; документація viem — «Units» (поза корпусом); Foundry Book — «Anvil» (поза
+  корпусом).
+- **Сервери MCP:** `tanstack-query-docs`, `wagmi-docs`.
 - **Зробити:** 1) Foundry через `foundryup` у WSL, `anvil` в окремому терміналі; 2) у окремому профілі браузера —
   гаманець, мережа «localhost 8545» з ідентифікатором 31337, імпорт одного тестового рахунку Anvil; 3) конфіг wagmi з
   ланцюгом `foundry` і з'єднувачем `injected`; 4) кнопки «підключити» і «відключити», адреса скорочено, мережа,
@@ -2412,10 +2415,10 @@ NestJS і Next.js.
   газу; обидва числа є в квитанції. Nonce адреси росте на одиницю з кожною транзакцією. Відхилення в гаманці — не
   збій, а звичайний результат: стандартний код помилки 4001, «користувач відмовився». Anvil за замовчуванням
   включає транзакцію в блок миттєво; `anvil --block-time 12` робить блок раз на 12 секунд — так видно очікування.
-- **Читати:** у примірнику `zod` — `Defining schemas`; документація wagmi — «Send Transaction» (поза корпусом);
-  документація viem — «sendTransaction», «waitForTransactionReceipt» (поза корпусом); ethereum.org — «Transactions»,
-  «Gas and fees» (поза корпусом).
-- **Сервери MCP:** `zod-docs`.
+- **Читати:** у примірнику `zod` — `Defining schemas`; у примірнику `wagmi` — `React: Send Transaction`, `React:
+  useSendTransaction`, `React: useWaitForTransactionReceipt`; документація viem — «sendTransaction»,
+  «waitForTransactionReceipt» (поза корпусом); ethereum.org — «Transactions», «Gas and fees» (поза корпусом).
+- **Сервери MCP:** `zod-docs`, `wagmi-docs`.
 - **Зробити:** 1) форма «адреса й сума» зі схемою zod: адреса перевіряється `isAddress` з viem, сума — рядком,
   `parseEther` лише після перевірки; 2) відправка через `useSendTransaction`, стани «чекаємо підпису», «в черзі»,
   «у блоці», «впала», «відхилено»; 3) перезапустити `anvil --block-time 12` і пройти всі стани; 4) відхилити

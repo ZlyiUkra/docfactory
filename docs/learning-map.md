@@ -10,7 +10,7 @@ i18next, kraken-spot, kubernetes, lightweight-charts, linux, mdn, motion, msw, n
 nodejs, nodemailer, oracle-cloud, owasp, partysocket, patterns, playwright, postgrator, postgres-image, postgresql,
 react, react-hook-form, react-native, react-router, react-window, redux, sentry, shadcn, socketio, storybook,
 supabase, swr, tailwind, tanstack-query, tanstack-router, tanstack-virtual, testing-library, typescript, v8, vite,
-vitest, wasm, webdev, webstandards, zod, zustand.
+vitest, wagmi, wasm, webdev, webstandards, zod, zustand.
 
 ## Як читати таблиці
 
@@ -32,7 +32,7 @@ vitest, wasm, webdev, webstandards, zod, zustand.
 | 3. Екосистема | `react-router` (1–2, 13), `tanstack-query` (3–5, 8, 13), `react-hook-form` і `zod` (10), `zustand` і `redux` (11), `vitest` і `testing-library` (12–13), `msw` (13), `playwright` (14), `mdn` (6–8, 15), `webstandards` (6, 15), `shadcn` (15), `webdev` (8, 10, 15), `binance-spot` (вступ, 6–8), `kraken-spot` (вступ, 6–7), `partysocket` (7) |
 | 4. Сервер: SSR, стрімінг, серверні компоненти | — |
 | 5. Продакшн і викот у кластер | `vite` (1–2, 5–7, 9), `react-router` (1), `docker` (вступ, 7), `kubernetes` (вступ, 7–9), `oracle-cloud` (вступ, 8), `mdn` (4), `webstandards` (6), `playwright` (5), `github-actions` (5), `owasp` (2), `nginx` (7), `webdev` (3–4, 6) |
-| Факультатив «крипта» | `binance-spot` (К1–К3), `tanstack-query` (К1, К4), `lightweight-charts` (К2), `mdn` (К3), `zod` (К5) |
+| Факультатив «крипта» | `binance-spot` (К1–К3), `tanstack-query` (К1, К4), `lightweight-charts` (К2), `mdn` (К3), `zod` (К5), `wagmi` (К4–К5) |
 
 ### План NestJS — [instances/nestjs/LEARNING.md](../instances/nestjs/LEARNING.md)
 
@@ -62,7 +62,7 @@ vitest, wasm, webdev, webstandards, zod, zustand.
 | 7. DevOps: від збірки до продакшну | `docker` (вступ, 2, 4), `webstandards` (6), `kubernetes` (вступ, 12), `playwright` (7), `github-actions` (вступ, 7), `nginx` (вступ, 6), `webdev` (9–10), `sentry` (9) |
 | 8. Next.js поруч з окремим бекендом | `webstandards` (2, 6–7), `mdn` (7), `socketio` (6), `nginx` (6); за змістом — `nestjs` |
 | 9. Kubernetes глибше і демо | `kubernetes` (вступ, 1–8), `oracle-cloud` (вступ, 2, 7), `linux` (5), `mdn` (8), `webstandards` (8), `github-actions` (вступ, 5) |
-| Факультатив «крипта» | `webstandards` (К1–К3) |
+| Факультатив «крипта» | `webstandards` (К1–К3), `wagmi` (К3) |
 
 ## Лінія 2. Linux → Docker → Kubernetes
 
@@ -107,7 +107,7 @@ vitest, wasm, webdev, webstandards, zod, zustand.
 
 ### React
 
-1. Факультатив: wagmi, viem, decimal.js, Foundry.
+1. Факультатив: viem, decimal.js, Foundry.
 
 ### NestJS
 
@@ -122,7 +122,7 @@ vitest, wasm, webdev, webstandards, zod, zustand.
 2. Drizzle або Prisma.
 3. nuqs, next-themes, next-intl, iron-session, jose.
 4. OpenTelemetry, Prometheus і Grafana.
-5. Факультатив: viem, wagmi, OpenZeppelin, Foundry.
+5. Факультатив: viem, OpenZeppelin, Foundry.
 
 ### Спільне для лінії 1
 
