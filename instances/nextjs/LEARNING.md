@@ -396,15 +396,17 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - Wagmi (сайт кожної стабільної версії 0.x–3.x: хуки React, Vue, Solid, `@wagmi/core`, з'єднувачі, CLI, Tempo;
   журнали змін і таблиці версій npm) — `wagmi`;
 - Viem (сайт кожної стабільної версії 0.x–2.x: клієнти, транспорти, дії, контракти, акаунти, утиліти, SIWE,
-  EIP-7702, OP Stack, Account Abstraction, Tempo; приклади, журнал змін і таблиця версій npm) — `viem`.
+  EIP-7702, OP Stack, Account Abstraction, Tempo; приклади, журнал змін і таблиця версій npm) — `viem`;
+- Foundry (Foundry Book на день виходу кожної стабільної версії 0.3.0–1.8.5: forge, cast, anvil, chisel, читкоди,
+  forge-std, `foundry.toml`, довідник CLI; документація репозиторію, нотатки релізів, код forge-std і таблиця
+  версій npm) — `foundry`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
 - з «треба знати»: Drizzle, Prisma, Biome;
 - з «варто знати»: iron-session, jose, next-themes, nuqs, next-intl, Redis (Upstash), OpenTelemetry;
 - з «знати, що існує»: Stripe, Resend і React Email, Vercel AI SDK, UploadThing, Sanity, Payload, Contentful,
-  tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Grafana, Loki;
-- у факультативі — Foundry.
+  tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Grafana, Loki.
 
 ---
 
@@ -2255,7 +2257,7 @@ TLS і сертифікат, зворотний проксі, підніманн
 
 # Факультатив: крипта — 3 дні
 
-**Сервери MCP фази:** `nextjs-docs`, `webstandards-docs`, `wagmi-docs`, `viem-docs`.
+**Сервери MCP фази:** `nextjs-docs`, `webstandards-docs`, `wagmi-docs`, `viem-docs`, `foundry-docs`.
 
 Розуміти крипту й уміти написати з нею щось справжнє — для роботи фулстеком не обов'язково, і основний проєкт від
 цього не залежить. Повний вступ — поняття простими словами, інструменти, правила безпеки й гроші без `float` — у
@@ -2309,9 +2311,9 @@ TLS і сертифікат, зворотний проксі, підніманн
   актуальна — питання на день: Ethereum Foundation оголошувала кінець Sepolia на 30.09.2026, а 02.10.2026 вона
   ще працювала, і наступницю названо не було. Перед кроком викоту в тестову мережу перевірте блог Ethereum
   Foundation. Hardhat 3 — альтернатива на TypeScript, якщо Solidity-тести не до душі.
-- **Читати:** поза корпусом — getfoundry.sh: «Getting started», «Anvil», «Deploying»; docs.openzeppelin.com: «ERC20»;
-  у примірнику `webstandards` — `ERC-20: Token Standard`.
-- **Сервери MCP:** `webstandards-docs`.
+- **Читати:** у примірнику `foundry` — `Getting Started`, `Testing`, `Dependencies`, `Anvil`, `Deploying Contracts`;
+  у примірнику `webstandards` — `ERC-20: Token Standard`; поза корпусом — docs.openzeppelin.com: «ERC20».
+- **Сервери MCP:** `foundry-docs`, `webstandards-docs`.
 - **Зробити:** 1) `forge init`, OpenZeppelin як залежність, контракт `DemoToken`; 2) тести: власник карбує,
   чужий — ні, переказ змінює баланси; `forge test`; 3) `anvil` і викот контракту на нього з тестового ключа
   Anvil; 4) у застосунку — `balanceOf` для кількох адрес через `lib/chain.ts` з К1, мережа й адреса контракту зі

@@ -4,13 +4,13 @@
 однієї бібліотеки чи інструмента (тека `instances/<ім'я>`). Файл оновлюється після кожного нового примірника, разом
 із підрозділами «Документація у фабриці» самих планів.
 
-Стан на 12.10.2026. Примірники: alpine, argon2, astro, astro-markdown-pipeline, auth, binance-spot, certbot, clerk,
-docker, ecmascript, eslint, expo, express, express-rate-limit, ffmpeg, frontend-architecture, github-actions, helmet,
-i18next, kraken-spot, kubernetes, lightweight-charts, linux, mdn, motion, msw, nestjs, nextjs, nginx, node-postgres,
-nodejs, nodemailer, oracle-cloud, owasp, partysocket, patterns, playwright, postgrator, postgres-image, postgresql,
-react, react-hook-form, react-native, react-router, react-window, redux, sentry, shadcn, socketio, storybook,
-supabase, swr, tailwind, tanstack-query, tanstack-router, tanstack-virtual, testing-library, typescript, v8, viem,
-vite, vitest, wagmi, wasm, webdev, webstandards, zod, zustand.
+Стан на 13.10.2026. Примірники: alpine, argon2, astro, astro-markdown-pipeline, auth, binance-spot, certbot, clerk,
+docker, ecmascript, eslint, expo, express, express-rate-limit, ffmpeg, foundry, frontend-architecture, github-actions,
+helmet, i18next, kraken-spot, kubernetes, lightweight-charts, linux, mdn, motion, msw, nestjs, nextjs, nginx,
+node-postgres, nodejs, nodemailer, oracle-cloud, owasp, partysocket, patterns, playwright, postgrator, postgres-image,
+postgresql, react, react-hook-form, react-native, react-router, react-window, redux, sentry, shadcn, socketio,
+storybook, supabase, swr, tailwind, tanstack-query, tanstack-router, tanstack-virtual, testing-library, typescript,
+v8, viem, vite, vitest, wagmi, wasm, webdev, webstandards, zod, zustand.
 
 ## Як читати таблиці
 
@@ -32,7 +32,7 @@ vite, vitest, wagmi, wasm, webdev, webstandards, zod, zustand.
 | 3. Екосистема | `react-router` (1–2, 13), `tanstack-query` (3–5, 8, 13), `react-hook-form` і `zod` (10), `zustand` і `redux` (11), `vitest` і `testing-library` (12–13), `msw` (13), `playwright` (14), `mdn` (6–8, 15), `webstandards` (6, 15), `shadcn` (15), `webdev` (8, 10, 15), `binance-spot` (вступ, 6–8), `kraken-spot` (вступ, 6–7), `partysocket` (7) |
 | 4. Сервер: SSR, стрімінг, серверні компоненти | — |
 | 5. Продакшн і викот у кластер | `vite` (1–2, 5–7, 9), `react-router` (1), `docker` (вступ, 7), `kubernetes` (вступ, 7–9), `oracle-cloud` (вступ, 8), `mdn` (4), `webstandards` (6), `playwright` (5), `github-actions` (5), `owasp` (2), `nginx` (7), `webdev` (3–4, 6) |
-| Факультатив «крипта» | `binance-spot` (К1–К3), `tanstack-query` (К1, К4), `lightweight-charts` (К2), `mdn` (К3), `zod` (К5), `wagmi` (К4–К5), `viem` (К4–К5) |
+| Факультатив «крипта» | `binance-spot` (К1–К3), `tanstack-query` (К1, К4), `lightweight-charts` (К2), `mdn` (К3), `zod` (К5), `wagmi` (К4–К5), `viem` (К4–К5), `foundry` (К4–К5) |
 
 ### План NestJS — [instances/nestjs/LEARNING.md](../instances/nestjs/LEARNING.md)
 
@@ -46,7 +46,7 @@ vite, vitest, wagmi, wasm, webdev, webstandards, zod, zustand.
 | 5. Якість: тести й DI | `vitest` (1) |
 | 6. Продакшн | `docker` (вступ, 2, 7), `kubernetes` (вступ, 8–9), `oracle-cloud` (вступ, 8), `express` (9), `postgresql` (9), `github-actions` (вступ, 7), `nginx` (вступ, 2, 5), `node-postgres` (5), `argon2` (8) |
 | 7. Живі дані: WebSockets | `socketio` (вступ, 2–4, 6–7), `mdn` (вступ, 1), `webstandards` (вступ, 1, 3, 6), `vite` (2), `kubernetes` (3, 6, 8), `owasp` (3), `nginx` (6), `binance-spot` (вступ, 5), `kraken-spot` (вступ, 1, 5) |
-| Факультатив «крипта» | `binance-spot` (К1), `webstandards` (К3), `node-postgres` (К1), `viem` (К3–К4) |
+| Факультатив «крипта» | `binance-spot` (К1), `webstandards` (К3), `node-postgres` (К1), `viem` (К3–К4), `foundry` (К4) |
 
 ### План Next.js — [instances/nextjs/LEARNING.md](../instances/nextjs/LEARNING.md)
 
@@ -62,7 +62,7 @@ vite, vitest, wagmi, wasm, webdev, webstandards, zod, zustand.
 | 7. DevOps: від збірки до продакшну | `docker` (вступ, 2, 4), `webstandards` (6), `kubernetes` (вступ, 12), `playwright` (7), `github-actions` (вступ, 7), `nginx` (вступ, 6), `webdev` (9–10), `sentry` (9) |
 | 8. Next.js поруч з окремим бекендом | `webstandards` (2, 6–7), `mdn` (7), `socketio` (6), `nginx` (6); за змістом — `nestjs` |
 | 9. Kubernetes глибше і демо | `kubernetes` (вступ, 1–8), `oracle-cloud` (вступ, 2, 7), `linux` (5), `mdn` (8), `webstandards` (8), `github-actions` (вступ, 5) |
-| Факультатив «крипта» | `webstandards` (К1–К3), `wagmi` (К3), `viem` (К1, К3) |
+| Факультатив «крипта» | `webstandards` (К1–К3), `wagmi` (К3), `viem` (К1, К3), `foundry` (К2) |
 
 ## Лінія 2. Linux → Docker → Kubernetes
 
@@ -107,14 +107,14 @@ vite, vitest, wagmi, wasm, webdev, webstandards, zod, zustand.
 
 ### React
 
-1. Факультатив: decimal.js, Foundry.
+1. Факультатив: decimal.js.
 
 ### NestJS
 
 1. Prisma (40) і TypeORM (29): у документації Nest — лише інтеграційний шар.
 2. Redis (29) і BullMQ (8).
 3. Passport (13), class-validator і class-transformer (7), RxJS (4).
-4. Факультатив: decimal.js, Foundry.
+4. Факультатив: decimal.js.
 
 ### Next.js
 
@@ -122,7 +122,7 @@ vite, vitest, wagmi, wasm, webdev, webstandards, zod, zustand.
 2. Drizzle або Prisma.
 3. nuqs, next-themes, next-intl, iron-session, jose.
 4. OpenTelemetry, Prometheus і Grafana.
-5. Факультатив: OpenZeppelin, Foundry.
+5. Факультатив: OpenZeppelin.
 
 ### Спільне для лінії 1
 

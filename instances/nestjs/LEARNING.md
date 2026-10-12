@@ -410,7 +410,10 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 - хешування паролів: пакети npm argon2 (node-argon2) і `@node-rs/argon2` усіх стабільних версій, еталонна реалізація
   Argon2 і його специфікація — `argon2`;
 - Viem (сайт кожної стабільної версії 0.x–2.x: клієнти, транспорти, дії, контракти, акаунти, утиліти, SIWE,
-  EIP-7702, OP Stack, Account Abstraction, Tempo; приклади, журнал змін і таблиця версій npm) — `viem`.
+  EIP-7702, OP Stack, Account Abstraction, Tempo; приклади, журнал змін і таблиця версій npm) — `viem`;
+- Foundry (Foundry Book на день виходу кожної стабільної версії 0.3.0–1.8.5: forge, cast, anvil, chisel, читкоди,
+  forge-std, `foundry.toml`, довідник CLI; документація репозиторію, нотатки релізів, код forge-std і таблиця
+  версій npm) — `foundry`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
 глава про інтеграцію (TypeORM, Prisma, Passport, BullMQ, class-validator), але не документація самої
@@ -418,8 +421,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 
 - з «треба знати»: TypeORM, Prisma, Passport, bcrypt, class-validator, class-transformer, supertest, RxJS;
 - з «варто знати»: BullMQ, Redis, `ws`, nestjs-cls, nestjs-pino, csrf-csrf, CASL, orval, openapi-typescript;
-- з «знати, що існує»: Mongoose, MikroORM, Drizzle, Kafka, RabbitMQ, NATS;
-- у факультативі — Foundry.
+- з «знати, що існує»: Mongoose, MikroORM, Drizzle, Kafka, RabbitMQ, NATS.
 
 ---
 
@@ -2608,7 +2610,8 @@ SPA під одним іменем, викочується й відкочуєт
 
 # Факультатив: крипта — 4 дні
 
-**Сервери MCP фази:** `nestjs-docs`, `webstandards-docs`, `binance-spot-docs`, `node-postgres-docs`, `viem-docs`.
+**Сервери MCP фази:** `nestjs-docs`, `webstandards-docs`, `binance-spot-docs`, `node-postgres-docs`, `viem-docs`,
+`foundry-docs`.
 
 Мета — розуміти крипту з боку бекенду й уміти написати з нею щось справжнє. Для роботи фулстеком факультатив не
 потрібен, основний проєкт від нього не залежить. **Повний вступ — у плані React, факультатив** (на початку
@@ -2745,14 +2748,15 @@ Ethereum Foundation: на 02.10.2026 статус Sepolia непевний — �
   це лише пробний запуск — звірте з `forge create --help`); сам контракт — тема плану Next.js, факультатив, день К2.
   Ліміти: безкоштовні RPC рахують запити чи «кредити» — пачки, пауза й затримка на 429. Індексатор працює в одному
   екземплярі — окремий Deployment із `replicas: 1` у кластері, а не всередині кожного пода API.
-- **Читати:** у примірнику `viem` — `Public Client`, `getBlockNumber`, `getContractEvents`, `getLogs`; Foundry Book —
-  «Anvil», «forge create», «cast» (поза корпусом); розділ Techniques, глави `Task scheduling` (розділ Declarative
-  intervals) і `Database` (розділ TypeORM Transactions).
-- **Сервери MCP:** `nestjs-docs`, `viem-docs`.
+- **Читати:** у примірнику `viem` — `Public Client`, `getBlockNumber`, `getContractEvents`, `getLogs`; у примірнику
+  `foundry` — `Anvil`, `Deploying Contracts`, `Sending transactions`, `Custom methods` (розділ State snapshots);
+  розділ Techniques, глави `Task scheduling` (розділ Declarative intervals) і `Database` (розділ TypeORM
+  Transactions).
+- **Сервери MCP:** `nestjs-docs`, `viem-docs`, `foundry-docs`.
 - **Зробити:** 1) `anvil` в окремому терміналі; 2) викот токена й п'ять переказів через `cast send`; 3) таблиці
   `transfers` і курсора; 4) індексатор пачками з `CONFIRMATIONS` із конфігу; 5) `GET /api/chain/transfers?address=`
   із сумами рядками; 6) навчальна реорганізація: `cast rpc evm_snapshot`, переказ, індексатор із
-  `CONFIRMATIONS=0`, `cast rpc evm_revert <id>`, інший переказ (команди звірте з документацією Anvil);
+  `CONFIRMATIONS=0`, `cast rpc evm_revert <id>`, інший переказ (команди — у примірнику `foundry`, `Custom methods`);
   7) за бажанням — те саме проти тестової мережі через `RPC_URL`, якщо вона ще жива.
 - **Перевірити себе:** перезапуск індексатора посеред роботи не дає ні дублів, ні дірок — кількість рядків дорівнює
   кількості подій у `cast logs`; з `CONFIRMATIONS=0` вправа з реорганізацією лишає в базі переказ-привид, з `2` —
