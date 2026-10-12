@@ -48,6 +48,9 @@ _CARD = re.compile(r"<Card\b((?:[^<>\"{}]|\"[^\"]*\"|\{[^{}]*\})*?)/>", re.S)
 _CARDS = re.compile(r"^[ \t]*</?Cards>[ \t]*$\n?", re.M)
 _ATTR = re.compile(r"(\w+)\s*=\s*(?:\"([^\"]*)\"|\{\s*['\"]([^'\"]*)['\"]\s*\})")
 _SKIP_KINDS = {"code-group", "steps"}
+# Записаний вивід команд (Foundry Book: `~/snippets/output/hello_foundry/forge-build`, блок ```ansi) несе
+# кольори терміналу й посилання OSC 8 — керівні послідовності, а не текст.
+_ANSI = re.compile(r"\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b\[[0-9;?]*[A-Za-z]")
 # Заголовок сторінки з підзаголовком Vocs: «# Public Client [A function to create a Public Client]».
 _H1_SUBTITLE = re.compile(r"^#[ \t]+(.+?)[ \t]+\[([^\]]+)\][ \t]*$", re.M)
 
@@ -58,9 +61,12 @@ _DEPS: dict = {}
 
 
 def wanted(root: str) -> list:
-    """Файли тегу, які сторінки можуть узяти: шматки й код прикладів під коренем сайту."""
+    """Файли тегу, які сторінки можуть узяти: шматки й код прикладів під коренем сайту — будь-який
+    текстовий файл. Foundry Book вставляє й записаний вивід команд без розширення (`forge-build`), і
+    `foundry.toml`, і редакції прикладу `Safe.t.sol.1`, `.2`, `.3`."""
     r = re.escape(root.strip("/"))
-    return [re.compile(rf"^{r}/(?!public/|node_modules/).+\.(md|mdx|ts|tsx|js|json|sol)$")]
+    return [re.compile(rf"^{r}/(?!public/|node_modules/)"
+                       rf"(?!.*\.(?:png|jpe?g|gif|svg|ico|webp|avif|mp4|woff2?|ttf|pdf)$).+$")]
 
 
 def _resolve(target: str, page: str, root: str) -> str:
@@ -139,7 +145,7 @@ def _code(lines: list, path: str, root: str, files: dict, fetch, blocks: dict) -
         if m:
             where = _resolve(m.group(2), path, root)
             if where in files:
-                piece = _CACHE.sub("", fetch(where, files[where]))
+                piece = _ANSI.sub("", _CACHE.sub("", fetch(where, files[where])))
             else:
                 piece = blocks.get(posixpath.basename(m.group(2)), "")
             piece = _region(piece, m.group(3))
@@ -220,7 +226,8 @@ def _components(text: str, path: str, root: str, files: dict, fetch, depth: int 
 
 def expand(text: str, path: str, files: dict, fetch, root: str) -> str:
     """Тіло сторінки (без шапки YAML) з розкритими вставками, кодом і контейнерами."""
-    text = _components(text, path, root, files, fetch)
+    # Кольори терміналу бувають і в самій сторінці: таблиця `forge test --gas-report` у блоці ```ansi.
+    text = _components(_ANSI.sub("", text), path, root, files, fetch)
     # Підзаголовок — опис під назвою, а не частина назви.
     text = _H1_SUBTITLE.sub(lambda m: f"# {m.group(1)}\n\n{m.group(2)}.", text, count=1)
     blocks = _labelled(text)
