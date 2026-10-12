@@ -1459,6 +1459,29 @@ Next.js тримають кластер k3s, — правила Always Free, п�
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/oracle-cloud/README.md](instances/oracle-cloud/README.md).
 
+### lightweight-charts
+
+Документація Lightweight Charts™ — бібліотеки фінансових графіків TradingView (пакет npm `lightweight-charts`)
+англійською: сайт tradingview.github.io/lightweight-charts кожної мінорної лінії, яку він тримає (5.2, 5.1, 5.0, 4.2,
+4.1, 4.0, 3.8), з посібниками й повним довідником API, уроки й демо, каталог офіційних плагінів, нотатки релізів від
+1.0.0 і посібники з міграції; для 1.0–3.7, яких сайт не має, — тека `docs/` репозиторію на кожному сталому тезі й
+`typings.d.ts` з npm; README кожної сталої версії npm; журнали змін і README плагінів, `lwc-toolkit`,
+`create-lwc-plugin`, дві офіційні навички для асистентів коду, код прикладів плагінів та індикаторів; обгортки для
+Android (Kotlin) та iOS (Swift) — README з тегів, релізи й код. Читач `sitemap-html` дістав два поля: `min_chars`
+(короткі сторінки псевдонімів типів) і `inline_titles` (підзаголовки «Parameters», «Returns», «Default Value» довідника
+TypeDoc стають підписами всередині розділу члена). Лише сталі версії. 2 052 документи, 3 630 фрагментів.
+
+- порт `8826`; запис у Claude Code — `lightweight-charts-docs`, адреса `http://127.0.0.1:8826/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-lightweight-charts`, модель векторів — `bge-small`; `slug_rewrite` і `families` зводять
+  сторінки всіх версійних копій сайту в одну;
+- версія — лінія бібліотеки: `version: "5"` лишає всі 5.x, `"4.2"` — лінію 4.2; обгортки нумерують випуски за
+  бібліотекою; без названої версії промпт велить відповідати для 5.2 — найпоширенішої за завантаженнями npm (64%), а
+  для коду на API 4.x — для 4.2;
+- приклад питання агентові: `./df lightweight-charts ask "How do I add a volume histogram under candlesticks in v5?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/lightweight-charts/README.md](instances/lightweight-charts/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
