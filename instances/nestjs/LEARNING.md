@@ -333,7 +333,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 | `@nestjs/config` | змінні оточення з перевіркою схемою на старті | Ф2 Д3 |
 | `@nestjs/swagger` і CLI plugin | документ OpenAPI, сторінка `/docs`, джерело клієнта для SPA | Ф2 Д6–7 |
 | PostgreSQL | база даних | Ф0 Д13–18, Ф3; є примірник `postgresql` |
-| TypeORM або Prisma | ORM: сутності чи схема, міграції, запити | Ф3 Д1–10 |
+| TypeORM або Prisma | ORM: сутності чи схема, міграції, запити | Ф3 Д1–12; є примірник `prisma` (TypeORM — поза корпусом) |
 | `@nestjs/jwt`, Passport | токени й стратегії входу | Ф4 Д2–5 |
 | bcrypt або argon2 | хешування паролів | Ф4 Д1; є примірник `argon2` (argon2 і `@node-rs/argon2`; bcrypt — поза корпусом) |
 | Vitest і supertest | юніт- і наскрізні тести | Ф5; є примірник `vitest` (supertest — поза корпусом) |
@@ -399,6 +399,9 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   `@types/pg`, усі стабільні версії — `node-postgres`;
 - Drizzle (сайт orm.drizzle.team кожної стабільної версії 0.29–0.45, drizzle-kit, журнали змін і таблиці версій npm)
   — `drizzle`;
+- Prisma (сайт prisma.io/docs кожної стабільної версії 2.0–7.10: схема, Prisma Client, Prisma Migrate, CLI,
+  `prisma.config.ts`, адаптери драйверів, посібник NestJS; README монорепозиторію, нотатки релізів, таблиці версій
+  npm; документація Prisma 1) — `prisma`;
 - Socket.IO 2.x–4.x — сервер, клієнт, адаптери Redis, Redis Streams, Postgres і MongoDB, Admin UI, протоколи й
   приклади (зокрема з NestJS) — `socketio`;
 - GitHub Actions, Dependabot, Container registry (ghcr.io), офіційні дії — `github-actions`;
@@ -418,10 +421,9 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   версій npm) — `foundry`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
-глава про інтеграцію (TypeORM, Prisma, Passport, BullMQ, class-validator), але не документація самої
-бібліотеки:
+глава про інтеграцію (TypeORM, Passport, BullMQ, class-validator), але не документація самої бібліотеки:
 
-- з «треба знати»: TypeORM, Prisma, Passport, bcrypt, class-validator, class-transformer, supertest, RxJS;
+- з «треба знати»: TypeORM, Passport, bcrypt, class-validator, class-transformer, supertest, RxJS;
 - з «варто знати»: BullMQ, Redis, `ws`, nestjs-cls, nestjs-pino, csrf-csrf, CASL, orval, openapi-typescript;
 - з «знати, що існує»: Mongoose, MikroORM, Kafka, RabbitMQ, NATS.
 
@@ -1088,7 +1090,7 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 
 # Фаза 3. Дані: TypeORM, Prisma і продуктивність запитів — 12 днів
 
-**Сервери MCP фази:** `nestjs-docs`, `postgresql-docs`, `owasp-docs`.
+**Сервери MCP фази:** `nestjs-docs`, `prisma-docs`, `postgresql-docs`, `owasp-docs`.
 
 Головна глава — розділ Techniques, глава `Database`. Обидві ORM, одна за одною, на тому самому домені: TypeORM
 першою, бо її більше у вакансіях; Prisma другою і швидше, бо модель уже продумана. Останні два дні — продуктивність
@@ -1136,8 +1138,8 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   `find`, `findOne`, `save`, `remove`, умови `where`. Відповідь не повинна містити того, що клієнтові не треба, —
   передусім хеша пароля (фаза 4, день 1).
 - **Читати:** розділ Techniques, глава `Database`, розділ Repository pattern; поза корпусом — документація TypeORM:
-  «Working with Repository» або Prisma Client: «CRUD».
-- **Сервери MCP:** `nestjs-docs`.
+  «Working with Repository»; для Prisma — у примірнику `prisma` — `CRUD`.
+- **Сервери MCP:** `nestjs-docs`, `prisma-docs`.
 - **Зробити:** 1) `PostsService` на репозиторії замість масиву; 2) 404 з кодом, коли запису немає; 3) прогнати
   ті самі `curl` і SPA, що в фазі 2.
 - **Перевірити себе:** жоден маршрут ззовні не змінився: SPA працює без правок, згенерований клієнт той самий.
@@ -1203,8 +1205,10 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   пояснення в документі, перевірте на збірці). З'єднання дає драйвер-адаптер: для PostgreSQL —
   `@prisma/adapter-pg`. `PrismaService extends PrismaClient` і в конструкторі викликає `super({ adapter })`.
 - **Читати:** розділ Recipes, глава `Prisma` на лінії 12 — розділи Set up Prisma, Set the generator output path,
-  Configure the module format, Install and generate Prisma Client, Use Prisma Client in your NestJS services.
-- **Сервери MCP:** `nestjs-docs`.
+  Configure the module format, Install and generate Prisma Client, Use Prisma Client in your NestJS services; у
+  примірнику `prisma` (версія 7) — `NestJS`, `Upgrade to v7`, `Generators`, `Database drivers`, `Config API`,
+  довідник CLI `init` і `generate`.
+- **Сервери MCP:** `nestjs-docs`, `prisma-docs`.
 - **Зробити:** 1) окрема гілка або модуль поруч із TypeORM; 2) `schema.prisma` з `provider = "postgresql"` і
   новим генератором; 3) `PrismaService` з адаптером `pg`, зареєстрований як звичайний провайдер; 4) `npx prisma
   generate`.
@@ -1221,9 +1225,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   повертає лише перелічені поля — так пароль не виходить за межі сервісу. Сирий SQL — лише тегованим шаблоном
   `prisma.$queryRaw`, куди значення підставлене через `${q}`: Prisma робить із нього параметр.
   `$queryRawUnsafe` з вводом користувача — ін'єкція.
-- **Читати:** розділ Recipes, глава `Prisma`, розділ Create two database tables with Prisma Migrate;
-  документація Prisma Client (поза корпусом).
-- **Сервери MCP:** `nestjs-docs`.
+- **Читати:** розділ Recipes, глава `Prisma`, розділ Create two database tables with Prisma Migrate; у примірнику
+  `prisma` — `Models`, `CRUD`, `Select fields`, `Raw queries`, довідник CLI `dev` (`prisma migrate dev`).
+- **Сервери MCP:** `nestjs-docs`, `prisma-docs`.
 - **Зробити:** 1) `User` і `Post` у схемі; 2) `prisma migrate dev --name init`; 3) ті самі маршрути записів на
   Prisma; 4) звірити згенерований SQL із міграцією TypeORM.
 - **Перевірити себе:** SPA працює без правок; розбіжності двох SQL-міграцій (імена, індекси, типи) записані в
@@ -1237,8 +1241,8 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 - **Що це.** Вкладений `create` і `connect` створюють чи прив'язують пов'язані записи одним викликом. `include`
   вантажить зв'язки. `$transaction([…])` виконує масив запитів атомарно; інтерактивна
   `$transaction(async (tx) => …)` дає логіку між запитами — усі виклики всередині через `tx`.
-- **Читати:** документація Prisma — «Relation queries», «Transactions and batch queries» (поза корпусом).
-- **Сервери MCP:** жодного — джерела дня поза фабрикою.
+- **Читати:** у примірнику `prisma` — `Relation queries`, `Transactions and batch queries`.
+- **Сервери MCP:** `prisma-docs`.
 - **Зробити:** 1) користувач разом із першим записом одним викликом; 2) операція з дня 6 на `$transaction`;
   3) порівняння коду двох транзакцій у README.
 - **Перевірити себе:** падіння посередині інтерактивної транзакції не лишає в базі жодної з двох змін.
@@ -1250,8 +1254,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 - **Що це.** `prisma migrate dev` — для розробки: створює міграції й може скинути базу. `prisma migrate deploy`
   — для продакшну: лише застосовує вже створені, нічого не генерує й не скидає. Seed-скрипт наповнює порожню базу
   тестовими даними. Prisma Studio — переглядач бази в браузері.
-- **Читати:** документація Prisma — «Seeding», «Deploying database changes» (поза корпусом).
-- **Сервери MCP:** жодного — джерела дня поза фабрикою.
+- **Читати:** у примірнику `prisma` — `Seeding`, `Deploying database changes with Prisma Migrate`, `Development and
+  production`, `Prisma Studio`.
+- **Сервери MCP:** `prisma-docs`.
 - **Зробити:** 1) seed: три користувачі, по десять записів; 2) `migrate deploy` на чистій базі; 3) абзац у README:
   де Prisma зручніша, де виграє TypeORM, — на матеріалі власного коду; 4) вибрати одну ORM для решти плану.
 - **Перевірити себе:** `docker compose down -v`, `up`, `migrate deploy`, seed — і SPA показує записи.
@@ -1263,12 +1268,13 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 
 - **Навіщо.** Різниця між джуном і мідлом — саме тут. Список, що на десяти записах літає, на тисячі лягає.
 - **Що це.** N+1 — один запит за списком і ще по одному на кожен елемент. Видно його лише в лозі SQL: TypeORM —
-  `logging: true`, Prisma — `log: ['query']` (поза корпусом). Лікується приєднанням (`relations`,
+  `logging: true`, Prisma — `log: ['query']`. Лікується приєднанням (`relations`,
   `leftJoinAndSelect`, `include`) або одним запитом з `IN (…)`. NestJS Observe показує те саме згорнутим:
   «an N+1 reads as `SELECT order_items ×47`».
-- **Читати:** у розділі Observability — глава `SDK`, розділ Database queries and outbound HTTP; документація
-  обраної ORM про завантаження зв'язків (поза корпусом).
-- **Сервери MCP:** `nestjs-docs`.
+- **Читати:** у розділі Observability — глава `SDK`, розділ Database queries and outbound HTTP; про завантаження
+  зв'язків у Prisma — у примірнику `prisma` `Query optimization`, `Relation queries`, `Logging`; TypeORM — поза
+  корпусом.
+- **Сервери MCP:** `nestjs-docs`, `prisma-docs`.
 - **Зробити:** 1) список із п'ятдесяти записів, автор кожного — окремим запитом; 2) порахувати SQL у лозі;
   3) autocannon `-c 50 -d 20` — req/s і p99; 4) полагодити приєднанням і заміряти знову; 5) те саме на другій ORM;
   6) завести журнал вимірів і записати обидва рядки.
@@ -1282,9 +1288,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   міграцію. `EXPLAIN ANALYZE` на запиті, який згенерувала ORM, показує Seq Scan чи Index Scan. `OFFSET 90000`
   змушує базу пройти й викинути дев'яносто тисяч рядків; пагінація за ключем («keyset»: `WHERE id < :last ORDER
   BY id DESC LIMIT 20`) іде індексом одразу до місця.
-- **Читати:** у примірнику `postgresql` — `Indexes`; `Performance Tips`, розділ Using EXPLAIN; документація обраної
-  ORM про індекси (поза корпусом).
-- **Сервери MCP:** `postgresql-docs`.
+- **Читати:** у примірнику `postgresql` — `Indexes`; `Performance Tips`, розділ Using EXPLAIN; у примірнику
+  `prisma` — `Indexes`, `Pagination`; документація TypeORM про індекси (поза корпусом).
+- **Сервери MCP:** `postgresql-docs`, `prisma-docs`.
 - **Зробити:** 1) сто тисяч записів seed-скриптом; 2) запит списку автора з логу ORM — `EXPLAIN ANALYZE` без
   індексу й з ним; 3) остання сторінка через `OFFSET` і через keyset — час обох; 4) рядки в журнал.
 - **Перевірити себе:** у журналі Seq Scan → Index Scan з мілісекундами й два часи пагінації, що відрізняються в
@@ -1567,7 +1573,7 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 
 # Фаза 5. Якість: тести й тонкощі DI — 7 днів
 
-**Сервери MCP фази:** `nestjs-docs`, `vitest-docs`.
+**Сервери MCP фази:** `nestjs-docs`, `vitest-docs`, `prisma-docs`.
 
 Порядок навмисний: доки не написано тестів, теза «DI потрібен заради тестованості» лишається чужими словами. Тести
 — на Vitest, як у плані React; Jest ви зустрінете в старих проєктах, `@nestjs/testing` працює з обома. Найцінніші
@@ -1596,8 +1602,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   звичайний клас. Guard тестують окремо: створюють контекст виконання з потрібним користувачем і дивляться, що
   повертає `canActivate`.
 - **Читати:** розділ Fundamentals, глава `Testing` — розділи Unit testing, Auto mocking, Overriding globally
-  registered enhancers; розділ Techniques, глава `Database`, розділ Testing.
-- **Сервери MCP:** `nestjs-docs`.
+  registered enhancers; розділ Techniques, глава `Database`, розділ Testing; у примірнику `prisma` — `Unit testing`
+  (підміна Prisma Client).
+- **Сервери MCP:** `nestjs-docs`, `prisma-docs`.
 - **Зробити:** 1) тест сервісу записів із підміненим репозиторієм: «не знайдено» → 404; 2) тест `RolesGuard`:
   користувач без ролі отримує `false`.
 - **Перевірити себе:** тести проходять із вимкненою базою (`docker compose stop db`).
@@ -1695,7 +1702,7 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 # Фаза 6. Продакшн — 9 днів
 
 **Сервери MCP фази:** `nestjs-docs`, `docker-docs`, `kubernetes-docs`, `oracle-cloud-docs`, `express-docs`,
-`postgresql-docs`, `github-actions-docs`, `nginx-docs`, `node-postgres-docs`, `argon2-docs`.
+`postgresql-docs`, `github-actions-docs`, `nginx-docs`, `node-postgres-docs`, `argon2-docs`, `prisma-docs`.
 
 Сервер, який треба зібрати, запустити, тримати живим, міряти й вміти оновити. Глави Nest тут — лише те, що Nest
 вимагає від Docker, проксі й CI. Docker і Compose мають примірник `docker`, Kubernetes, k3s і Traefik — примірник
@@ -1737,8 +1744,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   екземпляри API почнуть накочувати їх одночасно, а невдала міграція покладе застосунок у цикл перезапусків.
 - **Читати:** у примірнику `docker` — `Docker Compose`, `Compose file reference`, `Networking in Compose`; у
   примірнику `nginx` — `NGINX Reverse Proxy`, `Module ngx_http_proxy_module` (директиви `proxy_pass` і
-  `proxy_set_header`); розділ Security, глава `Rate limiting`, розділ Proxies.
-- **Сервери MCP:** `nestjs-docs`, `docker-docs`, `nginx-docs`.
+  `proxy_set_header`); розділ Security, глава `Rate limiting`, розділ Proxies; у примірнику `prisma` — `Deploying
+  database changes with Prisma Migrate`, `Docker`.
+- **Сервери MCP:** `nestjs-docs`, `docker-docs`, `nginx-docs`, `prisma-docs`.
 - **Зробити:** 1) чотири сервіси; 2) `docker compose up` на чистій машині; 3) SPA на `http://localhost` входить,
   оновлює токен і створює запис; 4) повторити вправу з обмеженням частоти з фази 4, дня 12, з `trust proxy` і без.
 - **Перевірити себе:** `docker compose down -v && docker compose up` — застосунок працює з порожньою, але
@@ -1876,8 +1884,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   `ConfigMaps`, `Secrets`, `StatefulSets`, `Persistent Volumes`, `Jobs`,
   `Configure Liveness, Readiness and Startup Probes`; у примірнику `argon2` — `argon2 README 0.45.0 … 0.45.1:
   node-argon2`, розділ Prebuilt binaries (готові збірки під ARM64 і з якої версії); у примірнику `oracle-cloud` —
-  `Compute: Arm-Based Compute` (машина A1 — arm64).
-- **Сервери MCP:** `nestjs-docs`, `kubernetes-docs`, `argon2-docs`, `oracle-cloud-docs`.
+  `Compute: Arm-Based Compute` (машина A1 — arm64); у примірнику `prisma` — `Connection URLs` (аргумент `schema`
+  адреси PostgreSQL).
+- **Сервери MCP:** `nestjs-docs`, `kubernetes-docs`, `argon2-docs`, `oracle-cloud-docs`, `prisma-docs`.
 - **Зробити:** усі файли — у теці `k8s/` репозиторію, застосовуються командою `kubectl apply -f <файл>` («зроби в
   кластері так, як написано у файлі»: створює, а при повторі — оновлює); простір імен — той, де живе под SPA (нижче
   він названий `app`, ключ `-n app` у командах).

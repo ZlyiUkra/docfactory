@@ -309,7 +309,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 | Tailwind CSS | стилі класами прямо в розмітці; ставиться з `create-next-app` | 120 | Ф1 Д10; є примірник `tailwind` |
 | shadcn/ui (на Radix UI) | готові доступні компоненти, які копіюються у ваш проєкт | 59 | Ф4 Д6, Ф5 Д5; є примірник `shadcn` |
 | PostgreSQL | база даних | 41 | Ф4 Д1; SQL — у плані NestJS; є примірник `postgresql` |
-| Drizzle або Prisma | ORM: схема, міграції, типізовані запити | 16 і 9 | Ф4 Д1, Д4; є примірник `drizzle` |
+| Drizzle або Prisma | ORM: схема, міграції, типізовані запити | 16 і 9 | Ф4 Д1, Д4; є примірники `drizzle`, `prisma` |
 | zod | схема перевірки вводу — одна для форми й для сервера | 11 | Ф4 Д5; є примірник `zod` |
 | Auth.js або Better Auth | вхід, сесії, сторонні провайдери | 19 і 6 | Ф4 Д9; є примірник `auth` |
 | TanStack Query або SWR | дані в клієнтських компонентах: стрічки, опитування | 4 і 1 | Ф4 Д11; є примірники `tanstack-query`, `swr` |
@@ -376,6 +376,9 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - Drizzle (сайт orm.drizzle.team кожної стабільної версії 0.29–0.45: схема, запити, Relational Queries, міграції й
   drizzle-kit, Drizzle Studio, drizzle-seed, drizzle-zod; README монорепозиторію, журнали змін і таблиці версій npm)
   — `drizzle`;
+- Prisma (сайт prisma.io/docs кожної стабільної версії 2.0–7.10: схема, Prisma Client, Prisma Migrate, CLI,
+  `prisma.config.ts`, адаптери драйверів, посібник Next.js; README монорепозиторію, нотатки релізів, таблиці версій
+  npm) — `prisma`;
 - GitHub Actions, Dependabot, Container registry (ghcr.io), офіційні дії — `github-actions`;
 - Sentry: SDK для Next.js, `instrumentation.ts` і `onRequestError`, карти коду, sentry-cli — `sentry`;
 - безпека: шпаргалки OWASP Cheat Sheet Series, Top 10 (2013–2025), API Security Top 10, вимоги ASVS, Proactive
@@ -406,7 +409,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «треба знати»: Prisma, Biome;
+- з «треба знати»: Biome;
 - з «варто знати»: iron-session, jose, next-themes, nuqs, next-intl, Redis (Upstash), OpenTelemetry;
 - з «знати, що існує»: Stripe, Resend і React Email, Vercel AI SDK, UploadThing, Sanity, Payload, Contentful,
   tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Grafana, Loki.
@@ -1044,7 +1047,8 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 
 **Сервери MCP фази:** `nextjs-docs`, `webstandards-docs`, `zod-docs`, `react-hook-form-docs`, `auth-docs`,
 `clerk-docs`, `supabase-docs`, `tanstack-query-docs`, `swr-docs`, `vitest-docs`, `testing-library-docs`,
-`playwright-docs`, `postgresql-docs`, `drizzle-docs`, `owasp-docs`, `shadcn-docs`, `webdev-docs`, `argon2-docs`.
+`playwright-docs`, `postgresql-docs`, `drizzle-docs`, `prisma-docs`, `owasp-docs`, `shadcn-docs`, `webdev-docs`,
+`argon2-docs`.
 
 Тут фронтендер стає фулстеком: застосунок сам ходить у базу, сам упізнає користувача, сам перевіряє права й
 сам відповідає за те, що не віддав зайвого. Порядок навмисний: спершу база, потім хто ви (автентифікація),
@@ -1062,10 +1066,11 @@ Next.js — надбудова над HTTP, Node і серверним React. У
   правці, тож клієнт бази тримають один на процес, а не створюють на кожен імпорт.
 - **Читати:** у примірнику `drizzle` (з `version: "0.45"`) — `Get Started with Drizzle and PostgreSQL`, `Drizzle
   schema`, `Migrations with Drizzle Kit`, `Todo App with Neon Postgres` (Drizzle разом із Next.js), `Type API` (розділ
-  `Logging`); якщо обрано Prisma — `Example: prisma-postgres`, лише схему й створення клієнта: його серверні дії
-  навмисно без перевірок, і копіювати їх не можна, а документація Prisma — поза фабрикою; у примірнику `postgresql`
-  (з `version: "18"`) — `Getting Started`, `The SQL Language`.
-- **Сервери MCP:** `nextjs-docs`, `drizzle-docs`, `postgresql-docs`.
+  `Logging`); якщо обрано Prisma — у примірнику `prisma` (з `version: "7"`) — `Next.js`, `Models`, `dev` (`prisma
+  migrate dev`), `Logging`, а з примірника `nextjs` — `Example: prisma-postgres`, лише схему й створення клієнта: його
+  серверні дії навмисно без перевірок, і копіювати їх не можна; у примірнику `postgresql` (з `version: "18"`) —
+  `Getting Started`, `The SQL Language`.
+- **Сервери MCP:** `nextjs-docs`, `drizzle-docs`, `prisma-docs`, `postgresql-docs`.
 - **Зробити:** 1) `docker run` з PostgreSQL; 2) схема наскрізного проєкту й перша міграція; 3) `lib/data.ts`
   переходить на ORM, сторінки не змінюються; 4) увімкнути лог запитів ORM.
 - **Перевірити себе:** для сторінки списку на 50 записів ви записали в журнал, скільки запитів до бази робить
@@ -1112,9 +1117,9 @@ Next.js — надбудова над HTTP, Node і серверним React. У
   дізнається, хто питає (`getSession()`), перевіряє права і віддає лише потрібні поля — не весь рядок таблиці
   з хешем пароля. Компоненти й дії в базу самі не ходять.
 - **Читати:** `How to think about data security in Next.js`, розділи про Data Access Layer; у примірнику `drizzle`
-  — `SQL Select` (розділ `Partial select`) і `Drizzle Queries` (розділ `Partial fields select`): з бази — лише
-  потрібні колонки.
-- **Сервери MCP:** `nextjs-docs`, `drizzle-docs`.
+  — `SQL Select` (розділ `Partial select`) і `Drizzle Queries` (розділ `Partial fields select`), у примірнику
+  `prisma` — `Select fields` і `Excluding fields`: з бази — лише потрібні колонки.
+- **Сервери MCP:** `nextjs-docs`, `drizzle-docs`, `prisma-docs`.
 - **Зробити:** `lib/dal.ts`: `getMyPosts()`, `getPost(id)`, `createPost(input)`; жоден інший файл не
   імпортує клієнт бази.
 - **Перевірити себе:** пошук по проєкту імпорту ORM знаходить лише `lib/dal.ts` і файл клієнта.
@@ -1472,8 +1477,8 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 
 # Фаза 7. DevOps: від збірки до продакшну — 12 днів
 
-**Сервери MCP фази:** `nextjs-docs`, `docker-docs`, `drizzle-docs`, `webstandards-docs`, `kubernetes-docs`,
-`playwright-docs`, `github-actions-docs`, `nginx-docs`, `webdev-docs`, `sentry-docs`.
+**Сервери MCP фази:** `nextjs-docs`, `docker-docs`, `drizzle-docs`, `prisma-docs`, `webstandards-docs`,
+`kubernetes-docs`, `playwright-docs`, `github-actions-docs`, `nginx-docs`, `webdev-docs`, `sentry-docs`.
 
 Next.js — не тека статики: це сервер, який треба зібрати, запустити, тримати живим і вміти відкотити. Документації
 Docker, nginx, Kubernetes і GitHub Actions у корпусі Next.js немає; є те, чого Next.js вимагає від них, і готові
@@ -1530,8 +1535,9 @@ Cloud з'явився в плані React (фаза 5, дні 7–9), бекен
   перевірки стану. База не відкриває порт назовні. `Example: with-docker-compose/next-app` — лише сам
   застосунок; базу й міграції додаєте самі.
 - **Читати:** у примірнику `docker` — `Docker Compose`, `Compose file reference`; у примірнику `drizzle` —
-  `` `drizzle-kit migrate` ``, `Drizzle migrations fundamentals`; приклад вище.
-- **Сервери MCP:** `docker-docs`, `drizzle-docs`.
+  `` `drizzle-kit migrate` ``, `Drizzle migrations fundamentals`; у примірнику `prisma` — `Deploying database changes
+  with Prisma Migrate`, `Docker`; приклад вище.
+- **Сервери MCP:** `docker-docs`, `drizzle-docs`, `prisma-docs`.
 - **Зробити:** `docker compose up` на чистій машині підіймає застосунок, базу й накочує міграції.
 - **Перевірити себе:** видалити томи, `docker compose up` — застосунок працює з порожньою базою.
 - **Пастка:** застосунок стартує раніше за базу — потрібна перевірка стану й залежність.
