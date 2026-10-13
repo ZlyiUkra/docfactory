@@ -133,6 +133,14 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   same `families` entry and are fetched in parallel; identical sections still merge in the passage cache.
 - **`ghdocs-history` without `folders` reads `docs/`**: a source meant only for root files (`files`) needs
   `exclude: ["/"]`, or it repeats the documentation of the neighbouring source.
+- **A package version published without its README** (next-themes 0.3.0) takes the README from that version's tag as
+  a source of its own; a `slug_rewrite` rule gives it the key of the package README, so unchanged sections merge into
+  one passage with every version.
+- **Versions with neither a tag nor a `gitHead`** (next-themes 0.0.1–0.2.1) take the repository files from the last
+  commit of the main branch before the version's publish time in the npm registry (`time`); two versions on one
+  commit share a key: `"<sha>": "0.1.0, 0.0.16"`.
+- **A package that never left 0.x** needs `version_line_depth: 2`, or every version falls into the one line «0» and
+  the version filter cannot tell 0.4 from 0.3.
 - **Independent sources fetch in parallel**: one detached `refresh <id>` per long source (the site, a second
   repository) and one for the rest; each process keeps its own pause per host.
 - **Quality.** The second ten of `quality` («as the model»: queries in the documentation's own names, the way the
@@ -591,6 +599,13 @@ and what a taken port and a failed connection look like. A domain list in the ro
   запис `families` і тягнуть паралельно; однакові розділи все одно зливаються в кеші фрагментів.
 - **`ghdocs-history` без `folders` бере теку `docs/`**: джерелу лише кореневих файлів (`files`) потрібне
   `exclude: ["/"]`, інакше воно повторює документацію сусіднього джерела.
+- **Версія пакета, опублікована без README** (next-themes 0.3.0), бере README з тегу цієї версії окремим джерелом;
+  правило `slug_rewrite` дає йому ключ README пакета, і незмінні розділи зливаються в один фрагмент з усіма версіями.
+- **Версії без тегу й без `gitHead`** (next-themes 0.0.1–0.2.1) беруть файли репозиторію з останнього коміту головної
+  гілки перед публікацією версії в реєстрі npm (`time`); дві версії на одному коміті ділять ключ:
+  `"<sha>": "0.1.0, 0.0.16"`.
+- **Пакет, що ніколи не виходив з 0.x**, потребує `version_line_depth: 2`, інакше всі версії падають в одну лінію «0»
+  і фільтр версії не відрізнить 0.4 від 0.3.
 - **Незалежні джерела тягнуть паралельно**: окремий відокремлений `refresh <id>` на кожне довге джерело (сайт, другий
   репозиторій) і один на решту; пауза між зверненнями до хоста — у кожного процесу своя.
 - **Якість.** Друга десятка `quality` («як модель»: запити назвами самої документації, як велить писати промпт) —
@@ -1054,6 +1069,14 @@ errada.
   na mesma entrada de `families` e baixam em paralelo; seções idênticas ainda se fundem no cache de trechos.
 - **`ghdocs-history` sem `folders` lê `docs/`**: uma fonte só de arquivos da raiz (`files`) precisa de
   `exclude: ["/"]`, senão repete a documentação da fonte vizinha.
+- **Uma versão do pacote publicada sem README** (next-themes 0.3.0) pega o README da tag dessa versão como fonte
+  própria; uma regra `slug_rewrite` dá a ele a chave do README do pacote, e as seções inalteradas se fundem num só
+  trecho com todas as versões.
+- **Versões sem tag e sem `gitHead`** (next-themes 0.0.1–0.2.1) pegam os arquivos do repositório do último commit do
+  branch principal antes da publicação da versão no registro npm (`time`); duas versões no mesmo commit dividem a
+  chave: `"<sha>": "0.1.0, 0.0.16"`.
+- **Um pacote que nunca saiu do 0.x** precisa de `version_line_depth: 2`, senão todas as versões caem numa só linha
+  «0» e o filtro de versão não distingue 0.4 de 0.3.
 - **Fontes independentes baixam em paralelo**: um `refresh <id>` desacoplado para cada fonte longa (o site, um segundo
   repositório) e um para o resto; cada processo tem a sua própria pausa por host.
 - **Qualidade.** A segunda dezena de `quality` («como o modelo»: consultas com os nomes da própria documentação, como
