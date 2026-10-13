@@ -4,8 +4,8 @@
 однієї бібліотеки чи інструмента (тека `instances/<ім'я>`). Файл оновлюється після кожного нового примірника, разом
 із підрозділами «Документація у фабриці» самих планів.
 
-Стан на 13.10.2026. Примірники: alpine, argon2, astro, astro-markdown-pipeline, auth, binance-spot, certbot, clerk,
-docker, drizzle, ecmascript, eslint, expo, express, express-rate-limit, ffmpeg, foundry, frontend-architecture,
+Стан на 13.10.2026. Примірники: alpine, argon2, astro, astro-markdown-pipeline, auth, binance-spot, biome, certbot,
+clerk, docker, drizzle, ecmascript, eslint, expo, express, express-rate-limit, ffmpeg, foundry, frontend-architecture,
 github-actions, helmet, i18next, kraken-spot, kubernetes, lightweight-charts, linux, mdn, motion, msw, nestjs, nextjs,
 nginx, node-postgres, nodejs, nodemailer, oracle-cloud, owasp, partysocket, patterns, playwright, postgrator,
 postgres-image, postgresql, prisma, react, react-hook-form, react-native, react-router, react-window, redux, sentry,
@@ -53,7 +53,7 @@ testing-library, typescript, v8, viem, vite, vitest, wagmi, wasm, webdev, websta
 | Фаза | Примірники (дні) |
 |------|------------------|
 | 0. База, якої Next.js не дає | `mdn` (вступ, 1–3, 6), `webstandards` (1–3, 6), `react` (вступ, 4–5), `owasp` (3), `nodejs` (6) |
-| 1. Ядро App Router | `eslint` (1), `tailwind` (10), `webdev` (11, 14) |
+| 1. Ядро App Router | `eslint` і `biome` (1), `tailwind` (10), `webdev` (11, 14) |
 | 2. Як Next.js працює зсередини | — |
 | 3. Кешування | — |
 | 4. Фулстек: дані, автентифікація, дії, тести | `webstandards` (2–3, 5, 9–10, 12), `zod` (5), `react-hook-form` і `shadcn` (6), `postgresql` (1), `drizzle` (1, 4), `prisma` (1, 4), `auth`, `clerk` і `supabase` (9), `tanstack-query` і `swr` (11), `vitest` і `testing-library` (13), `playwright` (14), `owasp` (12), `webdev` (6), `argon2` (2), `iron-session` (3) |
