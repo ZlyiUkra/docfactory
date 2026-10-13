@@ -82,6 +82,22 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   edition under a different key takes a result slot from the new one.
 - **Two numberings in one instance** (Foundry 1.8 and forge-std 1.8): label the second one (`forge-std-1.17.0`, the
   field `version_prefix` for releases) so the version filter never mixes them.
+- **A documentation branch that moved to a prerelease** (Drizzle: in December 2025 the site's `main` merged the 1.0
+  beta docs and now installs `drizzle-orm@rc`): an instance of stable versions ends its site snapshots at the last
+  commit before that merge, later stable releases share that key, and what changed in them comes from the changelogs.
+  Look at the install commands of the newest snapshot (`@rc`, `@beta`, `@next`) before trusting it.
+- **Tabs whose names live in the container** (Astro MDX: `<Tabs items={['PostgreSQL', 'MySQL']}>` with bare `<Tab>`,
+  `<CodeTabs items>` where every code block is a tab): label every tab from `items`, or the examples of all dialects
+  merge into one unlabelled run of code. Imported MDX pieces with properties (`<InstallPackages lib='pg'/>`,
+  `{props.lib}`) are expanded with the values substituted, inside table cells too (`ghdocs-history` field
+  `astro_mdx`). Before the full fetch, run the reader offline over every snapshot of a bare clone and count leftover
+  component tags and `{props.`.
+- **Tutorials that repeat a step in every tab under its own heading** (four «Push your changes to the database» on one
+  page) take every result slot for a command name: `max_per_doc` 1 leaves such a page one slot.
+- **A changelog kept as one file per version** (`changelogs/drizzle-kit/0.31.4.md`) starts straight with a section:
+  the title comes from the path (`path_title`) and so does the version (`path_version`), labelled per package.
+- **An npm packument above the response ceiling** (drizzle-orm with hundreds of branch builds: 65 MB) is fetched
+  compressed: field `gzip` of `npm-versions`.
 - **Quality.** The second ten of `quality` («as the model»: queries in the documentation's own names, the way the
   prompt tells the model to write them) is the main goal: 10 of 10. Targets grow only by genuine answers. A target
   must be a section with its own text: a document that is only a header is never found as a section. `ua_query` is
@@ -489,6 +505,22 @@ and what a taken port and a failed connection look like. A domain list in the ro
   видачі місце нової.
 - **Дві нумерації в одному примірнику** (Foundry 1.8 і forge-std 1.8): другу позначають міткою (`forge-std-1.17.0`,
   для релізів — поле `version_prefix`), щоб фільтр версії їх не змішував.
+- **Гілка документації, що перейшла на передреліз** (Drizzle: у грудні 2025 у `main` сайту злили документацію бети
+  1.0, і тепер вона ставить `drizzle-orm@rc`): примірник стабільних версій закінчує знімки сайту останнім комітом
+  перед тим злиттям, пізніші стабільні версії ділять його ключ, а що в них змінилося, дають журнали змін. Перш ніж
+  довіряти найновішому знімку, дивляться на його команди встановлення (`@rc`, `@beta`, `@next`).
+- **Вкладки, чиї назви лежать у контейнері** (MDX для Astro: `<Tabs items={['PostgreSQL', 'MySQL']}>` з голими
+  `<Tab>`, `<CodeTabs items>`, де вкладка — кожен блок коду): кожну вкладку підписують з `items`, інакше приклади всіх
+  діалектів злипаються в один код без підписів. Імпортовані шматки MDX із властивостями (`<InstallPackages
+  lib='pg'/>`, `{props.lib}`) розкриваються з підставленими значеннями, і в клітинках таблиць теж (поле `astro_mdx`
+  читача `ghdocs-history`). До повного завантаження читач проганяють без мережі по всіх знімках голого клону й рахують
+  залишки тегів компонентів і `{props.`.
+- **Посібники, що повторюють крок у кожній вкладці власним заголовком** (чотири «Push your changes to the database» на
+  одній сторінці), забирають усі місця видачі на назву команди: `max_per_doc` 1 лишає такій сторінці одне місце.
+- **Журнал змін файлом на версію** (`changelogs/drizzle-kit/0.31.4.md`) починається одразу з розділу: назву дає шлях
+  (`path_title`), версію теж (`path_version`), з міткою пакета.
+- **Опис пакета npm понад стелю відповіді** (drizzle-orm із сотнями збірок гілок — 65 МБ) тягнуть стиснутим: поле
+  `gzip` читача `npm-versions`.
 - **Якість.** Друга десятка `quality` («як модель»: запити назвами самої документації, як велить писати промпт) —
   головна мета: 10 із 10. Цілі доповнюють лише справжніми відповідями. Ціль мусить бути розділом із власним текстом:
   документ із самої шапки розділом не знаходиться. `ua_query` — суто кирилицею, без цифр і латиниці.
@@ -896,6 +928,24 @@ errada.
   uma edição antiga sob outra chave rouba o lugar da nova nos resultados.
 - **Duas numerações numa instância** (Foundry 1.8 e forge-std 1.8): marque a segunda (`forge-std-1.17.0`, campo
   `version_prefix` nos releases) para que o filtro de versão não as misture.
+- **Um branch de documentação que passou para uma pré-versão** (Drizzle: em dezembro de 2025 o `main` do site recebeu
+  a documentação do beta 1.0 e agora instala `drizzle-orm@rc`): uma instância de versões estáveis termina os
+  instantâneos do site no último commit antes dessa fusão, as versões estáveis posteriores compartilham essa chave, e
+  o que mudou nelas vem dos changelogs. Antes de confiar no instantâneo mais novo, veja os comandos de instalação dele
+  (`@rc`, `@beta`, `@next`).
+- **Abas cujos nomes ficam no contêiner** (MDX do Astro: `<Tabs items={['PostgreSQL', 'MySQL']}>` com `<Tab>` sem
+  nome, `<CodeTabs items>` em que cada bloco de código é uma aba): rotule cada aba a partir de `items`, senão os
+  exemplos de todos os dialetos se juntam num só código sem rótulo. Trechos MDX importados com propriedades
+  (`<InstallPackages lib='pg'/>`, `{props.lib}`) são expandidos com os valores substituídos, também dentro de células
+  de tabela (campo `astro_mdx` do `ghdocs-history`). Antes do download completo, rode o leitor offline sobre todos os
+  instantâneos de um clone bare e conte as sobras de tags de componentes e `{props.`.
+- **Tutoriais que repetem um passo em cada aba sob título próprio** (quatro «Push your changes to the database» numa
+  página) tomam todas as vagas do resultado para o nome de um comando: `max_per_doc` 1 deixa uma vaga para essa
+  página.
+- **Um changelog com um arquivo por versão** (`changelogs/drizzle-kit/0.31.4.md`) começa direto numa seção: o título
+  vem do caminho (`path_title`), e a versão também (`path_version`), com o rótulo do pacote.
+- **Uma descrição de pacote npm acima do teto de resposta** (drizzle-orm com centenas de builds de branch: 65 MB) é
+  baixada comprimida: campo `gzip` do `npm-versions`.
 - **Qualidade.** A segunda dezena de `quality` («como o modelo»: consultas com os nomes da própria documentação, como
   o prompt manda o modelo escrever) é a meta principal: 10 de 10. Os alvos só crescem com respostas genuínas. Um
   alvo precisa ser uma seção com texto próprio: um documento que é só cabeçalho nunca é encontrado como seção. A
