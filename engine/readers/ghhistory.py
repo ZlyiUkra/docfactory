@@ -59,6 +59,11 @@
                    `<Tabs items>`/`<CodeTabs items>` дістають підписи, `<Npm>`/`<Npx>` стають командами,
                    позначки підтримки діалектів — рядком «Supported: …» (див. `_astromdx`); редакція
                    сторінки враховує й вставлені шматки;
+                   `biome_mdx: true` — сайт biomejs.dev на Astro Starlight (див. `_biomemdx`): вивід
+                   діагностики правил (сирий `<pre>` чи `<Fragment set:html>`) стає блоком тексту, іконки
+                   таблиць правил — підписами, компоненти команд і налаштувань редактора — кодом із
+                   шаблону файла компонента того самого знімка, згенеровані `.astro` — текстом, вкладки
+                   Starlight — підписами; редакція сторінки враховує й ці файли;
                    `prisma_mdx: true` — сайт документації Prisma (див. `_prismamdx`): вкладки
                    `<TabbedContent>`/`<Tabs>` дістають підписи, шматки сторінки для однієї бази
                    (`<SwitchTech>`) — підпис із назвою бази, вивід команди — «Output:», спільні
@@ -119,8 +124,8 @@ import sys
 from html import unescape
 from urllib.parse import quote, urlsplit
 
-from engine.readers import (Item, _astromdx, _baseui, _markup, _mdbook, _nginxxml, _prismamdx,
-                            _vitepress, _vocs, register)
+from engine.readers import (Item, _astromdx, _baseui, _biomemdx, _markup, _mdbook, _nginxxml,
+                            _prismamdx, _vitepress, _vocs, register)
 
 _TREES = re.compile(r"^/repos/([^/]+)/([^/]+)/git/trees/$")
 _LOCALE = re.compile(r"\.[a-z]{2}-[A-Z]{2}\.md$")
@@ -752,6 +757,9 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
     prisma = source.get("prisma_mdx") is True
     if prisma:
         wanted += _prismamdx.WANTED
+    biome = source.get("biome_mdx") is True
+    if biome:
+        wanted += _biomemdx.WANTED
     # Для vocs: ім'я документа → адреса, з якої текст сторінки вже прочитано під час переліку.
     # Тег цієї адреси буває новіший за перший тег документа (сторінка та сама, вставка інша), і
     # читання з адреси першого тегу тягнуло б ту саму сторінку з мережі вдруге.
@@ -853,6 +861,18 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
                                               lambda w, s, t=tag: blob_text(w, s, t),
                                               lambda u=origin[page_key]: ctx.text(u))
                     origin.setdefault(f"{lead}{_markup.slug(stem)}-{sha[:8]}", origin[page_key])
+                if biome:
+                    files_now = registry[tag]
+                    page_url = (f"https://raw.githubusercontent.com/{owner}/{repo}/"
+                                f"{quote(tag, safe='@')}/{quote(path)}")
+                    page_key = (path, sha)
+                    if page_key not in origin:
+                        origin[page_key] = page_url
+                    line = str(tags[tag]).split(".", 1)[0]
+                    sha = _biomemdx.revision(path, sha, files_now,
+                                             lambda w, s, t=tag: blob_text(w, s, t),
+                                             lambda u=origin[page_key]: ctx.text(u), line)
+                    origin.setdefault(f"{lead}{_markup.slug(stem)}-{sha[:8]}", origin[page_key])
                 name = f"{lead}{_markup.slug(stem)}-{sha[:8]}"
                 seen.setdefault(name, [path, []])[1].append(tag)
 
@@ -899,6 +919,10 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
                     text = _sphinx.help_text(text)
                 elif path.endswith(".rst"):
                     text = _sphinx.to_markdown(text)
+            if biome:
+                # Частина сторінок biomejs.dev починається порожнім рядком перед шапкою YAML; Astro її
+                # однаково бачить, а без зрізаного рядка шапка лишалася б у тексті.
+                text = text.lstrip("\n")
             meta, rest = _markup.front_matter(text)
             if hugo:
                 rest = _hugo(rest, ctx, f"https://raw.githubusercontent.com/{owner}/{repo}/"
@@ -921,6 +945,8 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
                 rest = _astromdx.expand(rest, path, registry.get(tag, {}), fetch, astro)
             if prisma:
                 rest = _prismamdx.expand(rest, path, registry.get(tag, {}), fetch, meta or {})
+            if biome:
+                rest = _biomemdx.expand(rest, path, registry.get(tag, {}), fetch, version)
             # Обидва — до викидання `export`: таблиці беруть дані саме з них.
             if source.get("jsx_props") is True:
                 rest = _jsx_props(rest)
