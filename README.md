@@ -1549,6 +1549,32 @@ chisel) — англійською: Foundry Book (getfoundry.sh) на день �
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/foundry/README.md](instances/foundry/README.md).
 
+### drizzle
+
+Документація Drizzle — ORM для TypeScript від drizzle-team (PostgreSQL, MySQL, SQLite, SingleStore) разом із CLI
+міграцій drizzle-kit, Drizzle Studio, drizzle-seed і генераторами схем валідації — англійською, лише стабільні версії:
+сайт orm.drizzle.team у стані на кожну стабільну версію drizzle-orm 0.29.1–0.45.4 — сайт версій не має, тож для
+кожної береться вершина гілки репозиторію drizzle-orm-docs перед виходом наступної версії, у трьох розкладках сайту;
+з грудня 2025 сайт описує 1.0 RC, тож знімки закінчуються останнім станом до бети — з get started для кожного
+драйвера, схемою, типами колонок, запитами, Relational Queries, міграціями й командами drizzle-kit, посібниками й
+нотатками випусків; монорепозиторій drizzle-team/drizzle-orm на кожному стабільному тезі 0.17.0–0.45.4 (README пакетів
+і модулів — до 0.29 це повний довідник pg-core, mysql-core і sqlite-core); журнали змін кожної стабільної версії
+кожного пакета; релізи drizzle-kit 0.17–0.23.1 з drizzle-kit-mirror; таблиці версій npm дванадцяти пакетів. Нове
+поле `astro_mdx` читача `ghdocs-history` (модуль `_astromdx`) розкриває шматки MDX сайту на Astro, підписує вкладки
+діалектів і робить команди з `<Npm>`/`<Npx>`; поле `path_title` дає назву за шляхом файла; поля `version_prefix` і
+`gzip` читачів npm. 1 404 документи, 4 383 фрагменти.
+
+- порт `8830`; запис у Claude Code — `drizzle-docs`, адреса `http://127.0.0.1:8830/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-drizzle`, модель векторів — `bge-small`; `slug_rewrite` дає спільний ключ сторінкам трьох
+  розкладок сайту, `max_per_doc` — 1;
+- версія — лінія drizzle-orm: `version: "0.45"` лишає всі 0.45.x; інші пакети — з міткою (`"drizzle-kit-0.31"`,
+  `"drizzle-zod-0.8"`); без названої версії промпт велить відповідати для найпопулярніших за завантаженнями npm,
+  drizzle-orm 0.45 (0.45.2) і drizzle-kit 0.31 (0.31.10);
+- приклад питання агентові: `./df drizzle ask "How do I upsert a row with onConflictDoUpdate in Drizzle?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/drizzle/README.md](instances/drizzle/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
