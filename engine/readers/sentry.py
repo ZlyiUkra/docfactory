@@ -13,7 +13,7 @@
                       двох журналів злився б в один фрагмент.
 `npm-readme-latest` — README найновішої версії пакета з опису в реєстрі npm (`url` —
                       https://registry.npmjs.org/ПАКЕТ, поле `readme`); версія документа — мітка
-                      `latest`.
+                      `latest`, з необов'язковим `version_prefix` перед нею.
 
 Навіщо. Сайт тримає поточну лінію SDK за звичайною адресою, а сторінки, що для старшої лінії
 відрізняються, — поруч, зі суфіксом версії: «…/tracing/streamed-spans__v10.x». `sitemap-md` дав
@@ -139,6 +139,9 @@ def npm_readme_latest(source: dict, ctx) -> list[Item]:
         _markup.require(title, body, source["url"])
         page = source.get("page") or f"https://www.npmjs.com/package/{package}"
         label = source.get("label", "README")
-        return _markup.document(f"{label} {version}: {title}", page, ctx.stamp, body, version)
+        # `version_prefix` (`drizzle-graphql-`): у примірнику, де пакети мають кожен свою нумерацію,
+        # фільтр версії інакше змішував би README різних пакетів.
+        return _markup.document(f"{label} {version}: {title}", page, ctx.stamp, body,
+                                str(source.get("version_prefix") or "") + version)
 
     return [Item(id=f"{source['id']}/{name}", file=f"{source['id']}--{name}.txt", make=make)]
