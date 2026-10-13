@@ -5,12 +5,12 @@
 із підрозділами «Документація у фабриці» самих планів.
 
 Стан на 13.10.2026. Примірники: alpine, argon2, astro, astro-markdown-pipeline, auth, binance-spot, certbot, clerk,
-docker, ecmascript, eslint, expo, express, express-rate-limit, ffmpeg, foundry, frontend-architecture, github-actions,
-helmet, i18next, kraken-spot, kubernetes, lightweight-charts, linux, mdn, motion, msw, nestjs, nextjs, nginx,
-node-postgres, nodejs, nodemailer, oracle-cloud, owasp, partysocket, patterns, playwright, postgrator, postgres-image,
-postgresql, react, react-hook-form, react-native, react-router, react-window, redux, sentry, shadcn, socketio,
-storybook, supabase, swr, tailwind, tanstack-query, tanstack-router, tanstack-virtual, testing-library, typescript,
-v8, viem, vite, vitest, wagmi, wasm, webdev, webstandards, zod, zustand.
+docker, drizzle, ecmascript, eslint, expo, express, express-rate-limit, ffmpeg, foundry, frontend-architecture,
+github-actions, helmet, i18next, kraken-spot, kubernetes, lightweight-charts, linux, mdn, motion, msw, nestjs, nextjs,
+nginx, node-postgres, nodejs, nodemailer, oracle-cloud, owasp, partysocket, patterns, playwright, postgrator,
+postgres-image, postgresql, react, react-hook-form, react-native, react-router, react-window, redux, sentry, shadcn,
+socketio, storybook, supabase, swr, tailwind, tanstack-query, tanstack-router, tanstack-virtual, testing-library,
+typescript, v8, viem, vite, vitest, wagmi, wasm, webdev, webstandards, zod, zustand.
 
 ## Як читати таблиці
 
@@ -56,10 +56,10 @@ v8, viem, vite, vitest, wagmi, wasm, webdev, webstandards, zod, zustand.
 | 1. Ядро App Router | `eslint` (1), `tailwind` (10), `webdev` (11, 14) |
 | 2. Як Next.js працює зсередини | — |
 | 3. Кешування | — |
-| 4. Фулстек: дані, автентифікація, дії, тести | `webstandards` (2–3, 5, 9–10, 12), `zod` (5), `react-hook-form` і `shadcn` (6), `postgresql` (1), `auth`, `clerk` і `supabase` (9), `tanstack-query` і `swr` (11), `vitest` і `testing-library` (13), `playwright` (14), `owasp` (12), `webdev` (6), `argon2` (2) |
+| 4. Фулстек: дані, автентифікація, дії, тести | `webstandards` (2–3, 5, 9–10, 12), `zod` (5), `react-hook-form` і `shadcn` (6), `postgresql` (1), `drizzle` (1, 4), `auth`, `clerk` і `supabase` (9), `tanstack-query` і `swr` (11), `vitest` і `testing-library` (13), `playwright` (14), `owasp` (12), `webdev` (6), `argon2` (2) |
 | 5. Інтерфейс із характером | `mdn` (4), `motion` (3–4), `zustand` (5), `webstandards` (5, 7), `shadcn` (5), `webdev` (4, 7), `i18next` (8) |
 | 6. Чужий код | — |
-| 7. DevOps: від збірки до продакшну | `docker` (вступ, 2, 4), `webstandards` (6), `kubernetes` (вступ, 12), `playwright` (7), `github-actions` (вступ, 7), `nginx` (вступ, 6), `webdev` (9–10), `sentry` (9) |
+| 7. DevOps: від збірки до продакшну | `docker` (вступ, 2, 4), `drizzle` (4), `webstandards` (6), `kubernetes` (вступ, 12), `playwright` (7), `github-actions` (вступ, 7), `nginx` (вступ, 6), `webdev` (9–10), `sentry` (9) |
 | 8. Next.js поруч з окремим бекендом | `webstandards` (2, 6–7), `mdn` (7), `socketio` (6), `nginx` (6); за змістом — `nestjs` |
 | 9. Kubernetes глибше і демо | `kubernetes` (вступ, 1–8), `oracle-cloud` (вступ, 2, 7), `linux` (5), `mdn` (8), `webstandards` (8), `github-actions` (вступ, 5) |
 | Факультатив «крипта» | `webstandards` (К1–К3), `wagmi` (К3), `viem` (К1, К3), `foundry` (К2) |
@@ -119,7 +119,7 @@ v8, viem, vite, vitest, wagmi, wasm, webdev, webstandards, zod, zustand.
 ### Next.js
 
 1. Redis (14).
-2. Drizzle або Prisma.
+2. Prisma — для тих, хто бере її замість Drizzle (Drizzle має примірник `drizzle`).
 3. nuqs, next-themes, next-intl, iron-session, jose.
 4. OpenTelemetry, Prometheus і Grafana.
 5. Факультатив: OpenZeppelin.
@@ -143,4 +143,4 @@ nodes with crictl`, `Container Runtimes`.
 1. Платформи розгортання: Cloudflare (3), Vercel і Netlify (по 1) — документація Astro описує лише адаптери до них.
 2. Контент поза документацією Astro: remark і rehype (3), CMS (2), Shiki (1).
 3. Lighthouse (1).
-4. Лише в переліку плану, без днів: Vue, Svelte, Solid, Preact (острови не на React), Drizzle, Prisma.
+4. Лише в переліку плану, без днів: Vue, Svelte, Solid, Preact (острови не на React), Prisma.

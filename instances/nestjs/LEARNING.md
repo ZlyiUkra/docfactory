@@ -365,7 +365,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 
 | Бібліотека | Навіщо | Де в плані |
 |------------|--------|------------|
-| Mongoose, MikroORM, Drizzle | інша база чи інший стиль ORM; у корпусі є `Mongo` і `MikroORM` | не вчиться |
+| Mongoose, MikroORM, Drizzle | інша база чи інший стиль ORM; у корпусі є `Mongo` і `MikroORM`; є примірник `drizzle` | не вчиться |
 | GraphQL (`@nestjs/graphql`) | клієнтів багато, і кожен хоче свою форму даних | не вчиться |
 | мікросервіси: Kafka, RabbitMQ, NATS | кілька сервісів обмінюються повідомленнями | не вчиться |
 | CQRS | складний домен, читання й запис розділені | не вчиться |
@@ -397,6 +397,8 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   `postgresql`;
 - драйвер `pg` (node-postgres) з `pg-pool`, `pg-cursor`, `pg-query-stream`, `pg-types`, `pg-copy-streams` і типами
   `@types/pg`, усі стабільні версії — `node-postgres`;
+- Drizzle (сайт orm.drizzle.team кожної стабільної версії 0.29–0.45, drizzle-kit, журнали змін і таблиці версій npm)
+  — `drizzle`;
 - Socket.IO 2.x–4.x — сервер, клієнт, адаптери Redis, Redis Streams, Postgres і MongoDB, Admin UI, протоколи й
   приклади (зокрема з NestJS) — `socketio`;
 - GitHub Actions, Dependabot, Container registry (ghcr.io), офіційні дії — `github-actions`;
@@ -421,7 +423,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 
 - з «треба знати»: TypeORM, Prisma, Passport, bcrypt, class-validator, class-transformer, supertest, RxJS;
 - з «варто знати»: BullMQ, Redis, `ws`, nestjs-cls, nestjs-pino, csrf-csrf, CASL, orval, openapi-typescript;
-- з «знати, що існує»: Mongoose, MikroORM, Drizzle, Kafka, RabbitMQ, NATS.
+- з «знати, що існує»: Mongoose, MikroORM, Kafka, RabbitMQ, NATS.
 
 ---
 

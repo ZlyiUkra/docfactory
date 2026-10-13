@@ -355,6 +355,7 @@ Cloudflare.
   кожного випуску, журнал змін) — `webdev`;
 - Tailwind CSS — `tailwind`; zod (схеми колекцій і дій) — `zod`;
 - Clerk — `clerk`; Supabase Auth — `supabase`; PostgreSQL — `postgresql`;
+- Drizzle (сайт orm.drizzle.team кожної стабільної версії 0.29–0.45, drizzle-kit, журнали змін) — `drizzle`;
 - Vitest — `vitest`; Playwright — `playwright`;
 - Docker і `docker compose` — `docker`;
 - Node.js (API парних мажорів 12–26, посібники nodejs.org/learn) і npm (CLI 6–12) — `nodejs`;
@@ -366,7 +367,7 @@ Cloudflare.
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
 - фреймворки островів, окрім React: Vue, Svelte, Solid, Preact;
-- дані: Drizzle, Prisma;
+- дані: Prisma;
 - платформи розгортання: Cloudflare, Vercel, Netlify;
 - спостереження: Lighthouse;
 - контент: Starlight, CMS, Shiki, remark і rehype поза документацією Astro.
