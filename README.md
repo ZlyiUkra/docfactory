@@ -1684,6 +1684,25 @@ README кожної версії з пакетів npm (README 0.3.0, якого
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/next-themes/README.md](instances/next-themes/README.md).
 
+### nuqs
+
+Документація nuqs — пакет npm, що тримає стан React у рядку адреси з типами (`useQueryState`, `useQueryStates`,
+парсери, адаптери для Next.js, React SPA, Remix, React Router і TanStack Router), — англійською, лише стабільні
+версії: сайт nuqs.dev (документація і блог) з репозиторію 47ng/nuqs на кожному стабільному тезі 1.15.0–2.10.2; README
+кожної стабільної версії nuqs і попередника next-usequerystate 1.0–1.20; нотатки стабільних релізів; таблиці версій
+npm обох пакетів. Новий читач `ghdocs-history-nuqs` (модуль `ghnuqs`) лишає з пари `HumanContent`/`LLMContent`
+текстову версію сторінки й робить плашку `FeatureSupportMatrix` реченням «Introduced in nuqs X». 312 документів,
+971 фрагмент.
+
+- порт `8836`; запис у Claude Code — `nuqs-docs`, адреса `http://127.0.0.1:8836/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-nuqs`, модель векторів — `bge-small`;
+- версія — лінія nuqs: `version: "2"` лишає всі 2.x, `"1"` — 1.x і next-usequerystate; без названої версії промпт
+  велить відповідати для 2.x (98,5 % завантажень npm) і класти номер версії лише в параметр `version`;
+- приклад питання агентові: `./df nuqs ask "How do I keep a page number in the URL with nuqs in the Next.js app router?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/nuqs/README.md](instances/nuqs/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
