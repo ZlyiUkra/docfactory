@@ -1645,6 +1645,26 @@ next.js, далі застосунок Next.js зі сценаріями App Rou
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/iron-session/README.md](instances/iron-session/README.md).
 
+### jose
+
+Документація jose — пакет npm, що реалізує JOSE (JWT, JWS, JWE, JWK, JWKS) на Web Crypto API для Node.js, браузерів,
+Deno, Bun і edge, — англійською, лише стабільні версії: `README.md`, `SECURITY.md` і тека `docs/` репозиторію
+panva/jose на кожному з 264 стабільних тегів v0.9.0–v6.2.12 (разом із першою назвою @panva/jose; довідник 1.x–2.x —
+один `docs/README.md`, 3.x–6.x — TypeDoc); журнал змін; 35 нотаток релізів, що доповнюють журнал (222 інші
+повторюють його слово в слово); таблиці версій npm jose і @panva/jose. Новий читач `ghdocs-history-typedoc` (модуль
+`ghtypedoc`) робить підзаголовки членів TypeDoc («Parameters», «Returns») підписами всередині розділу й вирізає
+однакові службові розділи («💗 Help the project», «Defined in»). 7 301 документ, 8 413 фрагментів.
+
+- порт `8834`; запис у Claude Code — `jose-docs`, адреса `http://127.0.0.1:8834/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-jose`, модель векторів — `bge-small`; `families` зводить два джерела теки `docs/` (3.x і
+  решту тегів) в одну родину;
+- версія — лінія jose: `version: "6"` лишає всі 6.x; без названої версії промпт велить відповідати для
+  найпопулярнішої за завантаженнями npm лінії 6.x і класти номер версії лише в параметр `version`, не в текст запиту;
+- приклад питання агентові: `./df jose ask "How do I verify a JWT with a remote JWKS in jose?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/jose/README.md](instances/jose/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
