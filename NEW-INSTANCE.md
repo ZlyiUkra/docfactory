@@ -72,6 +72,14 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   for each stable release, the last commit of the documentation repository before the release was published
   (`git rev-list -1 --before=<published_at> master` in a bare clone); its full SHA is the key in `tags`. Two releases
   on the same commit share one key: `"<sha>": "1.3.4, 1.3.3"`.
+- **A site whose generated pages are synced from the code before a release** (biomejs.dev: rule pages, the CLI and
+  configuration references arrive as «synchronize to `<code commit>`» commits): a snapshot «before the next release»
+  would already carry the next release's rules. The snapshot of a version is the last commit before the first sync
+  of a code commit that is not in the release (`git merge-base --is-ancestor <commit> <gitHead of the version>`);
+  while the site lived in the code repository, it is the release commit itself.
+- **A component whose text lives in its own file** (`<PackageManagerBiomeCommand command="check" />`): the command
+  is built from the component file of the same snapshot, and the page revision includes that file — sites change
+  such templates (`npx @biomejs/biome` → `npx biome`).
 - **Before the full fetch, list what the pages insert.** `git grep` over a bare clone shows every include target and
   its extension: a reader that took only code extensions silently dropped extension-less command output and
   `foundry.toml`, and a second fetch was needed. Recorded terminal output carries ANSI colour codes. After the fetch,
@@ -515,6 +523,13 @@ and what a taken port and a failed connection look like. A domain list in the ro
   кожного стабільного релізу — останній коміт репозиторію документації перед публікацією релізу
   (`git rev-list -1 --before=<published_at> master` у голому клоні); його повний SHA стає ключем у `tags`. Два релізи
   на тому самому коміті ділять один ключ: `"<sha>": "1.3.4, 1.3.3"`.
+- **Сайт, чиї згенеровані сторінки синхронізуються з кодом ще до релізу** (biomejs.dev: сторінки правил, довідники
+  CLI й конфігурації приходять комітами «synchronize to `<коміт коду>`»): знімок «перед наступною версією» ніс би вже
+  правила наступної. Знімок версії — останній коміт перед першою синхронізацією коміту коду, якого в релізі немає
+  (`git merge-base --is-ancestor <коміт> <gitHead версії>`); поки сайт жив у репозиторії коду, — сам коміт релізу.
+- **Компонент, чий текст лежить у його власному файлі** (`<PackageManagerBiomeCommand command="check" />`): команду
+  будують за файлом компонента того самого знімка, і редакція сторінки враховує цей файл — такі шаблони сайти міняють
+  (`npx @biomejs/biome` → `npx biome`).
 - **До повного завантаження — перелік того, що вставляють сторінки.** `git grep` по голому клону показує кожну ціль
   вставки і її розширення: читач, що брав лише розширення коду, мовчки губив записаний вивід команд без розширення й
   `foundry.toml`, і знадобилося друге завантаження. Записаний вивід терміналу несе кольори ANSI. Після завантаження
@@ -957,6 +972,14 @@ errada.
   lançamento: para cada versão estável, o último commit do repositório da documentação antes da publicação do release
   (`git rev-list -1 --before=<published_at> master` num clone *bare*); o SHA completo é a chave em `tags`. Duas
   versões no mesmo commit dividem uma chave: `"<sha>": "1.3.4, 1.3.3"`.
+- **Um site cujas páginas geradas são sincronizadas com o código antes do release** (biomejs.dev: páginas de regras e
+  as referências da CLI e da configuração chegam como commits «synchronize to `<commit do código>`»): um snapshot
+  «antes da próxima versão» já traria as regras da próxima. O snapshot de uma versão é o último commit antes da
+  primeira sincronização de um commit do código que não está no release (`git merge-base --is-ancestor <commit>
+  <gitHead da versão>`); enquanto o site vivia no repositório do código, é o próprio commit do release.
+- **Um componente cujo texto vive no próprio arquivo** (`<PackageManagerBiomeCommand command="check" />`): o comando
+  é montado a partir do arquivo do componente do mesmo snapshot, e a revisão da página inclui esse arquivo — sites
+  mudam esses templates (`npx @biomejs/biome` → `npx biome`).
 - **Antes do download completo, liste o que as páginas inserem.** `git grep` num clone *bare* mostra cada alvo de
   inclusão e a sua extensão: um leitor que aceitava só extensões de código perdeu em silêncio a saída de comandos sem
   extensão e o `foundry.toml`, e foi preciso um segundo download. A saída gravada do terminal traz cores ANSI. Depois
