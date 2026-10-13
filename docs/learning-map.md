@@ -56,7 +56,7 @@ testing-library, typescript, v8, viem, vite, vitest, wagmi, wasm, webdev, websta
 | 1. Ядро App Router | `eslint` (1), `tailwind` (10), `webdev` (11, 14) |
 | 2. Як Next.js працює зсередини | — |
 | 3. Кешування | — |
-| 4. Фулстек: дані, автентифікація, дії, тести | `webstandards` (2–3, 5, 9–10, 12), `zod` (5), `react-hook-form` і `shadcn` (6), `postgresql` (1), `drizzle` (1, 4), `prisma` (1, 4), `auth`, `clerk` і `supabase` (9), `tanstack-query` і `swr` (11), `vitest` і `testing-library` (13), `playwright` (14), `owasp` (12), `webdev` (6), `argon2` (2) |
+| 4. Фулстек: дані, автентифікація, дії, тести | `webstandards` (2–3, 5, 9–10, 12), `zod` (5), `react-hook-form` і `shadcn` (6), `postgresql` (1), `drizzle` (1, 4), `prisma` (1, 4), `auth`, `clerk` і `supabase` (9), `tanstack-query` і `swr` (11), `vitest` і `testing-library` (13), `playwright` (14), `owasp` (12), `webdev` (6), `argon2` (2), `iron-session` (3) |
 | 5. Інтерфейс із характером | `mdn` (4), `motion` (3–4), `zustand` (5), `webstandards` (5, 7), `shadcn` (5), `webdev` (4, 7), `i18next` (8) |
 | 6. Чужий код | — |
 | 7. DevOps: від збірки до продакшну | `docker` (вступ, 2, 4), `drizzle` (4), `prisma` (4), `webstandards` (6), `kubernetes` (вступ, 12), `playwright` (7), `github-actions` (вступ, 7), `nginx` (вступ, 6), `webdev` (9–10), `sentry` (9) |
@@ -119,7 +119,7 @@ testing-library, typescript, v8, viem, vite, vitest, wagmi, wasm, webdev, websta
 ### Next.js
 
 1. Redis (14).
-2. nuqs, next-themes, next-intl, iron-session, jose.
+2. nuqs, next-themes, next-intl, jose.
 3. OpenTelemetry, Prometheus і Grafana.
 4. Факультатив: OpenZeppelin.
 
