@@ -98,6 +98,26 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   the title comes from the path (`path_title`) and so does the version (`path_version`), labelled per package.
 - **An npm packument above the response ceiling** (drizzle-orm with hundreds of branch builds: 65 MB) is fetched
   compressed: field `gzip` of `npm-versions`.
+- **A site that moved pages many times** (Prisma: Gatsby, Docusaurus, Fumadocs, each with its own folders): take the
+  rename pairs for `slug_rewrite` from the site's own redirects (`static/_redirects`, `vercel.json`), following
+  chains to a page alive in the newest snapshot; keep a pair only when the old and new page share the tail of the
+  address or the title, and never appear in the same version. Pages renamed without a redirect pair up the same way
+  by title and a tail of two address words.
+- **A live tree that keeps copies of older versions or previews of the next one** (`orm/v6`, `docs.v6`, `next/`,
+  `v8/`): exclude them, or every snapshot would carry old pages under new version numbers. A patch of an older line
+  released after the next major (6.19.1 after 7.0.0) shares the last snapshot of its own line.
+- **One branch with a folder per version** (Prisma 1: `docs/1.0` … `docs/1.34`): one tag, the version from the folder
+  (`path_version`), and a `slug_rewrite` that drops the version folder so identical text of different versions
+  merges.
+- **A renamed repository** (prisma/prisma → prisma/orm): the GitHub API answers the old name with a redirect, which
+  the whitelist refuses; declare the new name.
+- **Shared MDX pieces with conditions on properties** (`{props.database && (<ul>…</ul>)}`, `${props.x.toLowerCase()}`
+  inside a `<CodeBlock>` template): evaluate the conditions before substituting, or an empty property leaves raw JSX.
+- **A reader tried offline on every snapshot** without downloading images: a partial clone
+  (`git clone --bare --filter=blob:none`), then the needed blobs in one batch (`git fetch --stdin origin` with their
+  SHAs). `git ls-tree -l` asks for blob sizes and fetches every missing blob one by one — leave `-l` out.
+- **Independent sources fetch in parallel**: one detached `refresh <id>` per long source (the site, a second
+  repository) and one for the rest; each process keeps its own pause per host.
 - **Quality.** The second ten of `quality` («as the model»: queries in the documentation's own names, the way the
   prompt tells the model to write them) is the main goal: 10 of 10. Targets grow only by genuine answers. A target
   must be a section with its own text: a document that is only a header is never found as a section. `ua_query` is
@@ -521,6 +541,25 @@ and what a taken port and a failed connection look like. A domain list in the ro
   (`path_title`), версію теж (`path_version`), з міткою пакета.
 - **Опис пакета npm понад стелю відповіді** (drizzle-orm із сотнями збірок гілок — 65 МБ) тягнуть стиснутим: поле
   `gzip` читача `npm-versions`.
+- **Сайт, що багато разів переносив сторінки** (Prisma: Gatsby, Docusaurus, Fumadocs, кожен зі своїми теками): пари
+  перейменувань для `slug_rewrite` беруть з перенаправлень самого сайту (`static/_redirects`, `vercel.json`), ідучи
+  ланцюжком до сторінки, живої в найновішому знімку; пару лишають, лише коли стара й нова сторінка мають спільний
+  кінець адреси чи назву і ніколи не стоять в одній версії. Сторінки, перейменовані без перенаправлення, зводять так
+  само — за назвою і двома спільними словами кінця адреси.
+- **Жива гілка тримає копії старих версій чи передрелізи наступної** (`orm/v6`, `docs.v6`, `next/`, `v8/`): їх
+  виключають, інакше кожен знімок ніс би старі сторінки під новими номерами. Латка старшої лінії, що вийшла після
+  нового мажора (6.19.1 після 7.0.0), ділить останній знімок своєї лінії.
+- **Одна гілка з текою на кожну версію** (Prisma 1: `docs/1.0` … `docs/1.34`): один тег, версія з теки
+  (`path_version`) і правило `slug_rewrite`, що знімає теку версії, — тоді однаковий текст різних версій зливається.
+- **Перейменований репозиторій** (prisma/prisma → prisma/orm): на старе ім'я API GitHub відповідає перенаправленням,
+  якого білий список не пропускає; в оголошенні — нове ім'я.
+- **Спільні шматки MDX з умовами на властивості** (`{props.database && (<ul>…</ul>)}`, `${props.x.toLowerCase()}` у
+  шаблоні `<CodeBlock>`): умови зважують до підстановки, інакше порожня властивість лишає сирий JSX.
+- **Читача проганяють без мережі по всіх знімках**, не тягнучи картинок: частковий клон (`git clone --bare
+  --filter=blob:none`), далі потрібні blob одним пакетом (`git fetch --stdin origin` з їхніми SHA). `git ls-tree -l`
+  питає розмір blob і тягне кожен відсутній поодинці — без `-l`.
+- **Незалежні джерела тягнуть паралельно**: окремий відокремлений `refresh <id>` на кожне довге джерело (сайт, другий
+  репозиторій) і один на решту; пауза між зверненнями до хоста — у кожного процесу своя.
 - **Якість.** Друга десятка `quality` («як модель»: запити назвами самої документації, як велить писати промпт) —
   головна мета: 10 із 10. Цілі доповнюють лише справжніми відповідями. Ціль мусить бути розділом із власним текстом:
   документ із самої шапки розділом не знаходиться. `ua_query` — суто кирилицею, без цифр і латиниці.
@@ -946,6 +985,27 @@ errada.
   vem do caminho (`path_title`), e a versão também (`path_version`), com o rótulo do pacote.
 - **Uma descrição de pacote npm acima do teto de resposta** (drizzle-orm com centenas de builds de branch: 65 MB) é
   baixada comprimida: campo `gzip` do `npm-versions`.
+- **Um site que mudou páginas de lugar muitas vezes** (Prisma: Gatsby, Docusaurus, Fumadocs, cada um com suas
+  pastas): os pares de renomeação para `slug_rewrite` vêm dos redirecionamentos do próprio site (`static/_redirects`,
+  `vercel.json`), seguindo a cadeia até uma página viva no instantâneo mais novo; o par fica só quando a página antiga
+  e a nova compartilham o fim do endereço ou o título e nunca aparecem na mesma versão. Páginas renomeadas sem
+  redirecionamento formam pares do mesmo jeito, pelo título e por duas palavras finais do endereço.
+- **Um branch vivo que guarda cópias de versões antigas ou prévias da próxima** (`orm/v6`, `docs.v6`, `next/`, `v8/`):
+  exclua-as, senão cada instantâneo traria páginas antigas sob números novos. Um patch de uma linha antiga lançado
+  depois do próximo major (6.19.1 depois de 7.0.0) compartilha o último instantâneo da sua própria linha.
+- **Um branch com uma pasta por versão** (Prisma 1: `docs/1.0` … `docs/1.34`): uma tag, a versão vinda da pasta
+  (`path_version`) e uma regra `slug_rewrite` que remove a pasta da versão, para que o texto idêntico de versões
+  diferentes se funda.
+- **Um repositório renomeado** (prisma/prisma → prisma/orm): para o nome antigo a API do GitHub responde com um
+  redirecionamento, que a lista branca recusa; declare o nome novo.
+- **Trechos MDX compartilhados com condições sobre propriedades** (`{props.database && (<ul>…</ul>)}`,
+  `${props.x.toLowerCase()}` num template de `<CodeBlock>`): avalie as condições antes da substituição, senão uma
+  propriedade vazia deixa JSX cru.
+- **O leitor é testado offline em todos os instantâneos** sem baixar imagens: um clone parcial
+  (`git clone --bare --filter=blob:none`) e depois os blobs necessários num só lote (`git fetch --stdin origin` com os
+  SHAs). `git ls-tree -l` pede o tamanho dos blobs e baixa cada blob ausente um a um — deixe o `-l` de fora.
+- **Fontes independentes baixam em paralelo**: um `refresh <id>` desacoplado para cada fonte longa (o site, um segundo
+  repositório) e um para o resto; cada processo tem a sua própria pausa por host.
 - **Qualidade.** A segunda dezena de `quality` («como o modelo»: consultas com os nomes da própria documentação, como
   o prompt manda o modelo escrever) é a meta principal: 10 de 10. Os alvos só crescem com respostas genuínas. Um
   alvo precisa ser uma seção com texto próprio: um documento que é só cabeçalho nunca é encontrado como seção. A
