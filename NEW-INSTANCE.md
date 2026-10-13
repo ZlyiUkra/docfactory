@@ -141,6 +141,10 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   commit share a key: `"<sha>": "0.1.0, 0.0.16"`.
 - **A package that never left 0.x** needs `version_line_depth: 2`, or every version falls into the one line «0» and
   the version filter cannot tell 0.4 from 0.3.
+- **After a new reader, compare headings of the raw file and the written document** for every page (headings outside
+  code blocks, from `raw/`): nuqs pages lost whole sections when a lazy match of a `<HumanContent>`/`<LLMContent>`
+  pair ran on to the next block, and a sentence starting with the word "import" swallowed a code fence. A count that
+  differs points at the page; an empty demo section explains itself.
 - **Independent sources fetch in parallel**: one detached `refresh <id>` per long source (the site, a second
   repository) and one for the rest; each process keeps its own pause per host.
 - **Quality.** The second ten of `quality` («as the model»: queries in the documentation's own names, the way the
@@ -606,6 +610,10 @@ and what a taken port and a failed connection look like. A domain list in the ro
   `"<sha>": "0.1.0, 0.0.16"`.
 - **Пакет, що ніколи не виходив з 0.x**, потребує `version_line_depth: 2`, інакше всі версії падають в одну лінію «0»
   і фільтр версії не відрізнить 0.4 від 0.3.
+- **Після нового читача — звірка заголовків сирого файла й записаного документа** для кожної сторінки (заголовки поза
+  блоками коду, з `raw/`): сторінки nuqs губили цілі розділи, коли лінивий збіг пари `<HumanContent>`/`<LLMContent>`
+  тягнувся до наступного блоку, а речення, що починалося словом «import», ковтало огорожу коду. Розбіжність числа
+  вказує на сторінку; порожній розділ демо пояснює себе сам.
 - **Незалежні джерела тягнуть паралельно**: окремий відокремлений `refresh <id>` на кожне довге джерело (сайт, другий
   репозиторій) і один на решту; пауза між зверненнями до хоста — у кожного процесу своя.
 - **Якість.** Друга десятка `quality` («як модель»: запити назвами самої документації, як велить писати промпт) —
@@ -1077,6 +1085,10 @@ errada.
   chave: `"<sha>": "0.1.0, 0.0.16"`.
 - **Um pacote que nunca saiu do 0.x** precisa de `version_line_depth: 2`, senão todas as versões caem numa só linha
   «0» e o filtro de versão não distingue 0.4 de 0.3.
+- **Depois de um leitor novo, compare os títulos do arquivo bruto e do documento gravado** em cada página (títulos
+  fora de blocos de código, a partir de `raw/`): páginas do nuqs perdiam seções inteiras quando um casamento
+  preguiçoso do par `<HumanContent>`/`<LLMContent>` avançava até o bloco seguinte, e uma frase iniciada pela palavra
+  "import" engolia uma cerca de código. Uma contagem diferente aponta a página; uma seção de demo vazia se explica.
 - **Fontes independentes baixam em paralelo**: um `refresh <id>` desacoplado para cada fonte longa (o site, um segundo
   repositório) e um para o resto; cada processo tem a sua própria pausa por host.
 - **Qualidade.** A segunda dezena de `quality` («como o modelo»: consultas com os nomes da própria documentação, como
