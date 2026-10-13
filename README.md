@@ -1575,6 +1575,31 @@ chisel) — англійською: Foundry Book (getfoundry.sh) на день �
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/drizzle/README.md](instances/drizzle/README.md).
 
+### prisma
+
+Документація Prisma — ORM для TypeScript і Node.js (схема Prisma, Prisma Client, Prisma Migrate, CLI) для PostgreSQL,
+MySQL, MariaDB, SQLite, SQL Server, CockroachDB і MongoDB, разом із платформою Prisma (Prisma Postgres, Accelerate,
+Optimize, Studio, Console) — англійською, лише стабільні версії: сайт prisma.io/docs у стані на кожну стабільну версію
+2.0.0–7.10.0 — сайт версій не має, тож для кожної береться вершина гілки репозиторію prisma/web (раніше prisma/docs)
+перед виходом наступної версії, у трьох рушіях сайту (Gatsby, Docusaurus, Fumadocs); з 25.08.2026 сайт описує
+передреліз Prisma ORM 8, тож знімки закінчуються останнім станом до нього; монорепозиторій prisma/orm (раніше
+prisma/prisma) на кожному стабільному тезі (README пакетів, адаптерів драйверів, instrumentation); нотатки кожного
+стабільного релізу; документація Prisma 1 (версії 1.0–1.34) і її релізи; таблиці версій npm двадцяти чотирьох пакетів.
+Нове поле `prisma_mdx` читача `ghdocs-history` (модуль `_prismamdx`) підписує вкладки, шматки сторінки для однієї бази
+й вивід команд, розкриває спільні шматки MDX з умовами на властивості й бере назву сторінок Prisma 1 з
+`export const meta`. 13 686 документів, 39 131 фрагмент.
+
+- порт `8831`; запис у Claude Code — `prisma-docs`, адреса `http://127.0.0.1:8831/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-prisma`, модель векторів — `bge-small`; `slug_rewrite` дає спільний ключ сторінкам, що
+  переїжджали між теками (313 правил, з них 242 — з офіційних перенаправлень сайту), `max_per_doc` — 1;
+- версія — лінія Prisma: `version: "7"` лишає всі 7.x, `"1"` — Prisma 1; пакети з власною нумерацією — з міткою
+  (`"extension-accelerate-2"`, `"ppg-1"`); без названої версії промпт велить відповідати для двох найпопулярніших
+  за завантаженнями npm ліній, Prisma 7 (7.10.0) і Prisma 6 (6.19.3), а де вони різняться — для обох;
+- приклад питання агентові: `./df prisma ask "How do I use upsert in Prisma Client?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/prisma/README.md](instances/prisma/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
