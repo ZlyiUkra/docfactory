@@ -53,6 +53,17 @@
                    коді й імпортовані шматки MDX (`<WriteParameters />`) розкриваються, службове twoslash
                    (кеш типів, рядки до `// ---cut---`) знімається, контейнери `:::tip` і картки меню стають
                    текстом (див. `_vocs`); редакція сторінки — її текст без кешу разом із вставками;
+                   `astro_mdx` — об'єкт «псевдонім шляху → [теки]» сайту Astro з MDX (orm.drizzle.team:
+                   `{"@mdx/": ["src/mdx/", "src/components/markdown/"]}`): імпортовані шматки MDX
+                   (`<InstallPackages lib='pg'/>`) розкриваються з підстановкою `{props.…}`, вкладки
+                   `<Tabs items>`/`<CodeTabs items>` дістають підписи, `<Npm>`/`<Npx>` стають командами,
+                   позначки підтримки діалектів — рядком «Supported: …» (див. `_astromdx`); редакція
+                   сторінки враховує й вставлені шматки;
+                   `path_title` — перелік пар «вираз шляху → назва» (`\\1` — група виразу): документ,
+                   чий шлях цілком збігся, дістає цю назву, а перший заголовок лишається в тексті.
+                   Журнали змін Drizzle — файл на версію (`changelogs/drizzle-kit/0.31.4.md`), і
+                   файл починається одразу з розділу («## New Netlify DB Driver»): без поля назвою
+                   ставав би він, а номер версії й ім'я пакета з назви зникали б;
                    `mdbook: true` — книжка mdBook (Foundry Book до травня 2025): вставки
                    `{{#include шлях[:область|:рядки]}}` — спільні шматки опцій, код прикладів, записаний
                    вивід команд — розкриваються (див. `_mdbook`); редакція враховує й вставлені файли;
@@ -103,8 +114,8 @@ import sys
 from html import unescape
 from urllib.parse import quote, urlsplit
 
-from engine.readers import (Item, _baseui, _markup, _mdbook, _nginxxml, _vitepress, _vocs,
-                            register)
+from engine.readers import (Item, _astromdx, _baseui, _markup, _mdbook, _nginxxml, _vitepress,
+                            _vocs, register)
 
 _TREES = re.compile(r"^/repos/([^/]+)/([^/]+)/git/trees/$")
 _LOCALE = re.compile(r"\.[a-z]{2}-[A-Z]{2}\.md$")
@@ -714,6 +725,7 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
     nginx_xml = source.get("nginx_xml") is True
     hugo = dict(source["hugo"]) if isinstance(source.get("hugo"), dict) else None
     path_version = [(re.compile(a), b) for a, b in source.get("path_version") or ()]
+    path_title = [(re.compile(a), b) for a, b in source.get("path_title") or ()]
     sources = dict(source["jsx_sources"]) if isinstance(source.get("jsx_sources"), dict) else None
     wanted = [_template_rx(t) for k in ("example", "source") for t in (sources or {}).get(k) or ()]
     base_ui = source.get("base_ui") is True
@@ -729,6 +741,9 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
     mdbook = source.get("mdbook") is True
     if mdbook:
         wanted += _mdbook.wanted()
+    astro = dict(source["astro_mdx"]) if isinstance(source.get("astro_mdx"), dict) else None
+    if astro:
+        wanted += _astromdx.wanted(astro)
     # Для vocs: ім'я документа → адреса, з якої текст сторінки вже прочитано під час переліку.
     # Тег цієї адреси буває новіший за перший тег документа (сторінка та сама, вставка інша), і
     # читання з адреси першого тегу тягнуло б ту саму сторінку з мережі вдруге.
@@ -805,6 +820,20 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
                     files_now.setdefault(path, sha)
                     sha = _mdbook.revision(path, sha, files_now,
                                            lambda w, s, t=tag: blob_text(w, s, t))
+                if astro:
+                    # Як у vocs: вставки видно лише в тексті сторінки, тож він читається вже тут,
+                    # один раз на неповторний вміст, а make бере його з тієї самої адреси.
+                    files_now = registry[tag]
+                    files_now.setdefault(path, sha)
+                    page_url = (f"https://raw.githubusercontent.com/{owner}/{repo}/"
+                                f"{quote(tag, safe='@')}/{quote(path)}")
+                    page_key = (path, sha)
+                    if page_key not in origin:
+                        origin[page_key] = page_url
+                    sha = _astromdx.revision(path, sha, files_now,
+                                             lambda w, s, t=tag: blob_text(w, s, t), astro,
+                                             lambda u=origin[page_key]: ctx.text(u))
+                    origin.setdefault(f"{lead}{_markup.slug(stem)}-{sha[:8]}", origin[page_key])
                 name = f"{lead}{_markup.slug(stem)}-{sha[:8]}"
                 seen.setdefault(name, [path, []])[1].append(tag)
 
@@ -829,7 +858,10 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
         # в імені файла, а не в тезі, на якому файл знайшовся.
         version = next((m.expand(v) for r, v in path_version if (m := r.search(path))), version)
 
-        def make(raw=raw, blob=blob, path=path, version=version, tag=tag, read=origin.get(name)):
+        named = next((m.expand(v) for r, v in path_title if (m := r.fullmatch(path))), "")
+
+        def make(raw=raw, blob=blob, path=path, version=version, tag=tag, read=origin.get(name),
+                 named=named):
             text = ctx.text(read or raw)
             if nginx_xml and path.endswith(".xml"):
                 # XML nginx.org буває, що починається з `<!DOCTYPE module`, — це не сторінка
@@ -866,6 +898,8 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
                 rest = _vocs.expand(rest, path, registry.get(tag, {}), fetch, vocs)
             if mdbook:
                 rest = _mdbook.expand(rest, path, registry.get(tag, {}), fetch)
+            if astro:
+                rest = _astromdx.expand(rest, path, registry.get(tag, {}), fetch, astro)
             # Обидва — до викидання `export`: таблиці беруть дані саме з них.
             if source.get("jsx_props") is True:
                 rest = _jsx_props(rest)
@@ -884,7 +918,7 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
             if source.get("yaml_history") is True:
                 rest = _yaml_history(rest)
             rest = _atx(_IMAGE_LINE.sub("", rest))
-            title = meta.get("title", "") if meta else ""
+            title = (meta.get("title", "") if meta else "") or named
             if not title:
                 title, rest = _split_title(rest)
             # Картинка в заголовку — шапка чи іконка сторінки («# ![OWASPHeader](…)», «# A01:2025
