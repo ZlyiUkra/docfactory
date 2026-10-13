@@ -1600,6 +1600,26 @@ prisma/prisma) на кожному стабільному тезі (README па�
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/prisma/README.md](instances/prisma/README.md).
 
+### iron-session
+
+Документація iron-session — пакет npm, що тримає сесію в підписаній і зашифрованій куці, без сховища на сервері
+(Next.js App Router і Pages Router, Express, Koa, Node, Bun, Deno), — англійською, лише стабільні версії: README,
+`MIGRATION.md` і типи кожної версії iron-session 1.0.1–9.0.1, його попередника next-iron-session 1.1.0–4.2.0 і
+бібліотеки шифрування iron-webcrypto 0.0.1–2.0.0 з пакетів npm; `SECURITY.md` з тегів 9.x; журнали змін; нотатки
+стабільних релізів GitHub (v6.0.0 і v8.0.0 — інструкції переходу); приклади з кожного стабільного тегу (express, koa,
+next.js, далі застосунок Next.js зі сценаріями App Router і Pages Router); таблиці версій npm трьох пакетів. Нових
+читачів не знадобилося. 359 документів, 1 053 фрагменти.
+
+- порт `8833`; запис у Claude Code — `iron-session-docs`, адреса `http://127.0.0.1:8833/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-iron-session`, модель векторів — `bge-small`;
+- версія — лінія пакета: `version: "8"` лишає всі 8.x; номери трьох пакетів перетинаються, тож назва уривка каже, чий
+  він; без названої версії промпт велить відповідати для найпопулярнішої за завантаженнями npm лінії 8.x, а де 6.x
+  робить інакше (`withIronSessionApiRoute` замість `getIronSession`) — і для неї;
+- приклад питання агентові: `./df iron-session ask "How do I read the session in a Next.js Server Action?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/iron-session/README.md](instances/iron-session/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
