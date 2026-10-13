@@ -324,7 +324,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 | Бібліотека | Навіщо | Шаблонів | Де в плані |
 |------------|--------|---------:|------------|
 | React Hook Form | великі форми з перевіркою на клієнті | 5 | Ф4 Д6; є примірник `react-hook-form` |
-| iron-session, jose | сесія в зашифрованій куці без бібліотеки автентифікації | 0 | Ф4 Д3; є примірник `iron-session` |
+| iron-session, jose | сесія в зашифрованій куці без бібліотеки автентифікації | 0 | Ф4 Д3; є примірники `iron-session` і `jose` |
 | Clerk, Supabase Auth | вхід і користувачі як послуга | 6 і 16 | Ф4 Д9; є примірники `clerk`, `supabase` |
 | Motion | анімації руху: поява, перестановка, жести | 8 | Ф5 Д3–4; є примірник `motion` |
 | next-themes | темна тема без миготіння | 4 | Ф5 Д5 |
@@ -376,6 +376,8 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - Better Auth (0.0–1.7) і NextAuth.js / Auth.js (1.1–4.24, бети v5, довідник API authjs.dev) — `auth`;
 - iron-session (README, типи й приклади кожної стабільної версії 1.0–9.0, попередник next-iron-session, шифрування
   iron-webcrypto) — `iron-session`;
+- jose (JWT, JWS, JWE, JWK, JWKS: довідник і README кожної стабільної версії 1.9–6.x і попередника @panva/jose, журнал
+  змін) — `jose`;
 - PostgreSQL 9.0–19 — `postgresql`; Socket.IO, сервер і клієнт — `socketio`;
 - Drizzle (сайт orm.drizzle.team кожної стабільної версії 0.29–0.45: схема, запити, Relational Queries, міграції й
   drizzle-kit, Drizzle Studio, drizzle-seed, drizzle-zod; README монорепозиторію, журнали змін і таблиці версій npm)
@@ -413,7 +415,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «варто знати»: jose, next-themes, nuqs, next-intl, Redis (Upstash), OpenTelemetry;
+- з «варто знати»: next-themes, nuqs, next-intl, Redis (Upstash), OpenTelemetry;
 - з «знати, що існує»: Stripe, Resend і React Email, Vercel AI SDK, UploadThing, Sanity, Payload, Contentful,
   tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Grafana, Loki.
 
@@ -1051,7 +1053,7 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 **Сервери MCP фази:** `nextjs-docs`, `webstandards-docs`, `zod-docs`, `react-hook-form-docs`, `auth-docs`,
 `clerk-docs`, `supabase-docs`, `tanstack-query-docs`, `swr-docs`, `vitest-docs`, `testing-library-docs`,
 `playwright-docs`, `postgresql-docs`, `drizzle-docs`, `prisma-docs`, `owasp-docs`, `shadcn-docs`, `webdev-docs`,
-`argon2-docs`, `iron-session-docs`.
+`argon2-docs`, `iron-session-docs`, `jose-docs`.
 
 Тут фронтендер стає фулстеком: застосунок сам ходить у базу, сам упізнає користувача, сам перевіряє права й
 сам відповідає за те, що не віддав зайвого. Порядок навмисний: спершу база, потім хто ви (автентифікація),
@@ -1105,10 +1107,10 @@ Next.js — надбудова над HTTP, Node і серверним React. У
   під час рендеру серверного компонента.
 - **Читати:** той самий гайд, розділ Session Management; `cookies`; у примірнику `iron-session` — README: `Usage`,
   `Session options`, `session.destroy(): void`, приклад
-  `examples/next/src/app/app-router-server-component-and-action/actions.ts`; поза корпусом — документація jose; у
-  примірнику `webstandards` — `RFC 7519 JSON Web Token (JWT): 4 JWT Claims`, `RFC 8725 JSON Web Token Best Current
-  Practices: 3 Best Practices`.
-- **Сервери MCP:** `nextjs-docs`, `iron-session-docs`, `webstandards-docs`.
+  `examples/next/src/app/app-router-server-component-and-action/actions.ts`; у примірнику `jose` — `Class: SignJWT`,
+  `Function: jwtVerify()`; у примірнику `webstandards` — `RFC 7519 JSON Web Token (JWT): 4 JWT Claims`, `RFC 8725
+  JSON Web Token Best Current Practices: 3 Best Practices`.
+- **Сервери MCP:** `nextjs-docs`, `iron-session-docs`, `jose-docs`, `webstandards-docs`.
 - **Зробити:** вхід ставить куку; вихід її стирає; функція `getSession()` у `lib/session.ts` з
   `import 'server-only'`.
 - **Перевірити себе:** у вкладці «Сховище» кука з прапорцями `HttpOnly` і `Secure`; `document.cookie` її не
