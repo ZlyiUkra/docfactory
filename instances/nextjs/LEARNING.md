@@ -1101,15 +1101,17 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 ### День 3. Сесія в куці
 
 - **Навіщо.** Після входу сервер мусить упізнавати користувача на кожному запиті.
-- **Що це.** Після успішного входу серверна дія записує куку сесії: зашифровану (iron-session або jose) чи
-  ідентифікатор запису в базі. Опції — `httpOnly`, `secure`, `sameSite: 'lax'`, термін дії. Читають її
-  `cookies()` у серверному коді. Записати куку можна лише в серверній дії, Route Handler або Proxy — **не**
-  під час рендеру серверного компонента.
+- **Що це.** Після успішного входу серверна дія записує куку сесії: підписану (jose `SignJWT`), зашифровану
+  (iron-session або jose `EncryptJWT`) чи ідентифікатор запису в базі. Функція гайду зветься `encrypt`, але
+  всередині — `SignJWT`, тобто підпис: він не дає підробити вміст, а прочитати його з base64url може будь-хто, хто
+  бачить значення куки. Тож у підписану куку кладуть лише те, що не шкода показати (`userId`, роль). Опції —
+  `httpOnly`, `secure`, `sameSite: 'lax'`, термін дії. Читають її `cookies()` у серверному коді. Записати куку
+  можна лише в серверній дії, Route Handler або Proxy — **не** під час рендеру серверного компонента.
 - **Читати:** той самий гайд, розділ Session Management; `cookies`; у примірнику `iron-session` — README: `Usage`,
   `Session options`, `session.destroy(): void`, приклад
   `examples/next/src/app/app-router-server-component-and-action/actions.ts`; у примірнику `jose` — `Class: SignJWT`,
-  `Function: jwtVerify()`; у примірнику `webstandards` — `RFC 7519 JSON Web Token (JWT): 4 JWT Claims`, `RFC 8725
-  JSON Web Token Best Current Practices: 3 Best Practices`.
+  `Function: jwtVerify()`, `Class: EncryptJWT`, `Function: jwtDecrypt()`; у примірнику `webstandards` — `RFC 7519
+  JSON Web Token (JWT): 4 JWT Claims`, `RFC 8725 JSON Web Token Best Current Practices: 3 Best Practices`.
 - **Сервери MCP:** `nextjs-docs`, `iron-session-docs`, `jose-docs`, `webstandards-docs`.
 - **Зробити:** вхід ставить куку; вихід її стирає; функція `getSession()` у `lib/session.ts` з
   `import 'server-only'`.
@@ -1804,7 +1806,8 @@ Cloud з'явився в плані React (фаза 5, дні 7–9), бекен
 
 # Фаза 8. Next.js поруч з окремим бекендом — 7 днів
 
-**Сервери MCP фази:** `nextjs-docs`, `webstandards-docs`, `mdn-docs`, `socketio-docs`, `nginx-docs`.
+**Сервери MCP фази:** `nextjs-docs`, `webstandards-docs`, `mdn-docs`, `socketio-docs`, `nginx-docs`, `jose-docs`,
+`iron-session-docs`.
 
 Продовження плану NestJS ([../nestjs/LEARNING.md](../nestjs/LEARNING.md)): там SPA з плану React уже отримала
 бекенд — контракт і помилки полів (фаза 2, дні 7–8), токени (фаза 4, дні 6–9), compose (фаза 6, день 2), живі
@@ -1840,12 +1843,16 @@ Cloud з'явився в плані React (фаза 5, дні 7–9), бекен
 ### День 3. Автентифікація наскрізь
 
 - **Навіщо.** Користувач увійшов у Next.js, а дані — в NestJS. Хтось мусить передати, хто це.
-- **Що це.** Токени NestJS лежать у зашифрованій `HttpOnly`-куці сесії Next.js; браузер їх не бачить. Серверний
-  код Next.js бере токен із сесії й додає до запиту в NestJS. Записати оновлений токен можна лише в Proxy,
-  Route Handler чи серверній дії — під час рендеру куку записати не можна. Де саме оновлювати, вирішіть і
+- **Що це.** Токени NestJS лежать у зашифрованій `HttpOnly`-куці сесії Next.js; браузер їх не бачить. Саме
+  зашифрованій — iron-session або jose `EncryptJWT`, а не підписаній `SignJWT` з фази 4, день 3: підписаний вміст
+  читається з base64url, і хто бачить значення куки, той отримав би самі токени й ходив би в NestJS повз Next.js.
+  Серверний код Next.js бере токен із сесії й додає до запиту в NestJS. Записати оновлений токен можна лише в
+  Proxy, Route Handler чи серверній дії — під час рендеру куку записати не можна. Де саме оновлювати, вирішіть і
   обґрунтуйте; зразок оновлення сесії в Proxy — `Example: with-supabase`.
-- **Читати:** `cookies`, розділ про поведінку куки в серверних компонентах; `proxy.js`, розділ Using cookies.
-- **Сервери MCP:** `nextjs-docs`.
+- **Читати:** `cookies`, розділ про поведінку куки в серверних компонентах; `proxy.js`, розділ Using cookies; у
+  примірнику `jose` — `Class: EncryptJWT`, `Function: jwtDecrypt()`; у примірнику `iron-session` — README:
+  `session.save(): Promise<void>`.
+- **Сервери MCP:** `nextjs-docs`, `jose-docs`, `iron-session-docs`.
 - **Зробити:** повний цикл від входу до протухання токена й мовчазного оновлення.
 - **Перевірити себе:** токен із коротким терміном життя протухає, а користувач нічого не помічає.
 - **Пастка:** оновлювати токен у серверному компоненті — нова пара губиться, і через хвилину вас викидає.

@@ -60,7 +60,7 @@ testing-library, typescript, v8, viem, vite, vitest, wagmi, wasm, webdev, websta
 | 5. Інтерфейс із характером | `mdn` (4), `motion` (3–4), `zustand` (5), `webstandards` (5, 7), `shadcn` (5), `webdev` (4, 7), `i18next` (8) |
 | 6. Чужий код | — |
 | 7. DevOps: від збірки до продакшну | `docker` (вступ, 2, 4), `drizzle` (4), `prisma` (4), `webstandards` (6), `kubernetes` (вступ, 12), `playwright` (7), `github-actions` (вступ, 7), `nginx` (вступ, 6), `webdev` (9–10), `sentry` (9) |
-| 8. Next.js поруч з окремим бекендом | `webstandards` (2, 6–7), `mdn` (7), `socketio` (6), `nginx` (6); за змістом — `nestjs` |
+| 8. Next.js поруч з окремим бекендом | `webstandards` (2, 6–7), `mdn` (7), `socketio` (6), `nginx` (6), `iron-session` і `jose` (3); за змістом — `nestjs` |
 | 9. Kubernetes глибше і демо | `kubernetes` (вступ, 1–8), `oracle-cloud` (вступ, 2, 7), `linux` (5), `mdn` (8), `webstandards` (8), `github-actions` (вступ, 5) |
 | Факультатив «крипта» | `webstandards` (К1–К3), `wagmi` (К3), `viem` (К1, К3), `foundry` (К2) |
 
