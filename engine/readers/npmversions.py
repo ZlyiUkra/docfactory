@@ -12,6 +12,13 @@
                  збірка з півтори сотні пакетів сервісів, і кожна версія переписувала б їх усі:
                  таблиця лінії 2 мала 1,7 МБ, з яких змістовні — дати й нові пакети. Без поля
                  таблиця та сама.
+                 `version_prefix` — рядок перед кожною версією, яку несуть документи
+                 (`drizzle-kit-`): у примірнику, де кілька пакетів мають кожен свою нумерацію
+                 (drizzle-orm 0.31 і drizzle-kit 0.31 — різні випуски), фільтр версії інакше
+                 змішував би таблиці різних пакетів. Без поля версії ті самі.
+                 `gzip: true` — опис тягнеться стиснутим: drizzle-orm із сотнями збірок гілок
+                 важить 65 МБ, понад стелю відповіді `MAX_BYTES`, а стиснутим — 6,5 МБ (для
+                 розпакованого стеля інша, `MAX_UNPACKED`). Без поля звернення те саме.
 
 Навіщо. Документація каже, як працює API, але рідко — з якої версії він є і як перейти з однієї
 версії на іншу. Реєстр npm знає це точно для кожної версії, яку можна встановити, зокрема canary,
@@ -101,7 +108,7 @@ def _path(label: str, entry: str) -> str:
     return label if entry == "." else f"{label}/{entry[2:]}"
 
 
-def _overview(label, cite, stamp, rows, dist_tags, lines) -> str:
+def _overview(label, cite, stamp, rows, dist_tags, lines, prefix: str = "") -> str:
     out = ["## Current dist-tags", ""]
     out += [f"- `{t}` → {v}" for t, v in dist_tags.items()]
     out += ["", "## Release lines", ""]
@@ -133,10 +140,10 @@ def _overview(label, cite, stamp, rows, dist_tags, lines) -> str:
             out.append(f"- `{_path(label, e)}`: from {a['v']} ({a['day']}) "
                        f"to {b['v']} ({b['day']})")
     return _markup.document(f"{label} npm registry: overview of all versions", cite, stamp,
-                            "\n".join(out), ", ".join(reversed([r["v"] for r in rows])))
+                            "\n".join(out), ", ".join(reversed([prefix + r["v"] for r in rows])))
 
 
-def _line_doc(label, cite, stamp, rows, ln, lockstep: bool = False) -> str:
+def _line_doc(label, cite, stamp, rows, ln, lockstep: bool = False, prefix: str = "") -> str:
     out: list[str] = []
     prev = None
     minor = None
@@ -189,7 +196,7 @@ def _line_doc(label, cite, stamp, rows, ln, lockstep: bool = False) -> str:
     body = (f"{len(rows)} published versions of line {ln}, oldest first, with what changed "
             f"against the previous version of the line.\n" + "\n".join(out))
     return _markup.document(f"{label} npm registry: versions {ln}.x", cite, stamp, body,
-                            ", ".join(reversed([r["v"] for r in rows])))
+                            ", ".join(reversed([prefix + r["v"] for r in rows])))
 
 
 @register("npm-versions")
@@ -202,7 +209,8 @@ def npm_versions(source: dict, ctx) -> list[Item]:
 
     def load() -> dict:
         try:
-            pack = json.loads(ctx.text(url))
+            pack = json.loads(ctx.text(url, gzip=True) if source.get("gzip") is True
+                              else ctx.text(url))
         except ValueError as exc:
             raise SystemExit(f"{url}: відповідь не JSON ({exc}).")
         times = pack.get("time") or {}
@@ -250,12 +258,14 @@ def npm_versions(source: dict, ctx) -> list[Item]:
         return Item(id=f"{source['id']}/{name.removesuffix('.txt')}",
                     file=f"{source['id']}--{name}", make=make)
 
+    prefix = str(source.get("version_prefix") or "")
     items.append(keep("overview.txt", _overview(label, cite, ctx.stamp, rows,
-                                                data["dist_tags"], lines)))
+                                                data["dist_tags"], lines, prefix)))
     for ln in lines:
         items.append(keep(f"line-{ln}.txt", _line_doc(label, cite, ctx.stamp,
                                                       [r for r in rows
                                                        if r["v"].split(".")[0] == ln], ln,
-                                                      source.get("lockstep_deps") is True)))
+                                                      source.get("lockstep_deps") is True,
+                                                      prefix)))
     del data, rows
     return items
