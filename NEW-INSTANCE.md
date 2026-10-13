@@ -124,6 +124,15 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
 - **A reader tried offline on every snapshot** without downloading images: a partial clone
   (`git clone --bare --filter=blob:none`), then the needed blobs in one batch (`git fetch --stdin origin` with their
   SHAs). `git ls-tree -l` asks for blob sizes and fetches every missing blob one by one — leave `-l` out.
+- **TypeDoc reference kept as markdown in the repository** (jose `docs/`): the `ghdocs-history-typedoc` reader turns
+  member subheadings ("Parameters", "Returns", "Call Signature") into labels inside the section (`inline_titles`)
+  and cuts sections that repeat on every page (`drop_titles`: "💗 Help the project", "Defined in" with a code line
+  that shifts with every release and keeps member sections from merging across editions).
+- **A version number printed on every page** (the Deno import `deno.land/x/jose@v3.20.4/…`) makes every release a new
+  edition of every page; `list` shows the count before the download. Such tags go into a source of their own in the
+  same `families` entry and are fetched in parallel; identical sections still merge in the passage cache.
+- **`ghdocs-history` without `folders` reads `docs/`**: a source meant only for root files (`files`) needs
+  `exclude: ["/"]`, or it repeats the documentation of the neighbouring source.
 - **Independent sources fetch in parallel**: one detached `refresh <id>` per long source (the site, a second
   repository) and one for the rest; each process keeps its own pause per host.
 - **Quality.** The second ten of `quality` («as the model»: queries in the documentation's own names, the way the
@@ -573,6 +582,15 @@ and what a taken port and a failed connection look like. A domain list in the ro
 - **Читача проганяють без мережі по всіх знімках**, не тягнучи картинок: частковий клон (`git clone --bare
   --filter=blob:none`), далі потрібні blob одним пакетом (`git fetch --stdin origin` з їхніми SHA). `git ls-tree -l`
   питає розмір blob і тягне кожен відсутній поодинці — без `-l`.
+- **Довідник TypeDoc, що лежить markdown-ом у репозиторії** (тека `docs/` jose): читач `ghdocs-history-typedoc` робить
+  підзаголовки членів («Parameters», «Returns», «Call Signature») підписами всередині розділу (`inline_titles`) і
+  вирізає розділи, однакові на кожній сторінці (`drop_titles`: «💗 Help the project», «Defined in» з рядком коду, що
+  зсувається з кожним релізом і не дає розділам членів злитися між редакціями).
+- **Номер версії на кожній сторінці** (імпорт для Deno `deno.land/x/jose@v3.20.4/…`) робить кожен реліз новою
+  редакцією кожної сторінки; `list` показує це число до завантаження. Такі теги виносять окремим джерелом у той самий
+  запис `families` і тягнуть паралельно; однакові розділи все одно зливаються в кеші фрагментів.
+- **`ghdocs-history` без `folders` бере теку `docs/`**: джерелу лише кореневих файлів (`files`) потрібне
+  `exclude: ["/"]`, інакше воно повторює документацію сусіднього джерела.
 - **Незалежні джерела тягнуть паралельно**: окремий відокремлений `refresh <id>` на кожне довге джерело (сайт, другий
   репозиторій) і один на решту; пауза між зверненнями до хоста — у кожного процесу своя.
 - **Якість.** Друга десятка `quality` («як модель»: запити назвами самої документації, як велить писати промпт) —
@@ -1027,6 +1045,15 @@ errada.
 - **O leitor é testado offline em todos os instantâneos** sem baixar imagens: um clone parcial
   (`git clone --bare --filter=blob:none`) e depois os blobs necessários num só lote (`git fetch --stdin origin` com os
   SHAs). `git ls-tree -l` pede o tamanho dos blobs e baixa cada blob ausente um a um — deixe o `-l` de fora.
+- **Referência TypeDoc guardada como markdown no repositório** (pasta `docs/` do jose): o leitor
+  `ghdocs-history-typedoc` transforma os subtítulos dos membros ("Parameters", "Returns", "Call Signature") em
+  rótulos dentro da seção (`inline_titles`) e corta seções repetidas em toda página (`drop_titles`: "💗 Help the
+  project", "Defined in" com uma linha de código que muda a cada release e impede a fusão das seções entre edições).
+- **Um número de versão impresso em toda página** (o import do Deno `deno.land/x/jose@v3.20.4/…`) faz de cada release
+  uma nova edição de cada página; `list` mostra a contagem antes do download. Essas tags vão para uma fonte própria
+  na mesma entrada de `families` e baixam em paralelo; seções idênticas ainda se fundem no cache de trechos.
+- **`ghdocs-history` sem `folders` lê `docs/`**: uma fonte só de arquivos da raiz (`files`) precisa de
+  `exclude: ["/"]`, senão repete a documentação da fonte vizinha.
 - **Fontes independentes baixam em paralelo**: um `refresh <id>` desacoplado para cada fonte longa (o site, um segundo
   repositório) e um para o resto; cada processo tem a sua própria pausa por host.
 - **Qualidade.** A segunda dezena de `quality` («como o modelo»: consultas com os nomes da própria documentação, como
