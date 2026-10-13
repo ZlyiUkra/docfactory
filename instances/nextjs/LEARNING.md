@@ -328,7 +328,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 | Clerk, Supabase Auth | вхід і користувачі як послуга | 6 і 16 | Ф4 Д9; є примірники `clerk`, `supabase` |
 | Motion | анімації руху: поява, перестановка, жести | 8 | Ф5 Д3–4; є примірник `motion` |
 | next-themes | темна тема без миготіння | 4 | Ф5 Д5; є примірник `next-themes` |
-| nuqs | стан у рядку адреси з типами: фільтри, сортування, сторінки | 0 | Ф5 Д5 |
+| nuqs | стан у рядку адреси з типами: фільтри, сортування, сторінки | 0 | Ф5 Д5; є примірник `nuqs` |
 | Zustand | невеликий глобальний стан у клієнтських компонентах | 1 | Ф5 Д5; є примірник `zustand` |
 | next-intl | переклади й адреси з мовою | 3 | Ф5 Д8; альтернатива — next-i18next (з 16.x уміє App Router), є примірник `i18next` |
 | Redis (Upstash) | обмеження частоти запитів, спільний кеш | 37 | Ф7 Д6, Ф3 Д9 |
@@ -379,6 +379,8 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - jose (JWT, JWS, JWE, JWK, JWKS: довідник і README кожної стабільної версії 1.9–6.x і попередника @panva/jose, журнал
   змін) — `jose`;
 - next-themes (README, типи й приклади кожної стабільної версії 0.0.1–0.4.6, нотатки релізів) — `next-themes`;
+- nuqs (сайт nuqs.dev кожної стабільної версії 1.15–2.x з блогом, README кожної версії й попередника
+  next-usequerystate, нотатки релізів) — `nuqs`;
 - PostgreSQL 9.0–19 — `postgresql`; Socket.IO, сервер і клієнт — `socketio`;
 - Drizzle (сайт orm.drizzle.team кожної стабільної версії 0.29–0.45: схема, запити, Relational Queries, міграції й
   drizzle-kit, Drizzle Studio, drizzle-seed, drizzle-zod; README монорепозиторію, журнали змін і таблиці версій npm)
@@ -416,7 +418,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «варто знати»: nuqs, next-intl, Redis (Upstash), OpenTelemetry;
+- з «варто знати»: next-intl, Redis (Upstash), OpenTelemetry;
 - з «знати, що існує»: Stripe, Resend і React Email, Vercel AI SDK, UploadThing, Sanity, Payload, Contentful,
   tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Grafana, Loki.
 
@@ -1296,7 +1298,7 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 # Фаза 5. Інтерфейс із характером — 8 днів
 
 **Сервери MCP фази:** `nextjs-docs`, `mdn-docs`, `zustand-docs`, `webstandards-docs`, `shadcn-docs`, `webdev-docs`,
-`i18next-docs`, `motion-docs`, `next-themes-docs`.
+`i18next-docs`, `motion-docs`, `next-themes-docs`, `nuqs-docs`.
 
 Те, що відрізняє «працює» від «приємно користуватися». Частина можливостей з'явилася в 16.2–16.3, а дещо
 ще експериментальне — дивіться на версії у відповіді сервера. Дні 1–4 можна брати одразу після фази 2.
@@ -1366,9 +1368,9 @@ Next.js — надбудова над HTTP, Node і серверним React. У
   глобальний клієнтський стан — Zustand.
 - **Читати:** у примірнику `shadcn` — `Next.js` (встановлення і темний режим), `Alert Dialog`, `Theming`, у
   документації Radix там само — `Dialog`; у примірнику `next-themes` — README: `With app/`, `With TailwindCSS`, `Avoid
-  Hydration Mismatch`, `The Flash`; nuqs; примірник `zustand`; у примірнику `webstandards` — `Developing a Keyboard
-  Interface`.
-- **Сервери MCP:** `shadcn-docs`, `next-themes-docs`, `zustand-docs`, `webstandards-docs`.
+  Hydration Mismatch`, `The Flash`; у примірнику `nuqs` — `Adapters` (Next.js, App router), `Basic usage`, `Built-in
+  parsers`, `Server-Side usage`; примірник `zustand`; у примірнику `webstandards` — `Developing a Keyboard Interface`.
+- **Сервери MCP:** `shadcn-docs`, `next-themes-docs`, `nuqs-docs`, `zustand-docs`, `webstandards-docs`.
 - **Зробити:** діалог підтвердження видалення з shadcn/ui; перемикач теми; фільтр списку в адресі.
 - **Перевірити себе:** фільтр переживає оновлення сторінки й копіювання посилання; при завантаженні темної
   теми немає білого спалаху; діалог закривається клавішею Esc і повертає фокус.
