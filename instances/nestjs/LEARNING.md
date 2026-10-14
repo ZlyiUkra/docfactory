@@ -411,6 +411,8 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   nodejs.org/learn) і npm (CLI 6–12, журнали змін) — `nodejs`;
 - libuv (Sphinx-документація кожної стабільної версії 0.10–1.53, README, платформи, ChangeLog; цикл подій і пул
   потоків Node зсередини) — `libuv`;
+- OpenSSL (сторінки man кожного випуску 0.9.8–4.0.3: команди `openssl`, конфігурація, C API, FIPS і провайдери,
+  міграція на 3.0) — `openssl`;
 - nginx: проксі перед API, стиснення, вебсокети через проксі — `nginx`;
 - Supabase — `supabase`; Clerk — `clerk`;
 - API споту Binance (REST, WebSocket API, потоки ринкових даних, ліміти, журнал змін) — `binance-spot`;

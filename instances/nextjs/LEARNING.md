@@ -398,6 +398,8 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
   nodejs.org/learn) і npm (CLI 6–12, журнали змін) — `nodejs`;
 - libuv (Sphinx-документація кожної стабільної версії 0.10–1.53, README, платформи, ChangeLog; цикл подій і пул
   потоків Node зсередини) — `libuv`;
+- OpenSSL (сторінки man кожного випуску 0.9.8–4.0.3: команди `openssl`, конфігурація, C API, FIPS і провайдери,
+  міграція на 3.0) — `openssl`;
 - Docker — `docker`; Kubernetes, k3s, Traefik, Kustomize, SOPS, age і Helm — `kubernetes`; sshd — `linux`;
 - безкоштовна машина Oracle Cloud (Always Free, повернення бездіяльних машин, «out of host capacity», бюджети), OKE —
   `oracle-cloud`;
