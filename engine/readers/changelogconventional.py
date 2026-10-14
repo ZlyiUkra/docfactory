@@ -5,7 +5,11 @@
                            `label` — підпис у назві, `cite` — адреса для людей. Заголовок версії —
                            «#», «##» чи «###», номер у ньому — посилання на порівняння версій
                            («[2.0.2](…)») або голий номер («# 1.0.0 (2021-12-29)»), дата — у
-                           круглих дужках після нього.
+                           круглих дужках після нього. Необов'язкові: `skip` — вираз версій, що не
+                           беруться (передрелізи «-pre.0»; гілка, чий журнал повторює записи іншої
+                           лінії); `version_prefix` — рядок перед версією в документі («npm-»: у
+                           примірнику, де версії Node.js і npm стоять поруч, «11.6.2» без нього
+                           потрапляла б у лінію Node 11).
 
 Навіщо. Lerna з conventional-changelog пише журнал пакета монорепозиторію (так веде його
 napi-rs/node-rs, звідки `@node-rs/argon2`): мінорні й мажорні версії — «#», латки — «##», номер —
@@ -41,9 +45,13 @@ def changelog_conventional(source: dict, ctx) -> list[Item]:
     label = source.get("label", "Changelog")
     lead = (re.sub(r"[^\w.-]+", "-", source["name_prefix"]).strip("-") + "-"
             if source.get("name_prefix") else "")
+    skip = re.compile(source["skip"]) if source.get("skip") else None
+    prefix = str(source.get("version_prefix") or "")
     items = []
     for i, head in enumerate(heads):
         version = head.group("linked") or head.group("bare")
+        if skip and skip.search(version):
+            continue
         heading = f"{version} {head.group('date') or ''}".strip()
         chunk = text[head.end():heads[i + 1].start() if i + 1 < len(heads) else len(text)]
         name = lead + re.sub(r"[^\w.-]+", "-", version)
@@ -53,7 +61,7 @@ def changelog_conventional(source: dict, ctx) -> list[Item]:
             body = _markup.markdown_body(chunk)
             _markup.require(heading, body, f"{source['url']} {heading}", min_chars=1)
             return _markup.document(f"{label}: {heading}", f"{cite}#{anchor}", ctx.stamp,
-                                    body, version)
+                                    body, prefix + version)
 
         items.append(Item(id=f"{source['id']}/{name}",
                           file=f"{source['id']}--{name}.txt", make=make))
