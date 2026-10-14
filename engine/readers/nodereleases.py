@@ -121,7 +121,7 @@ def node_releases(source: dict, ctx) -> list[Item]:
 
 _ANCHOR = re.compile(r'^<a id="(?P<v>\d+\.\d+\.\d+)"></a>\s*$', re.M)
 _HEAD = re.compile(r"^## (?P<date>\d{4}-\d\d-\d\d), Version (?P<v>\d+\.\d+\.\d+)(?P<rest>.*)$", re.M)
-_COMMITS = re.compile(r"^###\s+Commits\s*$", re.M)
+_COMMITS = re.compile(r"^###\s+(?:Semver-\w+\s+)?Commits\s*$", re.M)
 
 
 @register("changelog-node")
