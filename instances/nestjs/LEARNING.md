@@ -407,7 +407,8 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 - GitHub Actions, Dependabot, Container registry (ghcr.io), офіційні дії — `github-actions`;
 - безпека: шпаргалки OWASP Cheat Sheet Series, Top 10 (2013–2025), API Security Top 10, вимоги ASVS, Proactive
   Controls — `owasp`;
-- Node.js (API парних мажорів 12–26, посібники nodejs.org/learn) і npm (CLI 6–12) — `nodejs`;
+- Node.js (API усіх мажорів 10–26, розклад LTS і кінця підтримки, що нового в кожній версії, посібники
+  nodejs.org/learn) і npm (CLI 6–12, журнали змін) — `nodejs`;
 - nginx: проксі перед API, стиснення, вебсокети через проксі — `nginx`;
 - Supabase — `supabase`; Clerk — `clerk`;
 - API споту Binance (REST, WebSocket API, потоки ринкових даних, ліміти, журнал змін) — `binance-spot`;

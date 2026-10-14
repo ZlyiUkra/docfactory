@@ -394,7 +394,8 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - Sentry: SDK для Next.js, `instrumentation.ts` і `onRequestError`, карти коду, sentry-cli — `sentry`;
 - безпека: шпаргалки OWASP Cheat Sheet Series, Top 10 (2013–2025), API Security Top 10, вимоги ASVS, Proactive
   Controls — `owasp`;
-- Node.js (API парних мажорів 12–26, посібники nodejs.org/learn) і npm (CLI 6–12) — `nodejs`;
+- Node.js (API усіх мажорів 10–26, розклад LTS і кінця підтримки, що нового в кожній версії, посібники
+  nodejs.org/learn) і npm (CLI 6–12, журнали змін) — `nodejs`;
 - Docker — `docker`; Kubernetes, k3s, Traefik, Kustomize, SOPS, age і Helm — `kubernetes`; sshd — `linux`;
 - безкоштовна машина Oracle Cloud (Always Free, повернення бездіяльних машин, «out of host capacity», бюджети), OKE —
   `oracle-cloud`;

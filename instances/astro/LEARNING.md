@@ -359,7 +359,8 @@ Cloudflare.
 - Prisma (сайт prisma.io/docs кожної стабільної версії 2.0–7.10, Prisma Client, Prisma Migrate, CLI) — `prisma`;
 - Vitest — `vitest`; Playwright — `playwright`;
 - Docker і `docker compose` — `docker`;
-- Node.js (API парних мажорів 12–26, посібники nodejs.org/learn) і npm (CLI 6–12) — `nodejs`;
+- Node.js (API усіх мажорів 10–26, розклад LTS і кінця підтримки, що нового в кожній версії, посібники
+  nodejs.org/learn) і npm (CLI 6–12, журнали змін) — `nodejs`;
 - Next.js (для порівняння у фазі 7) — `nextjs`; NestJS (окремий бекенд) — `nestjs`;
 - Sentry: SDK для Astro, карти коду — `sentry`;
 - хешування паролів: пакети npm argon2 і `@node-rs/argon2`, еталонна реалізація Argon2 і його специфікація —

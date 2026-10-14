@@ -392,8 +392,8 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 - GitHub Actions, Dependabot, Container registry (ghcr.io) і GitHub Pages, офіційні дії — `github-actions`;
 - Sentry: SDK для React, межі помилок і хуки помилок React 19, карти коду, плагін Vite — `sentry`;
 - безпека: шпаргалки OWASP Cheat Sheet Series (XSS, CSP, React Security), Top 10 — `owasp`;
-- Node.js (API парних мажорів 12–26, посібники nodejs.org/learn) і npm (CLI 6–12, `package.json`, `npm ci`) —
-  `nodejs`;
+- Node.js (API усіх мажорів 10–26, розклад LTS і кінця підтримки, що нового в кожній версії, посібники
+  nodejs.org/learn) і npm (CLI 6–12, журнали змін, `package.json`, `npm ci`) — `nodejs`;
 - i18next і всі пакети його організації в npm: react-i18next (сайт усіх стабільних версій), i18next-http-backend,
   i18next-browser-languagedetector, i18next-cli, інші бекенди, формати й інструменти — `i18next`;
 - React Native (сайт усіх стабільних версій 0.1–0.87 з Turbo Native Modules і Fabric, нотатки релізів, журнал змін) —
