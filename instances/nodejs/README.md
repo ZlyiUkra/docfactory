@@ -1,7 +1,9 @@
 # nodejs — примірник фабрики docfactory
 
 Тридцять шостий примірник фабрики: захищений MCP-сервер, що відповідає на питання про Node.js і npm. Тут довідник API
-Node.js парних мажорів 26, 24, 22, 20, 18, 16, 14 і 12 з історією кожної функції, посібники nodejs.org/learn,
+Node.js усіх мажорів 10–26 (парних і непарних) з історією кожної функції, розклад ліній і склад кожного релізу,
+Notable Changes кожної версії, посібники nodejs.org/learn, сторінки nodejs.org про кінець підтримки й безпекові релізи,
+doc/contributing, undici, журнали змін npm 6–12,
 документація CLI npm 12, 11, 10, 9, 8, 7 і 6 (команди, `package.json`, `package-lock.json`, `.npmrc`, scripts,
 workspaces) і посібники docs.npmjs.com про реєстр, публікацію й безпеку пакетів. Код спільний і лежить у
 `../../engine/`, `../../server/` та `../../common/`; ця тека тримає самі дані домену. Загальний устрій фабрики — у
@@ -21,12 +23,19 @@ npm — так само (з npm 7 `peerDependencies` ставляться сам
 
 | Шар | Документів | Звідки |
 |-----|-----------:|--------|
-| Довідник API Node.js, парні мажори 12–26 | 472 | `nodejs/node`, тека `doc/api` на останньому тезі мажору |
+| Довідник API Node.js, усі мажори 10–26 | 928 | `nodejs/node`, тека `doc/api` на останньому тезі мажору |
+| Розклад ліній і склад релізів (npm, V8, libuv, OpenSSL у кожному) | 36 | `nodejs.org/dist/index.json`, `nodejs/Release/schedule.json` |
+| README робочої групи релізів | 1 | `nodejs/Release` |
+| Що нового у версії (Notable Changes, безпекові виправлення) | 454 | `doc/changelogs/CHANGELOG_V10…V26.md` |
+| nodejs.org: кінець підтримки, безпекові релізи, анонси мажорів, посібники переходу | 117 | `nodejs/nodejs.org` |
+| doc/contributing (внутрішня будова, супровід залежностей) | 59 | `nodejs/node`, гілка main |
+| undici (HTTP-клієнт, на якому стоїть `fetch`), мажори 5–8 | 141 | `nodejs/undici` |
+| Журнали змін npm CLI 6–12 | 28 + 74 + 41 + 32 + 28 + 35 + 5 | `npm/cli`, `CHANGELOG.md` гілок `release/vNN` |
 | Посібники nodejs.org/learn | 89 | `nodejs/learn` |
 | CLI npm 12–6 | 92 + 96 + 88 + 88 + 88 + 84 + 79 | `npm/documentation`, теки `content/cli/vNN` |
 | Посібники docs.npmjs.com | 101 | `npm/documentation`, тека `content` без CLI |
 
-Разом 1 277 документів; фрагментів в індексі — 19 920 (`expected_passages` у `checks.json`). Фрагменти — це шматки
+Разом 2 784 документи; фрагментів в індексі — 30 621 (`expected_passages` у `checks.json`); до оновлення 14.10.2026 було 1 277 і 19 920. Фрагменти — це шматки
 документів між заголовками, по яких іде пошук; однаковий текст різних версій зливається в один з усіма версіями. У
 довіднику Node з 510 файлів восьми мажорів 38 були дослівно однакові, а серед розділів однакових ще більше. Сторінки
 CLI npm різних версій лежать у різних теках (`content/cli/v11/…`), тож зливаються вони завдяки полю `slug_rewrite` у
@@ -35,7 +44,10 @@ CLI npm різних версій лежать у різних теках (`cont
 `npm-ci → Description` лежав би сімома копіями, а з ним — чотирма різними текстами (один на npm 8–11, окремо 12, 7 і
 6); фрагментів CLI npm 3 458 замість 8 415.
 
-Замір `quality`: перша десятка (питання своїми словами) — по словах 4 із 10, за змістом 8, разом 8; друга, «як модель»
+Замір `quality` після оновлення 14.10.2026: сімнадцять питань, з них сім нових (розклад і кінець підтримки, що йде з
+яким релізом, Notable Changes, проксі для `fetch`, primordials, супровід OpenSSL, журнал npm 11). Перша десятка — по
+словах 10 із 17, за змістом 8, разом 11; «як модель» — 17 із 17 (`max_per_doc` 0, 1 і 3 дали 17, 13 і 17, тож лишилось 2).
+Нижче — замір 07.10.2026, коли питань було десять: перша десятка (питання своїми словами) — по словах 4 із 10, за змістом 8, разом 8; друга, «як модель»
 (назви модулів, функцій і команд, з версією, як велить промпт), — 10 із 10. Заміряно сітку `max_per_doc` 0–3 на
 `fusion_depth` 0, 60, 120 і 200: найкраще 2 і 120, вони й стоять. До злиття сторінок npm пошук за змістом давав 6 із
 10, «разом» — ті самі 8.
@@ -75,12 +87,17 @@ CLI npm різних версій лежать у різних теках (`cont
 
 | Що | Джерело | Читач |
 |----|---------|-------|
-| довідник API Node.js | `nodejs/node`, теги `v26.10.0`, `v24.21.0`, `v22.23.3`, `v20.20.2`, `v18.20.8`, `v16.20.2`, `v14.21.3`, `v12.22.12` | `ghdocs-history` |
+| довідник API Node.js | `nodejs/node`, останній тег кожного мажору 10–26: `v26.11.1`, `v25.9.0`, `v24.21.0`, `v23.11.1`, `v22.23.3`, `v21.7.3`, `v20.20.2`, `v19.9.0`, `v18.20.8`, `v17.9.1`, `v16.20.2`, `v15.14.0`, `v14.21.3`, `v13.14.0`, `v12.22.12`, `v11.15.0`, `v10.24.1` | `ghdocs-history` |
+| розклад ліній і склад релізів | `nodejs.org/dist/index.json`, `schedule.json` репозиторію `nodejs/Release` | `node-releases`, новий |
+| що нового в кожній версії | `doc/changelogs/CHANGELOG_V10.md` … `V26.md` | `changelog-node`, новий |
+| nodejs.org, README групи релізів, doc/contributing | `nodejs/nodejs.org`, `nodejs/Release`, `nodejs/node` (гілка main) | `ghdocs-history` |
+| undici | `nodejs/undici`, останні теги 5.29.0, 6.29.0, 7.30.0, 8.11.2 | `ghdocs-history` |
+| журнали змін npm CLI | `npm/cli`, гілки `release/v6` … `release/v11` і `latest` | `changelog-conventional` (поля `skip`, `version_prefix`) |
 | посібники nodejs.org/learn | `nodejs/learn`, гілка main | `ghdocs-history` |
 | сайт docs.npmjs.com: CLI і посібники | `npm/documentation`, гілка main | `ghdocs-history` |
 
-Білий список — два хости: `api.github.com` і `raw.githubusercontent.com`, і в кожного джерела — лише його тека
-репозиторію. Самі сайти не читаються: вони збираються з тих самих репозиторіїв. Посилання у відповідях ведуть на
+Білий список — три хости: `api.github.com`, `raw.githubusercontent.com` і `nodejs.org` (лише `dist/index.json`), і
+в кожного джерела — лише його тека чи файл. Самі сайти не читаються: вони збираються з тих самих репозиторіїв. Посилання у відповідях ведуть на
 сайти: довідник — на сторінку свого мажору (`nodejs.org/docs/latest-v22.x/api/fs.html`), посібники — на
 nodejs.org/learn, npm — на docs.npmjs.com.
 
@@ -92,16 +109,25 @@ nodejs.org/learn, npm — на docs.npmjs.com.
   списком змін за версіями. YAML розбирає PyYAML, що приходить разом із fastembed.
 - **Адреса свого мажору.** У полі `site` читача тепер можна писати `{version}` — мітку найновішого тегу, де файл був
   саме таким: документ із Node 22 веде на `latest-v22.x`, а не на найновішу документацію.
+- **Розклад — з офіційних файлів, не з правил.** Читач `node-releases` лише переписує дати з `schedule.json` (початок,
+  Active LTS, Maintenance, End-of-life, кодове ім'я) і з `index.json` (дата, версії npm, V8, libuv, OpenSSL, прапорець
+  безпекового релізу). Висновків на кшталт «непарні мажори не стають LTS» він не робить: розклад змінюється (Node 27
+  уже має фазу Alpha). Документ лінії має версію-мажор («22», «0.12»), огляд всіх ліній — «releases».
+- **Журнал змін без переліку комітів.** `changelog-node` бере заголовок релізу й усе до розділу `Commits`: Notable
+  Changes, а в безпекових релізах — CVE і вражені лінії. Виправлення, що є лише в переліку комітів, тут немає.
+- **Версії npm окремо від Node.** Журнали npm несуть «npm-11.0.0» (поле `version_prefix`), інакше `11.6.2` потрапляла
+  б у лінію Node 11. Те саме — undici: «undici-8».
 - **Склейка `all.md`** — уся документація одним файлом — не береться: вона повторила б кожен розділ.
 - **Сайт npm адресує посібники плоско** — за останнім сегментом шляху (`docs.npmjs.com/about-audit-reports`), а CLI —
   з версією (`docs.npmjs.com/cli/v11/commands/npm-ci`). Юридичні правила, оплата й Enterprise не беруться.
 
 ## Межі, про які треба пам'ятати
 
-Тут немає непарних мажорів Node (вони живуть пів року і не стають LTS), журналів змін Node (`CHANGELOG_V24.md`:
-історію API несуть рядки «History»), блогу nodejs.org, документації Node до 12, інших рантаймів (Deno, Bun) і інших
-менеджерів пакетів (pnpm, Yarn), а також фреймворків на Node — вони в своїх примірниках (`express`, `nestjs`,
-`nextjs`, `socketio`).
+Тут немає довідника API Node до 10 (розклад і перелік релізів 0.x і 4–9 є), переліку комітів у журналах змін,
+вбудованих у Node бібліотек (libuv, OpenSSL, ICU, c-ares, llhttp, nghttp2 — їхні примірники ще попереду; V8 —
+примірник `v8`), блогу nodejs.org поза розділами про безпеку, мажори й розклад, образів Docker `node`, інших
+рантаймів (Deno, Bun) і менеджерів пакетів (pnpm, Yarn), а також фреймворків на Node — вони в своїх примірниках
+(`express`, `nestjs`, `nextjs`, `socketio`).
 
 ## Архівний режим: сервер без корпусу
 
@@ -109,16 +135,17 @@ nodejs.org/learn, npm — на docs.npmjs.com.
 підіймається з кешу фрагментів (`index/passages.json`) і колекції Qdrant; відповіді ті самі до символа — кеш тримає
 повний текст кожного фрагмента.
 
-**Де тексти.** В архіві `~/archives/docfactory/nodejs-corpus-2026-10-07.tar.gz` (6,4 МБ, 1 277 текстів і паспорт;
-перед видаленням розпакований окремо й звірений із диском — нуль розбіжностей). В історії git текстів немає ніде.
+**Де тексти.** В архіві `~/archives/docfactory/nodejs-corpus-2026-10-14.tar.gz` (61 МБ, 2 784 тексти, паспорт і
+сховище сирого `raw/`; перед видаленням розпакований окремо й звірений із диском — нуль розбіжностей). В історії git текстів немає ніде.
 Архів лежить лише на цій машині.
 
 **Як винести знову** — після оновлення, коли `vectors` і `smoke` пройшли:
 
 ```
 ls -l instances/nodejs/index/passages.json  # кеш має бути на місці й свіжий
-tar -czf ~/archives/docfactory/nodejs-corpus-РРРР-ММ-ДД.tar.gz -C instances/nodejs corpus
+tar -czf ~/archives/docfactory/nodejs-corpus-РРРР-ММ-ДД.tar.gz -C instances/nodejs corpus raw
 find instances/nodejs/corpus -maxdepth 1 -name '*.txt' -delete
+rm -rf instances/nodejs/raw
 gzip -9 -c instances/nodejs/index/passages.json > instances/nodejs/index/passages.json.gz
 ```
 
@@ -128,12 +155,12 @@ gzip -9 -c instances/nodejs/index/passages.json > instances/nodejs/index/passage
 **Як повернути тексти** — перед будь-яким оновленням корпусу:
 
 ```
-tar -xzf ~/archives/docfactory/nodejs-corpus-РРРР-ММ-ДД.tar.gz -C instances/nodejs
+tar -xzf ~/archives/docfactory/nodejs-corpus-2026-10-14.tar.gz -C instances/nodejs
 ./df nodejs smoke
 ```
 
 **На іншій машині** після клонування кеш треба розпакувати: `gunzip -k instances/nodejs/index/passages.json.gz`,
-далі `./df nodejs vectors` заллє колекцію Qdrant (близько 57 хвилин).
+далі `./df nodejs vectors` заллє колекцію Qdrant (близько години і чверті).
 
 ## Установка venv
 

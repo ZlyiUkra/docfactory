@@ -977,19 +977,21 @@ Docker) і релізи раннера. 1 538 документів, 8 362 фра
 
 ### nodejs
 
-Node.js і npm англійською: довідник API Node.js парних мажорів 26–12 з історією кожної функції (блоки `<!-- YAML -->`
-стають текстом «Added in / History», поле `yaml_history` читача `ghdocs-history`), посібники nodejs.org/learn, CLI npm
-12–6 (команди, `package.json`, `package-lock.json`, `.npmrc`, scripts, workspaces) і посібники docs.npmjs.com.
-Посилання ведуть на сторінку свого мажору nodejs.org і на docs.npmjs.com. 1 277 документів, 19 920 фрагментів
-(сторінки npm різних версій зливаються, поле `slug_rewrite`).
+Node.js і npm англійською: довідник API Node.js усіх мажорів 10–26 з історією кожної функції (блоки `<!-- YAML -->`
+стають текстом «Added in / History», поле `yaml_history` читача `ghdocs-history`), розклад ліній (Current, Active LTS,
+Maintenance, End-of-life) і склад кожного релізу з версіями npm, V8, libuv і OpenSSL (читач `node-releases`), Notable
+Changes кожної версії (читач `changelog-node`), сторінки nodejs.org про кінець підтримки й безпеку, doc/contributing,
+undici 5–8, посібники nodejs.org/learn, CLI npm 12–6, журнали змін npm 6–12 і посібники docs.npmjs.com. 2 784
+документи, 30 621 фрагмент (сторінки npm різних версій зливаються, поле `slug_rewrite`).
 
 - порт `8796`; запис у Claude Code — `nodejs-docs`, адреса `http://127.0.0.1:8796/mcp`; інструменти `search_docs` і
   `read_section`;
 - колекція у Qdrant — `docs-nodejs`, модель векторів — `bge-small`;
-- версії: довідник — мажор Node (`24`, `12`), посібники nodejs.org — `learn`, CLI npm — `npm-11`, `npm-6`, посібники
-  npm — `docs`; без названої версії відповідь — для Node.js 24 і npm 11;
-- приклад питання агентові: `./df nodejs ask "What is the difference between npm ci and npm install?"`;
-- корпус в архіві від самого початку, як у express;
+- версії: довідник — мажор Node (`24`, `12`), журнал змін Node — повна версія (`24.21.0`), CLI npm — `npm-11`,
+  `npm-6`, undici — `undici-8`, посібники nodejs.org — `learn`, npm — `docs`; без названої версії відповідь — для
+  лінії Active LTS за розкладом і npm 11;
+- приклад питання агентові: `./df nodejs ask "Is Node.js 20 still supported and when did it end?"`;
+- корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/nodejs/README.md](instances/nodejs/README.md).
 
 ### auth
