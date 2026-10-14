@@ -1,0 +1,138 @@
+# openssl — примірник фабрики docfactory
+
+Захищений MCP-сервер, що відповідає на питання про OpenSSL: команди `openssl` (req, x509, verify, s_client, pkcs12,
+dgst, enc …), файли конфігурації (`openssl.cnf`, `x509v3_config`, `fips_config`), довідник C API бібліотек libcrypto і
+libssl (`EVP_*`, `SSL_*`, `X509_*`, `BIO_*`, `OSSL_PROVIDER_*`) і оглядові сторінки концепцій (провайдери, модуль FIPS,
+міграція 1.1.1 → 3.0). Документація — сторінки man кожного випуску від 0.9.8 до 4.0.3. Код спільний і лежить у
+`../../engine/`, `../../server/` та `../../common/`; ця тека тримає самі дані домену. Загальний устрій фабрики — у
+[../../README.md](../../README.md).
+
+## Навіщо окремий примірник
+
+Документація Node.js описує лише модулі `crypto` і `tls`. Чому `ERR_OSSL_EVP_UNSUPPORTED`, що таке legacy-провайдер,
+які опції має `openssl req` — відповідає OpenSSL, і версія його в кожному випуску Node своя (які — у примірнику
+`nodejs`, документ кожної лінії). Сайт docs.openssl.org показує кілька свіжих ліній; тут — кожен випуск від 0.9.8.
+
+## Скільки цього
+
+| Шар | Документів | Звідки |
+|-----|-----------:|--------|
+| Команди (man1, до 3.0 — `doc/apps`) | 1 023 | `openssl/openssl`, теги випусків |
+| C API (man3, до 3.0 — `doc/crypto` і `doc/ssl`) | 4 663 | ті самі |
+| Конфігурація (man5) | 26 | ті самі |
+| Концепції й огляди (man7) | 776 | ті самі |
+
+Разом 6 488 документів у 212 тегах; фрагментів в індексі — 23 593 (`expected_passages` у `checks.json`). Замір
+`quality` (12 запитів): по словах 10, за змістом 12, разом 12. `max_per_doc` 0.
+
+## Що в цій теці
+
+- `corpus/` — паспорт `index.json`, тобто опис копії: адреса, дата завантаження й сума тексту кожного документа.
+  Самих текстів тут немає: корпус в архіві.
+- `index/` — кеш фрагментів, з якого сервер підіймається: у git — стиснений `passages.json.gz`.
+- `sources.json` — звідки корпус будується, і водночас білий список для оновлювача.
+- `config.json` — порт, колекція Qdrant, модель векторів, пауза між зверненнями і профіль домену.
+- `prompts/` — описи інструментів для моделі, системний промпт власного агента, текст відмови.
+- `checks.json` — чим `smoke` і `quality` перевіряють саме цей корпус.
+- `.env` — токен GitHub і, для кроку `ask`, ключ Anthropic; `.mcp.json` — запис HTTP-сервера для Claude Code.
+
+Кроки нижче запускаються з кореня фабрики через `./df openssl <крок>`.
+
+## Звідки документація
+
+Одне джерело `openssl-docs`, читач `ghdocs-history-pod`: файли `.pod` і `.pod.in` з тегів репозиторію `openssl/openssl`.
+
+- **POD → markdown.** Сторінки написані в Perl POD (`=head1`, `=item`, `B<…>`, `I<…>`). Читач `ghpod` перетворює їх на
+  markdown: `=head1` — розділ, `=item` — жирний рядок опції, абзац з відступом — блок коду.
+- **Шаблони `{- … -}`.** У 3.x сторінки команд — `.pod.in` зі вставками Perl; без збирання проєкту їх не обчислити,
+  тому вставки лишаються поза текстом (у списках опцій частини рядків може не бути).
+- **Єдині імена.** `doc/apps`, `doc/crypto`, `doc/ssl` до 3.0 і `doc/man1`, `doc/man3` після зведено до `doc-man1-…` і
+  `doc-man3-…`; команди без префікса дістають `openssl-` (`req` → `openssl-req`), тож версії однієї сторінки зливаються.
+- **Назва сторінки** — ім'я з розділу NAME, що збігається з назвою файла (`SSL_CTX_new`, а не `TLSv1_2_method`).
+- Позначки `doc/internal` і `doc/designs` не беруться: це нотатки розробників.
+
+## Межі, про які треба пам'ятати
+
+Журналів змін OpenSSL (`CHANGES.md`, `NEWS.md`) тут немає — «що нового в 3.4» лише з розділів HISTORY сторінок.
+Документації Node.js, V8, libuv, ICU, TLS і X.509 як стандартів, а також інших бібліотек TLS (BoringSSL, LibreSSL,
+GnuTLS) теж немає.
+
+## Архівний режим: сервер без корпусу
+
+Корпус в архіві від самого початку: у `corpus/` лежить лише паспорт, а сервер підіймається з кешу фрагментів і
+колекції Qdrant; відповіді ті самі до символа.
+
+**Де тексти.** В архіві `~/archives/docfactory/openssl-corpus-2026-10-14.tar.gz` (127 МБ, 6 488 текстів, паспорт і
+сховище сирого `raw/`; перед видаленням розпакований окремо й звірений з диском — нуль розбіжностей). Лише на цій машині.
+
+**Як винести знову** — після оновлення, коли `vectors` і `smoke` пройшли:
+
+```
+tar -czf ~/archives/docfactory/openssl-corpus-РРРР-ММ-ДД.tar.gz -C instances/openssl corpus raw
+find instances/openssl/corpus -maxdepth 1 -name '*.txt' -delete
+rm -rf instances/openssl/raw
+gzip -9 -c instances/openssl/index/passages.json > instances/openssl/index/passages.json.gz
+```
+
+**Як повернути тексти** — перед будь-яким оновленням:
+
+```
+tar -xzf ~/archives/docfactory/openssl-corpus-2026-10-14.tar.gz -C instances/openssl
+./df openssl smoke
+```
+
+**Оновлення.** Новий тег дописують у `tags` джерела `openssl-docs` (`"openssl-4.0.4": "4.0.4"`). Далі
+`./df openssl refresh`, `manifest`, `vectors`, `smoke`, `quality`. `pause_sec` у конфігу — 0: відповідь GitHub для цього
+обсягу береться з сирого сховища, а не з кожного запиту окремо.
+
+## Установка venv
+
+```
+cd instances/openssl
+python3 -m venv .venv
+.venv/bin/python -m pip install -U pip
+.venv/bin/python -m pip install -r requirements.txt
+cp .env.example .env          # впишіть GITHUB_TOKEN і, якщо потрібен крок ask, ANTHROPIC_API_KEY
+cd ../..
+```
+
+## Збирання корпусу
+
+Корпус в архіві: щоб оновити чи перезібрати його, тексти спершу повертають. Для роботи сервера збирати нічого не
+треба — потрібен лише `vectors`, якщо колекції ще немає.
+
+```
+./df openssl sources --why   # перелік джерел і білий список
+./df openssl refresh         # завантажити все задеклароване (близько 40 хвилин)
+./df openssl manifest        # оновити паспорт
+./df openssl setup           # Qdrant чи пошук лише по словах
+./df openssl vectors         # залити корпус у docs-openssl (близько 80 хвилин)
+./df openssl smoke           # перевірки
+```
+
+Після будь-якого оновлення корпусу `serve` треба перезапустити.
+
+## Сервер під Claude Code
+
+**1. Підняти сервер** в окремому терміналі WSL і лишити жити:
+
+```
+cd ~/Projects/docfactory
+./df openssl serve          # порт 8839
+```
+
+Готовий він тоді, коли надрукував кількість фрагментів і адресу `http://127.0.0.1:8839/mcp`.
+
+**2. Додати сервер у Claude Code** — у тому середовищі, де відкрито вікно:
+
+```
+claude mcp add --transport http --scope user openssl-docs http://127.0.0.1:8839/mcp
+```
+
+У WSL і у Windows Claude Code тримає окремі налаштування: вікно VS Code на боці Windows читає
+`C:\Users\<ім'я>\.claude.json`, тож команду треба виконати в PowerShell, або додати сервер кнопкою «Add server»
+у вікні `/mcp` (тип HTTP, рівень User).
+
+**3. Перевірити.** `/mcp` — має бути `openssl-docs` і два інструменти `search_docs`, `read_section`.
+
+Зупинка — Ctrl+C у терміналі сервера.
