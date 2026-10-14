@@ -994,6 +994,23 @@ undici 5–8, посібники nodejs.org/learn, CLI npm 12–6, журнал�
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/nodejs/README.md](instances/nodejs/README.md).
 
+### libuv
+
+Документація libuv — бібліотеки C під циклом подій Node.js — англійською, усіх стабільних версій: Sphinx-документація
+кожного тегу v0.10.2–v1.53.0 (цикл, handles, requests, потоки, файлова система, пул потоків, процеси, мережа), README,
+підтримувані платформи, політика безпеки і ChangeLog кожного випуску. Новий читач `changelog-libuv` (модуль
+`changeloguv`), а розбір Sphinx дістав директиви опису API `c:function`, `c:type` і позначки версії. 594 документи, 1 322
+фрагменти.
+
+- порт `8838`; запис у Claude Code — `libuv-docs`, адреса `http://127.0.0.1:8838/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-libuv`, модель векторів — `bge-small`;
+- версія — лінія libuv: `version: "1"` лишає всі 1.x, `"1.50"` — 1.50.x; без названої версії відповідь — для останньої
+  1.x;
+- приклад питання агентові: `./df libuv ask "What runs on the libuv thread pool and how do I change its size?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/libuv/README.md](instances/libuv/README.md).
+
 ### auth
 
 Better Auth і NextAuth.js / Auth.js англійською, якомога більше версій: Better Auth 0.0–1.7 (кожна мінорна), NextAuth.js
