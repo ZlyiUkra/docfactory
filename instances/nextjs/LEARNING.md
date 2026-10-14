@@ -330,7 +330,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 | next-themes | темна тема без миготіння | 4 | Ф5 Д5; є примірник `next-themes` |
 | nuqs | стан у рядку адреси з типами: фільтри, сортування, сторінки | 0 | Ф5 Д5; є примірник `nuqs` |
 | Zustand | невеликий глобальний стан у клієнтських компонентах | 1 | Ф5 Д5; є примірник `zustand` |
-| next-intl | переклади й адреси з мовою | 3 | Ф5 Д8; альтернатива — next-i18next (з 16.x уміє App Router), є примірник `i18next` |
+| next-intl | переклади й адреси з мовою | 3 | Ф5 Д8; є примірник `next-intl`; альтернатива — next-i18next (з 16.x уміє App Router), є примірник `i18next` |
 | Redis (Upstash) | обмеження частоти запитів, спільний кеш | 37 | Ф7 Д6, Ф3 Д9 |
 | Sentry | збір помилок із картами коду | 1 | Ф7 Д9; є примірник `sentry` |
 | OpenTelemetry | траси запитів: хто скільки чекав | 3 | Ф7 Д9 |
@@ -381,6 +381,8 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - next-themes (README, типи й приклади кожної стабільної версії 0.0.1–0.4.6, нотатки релізів) — `next-themes`;
 - nuqs (сайт nuqs.dev кожної стабільної версії 1.15–2.x з блогом, README кожної версії й попередника
   next-usequerystate, нотатки релізів) — `nuqs`;
+- next-intl (сайт next-intl.dev кожної стабільної версії 1.2–4.x з блогом, README кожної версії next-intl, use-intl,
+  icu-minify і плагіна SWC, журнал змін) — `next-intl`;
 - PostgreSQL 9.0–19 — `postgresql`; Socket.IO, сервер і клієнт — `socketio`;
 - Drizzle (сайт orm.drizzle.team кожної стабільної версії 0.29–0.45: схема, запити, Relational Queries, міграції й
   drizzle-kit, Drizzle Studio, drizzle-seed, drizzle-zod; README монорепозиторію, журнали змін і таблиці версій npm)
@@ -418,7 +420,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «варто знати»: next-intl, Redis (Upstash), OpenTelemetry;
+- з «варто знати»: Redis (Upstash), OpenTelemetry;
 - з «знати, що існує»: Stripe, Resend і React Email, Vercel AI SDK, UploadThing, Sanity, Payload, Contentful,
   tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Grafana, Loki.
 
@@ -1298,7 +1300,7 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 # Фаза 5. Інтерфейс із характером — 8 днів
 
 **Сервери MCP фази:** `nextjs-docs`, `mdn-docs`, `zustand-docs`, `webstandards-docs`, `shadcn-docs`, `webdev-docs`,
-`i18next-docs`, `motion-docs`, `next-themes-docs`, `nuqs-docs`.
+`i18next-docs`, `next-intl-docs`, `motion-docs`, `next-themes-docs`, `nuqs-docs`.
 
 Те, що відрізняє «працює» від «приємно користуватися». Частина можливостей з'явилася в 16.2–16.3, а дещо
 ще експериментальне — дивіться на версії у відповіді сервера. Дні 1–4 можна брати одразу після фази 2.
@@ -1410,10 +1412,11 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 - **Що це.** Мова в адресі (`/uk/…`, `/en/…`) — динамічний сегмент `[lang]` над маршрутами; переклади —
   словники або next-intl. MDX — markdown з компонентами React у файлах проєкту.
 - **Читати:** `Internationalization`, `How to use markdown and MDX in Next.js`; `Example: i18n-routing`, `Example:
-  mdx`; поза корпусом — документація next-intl: «App Router». Згадкою: у примірнику `i18next` — `next-i18next
-  README`, розділ «App Router Setup» (з 16.x: `getT()` у серверних компонентах, `useT()` у клієнтських,
-  `createProxy()` для мови в адресі) — третій шлях поруч зі словниками й next-intl.
-- **Сервери MCP:** `nextjs-docs`, `i18next-docs`.
+  mdx`; у примірнику `next-intl` — `Next.js App Router internationalization (i18n)`, `Setup locale-based routing`,
+  `Rendering translations`. Згадкою: у примірнику `i18next` — `next-i18next README`, розділ «App Router Setup» (з
+  16.x: `getT()` у серверних компонентах, `useT()` у клієнтських, `createProxy()` для мови в адресі) — третій шлях
+  поруч зі словниками й next-intl.
+- **Сервери MCP:** `nextjs-docs`, `next-intl-docs`, `i18next-docs`.
 - **Зробити:** дві мови для одного публічного розділу (не всього застосунку); сторінка «про проєкт» на MDX.
 - **Перевірити себе:** перемикач мови зберігає поточну сторінку; MDX-сторінка в таблиці збірки статична `○`.
 - **Пастка:** переносити весь `app/` під `[lang]` в останній день фази — це переїзд на тиждень.
