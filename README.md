@@ -1016,8 +1016,8 @@ undici 5–8, посібники nodejs.org/learn, CLI npm 12–6, журнал�
 Документація OpenSSL англійською, кожного випуску від 0.9.8 до 4.0.3: команди `openssl` (req, x509, verify, s_client,
 pkcs12, dgst …), файли конфігурації, довідник C API libcrypto і libssl та оглядові сторінки концепцій (провайдери, модуль
 FIPS, міграція 1.1.1 → 3.0). Сторінки написані в Perl POD, тож новий читач `ghdocs-history-pod` (модуль `ghpod`)
-перетворює їх на markdown; назви `doc/apps`, `doc/crypto` і `doc/ssl` до 3.0 зведено з `man1` і `man3`. 6 488 документів,
-23 593 фрагменти.
+перетворює їх на markdown; назви `doc/apps`, `doc/crypto` і `doc/ssl` до 3.0 зведено з `man1` і `man3`. 6 833 документи (з журналами CHANGES і NEWS, читач `changelog-openssl`),
+24 527 фрагментів.
 
 - порт `8839`; запис у Claude Code — `openssl-docs`, адреса `http://127.0.0.1:8839/mcp`; інструменти `search_docs` і
   `read_section`;
