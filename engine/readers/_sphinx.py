@@ -23,7 +23,7 @@ rst фабрики писався для README.rst і посібника SOPS, 
 import ast
 import re
 
-from engine.readers.sitedocs import _indent, _rst_block, plain, rst
+from engine.readers.sitedocs import _indent, _rst_block, _rst_dedent, plain, rst
 
 _DIRECTIVE = re.compile(r"^(\s*)\.\.\s+([\w:-]+)::(?:\s+(.*))?$")
 _SUBST_DEF = re.compile(r"^\s*\.\.\s+\|([^|]+)\|\s+replace::\s*(.*)$")
@@ -35,6 +35,14 @@ _SUBST_OTHER = re.compile(r"^\s*\.\.\s+\|([^|]+)\|\s+(?!replace::)[\w-]+::")
 _DROP = ("toctree", "automodule", "autoclass", "autofunction", "automethod", "autodata",
          "autoattribute", "autoexception", "autosummary", "literalinclude", "program-output",
          "currentmodule", "module", "py:module", "py:currentmodule", "index", "highlight")
+# Директиви опису API (домен C Sphinx: libuv, і подібні): підпис у аргументі, опис — тілом. Без розбору
+# `.. c:function:: int uv_run(…)` разом із описом пропадала б цілком, і сторінка лишалась би самим вступом.
+_API = ("c:function", "c:type", "c:macro", "c:member", "c:var", "c:struct", "c:union", "c:enum",
+        "c:enumerator", "c:alias", "function", "type", "macro", "member", "var", "struct", "union",
+        "enum", "enumerator")
+# Позначки версії: на сторінці версії не лишається нічого, окрім цього рядка, що функція нова чи змінена.
+_VERSIONED = {"versionadded": "Added in version", "versionchanged": "Changed in version",
+              "deprecated": "Deprecated since version", "versionremoved": "Removed in version"}
 _FIELD_ORPHAN = re.compile(r"^:(orphan|nosearch|tocdepth):.*$", re.M)
 # Роль із назвою й ціллю: на сайті видно лише назву.
 _ROLE_TITLED = re.compile(r":(?:ref|doc|term|numref|any|py:\w+):`([^`<]*?)\s*<[^`>]+>`")
@@ -137,6 +145,25 @@ def _prepare(text: str) -> str:
             name = d.group(2).lower()
             if name in _DROP:
                 _, i = _rst_block(lines, i + 1, len(d.group(1)))
+                continue
+            if name in _API:
+                block, j = _rst_block(lines, i + 1, len(d.group(1)))
+                body = [x for x in _rst_dedent(block) if not re.match(r"\s*:(noindex|no-index|module|"
+                                                                       r"no-contents-entry):", x)]
+                sig = " ".join((d.group(3) or "").split())
+                label = name.split(":")[-1].capitalize()
+                head = ["", f"{label}: ``{sig}``", ""]
+                lines[i:j] = head + body
+                out.extend(head)
+                i += 3
+                continue
+            if name in _VERSIONED:
+                block, j = _rst_block(lines, i + 1, len(d.group(1)))
+                note = " ".join(" ".join(x.split()) for x in block if x.strip())
+                head = f"{_VERSIONED[name]} {(d.group(3) or '').strip()}".strip()
+                lines[i:j] = ["", head + (": " + note if note else "."), ""]
+                out.extend(lines[i:i + 3])
+                i += 3
                 continue
             if name in ("code", "code-block", "sourcecode"):
                 caption, body, j = _caption(lines, i, len(d.group(1)))
