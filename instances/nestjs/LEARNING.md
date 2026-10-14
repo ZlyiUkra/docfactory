@@ -409,6 +409,8 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   Controls — `owasp`;
 - Node.js (API усіх мажорів 10–26, розклад LTS і кінця підтримки, що нового в кожній версії, посібники
   nodejs.org/learn) і npm (CLI 6–12, журнали змін) — `nodejs`;
+- libuv (Sphinx-документація кожної стабільної версії 0.10–1.53, README, платформи, ChangeLog; цикл подій і пул
+  потоків Node зсередини) — `libuv`;
 - nginx: проксі перед API, стиснення, вебсокети через проксі — `nginx`;
 - Supabase — `supabase`; Clerk — `clerk`;
 - API споту Binance (REST, WebSocket API, потоки ринкових даних, ліміти, журнал змін) — `binance-spot`;
