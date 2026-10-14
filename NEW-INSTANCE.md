@@ -88,6 +88,11 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   `slug_rewrite` rules with a script that matches document titles across the periods, then check in
   `index/passages.json` that a section key (`slug` and `section`) is shared only by sources of one family; an old
   edition under a different key takes a result slot from the new one.
+- **Release facts that live in JSON, not in docs** (Node.js: the release schedule and the list of every release with
+  the bundled npm, V8, OpenSSL): a small reader copies the dates and versions from the official files and draws no
+  conclusions of its own; the schedule changes. Without it the instance cannot answer «is X still supported».
+- **A changelog next to a docs corpus**: take the release heading and the notable changes, cut the list of commits,
+  and label versions of a second product («npm-11.0.0») so the version filter never mixes them with the first.
 - **Two numberings in one instance** (Foundry 1.8 and forge-std 1.8): label the second one (`forge-std-1.17.0`, the
   field `version_prefix` for releases) so the version filter never mixes them.
 - **A documentation branch that moved to a prerelease** (Drizzle: in December 2025 the site's `main` merged the 1.0
@@ -559,6 +564,11 @@ and what a taken port and a failed connection look like. A domain list in the ro
   виводять скриптом, що зіставляє назви документів різних періодів, і перевіряють в `index/passages.json`, що ключ
   розділу (`slug` і `section`) спільний лише для джерел однієї родини; стара редакція під іншим ключем забирає у
   видачі місце нової.
+- **Факти про релізи, що лежать у JSON, а не в документації** (Node.js: розклад і перелік усіх релізів з версіями npm,
+  V8, OpenSSL): малий читач переписує дати й версії з офіційних файлів і не робить власних висновків; розклад
+  змінюється. Без нього примірник не відповість, чи ще підтримується версія.
+- **Журнал змін поруч із документацією**: беруть заголовок релізу й Notable Changes, перелік комітів відрізають, а
+  версії другого продукту позначають («npm-11.0.0»), щоб фільтр версій не змішував їх із першим.
 - **Дві нумерації в одному примірнику** (Foundry 1.8 і forge-std 1.8): другу позначають міткою (`forge-std-1.17.0`,
   для релізів — поле `version_prefix`), щоб фільтр версії їх не змішував.
 - **Гілка документації, що перейшла на передреліз** (Drizzle: у грудні 2025 у `main` сайту злили документацію бети
