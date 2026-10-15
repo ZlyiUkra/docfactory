@@ -1011,6 +1011,22 @@ undici 5–8, посібники nodejs.org/learn, CLI npm 12–6, журнал�
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/libuv/README.md](instances/libuv/README.md).
 
+### fastify
+
+Документація Fastify — швидкого вебфреймворка для Node.js — англійською, усіх стабільних випусків 1.0.0–5.12.7: довідник і
+посібники (з них збирається fastify.dev), код ядра, тести, приклади, нотатки випусків, а також README і типи TypeScript
+близько 160 пакетів екосистеми: офіційних плагінів `@fastify/*`, складників ядра (`fastify-plugin`, `avvio`,
+`find-my-way`, `light-my-request`, `fast-json-stringify`) і старих плагінів `fastify-*`. Усі читачі наявні. 9 214 документів,
+20 103 фрагменти.
+
+- порт `8844`; запис у Claude Code — `fastify-docs`, адреса `http://127.0.0.1:8844/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-fastify`, модель векторів — `bge-small`;
+- версія — випуск Fastify чи плагіна: `version: "4"` лишає всі 4.x; без названої версії відповідь — для Fastify 5;
+- приклад питання агентові: `./df fastify ask "How do I validate a request body with a JSON schema in Fastify?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/fastify/README.md](instances/fastify/README.md).
+
 ### nghttp2
 
 Документація nghttp2 — реалізації HTTP/2 і HPACK на C під `http2` Node.js — англійською, усіх випусків 0.1.0–1.70.0: посібник
