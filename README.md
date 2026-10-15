@@ -941,6 +941,23 @@ Functions, потоки; з 7.4 — і розділи Enterprise, Cloud, RedisIn
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/redis/README.md](instances/redis/README.md).
 
+### ioredis
+
+Документація ioredis — повнофункціонального клієнта Redis для Node.js — англійською, кожного стабільного випуску
+1.0.0–6.0.0: README (підключення standalone, Sentinel і Cluster, опції, події, конвеєри й автоконвеєр, транзакції,
+pub/sub, потоки, Lua через `defineCommand`, TLS), довідник `API.md` (2–4), журнал змін, приклади, код `lib/` з JSDoc
+(довідник 5.x–6.x), тести останнього випуску кожної з 70 мінорних ліній, нотатки GitHub Releases, `@ioredis/commands`
+і типи спільноти `@types/ioredis`. Усі читачі наявні. 2 309 документів, 7 764 фрагменти.
+
+- порт `8846`; запис у Claude Code — `ioredis-docs`, адреса `http://127.0.0.1:8846/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-ioredis`, модель векторів — `bge-small`;
+- версія — випуск ioredis: `version: "5"` лишає всі 5.x, `"4.28"` — 4.28.x; без названої версії відповідь — для
+  6.0.0;
+- приклад питання агентові: `./df ioredis ask "How does retryStrategy work and how do I stop reconnecting?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/ioredis/README.md](instances/ioredis/README.md).
+
 ### socketio
 
 Socket.IO англійською: сайт socket.io для 4.x, 3.x і 2.x (документація, підручник, API й опції сервера й клієнта),
