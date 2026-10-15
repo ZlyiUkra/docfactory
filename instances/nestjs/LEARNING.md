@@ -424,6 +424,8 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   адаптер) — `fastify`;
 - Redis (сайт кожної мінорної лінії 1.3–8.10, `redis.conf` і нотатки всіх випусків, код і тести: команди, збереження,
   реплікація, Sentinel, Cluster, ACL, потоки; під BullMQ, кешем і адаптером socket.io) — `redis`;
+- ioredis (клієнт Redis для Node: README, довідник, код, тести й нотатки випусків 1.0–6.0; на ньому стоять BullMQ і
+  адаптер socket.io) — `ioredis`;
 - nginx: проксі перед API, стиснення, вебсокети через проксі — `nginx`;
 - Supabase — `supabase`; Clerk — `clerk`;
 - API споту Binance (REST, WebSocket API, потоки ринкових даних, ліміти, журнал змін) — `binance-spot`;
