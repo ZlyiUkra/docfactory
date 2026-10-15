@@ -1011,6 +1011,21 @@ undici 5–8, посібники nodejs.org/learn, CLI npm 12–6, журнал�
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/libuv/README.md](instances/libuv/README.md).
 
+### icu
+
+Документація ICU — бібліотеки Unicode під `Intl` Node.js — англійською: посібник користувача (до перенесення в репозиторій
+і 65.1–78.3), довідник C/C++ API з коментарів Doxygen публічних і внутрішніх заголовків ICU4C кожного випуску 1.4.0–78.3
+і дизайн-документи. Нові читач `gh-legacy-docs` (файли OpenOffice `.sxw` і HTML з `icu-docs`) і режим `outline` для
+заголовків C/C++ у `ghcode-history` (розділ на функцію, клас, макрос). 8 300 документів, 51 997 фрагментів.
+
+- порт `8840`; запис у Claude Code — `icu-docs`, адреса `http://127.0.0.1:8840/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-icu`, модель векторів — `bge-small`;
+- версія — випуск ICU: `version: "74"` лишає всі 74.x, `"74.2"` — 74.2; без названої версії відповідь — для найновішого;
+- приклад питання агентові: `./df icu ask "How do I make ucol_strcoll ignore accents and case?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/icu/README.md](instances/icu/README.md).
+
 ### openssl
 
 Документація OpenSSL англійською, кожного випуску від 0.9.8 до 4.0.3: команди `openssl` (req, x509, verify, s_client,
