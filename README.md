@@ -924,6 +924,23 @@ SGML, з 11 — XML), їх читає новий читач `pg-sgml`; файл,
 - корпус в архіві від самого початку, як у eslint;
 - докладніше — у [instances/postgresql/README.md](instances/postgresql/README.md).
 
+### redis
+
+Документація Redis — сервера структур даних у пам'яті — англійською, кожної мінорної лінії 1.3–8.10 у вигляді на день
+виходу наступної: сайт redis.io (команди, типи даних, збереження на диск, реплікація, Sentinel, Cluster, ACL, Lua і
+Functions, потоки; з 7.4 — і розділи Enterprise, Cloud, RedisInsight, RDI), `redis.conf`, `sentinel.conf` і нотатки всіх
+269 стабільних випусків, код `src/` і тести першого й останнього випуску кожної лінії, нотатки GitHub Releases. Усі
+читачі наявні. 19 678 документів, 97 242 фрагменти.
+
+- порт `8845`; запис у Claude Code — `redis-docs`, адреса `http://127.0.0.1:8845/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-redis`, модель векторів — `bge-small`;
+- версія — лінія Redis: `version: "7.2"` лишає сайт 7.2 і всі 7.2.x коду й конфігів, `"7"` — усі 7.x; без названої
+  версії відповідь — для найновішого випуску (8.10);
+- приклад питання агентові: `./df redis ask "How does XADD trim a stream with MAXLEN and what does the ~ modifier do?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/redis/README.md](instances/redis/README.md).
+
 ### socketio
 
 Socket.IO англійською: сайт socket.io для 4.x, 3.x і 2.x (документація, підручник, API й опції сервера й клієнта),
