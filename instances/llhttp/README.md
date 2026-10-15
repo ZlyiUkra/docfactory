@@ -1,0 +1,145 @@
+# llhttp — примірник фабрики docfactory
+
+Захищений MCP-сервер, що відповідає на питання про llhttp — парсер HTTP/1.x на C, на якому стоїть модуль `http` Node.js
+(він замінив `http_parser`): ініціалізація й виконання (`llhttp_init`, `llhttp_execute`), зворотні виклики `on_*`, коди
+помилок `HPE_*`, прапорці лояльності (`lenient`), chunked, upgrade, pipelining, випадки request smuggling. Документація —
+README, згенерований публічний заголовок, вихідний код генератора й автомата, тести (сирі HTTP-повідомлення з очікуваними
+подіями розбору) і нотатки випусків усіх версій від 1.0.1 до 9.4.3. Код спільний і лежить у `../../engine/`,
+`../../server/` та `../../common/`; ця тека тримає самі дані домену. Загальний устрій фабрики — у
+[../../README.md](../../README.md).
+
+## Навіщо окремий примірник
+
+Документація Node.js описує `http` зверху. Чому сервер відповів 400, що таке `HPE_INVALID_CONTENT_LENGTH`, які прапорці
+лояльності вмикає `--insecure-http-parser`, у якому випуску закрито вразливість у розборі `Transfer-Encoding` —
+відповідає llhttp, а його версія в кожному випуску Node своя (які — у примірнику `nodejs`, документ кожної лінії).
+
+## Скільки цього
+
+| Шар | Документів | Звідки |
+|-----|-----------:|--------|
+| README і docs (теги коду `vX.Y.Z`) | 26 | `nodejs/llhttp` |
+| README збірних тегів `release/vX.Y.Z` | 22 | ті самі |
+| Публічний заголовок `include/llhttp.h` | 59 | збірні теги |
+| Збірка: `src/llhttp.c`, `api.c`, `http.c`, CMake, gyp | 106 | збірні теги |
+| Вихідний код: генератор TypeScript, C, скрипти | 257 | теги коду |
+| Тести: `test/request/*.md`, `test/response/*.md`, `*.ts` | 250 | теги коду |
+| Нотатки випусків | 57 | GitHub Releases |
+
+Разом 777 документів; фрагментів — 1 529 (`expected_passages` у `checks.json`). Замір `quality` (12 запитів): по словах 9,
+за змістом 12, разом 12. `max_per_doc` 0.
+
+## Що в цій теці
+
+- `corpus/` — паспорт `index.json`: адреса, дата завантаження й сума тексту кожного документа. Самих текстів тут немає:
+  корпус в архіві.
+- `index/` — кеш фрагментів, з якого сервер підіймається: у git — стиснений `passages.json.gz`.
+- `sources.json` — звідки корпус будується, і водночас білий список для оновлювача.
+- `config.json` — порт, колекція Qdrant, модель векторів, пауза між зверненнями і профіль домену.
+- `prompts/` — описи інструментів для моделі, системний промпт власного агента, текст відмови.
+- `checks.json` — чим `smoke` і `quality` перевіряють саме цей корпус.
+- `.env` — токен GitHub і, для кроку `ask`, ключ Anthropic; `.mcp.json` — запис HTTP-сервера для Claude Code.
+
+Кроки нижче запускаються з кореня фабрики через `./df llhttp <крок>`.
+
+## Звідки документація
+
+Один репозиторій `nodejs/llhttp`, дві серії тегів і релізи:
+
+- `vX.Y.Z` (62 теги, 1.0.1–9.4.3) — вихідний код: генератор `src/llhttp/*.ts`, `src/native/*.c`, тести, README;
+- `release/vX.Y.Z` (59 тегів) — збірка: `include/llhttp.h`, `src/llhttp.c` (згенерований автомат), `api.c`, `http.c`;
+- GitHub Releases — нотатки (`ghreleases`); передрелізи `v6.0.7a/b` не беруться.
+
+Читачі наявні: `ghdocs-history`, `ghcode-history` (заголовок — з `outline`), `ghreleases`. Нового коду для llhttp не
+знадобилось.
+
+Особливості:
+
+- **Тести — найкраща довідка про поведінку.** `test/request/*.md` і `test/response/*.md`: кожен випадок — сирий HTTP-запит
+  чи відповідь і очікувані події розбору; з них видно, що парсер робить із заголовками, `Transfer-Encoding`, `Upgrade`.
+- **Згенерований автомат** (`src/llhttp.c`, ≈300 КБ) береться цілим: це те, що Node вбудовує, але читати його як довідку
+  марно; призначення — знайти, чи зберігся стан або константа.
+
+## Межі, про які треба пам'ятати
+
+Документації модуля `http` Node.js, HTTP/2 (nghttp2) і інших парсерів (`http-parser`, picohttpparser) тут немає. Окремого
+сайту документації в llhttp немає: його роль виконує README.
+
+## Архівний режим: сервер без корпусу
+
+Корпус в архіві від самого початку: у `corpus/` лежить лише паспорт, а сервер підіймається з кешу фрагментів і
+колекції Qdrant; відповіді ті самі до символа.
+
+**Де тексти.** В архіві `~/archives/docfactory/llhttp-corpus-2026-10-15.tar.gz` (5,7 МБ, 777 текстів, паспорт і сховище
+сирого `raw/`; перед видаленням розпакований окремо й звірений з диском — нуль розбіжностей). Лише на цій машині.
+
+**Як винести знову** — після оновлення, коли `vectors` і `smoke` пройшли:
+
+```
+tar -czf ~/archives/docfactory/llhttp-corpus-РРРР-ММ-ДД.tar.gz -C instances/llhttp corpus raw
+find instances/llhttp/corpus -maxdepth 1 -name '*.txt' -delete
+rm -rf instances/llhttp/raw
+gzip -9 -c instances/llhttp/index/passages.json > instances/llhttp/index/passages.json.gz
+```
+
+**Як повернути тексти** — перед будь-яким оновленням:
+
+```
+tar -xzf ~/archives/docfactory/llhttp-corpus-2026-10-15.tar.gz -C instances/llhttp
+./df llhttp smoke
+```
+
+**Оновлення.** Новий тег дописують першим рядком у `tags` джерел із кодом і збіркою («"v9.4.4": "9.4.4"» і
+«"release/v9.4.4": "9.4.4"»). Далі `./df llhttp refresh`, `manifest`, `vectors`, `smoke`, `quality`.
+
+## Установка venv
+
+```
+cd instances/llhttp
+python3 -m venv .venv
+.venv/bin/python -m pip install -U pip
+.venv/bin/python -m pip install -r requirements.txt
+cp .env.example .env          # впишіть GITHUB_TOKEN і, якщо потрібен крок ask, ANTHROPIC_API_KEY
+cd ../..
+```
+
+## Збирання корпусу
+
+Корпус в архіві: щоб оновити чи перезібрати його, тексти спершу повертають. Для роботи сервера збирати нічого не
+треба — потрібен лише `vectors`, якщо колекції ще немає.
+
+```
+./df llhttp sources --why   # перелік джерел і білий список
+./df llhttp refresh         # завантажити все задеклароване (близько 6 хвилин)
+./df llhttp manifest        # оновити паспорт
+./df llhttp setup           # Qdrant чи пошук лише по словах
+./df llhttp vectors         # залити корпус у docs-llhttp (близько 6 хвилин)
+./df llhttp smoke           # перевірки
+```
+
+Після будь-якого оновлення корпусу `serve` треба перезапустити.
+
+## Сервер під Claude Code
+
+**1. Підняти сервер** в окремому терміналі WSL і лишити жити:
+
+```
+cd ~/Projects/docfactory
+./df llhttp serve          # порт 8842
+```
+
+Готовий він тоді, коли надрукував кількість фрагментів і адресу `http://127.0.0.1:8842/mcp`.
+
+**2. Додати сервер у Claude Code** — у тому середовищі, де відкрито вікно:
+
+```
+claude mcp add --transport http --scope user llhttp-docs http://127.0.0.1:8842/mcp
+```
+
+У WSL і у Windows Claude Code тримає окремі налаштування: вікно VS Code на боці Windows читає
+`C:\Users\<ім'я>\.claude.json`, тож команду треба виконати в PowerShell, або додати сервер кнопкою «Add server»
+у вікні `/mcp` (тип HTTP, рівень User).
+
+**3. Перевірити.** `/mcp` — має бути `llhttp-docs` і два інструменти `search_docs`, `read_section`.
+
+Зупинка — Ctrl+C у терміналі сервера.
