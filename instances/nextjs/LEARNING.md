@@ -404,6 +404,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
   те, на чому стоїть `Intl`) — `icu`;
 - c-ares (сторінки man, заголовки, нотатки випусків і код усіх випусків 1.1–1.34; DNS-резолвер під `dns` Node) —
   `cares`;
+- llhttp (парсер HTTP/1.x під `http` Node: README, заголовок, код, тести й нотатки випусків 1.0–9.4) — `llhttp`;
 - Docker — `docker`; Kubernetes, k3s, Traefik, Kustomize, SOPS, age і Helm — `kubernetes`; sshd — `linux`;
 - безкоштовна машина Oracle Cloud (Always Free, повернення бездіяльних машин, «out of host capacity», бюджети), OKE —
   `oracle-cloud`;

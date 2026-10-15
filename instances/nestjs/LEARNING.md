@@ -417,6 +417,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   те, на чому стоїть `Intl`) — `icu`;
 - c-ares (сторінки man, заголовки, нотатки випусків і код усіх випусків 1.1–1.34; DNS-резолвер під `dns` Node) —
   `cares`;
+- llhttp (парсер HTTP/1.x під `http` Node: README, заголовок, код, тести й нотатки випусків 1.0–9.4) — `llhttp`;
 - nginx: проксі перед API, стиснення, вебсокети через проксі — `nginx`;
 - Supabase — `supabase`; Clerk — `clerk`;
 - API споту Binance (REST, WebSocket API, потоки ринкових даних, ліміти, журнал змін) — `binance-spot`;
