@@ -1011,6 +1011,22 @@ undici 5–8, посібники nodejs.org/learn, CLI npm 12–6, журнал�
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/libuv/README.md](instances/libuv/README.md).
 
+### nghttp2
+
+Документація nghttp2 — реалізації HTTP/2 і HPACK на C під `http2` Node.js — англійською, усіх випусків 0.1.0–1.70.0: посібник
+програміста, туторіали, сторінки утиліт `nghttp`, `nghttpd`, `nghttpx`, `h2load`, публічний заголовок з коментарями Doxygen,
+вихідний код бібліотеки й утиліт, тести, приклади й нотатки випусків (CVE). Усі читачі наявні. 6 337 документів,
+8 619 фрагментів.
+
+- порт `8843`; запис у Claude Code — `nghttp2-docs`, адреса `http://127.0.0.1:8843/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-nghttp2`, модель векторів — `bge-small`;
+- версія — випуск nghttp2: `version: "1.60"` лишає всі 1.60.x, `"1"` — усі 1.x; без названої версії відповідь — для
+  найновішого;
+- приклад питання агентові: `./df nghttp2 ask "Which nghttp2 release fixed the HTTP/2 rapid reset vulnerability?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/nghttp2/README.md](instances/nghttp2/README.md).
+
 ### llhttp
 
 Документація llhttp — парсера HTTP/1.x під модулем `http` Node.js — англійською, усіх випусків 1.0.1–9.4.3: README, згенерований
