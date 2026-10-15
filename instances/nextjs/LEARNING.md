@@ -402,6 +402,8 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
   міграція на 3.0) — `openssl`;
 - ICU (посібник і довідник C/C++ API кожного випуску 1.4–78: колація, межі тексту, форматування, часові пояси —
   те, на чому стоїть `Intl`) — `icu`;
+- c-ares (сторінки man, заголовки, нотатки випусків і код усіх випусків 1.1–1.34; DNS-резолвер під `dns` Node) —
+  `cares`;
 - Docker — `docker`; Kubernetes, k3s, Traefik, Kustomize, SOPS, age і Helm — `kubernetes`; sshd — `linux`;
 - безкоштовна машина Oracle Cloud (Always Free, повернення бездіяльних машин, «out of host capacity», бюджети), OKE —
   `oracle-cloud`;
