@@ -331,7 +331,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 | nuqs | стан у рядку адреси з типами: фільтри, сортування, сторінки | 0 | Ф5 Д5; є примірник `nuqs` |
 | Zustand | невеликий глобальний стан у клієнтських компонентах | 1 | Ф5 Д5; є примірник `zustand` |
 | next-intl | переклади й адреси з мовою | 3 | Ф5 Д8; є примірник `next-intl`; альтернатива — next-i18next (з 16.x уміє App Router), є примірник `i18next` |
-| Redis (Upstash) | обмеження частоти запитів, спільний кеш | 37 | Ф7 Д6, Ф3 Д9 |
+| Redis (Upstash) | обмеження частоти запитів, спільний кеш | 37 | Ф7 Д6, Ф3 Д9; є примірник `redis` (Upstash — лише свій сайт) |
 | Sentry | збір помилок із картами коду | 1 | Ф7 Д9; є примірник `sentry` |
 | OpenTelemetry | траси запитів: хто скільки чекав | 3 | Ф7 Д9 |
 | socket.io-client | з'єднання клієнтського компонента з gateway NestJS | — | Ф8 Д6–7; є примірник `socketio` |
@@ -407,6 +407,8 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - llhttp (парсер HTTP/1.x під `http` Node: README, заголовок, код, тести й нотатки випусків 1.0–9.4) — `llhttp`;
 - nghttp2 (HTTP/2 і HPACK на C під `http2` Node: посібник, заголовок, код, тести й нотатки випусків 0.1–1.70) —
   `nghttp2`;
+- Redis (сайт кожної мінорної лінії 1.3–8.10, `redis.conf` і нотатки всіх випусків, код і тести: команди, збереження,
+  реплікація, Sentinel, Cluster, ACL, потоки; під кешем, обмеженням частоти й адаптером socket.io) — `redis`;
 - Docker — `docker`; Kubernetes, k3s, Traefik, Kustomize, SOPS, age і Helm — `kubernetes`; sshd — `linux`;
 - безкоштовна машина Oracle Cloud (Always Free, повернення бездіяльних машин, «out of host capacity», бюджети), OKE —
   `oracle-cloud`;
@@ -432,7 +434,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «варто знати»: Redis (Upstash), OpenTelemetry;
+- з «варто знати»: Upstash (сам Redis має примірник `redis`), OpenTelemetry;
 - з «знати, що існує»: Stripe, Resend і React Email, Vercel AI SDK, UploadThing, Sanity, Payload, Contentful,
   tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Grafana, Loki.
 
@@ -1053,8 +1055,9 @@ Next.js — надбудова над HTTP, Node і серверним React. У
   можна замінити своїм через `cacheHandlers` — наприклад, Redis, щоб кілька серверів мали один кеш.
   `Example: cache-handler-redis` — для попередньої моделі (`cacheHandler` в однині); для `use cache` зразок
   лежить у самій сторінці `cacheHandlers`, розділ «Examples › External storage pattern».
-- **Читати:** `Using a CDN with Next.js`, `cacheHandlers`; поза корпусом — документація Redis (Upstash).
-- **Сервери MCP:** `nextjs-docs`.
+- **Читати:** `Using a CDN with Next.js`, `cacheHandlers`; документація Redis — примірник `redis`; поза корпусом —
+  Upstash.
+- **Сервери MCP:** `nextjs-docs`, `redis-docs`.
 - **Зробити:** схема на папері: браузер, CDN, Next.js, база; на кожному рівні — що лежить, скільки живе і чим
   скидається.
 - **Перевірити себе:** для будь-якого блоку вашої сторінки ви показуєте пальцем рівень, де він застаріє.

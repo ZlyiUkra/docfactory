@@ -348,7 +348,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 
 | Бібліотека | Навіщо | Де в плані |
 |------------|--------|------------|
-| BullMQ і Redis | черги задач із повторами; Redis — ще й остання ціна й адаптер вебсокетів | Ф6 Д6, Ф7 Д5–6 |
+| BullMQ і Redis | черги задач із повторами; Redis — ще й остання ціна й адаптер вебсокетів | Ф6 Д6, Ф7 Д5–6; є примірник `redis` (BullMQ — ще ні) |
 | `@socket.io/redis-adapter` | розсилка socket.io між кількома екземплярами через Redis | Ф7 Д6; є примірник `socketio` |
 | `ws`, `@nestjs/platform-ws` | голий протокол WebSocket: сервер для навчання й клієнт до біржі; `WsAdapter` | Ф7 Д1, Д2, Д5 |
 | `@nestjs/event-emitter` | події всередині застосунку | Ф6 Д6 |
@@ -422,6 +422,8 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   `nghttp2`;
 - Fastify (довідник, посібники, код, тести й README ≈160 плагінів усіх випусків 1.0–5.12; NestJS працює на ньому через
   адаптер) — `fastify`;
+- Redis (сайт кожної мінорної лінії 1.3–8.10, `redis.conf` і нотатки всіх випусків, код і тести: команди, збереження,
+  реплікація, Sentinel, Cluster, ACL, потоки; під BullMQ, кешем і адаптером socket.io) — `redis`;
 - nginx: проксі перед API, стиснення, вебсокети через проксі — `nginx`;
 - Supabase — `supabase`; Clerk — `clerk`;
 - API споту Binance (REST, WebSocket API, потоки ринкових даних, ліміти, журнал змін) — `binance-spot`;
@@ -438,7 +440,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 глава про інтеграцію (TypeORM, Passport, BullMQ, class-validator), але не документація самої бібліотеки:
 
 - з «треба знати»: TypeORM, Passport, bcrypt, class-validator, class-transformer, supertest, RxJS;
-- з «варто знати»: BullMQ, Redis, `ws`, nestjs-cls, nestjs-pino, csrf-csrf, CASL, orval, openapi-typescript;
+- з «варто знати»: BullMQ, `ws`, nestjs-cls, nestjs-pino, csrf-csrf, CASL, orval, openapi-typescript;
 - з «знати, що існує»: Mongoose, MikroORM, Kafka, RabbitMQ, NATS.
 
 ---
@@ -1721,7 +1723,7 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 Сервер, який треба зібрати, запустити, тримати живим, міряти й вміти оновити. Глави Nest тут — лише те, що Nest
 вимагає від Docker, проксі й CI. Docker і Compose мають примірник `docker`, Kubernetes, k3s і Traefik — примірник
 `kubernetes`, безкоштовна машина Oracle Cloud — примірник `oracle-cloud`, GitHub Actions — примірник
-`github-actions`, nginx — примірник `nginx`; документації Redis у фабриці немає.
+`github-actions`, nginx — примірник `nginx`, Redis — примірник `redis`.
 Дні 1–7 робляться на своєму комп'ютері й на тому самому хості (PaaS), куди ви викотили застосунок у фазі 2:
 `docker compose` лишається способом розробки до кінця родини. Дні 8–9 переносять продакшн у кластер k3s, який ви
 підняли в плані React (фаза 5, дні 7–9): бекенд, база й Redis стають подами поруч із подом SPA, а хост із фази 2
