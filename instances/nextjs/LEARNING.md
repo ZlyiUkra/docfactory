@@ -405,6 +405,8 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - c-ares (сторінки man, заголовки, нотатки випусків і код усіх випусків 1.1–1.34; DNS-резолвер під `dns` Node) —
   `cares`;
 - llhttp (парсер HTTP/1.x під `http` Node: README, заголовок, код, тести й нотатки випусків 1.0–9.4) — `llhttp`;
+- nghttp2 (HTTP/2 і HPACK на C під `http2` Node: посібник, заголовок, код, тести й нотатки випусків 0.1–1.70) —
+  `nghttp2`;
 - Docker — `docker`; Kubernetes, k3s, Traefik, Kustomize, SOPS, age і Helm — `kubernetes`; sshd — `linux`;
 - безкоштовна машина Oracle Cloud (Always Free, повернення бездіяльних машин, «out of host capacity», бюджети), OKE —
   `oracle-cloud`;

@@ -418,6 +418,8 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 - c-ares (сторінки man, заголовки, нотатки випусків і код усіх випусків 1.1–1.34; DNS-резолвер під `dns` Node) —
   `cares`;
 - llhttp (парсер HTTP/1.x під `http` Node: README, заголовок, код, тести й нотатки випусків 1.0–9.4) — `llhttp`;
+- nghttp2 (HTTP/2 і HPACK на C під `http2` Node: посібник, заголовок, код, тести й нотатки випусків 0.1–1.70) —
+  `nghttp2`;
 - nginx: проксі перед API, стиснення, вебсокети через проксі — `nginx`;
 - Supabase — `supabase`; Clerk — `clerk`;
 - API споту Binance (REST, WebSocket API, потоки ринкових даних, ліміти, журнал змін) — `binance-spot`;
