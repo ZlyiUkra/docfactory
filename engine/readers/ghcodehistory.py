@@ -125,6 +125,71 @@ def _outline_sol(text: str) -> str:
     return "\n\n".join(out)
 
 
+# Заголовки C/C++ з коментарями Doxygen (ICU): розділ починається коментарем «/** … */» і
+# триває до наступного такого коментаря; назва розділу — те, що оголошує перше оголошення
+# під ним. Макроси на кшталт U_CAPI, U_EXPORT2 назвою не бувають.
+_C_KIND = re.compile(r"\b(class|struct|union|enum(?:\s+class)?|namespace)\s+(?:U_\w+\s+)*([A-Za-z_]\w*)")
+_C_CALL = re.compile(r"([A-Za-z_~][\w:~]*)\s*\(")
+_C_LAST = re.compile(r"([A-Za-z_]\w*)\s*(?:\[[^\]]*\])?\s*(?:=[^;]*)?;")
+_C_MACRO = re.compile(r"^(?:U_[A-Z0-9_]+|if|while|for|switch|sizeof|return)$")
+
+
+def _c_heading(comment: list, decl: list) -> str:
+    """Назва розділу за коментарем і першим оголошенням під ним."""
+    for line in comment:
+        if m := re.search(r"[@\\]file\s+(\S+)", line):
+            return f"## File {m[1]}"
+    text = " ".join(x.strip() for x in decl).strip()
+    if m := re.match(r"#\s*define\s+([A-Za-z_]\w*)", text):
+        return f"## {m[1]}"
+    if (m := _C_KIND.search(text)) and "(" not in text.split(m[0])[0]:
+        return f"## {m[1].split()[0]} {m[2]}"
+    for m in _C_CALL.finditer(text):
+        if not _C_MACRO.match(m[1]):
+            return f"## {m[1]}()"
+    if m := _C_LAST.search(text):
+        return f"## {m[1]}"
+    return ""
+
+
+def _outline_c(text: str) -> str:
+    """Заголовок C/C++ з розділами: коментар Doxygen разом з оголошенням, що йде під ним."""
+    lines = text.rstrip().split("\n")
+    parts: list = [["", []]]
+    used: dict = {}
+    i, n = 0, len(lines)
+    while i < n:
+        if re.match(r"^\s*/\*\*", lines[i]):
+            j = i
+            while j < n and "*/" not in lines[j]:
+                j += 1
+            comment = lines[i:j + 1]
+            k, decl = j + 1, []
+            while k < n and len(decl) < 14 and not re.match(r"^\s*/\*\*", lines[k]):
+                decl.append(lines[k])
+                if re.search(r"[;{]\s*(?://.*)?$", lines[k]) or lines[k].lstrip().startswith("#"):
+                    break
+                k += 1
+            heading = _c_heading(comment, decl)
+            if heading:
+                used[heading] = used.get(heading, 0) + 1
+                if used[heading] > 1:
+                    heading = f"{heading} ({used[heading]})"
+            parts.append([heading, []])
+            parts[-1][1].extend(comment)
+            i = j + 1
+            continue
+        parts[-1][1].append(lines[i])
+        i += 1
+    out = []
+    for heading, body in parts:
+        code = "\n".join(body).strip("\n")
+        if not code.strip():
+            continue
+        out.append(f"{heading}\n\n```c\n{code}\n```" if heading else f"```c\n{code}\n```")
+    return "\n\n".join(out)
+
+
 @register("ghcode-history")
 def ghcode_history(source: dict, ctx) -> list[Item]:
     m = _TREES.match(urlsplit(source["url"]).path)
@@ -182,6 +247,8 @@ def ghcode_history(source: dict, ctx) -> list[Item]:
                 body = _outline(text, lang)
             elif outline and lang == "solidity":
                 body = _outline_sol(text)
+            elif outline and path.endswith(".h"):
+                body = _outline_c(text)
             else:
                 body = f"```{lang}\n{text.rstrip()}\n```"
             title = f"{repo}: {path}"
