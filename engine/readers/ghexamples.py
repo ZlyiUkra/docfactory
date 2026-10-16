@@ -6,6 +6,9 @@
                Необов'язкове поле `folder` — інша тека прикладів (`templates`), а
                порожній рядок — корінь репозиторію: в expo/examples кожен приклад
                лежить просто в корені.
+               Необов'язкове `name_prefix` — рядок перед іменем документа («redis-js» →
+               «redis-js-examples-nextjs»): приклади з однаковими назвами тек у кількох
+               репозиторіях одного примірника інакше ділять один ключ розділу.
 
 Навіщо. Сторінка прикладу на сайті TanStack Query (…/examples/simple) markdown-двійника
 не має: вона показує код, який підтягує з теки прикладу в репозиторії. Тож приклад
@@ -67,6 +70,8 @@ def ghexamples(source: dict, ctx) -> list[Item]:
     if tree.get("truncated"):
         raise SystemExit(f"{source['url']}: GitHub обрізав дерево — перелік був би неповним.")
     folder = source.get("folder", "examples").strip("/")
+    lead = (re.sub(r"[^\w.-]+", "-", source["name_prefix"]).strip("-") + "-"
+            if source.get("name_prefix") else "")
     prefix = f"{folder}/" if folder else ""
     blobs = {e["path"]: e.get("size", 0) for e in tree["tree"]
              if e.get("type") == "blob" and e.get("path", "").startswith(prefix)}
@@ -90,7 +95,9 @@ def ghexamples(source: dict, ctx) -> list[Item]:
         if not files or not all(ctx.allowed(r) for r in raws):
             continue
         page = f"https://github.com/{owner}/{repo}/tree/{ref}/{quote(root)}"
-        name = _markup.slug(root)
+        # `name_prefix` — рядок перед іменем документа: приклади «nextjs» кількох репозиторіїв
+        # одного примірника інакше мали б один ключ розділу, і пошук згортав би один як повтор іншого.
+        name = lead + _markup.slug(root)
 
         def make(root=root, files=files, raws=raws, page=page):
             title = f"Example: {root.removeprefix(prefix)}"
