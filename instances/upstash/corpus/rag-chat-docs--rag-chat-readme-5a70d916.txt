@@ -1,0 +1,132 @@
+# Upstash RAG Chat SDK
+# джерело: https://github.com/upstash/rag-chat/blob/v1.2.1/README.md
+# отримано: 2026-10-16
+# версія: rag-chat-1.2.1
+
+The `@upstash/rag-chat` package makes it easy to develop powerful retrieval-augmented generation (RAG) chat applications with minimal setup and configuration.
+
+Features:
+
+- Next.js compatibility with streaming support
+- Ingest entire websites, PDFs and more out of the box
+- Built-in Vector store for your knowledge base
+- (Optional) built-in Redis compatibility for fast chat history management
+- (Optional) built-in rate limiting
+- (Optional) disableRag option to use it as LLM + chat history
+
+## Getting started
+
+### Installation
+
+Install the package using your preferred package manager:
+
+```sh
+pnpm add @upstash/rag-chat
+
+bun add @upstash/rag-chat
+
+npm i @upstash/rag-chat
+```
+
+### Quick start
+
+1. Set up your environment variables:
+
+```sh
+UPSTASH_VECTOR_REST_URL="XXXXX"
+UPSTASH_VECTOR_REST_TOKEN="XXXXX"
+
+
+# if you use OpenAI compatible models
+OPENAI_API_KEY="XXXXX"
+
+# or if you use Upstash hosted models
+QSTASH_TOKEN="XXXXX"
+
+# Optional: For Redis-based chat history (default is in-memory)
+UPSTASH_REDIS_REST_URL="XXXXX"
+UPSTASH_REDIS_REST_TOKEN="XXXXX"
+```
+
+2. Initialize and use RAGChat:
+
+```typescript
+import { RAGChat } from "@upstash/rag-chat";
+
+const ragChat = new RAGChat();
+
+const response = await ragChat.chat("Tell me about machine learning");
+console.log(response);
+```
+
+### Basic Usage
+
+```typescript
+import { RAGChat, openai } from "@upstash/rag-chat";
+
+export const ragChat = new RAGChat({
+  model: openai("gpt-4-turbo"),
+});
+
+
+await ragChat.context.add({
+  type: "text",
+  data: "The speed of light is approximately 299,792,458 meters per second.",
+});
+
+await ragChat.context.add({
+  type: "pdf",
+  fileSource: "./data/physics_basics.pdf",
+});
+const response = await ragChat.chat("What is the speed of light?");
+
+console.log(response.output);
+```
+
+### Docs
+
+Checkout the documentation for integrations and advanced options.
+
+#### Langsmith
+
+LangSmith is a powerful development platform for LLM applications that provides valuable insights, debugging tools, and performance monitoring. Integrating LangSmith with RAGChat can significantly enhance your development workflow and application quality.
+
+##### For Upstash Models
+
+```ts
+import { RAGChat, upstash } from "ragchat";
+
+const ragChat = new RAGChat({
+  model: upstash("meta-llama/Meta-Llama-3-8B-Instruct", {
+    apiKey: process.env.QSTASH_TOKEN,
+    analytics: { name: "langsmith", token: process.env.LANGCHAIN_API_KEY },
+  }),
+});
+```
+
+##### For Custom Models (e.g., Meta-Llama)
+
+```ts
+import { RAGChat, custom } from "ragchat";
+
+const ragChat = new RAGChat({
+  model: custom("meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo", {
+    apiKey: "xxx",
+    baseUrl: "https://api.together.xyz",
+    analytics: { name: "langsmith", token: process.env.LANGCHAIN_API_KEY! },
+  }),
+});
+```
+
+##### For OpenAI Models
+
+```ts
+import { RAGChat, openai } from "ragchat";
+
+const ragChat = new RAGChat({
+  model: openai("gpt-3.5-turbo", {
+    apiKey: process.env.OPENAI_API_KEY!,
+    analytics: { name: "langsmith", token: process.env.LANGCHAIN_API_KEY },
+  }),
+});
+```

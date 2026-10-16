@@ -1,0 +1,119 @@
+# qstash-js: src/client/api/llm.ts
+# джерело: https://github.com/upstash/qstash-js/blob/v2.7.16/src/client/api/llm.ts
+# отримано: 2026-10-16
+# версія: qstash-2.7.16
+
+```ts
+import { BaseProvider } from "./base";
+import type { LLMOptions, LLMOwner, ProviderInfo } from "./types";
+import { updateWithAnalytics } from "./utils";
+```
+
+## class LLMProvider
+
+```ts
+export class LLMProvider<TOwner extends LLMOwner> extends BaseProvider<"llm", LLMOwner> {
+  public readonly apiKind = "llm";
+  public readonly organization?: string;
+
+  constructor(baseUrl: string, token: string, owner: TOwner, organization?: string) {
+    super(baseUrl, token, owner);
+    this.organization = organization;
+  }
+
+  getRoute(): string[] {
+    return this.owner === "anthropic" ? ["v1", "messages"] : ["v1", "chat", "completions"];
+  }
+```
+
+### LLMProvider.getHeaders()
+
+```ts
+  getHeaders(options: LLMOptions): Record<string, string> {
+    // don't send auth header in upstash
+    if (this.owner === "upstash" && !options.analytics) {
+      return { "content-type": "application/json" };
+    }
+
+    const header = this.owner === "anthropic" ? "x-api-key" : "authorization";
+    const headerValue = this.owner === "anthropic" ? this.token : `Bearer ${this.token}`;
+
+    const headers = {
+      [header]: headerValue,
+      "content-type": "application/json",
+    };
+
+    if (this.owner === "openai" && this.organization) {
+      headers["OpenAI-Organization"] = this.organization;
+    }
+
+    return headers;
+  }
+```
+
+### LLMProvider.onFinish()
+
+```ts
+  /**
+   * Checks if callback exists and adds analytics in place if it's set.
+   *
+   * @param request
+   * @param options
+   */
+  onFinish(providerInfo: ProviderInfo, options: LLMOptions): ProviderInfo {
+    // add analytics if they exist
+    if (options.analytics) {
+      return updateWithAnalytics(providerInfo, options.analytics);
+    }
+
+    return providerInfo;
+  }
+}
+
+// PROVIDERS
+```
+
+## const upstash
+
+```ts
+export const upstash = (): LLMProvider<"upstash"> => {
+  return new LLMProvider("https://qstash.upstash.io/llm", "", "upstash");
+};
+```
+
+## const openai
+
+```ts
+export const openai = ({
+  token,
+  organization,
+}: {
+  token: string;
+  organization?: string;
+}): LLMProvider<"openai"> => {
+  return new LLMProvider("https://api.openai.com", token, "openai", organization);
+};
+```
+
+## const anthropic
+
+```ts
+export const anthropic = ({ token }: { token: string }): LLMProvider<"anthropic"> => {
+  return new LLMProvider("https://api.anthropic.com", token, "anthropic");
+};
+```
+
+## const custom
+
+```ts
+export const custom = ({
+  baseUrl,
+  token,
+}: {
+  baseUrl: string;
+  token: string;
+}): LLMProvider<"custom"> => {
+  const trimmedBaseUrl = baseUrl.replace(/\/(v1\/)?chat\/completions$/, ""); // Will trim /v1/chat/completions and /chat/completions
+  return new LLMProvider(trimmedBaseUrl, token, "custom");
+};
+```

@@ -1,0 +1,514 @@
+# Example: nextjs/chat-to-website
+# джерело: https://github.com/upstash/rag-chat/tree/v2.0.3/examples/nextjs/chat-to-website
+# отримано: 2026-10-16
+# версія: rag-chat-2.0.3
+
+A complete project example with RAGChat & Next.js 14
+
+## ci.test.ts
+
+```ts
+import { test, expect } from "bun:test";
+import { Redis } from "@upstash/redis";
+import { Index } from "@upstash/vector";
+
+const deploymentURL = process.env.DEPLOYMENT_URL;
+if (!deploymentURL) {
+  throw new Error("DEPLOYMENT_URL not set");
+}
+
+async function collectStream(response: Response): Promise<string> {
+  if (!response.body) {
+    throw new Error("No response body");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let content = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+
+    if (done) {
+      break;
+    }
+
+    // Decode the stream chunk and append it to the content
+    const chunk = decoder.decode(value, { stream: true });
+    content += chunk;
+  }
+
+  // Return the fully collected content
+  return content;
+}
+
+async function invokeLoadPage(
+  website = "https:/raw.githubusercontent.com/upstash/docs/refs/heads/main/workflow/basics/caveats.mdx"
+) {
+  await fetch(`${deploymentURL}/${website}`, { method: "GET" });
+}
+
+async function invokeChat(userMessage: string, url = "http://localhost:3000/") {
+  return await fetch(`${deploymentURL}/api/chat-stream`, {
+    body: JSON.stringify({
+      messages: [
+        {
+          role: "user",
+          content: userMessage,
+        },
+      ],
+    }),
+    method: "POST",
+  });
+}
+
+const index = new Index({
+  url: process.env.UPSTASH_VECTOR_REST_URL,
+  token: process.env.UPSTASH_VECTOR_REST_TOKEN,
+});
+
+async function resetResources() {
+  const redis = Redis.fromEnv();
+  await redis.flushdb();
+
+  await index.reset({ all: true });
+  // wait for indexing
+  await new Promise((r) => setTimeout(r, 2000));
+}
+
+test(
+  "should invoke chat",
+  async () => {
+    await resetResources();
+    console.log("reset resources");
+
+    await invokeLoadPage();
+    console.log("loaded page");
+
+    const indexInfo = await index.info();
+    console.log("index info:", indexInfo);
+
+    const chatStream = await invokeChat(
+      "can you nest context.run statements? respond with just 'foo' if yes, 'bar' otherwise."
+    );
+    console.log("invoked chat");
+
+    const result = await collectStream(chatStream);
+    console.log("streamed response");
+    console.log(result);
+
+    const lowerCaseResult = result.toLowerCase();
+    expect(lowerCaseResult.includes("foo")).toBeTrue();
+    expect(lowerCaseResult.includes("bar")).toBeFalse();
+  },
+  { timeout: 20_000 }
+);
+```
+
+## package.json
+
+```json
+{
+  "name": "chat-to-website",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@nextui-org/react": "^2.4.6",
+    "@upstash/rag-chat": "latest",
+    "@upstash/redis": "^1.34.0",
+    "@upstash/vector": "^1.1.7",
+    "ai": "^3.3.0",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.424.0",
+    "next": "14.2.11",
+    "react": "^18",
+    "react-dom": "^18",
+    "tailwind-merge": "^2.4.0",
+    "tailwindcss-animate": "^1.0.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.5",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5"
+  }
+}
+```
+
+## src/app/[...url]/page.tsx
+
+```tsx
+import { ChatWrapper } from "@/components/ChatWrapper";
+import { ragChat } from "@/lib/rag-chat";
+import { redis } from "@/lib/redis";
+import { cookies } from "next/headers";
+
+interface PageProps {
+  params: {
+    url: string | string[] | undefined;
+  };
+}
+
+function reconstructUrl({ url }: { url: string[] }) {
+  const decodedComponents = url.map((component) => decodeURIComponent(component));
+
+  return decodedComponents.join("//");
+}
+
+const Page = async ({ params }: PageProps) => {
+  const sessionCookie = cookies().get("sessionId")?.value;
+  const reconstructedUrl = reconstructUrl({ url: params.url as string[] });
+
+  const sessionId = (reconstructedUrl + "--" + sessionCookie).replace(/\//g, "");
+
+  const isAlreadyIndexed = await redis.sismember("indexed-urls", reconstructedUrl);
+
+  const initialMessages = await ragChat.history.getMessages({ amount: 10, sessionId });
+
+  if (!isAlreadyIndexed) {
+    await ragChat.context.add({
+      type: "html",
+      source: reconstructedUrl,
+      config: { chunkOverlap: 50, chunkSize: 200 },
+    });
+
+    await redis.sadd("indexed-urls", reconstructedUrl);
+  }
+
+  return <ChatWrapper sessionId={sessionId} initialMessages={initialMessages} />;
+};
+
+export default Page;
+```
+
+## src/app/api/chat-stream/route.ts
+
+```ts
+import { ragChat } from "@/lib/rag-chat";
+import { aiUseChatAdapter } from "@upstash/rag-chat/nextjs";
+import { NextRequest } from "next/server";
+
+export const POST = async (req: NextRequest) => {
+  const { messages, sessionId } = await req.json();
+
+  const lastMessage = messages[messages.length - 1].content;
+
+  const response = await ragChat.chat(lastMessage, { streaming: true, sessionId });
+
+  return aiUseChatAdapter(response);
+};
+```
+
+## src/app/layout.tsx
+
+```tsx
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { cn } from "@/lib/utils";
+import { Providers } from "@/components/Providers";
+
+const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: "Create Next App",
+  description: "Generated by create next app",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <body className={cn(inter.className, "min-h-screen antialiased")}>
+        <Providers>
+          <main className="h-screen dark text-foreground bg-background">{children}</main>
+        </Providers>
+      </body>
+    </html>
+  );
+}
+```
+
+## src/app/page.tsx
+
+```tsx
+import Link from "next/link";
+
+export default function Home() {
+  return (
+    <main className="flex min-h-screen justify-center items-center">
+      <div className="w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
+        <div className="mb-3 ml-1">
+          Enter a website URL as the route to get started
+          <Link className="block underline" href="/https://example.com">
+            {"http://localhost:3000/example.com"}
+          </Link>
+        </div>
+        <div>
+          <iframe
+            width="560"
+            height="315"
+            src="https://www.youtube.com/embed/Ka8GoIUhM3g?si=Xyc0CUEjPFtjoPeM"
+            title="YouTube video player"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerPolicy="strict-origin-when-cross-origin"
+            allowFullScreen
+          ></iframe>
+        </div>
+      </div>
+    </main>
+  );
+}
+```
+
+## src/components/ChatInput.tsx
+
+```tsx
+"use client";
+
+import { Button, Textarea } from "@nextui-org/react";
+import { Send } from "lucide-react";
+import { type useChat } from "ai/react";
+
+type HandleInputChange = ReturnType<typeof useChat>["handleInputChange"];
+type HandleSubmit = ReturnType<typeof useChat>["handleSubmit"];
+type SetInput = ReturnType<typeof useChat>["setInput"];
+
+interface ChatInputProps {
+  input: string;
+  handleInputChange: HandleInputChange;
+  handleSubmit: HandleSubmit;
+  setInput: SetInput;
+}
+
+export const ChatInput = ({ handleInputChange, handleSubmit, input, setInput }: ChatInputProps) => {
+  return (
+    <div className="z-10 bg-zinc-900 absolute bottom-0 left-0 w-full">
+      <div className="mx-2 flex flex-row gap-3 md:mx-4 md:last:mb-6 lg:mx-auto lg:max-w-2xl xl:max-w-3xl">
+        <div className="relative flex h-full flex-1 items-stretch md:flex-col">
+          <div className="relative flex flex-col w-full flex-grow p-4">
+            <form onSubmit={handleSubmit} className="relative">
+              <Textarea
+                minRows={4}
+                autoFocus
+                onChange={handleInputChange}
+                value={input}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit();
+                    setInput("");
+                  }
+                }}
+                placeholder="Enter your question..."
+                className="resize-none bg-zinc-800 hover:bg-zinc-900 rounded-xl text-base"
+              />
+
+              <Button
+                size="sm"
+                type="submit"
+                className="absolute z-10 border border-border bg-zinc-900 right-2 bottom-2"
+              >
+                <Send className="size-4" />
+              </Button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+```
+
+## src/components/ChatWrapper.tsx
+
+```tsx
+"use client";
+
+import { Message, useChat } from "ai/react";
+import { Messages } from "./Messages";
+import { ChatInput } from "./ChatInput";
+
+export const ChatWrapper = ({
+  sessionId,
+  initialMessages,
+}: {
+  sessionId: string;
+  initialMessages: Message[];
+}) => {
+  const { messages, handleInputChange, handleSubmit, input, setInput } = useChat({
+    api: "/api/chat-stream",
+    body: { sessionId },
+    initialMessages,
+  });
+
+  return (
+    <div className="relative min-h-full bg-zinc-900 flex divide-y divide-zinc-700 flex-col justify-between gap-2">
+      <div className="flex-1 text-black bg-zinc-800 justify-between flex flex-col">
+        <Messages messages={messages} />
+      </div>
+
+      <ChatInput
+        input={input}
+        handleInputChange={handleInputChange}
+        handleSubmit={handleSubmit}
+        setInput={setInput}
+      />
+    </div>
+  );
+};
+```
+
+## src/components/Message.tsx
+
+```tsx
+import { cn } from "@/lib/utils";
+import { Bot, User } from "lucide-react";
+
+interface MessageProps {
+  content: string;
+  isUserMessage: boolean;
+}
+
+export const Message = ({ content, isUserMessage }: MessageProps) => {
+  return (
+    <div
+      className={cn({
+        "bg-zinc-800": isUserMessage,
+        "bg-zinc-900/25": !isUserMessage,
+      })}
+    >
+      <div className="p-6">
+        <div className="max-w-3xl mx-auto flex items-start gap-2.5">
+          <div
+            className={cn(
+              "size-10 shrink-0 aspect-square rounded-full border border-zinc-700 bg-zinc-900 flex justify-center items-center",
+              {
+                "bg-blue-950 border-blue-700 text-zinc-200": isUserMessage,
+              }
+            )}
+          >
+            {isUserMessage ? <User className="size-5" /> : <Bot className="size-5 text-white" />}
+          </div>
+
+          <div className="flex flex-col ml-6 w-full">
+            <div className="flex items-center space-x-2">
+              <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                {isUserMessage ? "You" : "Website"}
+              </span>
+            </div>
+
+            <p className="text-sm font-normal py-2.5 text-gray-900 dark:text-white">{content}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+```
+
+## src/components/Messages.tsx
+
+```tsx
+import { type Message as TMessage } from "ai/react";
+import { Message } from "./Message";
+import { MessageSquare } from "lucide-react";
+
+interface MessagesProps {
+  messages: TMessage[];
+}
+
+export const Messages = ({ messages }: MessagesProps) => {
+  return (
+    <div className="flex max-h-[calc(100vh-3.5rem-7rem)] flex-1 flex-col overflow-y-auto">
+      {messages.length ? (
+        messages.map((message, i) => (
+          <Message key={i} content={message.content} isUserMessage={message.role === "user"} />
+        ))
+      ) : (
+        <div className="flex-1 flex flex-col items-center justify-center gap-2">
+          <MessageSquare className="size-8 text-blue-500" />
+          <h3 className="font-semibold text-xl text-white">You&apos;re all set!</h3>
+          <p className="text-zinc-500 text-sm">Ask your first question to get started.</p>
+        </div>
+      )}
+    </div>
+  );
+};
+```
+
+## src/components/Providers.tsx
+
+```tsx
+"use client";
+
+import { PropsWithChildren } from "react";
+import { NextUIProvider } from "@nextui-org/react";
+
+export const Providers = ({ children }: PropsWithChildren) => {
+  return <NextUIProvider>{children}</NextUIProvider>;
+};
+```
+
+## src/lib/rag-chat.ts
+
+```ts
+import { RAGChat, upstash } from "@upstash/rag-chat";
+import { redis } from "./redis";
+
+export const ragChat = new RAGChat({
+  model: upstash("meta-llama/Meta-Llama-3-8B-Instruct"),
+  redis: redis,
+});
+```
+
+## src/lib/redis.ts
+
+```ts
+import { Redis } from "@upstash/redis";
+
+export const redis = Redis.fromEnv();
+```
+
+## src/lib/utils.ts
+
+```ts
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+```
+
+## src/middleware.ts
+
+```ts
+import { NextRequest, NextResponse } from "next/server";
+
+export function middleware(req: NextRequest) {
+  const res = NextResponse.next();
+
+  const cookie = req.cookies.get("sessionId");
+
+  if (!cookie) {
+    res.cookies.set("sessionId", crypto.randomUUID());
+  }
+
+  return res;
+}
+```

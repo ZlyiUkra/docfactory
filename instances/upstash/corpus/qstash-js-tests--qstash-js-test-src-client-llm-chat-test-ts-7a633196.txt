@@ -1,0 +1,583 @@
+# qstash-js: src/client/llm/chat.test.ts
+# джерело: https://github.com/upstash/qstash-js/blob/v2.6.5/src/client/llm/chat.test.ts
+# отримано: 2026-10-16
+# версія: qstash-2.6.5
+
+```ts
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+import { OpenAIStream, StreamingTextResponse } from "ai";
+import { describe, expect, mock, test } from "bun:test";
+import { Client } from "../client";
+import { custom, openai, upstash } from "./providers";
+import type { ChatCompletionChunk, ChatRequest } from "./types";
+import type { Requester } from "../http";
+```
+
+## function checkStream
+
+```ts
+async function checkStream(
+  stream: AsyncIterable<ChatCompletionChunk>,
+  expectInStream: string[] // array of strings to expect in stream
+): Promise<void> {
+  const _stream = OpenAIStream(stream);
+  const textResponse = new StreamingTextResponse(_stream);
+  const text = await textResponse.text();
+
+  const lines = text.split("\n").filter((line) => line.length > 0);
+
+  expect(lines.length).toBeGreaterThan(0);
+  expect(lines.some((line) => line.startsWith('0:"'))).toBeTrue(); // all lines start with `0:"`
+  expect(expectInStream.every((token) => text.includes(token))).toBeTrue();
+}
+```
+
+## Test Qstash chat
+
+```ts
+describe("Test Qstash chat", () => {
+  const client = new Client({ token: process.env.QSTASH_TOKEN! });
+```
+
+### should respond to prompt
+
+```ts
+  test(
+    "should respond to prompt",
+    async () => {
+      const response = await client.chat().prompt({
+        provider: upstash(),
+        model: "meta-llama/Meta-Llama-3-8B-Instruct",
+        system: "from now on, foo is whale",
+        user: "what exactly is foo?",
+        temperature: 0.5,
+      });
+
+      expect(response instanceof ReadableStream).toBeFalse();
+      expect(response.choices.length).toBe(1);
+      expect(response.choices[0].message.content.includes("whale")).toBeTrue();
+      expect(response.choices[0].message.role).toBe("assistant");
+    },
+    { timeout: 30_000, retry: 3 }
+  );
+```
+
+### should respond to create
+
+```ts
+  test(
+    "should respond to create",
+    async () => {
+      const response = await client.chat().create({
+        provider: upstash(),
+        model: "meta-llama/Meta-Llama-3-8B-Instruct",
+        messages: [
+          {
+            role: "system",
+            content: "from now on, foo is whale",
+          },
+          {
+            role: "user",
+            content: "what exactly is foo?",
+          },
+        ],
+        temperature: 0.5,
+      });
+
+      expect(response instanceof ReadableStream).toBeFalse();
+      expect(response.choices.length).toBe(1);
+      expect(response.choices[0].message.content.includes("whale")).toBeTrue();
+      expect(response.choices[0].message.role).toBe("assistant");
+    },
+    { timeout: 30_000, retry: 3 }
+  );
+```
+
+### should stream prompt
+
+```ts
+  test(
+    "should stream prompt",
+    async () => {
+      const response = await client.chat().prompt({
+        provider: upstash(),
+        model: "meta-llama/Meta-Llama-3-8B-Instruct",
+        system: "from now on, foo is whale",
+        user: "what exactly is foo?",
+        stream: true,
+        temperature: 0.5,
+      });
+
+      await checkStream(response, ["whale"]);
+    },
+    { timeout: 30_000, retry: 3 }
+  );
+```
+
+### should stream create
+
+```ts
+  test(
+    "should stream create",
+    async () => {
+      const response = await client.chat().create({
+        provider: upstash(),
+        model: "meta-llama/Meta-Llama-3-8B-Instruct",
+        messages: [
+          {
+            role: "system",
+            content: "from now on, foo is whale",
+          },
+          {
+            role: "user",
+            content: "what exactly is foo?",
+          },
+        ],
+        stream: true,
+        temperature: 0.5,
+      });
+
+      await checkStream(response, ["whale"]);
+    },
+    { timeout: 30_000, retry: 3 }
+  );
+```
+
+### should publish with llm api
+
+```ts
+  test("should publish with llm api", async () => {
+    const result = await client.publishJSON({
+      api: { name: "llm", provider: upstash() },
+      body: {
+        model: "meta-llama/Meta-Llama-3-8B-Instruct",
+        messages: [
+          {
+            role: "user",
+            content: "hello",
+          },
+        ],
+      },
+      callback: "https://example.com",
+    });
+    expect(result.messageId).toBeTruthy();
+  });
+```
+
+### should batch with llm api
+
+```ts
+  test("should batch with llm api", async () => {
+    const result = await client.batchJSON([
+      {
+        api: { name: "llm", provider: upstash() },
+        body: {
+          model: "meta-llama/Meta-Llama-3-8B-Instruct",
+          messages: [
+            {
+              role: "user",
+              content: "hello",
+            },
+          ],
+        },
+        callback: "https://example.com",
+      },
+    ]);
+    expect(result.length).toBe(1);
+    expect(result[0].messageId).toBeTruthy();
+  });
+```
+
+### should enqueue with llm api
+
+```ts
+  test("should enqueue with llm api", async () => {
+    const queueName = "upstash-queue";
+    const queue = client.queue({ queueName });
+    const result = await queue.enqueueJSON({
+      api: { name: "llm", provider: upstash() },
+      body: {
+        model: "meta-llama/Meta-Llama-3-8B-Instruct",
+        messages: [
+          {
+            role: "user",
+            content: "hello",
+          },
+        ],
+      },
+      callback: "https://example.com/",
+    });
+    expect(result.messageId).toBeTruthy();
+  });
+});
+```
+
+## Test Qstash chat with third party LLMs
+
+```ts
+describe("Test Qstash chat with third party LLMs", () => {
+  const client = new Client({ token: process.env.QSTASH_TOKEN! });
+```
+
+### should respond to prompt
+
+```ts
+  test(
+    "should respond to prompt",
+    async () => {
+      const response = await client.chat().prompt({
+        provider: openai({ token: process.env.OPENAI_API_KEY! }),
+        model: "gpt-3.5-turbo",
+        system: "from now on, foo is whale",
+        user: "what exactly is foo?",
+        temperature: 0.5,
+      });
+
+      expect(response instanceof ReadableStream).toBeFalse();
+      expect(response.choices.length).toBe(1);
+      expect(response.choices[0].message.content.includes("whale")).toBeTrue();
+      expect(response.choices[0].message.role).toBe("assistant");
+    },
+    { timeout: 30_000, retry: 3 }
+  );
+```
+
+### should respond to create
+
+```ts
+  test(
+    "should respond to create",
+    async () => {
+      const response = await client.chat().create({
+        provider: openai({ token: process.env.OPENAI_API_KEY! }),
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "system",
+            content: "from now on, foo is whale",
+          },
+          {
+            role: "user",
+            content: "what exactly is foo?",
+          },
+        ],
+        temperature: 0.5,
+      });
+
+      expect(response instanceof ReadableStream).toBeFalse();
+      expect(response.choices.length).toBe(1);
+      expect(response.choices[0].message.content.includes("whale")).toBeTrue();
+      expect(response.choices[0].message.role).toBe("assistant");
+    },
+    { timeout: 30_000, retry: 3 }
+  );
+```
+
+### should stream prompt
+
+```ts
+  test(
+    "should stream prompt",
+    async () => {
+      const response = await client.chat().prompt({
+        provider: openai({ token: process.env.OPENAI_API_KEY! }),
+        model: "gpt-3.5-turbo",
+        system: "from now on, foo is whale",
+        user: "what exactly is foo?",
+        stream: true,
+        temperature: 0.5,
+      });
+
+      await checkStream(response, ["whale"]);
+    },
+    { timeout: 30_000, retry: 3 }
+  );
+```
+
+### should stream create
+
+```ts
+  test(
+    "should stream create",
+    async () => {
+      const response = await client.chat().create({
+        provider: openai({ token: process.env.OPENAI_API_KEY! }),
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "system",
+            content: "from now on, foo is whale",
+          },
+          {
+            role: "user",
+            content: "what exactly is foo?",
+          },
+        ],
+        stream: true,
+        temperature: 0.5,
+      });
+
+      await checkStream(response, ["whale"]);
+    },
+    { timeout: 30_000, retry: 3 }
+  );
+```
+
+### should publish with llm api
+
+```ts
+  test("should publish with llm api", async () => {
+    const result = await client.publishJSON({
+      api: { name: "llm", provider: openai({ token: process.env.OPENAI_API_KEY! }) },
+      body: {
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "user",
+            content: "Where is the capital of Turkey?",
+          },
+        ],
+      },
+      callback: "https://oz.requestcatcher.com/",
+    });
+    expect(result.messageId).toBeTruthy();
+  });
+```
+
+### should publish with llm api
+
+```ts
+  test("should publish with llm api", () => {
+    //@ts-expect-error We intentionally omit the callback to ensure the function fails as expected
+    const resultPromise = client.publishJSON({
+      api: { name: "llm", provider: openai({ token: process.env.OPENAI_API_KEY! }) },
+      body: {
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "user",
+            content: "Where is the capital of Turkey?",
+          },
+        ],
+      },
+    });
+
+    expect(resultPromise).rejects.toThrow("Callback cannot be undefined when using LLM");
+  });
+```
+
+### should batch with llm api
+
+```ts
+  test("should batch with llm api", async () => {
+    const result = await client.batchJSON([
+      {
+        api: { name: "llm", provider: openai({ token: process.env.OPENAI_API_KEY! }) },
+        body: {
+          model: "gpt-3.5-turbo",
+          messages: [
+            {
+              role: "user",
+              content: "hello",
+            },
+          ],
+        },
+        callback: "https://example.com",
+      },
+    ]);
+    expect(result.length).toBe(1);
+    expect(result[0].messageId).toBeTruthy();
+  });
+```
+
+### should enqueue with llm api
+
+```ts
+  test("should enqueue with llm api", async () => {
+    const queueName = "upstash-queue";
+    const queue = client.queue({ queueName });
+    const result = await queue.enqueueJSON({
+      api: { name: "llm", provider: openai({ token: process.env.OPENAI_API_KEY! }) },
+      body: {
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "user",
+            content: "hello",
+          },
+        ],
+      },
+      callback: "https://example.com/",
+    });
+    expect(result.messageId).toBeTruthy();
+  });
+});
+```
+
+## createThirdParty
+
+```ts
+describe("createThirdParty", () => {
+  // Use a dummy token for testing
+  const client = new Client({ token: "test-token" });
+  const mockHttp = {
+    request: mock((config: unknown) => {
+      return config as Promise<unknown>;
+    }),
+    requestStream: mock((config: unknown) => {
+      return config as AsyncIterable<ChatCompletionChunk>;
+    }),
+  };
+
+  client.http = mockHttp as Requester;
+```
+
+### should delete provider, system and analytics to prevent adding them to body
+
+```ts
+  test("should delete provider, system and analytics to prevent adding them to body", async () => {
+    const mockRequest = {
+      provider: {
+        baseUrl: "https://api.together.xyz",
+        token: "xxx",
+        owner: "together",
+      },
+      model: "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+      messages: [
+        { role: "system", content: "from now on, foo is whale" },
+        { role: "user", content: "what exactly is foo?" },
+      ],
+      temperature: 0.5,
+      stream: false,
+      analytics: {
+        name: "helicone",
+        token: "helicone-token",
+      },
+      system: "Some system message", // This should be deleted
+    };
+
+    //@ts-expect-error required for tests because createThirdParty is private
+    await client.chat().createThirdParty(mockRequest);
+
+    const requestBody = JSON.parse((mockHttp.request.mock.calls[0][0] as any).body);
+
+    // Explicitly check that deleted properties are not in the body
+    expect(requestBody).not.toHaveProperty("provider");
+    expect(requestBody).not.toHaveProperty("system");
+    expect(requestBody).not.toHaveProperty("analytics");
+
+    // Check that other properties are still present with correct values
+    expect(requestBody).toEqual({
+      model: "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+      messages: [
+        { role: "system", content: "from now on, foo is whale" },
+        { role: "user", content: "what exactly is foo?" },
+      ],
+      temperature: 0.5,
+      stream: false,
+    });
+  });
+```
+
+### should call request with analytics enabled
+
+```ts
+  test("should call request with analytics enabled", async () => {
+    const mockRequest = {
+      provider: {
+        baseUrl: "https://api.together.xyz",
+        token: "xxx",
+        owner: "together",
+      },
+      model: "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+      messages: [
+        { role: "system", content: "from now on, foo is whale" },
+        { role: "user", content: "what exactly is foo?" },
+      ],
+      temperature: 0.5,
+      stream: false,
+      analytics: {
+        name: "helicone",
+        token: "helicone-token",
+      },
+      system: "Some system message", // This will be deleted
+    };
+
+    //@ts-expect-error required for tests because createThirdParty is private
+    await client.chat().createThirdParty(mockRequest);
+
+    expect(mockHttp.request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: [],
+        method: "POST",
+        headers: expect.objectContaining({
+          "Content-Type": "application/json",
+          Authorization: "Bearer xxx",
+          "Helicone-Auth": "Bearer helicone-token",
+          "Helicone-Target-Url": "https://api.together.xyz",
+        }),
+        baseUrl: "https://gateway.helicone.ai/v1/chat/completions",
+      })
+    );
+
+    expect(JSON.parse((mockHttp.request.mock.calls[0][0] as any).body)).toEqual({
+      model: "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+      messages: [
+        { role: "system", content: "from now on, foo is whale" },
+        { role: "user", content: "what exactly is foo?" },
+      ],
+      temperature: 0.5,
+      stream: false,
+    });
+  });
+```
+
+### should call requestStream with analytics disabled and stream enabled
+
+```ts
+  test("should call requestStream with analytics disabled and stream enabled", async () => {
+    const mockRequest: ChatRequest<{ stream: true }> = {
+      provider: custom({ baseUrl: "https://api.together.xyz", token: "xxx" }),
+      model: "meta-llama/Meta-Llama-3-8B-Instruct",
+      messages: [
+        { role: "system", content: "from now on, foo is whale" },
+        { role: "user", content: "what exactly is foo?" },
+      ],
+      stream: true,
+      temperature: 0.5,
+    };
+
+    //@ts-expect-error required for tests because createThirdParty is private
+    await client.chat().createThirdParty(mockRequest);
+
+    expect(mockHttp.requestStream).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: ["v1", "chat", "completions"],
+        method: "POST",
+        headers: expect.objectContaining({
+          "Content-Type": "application/json",
+          Authorization: "Bearer xxx",
+          Connection: "keep-alive",
+          Accept: "text/event-stream",
+          "Cache-Control": "no-cache",
+        }),
+        baseUrl: "https://api.together.xyz",
+      })
+    );
+
+    expect(JSON.parse((mockHttp.requestStream.mock.calls[0][0] as any).body)).toEqual({
+      model: "meta-llama/Meta-Llama-3-8B-Instruct",
+      messages: [
+        { role: "system", content: "from now on, foo is whale" },
+        { role: "user", content: "what exactly is foo?" },
+      ],
+      temperature: 0.5,
+      stream: true,
+    });
+  });
+});
+```

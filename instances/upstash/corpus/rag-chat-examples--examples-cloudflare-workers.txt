@@ -1,0 +1,256 @@
+# Example: cloudflare-workers
+# джерело: https://github.com/upstash/rag-chat/tree/v2.0.3/examples/cloudflare-workers
+# отримано: 2026-10-16
+# версія: rag-chat-2.0.3
+
+> NOTE: Currently there is an issue with our dependencies that is causing the bundle size to exceed the 1MB free limit of Cloudflare Workers. We are working on a fix and will update this example once it is resolved.
+
+## RAGChat with Cloudflare Workers
+
+This project demonstrates how to implement RAGChat (Retrieval-Augmented Generation Chat) using a basic Cloudflare Workers with Hono Router.
+
+The project includes four endpoints:
+
+- `/add-data` to add data to your endpoint.
+- `/chat` to make a chat request with rag-chat using Upstash LLM.
+- `/chat-stream` to make a chat request with rag-chat using Upstash LLM with streaming.
+
+You can check out the `src/index.ts` file to see how each endpoint works.
+
+For running the app locally, first run `npm install` to install the packages. Then, see the `Set Environment Variables` and `Development` sections below.
+
+## Installation Steps
+
+### 1. Install `rag-chat`
+
+First, install the rag-chat package:
+
+```
+npm install @upstash/rag-chat
+```
+
+### 2. Configure wrangler.toml
+
+Ensure your wrangler.toml file includes the following configuration to enable Node.js compatibility:
+
+```toml
+compatibility_flags = ["nodejs_compat"]
+```
+
+In older CF worker versions, you may need to set the following compatibility flags:
+
+```toml
+compatibility_flags = [ "streams_enable_constructors", "transformstream_enable_standard_constructor" ]
+```
+
+### 3. Set Environment Variables
+
+For local development, create a `.dev.vars` file and populate it with the following variables:
+
+```
+UPSTASH_REDIS_REST_URL="***"
+UPSTASH_REDIS_REST_TOKEN="***"
+UPSTASH_VECTOR_REST_URL="***"
+UPSTASH_VECTOR_REST_TOKEN="***"
+QSTASH_TOKEN="***"
+```
+
+`QSTASH_TOKEN` is needed for the `/chat` and `/chat-stream` endpoints. If you want to use the openai models for the llm,
+you can provide the `OPENAI_API_KEY` environment variable instead.
+
+For deployment, use the `wrangler` CLI to securely set environment variables.
+Run the following command for each secret:
+
+```
+npx wrangler secret put SECRET_NAME
+```
+
+Replace `SECRET_NAME` with the actual name of each environment variable (e.g., `UPSTASH_REDIS_REST_URL`).
+
+### 4. Development
+
+To start the development server, run:
+
+```
+npm run dev
+```
+
+### 5. Deployment
+
+To deploy the project, run:
+
+```
+npm run deploy
+```
+
+## ci.test.ts
+
+```ts
+import { test, expect } from "bun:test";
+
+const deploymentURL = process.env.DEPLOYMENT_URL;
+if (!deploymentURL) {
+  throw new Error("DEPLOYMENT_URL not set");
+}
+
+test("the server is running", async () => {
+  const res = await fetch(deploymentURL);
+  if (res.status !== 200) {
+    console.log(await res.text());
+  }
+  expect(res.status).toEqual(200);
+});
+
+test("/chat endpoint returning", async () => {
+  const res = await fetch(`${deploymentURL}/chat`);
+
+  expect(res.status).toEqual(200);
+
+  const text = await res.text();
+
+  console.log("/chat returned >", text, "<");
+});
+```
+
+## package.json
+
+```json
+{
+  "name": "cloudflare-workers-example",
+  "scripts": {
+    "dev": "wrangler dev src/index.ts",
+    "deploy": "wrangler deploy --minify src/index.ts"
+  },
+  "dependencies": {
+    "@upstash/rag-chat": "latest",
+    "@upstash/vector": "^1.1.6",
+    "hono": "^4.5.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240529.0",
+    "wrangler": "^3.57.2"
+  }
+}
+```
+
+## src/index.ts
+
+```ts
+import { Hono } from "hono";
+import { Index } from "@upstash/vector";
+import { RAGChat, upstash } from "@upstash/rag-chat";
+
+const app = new Hono<{
+  Variables: {
+    ragChat: RAGChat;
+  };
+  Bindings: {
+    UPSTASH_REDIS_REST_URL: string;
+    UPSTASH_REDIS_REST_TOKEN: string;
+    UPSTASH_VECTOR_REST_URL: string;
+    UPSTASH_VECTOR_REST_TOKEN: string;
+    QSTASH_TOKEN: string;
+    OPENAI_API_KEY: string;
+  };
+}>();
+
+app.use("*", async (c, next) => {
+  const ragChat = new RAGChat({
+    model: upstash("meta-llama/Meta-Llama-3-8B-Instruct", { apiKey: c.env.QSTASH_TOKEN }),
+
+    // 👇 ALTERNATIVE
+    // model: openai("gpt-4-turbo", {
+    //   apiKey: c.env.OPENAI_API_KEY,
+    // }),
+
+    vector: new Index({
+      url: c.env.UPSTASH_VECTOR_REST_URL,
+      token: c.env.UPSTASH_VECTOR_REST_TOKEN,
+      cache: false,
+    }),
+  });
+
+  c.set("ragChat", ragChat);
+
+  await next();
+});
+
+app.get("/", (c) => {
+  const landingPage = `
+    <html>
+      <body>
+        <h1>Available Endpoints</h1>
+        <ul>
+          <li><a href="/add-data">Add Data</a></li>
+          <li><a href="/chat">Chat</a></li>
+          <li><a href="/chat-stream">Chat Stream</a></li>
+        </ul>
+      </body>
+    </html>
+  `;
+  return c.html(landingPage);
+});
+
+app.get("/add-data", async (c) => {
+  const ragChat = c.var.ragChat;
+
+  const result = await Promise.all([
+    ragChat.context.add({
+      type: "text",
+      data: "Paris, the capital of France, is renowned for its iconic landmark, the Eiffel Tower, which was completed in 1889 and stands at 330 meters tall.",
+    }),
+    ragChat.context.add({
+      type: "text",
+      data: "The city is home to numerous world-class museums, including the Louvre Museum, housing famous works such as the Mona Lisa and Venus de Milo.",
+    }),
+    ragChat.context.add({
+      type: "text",
+      data: "Paris is often called the City of Light due to its significant role during the Age of Enlightenment and its early adoption of street lighting.",
+    }),
+    ragChat.context.add({
+      type: "text",
+      data: "The Seine River gracefully flows through Paris, dividing the city into the Left Bank and the Right Bank, each offering its own distinct atmosphere.",
+    }),
+    ragChat.context.add({
+      type: "text",
+      data: "Paris boasts a rich culinary scene, with a plethora of bistros, cafés, and Michelin-starred restaurants serving exquisite French cuisine.",
+    }),
+  ]);
+
+  return c.text(`Added data. Result: ${JSON.stringify(result)}`, 200);
+});
+
+app.get("/chat", async (c) => {
+  const response = await c.var.ragChat.chat("What is paris called?", { streaming: false });
+
+  return c.text(response.output, 200);
+});
+
+app.get("/chat-stream", async (c) => {
+  const response = await c.var.ragChat.chat(
+    "Describe what Paris is known as, narrating in the style of Dostoyevsky, and provide the answer in approximately a thousand words.",
+    { streaming: true }
+  );
+
+  const textEncoder = new TextEncoder();
+  const { readable, writable } = new TransformStream<string>({
+    transform(chunk, controller) {
+      controller.enqueue(textEncoder.encode(chunk));
+    },
+  });
+
+  // Start pumping the body. NOTE: No await!
+  void response.output.pipeTo(writable);
+
+  // ... and deliver our Response while that’s running.
+  return new Response(readable, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+    },
+  });
+});
+
+export default app;
+```

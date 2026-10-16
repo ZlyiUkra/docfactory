@@ -1,0 +1,115 @@
+# qstash-js: src/client/llm/providers.ts
+# джерело: https://github.com/upstash/qstash-js/blob/v2.7.9/src/client/llm/providers.ts
+# отримано: 2026-10-16
+# версія: qstash-2.7.9, qstash-2.7.8, qstash-2.7.7, qstash-2.7.6, qstash-2.7.5, qstash-2.7.4, qstash-2.7.3, qstash-2.7.2, qstash-2.7.1, qstash-2.7.0, qstash-2.6.5, qstash-2.6.4
+
+## type ProviderReturnType
+
+```ts
+export type ProviderReturnType = {
+  owner: "upstash" | "openai" | "custom";
+  baseUrl: string;
+  token: string;
+};
+
+export type AnalyticsConfig = { name: "helicone"; token: string };
+```
+
+## type AnalyticsSetup
+
+```ts
+export type AnalyticsSetup = {
+  baseURL?: string;
+  defaultHeaders?: Record<string, string | undefined>;
+};
+```
+
+## const setupAnalytics
+
+```ts
+export const setupAnalytics = (
+  analytics: AnalyticsConfig | undefined,
+  providerApiKey: string,
+  providerBaseUrl?: string,
+  provider?: "openai" | "upstash" | "custom"
+): AnalyticsSetup => {
+  if (!analytics) return {};
+
+  switch (analytics.name) {
+    case "helicone": {
+      switch (provider) {
+        case "upstash": {
+          return {
+            baseURL: "https://qstash.helicone.ai/llm/v1/chat/completions",
+            defaultHeaders: {
+              "Helicone-Auth": `Bearer ${analytics.token}`,
+              Authorization: `Bearer ${providerApiKey}`,
+            },
+          };
+        }
+        default: {
+          return {
+            baseURL: "https://gateway.helicone.ai/v1/chat/completions",
+            defaultHeaders: {
+              "Helicone-Auth": `Bearer ${analytics.token}`,
+              "Helicone-Target-Url": providerBaseUrl,
+              Authorization: `Bearer ${providerApiKey}`,
+            },
+          };
+        }
+      }
+    }
+    default: {
+      throw new Error("Unknown analytics provider");
+    }
+  }
+};
+```
+
+## const upstash
+
+```ts
+const upstash = (): {
+  owner: "upstash";
+  baseUrl: "https://qstash.upstash.io/llm";
+  token: string;
+} => {
+  return {
+    owner: "upstash",
+    baseUrl: "https://qstash.upstash.io/llm",
+    token: "",
+  };
+};
+```
+
+## const openai
+
+```ts
+const openai = ({
+  token,
+}: {
+  token: string;
+}): { owner: "openai"; baseUrl: "https://api.openai.com"; token: string } => {
+  return { token: token, owner: "openai", baseUrl: "https://api.openai.com" };
+};
+```
+
+## const custom
+
+```ts
+const custom = ({
+  baseUrl,
+  token,
+}: {
+  token: string;
+  baseUrl: string;
+}): { owner: "custom"; baseUrl: string; token: string } => {
+  const trimmedBaseUrl = baseUrl.replace(/\/(v1\/)?chat\/completions$/, ""); // Will trim /v1/chat/completions and /chat/completions
+  return {
+    token,
+    owner: "custom",
+    baseUrl: trimmedBaseUrl,
+  };
+};
+export { custom, openai, upstash };
+```

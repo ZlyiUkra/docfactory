@@ -1,0 +1,825 @@
+# qstash-js: src/client/client.test.ts
+# джерело: https://github.com/upstash/qstash-js/blob/v2.9.1/src/client/client.test.ts
+# отримано: 2026-10-16
+# версія: qstash-2.9.1
+
+```ts
+/* eslint-disable @typescript-eslint/no-magic-numbers */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { nanoid } from "nanoid";
+import { Client } from "./client";
+import type { PublishToUrlResponse } from "../../dist";
+import { MOCK_QSTASH_SERVER_URL, mockQStashServer } from "./workflow/test-utils";
+import type { HttpClient } from "./http";
+```
+
+## const clearQueues
+
+```ts
+export const clearQueues = async (client: Client) => {
+  const queueDetails = await client.queue().list();
+  await Promise.all(
+    queueDetails.map(async (q) => {
+      await client.queue({ queueName: q.name }).delete();
+    })
+  );
+};
+```
+
+## E2E Publish
+
+```ts
+describe("E2E Publish", () => {
+```
+
+### should publish a message with a label
+
+```ts
+  test("should publish a message with a label", async () => {
+    const result = await client.publish({
+      url: "https://example.com/",
+      body: "test-body",
+      label: "test-label",
+    });
+    const verifiedMessage = await client.messages.get(result.messageId);
+    expect(verifiedMessage.label).toBe("test-label");
+  });
+  const client = new Client({ token: process.env.QSTASH_TOKEN! });
+
+  afterAll(async () => {
+    await clearQueues(client);
+  });
+
+  beforeAll(async () => {
+    await clearQueues(client);
+  });
+```
+
+### should publish a json message
+
+```ts
+  test("should publish a json message", async () => {
+    const result = await client.publishJSON({
+      url: "https://example.com/",
+      body: { hello: "world" },
+      headers: {
+        "test-header": "test-value",
+        "Upstash-Forward-bypass-tunnel-reminder": "client-test",
+      },
+    });
+
+    const verifiedMessage = await client.messages.get(result.messageId);
+    const messageHeaders = new Headers(verifiedMessage.header);
+
+    expect(messageHeaders.get("test-header")).toEqual("test-value");
+    expect(messageHeaders.get("bypass-tunnel-reminder")).toEqual("client-test");
+    expect(verifiedMessage.body).toEqual(JSON.stringify({ hello: "world" }));
+  });
+```
+
+### should verify qstash server removed forwaded header prefix
+
+```ts
+  test("should verify qstash server removed forwaded header prefix", async () => {
+    const result = await client.publishJSON({
+      url: "https://example.com/",
+      headers: {
+        "Upstash-Forward-bypass-tunnel-reminder": "client-test",
+      },
+    });
+
+    const verifiedMessage = await client.messages.get(result.messageId);
+    const messageHeaders = new Headers(verifiedMessage.header);
+
+    expect(messageHeaders.get("Upstash-Forward-bypass-tunnel-reminder")).toBeNull();
+  });
+```
+
+### should publish a message with a delay
+
+```ts
+  test("should publish a message with a delay", async () => {
+    const result = await client.publish({
+      url: "https://example.com/",
+      delay: 5,
+    });
+
+    const verifiedMessage = await client.messages.get(result.messageId);
+    expect(verifiedMessage.notBefore).toBeGreaterThanOrEqual(Date.now());
+  });
+```
+
+### should publish a message with a notBefore
+
+```ts
+  test("should publish a message with a notBefore", async () => {
+    const delay = (Date.now() + 1000 * 5) / 1000;
+    const result = await client.publish({
+      url: "https://example.com/",
+      notBefore: delay,
+    });
+
+    const verifiedMessage = await client.messages.get(result.messageId);
+    expect(verifiedMessage.notBefore).toBeGreaterThanOrEqual(delay);
+  });
+```
+
+### should publish a message with a callback
+
+```ts
+  test("should publish a message with a callback", async () => {
+    const result = await client.publish({
+      url: "https://example.com/",
+      callback: `https://oz.requestcatcher.com/?foo=bar`,
+    });
+
+    const verifiedMessage = await client.messages.get(result.messageId);
+    expect(verifiedMessage.callback).toBe("https://oz.requestcatcher.com/?foo=bar");
+  });
+```
+
+### should publish a message and fail then call failure callback
+
+```ts
+  test("should publish a message and fail then call failure callback", async () => {
+    const retryCount = 1;
+
+    const result = await client.publish({
+      url: "https://example.com/",
+      retries: retryCount, // Retries after 12 sec
+      failureCallback: `https://oz.requestcatcher.com/?foo=bar`,
+    });
+
+    const verifiedMessage = await client.messages.get(result.messageId);
+    expect(verifiedMessage.maxRetries).toBeGreaterThanOrEqual(retryCount);
+    expect(verifiedMessage.failureCallback).toBe("https://oz.requestcatcher.com/?foo=bar");
+  });
+```
+
+### should use global headers
+
+```ts
+  test("should use global headers", async () => {
+    const clientWithHeaders = new Client({
+      token: process.env.QSTASH_TOKEN!,
+      // @ts-expect-error undefined header
+      headers: {
+        "undefined-header": undefined,
+        "test-header": "value",
+        "test-header-2": "value-2",
+        "TEST-CASE": "value-uppercase",
+        "test-case": "value-lowercase",
+      },
+    });
+    const result = await clientWithHeaders.publish({
+      url: "https://example.com/",
+    });
+
+    const verifiedMessage = await client.messages.get(result.messageId);
+    const messageHeaders = new Headers(verifiedMessage.header);
+
+    expect(messageHeaders.get("test-header")).toEqual("value");
+    expect(messageHeaders.get("test-header-2")).toEqual("value-2");
+    expect(messageHeaders.get("test-case")).toEqual("value-uppercase, value-lowercase");
+    expect(messageHeaders.get("undefined-header")).toEqual("undefined");
+  });
+```
+
+### should override global headers
+
+```ts
+  test("should override global headers", async () => {
+    const clientWithHeaders = new Client({
+      token: process.env.QSTASH_TOKEN!,
+      headers: {
+        "test-header": "value",
+        "test-header-2": "value-2",
+        "stays-same": "same",
+      },
+    });
+    const result = await clientWithHeaders.publish({
+      url: "https://example.com/",
+      headers: {
+        "Test-Header": "override-value",
+      },
+    });
+
+    const verifiedMessage = await client.messages.get(result.messageId);
+    const messageHeaders = new Headers(verifiedMessage.header);
+
+    expect(messageHeaders.get("test-header")).toEqual("override-value");
+    expect(messageHeaders.get("test-header-2")).toEqual("value-2");
+    expect(messageHeaders.get("stays-same")).toEqual("same");
+  });
+```
+
+### should override global headers with publishJSON if headers are provided
+
+```ts
+  test("should override global headers with publishJSON if headers are provided", async () => {
+    const clientWithHeaders = new Client({
+      token: process.env.QSTASH_TOKEN!,
+      headers: {
+        "test-header": "value",
+        "test-header-2": "value-2",
+      },
+    });
+    const result = await clientWithHeaders.publishJSON({
+      url: "https://example.com/",
+      headers: {
+        "Test-Header": "override-value",
+        "stays-same": "same",
+      },
+    });
+
+    const verifiedMessage = await client.messages.get(result.messageId);
+    const messageHeaders = new Headers(verifiedMessage.header);
+
+    expect(messageHeaders.get("test-header")).toEqual("override-value");
+    expect(messageHeaders.get("test-header-2")).toEqual("value-2");
+    expect(messageHeaders.get("stays-same")).toEqual("same");
+  });
+});
+```
+
+## E2E Batch
+
+```ts
+describe("E2E Batch", () => {
+```
+
+### should override global headers
+
+```ts
+  test("should override global headers", async () => {
+    const client = new Client({
+      token: process.env.QSTASH_TOKEN!,
+      headers: {
+        "test-header": "value",
+        "test-header-2": "value-2",
+      },
+    });
+    const result = (await client.batch([
+      {
+        url: "https://example.com/1",
+        headers: {
+          "Test-Header": "override-value-1",
+          "stays-same": "same",
+        },
+      },
+      {
+        url: "https://example.com/2",
+        headers: {
+          "Test-Header": "override-value-2",
+          "stays-same": "same",
+        },
+      },
+    ])) as PublishToUrlResponse[];
+
+    const verifiedMessage1 = await client.messages.get(result[0].messageId);
+    const messageHeaders1 = new Headers(verifiedMessage1.header);
+
+    const verifiedMessage2 = await client.messages.get(result[1].messageId);
+    const messageHeaders2 = new Headers(verifiedMessage2.header);
+
+    expect(messageHeaders1.get("test-header")).toEqual("override-value-1");
+    expect(messageHeaders2.get("test-header")).toEqual("override-value-2");
+
+    expect(messageHeaders1.get("stays-same")).toEqual("same");
+    expect(messageHeaders2.get("stays-same")).toEqual("same");
+
+    expect(messageHeaders1.get("test-header-2")).toEqual("value-2");
+    expect(messageHeaders2.get("test-header-2")).toEqual("value-2");
+  });
+```
+
+### should override global headers with batchJSON
+
+```ts
+  test("should override global headers with batchJSON", async () => {
+    const client = new Client({
+      token: process.env.QSTASH_TOKEN!,
+      headers: {
+        "test-header": "value",
+        "test-header-2": "value-2",
+      },
+    });
+    const result = (await client.batchJSON([
+      {
+        url: "https://example.com/1",
+        headers: {
+          "Test-Header": "override-value-1",
+          "stays-same": "same",
+        },
+      },
+      {
+        url: "https://example.com/2",
+        headers: {
+          "Test-Header": "override-value-2",
+          "stays-same": "same",
+        },
+      },
+    ])) as PublishToUrlResponse[];
+
+    const verifiedMessage1 = await client.messages.get(result[0].messageId);
+    const messageHeaders1 = new Headers(verifiedMessage1.header);
+
+    const verifiedMessage2 = await client.messages.get(result[1].messageId);
+    const messageHeaders2 = new Headers(verifiedMessage2.header);
+
+    expect(messageHeaders1.get("test-header")).toEqual("override-value-1");
+    expect(messageHeaders2.get("test-header")).toEqual("override-value-2");
+
+    expect(messageHeaders1.get("stays-same")).toEqual("same");
+    expect(messageHeaders2.get("stays-same")).toEqual("same");
+
+    expect(messageHeaders1.get("test-header-2")).toEqual("value-2");
+    expect(messageHeaders2.get("test-header-2")).toEqual("value-2");
+  });
+});
+```
+
+## E2E Url Group Publish
+
+```ts
+describe("E2E Url Group Publish", () => {
+  const client = new Client({ token: process.env.QSTASH_TOKEN! });
+```
+
+### should publish message multiple url groups
+
+```ts
+  test("should publish message multiple url groups", async () => {
+    const endpoint = { name: "urlGroup1", url: "https://oz.requestcatcher.com/?foo=bar" };
+    const endpoint1 = { name: "urlGroup2", url: "https://oz.requestcatcher.com/?baz=bar" };
+    const urlGroup = "my-proxy-url-group";
+
+    await client.urlGroups.addEndpoints({
+      endpoints: [endpoint, endpoint1],
+      name: urlGroup,
+    });
+
+    const result = await client.publish({
+      headers: {
+        "test-header": "test-value",
+        "Upstash-Forward-bypass-tunnel-reminder": "client-test",
+      },
+      urlGroup,
+      delay: 3,
+    });
+    const verifiedMessage = await client.messages.get(result[0].messageId);
+    const verifiedMessage1 = await client.messages.get(result[1].messageId);
+
+    for (const messageDetail of [verifiedMessage, verifiedMessage1]) {
+      expect(messageDetail.urlGroup).toEqual(urlGroup);
+    }
+    await client.urlGroups.delete(urlGroup);
+  });
+});
+```
+
+## E2E Queue
+
+```ts
+describe("E2E Queue", () => {
+  const client = new Client({ token: process.env.QSTASH_TOKEN! });
+
+  afterAll(async () => {
+    const [queueDetails, urlGroups] = await Promise.all([
+      client.queue().list(),
+      client.urlGroups.list(),
+    ]);
+
+    await Promise.all([
+      ...urlGroups.map(async (t) => {
+        await client.urlGroups.delete(t.name);
+      }),
+
+      ...queueDetails.map(async (q) => {
+        await client.queue({ queueName: q.name }).delete();
+      }),
+    ]);
+  });
+```
+
+### should create a queue, verify it then remove it
+
+```ts
+  test(
+    "should create a queue, verify it then remove it",
+    async () => {
+      const queueName = nanoid();
+      await client.queue({ queueName }).upsert({ parallelism: 1 });
+
+      const queueDetails = await client.queue({ queueName }).enqueue({
+        url: "https://oz.requestcatcher.com/?foo=bar",
+        body: JSON.stringify({ hello: "world" }),
+        headers: {
+          "test-header": "test-value",
+          "Upstash-Forward-bypass-tunnel-reminder": "client-test",
+        },
+      });
+
+      const verifiedMessage = await client.messages.get(queueDetails.messageId);
+      expect(verifiedMessage.queueName).toBe(queueName);
+      await client.queue({ queueName }).delete();
+    },
+    { timeout: 35_000 }
+  );
+```
+
+### should batch items to urlGroup and url with queueName
+
+```ts
+  test(
+    "should batch items to urlGroup and url with queueName",
+    async () => {
+      const queueName = nanoid();
+      const urlGroup = nanoid();
+
+      await client.queue({ queueName }).upsert({ parallelism: 1 });
+      await client.urlGroups.addEndpoints({
+        name: urlGroup,
+        endpoints: [{ url: "https://example.com/", name: "first" }],
+      });
+
+      const result = await client.batch([
+        {
+          urlGroup: urlGroup,
+          body: "message",
+          queueName,
+        },
+        {
+          url: "https://example.com/",
+          queueName,
+        },
+      ]);
+      expect(Array.isArray(result)).toBeTrue();
+      await client.queue({ queueName }).delete();
+    },
+    { timeout: 35_000 }
+  );
+```
+
+### should return batch result as array when there is a single item
+
+```ts
+  test(
+    "should return batch result as array when there is a single item",
+    async () => {
+      const queueName = nanoid();
+      const urlGroup = nanoid();
+
+      await client.queue({ queueName }).upsert({ parallelism: 1 });
+      await client.urlGroups.addEndpoints({
+        name: urlGroup,
+        endpoints: [{ url: "https://example.com/", name: "first" }],
+      });
+
+      const result = await client.batch([
+        {
+          urlGroup: urlGroup,
+          body: "message",
+          queueName,
+        },
+      ]);
+      expect(Array.isArray(result)).toBeTrue();
+      await client.queue({ queueName }).delete();
+    },
+    { timeout: 35_000 }
+  );
+```
+
+### should batch json items to urlGroup and url with queueName
+
+```ts
+  test(
+    "should batch json items to urlGroup and url with queueName",
+    async () => {
+      const queueName = nanoid();
+      const urlGroup = nanoid();
+
+      await client.queue({ queueName }).upsert({ parallelism: 1 });
+      await client.urlGroups.addEndpoints({
+        name: urlGroup,
+        endpoints: [{ url: "https://example.com/", name: "first" }],
+      });
+
+      await client.batchJSON([
+        {
+          urlGroup: urlGroup,
+          body: "message",
+          queueName,
+        },
+        {
+          url: "https://example.com/",
+          queueName,
+        },
+      ]);
+      await client.queue({ queueName }).delete();
+    },
+    { timeout: 35_000 }
+  );
+});
+```
+
+## flow control
+
+```ts
+describe("flow control", () => {
+  const token = nanoid();
+  const client = new Client({
+    baseUrl: MOCK_QSTASH_SERVER_URL,
+    token,
+    enableTelemetry: false,
+  });
+
+  const flowControlKey = nanoid();
+```
+
+### should throw if key is passed but no ratePerSec or parallelism
+
+```ts
+  test("should throw if key is passed but no ratePerSec or parallelism", () => {
+    // eslint-disable-next-line unicorn/consistent-function-scoping
+    const throws = async () => {
+      await client.publishJSON({
+        url: "https://example.com/",
+        // @ts-expect-error missing ratePerSecond or parallelism for test purposes
+        flowControl: {
+          key: flowControlKey,
+        },
+      });
+    };
+    expect(throws).toThrow("Provide at least one of parallelism or ratePerSecond for flowControl");
+  });
+```
+
+### should publish a message with flow control
+
+```ts
+  test("should publish a message with flow control", async () => {
+    await mockQStashServer({
+      execute: async () => {
+        await client.publishJSON({
+          urlGroup: "my-group",
+          flowControl: {
+            key: flowControlKey,
+            parallelism: 3,
+            ratePerSecond: 5,
+          },
+          retryDelay: "pow(retried, 2) * 1000",
+        });
+      },
+      responseFields: {
+        body: { messageId: "msgId" },
+        status: 200,
+      },
+      receivesRequest: {
+        method: "POST",
+        token,
+        url: "http://localhost:8080/v2/publish/my-group",
+        body: undefined,
+        headers: {
+          "Upstash-Flow-Control-Key": flowControlKey,
+          "Upstash-Flow-Control-Value": "parallelism=3, rate=5",
+          "upstash-retry-delay": "pow(retried, 2) * 1000",
+        },
+      },
+    });
+  });
+```
+
+### should batch messages with flow control
+
+```ts
+  test("should batch messages with flow control", async () => {
+    const flowControlKeyOne = nanoid();
+    const flowControlKeyTwo = nanoid();
+    const flowControlKeyThree = nanoid();
+    await mockQStashServer({
+      execute: async () => {
+        await client.batch([
+          {
+            url: "https://example.com/one",
+            flowControl: {
+              key: flowControlKeyOne,
+              ratePerSecond: 10,
+            },
+            body: "some-body",
+            retryDelay: "pow(retried, 2) * 1000",
+          },
+          {
+            url: "https://example.com/two",
+            flowControl: {
+              key: flowControlKeyTwo,
+              parallelism: 5,
+            },
+            method: "GET",
+          },
+          {
+            url: "https://example.com/three",
+            flowControl: {
+              key: flowControlKeyThree,
+              parallelism: 5,
+              rate: 10,
+              period: "1m",
+            },
+            method: "PATCH",
+          },
+        ]);
+      },
+      responseFields: {
+        body: { messageId: "msgId" },
+        status: 200,
+      },
+      receivesRequest: {
+        method: "POST",
+        token,
+        url: "http://localhost:8080/v2/batch",
+        body: [
+          {
+            body: "some-body",
+            destination: "https://example.com/one",
+            headers: {
+              "upstash-flow-control-key": flowControlKeyOne,
+              "upstash-flow-control-value": "rate=10",
+              "upstash-method": "POST",
+              "upstash-retry-delay": "pow(retried, 2) * 1000",
+            },
+          },
+          {
+            destination: "https://example.com/two",
+            headers: {
+              "upstash-flow-control-key": flowControlKeyTwo,
+              "upstash-flow-control-value": "parallelism=5",
+              "upstash-method": "GET",
+            },
+          },
+          {
+            destination: "https://example.com/three",
+            headers: {
+              "upstash-flow-control-key": flowControlKeyThree,
+              "upstash-flow-control-value": "parallelism=5, rate=10, period=1m",
+              "upstash-method": "PATCH",
+            },
+          },
+        ],
+        headers: {
+          // eslint-disable-next-line unicorn/no-null
+          "Upstash-Flow-Control-Key": null,
+          // eslint-disable-next-line unicorn/no-null
+          "Upstash-Flow-Control-Value": null,
+        },
+      },
+    });
+  });
+});
+```
+
+## Telemetry headers
+
+```ts
+describe("Telemetry headers", () => {
+  const token = nanoid();
+  const client = new Client({
+    baseUrl: MOCK_QSTASH_SERVER_URL,
+    token,
+  });
+```
+
+### should add telemetry headers
+
+```ts
+  test("should add telemetry headers", async () => {
+    await mockQStashServer({
+      execute: async () => {
+        await client.publishJSON({
+          url: "https://example.com/",
+        });
+      },
+      responseFields: {
+        body: { messageId: "msgId" },
+        status: 200,
+      },
+      receivesRequest: {
+        method: "POST",
+        token,
+        url: "http://localhost:8080/v2/publish/https://example.com/",
+      },
+      validateRequest: (request) => {
+        expect(request.headers.get("Upstash-Telemetry-Sdk")).toStartWith("upstash-qstash-js@");
+        expect(request.headers.get("Upstash-Telemetry-Runtime")).toBeTruthy();
+      },
+    });
+  });
+```
+
+### should not add telemetry headers if disabled
+
+```ts
+  test("should not add telemetry headers if disabled", async () => {
+    const client = new Client({
+      baseUrl: MOCK_QSTASH_SERVER_URL,
+      token,
+      enableTelemetry: false,
+    });
+
+    await mockQStashServer({
+      execute: async () => {
+        await client.publishJSON({
+          url: "https://example.com/",
+        });
+      },
+      responseFields: {
+        body: { messageId: "msgId" },
+        status: 200,
+      },
+      receivesRequest: {
+        method: "POST",
+        token,
+        url: "http://localhost:8080/v2/publish/https://example.com/",
+      },
+      validateRequest: (request) => {
+        expect(request.headers.get("Upstash-Telemetry-Sdk")).toBeNull();
+        expect(request.headers.get("Upstash-Telemetry-Platform")).toBeNull();
+        expect(request.headers.get("Upstash-Telemetry-Runtime")).toBeNull();
+      },
+    });
+  });
+```
+
+### should stack telemetry headers
+
+```ts
+  test("should stack telemetry headers", async () => {
+    const client = new Client({
+      baseUrl: MOCK_QSTASH_SERVER_URL,
+      token,
+      headers: {
+        // Should work with different casing as well
+        "upstash-Telemetry-SDK": "other-sdk@v1.0.0",
+        "upstash-Telemetry-PLATFORM": "aws",
+      },
+    });
+
+    await mockQStashServer({
+      execute: async () => {
+        await client.publishJSON({
+          url: "https://example.com/",
+        });
+      },
+      responseFields: {
+        body: { messageId: "msgId" },
+        status: 200,
+      },
+      receivesRequest: {
+        method: "POST",
+        token,
+        url: "http://localhost:8080/v2/publish/https://example.com/",
+      },
+      validateRequest: (request) => {
+        expect(request.headers.get("Upstash-Telemetry-Sdk")).toStartWith(
+          "other-sdk@v1.0.0, upstash-qstash-js@"
+        );
+        expect(request.headers.get("Upstash-Telemetry-Runtime")).toBeTruthy();
+        expect(request.headers.get("Upstash-Telemetry-Platform")).toBe("aws");
+      },
+    });
+  });
+});
+```
+
+## Client init
+
+```ts
+describe("Client init", () => {
+```
+
+### should use correct baseUrl if invalid one is passed
+
+```ts
+  test("should use correct baseUrl if invalid one is passed", () => {
+    const client = new Client({
+      baseUrl: "https://qstash.upstash.io/v2/publish",
+      token: "some-token",
+    });
+
+    expect((client.http as HttpClient).baseUrl).toBe("https://qstash.upstash.io");
+  });
+```
+
+### should use correct baseUrl if invalid one is passed
+
+```ts
+  test("should use correct baseUrl if invalid one is passed", () => {
+    const client = new Client({
+      baseUrl: "https://qstash.upstash.io/v2/publish/",
+      token: "some-token",
+    });
+
+    expect((client.http as HttpClient).baseUrl).toBe("https://qstash.upstash.io");
+  });
+});
+```

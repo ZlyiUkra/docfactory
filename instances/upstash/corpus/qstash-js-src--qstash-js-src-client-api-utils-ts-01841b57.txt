@@ -1,0 +1,180 @@
+# qstash-js: src/client/api/utils.ts
+# джерело: https://github.com/upstash/qstash-js/blob/v2.12.0/src/client/api/utils.ts
+# отримано: 2026-10-16
+# версія: qstash-2.12.0, qstash-2.11.3, qstash-2.11.2, qstash-2.11.1, qstash-2.11.0, qstash-2.10.1, qstash-2.10.0, qstash-2.9.1, qstash-2.9.0, qstash-2.8.4, qstash-2.8.3, qstash-2.8.2, qstash-2.8.1, qstash-2.8.0, qstash-2.7.23, qstash-2.7.22, qstash-2.7.21, qstash-2.7.20, qstash-2.7.19, qstash-2.7.18
+
+```ts
+import type { PublishRequest } from "../client";
+import type { LLMOptions, ProviderInfo, PublishEmailApi, PublishLLMApi } from "./types";
+import { upstash } from "./llm";
+import type { HeadersInit } from "../types";
+```
+
+## const getProviderInfo
+
+```ts
+/**
+ * copies and updates the request by removing the api field and adding url & headers.
+ *
+ * @param api api field of PublishRequest
+ * @param upstashToken used if provider is upstash and token is not set
+ * @returns updated request
+ */
+export const getProviderInfo = (
+  api: PublishEmailApi | PublishLLMApi,
+  upstashToken: string
+): ProviderInfo => {
+  const { name, provider, ...parameters } = api;
+  // eslint-disable-next-line @typescript-eslint/no-deprecated
+  const finalProvider = provider ?? upstash();
+
+  // use upstash token if it's not set
+  if (finalProvider.owner === "upstash" && !finalProvider.token) {
+    finalProvider.token = upstashToken;
+  }
+
+  // validate provider
+  if (!finalProvider.baseUrl) throw new TypeError("baseUrl cannot be empty or undefined!");
+  if (!finalProvider.token) throw new TypeError("token cannot be empty or undefined!");
+  if (finalProvider.apiKind !== name) {
+    throw new TypeError(
+      `Unexpected api name. Expected '${finalProvider.apiKind}', received ${name}`
+    );
+  }
+
+  const providerInfo: ProviderInfo = {
+    url: finalProvider.getUrl(),
+    baseUrl: finalProvider.baseUrl,
+    route: finalProvider.getRoute(),
+    appendHeaders: finalProvider.getHeaders(parameters),
+    owner: finalProvider.owner,
+    method: finalProvider.method,
+  };
+
+  return finalProvider.onFinish(providerInfo, parameters);
+};
+```
+
+## const safeJoinHeaders
+
+```ts
+/**
+ * joins two header sets. If the same header exists in both headers and record,
+ * one in headers is used.
+ *
+ * The reason why we added this method is because the following doesn't work:
+ *
+ * ```ts
+ * const joined = {
+ *   ...headers,
+ *   ...record
+ * }
+ * ```
+ *
+ * `headers.toJSON` could have worked, but it exists in bun, and not necessarily in
+ * other runtimes.
+ *
+ * @param headers Headers object
+ * @param record record
+ * @returns joined header
+ */
+const safeJoinHeaders = (headers: Headers, record: Record<string, string>) => {
+  const joinedHeaders = new Headers(record);
+  for (const [header, value] of headers.entries()) {
+    joinedHeaders.set(header, value);
+  }
+  return joinedHeaders as HeadersInit;
+};
+```
+
+## const processApi
+
+```ts
+/**
+ * copies and updates the request by removing the api field and adding url & headers.
+ *
+ * if there is no api field, simply returns after overwriting headers with the passed headers.
+ *
+ * @param request request with api field
+ * @param headers processed headers. Previously, these headers were assigned to the request
+ *   when the headers were calculated. But PublishRequest.request type (HeadersInit) is broader
+ *   than headers (Headers). PublishRequest.request is harder to work with, so we set them here.
+ * @param upstashToken used if provider is upstash and token is not set
+ * @returns updated request
+ */
+export const processApi = (
+  request: PublishRequest<unknown>,
+  headers: Headers,
+  upstashToken: string
+): PublishRequest<unknown> => {
+  if (!request.api) {
+    request.headers = headers;
+    return request;
+  }
+
+  const { url, appendHeaders, owner, method } = getProviderInfo(request.api, upstashToken);
+
+  if (request.api.name === "llm") {
+    const callback = request.callback;
+    if (!callback) {
+      throw new TypeError("Callback cannot be undefined when using LLM api.");
+    }
+
+    return {
+      ...request,
+      method: request.method ?? method,
+      headers: safeJoinHeaders(headers, appendHeaders),
+      ...(owner === "upstash" && !request.api.analytics
+        ? { api: { name: "llm" }, url: undefined, callback }
+        : { url, api: undefined }),
+    };
+  } else {
+    return {
+      ...request,
+      method: request.method ?? method,
+      headers: safeJoinHeaders(headers, appendHeaders),
+      url,
+      api: undefined,
+    };
+  }
+};
+```
+
+## function updateWithAnalytics
+
+```ts
+export function updateWithAnalytics(
+  providerInfo: ProviderInfo,
+  analytics: Required<LLMOptions>["analytics"]
+): ProviderInfo {
+  switch (analytics.name) {
+    case "helicone": {
+      providerInfo.appendHeaders["Helicone-Auth"] = `Bearer ${analytics.token}`;
+      if (providerInfo.owner === "upstash") {
+        updateProviderInfo(providerInfo, "https://qstash.helicone.ai", [
+          "llm",
+          ...providerInfo.route,
+        ]);
+      } else {
+        providerInfo.appendHeaders["Helicone-Target-Url"] = providerInfo.baseUrl;
+
+        updateProviderInfo(providerInfo, "https://gateway.helicone.ai", providerInfo.route);
+      }
+      return providerInfo;
+    }
+    default: {
+      throw new Error("Unknown analytics provider");
+    }
+  }
+}
+```
+
+## function updateProviderInfo
+
+```ts
+function updateProviderInfo(providerInfo: ProviderInfo, baseUrl: string, route: string[]) {
+  providerInfo.baseUrl = baseUrl;
+  providerInfo.route = route;
+  providerInfo.url = `${baseUrl}/${route.join("/")}`;
+}
+```
