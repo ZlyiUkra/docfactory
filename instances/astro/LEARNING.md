@@ -213,7 +213,7 @@ Astro — фреймворк, що працює з HTML і мережею нап
 
 # Фаза 4. Дані й авторизація — 10 днів
 
-**Сервери MCP фази:** `astro-docs`, `clerk-docs`, `supabase-docs`, `webstandards-docs`, `mdn-docs`, `postgresql-docs`,
+**Сервери MCP фази:** `astro-docs`, `upstash-docs`, `clerk-docs`, `supabase-docs`, `webstandards-docs`, `mdn-docs`, `postgresql-docs`,
 `argon2-docs`.
 
 - **День 1 — вибір сховища.** Коли досить файлів, коли потрібна база, що дає `@astrojs/db`. *Вправа:* записати
@@ -235,8 +235,9 @@ Astro — фреймворк, що працює з HTML і мережею нап
 - **День 8 — захист маршрутів.** Перевірка в middleware, ролі в `locals`. *Вправа:* приватна зона, куди не
   пускає без входу, і адмінська, куди не пускає без ролі. *Сервери MCP:* `astro-docs`.
 - **День 9 — безпека форм.** CSRF, обмеження частоти, перевірка вводу на сервері попри перевірку на клієнті.
-  *Вправа:* відправити форму з підробленого джерела й переконатися, що сервер відмовив. *Сервери MCP:*
-  `astro-docs`, `webstandards-docs`, `mdn-docs`.
+  Обмеження частоти на serverless-хостингу — лічильник у спільному сховищі: у примірнику `upstash` — `Redis:
+  Ratelimiting Algorithms`, `Redis: Methods` (`@upstash/ratelimit`). *Вправа:* відправити форму з підробленого джерела
+  й переконатися, що сервер відмовив. *Сервери MCP:* `astro-docs`, `upstash-docs`, `webstandards-docs`, `mdn-docs`.
 - **День 10 — збірка фази.** *Вправа:* пройти весь застосунок негативними сценаріями: чужа сесія, протухла
   кука, роль без прав, зіпсоване тіло запиту. *Сервери MCP:* `astro-docs`.
 
@@ -364,7 +365,9 @@ Cloudflare.
 - Next.js (для порівняння у фазі 7) — `nextjs`; NestJS (окремий бекенд) — `nestjs`;
 - Sentry: SDK для Astro, карти коду — `sentry`;
 - хешування паролів: пакети npm argon2 і `@node-rs/argon2`, еталонна реалізація Argon2 і його специфікація —
-  `argon2`.
+  `argon2`;
+- Upstash (Redis по HTTP для serverless, `@upstash/ratelimit`, QStash, Workflow, Vector: сайт, блог, код і README
+  кожного SDK) — `upstash`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 

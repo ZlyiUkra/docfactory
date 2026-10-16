@@ -96,7 +96,7 @@ webstandards, zod, zustand.
 | 1. Ядро Astro | `tailwind` (6), `react` (10), `vite` (14) |
 | 2. Контент | `zod` (2), `webdev` (6–7), `mdn` (7) |
 | 3. Сервер | `mdn` (3–4, 12), `zod` (7), `webstandards` (12) |
-| 4. Дані й авторизація | `postgresql` (2–3), `clerk` (6), `supabase` (6), `mdn` (7, 9), `webstandards` (7, 9), `argon2` (7) |
+| 4. Дані й авторизація | `postgresql` (2–3), `clerk` (6), `supabase` (6), `mdn` (7, 9), `webstandards` (7, 9), `argon2` (7), `upstash` (9) |
 | 5. Продуктивність і якість | `mdn` (3–4, 8), `webdev` (4, 8), `vitest` (6), `playwright` (7), `webstandards` (8) |
 | 6. Продакшн | `docker` (3–4), `playwright` (5) |
 | 7. Межі інструмента | `nextjs` (2), `nestjs` (3–4), `webstandards` (4) |
