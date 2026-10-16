@@ -411,6 +411,8 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
   реплікація, Sentinel, Cluster, ACL, потоки; під кешем, обмеженням частоти й адаптером socket.io) — `redis`;
 - ioredis (клієнт Redis для Node: README, довідник, код, тести й нотатки випусків 1.0–6.0; під `cacheHandlers` і
   обмеженням частоти на своєму Redis) — `ioredis`;
+- node-redis (офіційний клієнт Redis для Node, пакет `redis` з модулями json, search, time-series, bloom: README,
+  посібники, код з типами, тести й нотатки випусків 0.3–6.3; альтернатива ioredis) — `node-redis`;
 - Docker — `docker`; Kubernetes, k3s, Traefik, Kustomize, SOPS, age і Helm — `kubernetes`; sshd — `linux`;
 - безкоштовна машина Oracle Cloud (Always Free, повернення бездіяльних машин, «out of host capacity», бюджети), OKE —
   `oracle-cloud`;
