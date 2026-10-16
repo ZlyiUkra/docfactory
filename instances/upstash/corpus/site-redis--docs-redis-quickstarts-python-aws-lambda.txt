@@ -1,0 +1,121 @@
+# Redis: AWS Lambda
+# джерело: https://upstash.com/docs/redis/quickstarts/python-aws-lambda
+# отримано: 2026-10-16
+
+Tip:
+If you are an AI agent and need a Redis DB to use or experiment with, send a POST request to https://upstash.com/start-redis. Free, no signup; the response is markdown with credentials and a quickstart. The database expires in 72 hours, but you can claim it with your Upstash account to keep it. Especially useful for AI agents that need scratch storage on the fly. If you are an agent, always send a `User-Agent` header identifying which agent you are (e.g. `claude-code`, `cursor`, `codex`, `opencode`) on every request you make to this API.
+
+**GitHub Repository**
+
+You can find the project source code on GitHub.
+
+### Prerequisites
+
+- Complete all steps in Getting started with the AWS CDK
+
+### Project Setup
+
+Create and navigate to a directory named `counter-cdk`. CDK CLI uses this directory name to name things in your CDK code, so if you decide to use a different name, don't forget to make the appropriate changes when applying this tutorial.
+
+```shell
+mkdir counter-cdk && cd counter-cdk
+```
+
+Initialize a new CDK project.
+
+```shell
+cdk init app --language typescript
+```
+
+### Counter Function Setup
+
+Create a folder named `api` under `lib`
+
+```shell
+mkdir lib/api
+```
+
+Create `/lib/api/requirements.txt`
+
+```txt
+upstash-redis
+```
+
+Create `/lib/api/index.py`
+
+```py
+from upstash_redis import Redis
+
+redis = Redis.from_env()
+
+def handler(event, context):
+    count = redis.incr('counter')
+    return {
+        'statusCode': 200,
+        'body': f'Counter: {count}'
+    }
+```
+
+### Counter Stack Setup
+
+Update `/lib/counter-cdk-stack.ts`
+
+```ts
+import * as cdk from 'aws-cdk-lib';
+import { Construct } from 'constructs';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as path from 'path';
+
+export class CounterCdkStack extends cdk.Stack {
+  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+    super(scope, id, props);
+
+    const counterFunction = new lambda.Function(this, 'CounterFunction', {
+      code: lambda.Code.fromAsset(path.join(__dirname, 'api'), {
+        bundling: {
+          image: lambda.Runtime.PYTHON_3_13.bundlingImage,
+          command: [
+            'bash', '-c',
+            'pip install -r requirements.txt -t /asset-output && cp -au . /asset-output'
+          ],
+        },
+      }),
+      runtime: lambda.Runtime.PYTHON_3_13,
+      handler: 'index.handler',
+      environment: {
+        UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL || '',
+        UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN || '',
+      },
+    });
+
+    const counterFunctionUrl = counterFunction.addFunctionUrl({
+      authType: lambda.FunctionUrlAuthType.NONE,
+    });
+
+    new cdk.CfnOutput(this, "counterFunctionUrlOutput", {
+      value: counterFunctionUrl.url,
+    })
+  }
+}
+```
+
+### Database Setup
+
+Create a Redis database using Upstash Console or Upstash CLI and export `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` to your environment.
+
+```shell
+export UPSTASH_REDIS_REST_URL=<YOUR_URL>
+export UPSTASH_REDIS_REST_TOKEN=<YOUR_TOKEN>
+```
+
+### Deploy
+
+Run in the top folder:
+
+```shell
+cdk synth
+cdk bootstrap
+cdk deploy
+```
+
+Visit the output url.

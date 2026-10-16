@@ -1,0 +1,67 @@
+# Redis: FCALL
+# джерело: https://upstash.com/docs/redis/sdks/ts/commands/functions/call
+# отримано: 2026-10-16
+
+> Invoke a function.
+
+## Arguments
+
+-  (string, required)
+  The function name.
+
+  -  (string[])
+    The keys that the function accesses.
+
+Warning:
+    The function can only read/write from the keys that are provided in the `keys` argument.
+
+    -  (string[])
+      The arguments for the function.
+
+      ## Response
+
+      -  (unknown, required)
+        The return value of the function.
+
+```ts
+const code = `
+#!lua name=mylib
+redis.register_function('helloworld',
+  function()
+    return 'Hello World!'
+  end
+)
+`;
+
+await redis.functions.load({ code, replace: true });
+
+const res = await redis.functions.call("helloworld");
+console.log(res); // "Hello World!"
+```
+
+```ts
+const code = `
+#!lua name=mylib
+
+redis.register_function('my_hset',
+  function (keys, args)
+    local hash = keys[1]
+    local time = redis.call('TIME')[1]
+    return redis.call('HSET', hash, '_last_modified_', time, unpack(args))
+  end
+)
+`;
+
+await redis.functions.load({ code, replace: true });
+
+const res = await redis.functions.call(
+  "my_hset",
+  ["myhash"],
+  [
+    "myfield",
+    "some value",
+    "another_field",
+    "another value",
+  ],
+);
+```

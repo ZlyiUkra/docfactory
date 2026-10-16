@@ -1,0 +1,267 @@
+# Redis: Aggregations
+# джерело: https://upstash.com/docs/redis/search/aggregations
+# отримано: 2026-10-16
+
+Aggregations let you compute analytics over your indexed data — metrics like averages, sums, and statistics,
+as well as bucket-based groupings like terms, ranges, and histograms.
+
+Use the `SEARCH.AGGREGATE` command to run aggregations.
+
+They are useful when you want to answer questions like:
+
+- "What is the average price?"
+- "How many unique users do we have?"
+- "How many orders fall into each price range?"
+- "How does traffic change per hour/day?"
+- "How can I page through every category and price-range combination?"
+
+**TypeScript**
+
+```ts
+const result = await index.aggregate({
+  aggregations: {
+    avg_price: { $avg: { field: "price" } },
+  },
+});
+```
+
+**Python**
+
+```python
+result = index.aggregate(
+    aggregations={"avg_price": {"$avg": {"field": "price"}}},
+)
+```
+
+**Redis CLI**
+
+```bash
+SEARCH.AGGREGATE products '{}' '{"avg_price": {"$avg": {"field": "price"}}}'
+```
+
+Aggregation requests have two phases:
+
+1. **Document selection**: Optional `filter` selects which documents participate.
+2. **Aggregation computation**: the selected set is reduced into metric values and/or buckets.
+
+Each aggregation is defined with an **alias** (the key you choose for the result) and an **operator** that specifies what to compute.
+
+### Response Format
+
+**TypeScript**
+
+```ts
+const result = await index.aggregate({
+  aggregations: {
+    avg_price: { $avg: { field: "price" } },
+    by_category: { $terms: { field: "category", size: 5 } },
+  },
+});
+
+// result is an object keyed by alias:
+// {
+//   avg_price: { value: 49.99 },
+//   by_category: {
+//     buckets: [
+//       { key: "electronics", docCount: 42 },
+//       { key: "clothing", docCount: 31 },
+//     ],
+//   },
+// }
+```
+
+**Python**
+
+```python
+result = index.aggregate(
+    aggregations={
+        "avg_price": {"$avg": {"field": "price"}},
+        "by_category": {"$terms": {"field": "category", "size": 5}},
+    },
+)
+
+# result is a dict keyed by alias:
+# {
+#   "avg_price": {"value": 49.99},
+#   "by_category": {
+#     "buckets": [
+#       {"key": "electronics", "docCount": 42},
+#       {"key": "clothing", "docCount": 31},
+#     ],
+#   },
+# }
+```
+
+**Redis CLI**
+
+```bash
+SEARCH.AGGREGATE products '{}' '{"avg_price": {"$avg": {"field": "price"}}, "by_category": {"$terms": {"field": "category", "size": 5}}}'
+
+# Response (`redis-cli --json`) is an object keyed by alias:
+# {"avg_price":{"value":49.99},"by_category":{"buckets":[{"key":"electronics","docCount":42},{"key":"clothing","docCount":31}]}}
+```
+
+## Filtering
+
+Use `filter` to restrict which documents participate in the aggregation.
+
+Filtering uses the same query syntax as queries.
+
+**TypeScript**
+
+```ts
+const result = await index.aggregate({
+  filter: { inStock: true },
+  aggregations: {
+    avg_price: { $avg: { field: "price" } },
+  },
+});
+```
+
+**Python**
+
+```python
+result = index.aggregate(
+    filter={"inStock": True},
+    aggregations={
+        "avg_price": {"$avg": {"field": "price"}},
+    },
+)
+```
+
+**Redis CLI**
+
+```bash
+SEARCH.AGGREGATE products '{"inStock": true}' '{"avg_price": {"$avg": {"field": "price"}}}'
+```
+
+## Multiple Aggregations in One Request
+
+You can compute multiple top-level aggregations in one call by defining multiple aliases under `aggregations`.
+
+Each alias is computed against the same filtered document set.
+
+**TypeScript**
+
+```ts
+const result = await index.aggregate({
+  aggregations: {
+    avg_price: { $avg: { field: "price" } },
+    price_stats: { $stats: { field: "price" } },
+    by_category: { $terms: { field: "category", size: 5 } },
+    price_ranges: {
+      $range: {
+        field: "price",
+        ranges: [{ to: 50 }, { from: 50 }],
+      },
+    },
+  },
+});
+```
+
+**Python**
+
+```python
+result = index.aggregate(
+    aggregations={
+        "avg_price": {"$avg": {"field": "price"}},
+        "price_stats": {"$stats": {"field": "price"}},
+        "by_category": {"$terms": {"field": "category", "size": 5}},
+        "price_ranges": {
+            "$range": {
+                "field": "price",
+                "ranges": [{"to": 50}, {"from": 50}],
+            }
+        },
+    },
+)
+```
+
+**Redis CLI**
+
+```bash
+SEARCH.AGGREGATE products '{}' '{"avg_price": {"$avg": {"field": "price"}}, "price_stats": {"$stats": {"field": "price"}}, "by_category": {"$terms": {"field": "category", "size": 5}}, "price_ranges": {"$range": {"field": "price", "ranges": [{"to": 50}, {"from": 50}]}}}'
+```
+
+## Nested Aggregations
+
+Bucket operators can include sub-aggregations via `$aggs`, so you can compute per-bucket metrics.
+
+- `$terms`, `$range`, `$histogram`, `$dateHistogram`, and `$composite` support nested `$aggs`.
+- `$facet` does not support nested `$aggs`.
+- Metric operators do not support nested `$aggs`.
+
+**TypeScript**
+
+```ts
+const result = await index.aggregate({
+  aggregations: {
+    by_category: {
+      $terms: { field: "category" },
+      $aggs: {
+        avg_price: { $avg: { field: "price" } },
+        min_price: { $min: { field: "price" } },
+      },
+    },
+  },
+});
+```
+
+**Python**
+
+```python
+result = index.aggregate(
+    aggregations={
+        "by_category": {
+            "$terms": {"field": "category"},
+            "$aggs": {
+                "avg_price": {"$avg": {"field": "price"}},
+                "min_price": {"$min": {"field": "price"}},
+            },
+        },
+    },
+)
+```
+
+**Redis CLI**
+
+```bash
+SEARCH.AGGREGATE products '{}' '{"by_category": {"$terms": {"field": "category"}, "$aggs": {"avg_price": {"$avg": {"field": "price"}}, "min_price": {"$min": {"field": "price"}}}}}'
+```
+
+## Operator Families
+
+### Metric Aggregations
+
+Metric aggregations return numeric summaries.
+
+| Operator | Typical use |
+|----------|-------------|
+| `$avg` | Mean value |
+| `$sum` | Total, with an option to return `null` when no values are collected |
+| `$min` | Smallest value |
+| `$max` | Largest value |
+| `$count` | Number of values |
+| `$cardinality` | Number of distinct values |
+| `$stats` | Basic summary stats |
+| `$extendedStats` | Stats + variance/std deviation |
+| `$percentiles` | Distribution cut points |
+
+See the metric overview.
+
+By default, `$sum` returns `0` when no values are collected — either no documents match, or the matching documents all have a missing/null value for the field and no `missing` fallback is set. Set `nullIfNoMatch: true` to return `null` for that case. This lets you distinguish it from a real sum of zero.
+
+### Bucket Aggregations
+
+Bucket aggregations partition documents into groups.
+
+| Operator | Typical use |
+|----------|-------------|
+| `$terms` | Top values by field |
+| `$range` | Custom ranges |
+| `$histogram` | Fixed numeric bins |
+| `$dateHistogram` | Fixed time bins |
+| `$composite` | Paginated combinations of several sources |
+| `$facet` | Hierarchical facets |
+
+See the bucket overview.
