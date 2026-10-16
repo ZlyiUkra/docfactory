@@ -431,6 +431,8 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 - BullMQ (черги задач поверх Redis: сайт docs.bullmq.io, README, код з Lua-скриптами, тести й нотатки випусків
   1.0–6.3, порти Python, Elixir, Rust, PHP і .NET; попередник Bull 0.1–4.16, панелі Bull Board і Arena, модулі
   `@nestjs/bullmq` і `@nestjs/bull`) — `bullmq`;
+- Upstash (платформа: Redis по HTTP, `@upstash/ratelimit`, QStash з підписаними повідомленнями й розкладами, Workflow,
+  Vector — сайт, блог, код і README кожного SDK; зразок підписаних вебхуків) — `upstash`;
 - nginx: проксі перед API, стиснення, вебсокети через проксі — `nginx`;
 - Supabase — `supabase`; Clerk — `clerk`;
 - API споту Binance (REST, WebSocket API, потоки ринкових даних, ліміти, журнал змін) — `binance-spot`;
@@ -1724,7 +1726,7 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 
 # Фаза 6. Продакшн — 9 днів
 
-**Сервери MCP фази:** `nestjs-docs`, `docker-docs`, `kubernetes-docs`, `oracle-cloud-docs`, `express-docs`,
+**Сервери MCP фази:** `nestjs-docs`, `docker-docs`, `kubernetes-docs`, `oracle-cloud-docs`, `express-docs`, `upstash-docs`,
 `postgresql-docs`, `github-actions-docs`, `nginx-docs`, `node-postgres-docs`, `argon2-docs`, `prisma-docs`.
 
 Сервер, який треба зібрати, запустити, тримати живим, міряти й вміти оновити. Глави Nest тут — лише те, що Nest
@@ -1843,12 +1845,13 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 - **Що це.** Подія (`@nestjs/event-emitter`) — сигнал усередині процесу: «запис опубліковано», і хто слухає, той
   реагує; процес упав — подія зникла. Черга (`@nestjs/bullmq` поверх Redis) зберігає задачу поза процесом:
   обробник бере її, а при збої повторює — `attempts` і `backoff` між спробами. Вебхук: `POST` на чужу адресу з
-  тілом і підписом HMAC у заголовку, щоб отримувач перевірив, що це ви (поза корпусом). Задачі за розкладом —
+  тілом і підписом у заголовку, щоб отримувач перевірив, що це ви; готовий зразок того самого патерну — підписані
+  повідомлення QStash: у примірнику `upstash` — `QStash: Verify Signatures`, `QStash: Receiving Messages`. Задачі за розкладом —
   `@nestjs/schedule`, коли знадобиться.
 - **Читати:** розділ Techniques, глави `Events` (розділ Preventing event loss) і `Queues` (розділи BullMQ
   installation, Producers, Consumers, Job options); `Task scheduling` — згадкою. Сама BullMQ — `attempts`,
   `backoff`, `removeOnComplete`, події черги — у документації BullMQ (примірник `bullmq`).
-- **Сервери MCP:** `nestjs-docs`, `bullmq-docs`.
+- **Сервери MCP:** `nestjs-docs`, `bullmq-docs`, `upstash-docs`.
 - **Зробити:** 1) подія `post.published`; 2) слухач кладе задачу «надіслати вебхук» у чергу; 3) обробник шле
   `POST` із підписом на тестовий приймач; 4) Redis у compose; 5) приймач перші два рази відповідає 500.
 - **Перевірити себе:** запис опубліковано миттєво; вебхук дійшов із третьої спроби — у лозі видно три спроби з

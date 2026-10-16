@@ -45,7 +45,7 @@ webstandards, zod, zustand.
 | 3. Дані: TypeORM, Prisma | `prisma` (3, 7–12), `postgresql` (12), `owasp` (5); TypeORM — у документації Nest лише інтеграція |
 | 4. Автентифікація й авторизація | `webstandards` (1–2, 6–8, 12), `express` (8, 12), `react-router` (9), `owasp` (1, 6, 8, 12), `argon2` (1) |
 | 5. Якість: тести й DI | `vitest` (1), `prisma` (2) |
-| 6. Продакшн | `docker` (вступ, 2, 7), `kubernetes` (вступ, 8–9), `oracle-cloud` (вступ, 8), `express` (9), `postgresql` (9), `github-actions` (вступ, 7), `nginx` (вступ, 2, 5), `node-postgres` (5), `argon2` (8), `prisma` (2, 8) |
+| 6. Продакшн | `docker` (вступ, 2, 7), `upstash` (6), `kubernetes` (вступ, 8–9), `oracle-cloud` (вступ, 8), `express` (9), `postgresql` (9), `github-actions` (вступ, 7), `nginx` (вступ, 2, 5), `node-postgres` (5), `argon2` (8), `prisma` (2, 8) |
 | 7. Живі дані: WebSockets | `socketio` (вступ, 2–4, 6–7), `mdn` (вступ, 1), `webstandards` (вступ, 1, 3, 6), `vite` (2), `kubernetes` (3, 6, 8), `owasp` (3), `nginx` (6), `binance-spot` (вступ, 5), `kraken-spot` (вступ, 1, 5) |
 | Факультатив «крипта» | `binance-spot` (К1), `webstandards` (К3), `node-postgres` (К1), `viem` (К3–К4), `foundry` (К4) |
 
@@ -61,7 +61,7 @@ webstandards, zod, zustand.
 | 5. Інтерфейс із характером | `mdn` (4), `motion` (3–4), `zustand` (5), `webstandards` (5, 7), `shadcn`, `next-themes` і `nuqs` (5), `webdev` (4, 7), `i18next` і `next-intl` (8) |
 | 6. Чужий код | — |
 | 7. DevOps: від збірки до продакшну | `docker` (вступ, 2, 4), `upstash` (6), `drizzle` (4), `prisma` (4), `webstandards` (6), `kubernetes` (вступ, 12), `playwright` (7), `github-actions` (вступ, 7), `nginx` (вступ, 6), `webdev` (9–10), `sentry` (9) |
-| 8. Next.js поруч з окремим бекендом | `webstandards` (2, 6–7), `mdn` (7), `socketio` (6), `nginx` (6), `iron-session` і `jose` (3); за змістом — `nestjs` |
+| 8. Next.js поруч з окремим бекендом | `upstash` (1), `webstandards` (2, 6–7), `mdn` (7), `socketio` (6), `nginx` (6), `iron-session` і `jose` (3); за змістом — `nestjs` |
 | 9. Kubernetes глибше і демо | `kubernetes` (вступ, 1–8), `oracle-cloud` (вступ, 2, 7), `linux` (5), `mdn` (8), `webstandards` (8), `github-actions` (вступ, 5) |
 | Факультатив «крипта» | `webstandards` (К1–К3), `wagmi` (К3), `viem` (К1, К3), `foundry` (К2) |
 
@@ -113,19 +113,18 @@ webstandards, zod, zustand.
 ### NestJS
 
 1. TypeORM (29): у документації Nest — лише інтеграційний шар.
-2. Redis (29) і BullMQ (8).
-3. Passport (13), class-validator і class-transformer (7), RxJS (4).
-4. Факультатив: decimal.js.
+2. Passport (13), class-validator і class-transformer (7), RxJS (4).
+3. Факультатив: decimal.js.
 
 ### Next.js
 
-1. Redis (14).
-2. OpenTelemetry, Prometheus і Grafana.
-3. Факультатив: OpenZeppelin.
+1. OpenTelemetry, Prometheus і Grafana.
+2. Факультатив: OpenZeppelin.
 
 ### Спільне для лінії 1
 
-Redis потрібен двом-трьом планам одразу: такий примірник закриває найбільше.
+Redis (29 згадок у NestJS, 14 у Next.js) і BullMQ (8) закрито родиною Redis: `redis`, `ioredis`, `node-redis`, `bullmq`
+(15–16.10.2026) і `upstash` (16.10.2026) — сервер, клієнти, черги й керована платформа з Redis по HTTP.
 
 ### Лінія 2
 

@@ -1840,7 +1840,7 @@ Cloud з'явився в плані React (фаза 5, дні 7–9), бекен
 
 # Фаза 8. Next.js поруч з окремим бекендом — 7 днів
 
-**Сервери MCP фази:** `nextjs-docs`, `webstandards-docs`, `mdn-docs`, `socketio-docs`, `nginx-docs`, `jose-docs`,
+**Сервери MCP фази:** `nextjs-docs`, `upstash-docs`, `webstandards-docs`, `mdn-docs`, `socketio-docs`, `nginx-docs`, `jose-docs`,
 `iron-session-docs`.
 
 Продовження плану NestJS ([../nestjs/LEARNING.md](../nestjs/LEARNING.md)): там SPA з плану React уже отримала
@@ -1853,9 +1853,10 @@ Cloud з'явився в плані React (фаза 5, дні 7–9), бекен
 - **Навіщо.** Це питання ставлять на кожній співбесіді рівня мідл і вище.
 - **Що це.** Next.js як єдиний сервер — простіше, один викот. Зв'язка з NestJS — коли є фонові задачі, черги,
   кілька клієнтів одного API, складний домен. Головне правило: в одних даних — один власник. Якщо є NestJS,
-  схемою й міграціями володіє він, а Next.js ходить до нього.
-- **Читати:** `How to use Next.js as a backend for your frontend`.
-- **Сервери MCP:** `nextjs-docs`.
+  схемою й міграціями володіє він, а Next.js ходить до нього. Третій варіант — без власного бекенду на serverless:
+  фонові задачі й черги дає QStash, довгі ланцюжки кроків — Workflow (примірник `upstash`).
+- **Читати:** `How to use Next.js as a backend for your frontend`; у примірнику `upstash` — `QStash: Getting Started`, `Workflow: Overview`.
+- **Сервери MCP:** `nextjs-docs`, `upstash-docs`.
 - **Зробити:** записати рішення для свого проєкту: три критерії й висновок — Next.js сам чи разом із NestJS.
 - **Перевірити себе:** у README абзац із трьома критеріями й висновком для свого проєкту.
 - **Пастка:** обидва сервери пишуть в одну базу.
