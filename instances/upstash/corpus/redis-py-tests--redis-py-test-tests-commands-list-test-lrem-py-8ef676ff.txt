@@ -1,0 +1,55 @@
+# redis-py: tests/commands/list/test_lrem.py
+# джерело: https://github.com/upstash/redis-py/blob/1.8.0/tests/commands/list/test_lrem.py
+# отримано: 2026-10-16
+# версія: upstash-redis-1.8.0, upstash-redis-1.6.0, upstash-redis-1.5.0, upstash-redis-1.4.0, upstash-redis-1.3.0, upstash-redis-1.2.0, upstash-redis-1.1.0, upstash-redis-1.0.0, upstash-redis-0.16.0, upstash-redis-0.15.0
+
+```python
+import pytest
+
+from upstash_redis import Redis
+
+
+@pytest.fixture(autouse=True)
+def flush_mylist(redis: Redis):
+    mylist = "mylist"
+
+    redis.delete(mylist)
+
+
+def test_lrem_existing_value(redis: Redis):
+    mylist = "mylist"
+    values = ["value1", "value2", "value3", "value2"]
+
+    redis.rpush(mylist, *values)
+
+    result = redis.lrem(mylist, count=0, element="value2")
+    assert result == 2  # Number of removed elements
+
+    expected_list = ["value1", "value3"]
+    assert redis.lrange(mylist, 0, -1) == expected_list
+
+
+def test_lrem_nonexistent_value(redis: Redis):
+    mylist = "mylist"
+    values = ["value1", "value2", "value3"]
+
+    redis.rpush(mylist, *values)
+
+    result = redis.lrem(mylist, count=0, element="value4")
+    assert result == 0  # No elements removed
+
+    assert redis.lrange(mylist, 0, -1) == values
+
+
+def test_lrem_with_count(redis: Redis):
+    mylist = "mylist"
+    values = ["value1", "value2", "value3", "value2"]
+
+    redis.rpush(mylist, *values)
+
+    result = redis.lrem(mylist, count=1, element="value2")
+    assert result == 1  # Number of removed elements
+
+    expected_list = ["value1", "value3", "value2"]
+    assert redis.lrange(mylist, 0, -1) == expected_list
+```

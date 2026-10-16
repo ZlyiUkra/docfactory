@@ -1,0 +1,53 @@
+# redis-py: tests/commands/sortedSet/test_zrandmember.py
+# джерело: https://github.com/upstash/redis-py/blob/1.8.0/tests/commands/sortedSet/test_zrandmember.py
+# отримано: 2026-10-16
+# версія: upstash-redis-1.8.0, upstash-redis-1.6.0, upstash-redis-1.5.0, upstash-redis-1.4.0, upstash-redis-1.3.0, upstash-redis-1.2.0, upstash-redis-1.1.0, upstash-redis-1.0.0, upstash-redis-0.16.0, upstash-redis-0.15.0
+
+```python
+import pytest
+
+from upstash_redis import Redis
+
+
+@pytest.fixture(autouse=True)
+def flush_sorted_set(redis: Redis):
+    sorted_set = "sorted_set"
+
+    redis.delete(sorted_set)
+
+
+def test_zrandmember(redis: Redis):
+    sorted_set = "sorted_set"
+
+    redis.zadd(sorted_set, {"member1": 10, "member2": 20, "member3": 30})
+
+    result = redis.zrandmember(sorted_set)
+
+    assert result in ["member1", "member2", "member3"]
+
+
+def test_zrandmember_with_count(redis: Redis):
+    sorted_set = "sorted_set"
+
+    redis.zadd(sorted_set, {"member1": 10, "member2": 20, "member3": 30})
+
+    result = redis.zrandmember(sorted_set, count=2)
+
+    assert isinstance(result, list)
+    assert len(result) == 2
+
+    assert all(member in ["member1", "member2", "member3"] for member in result)
+
+
+def test_zrandmember_with_withscores(redis: Redis):
+    sorted_set = "sorted_set"
+
+    redis.zadd(sorted_set, {"member1": 10, "member2": 20, "member3": 30})
+
+    result = redis.zrandmember(sorted_set, count=2, withscores=True)
+    assert isinstance(result, list)
+
+    assert all(isinstance(member, tuple) and len(member) == 2 for member in result)
+    assert all(member[0] in ["member1", "member2", "member3"] for member in result)
+    assert all(isinstance(member[1], float) for member in result)
+```

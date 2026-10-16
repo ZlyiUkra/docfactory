@@ -1,0 +1,44 @@
+# redis-py: tests/commands/hash/test_hscan.py
+# джерело: https://github.com/upstash/redis-py/blob/1.8.0/tests/commands/hash/test_hscan.py
+# отримано: 2026-10-16
+# версія: upstash-redis-1.8.0, upstash-redis-1.6.0, upstash-redis-1.5.0, upstash-redis-1.4.0, upstash-redis-1.3.0, upstash-redis-1.2.0, upstash-redis-1.1.0, upstash-redis-1.0.0, upstash-redis-0.16.0, upstash-redis-0.15.0
+
+```python
+import pytest
+
+from upstash_redis import Redis
+
+
+@pytest.fixture(autouse=True)
+def flush_hash(redis: Redis):
+    hash_name = "myhash"
+    redis.delete(hash_name)
+    yield
+    redis.delete(hash_name)
+
+
+def test_hscan_with_match(redis: Redis):
+    hash_name = "myhash"
+
+    # Set some field-value pairs in the hash
+    redis.hset(hash_name, "field1", "value1")
+    redis.hset(hash_name, "field2", "value2")
+    redis.hset(hash_name, "field3", "value3")
+    redis.hset(hash_name, "other_field", "other_value")
+
+    # Use HSCAN command with match parameter to filter field-value pairs
+    cursor = 0
+    count = 2  # Maximum number of elements to retrieve per iteration
+    pattern = "field*"  # Pattern to match field names
+    result = {}
+
+    while True:
+        cursor, data = redis.hscan(hash_name, cursor, count=count, match=pattern)
+        result.update(data)
+
+        if cursor == 0:
+            break
+
+    # Assertions to check the retrieved field-value pairs
+    assert result == {"field1": "value1", "field2": "value2", "field3": "value3"}
+```

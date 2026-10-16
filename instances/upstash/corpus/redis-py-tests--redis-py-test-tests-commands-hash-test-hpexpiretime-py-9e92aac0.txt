@@ -1,0 +1,45 @@
+# redis-py: tests/commands/hash/test_hpexpiretime.py
+# джерело: https://github.com/upstash/redis-py/blob/1.8.0/tests/commands/hash/test_hpexpiretime.py
+# отримано: 2026-10-16
+# версія: upstash-redis-1.8.0, upstash-redis-1.6.0, upstash-redis-1.5.0, upstash-redis-1.4.0
+
+```python
+import pytest
+import time
+from upstash_redis import Redis
+
+
+@pytest.fixture(autouse=True)
+def flush_hash(redis: Redis):
+    hash_name = "myhash"
+    redis.delete(hash_name)
+
+
+def test_hpexpiretime_returns_correct_expiry(redis: Redis):
+    hash_name = "myhash"
+    field = "field1"
+    value = "value1"
+
+    redis.hset(hash_name, field, value)
+    redis.hpexpire(hash_name, field, 500)
+    expiry_time_ms = redis.hpexpiretime(hash_name, [field])[0]
+
+    assert expiry_time_ms > 0
+    assert expiry_time_ms <= int(time.time() * 1000) + 1000
+
+
+def test_hpexpiretime_returns_minus1_if_no_expiry(redis: Redis):
+    hash_name = "myhash"
+    field = "field1"
+    value = "value1"
+
+    redis.hset(hash_name, field, value)
+    assert redis.hpexpiretime(hash_name, [field])[0] == -1
+
+
+def test_hpexpiretime_returns_minus2_if_field_does_not_exist(redis: Redis):
+    hash_name = "myhash"
+    field = "field1"
+
+    assert redis.hpexpiretime(hash_name, [field])[0] == -2
+```

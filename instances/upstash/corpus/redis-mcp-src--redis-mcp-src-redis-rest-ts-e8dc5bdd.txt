@@ -1,0 +1,128 @@
+# redis-mcp: src/redis/rest.ts
+# джерело: https://github.com/upstash/redis-mcp/blob/v0.1.1/src/redis/rest.ts
+# отримано: 2026-10-16
+# версія: redis-mcp-0.1.1
+
+```ts
+import type { DatabaseConfig } from "../config";
+import { config } from "../config";
+import { telemetryHeaders } from "../telemetry";
+import { log } from "../log";
+import type { CommandResult } from "./types";
+
+type RestReply = { result: unknown } | { error: string };
+
+const MAX_RETRIES = 2;
+
+// A bad URL/scheme throws a TypeError that retrying will never fix. The wording
+// differs across runtimes and the real reason is sometimes only in `cause`:
+//   Node: "Failed to parse URL from x"; "fetch failed" (cause: "unknown scheme")
+//   Bun:  "fetch() URL is invalid"; "protocol must be http:, https: or s3:"
+// Transient network failures ("fetch failed" / ECONN* / ENOTFOUND) are also
+// TypeErrors but must still retry, so we match only the permanent wordings.
+const NON_RETRYABLE = /parse url|invalid url|url is invalid|protocol must be|unknown scheme/i;
+```
+
+## function isNonRetryable
+
+```ts
+export function isNonRetryable(error: unknown): boolean {
+  if (!(error instanceof TypeError)) return false;
+  const cause = error.cause;
+  const causeText = cause instanceof Error ? cause.message : typeof cause === "string" ? cause : "";
+  return NON_RETRYABLE.test(`${error.message} ${causeText}`);
+}
+```
+
+## function fetchWithRetry
+
+```ts
+async function fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const res = await fetch(url, init);
+      // Retry on transient server errors only.
+      if (res.status >= 500 && attempt < MAX_RETRIES) {
+        await delay(attempt);
+        continue;
+      }
+      return res;
+    } catch (error) {
+      if (isNonRetryable(error)) throw error;
+      lastError = error;
+      if (attempt < MAX_RETRIES) {
+        await delay(attempt);
+        continue;
+      }
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
+}
+```
+
+## function delay
+
+```ts
+function delay(attempt: number): Promise<void> {
+  const ms = Math.min(Math.exp(attempt) * 50, 1000);
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+```
+
+## function normalize
+
+```ts
+function normalize(command: string[], reply: RestReply): CommandResult {
+  return "error" in reply ? { command, error: reply.error } : { command, result: reply.result };
+}
+```
+
+## function runHttp
+
+```ts
+/**
+ * Execute commands over the Upstash REST API.
+ * - single command (non-transaction): POST to the base URL
+ * - multiple commands: POST to /pipeline (independent) or /multi-exec (atomic)
+ */
+export async function runHttp(
+  db: DatabaseConfig,
+  commands: string[][],
+  transaction: boolean
+): Promise<CommandResult[]> {
+  const base = (db.restUrl ?? "").replace(/\/+$/, "");
+  const single = commands.length === 1 && !transaction;
+  const path = single ? "" : transaction ? "/multi-exec" : "/pipeline";
+  const body = single ? commands[0] : commands;
+
+  log(`> REST ${db.name} ${path || "(single)"} x${commands.length}`);
+
+  const res = await fetchWithRetry(base + path, {
+    method: "POST",
+    body: JSON.stringify(body),
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${db.restToken ?? ""}`,
+      ...telemetryHeaders(config.disableTelemetry),
+    },
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Upstash REST request failed (HTTP ${res.status}): ${text || res.statusText}`);
+  }
+
+  const data = (await res.json()) as RestReply | RestReply[];
+
+  if (single) return [normalize(commands[0], data as RestReply)];
+
+  // /multi-exec can return a single { error } object when the transaction is aborted.
+  if (!Array.isArray(data)) {
+    const error = "error" in data ? data.error : JSON.stringify(data);
+    return commands.map((command) => ({ command, error: String(error) }));
+  }
+
+  return data.map((reply, i) => normalize(commands[i], reply));
+}
+```
