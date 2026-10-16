@@ -1,0 +1,506 @@
+# Example: search-docs
+# джерело: https://github.com/upstash/search-js/tree/0.1.7/examples/search-docs
+# отримано: 2026-10-16
+# версія: search-0.1.7
+
+Deploy with Vercel
+
+## Description
+
+A modern documentation library to search and track the docs.
+
+## How it Works
+
+- Search: Uses Upstash Search UI to query multiple indexes in parallel, sorts and groups results, and displays them with section headers.
+- Recent Updates: Upstash Qstash fetches all documents from multiple indexes in batches, filters for those crawled in the last week.
+
+## Setup
+
+Follow these steps to get the application running:
+
+2.  **Create Upstash Search Database:**
+    - Go to the Upstash Console and create a new Search database.
+    - Once created, copy your `UPSTASH_SEARCH_REST_URL`, `UPSTASH_SEARCH_REST_TOKEN` and `UPSTASH_SEARCH_READONLY_TOKEN`.
+
+3.  **Deploy Crawler Script:**
+    Click on the vercel deploy button above and provide the requested Upstash Search credentials.
+
+```env
+    NEXT_PUBLIC_UPSTASH_SEARCH_URL="YOUR_UPSTASH_SEARCH_REST_URL"
+    NEXT_PUBLIC_UPSTASH_SEARCH_READONLY_TOKEN="YOUR_UPSTASH_SEARCH_READONLY_TOKEN"
+    UPSTASH_SEARCH_REST_TOKEN="YOUR_UPSTASH_SEARCH_REST_TOKEN"
+```
+
+4.  **Populate the Database:**
+    Now that we deployed the project, our crawler resides at `/api/crawl`.
+
+    - Upstash Qstash can call the `/api/crawl` endpoint with a schedule to crawl the relevant data and upsert it to the specified Search Database
+    - Providing the URL and the index name in the body, you may manage the crawler from Upstash Console,
+    e.g.
+
+```
+    {
+        "docsUrl": "https://upstash.com/docs",
+        "index": "upstash"
+    }
+```
+
+6.  **Search for Docs:**
+    The UI also resides in the same deployment, so now using the UI, you can track your docs and do search accross all the docs you have added as scheduled.
+
+## Final Remarks
+
+The crawler operates incrementally, automatically discarding outdated content and keeping your Search database synchronized with the latest website updates each time it runs on schedule.
+
+## app/layout.tsx
+
+```tsx
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "Upstash Docs Library",
+  description: "A modern documentation library to search and track the docs you like.",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        {children}
+      </body>
+    </html>
+  );
+}
+```
+
+## app/page.tsx
+
+```tsx
+import SearchComponent from "../components/SearchComponent"
+import RecentUpdates from "../components/RecentUpdates"
+import { BookOpen } from "lucide-react"
+
+export default function Page() {
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-6xl mx-auto px-6 py-8">
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <BookOpen className="w-8 h-8 text-blue-600" />
+              <h1 className="text-3xl font-bold text-gray-900">Documentation Library</h1>
+            </div>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Search across all your documentation sources and discover the latest updates
+            </p>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-4xl mx-auto px-6 py-8 space-y-8">
+          <SearchComponent />
+          <RecentUpdates />     
+      </main>
+    </div>
+  )
+}
+```
+
+## components/RecentUpdates.tsx
+
+```tsx
+"use client"
+
+import { getIndexColor } from "@/utils/colors"
+import { Search } from "@upstash/search"
+import { FileText, Clock } from "lucide-react"
+import { useState, useEffect } from "react"
+
+// Initialize Upstash Search client
+const client = new Search({
+  url: process.env.NEXT_PUBLIC_UPSTASH_SEARCH_URL || "",
+  token: process.env.NEXT_PUBLIC_UPSTASH_SEARCH_READONLY_TOKEN || "",
+})
+
+interface SearchResult {
+  id: string
+  content: {
+    title: string
+    fullContent: string
+  }
+  metadata: {
+    url: string
+    path: string
+    contentLength: number
+    crawledAt: string
+  }
+  score: number
+  indexName?: string
+}
+
+async function getLatestDocs(): Promise<SearchResult[]> {
+  try {
+    const indexes = await client.listIndexes()
+
+    const currentDate = new Date()
+    currentDate.setDate(currentDate.getDate() - 7)
+    const oneWeekAgo = currentDate.getTime()
+
+    const rangePromises = indexes.map(async (indexName) => {
+      try {
+        const index = client.index(indexName)
+        let recentDocuments: SearchResult[] = []
+        let cursor = ""
+
+        while (true) {
+          const results = await index.range({
+            cursor: cursor,
+            limit: 100
+          })
+          //TODO: use metadata filter instead as param
+          const recentBatch = results.documents
+            .filter(result => {
+              if (!result.metadata?.crawledAt) return false
+              const crawledTime = new Date(result.metadata.crawledAt as string).getTime()
+              return crawledTime >= oneWeekAgo
+            })
+            .map((result) => ({
+              ...result,
+              id: `${indexName}-${result.id}`,
+              indexName
+            })) as SearchResult[]
+
+          recentDocuments = recentDocuments.concat(recentBatch)
+
+          if (!results.nextCursor || results.nextCursor === cursor || recentDocuments.length >= 10) {
+            break
+          }
+          cursor = results.nextCursor
+        }
+
+        return recentDocuments.slice(0, 10)
+      } catch (error) {
+        console.error(`Error getting documents from ${indexName}:`, error)
+        return []
+      }
+    })
+
+    const allResultArrays = await Promise.all(rangePromises)
+
+    const allResults = allResultArrays.flat() as SearchResult[]
+
+    return allResults
+
+  } catch (error) {
+    console.error('Error getting latest docs:', error)
+    return []
+  }
+}
+
+export default function RecentUpdates() {
+  const [latestDocs, setLatestDocs] = useState<SearchResult[]>([])
+  const [loadingLatest, setLoadingLatest] = useState(true)
+
+  useEffect(() => {
+    const loadLatestDocs = async () => {
+      const latest = await getLatestDocs()
+      setLatestDocs(latest)
+      setLoadingLatest(false)
+    }
+
+    loadingLatest && loadLatestDocs()
+  }, [latestDocs])
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString() + " " + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+      <div className="p-4 border-b border-gray-100">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+          <Clock className="w-5 h-5" />
+          Recent Updates
+        </h2>
+      </div>
+
+      <div className="p-4">
+        {loadingLatest ? (
+          <div className="flex items-center justify-center py-8 text-gray-500">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            <span className="ml-2">Loading...</span>
+          </div>
+        ) : (
+          <div className="h-96 overflow-y-auto">
+            <div className="space-y-1">
+              {latestDocs.map((doc, index) => (
+                <div key={doc.id}>
+                  <div
+                    className="flex items-start gap-3 p-3 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors group"
+                    onClick={() => window.open(doc.metadata?.url, "_blank")}
+                  >
+                    <div className="flex-shrink-0 mt-1">
+                      <FileText className="w-4 h-4 text-gray-400 group-hover:text-blue-600 transition-colors" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-sm text-gray-900 group-hover:text-blue-600 transition-colors truncate">
+                        {doc.content?.title || 'Documentation'} <span className={`text-xs ${getIndexColor(doc.indexName || '')} px-2 py-1 rounded`}>
+                          {doc.indexName}
+                        </span>
+                      </h3>
+                      <div className="flex items-center justify-between mt-1">
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {`${doc.content.fullContent.slice(0, 100)}...`}
+                        </p>
+                        <span className="text-xs text-gray-500">
+                          {formatDate(doc.metadata.crawledAt)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  {index < latestDocs.length - 1 && (
+                    <div className="border-b border-gray-100 my-1"></div>
+                  )}
+                </div>
+              ))}
+
+              {latestDocs.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <FileText className="w-12 h-12 text-gray-300 mb-2" />
+                  <p className="text-sm text-gray-500">No recent updates in the last week</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+```
+
+## components/SearchComponent.tsx
+
+```tsx
+"use client"
+
+import { SearchBar } from "@upstash/search-ui"
+import "@upstash/search-ui/dist/index.css"
+import { Search } from "@upstash/search"
+import { FileText } from "lucide-react"
+import { getIndexColor } from "@/utils/colors"
+
+// Initialize Upstash Search client
+const client = new Search({
+  url: process.env.NEXT_PUBLIC_UPSTASH_SEARCH_URL || "",
+  token: process.env.NEXT_PUBLIC_UPSTASH_SEARCH_READONLY_TOKEN || "",
+})
+
+interface SearchResult {
+  id: string
+  content: {
+    title: string
+    fullContent: string
+  }
+  metadata: {
+    url: string
+    path: string
+    contentLength: number
+    crawledAt: string
+  }
+  score: number
+  indexName?: string
+}
+
+async function searchDocs(query: string): Promise<SearchResult[]> {
+  if (!query.trim()) return []
+
+  try {
+    const indexes = await client.listIndexes()
+
+    const searchPromises = indexes.map(async (indexName) => {
+      try {
+        const index = client.index(indexName)
+        const searchParams: any = {
+          query,
+          limit: 10,
+          reranking: true
+        }
+
+        const results = await index.search(searchParams)
+
+        return (results as any[]).map((result, i) => ({
+          ...result,
+          id: `${indexName}-${result.id}`,
+          indexName
+        }))
+      } catch (error) {
+        console.error(`Error searching ${indexName}:`, error)
+        return []
+      }
+    })
+
+    const resultArrays = await Promise.all(searchPromises)
+
+    const allResults = resultArrays.flat() as SearchResult[]
+
+    const topResults = allResults
+      .sort((a, b) => (b.score || 0) - (a.score || 0))
+      .slice(0, 10)
+
+    return topResults
+
+  } catch (error) {
+    console.error('Search error:', error)
+    return []
+  }
+}
+
+
+export default function SearchComponent() {
+
+  return (
+    <div className="space-y-4">
+      {/* Search Bar */}
+      <div className="max-w-sm mx-auto lg:mx-0">
+        <SearchBar.Dialog>
+          <SearchBar.DialogTrigger placeholder="Search docs..." />
+
+          <SearchBar.DialogContent>
+            <SearchBar.Input placeholder="Type to search documentation..." />
+            <SearchBar.Results
+              searchFn={searchDocs}
+            >
+              {(result) => (
+                <SearchBar.Result value={result.id} key={result.id}>
+                  <SearchBar.ResultIcon>
+                    <FileText className="text-gray-600" />
+                  </SearchBar.ResultIcon>
+
+                  <SearchBar.ResultContent>
+                    <SearchBar.ResultTitle onClick={() => {
+                      window.open(result.metadata?.url, "_blank")
+                    }}>
+
+                      {result.content?.title} <span className={`text-xs px-2 py-1 rounded ${getIndexColor(result.indexName || '')}`}>{result.indexName}</span>
+                    </SearchBar.ResultTitle>
+
+                    <p className="text-xs text-gray-500 mt-0.5">{`${result.content.fullContent.slice(0, 100)}...`}</p>
+                  </SearchBar.ResultContent>
+                </SearchBar.Result>
+              )}
+            </SearchBar.Results>
+          </SearchBar.DialogContent>
+        </SearchBar.Dialog>
+      </div>
+    </div>
+  )
+}
+```
+
+## package.json
+
+```json
+{
+  "name": "search-docs",
+  "version": "0.1.0",
+  "description": "A modern documentation library to search and track the docs.",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@upstash/search": "^0.1.3",
+    "@upstash/search-crawler": "^0.1.8",
+    "@upstash/search-ui": "^0.1.4",
+    "lucide-react": "^0.525.0",
+    "next": "15.3.5",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tailwindcss": "^4",
+    "tw-animate-css": "^1.3.5",
+    "typescript": "^5"
+  }
+}
+```
+
+## pages/api/crawl.ts
+
+```ts
+import type { NextApiRequest, NextApiResponse } from 'next'
+import { crawlAndIndex } from "@upstash/search-crawler"
+ 
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method === 'POST') {
+    const { docsUrl, index } = req.body;
+    const upstashUrl = process.env.NEXT_PUBLIC_UPSTASH_SEARCH_URL!
+    const upstashRestToken = process.env.UPSTASH_SEARCH_REST_TOKEN!
+
+    if (!docsUrl || !upstashUrl || !upstashRestToken) {
+      return res.status(500).json({ error: "Missing Upstash Search configuration" });
+    }
+    
+    const result = await crawlAndIndex({
+        upstashUrl,
+        upstashToken: upstashRestToken,
+        indexName: index || "default",
+        docUrl: docsUrl,
+    })
+
+    return res.status(200).json(result)
+  } else {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+}
+```
+
+## utils/colors.ts
+
+```ts
+const colorPalette = [
+    "bg-blue-50 text-blue-700",
+    "bg-purple-50 text-purple-700",
+    "bg-yellow-50 text-yellow-700",
+    "bg-pink-50 text-pink-700",
+    "bg-indigo-50 text-indigo-700",
+    "bg-red-50 text-red-700",
+    "bg-green-50 text-green-700",
+];
+
+export function getIndexColor(indexName: string) {
+    let hash = 0;
+    for (let i = 0; i < indexName.length; i++) {
+        hash = indexName.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const colorIndex = Math.abs(hash) % colorPalette.length;
+    return colorPalette[colorIndex];
+}
+```

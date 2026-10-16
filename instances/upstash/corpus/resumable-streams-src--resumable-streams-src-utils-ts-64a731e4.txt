@@ -1,0 +1,50 @@
+# resumable-streams: src/utils.ts
+# джерело: https://github.com/upstash/resumable-streams/blob/ff16b03a48caddd41d5d9f0cfe2397dce1bc3a42/src/utils.ts
+# отримано: 2026-10-16
+
+```ts
+import { Pipeline, Redis } from "@upstash/redis"
+import { UIMessage } from "ai"
+```
+
+## const redis
+
+```ts
+export const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN,
+})
+```
+
+## const addMessageToHistory
+
+```ts
+export const addMessageToHistory = async (
+  chatId: string,
+  unix: number,
+  message: UIMessage
+): Promise<void> => {
+  const messageKey = `${unix}-${message.id || Math.random()}`
+
+  await redis.zadd(
+    `chat:history:${chatId}`,
+    // 👇 this is important for being idempotent (if exists, do nothing)
+    { nx: true },
+    { score: unix, member: message }
+  )
+}
+```
+
+## const getMessageHistory
+
+```ts
+export const getMessageHistory = async (chatId: string): Promise<UIMessage[]> => {
+  const messages = await redis.zrange<UIMessage[]>(`chat:history:${chatId}`, 0, -1)
+
+  if (!messages || messages.length === 0) {
+    return []
+  }
+
+  return messages
+}
+```

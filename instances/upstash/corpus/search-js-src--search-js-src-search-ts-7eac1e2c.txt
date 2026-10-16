@@ -1,0 +1,89 @@
+# search-js: src/search.ts
+# джерело: https://github.com/upstash/search-js/blob/0.1.7/src/search.ts
+# отримано: 2026-10-16
+# версія: search-0.1.7, search-0.1.6, search-0.1.5, search-0.1.4, search-0.1.3, search-0.1.2
+
+```ts
+import { Index as VectorIndex } from "@upstash/vector";
+import { SearchIndex } from "./search-index";
+import type { Dict } from "./types";
+import type { HttpClient } from "./client/search-client";
+```
+
+## class Search
+
+```ts
+/**
+ * Provides search capabilities over indexes.
+ */
+export class Search {
+  protected vectorIndex: VectorIndex;
+```
+
+### Search.constructor()
+
+```ts
+  /**
+   * Creates a new Search instance.
+   *
+   * @param vectorIndex - The underlying index used for search operations.
+   */
+  constructor(private client: HttpClient) {
+    this.vectorIndex = new VectorIndex(client);
+  }
+
+  /**
+   * Returns a SearchIndex instance for a given index.
+   *
+   * Each index is an isolated collection where documents can be added,
+   * retrieved, searched, and deleted.
+   *
+   * @param indexName - The name to use as an index.
+   * @returns A SearchIndex instance for managing documents within the index.
+   */
+  index = <TContent extends Dict = Dict, TIndexMetadata extends Dict = Dict>(
+    indexName: string
+  ): SearchIndex<TContent, TIndexMetadata> => {
+    return new SearchIndex<TContent, TIndexMetadata>(this.client, this.vectorIndex, indexName);
+  };
+
+  /**
+   * Retrieves a list of all available indexes.
+   *
+   * @returns An array of strings representing the names of available indexes.
+   */
+  listIndexes = async () => {
+    return await this.vectorIndex.listNamespaces();
+  };
+
+  /**
+   * Retrieves overall search index statistics.
+   *
+   * This includes disk usage, total document count, pending document count,
+   * and details about each available index.
+   *
+   * @returns An object containing search system metrics and index details.
+   */
+  info = async () => {
+    const { indexSize, namespaces, pendingVectorCount, vectorCount } =
+      await this.vectorIndex.info();
+
+    const indexes = Object.fromEntries(
+      Object.entries(namespaces).map((namespace) => [
+        namespace[0],
+        {
+          pendingDocumentCount: namespace[1].pendingVectorCount,
+          documentCount: namespace[1].vectorCount,
+        },
+      ])
+    );
+
+    return {
+      diskSize: indexSize,
+      pendingDocumentCount: pendingVectorCount,
+      documentCount: vectorCount,
+      indexes,
+    };
+  };
+}
+```

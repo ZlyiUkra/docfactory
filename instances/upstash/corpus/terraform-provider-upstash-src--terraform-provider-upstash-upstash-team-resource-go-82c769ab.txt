@@ -1,0 +1,67 @@
+# terraform-provider-upstash: upstash/team/resource.go
+# джерело: https://github.com/upstash/terraform-provider-upstash/blob/v2.1.0/upstash/team/resource.go
+# отримано: 2026-10-16
+# версія: terraform-2.1.0, terraform-2.0.1, terraform-2.0.0
+
+```text
+package team
+
+import (
+	"fmt"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+)
+
+func ResourceTeam() *schema.Resource {
+	return &schema.Resource{
+		CreateContext: resourceCreate,
+		ReadContext:   resourceRead,
+		UpdateContext: resourceUpdate,
+		DeleteContext: resourceDelete,
+		Schema: map[string]*schema.Schema{
+			"team_id": {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "Unique Cluster ID for created cluster",
+			},
+			"team_name": {
+				Type:        schema.TypeString,
+				Required:    true,
+				ForceNew:    true,
+				Description: "Name of the team",
+			},
+			"copy_cc": {
+				Type:        schema.TypeBool,
+				Required:    true,
+				ForceNew:    true,
+				Description: "Whether Credit Card is copied",
+			},
+			"team_members": {
+				Type:     schema.TypeMap,
+				Required: true,
+				ForceNew: false,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+				Description: "Members of the team. (Owner must be specified, which is the owner of the api key.)",
+				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
+					noOwner := true
+					for _, b := range val.(map[string]interface{}) {
+						if b.(string) == "owner" {
+							noOwner = false
+						}
+					}
+					if noOwner {
+						errs = append(errs, fmt.Errorf("Owner of the api key should be given the role of owner"))
+					}
+					return
+				},
+			},
+		},
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
+	}
+
+}
+```
