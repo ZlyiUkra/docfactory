@@ -1,0 +1,195 @@
+# @upstash/lock README 0.3.0 … 0.3.1
+# джерело: https://registry.npmjs.org/@upstash/lock/-/lock-0.3.1.tgz
+# отримано: 2026-10-16
+# версія: lock-0.3.1, lock-0.3.0
+
+  @upstash/lock
+  Distributed Lock using Upstash Redis
+
+  upstash.com
+
+> [!NOTE]
+> **This project is a Community Project.**
+>
+> The project is maintained and supported by the community. Upstash may contribute but does not officially support or assume responsibility for it.
+
+`@upstash/lock` offers a distributed lock implementation using Upstash Redis.
+
+### Disclaimer
+
+Please use this lock implementation for efficiency purposes; for example to avoid doing an expensive work more than once or to perform a task _mostly_ once in a best-effort manner.
+Do not use it to guarantee correctness of your system; such as leader-election or for the tasks requiring _exactly_ once execution.
+
+Upstash Redis uses async replication between replicas, and a lock can be acquired by multiple clients in case of a crash or network partition. Please read the post How to do distributed locking by Martin Kleppman to learn more about the topic.
+
+### Quick Start
+
+NPM
+
+```bash
+npm install @upstash/lock
+```
+
+PNPM
+
+```bash
+pnpm add @upstash/lock
+```
+
+Bun
+
+```bash
+bun add @upstash/lock
+```
+
+### Locking Demo
+
+To see a demo of the lock in action, visit https://lock-upstash.vercel.app
+
+To create the Redis instance, you can use the `Redis.fromEnv()` method to use an Upstash Redis instance from environment variables. More options can be found here.
+
+### Lock Example Usage
+
+```typescript
+import { Lock } from "@upstash/lock";
+import { Redis } from "@upstash/redis";
+
+async function handleOperation() {
+  const lock = new Lock({
+    id: "unique-lock-id",
+    redis: Redis.fromEnv(),
+  });
+
+  if (await lock.acquire()) {
+    // Perform your critical section that requires mutual exclusion
+    await criticalSection();
+    await lock.release();
+  } else {
+    // handle lock acquisition failure
+  }
+}
+```
+
+### Automatic Release with `await using`
+
+`Lock` implements the Explicit Resource Management protocol (`Symbol.asyncDispose`), so on TypeScript 5.2+ or a modern runtime (Node.js 20.9+, Bun, Deno, Chrome 123+) you can let the language release the lock for you — even if the critical section throws:
+
+> [!NOTE]
+> TypeScript 5.2+ is recommended for the `await using` types. Older runtimes and TypeScript versions keep working as before — this feature is purely additive.
+
+```typescript
+import { Lock, LockAcquisitionError } from "@upstash/lock";
+import { Redis } from "@upstash/redis";
+
+async function handleOperation() {
+  try {
+    await using lock = await new Lock({
+      id: "unique-lock-id",
+      redis: Redis.fromEnv(),
+    }).acquireOrThrow();
+
+    // Perform your critical section that requires mutual exclusion
+    await criticalSection();
+  } catch (err) {
+    if (err instanceof LockAcquisitionError) {
+      // handle lock acquisition failure
+    }
+    throw err;
+  }
+} // lock.release() is called automatically here
+```
+
+If you prefer the boolean-returning `acquire()`, that works too — disposal is a no-op when the lock was never acquired (or was already released):
+
+```typescript
+await using lock = new Lock({ id: "unique-lock-id", redis: Redis.fromEnv() });
+if (await lock.acquire()) {
+  await criticalSection();
+} // released automatically, whether or not criticalSection threw
+```
+
+### Releasing From Another Process
+
+Sometimes the process that acquires the lock is not the one that knows when the work is done, for example a route that starts an async job. Pass your own `uuid` to `acquire`, hand it to the finalizer, and seed it into a new `Lock` there:
+
+```typescript
+// Process A: acquire with a known uuid
+const uuid = crypto.randomUUID();
+const lock = new Lock({ id: "job-lock", redis: Redis.fromEnv() });
+await lock.acquire({ uuid });
+
+// Process B: seed the uuid, then release safely
+const lock = new Lock({ id: "job-lock", redis: Redis.fromEnv(), uuid });
+await lock.release();
+```
+
+Release still checks the UUID in Redis, so a stale finalizer can never delete a lock it no longer owns.
+
+### Lock API
+
+#### `Lock`
+
+```typescript
+new Lock({
+  id: string,
+  redis: Redis, // ie. Redis.fromEnv(), new Redis({...})
+  lease: number, // default: 10000 ms
+  retry: {
+    attempts: number, // default: 3
+    delay: number, // default: 100 ms
+  },
+  uuid: string, // optional: seed the uuid of an already-acquired lock
+});
+```
+
+#### `Lock#acquire`
+
+Attempts to acquire the lock. Returns `true` if the lock is acquired, `false` otherwise.
+
+You can pass a `config` object to override the default `lease` and `retry` options.
+
+```typescript
+async acquire(config?: LockAcquireConfig): Promise<boolean>
+```
+
+#### `Lock#acquireOrThrow`
+
+Like `acquire`, but throws a `LockAcquisitionError` on failure and resolves with the lock itself, making it a natural fit for `await using`.
+
+```typescript
+async acquireOrThrow(config?: LockAcquireConfig): Promise<this>
+```
+
+#### `Lock#[Symbol.asyncDispose]`
+
+Releases the lock (if held) when an `await using` scope exits. No-op if the lock was never acquired or was already released.
+
+#### `Lock#release`
+
+Attempts to release the lock. Returns `true` if the lock is released, `false` otherwise.
+
+```typescript
+async release(): Promise<boolean>
+```
+
+#### `Lock#extend`
+
+Attempts to extend the lock lease. Returns `true` if the lock lease is extended, `false` otherwise.
+
+```typescript
+async extend(amt: number): Promise<boolean>
+```
+
+#### `Lock#getStatus`
+
+Returns whether the lock is `ACQUIRED` or `FREE`.
+
+```typescript
+async getStatus(): Promise<LockStatus>
+```
+
+| Option           | Default Value | Description                                                                       |
+| ---------------- | ------------- | --------------------------------------------------------------------------------- |
+| `lease`          | `10000`       | The lease duration in milliseconds. After this expires, the lock will be released |
+| `retry.attempts` | `3`           | The number of attempts to acquire the lock.                                       |
+| `retry.delay`    | `100`         | The delay between attempts in milliseconds.                                       |

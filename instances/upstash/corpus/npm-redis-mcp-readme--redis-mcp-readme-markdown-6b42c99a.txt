@@ -1,0 +1,204 @@
+# @upstash/redis-mcp README 0.1.0 … 0.1.1
+# джерело: https://registry.npmjs.org/@upstash/redis-mcp/-/redis-mcp-0.1.1.tgz
+# отримано: 2026-10-16
+# версія: redis-mcp-0.1.1, redis-mcp-0.1.0
+
+## Upstash Redis MCP
+
+Add to Cursor
+
+Lightweight MCP server for Redis with only two tools:
+
+- 🧪 **`redis_run_commands`**: run one or more Redis commands over **HTTP/REST** or **TCP**, as a pipeline or an atomic transaction.
+- 📚 **`redis_search_docs`**: search the Redis docs using Context7 public api.
+
+One server can hold multiple named databases. Configuration is pure environment variables and CLI flags.
+
+## 🔌 Quickstart
+
+Claude Code
+
+Run this in your terminal. See the Claude Code MCP docs for more.
+
+```bash
+claude mcp add upstash-redis \
+  -e UPSTASH_REDIS_REST_URL=https://<your-db>.upstash.io \
+  -e UPSTASH_REDIS_REST_TOKEN=<your-rest-token> \
+  -- npx -y @upstash/redis-mcp
+```
+
+Cursor
+
+Add to `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (per-project), or go to **Settings → MCP → Add new MCP server**. See the Cursor MCP docs.
+
+```json
+{
+  "mcpServers": {
+    "upstash-redis": {
+      "command": "npx",
+      "args": ["-y", "@upstash/redis-mcp"],
+      "env": {
+        "UPSTASH_REDIS_REST_URL": "https://<your-db>.upstash.io",
+        "UPSTASH_REDIS_REST_TOKEN": "<your-rest-token>"
+      }
+    }
+  }
+}
+```
+
+VS Code
+
+Add to `.vscode/mcp.json` (per-project) or your user `mcp` settings. See the VS Code MCP docs.
+
+```json
+{
+  "servers": {
+    "upstash-redis": {
+      "command": "npx",
+      "args": ["-y", "@upstash/redis-mcp"],
+      "env": {
+        "UPSTASH_REDIS_REST_URL": "https://<your-db>.upstash.io",
+        "UPSTASH_REDIS_REST_TOKEN": "<your-rest-token>"
+      }
+    }
+  }
+}
+```
+
+Codex
+
+Add to `~/.codex/config.toml` (or a project-level `.codex/config.toml`). See the Codex MCP docs.
+
+```toml
+[mcp_servers.upstash-redis]
+command = "npx"
+args = ["-y", "@upstash/redis-mcp"]
+env = { UPSTASH_REDIS_REST_URL = "https://<your-db>.upstash.io", UPSTASH_REDIS_REST_TOKEN = "<your-rest-token>" }
+```
+
+OpenCode
+
+Add to `opencode.json` (project) or `~/.config/opencode/opencode.json` (global). See the OpenCode MCP docs.
+
+```json
+{
+  "mcp": {
+    "upstash-redis": {
+      "type": "local",
+      "command": ["npx", "-y", "@upstash/redis-mcp"],
+      "environment": {
+        "UPSTASH_REDIS_REST_URL": "https://<your-db>.upstash.io",
+        "UPSTASH_REDIS_REST_TOKEN": "<your-rest-token>"
+      }
+    }
+  }
+}
+```
+
+> [!TIP]
+> Any MCP-compatible client works. If yours isn't listed, add a **stdio** server that runs `npx -y @upstash/redis-mcp` with the two env vars above.
+
+## 🧰 Tools
+
+### 🧪 `redis_run_commands`
+
+Run any Redis command: `GET`, `SET`, `SCAN`, `ZADD`, `EVAL`, the `SEARCH.*` family, and everything else. Each command is an array of args (numbers are accepted and coerced to strings). By default multiple commands run as a **pipeline**: each returns its own result/error, aligned to the input, and one failure doesn't abort the rest. Set `transaction: true` for an atomic `MULTI/EXEC`.
+
+```jsonc
+{
+  "commands": [
+    ["SET", "visits", 0],
+    ["INCR", "visits"],
+    ["GET", "visits"],
+  ],
+  "transaction": false, // optional: true => atomic MULTI/EXEC
+  // "database": "prod"       // only when more than one database is configured
+  // raw credential overrides (optional):
+  // "rest_url", "rest_token" // HTTP
+  // "connection_string"      // TCP, rediss://
+}
+```
+
+The transport (HTTP vs TCP) is determined by how the target database is configured; the agent never picks it.
+
+### 📚 `redis_search_docs`
+
+Searches the Upstash Redis documentation live and returns the most relevant pages. Reach for it whenever you're unsure about a command or feature, especially Upstash-specific ones like the `SEARCH.*` full-text search family. It's powered by Context7's free tier, so no API key or extra setup is required.
+
+```jsonc
+{ "query": "SEARCH.AGGREGATE date histogram" }
+```
+
+## ⚙️ Configuration
+
+Everything is set through environment variables and CLI flags; there are no config files.
+
+### Single database
+
+| Transport | Environment                                           | CLI                                     |
+| --------- | ----------------------------------------------------- | --------------------------------------- |
+| HTTP      | `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` | `--rest-url <url> --rest-token <token>` |
+| TCP       | `UPSTASH_REDIS_TCP_URL` (or `REDIS_URL`)              | `--url <rediss://…>`                    |
+
+### Multiple databases
+
+Give each database a name. The name becomes a selectable `database` value in `redis_run_commands`.
+
+**Environment**: insert a `<NAME>` segment:
+
+```bash
+UPSTASH_REDIS_PROD_REST_URL="https://prod-db.upstash.io"
+UPSTASH_REDIS_PROD_REST_TOKEN="<prod-rest-token>"
+UPSTASH_REDIS_CACHE_TCP_URL="rediss://default:<password>@cache-db.upstash.io:6379"
+```
+
+**CLI**: repeat `--database` to start each group:
+
+```bash
+npx -y @upstash/redis-mcp \
+  --database prod  --rest-url https://prod-db.upstash.io --rest-token <prod-rest-token> \
+  --database cache --url rediss://default:<password>@cache-db.upstash.io:6379
+```
+
+> [!NOTE]
+> **Raw credentials per call.** A `redis_run_commands` call may also pass `rest_url` + `rest_token` (HTTP) or `connection_string` (TCP) inline; these override the registry and work even with no configured database. They flow through the model's context, so prefer env/CLI for anything sensitive.
+
+### Flags & options
+
+| Flag                        | Env                         | Default | Purpose                                                                                                            |
+| --------------------------- | --------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------ |
+| `--transport <stdio\|http>` |                             | `stdio` | Server transport                                                                                                   |
+| `--port <n>`                |                             | `3000`  | Port for the `http` transport                                                                                      |
+| `--readonly`                | `UPSTASH_REDIS_READONLY`    | off     | Best-effort: reject write commands on both transports. Server-side read-only REST tokens remain the robust option. |
+| `--disable-telemetry`       | `UPSTASH_DISABLE_TELEMETRY` | off     | Stop sending `Upstash-Telemetry-*` headers on HTTP requests                                                        |
+| `--debug`                   |                             | off     | Verbose logging to stderr + `redis-mcp-debug.log`                                                                  |
+
+## 📡 Telemetry
+
+HTTP/REST requests carry `Upstash-Telemetry-{Sdk,Platform,Runtime}` headers. Disable with `--disable-telemetry` or `UPSTASH_DISABLE_TELEMETRY=true`.
+
+## 🏃 Run it locally
+
+```bash
+bun install
+bun run build                 # emits dist/index.js
+cp .env.example .env          # add UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN
+
+node dist/index.js                          # stdio (what clients spawn)
+node dist/index.js --transport http --port 3000   # HTTP: endpoint /mcp, health /ping
+```
+
+The server auto-loads `.env`. To point a client at your local build, swap `npx -y @upstash/redis-mcp` in any Quickstart config for `node /absolute/path/to/redis-mcp/dist/index.js`.
+
+## 🛠️ Development
+
+```bash
+bun install
+bun run build
+bun test
+bun run lint
+```
+
+## 📄 License
+
+MIT © Upstash
