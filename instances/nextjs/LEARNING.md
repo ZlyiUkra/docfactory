@@ -331,7 +331,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 | nuqs | стан у рядку адреси з типами: фільтри, сортування, сторінки | 0 | Ф5 Д5; є примірник `nuqs` |
 | Zustand | невеликий глобальний стан у клієнтських компонентах | 1 | Ф5 Д5; є примірник `zustand` |
 | next-intl | переклади й адреси з мовою | 3 | Ф5 Д8; є примірник `next-intl`; альтернатива — next-i18next (з 16.x уміє App Router), є примірник `i18next` |
-| Redis (Upstash) | обмеження частоти запитів, спільний кеш | 37 | Ф7 Д6, Ф3 Д9; є примірник `redis` (Upstash — лише свій сайт) |
+| Redis (Upstash) | обмеження частоти запитів, спільний кеш | 37 | Ф7 Д6, Ф3 Д9; є примірники `redis` і `upstash` (сайт Upstash, `@upstash/redis`, `@upstash/ratelimit`) |
 | Sentry | збір помилок із картами коду | 1 | Ф7 Д9; є примірник `sentry` |
 | OpenTelemetry | траси запитів: хто скільки чекав | 3 | Ф7 Д9 |
 | socket.io-client | з'єднання клієнтського компонента з gateway NestJS | — | Ф8 Д6–7; є примірник `socketio` |
@@ -416,6 +416,9 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - BullMQ (черги задач поверх Redis: сайт docs.bullmq.io, README, код, тести й нотатки випусків 1.0–6.3, порти;
   попередник Bull, панелі Bull Board і Arena, модулі `@nestjs/bullmq` і `@nestjs/bull`; черга живе в API на NestJS,
   Next.js лише приймає її вебхуки) — `bullmq`;
+- Upstash (платформа: сайт upstash.com/docs — Redis по HTTP з довідником команд, `@upstash/redis`, `@upstash/ratelimit`,
+  QStash, Workflow, Vector, Search, Box, Developer API; блог; README, код, тести й нотатки випусків кожного SDK;
+  під кешем і обмеженням частоти на Vercel і Cloudflare) — `upstash`;
 - Docker — `docker`; Kubernetes, k3s, Traefik, Kustomize, SOPS, age і Helm — `kubernetes`; sshd — `linux`;
 - безкоштовна машина Oracle Cloud (Always Free, повернення бездіяльних машин, «out of host capacity», бюджети), OKE —
   `oracle-cloud`;
@@ -441,7 +444,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «варто знати»: Upstash (сам Redis має примірник `redis`), OpenTelemetry;
+- з «варто знати»: OpenTelemetry;
 - з «знати, що існує»: Stripe, Resend і React Email, Vercel AI SDK, UploadThing, Sanity, Payload, Contentful,
   tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Grafana, Loki.
 
@@ -953,7 +956,7 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 
 # Фаза 3. Кешування — 9 днів
 
-**Сервери MCP фази:** `nextjs-docs`.
+**Сервери MCP фази:** `nextjs-docs`, `redis-docs`, `upstash-docs`.
 
 Найскладніша тема Next.js і єдина, де матеріал з інтернету застаріває за рік. Тут фільтр версії сервера —
 головний інструмент.
@@ -1062,9 +1065,10 @@ Next.js — надбудова над HTTP, Node і серверним React. У
   можна замінити своїм через `cacheHandlers` — наприклад, Redis, щоб кілька серверів мали один кеш.
   `Example: cache-handler-redis` — для попередньої моделі (`cacheHandler` в однині); для `use cache` зразок
   лежить у самій сторінці `cacheHandlers`, розділ «Examples › External storage pattern».
-- **Читати:** `Using a CDN with Next.js`, `cacheHandlers`; документація Redis — примірник `redis`; поза корпусом —
-  Upstash.
-- **Сервери MCP:** `nextjs-docs`, `redis-docs`.
+- **Читати:** `Using a CDN with Next.js`, `cacheHandlers`; документація Redis — примірник `redis`; у примірнику
+  `upstash` — `Redis: REST API`, `Redis: Get Started` (SDK TypeScript), `Redis: App Router` (швидкий старт для
+  Next.js), `Redis: Vercel - Upstash Redis Integration`.
+- **Сервери MCP:** `nextjs-docs`, `redis-docs`, `upstash-docs`.
 - **Зробити:** схема на папері: браузер, CDN, Next.js, база; на кожному рівні — що лежить, скільки живе і чим
   скидається.
 - **Перевірити себе:** для будь-якого блоку вашої сторінки ви показуєте пальцем рівень, де він застаріє.
@@ -1515,7 +1519,7 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 
 # Фаза 7. DevOps: від збірки до продакшну — 12 днів
 
-**Сервери MCP фази:** `nextjs-docs`, `docker-docs`, `drizzle-docs`, `prisma-docs`, `webstandards-docs`,
+**Сервери MCP фази:** `nextjs-docs`, `docker-docs`, `upstash-docs`, `drizzle-docs`, `prisma-docs`, `webstandards-docs`,
 `kubernetes-docs`, `playwright-docs`, `github-actions-docs`, `nginx-docs`, `webdev-docs`, `sentry-docs`.
 
 Next.js — не тека статики: це сервер, який треба зібрати, запустити, тримати живим і вміти відкотити. Документації
@@ -1599,11 +1603,12 @@ Cloud з'явився в плані React (фаза 5, дні 7–9), бекен
   у Next.js ставлять `compress: false`. Персональні сторінки Next.js віддає з `Cache-Control: private` —
   проксі не має їх кешувати. TLS локально — сертифікатом mkcert.
 - **Читати:** `How to self-host your Next.js application`, розділ про зворотний проксі; `Streaming`, розділ «Reverse
-  proxies»; `compress`; поза корпусом — документація Upstash Ratelimit; у примірнику `webstandards` — `RFC 9110 HTTP
+  proxies»; `compress`; у примірнику `upstash` — `Redis: Ratelimiting Algorithms`, `Redis: Methods`, `Redis: Getting
+  Started` (розділ ratelimit); у примірнику `webstandards` — `RFC 9110 HTTP
   Semantics: 7 Routing HTTP Messages`, `RFC 9112 HTTP/1.1: 9 Connection Management`; у примірнику `nginx` — `NGINX
   Reverse Proxy` (розділ Configuring Buffers), `Module ngx_http_proxy_module` (директиви `proxy_buffering`,
   `proxy_cache`), `NGINX Content Caching`, `Module ngx_http_limit_req_module`, `Configuring HTTPS servers`.
-- **Сервери MCP:** `nextjs-docs`, `webstandards-docs`, `nginx-docs`.
+- **Сервери MCP:** `nextjs-docs`, `upstash-docs`, `webstandards-docs`, `nginx-docs`.
 - **Зробити:** 1) nginx у compose перед застосунком; 2) `curl -N --compressed` — стрімінг дожив; 3) увімкнути
   кеш nginx і зайти двома користувачами в кабінет; 4) обмеження частоти на адресі входу.
 - **Перевірити себе:** шматки стріму приходять із проміжками; кожен користувач бачить свій кабінет.
