@@ -1,0 +1,177 @@
+# Upstash Context7 SDK
+# джерело: https://github.com/upstash/context7/blob/ctx7@0.5.11/packages/sdk/README.md
+# отримано: 2026-10-16
+# версія: ctx7-0.5.11, context7-tools-ai-sdk-1.0.1, context7-sdk-0.4.1, context7-mcp-4.1.1, context7-mcp-4.1.0, context7-mcp-4.0.7, context7-mcp-4.0.6
+
+> ⚠️ **Work in Progress**: This SDK is currently under active development. The API is subject to change and may introduce breaking changes in future releases.
+
+`@upstash/context7-sdk` is an HTTP/REST based client for TypeScript, built on top of the Context7 API.
+
+## Why Context7?
+
+LLMs rely on outdated or generic training data about the libraries you use. This leads to:
+
+- Code examples based on year-old training data
+- Hallucinated APIs that don't exist
+- Generic answers for old package versions
+
+Context7 solves this by providing up-to-date, version-specific documentation and code examples directly from the source. Use this SDK to:
+
+- Build AI agents with accurate, current documentation context
+- Create RAG pipelines with reliable library documentation
+- Power code generation tools with real API references
+
+## Quick Start
+
+### Install
+
+```bash
+npm install @upstash/context7-sdk
+```
+
+### Get API Key
+
+Get your API key from Context7
+
+## Basic Usage
+
+```ts
+import { Context7 } from "@upstash/context7-sdk";
+
+const client = new Context7({
+  apiKey: "<CONTEXT7_API_KEY>",
+});
+
+// Search for libraries
+const libraries = await client.searchLibrary("I need to build a UI with components", "react");
+console.log(libraries[0].id); // "/facebook/react"
+
+// Get documentation as JSON array (default)
+const docs = await client.getContext("How do I use hooks?", "/facebook/react");
+console.log(docs[0].title, docs[0].content);
+
+// Get documentation context as plain text
+const context = await client.getContext("How do I use hooks?", "/facebook/react", { type: "txt" });
+console.log(context);
+```
+
+## Configuration
+
+### Environment Variables
+
+You can set your API key via environment variable:
+
+```sh
+CONTEXT7_API_KEY=ctx7sk-...
+```
+
+Then initialize without options:
+
+```ts
+const client = new Context7();
+```
+
+### Vercel Marketplace OIDC
+
+Vercel Marketplace resources can authenticate without a long-lived Context7
+API key. Pass Vercel's per-resource access-token callback as a token provider
+so each request receives a current token:
+
+```ts
+import { Context7 } from "@upstash/context7-sdk";
+import { getIntegrationToken } from "@vercel/integrations";
+
+const client = new Context7({
+  authToken: () => getIntegrationToken("context7"),
+});
+```
+
+The `getIntegrationToken` signature is based on Vercel's current provider
+specification and may change before Marketplace OIDC is generally available.
+
+The token's `resource` claim must match the Context7 resource created during
+Marketplace provisioning. Do not resolve the token once at startup: Vercel
+Marketplace OIDC tokens are short-lived.
+
+Explicit credentials take precedence in this order: `apiKey`, `authToken`, then
+`CONTEXT7_API_KEY`. This allows OIDC to be tested while a legacy API key remains
+available during a dual-auth migration.
+
+### Production HTTP options
+
+Requests time out after 30 seconds and retry transient network errors, `408`, `425`, `429`,
+and `5xx` responses by default. You can configure those defaults for the client and override
+timeout, cancellation, and native fetch caching per request:
+
+```ts
+import { Context7, Context7Error } from "@upstash/context7-sdk";
+
+const client = new Context7({
+  apiKey: process.env.CONTEXT7_API_KEY,
+  timeout: 10_000,
+  retry: {
+    retries: 3,
+    backoff: (attempt) => 100 * 2 ** attempt,
+  },
+  onResponse: ({ status, requestId, rateLimit, attempt }) => {
+    console.log({ status, requestId, rateLimit, attempt });
+  },
+});
+
+const controller = new AbortController();
+
+try {
+  const docs = await client.getContext("How do I use hooks?", "/facebook/react", {
+    signal: controller.signal,
+    timeout: 5_000,
+    cache: "no-store",
+  });
+  console.log(docs);
+} catch (error) {
+  if (error instanceof Context7Error) {
+    console.error(error.code, error.status, error.requestId, error.rateLimit);
+  }
+}
+```
+
+The client also accepts `baseUrl`, `headers`, `keepAlive`, and a custom `fetch` implementation for
+proxies, instrumentation, tests, and runtimes that do not expose a global `fetch`. The configured
+API key always controls the `Authorization` header.
+
+As in `@upstash/redis`, you can express a timeout with a fresh signal for every request:
+
+```ts
+const client = new Context7({
+  apiKey: process.env.CONTEXT7_API_KEY,
+  signal: () => AbortSignal.timeout(10_000),
+});
+```
+
+Set `retry: false` to make exactly one request, `timeout: false` to disable the request timeout,
+or `cache: false` to omit the native fetch cache option.
+
+Only `GET` requests are retried. Mutating requests remain single-attempt.
+
+## Docs
+
+See the documentation for details.
+
+## Contributing
+
+### Running tests
+
+```sh
+pnpm test
+```
+
+Run the live API integration tests separately with a configured API key:
+
+```sh
+pnpm test:integration
+```
+
+### Building
+
+```sh
+pnpm build
+```

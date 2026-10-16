@@ -1,0 +1,337 @@
+# Get Docs
+# джерело: https://github.com/upstash/context7/blob/@upstash%2Fcontext7-tools-ai-sdk@0.1.0/docs/sdks/ts/commands/get-docs.mdx
+# отримано: 2026-10-16
+# версія: context7-tools-ai-sdk-0.1.0, context7-mcp-2.0.2, context7-mcp-2.0.1, context7-mcp-2.0.0, context7-mcp-1.0.33, context7-mcp-1.0.32
+
+## Get Docs
+
+Retrieve documentation for a specific library. You can get code examples or informational documentation in either JSON or text format.
+
+## Arguments
+
+  The library identifier in the format `/owner/repo` (e.g., `/facebook/react`)
+
+properties
+
+      Type of documentation to retrieve
+      - `code`: Code examples and API documentation
+      - `info`: Informational documentation and guides
+
+      Default: `"code"`
+
+      Format of the response
+      - `json`: Structured JSON with metadata
+      - `txt`: Plain text format
+
+      Default: `"json"`
+
+      Maximum number of snippets to return (1-100)
+
+      Page number for pagination (starts at 1)
+
+      Filter documentation by topic (e.g., "hooks", "components", "api")
+
+      Specific version to retrieve documentation for (e.g., "18.0.0")
+
+## Response
+
+The response type is automatically inferred based on the `format` and `mode` parameters. All response types extend a common base with pagination and token information.
+
+### Text Format (`format: "txt"`)
+
+properties
+
+      Plain text documentation content
+
+      Total number of tokens in the content
+
+properties
+
+          Current page number
+
+          Number of items per page
+
+          Total number of pages available
+
+          Whether there is a next page
+
+          Whether there is a previous page
+
+### JSON Format with Code Type (`format: "json"`, `mode: "code"`)
+
+properties
+
+      Array of code snippets
+
+CodeSnippet properties
+
+          Title of the code snippet
+
+          Description of what the code does
+
+          Programming language (e.g., "typescript", "javascript")
+
+          Number of tokens in the code
+
+          Unique identifier for the code snippet
+
+          Title of the source page
+
+          List of code examples
+
+CodeExample properties
+
+              Programming language
+
+              The actual code
+
+      Total number of tokens across all snippets
+
+properties
+
+          Current page number
+
+          Number of items per page
+
+          Total number of pages available
+
+          Whether there is a next page
+
+          Whether there is a previous page
+
+properties
+
+          Authentication level used
+
+### JSON Format with Info Type (`format: "json"`, `mode: "info"`)
+
+properties
+
+      Array of informational snippets
+
+InfoSnippet properties
+
+          Page identifier
+
+          Breadcrumb path to the content
+
+          The documentation content
+
+          Number of tokens in the content
+
+      Total number of tokens
+
+      Pagination information (same structure as code response)
+
+      Response metadata (same structure as code response)
+
+## Examples
+
+```typescript
+import { Context7 } from "@upstash/context7-sdk";
+
+const client = new Context7();
+
+// JSON is the default format, no need to specify
+const docs = await client.getDocs("/facebook/react", {
+  mode: "code",
+  limit: 5,
+});
+
+console.log(`Retrieved ${docs.snippets.length} code snippets`);
+```
+
+```typescript
+import { Context7 } from "@upstash/context7-sdk";
+
+const client = new Context7();
+
+const docs = await client.getDocs("/facebook/react", {
+  mode: "code",
+  format: "txt",
+  limit: 5,
+});
+
+console.log(docs.content);
+```
+
+```typescript
+import { Context7 } from "@upstash/context7-sdk";
+
+const client = new Context7({
+  apiKey: process.env.CONTEXT7_API_KEY!,
+});
+
+const docs = await client.getDocs("/facebook/react", {
+  mode: "info",
+  format: "txt",
+  limit: 3,
+});
+
+console.log(docs.content);
+```
+
+```typescript
+import { Context7 } from "@upstash/context7-sdk";
+
+const client = new Context7({
+  apiKey: process.env.CONTEXT7_API_KEY!,
+});
+
+const docs = await client.getDocs("/facebook/react", {
+  mode: "info",
+  format: "json",
+  limit: 3,
+});
+
+docs.snippets.forEach((snippet) => {
+  console.log(`Tokens: ${snippet.contentTokens}`);
+});
+```
+
+```typescript
+import { Context7 } from "@upstash/context7-sdk";
+
+const client = new Context7({
+  apiKey: process.env.CONTEXT7_API_KEY!,
+});
+
+const page1 = await client.getDocs("/facebook/react", {
+  mode: "code",
+  format: "json",
+  page: 1,
+  limit: 10,
+});
+
+console.log(`Page ${page1.pagination.page} of ${page1.pagination.totalPages}`);
+console.log(`Has next: ${page1.pagination.hasNext}`);
+
+if (page1.pagination.hasNext) {
+  const page2 = await client.getDocs("/facebook/react", {
+    mode: "code",
+    format: "json",
+    page: 2,
+    limit: 10,
+  });
+  console.log(`Retrieved page 2 with ${page2.snippets.length} snippets`);
+}
+```
+
+```typescript
+import { Context7 } from "@upstash/context7-sdk";
+
+const client = new Context7({
+  apiKey: process.env.CONTEXT7_API_KEY!,
+});
+
+const hooks = await client.getDocs("/facebook/react", {
+  mode: "code",
+  format: "json",
+  topic: "hooks",
+  limit: 5,
+});
+
+console.log(`Found ${hooks.snippets.length} hook examples`);
+```
+
+```typescript
+import { Context7 } from "@upstash/context7-sdk";
+
+const client = new Context7({
+  apiKey: process.env.CONTEXT7_API_KEY!,
+});
+
+const docs = await client.getDocs("/facebook/react", {
+  mode: "code",
+  format: "json",
+  version: "18.0.0",
+  limit: 5,
+});
+```
+
+## Use Cases
+
+### Building a Documentation Chat Bot
+
+```typescript
+import { Context7 } from "@upstash/context7-sdk";
+
+const client = new Context7({
+  apiKey: process.env.CONTEXT7_API_KEY!,
+});
+
+async function getRelevantDocs(library: string, topic: string) {
+  const docs = await client.getDocs(library, {
+    mode: "code",
+    format: "json",
+    topic,
+    limit: 5,
+  });
+
+  return docs.snippets.map((snippet) => ({
+    title: snippet.codeTitle,
+    description: snippet.codeDescription,
+    code: snippet.codeList[0]?.code,
+    language: snippet.codeLanguage,
+  }));
+}
+
+const reactHooksDocs = await getRelevantDocs("/facebook/react", "hooks");
+```
+
+### Fetching All Documentation Pages
+
+```typescript
+import { Context7 } from "@upstash/context7-sdk";
+
+const client = new Context7({
+  apiKey: process.env.CONTEXT7_API_KEY!,
+});
+
+async function getAllDocs(library: string) {
+  const allSnippets = [];
+  let page = 1;
+  let hasMore = true;
+
+  while (hasMore) {
+    const response = await client.getDocs(library, {
+      mode: "code",
+      format: "json",
+      page,
+      limit: 100,
+    });
+
+    allSnippets.push(...response.snippets);
+    hasMore = response.pagination.hasNext;
+    page++;
+  }
+
+  return allSnippets;
+}
+
+const allReactDocs = await getAllDocs("/facebook/react");
+console.log(`Total snippets: ${allReactDocs.length}`);
+```
+
+### Extracting Code Examples
+
+```typescript
+import { Context7 } from "@upstash/context7-sdk";
+
+const client = new Context7({
+  apiKey: process.env.CONTEXT7_API_KEY!,
+});
+
+const docs = await client.getDocs("/facebook/react", {
+  mode: "code",
+  format: "json",
+  limit: 20,
+});
+
+const tsExamples = docs.snippets
+  .filter((snippet) => snippet.codeLanguage === "typescript")
+  .map((snippet) => snippet.codeList)
+  .flat();
+
+console.log(`Found ${tsExamples.length} TypeScript examples`);
+```

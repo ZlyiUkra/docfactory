@@ -1,0 +1,688 @@
+# Example: ai-sdk-demo
+# джерело: https://github.com/upstash/agentkit/tree/@upstash%2Fagentkit-sdk@0.9.0/examples/ai-sdk-demo
+# отримано: 2026-10-16
+# версія: agentkit-sdk-0.9.0
+
+## ai-sdk-demo
+
+A persistent, streaming chat app built on `@upstash/agentkit-ai-sdk` and the
+Vercel AI SDK (`useChat`), backed entirely by a real Upstash Redis.
+
+## What it shows
+
+- **Chat history** — every turn is persisted with `createChatHistory`. The sidebar lists your chats and
+  fuzzy-searches them (`listChats` / `searchChats`); reloading or revisiting a chat resumes it
+  (`getChat` → `useChat({ messages })`). The route persists the whole conversation in `onFinish`.
+- **Agent memory** — `recall_memory` / `save_memory` tools (`createMemoryTools`).
+- **Search tools** — schema-driven `search` / `aggregate` / `count` over a seeded **books** index
+  (`createSearchTools`). The books are seeded once into Redis on first load.
+- **Tool cache** — a memoized `convert_price` tool (`cachedTools`).
+- **Rate limiting** — `createRateLimit` checked (by user) before each model call.
+
+Tool calls are rendered inline in the chat so you can see what the agent did.
+
+## Setup
+
+```bash
+cp .env.example .env   # then fill in the values (or put them in the repo-root .env)
+pnpm install           # from the repo root
+```
+
+`.env.example` lists the required vars: `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, and
+`OPENAI_API_KEY`. The app reads a local `.env` first, then falls back to the repo-root `.env`.
+
+## Run
+
+```bash
+pnpm --filter ai-sdk-demo dev   # or: cd examples/ai-sdk-demo && pnpm dev
+```
+
+Open <http://localhost:3000>. The demo uses the `gpt-5.4-mini` model.
+
+## app/api/chat/route.ts
+
+```ts
+import { openai } from "@ai-sdk/openai";
+import {
+  convertToModelMessages,
+  createUIMessageStreamResponse,
+  streamText,
+  stepCountIs,
+  tool,
+  toUIMessageStream,
+  type UIMessage,
+} from "ai";
+import { z } from "zod";
+import {
+  Ratelimit,
+  cachedTools,
+  createMemoryTools,
+  createRateLimit,
+  createSearchTools,
+} from "@upstash/agentkit-ai-sdk";
+import { getRedis } from "../../lib/redis";
+import { BOOKS_INDEX, DEMO_MODEL, bookSchema, getHistory } from "../../lib/chat";
+import { USER_HEADER, normalizeUser } from "../../lib/users";
+
+export const runtime = "nodejs";
+
+export async function POST(req: Request) {
+  // The client (`useChat`) posts the WHOLE messages array + the chat id, and sends the active user id
+  // as a header. Memory, history, tool cache and rate limit are all scoped to this user; only the
+  // shared books index is common to everyone.
+  const { id, messages } = (await req.json()) as { id: string; messages: UIMessage[] };
+  // ⚠️ DEMO ONLY: this trusts a client-supplied header to identify the user, so anyone can send
+  // `x-user-id: <someone-else>` and read/overwrite their data. It's only safe here because
+  // `normalizeUser` allow-lists it to two fixed demo users. In production, derive `userId` from a
+  // VERIFIED server-side session (Clerk, Auth.js/NextAuth, Supabase Auth, Auth0, …) — e.g.
+  // `const { userId } = await auth()` with Clerk — and NEVER from a request header/param/body.
+  const userId = normalizeUser(req.headers.get(USER_HEADER));
+  const redis = getRedis();
+
+  // Rate limiting — limit per user (the identifier), before doing any model work.
+  const ratelimit = createRateLimit({
+    redis, // the Upstash Redis client backing the limiter
+    limiter: Ratelimit.slidingWindow(30, "1 m"), // the limiter algorithm
+    // prefix: "agentkit:rateLimit", // optional: base key prefix; keys are `<prefix>:<identifier>`
+  });
+  const { success } = await ratelimit.limit(userId); // per-user identifier
+  if (!success) {
+    return new Response("Rate limited", { status: 429 });
+  }
+
+  // Agent memory tools — recall_memory / save_memory, scoped to this user.
+  const memoryTools = createMemoryTools({ redis, userId });
+
+  // Schema-driven search tools — search / aggregate / count over the books index (created reactively).
+  // The books index is intentionally SHARED across users, so no per-user scoping here.
+  const searchTools = createSearchTools({ schema: bookSchema, redis, indexName: BOOKS_INDEX });
+
+  // Tool cache — deterministic tool results memoized in Redis, scoped per user. Each tool is cached
+  // under its map key (the tool name); `userId` scopes the entries to this user.
+  const cachedToolSet = cachedTools(
+    {
+      convert_price: tool({
+        description: "Convert a USD price to another currency at today's rate.",
+        inputSchema: z.object({ usd: z.number(), currency: z.string() }),
+        execute: async ({ usd, currency }) => ({ usd, currency, amount: usd * 0.92 }),
+      }),
+    },
+    { userId, redis },
+  );
+
+  const model = openai(DEMO_MODEL);
+  const tools = { ...memoryTools, ...searchTools, ...cachedToolSet };
+
+  const result = streamText({
+    model,
+    messages: await convertToModelMessages(messages),
+    tools,
+    stopWhen: stepCountIs(5),
+  });
+
+  const history = getHistory();
+  const firstUserText = messages
+    .find((m) => m.role === "user")
+    ?.parts.map((p) => (p.type === "text" ? p.text : ""))
+    .join(" ")
+    .trim();
+
+  return createUIMessageStreamResponse({
+    stream: toUIMessageStream({
+      stream: result.stream,
+      originalMessages: messages,
+      // Persist the WHOLE conversation (including the new assistant reply) when the stream finishes.
+      onFinish: async ({ messages }) => {
+        await history.saveChat({
+          userId,
+          sessionId: id,
+          messages,
+          title: firstUserText ? firstUserText.slice(0, 60) : "New chat",
+        });
+      },
+    }),
+  });
+}
+```
+
+## app/api/chats/route.ts
+
+```ts
+import { getHistory } from "../../lib/chat";
+import { USER_HEADER, normalizeUser } from "../../lib/users";
+
+export const runtime = "nodejs";
+
+// GET /api/chats          → list the user's chats (summaries, newest first)
+// GET /api/chats?q=<text>  → fuzzy-search the user's chats by what was said
+// ⚠️ DEMO ONLY: the user is identified by the client-supplied `x-user-id` header (allow-listed to two
+// fixed demo users by `normalizeUser`). In production, derive `userId` from a VERIFIED server-side
+// session (Clerk, Auth.js/NextAuth, Supabase Auth, Auth0, …), never from a client-supplied value.
+export async function GET(req: Request) {
+  const history = getHistory();
+  const userId = normalizeUser(req.headers.get(USER_HEADER));
+  const q = new URL(req.url).searchParams.get("q")?.trim();
+
+  if (q) {
+    const hits = await history.searchChats({ userId, query: q, target: "both", limit: 20 });
+    return Response.json({ chats: hits });
+  }
+
+  const chats = await history.listChats({ userId, limit: 50 });
+  return Response.json({ chats });
+}
+```
+
+## app/chat/[id]/page.tsx
+
+```tsx
+import { cookies } from "next/headers";
+import { getHistory, seedBooks } from "../../lib/chat";
+import { USER_COOKIE, normalizeUser } from "../../lib/users";
+import Chat from "../../components/Chat";
+
+export const dynamic = "force-dynamic";
+
+export default async function ChatPage(props: { params: Promise<{ id: string }> }) {
+  const { id } = await props.params;
+
+  // Seed the books index once (flag-gated in Redis) so the search tools have data to return.
+  await seedBooks();
+
+  // The active user comes from the cookie (set by the user switcher) so SSR scopes to the right user.
+  const userId = normalizeUser((await cookies()).get(USER_COOKIE)?.value);
+
+  // Server-load this user's stored transcript so `useChat` is seeded with the full history.
+  const chat = await getHistory().getChat({ userId, sessionId: id });
+
+  // The sidebar lives in app/chat/layout.tsx (persists across chats); the page only renders the chat.
+  return <Chat id={id} initialMessages={chat?.messages ?? []} title={chat?.title} />;
+}
+```
+
+## app/chat/layout.tsx
+
+```tsx
+import { cookies } from "next/headers";
+import Sidebar from "../components/Sidebar";
+import { UserProvider } from "../components/UserProvider";
+import { USER_COOKIE, normalizeUser } from "../lib/users";
+
+// The sidebar lives in the layout (not the page), so it stays mounted as you switch chats —
+// its search box and list state survive navigation instead of remounting on every `[id]` change.
+export default async function ChatLayout({ children }: { children: React.ReactNode }) {
+  // Read the selected user from the cookie so SSR (and the provider's initial state) match.
+  const initialUserId = normalizeUser((await cookies()).get(USER_COOKIE)?.value);
+
+  return (
+    <UserProvider initialUserId={initialUserId}>
+      <div className="layout">
+        <Sidebar />
+        <section className="chat-pane">{children}</section>
+      </div>
+    </UserProvider>
+  );
+}
+```
+
+## app/components/Chat.tsx
+
+```tsx
+"use client";
+import { useState } from "react";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport, type UIMessage } from "ai";
+import { USER_HEADER } from "../lib/users";
+import { useUser } from "./UserProvider";
+
+const PRESETS = [
+  "Remember that I love science fiction.",
+  "What do you know about me?",
+  "How many books in the index are by Ursula K. Le Guin?",
+];
+
+export default function Chat({
+  id,
+  initialMessages,
+  title,
+}: {
+  id: string;
+  initialMessages: UIMessage[];
+  title?: string;
+}) {
+  const { userId } = useUser();
+  const [input, setInput] = useState("");
+  // Posts the WHOLE messages array + the chat id to /api/chat, with the user id as a header so the
+  // server scopes memory / history / cache / rate limit to this user.
+  const { messages, sendMessage, status } = useChat({
+    id,
+    messages: initialMessages,
+    transport: new DefaultChatTransport({ headers: { [USER_HEADER]: userId } }),
+  });
+  const busy = status === "submitted" || status === "streaming";
+
+  function send(text: string) {
+    const value = text.trim();
+    if (!value || busy) return;
+    sendMessage({ text: value });
+    setInput("");
+  }
+
+  return (
+    <div className="chat">
+      <h1>{title ?? "New chat"}</h1>
+
+      <div className="presets">
+        {PRESETS.map((p) => (
+          <button key={p} className="preset" onClick={() => send(p)} disabled={busy}>
+            {p}
+          </button>
+        ))}
+      </div>
+
+      <div className="messages">
+        {messages.length === 0 && (
+          <p className="muted">
+            A streaming chat backed by <code>@upstash/agentkit-ai-sdk</code>. Every turn is persisted to
+            Upstash Redis with <code>createChatHistory</code> — reload or revisit from the sidebar to
+            resume. The sidebar also fuzzy-searches your chats (<code>searchChats</code>). The agent has
+            memory tools (<code>recall_memory</code> / <code>save_memory</code>), schema-driven Redis
+            Search tools over a books index (<code>search</code> / <code>aggregate</code> /{" "}
+            <code>count</code>), and a cached tool (<code>convert_price</code>); requests are rate-limited
+            before the model call.
+          </p>
+        )}
+        {messages.map((m) => {
+          const text = m.parts
+            .map((part) => (part.type === "text" ? part.text : ""))
+            .join("");
+          return (
+            <div className="card" key={m.id}>
+              <div className="muted">{m.role === "user" ? "You" : "Assistant"}</div>
+              {/* Show every tool the model called, with its state + result. */}
+              {m.parts.map((part, i) => {
+                if (part.type !== "dynamic-tool" && !part.type.startsWith("tool-")) return null;
+                const p = part as {
+                  state?: string;
+                  toolName?: string;
+                  output?: unknown;
+                  errorText?: string;
+                };
+                const name = part.type === "dynamic-tool" ? (p.toolName ?? "tool") : part.type.slice(5);
+                return (
+                  <div className="tool-call" key={i}>
+                    <span className="tool-tag">🔧 {name}</span>
+                    {p.state ? <span className="muted"> · {p.state}</span> : null}
+                    {p.output != null ? (
+                      <pre className="tool-io">{JSON.stringify(p.output, null, 2)}</pre>
+                    ) : null}
+                    {p.errorText ? <pre className="tool-io tool-err">{p.errorText}</pre> : null}
+                  </div>
+                );
+              })}
+              {text ? <div>{text}</div> : <span className="muted">…</span>}
+            </div>
+          );
+        })}
+      </div>
+
+      <form
+        className="composer"
+        onSubmit={(e) => {
+          e.preventDefault();
+          send(input);
+        }}
+      >
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Type a message…"
+          disabled={busy}
+        />
+        <button type="submit" disabled={busy}>
+          {busy ? "…" : "Send"}
+        </button>
+      </form>
+    </div>
+  );
+}
+```
+
+## app/components/Sidebar.tsx
+
+```tsx
+"use client";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { USER_HEADER } from "../lib/users";
+import { useUser } from "./UserProvider";
+import UserSwitcher from "./UserSwitcher";
+
+type ChatSummary = {
+  sessionId: string;
+  title?: string;
+  messageCount: number;
+  updatedAt: number;
+  score?: number;
+};
+
+export default function Sidebar() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { userId } = useUser();
+  // Active chat id derived from the URL — no prop, so the sidebar never remounts on navigation.
+  const activeId = pathname?.startsWith("/chat/") ? pathname.slice("/chat/".length) : "";
+
+  const [chats, setChats] = useState<ChatSummary[]>([]);
+  const [query, setQuery] = useState("");
+
+  async function load(q?: string) {
+    const url = q ? `/api/chats?q=${encodeURIComponent(q)}` : "/api/chats";
+    // Identify the user via a header so the API lists only this user's chats.
+    const res = await fetch(url, { headers: { [USER_HEADER]: userId } });
+    const json = (await res.json()) as { chats: ChatSummary[] };
+    setChats(json.chats ?? []);
+  }
+
+  // Reload after navigating (so a new chat shows up) or after switching users, keeping the query.
+  useEffect(() => {
+    load(query.trim() || undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId, userId]);
+
+  // Debounced fuzzy search via searchChats({ userId, query }).
+  useEffect(() => {
+    const t = setTimeout(() => load(query.trim() || undefined), 250);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
+
+  return (
+    <aside className="sidebar">
+      <UserSwitcher />
+
+      {/* Soft-navigate to a fresh chat id so the sidebar (and this search box) stays mounted. */}
+      <button className="new-chat" onClick={() => router.push(`/chat/${crypto.randomUUID()}`)}>
+        + New chat
+      </button>
+
+      <input
+        className="search"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search chats…"
+      />
+
+      <nav className="chat-list">
+        {chats.length === 0 && <p className="muted">No chats yet.</p>}
+        {chats.map((c) => (
+          <Link
+            key={c.sessionId}
+            href={`/chat/${c.sessionId}`}
+            className={"chat-link" + (c.sessionId === activeId ? " active" : "")}
+          >
+            <span className="chat-title">{c.title || "Untitled chat"}</span>
+            <span className="muted chat-meta">
+              {c.messageCount} msg{c.score !== undefined ? ` · ${c.score.toFixed(1)}` : ""}
+            </span>
+          </Link>
+        ))}
+      </nav>
+    </aside>
+  );
+}
+```
+
+## app/components/UserProvider.tsx
+
+```tsx
+"use client";
+import { createContext, useCallback, useContext, useState } from "react";
+import { useRouter } from "next/navigation";
+import { DEFAULT_USER, USER_COOKIE, USERS, type DemoUser, normalizeUser } from "../lib/users";
+
+type UserContextValue = {
+  /** The currently selected demo user. */
+  userId: DemoUser;
+  /** Switch users: persist the choice, start a fresh chat, and re-render server components. */
+  switchUser: (next: DemoUser) => void;
+};
+
+const UserContext = createContext<UserContextValue | null>(null);
+
+/**
+ * Holds the selected demo user. Initialized from the cookie (server-read, passed in to avoid a
+ * hydration mismatch). Switching writes the cookie — so the server can scope the chat page's initial
+ * transcript — and navigates to a fresh chat for the new user.
+ */
+export function UserProvider({
+  initialUserId,
+  children,
+}: {
+  initialUserId: DemoUser;
+  children: React.ReactNode;
+}) {
+  const router = useRouter();
+  const [userId, setUserId] = useState<DemoUser>(normalizeUser(initialUserId));
+
+  const switchUser = useCallback(
+    (next: DemoUser) => {
+      if (next === userId) return;
+      document.cookie = `${USER_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax`;
+      setUserId(next);
+      // Fresh chat for the new user; refresh so server components re-read the cookie.
+      router.push(`/chat/${crypto.randomUUID()}`);
+      router.refresh();
+    },
+    [userId, router],
+  );
+
+  return <UserContext.Provider value={{ userId, switchUser }}>{children}</UserContext.Provider>;
+}
+
+export function useUser(): UserContextValue {
+  const ctx = useContext(UserContext);
+  if (!ctx) throw new Error("useUser must be used within a UserProvider");
+  return ctx;
+}
+
+export { USERS, DEFAULT_USER };
+```
+
+## app/components/UserSwitcher.tsx
+
+```tsx
+"use client";
+import { USERS } from "../lib/users";
+import { useUser } from "./UserProvider";
+
+/** Dropdown to switch the active demo user. Each user's data is fully separate. */
+export default function UserSwitcher() {
+  const { userId, switchUser } = useUser();
+  return (
+    <label className="user-switcher">
+      <span className="muted">User</span>
+      <select value={userId} onChange={(e) => switchUser(e.target.value as (typeof USERS)[number])}>
+        {USERS.map((u) => (
+          <option key={u} value={u}>
+            {u}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+```
+
+## app/layout.tsx
+
+```tsx
+import "./globals.css";
+import type { ReactNode } from "react";
+
+export const metadata = { title: "AgentKit chat demo" };
+
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <main>{children}</main>
+      </body>
+    </html>
+  );
+}
+```
+
+## app/lib/chat.ts
+
+```ts
+import { s } from "@upstash/redis";
+import { createChatHistory } from "@upstash/agentkit-ai-sdk";
+import { getRedis } from "./redis";
+
+// READMEs/demos use gpt-5.4-mini (unit tests use gpt-4o).
+export const DEMO_MODEL = "gpt-5.4-mini";
+
+// A schema-driven Redis Search index the agent can query with the `search`/`aggregate`/`count` tools.
+export const bookSchema = s.object({
+  title: s.string(),
+  author: s.string().noTokenize(),
+  year: s.number(),
+});
+
+export const BOOKS_INDEX = "demo:aisdk:books";
+
+// Durable chat history backed by Upstash Redis Search — the source of truth for every conversation.
+let history: ReturnType<typeof createChatHistory> | undefined;
+export function getHistory() {
+  return (history ??= createChatHistory({
+    redis: getRedis(), // optional: defaults to Redis.fromEnv()
+    prefix: "demo:aisdk:chat", // optional: base key prefix + index name base (default "agentkit:chat")
+    // ttlSeconds: 60 * 60 * 24, // optional: per-chat expiry; omitted here so chats persist
+  }));
+}
+
+// Demo books for the search tools to query (so `search`/`aggregate`/`count` return real results).
+const BOOKS = [
+  { id: "1", title: "The Left Hand of Darkness", author: "Ursula K. Le Guin", year: 1969 },
+  { id: "2", title: "The Dispossessed", author: "Ursula K. Le Guin", year: 1974 },
+  { id: "3", title: "A Wizard of Earthsea", author: "Ursula K. Le Guin", year: 1968 },
+  { id: "4", title: "Neuromancer", author: "William Gibson", year: 1984 },
+  { id: "5", title: "Dune", author: "Frank Herbert", year: 1965 },
+  { id: "6", title: "Foundation", author: "Isaac Asimov", year: 1951 },
+  { id: "7", title: "Snow Crash", author: "Neal Stephenson", year: 1992 },
+  { id: "8", title: "The Three-Body Problem", author: "Liu Cixin", year: 2008 },
+];
+
+/**
+ * Seed the books index once. A boolean flag key in Redis gates it: unset/false → write the docs,
+ * build the index, and set the flag; true → no-op. Call this before rendering so the agent's first
+ * `search`/`count` returns data.
+ */
+export async function seedBooks(): Promise<void> {
+  const redis = getRedis();
+  const flagKey = `${BOOKS_INDEX}:seeded`;
+  if (await redis.get(flagKey)) return; // already seeded — no-op
+
+  const prefix = `${BOOKS_INDEX}:`;
+  await Promise.all(
+    BOOKS.map((b) =>
+      redis.json.set(prefix + b.id, "$", { title: b.title, author: b.author, year: b.year }),
+    ),
+  );
+  // Create the index + wait so the very first query returns the seeded rows.
+  await redis.search
+    .createIndex({ name: BOOKS_INDEX, dataType: "json", prefix, schema: bookSchema })
+    .catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!/already exists/i.test(msg)) throw err;
+    });
+  await redis.search.index({ name: BOOKS_INDEX, schema: bookSchema }).waitIndexing();
+  await redis.set(flagKey, true);
+}
+```
+
+## app/lib/redis.ts
+
+```ts
+import { resolve } from "node:path";
+import { config } from "dotenv";
+import { Redis } from "@upstash/redis";
+
+// Load a local `.env` (copy from `.env.example`) first, then fall back to the repo-root `.env`.
+// dotenv doesn't overwrite already-set vars, so the local file wins.
+config({ path: resolve(process.cwd(), ".env") });
+config({ path: resolve(process.cwd(), "../../.env") });
+
+let client: Redis | undefined;
+export function getRedis(): Redis {
+  return (client ??= Redis.fromEnv());
+}
+```
+
+## app/lib/users.ts
+
+```ts
+// Two demo users you can switch between in the UI. Each user's data — chat history, agent memory,
+// tool cache, and rate limit — is kept separate; only the shared books index is common to both.
+export const USERS = ["alice", "bob"] as const;
+export type DemoUser = (typeof USERS)[number];
+export const DEFAULT_USER: DemoUser = "alice";
+
+// The selected user is sent to the API on every request as this header, and persisted in this cookie
+// so server components (the chat page's initial transcript) can read it on render.
+export const USER_HEADER = "x-user-id";
+export const USER_COOKIE = "demo-user-id";
+
+/** Coerce an arbitrary header/cookie value to a known demo user (falls back to the default). */
+export function normalizeUser(value: string | null | undefined): DemoUser {
+  return USERS.includes(value as DemoUser) ? (value as DemoUser) : DEFAULT_USER;
+}
+```
+
+## app/page.tsx
+
+```tsx
+import { randomUUID } from "node:crypto";
+import { redirect } from "next/navigation";
+
+export default function Page() {
+  // Start every visit on a fresh chat id; `/chat/<id>` loads (empty) and persists as you talk.
+  redirect(`/chat/${randomUUID()}`);
+}
+```
+
+## package.json
+
+```json
+{
+  "name": "ai-sdk-demo",
+  "version": "0.1.4",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^4.0.53",
+    "@ai-sdk/react": "^4.0.90",
+    "@upstash/agentkit-ai-sdk": "workspace:*",
+    "@upstash/agentkit-sdk": "workspace:*",
+    "@upstash/redis": "^1.38.4",
+    "ai": "7.0.87",
+    "dotenv": "^16.4.5",
+    "next": "16.2.9",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "19.2.15",
+    "@types/react-dom": "19.2.3",
+    "typescript": "^5"
+  }
+}
+```
