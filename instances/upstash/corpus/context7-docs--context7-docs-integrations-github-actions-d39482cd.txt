@@ -1,0 +1,80 @@
+# GitHub Actions
+# джерело: https://github.com/upstash/context7/blob/ctx7@0.6.1/docs/integrations/github-actions.mdx
+# отримано: 2026-10-16
+# версія: ctx7-0.6.1, ctx7-0.6.0, ctx7-0.5.16, ctx7-0.5.15, ctx7-0.5.14, ctx7-0.5.13, ctx7-0.5.12, ctx7-0.5.11, ctx7-0.5.10, ctx7-0.5.9, ctx7-0.5.8, ctx7-0.5.7, ctx7-0.5.6, ctx7-0.5.5, ctx7-0.5.4, ctx7-0.5.3, context7-tools-ai-sdk-1.0.3, context7-tools-ai-sdk-1.0.2, context7-tools-ai-sdk-1.0.1, context7-tools-ai-sdk-0.2.5, context7-tools-ai-sdk-0.2.4, context7-sdk-0.5.1, context7-sdk-0.5.0, context7-sdk-0.4.1, context7-sdk-0.4.0, context7-pi-0.1.3, context7-pi-0.1.2, context7-pi-0.1.1, context7-opencode-0.2.1, context7-opencode-0.2.0, context7-opencode-0.1.0, context7-mcp-4.4.2, context7-mcp-4.4.1, context7-mcp-4.4.0, context7-mcp-4.3.0, context7-mcp-4.2.1, context7-mcp-4.2.0, context7-mcp-4.1.3, context7-mcp-4.1.2, context7-mcp-4.1.1, context7-mcp-4.1.0, context7-mcp-4.0.7, context7-mcp-4.0.6, context7-mcp-4.0.5, context7-mcp-4.0.4, context7-mcp-4.0.3, context7-mcp-4.0.2, context7-mcp-4.0.1, context7-mcp-4.0.0, context7-mcp-3.2.5, context7-mcp-3.2.4, context7-mcp-3.2.3, context7-mcp-3.2.2
+
+Keep your Context7 documentation in sync by triggering a refresh whenever you push to your main branch.
+
+## Setup
+
+Get your API key
+
+    Go to your Context7 dashboard and copy your API key.
+
+Add the API key as a repository secret
+
+    In your GitHub repository, go to **Settings** → **Secrets and variables** → **Actions** and add a new secret:
+
+    | Name | Value |
+    |------|-------|
+    | `CONTEXT7_API_KEY` | Your API key from the Context7 dashboard |
+
+Create the workflow file
+
+    Add the following file to your repository at `.github/workflows/context7-refresh.yml`:
+
+```yaml
+    name: Refresh Context7 Docs
+
+    on:
+      push:
+        branches:
+          - master # change to your default branch if different
+
+    jobs:
+      refresh:
+        runs-on: ubuntu-latest
+        steps:
+          - name: Trigger Context7 Refresh
+            run: |
+              curl -s -X POST https://context7.com/api/v1/refresh \
+                -H "Content-Type: application/json" \
+                -H "Authorization: Bearer ${{ secrets.CONTEXT7_API_KEY }}" \
+                -d '{"libraryName": "/${{ github.repository }}"}'
+```
+
+    This uses `${{ github.repository }}` to automatically resolve to your repository's `owner/repo` (e.g., `vercel/next.js`). If your library ID on Context7 differs from your GitHub repository name, replace it with the correct value (e.g., `/your-org/your-repo`).
+
+## Refreshing a Specific Branch
+
+To refresh a non-default branch, add the `branch` field to the request body. The `branch` value must match a branch name that already exists on your library in Context7.
+
+```yaml
+- name: Trigger Context7 Refresh
+  run: |
+    curl -s -X POST https://context7.com/api/v1/refresh \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer ${{ secrets.CONTEXT7_API_KEY }}" \
+      -d '{"libraryName": "/your-org/your-repo", "branch": "v2"}'
+```
+
+Note:
+
+  If the branch has not been added to your library on Context7, the refresh will fail with a `branch_not_found` error.
+
+## Private Repositories
+
+For private repositories, include a `gitToken` so Context7 can access your code:
+
+```yaml
+- name: Trigger Context7 Refresh
+  run: |
+    curl -s -X POST https://context7.com/api/v1/refresh \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer ${{ secrets.CONTEXT7_API_KEY }}" \
+      -d '{"libraryName": "/your-org/your-repo", "gitToken": "${{ secrets.GIT_ACCESS_TOKEN }}"}'
+```
+
+Note:
+
+  Private sources require a Pro or Enterprise plan. See the Private Sources guide for more details.

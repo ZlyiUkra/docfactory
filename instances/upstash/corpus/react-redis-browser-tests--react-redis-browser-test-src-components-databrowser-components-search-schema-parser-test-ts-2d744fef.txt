@@ -1,0 +1,1231 @@
+# react-redis-browser: src/components/databrowser/components/search/schema-parser.test.ts
+# джерело: https://github.com/upstash/react-redis-browser/blob/v0.2.22/src/components/databrowser/components/search/schema-parser.test.ts
+# отримано: 2026-10-16
+# версія: react-redis-browser-0.2.22
+
+```ts
+import { describe, expect, test } from "bun:test"
+
+import { parseSchemaFromEditorValue } from "./schema-parser"
+```
+
+## Schema Parser
+
+```ts
+describe("Schema Parser", () => {
+```
+
+### parses basic string field
+
+```ts
+  test("parses basic string field", () => {
+    const input = `
+      const schema: Schema = s.object({
+        name: s.string(),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        name: "TEXT",
+      },
+    })
+  })
+```
+
+### parses string field with options
+
+```ts
+  test("parses string field with options", () => {
+    const input = `
+      const schema: Schema = s.object({
+        title: s.string().noTokenize(),
+        slug: s.string().noStem(),
+        author: s.string().from("writer"),
+        complex: s.string().noTokenize().noStem().from("blob"),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        title: { type: "TEXT", noTokenize: true },
+        slug: { type: "TEXT", noStem: true },
+        author: { type: "TEXT", from: "writer" },
+        complex: { type: "TEXT", noTokenize: true, noStem: true, from: "blob" },
+      },
+    })
+  })
+```
+
+### parses number fields
+
+```ts
+  test("parses number fields", () => {
+    const input = `
+      const schema: Schema = s.object({
+        price: s.number(),
+        count: s.number("U64"),
+        score: s.number("I64").from("val"),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        price: { type: "F64", fast: true },
+        count: { type: "U64", fast: true },
+        score: { type: "I64", fast: true, from: "val" },
+      },
+    })
+  })
+```
+
+### parses boolean fields
+
+```ts
+  test("parses boolean fields", () => {
+    const input = `
+      const schema: Schema = s.object({
+        isActive: s.boolean(),
+        isAdmin: s.boolean().fast(),
+        isDeleted: s.boolean().from("del"),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        isActive: "BOOL",
+        isAdmin: { type: "BOOL", fast: true },
+        isDeleted: { type: "BOOL", from: "del" },
+      },
+    })
+  })
+```
+
+### parses date fields
+
+```ts
+  test("parses date fields", () => {
+    const input = `
+      const schema: Schema = s.object({
+        created: s.date(),
+        updated: s.date().fast(),
+        deleted: s.date().from("del_at"),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        created: "DATE",
+        updated: { type: "DATE", fast: true },
+        deleted: { type: "DATE", from: "del_at" },
+      },
+    })
+  })
+```
+
+### parses nested objects
+
+```ts
+  test("parses nested objects", () => {
+    const input = `
+      const schema: Schema = s.object({
+        user: s.object({
+          name: s.string(),
+          address: s.object({
+            city: s.string(),
+            zip: s.number("U64"),
+          }),
+        }),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        "user.name": "TEXT",
+        "user.address.city": "TEXT",
+        "user.address.zip": { type: "U64", fast: true },
+      },
+    })
+  })
+```
+
+### handles mixed quotes and trailing commas
+
+```ts
+  test("handles mixed quotes and trailing commas", () => {
+    const input = `
+      const schema: Schema = s.object({
+        'name': s.string(),
+        "age": s.number(),
+        active: s.boolean(),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        name: "TEXT",
+        age: { type: "F64", fast: true },
+        active: "BOOL",
+      },
+    })
+  })
+```
+
+### returns error for invalid format
+
+```ts
+  test("returns error for invalid format", () => {
+    const input = `
+      const schema = s.string()
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: false,
+      error: "Invalid format. Expected s.object({ ... })",
+    })
+  })
+})
+
+// ============================================================================
+// EDGE CASE TESTS
+// ============================================================================
+```
+
+## Schema Parser - Edge Cases
+
+```ts
+describe("Schema Parser - Edge Cases", () => {
+```
+
+### handles empty object
+
+```ts
+  test("handles empty object", () => {
+    const input = `const schema: Schema = s.object({})`
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {},
+    })
+  })
+```
+
+### handles field names with dots in quotes
+
+```ts
+  test("handles field names with dots in quotes", () => {
+    const input = `
+      const schema: Schema = s.object({
+        "field.with.dots": s.string(),
+        'another.dotted.field': s.number(),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        "field.with.dots": "TEXT",
+        "another.dotted.field": { type: "F64", fast: true },
+      },
+    })
+  })
+```
+
+### handles colons in from() values
+
+```ts
+  test("handles colons in from() values", () => {
+    const input = `
+      const schema: Schema = s.object({
+        data: s.string().from("namespace:field"),
+        time: s.date().from("timestamp:utc"),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        data: { type: "TEXT", from: "namespace:field" },
+        time: { type: "DATE", from: "timestamp:utc" },
+      },
+    })
+  })
+```
+
+### handles brackets in from() values
+
+```ts
+  test("handles brackets in from() values", () => {
+    const input = `
+      const schema: Schema = s.object({
+        item: s.string().from("items(0)"),
+        nested: s.number().from("data[key]"),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        item: { type: "TEXT", from: "items(0)" },
+        nested: { type: "F64", fast: true, from: "data[key]" },
+      },
+    })
+  })
+```
+
+### handles no trailing comma on last field
+
+```ts
+  test("handles no trailing comma on last field", () => {
+    const input = `
+      const schema: Schema = s.object({
+        first: s.string(),
+        last: s.boolean()
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        first: "TEXT",
+        last: "BOOL",
+      },
+    })
+  })
+```
+
+### handles excessive whitespace
+
+```ts
+  test("handles excessive whitespace", () => {
+    const input = `
+      const schema: Schema = s.object(   {
+
+        "name"    :    s.string()   ,
+
+        age   :   s.number(   "U64"   )   ,
+
+      }   )
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        name: "TEXT",
+        age: { type: "U64", fast: true },
+      },
+    })
+  })
+```
+
+### handles single-line input
+
+```ts
+  test("handles single-line input", () => {
+    const input = `const schema:Schema=s.object({a:s.string(),b:s.number(),c:s.boolean()})`
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        a: "TEXT",
+        b: { type: "F64", fast: true },
+        c: "BOOL",
+      },
+    })
+  })
+```
+
+### handles commas inside from() string values
+
+```ts
+  test("handles commas inside from() string values", () => {
+    const input = `
+      const schema: Schema = s.object({
+        data: s.string().from("a,b,c"),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        data: { type: "TEXT", from: "a,b,c" },
+      },
+    })
+  })
+```
+
+### handles parentheses inside string values
+
+```ts
+  test("handles parentheses inside string values", () => {
+    const input = `
+      const schema: Schema = s.object({
+        func: s.string().from("fn(x)"),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        func: { type: "TEXT", from: "fn(x)" },
+      },
+    })
+  })
+```
+
+### handles mixed nested and flat fields
+
+```ts
+  test("handles mixed nested and flat fields", () => {
+    const input = `
+      const schema: Schema = s.object({
+        id: s.number("U64"),
+        user: s.object({
+          name: s.string(),
+          email: s.string(),
+        }),
+        active: s.boolean(),
+        meta: s.object({
+          created: s.date(),
+        }),
+        tags: s.string(),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        id: { type: "U64", fast: true },
+        "user.name": "TEXT",
+        "user.email": "TEXT",
+        active: "BOOL",
+        "meta.created": "DATE",
+        tags: "TEXT",
+      },
+    })
+  })
+```
+
+### handles unicode characters in field names
+
+```ts
+  test("handles unicode characters in field names", () => {
+    const input = `
+      const schema: Schema = s.object({
+        "名前": s.string(),
+        "données": s.number(),
+        emoji_🎉: s.boolean(),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        名前: "TEXT",
+        données: { type: "F64", fast: true },
+        "emoji_🎉": "BOOL",
+      },
+    })
+  })
+```
+
+### handles reserved words as field names
+
+```ts
+  test("handles reserved words as field names", () => {
+    const input = `
+      const schema: Schema = s.object({
+        "s.string()": s.string(),
+        "s.number()": s.number(),
+        "s.boolean()": s.boolean(),
+        ".string()": s.string(),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        "s.string()": "TEXT",
+        "s.number()": { type: "F64", fast: true },
+        "s.boolean()": "BOOL",
+        ".string()": "TEXT",
+      },
+    })
+  })
+```
+
+### handles escaped quotes in from() values
+
+```ts
+  test("handles escaped quotes in from() values", () => {
+    const input = `
+      const schema: Schema = s.object({
+        quote: s.string().from("field\\"name"),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        quote: { type: "TEXT", from: 'field"name' },
+      },
+    })
+  })
+```
+
+### handles single quotes in double-quoted from() values
+
+```ts
+  test("handles single quotes in double-quoted from() values", () => {
+    const input = `
+      const schema: Schema = s.object({
+        data: s.string().from("it's"),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        data: { type: "TEXT", from: "it's" },
+      },
+    })
+  })
+```
+
+### handles double quotes in single-quoted from() values
+
+```ts
+  test("handles double quotes in single-quoted from() values", () => {
+    const input = `
+      const schema: Schema = s.object({
+        data: s.string().from('it"s'),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        data: { type: "TEXT", from: 'it"s' },
+      },
+    })
+  })
+```
+
+### handles all number types
+
+```ts
+  test("handles all number types", () => {
+    const input = `
+      const schema: Schema = s.object({
+        f64: s.number("F64"),
+        u64: s.number("U64"),
+        i64: s.number("I64"),
+        default: s.number(),
+        aliased: s.number("F64").from("source"),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        f64: { type: "F64", fast: true },
+        u64: { type: "U64", fast: true },
+        i64: { type: "I64", fast: true },
+        default: { type: "F64", fast: true },
+        aliased: { type: "F64", fast: true, from: "source" },
+      },
+    })
+  })
+```
+
+### handles all string modifiers combined
+
+```ts
+  test("handles all string modifiers combined", () => {
+    const input = `
+      const schema: Schema = s.object({
+        full: s.string().noTokenize().noStem().from("original"),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        full: { type: "TEXT", noTokenize: true, noStem: true, from: "original" },
+      },
+    })
+  })
+```
+
+### handles modifiers in different order
+
+```ts
+  test("handles modifiers in different order", () => {
+    const input = `
+      const schema: Schema = s.object({
+        a: s.string().from("x").noTokenize(),
+        b: s.string().noStem().from("y"),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        a: { type: "TEXT", noTokenize: true, from: "x" },
+        b: { type: "TEXT", noStem: true, from: "y" },
+      },
+    })
+  })
+```
+
+### handles comments in schema (single-line)
+
+```ts
+  test("handles comments in schema (single-line)", () => {
+    const input = `
+      const schema: Schema = s.object({
+        // This is a name field
+        name: s.string(),
+        // Age in years
+        age: s.number(),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        name: "TEXT",
+        age: { type: "F64", fast: true },
+      },
+    })
+  })
+```
+
+### handles inline comments
+
+```ts
+  test("handles inline comments", () => {
+    const input = `
+      const schema: Schema = s.object({
+        name: s.string(), // user's name
+        age: s.number(), // in years
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        name: "TEXT",
+        age: { type: "F64", fast: true },
+      },
+    })
+  })
+```
+
+### handles block comments
+
+```ts
+  test("handles block comments", () => {
+    const input = `
+      const schema: Schema = s.object({
+        /* Primary identifier */
+        id: s.number("U64"),
+        /* User's full name
+           This is searchable */
+        name: s.string(),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        id: { type: "U64", fast: true },
+        name: "TEXT",
+      },
+    })
+  })
+})
+```
+
+## Schema Parser - Additional Edge Cases
+
+```ts
+describe("Schema Parser - Additional Edge Cases", () => {
+```
+
+### handles empty string in from() value
+
+```ts
+  test("handles empty string in from() value", () => {
+    const input = `
+      const schema: Schema = s.object({
+        data: s.string().from(""),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        data: { type: "TEXT", from: "" },
+      },
+    })
+  })
+```
+
+### handles nested objects with same-name fields at different levels
+
+```ts
+  test("handles nested objects with same-name fields at different levels", () => {
+    const input = `
+      const schema: Schema = s.object({
+        name: s.string(),
+        user: s.object({
+          name: s.string(),
+          profile: s.object({
+            name: s.string(),
+          }),
+        }),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        name: "TEXT",
+        "user.name": "TEXT",
+        "user.profile.name": "TEXT",
+      },
+    })
+  })
+```
+
+### handles tabs in input
+
+```ts
+  test("handles tabs in input", () => {
+    const input = `const schema: Schema = s.object({\n\tname:\ts.string(),\n\tage:\ts.number()\n})`
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        name: "TEXT",
+        age: { type: "F64", fast: true },
+      },
+    })
+  })
+```
+
+### handles CRLF line endings
+
+```ts
+  test("handles CRLF line endings", () => {
+    const input =
+      "const schema: Schema = s.object({\r\n  name: s.string(),\r\n  age: s.number()\r\n})"
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        name: "TEXT",
+        age: { type: "F64", fast: true },
+      },
+    })
+  })
+```
+
+### handles empty nested object
+
+```ts
+  test("handles empty nested object", () => {
+    const input = `
+      const schema: Schema = s.object({
+        name: s.string(),
+        empty: s.object({}),
+        age: s.number(),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        name: "TEXT",
+        age: { type: "F64", fast: true },
+      },
+    })
+  })
+```
+
+### handles field names with spaces in quotes
+
+```ts
+  test("handles field names with spaces in quotes", () => {
+    const input = `
+      const schema: Schema = s.object({
+        "field with spaces": s.string(),
+        "another spaced field": s.number(),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        "field with spaces": "TEXT",
+        "another spaced field": { type: "F64", fast: true },
+      },
+    })
+  })
+```
+
+### handles from() with special URL characters
+
+```ts
+  test("handles from() with special URL characters", () => {
+    const input = `
+      const schema: Schema = s.object({
+        url: s.string().from("https://example.com/path?query=1"),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        url: { type: "TEXT", from: "https://example.com/path?query=1" },
+      },
+    })
+  })
+```
+
+### handles multiple whitespace between modifiers
+
+```ts
+  test("handles multiple whitespace between modifiers", () => {
+    const input = `
+      const schema: Schema = s.object({
+        text: s.string()    .noTokenize()    .noStem()    .from("source"),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        text: { type: "TEXT", noTokenize: true, noStem: true, from: "source" },
+      },
+    })
+  })
+```
+
+### handles backslashes in from() values
+
+```ts
+  test("handles backslashes in from() values", () => {
+    // Input has .from("a\b") where \b is a single backslash followed by b
+    // In JS source: 'from("a\\b")' creates a string with one backslash
+    const input = String.raw`const schema: Schema = s.object({ path: s.string().from("a\b") })`
+    const result = parseSchemaFromEditorValue(input)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      // Parser returns characters as-is: a, \, b
+      expect((result.schema.path as { from: string }).from).toBe(String.raw`a\b`)
+    }
+  })
+```
+
+### handles double backslashes in from() values
+
+```ts
+  test("handles double backslashes in from() values", () => {
+    // Input has .from("a\\b") with two backslash characters
+    const input = String.raw`const schema: Schema = s.object({ path: s.string().from("a\\b") })`
+    const result = parseSchemaFromEditorValue(input)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      // Parser returns characters as-is: a, \, \, b
+      expect((result.schema.path as { from: string }).from).toBe(String.raw`a\\b`)
+    }
+  })
+```
+
+### handles newlines inside from() (should not match)
+
+```ts
+  test("handles newlines inside from() (should not match)", () => {
+    const input = `
+      const schema: Schema = s.object({
+        name: s.string(),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        name: "TEXT",
+      },
+    })
+  })
+```
+
+### handles underscore field names
+
+```ts
+  test("handles underscore field names", () => {
+    const input = `
+      const schema: Schema = s.object({
+        _id: s.number("U64"),
+        __typename: s.string(),
+        _private_field: s.boolean(),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        _id: { type: "U64", fast: true },
+        __typename: "TEXT",
+        _private_field: "BOOL",
+      },
+    })
+  })
+```
+
+### handles $ in field names
+
+```ts
+  test("handles $ in field names", () => {
+    const input = `
+      const schema: Schema = s.object({
+        "$ref": s.string(),
+        "$type": s.string(),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        $ref: "TEXT",
+        $type: "TEXT",
+      },
+    })
+  })
+})
+
+// ============================================================================
+// MALFORMED INPUT TESTS
+// ============================================================================
+```
+
+## Schema Parser - Malformed Inputs
+
+```ts
+describe("Schema Parser - Malformed Inputs", () => {
+```
+
+### handles missing closing brace gracefully
+
+```ts
+  test("handles missing closing brace gracefully", () => {
+    const input = `
+      const schema: Schema = s.object({
+        name: s.string(),
+    `
+    // Should either fail gracefully or parse what it can
+    const result = parseSchemaFromEditorValue(input)
+    // This will fail because the regex won't match - which is expected
+    expect(result.success).toBe(false)
+  })
+```
+
+### handles missing s.object wrapper
+
+```ts
+  test("handles missing s.object wrapper", () => {
+    const input = `
+      const schema: Schema = {
+        name: s.string(),
+      }
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result.success).toBe(false)
+    expect(result.success === false && result.error).toContain("Expected s.object")
+  })
+```
+
+### handles unknown field type with error
+
+```ts
+  test("handles unknown field type with error", () => {
+    const input = `
+      const schema: Schema = s.object({
+        unknown: s.unknown(),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toContain("Unknown field type")
+      expect(result.error).toContain("s.unknown()")
+      expect(result.error).toContain("unknown")
+    }
+  })
+```
+
+### errors on field without value
+
+```ts
+  test("errors on field without value", () => {
+    const input = `
+      const schema: Schema = s.object({
+        name,
+        age: s.number(),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    // A malformed field (missing value) must surface an error instead of being
+    // silently dropped and committing an incomplete schema.
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toContain("name")
+    }
+  })
+```
+
+### handles extra commas
+
+```ts
+  test("handles extra commas", () => {
+    const input = `
+      const schema: Schema = s.object({
+        name: s.string(),,,
+        age: s.number(),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.schema.name).toBe("TEXT")
+      expect(result.schema.age).toEqual({ type: "F64", fast: true })
+    }
+  })
+```
+
+### handles only whitespace inside object
+
+```ts
+  test("handles only whitespace inside object", () => {
+    const input = `
+      const schema: Schema = s.object({
+
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {},
+    })
+  })
+```
+
+### handles field names that look like type names
+
+```ts
+  test("handles field names that look like type names", () => {
+    const input = `
+      const schema: Schema = s.object({
+        string: s.string(),
+        number: s.number(),
+        boolean: s.boolean(),
+        date: s.date(),
+        object: s.string(),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        string: "TEXT",
+        number: { type: "F64", fast: true },
+        boolean: "BOOL",
+        date: "DATE",
+        object: "TEXT",
+      },
+    })
+  })
+```
+
+### handles unicode in from() values
+
+```ts
+  test("handles unicode in from() values", () => {
+    const input = `
+      const schema: Schema = s.object({
+        greeting: s.string().from("こんにちは"),
+        emoji: s.string().from("🎉🎊🎁"),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        greeting: { type: "TEXT", from: "こんにちは" },
+        emoji: { type: "TEXT", from: "🎉🎊🎁" },
+      },
+    })
+  })
+```
+
+### handles very long field names
+
+```ts
+  test("handles very long field names", () => {
+    const longName = "a".repeat(200)
+    const input = `
+      const schema: Schema = s.object({
+        ${longName}: s.string(),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result).toEqual({
+      success: true,
+      schema: {
+        [longName]: "TEXT",
+      },
+    })
+  })
+```
+
+### handles many fields
+
+```ts
+  test("handles many fields", () => {
+    const fields = Array.from({ length: 50 }, (_, i) => `field${i}: s.string()`).join(",\n")
+    const input = `const schema: Schema = s.object({ ${fields} })`
+    const result = parseSchemaFromEditorValue(input)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(Object.keys(result.schema).length).toBe(50)
+    }
+  })
+```
+
+### handles deeply nested (10 levels)
+
+```ts
+  test("handles deeply nested (10 levels)", () => {
+    let input = "a: s.string()"
+    for (let i = 9; i >= 0; i--) {
+      input = `l${i}: s.object({ ${input} })`
+    }
+    input = `const schema: Schema = s.object({ ${input} })`
+
+    const result = parseSchemaFromEditorValue(input)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      const key = "l0.l1.l2.l3.l4.l5.l6.l7.l8.l9.a"
+      expect(result.schema[key]).toBe("TEXT")
+    }
+  })
+})
+
+// ============================================================================
+// ERROR HANDLING TESTS
+// ============================================================================
+```
+
+## Schema Parser - Error Handling
+
+```ts
+describe("Schema Parser - Error Handling", () => {
+```
+
+### reports unknown field type with field name
+
+```ts
+  test("reports unknown field type with field name", () => {
+    const input = `
+      const schema: Schema = s.object({
+        myField: s.unknown(),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toBe('Unknown field type "s.unknown()" for field "myField"')
+    }
+  })
+```
+
+### reports unknown field type in nested object with full path
+
+```ts
+  test("reports unknown field type in nested object with full path", () => {
+    const input = `
+      const schema: Schema = s.object({
+        user: s.object({
+          data: s.vector(),
+        }),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toBe('Unknown field type "s.vector()" for field "user.data"')
+    }
+  })
+```
+
+### reports malformed nested s.object()
+
+```ts
+  test("reports malformed nested s.object()", () => {
+    const input = `
+      const schema: Schema = s.object({
+        user: s.object({ name: s.string()
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toContain("Malformed s.object()")
+      expect(result.error).toContain("user")
+    }
+  })
+```
+
+### reports multiple unknown types (first one wins)
+
+```ts
+  test("reports multiple unknown types (first one wins)", () => {
+    const input = `
+      const schema: Schema = s.object({
+        a: s.array(),
+        b: s.map(),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toBe('Unknown field type "s.array()" for field "a"')
+    }
+  })
+```
+
+### known fields before unknown field are not in result on error
+
+```ts
+  test("known fields before unknown field are not in result on error", () => {
+    const input = `
+      const schema: Schema = s.object({
+        name: s.string(),
+        bad: s.invalid(),
+      })
+    `
+    const result = parseSchemaFromEditorValue(input)
+    expect(result.success).toBe(false)
+  })
+})
+```
