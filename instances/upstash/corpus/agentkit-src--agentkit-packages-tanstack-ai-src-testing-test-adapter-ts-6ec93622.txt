@@ -1,0 +1,106 @@
+# agentkit: packages/tanstack-ai/src/testing/test-adapter.ts
+# джерело: https://github.com/upstash/agentkit/blob/@upstash%2Fagentkit-tanstack-ai@0.1.1/packages/tanstack-ai/src/testing/test-adapter.ts
+# отримано: 2026-10-16
+# версія: agentkit-tanstack-ai-0.1.1, agentkit-eve-extension-0.16.0, agentkit-eve-extension-0.15.0, agentkit-eve-0.15.1, agentkit-eve-0.14.1, agentkit-ai-sdk-0.15.1
+
+```ts
+/**
+ * Test-only: a scripted TanStack AI text adapter, so middleware and memory are exercised through a
+ * real `chat()` agent loop without a model provider. `turns[i]` is what the model "says" on call i:
+ * either a list of tool calls or a final text answer. The last entry repeats if the loop runs longer.
+ */
+import type { StreamChunk } from "@tanstack/ai";
+```
+
+## type ScriptedTurn
+
+```ts
+export type ScriptedTurn =
+  | { toolCalls: Array<{ id: string; name: string; args: unknown }> }
+  | { text: string };
+```
+
+## interface ScriptedAdapter
+
+```ts
+export interface ScriptedAdapter {
+  kind: "text";
+  name: string;
+  model: string;
+  "~types": never;
+  /** Every `chatStream` call's options, for asserting on what the loop sent the model. */
+  calls: Array<{ messages: unknown[]; systemPrompts?: unknown; tools?: unknown[] }>;
+  chatStream: (options: unknown) => AsyncIterable<StreamChunk>;
+  structuredOutput: () => Promise<never>;
+}
+```
+
+## function scriptedAdapter
+
+```ts
+export function scriptedAdapter(turns: ScriptedTurn[]): ScriptedAdapter {
+  const calls: ScriptedAdapter["calls"] = [];
+  return {
+    kind: "text",
+    name: "scripted",
+    model: "scripted-1",
+    "~types": undefined as never,
+    calls,
+    async *chatStream(options: unknown) {
+      calls.push(options as ScriptedAdapter["calls"][number]);
+      const turn = turns[Math.min(calls.length - 1, turns.length - 1)]!;
+      const timestamp = Date.now();
+      const n = calls.length;
+      if ("toolCalls" in turn) {
+        for (const call of turn.toolCalls) {
+          yield {
+            type: "TOOL_CALL_START",
+            toolCallId: call.id,
+            toolCallName: call.name,
+            toolName: call.name,
+            timestamp,
+          } as unknown as StreamChunk;
+          yield {
+            type: "TOOL_CALL_ARGS",
+            toolCallId: call.id,
+            delta: JSON.stringify(call.args),
+            timestamp,
+          } as unknown as StreamChunk;
+          yield {
+            type: "TOOL_CALL_END",
+            toolCallId: call.id,
+            toolCallName: call.name,
+            toolName: call.name,
+            input: call.args,
+            timestamp,
+          } as unknown as StreamChunk;
+        }
+        yield {
+          type: "RUN_FINISHED",
+          finishReason: "tool_calls",
+          timestamp,
+        } as unknown as StreamChunk;
+      } else {
+        const messageId = `msg-${n}`;
+        yield {
+          type: "TEXT_MESSAGE_START",
+          messageId,
+          role: "assistant",
+          timestamp,
+        } as unknown as StreamChunk;
+        yield {
+          type: "TEXT_MESSAGE_CONTENT",
+          messageId,
+          delta: turn.text,
+          timestamp,
+        } as unknown as StreamChunk;
+        yield { type: "TEXT_MESSAGE_END", messageId, timestamp } as unknown as StreamChunk;
+        yield { type: "RUN_FINISHED", finishReason: "stop", timestamp } as unknown as StreamChunk;
+      }
+    },
+    structuredOutput: async () => {
+      throw new Error("scriptedAdapter: structuredOutput is not scripted");
+    },
+  };
+}
+```

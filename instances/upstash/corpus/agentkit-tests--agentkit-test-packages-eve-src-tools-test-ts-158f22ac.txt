@@ -1,0 +1,67 @@
+# agentkit: packages/eve/src/tools.test.ts
+# джерело: https://github.com/upstash/agentkit/blob/@upstash%2Fagentkit-sdk@0.2.0/packages/eve/src/tools.test.ts
+# отримано: 2026-10-16
+# версія: agentkit-sdk-0.2.0, agentkit-eve-0.2.2, agentkit-ai-sdk-0.2.0
+
+```ts
+import { z } from "zod";
+import { afterAll, describe, expect, it, vi } from "vitest";
+import { defineCachedTool } from "./tools.js";
+import { cleanupKeys, hasRedisCreds, testRedis, uniquePrefix } from "./test-support.js";
+
+const CTX = {} as never;
+```
+
+## defineCachedTool (live Redis)
+
+```ts
+describe.skipIf(!hasRedisCreds)("defineCachedTool (live Redis)", () => {
+  const redis = testRedis();
+  // The tool owns its ToolCache (default `agentkit:toolCache` base); isolate this run by userId.
+  const ns = uniquePrefix("eve-tool").replace("test:", "");
+
+  afterAll(async () => {
+    await cleanupKeys(redis, `agentkit:toolCache:${ns}`);
+  });
+```
+
+### memoizes by userId + toolName + input so execute runs once
+
+```ts
+  it("memoizes by userId + toolName + input so execute runs once", async () => {
+    const fn = vi.fn(async ({ x }: { x: number }) => x * 2);
+    const t = defineCachedTool({
+      description: "double",
+      inputSchema: z.object({ x: z.number() }),
+      toolName: "double",
+      userId: ns,
+      execute: fn,
+      redis,
+    });
+
+    expect(await t.execute({ x: 21 }, CTX)).toBe(42);
+    expect(await t.execute({ x: 21 }, CTX)).toBe(42);
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+```
+
+### supports a function userId (derived from input/ctx)
+
+```ts
+  it("supports a function userId (derived from input/ctx)", async () => {
+    const fn = vi.fn(async ({ id }: { id: string }) => id.toUpperCase());
+    const t = defineCachedTool({
+      description: "upper",
+      inputSchema: z.object({ id: z.string() }),
+      toolName: "upper",
+      userId: ({ id }) => `${ns}:${id}`,
+      execute: fn,
+      redis,
+    });
+
+    await t.execute({ id: "a" }, CTX);
+    await t.execute({ id: "a" }, CTX);
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+});
+```

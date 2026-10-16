@@ -1,0 +1,69 @@
+# agentkit: packages/ai-sdk/src/search-tools.ts
+# джерело: https://github.com/upstash/agentkit/blob/@upstash%2Fagentkit-tanstack-ai@0.1.1/packages/ai-sdk/src/search-tools.ts
+# отримано: 2026-10-16
+# версія: agentkit-tanstack-ai-0.1.1, agentkit-sdk-0.9.0, agentkit-sdk-0.6.0, agentkit-eve-extension-0.16.0, agentkit-eve-extension-0.15.0, agentkit-eve-extension-0.14.0, agentkit-eve-extension-0.13.0, agentkit-eve-extension-0.12.0, agentkit-eve-extension-0.11.0, agentkit-eve-extension-0.10.0, agentkit-eve-extension-0.9.0, agentkit-eve-extension-0.8.0, agentkit-eve-extension-0.7.0, agentkit-eve-extension-0.6.0, agentkit-eve-0.15.1, agentkit-eve-0.14.1, agentkit-eve-0.13.0, agentkit-eve-0.12.0, agentkit-eve-0.9.0, agentkit-eve-0.8.0, agentkit-eve-0.7.0, agentkit-eve-0.6.0, agentkit-ai-sdk-0.15.1, agentkit-ai-sdk-0.9.0, agentkit-ai-sdk-0.6.0
+
+```ts
+import { tool, type Tool, type ToolSet } from "ai";
+import { Redis } from "@upstash/redis";
+import {
+  createSearchToolDefs,
+  type SearchToolDef,
+  type SearchToolDefsConfig,
+} from "@upstash/agentkit-sdk";
+import { addTelemetry } from "./telemetry.js";
+```
+
+## interface CreateSearchToolsConfig
+
+```ts
+export interface CreateSearchToolsConfig extends Omit<SearchToolDefsConfig, "redis"> {
+  /** Upstash Redis client. Defaults to `Redis.fromEnv()`. */
+  redis?: Redis;
+}
+```
+
+## function wrap
+
+```ts
+// The schema is a generic zod type and these tools are model-called, so inference isn't needed here.
+function wrap(def: SearchToolDef): Tool {
+  return tool({
+    description: def.description,
+    inputSchema: def.inputSchema,
+    execute: def.execute,
+  } as never) as Tool;
+}
+```
+
+## function createSearchTools
+
+```ts
+/**
+ * Build a set of Vercel AI SDK tools that let an agent search an Upstash Redis Search index:
+ * `search` (query), `aggregate`, and `count`. The tool descriptions are generated from your `schema`
+ * so the model knows the available fields, their types, and which filter operators apply to each. The
+ * index is created on first use (reactively) — no setup, no `ensureIndex` flag.
+ *
+ * ```ts
+ * import { s } from "@upstash/redis";
+ * import { createSearchTools } from "@upstash/agentkit-ai-sdk";
+ * import { generateText, stepCountIs } from "ai";
+ *
+ * const schema = s.object({ name: s.string(), age: s.number() });
+ * const result = await generateText({
+ *   model,
+ *   tools: createSearchTools({ schema, indexName: "users" }),
+ *   stopWhen: stepCountIs(5),
+ *   prompt: "Find users named Ada older than 30",
+ * });
+ * ```
+ */
+export function createSearchTools(config: CreateSearchToolsConfig): ToolSet {
+  const { redis, ...rest } = config;
+  const client = redis ?? Redis.fromEnv();
+  addTelemetry(client, rest.enableTelemetry);
+  const defs = createSearchToolDefs({ redis: client, ...rest });
+  return { search: wrap(defs.search), aggregate: wrap(defs.aggregate), count: wrap(defs.count) };
+}
+```

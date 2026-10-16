@@ -1,0 +1,88 @@
+# agentkit: packages/ai-sdk/src/memory.test.ts
+# джерело: https://github.com/upstash/agentkit/blob/@upstash%2Fagentkit-tanstack-ai@0.1.1/packages/ai-sdk/src/memory.test.ts
+# отримано: 2026-10-16
+# версія: agentkit-tanstack-ai-0.1.1, agentkit-sdk-0.9.0, agentkit-eve-extension-0.16.0, agentkit-eve-extension-0.15.0, agentkit-eve-extension-0.14.0, agentkit-eve-extension-0.13.0, agentkit-eve-extension-0.12.0, agentkit-eve-extension-0.11.0, agentkit-eve-extension-0.10.0, agentkit-eve-extension-0.9.0, agentkit-eve-0.15.1, agentkit-eve-0.14.1, agentkit-eve-0.13.0, agentkit-eve-0.12.0, agentkit-eve-0.9.0, agentkit-ai-sdk-0.15.1, agentkit-ai-sdk-0.9.0
+
+```ts
+import { AgentMemory } from "@upstash/agentkit-sdk";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createMemoryTools } from "./memory.js";
+import { cleanupKeys, hasRedisCreds, testRedis, uniqueUserId } from "./test-support.js";
+```
+
+## function pollUntil
+
+```ts
+/** Poll a read until it reflects a just-written doc — insurance for residual indexing lag. */
+async function pollUntil<T>(read: () => Promise<T>, ready: (value: T) => boolean): Promise<T> {
+  const deadline = Date.now() + 8_000; // well inside vitest's 30s testTimeout
+  let value = await read();
+  while (!ready(value) && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    value = await read();
+  }
+  return value;
+}
+
+const TOOL_OPTS = { toolCallId: "t", messages: [] } as never;
+```
+
+## function call
+
+```ts
+function call<R>(execute: unknown, input: unknown): Promise<R> {
+  return (execute as (i: unknown, o: unknown) => Promise<R>)(input, TOOL_OPTS);
+}
+```
+
+## createMemoryTools (live Redis)
+
+```ts
+describe.skipIf(!hasRedisCreds)("createMemoryTools (live Redis)", () => {
+  const redis = testRedis();
+  // The tools own their AgentMemory (default `agentkit:memory` index); isolate this run by scope.
+  const ns = uniqueUserId("aisdk-mem");
+  const tools = createMemoryTools({ redis, userId: ns });
+  // A throwaway handle on the same default index, just to wait for indexing before recall.
+  const index = new AgentMemory({ redis }).searchIndex;
+
+  // Make sure the index exists before anything is written into its keyspace: `waitIndexing()` on a
+  // missing index is a silent no-op, so a save followed by a recall would otherwise race the
+  // reactive create. A recall on a missing index returns the `null` sentinel and provisions it.
+  beforeAll(async () => {
+    await call(tools.recall_memory!.execute, { query: "provisioning probe" });
+  });
+
+  afterAll(async () => {
+    await cleanupKeys(redis, `agentkit:memory:${ns}`);
+  });
+```
+
+### exposes recall_memory and save_memory tools
+
+```ts
+  it("exposes recall_memory and save_memory tools", () => {
+    expect(Object.keys(tools).sort()).toEqual(["recall_memory", "save_memory"]);
+    expect(tools.save_memory!.inputSchema).toBeDefined();
+  });
+```
+
+### save_memory persists and recall_memory retrieves
+
+```ts
+  it("save_memory persists and recall_memory retrieves", async () => {
+    const saved = await call<{ id: string; saved: boolean }>(tools.save_memory!.execute, {
+      text: "The user prefers dark mode",
+    });
+    expect(saved.saved).toBe(true);
+    await index.waitIndexing();
+
+    const recalled = await pollUntil(
+      () =>
+        call<{ text: string }[]>(tools.recall_memory!.execute, { query: "ui theme preference" }),
+      (found) => found.some((m) => m.text.includes("dark mode")),
+    );
+    expect(recalled.some((m) => m.text.includes("dark mode"))).toBe(true);
+  });
+});
+```

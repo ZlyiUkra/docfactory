@@ -1,0 +1,120 @@
+# agentkit: packages/ai-sdk/src/search-tools.test.ts
+# джерело: https://github.com/upstash/agentkit/blob/@upstash%2Fagentkit-tanstack-ai@0.1.1/packages/ai-sdk/src/search-tools.test.ts
+# отримано: 2026-10-16
+# версія: agentkit-tanstack-ai-0.1.1, agentkit-sdk-0.9.0, agentkit-eve-extension-0.16.0, agentkit-eve-extension-0.15.0, agentkit-eve-extension-0.14.0, agentkit-eve-extension-0.13.0, agentkit-eve-extension-0.12.0, agentkit-eve-extension-0.11.0, agentkit-eve-extension-0.10.0, agentkit-eve-extension-0.9.0, agentkit-eve-0.15.1, agentkit-eve-0.14.1, agentkit-eve-0.13.0, agentkit-eve-0.12.0, agentkit-eve-0.9.0, agentkit-ai-sdk-0.15.1, agentkit-ai-sdk-0.9.0
+
+```ts
+import { s } from "@upstash/redis";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createSearchTools } from "./search-tools.js";
+import { hasRedisCreds, testRedis, uniquePrefix } from "./test-support.js";
+
+const TOOL_OPTS = { toolCallId: "t", messages: [] } as never;
+```
+
+## function call
+
+```ts
+function call<R>(execute: unknown, input: unknown): Promise<R> {
+  return (execute as (i: unknown, o: unknown) => Promise<R>)(input, TOOL_OPTS);
+}
+```
+
+## function pollUntil
+
+```ts
+/** Poll a read until it reflects a just-written doc — insurance for residual indexing lag. */
+async function pollUntil<T>(read: () => Promise<T>, ready: (value: T) => boolean): Promise<T> {
+  const deadline = Date.now() + 8_000; // well inside vitest's 30s testTimeout
+  let value = await read();
+  while (!ready(value) && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    value = await read();
+  }
+  return value;
+}
+```
+
+## const schema
+
+```ts
+const schema = s.object({
+  name: s.string(),
+  age: s.number(),
+  city: s.string().noTokenize(),
+});
+```
+
+## createSearchTools (live Redis)
+
+```ts
+describe.skipIf(!hasRedisCreds)("createSearchTools (live Redis)", () => {
+  const redis = testRedis();
+  const name = uniquePrefix("searchtools").replace(/[^a-zA-Z0-9_]/g, "_");
+  const prefix = `${name}:`;
+  const tools = createSearchTools({ schema, redis, indexName: name, prefix });
+
+  // Create the index BEFORE anything is seeded under its prefix. `waitIndexing()` on an index that
+  // does not exist yet is a silent no-op, so seeding first and letting the first read provision it
+  // reactively leaves the reads racing the backfill. Any read provisions: a missing index answers
+  // `count` with the `{count: -1}` sentinel, which makes the tool create it and retry.
+  beforeAll(async () => {
+    await call<{ count: number }>(tools.count!.execute, { filter: { city: { $eq: "nowhere" } } });
+  });
+
+  afterAll(async () => {
+    try {
+      await redis.search.index({ name }).drop();
+    } catch {
+      /* may not exist */
+    }
+  });
+```
+
+### returns search / aggregate / count tools with schema-aware descriptions
+
+```ts
+  it("returns search / aggregate / count tools with schema-aware descriptions", () => {
+    expect(Object.keys(tools).sort()).toEqual(["aggregate", "count", "search"]);
+    // Descriptions teach the agent the fields + operators.
+    expect(tools.search!.description).toContain("`name` (TEXT)");
+    expect(tools.search!.description).toContain("`age` (F64)");
+    expect(tools.search!.description).toContain("$smart");
+    expect(tools.search!.inputSchema).toBeDefined();
+  });
+```
+
+### search tool runs a $smart query against the index
+
+```ts
+  it("search tool runs a $smart query against the index", async () => {
+    // Seed documents under the index prefix (auto-synced into the index).
+    await redis.json.set(`${prefix}1`, "$", { name: "Ada Lovelace", age: 36, city: "London" });
+    await redis.json.set(`${prefix}2`, "$", { name: "Alan Turing", age: 41, city: "London" });
+    await redis.search.index({ name }).waitIndexing();
+
+    const hits = await pollUntil(
+      () =>
+        call<{ data?: { name?: string } }[]>(tools.search!.execute, {
+          filter: { name: { $smart: "ada" } },
+        }),
+      (found) => found.some((h) => h.data?.name?.includes("Ada")),
+    );
+    expect(hits.length).toBeGreaterThan(0);
+    expect(hits.some((h) => h.data?.name?.includes("Ada"))).toBe(true);
+  });
+```
+
+### count tool counts matching documents
+
+```ts
+  it("count tool counts matching documents", async () => {
+    // Counts the two docs seeded by the previous test; poll until indexing has caught up with both.
+    const result = await pollUntil(
+      () => call<{ count: number }>(tools.count!.execute, { filter: { city: { $eq: "London" } } }),
+      (r) => r.count >= 2,
+    );
+    expect(result.count).toBeGreaterThanOrEqual(2);
+  });
+});
+```

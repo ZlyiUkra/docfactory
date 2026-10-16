@@ -1,0 +1,55 @@
+# agentkit: packages/sdk/src/rate-limit.ts
+# джерело: https://github.com/upstash/agentkit/blob/@upstash%2Fagentkit-sdk@0.2.0/packages/sdk/src/rate-limit.ts
+# отримано: 2026-10-16
+# версія: agentkit-sdk-0.2.0, agentkit-eve-extension-0.5.0, agentkit-eve-extension-0.4.0, agentkit-eve-extension-0.3.1, agentkit-eve-extension-0.3.0, agentkit-eve-0.5.0, agentkit-eve-0.3.0, agentkit-eve-0.2.2, agentkit-eve-0.2.1, agentkit-eve-0.2.0, agentkit-ai-sdk-0.2.0
+
+```ts
+import { Ratelimit, type Duration } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
+
+// Re-export the `@upstash/ratelimit` surface AgentKit users need so they never have to import from
+// (or install) `@upstash/ratelimit` directly. `Ratelimit` is the class whose static helpers build a
+// custom `limiter` (e.g. `Ratelimit.fixedWindow(...)`); `Duration` types the `window` option.
+export { Ratelimit };
+export type { Duration };
+
+/** Limiter algorithm accepted by `@upstash/ratelimit` (the value `Ratelimit.slidingWindow(...)` etc. returns). */
+type Limiter = ConstructorParameters<typeof Ratelimit>[0]["limiter"];
+```
+
+## interface RateLimitConfig
+
+```ts
+/** Configuration for {@link createRateLimit}. */
+export interface RateLimitConfig {
+  /** Upstash Redis client backing the limiter. Defaults to `Redis.fromEnv()`. */
+  redis?: Redis;
+  /** The limiter algorithm, e.g. `Ratelimit.slidingWindow(10, "60 s")` or `Ratelimit.fixedWindow(...)`. */
+  limiter: Limiter;
+  /** Key prefix for the limiter. Defaults to `agentkit:rateLimit`; keys are `<prefix>:<identifier>`. */
+  prefix?: string;
+}
+```
+
+## function createRateLimit
+
+```ts
+/**
+ * Build a configured [Upstash Ratelimit](https://github.com/upstash/ratelimit-js) `Ratelimit` with
+ * AgentKit defaults. The returned value is a plain `Ratelimit`, so call `.limit(identifier)` yourself
+ * before doing work (e.g. before `generateText`). Keys are `agentkit:rateLimit:<identifier>`.
+ *
+ * ```ts
+ * const ratelimit = createRateLimit({ redis, limiter: Ratelimit.slidingWindow(30, "1 m") });
+ * const { success } = await ratelimit.limit("user-123");
+ * if (!success) throw new Error("rate limited");
+ * ```
+ */
+export function createRateLimit(config: RateLimitConfig): Ratelimit {
+  return new Ratelimit({
+    redis: config.redis ?? Redis.fromEnv(),
+    limiter: config.limiter,
+    prefix: config.prefix ?? "agentkit:rateLimit",
+  });
+}
+```

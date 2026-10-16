@@ -1,0 +1,2564 @@
+# box: packages/python-sdk/upstash_box/_sync/client.py
+# джерело: https://github.com/upstash/box/blob/python-sdk-v0.4.0/packages/python-sdk/upstash_box/_sync/client.py
+# отримано: 2026-10-16
+# версія: upstash-box-0.4.0
+
+```python
+# DO NOT EDIT — generated from upstash_box/_async/ by scripts/generate_sync.py.
+# Edit the async source and re-run the generator. Hand-written sync code that
+# can't be generated cleanly belongs in upstash_box/_sync/_fallbacks.py.
+"""Generated synchronous client — DO NOT EDIT.
+
+Produced from upstash_box/_async/ by scripts/generate_sync.py. Edit the async
+source and re-run the generator."""
+
+from __future__ import annotations
+
+import time
+import base64
+import json
+import logging
+import os
+import uuid
+from typing import (
+    Any,
+    Iterator,
+    Dict,
+    Generic,
+    List,
+    Literal,
+    Mapping,
+    Optional,
+    TypeVar,
+    Union,
+)
+from urllib.parse import urlencode
+
+import httpx
+from typing_extensions import Unpack
+
+from .. import _common as common
+from .._deadline import next_before, open_before, check_deadline, run_deadline
+from .._exec_session import (
+    ExecSessionHandle,
+    StdoutCallback,
+    build_start_frame,
+    open_exec_session,
+    session_url,
+)
+from ..errors import _CANCELLED_MESSAGE, BoxError, _RunAbortedError
+from ..types import (
+    Agent,
+    AgentOptions,
+    BoxConfig,
+    BoxConnectionOptions,
+    BoxData,
+    BoxGetOptions,
+    BoxRunData,
+    BrowserActAction,
+    BrowserActResult,
+    BrowserContent,
+    BrowserObserveElement,
+    BrowserObserveResult,
+    BrowserRecording,
+    Chunk,
+    CodeLanguage,
+    CustomHarnessConfig,
+    EphemeralBoxConfig,
+    ExecExitChunk,
+    ExecOutputChunk,
+    ExecStreamChunk,
+    FileEntry,
+    FileStat,
+    FinishChunk,
+    FinishUsage,
+    GitCommitResult,
+    GitConfigResult,
+    GitExecResult,
+    Issue,
+    ListOptions,
+    LogEntry,
+    ModelConfig,
+    NetworkPolicy,
+    PromptFiles,
+    PublicURL,
+    PublicURLListItem,
+    PullRequest,
+    ReasoningChunk,
+    ResponseSchema,
+    RunCost,
+    RunLog,
+    RunStatus,
+    Schedule,
+    Snapshot,
+    StartChunk,
+    StatsChunk,
+    TextDeltaChunk,
+    ToolCallChunk,
+    ToolResultCallback,
+    ToolResultChunk,
+    ToolUseCallback,
+    UnknownChunk,
+    UploadFileEntry,
+    WebhookConfig,
+)
+from ._sse import iter_exec_stream, iter_sse_events
+
+_logger = logging.getLogger("upstash_box")
+
+# Sentinel to distinguish "argument omitted" from an explicit ``None`` in
+# partial updates (``None`` means "clear" for agent options).
+_UNSET: Any = object()
+
+T = TypeVar("T")
+
+WORKSPACE = common.WORKSPACE
+_DEFAULT_TIMEOUT_MS = 600000
+
+
+def _resolve_tool_call_id(parsed: Dict[str, Any]) -> Optional[str]:
+    for key in ("tool_call_id", "tool_use_id", "toolCallId", "id"):
+        value = parsed.get(key)
+        if isinstance(value, str):
+            return value
+    return None
+
+
+def _normalize_path(p: str) -> str:
+    resolved: List[str] = []
+    for part in p.split("/"):
+        if part == "" or part == ".":
+            continue
+        if part == "..":
+            if resolved:
+                resolved.pop()
+        else:
+            resolved.append(part)
+    return "/" + "/".join(resolved)
+
+
+class Run(Generic[T]):
+    """A single agent or shell execution returned by ``agent.run`` / ``exec.command``."""
+
+    def __init__(self, box: "Box", type_: str, id: Optional[str] = None) -> None:
+        self._id = id or str(uuid.uuid4())
+        self.type = type_
+        self._box = box
+        self._result: Optional[T] = None
+        self._status: RunStatus = "running"
+        self._exit_code: Optional[int] = None
+        self._stdout = ""
+        self._stderr = ""
+        self._input_tokens = 0
+        self._output_tokens = 0
+        self._cached_input_tokens = 0
+        self._total_usd = 0.0
+        self._compute_ms = 0.0
+        self._start_time = time.time() * 1000
+        # The open streaming response, so cancel() can stop it locally.
+        self._response: Optional[httpx.Response] = None
+        # The pending open of a stream (async task), so cancel() can interrupt it.
+        self._opening: Optional[Any] = None
+        self._cancel_requested = False
+
+    @property
+    def id(self) -> str:
+        return self._id
+
+    @property
+    def status(self) -> RunStatus:
+        return self._status
+
+    @property
+    def result(self) -> Any:
+        if self._result is None:
+            return ""
+        return self._result
+
+    @property
+    def exit_code(self) -> Optional[int]:
+        return self._exit_code
+
+    @property
+    def stdout(self) -> str:
+        """Raw stdout of the process. Only set for command and code runs."""
+        return self._stdout
+
+    @property
+    def stderr(self) -> str:
+        """Raw stderr of the process. Only set for command and code runs."""
+        return self._stderr
+
+    @property
+    def cost(self) -> RunCost:
+        return RunCost(
+            input_tokens=self._input_tokens,
+            output_tokens=self._output_tokens,
+            cached_input_tokens=self._cached_input_tokens,
+            compute_ms=self._compute_ms or (time.time() * 1000 - self._start_time),
+            total_usd=self._total_usd,
+        )
+
+    def cancel(self) -> None:
+        """Cancel the run. An open stream is closed locally first, so iterating
+        a cancelled ``StreamRun`` raises ``BoxError`` instead of continuing."""
+        self._cancel_requested = True
+        opening = self._opening
+        if opening is not None:
+            opening.cancel()
+        response = self._response
+        if response is not None:
+            try:
+                response.close()
+            except Exception:
+                pass
+        try:
+            self._box._request("POST", f"/v2/box/{self._box.id}/runs/{self._id}/cancel")
+        except Exception:
+            pass
+        self._status = "cancelled"
+
+    def logs(self) -> List[RunLog]:
+        all_logs = self._box.logs()
+        start_sec = int(self._start_time / 1000)
+        out: List[RunLog] = []
+        for entry in all_logs:
+            if entry.timestamp >= start_sec:
+                iso = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(entry.timestamp)) + ".000Z"
+                out.append(RunLog(timestamp=iso, level=entry.level, message=entry.message))
+        return out
+
+
+class StreamRun(Run[T]):
+    """A streaming run that yields typed chunks in real time.
+
+    Iterable: the async client is async-iterable; the generated sync ``StreamRun``
+    is a plain iterable. Python does not run a generator's ``finally`` when you
+    ``break`` out of a loop (unlike JS ``for await``), so to finalize status
+    (e.g. ``detached``) after early termination, close the run
+    (``aclose()`` async / ``close()`` sync) or use it as a context manager.
+    """
+
+    def __init__(self, box: "Box", type_: str, id: Optional[str] = None) -> None:
+        super().__init__(box, type_, id)
+        self._iterator: Optional[Any] = None
+
+    def __iter__(self) -> Iterator[Any]:
+        assert self._iterator is not None
+        return self._iterator
+
+    def close(self) -> None:
+        if self._iterator is not None:
+            self._iterator.close()
+
+    def __enter__(self) -> "StreamRun":
+        return self
+
+    def __exit__(self, *exc: Any) -> None:
+        self.close()
+
+
+class AgentNamespace:
+    def __init__(self, box: "Box") -> None:
+        self._box = box
+
+    def run(
+        self,
+        *,
+        prompt: str,
+        response_schema: Optional[ResponseSchema] = None,
+        files: Optional[PromptFiles] = None,
+        options: Optional[AgentOptions] = None,
+        timeout: Optional[float] = None,
+        max_retries: int = 0,
+        on_tool_use: Optional[ToolUseCallback] = None,
+        on_tool_result: Optional[ToolResultCallback] = None,
+        webhook: Optional[WebhookConfig] = None,
+    ) -> Run[Any]:
+        self._box._require_agent()
+        if not prompt:
+            raise BoxError("prompt is required")
+        if webhook:
+            return self._box._execute_webhook_run(prompt, response_schema, files, options, webhook)
+        return self._box._run_with_retries(
+            prompt,
+            response_schema,
+            files,
+            options,
+            timeout,
+            max_retries,
+            on_tool_use,
+            on_tool_result,
+        )
+
+    def stream(
+        self,
+        *,
+        prompt: str,
+        files: Optional[PromptFiles] = None,
+        options: Optional[AgentOptions] = None,
+        timeout: Optional[float] = None,
+        on_tool_use: Optional[ToolUseCallback] = None,
+        on_tool_result: Optional[ToolResultCallback] = None,
+    ) -> StreamRun[str]:
+        self._box._require_agent()
+        if not prompt:
+            raise BoxError("prompt is required")
+        return self._box._stream(prompt, files, options, timeout, on_tool_use, on_tool_result)
+
+
+class ExecNamespace:
+    def __init__(self, box: "Box") -> None:
+        self._box = box
+
+    def command(self, command: str) -> Run[str]:
+        return self._box._exec_command(command)
+
+    def code(self, *, code: str, lang: CodeLanguage, timeout: Optional[float] = None) -> Run[str]:
+        return self._box._exec_code(code, lang, timeout)
+
+    def stream(self, command: str) -> StreamRun[str]:
+        return self._box._exec_stream(command)
+
+    def stream_code(
+        self, *, code: str, lang: CodeLanguage, timeout: Optional[float] = None
+    ) -> StreamRun[str]:
+        return self._box._exec_stream_code(code, lang, timeout)
+
+    def session(
+        self,
+        *,
+        cmd: Optional[str] = None,
+        argv: Optional[List[str]] = None,
+        tty: bool = False,
+        cwd: Optional[str] = None,
+        rows: Optional[int] = None,
+        cols: Optional[int] = None,
+        env: Optional[List[str]] = None,
+        on_stdout: Optional[StdoutCallback] = None,
+        on_stderr: Optional[StdoutCallback] = None,
+    ) -> ExecSessionHandle:
+        """Start a live command session and return once the process is running.
+
+        Unlike ``command``, which returns after the command finishes, a session
+        stays open: write to stdin, resize a PTY, signal the process tree, and
+        receive output as it is produced.
+
+        ``argv`` is the exact program and arguments, run without a shell, and
+        takes precedence over ``cmd``, which is run via ``bash -lc``. ``tty``
+        allocates a PTY, which merges stderr into stdout. ``env`` entries are
+        ``KEY=VALUE`` strings overlaid on the box environment. ``on_stdout`` and
+        ``on_stderr`` receive raw ``bytes`` as they arrive.
+
+        The returned handle owns the process: closing it, or losing the
+        connection, kills the command.
+        """
+        return self._box._exec_session(
+            cmd=cmd,
+            argv=argv,
+            tty=tty,
+            cwd=cwd,
+            rows=rows,
+            cols=cols,
+            env=env,
+            on_stdout=on_stdout,
+            on_stderr=on_stderr,
+        )
+
+
+class FilesNamespace:
+    def __init__(self, box: "Box") -> None:
+        self._box = box
+
+    def read(
+        self,
+        path: str,
+        *,
+        encoding: Optional[str] = None,
+        offset: Optional[int] = None,
+        length: Optional[int] = None,
+    ) -> str:
+        """Read a file. Supplying ``length`` reads a bounded byte range starting
+        at ``offset`` (default 0) instead of the whole file. The server rejects a
+        ``length`` above 8 MiB."""
+        return self._box._read_file(path, encoding, offset, length)
+
+    def write(self, *, path: str, content: str, encoding: Optional[str] = None) -> None:
+        self._box._write_file(path, content, encoding)
+
+    def list(self, path: Optional[str] = None) -> List[FileEntry]:
+        return self._box._list_files(path)
+
+    def stat(self, path: str, *, follow: bool = False) -> FileStat:
+        """Return filesystem metadata for a path. ``follow`` dereferences a
+        final symlink; the default is lstat, which reports it as ``symlink``."""
+        return self._box._stat_file(path, follow)
+
+    def mkdir(self, path: str, *, parents: bool = False) -> None:
+        """Create a directory. ``parents`` mirrors ``mkdir -p``."""
+        self._box._make_dir(path, parents)
+
+    def rename(self, from_path: str, to_path: str) -> None:
+        """Move/rename a path."""
+        self._box._rename_file(from_path, to_path)
+
+    def remove(self, path: str, *, recursive: bool = False) -> None:
+        """Remove a path. ``recursive`` is required to remove a directory."""
+        self._box._remove_file(path, recursive)
+
+    def upload(self, files: List[UploadFileEntry]) -> None:
+        self._box._upload_files(files)
+
+    def download(self, *, folder: Optional[str] = None) -> None:
+        self._box._download_files(folder)
+
+
+class GitNamespace:
+    def __init__(self, box: "Box") -> None:
+        self._box = box
+
+    def clone(
+        self,
+        *,
+        repo: str,
+        branch: Optional[str] = None,
+        depth: Optional[int] = None,
+        folder: Optional[str] = None,
+    ) -> None:
+        self._box._git_clone(repo, branch, depth, folder)
+
+    def diff(self) -> str:
+        return self._box._git_diff()
+
+    def status(self) -> str:
+        return self._box._git_status()
+
+    def commit(
+        self,
+        *,
+        message: str,
+        author_name: Optional[str] = None,
+        author_email: Optional[str] = None,
+    ) -> GitCommitResult:
+        return self._box._git_commit(message, author_name, author_email)
+
+    def update_config(
+        self, *, user_name: Optional[str] = None, user_email: Optional[str] = None
+    ) -> GitConfigResult:
+        return self._box._git_update_config(user_name, user_email)
+
+    def push(self, *, branch: Optional[str] = None) -> None:
+        self._box._git_push(branch)
+
+    def create_pr(
+        self,
+        *,
+        title: str,
+        body: Optional[str] = None,
+        base: Optional[str] = None,
+        attach: Optional[List[str]] = None,
+    ) -> PullRequest:
+        return self._box._git_create_pr(title, body, base, attach)
+
+    def create_issue(
+        self,
+        *,
+        title: str,
+        body: Optional[str] = None,
+        attach: Optional[List[str]] = None,
+    ) -> Issue:
+        return self._box._git_create_issue(title, body, attach)
+
+    def exec(self, *, args: List[str]) -> GitExecResult:
+        """Run a git command. Returns its output and git's own exit code
+        (128 when the folder is not a repository)."""
+        return self._box._git_exec(args)
+
+    def checkout(self, *, branch: str) -> None:
+        self._box._git_checkout(branch)
+
+
+class ScheduleNamespace:
+    def __init__(self, box: "Box") -> None:
+        self._box = box
+
+    def exec(
+        self,
+        *,
+        cron: str,
+        command: List[str],
+        folder: Optional[str] = None,
+        webhook_url: Optional[str] = None,
+        webhook_headers: Optional[Dict[str, str]] = None,
+    ) -> Schedule:
+        return self._box._schedule_exec(
+            {
+                "cron": cron,
+                "command": command,
+                "folder": folder,
+                "webhook_url": webhook_url,
+                "webhook_headers": webhook_headers,
+            }
+        )
+
+    def agent(
+        self,
+        *,
+        cron: str,
+        prompt: str,
+        folder: Optional[str] = None,
+        model: Optional[str] = None,
+        options: Optional[AgentOptions] = None,
+        timeout: Optional[float] = None,
+        webhook_url: Optional[str] = None,
+        webhook_headers: Optional[Dict[str, str]] = None,
+    ) -> Schedule:
+        return self._box._schedule_agent(
+            {
+                "cron": cron,
+                "prompt": prompt,
+                "folder": folder,
+                "model": model,
+                "options": options,
+                "timeout": timeout,
+                "webhook_url": webhook_url,
+                "webhook_headers": webhook_headers,
+            }
+        )
+
+    def list(self) -> List[Schedule]:
+        return self._box._schedule_list()
+
+    def get(self, id: str) -> Schedule:
+        return self._box._schedule_get(id)
+
+    def update(
+        self,
+        id: str,
+        *,
+        cron: Optional[str] = None,
+        command: Optional[List[str]] = None,
+        prompt: Optional[str] = None,
+        folder: Optional[str] = None,
+        model: Optional[str] = None,
+        options: Any = _UNSET,
+        timeout: Optional[float] = None,
+        webhook_url: Optional[str] = None,
+        webhook_headers: Optional[Dict[str, str]] = None,
+    ) -> Schedule:
+        """Partially update a schedule.
+
+        Omitted arguments keep their current value. Explicitly empty values
+        (``""`` / ``[]`` / ``{}``) clear the field, and ``options=None``
+        clears agent options. The schedule's type cannot be changed
+        (``command`` is only valid on exec schedules, ``prompt`` only on
+        prompt schedules), and pause/resume have their own methods.
+        """
+        return self._box._schedule_update(
+            id,
+            {
+                "cron": cron,
+                "command": command,
+                "prompt": prompt,
+                "folder": folder,
+                "model": model,
+                "options": options,
+                "timeout": timeout,
+                "webhook_url": webhook_url,
+                "webhook_headers": webhook_headers,
+            },
+        )
+
+    def pause(self, id: str) -> None:
+        self._box._schedule_pause(id)
+
+    def resume(self, id: str) -> None:
+        self._box._schedule_resume(id)
+
+    def delete(self, id: str) -> None:
+        self._box._schedule_delete(id)
+
+
+class SkillsNamespace:
+    def __init__(self, box: "Box") -> None:
+        self._box = box
+
+    def add(self, skill_id: str) -> None:
+        self._box._skill_add(skill_id)
+
+    def remove(self, skill_id: str) -> None:
+        self._box._skill_remove(skill_id)
+
+    def list(self) -> List[str]:
+        return self._box._skill_list()
+
+
+class LabelsNamespace:
+    def __init__(self, box: "Box") -> None:
+        self._box = box
+
+    def add(self, label: str) -> List[str]:
+        """Add a label. Returns the box's updated label set."""
+        return self._box._label_add(label)
+
+    def remove(self, label: str) -> List[str]:
+        """Remove a label. Returns the box's updated label set."""
+        return self._box._label_remove(label)
+
+    def list(self) -> List[str]:
+        """List this box's labels."""
+        return self._box._label_list()
+
+
+class Tab:
+    """A single browser tab in a box's Chromium, addressed by its CDP target id.
+
+    Obtain one via ``box.browser``: ``box.browser.tab.create(url)``,
+    ``box.browser.list_tabs()``, or ``box.browser.get_tab(id)``. All page
+    operations run against this specific tab and work headless.
+    """
+
+    def __init__(self, box: "Box", init: Mapping[str, Any]) -> None:
+        self._box = box
+        #: CDP target id of this tab.
+        self.id: str = init["id"]
+        #: Last known URL of this tab (from create/list_tabs; not live).
+        self.url: Optional[str] = init.get("url")
+        #: Last known title of this tab (from create/list_tabs; not live).
+        self.title: Optional[str] = init.get("title")
+
+    def goto(self, url: str) -> BrowserContent:
+        """Navigate this tab to a URL and return the page content."""
+        resp = self._box._request(
+            "POST",
+            f"/v2/box/{self._box.id}/browser/goto",
+            body={"url": url, "tab": self.id},
+            timeout=60000,
+        )
+        return BrowserContent.model_validate(resp)
+
+    def content(self) -> BrowserContent:
+        """Read this tab's current title, URL, text, and links."""
+        resp = self._box._request(
+            "GET",
+            f"/v2/box/{self._box.id}/browser/content?{urlencode({'tab': self.id})}",
+            timeout=60000,
+        )
+        return BrowserContent.model_validate(resp)
+
+    def screenshot(
+        self,
+        *,
+        encoding: Literal["bytes", "base64"] = "bytes",
+        full_page: bool = False,
+    ) -> Union[bytes, str]:
+        """Capture this tab as PNG bytes, or a base64-encoded PNG string."""
+        params = {"encoding": "base64", "tab": self.id}
+        if full_page:
+            params["full_page"] = "true"
+        resp = self._box._request(
+            "GET",
+            f"/v2/box/{self._box.id}/browser/screenshot?{urlencode(params)}",
+            timeout=60000,
+        )
+        data = resp.get("data") or ""
+        if encoding == "base64":
+            return data
+        return base64.b64decode(data)
+
+    def extract(
+        self,
+        instruction: str,
+        schema: ResponseSchema,
+        *,
+        model: Optional[str] = None,
+    ) -> Any:
+        """Extract schema-validated structured data from this tab (metered).
+
+        ``schema`` is a pydantic model class (validated, returns an instance) or
+        a raw JSON-schema dict (returns the raw data). ``model`` optionally
+        overrides the provider-prefixed model, e.g. ``anthropic/claude-sonnet-4-5``.
+        """
+        json_schema = common.to_json_schema(schema)
+        if json_schema is None:
+            raise BoxError("extract requires a pydantic model class or a JSON-schema dict")
+        body: Dict[str, Any] = {"instruction": instruction, "schema": json_schema, "tab": self.id}
+        if model:
+            body["model"] = model
+        resp = self._box._request(
+            "POST",
+            f"/v2/box/{self._box.id}/browser/extract",
+            body=body,
+            timeout=180000,
+        )
+        return common.validate_structured_data(schema, resp.get("data"))
+
+    def observe(self, instruction: str, *, model: Optional[str] = None) -> BrowserObserveResult:
+        """List actionable page elements matching an instruction (metered)."""
+        body: Dict[str, Any] = {"instruction": instruction, "tab": self.id}
+        if model:
+            body["model"] = model
+        resp = self._box._request(
+            "POST",
+            f"/v2/box/{self._box.id}/browser/observe",
+            body=body,
+            timeout=180000,
+        )
+        return BrowserObserveResult.model_validate({"elements": resp.get("elements") or []})
+
+    def act(
+        self,
+        instruction: Union[str, BrowserObserveElement, BrowserActAction, Dict[str, Any]],
+        *,
+        model: Optional[str] = None,
+    ) -> BrowserActResult:
+        """Resolve and execute one action on this tab.
+
+        Pass a string (LLM-resolved, metered) or a pre-resolved ``observe()``
+        action to replay it with no LLM call and no key (``model`` ignored).
+        """
+        if isinstance(instruction, str):
+            body: Dict[str, Any] = {"instruction": instruction, "tab": self.id}
+            if model:
+                body["model"] = model
+        else:
+            action = (
+                {k: v for k, v in instruction.items() if v is not None}
+                if isinstance(instruction, dict)
+                else instruction.model_dump(exclude_none=True)
+            )
+            if not action.get("selector"):
+                raise BoxError("act(action) requires a selector; observe() did not resolve one")
+            body = {"action": action, "tab": self.id}
+        resp = self._box._request(
+            "POST",
+            f"/v2/box/{self._box.id}/browser/act",
+            body=body,
+            timeout=180000,
+        )
+        return BrowserActResult.model_validate(resp)
+
+    def live_view_url(self) -> str:
+        """Live-view URL for this tab (authenticated via a token in the URL).
+
+        Open it directly or embed it in an iframe — view-only: frames flow out,
+        no input goes in.
+        """
+        return self._box._browser_live_view_url(self.id)
+
+    def close(self) -> None:
+        """Close this tab."""
+        self._box._request("DELETE", f"/v2/box/{self._box.id}/browser/tabs/{self.id}")
+
+
+class BrowserRecordingHandle:
+    """Handle for an in-flight recording returned by ``recordings.start()``."""
+
+    def __init__(self, box: "Box", recording_id: str) -> None:
+        self._box = box
+        self.id = recording_id
+
+    def stop(self) -> BrowserRecording:
+        """Finalize the recording: flush the encoder, upload, return metadata.
+
+        If this handle's recording already ended (e.g. auto-stopped), returns
+        its metadata without stopping whatever newer recording may be active.
+        """
+        # The stop endpoint is box-wide; guard so a stale handle can't stop a
+        # newer recording on the same box.
+        current = self._box._recording_get(self.id)
+        if current.status != "recording":
+            return current
+        return self._box._recording_stop()
+
+
+class BrowserTabNamespace:
+    def __init__(self, box: "Box") -> None:
+        self._box = box
+
+    def create(
+        self,
+        url: str,
+        *,
+        wait_until: Optional[Literal["load", "domcontentloaded", "networkidle"]] = None,
+        timeout: Optional[int] = None,
+    ) -> Tab:
+        """Open a tab, navigate it, and wait for the requested lifecycle state.
+
+        ``wait_until`` defaults to ``"load"`` server-side. ``timeout`` is the
+        navigation timeout in milliseconds (default 30,000; ``0`` disables it).
+        """
+        return self._box._browser_create_tab(url, wait_until, timeout)
+
+
+class BrowserRecordingsNamespace:
+    """Session recordings — capture the browser (all tabs, follows the
+    foreground) to a replayable HLS video with run/tab-switch chapters.
+    Recordings auto-stop after ``max_duration_seconds`` (max 10 minutes) or
+    after 3 minutes of no on-screen activity."""
+
+    def __init__(self, box: "Box") -> None:
+        self._box = box
+
+    def start(self, *, max_duration_seconds: Optional[int] = None) -> BrowserRecordingHandle:
+        """Start capturing. One active recording per box."""
+        return self._box._recording_start(max_duration_seconds)
+
+    def stop(self) -> BrowserRecording:
+        """Stop the active recording and return its metadata."""
+        return self._box._recording_stop()
+
+    def list(self) -> List[BrowserRecording]:
+        """List this box's recordings, newest first (auto-paginates)."""
+        return self._box._recording_list()
+
+    def get(self, recording_id: str) -> BrowserRecording:
+        """Fetch one recording's metadata."""
+        return self._box._recording_get(recording_id)
+
+    def download(self, recording_id: str, *, path: Optional[str] = None) -> str:
+        """Download a recording's video and return the local path written.
+
+        Recordings are MP4; recordings captured before MP4 support (or whose
+        remux failed) download as raw MPEG-TS.
+        """
+        return self._box._recording_download(recording_id, path)
+
+
+class BrowserNamespace:
+    """Browser namespace — DOM-aware control of Chromium via CDP. Requires a
+    box created with ``browser=True``. Tab management only: open, list, and
+    address tabs. All page operations live on the tab handle returned here."""
+
+    def __init__(self, box: "Box") -> None:
+        self._box = box
+        self.tab = BrowserTabNamespace(box)
+        self.recordings = BrowserRecordingsNamespace(box)
+
+    def list_tabs(self) -> List[Tab]:
+        """List the box's open tabs as handles."""
+        return self._box._browser_list_tabs()
+
+    def get_tab(self, tab_id: str) -> Tab:
+        """Address an existing tab by its CDP target id — no network call."""
+        return Tab(self._box, {"id": tab_id})
+
+    def cdp_url(self) -> str:
+        """Return an authenticated CDP WebSocket URL for Playwright, Puppeteer,
+        or Stagehand."""
+        return self._box._browser_cdp_url()
+
+
+class Box(Generic[T]):
+    """A sandboxed AI coding environment."""
+
+    def __init__(self, data: Dict[str, Any], config: Dict[str, Any]) -> None:
+        self.id = data["id"]
+        self.size = data.get("size") or "small"
+        self.keep_alive = bool(data.get("keep_alive"))
+        self._cwd = WORKSPACE
+        self._network_policy = common.deserialize_network_policy(data.get("network_policy"))
+        self._model = data.get("model")
+        self._agent = data.get("agent")
+        self._base_url = config["base_url"]
+        self._headers = config["headers"]
+        self._timeout_ms = config.get("timeout", _DEFAULT_TIMEOUT_MS)
+        self._debug = config.get("debug", False)
+        self._git_token = config.get("git_token")
+        self._is_agent_configured = config.get("is_agent_configured", False)
+        self._client: httpx.Client = config["client"]
+
+        self.agent = AgentNamespace(self)
+        self.exec = ExecNamespace(self)
+        self.files = FilesNamespace(self)
+        self.git = GitNamespace(self)
+        self.schedule = ScheduleNamespace(self)
+        self.skills = SkillsNamespace(self)
+        self.labels = LabelsNamespace(self)
+        self.browser = BrowserNamespace(self)
+
+    # ==================== Lifecycle / transport ====================
+
+    @property
+    def cwd(self) -> str:
+        return self._cwd
+
+    @property
+    def network_policy(self) -> NetworkPolicy:
+        return self._network_policy
+
+    @property
+    def model_config(self) -> ModelConfig:
+        return {"harness": self._agent, "model": self._model}
+
+    def close(self) -> None:
+        self._client.close()
+
+    def __enter__(self) -> "Box":
+        return self
+
+    def __exit__(self, *exc: Any) -> None:
+        self.close()
+
+    def _require_agent(self) -> None:
+        if not self._is_agent_configured:
+            raise BoxError(
+                "No agent configured. Pass an `agent` option to create() to use box.agent.run()."
+            )
+
+    def _log(self, *args: Any) -> None:
+        if self._debug:
+            _logger.debug("[Box] %s", " ".join(str(a) for a in args))
+
+    # ==================== HTTP ====================
+
+    def _request(
+        self,
+        method: str,
+        path: str,
+        *,
+        body: Any = None,
+        timeout: Optional[float] = None,
+    ) -> Any:
+        url = f"{self._base_url}{path}"
+        headers = dict(self._headers)
+        content = None
+        if body is not None:
+            headers["Content-Type"] = "application/json"
+            content = json.dumps(body)
+        self._log(method, url)
+        try:
+            response = self._client.request(
+                method,
+                url,
+                headers=headers,
+                content=content,
+                timeout=_ms_to_seconds(self._timeout_ms if timeout is None else timeout),
+            )
+        except httpx.TimeoutException as e:
+            raise BoxError("Request timeout") from e
+        except BoxError:
+            raise
+        except Exception as e:
+            raise BoxError(str(e)) from e
+        common.raise_for_status(response)
+        text = response.text
+        if not text:
+            return {}
+        return json.loads(text)
+
+    # ==================== Run ====================
+
+    def _run_with_retries(
+        self,
+        prompt,
+        response_schema,
+        files,
+        options,
+        timeout,
+        max_retries,
+        on_tool_use,
+        on_tool_result,
+    ) -> Run[Any]:
+        last_error: Optional[Exception] = None
+        for attempt in range(max_retries + 1):
+            try:
+                return self._execute_run(
+                    prompt,
+                    response_schema,
+                    files,
+                    options,
+                    timeout,
+                    on_tool_use,
+                    on_tool_result,
+                )
+            except _RunAbortedError:
+                # A cancelled or timed-out run must not be retried: the run may
+                # still be executing server-side, so a retry starts a second
+                # billed run the caller never sees.
+                raise
+            except Exception as e:
+                last_error = e
+                if attempt < max_retries:
+                    delay = min(1.0 * (2**attempt), 30.0)
+                    time.sleep(delay)
+        assert last_error is not None
+        raise last_error
+
+    def _execute_run(
+        self,
+        prompt,
+        response_schema,
+        files,
+        options,
+        timeout,
+        on_tool_use,
+        on_tool_result,
+    ) -> Run[Any]:
+        start = time.time() * 1000
+        run: Run[Any] = Run(self, "agent")
+
+        request_body: Dict[str, Any] = {"prompt": prompt}
+        folder = self._get_folder()
+        if folder:
+            request_body["folder"] = folder
+        if response_schema is not None:
+            schema = common.to_json_schema(response_schema)
+            if schema:
+                request_body["json_schema"] = schema
+        if options:
+            request_body["agent_options"] = common.to_backend_agent_options(self._agent, options)
+
+        raw_output = ""
+        deadline = run_deadline(timeout)
+        try:
+            check_deadline(deadline, "Run timed out")
+            request = self._build_run_stream_request(request_body, files, timeout)
+            # Building the request reads attachments from disk; recheck so a slow
+            # read never submits a run after the deadline (the sync open can't be cut short).
+            check_deadline(deadline, "Run timed out")
+            response = open_before(self._open_stream(request), deadline, "Run timed out", run)
+        except Exception as e:
+            mapped = _map_stream_error(run, e, deadline, start, "Run timed out")
+            if mapped is e:
+                raise
+            raise mapped from e
+        run._response = response
+        try:
+            events = iter_sse_events(response)
+            while True:
+                if run._cancel_requested:
+                    raise _RunAbortedError(_CANCELLED_MESSAGE)
+                try:
+                    event_type, data = next_before(events, deadline, "Run timed out")
+                except StopIteration:
+                    break
+                if run._cancel_requested:
+                    raise _RunAbortedError(_CANCELLED_MESSAGE)
+                parsed = _safe_json(data)
+                if parsed is None:
+                    continue
+                if event_type == "run_start":
+                    if parsed.get("run_id"):
+                        run._id = parsed["run_id"]
+                elif event_type == "text":
+                    raw_output += parsed.get("text") or ""
+                elif event_type == "tool":
+                    if on_tool_use:
+                        on_tool_use(
+                            {
+                                "tool_call_id": _resolve_tool_call_id(parsed),
+                                "name": parsed.get("name") or "",
+                                "input": parsed.get("input") or {},
+                            }
+                        )
+                elif event_type == "tool_result":
+                    if on_tool_result:
+                        on_tool_result(
+                            {
+                                "tool_call_id": _resolve_tool_call_id(parsed),
+                                "output": parsed.get("output"),
+                            }
+                        )
+                elif event_type == "done":
+                    run._input_tokens = parsed.get("input_tokens") or 0
+                    run._output_tokens = parsed.get("output_tokens") or 0
+                    run._cached_input_tokens = parsed.get("cached_input_tokens") or 0
+                    run._total_usd = parsed.get("total_cost_usd") or 0
+                    if parsed.get("output"):
+                        raw_output = parsed["output"]
+                elif event_type == "error":
+                    raise BoxError(parsed.get("error") or "Stream error")
+            if run._cancel_requested:
+                raise _RunAbortedError(_CANCELLED_MESSAGE)
+        except Exception as e:
+            mapped = _map_stream_error(run, e, deadline, start, "Run timed out")
+            if mapped is e:
+                raise
+            raise mapped from e
+        finally:
+            run._response = None
+            response.close()
+
+        output: Any = raw_output.strip()
+        if response_schema is not None:
+            output = common.parse_structured_output(response_schema, output)
+
+        run._result = output
+        run._status = "completed"
+        run._compute_ms = time.time() * 1000 - start
+        return run
+
+    def _execute_webhook_run(self, prompt, response_schema, files, options, webhook) -> Run[Any]:
+        run: Run[Any] = Run(self, "agent")
+        request_body: Dict[str, Any] = {"prompt": prompt}
+        folder = self._get_folder()
+        if folder:
+            request_body["folder"] = folder
+        if response_schema is not None:
+            schema = common.to_json_schema(response_schema)
+            if schema:
+                request_body["json_schema"] = schema
+        if options:
+            request_body["agent_options"] = common.to_backend_agent_options(self._agent, options)
+        request_body["webhook"] = (
+            {"url": webhook["url"], "headers": webhook["headers"]}
+            if webhook.get("headers")
+            else {"url": webhook["url"]}
+        )
+
+        mode, prepared, file_paths = common.prepare_run_request(request_body, files)
+        url = f"{self._base_url}/v2/box/{self.id}/run"
+        response = self._post_run(url, mode, prepared, file_paths)
+        common.raise_for_status(response)
+        data = response.json()
+        if data.get("run_id"):
+            run._id = data["run_id"]
+        run._status = "running"
+        return run
+
+    def _stream(
+        self, prompt, files, options, timeout, on_tool_use, on_tool_result
+    ) -> StreamRun[str]:
+        start = time.time() * 1000
+        run: StreamRun[str] = StreamRun(self, "agent")
+
+        request_body: Dict[str, Any] = {"prompt": prompt}
+        folder = self._get_folder()
+        if folder:
+            request_body["folder"] = folder
+        if options:
+            request_body["agent_options"] = common.to_backend_agent_options(self._agent, options)
+
+        box: "Box" = self
+        # The deadline starts now, not on first iteration, matching the JS SDK.
+        deadline = run_deadline(timeout)
+
+        def iterate() -> Iterator[Chunk]:
+            raw_output = ""
+            finished = False
+            try:
+                # StreamRun is lazy: cancel() may run before the first iteration,
+                # and the deadline started at stream(). Never submit a run after either.
+                if run._cancel_requested:
+                    raise _RunAbortedError(_CANCELLED_MESSAGE)
+                check_deadline(deadline, "Stream timed out")
+                request = box._build_run_stream_request(request_body, files, timeout)
+                # Building the request reads attachments from disk; recheck so a slow
+                # read never submits a run after the deadline (the sync open can't be cut short).
+                check_deadline(deadline, "Stream timed out")
+                response = open_before(box._open_stream(request), deadline, "Stream timed out", run)
+            except Exception as e:
+                mapped = _map_stream_error(run, e, deadline, start, "Stream timed out")
+                if mapped is e:
+                    raise
+                raise mapped from e
+            run._response = response
+            try:
+                events = iter_sse_events(response)
+                while True:
+                    if run._cancel_requested:
+                        raise _RunAbortedError(_CANCELLED_MESSAGE)
+                    try:
+                        event_type, data = next_before(events, deadline, "Stream timed out")
+                    except StopIteration:
+                        break
+                    if run._cancel_requested:
+                        raise _RunAbortedError(_CANCELLED_MESSAGE)
+                    parsed = _safe_json(data)
+                    if parsed is None:
+                        continue
+                    if event_type == "run_start":
+                        if parsed.get("run_id"):
+                            run._id = parsed["run_id"]
+                        yield StartChunk(run_id=parsed.get("run_id") or "")
+                    elif event_type == "text":
+                        text = parsed.get("text") or ""
+                        if text:
+                            raw_output += text
+                            yield TextDeltaChunk(text=text)
+                    elif event_type == "thinking":
+                        text = parsed.get("text") or ""
+                        if text:
+                            yield ReasoningChunk(text=text)
+                    elif event_type == "tool":
+                        tool_call_id = _resolve_tool_call_id(parsed)
+                        if on_tool_use:
+                            on_tool_use(
+                                {
+                                    "tool_call_id": tool_call_id,
+                                    "name": parsed.get("name") or "",
+                                    "input": parsed.get("input") or {},
+                                }
+                            )
+                        yield ToolCallChunk(
+                            tool_call_id=tool_call_id,
+                            tool_name=parsed.get("name") or "",
+                            input=parsed.get("input") or {},
+                        )
+                    elif event_type == "tool_result":
+                        tool_call_id = _resolve_tool_call_id(parsed)
+                        if on_tool_result:
+                            on_tool_result(
+                                {
+                                    "tool_call_id": tool_call_id,
+                                    "output": parsed.get("output"),
+                                }
+                            )
+                        yield ToolResultChunk(
+                            tool_call_id=tool_call_id, output=parsed.get("output")
+                        )
+                    elif event_type == "done":
+                        run._input_tokens = parsed.get("input_tokens") or 0
+                        run._output_tokens = parsed.get("output_tokens") or 0
+                        run._cached_input_tokens = parsed.get("cached_input_tokens") or 0
+                        run._total_usd = parsed.get("total_cost_usd") or 0
+                        if parsed.get("output"):
+                            raw_output = parsed["output"]
+                        yield FinishChunk(
+                            output=parsed.get("output") or "",
+                            usage=FinishUsage(
+                                input_tokens=parsed.get("input_tokens") or 0,
+                                output_tokens=parsed.get("output_tokens") or 0,
+                                cached_input_tokens=parsed.get("cached_input_tokens") or 0,
+                            ),
+                            session_id=parsed.get("session_id") or "",
+                        )
+                    elif event_type == "stats":
+                        yield StatsChunk(
+                            cpu_ns=parsed.get("cpu_ns") or 0,
+                            memory_peak_bytes=parsed.get("memory_peak_bytes") or 0,
+                        )
+                    elif event_type == "error":
+                        raise BoxError(parsed.get("error") or "Stream error")
+                    else:
+                        yield UnknownChunk(event=event_type, data=parsed)
+
+                if run._cancel_requested:
+                    raise _RunAbortedError(_CANCELLED_MESSAGE)
+                finished = True
+                run._result = raw_output.strip()
+                run._status = "completed"
+                run._compute_ms = time.time() * 1000 - start
+            except Exception as e:
+                run._result = raw_output.strip()
+                mapped = _map_stream_error(run, e, deadline, start, "Stream timed out")
+                if not isinstance(mapped, _RunAbortedError):
+                    run._status = "failed"
+                    run._compute_ms = time.time() * 1000 - start
+                if mapped is e:
+                    raise
+                raise mapped from e
+            finally:
+                run._response = None
+                response.close()
+                if not finished and run._status == "running":
+                    run._result = raw_output.strip()
+                    run._status = "detached"
+                    run._compute_ms = time.time() * 1000 - start
+
+        run._iterator = iterate()
+        return run
+
+    def _build_run_stream_request(self, request_body, files, timeout) -> httpx.Request:
+        mode, prepared, file_paths = common.prepare_run_request(request_body, files)
+        url = f"{self._base_url}/v2/box/{self.id}/run/stream"
+        return self._build_stream_request(url, mode, prepared, file_paths, timeout)
+
+    def _build_stream_request(self, url, mode, prepared, file_paths, timeout) -> httpx.Request:
+        headers = dict(self._headers)
+        # None uses the box's default; an explicit 0 means no timeout at all,
+        # matching the run deadline (run_deadline treats 0 as none).
+        if timeout is None:
+            resolved_timeout = _ms_to_seconds(self._timeout_ms)
+        elif timeout == 0:
+            resolved_timeout = None
+        else:
+            resolved_timeout = _ms_to_seconds(timeout)
+        kwargs: Dict[str, Any] = {"timeout": resolved_timeout}
+        if mode == "multipart":
+            kwargs["data"] = common.multipart_field_data(prepared)
+            kwargs["files"] = _build_multipart_files(file_paths)
+        else:
+            headers["Content-Type"] = "application/json"
+            kwargs["content"] = json.dumps(prepared)
+        return self._client.build_request("POST", url, headers=headers, **kwargs)
+
+    def _open_stream(self, request: httpx.Request) -> httpx.Response:
+        response = self._client.send(request, stream=True)
+        if not response.is_success:
+            response.read()
+            common.raise_for_status(response)
+        return response
+
+    def _post_run(self, url, mode, prepared, file_paths):
+        headers = dict(self._headers)
+        kwargs: Dict[str, Any] = {"timeout": _ms_to_seconds(self._timeout_ms)}
+        if mode == "multipart":
+            kwargs["data"] = common.multipart_field_data(prepared)
+            kwargs["files"] = _build_multipart_files(file_paths)
+        else:
+            headers["Content-Type"] = "application/json"
+            kwargs["content"] = json.dumps(prepared)
+        return self._client.post(url, headers=headers, **kwargs)
+
+    # ==================== Exec ====================
+
+    def _exec_command(self, command: str) -> Run[str]:
+        start = time.time() * 1000
+        folder = self._get_folder()
+        body: Dict[str, Any] = {"command": ["sh", "-c", command]}
+        if folder:
+            body["folder"] = folder
+        result = self._request("POST", f"/v2/box/{self.id}/exec", body=body)
+        run: Run[str] = Run(self, "command")
+        # stderr must not shadow stdout on success (commands often emit warnings on stderr)
+        if result.get("exit_code") == 0:
+            run._result = result.get("output") or ""
+        else:
+            run._result = result.get("error") or result.get("output") or ""
+        run._stdout = result.get("output") or ""
+        run._stderr = result.get("error") or ""
+        run._status = "completed" if result.get("exit_code") == 0 else "failed"
+        run._exit_code = result.get("exit_code")
+        run._compute_ms = time.time() * 1000 - start
+        return run
+
+    def _exec_code(self, code, lang, timeout) -> Run[str]:
+        start = time.time() * 1000
+        folder = self._get_folder()
+        body: Dict[str, Any] = {"code": code, "language": lang}
+        if timeout is not None:
+            body["timeout"] = timeout
+        if folder:
+            body["folder"] = folder
+        result = self._request("POST", f"/v2/box/{self.id}/code", body=body)
+        run: Run[str] = Run(self, "code")
+        if result.get("exit_code") == 0:
+            run._result = result.get("output") or ""
+        else:
+            run._result = result.get("error") or result.get("output") or ""
+        run._stdout = result.get("output") or ""
+        run._stderr = result.get("error") or ""
+        run._status = "completed" if result.get("exit_code") == 0 else "failed"
+        run._exit_code = result.get("exit_code")
+        run._compute_ms = time.time() * 1000 - start
+        return run
+
+    def _exec_stream(self, command: str) -> StreamRun[str]:
+        folder = self._get_folder()
+        body: Dict[str, Any] = {"command": ["sh", "-c", command]}
+        if folder:
+            body["folder"] = folder
+        return self._exec_stream_request(f"/v2/box/{self.id}/exec-stream", body, "command")
+
+    def _exec_stream_code(self, code, lang, timeout) -> StreamRun[str]:
+        folder = self._get_folder()
+        body: Dict[str, Any] = {"code": code, "language": lang}
+        if timeout is not None:
+            body["timeout"] = timeout
+        if folder:
+            body["folder"] = folder
+        return self._exec_stream_request(f"/v2/box/{self.id}/code-stream", body, "code")
+
+    def _exec_session(
+        self,
+        *,
+        cmd: Optional[str] = None,
+        argv: Optional[List[str]] = None,
+        tty: bool = False,
+        cwd: Optional[str] = None,
+        rows: Optional[int] = None,
+        cols: Optional[int] = None,
+        env: Optional[List[str]] = None,
+        on_stdout: Optional[StdoutCallback] = None,
+        on_stderr: Optional[StdoutCallback] = None,
+    ) -> ExecSessionHandle:
+        start = build_start_frame(
+            cmd=cmd,
+            argv=argv,
+            tty=tty,
+            # Default to the box's current directory (honoring cd()), matching exec.command.
+            cwd=self._resolve_path(cwd) if cwd else self._cwd,
+            rows=rows,
+            cols=cols,
+            env=env,
+        )
+        return open_exec_session(
+            url=session_url(self._base_url, self.id),
+            headers=dict(self._headers),
+            timeout_s=_ms_to_seconds(self._timeout_ms),
+            start=start,
+            on_stdout=on_stdout,
+            on_stderr=on_stderr,
+        )
+
+    def _exec_stream_request(self, path, body, type_) -> StreamRun[str]:
+        start = time.time() * 1000
+        run: StreamRun[str] = StreamRun(self, type_)
+        box: "Box" = self
+        url = f"{self._base_url}{path}"
+        headers = dict(self._headers)
+        headers["Content-Type"] = "application/json"
+        request = self._client.build_request(
+            "POST",
+            url,
+            headers=headers,
+            content=json.dumps(body),
+            timeout=_ms_to_seconds(self._timeout_ms),
+        )
+
+        def iterate() -> Iterator[ExecStreamChunk]:
+            full_output = ""
+            finished = False
+            response = box._open_stream(request)
+            try:
+                for chunk in iter_exec_stream(response):
+                    if isinstance(chunk, ExecOutputChunk):
+                        full_output += chunk.data
+                    elif isinstance(chunk, ExecExitChunk):
+                        run._exit_code = chunk.exit_code
+                        run._status = "completed" if chunk.exit_code == 0 else "failed"
+                    yield chunk
+                finished = True
+                run._result = full_output
+                run._compute_ms = time.time() * 1000 - start
+                if run._status == "running":
+                    run._status = "completed"
+            except BoxError:
+                run._result = full_output
+                run._status = "failed"
+                run._compute_ms = time.time() * 1000 - start
+                raise
+            finally:
+                response.close()
+                if not finished and run._status == "running":
+                    run._result = full_output
+                    run._status = "detached"
+                    run._compute_ms = time.time() * 1000 - start
+
+        run._iterator = iterate()
+        return run
+
+    # ==================== Working directory ====================
+
+    def cd(self, path: str) -> None:
+        if path.startswith("/"):
+            new_path = _normalize_path(path)
+        else:
+            new_path = _normalize_path(f"{self._cwd}/{path}")
+        result = self._request(
+            "POST", f"/v2/box/{self.id}/exec", body={"command": ["ls", new_path]}
+        )
+        if result.get("exit_code") != 0:
+            raise BoxError(f"cd: {path}: No such file or directory")
+        self._cwd = new_path
+
+    def _get_folder(self) -> str:
+        prefix = WORKSPACE + "/"
+        if self._cwd == WORKSPACE:
+            return ""
+        if self._cwd.startswith(prefix):
+            return self._cwd[len(prefix) :]
+        return self._cwd
+
+    def _resolve_path(self, p: str) -> str:
+        if p.startswith("/"):
+            return p
+        return f"{self._cwd}/{p}"
+
+    # ==================== Files ====================
+
+    def _read_file(
+        self,
+        path: str,
+        encoding: Optional[str],
+        offset: Optional[int] = None,
+        length: Optional[int] = None,
+    ) -> str:
+        resolved = self._resolve_path(path)
+        url = f"/v2/box/{self.id}/files/read?path={_q(resolved)}"
+        if encoding:
+            url += f"&encoding={_q(encoding)}"
+        # Presence of length (not its value) selects a bounded range, so an
+        # explicit length=0 reads zero bytes rather than the whole file.
+        if length is not None:
+            url += f"&offset={offset or 0}&length={length}"
+        data = self._request("GET", url)
+        return data.get("content", "")
+
+    def _stat_file(self, path: str, follow: bool) -> FileStat:
+        resolved = self._resolve_path(path)
+        url = f"/v2/box/{self.id}/files/stat?path={_q(resolved)}"
+        if follow:
+            url += "&follow=true"
+        data = self._request("GET", url)
+        return FileStat.model_validate(data)
+
+    def _make_dir(self, path: str, parents: bool) -> None:
+        resolved = self._resolve_path(path)
+        self._request(
+            "POST", f"/v2/box/{self.id}/files/mkdir", body={"path": resolved, "parents": parents}
+        )
+
+    def _rename_file(self, from_path: str, to_path: str) -> None:
+        self._request(
+            "POST",
+            f"/v2/box/{self.id}/files/rename",
+            body={"from": self._resolve_path(from_path), "to": self._resolve_path(to_path)},
+        )
+
+    def _remove_file(self, path: str, recursive: bool) -> None:
+        resolved = self._resolve_path(path)
+        self._request(
+            "POST",
+            f"/v2/box/{self.id}/files/remove",
+            body={"path": resolved, "recursive": recursive},
+        )
+
+    def _write_file(self, path, content, encoding) -> None:
+        resolved = self._resolve_path(path)
+        body: Dict[str, Any] = {"path": resolved, "content": content}
+        if encoding:
+            body["encoding"] = encoding
+        self._request("POST", f"/v2/box/{self.id}/files/write", body=body)
+
+    def _list_files(self, path: Optional[str]) -> List[FileEntry]:
+        qs = ""
+        if path:
+            qs = f"?folder={_q(self._resolve_path(path))}"
+        else:
+            folder = self._get_folder()
+            if folder:
+                qs = f"?folder={_q(folder)}"
+        data = self._request("GET", f"/v2/box/{self.id}/files/list{qs}")
+        files = data.get("files") or []
+        return [FileEntry.model_validate(f) for f in files]
+
+    def _upload_files(self, files: List[UploadFileEntry]) -> None:
+        upload_files = []
+        data_paths = []
+        for f in files:
+            resolved = self._resolve_path(f["destination"])
+            with open(f["path"], "rb") as fh:
+                content = fh.read()
+            data_paths.append(resolved)
+            upload_files.append(("files", (f["destination"], content)))
+        url = f"{self._base_url}/v2/box/{self.id}/files/upload"
+        self._log("POST", url)
+        response = self._client.post(
+            url,
+            headers=self._headers,
+            data={"paths": data_paths},
+            files=upload_files,
+            timeout=_ms_to_seconds(self._timeout_ms),
+        )
+        common.raise_for_status(response)
+
+    def _download_files(self, remote_path: Optional[str]) -> None:
+        resolved = self._resolve_path(remote_path) if remote_path else self._cwd
+        if remote_path:
+            dest = f"./{os.path.basename(resolved)}"
+        elif self._cwd == WORKSPACE:
+            dest = "./workspace"
+        else:
+            dest = f"./{os.path.basename(self._cwd)}"
+
+        files = self._list_files(resolved)
+        os.makedirs(dest, exist_ok=True)
+        for f in files:
+            if f.is_dir:
+                continue
+            url = f"{self._base_url}/v2/box/{self.id}/files/download?folder={_q(f.path)}"
+            response = self._client.get(
+                url, headers=self._headers, timeout=_ms_to_seconds(self._timeout_ms)
+            )
+            if not response.is_success:
+                raise BoxError(f"Failed to download {f.path}", response.status_code)
+            # Sanitize the remote-provided name: never let it escape `dest` via
+            # path separators or absolute paths (path-traversal hardening).
+            safe_name = os.path.basename(f.name)
+            if not safe_name or safe_name in (".", ".."):
+                raise BoxError(f"Unsafe download filename: {f.name!r}")
+            with open(os.path.join(dest, safe_name), "wb") as fh:
+                fh.write(response.content)
+
+    # ==================== Lifecycle ====================
+
+    def get_status(self) -> Dict[str, Any]:
+        return self._request("GET", f"/v2/box/{self.id}/status")
+
+    def configure_model(self, model: str) -> None:
+        self._request("PUT", f"/v2/box/{self.id}/config/model", body={"model": model})
+        self._model = model
+        self._is_agent_configured = True
+
+    def configure_custom_harness(self, custom_harness: CustomHarnessConfig) -> None:
+
+        if self._agent != Agent.CUSTOM.value:
+            raise BoxError("Custom harness can only be configured on custom agent boxes")
+        self._request(
+            "PUT",
+            f"/v2/box/{self.id}/config/custom-runner",
+            body={"custom_runner": custom_harness},
+        )
+        self._is_agent_configured = True
+
+    def update_network_policy(self, policy: NetworkPolicy) -> None:
+        self._request(
+            "PUT",
+            f"/v2/box/{self.id}/config/network-policy",
+            body=common.serialize_network_policy(policy),
+        )
+        self._network_policy = policy
+
+    def get_init_command(self) -> str:
+        data = self._request("GET", f"/v2/box/{self.id}/startup")
+        return data.get("init_command", "")
+
+    def set_init_command(self, init_command: str) -> None:
+        if not init_command:
+            raise BoxError("init_command is required")
+        self._request("PUT", f"/v2/box/{self.id}/startup", body={"init_command": init_command})
+
+    def delete_init_command(self) -> None:
+        self._request("DELETE", f"/v2/box/{self.id}/startup")
+
+    def pause(self) -> None:
+        if self.keep_alive:
+            raise BoxError("Keep-alive boxes cannot be paused")
+        self._request("POST", f"/v2/box/{self.id}/pause")
+
+    def resume(self) -> None:
+        self._request("POST", f"/v2/box/{self.id}/resume")
+
+    def delete(self) -> None:
+        self._request("DELETE", f"/v2/box/{self.id}")
+        self.close()
+
+    def snapshot(self, *, name: str) -> Snapshot:
+        data = self._request("POST", f"/v2/box/{self.id}/snapshots", body={"name": name})
+        snapshot = Snapshot.model_validate(data)
+        start = time.time()
+        while snapshot.status == "creating" and time.time() - start < 300:
+            time.sleep(2)
+            snapshots = self.list_snapshots()
+            for s in snapshots:
+                if s.id == snapshot.id:
+                    snapshot = s
+        if snapshot.status == "creating":
+            raise BoxError("Snapshot creation timed out")
+        if snapshot.status == "error":
+            raise BoxError("Snapshot creation failed")
+        return snapshot
+
+    def list_snapshots(self) -> List[Snapshot]:
+        data = self._request("GET", f"/v2/box/{self.id}/snapshots")
+        return [Snapshot.model_validate(s) for s in (data.get("snapshots") or [])]
+
+    def delete_snapshot(self, snapshot_id: str) -> None:
+        self._request("DELETE", f"/v2/box/{self.id}/snapshots/{snapshot_id}")
+
+    def logs(self, *, offset: Optional[int] = None, limit: Optional[int] = None) -> List[LogEntry]:
+        params = []
+        if offset is not None:
+            params.append(f"offset={offset}")
+        if limit is not None:
+            params.append(f"limit={limit}")
+        qs = ("?" + "&".join(params)) if params else ""
+        data = self._request("GET", f"/v2/box/{self.id}/logs{qs}")
+        return [LogEntry.model_validate(entry) for entry in data.get("logs", [])]
+
+    def list_runs(self) -> List[BoxRunData]:
+
+        data = self._request("GET", f"/v2/box/{self.id}/runs")
+        return [BoxRunData.model_validate(r) for r in data.get("runs", [])]
+
+    # ==================== Schedules ====================
+
+    def _schedule_exec(self, options: Dict[str, Any]) -> Schedule:
+        body: Dict[str, Any] = {
+            "type": "exec",
+            "cron": options["cron"],
+            "command": options["command"],
+            "folder": self._resolve_path(options["folder"]) if options.get("folder") else self._cwd,
+        }
+        if options.get("webhook_url"):
+            body["webhook_url"] = options["webhook_url"]
+        if options.get("webhook_headers"):
+            body["webhook_headers"] = options["webhook_headers"]
+        data = self._request("POST", f"/v2/box/{self.id}/schedules", body=body)
+        return Schedule.model_validate(data)
+
+    def _schedule_agent(self, options: Dict[str, Any]) -> Schedule:
+        body: Dict[str, Any] = {
+            "type": "prompt",
+            "cron": options["cron"],
+            "prompt": options["prompt"],
+            "folder": self._resolve_path(options["folder"]) if options.get("folder") else self._cwd,
+        }
+        if options.get("model"):
+            body["model"] = options["model"]
+        if options.get("options"):
+            body["agent_options"] = common.to_backend_agent_options(self._agent, options["options"])
+        if options.get("timeout") is not None:
+            body["timeout"] = options["timeout"]
+        if options.get("webhook_url"):
+            body["webhook_url"] = options["webhook_url"]
+        if options.get("webhook_headers"):
+            body["webhook_headers"] = options["webhook_headers"]
+        data = self._request("POST", f"/v2/box/{self.id}/schedules", body=body)
+        return Schedule.model_validate(data)
+
+    def _schedule_list(self) -> List[Schedule]:
+        data = self._request("GET", f"/v2/box/{self.id}/schedules")
+        return [Schedule.model_validate(s) for s in data]
+
+    def _schedule_get(self, id: str) -> Schedule:
+        data = self._request("GET", f"/v2/box/{self.id}/schedules/{id}")
+        return Schedule.model_validate(data)
+
+    def _schedule_update(self, id: str, options: Dict[str, Any]) -> Schedule:
+        # Partial update: only fields the caller set are sent; empty values
+        # ("" / [] / {}) clear the field on the backend, options=None clears
+        # agent options (sent as JSON null).
+        body: Dict[str, Any] = {}
+        if options.get("cron") is not None:
+            body["cron"] = options["cron"]
+        if options.get("command") is not None:
+            body["command"] = options["command"]
+        if options.get("prompt") is not None:
+            body["prompt"] = options["prompt"]
+        folder = options.get("folder")
+        if folder is not None:
+            body["folder"] = self._resolve_path(folder) if folder else ""
+        if options.get("model") is not None:
+            body["model"] = options["model"]
+        agent_options = options.get("options", _UNSET)
+        if agent_options is not _UNSET:
+            body["agent_options"] = (
+                None
+                if agent_options is None
+                else common.to_backend_agent_options(self._agent, agent_options)
+            )
+        if options.get("timeout") is not None:
+            body["timeout"] = options["timeout"]
+        if options.get("webhook_url") is not None:
+            body["webhook_url"] = options["webhook_url"]
+        if options.get("webhook_headers") is not None:
+            body["webhook_headers"] = options["webhook_headers"]
+        data = self._request("PATCH", f"/v2/box/{self.id}/schedules/{id}", body=body)
+        return Schedule.model_validate(data)
+
+    def _schedule_pause(self, id: str) -> None:
+        self._request("POST", f"/v2/box/{self.id}/schedules/{id}/pause")
+
+    def _schedule_resume(self, id: str) -> None:
+        self._request("POST", f"/v2/box/{self.id}/schedules/{id}/resume")
+
+    def _schedule_delete(self, id: str) -> None:
+        self._request("DELETE", f"/v2/box/{self.id}/schedules/{id}")
+
+    # ==================== Git ====================
+
+    def _git_clone(self, repo, branch, depth, folder=None) -> None:
+        # For clone the folder is the destination, so an explicit one wins over
+        # the current directory; the directory does not exist yet by definition.
+        folder = folder or self._get_folder()
+        body: Dict[str, Any] = {"repo": repo, "branch": branch, "github_token": self._git_token}
+        if depth is not None:
+            body["depth"] = depth
+        if folder:
+            body["folder"] = folder
+        self._request("POST", f"/v2/box/{self.id}/git/clone", body=body)
+
+    def _git_diff(self) -> str:
+        folder = self._get_folder()
+        qs = f"?folder={_q(folder)}" if folder else ""
+        data = self._request("GET", f"/v2/box/{self.id}/git/diff{qs}")
+        return data.get("diff", "")
+
+    def _git_status(self) -> str:
+        folder = self._get_folder()
+        qs = f"?folder={_q(folder)}" if folder else ""
+        data = self._request("GET", f"/v2/box/{self.id}/git/status{qs}")
+        return data.get("status", "")
+
+    def _git_commit(self, message, author_name, author_email) -> GitCommitResult:
+        folder = self._get_folder()
+        body: Dict[str, Any] = {
+            "message": message,
+            "author_name": author_name,
+            "author_email": author_email,
+        }
+        if folder:
+            body["folder"] = folder
+        data = self._request("POST", f"/v2/box/{self.id}/git/commit", body=body)
+        return GitCommitResult.model_validate(data)
+
+    def _git_update_config(self, user_name, user_email) -> GitConfigResult:
+        if not user_name and not user_email:
+            raise BoxError("At least one of user_name or user_email is required")
+        data = self._request(
+            "PUT",
+            f"/v2/box/{self.id}/config/git",
+            body={"git_user_name": user_name, "git_user_email": user_email},
+        )
+        return GitConfigResult.model_validate(data)
+
+    def _git_push(self, branch) -> None:
+        folder = self._get_folder()
+        body: Dict[str, Any] = {"branch": branch}
+        if folder:
+            body["folder"] = folder
+        self._request("POST", f"/v2/box/{self.id}/git/push", body=body)
+
+    def _git_create_pr(self, title, body_text, base, attach=None) -> PullRequest:
+        folder = self._get_folder()
+        body: Dict[str, Any] = {"title": title, "body": body_text, "base": base}
+        if attach:
+            body["attach"] = attach
+        if folder:
+            body["folder"] = folder
+        data = self._request("POST", f"/v2/box/{self.id}/git/create-pr", body=body)
+        return PullRequest.model_validate(data)
+
+    def _git_create_issue(self, title, body_text, attach=None) -> Issue:
+        folder = self._get_folder()
+        body: Dict[str, Any] = {"title": title, "body": body_text}
+        if attach:
+            body["attach"] = attach
+        if folder:
+            body["folder"] = folder
+        data = self._request("POST", f"/v2/box/{self.id}/git/create-issue", body=body)
+        return Issue.model_validate(data)
+
+    def _git_exec(self, args) -> GitExecResult:
+        folder = self._get_folder()
+        body: Dict[str, Any] = {"args": args}
+        if folder:
+            body["folder"] = folder
+        data = self._request("POST", f"/v2/box/{self.id}/git/exec", body=body)
+        return GitExecResult.model_validate(data)
+
+    def _git_checkout(self, branch) -> None:
+        folder = self._get_folder()
+        body: Dict[str, Any] = {"branch": branch}
+        if folder:
+            body["folder"] = folder
+        self._request("POST", f"/v2/box/{self.id}/git/checkout", body=body)
+
+    # ==================== Skills ====================
+
+    def _skill_add(self, skill_id: str) -> None:
+        self._request("POST", f"/v2/box/{self.id}/config/skills", body={"skill_id": skill_id})
+
+    def _skill_remove(self, skill_id: str) -> None:
+        self._request("DELETE", f"/v2/box/{self.id}/config/skills/{skill_id}")
+
+    def _skill_list(self) -> List[str]:
+        data = self._request("GET", f"/v2/box/{self.id}")
+        return data.get("enabled_skills") or []
+
+    def _label_add(self, label: str) -> List[str]:
+        data = self._request("POST", f"/v2/box/{self.id}/config/labels", body={"label": label})
+        return (data or {}).get("labels") or []
+
+    def _label_remove(self, label: str) -> List[str]:
+        data = self._request("DELETE", f"/v2/box/{self.id}/config/labels/{_q(label)}")
+        return (data or {}).get("labels") or []
+
+    def _label_list(self) -> List[str]:
+        data = self._request("GET", f"/v2/box/{self.id}")
+        return data.get("labels") or []
+
+    # ==================== Public URLs ====================
+
+    def get_public_url(
+        self, port: int, *, bearer_token: Optional[bool] = None, basic_auth: Optional[bool] = None
+    ) -> PublicURL:
+        body: Dict[str, Any] = {"port": port}
+        if bearer_token is not None:
+            body["bearer_token"] = bearer_token
+        if basic_auth is not None:
+            body["basic_auth"] = basic_auth
+        data = self._request("POST", f"/v2/box/{self.id}/preview", body=body)
+        return PublicURL.model_validate(data)
+
+    def list_public_urls(self) -> Dict[str, List[PublicURLListItem]]:
+        """List this box's public URLs. Secrets (token, password) are only
+        returned when a URL is created, so list items carry auth flags instead."""
+        data = self._request("GET", f"/v2/box/{self.id}/preview")
+        previews = data.get("previews") or []
+        return {"public_urls": [PublicURLListItem.model_validate(p) for p in previews]}
+
+    def delete_public_url(self, port: int) -> None:
+        self._request("DELETE", f"/v2/box/{self.id}/preview/{port}")
+
+    # ==================== Browser ====================
+
+    def _browser_create_tab(
+        self,
+        url: str,
+        wait_until: Optional[str],
+        timeout: Optional[int],
+    ) -> Tab:
+        # timeout=0 disables the navigation deadline server-side; give the HTTP
+        # request an effectively unbounded budget to match (mirrors the JS SDK).
+        operation_timeout = 2_147_000_000 if timeout == 0 else timeout
+        body: Dict[str, Any] = {"url": url}
+        if wait_until:
+            body["wait_until"] = wait_until
+        if timeout is not None:
+            body["timeout"] = timeout
+        http_timeout = 60000 if operation_timeout is None else max(60000, operation_timeout + 5000)
+        resp = self._request(
+            "POST", f"/v2/box/{self.id}/browser/tabs", body=body, timeout=http_timeout
+        )
+        return Tab(self, resp)
+
+    def _browser_list_tabs(self) -> List[Tab]:
+        resp = self._request("GET", f"/v2/box/{self.id}/browser/tabs", timeout=60000)
+        return [Tab(self, t) for t in resp.get("tabs") or []]
+
+    def _browser_cdp_url(self) -> str:
+        resp = self._request("POST", f"/v2/box/{self.id}/browser/connect", timeout=60000)
+        cdp_url = resp.get("cdp_url")
+        if not cdp_url:
+            raise BoxError("Browser connect did not return a CDP URL")
+        return cdp_url
+
+    def _browser_live_view_url(self, tab_id: Optional[str]) -> str:
+        resp = self._request(
+            "POST",
+            f"/v2/box/{self.id}/browser/screencast",
+            body={"tab": tab_id} if tab_id else None,
+            timeout=60000,
+        )
+        screencast_url = resp.get("screencast_url")
+        if not screencast_url:
+            raise BoxError("Browser screencast did not return a URL")
+        return screencast_url
+
+    def _map_recording(self, raw: Mapping[str, Any]) -> BrowserRecording:
+        data = dict(raw)
+        if not data.get("box_id"):
+            data["box_id"] = self.id
+        # The API reports expires_at in epoch seconds; normalize to ms like the
+        # other timestamps.
+        if data.get("expires_at") is not None:
+            data["expires_at"] = int(data["expires_at"]) * 1000
+        rec_id = data.get("id") or ""
+        data["playlist_url"] = (
+            f"{self._base_url}/v2/box/{self.id}/browser/recordings/{rec_id}/playlist"
+        )
+        return BrowserRecording.model_validate(data)
+
+    def _recording_start(self, max_duration_seconds: Optional[int]) -> BrowserRecordingHandle:
+        body: Dict[str, Any] = {}
+        if max_duration_seconds:
+            body["max_duration_seconds"] = max_duration_seconds
+        resp = self._request(
+            "POST", f"/v2/box/{self.id}/browser/recordings", body=body, timeout=60000
+        )
+        rec = self._map_recording(resp)
+        return BrowserRecordingHandle(self, rec.id)
+
+    def _recording_stop(self) -> BrowserRecording:
+        # Stopping flushes the encoder and uploads the HLS artifacts.
+        resp = self._request("POST", f"/v2/box/{self.id}/browser/recordings/stop", timeout=180000)
+        return self._map_recording(resp)
+
+    def _recording_list(self) -> List[BrowserRecording]:
+        recordings: List[BrowserRecording] = []
+        cursor: Optional[str] = None
+        while True:
+            params = {"limit": "100"}
+            if cursor:
+                params["cursor"] = cursor
+            resp = self._request("GET", f"/v2/box/{self.id}/browser/recordings?{urlencode(params)}")
+            recordings.extend(self._map_recording(r) for r in resp.get("recordings") or [])
+            cursor = resp.get("next_cursor") or None
+            if not cursor:
+                return recordings
+
+    def _recording_get(self, recording_id: str) -> BrowserRecording:
+        resp = self._request("GET", f"/v2/box/{self.id}/browser/recordings/{recording_id}")
+        return self._map_recording(resp)
+
+    def _recording_download(self, recording_id: str, path: Optional[str]) -> str:
+        url = f"{self._base_url}/v2/box/{self.id}/browser/recordings/{recording_id}/download"
+        # Normalize transport failures (header timeouts, connection resets, interrupted
+        # streams) to BoxError, matching _request(); BoxError from validation propagates.
+        try:
+            with self._client.stream(
+                "GET", url, headers=self._headers, timeout=_ms_to_seconds(self._timeout_ms)
+            ) as response:
+                if not response.is_success:
+                    response.read()
+                    common.raise_for_status(response)
+                # The backend serves only remuxed MP4 or legacy MPEG-TS; reject anything else.
+                content_type = (
+                    response.headers.get("content-type", "").split(";")[0].strip().lower()
+                )
+                if content_type == "video/mp4":
+                    extension = "mp4"
+                elif content_type == "video/mp2t":
+                    extension = "ts"
+                else:
+                    raise BoxError(
+                        f"Unexpected recording content type: {content_type or 'unknown'}"
+                    )
+                dest = path or f"./box-recording-{recording_id}.{extension}"
+                parent = os.path.dirname(dest)
+                if parent:
+                    os.makedirs(parent, exist_ok=True)
+                # Write to a sibling temp file, then atomically replace dest, so a failed
+                # download never truncates or removes an existing file at dest.
+                tmp = f"{dest}.{uuid.uuid4().hex}.tmp"
+                try:
+                    with open(tmp, "wb") as fh:
+                        for chunk in response.iter_bytes():
+                            fh.write(chunk)
+                    os.replace(tmp, dest)
+                except BaseException:
+                    try:
+                        os.remove(tmp)
+                    except OSError:
+                        pass
+                    raise
+        except httpx.TimeoutException as e:
+            raise BoxError("Request timeout") from e
+        except BoxError:
+            raise
+        except Exception as e:
+            raise BoxError(str(e)) from e
+        return dest
+
+    # ==================== Static methods ====================
+
+    @classmethod
+    def create(cls, **config: Unpack[BoxConfig]) -> "Box":
+        api_key = common.resolve_api_key(config.get("api_key"))
+        agent = config.get("agent")
+        if agent:
+            common.resolve_agent_model(agent)
+        base_url = common.resolve_base_url(config.get("base_url"))
+        headers = common.build_headers(api_key)
+        timeout = config.get("timeout", _DEFAULT_TIMEOUT_MS)
+        debug = config.get("debug", False)
+
+        body = _build_create_body(config, agent)
+        client = httpx.Client()
+        try:
+            response = client.post(
+                f"{base_url}/v2/box",
+                headers={**headers, "Content-Type": "application/json"},
+                content=json.dumps(body),
+                timeout=_ms_to_seconds(timeout),
+            )
+            common.raise_for_status(response)
+            data = response.json()
+
+            start = time.time()
+            while data.get("status") == "creating" and time.time() - start < 300:
+                time.sleep(2)
+                poll = client.get(
+                    f"{base_url}/v2/box/{data['id']}",
+                    headers=headers,
+                    timeout=_ms_to_seconds(timeout),
+                )
+                if poll.is_success:
+                    data = poll.json()
+
+            if data.get("status") == "creating":
+                raise BoxError("Box creation timed out")
+            if data.get("status") == "error":
+                raise BoxError("Box creation failed")
+        except BaseException:
+            client.close()
+            raise
+
+        return cls(
+            data,
+            {
+                "base_url": base_url,
+                "headers": headers,
+                "timeout": timeout,
+                "debug": debug,
+                "git_token": (config.get("git") or {}).get("token"),
+                "is_agent_configured": bool(data.get("agent")),
+                "client": client,
+            },
+        )
+
+    @classmethod
+    def get(cls, box_id: str, **options: Unpack[BoxGetOptions]) -> "Box":
+        api_key = common.resolve_api_key(options.get("api_key"))
+        base_url = common.resolve_base_url(options.get("base_url"))
+        headers = common.build_headers(api_key)
+        timeout = options.get("timeout", _DEFAULT_TIMEOUT_MS)
+        debug = options.get("debug", False)
+        client = httpx.Client()
+        try:
+            response = client.get(
+                f"{base_url}/v2/box/{box_id}",
+                headers=headers,
+                timeout=_ms_to_seconds(timeout),
+            )
+            common.raise_for_status(response)
+            data = response.json()
+        except BaseException:
+            client.close()
+            raise
+        return cls(
+            data,
+            {
+                "base_url": base_url,
+                "headers": headers,
+                "timeout": timeout,
+                "debug": debug,
+                "git_token": options.get("git_token"),
+                "is_agent_configured": bool(data.get("model")),
+                "client": client,
+            },
+        )
+
+    @classmethod
+    def get_by_name(cls, name: str, **options: Unpack[BoxGetOptions]) -> "Box":
+        return cls.get(name, **options)
+
+    @classmethod
+    def list(cls, **options: Unpack[ListOptions]) -> List[BoxData]:
+
+        api_key = common.resolve_api_key(options.get("api_key"))
+        base_url = common.resolve_base_url(options.get("base_url"))
+        headers = common.build_headers(api_key)
+        label = options.get("label")
+        query = f"?label={_q(label)}" if label else ""
+        with httpx.Client() as client:
+            response = client.get(f"{base_url}/v2/box{query}", headers=headers)
+            common.raise_for_status(response)
+            return [BoxData.model_validate(b) for b in response.json()]
+
+    @classmethod
+    def from_snapshot(cls, snapshot_id: str, **config: Unpack[BoxConfig]) -> "Box":
+        api_key = common.resolve_api_key(config.get("api_key"))
+        base_url = common.resolve_base_url(config.get("base_url"))
+        headers = common.build_headers(api_key)
+        timeout = config.get("timeout", _DEFAULT_TIMEOUT_MS)
+        debug = config.get("debug", False)
+        agent = config.get("agent")
+
+        body = _build_create_body(config, agent)
+        body["snapshot_id"] = snapshot_id
+        client = httpx.Client()
+        try:
+            response = client.post(
+                f"{base_url}/v2/box/from-snapshot",
+                headers={**headers, "Content-Type": "application/json"},
+                content=json.dumps(body),
+                timeout=_ms_to_seconds(timeout),
+            )
+            common.raise_for_status(response)
+            data = response.json()
+
+            start = time.time()
+            while data.get("status") == "creating" and time.time() - start < 300:
+                time.sleep(2)
+                poll = client.get(
+                    f"{base_url}/v2/box/{data['id']}",
+                    headers=headers,
+                    timeout=_ms_to_seconds(timeout),
+                )
+                if poll.is_success:
+                    data = poll.json()
+
+            if data.get("status") == "creating":
+                raise BoxError("Box creation from snapshot timed out")
+            if data.get("status") == "error":
+                raise BoxError("Box creation from snapshot failed")
+        except BaseException:
+            client.close()
+            raise
+
+        return cls(
+            data,
+            {
+                "base_url": base_url,
+                "headers": headers,
+                "timeout": timeout,
+                "debug": debug,
+                "git_token": (config.get("git") or {}).get("token"),
+                "is_agent_configured": bool(data.get("model")),
+                "client": client,
+            },
+        )
+
+    @classmethod
+    def delete_boxes(
+        cls, *, box_ids: Union[str, List[str]], **options: Unpack[BoxConnectionOptions]
+    ) -> None:
+        api_key = common.resolve_api_key(options.get("api_key"))
+        base_url = common.resolve_base_url(options.get("base_url"))
+        headers = common.build_headers(api_key)
+        ids = common.require_ids(box_ids, "box_ids")
+        with httpx.Client() as client:
+            response = client.request(
+                "DELETE",
+                f"{base_url}/v2/box",
+                headers={**headers, "Content-Type": "application/json"},
+                content=json.dumps({"ids": ids}),
+            )
+            common.raise_for_status(response)
+
+    @classmethod
+    def delete_snapshots(
+        cls,
+        *,
+        snapshot_ids: Optional[Union[str, List[str]]] = None,
+        **options: Unpack[BoxConnectionOptions],
+    ) -> Dict[str, Any]:
+        api_key = common.resolve_api_key(options.get("api_key"))
+        base_url = common.resolve_base_url(options.get("base_url"))
+        headers = common.build_headers(api_key)
+        # Deleting everything is asked for explicitly, never implied by a missing list.
+        body: Dict[str, Any] = {}
+        params: Dict[str, str] = {}
+        if snapshot_ids is None:
+            params["all"] = "true"
+        else:
+            body["ids"] = common.require_ids(snapshot_ids, "snapshot_ids")
+        with httpx.Client() as client:
+            response = client.request(
+                "DELETE",
+                f"{base_url}/v2/box/snapshots",
+                headers={**headers, "Content-Type": "application/json"},
+                params=params,
+                content=json.dumps(body),
+            )
+            common.raise_for_status(response)
+            return response.json()
+
+    @classmethod
+    def set_env(cls, key: str, value: str, **options: Unpack[BoxConnectionOptions]) -> None:
+        api_key = common.resolve_api_key(options.get("api_key"))
+        base_url = common.resolve_base_url(options.get("base_url"))
+        headers = common.build_headers(api_key)
+        with httpx.Client() as client:
+            response = client.put(
+                f"{base_url}/v2/box/settings/env/{_q(key)}",
+                headers={**headers, "Content-Type": "application/json"},
+                content=json.dumps({"value": value}),
+            )
+            common.raise_for_status(response)
+
+    @classmethod
+    def list_env(cls, **options: Unpack[BoxConnectionOptions]) -> Dict[str, str]:
+        api_key = common.resolve_api_key(options.get("api_key"))
+        base_url = common.resolve_base_url(options.get("base_url"))
+        headers = common.build_headers(api_key)
+        with httpx.Client() as client:
+            response = client.get(f"{base_url}/v2/box/settings/env", headers=headers)
+            common.raise_for_status(response)
+            data = response.json()
+            return data.get("env_vars", data)
+
+    @classmethod
+    def delete_env(cls, key: str, **options: Unpack[BoxConnectionOptions]) -> None:
+        api_key = common.resolve_api_key(options.get("api_key"))
+        base_url = common.resolve_base_url(options.get("base_url"))
+        headers = common.build_headers(api_key)
+        with httpx.Client() as client:
+            response = client.delete(f"{base_url}/v2/box/settings/env/{_q(key)}", headers=headers)
+            common.raise_for_status(response)
+
+    @classmethod
+    def set_all_env(cls, vars: Dict[str, str], **options: Unpack[BoxConnectionOptions]) -> None:
+        api_key = common.resolve_api_key(options.get("api_key"))
+        base_url = common.resolve_base_url(options.get("base_url"))
+        headers = common.build_headers(api_key)
+        with httpx.Client() as client:
+            response = client.put(
+                f"{base_url}/v2/box/settings/env",
+                headers={**headers, "Content-Type": "application/json"},
+                content=json.dumps({"env_vars": vars}),
+            )
+            common.raise_for_status(response)
+
+
+class EphemeralBox:
+    """A lightweight, short-lived box supporting exec, files, and schedules only."""
+
+    def __init__(self, box: Box, expires_at: int) -> None:
+        self._box = box
+        self.id = box.id
+        self.expires_at = expires_at
+        self.exec = box.exec
+        self.files = box.files
+        self.schedule = box.schedule
+
+    @property
+    def cwd(self) -> str:
+        return self._box.cwd
+
+    @property
+    def network_policy(self) -> NetworkPolicy:
+        return self._box.network_policy
+
+    def cd(self, path: str) -> None:
+        self._box.cd(path)
+
+    def get_status(self) -> Dict[str, Any]:
+        return self._box.get_status()
+
+    def delete(self) -> None:
+        self._box.delete()
+
+    def close(self) -> None:
+        self._box.close()
+
+    def __enter__(self) -> "EphemeralBox":
+        return self
+
+    def __exit__(self, *exc: Any) -> None:
+        self.close()
+
+    def snapshot(self, *, name: str) -> Snapshot:
+        return self._box.snapshot(name=name)
+
+    def list_snapshots(self) -> List[Snapshot]:
+        return self._box.list_snapshots()
+
+    def delete_snapshot(self, snapshot_id: str) -> None:
+        self._box.delete_snapshot(snapshot_id)
+
+    @classmethod
+    def create(cls, **config: Unpack[EphemeralBoxConfig]) -> "EphemeralBox":
+        api_key = common.resolve_api_key(config.get("api_key"))
+        base_url = common.resolve_base_url(config.get("base_url"))
+        headers = common.build_headers(api_key)
+        timeout = config.get("timeout", _DEFAULT_TIMEOUT_MS)
+        debug = config.get("debug", False)
+        body = _build_ephemeral_body(config)
+        client = httpx.Client()
+        try:
+            response = client.post(
+                f"{base_url}/v2/box",
+                headers={**headers, "Content-Type": "application/json"},
+                content=json.dumps(body),
+                timeout=_ms_to_seconds(timeout),
+            )
+            common.raise_for_status(response)
+            data = response.json()
+        except BaseException:
+            client.close()
+            raise
+        box: Box = Box(
+            data,
+            {
+                "base_url": base_url,
+                "headers": headers,
+                "timeout": timeout,
+                "debug": debug,
+                "client": client,
+            },
+        )
+        return cls(box, data.get("expires_at", 0))
+
+    @classmethod
+    def from_snapshot(
+        cls, snapshot_id: str, **config: Unpack[EphemeralBoxConfig]
+    ) -> "EphemeralBox":
+        api_key = common.resolve_api_key(config.get("api_key"))
+        base_url = common.resolve_base_url(config.get("base_url"))
+        headers = common.build_headers(api_key)
+        timeout = config.get("timeout", _DEFAULT_TIMEOUT_MS)
+        debug = config.get("debug", False)
+        body = _build_ephemeral_body(config)
+        body["snapshot_id"] = snapshot_id
+        client = httpx.Client()
+        try:
+            response = client.post(
+                f"{base_url}/v2/box/from-snapshot",
+                headers={**headers, "Content-Type": "application/json"},
+                content=json.dumps(body),
+                timeout=_ms_to_seconds(timeout),
+            )
+            common.raise_for_status(response)
+            data = response.json()
+        except BaseException:
+            client.close()
+            raise
+        box: Box = Box(
+            data,
+            {
+                "base_url": base_url,
+                "headers": headers,
+                "timeout": timeout,
+                "debug": debug,
+                "client": client,
+            },
+        )
+        return cls(box, data.get("expires_at", 0))
+
+    @classmethod
+    def get_by_name(cls, name: str, **options: Unpack[BoxGetOptions]) -> Box:
+        # Mirrors JS: EphemeralBox.getByName = Box.get -> returns a Box, not Ephemeral.
+        return Box.get(name, **options)
+
+    @classmethod
+    def delete_boxes(
+        cls, *, box_ids: Union[str, List[str]], **options: Unpack[BoxConnectionOptions]
+    ) -> None:
+        Box.delete_boxes(box_ids=box_ids, **options)
+
+    @classmethod
+    def delete_snapshots(
+        cls,
+        *,
+        snapshot_ids: Optional[Union[str, List[str]]] = None,
+        **options: Unpack[BoxConnectionOptions],
+    ) -> Dict[str, Any]:
+        return Box.delete_snapshots(snapshot_ids=snapshot_ids, **options)
+
+
+# ==================== Module helpers ====================
+
+
+def _ms_to_seconds(ms: Optional[float]) -> Optional[float]:
+    if ms is None:
+        return None
+    return ms / 1000.0
+
+
+def _map_stream_error(
+    run: Run[Any],
+    error: Exception,
+    deadline: Optional[float],
+    start: float,
+    timed_out_message: str,
+) -> Exception:
+    """Translate a failure of a streaming run into what the caller sees.
+
+    A run the caller cancelled, or one that hit its ``timeout``, becomes a
+    non-retryable ``_RunAbortedError`` with status ``cancelled``. Without a run
+    ``timeout``, a read or write timeout is non-retryable ``Request timeout``
+    too, since the run may have started; a connect or pool timeout stays a
+    retryable ``BoxError("Request timeout")``.
+    Anything else is returned unchanged.
+    """
+    if run._cancel_requested:
+        # An explicit cancel wins, even if the deadline also passed meanwhile.
+        run._status = "cancelled"
+        run._compute_ms = time.time() * 1000 - start
+        if isinstance(error, _RunAbortedError) and str(error) == _CANCELLED_MESSAGE:
+            return error
+        return _RunAbortedError(_CANCELLED_MESSAGE)
+    # Any failure observed after the deadline is a timeout, not retryable: e.g.
+    # a sync open or error body that outlasted it, which sync cannot interrupt.
+    # Errors received before the deadline keep their own message.
+    timed_out = isinstance(error, (httpx.TimeoutException, _RunAbortedError)) or (
+        deadline is not None and time.monotonic() >= deadline
+    )
+    if deadline is not None and timed_out:
+        run._status = "cancelled"
+        run._compute_ms = time.time() * 1000 - start
+        if isinstance(error, _RunAbortedError):
+            return error
+        return _RunAbortedError(timed_out_message)
+    if isinstance(error, (httpx.ReadTimeout, httpx.WriteTimeout)):
+        # The request reached the server, so the run may already be executing;
+        # retrying would start a second billed run. Not retryable.
+        run._status = "cancelled"
+        run._compute_ms = time.time() * 1000 - start
+        return _RunAbortedError("Request timeout")
+    if isinstance(error, httpx.TimeoutException):
+        # Connect/pool timeouts: the request never left, so a retry is safe.
+        return BoxError("Request timeout")
+    return error
+
+
+def _q(value: str) -> str:
+    from urllib.parse import quote
+
+    return quote(value, safe="")
+
+
+def _safe_json(data: str) -> Optional[Dict[str, Any]]:
+    try:
+        parsed = json.loads(data)
+        return parsed if isinstance(parsed, dict) else {}
+    except Exception:
+        return None
+
+
+def _build_multipart_files(file_paths: List[str]) -> List[Any]:
+    out = []
+    for path in file_paths:
+        with open(path, "rb") as fh:
+            content = fh.read()
+        out.append(("files", (os.path.basename(path), content, common.mime_for_path(path))))
+    return out
+
+
+def _build_create_body(
+    config: Mapping[str, Any], agent: Optional[Mapping[str, Any]]
+) -> Dict[str, Any]:
+    body: Dict[str, Any] = {}
+    if config.get("name"):
+        body["name"] = config["name"]
+    if config.get("labels"):
+        body["labels"] = config["labels"]
+    if config.get("size"):
+        body["size"] = config["size"]
+    if config.get("keep_alive"):
+        body["keep_alive"] = True
+    if config.get("init_command") is not None:
+        body["init_command"] = config["init_command"]
+    if config.get("browser"):
+        body["browser"] = True
+    if agent:
+        common.append_agent_config_to_body(body, agent)
+    if config.get("runtime"):
+        body["runtime"] = config["runtime"]
+    git = config.get("git") or {}
+    if git.get("token"):
+        body["github_token"] = git["token"]
+    if git.get("user_name"):
+        body["git_user_name"] = git["user_name"]
+    if git.get("user_email"):
+        body["git_user_email"] = git["user_email"]
+    if config.get("env"):
+        body["env_vars"] = config["env"]
+    if config.get("attach_headers"):
+        body["attach_headers"] = config["attach_headers"]
+    if config.get("network_policy"):
+        body["network_policy"] = common.serialize_network_policy(config["network_policy"])
+    if config.get("skills"):
+        body["skills"] = config["skills"]
+    if config.get("mcp_servers"):
+        body["mcp_servers"] = common.serialize_mcp_servers(config["mcp_servers"])
+    return body
+
+
+def _build_ephemeral_body(config: Mapping[str, Any]) -> Dict[str, Any]:
+    body: Dict[str, Any] = {"ephemeral": True}
+    if config.get("name"):
+        body["name"] = config["name"]
+    if config.get("labels"):
+        body["labels"] = config["labels"]
+    if config.get("size"):
+        body["size"] = config["size"]
+    if config.get("ttl") is not None:
+        body["ttl"] = config["ttl"]
+    if config.get("runtime"):
+        body["runtime"] = config["runtime"]
+    if config.get("env"):
+        body["env_vars"] = config["env"]
+    if config.get("attach_headers"):
+        body["attach_headers"] = config["attach_headers"]
+    if config.get("network_policy"):
+        body["network_policy"] = common.serialize_network_policy(config["network_policy"])
+    return body
+```

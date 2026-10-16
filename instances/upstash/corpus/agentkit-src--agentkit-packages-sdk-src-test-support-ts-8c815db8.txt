@@ -1,0 +1,60 @@
+# agentkit: packages/sdk/src/test-support.ts
+# джерело: https://github.com/upstash/agentkit/blob/@upstash%2Fagentkit-tanstack-ai@0.1.1/packages/sdk/src/test-support.ts
+# отримано: 2026-10-16
+# версія: agentkit-tanstack-ai-0.1.1, agentkit-sdk-0.9.0, agentkit-sdk-0.6.0, agentkit-sdk-0.2.0, agentkit-eve-extension-0.16.0, agentkit-eve-extension-0.15.0, agentkit-eve-extension-0.14.0, agentkit-eve-extension-0.13.0, agentkit-eve-extension-0.12.0, agentkit-eve-extension-0.11.0, agentkit-eve-extension-0.10.0, agentkit-eve-extension-0.9.0, agentkit-eve-extension-0.8.0, agentkit-eve-extension-0.7.0, agentkit-eve-extension-0.6.0, agentkit-eve-extension-0.5.0, agentkit-eve-extension-0.4.0, agentkit-eve-extension-0.3.1, agentkit-eve-extension-0.3.0, agentkit-eve-0.15.1, agentkit-eve-0.14.1, agentkit-eve-0.13.0, agentkit-eve-0.12.0, agentkit-eve-0.9.0, agentkit-eve-0.8.0, agentkit-eve-0.7.0, agentkit-eve-0.6.0, agentkit-eve-0.5.0, agentkit-eve-0.3.0, agentkit-eve-0.2.2, agentkit-eve-0.2.1, agentkit-eve-0.2.0, agentkit-ai-sdk-0.15.1, agentkit-ai-sdk-0.9.0, agentkit-ai-sdk-0.6.0, agentkit-ai-sdk-0.2.0
+
+```ts
+/**
+ * Test-only helpers (not part of the published surface — never imported by `index.ts`/`testing`).
+ *
+ * Per the project's testing policy, the SDK is tested against a real Upstash Redis instance rather
+ * than a mock. Credentials are read from the repo-root `.env` (or the environment). When they are
+ * absent, `hasRedisCreds` is false and the suites skip themselves so CI without secrets stays green.
+ */
+import { randomUUID } from "node:crypto";
+import { config } from "dotenv";
+import { Redis } from "@upstash/redis";
+
+// Load repo-root .env (no-op if already loaded or absent).
+config();
+```
+
+## const hasRedisCreds
+
+```ts
+export const hasRedisCreds = Boolean(
+  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN,
+);
+```
+
+## function testRedis
+
+```ts
+/** A real Upstash Redis client from env. Only call when `hasRedisCreds` is true. */
+export function testRedis(): Redis {
+  return Redis.fromEnv();
+}
+```
+
+## function uniquePrefix
+
+```ts
+/** A collision-proof key prefix so parallel test runs never share keys or indexes. */
+export function uniquePrefix(label: string): string {
+  return `test:${label}:${randomUUID().slice(0, 8)}`;
+}
+```
+
+## function cleanupKeys
+
+```ts
+/** Delete every key under a key prefix (best-effort cleanup in afterAll hooks). */
+export async function cleanupKeys(redis: Redis, prefix: string): Promise<void> {
+  let cursor = "0";
+  do {
+    const [next, keys] = await redis.scan(cursor, { match: `${prefix}*`, count: 200 });
+    cursor = next;
+    if (keys.length) await redis.del(...keys);
+  } while (cursor !== "0");
+}
+```
