@@ -1,0 +1,116 @@
+# redis-js: pkg/http.test.ts
+# джерело: https://github.com/upstash/redis-js/blob/v1.33.0/pkg/http.test.ts
+# отримано: 2026-10-16
+# версія: redis-1.33.0, redis-1.32.0
+
+```ts
+import { describe, expect, test } from "bun:test";
+import { HttpClient } from "./http";
+
+import { UrlError } from "./error";
+import { newHttpClient } from "./test-utils";
+```
+
+## remove trailing slash from urls
+
+```ts
+test("remove trailing slash from urls", () => {
+  const client = new HttpClient({ baseUrl: "https://example.com/" });
+
+  expect(client.baseUrl).toEqual("https://example.com");
+});
+
+describe(new URL("", import.meta.url).pathname, () => {
+
+  describe("when the request is invalid", () => {
+```
+
+#### throws
+
+```ts
+    test("throws", async () => {
+      const client = newHttpClient();
+      let hasThrown = false;
+      await client.request({ body: ["get", "1", "2"] }).catch(() => {
+        hasThrown = true;
+      });
+      expect(hasThrown).toBeTrue();
+    });
+  });
+
+  describe("whithout authorization", () => {
+```
+
+#### throws
+
+```ts
+    test("throws", async () => {
+      const client = newHttpClient();
+      client.headers = {};
+      let hasThrown = false;
+      await client.request({ body: ["get", "1", "2"] }).catch(() => {
+        hasThrown = true;
+      });
+      expect(hasThrown).toBeTrue();
+    });
+  });
+});
+```
+
+## Abort
+
+```ts
+describe("Abort", () => {
+```
+
+### should abort the request
+
+```ts
+  test("should abort the request", async () => {
+    const controller = new AbortController();
+    const signal = controller.signal;
+
+    const client = newHttpClient();
+    client.options.signal = signal;
+    const body = client.request({
+      body: ["set", "name", "hezarfen"],
+    });
+    controller.abort("Abort works!");
+
+    expect((await body).result).toEqual("Abort works!");
+  });
+});
+```
+
+## should reject invalid urls
+
+```ts
+describe("should reject invalid urls", () => {
+```
+
+### should reject when https is missing
+
+```ts
+  test("should reject when https is missing", () => {
+    try {
+      new HttpClient({ baseUrl: "eu1-flying-whale-434343.upstash.io" });
+    } catch (error) {
+      expect(error instanceof UrlError).toBeTrue();
+      return;
+    }
+    throw new Error("Test error. Should have raised when initializing client");
+  });
+
+  test("should allow when http is used", () => {
+    new HttpClient({
+      baseUrl: "http://eu1-flying-whale-434343.upstash.io",
+    });
+  });
+
+  test("should allow when https is used", () => {
+    new HttpClient({
+      baseUrl: "https://eu1-flying-whale-434343.upstash.io",
+    });
+  });
+});
+```

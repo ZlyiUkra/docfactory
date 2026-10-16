@@ -1,0 +1,96 @@
+# redis-js: pkg/script.test.ts
+# джерело: https://github.com/upstash/redis-js/blob/v1.33.0/pkg/script.test.ts
+# отримано: 2026-10-16
+# версія: redis-1.33.0, redis-1.32.0, redis-1.31.6, redis-1.30.1, redis-1.29.0, redis-1.28.4
+
+```ts
+import { afterEach, describe, expect, test } from "bun:test";
+import { Redis } from "./redis";
+import { keygen, newHttpClient, randomID } from "./test-utils";
+const client = newHttpClient();
+
+const { cleanup } = keygen();
+afterEach(cleanup);
+```
+
+## create a new script
+
+```ts
+describe("create a new script", () => {
+```
+
+### creates a new script
+
+```ts
+  test(
+    "creates a new script",
+    async () => {
+      const redis = new Redis(client);
+      const script = redis.createScript("return ARGV[1];");
+
+      const res = await script.eval([], ["Hello World"]);
+      expect(res).toEqual("Hello World");
+    },
+    { timeout: 15000 },
+  );
+});
+```
+
+## sha1
+
+```ts
+describe("sha1", () => {
+```
+
+### calculates the correct sha1
+
+```ts
+  test("calculates the correct sha1", () => {
+    const redis = new Redis(client);
+    const script = redis.createScript("The quick brown fox jumps over the lazy dog");
+
+    expect(script.sha1).toEqual("2fd4e1c67a2d28fced849ee1bb76e7391b93eb12");
+  });
+```
+
+### calculates the correct sha1 for empty string
+
+```ts
+  test("calculates the correct sha1 for empty string", () => {
+    const redis = new Redis(client);
+    const script = redis.createScript("");
+
+    expect(script.sha1).toEqual("da39a3ee5e6b4b0d3255bfef95601890afd80709");
+  });
+});
+```
+
+## script gets loaded
+
+```ts
+describe("script gets loaded", () => {
+```
+
+### following evalsha command is a hit
+
+```ts
+  test("following evalsha command is a hit", async () => {
+    const id = randomID();
+    const s = `return "${id}";`;
+    const redis = new Redis(client);
+    const script = redis.createScript(s);
+
+    let hasThrown = false;
+
+    await script.evalsha([], []).catch(() => {
+      hasThrown = true;
+    });
+    expect(hasThrown).toBeTrue();
+    const res = await script.exec([], []);
+    expect(res).toEqual(id);
+
+    const res2 = await script.evalsha([], []);
+    expect(res2).toEqual(id);
+  });
+});
+```

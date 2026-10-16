@@ -1,0 +1,68 @@
+# redis-js: pkg/commands/hsetnx.test.ts
+# джерело: https://github.com/upstash/redis-js/blob/v1.2.0/pkg/commands/hsetnx.test.ts
+# отримано: 2026-10-16
+# версія: redis-1.2.0, redis-1.1.0, redis-1.0.3
+
+```ts
+import { keygen, newHttpClient } from "../test-utils"
+import { randomUUID } from "crypto"
+import { describe, it, expect, afterAll } from "@jest/globals"
+import { HSetCommand } from "./hset"
+import { HGetCommand } from "./hget"
+import { HSetNXCommand } from "./hsetnx"
+```
+
+## const client
+
+```ts
+const client = newHttpClient()
+
+const { newKey, cleanup } = keygen()
+afterAll(cleanup)
+```
+
+## when hash exists already
+
+```ts
+describe("when hash exists already", () => {
+```
+
+### returns 0
+
+```ts
+  it("returns 0", async () => {
+    const key = newKey()
+    const field = randomUUID()
+    const value = randomUUID()
+    const newValue = randomUUID()
+    await new HSetCommand(key, { [field]: value }).exec(client)
+    const res = await new HSetNXCommand(key, field, newValue).exec(client)
+    expect(res).toBe(0)
+    const res2 = await new HGetCommand(key, field).exec(client)
+
+    expect(res2).toEqual(value)
+  })
+})
+```
+
+## when hash does not exist
+
+```ts
+describe("when hash does not exist", () => {
+```
+
+### returns 1
+
+```ts
+  it("returns 1", async () => {
+    const key = newKey()
+    const field = randomUUID()
+    const value = randomUUID()
+    const res = await new HSetNXCommand(key, field, value).exec(client)
+    expect(res).toBe(1)
+    const res2 = await new HGetCommand(key, field).exec(client)
+
+    expect(res2).toEqual(value)
+  })
+})
+```

@@ -1,0 +1,112 @@
+# redis-js: test/hashes/hscan.test.ts
+# джерело: https://github.com/upstash/redis-js/blob/v0.2.1/test/hashes/hscan.test.ts
+# отримано: 2026-10-16
+# версія: redis-0.2.1
+
+```ts
+import { flushdb, hscan, hset } from '../../src';
+import { nanoid } from 'nanoid';
+```
+
+## hscan command
+
+```ts
+describe('hscan command', () => {
+```
+
+### basic
+
+```ts
+  it('basic', async () => {
+    const myHash = nanoid();
+
+    const { data: setData } = await hset(myHash, 'f1', 'v1', 'f2', 'v2');
+    expect(setData).toBe(2);
+
+    const { data } = await hscan(myHash, 0);
+    expect(data[0]).toBe('0');
+    expect(data[1].length).toBeGreaterThanOrEqual(4);
+  });
+```
+
+### with match
+
+```ts
+  it('with match', async () => {
+    await flushdb();
+
+    const myHash = nanoid();
+
+    const { data: setData } = await hset(
+      myHash,
+      'f1',
+      'v1',
+      'f2',
+      'v2',
+      'f-3',
+      'v3',
+      'f-4',
+      'v4'
+    );
+    expect(setData).toBe(4);
+
+    const { data } = await hscan(myHash, 0, 'MATCH', '*-*');
+    expect(data[0]).toBe('0');
+    expect(data[1].length).toBeGreaterThanOrEqual(4);
+  });
+```
+
+### with count
+
+```ts
+  it('with count', async () => {
+    await flushdb();
+
+    const myHash = nanoid();
+
+    const { data: setData } = await hset(
+      myHash,
+      'f1',
+      'v1',
+      'f2',
+      'v2',
+      'f-3',
+      'v3',
+      'f-4',
+      'v4'
+    );
+    expect(setData).toBe(4);
+
+    const { data: data } = await hscan(myHash, 0, 'COUNT', 10);
+    expect(data[0]).toBe('0');
+    expect(data[1].length).toBeGreaterThanOrEqual(8);
+  });
+```
+
+### with match and count
+
+```ts
+  it('with match and count', async () => {
+    await flushdb();
+
+    const myHash = nanoid();
+
+    const { data: setData } = await hset(
+      myHash,
+      'f1',
+      'v1',
+      'f2',
+      'v2',
+      'f-3',
+      'v3',
+      'f-4',
+      'v4'
+    );
+    expect(setData).toBe(4);
+
+    const { data } = await hscan(myHash, 0, 'MATCH', '*-*', 'COUNT', 10);
+    expect(data[0]).toBe('0');
+    expect(data[1].length).toBeGreaterThanOrEqual(4);
+  });
+});
+```

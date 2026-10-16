@@ -1,0 +1,275 @@
+# redis-js: pkg/commands/set.test.ts
+# джерело: https://github.com/upstash/redis-js/blob/v1.36.4/pkg/commands/set.test.ts
+# отримано: 2026-10-16
+# версія: redis-1.36.4, redis-1.35.8
+
+```ts
+import { keygen, newHttpClient, randomID } from "../test-utils";
+
+import { afterAll, expect, test, describe } from "bun:test";
+import { GetCommand } from "./get";
+import { SetCommand } from "./set";
+
+const client = newHttpClient();
+
+const { newKey, cleanup } = keygen();
+afterAll(cleanup);
+```
+
+## without options
+
+```ts
+describe("without options", () => {
+```
+
+### sets value
+
+```ts
+  test("sets value", async () => {
+    const key = newKey();
+    const value = randomID();
+
+    const res = await new SetCommand([key, value]).exec(client);
+    expect(res).toEqual("OK");
+    const res2 = await new GetCommand([key]).exec(client);
+    expect(res2).toEqual(value);
+  });
+});
+```
+
+## ex
+
+```ts
+describe("ex", () => {
+```
+
+### sets value
+
+```ts
+  test("sets value", async () => {
+    const key = newKey();
+    const value = randomID();
+
+    const res = await new SetCommand([key, value, { ex: 1 }]).exec(client);
+    expect(res).toEqual("OK");
+    const res2 = await new GetCommand([key]).exec(client);
+    expect(res2).toEqual(value);
+    await new Promise((res) => setTimeout(res, 2000));
+
+    const res3 = await new GetCommand([key]).exec(client);
+    expect(res3).toEqual(null);
+  });
+});
+```
+
+## px
+
+```ts
+describe("px", () => {
+```
+
+### sets value
+
+```ts
+  test("sets value", async () => {
+    const key = newKey();
+    const value = randomID();
+
+    const res = await new SetCommand([key, value, { px: 1000 }]).exec(client);
+    expect(res).toEqual("OK");
+    const res2 = await new GetCommand([key]).exec(client);
+    expect(res2).toEqual(value);
+    await new Promise((res) => setTimeout(res, 2000));
+
+    const res3 = await new GetCommand([key]).exec(client);
+
+    expect(res3).toEqual(null);
+  });
+});
+```
+
+## exat
+
+```ts
+describe("exat", () => {
+```
+
+### sets value
+
+```ts
+  test("sets value", async () => {
+    const key = newKey();
+    const value = randomID();
+
+    const res = await new SetCommand([
+      key,
+      value,
+      {
+        exat: Math.floor(Date.now() / 1000) + 2,
+      },
+    ]).exec(client);
+    expect(res).toEqual("OK");
+    const res2 = await new GetCommand([key]).exec(client);
+    expect(res2).toEqual(value);
+    await new Promise((res) => setTimeout(res, 3000));
+
+    const res3 = await new GetCommand([key]).exec(client);
+
+    expect(res3).toEqual(null);
+  });
+});
+```
+
+## pxat
+
+```ts
+describe("pxat", () => {
+```
+
+### sets value
+
+```ts
+  test("sets value", async () => {
+    const key = newKey();
+    const value = randomID();
+
+    const res = await new SetCommand([key, value, { pxat: Date.now() + 1000 }]).exec(client);
+    expect(res).toEqual("OK");
+    const res2 = await new GetCommand([key]).exec(client);
+    expect(res2).toEqual(value);
+    await new Promise((res) => setTimeout(res, 2000));
+
+    const res3 = await new GetCommand([key]).exec(client);
+
+    expect(res3).toEqual(null);
+  });
+});
+```
+
+## get
+
+```ts
+describe("get", () => {
+```
+
+### gets the old value
+
+```ts
+  test("gets the old value", async () => {
+    const key = newKey();
+    const old = randomID();
+    const value = randomID();
+    await new SetCommand([key, old]).exec(client);
+
+    const res = await new SetCommand([key, value, { get: true }]).exec(client);
+    expect(res).toEqual(old);
+  });
+});
+```
+
+## get with xx
+
+```ts
+describe("get with xx", () => {
+```
+
+### gets the old value
+
+```ts
+  test("gets the old value", async () => {
+    const key = newKey();
+    const old = randomID();
+    const value = randomID();
+    await new SetCommand([key, old]).exec(client);
+
+    const res = await new SetCommand([key, value, { get: true, xx: true }]).exec(client);
+    expect(res).toEqual(old);
+  });
+});
+```
+
+## nx
+
+```ts
+describe("nx", () => {
+
+  describe("when key exists", () => {
+```
+
+#### does nothing
+
+```ts
+    test("does nothing", async () => {
+      const key = newKey();
+      const value = randomID();
+      const newValue = randomID();
+
+      await new SetCommand([key, value]).exec(client);
+      const res = await new SetCommand([key, newValue, { nx: true }]).exec(client);
+      expect(res).toEqual(null);
+      const res2 = await new GetCommand([key]).exec(client);
+      expect(res2).toEqual(value);
+    });
+  });
+
+  describe("when key does not exists", () => {
+```
+
+#### overwrites key
+
+```ts
+    test("overwrites key", async () => {
+      const key = newKey();
+      const value = randomID();
+
+      const res = await new SetCommand([key, value, { nx: true }]).exec(client);
+      expect(res).toEqual("OK");
+      const res2 = await new GetCommand([key]).exec(client);
+      expect(res2).toEqual(value);
+    });
+  });
+});
+```
+
+## xx
+
+```ts
+describe("xx", () => {
+
+  describe("when key exists", () => {
+```
+
+#### overwrites key
+
+```ts
+    test("overwrites key", async () => {
+      const key = newKey();
+      const value = randomID();
+      const newValue = randomID();
+
+      await new SetCommand([key, value]).exec(client);
+      const res = await new SetCommand([key, newValue, { xx: true }]).exec(client);
+      expect(res).toEqual("OK");
+      const res2 = await new GetCommand([key]).exec(client);
+      expect(res2).toEqual(newValue);
+    });
+  });
+
+  describe("when key does not exists", () => {
+```
+
+#### does nothing
+
+```ts
+    test("does nothing", async () => {
+      const key = newKey();
+      const value = randomID();
+
+      const res = await new SetCommand([key, value, { xx: true }]).exec(client);
+      expect(res).toEqual(null);
+      const res2 = await new GetCommand([key]).exec(client);
+      expect(res2).toEqual(null);
+    });
+  });
+});
+```

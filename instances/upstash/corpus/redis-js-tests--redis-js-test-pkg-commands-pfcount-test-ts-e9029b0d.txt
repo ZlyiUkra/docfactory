@@ -1,0 +1,87 @@
+# redis-js: pkg/commands/pfcount.test.ts
+# джерело: https://github.com/upstash/redis-js/blob/v1.27.1/pkg/commands/pfcount.test.ts
+# отримано: 2026-10-16
+# версія: redis-1.27.1, redis-1.26.0, redis-1.25.2
+
+```ts
+import { newHttpClient, keygen, randomID } from "../test-utils.ts";
+import { afterEach, expect, test, describe } from "bun:test";
+
+import { PfAddCommand } from "./pfadd.ts";
+import { PfCountCommand } from "./pfcount.ts";
+
+const client = newHttpClient();
+
+const { newKey, cleanup } = keygen();
+afterEach(cleanup);
+```
+
+## simple cardinality check
+
+```ts
+describe("simple cardinality check", () => {
+  const key = newKey();
+```
+
+### insert multiple unique strings
+
+```ts
+  test("insert multiple unique strings", async () => {
+    const value1 = randomID();
+    const value2 = randomID();
+    const value3 = randomID();
+    await new PfAddCommand([key, value1, value2, value3]).exec(client);
+
+    const resCount = await new PfCountCommand([key]).exec(client);
+    expect(resCount).toBe(3);
+  });
+});
+```
+
+## multiple keys cardinality check
+
+```ts
+describe("multiple keys cardinality check", () => {
+  const key1 = newKey();
+  const key2 = newKey();
+  const value1 = randomID();
+  const value2 = randomID();
+  const value3 = randomID();
+  const value4 = randomID();
+  const value5 = randomID();
+```
+
+### insert unique strings into two HLLs
+
+```ts
+  test("insert unique strings into two HLLs", async () => {
+    await new PfAddCommand([key1, value1, value2]).exec(client);
+    await new PfAddCommand([key2, value3, value4]).exec(client);
+
+    const resCount = await new PfCountCommand([key1, key2]).exec(client);
+    expect(resCount).toBe(4);
+  });
+});
+```
+
+## cardinality after repeated insertions
+
+```ts
+describe("cardinality after repeated insertions", () => {
+  const key = newKey();
+  const value1 = randomID();
+  const value2 = randomID();
+```
+
+### insert strings and then re-insert them
+
+```ts
+  test("insert strings and then re-insert them", async () => {
+    await new PfAddCommand([key, value1, value2]).exec(client);
+    await new PfAddCommand([key, value1, value2]).exec(client);
+
+    const resCount = await new PfCountCommand([key]).exec(client);
+    expect(resCount).toBe(2);
+  });
+});
+```

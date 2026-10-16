@@ -1,0 +1,54 @@
+# redis-js: pkg/commands/json_mget.test.ts
+# джерело: https://github.com/upstash/redis-js/blob/v1.36.4/pkg/commands/json_mget.test.ts
+# отримано: 2026-10-16
+# версія: redis-1.36.4, redis-1.35.8, redis-1.34.9, redis-1.33.0, redis-1.32.0, redis-1.31.6, redis-1.30.1, redis-1.29.0, redis-1.28.4, redis-1.27.1, redis-1.26.0, redis-1.25.2, redis-1.24.3
+
+```ts
+import { afterAll, expect, test } from "bun:test";
+import { keygen, newHttpClient } from "../test-utils";
+
+import { JsonMGetCommand } from "./json_mget";
+import { JsonSetCommand } from "./json_set";
+
+const client = newHttpClient();
+
+const { newKey, cleanup } = keygen();
+afterAll(cleanup);
+```
+
+## Return the values at path from multiple key arguments
+
+```ts
+test("Return the values at path from multiple key arguments", async () => {
+  const key1 = newKey();
+  const key2 = newKey();
+  const res1 = await new JsonSetCommand([
+    key1,
+    "$",
+    {
+      a: 1,
+      b: 2,
+      nested: { a: 3 },
+      c: null,
+    },
+  ]).exec(client);
+  expect(res1).toBe("OK");
+
+  const res2 = await new JsonSetCommand([
+    key2,
+    "$",
+    {
+      a: 4,
+      b: 5,
+      nested: { a: 6 },
+      c: null,
+    },
+  ]).exec(client);
+  expect(res2).toEqual("OK");
+  const res3 = await new JsonMGetCommand([[key1, key2], "$..a"]).exec(client);
+  expect(res3).toEqual([
+    [3, 1],
+    [6, 4],
+  ]);
+});
+```

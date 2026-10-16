@@ -1,0 +1,80 @@
+# redis-js: pkg/commands/bitfield.test.ts
+# джерело: https://github.com/upstash/redis-js/blob/v1.36.4/pkg/commands/bitfield.test.ts
+# отримано: 2026-10-16
+# версія: redis-1.36.4, redis-1.35.8, redis-1.34.9, redis-1.33.0, redis-1.32.0
+
+```ts
+import { afterAll, describe, expect, test } from "bun:test";
+import { keygen, newHttpClient } from "../test-utils";
+import { BitFieldCommand } from "./bitfield";
+
+const client = newHttpClient();
+
+const { newKey, cleanup } = keygen();
+afterAll(cleanup);
+```
+
+## when key is not set
+
+```ts
+describe("when key is not set", () => {
+
+  test("returns 0", async () => {
+    const key = newKey();
+    const res = await new BitFieldCommand([key], client).get("u4", "#0").exec();
+    expect(res).toEqual([0]);
+  });
+});
+```
+
+## when key is set
+
+```ts
+describe("when key is set", () => {
+```
+
+### sets / gets value
+
+```ts
+  test("sets / gets value", async () => {
+    const key = newKey();
+    const value = 42;
+    const res = await new BitFieldCommand([key], client)
+      .set("u8", "#0", value)
+      .get("u8", "#0")
+      .exec();
+    expect(res).toEqual([0, value]);
+  });
+```
+
+### increments value
+
+```ts
+  test("increments value", async () => {
+    const key = newKey();
+    const value = 42;
+    const increment = 10;
+    const res = await new BitFieldCommand([key], client)
+      .set("u8", "#0", value)
+      .incrby("u8", "#0", increment)
+      .exec();
+    expect(res).toEqual([0, value + increment]);
+  });
+```
+
+### overflows
+
+```ts
+  test("overflows", async () => {
+    const key = newKey();
+    const value = 255;
+    const bitWidth = 8;
+    const res = await new BitFieldCommand([key], client)
+      .set(`u${bitWidth}`, "#0", value)
+      .incrby(`u${bitWidth}`, "#0", 10)
+      .overflow("WRAP")
+      .exec();
+    expect(res).toEqual([0, (value + 10) % 2 ** bitWidth]);
+  });
+});
+```

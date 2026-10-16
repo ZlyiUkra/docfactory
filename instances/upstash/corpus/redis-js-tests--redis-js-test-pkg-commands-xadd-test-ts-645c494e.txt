@@ -1,0 +1,170 @@
+# redis-js: pkg/commands/xadd.test.ts
+# джерело: https://github.com/upstash/redis-js/blob/v1.34.9/pkg/commands/xadd.test.ts
+# отримано: 2026-10-16
+# версія: redis-1.34.9, redis-1.33.0, redis-1.32.0, redis-1.31.6, redis-1.30.1, redis-1.29.0, redis-1.28.4, redis-1.27.1, redis-1.26.0, redis-1.25.2, redis-1.24.3
+
+```ts
+import { keygen, newHttpClient, randomID } from "../test-utils";
+
+import { afterAll, expect, test } from "bun:test";
+import { XAddCommand } from "./xadd";
+import { XRangeCommand } from "./xrange";
+
+const client = newHttpClient();
+
+const { newKey, cleanup } = keygen();
+afterAll(cleanup);
+```
+
+## without options
+
+```ts
+test("without options", () => {
+```
+
+### should return valid stream id
+
+```ts
+  test("should return valid stream id", async () => {
+    const key = newKey();
+    const field1 = "field1";
+    const member1 = randomID();
+
+    const field2 = "field2";
+    const member2 = randomID();
+
+    const res = await new XAddCommand([
+      key,
+      "*",
+      {
+        [field1]: member1,
+        [field2]: member2,
+      },
+    ]).exec(client);
+
+    expect(res.length).toBeGreaterThan(0);
+  });
+});
+```
+
+## with NOMKSTREAM
+
+```ts
+test("with NOMKSTREAM", () => {
+```
+
+### should return valid stream id
+
+```ts
+  test("should return valid stream id", async () => {
+    const key = newKey();
+    const field1 = "field1";
+    const member1 = randomID();
+
+    const field2 = "field2";
+    const member2 = randomID();
+
+    const first = await new XAddCommand([
+      key,
+      "*",
+      {
+        [field1]: member1,
+        [field2]: member2,
+      },
+    ]).exec(client);
+    expect(first.length).toBeGreaterThan(0);
+
+    const res = await new XAddCommand([
+      key,
+      "*",
+      { [field1]: member1, [field2]: member2 },
+      { nomkStream: true },
+    ]).exec(client);
+    expect(res.length).toBeGreaterThan(0);
+  });
+```
+
+### should return null
+
+```ts
+  test("should return null", async () => {
+    const key = newKey();
+    const field1 = "field1";
+    const member1 = randomID();
+
+    const field2 = "field2";
+    const member2 = randomID();
+
+    const res = await new XAddCommand([
+      key,
+      "*",
+      { [field1]: member1, [field2]: member2 },
+      { nomkStream: true },
+    ]).exec(client);
+
+    expect(res).toBeNull();
+  });
+});
+```
+
+## with threshold
+
+```ts
+test("with threshold", () => {
+```
+
+### should always return less than or equal to 5
+
+```ts
+  test("should always return less than or equal to 5", async () => {
+    const key = newKey();
+    const field1 = "field1";
+    const member1 = randomID();
+
+    const field2 = "field2";
+    const member2 = randomID();
+
+    for (let i = 0; i < 10; i++) {
+      const xaddRes = await new XAddCommand([
+        key,
+        "*",
+        { [field1]: member1, [field2]: member2 },
+        { trim: { comparison: "=", threshold: 5, type: "MAXLEN" } },
+      ]).exec(client);
+      expect(xaddRes.length).toBeGreaterThan(0);
+
+      const xrangeRes = await new XRangeCommand([key, "-", "+"]).exec(client);
+      expect(Object.keys(xrangeRes).length).toBeLessThanOrEqual(5);
+    }
+  });
+```
+
+### should trim the stream by stream id
+
+```ts
+  test("should trim the stream by stream id", async () => {
+    const key = newKey();
+    const field1 = "field1";
+    const member1 = randomID();
+
+    const field2 = "field2";
+    const member2 = randomID();
+
+    const xaddRes = await new XAddCommand([
+      key,
+      "*",
+      { [field1]: member1, [field2]: member2 },
+    ]).exec(client);
+
+    await new XAddCommand([
+      key,
+      "*",
+      { [field1]: member1, [field2]: member2 },
+      { trim: { type: "minid", threshold: xaddRes, comparison: "=" } },
+    ]).exec(client);
+
+    const xrangeRes = await new XRangeCommand([key, "-", "+"]).exec(client);
+    expect(Object.keys(xrangeRes).length).toEqual(2);
+  });
+});
+```

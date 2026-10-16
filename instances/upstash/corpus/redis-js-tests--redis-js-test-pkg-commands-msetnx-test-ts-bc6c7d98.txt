@@ -1,0 +1,61 @@
+# redis-js: pkg/commands/msetnx.test.ts
+# джерело: https://github.com/upstash/redis-js/blob/v1.36.4/pkg/commands/msetnx.test.ts
+# отримано: 2026-10-16
+# версія: redis-1.36.4, redis-1.35.8, redis-1.34.9, redis-1.33.0, redis-1.32.0, redis-1.31.6, redis-1.30.1, redis-1.29.0, redis-1.28.4, redis-1.27.1, redis-1.26.0, redis-1.25.2, redis-1.24.3
+
+```ts
+import { keygen, newHttpClient, randomID } from "../test-utils";
+
+import { afterAll, expect, test } from "bun:test";
+import { GetCommand } from "./get";
+import { MGetCommand } from "./mget";
+import { MSetNXCommand } from "./msetnx";
+import { SetCommand } from "./set";
+const client = newHttpClient();
+
+const { newKey, cleanup } = keygen();
+afterAll(cleanup);
+```
+
+## sets values
+
+```ts
+test("sets values", async () => {
+  const key1 = newKey();
+  const value1 = randomID();
+  const key2 = newKey();
+  const value2 = randomID();
+
+  const kv: Record<string, string> = {};
+  kv[key1] = value1;
+  kv[key2] = value2;
+  const res = await new MSetNXCommand([kv]).exec(client);
+
+  expect(res).toEqual(1);
+  const res2 = await new MGetCommand<[string, string]>([key1, key2]).exec(client);
+
+  expect(res2).toEqual([value1, value2]);
+});
+```
+
+## does not set values if one key already exists
+
+```ts
+test("does not set values if one key already exists", async () => {
+  const key1 = newKey();
+  const value1 = randomID();
+  const key2 = newKey();
+  const value2 = randomID();
+  await new SetCommand([key1, value1]).exec(client);
+  const kv: Record<string, string> = {};
+  kv[key1] = value1;
+  kv[key2] = value2;
+  const res = await new MSetNXCommand([kv]).exec(client);
+
+  expect(res).toEqual(0);
+
+  const res2 = await new GetCommand([key2]).exec(client);
+
+  expect(res2).toEqual(null);
+});
+```

@@ -1,0 +1,68 @@
+# redis-js: pkg/commands/hgetall.test.ts
+# джерело: https://github.com/upstash/redis-js/blob/v1.33.0/pkg/commands/hgetall.test.ts
+# отримано: 2026-10-16
+# версія: redis-1.33.0, redis-1.32.0, redis-1.31.6, redis-1.30.1, redis-1.29.0, redis-1.28.4, redis-1.27.1, redis-1.26.0, redis-1.25.2, redis-1.24.3
+
+```ts
+import { afterAll, expect, test } from "bun:test";
+import { keygen, newHttpClient, randomID, randomUnsafeIntegerString } from "../test-utils";
+import { HGetAllCommand } from "./hgetall";
+import { HSetCommand } from "./hset";
+
+const client = newHttpClient();
+
+const { newKey, cleanup } = keygen();
+afterAll(cleanup);
+```
+
+## returns all fields
+
+```ts
+test("returns all fields", async () => {
+  const key = newKey();
+  const field2 = randomID();
+  const field1 = randomID();
+  const value1 = false;
+  const value2 = randomID();
+  await new HSetCommand([key, { [field1]: value1, [field2]: value2 }]).exec(client);
+
+  const res = await new HGetAllCommand([key]).exec(client);
+
+  const obj = { [field1]: value1, [field2]: value2 };
+  expect(res).toEqual(obj);
+});
+```
+
+## when hash does not exist
+
+```ts
+test("when hash does not exist", () => {
+
+  test("it returns null", async () => {
+    const res = await new HGetAllCommand([randomID()]).exec(client);
+    expect(res).toEqual(null);
+  });
+});
+```
+
+## properly return bigint precisely
+
+```ts
+test("properly return bigint precisely", async () => {
+  const key = newKey();
+  const field3 = randomID();
+  const field2 = randomID();
+  const field1 = randomID();
+  const value1 = false;
+  const value2 = randomID();
+  const value3 = randomUnsafeIntegerString();
+  await new HSetCommand([key, { [field1]: value1, [field2]: value2, [field3]: value3 }]).exec(
+    client,
+  );
+
+  const res = await new HGetAllCommand([key]).exec(client);
+
+  const obj = { [field1]: value1, [field2]: value2, [field3]: value3 };
+  expect(res).toEqual(obj);
+});
+```

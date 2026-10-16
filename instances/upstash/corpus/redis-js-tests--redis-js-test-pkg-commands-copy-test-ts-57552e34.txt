@@ -1,0 +1,101 @@
+# redis-js: pkg/commands/copy.test.ts
+# джерело: https://github.com/upstash/redis-js/blob/v1.36.4/pkg/commands/copy.test.ts
+# отримано: 2026-10-16
+# версія: redis-1.36.4, redis-1.35.8, redis-1.34.9, redis-1.33.0, redis-1.32.0, redis-1.31.6, redis-1.30.1, redis-1.29.0, redis-1.28.4, redis-1.27.1, redis-1.26.0, redis-1.25.2, redis-1.24.3
+
+```ts
+import { keygen, newHttpClient, randomID } from "../test-utils";
+
+import { afterAll, describe, expect, test } from "bun:test";
+import { CopyCommand } from "./copy";
+import { LPushCommand } from "./lpush";
+import { SetCommand } from "./set";
+
+const client = newHttpClient();
+
+const { newKey, cleanup } = keygen();
+afterAll(cleanup);
+```
+
+## COPY test
+
+```ts
+describe("COPY test", () => {
+```
+
+### should copy key-value to another key
+
+```ts
+  test("should copy key-value to another key", async () => {
+    const key = newKey();
+    const destinationKey = newKey();
+    const value = randomID();
+    await new SetCommand([key, value]).exec(client);
+    const res = await new CopyCommand([key, destinationKey]).exec(client);
+    expect(res).toEqual("COPIED");
+  });
+```
+
+### should not override existing destination
+
+```ts
+  test("should not override existing destination", async () => {
+    const key = newKey();
+    const destinationKey = newKey();
+    const value = randomID();
+    await new SetCommand([key, value]).exec(client);
+    await new SetCommand([destinationKey, value]).exec(client);
+    const res = await new CopyCommand([key, destinationKey]).exec(client);
+    expect(res).toEqual("NOT_COPIED");
+  });
+```
+
+### should override existing destination with replace
+
+```ts
+  test("should override existing destination with replace", async () => {
+    const key = newKey();
+    const destinationKey = newKey();
+    const value = randomID();
+    await new SetCommand([key, value]).exec(client);
+    await new SetCommand([destinationKey, value]).exec(client);
+    const res = await new CopyCommand([key, destinationKey, { replace: true }]).exec(client);
+    expect(res).toEqual("COPIED");
+  });
+```
+
+### should handle non-existent source key
+
+```ts
+  test("should handle non-existent source key", async () => {
+    const key = newKey();
+    const destinationKey = newKey();
+    const res = await new CopyCommand([key, destinationKey]).exec(client);
+    expect(res).toEqual("NOT_COPIED");
+  });
+```
+
+### should handle same source and destination keys
+
+```ts
+  test("should handle same source and destination keys", async () => {
+    const key = newKey();
+    const value = randomID();
+    await new SetCommand([key, value]).exec(client);
+    const res = await new CopyCommand([key, key]).exec(client);
+    expect(res).toEqual("NOT_COPIED");
+  });
+```
+
+### should copy list data type
+
+```ts
+  test("should copy list data type", async () => {
+    const key = newKey();
+    const destinationKey = newKey();
+    await new LPushCommand([key, "value1", "value2"]).exec(client);
+    const res = await new CopyCommand([key, destinationKey]).exec(client);
+    expect(res).toEqual("COPIED");
+  });
+});
+```

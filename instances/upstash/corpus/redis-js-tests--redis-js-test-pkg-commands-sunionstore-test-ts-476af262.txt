@@ -1,0 +1,41 @@
+# redis-js: pkg/commands/sunionstore.test.ts
+# джерело: https://github.com/upstash/redis-js/blob/v1.33.0/pkg/commands/sunionstore.test.ts
+# отримано: 2026-10-16
+# версія: redis-1.33.0, redis-1.32.0, redis-1.31.6, redis-1.30.1, redis-1.29.0, redis-1.28.4, redis-1.27.1, redis-1.26.0, redis-1.25.2, redis-1.24.3
+
+```ts
+import { keygen, newHttpClient, randomID } from "../test-utils";
+
+import { afterAll, expect, test } from "bun:test";
+import { SAddCommand } from "./sadd";
+
+import { SMembersCommand } from "./smembers";
+import { SUnionStoreCommand } from "./sunionstore";
+const client = newHttpClient();
+
+const { newKey, cleanup } = keygen();
+afterAll(cleanup);
+```
+
+## writes the union to destination
+
+```ts
+test("writes the union to destination", async () => {
+  const key1 = newKey();
+  const key2 = newKey();
+  const dest = newKey();
+
+  const member1 = randomID();
+  const member2 = randomID();
+
+  await new SAddCommand([key1, member1]).exec(client);
+  await new SAddCommand([key2, member2]).exec(client);
+  const res = await new SUnionStoreCommand([dest, key1, key2]).exec(client);
+  expect(res).toEqual(2);
+
+  const res2 = await new SMembersCommand([dest]).exec(client);
+
+  expect(res2).toBeTruthy();
+  expect(res2!.sort()).toEqual([member1, member2].sort());
+});
+```
