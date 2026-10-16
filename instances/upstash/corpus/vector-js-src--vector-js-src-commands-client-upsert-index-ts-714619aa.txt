@@ -1,0 +1,90 @@
+# vector-js: src/commands/client/upsert/index.ts
+# джерело: https://github.com/upstash/vector-js/blob/v1.1.7/src/commands/client/upsert/index.ts
+# отримано: 2026-10-16
+# версія: vector-1.1.7, vector-1.1.6, vector-1.1.5, vector-1.1.4, vector-1.1.3
+
+```ts
+import type { NAMESPACE } from "@commands/client/types";
+import { Command } from "@commands/command";
+
+type NoInfer<T> = T extends infer U ? U : never;
+```
+
+## type VectorPayload
+
+```ts
+type VectorPayload<TMetadata> = {
+  id: number | string;
+  vector: number[];
+  metadata?: NoInfer<TMetadata>;
+};
+```
+
+## type DataPayload
+
+```ts
+type DataPayload<TMetadata> = {
+  id: number | string;
+  data: string;
+  metadata?: NoInfer<TMetadata>;
+};
+```
+
+## type Payload
+
+```ts
+type Payload<TMetadata> =
+  | VectorPayload<TMetadata>
+  | DataPayload<TMetadata>
+  | VectorPayload<TMetadata>[]
+  | DataPayload<TMetadata>[];
+
+type UpsertCommandOptions = { namespace?: string };
+```
+
+## type UpsertEndpointVariants
+
+```ts
+type UpsertEndpointVariants =
+  | `upsert`
+  | `upsert-data`
+  | `upsert/${NAMESPACE}`
+  | `upsert-data/${NAMESPACE}`;
+```
+
+## class UpsertCommand
+
+```ts
+export class UpsertCommand<TMetadata> extends Command<string> {
+```
+
+### UpsertCommand.constructor()
+
+```ts
+  constructor(payload: Payload<TMetadata>, opts?: UpsertCommandOptions) {
+    let endpoint: UpsertEndpointVariants = "upsert";
+
+    if (Array.isArray(payload)) {
+      const isUpsert = payload.some((p) => isVectorPayload(p));
+      endpoint = isUpsert ? "upsert" : "upsert-data";
+    } else {
+      endpoint = isVectorPayload(payload) ? "upsert" : "upsert-data";
+    }
+
+    if (opts?.namespace) {
+      endpoint = `${endpoint}/${opts.namespace}`;
+    }
+    super(payload, endpoint);
+  }
+}
+```
+
+## const isVectorPayload
+
+```ts
+const isVectorPayload = <TMetadata>(
+  payload: VectorPayload<TMetadata> | DataPayload<TMetadata>
+): payload is VectorPayload<TMetadata> => {
+  return "vector" in payload;
+};
+```

@@ -1,0 +1,77 @@
+# vector-php: src/Operations/FetchVectorsOperation.php
+# джерело: https://github.com/upstash/vector-php/blob/v1.2.0/src/Operations/FetchVectorsOperation.php
+# отримано: 2026-10-16
+# версія: vector-php-1.2.0
+
+```text
+<?php
+
+namespace Upstash\Vector\Operations;
+
+use Upstash\Vector\Contracts\TransporterInterface;
+use Upstash\Vector\Operations\Concerns\AssertsApiResponseErrors;
+use Upstash\Vector\Operations\Concerns\MapsVectorMatches;
+use Upstash\Vector\Transporter\ContentType;
+use Upstash\Vector\Transporter\Method;
+use Upstash\Vector\Transporter\TransporterRequest;
+use Upstash\Vector\Transporter\TransporterResponse;
+use Upstash\Vector\VectorFetch;
+use Upstash\Vector\VectorFetchByPrefix;
+use Upstash\Vector\VectorFetchResult;
+use Upstash\Vector\VectorMatch;
+
+/**
+ * @internal
+ */
+final readonly class FetchVectorsOperation
+{
+    use AssertsApiResponseErrors;
+    use MapsVectorMatches;
+
+    public function __construct(private string $namespace, private TransporterInterface $transporter) {}
+
+    public function fetch(VectorFetch|VectorFetchByPrefix $vectorFetch): VectorFetchResult
+    {
+        $path = $this->getPath();
+        $request = new TransporterRequest(
+            contentType: ContentType::JSON,
+            method: Method::GET,
+            path: $path,
+            data: $vectorFetch->toArray(),
+        );
+
+        $response = $this->transporter->sendRequest($request);
+
+        $this->assertResponse($response);
+
+        return $this->transformResponse($response);
+    }
+
+    private function getPath(): string
+    {
+        $namespace = trim($this->namespace);
+        if ($namespace === '') {
+            return '/fetch';
+        }
+
+        return "/fetch/$namespace";
+    }
+
+    private function transformResponse(TransporterResponse $response): VectorFetchResult
+    {
+        $data = json_decode($response->data, true);
+        $result = $data['result'] ?? [];
+
+        // Filter out empty results
+        $result = array_filter($result);
+
+        $results = array_map(fn (array $result) => $this->mapVectorMatch($result), $result);
+        $keys = array_map(fn (VectorMatch $match) => $match->getIdentifier(), $results);
+
+        // Key-by vector ID
+        $results = array_combine($keys, $results);
+
+        return new VectorFetchResult($keys, $results);
+    }
+}
+```

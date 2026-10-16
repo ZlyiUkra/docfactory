@@ -1,0 +1,99 @@
+# vector-js: src/commands/client/upsert/index.ts
+# джерело: https://github.com/upstash/vector-js/blob/v1.1.2/src/commands/client/upsert/index.ts
+# отримано: 2026-10-16
+# версія: vector-1.1.2
+
+```ts
+import type { NAMESPACE } from "@commands/client/types";
+import { Command } from "@commands/command";
+
+type NoInfer<T> = T extends infer U ? U : never;
+```
+
+## type VectorPayload
+
+```ts
+type VectorPayload<TMetadata> = {
+  id: number | string;
+  vector: number[];
+  metadata?: NoInfer<TMetadata>;
+};
+```
+
+## type DataPayload
+
+```ts
+type DataPayload<TMetadata> = {
+  id: number | string;
+  data: string;
+  metadata?: NoInfer<TMetadata>;
+};
+```
+
+## type Payload
+
+```ts
+type Payload<TMetadata> =
+  | VectorPayload<TMetadata>
+  | DataPayload<TMetadata>
+  | VectorPayload<TMetadata>[]
+  | DataPayload<TMetadata>[];
+
+type UpsertCommandOptions = { namespace?: string };
+```
+
+## type UpsertEndpointVariants
+
+```ts
+type UpsertEndpointVariants =
+  | `upsert`
+  | `upsert-data`
+  | `upsert/${NAMESPACE}`
+  | `upsert-data/${NAMESPACE}`;
+```
+
+## class UpsertCommand
+
+```ts
+export class UpsertCommand<TMetadata> extends Command<string> {
+```
+
+### UpsertCommand.constructor()
+
+```ts
+  constructor(payload: Payload<TMetadata>, opts?: UpsertCommandOptions) {
+    let endpoint: UpsertEndpointVariants = "upsert";
+
+    if (Array.isArray(payload)) {
+      const hasData = payload.some((p) => "data" in p && p.data);
+      if (hasData) {
+        endpoint = "upsert-data";
+
+        for (const p of payload) {
+          if (!("metadata" in p) && "data" in p) {
+            p.metadata = {
+              data: p.data,
+            } as NoInfer<TMetadata & { data: string }>;
+          }
+        }
+      }
+    } else {
+      if ("data" in payload) {
+        endpoint = "upsert-data";
+
+        if (!("metadata" in payload)) {
+          payload.metadata = {
+            data: payload.data,
+          } as NoInfer<TMetadata & { data: string }>;
+        }
+      }
+    }
+
+    if (opts?.namespace) {
+      endpoint = `${endpoint}/${opts.namespace}`;
+    }
+
+    super(payload, endpoint);
+  }
+}
+```

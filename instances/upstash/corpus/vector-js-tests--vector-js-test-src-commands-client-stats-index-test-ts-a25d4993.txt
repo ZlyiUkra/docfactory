@@ -1,0 +1,40 @@
+# vector-js: src/commands/client/stats/index.test.ts
+# джерело: https://github.com/upstash/vector-js/blob/v1.0.0/src/commands/client/stats/index.test.ts
+# отримано: 2026-10-16
+# версія: vector-1.0.0
+
+```ts
+import { afterAll, describe, expect, test } from "bun:test";
+import { UpsertCommand } from "@commands/index";
+import { newHttpClient, randomFloat, randomID, resetIndexes } from "@utils/test-utils";
+import { sleep } from "bun";
+import { StatsCommand } from ".";
+
+const client = newHttpClient();
+```
+
+## STATS
+
+```ts
+describe("STATS", () => {
+  afterAll(async () => await resetIndexes());
+```
+
+### should return vectorCount successfully
+
+```ts
+  test("should return vectorCount successfully", async () => {
+    const vectorCount = 20;
+    const randomizedData = new Array(vectorCount).fill("").map(() => ({
+      id: randomID(),
+      vector: [randomFloat(), randomFloat()],
+    }));
+
+    const payloads = randomizedData.map((data) => new UpsertCommand(data).exec(client));
+    await Promise.all(payloads);
+    await sleep(2000);
+    const res = await new StatsCommand().exec(client);
+    expect(res.vectorCount).toBeGreaterThanOrEqual(vectorCount);
+  });
+});
+```
