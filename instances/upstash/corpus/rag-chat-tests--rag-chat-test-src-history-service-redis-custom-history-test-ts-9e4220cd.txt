@@ -1,0 +1,41 @@
+# rag-chat: src/history-service/redis-custom-history.test.ts
+# джерело: https://github.com/upstash/rag-chat/blob/v2.0.3/src/history-service/redis-custom-history.test.ts
+# отримано: 2026-10-16
+# версія: rag-chat-2.0.3, rag-chat-2.0.2, rag-chat-2.0.1, rag-chat-2.0.0, rag-chat-1.6.4, rag-chat-1.6.1, rag-chat-1.6.0, rag-chat-1.5.0, rag-chat-1.4.0, rag-chat-1.3.2, rag-chat-1.3.1, rag-chat-1.3.0, rag-chat-1.2.1, rag-chat-1.1.1, rag-chat-1.1.0, rag-chat-1.0.7, rag-chat-1.0.6, rag-chat-1.0.5, rag-chat-1.0.4
+
+```ts
+import { Redis } from "@upstash/redis";
+import { afterAll, describe, expect, test } from "bun:test";
+import { UpstashRedisHistory } from "./redis-custom-history";
+```
+
+## Redis chat-history
+
+```ts
+describe("Redis chat-history", () => {
+  const redis = Redis.fromEnv();
+  afterAll(async () => {
+    await redis.flushdb();
+  });
+```
+
+### should give last 3 messages from redis
+
+```ts
+  test("should give last 3 messages from redis", async () => {
+    const history = new UpstashRedisHistory({
+      client: redis,
+    });
+    await history.addMessage({ message: { content: "Hello!", role: "user" } });
+    await history.addMessage({ message: { content: "Hello, human.", role: "assistant" } });
+    await history.addMessage({ message: { content: "Whats your name?", role: "user" } });
+    await history.addMessage({ message: { content: "Upstash", role: "assistant" } });
+    await history.addMessage({ message: { content: "Good. How are you?", role: "user" } });
+    await history.addMessage({ message: { content: "I'm good. Thanks.", role: "assistant" } });
+
+    const messages = await history.getMessages({ amount: 3 });
+    const final = messages.map((message) => message.content);
+    expect(["Upstash", "Good. How are you?", "I'm good. Thanks."]).toEqual(final);
+  });
+});
+```

@@ -1,0 +1,59 @@
+# ratelimit-js: packages/sdk/src/cache.ts
+# джерело: https://github.com/upstash/ratelimit-js/blob/v0.4.4/packages/sdk/src/cache.ts
+# отримано: 2026-10-16
+# версія: ratelimit-0.4.4, ratelimit-0.4.3, ratelimit-0.4.2, ratelimit-0.4.1, ratelimit-0.4.0, ratelimit-0.3.12, ratelimit-0.3.11, ratelimit-0.3.10, ratelimit-0.3.9, ratelimit-0.3.8, ratelimit-0.3.7, ratelimit-0.3.6, ratelimit-0.3.5, ratelimit-0.3.4, ratelimit-0.3.3, ratelimit-0.3.2, ratelimit-0.3.1
+
+```ts
+import { EphemeralCache } from "./types";
+```
+
+## class Cache
+
+```ts
+export class Cache implements EphemeralCache {
+  /**
+   * Stores identifier -> reset (in milliseconds)
+   */
+  private readonly cache: Map<string, number>;
+
+  constructor(cache: Map<string, number>) {
+    this.cache = cache;
+  }
+```
+
+### Cache.isBlocked()
+
+```ts
+  public isBlocked(identifier: string): { blocked: boolean; reset: number } {
+    if (!this.cache.has(identifier)) {
+      return { blocked: false, reset: 0 };
+    }
+    const reset = this.cache.get(identifier)!;
+    if (reset < Date.now()) {
+      this.cache.delete(identifier);
+      return { blocked: false, reset: 0 };
+    }
+
+    return { blocked: true, reset: reset };
+  }
+
+  public blockUntil(identifier: string, reset: number): void {
+    this.cache.set(identifier, reset);
+  }
+
+  public set(key: string, value: number): void {
+    this.cache.set(key, value);
+  }
+
+  public get(key: string): number | null {
+    return this.cache.get(key) || null;
+  }
+
+  public incr(key: string): number {
+    let value = this.cache.get(key) ?? 0;
+    value += 1;
+    this.cache.set(key, value);
+    return value;
+  }
+}
+```

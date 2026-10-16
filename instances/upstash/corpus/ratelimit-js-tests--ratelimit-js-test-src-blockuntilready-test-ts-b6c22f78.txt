@@ -1,0 +1,85 @@
+# ratelimit-js: src/blockUntilReady.test.ts
+# джерело: https://github.com/upstash/ratelimit-js/blob/v2.2.0/src/blockUntilReady.test.ts
+# отримано: 2026-10-16
+# версія: ratelimit-2.2.0, ratelimit-2.1.0, ratelimit-2.0.8
+
+```ts
+import { describe, expect, test } from "bun:test";
+import crypto from "node:crypto";
+import { Redis } from "@upstash/redis";
+import { Ratelimit } from "./index";
+
+const redis = Redis.fromEnv();
+
+const metrics: Record<string | symbol, number> = {};
+```
+
+## const spy
+
+```ts
+const spy = new Proxy(redis, {
+  get: (target, prop) => {
+    if (metrics[prop] === undefined) {
+      metrics[prop] = 0;
+    }
+    metrics[prop]++;
+    // @ts-expect-error we don't care about the types here
+    return target[prop];
+  },
+});
+```
+
+## const limiter
+
+```ts
+const limiter = new Ratelimit({
+  redis: spy,
+  limiter: Ratelimit.fixedWindow(1, "5 h"),
+});
+```
+
+## blockUntilReady
+
+```ts
+describe("blockUntilReady", () => {
+```
+
+### reaching the timeout
+
+```ts
+  test("reaching the timeout", async () => {
+    const id = crypto.randomUUID();
+
+    // Use up all tokens in the current window
+    for (let i = 0; i < 3; i++) {
+      await limiter.limit(id, { rate: 5 });
+    }
+
+    const start = Date.now();
+    const res = await limiter.blockUntilReady(id, 1200);
+    expect(res.success).toBe(false);
+    expect(start + 1000).toBeLessThanOrEqual(Date.now());
+    await res.pending;
+  }, 20_000);
+```
+
+### resolving before the timeout
+
+```ts
+  test("resolving before the timeout", async () => {
+    const id = crypto.randomUUID();
+
+    // Use up all tokens in the current window
+    // for (let i = 0; i < 4; i++) {
+    //   await limiter.limit(id);
+    // }
+
+    const start = Date.now();
+    const res = await limiter.blockUntilReady(id, 1000);
+    expect(res.success).toBe(true);
+    expect(start + 1000).toBeGreaterThanOrEqual(Date.now());
+
+    await res.pending;
+  }, 20_000);
+});
+```

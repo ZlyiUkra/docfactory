@@ -1,0 +1,48 @@
+# ratelimit-js: src/lua-scripts/hash.test.ts
+# джерело: https://github.com/upstash/ratelimit-js/blob/v2.2.0/src/lua-scripts/hash.test.ts
+# отримано: 2026-10-16
+# версія: ratelimit-2.2.0, ratelimit-2.1.0, ratelimit-2.0.8
+
+```ts
+import { Redis } from "@upstash/redis";
+import { describe, expect, test } from "bun:test";
+import { RESET_SCRIPT, SCRIPTS } from "./hash";
+```
+
+## should use correct hash for lua scripts
+
+```ts
+describe("should use correct hash for lua scripts", () => {
+  const redis = Redis.fromEnv();
+
+  const validateHash = async (script: string, expectedHash: string) => {
+    const hash = await redis.scriptLoad(script)
+    expect(hash).toBe(expectedHash)
+  }
+
+  const algorithms = [
+    ...Object.entries(SCRIPTS.singleRegion), ...Object.entries(SCRIPTS.multiRegion)
+  ]
+
+  // for each algorithm (fixedWindow, slidingWindow etc)
+  for (const [algorithm, scripts] of algorithms) {
+```
+
+#### ${algorithm}
+
+```ts
+    describe(`${algorithm}`, () => {
+      // for each method (limit & getRemaining)
+      for (const [method, scriptInfo] of Object.entries(scripts)) {
+        test(method, async () => {
+          await validateHash(scriptInfo.script, scriptInfo.hash)
+        })
+      }
+    })
+  }
+
+  test("reset script", async () => {
+    await validateHash(RESET_SCRIPT.script, RESET_SCRIPT.hash)
+  })
+})
+```
