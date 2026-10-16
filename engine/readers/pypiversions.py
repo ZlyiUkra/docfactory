@@ -6,7 +6,9 @@
                   `name_prefix` — рядок перед іменем документа: «overview» і «line-2» кількох
                   проєктів одного примірника інакше мали б спільний ключ розділу;
                   `readme: true` — ще й опис проєкту (те, що PyPI показує на сторінці версії):
-                  один документ на кожен неповторний текст, з усіма версіями, де він був таким.
+                  один документ на кожен неповторний текст, з усіма версіями, де він був таким;
+                  `version_prefix` — рядок перед кожною версією документа («upstash-redis-»):
+                  коли проєктів у примірнику кілька й кожен має свою нумерацію.
 
 Навіщо. Те саме, що `npm-versions` для пакетів npm: документація каже, як працює інструмент, але
 рідко — з якої версії щось є і що треба для встановлення. PyPI знає це точно для кожної версії:
@@ -93,7 +95,7 @@ def _diff(old: dict, new: dict) -> list[str]:
     return out
 
 
-def _overview(label, cite, stamp, rows, lines) -> str:
+def _overview(label, cite, stamp, rows, lines, vp="") -> str:
     out = [f"Latest version: {rows[-1]['v']} ({rows[-1]['day']}).", "", "## Release lines", ""]
     for ln in lines:
         rs = [r for r in rows if r["v"].split(".")[0] == ln]
@@ -117,10 +119,10 @@ def _overview(label, cite, stamp, rows, lines) -> str:
         out += [f"- {p or 'not declared'}: from {a['v']} ({a['day']}) to {b['v']} ({b['day']})"
                 for p, a, b in spans]
     return _markup.document(f"{label} on PyPI: overview of all versions", cite, stamp,
-                            "\n".join(out), ", ".join(reversed([r["v"] for r in rows])))
+                            "\n".join(out), ", ".join(reversed([vp + r["v"] for r in rows])))
 
 
-def _line_doc(label, cite, stamp, rows, ln) -> str:
+def _line_doc(label, cite, stamp, rows, ln, vp="") -> str:
     out: list[str] = []
     prev = None
     minor = None
@@ -151,7 +153,7 @@ def _line_doc(label, cite, stamp, rows, ln) -> str:
     body = (f"{len(rows)} published versions of line {ln}, oldest first, with what changed "
             f"against the previous version of the line.\n" + "\n".join(out))
     return _markup.document(f"{label} on PyPI: versions {ln}.x", cite, stamp, body,
-                            ", ".join(reversed([r["v"] for r in rows])))
+                            ", ".join(reversed([vp + r["v"] for r in rows])))
 
 
 def _readme(text: str, kind: str) -> str:
@@ -203,14 +205,17 @@ def pypi_versions(source: dict, ctx) -> list[Item]:
     lines = sorted({r["v"].split(".")[0] for r in rows}, key=int)
     lead = (re.sub(r"[^\w.-]+", "-", source["name_prefix"]).strip("-") + "-"
             if source.get("name_prefix") else "")
-    docs = {"overview": _overview(label, cite, ctx.stamp, rows, lines)}
+    # `version_prefix` — рядок перед кожною версією («upstash-redis-1.8.0»): примірник із
+    # кількома пакетами, де кожен має власну нумерацію, інакше змішував би їх у фільтрі.
+    vp = str(source.get("version_prefix") or "")
+    docs = {"overview": _overview(label, cite, ctx.stamp, rows, lines, vp)}
     for ln in lines:
         docs[f"line-{ln}"] = _line_doc(label, f"{cite}#history", ctx.stamp,
-                                       [r for r in rows if r["v"].split(".")[0] == ln], ln)
+                                       [r for r in rows if r["v"].split(".")[0] == ln], ln, vp)
     for h, (text, kind, versions) in texts.items():
         body = _markup.markdown_body(_readme(text, kind))
         docs[f"readme-{h}"] = _markup.document(
             f"{label}: project description on PyPI", f"{cite}{versions[-1]}/", ctx.stamp, body,
-            ", ".join(reversed(versions)))
+            ", ".join(vp + v for v in reversed(versions)))
     return [Item(id=f"{source['id']}/{lead}{name}", file=f"{source['id']}--{lead}{name}.txt",
                  make=lambda text=text: text) for name, text in docs.items()]

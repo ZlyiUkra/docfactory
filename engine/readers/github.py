@@ -24,6 +24,8 @@
                `name_prefix` стає перед іменем документа: реліз «v2.0.0» двох
                репозиторіїв одного примірника інакше мав би один ключ розділу, і пошук
                згортав би один реліз як повтор іншого. Без поля ім'я те саме, що й було.
+               Поле `version_prefix` стає перед версією («redis-» → «redis-1.39.0»): для
+               примірника з кількома нумераціями. Без поля версія та сама.
 `ghcommit`   — один коміт через API (…/repos/ВЛАСНИК/РЕПО/commits/SHA): повідомлення,
                автор, дата, склад файлів; поле `files` — шляхи, текст яких на цьому
                коміті додається в документ (напр. тодішній README.md).
@@ -168,6 +170,9 @@ def ghreleases(source: dict, ctx) -> list[Item]:
     skip = re.compile(source["skip"]) if source.get("skip") else None
     lead = (re.sub(r"[^\w.-]+", "-", source["name_prefix"]).strip("-") + "-"
             if source.get("name_prefix") else "")
+    # `version_prefix` — рядок перед версією («redis-1.39.0»), коли в примірнику кілька
+    # нумерацій; без поля версія та сама, що й була.
+    vp = str(source.get("version_prefix") or "")
     items = []
     for rel in releases:
         if not isinstance(rel, dict) or rel.get("draft") or not rel.get("tag_name"):
@@ -178,7 +183,7 @@ def ghreleases(source: dict, ctx) -> list[Item]:
         m = _RELEASE_TAG.match(tag)
         name = lead + re.sub(r"[^\w.-]+", "-", tag).strip("-")
 
-        def make(rel=rel, tag=tag, version=m.group(1) if m else ""):
+        def make(rel=rel, tag=tag, version=(vp + m.group(1)) if m else ""):
             day = str(rel.get("published_at") or rel.get("created_at") or "")[:10]
             pre = ", pre-release" if rel.get("prerelease") else ""
             notes = _markup.markdown_body(str(rel.get("body") or "")) or "No release notes."

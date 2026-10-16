@@ -37,7 +37,7 @@ from engine.readers.sitemap import _LOC, _inside
 
 # Блок-цитата, якою Mintlify відкриває кожен двійник: «> ## Documentation Index» і
 # два-три рядки «> …» під ним.
-_INDEX = re.compile(r"\A\s*> ## Documentation Index\n(?:>[^\n]*\n)*")
+_INDEX = re.compile(r"\A\s*> ## Documentation [Ii]ndex\n(?:>[^\n]*\n)*")
 _OPENAPI = re.compile(r"^(?:## OpenAPI\n+)?(`{3,})yaml (\S+) (get|post|put|patch|delete) (\S+)\n"
                       r"(.*?)^\1[ \t]*$", re.M | re.S)
 # Найдовший приклад JSON, що лишається в тексті.

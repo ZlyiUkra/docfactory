@@ -6,6 +6,8 @@
                       (файл .d.ts, поділений на розділи за оголошеннями). Необов'язкові: `label` —
                       назва документа, `skip_versions` — вираз версій, що не беруться, `name_prefix` —
                       ім'я документа замість імені пакета (файли одного пакета не зливаються).
+                      `version_prefix` — рядок перед кожною версією документа («redis-»):
+                      коли пакетів у примірнику багато й кожен має свою нумерацію.
 `npm-githead-files` — файли дерева репозиторію на коміті `gitHead` кожної версії. `url` — опис
                       пакета, `repo` — «власник/репозиторій», `include` — вираз шляхів, що беруться
                       (напр. `^examples/.*\\.js$`), `label`, `skip_versions` — як вище.
@@ -102,6 +104,9 @@ def npm_tarball_files(source: dict, ctx) -> list[Item]:
     # (README, SECURITY, типи різних модулів) інакше мали б однакову назву, а з нею й ключ розділу.
     package = re.sub(r"[^\w.-]+", "-", source["name_prefix"]).strip("-") \
         if source.get("name_prefix") else _package_name(source)
+    # `version_prefix` — рядок перед кожною версією («redis-1.39.0»): примірник із десятками
+    # пакетів, де кожен має власну нумерацію, інакше змішував би їх у фільтрі версії.
+    vp = str(source.get("version_prefix") or "")
     items = []
     for key, (url, found) in seen.items():
         name = f"{package}-{kind}-{key[:8]}"
@@ -120,7 +125,7 @@ def npm_tarball_files(source: dict, ctx) -> list[Item]:
                         f"{_sections(text)}")
                 full = f"{label} {span}"
             _markup.require(full, body, url, min_chars=1)
-            return _markup.document(full, url, ctx.stamp, body, ", ".join(found))
+            return _markup.document(full, url, ctx.stamp, body, ", ".join(vp + v for v in found))
 
         items.append(Item(id=f"{source['id']}/{name}",
                           file=f"{source['id']}--{name}.txt", make=make))
