@@ -1,0 +1,53 @@
+# strapi-plugin-upstash-search: server/src/services/store/listened-content-types.ts
+# джерело: https://github.com/upstash/strapi-plugin-upstash-search/blob/d991af3d346f0d070e9d18891423032c6f47876d/server/src/services/store/listened-content-types.ts
+# отримано: 2026-10-16
+
+```ts
+import type { Store } from './store';
+```
+
+## const createListenedContentTypesStore
+
+```ts
+const createListenedContentTypesStore = ({ store }: { store: Store }) => ({
+  getListenedContentTypes: async function () {
+    const contentTypes = (await store.getStoreKey({
+      key: 'upstash_search_listened_content_types',
+    })) as string[];
+    return contentTypes || [];
+  },
+
+  setListenedContentTypes: async function ({ contentTypes = [] }: { contentTypes: string[] }) {
+    return store.setStoreKey({
+      key: 'upstash_search_listened_content_types',
+      value: contentTypes,
+    });
+  },
+
+  addListenedContentType: async function ({ contentType }: { contentType: string }) {
+    const listenedContentTypes = await this.getListenedContentTypes();
+    const newSet = new Set(listenedContentTypes);
+    newSet.add(contentType);
+
+    return this.setListenedContentTypes({
+      contentTypes: [...newSet],
+    });
+  },
+
+  addListenedContentTypes: async function ({ contentTypes }: { contentTypes: string[] }) {
+    for (const contentType of contentTypes) {
+      await this.addListenedContentType({ contentType });
+    }
+    return this.getListenedContentTypes();
+  },
+
+  emptyListenedContentTypes: async function () {
+    await this.setListenedContentTypes({ contentTypes: [] });
+    return this.getListenedContentTypes();
+  },
+});
+
+export type ListenedContentTypesService = ReturnType<typeof createListenedContentTypesStore>;
+
+export default createListenedContentTypesStore;
+```
