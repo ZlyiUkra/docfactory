@@ -1,0 +1,48 @@
+# workflow-js: src/context/provider.ts
+# джерело: https://github.com/upstash/workflow-js/blob/v1.4.0/src/context/provider.ts
+# отримано: 2026-10-16
+# версія: workflow-1.4.0, workflow-1.3.3, workflow-1.3.2, workflow-1.3.1, workflow-1.3.0, workflow-1.2.1, workflow-1.2.0, workflow-1.1.1, workflow-1.1.0, workflow-1.0.0
+
+```ts
+import { PublishRequest } from "@upstash/qstash";
+import { WorkflowError } from "../error";
+```
+
+## const getProviderInfo
+
+```ts
+/**
+ * copies and updates the request by removing the api field and adding url & headers.
+ *
+ * @param api api field of PublishRequest
+ * @returns updated request with provider info
+ */
+export const getProviderInfo = (api: Required<PublishRequest>["api"]) => {
+  if (!api.provider) {
+    throw new WorkflowError("A Provider must be provided.");
+  }
+  if (api.provider.owner === "upstash") {
+    throw new WorkflowError("Upstash provider isn't supported.");
+  }
+
+  const { name, provider, ...parameters } = api;
+
+  // validate provider
+  if (!provider.baseUrl) throw new TypeError("baseUrl cannot be empty or undefined!");
+  if (!provider.token) throw new TypeError("token cannot be empty or undefined!");
+  if (provider.apiKind !== name) {
+    throw new TypeError(`Unexpected api name. Expected '${provider.apiKind}', received ${name}`);
+  }
+
+  const providerInfo = {
+    url: provider.getUrl(),
+    baseUrl: provider.baseUrl,
+    route: provider.getRoute(),
+    appendHeaders: provider.getHeaders(parameters),
+    owner: provider.owner,
+    method: provider.method,
+  };
+
+  return provider.onFinish(providerInfo, parameters);
+};
+```

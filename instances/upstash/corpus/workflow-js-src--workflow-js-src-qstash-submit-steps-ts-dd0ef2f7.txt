@@ -1,0 +1,169 @@
+# workflow-js: src/qstash/submit-steps.ts
+# джерело: https://github.com/upstash/workflow-js/blob/v1.4.0/src/qstash/submit-steps.ts
+# отримано: 2026-10-16
+# версія: workflow-1.4.0
+
+```ts
+import { NO_CONCURRENCY } from "../constants";
+import { attachStepNameToError, WorkflowAbort } from "../error";
+import { Telemetry } from "../types";
+import { WorkflowContext } from "../context";
+import { BaseLazyStep } from "../context/steps";
+import { getHeaders } from "./headers";
+import { DispatchDebug, DispatchLifecycle } from "../middleware/types";
+```
+
+## const submitParallelSteps
+
+```ts
+/**
+ * Submits parallel steps to QStash.
+ *
+ * @param context workflow context
+ * @param steps list of lazy steps to submit
+ * @param initialStepCount initial step count
+ * @param invokeCount current invoke count
+ * @param telemetry optional telemetry information
+ * @param dispatchDebug debug event dispatcher
+ */
+export const submitParallelSteps = async ({
+  context,
+  steps,
+  initialStepCount,
+  invokeCount,
+  telemetry,
+  dispatchDebug,
+}: {
+  context: WorkflowContext;
+  steps: BaseLazyStep[];
+  initialStepCount: number;
+  invokeCount: number;
+  telemetry?: Telemetry;
+  dispatchDebug: DispatchDebug;
+}) => {
+  const planSteps = steps.map((step, index) =>
+    step.getPlanStep(steps.length, initialStepCount + index)
+  );
+
+  await dispatchDebug("onInfo", {
+    info: `Submitting ${planSteps.length} parallel steps.`,
+  });
+
+  const result = (await context.qstashClient.batch(
+    planSteps.map((planStep) => {
+      const { headers } = getHeaders({
+        initHeaderValue: "false",
+        workflowConfig: {
+          workflowRunId: context.workflowRunId,
+          workflowUrl: context.url,
+          workflowRunCreatedAt: context.workflowRunCreatedAt,
+          telemetry,
+        },
+        invokeCount,
+      });
+
+      return {
+        headers,
+        method: "POST",
+        url: context.url,
+        body: JSON.stringify(planStep),
+        notBefore: planStep.sleepUntil,
+        delay: planStep.sleepFor,
+      };
+    })
+  )) as { messageId: string }[];
+
+  if (result && result.length > 0) {
+    await dispatchDebug("onInfo", {
+      info: `Submitted ${planSteps.length} parallel steps. messageIds: ${result
+        .filter((r) => r)
+        .map((r) => r.messageId)
+        .join(", ")}.`,
+    });
+  }
+
+  throw new WorkflowAbort(planSteps[0].stepName, planSteps[0]);
+};
+```
+
+## const submitSingleStep
+
+```ts
+/**
+ * Submits a single step to QStash.
+ *
+ * @param context workflow context
+ * @param lazyStep lazy step to submit
+ * @param stepId step ID
+ * @param invokeCount current invoke count
+ * @param concurrency concurrency level
+ * @param telemetry optional telemetry information
+ * @param dispatchDebug debug event dispatcher
+ * @param dispatchLifecycle lifecycle event dispatcher
+ */
+export const submitSingleStep = async ({
+  context,
+  lazyStep,
+  stepId,
+  invokeCount,
+  concurrency,
+  telemetry,
+  dispatchDebug,
+  dispatchLifecycle,
+}: {
+  context: WorkflowContext;
+  lazyStep: BaseLazyStep;
+  stepId: number;
+  invokeCount: number;
+  concurrency: number;
+  telemetry?: Telemetry;
+  dispatchDebug: DispatchDebug;
+  dispatchLifecycle: DispatchLifecycle;
+}) => {
+  await dispatchLifecycle("beforeExecution", {
+    stepName: lazyStep.stepName,
+  });
+
+  let resultStep;
+  try {
+    resultStep = await lazyStep.getResultStep(concurrency, stepId);
+  } catch (error) {
+    // The step function threw. Remember which step failed so the serve handler
+    // can report it to QStash via the `Upstash-Error-Step-Name` header.
+    attachStepNameToError(error, lazyStep.stepName);
+    throw error;
+  }
+
+  const { headers } = lazyStep.getHeaders({
+    context,
+    step: resultStep,
+    invokeCount,
+    telemetry,
+  });
+  const body = lazyStep.getBody({
+    context,
+    step: resultStep,
+    headers,
+    invokeCount,
+    telemetry,
+  });
+
+  const submitResult = await lazyStep.submitStep({
+    context,
+    body,
+    headers,
+    isParallel: concurrency !== NO_CONCURRENCY,
+    invokeCount,
+    step: resultStep,
+    telemetry,
+  });
+
+  if (submitResult && submitResult[0]) {
+    await dispatchDebug("onInfo", {
+      info: `Submitted step "${resultStep.stepName}" with messageId: ${submitResult[0].messageId}.`,
+    });
+  }
+
+  return resultStep;
+};
+```

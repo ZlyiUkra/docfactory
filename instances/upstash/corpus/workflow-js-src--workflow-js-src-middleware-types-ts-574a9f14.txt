@@ -1,0 +1,111 @@
+# workflow-js: src/middleware/types.ts
+# джерело: https://github.com/upstash/workflow-js/blob/v1.4.0/src/middleware/types.ts
+# отримано: 2026-10-16
+# версія: workflow-1.4.0, workflow-1.3.3, workflow-1.3.2, workflow-1.3.1, workflow-1.3.0, workflow-1.2.1, workflow-1.2.0, workflow-1.1.1, workflow-1.1.0, workflow-1.0.0
+
+```ts
+import { WorkflowContext } from "../context";
+
+export type LifeCycleEvent = "beforeExecution" | "afterExecution" | "runStarted" | "runCompleted";
+export type DebugEvent = "onError" | "onWarning" | "onInfo";
+```
+
+## type LifeCycleEventParameters
+
+```ts
+export type LifeCycleEventParameters<TResult> = {
+  beforeExecution: {
+    stepName: string;
+  };
+  afterExecution: {
+    stepName: string;
+    result: unknown;
+  };
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+  runStarted: {};
+  runCompleted: {
+    result: TResult;
+  };
+};
+```
+
+## type DebugEventParameters
+
+```ts
+export type DebugEventParameters = {
+  onError: { error: Error };
+  onWarning: { warning: string };
+  onInfo: { info: string };
+};
+```
+
+## type MiddlewareCallbacks
+
+```ts
+export type MiddlewareCallbacks<TInitialPayload, TResult> = Partial<
+  {
+    [K in LifeCycleEvent]: (
+      params: LifeCycleEventParameters<TResult>[K] & {
+        context: WorkflowContext<TInitialPayload>;
+      }
+    ) => Promise<void> | void;
+  } & {
+    [K in DebugEvent]: (
+      params: DebugEventParameters[K] & { workflowRunId?: string }
+    ) => Promise<void> | void;
+  }
+>;
+```
+
+## type MiddlewareInitCallbacks
+
+```ts
+export type MiddlewareInitCallbacks<TInitialPayload, TResult> = () =>
+  | Promise<MiddlewareCallbacks<TInitialPayload, TResult>>
+  | MiddlewareCallbacks<TInitialPayload, TResult>;
+```
+
+## type MiddlewareCallbackConfig
+
+```ts
+export type MiddlewareCallbackConfig<TInitialPayload, TResult> =
+  | {
+      init: MiddlewareInitCallbacks<TInitialPayload, TResult>;
+    }
+  | {
+      callbacks: MiddlewareCallbacks<TInitialPayload, TResult>;
+    };
+```
+
+## type MiddlewareParameters
+
+```ts
+export type MiddlewareParameters<TInitialPayload, TResult> = {
+  name: string;
+} & MiddlewareCallbackConfig<TInitialPayload, TResult>;
+```
+
+## type DispatchDebug
+
+```ts
+/**
+ * Type for the dispatch debug method that can be passed to helper functions
+ * without needing to pass generics everywhere
+ */
+export type DispatchDebug = <K extends DebugEvent>(
+  event: K,
+  params: DebugEventParameters[K]
+) => Promise<void>;
+```
+
+## type DispatchLifecycle
+
+```ts
+/**
+ * Type for the dispatch lifecycle method
+ */
+export type DispatchLifecycle<TResult = unknown> = <K extends LifeCycleEvent>(
+  event: K,
+  params: LifeCycleEventParameters<TResult>[K]
+) => Promise<void>;
+```

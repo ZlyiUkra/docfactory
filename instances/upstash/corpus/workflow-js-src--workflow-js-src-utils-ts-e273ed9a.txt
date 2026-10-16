@@ -1,0 +1,143 @@
+# workflow-js: src/utils.ts
+# джерело: https://github.com/upstash/workflow-js/blob/v1.3.0/src/utils.ts
+# отримано: 2026-10-16
+# версія: workflow-1.3.0, workflow-1.2.1, workflow-1.2.0, workflow-1.1.1, workflow-1.1.0, workflow-1.0.0
+
+```ts
+import { WorkflowError } from "./error";
+import { WorkflowClient } from "./types";
+
+const NANOID_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_";
+const NANOID_LENGTH = 21;
+```
+
+## function getRandomInt
+
+```ts
+function getRandomInt() {
+  return Math.floor(Math.random() * NANOID_CHARS.length);
+}
+```
+
+## function nanoid
+
+```ts
+/**
+ * @param length length of the generated id
+ */
+export function nanoid(length: number = NANOID_LENGTH): string {
+  return Array.from({ length })
+    .map(() => NANOID_CHARS[getRandomInt()])
+    .join("");
+}
+```
+
+## function getWorkflowRunId
+
+```ts
+/**
+ * @param id optional id to use as suffix
+ */
+export function getWorkflowRunId(id?: string): string {
+  return `wfr_${id ?? nanoid()}`;
+}
+```
+
+## function decodeBase64
+
+```ts
+/**
+ * When the base64 string has unicode characters, atob doesn't decode
+ * them correctly since it only outputs ASCII characters. Therefore,
+ * instead of using atob, we properly decode them.
+ *
+ * If the decoding into unicode somehow fails, returns the result of atob
+ *
+ * https://developer.mozilla.org/en-US/docs/Glossary/Base64#the_unicode_problem
+ *
+ * @param base64 encoded string
+ */
+export function decodeBase64(base64: string) {
+  const binString = atob(base64);
+  try {
+    // @ts-expect-error m will always be defined
+    const intArray = Uint8Array.from(binString, (m) => m.codePointAt(0));
+    return new TextDecoder().decode(intArray);
+  } catch (error) {
+    // this error should never happen essentially. It's only a failsafe
+    console.warn(
+      `Upstash Qstash: Failed while decoding base64 "${base64}".` +
+        ` Decoding with atob and returning it instead. ${error}`
+    );
+    return binString;
+  }
+}
+```
+
+## function getUserIdFromToken
+
+```ts
+/**
+ * @param qstashClient QStash client to extract user ID from
+ */
+export function getUserIdFromToken(qstashClient: WorkflowClient): string {
+  try {
+    const token = (qstashClient as WorkflowClient & { token: string }).token;
+    const decodedToken = decodeBase64(token);
+    const tokenPayload = JSON.parse(decodedToken) as { UserID: string };
+    const userId = tokenPayload.UserID;
+
+    if (!userId) {
+      throw new WorkflowError("QStash token payload does not contain userId");
+    }
+    return userId;
+  } catch (error) {
+    throw new WorkflowError(
+      `Failed to decode QStash token while running create webhook step: ${(error as Error).message}`
+    );
+  }
+}
+```
+
+## function getQStashUrl
+
+```ts
+/**
+ * @param qstashClient QStash client to extract URL from
+ */
+export function getQStashUrl(qstashClient: WorkflowClient): string {
+  try {
+    const requester = qstashClient.http;
+    const baseUrl = (requester as typeof requester & { baseUrl: string }).baseUrl;
+
+    if (!baseUrl) {
+      throw new WorkflowError("QStash client does not have a baseUrl");
+    }
+    return baseUrl;
+  } catch (error) {
+    throw new WorkflowError(`Failed to get QStash URL from client: ${(error as Error).message}`);
+  }
+}
+```
+
+## function getEventId
+
+```ts
+export function getEventId(): string {
+  return `evt_${nanoid(15)}`;
+}
+```
+
+## function stringifyBody
+
+```ts
+export function stringifyBody(body: unknown): string | undefined {
+  if (body === undefined) {
+    return undefined;
+  }
+  if (typeof body === "string") {
+    return body;
+  }
+  return JSON.stringify(body);
+}
+```

@@ -1,0 +1,59 @@
+# workflow-js: platforms/solidjs.ts
+# джерело: https://github.com/upstash/workflow-js/blob/v1.3.3/platforms/solidjs.ts
+# отримано: 2026-10-16
+# версія: workflow-1.3.3, workflow-1.3.2, workflow-1.3.1, workflow-1.3.0, workflow-1.2.1, workflow-1.2.0, workflow-1.1.1, workflow-1.1.0, workflow-1.0.0
+
+```ts
+import type { APIEvent } from "@solidjs/start/server";
+
+import type { WorkflowServeOptions, RouteFunction, Telemetry } from "../src";
+import { serveBase } from "../src/serve";
+import { SDK_TELEMETRY } from "../src/constants";
+```
+
+## const serve
+
+```ts
+/**
+ * Serve method to serve a Upstash Workflow in a SolidJS project
+ *
+ * See for options https://upstash.com/docs/qstash/workflows/basics/serve
+ *
+ * @param routeFunction workflow function
+ * @param options workflow options
+ * @returns
+ */
+export const serve = <TInitialPayload = unknown, TResult = unknown>(
+  routeFunction: RouteFunction<TInitialPayload, TResult>,
+  options?: WorkflowServeOptions<TInitialPayload, TResult>
+) => {
+  const telemetry: Telemetry = {
+    sdk: SDK_TELEMETRY,
+    framework: "solidjs",
+    runtime: process.versions.bun
+      ? `bun@${process.versions.bun}/node@${process.version}`
+      : `node@${process.version}`,
+  };
+  // Create a handler which receives an event and calls the
+  // serveBase method
+  const handler = async (event: APIEvent) => {
+    // verify that the request is POST
+    const method = event.request.method;
+    if (method.toUpperCase() !== "POST") {
+      return new Response("Only POST requests are allowed in worklfows", {
+        status: 405,
+      });
+    }
+
+    // create serve handler
+    const { handler: serveHandler } = serveBase<TInitialPayload, Request, Response, TResult>(
+      routeFunction,
+      telemetry,
+      options
+    );
+
+    return await serveHandler(event.request);
+  };
+  return { POST: handler };
+};
+```

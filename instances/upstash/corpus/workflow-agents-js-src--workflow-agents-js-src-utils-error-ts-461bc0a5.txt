@@ -1,0 +1,91 @@
+# workflow-agents-js: src/utils/error.ts
+# джерело: https://github.com/upstash/workflow-agents-js/blob/v0.3.2/src/utils/error.ts
+# отримано: 2026-10-16
+# версія: workflow-agents-0.3.2, workflow-agents-0.3.1, workflow-agents-0.3.0, workflow-agents-0.2.2, workflow-agents-0.2.1
+
+```ts
+import { WorkflowAbort, type WorkflowContext } from "@upstash/workflow";
+```
+
+## function getConstructorName
+
+```ts
+function getConstructorName(obj: unknown): string | null {
+  if (obj === null || obj === undefined) {
+    return null;
+  }
+  const ctor = obj.constructor;
+  if (!ctor || ctor.name === "Object") {
+    return null;
+  }
+  return ctor.name;
+}
+```
+
+## function getConstructorNames
+
+```ts
+function getConstructorNames(obj: unknown): string[] {
+  const proto = Object.getPrototypeOf(obj);
+  const name = getConstructorName(proto);
+  if (name === null) {
+    return [];
+  }
+  return [name, ...getConstructorNames(proto)];
+}
+```
+
+## function isInstanceOf
+
+```ts
+export function isInstanceOf<T>(
+  v: unknown,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ctor: new (...args: any[]) => T
+): v is T {
+  return getConstructorNames(v).includes(ctor.name);
+}
+```
+
+## const WORKFLOW_ABORT_NAMES
+
+```ts
+/**
+ * `name` of every WorkflowAbort in @upstash/workflow. Each subclass reassigns
+ * `this.name`, so checking for "WorkflowAbort" alone misses all four of them.
+ *
+ * Keep in sync with the error classes in @upstash/workflow when it adds a new
+ * WorkflowAbort subclass.
+ */
+const WORKFLOW_ABORT_NAMES = new Set([
+  "WorkflowAbort",
+  "WorkflowAuthError",
+  "WorkflowCancelAbort",
+  "WorkflowNonRetryableError",
+  "WorkflowRetryAfterError",
+]);
+```
+
+## const isWorkflowAbort
+
+```ts
+/**
+ * Whether an error is an expected workflow suspend rather than a real failure.
+ *
+ * `isInstanceOf` compares constructor names, which a bundler rewrites — so a
+ * suspend from a minified build falls through it. `name` is assigned a string
+ * literal in each constructor, so it survives minification; we check it first
+ * and keep `isInstanceOf` as the fallback for any subclass not listed above.
+ */
+export const isWorkflowAbort = (error: unknown): error is WorkflowAbort =>
+  error instanceof Error &&
+  (WORKFLOW_ABORT_NAMES.has(error.name) || isInstanceOf(error, WorkflowAbort));
+```
+
+## const isDisabledWorkflowContext
+
+```ts
+export const isDisabledWorkflowContext = (context: WorkflowContext & ({ disabled: true } | {disabled?: never})) => {
+  return "disabled" in context && context.disabled;
+};
+```

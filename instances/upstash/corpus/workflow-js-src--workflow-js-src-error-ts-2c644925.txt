@@ -1,0 +1,174 @@
+# workflow-js: src/error.ts
+# джерело: https://github.com/upstash/workflow-js/blob/v0.2.23/src/error.ts
+# отримано: 2026-10-16
+# версія: workflow-0.2.23, workflow-0.2.22
+
+```ts
+import { QstashError } from "@upstash/qstash";
+import type { Duration, FailureFunctionPayload, Step } from "./types";
+```
+
+## class WorkflowError
+
+```ts
+/**
+ * Error raised during Workflow execution
+ */
+export class WorkflowError extends QstashError {
+
+  constructor(message: string) {
+    super(message);
+    this.name = "WorkflowError";
+  }
+}
+```
+
+## class WorkflowAbort
+
+```ts
+/**
+ * Raised when the workflow executes a function successfully
+ * and aborts to end the execution
+ */
+export class WorkflowAbort extends Error {
+  public stepInfo?: Step;
+  public stepName: string;
+  /**
+   * whether workflow is to be canceled on abort
+   */
+  public cancelWorkflow: boolean;
+```
+
+### WorkflowAbort.constructor()
+
+```ts
+  /**
+   *
+   * @param stepName name of the aborting step
+   * @param stepInfo step information
+   * @param cancelWorkflow
+   */
+  constructor(stepName: string, stepInfo?: Step, cancelWorkflow = false) {
+    super(
+      "This is an Upstash Workflow error thrown after a step executes. It is expected to be raised." +
+        " Make sure that you await for each step. Also, if you are using try/catch blocks, you should not wrap context.run/sleep/sleepUntil/call methods with try/catch." +
+        ` Aborting workflow after executing step '${stepName}'.`
+    );
+    this.name = "WorkflowAbort";
+    this.stepName = stepName;
+    this.stepInfo = stepInfo;
+    this.cancelWorkflow = cancelWorkflow;
+  }
+}
+```
+
+## class WorkflowNonRetryableError
+
+```ts
+/**
+ * Raised when the workflow is failed due to a non-retryable error
+ */
+export class WorkflowNonRetryableError extends WorkflowAbort {
+```
+
+### WorkflowNonRetryableError.constructor()
+
+```ts
+  /**
+   * @param message error message to be displayed
+   */
+  constructor(message?: string) {
+    super("fail", undefined, false);
+    this.name = "WorkflowNonRetryableError";
+    if (message) this.message = message;
+  }
+}
+```
+
+## class WorkflowRetryAfterError
+
+```ts
+export class WorkflowRetryAfterError extends WorkflowAbort {
+  public retryAfter: number | Duration;
+```
+
+### WorkflowRetryAfterError.constructor()
+
+```ts
+  /**
+   * @param retryAfter time in seconds after which the workflow should be retried
+   * @param message error message to be displayed
+   */
+  constructor(message: string, retryAfter: number | Duration) {
+    super("retry", undefined, false);
+    this.name = "WorkflowRetryAfterError";
+    this.retryAfter = retryAfter;
+    if (message) this.message = message;
+  }
+}
+```
+
+## const formatWorkflowError
+
+```ts
+/**
+ * Formats an unknown error to match the FailureFunctionPayload format
+ *
+ * @param error
+ * @returns
+ */
+export const formatWorkflowError = (error: unknown): FailureFunctionPayload => {
+  return error instanceof Error
+    ? {
+        error: error.name,
+        message: error.message,
+        stack: error.stack,
+      }
+    : {
+        error: "Error",
+        message:
+          "An error occured while executing workflow: " +
+          `'${typeof error === "string" ? error : JSON.stringify(error)}'`,
+      };
+};
+```
+
+## function getConstructorName
+
+```ts
+function getConstructorName(obj: unknown): string | null {
+  if (obj === null || obj === undefined) {
+    return null;
+  }
+  const ctor = obj.constructor;
+  if (!ctor || ctor.name === "Object") {
+    return null;
+  }
+  return ctor.name;
+}
+```
+
+## function getConstructorNames
+
+```ts
+function getConstructorNames(obj: unknown): string[] {
+  const proto = Object.getPrototypeOf(obj);
+  const name = getConstructorName(proto);
+  if (name === null) {
+    return [];
+  }
+  return [name, ...getConstructorNames(proto)];
+}
+```
+
+## function isInstanceOf
+
+```ts
+export function isInstanceOf<T>(
+  v: unknown,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ctor: new (...args: any[]) => T
+): v is T {
+  return getConstructorNames(v).includes(ctor.name);
+}
+```

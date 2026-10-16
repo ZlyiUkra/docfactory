@@ -1,0 +1,1129 @@
+# workflow-js: src/context/steps.ts
+# джерело: https://github.com/upstash/workflow-js/blob/v1.3.0/src/context/steps.ts
+# отримано: 2026-10-16
+# версія: workflow-1.3.0, workflow-1.2.1, workflow-1.2.0
+
+```ts
+import type { Client, FlowControl, HTTPMethods } from "@upstash/qstash";
+import type {
+  CallResponse,
+  CallSettings,
+  HeaderParams,
+  InvokeStepResponse,
+  InvokeWorkflowRequest,
+  LazyInvokeStepParams,
+  NotifyStepResponse,
+  Step,
+  StepFunction,
+  StepType,
+  WaitRequest,
+  WaitStepResponse,
+} from "../types";
+import { makeNotifyRequest } from "../client/utils";
+import type { Duration } from "../types";
+import { WorkflowError } from "../error";
+import {
+  decodeBase64,
+  getEventId,
+  getQStashUrl,
+  getUserIdFromToken,
+  getWorkflowRunId,
+  stringifyBody,
+} from "../utils";
+import { WorkflowContext } from "./context";
+import { getHeaders, prepareFlowControl } from "../qstash/headers";
+import {
+  DEFAULT_RETRIES,
+  WORKFLOW_FEATURE_HEADER,
+  WORKFLOW_INIT_HEADER,
+  WORKFLOW_LABEL_HEADER,
+  WORKFLOW_URL_HEADER,
+} from "../constants";
+import { getTelemetryHeaders, HeadersResponse } from "../workflow-requests";
+```
+
+## type StepParams
+
+```ts
+type StepParams = { context: WorkflowContext } & Pick<HeaderParams, "telemetry"> &
+  Required<Pick<HeaderParams, "step" | "invokeCount">>;
+type GetHeaderParams = StepParams;
+type GetBodyParams = StepParams & Omit<HeadersResponse, "contentType">;
+```
+
+## type SubmitStepParams
+
+```ts
+type SubmitStepParams = StepParams &
+  Pick<HeadersResponse, "headers"> & { body: string; isParallel: boolean };
+```
+
+## class BaseLazyStep
+
+```ts
+/**
+ * Base class outlining steps. Basically, each step kind (run/sleep/sleepUntil)
+ * should have two methods: getPlanStep & getResultStep.
+ *
+ * getPlanStep works the same way for all so it's implemented here.
+ * The different step types will implement their own getResultStep method.
+ */
+export abstract class BaseLazyStep<TResult = unknown> {
+  public readonly stepName;
+  public abstract readonly stepType: StepType; // will be set in the subclasses
+  protected abstract readonly allowUndefinedOut: boolean;
+  protected readonly context: WorkflowContext;
+```
+
+### BaseLazyStep.constructor()
+
+```ts
+  constructor(context: WorkflowContext, stepName: string) {
+    this.context = context;
+    if (!stepName) {
+      throw new WorkflowError(
+        "A workflow step name cannot be undefined or an empty string. Please provide a name for your workflow step."
+      );
+    }
+    if (typeof stepName !== "string") {
+      throw new WorkflowError(
+        `A workflow step name must be a string. Received "${stepName}" (${typeof stepName}).`
+      );
+    }
+    this.stepName = stepName;
+  }
+
+  /**
+   * plan step to submit when step will run parallel with other
+   * steps (parallel call state `first`)
+   *
+   * @param concurrent number of steps running parallel
+   * @param targetStep target step id corresponding to this step
+   * @returns
+   */
+  public abstract getPlanStep(concurrent: number, targetStep: number): Step<undefined>;
+
+  /**
+   * result step to submit after the step executes. Used in single step executions
+   * and when a plan step executes in parallel executions (parallel call state `partial`).
+   *
+   * @param concurrent
+   * @param stepId
+   */
+  public abstract getResultStep(concurrent: number, stepId: number): Promise<Step<TResult>>;
+```
+
+### BaseLazyStep.parseOut()
+
+```ts
+  /**
+   * parse the out field of a step result.
+   *
+   * will be called when returning the steps to the context from auto executor
+   *
+   * @param step step
+   * @returns parsed out field
+   */
+  public parseOut(step: Step): TResult {
+    const out = step.out;
+    if (out === undefined) {
+      if (this.allowUndefinedOut) {
+        return this.handleUndefinedOut(step) as TResult;
+      } else {
+        throw new WorkflowError(
+          `Error while parsing output of ${this.stepType} step. Expected a string, but got: undefined`
+        );
+      }
+    }
+
+    if (typeof out === "object") {
+      // this is an error which should never happen.
+      console.warn(
+        `Error while parsing ${this.stepType} step output. Expected a string, but got object. Please reach out to Upstash Support.`
+      );
+      return out as TResult;
+    }
+
+    if (typeof out !== "string") {
+      throw new WorkflowError(
+        `Error while parsing output of ${this.stepType} step. Expected a string or undefined, but got: ${typeof out}`
+      );
+    }
+
+    return this.safeParseOut(out, step);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protected safeParseOut(out: string, step: Step): TResult {
+    return BaseLazyStep.tryParsing(out);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protected handleUndefinedOut(step: Step): TResult {
+    return undefined as TResult;
+  }
+
+  protected static tryParsing(stepOut: unknown) {
+    try {
+      return JSON.parse(stepOut as string);
+    } catch {
+      return stepOut;
+    }
+  }
+
+  getBody({ step }: GetBodyParams): string {
+    step.out = JSON.stringify(step.out);
+    return JSON.stringify(step);
+  }
+```
+
+### BaseLazyStep.getHeaders()
+
+```ts
+  getHeaders({ context, telemetry, invokeCount, step }: GetHeaderParams): HeadersResponse {
+    return getHeaders({
+      initHeaderValue: "false",
+      workflowConfig: {
+        workflowRunId: context.workflowRunId,
+        workflowUrl: context.url,
+        useJSONContent: false,
+        telemetry,
+      },
+      invokeCount,
+      stepInfo: {
+        step,
+        lazyStep: this,
+      },
+    });
+  }
+```
+
+### BaseLazyStep.submitStep()
+
+```ts
+  async submitStep({ context, body, headers }: SubmitStepParams) {
+    return (await context.qstashClient.batch([
+      {
+        body,
+        headers,
+        method: "POST",
+        url: context.url,
+      },
+    ])) as { messageId: string }[];
+  }
+}
+```
+
+## class LazyFunctionStep
+
+```ts
+/**
+ * Lazy step definition for `context.run` case
+ */
+export class LazyFunctionStep<TResult = unknown> extends BaseLazyStep<TResult> {
+  private readonly stepFunction: StepFunction<TResult>;
+  stepType: StepType = "Run";
+  allowUndefinedOut = true;
+
+  constructor(context: WorkflowContext, stepName: string, stepFunction: StepFunction<TResult>) {
+    super(context, stepName);
+    this.stepFunction = stepFunction;
+  }
+```
+
+### LazyFunctionStep.getPlanStep()
+
+```ts
+  public getPlanStep(concurrent: number, targetStep: number): Step<undefined> {
+    return {
+      stepId: 0,
+      stepName: this.stepName,
+      stepType: this.stepType,
+      concurrent,
+      targetStep,
+    };
+  }
+```
+
+### LazyFunctionStep.getResultStep()
+
+```ts
+  public async getResultStep(concurrent: number, stepId: number): Promise<Step<TResult>> {
+    let result = this.stepFunction();
+    if (result instanceof Promise) {
+      result = await result;
+    }
+
+    return {
+      stepId,
+      stepName: this.stepName,
+      stepType: this.stepType,
+      out: result,
+      concurrent,
+    };
+  }
+}
+```
+
+## class LazySleepStep
+
+```ts
+/**
+ * Lazy step definition for `context.sleep` case
+ */
+export class LazySleepStep extends BaseLazyStep {
+  private readonly sleep: number | Duration;
+  stepType: StepType = "SleepFor";
+  allowUndefinedOut = true;
+
+  constructor(context: WorkflowContext, stepName: string, sleep: number | Duration) {
+    super(context, stepName);
+    this.sleep = sleep;
+  }
+```
+
+### LazySleepStep.getPlanStep()
+
+```ts
+  public getPlanStep(concurrent: number, targetStep: number): Step<undefined> {
+    return {
+      stepId: 0,
+      stepName: this.stepName,
+      stepType: this.stepType,
+      sleepFor: this.sleep,
+      concurrent,
+      targetStep,
+    };
+  }
+```
+
+### LazySleepStep.getResultStep()
+
+```ts
+  public async getResultStep(concurrent: number, stepId: number): Promise<Step> {
+    return await Promise.resolve({
+      stepId,
+      stepName: this.stepName,
+      stepType: this.stepType,
+      sleepFor: this.sleep,
+      concurrent,
+    });
+  }
+```
+
+### LazySleepStep.submitStep()
+
+```ts
+  async submitStep({ context, body, headers, isParallel }: SubmitStepParams) {
+    return (await context.qstashClient.batch([
+      {
+        body,
+        headers,
+        method: "POST",
+        url: context.url,
+        delay: isParallel ? undefined : this.sleep,
+      },
+    ])) as { messageId: string }[];
+  }
+}
+```
+
+## class LazySleepUntilStep
+
+```ts
+/**
+ * Lazy step definition for `context.sleepUntil` case
+ */
+export class LazySleepUntilStep extends BaseLazyStep {
+  private readonly sleepUntil: number;
+  stepType: StepType = "SleepUntil";
+  allowUndefinedOut = true;
+
+  constructor(context: WorkflowContext, stepName: string, sleepUntil: number) {
+    super(context, stepName);
+    this.sleepUntil = sleepUntil;
+  }
+```
+
+### LazySleepUntilStep.getPlanStep()
+
+```ts
+  public getPlanStep(concurrent: number, targetStep: number): Step<undefined> {
+    return {
+      stepId: 0,
+      stepName: this.stepName,
+      stepType: this.stepType,
+      sleepUntil: this.sleepUntil,
+      concurrent,
+      targetStep,
+    };
+  }
+```
+
+### LazySleepUntilStep.getResultStep()
+
+```ts
+  public async getResultStep(concurrent: number, stepId: number): Promise<Step> {
+    return await Promise.resolve({
+      stepId,
+      stepName: this.stepName,
+      stepType: this.stepType,
+      sleepUntil: this.sleepUntil,
+      concurrent,
+    });
+  }
+
+  protected safeParseOut() {
+    return undefined;
+  }
+```
+
+### LazySleepUntilStep.submitStep()
+
+```ts
+  async submitStep({ context, body, headers, isParallel }: SubmitStepParams) {
+    return (await context.qstashClient.batch([
+      {
+        body,
+        headers,
+        method: "POST",
+        url: context.url,
+        notBefore: isParallel ? undefined : this.sleepUntil,
+      },
+    ])) as { messageId: string }[];
+  }
+}
+```
+
+## class LazyCallStep
+
+```ts
+export class LazyCallStep<TResult = unknown> extends BaseLazyStep<CallResponse<TResult>> {
+  private readonly url: string;
+  private readonly method: HTTPMethods;
+  private readonly body?: string;
+  public readonly headers: Record<string, string>;
+  public readonly retries: number;
+  public readonly retryDelay?: string;
+  public readonly timeout?: number | Duration;
+  public readonly flowControl?: FlowControl;
+
+  stepType: StepType = "Call";
+  allowUndefinedOut = false;
+```
+
+### LazyCallStep.constructor()
+
+```ts
+  constructor(
+    params: {
+      context: WorkflowContext;
+      stepName: string;
+    } & CallSettings
+  ) {
+    super(params.context, params.stepName);
+    this.url = params.url;
+    this.method = params.method ?? "GET";
+    this.body = params.body;
+    this.headers = params.headers ?? {};
+    this.retries = params.retries ?? 0;
+    this.retryDelay = params.retryDelay;
+    this.timeout = params.timeout;
+    this.flowControl = params.flowControl;
+  }
+```
+
+### LazyCallStep.getPlanStep()
+
+```ts
+  public getPlanStep(concurrent: number, targetStep: number): Step<undefined> {
+    return {
+      stepId: 0,
+      stepName: this.stepName,
+      stepType: this.stepType,
+      concurrent,
+      targetStep,
+    };
+  }
+```
+
+### LazyCallStep.getResultStep()
+
+```ts
+  public async getResultStep(
+    concurrent: number,
+    stepId: number
+  ): Promise<Step<CallResponse<TResult>>> {
+    return await Promise.resolve({
+      stepId,
+      stepName: this.stepName,
+      stepType: this.stepType,
+      concurrent,
+      callUrl: this.url,
+      callMethod: this.method,
+      callBody: this.body,
+      callHeaders: this.headers,
+    });
+  }
+```
+
+### LazyCallStep.safeParseOut()
+
+```ts
+  protected safeParseOut(out: string): CallResponse<TResult> {
+    const { header, status, body } = JSON.parse(out) as {
+      header: Record<string, string[]>;
+      status: number;
+      body: unknown;
+    };
+
+    const responseHeaders = new Headers(header);
+    if (LazyCallStep.isText(responseHeaders.get("content-type"))) {
+      const bytes = new Uint8Array(out.length);
+      for (let i = 0; i < out.length; i++) {
+        bytes[i] = out.charCodeAt(i);
+      }
+
+      const processedResult = new TextDecoder().decode(bytes);
+      const newBody = JSON.parse(processedResult).body;
+
+      return {
+        status,
+        header,
+        body: BaseLazyStep.tryParsing(newBody) as TResult,
+      };
+    } else {
+      return { header, status, body: body as TResult };
+    }
+  }
+
+  private static applicationContentTypes = [
+    "application/json",
+    "application/xml",
+    "application/javascript",
+    "application/x-www-form-urlencoded",
+    "application/xhtml+xml",
+    "application/ld+json",
+    "application/rss+xml",
+    "application/atom+xml",
+  ];
+
+  private static isText = (contentTypeHeader: string | null) => {
+    if (!contentTypeHeader) {
+      return false;
+    }
+    if (LazyCallStep.applicationContentTypes.some((type) => contentTypeHeader.includes(type))) {
+      return true;
+    }
+    if (contentTypeHeader.startsWith("text/")) {
+      return true;
+    }
+    return false;
+  };
+```
+
+### LazyCallStep.getBody()
+
+```ts
+  public getBody({ step }: GetBodyParams): string {
+    if (!step.callUrl) {
+      throw new WorkflowError("Incompatible step received in LazyCallStep.getBody");
+    }
+
+    return JSON.stringify(step.callBody);
+  }
+```
+
+### LazyCallStep.getHeaders()
+
+```ts
+  getHeaders({ context, telemetry, invokeCount, step }: GetHeaderParams): HeadersResponse {
+    const { headers, contentType } = super.getHeaders({ context, telemetry, invokeCount, step });
+
+    headers["Upstash-Retries"] = this.retries.toString();
+
+    if (this.retryDelay) {
+      headers["Upstash-Retry-Delay"] = this.retryDelay;
+    }
+
+    // WF_DetectTrigger is not included because these requests are going to external endpoints
+    headers[WORKFLOW_FEATURE_HEADER] = "WF_NoDelete,InitialBody";
+
+    if (this.flowControl) {
+      const { flowControlKey, flowControlValue } = prepareFlowControl(this.flowControl);
+
+      headers["Upstash-Flow-Control-Key"] = flowControlKey;
+      headers["Upstash-Flow-Control-Value"] = flowControlValue;
+    }
+
+    if (this.timeout) {
+      headers["Upstash-Timeout"] = this.timeout.toString();
+    }
+
+    const forwardedHeaders = Object.fromEntries(
+      Object.entries(this.headers).map(([header, value]) => [`Upstash-Forward-${header}`, value])
+    );
+
+    return {
+      headers: {
+        ...headers,
+        ...forwardedHeaders,
+
+        "Upstash-Callback": context.url,
+        "Upstash-Callback-Workflow-RunId": context.workflowRunId,
+        "Upstash-Callback-Workflow-CallType": "fromCallback",
+        "Upstash-Callback-Workflow-Init": "false",
+        "Upstash-Callback-Workflow-Url": context.url,
+        "Upstash-Callback-Feature-Set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
+
+        "Upstash-Callback-Forward-Upstash-Workflow-Callback": "true",
+        "Upstash-Callback-Forward-Upstash-Workflow-StepId": step.stepId.toString(),
+        "Upstash-Callback-Forward-Upstash-Workflow-StepName": this.stepName,
+        "Upstash-Callback-Forward-Upstash-Workflow-StepType": this.stepType,
+        "Upstash-Callback-Forward-Upstash-Workflow-Concurrent": step.concurrent.toString(),
+        "Upstash-Callback-Forward-Upstash-Workflow-ContentType": contentType,
+        "Upstash-Workflow-CallType": "toCallback",
+      },
+      contentType,
+    };
+  }
+```
+
+### LazyCallStep.submitStep()
+
+```ts
+  async submitStep({ context, headers }: SubmitStepParams) {
+    return (await context.qstashClient.batch([
+      {
+        headers,
+        body: this.body,
+        method: this.method,
+        url: this.url,
+        retries: DEFAULT_RETRIES === this.retries ? undefined : this.retries,
+        retryDelay: this.retryDelay,
+        flowControl: this.flowControl,
+      },
+    ])) as { messageId: string }[];
+  }
+}
+```
+
+## class LazyWaitEventStep
+
+```ts
+export abstract class LazyWaitEventStep<TResult> extends BaseLazyStep<TResult> {
+  private readonly eventId: string;
+  private readonly timeout: string;
+  protected allowUndefinedOut = false;
+```
+
+### LazyWaitEventStep.constructor()
+
+```ts
+  constructor(
+    context: WorkflowContext,
+    stepName: string,
+    eventId: string,
+    timeout: string // TODO: string format and accept number as smth
+  ) {
+    super(context, stepName);
+    this.eventId = eventId;
+    this.timeout = timeout;
+  }
+```
+
+### LazyWaitEventStep.getPlanStep()
+
+```ts
+  public getPlanStep(concurrent: number, targetStep: number): Step<undefined> {
+    return {
+      stepId: 0,
+      stepName: this.stepName,
+      stepType: this.stepType,
+      waitEventId: this.eventId,
+      timeout: this.timeout,
+      concurrent,
+      targetStep,
+    };
+  }
+```
+
+### LazyWaitEventStep.getResultStep()
+
+```ts
+  public async getResultStep(concurrent: number, stepId: number): Promise<Step<TResult>> {
+    return await Promise.resolve({
+      stepId,
+      stepName: this.stepName,
+      stepType: this.stepType,
+      waitEventId: this.eventId,
+      timeout: this.timeout,
+      concurrent,
+    });
+  }
+
+  protected abstract safeParseOut(out: string, step: Step): TResult;
+```
+
+### LazyWaitEventStep.getHeaders()
+
+```ts
+  public getHeaders({ context, telemetry, invokeCount, step }: GetHeaderParams): HeadersResponse {
+    const headers = super.getHeaders({ context, telemetry, invokeCount, step });
+    headers.headers["Upstash-Workflow-CallType"] = "step";
+    return headers;
+  }
+```
+
+### LazyWaitEventStep.getBody()
+
+```ts
+  public getBody({ context, step, headers, telemetry }: GetBodyParams): string {
+    if (!step.waitEventId) {
+      throw new WorkflowError("Incompatible step received in LazyWaitForEventStep.getBody");
+    }
+
+    const timeoutHeaders = {
+      // to include user headers:
+      ...Object.fromEntries(Object.entries(headers).map(([header, value]) => [header, [value]])),
+      // to include telemetry headers:
+      ...(telemetry
+        ? Object.fromEntries(
+            Object.entries(getTelemetryHeaders(telemetry)).map(([header, value]) => [
+              header,
+              [value],
+            ])
+          )
+        : {}),
+
+      // note: using WORKFLOW_ID_HEADER doesn't work, because Runid -> RunId:
+      "Upstash-Workflow-Runid": [context.workflowRunId],
+      [WORKFLOW_INIT_HEADER]: ["false"],
+      [WORKFLOW_URL_HEADER]: [context.url],
+      "Upstash-Workflow-CallType": ["step"],
+    };
+
+    const waitBody: WaitRequest = {
+      url: context.url,
+      timeout: step.timeout,
+      timeoutBody: undefined,
+      timeoutUrl: context.url,
+      timeoutHeaders,
+      step: {
+        stepId: step.stepId,
+        stepType: this.stepType,
+        stepName: step.stepName,
+        concurrent: step.concurrent,
+        targetStep: step.targetStep,
+      },
+    };
+
+    return JSON.stringify(waitBody);
+  }
+```
+
+### LazyWaitEventStep.submitStep()
+
+```ts
+  async submitStep({ context, body, headers }: SubmitStepParams) {
+    const result = (await context.qstashClient.http.request({
+      path: ["v2", "wait", this.eventId],
+      body: body,
+      headers,
+      method: "POST",
+      parseResponseAsJson: false,
+    })) as { messageId: string };
+    return [result];
+  }
+}
+```
+
+## class LazyNotifyStep
+
+```ts
+export class LazyNotifyStep extends LazyFunctionStep<NotifyStepResponse> {
+  stepType: StepType = "Notify";
+```
+
+### LazyNotifyStep.constructor()
+
+```ts
+  constructor(
+    context: WorkflowContext,
+    stepName: string,
+    eventId: string,
+    eventData: unknown,
+    requester: Client["http"],
+    workflowRunId?: string
+  ) {
+    super(context, stepName, async () => {
+      const notifyResponse = await makeNotifyRequest(requester, eventId, eventData, workflowRunId);
+
+      return {
+        eventId,
+        eventData,
+        notifyResponse,
+      };
+    });
+  }
+```
+
+### LazyNotifyStep.safeParseOut()
+
+```ts
+  protected safeParseOut(out: string): NotifyStepResponse {
+    const result = JSON.parse(out) as NotifyStepResponse;
+    return {
+      ...result,
+      eventData: BaseLazyStep.tryParsing(result.eventData),
+    };
+  }
+}
+```
+
+## class LazyInvokeStep
+
+```ts
+export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazyStep<
+  InvokeStepResponse<TResult>
+> {
+  stepType: StepType = "Invoke";
+  params: LazyInvokeStepParams<TBody, TResult>;
+  protected allowUndefinedOut = false;
+  /**
+   * workflow id of the invoked workflow
+   */
+  private workflowId: string;
+```
+
+### LazyInvokeStep.constructor()
+
+```ts
+  constructor(
+    context: WorkflowContext,
+    stepName: string,
+    params: LazyInvokeStepParams<TBody, TResult>
+  ) {
+    super(context, stepName);
+    this.params = params;
+
+    const { workflowId } = params.workflow;
+    if (!workflowId) {
+      throw new WorkflowError("You can only invoke workflow which has a workflowId");
+    }
+    this.workflowId = workflowId;
+  }
+```
+
+### LazyInvokeStep.getPlanStep()
+
+```ts
+  public getPlanStep(concurrent: number, targetStep: number): Step<undefined> {
+    return {
+      stepId: 0,
+      stepName: this.stepName,
+      stepType: this.stepType,
+      concurrent,
+      targetStep,
+    };
+  }
+```
+
+### LazyInvokeStep.getResultStep()
+
+```ts
+  /**
+   * won't be used as it's the server who will add the result step
+   * in Invoke step.
+   */
+  public getResultStep(
+    concurrent: number,
+    stepId: number
+  ): Promise<Step<InvokeStepResponse<TResult>>> {
+    return Promise.resolve({
+      stepId,
+      stepName: this.stepName,
+      stepType: this.stepType,
+      concurrent,
+    });
+  }
+```
+
+### LazyInvokeStep.safeParseOut()
+
+```ts
+  protected safeParseOut(out: string): InvokeStepResponse<TResult> {
+    const result = JSON.parse(out) as InvokeStepResponse<TResult>;
+    return {
+      ...result,
+      body: BaseLazyStep.tryParsing(result.body),
+    };
+  }
+```
+
+### LazyInvokeStep.getBody()
+
+```ts
+  public getBody({ context, step, telemetry, invokeCount }: GetBodyParams): string {
+    const { headers: invokerHeaders } = getHeaders({
+      initHeaderValue: "false",
+      workflowConfig: {
+        workflowRunId: context.workflowRunId,
+        workflowUrl: context.url,
+        telemetry,
+        useJSONContent: false,
+      },
+      invokeCount,
+    });
+
+    context.qstashClient.http.headers?.forEach((value, key) => {
+      invokerHeaders[key] = value;
+    });
+
+    invokerHeaders["Upstash-Workflow-Runid"] = context.workflowRunId;
+
+    const request: InvokeWorkflowRequest = {
+      body: stringifyBody(this.params.body),
+      headers: Object.fromEntries(
+        Object.entries(invokerHeaders).map((pairs) => [pairs[0], [pairs[1]]])
+      ),
+      workflowRunId: context.workflowRunId,
+      workflowRunCreatedAt: context.workflowRunCreatedAt,
+      workflowUrl: context.url,
+      step,
+    };
+
+    return JSON.stringify(request);
+  }
+```
+
+### LazyInvokeStep.getHeaders()
+
+```ts
+  getHeaders({ context, telemetry, invokeCount }: GetHeaderParams): HeadersResponse {
+    const {
+      workflow,
+      headers = {},
+      workflowRunId,
+      retries,
+      retryDelay,
+      flowControl,
+      label,
+    } = this.params;
+    const newUrl = context.url.replace(/[^/]+$/, this.workflowId);
+
+    const { headers: triggerHeaders, contentType } = getHeaders({
+      initHeaderValue: "true",
+      workflowConfig: {
+        workflowRunId: getWorkflowRunId(workflowRunId),
+        workflowUrl: newUrl,
+        retries,
+        retryDelay,
+        telemetry,
+        failureUrl: newUrl,
+        flowControl,
+        useJSONContent: workflow.useJSONContent ?? false,
+      },
+      invokeCount: invokeCount + 1,
+      userHeaders: new Headers(headers) as Headers,
+    });
+    triggerHeaders["Upstash-Workflow-Invoke"] = "true";
+
+    if (label) {
+      triggerHeaders[WORKFLOW_LABEL_HEADER] = label;
+      triggerHeaders[`upstash-forward-${WORKFLOW_LABEL_HEADER}`] = label;
+    }
+
+    return { headers: triggerHeaders, contentType };
+  }
+```
+
+### LazyInvokeStep.submitStep()
+
+```ts
+  async submitStep({ context, body, headers }: SubmitStepParams) {
+    const newUrl = context.url.replace(/[^/]+$/, this.workflowId);
+    const result = (await context.qstashClient.publish({
+      headers,
+      method: "POST",
+      body,
+      url: newUrl,
+    })) as { messageId: string };
+    return [result];
+  }
+}
+```
+
+## type Webhook
+
+```ts
+export type Webhook = {
+  webhookUrl: string;
+  eventId: string;
+};
+```
+
+## class LazyCreateWebhookStep
+
+```ts
+export class LazyCreateWebhookStep extends BaseLazyStep<Webhook> {
+  stepType: StepType = "CreateWebhook";
+  protected allowUndefinedOut = false;
+```
+
+### LazyCreateWebhookStep.getPlanStep()
+
+```ts
+  public getPlanStep(concurrent: number, targetStep: number): Step<undefined> {
+    return {
+      stepId: 0,
+      stepName: this.stepName,
+      stepType: this.stepType,
+      concurrent,
+      targetStep,
+    };
+  }
+```
+
+### LazyCreateWebhookStep.getResultStep()
+
+```ts
+  public async getResultStep(concurrent: number, stepId: number): Promise<Step<Webhook>> {
+    return {
+      stepId,
+      stepName: this.stepName,
+      stepType: this.stepType,
+      out: undefined,
+      concurrent,
+    };
+  }
+```
+
+### LazyCreateWebhookStep.getBody()
+
+```ts
+  getBody({ step, context }: GetBodyParams): string {
+    const userId = getUserIdFromToken(context.qstashClient);
+    const workflowRunId = context.workflowRunId;
+    const eventId = getEventId();
+    const qstashUrl = getQStashUrl(this.context.qstashClient);
+
+    return JSON.stringify({
+      ...step,
+      out: JSON.stringify({
+        webhookUrl: `${qstashUrl}/v2/workflows/hooks/${userId}/${workflowRunId}/${eventId}`,
+        eventId,
+      }),
+    });
+  }
+}
+```
+
+## type WaitForWebhookResponse
+
+```ts
+export type WaitForWebhookResponse =
+  | {
+      timeout: false;
+      request: Request;
+    }
+  | {
+      timeout: true;
+      request: undefined;
+    };
+```
+
+## type WaitForWebhookOut
+
+```ts
+type WaitForWebhookOut = {
+  method: HTTPMethods;
+  header: Record<string, string[]>;
+  body: string | undefined;
+  proto: string;
+  host: string;
+  url: string;
+};
+```
+
+## class LazyWaitForWebhookStep
+
+```ts
+export class LazyWaitForWebhookStep extends LazyWaitEventStep<WaitForWebhookResponse> {
+  stepType: StepType = "WaitForWebhook";
+  protected allowUndefinedOut = true;
+
+  constructor(context: WorkflowContext, stepName: string, webhook: Webhook, timeout: Duration) {
+    super(context, stepName, webhook.eventId, timeout);
+  }
+```
+
+### LazyWaitForWebhookStep.safeParseOut()
+
+```ts
+  protected safeParseOut(out: string): WaitForWebhookResponse {
+    const eventData = decodeBase64(out);
+    const parsedEventData = BaseLazyStep.tryParsing(eventData) as WaitForWebhookOut;
+
+    const body = parsedEventData.body;
+    const parsedBody = typeof body === "string" ? decodeBase64(body) : undefined;
+
+    const methodUpper = parsedEventData.method.toUpperCase();
+    const canHaveBody = methodUpper !== "GET" && methodUpper !== "HEAD";
+
+    const request = new Request(
+      `${parsedEventData.proto}://${parsedEventData.host}${parsedEventData.url}`,
+      {
+        method: parsedEventData.method,
+        headers: parsedEventData.header,
+        body: canHaveBody ? parsedBody : undefined,
+      }
+    );
+
+    return {
+      request,
+      timeout: false,
+    };
+  }
+
+  protected handleUndefinedOut(): WaitForWebhookResponse {
+    return {
+      timeout: true,
+      request: undefined,
+    };
+  }
+}
+```
+
+## class LazyWaitForEventStep
+
+```ts
+export class LazyWaitForEventStep<TEventData> extends LazyWaitEventStep<
+  WaitStepResponse<TEventData>
+> {
+  stepType: StepType = "Wait";
+  protected allowUndefinedOut = true;
+```
+
+### LazyWaitForEventStep.parseWaitForEventOut()
+
+```ts
+  private parseWaitForEventOut(
+    out: string | undefined,
+    waitTimeout: boolean | undefined
+  ): WaitStepResponse<TEventData> {
+    return {
+      eventData: out ? BaseLazyStep.tryParsing(decodeBase64(out)) : undefined,
+      timeout: waitTimeout ?? false,
+    };
+  }
+
+  protected safeParseOut(out: string, step: Step): WaitStepResponse<TEventData> {
+    return this.parseWaitForEventOut(out, step.waitTimeout);
+  }
+
+  protected handleUndefinedOut(step: Step): WaitStepResponse<TEventData> {
+    return this.parseWaitForEventOut(undefined, step.waitTimeout);
+  }
+}
+```

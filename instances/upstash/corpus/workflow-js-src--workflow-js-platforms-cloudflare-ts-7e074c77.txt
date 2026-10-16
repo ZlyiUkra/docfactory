@@ -1,0 +1,141 @@
+# workflow-js: platforms/cloudflare.ts
+# джерело: https://github.com/upstash/workflow-js/blob/v0.2.23/platforms/cloudflare.ts
+# отримано: 2026-10-16
+# версія: workflow-0.2.23, workflow-0.2.22, workflow-0.2.21, workflow-0.2.20, workflow-0.2.19, workflow-0.2.18, workflow-0.2.17, workflow-0.2.16, workflow-0.2.15, workflow-0.2.14, workflow-0.2.13, workflow-0.2.12, workflow-0.2.11, workflow-0.2.10, workflow-0.2.9
+
+```ts
+import type { InvokableWorkflow, PublicServeOptions, RouteFunction, Telemetry } from "../src";
+import { SDK_TELEMETRY } from "../src/constants";
+import { serveBase } from "../src/serve";
+import { serveManyBase } from "../src/serve/serve-many";
+```
+
+## type WorkflowBindings
+
+```ts
+export type WorkflowBindings = {
+  QSTASH_TOKEN: string;
+  QSTASH_URL?: string;
+  QSTASH_CURRENT_SIGNING_KEY?: string;
+  QSTASH_NEXT_SIGNING_KEY?: string;
+  UPSTASH_WORKFLOW_URL?: string;
+};
+
+/**
+ * Cloudflare Pages Function arguments
+ */
+export type PagesHandlerArgs = [{ request: Request; env: Record<string, string | undefined> }];
+
+/**
+ * Cloudflare Worker arguments
+ */
+export type WorkersHandlerArgs = [Request, Record<string, string | undefined>];
+```
+
+## const getArgs
+
+```ts
+/**
+ * Support both Cloudflare Pages Functions and Cloudflare Workers
+ */
+const getArgs = (
+  args: PagesHandlerArgs | WorkersHandlerArgs
+): { request: Request; env: Record<string, string | undefined> } => {
+  // @ts-expect-error types of args don't allow length 0, but want to sanity check
+  if (!Array.isArray(args) || args.length === 0) {
+    throw new Error("No arguments passed to serve handler");
+  }
+
+  if (typeof args[0] === "object" && "request" in args[0] && "env" in args[0]) {
+    return {
+      request: args[0].request,
+      env: args[0].env,
+    };
+  }
+
+  if (args.length > 1 && typeof args[1] === "object") {
+    return {
+      request: args[0],
+      env: args[1],
+    };
+  }
+
+  throw new Error("Could not derive handler arguments from input. Please check how serve is used.");
+};
+```
+
+## const telemetry
+
+```ts
+const telemetry: Telemetry = {
+  sdk: SDK_TELEMETRY,
+  framework: "cloudflare",
+};
+```
+
+## const serve
+
+```ts
+/**
+ * Serve method to serve a Upstash Workflow in a Cloudflare project
+ *
+ * See for options https://upstash.com/docs/qstash/workflows/basics/serve
+ *
+ * @param routeFunction workflow function
+ * @param options workflow options
+ * @returns
+ */
+export const serve = <TInitialPayload = unknown, TResult = unknown>(
+  routeFunction: RouteFunction<TInitialPayload, TResult>,
+  options?: PublicServeOptions<TInitialPayload>
+): {
+  fetch: (...args: PagesHandlerArgs | WorkersHandlerArgs) => Promise<Response>;
+} => {
+  const fetch = async (...args: PagesHandlerArgs | WorkersHandlerArgs) => {
+    const { request, env } = getArgs(args);
+    const { handler: serveHandler } = serveBase(routeFunction, telemetry, {
+      env,
+      ...options,
+    });
+    return await serveHandler(request);
+  };
+
+  return { fetch };
+};
+```
+
+## const createWorkflow
+
+```ts
+export const createWorkflow = <TInitialPayload, TResult>(
+  ...params: Parameters<typeof serve<TInitialPayload, TResult>>
+): InvokableWorkflow<TInitialPayload, TResult> => {
+  const [routeFunction, options = {}] = params;
+  return {
+    workflowId: undefined,
+    routeFunction,
+    options,
+  };
+};
+```
+
+## const serveMany
+
+```ts
+export const serveMany = (
+  workflows: Parameters<typeof serveManyBase>[0]["workflows"],
+  options?: Parameters<typeof serveManyBase>[0]["options"]
+) => {
+  return {
+    fetch: serveManyBase<ReturnType<typeof serve>["fetch"]>({
+      workflows: workflows,
+      getUrl(...params) {
+        const { request } = getArgs(params);
+        return request.url;
+      },
+      options,
+      serveMethod: (...params: Parameters<typeof serve>) => serve(...params).fetch,
+    }).handler,
+  };
+};
+```

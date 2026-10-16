@@ -1,0 +1,91 @@
+# workflow-agents-js: src/agents/telemetry.test.ts
+# джерело: https://github.com/upstash/workflow-agents-js/blob/v0.3.2/src/agents/telemetry.test.ts
+# отримано: 2026-10-16
+# версія: workflow-agents-0.3.2
+
+```ts
+import { describe, test, expect } from "bun:test";
+import type { WorkflowContext } from "@upstash/workflow";
+import { WorkflowAgents } from ".";
+import { SDK_TELEMETRY, addTelemetry } from "./telemetry";
+```
+
+## const contextWithTelemetry
+
+```ts
+const contextWithTelemetry = (sdk?: string) =>
+  ({
+    executor: { telemetry: sdk === undefined ? undefined : { sdk } },
+  }) as unknown as WorkflowContext;
+```
+
+## telemetry
+
+```ts
+describe("telemetry", () => {
+```
+
+### appends the sdk to the context telemetry, comma separated
+
+```ts
+  test("appends the sdk to the context telemetry, comma separated", () => {
+    const context = contextWithTelemetry("@upstash/workflow@v1.3.3");
+
+    new WorkflowAgents({ context });
+
+    // @ts-expect-error accessing hidden fields
+    expect(context.executor.telemetry.sdk).toBe(
+      `@upstash/workflow@v1.3.3,${SDK_TELEMETRY}`
+    );
+  });
+```
+
+### appends only once, no matter how many times the context is used
+
+```ts
+  test("appends only once, no matter how many times the context is used", () => {
+    const context = contextWithTelemetry("@upstash/workflow@v1.3.3");
+
+    new WorkflowAgents({ context });
+    new WorkflowAgents({ context });
+    addTelemetry(context);
+
+    // @ts-expect-error accessing hidden fields
+    expect(context.executor.telemetry.sdk).toBe(
+      `@upstash/workflow@v1.3.3,${SDK_TELEMETRY}`
+    );
+  });
+```
+
+### leaves a context without telemetry untouched
+
+```ts
+  test("leaves a context without telemetry untouched", () => {
+    const context = contextWithTelemetry(undefined);
+
+    new WorkflowAgents({ context });
+
+    // @ts-expect-error accessing hidden fields
+    expect(context.executor.telemetry).toBeUndefined();
+  });
+```
+
+### never throws, even on a malformed context
+
+```ts
+  test("never throws, even on a malformed context", () => {
+    expect(() =>
+      new WorkflowAgents({ context: {} as unknown as WorkflowContext })
+    ).not.toThrow();
+    expect(() =>
+      new WorkflowAgents({
+        context: {
+          get executor() {
+            throw new Error("telemetry down");
+          },
+        } as unknown as WorkflowContext,
+      })
+    ).not.toThrow();
+  });
+});
+```
