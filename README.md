@@ -1010,6 +1010,26 @@ pub/sub, потоки, Lua через `defineCommand`, TLS), довідник `A
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/node-redis/README.md](instances/node-redis/README.md).
 
+### bullmq
+
+Документація BullMQ — черг задач поверх Redis для Node.js — англійською, кожного стабільного випуску 1.0.0–6.3.15:
+сайт docs.bullmq.io (посібник, шаблони, BullMQ Pro, розділ Bull, порти, журнали змін усіх мажорів), README, код `src/`
+з Lua-скриптами черги (з 6.x — і SQL бекенду Postgres), тести останнього випуску кожної мінорної лінії, нотатки GitHub
+Releases, код портів Python, Elixir, Rust, PHP і .NET. Поруч попередник Bull 0.1.6–4.16.5 (README, REFERENCE, PATTERNS,
+MIGRATION, код, тести, релізи, `@types/bull`), панель Bull Board 0.0.6–9.10.4 (сайт, README пакетів, код усіх
+пакетів з React-інтерфейсом, приклади, релізи), панель Arena 1.0–4.10 і модулі `@nestjs/bull` та `@nestjs/bullmq`
+0.0.1–12.0.0. Усі читачі наявні. 13 882 документи, 35 922 фрагменти.
+
+- порт `8848`; запис у Claude Code — `bullmq-docs`, адреса `http://127.0.0.1:8848/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-bullmq`, модель векторів — `bge-small`;
+- версія — у кожного продукту своя: документ BullMQ несе випуски BullMQ (`version: "5"` лишає всі 5.x, `"5.34"` —
+  5.34.x), документ Bull — випуски Bull, Bull Board — свої; без названої версії відповідь — для найновішого BullMQ;
+- приклад питання агентові: `./df bullmq ask "How does backoff work when a job fails?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- член родини Redis (розділ «Родини примірників»): піднімати разом з `redis`, `ioredis` і `node-redis`;
+- докладніше — у [instances/bullmq/README.md](instances/bullmq/README.md).
+
 ### socketio
 
 Socket.IO англійською: сайт socket.io для 4.x, 3.x і 2.x (документація, підручник, API й опції сервера й клієнта),
