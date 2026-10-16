@@ -348,7 +348,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 
 | Бібліотека | Навіщо | Де в плані |
 |------------|--------|------------|
-| BullMQ і Redis | черги задач із повторами; Redis — ще й остання ціна й адаптер вебсокетів | Ф6 Д6, Ф7 Д5–6; є примірник `redis` (BullMQ — ще ні) |
+| BullMQ і Redis | черги задач із повторами; Redis — ще й остання ціна й адаптер вебсокетів | Ф6 Д6, Ф7 Д5–6; є примірники `bullmq` і `redis` |
 | `@socket.io/redis-adapter` | розсилка socket.io між кількома екземплярами через Redis | Ф7 Д6; є примірник `socketio` |
 | `ws`, `@nestjs/platform-ws` | голий протокол WebSocket: сервер для навчання й клієнт до біржі; `WsAdapter` | Ф7 Д1, Д2, Д5 |
 | `@nestjs/event-emitter` | події всередині застосунку | Ф6 Д6 |
@@ -428,6 +428,9 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   адаптер socket.io) — `ioredis`;
 - node-redis (офіційний клієнт Redis для Node, пакет `redis` з модулями json, search, time-series, bloom: README,
   посібники, код з типами, тести й нотатки випусків 0.3–6.3; альтернатива ioredis) — `node-redis`;
+- BullMQ (черги задач поверх Redis: сайт docs.bullmq.io, README, код з Lua-скриптами, тести й нотатки випусків
+  1.0–6.3, порти Python, Elixir, Rust, PHP і .NET; попередник Bull 0.1–4.16, панелі Bull Board і Arena, модулі
+  `@nestjs/bullmq` і `@nestjs/bull`) — `bullmq`;
 - nginx: проксі перед API, стиснення, вебсокети через проксі — `nginx`;
 - Supabase — `supabase`; Clerk — `clerk`;
 - API споту Binance (REST, WebSocket API, потоки ринкових даних, ліміти, журнал змін) — `binance-spot`;
@@ -441,10 +444,10 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   версій npm) — `foundry`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
-глава про інтеграцію (TypeORM, Passport, BullMQ, class-validator), але не документація самої бібліотеки:
+глава про інтеграцію (TypeORM, Passport, class-validator), але не документація самої бібліотеки:
 
 - з «треба знати»: TypeORM, Passport, bcrypt, class-validator, class-transformer, supertest, RxJS;
-- з «варто знати»: BullMQ, `ws`, nestjs-cls, nestjs-pino, csrf-csrf, CASL, orval, openapi-typescript;
+- з «варто знати»: `ws`, nestjs-cls, nestjs-pino, csrf-csrf, CASL, orval, openapi-typescript;
 - з «знати, що існує»: Mongoose, MikroORM, Kafka, RabbitMQ, NATS.
 
 ---
@@ -1843,8 +1846,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   тілом і підписом HMAC у заголовку, щоб отримувач перевірив, що це ви (поза корпусом). Задачі за розкладом —
   `@nestjs/schedule`, коли знадобиться.
 - **Читати:** розділ Techniques, глави `Events` (розділ Preventing event loss) і `Queues` (розділи BullMQ
-  installation, Producers, Consumers, Job options); `Task scheduling` — згадкою.
-- **Сервери MCP:** `nestjs-docs`.
+  installation, Producers, Consumers, Job options); `Task scheduling` — згадкою. Сама BullMQ — `attempts`,
+  `backoff`, `removeOnComplete`, події черги — у документації BullMQ (примірник `bullmq`).
+- **Сервери MCP:** `nestjs-docs`, `bullmq-docs`.
 - **Зробити:** 1) подія `post.published`; 2) слухач кладе задачу «надіслати вебхук» у чергу; 3) обробник шле
   `POST` із підписом на тестовий приймач; 4) Redis у compose; 5) приймач перші два рази відповідає 500.
 - **Перевірити себе:** запис опубліковано миттєво; вебхук дійшов із третьої спроби — у лозі видно три спроби з

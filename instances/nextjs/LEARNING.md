@@ -413,6 +413,9 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
   обмеженням частоти на своєму Redis) — `ioredis`;
 - node-redis (офіційний клієнт Redis для Node, пакет `redis` з модулями json, search, time-series, bloom: README,
   посібники, код з типами, тести й нотатки випусків 0.3–6.3; альтернатива ioredis) — `node-redis`;
+- BullMQ (черги задач поверх Redis: сайт docs.bullmq.io, README, код, тести й нотатки випусків 1.0–6.3, порти;
+  попередник Bull, панелі Bull Board і Arena, модулі `@nestjs/bullmq` і `@nestjs/bull`; черга живе в API на NestJS,
+  Next.js лише приймає її вебхуки) — `bullmq`;
 - Docker — `docker`; Kubernetes, k3s, Traefik, Kustomize, SOPS, age і Helm — `kubernetes`; sshd — `linux`;
 - безкоштовна машина Oracle Cloud (Always Free, повернення бездіяльних машин, «out of host capacity», бюджети), OKE —
   `oracle-cloud`;
