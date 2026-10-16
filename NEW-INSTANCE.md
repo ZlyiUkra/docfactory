@@ -152,6 +152,20 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   differs points at the page; an empty demo section explains itself.
 - **Independent sources fetch in parallel**: one detached `refresh <id>` per long source (the site, a second
   repository) and one for the rest; each process keeps its own pause per host.
+- **A platform with dozens of packages, each numbered on its own** (Upstash: `@upstash/redis` 1.39, `qstash` 2.12,
+  `vector` 1.2, the Python clients…): every version carries its package name. Tag values «redis-1.39.0» in
+  `ghdocs-history` and `ghcode-history`, `version_prefix` in `npm-versions`, `npm-tarball-files`, `pypi-versions`,
+  `ghreleases` and `ghreleases-stable`; a monorepo tag `@scope/pkg@x.y.z` becomes «pkg-x.y.z». Otherwise
+  `version: "1"` mixes twenty products and the line list says nothing.
+- **An empty `readme` field in the npm registry does not mean the tarball has no README** (20 `@upstash` packages,
+  `redis` and `qstash` among them). Decide README sources by the count of stable versions, take the file from the
+  tarball with `(?i)^readme(\.\w+)?$`, and treat the few «без файла» as the exception.
+- **Example folders with the same names in several repositories** (`examples/nextjs` in seven SDKs) share one
+  section key: `name_prefix` of `ghexamples` (the repository name). The shared-keys scan also catches a package that
+  lives on npm and on PyPI under the same name (`qstash` → `name_prefix` «qstash-py» for PyPI).
+- **A product removed from a documentation site** (Upstash Kafka) comes from the commit before the removal:
+  `commits?path=<folder>` gives the deleting commit, its parent is the snapshot; the source carries no version.
+  Mintlify writes its «Documentation index» block in either case — the reader matches both.
 - **Quality.** The second ten of `quality` («as the model»: queries in the documentation's own names, the way the
   prompt tells the model to write them) is the main goal: 10 of 10. Targets grow only by genuine answers. A target
   must be a section with its own text: a document that is only a header is never found as a section. `ua_query` is
@@ -626,6 +640,20 @@ and what a taken port and a failed connection look like. A domain list in the ro
   вказує на сторінку; порожній розділ демо пояснює себе сам.
 - **Незалежні джерела тягнуть паралельно**: окремий відокремлений `refresh <id>` на кожне довге джерело (сайт, другий
   репозиторій) і один на решту; пауза між зверненнями до хоста — у кожного процесу своя.
+- **Платформа з десятками пакетів, кожен зі своєю нумерацією** (Upstash: `@upstash/redis` 1.39, `qstash` 2.12,
+  `vector` 1.2, клієнти Python…): кожна версія несе назву пакета. Значення тегів «redis-1.39.0» у `ghdocs-history`
+  і `ghcode-history`, поле `version_prefix` у `npm-versions`, `npm-tarball-files`, `pypi-versions`, `ghreleases` і
+  `ghreleases-stable`; тег монорепозиторію `@scope/pkg@x.y.z` стає «pkg-x.y.z». Інакше `version: "1"` змішує
+  двадцять продуктів, а перелік ліній нічого не каже.
+- **Порожнє поле `readme` в реєстрі npm не означає, що README немає в tarball** (20 пакетів `@upstash`, серед них
+  `redis` і `qstash`). Джерела README вирішують за числом стабільних версій, файл беруть із tarball за
+  `(?i)^readme(\.\w+)?$`, а кілька «без файла» — виняток.
+- **Теки прикладів з однаковими назвами в кількох репозиторіях** (`examples/nextjs` у семи SDK) ділять один ключ
+  розділу: `name_prefix` читача `ghexamples` (назва репозиторію). Скан спільних ключів ловить і пакет, що живе на npm
+  і на PyPI під одним іменем (`qstash` → `name_prefix` «qstash-py» для PyPI).
+- **Продукт, прибраний із сайту документації** (Upstash Kafka), беруть із коміту перед видаленням:
+  `commits?path=<тека>` дає коміт видалення, його батько — знімок; версії джерело не несе. Блок «Documentation index»
+  Mintlify пише і з великої, і з малої літери — читач упізнає обидва.
 - **Якість.** Друга десятка `quality` («як модель»: запити назвами самої документації, як велить писати промпт) —
   головна мета: 10 із 10. Цілі доповнюють лише справжніми відповідями. Ціль мусить бути розділом із власним текстом:
   документ із самої шапки розділом не знаходиться. `ua_query` — суто кирилицею, без цифр і латиниці.
@@ -1101,6 +1129,20 @@ errada.
   "import" engolia uma cerca de código. Uma contagem diferente aponta a página; uma seção de demo vazia se explica.
 - **Fontes independentes baixam em paralelo**: um `refresh <id>` desacoplado para cada fonte longa (o site, um segundo
   repositório) e um para o resto; cada processo tem a sua própria pausa por host.
+- **Uma plataforma com dezenas de pacotes, cada um com a própria numeração** (Upstash: `@upstash/redis` 1.39,
+  `qstash` 2.12, `vector` 1.2, os clientes Python…): cada versão leva o nome do pacote. Valores de tag «redis-1.39.0»
+  em `ghdocs-history` e `ghcode-history`, `version_prefix` em `npm-versions`, `npm-tarball-files`, `pypi-versions`,
+  `ghreleases` e `ghreleases-stable`; uma tag de monorrepositório `@scope/pkg@x.y.z` vira «pkg-x.y.z». Senão
+  `version: "1"` mistura vinte produtos e a lista de linhas não diz nada.
+- **Um campo `readme` vazio no registro npm não significa que o tarball não tem README** (20 pacotes `@upstash`,
+  entre eles `redis` e `qstash`). Decida as fontes de README pelo número de versões estáveis, pegue o arquivo do
+  tarball com `(?i)^readme(\.\w+)?$` e trate os poucos «без файла» como exceção.
+- **Pastas de exemplos com os mesmos nomes em vários repositórios** (`examples/nextjs` em sete SDKs) compartilham
+  uma chave de seção: `name_prefix` do `ghexamples` (nome do repositório). A varredura de chaves compartilhadas
+  também pega um pacote que vive no npm e no PyPI com o mesmo nome (`qstash` → `name_prefix` «qstash-py» no PyPI).
+- **Um produto removido do site de documentação** (Upstash Kafka) vem do commit anterior à remoção:
+  `commits?path=<pasta>` dá o commit que apagou, o pai dele é o snapshot; a fonte não leva versão. O Mintlify
+  escreve o bloco «Documentation index» com maiúscula ou minúscula — o leitor reconhece os dois.
 - **Qualidade.** A segunda dezena de `quality` («como o modelo»: consultas com os nomes da própria documentação, como
   o prompt manda o modelo escrever) é a meta principal: 10 de 10. Os alvos só crescem com respostas genuínas. Um
   alvo precisa ser uma seção com texto próprio: um documento que é só cabeçalho nunca é encontrado como seção. A
