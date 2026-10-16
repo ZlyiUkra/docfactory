@@ -274,10 +274,14 @@ def _humanize(label: str) -> str:
 def _role(m, st: _State) -> str:
     role, body = m.group(1).lower(), m.group(2).strip()
     role = role.split(":")[-1]
+    # Екрановані `\<` `\>` — частина тексту, не ціль: ховаються на час розбору.
+    body = body.replace("\\<", "\x01").replace("\\>", "\x02")
     text, target = body, ""
-    t = re.match(r"^(.*?)\s*<([^<>]+)>$", body)
+    # Ціль — лише `<…>` наприкінці; `sh.status.<db>.chunks` посередині — частина тексту.
+    t = re.match(r"^(.*?)\s*<(.+)>$", body)
     if t:
         text, target = t.group(1).strip(), t.group(2).strip()
+    text, target, body = (x.replace("\x01", "<").replace("\x02", ">") for x in (text, target, body))
     if role == "ref":
         if text and target:
             return text
@@ -322,10 +326,17 @@ def _tail(name: str) -> str:
 def inline(line: str, st: _State) -> str:
     """Вбудована розмітка rst → markdown. Код не чіпається."""
     def text(part: str) -> str:
+        # Результат ролі (часто код із `<db>` усередині) ховається за заповнювачем, щоб решта
+        # замін — теги, посилання — його не чіпала.
+        saved: list[str] = []
+
+        def keep(m) -> str:
+            saved.append(_role(m, st))
+            return f"\x00{len(saved) - 1}\x00"
+        part = _ROLE.sub(keep, part)
         part = _LINK.sub(lambda m: (f"[{m.group(1)}]({m.group(2)})" if m.group(1)
                                     and not m.group(2).startswith("#")
                                     else m.group(1) or m.group(2)), part)
-        part = _ROLE.sub(lambda m: _role(m, st), part)
         part = _BARE_URL.sub(r"\1", part)
 
         def ref(m):
@@ -334,7 +345,7 @@ def inline(line: str, st: _State) -> str:
         part = _REF.sub(ref, part)
         part = _HTML_TAG.sub(lambda m: f"`<{m.group(1)}{m.group(2) or ''}>`", part)
         part = _FOOTNOTE_REF.sub("", part)
-        return part
+        return re.sub(r"\x00(\d+)\x00", lambda m: saved[int(m.group(1))], part)
 
     parts, pos = [], 0
     for m in _CODE_SPAN.finditer(line):
@@ -770,7 +781,7 @@ def _admonition(lname: str, arg: str, body: list[str], st: _State, out: _Out) ->
         _sub_render(body, st, out)
         return
     if lname == "admonition":
-        label = arg
+        label = inline(arg, st)
         arg = ""
     if arg:
         body = [arg, ""] + body
