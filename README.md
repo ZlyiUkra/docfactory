@@ -958,6 +958,24 @@ pub/sub, потоки, Lua через `defineCommand`, TLS), довідник `A
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/ioredis/README.md](instances/ioredis/README.md).
 
+### node-redis
+
+Документація node-redis — офіційного клієнта Redis для Node.js (пакет `redis` з `@redis/client`, `json`, `search`,
+`time-series`, `bloom`, `entraid`) — англійською, кожного стабільного випуску 0.3.5–6.3.0: README (у 0.x–3.x — увесь
+довідник), посібники `docs/` (конфігурація клієнта, кластер, Sentinel, pub/sub, транзакції, пул, ітератори SCAN,
+програмованість, RESP, міграції v3 → v4 → v5 → v6), журнал змін, приклади й doctests, код клієнта й модулів з типами
+(довідник 4.x–6.x), тести останнього випуску кожної з 41 мінорної лінії, нотатки GitHub Releases, README пакетів з npm і
+типи спільноти `@types/redis`. Усі читачі наявні. 6 089 документів, 17 699 фрагментів.
+
+- порт `8847`; запис у Claude Code — `node-redis-docs`, адреса `http://127.0.0.1:8847/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-node-redis`, модель векторів — `bge-small`;
+- версія — випуск пакета `redis`: `version: "4"` лишає всі 4.x, `"5.1"` — 5.1.x; без названої версії відповідь — для
+  6.3.0;
+- приклад питання агентові: `./df node-redis ask "How do I configure reconnectStrategy in createClient?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/node-redis/README.md](instances/node-redis/README.md).
+
 ### socketio
 
 Socket.IO англійською: сайт socket.io для 4.x, 3.x і 2.x (документація, підручник, API й опції сервера й клієнта),
