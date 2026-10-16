@@ -1,0 +1,81 @@
+# context7: packages/mcp/src/lib/encryption.ts
+# джерело: https://github.com/upstash/context7/blob/ctx7@0.5.9/packages/mcp/src/lib/encryption.ts
+# отримано: 2026-10-16
+# версія: ctx7-0.5.9, ctx7-0.5.8, ctx7-0.5.7, ctx7-0.5.6, ctx7-0.5.5, ctx7-0.5.4, ctx7-0.5.3, ctx7-0.5.2, ctx7-0.5.1, ctx7-0.5.0, ctx7-0.4.5, ctx7-0.4.4, context7-tools-ai-sdk-0.2.5, context7-tools-ai-sdk-0.2.4, context7-sdk-0.3.1, context7-pi-0.1.2, context7-pi-0.1.1, context7-pi-0.1.0, context7-opencode-0.1.0, context7-mcp-4.0.3, context7-mcp-4.0.2, context7-mcp-4.0.1, context7-mcp-4.0.0, context7-mcp-3.2.5, context7-mcp-3.2.4, context7-mcp-3.2.3, context7-mcp-3.2.2, context7-mcp-3.2.1, context7-mcp-3.2.0, context7-mcp-3.1.0, context7-mcp-3.0.0
+
+```ts
+import { createCipheriv, randomBytes } from "crypto";
+import { SERVER_VERSION } from "./constants.js";
+import type { ClientContext } from "./types.js";
+
+const DEFAULT_ENCRYPTION_KEY = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
+const ENCRYPTION_KEY = process.env.CLIENT_IP_ENCRYPTION_KEY || DEFAULT_ENCRYPTION_KEY;
+const ALGORITHM = "aes-256-cbc";
+```
+
+## function validateEncryptionKey
+
+```ts
+function validateEncryptionKey(key: string): boolean {
+  // Must be exactly 64 hex characters (32 bytes)
+  return /^[0-9a-fA-F]{64}$/.test(key);
+}
+```
+
+## function encryptClientIp
+
+```ts
+function encryptClientIp(clientIp: string): string {
+  if (!validateEncryptionKey(ENCRYPTION_KEY)) {
+    console.error("Invalid encryption key format. Must be 64 hex characters.");
+    return clientIp; // Fallback to unencrypted
+  }
+
+  try {
+    const iv = randomBytes(16);
+    const cipher = createCipheriv(ALGORITHM, Buffer.from(ENCRYPTION_KEY, "hex"), iv);
+    let encrypted = cipher.update(clientIp, "utf8", "hex");
+    encrypted += cipher.final("hex");
+    return iv.toString("hex") + ":" + encrypted;
+  } catch (error) {
+    console.error("Error encrypting client IP:", error);
+    return clientIp; // Fallback to unencrypted
+  }
+}
+```
+
+## function generateHeaders
+
+```ts
+/**
+ * Generate headers for Context7 API requests.
+ * Handles client IP encryption, authentication, and telemetry headers.
+ */
+export function generateHeaders(context: ClientContext): Record<string, string> {
+  const headers: Record<string, string> = {
+    "X-Context7-Source": "mcp-server",
+    "X-Context7-Server-Version": SERVER_VERSION,
+  };
+
+  if (context.clientIp) {
+    headers["mcp-client-ip"] = encryptClientIp(context.clientIp);
+  }
+  if (context.sessionId) {
+    headers["mcp-session-id"] = context.sessionId;
+  }
+  if (context.apiKey) {
+    headers["Authorization"] = `Bearer ${context.apiKey}`;
+  }
+  if (context.clientInfo?.ide) {
+    headers["X-Context7-Client-IDE"] = context.clientInfo.ide;
+  }
+  if (context.clientInfo?.version) {
+    headers["X-Context7-Client-Version"] = context.clientInfo.version;
+  }
+  if (context.transport) {
+    headers["X-Context7-Transport"] = context.transport;
+  }
+
+  return headers;
+}
+```

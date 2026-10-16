@@ -1,0 +1,127 @@
+# context7: packages/mcp/src/lib/process-shutdown.ts
+# джерело: https://github.com/upstash/context7/blob/ctx7@0.6.1/packages/mcp/src/lib/process-shutdown.ts
+# отримано: 2026-10-16
+# версія: ctx7-0.6.1, ctx7-0.6.0, ctx7-0.5.16, ctx7-0.5.15, ctx7-0.5.14, ctx7-0.5.13, ctx7-0.5.12, context7-tools-ai-sdk-1.0.3, context7-tools-ai-sdk-1.0.2, context7-sdk-0.5.1, context7-sdk-0.5.0, context7-pi-0.1.3, context7-opencode-0.2.1, context7-opencode-0.2.0, context7-mcp-4.4.2, context7-mcp-4.4.1, context7-mcp-4.4.0, context7-mcp-4.3.0, context7-mcp-4.2.1, context7-mcp-4.2.0, context7-mcp-4.1.3, context7-mcp-4.1.2, context7-mcp-4.1.1, context7-mcp-4.1.0
+
+```ts
+const DEFAULT_CLOSE_TIMEOUT_MS = 5_000;
+const DEFAULT_FLUSH_TIMEOUT_MS = 5_000;
+```
+
+## interface ShutdownHandle
+
+```ts
+interface ShutdownHandle {
+  close(): Promise<void>;
+}
+```
+
+## interface InputLifecycle
+
+```ts
+interface InputLifecycle {
+  once(event: "close" | "end", listener: () => void): unknown;
+}
+```
+
+## interface SignalLifecycle
+
+```ts
+interface SignalLifecycle {
+  once(event: "SIGHUP" | "SIGINT" | "SIGTERM", listener: () => void): unknown;
+}
+```
+
+## interface ProcessShutdownOptions
+
+```ts
+interface ProcessShutdownOptions {
+  closeTimeoutMs?: number;
+  exit?: (code: number) => void;
+  flush?: () => Promise<void>;
+  flushTimeoutMs?: number;
+  input?: InputLifecycle;
+  onerror?: (error: unknown) => void;
+  signals?: SignalLifecycle;
+}
+```
+
+## function withTimeout
+
+```ts
+async function withTimeout(
+  operation: () => Promise<void>,
+  timeoutMs: number,
+  description: string
+): Promise<void> {
+  let timeout: NodeJS.Timeout | undefined;
+  try {
+    await Promise.race([
+      operation(),
+      new Promise<never>((_resolve, reject) => {
+        timeout = setTimeout(
+          () => reject(new Error(`${description} exceeded ${timeoutMs}ms`)),
+          timeoutMs
+        );
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
+```
+
+## function installProcessShutdown
+
+```ts
+/**
+ * Coordinates one bounded, idempotent process shutdown for HTTP and stdio.
+ * Passing an input lifecycle additionally treats stdio EOF as termination.
+ */
+export function installProcessShutdown(
+  handle: ShutdownHandle,
+  options: ProcessShutdownOptions = {}
+): () => void {
+  const signals = options.signals ?? process;
+  const exit = options.exit ?? ((code: number) => process.exit(code));
+  const closeTimeoutMs = options.closeTimeoutMs ?? DEFAULT_CLOSE_TIMEOUT_MS;
+  const flushTimeoutMs = options.flushTimeoutMs ?? DEFAULT_FLUSH_TIMEOUT_MS;
+  let shutdownPromise: Promise<void> | undefined;
+
+  const reportError = (error: unknown): void => {
+    try {
+      options.onerror?.(error);
+    } catch {
+      // A reporting callback must not prevent shutdown.
+    }
+  };
+
+  const shutdown = (): void => {
+    shutdownPromise ??= (async () => {
+      let exitCode = 0;
+      try {
+        await withTimeout(() => handle.close(), closeTimeoutMs, "Server close");
+      } catch (error) {
+        exitCode = 1;
+        reportError(error);
+      }
+
+      try {
+        if (options.flush) {
+          await withTimeout(options.flush, flushTimeoutMs, "OpenTelemetry flush");
+        }
+      } catch (error) {
+        reportError(error);
+      }
+      exit(exitCode);
+    })();
+  };
+
+  options.input?.once("end", shutdown);
+  options.input?.once("close", shutdown);
+  signals.once("SIGHUP", shutdown);
+  signals.once("SIGINT", shutdown);
+  signals.once("SIGTERM", shutdown);
+  return shutdown;
+}
+```

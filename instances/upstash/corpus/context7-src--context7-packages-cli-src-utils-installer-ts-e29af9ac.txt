@@ -1,0 +1,59 @@
+# context7: packages/cli/src/utils/installer.ts
+# джерело: https://github.com/upstash/context7/blob/ctx7@0.3.12/packages/cli/src/utils/installer.ts
+# отримано: 2026-10-16
+# версія: ctx7-0.3.12, ctx7-0.3.11, ctx7-0.3.10, ctx7-0.3.9, ctx7-0.3.8, context7-tools-ai-sdk-0.2.3, context7-mcp-2.1.8, context7-mcp-2.1.7, context7-mcp-2.1.6
+
+```ts
+import { mkdir, writeFile, rm, symlink, lstat } from "fs/promises";
+import { join, resolve, dirname } from "path";
+
+import type { SkillFile } from "../types.js";
+```
+
+## function installSkillFiles
+
+```ts
+export async function installSkillFiles(
+  skillName: string,
+  files: SkillFile[],
+  targetDir: string
+): Promise<void> {
+  const skillDir = resolve(targetDir, skillName);
+
+  for (const file of files) {
+    const filePath = resolve(skillDir, file.path);
+
+    // Prevent directory traversal — resolved path must stay within skillDir
+    if (!filePath.startsWith(skillDir + "/") && filePath !== skillDir) {
+      throw new Error(`Skill file path "${file.path}" resolves outside the target directory`);
+    }
+
+    const fileDir = dirname(filePath);
+
+    await mkdir(fileDir, { recursive: true });
+    await writeFile(filePath, file.content);
+  }
+}
+```
+
+## function symlinkSkill
+
+```ts
+export async function symlinkSkill(
+  skillName: string,
+  sourcePath: string,
+  targetDir: string
+): Promise<void> {
+  const targetPath = join(targetDir, skillName);
+
+  try {
+    const stats = await lstat(targetPath);
+    if (stats.isSymbolicLink() || stats.isDirectory()) {
+      await rm(targetPath, { recursive: true });
+    }
+  } catch {}
+
+  await mkdir(targetDir, { recursive: true });
+  await symlink(sourcePath, targetPath);
+}
+```

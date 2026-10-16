@@ -1,0 +1,79 @@
+# context7: packages/opencode/src/index.ts
+# джерело: https://github.com/upstash/context7/blob/ctx7@0.5.12/packages/opencode/src/index.ts
+# отримано: 2026-10-16
+# версія: ctx7-0.5.12, ctx7-0.5.11, ctx7-0.5.10, ctx7-0.5.9, context7-tools-ai-sdk-1.0.2, context7-tools-ai-sdk-1.0.1, context7-sdk-0.5.0, context7-sdk-0.4.1, context7-sdk-0.4.0, context7-opencode-0.1.0, context7-mcp-4.1.1, context7-mcp-4.1.0, context7-mcp-4.0.7, context7-mcp-4.0.6, context7-mcp-4.0.5, context7-mcp-4.0.4, context7-mcp-4.0.3
+
+```ts
+import { fileURLToPath } from "node:url";
+import type { Config, PluginModule } from "@opencode-ai/plugin";
+
+const MCP_BASE_URL = "https://mcp.context7.com";
+const MCP_URL = `${MCP_BASE_URL}/mcp`;
+const MCP_OAUTH_URL = `${MCP_BASE_URL}/mcp/oauth`;
+const MCP_SERVER_NAME = "context7";
+
+const SKILLS_DIR = fileURLToPath(new URL("../skills", import.meta.url));
+```
+
+## interface Context7PluginOptions
+
+```ts
+export interface Context7PluginOptions {
+  apiKey?: string;
+}
+```
+
+## type ConfigWithSkills
+
+```ts
+/** OpenCode's `Config` type does not declare `skills` yet, but the config schema accepts it. */
+type ConfigWithSkills = Config & {
+  skills?: { paths?: string[]; urls?: string[] };
+};
+```
+
+## function nonEmptyString
+
+```ts
+function nonEmptyString(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+```
+
+## function applyContext7Config
+
+```ts
+function applyContext7Config(config: Config, apiKey: string | undefined): void {
+  config.mcp ??= {};
+  config.mcp[MCP_SERVER_NAME] ??= apiKey
+    ? {
+        type: "remote",
+        url: MCP_URL,
+        enabled: true,
+        headers: { Authorization: `Bearer ${apiKey}` },
+        oauth: false,
+      }
+    : { type: "remote", url: MCP_OAUTH_URL, enabled: true };
+
+  const withSkills = config as ConfigWithSkills;
+  withSkills.skills ??= {};
+  const skillPaths = (withSkills.skills.paths ??= []);
+  if (!skillPaths.includes(SKILLS_DIR)) {
+    skillPaths.push(SKILLS_DIR);
+  }
+}
+
+/** Only the default export. Any other export is loaded as a second plugin by the legacy loader. */
+export default {
+  id: "context7",
+  server: async (_input, options) => {
+    const apiKey = nonEmptyString(options?.apiKey) ?? nonEmptyString(process.env.CONTEXT7_API_KEY);
+
+    return {
+      config: async (config) => {
+        applyContext7Config(config, apiKey);
+      },
+    };
+  },
+} satisfies PluginModule;
+```

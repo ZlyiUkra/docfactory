@@ -1,0 +1,111 @@
+# context7: packages/mcp/src/lib/encryption.ts
+# джерело: https://github.com/upstash/context7/blob/ctx7@0.6.1/packages/mcp/src/lib/encryption.ts
+# отримано: 2026-10-16
+# версія: ctx7-0.6.1, ctx7-0.6.0, ctx7-0.5.16, ctx7-0.5.15, ctx7-0.5.14, ctx7-0.5.13, ctx7-0.5.12, ctx7-0.5.11, ctx7-0.5.10, context7-tools-ai-sdk-1.0.3, context7-tools-ai-sdk-1.0.2, context7-tools-ai-sdk-1.0.1, context7-sdk-0.5.1, context7-sdk-0.5.0, context7-sdk-0.4.1, context7-sdk-0.4.0, context7-pi-0.1.3, context7-opencode-0.2.1, context7-opencode-0.2.0, context7-mcp-4.4.2, context7-mcp-4.4.1, context7-mcp-4.4.0, context7-mcp-4.3.0, context7-mcp-4.2.1, context7-mcp-4.2.0, context7-mcp-4.1.3, context7-mcp-4.1.2, context7-mcp-4.1.1, context7-mcp-4.1.0, context7-mcp-4.0.7, context7-mcp-4.0.6, context7-mcp-4.0.5
+
+```ts
+import { createCipheriv, randomBytes } from "crypto";
+import { isIP } from "node:net";
+import { SERVER_VERSION } from "./constants.js";
+import type { ClientContext } from "./types.js";
+
+const ASSERTION_ALGORITHM = "aes-256-gcm";
+const ASSERTION_VERSION = "v1";
+let reportedInvalidAssertionKey = false;
+```
+
+## function validateEncryptionKey
+
+```ts
+function validateEncryptionKey(key: string): boolean {
+  // Must be exactly 64 hex characters (32 bytes)
+  return /^[0-9a-fA-F]{64}$/.test(key);
+}
+```
+
+## function assertionKey
+
+```ts
+function assertionKey() {
+  const key = process.env.MCP_CLIENT_IP_ASSERTION_KEY;
+  return key && validateEncryptionKey(key) ? Buffer.from(key, "hex") : null;
+}
+```
+
+## function createClientIpAssertion
+
+```ts
+/**
+ * Create a short-lived, authenticated client-IP assertion.
+ * Format: v1:<unix timestamp seconds>:<12-byte nonce hex>:<ciphertext + tag hex>
+ */
+export function createClientIpAssertion(
+  clientIp: string,
+  nowMs = Date.now(),
+  nonce = randomBytes(12)
+): string | null {
+  const key = assertionKey();
+  if (!key) {
+    if (!reportedInvalidAssertionKey) {
+      reportedInvalidAssertionKey = true;
+      console.error(
+        "MCP_CLIENT_IP_ASSERTION_KEY is missing or invalid; client IP assertions are disabled."
+      );
+    }
+    return null;
+  }
+  if (nonce.length !== 12 || isIP(clientIp) === 0) return null;
+
+  try {
+    const timestamp = Math.floor(nowMs / 1000).toString();
+    const aad = `${ASSERTION_VERSION}:${timestamp}`;
+    const cipher = createCipheriv(ASSERTION_ALGORITHM, key, nonce);
+    cipher.setAAD(Buffer.from(aad, "utf8"));
+    const ciphertext = Buffer.concat([cipher.update(clientIp, "utf8"), cipher.final()]);
+    const ciphertextAndTag = Buffer.concat([ciphertext, cipher.getAuthTag()]);
+    return `${aad}:${nonce.toString("hex")}:${ciphertextAndTag.toString("hex")}`;
+  } catch {
+    return null;
+  }
+}
+```
+
+## function generateHeaders
+
+```ts
+/**
+ * Generate headers for Context7 API requests.
+ * Handles client IP encryption, authentication, and telemetry headers.
+ */
+export function generateHeaders(context: ClientContext): Record<string, string> {
+  const headers: Record<string, string> = {
+    "X-Context7-Source": "mcp-server",
+    "X-Context7-Server-Version": SERVER_VERSION,
+  };
+
+  if (context.clientIp) {
+    const assertion = createClientIpAssertion(context.clientIp);
+    if (assertion) headers["mcp-client-ip-assertion"] = assertion;
+  }
+  if (context.sessionId) {
+    headers["mcp-session-id"] = context.sessionId;
+  }
+  if (context.apiKey) {
+    headers["Authorization"] = `Bearer ${context.apiKey}`;
+  }
+  if (context.clientInfo?.ide) {
+    headers["X-Context7-Client-IDE"] = context.clientInfo.ide;
+  }
+  if (context.clientInfo?.version) {
+    headers["X-Context7-Client-Version"] = context.clientInfo.version;
+  }
+  if (context.plugin) {
+    headers["X-Context7-Plugin"] = context.plugin;
+  }
+  if (context.transport) {
+    headers["X-Context7-Transport"] = context.transport;
+  }
+
+  return headers;
+}
+```
