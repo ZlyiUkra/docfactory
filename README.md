@@ -312,7 +312,7 @@ ecma-international.org, unicode.org і rfc-editor.org). Оригінали на 
 | `llhttp` | `llhttp-docs` | 8842 | парсер HTTP/1.x |
 | `nghttp2` | `nghttp2-docs` | 8843 | `http2` |
 
-**Родина Redis** — сервер, два клієнти для Node.js і черги поверх них:
+**Родина Redis** — сервер, два клієнти для Node.js, черги поверх них і керована платформа Upstash:
 
 | Примірник | Сервер | Порт | Що |
 |-----------|--------|-----:|----|
@@ -320,6 +320,7 @@ ecma-international.org, unicode.org і rfc-editor.org). Оригінали на 
 | `ioredis` | `ioredis-docs` | 8846 | клієнт ioredis для Node.js |
 | `node-redis` | `node-redis-docs` | 8847 | офіційний клієнт node-redis (пакет `redis`) з модулями |
 | `bullmq` | `bullmq-docs` | 8848 | черги BullMQ, Bull, панелі Bull Board і Arena, `@nestjs/bull*` |
+| `upstash` | `upstash-docs` | 8849 | платформа Upstash: Redis по HTTP, ratelimit, QStash, Workflow, Vector, Search, Box… |
 
 Щоб підняти родину: `./df <примірник> serve` для кожного члена в окремому терміналі (порти різні) і по одному
 `claude mcp add --transport http --scope user <сервер> http://127.0.0.1:<порт>/mcp` у WSL і у Windows.
@@ -1027,8 +1028,30 @@ MIGRATION, код, тести, релізи, `@types/bull`), панель Bull B
   5.34.x), документ Bull — випуски Bull, Bull Board — свої; без названої версії відповідь — для найновішого BullMQ;
 - приклад питання агентові: `./df bullmq ask "How does backoff work when a job fails?"`;
 - корпус і сховище сирого — в архіві від самого початку;
-- член родини Redis (розділ «Родини примірників»): піднімати разом з `redis`, `ioredis` і `node-redis`;
+- член родини Redis (розділ «Родини примірників»): піднімати разом з `redis`, `ioredis`, `node-redis` і `upstash`;
 - докладніше — у [instances/bullmq/README.md](instances/bullmq/README.md).
+
+### upstash
+
+Документація платформи Upstash — безсерверних даних з оплатою за запит — англійською: сайт upstash.com/docs (Upstash
+Redis з довідником 334 команд і сторінками SDK TypeScript, Python і ratelimit, QStash, Workflow, Vector, Search,
+Realtime, Blob, Box, DevOps, Developer API; розділ Kafka з історії репозиторію документації), блог 2021–2026 і глосарій,
+і для кожного стабільного випуску кожного SDK та інструменту (`@upstash/redis` 0.1–1.39, `ratelimit`, `qstash`,
+`vector`, `workflow`, `search`, `realtime`, `lock`, `queue`, `query`, `semantic-cache`, `blob`, `cli`, MCP-сервери,
+закритий `kafka`, монорепозиторії Box, AgentKit і Context7, клієнти Python, Go, PHP, провайдери Terraform і Pulumi) —
+README, журнали змін, код, тести й нотатки GitHub Releases; таблиці версій і README 66 пакетів `@upstash` з npm, 8
+проєктів PyPI, приклади, skills. Трьом читачам додано поле `version_prefix`, одному — `name_prefix`. 14 432 документи,
+53 287 фрагментів.
+
+- порт `8849`; запис у Claude Code — `upstash-docs`, адреса `http://127.0.0.1:8849/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-upstash`, модель векторів — `bge-small`;
+- версія — з назвою пакета, бо нумерацій десятки: `version: "redis-1.39"` лишає 1.39.x клієнта `@upstash/redis`,
+  `"qstash-2"` — усі 2.x, `"upstash-redis-1"` — клієнт Python; сторінки сайту, блог і приклади версій не несуть;
+- приклад питання агентові: `./df upstash ask "How does auto-pipelining work in @upstash/redis?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- член родини Redis (розділ «Родини примірників»): піднімати разом з `redis`, `ioredis`, `node-redis` і `bullmq`;
+- докладніше — у [instances/upstash/README.md](instances/upstash/README.md).
 
 ### socketio
 
