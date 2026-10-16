@@ -1,0 +1,188 @@
+# Blog: Building a Guest Book on the Edge with SvelteKit, Upstash Redis® and Vercel
+# джерело: https://github.com/upstash/upstash-web/blob/d8ed5e3d14f0b104aaed7a3895a05fe117f16ceb/data/blog/2022-07-25-sveltekit-edge-redis.mdx
+# отримано: 2026-10-16
+
+> This post was updated in December 2022 and is now compatible with SvelteKit 1.0.
+
+Vercel recently launched Edge Functions, which let you run JavaScript code on their globally-distributed edge network. With SvelteKit, the upcoming full-stack framework for Svelte, you can deploy your app to these Edge Functions. This means you can serve your users dynamically-rendered pages at the same speed you would serve static files from a CDN.
+
+In this tutorial, we’ll show how to build a small site with SvelteKit that takes full advantage of the edge. The site will show a list of all the cities that have visited the site. We’ll determine the user’s current city using Vercel’s edge headers and display it on the page, and the user can choose to add their city to the list of visitors.
+
+We’ll be using Upstash Redis® as a data store, since (like SvelteKit) it’s optimized for use with serverless hosting providers. In addition, they allow provisioning a global database that will minimize latency from the deployed function to the database instance.
+
+## Starter overview
+
+Set up the starter project by running the following commands. This uses a tool called degit to download a fresh copy of the initial state of the repo, though you can clone/fork the `initial` branch of the starter repo itself if you’d prefer.
+
+```bash
+npx degit geoffrich/sveltekit-edge-guestbook#initial sveltekit-edge-guestbook
+cd sveltekit-edge-guestbook
+npm i
+npm run dev
+```
+
+Currently, it's non-functional since it's not getting the user's city or storing the list of cities anywhere. In this blog post, we’ll fix both of those issues.
+
+Let’s quickly orient ourselves in the project. `src/routes/+page.svelte` corresponds to the page we’ll see at the root route. It receives a `data` prop that includes the list of visits and the city of the current user and a `form` prop that will contain the result of submitting the form.
+
+One cool thing is that the data is submitted via a `<form>`, so it does _not_ need JavaScript to function. When JS is not available, the form will submit as normal and trigger a full page reload. When JS is available, it will update in place instead of reloading. This is accomplished using a Svelte action called `enhance`, which is included with SvelteKit. Explaining how it works is outside of the scope of this post, but take a look at the SvelteKit docs on progressive enhancement if you're curious.
+
+```html
+<form action="/" method="post" use:enhance>
+  <button>I was here</button>
+</form>
+```
+
+In `src/routes/+page.server.ts` we have our `load` function, which supplies data to the page, and our default form action, which will handle form submissions. Currently, they call the `get_visitors` and `add_visitor` functions from our `$lib` directory to retrieve and update the list of visits. They also call a local `get_city` method to get the user’s city. Those methods are stubbed out for now, since we’ll be implementing them as part of this tutorial.
+
+## Getting the user’s location
+
+Since we’re planning to deploy the app to Vercel, we can use Vercel’s edge headers to get the user’s city and country. x-vercel-ip-country will have the country code of the user and x-vercel-ip-city will have the city of the user. This is all based off of the user's IP address, so it won't be 100% accurate. However, it will be good enough for our purposes.
+
+The relevant headers names are already in `src/lib/constants.ts` for our use. Import them at the top of `src/routes/+page.server.ts`.
+
+```tsx
+import { CITY_HEADER, COUNTRY_HEADER } from "$lib/constants";
+```
+
+Then replace the existing `get_city` function with the following:
+
+```tsx
+function get_city(request: Request) {
+  const city = request.headers.get(CITY_HEADER) ?? "unknown city";
+  const country = get_country_name(request.headers.get(COUNTRY_HEADER));
+  return `${city}, ${country}`;
+}
+
+const display_names = new Intl.DisplayNames(["en"], { type: "region" });
+function get_country_name(country_code: string | null) {
+  if (country_code) {
+    return display_names.of(country_code);
+  }
+  return "unknown country";
+}
+```
+
+This method will retrieve the city and country from the request headers, falling back to “unknown” if it’s not set. Note how this function uses the web `Intl.DisplayNames` API to get the country name from the country code—no NPM package required! This API will be available when we deploy to Vercel Edge Functions.
+
+This will work great when deployed, but these headers won't be automatically set when developing. Fortunately, the starter project already adds custom code in SvelteKit’s handle hook to add these headers in development.
+
+```tsx
+import type { Handle } from "@sveltejs/kit";
+import { dev } from "$app/environment";
+import { CITY_HEADER, COUNTRY_HEADER } from "$lib/constants";
+
+export const handle: Handle = async function ({ event, resolve }) {
+  if (dev) {
+    event.request.headers.append(CITY_HEADER, "Kakariko Village");
+    event.request.headers.append(COUNTRY_HEADER, "JP");
+  }
+  const response = await resolve(event);
+  return response;
+};
+```
+
+With these changes, you can deploy the project and the page will display the city the request came from. However, we still need to actually store the city when the user submits the form. Let’s do that next.
+
+## Saving the user’s location to Redis
+
+When the user submits the form, we want to add their city to a list. This list should store both the city name as well as the number of times this city has been submitted. This is perfect for a Redis® sorted set, since each member in the set has a value (the city name) and score (the number of times that city has visited).
+
+For the purposes of this tutorial, we’ll use Upstash and their JavaScript SDK to make interacting with Redis® as straightforward as possible.
+
+Go ahead and sign up for a free Upstash instance to continue following along with this tutorial. A single region should be fine for development, though when you deploy production applications to the edge you may want to use a multi-region database to reduce latency between the edge function processing the request and the database.
+
+Once you’ve created a Redis® instance, create a `.env` file at the root of the repo with your REST URL and token. You can find these values in the “REST API” section of your database settings in the Upstash console.
+
+```bash
+UPSTASH_REDIS_REST_URL="COPY URL HERE"
+UPSTASH_REDIS_REST_TOKEN="COPY TOKEN HERE"
+```
+
+We can access these values in our code using SvelteKit's `$env` module.
+
+Now, update our `get_visitors` and `add_visitor` functions in `/src/lib/data.ts` to read and write data from our Redis® instance.
+
+```tsx
+import { Redis } from "@upstash/redis";
+import {
+  UPSTASH_REDIS_REST_TOKEN,
+  UPSTASH_REDIS_REST_URL,
+} from "$env/static/private";
+
+interface Visit {
+  city: string;
+  count: string;
+}
+
+const set_name = "visitors";
+
+export async function get_visitors(): Promise<Visit[]> {
+  const redis = get_redis();
+  const visitors = await redis.zrange<string[]>(set_name, 0, -1, {
+    withScores: true,
+  });
+  return adapt_visitors(visitors);
+}
+
+export async function add_visitor(city: string) {
+  const redis = get_redis();
+  await redis.zincrby(set_name, 1, city);
+}
+
+function get_redis() {
+  return new Redis({
+    url: UPSTASH_REDIS_REST_URL,
+    token: UPSTASH_REDIS_REST_TOKEN,
+  });
+}
+
+// takes the result from ZRANGE and adapt it into a list of visits
+// e.g. ['Seattle', '2', 'Los Angeles', '1'] becomes
+// [ { city: 'Seattle', count: '2'}, { city: 'Los Angeles', count: '1' } ]
+function adapt_visitors(visitors: string[]): Visit[] {
+  const adapted: Visit[] = [];
+  for (let i = 0; i < visitors.length; i += 2) {
+    const member = visitors[i];
+    const score = visitors[i + 1];
+    adapted.push({ city: decodeURIComponent(member), count: score });
+  }
+  return adapted;
+}
+```
+
+In `get_visitors`, we first initialize our Redis® client using the environment variables we set earlier. We then use the ZRANGE command to retrieve everything in the `visitors` set and their scores. The data returned is not in the format we want, so we convert it into a list of visit objects and return it.
+
+`add_visitor` is simpler. It gets the Redis® client as in the previous method, and uses ZINCRBY to add one to that city in the `visitors` set. By default, ZINCRBY will add the item to the set if it isn’t already there.
+
+These methods are already used in our `+page.server.ts` file, so you should now be able to add cities to the list and see the results.
+
+## Deploying to Vercel
+
+With those changes in place, we can deploy the project to Vercel Edge Functions. In SvelteKit, this is as simple as using the Vercel adapter and passing `{edge: true}` to the adapter options. This should already be done in the provided starter project.
+
+```jsx
+import adapter from "@sveltejs/adapter-vercel";
+import preprocess from "svelte-preprocess";
+
+/** @type {import('@sveltejs/kit').Config} */
+const config = {
+  // Consult https://github.com/sveltejs/svelte-preprocess
+  // for more information about preprocessors
+  preprocess: preprocess(),
+
+  kit: {
+    adapter: adapter({ edge: true }),
+  },
+};
+
+export default config;
+```
+
+Push your project to GitHub and create a new project on Vercel. Everything should be preconfigured, though you’ll want to add the Upstash environment variables to the project that we previously added to our `.env` file. Wait for the project to build and deploy, and your site should be live! SvelteKit, Vercel, and Upstash—running on the edge 😎
+
+## Wrapping up
+
+Thanks for following along! I hope this post showed how easy it is to deploy a site to the edge using SvelteKit. You can find the final code on GitHub. For another example of SvelteKit running on Edge Functions, see this project from Rich Harris.
+
+Have any questions? Reach out on Twitter. You can also find my other writing about Svelte on my blog.

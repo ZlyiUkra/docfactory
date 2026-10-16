@@ -1,0 +1,57 @@
+# Blog: How We Power Box Logs with Upstash Redis Search
+# джерело: https://github.com/upstash/upstash-web/blob/d8ed5e3d14f0b104aaed7a3895a05fe117f16ceb/data/blog/2026-06-05-box-logs-redis-search.mdx
+# отримано: 2026-10-16
+
+Box generates a lot of logs. Every agent run, every shell command, every system event writes one. Log search is a natural use case for Upstash Redis Search: time range filtering, level and source matching, full-text search on messages, all without leaving Redis.
+
+Here's how we use it.
+
+---
+
+## Replacing the old structure with Upstash Redis Search
+
+We used to store logs in Redis lists. Every write was an `RPUSH`, every read was an `LRANGE`. Fast and ordered, but any filter (by level, by time, by message content) meant reading everything and scanning in memory.
+
+Upstash Redis Search replaces the list entirely. Each log entry becomes a JSON document indexed in a Redis database. No separate service, no new infrastructure. The same connection, the same credentials.
+
+```go
+pipe.Do(ctx, "JSON.SET", entryKey, "$", string(jsonBytes))
+pipe.Expire(ctx, entryKey, 7*24*time.Hour)
+pipe.Exec(ctx)
+```
+
+The index schema is defined on JSON documents with one field per log attribute. Each field type maps directly to how it gets queried:
+
+| Field | Type | Used for |
+|---|---|---|
+| `customerId` | `KEYWORD` | Scoping every query to the right user |
+| `boxId` | `KEYWORD` | Filtering to one or more specific boxes |
+| `timestamp` | `I64 FAST` | Time range filtering; the `FAST` flag keeps range queries cheap |
+| `level` | `KEYWORD` | Exact match: `info`, `warn`, `error` |
+| `source` | `KEYWORD` | Exact match: `system`, `agent`, `user` |
+| `message` | `TEXT` | Full-text search across log messages |
+
+---
+
+## What the index unlocks
+
+Before this, the logs API had one parameter: box ID. After, it has everything a user actually needs.
+
+**Time range filtering** is the most used. Preset filters (last 15 minutes, last hour, last 24 hours, last 7 days) compute a `start_time` fresh on every query. The `timestamp` field is indexed as `I64 FAST` so range queries on it are cheap.
+
+**Level and source filtering** are exact keyword matches. Filtering to errors only or to agent-generated logs only is a single index condition, not a post-scan.
+
+**Full-text search** runs against the message field using the `$smart` operator, which does intelligent matching against the indexed text. You can search for an error string, a function name, anything that appears in a log message.
+
+**Cross-box queries** work the same way. The logs view queries across every box a user owns in a single request.
+
+All of this is powered by Upstash Redis Search's querying capabilities and comes back paginated with limit and offset. The frontend never touches a full log list again.
+
+The log search experience is lightning fast, and Upstash Redis Search made it effortless to build.
+
+---
+
+## Related
+
+- Box Quickstart
+- Upstash Redis Search

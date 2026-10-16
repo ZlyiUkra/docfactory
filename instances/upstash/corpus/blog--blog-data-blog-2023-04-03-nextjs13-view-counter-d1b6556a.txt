@@ -1,0 +1,206 @@
+# Adding a View Counter to your Next.js Blog
+# джерело: https://github.com/upstash/upstash-web/blob/d8ed5e3d14f0b104aaed7a3895a05fe117f16ceb/data/blog/2023-04-03-nextjs13-view-counter.mdx
+# отримано: 2026-10-16
+
+Inspired by Lee's blog, where every blog post is
+showing the number of views it has, I wanted to do something similar for my
+page. I'm also using Next.js 13 with the new app router but instead of storing
+the page views in a mysql database, I'll be using Upstash Redis.
+
+Here's an example of what we'll be building.
+Each card on the home page will show the number of views it has.
+
+## Why Redis?
+
+Redis already comes with 2 great commands that make it trivial to deduplicate
+and to increment a counter.
+
+In order to get a more accurate counter, I want to debounce the incrementing of
+the counter. If a user refreshes the page, the counter should only be
+incremented once. We can do this really easily with Redis' `SET` command. It has
+a `NX` option that will only set the key if it doesn't exist yet and an `EX`
+option that will expire the key after a given amount of seconds. By combining
+both of these options we can ensure a single user does not increment the counter
+multiple times within a given timeframe.
+
+The second command is `INCR` which will increment a given key by 1 atomically.
+
+## Setting up Redis
+
+Setting up a database on Upstash is easy and includes 10k requests per day
+for free! You can create a new database
+here. It literally takes only a few
+seconds. Afterwards scroll down and copy the `REST` connection
+secrets to your `.env.local` file:
+
+```bash
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+```
+
+## Next.js
+
+Now that we have a Redis database, we can start implementing the counter. We need to install @upstash/redis first:
+
+```bash
+pnpm add @upstash/redis
+```
+
+In order to store the page views, we need two components. An api route and a
+client component. Let's start with the api route.
+
+## /api/incr.ts
+
+Upstash and `@upstash/redis` is compatible with Vercel's edge functions, so
+first of all, we will import everything we need, setup redis and configure the
+runtime to be `edge`.
+
+Create a new file `/api/incr.ts` and add the following code:
+
+```ts
+import { NextRequest, NextResponse } from "next/server";
+
+import { Redis } from "@upstash/redis";
+
+const redis = Redis.fromEnv();
+
+export const config = {
+  runtime: "edge",
+};
+```
+
+Next up we'll require a slug or similar identifier to be passed in the request
+body. If it's not present, we'll return a `400` status code.
+
+```ts
+export default async function incr(req: NextRequest): Promise<NextResponse> {
+  const body = await req.json();
+  const slug = body.slug as string | undefined;
+  if (!slug) {
+    return new NextResponse("Slug not found", { status: 400 });
+  }
+
+  // more to come here
+}
+```
+
+Then we also need to get the user's IP address. We can do this by using the
+`req.ip` property. We'll hash the IP address using the `SHA-256` algorithm and
+store it in the database. This way we don't have to store the IP address
+directly, which could be a security concern.
+
+```ts
+const ip = req.ip;
+// Hash the IP and turn it into a hex string
+const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(ip));
+const hash = Array.from(new Uint8Array(buf))
+  .map((b) => b.toString(16).padStart(2, "0"))
+  .join("");
+```
+
+Now let's use the first redis command mentioned above. Using `SET` together with
+`NX` and `EX` gives us an easy way to check if a specific ip address has been
+viewing a page within the last 24 hours:
+
+```ts
+const isNew = await redis.set(["deduplicate", hash, slug].join(":"), true, {
+  nx: true,
+  ex: 24 * 60 * 60,
+});
+if (!isNew) {
+  new NextResponse(null, { status: 202 });
+}
+```
+
+The last thing to do is to increment the counter for the given slug. We'll use
+the `INCR` command for this:
+
+```ts
+await redis.incr(["pageviews", "projects", slug].join(":"));
+return new NextResponse(null, { status: 202 });
+```
+
+For reference, you can find the complete code
+here
+
+## /app/[slug]/view.tsx
+
+Next, let's create a small client component, that sends a request to the api route we just created whenever it mounts. This component can then be embedded in any page we want to track.
+
+```tsx
+"use client";
+
+import { useEffect } from "react";
+
+export const ReportView: React.FC<{ slug: string }> = ({ slug }) => {
+  useEffect(() => {
+    fetch("/api/incr", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ slug }),
+    });
+  }, [slug]);
+
+  return null;
+};
+```
+
+## /app/[slug]/page.tsx
+
+The last thing we need to do is to add the `ReportView` component to the page we want to track:
+
+```tsx
+import { ReportView } from "./view";
+
+type Props = {
+  params: {
+    slug: string;
+  };
+};
+
+export default function Page({ params }: Props) {
+  return (
+    <div>
+      <ReportView slug={params.slug} />
+      {/* Add your page content here */}
+    </div>
+  );
+}
+```
+
+From now on all visits to `/app/[slug]` will be tracked and the counter will be incremented for each unique visitor in the last 24h.
+
+## Displaying Views
+
+Tracking the views is nice, but we also want to display them publicly. Let's see how we can do that.
+
+In order to display the number of views, we need to look them up from the database. We can do this by using the `GET` command. We should also add a `revalidate` config to the page component, so that the page is revalidated every 60 seconds and not for every request.
+
+```tsx
+type Props = {
+	params: {
+		slug: string;
+	};
+};
+
+export const revalidate = 60
+
+export default function Page({ params }: Props) {
+  const views = await redis.get<number>(["pageviews", "projects", params.slug].join(":")) ?? 0
+
+  return ...
+}
+```
+
+## Final words
+
+Check out a full example of this at chronark.com. The code is available on GitHub.
+Specifically, here are the relevant bits:
+
+- api route
+- tracking component
+- loading the number of views
+
+If you're interested in more page view analytics, please let us know on Twitter or Discord.

@@ -1,0 +1,43 @@
+# Blog: Pipeline REST API on Serverless Redis
+# джерело: https://github.com/upstash/upstash-web/blob/d8ed5e3d14f0b104aaed7a3895a05fe117f16ceb/data/blog/2021-07-16-pipeline.mdx
+# отримано: 2026-10-16
+
+Upstash supports the REST API in addition to the native Redis API. The REST API helps developers access their Redis without connection issues from serverless and edge functions. However, if you execute multiple Redis commands in the same function, this means you will make a call to the database multiple times. One of our community members (@MasterGates) came with a great suggestion in our Discord channel. Pipeline API:
+
+## Pipeline API
+
+The Pipeline API is just an adaptation of the Redis PIPELINE command to the REST API. You send multiple commands in a single HTTP request, and the responses are returned in a single request. This improves the performance of your application by reducing the RTT (round trip time) as well as decreasing socket I/O.
+
+Request syntax:
+
+```shell
+curl -X POST https://us1-merry-cat-32748.upstash.io/pipeline \
+-H "Authorization: Bearer 2553feg6a2d9842h2a0gcdb5f8efe9934" \
+-d '
+   [
+     ["SET", "key1", "valuex"],
+     ["SETEX", "key2", 13, "valuez"],
+     ["INCR", "key1"],
+     ["ZADD", "myset", 11, "item1", 22, "item2"]
+   ]
+   '
+```
+
+Response syntax:
+
+```json
+[
+  { "result": "OK" },
+  { "result": "OK" },
+  { "error": "ERR value is not an integer or out of range" },
+  { "result": 2 }
+]
+```
+
+## Ordering Guarantee and Atomicity
+
+Upstash guarantees that the commands in the pipeline are executed in the same order. However, atomicity is not guaranteed. Commands sent by other clients can interleave with the pipeline. Some commands may fail while the remaining are executed with success.
+
+Another limitation of the pipeline API is that your commands should be independent, so the response of a command should not be needed by another command in the pipeline.
+
+Check our documentation to learn more about the Upstash REST API. We continue to develop the API guided by our users, so please share your feedback on Twitter or Discord.

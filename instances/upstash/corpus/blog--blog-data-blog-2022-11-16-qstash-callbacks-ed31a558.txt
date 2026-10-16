@@ -1,0 +1,69 @@
+# Blog: Announcing QStash Callbacks
+# джерело: https://github.com/upstash/upstash-web/blob/d8ed5e3d14f0b104aaed7a3895a05fe117f16ceb/data/blog/2022-11-16-qstash-callbacks.mdx
+# отримано: 2026-10-16
+
+Earlier this year, we released QStash, a message queue and scheduler designed for serverless and edge platforms.
+Today we're excited to announce: QStash Callbacks.
+
+QStash solved the problem of using queues and scheduling messages in serverless functions. But until now this was a one way street, where you could only send messages but had no way of accessing the response of the destination API.
+With QStash Callbacks, you can now send messages and get the response pushed back to you.
+
+## How it works
+
+Currently, when you publish a message, we send it to the destination API and wait for a response. If the response is a 2xx status code, we consider the message delivered. If the response is a 4xx or 5xx status code, we consider the message undelivered and retry it.
+
+With QStash Callbacks, you can now send a message and get the response pushed back to you. This is how it works:
+
+1. You publish a message to QStash with a callback URL.
+2. QStash sends the message to the destination API and waits for a response.
+3. QStash waits for the response
+4. The response status, body and headers are sent to the callback URL.
+
+## How to use it
+
+Callback URLs are added when publishing a message or scheduling a message.
+To add a callback URL, you can use the `Upstash-Callback` header:
+
+```bash
+curl -X POST \
+  https://qstash.upstash.io/v2/publish/<DESTINATION_URL_OR_TOPIC> \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer <QSTASH_TOKEN>' \
+  -H 'Upstash-Callback: https://my-project.vercel.app/api/callback' \
+  -d '{
+    "message": "Hello World"
+}'
+```
+
+After receiving a response from the destination api, we immediately publish a new message to the callback URL. The message body is a JSON object with the following fields:
+
+```json
+{
+  "status": 200,
+  "sourceMessasgeId": "msg_xxx" // The ID of the message that triggered the callback
+  "headers": {
+    "key": ["value"]
+  },
+  "body": "base64 encoded response body",
+  "retried": 1 // How many times we retried to deliver the original message
+}
+```
+
+You should then verify the signature just like you would for a regular message.
+
+### Example
+
+Using callbacks opens up a lot of new use cases. For example, you can now use QStash to call 3rd party APIs and use the response to update your database.
+
+Dom from our friends at Vercel has already built an example project that uses QStash callbacks to call the DALL-E API and store the generated images in redis to show them in the UI.
+Check it out here:
+
+- Source Code
+- App
+
+### Future
+
+Please let us know what you would like to build with callbacks or if you have feedback on Twitter or Discord, we're excited to see what you come up with!
+
+For a more in-depth guide on how to use callbacks, please visit our
+documentation.
