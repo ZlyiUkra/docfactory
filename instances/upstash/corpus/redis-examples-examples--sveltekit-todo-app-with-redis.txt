@@ -1,0 +1,298 @@
+# Example: sveltekit-todo-app-with-redis
+# джерело: https://github.com/upstash/redis-examples/tree/master/sveltekit-todo-app-with-redis
+# отримано: 2026-10-16
+
+## SvelteKit Todo App with Redis
+
+Demo
+
+---
+
+### Developing
+
+Once you've created a project and installed dependencies with `yarn` start a
+development server:
+
+```bash
+yarn run dev
+```
+
+## package.json
+
+```json
+{
+  "name": "svelte-kit-todo-app-with-redis",
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "svelte-kit dev",
+    "build": "svelte-kit build",
+    "package": "svelte-kit package",
+    "preview": "svelte-kit preview",
+    "prepare": "svelte-kit sync",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "check:watch": "svelte-check --tsconfig ./tsconfig.json --watch",
+    "lint": "prettier --ignore-path .gitignore --check --plugin-search-dir=. .",
+    "format": "prettier --ignore-path .gitignore --write --plugin-search-dir=. ."
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-auto": "next",
+    "@sveltejs/kit": "next",
+    "@types/cookie": "^0.4.1",
+    "prettier": "^2.5.1",
+    "prettier-plugin-svelte": "^2.5.0",
+    "svelte": "^3.46.0",
+    "svelte-check": "^2.2.6",
+    "svelte-preprocess": "^4.10.1",
+    "tslib": "^2.3.1",
+    "typescript": "~4.6.2"
+  },
+  "dependencies": {
+    "@upstash/redis": "^1.0.0",
+    "dotenv": "^16.0.0"
+  }
+}
+```
+
+## src/app.html
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="description" content="Svelte demo app" />
+    <link rel="icon" href="%svelte.assets%/favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    %svelte.head%
+  </head>
+  <body>
+    <div>%svelte.body%</div>
+  </body>
+</html>
+```
+
+## src/components/Todo.svelte
+
+```svelte
+<script lang="ts">
+  import type { Todo } from "$lib/types";
+
+  export let todo: Todo;
+</script>
+
+<div class="todo">
+  <form action="/?_method=PATCH" method="post">
+    <input type="hidden" name="todo" value={JSON.stringify(todo)} />
+    <button
+      class="checkbox"
+      aria-label="Mark todo as {todo.status ? 'not done' : 'done'}"
+    >
+      {todo.status ? "✓" : ""}
+    </button>
+  </form>
+
+  <span class="text">{todo.text}</span>
+
+  <form action="/?_method=DELETE" method="post">
+    <input type="hidden" name="id" value={todo.id} />
+    <button class="delete" aria-label="Delete todo">✕</button>
+  </form>
+</div>
+
+<style>
+  .todo {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    border-radius: var(--rounded-md);
+  }
+
+  .checkbox {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: var(--rounded);
+    border: 1px solid var(--gray-300);
+    box-shadow: 0 1px 1px 0 rgb(0 0 0 / 10%);
+  }
+
+  .text {
+    margin-left: 0.75rem;
+    flex-grow: 1;
+  }
+
+  .delete {
+    opacity: 0.3;
+  }
+  .delete:hover,
+  .delete:focus {
+    color: red;
+    opacity: 1;
+  }
+</style>
+```
+
+## src/lib/redis.ts
+
+```ts
+import "dotenv/config";
+import { Redis } from "@upstash/redis";
+
+export const databaseName =
+  process.env.NODE_ENV === "development"
+    ? "redis-with-svelte-kit-dev"
+    : "redis-with-svelte-kit";
+
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN,
+});
+
+export default redis;
+```
+
+## src/lib/types.ts
+
+```ts
+export type Todo = {
+  id: string;
+  text: string;
+  status: boolean;
+};
+```
+
+## src/routes/index.svelte
+
+```svelte
+<script lang="ts">
+  import "../app.css";
+  import type { Todo } from "$lib/types";
+  import TodoItem from "../components/Todo.svelte";
+
+  export let todos: Todo[];
+  const uncheckedTodos = todos.filter((todo) => !todo.status);
+  const checkedTodos = todos.filter((todo) => todo.status);
+</script>
+
+<svelte:head>
+  <title>Todos</title>
+</svelte:head>
+
+<main class="container">
+  <form class="new" action="/" method="post">
+    <input
+      type="text"
+      name="text"
+      autofocus
+      aria-label="Add todo"
+      class="input"
+      placeholder="What needs to be done?"
+    />
+  </form>
+
+  <div class="todos">
+    {#each uncheckedTodos as todo (todo.id)}
+      <TodoItem {todo} />
+    {/each}
+  </div>
+
+  {#if checkedTodos.length}
+    <div class="todos todos-done">
+      {#each checkedTodos as todo (todo.id)}
+        <TodoItem {todo} />
+      {/each}
+    </div>
+  {/if}
+
+
+  <p class="repo-link">
+    <a
+      target="_blank"
+      href="https://github.com/upstash/redis-examples/tree/master/svelte-kit-todo-app-with-redis"
+    >
+      View source on GitHub
+    </a>
+  </p>
+</main>
+
+<style>
+  .repo-link {
+    margin-top: 2rem;
+    text-align: center;
+  }
+
+  .todos {
+    margin-top: 1.5rem;
+  }
+
+  .todos.todos-done {
+    background-color: var(--gray-100);
+    color: var(--gray-500);
+    border-radius: var(--rounded-md);
+  }
+</style>
+```
+
+## src/routes/index.ts
+
+```ts
+import redis, { databaseName } from "$lib/redis";
+import type { RequestHandler } from "@sveltejs/kit";
+
+const redirect = {
+  status: 303,
+  headers: {
+    location: "/",
+  },
+};
+
+export const get: RequestHandler = async () => {
+  let todos = [];
+
+  const data = await redis.hgetall(databaseName);
+  if (!data) return { body: { todos } };
+
+  todos = Object.keys(data)
+    .map((key) => ({
+      id: key,
+      text: data[key]["text"],
+      status: data[key]["status"],
+    }))
+    .sort((a, b) => parseInt(b.id) - parseInt(a.id));
+
+  return { body: { todos } };
+};
+
+export const post: RequestHandler = async ({ request }) => {
+  const form = await request.formData();
+  const text = form.get("text");
+  const id = Date.now().toString();
+
+  const todo = JSON.stringify({ text, status: false });
+
+  await redis.hset(databaseName, id, todo);
+  return redirect;
+};
+
+export const patch: RequestHandler = async ({ request }) => {
+  const form = await request.formData();
+  const todo = form.get("todo");
+
+  const { id, text, status } = JSON.parse(todo as string);
+  let newTodo = { text, status: !status };
+
+  await redis.hset(databaseName, id, JSON.stringify(newTodo));
+  return redirect;
+};
+
+export const del: RequestHandler = async ({ request, locals }) => {
+  const form = await request.formData();
+  const id = form.get("id");
+
+  await redis.hdel(databaseName, id as string);
+  return redirect;
+};
+```

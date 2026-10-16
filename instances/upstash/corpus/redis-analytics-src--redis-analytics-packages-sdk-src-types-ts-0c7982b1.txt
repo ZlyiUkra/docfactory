@@ -1,0 +1,274 @@
+# redis-analytics: packages/sdk/src/types.ts
+# джерело: https://github.com/upstash/redis-analytics/blob/a7e0afc8a694dad44777c4172e14d955d5e8f640/packages/sdk/src/types.ts
+# отримано: 2026-10-16
+
+```ts
+import type { Redis } from "@upstash/redis";
+
+// ─── Utility Types ──────────────────────────────────────────────
+```
+
+## type DeepPartial
+
+```ts
+export type DeepPartial<T> = {
+  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
+};
+
+// ─── Feature Flags ───────────────────────────────────────────────
+```
+
+## type FeatureFlagDefinition
+
+```ts
+export type FeatureFlagDefinition = {
+  possibleValues: string[];
+  defaultValue: string;
+  description?: string;
+};
+```
+
+## type FeatureFlagConfig
+
+```ts
+export type FeatureFlagConfig = FeatureFlagDefinition & {
+  name: string;
+};
+
+export type FeatureFlagDefinitions = Record<string, FeatureFlagDefinition>;
+```
+
+## type FeatureFlagAssignment
+
+```ts
+// Feature flag assignment: either explicit value or distribution weights
+export type FeatureFlagAssignment =
+  | string
+  | Record<string, number>;
+
+// ─── Sessions ────────────────────────────────────────────────────
+```
+
+## type SessionMetadata
+
+```ts
+export type SessionMetadata<
+  TFeatureFlags extends Record<string, string> = Record<string, string>,
+> = {
+  sessionId: string;
+  createdAt: number;
+  featureFlags: TFeatureFlags;
+  metadata?: Record<string, unknown>;
+};
+```
+
+## type SessionResult
+
+```ts
+export type SessionResult<
+  TFeatureFlags extends Record<string, string> = Record<string, string>,
+> =
+  | { exists: true; session: SessionMetadata<TFeatureFlags> }
+  | { exists: false };
+```
+
+## type Session
+
+```ts
+export type Session<
+  TFeatureFlags extends Record<string, string> = Record<string, string>,
+> = {
+  id: string;
+  createdAt: number;
+  featureFlags: TFeatureFlags;
+  metadata?: Record<string, unknown>;
+};
+
+// ─── Events ──────────────────────────────────────────────────────
+```
+
+## type StandardEventMap
+
+```ts
+export type StandardEventMap = {
+  pageview: { path: string };
+  click: { element: string };
+  error: { message: string };
+  warning: { message: string };
+  info: { message: string };
+};
+
+export type StandardEventName = keyof StandardEventMap;
+```
+
+## type EventData
+
+```ts
+export type EventData = {
+  sessionCreationTimestamp: number;
+  sessionId: string;
+  /** ISO 8601 date string for date filtering */
+  eventTime: string;
+  /** Millisecond epoch for numeric aggregation (histogram) */
+  eventTimeMs: number;
+  eventName: string;
+  featureFlags: Record<string, string>;
+  sessionMetadata?: Record<string, unknown>;
+  properties?: Record<string, unknown>;
+};
+```
+
+## type CaptureEventInput
+
+```ts
+export type CaptureEventInput<
+  TCustomEvents extends Record<string, Record<string, unknown>> = Record<
+    string,
+    Record<string, unknown>
+  >,
+> =
+  | {
+      [K in keyof TCustomEvents]: {
+        sessionId: string;
+        eventName: K & string;
+        properties: TCustomEvents[K];
+      };
+    }[keyof TCustomEvents]
+  | {
+      [K in StandardEventName]: {
+        sessionId: string;
+        eventName: K;
+        properties: StandardEventMap[K];
+      };
+    }[StandardEventName];
+
+// ─── Schema Registry ────────────────────────────────────────────
+
+export type SchemaPropertyType = "string" | "number" | "boolean";
+```
+
+## type SchemaProperty
+
+```ts
+export type SchemaProperty = {
+  type: SchemaPropertyType;
+};
+```
+
+## type EventSchema
+
+```ts
+export type EventSchema = {
+  properties: Record<string, SchemaProperty>;
+  lastUpdated: number;
+  version: number;
+};
+
+// ─── System Logging ─────────────────────────────────────────────
+```
+
+## type LogType
+
+```ts
+export type LogType =
+  | "schema_update"
+  | "feature_flag_update"
+  | "validation_error"
+  | "system_error"
+  | "index_update";
+```
+
+## type SystemLog
+
+```ts
+export type SystemLog = {
+  logType: LogType;
+  timestamp: number;
+  eventName?: string;
+  changes?: {
+    before: unknown;
+    after: unknown;
+  };
+  metadata?: Record<string, unknown>;
+};
+
+// ─── Search Index ───────────────────────────────────────────────
+```
+
+## type SearchIndexInfo
+
+```ts
+export type SearchIndexInfo = {
+  currentIndex: string;
+  alias: string;
+  schema: Record<string, unknown>;
+  documentCount: number;
+};
+
+// ─── Configuration ──────────────────────────────────────────────
+```
+
+## type AnalyticsConfig
+
+```ts
+export type AnalyticsConfig = {
+  session: {
+    expirationMs: number;
+  };
+  featureFlags: FeatureFlagDefinitions;
+  events: {
+    customEventRetentionDays: number;
+    /** Maximum number of events allowed in a single batch request. Default: 20 */
+    maxBatchSize: number;
+  };
+  schemaValidation: {
+    /** Probability of validating schema on each event, between 0 and 1. Default: 1 (every event). Set lower (e.g. 0.01) to reduce Redis costs at the expense of delayed schema detection. */
+    checkFrequency: number;
+  };
+  logging: {
+    retentionDays: number;
+    enabledTypes: LogType[];
+  };
+  search: {
+    indexName: string;
+  };
+};
+```
+
+## type SDKOptions
+
+```ts
+export type SDKOptions = {
+  redis: Redis;
+  config: AnalyticsConfig;
+};
+
+// ─── Server Configuration ───────────────────────────────────────
+```
+
+## type ServerConfig
+
+```ts
+export type ServerConfig = {
+  redis: {
+    url: string;
+    token: string;
+  };
+  config?: DeepPartial<AnalyticsConfig>;
+};
+
+// ─── Client Configuration ───────────────────────────────────────
+```
+
+## type ClientConfig
+
+```ts
+export type ClientConfig = {
+  /** Base URL for the analytics endpoint. Defaults to "/api/analytics" */
+  endpoint?: string;
+  /** Debounce time in ms for batching event captures. 0 = no batching. Defaults to 0. */
+  flushInterval?: number;
+  /** Maximum number of events to send in a single batch request. Default: 20. */
+  maxBatchSize?: number;
+};
+```

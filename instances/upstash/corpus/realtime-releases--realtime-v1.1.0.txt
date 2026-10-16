@@ -1,0 +1,36 @@
+# realtime release: v1.1.0
+# джерело: https://github.com/upstash/realtime/releases/tag/v1.1.0
+# отримано: 2026-10-16
+# версія: realtime-1.1.0
+
+Tag v1.1.0, published 2026-07-29.
+
+## Cursor-based resumption for server-side subscriptions
+
+Every event delivered by a server-side `subscribe()` now carries an opaque `cursor`. Pass the last handled cursor back as `after` to resume exactly where you left off — missed events are replayed from the stream, then live delivery continues with automatic deduplication:
+
+```ts
+await realtime.channel("jobs").subscribe({
+  events: ["job.updated"],
+  after: storedCursor,
+  onData(message) {
+    handleJobUpdate(message.data)
+    saveCursor("jobs", message.cursor)
+  },
+})
+```
+
+- A trimmed, expired or malformed cursor rejects the subscription with the new `CursorUnavailableError`, so you can reload canonical state and start fresh.
+- `after` and `history` are mutually exclusive, enforced at the type level and at runtime.
+- `RealtimeCursor` is a branded string; narrow stored values with the exported `isRealtimeCursor` guard before passing them to `after`.
+- Failed history replays now reject the `subscribe()` promise and clean up the underlying Redis subscription instead of hanging.
+- Stream-id comparison uses `BigInt`, so sequence numbers beyond 2^53 order correctly.
+
+See docs/server-side-cursor-resumption.md for a full usage guide.
+
+### Compatibility notes
+
+- `onData` payloads gain a `cursor` property, and the exported `UserEvent["id"]` type is now branded — a type-level change for TypeScript consumers constructing `UserEvent` values manually. Hence the minor version bump.
+- Event ids are now validated against the Redis stream-id format (`^\d+-\d+$`) everywhere. Events published to a channel by hand (raw `redis.publish` with a custom `id`, bypassing `emit()`) are silently dropped from delivery. Use `emit()`, which mints valid ids via `XADD`.
+
+Thanks @smorimoto for the contribution (#26, closes #25).

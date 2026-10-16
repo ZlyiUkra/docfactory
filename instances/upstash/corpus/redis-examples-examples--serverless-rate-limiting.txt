@@ -1,0 +1,61 @@
+# Example: serverless-rate-limiting
+# джерело: https://github.com/upstash/redis-examples/tree/master/serverless-rate-limiting
+# отримано: 2026-10-16
+
+### Rate Limiting AWS Lambda with Redis
+
+This example showcases how to rate limit your AWS Lambda function using Serverless Redis.
+
+See the tutorial for details.
+
+## handler.js
+
+```js
+const RateLimiter = require('async-ratelimiter')
+const Redis = require('ioredis')
+const { getClientIp } = require('request-ip')
+
+const rateLimiter = new RateLimiter({
+    db: new Redis("REPLACE_HERE"),
+    max: 1,
+    duration: 5_000
+})
+
+module.exports.hello = async (event) => {
+    const clientIp = getClientIp(event) || 'NA'
+    const limit = await rateLimiter.get({id: clientIp})
+    if (!limit.remaining) {
+        return {
+            statusCode: 429,
+            body: JSON.stringify(
+                {
+                    message: 'Sorry, you are rate limited. Wait for 5 seconds',
+                    client: clientIp
+                },
+            ),
+        };
+    }
+
+    return {
+        statusCode: 200,
+        body: JSON.stringify(
+            {
+                message: 'hello!',
+                client: clientIp
+            },
+        ),
+    };
+};
+```
+
+## package.json
+
+```json
+{
+  "dependencies": {
+    "async-ratelimiter": "^1.2.8",
+    "ioredis": "^4.27.1",
+    "request-ip": "^2.1.3"
+  }
+}
+```

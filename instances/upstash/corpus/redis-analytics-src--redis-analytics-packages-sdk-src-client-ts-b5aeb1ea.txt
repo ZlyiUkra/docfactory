@@ -1,0 +1,303 @@
+# redis-analytics: packages/sdk/src/client.ts
+# джерело: https://github.com/upstash/redis-analytics/blob/a7e0afc8a694dad44777c4172e14d955d5e8f640/packages/sdk/src/client.ts
+# отримано: 2026-10-16
+
+```ts
+import type {
+  AnalyticsRequest,
+  AnalyticsResponse,
+} from "./protocol";
+import type {
+  CaptureEventInput,
+  ClientConfig,
+  Session,
+  SessionResult,
+} from "./types";
+```
+
+## class AnalyticsClient
+
+```ts
+export class AnalyticsClient<
+  TCustomEvents extends Record<string, Record<string, unknown>> = Record<
+    string,
+    Record<string, unknown>
+  >,
+  TFeatureFlags extends Record<string, string> = Record<string, string>,
+> {
+  private endpoint: string;
+  private flushInterval: number;
+  private maxBatchSize: number;
+  private eventQueue: Array<{
+    sessionId: string;
+    eventName: string;
+    properties?: Record<string, unknown>;
+  }> = [];
+  private flushTimer: ReturnType<typeof setTimeout> | null = null;
+```
+
+### AnalyticsClient.constructor()
+
+```ts
+  constructor(config?: ClientConfig) {
+    this.endpoint = config?.endpoint ?? "/api/analytics";
+    this.flushInterval = config?.flushInterval ?? 0;
+    this.maxBatchSize = config?.maxBatchSize ?? 20;
+  }
+```
+
+### AnalyticsClient.sendPost()
+
+```ts
+  private async sendPost<T = unknown>(
+    request: AnalyticsRequest
+  ): Promise<T> {
+    const response = await fetch(this.endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+    });
+
+    const result: AnalyticsResponse = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.error ?? "Analytics request failed");
+    }
+
+    return result.data as T;
+  }
+```
+
+### AnalyticsClient.sendGet()
+
+```ts
+  private async sendGet<T = unknown>(
+    requestType: string,
+    params: Record<string, string>
+  ): Promise<T> {
+    const searchParams = new URLSearchParams({ requestType, ...params });
+    const response = await fetch(`${this.endpoint}?${searchParams}`);
+
+    const result: AnalyticsResponse = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.error ?? "Analytics request failed");
+    }
+
+    return result.data as T;
+  }
+
+  // ─── Batch Queue ─────────────────────────────────────────────
+```
+
+### AnalyticsClient.enqueueEvent()
+
+```ts
+  private enqueueEvent(event: {
+    sessionId: string;
+    eventName: string;
+    properties?: Record<string, unknown>;
+  }): void {
+    this.eventQueue.push(event);
+
+    if (this.flushTimer) {
+      clearTimeout(this.flushTimer);
+    }
+
+    this.flushTimer = setTimeout(() => {
+      this.flush();
+    }, this.flushInterval);
+  }
+```
+
+### AnalyticsClient.flush()
+
+```ts
+  async flush(): Promise<void> {
+    if (this.flushTimer) {
+      clearTimeout(this.flushTimer);
+      this.flushTimer = null;
+    }
+
+    if (this.eventQueue.length === 0) return;
+
+    const events = [...this.eventQueue];
+    this.eventQueue = [];
+
+    if (events.length === 1) {
+      await this.sendPost({
+        requestType: "captureEvent",
+        data: events[0],
+      });
+    } else {
+      // Send in chunks of maxBatchSize
+      for (let i = 0; i < events.length; i += this.maxBatchSize) {
+        const chunk = events.slice(i, i + this.maxBatchSize);
+        await this.sendPost({
+          requestType: "captureBatchEvents",
+          data: { events: chunk },
+        });
+      }
+    }
+  }
+
+  // ─── Session Management ──────────────────────────────────────
+
+  async createSession(): Promise<Session<TFeatureFlags>> {
+    return this.sendPost<Session<TFeatureFlags>>({
+      requestType: "createSession",
+      data: {},
+    });
+  }
+```
+
+### AnalyticsClient.getSession()
+
+```ts
+  async getSession(sessionId: string): Promise<SessionResult<TFeatureFlags>> {
+    return this.sendGet<SessionResult<TFeatureFlags>>("getSession", { sessionId });
+  }
+
+  // ─── Event Tracking ──────────────────────────────────────────
+```
+
+### AnalyticsClient.captureEvent()
+
+```ts
+  async captureEvent(
+    input: CaptureEventInput<TCustomEvents>
+  ): Promise<void> {
+    const event = input as {
+      sessionId: string;
+      eventName: string;
+      properties?: Record<string, unknown>;
+    };
+
+    if (this.flushInterval > 0) {
+      this.enqueueEvent(event);
+      return;
+    }
+
+    await this.sendPost({
+      requestType: "captureEvent",
+      data: event,
+    });
+  }
+```
+
+### AnalyticsClient.capturePageView()
+
+```ts
+  async capturePageView(sessionId: string, path: string): Promise<void> {
+    const event = { sessionId, eventName: "pageview" as const, properties: { path } };
+
+    if (this.flushInterval > 0) {
+      this.enqueueEvent(event);
+      return;
+    }
+
+    await this.sendPost({
+      requestType: "captureEvent",
+      data: event,
+    });
+  }
+```
+
+### AnalyticsClient.captureClick()
+
+```ts
+  async captureClick(sessionId: string, element: string): Promise<void> {
+    const event = { sessionId, eventName: "click" as const, properties: { element } };
+
+    if (this.flushInterval > 0) {
+      this.enqueueEvent(event);
+      return;
+    }
+
+    await this.sendPost({
+      requestType: "captureEvent",
+      data: event,
+    });
+  }
+```
+
+### AnalyticsClient.captureError()
+
+```ts
+  async captureError(sessionId: string, message: string): Promise<void> {
+    const event = { sessionId, eventName: "error" as const, properties: { message } };
+
+    if (this.flushInterval > 0) {
+      this.enqueueEvent(event);
+      return;
+    }
+
+    await this.sendPost({
+      requestType: "captureEvent",
+      data: event,
+    });
+  }
+```
+
+### AnalyticsClient.captureWarning()
+
+```ts
+  async captureWarning(sessionId: string, message: string): Promise<void> {
+    const event = { sessionId, eventName: "warning" as const, properties: { message } };
+
+    if (this.flushInterval > 0) {
+      this.enqueueEvent(event);
+      return;
+    }
+
+    await this.sendPost({
+      requestType: "captureEvent",
+      data: event,
+    });
+  }
+```
+
+### AnalyticsClient.captureInfo()
+
+```ts
+  async captureInfo(sessionId: string, message: string): Promise<void> {
+    const event = { sessionId, eventName: "info" as const, properties: { message } };
+
+    if (this.flushInterval > 0) {
+      this.enqueueEvent(event);
+      return;
+    }
+
+    await this.sendPost({
+      requestType: "captureEvent",
+      data: event,
+    });
+  }
+
+  // ─── Feature Flags ───────────────────────────────────────────
+```
+
+### AnalyticsClient.getFeatureFlag()
+
+```ts
+  async getFeatureFlag<K extends string & keyof TFeatureFlags>(
+    sessionId: string,
+    flagName: K
+  ): Promise<TFeatureFlags[K] | null> {
+    const result = await this.sendGet<{ value: TFeatureFlags[K] | null }>(
+      "getFeatureFlag",
+      { sessionId, flagName }
+    );
+    return result.value;
+  }
+
+  async getAllFeatureFlags(
+    sessionId: string
+  ): Promise<TFeatureFlags> {
+    return this.sendGet<TFeatureFlags>(
+      "getAllFeatureFlags",
+      { sessionId }
+    );
+  }
+}
+```

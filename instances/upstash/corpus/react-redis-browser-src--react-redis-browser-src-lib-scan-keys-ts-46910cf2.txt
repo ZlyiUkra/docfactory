@@ -1,0 +1,53 @@
+# react-redis-browser: src/lib/scan-keys.ts
+# джерело: https://github.com/upstash/react-redis-browser/blob/v0.2.22/src/lib/scan-keys.ts
+# отримано: 2026-10-16
+# версія: react-redis-browser-0.2.22, react-redis-browser-0.2.21, react-redis-browser-0.2.20, react-redis-browser-0.2.19, react-redis-browser-0.2.18, react-redis-browser-0.2.17, react-redis-browser-0.2.16, react-redis-browser-0.2.15, react-redis-browser-0.2.14
+
+```ts
+import type { Redis } from "@upstash/redis"
+```
+
+## function scanKeys
+
+```ts
+/**
+ * Scans Redis keys matching a pattern using SCAN (non-blocking).
+ * Optionally limits the total number of keys returned.
+ */
+export async function scanKeys(
+  redis: Redis,
+  {
+    match,
+    type,
+    count = 100,
+    limit,
+  }: {
+    match?: string
+    type?: string
+    count?: number
+    limit?: number
+  } = {}
+): Promise<string[]> {
+  let cursor = "0"
+  const result: string[] = []
+
+  while (true) {
+    const [newCursor, keys] = await redis.scan(cursor, {
+      count,
+      type,
+      match,
+    })
+
+    result.push(...keys)
+
+    if (limit && result.length >= limit) {
+      return result.slice(0, limit)
+    }
+
+    if (newCursor === "0") break
+    cursor = newCursor
+  }
+
+  return result
+}
+```

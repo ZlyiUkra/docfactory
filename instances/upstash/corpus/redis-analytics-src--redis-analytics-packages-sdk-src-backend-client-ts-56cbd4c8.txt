@@ -1,0 +1,371 @@
+# redis-analytics: packages/sdk/src/backend-client.ts
+# джерело: https://github.com/upstash/redis-analytics/blob/a7e0afc8a694dad44777c4172e14d955d5e8f640/packages/sdk/src/backend-client.ts
+# отримано: 2026-10-16
+
+```ts
+import { Redis } from "@upstash/redis";
+import type {
+  AnalyticsConfig,
+  CaptureEventInput,
+  DeepPartial,
+  EventSchema,
+  FeatureFlagConfig,
+  FeatureFlagDefinition,
+  LogType,
+  SearchIndexInfo,
+  ServerConfig,
+  Session,
+  SessionResult,
+  SystemLog,
+} from "./types";
+import type { AnalyticsRequest, AnalyticsResponse } from "./protocol";
+import { LoggingService } from "./services/logging";
+import { FeatureFlagService } from "./services/feature-flags";
+import { SessionService } from "./services/sessions";
+import { EventService } from "./services/events";
+import { SchemaRegistry } from "./services/schema-registry";
+import { SearchIndexService } from "./services/search-index";
+```
+
+## const DEFAULT_CONFIG
+
+```ts
+const DEFAULT_CONFIG: AnalyticsConfig = {
+  session: {
+    expirationMs: 3_600_000, // 1 hour
+  },
+  featureFlags: {},
+  events: {
+    customEventRetentionDays: 7,
+    maxBatchSize: 20,
+  },
+  schemaValidation: {
+    checkFrequency: 1,
+  },
+  logging: {
+    retentionDays: 30,
+    enabledTypes: [
+      "schema_update",
+      "feature_flag_update",
+      "system_error",
+      "index_update",
+    ],
+  },
+  search: {
+    indexName: "events-idx",
+  },
+};
+```
+
+## function deepMerge
+
+```ts
+function deepMerge<T extends Record<string, unknown>>(
+  target: T,
+  source: DeepPartial<T>
+): T {
+  const result = { ...target };
+  for (const key of Object.keys(source) as Array<keyof T>) {
+    const sourceVal = source[key];
+    if (sourceVal === undefined) continue;
+    const targetVal = result[key];
+    if (
+      targetVal &&
+      typeof targetVal === "object" &&
+      !Array.isArray(targetVal) &&
+      typeof sourceVal === "object" &&
+      !Array.isArray(sourceVal)
+    ) {
+      result[key] = deepMerge(
+        targetVal as Record<string, unknown>,
+        sourceVal as Record<string, unknown>
+      ) as T[keyof T];
+    } else {
+      result[key] = sourceVal as T[keyof T];
+    }
+  }
+  return result;
+}
+```
+
+## type MiddlewareResult
+
+```ts
+export type MiddlewareResult<
+  TSessionMetadata extends Record<string, unknown> = Record<string, unknown>,
+> = {
+  sessionMetadata?: TSessionMetadata;
+  /**
+   * Feature flags to assign to the session.
+   * Set to `false` to wipe all previously accumulated flags.
+   */
+  featureFlags?: Record<string, string> | false;
+};
+```
+
+## type MiddlewareFn
+
+```ts
+export type MiddlewareFn<
+  TSessionMetadata extends Record<string, unknown> = Record<string, unknown>,
+> = (context: {
+  request: Request;
+  analyticsRequest: AnalyticsRequest;
+}) =>
+  | Response
+  | void
+  | MiddlewareResult<TSessionMetadata>
+  | Promise<Response | void | MiddlewareResult<TSessionMetadata>>;
+```
+
+## type HandlerOptions
+
+```ts
+export type HandlerOptions<
+  TSessionMetadata extends Record<string, unknown> = Record<string, unknown>,
+> = {
+  /**
+   * Middleware(s) that run before each request is processed.
+   * Accepts a single middleware or an array of middlewares (executed in order).
+   * Return a Response to short-circuit (e.g. 401 Unauthorized).
+   * Return void to let the request proceed.
+   * Return { sessionMetadata, featureFlags } to attach metadata/flags to the session.
+   * If multiple middlewares return featureFlags, they are merged ({ ...existing, ...new }).
+   * If a middleware returns { featureFlags: false }, all previously accumulated flags are wiped.
+   */
+  middleware?: MiddlewareFn<TSessionMetadata> | MiddlewareFn<TSessionMetadata>[];
+};
+```
+
+## class AnalyticsBackendClient
+
+```ts
+export class AnalyticsBackendClient<
+  TCustomEvents extends Record<string, Record<string, unknown>> = Record<
+    string,
+    Record<string, unknown>
+  >,
+  TFeatureFlags extends Record<string, string> = Record<string, string>,
+  TSessionMetadata extends Record<string, unknown> = Record<string, unknown>,
+> {
+  readonly events: EventService;
+  readonly sessions: SessionService;
+  readonly featureFlags: FeatureFlagService;
+  readonly schemas: SchemaRegistry;
+  readonly logs: LoggingService;
+  readonly searchIndex: SearchIndexService;
+
+  private redis: Redis;
+  private config: AnalyticsConfig;
+```
+
+### AnalyticsBackendClient.constructor()
+
+```ts
+  constructor(serverConfig: ServerConfig) {
+    this.redis = new Redis({
+      url: serverConfig.redis.url,
+      token: serverConfig.redis.token,
+    });
+    this.config = deepMerge(
+      DEFAULT_CONFIG,
+      (serverConfig.config ?? {}) as DeepPartial<AnalyticsConfig>
+    );
+
+    this.logs = new LoggingService(this.redis, this.config);
+    this.featureFlags = new FeatureFlagService(this.redis, this.config, this.logs);
+    this.sessions = new SessionService(
+      this.redis,
+      this.config,
+      this.featureFlags,
+      this.logs
+    );
+    this.schemas = new SchemaRegistry(this.redis, this.config, this.logs);
+    this.searchIndex = new SearchIndexService(
+      this.redis,
+      this.config,
+      this.schemas,
+      this.featureFlags,
+      this.logs
+    );
+    this.events = new EventService(
+      this.redis,
+      this.config,
+      this.schemas,
+      this.logs
+    );
+  }
+
+  // ─── Handler ──────────────────────────────────────────────────
+
+  getHandler(options?: HandlerOptions<TSessionMetadata>): (request: Request) => Promise<Response> {
+    return (request: Request) => this.handleRequest(request, options);
+  }
+```
+
+### AnalyticsBackendClient.handleRequest()
+
+```ts
+  private async handleRequest(
+    request: Request,
+    options?: HandlerOptions<TSessionMetadata>
+  ): Promise<Response> {
+    try {
+      const method = request.method.toUpperCase();
+      let analyticsRequest: AnalyticsRequest;
+
+      if (method === "GET") {
+        const url = new URL(request.url);
+        const requestType = url.searchParams.get("requestType");
+
+        if (!requestType) {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: "Missing requestType query parameter",
+            }),
+            { status: 400, headers: { "Content-Type": "application/json" } }
+          );
+        }
+
+        analyticsRequest = this.parseGetRequest(requestType, url.searchParams);
+      } else {
+        analyticsRequest = (await request.json()) as AnalyticsRequest;
+      }
+
+      // Run middleware(s)
+      let sessionMetadata: TSessionMetadata | undefined;
+      let middlewareFeatureFlags: Record<string, string> | undefined;
+
+      const middlewares = options?.middleware
+        ? Array.isArray(options.middleware)
+          ? options.middleware
+          : [options.middleware]
+        : [];
+
+      for (const mw of middlewares) {
+        const middlewareResult = await mw({ request, analyticsRequest });
+
+        if (middlewareResult instanceof Response) {
+          return middlewareResult;
+        }
+
+        if (middlewareResult && typeof middlewareResult === "object") {
+          if ("sessionMetadata" in middlewareResult && middlewareResult.sessionMetadata) {
+            sessionMetadata = { ...sessionMetadata, ...middlewareResult.sessionMetadata } as TSessionMetadata;
+          }
+          if ("featureFlags" in middlewareResult) {
+            if (middlewareResult.featureFlags === false) {
+              middlewareFeatureFlags = {};
+            } else if (middlewareResult.featureFlags) {
+              middlewareFeatureFlags = { ...(middlewareFeatureFlags ?? {}), ...middlewareResult.featureFlags };
+            }
+          }
+        }
+      }
+
+      const result = await this.processRequest(analyticsRequest, sessionMetadata, middlewareFeatureFlags);
+      return new Response(JSON.stringify(result), {
+        status: result.success ? 200 : 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown error";
+      const result: AnalyticsResponse = { success: false, error: message };
+      return new Response(JSON.stringify(result), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  }
+```
+
+### AnalyticsBackendClient.parseGetRequest()
+
+```ts
+  private parseGetRequest(
+    requestType: string,
+    params: URLSearchParams
+  ): AnalyticsRequest {
+    switch (requestType) {
+      case "getSession":
+        return {
+          requestType: "getSession",
+          data: { sessionId: params.get("sessionId")! },
+        };
+      case "getFeatureFlag":
+        return {
+          requestType: "getFeatureFlag",
+          data: {
+            sessionId: params.get("sessionId")!,
+            flagName: params.get("flagName")!,
+          },
+        };
+      case "getAllFeatureFlags":
+        return {
+          requestType: "getAllFeatureFlags",
+          data: { sessionId: params.get("sessionId")! },
+        };
+      default:
+        throw new Error(`Unknown GET request type: ${requestType}`);
+    }
+  }
+```
+
+### AnalyticsBackendClient.processRequest()
+
+```ts
+  private async processRequest(
+    req: AnalyticsRequest,
+    sessionMetadata?: Record<string, unknown>,
+    middlewareFeatureFlags?: Record<string, string>
+  ): Promise<AnalyticsResponse> {
+    switch (req.requestType) {
+      case "captureEvent": {
+        await this.events.captureEvent(req.data as any);
+        return { success: true };
+      }
+      case "captureBatchEvents": {
+        await this.events.captureBatchEvents(req.data.events);
+        return { success: true };
+      }
+      case "getSession": {
+        const session = await this.sessions.getSession(req.data.sessionId);
+        return { success: true, data: session };
+      }
+      case "getFeatureFlag": {
+        const value = await this.sessions.getFeatureFlag(
+          req.data.sessionId,
+          req.data.flagName
+        );
+        return { success: true, data: { value } };
+      }
+      case "getAllFeatureFlags": {
+        const flags = await this.sessions.getAllFeatureFlags(req.data.sessionId);
+        return { success: true, data: flags };
+      }
+      case "createSession": {
+        const session = await this.sessions.createSession({
+          resolvedFeatureFlags: middlewareFeatureFlags,
+          metadata: sessionMetadata,
+        });
+        // Register session metadata schema so it's available in search index
+        if (sessionMetadata && Object.keys(sessionMetadata).length > 0) {
+          await this.schemas.validateAndUpdateSchema(
+            "__session_metadata__",
+            sessionMetadata
+          );
+        }
+        return { success: true, data: session };
+      }
+      default: {
+        return {
+          success: false,
+          error: `Unknown request type: ${(req as any).requestType}`,
+        };
+      }
+    }
+  }
+}
+```

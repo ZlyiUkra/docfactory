@@ -1,0 +1,127 @@
+# react-redis-browser: src/components/databrowser/components/item-context-menu.tsx
+# джерело: https://github.com/upstash/react-redis-browser/blob/v0.2.5/src/components/databrowser/components/item-context-menu.tsx
+# отримано: 2026-10-16
+# версія: react-redis-browser-0.2.5, react-redis-browser-0.2.4, react-redis-browser-0.2.3, react-redis-browser-0.2.2
+
+```tsx
+import { useState, type PropsWithChildren } from "react"
+import { useDatabrowserStore } from "@/store"
+import { type ListDataType } from "@/types"
+import { ContextMenuSeparator } from "@radix-ui/react-context-menu"
+
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu"
+import { toast } from "@/components/ui/use-toast"
+
+import { useEditListItem } from "../hooks"
+import { DeleteAlertDialog } from "./display/delete-alert-dialog"
+import type { ItemData } from "./display/display-list"
+```
+
+## const ItemContextMenu
+
+```tsx
+export const ItemContextMenu = ({
+  children,
+  dataKey,
+  type,
+}: PropsWithChildren<{
+  dataKey: string
+  type: ListDataType
+}>) => {
+  const { mutate: editItem } = useEditListItem()
+  const [isAlertOpen, setAlertOpen] = useState(false)
+  const [data, setData] = useState<ItemData | undefined>()
+  const { addTab, setSelectedKey, selectTab, setSelectedListItem } = useDatabrowserStore()
+
+  return (
+    <>
+      <DeleteAlertDialog
+        deletionType="item"
+        open={isAlertOpen}
+        onOpenChange={setAlertOpen}
+        onDeleteConfirm={(e) => {
+          e.stopPropagation()
+          if (data) {
+            editItem({
+              type,
+              dataKey,
+              itemKey: data?.key,
+              // For deletion
+              newKey: undefined,
+            })
+          }
+          setAlertOpen(false)
+        }}
+      />
+      <ContextMenu modal={false}>
+        <ContextMenuTrigger
+          asChild
+          // NOTE: We did not put the ContextMenu on every key because of performance reasons
+          onContextMenu={(e) => {
+            const el = e.target as HTMLElement
+            const item = el.closest("[data-item-key]")
+
+            if (item && item instanceof HTMLElement && item.dataset.itemKey !== undefined) {
+              setData({
+                key: item.dataset.itemKey,
+                value: item.dataset.itemValue,
+              })
+            } else {
+              throw new Error("Key not found")
+            }
+          }}
+        >
+          {children}
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem
+            onClick={() => {
+              if (!data) return
+              navigator.clipboard.writeText(data?.key)
+              toast({
+                description: "Key copied to clipboard",
+              })
+            }}
+          >
+            Copy key
+          </ContextMenuItem>
+          {data?.value && (
+            <ContextMenuItem
+              onClick={() => {
+                navigator.clipboard.writeText(data?.value ?? "")
+                toast({
+                  description: "Value copied to clipboard",
+                })
+              }}
+            >
+              Copy value
+            </ContextMenuItem>
+          )}
+          <ContextMenuItem
+            onClick={() => {
+              if (!data) return
+              const newTabId = addTab()
+              selectTab(newTabId)
+              setSelectedKey(newTabId, dataKey)
+              setSelectedListItem(newTabId, {
+                key: data.key,
+              })
+            }}
+          >
+            Open in new tab
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem disabled={type === "stream"} onClick={() => setAlertOpen(true)}>
+            Delete item
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+    </>
+  )
+}
+```

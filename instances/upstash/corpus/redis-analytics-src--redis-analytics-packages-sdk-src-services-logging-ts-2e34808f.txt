@@ -1,0 +1,100 @@
+# redis-analytics: packages/sdk/src/services/logging.ts
+# джерело: https://github.com/upstash/redis-analytics/blob/a7e0afc8a694dad44777c4172e14d955d5e8f640/packages/sdk/src/services/logging.ts
+# отримано: 2026-10-16
+
+```ts
+import type { Redis } from "@upstash/redis";
+import type { AnalyticsConfig, LogType, SystemLog } from "../types";
+import { generateLogKey } from "../utils";
+```
+
+## class LoggingService
+
+```ts
+export class LoggingService {
+
+  constructor(
+    private redis: Redis,
+    private config: AnalyticsConfig
+  ) {}
+```
+
+### LoggingService.log()
+
+```ts
+  async log(log: Omit<SystemLog, "timestamp">): Promise<void> {
+    if (!this.config.logging.enabledTypes.includes(log.logType)) {
+      return;
+    }
+
+    const key = generateLogKey();
+    const logEntry: SystemLog = {
+      ...log,
+      timestamp: Date.now(),
+    };
+
+    const retentionMs = this.config.logging.retentionDays * 24 * 60 * 60 * 1000;
+    const px = Math.max(retentionMs, 1000);
+
+    await this.redis.set(key, JSON.stringify(logEntry), { px });
+  }
+```
+
+### LoggingService.getLogs()
+
+```ts
+  async getLogs(options?: {
+    type?: LogType;
+    limit?: number;
+    offset?: number;
+  }): Promise<SystemLog[]> {
+    const limit = options?.limit ?? 50;
+    const offset = options?.offset ?? 0;
+
+    // Scan for log keys
+    const keys: string[] = [];
+    let cursor = 0;
+    const maxScan = 1000; // safety limit
+    let scanned = 0;
+
+    do {
+      const [nextCursor, batch] = await this.redis.scan(cursor, {
+        match: "system-log-*",
+        count: 100,
+      });
+      cursor = typeof nextCursor === "string" ? parseInt(nextCursor) : nextCursor;
+      keys.push(...batch);
+      scanned += batch.length;
+    } while (cursor !== 0 && scanned < maxScan);
+
+    if (keys.length === 0) return [];
+
+    // Sort by key (timestamp is embedded in key)
+    keys.sort().reverse();
+
+    // Paginate
+    const paginatedKeys = keys.slice(offset, offset + limit);
+    if (paginatedKeys.length === 0) return [];
+
+    // Fetch logs
+    const pipeline = this.redis.pipeline();
+    for (const key of paginatedKeys) {
+      pipeline.get(key);
+    }
+    const results = await pipeline.exec<(string | null)[]>();
+
+    const logs: SystemLog[] = [];
+    for (const result of results) {
+      if (result) {
+        const log: SystemLog =
+          typeof result === "string" ? JSON.parse(result) : (result as SystemLog);
+        if (!options?.type || log.logType === options.type) {
+          logs.push(log);
+        }
+      }
+    }
+
+    return logs;
+  }
+}
+```

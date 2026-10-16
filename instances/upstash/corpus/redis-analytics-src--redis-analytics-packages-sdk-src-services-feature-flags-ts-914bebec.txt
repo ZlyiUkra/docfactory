@@ -1,0 +1,156 @@
+# redis-analytics: packages/sdk/src/services/feature-flags.ts
+# джерело: https://github.com/upstash/redis-analytics/blob/a7e0afc8a694dad44777c4172e14d955d5e8f640/packages/sdk/src/services/feature-flags.ts
+# отримано: 2026-10-16
+
+```ts
+import type { Redis } from "@upstash/redis";
+import type {
+  AnalyticsConfig,
+  FeatureFlagAssignment,
+  FeatureFlagConfig,
+  FeatureFlagDefinition,
+  FeatureFlagDefinitions,
+} from "../types";
+import { LoggingService } from "./logging";
+import { selectByDistribution } from "../utils";
+
+const FEATURE_FLAGS_KEY = "analytics:feature-flags";
+```
+
+## class FeatureFlagService
+
+```ts
+export class FeatureFlagService {
+
+  constructor(
+    private redis: Redis,
+    private config: AnalyticsConfig,
+    private logger: LoggingService
+  ) {}
+```
+
+### FeatureFlagService.getDefinitions()
+
+```ts
+  async getDefinitions(): Promise<FeatureFlagDefinitions> {
+    const stored = await this.redis.get<FeatureFlagDefinitions>(
+      FEATURE_FLAGS_KEY
+    );
+    return stored ?? this.config.featureFlags;
+  }
+```
+
+### FeatureFlagService.defineFlag()
+
+```ts
+  async defineFlag(flagConfig: FeatureFlagConfig): Promise<void> {
+    const definitions = await this.getDefinitions();
+    const before = definitions[flagConfig.name];
+
+    const { name, ...definition } = flagConfig;
+    definitions[name] = definition;
+
+    await this.redis.set(FEATURE_FLAGS_KEY, JSON.stringify(definitions));
+
+    await this.logger.log({
+      logType: "feature_flag_update",
+      eventName: name,
+      changes: {
+        before: before ?? null,
+        after: definition,
+      },
+    });
+  }
+```
+
+### FeatureFlagService.updateFlag()
+
+```ts
+  async updateFlag(
+    name: string,
+    update: Partial<FeatureFlagDefinition>
+  ): Promise<void> {
+    const definitions = await this.getDefinitions();
+    const existing = definitions[name];
+
+    if (!existing) {
+      throw new Error(`Feature flag "${name}" does not exist`);
+    }
+
+    const before = { ...existing };
+    definitions[name] = { ...existing, ...update };
+
+    await this.redis.set(FEATURE_FLAGS_KEY, JSON.stringify(definitions));
+
+    await this.logger.log({
+      logType: "feature_flag_update",
+      eventName: name,
+      changes: { before, after: definitions[name] },
+    });
+  }
+```
+
+### FeatureFlagService.resolveFlags()
+
+```ts
+  async resolveFlags(
+    assignments?: Record<string, FeatureFlagAssignment>
+  ): Promise<Record<string, string>> {
+    const definitions = await this.getDefinitions();
+    const resolved: Record<string, string> = {};
+
+    for (const [flagName, definition] of Object.entries(definitions)) {
+      const assignment = assignments?.[flagName];
+
+      if (assignment === undefined) {
+        // Use default value
+        resolved[flagName] = definition.defaultValue;
+      } else if (typeof assignment === "string") {
+        // Explicit value - validate
+        if (!definition.possibleValues.includes(assignment)) {
+          throw new Error(
+            `Invalid value "${assignment}" for feature flag "${flagName}". ` +
+              `Possible values: ${definition.possibleValues.join(", ")}`
+          );
+        }
+        resolved[flagName] = assignment;
+      } else {
+        // Distribution-based assignment
+        const distributionValues = Object.keys(assignment);
+        for (const v of distributionValues) {
+          if (!definition.possibleValues.includes(v)) {
+            throw new Error(
+              `Invalid distribution value "${v}" for feature flag "${flagName}". ` +
+                `Possible values: ${definition.possibleValues.join(", ")}`
+            );
+          }
+        }
+        resolved[flagName] = selectByDistribution(assignment);
+      }
+    }
+
+    return resolved;
+  }
+```
+
+### FeatureFlagService.validateFlagValue()
+
+```ts
+  private validateFlagValue(
+    flagName: string,
+    value: string,
+    definitions: FeatureFlagDefinitions
+  ): void {
+    const definition = definitions[flagName];
+    if (!definition) {
+      throw new Error(`Feature flag "${flagName}" does not exist`);
+    }
+    if (!definition.possibleValues.includes(value)) {
+      throw new Error(
+        `Invalid value "${value}" for feature flag "${flagName}". ` +
+          `Possible values: ${definition.possibleValues.join(", ")}`
+      );
+    }
+  }
+}
+```

@@ -1,0 +1,1641 @@
+# Example: blitzjs-todo-with-redis
+# джерело: https://github.com/upstash/redis-examples/tree/master/blitzjs-todo-with-redis
+# отримано: 2026-10-16
+
+Blitz.js
+
+This is a Blitz.js app.
+
+## **blitzjs-todo-with-redis**
+
+## Getting Started
+
+Run your app in the development mode.
+
+```
+blitz dev
+```
+
+Open http://localhost:3000 with your browser to see the result.
+
+## Environment Variables
+
+Ensure the `.env.local` file has required environment variables:
+
+```
+DATABASE_URL=postgresql://<YOUR_DB_USERNAME>@localhost:5432/blitzjs-todo-with-redis
+```
+
+Ensure the `.env.test.local` file has required environment variables:
+
+```
+DATABASE_URL=postgresql://<YOUR_DB_USERNAME>@localhost:5432/blitzjs-todo-with-redis_test
+```
+
+## Tests
+
+Runs your tests using Jest.
+
+```
+yarn test
+```
+
+Blitz comes with a test setup using Jest and react-testing-library.
+
+## Commands
+
+Blitz comes with a powerful CLI that is designed to make development easy and fast. You can install it with `npm i -g blitz`
+
+```
+  blitz [COMMAND]
+
+  dev       Start a development server
+  build     Create a production build
+  start     Start a production server
+  export    Export your Blitz app as a static application
+  prisma    Run prisma commands
+  generate  Generate new files for your Blitz project
+  console   Run the Blitz console REPL
+  install   Install a recipe
+  help      Display help for blitz
+  test      Run project tests
+```
+
+You can read more about it on the CLI Overview documentation.
+
+## What's included?
+
+Here is the starting structure of your app.
+
+```
+blitzjs-todo-with-redis
+├── app/
+│   ├── api/
+│   ├── auth/
+│   │   ├── components/
+│   │   │   ├── LoginForm.tsx
+│   │   │   └── SignupForm.tsx
+│   │   ├── mutations/
+│   │   │   ├── changePassword.ts
+│   │   │   ├── forgotPassword.test.ts
+│   │   │   ├── forgotPassword.ts
+│   │   │   ├── login.ts
+│   │   │   ├── logout.ts
+│   │   │   ├── resetPassword.test.ts
+│   │   │   ├── resetPassword.ts
+│   │   │   └── signup.ts
+│   │   ├── pages/
+│   │   │   ├── forgot-password.tsx
+│   │   │   ├── login.tsx
+│   │   │   ├── reset-password.tsx
+│   │   │   └── signup.tsx
+│   │   └── validations.ts
+│   ├── core/
+│   │   ├── components/
+│   │   │   ├── Form.tsx
+│   │   │   └── LabeledTextField.tsx
+│   │   ├── hooks/
+│   │   │   └── useCurrentUser.ts
+│   │   └── layouts/
+│   │       └── Layout.tsx
+│   ├── pages/
+│   │   ├── _app.tsx
+│   │   ├── _document.tsx
+│   │   ├── 404.tsx
+│   │   ├── index.test.tsx
+│   │   └── index.tsx
+│   └── users/
+│       └── queries/
+│           └── getCurrentUser.ts
+├── db/
+│   ├── migrations/
+│   ├── index.ts
+│   ├── schema.prisma
+│   └── seeds.ts
+├── integrations/
+├── mailers/
+│   └── forgotPasswordMailer.ts
+├── public/
+│   ├── favicon.ico
+│   └── logo.png
+├── test/
+│   ├── setup.ts
+│   └── utils.tsx
+├── .eslintrc.js
+├── babel.config.js
+├── blitz.config.ts
+├── jest.config.ts
+├── package.json
+├── README.md
+├── tsconfig.json
+└── types.ts
+```
+
+These files are:
+
+- The `app/` folder is a container for most of your project. This is where you’ll put any pages or API routes.
+
+- `db/` is where your database configuration goes. If you’re writing models or checking migrations, this is where to go.
+
+- `public/` is a folder where you will put any static assets. If you have images, files, or videos which you want to use in your app, this is where to put them.
+
+- `integrations/` is a folder to put all third-party integrations like with Stripe, Sentry, etc.
+
+- `test/` is a folder where you can put test utilities and integration tests.
+
+- `package.json` contains information about your dependencies and devDependencies. If you’re using a tool like `npm` or `yarn`, you won’t have to worry about this much.
+
+- `tsconfig.json` is our recommended setup for TypeScript.
+
+- `.babel.config.js`, `.eslintrc.js`, `.env`, etc. ("dotfiles") are configuration files for various bits of JavaScript tooling.
+
+- `blitz.config.ts` is for advanced custom configuration of Blitz. Here you can learn how to use it.
+
+- `jest.config.js` contains config for Jest tests. You can customize it if needed.
+
+You can read more about it in the File Structure section of the documentation.
+
+### Tools included
+
+Blitz comes with a set of tools that corrects and formats your code, facilitating its future maintenance. You can modify their options and even uninstall them.
+
+- **ESLint**: It lints your code: searches for bad practices and tell you about it. You can customize it via the `.eslintrc.js`, and you can install (or even write) plugins to have it the way you like it. It already comes with the `blitz` config, but you can remove it safely. Learn More.
+- **Husky**: It adds githooks, little pieces of code that get executed when certain Git events are triggerd. For example, `pre-commit` is triggered just before a commit is created. You can see the current hooks inside `.husky/`. If are having problems commiting and pushing, check out ther troubleshooting guide. Learn More.
+- **Prettier**: It formats your code to look the same everywhere. You can configure it via the `.prettierrc` file. The `.prettierignore` contains the files that should be ignored by Prettier; useful when you have large files or when you want to keep a custom formatting. Learn More.
+
+## Learn more
+
+Read the Blitz.js Documentation to learn more.
+
+The Blitz community is warm, safe, diverse, inclusive, and fun! Feel free to reach out to us in any of our communication channels.
+
+- Website
+- Discord
+- Report an issue
+- Forum discussions
+- How to Contribute
+- Sponsor or donate
+
+## app/api/add.ts
+
+```ts
+//blitzjs api route
+import { BlitzApiRequest, BlitzApiResponse, getSession } from "blitz"
+
+const handler = async (req: BlitzApiRequest, res: BlitzApiResponse) => {
+  const session = await getSession(req, res)
+  if (req.method !== "POST" || !req.body.data || !session.userId) {
+    res.status(401).json({ error: `Do not tamper with this route!` })
+  } else {
+    let todo = encodeURI(req.body.data)
+    const url = `${process.env.UPSTASH_REDIS_REST_URL}/lpush/${session.userId}/${todo}?_token=${process.env.UPSTASH_REDIS_REST_TOKEN}`
+    await fetch(url)
+      .then(() => res.status(200).json({ success: true }))
+      .catch(() => res.status(500).json({ error: "Error adding data." }))
+  }
+}
+export default handler
+```
+
+## app/api/getall.ts
+
+```ts
+import { BlitzApiRequest, BlitzApiResponse, getSession } from "blitz"
+
+export const handler = async (req: BlitzApiRequest, res: BlitzApiResponse) => {
+  const session = await getSession(req, res)
+  if (!session.userId) {
+    res.status(401).json({ error: `Do not tamper with this route!` })
+  } else {
+    const url = `${process.env.UPSTASH_REDIS_REST_URL}/lrange/${session.userId}/0/100?_token=${process.env.UPSTASH_REDIS_REST_TOKEN}`
+
+    await fetch(url)
+      .then((r) => r.json())
+      .then((data) => {
+        let result = data.result
+        res.status(200).json({ success: true, data: result })
+      })
+      .catch(() => res.status(500).json({ error: "Error getting data." }))
+  }
+}
+export default handler
+```
+
+## app/api/remove.ts
+
+```ts
+//blitzjs api route
+import { BlitzApiRequest, BlitzApiResponse, getSession } from "blitz"
+
+const handler = async (req: BlitzApiRequest, res: BlitzApiResponse) => {
+  const session = await getSession(req, res)
+  if (req.method !== "POST" || !req.body.data || !session.userId) {
+    res.status(401).json({ error: `Do not tamper with this route!` })
+  } else {
+    let todo = encodeURI(req.body.data)
+    const url = `${process.env.UPSTASH_REDIS_REST_URL}/lrem/${session.userId}/1/${todo}?_token=${process.env.UPSTASH_REDIS_REST_TOKEN}`
+    await fetch(url)
+      .then(() => res.status(200).json({ success: true }))
+      .catch(() => res.status(500).json({ error: "Error removing data." }))
+  }
+}
+export default handler
+```
+
+## app/auth/components/LoginForm.tsx
+
+```tsx
+import { AuthenticationError, Link, useMutation, Routes, PromiseReturnType } from "blitz"
+import { LabeledTextField } from "app/core/components/LabeledTextField"
+import { Form, FORM_ERROR } from "app/core/components/Form"
+import login from "app/auth/mutations/login"
+import { Login } from "app/auth/validations"
+
+type LoginFormProps = {
+  onSuccess?: (user: PromiseReturnType<typeof login>) => void
+}
+
+export const LoginForm = (props: LoginFormProps) => {
+  const [loginMutation] = useMutation(login)
+
+  return (
+    <div className="min-h-screen flex flex-col justify-center items-center">
+      <h1 className="font-bold text-3xl">Login</h1>
+
+      <Form
+        className="text-center"
+        submitText="Login"
+        schema={Login}
+        initialValues={{ email: "", password: "" }}
+        onSubmit={async (values) => {
+          try {
+            const user = await loginMutation(values)
+            props.onSuccess?.(user)
+          } catch (error: any) {
+            if (error instanceof AuthenticationError) {
+              return { [FORM_ERROR]: "Sorry, those credentials are invalid" }
+            } else {
+              return {
+                [FORM_ERROR]:
+                  "Sorry, we had an unexpected error. Please try again. - " + error.toString(),
+              }
+            }
+          }
+        }}
+      >
+        <LabeledTextField name="email" label="Email" placeholder="Email" />
+        <LabeledTextField name="password" label="Password" placeholder="Password" type="password" />
+        <div>
+          <Link href={Routes.ForgotPasswordPage()}>
+            <a>Forgot your password?</a>
+          </Link>
+        </div>
+      </Form>
+
+      <div className="mt-4 px-2 py-1 border-2 border-black hover:bg-gray-400">
+        Or <Link href={Routes.SignupPage()}>Sign Up</Link>
+      </div>
+    </div>
+  )
+}
+
+export default LoginForm
+```
+
+## app/auth/components/SignupForm.tsx
+
+```tsx
+import { useMutation } from "blitz"
+import { LabeledTextField } from "app/core/components/LabeledTextField"
+import { Form, FORM_ERROR } from "app/core/components/Form"
+import signup from "app/auth/mutations/signup"
+import { Signup } from "app/auth/validations"
+
+type SignupFormProps = {
+  onSuccess?: () => void
+}
+
+export const SignupForm = (props: SignupFormProps) => {
+  const [signupMutation] = useMutation(signup)
+
+  return (
+    <div className="min-h-screen flex flex-col justify-center items-center">
+      <h1 className="font-bold text-3xl my-5">Create an Account</h1>
+
+      <Form
+        className="text-center"
+        submitText="Create Account"
+        schema={Signup}
+        initialValues={{ email: "", password: "" }}
+        onSubmit={async (values) => {
+          try {
+            await signupMutation(values)
+            props.onSuccess?.()
+          } catch (error: any) {
+            if (error.code === "P2002" && error.meta?.target?.includes("email")) {
+              // This error comes from Prisma
+              return { email: "This email is already being used" }
+            } else {
+              return { [FORM_ERROR]: error.toString() }
+            }
+          }
+        }}
+      >
+        <LabeledTextField name="email" label="Email" placeholder="Email" />
+        <LabeledTextField name="password" label="Password" placeholder="Password" type="password" />
+      </Form>
+    </div>
+  )
+}
+
+export default SignupForm
+```
+
+## app/auth/mutations/changePassword.ts
+
+```ts
+import { NotFoundError, SecurePassword, resolver } from "blitz"
+import db from "db"
+import { authenticateUser } from "./login"
+import { ChangePassword } from "../validations"
+
+export default resolver.pipe(
+  resolver.zod(ChangePassword),
+  resolver.authorize(),
+  async ({ currentPassword, newPassword }, ctx) => {
+    const user = await db.user.findFirst({ where: { id: ctx.session.userId! } })
+    if (!user) throw new NotFoundError()
+
+    await authenticateUser(user.email, currentPassword)
+
+    const hashedPassword = await SecurePassword.hash(newPassword.trim())
+    await db.user.update({
+      where: { id: user.id },
+      data: { hashedPassword },
+    })
+
+    return true
+  }
+)
+```
+
+## app/auth/mutations/forgotPassword.test.ts
+
+```ts
+import { hash256, Ctx } from "blitz"
+import forgotPassword from "./forgotPassword"
+import db from "db"
+import previewEmail from "preview-email"
+
+beforeEach(async () => {
+  await db.$reset()
+})
+
+const generatedToken = "plain-token"
+jest.mock("blitz", () => ({
+  ...jest.requireActual<Record<string, unknown>>("blitz")!,
+  generateToken: () => generatedToken,
+}))
+jest.mock("preview-email", () => jest.fn())
+
+describe("forgotPassword mutation", () => {
+  it("does not throw error if user doesn't exist", async () => {
+    await expect(forgotPassword({ email: "no-user@email.com" }, {} as Ctx)).resolves.not.toThrow()
+  })
+
+  it("works correctly", async () => {
+    // Create test user
+    const user = await db.user.create({
+      data: {
+        email: "user@example.com",
+        tokens: {
+          // Create old token to ensure it's deleted
+          create: {
+            type: "RESET_PASSWORD",
+            hashedToken: "token",
+            expiresAt: new Date(),
+            sentTo: "user@example.com",
+          },
+        },
+      },
+      include: { tokens: true },
+    })
+
+    // Invoke the mutation
+    await forgotPassword({ email: user.email }, {} as Ctx)
+
+    const tokens = await db.token.findMany({ where: { userId: user.id } })
+    const token = tokens[0]
+    if (!user.tokens[0]) throw new Error("Missing user token")
+    if (!token) throw new Error("Missing token")
+
+    // delete's existing tokens
+    expect(tokens.length).toBe(1)
+
+    expect(token.id).not.toBe(user.tokens[0].id)
+    expect(token.type).toBe("RESET_PASSWORD")
+    expect(token.sentTo).toBe(user.email)
+    expect(token.hashedToken).toBe(hash256(generatedToken))
+    expect(token.expiresAt > new Date()).toBe(true)
+    expect(previewEmail).toBeCalled()
+  })
+})
+```
+
+## app/auth/mutations/forgotPassword.ts
+
+```ts
+import { resolver, generateToken, hash256 } from "blitz"
+import db from "db"
+import { forgotPasswordMailer } from "mailers/forgotPasswordMailer"
+import { ForgotPassword } from "../validations"
+
+const RESET_PASSWORD_TOKEN_EXPIRATION_IN_HOURS = 4
+
+export default resolver.pipe(resolver.zod(ForgotPassword), async ({ email }) => {
+  // 1. Get the user
+  const user = await db.user.findFirst({ where: { email: email.toLowerCase() } })
+
+  // 2. Generate the token and expiration date.
+  const token = generateToken()
+  const hashedToken = hash256(token)
+  const expiresAt = new Date()
+  expiresAt.setHours(expiresAt.getHours() + RESET_PASSWORD_TOKEN_EXPIRATION_IN_HOURS)
+
+  // 3. If user with this email was found
+  if (user) {
+    // 4. Delete any existing password reset tokens
+    await db.token.deleteMany({ where: { type: "RESET_PASSWORD", userId: user.id } })
+    // 5. Save this new token in the database.
+    await db.token.create({
+      data: {
+        user: { connect: { id: user.id } },
+        type: "RESET_PASSWORD",
+        expiresAt,
+        hashedToken,
+        sentTo: user.email,
+      },
+    })
+    // 6. Send the email
+    await forgotPasswordMailer({ to: user.email, token }).send()
+  } else {
+    // 7. If no user found wait the same time so attackers can't tell the difference
+    await new Promise((resolve) => setTimeout(resolve, 750))
+  }
+
+  // 8. Return the same result whether a password reset email was sent or not
+  return
+})
+```
+
+## app/auth/mutations/login.ts
+
+```ts
+import { resolver, SecurePassword, AuthenticationError } from "blitz"
+import db from "db"
+import { Login } from "../validations"
+import { Role } from "types"
+
+export const authenticateUser = async (rawEmail: string, rawPassword: string) => {
+  const { email, password } = Login.parse({ email: rawEmail, password: rawPassword })
+  const user = await db.user.findFirst({ where: { email } })
+  if (!user) throw new AuthenticationError()
+
+  const result = await SecurePassword.verify(user.hashedPassword, password)
+
+  if (result === SecurePassword.VALID_NEEDS_REHASH) {
+    // Upgrade hashed password with a more secure hash
+    const improvedHash = await SecurePassword.hash(password)
+    await db.user.update({ where: { id: user.id }, data: { hashedPassword: improvedHash } })
+  }
+
+  const { hashedPassword, ...rest } = user
+  return rest
+}
+
+export default resolver.pipe(resolver.zod(Login), async ({ email, password }, ctx) => {
+  // This throws an error if credentials are invalid
+  const user = await authenticateUser(email, password)
+
+  await ctx.session.$create({ userId: user.id, role: user.role as Role })
+
+  return user
+})
+```
+
+## app/auth/mutations/logout.ts
+
+```ts
+import { Ctx } from "blitz"
+
+export default async function logout(_: any, ctx: Ctx) {
+  return await ctx.session.$revoke()
+}
+```
+
+## app/auth/mutations/resetPassword.test.ts
+
+```ts
+import resetPassword from "./resetPassword"
+import db from "db"
+import { hash256, SecurePassword } from "blitz"
+
+beforeEach(async () => {
+  await db.$reset()
+})
+
+const mockCtx: any = {
+  session: {
+    $create: jest.fn,
+  },
+}
+
+describe("resetPassword mutation", () => {
+  it("works correctly", async () => {
+    expect(true).toBe(true)
+
+    // Create test user
+    const goodToken = "randomPasswordResetToken"
+    const expiredToken = "expiredRandomPasswordResetToken"
+    const future = new Date()
+    future.setHours(future.getHours() + 4)
+    const past = new Date()
+    past.setHours(past.getHours() - 4)
+
+    const user = await db.user.create({
+      data: {
+        email: "user@example.com",
+        tokens: {
+          // Create old token to ensure it's deleted
+          create: [
+            {
+              type: "RESET_PASSWORD",
+              hashedToken: hash256(expiredToken),
+              expiresAt: past,
+              sentTo: "user@example.com",
+            },
+            {
+              type: "RESET_PASSWORD",
+              hashedToken: hash256(goodToken),
+              expiresAt: future,
+              sentTo: "user@example.com",
+            },
+          ],
+        },
+      },
+      include: { tokens: true },
+    })
+
+    const newPassword = "newPassword"
+
+    // Non-existent token
+    await expect(
+      resetPassword({ token: "no-token", password: "", passwordConfirmation: "" }, mockCtx)
+    ).rejects.toThrowError()
+
+    // Expired token
+    await expect(
+      resetPassword(
+        { token: expiredToken, password: newPassword, passwordConfirmation: newPassword },
+        mockCtx
+      )
+    ).rejects.toThrowError()
+
+    // Good token
+    await resetPassword(
+      { token: goodToken, password: newPassword, passwordConfirmation: newPassword },
+      mockCtx
+    )
+
+    // Delete's the token
+    const numberOfTokens = await db.token.count({ where: { userId: user.id } })
+    expect(numberOfTokens).toBe(0)
+
+    // Updates user's password
+    const updatedUser = await db.user.findFirst({ where: { id: user.id } })
+    expect(await SecurePassword.verify(updatedUser!.hashedPassword, newPassword)).toBe(
+      SecurePassword.VALID
+    )
+  })
+})
+```
+
+## app/auth/mutations/resetPassword.ts
+
+```ts
+import { resolver, SecurePassword, hash256 } from "blitz"
+import db from "db"
+import { ResetPassword } from "../validations"
+import login from "./login"
+
+export class ResetPasswordError extends Error {
+  name = "ResetPasswordError"
+  message = "Reset password link is invalid or it has expired."
+}
+
+export default resolver.pipe(resolver.zod(ResetPassword), async ({ password, token }, ctx) => {
+  // 1. Try to find this token in the database
+  const hashedToken = hash256(token)
+  const possibleToken = await db.token.findFirst({
+    where: { hashedToken, type: "RESET_PASSWORD" },
+    include: { user: true },
+  })
+
+  // 2. If token not found, error
+  if (!possibleToken) {
+    throw new ResetPasswordError()
+  }
+  const savedToken = possibleToken
+
+  // 3. Delete token so it can't be used again
+  await db.token.delete({ where: { id: savedToken.id } })
+
+  // 4. If token has expired, error
+  if (savedToken.expiresAt < new Date()) {
+    throw new ResetPasswordError()
+  }
+
+  // 5. Since token is valid, now we can update the user's password
+  const hashedPassword = await SecurePassword.hash(password.trim())
+  const user = await db.user.update({
+    where: { id: savedToken.userId },
+    data: { hashedPassword },
+  })
+
+  // 6. Revoke all existing login sessions for this user
+  await db.session.deleteMany({ where: { userId: user.id } })
+
+  // 7. Now log the user in with the new credentials
+  await login({ email: user.email, password }, ctx)
+
+  return true
+})
+```
+
+## app/auth/mutations/signup.ts
+
+```ts
+import { resolver, SecurePassword } from "blitz"
+import db from "db"
+import { Signup } from "app/auth/validations"
+import { Role } from "types"
+
+export default resolver.pipe(resolver.zod(Signup), async ({ email, password }, ctx) => {
+  const hashedPassword = await SecurePassword.hash(password.trim())
+  const user = await db.user.create({
+    data: { email: email.toLowerCase().trim(), hashedPassword, role: "USER" },
+    select: { id: true, name: true, email: true, role: true },
+  })
+
+  await ctx.session.$create({ userId: user.id, role: user.role as Role })
+  return user
+})
+```
+
+## app/auth/pages/forgot-password.tsx
+
+```tsx
+import { BlitzPage, useMutation } from "blitz"
+import Layout from "app/core/layouts/Layout"
+import { LabeledTextField } from "app/core/components/LabeledTextField"
+import { Form, FORM_ERROR } from "app/core/components/Form"
+import { ForgotPassword } from "app/auth/validations"
+import forgotPassword from "app/auth/mutations/forgotPassword"
+
+const ForgotPasswordPage: BlitzPage = () => {
+  const [forgotPasswordMutation, { isSuccess }] = useMutation(forgotPassword)
+
+  return (
+    <div>
+      <h1>Forgot your password?</h1>
+
+      {isSuccess ? (
+        <div>
+          <h2>Request Submitted</h2>
+          <p>
+            If your email is in our system, you will receive instructions to reset your password
+            shortly.
+          </p>
+        </div>
+      ) : (
+        <Form
+          submitText="Send Reset Password Instructions"
+          schema={ForgotPassword}
+          initialValues={{ email: "" }}
+          onSubmit={async (values) => {
+            try {
+              await forgotPasswordMutation(values)
+            } catch (error: any) {
+              return {
+                [FORM_ERROR]: "Sorry, we had an unexpected error. Please try again.",
+              }
+            }
+          }}
+        >
+          <LabeledTextField name="email" label="Email" placeholder="Email" />
+        </Form>
+      )}
+    </div>
+  )
+}
+
+ForgotPasswordPage.redirectAuthenticatedTo = "/"
+ForgotPasswordPage.getLayout = (page) => <Layout title="Forgot Your Password?">{page}</Layout>
+
+export default ForgotPasswordPage
+```
+
+## app/auth/pages/login.tsx
+
+```tsx
+import { useRouter, BlitzPage } from "blitz"
+import Layout from "app/core/layouts/Layout"
+import { LoginForm } from "app/auth/components/LoginForm"
+
+const LoginPage: BlitzPage = () => {
+  const router = useRouter()
+
+  return (
+    <div>
+      <LoginForm
+        onSuccess={(_user) => {
+          const next = router.query.next ? decodeURIComponent(router.query.next as string) : "/"
+          router.push(next)
+        }}
+      />
+    </div>
+  )
+}
+
+LoginPage.redirectAuthenticatedTo = "/"
+LoginPage.getLayout = (page) => <Layout title="Log In">{page}</Layout>
+
+export default LoginPage
+```
+
+## app/auth/pages/reset-password.tsx
+
+```tsx
+import { BlitzPage, useRouterQuery, Link, useMutation, Routes } from "blitz"
+import Layout from "app/core/layouts/Layout"
+import { LabeledTextField } from "app/core/components/LabeledTextField"
+import { Form, FORM_ERROR } from "app/core/components/Form"
+import { ResetPassword } from "app/auth/validations"
+import resetPassword from "app/auth/mutations/resetPassword"
+
+const ResetPasswordPage: BlitzPage = () => {
+  const query = useRouterQuery()
+  const [resetPasswordMutation, { isSuccess }] = useMutation(resetPassword)
+
+  return (
+    <div>
+      <h1>Set a New Password</h1>
+
+      {isSuccess ? (
+        <div>
+          <h2>Password Reset Successfully</h2>
+          <p>
+            Go to the <Link href={Routes.Home()}>homepage</Link>
+          </p>
+        </div>
+      ) : (
+        <Form
+          submitText="Reset Password"
+          schema={ResetPassword}
+          initialValues={{ password: "", passwordConfirmation: "", token: query.token as string }}
+          onSubmit={async (values) => {
+            try {
+              await resetPasswordMutation(values)
+            } catch (error: any) {
+              if (error.name === "ResetPasswordError") {
+                return {
+                  [FORM_ERROR]: error.message,
+                }
+              } else {
+                return {
+                  [FORM_ERROR]: "Sorry, we had an unexpected error. Please try again.",
+                }
+              }
+            }
+          }}
+        >
+          <LabeledTextField name="password" label="New Password" type="password" />
+          <LabeledTextField
+            name="passwordConfirmation"
+            label="Confirm New Password"
+            type="password"
+          />
+        </Form>
+      )}
+    </div>
+  )
+}
+
+ResetPasswordPage.redirectAuthenticatedTo = "/"
+ResetPasswordPage.getLayout = (page) => <Layout title="Reset Your Password">{page}</Layout>
+
+export default ResetPasswordPage
+```
+
+## app/auth/pages/signup.tsx
+
+```tsx
+import { useRouter, BlitzPage, Routes } from "blitz"
+import Layout from "app/core/layouts/Layout"
+import { SignupForm } from "app/auth/components/SignupForm"
+
+const SignupPage: BlitzPage = () => {
+  const router = useRouter()
+
+  return (
+    <div>
+      <SignupForm onSuccess={() => router.push(Routes.Home())} />
+    </div>
+  )
+}
+
+SignupPage.redirectAuthenticatedTo = "/"
+SignupPage.getLayout = (page) => <Layout title="Sign Up">{page}</Layout>
+
+export default SignupPage
+```
+
+## app/auth/validations.ts
+
+```ts
+import { z } from "zod"
+
+export const email = z
+  .string()
+  .email()
+  .transform((str) => str.toLowerCase().trim())
+
+export const password = z
+  .string()
+  .min(10)
+  .max(100)
+  .transform((str) => str.trim())
+
+export const Signup = z.object({
+  email,
+  password,
+})
+
+export const Login = z.object({
+  email,
+  password: z.string(),
+})
+
+export const ForgotPassword = z.object({
+  email,
+})
+
+export const ResetPassword = z
+  .object({
+    password: password,
+    passwordConfirmation: password,
+    token: z.string(),
+  })
+  .refine((data) => data.password === data.passwordConfirmation, {
+    message: "Passwords don't match",
+    path: ["passwordConfirmation"], // set the path of the error
+  })
+
+export const ChangePassword = z.object({
+  currentPassword: z.string(),
+  newPassword: password,
+})
+```
+
+## app/core/components/Form.tsx
+
+```tsx
+import { ReactNode, PropsWithoutRef } from "react"
+import { Form as FinalForm, FormProps as FinalFormProps } from "react-final-form"
+import { z } from "zod"
+import { validateZodSchema } from "blitz"
+export { FORM_ERROR } from "final-form"
+
+export interface FormProps<S extends z.ZodType<any, any>>
+  extends Omit<PropsWithoutRef<JSX.IntrinsicElements["form"]>, "onSubmit"> {
+  /** All your form fields */
+  children?: ReactNode
+  /** Text to display in the submit button */
+  submitText?: string
+  schema?: S
+  onSubmit: FinalFormProps<z.infer<S>>["onSubmit"]
+  initialValues?: FinalFormProps<z.infer<S>>["initialValues"]
+}
+
+export function Form<S extends z.ZodType<any, any>>({
+  children,
+  submitText,
+  schema,
+  initialValues,
+  onSubmit,
+  ...props
+}: FormProps<S>) {
+  return (
+    <FinalForm
+      initialValues={initialValues}
+      validate={validateZodSchema(schema)}
+      onSubmit={onSubmit}
+      render={({ handleSubmit, submitting, submitError }) => (
+        <form onSubmit={handleSubmit} className="form" {...props}>
+          {/* Form fields supplied as children are rendered here */}
+          {children}
+
+          {submitError && (
+            <div role="alert" style={{ color: "red" }}>
+              {submitError}
+            </div>
+          )}
+
+          {submitText && (
+            <button type="submit" disabled={submitting}>
+              {submitText}
+            </button>
+          )}
+
+          <style global jsx>{`
+            .form > * + * {
+              margin-top: 1rem;
+            }
+          `}</style>
+        </form>
+      )}
+    />
+  )
+}
+
+export default Form
+```
+
+## app/core/components/LabeledTextField.tsx
+
+```tsx
+import { forwardRef, ComponentPropsWithoutRef, PropsWithoutRef } from "react"
+import { useField, UseFieldConfig } from "react-final-form"
+
+export interface LabeledTextFieldProps extends PropsWithoutRef<JSX.IntrinsicElements["input"]> {
+  /** Field name. */
+  name: string
+  /** Field label. */
+  label: string
+  /** Field type. Doesn't include radio buttons and checkboxes */
+  type?: "text" | "password" | "email" | "number"
+  outerProps?: PropsWithoutRef<JSX.IntrinsicElements["div"]>
+  labelProps?: ComponentPropsWithoutRef<"label">
+  fieldProps?: UseFieldConfig<string>
+}
+
+export const LabeledTextField = forwardRef<HTMLInputElement, LabeledTextFieldProps>(
+  ({ name, label, outerProps, fieldProps, labelProps, ...props }, ref) => {
+    const {
+      input,
+      meta: { touched, error, submitError, submitting },
+    } = useField(name, {
+      parse:
+        props.type === "number"
+          ? (Number as any)
+          : // Converting `""` to `null` ensures empty values will be set to null in the DB
+            (v) => (v === "" ? null : v),
+      ...fieldProps,
+    })
+
+    const normalizedError = Array.isArray(error) ? error.join(", ") : error || submitError
+
+    return (
+      <div {...outerProps}>
+        <label {...labelProps}>
+          {label}
+          <input {...input} disabled={submitting} {...props} ref={ref} />
+        </label>
+
+        {touched && normalizedError && (
+          <div role="alert" style={{ color: "red" }}>
+            {normalizedError}
+          </div>
+        )}
+
+        <style jsx>{`
+          label {
+            display: flex;
+            flex-direction: column;
+            align-items: start;
+            font-size: 1rem;
+          }
+          input {
+            font-size: 1rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+            border: 1px solid purple;
+            appearance: none;
+            margin-top: 0.5rem;
+          }
+        `}</style>
+      </div>
+    )
+  }
+)
+
+export default LabeledTextField
+```
+
+## app/core/hooks/useCurrentUser.ts
+
+```ts
+import { useQuery } from "blitz"
+import getCurrentUser from "app/users/queries/getCurrentUser"
+
+export const useCurrentUser = () => {
+  const [user] = useQuery(getCurrentUser, null)
+  return user
+}
+```
+
+## app/core/layouts/Layout.tsx
+
+```tsx
+import { Head, BlitzLayout } from "blitz"
+
+const Layout: BlitzLayout<{ title?: string }> = ({ title, children }) => {
+  return (
+    <>
+      <Head>
+        <title>{title || "blitzjs-todo-with-redis"}</title>
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+
+      {children}
+    </>
+  )
+}
+
+export default Layout
+```
+
+## app/pages/404.tsx
+
+```tsx
+import { Head, ErrorComponent } from "blitz"
+
+// ------------------------------------------------------
+// This page is rendered if a route match is not found
+// ------------------------------------------------------
+export default function Page404() {
+  const statusCode = 404
+  const title = "This page could not be found"
+  return (
+    <>
+      <Head>
+        <title>
+          {statusCode}: {title}
+        </title>
+      </Head>
+      <ErrorComponent statusCode={statusCode} title={title} />
+    </>
+  )
+}
+```
+
+## app/pages/_app.tsx
+
+```tsx
+import {
+  AppProps,
+  ErrorBoundary,
+  ErrorComponent,
+  AuthenticationError,
+  AuthorizationError,
+  ErrorFallbackProps,
+  useQueryErrorResetBoundary,
+} from "blitz"
+import LoginForm from "app/auth/components/LoginForm"
+
+import "app/core/styles/index.css"
+
+export default function App({ Component, pageProps }: AppProps) {
+  const getLayout = Component.getLayout || ((page) => page)
+
+  return (
+    <ErrorBoundary
+      FallbackComponent={RootErrorFallback}
+      onReset={useQueryErrorResetBoundary().reset}
+    >
+      {getLayout(<Component {...pageProps} />)}
+    </ErrorBoundary>
+  )
+}
+
+function RootErrorFallback({ error, resetErrorBoundary }: ErrorFallbackProps) {
+  if (error instanceof AuthenticationError) {
+    return <LoginForm onSuccess={resetErrorBoundary} />
+  } else if (error instanceof AuthorizationError) {
+    return (
+      <ErrorComponent
+        statusCode={error.statusCode}
+        title="Sorry, you are not authorized to access this"
+      />
+    )
+  } else {
+    return (
+      <ErrorComponent statusCode={error.statusCode || 400} title={error.message || error.name} />
+    )
+  }
+}
+```
+
+## app/pages/_document.tsx
+
+```tsx
+import { Document, Html, DocumentHead, Main, BlitzScript /*DocumentContext*/ } from "blitz"
+
+class MyDocument extends Document {
+  // Only uncomment if you need to customize this behaviour
+  // static async getInitialProps(ctx: DocumentContext) {
+  //   const initialProps = await Document.getInitialProps(ctx)
+  //   return {...initialProps}
+  // }
+
+  render() {
+    return (
+      <Html lang="en">
+        <DocumentHead />
+        <body>
+          <Main />
+          <BlitzScript />
+        </body>
+      </Html>
+    )
+  }
+}
+
+export default MyDocument
+```
+
+## app/pages/index.test.tsx
+
+```tsx
+import { render } from "test/utils"
+
+import Home from "./index"
+import { useCurrentUser } from "app/core/hooks/useCurrentUser"
+
+jest.mock("app/core/hooks/useCurrentUser")
+const mockUseCurrentUser = useCurrentUser as jest.MockedFunction<typeof useCurrentUser>
+
+test.skip("renders blitz documentation link", () => {
+  // This is an example of how to ensure a specific item is in the document
+  // But it's disabled by default (by test.skip) so the test doesn't fail
+  // when you remove the the default content from the page
+
+  // This is an example on how to mock api hooks when testing
+  mockUseCurrentUser.mockReturnValue({
+    id: 1,
+    name: "User",
+    email: "user@email.com",
+    role: "user",
+  })
+
+  const { getByText } = render(<Home />)
+  const linkElement = getByText(/Documentation/i)
+  expect(linkElement).toBeInTheDocument()
+})
+```
+
+## app/pages/index.tsx
+
+```tsx
+import { Link, BlitzPage, useMutation, Routes, getAntiCSRFToken } from "blitz"
+import { useRef, useEffect, useState, Suspense } from "react"
+import Layout from "app/core/layouts/Layout"
+import { useCurrentUser } from "app/core/hooks/useCurrentUser"
+import logout from "app/auth/mutations/logout"
+
+const Main = () => {
+  const todoRef = useRef<HTMLInputElement>(null)
+  const [todos, setTodos] = useState([])
+  const currentUser = useCurrentUser()
+  const [logoutMutation] = useMutation(logout)
+  const handleAddTodo = async (e) => {
+    e.preventDefault()
+    const antiCSRFToken = await getAntiCSRFToken()
+    const response = await fetch("/api/add", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "anti-csrf": antiCSRFToken,
+      },
+      body: JSON.stringify({ data: todoRef.current?.value }),
+    })
+    const data = await response.json()
+    if (data.success) {
+      todoRef.current!.value = ""
+      fetchTodos()
+    }
+  }
+  const handleRemoveTodo = async (id) => {
+    const antiCSRFToken = await getAntiCSRFToken()
+    const response = await fetch("/api/remove", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "anti-csrf": antiCSRFToken,
+      },
+      body: JSON.stringify({ data: id }),
+    })
+    const data = await response.json()
+    if (data.success) {
+      fetchTodos()
+    }
+  }
+  const fetchTodos = async () => {
+    const antiCSRFToken = await getAntiCSRFToken()
+    const response = await fetch("/api/getall", {
+      method: "GET",
+      headers: {
+        "anti-csrf": antiCSRFToken,
+      },
+    })
+    const res = await response.json()
+    setTodos(res.data)
+  }
+  useEffect(() => {
+    fetchTodos()
+  }, [])
+
+  if (currentUser) {
+    return (
+      <>
+        <button
+          className="mt-4 px-2 py-1 border-2 border-black hover:bg-gray-400 mb-3"
+          onClick={async () => {
+            await logoutMutation()
+          }}
+        >
+          Logout
+        </button>
+        <div>
+          User id: <code>{currentUser.id}</code>
+          <br />
+          User email: <code>{currentUser.email}</code>
+        </div>
+        <form className="mt-2" onSubmit={handleAddTodo}>
+          <p>add a todo:</p>
+          <input
+            ref={todoRef}
+            className="w-full border-black border-2 focus:outline-none text-center"
+          />
+        </form>
+        <div className="flex flex-col gap-2 mt-4 bg-gray-300 rounded-md">
+          {(todos as string[]).map((todo: string, index: number) => (
+            <div className="flex items-center p-3 rounded-md bg-gray-300" key={index}>
+              <button
+                onClick={() => handleRemoveTodo(todo)}
+                className="flex items-center mr-4 justify-center w-5 h-5 rounded-[0.25rem] border border-solid border-gray-500 shadow-sm hover:bg-gray-700"
+              ></button>
+
+              <span>{todo}</span>
+            </div>
+          ))}
+        </div>
+      </>
+    )
+  } else {
+    return (
+      <div className="flex flex-col gap-4 text-center">
+        <Link href={Routes.SignupPage()}>
+          <a className="mt-4 px-2 py-1 border-2 border-black hover:bg-gray-400">
+            <strong>Sign Up</strong>
+          </a>
+        </Link>
+        <Link href={Routes.LoginPage()}>
+          <a className="mt-4 px-2 py-1 border-2 border-black hover:bg-gray-400">
+            <strong>Login</strong>
+          </a>
+        </Link>
+      </div>
+    )
+  }
+}
+
+const Home: BlitzPage = () => {
+  return (
+    <div className="flex flex-col min-h-screen items-center justify-center">
+      <main>
+        <div className="my-4">
+          <Suspense fallback="Loading...">
+            <Main />
+          </Suspense>
+        </div>
+      </main>
+    </div>
+  )
+}
+
+Home.suppressFirstRenderFlicker = true
+Home.getLayout = (page) => <Layout title="Home">{page}</Layout>
+
+export default Home
+```
+
+## app/users/queries/getCurrentUser.ts
+
+```ts
+import { Ctx } from "blitz"
+import db from "db"
+
+export default async function getCurrentUser(_ = null, { session }: Ctx) {
+  if (!session.userId) return null
+
+  const user = await db.user.findFirst({
+    where: { id: session.userId },
+    select: { id: true, name: true, email: true, role: true },
+  })
+
+  return user
+}
+```
+
+## db/index.ts
+
+```ts
+import { enhancePrisma } from "blitz"
+import { PrismaClient } from "@prisma/client"
+
+const EnhancedPrisma = enhancePrisma(PrismaClient)
+
+export * from "@prisma/client"
+export default new EnhancedPrisma()
+```
+
+## db/seeds.ts
+
+```ts
+// import db from "./index"
+
+/*
+ * This seed function is executed when you run `blitz db seed`.
+ *
+ * Probably you want to use a library like https://chancejs.com
+ * or https://github.com/Marak/Faker.js to easily generate
+ * realistic data.
+ */
+const seed = async () => {
+  // for (let i = 0; i < 5; i++) {
+  //   await db.project.create({ data: { name: "Project " + i } })
+  // }
+}
+
+export default seed
+```
+
+## mailers/forgotPasswordMailer.ts
+
+```ts
+/* TODO - You need to add a mailer integration in `integrations/` and import here.
+ *
+ * The integration file can be very simple. Instantiate the email client
+ * and then export it. That way you can import here and anywhere else
+ * and use it straight away.
+ */
+import previewEmail from "preview-email"
+
+type ResetPasswordMailer = {
+  to: string
+  token: string
+}
+
+export function forgotPasswordMailer({ to, token }: ResetPasswordMailer) {
+  // In production, set APP_ORIGIN to your production server origin
+  const origin = process.env.APP_ORIGIN || process.env.BLITZ_DEV_SERVER_ORIGIN
+  const resetUrl = `${origin}/reset-password?token=${token}`
+
+  const msg = {
+    from: "TODO@example.com",
+    to,
+    subject: "Your Password Reset Instructions",
+    html: `
+      <h1>Reset Your Password</h1>
+      <h3>NOTE: You must set up a production email integration in mailers/forgotPasswordMailer.ts</h3>
+
+      <a href="${resetUrl}">
+        Click here to set a new password
+      </a>
+    `,
+  }
+
+  return {
+    async send() {
+      if (process.env.NODE_ENV === "production") {
+        // TODO - send the production email, like this:
+        // await postmark.sendEmail(msg)
+        throw new Error("No production email implementation in mailers/forgotPasswordMailer")
+      } else {
+        // Preview email in the browser
+        await previewEmail(msg)
+      }
+    },
+  }
+}
+```
+
+## package.json
+
+```json
+{
+  "name": "blitzjs-todo-with-redis",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "blitz dev",
+    "build": "blitz build",
+    "start": "blitz start",
+    "studio": "blitz prisma studio",
+    "lint": "eslint --ignore-path .gitignore --ext .js,.ts,.tsx .",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "prepare": "husky install"
+  },
+  "prisma": {
+    "schema": "db/schema.prisma"
+  },
+  "prettier": {
+    "semi": false,
+    "printWidth": 100
+  },
+  "lint-staged": {
+    "*.{js,ts,tsx}": [
+      "eslint --fix"
+    ]
+  },
+  "dependencies": {
+    "@prisma/client": "3.11.1",
+    "autoprefixer": "10.4.4",
+    "blitz": "0.45.3",
+    "final-form": "4.20.6",
+    "postcss": "8.4.12",
+    "react": "18.0.0-beta-149b420f6-20211119",
+    "react-dom": "18.0.0-alpha-5ca4b0433-20211020",
+    "react-final-form": "6.5.8",
+    "tailwindcss": "3.0.23",
+    "zod": "3.14.2"
+  },
+  "devDependencies": {
+    "@types/preview-email": "2.0.1",
+    "@types/react": "17.0.43",
+    "eslint": "7.32.0",
+    "husky": "7.0.4",
+    "lint-staged": "11.3.0-beta.2",
+    "prettier": "2.6.1",
+    "prettier-plugin-prisma": "3.11.0",
+    "pretty-quick": "3.1.3",
+    "preview-email": "3.0.5",
+    "prisma": "3.11.1",
+    "typescript": "~4.5"
+  },
+  "private": true
+}
+```
+
+## test/setup.ts
+
+```ts
+// This is the jest 'setupFilesAfterEnv' setup file
+// It's a good place to set globals, add global before/after hooks, etc
+
+export {} // so TS doesn't complain
+```
+
+## test/utils.tsx
+
+```tsx
+import { RouterContext, BlitzRouter, BlitzProvider } from "blitz"
+import { render as defaultRender } from "@testing-library/react"
+import { renderHook as defaultRenderHook } from "@testing-library/react-hooks"
+
+export * from "@testing-library/react"
+
+// --------------------------------------------------------------------------------
+// This file customizes the render() and renderHook() test functions provided
+// by React testing library. It adds a router context wrapper with a mocked router.
+//
+// You should always import `render` and `renderHook` from this file
+//
+// This is the place to add any other context providers you need while testing.
+// --------------------------------------------------------------------------------
+
+// --------------------------------------------------
+// render()
+// --------------------------------------------------
+// Override the default test render with our own
+//
+// You can override the router mock like this:
+//
+// const { baseElement } = render(<MyComponent />, {
+//   router: { pathname: '/my-custom-pathname' },
+// });
+// --------------------------------------------------
+export function render(
+  ui: RenderUI,
+  { wrapper, router, dehydratedState, ...options }: RenderOptions = {}
+) {
+  if (!wrapper) {
+    // Add a default context wrapper if one isn't supplied from the test
+    wrapper = ({ children }) => (
+      <BlitzProvider dehydratedState={dehydratedState}>
+        <RouterContext.Provider value={{ ...mockRouter, ...router }}>
+          {children}
+        </RouterContext.Provider>
+      </BlitzProvider>
+    )
+  }
+  return defaultRender(ui, { wrapper, ...options })
+}
+
+// --------------------------------------------------
+// renderHook()
+// --------------------------------------------------
+// Override the default test renderHook with our own
+//
+// You can override the router mock like this:
+//
+// const result = renderHook(() => myHook(), {
+//   router: { pathname: '/my-custom-pathname' },
+// });
+// --------------------------------------------------
+export function renderHook(
+  hook: RenderHook,
+  { wrapper, router, dehydratedState, ...options }: RenderHookOptions = {}
+) {
+  if (!wrapper) {
+    // Add a default context wrapper if one isn't supplied from the test
+    wrapper = ({ children }) => (
+      <BlitzProvider dehydratedState={dehydratedState}>
+        <RouterContext.Provider value={{ ...mockRouter, ...router }}>
+          {children}
+        </RouterContext.Provider>
+      </BlitzProvider>
+    )
+  }
+  return defaultRenderHook(hook, { wrapper, ...options })
+}
+
+export const mockRouter: BlitzRouter = {
+  basePath: "",
+  pathname: "/",
+  route: "/",
+  asPath: "/",
+  params: {},
+  query: {},
+  isReady: true,
+  isLocaleDomain: false,
+  isPreview: false,
+  push: jest.fn(),
+  replace: jest.fn(),
+  reload: jest.fn(),
+  back: jest.fn(),
+  prefetch: jest.fn(),
+  beforePopState: jest.fn(),
+  events: {
+    on: jest.fn(),
+    off: jest.fn(),
+    emit: jest.fn(),
+  },
+  isFallback: false,
+}
+
+type DefaultParams = Parameters<typeof defaultRender>
+type RenderUI = DefaultParams[0]
+type RenderOptions = DefaultParams[1] & { router?: Partial<BlitzRouter>; dehydratedState?: unknown }
+
+type DefaultHookParams = Parameters<typeof defaultRenderHook>
+type RenderHook = DefaultHookParams[0]
+type RenderHookOptions = DefaultHookParams[1] & {
+  router?: Partial<BlitzRouter>
+  dehydratedState?: unknown
+}
+```
+
+## types.ts
+
+```ts
+import { DefaultCtx, SessionContext, SimpleRolesIsAuthorized } from "blitz"
+import { User } from "db"
+
+// Note: You should switch to Postgres and then use a DB enum for role type
+export type Role = "ADMIN" | "USER"
+
+declare module "blitz" {
+  export interface Ctx extends DefaultCtx {
+    session: SessionContext
+  }
+  export interface Session {
+    isAuthorized: SimpleRolesIsAuthorized<Role>
+    PublicData: {
+      userId: User["id"]
+      role: Role
+    }
+  }
+}
+```

@@ -1,0 +1,37 @@
+# react-redis-browser: src/components/databrowser/hooks/use-set-ttl.ts
+# джерело: https://github.com/upstash/react-redis-browser/blob/v0.1.6/src/components/databrowser/hooks/use-set-ttl.ts
+# отримано: 2026-10-16
+# версія: react-redis-browser-0.1.6, react-redis-browser-0.1.5, react-redis-browser-0.1.4, react-redis-browser-0.1.3, react-redis-browser-0.1.2, react-redis-browser-0.1.1, react-redis-browser-0.1.0
+
+```ts
+import { useDatabrowser } from "@/store"
+import { useMutation } from "@tanstack/react-query"
+
+import { queryClient } from "@/lib/clients"
+
+import { FETCH_SIMPLE_KEY_QUERY_KEY } from "./use-fetch-simple-key"
+import { FETCH_TTL_QUERY_KEY } from "./use-fetch-ttl"
+```
+
+## const useSetTTL
+
+```ts
+export const useSetTTL = () => {
+  const { redis } = useDatabrowser()
+
+  const updateTTL = useMutation({
+    mutationFn: async ({ dataKey, ttl }: { dataKey: string; ttl?: number }) => {
+      await (ttl === undefined ? redis.persist(dataKey) : redis.expire(dataKey, ttl))
+    },
+    onSuccess: (_, { dataKey }) => {
+      queryClient.invalidateQueries({
+        queryKey: [FETCH_TTL_QUERY_KEY, dataKey],
+      })
+      queryClient.invalidateQueries({
+        queryKey: [FETCH_SIMPLE_KEY_QUERY_KEY, dataKey],
+      })
+    },
+  })
+  return updateTTL
+}
+```

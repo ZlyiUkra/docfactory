@@ -1,0 +1,59 @@
+# react-redis-browser: src/components/databrowser/components/header/refresh-button.tsx
+# джерело: https://github.com/upstash/react-redis-browser/blob/v0.2.22/src/components/databrowser/components/header/refresh-button.tsx
+# отримано: 2026-10-16
+# версія: react-redis-browser-0.2.22, react-redis-browser-0.2.21, react-redis-browser-0.2.20, react-redis-browser-0.2.19, react-redis-browser-0.2.18, react-redis-browser-0.2.17, react-redis-browser-0.2.16, react-redis-browser-0.2.15, react-redis-browser-0.2.14
+
+```tsx
+import { useRedis } from "@/redis-context"
+import { useTab } from "@/tab-provider"
+import { useMutation } from "@tanstack/react-query"
+
+import { queryClient } from "@/lib/clients"
+import { ReloadButton } from "@/components/common/reload-button"
+
+import {
+  FETCH_KEYS_QUERY_KEY,
+  FETCH_LIST_ITEMS_QUERY_KEY,
+  FETCH_SIMPLE_KEY_QUERY_KEY,
+  useKeys,
+} from "../../hooks"
+import { FETCH_KEY_TYPE_QUERY_KEY } from "../../hooks/use-fetch-key-type"
+```
+
+## const invalidateAll
+
+```tsx
+const invalidateAll = () => {
+  queryClient.invalidateQueries({ queryKey: [FETCH_KEYS_QUERY_KEY] })
+  queryClient.invalidateQueries({ queryKey: [FETCH_LIST_ITEMS_QUERY_KEY] })
+  queryClient.invalidateQueries({ queryKey: [FETCH_SIMPLE_KEY_QUERY_KEY] })
+  queryClient.invalidateQueries({ queryKey: [FETCH_KEY_TYPE_QUERY_KEY] })
+}
+```
+
+## const RefreshButton
+
+```tsx
+export const RefreshButton = () => {
+  const { query } = useKeys()
+  const { isValuesSearchSelected, valuesSearch } = useTab()
+  const { redisNoPipeline: redis } = useRedis()
+
+  const reindex = useMutation({
+    mutationFn: async () => {
+      if (isValuesSearchSelected && valuesSearch.index) {
+        await redis.search.index({ name: valuesSearch.index }).waitIndexing()
+      }
+    },
+    onSettled: invalidateAll,
+  })
+
+  return (
+    <ReloadButton
+      onClick={() => reindex.mutate()}
+      isLoading={query.isFetching || reindex.isPending}
+      tooltip={isValuesSearchSelected ? "Reindex & Refresh Query" : "Refresh Scan"}
+    />
+  )
+}
+```

@@ -1,0 +1,49 @@
+# react-redis-browser: src/components/databrowser/hooks/use-fetch-ttl.ts
+# джерело: https://github.com/upstash/react-redis-browser/blob/v0.1.11/src/components/databrowser/hooks/use-fetch-ttl.ts
+# отримано: 2026-10-16
+# версія: react-redis-browser-0.1.11, react-redis-browser-0.1.10, react-redis-browser-0.1.9, react-redis-browser-0.1.8, react-redis-browser-0.1.7
+
+```ts
+import { useEffect } from "react"
+import { useDatabrowser } from "@/store"
+import { useQuery } from "@tanstack/react-query"
+
+import { queryClient } from "@/lib/clients"
+
+import { TTL_INFINITE, TTL_NOT_FOUND } from "../components/display/ttl-badge"
+import { FETCH_SIMPLE_KEY_QUERY_KEY } from "./use-fetch-simple-key"
+```
+
+## const FETCH_TTL_QUERY_KEY
+
+```ts
+export const FETCH_TTL_QUERY_KEY = "fetch-ttl"
+```
+
+## const useFetchKeyExpire
+
+```ts
+// Returns the expireAt instead of ttl seconds, its more useful for the UI
+export const useFetchKeyExpire = (dataKey: string) => {
+  const { redis } = useDatabrowser()
+
+  const { isLoading, error, data } = useQuery({
+    queryKey: [FETCH_TTL_QUERY_KEY, dataKey],
+    queryFn: async () => {
+      const ttl = await redis.ttl(dataKey)
+
+      return ttl === TTL_INFINITE || ttl === TTL_NOT_FOUND ? ttl : Date.now() + ttl * 1000
+    },
+  })
+
+  useEffect(() => {
+    if (data === TTL_NOT_FOUND) {
+      queryClient.invalidateQueries({
+        queryKey: [FETCH_SIMPLE_KEY_QUERY_KEY, dataKey],
+      })
+    }
+  }, [data === TTL_NOT_FOUND])
+
+  return { isLoading, error, data }
+}
+```

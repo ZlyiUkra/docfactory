@@ -1,0 +1,96 @@
+# Example: using-fastly-compute
+# джерело: https://github.com/upstash/redis-examples/tree/master/using-fastly-compute
+# отримано: 2026-10-16
+
+## Building a Serverless API with Fastly Compute @ Edge and Redis
+
+See the blog post to learn more.
+
+## package.json
+
+```json
+{
+  "name": "fastly-upstash-example",
+  "version": "0.2.0",
+  "main": "src/index.js",
+  "author": "woverton@fastly.com",
+  "license": "MIT",
+  "engines": {
+    "node": "^16"
+  },
+  "devDependencies": {
+    "core-js": "^3.19.1",
+    "webpack": "^5.64.0",
+    "webpack-cli": "^4.9.1"
+  },
+  "dependencies": {
+    "@fastly/js-compute": "^0.2.1",
+    "@upstash/redis": "^1.0.0",
+    "flight-path": "^1.0.10"
+  },
+  "scripts": {
+    "prebuild": "webpack",
+    "build": "js-compute-runtime --skip-pkg bin/index.js bin/main.wasm",
+    "deploy": "npm run build && fastly compute deploy",
+    "dev": "fastly compute serve --watch"
+  }
+}
+```
+
+## src/index.js
+
+```js
+import { Router } from 'flight-path';
+import { Redis } from '@upstash/redis/fastly';
+
+const router = new Router();
+
+const redis = new Redis({
+  url: 'https://eu1-liberal-cat-31266.upstash.io',
+  token:
+    'AX-XACQgOwNjExYWQwM2Y5NzkzNGU3NWFkO3443yujM2NDJkYjM=',
+  backend: 'upstash-db'
+});
+
+router.get('/', async (req, res) => {
+  const count = await redis.incr('count');
+  res.send(`Fastly with Upstash! Count: ${count}`);
+});
+
+router.listen();
+```
+
+## src/welcome-to-compute@edge.html
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <title>Welcome to Compute@Edge</title>
+    <link
+      rel="icon"
+      href="https://developer.fastly.com/favicon-32x32.png"
+      type="image/png"
+    />
+  </head>
+  <body>
+    <iframe
+      src="https://developer.fastly.com/compute-welcome"
+      style="
+        border: 0;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+      "
+    ></iframe>
+  </body>
+</html>
+```

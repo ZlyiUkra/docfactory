@@ -1,0 +1,115 @@
+# react-redis-browser: src/components/databrowser/components/sidebar-context-menu.tsx
+# джерело: https://github.com/upstash/react-redis-browser/blob/v0.2.22/src/components/databrowser/components/sidebar-context-menu.tsx
+# отримано: 2026-10-16
+# версія: react-redis-browser-0.2.22, react-redis-browser-0.2.21, react-redis-browser-0.2.20, react-redis-browser-0.2.19, react-redis-browser-0.2.18, react-redis-browser-0.2.17, react-redis-browser-0.2.16, react-redis-browser-0.2.15, react-redis-browser-0.2.14
+
+```tsx
+import { useState, type PropsWithChildren } from "react"
+import { useDatabrowserStore } from "@/store"
+import { useTab } from "@/tab-provider"
+import { ContextMenuSeparator } from "@radix-ui/react-context-menu"
+import { IconCopy, IconExternalLink, IconTrash } from "@tabler/icons-react"
+
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu"
+import { toast } from "@/components/ui/use-toast"
+
+import { useDeleteKey } from "../hooks"
+import { DeleteKeyModal } from "./delete-key-modal"
+```
+
+## const SidebarContextMenu
+
+```tsx
+export const SidebarContextMenu = ({ children }: PropsWithChildren) => {
+  const { mutateAsync: deleteKey } = useDeleteKey()
+  const [isAlertOpen, setAlertOpen] = useState(false)
+  const [contextKeys, setContextKeys] = useState<string[]>([])
+  const {
+    addTab,
+    setSelectedKey: setSelectedKeyGlobal,
+    selectTab,
+    setSearch,
+  } = useDatabrowserStore()
+  const { search: currentSearch, selectedKeys, isValuesSearchSelected } = useTab()
+
+  return (
+    <>
+      <DeleteKeyModal
+        deletionType="key"
+        count={contextKeys.length}
+        open={isAlertOpen}
+        onOpenChange={setAlertOpen}
+        showReindex={isValuesSearchSelected}
+        onDeleteConfirm={async (e, options) => {
+          e.stopPropagation()
+          await deleteKey({ keys: contextKeys, reindex: options?.reindex })
+          setAlertOpen(false)
+        }}
+      />
+      <ContextMenu modal={false}>
+        <ContextMenuTrigger
+          // NOTE: We did not put the ContextMenu on every key because of performance reasons
+          onContextMenu={(e) => {
+            const el = e.target as HTMLElement
+            const key = el.closest("[data-key]")
+
+            if (key && key instanceof HTMLElement && key.dataset.key !== undefined) {
+              const clickedKey = key.dataset.key
+
+              // If right-clicking on a selected key, keep all selected keys
+              if (selectedKeys.includes(clickedKey)) {
+                setContextKeys(selectedKeys)
+              } else {
+                // If right-clicking on an unselected key, only set context for context menu
+                setContextKeys([clickedKey])
+              }
+            } else {
+              throw new Error("Key not found")
+            }
+          }}
+        >
+          {children}
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem
+            onClick={() => {
+              navigator.clipboard.writeText(contextKeys[0])
+              toast({
+                description: "Key copied to clipboard",
+              })
+            }}
+            className="gap-2"
+            disabled={contextKeys.length !== 1}
+          >
+            <IconCopy size={16} />
+            Copy key
+          </ContextMenuItem>
+          <ContextMenuItem
+            onClick={() => {
+              const newTabId = addTab()
+              setSelectedKeyGlobal(newTabId, contextKeys[0])
+              setSearch(newTabId, currentSearch)
+              selectTab(newTabId)
+            }}
+            className="gap-2"
+            disabled={contextKeys.length !== 1}
+          >
+            <IconExternalLink size={16} />
+            Open in new tab
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem onClick={() => setAlertOpen(true)} className="gap-2">
+            <IconTrash size={16} />
+            {contextKeys.length > 1 ? `Delete ${contextKeys.length} keys` : "Delete key"}
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+    </>
+  )
+}
+```

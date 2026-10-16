@@ -1,0 +1,115 @@
+# redis-analytics: packages/sdk/src/services/sessions.ts
+# джерело: https://github.com/upstash/redis-analytics/blob/a7e0afc8a694dad44777c4172e14d955d5e8f640/packages/sdk/src/services/sessions.ts
+# отримано: 2026-10-16
+
+```ts
+import type { Redis } from "@upstash/redis";
+import type {
+  AnalyticsConfig,
+  FeatureFlagAssignment,
+  Session,
+  SessionMetadata,
+  SessionResult,
+} from "../types";
+import { FeatureFlagService } from "./feature-flags";
+import { LoggingService } from "./logging";
+import { generateSessionId } from "../utils";
+
+const SESSION_PREFIX = "analytics:session:";
+```
+
+## class SessionService
+
+```ts
+export class SessionService {
+
+  constructor(
+    private redis: Redis,
+    private config: AnalyticsConfig,
+    private featureFlags: FeatureFlagService,
+    private logger: LoggingService
+  ) {}
+```
+
+### SessionService.createSession()
+
+```ts
+  async createSession(options?: {
+    featureFlags?: Record<string, FeatureFlagAssignment>;
+    /** Pre-resolved feature flags from middleware. When provided, skips flag resolution. */
+    resolvedFeatureFlags?: Record<string, string>;
+    metadata?: Record<string, unknown>;
+  }): Promise<Session> {
+    // Use pre-resolved flags from middleware if provided, otherwise resolve normally
+    const resolvedFlags = options?.resolvedFeatureFlags !== undefined
+      ? options.resolvedFeatureFlags
+      : await this.featureFlags.resolveFlags(options?.featureFlags);
+
+    const sessionId = generateSessionId();
+    const createdAt = Date.now();
+
+    const sessionData: SessionMetadata = {
+      sessionId,
+      createdAt,
+      featureFlags: resolvedFlags,
+      ...(options?.metadata ? { metadata: options.metadata } : {}),
+    };
+
+    // Store session with expiration
+    const key = `${SESSION_PREFIX}${sessionId}`;
+    await this.redis.set(key, JSON.stringify(sessionData), {
+      px: this.config.session.expirationMs,
+    });
+
+    return {
+      id: sessionId,
+      createdAt,
+      featureFlags: resolvedFlags,
+      ...(options?.metadata ? { metadata: options.metadata } : {}),
+    };
+  }
+```
+
+### SessionService.getSession()
+
+```ts
+  async getSession(sessionId: string): Promise<SessionResult> {
+    const key = `${SESSION_PREFIX}${sessionId}`;
+    const data = await this.redis.get<SessionMetadata | string>(key);
+
+    if (!data) {
+      return { exists: false };
+    }
+
+    const session: SessionMetadata =
+      typeof data === "string" ? JSON.parse(data) : data;
+
+    return { exists: true, session };
+  }
+```
+
+### SessionService.getFeatureFlag()
+
+```ts
+  async getFeatureFlag(
+    sessionId: string,
+    flagName: string
+  ): Promise<string | null> {
+    const result = await this.getSession(sessionId);
+    if (!result.exists) return null;
+    return result.session.featureFlags[flagName] ?? null;
+  }
+```
+
+### SessionService.getAllFeatureFlags()
+
+```ts
+  async getAllFeatureFlags(
+    sessionId: string
+  ): Promise<Record<string, string> | null> {
+    const result = await this.getSession(sessionId);
+    if (!result.exists) return null;
+    return result.session.featureFlags;
+  }
+}
+```

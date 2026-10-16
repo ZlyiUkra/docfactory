@@ -1,0 +1,271 @@
+# Example: survey-app
+# джерело: https://github.com/upstash/redis-examples/tree/master/survey-app
+# отримано: 2026-10-16
+
+### Build your own survey app with Upstash Redis only
+
+This example showcases how to build a Next.js app that uses Upstash Redis as it's only database.
+
+See the blog post for details.
+
+## package.json
+
+```json
+{
+  "name": "survey-app",
+  "author": "Sönke Peters <soenke@soenkep.com>",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@upstash/redis": "^1.0.0",
+    "next": "12.0.8",
+    "react": "17.0.2",
+    "react-dom": "17.0.2"
+  },
+  "devDependencies": {
+    "eslint": "8.6.0",
+    "eslint-config-next": "12.0.8"
+  }
+}
+```
+
+## pages/_app.js
+
+```js
+import '../styles/globals.css'
+
+function MyApp({ Component, pageProps }) {
+  return <Component {...pageProps} />
+}
+
+export default MyApp
+```
+
+## pages/api/hello.js
+
+```js
+// Next.js API route support: https://nextjs.org/docs/api-routes/introduction
+
+export default function handler(req, res) {
+  res.status(200).json({ name: 'John Doe' })
+}
+```
+
+## pages/api/results.js
+
+```js
+import { Redis } from "@upstash/redis";
+
+const resultsHandler = async (req, res) => {
+  // Retrieve data from redis
+
+  const redis = new Redis({
+    token: "INSERT_YOUR_TOKEN",
+    url: "INSERT_YOUR_URL",
+  });
+
+  try {
+    //Find all the entries in the set
+    const entries = await redis.smembers("entries");
+    //Get all survey entries by id/key
+    //To run multiple queries at once, Upstash supports the use of the pipeline command. This way we can run multiple queries at once and get the results in a single call.
+    const p = redis.pipeline();
+    entries.forEach((id) => {
+      p.hgetall(id);
+    });
+    const results = await p.exec();
+
+    return res.status(200).json({
+      success: true,
+      message: "Data retrieved successfully",
+      data: results,
+    });
+  } catch (error) {
+    console.error("Failed to retrieve data from redis", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retrieve data from redis",
+    });
+  }
+};
+
+export default resultsHandler;
+```
+
+## pages/api/submit.js
+
+```js
+import { Redis } from "@upstash/redis";
+
+const submitHandler = async (req, res) => {
+  const body = req.body;
+
+  console.log({ body });
+
+  // Prepare data to be insert into DB
+  const data = {
+    rating: String(body.rating) || "0",
+    recommendation: String(body.recommendation) || "false",
+    comment: String(body.comment) || "",
+  };
+
+  // generate a random id
+  const id =
+    Math.random().toString(36).substring(2, 15) +
+    Math.random().toString(36).substring(2, 15);
+
+  // Insert data into Upstash redis
+
+  const redis = new Redis({
+    token: "INSERT_YOUR_TOKEN",
+    url: "INSERT_YOUR_URL",
+  });
+
+  try {
+    //Store the survey data
+    await redis.hset(
+      `entries:${id}`, data
+    );
+
+    //Store the id of the survey to retrieve it later
+    await redis.sadd("entries", `entries:${id}`);
+  } catch (error) {
+    console.error("Failed to insert data into redis", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to insert data into redis",
+    });
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: "Data inserted successfully",
+  });
+};
+
+export default submitHandler;
+```
+
+## pages/index.js
+
+```js
+import Head from "next/head";
+import Image from "next/image";
+import styles from "../styles/Home.module.css";
+
+export default function Home() {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const form = e.target;
+
+    const data = {
+      rating: form.rating.value,
+      recommendation: form.recommendation.value,
+      comment: form.comment.value,
+    };
+
+    console.log({ data });
+
+    // send data to backend
+    await fetch("/api/submit", {
+      body: JSON.stringify(data),
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      method: "POST",
+    });
+
+    alert("Thank you for your feedback!");
+  };
+
+  const RatingOption = ({ value }) => (
+    <div>
+      <input type="radio" name="rating" value={value} required />{" "}
+      <label>{value}</label>
+    </div>
+  );
+
+  return (
+    <div className={styles.container} onSubmit={handleSubmit}>
+      <form>
+        <div>
+          <label>How do you feel about our products/services?</label>
+
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((value) => (
+            <RatingOption key={value} value={value} />
+          ))}
+        </div>
+
+        <div>
+          <label>Would you recommend us to your colleagues?</label>
+
+          <div>
+            <input type="radio" name="recommendation" value="true" required />{" "}
+            <label>Yes</label>
+          </div>
+
+          <div>
+            <input type="radio" name="recommendation" value="false" required />{" "}
+            <label>No</label>
+          </div>
+        </div>
+
+        <div>
+          <label>Please share your thoughts... (Optional)</label>
+          <textarea
+            name="comment"
+            placeholder="This is what I liked most/this is what you can improve..."
+          ></textarea>
+        </div>
+
+        <input type="submit" />
+      </form>
+    </div>
+  );
+}
+```
+
+## pages/results.js
+
+```js
+import { useEffect, useState } from "react";
+
+import styles from "../styles/Results.module.css";
+
+export default function Results() {
+  const [surveyData, setSurveyData] = useState([]);
+
+  useEffect(() => {
+    fetch("/api/results")
+      .then((res) => res.json())
+      .then((response) => setSurveyData(response.data));
+  }, []);
+
+  return (
+    <div className={styles.container}>
+      {surveyData.map((data) => (
+        <div key={data.id}>
+          <p>
+            <strong>Rating:</strong> {data.rating}
+          </p>
+          <p>
+            <strong>Recommendation:</strong> {data.recommendation}
+          </p>
+          <p>
+            <strong>Comment:</strong> {data.comment}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
