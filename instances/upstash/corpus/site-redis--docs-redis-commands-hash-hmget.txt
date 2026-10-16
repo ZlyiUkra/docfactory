@@ -1,0 +1,161 @@
+# Redis: HMGET
+# джерело: https://upstash.com/docs/redis/commands/hash/hmget
+# отримано: 2026-10-16
+
+> Get values of multiple fields.
+
+Use `HMGET` to read several fields of a hash in one call.
+
+The reply holds one entry per requested field, in the order requested, with null for fields that do not exist. Asking for fields of a key that does not exist returns a list of nulls rather than an error, so the shape of the reply is always predictable and can be zipped back onto your list of field names.
+
+It saves the round trips of repeated `HGET` calls and transfers far less than `HGETALL` when you only need a few fields of a large hash.
+
+## Syntax
+
+```redis
+HMGET <key> <field> [<field> ...]
+```
+
+## Arguments
+
+| Argument | Required | Repeatable | Description |
+| --- | --- | --- | --- |
+| `<key>` | Yes | No | Redis key targeted by the command. |
+| `<field>` | Yes | Yes | Hash field name. |
+
+## Response
+
+The reply reports the result of the operation. Error replies have the same shape in RESP2 and RESP3 and are surfaced as exceptions by the SDKs below.
+
+| Protocol | Reply |
+| --- | --- |
+| RESP2 | Array of bulk-string values or null values, one per field |
+| RESP3 | Array of bulk-string values or null values, one per field |
+
+Note:
+Client libraries often decode bulk strings, maps, sets, and numeric strings into language-native values. The table describes the Redis wire reply.
+
+## Examples
+
+TCP examples use the TLS `REDIS_URL` from the Upstash console. REST examples use `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
+
+**Redis CLI**
+
+```bash
+HMGET my-key field
+```
+
+**@upstash/redis**
+
+```ts
+import { Redis } from "@upstash/redis";
+
+const redis = Redis.fromEnv();
+
+await redis.hset("key", {
+  id: 1,
+  username: "chronark",
+  name: "andreas"
+  });
+const fields = await redis.hmget("key", "username", "name");
+console.log(fields); // { username: "chronark", name: "andreas" }
+```
+
+**upstash_redis**
+
+```python
+from upstash_redis import Redis
+
+redis = Redis.from_env()
+result = redis.hmget("my-key", "field")
+print(result)
+```
+
+**ioredis**
+
+```ts
+import Redis from "ioredis";
+
+const redis = new Redis(process.env.REDIS_URL!);
+const result = await redis.hmget("my-key", "field");
+console.log(result);
+```
+
+**node-redis**
+
+```ts
+import { createClient } from "redis";
+
+const client = await createClient({ url: process.env.REDIS_URL })
+  .on("error", console.error)
+  .connect();
+const result = await client.hmGet("my-key", "field");
+console.log(result);
+```
+
+**redis-py**
+
+```python
+import os
+import redis
+
+client = redis.from_url(os.environ["REDIS_URL"])
+result = client.hmget("my-key", ["field"])
+print(result)
+```
+
+**go-redis**
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+
+    "github.com/redis/go-redis/v9"
+)
+
+func main() {
+    opts, err := redis.ParseURL(os.Getenv("REDIS_URL"))
+    if err != nil {
+        panic(err)
+    }
+    client := redis.NewClient(opts)
+    result, err := client.HMGet(context.Background(), "my-key", "field").Result()
+    if err != nil {
+        panic(err)
+    }
+    fmt.Println(result)
+}
+```
+
+**jedis**
+
+```java
+import java.net.URI;
+
+import redis.clients.jedis.Jedis;
+
+try (Jedis jedis = new Jedis(new URI(System.getenv("REDIS_URL")))) {
+  Object result = jedis.hmget("my-key", "field");
+  System.out.println(result);
+}
+```
+
+**redis-rs**
+
+```rust
+use redis::TypedCommands;
+
+fn main() -> redis::RedisResult<()> {
+    let url = std::env::var("REDIS_URL").expect("REDIS_URL is not set");
+    let client = redis::Client::open(url)?;
+    let mut connection = client.get_connection()?;
+
+    let result = connection.hmget("my-key", &["field"])?;
+    println!("{result:?}");
+    Ok(())
+}
+```

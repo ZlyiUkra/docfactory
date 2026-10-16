@@ -1,0 +1,152 @@
+# Redis: TOUCH
+# джерело: https://upstash.com/docs/redis/commands/generic/touch
+# отримано: 2026-10-16
+
+> Update last access time of keys.
+
+Use `TOUCH` to update the last access time of one or more keys without reading their values.
+
+The reply counts how many of the given keys exist, just like `EXISTS`, but the call also refreshes the idle time and access frequency that the LRU and LFU eviction policies rely on. That makes it a way to tell the server that a key is still in use, for example to keep a cached value from being evicted while a slower process is still going to need it. It does not change the key's expiration.
+
+## Syntax
+
+```redis
+TOUCH <key> [<key> ...]
+```
+
+## Arguments
+
+| Argument | Required | Repeatable | Description |
+| --- | --- | --- | --- |
+| `<key>` | Yes | Yes | Redis key targeted by the command. |
+
+## Response
+
+The reply reports the result of the operation. Error replies have the same shape in RESP2 and RESP3 and are surfaced as exceptions by the SDKs below.
+
+| Protocol | Reply |
+| --- | --- |
+| RESP2 | Integer |
+| RESP3 | Integer |
+
+Note:
+Client libraries often decode bulk strings, maps, sets, and numeric strings into language-native values. The table describes the Redis wire reply.
+
+## Examples
+
+TCP examples use the TLS `REDIS_URL` from the Upstash console. REST examples use `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
+
+**Redis CLI**
+
+```bash
+TOUCH my-key
+```
+
+**@upstash/redis**
+
+```ts
+import { Redis } from "@upstash/redis";
+
+const redis = Redis.fromEnv();
+
+await redis.touch("key1", "key2", "key3");
+```
+
+**upstash_redis**
+
+```python
+from upstash_redis import Redis
+
+redis = Redis.from_env()
+result = redis.touch("my-key")
+print(result)
+```
+
+**ioredis**
+
+```ts
+import Redis from "ioredis";
+
+const redis = new Redis(process.env.REDIS_URL!);
+const result = await redis.touch("my-key");
+console.log(result);
+```
+
+**node-redis**
+
+```ts
+import { createClient } from "redis";
+
+const client = await createClient({ url: process.env.REDIS_URL })
+  .on("error", console.error)
+  .connect();
+const result = await client.touch("my-key");
+console.log(result);
+```
+
+**redis-py**
+
+```python
+import os
+import redis
+
+client = redis.from_url(os.environ["REDIS_URL"])
+result = client.touch("my-key")
+print(result)
+```
+
+**go-redis**
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+
+    "github.com/redis/go-redis/v9"
+)
+
+func main() {
+    opts, err := redis.ParseURL(os.Getenv("REDIS_URL"))
+    if err != nil {
+        panic(err)
+    }
+    client := redis.NewClient(opts)
+    result, err := client.Touch(context.Background(), "my-key").Result()
+    if err != nil {
+        panic(err)
+    }
+    fmt.Println(result)
+}
+```
+
+**jedis**
+
+```java
+import java.net.URI;
+
+import redis.clients.jedis.Jedis;
+
+try (Jedis jedis = new Jedis(new URI(System.getenv("REDIS_URL")))) {
+  Object result = jedis.touch("my-key");
+  System.out.println(result);
+}
+```
+
+**redis-rs**
+
+```rust
+fn main() -> redis::RedisResult<()> {
+    let url = std::env::var("REDIS_URL").expect("REDIS_URL is not set");
+    let client = redis::Client::open(url)?;
+    let mut connection = client.get_connection()?;
+
+    let mut command = redis::cmd("TOUCH");
+    command.arg("my-key");
+    let result: redis::Value = command.query(&mut connection)?;
+    println!("{result:?}");
+    Ok(())
+}
+```

@@ -1,0 +1,139 @@
+# Redis: QUIT
+# джерело: https://upstash.com/docs/redis/commands/connection/quit
+# отримано: 2026-10-16
+
+> Close the connection.
+
+Warning:
+Prefer closing the connection from the client in new code, which avoids leaving `TIME_WAIT` sockets on the server.
+
+Use `QUIT` to ask the server to close the connection once all pending replies have been sent.
+
+The server replies `OK` and then terminates the connection, so no reply is lost and the shutdown is clean from both sides. Modern clients usually just close the socket, and pooled connections should be returned to the pool rather than closed, so `QUIT` is mostly useful in scripts and interactive sessions.
+
+## Syntax
+
+```redis
+QUIT
+```
+
+## Arguments
+
+This command takes no arguments.
+
+## Important points
+
+- This is a connection-oriented command and is available over native Redis TCP, not the stateless REST endpoint.
+
+## Response
+
+The reply reports the result of the operation. Error replies have the same shape in RESP2 and RESP3 and are surfaced as exceptions by the SDKs below.
+
+| Protocol | Reply |
+| --- | --- |
+| RESP2 | Simple string `OK` |
+| RESP3 | Simple string `OK` |
+
+Note:
+Client libraries often decode bulk strings, maps, sets, and numeric strings into language-native values. The table describes the Redis wire reply.
+
+## Examples
+
+TCP examples use the TLS `REDIS_URL` from the Upstash console. REST examples use `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
+
+**Redis CLI**
+
+```bash
+QUIT
+```
+
+**ioredis**
+
+```ts
+import Redis from "ioredis";
+
+const redis = new Redis(process.env.REDIS_URL!);
+const result = await redis.quit();
+console.log(result);
+```
+
+**node-redis**
+
+```ts
+import { createClient } from "redis";
+
+const client = await createClient({ url: process.env.REDIS_URL })
+  .on("error", console.error)
+  .connect();
+const result = await client.sendCommand(["QUIT"]);
+console.log(result);
+```
+
+**redis-py**
+
+```python
+import os
+import redis
+
+client = redis.from_url(os.environ["REDIS_URL"])
+result = client.quit()
+print(result)
+```
+
+**go-redis**
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+
+    "github.com/redis/go-redis/v9"
+)
+
+func main() {
+    opts, err := redis.ParseURL(os.Getenv("REDIS_URL"))
+    if err != nil {
+        panic(err)
+    }
+    client := redis.NewClient(opts)
+    result, err := client.Quit(context.Background()).Result()
+    if err != nil {
+        panic(err)
+    }
+    fmt.Println(result)
+}
+```
+
+**jedis**
+
+```java
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.commands.ProtocolCommand;
+
+ProtocolCommand command = () -> "QUIT".getBytes(StandardCharsets.UTF_8);
+try (Jedis jedis = new Jedis(new URI(System.getenv("REDIS_URL")))) {
+  Object result = jedis.sendCommand(command);
+  System.out.println(result);
+}
+```
+
+**redis-rs**
+
+```rust
+fn main() -> redis::RedisResult<()> {
+    let url = std::env::var("REDIS_URL").expect("REDIS_URL is not set");
+    let client = redis::Client::open(url)?;
+    let mut connection = client.get_connection()?;
+
+    let mut command = redis::cmd("QUIT");
+
+    let result: redis::Value = command.query(&mut connection)?;
+    println!("{result:?}");
+    Ok(())
+}
+```

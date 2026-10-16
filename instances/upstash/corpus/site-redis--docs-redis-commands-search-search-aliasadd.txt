@@ -1,0 +1,161 @@
+# Redis: SEARCH.ALIASADD
+# джерело: https://upstash.com/docs/redis/commands/search/search-aliasadd
+# отримано: 2026-10-16
+
+> Create or update a search index alias.
+
+Use `SEARCH.ALIASADD` to create an alias or update an existing alias to point to a search index.
+
+An alias is a stable name that queries can use in place of a real index name, so the index behind it can be replaced without touching application code. Pointing an existing alias at a different index is atomic, which is what makes zero-downtime reindexing possible: build the new index under a fresh name, then move the alias to it in one step.
+
+See Aliases for feature examples, including zero-downtime index swaps.
+
+The target name is not required to exist when the alias is created, so aliases can temporarily be dangling. Most commands resolve aliases, but `SEARCH.DROP` always uses a literal index name.
+
+## Syntax
+
+```redis
+SEARCH.ALIASADD <alias> <index_name>
+```
+
+## Response
+
+Returns `1` if a new alias was created or `2` if an existing alias was updated, including when it already points to the supplied index.
+
+## Examples
+
+**Redis CLI**
+
+```bash
+SEARCH.ALIASADD products products-v2
+```
+
+**@upstash/redis**
+
+```ts
+import { Redis } from "@upstash/redis";
+
+const redis = Redis.fromEnv();
+const result = await redis.search.alias.add({
+  alias: "products",
+  indexName: "products-v2",
+});
+```
+
+**upstash_redis**
+
+```python
+from upstash_redis import Redis
+
+redis = Redis.from_env()
+result = redis.search.alias.add(
+    alias="products",
+    index_name="products-v2",
+)
+```
+
+**ioredis**
+
+```ts
+import IORedis from "ioredis";
+import { createSearch } from "@upstash/search-ioredis";
+
+const redis = new IORedis(process.env.REDIS_URL!);
+const search = createSearch(redis);
+const result = await search.alias.add({
+  alias: "products",
+  indexName: "products-v2",
+});
+```
+
+**node-redis**
+
+```ts
+import { createClient } from "redis";
+import { createSearch } from "@upstash/search-redis";
+
+const client = await createClient({ url: process.env.REDIS_URL })
+  .on("error", console.error)
+  .connect();
+const search = createSearch(client);
+const result = await search.alias.add({
+  alias: "products",
+  indexName: "products-v2",
+});
+```
+
+**redis-py**
+
+```python
+import os
+import redis
+
+client = redis.from_url(os.environ["REDIS_URL"])
+result = client.execute_command("SEARCH.ALIASADD", "products", "products-v2")
+print(result)
+```
+
+**go-redis**
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+
+    "github.com/redis/go-redis/v9"
+)
+
+func main() {
+    opts, err := redis.ParseURL(os.Getenv("REDIS_URL"))
+    if err != nil {
+        panic(err)
+    }
+    client := redis.NewClient(opts)
+    result, err := client.Do(context.Background(), "SEARCH.ALIASADD", "products", "products-v2").Result()
+    if err != nil {
+        panic(err)
+    }
+    fmt.Println(result)
+}
+```
+
+**jedis**
+
+```java
+import java.net.URI;
+
+import redis.clients.jedis.Jedis;
+
+try (Jedis jedis = new Jedis(new URI(System.getenv("REDIS_URL")))) {
+  Object result = jedis.sendCommand(() -> "SEARCH.ALIASADD".getBytes(), "products", "products-v2");
+  System.out.println(result);
+}
+```
+
+**redis-rs**
+
+```rust
+fn main() -> redis::RedisResult<()> {
+    let url = std::env::var("REDIS_URL").expect("REDIS_URL is not set");
+    let client = redis::Client::open(url)?;
+    let mut connection = client.get_connection()?;
+
+    let mut command = redis::cmd("SEARCH.ALIASADD");
+    command.arg("products");
+    command.arg("products-v2");
+    let result: redis::Value = command.query(&mut connection)?;
+    println!("{result:?}");
+    Ok(())
+}
+```
+
+**curl**
+
+```bash
+curl -X POST https://YOUR_ENDPOINT.upstash.io \
+  -H "Authorization: Bearer $UPSTASH_REDIS_REST_TOKEN" \
+  -d '["SEARCH.ALIASADD", "products", "products-v2"]'
+```

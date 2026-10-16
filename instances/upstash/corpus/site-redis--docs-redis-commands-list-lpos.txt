@@ -1,0 +1,160 @@
+# Redis: LPOS
+# джерело: https://upstash.com/docs/redis/commands/list/lpos
+# отримано: 2026-10-16
+
+> Find the position of an element.
+
+Use `LPOS` to find the position of an element in a list.
+
+The scan starts at the head and, by default, reports the index of the first match or null when there is none. `RANK` selects which match to report: `RANK 2` skips to the second occurrence, and a negative rank searches backwards from the tail, so `RANK -1` finds the last occurrence. `COUNT` returns that many matching indexes instead of just one, and `COUNT 0` returns all of them. `MAXLEN` limits how many elements are compared, which bounds the cost of the search on a long list at the price of possibly missing matches beyond that point.
+
+It is the read-only way to locate a value before acting on it with `LSET` or `LREM`.
+
+## Syntax
+
+```redis
+LPOS <key> <element> [RANK <rank>] [COUNT <num-matches>] [MAXLEN <len>]
+```
+
+## Arguments
+
+| Argument | Required | Repeatable | Description |
+| --- | --- | --- | --- |
+| `<key>` | Yes | No | Redis key targeted by the command. |
+| `<element>` | Yes | No | Element value to search for. |
+| `RANK <rank>` | No | No | Which match to return; negative values search from the tail. |
+| `COUNT <num-matches>` | No | No | Number of matches to return; `0` returns every match. |
+| `MAXLEN <len>` | No | No | Maximum number of entries to keep in the stream. |
+
+## Response
+
+The reply reports the result of the operation. Error replies have the same shape in RESP2 and RESP3 and are surfaced as exceptions by the SDKs below.
+
+| Protocol | Reply |
+| --- | --- |
+| RESP2 | Null bulk string or null array, Integer, or array of integer positions |
+| RESP3 | Null, Integer, or array of integer positions |
+
+Note:
+Client libraries often decode bulk strings, maps, sets, and numeric strings into language-native values. The table describes the Redis wire reply.
+
+## Examples
+
+TCP examples use the TLS `REDIS_URL` from the Upstash console. REST examples use `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
+
+**Redis CLI**
+
+```bash
+LPOS my-key element
+```
+
+**@upstash/redis**
+
+```ts
+import { Redis } from "@upstash/redis";
+
+const redis = Redis.fromEnv();
+
+await redis.rpush("key", "a", "b", "c");
+const index = await redis.lpos("key", "b");
+console.log(index); // 1
+```
+
+**upstash_redis**
+
+```python
+from upstash_redis import Redis
+
+redis = Redis.from_env()
+result = redis.lpos("my-key", "element")
+print(result)
+```
+
+**ioredis**
+
+```ts
+import Redis from "ioredis";
+
+const redis = new Redis(process.env.REDIS_URL!);
+const result = await redis.lpos("my-key", "element");
+console.log(result);
+```
+
+**node-redis**
+
+```ts
+import { createClient } from "redis";
+
+const client = await createClient({ url: process.env.REDIS_URL })
+  .on("error", console.error)
+  .connect();
+const result = await client.lPos("my-key", "element");
+console.log(result);
+```
+
+**redis-py**
+
+```python
+import os
+import redis
+
+client = redis.from_url(os.environ["REDIS_URL"])
+result = client.lpos("my-key", "element")
+print(result)
+```
+
+**go-redis**
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+
+    "github.com/redis/go-redis/v9"
+)
+
+func main() {
+    opts, err := redis.ParseURL(os.Getenv("REDIS_URL"))
+    if err != nil {
+        panic(err)
+    }
+    client := redis.NewClient(opts)
+    result, err := client.LPos(context.Background(), "my-key", "element", redis.LPosArgs{}).Result()
+    if err != nil {
+        panic(err)
+    }
+    fmt.Println(result)
+}
+```
+
+**jedis**
+
+```java
+import java.net.URI;
+
+import redis.clients.jedis.Jedis;
+
+try (Jedis jedis = new Jedis(new URI(System.getenv("REDIS_URL")))) {
+  Object result = jedis.lpos("my-key", "element");
+  System.out.println(result);
+}
+```
+
+**redis-rs**
+
+```rust
+use redis::{LposOptions, TypedCommands};
+
+fn main() -> redis::RedisResult<()> {
+    let url = std::env::var("REDIS_URL").expect("REDIS_URL is not set");
+    let client = redis::Client::open(url)?;
+    let mut connection = client.get_connection()?;
+
+    let result: Option<isize> = connection.lpos("my-key", "element", LposOptions::default())?;
+    println!("{result:?}");
+    Ok(())
+}
+```
