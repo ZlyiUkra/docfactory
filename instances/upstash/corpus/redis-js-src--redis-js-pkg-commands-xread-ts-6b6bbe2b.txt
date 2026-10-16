@@ -1,0 +1,80 @@
+# redis-js: pkg/commands/xread.ts
+# джерело: https://github.com/upstash/redis-js/blob/v1.28.3/pkg/commands/xread.ts
+# отримано: 2026-10-16
+# версія: redis-1.28.3
+
+```ts
+import { Command, CommandOptions } from "./command";
+```
+
+## const UNBALANCED_XREAD_ERR
+
+```ts
+export const UNBALANCED_XREAD_ERR =
+  "ERR Unbalanced XREAD list of streams: for each stream key an ID or '$' must be specified";
+```
+
+## type XReadCommandOptions
+
+```ts
+type XReadCommandOptions = [
+  key: string | string[],
+  id: string | string[],
+  options?: { count?: number; blockMS?: number },
+];
+```
+
+## type XReadOptions
+
+```ts
+//This type ensures users have balanced stream keys and stream ids otherwise redis server will throw an error.
+type XReadOptions = XReadCommandOptions extends [infer K, infer I, ...any[]]
+  ? K extends string
+    ? I extends string
+      ? [key: string, id: string, options?: { count?: number; blockMS?: number }]
+      : never
+    : K extends string[]
+    ? I extends string[]
+      ? [key: string[], id: string[], options?: { count?: number; blockMS?: number }]
+      : never
+    : never
+  : never;
+```
+
+## class XReadCommand
+
+```ts
+/**
+ * @see https://redis.io/commands/xread
+ */
+export class XReadCommand extends Command<number, unknown[]> {
+```
+
+### XReadCommand.constructor()
+
+```ts
+  constructor([key, id, options]: XReadOptions, opts?: CommandOptions<number, unknown[]>) {
+    if (Array.isArray(key) && Array.isArray(id)) {
+      if (key.length !== id.length) {
+        throw new Error(UNBALANCED_XREAD_ERR);
+      }
+    }
+    const commands: unknown[] = [];
+
+    if (typeof options?.count === "number") {
+      commands.push("COUNT", options.count);
+    }
+    if (typeof options?.blockMS === "number") {
+      commands.push("BLOCK", options.blockMS);
+    }
+
+    commands.push(
+      "STREAMS",
+      ...(Array.isArray(key) ? [...key] : [key]),
+      ...(Array.isArray(id) ? [...id] : [id]),
+    );
+
+    super(["XREAD", ...commands], opts);
+  }
+}
+```

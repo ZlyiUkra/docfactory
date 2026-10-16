@@ -1,0 +1,83 @@
+# redis-js: pkg/commands/xadd.ts
+# джерело: https://github.com/upstash/redis-js/blob/v1.33.0/pkg/commands/xadd.ts
+# отримано: 2026-10-16
+# версія: redis-1.33.0, redis-1.32.0, redis-1.31.6, redis-1.31.5, redis-1.31.4, redis-1.31.3, redis-1.31.2, redis-1.31.1, redis-1.31.0, redis-1.30.1, redis-1.30.0, redis-1.29.0, redis-1.28.4, redis-1.28.3, redis-1.28.2, redis-1.28.1, redis-1.28.0, redis-1.27.1, redis-1.27.0, redis-1.26.0, redis-1.25.2, redis-1.25.1, redis-1.25.0, redis-1.24.3, redis-1.24.2, redis-1.24.1, redis-1.24.0
+
+```ts
+import { Command, CommandOptions } from "./command";
+```
+
+## type XAddCommandOptions
+
+```ts
+type XAddCommandOptions = {
+  nomkStream?: boolean;
+  trim?: (
+    | {
+        type: "MAXLEN" | "maxlen";
+        threshold: number;
+      }
+    | {
+        type: "MINID" | "minid";
+        threshold: string;
+      }
+  ) &
+    (
+      | {
+          comparison: "~";
+          limit?: number;
+        }
+      | {
+          comparison: "=";
+          limit?: never;
+        }
+    );
+};
+```
+
+## class XAddCommand
+
+```ts
+/**
+ * @see https://redis.io/commands/xadd
+ */
+export class XAddCommand extends Command<string, string> {
+```
+
+### XAddCommand.constructor()
+
+```ts
+  constructor(
+    [key, id, entries, opts]: [
+      key: string,
+      id: "*" | string,
+      entries: { [field: string]: unknown },
+      opts?: XAddCommandOptions,
+    ],
+    commandOptions?: CommandOptions<string, string>,
+  ) {
+    const command: unknown[] = ["XADD", key];
+
+    if (opts) {
+      if (opts.nomkStream) {
+        command.push("NOMKSTREAM");
+      }
+      if (opts.trim) {
+        command.push(opts.trim.type, opts.trim.comparison, opts.trim.threshold);
+        if (typeof opts.trim.limit !== "undefined") {
+          command.push("LIMIT", opts.trim.limit);
+        }
+      }
+    }
+
+    command.push(id);
+
+    // entries
+    for (const [k, v] of Object.entries(entries)) {
+      command.push(k, v);
+    }
+
+    super(command, commandOptions);
+  }
+}
+```

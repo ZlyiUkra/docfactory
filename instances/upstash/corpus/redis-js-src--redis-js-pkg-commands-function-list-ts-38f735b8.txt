@@ -1,0 +1,104 @@
+# redis-js: pkg/commands/function_list.ts
+# джерело: https://github.com/upstash/redis-js/blob/v1.36.4/pkg/commands/function_list.ts
+# отримано: 2026-10-16
+# версія: redis-1.36.4, redis-1.36.3, redis-1.36.2, redis-1.36.1, redis-1.36.0
+
+```ts
+import { kvArrayToObject } from "../util";
+import type { CommandOptions } from "./command";
+import { Command } from "./command";
+```
+
+## type FunctionListArgs
+
+```ts
+export type FunctionListArgs = {
+  /**
+   * Pattern for matching library names. Supports glob patterns.
+   *
+   * Example: "my_library_*"
+   */
+  libraryName?: string;
+  /**
+   * Includes the library source code in the response.
+   *
+   * @default false
+   */
+  withCode?: boolean;
+};
+```
+
+## type RedisFunctionLibrary
+
+```ts
+type RedisFunctionLibrary = {
+  libraryName: string;
+  engine: string;
+  functions: {
+    name: string;
+    description?: string;
+    flags: string[];
+  }[];
+  libraryCode?: string;
+};
+```
+
+## class FunctionListCommand
+
+```ts
+/**
+ * @see https://redis.io/docs/latest/commands/function-list/
+ */
+export class FunctionListCommand extends Command<unknown, RedisFunctionLibrary[]> {
+```
+
+### FunctionListCommand.constructor()
+
+```ts
+  constructor(
+    [args]: [args?: FunctionListArgs],
+    opts?: CommandOptions<unknown, RedisFunctionLibrary[]>
+  ) {
+    const command: (string | number | boolean)[] = ["function", "list"];
+    if (args?.libraryName) {
+      command.push("libraryname", args.libraryName);
+    }
+    if (args?.withCode) {
+      command.push("withcode");
+    }
+    super(command, { deserialize, ...opts });
+  }
+}
+```
+
+## function deserialize
+
+```ts
+function deserialize(result: unknown): RedisFunctionLibrary[] {
+  if (!Array.isArray(result)) return [];
+
+  return result.map((libRaw) => {
+    const lib = kvArrayToObject<{
+      library_name: string;
+      engine: string;
+      functions: unknown[];
+      library_code: string;
+    }>(libRaw);
+
+    const functionsParsed = lib.functions.map((fnRaw) =>
+      kvArrayToObject<{ name: string; description: string | null; flags: string[] }>(fnRaw)
+    );
+
+    return {
+      libraryName: lib.library_name,
+      engine: lib.engine,
+      functions: functionsParsed.map((fn) => ({
+        name: fn.name,
+        description: fn.description ?? undefined,
+        flags: fn.flags,
+      })),
+      libraryCode: lib.library_code,
+    };
+  });
+}
+```

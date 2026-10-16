@@ -1,0 +1,96 @@
+# redis-js: pkg/commands/xreadgroup.ts
+# джерело: https://github.com/upstash/redis-js/blob/v1.33.0/pkg/commands/xreadgroup.ts
+# отримано: 2026-10-16
+# версія: redis-1.33.0, redis-1.32.0, redis-1.31.6, redis-1.31.5, redis-1.31.4, redis-1.31.3, redis-1.31.2, redis-1.31.1, redis-1.31.0, redis-1.30.1, redis-1.30.0, redis-1.29.0, redis-1.28.4
+
+```ts
+import { Command, CommandOptions } from "./command";
+```
+
+## const UNBALANCED_XREADGROUP_ERR
+
+```ts
+export const UNBALANCED_XREADGROUP_ERR =
+  "ERR Unbalanced XREADGROUP list of streams: for each stream key an ID or '$' must be specified";
+
+type Options = { count?: number; blockMS?: number; NOACK?: boolean };
+```
+
+## type XReadGroupCommandOptions
+
+```ts
+type XReadGroupCommandOptions = [
+  group: string,
+  consumer: string,
+  key: string | string[],
+  id: string | string[],
+  options?: Options,
+];
+```
+
+## type XReadGroupOptions
+
+```ts
+//This type ensures users have balanced stream keys and stream ids otherwise redis server will throw an error.
+type XReadGroupOptions = XReadGroupCommandOptions extends [
+  string,
+  string,
+  infer TKey,
+  infer TId,
+  ...any[],
+]
+  ? TKey extends string
+    ? TId extends string
+      ? [group: string, consumer: string, key: string, id: string, options?: Options]
+      : never
+    : TKey extends string[]
+      ? TId extends string[]
+        ? [group: string, consumer: string, key: string[], id: string[], options?: Options]
+        : never
+      : never
+  : never;
+```
+
+## class XReadGroupCommand
+
+```ts
+/**
+ * @see https://redis.io/commands/xreadgroup
+ */
+export class XReadGroupCommand extends Command<number, unknown[]> {
+```
+
+### XReadGroupCommand.constructor()
+
+```ts
+  constructor(
+    [group, consumer, key, id, options]: XReadGroupOptions,
+    opts?: CommandOptions<number, unknown[]>,
+  ) {
+    if (Array.isArray(key) && Array.isArray(id)) {
+      if (key.length !== id.length) {
+        throw new Error(UNBALANCED_XREADGROUP_ERR);
+      }
+    }
+    const commands: unknown[] = [];
+
+    if (typeof options?.count === "number") {
+      commands.push("COUNT", options.count);
+    }
+    if (typeof options?.blockMS === "number") {
+      commands.push("BLOCK", options.blockMS);
+    }
+    if (typeof options?.NOACK === "boolean" && options?.NOACK) {
+      commands.push("NOACK");
+    }
+
+    commands.push(
+      "STREAMS",
+      ...(Array.isArray(key) ? [...key] : [key]),
+      ...(Array.isArray(id) ? [...id] : [id]),
+    );
+
+    super(["XREADGROUP", "GROUP", group, consumer, ...commands], opts);
+  }
+}
+```

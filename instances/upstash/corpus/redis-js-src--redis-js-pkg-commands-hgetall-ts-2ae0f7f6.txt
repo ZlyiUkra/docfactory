@@ -1,0 +1,57 @@
+# redis-js: pkg/commands/hgetall.ts
+# джерело: https://github.com/upstash/redis-js/blob/v1.34.5/pkg/commands/hgetall.ts
+# отримано: 2026-10-16
+# версія: redis-1.34.5, redis-1.34.4, redis-1.34.3, redis-1.34.2, redis-1.34.1, redis-1.34.0
+
+```ts
+import type { CommandOptions } from "./command";
+import { Command } from "./command";
+```
+
+## function deserialize
+
+```ts
+function deserialize<TData extends Record<string, unknown>>(result: string[]): TData | null {
+  if (result.length === 0) {
+    return null;
+  }
+  const obj: Record<string, unknown> = {};
+  while (result.length >= 2) {
+    const key = result.shift()!;
+    const value = result.shift()!;
+    try {
+      // handle unsafe integer
+      const valueIsNumberAndNotSafeInteger =
+        !Number.isNaN(Number(value)) && !Number.isSafeInteger(Number(value));
+      obj[key] = valueIsNumberAndNotSafeInteger ? value : JSON.parse(value);
+    } catch {
+      obj[key] = value;
+    }
+  }
+  return obj as TData;
+}
+```
+
+## class HGetAllCommand
+
+```ts
+/**
+ * @see https://redis.io/commands/hgetall
+ */
+export class HGetAllCommand<TData extends Record<string, unknown>> extends Command<
+  unknown | null,
+  TData | null
+> {
+```
+
+### HGetAllCommand.constructor()
+
+```ts
+  constructor(cmd: [key: string], opts?: CommandOptions<unknown | null, TData | null>) {
+    super(["hgetall", ...cmd], {
+      deserialize: (result) => deserialize<TData>(result as string[]),
+      ...opts,
+    });
+  }
+}
+```

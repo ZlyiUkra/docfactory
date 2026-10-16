@@ -1,0 +1,67 @@
+# redis-js: pkg/commands/xrange.ts
+# джерело: https://github.com/upstash/redis-js/blob/v1.33.0/pkg/commands/xrange.ts
+# отримано: 2026-10-16
+# версія: redis-1.33.0, redis-1.32.0, redis-1.31.6, redis-1.31.5, redis-1.31.4, redis-1.31.3, redis-1.31.2, redis-1.31.1, redis-1.31.0, redis-1.30.1, redis-1.30.0, redis-1.29.0, redis-1.28.4
+
+```ts
+import { Command, CommandOptions } from "./command";
+```
+
+## function deserialize
+
+```ts
+function deserialize<TData extends Record<string, Record<string, unknown>>>(
+  result: [string, string[]][],
+): TData {
+  const obj: Record<string, Record<string, unknown>> = {};
+  for (const e of result) {
+    while (e.length >= 2) {
+      const streamId = e.shift() as string;
+      const entries = e.shift()!;
+
+      if (!(streamId in obj)) {
+        obj[streamId] = {};
+      }
+      while (entries.length >= 2) {
+        const field = (entries as string[]).shift()! as string;
+        const value = (entries as string[]).shift()! as string;
+
+        try {
+          obj[streamId][field] = JSON.parse(value);
+        } catch {
+          obj[streamId][field] = value;
+        }
+      }
+    }
+  }
+  return obj as TData;
+}
+```
+
+## class XRangeCommand
+
+```ts
+export class XRangeCommand<TData extends Record<string, Record<string, unknown>>> extends Command<
+  string[][],
+  TData
+> {
+```
+
+### XRangeCommand.constructor()
+
+```ts
+  constructor(
+    [key, start, end, count]: [key: string, start: string, end: string, count?: number],
+    opts?: CommandOptions<unknown[], TData[]>,
+  ) {
+    const command: unknown[] = ["XRANGE", key, start, end];
+    if (typeof count === "number") {
+      command.push("COUNT", count);
+    }
+    super(command, {
+      deserialize: (result) => deserialize<any>(result as any),
+      ...opts,
+    });
+  }
+}
+```

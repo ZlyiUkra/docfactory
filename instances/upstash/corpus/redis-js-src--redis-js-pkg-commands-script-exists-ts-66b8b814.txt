@@ -1,0 +1,55 @@
+# redis-js: pkg/commands/script_exists.ts
+# джерело: https://github.com/upstash/redis-js/blob/v1.3.2/pkg/commands/script_exists.ts
+# отримано: 2026-10-16
+# версія: redis-1.3.2
+
+```ts
+import { Command } from "./command.ts";
+```
+
+## type TupleOfLength
+
+```ts
+type TupleOfLength<T, L extends number, R extends T[] = []> =
+  R["length"] extends L ? R : TupleOfLength<
+    T,
+    L,
+    [...R, T]
+  >;
+```
+
+## class ScriptExistsCommand
+
+```ts
+/**
+ * @see https://redis.io/commands/script-exists
+ */
+export class ScriptExistsCommand<T extends [string, ...string[]]>
+  extends Command<
+    T extends [string] ? string : TupleOfLength<string, T["length"]>,
+    TupleOfLength<string, T["length"]>
+  > {
+```
+
+### ScriptExistsCommand.constructor()
+
+```ts
+  constructor(...hash: T) {
+    super(
+      ["script", "exists", ...hash],
+      {
+        deserialize: (result) => {
+          /**
+           * This isn't very pretty but it does the job.
+           * The user facing api is clean and will return a single `string` if they provided
+           * a single script hash, and an array of strings of the same length when given an
+           * array of hashes.
+           */
+          const parsed = result as string[];
+          return parsed.length === 1 ? (parsed[0] as any) : parsed;
+        },
+      },
+    );
+  }
+}
+```

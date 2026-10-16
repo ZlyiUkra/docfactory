@@ -1,0 +1,78 @@
+# redis-js: pkg/commands/zadd.ts
+# джерело: https://github.com/upstash/redis-js/blob/v1.36.4/pkg/commands/zadd.ts
+# отримано: 2026-10-16
+# версія: redis-1.36.4, redis-1.36.3, redis-1.36.2, redis-1.36.1, redis-1.36.0, redis-1.35.8, redis-1.35.7, redis-1.35.6, redis-1.35.5, redis-1.35.4, redis-1.35.3, redis-1.35.2, redis-1.35.1, redis-1.35.0, redis-1.34.9, redis-1.34.8, redis-1.34.7, redis-1.34.6, redis-1.34.5, redis-1.34.4, redis-1.34.3, redis-1.34.2, redis-1.34.1, redis-1.34.0
+
+```ts
+import type { CommandOptions } from "./command";
+import { Command } from "./command";
+```
+
+## type NXAndXXOptions
+
+```ts
+type NXAndXXOptions =
+  | { nx: true; xx?: never }
+  | { nx?: never; xx: true }
+  | { nx?: never; xx?: never };
+```
+
+## type LTAndGTOptions
+
+```ts
+type LTAndGTOptions =
+  | { lt: true; gt?: never }
+  | { lt?: never; gt: true }
+  | { lt?: never; gt?: never };
+
+export type ZAddCommandOptions = NXAndXXOptions & LTAndGTOptions & { ch?: true } & { incr?: true };
+
+type Arg2<TData> = ScoreMember<TData> | ZAddCommandOptions;
+export type ScoreMember<TData> = { score: number; member: TData };
+```
+
+## class ZAddCommand
+
+```ts
+/**
+ * @see https://redis.io/commands/zadd
+ */
+export class ZAddCommand<TData = string> extends Command<number | null, number | null> {
+```
+
+### ZAddCommand.constructor()
+
+```ts
+  constructor(
+    [key, arg1, ...arg2]: [string, Arg2<TData>, ...ScoreMember<TData>[]],
+    opts?: CommandOptions<number | null, number | null>
+  ) {
+    const command: unknown[] = ["zadd", key];
+    if ("nx" in arg1 && arg1.nx) {
+      command.push("nx");
+    } else if ("xx" in arg1 && arg1.xx) {
+      command.push("xx");
+    }
+    if ("ch" in arg1 && arg1.ch) {
+      command.push("ch");
+    }
+    if ("incr" in arg1 && arg1.incr) {
+      command.push("incr");
+    }
+
+    if ("lt" in arg1 && arg1.lt) {
+      command.push("lt");
+    } else if ("gt" in arg1 && arg1.gt) {
+      command.push("gt");
+    }
+
+    if ("score" in arg1 && "member" in arg1) {
+      command.push(arg1.score, arg1.member);
+    }
+
+    command.push(...arg2.flatMap(({ score, member }) => [score, member]));
+
+    super(command, opts);
+  }
+}
+```
