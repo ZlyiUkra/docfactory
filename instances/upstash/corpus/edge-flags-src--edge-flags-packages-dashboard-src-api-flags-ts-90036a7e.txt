@@ -1,0 +1,146 @@
+# edge-flags: packages/dashboard/src/api/flags.ts
+# джерело: https://github.com/upstash/edge-flags/blob/@upstash%2Fedge-flags@0.1.3/packages/dashboard/src/api/flags.ts
+# отримано: 2026-10-16
+# версія: edge-flags-0.1.3, edge-flags-0.1.2
+
+```ts
+import { useMutation, useQuery } from "@tanstack/react-query"
+import { Admin, Environment, Rule } from "@upstash/edge-flags"
+
+import { useRedis } from "@/hooks/use-redis"
+
+import { queryClient } from "./query-client"
+```
+
+## type FlagData
+
+```ts
+export type FlagData = Awaited<ReturnType<(typeof Admin)["prototype"]["getFlag"]>>
+```
+
+## const useFetchFlags
+
+```ts
+export const useFetchFlags = ({ selectedDb }: { selectedDb?: string }) => {
+  const { flags } = useRedis()
+
+  return useQuery({
+    queryKey: ["flags-list", selectedDb],
+    queryFn: async () => {
+      const list = await flags.listFlags()
+
+      return list.sort((a, b) => a.name.localeCompare(b.name))
+    },
+  })
+}
+```
+
+## const invalidateFlagsList
+
+```ts
+const invalidateFlagsList = () => {
+  queryClient.invalidateQueries({
+    queryKey: ["flags-list"],
+  })
+}
+```
+
+## const useCreateFlag
+
+```ts
+export const useCreateFlag = () => {
+  const { flags } = useRedis()
+
+  return useMutation({
+    mutationFn: flags.createFlag.bind(flags),
+    onSuccess: invalidateFlagsList,
+  })
+}
+```
+
+## const useUpdateFlag
+
+```ts
+export const useUpdateFlag = () => {
+  const { flags } = useRedis()
+
+  return useMutation({
+    mutationFn: async ({
+      name,
+      environment,
+      data,
+    }: {
+      name: string
+      environment: Environment
+      data: {
+        enabled?: boolean
+        rules?: Rule[]
+        percentage?: number | null
+      }
+    }) => flags.updateFlag(name, environment, data),
+    onSuccess: invalidateFlagsList,
+  })
+}
+```
+
+## const useDeleteFlag
+
+```ts
+export const useDeleteFlag = () => {
+  const { flags } = useRedis()
+
+  return useMutation({
+    mutationFn: flags.deleteFlag.bind(flags),
+    onSuccess: invalidateFlagsList,
+  })
+}
+```
+
+## const useRenameFlag
+
+```ts
+export const useRenameFlag = () => {
+  const { flags } = useRedis()
+
+  return useMutation({
+    mutationFn: ({ oldName, newName }: { oldName: string; newName: string }) =>
+      flags.renameFlag(oldName, newName),
+    onSuccess: invalidateFlagsList,
+  })
+}
+```
+
+## const useCopyFlag
+
+```ts
+export const useCopyFlag = () => {
+  const { flags } = useRedis()
+
+  return useMutation({
+    mutationFn: ({ flagName, newName }: { flagName: string; newName: string }) =>
+      flags.copyFlag(flagName, newName),
+    onSuccess: invalidateFlagsList,
+  })
+}
+```
+
+## const useCopyFlagToEnvironment
+
+```ts
+export const useCopyFlagToEnvironment = () => {
+  const { flags } = useRedis()
+
+  return useMutation({
+    mutationFn: ({
+      flagName,
+      from,
+      to,
+    }: {
+      flagName: string
+      from: Environment
+      to: Environment
+    }) => flags.copyEnvironment(flagName, from, to),
+    onSuccess: invalidateFlagsList,
+  })
+}
+```

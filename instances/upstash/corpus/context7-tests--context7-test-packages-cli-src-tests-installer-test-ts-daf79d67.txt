@@ -1,0 +1,222 @@
+# context7: packages/cli/src/__tests__/installer.test.ts
+# джерело: https://github.com/upstash/context7/blob/ctx7@0.6.1/packages/cli/src/__tests__/installer.test.ts
+# отримано: 2026-10-16
+# версія: ctx7-0.6.1, ctx7-0.5.16, ctx7-0.4.5, context7-tools-ai-sdk-1.0.3, context7-tools-ai-sdk-0.2.5, context7-sdk-0.5.1, context7-sdk-0.4.1, context7-sdk-0.3.1, context7-pi-0.1.3, context7-opencode-0.2.1, context7-opencode-0.1.0, context7-mcp-4.4.2, context7-mcp-4.3.0, context7-mcp-4.2.1, context7-mcp-4.1.3, context7-mcp-4.0.7, context7-mcp-3.2.5, context7-mcp-3.1.0, context7-mcp-3.0.0, context7-mcp-2.3.0
+
+```ts
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { mkdir, readFile, writeFile, rm, access } from "fs/promises";
+import { join } from "path";
+import { tmpdir } from "os";
+
+import { installSkillFiles, symlinkSkill } from "../utils/installer.js";
+import { isSafeSkillName, assertSkillNameInRoot } from "../utils/skill-name.js";
+
+let tempDir: string;
+```
+
+## function exists
+
+```ts
+async function exists(path: string): Promise<boolean> {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+beforeEach(async () => {
+  tempDir = join(tmpdir(), `ctx7-installer-test-${Date.now()}-${Math.random()}`);
+  await mkdir(tempDir, { recursive: true });
+});
+
+afterEach(async () => {
+  await rm(tempDir, { recursive: true, force: true });
+});
+```
+
+## isSafeSkillName
+
+```ts
+describe("isSafeSkillName", () => {
+```
+
+### accepts typical skill names
+
+```ts
+  test("accepts typical skill names", () => {
+    for (const name of [
+      "pdf",
+      "find-docs",
+      "skill_one",
+      "skill.v2",
+      "a1",
+      "abc123",
+      "PDF",
+      "Find-Docs",
+      "MySkill",
+    ]) {
+      expect(isSafeSkillName(name)).toBe(true);
+    }
+  });
+```
+
+### rejects path traversal and separators
+
+```ts
+  test("rejects path traversal and separators", () => {
+    for (const name of [
+      "..",
+      ".",
+      "../evil",
+      "..\\evil",
+      "a/b",
+      "a\\b",
+      "/abs",
+      "C:\\drive",
+      "with space",
+      "",
+      ".hidden",
+      "name\0",
+      "name\nwith-newline",
+    ]) {
+      expect(isSafeSkillName(name)).toBe(false);
+    }
+  });
+
+  test("rejects names longer than 128 chars", () => {
+    expect(isSafeSkillName("a".repeat(128))).toBe(true);
+    expect(isSafeSkillName("a".repeat(129))).toBe(false);
+  });
+});
+```
+
+## assertSkillNameInRoot
+
+```ts
+describe("assertSkillNameInRoot", () => {
+
+  test("returns resolved path for safe name", () => {
+    const result = assertSkillNameInRoot("/tmp/skills", "pdf");
+    expect(result).toBe("/tmp/skills/pdf");
+  });
+
+  test("throws on traversal", () => {
+    expect(() => assertSkillNameInRoot("/tmp/skills", "..")).toThrow();
+    expect(() => assertSkillNameInRoot("/tmp/skills", "../evil")).toThrow();
+  });
+});
+```
+
+## installSkillFiles
+
+```ts
+describe("installSkillFiles", () => {
+```
+
+### writes files inside the skill directory
+
+```ts
+  test("writes files inside the skill directory", async () => {
+    const skillsRoot = join(tempDir, "skills");
+    await mkdir(skillsRoot, { recursive: true });
+
+    await installSkillFiles("good", [{ path: "SKILL.md", content: "hello" }], skillsRoot);
+
+    const written = await readFile(join(skillsRoot, "good", "SKILL.md"), "utf8");
+    expect(written).toBe("hello");
+  });
+```
+
+### rejects skill name '..' and does not write outside skills root
+
+```ts
+  test("rejects skill name '..' and does not write outside skills root", async () => {
+    const skillsRoot = join(tempDir, ".claude", "skills");
+    await mkdir(skillsRoot, { recursive: true });
+
+    const settingsPath = join(tempDir, ".claude", "settings.json");
+
+    await expect(
+      installSkillFiles("..", [{ path: "settings.json", content: '{"hooks":{}}' }], skillsRoot)
+    ).rejects.toThrow();
+
+    expect(await exists(settingsPath)).toBe(false);
+  });
+```
+
+### rejects skill names with path separators
+
+```ts
+  test("rejects skill names with path separators", async () => {
+    const skillsRoot = join(tempDir, "skills");
+    await mkdir(skillsRoot, { recursive: true });
+
+    for (const bad of ["../evil", "a/b", "..\\evil"]) {
+      await expect(
+        installSkillFiles(bad, [{ path: "SKILL.md", content: "x" }], skillsRoot)
+      ).rejects.toThrow();
+    }
+  });
+```
+
+### still rejects traversal in file.path
+
+```ts
+  test("still rejects traversal in file.path", async () => {
+    const skillsRoot = join(tempDir, "skills");
+    await mkdir(skillsRoot, { recursive: true });
+
+    await expect(
+      installSkillFiles("good", [{ path: "../escape.txt", content: "x" }], skillsRoot)
+    ).rejects.toThrow(/outside/);
+  });
+});
+```
+
+## symlinkSkill
+
+```ts
+describe("symlinkSkill", () => {
+```
+
+### creates symlink under skills root for safe name
+
+```ts
+  test("creates symlink under skills root for safe name", async () => {
+    const skillsRoot = join(tempDir, "linked");
+    await mkdir(skillsRoot, { recursive: true });
+
+    const source = join(tempDir, "source");
+    await mkdir(source, { recursive: true });
+    await writeFile(join(source, "marker"), "ok");
+
+    await symlinkSkill("good", source, skillsRoot);
+
+    const linkedMarker = await readFile(join(skillsRoot, "good", "marker"), "utf8");
+    expect(linkedMarker).toBe("ok");
+  });
+```
+
+### does not rm parent when skill name is '..'
+
+```ts
+  test("does not rm parent when skill name is '..'", async () => {
+    const skillsRoot = join(tempDir, ".cursor", "skills");
+    await mkdir(skillsRoot, { recursive: true });
+
+    const sentinel = join(tempDir, ".cursor", "keep.txt");
+    await writeFile(sentinel, "sentinel");
+
+    const source = join(tempDir, "source");
+    await mkdir(source, { recursive: true });
+
+    await expect(symlinkSkill("..", source, skillsRoot)).rejects.toThrow();
+
+    expect(await exists(sentinel)).toBe(true);
+    expect(await exists(join(tempDir, ".cursor"))).toBe(true);
+  });
+});
+```

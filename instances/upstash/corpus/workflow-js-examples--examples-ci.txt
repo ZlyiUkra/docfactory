@@ -1,0 +1,4682 @@
+# Example: ci
+# джерело: https://github.com/upstash/workflow-js/tree/v1.4.0/examples/ci
+# отримано: 2026-10-16
+# версія: workflow-1.4.0
+
+Deploy with Vercel
+
+## Upstash Workflow Nextjs Example
+
+This project has some routes showcasing how Upstash Workflow can be used in a nextjs project. You can learn more in Workflow documentation for Nextjs.
+
+Under the app directory, you will find 7 folders, each corresponding to a workflow API except the `-call-qstash`. In each of these folders, you will find the `route.ts` file which defines the endpoint.
+
+The user calls `-call-qstash` with information about which endpoint is to be called in the body. `-call-qstash` publishes a message to QStash. QStash then calls the specified endpoint.
+
+flow-diagram
+
+## Deploying the Project at Vercel
+
+To deploy the project, you can simply use the `Deploy with Vercel` button at the top of this README. If you want to edit the project and deploy it, you can read the rest of this section.
+
+To deploy the project at vercel and try the endpoints, you should start with setting up the project by running:
+
+```
+vercel
+```
+
+Next, you shoud go to vercel.com, find your project and add `QSTASH_TOKEN`, to the project as environment variables. You can find this env variables from the Upstash Console. To learn more about other env variables and their use in the context of Upstash Workflow, you can read the Secure your Endpoint in our documentation.
+
+Once you add the env variables, you can deploy the project with:
+
+```
+vercel --prod
+```
+
+Note that the project won't work in preview. It should be deployed to production like above. This is because preview requires authentication.
+
+Once you have the app deployed, you can go to the deployment and call the endpoints using the form on the page.
+
+You can observe the logs at Upstash console under the Worfklow tab or vercel.com to see your workflow operate.
+
+## Local Development
+
+For local development setup, refer to the Local Development section in our documentation.
+
+## app/ci/ci.test.ts
+
+```ts
+import { test, describe } from "vitest"
+import { TEST_ROUTES, TEST_TIMEOUT_DURATION } from "./constants";
+import { initiateTest } from "./utils";
+
+describe("workflow integration tests", () => {
+  TEST_ROUTES.forEach(testConfig => {
+    test(
+      testConfig.route,
+      async () => {
+        await initiateTest(testConfig)
+      },
+      testConfig.timeout ?? TEST_TIMEOUT_DURATION
+    )
+  });
+})
+```
+
+## app/ci/constants.ts
+
+```ts
+import { RouteConfigs, TestConfig } from "./types"
+
+export const RETRY_COUNT = 20
+export const RETRY_INTERVAL_DURATION = 2000
+export const CHECK_WF_AFTER_INIT_DURATION = 10000
+const TEST_BUFFER_DURATION = 5000
+export const TEST_TIMEOUT_DURATION = (
+  CHECK_WF_AFTER_INIT_DURATION
+  + (RETRY_COUNT * RETRY_INTERVAL_DURATION)
+  + TEST_BUFFER_DURATION
+)
+
+export const CI_RANDOM_ID_HEADER = "Ci-Test-Id"
+export const CI_ROUTE_HEADER = `Ci-Test-Route`
+
+/**
+ * a label header set in the SDK itself to set context.label via client.trigger
+ */
+export const WORKFLOW_LABEL_HEADER = "upstash-label"
+
+export const BASE_URL = process.env.VERCEL_URL
+  ? `https://${process.env.VERCEL_URL}`
+  : process.env.UPSTASH_WORKFLOW_URL
+    ? process.env.UPSTASH_WORKFLOW_URL
+    : "http://localhost:3001"
+
+export const TEST_ROUTE_PREFIX = `${BASE_URL}/test-routes`
+
+export const TEST_ROUTES: Pick<TestConfig, RouteConfigs>[] = [
+  {
+    // tests a very basic endpoint with 2 context run statements
+    // payload has unicode chars
+    route: "path",
+  },
+  {
+    // same endpoint as path but passes an unknown sdk header
+    // which results in one extra request to the endpoint
+    route: "path-with-unknown-sdk-header",
+  },
+  {
+    // runs sleep and sleepUntil. checks if sufficient time passed between
+    // steps
+    route: "sleep",
+  },
+  {
+    // runs sleep parallel with other steps
+    route: "sleepWithoutAwait",
+  },
+  {
+    // checks auth
+    route: "auth/success",
+  },
+  {
+    // checks auth failing
+    route: "auth/fail",
+  },
+  {
+    // checks custom auth
+    route: "auth/custom/workflow",
+  },
+  {
+    // checks context.call (sucess and fail case)
+    route: "call/workflow",
+  },
+  {
+    // checks context.call with a zod schema validating the initial payload
+    route: "call/with-schema",
+  },
+  {
+    // check the error when wf early returns
+    route: "returns-before-step",
+  },
+  {
+    // checks context.run with async and sync route methods
+    route: "async-sync-run",
+  },
+  {
+    // checks failureFunction
+    route: "failureFunction",
+  },
+  {
+    // checks failureFunction with retries: 1
+    route: "failureFunction-retry",
+  },
+  {
+    // checks failureFunction with NonRetryableError
+    route: "failureFunction-nonRetryable",
+  },
+  {
+    // checks failureUrl
+    route: "failureUrl/workflow",
+  },
+  {
+    route: "wait-for-event/workflow",
+  },
+  {
+    route: "call/workflow-with-failureFunction",
+  },
+  {
+    route: "call/workflow-with-failureUrl",
+  },
+  {
+    route: "invoke/workflows/workflowOne",
+  },
+  {
+    route: "trigger-non-workflow/workflow",
+  },
+  {
+    route: "webhook/workflow",
+  },
+  {
+    route: "middleware-logs/workflows/mainWorkflow",
+  },
+  {
+    route: "qstash-trigger-fetch/workflows/mainWorkflow",
+  },
+  {
+    route: "quota-error/workflows/mainWorkflow",
+  },
+  {
+    route: "invoke-parent-failure/workflow",
+  },
+  {
+    route: "retried",
+  },
+  {
+    // starts a workflow using every kind of step twice with the same run id and
+    // the same data, and checks that both runs finish. takes two full runs.
+    route: "same-run-id/runner",
+    timeout: 180_000,
+  }
+
+  /**
+   * TEST LARGE PAYLOAD CASES
+   * 
+   * disabled because they are unpredictable in CI.
+   * they are checked locally instead.
+   */
+  // {
+  //   route: "large-payload/call-result/workflow",
+  // },
+  // {
+  //   route: "large-payload/error",
+  // },
+  // {
+  //   route: "large-payload/initial",
+  // },
+  // {
+  //   route: "large-payload/step-result",
+  // },
+  // {
+  //   route: "large-payload/step-result-parallel",
+  // },
+]
+```
+
+## app/ci/types.ts
+
+```ts
+import { FlowControl } from "@upstash/qstash"
+
+export type TriggerConfig = {
+  retries?: number,
+  retryDelay?: string,
+  flowControl?: FlowControl,
+  failureUrl?: string,
+  label?: string
+}
+
+export type TestConfig<TPayload = unknown> = {
+  /**
+   * path of the workflow endpoint
+   * 
+   * will also be part of the redis key
+   */
+  route: string,
+  /**
+   * payload to send in the initial request
+   */
+  payload: TPayload,
+  /**
+   * headers of the request
+   */
+  headers?: Record<string, string>,
+  /**
+   * number of times the endpoint is to be called in this test
+   */
+  expectedCallCount: number
+  /**
+   * expected result in the Redis
+   */
+  expectedResult: string
+  /**
+   * whether the workflow should start
+   * 
+   * @default true
+   */
+  shouldWorkflowStart?: boolean
+  /**
+   * run trigger config
+   */
+  triggerConfig?: TriggerConfig
+  /**
+   * duration of the test in milliseconds, for tests which take longer than
+   * the others. the results are waited for during the extra time.
+   *
+   * @default TEST_TIMEOUT_DURATION
+   */
+  timeout?: number
+}
+
+/**
+ * configs derived from the test endpoints instead of the constants file
+ */
+export type RouteConfigs = "route" | "timeout"
+
+export type RedisResult = {
+  /**
+   * observed call count
+   */
+  callCount: number
+  /**
+   * result written to redis
+   */
+  result: string
+  /**
+   * a randomly generated string which is generated
+   * in each test and sent as a header.
+   */
+  randomTestId: string
+}
+```
+
+## app/ci/upstash/qstash.ts
+
+```ts
+import { Client as WorkflowClient } from "@upstash/workflow"
+import { TEST_ROUTE_PREFIX, CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER } from "../constants"
+import { TestConfig } from "../types"
+
+const workflowClient = new WorkflowClient({ baseUrl: process.env.QSTASH_URL, token: process.env.QSTASH_TOKEN! })
+
+/**
+ * starts a workflow run given the config
+ * 
+ * @param testConfig 
+ * @param randomTestId 
+ * @returns 
+ */
+export const startWorkflow = async (
+  testConfig: Pick<TestConfig, "route" | "headers" | "payload" | "triggerConfig">,
+  randomTestId: string
+): Promise<{ workflowRunId: string }> => {
+  const result = await workflowClient.trigger({
+    url: `${TEST_ROUTE_PREFIX}/${testConfig.route}`,
+    headers: {
+      [ CI_RANDOM_ID_HEADER ]: randomTestId,
+      [ CI_ROUTE_HEADER ]: testConfig.route,
+      ...testConfig.headers
+    },
+    retryDelay: testConfig.triggerConfig?.retryDelay,
+    retries: testConfig.triggerConfig?.retries,
+    flowControl: testConfig.triggerConfig?.flowControl,
+    failureUrl: testConfig.triggerConfig?.failureUrl,
+    label: testConfig.triggerConfig?.label,
+    body: testConfig.payload,
+  })
+  return result
+}
+
+export const getWorkflowLogs = async (workflowRunId: string) => {
+  const results = await workflowClient.logs({ workflowRunId })
+  return results
+}
+```
+
+## app/ci/upstash/redis.test.ts
+
+```ts
+
+import { describe, test, expect, beforeAll } from "vitest";
+import * as redis from "./redis"
+import { nanoid } from "../utils";
+
+describe("redis", () => {
+  test("should throw on missing results", async () => {
+    await expect(
+      redis.checkRedisForResults("some-route", "some-id", -1, "some-result", 1)
+    ).rejects.toThrow(
+      "result not found for route some-route with randomTestId some-id"
+    )
+  }, 15000)
+
+  test("should throw when saving results without any increment", async () => {
+    await expect(
+      redis.saveResultsWithoutContext("some-route", "some-id", "some-result")
+    ).rejects.toThrow(
+      "callCount shouldn't be 0. It was 0 in test of the route 'some-route'"
+    )
+  })
+
+  describe("after two increments and saving results", () => {
+
+    const route = "two-inrement-route"
+    const randomId = `random-id-${nanoid()}`
+    const result = `random-result-${nanoid()}`
+
+    beforeAll(async () => {
+      await redis.increment(route, randomId)
+      await redis.increment(route, randomId)
+      await redis.saveResultsWithoutContext(route, randomId, result)
+    })
+
+    test("should throw on mismatching result", async () => {
+      await expect(
+        redis.checkRedisForResults(route, randomId, 2, "not-correct")
+      ).rejects.toThrow(
+        `Unexpected value.\n\tReceived "${result}"\n\tExpected "not-correct"`
+      )
+    })
+
+    test("should throw on mismatching call count", async () => {
+      await expect(
+        redis.checkRedisForResults(route, randomId, 123, result)
+      ).rejects.toThrow(
+        `Unexpected value.\n\tReceived "2"\n\tExpected "123"`
+      )
+    })
+
+    test("should not throw on correct results", async () => {
+      await expect(
+        redis.checkRedisForResults(route, randomId, 2, result)
+      ).resolves.not.toThrow()
+    })
+  })
+
+  describe("other redis tests", () => {
+
+    test("should override call count", async () => {
+
+      const route = "override-route"
+      const randomId = `random-id-${nanoid()}`
+      const result = `random-result-${nanoid()}`
+      const override = -3
+
+      await redis.increment(route, randomId)
+      await redis.increment(route, randomId)
+      await redis.increment(route, randomId)
+
+      await redis.saveResultsWithoutContext(route, randomId, result, override)
+
+      await expect(
+        redis.checkRedisForResults(route, randomId, 3, result)
+      ).rejects.toThrow(
+        `Unexpected value.\n\tReceived "-3"\n\tExpected "3"`
+      )
+
+      await expect(
+        redis.checkRedisForResults(route, randomId, override, result)
+      ).resolves.not.toThrow()
+    })
+
+    test("should fail if marked as failed", async () => {
+
+      const route = "fail-route"
+      const randomId = `random-id-${nanoid()}`
+      const result = `random-result-${nanoid()}`
+
+      // increment, save and check
+      await redis.increment(route, randomId)
+      await redis.saveResultsWithoutContext(route, randomId, result)
+      await redis.checkRedisForResults(route, randomId, 1, result)
+
+      // mark as failed and check
+      await redis.failWithoutContext(route, randomId)
+      await expect(redis.checkRedisForResults(route, randomId, 1, result)).rejects.toThrow(redis.FAILED_TEXT)
+
+    })
+  })
+})
+```
+
+## app/ci/upstash/redis.ts
+
+```ts
+import { Redis } from "@upstash/redis";
+import { RedisResult } from "../types";
+import { expect } from "../utils";
+import { type WorkflowContext } from "@upstash/workflow";
+import { CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER, RETRY_COUNT, RETRY_INTERVAL_DURATION } from "../constants";
+
+export const redis = Redis.fromEnv();
+const EXPIRE_IN_SECS = 60
+
+const getRedisKey = (
+  kind: "increment" | "result" | "fail",
+  route: string,
+  randomTestId: string
+): string => {
+  return `wf-${kind}-${route}-${randomTestId}`
+}
+
+/**
+ * increments the call count for route and randomTestId
+ * 
+ * @param route route of the test run
+ * @param randomTestId randomTestId unique to test run
+ */
+export const increment = async (route: string, randomTestId: string) => {
+  const key = getRedisKey("increment", route, randomTestId)
+
+  const pipe = redis.pipeline()
+  pipe.incr(key)
+  pipe.expire(key, EXPIRE_IN_SECS)
+  await pipe.exec()
+}
+
+export const saveResultsWithoutContext = async (
+  route: string,
+  randomTestId: string,
+  result: string,
+  overrideCallCount?: number
+) => {
+  // get call count
+  const incrementKey = getRedisKey("increment", route, randomTestId)
+  const callCount = overrideCallCount ?? await redis.get<number>(incrementKey) ?? 0
+
+  if (callCount === 0) {
+    throw new Error(`callCount shouldn't be 0. It was 0 in test of the route '${route}'`);
+  }
+
+  // save result
+  const key = getRedisKey("result", route, randomTestId)
+  await redis.set<RedisResult>(key, { callCount, result, randomTestId }, { ex: EXPIRE_IN_SECS })
+}
+
+/**
+ * saves the result of the workflow to mark the completion of the test
+ * 
+ * @param context workflow context used
+ * @param result result to save which will be checked in the test
+ */
+export const saveResult = async (
+  context: WorkflowContext<unknown>,
+  result: string
+) => {
+  const randomTestId = context.headers.get(CI_RANDOM_ID_HEADER)
+  const route = context.headers.get(CI_ROUTE_HEADER)
+
+  if (randomTestId === null) {
+    throw new Error("randomTestId can't be null.")
+  }
+  if (route === null) {
+    throw new Error("route can't be null.")
+  }
+
+  await saveResultsWithoutContext(
+    route,
+    randomTestId,
+    result
+  )
+}
+
+export const failWithoutContext = async (
+  route: string,
+  randomTestId: string
+) => {
+  const key = getRedisKey("fail", route, randomTestId)
+  await redis.set<boolean>(key, true, { ex: EXPIRE_IN_SECS })
+}
+
+/**
+ * marks the workflow as failed
+ * 
+ * @param context 
+ * @returns 
+ */
+export const fail = async (
+  context: Pick<WorkflowContext<unknown>, "headers">,
+) => {
+  const randomTestId = context.headers.get(CI_RANDOM_ID_HEADER)
+  const route = context.headers.get(CI_ROUTE_HEADER)
+
+  if (randomTestId === null) {
+    throw new Error("randomTestId can't be null.")
+  }
+  if (route === null) {
+    throw new Error("route can't be null.")
+  }
+
+  await failWithoutContext(route, randomTestId)
+}
+
+export const FAILED_TEXT = "Test has failed because it was marked as failed with `fail` method."
+
+export const checkRedisForResults = async (
+  route: string,
+  randomTestId: string,
+  expectedCallCount: number,
+  expectedResult: string,
+  retryOverride?: number
+) => {
+  const key = getRedisKey("result", route, randomTestId)
+  let testResult: RedisResult | null = null
+
+  const retryCount = retryOverride ?? RETRY_COUNT
+  for ( let i=1; i <= retryCount; i++ ) {
+    testResult = await redis.get<RedisResult>(key)
+    if (testResult) {
+      break
+    }
+    if (i !== retryCount) {
+      await new Promise(r => setTimeout(r, RETRY_INTERVAL_DURATION));
+    }
+  }
+
+  if (!testResult) {
+    throw new Error(`result not found for route ${route} with randomTestId ${randomTestId}`)
+  }
+
+  const failKey = getRedisKey("fail", route, randomTestId)
+  const failed = await redis.get<boolean>(failKey)
+  if (failed) {
+    throw new Error(FAILED_TEXT)
+  }
+
+  const { callCount, randomTestId: resultRandomTestId, result } = testResult 
+  
+  expect(resultRandomTestId, randomTestId)
+  expect(result, expectedResult)
+  expect(callCount, expectedCallCount)
+}
+```
+
+## app/ci/utils.test.ts
+
+```ts
+import { test, expect } from "vitest";
+import { expect as utilsExpect, ANY_STRING } from "./utils"
+
+test("expect - basic equality", () => {
+  expect(() => utilsExpect("same", "same")).not.toThrow()
+  expect(() => utilsExpect("not", "same")).toThrow(`Unexpected value.\n\tReceived "not"\n\tExpected "same"`)
+})
+
+test("expect - ANY_STRING pattern matching", () => {
+  // Test basic ANY_STRING replacement
+  expect(() => utilsExpect("hello world", `hello ${ANY_STRING}`)).not.toThrow()
+  expect(() => utilsExpect("test123", `test${ANY_STRING}`)).not.toThrow()
+  expect(() => utilsExpect("prefix-suffix", `prefix${ANY_STRING}suffix`)).not.toThrow()
+  
+  // Test multiple ANY_STRING patterns
+  expect(() => utilsExpect(`user-123-data`, `user${ANY_STRING}data`)).not.toThrow()
+  expect(() => utilsExpect("id_abc_def_end", `id${ANY_STRING}end`)).not.toThrow()
+  
+  // Test empty string matching
+  expect(() => utilsExpect("start", `start${ANY_STRING}`)).not.toThrow()
+  expect(() => utilsExpect("end", `${ANY_STRING}end`)).not.toThrow()
+  
+  // Test full string replacement
+  expect(() => utilsExpect("anything", `${ANY_STRING}`)).not.toThrow()
+})
+
+test("expect - ANY_STRING pattern failures", () => {
+  // Should fail when pattern doesn't match
+  expect(() => utilsExpect("hello world", `goodbye ${ANY_STRING}`))
+    .toThrow(`Unexpected value.\n\tReceived "hello world"\n\tExpected pattern "goodbye ${ANY_STRING}"`)
+  
+  expect(() => utilsExpect("test", `testing${ANY_STRING}`))
+    .toThrow(`Unexpected value.\n\tReceived "test"\n\tExpected pattern "testing${ANY_STRING}"`)
+  
+  expect(() => utilsExpect("prefix-wrong", `prefix${ANY_STRING}suffix`))
+    .toThrow(`Unexpected value.\n\tReceived "prefix-wrong"\n\tExpected pattern "prefix${ANY_STRING}suffix"`)
+})
+
+test("expect - non-string types", () => {
+  // Numbers
+  expect(() => utilsExpect(42, 42)).not.toThrow()
+  expect(() => utilsExpect(42, 43)).toThrow(`Unexpected value.\n\tReceived "42"\n\tExpected "43"`)
+  
+  // Booleans
+  expect(() => utilsExpect(true, true)).not.toThrow()
+  expect(() => utilsExpect(true, false)).toThrow(`Unexpected value.\n\tReceived "true"\n\tExpected "false"`)
+  
+  // Null and undefined
+  expect(() => utilsExpect(null, null)).not.toThrow()
+  expect(() => utilsExpect(undefined, undefined)).not.toThrow()
+  expect(() => utilsExpect(null, undefined)).toThrow(`Unexpected value.\n\tReceived "null"\n\tExpected "undefined"`)
+  
+  // Objects
+  const obj1 = { a: 1 }
+  const obj2 = { a: 1 }
+  expect(() => utilsExpect(obj1, obj1)).not.toThrow() // Same reference
+  expect(() => utilsExpect(obj1, obj2)).toThrow() // Different references
+})
+```
+
+## app/ci/utils.ts
+
+```ts
+import { RouteConfigs, TriggerConfig, type TestConfig } from "./types"
+import { CHECK_WF_AFTER_INIT_DURATION, CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER, RETRY_COUNT, RETRY_INTERVAL_DURATION, TEST_ROUTE_PREFIX, TEST_TIMEOUT_DURATION } from "./constants"
+import { serve } from "@upstash/workflow/nextjs"
+import * as redis from "./upstash/redis"
+import * as qstash from "./upstash/qstash"
+
+export const nanoid = () => {
+  return Math.floor(Math.random() * 10000).toString()
+}
+
+/**
+ * wraps the handler of the serve method to call redis.increment
+ * everytime the endpoint is called.
+ * 
+ * Also returns a GET endpoint to return the test configuration
+ * 
+ * @param serveResult 
+ * @param testConfig 
+ * @returns 
+ */
+export const testServe = (
+  serveResult: ReturnType<typeof serve>,
+  testConfig: Omit<TestConfig, RouteConfigs>
+) => {
+
+  const handler = async (request: Request) => {
+    // get route & randomId
+    const route = request.headers.get(CI_ROUTE_HEADER)
+    const randomId = request.headers.get(CI_RANDOM_ID_HEADER)
+
+    // validate route & randomId
+    if (!route) {
+      throw new Error(`failed to get route in test. randomId was ${randomId}`)
+    }
+    if (!randomId) {
+      throw new Error(`failed to get randomId in test. route was ${randomId}`)
+    }
+
+    await redis.increment(route, randomId)
+    return await serveResult.POST(request)
+  }
+
+  const GET = async () => {
+    return new Response(JSON.stringify(testConfig), { status: 200 })
+  }
+
+  return { POST: handler, GET }
+}
+
+export const getTestConfig = async (route: string) => {
+  const response = await fetch(
+    `${TEST_ROUTE_PREFIX}/${route}`,
+    { method: "GET" }
+  )
+
+  if (response.status !== 200) {
+    throw new Error(`Failed to get the test config: ${response.statusText}`)
+  }
+
+  const testConfig = await response.json() as Parameters<typeof testServe>[1]
+
+  return testConfig
+}
+
+export const initiateTest = async (params: Pick<TestConfig, RouteConfigs>) => {
+  const randomTestId = nanoid()
+  const { route, timeout } = params
+  // a test with a longer timeout waits for its results during the extra time. each retry
+  // also waits for a redis call, so a retry is counted as 1.5 intervals. otherwise the
+  // retries outlast the test timeout, and a missing result shows up as a vitest timeout
+  // instead of "no results found".
+  const resultRetryCount = timeout
+    ? RETRY_COUNT + Math.floor((timeout - TEST_TIMEOUT_DURATION) / (RETRY_INTERVAL_DURATION * 1.5))
+    : undefined
+  const { headers, payload, expectedCallCount, expectedResult, triggerConfig, shouldWorkflowStart = true } = await getTestConfig(route)
+
+  const { workflowRunId } = await qstash.startWorkflow({ route, headers, payload, triggerConfig }, randomTestId)
+
+  // sleep for 4 secs and check that message is delivered
+  await new Promise(r => setTimeout(r, CHECK_WF_AFTER_INIT_DURATION));
+
+  try {
+    await redis.checkRedisForResults(route, randomTestId, expectedCallCount, expectedResult, resultRetryCount)
+  } catch (error) {
+    console.error("Test Failed. no results found.")
+    throw error
+  }
+}
+
+type ExpectType = number | string | object | undefined | void | boolean | null
+
+export const ANY_STRING = '__ANY_STRING_PLACEHOLDER_9d8f7e6c5b4a__'
+
+export const expect = <TObject extends ExpectType = ExpectType>(
+  received: TObject,
+  expected: TObject
+) => {
+  // Handle string pattern matching with ANY_STRING
+  if (typeof received === 'string' && typeof expected === 'string') {
+    const expectedStr = expected as string
+    if (expectedStr.includes(ANY_STRING)) {
+      const pattern = expectedStr.replace(new RegExp(ANY_STRING.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), '.*')
+      const regex = new RegExp(`^${pattern}$`)
+      if (!regex.test(received as string)) {
+        throw new Error(`Unexpected value.\n\tReceived "${received}"\n\tExpected pattern "${expected}"`)
+      }
+      return
+    }
+  }
+
+  if (received !== expected) {
+    throw new Error(`Unexpected value.\n\tReceived "${received}"\n\tExpected "${expected}"`)
+  }
+}
+```
+
+## app/layout.tsx
+
+```tsx
+import type { Metadata } from 'next'
+import './globals.css'
+
+export const metadata: Metadata = {
+  title: 'Upstash Workflow',
+  description: 'Generated by create next app',
+  icons: {
+    icon: '/favicon-32x32.png',
+  },
+}
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode
+}>) {
+  return (
+    <html lang="en" className='scroll-smooth'>
+      <body className="antialiased text-sm sm:text-base">{children}</body>
+    </html>
+  )
+}
+```
+
+## app/page.tsx
+
+```tsx
+'use client'
+
+import { Suspense } from 'react'
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <Page />
+    </Suspense>
+  )
+}
+const Page = () => {
+  return (
+    <main className="h-screen">
+      <div className="max-w-screen-sm px-8 pt-16 mx-auto pb-44">
+        {/* header */}
+        <header>
+          <img
+            className="w-10 mb-8"
+            src="/upstash-logo.svg"
+            alt="upstash logo"
+          />
+
+          <h1 className="text-2xl font-semibold text-balance">
+            Get Started with Upstash Workflow
+          </h1>
+          <h2 className="text-lg text-balance opacity-60">
+            This is a simple example to demonstrate Upstash Workflow with
+            Next.js. Start a workflow by selecting a route and providing a
+            request body.
+          </h2>
+
+          <div className="flex flex-wrap items-center gap-2 mt-4">
+            <a
+              className="inline-flex items-center gap-1 px-3 py-2 bg-gray-100 rounded-md hover:bg-emerald-100"
+              href="https://upstash.com/docs/qstash/workflow/quickstarts/vercel-nextjs"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+                <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" />
+                <path d="M10 13l-1 2l1 2" />
+                <path d="M14 13l1 2l-1 2" />
+              </svg>
+              Docs
+            </a>
+            <a
+              className="inline-flex items-center gap-1 px-3 py-2 bg-gray-100 rounded-md hover:bg-emerald-100"
+              href="https://github.com/upstash/qstash-js/tree/main/examples/workflow/nextjs"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                <path d="M9 19c-4.3 1.4 -4.3 -2.5 -6 -3m12 5v-3.5c0 -1 .1 -1.4 -.5 -2c2.8 -.3 5.5 -1.4 5.5 -6a4.6 4.6 0 0 0 -1.3 -3.2a4.2 4.2 0 0 0 -.1 -3.2s-1.1 -.3 -3.5 1.3a12.3 12.3 0 0 0 -6.2 0c-2.4 -1.6 -3.5 -1.3 -3.5 -1.3a4.2 4.2 0 0 0 -.1 3.2a4.6 4.6 0 0 0 -1.3 3.2c0 4.6 2.7 5.7 5.5 6c-.6 .6 -.6 1.2 -.5 2v3.5" />
+              </svg>
+              Repository
+            </a>
+          </div>
+        </header>
+      </div>
+    </main>
+  )
+}
+```
+
+## app/test-routes/async-sync-run/route.ts
+
+```ts
+import { serve } from "@upstash/workflow/nextjs";
+import { BASE_URL } from "app/ci/constants";
+import { testServe, expect } from "app/ci/utils";
+import { saveResult } from "app/ci/upstash/redis"
+
+const header = `test-header-foo`
+const headerValue = `header-bar`
+const payload = "my-payload"
+
+export const { POST, GET } = testServe(
+  serve<string>(
+    async (context) => {
+
+      const input = context.requestPayload;
+
+      expect(input, payload);
+      expect(context.headers.get(header)!, headerValue)
+
+      const result1 = await context.run("async step", async () => {
+        return await Promise.resolve("result1");
+      });
+
+      expect(result1, "result1");
+
+      const result2 = await context.run("sync step", () => {
+        return "result2";
+      });
+
+      expect(result2, "result2");
+
+      const result3 = await context.run("sync step returning promise", () => {
+        return Promise.resolve("result3");
+      });
+
+      expect(result3, "result3");
+
+      await saveResult(
+        context,
+        `${result1} ${result2} ${result3}`
+      )
+    }, {
+      baseUrl: BASE_URL,
+    }
+  ), {
+    expectedCallCount: 4,
+    expectedResult: `result1 result2 result3`,
+    payload,
+    headers: {
+      [ header ]: headerValue,
+    },
+    triggerConfig: {
+      retries: 0
+    }
+  }
+)
+```
+
+## app/test-routes/auth/custom/target/route.ts
+
+```ts
+import { WorkflowContext } from "@upstash/workflow";
+import { serve } from "@upstash/workflow/nextjs";
+import { fail } from "app/ci/upstash/redis";
+import { nanoid } from "app/ci/utils";
+
+
+export const { POST } = serve(async (context) => {
+  if (context.headers.get("authorization") !== nanoid()) {
+    return;
+  };
+}, {
+  receiver: undefined,
+  async failureFunction({ context, failResponse }) {
+    console.error("failing:", failResponse);
+    await fail(context as WorkflowContext)
+  },
+})
+```
+
+## app/test-routes/auth/custom/workflow/route.ts
+
+```ts
+import { serve } from "@upstash/workflow/nextjs";
+import { BASE_URL, CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER, TEST_ROUTE_PREFIX } from "app/ci/constants";
+import { testServe, expect, ANY_STRING } from "app/ci/utils";
+import { FailureFunctionPayload, WorkflowContext } from "@upstash/workflow";
+import { saveResult } from "app/ci/upstash/redis";
+
+const header = `test-header-foo`
+const headerValue = `header-bar`
+const authentication = `Bearer test-auth-super-secret`
+const payload = "my-payload"
+
+const thirdPartyEndpoint = `${TEST_ROUTE_PREFIX}/auth/custom/target`
+
+const makeCall = async (
+  context: WorkflowContext,
+  stepName: string,
+  method: "GET" | "POST",
+  headers: Record<string, string>,
+  expectedStatus: number,
+  expectedBody: unknown,
+  callBody?: string
+) => {
+  const randomId = context.headers.get(CI_RANDOM_ID_HEADER)
+  const route = context.headers.get(CI_ROUTE_HEADER)
+
+  if (!randomId || !route) {
+    throw new Error("randomId or route not found")
+  }
+
+  const { status, body } = await context.call<FailureFunctionPayload>(stepName, {
+    url: thirdPartyEndpoint,
+    body: callBody ?? JSON.stringify({
+      status: 200,
+      header: "",
+      body: "",
+      url: "",
+      sourceHeader: {
+        [CI_ROUTE_HEADER]: [route],
+        [CI_RANDOM_ID_HEADER]: [randomId]
+      },
+      sourceBody: "",
+      workflowRunId: "",
+      sourceMessageId: "",
+    }),
+    method,
+    headers: {
+      [CI_RANDOM_ID_HEADER]: randomId,
+      [CI_ROUTE_HEADER]: route,
+      ...headers
+    }
+  })
+
+  expect(status, expectedStatus)
+
+  expect(typeof body, typeof expectedBody)
+  expect(JSON.stringify(body), JSON.stringify(expectedBody))
+}
+
+export const { POST, GET } = testServe(
+  serve<string>(
+    async (context) => {
+
+      expect(context.headers.get(header)!, headerValue)
+
+      await makeCall(
+        context,
+        "failure call should fail",
+        "POST",
+        {
+          "Upstash-Workflow-Is-Failure": "true"
+        },
+        500,
+        {
+          error: "WorkflowError",
+          message: "Not authorized to run the failure function.",
+          stack: ANY_STRING
+        }
+      )
+
+      await makeCall(
+        context,
+        "callback request should fail",
+        "POST",
+        {
+          "Upstash-Workflow-Callback": "true",
+        },
+        400,
+        {
+          message: "Failed to authenticate Workflow request. If this is unexpected, see the caveat https://upstash.com/docs/workflow/basics/caveats#avoid-non-deterministic-code-outside-context-run",
+          workflowRunId: "no-workflow-id"
+        }
+      )
+
+      await makeCall(
+        context,
+        "init call should fail",
+        "POST",
+        {},
+        400,
+        {
+          message: "Failed to authenticate Workflow request. If this is unexpected, see the caveat https://upstash.com/docs/workflow/basics/caveats#avoid-non-deterministic-code-outside-context-run",
+          workflowRunId: "no-workflow-id"
+        }
+      )
+
+      const input = context.requestPayload;
+      expect(input, payload);
+
+      await saveResult(
+        context,
+        "not authorized for failure"
+      )
+    }, {
+    baseUrl: BASE_URL,
+  }
+  ), {
+  expectedCallCount: 7,
+  expectedResult: "not authorized for failure",
+  payload,
+  headers: {
+    [header]: headerValue,
+    "authentication": authentication
+  },
+  triggerConfig: {
+    retries: 0,
+  }
+}
+)
+```
+
+## app/test-routes/auth/fail/route.ts
+
+```ts
+import { serve } from "@upstash/workflow/nextjs";
+import { BASE_URL } from "app/ci/constants";
+import { testServe, expect } from "app/ci/utils";
+import { fail, saveResult } from "app/ci/upstash/redis"
+
+const header = `test-header-foo`
+const headerValue = `header-bar`
+const authentication = `Bearer test-auth-super-secret`
+const payload = "my-payload"
+
+export const { POST, GET } = testServe(
+  serve<string>(
+    async (context) => {
+
+      const input = context.requestPayload;
+
+      expect(input, payload);
+      expect(context.headers.get(header)!, headerValue)
+
+      if (context.headers.get("authentication") !== "not-correct") {
+        console.error("Authentication failed.");
+
+        await saveResult(
+          context,
+          "auth fails"
+        )
+
+        return;
+      }
+
+      await fail(context)
+    }, {
+      baseUrl: BASE_URL,
+    }
+  ), {
+    expectedCallCount: 1,
+    expectedResult: "auth fails",
+    payload,
+    headers: {
+      [ header ]: headerValue,
+      "authentication": authentication
+    },
+    triggerConfig: {
+      retries: 1 // check with retries 1 to see if endpoint will retry
+    },
+    shouldWorkflowStart: false
+  }
+)
+```
+
+## app/test-routes/auth/success/route.ts
+
+```ts
+import { serve } from "@upstash/workflow/nextjs";
+import { BASE_URL } from "app/ci/constants";
+import { testServe, expect } from "app/ci/utils";
+import { saveResult } from "app/ci/upstash/redis"
+
+const header = `test-header-foo`
+const headerValue = `header-bar`
+const authentication = `Bearer test-auth-super-secret`
+const payload = "my-payload"
+
+const someWork = (input: string) => {
+  return `processed '${input}'`;
+};
+
+export const { POST, GET } = testServe(
+  serve<string>(
+    async (context) => {
+
+      const input = context.requestPayload;
+
+      expect(input, payload);
+      expect(context.headers.get(header)!, headerValue)
+
+      if (context.headers.get("authentication") !== authentication) {
+        console.error("Authentication failed.");
+        return;
+      }
+
+      const result1 = await context.run("step1", async () => {
+        return await Promise.resolve(someWork(input));
+      });
+
+      expect(result1, "processed 'my-payload'");
+
+      const result2 = await context.run("step2", async () => {
+        const result = someWork(result1);
+        return await Promise.resolve(result);
+      });
+
+      expect(result2, "processed 'processed 'my-payload''");
+      await saveResult(
+        context,
+        "processed 'processed 'my-payload''"
+      )
+    }, {
+      baseUrl: BASE_URL,
+    }
+  ), {
+    expectedCallCount: 3,
+    expectedResult: "processed 'processed 'my-payload''",
+    payload,
+    headers: {
+      [ header ]: headerValue,
+      "authentication": authentication
+    },
+    triggerConfig: {
+      retries: 0
+    }
+  }
+)
+```
+
+## app/test-routes/call/constants.ts
+
+```ts
+
+export const FAILING_HEADER = "Fail-Header-Foo"
+export const FAILING_HEADER_VALUE = "fail-header-value-BAR"
+
+export const GET_HEADER = "Get-Header"
+export const GET_HEADER_VALUE = "get-header-value-FOO"
+
+export const PATCH_RESULT = 99999999
+
+export const DELETE_RESULT = { foo: "bar", zed: 2, unicode: "`“X” - 𐐷𐐶𐐹`" }
+
+export const CUSTOM_CONTENT_TYPE = "application/x-www-form-urlencoded"
+```
+
+## app/test-routes/call/third-party/route.ts
+
+```ts
+import { expect } from "app/ci/utils";
+import { FAILING_HEADER_VALUE, FAILING_HEADER, GET_HEADER, GET_HEADER_VALUE, PATCH_RESULT, CUSTOM_CONTENT_TYPE, DELETE_RESULT } from "../constants";
+
+const thirdPartyResult = "third-party-result";
+
+export const GET = async (request: Request) => {
+  return new Response(
+    `called GET '${thirdPartyResult}' '${request.headers.get("get-header")}'`,
+    {
+      status: 200,
+      headers: {
+        [GET_HEADER]: GET_HEADER_VALUE
+      }
+    }
+  )
+}
+
+export const POST = async (request: Request) => {
+
+  expect(request.headers.get("content-type"), CUSTOM_CONTENT_TYPE);
+
+  return new Response(
+    `called POST '${thirdPartyResult}' '${request.headers.get("post-header")}' '${await request.text()}'`,
+    { status: 201 }
+  )
+}
+
+export const PATCH = async () => {
+  return new Response(
+    PATCH_RESULT.toString(),
+    {
+      status: 401,
+      headers: {
+        [FAILING_HEADER]: FAILING_HEADER_VALUE
+      }
+    }
+  )
+}
+
+export const DELETE = async () => {
+  return new Response(
+    JSON.stringify(DELETE_RESULT),
+    {
+      status: 400
+    }
+  )
+}
+
+export const PUT = async () => {
+  return new Response(
+    undefined,
+    {
+      status: 300,
+    }
+  )
+}
+```
+
+## app/test-routes/call/with-schema/route.ts
+
+```ts
+import { serve } from "@upstash/workflow/nextjs";
+import { BASE_URL, TEST_ROUTE_PREFIX } from "app/ci/constants";
+import { testServe, expect } from "app/ci/utils";
+import { saveResult } from "app/ci/upstash/redis"
+import { GET_HEADER, GET_HEADER_VALUE } from "../constants";
+import { z } from "zod";
+
+const testHeader = `test-header-foo`
+const headerValue = `header-foo`
+
+const schema = z.object({
+  name: z.string(),
+  count: z.number(),
+})
+
+const payload = { name: "with-schema-payload", count: 7 }
+
+const thirdPartyEndpoint = `${TEST_ROUTE_PREFIX}/call/third-party`
+const getHeader = {
+  "get-header": "get-header-value-x",
+};
+
+export const { POST, GET } = testServe(
+  serve(
+    async (context) => {
+      expect(context.headers.get(testHeader)!, headerValue)
+
+      const { body: getResult, header: getHeaders, status: getStatus } = await context.call<string>("get call", {
+        url: thirdPartyEndpoint,
+        headers: getHeader,
+      });
+
+      const input = context.requestPayload
+
+      expect(input.name, payload.name)
+      expect(input.count, payload.count)
+
+      expect(getStatus, 200)
+      expect(getHeaders[GET_HEADER][0], GET_HEADER_VALUE)
+      expect(getResult, "called GET 'third-party-result' 'get-header-value-x'");
+
+      await saveResult(
+        context,
+        getResult
+      )
+    }, {
+      baseUrl: BASE_URL,
+      schema,
+    }
+  ), {
+    expectedCallCount: 3,
+    expectedResult: "called GET 'third-party-result' 'get-header-value-x'",
+    payload,
+    headers: {
+      [ testHeader ]: headerValue,
+    },
+    triggerConfig: {
+      retries: 0,
+    }
+  }
+)
+```
+
+## app/test-routes/call/workflow-with-failureFunction/route.ts
+
+```ts
+import { serve } from "@upstash/workflow/nextjs";
+import { BASE_URL, TEST_ROUTE_PREFIX } from "app/ci/constants";
+import { testServe, expect } from "app/ci/utils";
+import { fail, saveResult } from "app/ci/upstash/redis"
+import { FAILING_HEADER, FAILING_HEADER_VALUE, PATCH_RESULT } from "../constants";
+import { WorkflowContext } from "@upstash/workflow";
+
+const testHeader = `test-header-foo`
+const headerValue = `header-foo`
+const payload = "my-payload"
+
+const thirdPartyEndpoint = `${TEST_ROUTE_PREFIX}/call/third-party`
+
+export const { POST, GET } = testServe(
+  serve<string>(
+    async (context) => {
+
+      const { body: patchResult, status, header } = await context.call<number>("get call", {
+        url: thirdPartyEndpoint,
+        method: "PATCH",
+        retries: 0
+      });
+
+      expect(status, 401)
+      expect(patchResult, PATCH_RESULT);
+      expect(header[FAILING_HEADER][0], FAILING_HEADER_VALUE)
+      
+      await saveResult(
+        context,
+        patchResult.toString(),
+      )
+    }, {
+      baseUrl: BASE_URL,
+      async failureFunction({ context, failResponse }) {
+        console.error("failing:", failResponse);
+        await fail(context as WorkflowContext)
+      },
+    }
+  ), {
+    expectedCallCount: 3,
+    expectedResult: PATCH_RESULT.toString(),
+    payload,
+    headers: {
+      [ testHeader ]: headerValue,
+    },
+    triggerConfig: {
+      retries: 0,
+    }
+  }
+)
+```
+
+## app/test-routes/call/workflow-with-failureUrl/route.ts
+
+```ts
+import { serve } from "@upstash/workflow/nextjs";
+import { BASE_URL, TEST_ROUTE_PREFIX } from "app/ci/constants";
+import { testServe, expect } from "app/ci/utils";
+import { saveResult } from "app/ci/upstash/redis"
+import { FAILING_HEADER, FAILING_HEADER_VALUE, PATCH_RESULT } from "../constants";
+
+const testHeader = `test-header-foo`
+const headerValue = `header-foo`
+const payload = "my-payload"
+
+const thirdPartyEndpoint = `${TEST_ROUTE_PREFIX}/call/third-party`
+
+export const { POST, GET } = testServe(
+  serve<string>(
+    async (context) => {
+
+      const { body: patchResult, status, header } = await context.call<number>("get call", {
+        url: thirdPartyEndpoint,
+        method: "PATCH",
+        retries: 0
+      });
+
+      expect(status, 401)
+      expect(patchResult, PATCH_RESULT);
+      expect(header[FAILING_HEADER][0], FAILING_HEADER_VALUE)
+      
+      await saveResult(
+        context,
+        patchResult.toString(),
+      )
+    }, {
+      baseUrl: BASE_URL,
+    }
+  ), {
+    expectedCallCount: 3,
+    expectedResult: PATCH_RESULT.toString(),
+    payload,
+    headers: {
+      [ testHeader ]: headerValue,
+    },
+    triggerConfig: {
+      retries: 0,
+      failureUrl: thirdPartyEndpoint
+    }
+  }
+)
+```
+
+## app/test-routes/call/workflow/route.ts
+
+```ts
+import { serve } from "@upstash/workflow/nextjs";
+import { BASE_URL, TEST_ROUTE_PREFIX } from "app/ci/constants";
+import { testServe, expect } from "app/ci/utils";
+import { saveResult } from "app/ci/upstash/redis"
+import { CUSTOM_CONTENT_TYPE, DELETE_RESULT, FAILING_HEADER, FAILING_HEADER_VALUE, GET_HEADER, GET_HEADER_VALUE, PATCH_RESULT } from "../constants";
+
+const testHeader = `test-header-foo`
+const headerValue = `header-foo`
+const payload = "my-payload"
+
+const thirdPartyEndpoint = `${TEST_ROUTE_PREFIX}/call/third-party`
+const postHeader = {
+  "post-header": "post-header-value-x",
+  "content-type": CUSTOM_CONTENT_TYPE
+};
+const getHeader = {
+  "get-header": "get-header-value-x",
+};
+
+export const { POST, GET } = testServe(
+  serve<string>(
+    async (context) => {
+
+      const input = context.requestPayload;
+
+      // TODO: can't check payload here because
+      // payload doesn't exist in handle third party call:
+      // expect(input, payload);
+
+      expect(context.headers.get(testHeader)!, headerValue)
+
+      const { body: postResult, status: postStatus } = await context.call("post call", {
+        url: thirdPartyEndpoint,
+        method: "POST",
+        body: "post-payload",
+        headers: postHeader,
+      });
+
+      // check payload after first step because we can't check above
+      expect(input, payload);
+      expect(postStatus, 201)
+
+      expect(postResult as string,
+        "called POST 'third-party-result' 'post-header-value-x' 'post-payload'"
+      );
+
+      await context.sleep("sleep 1", 2);
+
+      const { body: getResult, header: getHeaders, status: getStatus } = await context.call<string>("get call", {
+        url: thirdPartyEndpoint,
+        headers: getHeader,
+      });
+
+      expect(getStatus, 200)
+      expect(getHeaders[GET_HEADER][0], GET_HEADER_VALUE)
+      expect(getResult, "called GET 'third-party-result' 'get-header-value-x'");
+
+      const { body: patchResult, status, header } = await context.call<number>("patch call", {
+        url: thirdPartyEndpoint,
+        headers: getHeader,
+        method: "PATCH",
+        retries: 1,
+        retryDelay: "1000"
+      });
+
+      expect(status, 401)
+      expect(patchResult, PATCH_RESULT);
+      expect(header[FAILING_HEADER][0], FAILING_HEADER_VALUE)
+
+      // put will return with an empty body. should return "" as body in that case.
+      const { body: putBody, status: putStatus } = await context.call<string>("put call", {
+        url: thirdPartyEndpoint,
+        method: "PUT",
+        retries: 0
+      })
+
+      expect(putStatus, 300)
+      expect(putBody, "");
+
+      // DELETE will return a JSON
+      const { body: deleteBody, status: deleteStatus } = await context.call<{ foo: string, zed: number }>("delete call", {
+        url: thirdPartyEndpoint,
+        method: "DELETE",
+        retries: 0
+      })
+
+      expect(deleteStatus, 400)
+      expect(typeof deleteBody, "object");
+      expect(JSON.stringify(deleteBody), JSON.stringify(DELETE_RESULT));
+
+      await saveResult(
+        context,
+        getResult
+      )
+    }, {
+    baseUrl: BASE_URL,
+  }
+  ), {
+  expectedCallCount: 12,
+  expectedResult: "called GET 'third-party-result' 'get-header-value-x'",
+  payload,
+  headers: {
+    [testHeader]: headerValue,
+  },
+  triggerConfig: {
+    retries: 0,
+    retryDelay: "1000"
+  }
+}
+)
+```
+
+## app/test-routes/failureFunction-nonRetryable/route.ts
+
+```ts
+import { serve } from "@upstash/workflow/nextjs";
+import { BASE_URL, WORKFLOW_LABEL_HEADER } from "app/ci/constants";
+import { testServe, expect } from "app/ci/utils";
+import { saveResult } from "app/ci/upstash/redis"
+import { WorkflowContext, WorkflowNonRetryableError } from "@upstash/workflow";
+
+const header = `test-header-foo`
+const headerValue = `header-bar`
+const authHeaderValue = `Bearer super-secret-token`
+
+const errorMessage = `my-non-retryable-error`
+const payload = "my-payload"
+const label = "my-non-retryable-label"
+
+export const { POST, GET } = testServe(
+  serve<string>(
+    async (context) => {
+      const input = context.requestPayload;
+
+      expect(typeof input, typeof payload);
+      expect(input, payload);
+      expect(context.headers.get(header)!, headerValue)
+      expect(context.headers.get(WORKFLOW_LABEL_HEADER)!, label)
+      expect(context.label, label)
+
+      await context.run("step1", () => {
+        throw new WorkflowNonRetryableError(errorMessage);
+      });
+    }, {
+      baseUrl: BASE_URL,
+      failureFunction: async ({ context, failStatus, failResponse }) => {
+        expect(failStatus, 489);
+        expect(failResponse, errorMessage);
+        expect(context.requestPayload, payload);
+        expect(typeof context.requestPayload, typeof payload);
+        expect(context.headers.get("authentication")!, authHeaderValue);
+        expect(context.headers.get(WORKFLOW_LABEL_HEADER)!, label)
+        expect(context.label, label)
+
+        await saveResult(
+          context as WorkflowContext,
+          failResponse
+        )
+      },
+    }
+  ), {
+    expectedCallCount: 2,
+    expectedResult: errorMessage,
+    payload,
+    headers: {
+      [ header ]: headerValue,
+      "authentication": authHeaderValue,
+    },
+    triggerConfig: {
+      retries: 0,
+      label
+    }
+  }
+)
+```
+
+## app/test-routes/failureFunction-retry/route.ts
+
+```ts
+import { serve } from "@upstash/workflow/nextjs";
+import { BASE_URL, CI_RANDOM_ID_HEADER } from "app/ci/constants";
+import { testServe, expect } from "app/ci/utils";
+import * as redis from "app/ci/upstash/redis"
+import { WorkflowContext } from "@upstash/workflow";
+
+const header = `test-header-foo`
+const headerValue = `header-bar`
+const authHeaderValue = `Bearer super-secret-token`
+
+const errorMessage = `my-error`
+const payload = "my-payload"
+
+const counter_route = "failureFuction-retry-call-counter"
+
+export const { POST, GET } = testServe(
+  serve<string>(
+    async (context) => {
+      const input = context.requestPayload;
+
+      expect(input, payload);
+      expect(context.headers.get(header)!, headerValue)
+
+      await context.run("step1", () => {
+        redis.increment(
+          counter_route,
+          context.headers.get(CI_RANDOM_ID_HEADER)!
+        )
+        throw new Error(errorMessage);
+      });
+    }, {
+      baseUrl: BASE_URL,
+      failureFunction: async ({ context, failStatus, failResponse }) => {
+        expect(failStatus, 500);
+        expect(failResponse, errorMessage);
+        expect(context.headers.get("authentication")!, authHeaderValue);
+
+        // save the counter and check it
+        await redis.saveResultsWithoutContext(
+          counter_route,
+          context.headers.get(CI_RANDOM_ID_HEADER)!,
+          ""
+        )
+        await redis.checkRedisForResults(
+          counter_route,
+          context.headers.get(CI_RANDOM_ID_HEADER)!,
+          2,
+          ""
+        )
+        
+        await redis.saveResult(
+          context as WorkflowContext,
+          `${failResponse}`
+        )
+      },
+    }
+  ), {
+    expectedCallCount: 3,
+    expectedResult: `${errorMessage}`,
+    payload,
+    headers: {
+      [ header ]: headerValue,
+      "authentication": authHeaderValue
+    },
+    triggerConfig: {
+      retries: 1,
+    }
+  }
+)
+```
+
+## app/test-routes/failureFunction/route.ts
+
+```ts
+import { serve } from "@upstash/workflow/nextjs";
+import { BASE_URL, WORKFLOW_LABEL_HEADER } from "app/ci/constants";
+import { testServe, expect } from "app/ci/utils";
+import { saveResult } from "app/ci/upstash/redis"
+import { WorkflowContext } from "@upstash/workflow";
+
+const header = `test-header-foo`
+const headerValue = `header-bar`
+const authHeaderValue = `Bearer super-secret-token`
+
+const errorMessage = `my-error`
+const payload = undefined
+const label = "my-label"
+
+export const { POST, GET } = testServe(
+  serve<string>(
+    async (context) => {
+      const input = context.requestPayload;
+
+      expect(typeof input, typeof payload);
+      expect(input, payload);
+      expect(context.headers.get(header)!, headerValue)
+      expect(context.headers.get(WORKFLOW_LABEL_HEADER)!, label)
+      expect(context.label, label)
+
+      await context.run("step1", () => {
+        throw new Error(errorMessage);
+      });
+    }, {
+      baseUrl: BASE_URL,
+      failureFunction: async ({ context, failStatus, failResponse }) => {
+        expect(failStatus, 500);
+        expect(failResponse, errorMessage);
+        expect(context.requestPayload, payload);
+        expect(typeof context.requestPayload, typeof payload);
+        expect(context.headers.get("authentication")!, authHeaderValue);
+        expect(context.headers.get(WORKFLOW_LABEL_HEADER)!, label)
+        expect(context.label, label)
+
+        await saveResult(
+          context as WorkflowContext,
+          failResponse
+        )
+      },
+    }
+  ), {
+    expectedCallCount: 2,
+    expectedResult: errorMessage,
+    payload,
+    headers: {
+      [ header ]: headerValue,
+      "authentication": authHeaderValue,
+    },
+    triggerConfig: {
+      retries: 0,
+      label
+    }
+  }
+)
+```
+
+## app/test-routes/failureUrl/constants.ts
+
+```ts
+
+export const PAYLOAD = "my-payload-zed"
+
+export const HEADER = `Test-Header-Foo`
+export const HEADER_VALUE = `header-bar`
+
+export const ERROR_MESSAGE = "my-error-zed"
+```
+
+## app/test-routes/failureUrl/third-party/route.ts
+
+```ts
+import { CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER } from "app/ci/constants"
+import { saveResultsWithoutContext } from "app/ci/upstash/redis"
+import { ANY_STRING, expect } from "app/ci/utils"
+import { ERROR_MESSAGE, HEADER, HEADER_VALUE } from "../constants"
+
+export const POST = async (request: Request) => {
+  const result = await request.json() as {
+    body: string,
+    header: Record<string, string[]>,
+    workflowRunId: string
+  }
+
+  const errorMessage = atob(result.body)
+  expect(errorMessage, `{"error":"Error","message":"${ERROR_MESSAGE}","stack":${ANY_STRING}}`)
+  expect(request.headers.get(HEADER), HEADER_VALUE)
+
+  // get id and route
+  const randomTestId = request.headers.get(CI_RANDOM_ID_HEADER)
+  const route = request.headers.get(CI_ROUTE_HEADER)
+
+  if (!route || !randomTestId || !errorMessage) {
+    throw new Error(`failed to get route, randomTestId or errorMessage. route: ${route}, randomTestId: ${randomTestId}, errorMessage: ${errorMessage}`)
+  }
+
+  await saveResultsWithoutContext(
+    route, randomTestId, errorMessage
+  )
+
+  return new Response("", { status: 200 })
+}
+```
+
+## app/test-routes/failureUrl/workflow/route.ts
+
+```ts
+import { serve } from "@upstash/workflow/nextjs";
+import { BASE_URL, TEST_ROUTE_PREFIX } from "app/ci/constants";
+import { testServe, expect, ANY_STRING } from "app/ci/utils";
+import { ERROR_MESSAGE, PAYLOAD, HEADER, HEADER_VALUE } from "../constants";
+
+const thirdPartyEndpoint = `${TEST_ROUTE_PREFIX}/failureUrl/third-party`
+
+export const { POST, GET } = testServe(
+  serve<string>(
+    async (context) => {
+      const input = context.requestPayload;
+
+      expect(input, PAYLOAD);
+      expect(context.headers.get(HEADER)!, HEADER_VALUE)
+
+      await context.run("step1", () => {
+        throw new Error(ERROR_MESSAGE);
+      });
+    }, {
+      baseUrl: BASE_URL,
+    }
+  ), {
+    expectedCallCount: 1,
+    expectedResult: `{"error":"Error","message":"${ERROR_MESSAGE}","stack":${ANY_STRING}}`,
+    payload: PAYLOAD,
+    headers: {
+      [ HEADER ]: HEADER_VALUE,
+    },
+    triggerConfig: {
+      retries: 0,
+      failureUrl: thirdPartyEndpoint
+    }
+  }
+)
+```
+
+## app/test-routes/invoke-parent-failure/[...]/route.ts
+
+```ts
+
+import { Client, WorkflowContext, WorkflowNonRetryableError } from "@upstash/workflow";
+import { createWorkflow, serveMany } from "@upstash/workflow/nextjs";
+import { BASE_URL, CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER } from "app/ci/constants";
+import { saveResult } from "app/ci/upstash/redis";
+import { testServe } from "app/ci/utils";
+
+const client = new Client({
+  baseUrl: process.env.QSTASH_URL!,
+  token: process.env.QSTASH_TOKEN!,
+})
+
+const FAILING_STEP_NAME = "failing step"
+const INVOKE_CHILD_STEP_NAME = "invoke child"
+
+const workflow = createWorkflow(async (context: WorkflowContext) => {
+  const workflowRunId = await context.run("step 1", async () => {
+    console.log("workflow says hi")
+    return `workflow-run-id-${(Math.random() * 1000).toFixed(0)}`
+  })
+
+  await context.invoke("invoke child", {
+    workflow: testWorkflow,
+    body: undefined,
+    headers: {
+      [CI_ROUTE_HEADER]: context.headers.get(CI_ROUTE_HEADER) as string,
+      [CI_RANDOM_ID_HEADER]: context.headers.get(CI_RANDOM_ID_HEADER) as string,
+    },
+    workflowRunId,
+  })
+
+  await context.run("verify step", async () => {
+
+    for (let i = 0; i < 30; i++) {
+      const workflowLogs = await client.logs({ workflowRunId: `wfr_${workflowRunId}` })
+      const workflowRun = workflowLogs.runs[0]
+
+      if (workflowRun && workflowRun.steps[1] && workflowRun.steps[1].type === "parallel") {
+        const invokeChild = workflowRun.steps[1].steps?.find(s => s.stepName === INVOKE_CHILD_STEP_NAME)
+        const failingStep = workflowRun.steps[1].steps?.find(s => s.stepName === FAILING_STEP_NAME)
+
+        if (invokeChild && invokeChild.state === "STEP_SUCCESS" && failingStep && failingStep.state === "STEP_FAILED") {
+          return { success: true }
+        }
+      }
+      // sleep for 1 sec
+      await new Promise(r => setTimeout(r, 1000));
+    }
+
+    console.warn("child workflow did not fail within expected time");
+    throw new WorkflowNonRetryableError("child workflow did not fail within expected time")
+  })
+
+  await saveResult(
+    context,
+    "done invoke"
+  )
+})
+
+const testWorkflow = createWorkflow(async (context: WorkflowContext) => {
+  await Promise.all([
+    context.invoke(INVOKE_CHILD_STEP_NAME, {
+      workflow: childWorkflow,
+      body: undefined,
+      headers: {
+        [CI_ROUTE_HEADER]: context.headers.get(CI_ROUTE_HEADER) as string,
+        [CI_RANDOM_ID_HEADER]: context.headers.get(CI_RANDOM_ID_HEADER) as string,
+      },
+    }),
+    context.run(FAILING_STEP_NAME, async () => {
+      // sleep for 1 sec
+      await new Promise(r => setTimeout(r, 1000));
+      throw new WorkflowNonRetryableError("step failed")
+    })
+  ])
+
+})
+
+const childWorkflow = createWorkflow(async (context: WorkflowContext) => {
+  await context.sleep("sleep 3s", 3)
+  await context.run("child step", async () => {
+    console.log("child workflow step")
+  })
+})
+
+export const { POST, GET } = testServe(serveMany({
+  workflow,
+  testWorkflow,
+  childWorkflow,
+}, {
+  baseUrl: BASE_URL
+}),
+  {
+    expectedCallCount: 11,
+    expectedResult: "done invoke",
+    payload: undefined,
+  }
+)
+```
+
+## app/test-routes/invoke/called-endpoint/route.ts
+
+```ts
+import { expect } from "app/ci/utils";
+
+export const GET = async (request: Request) => {
+  expect(request.headers.get("upstash-workflow-invoke-count"), "2")
+  return new Response(JSON.stringify({}), { status: 200 });
+}
+```
+
+## app/test-routes/invoke/workflows/[...]/route.ts
+
+```ts
+import { WorkflowContext } from "@upstash/workflow";
+import { createWorkflow, serveMany } from "@upstash/workflow/nextjs";
+import { BASE_URL, CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER, TEST_ROUTE_PREFIX } from "app/ci/constants";
+import { fail, saveResult } from "app/ci/upstash/redis";
+import { expect, nanoid, testServe } from "app/ci/utils";
+import { z } from "zod";
+
+const testHeader = `test-header-foo`
+const headerValue = `header-foo`
+const payload = 123
+
+
+const invokePayload = "invoke-payload"
+const invokeResult = "invoke-result"
+
+const BRANCH_ONE_RESULT = { "branch-one": "result" }
+const BRANCH_TWO_RESULT = "branch-two-result"
+
+const invokeHeader = "invoke-header"
+const invokeHeaderValue = "invoke-header-value"
+const invokeLabel = "invoke-label"
+
+const workflowRunIdHeader = "workflow-run-id-header"
+
+const workflowOne = createWorkflow(async (context: WorkflowContext<number>) => {
+  expect(context.headers.get(testHeader), headerValue)
+
+  const workflowRunId = await context.run("step 1", async () => {
+    console.log("workflow one says hi")
+    return nanoid()
+  })
+
+  const { body, isCanceled, isFailed } = await context.invoke("invoking other", {
+    workflow: workflowTwo,
+    body: invokePayload,
+    headers: {
+      [invokeHeader]: invokeHeaderValue,
+      [workflowRunIdHeader]: workflowRunId,
+      [CI_ROUTE_HEADER]: context.headers.get(CI_ROUTE_HEADER) as string,
+      [CI_RANDOM_ID_HEADER]: context.headers.get(CI_RANDOM_ID_HEADER) as string,
+    },
+    workflowRunId,
+    label: invokeLabel,
+  })
+
+  expect(body, invokeResult)
+  expect(isCanceled, false)
+  expect(isFailed, false)
+
+  const result = await context.call("call workflow", {
+    workflow: workflowFour,
+    body: invokePayload,
+    headers: {
+      [CI_ROUTE_HEADER]: context.headers.get(CI_ROUTE_HEADER) as string,
+      [CI_RANDOM_ID_HEADER]: context.headers.get(CI_RANDOM_ID_HEADER) as string,
+    },
+    retries: 0
+  })
+
+  expect(typeof result.body.workflowRunId, "string")
+
+  const { body: failingBody, isCanceled: failingIsCanceled, isFailed: failingIsFailed } = await context.invoke("invoke failing", {
+    workflow: workflowThree,
+    body: invokePayload,
+    headers: {
+      [CI_ROUTE_HEADER]: context.headers.get(CI_ROUTE_HEADER) as string,
+      [CI_RANDOM_ID_HEADER]: context.headers.get(CI_RANDOM_ID_HEADER) as string,
+    },
+    retries: 0
+  })
+
+  expect(failingBody, undefined)
+  expect(failingIsCanceled, false)
+  expect(failingIsFailed, true)
+
+  await context.run("step 2", async () => {
+    console.log("workflow one says bye")
+  })
+
+  await context.sleep("sleep so that the async workflowFour finishes", 3)
+
+  await saveResult(
+    context,
+    "done invoke"
+  )
+}, {
+  // schema: z.number(), # TODO add back after fromCallback is removed
+})
+
+const workflowTwo = createWorkflow(async (context: WorkflowContext<string>) => {
+  expect(context.requestPayload, invokePayload)
+  expect(context.headers.get(invokeHeader) as string, invokeHeaderValue)
+  expect(context.workflowRunId, `wfr_${context.headers.get(workflowRunIdHeader)}`)
+  expect(context.label, invokeLabel)
+
+  await context.run("step 1", async () => {
+    console.log("workflow two says hi")
+  })
+
+  // @ts-expect-error accessing private fields for testing purposes.
+  // We also check after the first step, because DisabledWorkflowContext
+  // doesn't have the correct invokeCount
+  const invokeCount = context.executor.invokeCount
+  expect(invokeCount, 1)
+
+  await context.run("step 2", async () => {
+    console.log("workflow two says bye")
+  })
+
+  const result = await Promise.all([
+    context.invoke("invoke branch one", {
+      workflow: branchOne,
+      body: 1,
+      headers: {
+        [CI_ROUTE_HEADER]: context.headers.get(CI_ROUTE_HEADER) as string,
+        [CI_RANDOM_ID_HEADER]: context.headers.get(CI_RANDOM_ID_HEADER) as string,
+      }
+    }),
+    context.invoke("invoke branch two", {
+      workflow: branchTwo,
+      body: 2,
+      headers: {
+        [CI_ROUTE_HEADER]: context.headers.get(CI_ROUTE_HEADER) as string,
+        [CI_RANDOM_ID_HEADER]: context.headers.get(CI_RANDOM_ID_HEADER) as string,
+      }
+    })
+  ])
+
+  expect(typeof result[0].body, "object")
+  expect(JSON.stringify(result[0].body), JSON.stringify(BRANCH_ONE_RESULT))
+  expect(result[1].body, BRANCH_TWO_RESULT)
+
+  return invokeResult
+})
+
+const workflowThree = createWorkflow(async (context: WorkflowContext<string>) => {
+  try {
+    expect(context.requestPayload, invokePayload)
+  } catch {
+    fail(context)
+  }
+  throw new Error("what")
+})
+
+const workflowFour = createWorkflow(async (context: WorkflowContext<string>) => {
+  await context.run("mock", () => {})
+})
+
+/**
+ * wait for event workflows
+ */
+
+const thirdPartyEndpoint = `${TEST_ROUTE_PREFIX}/invoke/called-endpoint`
+const notifiedEventId = "notifiedEvent"
+
+/**
+ * calls waitForEvent and checks invokeCount
+ */
+const branchOne = createWorkflow(async (context: WorkflowContext<number>) => {
+  const { timeout } = await context.waitForEvent("timeoutEvent", "timeoutEvent", { timeout: 1 })
+  expect(timeout, true)
+
+  // @ts-expect-error accessing private fields for testing purposes.
+  // We also check after the first step, because DisabledWorkflowContext
+  // doesn't have the correct invokeCount
+  const invokeCount = context.executor.invokeCount
+  expect(invokeCount, 2)
+
+  const { timeout: isTimeout } = await context.waitForEvent("notified event", notifiedEventId, { timeout: "20s" })
+  expect(isTimeout, false)
+
+  await context.sleep("check", 1)
+
+  return BRANCH_ONE_RESULT
+})
+
+/**
+ * notifies branhcOne, calls context.call and checks invokeCount
+ */
+const branchTwo = createWorkflow(async (context: WorkflowContext<number>) => {
+
+  const { status } = await context.call("call", {
+    url: thirdPartyEndpoint,
+    method: "GET",
+  })
+
+  expect(status, 200)
+
+  // @ts-expect-error accessing private fields for testing purposes.
+  // We also check after the first step, because DisabledWorkflowContext
+  // doesn't have the correct invokeCount
+  const invokeCount = context.executor.invokeCount
+  expect(invokeCount, 2)
+
+  await context.sleep("wait", 5)
+  const { notifyResponse } = await context.notify("notified event", notifiedEventId, "data")
+  expect(notifyResponse.length > 0, true)
+
+  await context.sleep("check", 1)
+
+  return BRANCH_TWO_RESULT
+})
+
+export const { POST, GET } = testServe(
+  serveMany({
+    workflowOne,
+    workflowTwo,
+    workflowThree,
+    workflowFour,
+    branchOne,
+    branchTwo,
+  }, {
+    baseUrl: BASE_URL
+  }),
+  {
+    expectedCallCount: 30,
+    expectedResult: "done invoke",
+    payload,
+    headers: {
+      [testHeader]: headerValue,
+    }
+  }
+)
+```
+
+## app/test-routes/large-payload/call-result/third-party/route.ts
+
+```ts
+import { GET_HEADER, GET_HEADER_VALUE, largeObject } from "../../utils"
+
+export const GET = async () => {
+  return new Response(
+    largeObject,
+    {
+      status: 201,
+      headers: {
+        [ GET_HEADER ]: GET_HEADER_VALUE
+      }
+    }
+  )
+}
+```
+
+## app/test-routes/large-payload/call-result/workflow/route.ts
+
+```ts
+import { serve } from "@upstash/workflow/nextjs";
+import { BASE_URL, TEST_ROUTE_PREFIX } from "app/ci/constants";
+import { testServe, expect } from "app/ci/utils";
+import { saveResult } from "app/ci/upstash/redis"
+import { GET_HEADER, GET_HEADER_VALUE, largeObject, largeObjectLength } from "../../utils";
+
+const header = `test-header-foo`
+const headerValue = `header-bar`
+const payload = "“unicode-quotes”"
+
+const thirdPartyEndpoint = `${TEST_ROUTE_PREFIX}/large-payload/call-result/third-party`
+
+export const { POST, GET } = testServe(
+  serve<string>(
+    async (context) => {
+      const input = context.requestPayload;
+
+      expect(context.headers.get(header)!, headerValue)
+      
+      const { body: result1, status, header: headers } = await context.call<string>("get large bod", {
+        url: thirdPartyEndpoint,
+        method: "GET"
+      })
+
+      expect(input, payload);
+
+      expect(status, 201)
+      expect(result1, largeObject)
+      expect(result1.length, largeObjectLength)
+      expect(headers[GET_HEADER][0], GET_HEADER_VALUE)
+
+      const result2 = await context.run("step2", () => {
+        return result1.length
+      });
+
+      expect(result2, largeObjectLength);
+
+      await saveResult(
+        context,
+        result2.toString()
+      )
+    }, {
+      baseUrl: BASE_URL,
+    }
+  ), {
+    expectedCallCount: 4,
+    expectedResult: largeObjectLength.toString(),
+    payload,
+    headers: {
+      [ header ]: headerValue
+    },
+    triggerConfig: {
+      retries: 0
+    }
+  }
+)
+```
+
+## app/test-routes/large-payload/error/route.ts
+
+```ts
+import { serve } from "@upstash/workflow/nextjs";
+import { BASE_URL } from "app/ci/constants";
+import { testServe, expect } from "app/ci/utils";
+import { saveResult } from "app/ci/upstash/redis"
+import { largeObject } from "../utils";
+import { WorkflowContext } from "@upstash/workflow";
+
+const header = `test-header-foo`
+const headerValue = `header-bar`
+const payload = "“unicode-quotes”"
+
+export const { POST, GET } = testServe(
+  serve<string>(
+    async (context) => {
+      const input = context.requestPayload;
+
+      expect(input, payload);
+      expect(context.headers.get(header)!, headerValue)
+
+      const result1 = await context.run("step1", () => {
+        return input.length;
+      });
+
+      expect(result1, payload.length);
+
+      await context.run("step2", () => {
+        throw new Error(largeObject)
+      });
+    }, {
+      baseUrl: BASE_URL,
+      async failureFunction({ context, failStatus, failResponse }) {
+        expect( failResponse, largeObject )
+        expect( failStatus, 500 )
+        expect( context.requestPayload as string, payload )
+        
+        await saveResult(
+          context as WorkflowContext,
+          `super secret`
+        )
+      },
+    }
+  ), {
+    expectedCallCount: 3,
+    expectedResult: `super secret`,
+    payload,
+    headers: {
+      [ header ]: headerValue
+    },
+    triggerConfig: {
+      retries: 0,
+    }
+  }
+)
+```
+
+## app/test-routes/large-payload/initial/route.ts
+
+```ts
+import { serve } from "@upstash/workflow/nextjs";
+import { BASE_URL } from "app/ci/constants";
+import { testServe, expect } from "app/ci/utils";
+import { saveResult } from "app/ci/upstash/redis"
+import { largeObject } from "../utils";
+import { WorkflowContext } from "@upstash/workflow";
+
+const header = `test-header-foo`
+const headerValue = `header-bar`
+const throws = "throwing-foo"
+
+export const { POST, GET } = testServe(
+  serve<string>(
+    async (context) => {
+      const input = context.requestPayload;
+
+      expect(input, largeObject);
+      expect(context.headers.get(header)!, headerValue)
+
+      const result1 = await context.run("step1", () => {
+        return input.length;
+      });
+
+      expect(result1, largeObject.length);
+
+      const result2 = await context.run("step2", () => {
+        return input
+      });
+
+      expect(result2, largeObject);
+
+      await context.run("throws", () => {
+        throw new Error(throws)
+      })
+    }, {
+      baseUrl: BASE_URL,
+      async failureFunction({ context, failResponse }) {
+        expect(context.requestPayload as string, largeObject)
+        expect(failResponse, throws)
+
+        await saveResult(
+          context as WorkflowContext,
+          throws
+        )
+      },
+    }
+  ), {
+    expectedCallCount: 4,
+    expectedResult: throws,
+    payload: largeObject,
+    headers: {
+      [ header ]: headerValue
+    },
+    triggerConfig: {
+      retries: 0,
+    }
+  }
+)
+```
+
+## app/test-routes/large-payload/step-result-parallel/route.ts
+
+```ts
+import { serve } from "@upstash/workflow/nextjs";
+import { BASE_URL } from "app/ci/constants";
+import { testServe, expect } from "app/ci/utils";
+import { saveResult } from "app/ci/upstash/redis"
+import { largeObject, largeObjectLength } from "../utils";
+
+const header = `test-header-foo`
+const headerValue = `header-bar`
+const payload = "foo"
+
+export const { POST, GET } = testServe(
+  serve<string>(
+    async (context) => {
+      const input = context.requestPayload;
+
+      expect(input, payload);
+      expect(context.headers.get(header)!, headerValue)
+
+      const [result1, largeResult1] = await Promise.all([
+        context.run("step 1", () => undefined),
+        context.run("step 2 - large", () => {
+          return largeObject;
+        })
+      ])
+
+      expect(typeof result1, "undefined");
+      expect(typeof largeResult1, "string");
+      expect(largeResult1.length, largeObjectLength);
+      expect(largeResult1, largeObject);
+
+      const [largeResult2, result2] = await Promise.all([
+        context.run("step 3 - large", () => {
+          return largeObject;
+        }),
+        context.run("step 4", () => undefined),
+      ])
+
+      expect(typeof result2, "undefined");
+      expect(typeof largeResult2, "string");
+      expect(largeResult2.length, largeObjectLength);
+      expect(largeResult2, largeObject);
+
+      await saveResult(
+        context,
+        `${largeResult1.length} - ${largeResult2.length}`
+      )
+    }, {
+      baseUrl: BASE_URL,
+    }
+  ), {
+    expectedCallCount: 9,
+    expectedResult: `${largeObjectLength} - ${largeObjectLength}`,
+    payload,
+    headers: {
+      [ header ]: headerValue
+    },
+    triggerConfig: {
+      retries: 0,
+    }
+  }
+)
+```
+
+## app/test-routes/large-payload/step-result/route.ts
+
+```ts
+import { serve } from "@upstash/workflow/nextjs";
+import { BASE_URL } from "app/ci/constants";
+import { testServe, expect } from "app/ci/utils";
+import { saveResult } from "app/ci/upstash/redis"
+import { largeObject, largeObjectLength } from "../utils";
+
+const header = `test-header-foo`
+const headerValue = `header-bar`
+const payload = "foo"
+
+export const { POST, GET } = testServe(
+  serve<string>(
+    async (context) => {
+      const input = context.requestPayload;
+
+      expect(input, payload);
+      expect(context.headers.get(header)!, headerValue)
+
+      const result1 = await context.run("step1", () => {
+        return largeObject;
+      });
+
+      expect(result1, largeObject);
+      expect(typeof result1, "string");
+      expect(result1.length, largeObjectLength);
+
+      const result2 = await context.run("step2", () => {
+        return result1.length;
+      });      
+
+      expect(result2, largeObjectLength);
+
+      await saveResult(
+        context,
+        result2.toString()
+      )
+    }, {
+      baseUrl: BASE_URL,
+    }
+  ), {
+    expectedCallCount: 3,
+    expectedResult: largeObjectLength.toString(),
+    payload,
+    headers: {
+      [ header ]: headerValue
+    },
+    triggerConfig: {
+      retries: 0,
+    }
+  }
+)
+```
+
+## app/test-routes/large-payload/utils.ts
+
+```ts
+export const largeObjectLength = 5 * 1024 * 1024
+export const largeObject = "x".repeat(largeObjectLength);
+
+export const GET_HEADER = "Get-Header"
+export const GET_HEADER_VALUE = "get-header-value-FOO"
+```
+
+## app/test-routes/middleware-logs/called-endpoint/route.ts
+
+```ts
+export const GET = async () => {
+  return new Response(
+    JSON.stringify({ message: "middleware-logs-endpoint-result" }),
+    {
+      status: 200,
+      headers: {
+        "content-type": "application/json",
+      },
+    }
+  )
+}
+```
+
+## app/test-routes/middleware-logs/workflows/[...]/route.ts
+
+```ts
+import { WorkflowContext } from "@upstash/workflow";
+import { createWorkflow, serveMany } from "@upstash/workflow/nextjs";
+import { WorkflowMiddleware, WorkflowNonRetryableError } from "@upstash/workflow";
+import { BASE_URL, CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER, TEST_ROUTE_PREFIX } from "app/ci/constants";
+import { redis, saveResult } from "app/ci/upstash/redis";
+import { ANY_STRING, expect, testServe } from "app/ci/utils";
+
+const testHeader = `test-header-middleware`
+const headerValue = `header-middleware-value`
+const payload = "middleware-test-payload"
+
+const REDIS_LOG_PREFIX = "wf-middleware-logs"
+
+/**
+ * Helper to get Redis key for workflow logs
+ */
+const getLogKey = (workflowRunId: string) => {
+  return `${REDIS_LOG_PREFIX}-${workflowRunId}`
+}
+
+/**
+ * Checks whether a received log line matches an expected one, supporting the
+ * ANY_STRING wildcard placeholder (same semantics as `expect`).
+ */
+const logMatches = (received: string, expected: string) => {
+  if (expected.includes(ANY_STRING)) {
+    const pattern = expected.replace(
+      new RegExp(ANY_STRING.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
+      '.*'
+    )
+    return new RegExp(`^${pattern}$`).test(received)
+  }
+  return received === expected
+}
+
+/**
+ * Helper to check expected logs in Redis for a given workflow run.
+ *
+ * Logs are accumulated across multiple workflow invocations, and each
+ * invocation is a separate HTTP request. The ordering of logs emitted around
+ * invocation boundaries is not deterministic: the trailing
+ * "...completed successfully." of one invocation is pushed at the end of its
+ * request while QStash has already started the next invocation, which pushes
+ * "Run id identified...". Those two rpush calls race, so adjacent boundary logs
+ * can swap. We therefore compare the logs as an unordered multiset instead of
+ * by index.
+ */
+const checkLogs = async (workflowRunId: string, expectedLogs: string[]) => {
+  const key = getLogKey(workflowRunId)
+  const logs = await redis.lrange<string>(key, 0, -1)
+
+  if (!logs || logs.length === 0) {
+    throw new Error(`No logs found for workflowRunId: ${workflowRunId}`)
+  }
+
+  expect(logs.length, expectedLogs.length)
+
+  const remaining = [...logs]
+  for (const expected of expectedLogs) {
+    const index = remaining.findIndex((log) => logMatches(log, expected))
+    if (index === -1) {
+      throw new Error(
+        `Expected log not found: "${expected}"\n\tReceived logs: ${JSON.stringify(logs, null, 2)}`
+      )
+    }
+    remaining.splice(index, 1)
+  }
+}
+
+/**
+ * Middleware that logs to Redis
+ */
+const redisLoggingMiddleware = new WorkflowMiddleware<unknown, unknown>({
+  name: "redisLogging",
+  callbacks: {
+    async runStarted({ context }) {
+      if (context.workflowRunId) {
+        const key = getLogKey(context.workflowRunId)
+        await redis.rpush(key, "runStarted")
+        await redis.expire(key, 60)
+      }
+    },
+    async runCompleted({ context, result }) {
+      if (context.workflowRunId) {
+        const key = getLogKey(context.workflowRunId)
+        await redis.rpush(key, `runCompleted:${JSON.stringify(result)}`)
+        await redis.expire(key, 60)
+      }
+    },
+    async beforeExecution({ context, stepName }) {
+      if (context.workflowRunId) {
+        const key = getLogKey(context.workflowRunId)
+        await redis.rpush(key, `beforeExecution:${stepName}`)
+        await redis.expire(key, 60)
+      }
+    },
+    async afterExecution({ context, stepName }) {
+      if (context.workflowRunId) {
+        const key = getLogKey(context.workflowRunId)
+        await redis.rpush(key, `afterExecution:${stepName}`)
+        await redis.expire(key, 60)
+      }
+    },
+    async onError({ workflowRunId, error }) {
+      if (workflowRunId) {
+        const key = getLogKey(workflowRunId)
+        await redis.rpush(key, `onError:${error.message}`)
+        await redis.expire(key, 60)
+      }
+    },
+    async onWarning({ workflowRunId, warning }) {
+      if (workflowRunId) {
+        const key = getLogKey(workflowRunId)
+        await redis.rpush(key, `onWarning:${warning}`)
+        await redis.expire(key, 60)
+      }
+    },
+    async onInfo({ workflowRunId, info }) {
+      if (workflowRunId) {
+        const key = getLogKey(workflowRunId)
+        await redis.rpush(key, `onInfo:${info}`)
+        await redis.expire(key, 60)
+      }
+    },
+  },
+})
+
+/**
+ * Workflow 1: Run and Sleep
+ * Tests context.run and context.sleep steps
+ */
+const runAndSleepWorkflow = createWorkflow(async (context: WorkflowContext<string>) => {
+  const result1 = await context.run("run step", async () => {
+    return "run-result"
+  })
+
+  expect(result1, "run-result")
+
+  await context.sleep("sleep step", 1)
+
+  return {
+    result: "runAndSleep-complete",
+    workflowRunId: context.workflowRunId
+  }
+})
+
+/**
+ * Workflow 2: Call
+ * Tests context.call to a third-party endpoint
+ */
+const calledEndpoint = `${TEST_ROUTE_PREFIX}/middleware-logs/called-endpoint`
+
+const callWorkflow = createWorkflow(async (context: WorkflowContext<string>) => {
+  const { status, body } = await context.call<{ message: string }>("call step", {
+    url: calledEndpoint,
+    method: "GET",
+  })
+
+  expect(status, 200)
+  expect(body.message, "middleware-logs-endpoint-result")
+
+  return {
+    result: "call-complete",
+    workflowRunId: context.workflowRunId
+  }
+})
+
+/**
+ * Workflow 3: Wait For Event Timeout
+ * Tests context.waitForEvent with timeout
+ */
+const waitForEventTimeoutWorkflow = createWorkflow(async (context: WorkflowContext<string>) => {
+  const { eventData, timeout } = await context.waitForEvent(
+    "wait for event",
+    `random-event-never-triggered-${Date.now()}`,
+    {
+      timeout: 1
+    }
+  )
+
+  expect(timeout, true)
+  expect(eventData as undefined, undefined)
+
+  return {
+    result: "waitForEventTimeout-complete",
+    workflowRunId: context.workflowRunId
+  }
+})
+
+/**
+ * Main workflow that invokes other workflows and checks logs
+ */
+const mainWorkflow = createWorkflow(async (context: WorkflowContext<string>) => {
+  expect(context.requestPayload, payload)
+  expect(context.headers.get(testHeader), headerValue)
+
+  // Invoke runAndSleepWorkflow
+  const result1 = await context.invoke("invoke runAndSleep", {
+    workflow: runAndSleepWorkflow,
+    body: "test",
+    headers: {
+      [CI_ROUTE_HEADER]: context.headers.get(CI_ROUTE_HEADER) as string,
+      [CI_RANDOM_ID_HEADER]: context.headers.get(CI_RANDOM_ID_HEADER) as string,
+    },
+  })
+
+  expect(result1.body.result, "runAndSleep-complete")
+  expect(result1.isFailed, false)
+
+  // Check logs for runAndSleepWorkflow
+  await context.run("check logs 1", async () => {
+    const workflowRunId = result1.body.workflowRunId
+    if (workflowRunId) {
+      await checkLogs(workflowRunId, [
+        'onInfo:Run id identified. isFirstInvocation: false, unknownSdk: false',
+        'runStarted',
+        'beforeExecution:run step',
+        `onInfo:Submitted step "run step" with messageId: ${ANY_STRING}.`,
+        'onInfo:Workflow endpoint execution completed successfully.',
+        'onInfo:Run id identified. isFirstInvocation: false, unknownSdk: false',
+        'afterExecution:run step',
+        'beforeExecution:sleep step',
+        `onInfo:Submitted step "sleep step" with messageId: ${ANY_STRING}.`,
+        'onInfo:Workflow endpoint execution completed successfully.',
+        'onInfo:Run id identified. isFirstInvocation: false, unknownSdk: false',
+        'afterExecution:sleep step',
+        `runCompleted:{"result":"runAndSleep-complete","workflowRunId":"${workflowRunId}"}`,
+        `onInfo:Deleting workflow run ${workflowRunId} from QStash.`,
+        `onInfo:Workflow run ${workflowRunId} deleted from QStash successfully.`,
+        'onInfo:Workflow endpoint execution completed successfully.'
+      ])
+    } else {
+      throw new WorkflowNonRetryableError("workflowRunId not found in result1.body")
+    }
+  })
+
+  // Invoke callWorkflow
+  const result2 = await context.invoke("invoke call", {
+    workflow: callWorkflow,
+    body: "test",
+    headers: {
+      [CI_ROUTE_HEADER]: context.headers.get(CI_ROUTE_HEADER) as string,
+      [CI_RANDOM_ID_HEADER]: context.headers.get(CI_RANDOM_ID_HEADER) as string,
+    },
+  })
+
+  expect(result2.body.result, "call-complete")
+  expect(result2.isFailed, false)
+
+  // Check logs for callWorkflow
+  await context.run("check logs 2", async () => {
+    const workflowRunId = result2.body.workflowRunId
+    if (workflowRunId) {
+      await checkLogs(workflowRunId, [
+        'onInfo:Run id identified. isFirstInvocation: false, unknownSdk: false',
+        'runStarted',
+        'beforeExecution:call step',
+        `onInfo:Submitted step "call step" with messageId: ${ANY_STRING}.`,
+        'onInfo:Workflow endpoint execution completed successfully.',
+        'onInfo:Run id identified. isFirstInvocation: false, unknownSdk: false',
+        'afterExecution:call step',
+        `runCompleted:{"result":"call-complete","workflowRunId":"${workflowRunId}"}`,
+        `onInfo:Deleting workflow run ${workflowRunId} from QStash.`,
+        `onInfo:Workflow run ${workflowRunId} deleted from QStash successfully.`,
+        'onInfo:Workflow endpoint execution completed successfully.'
+      ])
+    } else {
+      throw new WorkflowNonRetryableError("workflowRunId not found in result2.body")
+    }
+  })
+
+  // Invoke waitForEventTimeoutWorkflow
+  const result3 = await context.invoke("invoke waitForEvent", {
+    workflow: waitForEventTimeoutWorkflow,
+    body: "test",
+    headers: {
+      [CI_ROUTE_HEADER]: context.headers.get(CI_ROUTE_HEADER) as string,
+      [CI_RANDOM_ID_HEADER]: context.headers.get(CI_RANDOM_ID_HEADER) as string,
+    },
+  })
+
+  expect(result3.body.result, "waitForEventTimeout-complete")
+  expect(result3.isFailed, false)
+
+  // Check logs for waitForEventTimeoutWorkflow
+  await context.run("check logs 3", async () => {
+    const workflowRunId = result3.body.workflowRunId
+    if (workflowRunId) {
+      await checkLogs(workflowRunId, [
+        'onInfo:Run id identified. isFirstInvocation: false, unknownSdk: false',
+        'runStarted',
+        'beforeExecution:wait for event',
+        'onInfo:Workflow endpoint execution completed successfully.',
+        'onInfo:Run id identified. isFirstInvocation: false, unknownSdk: false',
+        'afterExecution:wait for event',
+        `runCompleted:{"result":"waitForEventTimeout-complete","workflowRunId":"${workflowRunId}"}`,
+        `onInfo:Deleting workflow run ${workflowRunId} from QStash.`,
+        `onInfo:Workflow run ${workflowRunId} deleted from QStash successfully.`,
+        'onInfo:Workflow endpoint execution completed successfully.'
+      ])
+    } else {
+      throw new WorkflowNonRetryableError("workflowRunId not found in result3.body")
+    }
+  })
+
+  await saveResult(context, "all-middleware-tests-complete")
+})
+
+export const { POST, GET } = testServe(
+  serveMany({
+    mainWorkflow,
+    runAndSleepWorkflow,
+    callWorkflow,
+    waitForEventTimeoutWorkflow,
+  }, {
+    baseUrl: BASE_URL,
+    middlewares: [redisLoggingMiddleware],
+  }),
+  {
+    expectedCallCount: 15,
+    expectedResult: "all-middleware-tests-complete",
+    payload,
+    headers: {
+      [testHeader]: headerValue,
+    },
+    triggerConfig: {
+      retries: 0,
+    }
+  }
+)
+```
+
+## app/test-routes/path-with-unknown-sdk-header/route.ts
+
+```ts
+import { serve } from "@upstash/workflow/nextjs";
+import { BASE_URL } from "app/ci/constants";
+import { testServe, expect } from "app/ci/utils";
+import { saveResult } from "app/ci/upstash/redis"
+
+const header = `test-header-foo`
+const headerValue = `header-bar`
+const payload = "“unicode-quotes”"
+
+const someWork = (input: string) => {
+  return `processed '${input}'`;
+};
+
+export const { POST, GET } = testServe(
+  serve<string>(
+    async (context) => {
+      const input = context.requestPayload;
+
+      expect(input, payload);
+      expect(context.headers.get(header)!, headerValue)
+
+      const result1 = await context.run("step1", async () => {
+        return await Promise.resolve(someWork(input));
+      });
+
+      expect(result1, "processed '“unicode-quotes”'");
+
+      const result2 = await context.run("step2", async () => {
+        const result = someWork(result1);
+        return await Promise.resolve(result);
+      });
+
+      expect(result2, "processed 'processed '“unicode-quotes”''");
+
+      const result3 = await context.run("step 3", () => true)
+      expect(result3, true)
+      expect(typeof result3, "boolean")
+      
+      await saveResult(
+        context,
+        result2
+      )
+    }, {
+      baseUrl: BASE_URL,
+    }
+  ), {
+    // 1 highher than the regular path endpoint due to the unknown sdk header request
+    expectedCallCount: 5,
+    expectedResult: "processed 'processed '“unicode-quotes”''",
+    payload,
+    headers: {
+      [ header ]: headerValue,
+      "Upstash-Workflow-Unknown-Sdk": "true"
+    },
+    triggerConfig: {
+      retries: 0,
+    }
+  }
+)
+```
+
+## app/test-routes/path/route.ts
+
+```ts
+import { serve } from "@upstash/workflow/nextjs";
+import { BASE_URL } from "app/ci/constants";
+import { testServe, expect } from "app/ci/utils";
+import { saveResult } from "app/ci/upstash/redis"
+
+const header = `test-header-foo`
+const headerValue = `header-bar`
+const payload = "“unicode-quotes”"
+
+const someWork = (input: string) => {
+  return `processed '${input}'`;
+};
+
+export const { POST, GET } = testServe(
+  serve<string>(
+    async (context) => {
+      const input = context.requestPayload;
+
+      expect(input, payload);
+      expect(context.headers.get(header)!, headerValue)
+
+      const result1 = await context.run("step1", async () => {
+        return await Promise.resolve(someWork(input));
+      });
+
+      expect(result1, "processed '“unicode-quotes”'");
+
+      const result2 = await context.run("step2", async () => {
+        const result = someWork(result1);
+        return await Promise.resolve(result);
+      });
+
+      expect(result2, "processed 'processed '“unicode-quotes”''");
+
+      const result3 = await context.run("step 3", () => true)
+      expect(result3, true)
+      expect(typeof result3, "boolean")
+      
+      await saveResult(
+        context,
+        result2
+      )
+    }, {
+      baseUrl: BASE_URL,
+    }
+  ), {
+    expectedCallCount: 4,
+    expectedResult: "processed 'processed '“unicode-quotes”''",
+    payload,
+    headers: {
+      [ header ]: headerValue
+    },
+    triggerConfig: {
+      retries: 0,
+    }
+  }
+)
+```
+
+## app/test-routes/qstash-trigger-fetch/constants.ts
+
+```ts
+export const QSTASH_TRIGGER_HEADER = "X-Qstash-Trigger-Test"
+export const QSTASH_TRIGGER_HEADER_VALUE = "qstash-trigger-test-value"
+export const WORKFLOW_WEBHOOK_RESULT = "workflow-webhook-completed"
+export const THIRD_ENDPOINT_RESULT = { success: true, message: "third endpoint success" } as const
+```
+
+## app/test-routes/qstash-trigger-fetch/post/route.ts
+
+```ts
+import { QSTASH_TRIGGER_HEADER, QSTASH_TRIGGER_HEADER_VALUE, THIRD_ENDPOINT_RESULT } from "../constants";
+
+export const POST = async (request: Request) => {
+  // Verify the QStash trigger header
+  const triggerHeader = request.headers.get(QSTASH_TRIGGER_HEADER);
+  if (triggerHeader !== QSTASH_TRIGGER_HEADER_VALUE) {
+    return new Response(
+      JSON.stringify({ 
+        error: `Expected header ${QSTASH_TRIGGER_HEADER} to be ${QSTASH_TRIGGER_HEADER_VALUE}, got ${triggerHeader}` 
+      }),
+      { 
+        status: 400,
+        headers: { "Content-Type": "application/json" }
+      }
+    );
+  }
+
+  // Return a random success response
+  return new Response(
+    JSON.stringify(THIRD_ENDPOINT_RESULT),
+    { 
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Upstash-Workflow-Sdk-Version": "1"
+       },
+    }
+  );
+};
+```
+
+## app/test-routes/qstash-trigger-fetch/workflows/[...]/route.ts
+
+```ts
+
+import { createWorkflow, serveMany } from "@upstash/workflow/nextjs";
+import { BASE_URL, CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER, TEST_ROUTE_PREFIX } from "app/ci/constants";
+import { testServe, expect } from "app/ci/utils";
+import { saveResult, fail } from "app/ci/upstash/redis";
+import { 
+  QSTASH_TRIGGER_HEADER, 
+  QSTASH_TRIGGER_HEADER_VALUE, 
+  WORKFLOW_WEBHOOK_RESULT,
+} from "../../constants";
+import { Client, WorkflowContext, WorkflowNonRetryableError } from "@upstash/workflow";
+import { largeObject } from "app/test-routes/large-payload/utils";
+
+const header = "test-header-qstash-trigger"
+const headerValue = "qstash-trigger-header-value"
+const payload = { test: "qstash-trigger-payload" }
+const getResult = "qstash-trigger test completed successfully"
+
+type TriggerResponse = {
+  workflowRunId: string,
+  workflowCreatedAt: number
+}
+
+const QSTASH_URL = process.env.QSTASH_URL ?? "https://qstash.upstash.io";
+
+const workflowClient = new Client({
+  baseUrl: QSTASH_URL,
+  token: process.env.QSTASH_TOKEN!,
+})
+
+const mainWorkflow = createWorkflow(async (context: WorkflowContext<typeof payload>) => {
+  const input = context.requestPayload;
+
+  expect(context.headers.get(header)!, headerValue)
+  expect(input.test, payload.test);
+
+  // Create webhook for the 2nd endpoint to call back
+  const webhook = await context.createWebhook("create webhook");
+  
+  // Verify webhook has the expected structure
+  expect(typeof webhook.webhookUrl, "string");
+  expect(typeof webhook.eventId, "string");
+
+  // Step 1: Call the 2nd endpoint (workflow) using QStash trigger pattern
+  // this time with Upstash-Workflow-Unknown-Sdk header and largeObject
+  const callWorkflowResponse = await context.run("call workflow endpoint", async () => {
+    const response = await fetch(
+      `${QSTASH_URL}/v2/trigger/${TEST_ROUTE_PREFIX}/qstash-trigger-fetch/workflows/webhookWorkflow`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.QSTASH_TOKEN}`,
+          [`upstash-forward-${QSTASH_TRIGGER_HEADER}`]: QSTASH_TRIGGER_HEADER_VALUE,
+          [`upstash-forward-${CI_RANDOM_ID_HEADER}`]: context.headers.get(CI_RANDOM_ID_HEADER)!,
+          [`upstash-forward-${CI_ROUTE_HEADER}`]: context.headers.get(CI_ROUTE_HEADER)!,
+          "Upstash-Retries": "0",
+          "Upstash-Workflow-Unknown-Sdk": "true",
+        },
+        body: JSON.stringify({ webhookUrl: webhook.webhookUrl, largeObject }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new WorkflowNonRetryableError(`First workflow call failed with status ${response.status}. Error: ${await response.text()}`);
+    }
+    
+    return response.ok;
+  });
+
+  // Step 2: Call the 2nd endpoint (workflow) using QStash trigger pattern,
+  const callUnknownSDKWorkflowResponse = await context.run("call workflow endpoint", async () => {
+    const response = await fetch(
+      `${QSTASH_URL}/v2/trigger/${TEST_ROUTE_PREFIX}/qstash-trigger-fetch/workflows/webhookWorkflow`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.QSTASH_TOKEN}`,
+          [`upstash-forward-${QSTASH_TRIGGER_HEADER}`]: QSTASH_TRIGGER_HEADER_VALUE,
+          [`upstash-forward-${CI_RANDOM_ID_HEADER}`]: context.headers.get(CI_RANDOM_ID_HEADER)!,
+          [`upstash-forward-${CI_ROUTE_HEADER}`]: context.headers.get(CI_ROUTE_HEADER)!,
+          "Upstash-Retries": "0"
+        },
+        body: JSON.stringify({ webhookUrl: webhook.webhookUrl }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new WorkflowNonRetryableError(`Second workflow call failed with status ${response.status}. Error: ${await response.text()}`);
+    }
+    
+    return response.ok;
+  });
+
+  expect(callUnknownSDKWorkflowResponse, true);
+
+  // Step 3: Call the 3rd endpoint (POST endpoint) using QStash trigger pattern
+  const callPostEndpointResponse = await context.run("call post endpoint", async () => {
+    const response = await fetch(
+      `${QSTASH_URL}/v2/trigger/${TEST_ROUTE_PREFIX}/qstash-trigger-fetch/post`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.QSTASH_TOKEN}`,
+          [`upstash-forward-${QSTASH_TRIGGER_HEADER}`]: QSTASH_TRIGGER_HEADER_VALUE,
+          "Upstash-Retries": "0"
+        },
+        body: JSON.stringify({ data: "test-data" }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new WorkflowNonRetryableError(`POST endpoint call failed with status ${response.status}. Error: ${await response.text()}`);
+    }
+    
+    const result = await response.json() as TriggerResponse;
+    return result;
+  });
+  
+  expect(typeof callPostEndpointResponse.workflowRunId, "string");
+  expect(typeof callPostEndpointResponse.workflowCreatedAt, "number");
+
+  // wait for the 2 webhook calls from the 2nd endpoint
+  for (let i = 0; i < 2; i++) {
+    // Step 3: Wait for the webhook to be called by the 2nd endpoint
+    const webhookResponse = await context.waitForWebhook(
+      "wait for webhook",
+      webhook,
+      "30s"
+    );
+    
+    // Verify the webhook was called
+    expect(webhookResponse.timeout, false);
+    const request = webhookResponse.request!;
+    expect(typeof request, "object");
+    expect(request.method, "POST");
+    
+    const webhookData = await request.json() as { result: string }
+    expect(webhookData.result, WORKFLOW_WEBHOOK_RESULT);
+  }
+
+  // Step 4: Final verification step
+  const result = await context.run("verify complete", async () => {
+
+    for (let i = 0; i < 5; i++) {
+      
+      const logs = await workflowClient.logs({
+        workflowRunId: callPostEndpointResponse.workflowRunId
+      })
+
+      if (logs.runs.length === 0 || logs.runs[0].workflowState !== "RUN_FAILED") {
+        console.log("waiting for logs to be available...", i);
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        continue;
+      }
+
+      const run = logs.runs[0];
+      expect(run.workflowRunId, callPostEndpointResponse.workflowRunId);
+      expect(run.workflowState, "RUN_FAILED")
+      expect(run.steps.length, 2)
+      expect(run.steps[0].steps.length, 1)
+      expect(run.steps[0].steps[0].state, "STEP_SUCCESS")
+      expect(run.steps[1].steps.length, 1)
+
+      const nextStep = run.steps[1]
+      if (nextStep.type === "next") {
+        expect(nextStep.steps[0].errors![0].error, "trigger rest api is only usable with sdk versions after v1.0.0 major version")
+        return getResult
+      } else {
+        throw new WorkflowNonRetryableError("Unexpected step type when checking workflow logs in the test")
+      }      
+    }
+    throw new WorkflowNonRetryableError("failed the test because incorrect logs were returned after retries")
+  });
+
+  await context.sleep("sleep before finish to ensure all requests arrive", 2); // wait for 2 seconds to ensure all logs are flushed
+
+  await saveResult(
+    context,
+    result
+  )
+})
+
+const webhookWorkflow = createWorkflow(async (context: WorkflowContext<{ webhookUrl: string }>) => {
+  const { webhookUrl } = context.requestPayload;
+
+  // Verify that we received the webhook URL
+  if (!webhookUrl) {
+    throw new Error("webhook URL not provided");
+  }
+
+  // Verify the QStash trigger header
+  const triggerHeader = context.headers.get(QSTASH_TRIGGER_HEADER);
+  if (triggerHeader !== QSTASH_TRIGGER_HEADER_VALUE) {
+    throw new Error(`Expected header ${QSTASH_TRIGGER_HEADER} to be ${QSTASH_TRIGGER_HEADER_VALUE}, got ${triggerHeader}`);
+  }
+
+  // Step 1: Do some work
+  await context.run("do work", () => {
+    return "work completed";
+  });
+
+  // Step 2: Call the webhook before finishing
+  const webhookCallResult = await context.run("call webhook", async () => {
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ result: WORKFLOW_WEBHOOK_RESULT }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`webhook call failed with status ${response.status}, ${await response.text()}`);
+    }
+
+    return response.ok;
+  });
+
+  return { success: true, webhookCalled: webhookCallResult };
+})
+
+export const { POST, GET } = testServe(
+  serveMany(
+    {
+      mainWorkflow,
+      webhookWorkflow,
+    },
+    {
+      baseUrl: BASE_URL,
+      receiver: undefined,
+      failureFunction: async ({ context, failResponse }) => {
+        console.error("failing:", failResponse);
+        await fail(context as WorkflowContext)
+      }
+    }
+  ), {
+    expectedCallCount: 16,
+    expectedResult: getResult,
+    payload,
+    headers: {
+      [ header ]: headerValue,
+    },
+    triggerConfig: {
+      retries: 0
+    }
+  }
+)
+```
+
+## app/test-routes/quota-error/workflows/[...]/route.ts
+
+```ts
+import { Client, StepError, WorkflowContext, WorkflowNonRetryableError } from "@upstash/workflow";
+import { createWorkflow, serveMany } from "@upstash/workflow/nextjs";
+import { BASE_URL, CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER } from "app/ci/constants";
+import { fail, saveResult } from "app/ci/upstash/redis";
+import { expect, testServe } from "app/ci/utils";
+
+const testHeader = "test-header-quota-error"
+const headerValue = "quota-error-header-value"
+const payload = "quota-error-payload"
+const expectedResult = "quota-error-test-complete"
+
+const HUGE_RETRY = 1_000_000
+
+const workflowClient = new Client({
+  baseUrl: process.env.QSTASH_URL,
+  token: process.env.QSTASH_TOKEN!,
+})
+
+/**
+ * Sub-workflow 1: single context.call with huge retry value
+ * Should fail with 412 quota error wrapped in WorkflowNonRetryableError
+ */
+const singleCallWorkflow = createWorkflow(async (context: WorkflowContext<string>) => {
+  await context.call("huge retry call", {
+    url: "https://mock.httpstatus.io/200",
+    method: "GET",
+    retries: HUGE_RETRY,
+  })
+})
+
+/**
+ * Sub-workflow 2: two parallel context.calls, one with huge retry value
+ * Should fail with 412 quota error wrapped in WorkflowNonRetryableError
+ */
+const parallelCallWorkflow = createWorkflow(async (context: WorkflowContext<string>) => {
+  await Promise.all([
+    context.call("normal call", {
+      url: "https://mock.httpstatus.io/200",
+      method: "GET",
+      retries: 0,
+    }),
+    context.call("huge retry call", {
+      url: "https://mock.httpstatus.io/200",
+      method: "GET",
+      retries: HUGE_RETRY,
+    }),
+  ])
+})
+
+/**
+ * Parent workflow: triggers both sub-workflows via context.call,
+ * then checks their logs to verify they failed with the right error
+ */
+const mainWorkflow = createWorkflow(async (context: WorkflowContext<string>) => {
+  expect(context.headers.get(testHeader)!, headerValue)
+
+  // Trigger both sub-workflows using context.call with workflow param
+  // This returns the workflowRunId immediately without waiting for completion
+  const [singleCallResult, parallelCallResult] = await Promise.all([
+    context.call("call single call workflow", {
+      workflow: singleCallWorkflow,
+      body: "test",
+      headers: {
+        [CI_ROUTE_HEADER]: context.headers.get(CI_ROUTE_HEADER) as string,
+        [CI_RANDOM_ID_HEADER]: context.headers.get(CI_RANDOM_ID_HEADER) as string,
+      },
+      retries: 0
+    }),
+    context.call("call parallel call workflow", {
+      workflow: parallelCallWorkflow,
+      body: "test",
+      headers: {
+        [CI_ROUTE_HEADER]: context.headers.get(CI_ROUTE_HEADER) as string,
+        [CI_RANDOM_ID_HEADER]: context.headers.get(CI_RANDOM_ID_HEADER) as string,
+      },
+      retries: 0
+    }),
+  ])
+
+  expect(typeof singleCallResult.body.workflowRunId, "string")
+  expect(typeof parallelCallResult.body.workflowRunId, "string")
+
+  // Wait for the sub-workflows to fail
+  await context.sleep("wait for sub-workflows to fail", 5)
+
+  // Check logs for singleCallWorkflow
+  await context.run("check single call logs", async () => {
+    for (let i = 0; i < 5; i++) {
+      const logs = await workflowClient.logs({
+        workflowRunId: singleCallResult.body.workflowRunId
+      })
+
+      if (logs.runs.length === 0 || logs.runs[0].workflowState !== "RUN_FAILED") {
+        console.log("waiting for single call logs...", i)
+        await new Promise((resolve) => setTimeout(resolve, 2000))
+        continue
+      }
+
+      const run = logs.runs[0]
+      expect(run.workflowState, "RUN_FAILED")
+
+      // Find the failed step
+      const failedStepGroup = run.steps.find(s => s.type === "next")
+      if (!failedStepGroup || failedStepGroup.type !== "next") {
+        throw new WorkflowNonRetryableError("Expected a 'next' step in single call workflow logs")
+      }
+
+      expect(failedStepGroup.steps.length, 1)
+      expect(failedStepGroup.steps[0].state, "STEP_FAILED")
+
+      const errors = failedStepGroup.steps[0].errors
+      if (!errors || errors.length === 0) {
+        throw new WorkflowNonRetryableError("Expected errors in single call workflow logs")
+      }
+
+      // The error should be a NonRetryableError (status 489)
+      expect(errors[0].status, 489)
+      return
+    }
+    throw new WorkflowNonRetryableError("Failed to get single call workflow logs after retries")
+  })
+
+  // Check logs for parallelCallWorkflow
+  await context.run("check parallel call logs", async () => {
+    for (let i = 0; i < 5; i++) {
+      const logs = await workflowClient.logs({
+        workflowRunId: parallelCallResult.body.workflowRunId
+      })
+
+      if (logs.runs.length === 0 || logs.runs[0].workflowState !== "RUN_FAILED") {
+        console.log("waiting for parallel call logs...", i)
+        await new Promise((resolve) => setTimeout(resolve, 2000))
+        continue
+      }
+
+      const run = logs.runs[0]
+      expect(run.workflowState, "RUN_FAILED")
+
+      // Find the parallel step group
+      const failedStepGroup = run.steps.find(s => s.type === "parallel")
+      if (!failedStepGroup || failedStepGroup.type !== "parallel") {
+        throw new WorkflowNonRetryableError("Expected a 'parallel' step in parallel call workflow logs")
+      }
+
+      // Find the step that failed among the parallel steps
+      const failedStep = failedStepGroup.steps.find(s => s.state === "STEP_FAILED")
+      if (!failedStep) {
+        throw new WorkflowNonRetryableError("Expected a failed step in parallel call workflow logs")
+      }
+
+      const errors = (failedStep as unknown as { errors: StepError[] }).errors
+      if (!errors || errors.length === 0) {
+        throw new WorkflowNonRetryableError("Expected errors in parallel call workflow logs")
+      }
+
+      // The error should be a NonRetryableError (status 489)
+      expect(errors[0].status, 489)
+      return
+    }
+    throw new WorkflowNonRetryableError("Failed to get parallel call workflow logs after retries")
+  })
+
+  await saveResult(
+    context,
+    expectedResult,
+  )
+})
+
+export const { POST, GET } = testServe(
+  serveMany(
+    {
+      mainWorkflow,
+      singleCallWorkflow,
+      parallelCallWorkflow,
+    },
+    {
+      baseUrl: BASE_URL,
+      receiver: undefined,
+      failureFunction: async ({ context, failResponse }) => {
+        console.error("failing:", failResponse);
+        await fail(context as WorkflowContext)
+      }
+    }
+  ), {
+    expectedCallCount: 16,
+    expectedResult,
+    payload,
+    headers: {
+      [testHeader]: headerValue,
+    },
+    triggerConfig: {
+      retries: 0
+    }
+  }
+)
+```
+
+## app/test-routes/retried/route.ts
+
+```ts
+import { serve } from "@upstash/workflow/nextjs";
+import { BASE_URL } from "app/ci/constants";
+import { testServe, expect } from "app/ci/utils";
+import { saveResult } from "app/ci/upstash/redis"
+
+const header = `test-header-foo`
+const headerValue = `header-bar`
+const payload = "retried-payload"
+
+export const { POST, GET } = testServe(
+  serve<string>(
+    async (context) => {
+      const input = context.requestPayload;
+
+      expect(input, payload);
+      expect(context.headers.get(header)!, headerValue)
+
+      // context.retried reflects the QStash `Upstash-Retried` header for the
+      // current delivery. It must be a number.
+      expect(typeof context.retried, "number")
+
+      // On the first delivery of this step QStash sets Upstash-Retried: 0,
+      // we throw to force a retry. On the retry QStash sets it to 1 and we
+      // assert the new value and complete the step.
+      const observedRetried = await context.run("force-retry", () => {
+        if (context.retried === 0) {
+          throw new Error("forcing-retry")
+        }
+        return context.retried
+      })
+
+      expect(observedRetried, 1)
+
+      await saveResult(
+        context,
+        `retried=${observedRetried}`
+      )
+    }, {
+      baseUrl: BASE_URL,
+    }
+  ), {
+    // first delivery + retried delivery + post-step continuation
+    expectedCallCount: 3,
+    expectedResult: "retried=1",
+    payload,
+    headers: {
+      [ header ]: headerValue
+    },
+    triggerConfig: {
+      retries: 1,
+    }
+  }
+)
+```
+
+## app/test-routes/returns-before-step/route.ts
+
+```ts
+import { serve } from "@upstash/workflow/nextjs";
+import { BASE_URL, CI_RANDOM_ID_HEADER } from "app/ci/constants";
+import { expect, testServe } from "app/ci/utils";
+import { redis, saveResult, fail } from "app/ci/upstash/redis"
+import { WorkflowContext } from "@upstash/workflow";
+
+const secret = "super-secret-key"
+
+export const { POST, GET } = testServe(
+  serve<string>(
+    async (context) => {
+
+      const randomId = context.headers.get(CI_RANDOM_ID_HEADER)
+      if (!randomId) {
+        throw new Error("randomId not found")
+      }
+      const redisKey = `redis-key-${randomId}`
+      const count = await redis.incr(redisKey)
+
+      if (count === 1) {
+        // return after the step, which should return 400
+        return
+      } else if (count === 2) {
+        // coming back for failureFunction. put a mock step to allow it
+        await context.run("mock step", () => { })
+      }
+
+      // otherwise fail.
+      await fail(context);
+    }, {
+    baseUrl: BASE_URL,
+    async failureFunction({ context, failStatus, failResponse }) {
+      expect(failStatus, 400)
+      expect(failResponse, `Failed to authenticate Workflow request. If this is unexpected, see the caveat https://upstash.com/docs/workflow/basics/caveats#avoid-non-deterministic-code-outside-context-run`)
+      await saveResult(
+        context as WorkflowContext,
+        secret
+      )
+    }
+  }
+  ), {
+  expectedCallCount: 2,
+  expectedResult: secret,
+  payload: undefined,
+  triggerConfig: {
+    retries: 0,
+  }
+}
+)
+```
+
+## app/test-routes/same-run-id/constants.ts
+
+```ts
+/**
+ * The runner starts the target workflow twice, one run after the other, with the
+ * same workflow run id and the same data. QStash deduplicates workflow requests by
+ * their content, so the requests of the second run must differ from the requests of
+ * the first one by the creation time of the run (Upstash-Workflow-CreatedAt).
+ * Otherwise the second trigger, or a step of the second run, is deduplicated
+ * against the first run and the second run never finishes.
+ */
+
+/**
+ * the run id of the target, the same for both of its runs. it is derived from the run id
+ * of the runner, which is the same in every request of the runner but differs between
+ * test runs, so a test run doesn't see the runs of an earlier one.
+ */
+export const getTargetRunId = (runnerRunId: string) =>
+  `same-run-id-target-${runnerRunId.replace(/^wfr_/, "")}`
+
+/**
+ * ids derived from the run id of the target, so that they are the same for both of its
+ * runs (same data) but differ between test runs.
+ */
+export const getTargetIds = (targetRunId: string) => {
+  const id = targetRunId.replace(/^wfr_/, "")
+  return {
+    childRunId: `${id}-child`,
+    eventId: `${id}-event`,
+    timeoutEventId: `${id}-timeout-event`,
+    nobodyWaitsEventId: `${id}-nobody-waits-event`,
+  }
+}
+
+export const TARGET_PAYLOAD = { input: "same-run-id-input" }
+export const CHILD_PAYLOAD = "same-run-id-child-input"
+export const CHILD_RESULT = `child received ${CHILD_PAYLOAD}`
+
+export const EVENT_DATA = { event: "same-run-id-event-data" }
+export const WEBHOOK_BODY = { webhook: "same-run-id-webhook-body" }
+
+export const CALL_HEADER_VALUE = "same-run-id-call"
+
+/**
+ * the steps of a successful run of the target, as they appear in the logs
+ */
+export const TARGET_STEP_NAMES = [
+  "init",
+  "parallel run one",
+  "parallel run two",
+  "sleep",
+  "sleep until",
+  "call",
+  "wait for event",
+  "notify the waiting step",
+  "wait for event to time out",
+  "notify",
+  "create webhook",
+  "call webhook",
+  "wait for webhook",
+  "invoke",
+  "last",
+]
+
+export const TARGET_LAST_STEP_RESULT = [
+  "one",
+  "two",
+  200,
+  EVENT_DATA.event,
+  WEBHOOK_BODY.webhook,
+  CHILD_RESULT,
+].join(":")
+
+export const RUNNER_RESULT = "both runs with the same id finished"
+```
+
+## app/test-routes/same-run-id/runner/route.ts
+
+```ts
+import { Client, WorkflowNonRetryableError } from "@upstash/workflow";
+import { serve } from "@upstash/workflow/nextjs";
+import { BASE_URL, TEST_ROUTE_PREFIX } from "app/ci/constants";
+import { saveResult } from "app/ci/upstash/redis";
+import { expect, testServe } from "app/ci/utils";
+import { getTargetRunId, RUNNER_RESULT, TARGET_PAYLOAD, TARGET_STEP_NAMES } from "../constants";
+
+/**
+ * Starts the target twice with the same workflow run id and the same data, one run
+ * after the other, and checks in the logs that each run finished successfully with
+ * all of its steps. See ../constants.ts for why.
+ */
+
+const workflowClient = new Client({ baseUrl: process.env.QSTASH_URL, token: process.env.QSTASH_TOKEN! })
+
+const startTarget = async (targetRunId: string) => {
+  const { workflowRunId } = await workflowClient.trigger({
+    url: `${TEST_ROUTE_PREFIX}/same-run-id/workflows/target`,
+    workflowRunId: targetRunId,
+    body: TARGET_PAYLOAD,
+    retries: 0,
+  })
+  return workflowRunId
+}
+
+/**
+ * waits for the one run of the target created after `createdAfter` to finish, checks it
+ * and returns its creation time
+ */
+const checkTargetRun = async (workflowRunId: string, createdAfter: number) => {
+  for (let i = 0; i < 20; i++) {
+    const { runs } = await workflowClient.logs({ filter: { workflowRunId } })
+    const newRuns = runs.filter(run => run.workflowRunCreatedAt > createdAfter)
+    if (newRuns.length > 1) {
+      throw new WorkflowNonRetryableError(`expected one new run of ${workflowRunId}, found ${newRuns.length}`)
+    }
+
+    const run = newRuns[0]
+    if (run && run.workflowState !== "RUN_STARTED") {
+      expect(run.workflowState, "RUN_SUCCESS")
+      expect(run.steps.some(group => group.type === "next"), false)
+
+      const steps = run.steps.flatMap(group => group.type === "next" ? [] : group.steps)
+      expect(
+        JSON.stringify(steps.map(step => step.stepName).sort()),
+        JSON.stringify([...TARGET_STEP_NAMES].sort())
+      )
+      for (const step of steps) {
+        expect(`${step.stepName}: ${step.state}`, `${step.stepName}: STEP_SUCCESS`)
+      }
+      return run.workflowRunCreatedAt
+    }
+    await new Promise(r => setTimeout(r, 2000))
+  }
+  throw new WorkflowNonRetryableError(`the run of ${workflowRunId} created after ${createdAfter} didn't finish in time`)
+}
+
+export const { POST, GET } = testServe(
+  serve(async (context) => {
+
+    const targetRunId = getTargetRunId(context.workflowRunId)
+
+    const first = await context.run("start first run", () => startTarget(targetRunId))
+    await context.sleep("wait for first run", 20)
+    // the id is new to this test run, so every run of it is one this test started
+    const firstCreatedAt = await context.run("check first run", () =>
+      checkTargetRun(first, 0)
+    )
+
+    // same id, same data: before Upstash-Workflow-CreatedAt, this run was deduplicated
+    const second = await context.run("start second run", () => startTarget(targetRunId))
+    expect(second, first)
+    await context.sleep("wait for second run", 20)
+    await context.run("check second run", () =>
+      checkTargetRun(second, firstCreatedAt)
+    )
+
+    await saveResult(context, RUNNER_RESULT)
+  }, {
+    baseUrl: BASE_URL,
+  }), {
+    expectedCallCount: 7,
+    expectedResult: RUNNER_RESULT,
+    payload: undefined,
+    triggerConfig: {
+      retries: 0,
+    }
+  }
+)
+```
+
+## app/test-routes/same-run-id/workflows/[...]/route.ts
+
+```ts
+import { Client, WorkflowContext, WorkflowNonRetryableError } from "@upstash/workflow";
+import { createWorkflow, serveMany } from "@upstash/workflow/nextjs";
+import { BASE_URL, TEST_ROUTE_PREFIX } from "app/ci/constants";
+import { expect } from "app/ci/utils";
+import {
+  CALL_HEADER_VALUE,
+  CHILD_PAYLOAD,
+  CHILD_RESULT,
+  EVENT_DATA,
+  getTargetIds,
+  TARGET_LAST_STEP_RESULT,
+  TARGET_PAYLOAD,
+  WEBHOOK_BODY,
+} from "../../constants";
+
+/**
+ * The target of the same-run-id test. It is started by the runner, not by the test
+ * itself, so it isn't wrapped in testServe: the runner checks its runs in the logs.
+ *
+ * It uses every kind of step the context has, so that each kind of request is sent
+ * again, with the same data, by the second run with the same id. context.api is
+ * left out since it calls third party services, and context.cancel since it would
+ * end the run.
+ */
+
+const workflowClient = new Client({ baseUrl: process.env.QSTASH_URL, token: process.env.QSTASH_TOKEN! })
+
+const child = createWorkflow(async (context: WorkflowContext<string>) => {
+  const result = await context.run("child step", () => `child received ${context.requestPayload}`)
+  await context.sleep("child sleep", 1)
+  return result
+})
+
+const target = createWorkflow(async (context: WorkflowContext<typeof TARGET_PAYLOAD>) => {
+  const { childRunId, eventId, timeoutEventId, nobodyWaitsEventId } = getTargetIds(context.workflowRunId)
+
+  const [one, two] = await Promise.all([
+    context.run("parallel run one", () => "one"),
+    context.run("parallel run two", () => "two"),
+  ])
+
+  // checked after the first step: the request delivering a context.call result runs the
+  // route function until the first step to authorize it, and that request has no payload
+  expect(context.requestPayload.input, TARGET_PAYLOAD.input)
+
+  await context.sleep("sleep", 1)
+  await context.sleepUntil("sleep until", Date.now() / 1000 + 1)
+
+  const callResponse = await context.call("call", {
+    url: `${TEST_ROUTE_PREFIX}/call/third-party`,
+    method: "GET",
+    headers: { "get-header": CALL_HEADER_VALUE },
+  })
+  expect(callResponse.status, 200)
+  expect(callResponse.body as string, `called GET 'third-party-result' '${CALL_HEADER_VALUE}'`)
+
+  // the run step notifies the wait once QStash has registered it
+  const [waitResponse] = await Promise.all([
+    context.waitForEvent("wait for event", eventId, { timeout: "30s" }),
+    context.run("notify the waiting step", async () => {
+      for (let i = 0; i < 20; i++) {
+        const notified = await workflowClient.notify({ eventId, eventData: EVENT_DATA })
+        if (notified.length > 0) {
+          return notified.length
+        }
+        await new Promise(r => setTimeout(r, 1000))
+      }
+      throw new WorkflowNonRetryableError(`nobody was waiting for ${eventId}`)
+    }),
+  ])
+  expect(waitResponse.timeout, false)
+  expect((waitResponse.eventData as typeof EVENT_DATA).event, EVENT_DATA.event)
+
+  const { timeout } = await context.waitForEvent("wait for event to time out", timeoutEventId, { timeout: 1 })
+  expect(timeout, true)
+
+  const { notifyResponse } = await context.notify("notify", nobodyWaitsEventId, EVENT_DATA)
+  expect(notifyResponse.length, 0)
+
+  const webhook = await context.createWebhook("create webhook")
+  await context.run("call webhook", async () => {
+    const response = await fetch(webhook.webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(WEBHOOK_BODY),
+    })
+    if (!response.ok) {
+      throw new WorkflowNonRetryableError(`webhook call failed with status ${response.status}`)
+    }
+    return response.status
+  })
+  const webhookResponse = await context.waitForWebhook("wait for webhook", webhook, "30s")
+  expect(webhookResponse.timeout, false)
+  const webhookBody = await webhookResponse.request!.json() as typeof WEBHOOK_BODY
+
+  const invokeResponse = await context.invoke("invoke", {
+    workflow: child,
+    body: CHILD_PAYLOAD,
+    workflowRunId: childRunId,
+    retries: 0,
+  })
+  expect(invokeResponse.isFailed, false)
+  expect(invokeResponse.body, CHILD_RESULT)
+
+  const last = await context.run("last", () => [
+    one,
+    two,
+    callResponse.status,
+    (waitResponse.eventData as typeof EVENT_DATA).event,
+    webhookBody.webhook,
+    invokeResponse.body,
+  ].join(":"))
+  expect(last, TARGET_LAST_STEP_RESULT)
+})
+
+export const { POST } = serveMany(
+  { target, child },
+  { baseUrl: BASE_URL }
+)
+```
+
+## app/test-routes/sleep/route.ts
+
+```ts
+import { serve } from "@upstash/workflow/nextjs";
+import { BASE_URL } from "app/ci/constants";
+import { testServe, expect } from "app/ci/utils";
+import { saveResult } from "app/ci/upstash/redis"
+
+const header = `test-header-foo`
+const headerValue = `header-bar`
+
+export const { POST, GET } = testServe(
+  serve<string>(
+    async (context) => {
+      const input = context.requestPayload;
+
+      expect(input, undefined);
+      expect(context.headers.get(header)!, headerValue)
+
+      const startTimeInMs = await context.run("step1", async () => {
+        const timeInMs = new Date().getTime()
+        return timeInMs
+      });
+
+      expect(typeof startTimeInMs, "number");
+
+      await context.sleepUntil("sleep1", Date.now() / 1000 + 3);
+
+      const middleTimeInMs = await context.run("step2", async () => {
+        const timeInMs = new Date().getTime()
+        return timeInMs
+      });
+
+      if (middleTimeInMs - startTimeInMs < 3000) {
+        throw new Error("it doesn't look like sleepUntil was applied.")
+      }
+
+      await context.sleep("sleep2", 2);
+
+      const endTimeInMs = await context.run("step3", async () => {
+        const timeInMs = new Date().getTime()
+        return timeInMs
+      });
+
+      if (endTimeInMs - middleTimeInMs < 2000) {
+        throw new Error("it doesn't look like sleep was applied.")
+      }
+
+      await saveResult(
+        context,
+        "foobar"
+      )
+    }, {
+      baseUrl: BASE_URL,
+    }
+  ), {
+    expectedCallCount: 6,
+    expectedResult: "foobar",
+    payload: undefined,
+    headers: {
+      [ header ]: headerValue
+    },
+    triggerConfig: {
+      retries: 0,
+    }
+  }
+)
+```
+
+## app/test-routes/sleepWithoutAwait/route.ts
+
+```ts
+import { serve } from "@upstash/workflow/nextjs";
+import { BASE_URL } from "app/ci/constants";
+import { testServe, expect } from "app/ci/utils";
+import { saveResult } from "app/ci/upstash/redis"
+
+type Invoice = {
+  date: number;
+  email: string;
+  amount: number;
+};
+
+type Charge = {
+  invoice: Invoice;
+  success: boolean;
+  counter: number
+};
+
+const header = `test-header-foo`
+const headerValue = `header-bar`
+const payload: Invoice = { date: 123, email: "my@mail.com", amount: 10 }
+
+const attemptCharge = (counter: number) => {
+  counter += 1;
+  if (counter === 3) {
+    counter = 0;
+    return { success: true, counter };
+  }
+  return { success: false, counter };
+};
+
+export const { POST, GET } = testServe(
+  serve<Invoice>(
+    async (context) => {
+      const invoice = context.requestPayload;
+
+      expect(typeof invoice, typeof payload);
+      expect(JSON.stringify(invoice), JSON.stringify(payload));
+
+      let charge: Charge = {
+        success: false,
+        counter: 0,
+        invoice
+      }
+
+      for (let index = 0; index < 3; index++) {
+        charge = await context.run("attemptCharge", () => {
+          const { success, counter } = attemptCharge(charge.counter);
+          const newCharge: Charge = { invoice, success, counter };
+          return newCharge;
+        });
+        
+        if (charge.success) {
+          const [updateDb, receipt, sleepResult] = await Promise.all([
+            context.run("updateDb", () => {
+              return charge.invoice.amount;
+            }),
+            context.run("sendReceipt", () => {
+              return charge.invoice.email;
+            }),
+            context.sleep("sleep", 5),
+          ]);
+
+          expect(updateDb, 10);
+          expect(receipt, "my@mail.com");
+          expect(sleepResult, undefined);
+          
+          await saveResult(
+            context,
+            "foobar"
+          )
+          
+          return;
+        }
+        await context.sleep("retrySleep", 2);
+      }
+      await context.run("paymentFailed", () => {
+        return true;
+      });
+    }, {
+      baseUrl: BASE_URL,
+    }
+  ), {
+    expectedCallCount: 12,
+    expectedResult: "foobar",
+    payload,
+    headers: {
+      [ header ]: headerValue
+    },
+    triggerConfig: {
+      retries: 0,
+    }
+  }
+)
+```
+
+## app/test-routes/trigger-non-workflow/constants.ts
+
+```ts
+export const NON_WORKFLOW_ROUTE_RESPONSE = "super-secret-response-foo";
+```
+
+## app/test-routes/trigger-non-workflow/non-workflow/route.ts
+
+```ts
+import { NON_WORKFLOW_ROUTE_RESPONSE } from "../constants";
+
+export const POST = async (request: Request) => {
+  return new Response(NON_WORKFLOW_ROUTE_RESPONSE, { status: 200 });
+}
+```
+
+## app/test-routes/trigger-non-workflow/workflow/route.ts
+
+```ts
+import { serve } from "@upstash/workflow/nextjs";
+import { Client, StepError } from "@upstash/workflow";
+import { BASE_URL } from "app/ci/constants";
+import { saveResult } from "app/ci/upstash/redis";
+import { expect, testServe } from "app/ci/utils";
+import { NON_WORKFLOW_ROUTE_RESPONSE } from "../constants";
+
+const header = `test-header-foo`
+const headerValue = `header-bar`
+
+const workflowClient = new Client({ baseUrl: process.env.QSTASH_URL, token: process.env.QSTASH_TOKEN! })
+
+export const { POST, GET } = testServe(
+  serve(async (context) => {
+
+    const { workflowRunId } = await context.run("trigger non-workflow", async () =>
+      workflowClient.trigger({
+        url: `${BASE_URL}/test-routes/trigger-non-workflow/non-workflow`,
+      })
+    )
+
+    await context.sleep("wait before checking logs", 5)
+
+    const errorBody = await context.run("check run logs", async () => {
+      for (let counter = 0; counter < 5; counter++) {
+        const { runs } = await workflowClient.logs({ workflowRunId })
+        if (runs.length === 1) {
+          const run = runs[0];
+          expect(run.workflowState, "RUN_FAILED")
+          expect(run.steps.length, 2)
+
+          const secondStep = run.steps[1];
+          expect(secondStep.type, "next")
+          expect(secondStep.steps.length, 1)
+          expect(secondStep.steps[0].state, "STEP_FAILED")
+
+          const errors = (secondStep.steps[0] as { errors: StepError[] }).errors;
+
+          expect(errors.length, 1)
+          expect(errors[0].error, "detected a non-workflow destination for trigger/invoke. make sure you are sending the request to the correct endpoint")
+          return errors[0].body
+        } else {
+          await new Promise(r => setTimeout(r, 2000));
+        }
+      }
+      return false
+    })
+
+    if (!errorBody) {
+      throw new Error(`Workflow run with ID ${workflowRunId} did not complete successfully`)
+    }
+
+    await saveResult(
+      context,
+      errorBody
+    )
+
+  }, {
+    baseUrl: BASE_URL,
+  }), {
+  expectedCallCount: 4,
+  expectedResult: NON_WORKFLOW_ROUTE_RESPONSE,
+  payload: NON_WORKFLOW_ROUTE_RESPONSE,
+  headers: {
+    [header]: headerValue
+  },
+  triggerConfig: {
+    retries: 0,
+  }
+})
+```
+
+## app/test-routes/wait-for-event/constants.ts
+
+```ts
+export const NOTIFIER_WORKFLOW_ROUTE = "wait-for-event/notifier-workflow"
+export const NOTIFIER_RESULT = "super-secret-foo"
+export const NOTIFIER_CALL_COUNT_OVERRIDE = -1
+
+export const SDK_EVENT_DATA = "notifying-with-sdk"
+export const TEXT_EVENT_DATA = "notifying-with-text-foo"
+export const OBJECT_EVENT_DATA = {"notifying": "object", "with": 1}
+
+export const NOTIFIER_SECRET = process.env.UPSTASH_REDIS_REST_TOKEN!.slice(0, 10)
+
+export type NotifierWorkflowConfig = {
+  /**
+   * event id used in /notifier
+   */
+  sdkEventId: string,
+  /**
+   * event id used in /notifier-workflow for text
+   */
+  textEventId: string,
+  /**
+   * event id used in /notifier-workflow for object
+   */
+  objectEventId: string,
+  /**
+   * random id used to save result to redis in /notifier-workflow
+   */
+  redisEntryId: string
+}
+```
+
+## app/test-routes/wait-for-event/notifier-workflow/route.ts
+
+```ts
+import { serve } from '@upstash/workflow/nextjs'
+import { saveResultsWithoutContext } from 'app/ci/upstash/redis'
+import { NOTIFIER_CALL_COUNT_OVERRIDE, NOTIFIER_RESULT, NOTIFIER_WORKFLOW_ROUTE, NotifierWorkflowConfig, OBJECT_EVENT_DATA, TEXT_EVENT_DATA } from '../constants'
+
+const RETRY_COUNT = 3
+const SLEEP_FOR_SEC = 1
+
+export const { POST } = serve<Omit<NotifierWorkflowConfig, "sdkEventId">>(async (context) => {
+
+  let notifiedWithText = false
+  for (let i=1; i<=RETRY_COUNT; i+=1) {
+    const progress = `${i}/${RETRY_COUNT}`
+    // sleep before notifying
+    await context.sleep(`sleeping before text ${progress}`, SLEEP_FOR_SEC)
+
+    // notify
+    const { notifyResponse } = await context.notify(
+      `notify with text ${progress}`,
+      context.requestPayload.textEventId,
+      TEXT_EVENT_DATA
+    )
+
+    // exit loop if succesfully notified
+    if (notifyResponse) {
+      notifiedWithText = true
+      break
+    }
+  }
+
+  if (!notifiedWithText) {
+    throw new Error("Failed to notify with text.")
+  }
+
+  let notifiedWithObject = false
+  for (let i=1; i<=RETRY_COUNT; i+=1) {
+    const progress = `${i}/${RETRY_COUNT}`
+    // sleep before notifying
+    await context.sleep(`sleeping before object ${progress}`, SLEEP_FOR_SEC)
+
+    // notify
+    const { notifyResponse } = await context.notify(
+      `notify with object ${progress}`,
+      context.requestPayload.objectEventId,
+      OBJECT_EVENT_DATA
+    )
+
+    // exit loop if succesfully notified
+    if (notifyResponse) {
+      notifiedWithObject = true
+      break
+    }
+  }
+
+  if (!notifiedWithObject) {
+    throw new Error("Failed to notify with object.")
+  }
+  
+  await context.run("save result to redis", async () => {
+    await saveResultsWithoutContext(
+      NOTIFIER_WORKFLOW_ROUTE,
+      context.requestPayload.redisEntryId,
+      NOTIFIER_RESULT,
+      NOTIFIER_CALL_COUNT_OVERRIDE
+    )
+  })
+})
+```
+
+## app/test-routes/wait-for-event/notifier/route.ts
+
+```ts
+import { Client } from "@upstash/workflow"
+import { NOTIFIER_SECRET, NotifierWorkflowConfig, SDK_EVENT_DATA } from "../constants"
+import { waitUntil } from '@vercel/functions';
+
+const client = new Client({ baseUrl: process.env.QSTASH_URL, token: process.env.QSTASH_TOKEN! })
+
+export const POST = async (request: Request) => {
+  if (!NOTIFIER_SECRET) {
+    return new Response("secret not set", { status: 500 })
+  }
+  if (request.headers.get("authorization") !== `Bearer ${NOTIFIER_SECRET}`) {
+    return new Response("unauthorized.", { status: 401 } )
+  }
+
+  const { sdkEventId } = await request.json() as Pick<NotifierWorkflowConfig, "sdkEventId">
+
+  const sleepAndNotify = async () => {
+    
+    await new Promise(r => setTimeout(r, 1000));
+    
+    const result = await client.notify({
+      eventId: sdkEventId,
+      eventData: SDK_EVENT_DATA
+    })
+    
+    if (!result.length) {
+      console.error("failed to notify workflow.")
+    }
+  }
+
+  waitUntil(sleepAndNotify())
+  return new Response("notifying...", { status: 200 })
+}
+```
+
+## app/test-routes/wait-for-event/workflow/route.ts
+
+```ts
+import { serve } from "@upstash/workflow/nextjs";
+import { BASE_URL, TEST_ROUTE_PREFIX } from "app/ci/constants";
+import { testServe, expect, nanoid } from "app/ci/utils";
+import { saveResult, checkRedisForResults } from "app/ci/upstash/redis"
+import { NOTIFIER_CALL_COUNT_OVERRIDE, NOTIFIER_RESULT, NOTIFIER_WORKFLOW_ROUTE, NotifierWorkflowConfig, OBJECT_EVENT_DATA, NOTIFIER_SECRET, TEXT_EVENT_DATA, SDK_EVENT_DATA } from "../constants";
+
+const header = `test-header-foo`
+const headerValue = `header-foo`
+const payload = "my-payload"
+
+export const { POST, GET } = testServe(
+  serve<string>(
+    async (context) => {
+      const input = context.requestPayload;
+
+      // TODO: can't check payload here because
+      // payload doesn't exist in handle third party call:
+      // expect(input, payload);
+
+      expect(context.headers.get(header)!, headerValue)
+
+      const { eventData, timeout } = await context.waitForEvent(
+        "wait for event which should timeout",
+        `random-event-${nanoid()}`,
+        {
+          timeout: 1
+        }
+      );
+      expect(eventData as undefined, undefined);
+      expect(timeout, true);
+
+      // check payload after first step because we can't check above
+      expect(input, payload);
+
+      
+      const config = await context.run<NotifierWorkflowConfig>("get config", () => {
+        return {
+          sdkEventId: `sdk-event-${nanoid()}`,
+          textEventId: `text-event-${nanoid()}`,
+          objectEventId: `object-event-${nanoid()}`,
+          redisEntryId: `notifier-workflow-redis-entry-${nanoid()}`,
+        }
+      })
+
+      // STEP 1: trigger /notifier and wait for it's event
+      const sdkResults = await Promise.all([
+        context.call(
+          "start notifying workflow",
+          {
+            url: `${TEST_ROUTE_PREFIX}/wait-for-event/notifier`,
+            method: "POST",
+            body: JSON.stringify(config),
+            headers: { authorization: `Bearer ${NOTIFIER_SECRET}` }
+          }
+        ),
+        context.waitForEvent("wait sdk", config.sdkEventId, {
+          timeout: "5s"
+        })
+      ])
+
+      expect(sdkResults[0].status, 200)
+      expect(sdkResults[0].body as string, "notifying...")
+      expect(sdkResults[1].timeout, false)
+      expect(typeof sdkResults[1].eventData, "string")
+      expect(sdkResults[1].eventData as string, SDK_EVENT_DATA)
+
+      
+      // STEP 2: trigger /notifier-workflow and wait for text event
+      const textResults = await Promise.all([
+        context.call<{ workflowRunId: string }>(
+          "start notifying workflow",
+          {
+            url: `${TEST_ROUTE_PREFIX}/${NOTIFIER_WORKFLOW_ROUTE}`,
+            method: "POST",
+            body: JSON.stringify(config),
+            retries: 0
+          }
+        ),
+        context.waitForEvent("wait text", config.textEventId, {
+          timeout: 5
+        })
+      ])
+
+      expect(textResults[0].status, 200)
+      expect(Boolean(textResults[0].body.workflowRunId), true)
+      expect(textResults[1].timeout, false)
+      expect(typeof textResults[1].eventData, "string")
+      expect(textResults[1].eventData as string, TEXT_EVENT_DATA)
+      
+      // STEP 3: wait for object event from /notifier-workflow
+      const {
+        eventData: objectEventData,
+        timeout: objectTimeout
+      } = await context.waitForEvent(
+        "wait object",
+        config.objectEventId,
+        {
+          timeout: "5s"
+        }
+      )
+
+      expect(objectTimeout, false)
+      expect(typeof objectEventData, "object")
+      expect(JSON.stringify(objectEventData), JSON.stringify(OBJECT_EVENT_DATA))
+
+      await context.sleep("sleep before checking other workflow", 1)
+      await context.run("check that other workflow has finished.", async () => {
+        await checkRedisForResults(
+          NOTIFIER_WORKFLOW_ROUTE,
+          config.redisEntryId,
+          NOTIFIER_CALL_COUNT_OVERRIDE,
+          NOTIFIER_RESULT
+        )
+      })
+
+      await saveResult(
+        context,
+        `${TEXT_EVENT_DATA} - ${JSON.stringify(OBJECT_EVENT_DATA)}`
+      )
+    }, {
+      baseUrl: BASE_URL,
+    }
+  ), {
+    expectedCallCount: 16,
+    expectedResult: `${TEXT_EVENT_DATA} - ${JSON.stringify(OBJECT_EVENT_DATA)}`,
+    payload,
+    headers: {
+      [ header ]: headerValue
+    },
+    triggerConfig: {
+      retries: 0,
+    }
+  }
+)
+```
+
+## app/test-routes/webhook/caller/route.ts
+
+```ts
+import { 
+  WEBHOOK_TEST_METHOD, 
+  WEBHOOK_TEST_BODY, 
+  WEBHOOK_TEST_HEADER, 
+  WEBHOOK_TEST_HEADER_VALUE 
+} from "../constants";
+
+export const POST = async (request: Request) => {
+  const { webhookUrl } = await request.json() as { webhookUrl: string };
+
+  if (!webhookUrl) {
+    return new Response("webhook URL not provided", { status: 400 });
+  }
+
+  // Call the webhook URL with specific method, body, and headers
+  const response = await fetch(webhookUrl, {
+    method: WEBHOOK_TEST_METHOD,
+    headers: {
+      "Content-Type": "application/json",
+      [WEBHOOK_TEST_HEADER]: WEBHOOK_TEST_HEADER_VALUE,
+    },
+    body: JSON.stringify(WEBHOOK_TEST_BODY),
+  });
+
+  if (!response.ok) {
+    return new Response(`webhook call failed with status ${response.status}`, { 
+      status: 500 
+    });
+  }
+
+  return new Response("webhook called", { status: 200 });
+};
+```
+
+## app/test-routes/webhook/constants.ts
+
+```ts
+export const WEBHOOK_TEST_METHOD = "POST"
+export const WEBHOOK_TEST_BODY = { test: "webhook-body", timestamp: 1764768991643 }
+export const WEBHOOK_TEST_HEADER = "X-Test-Header"
+export const WEBHOOK_TEST_HEADER_VALUE = "webhook-test-value"
+```
+
+## app/test-routes/webhook/workflow/route.ts
+
+```ts
+import { serve } from "@upstash/workflow/nextjs";
+import { TEST_ROUTE_PREFIX } from "app/ci/constants";
+import { testServe, expect } from "app/ci/utils";
+import { 
+  WEBHOOK_TEST_METHOD, 
+  WEBHOOK_TEST_BODY, 
+  WEBHOOK_TEST_HEADER, 
+  WEBHOOK_TEST_HEADER_VALUE 
+} from "../constants";
+import { saveResult } from "app/ci/upstash/redis";
+
+const header = "test-header-webhook"
+const headerValue = "webhook-header-value"
+const payload = { test: "webhook-payload" }
+const getResult = "webhook test completed successfully"
+
+export const { POST, GET } = testServe(
+  serve<typeof payload>(
+    async (context) => {
+      const input = context.requestPayload;
+
+      expect(context.headers.get(header)!, headerValue)
+
+      const timeoutWebhook = await context.createWebhook(
+        "timeout webhook",
+      );
+      // Wait for a webhook that will timeout
+      const timeoutResponse = await context.waitForWebhook(
+        "wait for timeout webhook",
+        timeoutWebhook,
+        "1s"
+      );
+      expect(timeoutResponse.timeout, true);
+      expect(timeoutResponse.request, undefined);
+
+      // Step 1: Create a webhook
+      const webhook = await context.createWebhook("create webhook");
+      
+      // Verify webhook has the expected structure
+      expect(typeof webhook.webhookUrl, "string");
+      expect(typeof webhook.eventId, "string");
+      expect(webhook.webhookUrl.length > 0, true);
+      expect(webhook.eventId.length > 0, true);
+
+      // Step 2: Call the caller endpoint with the webhook URL
+      const callResult = await context.call(
+        "call webhook caller",
+        {
+          url: `${TEST_ROUTE_PREFIX}/webhook/caller`,
+          method: "POST",
+          body: JSON.stringify({
+            webhookUrl: webhook.webhookUrl,
+          }),
+        }
+      );
+
+      expect(callResult.status, 200);
+
+      // Step 3: Wait for the webhook to be called
+      const webhookResponse = await context.waitForWebhook(
+        "wait for webhook",
+        webhook,
+        "30s"
+      );
+
+      // Verify the webhook response contains expected data
+      expect(webhookResponse.timeout, false);
+      const request = webhookResponse.request!;
+      expect(typeof request, "object");
+      expect(request.url, webhook.webhookUrl);
+      expect(request.method, WEBHOOK_TEST_METHOD);
+      expect(typeof request.headers, "object");
+      expect(request.headers.get(WEBHOOK_TEST_HEADER), WEBHOOK_TEST_HEADER_VALUE);
+
+      const eventData = await request.json() as typeof WEBHOOK_TEST_BODY
+      
+      // Check method
+      expect(request.method, WEBHOOK_TEST_METHOD);
+      
+      // Check body
+      expect(typeof eventData, "object");
+      expect(eventData.test, WEBHOOK_TEST_BODY.test);
+      
+      // Check headers
+      expect(request.headers.get(WEBHOOK_TEST_HEADER), WEBHOOK_TEST_HEADER_VALUE);
+
+      // Step 4: Final verification step
+      const result = await context.run("verify complete", () => {
+        expect(input.test, payload.test);
+        return getResult;
+      });
+
+      await saveResult(
+        context,
+        result
+      )
+    },
+    {
+      receiver: undefined,
+    }
+  ),
+  {
+    expectedCallCount: 8,
+    expectedResult: getResult,
+    headers: {
+      [header]: headerValue,
+    },
+    payload
+  }
+);
+```
+
+## package.json
+
+```json
+{
+  "name": "workflow",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3001",
+    "build": "next build",
+    "start": "next start -p 3001",
+    "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@upstash/qstash": "^2.7.12",
+    "@upstash/redis": "^1.34.2",
+    "@upstash/workflow": "latest",
+    "@vercel/functions": "^1.5.0",
+    "clsx": "^2.1.1",
+    "next": "14.2.35",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwind-merge": "^2.5.2",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.5",
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@vitest/ui": "^2.1.8",
+    "eslint": "^8.0.0",
+    "eslint-config-next": "14.2.9",
+    "postcss": "^8.4.45",
+    "prettier": "^3.3.3",
+    "prettier-plugin-tailwindcss": "^0.6.6",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.6.2",
+    "vitest": "^2.1.8"
+  }
+}
+```

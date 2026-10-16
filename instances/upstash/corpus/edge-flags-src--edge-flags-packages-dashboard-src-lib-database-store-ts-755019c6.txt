@@ -1,0 +1,82 @@
+# edge-flags: packages/dashboard/src/lib/database-store.ts
+# джерело: https://github.com/upstash/edge-flags/blob/@upstash%2Fedge-flags@0.1.3/packages/dashboard/src/lib/database-store.ts
+# отримано: 2026-10-16
+# версія: edge-flags-0.1.3, edge-flags-0.1.2
+
+```ts
+import { create } from "zustand"
+import { persist } from "zustand/middleware"
+```
+
+## type Database
+
+```ts
+type Database = {
+  id: string
+
+  url: string
+  token: string
+  tenant: string
+  prefix: string
+  saveToLocalStorage: boolean
+}
+```
+
+## type Store
+
+```ts
+type Store = {
+  databases: Database[]
+
+  addDatabase: (database: Omit<Database, "id">) => void
+  deleteDatabase: (id: string) => void
+}
+```
+
+## const useDatabaseStore
+
+```ts
+export const useDatabaseStore = create(
+  persist<Store>(
+    (set, get) => ({
+      databases: [],
+
+      addDatabase: (database) => {
+        if (get().databases.some((db) => db.url === database.url)) {
+          throw new Error("Database with the same URL already exists")
+        }
+
+        const db = {
+          id: Math.random().toString(36).slice(2, 9),
+          ...database,
+        }
+
+        set((state) => ({
+          databases: [...state.databases, db],
+        }))
+      },
+
+      deleteDatabase: (id) => {
+        if (!get().databases.some((db) => db.id === id)) {
+          throw new Error("Database with the given ID does not exist")
+        }
+
+        set((state) => ({
+          databases: state.databases.filter((db) => db.id !== id),
+        }))
+      },
+    }),
+    {
+      name: "edge-flags",
+
+      // Only save databases with `saveToLocalStorage` set to true
+      getStorage: () => localStorage,
+      partialize: (state) => ({
+        ...state,
+        databases: state.databases.filter((db) => db.saveToLocalStorage),
+        customField: true,
+      }),
+    }
+  )
+)
+```

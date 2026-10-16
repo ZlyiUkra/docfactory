@@ -1,0 +1,807 @@
+# Example: nextjs
+# джерело: https://github.com/upstash/qstash-js/tree/v2.12.0/examples/nextjs
+# отримано: 2026-10-16
+# версія: qstash-2.12.0
+
+## QStash With Next.js
+
+This project is a simple example of how to use QStash with Next.js.
+
+Routes in the project:
+
+- `/api/edge` (pages router)
+- `/api/receiver` (pages router)
+- `/api/serverless` (pages router)
+
+- `/edge` (app router)
+- `/serverless` (app router)
+- '/publish' (app router)
+
+On the landing page of the project, you will find an introduction to QStash. You can click a button to call the `/publish` endpoint and observe the requests delivered by QStash.
+
+## Local Development
+
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Set environment variables
+
+Create a `.env.local` file in the root of the project and add the following environment variables:
+
+```bash
+QSTASH_CURRENT_SIGNING_KEY=
+QSTASH_CURRENT_SIGNING_KEY_ID=
+```
+
+You can get these values from the Upstash Console.
+
+### 3. Start the development server
+
+```bash
+npm run dev
+```
+
+### 4. Start a local tunnel
+
+To test the application, QStash needs to send requests to your local server. You can use a tool like ngrok to create a secure tunnel to your localhost.
+
+```bash
+ngrok http 3000
+```
+
+Copy the resulting url and. Go to the Upstash Console and send a simple request to `<ngrok-url>/api/receiver`
+
+## app/ci/constants.ts
+
+```ts
+
+export const CRON = "*/30 * * * *"
+export const DESTINATION = "https://qstash-js-ci.requestcatcher.com/"
+```
+
+## app/ci/route.ts
+
+```ts
+import { Client } from "@upstash/qstash"
+import { CRON, DESTINATION } from "./constants";
+
+// Without this, `next build` pre-renders the GET and would call the live QStash API.
+export const dynamic = "force-dynamic";
+
+export const GET = async () => {
+  if (!process.env.QSTASH_TOKEN) {
+    throw new Error("CI test failed. QSTASH_TOKEN is missing.")
+  }
+
+  // create schedule
+  const client = new Client({ token: process.env.QSTASH_TOKEN! })
+  const { scheduleId } = await client.schedules.create({
+    destination: DESTINATION,
+    cron: CRON,
+  });
+
+  // check schedule
+  const schedule = await client.schedules.get(scheduleId)
+  if (schedule.destination !== DESTINATION) throw new Error(
+    `incorrect destionation. expected ${DESTINATION}, got ${schedule.destination}`
+  )
+  if (schedule.cron !== CRON) throw new Error(
+    `incorrect cron. expected ${CRON}, got ${schedule.cron}`
+  )
+
+  // delete schedule
+  await client.schedules.delete(scheduleId)
+  return new Response(JSON.stringify(schedule), { status: 200 });
+}
+```
+
+## app/dev/receive/route.ts
+
+```ts
+import { NextResponse } from "next/server";
+import { verifySignatureAppRouter } from "@upstash/qstash/nextjs";
+
+// Don't run at build time — devMode talks to a local QStash binary.
+export const dynamic = "force-dynamic";
+
+// Module-scoped set so the test can poll for delivery via GET ?check=<id>.
+const received = new Set<string>();
+
+export const POST = verifySignatureAppRouter(
+  async (request: Request) => {
+    const messageId = request.headers.get("upstash-message-id");
+    if (messageId) received.add(messageId);
+    return NextResponse.json({ ok: true, messageId });
+  },
+  { devMode: true }
+);
+
+export const GET = (request: Request) => {
+  const id = new URL(request.url).searchParams.get("check");
+  return NextResponse.json({ received: id ? received.has(id) : false });
+};
+```
+
+## app/dev/route.ts
+
+```ts
+import { NextResponse } from "next/server";
+import { Client } from "@upstash/qstash";
+
+// Don't run at build time — devMode talks to a local QStash binary.
+export const dynamic = "force-dynamic";
+
+const client = new Client({ token: "dev-token", devMode: true });
+
+export const GET = async () => {
+  const { messageId } = await client.publishJSON({
+    url: "https://example.com",
+    body: { hello: "from /dev route" },
+  });
+  return NextResponse.json({ ok: true, messageId });
+};
+```
+
+## app/dev/send/route.ts
+
+```ts
+import { NextResponse } from "next/server";
+import { Client } from "@upstash/qstash";
+
+// Don't run at build time — devMode talks to a local QStash binary.
+export const dynamic = "force-dynamic";
+
+const client = new Client({ token: "dev-token", devMode: true });
+
+export const GET = async (request: Request) => {
+  const origin = new URL(request.url).origin;
+  const { messageId } = await client.publishJSON({
+    url: `${origin}/dev/receive`,
+    body: { hello: "from /dev/send" },
+  });
+  return NextResponse.json({ ok: true, messageId });
+};
+```
+
+## app/edge/route.ts
+
+```ts
+import { NextResponse } from "next/server";
+import { verifySignatureAppRouter } from "@upstash/qstash/nextjs";
+
+async function handler(_req: Request) {
+  // simulate work
+  await new Promise((r) => setTimeout(r, 1000));
+
+  console.log("Success");
+  return NextResponse.json({ name: "John Doe" });
+}
+
+export const POST = verifySignatureAppRouter(handler);
+
+export const runtime = "edge";
+```
+
+## app/publish/route.ts
+
+```ts
+import { NextRequest, NextResponse } from "next/server";
+import { PublishPayload } from "./types";
+import { Client } from "@upstash/qstash";
+
+const client = new Client({
+  token: process.env.QSTASH_TOKEN!,
+});
+
+export const POST = async (request: NextRequest) => {
+
+  try {
+    const { url } = await request.json() as PublishPayload
+    const { messageId } = await client.publishJSON({
+      url,
+      body: "Hello world!",
+      method: "GET"
+    })
+  
+    return new NextResponse(JSON.stringify({
+      success: true,
+      messageId,
+    }), { status: 200 })
+  } catch (error) {
+    return new NextResponse(JSON.stringify({
+      success: false,
+      message: error
+    }))
+  }
+}
+```
+
+## app/publish/types.ts
+
+```ts
+
+export type PublishPayload = {
+  url: string
+}
+```
+
+## app/roundtrip/publish/route.ts
+
+```ts
+import { NextResponse } from "next/server";
+import { Client } from "@upstash/qstash";
+
+// Publishes a message to this same app's /roundtrip/verify endpoint and returns
+// the message id so the test can follow it in the message logs.
+export const dynamic = "force-dynamic";
+
+export const GET = async (request: Request) => {
+  if (!process.env.QSTASH_TOKEN) {
+    throw new Error("CI test failed. QSTASH_TOKEN is missing.");
+  }
+
+  const client = new Client({ token: process.env.QSTASH_TOKEN });
+  const origin = new URL(request.url).origin;
+  const { messageId } = await client.publishJSON({
+    url: `${origin}/roundtrip/verify`,
+    body: { hello: "qstash-js nextjs ci" },
+  });
+
+  return NextResponse.json({ messageId });
+};
+```
+
+## app/roundtrip/verify/route.ts
+
+```ts
+import { NextResponse } from "next/server";
+import { verifySignatureAppRouter } from "@upstash/qstash/nextjs";
+
+// Publicly reachable endpoint with a verifier. QStash delivers the signed
+// message here and verifySignatureAppRouter validates the signature using the
+// QSTASH_CURRENT_SIGNING_KEY / QSTASH_NEXT_SIGNING_KEY env vars. Returning 200
+// is what makes QStash mark the message as DELIVERED.
+export const dynamic = "force-dynamic";
+
+export const POST = verifySignatureAppRouter(async () => {
+  return NextResponse.json({ ok: true });
+});
+```
+
+## app/serverless/route.ts
+
+```ts
+import { verifySignatureAppRouter } from "@upstash/qstash/nextjs";
+import { NextResponse } from "next/server";
+
+async function handler(_req: Request) {
+  // simulate work
+  await new Promise((r) => setTimeout(r, 1000));
+
+  console.log("Success");
+  return NextResponse.json({ name: "John Doe Serverless" });
+}
+export const POST = verifySignatureAppRouter(handler);
+```
+
+## ci.test.ts
+
+```ts
+import { Schedule } from "@upstash/qstash";
+import { test, expect } from "bun:test";
+import { CRON, DESTINATION } from "./app/ci/constants";
+
+const deploymentURL = process.env.DEPLOYMENT_URL;
+if (!deploymentURL) {
+  throw new Error("DEPLOYMENT_URL not set");
+}
+
+test("the server is running", async () => {
+  const res = await fetch(`${deploymentURL}/ci`);
+  if (res.status !== 200) {
+    console.log(await res.text());
+  }
+  expect(res.status).toEqual(200);
+
+  const schedule = await res.json() as Schedule
+  expect(schedule.cron).toBe(CRON)
+  expect(schedule.destination).toBe(DESTINATION)
+});
+```
+
+## dev.test.ts
+
+```ts
+import { test, expect } from "bun:test";
+
+// Hits the /dev routes which use devMode: true. That triggers the qstash
+// CLI dev server to spawn inside the Next.js process. Run after starting the
+// example with `bun dev`. Also runs in CI via the nextjs-local-build job.
+const deploymentURL = process.env.DEPLOYMENT_URL;
+if (!deploymentURL) {
+  throw new Error("DEPLOYMENT_URL not set");
+}
+
+test("/dev publishes via dev server", async () => {
+  const res = await fetch(`${deploymentURL}/dev`);
+  if (res.status !== 200) console.log(await res.text());
+  expect(res.status).toBe(200);
+
+  const body = (await res.json()) as { ok: boolean; messageId?: string };
+  expect(body.ok).toBe(true);
+  expect(body.messageId).toBeTruthy();
+}, 60_000);
+
+test("/dev/send → /dev/receive round trip with signature verification", async () => {
+  const sendRes = await fetch(`${deploymentURL}/dev/send`);
+  expect(sendRes.status).toBe(200);
+  const { messageId } = (await sendRes.json()) as { messageId: string };
+  expect(messageId).toBeTruthy();
+
+  // Dev server delivers asynchronously; poll the receive route for arrival.
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    const checkRes = await fetch(`${deploymentURL}/dev/receive?check=${messageId}`);
+    const { received } = (await checkRes.json()) as { received: boolean };
+    if (received) return;
+    await Bun.sleep(250);
+  }
+  throw new Error(`message ${messageId} never delivered to /dev/receive within 10s`);
+}, 60_000);
+
+test("/dev/receive rejects unsigned requests", async () => {
+  const res = await fetch(`${deploymentURL}/dev/receive`, {
+    method: "POST",
+    body: JSON.stringify({ hello: "no signature" }),
+  });
+  // verifySignatureAppRouter returns 403 when the signature header is missing.
+  expect(res.status).toBe(403);
+});
+```
+
+## middleware.ts
+
+```ts
+import { verifySignatureEdge } from "@upstash/qstash/nextjs";
+import { type NextFetchEvent, type NextRequest, NextResponse } from "next/server";
+
+export default verifySignatureEdge(async (
+  request: NextRequest,
+  context?: NextFetchEvent,
+): Promise<Response> => {
+  return NextResponse.next()
+})
+
+export const config = {
+  matcher: "/api/middleware-endpoint",
+};
+```
+
+## package.json
+
+```json
+{
+  "name": "nextjs",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@upstash/qstash": "latest",
+    "next": "^14.2.23",
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
+  },
+  "devDependencies": {
+    "@types/micro": "^10.0.0",
+    "@types/node": "20.5.7",
+    "@types/react": "18.2.21",
+    "@types/react-dom": "18.2.7",
+    "autoprefixer": "^10.4.20",
+    "eslint": "8.48.0",
+    "eslint-config-next": "13.4.19",
+    "micro": "^10.0.1",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.13",
+    "typescript": "5.2.2"
+  }
+}
+```
+
+## pages/_app.tsx
+
+```tsx
+import "../styles/globals.css";
+import type { AppProps } from "next/app";
+
+function MyApp({ Component, pageProps }: AppProps) {
+  return <Component {...pageProps} />;
+}
+
+export default MyApp;
+```
+
+## pages/api/edge.ts
+
+```ts
+import { NextRequest, NextResponse } from "next/server";
+import { verifySignatureAppRouter } from "@upstash/qstash/dist/nextjs";
+
+async function handler(req: NextRequest) {
+  console.log(req.headers);
+
+  await new Promise((r) => setTimeout(r, 1000));
+
+  console.log("Success");
+  console.log(typeof req.body, { body: req.body });
+  return NextResponse.json({ name: "John Doe", body: req.body });
+}
+
+export default verifySignatureAppRouter(handler);
+
+export const config = {
+  runtime: "edge",
+  api: {
+    bodyParser: false,
+  },
+};
+```
+
+## pages/api/middleware-endpoint.ts
+
+```ts
+import type { NextApiRequest, NextApiResponse } from "next";
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  console.log(req.headers);
+
+  await new Promise((r) => setTimeout(r, 1000));
+
+  console.log("Success");
+  console.log(typeof req.body, { body: req.body });
+  res.status(200).json({ name: "John Doe", body: req.body });
+}
+```
+
+## pages/api/receiver.ts
+
+```ts
+/**
+ * This example shows how to use the `Receiver` to manually verify the incoming request.
+ * It might be useful in case you want to be able to call your endpoint as well as letting Upstash
+ * call it.
+ */
+
+import type { NextApiRequest, NextApiResponse } from "next";
+import { Receiver } from "@upstash/qstash";
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const signature = req.headers["upstash-signature"] as string | undefined;
+  console.log({ signature });
+  if (!signature) {
+    res.status(200).send("This request is not coming from qstash");
+    return res.end();
+  }
+
+  const currentSigningKey = process.env.QSTASH_CURRENT_SIGNING_KEY;
+  if (!currentSigningKey) {
+    res.status(500).send("QSTASH_CURRENT_SIGNING_KEY is missing");
+    return res.end();
+  }
+  const nextSigningKey = process.env.QSTASH_NEXT_SIGNING_KEY;
+  if (!nextSigningKey) {
+    res.status(500).send("QSTASH_NEXT_SIGNING_KEY is missing");
+    return res.end();
+  }
+  const receiver = new Receiver({
+    currentSigningKey,
+    nextSigningKey,
+  });
+  const chunks = [];
+  for await (const chunk of req) {
+    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+  }
+  const body = Buffer.concat(chunks).toString("utf-8");
+  const valid = await receiver.verify({
+    signature,
+    body: body,
+  });
+  if (!valid) {
+    res.status(403).send("Signature is invalid");
+    return res.end();
+  }
+
+  res.status(200).json({ valid });
+  return res.end();
+}
+
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+```
+
+## pages/api/serverless.ts
+
+```ts
+import type { NextApiRequest, NextApiResponse } from "next";
+import { verifySignature } from "@upstash/qstash/dist/nextjs";
+
+async function handler(req: NextApiRequest, res: NextApiResponse) {
+  console.log(req.headers);
+
+  await new Promise((r) => setTimeout(r, 1000));
+
+  console.log("Success");
+  console.log(typeof req.body, { body: req.body });
+  res.status(200).json({ name: "John Doe", body: req.body });
+}
+
+export default verifySignature(handler);
+
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+```
+
+## pages/index.tsx
+
+```tsx
+"use client"
+import { useEffect, useState } from 'react';
+import { PublishPayload } from '../app/publish/types';
+
+export default function Home() {
+
+  // Generate random number and set the URL when the component mounts
+  const [requestCatcherUrl, setRequestCatcherUrl] = useState<string | null>(null);
+  useEffect(() => {
+    const randomNum = Math.floor(Math.random() * 100000); // Generate random number
+    const newUrl = `https://qstash-nextjs-${randomNum}.requestcatcher.com`;
+    setRequestCatcherUrl(newUrl);
+  }, []);
+
+  const [publish, setPublish] = useState({ messageId: "" });
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState('');
+
+  const handlePublish = async () => {
+    try {
+      setLoading(true)
+      const body: PublishPayload = {
+        url: requestCatcherUrl!
+      } 
+      const res = await fetch('/publish', {
+        method: "POST",
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setPublish(data);
+        setMessage('');
+      } else {
+        setMessage(data.message || 'Error fetching data.');
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      setPublish({
+        messageId: "",
+      });
+      setMessage('Error fetching data. Please check the environment variables.');
+    } finally {
+      setLoading(false)
+    }
+  };
+
+  return (
+    <main className="h-screen">
+      <div className="max-w-screen-sm px-8 pt-16 mx-auto pb-44 gap-4 grid">
+        {/* header */}
+        <header>
+          <img
+            className="w-10 mb-8"
+            src="/upstash-logo.svg"
+            alt="upstash logo"
+          />
+
+          <h1 className="text-2xl font-semibold text-balance">
+            Get Started with Upstash QStash
+          </h1>
+          <h2 className="text-lg text-balance opacity-60">
+            This is a simple example to demonstrate Upstash QStash with
+            Next.js. We will make a publish request through QStash and
+            observe what&apos;s delivered.
+          </h2>
+
+          <div className="flex flex-wrap items-center gap-2 mt-4">
+            <a
+              className="inline-flex items-center gap-1 px-3 py-2 bg-gray-100 rounded-md hover:bg-emerald-100"
+              href="https://upstash.com/docs/qstash/overall/getstarted"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+                <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" />
+                <path d="M10 13l-1 2l1 2" />
+                <path d="M14 13l1 2l-1 2" />
+              </svg>
+              Docs
+            </a>
+            <a
+              className="inline-flex items-center gap-1 px-3 py-2 bg-gray-100 rounded-md hover:bg-emerald-100"
+              href="https://github.com/upstash/qstash-js/tree/main/examples/nextjs"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                <path d="M9 19c-4.3 1.4 -4.3 -2.5 -6 -3m12 5v-3.5c0 -1 .1 -1.4 -.5 -2c2.8 -.3 5.5 -1.4 5.5 -6a4.6 4.6 0 0 0 -1.3 -3.2a4.2 4.2 0 0 0 -.1 -3.2s-1.1 -.3 -3.5 1.3a12.3 12.3 0 0 0 -6.2 0c-2.4 -1.6 -3.5 -1.3 -3.5 -1.3a4.2 4.2 0 0 0 -.1 3.2a4.6 4.6 0 0 0 -1.3 3.2c0 4.6 2.7 5.7 5.5 6c-.6 .6 -.6 1.2 -.5 2v3.5" />
+              </svg>
+              Repository
+            </a>
+          </div>
+        </header>
+        <div>
+          <h2 className="text-lg text-balance opacity-60 pt-6">
+            First, go to <a className='text-green-500 hover:text-green-400 transition-colors' href={requestCatcherUrl!} target='_blank'>{ requestCatcherUrl }</a> to observe the request delivered by QStash.
+          </h2>
+        </div>
+        <div>
+          <h2 className="text-lg text-balance opacity-60 pt-6">
+            Next, click the button below to make a publish request:
+          </h2>
+          <button
+            disabled={loading}
+            className={`mt-2 h-8 rounded-md bg-emerald-500 px-4 text-white transition-opacity ${loading ? 'opacity-30' : ''}`}
+            onClick={handlePublish}
+          >
+            Publish
+          </button>
+          {message && <div>
+            Something went wrong: {message}
+          </div>}
+        </div>
+        <div className="break-all bg-gray-100 rounded-md mt-6 px-3 py-2 w-[600px]">
+          <h2 className="text-lg text-balance opacity-60 pb-2">
+            Results:
+          </h2>
+          <table className="table-auto w-full border-collapse">
+            <tbody>
+              <tr>
+                <td className="font-semibold w-32">Message ID</td>
+                <td className="opacity-60">{ publish.messageId }</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  );
+}
+```
+
+## test.ts
+
+```ts
+import { Client } from "@upstash/qstash";
+
+
+const client = new Client({ token: process.env.QSTASH_TOKEN! });
+const queue = client.queue({
+  queueName: "kauflandSellerApiQueue",
+});
+await queue.enqueueJSON({
+  url: "https://testing-url-error.requestcatcher.com",
+  body: {
+    nextRefreshCycleCount: 80_000,
+  },
+  headers: { "Content-Type": "application/json" },
+});
+```
+
+## verify.test.ts
+
+```ts
+import { Client } from "@upstash/qstash";
+import { test, expect } from "bun:test";
+
+// End-to-end delivery round trip. The app publishes a message to its own
+// /roundtrip/verify endpoint (which runs verifySignatureAppRouter), QStash
+// delivers the signed request, and we poll the message logs until QStash
+// reports it as DELIVERED.
+//
+// Requires a publicly reachable deployment, so this only runs in the deployed
+// CI job.
+const deploymentURL = process.env.DEPLOYMENT_URL;
+if (!deploymentURL) {
+  throw new Error("DEPLOYMENT_URL not set");
+}
+
+const token = process.env.QSTASH_TOKEN;
+if (!token) {
+  throw new Error("QSTASH_TOKEN not set");
+}
+
+// Endpoints that verify the QStash signature. Hitting them directly (without a
+// valid Upstash-Signature header) must be rejected, never answered with 200.
+const VERIFIED_ENDPOINTS = ["/roundtrip/verify", "/serverless", "/edge"];
+
+test("verified endpoints reject unsigned requests", async () => {
+  for (const path of VERIFIED_ENDPOINTS) {
+    const res = await fetch(`${deploymentURL}${path}`, {
+      method: "POST",
+      body: JSON.stringify({ hello: "no signature" }),
+    });
+
+    // verifySignatureAppRouter returns 403 when the signature header is missing.
+    expect(res.status).not.toBe(200);
+    expect(res.status).toBe(403);
+  }
+});
+
+test(
+  "publishes to the verify endpoint and the message is delivered",
+  async () => {
+    // 1. Ask the app to publish a message to its own /roundtrip/verify endpoint.
+    const res = await fetch(`${deploymentURL}/roundtrip/publish`);
+    if (res.status !== 200) {
+      console.log(await res.text());
+    }
+    expect(res.status).toEqual(200);
+
+    const { messageId } = (await res.json()) as { messageId: string };
+    expect(messageId).toBeTruthy();
+
+    // 2. Poll the message logs until the message reaches a terminal state.
+    const client = new Client({ token });
+    const deadline = Date.now() + 60_000;
+    while (Date.now() < deadline) {
+      const { logs } = await client.logs({ messageIds: [messageId] });
+      const states = new Set(logs.map((log) => log.state));
+
+      if (states.has("DELIVERED")) {
+        return; // success: the signed message was verified and delivered
+      }
+      if (states.has("FAILED") || states.has("CANCELED")) {
+        throw new Error(
+          `message ${messageId} did not deliver: ${JSON.stringify(logs)}`
+        );
+      }
+
+      await Bun.sleep(1000);
+    }
+
+    throw new Error(`message ${messageId} was not DELIVERED within 60s`);
+  },
+  90_000
+);
+```

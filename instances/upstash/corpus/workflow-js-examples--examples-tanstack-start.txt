@@ -1,0 +1,1312 @@
+# Example: tanstack-start
+# джерело: https://github.com/upstash/workflow-js/tree/v1.4.0/examples/tanstack-start
+# отримано: 2026-10-16
+# версія: workflow-1.4.0
+
+## Upstash Workflow TanStack Start Example
+
+This is an example of how to use Upstash Workflow in a TanStack Start project. You can learn more in Getting Started with Upstash Workflow.
+
+## Workflow Routes
+
+This project includes two workflow endpoints that demonstrate different workflow patterns:
+
+### 1. Single Workflow (`/demo/api/single-workflow`)
+
+**Location**: `src/routes/demo/api/single-workflow.ts`
+
+A simple workflow that processes input through two sequential steps. Each step transforms the input and logs the results.
+
+**Features**:
+- Sequential step execution
+- Input transformation at each step
+- Console logging for debugging
+
+### 2. Multi-Workflow Handler (`/demo/api/serve-many/$workflowName`)
+
+**Location**: `src/routes/demo/api/serve-many/$workflowName.ts`
+
+A more advanced setup that hosts multiple workflows and demonstrates workflow invocation patterns.
+
+**Features**:
+- Multiple workflows in a single handler
+- Workflow-to-workflow invocation
+- Dynamic workflow selection via URL parameter
+- Custom retry configuration
+
+**Available workflows**:
+- `workflowOne`: Invokes `workflowTwo` and processes the results
+- `workflowTwo`: A standalone workflow that returns a result
+
+## Development
+
+1. Install the dependencies
+
+```bash
+npm install
+```
+
+2. Start the QStash development server:
+
+```bash
+npx @upstash/qstash-cli dev
+```
+
+3. Once you run the development server, you will see `QSTASH_URL` and `QSTASH_TOKEN` environment variables for the local development server. Add these to the `.env` file:
+
+```bash
+QSTASH_URL="***"
+QSTASH_TOKEN="***"
+```
+
+When you are deploying your app to production, you don't need to set `QSTASH_URL`. You should only set the `QSTASH_TOKEN` environment variable to the token you get from Upstash Console.
+
+4. Run your app:
+
+```bash
+npm run dev
+```
+
+The development server will start on port 3001.
+
+## Testing the Workflows
+
+### Single Workflow
+
+Send a POST request to the single workflow endpoint:
+
+```bash
+curl -X POST http://localhost:3001/demo/api/single-workflow \
+    -H "Content-Type: application/json" \
+    -d '"Hello from single workflow!"'
+```
+
+**Expected behavior**:
+1. The workflow receives the input string
+2. Step 1 processes and logs the input
+3. Step 2 processes the result from step 1 and logs it
+4. Both steps' outputs are visible in the console
+
+### Multi-Workflow Handler
+
+**Test workflowOne** (which invokes workflowTwo):
+
+```bash
+curl -X POST http://localhost:3001/demo/api/serve-many/workflowOne \
+    -H "Content-Type: application/json" \
+    -d '{"body": "Hello from workflow one!"}'
+```
+
+**Test workflowTwo** directly:
+
+```bash
+curl -X POST http://localhost:3001/demo/api/serve-many/workflowTwo \
+    -H "Content-Type: application/json" \
+    -d '"Hello from workflow two!"'
+```
+
+**Expected behavior for workflowOne**:
+1. Logs "workflow one says hi"
+2. Invokes workflowTwo with the provided input
+3. Logs the invocation results (body, cancellation, and failure status)
+4. Logs "workflow one says bye"
+
+**Expected behavior for workflowTwo**:
+1. Logs "workflow two says hi"
+2. Logs "workflow two says bye"
+3. Returns "workflow two done"
+
+## Project Structure
+
+```
+src/
+├── routes/
+│   └── demo/
+│       └── api/
+│           ├── single-workflow.ts          # Simple sequential workflow
+│           └── serve-many/
+│               └── $workflowName.ts        # Multi-workflow handler
+└── ...
+```
+
+## Notes
+
+- **Production Deployment**: Only set `QSTASH_TOKEN` in production; `QSTASH_URL` is not needed
+
+## Learn More
+
+- TanStack Start Documentation
+- Upstash Workflow Documentation
+- QStash Documentation
+- TanStack Documentation
+
+## package.json
+
+```json
+{
+  "name": "tanstack-start",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev --port 3001",
+    "build": "vite build",
+    "serve": "vite preview",
+    "test": "vitest run",
+    "lint": "eslint",
+    "format": "prettier",
+    "check": "prettier --write . && eslint --fix"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.0.6",
+    "@tanstack/react-devtools": "^0.7.0",
+    "@tanstack/react-router": "^1.132.0",
+    "@tanstack/react-router-devtools": "^1.132.0",
+    "@tanstack/react-router-ssr-query": "^1.131.7",
+    "@tanstack/react-start": "^1.132.0",
+    "@tanstack/router-plugin": "^1.132.0",
+    "@upstash/workflow": "latest",
+    "lucide-react": "^0.544.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwindcss": "^4.0.6",
+    "vite-tsconfig-paths": "^5.1.4"
+  },
+  "devDependencies": {
+    "@tanstack/eslint-config": "^0.3.0",
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/react": "^16.2.0",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "@vitejs/plugin-react": "^5.0.4",
+    "jsdom": "^27.0.0",
+    "prettier": "^3.5.3",
+    "typescript": "^5.7.2",
+    "vite": "^7.1.7",
+    "vitest": "^3.0.5",
+    "web-vitals": "^5.1.0"
+  }
+}
+```
+
+## src/components/Header.tsx
+
+```tsx
+import { Link } from '@tanstack/react-router'
+
+import { useState } from 'react'
+import {
+  ChevronDown,
+  ChevronRight,
+  Home,
+  Menu,
+  Network,
+  SquareFunction,
+  StickyNote,
+  X,
+} from 'lucide-react'
+
+export default function Header() {
+  const [isOpen, setIsOpen] = useState(false)
+  const [groupedExpanded, setGroupedExpanded] = useState<
+    Record<string, boolean>
+  >({})
+
+  return (
+    <>
+      <header className="p-4 flex items-center bg-gray-800 text-white shadow-lg">
+        <button
+          onClick={() => setIsOpen(true)}
+          className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+          aria-label="Open menu"
+        >
+          <Menu size={24} />
+        </button>
+        <h1 className="ml-4 text-xl font-semibold">
+          <Link to="/">
+            <img
+              src="/tanstack-word-logo-white.svg"
+              alt="TanStack Logo"
+              className="h-10"
+            />
+          </Link>
+        </h1>
+      </header>
+
+      <aside
+        className={`fixed top-0 left-0 h-full w-80 bg-gray-900 text-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-700">
+          <h2 className="text-xl font-bold">Navigation</h2>
+          <button
+            onClick={() => setIsOpen(false)}
+            className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+            aria-label="Close menu"
+          >
+            <X size={24} />
+          </button>
+        </div>
+
+        <nav className="flex-1 p-4 overflow-y-auto">
+          <Link
+            to="/"
+            onClick={() => setIsOpen(false)}
+            className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
+            activeProps={{
+              className:
+                'flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
+            }}
+          >
+            <Home size={20} />
+            <span className="font-medium">Home</span>
+          </Link>
+
+          {/* Demo Links Start */}
+
+          <Link
+            to="/demo/start/server-funcs"
+            onClick={() => setIsOpen(false)}
+            className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
+            activeProps={{
+              className:
+                'flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
+            }}
+          >
+            <SquareFunction size={20} />
+            <span className="font-medium">Start - Server Functions</span>
+          </Link>
+
+          <Link
+            to="/demo/start/api-request"
+            onClick={() => setIsOpen(false)}
+            className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
+            activeProps={{
+              className:
+                'flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
+            }}
+          >
+            <Network size={20} />
+            <span className="font-medium">Start - API Request</span>
+          </Link>
+
+          <div className="flex flex-row justify-between">
+            <Link
+              to="/demo/start/ssr"
+              onClick={() => setIsOpen(false)}
+              className="flex-1 flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
+              activeProps={{
+                className:
+                  'flex-1 flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
+              }}
+            >
+              <StickyNote size={20} />
+              <span className="font-medium">Start - SSR Demos</span>
+            </Link>
+            <button
+              className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+              onClick={() =>
+                setGroupedExpanded((prev) => ({
+                  ...prev,
+                  StartSSRDemo: !prev.StartSSRDemo,
+                }))
+              }
+            >
+              {groupedExpanded.StartSSRDemo ? (
+                <ChevronDown size={20} />
+              ) : (
+                <ChevronRight size={20} />
+              )}
+            </button>
+          </div>
+          {groupedExpanded.StartSSRDemo && (
+            <div className="flex flex-col ml-4">
+              <Link
+                to="/demo/start/ssr/spa-mode"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
+                activeProps={{
+                  className:
+                    'flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
+                }}
+              >
+                <StickyNote size={20} />
+                <span className="font-medium">SPA Mode</span>
+              </Link>
+
+              <Link
+                to="/demo/start/ssr/full-ssr"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
+                activeProps={{
+                  className:
+                    'flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
+                }}
+              >
+                <StickyNote size={20} />
+                <span className="font-medium">Full SSR</span>
+              </Link>
+
+              <Link
+                to="/demo/start/ssr/data-only"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
+                activeProps={{
+                  className:
+                    'flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
+                }}
+              >
+                <StickyNote size={20} />
+                <span className="font-medium">Data Only</span>
+              </Link>
+            </div>
+          )}
+
+          {/* Demo Links End */}
+        </nav>
+      </aside>
+    </>
+  )
+}
+```
+
+## src/data/demo.punk-songs.ts
+
+```ts
+import { createServerFn } from '@tanstack/react-start'
+
+export const getPunkSongs = createServerFn({
+  method: 'GET',
+}).handler(async () => [
+  { id: 1, name: 'Teenage Dirtbag', artist: 'Wheatus' },
+  { id: 2, name: 'Smells Like Teen Spirit', artist: 'Nirvana' },
+  { id: 3, name: 'The Middle', artist: 'Jimmy Eat World' },
+  { id: 4, name: 'My Own Worst Enemy', artist: 'Lit' },
+  { id: 5, name: 'Fat Lip', artist: 'Sum 41' },
+  { id: 6, name: 'All the Small Things', artist: 'blink-182' },
+  { id: 7, name: 'Beverly Hills', artist: 'Weezer' },
+])
+```
+
+## src/routeTree.gen.ts
+
+```ts
+/* eslint-disable */
+
+// @ts-nocheck
+
+// noinspection JSUnusedGlobalSymbols
+
+// This file was automatically generated by TanStack Router.
+// You should NOT make any changes in this file as it will be overwritten.
+// Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
+
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as DemoStartServerFuncsRouteImport } from './routes/demo/start.server-funcs'
+import { Route as DemoStartApiRequestRouteImport } from './routes/demo/start.api-request'
+import { Route as DemoApiSingleWorkflowRouteImport } from './routes/demo/api/single-workflow'
+import { Route as DemoApiNamesRouteImport } from './routes/demo/api.names'
+import { Route as DemoStartSsrIndexRouteImport } from './routes/demo/start.ssr.index'
+import { Route as DemoStartSsrSpaModeRouteImport } from './routes/demo/start.ssr.spa-mode'
+import { Route as DemoStartSsrFullSsrRouteImport } from './routes/demo/start.ssr.full-ssr'
+import { Route as DemoStartSsrDataOnlyRouteImport } from './routes/demo/start.ssr.data-only'
+import { Route as DemoApiServeManyWorkflowNameRouteImport } from './routes/demo/api/serve-many/$workflowName'
+
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DemoStartServerFuncsRoute = DemoStartServerFuncsRouteImport.update({
+  id: '/demo/start/server-funcs',
+  path: '/demo/start/server-funcs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DemoStartApiRequestRoute = DemoStartApiRequestRouteImport.update({
+  id: '/demo/start/api-request',
+  path: '/demo/start/api-request',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DemoApiSingleWorkflowRoute = DemoApiSingleWorkflowRouteImport.update({
+  id: '/demo/api/single-workflow',
+  path: '/demo/api/single-workflow',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DemoApiNamesRoute = DemoApiNamesRouteImport.update({
+  id: '/demo/api/names',
+  path: '/demo/api/names',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DemoStartSsrIndexRoute = DemoStartSsrIndexRouteImport.update({
+  id: '/demo/start/ssr/',
+  path: '/demo/start/ssr/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DemoStartSsrSpaModeRoute = DemoStartSsrSpaModeRouteImport.update({
+  id: '/demo/start/ssr/spa-mode',
+  path: '/demo/start/ssr/spa-mode',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DemoStartSsrFullSsrRoute = DemoStartSsrFullSsrRouteImport.update({
+  id: '/demo/start/ssr/full-ssr',
+  path: '/demo/start/ssr/full-ssr',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DemoStartSsrDataOnlyRoute = DemoStartSsrDataOnlyRouteImport.update({
+  id: '/demo/start/ssr/data-only',
+  path: '/demo/start/ssr/data-only',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DemoApiServeManyWorkflowNameRoute =
+  DemoApiServeManyWorkflowNameRouteImport.update({
+    id: '/demo/api/serve-many/$workflowName',
+    path: '/demo/api/serve-many/$workflowName',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+
+export interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
+  '/demo/api/names': typeof DemoApiNamesRoute
+  '/demo/api/single-workflow': typeof DemoApiSingleWorkflowRoute
+  '/demo/start/api-request': typeof DemoStartApiRequestRoute
+  '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
+  '/demo/api/serve-many/$workflowName': typeof DemoApiServeManyWorkflowNameRoute
+  '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
+  '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
+  '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
+  '/demo/start/ssr': typeof DemoStartSsrIndexRoute
+}
+export interface FileRoutesByTo {
+  '/': typeof IndexRoute
+  '/demo/api/names': typeof DemoApiNamesRoute
+  '/demo/api/single-workflow': typeof DemoApiSingleWorkflowRoute
+  '/demo/start/api-request': typeof DemoStartApiRequestRoute
+  '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
+  '/demo/api/serve-many/$workflowName': typeof DemoApiServeManyWorkflowNameRoute
+  '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
+  '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
+  '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
+  '/demo/start/ssr': typeof DemoStartSsrIndexRoute
+}
+export interface FileRoutesById {
+  __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/demo/api/names': typeof DemoApiNamesRoute
+  '/demo/api/single-workflow': typeof DemoApiSingleWorkflowRoute
+  '/demo/start/api-request': typeof DemoStartApiRequestRoute
+  '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
+  '/demo/api/serve-many/$workflowName': typeof DemoApiServeManyWorkflowNameRoute
+  '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
+  '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
+  '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
+  '/demo/start/ssr/': typeof DemoStartSsrIndexRoute
+}
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | '/demo/api/names'
+    | '/demo/api/single-workflow'
+    | '/demo/start/api-request'
+    | '/demo/start/server-funcs'
+    | '/demo/api/serve-many/$workflowName'
+    | '/demo/start/ssr/data-only'
+    | '/demo/start/ssr/full-ssr'
+    | '/demo/start/ssr/spa-mode'
+    | '/demo/start/ssr'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | '/demo/api/names'
+    | '/demo/api/single-workflow'
+    | '/demo/start/api-request'
+    | '/demo/start/server-funcs'
+    | '/demo/api/serve-many/$workflowName'
+    | '/demo/start/ssr/data-only'
+    | '/demo/start/ssr/full-ssr'
+    | '/demo/start/ssr/spa-mode'
+    | '/demo/start/ssr'
+  id:
+    | '__root__'
+    | '/'
+    | '/demo/api/names'
+    | '/demo/api/single-workflow'
+    | '/demo/start/api-request'
+    | '/demo/start/server-funcs'
+    | '/demo/api/serve-many/$workflowName'
+    | '/demo/start/ssr/data-only'
+    | '/demo/start/ssr/full-ssr'
+    | '/demo/start/ssr/spa-mode'
+    | '/demo/start/ssr/'
+  fileRoutesById: FileRoutesById
+}
+export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
+  DemoApiNamesRoute: typeof DemoApiNamesRoute
+  DemoApiSingleWorkflowRoute: typeof DemoApiSingleWorkflowRoute
+  DemoStartApiRequestRoute: typeof DemoStartApiRequestRoute
+  DemoStartServerFuncsRoute: typeof DemoStartServerFuncsRoute
+  DemoApiServeManyWorkflowNameRoute: typeof DemoApiServeManyWorkflowNameRoute
+  DemoStartSsrDataOnlyRoute: typeof DemoStartSsrDataOnlyRoute
+  DemoStartSsrFullSsrRoute: typeof DemoStartSsrFullSsrRoute
+  DemoStartSsrSpaModeRoute: typeof DemoStartSsrSpaModeRoute
+  DemoStartSsrIndexRoute: typeof DemoStartSsrIndexRoute
+}
+
+declare module '@tanstack/react-router' {
+  interface FileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo/start/server-funcs': {
+      id: '/demo/start/server-funcs'
+      path: '/demo/start/server-funcs'
+      fullPath: '/demo/start/server-funcs'
+      preLoaderRoute: typeof DemoStartServerFuncsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo/start/api-request': {
+      id: '/demo/start/api-request'
+      path: '/demo/start/api-request'
+      fullPath: '/demo/start/api-request'
+      preLoaderRoute: typeof DemoStartApiRequestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo/api/single-workflow': {
+      id: '/demo/api/single-workflow'
+      path: '/demo/api/single-workflow'
+      fullPath: '/demo/api/single-workflow'
+      preLoaderRoute: typeof DemoApiSingleWorkflowRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo/api/names': {
+      id: '/demo/api/names'
+      path: '/demo/api/names'
+      fullPath: '/demo/api/names'
+      preLoaderRoute: typeof DemoApiNamesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo/start/ssr/': {
+      id: '/demo/start/ssr/'
+      path: '/demo/start/ssr'
+      fullPath: '/demo/start/ssr'
+      preLoaderRoute: typeof DemoStartSsrIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo/start/ssr/spa-mode': {
+      id: '/demo/start/ssr/spa-mode'
+      path: '/demo/start/ssr/spa-mode'
+      fullPath: '/demo/start/ssr/spa-mode'
+      preLoaderRoute: typeof DemoStartSsrSpaModeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo/start/ssr/full-ssr': {
+      id: '/demo/start/ssr/full-ssr'
+      path: '/demo/start/ssr/full-ssr'
+      fullPath: '/demo/start/ssr/full-ssr'
+      preLoaderRoute: typeof DemoStartSsrFullSsrRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo/start/ssr/data-only': {
+      id: '/demo/start/ssr/data-only'
+      path: '/demo/start/ssr/data-only'
+      fullPath: '/demo/start/ssr/data-only'
+      preLoaderRoute: typeof DemoStartSsrDataOnlyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo/api/serve-many/$workflowName': {
+      id: '/demo/api/serve-many/$workflowName'
+      path: '/demo/api/serve-many/$workflowName'
+      fullPath: '/demo/api/serve-many/$workflowName'
+      preLoaderRoute: typeof DemoApiServeManyWorkflowNameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+  }
+}
+
+const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
+  DemoApiNamesRoute: DemoApiNamesRoute,
+  DemoApiSingleWorkflowRoute: DemoApiSingleWorkflowRoute,
+  DemoStartApiRequestRoute: DemoStartApiRequestRoute,
+  DemoStartServerFuncsRoute: DemoStartServerFuncsRoute,
+  DemoApiServeManyWorkflowNameRoute: DemoApiServeManyWorkflowNameRoute,
+  DemoStartSsrDataOnlyRoute: DemoStartSsrDataOnlyRoute,
+  DemoStartSsrFullSsrRoute: DemoStartSsrFullSsrRoute,
+  DemoStartSsrSpaModeRoute: DemoStartSsrSpaModeRoute,
+  DemoStartSsrIndexRoute: DemoStartSsrIndexRoute,
+}
+export const routeTree = rootRouteImport
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
+```
+
+## src/router.tsx
+
+```tsx
+import { createRouter } from '@tanstack/react-router'
+
+// Import the generated route tree
+import { routeTree } from './routeTree.gen'
+
+// Create a new router instance
+export const getRouter = () => {
+  return createRouter({
+    routeTree,
+    scrollRestoration: true,
+    defaultPreloadStaleTime: 0,
+  })
+}
+```
+
+## src/routes/__root.tsx
+
+```tsx
+import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
+import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
+import { TanStackDevtools } from '@tanstack/react-devtools'
+
+import Header from '../components/Header'
+
+import appCss from '../styles.css?url'
+
+export const Route = createRootRoute({
+  head: () => ({
+    meta: [
+      {
+        charSet: 'utf-8',
+      },
+      {
+        name: 'viewport',
+        content: 'width=device-width, initial-scale=1',
+      },
+      {
+        title: 'TanStack Start Starter',
+      },
+    ],
+    links: [
+      {
+        rel: 'stylesheet',
+        href: appCss,
+      },
+    ],
+  }),
+
+  shellComponent: RootDocument,
+})
+
+function RootDocument({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        <Header />
+        {children}
+        <TanStackDevtools
+          config={{
+            position: 'bottom-right',
+          }}
+          plugins={[
+            {
+              name: 'Tanstack Router',
+              render: <TanStackRouterDevtoolsPanel />,
+            },
+          ]}
+        />
+        <Scripts />
+      </body>
+    </html>
+  )
+}
+```
+
+## src/routes/demo/api.names.ts
+
+```ts
+import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/demo/api/names')({
+  server: {
+    handlers: {
+      GET: () => {
+        return new Response(JSON.stringify(['Alice', 'Bob', 'Charlie']), {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+      },
+    },
+  },
+})
+```
+
+## src/routes/demo/api/serve-many/$workflowName.ts
+
+```ts
+// src/routes/demo/api/serve-many/$workflowName.ts
+import { createFileRoute } from '@tanstack/react-router'
+import { createWorkflow, serveMany } from "@upstash/workflow/nextjs"
+import type { WorkflowContext } from "@upstash/workflow"
+
+const workflowOne = createWorkflow(async (context) => {
+  await context.run("step 1", () => {
+    console.log("workflow one says hi")
+  })
+
+  const { body, isCanceled, isFailed } = await context.invoke("invoking other", {
+    workflow: workflowTwo,
+    body: "hello from workflow one",
+  })
+
+  await context.run("checking invoke results", () => {
+    console.log("invoke results", { body, isCanceled, isFailed })
+  })
+
+  await context.run("step 2", () => {
+    console.log("workflow one says bye")
+  })
+})
+
+const workflowTwo = createWorkflow(async (context: WorkflowContext<string>) => {
+  await context.run("step 1", () => {
+    console.log("workflow two says hi")
+  })
+
+  await context.run("step 2", () => {
+    console.log("workflow two says bye")
+  })
+
+  return "workflow two done"
+}, {
+  retries: 0
+})
+
+const { POST: serveManyHandler } = serveMany({
+  workflowOne,
+  workflowTwo,
+})
+
+export const Route = createFileRoute('/demo/api/serve-many/$workflowName')({
+  server: {
+    handlers: {
+      POST: async (ctx) => {
+        return serveManyHandler(ctx.request)
+      },
+    },
+  },
+})
+```
+
+## src/routes/demo/api/single-workflow.ts
+
+```ts
+import { createFileRoute } from '@tanstack/react-router'
+import { serve } from '@upstash/workflow/tanstack'
+
+const someWork = (input: string) => {
+  return `processed '${JSON.stringify(input)}'`
+}
+
+export const Route = createFileRoute('/demo/api/single-workflow')({
+  server: {
+    handlers: serve<string>(async (context) => {
+      const input = context.requestPayload
+      const result1 = await context.run('step1', () => {
+        const output = someWork(input)
+        console.log('step 1 input', input, 'output', output)
+        return output
+      })
+
+      await context.run('step2', () => {
+        const output = someWork(result1)
+        console.log('step 2 input', result1, 'output', output)
+      })
+    }),
+  },
+})
+```
+
+## src/routes/demo/start.api-request.tsx
+
+```tsx
+import { useEffect, useState } from 'react'
+
+import { createFileRoute } from '@tanstack/react-router'
+
+function getNames() {
+  return fetch('/demo/api/names').then((res) => res.json())
+}
+
+export const Route = createFileRoute('/demo/start/api-request')({
+  component: Home,
+})
+
+function Home() {
+  const [names, setNames] = useState<Array<string>>([])
+
+  useEffect(() => {
+    getNames().then(setNames)
+  }, [])
+
+  return (
+    <div
+      className="flex items-center justify-center min-h-screen p-4 text-white"
+      style={{
+        backgroundColor: '#000',
+        backgroundImage:
+          'radial-gradient(ellipse 60% 60% at 0% 100%, #444 0%, #222 60%, #000 100%)',
+      }}
+    >
+      <div className="w-full max-w-2xl p-8 rounded-xl backdrop-blur-md bg-black/50 shadow-xl border-8 border-black/10">
+        <h1 className="text-2xl mb-4">Start API Request Demo - Names List</h1>
+        <ul className="mb-4 space-y-2">
+          {names.map((name) => (
+            <li
+              key={name}
+              className="bg-white/10 border border-white/20 rounded-lg p-3 backdrop-blur-sm shadow-md"
+            >
+              <span className="text-lg text-white">{name}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  )
+}
+```
+
+## src/routes/demo/start.server-funcs.tsx
+
+```tsx
+import fs from 'node:fs'
+import { useCallback, useState } from 'react'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
+
+const filePath = 'todos.json'
+
+async function readTodos() {
+  return JSON.parse(
+    await fs.promises.readFile(filePath, 'utf-8').catch(() =>
+      JSON.stringify(
+        [
+          { id: 1, name: 'Get groceries' },
+          { id: 2, name: 'Buy a new phone' },
+        ],
+        null,
+        2,
+      ),
+    ),
+  )
+}
+
+const getTodos = createServerFn({
+  method: 'GET',
+}).handler(async () => await readTodos())
+
+const addTodo = createServerFn({ method: 'POST' })
+  .inputValidator((d: string) => d)
+  .handler(async ({ data }) => {
+    const todos = await readTodos()
+    todos.push({ id: todos.length + 1, name: data })
+    await fs.promises.writeFile(filePath, JSON.stringify(todos, null, 2))
+    return todos
+  })
+
+export const Route = createFileRoute('/demo/start/server-funcs')({
+  component: Home,
+  loader: async () => await getTodos(),
+})
+
+function Home() {
+  const router = useRouter()
+  let todos = Route.useLoaderData()
+
+  const [todo, setTodo] = useState('')
+
+  const submitTodo = useCallback(async () => {
+    todos = await addTodo({ data: todo })
+    setTodo('')
+    router.invalidate()
+  }, [addTodo, todo])
+
+  return (
+    <div
+      className="flex items-center justify-center min-h-screen bg-gradient-to-br from-zinc-800 to-black p-4 text-white"
+      style={{
+        backgroundImage:
+          'radial-gradient(50% 50% at 20% 60%, #23272a 0%, #18181b 50%, #000000 100%)',
+      }}
+    >
+      <div className="w-full max-w-2xl p-8 rounded-xl backdrop-blur-md bg-black/50 shadow-xl border-8 border-black/10">
+        <h1 className="text-2xl mb-4">Start Server Functions - Todo Example</h1>
+        <ul className="mb-4 space-y-2">
+          {todos?.map((t) => (
+            <li
+              key={t.id}
+              className="bg-white/10 border border-white/20 rounded-lg p-3 backdrop-blur-sm shadow-md"
+            >
+              <span className="text-lg text-white">{t.name}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="flex flex-col gap-2">
+          <input
+            type="text"
+            value={todo}
+            onChange={(e) => setTodo(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                submitTodo()
+              }
+            }}
+            placeholder="Enter a new todo..."
+            className="w-full px-4 py-3 rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+          />
+          <button
+            disabled={todo.trim().length === 0}
+            onClick={submitTodo}
+            className="bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-lg transition-colors"
+          >
+            Add todo
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+```
+
+## src/routes/demo/start.ssr.data-only.tsx
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { getPunkSongs } from '@/data/demo.punk-songs'
+
+export const Route = createFileRoute('/demo/start/ssr/data-only')({
+  ssr: 'data-only',
+  component: RouteComponent,
+  loader: async () => await getPunkSongs(),
+})
+
+function RouteComponent() {
+  const punkSongs = Route.useLoaderData()
+
+  return (
+    <div
+      className="flex items-center justify-center min-h-screen bg-gradient-to-br from-zinc-800 to-black p-4 text-white"
+      style={{
+        backgroundImage:
+          'radial-gradient(50% 50% at 20% 60%, #1a1a1a 0%, #0a0a0a 50%, #000000 100%)',
+      }}
+    >
+      <div className="w-full max-w-2xl p-8 rounded-xl backdrop-blur-md bg-black/50 shadow-xl border-8 border-black/10">
+        <h1 className="text-3xl font-bold mb-6 text-pink-400">
+          Data Only SSR - Punk Songs
+        </h1>
+        <ul className="space-y-3">
+          {punkSongs.map((song) => (
+            <li
+              key={song.id}
+              className="bg-white/10 border border-white/20 rounded-lg p-4 backdrop-blur-sm shadow-md"
+            >
+              <span className="text-lg text-white font-medium">
+                {song.name}
+              </span>
+              <span className="text-white/60"> - {song.artist}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  )
+}
+```
+
+## src/routes/demo/start.ssr.full-ssr.tsx
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { getPunkSongs } from '@/data/demo.punk-songs'
+
+export const Route = createFileRoute('/demo/start/ssr/full-ssr')({
+  component: RouteComponent,
+  loader: async () => await getPunkSongs(),
+})
+
+function RouteComponent() {
+  const punkSongs = Route.useLoaderData()
+
+  return (
+    <div
+      className="flex items-center justify-center min-h-screen bg-gradient-to-br from-zinc-800 to-black p-4 text-white"
+      style={{
+        backgroundImage:
+          'radial-gradient(50% 50% at 20% 60%, #1a1a1a 0%, #0a0a0a 50%, #000000 100%)',
+      }}
+    >
+      <div className="w-full max-w-2xl p-8 rounded-xl backdrop-blur-md bg-black/50 shadow-xl border-8 border-black/10">
+        <h1 className="text-3xl font-bold mb-6 text-purple-400">
+          Full SSR - Punk Songs
+        </h1>
+        <ul className="space-y-3">
+          {punkSongs.map((song) => (
+            <li
+              key={song.id}
+              className="bg-white/10 border border-white/20 rounded-lg p-4 backdrop-blur-sm shadow-md"
+            >
+              <span className="text-lg text-white font-medium">
+                {song.name}
+              </span>
+              <span className="text-white/60"> - {song.artist}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  )
+}
+```
+
+## src/routes/demo/start.ssr.index.tsx
+
+```tsx
+import { createFileRoute, Link } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/demo/start/ssr/')({
+  component: RouteComponent,
+})
+
+function RouteComponent() {
+  return (
+    <div
+      className="flex items-center justify-center min-h-screen bg-gradient-to-br from-zinc-900 to-black p-4 text-white"
+      style={{
+        backgroundImage:
+          'radial-gradient(50% 50% at 20% 60%, #1a1a1a 0%, #0a0a0a 50%, #000000 100%)',
+      }}
+    >
+      <div className="w-full max-w-2xl p-8 rounded-xl backdrop-blur-md bg-black/50 shadow-xl border-8 border-black/10">
+        <h1 className="text-4xl font-bold mb-8 text-center bg-gradient-to-r from-pink-500 via-purple-500 to-green-400 bg-clip-text text-transparent">
+          SSR Demos
+        </h1>
+        <div className="flex flex-col gap-4">
+          <Link
+            to="/demo/start/ssr/spa-mode"
+            className="text-2xl font-bold py-6 px-8 rounded-lg bg-gradient-to-r from-pink-600 to-pink-500 hover:from-pink-700 hover:to-pink-600 text-white text-center shadow-lg transform transition-all hover:scale-105 hover:shadow-pink-500/50 border-2 border-pink-400"
+          >
+            SPA Mode
+          </Link>
+          <Link
+            to="/demo/start/ssr/full-ssr"
+            className="text-2xl font-bold py-6 px-8 rounded-lg bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white text-center shadow-lg transform transition-all hover:scale-105 hover:shadow-purple-500/50 border-2 border-purple-400"
+          >
+            Full SSR
+          </Link>
+          <Link
+            to="/demo/start/ssr/data-only"
+            className="text-2xl font-bold py-6 px-8 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white text-center shadow-lg transform transition-all hover:scale-105 hover:shadow-green-500/50 border-2 border-green-400"
+          >
+            Data Only
+          </Link>
+        </div>
+      </div>
+    </div>
+  )
+}
+```
+
+## src/routes/demo/start.ssr.spa-mode.tsx
+
+```tsx
+import { useEffect, useState } from 'react'
+import { createFileRoute } from '@tanstack/react-router'
+import { getPunkSongs } from '@/data/demo.punk-songs'
+
+export const Route = createFileRoute('/demo/start/ssr/spa-mode')({
+  ssr: false,
+  component: RouteComponent,
+})
+
+function RouteComponent() {
+  const [punkSongs, setPunkSongs] = useState<
+    Awaited<ReturnType<typeof getPunkSongs>>
+  >([])
+
+  useEffect(() => {
+    getPunkSongs().then(setPunkSongs)
+  }, [])
+
+  return (
+    <div
+      className="flex items-center justify-center min-h-screen bg-gradient-to-br from-zinc-800 to-black p-4 text-white"
+      style={{
+        backgroundImage:
+          'radial-gradient(50% 50% at 20% 60%, #1a1a1a 0%, #0a0a0a 50%, #000000 100%)',
+      }}
+    >
+      <div className="w-full max-w-2xl p-8 rounded-xl backdrop-blur-md bg-black/50 shadow-xl border-8 border-black/10">
+        <h1 className="text-3xl font-bold mb-6 text-green-400">
+          SPA Mode - Punk Songs
+        </h1>
+        <ul className="space-y-3">
+          {punkSongs.map((song) => (
+            <li
+              key={song.id}
+              className="bg-white/10 border border-white/20 rounded-lg p-4 backdrop-blur-sm shadow-md"
+            >
+              <span className="text-lg text-white font-medium">
+                {song.name}
+              </span>
+              <span className="text-white/60"> - {song.artist}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  )
+}
+```
+
+## src/routes/index.tsx
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+
+import {
+  Zap,
+  Server,
+  Route as RouteIcon,
+  Shield,
+  Waves,
+  Sparkles,
+} from 'lucide-react'
+
+export const Route = createFileRoute('/')({
+  component: App,
+})
+
+function App() {
+  const features = [
+    {
+      icon: <Zap className="w-12 h-12 text-cyan-400" />,
+      title: 'Powerful Server Functions',
+      description:
+        'Write server-side code that seamlessly integrates with your client components. Type-safe, secure, and simple.',
+    },
+    {
+      icon: <Server className="w-12 h-12 text-cyan-400" />,
+      title: 'Flexible Server Side Rendering',
+      description:
+        'Full-document SSR, streaming, and progressive enhancement out of the box. Control exactly what renders where.',
+    },
+    {
+      icon: <RouteIcon className="w-12 h-12 text-cyan-400" />,
+      title: 'API Routes',
+      description:
+        'Build type-safe API endpoints alongside your application. No separate backend needed.',
+    },
+    {
+      icon: <Shield className="w-12 h-12 text-cyan-400" />,
+      title: 'Strongly Typed Everything',
+      description:
+        'End-to-end type safety from server to client. Catch errors before they reach production.',
+    },
+    {
+      icon: <Waves className="w-12 h-12 text-cyan-400" />,
+      title: 'Full Streaming Support',
+      description:
+        'Stream data from server to client progressively. Perfect for AI applications and real-time updates.',
+    },
+    {
+      icon: <Sparkles className="w-12 h-12 text-cyan-400" />,
+      title: 'Next Generation Ready',
+      description:
+        'Built from the ground up for modern web applications. Deploy anywhere JavaScript runs.',
+    },
+  ]
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
+      <section className="relative py-20 px-6 text-center overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-purple-500/10"></div>
+        <div className="relative max-w-5xl mx-auto">
+          <div className="flex items-center justify-center gap-6 mb-6">
+            <img
+              src="/tanstack-circle-logo.png"
+              alt="TanStack Logo"
+              className="w-24 h-24 md:w-32 md:h-32"
+            />
+            <h1 className="text-6xl md:text-7xl font-bold text-white">
+              <span className="text-gray-300">TANSTACK</span>{' '}
+              <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+                START
+              </span>
+            </h1>
+          </div>
+          <p className="text-2xl md:text-3xl text-gray-300 mb-4 font-light">
+            The framework for next generation AI applications
+          </p>
+          <p className="text-lg text-gray-400 max-w-3xl mx-auto mb-8">
+            Full-stack framework powered by TanStack Router for React and Solid.
+            Build modern applications with server functions, streaming, and type
+            safety.
+          </p>
+          <div className="flex flex-col items-center gap-4">
+            <a
+              href="https://tanstack.com/start"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-8 py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-semibold rounded-lg transition-colors shadow-lg shadow-cyan-500/50"
+            >
+              Documentation
+            </a>
+            <p className="text-gray-400 text-sm mt-2">
+              Begin your TanStack Start journey by editing{' '}
+              <code className="px-2 py-1 bg-slate-700 rounded text-cyan-400">
+                /src/routes/index.tsx
+              </code>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-16 px-6 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {features.map((feature, index) => (
+            <div
+              key={index}
+              className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 hover:border-cyan-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10"
+            >
+              <div className="mb-4">{feature.icon}</div>
+              <h3 className="text-xl font-semibold text-white mb-3">
+                {feature.title}
+              </h3>
+              <p className="text-gray-400 leading-relaxed">
+                {feature.description}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  )
+}
+```

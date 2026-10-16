@@ -1,0 +1,60 @@
+# Example: aws-lambda
+# джерело: https://github.com/upstash/qstash-js/tree/v2.12.0/examples/aws-lambda
+# отримано: 2026-10-16
+# версія: qstash-2.12.0
+
+## index.ts
+
+```ts
+import type { APIGatewayEvent, APIGatewayProxyResult, Context } from "aws-lambda";
+
+import { Receiver } from "@upstash/qstash";
+const receiver = new Receiver({
+  currentSigningKey: process.env["QSTASH_CURRENT_SIGNING_KEY"]!,
+  nextSigningKey: process.env["QSTASH_Next_SIGNING_KEY"]!,
+});
+
+export const handler = async (
+  event: APIGatewayEvent,
+  _context: Context,
+): Promise<APIGatewayProxyResult> => {
+  const isValid = await receiver.verify({
+    signature: event.headers["upstash-signature"]!,
+    body: event.body!,
+    url: `https://${event.requestContext.domainName}`,
+  });
+
+  console.log({ isValid });
+  // Add your business logic here
+
+  return {
+    statusCode: 200,
+    body: "OK",
+  };
+};
+```
+
+## package.json
+
+```json
+{
+  "name": "aws-lambda",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "rm -rf dist && esbuild index.ts --bundle --minify --sourcemap --platform=node --target=es2020 --outfile=dist/index.js",
+    "push": "cd dist && zip -r index.zip index.js* && aws lambda update-function-code --function-name sdks-qstash-quickstart-typescript --zip-file fileb://index.zip"
+  },
+  "keywords": [],
+  "author": "Andreas Thomas",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.119",
+    "@types/node": "^20.5.7",
+    "esbuild": "^0.19.2"
+  },
+  "dependencies": {
+    "@upstash/qstash": "latest"
+  }
+}
+```

@@ -1,0 +1,157 @@
+# context7: packages/mcp/test/stdio-shutdown.test.ts
+# джерело: https://github.com/upstash/context7/blob/ctx7@0.6.1/packages/mcp/test/stdio-shutdown.test.ts
+# отримано: 2026-10-16
+# версія: ctx7-0.6.1, ctx7-0.5.16, context7-tools-ai-sdk-1.0.3, context7-sdk-0.5.1, context7-pi-0.1.3, context7-opencode-0.2.1, context7-mcp-4.4.2, context7-mcp-4.3.0, context7-mcp-4.2.1, context7-mcp-4.1.3
+
+```ts
+import { EventEmitter } from "node:events";
+import { describe, expect, test } from "vitest";
+import type { StdioServerHandle } from "@modelcontextprotocol/server/stdio";
+import { installProcessShutdown } from "../src/lib/process-shutdown.js";
+```
+
+## function eventually
+
+```ts
+async function eventually(assertion: () => void): Promise<void> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    try {
+      assertion();
+      return;
+    } catch (error) {
+      lastError = error;
+      await new Promise<void>((resolve) => setTimeout(resolve, 1));
+    }
+  }
+  throw lastError;
+}
+```
+
+## process shutdown
+
+```ts
+describe("process shutdown", () => {
+```
+
+### closes and flushes once across SIGTERM and overlapping termination events
+
+```ts
+  test("closes and flushes once across SIGTERM and overlapping termination events", async () => {
+    const events: string[] = [];
+    const input = new EventEmitter();
+    const signals = new EventEmitter();
+    const handle: StdioServerHandle = {
+      close: async () => {
+        events.push("close");
+      },
+    };
+
+    installProcessShutdown(handle, {
+      exit: (code) => events.push(`exit:${code}`),
+      flush: async () => {
+        events.push("flush");
+      },
+      input,
+      signals,
+    });
+    signals.emit("SIGTERM");
+    signals.emit("SIGINT");
+    signals.emit("SIGHUP");
+    input.emit("end");
+    input.emit("close");
+
+    await eventually(() => expect(events).toEqual(["close", "flush", "exit:0"]));
+  });
+```
+
+### flushes recorded terminal metrics and exits nonzero when close rejects
+
+```ts
+  test("flushes recorded terminal metrics and exits nonzero when close rejects", async () => {
+    const failure = new Error("close failed");
+    const errors: unknown[] = [];
+    const events: string[] = [];
+    const input = new EventEmitter();
+    const signals = new EventEmitter();
+
+    installProcessShutdown(
+      {
+        close: async () => {
+          events.push("close");
+          throw failure;
+        },
+      },
+      {
+        exit: (code) => events.push(`exit:${code}`),
+        flush: async () => {
+          events.push("flush");
+        },
+        input,
+        onerror: (error) => errors.push(error),
+        signals,
+      }
+    );
+    signals.emit("SIGINT");
+
+    await eventually(() => expect(events).toEqual(["close", "flush", "exit:1"]));
+    expect(errors).toEqual([failure]);
+  });
+```
+
+### exits after the deadline when an external metrics flush never settles
+
+```ts
+  test("exits after the deadline when an external metrics flush never settles", async () => {
+    const errors: unknown[] = [];
+    const exits: number[] = [];
+    const input = new EventEmitter();
+    const signals = new EventEmitter();
+
+    installProcessShutdown(
+      { close: async () => undefined },
+      {
+        exit: (code) => exits.push(code),
+        flush: () => new Promise<void>(() => undefined),
+        flushTimeoutMs: 10,
+        input,
+        onerror: (error) => errors.push(error),
+        signals,
+      }
+    );
+    input.emit("end");
+
+    await eventually(() => expect(exits).toEqual([0]));
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatchObject({ message: "OpenTelemetry flush exceeded 10ms" });
+  });
+```
+
+### flushes and exits nonzero after the deadline when close never settles
+
+```ts
+  test("flushes and exits nonzero after the deadline when close never settles", async () => {
+    const errors: unknown[] = [];
+    const events: string[] = [];
+    const signals = new EventEmitter();
+
+    installProcessShutdown(
+      { close: () => new Promise<void>(() => undefined) },
+      {
+        closeTimeoutMs: 10,
+        exit: (code) => events.push(`exit:${code}`),
+        flush: async () => {
+          events.push("flush");
+        },
+        onerror: (error) => errors.push(error),
+        signals,
+      }
+    );
+    signals.emit("SIGTERM");
+
+    await eventually(() => expect(events).toEqual(["flush", "exit:1"]));
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatchObject({ message: "Server close exceeded 10ms" });
+  });
+});
+```

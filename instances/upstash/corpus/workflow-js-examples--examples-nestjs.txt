@@ -1,0 +1,277 @@
+# Example: nestjs
+# джерело: https://github.com/upstash/workflow-js/tree/v1.4.0/examples/nestjs
+# отримано: 2026-10-16
+# версія: workflow-1.4.0
+
+## Upstash Workflow Nestjs Example
+
+This is an example of how to use Upstash Workflow in a Nestjs project. You can learn more in Getting Started with Upstash Workflow.
+
+## Development
+
+1. Install the dependencies
+
+```bash
+npm install
+```
+
+2. Start the QStash development server:
+
+```bash
+npx @upstash/qstash-cli dev
+```
+
+3. Once you run the development server, you will see `QSTASH_URL` and `QSTASH_TOKEN` environment variables for the local development server. Add these to the `.env` file:
+
+```bash
+QSTASH_URL="***"
+QSTASH_TOKEN="***"
+```
+
+When you are deploying your app to production, you don't need to set `QSTASH_URL`. You should only set the `QSTASH_TOKEN` environment variable to the token you get from Upstash Console.
+
+4. Run your app:
+
+```bash
+npm run start
+```
+
+5. Send a `POST` request to the `/workflow` endpoint.
+
+**NOTE**: Workflow on Nestjs only works with `Content-Type: application/json` header.
+
+```bash
+curl -X POST http://localhost:3001/workflow \
+    -H "Content-Type: application/json" \
+    -d '{"message": "Hello from the workflow!"}'
+```
+
+## app.module.ts
+
+```ts
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+
+@Module({
+  imports: [ConfigModule.forRoot()],
+})
+export class AppModule {}
+```
+
+## package.json
+
+```json
+{
+  "name": "nestjs",
+  "version": "0.0.1",
+  "description": "",
+  "author": "",
+  "private": true,
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "nest build",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "start:debug": "nest start --debug --watch",
+    "start:prod": "node dist/main",
+    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage",
+    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
+    "test:e2e": "jest --config ./test/jest-e2e.json"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.1",
+    "@nestjs/config": "^4.0.2",
+    "@nestjs/core": "^11.0.1",
+    "@nestjs/platform-express": "^11.0.1",
+    "@types/express-serve-static-core": "5.1.0",
+    "@upstash/qstash": "^2.8.1",
+    "@upstash/workflow": "file:../../dist",
+    "express": "^5.1.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.2.0",
+    "@eslint/js": "^9.18.0",
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/schematics": "^11.0.0",
+    "@nestjs/testing": "^11.0.1",
+    "@swc/cli": "^0.6.0",
+    "@swc/core": "^1.10.7",
+    "@types/express": "5.0.3",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.10.7",
+    "@types/supertest": "^6.0.2",
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^10.0.1",
+    "eslint-plugin-prettier": "^5.2.2",
+    "globals": "^16.0.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.4.2",
+    "source-map-support": "^0.5.21",
+    "supertest": "^7.0.0",
+    "ts-jest": "^29.2.5",
+    "ts-loader": "^9.5.2",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.20.0"
+  },
+  "jest": {
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts"
+    ],
+    "rootDir": "src",
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "collectCoverageFrom": [
+      "**/*.(t|j)s"
+    ],
+    "coverageDirectory": "../coverage",
+    "testEnvironment": "node"
+  }
+}
+```
+
+## src/app.controller.ts
+
+```ts
+import { Controller, Get, Post, Req, Res, Next } from '@nestjs/common';
+import { AppService } from './app.service';
+import { serve } from '@upstash/workflow/express';
+import { Request, Response, NextFunction } from 'express';
+import { ConfigService } from '@nestjs/config';
+import { Client } from '@upstash/qstash';
+
+const someWork = (input: string) => {
+  return `processed '${JSON.stringify(input)}'`;
+};
+
+@Controller()
+export class AppController {
+  private qstashClient: Client;
+
+  constructor(
+    private readonly appService: AppService,
+    private configService: ConfigService,
+  ) {
+    const qstashUrl = this.configService.get<string>('QSTASH_URL');
+    const qstashToken = this.configService.get<string>('QSTASH_TOKEN');
+    this.qstashClient = new Client({
+      baseUrl: qstashUrl,
+      token: qstashToken,
+    });
+  }
+
+  @Get()
+  getHello(): string {
+    return this.configService.get<string>('QSTASH_URL') || 'missing';
+  }
+
+  @Post('workflow')
+  async upstashWorkflow(
+    @Req() req: Request,
+    @Res() res: Response,
+    @Next() next: NextFunction,
+  ) {
+    return serve<{ message: string }>(
+      async (context) => {
+        const input = context.requestPayload.message;
+        const result1 = await context.run('step1', () => {
+          const output = someWork(input);
+          console.log('step 1 input', input, 'output', output);
+          return output;
+        });
+
+        await context.run('step2', () => {
+          const output = someWork(result1);
+          console.log('step 2 input', result1, 'output', output);
+        });
+      },
+      {
+        qstashClient: this.qstashClient,
+      },
+    )(req, res, next);
+  }
+}
+```
+
+## src/app.module.ts
+
+```ts
+import { Module } from '@nestjs/common';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { ConfigModule } from '@nestjs/config';
+
+@Module({
+  imports: [ConfigModule.forRoot()],
+  controllers: [AppController],
+  providers: [AppService],
+})
+export class AppModule {}
+```
+
+## src/app.service.ts
+
+```ts
+import { Injectable } from '@nestjs/common';
+
+@Injectable()
+export class AppService {
+  getHello(): string {
+    return 'Hello World!';
+  }
+}
+```
+
+## src/main.ts
+
+```ts
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+  await app.listen(process.env.PORT ?? 3001);
+}
+bootstrap();
+```
+
+## test/app.e2e-spec.ts
+
+```ts
+import { Test, TestingModule } from '@nestjs/testing';
+import { INestApplication } from '@nestjs/common';
+import * as request from 'supertest';
+import { App } from 'supertest/types';
+import { AppModule } from './../src/app.module';
+
+describe('AppController (e2e)', () => {
+  let app: INestApplication<App>;
+
+  beforeEach(async () => {
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+
+    app = moduleFixture.createNestApplication();
+    await app.init();
+  });
+
+  it('/ (GET)', () => {
+    return request(app.getHttpServer())
+      .get('/')
+      .expect(200)
+      .expect('Hello World!');
+  });
+});
+```

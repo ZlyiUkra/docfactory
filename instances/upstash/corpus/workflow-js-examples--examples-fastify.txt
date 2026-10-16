@@ -1,0 +1,233 @@
+# Example: fastify
+# джерело: https://github.com/upstash/workflow-js/tree/v1.4.0/examples/fastify
+# отримано: 2026-10-16
+# версія: workflow-1.4.0
+
+## Upstash Workflow & Fastify Example
+
+This is an example of how to use Upstash Workflow with a Fastify server using TypeScript and ES modules.
+
+## Getting Started
+
+### 1. Install the dependencies
+
+```bash
+bun install
+```
+
+### 2. Start the QStash development server:
+
+```bash
+npx @upstash/qstash-cli dev
+```
+
+### 3. Once you run the development server, you will see `QSTASH_URL` and `QSTASH_TOKEN` environment variables for the local development server. Add these to the `.env` file:
+
+```bash
+QSTASH_URL="***"
+QSTASH_TOKEN="***"
+```
+
+When you are deploying your app to production, you don't need to set `QSTASH_URL`. You should only set the `QSTASH_TOKEN` environment variable to the token you get from Upstash Console.
+
+### 4. Run your app:
+
+```bash
+bun start
+```
+
+For production builds:
+
+```bash
+bun run build
+bun run start:prod
+```
+
+### 5. Send a `POST` request to the workflow endpoint.
+
+```bash
+curl -X POST http://localhost:3001/workflow -d '{"hello": "world"}' -H "content-type:application/json"
+```
+
+## Project Structure
+
+- `src/index.ts`: Entry point for the application
+- `src/server.ts`: Fastify server configuration and workflow implementation
+- `tsconfig.json`: TypeScript configuration
+- `package.json`: Project dependencies and scripts
+
+## Scripts
+
+- `bun start`: Start the development server using Bun
+- `bun run build`: Build the TypeScript files
+
+## package.json
+
+```json
+{
+  "name": "fastify",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "start": "bun src/index.ts",
+    "start:prod": "bun dist/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@fastify/env": "^5.0.2",
+    "@upstash/workflow": "latest",
+    "fastify": "^5.3.3",
+    "fastify-cli": "^7.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.23",
+    "typescript": "^5.8.3"
+  }
+}
+```
+
+## src/index.ts
+
+```ts
+// src/index.ts
+import server from './server.js';
+
+// Run the server!
+const start = async (): Promise<void> => {
+  try {
+    await server.listen({ port: 3001, host: '0.0.0.0' });
+    const address = server.server.address();
+    const port = typeof address === 'string' ? address : address?.port;
+    server.log.info(`Server is running on http://localhost:${port}`);
+  } catch (err) {
+    server.log.error(err);
+    console.log(err);
+    console.error('Server failed to start');
+    process.exit(1);
+  }
+};
+
+start();
+```
+
+## src/server.ts
+
+```ts
+// src/server.ts
+import Fastify, { FastifyRequest, FastifyReply } from 'fastify';
+import fastifyEnv from '@fastify/env';
+import { serve } from '@upstash/workflow';
+
+const fastify = Fastify({
+  logger: false
+});
+
+const schema = {
+  type: 'object',
+  required: ['QSTASH_URL', 'QSTASH_TOKEN'],
+  properties: {
+    QSTASH_URL: {
+      type: 'string',
+    },
+    QSTASH_TOKEN: {
+      type: 'string',
+    }
+  }
+}
+
+const options = {
+  confKey: 'config', // optional, default: 'config'
+  schema: schema,
+  dotenv: true
+}
+
+interface FastifyEnvConfig {
+  QSTASH_URL: string;
+  QSTASH_TOKEN: string;
+}
+
+// Extend FastifyInstance to include the config property
+declare module 'fastify' {
+  interface FastifyInstance {
+    config: FastifyEnvConfig;
+  }
+}
+
+fastify.register(fastifyEnv, options).after(() => {
+  // Register the /upstash route as a regular fastify route
+  const { handler } = serve(async (context) => {
+    const input = context.requestPayload;
+    const result1 = await context.run('step1', async () => {
+      const output = someWork(input);
+      console.log('step 1 input', input, 'output', output);
+      return output;
+    });
+
+    await context.run('step2', async () => {
+      const output = someWork(result1);
+      console.log('step 2 input', result1, 'output', output);
+    });
+  });
+
+  fastify.route({
+    method: ['POST'],
+    url: '/workflow',
+    handler: async (request: FastifyRequest, reply: FastifyReply) => {
+      // Convert Fastify request to Web Request
+      const { url, headers } = request;
+      
+      // @ts-expect-error getting encrypted property from raw socket
+      const encrypted: boolean = request.raw.socket.encrypted;
+      
+      // Get full URL including protocol and host
+      const protocol = request.protocol || (encrypted ? 'https' : 'http');
+      const host = headers['host'] as string;
+      const fullUrl = `${protocol}://${host}${url}`;
+
+      // Read body as a Buffer
+      let body: Buffer | null = null;
+      if (request.body) {
+        if (Buffer.isBuffer(request.body)) {
+          body = request.body;
+        } else if (typeof request.body === 'string') {
+          body = Buffer.from(request.body);
+        } else {
+          // Assume JSON
+          body = Buffer.from(JSON.stringify(request.body));
+        }
+      }
+
+      // Construct Web Request
+      const webRequest = new Request(fullUrl, {
+        method: "POST",
+        headers: headers as HeadersInit,
+        body
+      });
+
+      // Call the handler
+      const webResponse = await handler(webRequest);
+
+      // Set status and headers
+      reply.code(webResponse.status);
+      for (const [key, value] of webResponse.headers) {
+        reply.header(key, value);
+      }
+      // Send body
+      const responseBody = await webResponse.arrayBuffer();
+      reply.send(Buffer.from(responseBody));
+    }
+  });
+});
+
+const someWork = (input: unknown): string => {
+  return `processed '${JSON.stringify(input)}'`;
+};
+
+export default fastify;
+```

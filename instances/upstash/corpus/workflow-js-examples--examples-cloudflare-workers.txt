@@ -1,0 +1,165 @@
+# Example: cloudflare-workers
+# джерело: https://github.com/upstash/workflow-js/tree/v1.4.0/examples/cloudflare-workers
+# отримано: 2026-10-16
+# версія: workflow-1.4.0
+
+## Upstash Workflow Cloudflare Workers Example
+
+This is an example of how to use Upstash Workflow with Cloudflare Workers. You can learn more in Workflow documentation for Cloudflare Workers.
+
+Deploy to Cloudflare Workers
+**Note:** After deploying with the button above, you need to set the environment variables `QSTASH_URL` and `QSTASH_TOKEN`.
+
+## Development
+
+1. Install the dependencies
+
+```bash
+npm install
+```
+
+2. Start the QStash development server:
+
+```bash
+npx @upstash/qstash-cli dev
+```
+
+3. Once you run the development server, you will see `QSTASH_URL` and `QSTASH_TOKEN` environment variables for the local development server. Add these to the `.dev.vars` file:
+
+```bash
+QSTASH_URL="***"
+QSTASH_TOKEN="***"
+```
+
+When you are deploying your app to production, you don't need to set `QSTASH_URL`. You should only set the `QSTASH_TOKEN` environment variable to the token you get from Upstash Console.
+
+4. Run your app:
+
+```bash
+npm run dev
+```
+
+5. Send a `POST` request to the endpoint.
+
+```bash
+curl -X POST "http://localhost:3001" -d '{"text": "hello world!"}'
+```
+
+## Deployment
+
+You can use wrangler to deploy the project to Cloudflare Workers.
+
+```bash
+npm run deploy
+```
+
+Then, go to cloudflare dashboard and find your project. Add the
+`QSTASH_TOKEN` environment variable and re-deploy the project.
+
+Once the project is re-deployed, you can send a curl request
+like the one above (after replacing the localhost with the
+deployment URL).
+
+## package.json
+
+```json
+{
+  "name": "cloudflare-workers",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev --port 3001 --var UPSTASH_WORKFLOW_URL:$UPSTASH_WORKFLOW_URL",
+    "start": "wrangler dev --port 3001 --var UPSTASH_WORKFLOW_URL:$UPSTASH_WORKFLOW_URL",
+    "test": "vitest",
+    "cf-typegen": "wrangler types"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.4.5",
+    "@cloudflare/workers-types": "^4.20240821.1",
+    "typescript": "^5.5.2",
+    "vitest": "1.5.0",
+    "wrangler": "^3.60.3"
+  },
+  "dependencies": {
+    "@upstash/qstash": "latest",
+    "@upstash/workflow": "latest"
+  }
+}
+```
+
+## src/index.ts
+
+```ts
+import { serve } from '@upstash/workflow/cloudflare';
+
+const someWork = (input: string) => {
+  return `processed '${JSON.stringify(input)}'`;
+};
+
+export default serve<{ text: string }>(
+  async (context) => {
+    if (!context.requestPayload) throw new Error('No payload given, send a curl request to start the workflow');
+
+    const input = context.requestPayload.text;
+    const result1 = await context.run('step1', async () => {
+      const output = someWork(input);
+      console.log('step 1 input', input, 'output', output);
+      return output;
+    });
+
+    await context.run('step2', async () => {
+      const output = someWork(result1);
+      console.log('step 2 input', result1, 'output', output);
+    });
+  },
+  {
+    receiver: undefined,
+  },
+)
+```
+
+## src/serve-many.ts
+
+```ts
+import { WorkflowContext } from "@upstash/workflow";
+import { createWorkflow, serveMany } from "@upstash/workflow/cloudflare";
+
+const workflowOne = createWorkflow(async (context) => {
+  await context.run("step 1", async () => {
+    console.log("workflow one says hi")
+  })
+
+  const { body, isCanceled, isFailed } = await context.invoke("invoking other", {
+    workflow: workflowTwo,
+    body: "hello from workflow one",
+  })
+
+  await context.run("checking invoke results", () => {
+    console.log("invoke results", { body, isCanceled, isFailed })
+  })
+
+  await context.run("step 2", async () => {
+    console.log("workflow one says bye")
+  })
+})
+
+const workflowTwo = createWorkflow(async (context: WorkflowContext<string>) => {
+  await context.run("step 1", async () => {
+    console.log("workflow two says hi")
+  })
+
+  await context.run("step 2", async () => {
+    console.log("workflow two says bye")
+  })
+
+  return "workflow two done"
+}, {
+  retries: 0
+})
+
+export default serveMany({
+  workflowOne,
+  workflowTwo
+})
+```

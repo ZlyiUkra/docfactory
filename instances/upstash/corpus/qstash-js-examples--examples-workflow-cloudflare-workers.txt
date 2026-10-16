@@ -1,0 +1,158 @@
+# Example: workflow/cloudflare-workers
+# джерело: https://github.com/upstash/qstash-js/tree/v2.12.0/examples/workflow/cloudflare-workers
+# отримано: 2026-10-16
+# версія: qstash-2.12.0
+
+## Upstash Workflow Cloudflare Workers Example
+
+This is an example of how to use Upstash Workflow with Cloudflare Workers. You can learn more in Workflow documentation for Cloudflare Workers.
+
+Deploy to Cloudflare Workers
+**Note:** After deploying with the button above, you need to set the environment variables `QSTASH_URL` and `QSTASH_TOKEN`.
+
+## Development
+
+> [!TIP]
+> You can use the `bootstrap.sh` script to run this example with a local tunnel.
+>
+> Simply set the environment variables as explained below and run the following command in the `qstash-js/examples/workflow` directory:
+>
+> ```
+> bash bootstrap.sh cloudflare-workers
+> ```
+
+1. Install the dependencies
+
+```bash
+npm install
+```
+
+2. Get the credentials from the Upstash Console and add them to the `.dev.vars` file.
+
+```bash
+QSTASH_URL=
+QSTASH_TOKEN=
+```
+
+3. Open a local tunnel to port of the development server
+
+```bash
+ngrok http 3001
+```
+
+Also, set the `UPSTASH_WORKLFOW_URL` environment variable to the public url provided by ngrok.
+
+4. Run the development server
+
+```bash
+npm run dev
+```
+
+5. Send a `POST` request to the endpoint.
+
+```bash
+curl -X POST "http://localhost:3001" -d '{"text": "hello world!"}'
+```
+
+## Deployment
+
+You can use wrangler to deploy the project to Cloudflare Workers.
+
+```bash
+npm run deploy
+```
+
+Then, go to cloudflare dashboard and find your project. Add the
+`QSTASH_TOKEN` environment variable and re-deploy the project.
+
+Once the project is re-deployed, you can send a curl request
+like the one above (after replacing the localhost with the
+deployment URL).
+
+## package.json
+
+```json
+{
+  "name": "cloudflare-workers",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev --port 3001 --var UPSTASH_WORKFLOW_URL:$UPSTASH_WORKFLOW_URL",
+    "start": "wrangler dev --port 3001 --var UPSTASH_WORKFLOW_URL:$UPSTASH_WORKFLOW_URL",
+    "test": "vitest",
+    "cf-typegen": "wrangler types"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.4.5",
+    "@cloudflare/workers-types": "^4.20240821.1",
+    "typescript": "^5.5.2",
+    "vitest": "1.5.0",
+    "wrangler": "^3.60.3"
+  },
+  "dependencies": {
+    "@upstash/qstash": "latest"
+  }
+}
+```
+
+## src/index.ts
+
+```ts
+import { serve } from "@upstash/qstash/cloudflare";
+
+const someWork = (input: string) => {
+  return `processed '${JSON.stringify(input)}'`
+}
+
+export default {
+  fetch: serve<{text: string}>(async context => {
+		if (!context.requestPayload) throw new Error('No payload given, send a curl request to start the workflow');
+
+    const input = context.requestPayload.text
+    const result1 = await context.run("step1", async () => {
+      const output = someWork(input)
+      console.log("step 1 input", input, "output", output)
+      return output
+    });
+
+    const result2 = await context.run("step2", async () => {
+      const output = someWork(result1)
+      console.log("step 2 input", result1, "output", output)
+    });
+  },
+  {
+    receiver: undefined,
+  })
+};
+```
+
+## test/index.spec.ts
+
+```ts
+// test/index.spec.ts
+import { env, createExecutionContext, waitOnExecutionContext, SELF } from 'cloudflare:test';
+import { describe, it, expect } from 'vitest';
+import worker from '../src/index';
+
+// For now, you'll need to do something like this to get a correctly-typed
+// `Request` to pass to `worker.fetch()`.
+const IncomingRequest = Request<unknown, IncomingRequestCfProperties>;
+
+describe('Hello World worker', () => {
+	it('responds with Hello World! (unit style)', async () => {
+		const request = new IncomingRequest('http://example.com');
+		// Create an empty context to pass to `worker.fetch()`.
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		// Wait for all `Promise`s passed to `ctx.waitUntil()` to settle before running test assertions
+		await waitOnExecutionContext(ctx);
+		expect(await response.text()).toMatchInlineSnapshot(`"Hello World!"`);
+	});
+
+	it('responds with Hello World! (integration style)', async () => {
+		const response = await SELF.fetch('https://example.com');
+		expect(await response.text()).toMatchInlineSnapshot(`"Hello World!"`);
+	});
+});
+```

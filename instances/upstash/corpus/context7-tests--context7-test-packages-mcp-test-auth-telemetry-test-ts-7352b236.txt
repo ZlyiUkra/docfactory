@@ -1,0 +1,124 @@
+# context7: packages/mcp/test/auth-telemetry.test.ts
+# джерело: https://github.com/upstash/context7/blob/ctx7@0.6.1/packages/mcp/test/auth-telemetry.test.ts
+# отримано: 2026-10-16
+# версія: ctx7-0.6.1, ctx7-0.5.16, context7-tools-ai-sdk-1.0.3, context7-sdk-0.5.1, context7-pi-0.1.3, context7-opencode-0.2.1, context7-mcp-4.4.2, context7-mcp-4.3.0, context7-mcp-4.2.1
+
+```ts
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from "vitest";
+import { metrics } from "@opentelemetry/api";
+import {
+  AggregationTemporality,
+  DataPointType,
+  InMemoryMetricExporter,
+  MeterProvider,
+  PeriodicExportingMetricReader,
+} from "@opentelemetry/sdk-metrics";
+import {
+  forceFlushTelemetry,
+  observeAuthentication,
+  recordAuthenticationEvent,
+} from "../src/lib/telemetry.js";
+
+const exporter = new InMemoryMetricExporter(AggregationTemporality.CUMULATIVE);
+```
+
+## const provider
+
+```ts
+const provider = new MeterProvider({
+  readers: [
+    new PeriodicExportingMetricReader({
+      exporter,
+      exportIntervalMillis: 60_000,
+    }),
+  ],
+});
+
+beforeAll(() => {
+  expect(metrics.setGlobalMeterProvider(provider)).toBe(true);
+});
+
+beforeEach(() => {
+  exporter.reset();
+});
+
+afterAll(async () => {
+  await provider.shutdown();
+  metrics.disable();
+});
+```
+
+## function authenticationEvents
+
+```ts
+function authenticationEvents() {
+  const metric = exporter
+    .getMetrics()
+    .at(-1)
+    ?.scopeMetrics.flatMap((scope) => scope.metrics)
+    .find((candidate) => candidate.descriptor.name === "context7.mcp.authentication.events");
+  if (!metric || metric.dataPointType !== DataPointType.SUM) return [];
+  return metric.dataPoints;
+}
+```
+
+## MCP authentication OpenTelemetry
+
+```ts
+describe("MCP authentication OpenTelemetry", () => {
+```
+
+### records authentication decisions with bounded migration attributes
+
+```ts
+  test("records authentication decisions with bounded migration attributes", async () => {
+    await expect(
+      observeAuthentication({ enforcementMode: "required", route: "anonymous" }, async () => ({
+        allowed: false,
+        event: "challenge_issued",
+        method: "none",
+        outcome: "missing",
+      }))
+    ).resolves.toMatchObject({ allowed: false, event: "challenge_issued" });
+    await forceFlushTelemetry();
+
+    expect(authenticationEvents()).toContainEqual(
+      expect.objectContaining({
+        attributes: {
+          "context7.authentication.enforcement": "required",
+          "context7.authentication.event": "challenge_issued",
+          "context7.authentication.method": "none",
+          "context7.authentication.outcome": "missing",
+          "context7.mcp.route": "anonymous",
+        },
+        value: 1,
+      })
+    );
+  });
+```
+
+### records lifecycle events on the same meter
+
+```ts
+  test("records lifecycle events on the same meter", async () => {
+    recordAuthenticationEvent({
+      enforcementMode: "required",
+      event: "authenticated_tool_call",
+      method: "oauth",
+      outcome: "accepted",
+      route: "anonymous",
+    });
+    await forceFlushTelemetry();
+
+    expect(authenticationEvents()).toContainEqual(
+      expect.objectContaining({
+        attributes: expect.objectContaining({
+          "context7.authentication.event": "authenticated_tool_call",
+          "context7.authentication.method": "oauth",
+        }),
+        value: 1,
+      })
+    );
+  });
+});
+```

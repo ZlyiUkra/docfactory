@@ -1,0 +1,221 @@
+# context7: packages/tools-ai-sdk/src/index.test.ts
+# джерело: https://github.com/upstash/context7/blob/ctx7@0.6.1/packages/tools-ai-sdk/src/index.test.ts
+# отримано: 2026-10-16
+# версія: ctx7-0.6.1, ctx7-0.5.16, context7-tools-ai-sdk-1.0.3, context7-sdk-0.5.1, context7-pi-0.1.3, context7-opencode-0.2.1, context7-mcp-4.4.2, context7-mcp-4.3.0, context7-mcp-4.2.1, context7-mcp-4.1.3
+
+```ts
+import { describe, test, expect } from "vitest";
+import { generateText, stepCountIs, tool } from "ai";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { z } from "zod";
+import {
+  resolveLibraryId,
+  queryDocs,
+  Context7Agent,
+  SYSTEM_PROMPT,
+  AGENT_PROMPT,
+  RESOLVE_LIBRARY_ID_DESCRIPTION,
+} from "./index";
+```
+
+## const openrouter
+
+```ts
+const openrouter = createOpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY,
+});
+
+const model = openrouter("anthropic/claude-haiku-4.5");
+```
+
+## @upstash/context7-tools-ai-sdk
+
+```ts
+describe("@upstash/context7-tools-ai-sdk", () => {
+
+  describe("Tool structure", () => {
+```
+
+#### resolveLibraryId() should return a tool object with correct structure
+
+```ts
+    test("resolveLibraryId() should return a tool object with correct structure", () => {
+      const tool = resolveLibraryId();
+
+      expect(tool).toBeDefined();
+      expect(tool).toHaveProperty("execute");
+      expect(tool).toHaveProperty("inputSchema");
+      expect(tool).toHaveProperty("description");
+      expect(tool.description).toContain("library");
+    });
+```
+
+#### queryDocs() should return a tool object with correct structure
+
+```ts
+    test("queryDocs() should return a tool object with correct structure", () => {
+      const tool = queryDocs();
+
+      expect(tool).toBeDefined();
+      expect(tool).toHaveProperty("execute");
+      expect(tool).toHaveProperty("inputSchema");
+      expect(tool).toHaveProperty("description");
+      expect(tool.description).toContain("documentation");
+    });
+  });
+
+  describe("Tool usage with generateText", () => {
+```
+
+#### resolveLibraryId tool should be called when searching for a library
+
+```ts
+    test("resolveLibraryId tool should be called when searching for a library", async () => {
+      const result = await generateText({
+        model,
+        tools: {
+          resolveLibraryId: resolveLibraryId(),
+        },
+        toolChoice: { type: "tool", toolName: "resolveLibraryId" },
+        stopWhen: stepCountIs(2),
+        prompt: "Search for 'react' library",
+      });
+
+      expect(result.toolCalls.length).toBeGreaterThan(0);
+      expect(result.toolCalls[0].toolName).toBe("resolveLibraryId");
+      expect(result.toolResults.length).toBeGreaterThan(0);
+      const toolResult = result.toolResults[0] as unknown as { output: string };
+      expect(typeof toolResult.output).toBe("string");
+      expect(toolResult.output).toContain("Context7-compatible library ID");
+    }, 30000);
+```
+
+#### queryDocs tool should fetch documentation
+
+```ts
+    test("queryDocs tool should fetch documentation", async () => {
+      const result = await generateText({
+        model,
+        tools: {
+          queryDocs: queryDocs(),
+        },
+        toolChoice: { type: "tool", toolName: "queryDocs" },
+        stopWhen: stepCountIs(2),
+        prompt: "Fetch documentation for library ID '/facebook/react' about hooks",
+      });
+
+      expect(result.toolCalls.length).toBeGreaterThan(0);
+      expect(result.toolCalls[0].toolName).toBe("queryDocs");
+      expect(result.toolResults.length).toBeGreaterThan(0);
+      const toolResult = result.toolResults[0] as unknown as { output: string };
+      expect(typeof toolResult.output).toBe("string");
+      expect(toolResult.output.length).toBeGreaterThan(0);
+    }, 30000);
+```
+
+#### both tools can work together in a multi-step flow
+
+```ts
+    test("both tools can work together in a multi-step flow", async () => {
+      const result = await generateText({
+        model,
+        tools: {
+          resolveLibraryId: resolveLibraryId(),
+          queryDocs: queryDocs(),
+        },
+        stopWhen: stepCountIs(5),
+        prompt:
+          "First use resolveLibraryId to find the Next.js library, then use queryDocs to get documentation about routing",
+      });
+
+      const allToolCalls = result.steps.flatMap((step) => step.toolCalls);
+      const toolNames = allToolCalls.map((call) => call.toolName);
+      expect(toolNames).toContain("resolveLibraryId");
+      expect(toolNames).toContain("queryDocs");
+    }, 60000);
+  });
+
+  describe("Context7Agent class", () => {
+```
+
+#### should accept additional tools alongside Context7 tools
+
+```ts
+    test("should accept additional tools alongside Context7 tools", () => {
+      const customTool = tool({
+        description: "A custom test tool",
+        inputSchema: z.object({
+          input: z.string().describe("Test input"),
+        }),
+        execute: async ({ input }) => ({ result: `processed: ${input}` }),
+      });
+
+      const agent = new Context7Agent({
+        model,
+        tools: {
+          customTool,
+        },
+      });
+
+      expect(Object.keys(agent.tools).sort()).toEqual([
+        "customTool",
+        "queryDocs",
+        "resolveLibraryId",
+      ]);
+    });
+```
+
+#### should include Context7 tools in generate result
+
+```ts
+    test("should include Context7 tools in generate result", async () => {
+      const agent = new Context7Agent({
+        model,
+        stopWhen: stepCountIs(5),
+      });
+
+      const result = await agent.generate({
+        prompt:
+          "Use resolveLibraryId to search for Next.js, then use queryDocs to get routing documentation",
+      });
+
+      expect(result).toBeDefined();
+
+      const allToolCalls = result.steps.flatMap((step) => step.toolCalls);
+      const toolNames = allToolCalls.map((call) => call.toolName);
+
+      expect(toolNames).toContain("resolveLibraryId");
+      expect(toolNames).toContain("queryDocs");
+    }, 60000);
+  });
+
+  describe("Prompt exports", () => {
+```
+
+#### should export SYSTEM_PROMPT
+
+```ts
+    test("should export SYSTEM_PROMPT", () => {
+      expect(SYSTEM_PROMPT).toBeDefined();
+      expect(typeof SYSTEM_PROMPT).toBe("string");
+      expect(SYSTEM_PROMPT.length).toBeGreaterThan(0);
+    });
+
+    test("should export AGENT_PROMPT", () => {
+      expect(AGENT_PROMPT).toBeDefined();
+      expect(typeof AGENT_PROMPT).toBe("string");
+      expect(AGENT_PROMPT).toContain("Context7");
+    });
+```
+
+#### should export RESOLVE_LIBRARY_ID_DESCRIPTION
+
+```ts
+    test("should export RESOLVE_LIBRARY_ID_DESCRIPTION", () => {
+      expect(RESOLVE_LIBRARY_ID_DESCRIPTION).toBeDefined();
+      expect(typeof RESOLVE_LIBRARY_ID_DESCRIPTION).toBe("string");
+      expect(RESOLVE_LIBRARY_ID_DESCRIPTION).toContain("library");
+    });
+  });
+});
+```

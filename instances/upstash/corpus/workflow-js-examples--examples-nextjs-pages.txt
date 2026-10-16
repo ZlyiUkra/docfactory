@@ -1,0 +1,895 @@
+# Example: nextjs-pages
+# джерело: https://github.com/upstash/workflow-js/tree/v1.4.0/examples/nextjs-pages
+# отримано: 2026-10-16
+# версія: workflow-1.4.0
+
+Deploy with Vercel
+
+## Upstash Workflow Nextjs (Pages Router) Example
+
+This is an example of how to use Upstash Workflow with Nextjs (using Pages Router). You can learn more in Workflow documentation for Nextjs.
+
+In the `src/pages/api/path.sh` file, you can find out how one can define endpoints serving Upstash Workflow.
+
+## Development
+
+1. Install the dependencies
+
+```bash
+npm install
+```
+
+2. Start the QStash development server:
+
+```bash
+npx @upstash/qstash-cli dev
+```
+
+3. Once you run the development server, you will see `QSTASH_URL` and `QSTASH_TOKEN` environment variables for the local development server. Add these to the `.env.local` file:
+
+```bash
+QSTASH_URL="***"
+QSTASH_TOKEN="***"
+```
+
+When you are deploying your app to production, you don't need to set `QSTASH_URL`. You should only set the `QSTASH_TOKEN` environment variable to the token you get from Upstash Console.
+
+4. Run your app:
+
+```bash
+npm run dev
+```
+
+5. Send a `POST` request to the `/api/path` endpoint.
+
+```bash
+curl -X POST "http://localhost:3001/api/path" -d 'my-payload'
+```
+
+## Deploying the Project at Vercel
+
+To deploy the project, you can simply use the `Deploy with Vercel` button at the top of this README. If you want to edit the project and deploy it, you can read the rest of this section.
+
+To deploy the project at vercel and try the endpoints, you should start with setting up the project by running:
+
+```
+vercel
+```
+
+## ci.test.ts
+
+```ts
+
+import { RedisEntry } from "@/utils/types"
+import { Client } from "@upstash/qstash"
+import { Client as WorkflowClient } from "@upstash/workflow"
+import { Redis } from "@upstash/redis"
+import { serve } from "@upstash/workflow/nextjs"
+import { describe, test, expect } from "vitest"
+
+// Stable throwaway destination with a valid TLS cert (replaces requestcatcher.com)
+const MOCK_DESTINATION_URL = "https://example.com/"
+
+export const RETRY_COUNT = 20
+export const RETRY_INTERVAL_DURATION = 1000
+export const CHECK_WF_AFTER_INIT_DURATION = 10000
+const TEST_BUFFER_DURATION = 5000
+export const TEST_TIMEOUT_DURATION = (
+  CHECK_WF_AFTER_INIT_DURATION
+  + (RETRY_COUNT * RETRY_INTERVAL_DURATION)
+  + TEST_BUFFER_DURATION
+)
+
+type TestConfig = {
+  testDescription: string,
+  route: string,
+  payload: undefined | string | object,
+  headers: Record<string, string>,
+  expectedResult: unknown,
+  expectedLog?: unknown
+}
+
+const tests: TestConfig[] = [
+  {
+    testDescription: "should return undefined from undefined string",
+    route: "api/ci",
+    payload: undefined,
+    headers: {
+      "Content-Type": "text/plain"
+    },
+    expectedResult: `step 1 input: 'undefined', type: 'undefined', stringified input: 'undefined'`
+  },
+  {
+    testDescription: "should return undefined from empty string",
+    route: "api/ci",
+    payload: "",
+    headers: {
+      "Content-Type": "text/plain"
+    },
+    expectedResult: `step 1 input: 'undefined', type: 'undefined', stringified input: 'undefined'`
+  },
+  {
+    testDescription: "should return foo correctly",
+    route: "api/ci",
+    payload: "foo",
+    headers: {
+      "Content-Type": "text/plain"
+    },
+    expectedResult: `step 1 input: 'foo', type: 'string', stringified input: '"foo"'`
+  },
+  {
+    testDescription: "should allow json without space",
+    route: "api/ci",
+    payload: `{"foo":"bar"}`,
+    headers: {
+      "Content-Type": "text/plain"
+    },
+    expectedResult: `step 1 input: '[object Object]', type: 'object', stringified input: '{"foo":"bar"}'`
+  },
+  {
+    testDescription: "should allow json object",
+    route: "api/ci",
+    payload: {"foo":"bar"},
+    headers: {},
+    expectedResult: `step 1 input: '[object Object]', type: 'object', stringified input: '{"foo":"bar"}'`
+  },
+  {
+    testDescription: "should allow json with one space",
+    route: "api/ci",
+    payload: `{"foo": "bar"}`,
+    headers: {
+      "Content-Type": "text/plain"
+    },
+    expectedResult: `step 1 input: '[object Object]', type: 'object', stringified input: '{"foo":"bar"}'`
+  },
+  {
+    testDescription: "should allow json with 3 spaces",
+    route: "api/ci",
+    payload: `{   "foo"   :   "bar"   }`,
+    headers: {
+      "Content-Type": "text/plain"
+    },
+    expectedResult: `step 1 input: '[object Object]', type: 'object', stringified input: '{"foo":"bar"}'`
+  },
+  {
+    testDescription: "shall return empty response from failure function correctly",
+    route: "api/ci",
+    payload: `fail`,
+    headers: {
+      "workflow-should-fail": "true"
+    },
+    expectedResult: `Function failed as requested`,
+    expectedLog: expect.objectContaining({
+      failureFunction: expect.objectContaining({
+        responseBody: "{}",
+        state: "CALLBACK_SUCCESS"
+      })
+    })
+  },
+  {
+    testDescription: "shall return string response from failure function correctly",
+    route: "api/ci",
+    payload: `fail`,
+    headers: {
+      "workflow-should-fail": "true",
+      "workflow-failure-function-should-return": "true"
+    },
+    expectedResult: `Function failed as requested`,
+    expectedLog: expect.objectContaining({
+      failureFunction: expect.objectContaining({
+        responseBody: JSON.stringify({ result: "response" }),
+        state: "CALLBACK_SUCCESS"
+      })
+    })
+  }
+]
+
+const testEndpoint = ({
+  testDescription,
+  route,
+  payload,
+  headers,
+  expectedResult,
+  expectedLog
+}: TestConfig) => {
+  test(testDescription, async () => {
+    if (!process.env.DEPLOYMENT_URL) {
+      throw new Error("can't run test without deployment url.")
+    }
+
+    const redis = Redis.fromEnv()
+    const client = new WorkflowClient({ 
+      baseUrl: process.env.QSTASH_URL,
+      token: process.env.QSTASH_TOKEN!
+     })
+
+    const secret = "secret-" + Math.floor(Math.random() * 10000).toString()
+    
+    const { workflowRunId } = await client.trigger({
+      url: `${process.env.DEPLOYMENT_URL}/${route}`,
+      body: payload,
+      headers: {
+        "secret-header": secret,
+        ...headers
+      },
+      retries: 0
+    })
+
+    await new Promise(r => setTimeout(r, CHECK_WF_AFTER_INIT_DURATION));
+
+    let result: RedisEntry | null = null
+    for (let i=1; i<=RETRY_COUNT; i++) {
+      result = await redis.get<RedisEntry>(`ci-nextjs-pages-ran-${secret}`)
+      if (result) {
+        break
+      }
+      if (i!==RETRY_COUNT) {
+        await new Promise(r => setTimeout(r, RETRY_INTERVAL_DURATION));
+      }
+    }
+    
+    expect(result).toBeDefined()
+    expect(result?.secret).toBe(secret)
+    expect(result?.result).toBe(expectedResult)
+
+    if (expectedLog) {
+      let logs: Awaited<ReturnType<typeof client.logs>> | undefined
+      for (let i=1; i<=RETRY_COUNT; i++) {
+        logs = await client.logs({
+          workflowRunId
+        })
+        if (logs.runs.length === 1) {
+          break
+        }
+        if (i!==RETRY_COUNT) {
+          await new Promise(r => setTimeout(r, RETRY_INTERVAL_DURATION));
+        }
+      }
+
+      expect(logs).toBeDefined()
+      expect(logs!.runs.length).toBe(1)
+      expect(logs!.runs[0]).toEqual(expectedLog)
+    }
+  }, TEST_TIMEOUT_DURATION)
+}
+
+describe("nextjs-pages", () => {
+  test("should send first invocation", async () => {
+    const qstashClient = new Client({
+      baseUrl: MOCK_DESTINATION_URL,
+      token: "mock"
+    })
+    
+    // @ts-expect-error mocking batch
+    qstashClient.batch = async () => {
+      return { messageId: "msgId" }
+    }
+    
+    const { POST: serveHandler } = serve(
+      async (context) => {
+        await context.sleep("sleeping", 10)
+      }, {
+        qstashClient,
+        receiver: undefined
+      }
+    )
+
+    const request = new Request(MOCK_DESTINATION_URL)
+    const response = await serveHandler(request)
+
+    // it should send a request, but get failed to parse error because
+    // request catcher returns string
+    expect(response.status).toBe(200)
+    const result = await response.json() as { workflowRunId: string }
+    expect(result.workflowRunId).toBeTruthy()
+  })
+
+  if (process.env.DEPLOYMENT_URL) {
+    tests.forEach(test => {
+      testEndpoint(test)
+    })
+  } else {
+    console.log("skipping workflow run tests because DEPLOYMENT_URL is not set");
+  }
+})
+```
+
+## package.json
+
+```json
+{
+  "name": "nextjs-pages",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3001",
+    "build": "next build",
+    "start": "next start -p 3001",
+    "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@upstash/qstash": "^2.7.16",
+    "@upstash/redis": "^1.34.3",
+    "@upstash/workflow": "latest",
+    "clsx": "^2.1.1",
+    "next": "14.2.35",
+    "react": "^18",
+    "react-dom": "^18",
+    "tailwind-merge": "^2.5.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "@vitest/ui": "^2.1.8",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.8",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5",
+    "vitest": "^2.1.8"
+  }
+}
+```
+
+## src/components/step-list.tsx
+
+```tsx
+import * as React from 'react'
+import cx from '@/utils/cx'
+
+export interface StepProps extends React.ComponentPropsWithoutRef<'div'> {}
+
+const Step = ({ className, ...props }: StepProps) => {
+  return <div className={cx('[counter-reset:step]', className)} {...props} />
+}
+Step.displayName = 'Step'
+
+export interface StepItemProps extends React.ComponentPropsWithoutRef<'div'> {}
+
+const StepItem = ({ className, ...props }: StepItemProps) => {
+  return (
+    <div
+      className={cx(
+        'relative border-l-2 border-l-zinc-200 pb-16 pl-6 last:pb-0 sm:ml-4 sm:pl-8 dark:border-l-zinc-900',
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+StepItem.displayName = 'StepItem'
+
+export interface StepNumberProps
+  extends React.ComponentPropsWithoutRef<'span'> {
+  order?: number
+}
+
+const StepNumber = ({ order=1, className, ...props }: StepNumberProps) => {
+  return (
+    <span className="absolute top-0 left-0 h-6 sm:h-8">
+      <span
+        className={cx(
+          'absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
+          'flex size-8 items-center justify-center sm:size-10',
+          'text-center rounded-full bg-zinc-100 border-4 border-white',
+          className,
+        )}
+        {...props}
+      >
+        <span className="font-mono text-sm font-semibold opacity-60">{order}</span>
+      </span>
+    </span>
+  )
+}
+StepNumber.displayName = 'StepNumber'
+
+export interface StepTitleProps extends React.ComponentPropsWithoutRef<'h3'> {}
+
+const StepTitle = ({ className, ...props }: StepTitleProps) => {
+  return <h3 className={cx('font-semibold sm:text-lg', className)} {...props} />
+}
+StepTitle.displayName = 'StepTitle'
+
+export interface StepDescProps extends React.ComponentPropsWithoutRef<'h3'> {}
+
+const StepDesc = ({ className, ...props }: StepDescProps) => {
+  return <div className={cx('opacity-60', className)} {...props} />
+}
+StepDesc.displayName = 'StepDesc'
+
+export interface StepContentProps
+  extends React.ComponentPropsWithoutRef<'div'> {}
+
+const StepContent = ({ className, ...props }: StepContentProps) => {
+  return <div className={cx('mt-6', className)} {...props} />
+}
+StepContent.displayName = 'StepContent'
+
+export { Step, StepItem, StepNumber, StepTitle, StepDesc, StepContent }
+```
+
+## src/pages/_app.tsx
+
+```tsx
+import "@/styles/globals.css";
+import type { AppProps } from "next/app";
+
+export default function App({ Component, pageProps }: AppProps) {
+  return <Component {...pageProps} />;
+}
+```
+
+## src/pages/_document.tsx
+
+```tsx
+import { Html, Head, Main, NextScript } from "next/document";
+
+export default function Document() {
+  return (
+    <Html lang="en">
+      <Head />
+      <body className="antialiased">
+        <Main />
+        <NextScript />
+      </body>
+    </Html>
+  );
+}
+```
+
+## src/pages/api/ci.ts
+
+```ts
+/**
+ * This endpoint is for the CI of workflow-js
+ * 
+ * You can refer to path.ts for a simpler endpoint
+ */
+
+import { RedisEntry } from "@/utils/types";
+import { Redis } from "@upstash/redis";
+import { WorkflowNonRetryableError } from "@upstash/workflow";
+import { servePagesRouter } from "@upstash/workflow/nextjs";
+
+const someWork = (input: unknown) => {
+  return `step 1 input: '${input}', type: '${typeof input}', stringified input: '${JSON.stringify(input)}'`
+}
+
+const CI_FAIL_HEADER = "workflow-should-fail"
+const CI_FAIL_MESSAGE = "Function failed as requested"
+const CI_FAIL_SHOULD_RETURN_HEADER = "workflow-failure-function-should-return"
+
+const { handler } = servePagesRouter<unknown>(
+  async (context) => {
+    const input = context.requestPayload
+    const result1 = await context.run("step1", async () => {
+      const output = someWork(input)
+      return output
+    });
+
+    if (context.headers.get(CI_FAIL_HEADER) === "true") {
+      throw new WorkflowNonRetryableError(CI_FAIL_MESSAGE)
+    }
+
+    await context.sleep("sleep", 1);
+    
+    const secret = context.headers.get("secret-header")
+    if (!secret) {
+      console.error("secret not found");
+      throw new Error("secret not found. can't end the CI workflow")
+    } else {
+      const redis = Redis.fromEnv()
+      await redis.set<RedisEntry>(
+        `ci-nextjs-pages-ran-${secret}`,
+        {
+          secret,
+          result: result1
+        },
+        { ex: 30 }
+      )
+    }
+  },
+  {
+    async failureFunction({ failResponse, context }) {
+      if (context.headers.get(CI_FAIL_HEADER) !== "true") {
+        throw new Error("didn't receive the expected failure header")
+      }
+
+      if (failResponse !== CI_FAIL_MESSAGE) {
+        throw new Error(`expected fail response to be '${CI_FAIL_MESSAGE}', got '${failResponse}'`)
+      }
+
+
+      const redis = new Redis({
+        url: context.env["UPSTASH_REDIS_REST_URL"],
+        token: context.env["UPSTASH_REDIS_REST_TOKEN"]
+      })
+
+      await redis.set<RedisEntry>(
+        `ci-nextjs-pages-ran-${context.headers.get("secret-header")}`,
+        {
+          secret: context.headers.get("secret-header")!,
+          result: failResponse
+        },
+        { ex: 30 }
+      )
+
+      if (context.headers.get(CI_FAIL_SHOULD_RETURN_HEADER)) {
+        return "response"
+      }
+      return
+    },
+  }
+)
+
+export default handler;
+```
+
+## src/pages/api/path.ts
+
+```ts
+import { servePagesRouter } from "@upstash/workflow/nextjs";
+
+const someWork = (input: string) => {
+  return `processed '${JSON.stringify(input)}'`
+}
+
+const { handler } = servePagesRouter<{ text: string }>(
+  async (context) => {
+    const input = context.requestPayload.text
+    const result1 = await context.run("step1", async () => {
+      const output = someWork(input)
+      console.log("step 1 input", input, "output", output)
+      return output
+    });
+
+    await context.run("step2", async () => {
+      const output = someWork(result1)
+      console.log("step 2 input", result1, "output", output)
+    });
+  },
+)
+
+export default handler;
+```
+
+## src/pages/api/serve-many/[...slug].ts
+
+```ts
+import { WorkflowContext } from "@upstash/workflow"
+import { serveManyPagesRouter, createWorkflowPagesRouter } from "@upstash/workflow/nextjs"
+
+const workflowOne = createWorkflowPagesRouter(async (context) => {
+  await context.run("step 1", async () => {
+    console.log("workflow one says hi")
+  })
+
+  const { body, isCanceled, isFailed } = await context.invoke("invoking other", {
+    workflow: workflowTwo,
+    body: "hello from workflow one",
+  })
+
+  await context.run("checking invoke results", () => {
+    console.log("invoke results", { body, isCanceled, isFailed })
+  })
+
+  await context.run("step 2", async () => {
+    console.log("workflow one says bye")
+  })
+})
+
+const workflowTwo = createWorkflowPagesRouter(async (context: WorkflowContext<string>) => {
+  await context.run("step 1", async () => {
+    console.log("workflow two says hi")
+  })
+
+  await context.run("step 2", async () => {
+    console.log("workflow two says bye")
+  })
+
+  return "workflow two done"
+})
+
+const { handler } = serveManyPagesRouter({
+  workflowOne,
+  workflowTwo
+})
+
+export default handler
+```
+
+## src/pages/index.tsx
+
+```tsx
+"use client"
+import Img from 'next/image';
+import {
+  Step,
+  StepItem,
+  StepNumber,
+  StepTitle,
+  StepContent,
+  StepDesc,
+} from '@/components/step-list'
+import { Suspense, useState } from 'react';
+
+const routes = [
+  'path',
+  'serve-many/workflowOne',
+  'serve-many/workflowTwo'
+]
+
+function Home() {
+  const [requestBody, setRequestBody] = useState('{"date":123,"email":"my@mail.com","amount":10}');
+  const [loading, setLoading] = useState(false);
+  const [route, setRoute] = useState('path')
+  const handleSend = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/${route}`, {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        method: "POST",
+        body: requestBody
+      });
+      console.log('Response:', await response.json());
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+
+    return (
+      <main className="h-screen">
+        <div className="max-w-screen-sm px-8 pt-16 mx-auto pb-44">
+          {/* header */}
+          <header>
+            <img
+              className="w-10 mb-8"
+              src="/upstash-logo.svg"
+              alt="upstash logo"
+            />
+  
+            <h1 className="text-2xl font-semibold text-balance">
+              Get Started with Upstash Workflow
+            </h1>
+            <h2 className="text-lg text-balance opacity-60">
+              This is a simple example to demonstrate Upstash Workflow with
+              Next.js. Start a workflow by selecting a route and providing a
+              request body.
+            </h2>
+  
+            <div className="flex flex-wrap items-center gap-2 mt-4">
+              <a
+                className="inline-flex items-center gap-1 px-3 py-2 bg-gray-100 rounded-md hover:bg-emerald-100"
+                href="https://upstash.com/docs/qstash/workflow/quickstarts/vercel-nextjs"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                  <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+                  <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" />
+                  <path d="M10 13l-1 2l1 2" />
+                  <path d="M14 13l1 2l-1 2" />
+                </svg>
+                Docs
+              </a>
+              <a
+                className="inline-flex items-center gap-1 px-3 py-2 bg-gray-100 rounded-md hover:bg-emerald-100"
+                href="https://github.com/upstash/workflow-js/tree/main/examples/nextjs"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                  <path d="M9 19c-4.3 1.4 -4.3 -2.5 -6 -3m12 5v-3.5c0 -1 .1 -1.4 -.5 -2c2.8 -.3 5.5 -1.4 5.5 -6a4.6 4.6 0 0 0 -1.3 -3.2a4.2 4.2 0 0 0 -.1 -3.2s-1.1 -.3 -3.5 1.3a12.3 12.3 0 0 0 -6.2 0c-2.4 -1.6 -3.5 -1.3 -3.5 -1.3a4.2 4.2 0 0 0 -.1 3.2a4.6 4.6 0 0 0 -1.3 3.2c0 4.6 2.7 5.7 5.5 6c-.6 .6 -.6 1.2 -.5 2v3.5" />
+                </svg>
+                Repository
+              </a>
+            </div>
+          </header>
+  
+          {/* step-by-step */}
+          <Step className="mt-16 md:mt-16">
+            {/* step-1 */}
+  
+            <StepItem>
+              <StepNumber order={0} />
+  
+              <StepTitle>Local development with ngrok</StepTitle>
+              <StepDesc>
+                <p>
+                  Upstash Workflow require a publicly accessible API endpoint to
+                  function.
+                </p>
+                <p className="underline">
+                  if you are not working on local server, skip this step.
+                </p>
+              </StepDesc>
+  
+              <StepContent>
+                <a
+                  className="inline-flex items-center gap-1 px-3 py-2 bg-gray-100 rounded-md hover:bg-emerald-100"
+                  href="https://upstash.com/docs/qstash/workflow/howto/local-development"
+                  target="_blank"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                    <path d="M12 6h-6a2 2 0 0 0 -2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-6" />
+                    <path d="M11 13l9 -9" />
+                    <path d="M15 4h5v5" />
+                  </svg>
+                  ngrog setup
+                </a>
+              </StepContent>
+            </StepItem>
+  
+            {/* step-1 */}
+            <StepItem>
+              <StepNumber order={1} />
+  
+              <StepTitle>Send Request</StepTitle>
+              <StepDesc>
+                Each example has its own payload structure. To find the related
+                payload type, navigate to the corresponding route file in your
+                left sidebar.
+              </StepDesc>
+  
+              <StepContent>
+                <form
+                  onSubmit={handleSend}
+                  className="grid gap-4 p-6 rounded-xl bg-emerald-500/10"
+                >
+                  <div>
+                    <label className="text-xs uppercase opacity-60">Route</label>
+                    <select
+                      value={route}
+                      onChange={(e) => setRoute(e.target.value)}
+                      className="block w-full h-8 px-2 mt-1 bg-white border border-gray-300 rounded-md"
+                    >
+                      <option value="" disabled>
+                        Select route
+                      </option>
+                      {routes.map((r) => (
+                        <option key={r} value={r}>
+                          {r}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+  
+                  <div>
+                    <label className="text-xs uppercase opacity-60">Body</label>
+                    <textarea
+                      value={requestBody}
+                      onChange={(e) => setRequestBody(e.target.value)}
+                      rows={2}
+                      className="block w-full px-2 py-2 mt-1 bg-white border border-gray-300 rounded-md"
+                    />
+                  </div>
+  
+                  <div>
+                    <button
+                      disabled={loading}
+                      className={`h-8 rounded-md bg-emerald-500 px-4 text-white ${loading ? 'opacity-30' : ''}`}
+                    >
+                      {loading ? 'Sending...' : 'Send'}
+                    </button>
+                  </div>
+                </form>
+              </StepContent>
+            </StepItem>
+  
+            {/* step-2 */}
+            <StepItem>
+              <StepNumber order={2} />
+  
+              <StepTitle>See Logs in Upstash Console</StepTitle>
+              <StepDesc>
+                After running a workflow, navigate to the Upstash Console to see
+                the related logs.
+              </StepDesc>
+  
+              <StepContent>
+                <a
+                  className="inline-flex items-center gap-1 px-3 py-2 bg-gray-100 rounded-md hover:bg-emerald-100"
+                  href="https://console.upstash.com/qstash?tab=workflow"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                    <path d="M12 6h-6a2 2 0 0 0 -2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-6" />
+                    <path d="M11 13l9 -9" />
+                    <path d="M15 4h5v5" />
+                  </svg>
+                  Upstash Console
+                </a>
+  
+                <Img
+                  className="block mt-4"
+                  src="/ss.png"
+                  width={1564}
+                  height={476}
+                  alt="s"
+                />
+              </StepContent>
+            </StepItem>
+          </Step>
+        </div>
+      </main>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense>
+      <Home/>
+    </Suspense>
+  )
+}
+```
+
+## src/utils/cx.ts
+
+```ts
+import { ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export default function cx(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+```
+
+## src/utils/types.ts
+
+```ts
+
+
+export type RedisEntry = {
+  secret: string,
+  result: unknown
+}
+```

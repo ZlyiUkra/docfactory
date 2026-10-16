@@ -1,0 +1,123 @@
+# Example: cloudflare-workers
+# джерело: https://github.com/upstash/ratelimit-js/tree/v2.2.0/examples/cloudflare-workers
+# отримано: 2026-10-16
+# версія: ratelimit-2.2.0
+
+## Local Development
+
+For testing the app locally, start by creating an Upstash Redis. Next, create the `.dev.vars` file under `cloudflare-workers` directory and set the `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` environment variables:
+
+```
+// .dev.vars
+UPSTASH_REDIS_REST_URL="****"
+UPSTASH_REDIS_REST_TOKEN="****"
+```
+
+Then, simply run:
+
+```
+npx wrangler dev
+```
+
+## Deploy on Cloudflare
+
+To deploy the app, set the environment variables with the following lines. In both cases, you will be prompted to enter the secret value:
+
+```
+npx wrangler secret put UPSTASH_REDIS_REST_URL
+npx wrangler secret put UPSTASH_REDIS_REST_TOKEN
+```
+
+Then, deploy the project with:
+
+```
+npx wrangler deploy
+```
+
+## ci.test.ts
+
+```ts
+import { test, expect, } from "bun:test";
+
+
+const deploymentURL = process.env.DEPLOYMENT_URL ?? "http://127.0.0.1:8787";
+if (!deploymentURL) {
+	throw new Error("DEPLOYMENT_URL not set");
+}
+
+test("the server is running", async () => {
+	const res = await fetch(`${deploymentURL}/limit`);
+
+	if (res.status !== 200) {
+		console.log(await res.text());
+	}
+	expect(res.status).toEqual(200);
+}, { timeout: 10000 });
+```
+
+## package.json
+
+```json
+{
+  "name": "cloudflare-workers",
+  "version": "0.0.0",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20230419.0",
+    "@types/bun": "^1.1.10",
+    "bun-types": "^1.1.29",
+    "typescript": "^5.0.4",
+    "wrangler": "^3.49.0"
+  },
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler publish"
+  },
+  "dependencies": {
+    "@upstash/ratelimit": "latest",
+    "@upstash/redis": "latest"
+  }
+}
+```
+
+## src/index.ts
+
+```ts
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis/cloudflare";
+export interface Env {
+  UPSTASH_REDIS_REST_URL: string;
+  UPSTASH_REDIS_REST_TOKEN: string;
+}
+
+const cache = new Map();
+
+export default {
+  async fetch(request: Request, env: Env, context: ExecutionContext): Promise<Response> {
+    try {
+      console.log("URL:", env.UPSTASH_REDIS_REST_URL);
+
+      if (new URL(request.url).pathname !== "/limit") {
+        return new Response("go to /limit", { status: 400 });
+      }
+
+      const ratelimit = new Ratelimit({
+        redis: Redis.fromEnv(env),
+        limiter: Ratelimit.cachedFixedWindow(5, "5 s"),
+        ephemeralCache: cache,
+        analytics: true
+      });
+
+      const res = await ratelimit.limit("identifier");
+      context.waitUntil(res.pending)
+      if (res.success) {
+        return new Response(JSON.stringify(res, null, 2), { status: 200 });
+      } else {
+        return new Response(JSON.stringify({ res }, null, 2), { status: 429 });
+      }
+    } catch (err) {
+      return new Response((err as Error).message, { status: 500 });
+    }
+  },
+};
+```

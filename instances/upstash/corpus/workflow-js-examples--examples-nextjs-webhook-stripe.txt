@@ -1,0 +1,508 @@
+# Example: nextjs-webhook-stripe
+# джерело: https://github.com/upstash/workflow-js/tree/v1.4.0/examples/nextjs-webhook-stripe
+# отримано: 2026-10-16
+# версія: workflow-1.4.0
+
+## Upstash Workflow Nextjs Example with Webhooks Example
+
+This example demonstrates how to use Upstash Workflow with Next.js to handle Clerk webhook events, manage Stripe subscriptions, and send automated emails.
+
+## Features
+
+- Webhook handling for Clerk user events
+- Stripe customer and subscription management
+- Automated email sending with Resend
+- Trial period management
+- Event-driven workflow orchestration
+-
+
+## Prerequisites
+
+- Clerk account and API keys
+- Stripe account and API keys
+- Resend account and API key
+- Upstash account and QStash credentials
+
+## Development
+
+1. Install the dependencies
+
+```bash
+npm install
+```
+
+2. Set up your environment variables in `.env.local`:
+
+```shell
+QSTASH_URL=
+QSTASH_TOKEN=
+CLERK_WEBHOOK_SECRET=
+STRIPE_SECRET_KEY=
+RESEND_API_KEY=
+```
+
+3. Open a local tunnel to your development server:
+
+```bash
+ngrok http 3000
+```
+
+Set the UPSTASH_WORKFLOW_URL environment variable to the ngrok URL.
+
+4. Start the development server.
+
+Then, run the `create-user.sh` script in the `sh` folder.
+
+```bash
+./sh/create-user.sh
+```
+
+## Workflow Steps
+
+The example implements the following workflow:
+
+1. Validate incoming Clerk webhook on `/api/workflow/onboarding` endpoint
+2. Process user creation events
+3. Create Stripe customer
+4. Send welcome email
+5. Set up trial subscription
+6. Wait for `await-payment-method` event. If a payment method is added to user, `/api/workflow/stripe` endpoint will be triggered by Stripe workflow.
+7. Handle trial period completion
+8. Send appropriate follow-up emails
+
+## Contributing
+
+Contributions are welcome! Please read our contributing guidelines before submitting pull requests.
+
+## app/api/workflow/onboarding/route.ts
+
+```ts
+import { serve } from "@upstash/workflow/nextjs";
+import Stripe from "stripe"
+import { Resend } from 'resend'
+
+import { WebhookEvent } from "@clerk/nextjs/server";
+import { Webhook } from 'svix';
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "");
+const resend = new Resend(process.env.RESEND_API_KEY ?? "")
+export type OnboardingPayload = {
+  event: string;
+  clerkUserId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+}
+
+async function validateRequest(payloadString: string, headerPayload: Headers) {
+
+  const svixHeaders = {
+    "svix-id": headerPayload.get("svix-id") as string,
+    "svix-timestamp": headerPayload.get("svix-timestamp") as string,
+    "svix-signature": headerPayload.get("svix-signature") as string,
+  }
+  const wh = new Webhook(process.env.CLERK_WEBHOOK_SECRET ?? "");
+  return wh.verify(payloadString, svixHeaders) as WebhookEvent;
+}
+
+export const { POST } = serve<string>(async (context) => {
+  const payloadString = context.requestPayload;
+  const headerPayload = context.headers;
+
+  let event: WebhookEvent;
+  try {
+    event = await validateRequest(payloadString, headerPayload);
+  } catch {
+    return
+  }
+
+  const user = await context.run<false | OnboardingPayload>("handle-clerk-webhook-event", async () => {
+    if (event.type === "user.created") {
+      const { id: clerkUserId, email_addresses, first_name, last_name } = event.data;
+      const primaryEmail = email_addresses.find(email => email.id === event.data.primary_email_address_id)
+
+      if (!primaryEmail) {
+        return false
+      }
+
+      return {
+        event: event.type,
+        clerkUserId: clerkUserId,
+        email: primaryEmail.email_address,
+        firstName: first_name,
+        lastName: last_name,
+      } as OnboardingPayload
+    }
+    return false
+  })
+
+  if (!user) {
+    return
+  }
+
+  const customer = await context.run("create-stripe-customer", async () => {
+    return await stripe.customers.create({
+      email: user.email,
+      name: `${user.firstName} ${user.lastName}`,
+      metadata: {
+        clerkUserId: user.clerkUserId
+      }
+    })
+  })
+
+  await context.run("send-welcome-email", async () => {
+    console.log("Sending welcome email to:", user.email)
+
+    await resend.emails.send({
+      from: 'welcome@yourdomain.com',
+      to: user.email,
+      subject: 'Welcome to Your Trial!',
+      html: `
+            <h1>Welcome ${user.firstName || 'there'}!</h1>
+            <p>Thanks for signing up! Your trial starts now.</p>
+            <p>You have 7 days to explore all our premium features.</p>
+            <p>What you get with your trial:</p>
+            <ul>
+                <li>Feature 1</li>
+                <li>Feature 2</li>
+                <li>Feature 3</li>
+            </ul>
+            <p>Get started now: <a href="${process.env.NEXT_PUBLIC_URL}/dashboard">Visit Dashboard</a></p>
+        `
+    });
+
+  })
+
+  const subscription = await context.run("create-trial", async () => {
+    return await stripe.subscriptions.create({
+      customer: customer.id,
+      items: [{ price: "price_1QQQWaCKnqweyLP9MPbARyG" }],
+      trial_period_days: 7,
+      metadata: {
+        clerkUserId: user.clerkUserId,
+        workflowRunId: context.workflowRunId
+      }
+    })
+  })
+
+  await context.run("store-subscription", async () => {
+    console.log(subscription)
+  })
+
+
+  /**
+   * This is where we start waiting for the payment method to be added to the subscription.
+   * If the payment method is added within 7 days, workflow on the `api/stripe/route` will notify this workflow with `payment_method_<SUBSCRIPTION_ID>`.
+   * If the payment method is not added within 7 days, we will handle the trial end.
+   */
+  const { timeout } = await context.waitForEvent("await-payment-method", `payment_method_${subscription.id}`, {
+    timeout: "7d"
+  })
+
+
+  if (!timeout) {
+    await context.run("send-subscription-start-welcome-mail", async () => {
+      console.log("Sending subscription started email to:", user.email)
+
+      await resend.emails.send({
+        from: 'billing@yourdomain.com',
+        to: user.email,
+        subject: 'Payment Method Added Successfully!',
+        html: `
+              <h1>Thank you for adding your payment method!</h1>
+              <p>Your subscription will continue automatically after the trial period.</p>
+              <p>Your trial benefits:</p>
+              <ul>
+                  <li>Unlimited access to all features</li>
+                  <li>Priority support</li>
+                  <li>No interruption in service</li>
+              </ul>
+              <p>Need help? Reply to this email or visit our support center.</p>
+          `
+      });
+    })
+
+  } else {
+    await context.run("handle-trial-end", async () => {
+      await stripe.subscriptions.update(subscription.id, {
+        cancel_at_period_end: true
+      })
+
+      return { status: 'trial_ended' }
+    })
+
+
+    await context.run("send-trial-ending-mail", async () => {
+      console.log("Sending trial ending email to:", user.email)
+
+      await resend.emails.send({
+        from: 'billing@yourdomain.com',
+        to: user.email,
+        subject: 'Your Trial is Ending Soon',
+        html: `
+              <h1>Don't Lose Access!</h1>
+              <p>Your trial is coming to an end. Add a payment method to keep your access:</p>
+              <ul>
+                  <li>Keep all your data and settings</li>
+                  <li>Continue using premium features</li>
+                  <li>No interruption in service</li>
+              </ul>
+              <a href="${process.env.NEXT_PUBLIC_URL}/billing" style="
+                  display: inline-block;
+                  padding: 12px 24px;
+                  background-color: #0070f3;
+                  color: white;
+                  text-decoration: none;
+                  border-radius: 5px;
+                  margin: 20px 0;
+              ">Add Payment Method</a>
+              <p>Questions? Contact our support team!</p>
+          `
+      });
+
+    })
+  }
+
+}, { baseUrl: "<BASE_URL>", initialPayloadParser: (payload) => { return payload } })
+```
+
+## app/api/workflow/stripe/route.ts
+
+```ts
+import { headers } from "next/headers";
+import Stripe from "stripe";
+import { Client } from "@upstash/workflow"
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+
+const wc = new Client({
+  token: process.env.QSTASH_TOKEN ?? ""
+});
+
+export async function POST(request: Request) {
+  const body = await request.text();
+  const headerList = await headers();
+  const signature = headerList.get("stripe-signature") as string;
+
+  try {
+    const event = stripe.webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET ?? "");
+
+    if (event.type === "payment_method.attached") {
+      const paymentMethod = event.data.object;
+      const customer = await stripe.customers.retrieve(paymentMethod.customer as string);
+
+      const subscriptions = await stripe.subscriptions.list({
+        customer: paymentMethod.customer as string,
+        status: "trialing"
+      })
+
+      const trialSubscription = subscriptions.data[0];
+
+      if (trialSubscription) {
+        /**
+         * This is where we notify the Workflow on the `api/workflow/onboarding` endpoint when a payment method is attached to a customer.
+         * Whether this event is notified within 7 days(arbitrary, customizable timeout), can be handled in onboarding workflow.
+         */
+        await wc.notify({
+          eventId: `payment_method_${trialSubscription.id}`, eventData: {
+            customerId: customer.id,
+            paymentMethodId: paymentMethod.id,
+            addedAt: new Date().toISOString()
+          }
+        })
+      }
+
+    }
+
+    return Response.json({ received: true });
+  } catch (error) {
+    console.error('Stripe webhook error:', error);
+    return Response.json(
+      { error: 'Webhook error occurred' },
+      { status: 400 }
+    );
+  }
+}
+```
+
+## app/layout.tsx
+
+```tsx
+import type { Metadata } from "next";
+import localFont from "next/font/local";
+import "./globals.css";
+
+const geistSans = localFont({
+  src: "./fonts/GeistVF.woff",
+  variable: "--font-geist-sans",
+  weight: "100 900",
+});
+const geistMono = localFont({
+  src: "./fonts/GeistMonoVF.woff",
+  variable: "--font-geist-mono",
+  weight: "100 900",
+});
+
+export const metadata: Metadata = {
+  title: "Create Next App",
+  description: "Generated by create next app",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        {children}
+      </body>
+    </html>
+  );
+}
+```
+
+## app/page.tsx
+
+```tsx
+import Image from "next/image";
+
+export default function Home() {
+  return (
+    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
+      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
+        <Image
+          className="dark:invert"
+          src="/next.svg"
+          alt="Next.js logo"
+          width={180}
+          height={38}
+          priority
+        />
+        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
+          <li className="mb-2">
+            Get started by editing{" "}
+            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
+              app/page.tsx
+            </code>
+            .
+          </li>
+          <li>Save and see your changes instantly.</li>
+        </ol>
+
+        <div className="flex gap-4 items-center flex-col sm:flex-row">
+          <a
+            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
+            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Image
+              className="dark:invert"
+              src="/vercel.svg"
+              alt="Vercel logomark"
+              width={20}
+              height={20}
+            />
+            Deploy now
+          </a>
+          <a
+            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
+            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Read our docs
+          </a>
+        </div>
+      </main>
+      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
+        <a
+          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
+          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Image
+            aria-hidden
+            src="/file.svg"
+            alt="File icon"
+            width={16}
+            height={16}
+          />
+          Learn
+        </a>
+        <a
+          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
+          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Image
+            aria-hidden
+            src="/window.svg"
+            alt="Window icon"
+            width={16}
+            height={16}
+          />
+          Examples
+        </a>
+        <a
+          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
+          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Image
+            aria-hidden
+            src="/globe.svg"
+            alt="Globe icon"
+            width={16}
+            height={16}
+          />
+          Go to nextjs.org →
+        </a>
+      </footer>
+    </div>
+  );
+}
+```
+
+## package.json
+
+```json
+{
+  "name": "nextjs-webhook-stripe",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@clerk/nextjs": "^6.5.1",
+    "@upstash/workflow": "^0.2.0",
+    "next": "15.1.11",
+    "react": "^19.0.0-rc-de68d2f4-20241204",
+    "react-dom": "19.0.0-rc-de68d2f4-20241204",
+    "resend": "^4.0.1",
+    "stripe": "^17.4.0",
+    "svix": "^1.42.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "eslint": "^8",
+    "eslint-config-next": "15.0.3",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5"
+  }
+}
+```
