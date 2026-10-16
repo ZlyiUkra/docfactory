@@ -1,0 +1,123 @@
+# Workflow: Avoid Non-deterministic Code Outside context.run
+# джерело: https://upstash.com/docs/workflow/basics/best-practices/deterministic-code
+# отримано: 2026-10-16
+
+A workflow endpoint should always produce the same results, even if it's called multiple times. Avoid:
+
+- Non-idempotent functions
+- Time-dependent code
+- Randomness
+
+Example of what to avoid:
+
+```typescript
+export const { POST } = serve<{ entryId: string }>(async (context) => {
+  const { entryId } = context.requestPayload;
+
+  // 👇 Problem: Non-idempotent function outside context.run:
+  const result = await getResultFromDb(entryId);
+  if (result.return) {
+    return;
+  }
+
+  // ...
+})
+```
+
+```typescript
+export const { POST } = serve<string>(async (context) => {
+  const input = context.requestPayload
+
+  // 👇 Problem: time-dependent code
+  if (Date.now() % 5 == 2) {
+    await context.run("step-1", () => {
+      // ...
+    })
+  } else {
+    await context.run("step-2", () => {
+      // ...
+    })
+  }
+})
+```
+
+```typescript
+export const { POST } = serve<string>(async (context) => {
+  const input = context.requestPayload
+
+  // 👇 Problem: random code
+  if (Math.floor(Math.random() * 10) % 5 == 2) {
+    await context.run("step-1", () => {
+      // ...
+    })
+  } else {
+    await context.run("step-2", () => {
+      // ...
+    })
+  }
+})
+```
+
+```python
+@serve.post("/api/example")
+async def example(context: AsyncWorkflowContext[str]) -> None:
+    entry_id = context.request_payload["entry_id"]
+
+    # 👇 Problem: Non-idempotent function outside context.run:
+    result = await get_result_from_db(entry_id)
+    if result.should_return:
+        return
+
+    # ...
+
+```
+
+```python
+@serve.post("/api/example")
+async def example(context: AsyncWorkflowContext[str]) -> None:
+    input = context.request_payload
+
+    # 👇 Problem: time-dependent code
+    if time.time() % 5 == 2:
+        await context.run("step-1", lambda: ...)
+    else:
+        await context.run("step-2", lambda: ...)
+
+```
+
+```python
+@serve.post("/api/example")
+async def example(context: AsyncWorkflowContext[str]) -> None:
+    input = context.request_payload
+
+    # 👇 Problem: random code
+    if random.randint(0, 9) % 5 == 2:
+        await context.run("step-1", lambda: ...)
+    else:
+        await context.run("step-2", lambda: ...)
+
+```
+
+If you implement a non-idempotent code like the one shown above, you might encounter `Failed to authenticate Workflow request.` errors. This can happen if you `return` based on the result of the non-idempotent code before any workflow step.
+
+To prevent this, ensure that the non-idempotent code (such as `getResultFromDb` in the example) runs within `context.run`.
+
+```typescript
+const result = await context.run("get-result-from-db", async () => {
+  return await getResultFromDb(entryId)
+});
+if (result.return) {
+  return;
+}
+```
+
+```python
+async def _get_result_from_db():
+    return await get_result_from_db(entry_id)
+
+result = await context.run("get-result-from-db", _get_result_from_db)
+
+if result.should_return:
+    return
+
+```

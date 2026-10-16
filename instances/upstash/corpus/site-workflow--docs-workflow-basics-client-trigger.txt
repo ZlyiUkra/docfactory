@@ -1,0 +1,120 @@
+# Workflow: client.trigger
+# джерело: https://upstash.com/docs/workflow/basics/client/trigger
+# отримано: 2026-10-16
+
+The `trigger` method starts a new workflow run and returns its `workflowRunId`.
+
+You can also trigger multiple workflow runs in a single call by passing an array of arguments instead of a single object.
+
+## Arguments
+
+-  (string, required)
+  The public URL of the workflow endpoint.
+
+  -  (string)
+    A custom identifier for the workflow run.
+    Each run must use a unique ID.
+
+    The final ID will be prefixed with `wfr_`.
+    For example: passing `my-workflow` results in `wfr_my-workflow`.
+
+    If omitted, a run ID will be generated automatically.
+
+    -  (string | object)
+      The request payload to pass into the workflow run.
+      Accessible as `context.requestPayload` inside the workflow.
+
+      -  (object)
+        HTTP headers to pass into the workflow run.
+        Accessible as `context.headers` inside the workflow.
+
+        -  (string)
+          Number of retry attempts for workflow steps. Default is 3.
+
+          -  (string)
+            Delay between retries. Can use expressions like "1000 * (1 + retried)".
+
+            -  (object)
+              An optional flow control configuration to limit concurrency and execution rate of the workflow runs.
+
+              See Flow Control for details.
+
+              -  (string)
+                A logical grouping key that identifies which requests share the same flow control limits.
+
+                -  (number)
+                  The maximum number of allowed requests per second.
+
+                  -  (number)
+                    The maximum number of concurrent requests allowed.
+
+                    -  (string|number)
+                      The time window used to enforce the defined rate limit. Default is `1s`.
+
+                      -  (string)
+                        Delay for the workflow run. This is used to delay the execution of the workflow run. The delay is in seconds or can be passed as a string with a time unit (e.g. "1h", "30m", "15s").
+
+                        -  (number)
+                          Optionally set the absolute delay of this message.
+                          This will override the delay option.
+                          The message will not delivered until the specified time.
+
+                          Unix timestamp in seconds.
+
+                          -  (string | string[])
+                            An optional label to assign to the workflow run.
+                            This can be useful for identifying and filtering runs in the dashboard or logs.
+
+                            Pass an array to attach multiple labels to a single workflow run. The run will
+                            then match a logs or DLQ filter for any of its
+                            labels (OR semantics).
+
+                            -  (boolean)
+                              If set to true, telemetry data collection for this workflow run will be disabled.
+                              By default, telemetry is enabled to help improve Upstash services.
+
+                              See the `disableTelemetry` parameter in serve options for more details.
+
+                              ## Usage
+```ts
+import { Client } from "@upstash/workflow";
+
+const client = new Client({ token: "<QSTASH_TOKEN>" })
+
+const { workflowRunId } = await client.trigger({
+  url: "https://<YOUR_WORKFLOW_ENDPOINT>/<YOUR-WORKFLOW-ROUTE>",
+  body: "hello there!",         // optional body
+  headers: { ... },             // optional headers
+  workflowRunId: "my-workflow", // optional workflow run id
+  retries: 3,                   // optional retries
+  retryDelay: "1000 * (1 + retried)", // optional delay between retries
+  delay: "10s"                  // optional delay value
+  failureUrl: "https://<YOUR_FAILURE_URL>", // optional failure url
+  flowControl: {                // optional flow control
+    key: "USER_GIVEN_KEY",
+    rate: 10,
+    parallelism: 5,
+    period: "10m"
+  },
+  label: ["team-a", "high-priority"], // optional label(s); single string or array
+})
+```
+
+```ts
+import { Client } from "@upstash/workflow";
+
+const client = new Client({ token: "<QSTASH_TOKEN>" })
+const results = await client.trigger([
+  {
+    url: "<YOUR_WORKFLOW_ENDPOINT>",
+    // other options...
+  },
+  {
+    url: "<YOUR_WORKFLOW_ENDPOINT>",
+    // other options...
+  },
+])
+
+console.log(results[0].workflowRunId)
+// prints wfr_my-workflow
+```

@@ -1,0 +1,138 @@
+# Workflow: client.dlq.resume
+# джерело: https://upstash.com/docs/workflow/basics/client/dlq/resume
+# отримано: 2026-10-16
+
+The `dlq.resume` method resumes one or more workflow runs from the **Dead Letter Queue (DLQ)** at the point where they previously failed.
+This allows you to continue execution from the failed step instead of restarting the workflow from the beginning.
+
+## Arguments
+
+The first argument specifies which DLQ entries to resume. The optional second argument provides flow control and retry settings.
+
+### By DLQ ID
+
+Pass a single DLQ ID or an array of IDs directly:
+
+```ts
+await client.dlq.resume("dlq-12345");
+await client.dlq.resume(["dlq-12345", "dlq-67890"]);
+```
+
+### By filters
+
+Pass an object with a `filter` field:
+
+-  (object)
+
+  -  (string)
+    Filter by exact workflow URL.
+
+    -  (string)
+      Filter by workflow run ID.
+
+      -  (string | string[])
+        Resume workflows with this label. Pass an array to match runs that
+        have any of the given labels (OR semantics).
+
+        -  (Date | number)
+          Resume workflows created after this date.
+
+          -  (Date | number)
+            Resume workflows created before this date.
+
+            -  (string)
+              Filter by the IP address that triggered the workflow.
+
+              -  (string)
+                Filter by flow control key.
+
+                -  (number)
+                  Filter by workflow creation time (Unix timestamp in ms).
+
+                  -  (string)
+                    Filter by failure callback state.
+
+                    -  (number)
+                      Maximum number of messages to process per call. Defaults to `100`.
+
+                      -  (string)
+                        A pagination cursor from a previous request.
+
+                        ### Resume all
+
+                        -  (boolean)
+                          Set to `true` to resume all DLQ entries.
+
+                          ### Options (second argument)
+
+                          -  (object)
+                            An optional flow control configuration to limit concurrency and execution rate
+                            of resumed workflow runs.
+
+                            See Flow Control for details.
+
+                            -  (string)
+                              A logical grouping key that identifies which resumed runs share the same flow control limits.
+
+                              -  (number)
+                                The maximum number of allowed resumption requests per second.
+
+                                -  (number)
+                                  The maximum number of resumed runs that can execute concurrently.
+
+                                  -  (string|number)
+                                    The time window used to enforce the defined rate limit. Default is `1s`.
+
+                                    -  (number)
+                                      Number of retry attempts to apply when resuming the workflow run.
+                                      Defaults to `3` if not provided.
+
+                                      ## Response
+
+                                      - `cursor` (string)
+                                        A pagination cursor. If not returned, all matching entries have been processed.
+
+                                      - `workflowRuns` (object[])
+
+                                        - `workflowRunId` (string)
+                                          The ID of the workflow run resumed from the DLQ message.
+
+                                        - `workflowCreatedAt` (number)
+                                          The Unix timestamp (in milliseconds) when the resumed run was created.
+
+                                      ## Usage
+
+```ts
+const { messages } = await client.dlq.list();
+
+const response = await client.dlq.resume(messages[0].dlqId, {
+  flowControl: {
+    key: "my-flow-control-key",
+    parallelism: 10,
+  },
+  retries: 3,
+});
+```
+```ts
+const response = await client.dlq.resume(["dlq-12345", "dlq-67890"]);
+```
+```ts
+let cursor: string | undefined;
+do {
+  const result = await client.dlq.resume({
+    filter: {
+      label: "my-label",
+      workflowUrl: "https://example.com/workflow",
+    },
+    cursor,
+  });
+  cursor = result.cursor;
+} while (cursor);
+```
+```ts
+let cursor: string | undefined;
+do {
+  const result = await client.dlq.resume({ all: true, cursor });
+  cursor = result.cursor;
+} while (cursor);
+```

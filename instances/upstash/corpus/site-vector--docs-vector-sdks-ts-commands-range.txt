@@ -1,0 +1,127 @@
+# Vector: Range
+# джерело: https://upstash.com/docs/vector/sdks/ts/commands/range
+# отримано: 2026-10-16
+
+The range method is used to retrieve vectors in chunks with pagination. This method supports a variety of options to configure the query to your needs.
+
+Note:
+The range command is stateless, meaning you need to pass all of the parameters
+in each subsequent request.
+
+## Arguments
+
+-  (string | number, required)
+  The cursor to the last retrieved vector. Should be set to `0` in the initial
+  range request.
+
+  -  (string)
+    An string prefix to match vector IDs. All vectors with IDs that start with
+    this prefix will be retrieved.
+
+    -  (number, required)
+      The number of maximum vectors wanted in the response of range. (page size)
+
+      -  (boolean)
+        Whether to include the metadata of the vectors in the response. Setting this
+        `true` would be the best practice, since it will make it easier to identify
+        the vectors.
+
+        -  (boolean)
+          Whether to include the vector themselves in the response.
+
+          -  (boolean)
+            Whether to include the data field in the
+            response.
+
+            - `Namespace` ({ namespace?: string })
+              Namespace to call range for. If not set, default namespace is used.
+
+              ## Response
+
+              - `RangeResponse` (required)
+
+                - `nextCursor` (string | number, required)
+                  Cursor to use in the next range request.
+
+                - `vectors` (Vector | Vector[], required)
+
+                  - `id` (string | number, required)
+                    The ID of the vector
+
+                  - `vector` (number[])
+                    The vectors (if `includeVectors` is set to true)
+                  <ResponseField name="metadata" type="Record<string, unknown>">
+                  The metadata of the vectors (if `includeMetadata` is set to true)
+
+                - `data` (string)
+                  The data of the vector (if `includeData` is set to true)
+
+```typescript
+const responseRange = await index.range(
+  {
+    cursor: 0,
+    limit: 2,
+    includeMetadata: true,
+  },
+  { namespace: "my-namespace" }
+);
+
+/*
+{
+  nextCursor: '2',
+  vectors: [
+    {
+      id: '0',
+      metadata: {
+        keyword: "Vector"
+      }
+    },
+    {
+      id: '19',
+      metadata: {
+        keyword: "Redis"
+      }
+    }
+  ]
+}
+*/
+```
+
+```typescript
+const responseRange = await index.range({
+  cursor: 0,
+  limit: 2,
+  prefix: "test-",
+});
+
+/*
+{
+  nextCursor: '2',
+  vectors: [
+    { id: 'test-1' },
+    { id: 'test-2' },
+  ]
+}
+*/
+```
+
+```typescript
+type Metadata = {
+  title: string;
+  genre: "sci-fi" | "fantasy" | "horror" | "action";
+};
+
+const responseRange = await index.range<Metadata>({
+  cursor: 0,
+  limit: 2,
+  includeMetadata: true,
+});
+
+if (responseRange[0].metadata) {
+  // Since we passed the Metadata type parameter above,
+  // we can interact with metadata fields without having to
+  // do any typecasting.
+  const { title, genre } = results[0].metadata;
+  console.log(`The best match in fantasy was ${title}`);
+}
+```

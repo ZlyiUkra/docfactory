@@ -1,0 +1,255 @@
+# QStash: Publish a Message
+# джерело: https://upstash.com/docs/qstash/api-reference/messages/publish-a-message
+# отримано: 2026-10-16
+
+> Publish a message to the specified destination
+
+`POST /v2/publish/{destination}`
+
+## Request
+
+`POST https://qstash-{region}.upstash.io/v2/publish/{destination}`
+
+Authentication: `bearerAuth`, `bearerAuthQuery` headers.
+
+**Parameters**
+
+- `destination` (path, string, required)
+  Destination can either be a valid URL where the message gets sent to, or a URL Group name.
+  - If the destination is a URL, make sure the URL is prefixed with a valid protocol (http:// or https://)
+  - If the destination is a URL Group, a new message will be created for each endpoint in the group.
+
+  Note that destination must be publicly accessible over the internet. If you are working with local endpoints, consider using QStash local development server or a public tunnel service.
+
+- `Content-Type` (header, string)
+  `Content-Type` is the MIME type of the message.
+
+  We highly recommend sending a `Content-Type` header along, as this will help your destination API to understand the content of the message.
+
+  Set this to whatever data you are sending through QStash, if your message is json, then use `application/json`. Some frameworks like Next.js will not parse your body correctly if the content type is not correct.
+
+  Examples:
+  - `application/json`
+  - `application/xml`
+  - `application/octet-stream`
+  - `text/plain`
+
+- `Upstash-Forward-*` (header, string)
+  You can send custom headers to your endpoint along with your message.
+
+  To send a custom header, prefix the header name with `Upstash-Forward-`. We will strip prefix and send them to the destination.
+
+  | Header | Forwarded To Destination As |
+  |--------|--------------|
+  | Upstash-Forward-My-Header: my-value | My-Header: my-value |
+  | Upstash-Forward-Authorization: Bearer  | Authorization: Bearer  |
+
+- `Upstash-Method` (header, string)
+  The HTTP method to use when sending the request to your API.
+  One of: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`
+  Default: `POST`
+
+- `Upstash-Timeout` (header, string)
+  Specifies the maximum duration the request is allowed to take before timing out.
+
+  This parameter can be used to shorten the default allowed timeout value on your plan. See `Max HTTP Connection Timeout` on the pricing page for default values.
+
+  The format of this header is `<value><unit>` where value is a number and unit is one of:
+  - `s` for seconds
+  - `m` for minutes
+  - `h` for hours.
+
+- `Upstash-Retries` (header, integer)
+  How many times should this message be retried in case the destination API returns an error or is not available.
+
+  The total number of deliveries is 1 (initial attempt) + retries.
+
+  If it is not provided, the default of 3 retries is used.
+
+- `Upstash-Retry-Delay` (header, string)
+  Customize the delay between retry attempts when message delivery fails.
+
+  By default, QStash uses exponential backoff. You can override this by providing a mathematical expressions to compute next delay. This expression is computed after each failed attempt.
+
+  You can use the special variable `retried`, which is how many times the message has been retried. The `retried` is 0 for the first retry.
+
+  Supported functions:
+  | Function    | Description                          |
+  |-------------|--------------------------------------|
+  | `pow(x, y)`| Returns x raised to the power of y|
+  | `exp(x)`| Returns e raised to the power of x|
+  | `sqrt(x)`| Takes the square root of x|
+  | `abs(x)`| Returns the absolute value of x|
+  | `floor(x)`| Returns the largest integer less than or equal to x|
+  | `ceil(x)`| Returns the smallest integer greater than or equal to x|
+  | `round(x)`| Rounds x to the nearest integer|
+  | `min(x, y)`| Returns the smaller of x and y|
+  | `max(x, y)`| Returns the larger of x and y|
+
+  Examples:
+  - `1000`: Fixed 1 second delay
+  - `1000 * (1 + retried)`: Linear backoff
+  - `pow(2, retried) * 1000`: Exponential backoff
+  - `max(1000, pow(2, retried) * 100)`: Exponential with minimum 1s delay
+
+- `Upstash-Delay` (header, string)
+  Delay the message delivery.
+
+  The format of this header is `<value><unit>` where value is a number and unit is one of:
+  - `s` for seconds
+  - `m` for minutes
+  - `h` for hours.
+  - `d` for days.
+
+- `Upstash-Not-Before` (header, integer)
+  Delay the message delivery until a certain timestamp in the future.
+
+  The format is a unix timestamp in seconds, based on the UTC timezone.
+
+  When both `Upstash-Not-Before` and `Upstash-Delay` headers are provided, `Upstash-Not-Before` will take precedence.
+
+- `Upstash-Label` (header, string)
+  Label(s) to assign to the message for easier identification and filtering in logs and DLQ.
+
+  You can assign multiple labels by providing a comma-separated list.
+
+  Example: `label_1,label_2`
+
+- `Upstash-Flow-Control-Key` (header, string)
+  Flow Control Key to use for rate limiting messages.
+
+  Make sure you pass `Upstash-Flow-Control-Value` header as well to define the limits for the key.
+
+- `Upstash-Flow-Control-Value` (header, string)
+  Flow Control parallelism, rate and period values to use for rate limiting messages for the given key.
+  Format: `parallelism=<value>, rate=<value>, period=<value>`.
+  Make sure you pass `Upstash-Flow-Control-Key` header as well to define the key.
+  See flow control for details.
+
+- `Upstash-Deduplication-Id` (header, string)
+  Deduplication ID to use for de-duplicating messages.
+
+  If a message with the same deduplication ID was published in the last 10 minutes, the new message will be ignored.
+
+- `Upstash-Content-Based-Deduplication` (header, string)
+  Enable content based deduplication.
+
+  When enabled, QStash will compute a hash of the message body and use it as deduplication ID.
+  If a message with the same content was published in the last 10 minutes, the new message will be ignored.
+  One of: `true`, `false`
+  Default: `false`
+
+- `Upstash-Callback` (header, string)
+  You can define a callback url that will be called after message delivery, either success or failure. See the content of what will be delivered to a callback here.
+
+  - Callback URL must be prefixed with a valid protocol (http:// or https://)
+  - Callbacks are charged as a regular message.
+  - Callbacks will use the retry setting from the original request.
+
+- `Upstash-Callback-Forward-*` (header, string)
+  You can send custom headers along with your callback message.
+  To send a custom header, prefix the header name with `Upstash-Callback-Forward-`. We will strip prefix and them to the callback URL.
+
+  | Header | Forwarded To Callback Destination As |
+  |--------|--------------|
+  | Upstash-Callback-Forward-My-Header: my-value | My-Header: my-value |
+  | Upstash-Callback-Forward-Authorization: Bearer  | Authorization: Bearer  |
+
+- `Upstash-Callback-*` (header, string)
+  You can customize the callback message configuration.
+
+  See the Configuring Callbacks section to learn more.
+
+  | Header | Description |
+  |--------|--------------|
+  | Upstash-Callback-Method | HTTP method to use for the callback request. Default is POST. |
+  | Upstash-Callback-Timeout | Timeout for the callback request. Format is same as Upstash-Timeout header. |
+  | Upstash-Callback-Retries | Number of retries for the callback request. Default is same as original message retries. |
+  | Upstash-Callback-Retry-Delay | Retry delay for the callback request. Format is same as Upstash-Retry-Delay header. |
+
+- `Upstash-Failure-Callback` (header, string)
+  You can define a failure callback url that will be called when a delivery is failed. That is when all the defined retries are exhausted. See the content of what will be delivered to a failure callback (here)[/qstash/features/callbacks#how-do-i-use-callbacks]
+
+  - Failure callback URL must be prefixed with a valid protocol (http:// or https://)
+  - Failure callbacks are charged as a regular message.
+  - Failure callbacks will use the retry setting from the original request.
+
+- `Upstash-Failure-Callback-Forward-*` (header, string)
+  You can send custom headers along with your failure callback message.
+  To send a custom header, prefix the header name with `Upstash-Failure-Callback-Forward-`. We will strip prefix and them to the failure callback URL.
+
+  | Header | Forwarded To Callback Destination As |
+  |--------|--------------|
+  | Upstash-Failure-Callback-Forward-My-Header: my-value | My-Header: my-value |
+  | Upstash-Failure-Callback-Forward-Authorization: Bearer  | Authorization: Bearer  |
+
+- `Upstash-Failure-Callback-*` (header, string)
+  You can customize the failure callback message configuration.
+
+  See the Configuring Callbacks section to learn more.
+
+  | Header | Description |
+  |--------|--------------|
+  | Upstash-Failure-Callback-Method | HTTP method to use for the callback request. Default is POST. |
+  | Upstash-Failure-Callback-Timeout | Timeout for the callback request. Format is same as Upstash-Timeout header. |
+  | Upstash-Failure-Callback-Retries | Number of retries for the callback request. Default is same as original message retries. |
+  | Upstash-Failure-Callback-Retry-Delay | Retry delay for the callback request. Format is same as Upstash-Retry-Delay header. |
+
+- `Upstash-Redact-Fields` (header, string)
+  Comma-separated list of fields to redact from the schedule. Redacted fields appear as `REDACTED:<SHA256>` in the dashboard and API responses. The original values are still used when delivering messages to your endpoint.
+
+  All messages produced by this schedule will have the specified fields redacted. Schedule get and list endpoints also apply redaction, so private data won't appear in API responses or the dashboard.
+
+  Available options:
+  | Option | Description |
+  |--------|-------------|
+  | `body` | Redact the body of the message |
+  | `headers` | Redact all headers of the message |
+  | `header[header_name]` | Redact a specific header (e.g., `header[Authorization]`) |
+
+  Examples:
+  - `body`: Redact only the body
+  - `body, header[Authorization]`: Redact the body and the Authorization header
+  - `body, headers`: Redact both body and all headers
+
+**Request body** (`text/plain`)
+
+**Request body** (`application/json`)
+
+**Request body** (`application/octet-stream`)
+
+## Response
+
+**200** — Message(s) published successfully
+
+- One of the forms, 1: variant 1 (object)
+
+  - `messageId` (string)
+    Unique identifier for the published message or the old message ID if deduplicated
+
+  - `deduplicated` (boolean)
+    Whether this message is a duplicate and was not sent to the destination.
+
+- One of the forms, 2: variant 2 (object)
+  Published to URL Group and created multiple messages for each endpoint the URL Group
+
+  - `messages` (array of object)
+
+    - `messageId` (string)
+      Unique identifier for the published message or the old message ID if deduplicated
+
+    - `deduplicated` (boolean)
+      Whether this message is a duplicate and was not sent to the destination.
+
+    - `url` (string)
+      Destination URL of the URL Group endpoint.
+
+**400** — Bad request
+
+- `error` (string, required)
+  Error message
+
+**401** — Unauthorized
+
+- `error` (string, required)
+  Error message

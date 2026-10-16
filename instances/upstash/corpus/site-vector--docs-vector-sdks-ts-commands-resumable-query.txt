@@ -1,0 +1,173 @@
+# Vector: Resumable Query
+# джерело: https://upstash.com/docs/vector/sdks/ts/commands/resumable-query
+# отримано: 2026-10-16
+
+The resumableQuery method allows you to perform queries that can be resumed to fetch additional results. This is particularly useful for large result sets or when implementing pagination.
+
+Note:
+The dimension of the query vector must match the dimension of your index.
+
+Note:
+The score returned from query requests is a normalized value between 0 and 1,
+where 1 indicates the highest similarity and 0 the lowest regardless of the
+similarity function used.
+
+## Arguments
+
+- `Payload` (ResumableQueryPayload, required)
+
+  - `vector | sparseVector | data` (number[] | SparseVector | string, required)
+
+Note:
+    There are two ways to use the resumableQuery method. You can either create the vectors on your own and pass directly the `vector` or `sparseVector` field, depending on your index type. Or you can pass the `data` field and create the embeddings using Upstash Embedding.
+    The query data/vector that you want to search for in the index.
+
+  - `topK` (number, required)
+    The initial number of vectors to retrieve in the query result. The response will be sorted based on the distance metric score.
+
+  - `includeMetadata` (boolean)
+    Whether to include the metadata of the vectors in the response. Setting
+    this `true` would be the best practice, since it will make it easier to
+    identify the vectors.
+
+  - `includeVectors` (boolean)
+    Whether to include the vector values in the response.
+
+  - `includeData` (boolean)
+    Whether to include the data field in the response.
+
+  - `filter` (string)
+    The metadata filtering of the vector. This is used to query your data based on the filters and narrow down the query results.
+
+    If you want to learn more about filtering check: Metadata Filtering
+
+  - `weightingStrategy` (WeightingStrategy)
+    For sparse vectors, what kind of weighting strategy should be used while querying the matching non-zero dimension values of the query vector with the documents. If not provided, no weighting will be used.
+
+  - `fusionAlgorithm` (FusionAlgorithm)
+    Fusion algorithm to use while fusing scores from dense and sparse components of a hybrid index. If not provided, defaults to `RRF`.
+
+  - `queryMode` (QueryMode)
+    Query mode for hybrid indexes with Upstash-hosted embedding models. Specifies whether to run the query in only the dense index, only the sparse index, or in both. If not provided, defaults to `HYBRID`.
+
+  - `maxIdle` (number)
+    Maximum idle time for the resumable query in seconds.
+
+## Response
+
+- `ResumableQueryResponse` (Object, required)
+
+  - `result` (QueryResult[], required)
+    The initial query results.
+
+  required
+  >
+  A function to fetch the next batch of results.
+ Promise" required>
+A function to stop the resumable query and release resources.
+
+- `QueryResult` (Object, required)
+
+  - `id` (string | number, required)
+    The ID of the resulting vector.
+
+  - `score` (number, required)
+    The score of the vector data, calculated based on the distance metric of your index.
+
+  - `vector` (number[])
+    The resulting vector (if `includeVectors` is set to true)
+
+  - `sparseVector` (SparseVector)
+    The resulting sparseVector (if `includeVectors` is set to true)
+  <ResponseField name="metadata" type="Record<string, unknown>">
+  The metadata of the vector (if `includeMetadata` is set to true)
+
+- `data` (string)
+  The data of the vector (if `includeData` is set to true)
+
+```typescript
+const { result, fetchNext, stop } = await index.resumableQuery({
+  maxIdle: 3600,
+  topK: 50,
+  vector: [0, 1, 2, ..., 383], // 384-dimensional vector
+  includeMetadata: true,
+  includeVectors: true,
+});
+
+console.log(result);
+/*
+[
+  {
+    id: '6345',
+    score: 1.00000012,
+    vector: [0, 1, 2, ..., 383],
+    metadata: {
+      sentence: "Upstash is great."
+    }
+  },
+  // ... more results
+]
+*/
+
+const nextBatch = await fetchNext(5); // Fetch next 5 results
+console.log(nextBatch);
+
+await stop(); // Stop the resumable query
+```
+
+```typescript
+const { result, fetchNext, stop } = await index.resumableQuery({
+  maxIdle: 3600,
+  topK: 50,
+  data: "lord of the rings"
+  includeMetadata: true,
+  includeData: true,
+});
+
+console.log(result);
+/*
+[
+  {
+    id: '6345',
+    score: 1.00000012,
+    data: "hobbit",
+    metadata: {
+      sentence: "Upstash is great."
+    }
+  },
+  // ... more results
+]
+*/
+
+const nextBatch = await fetchNext(5); // Fetch next 5 results
+console.log(nextBatch);
+
+await stop(); // Stop the resumable query
+```
+
+```typescript
+type Metadata = {
+  title: string,
+  genre: 'sci-fi' | 'fantasy' | 'horror' | 'action'
+}
+
+const { result, fetchNext, stop } = await index.resumableQuery<Metadata>({
+  vector: [
+    ... // query embedding
+  ],
+  includeMetadata: true,
+  topK: 1,
+  filter: "genre = 'fantasy' and title = 'Lord of the Rings'",
+  maxIdle: 3600,
+})
+
+if (result[0].metadata) {
+  // Since we passed the Metadata type parameter above,
+  // we can interact with metadata fields without having to
+  // do any typecasting.
+  const { title, genre } = result[0].metadata;
+  console.log(`The best match in fantasy was ${title}`)
+}
+
+await stop();
+```

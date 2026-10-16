@@ -1,0 +1,81 @@
+# Workflow: context.invoke
+# джерело: https://upstash.com/docs/workflow/steps/invoke
+# отримано: 2026-10-16
+
+`context.invoke()` triggers another workflow run and pauses until the invoked workflow finishes.
+
+The calling workflow resumes once the invoked workflow either **succeeds**, **fails**, or is **canceled**.
+
+Note:
+Workflows can only invoke other workflows that were served together in the same `serveMany` route.
+For details, see Invoke other workflows.
+
+## Arguments
+
+-  (function, required)
+  The workflow definition to invoke.
+  Must be a workflow exposed under the same `serveMany`.
+
+  -  (any)
+    The payload to send to the invoked workflow.
+    This value will be set as `context.requestPayload` in the invoked workflow.
+
+    -  (object)
+      Optional HTTP headers to forward to the invoked workflow.
+      This value will be set as `context.headers` in the invoked workflow.
+
+      -  (string)
+        Override the workflow run ID for the invoked workflow.
+        Defaults to a new ID if not specified.
+
+        -  (number)
+          Number of retry attempts configuration of the invoked workflow.
+          Defaults to `3`. Retries use exponential backoff.
+
+          -  (number|string)
+            Delay between retries of the invoked workflow.
+
+            -  (object)
+              Flow control configuration of the invoked workflow.
+
+              See Flow Control for details.
+
+              -  (string)
+                A logical grouping key that identifies which requests share the same flow control limits.
+
+                -  (number)
+                  The maximum number of allowed requests per second.
+
+                  -  (number)
+                    The maximum number of concurrent requests allowed.
+
+                    -  (string|number)
+                      The time window used to enforce the defined rate limit. Default is `1s`.
+
+                      ## Response
+
+                      - `body` (any)
+                        The response body returned by the invoked workflow.
+
+                      - `isFailed` (boolean)
+                        `true` if the invoked workflow completed with failure.
+
+                      - `isCanceled` (boolean)
+                        `true` if the invoked workflow was canceled before completion.
+
+                      ## Usage
+
+```ts
+const { body, isFailed, isCanceled } = await context.invoke(
+  "invoke another workflow",
+  {
+    workflow: anotherWorkflow,
+    body: "test",
+    header: {...}, // headers to pass to anotherWorkflow (optional)
+    retries,       // number of retries (optional, default: 3)
+    retryDelay,    // delay between retries (optional, uses exponential backoff by default)
+    flowControl,   // flow control settings (optional)
+    workflowRunId  // workflowRunId to set (optional)
+  }
+);
+```

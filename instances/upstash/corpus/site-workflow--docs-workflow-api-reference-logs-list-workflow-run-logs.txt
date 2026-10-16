@@ -1,0 +1,275 @@
+# Workflow: List Workflow Run Logs
+# джерело: https://upstash.com/docs/workflow/api-reference/logs/list-workflow-run-logs
+# отримано: 2026-10-16
+
+`GET /v2/workflows/logs`
+
+## Request
+
+`GET https://qstash-{region}.upstash.io/v2/workflows/logs`
+
+Authentication: `bearerAuth`, `bearerAuthQuery` headers.
+
+**Parameters**
+
+- `cursor` (query, string)
+  Pagination cursor for fetching the next page of results.
+
+- `workflowUrl` (query, string)
+  Filter by workflow URL (exact match). Must start with http:// or https://.
+
+- `workflowRunId` (query, string)
+  Filter by specific workflow run ID..
+
+- `workflowCreatedAt` (query, integer, int64)
+  Filter by workflow creation timestamp in milliseconds (Unix timestamp).
+
+- `workflowRuns` (query, string)
+  Filter by multiple workflow runs. Provide a comma-separated list of `workflowRunId@workflowCreatedAt` pairs to query specific runs in a single request.
+
+  Example: `workflowRuns=ID1@TS1,ID2@TS2`
+
+  When this parameter is provided, all other filters are ignored.
+
+- `state` (query, string)
+  Filter by workflow or step state. Common states include:
+
+  | Value          | Description                                                    |
+  | -------------- | -------------------------------------------------------------- |
+  | `RUN_STARTED`  | The workflow has started to run and currently in progress.     |
+  | `RUN_SUCCESS`  | The workflow run has completed succesfully.                    |
+  | `RUN_FAILED`   | Some errors has occured and workflow failed after all retries. |
+  | `RUN_CANCELED` | The workflow run has canceled upon user request.               |
+  | `STEP_SUCCESS` | The step succesfully fnished.               |
+  | `STEP_RETRY` | The step is being retried.               |
+  | `STEP_FAILED` | The step is failed.               |
+  | `STEP_PROGRESS` | The step is in progress.                |
+  | `STEP_CANCELED` | The step is cancelled manually.               |
+
+- `fromDate` (query, integer, int64)
+  Filter events from this date onwards in milliseconds (Unix timestamp). Inclusive.
+
+- `toDate` (query, integer, int64)
+  Filter events up to this date in milliseconds (Unix timestamp). Inclusive.
+
+- `count` (query, integer)
+  Maximum number of results to return per page.
+  - Event mode: Max 1000 (default 1000)
+  - Run mode (groupBy=workflowRunId): Max 10 (default 10)
+  Default: `1000`
+  Maximum: `1000`
+
+- `trimBody` (query, integer)
+  Trim request/response bodies to this many bytes. Use -1 to exclude bodies entirely.
+  Useful for reducing response size when bodies are large.
+  Default: `-1`
+
+- `label` (query, array of string)
+  Filter workflow run by label. Supports multi-value filtering. You can pass multiple values to match workflow runs with any of the given labels (OR logic).
+
+  Examples:
+  - `label=my_label`
+  - `label=label_1&label=label_2`
+
+- `flowControlKey` (query, string)
+  Filter workflow run by the flow control key assigned by the user on trigger.
+
+- `callerIp` (query, string)
+  Filter workflow run by the callerIp that started to workflow run.
+
+## Response
+
+**200** — Workflow logs retrieved successfully
+
+- `cursor` (string)
+  Pagination cursor for the next page. Empty if no more results.
+
+- `runs` (array of object)
+  Array of complete workflow runs with all steps and metadata.
+
+  - `workflowRunId` (string)
+    The unique identifier for this workflow run.
+
+  - `workflowUrl` (string)
+    The URL of the workflow.
+
+  - `workflowState` (string)
+    The current state of the workflow run
+
+    | Value          | Description                                                    |
+    | -------------- | -------------------------------------------------------------- |
+    | `RUN_STARTED`  | The workflow has started to run and currently in progress.     |
+    | `RUN_SUCCESS`  | The workflow run has completed succesfully.                    |
+    | `RUN_FAILED`   | Some errors has occured and workflow failed after all retries. |
+    | `RUN_CANCELED` | The workflow run has canceled upon user request.               |
+
+  - `workflowRunCreatedAt` (integer, int64)
+    When the workflow run was created (Unix timestamp in milliseconds).
+
+  - `workflowRunCompletedAt` (integer, int64)
+    When the workflow run completed (Unix timestamp in milliseconds).
+
+  - `workflowRunCallerIp` (string)
+    IP address of the client who triggered the workflow.
+
+  - `steps` (array of object)
+    The workflow steps grouped by execution pattern.
+
+    - `steps` (array of object)
+      Array of steps in this group.
+
+      - `stepId` (integer, int64)
+        The unique identifier for this step.
+
+      - `stepName` (string)
+        The name of the step.
+
+      - `stepType` (string)
+        The type of step (e.g., call, wait, sleep, invoke).
+
+      - `callType` (string)
+        The call type (e.g., step, parallelPlan, parallelResult).
+
+      - `messageId` (string)
+        The message ID for this step.
+
+      - `state` (string)
+        The state of the step (STEP_SUCCESS, STEP_RETRY, STEP_FAILED, STEP_PROGRESS, STEP_CANCELED).
+
+      - `createdAt` (integer, int64)
+        When the step was created (Unix timestamp in milliseconds).
+
+      - `out` (string)
+        The output/result of the step.
+
+      - `callUrl` (string)
+        The URL called in this step.
+
+      - `callMethod` (string)
+        The HTTP method used.
+
+      - `callBody` (string)
+        The request body sent.
+
+      - `callHeaders` (object)
+        The request headers sent.
+
+        - `<key>` (array of string)
+
+      - `callResponseStatus` (integer, int64)
+        The HTTP status code received.
+
+      - `callResponseBody` (string)
+        The response body received.
+
+      - `callResponseHeaders` (object)
+        The response headers received.
+
+        - `<key>` (array of string)
+
+      - `waitEventId` (string)
+        The event ID being waited for (wait steps only).
+
+      - `waitTimeout` (boolean)
+        Whether the wait timed out.
+
+      - `invokedWorkflowRunId` (string)
+        The run ID of the invoked workflow (invoke steps only).
+
+      - `invokedWorkflowUrl` (string)
+        The URL of the invoked workflow.
+
+      - `retries` (integer)
+        Maximum number of retries configured.
+
+      - `nextDeliveryTime` (integer, int64)
+        Next scheduled retry time (Unix timestamp in milliseconds).
+
+    - `type` (string)
+      The type of grouping (parallel, sequential, or next).
+      One of: `parallel`, `sequential`, `next`
+
+  - `workflowRunResponse` (string)
+    The response returned by the workflow run.
+
+  - `invoker` (object)
+
+    - `workflowRunId` (string)
+      The workflow run ID of the invoker.
+
+    - `workflowUrl` (string)
+      The workflow URL of the invoker.
+
+    - `workflowRunCreatedAt` (integer, int64)
+      The creation timestamp of the invoker workflow run.
+
+  - `failureFunction` (object)
+
+    - `messageId` (string)
+      The message ID of the failure callback.
+
+    - `url` (string)
+      The URL of the failure callback.
+
+    - `state` (string)
+      The state of the failure callback.
+
+    - `dlqId` (string)
+      The DLQ ID of the failure callback if it failed.
+
+    - `failHeaders` (object)
+      The headers from the failed workflow step.
+
+      - `<key>` (array of string)
+
+    - `failStatus` (integer)
+      The status code from the failed workflow step.
+
+    - `failResponse` (string)
+      The response body from the failed workflow step.
+
+    - `responseBody` (string)
+      The response body from the failure callback attempt.
+
+    - `responseHeaders` (object)
+      The response headers from the failure callback attempt.
+
+      - `<key>` (array of string)
+
+    - `responseStatus` (integer)
+      The response status from the failure callback attempt.
+
+    - `maxRetries` (integer)
+      Maximum number of retries configured for the failure callback.
+
+  - `dlqId` (string)
+    The DLQ ID if the workflow run failed.
+
+  - `label` (string, deprecated)
+    Label assigned to the workflow run. Deprecated in favor of `labels`.
+
+  - `labels` (array of string)
+    List of labels assigned to the workflow run.
+
+  - `flowControlKey` (string)
+    Flow Control Key assigned to the workflow run.
+
+**400** — Bad Request - Invalid parameters (e.g., invalid cursor, state, or groupBy value)
+
+- `error` (string, required)
+  Error message
+
+**401** — Unauthorized
+
+- `error` (string, required)
+  Error message
+
+**429** — Too Many Requests - Rate limit exceeded
+
+- `error` (string, required)
+  Error message
+
+**500** — Internal Server Error
+
+- `error` (string, required)
+  Error message

@@ -1,0 +1,114 @@
+# Realtime: Authentication
+# джерело: https://upstash.com/docs/realtime/features/middleware
+# отримано: 2026-10-16
+
+Protect your realtime endpoints with custom auth logic.
+
+## Basic Middleware
+
+```typescript
+import { handle } from "@upstash/realtime"
+import { realtime } from "@/lib/realtime"
+import { currentUser } from "@/auth"
+
+export const GET = handle({
+  realtime,
+  middleware: async ({ request, channels }) => {
+    const user = await currentUser(request)
+
+    if (!user) {
+      return new Response("Unauthorized", { status: 401 })
+    }
+  },
+})
+```
+
+## Middleware API
+
+The middleware function receives:
+
+-  (Request)
+  The incoming HTTP Request object
+
+  -  (string[], default `['default']`)
+    The channels a user is attempting to connect to
+
+    - `return`
+      - Return `undefined` or nothing to allow the connection
+      - Return a `Response` object to block the connection with a custom error
+
+    ## Authentication Patterns
+
+**User-Based Auth**
+
+    Verify users can access specific channels:
+
+```typescript
+export const GET = handle({
+  realtime,
+  middleware: async ({ request, channels }) => {
+    const user = await currentUser(request)
+
+    for (const channel of channels) {
+      if (channel === "default") {
+        continue
+      }
+
+      if (!channel.startsWith(user.id)) {
+        return new Response("You can only access your own channels", { status: 403 })
+      }
+    }
+  },
+})
+```
+
+**Session-Based Auth**
+
+    Verify user sessions before allowing connections:
+
+```typescript
+import { getSession } from "@/auth"
+
+export const GET = handle({
+  realtime,
+  middleware: async ({ request }) => {
+    const session = await getSession(request)
+
+    if (!session?.user) {
+      return new Response("Please sign in", { status: 401 })
+    }
+  },
+})
+```
+
+**Role-Based Access**
+
+    Control access based on user roles:
+
+```typescript
+export const GET = handle({
+  realtime,
+  middleware: async ({ request, channels }) => {
+    const user = await currentUser(request)
+
+    for (const channel of channels) {
+      if (channel === "default") {
+        continue
+      }
+
+      if (channel.startsWith("admin-") && user.role !== "admin") {
+        return new Response("Admin access required", { status: 403 })
+      }
+
+      if (channel.startsWith("team-")) {
+        const teamId = channel.replace("team-", "")
+        const isMember = await checkTeamMembership(user.id, teamId)
+
+        if (!isMember) {
+          return new Response("Not a team member", { status: 403 })
+        }
+      }
+    }
+  },
+})
+```

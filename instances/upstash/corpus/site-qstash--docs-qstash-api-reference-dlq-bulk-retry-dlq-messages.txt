@@ -1,0 +1,91 @@
+# QStash: Bulk Retry DLQ messages
+# джерело: https://upstash.com/docs/qstash/api-reference/dlq/bulk-retry-dlq-messages
+# отримано: 2026-10-16
+
+> Retry delivery of multiple messages from the DLQ
+
+`POST /v2/dlq/retry`
+
+When DLQ messages are retried, new messages with the same body and headers are created and scheduled for delivery.
+The original DLQ messages are then removed from the DLQ.
+
+Note:
+You can pass all configuration headers to override the configuration of the original messages.
+
+For example, if the retry count of the original messages is 5, you can set it to 0 for the retried messages by passing `Upstash-Retries: 0 ` header to this request.
+Check out publish documentation for complete list of configuration options you can pass.
+
+Info:
+For multi-value filters, a message matches if its value equals any of the given values (OR logic), and multiple filters are combined with AND logic.
+
+Multiple values can be passed either by repeating the query parameter (`label=label_1&label=label_2`) or as a single comma-separated value (`label=label_1,label_2`).
+
+## Request
+
+`POST https://qstash-{region}.upstash.io/v2/dlq/retry`
+
+Authentication: `bearerAuth`, `bearerAuthQuery` headers.
+
+**Parameters**
+
+- `dlqIds` (query, array of string)
+  List of DLQ IDs to retry. If provided, other filters are ignored.
+
+- `messageId` (query, string)
+  Filter DLQ messages by message ID
+
+- `url` (query, array of string)
+  Filter DLQ messages by destination URL. Supports multiple values.
+
+- `topicName` (query, array of string)
+  Filter DLQ messages by URL Group name. Supports multiple values.
+
+- `scheduleId` (query, array of string)
+  Filter DLQ messages by schedule ID. Supports multiple values.
+
+- `queueName` (query, array of string)
+  Filter DLQ messages by queue name. Supports multiple values.
+
+- `fromDate` (query, integer, int64)
+  Filter DLQ messages by starting date, in milliseconds (Unix timestamp). This is inclusive.
+
+- `toDate` (query, integer, int64)
+  Filter DLQ messages by ending date, in milliseconds (Unix timestamp). This is inclusive.
+
+- `responseStatus` (query, array of integer)
+  Filter DLQ messages by HTTP response status code of the last delivery attempt. Supports multiple values.
+
+- `callerIp` (query, array of string)
+  Filter DLQ messages by IP address of the publisher. Supports multiple values.
+
+- `label` (query, array of string)
+  Filter DLQ messages by label. Supports multiple values. You can pass multiple values to match messages with any of the given labels (OR logic).
+
+  Examples:
+  - `label=my_label`
+  - `label=label_1&label=label_2`
+  - `label=label_1,label_2`
+
+- `flowControlKey` (query, array of string)
+  Filter DLQ messages by Flow Control Key. Supports multiple values.
+
+## Response
+
+**201** — Messages retry initiated successfully
+
+- `cursor` (string)
+  A cursor which you can use in subsequent requests to paginate through all messages.
+  If no cursor is returned, you have reached the end of the messages.
+
+- `responses` (array of object)
+
+  - `messageId` (string)
+    Unique identifier for the published message or the old message ID if deduplicated
+
+  - `deduplicated` (boolean)
+    Whether this message is a duplicate and was not sent to the destination.
+
+**404** — Some messages were not found in the DLQ
+
+- `error` (string, required)
+  Error message

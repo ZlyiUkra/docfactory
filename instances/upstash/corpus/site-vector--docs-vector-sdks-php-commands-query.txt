@@ -1,0 +1,235 @@
+# Vector: Querying Vectors
+# джерело: https://upstash.com/docs/vector/sdks/php/commands/query
+# отримано: 2026-10-16
+
+Now that our database contains data, we want to query it.
+
+There are several ways to query the database, depending on the type of index you have configured.
+
+## Querying
+
+You can query your vector index for similar vectors.
+
+Below, we will learn how to use the SDK to query Dense, Sparse, and Hybrid indexes.
+
+You can read more about Sparse Indexes and Hybrid Indexes on our docs.
+
+### Dense Indexes
+
+We’ll use the `query()` method to instruct the SDK to query vectors from Upstash Vector.
+
+```php
+use Upstash\Vector\Index;
+use Upstash\Vector\VectorQuery;
+
+$index = new Index(
+  url: "<UPSTASH_VECTOR_REST_URL>",
+  token: "<UPSTASH_VECTOR_REST_TOKEN>",
+);
+
+$results = $index->query(new VectorQuery(
+  vector: [0.1, 0.2, ...], // "..." represents the dimension size of your vector index.
+  topK: 15, // topK is the limit number of records we want to be returned.
+  includeMetadata: true, // (optional) if true the query results will contain metadata.
+  includeVectors: true, // (optional) if true the query results will contain the indexed vectors.
+  includeData: true, // (optional) if true the query results will contain the string data.
+  filter: '', // (optional) if set, the query results will be filtered by the given filter.
+));
+```
+
+```php
+use Upstash\Vector\Index;
+use Upstash\Vector\VectorQuery;
+
+$index = new Index(
+  url: "<UPSTASH_VECTOR_REST_URL>",
+  token: "<UPSTASH_VECTOR_REST_TOKEN>",
+);
+
+$results = $index->namespace('my-namespace')->query(new VectorQuery(
+  vector: [0.1, 0.2, ...], // "..." represents the dimension size of your vector index.
+  topK: 15, // topK is the limit number of records we want to be returned.
+  includeMetadata: true, // (optional) if true the query results will contain metadata.
+  includeVectors: true, // (optional) if true the query results will contain the indexed vectors.
+  includeData: true, // (optional) if true the query results will contain the string data.
+  filter: '', // (optional) if set, the query results will be filtered by the given filter.
+));
+```
+
+Note:
+The dimension of the query vector must match the dimension of your index.
+
+Note:
+The score returned from query requests is a normalized value between 0 and 1,
+where 1 indicates the highest similarity and 0 the lowest regardless of the
+similarity function used.
+
+### Sparse Indexes
+
+We can also use the `query()` method to instruct the SDK to query our Sparse index, as shown below:
+
+```php
+use Upstash\Vector\Index;
+use Upstash\Vector\VectorQuery;
+use Upstash\Vector\SparseVector;
+
+$index = new Index(
+  url: "<UPSTASH_VECTOR_REST_URL>",
+  token: "<UPSTASH_VECTOR_REST_TOKEN>",
+);
+
+$results = $index->query(new VectorQuery(
+  sparseVector: new SparseVector(
+    indices: [1, 2, 3],
+    values: [5.0, 6.0, 7.0],
+  ),
+  topK: 15,
+));
+```
+
+```php
+use Upstash\Vector\Index;
+use Upstash\Vector\VectorQuery;
+use Upstash\Vector\SparseVector;
+
+$index = new Index(
+  url: "<UPSTASH_VECTOR_REST_URL>",
+  token: "<UPSTASH_VECTOR_REST_TOKEN>",
+);
+
+$results = $index->namespace('my-namespace')->query(new VectorQuery(
+  sparseVector: new SparseVector(
+    indices: [1, 2, 3],
+    values: [5.0, 6.0, 7.0],
+  ),
+  topK: 15,
+));
+```
+
+Note: Sparse indexes can only be queried using sparse vectors. If you attempt to pass a regular vector in the query, the SDK will throw an exception.
+
+### Hybrid Indexes
+
+Hybrid indexes work the same way; they also use the `query()` method to query our index, as shown below:
+
+```php
+use Upstash\Vector\Index;
+use Upstash\Vector\VectorQuery;
+use Upstash\Vector\SparseVector;
+
+$index = new Index(
+  url: "<UPSTASH_VECTOR_REST_URL>",
+  token: "<UPSTASH_VECTOR_REST_TOKEN>",
+);
+
+$results = $index->query(new VectorQuery(
+  vector: [0.1, 0.2, ...],
+  sparseVector: new SparseVector(
+    indices: [1, 2, 3],
+    values: [5.0, 6.0, 7.0],
+  ),
+  topK: 15,
+));
+```
+
+```php
+use Upstash\Vector\Index;
+use Upstash\Vector\VectorQuery;
+use Upstash\Vector\SparseVector;
+
+$index = new Index(
+  url: "<UPSTASH_VECTOR_REST_URL>",
+  token: "<UPSTASH_VECTOR_REST_TOKEN>",
+);
+
+$results = $index->namespace('my-namespace')->query(new VectorQuery(
+  vector: [0.1, 0.2, ...],
+  sparseVector: new SparseVector(
+    indices: [1, 2, 3],
+    values: [5.0, 6.0, 7.0],
+  ),
+  topK: 15,
+));
+```
+
+## Embedding Models
+
+### Query Data
+
+If your index is configured with one of our embedding models, you can query the index using a simple string, which will be automatically converted into vector embeddings. See the example below:
+
+```php
+use Upstash\Vector\Index;
+use Upstash\Vector\DataQuery;
+
+$index = new Index(
+  url: "<UPSTASH_VECTOR_REST_URL>",
+  token: "<UPSTASH_VECTOR_REST_TOKEN>",
+);
+
+$results = $index->queryData(new DataQuery(
+  data: 'What is the capital of France?',
+  topK: 1, // to only return 1 result.
+  includeData: true,
+));
+```
+
+```php
+use Upstash\Vector\Index;
+use Upstash\Vector\DataQuery;
+
+$index = new Index(
+  url: "<UPSTASH_VECTOR_REST_URL>",
+  token: "<UPSTASH_VECTOR_REST_TOKEN>",
+);
+
+$results = $index->namespace('my-namespace')->queryData(new DataQuery(
+  data: 'What is the capital of France?',
+  topK: 1, // to only return 1 result.
+  includeData: true,
+));
+```
+
+Note: If your index is not configured with an embedding model, this call will throw an exception.
+
+You can read more about Embedding Models on our docs.
+
+## Metadata Filtering
+
+Data stored in indexes on Upstash Vector can be populated with metadata, which can then be used for filtering vectors.
+
+Our SDK makes it easy to filter vectors based on their metadata values. Check out the example below:
+
+```php
+use Upstash\Vector\Index;
+use Upstash\Vector\VectorQuery;
+
+$index = new Index(
+  url: "<UPSTASH_VECTOR_REST_URL>",
+  token: "<UPSTASH_VECTOR_REST_TOKEN>",
+);
+
+$results = $index->query(new VectorQuery(
+  vector: [0.1, 0.2, ...],
+  topK: 15,
+  filter: "country = 'PT' AND continent = 'EU'"
+));
+```
+
+```php
+use Upstash\Vector\Index;
+use Upstash\Vector\VectorQuery;
+
+$index = new Index(
+  url: "<UPSTASH_VECTOR_REST_URL>",
+  token: "<UPSTASH_VECTOR_REST_TOKEN>",
+);
+
+$results = $index->namespace('my-namespace')->query(new VectorQuery(
+  vector: [0.1, 0.2, ...],
+  topK: 15,
+  filter: "country = 'PT' AND continent = 'EU'"
+));
+```
+
+You can read more about Metadata Filtering on our docs.
