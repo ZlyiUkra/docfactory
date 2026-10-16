@@ -1,0 +1,132 @@
+# Example: using-serverless-framework
+# джерело: https://github.com/upstash/examples/tree/main/examples/using-serverless-framework
+# отримано: 2026-10-16
+
+Deploy with Serverless Framework
+
+    Streamline your deployment process using the Serverless Framework, incorporating Redis for enhanced scalability, efficient data management, and seamless integration with cloud services.
+
+handler.js > ioredis async
+
+handlerSync.js > ioredis sync
+
+handlerEphemeral.js > does not reuse the connection
+
+handlerNodeRedis.js > noderedis sync
+
+### Learn More
+
+To learn more about Upstash and its services, check out the following resources:
+
+- Documentation
+- Website
+- Blog
+- Console
+- Discord
+
+## handler.js
+
+```js
+"use strict";
+
+const Redis = require("ioredis");
+
+const time = new Date();
+
+if (typeof client === "undefined") {
+  const client = new Redis(process.env.REDIS_URL);
+}
+
+module.exports.hello = async (event) => {
+  console.log("hello");
+  await client.set("hello", "world");
+  const response = await client.get("hello");
+  return { response: `${response}-${time}` };
+};
+```
+
+## handlerEphemeral.js
+
+```js
+"use strict";
+
+const Redis = require("ioredis");
+
+module.exports.hello = async (event) => {
+  const client = new Redis(process.env.REDIS_URL);
+  await client.set("hello", "world");
+  const response = await client.get("hello");
+  await client.quit();
+  return { response: response };
+};
+```
+
+## handlerNodeRedis.js
+
+```js
+"use strict";
+
+const Redis = require("redis");
+
+if (typeof client === "undefined") {
+  const client = Redis.createClient({
+    host: "us1-full-bug-31874.upstash.io",
+    port: "31874",
+    password: "12345",
+  });
+}
+
+module.exports.hello = (event, context, callback) => {
+  context.callbackWaitsForEmptyEventLoop = false;
+
+  // client.on("error", function(err) {
+  //     throw err;
+  // });
+  client.set("foo", "bar", function (err, dat) {
+    console.log(dat);
+    console.log(err);
+    callback(null, { response: dat });
+  });
+};
+```
+
+## handlerSync.js
+
+```js
+"use strict";
+
+const Redis = require("ioredis");
+
+if (typeof client === "undefined") {
+  const client = new Redis("redis://:6f9ae50f60db42d587ada7174f2f64d0@eu1-apt-bedbug-32176.upstashdev.com:32176");
+}
+
+module.exports.hello = (event, context, callback) => {
+  // This will allow us to freeze open connections to a database
+  context.callbackWaitsForEmptyEventLoop = false;
+
+  client.get("foo").then((dat, err) => {
+    callback(null, { response: dat });
+  });
+};
+```
+
+## package.json
+
+```json
+{
+  "name": "com.upstash.examples.using-serverless-framework",
+  "version": "1.0.0",
+  "description": "Start adn Deploy Upstash with Serverless Framework",
+  "main": "handler.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ioredis": "^5.3.2",
+    "redis": "^4.6.7"
+  }
+}
+```

@@ -1,0 +1,199 @@
+# Example: nextauth-upstash-redis
+# джерело: https://github.com/upstash/examples/tree/main/examples/nextauth-upstash-redis
+# отримано: 2026-10-16
+
+This is an example of how to do Next.js Authentication with NextAuth.js and Serverless Redis by Upstash.
+
+## Getting Started
+
+- Download or Clone this repository
+
+- Install all dependencies
+
+```bash
+npm install
+# or
+yarn install
+# or
+pnpm install
+```
+
+- Copy `.env.example` to `.env.local` and check the `.env.example` file to fill in the environment variables
+
+- Run the development server:
+
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+```
+
+Open http://localhost:3000 to see the app.
+
+## app/api/auth/[...nextauth]/route.ts
+
+```ts
+import NextAuth from "next-auth";
+import { authOptions } from "@/lib/auth";
+
+const handler = NextAuth(authOptions);
+
+export { handler as GET, handler as POST };
+```
+
+## app/components/do-auth.tsx
+
+```tsx
+"use client";
+
+import { Session } from "next-auth";
+import { signIn, signOut } from "next-auth/react";
+import Image from "next/image";
+import React, { useState } from "react";
+
+export function DoAuth({ session }: { session: Session | null }) {
+	const [loading, setLoading] = useState(false);
+	return (
+		<>
+			{session ? (
+				<div className="space-y-4">
+					<div className="flex flex-col items-center gap-y-2">
+						<div className="relative w-40 h-40">
+							<Image fill src={session.user?.image as string} alt={session.user?.name as string} />
+						</div>
+						<span className="text-xl font-bold">{session.user?.name}</span>
+						<span className="text-gray-400">{session.user?.email}</span>
+					</div>
+					<button
+						className="bg-slate-800 w-full hover:bg-slate-700 text-gray-100 font-bold py-2 px-4 rounded"
+						onClick={() => signOut()}
+					>
+						Sign out
+					</button>
+				</div>
+			) : (
+				<button
+					className="bg-slate-800 hover:bg-slate-700 text-gray-100 font-bold py-2 px-4 rounded"
+					onClick={() => {
+						signIn("github");
+						setLoading(true);
+					}}
+					disabled={loading}
+				>
+					{loading ? "Sigining in..." : "Sign in with GitHub"}
+				</button>
+			)}
+		</>
+	);
+}
+```
+
+## app/layout.tsx
+
+```tsx
+import "./globals.css";
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+
+const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+	title: "NextAuth.js + Serverless Redis by Upstash",
+	description: "Next.js Authentication with NextAuth.js + Serverless Redis by Upstash",
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+	return (
+		<html lang="en">
+			<body className={inter.className}>{children}</body>
+		</html>
+	);
+}
+```
+
+## app/page.tsx
+
+```tsx
+import { getServerSession } from "next-auth";
+import { DoAuth } from "./components/do-auth";
+import { authOptions } from "@/lib/auth";
+
+export default async function Home() {
+	const session = await getServerSession(authOptions);
+	return (
+		<main className="flex min-h-screen flex-col items-center bg-slate-900 text-gray-100 gap-y-20 p-24">
+			<h1 className="md:leading-snug text-3xl max-w-[1000px] md:text-5xl  [&>a]:text-green-500 font-bold text-center">
+				<a href="https://nextjs.org" target="_blank">
+					Next.js
+				</a>{" "}
+				Authentication with{" "}
+				<a href="https://next-auth.js.org/" target="_blank">
+					NextAuth.js{" "}
+				</a>{" "}
+				+{" "}
+				<a href="https://upstash.com/" target="_blank">
+					Serverless Redis by Upstash
+				</a>
+			</h1>
+
+			<DoAuth session={session} />
+		</main>
+	);
+}
+```
+
+## lib/auth.ts
+
+```ts
+import GithubProvider from "next-auth/providers/github";
+import { UpstashRedisAdapter } from "@auth/upstash-redis-adapter";
+import { Redis } from "@upstash/redis";
+import { type Adapter } from "next-auth/adapters";
+
+const redis = Redis.fromEnv();
+
+export const authOptions = {
+	adapter: UpstashRedisAdapter(redis) as Adapter,
+	providers: [
+		GithubProvider({
+			clientId: process.env.GITHUB_CLIENT_ID as string,
+			clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
+		}),
+	],
+};
+```
+
+## package.json
+
+```json
+{
+  "name": "nextauth-upstash-redis",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@auth/upstash-redis-adapter": "^1.0.0",
+    "@types/node": "20.4.9",
+    "@types/react": "18.2.20",
+    "@types/react-dom": "18.2.7",
+    "@upstash/redis": "^1.22.0",
+    "autoprefixer": "10.4.14",
+    "eslint": "8.46.0",
+    "eslint-config-next": "13.4.13",
+    "next": "13.4.13",
+    "next-auth": "^4.22.5",
+    "postcss": "8.4.27",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "tailwindcss": "3.3.3",
+    "typescript": "5.1.6"
+  }
+}
+```

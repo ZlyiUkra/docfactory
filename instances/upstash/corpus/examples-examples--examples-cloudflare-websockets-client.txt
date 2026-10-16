@@ -1,0 +1,325 @@
+# Example: cloudflare-websockets/client
+# джерело: https://github.com/upstash/examples/tree/main/examples/cloudflare-websockets/client
+# отримано: 2026-10-16
+
+## React + TypeScript + Vite
+
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+
+Currently, two official plugins are available:
+
+- @vitejs/plugin-react uses Babel for Fast Refresh
+- @vitejs/plugin-react-swc uses SWC for Fast Refresh
+
+## Expanding the ESLint configuration
+
+If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+
+- Configure the top-level `parserOptions` property like this:
+
+```js
+export default tseslint.config({
+  languageOptions: {
+    // other options...
+    parserOptions: {
+      project: ['./tsconfig.node.json', './tsconfig.app.json'],
+      tsconfigRootDir: import.meta.dirname,
+    },
+  },
+})
+```
+
+- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
+- Optionally add `...tseslint.configs.stylisticTypeChecked`
+- Install eslint-plugin-react and update the config:
+
+```js
+// eslint.config.js
+import react from 'eslint-plugin-react'
+
+export default tseslint.config({
+  // Set the react version
+  settings: { react: { version: '18.3' } },
+  plugins: {
+    // Add the react plugin
+    react,
+  },
+  rules: {
+    // other rules...
+    // Enable its recommended rules
+    ...react.configs.recommended.rules,
+    ...react.configs['jsx-runtime'].rules,
+  },
+})
+```
+
+## package.json
+
+```json
+{
+  "name": "client",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "pnpm run build && wrangler pages dev ./dist",
+    "deploy": "pnpm run build && wrangler pages deploy ./dist"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241230.0",
+    "@eslint/js": "^9.15.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.15.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-react-refresh": "^0.4.14",
+    "globals": "^15.12.0",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "~5.6.2",
+    "typescript-eslint": "^8.15.0",
+    "vite": "^6.0.1",
+    "wrangler": "^3.99.0"
+  }
+}
+```
+
+## src/App.tsx
+
+```tsx
+import { useRef, useEffect } from "react";
+import { useChat } from "./hooks/useChat";
+
+function App() {
+  const { messages, status, sendMessage, currentUserId } = useChat(
+    import.meta.env.VITE_WORKER_URL
+  );
+  const messageRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (messageRef.current?.value.trim()) {
+      sendMessage(messageRef.current.value);
+      messageRef.current.value = "";
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-900 text-gray-300">
+      <div className="max-w-4xl mx-auto p-4">
+        <div className="bg-gray-800/30 backdrop-blur-sm rounded-xl p-6 max-w-2xl mx-auto text-center mt-12 mb-8">
+          <div className="flex items-center justify-center gap-4 mb-8">
+            <div
+              className="bg-white backdrop-blur-sm h-14 px-6 rounded-2xl flex items-center justify-center 
+                  shadow-lg hover:bg-white/20 transition-colors"
+            >
+              <img src="/upstash.png" alt="Upstash" className="h-6" />
+            </div>
+            <span className="text-gray-600 font-medium">+</span>
+            <div
+              className="bg-white backdrop-blur-sm h-14 px-6 rounded-2xl flex items-center justify-center 
+                  shadow-lg hover:bg-white/20 transition-colors"
+            >
+              <img src="/cloudflare.png" alt="Cloudflare" className="h-6" />
+            </div>
+          </div>
+          <p className="text-gray-400 text-sm">
+            A real-time chat example using Cloudflare Workers WebSocket API,
+            deployed on Cloudflare Pages, with Upstash Redis for message
+            storage.
+          </p>
+        </div>
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-2xl font-bold">Chat</h1>
+          <span
+            className={`px-3 py-1 rounded-full text-sm ${
+              status === "connected"
+                ? "bg-green-100 text-green-800"
+                : status === "connecting"
+                ? "bg-yellow-100 text-yellow-800"
+                : "bg-red-100 text-red-800"
+            }`}
+          >
+            {status}
+          </span>
+        </div>
+
+        <div className="bg-gray-800/50 rounded-lg shadow mb-4 backdrop-blur-sm">
+          <div className="h-[500px] overflow-y-auto p-4 space-y-4">
+            {messages.map((msg) => {
+              const isCurrentUser = msg.userId === currentUserId;
+              return (
+                <div
+                  key={`${msg.timestamp}-${msg.userId}`}
+                  className={`flex flex-col ${
+                    isCurrentUser ? "items-end" : "items-start"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1 px-2">
+                    <span className="text-gray-400 text-xs">
+                      {new Date(msg.timestamp).toLocaleTimeString()}
+                    </span>
+                    <span className="text-blue-400 text-sm font-medium">
+                      {msg.userId.slice(0, 6)}
+                    </span>
+                  </div>
+                  <div
+                    className={`max-w-[70%] p-3 rounded-2xl ${
+                      isCurrentUser
+                        ? "bg-blue-600 text-white rounded-tr-none"
+                        : "bg-gray-700 text-gray-200 rounded-tl-none"
+                    }`}
+                  >
+                    <span className="block break-words">{msg.message}</span>
+                  </div>
+                </div>
+              );
+            })}
+            <div ref={messagesEndRef} />
+          </div>
+
+          <form
+            onSubmit={handleSubmit}
+            className="border-t border-gray-700/50 p-4 flex gap-2"
+          >
+            <input
+              ref={messageRef}
+              type="text"
+              placeholder="Type a message..."
+              disabled={status !== "connected"}
+              className="flex-1 px-4 py-2 bg-gray-700 text-gray-200 border border-gray-600 rounded-md 
+                       focus:outline-none focus:border-blue-500 placeholder-gray-400"
+            />
+            <button
+              type="submit"
+              disabled={status !== "connected"}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 
+                       disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Send
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default App;
+```
+
+## src/hooks/useChat.ts
+
+```ts
+import { useState, useEffect, useCallback, useRef } from 'react';
+
+type ChatMessage = {
+	userId: string;
+	message: string;
+	timestamp: number;
+}
+export function useChat(url: string) {
+	const wsRef = useRef<WebSocket | null>(null);
+	const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
+	const [messages, setMessages] = useState<ChatMessage[]>([]);
+	const currentUserId = useRef(crypto.randomUUID());
+
+	const connect = useCallback(() => {
+		const ws = new WebSocket(url);
+		wsRef.current = ws;
+
+		ws.onopen = () => {
+			setStatus('connected');
+			// Send userId when connection opens
+			ws.send(JSON.stringify({
+				type: 'init',
+				userId: currentUserId.current
+			}));
+		};
+
+		ws.onmessage = (event) => {
+			const data = JSON.parse(event.data);
+
+			switch (data.type) {
+				case 'history':
+					{
+						const parsedMessages = data.messages;
+						setMessages(parsedMessages);
+						break;
+					}
+				default:
+					setMessages(prevMessages => {
+						const exists = prevMessages.some(msg =>
+							msg.timestamp === data.timestamp && msg.userId === data.userId
+						);
+						return exists ? prevMessages : [...prevMessages, data];
+					});
+			}
+		};
+
+		ws.onclose = () => {
+			setStatus('disconnected');
+			setTimeout(connect, 3000);
+		};
+
+		return () => ws.close();
+	}, [url]);
+
+	useEffect(() => {
+		const cleanup = connect();
+		return () => {
+			cleanup();
+			setMessages([]);
+		};
+	}, [connect]);
+
+	const sendMessage = useCallback((message: string) => {
+		if (wsRef.current?.readyState === WebSocket.OPEN) {
+			wsRef.current.send(JSON.stringify({
+				type: 'message',
+				content: message
+			}));
+		}
+	}, []);
+
+	return {
+		messages,
+		status,
+		sendMessage,
+		currentUserId: currentUserId.current
+	};
+}
+```
+
+## src/main.tsx
+
+```tsx
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import './index.css'
+import App from './App.tsx'
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)
+```

@@ -1,0 +1,113 @@
+# Example: next-chatapp-with-kafka/server
+# джерело: https://github.com/upstash/examples/tree/main/examples/next-chatapp-with-kafka/server
+# отримано: 2026-10-16
+
+## api/server.ts
+
+```ts
+import { WebSocket } from "ws";
+
+import * as http from "http";
+import { Kafka } from "@upstash/kafka";
+import { Redis } from "@upstash/redis";
+
+const server = http.createServer();
+const wss = new WebSocket.Server({ server });
+
+server.listen(8080, () => {
+    console.log("Server is running on port 6060");
+});
+
+const kafka = new Kafka({
+    url: process.env.UPSTASH_KAFKA_REST_URL as string,
+    username: process.env.UPSTASH_KAFKA_REST_USERNAME as string,
+    password: process.env.UPSTASH_KAFKA_REST_PASSWORD as string,
+});
+
+const redis = Redis.fromEnv();
+
+const consumer = kafka.consumer();
+
+const producer = kafka.producer();
+
+const clients = new Set<WebSocket>();
+
+async function run() {
+    while (true) {
+        const messages = await consumer.consume({
+            consumerGroupId: "group_1",
+            instanceId: "instance_1",
+            topics: ["chat"],
+            autoOffsetReset: "earliest",
+        });
+
+        if (messages.length != 0) {
+            for (let i = 0; i < messages.length; i++) {
+                await redis.lpush("messagesList", messages[i].value);
+                console.log(`Message sending: ${messages[i].value}`);
+
+                clients.forEach((connection: WebSocket) => {
+                    connection.send(messages[i].value);
+                });
+            }
+        }
+
+        console.log("run!");
+
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+}
+
+run().catch((error) => {
+    console.log(`Error running the consumer: ${error}`);
+});
+
+wss.on("connection", async (connection, req) => {
+    clients.add(connection);
+
+    console.log("New client connected:");
+
+    connection.on("message", async (message) => {
+        const jsonMessage = message.toString();
+
+        console.log("Received message:", JSON.parse(jsonMessage));
+
+        producer.produce("chat", jsonMessage);
+    });
+
+    connection.on("close", () => {
+        console.log(`Client disconnected:`);
+        clients.delete(connection);
+    });
+});
+```
+
+## package.json
+
+```json
+{
+    "name": "server",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+        "start": "node api/server.js"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "@types/ws": "^8.5.5",
+        "@upstash/kafka": "^1.3.3",
+        "@upstash/redis": "^1.22.0",
+        "dotenv": "^16.3.1",
+        "tsc": "^2.0.4",
+        "typescript": "^5.1.6",
+        "ws": "^8.13.0"
+    },
+    "devDependencies": {
+        "@flydotio/dockerfile": "^0.4.3",
+        "tsup": "^7.2.0"
+    }
+}
+```

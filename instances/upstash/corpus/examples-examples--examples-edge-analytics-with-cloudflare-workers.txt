@@ -1,0 +1,146 @@
+# Example: edge-analytics-with-cloudflare-workers
+# джерело: https://github.com/upstash/examples/tree/main/examples/edge-analytics-with-cloudflare-workers
+# отримано: 2026-10-16
+
+Edge Analytics with Cloudflare Workers
+
+Access log analytics with CloudFlare Workers and Upstash Redis.
+
+This example erforms edge analytics on access logs using CloudFlare Workers and Upstash Redis, extracting page views, unique visitors, top countries, and top pages for a specified date.
+
+### Learn More
+
+To learn more about Upstash and its services, check out the following resources:
+
+- Documentation
+- Website
+- Blog
+- Console
+- Discord
+
+## cloudflare-workers/index.js
+
+```js
+addEventListener("fetch", (event) => {
+  event.respondWith(handleRequest(event.request).catch((err) => new Response(err.stack, { status: 500 })));
+});
+
+const endpoint = "REPLACE_UPSTASH_REST_ENDPOINT";
+const token = "REPLACE_UPSTASH_REST_TOKEN";
+
+async function recordRequest(request) {
+  const d = new Date();
+  const datestr = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+  const data = [["url", request.url], ...request.headers];
+  const url = `${endpoint}/lpush/${datestr}`;
+  const init = {
+    body: JSON.stringify(data),
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
+  return await fetch(url, init);
+}
+
+async function handleRequest(request) {
+  recordRequest(request);
+  return new Response("My Awesome Website");
+}
+```
+
+## index.js
+
+```js
+const Redis = require("ioredis");
+require("dotenv").config();
+console.log("EDGE analytics with CloudFlare Workers and Upstash Redis.");
+const redis = new Redis(process.env.REDIS_URL);
+const dateArg = process.argv[2];
+let datestr;
+if (dateArg) {
+  datestr = dateArg;
+} else {
+  const d = new Date();
+  datestr = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+
+redis.lrange(datestr, "0", "-1", function (err, result) {
+  let pageview = 0;
+  const users = new Set();
+  let countries = new Map();
+  let paths = new Map();
+  if (err) {
+    console.log("Could not connect to Redis.");
+    console.error(err);
+  } else {
+    console.log("Upstash Redis Connection Successful. Analyzing the access logs...");
+    if (!result || result.length === 0) {
+      console.log(`Could not find any access logs for the date:${datestr}`);
+    } else {
+      for (const elem of result) {
+        const entries = JSON.parse(elem);
+        for (const entry of entries) {
+          if (entry[0] === "accept") {
+            if (entry[1].startsWith("text")) pageview++;
+          }
+          if (entry[0] === "cf-ipcountry") {
+            let temp = countries.get(entry[1]);
+            if (!temp) {
+              temp = 0;
+            }
+            countries.set(entry[1], temp + 1);
+          }
+          if (entry[0] === "url") {
+            let temp = paths.get(entry[1]);
+            if (!temp) {
+              temp = 0;
+            }
+            paths.set(entry[1], temp + 1);
+          }
+          if (entry[0] === "x-real-ip") {
+            users.add(entry[1]);
+          }
+        }
+      }
+      countries = new Map([...countries.entries()].sort((a, b) => b[1] - a[1]));
+      paths = new Map([...paths.entries()].sort((a, b) => b[1] - a[1]));
+      console.log("\nDATE: " + datestr);
+      console.log("\nPAGE VIEWS: " + pageview);
+      console.log("\nUNIQUE VISITORS: " + users.size);
+      logMap("TOP COUNTRIES", countries);
+      logMap("TOP PAGES", paths);
+    }
+  }
+});
+
+function logMap(title, data) {
+  console.log("\n" + title);
+  console.log("----------------");
+  console.log(mapEntriesToString(data));
+}
+
+function mapEntriesToString(entries) {
+  return Array.from(entries, ([k, v]) => `${k} : ${v}\n`).join("");
+}
+```
+
+## package.json
+
+```json
+{
+  "name": "edge-analytics-with-cloudflare-workers",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "ioredis": "^5.3.2"
+  }
+}
+```

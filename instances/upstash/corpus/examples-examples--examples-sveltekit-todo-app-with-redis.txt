@@ -1,0 +1,326 @@
+# Example: sveltekit-todo-app-with-redis
+# джерело: https://github.com/upstash/examples/tree/main/examples/sveltekit-todo-app-with-redis
+# отримано: 2026-10-16
+
+## create-svelte
+
+Everything you need to build a Svelte project, powered by `create-svelte`.
+
+## Creating a project
+
+If you're seeing this, you've probably already done this step. Congrats!
+
+```bash
+# create a new project in the current directory
+npm create svelte@latest
+
+# create a new project in my-app
+npm create svelte@latest my-app
+```
+
+## Developing
+
+Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+
+```bash
+npm run dev
+
+# or start the server and open the app in a new browser tab
+npm run dev -- --open
+```
+
+## Building
+
+To create a production version of your app:
+
+```bash
+npm run build
+```
+
+You can preview the production build with `npm run preview`.
+
+> To deploy your app, you may need to install an adapter for your target environment.
+
+## package.json
+
+```json
+{
+	"name": "sveltekit-todo-app-with-redis-new",
+	"version": "0.0.1",
+	"private": true,
+	"scripts": {
+		"dev": "vite dev",
+		"build": "vite build",
+		"preview": "vite preview",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"lint": "prettier --plugin-search-dir . --check . && eslint .",
+		"format": "prettier --plugin-search-dir . --write ."
+	},
+	"devDependencies": {
+		"@sveltejs/adapter-auto": "^2.1.0",
+		"@sveltejs/kit": "^1.22.4",
+		"@typescript-eslint/eslint-plugin": "^6.3.0",
+		"@typescript-eslint/parser": "^6.3.0",
+		"eslint": "^8.46.0",
+		"eslint-config-prettier": "^9.0.0",
+		"eslint-plugin-svelte": "^2.32.4",
+		"prettier": "^3.0.1",
+		"prettier-plugin-svelte": "^3.0.3",
+		"svelte": "^4.1.2",
+		"svelte-check": "^3.4.6",
+		"tslib": "^2.6.1",
+		"typescript": "^5.1.6",
+		"vite": "^4.4.9"
+	},
+	"type": "module",
+	"dependencies": {
+		"@upstash/redis": "^1.22.0"
+	}
+}
+```
+
+## src/app.html
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
+		<meta name="viewport" content="width=device-width" />
+		%sveltekit.head%
+	</head>
+	<body data-sveltekit-preload-data="hover">
+		<div style="display: contents">%sveltekit.body%</div>
+	</body>
+</html>
+```
+
+## src/components/Todo.svelte
+
+```svelte
+<script lang="ts">
+	import type { Todo } from '$lib/types';
+
+	export let todo: Todo;
+</script>
+
+<div class="todo">
+	<form action="?/change" method="post">
+		<input type="hidden" name="todo" value={JSON.stringify(todo)} />
+
+		<button class="checkbox" aria-label="Mark todo as {todo.status ? 'not done' : 'done'}">
+			{todo.status ? '✓' : ''}
+		</button>
+	</form>
+
+	<span class="text">{todo.text}</span>
+
+	<form action="?/delete" method="post">
+		<input type="hidden" name="id" value={todo.id} />
+		<button class="delete" aria-label="Delete todo">✕</button>
+	</form>
+</div>
+
+<style>
+	.todo {
+		display: flex;
+		align-items: center;
+		padding: 0.75rem;
+		border-radius: var(--rounded-md);
+	}
+
+	.checkbox {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 1.25rem;
+		height: 1.25rem;
+		border-radius: var(--rounded);
+		border: 1px solid var(--gray-300);
+		box-shadow: 0 1px 1px 0 rgb(0 0 0 / 10%);
+	}
+
+	.text {
+		margin-left: 0.75rem;
+		flex-grow: 1;
+	}
+
+	.delete {
+		opacity: 0.3;
+	}
+	.delete:hover,
+	.delete:focus {
+		color: red;
+		opacity: 1;
+	}
+</style>
+```
+
+## src/lib/redis.ts
+
+```ts
+import { UPSTASH_REDIS_REST_TOKEN, UPSTASH_REDIS_REST_URL } from "$env/static/private";
+import { Redis } from "@upstash/redis";
+
+export const databaseName = import.meta.env.DEV ? "redis-with-svelte-kit-dev" : "redis-with-svelte-kit";
+
+const redis = new Redis({
+  url: UPSTASH_REDIS_REST_URL,
+  token: UPSTASH_REDIS_REST_TOKEN,
+});
+
+export default redis;
+```
+
+## src/lib/types.ts
+
+```ts
+export type Todo = {
+  id: string;
+  text: string;
+  status: boolean;
+};
+```
+
+## src/routes/+page.server.ts
+
+```ts
+import type { Actions, PageServerLoad } from './$types';
+import redis, { databaseName } from "$lib/redis";
+import type { Todo } from "$lib/types";
+import { error } from '@sveltejs/kit';
+
+export const load = (async () => {
+    let todos: Todo[] = [];
+
+    const data = await redis.hgetall(databaseName);
+
+    if (!data) {
+        return {
+            todos
+        };
+    }
+
+    todos = Object.keys(data)
+        .map((key) => ({
+            id: key,
+            text: data[key]["text"],
+            status: data[key]["status"],
+        }))
+        .sort((a, b) => parseInt(b.id) - parseInt(a.id));
+
+    return {
+        todos
+    };
+}) satisfies PageServerLoad;
+
+export const actions = {
+    new: async ({ request }) => {
+        const form = await request.formData();
+        const text = form.get("text");
+        const id = Date.now().toString();
+
+        if (!text) {
+            throw error(400, "Text is required");
+        }
+
+        await redis.hset<Todo>(databaseName, { [id]: { id, text: text as string, status: false } });
+
+        return {}
+    },
+    change: async ({ request }) => {
+        const form = await request.formData();
+        const todo = form.get("todo");
+
+        const { id, text, status } = JSON.parse(todo as string);
+        const newTodo = { id, text, status: !status };
+
+        await redis.hset<Todo>(databaseName, { [id]: newTodo });
+        return {}
+    },
+    delete: async ({ request }) => {
+        const form = await request.formData();
+        const id = form.get("id");
+
+        await redis.hdel(databaseName, id as string);
+    }
+} satisfies Actions
+```
+
+## src/routes/+page.svelte
+
+```svelte
+<script lang="ts">
+	import type { PageData } from './$types';
+	import '../app.css';
+	import type { Todo } from '$lib/types';
+
+	import TodoItem from '../components/Todo.svelte';
+
+	export let data: PageData;
+
+	$: ({ todos } = data);
+
+	$: uncheckedTodos = todos ? todos.filter((todo) => !todo.status) : [];
+	$: checkedTodos = todos ? todos.filter((todo) => todo.status) : [];
+</script>
+
+<svelte:head>
+	<title>Todos</title>
+</svelte:head>
+
+<main class="container">
+	<form class="new" action="?/new" method="post">
+		<input
+			type="text"
+			name="text"
+			autofocus
+			aria-label="Add todo"
+			class="input"
+			placeholder="What needs to be done?"
+		/>
+	</form>
+
+	<div class="todos">
+		{#each uncheckedTodos as todo (todo.id)}
+			<TodoItem {todo} />
+		{/each}
+	</div>
+
+	{#if checkedTodos.length}
+		<div class="todos todos-done">
+			{#each checkedTodos as todo (todo.id)}
+				<TodoItem {todo} />
+			{/each}
+		</div>
+	{/if}
+
+	<p class="repo-link">
+		<a
+			target="_blank"
+			href="https://github.com/upstash/redis-examples/tree/master/svelte-kit-todo-app-with-redis"
+		>
+			View source on GitHub
+		</a>
+	</p>
+</main>
+
+<style>
+	.repo-link {
+		margin-top: 2rem;
+		text-align: center;
+	}
+
+	.todos {
+		margin-top: 1.5rem;
+	}
+
+	.todos.todos-done {
+		background-color: var(--gray-100);
+		color: var(--gray-500);
+		border-radius: var(--rounded-md);
+	}
+</style>
+```

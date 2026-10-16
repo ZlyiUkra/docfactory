@@ -1,0 +1,175 @@
+# blob-js: src/shared/types.ts
+# джерело: https://github.com/upstash/blob-js/blob/v0.0.1/src/shared/types.ts
+# отримано: 2026-10-16
+# версія: blob-0.0.1
+
+```ts
+import type { BlobError } from './errors.ts';
+```
+
+## interface BlobObject
+
+```ts
+/** What every write verb returns, what list() pages carry, and blob in a snapshot's 'done' member. */
+export interface BlobObject {
+  path: string;
+  /** Undefined on a private bucket: no public host serves it, so use signedRead(). */
+  url?: string;
+  /** `${url}?v=${etag}`: the fix for a stable path that gets overwritten. Undefined when url is. */
+  versionedUrl?: string;
+  size: number;
+  etag: string;
+  uploadedAt: Date;
+}
+
+/* ----------------------------------------------------------- upload wire -- */
+```
+
+## interface WireFile
+
+```ts
+export interface WireFile {
+  name: string;
+  type: string;
+  size: number;
+}
+```
+
+## interface WireLimits
+
+```ts
+export interface WireLimits {
+  allowedContentTypes?: readonly string[];
+  maxBytes?: number;
+}
+```
+
+## interface WireSingle
+
+```ts
+export interface WireSingle {
+  kind: 'single';
+  url: string;
+  headers: Record<string, string>;
+}
+```
+
+## interface WirePart
+
+```ts
+export interface WirePart {
+  n: number;
+  url: string;
+}
+```
+
+## interface WireMultipart
+
+```ts
+export interface WireMultipart {
+  kind: 'multipart';
+  partSize: number;
+  parts: WirePart[];
+}
+```
+
+## interface WireBeginResponse
+
+```ts
+export interface WireBeginResponse {
+  completionToken: string;
+  path: string;
+  upload: WireSingle | WireMultipart;
+}
+```
+
+## interface WireLanded
+
+```ts
+export interface WireLanded {
+  n: number;
+  etag: string;
+}
+```
+
+## type WirePartsResponse
+
+```ts
+export type WirePartsResponse =
+  | { kind: 'single'; url: string; headers: Record<string, string> }
+  | { kind: 'multipart'; partSize: number; size: number; parts: WirePart[]; landed: WireLanded[] };
+```
+
+## interface WireEndResponse
+
+```ts
+export interface WireEndResponse<TData = unknown> {
+  blob: Omit<BlobObject, 'uploadedAt'> & { uploadedAt: string };
+  data: TData;
+}
+```
+
+## type WireRequest
+
+```ts
+export type WireRequest =
+  | { phase: 'begin'; file: WireFile; input?: unknown }
+  | { phase: 'parts'; completionToken: string; from: number }
+  | { phase: 'end'; completionToken: string; parts?: WireLanded[] }
+  | { phase: 'cancel'; completionToken: string };
+
+/* -------------------------------------------------------------- browser -- */
+```
+
+## type UploadSnapshot
+
+```ts
+export type UploadSnapshot = {
+  loaded: number;
+  total: number;
+  percent: number;
+  canPause: boolean;
+  /** Every in-flight part is waiting on a backoff. */
+  stalled: boolean;
+} & (
+  | { status: 'queued' | 'uploading' | 'paused' }
+  | { status: 'done'; blob: BlobObject & { data: unknown } }
+  | { status: 'canceled' }
+  | { status: 'error'; error: BlobError }
+);
+```
+
+## interface UploadTask
+
+```ts
+export interface UploadTask {
+  readonly id: string;
+  readonly file: File;
+  snapshot(): UploadSnapshot;
+  subscribe(onChange: () => void): () => void;
+  readonly done: Promise<BlobObject & { data: unknown }>;
+  pause(): boolean;
+  resume(): boolean;
+  cancel(): boolean;
+  /** Only from 'error': runs the same upload again from the parts that landed. done is replaced. */
+  retry(): boolean;
+}
+```
+
+## interface UploadRouteTypes
+
+```ts
+/** Phantom types carried by a handleUpload POST handler so useUpload<typeof POST> can infer them. */
+export interface UploadRouteTypes<TInput, TData> {
+  input: TInput;
+  data: TData;
+}
+```
+
+## type UploadRoute
+
+```ts
+export type UploadRoute<TInput = unknown, TData = unknown> = ((request: Request) => Promise<Response>) & {
+  readonly __types?: UploadRouteTypes<TInput, TData>;
+};
+```

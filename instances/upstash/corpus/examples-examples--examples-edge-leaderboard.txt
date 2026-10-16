@@ -1,0 +1,87 @@
+# Example: edge-leaderboard
+# джерело: https://github.com/upstash/examples/tree/main/examples/edge-leaderboard
+# отримано: 2026-10-16
+
+Leaderboard with Cloudflare and Redis
+
+    Implement a Leaderboard API At the Edge using Cloudflare Workers and Redis.
+
+See the tutorial.
+
+## Run the Example
+
+- Copy `wrangler.toml.example` to `wrangler.toml`
+- Replace TOKEN with Upstash Database REST Token
+- Replace account_id with Cloudflare account id.
+- Run `wrangler dev`
+
+### Learn More
+
+To learn more about Upstash and its services, check out the following resources:
+
+- Documentation
+- Website
+- Blog
+- Console
+- Discord
+
+## index.js
+
+```js
+addEventListener("fetch", (event) => {
+  event.respondWith(handleRequest(event.request));
+});
+
+async function handleRequest(request) {
+  if (request.method === "GET") {
+    return getLeaderboard();
+  } else if (request.method === "POST") {
+    return addScore(request);
+  } else {
+    return new Response("Invalid Request!");
+  }
+}
+
+async function getLeaderboard() {
+  const url = `https://us1-full-bug-31874.upstash.io/zrevrange/scores/0/1000/WITHSCORES/?_token=${TOKEN}`;
+
+  const res = await fetch(new Request(url), {
+    cf: {
+      cacheTtl: 10,
+      cacheEverything: true,
+      cacheKey: url,
+    },
+  });
+  return res;
+}
+
+async function addScore(request) {
+  const { searchParams } = new URL(request.url);
+  const player = searchParams.get("player");
+  const score = searchParams.get("score");
+  const url = `https://us1-full-bug-31874.upstash.io/zadd/scores/${score}/${player}?_token=${TOKEN}`;
+  const res = await fetch(url);
+  return new Response(await res.text());
+}
+```
+
+## package.json
+
+```json
+{
+  "private": true,
+  "name": "edge-leaderboard",
+  "version": "1.0.0",
+  "description": "A template for kick starting a Cloudflare Workers project",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "format": "prettier --write '**/*.{js,css,json,md}'"
+  },
+  "author": "noahfschr <noah@upstash.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "prettier": "^3.0.1"
+  }
+}
+```

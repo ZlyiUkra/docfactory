@@ -1,0 +1,96 @@
+# Example: cloud-run-sessions
+# джерело: https://github.com/upstash/examples/tree/main/examples/cloud-run-sessions
+# отримано: 2026-10-16
+
+Session Management on Google Cloud Run with Serverless Redis
+
+    Efficient session management implemented on Google Cloud Run, utilizing Serverless Redis for seamless storage and retrieval of session data.
+
+See the tutorial for details.
+
+### Learn More
+
+To learn more about Upstash and its services, check out the following resources:
+
+- Documentation
+- Website
+- Blog
+- Console
+- Discord
+
+## index.js
+
+```js
+const express = require("express");
+const parseurl = require("parseurl");
+const session = require("express-session");
+const redis = require("redis");
+
+const RedisStore = require("connect-redis")(session);
+const client = redis.createClient({
+  // REPLACE HERE
+});
+
+const app = express();
+
+app.use(
+  session({
+    store: new RedisStore({ client: client }),
+    secret: "forest cat",
+    resave: false,
+    saveUninitialized: true,
+  }),
+);
+
+app.use(function (req, res, next) {
+  if (!req.session.views) {
+    req.session.views = {};
+  }
+
+  // get the url pathname
+  const pathname = parseurl(req).pathname;
+
+  // count the views
+  req.session.views[pathname] = (req.session.views[pathname] || 0) + 1;
+  next();
+});
+
+app.get("/", function (req, res, next) {
+  res.send(`you viewed this page ${req.session.views["/"]} times`);
+});
+
+app.get("/foo", function (req, res, next) {
+  res.send(`you viewed this page ${req.session.views["/foo"]} times`);
+});
+
+app.get("/bar", function (req, res, next) {
+  res.send(`you viewed this page ${req.session.views["/bar"]} times`);
+});
+
+app.listen(8080, function () {
+  console.log("The app listening on port 8080!");
+});
+```
+
+## package.json
+
+```json
+{
+  "name": "cloud-run-sessions",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "connect-redis": "^7.1.0",
+    "express": "^4.18.2",
+    "express-session": "^1.17.3",
+    "redis": "^4.6.7"
+  }
+}
+```
