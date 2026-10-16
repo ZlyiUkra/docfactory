@@ -1,0 +1,153 @@
+# box: packages/sdk/src/__tests__/integration/agent.integration.test.ts
+# джерело: https://github.com/upstash/box/blob/python-sdk-v0.4.0/packages/sdk/src/__tests__/integration/agent.integration.test.ts
+# отримано: 2026-10-16
+# версія: upstash-box-0.4.0, dsh-box-0.1.8, box-pi-0.1.15, box-cli-0.3.5, box-cli-0.2.24, box-0.7.9
+
+```ts
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { z } from "zod/v3";
+import { Agent, Box, ClaudeCode, OpenAICodex } from "../../index.js";
+import { UPSTASH_BOX_API_KEY } from "./setup.js";
+```
+
+## agent
+
+```ts
+describe.skipIf(!UPSTASH_BOX_API_KEY)("agent", () => {
+  let box: Box;
+
+  beforeAll(async () => {
+    box = await Box.create({
+      apiKey: UPSTASH_BOX_API_KEY!,
+      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Haiku_4_5 },
+    });
+  }, 120000);
+
+  afterAll(async () => {
+    try {
+      await box?.delete();
+    } catch {
+      // cleanup best-effort
+    }
+  }, 30000);
+```
+
+### agent.run: returns result
+
+```ts
+  it("agent.run: returns result", async () => {
+    const run = await box.agent.run({
+      prompt: "Reply with exactly: INTEGRATION_OK",
+    });
+    const result = run.result;
+    expect(result).toBeTruthy();
+  }, 120000);
+```
+
+### agent.stream: yields Chunk objects
+
+```ts
+  it("agent.stream: yields Chunk objects", async () => {
+    let text = "";
+    let chunkCount = 0;
+    const run = await box.agent.stream({
+      prompt: "Reply with exactly: STREAM_OK",
+    });
+    for await (const chunk of run) {
+      chunkCount++;
+      if (chunk.type === "text-delta") {
+        text += chunk.text;
+      }
+    }
+    expect(chunkCount).toBeGreaterThan(0);
+    expect(text).toBeTruthy();
+    expect(run.status).toBe("completed");
+  }, 120000);
+```
+
+### agent.run: structured output with responseSchema
+
+```ts
+  it("agent.run: structured output with responseSchema", async () => {
+    const schema = z.object({
+      message: z.string(),
+      messageSize: z.number(),
+      secretCookie: z.string(),
+    });
+
+    // A real task, not "say hi". The runner exposes the schema as a
+    // StructuredOutput tool, and a model asked to call a tool for no reason can
+    // refuse it as a prompt injection, which is what Haiku 4.5 did.
+    const run = await box.agent.run({
+      prompt:
+        "Write the text 'hello' to greeting.txt, then report the message you wrote, " +
+        "its size in bytes, and the value 'chocolate-chip' as the secret cookie.",
+      responseSchema: schema,
+    });
+
+    const result = run.result;
+    expect(result).toEqual({
+      message: expect.any(String),
+      messageSize: expect.any(Number),
+      secretCookie: expect.any(String),
+    });
+  }, 120000);
+});
+```
+
+## agent (OpenAI GPT-5.4)
+
+```ts
+describe.skipIf(!UPSTASH_BOX_API_KEY)("agent (OpenAI GPT-5.4)", () => {
+  let box: Box<Agent.Codex>;
+
+  beforeAll(async () => {
+    box = await Box.create<Agent.Codex>({
+      apiKey: UPSTASH_BOX_API_KEY!,
+      agent: { harness: Agent.Codex, model: OpenAICodex.GPT_5_4 },
+    });
+  }, 120000);
+
+  afterAll(async () => {
+    try {
+      await box?.delete();
+    } catch {
+      // cleanup best-effort
+    }
+  }, 30000);
+```
+
+### agent.run: returns non-empty result
+
+```ts
+  it("agent.run: returns non-empty result", async () => {
+    const run = await box.agent.run({
+      prompt: "Reply with exactly: OPENAI_OK",
+    });
+    expect(run.result).toBeTruthy();
+    expect(run.result).toContain("OPENAI_OK");
+    expect(run.status).toBe("completed");
+  }, 120000);
+```
+
+### agent.stream: yields text-delta chunks
+
+```ts
+  it("agent.stream: yields text-delta chunks", async () => {
+    let text = "";
+    let chunkCount = 0;
+    const run = await box.agent.stream({
+      prompt: "Reply with exactly: OPENAI_STREAM_OK",
+    });
+    for await (const chunk of run) {
+      chunkCount++;
+      if (chunk.type === "text-delta") {
+        text += chunk.text;
+      }
+    }
+    expect(chunkCount).toBeGreaterThan(0);
+    expect(text).toBeTruthy();
+    expect(run.status).toBe("completed");
+  }, 120000);
+});
+```

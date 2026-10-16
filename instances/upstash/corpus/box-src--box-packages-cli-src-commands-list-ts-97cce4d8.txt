@@ -1,0 +1,61 @@
+# box: packages/cli/src/commands/list.ts
+# джерело: https://github.com/upstash/box/blob/python-sdk-v0.1.2/packages/cli/src/commands/list.ts
+# отримано: 2026-10-16
+# версія: upstash-box-0.1.2, upstash-box-0.1.0, box-cli-0.2.12, box-cli-0.2.11, box-cli-0.2.10, box-cli-0.2.9, box-cli-0.2.8, box-cli-0.2.7, box-cli-0.2.6, box-cli-0.2.5, box-cli-0.2.4, box-cli-0.2.3, box-cli-0.2.2, box-cli-0.2.1, box-cli-0.2.0, box-cli-0.1.45, box-cli-0.1.44, box-cli-0.1.43, box-cli-0.1.41, box-cli-0.1.40, box-cli-0.1.39, box-cli-0.1.38, box-cli-0.1.37, box-cli-0.1.36, box-cli-0.1.35, box-cli-0.1.34, box-cli-0.1.33, box-cli-0.1.32, box-cli-0.1.31, box-cli-0.1.30, box-cli-0.1.29, box-cli-0.1.28, box-cli-0.1.27, box-cli-0.1.26, box-cli-0.1.25, box-cli-0.1.24, box-cli-0.1.23, box-cli-0.1.22, box-cli-0.1.21, box-cli-0.1.20, box-cli-0.1.19, box-cli-0.1.18, box-cli-0.1.17, box-cli-0.1.16, box-cli-0.1.15, box-cli-0.1.14, box-cli-0.1.13, box-0.5.3, box-0.5.2, box-0.5.1, box-0.5.0, box-0.4.8, box-0.4.7, box-0.4.6, box-0.4.5, box-0.4.4, box-0.4.3, box-0.4.2, box-0.4.1, box-0.4.0, box-0.3.0, box-0.2.3, box-0.2.2, box-0.2.0, box-0.1.36, box-0.1.35, box-0.1.34, box-0.1.33, box-0.1.32, box-0.1.31, box-0.1.30, box-0.1.29, box-0.1.28, box-0.1.27, box-0.1.26, box-0.1.25, box-0.1.24, box-0.1.23, box-0.1.22, box-0.1.21, box-0.1.20, box-0.1.19, box-0.1.18, box-0.1.17, box-0.1.16, box-0.1.15, box-0.1.14, box-0.1.13, box-0.1.12, box-0.1.11, box-0.1.10
+
+```ts
+import { Box } from "@upstash/box";
+import { resolveToken } from "../auth.js";
+import { formatJSON } from "../output.js";
+```
+
+## interface ListFlags
+
+```ts
+interface ListFlags {
+  token?: string;
+}
+```
+
+## function listCommand
+
+```ts
+export async function listCommand(flags: ListFlags): Promise<void> {
+  const apiKey = resolveToken(flags.token);
+  const boxes = await Box.list({ apiKey });
+
+  if (boxes.length === 0) {
+    console.log("No boxes found.");
+    return;
+  }
+
+  const formatDate = (ts: number) => {
+    const d = new Date(ts < 1e12 ? ts * 1000 : ts);
+    const time = d.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+    const date = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    return `${time} ${date}`;
+  };
+
+  const headers = ["ID", "STATUS", "MODEL", "CREATED", "NAME"];
+  const rows = boxes.map((b) => [
+    b.id,
+    b.status,
+    b.model ?? "",
+    formatDate(b.created_at),
+    b.name ?? "",
+  ]);
+
+  const colWidths = headers.map((h, i) => Math.max(h.length, ...rows.map((r) => r[i]!.length)));
+
+  const formatRow = (row: string[]) => row.map((val, i) => val.padEnd(colWidths[i]!)).join("  ");
+
+  console.log(formatRow(headers));
+  for (const row of rows) {
+    console.log(formatRow(row));
+  }
+}
+```

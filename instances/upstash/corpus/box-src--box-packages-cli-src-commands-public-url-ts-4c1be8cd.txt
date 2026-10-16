@@ -1,0 +1,102 @@
+# box: packages/cli/src/commands/public-url.ts
+# джерело: https://github.com/upstash/box/blob/@upstash%2Fdsh-box@0.1.5/packages/cli/src/commands/public-url.ts
+# отримано: 2026-10-16
+# версія: dsh-box-0.1.5, dsh-box-0.1.4, dsh-box-0.1.3, dsh-box-0.1.2, dsh-box-0.1.1, box-pi-0.1.12, box-pi-0.1.11, box-pi-0.1.10, box-pi-0.1.9, box-pi-0.1.8, box-cli-0.3.2, box-cli-0.3.1, box-cli-0.3.0, box-cli-0.2.24, box-cli-0.2.23, box-cli-0.2.22, box-cli-0.2.21, box-0.7.6, box-0.7.5, box-0.7.4, box-0.7.3, box-0.7.2
+
+```ts
+import { Box } from "@upstash/box";
+import { announceBox, resolveBoxId } from "../core/box-ref.js";
+import { CliError } from "../core/errors.js";
+import { emit, note, requireToken, type GlobalFlags } from "../core/io.js";
+```
+
+## type PublicUrlFlags
+
+```ts
+export type PublicUrlFlags = GlobalFlags & {
+  basicAuth?: boolean;
+  bearerToken?: boolean;
+};
+```
+
+## function open
+
+```ts
+/** Resolve the box once, shared by every verb. */
+async function open(flags: GlobalFlags): Promise<Box> {
+  const resolved = resolveBoxId({ flag: flags.box });
+  announceBox(resolved);
+  return Box.get(resolved.id, { apiKey: requireToken(flags.token) });
+}
+```
+
+## function portFrom
+
+```ts
+/**
+ * Parse a port argument.
+ * @param value - the argument as given.
+ * @returns the port number.
+ */
+function portFrom(value: string): number {
+  const port = Number(value);
+  if (!Number.isInteger(port) || port < 1 || port > 65_535) {
+    throw new CliError(`Not a port: ${value}`);
+  }
+  return port;
+}
+```
+
+## function publicUrlCommand
+
+```ts
+/**
+ * Publish a port and print its public URL.
+ *
+ * Credentials are printed once and are not retrievable afterwards, so a caller
+ * that wants them should use `--json`.
+ */
+export async function publicUrlCommand(portArg: string, flags: PublicUrlFlags): Promise<void> {
+  const port = portFrom(portArg);
+  const box = await open(flags);
+  const created = await box.getPublicURL(port, {
+    ...(flags.basicAuth ? { basicAuth: true } : {}),
+    ...(flags.bearerToken ? { bearerToken: true } : {}),
+  });
+  const lines = [created.url];
+  if (created.username) lines.push(`user: ${created.username}  password: ${created.password}`);
+  if (created.token) lines.push(`bearer token: ${created.token}`);
+  emit(created, lines, flags);
+  // A server started as a plain background job is reaped when the command that
+  // launched it finishes, and the URL then 502s.
+  note("Start the server detached — ( npm run dev & ) — or it stops with the command.");
+}
+```
+
+## function publicUrlListCommand
+
+```ts
+/** List the box's public URLs. */
+export async function publicUrlListCommand(flags: GlobalFlags): Promise<void> {
+  const box = await open(flags);
+  const { publicURLs } = await box.listPublicURLs();
+  if (publicURLs.length === 0 && !flags.json) note("No public URLs.");
+  emit(
+    publicURLs,
+    publicURLs.map((entry) => `${String(entry.port).padEnd(6)}${entry.url}`),
+    flags,
+  );
+}
+```
+
+## function publicUrlDeleteCommand
+
+```ts
+/** Withdraw the public URL for a port. */
+export async function publicUrlDeleteCommand(portArg: string, flags: GlobalFlags): Promise<void> {
+  const port = portFrom(portArg);
+  const box = await open(flags);
+  await box.deletePublicURL(port);
+  emit({ port }, `Removed the public URL for port ${port}`, flags);
+}
+```

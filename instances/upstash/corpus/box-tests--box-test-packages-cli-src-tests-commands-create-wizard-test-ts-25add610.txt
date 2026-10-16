@@ -1,0 +1,245 @@
+# box: packages/cli/src/__tests__/commands/create-wizard.test.ts
+# джерело: https://github.com/upstash/box/blob/python-sdk-v0.4.0/packages/cli/src/__tests__/commands/create-wizard.test.ts
+# отримано: 2026-10-16
+# версія: upstash-box-0.4.0, dsh-box-0.1.8, box-pi-0.1.15, box-cli-0.3.5, box-0.7.9
+
+```ts
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+vi.mock("../../utils/interactive-select.js", () => ({
+  interactiveSelect: vi.fn(),
+}));
+
+vi.mock("node:readline", () => {
+  const answers: string[] = [];
+  return {
+    default: {
+      createInterface: vi.fn(() => ({
+        question: (_query: string, cb: (answer: string) => void) => {
+          cb(answers.shift() ?? "");
+        },
+        close: vi.fn(),
+      })),
+    },
+    __answers: answers,
+  };
+});
+
+import { interactiveSelect } from "../../utils/interactive-select.js";
+import { createWizard } from "../../commands/create-wizard.js";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const { __answers } = (await import("node:readline")) as any;
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  __answers.length = 0;
+  vi.spyOn(console, "log").mockImplementation(() => {});
+});
+```
+
+## createWizard
+
+```ts
+describe("createWizard", () => {
+```
+
+### happy path: Claude model + Upstash key
+
+```ts
+  it("happy path: Claude model + Upstash key", async () => {
+    vi.mocked(interactiveSelect)
+      .mockResolvedValueOnce("python") // runtime
+      .mockResolvedValueOnce("agent") // action: configure agent
+      .mockResolvedValueOnce("claude-code") // provider
+      .mockResolvedValueOnce("anthropic/claude-sonnet-4-5") // model
+      .mockResolvedValueOnce("upstash") // API key option
+      .mockResolvedValueOnce("create"); // action: create
+
+    const result = await createWizard();
+
+    expect(result).toEqual({
+      runtime: "python",
+      agentModel: "anthropic/claude-sonnet-4-5",
+      agentProvider: "claude-code",
+    });
+  });
+```
+
+### no agent → only runtime set
+
+```ts
+  it("no agent → only runtime set", async () => {
+    vi.mocked(interactiveSelect)
+      .mockResolvedValueOnce("node") // runtime
+      .mockResolvedValueOnce("create"); // action: create directly
+
+    const result = await createWizard();
+
+    expect(result).toEqual({ runtime: "node" });
+    expect(result?.agentModel).toBeUndefined();
+    expect(result?.agentApiKey).toBeUndefined();
+  });
+```
+
+### OpenAI model + custom API key
+
+```ts
+  it("OpenAI model + custom API key", async () => {
+    __answers.push("sk-my-openai-key");
+
+    vi.mocked(interactiveSelect)
+      .mockResolvedValueOnce("node") // runtime
+      .mockResolvedValueOnce("agent") // action: configure agent
+      .mockResolvedValueOnce("codex") // provider
+      .mockResolvedValueOnce("openai/gpt-5.3-codex") // model
+      .mockResolvedValueOnce("custom") // API key option
+      .mockResolvedValueOnce("create"); // action: create
+
+    const result = await createWizard();
+
+    expect(result).toEqual({
+      runtime: "node",
+      agentModel: "openai/gpt-5.3-codex",
+      agentProvider: "codex",
+      agentApiKey: "sk-my-openai-key",
+    });
+  });
+```
+
+### Neon model → stored credential without asking for a key
+
+```ts
+  it("Neon model → stored credential without asking for a key", async () => {
+    vi.mocked(interactiveSelect)
+      .mockResolvedValueOnce("node") // runtime
+      .mockResolvedValueOnce("agent") // action: configure agent
+      .mockResolvedValueOnce("opencode") // provider
+      .mockResolvedValueOnce("neon/claude-haiku-4-5") // model
+      .mockResolvedValueOnce("create"); // action: create (no key prompt in between)
+
+    const result = await createWizard();
+
+    expect(result).toEqual({
+      runtime: "node",
+      agentModel: "neon/claude-haiku-4-5",
+      agentProvider: "opencode",
+      agentApiKey: "stored",
+    });
+    // runtime, action, provider, model, action: the key choice was never shown.
+    expect(vi.mocked(interactiveSelect)).toHaveBeenCalledTimes(5);
+  });
+```
+
+### stored key option → agentApiKey is 'stored'
+
+```ts
+  it("stored key option → agentApiKey is 'stored'", async () => {
+    vi.mocked(interactiveSelect)
+      .mockResolvedValueOnce("node") // runtime
+      .mockResolvedValueOnce("agent") // action: configure agent
+      .mockResolvedValueOnce("claude-code") // provider
+      .mockResolvedValueOnce("anthropic/claude-opus-4-5") // model
+      .mockResolvedValueOnce("stored") // API key option
+      .mockResolvedValueOnce("create"); // action: create
+
+    const result = await createWizard();
+
+    expect(result?.agentApiKey).toBe("stored");
+  });
+```
+
+### git token added via action loop
+
+```ts
+  it("git token added via action loop", async () => {
+    __answers.push("ghp_abc123");
+
+    vi.mocked(interactiveSelect)
+      .mockResolvedValueOnce("node") // runtime
+      .mockResolvedValueOnce("git-token") // action: add git token
+      .mockResolvedValueOnce("create"); // action: create
+
+    const result = await createWizard();
+
+    expect(result?.gitToken).toBe("ghp_abc123");
+  });
+```
+
+### env vars added via action loop
+
+```ts
+  it("env vars added via action loop", async () => {
+    __answers.push("FOO=bar");
+
+    vi.mocked(interactiveSelect)
+      .mockResolvedValueOnce("node") // runtime
+      .mockResolvedValueOnce("env-vars") // action: add env
+      .mockResolvedValueOnce("create"); // action: create
+
+    const result = await createWizard();
+
+    expect(result?.env).toEqual(["FOO=bar"]);
+  });
+```
+
+### escape at runtime step → returns undefined
+
+```ts
+  it("escape at runtime step → returns undefined", async () => {
+    vi.mocked(interactiveSelect).mockResolvedValueOnce(undefined);
+
+    const result = await createWizard();
+
+    expect(result).toBeUndefined();
+  });
+```
+
+### escape at action loop → returns undefined
+
+```ts
+  it("escape at action loop → returns undefined", async () => {
+    vi.mocked(interactiveSelect)
+      .mockResolvedValueOnce("node") // runtime
+      .mockResolvedValueOnce(undefined); // action: escape
+
+    const result = await createWizard();
+
+    expect(result).toBeUndefined();
+  });
+```
+
+### escape during agent sub-flow → returns undefined
+
+```ts
+  it("escape during agent sub-flow → returns undefined", async () => {
+    vi.mocked(interactiveSelect)
+      .mockResolvedValueOnce("node") // runtime
+      .mockResolvedValueOnce("agent") // action: configure agent
+      .mockResolvedValueOnce(undefined); // provider: escape
+
+    const result = await createWizard();
+
+    expect(result).toBeUndefined();
+  });
+```
+
+### empty custom key → falls back to Upstash-managed (agentApiKey undefined)
+
+```ts
+  it("empty custom key → falls back to Upstash-managed (agentApiKey undefined)", async () => {
+    __answers.push("");
+
+    vi.mocked(interactiveSelect)
+      .mockResolvedValueOnce("node") // runtime
+      .mockResolvedValueOnce("agent") // action: configure agent
+      .mockResolvedValueOnce("claude-code") // provider
+      .mockResolvedValueOnce("anthropic/claude-sonnet-4-5") // model
+      .mockResolvedValueOnce("custom") // API key option
+      .mockResolvedValueOnce("create"); // action: create
+
+    const result = await createWizard();
+
+    expect(result?.agentApiKey).toBeUndefined();
+  });
+});
+```

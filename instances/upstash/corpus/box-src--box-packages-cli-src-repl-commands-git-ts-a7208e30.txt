@@ -1,0 +1,48 @@
+# box: packages/cli/src/repl/commands/git.ts
+# джерело: https://github.com/upstash/box/blob/@upstash%2Fbox-cli@0.1.14/packages/cli/src/repl/commands/git.ts
+# отримано: 2026-10-16
+# версія: box-cli-0.1.14, box-cli-0.1.13, box-cli-0.1.12, box-cli-0.1.11, box-cli-0.1.10, box-cli-0.1.9, box-0.1.11, box-0.1.10, box-0.1.9, box-0.1.8, box-0.1.7
+
+```ts
+import type { Box } from "@upstash/box";
+import type { BoxREPLEvent } from "../types.js";
+
+/**
+ * Handle git subcommands: clone, diff, create-pr.
+ */
+export async function* handleGit(box: Box, args: string): AsyncGenerator<BoxREPLEvent> {
+  const parts = args.split(/\s+/);
+  const sub = parts[0];
+
+  switch (sub) {
+    case "clone": {
+      const repo = parts[1];
+      const branch = parts[2];
+      if (!repo) {
+        yield { type: "log", message: "Usage: git clone <repo> [branch]" };
+        return;
+      }
+      await box.git.clone({ repo, branch });
+      yield { type: "log", message: `Cloned ${repo}` };
+      break;
+    }
+    case "diff": {
+      const diff = await box.git.diff();
+      yield { type: "log", message: diff || "(no changes)" };
+      break;
+    }
+    case "create-pr": {
+      const title = parts.slice(1).join(" ");
+      if (!title) {
+        yield { type: "log", message: "Usage: git create-pr <title>" };
+        return;
+      }
+      const pr = await box.git.createPR({ title });
+      yield { type: "log", message: `PR #${pr.number}: ${pr.url}` };
+      break;
+    }
+    default:
+      yield { type: "log", message: "Usage: git <clone|diff|create-pr> [args...]" };
+  }
+}
+```

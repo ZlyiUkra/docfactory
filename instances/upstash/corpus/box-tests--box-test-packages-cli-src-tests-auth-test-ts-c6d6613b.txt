@@ -1,0 +1,53 @@
+# box: packages/cli/src/__tests__/auth.test.ts
+# джерело: https://github.com/upstash/box/blob/python-sdk-v0.4.0/packages/cli/src/__tests__/auth.test.ts
+# отримано: 2026-10-16
+# версія: upstash-box-0.4.0, dsh-box-0.1.8, box-pi-0.1.15, box-cli-0.3.5, box-cli-0.2.24, box-0.7.9
+
+```ts
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { CliError } from "../core/errors.js";
+import { resolveToken } from "../auth.js";
+```
+
+## resolveToken
+
+```ts
+describe("resolveToken", () => {
+  let exitSpy: ReturnType<typeof vi.spyOn>;
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    delete process.env.UPSTASH_BOX_API_KEY;
+    exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
+    errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it("returns flag token when provided", () => {
+    expect(resolveToken("flag-token")).toBe("flag-token");
+  });
+
+  it("returns env var when no flag", () => {
+    process.env.UPSTASH_BOX_API_KEY = "env-token";
+    expect(resolveToken()).toBe("env-token");
+  });
+```
+
+### throws when no token is available
+
+```ts
+  it("throws when no token is available", () => {
+    // A CliError rather than process.exit, so it exits 125 through the same
+    // boundary as every other CLI failure.
+    expect(() => resolveToken()).toThrow(CliError);
+    expect(() => resolveToken()).toThrow(/API token required/);
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
+
+  it("prefers flag over env var", () => {
+    process.env.UPSTASH_BOX_API_KEY = "env-token";
+    expect(resolveToken("flag-token")).toBe("flag-token");
+  });
+});
+```

@@ -1,0 +1,69 @@
+# box: packages/cli/src/commands/from-snapshot.ts
+# джерело: https://github.com/upstash/box/blob/@upstash%2Fbox-cli@0.1.36/packages/cli/src/commands/from-snapshot.ts
+# отримано: 2026-10-16
+# версія: box-cli-0.1.36, box-cli-0.1.35, box-cli-0.1.34, box-cli-0.1.33, box-cli-0.1.32, box-cli-0.1.31, box-cli-0.1.30, box-cli-0.1.29, box-cli-0.1.28, box-cli-0.1.27, box-cli-0.1.26, box-0.1.32, box-0.1.31, box-0.1.30, box-0.1.29, box-0.1.28, box-0.1.27, box-0.1.26, box-0.1.25, box-0.1.24, box-0.1.23, box-0.1.22
+
+```ts
+import { Box, inferDefaultProvider } from "@upstash/box";
+import type { Runtime } from "@upstash/box";
+import { resolveToken } from "../auth.js";
+import { resolveAgentApiKey } from "../agent-key.js";
+import { startRepl } from "../repl/terminal.js";
+```
+
+## interface FromSnapshotFlags
+
+```ts
+interface FromSnapshotFlags {
+  token?: string;
+  runtime?: string;
+  agentModel?: string;
+  agentProvider?: string;
+  /** @deprecated Use `agentProvider` instead. */
+  agentRunner?: string;
+  agentApiKey?: string | true;
+  gitToken?: string;
+  env?: string[];
+}
+```
+
+## function fromSnapshotCommand
+
+```ts
+export async function fromSnapshotCommand(
+  snapshotId: string,
+  flags: FromSnapshotFlags,
+): Promise<void> {
+  const apiKey = resolveToken(flags.token);
+
+  const env: Record<string, string> = {};
+  if (flags.env) {
+    for (const e of flags.env) {
+      const idx = e.indexOf("=");
+      if (idx === -1) {
+        console.error(`Invalid env format: ${e} (expected KEY=VAL)`);
+        process.exit(1);
+      }
+      env[e.slice(0, idx)] = e.slice(idx + 1);
+    }
+  }
+
+  console.log("Creating box from snapshot...");
+  const box = await Box.fromSnapshot(snapshotId, {
+    apiKey,
+    runtime: flags.runtime as Runtime,
+    agent: flags.agentModel
+      ? {
+          provider:
+            flags.agentProvider ?? flags.agentRunner ?? inferDefaultProvider(flags.agentModel),
+          model: flags.agentModel,
+          apiKey: resolveAgentApiKey(flags.agentApiKey),
+        }
+      : undefined,
+    git: flags.gitToken ? { token: flags.gitToken } : undefined,
+    env: Object.keys(env).length > 0 ? env : undefined,
+  });
+
+  await startRepl(box);
+}
+```

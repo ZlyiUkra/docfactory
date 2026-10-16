@@ -1,0 +1,305 @@
+# box: packages/cli/src/__tests__/repl/client.test.ts
+# джерело: https://github.com/upstash/box/blob/python-sdk-v0.4.0/packages/cli/src/__tests__/repl/client.test.ts
+# отримано: 2026-10-16
+# версія: upstash-box-0.4.0, upstash-box-0.3.0, upstash-box-0.2.0, upstash-box-0.1.4, dsh-box-0.1.8, box-pi-0.1.15, box-cli-0.3.5, box-cli-0.2.24, box-cli-0.1.45, box-0.7.9, box-0.6.3, box-0.5.5, box-0.4.8, box-0.3.0, box-0.2.3, box-0.1.36
+
+```ts
+import { describe, it, expect, vi } from "vitest";
+import { BoxREPLClient } from "../../repl/client.js";
+import { collectEvents } from "./helpers.js";
+```
+
+## BoxREPLClient
+
+```ts
+describe("BoxREPLClient", () => {
+
+  describe("handleInput", () => {
+```
+
+#### returns no events for empty input
+
+```ts
+    it("returns no events for empty input", async () => {
+      const client = new BoxREPLClient({} as any);
+      const events = await collectEvents(client.handleInput(""));
+      expect(events).toEqual([]);
+    });
+```
+
+#### returns no events for whitespace-only input
+
+```ts
+    it("returns no events for whitespace-only input", async () => {
+      const client = new BoxREPLClient({} as any);
+      const events = await collectEvents(client.handleInput("   "));
+      expect(events).toEqual([]);
+    });
+```
+
+#### yields exit for 'exit'
+
+```ts
+    it("yields exit for 'exit'", async () => {
+      const client = new BoxREPLClient({} as any);
+      const events = await collectEvents(client.handleInput("exit"));
+      expect(events).toContainEqual({ type: "exit", message: "Goodbye." });
+    });
+```
+
+#### yields exit for '/exit'
+
+```ts
+    it("yields exit for '/exit'", async () => {
+      const client = new BoxREPLClient({} as any);
+      const events = await collectEvents(client.handleInput("/exit"));
+      expect(events).toContainEqual({ type: "exit", message: "Goodbye." });
+    });
+```
+
+#### yields command:not-found for unknown /command
+
+```ts
+    it("yields command:not-found for unknown /command", async () => {
+      const client = new BoxREPLClient({} as any);
+      const events = await collectEvents(client.handleInput("/foobar"));
+      expect(events).toContainEqual(
+        expect.objectContaining({ type: "command:not-found", typed: "foobar" }),
+      );
+    });
+```
+
+#### catches handler errors and yields error event
+
+```ts
+    it("catches handler errors and yields error event", async () => {
+      const mockBox = {
+        exec: {
+          stream: vi.fn().mockRejectedValue(new Error("boom")),
+        },
+      };
+      const client = new BoxREPLClient(mockBox as any);
+      const events = await collectEvents(client.handleInput("failing-command"));
+
+      expect(events).toContainEqual({ type: "error", message: "Error: boom" });
+    });
+
+    // --- Shell mode (default) ---
+```
+
+#### defaults to shell mode: bare text calls exec.stream
+
+```ts
+    it("defaults to shell mode: bare text calls exec.stream", async () => {
+      const mockBox = {
+        exec: {
+          stream: vi.fn().mockImplementation(async () => {
+            async function* iterate() {
+              yield { type: "output", data: "output" };
+            }
+            return { [Symbol.asyncIterator]: () => iterate() };
+          }),
+        },
+      };
+      const client = new BoxREPLClient(mockBox as any);
+      expect(client.mode).toBe("shell");
+
+      const events = await collectEvents(client.handleInput("ls -la"));
+
+      expect(mockBox.exec.stream).toHaveBeenCalledWith("ls -la");
+      expect(events[0]).toEqual({ type: "command:start", command: "shell", args: "ls -la" });
+      expect(events).toContainEqual({ type: "stream", text: "output" });
+      expect(events).toContainEqual(
+        expect.objectContaining({ type: "command:complete", command: "shell" }),
+      );
+    });
+
+    // --- Agent mode ---
+```
+
+#### /agent switches to agent mode, bare text calls agent.stream
+
+```ts
+    it("/agent switches to agent mode, bare text calls agent.stream", async () => {
+      const client = new BoxREPLClient({} as any);
+
+      // Switch to agent mode
+      const switchEvents = await collectEvents(client.handleInput("/agent"));
+      expect(client.mode).toBe("agent");
+      expect(switchEvents).toContainEqual({ type: "log", message: "Switched to agent mode" });
+
+      // Bare text should now go to agent
+      const mockBox = {
+        agent: {
+          stream: vi.fn().mockImplementation(async () => {
+            async function* iterate() {
+              yield { type: "text-delta", text: "hi" };
+            }
+            return { [Symbol.asyncIterator]: () => iterate() };
+          }),
+        },
+      };
+      const agentClient = new BoxREPLClient(mockBox as any);
+      agentClient.mode = "agent";
+
+      const events = await collectEvents(agentClient.handleInput("hello world"));
+      expect(events[0]).toEqual({ type: "command:start", command: "agent", args: "hello world" });
+      expect(events).toContainEqual({ type: "stream", text: "hi" });
+      expect(events).toContainEqual(
+        expect.objectContaining({ type: "command:complete", command: "agent" }),
+      );
+    });
+
+    // --- /shell switches back ---
+```
+
+#### /shell switches back to shell mode
+
+```ts
+    it("/shell switches back to shell mode", async () => {
+      const client = new BoxREPLClient({} as any);
+      client.mode = "agent";
+
+      const events = await collectEvents(client.handleInput("/shell"));
+      expect(client.mode).toBe("shell");
+      expect(events).toContainEqual({ type: "log", message: "Switched to shell mode" });
+    });
+
+    // --- cd interception ---
+```
+
+#### cd <path> with single arg treated as /cd
+
+```ts
+    it("cd <path> with single arg treated as /cd", async () => {
+      const mockBox = {
+        cwd: "/workspace/home/src",
+        cd: vi.fn().mockResolvedValue(undefined),
+      };
+      // Make box.cwd update after cd
+      mockBox.cd.mockImplementation(async () => {
+        mockBox.cwd = "/workspace/home/src";
+      });
+
+      const client = new BoxREPLClient(mockBox as any);
+      const events = await collectEvents(client.handleInput("cd src"));
+
+      expect(events[0]).toEqual({ type: "command:start", command: "cd", args: "src" });
+      expect(mockBox.cd).toHaveBeenCalledWith("src");
+      expect(events).toContainEqual(
+        expect.objectContaining({ type: "command:complete", command: "cd" }),
+      );
+    });
+```
+
+#### cd with compound command runs as shell and logs warning
+
+```ts
+    it("cd with compound command runs as shell and logs warning", async () => {
+      const mockBox = {
+        exec: {
+          stream: vi.fn().mockImplementation(async () => {
+            async function* iterate() {
+              yield { type: "output", data: "file1\nfile2" };
+            }
+            return { [Symbol.asyncIterator]: () => iterate() };
+          }),
+        },
+      };
+      const client = new BoxREPLClient(mockBox as any);
+      const events = await collectEvents(client.handleInput("cd src && ls"));
+
+      expect(mockBox.exec.stream).toHaveBeenCalledWith("cd src && ls");
+      expect(events).toContainEqual({
+        type: "log",
+        message: "Tip: use just 'cd <path>' to change the working directory",
+      });
+    });
+  });
+
+  describe("getCommand", () => {
+    const client = new BoxREPLClient({} as any);
+
+    it("returns null for non-command input", () => {
+      expect(client["getCommand"]("hello")).toBeNull();
+    });
+```
+
+#### parses command without args
+
+```ts
+    it("parses command without args", () => {
+      const result = client["getCommand"]("/snapshot");
+      expect(result).not.toBeNull();
+      expect(result!.command.name).toBe("snapshot");
+      expect(result!.args).toBe("");
+    });
+```
+
+#### parses command with args
+
+```ts
+    it("parses command with args", () => {
+      const result = client["getCommand"]("/files list .");
+      expect(result).not.toBeNull();
+      expect(result!.command.name).toBe("files");
+      expect(result!.args).toBe("list .");
+    });
+  });
+
+  describe("suggestCommands", () => {
+```
+
+#### returns commands matching prefix
+
+```ts
+    it("returns commands matching prefix", () => {
+      const client = new BoxREPLClient({} as any);
+      const suggestions = client.suggestCommands("co");
+      expect(suggestions.map((c) => c.name)).toContain("console");
+    });
+
+    it("returns empty for no match", () => {
+      const client = new BoxREPLClient({} as any);
+      const suggestions = client.suggestCommands("zzz");
+      expect(suggestions).toEqual([]);
+    });
+```
+
+#### returns all commands for empty prefix
+
+```ts
+    it("returns all commands for empty prefix", () => {
+      const client = new BoxREPLClient({} as any);
+      const suggestions = client.suggestCommands("");
+      expect(suggestions.length).toBeGreaterThan(0);
+    });
+```
+
+#### hides /shell when in shell mode
+
+```ts
+    it("hides /shell when in shell mode", () => {
+      const client = new BoxREPLClient({} as any);
+      client.mode = "shell";
+      const suggestions = client.suggestCommands("");
+      const names = suggestions.map((c) => c.name);
+      expect(names).not.toContain("shell");
+      expect(names).toContain("agent");
+    });
+```
+
+#### hides /agent when in agent mode
+
+```ts
+    it("hides /agent when in agent mode", () => {
+      const client = new BoxREPLClient({} as any);
+      client.mode = "agent";
+      const suggestions = client.suggestCommands("");
+      const names = suggestions.map((c) => c.name);
+      expect(names).not.toContain("agent");
+      expect(names).toContain("shell");
+    });
+  });
+});
+```

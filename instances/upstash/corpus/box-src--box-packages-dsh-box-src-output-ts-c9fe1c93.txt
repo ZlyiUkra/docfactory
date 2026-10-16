@@ -1,0 +1,96 @@
+# box: packages/dsh-box/src/output.ts
+# джерело: https://github.com/upstash/box/blob/python-sdk-v0.4.0/packages/dsh-box/src/output.ts
+# отримано: 2026-10-16
+# версія: upstash-box-0.4.0, dsh-box-0.1.8, dsh-box-0.1.7, dsh-box-0.1.6, dsh-box-0.1.5, dsh-box-0.1.4, dsh-box-0.1.3, dsh-box-0.1.2, dsh-box-0.1.1, dsh-box-0.1.0, box-pi-0.1.15, box-pi-0.1.14, box-pi-0.1.13, box-pi-0.1.12, box-pi-0.1.11, box-pi-0.1.10, box-pi-0.1.9, box-pi-0.1.8, box-cli-0.3.5, box-cli-0.3.4, box-cli-0.3.3, box-cli-0.3.2, box-cli-0.3.1, box-cli-0.3.0, box-cli-0.2.24, box-cli-0.2.23, box-cli-0.2.22, box-cli-0.2.21, box-0.7.9, box-0.7.8, box-0.7.7, box-0.7.6, box-0.7.5, box-0.7.4, box-0.7.3, box-0.7.2
+
+```ts
+/**
+ * Bounded host-side collection for one Upstash Box output stream.
+ *
+ * The Box SDK delivers already-decoded raw bytes to `onStdout`/`onStderr`, so
+ * this adapter needs no transport decoder. Phase 0 keeps only the in-memory
+ * tail: `spillPath` is never advertised, and a lossy read says so.
+ */
+
+import { Buffer } from "node:buffer";
+import type { SubprocessOutputRead, SubprocessOutputReader } from "@deepseek-ai/dsh-subprocess";
+
+/**
+ * Host-side ceiling for `pipe` output that nothing has read yet.
+ *
+ * A local child writes into an OS pipe, so a consumer that stops reading fills
+ * the pipe and the child blocks. This session has no such path: the transport
+ * pushes stdout frames unconditionally and exposes no pause, so `push()`
+ * returning false cannot slow the box down and the backlog is host memory. A
+ * consumer keeping up never approaches this; only one that has stopped does.
+ *
+ * Collect mode is already bounded by its own `maxBytes`.
+ */
+export const MAX_UNREAD_OUTPUT_BYTES = 32 * 1024 * 1024;
+```
+
+## class BoxOutputReader
+
+```ts
+/** Offset reader over one collect-mode Box stream. */
+export class BoxOutputReader implements SubprocessOutputReader {
+  private chunks: Buffer[] = [];
+  private retainedBytes = 0;
+  private totalBytes = 0;
+
+  /**
+   * Create a bounded reader.
+   * @param maxBytes - In-memory tail cap; overflow discards from the head.
+   */
+  constructor(private readonly maxBytes: number) {}
+
+  /** Total bytes observed from the session. */
+  get size(): number {
+    return this.totalBytes;
+  }
+```
+
+### BoxOutputReader.push()
+
+```ts
+  /**
+   * Append one decoded output event.
+   * @param bytes - Raw process bytes from the session callback.
+   */
+  push(bytes: Uint8Array): void {
+    if (bytes.length === 0) return;
+    const chunk = Buffer.from(bytes);
+    this.totalBytes += chunk.length;
+    this.chunks.push(chunk);
+    this.retainedBytes += chunk.length;
+    while (this.retainedBytes > this.maxBytes) {
+      const head = this.chunks[0] as Buffer;
+      const excess = this.retainedBytes - this.maxBytes;
+      if (head.length <= excess) {
+        this.chunks.shift();
+        this.retainedBytes -= head.length;
+      } else {
+        this.chunks[0] = head.subarray(excess);
+        this.retainedBytes -= excess;
+      }
+    }
+  }
+```
+
+### BoxOutputReader.readFrom()
+
+```ts
+  /** @inheritdoc */
+  readFrom(fromByte: number): SubprocessOutputRead {
+    const retained = Buffer.concat(this.chunks, this.retainedBytes);
+    const firstRetained = this.totalBytes - this.retainedBytes;
+    const lossy = fromByte < firstRetained;
+    const start = lossy ? 0 : Math.min(retained.length, Math.max(0, fromByte - firstRetained));
+    return {
+      text: retained.subarray(start).toString("utf8"),
+      nextOffset: this.totalBytes,
+      lossy,
+    };
+  }
+}
+```

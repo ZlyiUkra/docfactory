@@ -1,0 +1,117 @@
+# box: packages/cli/src/__tests__/commands/connect.test.ts
+# джерело: https://github.com/upstash/box/blob/python-sdk-v0.4.0/packages/cli/src/__tests__/commands/connect.test.ts
+# отримано: 2026-10-16
+# версія: upstash-box-0.4.0, dsh-box-0.1.8, box-pi-0.1.15, box-cli-0.3.5, box-cli-0.2.24, box-0.7.9
+
+```ts
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { CliError } from "../../core/errors.js";
+import { connectCommand } from "../../commands/connect.js";
+
+vi.mock("@upstash/box", () => ({
+  Box: {
+    get: vi.fn(),
+    list: vi.fn(),
+  },
+}));
+
+vi.mock("../../repl/terminal.js", () => ({
+  startRepl: vi.fn(),
+}));
+
+vi.mock("../../utils/interactive-select.js", () => ({
+  interactiveSelect: vi.fn(),
+}));
+
+vi.mock("../../auth.js", () => ({
+  resolveToken: vi.fn((token?: string) => token ?? "resolved-token"),
+}));
+
+import { Box } from "@upstash/box";
+import { startRepl } from "../../repl/terminal.js";
+```
+
+## connectCommand
+
+```ts
+describe("connectCommand", () => {
+  let exitSpy: ReturnType<typeof vi.spyOn>;
+  let logSpy: ReturnType<typeof vi.spyOn>;
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
+    logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+```
+
+### connects to box by ID
+
+```ts
+  it("connects to box by ID", async () => {
+    const mockBox = { id: "box-1" };
+    vi.mocked(Box.get).mockResolvedValueOnce(mockBox as any);
+
+    await connectCommand("box-1", { token: "key" });
+
+    expect(Box.get).toHaveBeenCalledWith("box-1", { apiKey: "key" });
+    expect(startRepl).toHaveBeenCalledWith(mockBox);
+  });
+```
+
+### connects to most recent box when no ID
+
+```ts
+  it("connects to most recent box when no ID", async () => {
+    const mockBox = { id: "box-recent" };
+    vi.mocked(Box.list).mockResolvedValueOnce([{ id: "box-recent", status: "idle" } as any]);
+    vi.mocked(Box.get).mockResolvedValueOnce(mockBox as any);
+
+    await connectCommand(undefined, { token: "key" });
+
+    expect(Box.list).toHaveBeenCalledWith({ apiKey: "key" });
+    expect(Box.get).toHaveBeenCalledWith("box-recent", { apiKey: "key" });
+    expect(startRepl).toHaveBeenCalledWith(mockBox);
+  });
+```
+
+### shows single-box message when only one box exists
+
+```ts
+  it("shows single-box message when only one box exists", async () => {
+    const mockBox = { id: "box-only" };
+    vi.mocked(Box.list).mockResolvedValueOnce([{ id: "box-only", status: "idle" } as any]);
+    vi.mocked(Box.get).mockResolvedValueOnce(mockBox as any);
+
+    await connectCommand(undefined, { token: "key" });
+
+    expect(logSpy).toHaveBeenCalledWith("Only one box found, using it...");
+  });
+```
+
+### exits when no boxes found
+
+```ts
+  it("exits when no boxes found", async () => {
+    vi.mocked(Box.list).mockResolvedValueOnce([]);
+
+    await expect(connectCommand(undefined, { token: "key" })).rejects.toThrow(/No boxes found/);
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
+```
+
+### filters out deleted boxes
+
+```ts
+  it("filters out deleted boxes", async () => {
+    vi.mocked(Box.list).mockResolvedValueOnce([{ id: "box-deleted", status: "deleted" } as any]);
+
+    await expect(connectCommand(undefined, { token: "key" })).rejects.toThrow(/No boxes found/);
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
+});
+```

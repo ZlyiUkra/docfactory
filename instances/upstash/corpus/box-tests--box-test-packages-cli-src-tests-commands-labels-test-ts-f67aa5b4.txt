@@ -1,0 +1,115 @@
+# box: packages/cli/src/__tests__/commands/labels.test.ts
+# джерело: https://github.com/upstash/box/blob/python-sdk-v0.4.0/packages/cli/src/__tests__/commands/labels.test.ts
+# отримано: 2026-10-16
+# версія: upstash-box-0.4.0, dsh-box-0.1.8, box-pi-0.1.15, box-cli-0.3.5, box-cli-0.2.24, box-0.7.9
+
+```ts
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { labelAddCommand, labelRemoveCommand, labelListCommand } from "../../commands/labels.js";
+```
+
+## const mockLabels
+
+```ts
+const mockLabels = {
+  add: vi.fn(),
+  remove: vi.fn(),
+  list: vi.fn(),
+};
+
+vi.mock("@upstash/box", () => ({
+  Box: {
+    get: vi.fn(),
+  },
+}));
+
+vi.mock("../../auth.js", () => ({
+  resolveToken: vi.fn((token?: string) => token ?? "resolved-token"),
+}));
+
+import { Box } from "@upstash/box";
+```
+
+## labels commands
+
+```ts
+describe("labels commands", () => {
+  let logSpy: ReturnType<typeof vi.spyOn>;
+  let stdout: ReturnType<typeof vi.spyOn>;
+  const written = () => stdout.mock.calls.map((call) => String(call[0])).join("");
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    vi.mocked(Box.get).mockResolvedValue({ id: "box-1", labels: mockLabels } as any);
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+```
+
+### add sends the label and prints updated set
+
+```ts
+  it("add sends the label and prints updated set", async () => {
+    mockLabels.add.mockResolvedValueOnce(["beta", "x-team"]);
+
+    await labelAddCommand("box-1", "x-team", { token: "key" });
+
+    expect(Box.get).toHaveBeenCalledWith("box-1", { apiKey: "key" });
+    expect(mockLabels.add).toHaveBeenCalledWith("x-team");
+    expect(written()).toContain("beta, x-team");
+  });
+```
+
+### remove sends the label and prints updated set
+
+```ts
+  it("remove sends the label and prints updated set", async () => {
+    mockLabels.remove.mockResolvedValueOnce(["x-team"]);
+
+    await labelRemoveCommand("box-1", "beta", { token: "key" });
+
+    expect(mockLabels.remove).toHaveBeenCalledWith("beta");
+    expect(written()).toContain("x-team");
+  });
+```
+
+### list prints each label
+
+```ts
+  it("list prints each label", async () => {
+    mockLabels.list.mockResolvedValueOnce(["beta", "x-team"]);
+
+    await labelListCommand("box-1", { token: "key" });
+
+    expect(mockLabels.list).toHaveBeenCalled();
+    expect(written()).toContain("beta");
+    expect(written()).toContain("x-team");
+  });
+```
+
+### says so on stderr when there are no labels, leaving stdout empty
+
+```ts
+  it("says so on stderr when there are no labels, leaving stdout empty", async () => {
+    const stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    mockLabels.list.mockResolvedValueOnce([]);
+
+    await labelListCommand("box-1", { token: "key" });
+
+    expect(stderr.mock.calls.map((c) => String(c[0])).join("")).toContain("No labels.");
+    expect(written()).toBe("");
+  });
+```
+
+### emits an empty array under --json rather than a message
+
+```ts
+  it("emits an empty array under --json rather than a message", async () => {
+    mockLabels.list.mockResolvedValueOnce([]);
+    await labelListCommand("box-1", { token: "key", json: true });
+    expect(JSON.parse(written())).toEqual([]);
+  });
+});
+```

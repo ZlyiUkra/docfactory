@@ -1,0 +1,37 @@
+# box: packages/python-sdk/tests/integration/test_ephemeral_async.py
+# джерело: https://github.com/upstash/box/blob/python-sdk-v0.4.0/packages/python-sdk/tests/integration/test_ephemeral_async.py
+# отримано: 2026-10-16
+# версія: upstash-box-0.4.0, upstash-box-0.3.0, upstash-box-0.2.0, upstash-box-0.1.4, dsh-box-0.1.8, box-pi-0.1.15, box-cli-0.3.5, box-cli-0.2.24, box-0.7.9, box-0.6.3, box-0.5.5
+
+```python
+"""Ephemeral box — exec, files, cwd, status. No agent/git/skills surface."""
+
+import pytest
+
+from upstash_box import AsyncEphemeralBox
+
+pytestmark = pytest.mark.integration
+
+
+async def test_ephemeral_exec_files(opts):
+    box = await AsyncEphemeralBox.create(runtime="node", ttl=600, **opts)
+    try:
+        assert box.expires_at > 0
+        assert not hasattr(box, "agent")
+        assert not hasattr(box, "git")
+
+        run = await box.exec.command("echo ephemeral-ok")
+        assert "ephemeral-ok" in run.result
+
+        await box.files.write(path="e.txt", content="ephemeral")
+        assert await box.files.read("e.txt") == "ephemeral"
+
+        await box.exec.command("mkdir -p d")
+        await box.cd("d")
+        assert box.cwd.endswith("/d")
+
+        status = await box.get_status()
+        assert "status" in status
+    finally:
+        await box.delete()
+```

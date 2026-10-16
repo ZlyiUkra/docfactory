@@ -1,0 +1,122 @@
+# box: packages/sdk/src/__tests__/integration/exec.integration.test.ts
+# джерело: https://github.com/upstash/box/blob/python-sdk-v0.4.0/packages/sdk/src/__tests__/integration/exec.integration.test.ts
+# отримано: 2026-10-16
+# версія: upstash-box-0.4.0, dsh-box-0.1.8, box-pi-0.1.15, box-cli-0.3.5, box-cli-0.2.24, box-0.7.9
+
+```ts
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { Agent, Box, ClaudeCode } from "../../index.js";
+import { UPSTASH_BOX_API_KEY } from "./setup.js";
+```
+
+## exec
+
+```ts
+describe.skipIf(!UPSTASH_BOX_API_KEY)("exec", () => {
+  let box: Box;
+
+  beforeAll(async () => {
+    box = await Box.create({
+      apiKey: UPSTASH_BOX_API_KEY!,
+      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Haiku_4_5 },
+    });
+  }, 120000);
+
+  afterAll(async () => {
+    try {
+      await box?.delete();
+    } catch {
+      // cleanup best-effort
+    }
+  }, 30000);
+```
+
+### exec.command: runs a shell command
+
+```ts
+  it("exec.command: runs a shell command", async () => {
+    const run = await box.exec.command("echo hello");
+    expect(run.result).toContain("hello");
+    expect(run.status).toBe("completed");
+    expect(run.exitCode).toBe(0);
+  });
+```
+
+### exec.code: runs inline JavaScript
+
+```ts
+  it("exec.code: runs inline JavaScript", async () => {
+    const run = await box.exec.code({
+      code: "console.log(JSON.stringify({ sum: 1 + 2 }))",
+      lang: "js",
+    });
+    expect(run.exitCode).toBe(0);
+    expect(run.result).toContain('"sum":3');
+    expect(run.type).toBe("code");
+  });
+```
+
+### exec.stream: streams multi-line shell output
+
+```ts
+  it("exec.stream: streams multi-line shell output", async () => {
+    const run = await box.exec.stream('for i in $(seq 0 4); do echo "line=$i"; sleep 0.5; done');
+    const chunks: string[] = [];
+    for await (const chunk of run) {
+      if (chunk.type === "output") {
+        chunks.push(chunk.data);
+      }
+    }
+
+    const fullOutput = chunks.join("");
+
+    for (let i = 0; i < 5; i++) {
+      expect(fullOutput).toContain(`line=${i}`);
+    }
+
+    // Must have received multiple output chunks (not all in one batch)
+    expect(chunks.length).toBeGreaterThanOrEqual(2);
+
+    // Run should be populated after iteration
+    expect(run.status).toBe("completed");
+    expect(run.exitCode).toBe(0);
+  }, 30000);
+```
+
+### exec.streamCode: streams multi-line JS output
+
+```ts
+  it("exec.streamCode: streams multi-line JS output", async () => {
+    const code = `
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+(async () => {
+  for (let i = 0; i < 5; i++) {
+    console.log("Step " + i);
+    await sleep(1000);
+  }
+})();
+`.trim();
+    const run = await box.exec.streamCode({ code, lang: "js" });
+    const chunks: string[] = [];
+    for await (const chunk of run) {
+      if (chunk.type === "output") {
+        chunks.push(chunk.data);
+      }
+    }
+
+    const fullOutput = chunks.join("");
+
+    for (let i = 0; i < 5; i++) {
+      expect(fullOutput).toContain(`Step ${i}`);
+    }
+
+    // Must have received multiple output chunks (not all in one batch)
+    expect(chunks.length).toBeGreaterThanOrEqual(2);
+
+    // Run should be populated after iteration
+    expect(run.status).toBe("completed");
+    expect(run.exitCode).toBe(0);
+    expect(run.type).toBe("code");
+  }, 30000);
+});
+```

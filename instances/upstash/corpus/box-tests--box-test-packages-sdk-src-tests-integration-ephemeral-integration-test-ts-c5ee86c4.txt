@@ -1,0 +1,320 @@
+# box: packages/sdk/src/__tests__/integration/ephemeral.integration.test.ts
+# джерело: https://github.com/upstash/box/blob/python-sdk-v0.4.0/packages/sdk/src/__tests__/integration/ephemeral.integration.test.ts
+# отримано: 2026-10-16
+# версія: upstash-box-0.4.0, upstash-box-0.3.0, upstash-box-0.2.0, upstash-box-0.1.4, dsh-box-0.1.8, box-pi-0.1.15, box-cli-0.3.5, box-cli-0.2.24, box-cli-0.1.45, box-0.7.9, box-0.6.3, box-0.5.5, box-0.4.8, box-0.3.0, box-0.2.3, box-0.1.36
+
+```ts
+import { describe, it, expect, afterAll } from "vitest";
+import { writeFileSync, mkdirSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { EphemeralBox } from "../../index.js";
+import { UPSTASH_BOX_API_KEY } from "./setup.js";
+```
+
+## EphemeralBox — node runtime
+
+```ts
+describe.skipIf(!UPSTASH_BOX_API_KEY)("EphemeralBox — node runtime", () => {
+  let box: EphemeralBox;
+  let tmpDir: string;
+
+  afterAll(async () => {
+    try {
+      await box?.delete();
+    } catch {
+      // cleanup best-effort
+    }
+    try {
+      if (tmpDir) rmSync(tmpDir, { recursive: true, force: true });
+    } catch {
+      // cleanup best-effort
+    }
+  }, 30000);
+```
+
+### creates an ephemeral box with node runtime
+
+```ts
+  it("creates an ephemeral box with node runtime", async () => {
+    box = await EphemeralBox.create({
+      apiKey: UPSTASH_BOX_API_KEY!,
+      runtime: "node",
+      ttl: 300,
+    });
+
+    expect(box.id).toBeTruthy();
+    expect(box.expiresAt).toBeGreaterThan(0);
+  }, 30000);
+```
+
+### exec.command: runs a shell command
+
+```ts
+  it("exec.command: runs a shell command", async () => {
+    const run = await box.exec.command("echo hello-ephemeral");
+    expect(run.result).toContain("hello-ephemeral");
+    expect(run.status).toBe("completed");
+    expect(run.exitCode).toBe(0);
+  });
+```
+
+### exec.code: runs inline JavaScript
+
+```ts
+  it("exec.code: runs inline JavaScript", async () => {
+    const run = await box.exec.code({
+      code: "console.log(JSON.stringify({ product: 6 * 7 }))",
+      lang: "js",
+    });
+    expect(run.exitCode).toBe(0);
+    expect(run.result).toContain('"product":42');
+  });
+```
+
+### exec.stream: streams shell output
+
+```ts
+  it("exec.stream: streams shell output", async () => {
+    const run = await box.exec.stream("for i in 1 2 3; do echo line-$i; done");
+    const chunks: string[] = [];
+    for await (const chunk of run) {
+      if (chunk.type === "output") {
+        chunks.push(chunk.data);
+      }
+    }
+    const fullOutput = chunks.join("");
+    expect(fullOutput).toContain("line-1");
+    expect(fullOutput).toContain("line-2");
+    expect(fullOutput).toContain("line-3");
+    expect(run.status).toBe("completed");
+  }, 15000);
+```
+
+### exec.streamCode: streams inline JS output
+
+```ts
+  it("exec.streamCode: streams inline JS output", async () => {
+    const run = await box.exec.streamCode({
+      code: 'for (let i = 0; i < 3; i++) console.log("count-" + i);',
+      lang: "js",
+    });
+    const chunks: string[] = [];
+    for await (const chunk of run) {
+      if (chunk.type === "output") {
+        chunks.push(chunk.data);
+      }
+    }
+    const fullOutput = chunks.join("");
+    expect(fullOutput).toContain("count-0");
+    expect(fullOutput).toContain("count-1");
+    expect(fullOutput).toContain("count-2");
+  }, 15000);
+```
+
+### files: write then read roundtrip
+
+```ts
+  it("files: write then read roundtrip", async () => {
+    await box.files.write({ path: "test.txt", content: "ephemeral file content" });
+    const content = await box.files.read("test.txt");
+    expect(content).toBe("ephemeral file content");
+  });
+
+  it("files: list shows written file", async () => {
+    const files = await box.files.list();
+    const found = files.some((f) => f.name === "test.txt");
+    expect(found).toBe(true);
+  });
+```
+
+### files: upload sends a local file to the box
+
+```ts
+  it("files: upload sends a local file to the box", async () => {
+    tmpDir = join(tmpdir(), `ephemeral-test-${Date.now()}`);
+    mkdirSync(tmpDir, { recursive: true });
+    const localPath = join(tmpDir, "upload.txt");
+    writeFileSync(localPath, "uploaded via ephemeral");
+
+    await box.files.upload([{ path: localPath, destination: "uploaded.txt" }]);
+    const content = await box.files.read("uploaded.txt");
+    expect(content).toBe("uploaded via ephemeral");
+  });
+
+  it("getStatus: returns current status", async () => {
+    const { status } = await box.getStatus();
+    expect(status).toBeTruthy();
+  });
+```
+
+### cd: changes working directory
+
+```ts
+  it("cd: changes working directory", async () => {
+    await box.exec.command("mkdir -p subdir");
+    await box.cd("subdir");
+    expect(box.cwd).toBe("/workspace/home/subdir");
+    // Reset
+    await box.cd("/workspace/home");
+  });
+});
+```
+
+## EphemeralBox — env vars
+
+```ts
+describe.skipIf(!UPSTASH_BOX_API_KEY)("EphemeralBox — env vars", () => {
+  let box: EphemeralBox;
+
+  afterAll(async () => {
+    try {
+      await box?.delete();
+    } catch {
+      // cleanup best-effort
+    }
+  }, 30000);
+```
+
+### creates an ephemeral box with env vars
+
+```ts
+  it("creates an ephemeral box with env vars", async () => {
+    box = await EphemeralBox.create({
+      apiKey: UPSTASH_BOX_API_KEY!,
+      ttl: 300,
+      env: { MY_SECRET: "ephemeral-secret", APP_MODE: "staging" },
+    });
+
+    expect(box.id).toBeTruthy();
+  }, 30000);
+```
+
+### env vars are available in shell commands
+
+```ts
+  it("env vars are available in shell commands", async () => {
+    const run = await box.exec.command("echo $MY_SECRET");
+    expect(run.exitCode).toBe(0);
+    expect(run.result).toContain("ephemeral-secret");
+  });
+
+  it("multiple env vars are set", async () => {
+    const run = await box.exec.command("echo $APP_MODE");
+    expect(run.exitCode).toBe(0);
+    expect(run.result).toContain("staging");
+  });
+```
+
+### env vars are available in inline code
+
+```ts
+  it("env vars are available in inline code", async () => {
+    const run = await box.exec.code({
+      code: "console.log(process.env.MY_SECRET)",
+      lang: "js",
+    });
+    expect(run.exitCode).toBe(0);
+    expect(run.result).toContain("ephemeral-secret");
+  });
+});
+```
+
+## EphemeralBox — python runtime
+
+```ts
+describe.skipIf(!UPSTASH_BOX_API_KEY)("EphemeralBox — python runtime", () => {
+  let box: EphemeralBox;
+
+  afterAll(async () => {
+    try {
+      await box?.delete();
+    } catch {
+      // cleanup best-effort
+    }
+  }, 30000);
+```
+
+### creates an ephemeral box with python runtime
+
+```ts
+  it("creates an ephemeral box with python runtime", async () => {
+    box = await EphemeralBox.create({
+      apiKey: UPSTASH_BOX_API_KEY!,
+      runtime: "python",
+      ttl: 300,
+    });
+
+    expect(box.id).toBeTruthy();
+    expect(box.expiresAt).toBeGreaterThan(0);
+  }, 30000);
+```
+
+### exec.command: runs a shell command
+
+```ts
+  it("exec.command: runs a shell command", async () => {
+    const run = await box.exec.command("python3 --version");
+    expect(run.exitCode).toBe(0);
+    expect(run.result.toLowerCase()).toContain("python");
+  });
+```
+
+### exec.code: runs inline Python
+
+```ts
+  it("exec.code: runs inline Python", async () => {
+    const run = await box.exec.code({
+      code: 'import json; print(json.dumps({"result": 2 ** 10}))',
+      lang: "python",
+    });
+    expect(run.exitCode).toBe(0);
+    expect(run.result).toContain('"result": 1024');
+  });
+```
+
+### files: write and read in python box
+
+```ts
+  it("files: write and read in python box", async () => {
+    await box.files.write({ path: "data.json", content: '{"key":"value"}' });
+    const content = await box.files.read("data.json");
+    expect(content).toBe('{"key":"value"}');
+  });
+});
+```
+
+## EphemeralBox — default config
+
+```ts
+describe.skipIf(!UPSTASH_BOX_API_KEY)("EphemeralBox — default config", () => {
+  let box: EphemeralBox;
+
+  afterAll(async () => {
+    try {
+      await box?.delete();
+    } catch {
+      // cleanup best-effort
+    }
+  }, 30000);
+```
+
+### creates an ephemeral box with no runtime or ttl
+
+```ts
+  it("creates an ephemeral box with no runtime or ttl", async () => {
+    box = await EphemeralBox.create({
+      apiKey: UPSTASH_BOX_API_KEY!,
+    });
+
+    expect(box.id).toBeTruthy();
+    expect(box.expiresAt).toBeGreaterThan(0);
+  }, 30000);
+
+  it("exec.command: runs a basic command", async () => {
+    const run = await box.exec.command("uname -s");
+    expect(run.exitCode).toBe(0);
+    expect(run.result).toContain("Linux");
+  });
+});
+```

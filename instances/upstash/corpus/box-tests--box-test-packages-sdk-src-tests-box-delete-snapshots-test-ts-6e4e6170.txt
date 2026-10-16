@@ -1,0 +1,108 @@
+# box: packages/sdk/src/__tests__/box-delete-snapshots.test.ts
+# джерело: https://github.com/upstash/box/blob/python-sdk-v0.3.0/packages/sdk/src/__tests__/box-delete-snapshots.test.ts
+# отримано: 2026-10-16
+# версія: upstash-box-0.3.0, upstash-box-0.2.0, upstash-box-0.1.4, box-cli-0.2.24, box-0.6.3, box-0.5.5, box-0.4.8
+
+```ts
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { Box, BoxError } from "../client.js";
+import { mockResponse, TEST_CONFIG } from "./helpers.js";
+```
+
+## Box.deleteSnapshots (static)
+
+```ts
+describe("Box.deleteSnapshots (static)", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+    delete process.env.UPSTASH_BOX_API_KEY;
+  });
+  afterEach(() => vi.restoreAllMocks());
+```
+
+### deletes all snapshots when no snapshotIds provided
+
+```ts
+  it("deletes all snapshots when no snapshotIds provided", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ deleted: 3 }));
+
+    const result = await Box.deleteSnapshots({
+      apiKey: TEST_CONFIG.apiKey,
+      baseUrl: TEST_CONFIG.baseUrl,
+    });
+
+    const [url, init] = vi.mocked(fetch).mock.calls[0]!;
+    expect(url).toBe(`${TEST_CONFIG.baseUrl}/v2/box/snapshots`);
+    expect(init?.method).toBe("DELETE");
+    const body = JSON.parse(init?.body as string);
+    expect(body.ids).toBeUndefined();
+    expect(result).toEqual({ deleted: 3 });
+  });
+```
+
+### deletes a single snapshot by ID
+
+```ts
+  it("deletes a single snapshot by ID", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ deleted: 1 }));
+
+    const result = await Box.deleteSnapshots({
+      apiKey: TEST_CONFIG.apiKey,
+      baseUrl: TEST_CONFIG.baseUrl,
+      snapshotIds: "snap-1",
+    });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.ids).toEqual(["snap-1"]);
+    expect(result).toEqual({ deleted: 1 });
+  });
+```
+
+### deletes multiple snapshots by ID
+
+```ts
+  it("deletes multiple snapshots by ID", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ deleted: 2 }));
+
+    const result = await Box.deleteSnapshots({
+      apiKey: TEST_CONFIG.apiKey,
+      baseUrl: TEST_CONFIG.baseUrl,
+      snapshotIds: ["snap-1", "snap-2"],
+    });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.ids).toEqual(["snap-1", "snap-2"]);
+    expect(result).toEqual({ deleted: 2 });
+  });
+
+  it("throws when apiKey is missing", async () => {
+    await expect(Box.deleteSnapshots()).rejects.toThrow("apiKey is required");
+  });
+```
+
+### uses env var for apiKey
+
+```ts
+  it("uses env var for apiKey", async () => {
+    process.env.UPSTASH_BOX_API_KEY = "env-key";
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ deleted: 0 }));
+
+    await Box.deleteSnapshots();
+
+    const [, init] = vi.mocked(fetch).mock.calls[0]!;
+    expect((init?.headers as Record<string, string>)["X-Box-Api-Key"]).toBe("env-key");
+  });
+```
+
+### throws on API error
+
+```ts
+  it("throws on API error", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ error: "unauthorized" }, 401));
+
+    await expect(
+      Box.deleteSnapshots({ apiKey: TEST_CONFIG.apiKey, baseUrl: TEST_CONFIG.baseUrl }),
+    ).rejects.toThrow("unauthorized");
+  });
+});
+```

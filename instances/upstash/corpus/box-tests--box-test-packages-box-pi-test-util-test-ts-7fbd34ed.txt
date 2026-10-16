@@ -1,0 +1,108 @@
+# box: packages/box-pi/test/util.test.ts
+# джерело: https://github.com/upstash/box/blob/python-sdk-v0.4.0/packages/box-pi/test/util.test.ts
+# отримано: 2026-10-16
+# версія: upstash-box-0.4.0, upstash-box-0.3.0, upstash-box-0.2.0, dsh-box-0.1.8, box-pi-0.1.15, box-cli-0.3.5, box-cli-0.2.24, box-0.7.9, box-0.6.3
+
+```ts
+import { describe, expect, it } from 'vitest'
+import { joinPath, normalizeRepoUrl, repoName, shellQuote, shortId } from '../src/util.ts'
+```
+
+## shellQuote
+
+```ts
+describe('shellQuote', () => {
+
+  it('wraps in single quotes', () => {
+    expect(shellQuote('abc')).toBe(`'abc'`)
+    expect(shellQuote('a b')).toBe(`'a b'`)
+  })
+```
+
+### neutralizes single quotes
+
+```ts
+  it('neutralizes single quotes', () => {
+    expect(shellQuote(`a'b`)).toBe(`'a'\\''b'`)
+    // $, backticks, globs stay literal inside single quotes
+    expect(shellQuote('$HOME `id` *')).toBe(`'$HOME \`id\` *'`)
+  })
+})
+```
+
+## normalizeRepoUrl
+
+```ts
+describe('normalizeRepoUrl', () => {
+```
+
+### passes through full URLs and SSH
+
+```ts
+  it('passes through full URLs and SSH', () => {
+    expect(normalizeRepoUrl('https://github.com/a/b')).toBe('https://github.com/a/b')
+    expect(normalizeRepoUrl('git@github.com:a/b.git')).toBe('git@github.com:a/b.git')
+    expect(normalizeRepoUrl('ssh://git@github.com/a/b')).toBe('ssh://git@github.com/a/b')
+  })
+```
+
+### adds https:// to bare hosts
+
+```ts
+  it('adds https:// to bare hosts', () => {
+    expect(normalizeRepoUrl('github.com/a/b')).toBe('https://github.com/a/b')
+    expect(normalizeRepoUrl('  github.com/a/b  ')).toBe('https://github.com/a/b')
+  })
+
+  it('rejects empty input', () => {
+    expect(() => normalizeRepoUrl('   ')).toThrow()
+  })
+})
+```
+
+## repoName
+
+```ts
+describe('repoName', () => {
+```
+
+### extracts the last path segment
+
+```ts
+  it('extracts the last path segment', () => {
+    expect(repoName('https://github.com/acme/api')).toBe('api')
+    expect(repoName('https://github.com/acme/api.git')).toBe('api')
+    expect(repoName('git@github.com:acme/api.git')).toBe('api')
+    expect(repoName('github.com/acme/api/')).toBe('api')
+    expect(repoName('')).toBe('repo')
+  })
+})
+```
+
+## shortId
+
+```ts
+describe('shortId', () => {
+
+  it('truncates to 8 chars', () => {
+    expect(shortId('0123456789abcdef')).toBe('01234567')
+    expect(shortId('abc')).toBe('abc')
+  })
+})
+```
+
+## joinPath
+
+```ts
+describe('joinPath', () => {
+```
+
+### joins with exactly one slash
+
+```ts
+  it('joins with exactly one slash', () => {
+    expect(joinPath('/workspace/home', 'api')).toBe('/workspace/home/api')
+    expect(joinPath('/workspace/home/', '/api')).toBe('/workspace/home/api')
+  })
+})
+```

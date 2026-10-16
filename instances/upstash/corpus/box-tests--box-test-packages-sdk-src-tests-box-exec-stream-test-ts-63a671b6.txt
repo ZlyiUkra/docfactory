@@ -1,0 +1,586 @@
+# box: packages/sdk/src/__tests__/box-exec-stream.test.ts
+# джерело: https://github.com/upstash/box/blob/python-sdk-v0.4.0/packages/sdk/src/__tests__/box-exec-stream.test.ts
+# отримано: 2026-10-16
+# версія: upstash-box-0.4.0, dsh-box-0.1.8, box-pi-0.1.15, box-cli-0.3.5, box-cli-0.2.24, box-0.7.9
+
+```ts
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { mockResponse, createTestBox } from "./helpers.js";
+import type { StreamRun } from "../client.js";
+import type { ExecStreamChunk } from "../types.js";
+```
+
+## function mockExecStreamResponse
+
+```ts
+function mockExecStreamResponse(
+  text: string,
+  exitData: { exit_code: number; cpu_ns: number },
+  status = 200,
+): Response {
+  const exitEvent = `event: exit\ndata: ${JSON.stringify(exitData)}\n\n`;
+  const raw = text + exitEvent;
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode(raw));
+      controller.close();
+    },
+  });
+
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    statusText: status === 200 ? "OK" : "Error",
+    headers: new Headers({ "content-type": "text/event-stream" }),
+    json: () => Promise.reject(new Error("stream response")),
+    text: () => Promise.resolve(raw),
+    body: stream,
+    bodyUsed: false,
+    arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+    blob: () => Promise.resolve(new Blob()),
+    formData: () => Promise.resolve(new FormData()),
+    clone: () => mockExecStreamResponse(text, exitData, status),
+    redirected: false,
+    type: "basic" as ResponseType,
+    url: "",
+    bytes: () => Promise.resolve(new Uint8Array()),
+  } as Response;
+}
+```
+
+## function mockChunkedResponse
+
+```ts
+/**
+ * A stream delivered in caller-chosen pieces, so a marker and its payload can
+ * be split the way the network splits them.
+ */
+function mockChunkedResponse(pieces: string[]): Response {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    start(controller) {
+      for (const piece of pieces) controller.enqueue(encoder.encode(piece));
+      controller.close();
+    },
+  });
+  return {
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    headers: new Headers({ "content-type": "text/event-stream" }),
+    json: () => Promise.reject(new Error("stream response")),
+    text: () => Promise.resolve(pieces.join("")),
+    body: stream,
+    bodyUsed: false,
+    arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+    blob: () => Promise.resolve(new Blob()),
+    formData: () => Promise.resolve(new FormData()),
+    clone: () => mockChunkedResponse(pieces),
+    redirected: false,
+    type: "basic" as ResponseType,
+    url: "",
+    bytes: () => Promise.resolve(new Uint8Array()),
+  } as Response;
+}
+```
+
+## function mockExecStreamErrorResponse
+
+```ts
+function mockExecStreamErrorResponse(errorMessage: string): Response {
+  const raw = `event: error\ndata: ${JSON.stringify({ error: errorMessage })}\n\n`;
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode(raw));
+      controller.close();
+    },
+  });
+
+  return {
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    headers: new Headers({ "content-type": "text/event-stream" }),
+    json: () => Promise.reject(new Error("stream response")),
+    text: () => Promise.resolve(raw),
+    body: stream,
+    bodyUsed: false,
+    arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+    blob: () => Promise.resolve(new Blob()),
+    formData: () => Promise.resolve(new FormData()),
+    clone: () => mockExecStreamErrorResponse(errorMessage),
+    redirected: false,
+    type: "basic" as ResponseType,
+    url: "",
+    bytes: () => Promise.resolve(new Uint8Array()),
+  } as Response;
+}
+```
+
+## function mockExecStreamResponseChunked
+
+```ts
+function mockExecStreamResponseChunked(
+  textChunks: string[],
+  exitData: { exit_code: number; cpu_ns: number },
+): Response {
+  const encoder = new TextEncoder();
+  const exitEvent = `event: exit\ndata: ${JSON.stringify(exitData)}\n\n`;
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      for (const text of textChunks) {
+        controller.enqueue(encoder.encode(text));
+        await new Promise((r) => setTimeout(r, 0));
+      }
+      controller.enqueue(encoder.encode(exitEvent));
+      await new Promise((r) => setTimeout(r, 0));
+      controller.close();
+    },
+  });
+
+  return {
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    headers: new Headers({ "content-type": "text/event-stream" }),
+    json: () => Promise.reject(new Error("stream response")),
+    text: () => Promise.resolve(textChunks.join("") + exitEvent),
+    body: stream,
+    bodyUsed: false,
+    arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+    blob: () => Promise.resolve(new Blob()),
+    formData: () => Promise.resolve(new FormData()),
+    clone: () => mockExecStreamResponseChunked(textChunks, exitData),
+    redirected: false,
+    type: "basic" as ResponseType,
+    url: "",
+    bytes: () => Promise.resolve(new Uint8Array()),
+  } as Response;
+}
+```
+
+## function mockExecStreamRawChunks
+
+```ts
+function mockExecStreamRawChunks(chunks: string[]): Response {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      for (const chunk of chunks) {
+        controller.enqueue(encoder.encode(chunk));
+        await new Promise((r) => setTimeout(r, 0));
+      }
+      controller.close();
+    },
+  });
+
+  return {
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    headers: new Headers({ "content-type": "text/event-stream" }),
+    json: () => Promise.reject(new Error("stream response")),
+    text: () => Promise.resolve(chunks.join("")),
+    body: stream,
+    bodyUsed: false,
+    arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+    blob: () => Promise.resolve(new Blob()),
+    formData: () => Promise.resolve(new FormData()),
+    clone: () => mockExecStreamRawChunks(chunks),
+    redirected: false,
+    type: "basic" as ResponseType,
+    url: "",
+    bytes: () => Promise.resolve(new Uint8Array()),
+  } as Response;
+}
+```
+
+## function collect
+
+```ts
+async function collect(run: StreamRun<string, ExecStreamChunk>): Promise<ExecStreamChunk[]> {
+  const chunks: ExecStreamChunk[] = [];
+  for await (const chunk of run) {
+    chunks.push(chunk);
+  }
+  return chunks;
+}
+```
+
+## exec.stream
+
+```ts
+describe("exec.stream", () => {
+  afterEach(() => vi.restoreAllMocks());
+```
+
+### yields ExecStreamChunk objects then populates run
+
+```ts
+  it("yields ExecStreamChunk objects then populates run", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(
+      mockExecStreamResponse("hello world\n", { exit_code: 0, cpu_ns: 24562000 }),
+    );
+
+    const run = await box.exec.stream("echo hello world");
+    const chunks = await collect(run);
+
+    const outputChunks = chunks.filter((c) => c.type === "output");
+    expect(outputChunks.length).toBe(1);
+    expect(outputChunks[0]!.type === "output" && outputChunks[0]!.data).toBe("hello world\n");
+    expect(chunks.some((c) => c.type === "exit")).toBe(true);
+    expect(run.status).toBe("completed");
+    expect(run.exitCode).toBe(0);
+    expect(run.result).toBe("hello world\n");
+  });
+```
+
+### sends correct URL and body
+
+```ts
+  it("sends correct URL and body", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(mockExecStreamResponse("ok\n", { exit_code: 0, cpu_ns: 100 }));
+
+    const run = await box.exec.stream("ls -la");
+    await collect(run);
+
+    const [url, init] = fetchMock.mock.calls[1]!;
+    expect(url).toContain("/v2/box/box-123/exec-stream");
+    expect(init?.method).toBe("POST");
+    const body = JSON.parse(init?.body as string);
+    expect(body.command).toEqual(["sh", "-c", "ls -la"]);
+  });
+```
+
+### includes folder when cwd is set
+
+```ts
+  it("includes folder when cwd is set", async () => {
+    const { box, fetchMock } = await createTestBox();
+    // cd into a subdirectory
+    fetchMock.mockResolvedValueOnce(
+      mockResponse({ exit_code: 0, output: "/workspace/home/mydir" }),
+    );
+    await box.cd("mydir");
+
+    fetchMock.mockResolvedValueOnce(mockExecStreamResponse("ok\n", { exit_code: 0, cpu_ns: 0 }));
+
+    const run = await box.exec.stream("pwd");
+    await collect(run);
+
+    const [, init] = fetchMock.mock.calls[2]!;
+    const body = JSON.parse(init?.body as string);
+    expect(body.folder).toBe("mydir");
+  });
+```
+
+### handles non-zero exit code
+
+```ts
+  it("handles non-zero exit code", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(
+      mockExecStreamResponse("not found\n", { exit_code: 127, cpu_ns: 500 }),
+    );
+
+    const run = await box.exec.stream("badcommand");
+    await collect(run);
+
+    expect(run.exitCode).toBe(127);
+    expect(run.status).toBe("failed");
+  });
+```
+
+### parses exit event split across stream chunks
+
+```ts
+  it("parses exit event split across stream chunks", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(
+      mockExecStreamRawChunks([
+        "line=0\nline=1\n",
+        "line=2\n\nevent: ex",
+        'it\ndata: {"exit_code":0,"cpu_ns":123}\n\n',
+      ]),
+    );
+
+    const run = await box.exec.stream("echo lines");
+    const chunks = await collect(run);
+    const output = chunks
+      .filter((chunk) => chunk.type === "output")
+      .map((chunk) => chunk.data)
+      .join("");
+
+    expect(output).toContain("line=0");
+    expect(output).toContain("line=2");
+    expect(run.status).toBe("completed");
+    expect(run.exitCode).toBe(0);
+  });
+```
+
+### throws on non-OK response
+
+```ts
+  it("throws on non-OK response", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(mockResponse({ error: "not found" }, 404));
+
+    await expect(box.exec.stream("echo hi")).rejects.toThrow("not found");
+  });
+```
+
+### throws on SSE error event
+
+```ts
+  it("throws on SSE error event", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(mockExecStreamErrorResponse("failed to start stream"));
+
+    const run = await box.exec.stream("echo hi");
+    await expect(collect(run)).rejects.toThrow("failed to start stream");
+  });
+```
+
+### sets status to detached when consumer breaks early
+
+```ts
+  it("sets status to detached when consumer breaks early", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(
+      mockExecStreamResponseChunked(["line1\n", "line2\n", "line3\n"], {
+        exit_code: 0,
+        cpu_ns: 100,
+      }),
+    );
+
+    const run = await box.exec.stream("echo lines");
+    for await (const chunk of run) {
+      if (chunk.type === "output") break; // early exit after first output
+    }
+
+    expect(run.status).toBe("detached");
+    expect(run.result).toBe("line1\n");
+    expect(run.cost.computeMs).toBeGreaterThanOrEqual(0);
+  });
+```
+
+### sets status to failed on error and preserves partial output
+
+```ts
+  it("sets status to failed on error and preserves partial output", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(mockExecStreamErrorResponse("exec failed"));
+
+    const run = await box.exec.stream("bad cmd");
+    await expect(collect(run)).rejects.toThrow("exec failed");
+
+    expect(run.status).toBe("failed");
+    expect(run.cost.computeMs).toBeGreaterThanOrEqual(0);
+  });
+});
+```
+
+## exec.streamCode
+
+```ts
+describe("exec.streamCode", () => {
+  afterEach(() => vi.restoreAllMocks());
+```
+
+### yields ExecStreamChunk objects then populates run
+
+```ts
+  it("yields ExecStreamChunk objects then populates run", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(
+      mockExecStreamResponse('{"sum":3}\n', { exit_code: 0, cpu_ns: 1000 }),
+    );
+
+    const run = await box.exec.streamCode({
+      code: "console.log(JSON.stringify({sum:1+2}))",
+      lang: "js",
+    });
+    const chunks = await collect(run);
+
+    const outputChunks = chunks.filter((c) => c.type === "output");
+    expect(outputChunks.length).toBe(1);
+    expect(outputChunks[0]!.type === "output" && outputChunks[0]!.data).toBe('{"sum":3}\n');
+    expect(run.status).toBe("completed");
+    expect(run.exitCode).toBe(0);
+    expect(run.type).toBe("code");
+  });
+```
+
+### sends correct URL and body
+
+```ts
+  it("sends correct URL and body", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(mockExecStreamResponse("ok\n", { exit_code: 0, cpu_ns: 0 }));
+
+    const run = await box.exec.streamCode({ code: "print('hi')", lang: "python" });
+    await collect(run);
+
+    const [url, init] = fetchMock.mock.calls[1]!;
+    expect(url).toContain("/v2/box/box-123/code-stream");
+    expect(init?.method).toBe("POST");
+    const body = JSON.parse(init?.body as string);
+    expect(body.code).toBe("print('hi')");
+    expect(body.language).toBe("python");
+  });
+```
+
+### passes timeout when provided
+
+```ts
+  it("passes timeout when provided", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(mockExecStreamResponse("ok\n", { exit_code: 0, cpu_ns: 0 }));
+
+    const run = await box.exec.streamCode({
+      code: "console.log('ok')",
+      lang: "js",
+      timeout: 5000,
+    });
+    await collect(run);
+
+    const [, init] = fetchMock.mock.calls[1]!;
+    const body = JSON.parse(init?.body as string);
+    expect(body.timeout).toBe(5000);
+  });
+```
+
+### throws on non-OK response
+
+```ts
+  it("throws on non-OK response", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(mockResponse({ error: "server error" }, 500));
+
+    await expect(box.exec.streamCode({ code: "x", lang: "js" })).rejects.toThrow("server error");
+  });
+```
+
+### throws on SSE error event
+
+```ts
+  it("throws on SSE error event", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(mockExecStreamErrorResponse("failed to start stream"));
+
+    const run = await box.exec.streamCode({ code: "x", lang: "js" });
+    await expect(collect(run)).rejects.toThrow("failed to start stream");
+  });
+```
+
+### sets status to detached when consumer breaks early
+
+```ts
+  it("sets status to detached when consumer breaks early", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(
+      mockExecStreamResponseChunked(["output1\n", "output2\n"], {
+        exit_code: 0,
+        cpu_ns: 100,
+      }),
+    );
+
+    const run = await box.exec.streamCode({ code: "print('hi')", lang: "python" });
+    for await (const chunk of run) {
+      if (chunk.type === "output") break;
+    }
+
+    expect(run.status).toBe("detached");
+    expect(run.result).toBe("output1\n");
+    expect(run.cost.computeMs).toBeGreaterThanOrEqual(0);
+  });
+```
+
+### sets status to failed on error and preserves partial output
+
+```ts
+  it("sets status to failed on error and preserves partial output", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(mockExecStreamErrorResponse("code exec failed"));
+
+    const run = await box.exec.streamCode({ code: "x", lang: "js" });
+    await expect(collect(run)).rejects.toThrow("code exec failed");
+
+    expect(run.status).toBe("failed");
+    expect(run.cost.computeMs).toBeGreaterThanOrEqual(0);
+  });
+});
+```
+
+## exec stream split across network reads
+
+```ts
+describe("exec stream split across network reads", () => {
+  async function collect(box: Awaited<ReturnType<typeof createTestBox>>["box"]) {
+    const chunks: ExecStreamChunk[] = [];
+    for await (const chunk of await box.exec.stream("true")) chunks.push(chunk);
+    return chunks;
+  }
+```
+
+### still reports the exit status when the marker and payload arrive apart
+
+```ts
+  it("still reports the exit status when the marker and payload arrive apart", async () => {
+    const { box, fetchMock } = await createTestBox();
+    // The marker completing one read and the payload starting the next is what
+    // happens on the wire; losing the exit chunk there leaves a caller with no
+    // way to know whether the command succeeded.
+    fetchMock.mockResolvedValueOnce(
+      mockChunkedResponse(["hello\n", "event: exit\n", 'data: {"exit_code":3,"cpu_ns":1}\n\n']),
+    );
+
+    const chunks = await collect(box);
+
+    expect(chunks.filter((chunk) => chunk.type === "exit")).toEqual([
+      { type: "exit", exitCode: 3, cpuNs: 1 },
+    ]);
+  });
+```
+
+### does not duplicate the output that preceded the exit event
+
+```ts
+  it("does not duplicate the output that preceded the exit event", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(
+      mockChunkedResponse(["hello\n", "event: exit\n", 'data: {"exit_code":0,"cpu_ns":0}\n\n']),
+    );
+
+    const chunks = await collect(box);
+
+    const output = chunks
+      .filter((chunk) => chunk.type === "output")
+      .map((chunk) => (chunk as { data: string }).data)
+      .join("");
+    expect(output).toBe("hello\n");
+  });
+```
+
+### survives the payload itself being split
+
+```ts
+  it("survives the payload itself being split", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(
+      mockChunkedResponse(["event: exit\n", 'data: {"exit_code":', '42,"cpu_ns":0}\n\n']),
+    );
+
+    const chunks = await collect(box);
+
+    expect(chunks.filter((chunk) => chunk.type === "exit")).toEqual([
+      { type: "exit", exitCode: 42, cpuNs: 0 },
+    ]);
+  });
+});
+```
