@@ -3,7 +3,8 @@
     instances/<примірник>/.venv/bin/python tools/seed_git_store.py --instance opentelemetry \\
         --clone open-telemetry/opentelemetry-js=/шлях/до/opentelemetry-js.git [--clone …] [--dry-run]
 
-Навіщо. Читачі `ghdocs-history`, `ghcode-history`, `ghcode-history-ts` і `ghcode-history-proto` беруть
+Навіщо. Читачі `ghdocs-history`, `ghcode-history`, `ghcode-history-ts`, `ghcode-history-proto`,
+`ghdocs-history-xhp` і `ghcode-history-lo` беруть
 кожну неповторну редакцію файла з raw.githubusercontent.com по одному запиту. Код і тести
 opentelemetry-js на 143 комітах випусків — десять тисяч файлів, js-contrib — ще п'ять, і мережею це
 години; голий клон (`git clone --bare`) має всі blob-и локально, а GitHub віддає за адресою
@@ -19,7 +20,9 @@ raw.githubusercontent.com той самий blob байт у байт. Інст�
 лишаються мережі.
 
 Дерева тегів (`git/trees/<тег>?recursive=1`) інструмент не кладе: їх бере `./df <примірник> list`
-через API (кількасот запитів), і він же має бути першим кроком. Частковий клон (`--filter=blob:none`)
+через API (кількасот запитів), і він же має бути першим кроком. Виняток — `ghdocs-history-xhp`: він
+читає сторінки вже під час переліку, і `list` тягнув би кожну мережею. Для нього `--trees` кладе й
+дерева `тег:тека?recursive=1` з повного клону (розміри blob-ів беруться з нього ж). Частковий клон (`--filter=blob:none`)
 підходить теж: blob-и, яких бракує, інструмент докачує пачками (`git fetch --stdin origin`), і лише ті,
 що потрапили до відбору.
 
@@ -45,7 +48,8 @@ from engine.readers.ghhistory import _LOCALE  # noqa: E402
 
 RAW = "https://raw.githubusercontent.com"
 TREES = re.compile(r"^/repos/([^/]+)/([^/]+)/git/trees/(.*)$")
-READERS = {"ghdocs-history", "ghcode-history", "ghcode-history-ts", "ghcode-history-proto", "otel-registry"}
+READERS = {"ghdocs-history", "ghcode-history", "ghcode-history-ts", "ghcode-history-proto", "otel-registry",
+           "ghdocs-history-xhp", "ghcode-history-lo"}
 PLAIN = {"vitepress", "vocs", "astro_mdx", "prisma_mdx", "biome_mdx", "mdbook", "base_ui", "jsx_sources",
          "hugo", "sphinx"}
 
@@ -71,6 +75,9 @@ def _selector(src: dict):
         return ok
     if src["reader"] == "otel-registry":
         return lambda path: path.startswith("data/registry/") and path.endswith((".yml", ".yaml"))
+    if src["reader"] == "ghdocs-history-xhp":
+        roots = tuple(r.strip("/") + "/" for r in src.get("roots") or ["source/text"])
+        return lambda path: path.startswith(roots) and path.endswith(".xhp")
     include = [re.compile(r) for r in src.get("include") or ()]
     return lambda path: any(r.search(path) for r in include) and not any(r.search(path) for r in exclude)
 
@@ -105,12 +112,48 @@ def _fetch(clone: pathlib.Path, shas: list[str]) -> None:
         print(f"  докачано blob-ів: {min(i + 5000, len(shas))} з {len(shas)}", flush=True)
 
 
+def _put_trees(store, sources: list[dict], clones: dict) -> None:
+    """Дерева `тег:тека?recursive=1` у вигляді відповіді API — перша наявна тека з `roots` на кожному тезі."""
+    for src in sources:
+        if src.get("reader") != "ghdocs-history-xhp":
+            continue
+        m = TREES.match(urlsplit(src["url"]).path)
+        clone = clones.get(f"{m.group(1)}/{m.group(2)}") if m else None
+        if clone is None:
+            continue
+        git = ["git", "--git-dir", str(clone)]
+        n = 0
+        for tag in src.get("tags") or {}:
+            for root in src.get("roots") or ["source/text"]:
+                sha = subprocess.run(git + ["rev-parse", "--verify", "-q", f"{tag}:{root}"],
+                                     capture_output=True, text=True).stdout.strip()
+                if not sha:
+                    continue
+                out = subprocess.run(git + ["ls-tree", "-r", "-t", "-l", f"{tag}:{root}"],
+                                     capture_output=True, text=True, check=True).stdout
+                tree = []
+                for ln in out.splitlines():
+                    meta, path = ln.split("\t", 1)
+                    mode, typ, blob, size = meta.split()
+                    tree.append({"path": path, "mode": mode, "type": typ, "sha": blob,
+                                 **({"size": int(size)} if typ == "blob" else {})})
+                url = f"{src['url']}{quote(tag, safe='@')}:{quote(root)}?recursive=1"
+                if store.meta(url) is not None:
+                    break  # запис, що вже є, лишається як був
+                store.put(url, "", json.dumps({"sha": sha, "tree": tree, "truncated": False}).encode(), {})
+                n += 1
+                break
+        print(f"  {src['id']}: дерев тегів {n}", flush=True)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--instance", required=True, help="назва примірника (тека в instances/)")
     ap.add_argument("--clone", action="append", default=[], metavar="власник/репо=шлях",
                     help="голий клон репозиторію; повторюваний")
     ap.add_argument("--dry-run", action="store_true", help="лише порахувати, нічого не писати")
+    ap.add_argument("--trees", action="store_true",
+                    help="ще й дерева тегів для джерел ghdocs-history-xhp (потрібен повний клон)")
     args = ap.parse_args()
 
     root = pathlib.Path(__file__).resolve().parent.parent
@@ -158,6 +201,8 @@ def main() -> int:
         raise SystemExit("жодного джерела з клонів --clone не збіглося з sources.json")
 
     store = None if args.dry_run else rawstore.of(inst, time.strftime("%Y-%m-%d"))
+    if args.trees and store is not None:
+        _put_trees(store, sources, clones)
     if store is None and not args.dry_run:
         raise SystemExit(f"{inst}: сховище сирого вимкнено (raw_store: false)")
     t0 = time.time()
