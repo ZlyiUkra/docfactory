@@ -322,6 +322,14 @@ ecma-international.org, unicode.org і rfc-editor.org). Оригінали на 
 | `bullmq` | `bullmq-docs` | 8848 | черги BullMQ, Bull, панелі Bull Board і Arena, `@nestjs/bull*` |
 | `upstash` | `upstash-docs` | 8849 | платформа Upstash: Redis по HTTP, ratelimit, QStash, Workflow, Vector, Search, Box… |
 
+**Родина Mongo** — сервер, офіційний драйвер Node.js і Mongoose з екосистемою:
+
+| Примірник | Сервер | Порт | Що |
+|-----------|--------|-----:|----|
+| `mongodb` | `mongodb-docs` | 8850 | сервер MongoDB усіх ліній 2.2–9.0, mongosh, Database Tools |
+| `node-mongodb` | `node-mongodb-docs` | 8851 | офіційний драйвер Node.js (пакет `mongodb`) і `bson` |
+| `mongoose` | `mongoose-docs` | 8852 | Mongoose і додатки: `@nestjs/mongoose`, Typegoose, memory-server, плагіни |
+
 Щоб підняти родину: `./df <примірник> serve` для кожного члена в окремому терміналі (порти різні) і по одному
 `claude mcp add --transport http --scope user <сервер> http://127.0.0.1:<порт>/mcp` у WSL і у Windows.
 
@@ -1962,6 +1970,64 @@ next-intl-swc-plugin-extractor, англійською, лише стабіль�
 - приклад питання агентові: `./df next-intl ask "How do I set up next-intl with locale-based routing in the App Router?"`;
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/next-intl/README.md](instances/next-intl/README.md).
+
+### mongodb
+
+Документація сервера MongoDB англійською: Database Manual кожної лінії від 2.2 до 9.0 — усі мажорні й мінорні, разом
+із rapid 5.1–5.3, 6.1–6.3, 7.1–7.3 і 8.3 (21 заморожена гілка і 4 теки монорепозиторію `mongodb/docs`), з вкладками
+прикладів усіх мов; mongosh 2.1 і 2.13; Database Tools 100.19. Новий читач `snooty-history` для формату Snooty rST:
+вставки, `sharedinclude` з `10gen/docs-shared`, вкладки обох записів, YAML-кроки й витяги старих гілок, константи й
+підстановки, об'єктні директиви заголовками. Сховище сирого засіяно з голого клону, корпус зібрано без мережі.
+32 653 документи, 90 554 фрагменти.
+
+- порт `8850`; запис у Claude Code — `mongodb-docs`, адреса `http://127.0.0.1:8850/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-mongodb`, модель векторів — `bge-small`;
+- версія — лінія сервера: `version: "4.4"` лишає посібник 4.4; mongosh і Database Tools мають власну нумерацію й
+  ідуть з міткою: `"mongosh-2.13"`, `"database-tools-100.19"`;
+- приклад питання агентові: `./df mongodb ask "How does insertMany behave with ordered: false?"`;
+- корпус і сховище сирого — в архіві;
+- член родини Mongo (розділ «Родини примірників»): піднімати разом з `node-mongodb` і `mongoose`;
+- докладніше — у [instances/mongodb/README.md](instances/mongodb/README.md).
+
+### node-mongodb
+
+Документація офіційного драйвера MongoDB для Node.js англійською: сайт кожної мінорної лінії 3.6–7.7 (48 гілок
+`mongodb/docs-node` і монорепозиторій), код `src/` із TSDoc (84 теги 4.0.0–7.7.0) і `lib/` із JSDoc (338 тегів
+0.6.8–3.7.4), тести integration і unit кожного стабільного випуску, `HISTORY.md` і нотатки релізів, бібліотека `bson`
+(155 тегів, журнал, релізи), реєстр npm і README семи пакетів, типи `@types/mongodb` з tarball. 12 030 документів,
+31 286 фрагментів.
+
+- порт `8851`; запис у Claude Code — `node-mongodb-docs`, адреса `http://127.0.0.1:8851/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-node-mongodb`, модель векторів — `bge-small`;
+- версія — лінія документації `version: "6.17"`; код, тести й журнал несуть повну версію тега (`"6.17.0"`), bson — з
+  префіксом (`"bson-6.10"`), пакети npm — з назвою; без названої версії відповідати для 6.x (44 % завантажень) і 7.x
+  (34 %);
+- приклад питання агентові: `./df node-mongodb ask "How do I resume a change stream after an error?"`;
+- корпус і сховище сирого — в архіві;
+- член родини Mongo (розділ «Родини примірників»): піднімати разом з `mongodb` і `mongoose`;
+- докладніше — у [instances/node-mongodb/README.md](instances/node-mongodb/README.md).
+
+### mongoose
+
+Документація Mongoose англійською: `docs/*.md` кожного стабільного випуску від 5.13.0 до 9.x (354 теги), знімки сайту
+3.8.x і 4.x, код `lib/` із JSDoc, типи `types/` і тести кожного випуску (999 тегів), `CHANGELOG.md` від 1.0.1 (новий
+читач `changelog-slash-dated` для заголовків «9.11.2 / 2026-10-12»), нотатки релізів, реєстр npm і README; додатки —
+`@nestjs/mongoose`, Typegoose, mongodb-memory-server, connect-mongo, плагіни mongoose-autopopulate,
+mongoose-lean-virtuals, mongoose-unique-validator, mongoose-paginate-v2 (документація, код, релізи, npm кожного
+випуску), типи `@types/mongoose`. 18 058 документів, 48 158 фрагментів.
+
+- порт `8852`; запис у Claude Code — `mongoose-docs`, адреса `http://127.0.0.1:8852/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-mongoose`, модель векторів — `bge-small`;
+- версія — повна версія Mongoose (`version: "8.19.3"`) чи лінія (`"8.19"`); додатки — з назвою пакета
+  (`"typegoose-12"`, `"nestjs-11"`, `"memory-server-10"`); без названої версії відповідати для 8.x (44 % завантажень)
+  і 9.x (34 %);
+- приклад питання агентові: `./df mongoose ask "How does populate work with nested paths?"`;
+- корпус і сховище сирого — в архіві;
+- член родини Mongo (розділ «Родини примірників»): піднімати разом з `mongodb` і `node-mongodb`;
+- докладніше — у [instances/mongoose/README.md](instances/mongoose/README.md).
 
 ## Захист
 

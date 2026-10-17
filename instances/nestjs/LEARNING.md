@@ -365,7 +365,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 
 | Бібліотека | Навіщо | Де в плані |
 |------------|--------|------------|
-| Mongoose, MikroORM, Drizzle | інша база чи інший стиль ORM; у корпусі є `Mongo` і `MikroORM`; є примірник `drizzle` | не вчиться |
+| Mongoose, MikroORM, Drizzle | інша база чи інший стиль ORM; у корпусі є `Mongo` і `MikroORM`; є примірник `drizzle` і родина Mongo: `mongodb`, `node-mongodb`, `mongoose` | не вчиться |
 | GraphQL (`@nestjs/graphql`) | клієнтів багато, і кожен хоче свою форму даних | не вчиться |
 | мікросервіси: Kafka, RabbitMQ, NATS | кілька сервісів обмінюються повідомленнями | не вчиться |
 | CQRS | складний домен, читання й запис розділені | не вчиться |
@@ -450,7 +450,8 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 
 - з «треба знати»: TypeORM, Passport, bcrypt, class-validator, class-transformer, supertest, RxJS;
 - з «варто знати»: `ws`, nestjs-cls, nestjs-pino, csrf-csrf, CASL, orval, openapi-typescript;
-- з «знати, що існує»: Mongoose, MikroORM, Kafka, RabbitMQ, NATS.
+- з «знати, що існує»: MikroORM, Kafka, RabbitMQ, NATS (Mongoose закрито 17.10.2026 родиною Mongo: `mongodb`,
+  `node-mongodb`, `mongoose`).
 
 ---
 

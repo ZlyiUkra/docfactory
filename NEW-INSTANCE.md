@@ -166,6 +166,24 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
 - **A product removed from a documentation site** (Upstash Kafka) comes from the commit before the removal:
   `commits?path=<folder>` gives the deleting commit, its parent is the snapshot; the source carries no version.
   Mintlify writes its «Documentation index» block in either case — the reader matches both.
+- **Documentation in Snooty rST** (MongoDB: the server manual, mongosh, Database Tools, the drivers) — the
+  `snooty-history` reader: `.txt` pages, `include`/`literalinclude`/`sharedinclude` (shared snippets from
+  `10gen/docs-shared`), tabs in both notations, YAML steps and extracts of the old branches, `{+x+}` constants from
+  `snooty.toml` and `conf.py`, substitutions with nested values, object directives as headings. Hunt the leftovers with a
+  census of the corpus (`|x|`, `{+x+}`, `:ref:`, raw spans) and fix the reader down to zero; what remains are literal
+  blocks, where the markup really is raw.
+- **Do not fetch a huge documentation repository over the network**: a bare clone (`git clone --bare`), seed the raw
+  store with every blob by its sha under its raw.githubusercontent.com address (a sha → address map next to the store),
+  only the branch trees via the API; then `build` offline (32 thousand pages in 12 minutes instead of seven hours). A
+  blob identical across 20 branches is stored once.
+- **The tarball of a scoped package** (`@types/mongodb`) is served at an address with a literal "/"
+  (`/@types/mongodb/-/…`), not `%2F`: both forms must be in `within`, otherwise every version is "no file".
+  DefinitelyTyped, `@nestjs/*` and precompiled packages (`@mongodb-js/zstd`) ship no README in the tarball: take
+  `index.d.ts` for types (`kind: types`), drop the other README sources.
+- **A family of three or more instances**: one overnight chain of heavy steps (vectors one after another, smoke and
+  quality after each), the timed reports go on while the chain lives. `ua_query` in `checks.json` is pure Cyrillic (a
+  Latin word breaks the check), and the version probe is a line (`"9.11"`), not a full version, when there are hundreds
+  of lines.
 - **Quality.** The second ten of `quality` («as the model»: queries in the documentation's own names, the way the
   prompt tells the model to write them) is the main goal: 10 of 10. Targets grow only by genuine answers. A target
   must be a section with its own text: a document that is only a header is never found as a section. `ua_query` is
@@ -654,6 +672,22 @@ and what a taken port and a failed connection look like. A domain list in the ro
 - **Продукт, прибраний із сайту документації** (Upstash Kafka), беруть із коміту перед видаленням:
   `commits?path=<тека>` дає коміт видалення, його батько — знімок; версії джерело не несе. Блок «Documentation index»
   Mintlify пише і з великої, і з малої літери — читач упізнає обидва.
+- **Документація у форматі Snooty rST** (MongoDB: посібник сервера, mongosh, Database Tools, драйвери) — читач
+  `snooty-history`: сторінки `.txt`, `include`/`literalinclude`/`sharedinclude` (спільні вставки з `10gen/docs-shared`),
+  вкладки обох записів, YAML-кроки й витяги старих гілок, константи `{+x+}` із `snooty.toml` і `conf.py`, підстановки
+  з вкладеними значеннями, об'єктні директиви заголовками. Залишки шукати переписом корпусу (`|x|`, `{+x+}`, `:ref:`,
+  сирі спани) і правити читач до нуля; що лишається — літеральні блоки, де розмітка справді сира.
+- **Великий репозиторій документації не тягти мережею**: голий клон (`git clone --bare`), засів сховища сирого кожним
+  blob за його sha під адресою raw.githubusercontent.com (мапа sha → адреса поруч зі сховищем), мережею — лише дерева
+  гілок через API; далі `build` без мережі (32 тисячі сторінок за 12 хвилин замість семи годин). Blob, однаковий у
+  20 гілках, лежить один раз.
+- **Tarball пакета з областю** (`@types/mongodb`) реєстр віддає за адресою з літеральною «/» (`/@types/mongodb/-/…`),
+  а не з `%2F`: обидві форми мають бути у `within`, інакше всі версії «без файла». Пакети DefinitelyTyped, `@nestjs/*`
+  і прекомпільовані (`@mongodb-js/zstd`) README у tarball не кладуть: для типів брати `index.d.ts` (`kind: types`),
+  решту джерел README прибрати.
+- **Родина з трьох і більше примірників**: один ланцюжок важких кроків на ніч (вектори по черзі, за кожними — smoke і
+  quality), звіти за таймером тривають, поки ланцюжок живий. `ua_query` у `checks.json` — суто кирилицею (латинське
+  слово ламає перевірку), а пробна версія — лінія (`"9.11"`), не повна версія, коли ліній понад сотню.
 - **Якість.** Друга десятка `quality` («як модель»: запити назвами самої документації, як велить писати промпт) —
   головна мета: 10 із 10. Цілі доповнюють лише справжніми відповідями. Ціль мусить бути розділом із власним текстом:
   документ із самої шапки розділом не знаходиться. `ua_query` — суто кирилицею, без цифр і латиниці.
@@ -1143,6 +1177,24 @@ errada.
 - **Um produto removido do site de documentação** (Upstash Kafka) vem do commit anterior à remoção:
   `commits?path=<pasta>` dá o commit que apagou, o pai dele é o snapshot; a fonte não leva versão. O Mintlify
   escreve o bloco «Documentation index» com maiúscula ou minúscula — o leitor reconhece os dois.
+- **Documentação em Snooty rST** (MongoDB: manual do servidor, mongosh, Database Tools, drivers) — o leitor
+  `snooty-history`: páginas `.txt`, `include`/`literalinclude`/`sharedinclude` (trechos partilhados de
+  `10gen/docs-shared`), abas nas duas notações, passos e extratos YAML dos ramos antigos, constantes `{+x+}` de
+  `snooty.toml` e `conf.py`, substituições com valores aninhados, diretivas de objeto como títulos. Procurar os restos
+  com um censo do corpus (`|x|`, `{+x+}`, `:ref:`, spans crus) e corrigir o leitor até zero; o que fica são blocos
+  literais, onde a marcação é mesmo crua.
+- **Não baixar pela rede um repositório de documentação enorme**: clone bare (`git clone --bare`), semear o depósito
+  bruto com cada blob pelo seu sha no endereço raw.githubusercontent.com (mapa sha → endereço junto ao depósito), pela
+  rede só as árvores dos ramos via API; depois `build` sem rede (32 mil páginas em 12 minutos em vez de sete horas). Um
+  blob igual em 20 ramos fica guardado uma vez.
+- **O tarball de um pacote com escopo** (`@types/mongodb`) é servido num endereço com "/" literal
+  (`/@types/mongodb/-/…`), não `%2F`: as duas formas têm de estar em `within`, senão todas as versões ficam "sem
+  arquivo". DefinitelyTyped, `@nestjs/*` e pacotes pré-compilados (`@mongodb-js/zstd`) não trazem README no tarball:
+  para tipos usar `index.d.ts` (`kind: types`), remover as outras fontes de README.
+- **Uma família de três ou mais instâncias**: uma cadeia noturna de passos pesados (vetores um após outro, smoke e
+  quality depois de cada), os relatórios por temporizador continuam enquanto a cadeia vive. `ua_query` em `checks.json`
+  é só cirílico (uma palavra latina quebra a verificação), e a versão de prova é uma linha (`"9.11"`), não uma versão
+  completa, quando há centenas de linhas.
 - **Qualidade.** A segunda dezena de `quality` («como o modelo»: consultas com os nomes da própria documentação, como
   o prompt manda o modelo escrever) é a meta principal: 10 de 10. Os alvos só crescem com respostas genuínas. Um
   alvo precisa ser uma seção com texto próprio: um documento que é só cabeçalho nunca é encontrado como seção. A
