@@ -2048,6 +2048,27 @@ PyPI. Читач `ghcode-history` навчився ділити файли Go й
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/ollama/README.md](instances/ollama/README.md).
 
+### jsonschema
+
+Документація JSON Schema й Ajv англійською: сайт json-schema.org цілком (Understanding JSON Schema, Learn, нотатки
+випусків і міграції, блог); тексти специфікацій draft-03…2020-12 (Core, Validation, Hyper-Schema, Relative JSON
+Pointer, обидва видання draft-07 і 2020-12) і наступного випуску в розробці («next», гілка main json-schema-spec);
+метасхеми; JSON Schema Test Suite; сайт ajv.js.org кожного стабільного тегу 7.0.0–8.20.0, документація Ajv до 7.0, код
+і тести Ajv; README, релізи й версії npm Ajv і пакетів ajv-formats, ajv-errors, ajv-keywords, ajv-i18n, ajv-cli,
+ajv-merge-patch, ajv-draft-04, json-schema-traverse; @types/json-schema. Новий читач `json-test-suite` (група тестів —
+розділ), поля `jsonschema_org` і `vuepress` читача `ghdocs-history`, поле `version` читача `ietf-text`. 2 214
+документів, 9 670 фрагментів.
+
+- порт `8855`; запис у Claude Code — `jsonschema-docs`, адреса `http://127.0.0.1:8855/mcp`; інструменти `search_docs`
+  і `read_section`;
+- колекція у Qdrant — `docs-jsonschema`, модель векторів — `bge-small`;
+- версія — випуск специфікації назвою (`version: "2020-12"`, `"draft-07"`, `"next"`), Ajv — лінією (`"8"`), інші
+  пакети — з назвою (`"ajv-formats-3"`); сторінки json-schema.org версій не мають; без названого випуску відповідати
+  для 2020-12 і казати, де draft-07 інакше (`new Ajv()` перевіряє саме draft-07);
+- приклад питання агентові: `./df jsonschema ask "How does unevaluatedProperties differ from additionalProperties?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/jsonschema/README.md](instances/jsonschema/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений

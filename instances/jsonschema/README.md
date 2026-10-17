@@ -1,0 +1,192 @@
+# jsonschema — примірник фабрики docfactory
+
+Захищений MCP-сервер, що відповідає на питання про JSON Schema — мову перевірки й анотування JSON — і про Ajv,
+валідатор JSON Schema та JSON Type Definition для JavaScript і TypeScript. Документація — сайт json-schema.org
+цілком (книга Understanding JSON Schema, Learn, нотатки випусків і міграції кожного draft, блог), тексти всіх
+виданих специфікацій draft-03…2020-12 і наступного випуску, що ще в розробці, метасхеми, офіційний JSON Schema Test
+Suite, сайт ajv.js.org для кожного стабільного тегу 7.0.0–8.20.0, документація Ajv до 7.0, код і тести Ajv, README,
+релізи й версії npm самого Ajv і пакетів ajv-formats, ajv-errors, ajv-keywords, ajv-i18n, ajv-cli, ajv-merge-patch,
+ajv-draft-04, json-schema-traverse, типи @types/json-schema. Код спільний і лежить у `../../engine/`,
+`../../server/` та `../../common/`; ця тека тримає самі дані домену. Загальний устрій фабрики — у
+[../../README.md](../../README.md).
+
+## Навіщо окремий примірник
+
+JSON Schema — не одна специфікація, а сім випусків, і між ними змінювалося саме те, про що питають: `$ref` поруч з
+іншими ключовими словами в draft-04…07 ігнорує їх, а з 2019-09 — ні; масивна форма `items` у 2020-12 стала
+`prefixItems`; `$recursiveRef` 2019-09 замінено на `$dynamicRef`; `exclusiveMaximum` у draft-04 — булеве, з draft-06 —
+число. Ajv до того ж за замовчуванням перевіряє draft-07, а 2020-12 — окремим класом `Ajv2020`. Тут кожен випуск
+специфікації і кожна версія Ajv — окремою редакцією: відповідь «чи можна `$ref` поруч з `properties` у draft-07»
+береться з тексту draft-07, а не з пам'яті. Test Suite додає те, чого в прозі немає: для кожного ключового слова —
+схеми з екземплярами, позначеними «valid» чи «invalid».
+
+## Скільки цього
+
+| Шар | Документів | Фрагментів | Звідки |
+|-----|-----------:|-----------:|--------|
+| Сайт json-schema.org | 105 | 912 | `json-schema-org/website`, тека `pages/` на одному коміті |
+| Специфікації draft-03…2020-12 (Core, Validation, Hyper-Schema, Relative JSON Pointer) | 318 | 1 219 | архів IETF, 27 чернеток |
+| Метасхеми й словники | 46 | 46 | `json-schema-org/website`, `public/draft*/` |
+| Наступний випуск («next»): Core, Validation, вивід, пропозиції, ADR, метасхема | 29 | 408 | `json-schema-org/json-schema-spec`, гілка main |
+| JSON Schema Test Suite | 434 | 2 411 | `json-schema-org/JSON-Schema-Test-Suite`, гілка main |
+| Сайт ajv.js.org | 160 | 604 | `ajv-validator/ajv`, тека `docs/`, 47 стабільних тегів 7.0.0–8.20.0 |
+| Документація Ajv до 7.0: KEYWORDS, CUSTOM, FAQ, COERCION | 53 | 236 | ті самі файли на 127 стабільних тегах до 6.12.6 |
+| Код `lib/` і тести `spec/` Ajv | 479 | 2 195 | остання латка кожної мінорної 7.0–8.20 (24 теги) |
+| README npm Ajv і 8 пакетів | 291 | 1 030 | tarball кожної стабільної версії |
+| Таблиці версій npm | 53 | 261 | реєстр npm |
+| Нотатки релізів Ajv і пакетів | 228 | 266 | GitHub Releases, лише стабільні |
+| @types/json-schema | 18 | 82 | DefinitelyTyped, кожна редакція, що виходила в npm |
+
+Разом 2 214 документів; фрагментів — 9 670 (`expected_passages` у `checks.json`): однакові тексти редакцій злито.
+Замір `quality` (10 запитів): по словах 9, за змістом 10, разом 10.
+
+## Що в цій теці
+
+- `corpus/` — паспорт `index.json`: адреса, дата завантаження й сума тексту кожного документа. Самих текстів тут немає:
+  корпус в архіві.
+- `index/` — кеш фрагментів, з якого сервер підіймається: у git — стиснений `passages.json.gz`.
+- `sources.json` — звідки корпус будується (67 джерел), і водночас білий список для оновлювача.
+- `config.json` — порт, колекція Qdrant, модель векторів, профіль домену, варіанти Test Suite.
+- `prompts/` — описи інструментів для моделі, системний промпт власного агента, текст відмови.
+- `checks.json` — чим `smoke` і `quality` перевіряють саме цей корпус.
+- `.env` — токен GitHub і, для кроку `ask`, ключ Anthropic; `.mcp.json` — запис HTTP-сервера для Claude Code.
+
+Кроки нижче запускаються з кореня фабрики через `./df jsonschema <крок>`.
+
+## Звідки документація
+
+| Що | Читач |
+|----|-------|
+| сайт json-schema.org, «next», ajv.js.org, документація Ajv до 7.0 | `ghdocs-history` (поля `jsonschema_org`, `vuepress`) |
+| специфікації | `ietf-text` (поле `version`) |
+| метасхеми, схеми «next», код і тести Ajv | `ghcode-history`, `ghcode-history-ts` |
+| JSON Schema Test Suite | `json-test-suite` (новий) |
+| нотатки релізів | `ghreleases` |
+| npm: таблиці версій і README | `npm-versions`, `npm-tarball-files` |
+| @types/json-schema | `dt-history` |
+
+Нове в спільному коді:
+
+- **Читач `json-test-suite`.** Файл тестів — масив JSON на десятки кілобайт; узятий кодом, він різався б за довжиною
+  посеред схеми. Тут кожна група — розділ з описом-заголовком («unevaluatedProperties with $ref»), під ним схема і
+  рядки «valid — опис: дані». Версія — з теки (`tests/draft2020-12` → `2020-12`, `tests/v1` → `next`): теги репозиторію
+  — версії модуля Perl, а не випуски специфікації.
+- **Поле `jsonschema_org` читача `ghdocs-history`** (див. `_jsonschemaorg`): позначки «New in draft 6», виноски
+  «Draft-specific info», вкладки `[tab "Python"]` і підписи прикладів (`// props { "valid": false }` → «Invalid
+  instance:») стають текстом. Без підписів модель не відрізнила б приклад, що проходить перевірку, від того, що її
+  провалює.
+- **Поле `vuepress` читача `ghdocs-history`** (див. `_vuepress`): сорок контейнерів `::: warning` сайту ajv.js.org,
+  вкладки `<code-block title>` і позначки `<Badge>` стають підписами. Позначка в заголовку стає окремим рядком під
+  ним: у 8.x до «unevaluatedProperties» дописали «NEW: draft 2019-09», і в заголовку вона дала б розділу інший ключ,
+  ніж у 7.x. Огорожа коду з відступом закривається разом із пунктом списку, як у markdown-it: у `json-schema.md`
+  лишився зайвий рядок «```», і без цього пів сторінки читалося б кодом.
+- **Поле `version` читача `ietf-text`**: кілька випусків однієї специфікації в одному примірнику.
+
+Особливості:
+
+- **Мітки версій.** Випуски специфікації — назвою (`2020-12`, `2019-09`, `draft-07`…`draft-03`, `next`), Ajv — числом
+  (`8.17.1`, лінія `8`), інші пакети — з назвою (`ajv-formats-3.0.1`). Числові `7` чи `4` не плутаються: draft-07 і
+  draft-04 пишуться з префіксом. Сторінки сайту json-schema.org версій не мають — вони описують поточний стан і самі
+  позначають, що в якому draft інакше.
+- **Обидва видання draft-07 і 2020-12.** Чернетки -00 і -01 одного випуску здебільшого однакові: однакові розділи
+  злито в один фрагмент з обома виданнями, різні лишаються окремо.
+- **Test Suite — варіанти.** Та сама група тестів лежить у теках шести випусків; `variant_pattern` згортає копії в одне
+  місце видачі, а `version` чи назва випуску в запиті («2020-12», «draft-07») вибирає потрібну.
+- **Посилання.** Розділи 2020-12 ведуть на json-schema.org/draft/2020-12/…, решта — на datatracker.ietf.org (HTML
+  json-schema.org старших випусків має інші якорі); сторінки сайту й ajv.js.org — на самі сайти.
+- **Запити `quality`** записано так, як їх ставить модель: назва з документації, далі опис. Цілі — розділи, які
+  знаюча людина прийняла б як відповідь; для ключових слів це розділ книги, розділи специфікації 2020-12, 2019-09 і
+  «next» та сторінка Ajv про це слово.
+
+## Межі, про які треба пам'ятати
+
+- Лише стабільні версії Ajv і пакетів: бет, rc й альф не взято (у самого Ajv таких тегів 42). README
+  ajv-merge-patch 1.0.0 немає: реєстр не віддає її tarball.
+- «next» — не виданий випуск: тексти гілки main json-schema-spec на 17.10.2026 змінюються.
+- Чернетки draft-00…02 (2009–2010) і Relative JSON Pointer Луффа 2013 року не взято.
+- Інші валідатори (jsonschema для Python, Zod, Joi), OpenAPI і сам формат JSON (RFC 8259) — не тут.
+- Сторінки сайту з даних, а не з markdown (FAQ, перелік інструментів, приклади використання), не взято.
+
+## Архівний режим: сервер без корпусу
+
+Корпус в архіві від самого початку: у `corpus/` лежить лише паспорт, а сервер підіймається з кешу фрагментів і
+колекції Qdrant; відповіді ті самі до символа.
+
+**Де тексти.** В архіві `~/archives/docfactory/jsonschema-corpus-2026-10-17.tar.gz` (2 214 текстів, паспорт і сховище
+сирого `raw/`; перед видаленням розпакований окремо й звірений з диском). Лише на цій машині.
+
+**Як винести знову** — після оновлення, коли `vectors` і `smoke` пройшли:
+
+```
+tar -czf ~/archives/docfactory/jsonschema-corpus-РРРР-ММ-ДД.tar.gz -C instances/jsonschema corpus raw
+find instances/jsonschema/corpus -maxdepth 1 -name '*.txt' -delete
+rm -rf instances/jsonschema/raw
+gzip -9 -c instances/jsonschema/index/passages.json > instances/jsonschema/index/passages.json.gz
+```
+
+**Як повернути тексти** — перед будь-яким оновленням:
+
+```
+tar -xzf ~/archives/docfactory/jsonschema-corpus-2026-10-17.tar.gz -C instances/jsonschema
+./df jsonschema smoke
+```
+
+**Оновлення.** Новий випуск Ajv дописують першим рядком у `tags` джерел `ajv-docs` і, якщо це нова мінорна,
+`ajv-code` («"v8.21.0": "8.21.0"»). Сайт json-schema.org, «next» і Test Suite взято на конкретних комітах: новий знімок —
+новий SHA в `tags` (`site`, `meta-*`, `spec-next*`) чи в адресі дерева (`test-suite`). Новий випуск специфікації —
+нові джерела `ietf-text`. Релізи й npm підхоплюються самі. Далі `./df jsonschema refresh`, `manifest`, `vectors`,
+`smoke`, `quality`.
+
+## Установка venv
+
+```
+cd instances/jsonschema
+python3 -m venv .venv
+.venv/bin/python -m pip install -U pip
+.venv/bin/python -m pip install -r requirements.txt
+cp .env.example .env          # впишіть GITHUB_TOKEN і, якщо потрібен крок ask, ANTHROPIC_API_KEY
+cd ../..
+```
+
+## Збирання корпусу
+
+Корпус в архіві: щоб оновити чи перезібрати його, тексти спершу повертають. Для роботи сервера збирати нічого не
+треба — потрібен лише `vectors`, якщо колекції ще немає.
+
+```
+./df jsonschema sources --why   # перелік джерел і білий список
+./df jsonschema refresh         # завантажити все задеклароване (близько 10 хвилин)
+./df jsonschema manifest        # оновити паспорт
+./df jsonschema setup           # Qdrant чи пошук лише по словах
+./df jsonschema vectors         # залити корпус у docs-jsonschema (близько 40 хвилин)
+./df jsonschema smoke           # перевірки
+```
+
+Після будь-якого оновлення корпусу `serve` треба перезапустити.
+
+## Сервер під Claude Code
+
+**1. Підняти сервер** в окремому терміналі WSL і лишити жити:
+
+```
+cd ~/Projects/docfactory
+./df jsonschema serve          # порт 8855
+```
+
+Готовий він тоді, коли надрукував кількість фрагментів і адресу `http://127.0.0.1:8855/mcp`. Якщо порт зайнятий,
+сервер скаже про це й вийде: значить, `serve` цього примірника вже десь запущений.
+
+**2. Додати сервер у Claude Code** — у тому середовищі, де відкрито вікно:
+
+```
+claude mcp add --transport http --scope user jsonschema-docs http://127.0.0.1:8855/mcp
+```
+
+У WSL і у Windows Claude Code тримає окремі налаштування: вікно VS Code на боці Windows читає
+`C:\Users\<ім'я>\.claude.json`, тож команду треба виконати в PowerShell, або додати сервер кнопкою «Add server»
+у вікні `/mcp` (тип HTTP, рівень User). Для проєкту в цій теці досить `.mcp.json`.
+
+**3. Перевірити.** `/mcp` — має бути `jsonschema-docs` і два інструменти `search_docs`, `read_section`. Якщо сервер
+у списку «failed», найчастіше `serve` просто не запущений.
+
+Зупинка — Ctrl+C у терміналі сервера.
