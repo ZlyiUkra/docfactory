@@ -205,6 +205,17 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
 - **Books and pages** are cited as title, author, publisher, year of the newest edition.
 - **The instance report** ends with the commands to raise and register the server: `./df <domain> serve` and
   `claude mcp add …` both for WSL and for Windows — Claude Code keeps separate settings in each.
+- **A test suite kept as JSON** (JSON-Schema-Test-Suite: an array of groups «schema + instances marked valid or
+  invalid» per file): read as code, a file is cut by length in the middle of a schema. The `json-test-suite` reader
+  makes every group a section titled by its description. The same group lives in the folder of every draft; a
+  `variant_pattern` on the folder prefix folds the copies into one result slot.
+- **One specification in several releases** (JSON Schema draft-03 … 2020-12 from the IETF archive): `ietf-text` with
+  `version` per source. Editions -00 and -01 of one release share section keys, and their identical sections merge into
+  one excerpt carrying both.
+- **A badge inside a heading** (VuePress `### unevaluatedProperties <Badge text="NEW: draft 2019-09" />`) becomes a
+  line under the heading, not part of it: otherwise the release that added the badge gives the section a new key, and
+  editions stop merging. An indented code fence closes together with its list item, as markdown-it does: one stray
+  «```» otherwise turned half a page into code.
 
 ## Anatomy of an instance
 
@@ -716,6 +727,17 @@ and what a taken port and a failed connection look like. A domain list in the ro
 - **Книжки й сторінки** цитують як назву, автора, видавництво й рік найновішого видання.
 - **Звіт про примірник** закінчується командами підняти й записати сервер: `./df <домен> serve` і `claude mcp add …`
   і для WSL, і для Windows — Claude Code тримає там окремі налаштування.
+- **Набір тестів у JSON** (JSON-Schema-Test-Suite: у файлі — масив груп «схема + екземпляри з позначкою valid чи
+  invalid»): узятий кодом, файл ріжеться за довжиною посеред схеми. Читач `json-test-suite` робить кожну групу
+  розділом з описом-заголовком. Та сама група лежить у теці кожного випуску; `variant_pattern` за префіксом теки
+  згортає копії в одне місце видачі.
+- **Одна специфікація в кількох випусках** (JSON Schema draft-03 … 2020-12 з архіву IETF): `ietf-text` з полем
+  `version` на кожне джерело. Видання -00 і -01 одного випуску мають спільні ключі розділів, і однакові розділи
+  зливаються в один фрагмент з обома виданнями.
+- **Позначка в заголовку** (VuePress `### unevaluatedProperties <Badge text="NEW: draft 2019-09" />`) стає рядком під
+  заголовком, а не його частиною: інакше випуск, що додав позначку, дає розділу новий ключ, і редакції перестають
+  зливатися. Огорожа коду з відступом закривається разом із пунктом списку, як у markdown-it: один зайвий «```»
+  інакше робив кодом пів сторінки.
 
 ## З чого складається примірник
 
@@ -1234,6 +1256,17 @@ errada.
 - **O relatório da instância** termina com os comandos para subir e registrar o servidor: `./df <domínio> serve` e
   `claude mcp add …` tanto para o WSL quanto para o Windows — o Claude Code guarda configurações separadas em cada
   um.
+- **Uma suíte de testes em JSON** (JSON-Schema-Test-Suite: por arquivo, um array de grupos «schema + instâncias
+  marcadas valid ou invalid»): lido como código, o arquivo é cortado por tamanho no meio de um schema. O leitor
+  `json-test-suite` faz de cada grupo uma seção com a descrição como título. O mesmo grupo está na pasta de cada
+  draft; um `variant_pattern` no prefixo da pasta junta as cópias numa só posição do resultado.
+- **Uma especificação em várias versões** (JSON Schema draft-03 … 2020-12 do arquivo do IETF): `ietf-text` com
+  `version` em cada fonte. As edições -00 e -01 de uma versão têm as mesmas chaves de seção, e as seções idênticas se
+  fundem num trecho com as duas.
+- **Um selo dentro de um título** (VuePress `### unevaluatedProperties <Badge text="NEW: draft 2019-09" />`) vira uma
+  linha abaixo do título, não parte dele: senão a versão que acrescentou o selo dá à seção uma chave nova, e as
+  edições deixam de se fundir. Uma cerca de código recuada fecha junto com o item da lista, como no markdown-it: um
+  «```» sobrando transformava meia página em código.
 
 ## Anatomia de uma instância
 
