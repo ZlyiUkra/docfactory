@@ -32,6 +32,7 @@ Accept: та сама адреса з «Accept: text/markdown» — інша в�
 import gzip
 import hashlib
 import json
+import os
 import pathlib
 import re
 import time
@@ -117,7 +118,11 @@ class Store:
                 "sha256": digest, "bytes": len(data)}
         path = self.path(url, accept)
         path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_name(path.name + ".tmp")
+        # PID у тимчасовому імені: паралельні `refresh` джерел одного репозиторію тягнуть ті
+        # самі дерева в ту саму мить, і зі спільним «.tmp» один процес перейменовував файл
+        # другого — той падав на `replace` з «No such file». Тепер кожен пише свій, а
+        # `replace` атомарний, тож лишається цілий запис того, хто перейменував останнім.
+        tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
         try:
             with gzip.open(tmp, "wb", compresslevel=6) as f:
                 f.write(json.dumps(meta, ensure_ascii=False).encode("utf-8") + b"\n")

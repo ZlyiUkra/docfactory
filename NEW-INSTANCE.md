@@ -188,9 +188,6 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
 - **Code in Go or Python**: the `outline` field of `ghcode-history` as a list of languages (`["go"]`, `["python"]`)
   splits a file into top-level declarations together with the comment above them (in Python also methods of a class,
   `@overload` variants as one section). `outline: true` keeps its old meaning for the instances already verified.
-- **Parallel `refresh` of sources from one repository** fetches the same tree pages at the same moment, and for a few
-  of them the raw store prints "сховище сирого не записалося": two processes write one temporary file. The record of
-  the other process stays and `build` works; still, keep the sources of one repository in one process.
 - **A family of three or more instances**: one overnight chain of heavy steps (vectors one after another, smoke and
   quality after each), the timed reports go on while the chain lives. `ua_query` in `checks.json` is pure Cyrillic (a
   Latin word breaks the check), and the version probe is a line (`"9.11"`), not a full version, when there are hundreds
@@ -704,9 +701,6 @@ and what a taken port and a failed connection look like. A domain list in the ro
 - **Код Go чи Python**: поле `outline` читача `ghcode-history` переліком мов (`["go"]`, `["python"]`) ділить файл за
   оголошеннями верхнього рівня разом з коментарем над ними (у Python — і методи класу, варіанти `@overload` — одним
   розділом). `outline: true` лишається з колишнім змістом для вже звірених примірників.
-- **Паралельний `refresh` джерел одного репозиторію** тягне ті самі сторінки дерев в ту саму мить, і для кількох із
-  них сховище сирого пише «сховище сирого не записалося»: два процеси пишуть один тимчасовий файл. Запис другого
-  процесу лишається, і `build` працює; та джерела одного репозиторію краще тримати в одному процесі.
 - **Родина з трьох і більше примірників**: один ланцюжок важких кроків на ніч (вектори по черзі, за кожними — smoke і
   quality), звіти за таймером тривають, поки ланцюжок живий. `ua_query` у `checks.json` — суто кирилицею (латинське
   слово ламає перевірку), а пробна версія — лінія (`"9.11"`), не повна версія, коли ліній понад сотню.
@@ -1222,10 +1216,6 @@ errada.
   `["python"]`) divide o arquivo pelas declarações de nível superior junto com o comentário acima delas (em Python
   também os métodos da classe, variantes `@overload` como uma seção). `outline: true` mantém o sentido antigo para as
   instâncias já conferidas.
-- **`refresh` paralelo de fontes do mesmo repositório** busca as mesmas páginas de árvores no mesmo instante, e para
-  algumas delas o depósito bruto imprime «сховище сирого не записалося»: dois processos escrevem o mesmo arquivo
-  temporário. O registro do outro processo fica e o `build` funciona; ainda assim, mantenha as fontes de um
-  repositório num só processo.
 - **Uma família de três ou mais instâncias**: uma cadeia noturna de passos pesados (vetores um após outro, smoke e
   quality depois de cada), os relatórios por temporizador continuam enquanto a cadeia vive. `ua_query` em `checks.json`
   é só cirílico (uma palavra latina quebra a verificação), e a versão de prova é uma linha (`"9.11"`), não uma versão
