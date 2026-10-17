@@ -6,8 +6,8 @@
 
 Стан на 17.10.2026. Примірники: alpine, argon2, astro, astro-markdown-pipeline, auth, binance-spot, biome, bullmq,
 cares, certbot, clerk, docker, drizzle, ecmascript, eslint, expo, express, express-rate-limit, fastify, ffmpeg,
-foundry, frontend-architecture, github-actions, helmet, i18next, icu, ioredis, iron-session, jose, kraken-spot,
-kubernetes, libuv, lightweight-charts, linux, llhttp, mdn, mongodb, mongoose, motion, msw, nestjs, next-intl,
+foundry, frontend-architecture, github-actions, helmet, i18next, icu, ioredis, iron-session, jose, jsonschema,
+kraken-spot, kubernetes, libuv, lightweight-charts, linux, llhttp, mdn, mongodb, mongoose, motion, msw, nestjs, next-intl,
 next-themes, nextjs, nghttp2, nginx, node-mongodb, node-postgres, node-redis, nodejs, nodemailer, nuqs, ollama,
 openssl, oracle-cloud, owasp, partysocket, patterns, playwright, postgrator, postgres-image, postgresql, prisma,
 react, react-hook-form, react-native, react-router, react-window, redis, redux, sentry, shadcn, socketio, storybook,
@@ -42,7 +42,7 @@ viem, vite, vitest, wagmi, wasm, webdev, webstandards, zod, zustand.
 |------|------------------|
 | 0. База, якої Nest не дає | `typescript` (вступ, 1–4), `mdn` (вступ, 6–7, 10–11), `webstandards` (6–7, 10–11), `express` (9–10), `vite` (11), `postgresql` (вступ, 13–18), `owasp` (вступ, 10), `nodejs` (5, 8, 12) |
 | 1. Ядро Nest | — |
-| 2. Робочий API | `zod` (1, 3, 8), `webstandards` (4, 6), `tanstack-query` (7), `react-hook-form` (8) |
+| 2. Робочий API | `zod` (1, 3, 8), `webstandards` (4, 6), `tanstack-query` (7), `react-hook-form` (8), `jsonschema` (6) |
 | 3. Дані: TypeORM, Prisma | `prisma` (3, 7–12), `postgresql` (12), `owasp` (5); TypeORM — у документації Nest лише інтеграція |
 | 4. Автентифікація й авторизація | `webstandards` (1–2, 6–8, 12), `express` (8, 12), `react-router` (9), `owasp` (1, 6, 8, 12), `argon2` (1) |
 | 5. Якість: тести й DI | `vitest` (1), `prisma` (2) |

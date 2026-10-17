@@ -422,6 +422,8 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   `nghttp2`;
 - Fastify (довідник, посібники, код, тести й README ≈160 плагінів усіх випусків 1.0–5.12; NestJS працює на ньому через
   адаптер) — `fastify`;
+- JSON Schema і Ajv (специфікації draft-03…2020-12 і наступного випуску, книга Understanding JSON Schema, Test Suite,
+  ajv.js.org 7.0–8.20, пакети ajv-*; схеми тіл у документі OpenAPI, валідація Fastify) — `jsonschema`;
 - Redis (сайт кожної мінорної лінії 1.3–8.10, `redis.conf` і нотатки всіх випусків, код і тести: команди, збереження,
   реплікація, Sentinel, Cluster, ACL, потоки; під BullMQ, кешем і адаптером socket.io) — `redis`;
 - ioredis (клієнт Redis для Node: README, довідник, код, тести й нотатки випусків 1.0–6.0; на ньому стоять BullMQ і
@@ -924,7 +926,8 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 
 # Фаза 2. Робочий API — 9 днів
 
-**Сервери MCP фази:** `nestjs-docs`, `zod-docs`, `webstandards-docs`, `tanstack-query-docs`, `react-hook-form-docs`.
+**Сервери MCP фази:** `nestjs-docs`, `zod-docs`, `webstandards-docs`, `tanstack-query-docs`, `react-hook-form-docs`,
+`jsonschema-docs`.
 
 Тут API стає таким, яким його можна віддати фронту: вхід перевіряється схемою, конфіг — на старті, помилки мають
 один формат, контракт описано машинно, а SPA отримує згенерований клієнт і підсвічує конкретне поле форми. Основний
@@ -1037,8 +1040,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   помилки. Сторінку `/docs` у продакшні не віддають усім — лише за змінною оточення або за входом.
 - **Читати:** розділ OpenAPI — глава `Introduction` (розділи Bootstrap і Standard Schema (Zod, Valibot)),
   `Operations`, `CLI Plugin`, `Types and Parameters`; у примірнику `webstandards` — `OpenAPI Specification 3.1.1: 4
-  Specification`, `JSON Schema 2020-12 Validation: 6 A Vocabulary for Structural Validation`.
-- **Сервери MCP:** `nestjs-docs`, `webstandards-docs`.
+  Specification`, `JSON Schema 2020-12 Validation: 6 A Vocabulary for Structural Validation`; у примірнику
+  `jsonschema` — `Understanding JSON Schema: object`, `Understanding JSON Schema: string`.
+- **Сервери MCP:** `nestjs-docs`, `webstandards-docs`, `jsonschema-docs`.
 - **Зробити:** 1) `SwaggerModule.setup('docs', …)`, увімкнений лише коли `NODE_ENV !== 'production'` або стоїть
   окрема змінна; 2) перевірити, що тіла запитів записів у документі повні; 3) `@ApiResponse` для 400, 404 і 409
   з форматом помилки; 4) пройти всі маршрути зі сторінки.
