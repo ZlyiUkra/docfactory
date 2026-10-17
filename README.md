@@ -2069,6 +2069,29 @@ ajv-merge-patch, ajv-draft-04, json-schema-traverse; @types/json-schema. Нов�
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/jsonschema/README.md](instances/jsonschema/README.md).
 
+### opentelemetry
+
+Документація OpenTelemetry англійською: сайт opentelemetry.io цілком (концепції, сторінки всіх мов, zero-code,
+Collector, Operator і FaaS, демо, блог, реєстр екосистеми); специфікація кожного тегу 0.1–1.61 з OTEP; семантичні
+домовленості 1.21–1.44; файли `.proto` OTLP 0.3–1.11; opentelemetry-js кожного випуску (README пакетів, посібники,
+код із TSDoc, тести, приклади, журнали чотирьох ліній) і архівний opentelemetry-js-api; 78 пакетів
+opentelemetry-js-contrib на кожному своєму випуску (документація, код, тести, журнал); Collector і contrib Collector
+кожного випуску 0.x (README компонентів, `docs/`, журнали); декларативна конфігурація, OpAMP, `@vercel/otel`, реєстр
+npm 22 ключових пакетів. Нові читачі `ghcode-history-proto`, `changelog-otel`, `otel-registry`, поля `otel_hugo` і
+`lead_comment` читача `ghdocs-history`, інструмент `tools/seed_git_store.py` (засів сховища сирого з голих клонів).
+38 119 документів, 128 459 фрагментів.
+
+- порт `8853`; запис у Claude Code — `opentelemetry-docs`, адреса `http://127.0.0.1:8853/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-opentelemetry`, модель векторів — `bge-small`;
+- версія — з назвою продукту: стабільна лінія SDK JS голим номером (`version: "2"`, `"2.12"`), решта — `"api-1"`,
+  `"experimental-0.223"`, `"spec-1.61"`, `"semconv-1.44"`, `"collector-0.163"`, пакети contrib — назвою
+  (`"instrumentation-express-0"`); сторінки сайту версій не мають; без названої версії відповідати для SDK 2.x
+  (81–84 % завантажень) і казати, де 1.x інакше;
+- приклад питання агентові: `./df opentelemetry ask "How does the BatchSpanProcessor behave when its queue is full?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/opentelemetry/README.md](instances/opentelemetry/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений

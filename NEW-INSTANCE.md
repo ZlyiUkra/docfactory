@@ -192,6 +192,23 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   quality after each), the timed reports go on while the chain lives. `ua_query` in `checks.json` is pure Cyrillic (a
   Latin word breaks the check), and the version probe is a line (`"9.11"`), not a full version, when there are hundreds
   of lines.
+- **A monorepo whose packages tag their own releases** (js-contrib: 3 396 tags of 78 packages on 145 commits;
+  Collector: 7 094 module tags on 195): key `tags` by the full SHA of the release commit, so a tree is fetched once per
+  commit, and give every package its own sources with only its own releases, labelled with its name
+  (`instrumentation-pg-0.55.0`); otherwise a README carries the versions of its neighbours on the commit. A package
+  removed from `main` takes its changelog from the commit of its last release.
+- **Code and tests across hundreds of releases**: tens of thousands of file revisions, hours over the network one by
+  one. `./df <domain> list` fetches the trees through the API, `tools/seed_git_store.py --clone owner/repo=path` puts
+  every blob of a bare clone into the raw store under the address the reader will request, and `build` runs without
+  network (35 thousand files in seconds; a `--filter=blob:none` clone fetches only the selected blobs).
+- **A Hugo front matter kept in an HTML comment** (`<!--- Hugo front matter … --->` at the top of every OpenTelemetry
+  specification file since 2023): the `ghdocs-history` field `lead_comment`, otherwise the file name becomes the title,
+  and with `passage_context` it goes into every vector. Look at the first line of the written documents before
+  `vectors`.
+- **Documents that moved to another repository** (semantic conventions: out of the specification into their own
+  repository at 1.21, then `database/` → `db/`): derive `slug_rewrite` from document titles, keep only the pairs that
+  never coexist in one version, and put both sources into one `families` entry; then the old edition stops taking the
+  first places from the new one.
 - **Quality.** The second ten of `quality` («as the model»: queries in the documentation's own names, the way the
   prompt tells the model to write them) is the main goal: 10 of 10. Targets grow only by genuine answers. A target
   must be a section with its own text: a document that is only a header is never found as a section. `ua_query` is
@@ -715,6 +732,22 @@ and what a taken port and a failed connection look like. A domain list in the ro
 - **Родина з трьох і більше примірників**: один ланцюжок важких кроків на ніч (вектори по черзі, за кожними — smoke і
   quality), звіти за таймером тривають, поки ланцюжок живий. `ua_query` у `checks.json` — суто кирилицею (латинське
   слово ламає перевірку), а пробна версія — лінія (`"9.11"`), не повна версія, коли ліній понад сотню.
+- **Монорепозиторій, де пакети тегують власні випуски** (js-contrib: 3 396 тегів 78 пакетів на 145 комітах;
+  Collector: 7 094 теги модулів на 195): ключ у `tags` — повний SHA коміту випуску, тож дерево тягнеться раз на коміт,
+  а кожен пакет — окремими джерелами лише зі своїми випусками й міткою зі своєю назвою (`instrumentation-pg-0.55.0`);
+  інакше README дістає версії сусідів по коміту. Знятий з `main` пакет бере журнал змін із коміту свого останнього
+  випуску.
+- **Код і тести сотень випусків**: десятки тисяч редакцій файлів, мережею по одному — години. `./df <домен> list` бере
+  дерева через API, `tools/seed_git_store.py --clone власник/репо=шлях` кладе кожен blob голого клона у сховище сирого
+  під тією адресою, яку попросить читач, і `build` іде без мережі (35 тисяч файлів за секунди; клон
+  `--filter=blob:none` докачує лише відібрані blob-и).
+- **Шапка Hugo в коментарі HTML** («`<!--- Hugo front matter … --->`» нагорі кожного файла специфікацій
+  OpenTelemetry з 2023 року): поле `lead_comment` читача `ghdocs-history`, інакше назвою стає ім'я файла, а з
+  `passage_context` воно ще й іде в кожен вектор. Перед `vectors` подивіться на перший рядок записаних документів.
+- **Документи, що переїхали в інший репозиторій** (семантичні домовленості: зі специфікації у власний репозиторій на
+  1.21, потім `database/` → `db/`): `slug_rewrite` виводити з назв документів, лишати лише пари, що ніколи не
+  співіснували в одній версії, і обидва джерела — в один запис `families`; тоді стара редакція перестає забирати перші
+  місця в нової.
 - **Якість.** Друга десятка `quality` («як модель»: запити назвами самої документації, як велить писати промпт) —
   головна мета: 10 із 10. Цілі доповнюють лише справжніми відповідями. Ціль мусить бути розділом із власним текстом:
   документ із самої шапки розділом не знаходиться. `ua_query` — суто кирилицею, без цифр і латиниці.
@@ -1242,6 +1275,23 @@ errada.
   quality depois de cada), os relatórios por temporizador continuam enquanto a cadeia vive. `ua_query` em `checks.json`
   é só cirílico (uma palavra latina quebra a verificação), e a versão de prova é uma linha (`"9.11"`), não uma versão
   completa, quando há centenas de linhas.
+- **Um monorrepositório cujos pacotes marcam os próprios lançamentos** (js-contrib: 3 396 tags de 78 pacotes em 145
+  commits; Collector: 7 094 tags de módulos em 195): a chave em `tags` é o SHA completo do commit do lançamento, assim a
+  árvore é buscada uma vez por commit, e cada pacote ganha fontes próprias só com os seus lançamentos, rotuladas com o
+  seu nome (`instrumentation-pg-0.55.0`); senão o README carrega as versões dos vizinhos no commit. Um pacote retirado
+  de `main` pega o changelog do commit do seu último lançamento.
+- **Código e testes de centenas de lançamentos**: dezenas de milhares de revisões de arquivos, horas pela rede um a um.
+  `./df <domínio> list` busca as árvores pela API, `tools/seed_git_store.py --clone dono/repo=caminho` põe cada blob
+  de um clone bare no armazenamento bruto sob o endereço que o leitor vai pedir, e `build` roda sem rede (35 mil
+  arquivos em segundos; um clone `--filter=blob:none` baixa só os blobs selecionados).
+- **Um front matter do Hugo guardado num comentário HTML** («`<!--- Hugo front matter … --->`» no topo de cada arquivo
+  das especificações do OpenTelemetry desde 2023): o campo `lead_comment` do leitor `ghdocs-history`; senão o nome do
+  arquivo vira o título e, com `passage_context`, ainda entra em cada vetor. Antes de `vectors`, olhe a primeira linha
+  dos documentos escritos.
+- **Documentos que mudaram de repositório** (convenções semânticas: da especificação para um repositório próprio na
+  1.21, depois `database/` → `db/`): derive o `slug_rewrite` dos títulos dos documentos, mantenha só os pares que nunca
+  coexistem numa versão e ponha as duas fontes numa entrada de `families`; então a edição antiga deixa de tomar os
+  primeiros lugares da nova.
 - **Qualidade.** A segunda dezena de `quality` («como o modelo»: consultas com os nomes da própria documentação, como
   o prompt manda o modelo escrever) é a meta principal: 10 de 10. Os alvos só crescem com respostas genuínas. Um
   alvo precisa ser uma seção com texto próprio: um documento que é só cabeçalho nunca é encontrado como seção. A
