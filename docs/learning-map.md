@@ -12,7 +12,8 @@ nestjs, next-intl, next-themes, nextjs, nghttp2, nginx, node-mongodb, node-postg
 nuqs, ollama, openssl, opentelemetry, oracle-cloud, owasp, partysocket, patterns, playwright, postgrator,
 postgres-image, postgresql, prisma, react, react-hook-form, react-native, react-router, react-window, redis, redux,
 sentry, shadcn, socketio, storybook, supabase, swr, tailwind, tanstack-query, tanstack-router, tanstack-virtual,
-testing-library, typescript, upstash, v8, viem, vite, vitest, wagmi, wasm, webdev, webstandards, zod, zustand.
+tesseract, testing-library, typescript, upstash, v8, viem, vite, vitest, wagmi, wasm, webdev, webstandards, zod,
+zustand.
 
 ## Як читати таблиці
 
