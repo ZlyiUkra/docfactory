@@ -6,8 +6,9 @@
                    що беруться. Необов'язкові: `exclude` — вирази шляхів, що не беруться,
                    `name_prefix` — рядок перед іменем документа; `outline: true` — файл
                    JavaScript ділиться на розділи (див. `_outline`), файл Solidity — так само
-                   (див. `_outline_sol`); `max_file` — межа розміру файла в байтах замість
-                   спільної (40 000).
+                   (див. `_outline_sol`); `outline` переліком мов (`["go"]`, `["python"]`) —
+                   на розділи ділиться лише код цих мов (див. `_outline_go`, `_outline_py`);
+                   `max_file` — межа розміру файла в байтах замість спільної (40 000).
 
 Навіщо. `ghcode` бере дерево одного тегу, а `ghdocs-history` бере багато тегів, але читає
 кожен файл як markdown. CSP-збірка Alpine.js описана на сайті однією сторінкою, і та
@@ -27,6 +28,12 @@
 а злиття однакових фрагментів між редакціями (`revision_suffix`) лишає кожному тестові
 версії, у яких він був, — тобто з якої версії збірка це вміє. Код ділиться так само за
 оголошеннями верхнього рівня й методами класів.
+
+Навіщо перелік мов. `api/types.go` Ollama — 44 тисячі символів: структура Options з
+`num_ctx` і `num_predict`, запити й відповіді всіх ендпоінтів; `ollama/_client.py` клієнта
+Python — 41 тисяча. Цілим фрагментом вектор бачив би лише імпорти. Але `outline: true` уже
+стоїть у джерелі redis, що бере й файли `.py`: поділ Python під тим самим `true` змінив би
+звірений примірник. Перелік вмикає нові мови лише там, де їх назвали.
 """
 
 import json
@@ -190,6 +197,108 @@ def _outline_c(text: str) -> str:
     return "\n\n".join(out)
 
 
+# Go: оголошення верхнього рівня — функція чи метод (отримувач стає власником), тип, змінна,
+# константа; коментар упритул над оголошенням належить йому.
+_GO_FUNC = re.compile(r"^func\s+(?:\(\s*\w*\s*\*?\s*([A-Za-z_]\w*)(?:\[[^\]]*\])?\s*\)\s*)?"
+                      r"([A-Za-z_]\w*)")
+_GO_DECL = re.compile(r"^(type|var|const)\s+(?:(\()|([A-Za-z_]\w*))")
+_GO_ITEM = re.compile(r"^\t([A-Za-z_]\w*)\b")
+# Розділ коротший за це приклеюється до попереднього (той самий поріг, що в `ghcode-history-ts`).
+_MIN_PART = 200
+
+
+def _go_heading(line: str, following: list) -> str:
+    if m := _GO_FUNC.match(line):
+        return f"## {m[1]}.{m[2]}()" if m[1] else f"## {m[2]}()"
+    m = _GO_DECL.match(line)
+    if not m:
+        return ""
+    if m[3]:
+        return f"## {m[1]} {m[3]}"
+    names = []
+    for item in following:
+        if item.startswith(")"):
+            break
+        if (n := _GO_ITEM.match(item)) and n[1] not in names:
+            names.append(n[1])
+    shown = ", ".join(names[:8]) + (", …" if len(names) > 8 else "")
+    return f"## {m[1]} {shown}" if shown else ""
+
+
+def _outline_go(text: str) -> str:
+    """Файл Go з розділами: заголовок на кожне оголошення верхнього рівня разом з його коментарем."""
+    lines = text.rstrip().split("\n")
+    parts: list = [["", []]]
+    raw_string = False
+    for i, line in enumerate(lines):
+        heading = "" if raw_string else _go_heading(line, lines[i + 1:])
+        if not line.lstrip().startswith("//") and line.count("`") % 2:
+            raw_string = not raw_string
+        if heading:
+            prev = parts[-1][1]
+            lead = []
+            while prev and prev[-1].startswith("//"):
+                lead.insert(0, prev.pop())
+            parts.append([heading, lead])
+        parts[-1][1].append(line)
+    return _join(parts, "go", glue=lambda heading: True)
+
+
+# Python: клас, функція чи метод (на відступі тіла класу — ollama-python пише двома пробілами,
+# більшість коду чотирма); декоратори й коментарі впритул над оголошенням належать йому,
+# перевантаження (`@overload`) одного методу — один розділ.
+_PY_DEF = re.compile(r"^( *)(?:async\s+)?(def|class)\s+([A-Za-z_]\w*)")
+_PY_LEAD = re.compile(r"^ *(?:@|#)")
+
+
+def _outline_py(text: str) -> str:
+    """Файл Python з розділами: класи, функції й методи класів верхнього рівня."""
+    lines = text.rstrip().split("\n")
+    parts: list = [["", []]]
+    owner, body = "", ""
+    in_string = False
+    for line in lines:
+        heading = ""
+        if owner and not body and line.strip() and line[0] == " ":
+            body = line[:len(line) - len(line.lstrip(" "))]
+        if not in_string and (m := _PY_DEF.match(line)):
+            if not m[1]:
+                owner, body = (m[3] if m[2] == "class" else ""), ""
+                heading = f"## {m[2]} {m[3]}" if m[2] == "class" else f"## {m[3]}()"
+            elif owner and m[1] == body and m[2] == "def":
+                heading = f"### {owner}.{m[3]}()"
+        elif not in_string and line and not line[0].isspace() and not _PY_LEAD.match(line):
+            owner, body = "", ""
+        if line.count('"""') % 2 or line.count("'''") % 2:
+            in_string = not in_string
+        if heading:
+            prev = parts[-1][1]
+            lead = []
+            while prev and prev[-1].strip() and _PY_LEAD.match(prev[-1]):
+                lead.insert(0, prev.pop())
+            if heading == parts[-1][0]:
+                parts[-1][1].extend(lead)
+            else:
+                parts.append([heading, lead])
+        parts[-1][1].append(line)
+    return _join(parts, "python", glue=lambda heading: not heading.startswith("## "))
+
+
+def _join(parts: list, lang: str, glue) -> str:
+    """Розділи в текст; куций розділ, якому `glue` дозволяє, приклеюється до попереднього."""
+    merged: list = []
+    for heading, body in parts:
+        code = "\n".join(body).strip("\n")
+        if not code.strip():
+            continue
+        if merged and heading and len(code) < _MIN_PART and glue(heading):
+            merged[-1][1] += "\n\n" + code
+            continue
+        merged.append([heading, code])
+    return "\n\n".join(f"{h}\n\n```{lang}\n{c}\n```" if h else f"```{lang}\n{c}\n```"
+                       for h, c in merged)
+
+
 @register("ghcode-history")
 def ghcode_history(source: dict, ctx) -> list[Item]:
     m = _TREES.match(urlsplit(source["url"]).path)
@@ -206,6 +315,9 @@ def ghcode_history(source: dict, ctx) -> list[Item]:
     exclude = [re.compile(x) for x in source.get("exclude") or ()]
     lead = f"{_markup.slug(source['name_prefix'])}-" if source.get("name_prefix") else ""
     outline = source.get("outline") is True
+    langs = source.get("outline") if isinstance(source.get("outline"), list) else []
+    if set(langs) - {"go", "python"}:
+        raise SystemExit(f"{source['id']}: `outline` переліком знає лише мови «go» і «python».")
     max_file = int(source.get("max_file") or _MAX_FILE)
 
     # ім'я документа → [шлях, [теги]]; порядок — від найновішого тегу, як оголошено в `tags`
@@ -243,7 +355,11 @@ def ghcode_history(source: dict, ctx) -> list[Item]:
             text = ctx.text(raw)
             _markup.refuse_html(text, raw)
             lang = "solidity" if path.endswith(".sol") else _lang(path)
-            if outline and lang in ("js", "ts"):
+            if "go" in langs and path.endswith(".go"):
+                body = _outline_go(text)
+            elif "python" in langs and lang == "python":
+                body = _outline_py(text)
+            elif outline and lang in ("js", "ts"):
                 body = _outline(text, lang)
             elif outline and lang == "solidity":
                 body = _outline_sol(text)
