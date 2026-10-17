@@ -73,6 +73,11 @@
                    (`<SwitchTech>`) — підпис із назвою бази, вивід команди — «Output:», спільні
                    шматки `_….mdx` розкриваються з підстановкою `{props.…}`, назва блоку коду
                    (`file=`, `title=`) стає рядком перед ним; редакція сторінки враховує вставки;
+                   `jsonschema_org: true` — сайт json-schema.org (див. `_jsonschemaorg`): позначки
+                   «New in draft 6», виноски `<Infobox>`, вкладки `[tab "Python"]` і підписи прикладів
+                   `// props` («Schema:», «Valid instance:», «Invalid instance:») стають текстом;
+                   `vuepress: true` — сайт VuePress 1 (ajv.js.org, див. `_vuepress`): контейнери
+                   `::: warning Назва`, вкладки `<code-block title>` і `<Badge text>` стають підписами;
                    `path_title` — перелік пар «вираз шляху → назва» (`\\1` — група виразу): документ,
                    чий шлях цілком збігся, дістає цю назву, а перший заголовок лишається в тексті.
                    Журнали змін Drizzle — файл на версію (`changelogs/drizzle-kit/0.31.4.md`), і
@@ -128,8 +133,8 @@ import sys
 from html import unescape
 from urllib.parse import quote, urlsplit
 
-from engine.readers import (Item, _astromdx, _baseui, _biomemdx, _markup, _mdbook, _nginxxml,
-                            _otelhugo, _prismamdx, _vitepress, _vocs, register)
+from engine.readers import (Item, _astromdx, _baseui, _biomemdx, _jsonschemaorg, _markup, _mdbook,
+                            _nginxxml, _otelhugo, _prismamdx, _vitepress, _vocs, _vuepress, register)
 
 _TREES = re.compile(r"^/repos/([^/]+)/([^/]+)/git/trees/$")
 _LOCALE = re.compile(r"\.[a-z]{2}-[A-Z]{2}\.md$")
@@ -964,6 +969,10 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
                 rest = _component_labels(rest, labels)
             if source.get("admonitions") is True:
                 rest = _admonitions(rest)
+            if source.get("jsonschema_org") is True:
+                rest = _jsonschemaorg.expand(rest)
+            if source.get("vuepress") is True:
+                rest = _vuepress.expand(rest)
             if path.endswith(".mdx") or source.get("mdx") is True:
                 # Імпорти й експорти MDX — код сторінки, а не її текст.
                 rest = _markup.mdx_statements_out(rest)

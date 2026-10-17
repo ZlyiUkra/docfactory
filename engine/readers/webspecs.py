@@ -10,7 +10,8 @@
 `ietf-text`  — `url` — текст RFC, чернетки IETF чи специфікації OpenID у форматі xml2rfc.
                Документ — розділ верхнього рівня. `cite` — HTML-видання, на розділ якого
                веде адреса документа; поле `anchors: false` — коли якорів «#section-N» у
-               нього немає.
+               нього немає; `version` — версія в шапці кожного документа (випуск
+               специфікації, коли в одному примірнику їх кілька).
 `erc-md`     — `url` — markdown ERC з репозиторію ethereum/ERCs, `page` — його сторінка на
                eips.ethereum.org.
 
@@ -418,7 +419,7 @@ def ietf_text(source: dict, ctx) -> list[Item]:
             body = re.sub(r"\n{3,}", "\n\n", "\n".join(ch["lines"])).strip("\n")
             title = f"{label}: {ch['num']} {ch['title']}"
             _markup.require(title, body, where, min_chars=1)
-            return _markup.document(title, where, ctx.stamp, body)
+            return _markup.document(title, where, ctx.stamp, body, source.get("version", ""))
 
         items.append(Item(id=f"{source['id']}/{name}",
                           file=f"{source['id']}--{name}.txt", make=make))
