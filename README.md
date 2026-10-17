@@ -2029,6 +2029,25 @@ mongoose-lean-virtuals, mongoose-unique-validator, mongoose-paginate-v2 (док�
 - член родини Mongo (розділ «Родини примірників»): піднімати разом з `mongodb` і `node-mongodb`;
 - докладніше — у [instances/mongoose/README.md](instances/mongoose/README.md).
 
+### ollama
+
+Документація Ollama англійською: сайт docs.ollama.com цілком (можливості, CLI, Modelfile, довжина контексту,
+Linux/macOS/Windows/Docker, підтримка GPU, FAQ зі змінними сервера, інтеграції, довідник API з полями кожного
+ендпоінта, сумісність з OpenAI й Anthropic); з кожного стабільного тегу ollama/ollama v0.0.1–v0.40.6 (263 теги) — тека
+`docs/` зі старим довідником `api.md`, README, код Go `api/` і `envconfig/` з тестами, нотатки релізів; клієнти
+ollama-js і ollama-python — код, тести, приклади й релізи кожного стабільного тегу, README і таблиці версій з npm і
+PyPI. Читач `ghcode-history` навчився ділити файли Go й Python на розділи (поле `outline` переліком мов); сайт і тека
+`docs/` — одна родина (`families`), однакові тексти злито. 1 710 документів, 5 693 фрагменти.
+
+- порт `8854`; запис у Claude Code — `ollama-docs`, адреса `http://127.0.0.1:8854/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-ollama`, модель векторів — `bge-small`;
+- версія — лінія Ollama (`version: "0.12"`); клієнти — з назвою пакета (`"ollama-js-0.6"`, `"ollama-python-0.5"`);
+  сторінки сайту версій не мають і описують поточний стан;
+- приклад питання агентові: `./df ollama ask "How do I unload a model right after a request with keep_alive?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/ollama/README.md](instances/ollama/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
