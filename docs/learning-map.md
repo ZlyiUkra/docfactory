@@ -7,12 +7,12 @@
 Стан на 17.10.2026. Примірники: alpine, argon2, astro, astro-markdown-pipeline, auth, binance-spot, biome, bullmq,
 cares, certbot, clerk, docker, drizzle, ecmascript, eslint, expo, express, express-rate-limit, fastify, ffmpeg,
 foundry, frontend-architecture, github-actions, helmet, i18next, icu, ioredis, iron-session, jose, jsonschema,
-kraken-spot, kubernetes, libuv, lightweight-charts, linux, llhttp, mdn, mongodb, mongoose, motion, msw, nestjs, next-intl,
-next-themes, nextjs, nghttp2, nginx, node-mongodb, node-postgres, node-redis, nodejs, nodemailer, nuqs, ollama,
-openssl, oracle-cloud, owasp, partysocket, patterns, playwright, postgrator, postgres-image, postgresql, prisma,
-react, react-hook-form, react-native, react-router, react-window, redis, redux, sentry, shadcn, socketio, storybook,
-supabase, swr, tailwind, tanstack-query, tanstack-router, tanstack-virtual, testing-library, typescript, upstash, v8,
-viem, vite, vitest, wagmi, wasm, webdev, webstandards, zod, zustand.
+kraken-spot, kubernetes, libuv, lightweight-charts, linux, llhttp, mdn, mongodb, mongoose, motion, msw, nestjs,
+next-intl, next-themes, nextjs, nghttp2, nginx, node-mongodb, node-postgres, node-redis, nodejs, nodemailer, nuqs,
+ollama, openssl, opentelemetry, oracle-cloud, owasp, partysocket, patterns, playwright, postgrator, postgres-image,
+postgresql, prisma, react, react-hook-form, react-native, react-router, react-window, redis, redux, sentry, shadcn,
+socketio, storybook, supabase, swr, tailwind, tanstack-query, tanstack-router, tanstack-virtual, testing-library,
+typescript, upstash, v8, viem, vite, vitest, wagmi, wasm, webdev, webstandards, zod, zustand.
 
 ## Як читати таблиці
 
@@ -61,7 +61,7 @@ viem, vite, vitest, wagmi, wasm, webdev, webstandards, zod, zustand.
 | 4. Фулстек: дані, автентифікація, дії, тести | `webstandards` (2–3, 5, 9–10, 12), `zod` (5), `react-hook-form` і `shadcn` (6), `postgresql` (1), `drizzle` (1, 4), `prisma` (1, 4), `auth`, `clerk` і `supabase` (9), `tanstack-query` і `swr` (11), `vitest` і `testing-library` (13), `playwright` (14), `owasp` (12), `webdev` (6), `argon2` (2), `iron-session` і `jose` (3) |
 | 5. Інтерфейс із характером | `mdn` (4), `motion` (3–4), `zustand` (5), `webstandards` (5, 7), `shadcn`, `next-themes` і `nuqs` (5), `webdev` (4, 7), `i18next` і `next-intl` (8) |
 | 6. Чужий код | — |
-| 7. DevOps: від збірки до продакшну | `docker` (вступ, 2, 4), `upstash` (6), `drizzle` (4), `prisma` (4), `webstandards` (6), `kubernetes` (вступ, 12), `playwright` (7), `github-actions` (вступ, 7), `nginx` (вступ, 6), `webdev` (9–10), `sentry` (9) |
+| 7. DevOps: від збірки до продакшну | `docker` (вступ, 2, 4), `upstash` (6), `drizzle` (4), `prisma` (4), `webstandards` (6), `kubernetes` (вступ, 12), `playwright` (7), `github-actions` (вступ, 7), `nginx` (вступ, 6), `webdev` (9–10), `sentry` (9), `opentelemetry` (9) |
 | 8. Next.js поруч з окремим бекендом | `upstash` (1), `webstandards` (2, 6–7), `mdn` (7), `socketio` (6), `nginx` (6), `iron-session` і `jose` (3); за змістом — `nestjs` |
 | 9. Kubernetes глибше і демо | `kubernetes` (вступ, 1–8), `oracle-cloud` (вступ, 2, 7), `linux` (5), `mdn` (8), `webstandards` (8), `github-actions` (вступ, 5) |
 | Факультатив «крипта» | `webstandards` (К1–К3), `wagmi` (К3), `viem` (К1, К3), `foundry` (К2) |
@@ -119,7 +119,7 @@ viem, vite, vitest, wagmi, wasm, webdev, webstandards, zod, zustand.
 
 ### Next.js
 
-1. OpenTelemetry, Prometheus і Grafana.
+1. Prometheus і Grafana.
 2. Факультатив: OpenZeppelin.
 
 ### Спільне для лінії 1

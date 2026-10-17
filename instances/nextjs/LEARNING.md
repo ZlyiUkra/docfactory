@@ -333,7 +333,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 | next-intl | переклади й адреси з мовою | 3 | Ф5 Д8; є примірник `next-intl`; альтернатива — next-i18next (з 16.x уміє App Router), є примірник `i18next` |
 | Redis (Upstash) | обмеження частоти запитів, спільний кеш | 37 | Ф7 Д6, Ф3 Д9; є примірники `redis` і `upstash` (сайт Upstash, `@upstash/redis`, `@upstash/ratelimit`) |
 | Sentry | збір помилок із картами коду | 1 | Ф7 Д9; є примірник `sentry` |
-| OpenTelemetry | траси запитів: хто скільки чекав | 3 | Ф7 Д9 |
+| OpenTelemetry | траси запитів: хто скільки чекав | 3 | Ф7 Д9; є примірник `opentelemetry` |
 | socket.io-client | з'єднання клієнтського компонента з gateway NestJS | — | Ф8 Д6–7; є примірник `socketio` |
 | SOPS і age | секрети кластера в git лише зашифрованими | — | Ф9 Д6; є примірник `kubernetes` |
 
@@ -392,6 +392,9 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
   npm) — `prisma`;
 - GitHub Actions, Dependabot, Container registry (ghcr.io), офіційні дії — `github-actions`;
 - Sentry: SDK для Next.js, `instrumentation.ts` і `onRequestError`, карти коду, sentry-cli — `sentry`;
+- OpenTelemetry (сайт opentelemetry.io: SDK для Node.js і браузера, zero-code, Collector, безпека; специфікація,
+  семантичні домовленості й OTLP кожної версії; opentelemetry-js і js-contrib кожного випуску з кодом і тестами;
+  Collector і contrib Collector; `@vercel/otel`) — `opentelemetry`;
 - безпека: шпаргалки OWASP Cheat Sheet Series, Top 10 (2013–2025), API Security Top 10, вимоги ASVS, Proactive
   Controls — `owasp`;
 - Node.js (API усіх мажорів 10–26, розклад LTS і кінця підтримки, що нового в кожній версії, посібники
@@ -444,7 +447,6 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «варто знати»: OpenTelemetry;
 - з «знати, що існує»: Stripe, Resend і React Email, Vercel AI SDK, UploadThing, Sanity, Payload, Contentful,
   tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Grafana, Loki.
 
@@ -1520,7 +1522,8 @@ Next.js — надбудова над HTTP, Node і серверним React. У
 # Фаза 7. DevOps: від збірки до продакшну — 12 днів
 
 **Сервери MCP фази:** `nextjs-docs`, `docker-docs`, `upstash-docs`, `drizzle-docs`, `prisma-docs`, `webstandards-docs`,
-`kubernetes-docs`, `playwright-docs`, `github-actions-docs`, `nginx-docs`, `webdev-docs`, `sentry-docs`.
+`kubernetes-docs`, `playwright-docs`, `github-actions-docs`, `nginx-docs`, `webdev-docs`, `sentry-docs`,
+`opentelemetry-docs`.
 
 Next.js — не тека статики: це сервер, який треба зібрати, запустити, тримати живим і вміти відкотити. Документації
 Docker, nginx, Kubernetes і GitHub Actions у корпусі Next.js немає; є те, чого Next.js вимагає від них, і готові
@@ -1650,10 +1653,12 @@ Cloud з'явився в плані React (фаза 5, дні 7–9), бекен
   Збір помилок із картами коду — Sentry або подібний збирач (порада з практики); помилки React він бере з опцій
   `onCaughtError` і `onUncaughtError` у `createRoot` (план React, фаза 2, день 8).
 - **Читати:** `How to set up instrumentation`, `How to set up instrumentation with OpenTelemetry`,
-  `useReportWebVitals`; `Example: with-opentelemetry`; у примірнику `webdev` — `Best practices for measuring Web
-  Vitals in the field` (коли й як відправляти, чому не середнє); у примірнику `sentry` — `Sentry for Next.js`,
-  `Capturing Errors for Next.js`, `Source Maps for Next.js`.
-- **Сервери MCP:** `nextjs-docs`, `webdev-docs`, `sentry-docs`.
+  `useReportWebVitals`; `Example: with-opentelemetry`; у примірнику `opentelemetry` — `OpenTelemetry for Vercel`
+  (`registerOTel` з `@vercel/otel`), `Traces` (спан, контекст, атрибути), `Exporters` (OTLP до колектора, Jaeger),
+  `Quick start` (Collector), `Handling sensitive data` (що не писати в траси); у примірнику `webdev` — `Best
+  practices for measuring Web Vitals in the field` (коли й як відправляти, чому не середнє); у примірнику `sentry` —
+  `Sentry for Next.js`, `Capturing Errors for Next.js`, `Source Maps for Next.js`.
+- **Сервери MCP:** `nextjs-docs`, `opentelemetry-docs`, `webdev-docs`, `sentry-docs`.
 - **Зробити:** локальний колектор (Jaeger у compose); штучна затримка 500 мс у запиті до бази.
 - **Перевірити себе:** у Jaeger спан на 500 мс знайдено за тривалістю, з `NEXT_OTEL_VERBOSE=1`.
 - **Пастка:** писати в траси тіла запитів разом із паролями.
