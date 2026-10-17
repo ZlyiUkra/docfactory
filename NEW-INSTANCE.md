@@ -249,6 +249,16 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   description away from its name.
 - **MediaWiki pages** are taken through `?action=render`: templates expanded, no menu and no «edit» links; the field
   `start` cuts the navigation at the top of the content.
+- **Man pages in AsciiDoc** (Tesseract `doc/*.asc`: underlined titles, `'FILE'::` definition lists, `....` literal
+  blocks, `<<ANCHOR,…>>`): reader `ghdocs-history-asciidoc`. Each definition-list term — an option, a parameter, a
+  language code — becomes a subsection, its type and default the first line of text, not part of the heading: as
+  bold lines inside a long OPTIONS cut by length, `--oem` was not found at all.
+- **A Sphinx site rewritten in MyST Markdown** (OCRmyPDF from 16.0: `:::{note}`, `:::{list-table}`,
+  ```` ```{eval-rst} ````, `` {issue}`…` ``): reader `ghdocs-history-myst` together with the field `sphinx` for the `.rst`
+  of older tags. A release-notes file that grows with every tag is taken once from the newest tag, and its per-tag
+  copies are excluded.
+- **`ghdocs-history` with `folders: [""]`** takes only the files at the root even with `recursive`: subfolders
+  (`tess3/`, `tess4/`) are named in `folders` one by one. `list` shows it — count the documents per folder.
 
 ## Anatomy of an instance
 
@@ -802,6 +812,16 @@ and what a taken port and a failed connection look like. A domain list in the ro
   опис з коментаря — поруч з оголошенням; поділений за довжиною, він відривав опис методу від його імені.
 - **Вікі MediaWiki** беруть через `?action=render`: шаблони розгорнуто, меню й посилань «edit» немає; навігацію
   нагорі змісту відрізає поле `start`.
+- **Сторінки man в AsciiDoc** (Tesseract `doc/*.asc`: заголовки підкресленням, списки означень `'FILE'::`, буквальні
+  блоки `....`, `<<ЯКІР,…>>`): читач `ghdocs-history-asciidoc`. Кожен термін списку означень — опція, параметр, код
+  мови — стає підрозділом, а тип і змовчання — першим рядком тексту, не заголовком: жирними рядками всередині довгого
+  OPTIONS, поділеного за довжиною, `--oem` не знаходився зовсім.
+- **Сайт Sphinx, переписаний у MyST Markdown** (OCRmyPDF з 16.0: `:::{note}`, `:::{list-table}`,
+  ```` ```{eval-rst} ````, `` {issue}`…` ``): читач `ghdocs-history-myst` разом із полем `sphinx` для `.rst` старих
+  тегів. Файл нотаток випусків, що росте з кожним тегом, беруть один раз із найновішого тегу, а його копії в кожному
+  тезі виключають.
+- **`ghdocs-history` з `folders: [""]`** бере лише файли кореня навіть із `recursive`: вкладені теки (`tess3/`,
+  `tess4/`) перелічують у `folders` поіменно. Це видно в `list` — рахуйте документи по теках.
 
 ## З чого складається примірник
 
@@ -1364,6 +1384,16 @@ errada.
   descrição de um método do seu nome.
 - **Páginas MediaWiki** são lidas via `?action=render`: modelos expandidos, sem menu e sem links «edit»; o campo
   `start` corta a navegação no topo do conteúdo.
+- **Páginas man em AsciiDoc** (Tesseract `doc/*.asc`: títulos sublinhados, listas de definição `'FILE'::`, blocos
+  literais `....`, `<<ÂNCORA,…>>`): leitor `ghdocs-history-asciidoc`. Cada termo da lista de definição — uma opção, um
+  parâmetro, um código de idioma — vira uma subseção, e o tipo e o padrão viram a primeira linha do texto, não o
+  título: como linhas em negrito dentro de um OPTIONS longo cortado por tamanho, `--oem` não era encontrado.
+- **Um site Sphinx reescrito em MyST Markdown** (OCRmyPDF a partir do 16.0: `:::{note}`, `:::{list-table}`,
+  ```` ```{eval-rst} ````, `` {issue}`…` ``): leitor `ghdocs-history-myst` junto com o campo `sphinx` para os `.rst`
+  das tags antigas. O arquivo de notas de versão que cresce a cada tag é lido uma vez, da tag mais nova, e as cópias
+  em cada tag são excluídas.
+- **`ghdocs-history` com `folders: [""]`** pega só os arquivos da raiz mesmo com `recursive`: as subpastas (`tess3/`,
+  `tess4/`) são listadas em `folders` uma a uma. O `list` mostra isso — conte os documentos por pasta.
 
 ## Anatomia de uma instância
 

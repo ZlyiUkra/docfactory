@@ -2114,6 +2114,26 @@ npm 22 ключових пакетів. Нові читачі `ghcode-history-pr
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/libreoffice/README.md](instances/libreoffice/README.md).
 
+### tesseract
+
+Документація Tesseract OCR англійською: сайт tesseract-ocr.github.io/tessdoc цілком (командний рядок, якість
+розпізнавання, мовні дані й перелік мов, навчання 3.x, 4.x і 5.x, приклади C++ API, FAQ); з кожного стабільного тегу
+tesseract-ocr/tesseract 1.03–5.5.3 — сторінки man (з 3.00), README, публічні заголовки C/C++ API, файли конфігурацій
+`tessdata/configs`; ChangeLog 1.0–5.5.0 і релізи; tesstrain і README tessdata, tessdata_best, tessdata_fast; обгортки
+OCRmyPDF (сайт ocrmypdf.readthedocs.io кожного тегу v3.0–v17.13.0, API, нотатки випусків), tesseract.js і
+tesseract.js-core, pytesseract, tesserocr, node-tesseract-ocr — документація, код, README і таблиці версій npm і PyPI.
+Нові читачі `ghdocs-history-asciidoc` (сторінки man в AsciiDoc, опція чи параметр — підрозділ),
+`ghdocs-history-myst` (сайт Sphinx у MyST Markdown) і `changelog-tesseract`. 1 662 документи, 5 704 фрагменти.
+
+- порт `8858`; запис у Claude Code — `tesseract-docs`, адреса `http://127.0.0.1:8858/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-tesseract`, модель векторів — `bge-small`;
+- версія — лінія Tesseract (`version: "5.5"`, `"4.1"`), обгортки — з назвою пакета (`"ocrmypdf-17"`,
+  `"tesseract.js-6"`, `"pytesseract-0.3"`); сайт tessdoc версій не має; без названої версії — найновіша;
+- приклад питання агентові: `./df tesseract ask "How do I OCR Ukrainian text to TSV with --psm 6?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/tesseract/README.md](instances/tesseract/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
