@@ -59,6 +59,10 @@
                    `<Tabs items>`/`<CodeTabs items>` дістають підписи, `<Npm>`/`<Npx>` стають командами,
                    позначки підтримки діалектів — рядком «Supported: …» (див. `_astromdx`); редакція
                    сторінки враховує й вставлені шматки;
+                   `otel_hugo: true` — сайт opentelemetry.io на Hugo з Docsy (див. `_otelhugo`):
+                   `param` з шапки сторінки, `cascade` предків чи `hugo.yaml`, `include` з тек
+                   `_includes` з підстановкою аргументів, вступи сторінок мов, версії з реєстру,
+                   вкладки з підписами, `config_option`, виноски;
                    `biome_mdx: true` — сайт biomejs.dev на Astro Starlight (див. `_biomemdx`): вивід
                    діагностики правил (сирий `<pre>` чи `<Fragment set:html>`) стає блоком тексту, іконки
                    таблиць правил — підписами, компоненти команд і налаштувань редактора — кодом із
@@ -125,7 +129,7 @@ from html import unescape
 from urllib.parse import quote, urlsplit
 
 from engine.readers import (Item, _astromdx, _baseui, _biomemdx, _markup, _mdbook, _nginxxml,
-                            _prismamdx, _vitepress, _vocs, register)
+                            _otelhugo, _prismamdx, _vitepress, _vocs, register)
 
 _TREES = re.compile(r"^/repos/([^/]+)/([^/]+)/git/trees/$")
 _LOCALE = re.compile(r"\.[a-z]{2}-[A-Z]{2}\.md$")
@@ -757,6 +761,9 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
     prisma = source.get("prisma_mdx") is True
     if prisma:
         wanted += _prismamdx.WANTED
+    otel = source.get("otel_hugo") is True
+    if otel:
+        wanted += _otelhugo.WANTED
     biome = source.get("biome_mdx") is True
     if biome:
         wanted += _biomemdx.WANTED
@@ -929,6 +936,9 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
                                         f"{quote(tag, safe='@')}/", hugo)
             def fetch(where, sha, tag=tag):
                 return blob_text(where, sha, tag)
+
+            if otel:
+                rest = _otelhugo.expand(rest, path, text, registry.get(tag, {}), fetch)
 
             if sources is not None:
                 rest = _sources(rest, meta or {}, path, registry.get(tag, {}), sources, fetch)

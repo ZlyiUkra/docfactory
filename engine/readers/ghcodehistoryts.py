@@ -4,8 +4,9 @@
                       самі, що в `ghcode-history`: `url` — префікс дерев через API
                       (…/repos/ВЛАСНИК/РЕПО/git/trees/), `tags` — об'єкт «тег або коміт → версія»
                       від найновішого, `include` — вирази шляхів, що беруться; необов'язкові
-                      `exclude` і `name_prefix`. Поля `outline` немає: файли .ts, .tsx, .js і
-                      .jsx ділиться на розділи завжди.
+                      `exclude`, `name_prefix` і `max_file` — межа розміру файла в байтах
+                      замість спільної (100 000). Поля `outline` немає: файли .ts, .tsx, .js
+                      і .jsx ділиться на розділи завжди.
 
 Навіщо окремий читач. `ghcode-history` ділить код за відступом у чотири пробіли й без
 модифікаторів — так написано Alpine.js. Код partysocket відформатовано Prettier (згодом
@@ -141,6 +142,7 @@ def ghcode_history_ts(source: dict, ctx) -> list[Item]:
         raise SystemExit(f"{source['id']}: поле `include` — вирази шляхів, що беруться.")
     exclude = [re.compile(x) for x in source.get("exclude") or ()]
     lead = f"{_markup.slug(source['name_prefix'])}-" if source.get("name_prefix") else ""
+    limit = int(source.get("max_file") or _MAX_FILE)
 
     # ім'я документа → [шлях, [теги]]; порядок — від найновішого тегу, як оголошено в `tags`
     seen: dict = {}
@@ -156,7 +158,7 @@ def ghcode_history_ts(source: dict, ctx) -> list[Item]:
             raise SystemExit(f"{url}: GitHub обрізав дерево — перелік був би неповним.")
         for entry in tree["tree"]:
             path = entry.get("path", "")
-            if (entry.get("type") == "blob" and 0 < entry.get("size", 1) <= _MAX_FILE
+            if (entry.get("type") == "blob" and 0 < entry.get("size", 1) <= limit
                     and any(r.search(path) for r in include)
                     and not any(r.search(path) for r in exclude)):
                 name = f"{lead}{_markup.slug(path)}-{entry['sha'][:8]}"
