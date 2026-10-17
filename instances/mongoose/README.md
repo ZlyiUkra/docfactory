@@ -29,7 +29,7 @@ mongoosejs.com показує документацію лише поточної
 | `CHANGELOG.md` (від 1.0.1) і нотатки релізів | 1 269 | 1 308 | ті самі + GitHub Releases |
 | `@nestjs/mongoose`: README, код `lib/`, релізи, npm | 210 | 373 | `nestjs/mongoose`, 45 тегів |
 | Typegoose: документація (від 8.0.0), код `src/`, релізи, npm | 1 265 | 2 984 | `typegoose/typegoose`, 187 тегів |
-| mongodb-memory-server: документація (від 7.0.0), код, релізи, npm | 982 | 3 503 | `typegoose/mongodb-memory-server` |
+| mongodb-memory-server: документація від 7.0.0, код, релізи, npm | 982 | 3 503 | `typegoose/mongodb-memory-server` |
 | connect-mongo: README і CHANGELOG, код, релізи, npm | 142 | 517 | `jdesboeufs/connect-mongo`, 40 тегів |
 | Плагіни autopopulate, lean-virtuals, unique-validator, paginate-v2 | 272 | 681 | `mongoosejs/*` та інші, 89 тегів |
 | Реєстр npm і README `mongoose`, типи `@types/mongoose` (`index.d.ts`) | 352 | 1 002 | registry.npmjs.org |
@@ -42,10 +42,10 @@ mongoosejs.com показує документацію лише поточної
 
 ## Що в цій теці
 
-- `corpus/` — тексти документів (поки корпус не винесено в архів) і паспорт `index.json`: адреса, дата завантаження
-  й сума тексту кожного документа.
+- `corpus/` — паспорт `index.json`: адреса, дата завантаження й сума тексту кожного документа. Самих текстів тут
+  немає: корпус в архіві.
 - `index/` — кеш фрагментів, з якого сервер підіймається: у git — стиснений `passages.json.gz`.
-- `raw/` — сховище сирих відповідей (612 МБ): дерева й файли GitHub, сторінки сайту, tarball npm. Не в git; в архів
+- `raw/` — сховище сирих відповідей (612 МБ): дерева й файли GitHub, сторінки сайту, tarball npm. Не в git; в архіві
   разом із корпусом.
 - `sources.json` — звідки корпус будується (48 джерел), і водночас білий список для оновлювача.
 - `config.json` — порт, колекція Qdrant, модель векторів, профіль домену.
@@ -74,8 +74,8 @@ mongoosejs.com показує документацію лише поточної
 
 - **Мітки версій.** Mongoose — повна версія тега (`8.19.3`), лінія в переліку — «X.Y» (`version_line_depth: 2`).
   Додатки — з назвою пакета, щоб нумерації не змішувались: `nestjs-11.0.4`, `typegoose-12.21.1`,
-  `memory-server-10.2.3`, `connect-mongo-5.1.0`, `autopopulate-1.2.1`, `lean-virtuals-2.1.0`, `unique-validator-6.1.1`,
-  `paginate-1.9.5`, `types-5.11.97`. Сайти — `3.8` і `4.13`.
+  `memory-server-10.2.3`, `connect-mongo-5.1.0`, `autopopulate-1.2.1`, `lean-virtuals-2.1.0`,
+  `unique-validator-6.1.1`, `paginate-1.9.5`, `types-5.11.97`. Сайти — `3.8` і `4.13`.
 - **Імена документів.** Документація: `mongoose-docs-guide`, `mongoose-docs-populate`, `mongoose-docs-middleware`,
   `mongoose-docs-typescript-statics`, `mongoose-docs-migrating-to-8`; код: `mongoose-lib-model-js`,
   `mongoose-lib-schema-js`; типи: `mongoose-types-models-d-ts`; тести: `mongoose-test-model-populate-test-js`;
@@ -115,8 +115,12 @@ mongoosejs.com показує документацію лише поточної
 
 ## Архівний режим: сервер без корпусу
 
-Коли родину зібрано, тексти виносять в архів: у `corpus/` лишається паспорт, а сервер підіймається з кешу фрагментів і
-колекції Qdrant; відповіді ті самі до символа. Поки архів не винесено, тексти лежать у `corpus/` (494 МБ).
+Корпус в архіві від дня збирання: у `corpus/` лежить лише паспорт, а сервер підіймається з кешу фрагментів і
+колекції Qdrant; відповіді ті самі до символа.
+
+**Де тексти.** В архіві `~/archives/docfactory/mongoose-corpus-2026-10-17.tar.gz` (668 МБ:
+18 058 текстів, паспорт і сховище сирого `raw/` — 37 320 файлів; перед
+видаленням розпакований окремо й звірений з диском — нуль розбіжностей). Лише на цій машині.
 
 **Як винести** — після оновлення, коли `vectors` і `smoke` пройшли:
 
@@ -130,7 +134,7 @@ gzip -9 -c instances/mongoose/index/passages.json > instances/mongoose/index/pas
 **Як повернути тексти** — перед будь-яким оновленням:
 
 ```
-tar -xzf ~/archives/docfactory/mongoose-corpus-РРРР-ММ-ДД.tar.gz -C instances/mongoose
+tar -xzf ~/archives/docfactory/mongoose-corpus-2026-10-17.tar.gz -C instances/mongoose
 ./df mongoose smoke
 ```
 
