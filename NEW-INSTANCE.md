@@ -233,6 +233,22 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   line under the heading, not part of it: otherwise the release that added the badge gives the section a new key, and
   editions stop merging. An indented code fence closes together with its list item, as markdown-it does: one stray
   «```» otherwise turned half a page into code.
+- **Help written in XML with includes** (LibreOffice `.xhp`: `<embed href="file#id">`, `<embedvar>`): the page is
+  assembled with the includes of the same tag, and its edition is computed from fingerprints of the included elements,
+  not of whole files. A collection file of menu paths changes with every release; fingerprinting the file would give a
+  new edition to hundreds of unchanged pages. Reader `ghdocs-history-xhp`.
+- **A repository whose tree GitHub returns truncated** (`LibreOffice/core`, over a hundred thousand files): take the
+  tree folder by folder (`git/trees/<tag>:<folder>?recursive=1`, field `roots`), and locally a partial clone of the
+  needed tags only: `git fetch --depth=1 --filter=blob:none origin refs/tags/<tag>:refs/tags/<tag>` — 35 MB of trees
+  instead of gigabytes; `tools/seed_git_store.py` fetches only the selected blobs.
+- **A reader that reads pages while listing** (includes, editions from fingerprints) is not run through `list`: a store
+  seeded from a clone has no validators, and `list` would fetch every page over the network again. The tag trees are
+  laid down by `seed_git_store.py --trees`, then `build` without network.
+- **An API reference generated from IDL** (UNO, from which api.libreoffice.org is built): the file is split into one
+  section per member, the description from the comment next to the declaration; split by length, it tore a method's
+  description away from its name.
+- **MediaWiki pages** are taken through `?action=render`: templates expanded, no menu and no «edit» links; the field
+  `start` cuts the navigation at the top of the content.
 
 ## Anatomy of an instance
 
@@ -771,6 +787,21 @@ and what a taken port and a failed connection look like. A domain list in the ro
   заголовком, а не його частиною: інакше випуск, що додав позначку, дає розділу новий ключ, і редакції перестають
   зливатися. Огорожа коду з відступом закривається разом із пунктом списку, як у markdown-it: один зайвий «```»
   інакше робив кодом пів сторінки.
+- **Довідка в XML зі вставками** (LibreOffice `.xhp`: `<embed href="файл#id">`, `<embedvar>`): сторінку збирають зі
+  вставками того самого тегу, а її редакцію рахують з відбитків вставлених елементів, не цілих файлів. Файл-збірник
+  рядків меню міняється з кожним випуском, і відбиток файла давав би нову редакцію сотням незмінних сторінок. Читач
+  `ghdocs-history-xhp`.
+- **Репозиторій, чиє дерево GitHub віддає обрізаним** (`LibreOffice/core`, понад сто тисяч файлів): дерево беруть
+  потеково (`git/trees/<тег>:<тека>?recursive=1`, поле `roots`), а локально — частковий клон лише потрібних тегів:
+  `git fetch --depth=1 --filter=blob:none origin refs/tags/<тег>:refs/tags/<тег>` — 35 МБ дерев замість гігабайтів;
+  `tools/seed_git_store.py` докачує лише відібрані blob-и.
+- **Читач, що читає сторінки вже під час переліку** (вставки, редакції з відбитків), не проганяють через `list`:
+  сховище, засіяне з клону, не має валідаторів, і `list` тягнув би кожну сторінку мережею вдруге. Дерева тегів кладе
+  `seed_git_store.py --trees`, далі — `build` без мережі.
+- **Довідник API, згенерований з IDL** (UNO, з якого збирають api.libreoffice.org): файл ділиться на розділ на член,
+  опис з коментаря — поруч з оголошенням; поділений за довжиною, він відривав опис методу від його імені.
+- **Вікі MediaWiki** беруть через `?action=render`: шаблони розгорнуто, меню й посилань «edit» немає; навігацію
+  нагорі змісту відрізає поле `start`.
 
 ## З чого складається примірник
 
@@ -1317,6 +1348,22 @@ errada.
   linha abaixo do título, não parte dele: senão a versão que acrescentou o selo dá à seção uma chave nova, e as
   edições deixam de se fundir. Uma cerca de código recuada fecha junto com o item da lista, como no markdown-it: um
   «```» sobrando transformava meia página em código.
+- **Ajuda escrita em XML com inclusões** (LibreOffice `.xhp`: `<embed href="arquivo#id">`, `<embedvar>`): a página é
+  montada com as inclusões da mesma tag, e sua edição é calculada a partir das impressões digitais dos elementos
+  incluídos, não de arquivos inteiros. Um arquivo-coletânea de caminhos de menu muda a cada versão; a impressão do
+  arquivo daria uma edição nova a centenas de páginas inalteradas. Leitor `ghdocs-history-xhp`.
+- **Um repositório cuja árvore o GitHub devolve truncada** (`LibreOffice/core`, mais de cem mil arquivos): a árvore é
+  lida pasta por pasta (`git/trees/<tag>:<pasta>?recursive=1`, campo `roots`), e localmente um clone parcial só das
+  tags necessárias: `git fetch --depth=1 --filter=blob:none origin refs/tags/<tag>:refs/tags/<tag>` — 35 MB de árvores
+  em vez de gigabytes; `tools/seed_git_store.py` baixa só os blobs selecionados.
+- **Um leitor que lê páginas já durante a listagem** (inclusões, edições por impressões digitais) não passa por
+  `list`: um armazenamento semeado a partir de um clone não tem validadores, e `list` baixaria cada página pela rede de
+  novo. As árvores das tags são gravadas por `seed_git_store.py --trees`, depois `build` sem rede.
+- **Uma referência de API gerada a partir de IDL** (UNO, da qual se monta api.libreoffice.org): o arquivo é dividido
+  em uma seção por membro, a descrição do comentário junto da declaração; dividido por tamanho, ele separava a
+  descrição de um método do seu nome.
+- **Páginas MediaWiki** são lidas via `?action=render`: modelos expandidos, sem menu e sem links «edit»; o campo
+  `start` corta a navegação no topo do conteúdo.
 
 ## Anatomia de uma instância
 

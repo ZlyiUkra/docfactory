@@ -2092,6 +2092,28 @@ npm 22 ключових пакетів. Нові читачі `ghcode-history-pr
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/opentelemetry/README.md](instances/opentelemetry/README.md).
 
+### libreoffice
+
+Документація LibreOffice англійською: уся довідка help.libreoffice.org для кінцевого тегу кожної лінії 3.3–26.8 (з
+`LibreOffice/help`: Writer, Calc з кожною функцією, Impress, Draw, Math, Base, Basic і ScriptForge, параметри
+командного рядка, таблиці фільтрів конвертації, параметри фільтрів CSV і PDF); з `LibreOffice/core` тих самих ліній —
+текст `soffice --help`, оголошення кожного фільтра й типу файла і довідник UNO API (IDL offapi і udkapi, з яких
+генерується api.libreoffice.org); Developer's Guide і release notes з вікі; бюлетені безпеки; обгортки для
+конвертації libreoffice-convert, libreoffice-file-converter (npm), unoserver і unoconv (PyPI) — README кожної версії,
+код, тести, журнали. Нові читачі `ghdocs-history-xhp` (сторінки `.xhp` зі вставками), `ghcode-history-lo` (IDL — член
+на розділ, фільтри, `soffice --help`), `mediawiki-render`, `html-details`; `tools/seed_git_store.py` знає їх, а
+`--trees` кладе дерева тегів. 61 986 документів, 81 180 фрагментів.
+
+- порт `8856`; запис у Claude Code — `libreoffice-docs`, адреса `http://127.0.0.1:8856/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-libreoffice`, модель векторів — `bge-small`;
+- версія — лінія LibreOffice (`version: "26.2"`, `"7.6"`), обгортки — з назвою (`"unoserver-3"`,
+  `"libreoffice-convert-1.8"`); бюлетені безпеки й Developer's Guide версій не мають; без названої версії відповідати
+  для 26.8 («fresh») і казати, де інакше 26.2 («still»);
+- приклад питання агентові: `./df libreoffice ask "How do I convert DOCX to PDF headless with its own profile?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/libreoffice/README.md](instances/libreoffice/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
