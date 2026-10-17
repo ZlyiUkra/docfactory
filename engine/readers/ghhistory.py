@@ -59,6 +59,9 @@
                    `<Tabs items>`/`<CodeTabs items>` дістають підписи, `<Npm>`/`<Npx>` стають командами,
                    позначки підтримки діалектів — рядком «Supported: …» (див. `_astromdx`); редакція
                    сторінки враховує й вставлені шматки;
+                   `lead_comment: true` — коментар HTML на самому початку файла (специфікації
+                   OpenTelemetry тримають там шапку Hugo: «<!--- Hugo front matter … --->»)
+                   знімається до пошуку назви, інакше назвою ставало ім'я файла;
                    `otel_hugo: true` — сайт opentelemetry.io на Hugo з Docsy (див. `_otelhugo`):
                    `param` з шапки сторінки, `cascade` предків чи `hugo.yaml`, `include` з тек
                    `_includes` з підстановкою аргументів, вступи сторінок мов, версії з реєстру,
@@ -138,6 +141,7 @@ from engine.readers import (Item, _astromdx, _baseui, _biomemdx, _jsonschemaorg,
 
 _TREES = re.compile(r"^/repos/([^/]+)/([^/]+)/git/trees/$")
 _LOCALE = re.compile(r"\.[a-z]{2}-[A-Z]{2}\.md$")
+_LEAD_COMMENT = re.compile(r"\A\s*<!--.*?-->[ \t]*\n?", re.S)
 _FENCE = re.compile(r"^\s*(```|~~~)")
 _ATX = re.compile(r"^(#{1,6})[ \t]+(\S.*?)[ \t]*#*[ \t]*$")
 _SETEXT = re.compile(r"^(=+|-+)[ \t]*$")
@@ -936,6 +940,8 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
                 # однаково бачить, а без зрізаного рядка шапка лишалася б у тексті.
                 text = text.lstrip("\n")
             meta, rest = _markup.front_matter(text)
+            if source.get("lead_comment") is True:
+                rest = _LEAD_COMMENT.sub("", rest, count=1)
             if hugo:
                 rest = _hugo(rest, ctx, f"https://raw.githubusercontent.com/{owner}/{repo}/"
                                         f"{quote(tag, safe='@')}/", hugo)
