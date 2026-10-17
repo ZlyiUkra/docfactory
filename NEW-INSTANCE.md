@@ -169,9 +169,9 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
 - **Documentation in Snooty rST** (MongoDB: the server manual, mongosh, Database Tools, the drivers) — the
   `snooty-history` reader: `.txt` pages, `include`/`literalinclude`/`sharedinclude` (shared snippets from
   `10gen/docs-shared`), tabs in both notations, YAML steps and extracts of the old branches, `{+x+}` constants from
-  `snooty.toml` and `conf.py`, substitutions with nested values, object directives as headings. Hunt the leftovers with a
-  census of the corpus (`|x|`, `{+x+}`, `:ref:`, raw spans) and fix the reader down to zero; what remains are literal
-  blocks, where the markup really is raw.
+  `snooty.toml` and `conf.py`, substitutions with nested values, object directives as headings. Hunt the leftovers
+  with a census of the corpus (`|x|`, `{+x+}`, `:ref:`, raw spans) and fix the reader down to zero; what remains are
+  literal blocks, where the markup really is raw.
 - **Do not fetch a huge documentation repository over the network**: a bare clone (`git clone --bare`), seed the raw
   store with every blob by its sha under its raw.githubusercontent.com address (a sha → address map next to the store),
   only the branch trees via the API; then `build` offline (32 thousand pages in 12 minutes instead of seven hours). A
@@ -673,9 +673,9 @@ and what a taken port and a failed connection look like. A domain list in the ro
   `commits?path=<тека>` дає коміт видалення, його батько — знімок; версії джерело не несе. Блок «Documentation index»
   Mintlify пише і з великої, і з малої літери — читач упізнає обидва.
 - **Документація у форматі Snooty rST** (MongoDB: посібник сервера, mongosh, Database Tools, драйвери) — читач
-  `snooty-history`: сторінки `.txt`, `include`/`literalinclude`/`sharedinclude` (спільні вставки з `10gen/docs-shared`),
-  вкладки обох записів, YAML-кроки й витяги старих гілок, константи `{+x+}` із `snooty.toml` і `conf.py`, підстановки
-  з вкладеними значеннями, об'єктні директиви заголовками. Залишки шукати переписом корпусу (`|x|`, `{+x+}`, `:ref:`,
+  `snooty-history`: сторінки `.txt`, `include`/`literalinclude`/`sharedinclude` (спільні вставки з
+  `10gen/docs-shared`), вкладки обох записів, YAML-кроки й витяги старих гілок, константи `{+x+}` із `snooty.toml` і
+  `conf.py`, підстановки з вкладеними значеннями, об'єктні директиви заголовками. Залишки шукати переписом корпусу (`|x|`, `{+x+}`, `:ref:`,
   сирі спани) і правити читач до нуля; що лишається — літеральні блоки, де розмітка справді сира.
 - **Великий репозиторій документації не тягти мережею**: голий клон (`git clone --bare`), засів сховища сирого кожним
   blob за його sha під адресою raw.githubusercontent.com (мапа sha → адреса поруч зі сховищем), мережею — лише дерева
