@@ -181,6 +181,16 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   (`/@types/mongodb/-/…`), not `%2F`: both forms must be in `within`, otherwise every version is "no file".
   DefinitelyTyped, `@nestjs/*` and precompiled packages (`@mongodb-js/zstd`) ship no README in the tarball: take
   `index.d.ts` for types (`kind: types`), drop the other README sources.
+- **A site built from the code repository's own `docs/`** (docs.ollama.com from `ollama/ollama` `docs/*.mdx`): the
+  site source and the history of the folder give the current page twice under different keys (`faq` and `docs-faq`),
+  and it takes two of five result slots. `slug_rewrite` `^docs-` → `` and one `families` entry for both sources fold
+  them into one slot; identical texts merge into one passage.
+- **Code in Go or Python**: the `outline` field of `ghcode-history` as a list of languages (`["go"]`, `["python"]`)
+  splits a file into top-level declarations together with the comment above them (in Python also methods of a class,
+  `@overload` variants as one section). `outline: true` keeps its old meaning for the instances already verified.
+- **Parallel `refresh` of sources from one repository** fetches the same tree pages at the same moment, and for a few
+  of them the raw store prints "сховище сирого не записалося": two processes write one temporary file. The record of
+  the other process stays and `build` works; still, keep the sources of one repository in one process.
 - **A family of three or more instances**: one overnight chain of heavy steps (vectors one after another, smoke and
   quality after each), the timed reports go on while the chain lives. `ua_query` in `checks.json` is pure Cyrillic (a
   Latin word breaks the check), and the version probe is a line (`"9.11"`), not a full version, when there are hundreds
@@ -687,6 +697,16 @@ and what a taken port and a failed connection look like. A domain list in the ro
   а не з `%2F`: обидві форми мають бути у `within`, інакше всі версії «без файла». Пакети DefinitelyTyped, `@nestjs/*`
   і прекомпільовані (`@mongodb-js/zstd`) README у tarball не кладуть: для типів брати `index.d.ts` (`kind: types`),
   решту джерел README прибрати.
+- **Сайт, зібраний із теки `docs/` самого репозиторію коду** (docs.ollama.com з `docs/*.mdx` `ollama/ollama`):
+  джерело сайту й історія теки дають чинну сторінку двічі під різними ключами (`faq` і `docs-faq`), і вона забирає два
+  місця з п'яти. `slug_rewrite` `^docs-` → `` і один запис `families` для обох джерел згортають їх в одне місце;
+  однакові тексти зливаються в один фрагмент.
+- **Код Go чи Python**: поле `outline` читача `ghcode-history` переліком мов (`["go"]`, `["python"]`) ділить файл за
+  оголошеннями верхнього рівня разом з коментарем над ними (у Python — і методи класу, варіанти `@overload` — одним
+  розділом). `outline: true` лишається з колишнім змістом для вже звірених примірників.
+- **Паралельний `refresh` джерел одного репозиторію** тягне ті самі сторінки дерев в ту саму мить, і для кількох із
+  них сховище сирого пише «сховище сирого не записалося»: два процеси пишуть один тимчасовий файл. Запис другого
+  процесу лишається, і `build` працює; та джерела одного репозиторію краще тримати в одному процесі.
 - **Родина з трьох і більше примірників**: один ланцюжок важких кроків на ніч (вектори по черзі, за кожними — smoke і
   quality), звіти за таймером тривають, поки ланцюжок живий. `ua_query` у `checks.json` — суто кирилицею (латинське
   слово ламає перевірку), а пробна версія — лінія (`"9.11"`), не повна версія, коли ліній понад сотню.
@@ -1194,6 +1214,18 @@ errada.
   (`/@types/mongodb/-/…`), não `%2F`: as duas formas têm de estar em `within`, senão todas as versões ficam "sem
   arquivo". DefinitelyTyped, `@nestjs/*` e pacotes pré-compilados (`@mongodb-js/zstd`) não trazem README no tarball:
   para tipos usar `index.d.ts` (`kind: types`), remover as outras fontes de README.
+- **Site montado a partir da pasta `docs/` do próprio repositório de código** (docs.ollama.com a partir de
+  `docs/*.mdx` de `ollama/ollama`): a fonte do site e o histórico da pasta dão a página atual duas vezes com chaves
+  diferentes (`faq` e `docs-faq`), e ela ocupa duas de cinco posições. `slug_rewrite` `^docs-` → `` e uma entrada de
+  `families` para as duas fontes as juntam numa posição; textos iguais fundem-se num trecho.
+- **Código em Go ou Python**: o campo `outline` do leitor `ghcode-history` como lista de linguagens (`["go"]`,
+  `["python"]`) divide o arquivo pelas declarações de nível superior junto com o comentário acima delas (em Python
+  também os métodos da classe, variantes `@overload` como uma seção). `outline: true` mantém o sentido antigo para as
+  instâncias já conferidas.
+- **`refresh` paralelo de fontes do mesmo repositório** busca as mesmas páginas de árvores no mesmo instante, e para
+  algumas delas o depósito bruto imprime «сховище сирого не записалося»: dois processos escrevem o mesmo arquivo
+  temporário. O registro do outro processo fica e o `build` funciona; ainda assim, mantenha as fontes de um
+  repositório num só processo.
 - **Uma família de três ou mais instâncias**: uma cadeia noturna de passos pesados (vetores um após outro, smoke e
   quality depois de cada), os relatórios por temporizador continuam enquanto a cadeia vive. `ua_query` em `checks.json`
   é só cirílico (uma palavra latina quebra a verificação), e a versão de prova é uma linha (`"9.11"`), não uma versão
