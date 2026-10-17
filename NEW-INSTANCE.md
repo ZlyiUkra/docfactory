@@ -172,10 +172,11 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   `snooty.toml` and `conf.py`, substitutions with nested values, object directives as headings. Hunt the leftovers
   with a census of the corpus (`|x|`, `{+x+}`, `:ref:`, raw spans) and fix the reader down to zero; what remains are
   literal blocks, where the markup really is raw.
-- **Do not fetch a huge documentation repository over the network**: a bare clone (`git clone --bare`), seed the raw
-  store with every blob by its sha under its raw.githubusercontent.com address (a sha → address map next to the store),
-  only the branch trees via the API; then `build` offline (32 thousand pages in 12 minutes instead of seven hours). A
-  blob identical across 20 branches is stored once.
+- **Do not fetch a huge documentation repository over the network**: a bare clone (`git clone --bare`) and the
+  `tools/seed_snooty_store.py --instance <domain> --clone owner/repo=path` tool seeds the raw store with every blob by
+  its sha under its raw.githubusercontent.com address (a sha → address map next to the store), only the branches and
+  folders declared in `sources.json`; only the branch trees go via the API; then `build` offline (32 thousand pages
+  in 12 minutes instead of seven hours). A blob identical across 20 branches is stored once.
 - **The tarball of a scoped package** (`@types/mongodb`) is served at an address with a literal "/"
   (`/@types/mongodb/-/…`), not `%2F`: both forms must be in `within`, otherwise every version is "no file".
   DefinitelyTyped, `@nestjs/*` and precompiled packages (`@mongodb-js/zstd`) ship no README in the tarball: take
@@ -677,10 +678,11 @@ and what a taken port and a failed connection look like. A domain list in the ro
   `10gen/docs-shared`), вкладки обох записів, YAML-кроки й витяги старих гілок, константи `{+x+}` із `snooty.toml` і
   `conf.py`, підстановки з вкладеними значеннями, об'єктні директиви заголовками. Залишки шукати переписом корпусу (`|x|`, `{+x+}`, `:ref:`,
   сирі спани) і правити читач до нуля; що лишається — літеральні блоки, де розмітка справді сира.
-- **Великий репозиторій документації не тягти мережею**: голий клон (`git clone --bare`), засів сховища сирого кожним
-  blob за його sha під адресою raw.githubusercontent.com (мапа sha → адреса поруч зі сховищем), мережею — лише дерева
-  гілок через API; далі `build` без мережі (32 тисячі сторінок за 12 хвилин замість семи годин). Blob, однаковий у
-  20 гілках, лежить один раз.
+- **Великий репозиторій документації не тягти мережею**: голий клон (`git clone --bare`) і засів сховища сирого
+  інструментом `tools/seed_snooty_store.py --instance <домен> --clone owner/repo=шлях` — кожен blob за його sha під
+  адресою raw.githubusercontent.com (мапа sha → адреса поруч зі сховищем), лише гілки й теки з `sources.json`;
+  мережею — лише дерева гілок через API; далі `build` без мережі (32 тисячі сторінок за 12 хвилин замість семи
+  годин). Blob, однаковий у 20 гілках, лежить один раз.
 - **Tarball пакета з областю** (`@types/mongodb`) реєстр віддає за адресою з літеральною «/» (`/@types/mongodb/-/…`),
   а не з `%2F`: обидві форми мають бути у `within`, інакше всі версії «без файла». Пакети DefinitelyTyped, `@nestjs/*`
   і прекомпільовані (`@mongodb-js/zstd`) README у tarball не кладуть: для типів брати `index.d.ts` (`kind: types`),
@@ -1183,10 +1185,11 @@ errada.
   `snooty.toml` e `conf.py`, substituições com valores aninhados, diretivas de objeto como títulos. Procurar os restos
   com um censo do corpus (`|x|`, `{+x+}`, `:ref:`, spans crus) e corrigir o leitor até zero; o que fica são blocos
   literais, onde a marcação é mesmo crua.
-- **Não baixar pela rede um repositório de documentação enorme**: clone bare (`git clone --bare`), semear o depósito
-  bruto com cada blob pelo seu sha no endereço raw.githubusercontent.com (mapa sha → endereço junto ao depósito), pela
-  rede só as árvores dos ramos via API; depois `build` sem rede (32 mil páginas em 12 minutos em vez de sete horas). Um
-  blob igual em 20 ramos fica guardado uma vez.
+- **Não baixar pela rede um repositório de documentação enorme**: clone bare (`git clone --bare`) e a ferramenta
+  `tools/seed_snooty_store.py --instance <domínio> --clone owner/repo=caminho` semeia o depósito bruto com cada blob
+  pelo seu sha no endereço raw.githubusercontent.com (mapa sha → endereço junto ao depósito), só os ramos e pastas de
+  `sources.json`; pela rede só as árvores dos ramos via API; depois `build` sem rede (32 mil páginas em 12 minutos em
+  vez de sete horas). Um blob igual em 20 ramos fica guardado uma vez.
 - **O tarball de um pacote com escopo** (`@types/mongodb`) é servido num endereço com "/" literal
   (`/@types/mongodb/-/…`), não `%2F`: as duas formas têm de estar em `within`, senão todas as versões ficam "sem
   arquivo". DefinitelyTyped, `@nestjs/*` e pacotes pré-compilados (`@mongodb-js/zstd`) não trazem README no tarball:
