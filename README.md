@@ -2233,6 +2233,31 @@ claude-cookbooks. Нові читачі `md-index` (зміст у markdown з п
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/anthropic-api/README.md](instances/anthropic-api/README.md).
 
+### stripe
+
+Документація Stripe англійською — для фінансових розрахунків у наших програмах: сайт docs.stripe.com цілком
+(посібники з усіма варіантами інтеграцій — Checkout, Elements, мобільні iOS і Android, Direct API — і прикладами
+сервера сімома мовами: Node.js, Python, Go, Ruby, Java, .NET, Stripe CLI; довідник API; журнал змін API кожної
+версії від `2011-06-21` до `2026-08-26.dahlia`; довідник Stripe.js); повна специфікація OpenAPI v1 і
+v2 — ресурс на документ і об'єкт на документ з типами полів і переліками enum; README і MIGRATING з кожного
+стабільного тегу stripe-node (0.0.2–23.0.0), Stripe.js, React Stripe.js, React Native і Connect.js та з останнього
+тегу кожної мінорної лінії SDK Python, Go, Ruby, Java, .NET, PHP, CLI, iOS і Android; нотатки релізів усіх
+п'ятнадцяти репозиторіїв; код найновіших JS-SDK; таблиці версій з npm, PyPI, RubyGems, Packagist, NuGet, Maven і
+CocoaPods. Нові читачі `stripe-md` (markdown-двійники сторінок: код кожної мови через `?lang=` зводиться в один
+документ, перелік варіантів розгортається у варіанти), `openapi-stripe` (специфікація без тегів), `ghraw-history`
+(відомі файли з кожного тегу через raw.githubusercontent.com, без дерев API) і `pkg-registry` (таблиці версій
+RubyGems, Packagist, NuGet, Maven, CocoaPods). 14 499 документів, 113 886 фрагментів.
+
+- порт `8863`; запис у Claude Code — `stripe-docs`, адреса `http://127.0.0.1:8863/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-stripe`, модель векторів — `bge-small`;
+- версія — з назвою SDK (`version: "node-23.0"`, `"python-16.0"`, `"go-87.0"`) або версії API
+  (`"api-2025-03-31.basil"`); посібники сайту шукають без версії; без названої версії — найновіша;
+- приклад питання агентові: `./df stripe ask "How do I pass an amount in JPY to the PaymentIntents API, and what is
+  the minimum charge?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/stripe/README.md](instances/stripe/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
