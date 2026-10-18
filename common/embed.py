@@ -77,8 +77,34 @@ def model():
             raise ModuleNotFoundError(
                 "немає fastembed, а без нього вектори нема чим рахувати; "
                 "постав: .venv/bin/python -m pip install fastembed") from exc
-        _model = TextEmbedding(model_name=MODEL_NAME)
+        _model = _on_gpu(TextEmbedding) or TextEmbedding(model_name=MODEL_NAME)
     return _model
+
+
+def _on_gpu(TextEmbedding):
+    """Модель на відеокарті — лише коли у venv примірника стоїть onnxruntime-gpu і CUDA справді
+    є; інакше None, і далі той самий виклик на процесорі, що й був.
+
+    Навіщо. Вектори sqlserver на процесорі йшли ~5 фрагментів за секунду: на 144 тисячі —
+    вісім годин, на архів — ще доба. RTX 2070 у WSL рахує ті самі числа (косинус з
+    процесорними ≥ 0,99999) зі швидкістю ~500 за секунду. Примірники зі звичайним
+    onnxruntime цієї гілки не бачать: у їхньому переліку провайдерів CUDA немає. Відеокарта, що
+    не відповіла (немає драйвера, `CUDA_VISIBLE_DEVICES=`), — теж None: працює процесор."""
+    try:
+        import onnxruntime
+    except ImportError:
+        return None
+    if "CUDAExecutionProvider" not in onnxruntime.get_available_providers():
+        return None
+    try:
+        if hasattr(onnxruntime, "preload_dlls"):
+            onnxruntime.preload_dlls()  # бібліотеки CUDA і cuDNN з колес nvidia-* того ж venv
+        found = TextEmbedding(model_name=MODEL_NAME, providers=["CUDAExecutionProvider"])
+        if "CUDAExecutionProvider" not in found.model.model.get_providers():
+            return None
+        return found
+    except Exception:  # noqa: BLE001 — будь-який збій відеокарти означає процесор, а не падіння
+        return None
 
 
 def loaded() -> bool:
