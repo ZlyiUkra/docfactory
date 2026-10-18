@@ -2274,7 +2274,8 @@ XML-документації пакета) і `nuget-package` (реєстр NuGe
   і `read_section`;
 - колекція у Qdrant — `docs-aspnetcore`, модель векторів — `bge-small`;
 - версія — голий номер для ASP.NET Core (`version: "8.0"`), з назвою продукту для класичного ASP.NET (`"mvc-5.2"`,
-  `"signalr-2.4"`, `"netfx-4.8.1"`); сторінки сайту класичного ASP.NET шукають без версії; без названої версії —
+  `"signalr-2.4"`, `"netfx-4.8.1"`); посібники класичних SignalR, MVC і Web API мають версію за текою
+  (`older-versions*` — старі випуски), решту сторінок класичного сайту шукають без версії; без названої версії —
   найновіша;
 - приклад питання агентові: `./df aspnetcore ask "How do I configure a fixed window rate limiter in ASP.NET Core 8?"`;
 - корпус і сховище сирого — в архіві від самого початку;

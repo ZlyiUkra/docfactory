@@ -369,6 +369,9 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   `nuget-package`), and packages with their own numbering (OData, SystemWebAdapters) stay out of the per-line sources,
   or OData 8.x lands in ASP.NET Core 8.0. A repository file without front matter takes its title from its first
   heading (`title_from: "heading"` in `ghdocs`); vendored code (googletest under `src/`) is cut with `exclude`.
+  Guides of old releases kept in `older-versions*` folders beside the new ones get their lines by path
+  (`path_versions` in `docfx`): otherwise the SignalR 1.x guide outranks its 2.x twin, and a search with a version
+  finds neither.
 
 ## Anatomy of an instance
 
@@ -1036,7 +1039,9 @@ and what a taken port and a failed connection look like. A domain list in the ro
   примірнику з ASP.NET Core 10.0): версія несе назву продукту префіксом (`mvc-5.2`; `version_prefixes` у
   `nuget-package`), а пакети з власними номерами (OData, SystemWebAdapters) не входять у джерела ліній, інакше OData
   8.x потрапляє в ASP.NET Core 8.0. Файл репозиторію без front matter бере назву з першого заголовка
-  (`title_from: "heading"` у `ghdocs`); вбудований чужий код (googletest у `src/`) відрізає `exclude`.
+  (`title_from: "heading"` у `ghdocs`); вбудований чужий код (googletest у `src/`) відрізає `exclude`. Посібники
+  старих випусків у теках `older-versions*` поряд з новими дістають лінії за шляхом (`path_versions` у `docfx`):
+  інакше посібник SignalR 1.x виходить вище за свого двійника 2.x, а пошук з версією не бачить жодного.
 
 ## З чого складається примірник
 
@@ -1724,6 +1729,9 @@ errada.
   pacotes com números próprios (OData, SystemWebAdapters) ficam fora das fontes por linha, senão o OData 8.x cai no
   ASP.NET Core 8.0. Um arquivo do repositório sem front matter tira o título do primeiro cabeçalho
   (`title_from: "heading"` no `ghdocs`); código alheio embutido (googletest em `src/`) é cortado com `exclude`.
+  Guias de versões antigas em pastas `older-versions*` ao lado das novas recebem suas linhas pelo caminho
+  (`path_versions` no `docfx`): senão o guia do SignalR 1.x sai acima do seu gêmeo 2.x, e uma busca com versão não
+  acha nenhum.
 
 ## Anatomia de uma instância
 
