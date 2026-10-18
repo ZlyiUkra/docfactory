@@ -42,6 +42,13 @@ config.json): незмінний розділ сусідніх версій зл
 «YamlMime:FAQ» (питання й відповіді стають розділами). Сторінки-вітрини (Landing, Hub),
 змісти й перелік варіантів — самі посилання, вони не беруться.
 
+Версії за текою (`path_versions`). Класичний ASP.NET тримає посібники старих випусків у
+теках `older-versions*` поряд з посібниками нових, і без версії сторінка SignalR 1.x та її
+двійник для 2.x у пошуку нерозрізнені, а пошук з версією не бачить жодної. Поле — перелік
+пар [вираз шляху сторінки в наборі, версії через кому]: перша пара, чий вираз знайшовся в
+шляху, дає сторінці версії («signalr/overview/older-versions/» → «signalr-1.0, signalr-1.1,
+signalr-1.2»); сторінка без такої пари бере `version` джерела, як і було.
+
 Ще кілька полів, без яких усе лишається, як було: `exclude` — вирази шляхів у репозиторії,
 що не беруться; `rows: true` — сітка «:::row:::»/«:::column:::» стає рядками (перемикач
 продуктів над синтаксисом T-SQL — одним рядком через « | »), а не блоком із відступом;
@@ -566,6 +573,7 @@ def docfx(source: dict, ctx) -> list[Item]:
     repos = source.get("repos") or {}
     yaml_pages = source.get("yaml_pages") is True
     exclude = [re.compile(r) for r in source.get("exclude") or ()]
+    path_versions = [(re.compile(r), v) for r, v in source.get("path_versions") or ()]
     # Значки посеред рядка («**Applies to:** :::image type="icon" source="…/yes-icon.svg":::
     # SQL Server …»): з полем `icons` (частина імені файла → текст) названий значок стає
     # текстом, решта випадає. Без поля рядок той самий, що й був.
@@ -866,7 +874,9 @@ def docfx(source: dict, ctx) -> list[Item]:
         if prefix:
             name = f"{prefix}-{name}"
 
-        def make(path=path, url=url, here=here):
+        version = next((v for r, v in path_versions if r.search(rel)), source.get("version", ""))
+
+        def make(path=path, url=url, here=here, version=version):
             text = get(path)
             if text is None:
                 raise SystemExit(f"{path}: файл не прочитався — документ не записую.")
@@ -877,7 +887,7 @@ def docfx(source: dict, ctx) -> list[Item]:
             title = _markup.title_of(meta, url)
             body = _markup.markdown_body(clean(expand(rest, path, 0, (), here)))
             _markup.require(title, body, url, min_chars=1)
-            return _markup.document(title, url, ctx.stamp, body, source.get("version", ""))
+            return _markup.document(title, url, ctx.stamp, body, version)
 
         items.append(Item(id=f"{source['id']}/{name}", file=f"{source['id']}--{name}.txt",
                           make=make))
