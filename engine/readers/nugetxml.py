@@ -15,7 +15,9 @@
 - `view` — назва версії довідника на сайті для посилань («aspnetcore-10.0»);
 - `name_prefix` — перед іменем документа; `version` — у шапку;
 - `folder` — каталог XML у пакеті, коли він не ref/ і не lib/ (еталонні збірки .NET
-  Framework: «build/.NETFramework/v4.8.1/»).
+  Framework: «build/.NETFramework/v4.8.1/»);
+- `exclude_types` — вираз повного імені типу, що не береться: таблиці рядків ресурсів
+  (Resources, CoreStrings) і простори імен `.Internal`, публічні лише формально.
 
 Каталог збірок у пакеті обирається сам: `ref/` переважає `lib/`, бо це контракт, який
 бачить код; серед цільових платформ — найновіша .NET, потім .NET Standard, потім .NET
@@ -321,12 +323,13 @@ def _member_heading(mid: str, type_short: str) -> tuple[int, str]:
 def nuget_xmldoc(source: dict, ctx) -> list[Item]:
     view = source.get("view", "")
     prefix = source.get("name_prefix", "api")
+    drop = re.compile(source["exclude_types"]) if source.get("exclude_types") else None
     types = _parse(source, ctx)
     if not types:
         raise SystemExit(f"{source['url']}: у пакеті немає XML-документації потрібних збірок.")
     items = []
     for full in sorted(types):
-        if not full:
+        if not full or (drop and drop.search(full)):
             continue
         name = f"{prefix}-{_markup.slug(full.replace('`', '-'))}"
         url = ("https://learn.microsoft.com/en-us/dotnet/api/"
