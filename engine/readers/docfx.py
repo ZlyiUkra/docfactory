@@ -19,6 +19,37 @@ config.json): незмінний розділ сусідніх версій зл
 Поле `link: "github"` — для версій, яких сайт уже не показує: посилання документа веде
 на файл у репозиторії на тому коміті, з якого він узятий.
 
+Монікери без номера (`monikers`). У SQL Server версії звуться «sql-server-2017»,
+«sql-server-ver15» (2019), «sql-server-ver16» (2022), «sql-server-linux-ver15», а поряд
+стоять продукти взагалі без номера — «azuresqldb-current», «fabric». Порядок версій
+продукту тут з назви не виводиться, тож поле джерела `monikers` дає його явно: перелік
+переліків, кожен — монікери одного продукту від найстарішого до найновішого (як їх
+показує learn.microsoft.com/api/familyTrees). З полем «>= sql-server-ver15» — це ver15 і
+все новіше в переліку того самого продукту; монікер, якого в полі немає, не справджує
+нічого. `moniker` тоді може бути й переліком: редакція «SQL Server 2022» — це те, що сайт
+показує і для «sql-server-ver16», і для «sql-server-linux-ver16»; сторінка входить у
+редакцію, якщо її монікери перетинаються з переліком, а блок лишається, якщо його вираз
+справджує хоч один монікер, з якими сторінка є в редакції. Монікери сторінки — з поля шапки
+`monikerRange`; без нього — з `build.fileMetadata.monikerRange` у docfx.json набору (шаблон
+шляху → вираз; з кількох шаблонів діє останній, як у DocFX), а без нього — з
+`moniker_range` групи вмісту; `exclude_monikers` з того ж docfx.json віднімаються. Саме так
+сторінку бачить сайт: шапка сторінки T-SQL з «=fabric» робить її сторінкою Fabric, хоч
+шаблон теки t-sql/** Fabric не називає. Позначки блоків пишуть по-різному
+(«::: moniker range="…"», «:::moniker range=…», зрідка «::: monikerRange="…"»), і з полем
+`monikers` читач приймає всі. Без поля — усе, як було.
+
+Сторінки YAML. Поле `yaml_pages: true` бере ще й .yml набору, але лише ті, де є текст:
+«YamlMime:FAQ» (питання й відповіді стають розділами). Сторінки-вітрини (Landing, Hub),
+змісти й перелік варіантів — самі посилання, вони не беруться.
+
+Ще кілька полів, без яких усе лишається, як було: `exclude` — вирази шляхів у репозиторії,
+що не беруться; `rows: true` — сітка «:::row:::»/«:::column:::» стає рядками (перемикач
+продуктів над синтаксисом T-SQL — одним рядком через « | »), а не блоком із відступом;
+`icons` — об'єкт «частина імені файла значка → текст»: значок посеред рядка
+(«**Applies to:** :::image type="icon" source="…/yes-icon.svg"::: SQL Server») стає текстом
+(«✓»), решта таких значків випадає. Адреса дерева «…/git/trees/КОМІТ:ТЕКА?recursive=1» — дерево
+лише однієї теки, коли повне GitHub обрізає (SupportArticles-docs): шляхи доповнюються текою.
+
 Розмітка DocFX, яку читач розгортає до тексту:
 - «[!INCLUDE[…](шлях)]» — вставка, теж зі своїми блоками версій і вставками;
 - «[!code-csharp[](шлях?name=snippet_1)]» і «:::code … source="шлях" id="snippet_1":::» —
@@ -35,6 +66,7 @@ config.json): незмінний розділ сусідніх версій зл
   випадають; «> [!NOTE]» стає «> Note:».
 """
 
+import json
 import posixpath
 import re
 import textwrap
@@ -42,10 +74,19 @@ from urllib.parse import unquote, urlsplit
 
 from engine.readers import Item, _markup, register
 
-_TREE = re.compile(r"^/repos/([^/]+)/([^/]+)/git/trees/([^/]+)$")
+# Дерево гілки чи коміту; «КОМІТ:ТЕКА» — дерево лише однієї теки (у SupportArticles-docs
+# повне дерево GitHub обрізає), шляхи якого читач доповнює назад до кореня репозиторію.
+_TREE = re.compile(r"^/repos/([^/]+)/([^/]+)/git/trees/([^/:%]+)(?:(?::|%3A)(.+))?$")
 _MONIKER = re.compile(r'^[ \t]*:::[ \t]*moniker[ \t]+range="([^"]*)"[ \t]*$'
                       r"|^[ \t]*:::[ \t]*moniker-end[ \t]*$", re.M)
 _TERM = re.compile(r"(>=|<=|>|<|=)?\s*([a-z][a-z-]*?)-(\d+(?:\.\d+)*)")
+# Для поля `monikers`: позначки в усіх написаннях, які трапляються в sql-docs, і умова —
+# знак та ціле ім'я монікера, з цифрами чи без.
+_MONIKER_ANY = re.compile(r'^[ \t]*:::[ \t]*moniker(?:[ \t]+range|range)[ \t]*=[ \t]*"([^"]*)"[ \t:]*$'
+                          r"|^[ \t]*:::[ \t]*moniker-end[ \t:]*$", re.M | re.I)
+_NAMED_TERM = re.compile(r"(>=|<=|>|<|=)?\s*([a-z][a-z0-9.-]*[a-z0-9])")
+_YAML_MIME = re.compile(r"\A﻿?#+\s*YamlMime:(\w+)")
+_YAML_KEY = re.compile(r"""^("[^"]*"|'[^']*'|[^\s:#"'-][^:#]*?|-[^\s:#][^:#]*?)\s*:(?:\s+(.*))?$""")
 _INCLUDE = re.compile(r"\[!INCLUDE\s*\[[^\]]*\]\(\s*<?([^)\s>]+)>?[^)]*\)\]", re.I)
 _CODE_REF = re.compile(r"\[!code-([\w+#.-]+)\s*\[[^\]]*\]\(\s*<?([^)\s>]+)>?[^)]*\)\]")
 _CODE_TRIPLE = re.compile(r":::code\s+(.*?):::", re.S)
@@ -59,6 +100,7 @@ _ZONE_END = re.compile(r"^\s*:::\s*zone-end\s*:?:?:?\s*$")
 _IMAGE_COMPLEX = re.compile(r'^\s*:::image\s+type="complex".*?:::image-end:::\s*$', re.S | re.M)
 _TRIPLE_LINE = re.compile(r"^\s*:::[\w-]+(?:\s.*)?:::\s*$|^\s*:::[\w-]+:::\s*$")
 _NO_LOC = re.compile(r':::no-loc\s+text="((?:\\.|[^"\\])*)":::')
+_ICON = re.compile(r':::image\s+type="[a-z]+"\s[^\n]*?:::')
 _ALERT = re.compile(r"\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]", re.I)
 _DIV = re.compile(r"^\s*>?\s*\[!(?:div|VIDEO)\b[^\]]*\]\s*$", re.I)
 _FENCE = re.compile(r"^\s*(```+|~~~+)")
@@ -122,6 +164,281 @@ def _monikers(text: str, moniker: str) -> str:
     if keep:
         out.append(text[pos:])
     return "".join(out)
+
+
+class MonikerOrder:
+    """Монікери продуктів у порядку версій — поле джерела `monikers`. Вираз DocFX — це
+    альтернативи через «||», кожна з умов через пробіл; умова без знака — рівність,
+    «>=»/«>»/«<=»/«<» рахуються в переліку того самого продукту. Результат — множина
+    монікерів, яку вираз описує; ім'я, якого в переліках немає, дає порожню множину."""
+
+    def __init__(self, lists: list):
+        self._lists = [[str(m).lower() for m in lst] for lst in lists]
+        self._pos = {m: (i, j) for i, lst in enumerate(self._lists) for j, m in enumerate(lst)}
+        self._memo: dict = {}
+
+    def expand(self, expr: str) -> frozenset:
+        expr = (expr or "").strip().lower()
+        if expr not in self._memo:
+            out: set = set()
+            for alt in expr.split("||"):
+                cur = None
+                for op, name in _NAMED_TERM.findall(alt):
+                    got = self._term(op, name)
+                    cur = got if cur is None else cur & got
+                out |= cur or set()
+            self._memo[expr] = frozenset(out)
+        return self._memo[expr]
+
+    def _term(self, op: str, name: str) -> set:
+        if name not in self._pos:
+            return set()
+        i, j = self._pos[name]
+        lst = self._lists[i]
+        return set({">=": lst[j:], ">": lst[j + 1:], "<=": lst[:j + 1], "<": lst[:j]}.get(op, [name]))
+
+
+def _glob(pattern: str):
+    """Шаблон шляху DocFX («ado/**/*.md», «./*.yml») як вираз: «**/» — будь-скільки тек,
+    зокрема жодної, «*» — будь-що в межах однієї теки."""
+    p = pattern.strip()
+    if p.startswith("./"):
+        p = p[2:]
+    out, i = [], 0
+    while i < len(p):
+        if p.startswith("**/", i):
+            out.append("(?:.*/)?")
+            i += 3
+        elif p.startswith("**", i):
+            out.append(".*")
+            i += 2
+        elif p[i] == "*":
+            out.append("[^/]*")
+            i += 1
+        elif p[i] == "?":
+            out.append("[^/]")
+            i += 1
+        else:
+            out.append(re.escape(p[i]))
+            i += 1
+    return re.compile("".join(out) + r"\Z")
+
+
+def _monikers_where(text: str, keep) -> str:
+    """Текст без блоків, чий вираз `keep` відкидає; `keep` None — лишаються всі блоки,
+    випадають лише позначки. Позначки — в усіх написаннях (`_MONIKER_ANY`)."""
+    if keep is None:
+        return _MONIKER_ANY.sub("", text)
+    out, pos, on = [], 0, True
+    for m in _MONIKER_ANY.finditer(text):
+        if on:
+            out.append(text[pos:m.start()])
+        on = keep(m.group(1)) if m.group(1) is not None else True
+        pos = m.end()
+    if on:
+        out.append(text[pos:])
+    return "".join(out)
+
+
+def yaml_load(text: str):
+    """Підмножина YAML, якою DocFX пише сторінки FAQ: словники й списки за відступом,
+    рядки в лапках і без (зокрема на кількох рядках), блоки «|» і «>». Блок зберігає
+    відносні відступи — відповідь FAQ буває списком із вкладеними пунктами чи кодом.
+    Бібліотеки YAML примірник не тягне: більше цим файлам не треба."""
+    lines = text.replace("\r\n", "\n").replace("\t", "    ").split("\n")
+    n = len(lines)
+
+    def ind(s):
+        return len(s) - len(s.lstrip(" "))
+
+    def skip(i):
+        while i < n and (not lines[i].strip() or lines[i].lstrip().startswith("#")):
+            i += 1
+        return i
+
+    def dash(s):
+        t = s.lstrip()
+        return t == "-" or t.startswith("- ")
+
+    def scalar(v):
+        v = v.strip()
+        if len(v) > 1 and v[0] in "\"'" and v[-1] == v[0]:
+            inner = v[1:-1]
+            return inner.replace("''", "'") if v[0] == "'" else inner.replace('\\"', '"')
+        return re.sub(r"\s+#\s.*$", "", v)
+
+    def block(i, parent, style):
+        body = []
+        while i < n and (not lines[i].strip() or ind(lines[i]) > parent):
+            body.append(lines[i])
+            i += 1
+        body = textwrap.dedent("\n".join(body)).strip("\n").split("\n")
+        if not style.startswith(">"):
+            return "\n".join(body), i
+        out, para = [], []
+        for ln in body:
+            if ln.strip() and not ln.startswith(" "):
+                para.append(ln.strip())
+                continue
+            if para:
+                out.append(" ".join(para))
+                para = []
+            out.append(ln)
+        if para:
+            out.append(" ".join(para))
+        return "\n".join(out), i
+
+    def value(v, i, indent):
+        if v in ("|", "|-", "|+", ">", ">-", ">+"):
+            return block(i + 1, indent, v)
+        if not v:
+            j = skip(i + 1)
+            if j < n and (ind(lines[j]) > indent or (ind(lines[j]) == indent and dash(lines[j]))):
+                return node(j)
+            return "", i + 1
+        i += 1
+        if v[0] in "\"'":
+            while not (len(v) > 1 and v.rstrip().endswith(v[0])) and i < n:
+                v += " " + lines[i].strip()
+                i += 1
+        else:
+            while (i < n and lines[i].strip() and ind(lines[i]) > indent
+                   and not lines[i].lstrip().startswith("#")):
+                v += " " + lines[i].strip()
+                i += 1
+        return scalar(v), i
+
+    def node(i):
+        return seq(i, ind(lines[i])) if dash(lines[i]) else mapping(i, ind(lines[i]))
+
+    def seq(i, indent):
+        out = []
+        while True:
+            i = skip(i)
+            if i >= n or ind(lines[i]) != indent or not dash(lines[i]):
+                return out, i
+            rest = lines[i].lstrip()[1:]
+            item = rest.lstrip()
+            if not item:
+                j = skip(i + 1)
+                if j < n and ind(lines[j]) > indent:
+                    val, i = node(j)
+                else:
+                    val, i = None, i + 1
+            elif _YAML_KEY.match(item):
+                lines[i] = " " * (indent + 1 + len(rest) - len(item)) + item
+                val, i = mapping(i, ind(lines[i]))
+            else:
+                val, i = value(item, i, indent)
+            out.append(val)
+
+    def mapping(i, indent):
+        out = {}
+        while True:
+            i = skip(i)
+            if i >= n or ind(lines[i]) != indent or dash(lines[i]):
+                return out, i
+            m = _YAML_KEY.match(lines[i].strip())
+            if not m:
+                i += 1
+                continue
+            out[scalar(m.group(1))], i = value((m.group(2) or "").strip(), i, indent)
+
+    try:
+        start = skip(0)
+        return node(start)[0] if start < n else {}
+    except (IndexError, ValueError, RecursionError):
+        return {}
+
+
+def faq_page(text: str) -> tuple[dict, str]:
+    """Сторінка «YamlMime:FAQ» як markdown: (поля metadata з назвою, тіло). Розділ FAQ —
+    заголовок другого рівня, кожне питання — заголовок під ним (без назви розділу —
+    другого рівня), відповідь — його текст."""
+    data = yaml_load(text)
+    if not isinstance(data, dict):
+        return {}, ""
+    meta = {k: v for k, v in (data.get("metadata") or {}).items() if isinstance(v, str)}
+    if isinstance(data.get("title"), str) and data["title"].strip():
+        meta["title"] = data["title"].strip()
+    out = []
+    for key in ("summary", "text"):
+        if isinstance(data.get(key), str) and data[key].strip():
+            out += [data[key].strip(), ""]
+    for sec in data.get("sections") or []:
+        if not isinstance(sec, dict):
+            continue
+        name = " ".join(str(sec.get("name") or "").split())
+        # Розділ «Ignored» — домовленість DocFX: сайт його назви не показує.
+        if name.lower() == "ignored":
+            name = ""
+        if name:
+            out += [f"## {name}", ""]
+        if isinstance(sec.get("text"), str) and sec["text"].strip():
+            out += [sec["text"].strip(), ""]
+        for q in sec.get("questions") or []:
+            if not isinstance(q, dict):
+                continue
+            question = " ".join(str(q.get("question") or "").split())
+            if question:
+                out += [("### " if name else "## ") + question, ""]
+            if isinstance(q.get("answer"), str) and q["answer"].strip():
+                out += [q["answer"].strip(), ""]
+    extra = data.get("additionalContent")
+    if isinstance(extra, str) and extra.strip():
+        out += [extra.strip(), ""]
+    return meta, "\n".join(out)
+
+
+_ROW = re.compile(r"^\s*:::\s*row(?:\s[^:]*)?:::\s*$")
+_ROW_END = re.compile(r"^\s*:::\s*row-end\s*:::\s*$")
+_COLUMN = re.compile(r"^\s*:::\s*column(?:\s[^:]*)?:::\s*$")
+_COLUMN_END = re.compile(r"^\s*:::\s*column-end\s*:::\s*$")
+
+
+def _layout_rows(text: str) -> str:
+    """Сітка «:::row:::» / «:::column:::» поза огорожами коду — звичайними рядками. Вміст
+    колонок DocFX пише з відступом у вісім пробілів, і без сітки він ставав би блоком
+    коду. Рядок, де кожна колонка — один короткий рядок (перемикач продуктів «SQL Server |
+    SQL Database | …» над синтаксисом), стає одним рядком через « | »; інакше колонки
+    йдуть абзацами одна за одною."""
+    if ":::" not in text:
+        return text
+    out, fence, cols, cur = [], "", None, None
+    for ln in text.split("\n"):
+        fm = _FENCE.match(ln)
+        if fence or (fm and cols is None):
+            out.append(ln)
+            if fence and fm and not ln.strip()[len(fence):].strip():
+                fence = ""
+            elif not fence and fm:
+                fence = fm.group(1)
+            continue
+        if cols is None:
+            if _ROW.match(ln):
+                cols = []
+            else:
+                out.append(ln)
+            continue
+        if _COLUMN.match(ln):
+            cur = []
+        elif _COLUMN_END.match(ln):
+            if cur is not None:
+                cols.append([c for c in cur if c])
+            cur = None
+        elif _ROW_END.match(ln):
+            if cols and all(len(c) <= 1 and len(c[0] if c else "") <= 200 for c in cols):
+                out.extend(["", " | ".join(c[0] for c in cols if c), ""])
+            else:
+                for c in cols:
+                    out.extend(["", *c, ""])
+            cols = cur = None
+        elif cur is not None:
+            cur.append(ln.strip())
+    if cols is not None:
+        for c in cols + ([cur] if cur else []):
+            out.extend(["", *[x for x in c if x], ""])
+    return "\n".join(out)
 
 
 def _dedent_block(lines: list[str]) -> list[str]:
@@ -233,14 +550,29 @@ def docfx(source: dict, ctx) -> list[Item]:
     m = _TREE.match(parts.path)
     if not m:
         raise SystemExit(f"{source['url']}: очікував адресу дерева гілки "
-                         f"/repos/ВЛАСНИК/РЕПО/git/trees/ГІЛКА.")
-    owner, repo, branch = m.groups()
+                         f"/repos/ВЛАСНИК/РЕПО/git/trees/ГІЛКА[:ТЕКА].")
+    owner, repo, branch, folder = m.groups()
+    folder = unquote(folder).strip("/") if folder else ""
     docset = source["docset"].strip("/")
     site = source["site"].rstrip("/") + "/"
     moniker = source.get("moniker", "")
-    view = f"?view={moniker}" if moniker else ""
+    # Перелік монікерів редакції; рядок — редакція з одного, як і було.
+    wanted = [m for m in ([moniker] if isinstance(moniker, str) else moniker) if m]
+    order = MonikerOrder(source["monikers"]) if source.get("monikers") else None
+    if order is not None:
+        wanted = [m.lower() for m in wanted]
+    view = f"?view={moniker}" if isinstance(moniker, str) and moniker else ""
     prefix = source.get("name_prefix", "")
     repos = source.get("repos") or {}
+    yaml_pages = source.get("yaml_pages") is True
+    exclude = [re.compile(r) for r in source.get("exclude") or ()]
+    # Значки посеред рядка («**Applies to:** :::image type="icon" source="…/yes-icon.svg":::
+    # SQL Server …»): з полем `icons` (частина імені файла → текст) названий значок стає
+    # текстом, решта випадає. Без поля рядок той самий, що й був.
+    icons = source.get("icons")
+    # Сітка «:::row:::» — лише з полем `rows: true`: у примірниках, зібраних раніше, її
+    # вміст лишається таким, як був.
+    rows = source.get("rows") is True
     tree = _markup_json(ctx, source["url"])
     if tree.get("truncated"):
         raise SystemExit(f"{source['url']}: GitHub обрізав дерево — перелік був би неповним.")
@@ -266,31 +598,88 @@ def docfx(source: dict, ctx) -> list[Item]:
             return posixpath.normpath(ref.lstrip("/"))
         return posixpath.normpath(posixpath.join(base_dir, ref))
 
+    # Вставки однакові для всіх сторінок і розгортаються тисячі разів (у sql-docs —
+    # «[!INCLUDE[ssnoversion-md]…]» майже в кожному абзаці); короткі тримаються в пам'яті
+    # до кінця джерела, а не читаються щоразу зі сховища. Текст той самий.
+    small: dict = {}
+
     def get(path: str) -> str | None:
+        if path in small:
+            return small[path]
         url = raw_of(path)
         if url is None or not ctx.allowed(url):
             return None
         code, data = ctx.fetch(url)
         if code != "200":
             return None
-        return data.decode("utf-8", errors="replace").replace("\r\n", "\n").lstrip("﻿")
+        text = data.decode("utf-8", errors="replace").replace("\r\n", "\n").lstrip("﻿")
+        if "/includes/" in "/" + path and len(text) <= 16384:
+            small[path] = text
+        return text
+
+    # docfx.json набору — монікери тек (fileMetadata) і групи; лише з полем `monikers`.
+    rules: list = []
+    drops: list = []
+    group_range = ""
+    pivot_files = [f"{docset}/zone-pivot-groups.yml"]
+    if order is not None:
+        try:
+            conf = json.loads(get(f"{docset}/docfx.json") or "{}").get("build") or {}
+        except ValueError as exc:
+            raise SystemExit(f"{docset}/docfx.json: не JSON ({exc}) — монікерів тек не знаю.")
+        meta_rules = conf.get("fileMetadata") or {}
+        rules = [(_glob(g), r) for g, r in (meta_rules.get("monikerRange") or {}).items()
+                 if isinstance(r, str)]
+        drops = [(_glob(g), {str(m).lower() for m in v})
+                 for g, v in (meta_rules.get("exclude_monikers") or {}).items() if isinstance(v, list)]
+        groups = conf.get("groups") or {}
+        for content in conf.get("content") or []:
+            grp = groups.get(content.get("group") or "") if isinstance(content, dict) else None
+            if isinstance(grp, dict) and grp.get("moniker_range"):
+                group_range = grp["moniker_range"]
+                break
+        for f in (meta_rules.get("zone_pivot_group_filename") or {}).values():
+            if isinstance(f, str):
+                pivot_files.append(f"{docset}/{f.removesuffix('.json')}.yml")
+
+    def page_monikers(rel: str, meta: dict):
+        """Монікери, з якими сайт показує сторінку (шлях від теки набору); None — сторінка
+        без версій, є в кожній."""
+        own = meta.get("monikerRange", "")
+        if not own:
+            for rx, rng in rules:
+                if rx.match(rel):
+                    own = rng
+            own = own or group_range
+        if not own:
+            return None
+        got = order.expand(own)
+        for rx, ms in drops:
+            if rx.match(rel):
+                got = got - ms
+        return got
 
     # Підписи варіантів «:::zone pivot» — з переліку набору; без нього підписом стає id.
     pivots: dict = {}
-    pivots_text = get(f"{docset}/zone-pivot-groups.yml") if source.get("pivots", True) else None
-    for pm in _PIVOT.finditer(pivots_text or ""):
-        pivots[pm.group(1)] = pm.group(2).strip().strip('"')
+    for pf in pivot_files if source.get("pivots", True) else ():
+        found = {pm.group(1): pm.group(2).strip().strip('"') for pm in _PIVOT.finditer(get(pf) or "")}
+        for key, label in found.items():
+            pivots.setdefault(key, label)
 
     paths = []
     for entry in tree["tree"]:
         path = entry.get("path", "")
+        if folder:
+            path = f"{folder}/{path}"
         if (entry.get("type") != "blob" or not path.startswith(docset + "/")
-                or not path.endswith(".md")):
+                or not (path.endswith(".md") or (yaml_pages and path.endswith(".yml")))):
             continue
         segs = path.split("/")
         if any(s in ("includes", "samples", "snippets", "_includes") for s in segs[:-1]):
             continue
-        if segs[-1].lower() in ("readme.md", "license.md", "toc.md"):
+        if segs[-1].lower() in ("readme.md", "license.md", "toc.md", "toc.yml"):
+            continue
+        if any(r.search(path) for r in exclude):
             continue
         paths.append(path)
 
@@ -298,15 +687,30 @@ def docfx(source: dict, ctx) -> list[Item]:
     # сторінка в цій версії, а `uid` → назва потрібні посиланням xref з інших сторінок.
     titles: dict = {}
     pages = []
+    shown: dict = {}
     for path in paths:
         text = get(path)
         if text is None:
             continue
-        meta, _ = _markup.front_matter(text)
+        if path.endswith(".yml"):
+            mime = _YAML_MIME.match(text)
+            if not mime or mime.group(1) != "FAQ":
+                continue
+            meta, _ = faq_page(text)
+        else:
+            meta, _ = _markup.front_matter(text)
         if meta.get("uid"):
             titles[meta["uid"]] = _markup.title_of(meta, path)
+        if order is not None:
+            got = page_monikers(path[len(docset) + 1:], meta)
+            here = [m for m in wanted if got is None or m in got]
+            if wanted and not here:
+                continue
+            shown[path] = frozenset(here) if wanted else None
+            pages.append(path)
+            continue
         rng = meta.get("monikerRange", "")
-        if moniker and rng and not in_range(rng, moniker):
+        if wanted and rng and not any(in_range(rng, m) for m in wanted):
             continue
         pages.append(path)
 
@@ -346,11 +750,22 @@ def docfx(source: dict, ctx) -> list[Item]:
         lang = _LANG.get(lang, lang)
         return "\n".join(["", "```" + lang, *lines, *tail, "```", ""])
 
-    def expand(text: str, path: str, depth: int, stack: tuple = ()) -> str:
+    def versions_of(text: str, here) -> str:
+        """Текст без блоків, яких сайт у цій редакції не показує. `here` — монікери
+        редакції, з якими є сторінка (лише з полем `monikers`)."""
+        if order is not None:
+            return _monikers_where(text, None if here is None else
+                                   (lambda e: bool(order.expand(e) & here)))
+        if isinstance(moniker, str):
+            return _monikers(text, moniker)
+        return _monikers_where(text, (lambda e: any(in_range(e, m) for m in wanted))
+                               if wanted else None)
+
+    def expand(text: str, path: str, depth: int, stack: tuple = (), here=None) -> str:
         """Текст файла `path` (сторінки чи вставки) з розгорнутими версіями, вставками й
         прикладами коду. Шляхи вставки — від її власної теки, як у DocFX."""
         base = posixpath.dirname(path)
-        text = _monikers(_drop_comments(text), moniker)
+        text = versions_of(_drop_comments(text), here)
         text = _IMAGE_COMPLEX.sub("", text)
 
         def include(im):
@@ -360,7 +775,7 @@ def docfx(source: dict, ctx) -> list[Item]:
             inner = get(target)
             if inner is None:
                 return ""
-            return expand(_strip_front(inner).strip("\n"), target, depth + 1, stack + (path,))
+            return expand(_strip_front(inner).strip("\n"), target, depth + 1, stack + (path,), here)
 
         text = _INCLUDE.sub(include, text)
 
@@ -394,7 +809,7 @@ def docfx(source: dict, ctx) -> list[Item]:
         """Решта розмітки DocFX поза огорожами коду: вкладки, варіанти, зображення,
         позначки на кшталт «[!div]»; посилання xref — назвами."""
         out, fence = [], ""
-        for ln in text.split("\n"):
+        for ln in (_layout_rows(text) if rows else text).split("\n"):
             fm = _FENCE.match(ln)
             if fence:
                 out.append(ln)
@@ -418,6 +833,8 @@ def docfx(source: dict, ctx) -> list[Item]:
             if _ZONE_END.match(ln) or _HR.match(ln) or _DIV.match(ln):
                 continue
             ln = _NO_LOC.sub(lambda nm: nm.group(1).replace('\\"', '"'), ln)
+            if icons is not None:
+                ln = _ICON.sub(lambda im: next((v for k, v in icons.items() if k in im.group(0)), ""), ln)
             if _TRIPLE_LINE.match(ln):
                 continue
             ln = _XREF_LINK.sub(lambda xm: xm.group(1) or xref(xm.group(2)), ln)
@@ -429,7 +846,13 @@ def docfx(source: dict, ctx) -> list[Item]:
     items, used = [], set()
     for path in pages:
         rel = path[len(docset) + 1:].removesuffix(".md")
+        if yaml_pages:
+            rel = rel.removesuffix(".yml")
         page = re.sub(r"(^|/)index$", r"\1", rel)
+        here = shown.get(path)
+        if order is not None and wanted:
+            # Сторінку лише для Linux сайт відкриває з ?view= монікера Linux.
+            view = f"?view={next(m for m in wanted if here is None or m in here)}"
         # Версій, яких сайт уже не показує, адреса з ?view= не відкриє — вона переводить
         # на найновішу; тоді посилання веде на сам файл того коміту.
         url = (f"https://github.com/{owner}/{repo}/blob/{branch}/{path}"
@@ -437,17 +860,22 @@ def docfx(source: dict, ctx) -> list[Item]:
         name = _markup.slug(re.sub(r"(^|/)index$", "", rel) or "index")
         if name in used:
             name = _markup.slug(rel)
+        if yaml_pages and name in used:
+            name = _markup.slug(path[len(docset) + 1:])
         used.add(name)
         if prefix:
             name = f"{prefix}-{name}"
 
-        def make(path=path, url=url):
+        def make(path=path, url=url, here=here):
             text = get(path)
             if text is None:
                 raise SystemExit(f"{path}: файл не прочитався — документ не записую.")
-            meta, rest = _markup.front_matter(text)
+            if path.endswith(".yml"):
+                meta, rest = faq_page(text)
+            else:
+                meta, rest = _markup.front_matter(text)
             title = _markup.title_of(meta, url)
-            body = _markup.markdown_body(clean(expand(rest, path, 0)))
+            body = _markup.markdown_body(clean(expand(rest, path, 0, (), here)))
             _markup.require(title, body, url, min_chars=1)
             return _markup.document(title, url, ctx.stamp, body, source.get("version", ""))
 
@@ -455,7 +883,7 @@ def docfx(source: dict, ctx) -> list[Item]:
                           make=make))
     if not items:
         raise SystemExit(f"{source['url']}: у наборі {docset} немає жодної сторінки"
-                         f"{' для ' + moniker if moniker else ''}.")
+                         f"{' для ' + ', '.join(wanted) if wanted else ''}.")
     return items
 
 

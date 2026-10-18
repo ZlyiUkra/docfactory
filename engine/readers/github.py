@@ -26,6 +26,9 @@
                згортав би один реліз як повтор іншого. Без поля ім'я те саме, що й було.
                Поле `version_prefix` стає перед версією («redis-» → «redis-1.39.0»): для
                примірника з кількома нумераціями. Без поля версія та сама.
+               Поле `stable: true` — без релізів, позначених на GitHub як передрелізи: у
+               mssql-jdbc превʼю мають звичайний тег («v13.5.1»), і вираз тегу їх не
+               відрізнить. Без поля беруться всі, як і було.
 `ghcommit`   — один коміт через API (…/repos/ВЛАСНИК/РЕПО/commits/SHA): повідомлення,
                автор, дата, склад файлів; поле `files` — шляхи, текст яких на цьому
                коміті додається в документ (напр. тодішній README.md).
@@ -186,6 +189,8 @@ def ghreleases(source: dict, ctx) -> list[Item]:
         if not isinstance(rel, dict) or rel.get("draft") or not rel.get("tag_name"):
             continue
         if skip and skip.search(str(rel["tag_name"])):
+            continue
+        if source.get("stable") is True and rel.get("prerelease"):
             continue
         tag = str(rel["tag_name"])
         m = _RELEASE_TAG.match(tag)

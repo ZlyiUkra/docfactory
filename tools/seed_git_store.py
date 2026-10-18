@@ -26,6 +26,14 @@ raw.githubusercontent.com той самий blob байт у байт. Інст�
 підходить теж: blob-и, яких бракує, інструмент докачує пачками (`git fetch --stdin origin`), і лише ті,
 що потрапили до відбору.
 
+Читач `docfx` (документація learn.microsoft.com з репозиторію) розгортає вставки й приклади коду
+з будь-якого місця набору, тож для нього кладуться всі текстові blob-и головного репозиторію на коміті
+з адреси дерева (зображення й інші двійкові файли — ні), саме дерево `git/trees/<коміт>?recursive=1`
+(читач гортає сторінки вже під час переліку, і `list` тягнув би кожну мережею) і з залежних
+репозиторіїв (поле `repos`: тека → «власник/репо/коміт») — лише файли, на які сторінки посилаються
+шляхом «~/../<тека>/…». Клон залежного репозиторію може бути неглибоким частковим
+(`--depth=1 --filter=blob:none`): потрібні blob-и докачуються пачкою.
+
 Білий список не слабшає: беруться лише джерела з `sources.json`, лише оголошені в них теги й шляхи, і
 лише з клонів, названих у `--clone власник/репо=шлях`. Нічого не видаляє й не перезаписує: запис, який
 у сховищі вже є, лишається.
@@ -35,6 +43,7 @@ import argparse
 import json
 import os
 import pathlib
+import posixpath
 import re
 import subprocess
 import sys
@@ -49,7 +58,13 @@ from engine.readers.ghhistory import _LOCALE  # noqa: E402
 RAW = "https://raw.githubusercontent.com"
 TREES = re.compile(r"^/repos/([^/]+)/([^/]+)/git/trees/(.*)$")
 READERS = {"ghdocs-history", "ghcode-history", "ghcode-history-ts", "ghcode-history-proto", "otel-registry",
-           "ghdocs-history-xhp", "ghcode-history-lo"}
+           "ghdocs-history-xhp", "ghcode-history-lo", "docfx"}
+# Двійкові файли, яких читач docfx ніколи не просить: зображення, архіви, бази для прикладів.
+BINARY = (".png", ".gif", ".jpg", ".jpeg", ".svg", ".ico", ".bmp", ".tif", ".tiff", ".webp", ".zip", ".gz",
+          ".7z", ".pdf", ".mp4", ".wmv", ".mov", ".pptx", ".docx", ".xlsx", ".vsdx", ".exe", ".dll", ".msi",
+          ".nupkg", ".bak", ".bacpac", ".dacpac", ".mdf", ".ldf", ".jar", ".whl", ".ttf", ".woff", ".woff2")
+# Посилання сторінки DocFX на файл залежного репозиторію: «~/../<тека>/<шлях>».
+DEPENDENT = re.compile(r"~/\.\./([\w.-]+)/([^\s)\"'?#\]]+)")
 PLAIN = {"vitepress", "vocs", "astro_mdx", "prisma_mdx", "biome_mdx", "mdbook", "base_ui", "jsx_sources",
          "hugo", "sphinx"}
 
@@ -78,6 +93,8 @@ def _selector(src: dict):
     if src["reader"] == "ghdocs-history-xhp":
         roots = tuple(r.strip("/") + "/" for r in src.get("roots") or ["source/text"])
         return lambda path: path.startswith(roots) and path.endswith(".xhp")
+    if src["reader"] == "docfx":
+        return lambda path: not path.lower().endswith(BINARY)
     include = [re.compile(r) for r in src.get("include") or ()]
     return lambda path: any(r.search(path) for r in include) and not any(r.search(path) for r in exclude)
 
@@ -146,6 +163,70 @@ def _put_trees(store, sources: list[dict], clones: dict) -> None:
         print(f"  {src['id']}: дерев тегів {n}", flush=True)
 
 
+def _docfx_tree(store, src: dict, clone: pathlib.Path, ref: str) -> None:
+    """Дерево коміту у вигляді відповіді API — те, що читач docfx бере першим зверненням."""
+    if store.meta(src["url"]) is not None:
+        return  # запис, що вже є, лишається як був
+    out = subprocess.run(["git", "--git-dir", str(clone), "ls-tree", "-r", "-t", ref],
+                         capture_output=True, text=True, check=True).stdout
+    tree = []
+    for ln in out.splitlines():
+        meta, path = ln.split("\t", 1)
+        mode, typ, blob = meta.split()
+        tree.append({"path": path, "mode": mode, "type": typ, "sha": blob})
+    sha = subprocess.run(["git", "--git-dir", str(clone), "rev-parse", f"{ref}^{{tree}}"],
+                         capture_output=True, text=True).stdout.strip()
+    store.put(src["url"], "", json.dumps({"sha": sha, "tree": tree, "truncated": False}).encode(), {})
+    print(f"  {src['id']}: дерево {ref[:12]} ({len(tree)} записів)", flush=True)
+
+
+def _docfx_dependent(src: dict, clone: pathlib.Path, ref: str, clones: dict) -> dict:
+    """{адреса: sha} файлів залежних репозиторіїв, на які посилаються сторінки й вставки
+    головного (текстові файли коміту `ref`)."""
+    key = (str(clone), ref, json.dumps(src.get("repos") or {}, sort_keys=True))
+    if key in _DEPENDENT_SEEN:
+        return _DEPENDENT_SEEN[key]
+    pages = [sha for path, sha in _ls(clone, ref) if path.endswith((".md", ".yml"))]
+    lost = _missing(clone, sorted(set(pages)))
+    if lost:
+        _fetch(clone, lost)
+    wanted: set = set()
+    proc = subprocess.Popen(["git", "--git-dir", str(clone), "cat-file", "--batch"], stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE, env=dict(os.environ, GIT_NO_LAZY_FETCH="1"))
+    for sha in pages:
+        proc.stdin.write((sha + "\n").encode())
+        proc.stdin.flush()
+        head = proc.stdout.readline().decode().split()
+        if len(head) < 3 or head[1] == "missing":
+            continue
+        text = proc.stdout.read(int(head[2])).decode("utf-8", errors="replace")
+        proc.stdout.read(1)
+        wanted.update(DEPENDENT.findall(text))
+    proc.stdin.close()
+    proc.wait()
+    urls: dict = {}
+    by_head = {h: r for h, r in (src.get("repos") or {}).items()}
+    listed: dict = {}
+    for head, rest in sorted(wanted):
+        spec = by_head.get(head)
+        if not spec:
+            continue
+        owner, repo, dep_ref = spec.split("/", 2)
+        dep = clones.get(f"{owner}/{repo}")
+        if dep is None:
+            continue
+        if spec not in listed:
+            listed[spec] = dict(_ls(dep, dep_ref))
+        path = posixpath.normpath(rest)
+        if path in listed[spec]:
+            urls[f"{RAW}/{spec}/{quote(path)}"] = listed[spec][path]
+    _DEPENDENT_SEEN[key] = urls
+    return urls
+
+
+_DEPENDENT_SEEN: dict = {}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--instance", required=True, help="назва примірника (тека в instances/)")
@@ -172,6 +253,7 @@ def main() -> int:
     # репо → {адреса: sha}; порядок джерел і тегів — як у sources.json
     plan: dict[str, dict[str, str]] = {}
     skipped = []
+    docfx: list = []
     for src in sources:
         if src.get("reader") not in READERS:
             continue
@@ -186,6 +268,9 @@ def main() -> int:
             continue
         ok = _selector(src)
         tags = [src["ref"]] if src["reader"] == "otel-registry" else list(src.get("tags") or {})
+        if src["reader"] == "docfx":
+            tags = [m.group(3)]
+            docfx.append((src, clones[repo], m.group(3)))
         first: dict = {}
         for tag in tags:
             for path, sha in _ls(clones[repo], tag):
@@ -195,6 +280,12 @@ def main() -> int:
         for (path, sha), tag in first.items():
             urls.setdefault(f"{RAW}/{repo}/{quote(tag, safe='@')}/{quote(path)}", sha)
         print(f"  {src['id']}: {len(first)} пар «шлях, вміст» на {len(tags)} тегах", flush=True)
+    for src, clone, ref in docfx:
+        dep = _docfx_dependent(src, clone, ref, clones)
+        for url, sha in dep.items():
+            owner, repo = urlsplit(url).path.split("/")[1:3]
+            plan.setdefault(f"{owner}/{repo}", {}).setdefault(url, sha)
+        print(f"  {src['id']}: файлів залежних репозиторіїв {len(dep)}", flush=True)
     for sid in skipped:
         print(f"  {sid}: поля розгортання, яких інструмент не знає, — лишається мережі", flush=True)
     if not plan:
@@ -203,6 +294,8 @@ def main() -> int:
     store = None if args.dry_run else rawstore.of(inst, time.strftime("%Y-%m-%d"))
     if args.trees and store is not None:
         _put_trees(store, sources, clones)
+    for src, clone, ref in docfx if store is not None else ():
+        _docfx_tree(store, src, clone, ref)
     if store is None and not args.dry_run:
         raise SystemExit(f"{inst}: сховище сирого вимкнено (raw_store: false)")
     t0 = time.time()
