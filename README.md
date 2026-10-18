@@ -2208,6 +2208,31 @@ HTML, тека кожної версії), `changelog-prerelease` (журнал,
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/nvidia-container-toolkit/README.md](instances/nvidia-container-toolkit/README.md).
 
+### anthropic-api
+
+Документація API Anthropic англійською — виклик моделей Claude (Haiku, Sonnet, Opus, Fable) через Messages API та
+офіційні SDK: сайт platform.claude.com/docs цілком (моделі з окремою сторінкою кожної, ціни, ліміти, помилки, версії й
+заголовки beta, Messages API, потокова видача, thinking і effort, виклик інструментів і серверні інструменти,
+кешування промпту, пакетна обробка, файли, структуровані відповіді, MCP, Agent Skills, Managed Agents, Admin API,
+хмарні платформи Bedrock, Vertex AI, Microsoft Foundry і Claude Platform on AWS, промпт-інженерія, журнали змін і
+системні промпти, HTTP-довідник API); довідник API в редакціях Python і TypeScript SDK; README, `api.md`, helpers і
+MIGRATION з кожного стабільного тегу SDK TypeScript (v0.2.1–sdk-v0.135.0), Python (v0.2.1–v1.15.0), Go, Ruby, C# і
+CLI `ant` з нотатками релізів; код і приклади TypeScript SDK 0.135.0 і Python SDK 1.15.0; таблиці версій і README
+`@anthropic-ai/sdk` та обгорток bedrock, vertex, foundry, aws, google-cloud на npm і `anthropic` на PyPI; рецепти
+claude-cookbooks. Нові читачі `md-index` (зміст у markdown з посиланнями на `.md`, зокрема вкладеними й від кореня
+сайту) і `ghdocs-history-ipynb` (обгортка над `ghdocs-history`, що робить із зошитів Jupyter markdown). 6 316
+документів, 92 404 фрагменти.
+
+- порт `8860`; запис у Claude Code — `anthropic-api-docs`, адреса `http://127.0.0.1:8860/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-anthropic-api`, модель векторів — `bge-small`;
+- версія — з назвою SDK (`version: "python-1.15"`, `"typescript-0.135.0"`, `"go-1.82"`, `"bedrock-sdk-0.35"`); сторінки
+  сайту, довідник API і cookbooks шукають без версії; без названої версії — найновіша;
+- приклад питання агентові: `./df anthropic-api ask "What does claude-haiku-5-5 cost per MTok, and what is its context
+  window?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/anthropic-api/README.md](instances/anthropic-api/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
