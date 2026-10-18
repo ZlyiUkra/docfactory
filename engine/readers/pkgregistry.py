@@ -13,6 +13,10 @@
                  версією, датою й вимогами (Ruby, PHP і розширення, цільові платформи .NET).
                  Передрелізи (`beta`, `alpha`, `rc`, `pre`) лише рахуються. `label` — назва пакета в
                  заголовку, `version_prefix` — мітка версій («ruby-»), `page` — людська сторінка.
+                 `variant` — вираз частини номера, що позначає збірку під середовище, а не версію
+                 (mssql-jdbc: «13.2.0.jre8», «13.2.0.jre11» → `\.(jre\d+)`): частина вирізається,
+                 збірки однієї версії стають одним рядком з переліком варіантів. Без поля «13.2.0.jre8»
+                 не схоже на номер і рахувалося б передрелізом.
 
 Навіщо. Для SDK Stripe інших мов реєстри кажуть те, чого немає в репозиторії: коли версію
 опубліковано і яку версію мови чи .NET вона вимагає. README у цих реєстрах — той самий, що на
@@ -90,6 +94,17 @@ def pkg_registry(source: dict, ctx) -> list[Item]:
 
     def make():
         rows = [(v.lstrip("v"), d, need) for v, d, need in _KINDS[kind](ctx, source) if v]
+        if source.get("variant"):
+            vrx = re.compile(source["variant"])
+            merged: dict = {}
+            for v, d, need in rows:
+                m = vrx.search(v)
+                base = vrx.sub("", v) if m else v
+                got = merged.setdefault(base, [d, need, []])
+                if m:
+                    got[2].append(m.group(1) if m.groups() else m.group(0))
+            rows = [(b, d, "; ".join(x for x in (need, ("builds " + ", ".join(vs)) if vs else "") if x))
+                    for b, (d, need, vs) in merged.items()]
         stable = sorted({r[0]: r for r in rows if _STABLE.match(r[0])}.values(),
                         key=lambda r: _key(r[0]), reverse=True)
         pre = len(rows) - len(stable)
