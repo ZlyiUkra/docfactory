@@ -298,6 +298,27 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   package with the control fields of every architecture and the long description. Such a repository usually keeps only
   the latest version, so the source answers «what does `apt-get install` put on the machine today» (number, size,
   checksums), not the history; the history comes from the tags.
+- **A Sphinx site that publishes every version in a folder of its own** (docs.nvidia.com:
+  `…/container-toolkit/1.20.1/`, `…/1.6.0/`): the version list (`versions1.json`) names only the newest few — probe
+  the folders by the repository's tag numbers (`index.html` answers 200 or 404). Reader `sphinx-html`: one source with
+  `url` holding `{version}` and a `versions` list; the pages of a version are a crawl of `.html` links from its start
+  page inside its folder, since page sets differ between years. It drops the heading anchors (`#`, or a font icon
+  U+F0C1 in the old theme), takes the code language from the wrapper class (`highlight-console`), labels the tabs
+  (sphinx-tabs keeps their names in `<button>`, which HTML parsing drops), keeps table rows on one line and cuts the
+  `toctree`. Identical text of a page in several versions becomes one document carrying all of them.
+- **A changelog that lists a release's changes under its release candidates** (NVIDIA: «## v1.19.0» says only «Promote
+  v1.19.0-rc.7 to v1.19.0»; the changes sit under «## v1.19.0-rc.1» … «-rc.7»): `skip` for `-rc` would leave one line
+  per release, and documents labelled «1.19.0-rc.3» are not found by the filter «1.19.0». Reader
+  `changelog-prerelease` makes one document per stable release with its candidates as sections; take the file once,
+  from the newest tag.
+- **An APT repository that keeps every version** (nvidia.github.io/libnvidia-container: 28 versions per package,
+  oldest first): `apt-packages` takes the title from the first stanza and would name the oldest version as what
+  `apt-get install` puts on the machine. Reader `apt-packages-versions`: the newest by number, a «Versions» section
+  with the dependencies of each, labels without the Debian revision (`1.20.1-1` → `1.20.1`) and a `packages` filter.
+- **One file — one source.** Command code across every tag and the full code of the newest tag overlap in that tag:
+  exclude from the newest-tag source what the all-tags source already takes (`^cmd/.+(?<!_test)\.go$`), or the same
+  file becomes two documents under two keys and takes two result slots. Likewise a Go module with no package at its
+  root on pkg.go.dev: the `pkgsite` root is a real package (`pkg/nvcdi`), the other public packages go into `pages`.
 
 ## Anatomy of an instance
 
@@ -897,6 +918,25 @@ and what a taken port and a failed connection look like. A domain list in the ro
   архітектури (`dists/<набір>/<компонент>/binary-<архітектура>/Packages`) — документ на пакет з полями керування
   кожної архітектури й довгим описом. Такий репозиторій зазвичай тримає лише останню версію, тож джерело відповідає на
   «що сьогодні ставить `apt-get install`» (номер, розмір, контрольні суми), а не на історію; історія — з тегів.
+- **Сайт Sphinx, що викладає кожну версію окремою текою** (docs.nvidia.com: `…/container-toolkit/1.20.1/`, `…/1.6.0/`):
+  перелік версій (`versions1.json`) називає лише кілька найновіших — теки перебирають за номерами тегів репозиторію
+  (`index.html` відповідає 200 чи 404). Читач `sphinx-html`: одне джерело з `{version}` в `url` і переліком `versions`;
+  сторінки версії — обхід посилань `.html` від її стартової сторінки в межах її теки, бо набори сторінок різних років
+  різні. Він знімає якорі заголовків (`#`, у старій темі — значок шрифту U+F0C1), бере мову коду з класу обгортки
+  (`highlight-console`), підписує вкладки (sphinx-tabs тримає їхні назви в `<button>`, які розбір HTML викидає), кладе
+  рядок таблиці в один рядок і вирізає `toctree`. Однаковий текст сторінки кількох версій — один документ з усіма ними.
+- **Журнал, де зміни випуску записано під його передрелізами** (NVIDIA: «## v1.19.0» каже лише «Promote v1.19.0-rc.7
+  to v1.19.0», а зміни — під «## v1.19.0-rc.1» … «-rc.7»): `skip` для `-rc` лишив би від випуску один рядок, а
+  документів «1.19.0-rc.3» фільтр «1.19.0» не знаходить. Читач `changelog-prerelease` робить документ на сталий
+  випуск, а його передрелізи — розділами; файл беруть один раз, із найновішого тегу.
+- **Репозиторій APT, що тримає всі версії** (nvidia.github.io/libnvidia-container: 28 версій кожного пакета, від
+  найстарішої): `apt-packages` бере назву з першого запису й назвав би найстарішу версію тією, що ставить
+  `apt-get install`. Читач `apt-packages-versions`: найновіша — за номером, розділ «Versions» із залежностями кожної,
+  мітки без ревізії Debian (`1.20.1-1` → `1.20.1`) і відбір `packages`.
+- **Один файл — одне джерело.** Код команд усіх тегів і повний код найновішого тегу перетинаються в цьому тезі: з
+  джерела найновішого тегу виключають те, що вже бере джерело всіх тегів (`^cmd/.+(?<!_test)\.go$`), інакше той самий
+  файл стає двома документами під двома ключами й забирає два місця видачі. Так само модуль Go без пакета в корені на
+  pkg.go.dev: корінь `pkgsite` — справжній пакет (`pkg/nvcdi`), решта публічних пакетів — у `pages`.
 
 ## З чого складається примірник
 
@@ -1509,6 +1549,29 @@ errada.
   cada arquitetura e a descrição longa. Um repositório assim costuma manter só a última versão, então a fonte responde
   «o que o `apt-get install` instala hoje» (número, tamanho, somas de verificação), não o histórico; o histórico vem
   das tags.
+- **Um site Sphinx que publica cada versão numa pasta própria** (docs.nvidia.com: `…/container-toolkit/1.20.1/`,
+  `…/1.6.0/`): a lista de versões (`versions1.json`) cita só as mais novas — teste as pastas pelos números das tags do
+  repositório (`index.html` responde 200 ou 404). Leitor `sphinx-html`: uma fonte com `{version}` na `url` e a lista
+  `versions`; as páginas de uma versão são uma varredura dos links `.html` a partir da página inicial dentro da pasta
+  dela, porque os conjuntos de páginas mudam com os anos. Ele tira as âncoras dos títulos (`#`, ou um ícone de fonte
+  U+F0C1 no tema antigo), pega a linguagem do código da classe do invólucro (`highlight-console`), rotula as abas (o
+  sphinx-tabs guarda os nomes em `<button>`, que a análise do HTML descarta), mantém cada linha de tabela numa linha e
+  corta o `toctree`. O texto idêntico de uma página em várias versões vira um documento com todas elas.
+- **Um changelog que lista as mudanças de uma versão sob os seus release candidates** (NVIDIA: «## v1.19.0» diz só
+  «Promote v1.19.0-rc.7 to v1.19.0»; as mudanças ficam sob «## v1.19.0-rc.1» … «-rc.7»): `skip` para `-rc` deixaria
+  uma linha por versão, e documentos rotulados «1.19.0-rc.3» não são achados pelo filtro «1.19.0». O leitor
+  `changelog-prerelease` faz um documento por versão estável com os candidatos como seções; leia o arquivo uma vez, da
+  tag mais nova.
+- **Um repositório APT que guarda todas as versões** (nvidia.github.io/libnvidia-container: 28 versões por pacote, da
+  mais antiga para a mais nova): o `apt-packages` tira o título da primeira entrada e chamaria a versão mais antiga de
+  aquela que o `apt-get install` instala. Leitor `apt-packages-versions`: a mais nova pelo número, uma seção
+  «Versions» com as dependências de cada uma, rótulos sem a revisão Debian (`1.20.1-1` → `1.20.1`) e o filtro
+  `packages`.
+- **Um arquivo — uma fonte.** O código dos comandos de todas as tags e o código completo da tag mais nova se
+  sobrepõem nessa tag: exclua da fonte da tag mais nova o que a fonte de todas as tags já pega
+  (`^cmd/.+(?<!_test)\.go$`), senão o mesmo arquivo vira dois documentos com duas chaves e ocupa dois lugares no
+  resultado. Do mesmo modo, um módulo Go sem pacote na raiz no pkg.go.dev: a raiz do `pkgsite` é um pacote de verdade
+  (`pkg/nvcdi`), os outros pacotes públicos vão em `pages`.
 
 ## Anatomia de uma instância
 

@@ -2183,6 +2183,31 @@ gvisor.dev/docs з теки `g3doc` (встановлення, Docker, Kubernete
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/gvisor/README.md](instances/gvisor/README.md).
 
+### nvidia-container-toolkit
+
+Документація NVIDIA Container Toolkit англійською — як контейнери дістають GPU NVIDIA: сайт docs.nvidia.com кожної
+опублікованої версії 1.6.0–1.20.1 (35 тек: встановлення через apt, dnf і zypper, налаштування Docker, containerd, CRI-O
+і Podman через `nvidia-ctk runtime configure`, змінні `NVIDIA_VISIBLE_DEVICES` і `NVIDIA_DRIVER_CAPABILITIES`, CDI і
+служба `nvidia-cdi-refresh`, архітектура, усунення несправностей, нотатки випусків); README, CONTRIBUTING і README
+команд `nvidia-ctk`, `nvidia-container-runtime`, `nvidia-cdi-hook` кожного сталого тегу v1.0.5–v1.20.1, CHANGELOG і
+релізи; код команд із прапорцями urfave/cli тих самих тегів; код Go і тести v1.20.1; README `nvidia-container-cli`,
+журнал і релізи libnvidia-container; архівні nvidia-docker 1.0–2.14 і nvidia-container-runtime 3.0–3.14; специфікація
+Container Device Interface (SPEC.md, README, TUTORIAL тегів v0.3.0–v1.1.1); сім пакетів репозиторію APT з усіма
+версіями; публічні пакети Go (`pkg/nvcdi`, `pkg/config`…) на pkg.go.dev. Нові читачі `sphinx-html` (сайт Sphinx у
+HTML, тека кожної версії), `changelog-prerelease` (журнал, де зміни сталого випуску записано під його `-rc`) і
+`apt-packages-versions` (індекс APT з усіма версіями пакета). 1 092 документи, 4 439 фрагментів.
+
+- порт `8861`; запис у Claude Code — `nvidia-container-toolkit-docs`, адреса `http://127.0.0.1:8861/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-nvidia-container-toolkit`, модель векторів — `bge-small`;
+- версія — спільна нумерація toolkit і libnvidia-container (`version: "1.20.1"` або лінія `"1.17"`), продукти з власною
+  нумерацією — з міткою (`"nvidia-docker-2.14.0"`, `"nvidia-container-runtime-3.14.0"`, `"cdi-1.1.1"`); без названої
+  версії — найновіша;
+- приклад питання агентові: `./df nvidia-container-toolkit ask "How do I configure containerd to use the NVIDIA runtime
+  with nvidia-ctk?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/nvidia-container-toolkit/README.md](instances/nvidia-container-toolkit/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
