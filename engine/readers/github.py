@@ -74,6 +74,8 @@ def ghdocs(source: dict, ctx) -> list[Item]:
     folders = [f.strip("/") for f in source.get("folders") or ["docs"]]
     recursive = source.get("recursive") is True
     root = source.get("root", "").strip("/")
+    only = re.compile(source["files"]) if source.get("files") else None
+    skip = re.compile(source["exclude"]) if source.get("exclude") else None
     paths = []
     for entry in tree["tree"]:
         path = entry.get("path", "")
@@ -81,7 +83,8 @@ def ghdocs(source: dict, ctx) -> list[Item]:
         inside = (folder in folders if not recursive else
                   any(folder == f or folder.startswith(f + "/") for f in folders))
         if (entry.get("type") == "blob" and inside and leaf.endswith(".md")
-                and not _LOCALE.search(leaf)):
+                and not _LOCALE.search(leaf) and (only is None or only.search(leaf))
+                and (skip is None or not skip.search(path))):
             paths.append(path)
     items = []
     for path in paths:
@@ -110,6 +113,11 @@ def ghdocs(source: dict, ctx) -> list[Item]:
             if meta.get("layout") == "redirect" and meta.get("dest_url"):
                 body = body or f"This page redirects to {meta['dest_url']}."
             title = _markup.title_of(meta, blob) if meta else ""
+            if not title and source.get("title_from") == "heading":
+                # README і нотатки без шапки YAML: назва — перший заголовок «# …»,
+                # а без нього — шлях файла в репозиторії.
+                h1 = re.search(r"^#\s+(.+?)\s*#*\s*$", rest, re.M)
+                title = _markup._inline(h1.group(1)).strip() if h1 else raw.split(f"/{tag}/", 1)[-1]
             # Файл на закріпленому тезі — не сторінка помилки, тож коротке тіло не
             # підозріле: «модуль застарів» чи «сторінку перенесено» — теж історія.
             _markup.require(title, body, raw, min_chars=1)
