@@ -341,7 +341,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 
 | Бібліотека | Коли згадати |
 |------------|--------------|
-| Stripe | платежі; у 15 шаблонах |
+| Stripe | платежі; у 15 шаблонах; є примірник `stripe` |
 | Resend, React Email | листи; у 8 і 4 шаблонах |
 | Vercel AI SDK | чат і генерація тексту; у 58 шаблонах |
 | UploadThing або сховище S3 | завантаження файлів користувачів |
@@ -443,11 +443,14 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
   EIP-7702, OP Stack, Account Abstraction, Tempo; приклади, журнал змін і таблиця версій npm) — `viem`;
 - Foundry (Foundry Book на день виходу кожної стабільної версії 0.3.0–1.8.5: forge, cast, anvil, chisel, читкоди,
   forge-std, `foundry.toml`, довідник CLI; документація репозиторію, нотатки релізів, код forge-std і таблиця
-  версій npm) — `foundry`.
+  версій npm) — `foundry`;
+- Stripe (сайт docs.stripe.com з варіантами інтеграцій і кодом сервера сімома мовами, довідник API й журнал змін
+  кожної версії API, Stripe.js, OpenAPI; README кожного випуску stripe-node, Stripe.js і React Stripe.js, SDK інших
+  мов, нотатки релізів, таблиці версій реєстрів) — `stripe`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «знати, що існує»: Stripe, Resend і React Email, Vercel AI SDK, UploadThing, Sanity, Payload, Contentful,
+- з «знати, що існує»: Resend і React Email, Vercel AI SDK, UploadThing, Sanity, Payload, Contentful,
   tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Grafana, Loki.
 
 ---

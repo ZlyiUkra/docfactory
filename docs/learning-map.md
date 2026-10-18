@@ -11,7 +11,7 @@ ioredis, iron-session, jose, jsonschema, kraken-spot, kubernetes, libreoffice, l
 llhttp, mdn, mongodb, mongoose, motion, msw, nestjs, next-intl, next-themes, nextjs, nghttp2, nginx, node-mongodb,
 node-postgres, node-redis, nodejs, nodemailer, nuqs, nvidia-container-toolkit, ollama, openssl, opentelemetry,
 oracle-cloud, owasp, partysocket, patterns, playwright, postgrator, postgres-image, postgresql, prisma, react,
-react-hook-form, react-native, react-router, react-window, redis, redux, sentry, shadcn, socketio, storybook,
+react-hook-form, react-native, react-router, react-window, redis, redux, sentry, shadcn, socketio, storybook, stripe,
 supabase, swr, tailwind, tanstack-query, tanstack-router, tanstack-virtual, tesseract, testing-library, typescript,
 upstash, v8, viem, vite, vitest, wagmi, wasm, webdev, webstandards, zod, zustand.
 
