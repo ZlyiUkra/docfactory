@@ -635,7 +635,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
 
 # Фаза 5. Експлуатація й безпека рушія — 6 днів
 
-**Сервери MCP фази:** `docker-docs`, `gvisor-docs`.
+**Сервери MCP фази:** `docker-docs`, `gvisor-docs`, `nvidia-container-toolkit-docs`.
 
 ### День 1. Налаштування рушія
 
@@ -643,10 +643,15 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   перетинаються з офісними.
 - **Що це.** `/etc/docker/daemon.json`: `log-driver` і `log-opts` (ротація), `default-address-pools` (діапазони
   мереж), `live-restore`, `features`, `registry-mirrors`. Після зміни — перезапуск служби. Проксі для рушія —
-  через `systemctl edit docker` (фаза 3 плану Linux).
+  через `systemctl edit docker` (фаза 3 плану Linux). Ще одна правка, необов'язкова, — для машини з GPU NVIDIA:
+  `sudo nvidia-ctk runtime configure --runtime=docker` дописує в `daemon.json` runtime `nvidia` (з `--cdi.enabled` —
+  ще й `features.cdi`), і контейнер дістає GPU через `docker run --gpus all` чи пристрій CDI
+  `--device nvidia.com/gpu=all`.
 - **Читати:** `Docker daemon configuration overview`; `dockerd` (довідник опцій); `Daemon proxy configuration`;
-  `Live restore`.
-- **Сервери MCP:** `docker-docs`.
+  `Live restore`; необов'язково — `GPU access`, `Alternative container runtimes` і NVIDIA Container Toolkit:
+  `Installing the NVIDIA Container Toolkit` (розділ «Configuring Docker»), `Specialized Configurations with Docker`,
+  `Support for Container Device Interface`.
+- **Сервери MCP:** `docker-docs`, `nvidia-container-toolkit-docs`.
 - **Зробити:** 1) `daemon.json` з ротацією журналів, власним пулом адрес і `live-restore`; 2) перезапустити `docker`
   і переконатися, що контейнери пережили перезапуск рушія.
 - **Перевірити себе:** `docker info` показує ваш драйвер журналів і `Live Restore Enabled: true`.
@@ -824,7 +829,8 @@ compose та buildx. Docker Desktop, Docker AI, Scout як продукт і і�
 - Kubernetes, k3s і контейнерні рантайми з боку кластера (фаза 6) — `kubernetes`;
 - PostgreSQL — `postgresql`;
 - GitHub Actions, Container registry (ghcr.io), офіційні дії Docker і GitHub — `github-actions`;
-- nginx: конфіг фронту й проксі, nginx у Docker — `nginx`.
+- nginx: конфіг фронту й проксі, nginx у Docker — `nginx`;
+- GPU NVIDIA в контейнерах: NVIDIA Container Toolkit, `nvidia-ctk`, CDI (фаза 5, день 1) — `nvidia-container-toolkit`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
