@@ -8,6 +8,8 @@
                `version` — версія всіх документів джерела.
                `follow: false` — посилань зі змістів не брати: документи — лише `url`,
                `index` і `pages` (окремі дописи, де посилання ведуть на сусідні дописи).
+               `heading` — вираз заголовка сторінки з групою 1 замість `<h1>`: довідники
+               gtk-doc і Doxygen (API poppler) пишуть назву в `<h2>` чи `<div class="title">`.
 
 Навіщо. Сайти tailwindcss.com усіх версій зібрано з MDX, але головного в MDX немає:
 таблиця класів сторінки («p-4 → padding: 1rem») у v1–v3 генерується з коду самого
@@ -33,10 +35,10 @@ _H1 = re.compile(r"<h1\b[^>]*>(.*?)</h1>", re.S)
 _LINE = re.compile(r'</span>(?=<span class="(?:line|flex)(?:\s[^"]*)?")')
 
 
-def _text(html: str, url: str, stamp: str, version: str, ends: list) -> str:
-    m = _H1.search(html)
+def _text(html: str, url: str, stamp: str, version: str, ends: list, head=_H1) -> str:
+    m = head.search(html)
     if not m:
-        raise SystemExit(f"На сторінці немає <h1> ({url}) — документ не записую.")
+        raise SystemExit(f"На сторінці немає заголовка ({head.pattern}, {url}) — документ не записую.")
     title = _markup.html_body(m.group(1)).strip().lstrip("#").strip()
     start = m.end()
     stop = min((e.start() for e in (r.search(html, start) for r in ends) if e),
@@ -53,6 +55,7 @@ def html_pages(source: dict, ctx) -> list[Item]:
     index = [source["url"]] + list(source.get("index", []))
     exclude = [re.compile(r) for r in source.get("exclude") or ()]
     ends = [re.compile(r) for r in source.get("end") or [r"<footer\b"]]
+    head = re.compile(source["heading"], re.S) if source.get("heading") else _H1
     cache: dict[str, str] = {}
     urls: list[str] = []
     names: set[str] = set()
@@ -83,7 +86,7 @@ def html_pages(source: dict, ctx) -> list[Item]:
 
         def make(url=url):
             html = cache.pop(url, None) or ctx.text(url)
-            return _text(html, url, ctx.stamp, source.get("version", ""), ends)
+            return _text(html, url, ctx.stamp, source.get("version", ""), ends, head)
 
         items.append(Item(id=f"{source['id']}/{name}",
                           file=f"{source['id']}--{name}.txt", make=make))

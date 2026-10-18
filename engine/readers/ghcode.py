@@ -29,9 +29,9 @@ from engine.readers import Item, _markup, register
 _TREE = re.compile(r"^/repos/([^/]+)/([^/]+)/git/trees/(.+)$")
 _MAX_FILE = 40_000
 _LANG = {".cc": "cpp", ".h": "cpp", ".cpp": "cpp", ".c": "c", ".js": "js", ".mjs": "js",
-         ".ts": "ts", ".tq": "torque", ".rs": "rust", ".py": "python", ".toml": "toml",
+         ".ts": "ts", ".tq": "torque", ".rs": "rust", ".py": "python", ".pyi": "python", ".toml": "toml",
          ".patch": "diff", ".sh": "sh", ".json": "json", ".md": "", ".kt": "kotlin",
-         ".swift": "swift"}
+         ".swift": "swift", ".hh": "cpp"}
 _NAMED = {"Makefile": "make", "BUILD.gn": "gn"}
 
 

@@ -59,8 +59,9 @@ def require(title: str, body: str, where: str, min_chars: int = MIN_BODY) -> Non
 
 def refuse_html(text: str, where: str) -> None:
     """Markdown-адреса, що відповіла HTML, — це сторінка помилки чи редирект на
-    оболонку сайту, а не документ."""
-    if text.lstrip()[:15].lower().startswith(("<!doctype", "<html")):
+    оболонку сайту, а не документ. Інший DOCTYPE — це XML, а не сторінка: delegates.xml.in
+    ImageMagick починається з «<!DOCTYPE delegatemap [»."""
+    if text.lstrip()[:15].lower().startswith(("<!doctype html", "<html")):
         raise SystemExit(f"Замість markdown прийшов HTML ({where}) — документ не записую.")
 
 
