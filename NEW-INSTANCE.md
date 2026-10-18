@@ -336,6 +336,23 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   subfolder (`packages/aws-sdk/README.md`) included — exclude the default `^docs/` instead. `ghexamples` takes only
   projects with `package.json`; examples kept as single files go through `ghcode-history` or `ghcode-history-ts` with
   `include: ["^examples/…"]`.
+- **A site that shows code in the language the reader picked** (docs.stripe.com: the markdown twin of a page gives one
+  language per `?lang=`): one document per page — the text once, under each section the code of the other languages
+  with a label (reader `stripe-md`). A document per language would repeat the page text seven times in the index and
+  in vectors. Even so the code made the site 61% of 114 thousand excerpts, and such pages vectorise at about five
+  excerpts a second against nine for an API reference: estimate the hours by the rate of each kind of source, not by
+  one average.
+- **A page that is only a list of variants** ("This article has multiple variants": Checkout or Elements, iOS or
+  Android): replace it with the variants, each a document named with its label (`variants: true`). The sitemap may
+  list a page twice, plainly and with `.md`: normalise the address before removing duplicates. A page that fails while
+  the list is being built must fail only its own document — one 404 cost a whole 26-minute listing.
+- **Thousands of tags, a few known files** (Stripe SDKs: over six thousand stable tags against an API quota of five
+  thousand calls an hour; GitHub truncates the trees of stripe-ios and stripe-java): read the files straight from
+  raw.githubusercontent.com, which spends no API quota — reader `ghraw-history`. Where an SDK has hundreds of minor
+  lines, take the last tag of each line.
+- **The phrases `smoke` looks for in the prompts** (`description_phrases`) are matched literally, line breaks
+  included: when rewrapping `prompts/search.txt` keep each of them on one line ("point by point" split by a wrap
+  failed `smoke`).
 
 ## Anatomy of an instance
 
@@ -971,6 +988,23 @@ and what a taken port and a failed connection look like. A domain list in the ro
   з підтеки (`packages/aws-sdk/README.md`) — виключати треба типове `^docs/`. `ghexamples` бере лише проєкти з
   `package.json`; приклади окремими файлами йдуть через `ghcode-history` чи `ghcode-history-ts` з
   `include: ["^examples/…"]`.
+- **Сайт, що показує код мовою, яку вибрав читач** (docs.stripe.com: markdown-двійник сторінки віддає одну мову за
+  `?lang=`): документ один на сторінку — текст один раз, під кожним розділом код інших мов з підписом (читач
+  `stripe-md`). Документ на кожну мову повторив би текст сторінки сім разів і в індексі, і у векторах. Навіть так код
+  зробив сайт шістьма десятими зі 114 тисяч фрагментів, а такі сторінки рахуються у вектори десь по п'ять фрагментів
+  за секунду проти дев'яти для довідника API: години оцінювати за швидкістю кожного роду джерел, а не за однією
+  середньою.
+- **Сторінка, що є лише переліком варіантів** («This article has multiple variants»: Checkout чи Elements, iOS чи
+  Android): замінити її варіантами, кожен — документ з назвою за підписом (`variants: true`). Сайтмап може нести
+  сторінку двічі, звичайною адресою і з `.md`: адресу зводити до одного вигляду до того, як прибирати повтори.
+  Сторінка, що падає під час складання переліку, має валити лише свій документ — один 404 коштував цілого переліку
+  на 26 хвилин.
+- **Тисячі тегів і кілька відомих файлів** (SDK Stripe: понад шість тисяч стабільних тегів проти п'яти тисяч звернень
+  API за годину; дерева stripe-ios і stripe-java GitHub обрізає): файли брати напряму з raw.githubusercontent.com,
+  що не витрачає ліміту API, — читач `ghraw-history`. Де SDK має сотні мінорних ліній, брати останній тег кожної.
+- **Фрази, які `smoke` шукає в промптах** (`description_phrases`), порівнюються дослівно, з переносами рядків:
+  переносячи рядки `prompts/search.txt`, тримати кожну з них в одному рядку («point by point», розірване
+  переносом, провалило `smoke`).
 
 ## З чого складається примірник
 
@@ -1623,6 +1657,24 @@ errada.
   arquivo de subpasta nomeado em `files` (`packages/aws-sdk/README.md`) — exclua o padrão `^docs/`. `ghexamples` pega
   só projetos com `package.json`; exemplos em arquivos soltos vão por `ghcode-history` ou `ghcode-history-ts` com
   `include: ["^examples/…"]`.
+- **Um site que mostra o código na linguagem escolhida pelo leitor** (docs.stripe.com: o gêmeo markdown da página dá
+  uma linguagem por `?lang=`): um documento por página — o texto uma vez, sob cada seção o código das outras
+  linguagens com um rótulo (leitor `stripe-md`). Um documento por linguagem repetiria o texto da página sete vezes no
+  índice e nos vetores. Mesmo assim o código fez do site 61% de 114 mil trechos, e essas páginas viram vetores a uns
+  cinco trechos por segundo contra nove de uma referência de API: estime as horas pela taxa de cada tipo de fonte, não
+  por uma média só.
+- **Uma página que é só uma lista de variantes** ("This article has multiple variants": Checkout ou Elements, iOS ou
+  Android): troque-a pelas variantes, cada uma um documento com o nome do seu rótulo (`variants: true`). O sitemap
+  pode listar uma página duas vezes, simples e com `.md`: normalize o endereço antes de tirar repetições. Uma página
+  que falha enquanto a lista é montada deve derrubar só o próprio documento — um 404 custou uma listagem inteira de
+  26 minutos.
+- **Milhares de tags, poucos arquivos conhecidos** (SDKs da Stripe: mais de seis mil tags estáveis contra uma cota de
+  cinco mil chamadas de API por hora; o GitHub trunca as árvores de stripe-ios e stripe-java): leia os arquivos
+  direto de raw.githubusercontent.com, que não gasta cota de API — leitor `ghraw-history`. Onde um SDK tem centenas
+  de linhas menores, pegue a última tag de cada linha.
+- **As frases que o `smoke` procura nos prompts** (`description_phrases`) são comparadas literalmente, com quebras de
+  linha: ao requebrar `prompts/search.txt`, mantenha cada uma numa linha só ("point by point" partido por uma quebra
+  reprovou o `smoke`).
 
 ## Anatomia de uma instância
 
