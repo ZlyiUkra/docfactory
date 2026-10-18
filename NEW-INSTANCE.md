@@ -272,6 +272,19 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
 - **Changelogs in a dozen formats**: reader `changelog-regex`, the entry heading is a regex in `sources.json` with
   groups `v` and `d`. Man pages in mdoc (`file`) go through `ghdocs-history-roff`; each option of OPTIONS becomes a
   subsection — forty options in one excerpt hid `--mime-type`.
+- **A sitemap whose `<loc>` are bare paths** (gvisor.dev, Jekyll without `site.url`:
+  `<loc>/blog/2023/06/27/directfs/</loc>`): `sitemap-html` compares `<loc>` with `within` as a string, and not one page
+  passes. Reader `sitemap-html-rel` first resolves every `<loc>` against the sitemap address and keeps the trailing
+  slash — the bare host without it is not recognised as a page of the site.
+- **Markup a verified shared reader does not know** (Jekyll `[TOC]` and Liquid tags in gVisor `g3doc`, Hugo TOML front
+  matter `+++` in the archived gvisor-website): a thin module calls `ghdocs_history` through a context wrapper whose
+  `text()` cleans every `.md` page before parsing (`ghdocs-history-jekyll`, `ghdocs-history-toml`). A new field in the
+  shared reader would risk drift in every instance already built on it; with the wrapper their corpora stay the same
+  byte for byte.
+- **`site` only for files the site still serves**: the `ghdocs-history` field `site` names the files of the newest tag
+  one by one instead of catching everything with `g3doc/(.*)\.md`. A page that moved or vanished
+  (`g3doc/checkpoint_restore.md` of 2019) and a file the site never showed (proposals, example READMEs) then cite their
+  GitHub blob at their own tag, not a dead site address.
 
 ## Anatomy of an instance
 
@@ -847,6 +860,19 @@ and what a taken port and a failed connection look like. A domain list in the ro
 - **Журнали змін десятка форматів**: читач `changelog-regex`, заголовок запису — вираз у `sources.json` з групами
   `v` і `d`. Сторінки man у mdoc (`file`) ідуть через `ghdocs-history-roff`; кожна опція розділу OPTIONS — підрозділ:
   сорок опцій одним фрагментом ховали `--mime-type`.
+- **Сайтмап, де `<loc>` — голі шляхи** (gvisor.dev, Jekyll без `site.url`: `<loc>/blog/2023/06/27/directfs/</loc>`):
+  `sitemap-html` порівнює `<loc>` з `within` як рядок, і не проходить жодна сторінка. Читач `sitemap-html-rel` спершу
+  робить з кожного `<loc>` повну адресу відносно самого сайтмапа й лишає завершальну риску: голий хост без неї білий
+  список не впізнає як сторінку сайту.
+- **Розмітка, якої не знає звірений спільний читач** (`[TOC]` і теги Liquid Jekyll у `g3doc` gVisor, шапки TOML `+++`
+  Hugo в архівному gvisor-website): тонкий модуль викликає `ghdocs_history` через обгортку контексту, чий `text()`
+  чистить кожну сторінку `.md` до розбору (`ghdocs-history-jekyll`, `ghdocs-history-toml`). Нове поле в спільному
+  читачі — ризик зсуву в кожному вже зібраному на ньому примірнику; з обгорткою їхні корпуси лишаються ті самі байт у
+  байт.
+- **`site` — лише для файлів, які сайт ще показує**: поле `site` читача `ghdocs-history` перелічує файли найновішого
+  тегу поіменно, а не ловить усе виразом `g3doc/(.*)\.md`. Сторінка, що переїхала чи зникла
+  (`g3doc/checkpoint_restore.md` 2019 року), і файл, якого сайт не показував (пропозиції, README прикладів), тоді
+  цитують свій blob на GitHub у своєму тезі, а не мертву адресу сайту.
 
 ## З чого складається примірник
 
@@ -1432,6 +1458,19 @@ errada.
 - **Changelogs em uma dúzia de formatos**: leitor `changelog-regex`, o cabeçalho da entrada é uma regex no
   `sources.json` com os grupos `v` e `d`. Páginas man em mdoc (`file`) passam por `ghdocs-history-roff`; cada opção de
   OPTIONS vira uma subseção — quarenta opções num só trecho escondiam `--mime-type`.
+- **Um sitemap cujos `<loc>` são caminhos sem host** (gvisor.dev, Jekyll sem `site.url`:
+  `<loc>/blog/2023/06/27/directfs/</loc>`): o `sitemap-html` compara `<loc>` com `within` como texto, e nenhuma página
+  passa. O leitor `sitemap-html-rel` primeiro transforma cada `<loc>` em endereço completo relativo ao próprio sitemap
+  e mantém a barra final — o host sem ela não é reconhecido como página do site.
+- **Marcação que um leitor compartilhado já conferido não conhece** (`[TOC]` e tags Liquid do Jekyll no `g3doc` do
+  gVisor, front matter TOML `+++` do Hugo no gvisor-website arquivado): um módulo fino chama `ghdocs_history` através
+  de um invólucro do contexto cujo `text()` limpa cada página `.md` antes da análise (`ghdocs-history-jekyll`,
+  `ghdocs-history-toml`). Um campo novo no leitor compartilhado seria risco de desvio em cada instância já montada
+  sobre ele; com o invólucro o corpus delas fica igual byte a byte.
+- **`site` só para arquivos que o site ainda mostra**: o campo `site` do `ghdocs-history` lista os arquivos da tag mais
+  nova um a um, em vez de pegar tudo com `g3doc/(.*)\.md`. Uma página que mudou de lugar ou sumiu
+  (`g3doc/checkpoint_restore.md` de 2019) e um arquivo que o site nunca mostrou (propostas, READMEs de exemplos) então
+  citam o seu blob no GitHub na sua própria tag, não um endereço morto do site.
 
 ## Anatomia de uma instância
 

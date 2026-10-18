@@ -2159,6 +2159,30 @@ ghostscript) — README, документація, код, журнали й т�
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/doc-tools/README.md](instances/doc-tools/README.md).
 
+### gvisor
+
+Документація gVisor англійською — ядра застосунку для контейнерів і його середовища виконання OCI `runsc`: сторінки
+gvisor.dev/docs з теки `g3doc` (встановлення, Docker, Kubernetes, containerd і CRI-O, платформи systrap і KVM, мережа,
+файлова система з overlay і directfs, GPU з nvproxy, TPU, checkpoint/restore, спостережуваність, Runtime Monitoring,
+посібник з архітектури) і кореневі файли google/gvisor кожного випуску 20190304.1–20261012.0 (283 щотижневі теги);
+прапорці й підкоманди `runsc` з коду `runsc/config` і `runsc/cmd` тих самих випусків; сторінки gvisor.dev поза
+документацією (таблиці системних викликів linux/amd64 і linux/arm64, сумісність застосунків, історія вразливостей,
+блог 2019–2026); архівний сайт 2019–2020 і архівний gvisor-containerd-shim 0.0.1–0.0.4; нотатки релізів з 20260817.0;
+пакет `runsc` в APT; довідник netstack (`pkg/tcpip` і підпакети, `pkg/buffer`) на pkg.go.dev. Нові читачі
+`sitemap-html-rel` (сайтмап із шляхами без хоста), `ghdocs-history-jekyll` і `ghdocs-history-toml` (обгортки над
+`ghdocs-history` для залишків Jekyll і шапок TOML сайту Hugo), `apt-packages` (індекс репозиторію APT) і `pkgsite`
+(довідник пакетів Go з pkg.go.dev). 1 219 документів, 5 792 фрагменти.
+
+- порт `8859`; запис у Claude Code — `gvisor-docs`, адреса `http://127.0.0.1:8859/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-gvisor`, модель векторів — `bge-small`;
+- версія — дата випуску (`version: "20261012.0"` або вся дата `"20261012"`; рік і префікс `release-` нічого не дають),
+  архівний shim — `"containerd-shim-0.0.4"`; сторінки gvisor.dev поза `g3doc`, архівний сайт і netstack шукають без
+  версії; без названої версії — найновіша;
+- приклад питання агентові: `./df gvisor ask "How do I run a Docker container with runsc on the KVM platform?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/gvisor/README.md](instances/gvisor/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
