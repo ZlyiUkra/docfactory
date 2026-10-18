@@ -319,6 +319,23 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   exclude from the newest-tag source what the all-tags source already takes (`^cmd/.+(?<!_test)\.go$`), or the same
   file becomes two documents under two keys and takes two result slots. Likewise a Go module with no package at its
   root on pkg.go.dev: the `pkgsite` root is a real package (`pkg/nvcdi`), the other public packages go into `pages`.
+- **Count the excerpts per source before `vectors`.** An API reference that expands every nested type on every
+  endpoint page (platform.claude.com: `messages/create` is 140 KB, and the Python and TypeScript editions repeat it
+  in their own syntax) made two thirds of 92 thousand excerpts; at about five excerpts a second that is five hours of
+  vectors. The cache `index/passages.json` exists before the first point is computed: group it by source, give the
+  user the hours, agree the scope, then start. Pages missing from `llms.txt` and `sitemap.xml` but listed on an index
+  page in markdown (nested items, links from the site root) come through the reader `md-index`.
+- **Jupyter notebooks** (claude-cookbooks): reader `ghdocs-history-ipynb` — markdown cells as they are, code as blocks
+  in the notebook's language, of the output only text, cut to `output_chars`; images and HTML of the output are
+  dropped (22 MB of notebooks gave 2.6 MB of text). `extensions` must include `.ipynb`.
+- **A repository that changed its tag scheme** (TypeScript SDK `v0.12.3` → `sdk-v0.12.4`, C# SDK `v11.0.0` →
+  `Anthropic-v12.0.0`): group the tags by the part before the number before declaring, or the first versions drop out.
+  In a monorepo a bare prefix `v` in `ghreleases-stable` also catches `vertex-sdk-v…`: take `v0.` with
+  `version_prefix` `typescript-0.`.
+- **Two traps of repository readers.** `exclude: ["/"]` drops every path with a folder, a file named in `files` from a
+  subfolder (`packages/aws-sdk/README.md`) included — exclude the default `^docs/` instead. `ghexamples` takes only
+  projects with `package.json`; examples kept as single files go through `ghcode-history` or `ghcode-history-ts` with
+  `include: ["^examples/…"]`.
 
 ## Anatomy of an instance
 
@@ -937,6 +954,23 @@ and what a taken port and a failed connection look like. A domain list in the ro
   джерела найновішого тегу виключають те, що вже бере джерело всіх тегів (`^cmd/.+(?<!_test)\.go$`), інакше той самий
   файл стає двома документами під двома ключами й забирає два місця видачі. Так само модуль Go без пакета в корені на
   pkg.go.dev: корінь `pkgsite` — справжній пакет (`pkg/nvcdi`), решта публічних пакетів — у `pages`.
+- **Порахувати фрагменти за джерелами до `vectors`.** Довідник API, що на кожній сторінці ендпоінта розгортає всі
+  вкладені типи (platform.claude.com: `messages/create` — 140 КБ, а редакції Python і TypeScript повторюють його своїм
+  синтаксисом), дав дві третини з 92 тисяч фрагментів; при п'яти фрагментах за секунду це п'ять годин векторів. Кеш
+  `index/passages.json` з'являється раніше за першу точку: згрупувати його за джерелами, назвати користувачеві
+  години, узгодити склад і лише тоді запускати. Сторінки, яких немає ні в `llms.txt`, ні в `sitemap.xml`, але є на
+  сторінці-змісті в markdown (вкладені пункти, посилання від кореня сайту), бере читач `md-index`.
+- **Зошити Jupyter** (claude-cookbooks): читач `ghdocs-history-ipynb` — клітинки markdown як є, код блоками мови
+  зошита, з виводу лише текст, обрізаний до `output_chars`; картинки й HTML виводу відкидаються (з 22 МБ зошитів —
+  2,6 МБ тексту). У `extensions` має бути `.ipynb`.
+- **Репозиторій, що змінив вигляд тегів** (TypeScript SDK `v0.12.3` → `sdk-v0.12.4`, C# SDK `v11.0.0` →
+  `Anthropic-v12.0.0`): перед оголошенням згрупувати теги за частиною до номера, інакше перші версії випадають. У
+  монорепозиторії голий префікс `v` у `ghreleases-stable` ловить і `vertex-sdk-v…`: брати `v0.` з `version_prefix`
+  `typescript-0.`.
+- **Дві пастки читачів репозиторію.** `exclude: ["/"]` відкидає кожен шлях з текою, зокрема названий у `files` файл
+  з підтеки (`packages/aws-sdk/README.md`) — виключати треба типове `^docs/`. `ghexamples` бере лише проєкти з
+  `package.json`; приклади окремими файлами йдуть через `ghcode-history` чи `ghcode-history-ts` з
+  `include: ["^examples/…"]`.
 
 ## З чого складається примірник
 
@@ -1572,6 +1606,23 @@ errada.
   (`^cmd/.+(?<!_test)\.go$`), senão o mesmo arquivo vira dois documentos com duas chaves e ocupa dois lugares no
   resultado. Do mesmo modo, um módulo Go sem pacote na raiz no pkg.go.dev: a raiz do `pkgsite` é um pacote de verdade
   (`pkg/nvcdi`), os outros pacotes públicos vão em `pages`.
+- **Conte os trechos por fonte antes de `vectors`.** Uma referência de API que expande todos os tipos aninhados em
+  cada página de endpoint (platform.claude.com: `messages/create` tem 140 KB, e as edições Python e TypeScript a
+  repetem com a própria sintaxe) deu dois terços de 92 mil trechos; a uns cinco trechos por segundo, são cinco horas
+  de vetores. O cache `index/passages.json` existe antes do primeiro ponto: agrupe-o por fonte, diga ao usuário as
+  horas, combine o escopo e só então comece. Páginas ausentes de `llms.txt` e de `sitemap.xml`, mas listadas numa
+  página de índice em markdown (itens aninhados, links a partir da raiz do site), vêm pelo leitor `md-index`.
+- **Notebooks Jupyter** (claude-cookbooks): leitor `ghdocs-history-ipynb` — células markdown como estão, código em
+  blocos da linguagem do notebook, da saída só o texto, cortado em `output_chars`; imagens e HTML da saída são
+  descartados (22 MB de notebooks deram 2,6 MB de texto). `extensions` precisa incluir `.ipynb`.
+- **Um repositório que mudou o formato das tags** (TypeScript SDK `v0.12.3` → `sdk-v0.12.4`, C# SDK `v11.0.0` →
+  `Anthropic-v12.0.0`): agrupe as tags pela parte antes do número antes de declarar, senão as primeiras versões ficam
+  de fora. Num monorepositório o prefixo `v` sozinho em `ghreleases-stable` também pega `vertex-sdk-v…`: use `v0.` com
+  `version_prefix` `typescript-0.`.
+- **Duas armadilhas dos leitores de repositório.** `exclude: ["/"]` descarta todo caminho com pasta, inclusive um
+  arquivo de subpasta nomeado em `files` (`packages/aws-sdk/README.md`) — exclua o padrão `^docs/`. `ghexamples` pega
+  só projetos com `package.json`; exemplos em arquivos soltos vão por `ghcode-history` ou `ghcode-history-ts` com
+  `include: ["^examples/…"]`.
 
 ## Anatomia de uma instância
 
