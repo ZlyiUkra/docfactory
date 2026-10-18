@@ -79,7 +79,8 @@ SignalR 2, Identity, OWIN/Katana, System.Web) тут таки: проєкти н
   лише після JavaScript і лише для редакцій 3.1–10.0, а джерело дає кожну редакцію одним проходом по одному дереву.
   Редакції 1.0–2.2 взято з коміту `6fa2d33` (19.09.2019), 3.0 — з `998d59e` (07.11.2020): пізніше їхні монікери
   з джерела прибрано. Посилання редакцій 3.1–10.0 ведуть на learn.microsoft.com з `?view=aspnetcore-X`, старіших —
-  на файл того коміту в GitHub.
+  на файл того коміту в GitHub. Поле `path_versions` дає сторінкам версії за текою: класичний сайт тримає
+  посібники старих випусків SignalR, MVC і Web API в `older-versions*` поряд з посібниками нових.
 - **`nuget-xmldoc`** будує довідник API з XML-документації, яку пакет NuGet несе поруч зі збіркою (`ref/` має
   перевагу над `lib/`, з цільових платформ — найновіша). Документ на тип, розділ на член: сигнатура, параметри, що
   повертає, винятки, зауваги, приклад. Той самий XML лежить в основі довідника learn.microsoft.com/dotnet/api, а
@@ -99,9 +100,16 @@ SignalR 2, Identity, OWIN/Katana, System.Web) тут таки: проєкти н
   нумерує кожен продукт окремо, тож версія несе назву продукту: `mvc-5.2` у довіднику API і `mvc-5.2.9` у пакеті
   NuGet, так само `webapi-5.3`, `webpages-3.3`, `signalr-2.4`, `identity-2.2`, `katana-4.2`, `netfx-4.8.1`
   (System.Web), `webstack-3.3.0` (релізи AspNetWebStack), `aspnet-…` (інші класичні пакети). Так само позначено
-  пакети з власною нумерацією поруч з ASP.NET Core: `odata-9.5.0`,
-  `systemwebadapters-2.3.0`, `datasync-6.1.0`, `extensions-10.11.0` (`Microsoft.AspNetCore.Diagnostics.Middleware`
-  та інші з dotnet/extensions). Сторінки сайту класичного ASP.NET версій не мають — їх шукають без версії.
+  пакети з власною нумерацією поруч з ASP.NET Core: `odata-9.5.0`, `systemwebadapters-2.3.0`, `datasync-6.1.0`,
+  `extensions-10.11.0` (`Microsoft.AspNetCore.Diagnostics.Middleware` та інші з dotnet/extensions).
+- **Версії сторінок класичного сайту.** 382 сторінки з 1 537 мають версію за текою (`path_versions` джерела
+  `classic-site`): SignalR — `older-versions/` 1.0–1.2, решта посібників 2.0–2.4 (57 сторінок); MVC —
+  `older-versions-1/` 1.0–2.0, `older-versions/` 3.0 чи 4.0 за підтекою, нові посібники 5.0–5.3 (228); Web API —
+  `older-versions/` `webapi-4.0` (Web API 1), решта `webapi-5.0`–`5.3` (Web API 2; 97); нотатки окремих випусків
+  (MVC 5.1, 5.2, Web API 2.1, 2.2) — свою версію. Сторінка, що несе кілька ліній, знаходиться з будь-якою з них:
+  `signalr-2` бере посібники SignalR 2 і не бере 1.x. Оглядові сторінки, переходи між версіями, Web Forms, Web
+  Pages, Identity, OWIN/Katana й решта сайту версій не мають — їх шукають без версії, бо будь-яка версія їх
+  відкидає.
 - **SignalR у лініях 2.1–2.3** має власні номери 1.0–1.2; пакети SignalR і `Http.Connections` узято за лінією
   продукту.
 - **Родини** (`families` у `config.json`) зводять редакції сайту, лінії API і теги репозиторію: однаковий текст
@@ -114,7 +122,7 @@ SignalR 2, Identity, OWIN/Katana, System.Web) тут таки: проєкти н
   HttpContext» (усі способи ставлять його першим, і пояснює він більше за опис властивості в довіднику API); про
   виклик методів клієнта з хаба SignalR 2 — розділ «SignalR Hubs in the ChatHub.cs» підручника SignalR 2. Посібник
   хабів SignalR 1.x майже дослівно повторює посібник 2.x, а його назва несе «SignalR 1.x», тож на питання про
-  SignalR 2 він виходить вище за посібник 2.x.
+  SignalR 2 без версії він виходить вище за посібник 2.x; з версією `signalr-2` лишається лише посібник 2.x.
 
 ## Межі, про які треба пам'ятати
 
@@ -132,7 +140,7 @@ SignalR 2, Identity, OWIN/Katana, System.Web) тут таки: проєкти н
 Корпус в архіві від самого початку: у `corpus/` лежить лише паспорт, а сервер підіймається з кешу фрагментів і
 колекції Qdrant; відповіді ті самі до символа.
 
-**Де тексти.** В архіві `~/archives/docfactory/aspnetcore-corpus-2026-10-18.tar.gz` (366 МБ: 56 153 тексти,
+**Де тексти.** В архіві `~/archives/docfactory/aspnetcore-corpus-2026-10-19.tar.gz` (366 МБ: 56 153 тексти,
 паспорт і сховище сирого `raw/`; перед видаленням розпакований окремо й звірений з диском — нуль розбіжностей). Лише
 на цій машині.
 
@@ -148,7 +156,7 @@ gzip -9 -c instances/aspnetcore/index/passages.json > instances/aspnetcore/index
 **Як повернути тексти** — перед будь-яким оновленням:
 
 ```
-tar -xzf ~/archives/docfactory/aspnetcore-corpus-2026-10-18.tar.gz -C instances/aspnetcore
+tar -xzf ~/archives/docfactory/aspnetcore-corpus-2026-10-19.tar.gz -C instances/aspnetcore
 ./df aspnetcore smoke
 ```
 
