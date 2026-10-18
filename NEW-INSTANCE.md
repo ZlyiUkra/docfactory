@@ -353,6 +353,22 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
 - **The phrases `smoke` looks for in the prompts** (`description_phrases`) are matched literally, line breaks
   included: when rewrapping `prompts/search.txt` keep each of them on one line ("point by point" split by a wrap
   failed `smoke`).
+- **A documentation site that DocFX builds from a public repository** (learn.microsoft.com: AspNetCore.Docs,
+  AspNetDocs): read the source, not the site. The site renders pages with JavaScript and serves only the newest
+  editions, while the repository holds every edition behind monikers (`monikerRange`, `:::moniker range`), with
+  includes and code snippets, some from neighbouring repositories (`~/../AspNetCore.Docs.Samples`) — reader `docfx`.
+  Editions the source no longer carries come from the last commit that still had their monikers (ASP.NET Core 1.0–2.2
+  and 3.0). Drop HTML comments before expanding includes: an include that names itself inside a comment recursed.
+- **An API reference from the packages themselves** (.NET): a NuGet package carries XML documentation next to the
+  assembly — the text learn.microsoft.com/dotnet/api is generated from — and the package of each release describes
+  exactly that release: reader `nuget-xmldoc`, `ref/` before `lib/`. Count the types first: internal namespaces and
+  resource classes (`.Internal`, `CoreStrings`) gave some ten thousand excerpts with no content (`exclude_types`); a
+  package without XML gives nothing and leaves `sources.json`.
+- **Products that number themselves** (classic ASP.NET: MVC 5.2, Web API 5.3, SignalR 2.4, Katana 4.2 in one instance
+  with ASP.NET Core 10.0): the version carries the product as a prefix (`mvc-5.2`; `version_prefixes` in
+  `nuget-package`), and packages with their own numbering (OData, SystemWebAdapters) stay out of the per-line sources,
+  or OData 8.x lands in ASP.NET Core 8.0. A repository file without front matter takes its title from its first
+  heading (`title_from: "heading"` in `ghdocs`); vendored code (googletest under `src/`) is cut with `exclude`.
 
 ## Anatomy of an instance
 
@@ -1005,6 +1021,22 @@ and what a taken port and a failed connection look like. A domain list in the ro
 - **Фрази, які `smoke` шукає в промптах** (`description_phrases`), порівнюються дослівно, з переносами рядків:
   переносячи рядки `prompts/search.txt`, тримати кожну з них в одному рядку («point by point», розірване
   переносом, провалило `smoke`).
+- **Сайт документації, який DocFX збирає з відкритого репозиторію** (learn.microsoft.com: AspNetCore.Docs,
+  AspNetDocs): читати джерело, а не сайт. Сайт малює сторінку JavaScript-ом і показує лише найновіші редакції, а
+  репозиторій тримає кожну редакцію за монікерами (`monikerRange`, `:::moniker range`), з вставками й прикладами коду,
+  частина яких — із сусідніх репозиторіїв (`~/../AspNetCore.Docs.Samples`), — читач `docfx`. Редакції, яких у
+  джерелі вже немає, брати з останнього коміту, де їхні монікери ще були (ASP.NET Core 1.0–2.2 і 3.0). HTML-коментарі
+  прибирати до розгортання вставок: вставка, що згадує саму себе в коментарі, зациклювалась.
+- **Довідник API з самих пакетів** (.NET): пакет NuGet несе поруч зі збіркою XML-документацію — той текст, з якого
+  згенеровано learn.microsoft.com/dotnet/api, — і пакет кожного випуску описує саме той випуск: читач
+  `nuget-xmldoc`, `ref/` раніше за `lib/`. Типи спершу порахувати: внутрішні простори імен і класи ресурсів
+  (`.Internal`, `CoreStrings`) дали близько десяти тисяч фрагментів без змісту (`exclude_types`); пакет без XML не
+  дає нічого і йде з `sources.json`.
+- **Продукти з власною нумерацією** (класичний ASP.NET: MVC 5.2, Web API 5.3, SignalR 2.4, Katana 4.2 в одному
+  примірнику з ASP.NET Core 10.0): версія несе назву продукту префіксом (`mvc-5.2`; `version_prefixes` у
+  `nuget-package`), а пакети з власними номерами (OData, SystemWebAdapters) не входять у джерела ліній, інакше OData
+  8.x потрапляє в ASP.NET Core 8.0. Файл репозиторію без front matter бере назву з першого заголовка
+  (`title_from: "heading"` у `ghdocs`); вбудований чужий код (googletest у `src/`) відрізає `exclude`.
 
 ## З чого складається примірник
 
@@ -1675,6 +1707,23 @@ errada.
 - **As frases que o `smoke` procura nos prompts** (`description_phrases`) são comparadas literalmente, com quebras de
   linha: ao requebrar `prompts/search.txt`, mantenha cada uma numa linha só ("point by point" partido por uma quebra
   reprovou o `smoke`).
+- **Um site de documentação que o DocFX monta a partir de um repositório aberto** (learn.microsoft.com:
+  AspNetCore.Docs, AspNetDocs): leia a fonte, não o site. O site desenha a página com JavaScript e mostra só as
+  edições mais novas, enquanto o repositório guarda cada edição atrás de monikers (`monikerRange`,
+  `:::moniker range`), com inclusões e trechos de código, parte deles de repositórios vizinhos
+  (`~/../AspNetCore.Docs.Samples`) — leitor `docfx`. Edições que a fonte já não tem vêm do último commit em que seus monikers ainda existiam (ASP.NET Core
+  1.0–2.2 e 3.0). Tire os comentários HTML antes de expandir as inclusões: uma inclusão que cita a si mesma num
+  comentário entrou em laço.
+- **Uma referência de API tirada dos próprios pacotes** (.NET): um pacote NuGet traz, ao lado do assembly, a
+  documentação XML — o texto de que learn.microsoft.com/dotnet/api é gerado — e o pacote de cada versão descreve
+  exatamente essa versão: leitor `nuget-xmldoc`, `ref/` antes de `lib/`. Conte os tipos primeiro: namespaces internos
+  e classes de recursos (`.Internal`, `CoreStrings`) deram uns dez mil trechos sem conteúdo (`exclude_types`); um
+  pacote sem XML não dá nada e sai do `sources.json`.
+- **Produtos com numeração própria** (ASP.NET clássico: MVC 5.2, Web API 5.3, SignalR 2.4, Katana 4.2 numa instância
+  com o ASP.NET Core 10.0): a versão leva o produto como prefixo (`mvc-5.2`; `version_prefixes` no `nuget-package`), e
+  pacotes com números próprios (OData, SystemWebAdapters) ficam fora das fontes por linha, senão o OData 8.x cai no
+  ASP.NET Core 8.0. Um arquivo do repositório sem front matter tira o título do primeiro cabeçalho
+  (`title_from: "heading"` no `ghdocs`); código alheio embutido (googletest em `src/`) é cortado com `exclude`.
 
 ## Anatomia de uma instância
 

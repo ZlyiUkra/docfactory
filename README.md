@@ -2258,6 +2258,28 @@ RubyGems, Packagist, NuGet, Maven, CocoaPods). 14 499 документів, 113 
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/stripe/README.md](instances/stripe/README.md).
 
+### aspnetcore
+
+Документація ASP.NET Core і класичного ASP.NET англійською, усі стабільні мажорні й мінорні версії: сайт
+learn.microsoft.com/aspnet/core кожної редакції 1.0–10.0 (3.1–10.0 з гілки `main`, старші — з історичних комітів
+dotnet/AspNetCore.Docs) і сайт класичного ASP.NET (Web Forms, MVC, Web API, Web Pages, SignalR 2, Identity,
+OWIN/Katana); довідник API кожної лінії ASP.NET Core 1.0–10.0, класичних MVC 4.0–5.3, Web API 4.0–5.3, Web Pages
+2.0–3.3, SignalR 1.0–2.4, Identity 1.0–2.2, Katana 2.0–4.2 і System.Web 4.8.1 — з XML-документації пакетів NuGet;
+версії, залежності й README 283 пакетів NuGet і п'яти пакетів npm; markdown dotnet/aspnetcore десяти тегів 2.1–10.0;
+різниці API 3.0–10.0, нотатки релізів .NET 9 і 10 та релізи GitHub. Нові читачі `docfx` (джерело сайту Learn:
+монікери, вставки, приклади коду із сусідніх репозиторіїв, `xref`, вкладки й зони), `nuget-xmldoc` (довідник API з
+XML-документації пакета) і `nuget-package` (реєстр NuGet). 56 153 документи, 126 194 фрагменти.
+
+- порт `8862`; запис у Claude Code — `aspnetcore-docs`, адреса `http://127.0.0.1:8862/mcp`; інструменти `search_docs`
+  і `read_section`;
+- колекція у Qdrant — `docs-aspnetcore`, модель векторів — `bge-small`;
+- версія — голий номер для ASP.NET Core (`version: "8.0"`), з назвою продукту для класичного ASP.NET (`"mvc-5.2"`,
+  `"signalr-2.4"`, `"netfx-4.8.1"`); сторінки сайту класичного ASP.NET шукають без версії; без названої версії —
+  найновіша;
+- приклад питання агентові: `./df aspnetcore ask "How do I configure a fixed window rate limiter in ASP.NET Core 8?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/aspnetcore/README.md](instances/aspnetcore/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
