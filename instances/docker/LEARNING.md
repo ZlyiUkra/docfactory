@@ -635,7 +635,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
 
 # Фаза 5. Експлуатація й безпека рушія — 6 днів
 
-**Сервери MCP фази:** `docker-docs`.
+**Сервери MCP фази:** `docker-docs`, `gvisor-docs`.
 
 ### День 1. Налаштування рушія
 
@@ -686,10 +686,12 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
 - **Навіщо.** Контейнер — не віртуальна машина: ядро спільне, і помилка в налаштуваннях дає root на господарі.
 - **Що це.** Захист шарами: не root усередині (`USER`), `--cap-drop ALL` + потрібні можливості, `--read-only` з
   tmpfs для записів, `--security-opt no-new-privileges`, типові профілі seccomp і AppArmor (фаза 6 плану Linux),
-  ніколи `--privileged` і не монтувати `/var/run/docker.sock` у контейнер.
+  ніколи `--privileged` і не монтувати `/var/run/docker.sock` у контейнер. Ще один шар, необов'язковий, — пісочниця
+  gVisor (`--runtime=runsc`): між контейнером і ядром господаря стає ядро застосунку в просторі користувача (Sentry),
+  і ядро господаря бачить лише вузький набір системних викликів; ціна — сумісність і швидкість системних викликів.
 - **Читати:** `Docker Engine security`; `Seccomp security profiles for Docker`; `AppArmor security profiles for
-  Docker`; `Antivirus software and Docker`.
-- **Сервери MCP:** `docker-docs`.
+  Docker`; `Antivirus software and Docker`; необов'язково — gVisor: `Docker Quick Start`, `Security Model`.
+- **Сервери MCP:** `docker-docs`, `gvisor-docs`.
 - **Зробити:** API з `--read-only`, `--cap-drop ALL`, `no-new-privileges` і tmpfs для `/tmp`; переконатися, що
   працює; спробувати з контейнера змінити час машини чи змонтувати файлову систему — відмова.
 - **Перевірити себе:** `docker inspect` показує `ReadonlyRootfs: true` і порожній перелік можливостей; спроби кроку —

@@ -79,6 +79,7 @@ zustand.
 | [Docker](../instances/docker/LEARNING.md) | 1. Образи й Dockerfile | `nginx` (4) |
 | Docker | 2. Дані й мережа | `nginx` (2) |
 | Docker | 4. Кілька архітектур, реєстри, CI, ланцюг постачання | `github-actions` (1, 4) |
+| Docker | 5. Експлуатація й безпека рушія | `gvisor` (4) |
 | Docker | 6. Міст до Kubernetes | `kubernetes` (1) |
 | [Kubernetes](../instances/kubernetes/LEARNING.md) | 2. Конфігурація, ресурси й безпека застосунку | `webstandards` (6) |
 | Kubernetes | 11. Мережа кластера | `nginx` (3) |
