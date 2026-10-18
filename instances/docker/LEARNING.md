@@ -830,6 +830,7 @@ compose та buildx. Docker Desktop, Docker AI, Scout як продукт і і�
 - PostgreSQL — `postgresql`;
 - GitHub Actions, Container registry (ghcr.io), офіційні дії Docker і GitHub — `github-actions`;
 - nginx: конфіг фронту й проксі, nginx у Docker — `nginx`;
+- gVisor: пісочниця `runsc` як рантайм Docker, модель безпеки (фаза 5, день 4) — `gvisor`;
 - GPU NVIDIA в контейнерах: NVIDIA Container Toolkit, `nvidia-ctk`, CDI (фаза 5, день 1) — `nvidia-container-toolkit`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
