@@ -259,6 +259,19 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   copies are excluded.
 - **`ghdocs-history` with `folders: [""]`** takes only the files at the root even with `recursive`: subfolders
   (`tess3/`, `tess4/`) are named in `folders` one by one. `list` shows it — count the documents per folder.
+- **Many tools in one instance** (doc-tools: poppler, ImageMagick, Ghostscript, qpdf, ExifTool and their wrappers):
+  every version label carries the tool name (`poppler-26.10.0`, `imagemagick-7.1.1-47`, `ubuntu-24.04`). Otherwise
+  `version: "10.0"` mixes Ghostscript 10.0 with qpdf 10.0.
+- **A project on GitLab without a GitHub mirror** (poppler on gitlab.freedesktop.org): reader `gitlab-history` —
+  the named folders of every tag through the GitLab API by numeric project id, one document per path and blob; a tag
+  without the folder yields nothing.
+- **A site kept as HTML in the repository** (ImageMagick `www/`, Ghostscript `doc/*.htm`, ExifTool `html/`): reader
+  `ghdocs-history-html` with `start`/`end` per site era, `drop` for ads, scripts and SVG icons (their `<title>`
+  «Twitter» otherwise became the page title) and `title_strip`. Pages that change once in several releases are taken
+  from the last tag of each release line, not from every tag.
+- **Changelogs in a dozen formats**: reader `changelog-regex`, the entry heading is a regex in `sources.json` with
+  groups `v` and `d`. Man pages in mdoc (`file`) go through `ghdocs-history-roff`; each option of OPTIONS becomes a
+  subsection — forty options in one excerpt hid `--mime-type`.
 
 ## Anatomy of an instance
 
@@ -822,6 +835,18 @@ and what a taken port and a failed connection look like. A domain list in the ro
   тезі виключають.
 - **`ghdocs-history` з `folders: [""]`** бере лише файли кореня навіть із `recursive`: вкладені теки (`tess3/`,
   `tess4/`) перелічують у `folders` поіменно. Це видно в `list` — рахуйте документи по теках.
+- **Багато інструментів в одному примірнику** (doc-tools: poppler, ImageMagick, Ghostscript, qpdf, ExifTool і їхні
+  обгортки): кожна мітка версії — з назвою інструмента (`poppler-26.10.0`, `imagemagick-7.1.1-47`, `ubuntu-24.04`).
+  Інакше `version: "10.0"` змішує Ghostscript 10.0 з qpdf 10.0.
+- **Проєкт на GitLab без дзеркала на GitHub** (poppler на gitlab.freedesktop.org): читач `gitlab-history` — названі
+  теки кожного тегу через API GitLab за числовим id проєкту, документ на пару «шлях, blob»; тег без теки нічого не дає.
+- **Сайт, що лежить у репозиторії готовим HTML** (ImageMagick `www/`, Ghostscript `doc/*.htm`, ExifTool `html/`): читач
+  `ghdocs-history-html` з `start`/`end` для кожної епохи сайту, `drop` для реклами, скриптів та іконок SVG (їхній
+  `<title>` «Twitter» інакше ставав назвою сторінки) і `title_strip`. Сторінки, що міняються раз на кілька випусків,
+  беруть з останнього тегу кожної лінії, а не з кожного тегу.
+- **Журнали змін десятка форматів**: читач `changelog-regex`, заголовок запису — вираз у `sources.json` з групами
+  `v` і `d`. Сторінки man у mdoc (`file`) ідуть через `ghdocs-history-roff`; кожна опція розділу OPTIONS — підрозділ:
+  сорок опцій одним фрагментом ховали `--mime-type`.
 
 ## З чого складається примірник
 
@@ -1394,6 +1419,19 @@ errada.
   em cada tag são excluídas.
 - **`ghdocs-history` com `folders: [""]`** pega só os arquivos da raiz mesmo com `recursive`: as subpastas (`tess3/`,
   `tess4/`) são listadas em `folders` uma a uma. O `list` mostra isso — conte os documentos por pasta.
+- **Muitas ferramentas numa instância** (doc-tools: poppler, ImageMagick, Ghostscript, qpdf, ExifTool e seus
+  wrappers): cada rótulo de versão leva o nome da ferramenta (`poppler-26.10.0`, `imagemagick-7.1.1-47`,
+  `ubuntu-24.04`). Senão `version: "10.0"` mistura Ghostscript 10.0 com qpdf 10.0.
+- **Um projeto no GitLab sem espelho no GitHub** (poppler em gitlab.freedesktop.org): leitor `gitlab-history` — as
+  pastas nomeadas de cada tag pela API do GitLab com o id numérico do projeto, um documento por par «caminho, blob»;
+  uma tag sem a pasta não dá nada.
+- **Um site guardado como HTML no repositório** (ImageMagick `www/`, Ghostscript `doc/*.htm`, ExifTool `html/`):
+  leitor `ghdocs-history-html` com `start`/`end` por era do site, `drop` para anúncios, scripts e ícones SVG (o
+  `<title>` «Twitter» deles virava o título da página) e `title_strip`. Páginas que mudam uma vez a cada vários
+  lançamentos vêm da última tag de cada linha, não de cada tag.
+- **Changelogs em uma dúzia de formatos**: leitor `changelog-regex`, o cabeçalho da entrada é uma regex no
+  `sources.json` com os grupos `v` e `d`. Páginas man em mdoc (`file`) passam por `ghdocs-history-roff`; cada opção de
+  OPTIONS vira uma subseção — quarenta opções num só trecho escondiam `--mime-type`.
 
 ## Anatomia de uma instância
 

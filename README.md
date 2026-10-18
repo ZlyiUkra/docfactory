@@ -2134,6 +2134,31 @@ tesseract.js-core, pytesseract, tesserocr, node-tesseract-ocr — докумен
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/tesseract/README.md](instances/tesseract/README.md).
 
+### doc-tools
+
+Документація файлових інструментів англійською: poppler (сторінки man pdfinfo, pdftotext, pdftoppm, pdftocairo,
+pdfimages, pdffonts, pdfseparate, pdfunite, pdfsig, pdftohtml, pdftops, pdfdetach, pdfattach кожного стабільного
+випуску 0.5–26.10 з gitlab.freedesktop.org, NEWS, довідник API glib, Qt5, Qt6, C++), librsvg і `rsvg-convert`, `file` і
+libmagic (file(1), magic(5), libmagic(3) 3.27–5.48, ChangeLog, правила Magdir), ImageMagick 6 і 7 (сайт `www/` кожної
+лінії 6.9.4–7.1.2 з API MagickCore і MagickWand, чинний сайт, man, `policy.xml` і `delegates.xml`, ChangeLog), img2pdf,
+Ghostscript 6.0–10.08, qpdf і pikepdf, ExifTool (exiftool.org із таблицями тегів кожного production release), resvg,
+CairoSVG; обгортки npm (node-poppler, pdf2pic, gm, magick-wasm, file-type, mmmagic, wasmagic, resvg-js,
+exiftool-vendored) і PyPI (pdf2image, python-poppler, pdftotext, Wand, python-magic, file-magic, PyExifTool,
+ghostscript) — README, документація, код, журнали й таблиці версій; сторінки man усіх інструментів в Ubuntu 22.04,
+24.04 і 26.04. Нові читачі `gitlab-history` (історія тегів проєкту на GitLab), `ghdocs-history-html` (сайт у HTML з
+тегів), `changelog-regex` (журнал будь-якого формату за виразом) і перетворювач mdoc для `ghdocs-history-roff` (опція
+— підрозділ). 17 963 документи, 63 582 фрагменти.
+
+- порт `8857`; запис у Claude Code — `doc-tools-docs`, адреса `http://127.0.0.1:8857/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-doc-tools`, модель векторів — `bge-small`;
+- версія — завжди з назвою інструмента (`version: "poppler-24.02"`, `"imagemagick-7.1"`, `"ghostscript-10.08"`,
+  `"file-5.45"`), обгортки — з назвою пакета (`"node-poppler-11"`, `"pdf2image-1.17"`), сторінки Ubuntu — випуском
+  (`"ubuntu-24.04"`); API poppler версій не має; без названої версії — найновіша;
+- приклад питання агентові: `./df doc-tools ask "How do I render page 1 of a PDF to PNG at 150 dpi with pdftoppm?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/doc-tools/README.md](instances/doc-tools/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
