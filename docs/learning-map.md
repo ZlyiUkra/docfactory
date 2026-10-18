@@ -4,9 +4,9 @@
 однієї бібліотеки чи інструмента (тека `instances/<ім'я>`). Файл оновлюється після кожного нового примірника, разом
 із підрозділами «Документація у фабриці» самих планів.
 
-Стан на 17.10.2026. Примірники: alpine, argon2, astro, astro-markdown-pipeline, auth, binance-spot, biome, bullmq,
-cares, certbot, clerk, docker, drizzle, ecmascript, eslint, expo, express, express-rate-limit, fastify, ffmpeg,
-foundry, frontend-architecture, github-actions, helmet, i18next, icu, ioredis, iron-session, jose, jsonschema,
+Стан на 18.10.2026. Примірники: alpine, argon2, astro, astro-markdown-pipeline, auth, binance-spot, biome, bullmq,
+cares, certbot, clerk, doc-tools, docker, drizzle, ecmascript, eslint, expo, express, express-rate-limit, fastify,
+ffmpeg, foundry, frontend-architecture, github-actions, helmet, i18next, icu, ioredis, iron-session, jose, jsonschema,
 kraken-spot, kubernetes, libreoffice, libuv, lightweight-charts, linux, llhttp, mdn, mongodb, mongoose, motion, msw,
 nestjs, next-intl, next-themes, nextjs, nghttp2, nginx, node-mongodb, node-postgres, node-redis, nodejs, nodemailer,
 nuqs, ollama, openssl, opentelemetry, oracle-cloud, owasp, partysocket, patterns, playwright, postgrator,
