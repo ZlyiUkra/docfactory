@@ -285,6 +285,19 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   one by one instead of catching everything with `g3doc/(.*)\.md`. A page that moved or vanished
   (`g3doc/checkpoint_restore.md` of 2019) and a file the site never showed (proposals, example READMEs) then cite their
   GitHub blob at their own tag, not a dead site address.
+- **Go package reference from pkg.go.dev** (gVisor netstack, `gvisor.dev/gvisor/pkg/tcpip`): reader `pkgsite` takes
+  the root package page and every subpackage of its «Directories» table; one document per package with Overview,
+  Constants, Variables, Functions and Types, each declaration as a Go code block, methods as subsections. Subpackage
+  links carry `@<version>` in the path — strip it, so one `within` prefix covers them all and the links do not age
+  every day. pkg.go.dev slows frequent clients down with 429: the reader keeps its own pause (field `pause`, 1.5 s by
+  default), while the instance's `pause_sec` for GitHub stays 0. A module without tags shows a pseudo-version
+  (`0.0.0-<time>-<commit>`): its documents carry no release version, and the prompt must say «search them without a
+  version».
+- **The package manager's own description from an APT repository** (gVisor `runsc`): reader `apt-packages` reads the
+  `Packages` index of each architecture (`dists/<suite>/<component>/binary-<arch>/Packages`) — one document per
+  package with the control fields of every architecture and the long description. Such a repository usually keeps only
+  the latest version, so the source answers «what does `apt-get install` put on the machine today» (number, size,
+  checksums), not the history; the history comes from the tags.
 
 ## Anatomy of an instance
 
@@ -873,6 +886,17 @@ and what a taken port and a failed connection look like. A domain list in the ro
   тегу поіменно, а не ловить усе виразом `g3doc/(.*)\.md`. Сторінка, що переїхала чи зникла
   (`g3doc/checkpoint_restore.md` 2019 року), і файл, якого сайт не показував (пропозиції, README прикладів), тоді
   цитують свій blob на GitHub у своєму тезі, а не мертву адресу сайту.
+- **Довідник пакетів Go з pkg.go.dev** (netstack gVisor, `gvisor.dev/gvisor/pkg/tcpip`): читач `pkgsite` бере сторінку
+  кореневого пакета й кожен підпакет із її таблиці «Directories»; документ — пакет з розділами Overview, Constants,
+  Variables, Functions і Types, кожне оголошення — блоком коду Go, методи — підрозділами. Посилання на підпакети
+  несуть у шляху `@<версія>` — її знімати: тоді один префікс `within` покриває всі, а посилання не старіють щодня.
+  pkg.go.dev пригальмовує частих клієнтів відповіддю 429: читач тримає власну паузу (поле `pause`, типово 1,5 с), а
+  `pause_sec` примірника для GitHub лишається нуль. Модуль без тегів показує псевдоверсію (`0.0.0-<час>-<коміт>`):
+  його документи не мають версії випуску, і промпт мусить казати «шукати без версії».
+- **Власний опис пакета з репозиторію APT** (`runsc` gVisor): читач `apt-packages` читає індекс `Packages` кожної
+  архітектури (`dists/<набір>/<компонент>/binary-<архітектура>/Packages`) — документ на пакет з полями керування
+  кожної архітектури й довгим описом. Такий репозиторій зазвичай тримає лише останню версію, тож джерело відповідає на
+  «що сьогодні ставить `apt-get install`» (номер, розмір, контрольні суми), а не на історію; історія — з тегів.
 
 ## З чого складається примірник
 
@@ -1471,6 +1495,20 @@ errada.
   nova um a um, em vez de pegar tudo com `g3doc/(.*)\.md`. Uma página que mudou de lugar ou sumiu
   (`g3doc/checkpoint_restore.md` de 2019) e um arquivo que o site nunca mostrou (propostas, READMEs de exemplos) então
   citam o seu blob no GitHub na sua própria tag, não um endereço morto do site.
+- **Referência de pacotes Go do pkg.go.dev** (netstack do gVisor, `gvisor.dev/gvisor/pkg/tcpip`): o leitor `pkgsite`
+  pega a página do pacote raiz e cada subpacote da sua tabela «Directories»; um documento por pacote com Overview,
+  Constants, Variables, Functions e Types, cada declaração como bloco de código Go, métodos como subseções. Os links
+  dos subpacotes trazem `@<versão>` no caminho — retire-a: assim um só prefixo `within` cobre todos e os links não
+  envelhecem a cada dia. O pkg.go.dev freia clientes frequentes com 429: o leitor mantém a sua própria pausa (campo
+  `pause`, 1,5 s por padrão), enquanto o `pause_sec` da instância para o GitHub continua zero. Um módulo sem tags
+  mostra uma pseudoversão (`0.0.0-<hora>-<commit>`): os documentos dele não têm versão de lançamento, e o prompt
+  precisa dizer «buscar sem versão».
+- **A descrição do próprio gerenciador de pacotes, de um repositório APT** (`runsc` do gVisor): o leitor
+  `apt-packages` lê o índice `Packages` de cada arquitetura
+  (`dists/<suíte>/<componente>/binary-<arquitetura>/Packages`) — um documento por pacote com os campos de controle de
+  cada arquitetura e a descrição longa. Um repositório assim costuma manter só a última versão, então a fonte responde
+  «o que o `apt-get install` instala hoje» (número, tamanho, somas de verificação), não o histórico; o histórico vem
+  das tags.
 
 ## Anatomia de uma instância
 
