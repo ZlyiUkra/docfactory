@@ -197,7 +197,8 @@ def stripe_md(source: dict, ctx) -> list[Item]:
     langs = list(source.get("langs") or [])
     pages: list[str] = []
     for loc in _LOC.findall(ctx.text(source["url"])):
-        page = loc.rstrip("/")
+        # Частина розділів (`/cli/…`) є в сайтмапі двічі: сторінкою і її markdown-двійником.
+        page = re.sub(r"\.md$", "", loc.rstrip("/"))
         path = urlsplit(page).path
         # Варіанти сторінок сайтмап теж несе (`?payment-ui=…&amp;ui=…`), але їх дає перелік
         # варіантів самої сторінки — з підписами й у формі, яку приймає markdown-двійник.
@@ -214,7 +215,9 @@ def stripe_md(source: dict, ctx) -> list[Item]:
         url = page + ".md"
         if source.get("variants") is True:
             probe = _with_lang(url, langs[0]) if langs else url
-            text = ctx.text(probe)
+            # Сторінка, якої не віддає двійник, — збій лише цього документа, не всього переліку.
+            code, data = ctx.fetch(probe)
+            text = data.decode("utf-8", errors="replace") if code == "200" else ""
             if _VARIANTS in text:
                 for label, v_url in _variants(text):
                     if not ctx.allowed(v_url):
