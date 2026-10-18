@@ -66,6 +66,7 @@ import json
 import re
 from urllib.parse import unquote, urljoin, urlsplit
 
+from engine import net
 from engine.readers import Item, _markup, register
 
 _ACCEPT = "text/markdown"
@@ -254,7 +255,14 @@ def learn_archive(source: dict, ctx) -> list[Item]:
 
     while queue:
         url = queue.popleft()
-        code, data = ctx.fetch(_with_query(url, query), accept=_ACCEPT)
+        try:
+            code, data = ctx.fetch(_with_query(url, query), accept=_ACCEPT)
+        except net.Refused as exc:
+            # Архівна адреса, що переадресовує на чинний сайт (/sql/…?view=sql-server-2014), —
+            # уже не сторінка архіву; білий список її не пускає, і падати мусить вона одна, а не
+            # весь перелік.
+            print(f"  {url}: {exc} — пропускаю", flush=True)
+            continue
         if code in _GONE:
             continue
         if code != "200":
@@ -283,7 +291,10 @@ def learn_archive(source: dict, ctx) -> list[Item]:
         toc = urljoin(url, rel) if rel else ""
         if toc and toc not in tocs and any(toc.startswith(w) for w in within) and ctx.allowed(toc):
             tocs.add(toc)
-            tcode, tdata = ctx.fetch(_with_query(toc, query))
+            try:
+                tcode, tdata = ctx.fetch(_with_query(toc, query))
+            except net.Refused:
+                tcode, tdata = "", b""
             if tcode == "200":
                 try:
                     items = json.loads(tdata).get("items") or []
