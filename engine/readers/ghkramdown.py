@@ -120,7 +120,13 @@ class _Kramdown:
             url = f"{base}{self._data}/{data[len('site.data.'):].replace('.', '/')}.yml"
             if not self._ctx.allowed(url):
                 return ""
-            rows = yaml_load(self._ctx.text(url))
+            # Сторінка буває, що називає файл даних, якого в цьому тезі ще немає (поради FluentAssertions 5.x–6.x
+            # вставляють `tips.datetimes` раніше, ніж з'явився datetimes.yml): Jekyll тоді не малює нічого, і тут
+            # вставка теж зникає, а не валить сторінку.
+            code, data = self._ctx.fetch(url)
+            if code != "200":
+                return ""
+            rows = yaml_load(data.decode("utf-8", errors="replace"))
             if not isinstance(rows, list):
                 return ""
             left, right = attrs.get("header1", "Before"), attrs.get("header2", "After")
