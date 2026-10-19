@@ -2334,6 +2334,31 @@ Oracle, MongoDB, Couchbase, KEFCore, Firebird, IBM, Jet, Spanner, YDB, DuckDB, D
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/entityframework/README.md](instances/entityframework/README.md).
 
+### testcontainers-dotnet
+
+Документація Testcontainers for .NET англійською, усі стабільні версії 0.0.4–4.16.0: сайт dotnet.testcontainers.org на
+кожному з 32 тегів 2.2.0–4.16.0 (тека `docs/` репозиторію, з прикладами, які сайт вставляє з тестів) і README, яким
+документація була до сайту (0.0.4–2.1.0, коли бібліотека звалася DotNet.Testcontainers); довідник API ядра й модулів
+кожної мінорної лінії 2.2–4.16 з XML-документації пакетів NuGet; версії, залежності й README 69 пакетів власника
+Testcontainers (ядро, Xunit, XunitV3, 66 модулів) і DotNet.Testcontainers; код, тести й приклади репозиторію на
+останньому тезі кожної мінорної лінії; 48 релізів GitHub. Разом з ним — Docker.DotNet.Enhanced, клієнт Docker Engine
+API, на якому стоїть ядро: вісім пакетів NuGet, довідник API 4.2–4.3, README з таблицею версій Docker API, код, тести й
+релізи ліній 3.125–4.3. Читач `site-history` навчився вставок `--8<--` з іменованими розділами (`snippet_sections`) і
+посилань на сторінки сайту (`site`), `nuget-xmldoc` — посилань на nuget.org (`link: "nuget"`), `nuget-package` —
+відсічки чужих старих версій (`since`), `ghcode-history` — коду C# з відступом у два пробіли (`outline_indent:
+"auto"`). Вектори — на відеокарті. 17 270 документів, 26 851 фрагмент.
+
+- порт `8867`; запис у Claude Code — `testcontainers-dotnet-docs`, адреса `http://127.0.0.1:8867/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-testcontainers-dotnet`, модель векторів — `bge-small`;
+- версія — точний номер випуску чи лінія (`version: "4.16"`, `"4.8.1"`, `"4"`); Docker.DotNet.Enhanced — з міткою
+  `docker-dotnet-` (`"docker-dotnet-4.3"`); без названої версії — Testcontainers 4.16.0;
+- Testcontainers 0.0.1–0.0.2.107 у NuGet — пакет іншого автора під тим самим ідентифікатором, він не береться;
+- приклад питання агентові: `./df testcontainers-dotnet ask "How do I wait until a container's HTTP endpoint returns
+  200 in Testcontainers for .NET?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/testcontainers-dotnet/README.md](instances/testcontainers-dotnet/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
