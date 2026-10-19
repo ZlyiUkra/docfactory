@@ -17,7 +17,11 @@
 - `folder` — каталог XML у пакеті, коли він не ref/ і не lib/ (еталонні збірки .NET
   Framework: «build/.NETFramework/v4.8.1/»);
 - `exclude_types` — вираз повного імені типу, що не береться: таблиці рядків ресурсів
-  (Resources, CoreStrings) і простори імен `.Internal`, публічні лише формально.
+  (Resources, CoreStrings) і простори імен `.Internal`, публічні лише формально;
+- `link: "nuget"` — адреса документа не на learn.microsoft.com, а на сторінку тієї версії
+  пакета на nuget.org, з якого прийшов тип. learn.microsoft.com генерує довідник лише для
+  бібліотек Microsoft: Testcontainers чи Docker.DotNet там немає, і кожне посилання вело б
+  на сторінку «не знайдено». Без поля адреси ті самі, що й були.
 
 Каталог збірок у пакеті обирається сам: `ref/` переважає `lib/`, бо це контракт, який
 бачить код; серед цільових платформ — найновіша .NET, потім .NET Standard, потім .NET
@@ -265,8 +269,11 @@ def _parse(source: dict, ctx) -> dict:
     urls = [source["url"]] if not source.get("packages") else [
         f"{_FLAT}{p.split('/')[0].lower()}/{p.split('/')[1].lower()}/"
         f"{p.split('/')[0].lower()}.{p.split('/')[1].lower()}.nupkg" for p in source["packages"]]
+    # Пакет, з якого прийшов тип («Ідентифікатор/версія»), — для посилань `link: "nuget"`.
+    refs = list(source.get("packages") or [])
     types: dict = {}
-    for url in urls:
+    for n, url in enumerate(urls):
+        pkg = refs[n] if refs else "/".join(url.split("/v3-flatcontainer/", 1)[-1].split("/")[:2])
         if not ctx.allowed(url):
             continue
         code, data = ctx.fetch(url)
@@ -286,11 +293,13 @@ def _parse(source: dict, ctx) -> dict:
                 mid = mem.get("name", "")
                 kind, name, _ = _split_member(mid)
                 if kind == "T":
-                    entry = types.setdefault(name, {"asm": asm, "type": "", "members": []})
+                    entry = types.setdefault(name, {"asm": asm, "pkg": pkg, "type": "",
+                                                    "members": []})
                     entry["type"] = ET.tostring(mem, encoding="unicode")
                 elif kind in _KINDS:
                     owner, _ = _owner(name)
-                    entry = types.setdefault(owner, {"asm": asm, "type": "", "members": []})
+                    entry = types.setdefault(owner, {"asm": asm, "pkg": pkg, "type": "",
+                                                     "members": []})
                     entry["members"].append(ET.tostring(mem, encoding="unicode"))
     _CACHE[source["id"]] = types
     return types
@@ -322,6 +331,9 @@ def _member_heading(mid: str, type_short: str) -> tuple[int, str]:
 @register("nuget-xmldoc")
 def nuget_xmldoc(source: dict, ctx) -> list[Item]:
     view = source.get("view", "")
+    link = source.get("link", "")
+    if link not in ("", "nuget"):
+        raise SystemExit(f"{source['id']}: поле link — лише \"nuget\".")
     prefix = source.get("name_prefix", "api")
     drop = re.compile(source["exclude_types"]) if source.get("exclude_types") else None
     types = _parse(source, ctx)
@@ -332,8 +344,12 @@ def nuget_xmldoc(source: dict, ctx) -> list[Item]:
         if not full or (drop and drop.search(full)):
             continue
         name = f"{prefix}-{_markup.slug(full.replace('`', '-'))}"
-        url = ("https://learn.microsoft.com/en-us/dotnet/api/"
-               + full.lower().replace("`", "-") + (f"?view={view}" if view else ""))
+        if link == "nuget":
+            pid, _, ver = types[full]["pkg"].partition("/")
+            url = f"https://www.nuget.org/packages/{pid}/{ver}"
+        else:
+            url = ("https://learn.microsoft.com/en-us/dotnet/api/"
+                   + full.lower().replace("`", "-") + (f"?view={view}" if view else ""))
 
         def make(full=full, url=url):
             entry = _parse(source, ctx)[full]
