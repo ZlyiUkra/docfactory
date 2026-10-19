@@ -334,7 +334,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 | `@nestjs/swagger` і CLI plugin | документ OpenAPI, сторінка `/docs`, джерело клієнта для SPA | Ф2 Д6–7 |
 | PostgreSQL | база даних | Ф0 Д13–18, Ф3; є примірник `postgresql` |
 | TypeORM або Prisma | ORM: сутності чи схема, міграції, запити | Ф3 Д1–12; є примірники `typeorm` і `prisma` |
-| `@nestjs/jwt`, Passport | токени й стратегії входу | Ф4 Д2–5; є примірник `passport` (Passport і стратегії local, JWT, OAuth 2.0, Google, GitHub, Facebook, Bearer, OpenID Connect; `@nestjs/jwt` — поза корпусом) |
+| `@nestjs/jwt`, Passport | токени й стратегії входу | Ф4 Д2–5; є примірник `passport` (Passport і тринадцять стратегій: local, JWT, OAuth 2.0, Google, GitHub, Facebook, Bearer, OpenID Connect, SAML, Azure AD, Twitter, Discord; `@nestjs/jwt` — поза корпусом) |
 | bcrypt або argon2 | хешування паролів | Ф4 Д1; є примірник `argon2` (argon2 і `@node-rs/argon2`; bcrypt — поза корпусом) |
 | Vitest і supertest | юніт- і наскрізні тести | Ф5; є примірник `vitest` (supertest — поза корпусом) |
 | `@nestjs/terminus` | перевірки стану для Docker і оркестраторів | Ф6 Д3, Д8 |
@@ -450,10 +450,10 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 - API споту Kraken, запасне джерело цін (REST, WebSocket v2, гайди, журнал змін) — `kraken-spot`;
 - хешування паролів: пакети npm argon2 (node-argon2) і `@node-rs/argon2` усіх стабільних версій, еталонна реалізація
   Argon2 і його специфікація — `argon2`;
-- Passport.js (сайт passportjs.org; README, журнали змін, код `lib/` і тести `test/` кожної стабільної версії passport
-  0.1–0.7 і стратегій passport-local, passport-jwt, passport-oauth2, passport-google-oauth20, passport-github2,
-  passport-facebook, passport-http-bearer, passport-openidconnect, passport-strategy; таблиці версій npm) —
-  `passport`;
+- Passport.js (сайт passportjs.org; README, журнали змін, код і тести кожної стабільної версії passport 0.1–0.7 і
+  тринадцяти стратегій: passport-local, passport-jwt, passport-oauth2, passport-google-oauth20, passport-github2,
+  passport-facebook, passport-http-bearer, passport-openidconnect, passport-saml, passport-azure-ad, passport-twitter,
+  passport-discord, passport-strategy; таблиці версій npm) — `passport`;
 - Viem (сайт кожної стабільної версії 0.x–2.x: клієнти, транспорти, дії, контракти, акаунти, утиліти, SIWE,
   EIP-7702, OP Stack, Account Abstraction, Tempo; приклади, журнал змін і таблиця версій npm) — `viem`;
 - Foundry (Foundry Book на день виходу кожної стабільної версії 0.3.0–1.8.5: forge, cast, anvil, chisel, читкоди,
