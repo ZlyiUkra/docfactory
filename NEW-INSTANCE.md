@@ -532,6 +532,25 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   members over the AngleSharp DOM) and compiled-in polyfills and annotations (`System.*`, `Microsoft.CodeAnalysis.*`,
   `JetBrains.Annotations` — 81 types in every Shouldly line): count members by namespace before declaring and cut them
   off with `exclude_types`.
+- **TypeScript with a four-space indent and no semicolons** (TypeORM: Prettier `semi: false`): `ghcode-history-ts`
+  takes class members at two spaces and tells an overload signature from a method by its «;», so the whole
+  EntityManager stayed one section, and every overload (`export function Column(): PropertyDecorator`) would become a
+  section of its own. `indent: 4` and `join_same: true` split members at four spaces and fold neighbouring sections
+  with the same heading into one. Count the headings of the largest class after the split.
+- **A Docusaurus component of the site's own around tabs** (`<DatabaseTabs>` with `<DatabaseTab value="postgres">`,
+  labels in `src/constants`): `docusaurus_tabs` knows only `<Tabs>`/`<TabItem>`, and the database names vanish. An
+  MDX import spread over several lines (`import {` … `} from "@site/…"`) left its tail as the first line of the text,
+  so the page title became a section and the file name the title — look at the first lines of the written documents.
+  Flat pages that open with a list of links to their own anchors (a table of contents) gave every document an intro
+  made of section names; drop it. Reader `ghdocs-history-typeorm` (`custom_tabs`, `drop_toc`).
+- **Code and tests outweigh the documentation** (TypeORM: 94 % of 55 thousand excerpts): a query made of identifiers
+  alone (`@Column nullable default`, `leftJoinAndSelect`) returns test entities and source files. The prompt tells the
+  model to put the topic words of the page next to the names («Column options», «joining relations») and to search
+  code by class and method: «as the model» went from 7 to 10 of 10, `max_per_doc` changed nothing.
+- **A package README rewritten by the build only cosmetically** (TypeORM swaps ```` ```typescript ```` for
+  ```` ```javascript ````): take the README from the publishing commit (`gitHead`) or the tag with `npm-readme`, and
+  the tarball (2–3 MB each, 300 MB for 115 versions) only for versions with neither; one `slug_rewrite` rule gives
+  both sources one key.
 
 ## Anatomy of an instance
 
@@ -1353,6 +1372,25 @@ and what a taken port and a failed connection look like. A domain list in the ro
 - **Пакет зі згенерованими обгортками чужої бібліотеки** (bunit.web: 12 тисяч членів `Bunit.Web.AngleSharp` поверх DOM
   AngleSharp) і вкомпільовані поліфіли й анотації (`System.*`, `Microsoft.CodeAnalysis.*`, `JetBrains.Annotations` —
   81 тип на кожну лінію Shouldly): члени рахують за просторами імен до оголошення й відсікають `exclude_types`.
+- **TypeScript з відступом у чотири пробіли й без «;»** (TypeORM: Prettier `semi: false`): `ghcode-history-ts` бере
+  члени класу на двох пробілах і відрізняє сигнатуру перевантаження від методу за «;», тож увесь EntityManager лишався
+  одним розділом, а кожне перевантаження (`export function Column(): PropertyDecorator`) ставало б окремим.
+  `indent: 4` і `join_same: true` ділять члени на чотирьох пробілах і зливають сусідні розділи з однаковим заголовком.
+  Після поділу перелічіть заголовки найбільшого класу.
+- **Власний компонент сайту Docusaurus навколо вкладок** (`<DatabaseTabs>` з `<DatabaseTab value="postgres">`,
+  підписи в `src/constants`): `docusaurus_tabs` знає лише `<Tabs>`/`<TabItem>`, і назви баз зникають. Імпорт MDX на
+  кількох рядках (`import {` … `} from "@site/…"`) лишав хвіст першим рядком тексту, тож назва сторінки ставала
+  розділом, а назвою документа — ім'я файла: дивіться на перші рядки записаних документів. Плоскі сторінки, що
+  починаються переліком посилань на власні якорі (змістом), давали кожному документу вступ з назв розділів — його
+  знімають. Читач `ghdocs-history-typeorm` (`custom_tabs`, `drop_toc`).
+- **Код і тести переважують документацію** (TypeORM: 94 % з 55 тисяч фрагментів): запит самими іменами (`@Column
+  nullable default`, `leftJoinAndSelect`) приносить сутності з тестів і файли коду. Промпт велить моделі ставити поруч
+  з іменами слова теми сторінки («Column options», «joining relations»), а код шукати ім'ям класу й методу: «як
+  модель» піднялося з 7 до 10 з 10, `max_per_doc` нічого не змінив.
+- **README пакета, який збирання міняє лише косметично** (TypeORM міняє ```` ```typescript ```` на
+  ```` ```javascript ````): README береться з коміту публікації (`gitHead`) чи тегу читачем `npm-readme`, а tarball
+  (2–3 МБ кожен, 300 МБ на 115 версій) — лише для версій без того й другого; одне правило `slug_rewrite` дає обом
+  джерелам один ключ.
 
 ## З чого складається примірник
 
@@ -2204,6 +2242,27 @@ errada.
   sobre o DOM do AngleSharp) e polyfills e anotações compilados dentro (`System.*`, `Microsoft.CodeAnalysis.*`,
   `JetBrains.Annotations` — 81 tipos em cada linha do Shouldly): conte os membros por namespace antes de declarar e
   corte-os com `exclude_types`.
+- **TypeScript com recuo de quatro espaços e sem «;»** (TypeORM: Prettier `semi: false`): o `ghcode-history-ts` pega
+  os membros da classe em dois espaços e distingue a assinatura de sobrecarga de um método pelo «;», então o
+  EntityManager inteiro ficava uma só seção, e cada sobrecarga (`export function Column(): PropertyDecorator`) viraria
+  uma seção própria. `indent: 4` e `join_same: true` dividem os membros em quatro espaços e fundem seções vizinhas com
+  o mesmo título. Depois da divisão, liste os títulos da maior classe.
+- **Um componente próprio do site Docusaurus em volta das abas** (`<DatabaseTabs>` com `<DatabaseTab
+  value="postgres">`, rótulos em `src/constants`): o `docusaurus_tabs` conhece só `<Tabs>`/`<TabItem>`, e os nomes dos
+  bancos somem. Um import MDX em várias linhas (`import {` … `} from "@site/…"`) deixava o fim como primeira linha do
+  texto, então o título da página virava seção e o nome do arquivo virava o título — olhe as primeiras linhas dos
+  documentos gravados. Páginas planas que começam com uma lista de links para as próprias âncoras (um sumário) davam a
+  cada documento uma introdução feita de nomes de seções; ela é retirada. Leitor `ghdocs-history-typeorm`
+  (`custom_tabs`, `drop_toc`).
+- **Código e testes pesam mais que a documentação** (TypeORM: 94 % de 55 mil trechos): uma consulta só de
+  identificadores (`@Column nullable default`, `leftJoinAndSelect`) traz entidades de teste e arquivos de código. O
+  prompt manda o modelo pôr as palavras do tema da página ao lado dos nomes («Column options», «joining relations») e
+  buscar código pelo nome da classe e do método: «como o modelo» subiu de 7 para 10 de 10, `max_per_doc` não mudou
+  nada.
+- **Um README de pacote que o build muda só na aparência** (o TypeORM troca ```` ```typescript ```` por
+  ```` ```javascript ````): o README vem do commit de publicação (`gitHead`) ou da tag pelo `npm-readme`, e o tarball
+  (2–3 MB cada, 300 MB para 115 versões) só para versões sem nenhum dos dois; uma regra `slug_rewrite` dá às duas
+  fontes uma só chave.
 
 ## Anatomia de uma instância
 
