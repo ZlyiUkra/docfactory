@@ -7,6 +7,19 @@
                       `exclude`, `name_prefix` і `max_file` — межа розміру файла в байтах
                       замість спільної (100 000). Поля `outline` немає: файли .ts, .tsx, .js
                       і .jsx ділиться на розділи завжди.
+                      `indent` — відступ членів класу в пробілах (типово 2); рівень заголовка
+                      тесту теж рахується за ним, а метод з вкладеними дужками узагальнення
+                      (`create<E, L extends DeepPartial<E>>(`) теж стає розділом.
+                      `join_same: true` — сусідні розділи з однаковим заголовком зливаються в
+                      один. Без цих полів поділ той самий, що й був.
+
+Навіщо `indent` і `join_same`. Код TypeORM відформатовано з відступом у чотири пробіли: під
+правилом «член класу — на двох» клас EntityManager лишався одним розділом на сотні рядків, і
+фрагменти, нарізані за довжиною, не називали методу. Рядки там пишуться без «;» (Prettier з
+`semi: false`), тож сигнатура перевантаження (`async transaction<T>(…): Promise<T>`, декоратор
+`export function Column(): PropertyDecorator`) від початку методу не відрізняється — кожне
+перевантаження ставало б окремим розділом з тим самим заголовком. `join_same` зводить їх із
+реалізацією в один розділ, як і задумано правилом «сигнатура без тіла — не межа».
 
 Навіщо окремий читач. `ghcode-history` ділить код за відступом у чотири пробіли й без
 модифікаторів — так написано Alpine.js. Код partysocket відформатовано Prettier (згодом
@@ -50,8 +63,9 @@ _TEST_OPEN = re.compile(_CALL + "$")
 _NAME_NEXT = re.compile(r"""^\s*(['"`])(.+?)\1""")
 _DECL = re.compile(r"^(?:export\s+)?(?:default\s+)?(?:declare\s+)?(?:abstract\s+)?(?:async\s+)?"
                    r"(class|function|interface|type|enum|const|let)\s+([A-Za-z_$][\w$]*)")
-_MEMBER = re.compile(r"^  ((?:(?:public|private|protected|static|readonly|override|async|get|set)"
-                     r"\s+)*)(constructor|[A-Za-z_$][\w$]*)\s*(?:<[^>]*>)?\(")
+_MEMBER_TAIL = (r"((?:(?:public|private|protected|static|readonly|override|async|get|set)"
+                r"\s+)*)(constructor|[A-Za-z_$][\w$]*)\s*(?:<[^>]*>)?\(")
+_MEMBER = re.compile(r"^  " + _MEMBER_TAIL)
 _NOT_METHOD = {"if", "for", "while", "switch", "catch", "function", "return", "super"}
 _COMMENT = re.compile(r"^\s*(?:/\*|\*|//|@[A-Za-z])")
 # Розділ коротший за це приклеюється до попереднього (той самий поріг, що й у фрагментів).
@@ -75,8 +89,15 @@ def _template_after(line: str, inside: bool) -> bool:
     return inside != (count % 2 == 1)
 
 
-def _outline(text: str, lang: str) -> str:
-    """Тіло з розділами: заголовок markdown на кожній межі, під ним — блок коду до наступної."""
+def _outline(text: str, lang: str, indent: int = 2, join_same: bool = False) -> str:
+    """Тіло з розділами: заголовок markdown на кожній межі, під ним — блок коду до наступної.
+
+    `indent` — відступ членів класу (і крок вкладеності тестів), `join_same` — сусідні розділи
+    з однаковим заголовком стають одним (див. поля джерела в описі модуля)."""
+    # Із власним відступом — і узагальнення з одним рівнем вкладених дужок
+    # (`create<Entity, EntityLike extends DeepPartial<Entity>>(`): `<[^>]*>` такого не бере.
+    member = _MEMBER if indent == 2 else re.compile(
+        rf"^ {{{indent}}}" + _MEMBER_TAIL.replace(r"(?:<[^>]*>)?", r"(?:<(?:[^<>]|<[^<>]*>)*>)?"))
     parts: list = [["", []]]
     owner = ""
     in_template = False
@@ -87,10 +108,10 @@ def _outline(text: str, lang: str) -> str:
         if inside:
             pass
         elif m := _TEST.match(line):
-            heading = f"{'#' * min(2 + len(m[1]) // 2, 6)} {m[3]}"
+            heading = f"{'#' * min(2 + len(m[1]) // indent, 6)} {m[3]}"
         elif (m := _TEST_OPEN.match(line)) and i + 1 < len(lines) \
                 and (n := _NAME_NEXT.match(lines[i + 1])):
-            heading = f"{'#' * min(2 + len(m[1]) // 2, 6)} {n[2]}"
+            heading = f"{'#' * min(2 + len(m[1]) // indent, 6)} {n[2]}"
         elif m := _DECL.match(line):
             single = m[1] in ("type", "const", "let") and line.rstrip().endswith(";")
             owner = m[2] if m[1] == "class" else ""
@@ -98,7 +119,7 @@ def _outline(text: str, lang: str) -> str:
                 heading = f"## {m[1]} {m[2]}"
         elif line.startswith("}"):
             owner = ""
-        elif owner and (m := _MEMBER.match(line)) and m[2] not in _NOT_METHOD \
+        elif owner and (m := member.match(line)) and m[2] not in _NOT_METHOD \
                 and not line.rstrip().endswith(";"):
             mods = m[1].split()
             accessor = next((w for w in mods if w in ("get", "set")), "")
@@ -118,6 +139,9 @@ def _outline(text: str, lang: str) -> str:
     for heading, lines in parts:
         code = "\n".join(lines).strip("\n")
         if not code.strip():
+            continue
+        if join_same and merged and heading and heading == merged[-1][0]:
+            merged[-1][1] += "\n\n" + code
             continue
         if merged and heading and len(code) < _MIN_PART and not heading.startswith("## "):
             merged[-1][1] += "\n\n" + code
@@ -143,6 +167,8 @@ def ghcode_history_ts(source: dict, ctx) -> list[Item]:
     exclude = [re.compile(x) for x in source.get("exclude") or ()]
     lead = f"{_markup.slug(source['name_prefix'])}-" if source.get("name_prefix") else ""
     limit = int(source.get("max_file") or _MAX_FILE)
+    indent = int(source.get("indent") or 2)
+    join_same = source.get("join_same") is True
 
     # ім'я документа → [шлях, [теги]]; порядок — від найновішого тегу, як оголошено в `tags`
     seen: dict = {}
@@ -179,7 +205,7 @@ def ghcode_history_ts(source: dict, ctx) -> list[Item]:
             text = ctx.text(raw)
             _markup.refuse_html(text, raw)
             lang = _lang_ts(path)
-            body = (_outline(text, lang) if lang in ("js", "ts", "tsx", "jsx")
+            body = (_outline(text, lang, indent, join_same) if lang in ("js", "ts", "tsx", "jsx")
                     else f"```{lang}\n{text.rstrip()}\n```")
             title = f"{repo}: {path}"
             _markup.require(title, body, raw, min_chars=1)

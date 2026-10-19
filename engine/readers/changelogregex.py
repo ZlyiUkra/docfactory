@@ -2,7 +2,10 @@
 
 `changelog-regex` — `url`     — сирий файл журналу; `cite` — адреса для людей;
                     `heading` — вираз рядка, з якого починається запис (багаторядковий режим), з групою
-                                `v` — номер версії, і необов'язковою `d` — датою;
+                                `v` — номер версії, і необов'язковими `d` — датою та `w` — другим
+                                номером, коли один запис описує два випуски (TypeORM:
+                                «## [0.2.23](…), [0.2.24](…) (2020-02-28)»): документ дістає обидві
+                                версії, і фільтр знаходить запис за кожною;
                     `label`   — підпис у назві документа («poppler NEWS»).
                     Необов'язкові: `markdown: true` — запис уже markdown і розбирається як markdown, інакше
                     це простий текст (див. нижче); `skip` — вираз версій, що не беруться (передвипуски);
@@ -80,12 +83,16 @@ def changelog_regex(source: dict, ctx) -> list[Item]:
             continue
         taken.add(version)
         date = (head.groupdict().get("d") or "").strip()
+        also = (head.groupdict().get("w") or "").strip()
         heading = f"{version} ({date})" if date else version
+        if also:
+            heading = f"{version}, {also} ({date})" if date else f"{version}, {also}"
         chunk = text[head.end():heads[i + 1].start() if i + 1 < len(heads) else len(text)]
         name = lead + re.sub(r"[^\w.-]+", "-", version)
 
         # Рядок заголовка без підкреслення reStructuredText («Version 2.63.3» над «=====»).
-        def make(chunk=chunk, heading=heading, version=version,
+        def make(chunk=chunk, heading=heading,
+                 version=f"{version}, {vprefix}{also}" if also else version,
                  line=head.group(0).strip().split("\n")[0].strip()):
             body = _markup.markdown_body(chunk) if markdown else _plain(chunk)
             body = f"{line}\n\n{body}" if not markdown else body
