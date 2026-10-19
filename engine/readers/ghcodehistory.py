@@ -15,7 +15,12 @@
                    пише код з відступом у два пробіли (простір імен блоком, тип на 2, члени на
                    4), а тести — на чотири (простір імен рядком), і під правилом «плюс чотири»
                    весь клас ContainerBuilder на 28 тисяч символів лишався одним розділом. Без
-                   поля поділ той самий, що й був.
+                   поля поділ той самий, що й був;
+                   `outline_tabs: true` — файл C# з відступом табуляцією (xUnit.net, bUnit)
+                   перед поділом дістає замість табуляцій пробіли (по чотири на позицію):
+                   розбір міряє відступ лише пробілами, і з табуляцією кожен член стояв на
+                   нульовому відступі, тож клас лишався одним розділом. Без поля текст і поділ
+                   ті самі, що й були.
 
 Навіщо. `ghcode` бере дерево одного тегу, а `ghdocs-history` бере багато тегів, але читає
 кожен файл як markdown. CSP-збірка Alpine.js описана на сайті однією сторінкою, і та
@@ -521,6 +526,11 @@ def ghcode_history(source: dict, ctx) -> list[Item]:
             elif "python" in langs and lang == "python":
                 body = _outline_py(text)
             elif "csharp" in langs and path.endswith(".cs"):
+                # `outline_tabs: true` — відступ табуляцією (xUnit.net, bUnit) стає пробілами до
+                # поділу: розбір бачить відступ лише в пробілах, і клас із членами на табуляції
+                # лишався одним розділом. Без поля текст той самий, що й був.
+                if source.get("outline_tabs") is True:
+                    text = text.expandtabs(4)
                 body = _outline_cs(text, source.get("outline_indent") == "auto")
             elif outline and lang in ("js", "ts"):
                 body = _outline(text, lang)
