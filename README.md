@@ -2393,6 +2393,32 @@ ASP.NET Core) і нотатки випусків; документація dotne
   100 МіБ; архів — `C:\Distr\dotnet-corpus-2026-10-19.tar.gz`;
 - докладніше — у [instances/dotnet/README.md](instances/dotnet/README.md).
 
+### typeorm
+
+Документація TypeORM англійською, усі стабільні версії 0.0.1–1.1.2: сайт typeorm.io 1.0.0–1.1.2 і v0.typeorm.io
+0.3.25–0.3.31 та плоска тека `docs/*.md` 0.1.0–0.3.24 — з тегів репозиторію typeorm/typeorm, бо сайт тримає лише
+найновішу версію кожної лінії (сутності й колонки, зв'язки, `DataSource` і параметри кожного драйвера,
+`EntityManager` і `Repository`, параметри `find`, QueryBuilder, міграції й CLI, транзакції, нотатки 1.0 і перехід з
+0.3); README пакета typeorm кожної стабільної версії, `CHANGELOG.md`, релізи GitHub; код `src/` з JSDoc і тести
+кожного стабільного тегу 0.0.2–1.1.2; `@typeorm/codemod` (перетворення коду 0.3 → 1.0) і
+`@typeorm/legacy-naming-strategies`; реєстр npm трьох пакетів. Новий читач `ghdocs-history-typeorm` підписує вкладки
+баз `<DatabaseTabs>` і знімає зміст плоских сторінок; `ghcode-history-ts` дістав поля `indent` і `join_same` (код з
+відступом у чотири пробіли, перевантаження разом з реалізацією), `changelog-regex` — групу `w` (один запис на дві
+версії). 19 759 документів, 54 916 фрагментів, 94 % — код і тести; вектори — на процесорі.
+
+- порт `8868`; запис у Claude Code — `typeorm-docs`, адреса `http://127.0.0.1:8868/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-typeorm`, модель векторів — `bge-small`;
+- версія — лінія чи випуск (`version: "0.3"`, `"1.1"`, `"0.2.45"`); `@typeorm/codemod` — з міткою `codemod-`
+  (`"codemod-1.0.3"`), legacy-naming-strategies — `legacy-naming-strategies-`; без названої версії — обидві лінії: 0.3
+  (0.3.31, 78 % завантажень npm) і 1.1 (1.1.2), з тим, що між ними змінила 1.0;
+- запит до сторінки документації — з назвою її теми поруч з іменами («Column options nullable default»): самі імена
+  приносять здебільшого код і тести;
+- приклад питання агентові: `./df typeorm ask "How do I define a many-to-one relation with a custom join column in
+  TypeORM 0.3?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/typeorm/README.md](instances/typeorm/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
