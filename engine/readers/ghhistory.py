@@ -91,7 +91,14 @@
                    вивід команд — розкриваються (див. `_mdbook`); редакція враховує й вставлені файли;
                    `react_spectrum: true` — службове зі сторінок репозиторію React Aria знімається:
                    коментар ліцензії, шапка YAML після імпортів, вирази `{docs.exports.….description}`
-                   і позначки підсвічування `/*- begin highlight -*/` у коді.
+                   і позначки підсвічування `/*- begin highlight -*/` у коді;
+                   `docusaurus_tabs: true` — вкладки Docusaurus (`<Tabs values={[{label: 'NUnit',
+                   value: 'nunit'}, …]}>` і `<TabItem value="nunit">`) дістають підпис «NUnit:»: сайт
+                   playwright.dev для .NET показує той самий приклад для кожного раннера тестів, і без
+                   підпису в тексті лишалися б чотири блоки коду поспіль невідомо для чого;
+                   `{version}` у `folders` — мітка тегу: сайт, що тримав кожну версію у своїй теці
+                   (`dotnet/versioned_docs/version-1.12`), береться одним джерелом, і на кожному
+                   тезі — лише тека його версії, а не всі версії, що лежали в тому знімку поруч.
 
 Навіщо `name_prefix`. Ключ розділу будується з імені документа, а ім'я — зі шляху файла.
 Журнали змін кількох репозиторіїв в одному примірнику (HISTORY.md body-parser, cors,
@@ -233,6 +240,11 @@ _JSX_SPACE = re.compile(r"\{\s*([\"'])\s*\1\s*\}")
 _SHIKI_MARK = re.compile(r"[ \t]*(?://|#)?[ \t]*\[!code [^\]]*\]")
 _ADMONITION = re.compile(r"^:::(\w+)(?:\[([^\]]*)\]|[ \t]+(.+?))?[ \t]*$")
 _ADMONITION_END = re.compile(r"^:::[ \t]*$")
+_TABS_OPEN = re.compile(r"<Tabs\b(.*?)>\s*$", re.S)
+_TAB_VALUE = re.compile(r"\{\s*label:\s*(['\"])(.*?)\1\s*,\s*value:\s*(['\"])(.*?)\3\s*,?\s*\}")
+_TAB_ITEM = re.compile(r"^[ \t]*<TabItem\b([^>]*)>[ \t]*$")
+_TAB_ATTR = re.compile(r"(\w+)=(?:\"([^\"]*)\"|'([^']*)')")
+_TAB_CLOSE = re.compile(r"^[ \t]*</(?:TabItem|Tabs)>[ \t]*$")
 _DB_FLAGS = (("isPrimaryKey", "primary key"), ("isForeignKey", "foreign key"),
              ("isUnique", "unique"), ("isOptional", "optional"), ("isRequired", "required"))
 
@@ -597,6 +609,45 @@ def _admonitions(text: str) -> str:
     return "\n".join(out)
 
 
+def _docusaurus_tabs(text: str) -> str:
+    """Вкладки Docusaurus → підпис кожної вкладки («NUnit:», «MSTest:») і її зміст.
+
+    Підпис береться з `values` найближчого `<Tabs>` вище (там пари label/value), інакше з
+    `label` самої вкладки, інакше — її `value`. Рядки `<Tabs …>`, `</TabItem>` і `</Tabs>`
+    знімаються: розмітка тексту не несе. Код не чіпається."""
+    names: dict = {}
+    out, fence, pending = [], False, ""
+    for line in text.split("\n"):
+        if pending:
+            # `<Tabs` з `values` на кількох рядках: збирається до закривної «>».
+            pending += "\n" + line
+            if _TABS_OPEN.search(pending):
+                names = {m.group(4): m.group(2) for m in _TAB_VALUE.finditer(pending)}
+                pending = ""
+            continue
+        if _FENCE.match(line):
+            fence = not fence
+        elif not fence:
+            if line.lstrip().startswith("<Tabs"):
+                if m := _TABS_OPEN.search(line):
+                    names = {v.group(4): v.group(2) for v in _TAB_VALUE.finditer(m.group(1))}
+                else:
+                    pending = line
+                continue
+            if m := _TAB_ITEM.match(line):
+                attrs = {a.group(1): a.group(2) if a.group(2) is not None else a.group(3)
+                         for a in _TAB_ATTR.finditer(m.group(1))}
+                value = attrs.get("value", "")
+                label = names.get(value) or attrs.get("label") or value
+                out += ["", f"{label}:", ""] if label else [""]
+                continue
+            if _TAB_CLOSE.match(line):
+                out.append("")
+                continue
+        out.append(line)
+    return "\n".join(out)
+
+
 _HUGO_INCLUDE = re.compile(r'\{\{<\s*include\s+"([^"]+)"\s*>\}\}')
 _HUGO_GHCODE = re.compile(r'\{\{<\s*ghcode\s+"([^"]+)"[^}]*>\}\}')
 _HUGO_CALLOUT = re.compile(r'\{\{<\s*call-out\b([^}]*)>\}\}')
@@ -813,12 +864,14 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
             registry[tag] = {sys.intern(e["path"]): sys.intern(e["sha"]) for e in tree["tree"]
                              if e.get("type") == "blob"
                              and any(r.match(e.get("path", "")) for r in wanted)}
+        # `{version}` у теці — мітка тегу: на тезі береться лише тека його версії.
+        folders_now = [f.replace("{version}", str(tags[tag])) for f in folders]
         for entry in tree["tree"]:
             path = entry.get("path", "")
             folder, _, leaf = path.rpartition("/")
             inside = path in files or (
-                folder in folders if not recursive else
-                any(folder == f or folder.startswith(f + "/") for f in folders))
+                folder in folders_now if not recursive else
+                any(folder == f or folder.startswith(f + "/") for f in folders_now))
             # Порожній файл — не документ і не історія: з нього нема чого читати.
             if (entry.get("type") == "blob" and inside and leaf.endswith(exts)
                     and not _LOCALE.search(leaf) and entry.get("size", 1) > 0
@@ -975,6 +1028,8 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
                 rest = _component_labels(rest, labels)
             if source.get("admonitions") is True:
                 rest = _admonitions(rest)
+            if source.get("docusaurus_tabs") is True:
+                rest = _docusaurus_tabs(rest)
             if source.get("jsonschema_org") is True:
                 rest = _jsonschemaorg.expand(rest)
             if source.get("vuepress") is True:
