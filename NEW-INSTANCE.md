@@ -416,6 +416,26 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   queued pages at once and parses them in order, so the listing is byte-identical; `trust_store` (a day) replays the
   responses already in the raw store without a request after a restart — remove it afterwards, or updates never see
   the site again.
+- **A DocFX docset without monikers** (learn.microsoft.com/ef: dotnet/EntityFramework.Docs): the site shows one
+  edition, so versions are snapshots of the repository — the last `main` commit a week after `x.y.0` reached NuGet
+  (that week the docs are finished for the release), linked to the commit's files on GitHub. A site that lived in
+  another format before DocFX (Sphinx until 31.10.2016) takes its first edition from the first commit in the new
+  format. Pages of the next major's previews are excluded from every snapshot: the week-after snapshot of the latest
+  release may already carry them.
+- **C# code of many lines**: `outline: ["csharp"]` in `ghcode-history` — a member with its `///` and attributes is a
+  section, so an unchanged method of neighbouring lines is one excerpt. Count after the split: the code and tests of
+  efcore across fourteen lines are 224 thousand excerpts (two thirds of the instance) and the server holds 5.6 GB; on
+  the GPU the vectors took 11 minutes.
+- **NuGet versions with build metadata** (`9.0.15+MySQL9.7.0`): such a package is missing from the semver1
+  registration altogether (404) — field `registration: "gz-semver2"` of `nuget-package`.
+- **Providers from an official list** are taken from every revision of the list page (the file's history in a bare
+  clone), and before declaring `nuget-xmldoc` check that the package of each line carries XML: of 62 provider packages
+  18 had it, and only they got an API reference.
+- **Release tags carrying a product name or a capital «V»** (`Google.Cloud.EntityFrameworkCore.Spanner-4.1.1`,
+  `EFCore-13.0.0.0`, `ef-v0.5.0`, `V4.1.0.0`) are not parsed by `ghreleases` — the version comes out empty; take them
+  with `ghreleases-stable` and `tag_prefix`.
+- **`ghdocs` strips the first folder of a path**: a sample's `Sample/README.md` and the root `README.md` both get the
+  name «readme», and one document overwrites the other — such folders go into separate sources.
 
 ## Anatomy of an instance
 
@@ -1129,6 +1149,24 @@ and what a taken port and a failed connection look like. A domain list in the ro
   а не валити весь перелік (архів 2014 упав після тисячі сторінок). Поле `workers` тягне хвилю з N адрес черги разом
   і розбирає по черзі, тож перелік той самий до байта; `trust_store` (день) після перезапуску бере відповіді, що вже
   лежать у сховищі сирого, без звернення — потім його прибрати, інакше оновлення вже не побачить сайту.
+- **Набір DocFX без монікерів** (learn.microsoft.com/ef: dotnet/EntityFramework.Docs): сайт показує одну редакцію,
+  тож версії — знімки репозиторію: останній коміт `main` за тиждень після появи `x.y.0` у NuGet (у ці дні
+  документацію доводять до випуску), посилання — на файли коміту в GitHub. Сайт, що до DocFX жив в іншому форматі
+  (Sphinx до 31.10.2016), бере першу редакцію з першого коміту в новому форматі. Сторінки прев'ю наступного мажора
+  виключають з усіх знімків: тижневий знімок останнього випуску вже може їх нести.
+- **Код C# багатьох ліній**: `outline: ["csharp"]` у `ghcode-history` — член разом із `///` і атрибутами є розділом,
+  тож незмінний метод сусідніх ліній — один фрагмент. Рахувати після поділу: код і тести efcore чотирнадцяти ліній —
+  224 тисячі фрагментів (дві третини примірника), сервер тримає 5,6 ГБ; на відеокарті вектори — 11 хвилин.
+- **Версії NuGet з метаданими збирання** (`9.0.15+MySQL9.7.0`): такого пакета немає в реєстрі semver1 зовсім (404) —
+  поле `registration: "gz-semver2"` читача `nuget-package`.
+- **Провайдери з офіційного переліку** беруть з усіх редакцій сторінки переліку (історія файла в голому клоні), а
+  перш ніж оголошувати `nuget-xmldoc`, перевіряють, чи пакет кожної лінії несе XML: з 62 пакетів провайдерів XML мали
+  18, і довідник API дістали лише вони.
+- **Теги релізів з назвою продукту чи великою «V»** (`Google.Cloud.EntityFrameworkCore.Spanner-4.1.1`,
+  `EFCore-13.0.0.0`, `ef-v0.5.0`, `V4.1.0.0`) `ghreleases` не розбирає — версія виходить порожня; їх бере
+  `ghreleases-stable` з `tag_prefix`.
+- **`ghdocs` знімає першу теку шляху**: `Sample/README.md` прикладу й кореневий `README.md` дістають одне ім'я
+  «readme», і один документ затирає інший — такі теки йдуть окремими джерелами.
 
 ## З чого складається примірник
 
@@ -1864,6 +1902,26 @@ errada.
   busca uma onda de N endereços da fila de uma vez e os processa em ordem, então a listagem é idêntica byte a byte;
   `trust_store` (um dia), após um reinício, reaproveita as respostas que já estão no armazenamento bruto sem
   requisição — retire-o depois, ou as atualizações nunca mais verão o site.
+- **Um docset DocFX sem monikers** (learn.microsoft.com/ef: dotnet/EntityFramework.Docs): o site mostra uma só
+  edição, então as versões são instantâneos do repositório — o último commit de `main` uma semana depois de `x.y.0`
+  chegar ao NuGet (nessa semana a documentação é concluída para o lançamento), com links para os arquivos do commit no
+  GitHub. Um site que antes do DocFX vivia em outro formato (Sphinx até 31.10.2016) tira a primeira edição do primeiro
+  commit no formato novo. As páginas de prévia do próximo major são excluídas de todos os instantâneos: o instantâneo
+  da semana do último lançamento já pode trazê-las.
+- **Código C# de muitas linhas**: `outline: ["csharp"]` no `ghcode-history` — um membro com seu `///` e atributos é
+  uma seção, então um método inalterado de linhas vizinhas é um só trecho. Conte depois da divisão: o código e os
+  testes do efcore em catorze linhas são 224 mil trechos (dois terços da instância) e o servidor ocupa 5,6 GB; na GPU
+  os vetores levaram 11 minutos.
+- **Versões NuGet com metadados de build** (`9.0.15+MySQL9.7.0`): um pacote assim nem existe no registro semver1
+  (404) — campo `registration: "gz-semver2"` do `nuget-package`.
+- **Provedores de uma lista oficial** vêm de todas as revisões da página da lista (o histórico do arquivo num clone
+  nu), e antes de declarar `nuget-xmldoc` confira se o pacote de cada linha traz XML: dos 62 pacotes de provedores, 18
+  traziam, e só eles ganharam referência de API.
+- **Tags de release com nome de produto ou «V» maiúsculo** (`Google.Cloud.EntityFrameworkCore.Spanner-4.1.1`,
+  `EFCore-13.0.0.0`, `ef-v0.5.0`, `V4.1.0.0`) o `ghreleases` não interpreta — a versão sai vazia; use
+  `ghreleases-stable` com `tag_prefix`.
+- **O `ghdocs` tira a primeira pasta do caminho**: o `Sample/README.md` de um exemplo e o `README.md` da raiz ganham o
+  mesmo nome «readme», e um documento sobrescreve o outro — essas pastas vão em fontes separadas.
 
 ## Anatomia de uma instância
 
