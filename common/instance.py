@@ -94,6 +94,18 @@ def config() -> dict:
                 or any(not isinstance(i, str) for i in ids) or len(ids) != len(set(ids))):
             raise SystemExit(f"{path}: поле families — {{\"родина\": [\"id джерела\", …]}}, "
                              f"кожне джерело щонайбільше в одній родині")
+    demote = data.get("demote")
+    if demote is not None:
+        places = demote.get("places") if isinstance(demote, dict) else None
+        try:
+            ok = (isinstance(demote, dict) and set(demote) == {"pattern", "places"}
+                  and isinstance(demote["pattern"], str) and bool(re.compile(demote["pattern"]).pattern)
+                  and isinstance(places, int) and not isinstance(places, bool) and 1 <= places <= 1000)
+        except re.error:
+            ok = False
+        if not ok:
+            raise SystemExit(f"{path}: поле demote — {{\"pattern\": вираз імені документа, "
+                             f"\"places\": ціле 1–1000}}, а не {demote!r}")
     port = data.get("port")
     if port is not None and (not isinstance(port, int)
                              or not 1 <= port <= 65535):

@@ -146,7 +146,7 @@ def main(argv: list[str]) -> int:
         # Той самий відсів варіантів і версії, що в spec_mcp._find; без
         # variant_strict і без версії — None, видача та сама, що й була.
         keep = spec_mcp._only_wanted(query, _version_keep(spec_mcp, version))
-        words = spec_mcp._dedup(spec_mcp._INDEX.retrieve(query, deep, keep), fuse, query)
+        words = spec_mcp._ranked(spec_mcp._INDEX.retrieve(query, deep, keep), fuse, deep, query)
         t_words += time.perf_counter() - t0
         found = {"по словах": spec_mcp._pin(query, words[:K], K, keep)}
 
@@ -159,7 +159,7 @@ def main(argv: list[str]) -> int:
                        if h.get("uid") in spec_mcp._BY_ID]
             if keep is not None:
                 meaning = [p for p in meaning if keep(p)]
-            meaning = spec_mcp._dedup(meaning, fuse, query)
+            meaning = spec_mcp._ranked(meaning, fuse, deep, query)
             # Розділи за назвою (title_match) ставляться поверх кожного способу, як
             # у spec_mcp._find; без поля _pin повертає видачу як є.
             found["за змістом"] = spec_mcp._pin(query, meaning[:K], K, keep)

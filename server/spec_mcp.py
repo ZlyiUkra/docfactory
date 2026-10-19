@@ -429,6 +429,28 @@ def _rrf(rankings: list[list[Passage]], k: int, const: int = 60) -> list[Passage
     return sorted(score, key=lambda p: -score[p])[:k]
 
 
+# Розділи другого ряду — поле demote у config.json (див. common/profile.py). Без поля —
+# None, і кожен список пошуку той самий, що й був.
+_DEMOTE = (re.compile(profile.DEMOTE_PATTERN)
+           if profile.DEMOTE_PATTERN and profile.DEMOTE_PLACES else None)
+
+
+def _ranked(passages: list[Passage], fuse: int, deep: int, query: str) -> list[Passage]:
+    """Список одного способу пошуку для злиття: повтори згорнуто, лишається `fuse` місць.
+
+    З полем demote розділ, чиє ім'я документа збігається з виразом, стоїть на
+    DEMOTE_PLACES місць нижче, ніж його поставив пошук (за рівного місця — як і був).
+    Відсув робиться на всій глибині `deep`, а вже потім список обрізається: інакше
+    розділ документації, одинадцятий у списку, не мав би звідки піднятися на місце
+    відсунутого тесту. Без поля — рівно `_dedup(passages, fuse, query)`, як і було."""
+    if _DEMOTE is None:
+        return _dedup(passages, fuse, query)
+    full = _dedup(passages, deep, query)
+    keyed = sorted(range(len(full)), key=lambda i: (
+        i + (profile.DEMOTE_PLACES if _DEMOTE.search(full[i].slug) else 0), i))
+    return [full[i] for i in keyed][:fuse]
+
+
 # У скільки разів глибше просять кожен спосіб, перш ніж згорнути повтори розділу.
 # Шість — з заміру server.quality: на його десятці цього запасу вистачає, щоб після
 # згортання всі k місць були зайняті різними розділами.
@@ -617,7 +639,7 @@ def _find_ranked(query: str, k: int, keep) -> tuple[list[Passage], str]:
     """Сам пошук для _find, без розділів за назвою."""
     fuse = profile.FUSION_DEPTH or k
     deep = max(k * DEPTH, fuse)
-    words = _dedup(_INDEX.retrieve(query, deep, keep), fuse, query)
+    words = _ranked(_INDEX.retrieve(query, deep, keep), fuse, deep, query)
     if not _VECTORS_READY:
         return words[:k], "words"
     try:
@@ -627,7 +649,7 @@ def _find_ranked(query: str, k: int, keep) -> tuple[list[Passage], str]:
         meaning = [_BY_ID[h["uid"]] for h in hits if h.get("uid") in _BY_ID]
         if keep is not None:
             meaning = [p for p in meaning if keep(p)]
-        meaning = _dedup(meaning, fuse, query)
+        meaning = _ranked(meaning, fuse, deep, query)
     except Exception as exc:                      # noqa: BLE001 - причина в stderr
         print(f"spec_mcp: пошук за змістом не відповів ({exc}); "
               f"віддаю знайдене по словах", file=sys.stderr)
