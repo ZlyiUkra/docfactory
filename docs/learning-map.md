@@ -5,16 +5,16 @@
 із підрозділами «Документація у фабриці» самих планів.
 
 Стан на 19.10.2026. Примірники: alpine, anthropic-api, argon2, aspnetcore, astro, astro-markdown-pipeline, auth,
-binance-spot, biome, bullmq, cares, certbot, clerk, doc-tools, docker, dotnet, drizzle, ecmascript, entityframework,
-eslint, expo, express, express-rate-limit, fastify, ffmpeg, foundry, frontend-architecture, github-actions, gvisor,
-helmet, i18next, icu, ioredis, iron-session, jose, jsonschema, kraken-spot, kubernetes, libreoffice, libuv,
-lightweight-charts, linux, llhttp, mdn, mongodb, mongoose, motion, msw, nestjs, next-intl, next-themes, nextjs,
-nghttp2, nginx, node-mongodb, node-postgres, node-redis, nodejs, nodemailer, nuqs, nvidia-container-toolkit, ollama,
-openssl, opentelemetry, oracle-cloud, owasp, partysocket, patterns, playwright, postgrator, postgres-image,
-postgresql, prisma, react, react-hook-form, react-native, react-router, react-window, redis, redux, sentry, shadcn,
-socketio, sqlserver, storybook, stripe, supabase, swr, tailwind, tanstack-query, tanstack-router, tanstack-virtual,
-tesseract, testcontainers-dotnet, testing-library, typeorm, typescript, upstash, v8, viem, vite, vitest, wagmi, wasm,
-webdev, webstandards, zod, zustand.
+binance-spot, biome, bullmq, cares, certbot, clerk, doc-tools, docker, dotnet, dotnet-testing, drizzle, ecmascript,
+entityframework, eslint, expo, express, express-rate-limit, fastify, ffmpeg, foundry, frontend-architecture,
+github-actions, gvisor, helmet, i18next, icu, ioredis, iron-session, jose, jsonschema, kraken-spot, kubernetes,
+libreoffice, libuv, lightweight-charts, linux, llhttp, mdn, mongodb, mongoose, motion, msw, nestjs, next-intl,
+next-themes, nextjs, nghttp2, nginx, node-mongodb, node-postgres, node-redis, nodejs, nodemailer, nuqs,
+nvidia-container-toolkit, ollama, openssl, opentelemetry, oracle-cloud, owasp, partysocket, patterns, playwright,
+postgrator, postgres-image, postgresql, prisma, react, react-hook-form, react-native, react-router, react-window,
+redis, redux, sentry, shadcn, socketio, sqlserver, storybook, stripe, supabase, swr, tailwind, tanstack-query,
+tanstack-router, tanstack-virtual, tesseract, testcontainers-dotnet, testing-library, typeorm, typescript, upstash,
+v8, viem, vite, vitest, wagmi, wasm, webdev, webstandards, zod, zustand.
 
 ## Як читати таблиці
 
