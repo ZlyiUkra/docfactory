@@ -459,6 +459,28 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   between neighbouring tags (`git diff -M --stat <tag> <next> -- docs`, `git log --diff-filter=R --summary`); every
   predecessor gets its own `slug_rewrite` rule to the newest name. A page with the old name and different content
   (`api/compose.md` of 4.15, ComposeBuilder) stays apart.
+- **Size before the build.** A passport line costs about 600 bytes, a passage of the gzipped cache 120–200, and GitHub
+  refuses files from 100 MiB. Count the pages of every snapshot and the types of every package before writing readers
+  (dotnet: 274 thousand documents, a 156 MB passport, 562 thousand passages). When it does not fit, the corpus, the
+  cache and the raw store stay local (`corpus/` and `index/` in the instance `.gitignore`, as in `patterns`), with an
+  archive outside WSL checked file by file.
+- **A DocFX repository with docfx.json at the root** (dotnet/docs): `~/` means the repository root — field
+  `tilde_root: ""` of `docfx`; `:::code … id="Assignment":::` points at `// <SnippetAssignment>` —
+  `snippet_prefix: "Snippet"`. Before the full build read `.openpublishing.publish.config.json` of every snapshot:
+  until 2020 the samples lived in the dependent repository dotnet/samples, and the code of those snapshots vanishes
+  silently.
+- **The site's API reference from ECMA XML** (dotnet/dotnet-api-docs): reader `ecma-xml`, one document per type with
+  the same document name and member headings as `nuget-xmldoc`, so the site reference and the XML of the packages fold
+  into one `families` record. `xml/FrameworksIndex` (tens of megabytes) is read with expressions over bytes, not as a
+  tree; `skip_monikers` drops preview-only types and members; only C# examples are inserted.
+- **Thousands of NuGet packages** (Microsoft.Extensions.*, 1,754 package lines): download them in parallel straight
+  into the raw store (`rawstore.put`), noting which carry XML, declare only those and run `build` without network —
+  2.5 minutes instead of an hour of `refresh` pauses.
+- **Facts of a release line in release metadata** (support phase, end of support) belong to the line document only:
+  repeated in each of 285 release documents they took every result for «end of support».
+- **Two numberings in one instance** (.NET 8.0 and C# 8): the language carries `csharp-` (`csharp-7` for an edition
+  of the standard, `csharp-12.0` for feature specifications). `ghdocs` takes `…/git/trees/TAG:FOLDER` for repositories
+  whose full tree GitHub truncates (dotnet/runtime, dotnet/roslyn) and encodes spaces and `#` in file names.
 
 ## Anatomy of an instance
 
@@ -1212,6 +1234,26 @@ and what a taken port and a failed connection look like. A domain list in the ro
   крок між сусідніми тегами (`git diff -M --stat <тег> <наступний> -- docs`, `git log --diff-filter=R --summary`);
   кожен попередник дістає власне правило `slug_rewrite` до найновішого імені. Сторінка зі старим ім'ям і іншим змістом
   (`api/compose.md` з 4.15, ComposeBuilder) лишається окремою.
+- **Розмір до збирання.** Рядок паспорта коштує близько 600 байтів, фрагмент стисненого кешу — 120–200, а GitHub
+  відхиляє файли від 100 МіБ. Сторінки кожного знімка й типи кожного пакета рахують до читачів (dotnet: 274 тисячі
+  документів, паспорт 156 МБ, 562 тисячі фрагментів). Якщо не влазить, корпус, кеш і сховище сирого лишаються локально
+  (`corpus/` і `index/` у `.gitignore` примірника, як у `patterns`), а архів поза WSL звіряють файл за файлом.
+- **Репозиторій DocFX з docfx.json у корені** (dotnet/docs): «~/» — корінь репозиторію, поле `tilde_root: ""` читача
+  `docfx`; `:::code … id="Assignment":::` вказує на `// <SnippetAssignment>` — `snippet_prefix: "Snippet"`. До повного
+  збирання читають `.openpublishing.publish.config.json` кожного знімка: до 2020 року приклади жили в залежному
+  репозиторії dotnet/samples, і код тих знімків зникає мовчки.
+- **Довідник API сайту з ECMA XML** (dotnet/dotnet-api-docs): читач `ecma-xml`, документ на тип з тим самим ім'ям
+  документа й заголовками членів, що в `nuget-xmldoc`, тож довідник сайту й XML пакетів згортаються одним записом
+  `families`. `xml/FrameworksIndex` (десятки мегабайтів) читають виразами по байтах, а не деревом; `skip_monikers`
+  відкидає типи й члени лише прев'ю; вставляються лише приклади C#.
+- **Тисячі пакетів NuGet** (Microsoft.Extensions.*, 1 754 лінії пакетів): завантажити паралельно просто в сховище сирого
+  (`rawstore.put`), записавши, які несуть XML, оголосити лише їх і збирати `build` без мережі — 2,5 хвилини замість
+  години пауз `refresh`.
+- **Факти лінії в метаданих випусків** (фаза й кінець підтримки) — лише в документі лінії: повторені в кожному з 285
+  документів випусків, вони забирали всю видачу на «end of support».
+- **Дві нумерації в одному примірнику** (.NET 8.0 і C# 8): мова несе `csharp-` (`csharp-7` — видання стандарту,
+  `csharp-12.0` — специфікації можливостей). `ghdocs` бере `…/git/trees/ТЕГ:ТЕКА` для репозиторіїв, чиє повне дерево
+  GitHub обрізає (dotnet/runtime, dotnet/roslyn), і кодує пробіли й «#» в іменах файлів.
 
 ## З чого складається примірник
 
@@ -1990,6 +2032,28 @@ errada.
   cada passo entre tags vizinhas (`git diff -M --stat <tag> <seguinte> -- docs`, `git log --diff-filter=R --summary`);
   cada predecessor ganha a própria regra `slug_rewrite` para o nome mais novo. Uma página com o nome antigo e conteúdo
   diferente (`api/compose.md` da 4.15, ComposeBuilder) fica à parte.
+- **Tamanho antes da montagem.** Uma linha do passaporte custa uns 600 bytes, um fragmento do cache comprimido 120–200,
+  e o GitHub recusa arquivos a partir de 100 MiB. Conte as páginas de cada snapshot e os tipos de cada pacote antes de
+  escrever leitores (dotnet: 274 mil documentos, passaporte de 156 MB, 562 mil fragmentos). Se não couber, o corpus, o
+  cache e o armazém do bruto ficam só locais (`corpus/` e `index/` no `.gitignore` da instância, como em `patterns`),
+  com um arquivo fora do WSL conferido arquivo por arquivo.
+- **Um repositório DocFX com docfx.json na raiz** (dotnet/docs): `~/` é a raiz do repositório — campo
+  `tilde_root: ""` do `docfx`; `:::code … id="Assignment":::` aponta para `// <SnippetAssignment>` —
+  `snippet_prefix: "Snippet"`. Antes da montagem completa leia o `.openpublishing.publish.config.json` de cada
+  snapshot: até 2020 os exemplos moravam no repositório dependente dotnet/samples, e o código desses snapshots some em
+  silêncio.
+- **A referência de API do site em ECMA XML** (dotnet/dotnet-api-docs): leitor `ecma-xml`, um documento por tipo com o
+  mesmo nome de documento e os mesmos títulos de membros do `nuget-xmldoc`, então a referência do site e o XML dos
+  pacotes se dobram num registro de `families`. O `xml/FrameworksIndex` (dezenas de megabytes) é lido com expressões
+  sobre bytes, não como árvore; `skip_monikers` descarta tipos e membros só de preview; só entram exemplos em C#.
+- **Milhares de pacotes NuGet** (Microsoft.Extensions.*, 1.754 linhas de pacotes): baixe-os em paralelo direto no
+  armazém do bruto (`rawstore.put`), anotando quais trazem XML, declare só esses e rode `build` sem rede — 2,5 minutos
+  em vez de uma hora de pausas do `refresh`.
+- **Fatos de uma linha nos metadados de versões** (fase e fim do suporte) ficam só no documento da linha: repetidos em
+  cada um dos 285 documentos de versão, tomavam todos os resultados para «end of support».
+- **Duas numerações numa instância** (.NET 8.0 e C# 8): a linguagem leva `csharp-` (`csharp-7` para uma edição do
+  padrão, `csharp-12.0` para especificações de recursos). O `ghdocs` aceita `…/git/trees/TAG:PASTA` para repositórios
+  cuja árvore completa o GitHub trunca (dotnet/runtime, dotnet/roslyn) e codifica espaços e `#` nos nomes.
 
 ## Anatomia de uma instância
 
