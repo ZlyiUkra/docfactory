@@ -22,6 +22,13 @@ registration5-gz-semver2). Пакет, чиї версії несуть мета
 (MySql.EntityFrameworkCore «9.0.15+MySQL9.7.0» — версія Connector/NET), у звичайному
 реєстрі semver1 відсутній зовсім (404). Метадані після «+» з номера знімаються: версія
 лишається тією, якою її ставлять і яку бере v3-flatcontainer. Без поля — усе, як було.
+
+Поле `since` — об'єкт «пакет → найстаріша версія, що береться»: ідентифікатор, який
+реєстр NuGet передав іншому проєктові разом зі старими версіями. Testcontainers 0.0.1–
+0.0.2.107 (2018–2019) опублікував інший автор, з описом «Package Description» і без
+жодного слова документації; бібліотека testcontainers-dotnet дістала цей ідентифікатор
+лише з 2.0.0 (до того вона звалася DotNet.Testcontainers). Без поля такі версії стали б
+лінією «0.0» самого Testcontainers і в огляді, і у фільтрі версій.
 """
 
 import hashlib
@@ -82,6 +89,7 @@ def _deps(entry: dict) -> list[str]:
 def nuget_package(source: dict, ctx) -> list[Item]:
     prefixes = [(re.compile(a), b) for a, b in source.get("version_prefixes") or []]
     gz = source.get("registration") == "gz-semver2"
+    since = source.get("since") or {}
     items = []
     for pkg in source["packages"]:
         vp = next((b for a, b in prefixes if a.search(pkg)), source.get("version_prefix", ""))
@@ -90,6 +98,8 @@ def nuget_package(source: dict, ctx) -> list[Item]:
             continue
         entries = [e for e in _entries(pkg, ctx, gz) if _STABLE.match(e.get("version", ""))
                    and e.get("listed", True) is not False]
+        if pkg in since:
+            entries = [e for e in entries if _key(e["version"]) >= _key(since[pkg])]
         if not entries:
             continue
         entries.sort(key=lambda e: _key(e["version"]))
