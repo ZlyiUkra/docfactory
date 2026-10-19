@@ -16,6 +16,12 @@
 `version_prefix` стає перед версією в шапці — для пакетів, чия нумерація не збігається з
 нумерацією продукту (класичний ASP.NET: «mvc-5.2.9»); `version_prefixes` — те саме
 перелік пар [вираз імені пакета, префікс], коли в одному джерелі пакети різних продуктів.
+
+Поле `registration: "gz-semver2"` — реєстр із версіями SemVer 2.0 (стиснутий,
+registration5-gz-semver2). Пакет, чиї версії несуть метадані збирання
+(MySql.EntityFrameworkCore «9.0.15+MySQL9.7.0» — версія Connector/NET), у звичайному
+реєстрі semver1 відсутній зовсім (404). Метадані після «+» з номера знімаються: версія
+лишається тією, якою її ставлять і яку бере v3-flatcontainer. Без поля — усе, як було.
 """
 
 import hashlib
@@ -25,6 +31,7 @@ import re
 from engine.readers import Item, _markup, register
 
 _REG = "https://api.nuget.org/v3/registration5-semver1/"
+_REG_GZ = "https://api.nuget.org/v3/registration5-gz-semver2/"
 _FLAT = "https://api.nuget.org/v3-flatcontainer/"
 _STABLE = re.compile(r"^\d+(?:\.\d+){1,3}$")
 _BUILT_FROM = re.compile(r"\s*This package was built from the source code at \S+")
@@ -38,23 +45,26 @@ def _line(v: str) -> str:
     return ".".join(v.split(".")[:2])
 
 
-def _entries(pkg: str, ctx) -> list[dict]:
+def _entries(pkg: str, ctx, gz: bool = False) -> list[dict]:
     """Записи catalogEntry усіх версій пакета. Реєстр великого пакета ділить версії на
-    сторінки, і сторінка без `items` — посилання, яке треба дочитати окремо."""
-    url = f"{_REG}{pkg.lower()}/index.json"
-    try:
-        data = json.loads(ctx.text(url))
-    except ValueError as exc:
-        raise SystemExit(f"{url}: відповідь не JSON ({exc}).")
+    сторінки, і сторінка без `items` — посилання, яке треба дочитати окремо. `gz` — реєстр
+    SemVer 2.0: він віддається лише стиснутим, і версії в ньому — без метаданих «+…»."""
+    url = f"{_REG_GZ if gz else _REG}{pkg.lower()}/index.json"
+
+    def read(u: str) -> dict:
+        try:
+            return json.loads(ctx.text(u, gzip=True) if gz else ctx.text(u))
+        except ValueError as exc:
+            raise SystemExit(f"{u}: відповідь не JSON ({exc}).")
+
     out = []
-    for page in data.get("items", []):
+    for page in read(url).get("items", []):
         items = page.get("items")
         if items is None:
-            try:
-                items = json.loads(ctx.text(page["@id"])).get("items", [])
-            except ValueError as exc:
-                raise SystemExit(f"{page['@id']}: відповідь не JSON ({exc}).")
+            items = read(page["@id"]).get("items", [])
         out.extend(i["catalogEntry"] for i in items if "catalogEntry" in i)
+    if gz:
+        out = [dict(e, version=str(e.get("version", "")).split("+", 1)[0]) for e in out]
     return out
 
 
@@ -71,13 +81,14 @@ def _deps(entry: dict) -> list[str]:
 @register("nuget-package")
 def nuget_package(source: dict, ctx) -> list[Item]:
     prefixes = [(re.compile(a), b) for a, b in source.get("version_prefixes") or []]
+    gz = source.get("registration") == "gz-semver2"
     items = []
     for pkg in source["packages"]:
         vp = next((b for a, b in prefixes if a.search(pkg)), source.get("version_prefix", ""))
-        url_reg = f"{_REG}{pkg.lower()}/index.json"
+        url_reg = f"{_REG_GZ if gz else _REG}{pkg.lower()}/index.json"
         if not ctx.allowed(url_reg):
             continue
-        entries = [e for e in _entries(pkg, ctx) if _STABLE.match(e.get("version", ""))
+        entries = [e for e in _entries(pkg, ctx, gz) if _STABLE.match(e.get("version", ""))
                    and e.get("listed", True) is not False]
         if not entries:
             continue
