@@ -873,18 +873,22 @@ Mock Service Worker англійською: сайт mswjs.io для MSW 3, 2 і
 ### playwright
 
 Playwright англійською: тека `docs/` репозиторію microsoft/playwright на останньому тезі кожної мінорної лінії від
-0.10 до 1.63 (гайди, Playwright Test, довідник API по класах із версією появи кожного члена, нотатки релізів JS), сайт
+0.10 до 1.64 (гайди, Playwright Test, довідник API по класах із версією появи кожного члена, нотатки релізів JS), сайт
 playwright.dev для Node.js (поточний реліз, лише JS/TS), Playwright MCP і Playwright CLI для агентів, а для
 `playwright`, `@playwright/mcp` і `@playwright/cli` — README кожної стабільної версії, нотатки релізів і реєстр npm
-(плюс реєстр `@playwright/test`). 3 371 документ, 22 392 фрагменти.
+(плюс реєстр `@playwright/test`). Playwright для .NET: сайт playwright.dev для .NET на кожній мінорній версії 1.12–1.64
+(лише C#, вкладки NUnit, MSTest і xUnit підписано), сім пакетів NuGet `Microsoft.Playwright*` і нотатки релізів
+microsoft/playwright-dotnet. 6 577 документів, 34 200 фрагментів.
 
 - порт `8788`; запис у Claude Code — `playwright-docs`, адреса `http://127.0.0.1:8788/mcp`; інструменти
   `search_docs` і `read_section`;
 - колекція у Qdrant — `docs-playwright`, модель векторів — `bge-small`;
 - версії: мітка — мінорна лінія (`1.63`), фільтр `version` теж мінорний (`version_line_depth: 2`); без названої
   версії відповідь — для 1.63, найпопулярнішої лінії;
-- сторінки лише для Python, Java і C# не взято; у спільних сторінках їхні приклади лишаються, промпт велить
-  відповідати формою JS/TS;
+- сторінки лише для Python, Java і C# з `docs/` не взято; у спільних сторінках їхні приклади лишаються, промпт велить
+  відповідати формою JS/TS, а для питань про .NET — шукати на сайті для .NET;
+- нові поля читача `ghdocs-history` — `docusaurus_tabs` (підпис кожної вкладки Docusaurus) і `{version}` у `folders`
+  (на кожному тезі лише тека його версії: старі теки `version-1.X` сайту для .NET); вектори рахуються на відеокарті;
 - нове поле читача `npm-versions` — `skip_versions`: відсіває щоденні alpha-збірки, що інакше роздували кеш фрагментів
   у десять разів;
 - приклад питання агентові: `./df playwright ask "How do I reuse authentication state between tests?"`;
