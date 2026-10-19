@@ -215,9 +215,11 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   must be a section with its own text: a document that is only a header is never found as a section. `ua_query` is
   purely Cyrillic: no digits, no Latin.
 - **Archive mode**, when the texts should not stay in the folder (licence, size):
-  `tar -czf <archive>.tar.gz -C instances/<domain> corpus raw`; unpack it into a separate folder and compare with
-  the disk; only then delete the `.txt` files and `raw/`, compress `index/passages.json` into `passages.json.gz` and
-  commit the passport and the cache. Keep one current archive per instance; unpack it back before an update.
+  `tar --sort=name -czf <archive>.tar.gz -C instances/<domain> corpus raw` (`--sort=name` puts similar revisions of a
+  page next to each other, so gzip compresses a corpus with many revisions about twice as well); unpack it into a
+  separate folder and compare with the disk; only then delete the `.txt` files and `raw/`, compress
+  `index/passages.json` into `passages.json.gz` and commit the passport and the cache. Keep one current archive per
+  instance; unpack it back before an update.
 - **Cosmetic reader fixes** that barely change the result wait for the instance's next update rather than a fetch
   of their own.
 - **Books and pages** are cited as title, author, publisher, year of the newest edition.
@@ -1148,9 +1150,10 @@ and what a taken port and a failed connection look like. A domain list in the ro
   головна мета: 10 із 10. Цілі доповнюють лише справжніми відповідями. Ціль мусить бути розділом із власним текстом:
   документ із самої шапки розділом не знаходиться. `ua_query` — суто кирилицею, без цифр і латиниці.
 - **Архівний режим** — коли текстам не місце в теці (ліцензія, розмір):
-  `tar -czf <архів>.tar.gz -C instances/<домен> corpus raw`; розпакувати в окрему теку й звірити з диском; лише
-  тоді видалити файли `.txt` і `raw/`, стиснути `index/passages.json` у `passages.json.gz` і закомітити паспорт і
-  кеш. Чинний архів у примірника один; перед оновленням його розпаковують назад.
+  `tar --sort=name -czf <архів>.tar.gz -C instances/<домен> corpus raw` (`--sort=name` ставить подібні редакції
+  сторінок поруч, і gzip стискає корпус із багатьма редакціями приблизно вдвічі краще); розпакувати в окрему теку й
+  звірити з диском; лише тоді видалити файли `.txt` і `raw/`, стиснути `index/passages.json` у `passages.json.gz` і
+  закомітити паспорт і кеш. Чинний архів у примірника один; перед оновленням його розпаковують назад.
 - **Косметичні правки читача**, що майже не міняють результат, чекають наступного оновлення примірника, а не
   окремого перекачування.
 - **Книжки й сторінки** цитують як назву, автора, видавництво й рік найновішого видання.
@@ -2070,9 +2073,11 @@ errada.
   alvo precisa ser uma seção com texto próprio: um documento que é só cabeçalho nunca é encontrado como seção. A
   `ua_query` é puramente cirílica: sem dígitos e sem latim.
 - **Modo de arquivo**, quando os textos não devem ficar na pasta (licença, tamanho):
-  `tar -czf <arquivo>.tar.gz -C instances/<domínio> corpus raw`; descompacte numa pasta à parte e compare com o
-  disco; só então apague os `.txt` e `raw/`, comprima `index/passages.json` em `passages.json.gz` e faça commit do
-  passaporte e do cache. Um arquivo vigente por instância; antes de uma atualização, descompacte-o de volta.
+  `tar --sort=name -czf <arquivo>.tar.gz -C instances/<domínio> corpus raw` (`--sort=name` coloca revisões parecidas
+  de uma página lado a lado, e o gzip comprime um corpus com muitas revisões cerca de duas vezes melhor); descompacte
+  numa pasta à parte e compare com o disco; só então apague os `.txt` e `raw/`, comprima `index/passages.json` em
+  `passages.json.gz` e faça commit do passaporte e do cache. Um arquivo vigente por instância; antes de uma
+  atualização, descompacte-o de volta.
 - **Correções cosméticas de leitor**, que quase não mudam o resultado, esperam a próxima atualização da instância
   em vez de um download próprio.
 - **Livros e páginas** são citados como título, autor, editora e ano da edição mais recente.

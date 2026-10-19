@@ -241,23 +241,27 @@ Sealed Secrets, сервісних мереж і консолей хмарних
 за весь nextjs. Під git на диску Windows кожен перерахунок стану репозиторію обходив би їх усі через міст між WSL і
 Windows, і кожен клік у редакторі чекав би десятки секунд.
 
-**Де тексти.** В архіві `~/archives/docfactory/kubernetes-corpus-2026-10-06-prefixed.tar.gz` (41 МБ, 45 056 текстів і
-паспорт; перед видаленням розпакований окремо й звірений із диском — нуль розбіжностей). В історії git текстів немає
-ніде. Архів лежить лише на цій машині.
+**Де тексти.** В архіві `~/archives/docfactory/kubernetes-corpus-2026-10-19.tar.gz` (172 МБ: 45 271 текст і паспорт
+плюс сховище сирого `raw/` — 1 084 файли; перед видаленням розпакований окремо й звірений із диском — нуль
+розбіжностей). В історії git текстів немає ніде. Архів лежить лише на цій машині.
 
 **Як винести знову** — після оновлення, коли `vectors` і `smoke` пройшли (вони ж збирають свіжий кеш):
 
 ```
 ls -l instances/kubernetes/index/passages.json                 # кеш має бути на місці й свіжий
-tar -czf ~/archives/docfactory/kubernetes-corpus-РРРР-ММ-ДД.tar.gz -C instances/kubernetes corpus
+tar --sort=name -czf ~/archives/docfactory/kubernetes-corpus-РРРР-ММ-ДД.tar.gz -C instances/kubernetes corpus raw
 find instances/kubernetes/corpus -maxdepth 1 -name '*.txt' -delete
+rm -rf instances/kubernetes/raw
 gzip -9 -c instances/kubernetes/index/passages.json > instances/kubernetes/index/passages.json.gz
 ```
 
-і закомітити паспорт `corpus/index.json` та `index/passages.json.gz`. Видаляти тексти — лише після того, як архів
-звірено з диском (поіменно, за розміром і за вмістом кожного файла).
+і закомітити паспорт `corpus/index.json` та `index/passages.json.gz`. Видаляти тексти й сховище — лише після того, як
+архів звірено з диском (поіменно, за розміром і за вмістом кожного файла).
 
-**Як повернути тексти** — перед будь-яким оновленням корпусу:
+`--sort=name` ставить подібні редакції сторінок у tar поруч, і gzip, що бачить лише сусідів у вікні 32 КБ, стискає
+корпус удвічі краще: без нього ті самі тексти важили 92 МБ, з ним — 41 МБ.
+
+**Як повернути тексти** — перед будь-яким оновленням корпусу; разом із ними повертається й сховище `raw/`:
 
 ```
 tar -xzf ~/archives/docfactory/kubernetes-corpus-РРРР-ММ-ДД.tar.gz -C instances/kubernetes
