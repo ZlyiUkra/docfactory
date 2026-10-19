@@ -129,7 +129,8 @@ tar -xzf ~/archives/docfactory/libuv-corpus-2026-10-14.tar.gz -C instances/libuv
 ./df libuv smoke           # перевірки
 ```
 
-Порядок оновлення — у [UPDATE.md](UPDATE.md). Після будь-якого оновлення корпусу `serve` треба перезапустити.
+Загальний порядок оновлення — у [../../UPDATE.md](../../UPDATE.md), а що дописати саме для libuv — в абзаці
+«Оновлення» вище. Після будь-якого оновлення корпусу `serve` треба перезапустити.
 
 ## Сервер під Claude Code
 
