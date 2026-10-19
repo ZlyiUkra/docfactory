@@ -6,8 +6,9 @@
                    що беруться. Необов'язкові: `exclude` — вирази шляхів, що не беруться,
                    `name_prefix` — рядок перед іменем документа; `outline: true` — файл
                    JavaScript ділиться на розділи (див. `_outline`), файл Solidity — так само
-                   (див. `_outline_sol`); `outline` переліком мов (`["go"]`, `["python"]`) —
-                   на розділи ділиться лише код цих мов (див. `_outline_go`, `_outline_py`);
+                   (див. `_outline_sol`); `outline` переліком мов (`["go"]`, `["python"]`,
+                   `["csharp"]`) — на розділи ділиться лише код цих мов (див. `_outline_go`,
+                   `_outline_py`, `_outline_cs`);
                    `max_file` — межа розміру файла в байтах замість спільної (40 000).
 
 Навіщо. `ghcode` бере дерево одного тегу, а `ghdocs-history` бере багато тегів, але читає
@@ -284,6 +285,154 @@ def _outline_py(text: str) -> str:
     return _join(parts, "python", glue=lambda heading: not heading.startswith("## "))
 
 
+# C#: оголошення типу (клас, структура, інтерфейс, запис, перелік) і член типу на відступі його
+# тіла (тип + чотири пробіли — так пишуть dotnet/efcore і dotnet/ef6, і з простором імен-блоком,
+# і з простором імен на файл); коментар документації «///» і атрибути «[…]» впритул над членом
+# належать йому. Рядок, що продовжує попередній (перелік базових типів, «=> …», «: base(…)»,
+# «where T : …», аргументи атрибута), членом не стає.
+_CS_TYPE = re.compile(r"^( *)(?:(?:public|internal|private|protected|static|sealed|abstract|partial|"
+                      r"readonly|unsafe|new|file|ref)\s+)*(class|struct|interface|enum|record(?:\s+struct|"
+                      r"\s+class)?)\s+([A-Za-z_@]\w*(?:<[^>{(]*>)?)")
+_CS_NAME = re.compile(r"(?:\boperator\s*(\S+?)\s*\(|\bthis\s*\[|([A-Za-z_@]\w*)"
+                      r"(?:<(?:[^<>()]|<[^<>()]*>)*>)?\s*\()")
+_CS_PLAIN = re.compile(r"([A-Za-z_@]\w*)\s*(?:\{|=>|=|;|$)")
+_CS_NOT_START = re.compile(r"^(?:\{|\}|//|/\*|\*|\[|#|\)|=>|=|:|\.|\+|-|\?|&&|\|\||,|\"|where\b)")
+
+
+def _cs_state(line: str, state: str) -> str:
+    """Стан після рядка: "" — код, "raw" — усередині «\"\"\"…», "verbatim" — усередині «@\"…»,
+    "comment" — усередині «/* … */». Навіщо: тести EF Core тримають очікуваний SQL у
+    багаторядкових рядках, і рядок SQL з відступом члена не мусить ставати членом."""
+    i, n = 0, len(line)
+    while i < n:
+        if state == "comment":
+            j = line.find("*/", i)
+            if j < 0:
+                return state
+            state, i = "", j + 2
+        elif state == "raw":
+            j = line.find('"""', i)
+            if j < 0:
+                return state
+            state, i = "", j + 3
+            while i < n and line[i] == '"':
+                i += 1
+        elif state == "verbatim":
+            j = line.find('"', i)
+            if j < 0:
+                return state
+            if line[j + 1:j + 2] == '"':
+                i = j + 2
+                continue
+            state, i = "", j + 1
+        elif line.startswith("//", i):
+            return state
+        elif line.startswith("/*", i):
+            state, i = "comment", i + 2
+        elif line.startswith('"""', i):
+            state, i = "raw", i + 3
+            while i < n and line[i] == '"':
+                i += 1
+        elif line[i] == '"' and (line[i - 1:i] == "@" or line[max(0, i - 2):i] == "$@"):
+            state, i = "verbatim", i + 1
+        elif line[i] == '"':
+            i += 1
+            while i < n and line[i] != '"':
+                i += 2 if line[i] == "\\" else 1
+            i += 1
+        elif line[i] == "'":
+            m = re.match(r"'(?:\\.[^']*|[^'\\])'", line[i:])
+            i += len(m.group(0)) if m else 1
+        else:
+            i += 1
+    return state
+
+
+def _cs_member(line: str) -> str:
+    """Ім'я члена з рядка оголошення: метод і конструктор — «Ім'я()», індексатор — «this[]»,
+    оператор — «operator ==», властивість, поле, подія — саме ім'я."""
+    code = re.sub(r"\[[^\]]*\]", "", line.split("//", 1)[0]).strip()
+    m = _CS_NAME.search(code)
+    arrow = code.find("=>")
+    assign = code.replace("=>", "  ").find("=")
+    if m and (arrow < 0 or m.start() < arrow) and (assign < 0 or m.start() < assign):
+        if m.group(1):
+            return f"operator {m.group(1)}"
+        if m.group(0).lstrip().startswith("this"):
+            return "this[]"
+        return f"{m.group(2)}()"
+    m = _CS_PLAIN.search(code)
+    return m.group(1) if m else ""
+
+
+def _outline_cs(text: str) -> str:
+    """Файл C# з розділами: тип — «## class DbContext», член — «### DbContext.SaveChanges()»
+    разом з його «///» і атрибутами; перевантаження, що йдуть поспіль, — один розділ, той
+    самий заголовок далі у файлі дістає номер. Шапка файла (ліцензія, using, простір імен)
+    входить у розділ першого типу.
+
+    Навіщо. Код і тести EF Core чотирнадцяти ліній — тридцять тисяч редакцій файлів: DbContext.cs
+    — 113 тисяч символів, тести перекладу запитів — сотні методів з очікуваним SQL кожен. Поділені
+    за довжиною, вони давали б фрагменти посеред методу, і зміна одного рядка зсувала б усі
+    наступні. Розділ на член дає фрагментові ім'я методу, а незмінний член сусідніх версій
+    зливається в один фрагмент з усіма ними (`revision_suffix`)."""
+    parts: list = [["", []]]
+    state = ""
+    types: list = []      # [(відступ, ім'я)] — тип і вкладені в нього
+    used: dict = {}
+    lead_from = None      # з якого рядка поточної частини почалися «///» і атрибути члена
+    awaiting = False      # між оголошенням типу і його «{»: базові типи, where
+    for line in text.replace("\r\n", "\n").rstrip().split("\n"):
+        inside, state = state, _cs_state(line, state)
+        heading = ""
+        stripped = line.strip()
+        indent = len(line) - len(line.lstrip(" "))
+        if not inside and stripped:
+            if awaiting:
+                awaiting = not ("{" in stripped or stripped.endswith(";"))
+            elif stripped[0] not in "{}":
+                while types and indent <= types[-1][0]:
+                    types.pop()
+                m = _CS_TYPE.match(line)
+                member = types[-1][0] + 4 if types else None
+                if m and (member is None or indent < member):
+                    types.append((indent, re.sub(r"<.*", "", m.group(3))))
+                    heading = f"## {m.group(2).split()[0]} {m.group(3)}"
+                    awaiting = "{" not in stripped and not stripped.endswith(";")
+                elif member is not None and indent == member:
+                    if stripped.startswith(("///", "[")):
+                        if lead_from is None:
+                            lead_from = len(parts[-1][1])
+                    elif not _CS_NOT_START.match(stripped):
+                        owner = types[-1][1]
+                        if m:
+                            heading = f"### {m.group(2).split()[0]} {owner}.{m.group(3)}"
+                            types.append((indent, re.sub(r"<.*", "", m.group(3))))
+                            awaiting = "{" not in stripped and not stripped.endswith(";")
+                        elif name := _cs_member(stripped):
+                            heading = f"### {owner}.{name}"
+                        if not heading:
+                            lead_from = None
+                    else:
+                        lead_from = None
+        if heading:
+            prev = parts[-1][1]
+            lead = prev[lead_from:] if lead_from is not None else []
+            if lead_from is not None:
+                del prev[lead_from:]
+            lead_from = None
+            if heading == parts[-1][0]:
+                prev.extend(lead)
+            elif heading.startswith("## ") and len(parts) == 1:
+                parts[0] = [heading, prev + lead]
+            else:
+                used[heading] = used.get(heading, 0) + 1
+                n = used[heading]
+                parts.append([heading if n == 1 else f"{heading} ({n})", lead])
+        parts[-1][1].append(line)
+    return _join(parts, "csharp", glue=lambda heading: heading.startswith("### "))
+
+
 def _join(parts: list, lang: str, glue) -> str:
     """Розділи в текст; куций розділ, якому `glue` дозволяє, приклеюється до попереднього."""
     merged: list = []
@@ -316,8 +465,9 @@ def ghcode_history(source: dict, ctx) -> list[Item]:
     lead = f"{_markup.slug(source['name_prefix'])}-" if source.get("name_prefix") else ""
     outline = source.get("outline") is True
     langs = source.get("outline") if isinstance(source.get("outline"), list) else []
-    if set(langs) - {"go", "python"}:
-        raise SystemExit(f"{source['id']}: `outline` переліком знає лише мови «go» і «python».")
+    if set(langs) - {"go", "python", "csharp"}:
+        raise SystemExit(f"{source['id']}: `outline` переліком знає лише мови «go», «python» "
+                         f"і «csharp».")
     max_file = int(source.get("max_file") or _MAX_FILE)
 
     # ім'я документа → [шлях, [теги]]; порядок — від найновішого тегу, як оголошено в `tags`
@@ -359,6 +509,8 @@ def ghcode_history(source: dict, ctx) -> list[Item]:
                 body = _outline_go(text)
             elif "python" in langs and lang == "python":
                 body = _outline_py(text)
+            elif "csharp" in langs and path.endswith(".cs"):
+                body = _outline_cs(text)
             elif outline and lang in ("js", "ts"):
                 body = _outline(text, lang)
             elif outline and lang == "solidity":
