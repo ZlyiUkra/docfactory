@@ -25,9 +25,9 @@ Microsoft.Extensions.*, які примірник `aspnetcore` свідомо н
 
 | Шар | Документів | Фрагментів | Звідки |
 |-----|-----------:|-----------:|--------|
-| Сайт learn.microsoft.com/dotnet: 13 знімків 1.0–10.0 | 147 236 | ≈228 000 | dotnet/docs |
-| Сайт — чинна гілка `main` | 12 966 | ≈12 000 нових | те саме |
-| Стандарт C# (ECMA-334 v5, v6, v7, чернетки v8, v9) і специфікація C# 6 | 172 | ≈4 800 | dotnet/csharpstandard, dotnet/csharplang |
+| Сайт learn.microsoft.com/dotnet: 13 знімків 1.0–10.0 | 147 258 | ≈206 300 | dotnet/docs, приклади — dotnet/samples тощо |
+| Сайт — чинна гілка `main` | 12 966 | ≈11 600 нових | те саме |
+| Стандарт C# (ECMA-334 v5, v6, v7, чернетки v8–v14) і специфікація C# 6 | 327 | ≈6 100 | dotnet/csharpstandard, dotnet/csharplang |
 | Специфікації можливостей C# 7.0–14.0 | 129 | ≈2 100 | dotnet/csharplang |
 | Документація Roslyn і критичні зміни компіляторів C#, VB, Razor за версіями .NET | 253 | ≈2 200 | dotnet/roslyn |
 | Специфікація Visual Basic | 13 | ≈750 | dotnet/vblang |
@@ -38,7 +38,7 @@ Microsoft.Extensions.*, які примірник `aspnetcore` свідомо н
 | Нотатки випусків 1.0–10.0 | 4 704 | ≈13 300 | dotnet/core release-notes |
 | Документація dotnet/runtime (`docs/`) і dotnet/sdk (`documentation/`) | 549 | ≈7 700 | GitHub |
 
-Разом 274 213 документів, 562 355 фрагментів (`expected_passages` у `checks.json`). Фрагменти рахуються за першим
+Разом 274 390 документів, 541 504 фрагменти (`expected_passages` у `checks.json`). Фрагменти рахуються за першим
 документом, де розділ трапився: незмінний розділ сусідніх знімків чи ліній — один фрагмент з усіма їхніми версіями, тож
 60 тисяч документів Microsoft.Extensions.* дали лише 14 тисяч фрагментів. Корпус зібрано за 15 хвилин: сайт,
 dotnet-api-docs і dotnet/core — зі сховища сирого, засіяного з голих клонів (`tools/seed_git_store.py`), пакети NuGet
@@ -46,15 +46,17 @@ dotnet-api-docs і dotnet/core — зі сховища сирого, засія�
 хвилин. Вектори — на відеокарті (RTX 2070 Super у WSL, `fastembed-gpu` у venv цього примірника): 12 хвилин, близько
 800 фрагментів за секунду.
 
-Замір `quality` (10 запитів своїми словами): по словах 5, за змістом 1, разом 5; «як модель» (ті самі теми назвами
-документації, як велить промпт) — 10 із 10. Чотирнадцять редакцій того самого сайту роблять запити своїми словами
-важкими: старі редакції сторінок під давніми іменами забирають місця у видачі.
+Замір `quality` (10 запитів своїми словами): по словах 7, за змістом 3, разом 6; «як модель» (ті самі теми назвами
+документації, як велить промпт) — 10 із 10. Перший замір давав 5/1/5; підняли його правила `slug_rewrite` (редакції
+перейменованих сторінок ділять ключ і одне місце у видачі), приклади коду старих знімків і `max_per_doc: 1` (заміряно
+0–3: 1 дає 7/3/6, 0 — 6/2/6, 2 і 3 — не більше; `fusion_depth` 10 і 20 знижують «як модель» до 9, тож не взято).
+Відсів розділів «See also» пробувався на льоту: +1 за змістом лише без `max_per_doc`, тож у читач не пішов.
 
 ## Що в цій теці
 
-- `sources.json` — звідки корпус будується (193 джерела), і водночас білий список для оновлювача.
+- `sources.json` — звідки корпус будується (198 джерел), і водночас білий список для оновлювача.
 - `config.json` — порт, колекція Qdrant, модель векторів, профіль домену, родини джерел-версій (`families`: сайт,
-  довідник API, стандарт C#).
+  довідник API, стандарт C#), 1 880 правил `slug_rewrite` для перейменованих сторінок, `max_per_doc: 1`.
 - `prompts/` — описи інструментів для моделі, системний промпт власного агента, текст відмови.
 - `checks.json` — чим `smoke` і `quality` перевіряють саме цей корпус.
 - `requirements.txt` — склад venv, зокрема `fastembed-gpu` і `onnxruntime-gpu` з колесами CUDA.
@@ -91,7 +93,9 @@ dotnet/runtime, dotnet/sdk, dotnet/roslyn, dotnet/csharplang, dotnet/vblang — 
   випуску, вони забирали всю видачу на «end of support».
 - **`docfx`**: `tilde_root` — тека, від якої рахується «~/» (у dotnet/docs docfx.json лежить у корені, і
   «~/includes/…» веде в корінь, а не в docs/); `snippet_prefix: "Snippet"` — dotnet/docs пише `:::code … id="Assignment"`,
-  а в коді позначає фрагмент `// <SnippetAssignment>`. Без полів читач поводиться як раніше.
+  а в коді позначає фрагмент `// <SnippetAssignment>`; `quote_paths: true` — шлях у адресі файла кодується так, як
+  його кладе засів сховища з клону, і приклади з пробілом у шляху («…/DataWorks SqlClient.HelloWorld/CS/source.cs»,
+  близько 870 посилань на кожен знімок 5.0+) знаходяться. Без полів читач поводиться як раніше.
 - **`ghdocs`**: адреса `…/git/trees/ТЕГ:ТЕКА` — дерево однієї теки (повні дерева dotnet/runtime і dotnet/roslyn
   GitHub обрізає); пробіл і «#» в імені файла («Compiler Breaking Changes - DotNet 9.md», «Getting-Started-C#-…»)
   кодуються в адресі.
@@ -104,16 +108,23 @@ dotnet/runtime, dotnet/sdk, dotnet/roslyn, dotnet/csharplang, dotnet/vblang — 
   виходу 12.11.2024: releases.json лінії замінив запис 9.0.0 грудневим (3.12.2024, SDK 9.0.101). Посилання знімків
   ведуть на файли коміту в GitHub, чинної гілки — на learn.microsoft.com; чинна гілка несе версію 10.0. Сторінки прев'ю
   .NET 11 і C# 15 (що нового, критичні зміни 11) не беруться.
-- **Приклади коду старих знімків.** До листопада 2020 року приклади жили в окремому репозиторії dotnet/samples
-  (залежний репозиторій збирання сайту): у знімках 1.0–3.1 приклади, на які сторінки посилаються як
-  `../../samples/snippets/…`, не вставлено. Так само не вставлено приклади із залежних репозиторіїв чинного сайту
-  (`~/../azure-dev-docs/…`, `_roslyn/…`) — це кільканадцять сторінок.
+- **Приклади коду із залежних репозиторіїв.** До листопада 2020 року приклади жили в окремому репозиторії
+  dotnet/samples, який збирання сайту клало поруч як теку `samples/` (`.openpublishing.publish.config.json` кожного
+  знімка). Для знімків 1.1–3.1 поле `repos` веде `samples/…` у dotnet/samples на останньому коміті перед днем знімка
+  (до 2018 року той репозиторій сам тримав усе в теці `samples/`): з близько 13 тисяч посилань кожного знімка
+  знаходиться 99%. Так само — `machinelearning-samples` (3.0+) і `iot-samples` (dotnet-iot-assets, 5.0+). Файли
+  засіяно в сховище сирого з голих клонів, лише ті, на які посилаються сторінки. Приклади з azure-dev-docs і roslyn
+  (поодинокі сторінки) не взято.
+- **Сторінки, що переїхали.** 1 880 правил `slug_rewrite`: перенаправлення всіх знімків dotnet/docs
+  (`.openpublishing.redirection.*.json`, 5 789 пар) і перейменування git між сусідніми знімками (427), ланцюжком до
+  сторінки, живої на `main`. Пару лишено, лише коли стара й нова сторінка ніколи не стоять в одному знімку і схожі
+  назвою чи кінцем адреси; 1 068 несхожих перенаправлень (на загальну сторінку розділу) відкинуто.
 - **Стандарт і специфікації C#.** Те, що сайт показує як «C# language specification»
   (learn.microsoft.com/dotnet/csharp/language-reference/language-specification/…), — текст dotnet/csharpstandard;
   «Feature specifications» (…/language-reference/proposals/…) — dotnet/csharplang `proposals/csharp-X.Y`; критичні
   зміни компілятора (…/csharp/whats-new/breaking-changes/…) — dotnet/roslyn `docs/compilers/CSharp`. Тут вони взяті з
   репозиторіїв, з посиланнями на GitHub: стандарт — гілки `standard-v5`, `standard-v6`, `standard-v7` (опубліковані
-  видання ECMA-334) і `draft-v8`, `draft-v9` (чернетки комітету); стара специфікація C# 6 — тека `spec/` csharplang;
+  видання ECMA-334) і `draft-v8` … `draft-v14` (чернетки комітету); стара специфікація C# 6 — тека `spec/` csharplang;
   специфікації можливостей — лише випущені версії 7.0–14.0, без нотаток зустрічей LDM і нереалізованих пропозицій.
   Номери розділів стандарту між виданнями зсуваються, тож однаковий текст різних видань зливається лише там, де номер
   розділу той самий.
@@ -122,7 +133,7 @@ dotnet/runtime, dotnet/sdk, dotnet/roslyn, dotnet/csharplang, dotnet/vblang — 
   щомісячними мінорними — `8.1` … `10.11`. Пакети Microsoft.Extensions.* з власною нумерацією несуть назву:
   `azure-1.14`, `configuration-azureappconfiguration-8.6`, `logging-applicationinsights-2.23`, `ml-5.0`,
   `caching-cosmos-1.8`, `caching-postgres-1.2`, `configuration-dockersecrets-unofficial-1.1`. C# — з міткою `csharp-`:
-  видання стандарту `csharp-5` … `csharp-9`, специфікація C# 6 — `csharp-6`, специфікації можливостей `csharp-7.0` …
+  видання стандарту `csharp-5` … `csharp-14` (з 8 — чернетки), специфікація C# 6 — `csharp-6`, специфікації можливостей `csharp-7.0` …
   `csharp-14.0`; `csharp-12` знаходить увесь C# 12. Документація runtime, sdk, Roslyn і специфікація VB — без версії.
 - **Довідник API з пакетів** — лише пакети, що несуть XML: Microsoft.NETCore.App 2.0–2.2 і Microsoft.NETCore.App.Ref
   3.0–10.0 (останній патч лінії; у 1.0 і 1.1 XML немає) і всі 123 ідентифікатори з префіксом Microsoft.Extensions —
@@ -131,8 +142,9 @@ dotnet/runtime, dotnet/sdk, dotnet/roslyn, dotnet/csharplang, dotnet/vblang — 
   дають нічого. Простори імен `.Internal` і класи рядків ресурсів не беруться.
 - **Запити `quality`** записано так, як їх ставить людина своїми словами. Цілі доповнено справжніми відповідями, яких не
   було в першій чернетці: метрика `http.client.request.duration` у редакції 8.0 (тоді розділ звався «Instrument»),
-  сторінка single-file під давнім іменем (`core/deploying/single-file`), розділ «Object Initializers with the required
-  modifier», документи дизайну runtime про багаторівневу компіляцію.
+  сторінка «Single-file deployment» цілком (вона вся про це питання), розділ «Object Initializers with the required
+  modifier», документи дизайну runtime про багаторівневу компіляцію, вступ README лінії .NET 8 у dotnet/core («supported
+  for 3 years, from November 2023 to November 2026»).
 
 ## Межі, про які треба пам'ятати
 
@@ -153,9 +165,10 @@ dotnet/runtime, dotnet/sdk, dotnet/roslyn, dotnet/csharplang, dotnet/vblang — 
 з клонів, див. «Оновлення») відтворює корпус з `sources.json`.
 
 **Резервна копія** — архів на диску Windows, поза WSL: `C:\Distr\dotnet-corpus-2026-10-19.tar.gz` (з WSL —
-`/mnt/c/Distr/dotnet-corpus-2026-10-19.tar.gz`), усередині теки `corpus/` (тексти й паспорт) і `raw/` (сховище
-сирого). Архів звірено з диском файл за файлом. Тексти лишаються й на диску: сервер, `refresh` і `build` працюють з
-ними як завжди.
+`/mnt/c/Distr/dotnet-corpus-2026-10-19.tar.gz`), 1,88 ГБ, усередині теки `corpus/` (тексти й паспорт) і `raw/`
+(сховище сирого) — 584 030 файлів. Архів звірено з диском файл за файлом (нуль розбіжностей); він замінив перший архів
+того самого дня після другого етапу (чернетки стандарту v10–v14, приклади старих знімків, `slug_rewrite`). Тексти
+лишаються й на диску: сервер, `refresh` і `build` працюють з ними як завжди.
 
 **Відновлення**, якщо корпусу немає, — з кореня `docfactory/`:
 
@@ -174,7 +187,9 @@ Qdrant, а якщо їх там немає — `./df dotnet vectors` (12 хви�
 `csharp-proposals-15-0` і `roslyn-breaking-*-11`; усе — у `families`; правила `dotnet-11`, `csharp-15`, `/11/` в
 `exclude` знімків і `skip_monikers` в `api-docs` прибрати. Сайт, dotnet-api-docs і dotnet/core тягнути не мережею, а
 голим клоном: `tools/seed_git_store.py --instance dotnet --clone dotnet/docs=<клон>` для знімків сайту, далі
-`./df dotnet build <джерела>`; решта — `./df dotnet refresh <джерела>`. Далі `manifest`, `vectors`, `smoke`, `quality`
+`./df dotnet build <джерела>`; приклади залежних репозиторіїв (поле `repos`: `machinelearning-samples`,
+`iot-samples` на коміті дня знімка) засіюються так само з голих клонів, лише файли, на які посилаються сторінки;
+решта — `./df dotnet refresh <джерела>`. Далі `manifest`, `vectors`, `smoke`, `quality`
 і новий архів на `C:\Distr` (старий — видалити після звірки нового).
 
 ## Установка venv
