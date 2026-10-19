@@ -87,4 +87,5 @@ Kustomize `kustomize/v5.9.0`, age, metrics-server), нова тека версі
 - **Цілі `quality` в `checks.json` мають версію** («1.37», cert-manager — «1.21», Let's Encrypt — без неї), і smoke
   звіряє, що кожна ціль існує саме в цій версії. З новою лінією Kubernetes версію в записах треба підняти, а smoke
   покаже ціль, що переїхала (так сторінка HPA `tasks-run-application-horizontal-pod-autoscale` після 1.34 стала
-  `concepts-workloads-autoscaling-horizontal-pod-autoscale`). Замір 03.10.2026: 6/6/4 із 10 переказом, 9/10 «як модель».
+  `concepts-workloads-autoscaling-horizontal-pod-autoscale`). Замір 03.10.2026: 6/6/4 із 10 переказом, 9/10 «як модель»;
+  19.10.2026 після оновлення: 6/6/6 і 10/10 (`max_per_doc` 1, див. «Замір» у README.md).
