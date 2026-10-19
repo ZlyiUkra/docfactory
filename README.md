@@ -2307,6 +2307,33 @@ go-sqlcmd, DacFx, SqlClient, mssql-jdbc, mssql-python, node-mssql, tedious і р
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/sqlserver/README.md](instances/sqlserver/README.md).
 
+### entityframework
+
+Документація Entity Framework англійською, усі стабільні мажорні й мінорні версії: сайт learn.microsoft.com/ef для EF
+Core 1.0–10.0 (знімки dotnet/EntityFramework.Docs за тиждень після кожного випуску — набір не має монікерів — і чинна
+гілка `main`) та EF6 (6.3–6.5 і чинна); довідник API кожної лінії EF Core 1.0–10.0 (з тестами специфікації) і Entity
+Framework 4.2–6.5 з XML-документації пакетів NuGet; версії, залежності й README 27 пакетів EF Core з `dotnet-ef`,
+пакетів EntityFramework 4.1–6.5 і 62 пакетів провайдерів з офіційних переліків EF Core і EF6 (Npgsql, Pomelo, MySQL,
+Oracle, MongoDB, Couchbase, KEFCore, Firebird, IBM, Jet, Spanner, YDB, DuckDB, Devart та інші); довідник API провайдерів,
+що несуть XML; код і тести dotnet/efcore на останньому випуску кожної лінії і dotnet/ef6 6.0–6.5; релізи GitHub;
+документація npgsql.org/efcore і mongodb.com/docs/entity-framework, README й журнали змін провайдерів. Читач
+`ghcode-history` навчився ділити C# на типи й члени (`outline: ["csharp"]`), `nuget-package` — брати реєстр SemVer 2.0
+(`registration: "gz-semver2"`), `snooty-history` — префікс імені (`name_prefix`). Вектори — на відеокарті. 66 635
+документів, 346 092 фрагменти.
+
+- порт `8865`; запис у Claude Code — `entityframework-docs`, адреса `http://127.0.0.1:8865/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-entityframework`, модель векторів — `bge-small`;
+- версія — голий номер для EF Core (`version: "8.0"`), `ef-` для класичного Entity Framework (`"ef-6.5"`, `"ef-4.3"`),
+  назва провайдера для його власної нумерації (`"npgsql-10.0"`, `"pomelo-9.0"`, `"mongodb-9.1"`); README і
+  документацію провайдерів без версії шукають без неї; без названої версії — EF Core 10.0;
+- сервер тримає в пам'яті близько 5,6 ГБ і збирає індекс по словах близько хвилини: дві третини фрагментів — код і
+  тести efcore;
+- приклад питання агентові: `./df entityframework ask "How do I update many rows with ExecuteUpdateAsync in EF Core
+  8?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/entityframework/README.md](instances/entityframework/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
