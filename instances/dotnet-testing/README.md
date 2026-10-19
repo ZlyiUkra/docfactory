@@ -3,64 +3,74 @@
 Захищений MCP-сервер, що відповідає на питання про тестування застосунків .NET бібліотеками xUnit.net (v2 і v3, з
 аналізаторами й адаптером Visual Studio), NUnit (3–5 і NUnit 2, з адаптером, аналізаторами, консоллю й рушієм), bUnit
 (компоненти Blazor), FluentAssertions і Shouldly (твердження), Moq і NSubstitute з NSubstitute.Analyzers (моки й
-замінники), AngleSharp і AngleSharp.Diffing (розбір і порівняння HTML, на них стоїть `MarkupMatches` bUnit) та Respawn
-(очищення бази між інтеграційними тестами). Документація англійською, усі стабільні мажорні й мінорні версії: сайти
-бібліотек (де сайт має теги — на кожному випуску), README з кожного стабільного тегу, журнали змін і нотатки релізів;
-довідник API кожної мінорної лінії з XML-документації пакетів NuGet; пакети NuGet з версіями, залежностями й README;
-код і тести на останньому тезі кожної мажорної лінії. Код спільний і лежить у `../../engine/`, `../../server/` та
-`../../common/`; ця тека тримає самі дані домену. Загальний устрій фабрики — у [../../README.md](../../README.md).
+замінники), AngleSharp з усіма офіційними пакетами (Css, Js, Xml, XPath, Io, Wasm, Renderer, Wrappers, Diffing —
+розбір і порівняння HTML, на Diffing стоїть `MarkupMatches` bUnit), FluentAssertions.Json та Respawn (очищення бази
+між інтеграційними тестами). Документація англійською, усі стабільні мажорні й мінорні версії: сайти бібліотек (де
+сайт має теги — на кожному випуску), README з кожного стабільного тегу, журнали змін і нотатки релізів; довідник API
+кожної мінорної лінії з XML-документації пакетів NuGet; пакети NuGet з версіями, залежностями й README; код і тести на
+останньому тезі кожної мажорної лінії. Код спільний і лежить у `../../engine/`, `../../server/` та `../../common/`; ця
+тека тримає самі дані домену. Загальний устрій фабрики — у [../../README.md](../../README.md).
 
 ## Навіщо окремий примірник
 
-Ці дев'ять бібліотек — не частина .NET: кожна має свою нумерацію, свій сайт (або лише README) і свої пакети, і жоден
-інший примірник їх не тримає (testcontainers-dotnet знає про xUnit.net лише те, як його використовують модулі
-Testcontainers). Разом вони — повний набір тестувальника .NET: фреймворк тестів, твердження, моки, тести компонентів
-Blazor і чиста база між інтеграційними тестами. Звернувшись до цієї одиниці з версією, дістаєш усе для впровадження
-саме на ній: сторінку сайту тієї версії, тип і член API того випуску, пакет із залежностями, код і тест, нотатки
-релізу з несумісними змінами.
+Ці дев'ять бібліотек і їхні доповнення (пакети AngleSharp.*, FluentAssertions.Json) — не частина .NET: кожна має свою
+нумерацію, свій сайт (або лише README) і свої пакети, і жоден інший примірник їх не тримає (testcontainers-dotnet знає
+про xUnit.net лише те, як його використовують модулі Testcontainers). Разом вони — повний набір тестувальника .NET:
+фреймворк тестів, твердження, моки, тести компонентів Blazor і чиста база між інтеграційними тестами. Звернувшись до
+цієї одиниці з версією, дістаєш усе для впровадження саме на ній: сторінку сайту тієї версії, тип і член API того
+випуску, пакет із залежностями, код і тест, нотатки релізу з несумісними змінами.
 
 ## Скільки цього
 
 | Шар | Документів | Фрагментів | Звідки |
 |-----|-----------:|-----------:|--------|
 | xunit.net: посібники v2 і v3, правила аналізаторів, нотатки 101 стабільного випуску | 300 | 1 821 | xunit/xunit.net, тека `site/` |
-| docs.nunit.org | 405 | 3 250 | nunit/docs, тека `docs/` (DocFX) |
+| docs.nunit.org (сторінки правил аналізаторів ділять розділи з документацією NUnit.Analyzers, див. нижче) | 405 | 2 375 | nunit/docs, тека `docs/` (DocFX) |
 | Документація NUnit 2.2.10, 2.4.8, 2.5.10, 2.6.4 | 323 | 1 171 | nunit/docs, `docs/legacy/` |
 | bunit.dev, останній тег кожної з 53 мінорних ліній 1.0–2.11 | 1 870 | 587 | bUnit-dev/bUnit, `docs/site` (DocFX) |
 | fluentassertions.com, 61 тег 4.19.3–8.11.0, сторінка releases і релізи, яких на ній немає | 296 | 872 | fluentassertions/fluentassertions |
 | Shouldly, NSubstitute і NSubstitute.Analyzers, AngleSharp і Diffing, Moq, Respawn: документація з тегів, вікі, README, журнали, релізи; README FluentAssertions | 833 | 1 646 | репозиторії бібліотек |
 | README xUnit.net, NUnit, bUnit з кожного тегу; релізи NUnit.Analyzers, журнал bUnit | 169 | 346 | xunit/xunit, nunit/nunit, nunit/nunit.analyzers, bUnit-dev/bUnit |
-| Довідник API xUnit.net v2 (2.0–2.9, xunit.abstractions) і v3 (1.0–4.0) | 8 301 | 8 691 | XML-документація пакетів NuGet |
+| Решта AngleSharp.* (Css, Js, Xml, XPath, Io, Wasm, Renderer, Scripting.JavaScript): `docs/` і README з тегів, журнали змін, релізи | 293 | 708 | AngleSharp/AngleSharp.* |
+| FluentAssertions.Json: README з 59 тегів, релізи | 25 | 54 | fluentassertions/fluentassertions.json |
+| NUnit.Analyzers (правила з 39 тегів), NUnit3TestAdapter (44 теги), консоль NUnit (38 тегів): документація й релізи | 685 | 2 079 | nunit/nunit.analyzers, nunit3-vs-adapter, nunit-console |
+| Довідник API xUnit.net v2 (2.0–2.9, xunit.abstractions) і v3 (1.0–4.0, з консольним раннером) | 8 404 | 8 816 | XML-документація пакетів NuGet |
 | Довідник API NUnit 2.5–2.6 і 3.0–5.0 | 6 810 | 5 364 | те саме |
 | Довідник API bUnit, 53 лінії | 6 731 | 1 778 | те саме |
 | Довідник API AngleSharp (25 ліній) і AngleSharp.Diffing (8) | 16 304 | 22 213 | те саме |
+| Довідник API решти AngleSharp.*: Css (10 ліній), Js (6), Scripting.JavaScript (5), Xml (10), XPath (2), Io (12), Wasm (2), Renderer (6) | 4 514 | 6 529 | те саме |
+| Довідник API FluentAssertions.Json (24 лінії) | 120 | 72 | те саме |
 | Довідник API FluentAssertions (73 лінії), Shouldly (3), Moq (17), NSubstitute (24) | 18 291 | 7 851 | те саме |
 | NuGet: версії, лінії, залежності й README 63 пакетів | 1 074 | 2 860 | реєстр NuGet |
+| NuGet: ще 10 пакетів — AngleSharp.Css, Js, Xml, XPath, Io, Wasm, Renderer, Scripting.JavaScript, Wrappers, FluentAssertions.Json | 110 | 299 | те саме |
 | Код і тести на останньому тезі кожної мажорної лінії (41 тег 10 репозиторіїв) | 13 526 | 82 489 | GitHub, поділені на типи й члени |
 
-Разом 75 233 документи, 140 939 фрагментів (`expected_passages` у `checks.json`); код і тести — 59 % фрагментів,
-довідник API — третина. 49 814 документів власних фрагментів не дали: кожен їхній розділ дослівно є в іншій версії, і
-той фрагмент лише дістав їхні версії — незмінна сторінка сайту чи незмінний член API десятків ліній у пошуку один.
-Корпус зібрано менш ніж за годину: код, тести, сторінки bunit.dev і docs.nunit.org — зі сховища сирого, засіяного з
-голих клонів (`tools/seed_git_store.py`, 53 397 записів за 31 с), пакети NuGet довідника API — паралельним
-завантаженням просто у сховище сирого (451 МБ) і `build` без мережі, решта — мережею за 27 хвилин. Вектори: половину
-(76 800 фрагментів) за 33 хвилини пораховано на процесорі, решту — на відеокарті (RTX 2070 Super у WSL,
-`fastembed-gpu` у venv цього примірника): 76 260 фрагментів за 133 с, близько 570 за секунду; числа процесора й
-відеокарти збігаються, тож точки обох лишились однією колекцією.
+Разом 81 083 документи, 149 930 фрагментів (`expected_passages` у `checks.json`); код і тести — 55 % фрагментів,
+довідник API — 35 %. 53 951 документ власних фрагментів не дали: кожен їхній розділ дослівно є в іншій версії, і той
+фрагмент лише дістав їхні версії — незмінна сторінка сайту чи незмінний член API десятків ліній у пошуку один. Перша
+черга (75 233 документи) зібрана менш ніж за годину: код, тести, сторінки bunit.dev і docs.nunit.org — зі сховища
+сирого, засіяного з голих клонів (`tools/seed_git_store.py`, 53 397 записів за 31 с), пакети NuGet довідника API —
+паралельним завантаженням просто у сховище сирого (451 МБ) і `build` без мережі, решта — мережею за 27 хвилин.
+Вектори: половину (76 800 фрагментів) за 33 хвилини пораховано на процесорі, решту — на відеокарті (RTX 2070 Super у
+WSL, `fastembed-gpu` у venv цього примірника): 76 260 фрагментів за 133 с, близько 570 за секунду; числа процесора й
+відеокарти збігаються, тож точки обох лишились однією колекцією. Друга черга (ще 119 джерел, 5 850 документів, 9 866
+нових фрагментів): корпус розпаковано з архіву першої, нові джерела — мережею за 10 хвилин, їхній довідник API —
+`build` зі сховища сирого (пакети докачано заздалегідь), вектори на відеокарті — 27 с.
 
 Замір `quality` (10 запитів своїми словами): по словах 6, за змістом 4, разом 8; «як модель» (ті самі теми назвами
-документації, як велить промпт) — 10 із 10. Перший замір давав 7 і 6 із 10: видачу на запити назвами API забирали
-тести бібліотек; дотюнінг — нижче, в «Особливостях».
+документації, як велить промпт) — 10 із 10; після другої черги те саме число в число, smoke — 239 перевірок. Перший
+замір давав 7 і 6 із 10: видачу на запити назвами API забирали тести бібліотек; дотюнінг — нижче, в «Особливостях».
 
 ## Що в цій теці
 
 - `corpus/` — паспорт `index.json`: адреса, дата завантаження й сума тексту кожного документа. Самих текстів тут
   немає: корпус в архіві.
 - `index/` — кеш фрагментів, з якого сервер підіймається: у git — стиснений `passages.json.gz`.
-- `sources.json` — звідки корпус будується (347 джерел), і водночас білий список для оновлювача.
+- `sources.json` — звідки корпус будується (466 джерел), і водночас білий список для оновлювача.
 - `config.json` — порт, колекція Qdrant, модель векторів, профіль домену, родини джерел-версій (`families`: лінії
-  довідника API кожної бібліотеки, 53 редакції bunit.dev, пари README репозиторію й пакета NuGet), правила
-  `slug_rewrite` для сторінок, що переїжджали, `fusion_depth: 10` і `demote` для тестів коду.
+  довідника API кожної бібліотеки, 53 редакції bunit.dev, пари README репозиторію й пакета NuGet, правила
+  NUnit.Analyzers на сайті й у репозиторії), правила `slug_rewrite` для сторінок, що переїжджали, `fusion_depth: 10` і
+  `demote` для тестів коду.
 - `prompts/` — описи інструментів для моделі, системний промпт власного агента, текст відмови.
 - `checks.json` — чим `smoke` і `quality` перевіряють саме цей корпус.
 - `requirements.txt` — склад venv, зокрема `fastembed-gpu` і `onnxruntime-gpu` з колесами CUDA.
@@ -81,10 +91,14 @@ Blazor і чиста база між інтеграційними тестами
 | Shouldly | docs.shouldly.org (тека `documentation/`, GitBook) на кожному тезі з 4.0, до того README | пакет; API 4.1–4.3 | релізи; код і тести 1.1.1.1, 2.8.3, 3.0.2, 4.3.0 |
 | Moq | вікі (Quickstart, FAQ), README і `docs/` на кожному тезі 4.0–4.21, CHANGELOG.md до 4.18.4 і changelog.md 4.20–4.21 | пакет; API 4.0–4.18 (4.20 і 4.21 XML не несуть) | код і тести 4.21.0 |
 | NSubstitute | nsubstitute.github.io (тека `docs/`, до 3.0 — `Source/Docs`) на кожному тезі 0.1–6.2, CHANGELOG.md до 5.3.0 | NSubstitute, NSubstitute.Analyzers.CSharp і VisualBasic; API 0.9–6.2 | релізи 6.x; код і тести 1.10.0–6.2.0; NSubstitute.Analyzers — правила NS1000–NS5004 і нотатки |
+| Решта AngleSharp.* | `docs/` і README на кожному стабільному тезі Css 0.10–1.1.2, Js 0.12–1.1.1, Scripting.JavaScript 0.3–0.5.1, Xml 0.11–1.2.0, XPath 1.1.0–2.0.9, Io 0.3.0–1.1.0, Wasm 0.13–1.1.0, Renderer 0.1–0.6.0; CHANGELOG.md | 8 пакетів (власник FlorianRappl; XPath — з організації AngleSharp, автор denis-ivanov), AngleSharp.Wrappers (egil); API Css 10, Js 6, Scripting.JavaScript 5, Xml 10, XPath 2, Io 12, Wasm 2, Renderer 6 ліній | релізи; код не береться |
+| FluentAssertions.Json | README на кожному тезі 2.1–8.0.0 | пакет; API 24 ліній 4.6–8.0 | релізи 4.20–8.0.0; код не береться |
+| NUnit.Analyzers, NUnit3TestAdapter, консоль NUnit | `documentation/` (правила) і README NUnit.Analyzers на 39 тегах; README, `docs/`, налагодження й фільтри адаптера на 44 тегах; README, VERSIONING.md, PLATFORM_SUPPORT.md консолі на 38 тегах | пакети вже в рядку NUnit; XML вони не несуть | релізи адаптера (27 з тегом «V…» і 17 без) і консолі; код не береться |
 
-Читачі: `ghdocs-history-kramdown` (новий) — сайти й README з тегів; `docfx` (нове поле `title_from`) — docs.nunit.org
-і bunit.dev; `ghdocs-history-html` — документація NUnit 2; `nuget-xmldoc` і `nuget-package` — NuGet; `ghcode-history`
-(нове поле `outline_tabs`) — код і тести; `ghreleases`, `changelog-regex`, `ghwiki-page` — релізи, журнали й вікі Moq.
+Читачі: `ghdocs-history-kramdown` (новий) — сайти й README з тегів, документація всіх нових джерел; `docfx` (нове поле
+`title_from`) — docs.nunit.org і bunit.dev; `ghdocs-history-html` — документація NUnit 2; `nuget-xmldoc` і
+`nuget-package` — NuGet; `ghcode-history` (нове поле `outline_tabs`) — код і тести; `ghreleases` і `ghreleases-stable`
+(теги адаптера «V6.3.1»), `changelog-regex`, `ghwiki-page` — релізи, журнали й вікі Moq.
 
 Ліцензії джерел (за реєстром NuGet): xUnit.net і Respawn — Apache-2.0; NUnit, bUnit, AngleSharp і AngleSharp.Diffing —
 MIT, docs.nunit.org — CC BY-NC-SA 4.0; Shouldly, Moq і NSubstitute — BSD-3-Clause; FluentAssertions до 7.x —
@@ -118,8 +132,10 @@ Apache-2.0, з 8.0 — комерційна ліцензія Xceed, докуме
   NUnit, NSubstitute і FluentAssertions. Мітки: `xunit-2.9.3` (xUnit.net v2 і його складові), `xunit-v3-3.2.2` (пакети
   xunit.v3), `xunit-runner-visualstudio-`, `xunit-analyzers-`, `xunit-abstractions-`, `nunit-` (NUnit і NUnitLite,
   `nunit-2.6.4` — NUnit 2), `nunit3testadapter-`, `nunittestadapter-`, `nunit-analyzers-`, `nunit-console-`, `bunit-`,
-  `anglesharp-`, `anglesharp-diffing-`, `respawn-`, `fluentassertions-`, `shouldly-`, `moq-`, `nsubstitute-`,
-  `nsubstitute-analyzers-`. Лінії мінорні (`version_line_depth: 2`): `"nunit-3.13"` бере лінію, `"nunit-4"` — усі 4.x.
+  `anglesharp-`, `anglesharp-diffing-`, `anglesharp-css-`, `-js-`, `-scripting-javascript-`, `-xml-`, `-xpath-`,
+  `-io-`, `-wasm-`, `-renderer-`, `-wrappers-` (усі з префіксом `anglesharp-`), `fluentassertions-json-`, `respawn-`,
+  `fluentassertions-`, `shouldly-`, `moq-`, `nsubstitute-`, `nsubstitute-analyzers-`. Лінії мінорні
+  (`version_line_depth: 2`): `"nunit-3.13"` бере лінію, `"nunit-4"` — усі 4.x.
 - **Сайти без тегів.** Репозиторії xunit.net і docs.nunit.org тегів не мають, тож їхні сторінки взято в чинному стані
   (xunit.net — коміт 7fc4111f від 07.10.2026, nunit/docs — eafa6cf5 від 13.10.2026) з версіями продуктів на день
   збирання: загальні сторінки xunit.net — `xunit-2.9.3, xunit-v3-4.0.2`, сторінки v2 чи v3 — свою, правила
@@ -139,10 +155,27 @@ Apache-2.0, з 8.0 — комерційна ліцензія Xceed, докуме
   `Microsoft.CodeAnalysis.*`, `JetBrains.Annotations` — 81 тип на кожну лінію Shouldly), без простору
   `NUnit.Framework.Internal` і без 12 тисяч згенерованих обгорток DOM AngleSharp у bunit.web (`Bunit.Web.AngleSharp`,
   у 1.8–1.25 — `AngleSharpWrappers`). Пакети без XML довідника не дають: Respawn, Moq 4.20–4.21, NSubstitute 3.x,
-  Shouldly до 4.1, NUnit.Engine.
+  Shouldly до 4.1, NUnit.Engine, аналізатори, адаптери й консолі (крім консольного раннера xunit.v3),
+  AngleSharp.Wrappers: за XML-документацією його версій 1.0–2.0 типів немає, тож обгортки, що заливали індекс у
+  bunit.web, тут не повернулись.
 - **Код і тести** — на останньому тезі кожної мажорної лінії. Асерти xUnit.net живуть у підмодулі xunit/assert.xunit і
-  в код не входять (їх описує довідник API xunit.assert); код NUnit 2 і Moq 3 у цих репозиторіях не живе; знімки
-  Verify тестів генератора bUnit (`*.verified.cs`, 76 згенерованих обгорток по ~90 КБ) не беруться.
+  в код не входять (їх описує довідник API xunit.assert); код NUnit 2 і Moq 3 у цих репозиторіях не живе; код нових
+  доповнень, аналізаторів, адаптерів і консолей не береться; знімки Verify тестів генератора bUnit (`*.verified.cs`,
+  76 згенерованих обгорток по ~90 КБ) не беруться.
+- **Решта AngleSharp.*.** Взято всі пакети власника AngleSharp на NuGet (FlorianRappl) — Css, Js, Xml, Io, Wasm,
+  Renderer і старий AngleSharp.Scripting.JavaScript (під цим іменем жив нинішній Js до 0.12, тож теги, журнал і релізи
+  репозиторію AngleSharp.Js розділено на два джерела з різною міткою версії) — і два зі списку користувача: XPath
+  (репозиторій у організації AngleSharp, пакет denis-ivanov) і Wrappers (egil, репозиторій без тегів і документації).
+  Репозиторії AngleSharp.Demos.*, Infrastructure.*, Specifications.Url і сайт anglesharp.github.io не взято. Сторінки,
+  що перейменовано між тегами (Questions, Render-Tree), зведено правилами `slug_rewrite`. Релізи GitHub беруться разом
+  із журналом CHANGELOG.md: імена записів журналу й релізів тегу без «v» (`1.0.0`) збігались, тож імена релізів несуть
+  `-release`.
+- **NUnit.Analyzers, NUnit3TestAdapter і консоль NUnit — без коду.** Сторінка правила NUnit.Analyzers на
+  docs.nunit.org і в `documentation/` репозиторію — той самий текст: ключі зведено правилом `slug_rewrite` і родиною
+  `nunit-analyzers-rules`, тож розділ займає одне місце й несе версії з обох джерел. Теги адаптера бувають «V6.3.1»,
+  «v6.2.0» і «5.1.0»; `ghreleases` велику «V» не розбирає, тож релізи — двома джерелами (`ghreleases-stable` з
+  `tag_prefix: "V"` і `ghreleases` без таких тегів). Релізи xunit/xunit, xunit.analyzers, visualstudio.xunit і
+  nunit/nunit не беруться: це посилання на сторінки xunit.net і docs.nunit.org, що вже в корпусі.
 - **FluentAssertions 8** — під комерційною ліцензією Xceed; документацію взято, бо вона публічна.
 - **Головна гілка Shouldly** вже несе документацію 5.0 (передреліз), тож сторінки взято лише з тегів стабільних
   випусків. Сторінка releases FluentAssertions на тезі 8.11.0 тримає записи самого 8.11.0 під «Unreleased»: їх, як і
@@ -165,9 +198,11 @@ Apache-2.0, з 8.0 — комерційна ліцензія Xceed, докуме
 - Усе англійською.
 - Лише стабільні випуски: передрелізи NuGet і нотатки передрелізів не взято; xunit.net і docs.nunit.org — у стані на
   день збирання.
-- Не взято: MSTest, Playwright, Testcontainers, Coverlet, AutoFixture, FluentAssertions.Json, решту пакетів AngleSharp
-  (AngleSharp.Css, .Js, .Xml, .XPath, .Io, .Wasm), пакети розширень NUnit (`NUnit.Extension.*`), NUnitLite 0.x–1.x як
-  окремий фреймворк, платформні пакети `xunit-console-tool.<rid>` і `xunit.v3.*.aot.*`, крім мета-пакетів.
+- Не взято: MSTest, Playwright, Testcontainers, Coverlet, AutoFixture, пакети розширень NUnit (`NUnit.Extension.*`),
+  NUnitLite 0.x–1.x як окремий фреймворк, платформні пакети `xunit-console-tool.<rid>` і `xunit.v3.*.aot.*`, крім
+  мета-пакетів, пакети AngleSharp.* інших авторів (Verify.AngleSharp тощо), код доповнень AngleSharp,
+  FluentAssertions.Json, аналізаторів, адаптерів і консолей.
+- Корпус знято 19.10.2026 до виходу bUnit 2.12.x: його немає ні на сайті, ні в довіднику API.
 - Довідник API з XML не перелічує успадкованих членів і не має прикладів, яких немає в самому XML.
 
 ## Архівний режим: сервер без корпусу
@@ -175,9 +210,9 @@ Apache-2.0, з 8.0 — комерційна ліцензія Xceed, докуме
 Корпус в архіві від самого початку: у `corpus/` лежить лише паспорт, а сервер підіймається з кешу фрагментів і
 колекції Qdrant; відповіді ті самі до символа.
 
-**Де тексти.** В архіві `~/archives/docfactory/dotnet-testing-corpus-2026-10-19.tar.gz` (582 МБ; 75 233 тексти,
-паспорт і сховище сирого `raw/`, 56 537 файлів; перед видаленням розпакований окремо й звірений з диском — нуль
-розбіжностей). Лише на цій машині.
+**Де тексти.** В архіві `~/archives/docfactory/dotnet-testing-corpus-2026-10-19-b.tar.gz` (623 МБ; 81 083 тексти,
+паспорт і сховище сирого `raw/`, 57 760 файлів; перед видаленням розпакований окремо й звірений з диском — нуль
+розбіжностей). Це другий архів: перший (75 233 тексти) після оновлення видалено. Лише на цій машині.
 
 **Як винести знову** — після оновлення, коли `vectors` і `smoke` пройшли:
 
@@ -191,12 +226,16 @@ gzip -9 -c instances/dotnet-testing/index/passages.json > instances/dotnet-testi
 **Як повернути тексти** — перед будь-яким оновленням:
 
 ```
-tar -xzf ~/archives/docfactory/dotnet-testing-corpus-2026-10-19.tar.gz -C instances/dotnet-testing
+tar -xzf ~/archives/docfactory/dotnet-testing-corpus-2026-10-19-b.tar.gz -C instances/dotnet-testing
 ./df dotnet-testing smoke
 ```
 
 **Оновлення.** Генератор `sources.json` лишився поза репозиторієм, тож правка — руками за зразком сусідніх джерел.
-Новий стабільний випуск бібліотеки: тег — першим у `tags` джерел README і сайту з тегами (`*-readme`, `*-docs`); нова
+Оновлення архівного примірника: розпакувати архів, додати джерела, `refresh` лише нових, `manifest`, `vectors`,
+`smoke`, `quality`; новий архів — під новою назвою, розпакований окремо й звірений з диском, і лише тоді видалити
+тексти, `raw/` і старий архів. Новий стабільний випуск бібліотеки: тег — першим у `tags` джерел README і сайту з
+тегами (`*-readme`, `*-docs`, а в доповнень AngleSharp.*, FluentAssertions.Json, адаптера й консолі NUnit —
+`anglesharp-<бібліотека>-docs`, `fluentassertions-json-docs`, `nunit3testadapter-docs`, `nunit-console-docs`); нова
 мінорна лінія — ще й джерело довідника API `<бібліотека>-api-x-y` (пакети `Пакет/x.y.z`, адреса nupkg, `within`) і
 його id у відповідній родині `families`, а для bUnit — джерело `bunit-docs-x-y` на новому тезі (попереднє найновіше
 дістає `link: "github"`); новий мажор — тег у `tags` джерела коду `*-src`. xunit.net і docs.nunit.org — новий коміт у
