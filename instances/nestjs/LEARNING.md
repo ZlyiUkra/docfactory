@@ -334,7 +334,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 | `@nestjs/swagger` і CLI plugin | документ OpenAPI, сторінка `/docs`, джерело клієнта для SPA | Ф2 Д6–7 |
 | PostgreSQL | база даних | Ф0 Д13–18, Ф3; є примірник `postgresql` |
 | TypeORM або Prisma | ORM: сутності чи схема, міграції, запити | Ф3 Д1–12; є примірники `typeorm` і `prisma` |
-| `@nestjs/jwt`, Passport | токени й стратегії входу | Ф4 Д2–5 |
+| `@nestjs/jwt`, Passport | токени й стратегії входу | Ф4 Д2–5; є примірник `passport` (Passport і стратегії local, JWT, OAuth 2.0, Google; `@nestjs/jwt` — поза корпусом) |
 | bcrypt або argon2 | хешування паролів | Ф4 Д1; є примірник `argon2` (argon2 і `@node-rs/argon2`; bcrypt — поза корпусом) |
 | Vitest і supertest | юніт- і наскрізні тести | Ф5; є примірник `vitest` (supertest — поза корпусом) |
 | `@nestjs/terminus` | перевірки стану для Docker і оркестраторів | Ф6 Д3, Д8 |
@@ -450,6 +450,9 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 - API споту Kraken, запасне джерело цін (REST, WebSocket v2, гайди, журнал змін) — `kraken-spot`;
 - хешування паролів: пакети npm argon2 (node-argon2) і `@node-rs/argon2` усіх стабільних версій, еталонна реалізація
   Argon2 і його специфікація — `argon2`;
+- Passport.js (сайт passportjs.org; README, журнали змін, код `lib/` і тести `test/` кожної стабільної версії passport
+  0.1–0.7 і стратегій passport-local, passport-jwt, passport-oauth2, passport-google-oauth20, passport-strategy;
+  таблиці версій npm) — `passport`;
 - Viem (сайт кожної стабільної версії 0.x–2.x: клієнти, транспорти, дії, контракти, акаунти, утиліти, SIWE,
   EIP-7702, OP Stack, Account Abstraction, Tempo; приклади, журнал змін і таблиця версій npm) — `viem`;
 - Foundry (Foundry Book на день виходу кожної стабільної версії 0.3.0–1.8.5: forge, cast, anvil, chisel, читкоди,
@@ -457,9 +460,9 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   версій npm) — `foundry`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
-глава про інтеграцію (Passport, class-validator), але не документація самої бібліотеки:
+глава про інтеграцію (class-validator), але не документація самої бібліотеки:
 
-- з «треба знати»: Passport, bcrypt, class-validator, class-transformer, supertest, RxJS;
+- з «треба знати»: bcrypt, class-validator, class-transformer, supertest, RxJS;
 - з «варто знати»: `ws`, nestjs-cls, nestjs-pino, csrf-csrf, CASL, orval, openapi-typescript;
 - з «знати, що існує»: MikroORM, Kafka, RabbitMQ, NATS.
 
@@ -1350,7 +1353,7 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 # Фаза 4. Автентифікація й авторизація — 13 днів
 
 **Сервери MCP фази:** `nestjs-docs`, `webstandards-docs`, `express-docs`, `react-router-docs`, `owasp-docs`,
-`argon2-docs`.
+`argon2-docs`, `passport-docs`.
 
 Точка, де сходяться всі глави фази 1: guard, декоратор, pipe, фільтр. Спершу руками, потім через Passport — так
 видно, що саме Passport робить за вас. Модель токенів одна на всю родину планів, і власник її — ця фаза:
@@ -1449,9 +1452,12 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 - **Що це.** Passport — бібліотека «стратегій» входу. `LocalStrategy` (email і пароль) і `JwtStrategy` (токен із
   заголовка) — класи з методом `validate()`; те, що він поверне, стає `request.user`. `AuthGuard('local')` і
   `AuthGuard('jwt')` з `@nestjs/passport` запускають стратегію. Типізація payload — у `validate()` стратегії JWT.
-- **Читати:** розділ Recipes, глава `Passport (auth)` — розділи Implementing Passport local, Implementing
-  Passport JWT, Enable authentication globally.
-- **Сервери MCP:** `nestjs-docs`.
+- **Читати:** розділ Recipes, глава `Passport (auth)` — розділи Implementing Passport local, Implementing Passport
+  JWT, Enable authentication globally; у примірнику `passport` — `Strategies` (розділ Verify Function: що передати в
+  `done(err, user, info)`), `Username & Password`, README passport-local 1.0.0 (розділ Configure Strategy:
+  `usernameField`, `passwordField`) і README passport-jwt 4.0.1 (розділи Configure Strategy, Extracting the JWT from
+  the request) — що з цього Nest ховає за `validate()`.
+- **Сервери MCP:** `nestjs-docs`, `passport-docs`.
 - **Зробити:** 1) вхід через `LocalStrategy`; 2) перевірка токена через `JwtStrategy`; 3) порівняти обсяг коду з
   днями 2–4.
 - **Перевірити себе:** усі `curl` з днів 2–4 дають ті самі статуси; у README — одна фраза, що Passport узяв на

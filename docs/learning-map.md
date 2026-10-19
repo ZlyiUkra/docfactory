@@ -46,7 +46,7 @@ v8, viem, vite, vitest, wagmi, wasm, webdev, webstandards, zod, zustand.
 | 1. Ядро Nest | — |
 | 2. Робочий API | `zod` (1, 3, 8), `webstandards` (4, 6), `tanstack-query` (7), `react-hook-form` (8), `jsonschema` (6) |
 | 3. Дані: TypeORM, Prisma | `typeorm` (вступ, 1–6, 11–12), `prisma` (вступ, 3, 7–12), `postgresql` (12), `owasp` (5) |
-| 4. Автентифікація й авторизація | `webstandards` (1–2, 6–8, 12), `express` (8, 12), `react-router` (9), `owasp` (1, 6, 8, 12), `argon2` (1) |
+| 4. Автентифікація й авторизація | `webstandards` (1–2, 6–8, 12), `express` (8, 12), `react-router` (9), `owasp` (1, 6, 8, 12), `argon2` (1), `passport` (5) |
 | 5. Якість: тести й DI | `vitest` (1), `prisma` (2) |
 | 6. Продакшн | `docker` (вступ, 2, 7), `upstash` (6), `kubernetes` (вступ, 8–9), `oracle-cloud` (вступ, 8), `express` (9), `postgresql` (9), `github-actions` (вступ, 7), `nginx` (вступ, 2, 5), `node-postgres` (5), `argon2` (8), `prisma` (2, 8) |
 | 7. Живі дані: WebSockets | `socketio` (вступ, 2–4, 6–7), `mdn` (вступ, 1), `webstandards` (вступ, 1, 3, 6), `vite` (2), `kubernetes` (3, 6, 8), `owasp` (3), `nginx` (6), `binance-spot` (вступ, 5), `kraken-spot` (вступ, 1, 5) |
@@ -116,7 +116,7 @@ v8, viem, vite, vitest, wagmi, wasm, webdev, webstandards, zod, zustand.
 
 ### NestJS
 
-1. Passport (13), class-validator і class-transformer (7), RxJS (4).
+1. class-validator і class-transformer (7), RxJS (4).
 2. Факультатив: decimal.js.
 
 ### Next.js
