@@ -84,7 +84,8 @@ API. Інше не взято: `demote` довідника API (`^api-`) на 3�
 - `prompts/` — описи інструментів для моделі, системний промпт власного агента, текст відмови.
 - `checks.json` — чим `smoke` і `quality` перевіряють саме цей корпус.
 - `.env` — токен GitHub і, для кроку `ask`, ключ Anthropic; `.mcp.json` — запис HTTP-сервера для Claude Code.
-- `corpus/`, `index/`, `raw/` — лише локально, у git не йдуть (див. «Корпус лише локально»).
+- `corpus/` (лише паспорт `index.json`), `index/` (кеш фрагментів) — лише локально, у git не йдуть; тексти й `raw/` —
+  в архіві (див. «Корпус лише локально»).
 
 Кроки нижче запускаються з кореня фабрики через `./df dotnet <крок>`.
 
@@ -187,33 +188,38 @@ dotnet/runtime, dotnet/sdk, dotnet/roslyn, dotnet/csharplang, dotnet/vblang — 
 цій машині, як корпуси `patterns` і `frontend-architecture`. У git — лише налаштування примірника; `refresh` (і засів
 з клонів, див. «Оновлення») відтворює корпус з `sources.json`.
 
-**Резервна копія** — архів на диску Windows, поза WSL: `C:\Distr\dotnet-corpus-2026-10-19.tar.gz` (з WSL —
-`/mnt/c/Distr/dotnet-corpus-2026-10-19.tar.gz`), 1,88 ГБ, усередині теки `corpus/` (тексти й паспорт) і `raw/`
-(сховище сирого) — 584 030 файлів. Архів звірено з диском файл за файлом (нуль розбіжностей); він замінив перший архів
-того самого дня після другого етапу (чернетки стандарту v10–v14, приклади старих знімків, `slug_rewrite`). Тексти
-лишаються й на диску: сервер, `refresh` і `build` працюють з ними як завжди.
+**Архівний режим (з 19.10.2026).** Тексти корпусу й сховище сирого `raw/` винесено в архів і з диска видалено: у теці
+`corpus/` лишився лише паспорт `index.json`, а в `index/` — кеш фрагментів (637 МБ, у git і в архіві його немає).
+Сервер читає кеш і стартує за ~40 секунд замість майже трьох хвилин, коли він розбирав 274 тисячі файлів; пошук і
+`read_section` віддають те саме. `refresh`, `build`, `manifest` і `check` без текстів не працюють, дві перевірки
+`smoke` пропускаються («корпус в архіві»). **Резервна копія** — архів `dotnet-corpus-2026-10-19.tar.gz`, 1,88 ГБ,
+усередині теки `corpus/` (тексти й паспорт) і `raw/` (сховище сирого) — 584 030 файлів; два однакові примірники
+(`sha256` збігається): на диску Windows, поза WSL, `C:\Distr\` (з WSL — `/mnt/c/Distr/`), і в
+`~/archives/docfactory/`. Перед видаленням архів розпаковано в окрему теку й звірено з диском (`diff -r`: нуль
+розбіжностей для `corpus` і `raw`).
 
-**Відновлення**, якщо корпусу немає, — з кореня `docfactory/`:
+**Відновлення** — перед будь-яким оновленням корпусу, з кореня `docfactory/`:
 
 ```
-tar -xzf /mnt/c/Distr/dotnet-corpus-2026-10-19.tar.gz -C instances/dotnet
+tar -xzf ~/archives/docfactory/dotnet-corpus-2026-10-19.tar.gz -C instances/dotnet
 ./df dotnet smoke
 ```
 
 Кеш фрагментів (`index/`) збереться з корпусу сам при першому старті сервера (близько хвилини); вектори лежать у
 Qdrant, а якщо їх там немає — `./df dotnet vectors` (12 хвилин на відеокарті).
 
-**Оновлення.** Новий патч: у джерелі `api-<лінія>` — номер пакета Microsoft.NETCore.App.Ref (адреса nupkg і
-`within`); лінії Microsoft.Extensions.* — у джерелах `ext-*` (генератор джерел лежав у scratchpad сесії збирання:
-нова лінія пакета додається руками за зразком сусідньої). Новий мажор: `site-11-0` (коміт `main` dotnet/docs за
-тиждень після виходу), `api-11-0`, `notes-11-0`, лінія `11.0` у `lines` джерела `releases`, нові
-`csharp-proposals-15-0` і `roslyn-breaking-*-11`; усе — у `families`; правила `dotnet-11`, `csharp-15`, `/11/` в
-`exclude` знімків і `skip_monikers` в `api-docs` прибрати. Сайт, dotnet-api-docs і dotnet/core тягнути не мережею, а
-голим клоном: `tools/seed_git_store.py --instance dotnet --clone dotnet/docs=<клон>` для знімків сайту, далі
-`./df dotnet build <джерела>`; приклади залежних репозиторіїв (поле `repos`: `machinelearning-samples`,
-`iot-samples` на коміті дня знімка) засіюються так само з голих клонів, лише файли, на які посилаються сторінки;
-решта — `./df dotnet refresh <джерела>`. Далі `manifest`, `vectors`, `smoke`, `quality`
-і новий архів на `C:\Distr` (старий — видалити після звірки нового).
+**Оновлення.** Новий патч: у джерелі `api-<лінія>` — номер пакета Microsoft.NETCore.App.Ref (адреса nupkg і `within`);
+лінії Microsoft.Extensions.* — у джерелах `ext-*` (генератор джерел лежав у scratchpad сесії збирання: нова лінія
+пакета додається руками за зразком сусідньої). Новий мажор: `site-11-0` (коміт `main` dotnet/docs за тиждень після
+виходу), `api-11-0`, `notes-11-0`, лінія `11.0` у `lines` джерела `releases`, нові `csharp-proposals-15-0` і
+`roslyn-breaking-*-11`; усе — у `families`; правила `dotnet-11`, `csharp-15`, `/11/` в `exclude` знімків і
+`skip_monikers` в `api-docs` прибрати. Сайт, dotnet-api-docs і dotnet/core тягнути не мережею, а голим клоном:
+`tools/seed_git_store.py --instance dotnet --clone dotnet/docs=<клон>` для знімків сайту, далі `./df dotnet build
+<джерела>`; приклади залежних репозиторіїв (поле `repos`: `machinelearning-samples`, `iot-samples` на коміті дня
+знімка) засіюються так само з голих клонів, лише файли, на які посилаються сторінки; решта — `./df dotnet refresh
+<джерела>`. Далі `manifest`, `vectors`, `smoke`, `quality` і новий архів: `tar --sort=name -czf <архів>.tar.gz -C
+instances/dotnet corpus raw`, звірити з диском, видалити тексти й `raw/`, покласти копію на `C:\Distr` (старий —
+видалити після звірки нового).
 
 ## Установка venv
 
