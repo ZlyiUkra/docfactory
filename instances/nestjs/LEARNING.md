@@ -405,6 +405,12 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 - Prisma (сайт prisma.io/docs кожної стабільної версії 2.0–7.10: схема, Prisma Client, Prisma Migrate, CLI,
   `prisma.config.ts`, адаптери драйверів, посібник NestJS; README монорепозиторію, нотатки релізів, таблиці версій
   npm; документація Prisma 1) — `prisma`;
+- MongoDB (посібник сервера кожної лінії 2.2–9.0: CRUD, запити, агрегація, індекси, транзакції, перевірка схеми,
+  реплікація; mongosh і Database Tools) — `mongodb`;
+- офіційний драйвер MongoDB для Node.js 3.6–7.7 (документація, код і тести кожного випуску, HISTORY, `bson`, типи) —
+  `node-mongodb`;
+- Mongoose (документація від 5.13 і сайти 3.8 та 4.x, код, тести, журнал змін; `@nestjs/mongoose`, Typegoose,
+  mongodb-memory-server, плагіни) — `mongoose`;
 - Socket.IO 2.x–4.x — сервер, клієнт, адаптери Redis, Redis Streams, Postgres і MongoDB, Admin UI, протоколи й
   приклади (зокрема з NestJS) — `socketio`;
 - GitHub Actions, Dependabot, Container registry (ghcr.io), офіційні дії — `github-actions`;
@@ -453,11 +459,9 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
 глава про інтеграцію (Passport, class-validator), але не документація самої бібліотеки:
 
-- з «треба знати»: Passport, bcrypt, class-validator, class-transformer, supertest, RxJS (TypeORM закрито 19.10.2026
-  примірником `typeorm`);
+- з «треба знати»: Passport, bcrypt, class-validator, class-transformer, supertest, RxJS;
 - з «варто знати»: `ws`, nestjs-cls, nestjs-pino, csrf-csrf, CASL, orval, openapi-typescript;
-- з «знати, що існує»: MikroORM, Kafka, RabbitMQ, NATS (Mongoose закрито 17.10.2026 родиною Mongo: `mongodb`,
-  `node-mongodb`, `mongoose`).
+- з «знати, що існує»: MikroORM, Kafka, RabbitMQ, NATS.
 
 ---
 

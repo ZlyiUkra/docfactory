@@ -119,9 +119,6 @@ webdev, webstandards, zod, zustand.
 1. Passport (13), class-validator і class-transformer (7), RxJS (4).
 2. Факультатив: decimal.js.
 
-TypeORM (29 згадок) закрито примірником `typeorm` 19.10.2026: документація кожної стабільної версії 0.1–1.1 (сайти
-typeorm.io і v0.typeorm.io та давні сторінки `docs/*.md`), README, журнал змін, код і тести кожного тегу.
-
 ### Next.js
 
 1. Prometheus і Grafana.
