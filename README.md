@@ -2426,15 +2426,15 @@ ASP.NET Core) і нотатки випусків; документація dotne
 FluentAssertions з FluentAssertions.Json, Shouldly, Moq, NSubstitute з NSubstitute.Analyzers, AngleSharp з усіма
 офіційними пакетами (Css, Js, Xml, XPath, Io, Wasm, Renderer, Wrappers, Diffing; на Diffing стоїть `MarkupMatches`
 bUnit) і Respawn. Сайти xunit.net і docs.nunit.org — у чинному стані (тегів не мають), bunit.dev — на останньому тезі
-кожної з 53 мінорних ліній, fluentassertions.com, docs.shouldly.org, nsubstitute.github.io і документація AngleSharp —
+кожної з 54 мінорних ліній, fluentassertions.com, docs.shouldly.org, nsubstitute.github.io і документація AngleSharp —
 з кожного стабільного тегу, вікі Moq; README кожної бібліотеки з кожного стабільного тегу, журнали змін і релізи;
 довідник API кожної мінорної лінії з XML-документації пакетів NuGet; версії, залежності й README 73 пакетів; код і
 тести основних бібліотек на останньому тезі кожної мажорної лінії (доповнення, аналізатори, адаптери й консоль NUnit —
 без коду, з документацією й релізами). Новий читач `ghdocs-history-kramdown` (розмітка Jekyll, kramdown і mdsnippets,
 вставки з даних YAML); `docfx` дістав `title_from`, `ghdocs-history-html` — `title_heading`, `ghcode-history` —
 `outline_tabs` для коду з відступом табуляцією, пошук — поле `demote`, що відсуває тести коду на п'ять місць нижче
-документації. Вектори — на відеокарті (перша половина першої черги — на процесорі). 81 083 документи, 149 930
-фрагментів.
+документації. Вектори — на відеокарті (перша половина першої черги — на процесорі). 81 241 документ, 149 944
+фрагменти.
 
 - порт `8868`; запис у Claude Code — `dotnet-testing-docs`, адреса `http://127.0.0.1:8868/mcp`; інструменти
   `search_docs` і `read_section`;
