@@ -2419,6 +2419,32 @@ ASP.NET Core) і нотатки випусків; документація dotne
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/typeorm/README.md](instances/typeorm/README.md).
 
+### dotnet-testing
+
+Документація бібліотек тестування застосунків .NET англійською, усі стабільні мажорні й мінорні версії: xUnit.net (v2
+і v3, аналізатори, адаптер Visual Studio), NUnit (3–5 і NUnit 2.2–2.6, адаптер, аналізатори, консоль і рушій), bUnit,
+FluentAssertions, Shouldly, Moq, NSubstitute з NSubstitute.Analyzers, AngleSharp з AngleSharp.Diffing (на них стоїть
+`MarkupMatches` bUnit) і Respawn. Сайти xunit.net і docs.nunit.org — у чинному стані (тегів не мають), bunit.dev — на
+останньому тезі кожної з 53 мінорних ліній, fluentassertions.com, docs.shouldly.org, nsubstitute.github.io і
+документація AngleSharp — з кожного стабільного тегу, вікі Moq; README кожної бібліотеки з кожного стабільного тегу,
+журнали змін і релізи; довідник API кожної мінорної лінії з XML-документації пакетів NuGet; версії, залежності й
+README 63 пакетів; код і тести на останньому тезі кожної мажорної лінії. Новий читач `ghdocs-history-kramdown`
+(розмітка Jekyll, kramdown і mdsnippets, вставки з даних YAML); `docfx` дістав `title_from`, `ghdocs-history-html` —
+`title_heading`, `ghcode-history` — `outline_tabs` для коду з відступом табуляцією, пошук — поле `demote`, що відсуває
+тести коду на п'ять місць нижче документації. Вектори — на відеокарті (перша половина — на процесорі). 75 233
+документи, 140 939 фрагментів.
+
+- порт `8868`; запис у Claude Code — `dotnet-testing-docs`, адреса `http://127.0.0.1:8868/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-dotnet-testing`, модель векторів — `bge-small`;
+- версія несе назву продукту: `version: "nunit-3.13"`, `"xunit-2.9"`, `"xunit-v3-3.2"`, `"fluentassertions-6"`,
+  `"moq-4.20"`; без названої версії — найпопулярніша за завантаженнями (xUnit.net 2.4.1, NUnit 3.13.3, bUnit 2.7.2 і
+  1.40.0, FluentAssertions 6.12.0, Shouldly 4.3.0, Moq 4.20.72, NSubstitute 5.3.0, AngleSharp 0.17.1, Respawn 6.2.1);
+- приклад питання агентові: `./df dotnet-testing ask "How do I share a fixture between test classes with
+  ICollectionFixture in xUnit.net v3?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/dotnet-testing/README.md](instances/dotnet-testing/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
