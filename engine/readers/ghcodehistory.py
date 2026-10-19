@@ -9,7 +9,13 @@
                    (див. `_outline_sol`); `outline` переліком мов (`["go"]`, `["python"]`,
                    `["csharp"]`) — на розділи ділиться лише код цих мов (див. `_outline_go`,
                    `_outline_py`, `_outline_cs`);
-                   `max_file` — межа розміру файла в байтах замість спільної (40 000).
+                   `max_file` — межа розміру файла в байтах замість спільної (40 000);
+                   `outline_indent: "auto"` — відступ членів типу C# береться з першого рядка
+                   його тіла, а не як відступ типу плюс чотири пробіли. Testcontainers for .NET
+                   пише код з відступом у два пробіли (простір імен блоком, тип на 2, члени на
+                   4), а тести — на чотири (простір імен рядком), і під правилом «плюс чотири»
+                   весь клас ContainerBuilder на 28 тисяч символів лишався одним розділом. Без
+                   поля поділ той самий, що й був.
 
 Навіщо. `ghcode` бере дерево одного тегу, а `ghdocs-history` бере багато тегів, але читає
 кожен файл як markdown. CSP-збірка Alpine.js описана на сайті однією сторінкою, і та
@@ -365,7 +371,7 @@ def _cs_member(line: str) -> str:
     return m.group(1) if m else ""
 
 
-def _outline_cs(text: str) -> str:
+def _outline_cs(text: str, auto: bool = False) -> str:
     """Файл C# з розділами: тип — «## class DbContext», член — «### DbContext.SaveChanges()»
     разом з його «///» і атрибутами; перевантаження, що йдуть поспіль, — один розділ, той
     самий заголовок далі у файлі дістає номер. Шапка файла (ліцензія, using, простір імен)
@@ -378,7 +384,7 @@ def _outline_cs(text: str) -> str:
     зливається в один фрагмент з усіма ними (`revision_suffix`)."""
     parts: list = [["", []]]
     state = ""
-    types: list = []      # [(відступ, ім'я)] — тип і вкладені в нього
+    types: list = []      # [[відступ, ім'я, відступ членів]] — тип і вкладені в нього
     used: dict = {}
     lead_from = None      # з якого рядка поточної частини почалися «///» і атрибути члена
     awaiting = False      # між оголошенням типу і його «{»: базові типи, where
@@ -394,9 +400,13 @@ def _outline_cs(text: str) -> str:
                 while types and indent <= types[-1][0]:
                     types.pop()
                 m = _CS_TYPE.match(line)
-                member = types[-1][0] + 4 if types else None
+                if auto and types and types[-1][2] is None and indent > types[-1][0] \
+                        and not stripped.startswith("#"):
+                    types[-1][2] = indent  # перший рядок тіла типу задає відступ членів
+                member = (types[-1][2] or types[-1][0] + 4) if types else None
                 if m and (member is None or indent < member):
-                    types.append((indent, re.sub(r"<.*", "", m.group(3))))
+                    types.append([indent, re.sub(r"<.*", "", m.group(3)),
+                                  None if auto else indent + 4])
                     heading = f"## {m.group(2).split()[0]} {m.group(3)}"
                     awaiting = "{" not in stripped and not stripped.endswith(";")
                 elif member is not None and indent == member:
@@ -407,7 +417,8 @@ def _outline_cs(text: str) -> str:
                         owner = types[-1][1]
                         if m:
                             heading = f"### {m.group(2).split()[0]} {owner}.{m.group(3)}"
-                            types.append((indent, re.sub(r"<.*", "", m.group(3))))
+                            types.append([indent, re.sub(r"<.*", "", m.group(3)),
+                                          None if auto else indent + 4])
                             awaiting = "{" not in stripped and not stripped.endswith(";")
                         elif name := _cs_member(stripped):
                             heading = f"### {owner}.{name}"
@@ -510,7 +521,7 @@ def ghcode_history(source: dict, ctx) -> list[Item]:
             elif "python" in langs and lang == "python":
                 body = _outline_py(text)
             elif "csharp" in langs and path.endswith(".cs"):
-                body = _outline_cs(text)
+                body = _outline_cs(text, source.get("outline_indent") == "auto")
             elif outline and lang in ("js", "ts"):
                 body = _outline(text, lang)
             elif outline and lang == "solidity":
