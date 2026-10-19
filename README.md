@@ -2543,7 +2543,7 @@ bUnit) і Respawn. Сайти xunit.net і docs.nunit.org — у чинному 
 документації. Вектори — на відеокарті (перша половина першої черги — на процесорі). 81 241 документ, 149 944
 фрагменти.
 
-- порт `8868`; запис у Claude Code — `dotnet-testing-docs`, адреса `http://127.0.0.1:8868/mcp`; інструменти
+- порт `8870`; запис у Claude Code — `dotnet-testing-docs`, адреса `http://127.0.0.1:8870/mcp`; інструменти
   `search_docs` і `read_section`;
 - колекція у Qdrant — `docs-dotnet-testing`, модель векторів — `bge-small`;
 - версія несе назву продукту: `version: "nunit-3.13"`, `"xunit-2.9"`, `"xunit-v3-3.2"`, `"fluentassertions-6"`,

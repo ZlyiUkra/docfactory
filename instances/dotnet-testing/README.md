@@ -287,17 +287,17 @@ dotnet-testing --clone <власник/репо>=<клон> …` (сторінк
 
 ```
 cd ~/Projects/docfactory
-./df dotnet-testing serve          # порт 8868
+./df dotnet-testing serve          # порт 8870
 ```
 
-Готовий він тоді, коли надрукував кількість фрагментів і адресу `http://127.0.0.1:8868/mcp`; індекс по словах
+Готовий він тоді, коли надрукував кількість фрагментів і адресу `http://127.0.0.1:8870/mcp`; індекс по словах
 збирається з кешу кілька десятків секунд. Якщо порт зайнятий, сервер скаже про це й вийде: значить, `serve` цього
-примірника вже десь запущений; хто тримає порт, покаже `ss -ltnp | grep 8868`.
+примірника вже десь запущений; хто тримає порт, покаже `ss -ltnp | grep 8870`.
 
 **2. Додати сервер у Claude Code** — у тому середовищі, де відкрито вікно:
 
 ```
-claude mcp add --transport http --scope user dotnet-testing-docs http://127.0.0.1:8868/mcp
+claude mcp add --transport http --scope user dotnet-testing-docs http://127.0.0.1:8870/mcp
 ```
 
 У WSL і у Windows Claude Code тримає окремі налаштування: вікно VS Code на боці Windows читає
