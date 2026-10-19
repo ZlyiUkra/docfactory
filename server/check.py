@@ -25,7 +25,8 @@ try:
     from mcp import ClientSession, StdioServerParameters
     from mcp.client.stdio import stdio_client
 except ImportError:
-    raise SystemExit("Потрібно:  pip install 'mcp[cli]'")
+    raise SystemExit("Потрібен пакет mcp[cli]: він є в спільних наборах (requirements/cpu.txt, "
+                     "requirements/gpu.txt); запускайте через ./df <примірник> <крок>")
 
 from common import profile  # noqa: E402
 

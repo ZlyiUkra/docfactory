@@ -73,7 +73,8 @@ except ImportError:
     try:
         from mcp.server.fastmcp import FastMCP as _Server  # SDK 1.x
     except ImportError:
-        raise SystemExit("Потрібен MCP SDK:  pip install 'mcp[cli]'")
+        raise SystemExit("Потрібен MCP SDK (пакет mcp[cli]): він є в спільних наборах "
+                         "(requirements/cpu.txt, requirements/gpu.txt)")
 
 from common import instance
 from common import nform
