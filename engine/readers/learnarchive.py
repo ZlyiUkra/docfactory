@@ -12,6 +12,14 @@
                   `skip_meta` — {поле шапки: вираз}: сторінка, чия шапка під нього
                   підпадає, не береться і не розгортається далі.
                   `version` — версія всіх документів джерела.
+                  `workers` — скільки звернень іти разом (типово одне): з черги береться хвиля
+                  з N адрес, сторінки й змісти тягнуться паралельно, а розбираються по черзі,
+                  тож перелік, імена й тексти ті самі, що й в одному потоці (archive-2014:
+                  8 220 документів однакові до байта); 429 і 503 так само чекають і повторюють.
+                  `trust_store` — день «РРРР-ММ-ДД»: відповідь 200, що лежить у сховищі сирого з
+                  цього дня чи пізніше, береться звідти без звернення. Лише на перезапуск
+                  перерваного обходу; лишене в оголошенні, поле не дасть оновленню побачити
+                  зміни сайту.
 
 Навіщо окремий читач. Набори зібрано з приватних репозиторіїв: мета-поле
 `original_content_git_url` веде в Azure DevOps (docs-archive-project) чи в закритий
@@ -64,6 +72,7 @@ import collections
 import html as html_lib
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import unquote, urljoin, urlsplit
 
 from engine import net
@@ -253,62 +262,108 @@ def learn_archive(source: dict, ctx) -> list[Item]:
             seen.add(url)
             queue.append(url)
 
-    while queue:
-        url = queue.popleft()
+    workers = max(1, int(source.get("workers") or 1))
+    trust = str(source.get("trust_store") or "")
+
+    def fetch(url: str, accept: str = "") -> tuple[str, bytes, str]:
+        """(код, тіло, день із сховища) однієї адреси. З `trust_store` відповідь 200, що вже
+        лежить у сховищі сирого з дня не раніше названого, береться звідти без звернення:
+        перезапуск обходу після збою не мусить заново питати тисячі сторінок. Адреса, яку
+        білий список не пускає (переадресація на чинний сайт), — код «refused»."""
+        if trust and ctx.store is not None and ctx.allowed(url):
+            got = ctx.store.get(url, accept)
+            if (got is not None and got[0].get("code", "200") == "200"
+                    and got[0].get("day", "") >= trust):
+                return "200", got[1], got[0].get("day", "")
         try:
-            code, data = ctx.fetch(_with_query(url, query), accept=_ACCEPT)
+            code, data = ctx.fetch(url, accept=accept) if accept else ctx.fetch(url)
         except net.Refused as exc:
-            # Архівна адреса, що переадресовує на чинний сайт (/sql/…?view=sql-server-2014), —
-            # уже не сторінка архіву; білий список її не пускає, і падати мусить вона одна, а не
-            # весь перелік.
-            print(f"  {url}: {exc} — пропускаю", flush=True)
-            continue
-        if code in _GONE:
-            continue
-        if code != "200":
-            # Збій зв'язку — не відповідь: сторінка лишається в переліку, і `make` спробує
-            # ще раз; лише її посилання цього разу не знайдено.
-            print(f"  {url}: {code} — посилань і змісту сторінки не знайдено", flush=True)
-            pages.append((url, url))
-            continue
-        text = data.decode("utf-8", errors="replace").replace("\r\n", "\n").lstrip("﻿")
-        if text.lstrip()[:15].lower().startswith(("<!doctype html", "<html")):
-            pages.append((url, url))
-            continue
-        meta, rest = _front(text)
+            return "refused", str(exc).encode("utf-8"), ""
+        return code, data, ""
+
+    def toc_of(url: str, text: str) -> str:
+        meta, _ = _front(text)
         if skipped(meta):
-            continue
-        # Та сама сторінка під двома адресами (регістр, перенаправлення) — один документ.
-        real = norm(meta.get("canonicalUrl", "").split("?")[0], url) or url
-        if real in canon:
-            continue
-        canon.add(real)
-        seen.add(real)
-        pages.append((url, real))
-        for link in _links(rest):
-            add(norm(link, url))
+            return ""
         rel = meta.get("toc_rel", "")
         toc = urljoin(url, rel) if rel else ""
         if toc and toc not in tocs and any(toc.startswith(w) for w in within) and ctx.allowed(toc):
-            tocs.add(toc)
-            try:
-                tcode, tdata = ctx.fetch(_with_query(toc, query))
-            except net.Refused:
-                tcode, tdata = "", b""
-            if tcode == "200":
-                try:
-                    items = json.loads(tdata).get("items") or []
-                except ValueError:
-                    items = []
-                stack = list(items)
-                while stack:
-                    it = stack.pop()
-                    if it.get("href"):
-                        add(norm(it["href"], toc))
-                    stack.extend(it.get("children") or [])
-        if len(pages) % REPORT_EVERY == 0:
-            print(f"  {source['id']}: перелік — {len(pages)} сторінок, у черзі {len(queue)}",
-                  flush=True)
+            return toc
+        return ""
+
+    def decoded(data: bytes) -> str:
+        return data.decode("utf-8", errors="replace").replace("\r\n", "\n").lstrip("\ufeff")
+
+    # `workers` > 1 — кілька звернень разом: з черги береться хвиля з N адрес, сторінки (а
+    # потім і їхні змісти) тягнуться паралельно, а розбираються по черзі, як в одному потоці.
+    # Хвиля — це рівно ті адреси, що стояли першими в черзі, тож черга, імена й документи ті
+    # самі, що й без поля. Пауза між зверненнями лишається спільною на контекст.
+    pool = ThreadPoolExecutor(workers) if workers > 1 else None
+    while queue:
+        wave = [queue.popleft() for _ in range(min(workers, len(queue)))]
+        if pool is None:
+            got = [fetch(_with_query(wave[0], query), _ACCEPT)]
+        else:
+            got = list(pool.map(lambda u: fetch(_with_query(u, query), _ACCEPT), wave))
+        ahead: dict = {}
+        if pool is not None:
+            want = list(dict.fromkeys(
+                t for (code, data, _), u in zip(got, wave) if code == "200"
+                for t in [toc_of(u, decoded(data))] if t))
+            for toc, res in zip(want, pool.map(lambda t: fetch(_with_query(t, query)), want)):
+                ahead[toc] = res
+        for url, (code, data, _day) in zip(wave, got):
+            if code == "refused":
+                # Архівна адреса, що переадресовує на чинний сайт (/sql/…?view=sql-server-2014), —
+                # уже не сторінка архіву; білий список її не пускає, і падати мусить вона одна, а
+                # не весь перелік.
+                print(f"  {url}: {data.decode('utf-8', errors='replace')} — пропускаю", flush=True)
+                continue
+            if code in _GONE:
+                continue
+            if code != "200":
+                # Збій зв'язку — не відповідь: сторінка лишається в переліку, і `make` спробує
+                # ще раз; лише її посилання цього разу не знайдено.
+                print(f"  {url}: {code} — посилань і змісту сторінки не знайдено", flush=True)
+                pages.append((url, url))
+                continue
+            text = decoded(data)
+            if text.lstrip()[:15].lower().startswith(("<!doctype html", "<html")):
+                pages.append((url, url))
+                continue
+            meta, rest = _front(text)
+            if skipped(meta):
+                continue
+            # Та сама сторінка під двома адресами (регістр, перенаправлення) — один документ.
+            real = norm(meta.get("canonicalUrl", "").split("?")[0], url) or url
+            if real in canon:
+                continue
+            canon.add(real)
+            seen.add(real)
+            pages.append((url, real))
+            for link in _links(rest):
+                add(norm(link, url))
+            rel = meta.get("toc_rel", "")
+            toc = urljoin(url, rel) if rel else ""
+            if toc and toc not in tocs and any(toc.startswith(w) for w in within) and ctx.allowed(toc):
+                tocs.add(toc)
+                tcode, tdata, _ = ahead[toc] if toc in ahead else fetch(_with_query(toc, query))
+                if tcode == "200":
+                    try:
+                        items = json.loads(tdata).get("items") or []
+                    except ValueError:
+                        items = []
+                    stack = list(items)
+                    while stack:
+                        it = stack.pop()
+                        if it.get("href"):
+                            add(norm(it["href"], toc))
+                        stack.extend(it.get("children") or [])
+            if len(pages) % REPORT_EVERY == 0:
+                print(f"  {source['id']}: перелік — {len(pages)} сторінок, у черзі {len(queue)}",
+                      flush=True)
+    if pool is not None:
+        pool.shutdown()
 
     items, used = [], set()
     for url, real in pages:
@@ -320,7 +375,14 @@ def learn_archive(source: dict, ctx) -> list[Item]:
         used.add(name)
 
         def make(url=url, real=real):
-            text = ctx.text(_with_query(url, query), accept=_ACCEPT)
+            day = ""
+            if trust:
+                code, data, day = fetch(_with_query(url, query), _ACCEPT)
+                if code != "200":
+                    raise SystemExit(f"{url}: {code}")
+                text = data.decode("utf-8", errors="replace")
+            else:
+                text = ctx.text(_with_query(url, query), accept=_ACCEPT)
             _markup.refuse_html(text, url)
             meta, rest = _front(text.replace("\r\n", "\n").lstrip("﻿"))
             title, rest = _title(meta, rest, suffix)
@@ -329,7 +391,7 @@ def learn_archive(source: dict, ctx) -> list[Item]:
             live = meta.get("canonicalUrl", "")
             if not live.startswith(f"https://{host}/"):
                 live = _with_query(real, query)
-            return _markup.document(title, live, ctx.stamp, body, source.get("version", ""))
+            return _markup.document(title, live, day or ctx.stamp, body, source.get("version", ""))
 
         items.append(Item(id=f"{source['id']}/{name}", file=f"{source['id']}--{name}.txt",
                           make=make))
