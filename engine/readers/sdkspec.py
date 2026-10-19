@@ -84,8 +84,9 @@ def sdk_spec(source: dict, ctx) -> list[Item]:
         try:
             import yaml
         except ImportError:
-            raise SystemExit("Читачеві sdk-spec потрібен PyYAML: додайте його в "
-                             "requirements.txt примірника й поставте у його venv.")
+            raise SystemExit("Читачеві sdk-spec потрібен PyYAML: він є в спільних наборах "
+                             "(requirements/cpu.txt, requirements/gpu.txt); запускайте через "
+                             "./df <примірник> <крок>.")
         try:
             spec = yaml.safe_load(ctx.text(source["url"]))
         except yaml.YAMLError as e:

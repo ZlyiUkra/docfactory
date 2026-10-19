@@ -1,10 +1,22 @@
 """CLI ядра фабрики.
 
-    .venv/bin/python -m engine --instance <назва> --sources [--why]
-    .venv/bin/python -m engine --instance <назва> --list
-    .venv/bin/python -m engine --instance <назва> --status [--deep] [id...]
-    .venv/bin/python -m engine --instance <назва> --refresh [--missing] [id...]
-    .venv/bin/python -m engine --instance <назва> --build [id...]
+Звичайно — через запускач `df` із кореня `docfactory/`: він сам бере спільне середовище (README.md,
+розділ «Спільне середовище») і виставляє `DF_INSTANCE_DIR`:
+
+    ./df <назва> sources [--why]
+    ./df <назва> list
+    ./df <назва> check [--deep] [id...]          # у ядра це --status
+    ./df <назва> refresh [--missing] [id...]
+    ./df <назва> build [id...]
+
+Без запускача те саме робить інтерпретатор спільного середовища (`.venvs/gpu/bin/python` або
+`.venvs/cpu/bin/python`), з прапорами ядра і з `DF_INSTANCE_DIR=instances/<назва>` в оточенні:
+
+    .venvs/gpu/bin/python -m engine --instance <назва> --sources [--why]
+    .venvs/gpu/bin/python -m engine --instance <назва> --list
+    .venvs/gpu/bin/python -m engine --instance <назва> --status [--deep] [id...]
+    .venvs/gpu/bin/python -m engine --instance <назва> --refresh [--missing] [id...]
+    .venvs/gpu/bin/python -m engine --instance <назва> --build [id...]
 
 `--sources` друкує оголошення джерел і білий список, що з нього виводиться;
 `--list` показує, що завантажилося б, нічого не пишучи; `--status` звіряє корпус із
@@ -15,8 +27,8 @@
 те саме, що `--refresh`, але без мережі: тексти збираються зі сховища сирих відповідей
 (`raw/` примірника), куди їх поклали попередні `--refresh`, `--status` чи `--list`.
 
-Кличеться з теки `docfactory/` (щоб `engine` був видимий як пакет), venv-ом самого
-примірника (щоб залежності читачів були на місці).
+Кличеться з теки `docfactory/` (щоб `engine` був видимий як пакет), інтерпретатором
+спільного середовища (щоб залежності читачів були на місці).
 """
 
 import pathlib

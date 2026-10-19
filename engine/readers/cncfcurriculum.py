@@ -19,8 +19,9 @@
 3. Лігатури (ﬁ, ﬂ) — звичайними літерами, інакше «Conﬁgure» не знаходиться словом «configure».
 4. Чотири програми (CAPA, CCA, CGOA, стара ICA) — картинки без текстового шару. Такі
    сторінки розпізнаються (OCR): pypdfium2 малює сторінку, rapidocr-onnxruntime читає. Обидва
-   ставляться лише в примірник, якому це треба, і імпортуються тут же, коли до них дійшло:
-   інші примірники без цих пакетів працюють як раніше. Документ з розпізнаним текстом
+   стоять у спільному середовищі (rapidocr-onnxruntime у `.venvs/gpu` — окремим кроком збірки,
+   requirements/gpu-ocr.txt) і імпортуються тут же, коли до них дійшло: читачі, яким
+   розпізнавання не потрібне, працюють як раніше. Документ з розпізнаним текстом
    позначено — у ньому можливі помилки.
 
 Розділ «NN% - Назва» стає заголовком `## NN% - Назва`, кожен пункт — рядком «- …».
@@ -141,8 +142,9 @@ def _ocr_engine():
         try:
             from rapidocr_onnxruntime import RapidOCR
         except ImportError:
-            raise SystemExit("Для PDF без текстового шару потрібен rapidocr-onnxruntime: "
-                             ".venv/bin/pip install -r requirements.txt")
+            raise SystemExit("Для PDF без текстового шару потрібен rapidocr-onnxruntime: він є в "
+                             "requirements/cpu.txt, а в .venvs/gpu його ставить окремий крок "
+                             "requirements/gpu-ocr.txt (README.md, розділ «Спільне середовище»)")
         _OCR_ENGINE.append(RapidOCR())
     return _OCR_ENGINE[0]
 
@@ -153,8 +155,8 @@ def ocr_fragments(data: bytes, index: int) -> list:
         import numpy
         import pypdfium2
     except ImportError:
-        raise SystemExit("Для PDF без текстового шару потрібен pypdfium2: "
-                         ".venv/bin/pip install -r requirements.txt")
+        raise SystemExit("Для PDF без текстового шару потрібен pypdfium2: він є в спільних "
+                         "наборах (requirements/cpu.txt, requirements/gpu.txt)")
     doc = pypdfium2.PdfDocument(data)
     try:
         page = doc[index]
@@ -322,7 +324,8 @@ def curriculum_text(data: bytes) -> tuple[str, bool]:
     try:
         import pypdf
     except ImportError:
-        raise SystemExit("Потрібен pypdf: .venv/bin/pip install -r requirements.txt")
+        raise SystemExit("Потрібен pypdf: він є в спільних наборах (requirements/cpu.txt, "
+                         "requirements/gpu.txt)")
     reader = pypdf.PdfReader(io.BytesIO(data))
     all_rows, ocr = [], False
     for n, page in enumerate(reader.pages):

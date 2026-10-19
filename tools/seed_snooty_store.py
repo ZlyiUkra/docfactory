@@ -1,6 +1,6 @@
 """Засів сховища сирого примірника з голого клону — для джерел читача `snooty-history`.
 
-    instances/<примірник>/.venv/bin/python tools/seed_snooty_store.py --instance mongodb \\
+    .venvs/gpu/bin/python tools/seed_snooty_store.py --instance mongodb \\
         --clone mongodb/docs=/шлях/до/docs.git --clone 10gen/docs-shared=/шлях/до/docs-shared.git [--dry-run]
 
 Навіщо. Репозиторій документації MongoDB — 60 тисяч файлів у двох десятках гілок; `refresh` тягне їх

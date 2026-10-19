@@ -5,7 +5,9 @@
 залити його у векторну базу. Домен (ECMAScript, Vue, Go…) дає лише свій
 `sources.json` і, за потреби, своїх читачів; цей код при цьому не змінюється.
 
-Примірник кличе ядро своїм venv, називаючи себе:
+Ядро кличуть інтерпретатором спільного середовища (README.md, розділ «Спільне середовище»),
+називаючи примірник; звичайно це робить `df`, і ці два рядки рівнозначні:
 
-    .venv/bin/python -m engine --instance ecmascript --sources
+    ./df ecmascript sources
+    .venvs/gpu/bin/python -m engine --instance ecmascript --sources
 """

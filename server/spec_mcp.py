@@ -31,18 +31,22 @@ React усіх версій. Що саме завантажено, сервер 
 Запуск на stdio (сам по собі мовчки чекає клієнта — це не зависання): клієнт,
 чи то Mode A, чи то Inspector, сам запускає цей процес і говорить у труби.
 
-    .venv/bin/python server/spec_mcp.py
+    DF_INSTANCE_DIR=instances/<примірник> .venvs/gpu/bin/python server/spec_mcp.py
+
+(інтерпретатор — зі спільного середовища, README.md, розділ «Спільне середовище»; `DF_INSTANCE_DIR`
+каже, який примірник читати, `df` виставляє його сам).
 
 Запуск HTTP-сервером для Claude Code: довгий процес тримає порт примірника з
 config.json, а Claude Code під'єднується за адресою (див. .mcp.json).
 
-    .venv/bin/python server/spec_mcp.py --serve
+    ./df <примірник> serve
 
 Перевірки:
 
-    .venv/bin/python -m server.smoke     функції напряму, повз протокол
-    .venv/bin/python -m server.check     справжній stdio-клієнт
-    npx -y @modelcontextprotocol/inspector .venv/bin/python server/spec_mcp.py
+    ./df <примірник> smoke     функції напряму, повз протокол (server.smoke)
+    ./df <примірник> protocol  справжній stdio-клієнт (server.check)
+    DF_INSTANCE_DIR=instances/<примірник> npx -y @modelcontextprotocol/inspector \\
+        .venvs/gpu/bin/python server/spec_mcp.py
 """
 
 import collections

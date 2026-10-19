@@ -5,9 +5,10 @@
 примірника й цих видань — назви файлів, межі глав і ознаки заголовків нижче вибрано
 під них. Перелік книг і глав — у README примірника, розділ «Книги».
 
-Запуск із кореня docfactory/ інтерпретатором venv примірника (потрібен pypdf):
+Запуск із кореня docfactory/ інтерпретатором спільного середовища (pypdf є в обох наборах,
+README.md, розділ «Спільне середовище»):
 
-    instances/patterns/.venv/bin/python instances/patterns/books.py [--books ТЕКА]
+    .venvs/gpu/bin/python instances/patterns/books.py [--books ТЕКА]
         [--7z ШЛЯХ] [--dry] [--overwrite] [larman] [csharp] [clean]
 
 `--books` — тека з файлами книг (змовчання — C:\\Books\\docfactory\\patterns у WSL).

@@ -20,8 +20,8 @@ FINAL · захищений агент специфікації над MCP.
 Модель викликається лише в agent loop — прогін платний. Безкоштовно перевіряється
 лише під'єднання до сервера:
 
-    .venv/bin/python -m server.agent --tools     # $0: MCP-рукостискання
-    .venv/bin/python -m server.agent "питання"   # платно: повний прогін
+    ./df <примірник> tools              # $0: MCP-рукостискання (server.agent --tools)
+    ./df <примірник> ask "питання"      # платно: повний прогін (server.agent "питання")
 """
 
 import asyncio
@@ -180,8 +180,8 @@ def main(argv: list[str]) -> int:
         return 0
     query = next((a for a in argv if not a.startswith("-")), None)
     if not query:
-        print("Питання: .venv/bin/python -m server.agent \"...\"")
-        print("Рукостискання ($0):  .venv/bin/python -m server.agent --tools")
+        print("Питання: ./df <примірник> ask \"...\"")
+        print("Рукостискання ($0):  ./df <примірник> tools")
         return 0
     report = run(query)
     print("Показано клієнту:\n ", report["shown"])

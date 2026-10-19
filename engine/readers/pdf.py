@@ -20,7 +20,8 @@ def _pdf_text(data: bytes) -> list[str]:
     try:
         import pypdf
     except ImportError:
-        raise SystemExit("Потрібен pypdf: .venv/bin/pip install pypdf")
+        raise SystemExit("Потрібен pypdf: він є в спільних наборах (requirements/cpu.txt, "
+                         "requirements/gpu.txt); запускайте через ./df <примірник> <крок>")
     reader = pypdf.PdfReader(io.BytesIO(data))
     lines = []
     for page in reader.pages:

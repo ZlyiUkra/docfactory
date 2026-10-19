@@ -1,6 +1,6 @@
 """Засів сховища сирого примірника з голих клонів — для джерел історії репозиторіїв GitHub.
 
-    instances/<примірник>/.venv/bin/python tools/seed_git_store.py --instance opentelemetry \\
+    .venvs/gpu/bin/python tools/seed_git_store.py --instance opentelemetry \\
         --clone open-telemetry/opentelemetry-js=/шлях/до/opentelemetry-js.git [--clone …] [--dry-run]
 
 Навіщо. Читачі `ghdocs-history`, `ghcode-history`, `ghcode-history-ts`, `ghcode-history-proto`,

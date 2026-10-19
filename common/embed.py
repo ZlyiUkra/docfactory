@@ -75,14 +75,15 @@ def model():
             # саме Exception і без векторів працює по словах далі. Тут лише
             # дописуємо до неї те, чого бракує читачеві, — команду.
             raise ModuleNotFoundError(
-                "немає fastembed, а без нього вектори нема чим рахувати; "
-                "постав: .venv/bin/python -m pip install fastembed") from exc
+                "немає fastembed, а без нього вектори нема чим рахувати; він є в "
+                "спільних наборах (requirements/cpu.txt, requirements/gpu.txt) — "
+                "запускай крок через ./df <примірник> <крок>") from exc
         _model = _on_gpu(TextEmbedding) or TextEmbedding(model_name=MODEL_NAME)
     return _model
 
 
 def _on_gpu(TextEmbedding):
-    """Модель на відеокарті — лише коли у venv примірника стоїть onnxruntime-gpu і CUDA справді
+    """Модель на відеокарті — лише коли в середовищі стоїть onnxruntime-gpu і CUDA справді
     є; інакше None, і далі той самий виклик на процесорі, що й був.
 
     Навіщо. Вектори sqlserver на процесорі йшли ~5 фрагментів за секунду: на 144 тисячі —

@@ -40,8 +40,9 @@ def _load(ctx, url: str) -> dict:
         try:
             import yaml
         except ImportError:
-            raise SystemExit("Читачеві openapi для YAML потрібен PyYAML: додайте його в "
-                             "requirements.txt примірника й поставте у його venv.")
+            raise SystemExit("Читачеві openapi для YAML потрібен PyYAML: він є в спільних наборах "
+                             "(requirements/cpu.txt, requirements/gpu.txt); запускайте через "
+                             "./df <примірник> <крок>.")
         spec = yaml.safe_load(raw)
     if not isinstance(spec, dict) or not isinstance(spec.get("paths"), dict):
         raise SystemExit(f"{url}: не схоже на OpenAPI — немає `paths`.")
