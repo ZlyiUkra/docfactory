@@ -49,6 +49,34 @@ Prerequisites: Python 3.10+ (tested on 3.14) and bash — Linux, macOS or WSL on
 meaning search and is optional. An Anthropic API key is needed only for the `ask` step; everything else runs
 without it.
 
+A venv is a folder with a Python interpreter and the packages for this project only; `df` calls it itself, so never
+activate it. An instance runs on one of two environments, both Linux (`bin/python`):
+
+- **the shared one** — two venvs in the repository root, `.venvs/cpu` (~525 MB) and `.venvs/gpu` (~2.6 GB, with the
+  CUDA libraries for an NVIDIA card), built from `requirements/cpu.txt` and `requirements/gpu.txt`, plus a single
+  `.env` in the root (outside git) holding `GITHUB_TOKEN` and `DF_VENV=cpu` or `gpu`. This is the default for a new
+  instance;
+- **the instance's own `.venv`** — optional, needed only when the domain wants a package outside
+  `requirements/*.txt`; the older instances still have one and are moving to the shared environment gradually.
+
+Build a shared venv once, from the repository root (for `gpu`, the same with `gpu`; the GPU itself is not required —
+without one `onnxruntime-gpu` computes on the CPU with the same numbers):
+
+```
+python3 -m venv .venvs/cpu
+.venvs/cpu/bin/python -m pip install -U pip
+.venvs/cpu/bin/python -m pip install -r requirements/cpu.txt
+```
+
+`df` picks the environment by three rules, in order: `DF_USE_SHARED=1` forces the shared one; otherwise the
+instance's own `.venv`, if it has one; otherwise the shared one named by `DF_VENV` (the environment variable, then
+the line in the root `.env`, `cpu` when neither is set). The root `.env` is read after the instance's own `.env` and
+never overrides it, so private keys such as `ANTHROPIC_API_KEY` stay in the instance's `.env`. `df <instance> serve`
+runs on the CPU by default; `DF_SERVE_GPU=1` brings the GPU back. Details are in the section "Спільне середовище"
+of [README.md](README.md).
+
+An own venv, when one is needed, is built from the instance folder:
+
 ```
 cd instances/ecmascript
 python3 -m venv .venv
@@ -56,8 +84,6 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 cd ../..
 ```
-
-Never activate the venv: `df` calls the right instance's `.venv/bin/python` itself.
 
 ## Run the server and connect Claude Code
 
