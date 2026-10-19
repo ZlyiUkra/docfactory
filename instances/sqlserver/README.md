@@ -82,6 +82,10 @@ learn.microsoft.com/en-us/lifecycle/products (джерела `lifecycle-2014` �
 «SQL Server 2025 lifecycle start date» дають розділ з датами першим, «when does extended support for SQL Server 2016
 end» — другим; «until when is SQL Server 2019 supported» ставить сторінку третьою, але розділом `#head` без дат, а
 `#support-dates` — сьомим: місця перед ним займають «Supported Version and Edition Upgrades» і сторінка PolyBase.
+Запит про 2019 додано до `checks.json` в обидва десятки (тепер по 11): з `version` «2019» він знаходиться (по словах
+ні, за змістом і разом так), «як модель» 11 із 11; своїми словами тепер 5, 6 і 6 із 11. У `prompts/search.txt`
+дописано, що дати лежать у розділі `#support-dates` і що кінцеві дати на добу пізніші: модель має прочитати цей розділ
+через `read_section` і відняти день.
 
 ## Що в цій теці
 
