@@ -78,7 +78,12 @@ def model():
                 "немає fastembed, а без нього вектори нема чим рахувати; він є в "
                 "спільних наборах (requirements/cpu.txt, requirements/gpu.txt) — "
                 "запускай крок через ./df <примірник> <крок>") from exc
-        _model = _on_gpu(TextEmbedding) or TextEmbedding(model_name=MODEL_NAME)
+        if os.environ.get("CUDA_VISIBLE_DEVICES") == "":
+            # df serve ховає відеокарту: одразу процесор. Інакше onnxruntime-gpu двічі пробує
+            # CUDA, друкує «EP Error … no CUDA-capable device» і вантажить модель вдруге.
+            _model = TextEmbedding(model_name=MODEL_NAME, providers=["CPUExecutionProvider"])
+        else:
+            _model = _on_gpu(TextEmbedding) or TextEmbedding(model_name=MODEL_NAME)
     return _model
 
 
