@@ -551,6 +551,16 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   ```` ```javascript ````): take the README from the publishing commit (`gitHead`) or the tag with `npm-readme`, and
   the tarball (2–3 MB each, 300 MB for 115 versions) only for versions with neither; one `slug_rewrite` rule gives
   both sources one key.
+- **Library tests take the results of queries by API names** (dotnet-testing: tests repeat API names in method names
+  and code dozens of times; for «xUnit1001 Fact methods cannot have parameters» three tests stood ahead of the rule
+  page): the search field `demote` (`{"pattern": a regex over the test documents' names, "places": N}`) moves such
+  sections N places down in the list of each search method. The number comes from a one-process measurement (here 5:
+  own words 7 → 8, «as the model» 10 of 10, smoke green). `max_per_doc` is powerless here: every test is a separate
+  document.
+- **Switching from CPU to GPU in the middle of `vectors`**: stop only that process, replace `fastembed` and
+  `onnxruntime` with `fastembed-gpu` and `onnxruntime-gpu[cuda,cudnn]` in the instance venv and start `vectors` again
+  — it sees the points already computed as unchanged (here 76,800 of 153,060) and computes the rest; CPU and GPU
+  numbers agree. Do not delete the collection.
 
 ## Anatomy of an instance
 
@@ -1391,6 +1401,15 @@ and what a taken port and a failed connection look like. A domain list in the ro
   ```` ```javascript ````): README береться з коміту публікації (`gitHead`) чи тегу читачем `npm-readme`, а tarball
   (2–3 МБ кожен, 300 МБ на 115 версій) — лише для версій без того й другого; одне правило `slug_rewrite` дає обом
   джерелам один ключ.
+- **Тести бібліотек забирають видачу запитів назвами API** (dotnet-testing: тести повторюють імена API в назвах
+  методів і в коді десятки разів; на «xUnit1001 Fact methods cannot have parameters» три тести стояли попереду
+  сторінки правила): поле пошуку `demote` (`{"pattern": вираз імені документа тестів, "places": N}`) відсуває такі
+  розділи на N місць у списку кожного способу. Число — за заміром одним процесом (тут 5: своїми словами 7 → 8, «як
+  модель» 10 із 10, smoke зелений). `max_per_doc` тут безсилий: кожен тест — окремий документ.
+- **Перехід з процесора на відеокарту посеред `vectors`**: зупинити лише цей процес, у venv примірника замінити
+  `fastembed` і `onnxruntime` на `fastembed-gpu` і `onnxruntime-gpu[cuda,cudnn]` і запустити `vectors` знову — уже
+  пораховані точки він бачить незмінними (тут 76 800 з 153 060) і дораховує решту; числа процесора й відеокарти
+  збігаються. Колекцію не видаляти.
 
 ## З чого складається примірник
 
@@ -2263,6 +2282,16 @@ errada.
   ```` ```javascript ````): o README vem do commit de publicação (`gitHead`) ou da tag pelo `npm-readme`, e o tarball
   (2–3 MB cada, 300 MB para 115 versões) só para versões sem nenhum dos dois; uma regra `slug_rewrite` dá às duas
   fontes uma só chave.
+- **Os testes das bibliotecas tomam os resultados de consultas por nomes de API** (dotnet-testing: os testes repetem
+  nomes de API nos nomes dos métodos e no código dezenas de vezes; em «xUnit1001 Fact methods cannot have parameters»
+  três testes ficavam à frente da página da regra): o campo de busca `demote` (`{"pattern": expressão sobre os nomes
+  dos documentos de testes, "places": N}`) desloca essas seções N posições para baixo na lista de cada método de
+  busca. O número vem de uma medição num processo só (aqui 5: com as próprias palavras 7 → 8, «como o modelo» 10 de
+  10, smoke verde). O `max_per_doc` não ajuda aqui: cada teste é um documento à parte.
+- **Passar da CPU para a GPU no meio do `vectors`**: pare só esse processo, troque `fastembed` e `onnxruntime` por
+  `fastembed-gpu` e `onnxruntime-gpu[cuda,cudnn]` no venv da instância e rode `vectors` de novo — ele vê os pontos já
+  calculados como inalterados (aqui 76.800 de 153.060) e calcula o resto; os números da CPU e da GPU coincidem. Não
+  apague a coleção.
 
 ## Anatomia de uma instância
 
