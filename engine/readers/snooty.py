@@ -15,7 +15,11 @@
                                   `.. sharedinclude::` (`sharedinclude_root` у snooty.toml:
                                   10gen/docs-shared), `shared_ref` — його гілка (типово main);
                    `exclude`    — вирази шляхів сторінок, що не беруться (типово — теки
-                                  вставок, картинок і прикладів коду).
+                                  вставок, картинок і прикладів коду);
+                   `name_prefix` — рядок перед іменем документа: у примірнику, де сторінки
+                                  Snooty живуть поруч з іншими наборами, «limitations» чи
+                                  «quick-start» інакше ділили б ключ розділу зі сторінками
+                                  інших продуктів. Без поля ім'я те саме, що й було.
 
 Навіщо. Посібник MongoDB лежить у `mongodb/docs` двояко: версії 2.2–8.0 — гілками `vX.Y` зі
 `source/` у корені, 7.0–9.0 — теками `content/manual/<версія>/` на `main`; mongosh і Database
@@ -432,6 +436,7 @@ def snooty_history(source: dict, ctx) -> list[Item]:
         raise SystemExit(f"{source['id']}: теки з версіями (folders-об'єкт) — лише на одній гілці.")
     source_dir = (source.get("source_dir") or "source").strip("/")
     label = source.get("label", "")
+    lead = f"{_markup.slug(source['name_prefix'])}-" if source.get("name_prefix") else ""
     exclude = [re.compile(r) for r in source.get("exclude") or _DEFAULT_EXCLUDE]
     site = _ShaSite(source, ctx)
     shared_site = None
@@ -477,7 +482,7 @@ def snooty_history(source: dict, ctx) -> list[Item]:
             stem = rel[:-4]
             stem = re.sub(r"(^|/)_?index$", "", stem) or "index"
             key = f"{path}\0{sha}\0{unit.ref}\0{unit.project}"
-            name = f"{_markup.slug(stem)}-{hashlib.sha1(key.encode()).hexdigest()[:8]}"
+            name = f"{lead}{_markup.slug(stem)}-{hashlib.sha1(key.encode()).hexdigest()[:8]}"
             if name in names:
                 continue
             names.add(name)
