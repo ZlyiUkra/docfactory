@@ -3,8 +3,9 @@
 `ghdocs-history-kramdown` — те саме, що `ghdocs-history` (усі його поля), плюс перед розбором
                             кожна сторінка `.md`/`.markdown` проходить кілька замін поза
                             блоками коду:
-                            - списки атрибутів kramdown (`{: .issue-link }`, `{:.no_toc}`)
-                              зникають — сайт робить з них класи CSS, а не текст; зміст
+                            - списки атрибутів kramdown (`{: .issue-link }`, `{:.no_toc}`) і
+                              якорі заголовків (`## Class Fixtures{ #class-fixture }`)
+                              зникають — сайт робить з них класи CSS і якорі, а не текст; зміст
                               сторінки («* TOC» над `{:toc}`) теж;
                             - блок `{% examplecode csharp %}` … `{% endexamplecode %}` стає
                               блоком коду цієї мови, а прихований код-заготовка
@@ -46,6 +47,8 @@ from engine.readers.ghhistory import ghdocs_history
 _RAW_PAGE = re.compile(r"^https://raw\.githubusercontent\.com/([^/]+)/([^/]+)/([^/]+)/(.+\.(?:md|markdown))$")
 _FENCE = re.compile(r"^\s*(```+|~~~+)")
 _IAL = re.compile(r"[ \t]*\{:[^}\n]*\}")
+# Атрибути заголовка markdig/kramdown у кінці рядка «## Class Fixtures{ #class-fixture }» — якір, а не назва.
+_HEADING_ID = re.compile(r"^(#{1,6}[ \t]+.*?)[ \t]*\{[ \t]*#[\w.:-]+(?:[ \t]+[.#][\w.:-]+)*[ \t]*\}[ \t]*$")
 _EXAMPLE = re.compile(r"^\s*\{%\s*examplecode\s+([\w+#-]+)\s*%\}\s*$")
 _EXAMPLE_END = re.compile(r"^\s*\{%\s*endexamplecode\s*%\}\s*$")
 _REQUIRED = re.compile(r"\{%\s*requiredcode\s*%\}.*?\{%\s*endrequiredcode\s*%\}[ \t]*\n?", re.S)
@@ -83,6 +86,7 @@ def _clean(text: str) -> str:
             continue
         if _SNIPPET_ANCHOR.match(ln) or _SNIPPET_SOURCE.match(ln):
             continue
+        ln = _HEADING_ID.sub(r"\1", ln)
         ln = _ALERT.sub(lambda am: f"{am.group(1)}{am.group(2).capitalize()}:", ln)
         stripped = _IAL.sub("", ln)
         # Рядок, що весь був списком атрибутів, зникає зовсім, а не лишає порожнього рядка
