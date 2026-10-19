@@ -7,6 +7,7 @@ Database, Azure SQL Managed Instance, Azure Synapse Analytics, Fabric Data Wareh
 рушій бази, резервні копії й відновлення, групи доступності, безпека, темпоральні таблиці, JSON, Query Store, Linux і
 контейнери, драйвери, ODBC, SSMS, sqlcmd, SqlPackage, Reporting Services, Integration Services, MDX і DMX, SSMA);
 сайт learn.microsoft.com/azure/azure-sql і /data-migration; статті підтримки learn.microsoft.com/troubleshoot/sql;
+сторінки життєвого циклу (дати початку й кінця підтримки) SQL Server 2014–2025 з learn.microsoft.com/lifecycle;
 архів Books Online SQL Server 2014, 2012, 2008 R2, 2008 і 2005 з learn.microsoft.com/previous-versions; пакети
 `mssql` і `tedious` (npm), `Microsoft.Data.SqlClient` (NuGet), `mssql-python` (PyPI), `mssql-jdbc` (Maven); теги
 образу `mcr.microsoft.com/mssql/server` і README microsoft/mssql-docker; приклади sql-server-samples; журнали змін,
@@ -31,6 +32,7 @@ SQL Server живе десятиліттями: у проєктах поруч �
 | learn.microsoft.com/sql — 10 редакцій | 85 006 | 120 779 | sql-docs a73b10f (18.10.2026); 2016 — 3990900 |
 | learn.microsoft.com/azure/azure-sql (3 редакції) і /data-migration | 724 | 10 678 | той самий коміт sql-docs |
 | Статті підтримки | 379 | 3 698 | MicrosoftDocs/SupportArticles-docs, `support/sql`, коміт 2bc3403 |
+| Життєвий цикл SQL Server 2014–2025 | 6 | 25 | learn.microsoft.com/en-us/lifecycle/products |
 | Архів SQL Server 2014 | 8 206 | 37 130 | learn.microsoft.com/previous-versions/sql/2014 |
 | Архів SQL Server 2012 | 11 925 | 64 556 | …/sql/sql-server-2012 (Books Online MSDN) |
 | Архів SQL Server 2008 R2 | 16 804 | 46 120 | …/sql/sql-server-2008-r2 |
@@ -42,7 +44,7 @@ SQL Server живе десятиліттями: у проєктах поруч �
 | Журнали змін, нотатки випусків, релізи | 988 | 2 873 | 15 джерел, лише сталі випуски |
 | go-sqlcmd і mssql-python: README, вікі | 66 | 467 | теги кожного сталого випуску, вікі |
 
-Разом 159 532 документи, 353 420 фрагментів (`expected_passages` у `checks.json`). Редакції сайту зливаються сильно: 85
+Разом 159 538 документів, 353 445 фрагментів (`expected_passages` у `checks.json`). Редакції сайту зливаються сильно: 85
 тисяч документів десяти редакцій дали 121 тисячу неповторних фрагментів, бо текстом вони різняться на сотні сторінок, а
 не на тисячі. Архів — 59 % фрагментів. Вектори: 25 088 фрагментів на процесорі (~4,7 за секунду), решта 328 332 і
 2 944 змінених — на відеокарті RTX 2070 за 7,7 хвилини (див. «Вектори на відеокарті»). Замір `quality` (10 запитів):
@@ -67,12 +69,26 @@ SQL Server живе десятиліттями: у проєктах поруч �
 12 і більше — 28 і 26. `max_per_doc` 1–2 і `fusion_depth` 10–30, з `demote` чи без, опускали «як модель» до 8–9, тож
 не ставились. Сервер перечитує `config.json` на старті, тож `serve` треба перезапустити.
 
+Життєвий цикл, 19.10.2026. Сторінки з датами підтримки в корпусі не було, і запит «until when is SQL Server 2019
+supported» віддавав нотатки випусків. Тепер шість сторінок «sql-server-2014» … «sql-server-2025» з
+learn.microsoft.com/en-us/lifecycle/products (джерела `lifecycle-2014` … `lifecycle-2025`, читач `html-pages`; по
+сторінці на джерело, бо `version` читача одна на все джерело) дають 6 документів і 25 фрагментів; їхні вектори
+дорахувано на відеокарті за секунду, зайвих точок не знайшлося. Версії 2012 і старших сайт не має (404). Адреса — з
+`/en-us/`: без нього сайт переадресовує, а оновлювач за переадресацією поза оголошеним не йде. Дати лежать у розділі
+`#support-dates`: початок, кінець основної (mainstream) і розширеної (extended) підтримки. Сторінка показує час у UTC,
+тому кінцеві дати на ній на день пізніші за тихоокеанські, які Microsoft називає в інших статтях (SQL Server 2019: на
+сторінці 3/1/2025 і 1/9/2030, у статтях — 28 лютого 2025 і 8 січня 2030); дати початку збігаються. Замір `quality` не
+змінився: 5, 5 і 5 із 10, «як модель» 10 із 10. Запити про дати: «SQL Server 2022 end of mainstream support date» і
+«SQL Server 2025 lifecycle start date» дають розділ з датами першим, «when does extended support for SQL Server 2016
+end» — другим; «until when is SQL Server 2019 supported» ставить сторінку третьою, але розділом `#head` без дат, а
+`#support-dates` — сьомим: місця перед ним займають «Supported Version and Edition Upgrades» і сторінка PolyBase.
+
 ## Що в цій теці
 
 - `corpus/` — паспорт `index.json`: адреса, дата завантаження й сума тексту кожного документа (83 МБ). Самих текстів
   тут немає: корпус в архіві.
 - `index/` — кеш фрагментів, з якого сервер підіймається: у git — стиснений `passages.json.gz` (67 МБ).
-- `sources.json` — звідки корпус будується (71 джерело), і водночас білий список для оновлювача.
+- `sources.json` — звідки корпус будується (77 джерел), і водночас білий список для оновлювача.
 - `config.json` — порт, колекція Qdrant, модель векторів, профіль домену, родини редакцій (`families`), відсув архіву
   MSDN нижче чинної документації (`demote`).
 - `prompts/` — описи інструментів для моделі, системний промпт власного агента, текст відмови.
@@ -86,6 +102,7 @@ SQL Server живе десятиліттями: у проєктах поруч �
 | Що | Читач |
 |----|-------|
 | сайти learn.microsoft.com, статті підтримки | `docfx`, нові поля `monikers`, `yaml_pages`, `rows`, `icons` |
+| сторінки життєвого циклу | `html-pages` — наявний, по сторінці на джерело |
 | архів previous-versions 2014–2005 | `learn-archive` — новий |
 | теги образу MCR | `registry-tags` — новий |
 | npm: таблиця версій і README кожної сталої версії | `npm-versions`, `npm-tarball-files` |
@@ -174,14 +191,14 @@ RTX 2070 Super: ~500–800 фрагментів за секунду; з проц
 Корпус в архіві від самого початку: у `corpus/` лежить лише паспорт, а сервер підіймається з кешу фрагментів і
 колекції Qdrant; відповіді ті самі до символа.
 
-**Де тексти.** В архіві `~/archives/docfactory/sqlserver-corpus-2026-10-19.tar.gz` (521 МБ: 159 532 тексти, паспорт і
-сховище сирого `raw/` — 118 669 відповідей, серед них засіяні з клонів sql-docs; перед видаленням розпакований окремо
-й звірений з диском — нуль розбіжностей). Лише на цій машині.
+**Де тексти.** В архіві `~/archives/docfactory/sqlserver-corpus-2026-10-19-lifecycle.tar.gz` (487 МБ: 159 538 текстів,
+паспорт і сховище сирого `raw/` — 118 675 відповідей, серед них засіяні з клонів sql-docs; перед видаленням розпакований
+окремо й звірений з диском — нуль розбіжностей). Лише на цій машині.
 
 **Як винести знову** — після оновлення, коли `vectors` і `smoke` пройшли:
 
 ```
-tar -czf ~/archives/docfactory/sqlserver-corpus-РРРР-ММ-ДД.tar.gz -C instances/sqlserver corpus raw
+tar --sort=name -czf ~/archives/docfactory/sqlserver-corpus-РРРР-ММ-ДД.tar.gz -C instances/sqlserver corpus raw
 find instances/sqlserver/corpus -maxdepth 1 -name '*.txt' -delete
 rm -rf instances/sqlserver/raw
 gzip -9 -c instances/sqlserver/index/passages.json > instances/sqlserver/index/passages.json.gz
@@ -190,7 +207,7 @@ gzip -9 -c instances/sqlserver/index/passages.json > instances/sqlserver/index/p
 **Як повернути тексти** — перед будь-яким оновленням:
 
 ```
-tar -xzf ~/archives/docfactory/sqlserver-corpus-2026-10-19.tar.gz -C instances/sqlserver
+tar -xzf ~/archives/docfactory/sqlserver-corpus-2026-10-19-lifecycle.tar.gz -C instances/sqlserver
 ./df sqlserver smoke
 ```
 
@@ -208,9 +225,10 @@ git clone --bare --filter=blob:none --shallow-since=<дата> --single-branch -
 
 (клон залежного репозиторію — `git init --bare`, потім `git fetch --depth=1 --filter=blob:none origin <коміт>`).
 Новий монікер (наступна версія SQL Server) дописують у кінець переліку продукту в полі `monikers` кожного джерела
-sql-docs і додають редакцію-джерело в родину `sql`. Статті підтримки — новий коміт main у `support`. Архів не
-змінюється; його повторний обхід — тисячі звернень, тож без потреби його не питають (`refresh` з іменами джерел). Решта
-— `./df sqlserver refresh <джерела>`, далі `manifest`, `vectors`, `smoke`, `quality`.
+sql-docs і додають редакцію-джерело в родину `sql` і джерело `lifecycle-<рік>` (сторінка життєвого циклу цієї версії,
+адреса з `/en-us/`). Статті підтримки — новий коміт main у `support`. Архів не змінюється; його повторний обхід —
+тисячі звернень, тож без потреби його не питають (`refresh` з іменами джерел). Решта —
+`./df sqlserver refresh <джерела>`, далі `manifest`, `vectors`, `smoke`, `quality`.
 
 ## Установка venv
 
