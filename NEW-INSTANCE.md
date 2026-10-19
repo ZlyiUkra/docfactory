@@ -37,9 +37,10 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   package registry. The npm registry is the base for packages, versions (canary included) and migrations. When the
   documentation covers several versions, the default is the most downloaded one; when two are close, answer for
   both.
-- **Environment before corpus.** Build the venv and the instance `.env` first; for GitHub sources add a
-  `GITHUB_TOKEN` line to that `.env` (the anonymous API allows 60 requests an hour). Do not run `refresh`,
-  `vectors`, `smoke` or `quality` before that.
+- **Environment before corpus.** Make sure the environment is ready first: the shared venvs (`.venvs/cpu`,
+  `.venvs/gpu`) exist and the root `.env` has a `GITHUB_TOKEN` line for GitHub sources (the anonymous API allows 60
+  requests an hour). The instance's own venv and `.env` are needed only in the cases of step 1. Do not run
+  `refresh`, `vectors`, `smoke` or `quality` before that.
 - **Try the reader on several kinds of pages before the full fetch:** an overview, a task page with tabs or
   accordions, a reference page, a changelog entry. Two pages are not a sample: a reader that missed tab panels once
   cost two full re-fetches of a 3 000-page site.
@@ -632,8 +633,8 @@ Fourteen files, identical in shape across instances, plus five folders that crea
 | `prompts/agent.txt` | system prompt for the project's own agent (`ask`) | you |
 | `prompts/refusal.txt` | the text layer 1 returns when it blocks a request | you |
 | `checks.json` | queries and expectations for `smoke`, `check`, `raw` and `quality` | you, after the first corpus |
-| `requirements.txt` | the instance venv contents | copy, then trim |
-| `.env.example` | key placeholder; never commit a real `.env` | copy |
+| `requirements.txt` | the instance venv contents; only when the instance needs a package outside the shared sets | copy, then trim |
+| `.env.example` | placeholders for the instance's own keys (`ANTHROPIC_API_KEY`, agent settings); `GITHUB_TOKEN` lives in the root `.env`; never commit a real `.env` | copy |
 | `.gitignore` | `.env`, `__pycache__/`, `*.pyc`, `.venv/`, `out/`, `index/passages.json` | copy |
 | `.mcp.json` | HTTP server record for Claude Code | copy, change the port |
 | `README.md` | what this domain is and where its docs come from | you |
@@ -642,16 +643,26 @@ Fourteen files, identical in shape across instances, plus five folders that crea
 | `index/` | the excerpt cache `passages.json` the server starts from; in archive mode it is committed compressed, `passages.json.gz` | built from `corpus/` by the first step that needs it |
 | `raw/` | raw site responses for `build` without network, old versions in `raw/_old/`; never in git | `refresh`, `check`, `list` |
 | `out/` | the search-mode decision, logs | `setup`, `serve` |
-| `.venv/` | the instance's own virtual environment | step 1 |
+| `.venv/` | the instance's own virtual environment; without it `df` uses the shared one from `.venvs/` | step 1, only if needed |
 
 ## Step 1 · Folder and virtual environment
 
-This is the only step performed from inside the instance folder. You never activate the venv: `df` calls the right
-instance's `.venv/bin/python` itself.
+You never activate a venv: `df` picks the right one itself. By default a new instance has no venv of its own and
+uses the shared environment (`.venvs/cpu` or `.venvs/gpu`, picked by `DF_VENV`; see the section «Shared environment»
+of the root README), so the step is only the folder:
 
 ```
 mkdir -p instances/<domain>/prompts
-cp instances/react/requirements.txt instances/react/.gitignore instances/react/.env.example instances/<domain>/
+cp instances/react/.gitignore instances/react/.env.example instances/<domain>/
+```
+
+Build an own venv only when the domain needs a package that is not in `requirements/cpu.txt` and
+`requirements/gpu.txt`. Then copy `requirements.txt` too, trim it to the shared lines plus that package and build the
+venv. This is the only action done from inside the instance folder, and from now on `df` takes the instance's own
+`.venv` whenever it exists:
+
+```
+cp instances/react/requirements.txt instances/<domain>/
 cd instances/<domain>
 python3 -m venv .venv
 .venv/bin/python -m pip install -U pip
@@ -663,8 +674,8 @@ cd ../..
 for example a conda interpreter: `/path/to/miniconda3/bin/python3 -m venv .venv`. Everything afterwards is
 unaffected, because the venv is self-contained.
 
-Trim `requirements.txt` to what the domain actually needs. `pypdf` belongs there only if some source is a PDF;
-`fastembed` only if you want meaning search.
+An own `.env` is needed only for private keys (`ANTHROPIC_API_KEY`, agent settings). The `GITHUB_TOKEN` line comes
+from the root `.env`; the instance's own file, if it has that line, overrides it.
 
 ## Step 2 · `config.json`
 
@@ -920,7 +931,7 @@ and what a taken port and a failed connection look like. A domain list in the ro
 ## Final checklist
 
 ```
-[ ] .venv built, dependencies installed
+[ ] environment: shared venv ready (own .venv only for packages outside the shared sets)
 [ ] config.json: free port, own collection, profile filled in
 [ ] sources.json: every source declared, whitelist bounded by `within`
 [ ] ./df <domain> sources --why  passes
@@ -966,9 +977,10 @@ and what a taken port and a failed connection look like. A domain list in the ro
 - **Обсяг погоджують до роботи.** Джерела за довірою: офіційний сайт, офіційний репозиторій, реєстр пакетів. Реєстр
   npm — база пакетів, версій (з canary) і переходів між ними. Коли документація охоплює кілька версій, версія за
   замовчуванням — найпопулярніша за завантаженнями; якщо дві близькі — відповідь для обох.
-- **Спершу середовище, потім корпус.** Першими — venv і `.env` примірника; для джерел GitHub у цей `.env` дописують
-  рядок `GITHUB_TOKEN` (анонімний API дає 60 звернень на годину). До того `refresh`, `vectors`, `smoke` і `quality`
-  не запускають.
+- **Спершу середовище, потім корпус.** Першим — готове середовище: спільні venv (`.venvs/cpu`, `.venvs/gpu`) є, а в
+  кореневому `.env` для джерел GitHub стоїть рядок `GITHUB_TOKEN` (анонімний API дає 60 звернень на годину). Власні
+  venv і `.env` примірника потрібні лише у випадках кроку 1. До того `refresh`, `vectors`, `smoke` і `quality` не
+  запускають.
 - **Читача пробують на кількох типах сторінок до повного завантаження:** огляд, завдання з вкладками чи гармошками,
   довідник, запис журналу змін. Дві сторінки — не вибірка: читач, що не бачив панелей вкладок, якось коштував двох
   повних перекачувань сайту на 3 000 сторінок.
@@ -1536,8 +1548,8 @@ and what a taken port and a failed connection look like. A domain list in the ro
 | `prompts/agent.txt` | системний промпт власного агента (`ask`) | ви |
 | `prompts/refusal.txt` | текст, який шар 1 повертає, коли блокує запит | ви |
 | `checks.json` | запити й очікування для `smoke`, `check`, `raw` і `quality` | ви, після першого корпусу |
-| `requirements.txt` | склад venv примірника | копія, потім підрізати |
-| `.env.example` | заготовка для ключа; справжній `.env` у git не потрапляє ніколи | копія |
+| `requirements.txt` | склад venv примірника; лише коли примірникові потрібен пакет поза спільними наборами | копія, потім підрізати |
+| `.env.example` | заготовка для власних ключів примірника (`ANTHROPIC_API_KEY`, налаштування агента); `GITHUB_TOKEN` лежить у кореневому `.env`; справжній `.env` у git не потрапляє ніколи | копія |
 | `.gitignore` | `.env`, `__pycache__/`, `*.pyc`, `.venv/`, `out/`, `index/passages.json` | копія |
 | `.mcp.json` | запис HTTP-сервера для Claude Code | копія, змінити порт |
 | `README.md` | що це за домен і звідки береться його документація | ви |
@@ -1546,16 +1558,26 @@ and what a taken port and a failed connection look like. A domain list in the ro
 | `index/` | кеш фрагментів `passages.json`, з якого підіймається сервер; в архівному режимі в git іде стисненим, `passages.json.gz` | будується з `corpus/` першим кроком, якому потрібен |
 | `raw/` | сирі відповіді сайтів для `build` без мережі, старі версії — у `raw/_old/`; у git не йде ніколи | `refresh`, `check`, `list` |
 | `out/` | рішення про спосіб пошуку, журнали | `setup`, `serve` |
-| `.venv/` | власне віртуальне середовище примірника | крок 1 |
+| `.venv/` | власне віртуальне середовище примірника; без нього `df` бере спільне з `.venvs/` | крок 1, лише за потреби |
 
 ## Крок 1 · Тека і venv
 
-Це єдиний крок, що робиться зсередини теки примірника. Venv активувати не треба ніколи: `df` сам викликає
-`.venv/bin/python` потрібного примірника.
+Venv активувати не треба ніколи: `df` сам обирає потрібний. Новий примірник за замовчуванням власного venv не має й
+працює на спільному середовищі (`.venvs/cpu` або `.venvs/gpu`, обирає `DF_VENV`; розділ «Спільне середовище»
+кореневого README), тож крок — лише тека:
 
 ```
 mkdir -p instances/<домен>/prompts
-cp instances/react/requirements.txt instances/react/.gitignore instances/react/.env.example instances/<домен>/
+cp instances/react/.gitignore instances/react/.env.example instances/<домен>/
+```
+
+Власний venv піднімайте, лише коли домену потрібен пакет, якого немає в `requirements/cpu.txt` і
+`requirements/gpu.txt`. Тоді скопіюйте й `requirements.txt`, підріжте його до спільних рядків плюс цей пакет і
+піднімайте venv. Це єдина дія, що робиться зсередини теки примірника, і відтепер `df` бере власний `.venv`
+примірника, щойно він є:
+
+```
+cp instances/react/requirements.txt instances/<домен>/
 cd instances/<домен>
 python3 -m venv .venv
 .venv/bin/python -m pip install -U pip
@@ -1567,8 +1589,8 @@ cd ../..
 він є, наприклад conda: `/шлях/до/miniconda3/bin/python3 -m venv .venv`. На все подальше це не впливає, бо venv
 самодостатній.
 
-`requirements.txt` підріжте під домен. `pypdf` потрібен, лише якщо якесь джерело видається PDF-ом; `fastembed` —
-лише якщо потрібен пошук за змістом.
+Власний `.env` потрібен лише для приватних ключів (`ANTHROPIC_API_KEY`, налаштування агента). Рядок `GITHUB_TOKEN`
+береться з кореневого `.env`; власний файл примірника, якщо в ньому цей рядок є, його перекриває.
 
 ## Крок 2 · `config.json`
 
@@ -1822,7 +1844,7 @@ claude mcp add --transport http --scope user <server_name> http://127.0.0.1:<п�
 ## Підсумковий список
 
 ```
-[ ] .venv піднято, залежності встановлено
+[ ] середовище: спільний venv готовий (власний .venv — лише для пакетів поза спільними наборами)
 [ ] config.json: вільний порт, власна колекція, профіль заповнено
 [ ] sources.json: усі джерела оголошено, білий список обмежено через `within`
 [ ] ./df <домен> sources --why  проходить
@@ -1870,9 +1892,10 @@ errada.
   oficial, o registro de pacotes. O registro do npm é a base para pacotes, versões (canary incluídas) e migrações.
   Quando a documentação cobre várias versões, a padrão é a mais baixada; se duas estão próximas, responda para
   ambas.
-- **Ambiente antes do corpus.** Primeiro o venv e o `.env` da instância; para fontes do GitHub acrescente uma linha
-  `GITHUB_TOKEN` a esse `.env` (a API anônima permite 60 requisições por hora). Antes disso não rode `refresh`,
-  `vectors`, `smoke` nem `quality`.
+- **Ambiente antes do corpus.** Primeiro o ambiente pronto: os venvs compartilhados (`.venvs/cpu`, `.venvs/gpu`)
+  existem e o `.env` da raiz tem uma linha `GITHUB_TOKEN` para fontes do GitHub (a API anônima permite 60 requisições
+  por hora). O venv e o `.env` próprios da instância só são necessários nos casos do passo 1. Antes disso não rode
+  `refresh`, `vectors`, `smoke` nem `quality`.
 - **Teste o leitor em vários tipos de página antes do download completo:** uma visão geral, uma página de tarefa com
   abas ou sanfonas, uma página de referência, uma entrada de changelog. Duas páginas não são amostra: um leitor que
   não via os painéis das abas já custou dois downloads completos de um site de 3 000 páginas.
@@ -2476,8 +2499,8 @@ Quatorze arquivos, com a mesma composição em todas as instâncias, mais cinco 
 | `prompts/agent.txt` | prompt de sistema do agente próprio (`ask`) | você |
 | `prompts/refusal.txt` | texto que a camada 1 devolve ao bloquear um pedido | você |
 | `checks.json` | consultas e expectativas de `smoke`, `check`, `raw` e `quality` | você, após o primeiro corpus |
-| `requirements.txt` | conteúdo do venv da instância | copiar e depois enxugar |
-| `.env.example` | modelo para a chave; um `.env` real nunca vai para o git | cópia |
+| `requirements.txt` | conteúdo do venv da instância; só quando a instância precisa de um pacote fora dos conjuntos compartilhados | copiar e depois enxugar |
+| `.env.example` | modelo para as chaves próprias da instância (`ANTHROPIC_API_KEY`, ajustes do agente); o `GITHUB_TOKEN` fica no `.env` da raiz; um `.env` real nunca vai para o git | cópia |
 | `.gitignore` | `.env`, `__pycache__/`, `*.pyc`, `.venv/`, `out/`, `index/passages.json` | cópia |
 | `.mcp.json` | registro do servidor HTTP para o Claude Code | cópia, trocar a porta |
 | `README.md` | o que é este domínio e de onde vem sua documentação | você |
@@ -2486,16 +2509,26 @@ Quatorze arquivos, com a mesma composição em todas as instâncias, mais cinco 
 | `index/` | o cache de trechos `passages.json` do qual o servidor sobe; no modo de arquivo vai para o git comprimido, `passages.json.gz` | montado a partir de `corpus/` pelo primeiro passo que precisa dele |
 | `raw/` | respostas brutas dos sites para o `build` sem rede, versões antigas em `raw/_old/`; nunca vai para o git | `refresh`, `check`, `list` |
 | `out/` | a decisão sobre o modo de busca, logs | `setup`, `serve` |
-| `.venv/` | ambiente virtual próprio da instância | passo 1 |
+| `.venv/` | ambiente virtual próprio da instância; sem ele o `df` usa o compartilhado de `.venvs/` | passo 1, só se necessário |
 
 ## Passo 1 · Pasta e ambiente virtual
 
-É o único passo executado de dentro da pasta da instância. Nunca é preciso ativar o venv: o `df` chama sozinho o
-`.venv/bin/python` da instância certa.
+Nunca é preciso ativar um venv: o `df` escolhe sozinho o certo. Por padrão uma instância nova não tem venv próprio e
+usa o ambiente compartilhado (`.venvs/cpu` ou `.venvs/gpu`, escolhido por `DF_VENV`; a seção «Ambiente
+compartilhado» do README da raiz), então o passo é só a pasta:
 
 ```
 mkdir -p instances/<domínio>/prompts
-cp instances/react/requirements.txt instances/react/.gitignore instances/react/.env.example instances/<domínio>/
+cp instances/react/.gitignore instances/react/.env.example instances/<domínio>/
+```
+
+Crie um venv próprio só quando o domínio precisa de um pacote que não está em `requirements/cpu.txt` nem em
+`requirements/gpu.txt`. Então copie também o `requirements.txt`, enxugue-o até as linhas compartilhadas mais esse
+pacote e crie o venv. É a única ação feita de dentro da pasta da instância, e daí em diante o `df` usa o `.venv`
+próprio da instância sempre que ele existir:
+
+```
+cp instances/react/requirements.txt instances/<domínio>/
 cd instances/<domínio>
 python3 -m venv .venv
 .venv/bin/python -m pip install -U pip
@@ -2507,8 +2540,8 @@ cd ../..
 o tenha, por exemplo o do conda: `/caminho/para/miniconda3/bin/python3 -m venv .venv`. Isso não afeta nada depois,
 porque o venv é autocontido.
 
-Enxugue o `requirements.txt` conforme o domínio. `pypdf` só é necessário se alguma fonte for PDF; `fastembed` só se
-você quiser busca por significado.
+Um `.env` próprio só é necessário para chaves privadas (`ANTHROPIC_API_KEY`, ajustes do agente). A linha
+`GITHUB_TOKEN` vem do `.env` da raiz; o arquivo próprio da instância, se tiver essa linha, a substitui.
 
 ## Passo 2 · `config.json`
 
@@ -2767,7 +2800,7 @@ isso.
 ## Lista final de conferência
 
 ```
-[ ] .venv criado, dependências instaladas
+[ ] ambiente: venv compartilhado pronto (.venv próprio só para pacotes fora dos conjuntos compartilhados)
 [ ] config.json: porta livre, coleção própria, perfil preenchido
 [ ] sources.json: todas as fontes declaradas, lista branca limitada por `within`
 [ ] ./df <domínio> sources --why  passa
