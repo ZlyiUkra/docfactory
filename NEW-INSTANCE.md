@@ -504,6 +504,34 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
 - **The same example in tabs for several variants** (NUnit / MSTest / xUnit, npm / yarn / pnpm): `docusaurus_tabs: true`
   puts the tab's label before its content; without it the text holds several identical code blocks with nothing to say
   which is which.
+- **Documentation of .NET repositories built with Jekyll, kramdown and mdsnippets** (xunit.net, fluentassertions.com,
+  nsubstitute.github.io, Shouldly): kramdown attribute lists `{: .issue-link }`, heading anchors `{ #id }`, Liquid
+  tags `{% examplecode csharp %}` with a hidden `{% requiredcode %}` scaffold, «snippet source | anchor» lines under
+  mdsnippets inserts — reader `ghdocs-history-kramdown`. The `jekyll_data` field expands
+  `{% include … examples=site.data.… %}` inserts whose data lives in YAML (the FluentAssertions tips — over a hundred
+  «before — better» pairs); a data file the tag does not have yet renders nothing in Jekyll, and the insert vanishes
+  instead of failing the page. Before downloading, take a census of the markup on the newest tag's pages
+  (`git grep -o` over a full bare clone).
+- **A DocFX site outside learn.microsoft.com** (docs.nunit.org, bunit.dev): the same `docfx` reader; a site with tags
+  is one source per last tag of every minor line in one family, seeded from a clone (`seed_git_store.py`). A page with
+  only `uid` in its front matter takes its title from the first «# …» (`title_from: "heading"`), and redirect pages
+  (`redirect_url:` in the front matter) are excluded up front — each one fails as «body too short».
+- **C# indented with tabs** (xUnit.net, bUnit): `outline_tabs: true` in `ghcode-history`, otherwise a class stays one
+  section. Check the indentation on a few files of every repository: `git show <tag>:<file> | sed 's/\t/→/g'`.
+- **A blobless clone is for trees only.** `git grep` and `git ls-tree -l` in a `--filter=blob:none` clone fetch every
+  blob with its own request and hang for minutes: the file sizes of a tag come from the tree through the API
+  (`gh api repos/…/git/trees/<tag>?recursive=1`), a markup census from a full bare clone (tens of megabytes, a
+  minute).
+- **A site without tags in an instance with a version filter** (xunit.net, docs.nunit.org): the pages carry the
+  product versions of the build day, and a filter for an older line (`nunit-3.13`) hides them. The prompt tells the
+  model to search twice: with the version (API reference, packages, notes, code) and without it (the guides).
+- **A release entry still under «Unreleased» on the release's own tag** (the FluentAssertions releases page at
+  8.11.0): the versions the page does not name come from `ghreleases` with a `skip` that negates the list of missing
+  ones (`^(?!(8\.11\.0|…)$)`); the rest of the GitHub releases would repeat the page.
+- **A package that embeds generated wrappers of another library** (bunit.web: 12 thousand `Bunit.Web.AngleSharp`
+  members over the AngleSharp DOM) and compiled-in polyfills and annotations (`System.*`, `Microsoft.CodeAnalysis.*`,
+  `JetBrains.Annotations` — 81 types in every Shouldly line): count members by namespace before declaring and cut them
+  off with `exclude_types`.
 
 ## Anatomy of an instance
 
@@ -1299,6 +1327,32 @@ and what a taken port and a failed connection look like. A domain list in the ro
 - **Той самий приклад у вкладках для кількох варіантів** (NUnit / MSTest / xUnit, npm / yarn / pnpm):
   `docusaurus_tabs: true` ставить підпис вкладки перед її змістом; без поля в тексті стоять кілька однакових блоків
   коду, і не видно, котрий для чого.
+- **Документація .NET-репозиторіїв на Jekyll, kramdown і mdsnippets** (xunit.net, fluentassertions.com,
+  nsubstitute.github.io, Shouldly): списки атрибутів `{: .issue-link }`, якорі заголовків `{ #id }`, теги Liquid
+  `{% examplecode csharp %}` з прихованою заготовкою `{% requiredcode %}`, рядки «snippet source | anchor» під
+  вставками mdsnippets — читач `ghdocs-history-kramdown`. Поле `jekyll_data` розгортає вставки
+  `{% include … examples=site.data.… %}`, чиї дані лежать у YAML (поради FluentAssertions — понад сотня пар «як було —
+  як краще»); файл даних, якого в тезі ще немає, Jekyll не малює, і вставка зникає, а не валить сторінку. До
+  завантаження — перепис розмітки сторінок найновішого тегу (`git grep -o` по повному голому клону).
+- **Сайт DocFX поза learn.microsoft.com** (docs.nunit.org, bunit.dev): той самий читач `docfx`; сайт із тегами —
+  джерело на останній тег кожної мінорної лінії в одній родині, засіяне з клону (`seed_git_store.py`). Сторінка з
+  самим `uid` у шапці бере назву з першого «# …» (`title_from: "heading"`), а сторінки-перенаправлення
+  (`redirect_url:` у шапці) виключають заздалегідь — кожна дає збій «тіло куце».
+- **Код C# з відступом табуляцією** (xUnit.net, bUnit): `outline_tabs: true` у `ghcode-history`, інакше клас лишається
+  одним розділом. Відступ перевіряють на кількох файлах кожного репозиторію: `git show <тег>:<файл> | sed 's/\t/→/g'`.
+- **Частковий клон — лише для дерев.** `git grep` і `git ls-tree -l` у клоні `--filter=blob:none` тягнуть кожен blob
+  окремим запитом і зависають на хвилини: розміри файлів тегу дає дерево через API
+  (`gh api repos/…/git/trees/<тег>?recursive=1`), а перепис розмітки — повний голий клон (десятки мегабайтів,
+  хвилина).
+- **Сайт без тегів у примірнику з фільтром версій** (xunit.net, docs.nunit.org): сторінки несуть версії продуктів на
+  день збирання, і фільтр старої лінії (`nunit-3.13`) їх ховає. Промпт велить шукати двічі: з версією (довідник API,
+  пакети, нотатки, код) і без неї (посібники).
+- **Запис випуску, що на тезі випуску ще стоїть під «Unreleased»** (сторінка releases FluentAssertions на 8.11.0):
+  версії, яких сторінка не називає, дає `ghreleases` зі `skip`-запереченням переліку відсутніх (`^(?!(8\.11\.0|…)$)`);
+  решта релізів GitHub повторювала б сторінку.
+- **Пакет зі згенерованими обгортками чужої бібліотеки** (bunit.web: 12 тисяч членів `Bunit.Web.AngleSharp` поверх DOM
+  AngleSharp) і вкомпільовані поліфіли й анотації (`System.*`, `Microsoft.CodeAnalysis.*`, `JetBrains.Annotations` —
+  81 тип на кожну лінію Shouldly): члени рахують за просторами імен до оголошення й відсікають `exclude_types`.
 
 ## З чого складається примірник
 
@@ -2122,6 +2176,34 @@ errada.
 - **O mesmo exemplo em abas para várias variantes** (NUnit / MSTest / xUnit, npm / yarn / pnpm):
   `docusaurus_tabs: true` põe o rótulo da aba antes do conteúdo; sem o campo, o texto traz vários blocos de código
   iguais sem dizer qual é qual.
+- **Documentação de repositórios .NET feita com Jekyll, kramdown e mdsnippets** (xunit.net, fluentassertions.com,
+  nsubstitute.github.io, Shouldly): listas de atributos kramdown `{: .issue-link }`, âncoras de títulos `{ #id }`,
+  tags Liquid `{% examplecode csharp %}` com o esqueleto oculto `{% requiredcode %}`, linhas «snippet source | anchor»
+  sob as inserções do mdsnippets — leitor `ghdocs-history-kramdown`. O campo `jekyll_data` expande inserções
+  `{% include … examples=site.data.… %}` cujos dados ficam em YAML (as dicas do FluentAssertions — mais de cem pares
+  «antes — melhor»); um arquivo de dados que a tag ainda não tem o Jekyll não desenha, e a inserção some em vez de
+  derrubar a página. Antes de baixar, faça o censo da marcação das páginas da tag mais nova (`git grep -o` num clone
+  bare completo).
+- **Um site DocFX fora do learn.microsoft.com** (docs.nunit.org, bunit.dev): o mesmo leitor `docfx`; um site com tags
+  vira uma fonte por última tag de cada linha menor numa família, semeada de um clone (`seed_git_store.py`). Uma
+  página só com `uid` no cabeçalho tira o título do primeiro «# …» (`title_from: "heading"`), e as páginas de
+  redirecionamento (`redirect_url:` no cabeçalho) são excluídas de antemão — cada uma falha como «corpo curto».
+- **C# indentado com tabulação** (xUnit.net, bUnit): `outline_tabs: true` no `ghcode-history`, senão a classe fica uma
+  seção só. Confira a indentação em alguns arquivos de cada repositório: `git show <tag>:<arquivo> | sed 's/\t/→/g'`.
+- **Clone sem blobs serve só para árvores.** `git grep` e `git ls-tree -l` num clone `--filter=blob:none` buscam cada
+  blob numa requisição própria e travam por minutos: os tamanhos dos arquivos de uma tag vêm da árvore pela API
+  (`gh api repos/…/git/trees/<tag>?recursive=1`), o censo da marcação de um clone bare completo (dezenas de megabytes,
+  um minuto).
+- **Um site sem tags numa instância com filtro de versão** (xunit.net, docs.nunit.org): as páginas levam as versões
+  dos produtos no dia da montagem, e o filtro de uma linha antiga (`nunit-3.13`) as esconde. O prompt manda buscar
+  duas vezes: com a versão (referência de API, pacotes, notas, código) e sem ela (os guias).
+- **Uma entrada de versão ainda sob «Unreleased» na própria tag da versão** (a página de releases do FluentAssertions
+  na 8.11.0): as versões que a página não cita vêm do `ghreleases` com um `skip` que nega a lista das ausentes
+  (`^(?!(8\.11\.0|…)$)`); o resto dos releases do GitHub repetiria a página.
+- **Um pacote que embute invólucros gerados de outra biblioteca** (bunit.web: 12 mil membros `Bunit.Web.AngleSharp`
+  sobre o DOM do AngleSharp) e polyfills e anotações compilados dentro (`System.*`, `Microsoft.CodeAnalysis.*`,
+  `JetBrains.Annotations` — 81 tipos em cada linha do Shouldly): conte os membros por namespace antes de declarar e
+  corte-os com `exclude_types`.
 
 ## Anatomia de uma instância
 
