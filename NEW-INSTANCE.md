@@ -494,6 +494,16 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
 - **Measure before changing a reader**: one process with the index loaded (`server.quality` with
   `profile.MAX_PER_DOC`/`FUSION_DEPTH` patched, or a filter wrapped around `spec_mcp._dedup` for dropping a kind of
   section) measures every variant in minutes; only what wins goes into the reader or `config.json`.
+- **A Docusaurus site that kept every version in its own folder and later deleted the old ones**
+  (playwright.dev: `dotnet/versioned_docs/version-1.12` … `version-1.23`, then only `version-stable`): take each
+  folder from the repository history in its last edition — the parent of the commit that deleted it, or the commit of
+  its last change when that parent is already taken by another version — and write `{version}` in `folders`, so each
+  commit gives only its own version's folder, not every version lying next to it. A `slug_rewrite` from
+  `version-1-X-` to `version-stable-` and one family in `families` merge the editions of a page. For the
+  `version-stable` era the snapshot of a line is its last «roll to 1.X» commit.
+- **The same example in tabs for several variants** (NUnit / MSTest / xUnit, npm / yarn / pnpm): `docusaurus_tabs: true`
+  puts the tab's label before its content; without it the text holds several identical code blocks with nothing to say
+  which is which.
 
 ## Anatomy of an instance
 
@@ -1280,6 +1290,15 @@ and what a taken port and a failed connection look like. A domain list in the ro
 - **Заміряти, перш ніж міняти читача**: один процес із завантаженим індексом (`server.quality` з підміненими
   `profile.MAX_PER_DOC`/`FUSION_DEPTH` чи з відсівом роду розділів обгорткою над `spec_mcp._dedup`) міряє кожен
   варіант за хвилини; у читач чи `config.json` іде лише те, що виграє.
+- **Сайт на Docusaurus, що тримав кожну версію у своїй теці, а потім старі видаляв** (playwright.dev:
+  `dotnet/versioned_docs/version-1.12` … `version-1.23`, далі лише `version-stable`): кожна тека береться з історії
+  репозиторію в останній редакції — з батька коміту, що її видалив, або з коміту її останньої зміни, коли того батька
+  вже взяла інша версія, — а `{version}` у `folders` бере на кожному коміті лише теку його версії, не всі версії, що
+  лежать поруч. `slug_rewrite` з `version-1-X-` на `version-stable-` і одна родина у `families` зливають редакції
+  сторінки. За часів `version-stable` знімок лінії — її останній коміт «roll to 1.X».
+- **Той самий приклад у вкладках для кількох варіантів** (NUnit / MSTest / xUnit, npm / yarn / pnpm):
+  `docusaurus_tabs: true` ставить підпис вкладки перед її змістом; без поля в тексті стоять кілька однакових блоків
+  коду, і не видно, котрий для чого.
 
 ## З чого складається примірник
 
@@ -2094,6 +2113,15 @@ errada.
 - **Medir antes de mudar o leitor**: um processo com o índice carregado (`server.quality` com
   `profile.MAX_PER_DOC`/`FUSION_DEPTH` trocados, ou um filtro em volta do `spec_mcp._dedup` para descartar um tipo de
   seção) mede cada variante em minutos; só o que ganha vai para o leitor ou o `config.json`.
+- **Um site Docusaurus que mantinha cada versão na própria pasta e depois apagava as antigas** (playwright.dev:
+  `dotnet/versioned_docs/version-1.12` … `version-1.23`, depois só `version-stable`): cada pasta vem do histórico do
+  repositório na última edição — o pai do commit que a apagou, ou o commit da sua última mudança quando esse pai já
+  foi tomado por outra versão — e `{version}` em `folders` faz cada commit dar só a pasta da sua versão, não todas as
+  versões ao lado. Um `slug_rewrite` de `version-1-X-` para `version-stable-` e uma família em `families` fundem as
+  edições de uma página. Na era `version-stable`, o retrato de uma linha é o seu último commit «roll to 1.X».
+- **O mesmo exemplo em abas para várias variantes** (NUnit / MSTest / xUnit, npm / yarn / pnpm):
+  `docusaurus_tabs: true` põe o rótulo da aba antes do conteúdo; sem o campo, o texto traz vários blocos de código
+  iguais sem dizer qual é qual.
 
 ## Anatomia de uma instância
 
