@@ -57,7 +57,7 @@ activate it. An instance runs on one of two environments, both Linux (`bin/pytho
   (`gpu` plus `requirements/gpu-ocr.txt`, see below), plus a single `.env` in the root (outside git) holding
   `GITHUB_TOKEN` and `DF_VENV=cpu` or `gpu`. This is the default for a new instance;
 - **the instance's own `.venv`** — optional, needed only when the domain wants a package outside
-  `requirements/*.txt`; the older instances still have one and are moving to the shared environment gradually.
+  `requirements/*.txt`; no instance has one now, all 110 run on the shared environment.
 
 Build a shared venv once, from the repository root (for `gpu`, the same with `gpu`; the GPU itself is not required —
 without one `onnxruntime-gpu` computes on the CPU with the same numbers):
@@ -93,7 +93,7 @@ of [README.md](README.md).
 An own venv, when one is needed, is built from the instance folder:
 
 ```
-cd instances/ecmascript
+cd instances/<domain>
 python3 -m venv .venv
 .venv/bin/python -m pip install -U pip
 .venv/bin/python -m pip install -r requirements.txt
