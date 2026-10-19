@@ -100,8 +100,9 @@ def ghdocs(source: dict, ctx) -> list[Item]:
     items = []
     for path in paths:
         # Пробіл в імені файла («Compiler Breaking Changes - DotNet 9.md» у dotnet/roslyn) http.client
-        # у запиті не пропускає; інші символи шляху лишаються як були.
-        web = path.replace(" ", "%20")
+        # у запиті не пропускає, а «#» («Glossary - C# …») обрізав би адресу як якір; інші символи
+        # шляху лишаються як були.
+        web = path.replace(" ", "%20").replace("#", "%23")
         raw = f"https://raw.githubusercontent.com/{owner}/{repo}/{tag}/{web}"
         if not ctx.allowed(raw):
             continue
