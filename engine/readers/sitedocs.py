@@ -16,10 +16,24 @@
                  Необов'язкові: `files` — окремі файли від кореня (README.md), `extensions`
                  (типово `.md`; у docusaurus ще `.mdx`), `exclude` — вирази шляхів від кореня,
                  `assets` — теки, з яких сторінки вставляють файли (приклади YAML), `snippets`
-                 — тека, від якої рахуються шляхи `--8<--` (mkdocs, типово `docs`),
+                 — тека, від якої рахуються шляхи `--8<--` (mkdocs, типово `docs`; «.» —
+                 корінь репозиторію, як типовий `base_path` pymdownx.snippets),
+                 `snippet_sections` — `true`: вставки `--8<--` до кінця так, як їх розгортає
+                 pymdownx.snippets з `dedent_subsections: true` (див. нижче),
                  `include_dir` — тека для `{% include 'x.yaml' %}` (mkdocs-macros), `skip_includes`
                  — вирази вставок, що не беруться (рекламний блок на кожній сторінці),
                  `variables` — файл змінних `[[VAR::ім'я]]` у теці версії (docusaurus).
+
+`snippet_sections`. Сайт Testcontainers for .NET не переписує прикладів у сторінку, а вставляє їх
+із тестів: `--8<-- "tests/…/PostgreSqlContainerTest.cs:UsePostgreSqlContainer"` — це лише рядки
+між мітками `// # --8<-- [start:UsePostgreSqlContainer]` і `// # --8<-- [end:…]` у файлі тесту,
+зі знятим спільним відступом (у класі тесту приклад стоїть на вісім пробілів глибше). Без поля
+такий рядок шукав файл з іменем «…cs:UsePostgreSqlContainer», не знаходив і зникав разом із
+прикладом. З полем: «шлях:Ім'я» бере іменований розділ, рядки-мітки інших розділів з вставленого
+тексту прибираються (у файлі тесту їх десятки), а вставка поза огорожею коду розбирається як
+markdown за будь-якого розширення — виноска `!!! tip` з `_call_out_test_projects.txt` стає
+підписом, а не рядком «!!! tip» з абзацом-кодом. Без поля все так, як було: kubernetes і linux
+дають той самий корпус байт у байт.
 
 Навіщо. Документацію Traefik, k3d, Gateway API, cert-manager, Helm, k3s, Kustomize, SOPS, age,
 metrics-server і Let's Encrypt пишуть п'ятьма різними розмітками, і жодну з них спільний розбір
@@ -53,6 +67,7 @@ import hashlib
 import json
 import posixpath
 import re
+import textwrap
 from html import unescape
 from urllib.parse import quote
 
@@ -74,10 +89,39 @@ _INCLUDE_MD = re.compile(r"\{%\s*include-markdown\s+[\"']([^\"']+)[\"'][^%]*%\}"
 _INCLUDE_MACRO = re.compile(r"\{%-?\s*include\s+[\"']([^\"']+)[\"']\s*-?%\}")
 _ATTR_LIST = re.compile(r"\{:[^}\n]*\}|\{\s*\.[\w-]+(?:\s+[.#][\w-]+)*\s*\}")
 _ICON = re.compile(r":(?:material|fontawesome|octicons|simple)-[\w-]+:(?:\{[^}]*\})?")
+# Іменований розділ вставки («шлях:Ім'я») і рядок-мітка розділу у вставленому файлі — ті самі
+# вирази, що в pymdownx.snippets: мітка — будь-що перед `-8<-` (коментар `//`, `<!--`), ім'я з
+# літери, без огляду на регістр.
+_SNIPPET_PART = re.compile(r"^(.*?):([a-z][-_0-9a-z]*)$", re.I)
+_SNIPPET_MARK = re.compile(r"^.*?-+8<-+[ \t]+\[[ \t]*(start|end)[ \t]*:[ \t]*([a-z][-_0-9a-z]*)"
+                           r"[ \t]*\].*$", re.I)
 
 
 def _dedent(lines: list[str], indent: int) -> list[str]:
     return [ln[indent:] if ln[:indent].strip() == "" else ln.lstrip() for ln in lines]
+
+
+def _snippet_part(text: str, part: str) -> str | None:
+    """Текст вставки за pymdownx.snippets: з ім'ям — лише рядки між мітками start і end цього
+    розділу, зі знятим спільним відступом (`dedent_subsections`); без імені — увесь файл. Рядки-
+    мітки не потрапляють у текст у жодному разі. None — розділу з таким ім'ям у файлі немає."""
+    lines = text.rstrip("\n").split("\n")
+    if not part:
+        return "\n".join(ln for ln in lines if not _SNIPPET_MARK.match(ln))
+    out: list[str] = []
+    inside = found = False
+    for ln in lines:
+        m = _SNIPPET_MARK.match(ln)
+        if m:
+            kind, name = m.group(1).lower(), m.group(2)
+            if name == part and kind == "start":
+                inside = found = True
+            elif name == part and kind == "end":
+                break
+            continue
+        if inside:
+            out.append(ln)
+    return textwrap.dedent("\n".join(out)) if found else None
 
 
 def mkdocs(text: str, page: Page, opts: dict, depth: int = 0) -> str:
@@ -85,6 +129,7 @@ def mkdocs(text: str, page: Page, opts: dict, depth: int = 0) -> str:
     підпис вкладки з огорожі коду — рядком перед кодом, вставки — текстом вставленого файла."""
     skip = [re.compile(r) for r in opts.get("skip_includes") or ()]
     base = (opts.get("snippets") or "docs").strip("/")
+    sections = opts.get("snippet_sections") is True
 
     def include_md(m):
         name = m.group(1)
@@ -113,10 +158,19 @@ def mkdocs(text: str, page: Page, opts: dict, depth: int = 0) -> str:
         if snip:
             # Шлях вставки — від теки docs/ (base_path mkdocs), не від сторінки.
             name = snip.group(2)
+            part = ""
+            if sections and _SNIPPET_PART.match(name):
+                name, part = _SNIPPET_PART.match(name).groups()
             inc = page.load("repo", f"{base}/{name}") if depth < _DEPTH else None
+            if inc is not None and sections:
+                inc = _snippet_part(inc, part)
             if inc is not None:
-                body = inc if fence or not name.endswith(".md") else mkdocs(
-                    front(inc)[1], page, opts, depth + 1)
+                if fence:
+                    body = inc
+                elif name.endswith(".md"):
+                    body = mkdocs(front(inc)[1], page, opts, depth + 1)
+                else:
+                    body = mkdocs(inc, page, opts, depth + 1) if sections else inc
                 out.extend(snip.group(1) + x if x else x for x in body.rstrip("\n").split("\n"))
             i += 1
             continue
