@@ -6,7 +6,10 @@
                       збігу першого виразу, що знайшовся (типово `<body`), — меню й шапка стоять раніше; `end` —
                       вирази, на найранішому збігу яких текст закінчується (типово `<footer`); `drop` — вирази
                       шматків, що вирізаються всередині тексту (бічне меню, рядок «назад до змісту»);
-                      `title_strip` — вирази, що зрізаються з назви («ImageMagick – » перед назвою сторінки).
+                      `title_strip` — вирази, що зрізаються з назви («ImageMagick – » перед назвою сторінки);
+                      `title_heading` — рівень чи перелік рівнів («h2», `["h2", "h3"]`): сторінка без <h1> бере
+                      назву з першого такого заголовка, а не з <title> (документація NUnit 2: <title> кожної
+                      сторінки — «NUnit.org», назва — у <h2> чи <h3>).
 
 Навіщо. Сайт ImageMagick до 7.1.2 жив у теці `www/` самого репозиторію, документація Ghostscript до 10.0 — у
 `doc/*.htm`, сайт ExifTool і досі — тека `html/` репозиторію. Ці теки — готовий HTML, і саме його показував сайт
@@ -34,6 +37,13 @@ class _Ctx:
         self._end = [re.compile(r, re.S | re.I) for r in source.get("end") or (r"<footer",)]
         self._drop = [re.compile(r, re.S | re.I) for r in source.get("drop") or ()]
         self._title_strip = [re.compile(r) for r in source.get("title_strip") or ()]
+        # `title_heading: "h2"` — сторінка без <h1>, чия назва стоїть у першому <h2> (документація NUnit 2 на
+        # docs.nunit.org: <title> у всіх 323 сторінок — «NUnit.org»). Без поля — як було.
+        levels = source.get("title_heading") or []
+        levels = [levels] if isinstance(levels, str) else list(levels)
+        levels = [lv for lv in levels if re.fullmatch(r"h[2-6]", str(lv))]
+        self._title_h = (re.compile(rf"<({'|'.join(levels)})\b[^>]*>(.*?)</\1>", re.S | re.I)
+                         if levels else None)
 
     def __getattr__(self, name):
         return getattr(self._ctx, name)
@@ -63,6 +73,11 @@ class _Ctx:
         # Назва — перший <h1> тексту, а як його немає — <title> сторінки: у <title> старих сторінок
         # ImageMagick і Ghostscript стоїть назва сайту разом з назвою сторінки.
         h1 = None if named else _H1.search(part)
+        if h1 is None and not named and self._title_h is not None:
+            hx = self._title_h.search(part)
+            if hx:
+                named = _markup.html_body(hx.group(2))
+                part = part[:hx.start()] + part[hx.end():]
         title = named or (_markup.html_body(h1.group(1)) if h1 else "")
         if h1:
             part = part[:h1.start()] + part[h1.end():]
