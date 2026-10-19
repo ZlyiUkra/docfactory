@@ -19,7 +19,10 @@
 #   ./df <примірник> ask "питання"       повний прогін агента (платно)
 #
 # Усі кроки біжать із теки docfactory/, щоб пакети `engine`, `server`, `common`
-# були видимі, і venv-ом самого примірника, тож залежності завжди ті, що треба.
+# були видимі, і venv-ом, тож залежності завжди ті, що треба. Який саме venv:
+#   1. DF_USE_SHARED=1 — спільний, .venvs/cpu або .venvs/gpu (його обирає DF_VENV);
+#   2. інакше власний .venv примірника, якщо він є — примірники переходять поступово;
+#   3. інакше спільний, за DF_VENV із оточення або кореневого .env, за замовчуванням cpu.
 # Який саме примірник — каже змінна DF_INSTANCE_DIR (тека instances/<домен>/),
 # яку df виставляє нижче: спільний код читає дані домену звідти, а не з-під себе.
 
@@ -37,9 +40,43 @@ STEP="${1:-}"; [ -n "$STEP" ] || { echo "Вкажіть крок для «$INST�
 shift
 
 DIR="$HERE/instances/$INST"
-PY="$DIR/.venv/bin/python"
+OWN_PY="$DIR/.venv/bin/python"
 [ -d "$DIR" ] || { echo "Немає примірника «$INST»: $DIR"; exit 1; }
-[ -x "$PY" ]  || { echo "Немає venv примірника: $PY (підніміть його за README)"; exit 1; }
+
+# Спільне середовище лише називаємо тут, а в оболонку з .env нічого не виконуємо:
+# DF_VENV дістається з кореневого .env рядком grep, файл не source-иться. Змінна
+# оточення сильніша за файл; без обох — cpu. Назву перевіряємо лише тоді, коли
+# спільне середовище справді береться, щоб криве значення не ламало примірників
+# зі своїм .venv.
+shared_python() {
+  local name="${DF_VENV:-}"
+  if [ -z "$name" ] && [ -f "$HERE/.env" ]; then
+    name="$(grep -E '^[[:space:]]*DF_VENV[[:space:]]*=' "$HERE/.env" | tail -n 1 | cut -d= -f2- | tr -d "\"' \r" || true)"
+  fi
+  name="${name:-cpu}"
+  case "$name" in
+    cpu|gpu) ;;
+    *) echo "DF_VENV мусить бути cpu або gpu, а не «$name»" >&2; exit 2 ;;
+  esac
+  SHARED_NAME="$name"
+  PY="$HERE/.venvs/$name/bin/python"
+}
+
+if [ "${DF_USE_SHARED:-}" = "1" ] || [ ! -x "$OWN_PY" ]; then
+  shared_python
+  if [ ! -x "$PY" ]; then
+    if [ "${DF_USE_SHARED:-}" = "1" ]; then
+      echo "Немає спільного venv «$SHARED_NAME»: $PY"
+      echo "Підніміть його за requirements/$SHARED_NAME.txt (README, розділ «Спільне середовище»)."
+    else
+      echo "Немає venv примірника: $OWN_PY, і немає спільного «$SHARED_NAME»: $PY"
+      echo "Підніміть один із двох: власний за README примірника або спільний за requirements/$SHARED_NAME.txt."
+    fi
+    exit 1
+  fi
+else
+  PY="$OWN_PY"
+fi
 
 # Тека даних цього примірника — для спільного коду, що більше не лежить усередині
 # домену (common/instance.py читає саме цю змінну).
