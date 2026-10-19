@@ -61,7 +61,9 @@ signalr-1.2»); сторінка без такої пари бере `version` �
 «~/samples/…» ведуть у корінь репозиторію, а не в docs/ (тоді поле — порожній рядок); вихід за
 корінь («~/../azure-dev-docs/…») там означає теку залежного репозиторію поруч. `snippet_prefix` —
 запасне ім'я позначки прикладу: dotnet/docs пише «:::code … id="Assignment":::», а в коді
-позначає фрагмент «// <SnippetAssignment>»; без поля такий приклад випадає.
+позначає фрагмент «// <SnippetAssignment>»; без поля такий приклад випадає. `quote_paths: true` — шлях у
+адресі файла кодується так само, як його кладе в сховище засів з клону, а приклад з пробілом у шляху
+(«…/DataWorks SqlClient.HelloWorld/CS/source.cs») знаходиться; без поля такі приклади випадали.
 
 Розмітка DocFX, яку читач розгортає до тексту:
 - «[!INCLUDE[…](шлях)]» — вставка, теж зі своїми блоками версій і вставками;
@@ -83,7 +85,7 @@ import json
 import posixpath
 import re
 import textwrap
-from urllib.parse import unquote, urlsplit
+from urllib.parse import quote, unquote, urlsplit
 
 from engine.readers import Item, _markup, register
 
@@ -102,6 +104,9 @@ _YAML_MIME = re.compile(r"\A﻿?#+\s*YamlMime:(\w+)")
 _YAML_KEY = re.compile(r"""^("[^"]*"|'[^']*'|[^\s:#"'-][^:#]*?|-[^\s:#][^:#]*?)\s*:(?:\s+(.*))?$""")
 _INCLUDE = re.compile(r"\[!INCLUDE\s*\[[^\]]*\]\(\s*<?([^)\s>]+)>?[^)]*\)\]", re.I)
 _CODE_REF = re.compile(r"\[!code-([\w+#.-]+)\s*\[[^\]]*\]\(\s*<?([^)\s>]+)>?[^)]*\)\]")
+# Те саме з пробілами в шляху («…/VS_Snippets_ADO.NET/DataWorks SqlClient.HelloWorld/CS/source.cs#1») — лише з
+# полем `quote_paths`: шлях тягнеться до закривної дужки.
+_CODE_REF_SPACED = re.compile(r"\[!code-([\w+#.-]+)\s*\[[^\]]*\]\(\s*<?([^)>]+?)>?\s*\)\]")
 _CODE_TRIPLE = re.compile(r":::code\s+(.*?):::", re.S)
 _ATTR = re.compile(r'([\w-]+)="([^"]*)"')
 _XREF_TAG = re.compile(r"<xref:([^>\s]+)>")
@@ -582,6 +587,9 @@ def docfx(source: dict, ctx) -> list[Item]:
     # Запасне ім'я позначки фрагмента (`snippet_prefix`, у dotnet/docs — «Snippet»); без поля
     # приклад, чиєї позначки немає, випадає, як і було.
     snippet_prefix = source.get("snippet_prefix", "")
+    # `quote_paths: true` — шлях файла в адресі кодується (пробіли, «+», дужки), як його кодує засів сховища з клону
+    # (tools/seed_git_store.py), і приклад з пробілом у шляху знаходиться. Без поля адреса та сама, що й була.
+    quote_paths = source.get("quote_paths") is True
     # Без поля «~/» — тека набору, як і було.
     tilde = source["tilde_root"].strip("/") if isinstance(source.get("tilde_root"), str) else None
     yaml_pages = source.get("yaml_pages") is True
@@ -605,6 +613,8 @@ def docfx(source: dict, ctx) -> list[Item]:
         if path.startswith("../") or path == "..":
             return None
         head, _, rest = path.partition("/")
+        if quote_paths:
+            rest, path = quote(rest), quote(path)
         if head in repos:
             return f"https://raw.githubusercontent.com/{repos[head]}/{rest}"
         return f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}"
@@ -826,7 +836,7 @@ def docfx(source: dict, ctx) -> list[Item]:
                 attrs["name"] = attrs["id"]
             return code_block(attrs.get("language", ""), resolve(attrs["source"], base), attrs)
 
-        text = _CODE_REF.sub(code_ref, text)
+        text = (_CODE_REF_SPACED if quote_paths else _CODE_REF).sub(code_ref, text)
         return _CODE_TRIPLE.sub(code_triple, text)
 
     def clean(text: str) -> str:
