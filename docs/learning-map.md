@@ -13,8 +13,8 @@ nghttp2, nginx, node-mongodb, node-postgres, node-redis, nodejs, nodemailer, nuq
 openssl, opentelemetry, oracle-cloud, owasp, partysocket, patterns, playwright, postgrator, postgres-image,
 postgresql, prisma, react, react-hook-form, react-native, react-router, react-window, redis, redux, sentry, shadcn,
 socketio, sqlserver, storybook, stripe, supabase, swr, tailwind, tanstack-query, tanstack-router, tanstack-virtual,
-tesseract, testcontainers-dotnet, testing-library, typescript, upstash, v8, viem, vite, vitest, wagmi, wasm, webdev,
-webstandards, zod, zustand.
+tesseract, testcontainers-dotnet, testing-library, typeorm, typescript, upstash, v8, viem, vite, vitest, wagmi, wasm,
+webdev, webstandards, zod, zustand.
 
 ## Як читати таблиці
 
@@ -45,7 +45,7 @@ webstandards, zod, zustand.
 | 0. База, якої Nest не дає | `typescript` (вступ, 1–4), `mdn` (вступ, 6–7, 10–11), `webstandards` (6–7, 10–11), `express` (9–10), `vite` (11), `postgresql` (вступ, 13–18), `owasp` (вступ, 10), `nodejs` (5, 8, 12) |
 | 1. Ядро Nest | — |
 | 2. Робочий API | `zod` (1, 3, 8), `webstandards` (4, 6), `tanstack-query` (7), `react-hook-form` (8), `jsonschema` (6) |
-| 3. Дані: TypeORM, Prisma | `prisma` (3, 7–12), `postgresql` (12), `owasp` (5); TypeORM — у документації Nest лише інтеграція |
+| 3. Дані: TypeORM, Prisma | `typeorm` (вступ, 1–6, 11–12), `prisma` (вступ, 3, 7–12), `postgresql` (12), `owasp` (5) |
 | 4. Автентифікація й авторизація | `webstandards` (1–2, 6–8, 12), `express` (8, 12), `react-router` (9), `owasp` (1, 6, 8, 12), `argon2` (1) |
 | 5. Якість: тести й DI | `vitest` (1), `prisma` (2) |
 | 6. Продакшн | `docker` (вступ, 2, 7), `upstash` (6), `kubernetes` (вступ, 8–9), `oracle-cloud` (вступ, 8), `express` (9), `postgresql` (9), `github-actions` (вступ, 7), `nginx` (вступ, 2, 5), `node-postgres` (5), `argon2` (8), `prisma` (2, 8) |
@@ -116,9 +116,11 @@ webstandards, zod, zustand.
 
 ### NestJS
 
-1. TypeORM (29): у документації Nest — лише інтеграційний шар.
-2. Passport (13), class-validator і class-transformer (7), RxJS (4).
-3. Факультатив: decimal.js.
+1. Passport (13), class-validator і class-transformer (7), RxJS (4).
+2. Факультатив: decimal.js.
+
+TypeORM (29 згадок) закрито примірником `typeorm` 19.10.2026: документація кожної стабільної версії 0.1–1.1 (сайти
+typeorm.io і v0.typeorm.io та давні сторінки `docs/*.md`), README, журнал змін, код і тести кожного тегу.
 
 ### Next.js
 

@@ -333,7 +333,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 | `@nestjs/config` | змінні оточення з перевіркою схемою на старті | Ф2 Д3 |
 | `@nestjs/swagger` і CLI plugin | документ OpenAPI, сторінка `/docs`, джерело клієнта для SPA | Ф2 Д6–7 |
 | PostgreSQL | база даних | Ф0 Д13–18, Ф3; є примірник `postgresql` |
-| TypeORM або Prisma | ORM: сутності чи схема, міграції, запити | Ф3 Д1–12; є примірник `prisma` (TypeORM — поза корпусом) |
+| TypeORM або Prisma | ORM: сутності чи схема, міграції, запити | Ф3 Д1–12; є примірники `typeorm` і `prisma` |
 | `@nestjs/jwt`, Passport | токени й стратегії входу | Ф4 Д2–5 |
 | bcrypt або argon2 | хешування паролів | Ф4 Д1; є примірник `argon2` (argon2 і `@node-rs/argon2`; bcrypt — поза корпусом) |
 | Vitest і supertest | юніт- і наскрізні тести | Ф5; є примірник `vitest` (supertest — поза корпусом) |
@@ -397,6 +397,9 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   `postgresql`;
 - драйвер `pg` (node-postgres) з `pg-pool`, `pg-cursor`, `pg-query-stream`, `pg-types`, `pg-copy-streams` і типами
   `@types/pg`, усі стабільні версії — `node-postgres`;
+- TypeORM (документація кожної стабільної версії 0.1–1.1: сутності, зв'язки, `DataSource`, `Repository`,
+  QueryBuilder, міграції й CLI, транзакції, драйвери баз, перехід з 0.3 на 1.0; README, журнал змін, код і тести
+  кожного тегу, `@typeorm/codemod`) — `typeorm`;
 - Drizzle (сайт orm.drizzle.team кожної стабільної версії 0.29–0.45, drizzle-kit, журнали змін і таблиці версій npm)
   — `drizzle`;
 - Prisma (сайт prisma.io/docs кожної стабільної версії 2.0–7.10: схема, Prisma Client, Prisma Migrate, CLI,
@@ -448,9 +451,10 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   версій npm) — `foundry`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
-глава про інтеграцію (TypeORM, Passport, class-validator), але не документація самої бібліотеки:
+глава про інтеграцію (Passport, class-validator), але не документація самої бібліотеки:
 
-- з «треба знати»: TypeORM, Passport, bcrypt, class-validator, class-transformer, supertest, RxJS;
+- з «треба знати»: Passport, bcrypt, class-validator, class-transformer, supertest, RxJS (TypeORM закрито 19.10.2026
+  примірником `typeorm`);
 - з «варто знати»: `ws`, nestjs-cls, nestjs-pino, csrf-csrf, CASL, orval, openapi-typescript;
 - з «знати, що існує»: MikroORM, Kafka, RabbitMQ, NATS (Mongoose закрито 17.10.2026 родиною Mongo: `mongodb`,
   `node-mongodb`, `mongoose`).
@@ -1120,12 +1124,12 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 
 # Фаза 3. Дані: TypeORM, Prisma і продуктивність запитів — 12 днів
 
-**Сервери MCP фази:** `nestjs-docs`, `prisma-docs`, `postgresql-docs`, `owasp-docs`.
+**Сервери MCP фази:** `nestjs-docs`, `typeorm-docs`, `prisma-docs`, `postgresql-docs`, `owasp-docs`.
 
 Головна глава — розділ Techniques, глава `Database`. Обидві ORM, одна за одною, на тому самому домені: TypeORM
 першою, бо її більше у вакансіях; Prisma другою і швидше, бо модель уже продумана. Останні два дні — продуктивність
 на обох: N+1, індекси, пагінація. З кінця фази в README живе журнал вимірів. Глави Nest описують лише
-інтеграційний шар; саму ORM вчать з її документації.
+інтеграційний шар; саму ORM вчать з її документації — примірники `typeorm` і `prisma`.
 
 ## Блок A. TypeORM — дні 1–6
 
@@ -1136,8 +1140,10 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   налаштування з `ConfigService`. Сутність — клас із `@Entity()` і колонками `@Column()`. `synchronize: true`
   підганяє схему бази під сутності на кожному старті — і може знищити дані; у робочому проєкті лише
   `synchronize: false` і міграції.
-- **Читати:** розділ Techniques, глава `Database`, розділи TypeORM Integration і Async configuration.
-- **Сервери MCP:** `nestjs-docs`.
+- **Читати:** розділ Techniques, глава `Database`, розділи TypeORM Integration і Async configuration; у примірнику
+  `typeorm` (лінія 1.1) — `Entities`, `DataSource`, `Data Source Options`, `Postgres / CockroachDB`, `Upgrading from
+  0.3 to 1.0` (розділ NestJS: яка версія `@nestjs/typeorm` працює з 1.x).
+- **Сервери MCP:** `nestjs-docs`, `typeorm-docs`.
 - **Зробити:** 1) `compose.yml` з `postgres` і томом; 2) `TypeOrmModule.forRootAsync` з `ConfigService`;
   3) сутності `User` і `Post`; 4) `synchronize: false` з першого рядка.
 - **Перевірити себе:** застосунок стартує й підключається; `docker compose down && up` — дані в томі лишилися.
@@ -1151,9 +1157,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 - **Що це.** CLI TypeORM порівнює сутності з базою й генерує файл міграції (`migration:generate`), застосовує
   (`migration:run`), відкочує останню (`migration:revert`). Міграції живуть окремо від застосунку: DI Nest у них
   немає. Для CLI потрібен окремий файл `DataSource` з тими самими налаштуваннями.
-- **Читати:** розділ Techniques, глава `Database`, розділ Migrations; документація TypeORM про міграції (поза
-  корпусом).
-- **Сервери MCP:** `nestjs-docs`.
+- **Читати:** розділ Techniques, глава `Database`, розділ Migrations; у примірнику `typeorm` — `How migrations work?`,
+  `Migrations: Setup`, `Migrations: Generating`, `Migrations: Executing and reverting`, `Using CLI`.
+- **Сервери MCP:** `nestjs-docs`, `typeorm-docs`.
 - **Зробити:** 1) файл `data-source.ts` і скрипти `migration:generate`, `migration:run`, `migration:revert`;
   2) перша міграція з таблицями; 3) додати колонку, згенерувати, накотити, відкотити, накотити знову.
 - **Перевірити себе:** `\d posts` у `psql` показує колонку після `run` і не показує після `revert`; таблиця
@@ -1167,9 +1173,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 - **Що це.** `TypeOrmModule.forFeature([Post])` у модулі і `@InjectRepository(Post)` у сервісі дають репозиторій:
   `find`, `findOne`, `save`, `remove`, умови `where`. Відповідь не повинна містити того, що клієнтові не треба, —
   передусім хеша пароля (фаза 4, день 1).
-- **Читати:** розділ Techniques, глава `Database`, розділ Repository pattern; поза корпусом — документація TypeORM:
-  «Working with Repository»; для Prisma — у примірнику `prisma` — `CRUD`.
-- **Сервери MCP:** `nestjs-docs`, `prisma-docs`.
+- **Читати:** розділ Techniques, глава `Database`, розділ Repository pattern; у примірнику `typeorm` — `Repository`,
+  `Find Options`, `Repository APIs`; для Prisma — у примірнику `prisma` — `CRUD`.
+- **Сервери MCP:** `nestjs-docs`, `typeorm-docs`, `prisma-docs`.
 - **Зробити:** 1) `PostsService` на репозиторії замість масиву; 2) 404 з кодом, коли запису немає; 3) прогнати
   ті самі `curl` і SPA, що в фазі 2.
 - **Перевірити себе:** жоден маршрут ззовні не змінився: SPA працює без правок, згенерований клієнт той самий.
@@ -1181,9 +1187,10 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 - **Що це.** Один-до-багатьох: `@ManyToOne` на записі й `@OneToMany` на користувачі. Багато-до-багатьох:
   `@ManyToMany` з `@JoinTable` або явна сутність-зв'язка з двома `@ManyToOne` — вона може мати власні колонки
   (коли додано тег, ким). `relations` у запиті вантажить зв'язок явно; `eager` — завжди, у кожному запиті.
-- **Читати:** розділ Techniques, глава `Database`, розділ Relations; документація TypeORM про зв'язки (поза
-  корпусом).
-- **Сервери MCP:** `nestjs-docs`.
+- **Читати:** розділ Techniques, глава `Database`, розділ Relations; у примірнику `typeorm` — `Relations`,
+  `Many-to-one / one-to-many relations`, `Many-to-many relations` (розділ Many-to-many relations with custom
+  properties), `Eager and Lazy Relations`.
+- **Сервери MCP:** `nestjs-docs`, `typeorm-docs`.
 - **Зробити:** 1) записи з автором — вибірка з автором і без; 2) теги обома способами; 3) у README — чому явна
   сутність-зв'язка майже завжди краща.
 - **Перевірити себе:** запит без `relations` не містить автора, з ним — містить; у міграції для явної сутності
@@ -1197,9 +1204,10 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   `skip`. Значення — **лише** параметрами: `.where('post.title ILIKE :q', { q: '%' + q + '%' })`; база отримує їх
   окремо від тексту запиту, і жодне значення не стане SQL. Назву колонки параметром передати не можна — тому поле
   сортування береться лише зі списку дозволених, а все інше дає 400 ще в схемі.
-- **Читати:** документація TypeORM — «Select using Query Builder» (поза корпусом); у примірнику `owasp` — `SQL
-  Injection Prevention Cheat Sheet`, `Query Parameterization Cheat Sheet`.
-- **Сервери MCP:** `owasp-docs`.
+- **Читати:** у примірнику `typeorm` — `Select using Query Builder` (розділи Using parameters to escape data,
+  Joining relations, Adding `ORDER BY` expression, Using pagination); у примірнику `owasp` — `SQL Injection Prevention
+  Cheat Sheet`, `Query Parameterization Cheat Sheet`.
+- **Сервери MCP:** `typeorm-docs`, `owasp-docs`.
 - **Зробити:** 1) `GET /posts?q=&author=&sort=createdAt&order=desc&page=` з необов'язковими фільтрами;
   2) `sort` у схемі запиту — `z.enum([...])`; 3) запит `?sort=id;DROP TABLE posts` і `?q=' OR 1=1 --`.
 - **Перевірити себе:** перший зловмисний запит — 400 від схеми; другий — порожній список, а не всі записи; у лозі
@@ -1214,8 +1222,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 - **Що це.** `DataSource` у сервісі й `QueryRunner`: `startTransaction`, `commitTransaction`,
   `rollbackTransaction` і `release` у `finally`. Коротший шлях — `dataSource.transaction(async (manager) => …)`.
   Усі зміни всередині — через той самий `manager`, а не через впроваджені репозиторії.
-- **Читати:** розділ Techniques, глава `Database`, розділ TypeORM Transactions.
-- **Сервери MCP:** `nestjs-docs`.
+- **Читати:** розділ Techniques, глава `Database`, розділ TypeORM Transactions; у примірнику `typeorm` —
+  `Transactions`, `Query Runner`.
+- **Сервери MCP:** `nestjs-docs`, `typeorm-docs`.
 - **Зробити:** операція на дві таблиці (запис і лічильник записів автора), яка падає посередині.
 - **Перевірити себе:** після падіння в обох таблицях стан, як до операції; `SELECT` по `pg_stat_activity` не
   показує завислих з'єднань.
@@ -1302,9 +1311,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   `leftJoinAndSelect`, `include`) або одним запитом з `IN (…)`. NestJS Observe показує те саме згорнутим:
   «an N+1 reads as `SELECT order_items ×47`».
 - **Читати:** у розділі Observability — глава `SDK`, розділ Database queries and outbound HTTP; про завантаження
-  зв'язків у Prisma — у примірнику `prisma` `Query optimization`, `Relation queries`, `Logging`; TypeORM — поза
-  корпусом.
-- **Сервери MCP:** `nestjs-docs`, `prisma-docs`.
+  зв'язків у Prisma — у примірнику `prisma` `Query optimization`, `Relation queries`, `Logging`; у TypeORM — у
+  примірнику `typeorm` `Logging`, `Performance optimization: Lazy and Eager Loading`, `Eager and Lazy Relations`.
+- **Сервери MCP:** `nestjs-docs`, `typeorm-docs`, `prisma-docs`.
 - **Зробити:** 1) список із п'ятдесяти записів, автор кожного — окремим запитом; 2) порахувати SQL у лозі;
   3) autocannon `-c 50 -d 20` — req/s і p99; 4) полагодити приєднанням і заміряти знову; 5) те саме на другій ORM;
   6) завести журнал вимірів і записати обидва рядки.
@@ -1319,8 +1328,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   змушує базу пройти й викинути дев'яносто тисяч рядків; пагінація за ключем («keyset»: `WHERE id < :last ORDER
   BY id DESC LIMIT 20`) іде індексом одразу до місця.
 - **Читати:** у примірнику `postgresql` — `Indexes`; `Performance Tips`, розділ Using EXPLAIN; у примірнику
-  `prisma` — `Indexes`, `Pagination`; документація TypeORM про індекси (поза корпусом).
-- **Сервери MCP:** `postgresql-docs`, `prisma-docs`.
+  `prisma` — `Indexes`, `Pagination`; у примірнику `typeorm` — `Indexes`, `Performance optimization: Using indexes`,
+  `Performance optimization: Pagination`.
+- **Сервери MCP:** `postgresql-docs`, `typeorm-docs`, `prisma-docs`.
 - **Зробити:** 1) сто тисяч записів seed-скриптом; 2) запит списку автора з логу ORM — `EXPLAIN ANALYZE` без
   індексу й з ним; 3) остання сторінка через `OFFSET` і через keyset — час обох; 4) рядки в журнал.
 - **Перевірити себе:** у журналі Seq Scan → Index Scan з мілісекундами й два часи пагінації, що відрізняються в
