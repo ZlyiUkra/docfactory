@@ -635,7 +635,7 @@ Fourteen files, identical in shape across instances, plus five folders that crea
 | `prompts/agent.txt` | system prompt for the project's own agent (`ask`) | you |
 | `prompts/refusal.txt` | the text layer 1 returns when it blocks a request | you |
 | `checks.json` | queries and expectations for `smoke`, `check`, `raw` and `quality` | you, after the first corpus |
-| `requirements.txt` | the instance venv contents; only when the instance needs a package outside the shared sets | copy, then trim |
+| `requirements.txt` | the instance venv contents; only when the instance needs a package outside the shared sets | write, listing just that package |
 | `.env.example` | placeholders for the instance's own keys (`ANTHROPIC_API_KEY`, agent settings); `GITHUB_TOKEN` lives in the root `.env`; never commit a real `.env` | copy |
 | `.gitignore` | `.env`, `__pycache__/`, `*.pyc`, `.venv/`, `out/`, `index/passages.json` | copy |
 | `.mcp.json` | HTTP server record for Claude Code | copy, change the port |
@@ -659,12 +659,11 @@ cp instances/react/.gitignore instances/react/.env.example instances/<domain>/
 ```
 
 Build an own venv only when the domain needs a package that is not in `requirements/cpu.txt` and
-`requirements/gpu.txt`. Then copy `requirements.txt` too, trim it to the shared lines plus that package and build the
-venv. This is the only action done from inside the instance folder, and from now on `df` takes the instance's own
-`.venv` whenever it exists:
+`requirements/gpu.txt`. Then write a `requirements.txt` that lists just that package and build the venv. This is the
+only action done from inside the instance folder, and from now on `df` takes the instance's own `.venv` whenever it
+exists:
 
 ```
-cp instances/react/requirements.txt instances/<domain>/
 cd instances/<domain>
 python3 -m venv .venv
 .venv/bin/python -m pip install -U pip
@@ -1551,7 +1550,7 @@ and what a taken port and a failed connection look like. A domain list in the ro
 | `prompts/agent.txt` | системний промпт власного агента (`ask`) | ви |
 | `prompts/refusal.txt` | текст, який шар 1 повертає, коли блокує запит | ви |
 | `checks.json` | запити й очікування для `smoke`, `check`, `raw` і `quality` | ви, після першого корпусу |
-| `requirements.txt` | склад venv примірника; лише коли примірникові потрібен пакет поза спільними наборами | копія, потім підрізати |
+| `requirements.txt` | склад venv примірника; лише коли примірникові потрібен пакет поза спільними наборами | написати, лише цей пакет |
 | `.env.example` | заготовка для власних ключів примірника (`ANTHROPIC_API_KEY`, налаштування агента); `GITHUB_TOKEN` лежить у кореневому `.env`; справжній `.env` у git не потрапляє ніколи | копія |
 | `.gitignore` | `.env`, `__pycache__/`, `*.pyc`, `.venv/`, `out/`, `index/passages.json` | копія |
 | `.mcp.json` | запис HTTP-сервера для Claude Code | копія, змінити порт |
@@ -1575,12 +1574,10 @@ cp instances/react/.gitignore instances/react/.env.example instances/<домен
 ```
 
 Власний venv піднімайте, лише коли домену потрібен пакет, якого немає в `requirements/cpu.txt` і
-`requirements/gpu.txt`. Тоді скопіюйте й `requirements.txt`, підріжте його до спільних рядків плюс цей пакет і
-піднімайте venv. Це єдина дія, що робиться зсередини теки примірника, і відтепер `df` бере власний `.venv`
-примірника, щойно він є:
+`requirements/gpu.txt`. Тоді напишіть `requirements.txt` лише з цим пакетом і піднімайте venv. Це єдина дія, що
+робиться зсередини теки примірника, і відтепер `df` бере власний `.venv` примірника, щойно він є:
 
 ```
-cp instances/react/requirements.txt instances/<домен>/
 cd instances/<домен>
 python3 -m venv .venv
 .venv/bin/python -m pip install -U pip
@@ -2504,7 +2501,7 @@ Quatorze arquivos, com a mesma composição em todas as instâncias, mais cinco 
 | `prompts/agent.txt` | prompt de sistema do agente próprio (`ask`) | você |
 | `prompts/refusal.txt` | texto que a camada 1 devolve ao bloquear um pedido | você |
 | `checks.json` | consultas e expectativas de `smoke`, `check`, `raw` e `quality` | você, após o primeiro corpus |
-| `requirements.txt` | conteúdo do venv da instância; só quando a instância precisa de um pacote fora dos conjuntos compartilhados | copiar e depois enxugar |
+| `requirements.txt` | conteúdo do venv da instância; só quando a instância precisa de um pacote fora dos conjuntos compartilhados | escrever, só com esse pacote |
 | `.env.example` | modelo para as chaves próprias da instância (`ANTHROPIC_API_KEY`, ajustes do agente); o `GITHUB_TOKEN` fica no `.env` da raiz; um `.env` real nunca vai para o git | cópia |
 | `.gitignore` | `.env`, `__pycache__/`, `*.pyc`, `.venv/`, `out/`, `index/passages.json` | cópia |
 | `.mcp.json` | registro do servidor HTTP para o Claude Code | cópia, trocar a porta |
@@ -2528,12 +2525,10 @@ cp instances/react/.gitignore instances/react/.env.example instances/<domínio>/
 ```
 
 Crie um venv próprio só quando o domínio precisa de um pacote que não está em `requirements/cpu.txt` nem em
-`requirements/gpu.txt`. Então copie também o `requirements.txt`, enxugue-o até as linhas compartilhadas mais esse
-pacote e crie o venv. É a única ação feita de dentro da pasta da instância, e daí em diante o `df` usa o `.venv`
-próprio da instância sempre que ele existir:
+`requirements/gpu.txt`. Então escreva um `requirements.txt` só com esse pacote e crie o venv. É a única ação feita de
+dentro da pasta da instância, e daí em diante o `df` usa o `.venv` próprio da instância sempre que ele existir:
 
 ```
-cp instances/react/requirements.txt instances/<domínio>/
 cd instances/<domínio>
 python3 -m venv .venv
 .venv/bin/python -m pip install -U pip

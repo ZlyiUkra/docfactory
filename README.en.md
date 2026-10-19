@@ -92,7 +92,8 @@ never overrides it, so private keys such as `ANTHROPIC_API_KEY` stay in the inst
 runs on the CPU by default; `DF_SERVE_GPU=1` brings the GPU back. Details are in the section "Спільне середовище"
 of [README.md](README.md).
 
-An own venv, when one is needed, is built from the instance folder:
+An own venv, when one is needed (the domain wants a package outside `requirements/*.txt` and keeps its own
+`requirements.txt` with just that package), is built from the instance folder:
 
 ```
 cd instances/<domain>
