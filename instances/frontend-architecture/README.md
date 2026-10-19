@@ -78,9 +78,10 @@ tar -xzf /mnt/c/Distr/frontend-architecture-corpus-2026-10-08.tar.gz -C instance
 - `checks.json` — чим `smoke` і `quality` перевіряють саме цей корпус.
 - `.env` — ключ Anthropic (лише для кроку `ask`) і токен GitHub (лише для завантаження); `.mcp.json` — запис
   HTTP-сервера для Claude Code.
-- `.venv/` — власний venv примірника; `requirements.txt` — його склад.
+- `requirements.txt` — склад пакетів примірника; працює спільне середовище з кореня (власний `.venv` — лише якщо
+  бракує пакетів зі спільних наборів).
 
-Кроки нижче, окрім установки venv, запускаються з кореня фабрики (`docfactory/`) через
+Кроки нижче запускаються з кореня фабрики (`docfactory/`) через
 `./df frontend-architecture <крок>`.
 
 ## Звідки документація
@@ -114,14 +115,10 @@ tar -xzf /mnt/c/Distr/frontend-architecture-corpus-2026-10-08.tar.gz -C instance
 
 ## Установка venv
 
-```
-cd instances/frontend-architecture
-python3 -m venv .venv
-.venv/bin/python -m pip install -U pip
-.venv/bin/python -m pip install -r requirements.txt
-cp .env.example .env          # впишіть GITHUB_TOKEN і, якщо потрібен крок ask, ANTHROPIC_API_KEY
-cd ../..
-```
+Власний venv цьому примірнику не потрібен: `./df frontend-architecture …` бере спільне середовище з кореня репозиторію
+(`.venvs/cpu` або `.venvs/gpu`). Як його збудувати один раз і як `df` обирає між ними — у кореневому README.md, розділ
+«Спільне середовище». Свій `.env` примірник тримає в `instances/frontend-architecture/.env` (`cp .env.example .env`;
+для кроку `ask` потрібен `ANTHROPIC_API_KEY`); `GITHUB_TOKEN`, якого немає в цьому `.env`, береться з кореневого.
 
 ## Збирання корпусу
 
@@ -164,9 +161,9 @@ claude mcp add --transport http --scope user frontend-architecture-docs http://1
 
 ## На іншій машині
 
-На іншій машині (теж WSL) бракує venv примірника, корпусу й векторів у Qdrant — їх немає в git:
+На іншій машині (теж WSL) бракує спільного середовища (`.venvs`), корпусу й векторів у Qdrant — їх немає в git:
 
-1. venv — за розділом «Установка venv» вище;
+1. середовище — спільне, з кореня: розділ «Установка venv» вище;
 2. корпус і пошук — за розділом «Збирання корпусу»;
 3. `./df frontend-architecture smoke`, `./df frontend-architecture serve` і кроки 2–3 розділу «Сервер під Claude
    Code».

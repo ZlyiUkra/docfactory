@@ -27,9 +27,10 @@ NestJS — фреймворк із довгою історією мажорни�
 - `prompts/` — описи інструментів для моделі, системний промпт власного агента, текст відмови.
 - `checks.json` — чим `smoke` і `quality` перевіряють саме цей корпус.
 - `.env` — ключ Anthropic (лише для кроку `ask`); `.mcp.json` — запис HTTP-сервера для Claude Code.
-- `.venv/` — власний venv примірника; `requirements.txt` — його склад.
+- `requirements.txt` — склад пакетів примірника; працює спільне середовище з кореня (власний `.venv` — лише якщо
+  бракує пакетів зі спільних наборів).
 
-Кроки нижче, окрім установки venv, запускаються з кореня фабрики (`docfactory/`) через `./df nestjs <крок>`.
+Кроки нижче запускаються з кореня фабрики (`docfactory/`) через `./df nestjs <крок>`.
 
 ## Звідки документація
 
@@ -114,17 +115,10 @@ gzip -9 -c instances/nestjs/index/passages.json > instances/nestjs/index/passage
 
 ## Установка venv
 
-Єдиний крок, що робиться зсередини цієї теки, — і після нього треба повернутися в корінь. Активувати venv не
-потрібно ані зараз, ані потім: `df` сам викликає `.venv/bin/python` примірника на кожному кроці.
-
-```
-cd instances/nestjs
-python3 -m venv .venv
-.venv/bin/python -m pip install -U pip
-.venv/bin/python -m pip install -r requirements.txt
-cp .env.example .env          # впишіть свій ANTHROPIC_API_KEY, якщо потрібен крок ask
-cd ../..                      # назад у корінь фабрики: усі кроки df — тільки звідти
-```
+Власний venv цьому примірнику не потрібен: `./df nestjs …` бере спільне середовище з кореня репозиторію
+(`.venvs/cpu` або `.venvs/gpu`). Як його збудувати один раз і як `df` обирає між ними — у кореневому README.md,
+розділ «Спільне середовище». Свій `.env` примірник тримає в `instances/nestjs/.env` (`cp .env.example .env`;
+для кроку `ask` потрібен `ANTHROPIC_API_KEY`); `GITHUB_TOKEN`, якого немає в цьому `.env`, береться з кореневого.
 
 ## Збирання корпусу
 

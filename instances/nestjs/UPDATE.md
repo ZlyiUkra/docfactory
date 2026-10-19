@@ -102,20 +102,13 @@ curl -s https://docs.nestjs.com/llms.txt | grep -oE 'https://docs\.nestjs\.com/[
 
 Якщо примірник треба відтворити повністю. Усі команди з кореня `docfactory/`.
 
-**Крок 1. Тека і venv.** Єдиний крок зсередини теки примірника.
+**Крок 1. Тека.** Власний venv не потрібен: працює спільне середовище з кореня (розділ «Спільне середовище» кореневого
+README.md).
 
 ```
 mkdir -p instances/nestjs/prompts
 cp instances/react/requirements.txt instances/react/.gitignore instances/react/.env.example instances/nestjs/
-cd instances/nestjs
-python3 -m venv .venv
-.venv/bin/python -m pip install -U pip
-.venv/bin/python -m pip install -r requirements.txt
-cd ../..
 ```
-
-Якщо системний `python3` іде без модуля `venv`, беруть інтерпретатор, у якого він є, наприклад
-`/шлях/до/miniconda3/bin/python3 -m venv .venv`. На все подальше це не впливає: venv самодостатній.
 
 **Крок 2. `config.json`.** Порт 8762, колекція `docs-nestjs`, `sections: "markdown"`, `versions: true`,
 інструменти `search_docs` і `read_section`, `answer_hosts` — `docs.nestjs.com`, `nestjs.com`, `github.com`.

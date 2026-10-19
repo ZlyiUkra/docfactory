@@ -107,14 +107,10 @@ tar -xzf ~/archives/docfactory/nghttp2-corpus-2026-10-15.tar.gz -C instances/ngh
 
 ## Установка venv
 
-```
-cd instances/nghttp2
-python3 -m venv .venv
-.venv/bin/python -m pip install -U pip
-.venv/bin/python -m pip install -r requirements.txt
-cp .env.example .env          # впишіть GITHUB_TOKEN і, якщо потрібен крок ask, ANTHROPIC_API_KEY
-cd ../..
-```
+Власний venv цьому примірнику не потрібен: `./df nghttp2 …` бере спільне середовище з кореня репозиторію
+(`.venvs/cpu` або `.venvs/gpu`). Як його збудувати один раз і як `df` обирає між ними — у кореневому README.md,
+розділ «Спільне середовище». Свій `.env` примірник тримає в `instances/nghttp2/.env` (`cp .env.example .env`;
+для кроку `ask` потрібен `ANTHROPIC_API_KEY`); `GITHUB_TOKEN`, якого немає в цьому `.env`, береться з кореневого.
 
 ## Збирання корпусу
 

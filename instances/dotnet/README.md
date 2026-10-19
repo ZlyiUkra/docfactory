@@ -59,7 +59,8 @@ dotnet-api-docs і dotnet/core — зі сховища сирого, засія�
   довідник API, стандарт C#), 1 880 правил `slug_rewrite` для перейменованих сторінок, `max_per_doc: 1`.
 - `prompts/` — описи інструментів для моделі, системний промпт власного агента, текст відмови.
 - `checks.json` — чим `smoke` і `quality` перевіряють саме цей корпус.
-- `requirements.txt` — склад venv, зокрема `fastembed-gpu` і `onnxruntime-gpu` з колесами CUDA.
+- `requirements.txt` — склад пакетів, зокрема `fastembed-gpu` і `onnxruntime-gpu` з колесами CUDA; працює спільне
+  середовище з кореня (власний `.venv` — лише якщо бракує пакетів зі спільних наборів).
 - `.env` — токен GitHub і, для кроку `ask`, ключ Anthropic; `.mcp.json` — запис HTTP-сервера для Claude Code.
 - `corpus/`, `index/`, `raw/` — лише локально, у git не йдуть (див. «Корпус лише локально»).
 
@@ -194,16 +195,10 @@ Qdrant, а якщо їх там немає — `./df dotnet vectors` (12 хви�
 
 ## Установка venv
 
-```
-cd instances/dotnet
-python3 -m venv .venv
-.venv/bin/python -m pip install -U pip
-.venv/bin/python -m pip install -r requirements.txt     # ~2,6 ГБ: onnxruntime-gpu і колеса CUDA
-cp .env.example .env          # впишіть GITHUB_TOKEN і, якщо потрібен крок ask, ANTHROPIC_API_KEY
-cd ../..
-```
-
-Без відеокарти `onnxruntime-gpu` рахує на процесорі тими самими числами; тоді `vectors` іде добу, а не хвилини.
+Власний venv цьому примірнику не потрібен: `./df dotnet …` бере спільне середовище з кореня репозиторію
+(`.venvs/cpu` або `.venvs/gpu`). Як його збудувати один раз і як `df` обирає між ними — у кореневому README.md,
+розділ «Спільне середовище». Свій `.env` примірник тримає в `instances/dotnet/.env` (`cp .env.example .env`;
+для кроку `ask` потрібен `ANTHROPIC_API_KEY`); `GITHUB_TOKEN`, якого немає в цьому `.env`, береться з кореневого.
 
 ## Збирання корпусу
 

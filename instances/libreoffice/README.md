@@ -140,7 +140,7 @@ git --git-dir /tmp/core.git config remote.origin.promisor true
 git --git-dir /tmp/core.git config remote.origin.partialclonefilter blob:none
 git --git-dir /tmp/core.git fetch --depth=1 --filter=blob:none --no-tags origin refs/tags/<тег>:refs/tags/<тег> …
 ./df libreoffice list soffice-help filters uno-api     # дерева core через API
-instances/libreoffice/.venv/bin/python tools/seed_git_store.py --instance libreoffice --trees \
+.venvs/cpu/bin/python tools/seed_git_store.py --instance libreoffice --trees \
     --clone LibreOffice/help=/tmp/help.git --clone LibreOffice/core=/tmp/core.git
 ./df libreoffice build help soffice-help filters uno-api
 ./df libreoffice refresh release-notes release-notes-3-3 devguide security npm-libreoffice-convert …
@@ -150,14 +150,10 @@ instances/libreoffice/.venv/bin/python tools/seed_git_store.py --instance libreo
 
 ## Установка venv
 
-```
-cd instances/libreoffice
-python3 -m venv .venv
-.venv/bin/python -m pip install -U pip
-.venv/bin/python -m pip install -r requirements.txt
-cp .env.example .env          # впишіть GITHUB_TOKEN і, якщо потрібен крок ask, ANTHROPIC_API_KEY
-cd ../..
-```
+Власний venv цьому примірнику не потрібен: `./df libreoffice …` бере спільне середовище з кореня репозиторію
+(`.venvs/cpu` або `.venvs/gpu`). Як його збудувати один раз і як `df` обирає між ними — у кореневому README.md,
+розділ «Спільне середовище». Свій `.env` примірник тримає в `instances/libreoffice/.env` (`cp .env.example .env`;
+для кроку `ask` потрібен `ANTHROPIC_API_KEY`); `GITHUB_TOKEN`, якого немає в цьому `.env`, береться з кореневого.
 
 ## Збирання корпусу
 

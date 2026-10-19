@@ -72,9 +72,10 @@ MSW 2 і 3 (12 з них — ще й з MSW 1), 4 — лише MSW 1 і 3. READM
 - `checks.json` — чим `smoke` і `quality` перевіряють саме цей корпус.
 - `.env` — ключ Anthropic (лише для кроку `ask`) і токен GitHub (лише для завантаження); `.mcp.json` — запис
   HTTP-сервера для Claude Code.
-- `.venv/` — власний venv примірника; `requirements.txt` — його склад.
+- `requirements.txt` — склад пакетів примірника; працює спільне середовище з кореня (власний `.venv` — лише якщо
+  бракує пакетів зі спільних наборів).
 
-Кроки нижче, окрім установки venv, запускаються з кореня фабрики (`docfactory/`) через `./df msw <крок>`.
+Кроки нижче запускаються з кореня фабрики (`docfactory/`) через `./df msw <крок>`.
 
 ## Звідки документація
 
@@ -143,14 +144,10 @@ tar -xzf ~/archives/docfactory/msw-corpus-РРРР-ММ-ДД.tar.gz -C instances
 
 ## Установка venv
 
-```
-cd instances/msw
-python3 -m venv .venv
-.venv/bin/python -m pip install -U pip
-.venv/bin/python -m pip install -r requirements.txt
-cp .env.example .env          # впишіть GITHUB_TOKEN і, якщо потрібен крок ask, ANTHROPIC_API_KEY
-cd ../..
-```
+Власний venv цьому примірнику не потрібен: `./df msw …` бере спільне середовище з кореня репозиторію
+(`.venvs/cpu` або `.venvs/gpu`). Як його збудувати один раз і як `df` обирає між ними — у кореневому README.md,
+розділ «Спільне середовище». Свій `.env` примірник тримає в `instances/msw/.env` (`cp .env.example .env`;
+для кроку `ask` потрібен `ANTHROPIC_API_KEY`); `GITHUB_TOKEN`, якого немає в цьому `.env`, береться з кореневого.
 
 ## Збирання корпусу
 
