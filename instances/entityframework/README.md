@@ -59,8 +59,6 @@ DuckDB, Snowflake, Kusto, OpenEdge, SQL Server Compact, файлові FileConte
   `slug_rewrite` для сторінок, що переїхали.
 - `prompts/` — описи інструментів для моделі, системний промпт власного агента, текст відмови.
 - `checks.json` — чим `smoke` і `quality` перевіряють саме цей корпус.
-- `requirements.txt` — склад пакетів, зокрема `fastembed-gpu` і `onnxruntime-gpu` з колесами CUDA; працює спільне
-  середовище з кореня (власний `.venv` — лише якщо бракує пакетів зі спільних наборів).
 - `.env` — токен GitHub і, для кроку `ask`, ключ Anthropic; `.mcp.json` — запис HTTP-сервера для Claude Code.
 
 Кроки нижче запускаються з кореня фабрики через `./df entityframework <крок>`.

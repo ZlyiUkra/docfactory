@@ -107,7 +107,7 @@ README.md).
 
 ```
 mkdir -p instances/nestjs/prompts
-cp instances/react/requirements.txt instances/react/.gitignore instances/react/.env.example instances/nestjs/
+cp instances/react/.gitignore instances/react/.env.example instances/nestjs/
 ```
 
 **Крок 2. `config.json`.** Порт 8762, колекція `docs-nestjs`, `sections: "markdown"`, `versions: true`,

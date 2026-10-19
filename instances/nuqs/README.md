@@ -54,8 +54,6 @@ Next.js (app і pages router), React SPA, Remix, React Router v6/v7/v8, TanStack
 - `checks.json` — чим `smoke` і `quality` перевіряють саме цей корпус.
 - `.env` — ключ Anthropic (лише для кроку `ask`) і токен GitHub (лише для завантаження корпусу); `.mcp.json` —
   запис HTTP-сервера для Claude Code.
-- `requirements.txt` — склад пакетів примірника; працює спільне середовище з кореня (власний `.venv` — лише якщо
-  бракує пакетів зі спільних наборів).
 
 Кроки нижче запускаються з кореня фабрики (`docfactory/`) через `./df nuqs <крок>`.
 

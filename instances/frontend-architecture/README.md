@@ -78,8 +78,6 @@ tar -xzf /mnt/c/Distr/frontend-architecture-corpus-2026-10-08.tar.gz -C instance
 - `checks.json` — чим `smoke` і `quality` перевіряють саме цей корпус.
 - `.env` — ключ Anthropic (лише для кроку `ask`) і токен GitHub (лише для завантаження); `.mcp.json` — запис
   HTTP-сервера для Claude Code.
-- `requirements.txt` — склад пакетів примірника; працює спільне середовище з кореня (власний `.venv` — лише якщо
-  бракує пакетів зі спільних наборів).
 
 Кроки нижче запускаються з кореня фабрики (`docfactory/`) через
 `./df frontend-architecture <крок>`.

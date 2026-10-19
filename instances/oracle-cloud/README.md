@@ -65,8 +65,6 @@ Tier account to a paid account?».
 - `checks.json` — чим `smoke` і `quality` перевіряють саме цей корпус.
 - `.env` — ключ Anthropic (лише для кроку `ask`) і токен GitHub (журнал змін і README `oci-sdk`); `.mcp.json` — запис
   HTTP-сервера для Claude Code.
-- `requirements.txt` — склад пакетів примірника; працює спільне середовище з кореня (власний `.venv` — лише якщо
-  бракує пакетів зі спільних наборів).
 
 Кроки нижче запускаються з кореня фабрики (`docfactory/`) через `./df oracle-cloud <крок>`.
 
