@@ -582,6 +582,42 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   NuGet package README), `slug_rewrite` maps the rule pages' keys to the site's, and one family in `families` puts the
   section in the results once.
 
+- **A release whose tag is one of many builds** (NuGet.Client: tags `7.9.0.83`, `6.14.3.1` are four-part build
+  numbers, and the highest one is not always the release: of 56 versions checked, 11 differed): the commit of a release
+  is the `repository commit` attribute in the nuspec of the NuGet package published for it
+  (`v3-flatcontainer/<id>/<version>/<id>.nuspec`), and it becomes the key in `tags`. For two versions (5.7.2, 6.0.2) the
+  commit from the nuspec is missing from the public repository (the API answers 422), for 4.x–5.10 the nuspec has none at
+  all — take the build tag there; check every commit with `gh api repos/…/commits/<sha>` before `list`.
+- **Root README files of different repositories in one instance** (NuGetGallery, `mcp/` of NuGet/Home): `ghdocs` names
+  each one `readme`, and the intros of several READMEs share a section key — the shared-key scan before `vectors` found
+  two. `ghdocs` has no `name_prefix`: the same file through `ghdocs-history` with `tags: {"<sha>": ""}` (no version),
+  `files` and `name_prefix` gets its own key; for a file from a subfolder `exclude` is `^docs/`, not `/`.
+- **An API reference behind dozens of tests of one class** (`FrameworkReducer.GetNearest`: the reference section is 33rd
+  both by words and by meaning, ahead of it are over thirty methods of one test class): `demote` does nothing — it
+  reorders only inside the list of depth `k`×6 = 30. A larger `fusion_depth` (40) lets the page into the list, and
+  `max_per_doc: 3` stops one test file taking all the places: «as the model» 8 → 10 of 10 (`demote` 5–20 changed
+  nothing, 30 helped only with depth from 40). Measure with one process that substitutes `profile.DEMOTE_PLACES`,
+  `FUSION_DEPTH` and `MAX_PER_DOC`.
+- **Packages whose XML is missing on part of the lines** (NuGet.* 6.5–6.11 and NuGet.VisualStudio 17.5–17.11 shipped
+  without XML documentation, 6.12 brought it back): before declaring `nuget-xmldoc`, download the latest version of every
+  minor line and note which carry XML (761 package × line pairs — a few minutes on five threads); the prompt names the
+  lines that exist and tells the model to answer about a type of the missing ones from the nearest present line.
+  Resource tables (`Strings`, `Resources`, `NuGetResources`, `AnalysisResources`, `SR`: 395 documents, the largest) go to
+  `exclude_types`; documents that `build` no longer writes stay in `corpus/` as orphans — move them out, do not delete.
+- **A `quality` target must exist in the newest edition of the page**: `VersionRange.Satisfies` has XML only in the
+  1.0.7 edition (`SimpleVersion`), the members of later lines have no comments and did not become documents — the
+  target was picked from the cache listing without looking at `versions`, and nothing in the current API could find it.
+  Check the `p.versions` of every target; take a member present in the newest line (`Parse`).
+- **All packages of an owner on nuget.org**:
+  `https://azuresearch-usnc.nuget.org/query?q=owner:<name>&take=100&prerelease=false` (52 of 54 hits were ours; two
+  from other products, `PoliteCaptcha` and `NuGet.Services.Build`, are dropped by `authors`); packages with only
+  prereleases show only with `prerelease=true` and give `nuget-package` nothing. Products with their own numbering
+  (NuGet.VisualStudio 17.x is the number of Visual Studio, NuGet.Mcp.Server 1.x, NuGet.Server 3.x) get a mark through
+  `version_prefixes`, otherwise «1.4» is both the MCP server and NuGet 1.4.
+- **When an update moves the tag of code and tests in a major line that is already taken** (e.g. 2.11.3 → 2.12.5): the
+  revisions of files that exist only on the old tag become orphans. Move them to a scratchpad folder before `manifest`
+  (never delete them); they do not go into the new archive and can be restored from the old tag on GitHub.
+
 ## Anatomy of an instance
 
 Fourteen files, identical in shape across instances, plus five folders that create themselves.
@@ -1450,6 +1486,41 @@ and what a taken port and a failed connection look like. A domain list in the ro
   `documentation/` тегів): репозиторій дістає окремий `name_prefix` (інакше README збігається з README пакета NuGet),
   а `slug_rewrite` зводить ключі сторінок правил до сайтових і одна родина в `families` ставить розділ у видачі на
   одне місце.
+
+- **Випуск, чий тег — один із багатьох збірок** (NuGet.Client: теги `7.9.0.83`, `6.14.3.1` — чотиричленні номери
+  збірок, і найвищий не завжди випуск: з 56 звірених версій 11 розійшлися): коміт випуску — атрибут `repository commit`
+  у nuspec пакета NuGet, опублікованого для цього випуску (`v3-flatcontainer/<id>/<версія>/<id>.nuspec`), і саме він
+  стає ключем у `tags`. Для двох версій (5.7.2, 6.0.2) коміт з nuspec у публічному репозиторії відсутній (API
+  відповідає 422), для 4.x–5.10 його в nuspec немає взагалі — там тег збірки; кожен коміт перевіряють
+  `gh api repos/…/commits/<sha>` до `list`.
+- **README кореня різних репозиторіїв в одному примірнику** (NuGetGallery, `mcp/` NuGet/Home): `ghdocs` називає кожен
+  `readme`, і вступи кількох README ділять ключ розділу — скан спільних ключів перед `vectors` знайшов два. У `ghdocs`
+  немає `name_prefix`: той самий файл через `ghdocs-history` з `tags: {"<sha>": ""}` (без версії), `files` і
+  `name_prefix` дістає свій ключ; для файла з підтеки `exclude` — `^docs/`, а не `/`.
+- **Довідник API за десятками тестів одного класу** (`FrameworkReducer.GetNearest`: розділ довідника — 33-й і по
+  словах, і за змістом, а перед ним понад тридцять методів одного тестового класу): `demote` нічого не дає — він
+  міняє порядок лише всередині списку глибини `k`×6 = 30. Більший `fusion_depth` (40) впускає сторінку в список, а
+  `max_per_doc: 3` не дає одному файлові тестів зайняти всі місця: «як модель» 8 → 10 із 10 (`demote` 5–20 не змінив
+  нічого, 30 помагав лише з глибиною від 40). Міряти одним процесом, що підміняє `profile.DEMOTE_PLACES`,
+  `FUSION_DEPTH` і `MAX_PER_DOC`.
+- **Пакети, чий XML бракує на частині ліній** (NuGet.* 6.5–6.11, NuGet.VisualStudio 17.5–17.11 вийшли без
+  XML-документації, з 6.12 вона повернулась): до оголошення `nuget-xmldoc` завантажити останню версію кожної мінорної
+  лінії й записати, які несуть XML (761 пара пакет × лінія — кілька хвилин на п'яти потоках); промпт називає наявні
+  лінії й велить відповідати про тип відсутніх за найближчою наявною. Таблиці ресурсів (`Strings`, `Resources`,
+  `NuGetResources`, `AnalysisResources`, `SR`: 395 документів, найбільші) — у `exclude_types`; документи, яких `build`
+  уже не пише, лишаються в `corpus/` сиротами — їх виносять, а не видаляють.
+- **Ціль `quality` мусить існувати в найновішій редакції сторінки**: `VersionRange.Satisfies` має XML лише в
+  редакції 1.0.7 (`SimpleVersion`), члени пізніших ліній коментарів не мають і документами не стали — ціль обрано зі
+  списку кешу, не глянувши на `versions`, і в чинному API її не знайшов би ніхто. Версії кожної цілі перевіряють у
+  `p.versions`; брати член, що є в найновішій лінії (`Parse`).
+- **Усі пакети власника на nuget.org**: `https://azuresearch-usnc.nuget.org/query?q=owner:<ім'я>&take=100&prerelease=false`
+  (52 з 54 влучань — наші; два з інших продуктів, `PoliteCaptcha` і `NuGet.Services.Build`, відсіяно за `authors`);
+  пакети лише з передрелізами видно тільки з `prerelease=true`, і `nuget-package` вони нічого не дають. Продукти з
+  власною нумерацією (NuGet.VisualStudio 17.x — номер Visual Studio, NuGet.Mcp.Server 1.x, NuGet.Server 3.x) дістають
+  мітку через `version_prefixes`, інакше «1.4» — і сервер MCP, і NuGet 1.4.
+- **Коли оновлення зсуває тег коду й тестів у вже взятій мажорній лінії** (напр. 2.11.3 → 2.12.5): редакції файлів,
+  що лишилися лише на старому тезі, стають сиротами. Їх виносять у теку scratchpad до `manifest` (не видаляють); у
+  новий архів вони не йдуть і відновлюються зі старого тегу на GitHub.
 
 ## З чого складається примірник
 
@@ -2353,6 +2424,43 @@ errada.
   `documentation/` das tags): o repositório ganha um `name_prefix` próprio (senão o README colide com o README do
   pacote NuGet), o `slug_rewrite` leva as chaves das páginas de regra às do site e uma família em `families` põe a
   seção uma vez só nos resultados.
+
+- **Uma versão cuja tag é uma entre muitos builds** (NuGet.Client: as tags `7.9.0.83`, `6.14.3.1` são números de build
+  de quatro partes, e a mais alta nem sempre é a versão: de 56 versões conferidas, 11 divergiram): o commit de uma
+  versão é o atributo `repository commit` do nuspec do pacote NuGet publicado para ela
+  (`v3-flatcontainer/<id>/<versão>/<id>.nuspec`), e ele vira a chave em `tags`. Para duas versões (5.7.2, 6.0.2) o
+  commit do nuspec não existe no repositório público (a API responde 422), e para 4.x–5.10 o nuspec não traz nenhum —
+  ali vale a tag de build; confira cada commit com `gh api repos/…/commits/<sha>` antes do `list`.
+- **READMEs da raiz de repositórios diferentes numa instância** (NuGetGallery, `mcp/` do NuGet/Home): o `ghdocs` chama
+  cada um de `readme`, e as introduções de vários READMEs dividem a chave de seção — a varredura de chaves comuns antes
+  do `vectors` achou duas. O `ghdocs` não tem `name_prefix`: o mesmo arquivo pelo `ghdocs-history` com
+  `tags: {"<sha>": ""}` (sem versão), `files` e `name_prefix` ganha chave própria; para um arquivo de subpasta o
+  `exclude` é `^docs/`, não `/`.
+- **Uma referência de API atrás de dezenas de testes de uma classe** (`FrameworkReducer.GetNearest`: a seção da
+  referência é a 33ª tanto por palavras quanto por sentido, e na frente dela há mais de trinta métodos de uma classe de
+  teste): o `demote` não faz nada — ele só reordena dentro da lista de profundidade `k`×6 = 30. Um `fusion_depth` maior
+  (40) deixa a página entrar na lista, e `max_per_doc: 3` impede que um arquivo de testes ocupe todos os lugares: «como
+  o modelo» 8 → 10 de 10 (`demote` 5–20 não mudou nada, 30 só ajudou com profundidade a partir de 40). Meça com um
+  processo que substitui `profile.DEMOTE_PLACES`, `FUSION_DEPTH` e `MAX_PER_DOC`.
+- **Pacotes cujo XML falta em parte das linhas** (NuGet.* 6.5–6.11 e NuGet.VisualStudio 17.5–17.11 saíram sem
+  documentação XML, a 6.12 a trouxe de volta): antes de declarar o `nuget-xmldoc`, baixe a última versão de cada linha
+  menor e anote quais levam XML (761 pares pacote × linha — alguns minutos em cinco threads); o prompt nomeia as linhas
+  que existem e manda responder sobre um tipo das que faltam pela linha presente mais próxima. As tabelas de recursos
+  (`Strings`, `Resources`, `NuGetResources`, `AnalysisResources`, `SR`: 395 documentos, os maiores) vão para
+  `exclude_types`; documentos que o `build` já não escreve ficam em `corpus/` como órfãos — tire-os dali, não apague.
+- **Um alvo de `quality` precisa existir na edição mais nova da página**: `VersionRange.Satisfies` tem XML só na
+  edição 1.0.7 (`SimpleVersion`), os membros das linhas posteriores não têm comentários e não viraram documentos — o
+  alvo foi escolhido da listagem do cache sem olhar `versions`, e nada na API atual poderia achá-lo. Confira os
+  `p.versions` de cada alvo; escolha um membro presente na linha mais nova (`Parse`).
+- **Todos os pacotes de um dono no nuget.org**:
+  `https://azuresearch-usnc.nuget.org/query?q=owner:<nome>&take=100&prerelease=false` (52 de 54 resultados eram nossos;
+  dois de outros produtos, `PoliteCaptcha` e `NuGet.Services.Build`, saem pelo `authors`); pacotes só com
+  pré-lançamentos aparecem apenas com `prerelease=true` e não dão nada ao `nuget-package`. Produtos com numeração
+  própria (NuGet.VisualStudio 17.x é o número do Visual Studio, NuGet.Mcp.Server 1.x, NuGet.Server 3.x) ganham uma
+  marca por `version_prefixes`, senão «1.4» é ao mesmo tempo o servidor MCP e o NuGet 1.4.
+- **Quando uma atualização move a tag de código e testes numa linha maior já tomada** (p. ex. 2.11.3 → 2.12.5): as
+  revisões de arquivos que existem só na tag antiga viram órfãs. Tire-as para uma pasta de rascunho antes do `manifest`
+  (nunca apague); elas não entram no arquivo novo e se recuperam da tag antiga no GitHub.
 
 ## Anatomia de uma instância
 
