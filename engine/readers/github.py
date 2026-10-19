@@ -9,6 +9,8 @@
                сама сторінка в різних джерелах мала те саме ім'я. Переклади
                (`*.ko-KR.md`) пропускаються: корпус англійський. Текст береться з
                raw.githubusercontent.com, а в шапку лягає людська адреса blob.
+               Адреса «…/git/trees/ТЕГ:ТЕКА?recursive=1» — дерево лише однієї теки, коли
+               повне GitHub обрізає (dotnet/runtime): шляхи доповнюються текою.
 `changelog`  — CHANGELOG.md, поділений на версії: кожен заголовок «## 18.2.0 (…)»
                дає окремий документ із цією версією; спільний заголовок двох
                ліній («## 0.5.2, 0.4.2 (…)») — один документ з обома. Файл
@@ -39,7 +41,7 @@
 import collections
 import json
 import re
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 from engine.readers import Item, _markup, register
 
@@ -69,6 +71,10 @@ def ghdocs(source: dict, ctx) -> list[Item]:
         raise SystemExit(f"{source['url']}: очікував адресу дерева тегу "
                          f"/repos/ВЛАСНИК/РЕПО/git/trees/ТЕГ.")
     owner, repo, tag = m.groups()
+    # «ТЕГ:ТЕКА» — дерево лише однієї теки: повне дерево великого репозиторію (dotnet/runtime)
+    # GitHub обрізає. Шляхи такого дерева — від теки, тож вона повертається на початок.
+    tag, _, sub = unquote(tag).partition(":")
+    sub = sub.strip("/")
     tree = _json(ctx, source["url"])
     if not isinstance(tree, dict) or not isinstance(tree.get("tree"), list):
         raise SystemExit(f"{source['url']}: у відповіді немає дерева файлів.")
@@ -82,6 +88,8 @@ def ghdocs(source: dict, ctx) -> list[Item]:
     paths = []
     for entry in tree["tree"]:
         path = entry.get("path", "")
+        if sub:
+            path = f"{sub}/{path}"
         folder, _, leaf = path.rpartition("/")
         inside = (folder in folders if not recursive else
                   any(folder == f or folder.startswith(f + "/") for f in folders))
@@ -91,10 +99,13 @@ def ghdocs(source: dict, ctx) -> list[Item]:
             paths.append(path)
     items = []
     for path in paths:
-        raw = f"https://raw.githubusercontent.com/{owner}/{repo}/{tag}/{path}"
+        # Пробіл в імені файла («Compiler Breaking Changes - DotNet 9.md» у dotnet/roslyn) http.client
+        # у запиті не пропускає; інші символи шляху лишаються як були.
+        web = path.replace(" ", "%20")
+        raw = f"https://raw.githubusercontent.com/{owner}/{repo}/{tag}/{web}"
         if not ctx.allowed(raw):
             continue
-        blob = f"https://github.com/{owner}/{repo}/blob/{tag}/{path}"
+        blob = f"https://github.com/{owner}/{repo}/blob/{tag}/{web}"
         # Позиція у старому змісті («02.1-jsx-in-depth») зі слага знімається: та
         # сама сторінка в сусідніх версіях мусить мати те саме ім'я.
         if root and path.startswith(root + "/"):
