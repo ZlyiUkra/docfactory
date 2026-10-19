@@ -2,10 +2,11 @@
 
 Двадцять восьмий примірник фабрики: захищений MCP-сервер, що відповідає на питання про Playwright — фреймворк для
 наскрізного тестування й автоматизації браузерів (Chromium, Firefox, WebKit) і його тест-раннер Playwright Test. Тут
-документація з репозиторію microsoft/playwright на кожній мінорній версії від 0.10 до 1.63, сайт playwright.dev для
+документація з репозиторію microsoft/playwright на кожній мінорній версії від 0.10 до 1.64, сайт playwright.dev для
 Node.js, Playwright MCP і Playwright CLI для агентів, README кожної стабільної версії пакетів, нотатки релізів і реєстр
-версій npm. Код спільний і лежить у `../../engine/`, `../../server/` та `../../common/`; ця тека тримає самі дані
-домену. Загальний устрій фабрики — у [../../README.md](../../README.md).
+версій npm, а також Playwright для .NET: сайт playwright.dev для .NET на кожній мінорній версії від 1.12 до 1.64, пакети
+NuGet і нотатки релізів microsoft/playwright-dotnet. Код спільний і лежить у `../../engine/`, `../../server/` та
+`../../common/`; ця тека тримає самі дані домену. Загальний устрій фабрики — у [../../README.md](../../README.md).
 
 ## Навіщо
 
@@ -17,32 +18,47 @@ Playwright виходить мінорною версією раз на міся
 Документацію playwright.dev для всіх мов збирають із тієї самої теки `docs/src` репозиторію; тут вона на кожній
 версії, а поточний сайт для Node.js — окремо, з прикладами лише JavaScript і TypeScript.
 
+Playwright для .NET (пакет NuGet `Microsoft.Playwright`) має свій сайт: ті самі посібники й довідник API, але з
+прикладами C# і окремою вкладкою для кожного раннера тестів — NUnit, MSTest, xUnit. Тут він на кожній мінорній версії
+від 1.12, першої стабільної в NuGet.
+
 У яких фазах і днях планів навчання він потрібен — див. [../../docs/learning-map.md](../../docs/learning-map.md).
 
 ## Скільки цього
 
 | Шар | Документів | Різних сторінок | Звідки |
 |-----|-----------:|----------------:|--------|
-| Документація репозиторію: гайди, Playwright Test, довідник API по класах, нотатки релізів JS | 2 733 | 248 | тека `docs/` microsoft/playwright на 73 тегах (0.10–1.63) |
-| Сайт playwright.dev для Node.js, поточний стабільний реліз | 147 | 147 | `nodejs/versioned_docs/version-stable` microsoft/playwright.dev |
+| Документація репозиторію: гайди, Playwright Test, довідник API по класах, нотатки релізів JS | 2 785 | 249 | тека `docs/` microsoft/playwright на 74 тегах (0.10–1.64) |
+| Сайт playwright.dev для Node.js, поточний стабільний реліз | 148 | 148 | `nodejs/versioned_docs/version-stable` microsoft/playwright.dev |
 | Сайт: Playwright MCP | 32 | 32 | `mcp/` microsoft/playwright.dev |
 | Сайт: Playwright CLI для агентів | 23 | 23 | `agent-cli/` microsoft/playwright.dev |
-| README стабільних версій `playwright`, `@playwright/mcp`, `@playwright/cli`, однакові тексти зведено | 162 | — | тег релізу на GitHub |
-| Нотатки релізів GitHub трьох репозиторіїв | 263 | — | GitHub API |
+| Сайт playwright.dev для .NET, кожна мінорна 1.24–1.64 | 1 997 | 98 | `dotnet/versioned_docs/version-stable` на 41 коміті |
+| Сайт playwright.dev для .NET, кожна мінорна 1.12–1.23 | 783 | 91 | теки `dotnet/versioned_docs/version-1.X` з історії |
+| README стабільних версій `playwright`, `@playwright/mcp`, `@playwright/cli`, однакові тексти зведено | 163 | — | тег релізу на GitHub |
+| Нотатки релізів GitHub чотирьох репозиторіїв | 355 | — | GitHub API |
+| Пакети NuGet Playwright для .NET: огляди, лінії, README | 280 | — | api.nuget.org |
 | Реєстр версій npm чотирьох пакетів | 11 | — | registry.npmjs.org |
 
-Разом 3 371 документ; фрагментів в індексі — 22 392 (`expected_passages` у `checks.json`). Фрагменти — це шматки
+Разом 6 577 документів; фрагментів в індексі — 34 200 (`expected_passages` у `checks.json`). Фрагменти — це шматки
 документів між заголовками, по яких іде пошук; однаковий текст різних версій зливається в один з усіма версіями.
 Найбільше — довідник API: файл класу (`class-page`, `class-locator`) змінюється майже в кожній версії, і кожен
-розділ-метод, що змінився, стає окремим фрагментом.
+розділ-метод, що змінився, стає окремим фрагментом. Сторінки сайту для .NET міняються з кожною версією майже всі:
+внизу кожної стоїть блок посилань на всі класи. Тому редакцій тут 2 780 на 119 сторінок, але незмінні розділи
+однаково зливаються в один фрагмент.
 
 Замір `quality` на першому корпусі: перша десятка (питання своїми словами, без версії) — по словах 7 із 10, за змістом
 7, разом 7; друга, «як модель» (назви API, з `version: "1.63"`, як велить промпт), — 9 із 10. Промах другої десятки —
 «getByRole locator»: знаходить метод `getByRole` у довіднику API (`class-locator`, `class-page`), а не гайд
 «Locators»; відповідь з таких уривків правильна, але вужча.
 
-**Версія у відповіді.** Без названої версії — Playwright 1.63: на день збирання 27% завантажень `@playwright/test` за
-тиждень (1.62 — 16%, 1.61 — 11%). Фільтр `version` — мінорна лінія: «1.63» бере 1.63.x.
+Після оновлення 19.10.2026 (1.64 і .NET) три питання кожної десятки замінено питаннями про .NET (встановлення
+браузерів, `.runsettings`, базовий клас `PageTest`), а версію другої — на «1.64». Перша десятка — по словах 8 із 10, за
+змістом 9, разом 7; «як модель» — 10 із 10.
+
+**Версія у відповіді.** Без названої версії — Playwright 1.63: на 19.10.2026 24% завантажень `@playwright/test` за
+тиждень (1.64 — 14%, 1.62 — 14%). Для .NET — теж 1.63: це найновіша версія `Microsoft.Playwright` у NuGet (сайт для .NET
+уже на 1.64), а тижневої статистики за версіями NuGet не дає. Фільтр `version` — мінорна лінія: «1.63» бере 1.63.x і
+JavaScript, і .NET.
 
 ## Пакети
 
@@ -57,6 +73,19 @@ Playwright виходить мінорною версією раз на міся
 (у `playwright` їх понад п'ять тисяч, щоденні) не беруться ні в README, ні в реєстр: поле `skip_versions` читача
 `npm-versions` відсіває їх, бо кожен фрагмент документа реєстру повторював би перелік усіх версій — 230 МБ із 258 у
 кеші фрагментів.
+
+Пакети NuGet (Playwright для .NET):
+
+| Пакет | Для чого |
+|-------|----------|
+| `Microsoft.Playwright` | бібліотека: `Playwright`, `IBrowser`, `IPage`, `ILocator`, перевірки `Expect` |
+| `Microsoft.Playwright.NUnit`, `.MSTest`, `.Xunit`, `.Xunit.v3` | базові класи тестів (`PageTest`, `ContextTest`) для свого раннера |
+| `Microsoft.Playwright.TestAdapter` | спільна основа цих пакетів: налаштування з `.runsettings` |
+| `Microsoft.Playwright.CLI` | давній глобальний інструмент `playwright` (1.0–1.2); його версії — з міткою «dotnet-cli-» |
+
+Від кожного пакета — огляд з усіма стабільними версіями й датами, документ на кожну лінію (платформи, залежності) і
+README тих версій, що його несуть (54 тексти). Огляд — про всі версії разом, тож версії не має; тому
+`expect_unversioned` у `checks.json` — `true`.
 
 ## Що в цій теці
 
@@ -79,24 +108,39 @@ Playwright виходить мінорною версією раз на міся
 |----|---------|-------|
 | документація всіх версій | тека `docs/` microsoft/playwright на останньому тезі кожної мінорної лінії | `ghdocs-history` |
 | сайт для Node.js, MCP, CLI | microsoft/playwright.dev, гілка main | `ghdocs-history` |
+| сайт для .NET 1.24–1.64 | microsoft/playwright.dev, останній коміт «roll to 1.X Playwright» кожної лінії | `ghdocs-history` |
+| сайт для .NET 1.12–1.23 | теки `dotnet/versioned_docs/version-1.X` microsoft/playwright.dev в останній редакції | `ghdocs-history` |
 | README пакетів | тег релізу кожної стабільної версії на GitHub | `npm-readme` |
 | нотатки релізів | GitHub API | `ghreleases` |
 | версії пакетів | реєстр npm | `npm-versions` |
+| пакети .NET | реєстр NuGet | `nuget-package` |
 
-Білий список — три хости: `api.github.com`, `raw.githubusercontent.com`, `registry.npmjs.org`. Сам playwright.dev не
-читається: сайт збирається з репозиторіїв microsoft/playwright і microsoft/playwright.dev. Посилання у відповідях можуть
-вести на playwright.dev.
+Білий список — чотири хости: `api.github.com`, `raw.githubusercontent.com`, `registry.npmjs.org`, `api.nuget.org`. Сам
+playwright.dev не читається: сайт збирається з репозиторіїв microsoft/playwright і microsoft/playwright.dev. Посилання
+у відповідях можуть вести на playwright.dev.
 
 Особливості, які варто знати:
 
 - **Інші мови.** Тека `docs/src` спільна для JavaScript, Python, Java і C#: у спільних сторінках поруч стоять
   приклади всіх мов, а частина розділів позначена як лише для однієї мови. Сторінки, зроблені лише для Python, Java
-  чи C# (`*-python.md`, `*-java.md`, `*-csharp.md`), не взято. Чистий JavaScript без інших мов — у сайті для Node.js,
-  але лише для поточного релізу.
+  чи C# (`*-python.md`, `*-java.md`, `*-csharp.md`), з цієї теки не взято: C# — на сайті для .NET, де інших мов немає.
+  Чистий JavaScript без інших мов — у сайті для Node.js, але лише для поточного релізу.
 - **Формат довідника API** — вихідний, а не сайтовий: заголовок `## async method: Locator.click`, під ним `* since:
   v1.14`, опції — підрозділами. Посилання на інші члени записано як `[`method: Page.goto`]`.
-- **Мітки сайту.** Сайт для Node.js має мітку «1.63», MCP — «0.0.83», CLI — «0.1.22»: це версії на день збирання,
+- **Мітки сайту.** Сайт для Node.js має мітку «1.64», MCP — «0.0.83», CLI — «0.1.22»: це версії на день збирання,
   записані в `sources.json`. Після нового релізу їх треба змінити разом з оновленням.
+- **Сайт для .NET за версіями.** З 1.24 playwright.dev тримає лише стабільну версію (`version-stable`), тож знімок
+  кожної лінії — останній коміт «roll to 1.X Playwright» цієї лінії. До липня 2022 кожна версія лежала у своїй теці
+  `version-1.X`, і старі теки згодом видаляли; їх узято з історії репозиторію в останній редакції. `{version}` у полі
+  `folders` читача бере на кожному коміті лише теку його версії, `slug_rewrite` у `config.json` дає сторінкам старих
+  тек той самий ключ, що й `version-stable`, а `families` — одну родину: редакції однієї сторінки зливаються, а не
+  займають кілька місць у видачі. Тека `dotnet/docs/` (наступна версія) збігається з `version-stable` файл у файл і не
+  береться.
+- **Вкладки раннерів.** Код для NUnit, MSTest, xUnit і xUnit v3 стоїть у вкладках; поле `docusaurus_tabs` читача
+  ставить перед кожною підпис «NUnit:», «MSTest:» (на сайті для Node.js — «npm:», «yarn:», «pnpm:»). Виноски
+  `:::note` стають підписом «Note:» (поле `admonitions`).
+- **Мітка «1.64» сайту для .NET** — з самого сайту: на день збирання в NuGet найновіша `Microsoft.Playwright` 1.63.0.
+- **Релізи playwright-dotnet** починаються з 0.111: так нумерувалися випуски PlaywrightSharp до 1.0.
 - **Стара документація (0.10–1.9)** лежала в корені `docs/`, з 1.10 — у `docs/src`; одна й та сама сторінка за
   різними шляхами — це історія, а не дублікат.
 - **Назви класів сайту** («Fixtures», «Clock») збігаються з назвами гайдів, тож поле `title_prefix` додає їм «API:».
@@ -105,9 +149,9 @@ Playwright виходить мінорною версією раз на міся
 
 ## Межі, про які треба пам'ятати
 
-Тут немає документації Jest і Vitest (окремий примірник `vitest`), Testing Library (примірник `testing-library`), MSW
-(примірник `msw`), Cypress, Selenium і Puppeteer, протоколу DevTools і самої вебплатформи (примірник `mdn`). Issues і
-GitHub Discussions свідомо не взято.
+Тут немає Playwright для Python і Java, документації Jest і Vitest (окремий примірник `vitest`), Testing Library
+(примірник `testing-library`), MSW (примірник `msw`), Cypress, Selenium і Puppeteer, протоколу DevTools і самої
+вебплатформи (примірник `mdn`). Issues і GitHub Discussions свідомо не взято.
 
 ## Архівний режим: сервер без корпусу
 
@@ -115,16 +159,17 @@ GitHub Discussions свідомо не взято.
 `index.json`, а сервер підіймається з кешу фрагментів (`index/passages.json`) і колекції Qdrant; відповіді ті самі до
 символа — кеш тримає повний текст кожного фрагмента.
 
-**Де тексти.** В архіві `~/archives/docfactory/playwright-corpus-2026-10-07-readme.tar.gz` (8,8 МБ, 3 371 текст і паспорт;
-перед видаленням розпакований окремо й звірений із диском — нуль розбіжностей). В історії git текстів немає ніде.
-Архів лежить лише на цій машині.
+**Де тексти.** В архіві `~/archives/docfactory/playwright-corpus-2026-10-19.tar.gz` (69 МБ, 6 577 текстів, паспорт і
+сховище сирого `raw/`; перед видаленням розпакований окремо й звірений із диском — нуль розбіжностей). В історії git
+текстів немає ніде. Архів лежить лише на цій машині.
 
 **Як винести знову** — після оновлення, коли `vectors` і `smoke` пройшли:
 
 ```
 ls -l instances/playwright/index/passages.json         # кеш має бути на місці й свіжий
-tar -czf ~/archives/docfactory/playwright-corpus-РРРР-ММ-ДД.tar.gz -C instances/playwright corpus
+tar -czf ~/archives/docfactory/playwright-corpus-РРРР-ММ-ДД.tar.gz -C instances/playwright corpus raw
 find instances/playwright/corpus -maxdepth 1 -name '*.txt' -delete
+rm -rf instances/playwright/raw
 gzip -9 -c instances/playwright/index/passages.json > instances/playwright/index/passages.json.gz
 ```
 
@@ -138,8 +183,14 @@ tar -xzf ~/archives/docfactory/playwright-corpus-РРРР-ММ-ДД.tar.gz -C in
 ./df playwright smoke
 ```
 
+**Оновлення.** Новий випуск Playwright `1.x.y`: тег `v1.x.y` першим у `tags` джерела `pw-docs` (замість попереднього
+тегу тієї самої лінії); мітка гілки `main` джерела `site-nodejs`; останній коміт «roll to 1.x Playwright» теки
+`dotnet/versioned_docs/version-stable` — першим у `tags` джерела `site-dotnet`; мітки `site-mcp` і `site-agent-cli` — за
+версіями `@playwright/mcp` і `@playwright/cli` у npm. README, реєстри npm і NuGet та релізи підхоплюються самі. Далі
+`refresh`, `manifest`, `vectors`, `smoke`, `quality`.
+
 **На іншій машині** після клонування кеш треба розпакувати: `gunzip -k instances/playwright/index/passages.json.gz`, далі
-`./df playwright vectors` заллє колекцію Qdrant (75 хвилин на цій машині).
+`./df playwright vectors` заллє колекцію Qdrant (на відеокарті близько хвилини, на процесорі — близько двох годин).
 
 ## Установка venv
 
@@ -147,24 +198,27 @@ tar -xzf ~/archives/docfactory/playwright-corpus-РРРР-ММ-ДД.tar.gz -C in
 cd instances/playwright
 python3 -m venv .venv
 .venv/bin/python -m pip install -U pip
-.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python -m pip install -r requirements.txt     # ~2,6 ГБ: onnxruntime-gpu і колеса CUDA
 cp .env.example .env          # впишіть GITHUB_TOKEN і, якщо потрібен крок ask, ANTHROPIC_API_KEY
 cd ../..
 ```
+
+Без відеокарти `onnxruntime-gpu` рахує на процесорі тими самими числами; тоді `vectors` іде години, а не хвилину.
 
 ## Збирання корпусу
 
 ```
 ./df playwright sources --why   # перелік джерел і білий список
-./df playwright refresh         # завантажити все задеклароване (~1 година 20 хвилин)
+./df playwright refresh         # завантажити все задеклароване (~2,5 години)
 ./df playwright manifest        # оновити паспорт
 ./df playwright setup           # Qdrant чи пошук лише по словах
-./df playwright vectors         # залити корпус у docs-playwright (~75 хвилин)
+./df playwright vectors         # залити корпус у docs-playwright (~1 хвилина на відеокарті)
 ./df playwright smoke           # перевірки
 ```
 
-Найдовша частина `refresh` — документація репозиторію: спершу читаються дерева 73 тегів (журнал тим часом мовчить),
-потім пишуться 2 733 тексти, і великі файли довідника API йдуть повільно. README читаються по одному на кожну
+Найдовші частини `refresh` — документація репозиторію і сайт для .NET, близько години кожна: спершу читаються дерева
+74 тегів чи 53 комітів (журнал тим часом мовчить), потім пишуться 2 785 і 2 780 текстів, і великі файли довідника API
+йдуть повільно. README читаються по одному на кожну
 стабільну версію. Без `GITHUB_TOKEN` у `.env` анонімного ліміту GitHub API (60 звернень на годину) не вистачить уже на
 дерева. Довший за 30 хвилин крок із Claude Code запускають окремим процесом (`setsid nohup …`); обірваний `refresh`
 продовжується з `--missing`.
