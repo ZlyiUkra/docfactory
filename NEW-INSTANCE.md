@@ -372,6 +372,50 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   Guides of old releases kept in `older-versions*` folders beside the new ones get their lines by path
   (`path_versions` in `docfx`): otherwise the SignalR 1.x guide outranks its 2.x twin, and a search with a version
   finds neither.
+- **DocFX monikers without a version number** (learn.microsoft.com/sql: `sql-server-ver16`, `sql-server-linux-ver15`,
+  `azuresqldb-current`, `fabric`): the order of a product's versions cannot be read from the name, so the `docfx`
+  field `monikers` gives it as lists, one per product, as `learn.microsoft.com/api/familyTrees/bymoniker/<moniker>`
+  shows them; `moniker` may be a list (an edition "SQL Server 2022" is what the site shows for both
+  `sql-server-ver16` and `sql-server-linux-ver16`). The monikers of a page are its own `monikerRange`, else the
+  last matching glob of `build.fileMetadata.monikerRange` in `docfx.json`, else the group's `moniker_range`, minus
+  `exclude_monikers`; the page header wins over the folder glob. Check the rule against the site before the fetch:
+  every page carries `<meta name="monikers">` (64 random pages, 64 matches).
+- **A version the site has dropped** (SQL Server 2016 after its end of support): in a partial clone
+  (`--filter=blob:none --shallow-since=…`) count the files whose moniker expressions name it on the first-parent
+  commits of the publishing branch; the count stays flat and then falls with a «Retire … monikers» PR. The edition
+  comes from the last commit before that PR, with `link: "github"`.
+- **Product editions of the same pages** (Azure SQL Database, Managed Instance, Synapse, Fabric): measure first.
+  Each edition was thousands of documents, but only about a hundred pages differ in text; identical sections of one
+  `families` entry merge, so 85 thousand documents of ten editions gave about 120 thousand distinct excerpts. Count
+  the distinct excerpts with a streaming script before `vectors` — documents say little about the hours.
+- **A huge DocFX repository from a clone**: `tools/seed_git_store.py` seeds the text blobs of the commit, the tree in
+  API form and the files of the dependent repositories the pages reference as `~/../<folder>/…` (shallow partial
+  clones fetched by commit SHA, `git fetch --depth=1 --filter=blob:none origin <sha>`); then `build` writes 86
+  thousand documents in minutes. Pin the dependent repositories (`repos`) to commits; private ones
+  (`reusable-content`) stay out, and their includes drop.
+- **A repository whose full tree GitHub truncates** (SupportArticles-docs): the tree of one folder,
+  `git/trees/<commit>:support/sql?recursive=1`; `docfx` completes the paths back to the root.
+- **YAML pages**: take `YamlMime:FAQ` (questions as sections; a section named «Ignored» has no heading on the site),
+  leave Landing, Hub, toc and pivot lists — they are only links (`yaml_pages: true`).
+- **Previews with ordinary tags** (mssql-jdbc publishes previews as `v13.5.1`, flagged only on GitHub): `ghreleases`
+  field `stable: true`. In a changelog, let the version group of `changelog-regex` capture the word «Preview» and
+  `skip` it, so a preview entry does not glue onto the stable entry above it.
+- **Build variants inside a Maven version** (`13.6.1.jre8`, `13.6.1.jre11`): `pkg-registry` field `variant`, or every
+  version counts as a pre-release.
+- **Container image tags** (`mcr.microsoft.com/v2/<image>/tags/list`): reader `registry-tags` — a document per line
+  (the SQL Server year) with CU, GDR and OS variants sorted by number, not alphabetically (`CU10` before `CU2`).
+- **Vectors: the order of the batch decides the hours.** The model pads every batch of 32 excerpts to its longest
+  one; in sql-docs nearly every run of 32 consecutive excerpts held one of 300–512 tokens, and with the same mean
+  length as aspnetcore (155 tokens against 139) vectors went at 4.7 excerpts a second instead of 13. `server/setup`
+  now computes them shortest first (×2.3 on the CPU, the same vectors to the bit). With an NVIDIA card,
+  `fastembed-gpu` and `onnxruntime-gpu[cuda,cudnn]` in the instance's own venv make `common/embed.py` use CUDA
+  (~500–800 excerpts a second on an RTX 2070 in WSL, cosine with CPU vectors ≥ 0.99999); venvs with the plain
+  `onnxruntime` never take that branch.
+- **A crawl of thousands of pages** (`learn-archive`): one page that redirects outside the whitelist must fail
+  alone, not the whole listing (archive 2014 died after a thousand pages). The field `workers` fetches a wave of N
+  queued pages at once and parses them in order, so the listing is byte-identical; `trust_store` (a day) replays the
+  responses already in the raw store without a request after a restart — remove it afterwards, or updates never see
+  the site again.
 
 ## Anatomy of an instance
 
@@ -1042,6 +1086,49 @@ and what a taken port and a failed connection look like. A domain list in the ro
   (`title_from: "heading"` у `ghdocs`); вбудований чужий код (googletest у `src/`) відрізає `exclude`. Посібники
   старих випусків у теках `older-versions*` поряд з новими дістають лінії за шляхом (`path_versions` у `docfx`):
   інакше посібник SignalR 1.x виходить вище за свого двійника 2.x, а пошук з версією не бачить жодного.
+- **Монікери DocFX без номера версії** (learn.microsoft.com/sql: `sql-server-ver16`, `sql-server-linux-ver15`,
+  `azuresqldb-current`, `fabric`): порядок версій продукту з імені не прочитати, тож поле `monikers` читача `docfx`
+  дає його переліками, по одному на продукт, як їх показує `learn.microsoft.com/api/familyTrees/bymoniker/<монікер>`;
+  `moniker` може бути переліком (редакція «SQL Server 2022» — те, що сайт показує і для `sql-server-ver16`, і для
+  `sql-server-linux-ver16`). Монікери сторінки — її власний `monikerRange`, інакше останній збіг шаблону
+  `build.fileMetadata.monikerRange` у `docfx.json`, інакше `moniker_range` групи, мінус `exclude_monikers`; шапка
+  сторінки перемагає шаблон теки. Звірте правило із сайтом до завантаження: кожна сторінка несе
+  `<meta name="monikers">` (64 випадкові сторінки — 64 збіги).
+- **Версія, яку сайт уже прибрав** (SQL Server 2016 після кінця підтримки): у частковому клоні
+  (`--filter=blob:none --shallow-since=…`) порахувати файли, чиї вирази монікерів її називають, на комітах першого
+  батька гілки публікації; число стоїть рівно, а тоді падає з PR «Retire … monikers». Редакція — з останнього коміту
+  перед цим PR, з `link: "github"`.
+- **Редакції тих самих сторінок за продуктом** (Azure SQL Database, Managed Instance, Synapse, Fabric): спершу
+  заміряти. Кожна редакція — тисячі документів, але текстом різняться близько сотні сторінок; однакові розділи
+  одного запису `families` зливаються, і 85 тисяч документів десяти редакцій дали близько 120 тисяч неповторних
+  фрагментів. Неповторні фрагменти рахувати потоковим скриптом до `vectors` — кількість документів про години мало
+  що каже.
+- **Величезний репозиторій DocFX — з клону**: `tools/seed_git_store.py` кладе текстові blob-и коміту, дерево у вигляді
+  відповіді API і файли залежних репозиторіїв, на які сторінки посилаються «~/../<тека>/…» (неглибокі часткові
+  клони за SHA коміту, `git fetch --depth=1 --filter=blob:none origin <sha>`); далі `build` пише 86 тисяч документів
+  за хвилини. Залежні репозиторії (`repos`) закріплювати на комітах; приватні (`reusable-content`) лишаються поза
+  примірником, і їхні вставки випадають.
+- **Репозиторій, чиє повне дерево GitHub обрізає** (SupportArticles-docs): дерево однієї теки,
+  `git/trees/<коміт>:support/sql?recursive=1`; `docfx` доповнює шляхи назад до кореня.
+- **Сторінки YAML**: брати `YamlMime:FAQ` (питання — розділами; розділ «Ignored» сайт показує без заголовка),
+  лишати Landing, Hub, змісти й переліки варіантів — там самі посилання (`yaml_pages: true`).
+- **Передрелізи зі звичайним тегом** (mssql-jdbc публікує превʼю як `v13.5.1`, позначка лише на GitHub): поле
+  `stable: true` читача `ghreleases`. У журналі змін група версії `changelog-regex` хай захоплює слово «Preview», а
+  `skip` його відкидає — інакше запис превʼю приклеюється до сталого над ним.
+- **Варіанти збірки в номері версії Maven** (`13.6.1.jre8`, `13.6.1.jre11`): поле `variant` читача `pkg-registry`,
+  інакше кожна версія рахується передрелізом.
+- **Теги образу контейнера** (`mcr.microsoft.com/v2/<образ>/tags/list`): читач `registry-tags` — документ на лінію
+  (рік SQL Server) з CU, GDR і варіантами ОС за номером, а не за абеткою (`CU10` перед `CU2`).
+- **Вектори: години вирішує порядок у пачці.** Модель доповнює кожну пачку з 32 фрагментів до найдовшого; у sql-docs
+  майже кожні 32 фрагменти підряд мали один на 300–512 токенів, і за тієї самої середньої довжини, що в aspnetcore
+  (155 токенів проти 139), вектори йшли 4,7 фрагмента за секунду замість 13. `server/setup` тепер рахує їх від
+  коротких до довгих (×2,3 на процесорі, вектори ті самі до біта). З відеокартою NVIDIA `fastembed-gpu` і
+  `onnxruntime-gpu[cuda,cudnn]` у власному venv примірника вмикають CUDA в `common/embed.py` (~500–800 фрагментів за
+  секунду на RTX 2070 у WSL, косинус із процесорними ≥ 0,99999); venv зі звичайним `onnxruntime` цієї гілки не бачать.
+- **Обхід тисяч сторінок** (`learn-archive`): сторінка, що переадресовує за межі білого списку, мусить падати сама,
+  а не валити весь перелік (архів 2014 упав після тисячі сторінок). Поле `workers` тягне хвилю з N адрес черги разом
+  і розбирає по черзі, тож перелік той самий до байта; `trust_store` (день) після перезапуску бере відповіді, що вже
+  лежать у сховищі сирого, без звернення — потім його прибрати, інакше оновлення вже не побачить сайту.
 
 ## З чого складається примірник
 
@@ -1732,6 +1819,51 @@ errada.
   Guias de versões antigas em pastas `older-versions*` ao lado das novas recebem suas linhas pelo caminho
   (`path_versions` no `docfx`): senão o guia do SignalR 1.x sai acima do seu gêmeo 2.x, e uma busca com versão não
   acha nenhum.
+- **Monikers DocFX sem número de versão** (learn.microsoft.com/sql: `sql-server-ver16`, `sql-server-linux-ver15`,
+  `azuresqldb-current`, `fabric`): a ordem das versões de um produto não se lê do nome, então o campo `monikers` do
+  leitor `docfx` a dá em listas, uma por produto, como `learn.microsoft.com/api/familyTrees/bymoniker/<moniker>` as
+  mostra; `moniker` pode ser uma lista (a edição "SQL Server 2022" é o que o site mostra tanto para
+  `sql-server-ver16` quanto para `sql-server-linux-ver16`). Os monikers de uma página são o seu próprio
+  `monikerRange`, senão o último glob que casa em `build.fileMetadata.monikerRange` do `docfx.json`, senão o
+  `moniker_range` do grupo, menos `exclude_monikers`; o cabeçalho da página vence o glob da pasta. Confira a regra
+  com o site antes de baixar: toda página traz `<meta name="monikers">` (64 páginas aleatórias, 64 acertos).
+- **Uma versão que o site já retirou** (SQL Server 2016 após o fim do suporte): num clone parcial
+  (`--filter=blob:none --shallow-since=…`) conte os arquivos cujas expressões de moniker a nomeiam nos commits de
+  primeiro pai do branch de publicação; a contagem fica estável e cai com um PR «Retire … monikers». A edição vem do
+  último commit antes desse PR, com `link: "github"`.
+- **Edições das mesmas páginas por produto** (Azure SQL Database, Managed Instance, Synapse, Fabric): meça antes.
+  Cada edição tinha milhares de documentos, mas só uma centena de páginas difere no texto; seções idênticas de uma
+  entrada de `families` se fundem, e 85 mil documentos de dez edições deram cerca de 120 mil trechos distintos.
+  Conte os trechos distintos com um script em fluxo antes de `vectors` — o número de documentos diz pouco das horas.
+- **Um repositório DocFX enorme a partir de um clone**: `tools/seed_git_store.py` grava os blobs de texto do commit,
+  a árvore no formato da API e os arquivos dos repositórios dependentes que as páginas citam como `~/../<pasta>/…`
+  (clones parciais rasos buscados pelo SHA, `git fetch --depth=1 --filter=blob:none origin <sha>`); depois o `build`
+  escreve 86 mil documentos em minutos. Fixe os repositórios dependentes (`repos`) em commits; os privados
+  (`reusable-content`) ficam de fora, e seus includes caem.
+- **Um repositório cuja árvore completa o GitHub trunca** (SupportArticles-docs): a árvore de uma pasta,
+  `git/trees/<commit>:support/sql?recursive=1`; o `docfx` completa os caminhos de volta à raiz.
+- **Páginas YAML**: pegue `YamlMime:FAQ` (perguntas como seções; uma seção chamada «Ignored» não tem título no
+  site), deixe Landing, Hub, sumários e listas de variantes — são só links (`yaml_pages: true`).
+- **Pré-lançamentos com tag comum** (o mssql-jdbc publica previews como `v13.5.1`, marcados só no GitHub): campo
+  `stable: true` do `ghreleases`. Num changelog, deixe o grupo de versão do `changelog-regex` capturar a palavra
+  «Preview» e o `skip` descartá-la, ou a entrada de preview gruda na entrada estável acima.
+- **Variantes de build dentro de uma versão Maven** (`13.6.1.jre8`, `13.6.1.jre11`): campo `variant` do
+  `pkg-registry`, senão toda versão conta como pré-lançamento.
+- **Tags de imagem de contêiner** (`mcr.microsoft.com/v2/<imagem>/tags/list`): leitor `registry-tags` — um documento
+  por linha (o ano do SQL Server) com CU, GDR e variantes de SO ordenados por número, não alfabeticamente (`CU10`
+  antes de `CU2`).
+- **Vetores: a ordem do lote decide as horas.** O modelo completa cada lote de 32 trechos até o mais longo; no
+  sql-docs quase todo grupo de 32 trechos seguidos tinha um de 300–512 tokens, e com o mesmo comprimento médio do
+  aspnetcore (155 tokens contra 139) os vetores iam a 4,7 trechos por segundo em vez de 13. O `server/setup` agora os
+  calcula do mais curto ao mais longo (×2,3 na CPU, os mesmos vetores bit a bit). Com placa NVIDIA, `fastembed-gpu` e
+  `onnxruntime-gpu[cuda,cudnn]` no venv da própria instância ligam o CUDA no `common/embed.py` (~500–800 trechos por
+  segundo numa RTX 2070 no WSL, cosseno com os vetores de CPU ≥ 0,99999); venvs com o `onnxruntime` comum nunca entram
+  nesse ramo.
+- **Uma varredura de milhares de páginas** (`learn-archive`): uma página que redireciona para fora da lista branca
+  deve falhar sozinha, não derrubar a listagem inteira (o arquivo 2014 caiu depois de mil páginas). O campo `workers`
+  busca uma onda de N endereços da fila de uma vez e os processa em ordem, então a listagem é idêntica byte a byte;
+  `trust_store` (um dia), após um reinício, reaproveita as respostas que já estão no armazenamento bruto sem
+  requisição — retire-o depois, ou as atualizações nunca mais verão o site.
 
 ## Anatomia de uma instância
 
