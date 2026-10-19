@@ -13,8 +13,8 @@ nghttp2, nginx, node-mongodb, node-postgres, node-redis, nodejs, nodemailer, nuq
 openssl, opentelemetry, oracle-cloud, owasp, partysocket, patterns, playwright, postgrator, postgres-image,
 postgresql, prisma, react, react-hook-form, react-native, react-router, react-window, redis, redux, sentry, shadcn,
 socketio, sqlserver, storybook, stripe, supabase, swr, tailwind, tanstack-query, tanstack-router, tanstack-virtual,
-tesseract, testing-library, typescript, upstash, v8, viem, vite, vitest, wagmi, wasm, webdev, webstandards, zod,
-zustand.
+tesseract, testcontainers-dotnet, testing-library, typescript, upstash, v8, viem, vite, vitest, wagmi, wasm, webdev,
+webstandards, zod, zustand.
 
 ## Як читати таблиці
 
