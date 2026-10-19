@@ -60,7 +60,9 @@ activate it. An instance runs on one of two environments, both Linux (`bin/pytho
   `requirements/*.txt`; no instance has one now, all 110 run on the shared environment.
 
 Build a shared venv once, from the repository root (for `gpu`, the same with `gpu`; the GPU itself is not required —
-without one `onnxruntime-gpu` computes on the CPU with the same numbers):
+without one `onnxruntime-gpu` computes on the CPU with the same numbers, only the `vectors` step is far slower there —
+roughly hours for 60–150 thousand fragments and about a day for the largest corpus, dotnet, 540 thousand, against
+minutes on the GPU at ~800 fragments a second):
 
 ```
 python3 -m venv .venvs/cpu
