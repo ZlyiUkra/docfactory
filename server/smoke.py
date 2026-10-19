@@ -110,6 +110,25 @@ def main(argv: list[str]) -> int:
           and vectorstore.COLLECTION == (os.getenv("QDRANT_COLLECTION") or conf_name),
           f"config: {conf_name!r}, у коді: {vectorstore.COLLECTION!r}")
 
+    # 0b-3. Порт примірника не збігається з портом жодного іншого. Два сервери на
+    # одному порту разом не стартують, а адреса в .mcp.json одного з них вела б до
+    # чужої документації. Дубль 8868 (typeorm і dotnet-testing, 19.10.2026) саме так
+    # й лишився непоміченим до першого `serve`.
+    own_port = instance.config().get("port")
+    clash = []
+    for other_cfg in sorted(instance.root().parent.glob("*/config.json")):
+        if other_cfg.parent == instance.root():
+            continue
+        try:
+            other_port = _json.loads(other_cfg.read_text(encoding="utf-8")).get("port")
+        except (OSError, ValueError):
+            continue
+        if other_port == own_port:
+            clash.append(other_cfg.parent.name)
+    check("порт примірника не збігається з портом жодного іншого",
+          own_port is not None and not clash,
+          f"порт {own_port}" + (f" уже в: {', '.join(clash)}" if clash else ""))
+
     # 0c. Кожен читач відмовляється від сторінки, якої не впізнає, винятком — а
     # не повертає куций документ. Раніше два збирачі глав (_document_262 і
     # _document_402) не перевіряли нічого: заглушка «This page has moved.»
