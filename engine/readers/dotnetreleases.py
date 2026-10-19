@@ -46,10 +46,10 @@ def _json(ctx, url: str):
 
 
 def _release_body(r: dict, line: dict) -> str:
+    # Фаза й кінець підтримки — властивість лінії, а не випуску: повторені в кожному з трьохсот
+    # документів випусків, вони забирали всю видачу на запит «end of support» у документа лінії.
     out = [f"Release date: {r.get('release-date', '')}",
-           f"Release line: .NET {line.get('channel-version', '')} "
-           f"({(line.get('release-type') or '').upper()}, support phase: {line.get('support-phase', '')}"
-           + (f", end of support {line['eol-date']}" if line.get("eol-date") else "") + ")",
+           f"Release line: .NET {line.get('channel-version', '')}",
            f"Security release: {'yes' if r.get('security') else 'no'}", ""]
     cves = r.get("cve-list") or []
     if cves:
@@ -144,7 +144,9 @@ def dotnet_releases(source: dict, ctx) -> list[Item]:
         d, rels = data[ch]
 
         def line_doc(ch=ch, d=d, rels=rels):
-            head = [f".NET {ch} release type: {(d.get('release-type') or '').upper()}.",
+            kind = (d.get("release-type") or "").upper()
+            kind = {"LTS": "long-term support (LTS)", "STS": "standard-term support (STS)"}.get(kind, kind)
+            head = [f".NET {ch} release type: {kind}.",
                     f"Support phase: {d.get('support-phase', '')}"]
             if d.get("eol-date"):
                 head.append(f"End of support: {d['eol-date']}")
@@ -161,7 +163,8 @@ def dotnet_releases(source: dict, ctx) -> list[Item]:
                             f"{', '.join(_ver(s) for s in sdks)} | {_ver(r.get('aspnetcore-runtime'))} | "
                             f"{', '.join(x.get('cve-id', '') for x in r.get('cve-list') or [])} |")
             body = "\n".join(head) + "\n\n## Releases\n\n" + "\n".join(rows)
-            return _markup.document(f".NET {ch} releases and support", f"{blob}{ch}/releases.json",
+            return _markup.document(f".NET {ch} support phase, end of support and releases",
+                                    f"{blob}{ch}/releases.json",
                                     ctx.stamp, body, ch)
 
         name = f"line-{_markup.slug(ch)}"
