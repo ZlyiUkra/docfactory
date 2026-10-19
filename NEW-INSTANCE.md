@@ -561,6 +561,26 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   `onnxruntime` with `fastembed-gpu` and `onnxruntime-gpu[cuda,cudnn]` in the instance venv and start `vectors` again
   — it sees the points already computed as unchanged (here 76,800 of 153,060) and computes the rest; CPU and GPU
   numbers agree. Do not delete the collection.
+- **Updating an archived instance** (dotnet-testing, second round: +119 sources): unpack the archive back into the
+  instance folder and check the counts, add the sources, `refresh` only the new ones
+  (`./df <instance> refresh <id…>`), build the API reference from packages fetched beforehand into the raw store with
+  `build`, then `manifest`, the shared-key scan, `vectors` (it removes surplus points itself), `smoke`, `quality` and
+  a comparison with the first round's numbers. The new archive gets a new name (`…-b.tar.gz`), is extracted separately
+  and checked against the disk (`diff -r`); only then are the texts, `raw/` and the old archive deleted.
+- **A release entry and a changelog entry of one tag share a name when the tag has no «v»** (`1.0.0`: `ghreleases`
+  names the document after the tag, `changelog-regex` after the version): the shared-key scan found it on two
+  libraries, and the fix cost a re-fetch of 171 documents. Release names with a `name_prefix` such as
+  `<library>-release` do not collide with the changelog's.
+- **Tags of one repository in different spellings** («V6.3.1», «v6.2.0», «5.1.0»): `ghreleases` does not parse a
+  capital «V», so two sources — `ghreleases-stable` with `tag_prefix: "V"` and `ghreleases` with `skip: "^V"`; for
+  documentation from tags one source is enough, because `tags` is «real tag → version label».
+- **A package that changed its name** (AngleSharp.Scripting.JavaScript before 0.12 → AngleSharp.Js): tags, changelog
+  and releases of one repository go in two sources with different version labels, cutting off the other's versions
+  with a `skip` expression; the NuGet package of each name is its own source.
+- **An analyzer rule page identical on the site and in the repository** (NUnit.Analyzers: docs.nunit.org and
+  `documentation/` of the tags): the repository gets its own `name_prefix` (otherwise its README collides with the
+  NuGet package README), `slug_rewrite` maps the rule pages' keys to the site's, and one family in `families` puts the
+  section in the results once.
 
 ## Anatomy of an instance
 
@@ -1410,6 +1430,26 @@ and what a taken port and a failed connection look like. A domain list in the ro
   `fastembed` і `onnxruntime` на `fastembed-gpu` і `onnxruntime-gpu[cuda,cudnn]` і запустити `vectors` знову — уже
   пораховані точки він бачить незмінними (тут 76 800 з 153 060) і дораховує решту; числа процесора й відеокарти
   збігаються. Колекцію не видаляти.
+- **Оновлення архівного примірника** (dotnet-testing, друга черга: +119 джерел): розпакувати архів назад у теку
+  примірника й звірити лічильники, додати джерела, `refresh` лише нових (`./df <домен> refresh <id…>`), довідник API з
+  пакетів, докачаних заздалегідь у сховище сирого, — `build`, далі `manifest`, скан ключів, `vectors` (він сам
+  прибирає зайві точки), `smoke`, `quality` і порівняння з числами першої черги. Новий архів — під новою назвою
+  (`…-b.tar.gz`), розпакований окремо й звірений з диском (`diff -r`); лише тоді видаляють тексти, `raw/` і старий
+  архів.
+- **Запис релізу й запис журналу змін одного тегу ділять ім'я, коли тег без «v»** (`1.0.0`: `ghreleases` називає
+  документ за тегом, `changelog-regex` — за версією): скан спільних ключів знайшов це на двох бібліотеках, а
+  виправлення коштувало перезавантаження 171 документа. Імена релізів з `name_prefix` на кшталт `<бібліотека>-release`
+  не збігаються з іменами журналу.
+- **Теги одного репозиторію в різних написаннях** («V6.3.1», «v6.2.0», «5.1.0»): `ghreleases` велику «V» не розбирає,
+  тож два джерела — `ghreleases-stable` з `tag_prefix: "V"` і `ghreleases` зі `skip: "^V"`; для документації з тегів
+  досить одного джерела, бо `tags` — це «справжній тег → мітка версії».
+- **Пакет, що змінив ім'я** (AngleSharp.Scripting.JavaScript до 0.12 → AngleSharp.Js): теги, журнал і релізи одного
+  репозиторію йдуть двома джерелами з різною міткою версії, відсікаючи чужі версії виразом `skip`; пакет NuGet кожного
+  імені — окреме джерело.
+- **Сторінка правила аналізатора, однакова на сайті й у репозиторії** (NUnit.Analyzers: docs.nunit.org і
+  `documentation/` тегів): репозиторій дістає окремий `name_prefix` (інакше README збігається з README пакета NuGet),
+  а `slug_rewrite` зводить ключі сторінок правил до сайтових і одна родина в `families` ставить розділ у видачі на
+  одне місце.
 
 ## З чого складається примірник
 
@@ -2292,6 +2332,27 @@ errada.
   `fastembed-gpu` e `onnxruntime-gpu[cuda,cudnn]` no venv da instância e rode `vectors` de novo — ele vê os pontos já
   calculados como inalterados (aqui 76.800 de 153.060) e calcula o resto; os números da CPU e da GPU coincidem. Não
   apague a coleção.
+- **Atualizar uma instância arquivada** (dotnet-testing, segunda rodada: +119 fontes): desempacote o arquivo de volta
+  na pasta da instância e confira as contagens, acrescente as fontes, rode `refresh` só das novas
+  (`./df <instância> refresh <id…>`), monte a referência de API a partir de pacotes baixados antes para o armazém do
+  bruto com `build`, depois `manifest`, a varredura de chaves comuns, `vectors` (ele mesmo remove os pontos
+  excedentes), `smoke`, `quality` e a comparação com os números da primeira rodada. O arquivo novo recebe um nome novo
+  (`…-b.tar.gz`), é extraído à parte e conferido com o disco (`diff -r`); só então se apagam os textos, o `raw/` e o
+  arquivo antigo.
+- **Uma entrada de release e uma entrada de changelog da mesma tag têm o mesmo nome quando a tag não tem «v»**
+  (`1.0.0`: o `ghreleases` nomeia o documento pela tag, o `changelog-regex` pela versão): a varredura de chaves comuns
+  achou isso em duas bibliotecas, e a correção custou rebaixar 171 documentos. Nomes de release com `name_prefix` como
+  `<biblioteca>-release` não colidem com os do changelog.
+- **Tags de um repositório em grafias diferentes** («V6.3.1», «v6.2.0», «5.1.0»): o `ghreleases` não lê o «V»
+  maiúsculo, então duas fontes — `ghreleases-stable` com `tag_prefix: "V"` e `ghreleases` com `skip: "^V"`; para a
+  documentação por tags basta uma fonte, porque `tags` é «tag real → rótulo da versão».
+- **Um pacote que mudou de nome** (AngleSharp.Scripting.JavaScript até a 0.12 → AngleSharp.Js): tags, changelog e
+  releases de um repositório vão em duas fontes com rótulos de versão diferentes, cortando as versões do outro com uma
+  expressão `skip`; o pacote NuGet de cada nome é uma fonte própria.
+- **Uma página de regra de analisador igual no site e no repositório** (NUnit.Analyzers: docs.nunit.org e
+  `documentation/` das tags): o repositório ganha um `name_prefix` próprio (senão o README colide com o README do
+  pacote NuGet), o `slug_rewrite` leva as chaves das páginas de regra às do site e uma família em `families` põe a
+  seção uma vez só nos resultados.
 
 ## Anatomia de uma instância
 
