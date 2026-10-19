@@ -22,7 +22,11 @@
                  pymdownx.snippets з `dedent_subsections: true` (див. нижче),
                  `include_dir` — тека для `{% include 'x.yaml' %}` (mkdocs-macros), `skip_includes`
                  — вирази вставок, що не беруться (рекламний блок на кожній сторінці),
-                 `variables` — файл змінних `[[VAR::ім'я]]` у теці версії (docusaurus).
+                 `variables` — файл змінних `[[VAR::ім'я]]` у теці версії (docusaurus),
+                 `site` — об'єкт «вираз шляху → адреса сторінки сайту» (`\\1` — група
+                 виразу), як у `ghdocs-history`: документ, чий шлях від кореня цілком збігся з
+                 виразом, цитує сторінку сайту, решта — blob на GitHub у своєму тезі. Сайт не
+                 читається, текст і далі береться з raw.githubusercontent.com.
 
 `snippet_sections`. Сайт Testcontainers for .NET не переписує прикладів у сторінку, а вставляє їх
 із тестів: `--8<-- "tests/…/PostgreSqlContainerTest.cs:UsePostgreSqlContainer"` — це лише рядки
@@ -554,6 +558,7 @@ def site_history(source: dict, ctx) -> list[Item]:
                                               "rst": (".rst",)}.get(fmt, (".md",)))
     exclude = [re.compile(r) for r in source.get("exclude") or ()]
     label = source.get("label", "")
+    pages = [(re.compile(k), v) for k, v in (source.get("site") or {}).items()]
     site = _Site(source, ctx)
 
     units: list[_Unit] = []
@@ -616,8 +621,9 @@ def site_history(source: dict, ctx) -> list[Item]:
             if name in names:
                 continue
             names.add(name)
-            blob = (f"https://github.com/{site.owner}/{site.repo}/blob/"
-                    f"{quote(unit.ref, safe='@')}/{quote(path)}")
+            blob = next((m.expand(v) for r, v in pages if (m := r.fullmatch(path))), "") or (
+                f"https://github.com/{site.owner}/{site.repo}/blob/"
+                f"{quote(unit.ref, safe='@')}/{quote(path)}")
 
             def make(unit=unit, path=path, sha=sha, blob=blob, raw=raw, rel=rel):
                 text = site.page(unit.ref, path, sha)
