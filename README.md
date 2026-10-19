@@ -2281,6 +2281,32 @@ XML-документації пакета) і `nuget-package` (реєстр NuGe
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/aspnetcore/README.md](instances/aspnetcore/README.md).
 
+### sqlserver
+
+Документація Microsoft SQL Server і Azure SQL англійською: сайт learn.microsoft.com/sql у кожній редакції — SQL
+Server 2017, 2019, 2022 і 2025 разом із SQL Server on Linux, SQL Server 2016 з останнього коміту перед вирізанням його
+монікера, і ті самі сторінки для Azure SQL Database, Managed Instance, Synapse, Fabric Data Warehouse і SQL database у
+Fabric (T-SQL, рушій бази, резервні копії, групи доступності, безпека, Linux і контейнери, драйвери, SSMS, SSRS,
+SSIS, MDX/DMX, SSMA); learn.microsoft.com/azure/azure-sql трьома редакціями і /data-migration; статті підтримки
+learn.microsoft.com/troubleshoot/sql; архів Books Online SQL Server 2014, 2012, 2008 R2, 2008 і 2005 з
+previous-versions; пакети `mssql` і `tedious` (README кожної сталої версії), `Microsoft.Data.SqlClient`,
+`mssql-python`, `mssql-jdbc`; теги образу `mcr.microsoft.com/mssql/server`; sql-server-samples; журнали змін і релізи
+go-sqlcmd, DacFx, SqlClient, mssql-jdbc, mssql-python, node-mssql, tedious і розширення MSSQL для VS Code. Нові читачі
+`learn-archive` (архів previous-versions, що лишився лише сторінками) і `registry-tags` (теги образу з реєстру OCI);
+`docfx` навчився монікерів без номера (`sql-server-ver16`, `azuresqldb-current`) з монікерами тек із docfx.json.
+Вектори — на відеокарті (у venv цього примірника `fastembed-gpu`). 159 532 документи, 353 420 фрагментів.
+
+- порт `8864`; запис у Claude Code — `sqlserver-docs`, адреса `http://127.0.0.1:8864/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-sqlserver`, модель векторів — `bge-small`;
+- версія — рік SQL Server (`version: "2022"`, `"2008 R2"`), назва хмарного продукту (`"azure-sql-database"`,
+  `"fabric-sql-database"`) або драйвер чи інструмент з назвою (`"mssql-12.7"`, `"sqlclient-7.1"`, `"jdbc-13.6"`);
+  статті підтримки, data-migration і приклади шукають без версії; без названої версії — SQL Server 2025;
+- приклад питання агентові: `./df sqlserver ask "How do I restore a database to a point in time with RESTORE LOG
+  STOPAT?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/sqlserver/README.md](instances/sqlserver/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
