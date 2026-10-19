@@ -481,6 +481,19 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
 - **Two numberings in one instance** (.NET 8.0 and C# 8): the language carries `csharp-` (`csharp-7` for an edition
   of the standard, `csharp-12.0` for feature specifications). `ghdocs` takes `…/git/trees/TAG:FOLDER` for repositories
   whose full tree GitHub truncates (dotnet/runtime, dotnet/roslyn) and encodes spaces and `#` in file names.
+- **Code samples of a DocFX site's dependent repositories** (dotnet/docs until 2020: dotnet/samples laid next to the
+  repository as `samples/`): take each snapshot's `.openpublishing.publish.config.json`, point the folder at the
+  repository's last commit before the snapshot day through `repos` of `docfx` (a dependent repository that itself kept
+  everything in a subfolder gets it as a suffix: `dotnet/samples/<sha>/samples`) and seed only the files the pages
+  reference, from a blobless clone. Paths with spaces need `quote_paths: true`: the seeded store keys are encoded, and
+  without the field 870 ADO.NET samples per snapshot fell out.
+- **`slug_rewrite` from a DocFX site's redirection files** (`.openpublishing.redirection.*.json` of every snapshot plus
+  git renames between snapshots): follow the chain to a page alive on the newest branch and keep a pair only when the
+  two pages never stand in one snapshot and share a title or the end of the path — about a third of the redirections
+  lead to a general section page and are dropped. 1,880 anchored rules add two minutes to the passage cache build.
+- **Measure before changing a reader**: one process with the index loaded (`server.quality` with
+  `profile.MAX_PER_DOC`/`FUSION_DEPTH` patched, or a filter wrapped around `spec_mcp._dedup` for dropping a kind of
+  section) measures every variant in minutes; only what wins goes into the reader or `config.json`.
 
 ## Anatomy of an instance
 
@@ -1254,6 +1267,19 @@ and what a taken port and a failed connection look like. A domain list in the ro
 - **Дві нумерації в одному примірнику** (.NET 8.0 і C# 8): мова несе `csharp-` (`csharp-7` — видання стандарту,
   `csharp-12.0` — специфікації можливостей). `ghdocs` бере `…/git/trees/ТЕГ:ТЕКА` для репозиторіїв, чиє повне дерево
   GitHub обрізає (dotnet/runtime, dotnet/roslyn), і кодує пробіли й «#» в іменах файлів.
+- **Приклади коду залежних репозиторіїв сайту DocFX** (dotnet/docs до 2020 року: dotnet/samples лежав поруч як
+  `samples/`): з `.openpublishing.publish.config.json` кожного знімка теку ведуть полем `repos` читача `docfx` на
+  останній коміт того репозиторію перед днем знімка (якщо він сам тримав усе в підтеці — з суфіксом:
+  `dotnet/samples/<sha>/samples`) і засівають з часткового клону лише файли, на які посилаються сторінки. Шляхам з
+  пробілами потрібне `quote_paths: true`: ключі засіяного сховища кодовані, і без поля випадало 870 прикладів ADO.NET
+  на кожен знімок.
+- **`slug_rewrite` з файлів перенаправлень сайту DocFX** (`.openpublishing.redirection.*.json` усіх знімків і
+  перейменування git між знімками): ланцюжком до сторінки, живої на найновішій гілці; пару лишають, лише коли сторінки
+  ніколи не стоять в одному знімку й мають спільну назву чи кінець адреси, — близько третини перенаправлень веде на
+  загальну сторінку розділу й відкидається. 1 880 правил з якорями додають до збирання кешу фрагментів дві хвилини.
+- **Заміряти, перш ніж міняти читача**: один процес із завантаженим індексом (`server.quality` з підміненими
+  `profile.MAX_PER_DOC`/`FUSION_DEPTH` чи з відсівом роду розділів обгорткою над `spec_mcp._dedup`) міряє кожен
+  варіант за хвилини; у читач чи `config.json` іде лише те, що виграє.
 
 ## З чого складається примірник
 
@@ -2054,6 +2080,20 @@ errada.
 - **Duas numerações numa instância** (.NET 8.0 e C# 8): a linguagem leva `csharp-` (`csharp-7` para uma edição do
   padrão, `csharp-12.0` para especificações de recursos). O `ghdocs` aceita `…/git/trees/TAG:PASTA` para repositórios
   cuja árvore completa o GitHub trunca (dotnet/runtime, dotnet/roslyn) e codifica espaços e `#` nos nomes.
+- **Exemplos de código dos repositórios dependentes de um site DocFX** (dotnet/docs até 2020: o dotnet/samples ficava ao
+  lado como `samples/`): a partir do `.openpublishing.publish.config.json` de cada snapshot, aponte a pasta pelo campo
+  `repos` do `docfx` para o último commit desse repositório antes do dia do snapshot (se ele mesmo guardava tudo numa
+  subpasta, com sufixo: `dotnet/samples/<sha>/samples`) e semeie de um clone parcial só os arquivos que as páginas
+  citam. Caminhos com espaços pedem `quote_paths: true`: as chaves do armazém semeado são codificadas, e sem o campo
+  sumiam 870 exemplos de ADO.NET por snapshot.
+- **`slug_rewrite` a partir dos arquivos de redirecionamento de um site DocFX** (`.openpublishing.redirection.*.json` de
+  todos os snapshots e renomeações do git entre snapshots): siga a cadeia até uma página viva no ramo mais novo e
+  mantenha o par só quando as páginas nunca estão no mesmo snapshot e compartilham o título ou o fim do endereço —
+  cerca de um terço dos redirecionamentos leva a uma página geral da seção e é descartado. 1.880 regras ancoradas
+  somam dois minutos à montagem do cache de fragmentos.
+- **Medir antes de mudar o leitor**: um processo com o índice carregado (`server.quality` com
+  `profile.MAX_PER_DOC`/`FUSION_DEPTH` trocados, ou um filtro em volta do `spec_mcp._dedup` para descartar um tipo de
+  seção) mede cada variante em minutos; só o que ganha vai para o leitor ou o `config.json`.
 
 ## Anatomia de uma instância
 
