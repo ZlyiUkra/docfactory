@@ -124,25 +124,12 @@ webdev, webstandards, zod, zustand.
 1. Prometheus і Grafana.
 2. Факультатив: OpenZeppelin.
 
-### Спільне для лінії 1
-
-Redis (29 згадок у NestJS, 14 у Next.js) і BullMQ (8) закрито родиною Redis: `redis`, `ioredis`, `node-redis`, `bullmq`
-(15–16.10.2026) і `upstash` (16.10.2026) — сервер, клієнти, черги й керована платформа з Redis по HTTP.
-
-MongoDB і Mongoose (рядок «знати, що існує» плану NestJS — інша база замість PostgreSQL у Ф3) закрито родиною
-Mongo: `mongodb` (сервер усіх ліній 2.2–9.0, mongosh, Database Tools), `node-mongodb` (офіційний драйвер Node.js і
-bson) і `mongoose` (ODM з `@nestjs/mongoose`, Typegoose, memory-server і плагінами) — 16–17.10.2026. План їх не вчить;
-сервери відповідають, коли проєкт на MongoDB.
-
 ### Лінія 2
 
-Прогалин, для яких варто збирати примірник, не лишилося: nginx (30 згадок у Linux, 7 у Docker, 3 у Kubernetes) має
-примірник `nginx` з 07.10.2026.
+Прогалин, для яких варто збирати примірник, не лишилося.
 
 Свідомо без примірника — план їх лише згадує або ставить однією командою: CNI (Calico, Cilium, Flannel), HAProxy,
-Podman, libvirt і QEMU, MetalLB, CloudNativePG, Trivy, Prometheus. etcd і containerd з `crictl` окремого примірника
-не потребують: їх покриває примірник `kubernetes` — `Operating etcd clusters for Kubernetes`, `Debugging Kubernetes
-nodes with crictl`, `Container Runtimes`.
+Podman, libvirt і QEMU, MetalLB, CloudNativePG, Trivy, Prometheus.
 
 ### Astro
 

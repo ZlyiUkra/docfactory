@@ -1263,7 +1263,9 @@ Let's Encrypt і програми іспитів CNCF. Про інші бібл�
 **Є примірник** — питати його сервер документації:
 
 - Kubernetes 1.0–1.37, k3s, k3d, Gateway API, Traefik, cert-manager, Helm, Kustomize, книга kubectl, SOPS, age,
-  metrics-server, Let's Encrypt, програми іспитів CNCF — `kubernetes`;
+  metrics-server, Let's Encrypt, програми іспитів CNCF; etcd (резервна копія й відновлення), containerd і `crictl`
+  (`Operating etcd clusters for Kubernetes`, `Container Runtimes`, `Debugging Kubernetes nodes with crictl`) —
+  `kubernetes`;
 - тексти стандартів (OpenID Connect для входу в кластер) — `webstandards`;
 - Docker і Compose — `docker`; Linux: man-сторінки, systemd, мережа — `linux`;
 - PostgreSQL — база наскрізного проєкту (`psql`, `pg_dump`, налаштування сервера) — `postgresql`;
