@@ -87,7 +87,7 @@ tar -xzf /mnt/c/Distr/patterns-corpus-2026-10-08.tar.gz -C instances/patterns
 Повторити (на іншій машині, з тими самими файлами книг) — з кореня `docfactory/`:
 
 ```
-instances/patterns/.venv/bin/python instances/patterns/books.py --books /mnt/c/Books/docfactory/patterns
+.venvs/cpu/bin/python instances/patterns/books.py --books /mnt/c/Books/docfactory/patterns
 ./df patterns manifest
 ./df patterns vectors
 ```
@@ -114,9 +114,10 @@ instances/patterns/.venv/bin/python instances/patterns/books.py --books /mnt/c/B
 - `prompts/` — описи інструментів для моделі, системний промпт власного агента, текст відмови.
 - `checks.json` — чим `smoke` і `quality` перевіряють саме цей корпус.
 - `.env` — ключ Anthropic (лише для кроку `ask`); `.mcp.json` — запис HTTP-сервера для Claude Code.
-- `.venv/` — власний venv примірника; `requirements.txt` — його склад.
+- `requirements.txt` — склад пакетів примірника; працює спільне середовище з кореня (власний `.venv` — лише якщо
+  бракує пакетів зі спільних наборів).
 
-Кроки нижче, окрім установки venv, запускаються з кореня фабрики (`docfactory/`) через `./df patterns <крок>`.
+Кроки нижче запускаються з кореня фабрики (`docfactory/`) через `./df patterns <крок>`.
 
 ## Звідки документація
 
@@ -160,14 +161,10 @@ GRASP, з главами книг Ларманa й Мартіна. Немає а
 
 ## Установка venv
 
-```
-cd instances/patterns
-python3 -m venv .venv
-.venv/bin/python -m pip install -U pip
-.venv/bin/python -m pip install -r requirements.txt
-cp .env.example .env          # якщо потрібен крок ask, впишіть ANTHROPIC_API_KEY
-cd ../..
-```
+Власний venv цьому примірнику не потрібен: `./df patterns …` бере спільне середовище з кореня репозиторію
+(`.venvs/cpu` або `.venvs/gpu`). Як його збудувати один раз і як `df` обирає між ними — у кореневому README.md,
+розділ «Спільне середовище». Свій `.env` примірник тримає в `instances/patterns/.env` (`cp .env.example .env`;
+для кроку `ask` потрібен `ANTHROPIC_API_KEY`); `GITHUB_TOKEN`, якого немає в цьому `.env`, береться з кореневого.
 
 ## Збирання корпусу
 
@@ -216,8 +213,9 @@ Claude Code відкрито раніше, ніж піднято сервер, �
 ## На іншій машині
 
 Інше вікно VS Code на тій самій машині нічого, крім кроків 1–3 вище, не потребує: сервер один, клієнтів скільки
-завгодно. На іншій машині (теж WSL) бракує venv примірника, корпусу й векторів у Qdrant — їх немає в git:
+завгодно. На іншій машині (теж WSL) бракує спільного середовища (`.venvs`), корпусу й векторів у Qdrant — їх немає в
+git:
 
-1. venv — за розділом «Установка venv» вище;
+1. середовище — спільне, з кореня: розділ «Установка venv» вище;
 2. корпус і пошук — за розділом «Збирання корпусу» (`setup --vectors` з Docker або `setup --no-vectors` без нього);
 3. `./df patterns smoke`, `./df patterns serve` і кроки 2–3 розділу «Сервер під Claude Code».

@@ -65,9 +65,10 @@ to Next Paint) — як швидко сторінка відповідає на 
 - `checks.json` — чим `smoke` і `quality` перевіряють саме цей корпус.
 - `.env` — ключ Anthropic (лише для кроку `ask`) і токен GitHub (тут не потрібен: усе йде з web.dev, реєстру npm і
   raw.githubusercontent.com); `.mcp.json` — запис HTTP-сервера для Claude Code.
-- `.venv/` — власний venv примірника; `requirements.txt` — його склад.
+- `requirements.txt` — склад пакетів примірника; працює спільне середовище з кореня (власний `.venv` — лише якщо
+  бракує пакетів зі спільних наборів).
 
-Кроки нижче, окрім установки venv, запускаються з кореня фабрики (`docfactory/`) через `./df webdev <крок>`.
+Кроки нижче запускаються з кореня фабрики (`docfactory/`) через `./df webdev <крок>`.
 
 ## Звідки документація
 
@@ -163,14 +164,10 @@ tar -xzf ~/archives/docfactory/webdev-corpus-РРРР-ММ-ДД.tar.gz -C instan
 
 ## Установка venv
 
-```
-cd instances/webdev
-python3 -m venv .venv
-.venv/bin/python -m pip install -U pip
-.venv/bin/python -m pip install -r requirements.txt
-cp .env.example .env          # якщо потрібен крок ask, впишіть ANTHROPIC_API_KEY
-cd ../..
-```
+Власний venv цьому примірнику не потрібен: `./df webdev …` бере спільне середовище з кореня репозиторію
+(`.venvs/cpu` або `.venvs/gpu`). Як його збудувати один раз і як `df` обирає між ними — у кореневому README.md,
+розділ «Спільне середовище». Свій `.env` примірник тримає в `instances/webdev/.env` (`cp .env.example .env`;
+для кроку `ask` потрібен `ANTHROPIC_API_KEY`); `GITHUB_TOKEN`, якого немає в цьому `.env`, береться з кореневого.
 
 ## Збирання корпусу
 

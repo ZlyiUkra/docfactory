@@ -183,7 +183,7 @@ tar -xzf ~/archives/docfactory/sqlserver-corpus-2026-10-19.tar.gz -C instances/s
 ```
 git clone --bare --filter=blob:none --shallow-since=<дата> --single-branch --branch live \
     https://github.com/MicrosoftDocs/sql-docs.git /шлях/sql-docs.git
-instances/sqlserver/.venv/bin/python tools/seed_git_store.py --instance sqlserver \
+.venvs/cpu/bin/python tools/seed_git_store.py --instance sqlserver \
     --clone MicrosoftDocs/sql-docs=/шлях/sql-docs.git --clone dotnet/SqlClient=/шлях/SqlClient.git …
 ./df sqlserver build docs-2016 docs-2017 … data-migration
 ```
@@ -196,17 +196,10 @@ sql-docs і додають редакцію-джерело в родину `sql`
 
 ## Установка venv
 
-```
-cd instances/sqlserver
-python3 -m venv .venv
-.venv/bin/python -m pip install -U pip
-.venv/bin/python -m pip install -r requirements.txt
-cp .env.example .env          # впишіть GITHUB_TOKEN і, якщо потрібен крок ask, ANTHROPIC_API_KEY
-cd ../..
-```
-
-`requirements.txt` ставить збірку для відеокарти (~2,3 ГБ коліс CUDA). На машині без NVIDIA можна поставити замість
-двох рядків `fastembed-gpu` і `onnxruntime-gpu` звичайний `fastembed>=0.8,<1`: вектори ті самі, лише повільніше.
+Власний venv цьому примірнику не потрібен: `./df sqlserver …` бере спільне середовище з кореня репозиторію
+(`.venvs/cpu` або `.venvs/gpu`). Як його збудувати один раз і як `df` обирає між ними — у кореневому README.md,
+розділ «Спільне середовище». Свій `.env` примірник тримає в `instances/sqlserver/.env` (`cp .env.example .env`;
+для кроку `ask` потрібен `ANTHROPIC_API_KEY`); `GITHUB_TOKEN`, якого немає в цьому `.env`, береться з кореневого.
 
 ## Збирання корпусу
 

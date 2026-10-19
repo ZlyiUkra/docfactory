@@ -74,13 +74,11 @@ print(json.load(sys.stdin)['gitHead'])"`.
 
 ## 2. Збирання з нуля
 
-На новій машині чи після втрати корпусу:
+На новій машині чи після втрати корпусу (venv — спільний, з кореня, власний не потрібен: розділ «Спільне середовище»
+кореневого README.md):
 
 ```
 cd instances/partysocket
-python3 -m venv .venv
-.venv/bin/python -m pip install -U pip
-.venv/bin/python -m pip install -r requirements.txt
 cp .env.example .env          # GITHUB_TOKEN обов'язково: без нього GitHub дає 60 звернень на годину
 cd ../..
 ./df partysocket refresh      # ~15 хвилин

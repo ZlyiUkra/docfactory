@@ -71,9 +71,10 @@ experimental-збіркою, — за довідником API, журналам
 - `checks.json` — чим `smoke` і `quality` перевіряють саме цей корпус.
 - `.env` — ключ Anthropic (лише для кроку `ask`) і токен GitHub (лише для завантаження корпусу, див. нижче);
   `.mcp.json` — запис HTTP-сервера для Claude Code.
-- `.venv/` — власний venv примірника; `requirements.txt` — його склад.
+- `requirements.txt` — склад пакетів примірника; працює спільне середовище з кореня (власний `.venv` — лише якщо
+  бракує пакетів зі спільних наборів).
 
-Кроки нижче, окрім установки venv, запускаються з кореня фабрики (`docfactory/`) через `./df react-router <крок>`.
+Кроки нижче запускаються з кореня фабрики (`docfactory/`) через `./df react-router <крок>`.
 
 ## Звідки документація
 
@@ -186,17 +187,10 @@ instances/react-router/index/passages.json.gz`, далі `./df react-router vect
 
 ## Установка venv
 
-Єдиний крок, що робиться зсередини цієї теки, — і після нього треба повернутися в корінь. Активувати venv не
-потрібно ані зараз, ані потім: `df` сам викликає `.venv/bin/python` примірника на кожному кроці.
-
-```
-cd instances/react-router
-python3 -m venv .venv
-.venv/bin/python -m pip install -U pip
-.venv/bin/python -m pip install -r requirements.txt
-cp .env.example .env          # впишіть GITHUB_TOKEN і, якщо потрібен крок ask, ANTHROPIC_API_KEY
-cd ../..                      # назад у корінь фабрики: усі кроки df — тільки звідти
-```
+Власний venv цьому примірнику не потрібен: `./df react-router …` бере спільне середовище з кореня репозиторію
+(`.venvs/cpu` або `.venvs/gpu`). Як його збудувати один раз і як `df` обирає між ними — у кореневому README.md,
+розділ «Спільне середовище». Свій `.env` примірник тримає в `instances/react-router/.env` (`cp .env.example .env`;
+для кроку `ask` потрібен `ANTHROPIC_API_KEY`); `GITHUB_TOKEN`, якого немає в цьому `.env`, береться з кореневого.
 
 ## Збирання корпусу
 

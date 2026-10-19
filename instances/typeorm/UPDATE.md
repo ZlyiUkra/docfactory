@@ -58,7 +58,7 @@ docs`), пари «старе ім'я → нове» дописують у `slug
 ./df typeorm sources --why
 ./df typeorm list > /dev/null
 git clone --bare --filter=blob:none https://github.com/typeorm/typeorm.git /tmp/typeorm.git
-instances/typeorm/.venv/bin/python tools/seed_git_store.py --instance typeorm --clone typeorm/typeorm=/tmp/typeorm.git
+.venvs/cpu/bin/python tools/seed_git_store.py --instance typeorm --clone typeorm/typeorm=/tmp/typeorm.git
 ./df typeorm build src tests codemod-src
 ./df typeorm refresh docs-v1 docs-v0 readme-typeorm npm-typeorm npm-codemod readme-codemod changelog releases
 ./df typeorm manifest

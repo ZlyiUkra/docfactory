@@ -58,7 +58,8 @@ API з XML-документації цих пакетів для кожної м
   і `max_per_doc: 3`.
 - `prompts/` — описи інструментів для моделі, системний промпт власного агента, текст відмови.
 - `checks.json` — чим `smoke` і `quality` перевіряють саме цей корпус.
-- `requirements.txt` — склад venv, зокрема `fastembed-gpu` і `onnxruntime-gpu` з колесами CUDA.
+- `requirements.txt` — склад пакетів, зокрема `fastembed-gpu` і `onnxruntime-gpu` з колесами CUDA; працює спільне
+  середовище з кореня (власний `.venv` — лише якщо бракує пакетів зі спільних наборів).
 - `.env` — токен GitHub і, для кроку `ask`, ключ Anthropic; `.mcp.json` — запис HTTP-сервера для Claude Code.
 
 Кроки нижче запускаються з кореня фабрики через `./df nuget <крок>`.
@@ -187,16 +188,10 @@ tar -xzf ~/archives/docfactory/nuget-corpus-2026-10-19.tar.gz -C instances/nuget
 
 ## Установка venv
 
-```
-cd instances/nuget
-python3 -m venv .venv
-.venv/bin/python -m pip install -U pip
-.venv/bin/python -m pip install -r requirements.txt     # ~2,6 ГБ: onnxruntime-gpu і колеса CUDA
-cp .env.example .env          # впишіть GITHUB_TOKEN і, якщо потрібен крок ask, ANTHROPIC_API_KEY
-cd ../..
-```
-
-Без відеокарти `onnxruntime-gpu` рахує на процесорі тими самими числами; тоді `vectors` іде години, а не хвилини.
+Власний venv цьому примірнику не потрібен: `./df nuget …` бере спільне середовище з кореня репозиторію
+(`.venvs/cpu` або `.venvs/gpu`). Як його збудувати один раз і як `df` обирає між ними — у кореневому README.md,
+розділ «Спільне середовище». Свій `.env` примірник тримає в `instances/nuget/.env` (`cp .env.example .env`;
+для кроку `ask` потрібен `ANTHROPIC_API_KEY`); `GITHUB_TOKEN`, якого немає в цьому `.env`, береться з кореневого.
 
 ## Збирання корпусу
 

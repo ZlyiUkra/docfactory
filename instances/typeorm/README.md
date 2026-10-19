@@ -74,9 +74,10 @@ limit — дослівно про неї) і розділами «Supported isol
 - `checks.json` — чим `smoke` і `quality` перевіряють саме цей корпус.
 - `.env` — токен GitHub (дерева тегів, релізи) і, для кроку `ask`, ключ Anthropic; `.mcp.json` — запис HTTP-сервера
   для Claude Code.
-- `.venv/` — власний venv примірника; `requirements.txt` — його склад (без GPU: вектори рахує процесор).
+- `requirements.txt` — склад пакетів примірника (без GPU: вектори рахує процесор); працює спільне середовище з кореня
+  (власний `.venv` — лише якщо бракує пакетів зі спільних наборів).
 
-Кроки нижче, окрім установки venv, запускаються з кореня фабрики (`docfactory/`) через `./df typeorm <крок>`.
+Кроки нижче запускаються з кореня фабрики (`docfactory/`) через `./df typeorm <крок>`.
 
 ## Звідки документація
 
@@ -186,14 +187,10 @@ tar -xzf ~/archives/docfactory/typeorm-corpus-2026-10-19.tar.gz -C instances/typ
 
 ## Установка venv
 
-```
-cd instances/typeorm
-python3 -m venv .venv
-.venv/bin/python -m pip install -U pip
-.venv/bin/python -m pip install -r requirements.txt
-cp .env.example .env          # GITHUB_TOKEN — для дерев тегів; ANTHROPIC_API_KEY — для кроку ask
-cd ../..
-```
+Власний venv цьому примірнику не потрібен: `./df typeorm …` бере спільне середовище з кореня репозиторію
+(`.venvs/cpu` або `.venvs/gpu`). Як його збудувати один раз і як `df` обирає між ними — у кореневому README.md,
+розділ «Спільне середовище». Свій `.env` примірник тримає в `instances/typeorm/.env` (`cp .env.example .env`;
+для кроку `ask` потрібен `ANTHROPIC_API_KEY`); `GITHUB_TOKEN`, якого немає в цьому `.env`, береться з кореневого.
 
 ## Збирання корпусу
 
