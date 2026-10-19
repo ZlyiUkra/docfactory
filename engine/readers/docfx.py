@@ -64,6 +64,9 @@ signalr-1.2»); сторінка без такої пари бере `version` �
 позначає фрагмент «// <SnippetAssignment>»; без поля такий приклад випадає. `quote_paths: true` — шлях у
 адресі файла кодується так само, як його кладе в сховище засів з клону, а приклад з пробілом у шляху
 («…/DataWorks SqlClient.HelloWorld/CS/source.cs») знаходиться; без поля такі приклади випадали.
+`title_from: "heading"` — сторінка без поля `title` у шапці бере назву з першого заголовка «# …»: docs.nunit.org
+пише в шапці лише `uid` («attribute-testcase»), і без поля назвою документа ставав саме він, а «# TestCase» —
+першим розділом; з полем той самий заголовок стає й назвою для посилань `xref`. Без поля — як було.
 
 Розмітка DocFX, яку читач розгортає до тексту:
 - «[!INCLUDE[…](шлях)]» — вставка, теж зі своїми блоками версій і вставками;
@@ -123,6 +126,8 @@ _ALERT = re.compile(r"\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]", re.I)
 _DIV = re.compile(r"^\s*>?\s*\[!(?:div|VIDEO)\b[^\]]*\]\s*$", re.I)
 _FENCE = re.compile(r"^\s*(```+|~~~+)")
 _HR = re.compile(r"^\s*-{3,}\s*$")
+# Перший заголовок першого рівня поза огорожами коду — для поля `title_from: "heading"`.
+_H1 = re.compile(r"^#[ \t]+(\S.*?)[ \t]*#*[ \t]*$")
 _PIVOT = re.compile(r"^\s*-\s+id:\s*(\S+)\s*\n\s+title:\s*(.+?)\s*$", re.M)
 # Позначка фрагмента в коментарі будь-якої мови прикладу: «// <snippet_1>»,
 # «<!-- </snippet_1> -->», «@* <snippet_1> *@», «# <snippet_1>». Без коментаря рядок
@@ -531,6 +536,25 @@ def snippet(text: str, name: str = "", rng: str = "", start: str = "", end: str 
     return body or None
 
 
+def _first_heading(body: str) -> tuple[str, str] | None:
+    """(назва, тіло без цього рядка) за першим «# …» поза огорожами коду; None — такого немає."""
+    lines = body.split("\n")
+    fence = ""
+    for i, ln in enumerate(lines):
+        fm = _FENCE.match(ln)
+        if fence:
+            if fm and ln.strip().startswith(fence):
+                fence = ""
+            continue
+        if fm:
+            fence = fm.group(1)
+            continue
+        m = _H1.match(ln)
+        if m:
+            return m.group(1).strip(), "\n".join(lines[:i] + lines[i + 1:])
+    return None
+
+
 def _strip_front(text: str) -> str:
     return _markup.front_matter(text)[1]
 
@@ -602,6 +626,16 @@ def docfx(source: dict, ctx) -> list[Item]:
     # Сітка «:::row:::» — лише з полем `rows: true`: у примірниках, зібраних раніше, її
     # вміст лишається таким, як був.
     rows = source.get("rows") is True
+    # `title_from: "heading"` — сторінка без `title` у шапці (docs.nunit.org пише лише `uid`) бере назву з
+    # першого заголовка «# …», і він уже не стає розділом. Без поля назва — з шапки, як і була.
+    from_heading = source.get("title_from") == "heading"
+
+    def page_title(meta: dict, body: str, where: str) -> tuple[str, str]:
+        if from_heading and not meta.get("title"):
+            got = _first_heading(body)
+            if got:
+                return got
+        return _markup.title_of(meta, where), body
     tree = _markup_json(ctx, source["url"])
     if tree.get("truncated"):
         raise SystemExit(f"{source['url']}: GitHub обрізав дерево — перелік був би неповним.")
@@ -734,7 +768,8 @@ def docfx(source: dict, ctx) -> list[Item]:
         else:
             meta, _ = _markup.front_matter(text)
         if meta.get("uid"):
-            titles[meta["uid"]] = _markup.title_of(meta, path)
+            titles[meta["uid"]] = page_title(meta, _markup.front_matter(text)[1] if from_heading
+                                             and not path.endswith(".yml") else "", path)[0]
         if order is not None:
             got = page_monikers(path[len(docset) + 1:], meta)
             here = [m for m in wanted if got is None or m in got]
@@ -910,7 +945,7 @@ def docfx(source: dict, ctx) -> list[Item]:
                 meta, rest = faq_page(text)
             else:
                 meta, rest = _markup.front_matter(text)
-            title = _markup.title_of(meta, url)
+            title, rest = page_title(meta, rest, url)
             body = _markup.markdown_body(clean(expand(rest, path, 0, (), here)))
             _markup.require(title, body, url, min_chars=1)
             return _markup.document(title, url, ctx.stamp, body, version)
