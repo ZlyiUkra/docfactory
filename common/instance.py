@@ -115,6 +115,12 @@ def config() -> dict:
     return _config
 
 
+def factory_root() -> pathlib.Path:
+    """Корінь фабрики (docfactory/), де лежить спільний `.env` для всіх примірників.
+    Береться від місця коду, а не від DF_INSTANCE_DIR: корінь один, примірників багато."""
+    return pathlib.Path(__file__).resolve().parent.parent
+
+
 def root() -> pathlib.Path:
     """Тека примірника, з яким працює цей запуск. Без неї далі йти не можна."""
     value = os.environ.get(ENV)
