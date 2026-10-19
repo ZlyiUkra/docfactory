@@ -56,6 +56,12 @@ signalr-1.2»); сторінка без такої пари бере `version` �
 («**Applies to:** :::image type="icon" source="…/yes-icon.svg"::: SQL Server») стає текстом
 («✓»), решта таких значків випадає. Адреса дерева «…/git/trees/КОМІТ:ТЕКА?recursive=1» — дерево
 лише однієї теки, коли повне GitHub обрізає (SupportArticles-docs): шляхи доповнюються текою.
+`tilde_root` — тека, від якої рахується «~/»: у DocFX це тека docfx.json. В AspNetCore.Docs вона
+збігається з набором (типово так і є), а dotnet/docs тримає docfx.json у корені, і «~/includes/…»,
+«~/samples/…» ведуть у корінь репозиторію, а не в docs/ (тоді поле — порожній рядок); вихід за
+корінь («~/../azure-dev-docs/…») там означає теку залежного репозиторію поруч. `snippet_prefix` —
+запасне ім'я позначки прикладу: dotnet/docs пише «:::code … id="Assignment":::», а в коді
+позначає фрагмент «// <SnippetAssignment>»; без поля такий приклад випадає.
 
 Розмітка DocFX, яку читач розгортає до тексту:
 - «[!INCLUDE[…](шлях)]» — вставка, теж зі своїми блоками версій і вставками;
@@ -470,11 +476,13 @@ def _lines_range(lines: list[str], spec: str) -> list[str]:
     return out
 
 
-def snippet(text: str, name: str = "", rng: str = "", start: str = "", end: str = "") -> list | None:
+def snippet(text: str, name: str = "", rng: str = "", start: str = "", end: str = "",
+            prefix: str = "") -> list | None:
     """Рядки прикладу коду, як їх вставляє DocFX. `name` — позначка фрагмента (теги в
     коментарі чи #region, без різниці в регістрі; кілька однойменних ділянок
     склеюються), `rng` — рядки, `start`/`end` — межі рядків. Нічого не знайдено — None:
-    документ без прикладу кращий за чужий шматок файла."""
+    документ без прикладу кращий за чужий шматок файла. `prefix` — запасне ім'я позначки:
+    dotnet/docs пише «id="Assignment"», а в коді — «// <SnippetAssignment>»."""
     lines = text.replace("\r\n", "\n").split("\n")
     if name:
         n = re.escape(name)
@@ -507,7 +515,7 @@ def snippet(text: str, name: str = "", rng: str = "", start: str = "", end: str 
                         continue
                 picked.append(ln)
         if not picked:
-            return None
+            return snippet(text, prefix + name, rng, start, end) if prefix else None
         lines = picked
     elif rng:
         lines = _lines_range(lines, rng)
@@ -571,6 +579,11 @@ def docfx(source: dict, ctx) -> list[Item]:
     view = f"?view={moniker}" if isinstance(moniker, str) and moniker else ""
     prefix = source.get("name_prefix", "")
     repos = source.get("repos") or {}
+    # Запасне ім'я позначки фрагмента (`snippet_prefix`, у dotnet/docs — «Snippet»); без поля
+    # приклад, чиєї позначки немає, випадає, як і було.
+    snippet_prefix = source.get("snippet_prefix", "")
+    # Без поля «~/» — тека набору, як і було.
+    tilde = source["tilde_root"].strip("/") if isinstance(source.get("tilde_root"), str) else None
     yaml_pages = source.get("yaml_pages") is True
     exclude = [re.compile(r) for r in source.get("exclude") or ()]
     path_versions = [(re.compile(r), v) for r, v in source.get("path_versions") or ()]
@@ -601,7 +614,10 @@ def docfx(source: dict, ctx) -> list[Item]:
         if not ref or re.match(r"^[a-z]+://", ref):
             return None
         if ref.startswith("~/"):
-            return posixpath.normpath(posixpath.join(docset, ref[2:]))
+            if tilde is None:
+                return posixpath.normpath(posixpath.join(docset, ref[2:]))
+            path = posixpath.normpath(posixpath.join(tilde, ref[2:]) if tilde else ref[2:])
+            return path[3:] if path.startswith("../") else path
         if ref.startswith("/"):
             return posixpath.normpath(ref.lstrip("/"))
         return posixpath.normpath(posixpath.join(base_dir, ref))
@@ -748,7 +764,7 @@ def docfx(source: dict, ctx) -> list[Item]:
         if text is None:
             return ""
         lines = snippet(text, attrs.get("name", ""), attrs.get("range", ""),
-                        attrs.get("start", ""), attrs.get("end", ""))
+                        attrs.get("start", ""), attrs.get("end", ""), snippet_prefix)
         if lines is None:
             return ""
         tail = []
