@@ -436,6 +436,29 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   with `ghreleases-stable` and `tag_prefix`.
 - **`ghdocs` strips the first folder of a path**: a sample's `Sample/README.md` and the root `README.md` both get the
   name «readme», and one document overwrites the other — such folders go into separate sources.
+- **A MkDocs site that inserts its samples from the tests** (dotnet.testcontainers.org:
+  `--8<-- "tests/…/PostgreSqlContainerTest.cs:UsePostgreSqlContainer"`, pymdownx.snippets with
+  `dedent_subsections: true`): the sample is only the lines between `// # --8<-- [start:Name]` and `[end:Name]`, the path is relative to the
+  repository root. Fields `snippet_sections: true` and `snippets: "."` of `site-history` take the named section
+  without its common indent and drop the marker lines; without them such a line looks for a file named «…cs:Name» and
+  the sample silently disappears. Declare the test folder in `assets`, and after the fetch grep the corpus for
+  leftover `--8<--`. The field `site` (as in `ghdocs-history`) lists the pages of the newest tag by name, so pages
+  that were removed cite their file on GitHub.
+- **C# with a two-space indent** (Testcontainers: block namespace, type at 2, members at 4; the tests at 4): the rule
+  «type plus four» of `outline: ["csharp"]` left a 28-thousand-character builder class as one section.
+  `outline_indent: "auto"` takes the members' indent from the first line of the type body. After the split, count the
+  headings of the largest class of each repository.
+- **A NuGet id that changed owners** (`Testcontainers` 0.0.1–0.0.2.107 of 2018–2019 belong to another author, «Package
+  Description», no README, no XML; the library got the id with 2.0.0): before declaring a package, look at
+  `authors`, `projectUrl` and the description of its oldest versions in the registration. The field `since` of
+  `nuget-package` («package → oldest version taken») cuts them off, otherwise they become a «0.0» line of the product.
+- **The API reference of a library Microsoft does not host**: `nuget-xmldoc` links every type to
+  learn.microsoft.com/dotnet/api, which knows only Microsoft's packages — `link: "nuget"` links it to the nuget.org
+  page of the package version it came from.
+- **A page renamed more than once** (`examples/compose.md` → `examples/dind.md` → `dind/index.md`): git sees each step
+  between neighbouring tags (`git diff -M --stat <tag> <next> -- docs`, `git log --diff-filter=R --summary`); every
+  predecessor gets its own `slug_rewrite` rule to the newest name. A page with the old name and different content
+  (`api/compose.md` of 4.15, ComposeBuilder) stays apart.
 
 ## Anatomy of an instance
 
@@ -1167,6 +1190,28 @@ and what a taken port and a failed connection look like. A domain list in the ro
   `ghreleases-stable` з `tag_prefix`.
 - **`ghdocs` знімає першу теку шляху**: `Sample/README.md` прикладу й кореневий `README.md` дістають одне ім'я
   «readme», і один документ затирає інший — такі теки йдуть окремими джерелами.
+- **Сайт MkDocs, що вставляє приклади з тестів** (dotnet.testcontainers.org:
+  `--8<-- "tests/…/PostgreSqlContainerTest.cs:UsePostgreSqlContainer"`, pymdownx.snippets з
+  `dedent_subsections: true`): приклад — лише рядки між `// # --8<-- [start:Ім'я]` і `[end:Ім'я]`, шлях — від кореня репозиторію. Поля
+  `snippet_sections: true` і `snippets: "."` читача `site-history` беруть іменований розділ без спільного відступу й
+  прибирають рядки-мітки; без них такий рядок шукає файл «…cs:Ім'я», і приклад мовчки зникає. Теку тестів оголошують в
+  `assets`, а після завантаження корпус перевіряють `grep`-ом на залишки `--8<--`. Поле `site` (як у `ghdocs-history`)
+  перелічує сторінки найновішого тегу поіменно, і прибрані сторінки цитують свій файл на GitHub.
+- **C# з відступом у два пробіли** (Testcontainers: простір імен блоком, тип на 2, члени на 4; тести — на 4): правило
+  «тип плюс чотири» з `outline: ["csharp"]` лишало клас будівника на 28 тисяч символів одним розділом.
+  `outline_indent: "auto"` бере відступ членів з першого рядка тіла типу. Після поділу перелічіть заголовки
+  найбільшого класу кожного репозиторію.
+- **Ідентифікатор NuGet, що змінив власника** (`Testcontainers` 0.0.1–0.0.2.107 2018–2019 років — інший автор,
+  «Package Description», без README і XML; бібліотека дістала ідентифікатор з 2.0.0): перш ніж оголошувати пакет,
+  подивіться в реєстрі `authors`, `projectUrl` і опис його найстаріших версій. Поле `since` читача `nuget-package`
+  («пакет → найстаріша версія, що береться») відсікає їх, інакше вони стають лінією «0.0» продукту.
+- **Довідник API бібліотеки, якої немає на learn.microsoft.com**: `nuget-xmldoc` посилає кожен тип на
+  learn.microsoft.com/dotnet/api, де є лише пакети Microsoft, — `link: "nuget"` посилає його на сторінку тієї версії
+  пакета на nuget.org, з якого тип прийшов.
+- **Сторінка, перейменована не раз** (`examples/compose.md` → `examples/dind.md` → `dind/index.md`): git бачить кожен
+  крок між сусідніми тегами (`git diff -M --stat <тег> <наступний> -- docs`, `git log --diff-filter=R --summary`);
+  кожен попередник дістає власне правило `slug_rewrite` до найновішого імені. Сторінка зі старим ім'ям і іншим змістом
+  (`api/compose.md` з 4.15, ComposeBuilder) лишається окремою.
 
 ## З чого складається примірник
 
@@ -1922,6 +1967,29 @@ errada.
   `ghreleases-stable` com `tag_prefix`.
 - **O `ghdocs` tira a primeira pasta do caminho**: o `Sample/README.md` de um exemplo e o `README.md` da raiz ganham o
   mesmo nome «readme», e um documento sobrescreve o outro — essas pastas vão em fontes separadas.
+- **Um site MkDocs que insere os exemplos a partir dos testes** (dotnet.testcontainers.org:
+  `--8<-- "tests/…/PostgreSqlContainerTest.cs:UsePostgreSqlContainer"`, pymdownx.snippets com
+  `dedent_subsections: true`): o exemplo são só as linhas entre `// # --8<-- [start:Nome]` e `[end:Nome]`, o caminho parte da raiz do repositório. Os
+  campos `snippet_sections: true` e `snippets: "."` do `site-history` pegam a seção nomeada sem o recuo comum e
+  removem as linhas-marcador; sem eles essa linha procura um arquivo «…cs:Nome» e o exemplo some calado. Declare a
+  pasta de testes em `assets` e, depois do download, procure com `grep` restos de `--8<--` no corpus. O campo `site`
+  (como no `ghdocs-history`) lista pelo nome as páginas da tag mais nova, e as páginas removidas citam o próprio
+  arquivo no GitHub.
+- **C# com recuo de dois espaços** (Testcontainers: namespace em bloco, tipo em 2, membros em 4; os testes em 4): a
+  regra «tipo mais quatro» do `outline: ["csharp"]` deixava uma classe builder de 28 mil caracteres como uma só seção.
+  `outline_indent: "auto"` tira o recuo dos membros da primeira linha do corpo do tipo. Depois da divisão, liste os
+  títulos da maior classe de cada repositório.
+- **Um id NuGet que trocou de dono** (`Testcontainers` 0.0.1–0.0.2.107, de 2018–2019, são de outro autor, «Package
+  Description», sem README nem XML; a biblioteca recebeu o id na 2.0.0): antes de declarar um pacote, veja no registro
+  `authors`, `projectUrl` e a descrição das versões mais antigas. O campo `since` do `nuget-package` («pacote → versão
+  mais antiga que entra») as corta; sem ele viram uma linha «0.0» do produto.
+- **A referência de API de uma biblioteca que não está no learn.microsoft.com**: o `nuget-xmldoc` aponta cada tipo
+  para learn.microsoft.com/dotnet/api, que só conhece os pacotes da Microsoft — `link: "nuget"` aponta para a página
+  da versão do pacote no nuget.org de onde o tipo veio.
+- **Uma página renomeada mais de uma vez** (`examples/compose.md` → `examples/dind.md` → `dind/index.md`): o git vê
+  cada passo entre tags vizinhas (`git diff -M --stat <tag> <seguinte> -- docs`, `git log --diff-filter=R --summary`);
+  cada predecessor ganha a própria regra `slug_rewrite` para o nome mais novo. Uma página com o nome antigo e conteúdo
+  diferente (`api/compose.md` da 4.15, ComposeBuilder) fica à parte.
 
 ## Anatomia de uma instância
 
