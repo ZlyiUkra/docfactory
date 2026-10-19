@@ -2,12 +2,12 @@
 
 Захищений MCP-сервер, що відповідає на питання про Passport.js — проміжний шар автентифікації для Node.js: застосунок
 оголошує стратегії (логін і пароль, JWT, OAuth 2.0 через Google), а `passport.authenticate()` запускає одну з них на
-запиті; працює з Express і Connect. Документація — всіх стабільних версій пакета passport (0.1–0.7) і п'яти пакетів
-стратегій: passport-local, passport-jwt, passport-oauth2, passport-google-oauth20 та passport-strategy (базовий клас
-будь-якої стратегії). Джерела — офіційний сайт passportjs.org, README і журнали змін, код і тести кожного тегу
-репозиторіїв та реєстр npm, лише англійською й лише стабільні версії. Код спільний і лежить у `../../engine/`,
-`../../server/` та `../../common/`; ця тека тримає самі дані домену. Загальний устрій фабрики — у
-[../../README.md](../../README.md).
+запиті; працює з Express і Connect. Документація — всіх стабільних версій пакета passport (0.1–0.7) і дев'яти пакетів
+стратегій: passport-local, passport-jwt, passport-oauth2, passport-google-oauth20, passport-github2,
+passport-facebook, passport-http-bearer, passport-openidconnect та passport-strategy (базовий клас будь-якої
+стратегії). Джерела — офіційний сайт passportjs.org, README і журнали змін, код і тести кожного тегу репозиторіїв та
+реєстр npm, лише англійською й лише стабільні версії. Код спільний і лежить у `../../engine/`, `../../server/` та
+`../../common/`; ця тека тримає самі дані домену. Загальний устрій фабрики — у [../../README.md](../../README.md).
 
 ## Навіщо окремий примірник
 
@@ -32,7 +32,7 @@
 
 ## Історія пакета
 
-Ця історія пояснює, чому лінії версій такі нерівні й чому версії шести пакетів перетинаються.
+Ця історія пояснює, чому лінії версій такі нерівні й чому версії десяти пакетів перетинаються.
 
 | Коли | Пакет | Версії | Що важливо |
 |------|-------|--------|------------|
@@ -43,17 +43,23 @@
 | 20.05.2022 | passport | 0.6.0 | `req.logout()` з обов'язковим зворотним викликом, перегенерація сесії при вході й виході, `keepSessionInfo` |
 | 27.11.2023 | passport | 0.7.0 | `req.authInfo` виставляється і з `assignProperty`; найновіша, ≈77 % завантажень за тиждень до 19.10.2026 |
 | серпень 2013 | passport-strategy | 1.0.0 | єдиний випуск базового класу |
+| жовтень 2011 — січень 2019 | passport-facebook | 0.1.0–0.1.6, 1.0.0–1.0.3, 2.0.0–2.1.1, 3.0.0 | 15 випусків; 0.1.0–0.1.4 без README в npm |
+| жовтень 2011 — серпень 2013 | passport-http-bearer | 0.1.0–0.1.2, 0.2.0–0.2.1, 1.0.0–1.0.1 | 7 випусків; 1.0.1 від 02.08.2013, ≈282 тис. завантажень за тиждень до 19.10.2026; 0.1.0–0.1.2 і 0.2.0 без README в npm |
+| грудень 2014 — березень 2020 | passport-github2 | 0.1.8–0.1.12 | п'ять випусків; тег у репозиторії є лише в v0.1.11 |
+| лютий 2013 — лютий 2024 | passport-openidconnect | 0.0.1, 0.0.2, 0.1.0–0.1.2 | 0.1.0 (17.11.2021) читає `profile.username` та `emails` зі стандартних claims і додає `loginHint`, `responseMode`, `claims`; 0.1.1 — `prompt`; 0.1.2 — оновлення залежності `oauth` |
 | жовтень 2011 — березень 2014 | passport-local | 0.1.0–0.1.6, 1.0.0 | 0.1.x без README в npm |
 | серпень 2013 — лютий 2024 | passport-oauth2 | 1.0.0–1.8.0 | 12 випусків; 1.6.0 — сховище стану (`store: true`), 1.7.0 — відповіді OAuth у формі (form post), 1.8.0 — оновлення залежності `oauth` |
 | листопад 2014 — грудень 2022 | passport-jwt | 0.1.0–4.0.1 | 16 випусків; 4.0.0 піднявся на `jsonwebtoken` 8 через вразливість, тому мажор |
 | лютий 2016 — березень 2019 | passport-google-oauth20 | 1.0.0, 2.0.0 | 2.0.0 перейшла з Google+ на Google Sign-in (інший `userinfo`) |
 
-Номери 1.0.0 однаково мають passport-strategy, passport-local, passport-google-oauth20 і passport-oauth2.
+Номери 1.0.0 однаково мають passport-strategy, passport-local, passport-google-oauth20, passport-oauth2,
+passport-facebook і passport-http-bearer.
 
 ## Скільки цього
 
-Стабільні версії: passport — 33, passport-jwt — 16, passport-oauth2 — 12, passport-local — 8, passport-google-oauth20
-— 2, passport-strategy — 1. Передрелізів (alpha, beta, rc) у цих пакетах немає.
+Стабільні версії: passport — 33, passport-jwt — 16, passport-facebook — 15, passport-oauth2 — 12, passport-local — 8,
+passport-http-bearer — 7, passport-github2 — 5, passport-openidconnect — 5, passport-google-oauth20 — 2,
+passport-strategy — 1. Передрелізів (alpha, beta, rc) у цих пакетах немає.
 
 | Шар | Документів | Версій | Звідки |
 |-----|-----------:|-------:|--------|
@@ -64,25 +70,30 @@
 | Код `lib/` і тести `test/` passport | 156 | 0.1.0–0.7.0 (33) | теги jaredhanson/passport |
 | Реєстр npm passport: огляд і лінія 0.x, з вимогами до Node (`engines`) | 2 | усі | registry.npmjs.org |
 | passport-strategy: README, код і тести, реєстр | 1 + 6 + 2 | 1.0.0 | npm, теги |
-| passport-jwt: README, посібники міграції `docs/`, код і тести, реєстр | 14 + 4 + 56 + 6 | 0.1.0–4.0.1 (код — 15 з 16) | npm, теги mikenicholson/passport-jwt |
+| passport-jwt: README, посібники міграції `docs/`, код і тести, реєстр | 14 + 4 + 56 + 6 | 0.1.0–4.0.1 (16) | npm, теги mikenicholson/passport-jwt; 2.1.1 — коміт публікації |
 | passport-oauth2: README, журнал змін, код і тести, реєстр | 8 + 4 + 73 + 2 | 1.0.0–1.8.0 | npm, `CHANGELOG.md`, теги |
 | passport-local: README (з тегів для 0.1.x), код і тести, реєстр | 1 + 3 + 32 + 3 | 0.1.0–1.0.0 | npm, теги |
 | passport-google-oauth20: README, журнал змін, `CONTRIBUTING.md`, код і тести, реєстр | 2 + 2 + 1 + 15 + 3 | 1.0.0–2.0.0 | npm, теги jaredhanson/passport-google-oauth2 |
+| passport-github2: README, код і тести, реєстр | 3 + 16 + 2 | 0.1.8–0.1.12 | npm; тег v0.1.11 і коміти публікації cfsghost/passport-github |
+| passport-facebook: README (з тегів для 0.1.0–0.1.4), `CONTRIBUTING.md`, код і тести, реєстр | 7 + 5 + 1 + 65 + 5 | 0.1.0–3.0.0 | npm, теги jaredhanson/passport-facebook |
+| passport-http-bearer: README (з тегів для 0.1.0–0.1.2 і 0.2.0), журнал змін, код і тести, реєстр | 2 + 3 + 2 + 29 + 3 | 0.1.0–1.0.1 | npm, `CHANGELOG.md`, теги jaredhanson/passport-http-bearer |
+| passport-openidconnect: README, журнал змін, код і тести, реєстр | 3 + 5 + 38 + 2 | 0.0.1–0.1.2 | npm, `CHANGELOG.md`, теги jaredhanson/passport-openidconnect |
 
-Разом 479 документів; фрагментів в індексі — 2393 (`expected_passages` у `checks.json`). Фрагменти — це шматки
+Разом 670 документів; фрагментів в індексі — 3098 (`expected_passages` у `checks.json`). Фрагменти — це шматки
 документів між заголовками, по яких іде пошук. Документ — неповторна редакція файла, і в рядку `# версія:` стоять усі
 версії, де він був саме таким; однаковий текст різних версій лягає одним фрагментом з усіма цими версіями. 82 %
 фрагментів — код і тести.
 
-Замір `quality` на першому корпусі: перша десятка (питання своїми словами, без версії) — по словах 6 із 10, за змістом
-7, разом 7; друга, «як модель» (назви Passport, як велить промпт), — 10 із 10, без дотюнінгу. Три питання першої
-десятки зливання не знаходить. Два не знаходить жоден спосіб: «побудувати власний механізм входу» (відповідь — README
-passport-strategy, але слів «власний» і «механізм» там немає) і «захистити переспрямування від підроблених запитів»
-(відповідь — посібник про `state`). Третє, «на яких випусках Node працює найновіша», пошук за змістом знаходить,
-а злиття губить: слова запиту збігаються з чужими сторінками про OAuth. Одну ціль «як модель» виправлено за
-документацією, а не за видачею: питання про `success`, `fail`, `redirect`, `pass`, `error` стратегії не має
-відповіді в README passport-strategy (цих слів там немає) — їх визначає код passport, `lib/middleware/authenticate.js`
-та `lib/passport/context/http/actions.js`. `max_per_doc` не заміряно: «як модель» дав 10 із 10 одразу.
+Замір `quality` на першому корпусі (шість пакетів, 479 документів): перша десятка (питання своїми словами, без версії)
+— по словах 6 із 10, за змістом 7, разом 7; друга, «як модель» (назви Passport, як велить промпт), — 10 із 10, без
+дотюнінгу. Три питання першої десятки зливання не знаходить. Два не знаходить жоден спосіб: «побудувати власний
+механізм входу» (відповідь — README passport-strategy, але слів «власний» і «механізм» там немає) і «захистити
+переспрямування від підроблених запитів» (відповідь — посібник про `state`). Третє, «на яких випусках Node працює
+найновіша», пошук за змістом знаходить, а злиття губить: слова запиту збігаються з чужими сторінками про OAuth. Одну
+ціль «як модель» виправлено за документацією, а не за видачею: питання про `success`, `fail`, `redirect`, `pass`,
+`error` стратегії не має відповіді в README passport-strategy (цих слів там немає) — їх визначає код passport,
+`lib/middleware/authenticate.js` та `lib/passport/context/http/actions.js`. `max_per_doc` не заміряно: «як модель» дав
+10 із 10 одразу. Після додавання ще чотирьох стратегій (670 документів) замір той самий: 6, 7, 7 і 10 із 10.
 
 ## Що в цій теці
 
@@ -90,7 +101,7 @@ passport-strategy, але слів «власний» і «механізм» т
   Самих текстів тут немає: корпус в архіві (розділ «Архівний режим» нижче).
 - `index/` — кеш фрагментів, з якого сервер підіймається: у git — стиснений `passages.json.gz`, розпакований
   `passages.json` лежить поруч і в git не потрапляє.
-- `sources.json` — звідки корпус будується (27 джерел), і водночас білий список для оновлювача.
+- `sources.json` — звідки корпус будується (44 джерела), і водночас білий список для оновлювача.
 - `config.json` — порт, колекція Qdrant, модель векторів, пауза між зверненнями, спільні ключі README з тегів
   (`slug_rewrite`) і профіль домену.
 - `prompts/` — описи інструментів для моделі, системний промпт власного агента, текст відмови.
@@ -105,40 +116,43 @@ passport-strategy, але слів «власний» і «механізм» т
 | Що | Джерело | Читач |
 |----|---------|-------|
 | Сайт | `https://www.passportjs.org/sitemap.xml`, без дублів `/downloads/html/` | `sitemap-html` |
-| README шести пакетів | tarball `registry.npmjs.org/<пакет>/-/<пакет>-X.tgz` | `npm-tarball-files` |
-| README версій без README в npm | кореневий `README.md` на тезі (passport 0.1.0–0.1.12, 0.3.2; passport-local 0.1.0–0.1.6) | `ghdocs-history` |
-| Журнали змін | `CHANGELOG.md` гілки master трьох репозиторіїв | `changelog-keep` |
-| `CONTRIBUTING.md`, `docs/` passport-jwt | теги репозиторіїв | `ghdocs-history` |
-| Код і тести | `lib/` і `test/` на кожному стабільному тезі шести репозиторіїв | `ghcode-history` з `outline: true` |
+| README десяти пакетів | tarball `registry.npmjs.org/<пакет>/-/<пакет>-X.tgz` | `npm-tarball-files` |
+| README версій без README в npm | кореневий `README.md` на тезі (passport 0.1.0–0.1.12, 0.3.2; passport-local 0.1.0–0.1.6; passport-facebook 0.1.0–0.1.4; passport-http-bearer 0.1.0–0.1.2, 0.2.0) | `ghdocs-history` |
+| Журнали змін | `CHANGELOG.md` гілки master п'яти репозиторіїв | `changelog-keep` |
+| `CONTRIBUTING.md` (passport, passport-google-oauth20, passport-facebook), `docs/` passport-jwt | теги репозиторіїв | `ghdocs-history` |
+| Код і тести | `lib/` і `test/` на кожному стабільному тезі десяти репозиторіїв | `ghcode-history` з `outline: true` |
 | Реєстр npm | registry.npmjs.org, одне звернення на пакет | `npm-versions` |
 
 Нових читачів примірник не потребував. Особливості корпусу:
 
-- **Версії шести пакетів перетинаються.** «1.0.0» є у чотирьох пакетів, а «0.1.x» — у passport і passport-local;
-  фільтр `version: "0.1"` бере обидва. Назва кожного документа називає пакет, і промпт велить дивитися на неї, перш
+- **Версії десяти пакетів перетинаються.** «1.0.0» є у шести пакетів, а «0.1.x» — у passport і шести стратегій;
+  фільтр `version: "0.1"` бере всі. Назва кожного документа називає пакет, і промпт велить дивитися на неї, перш
   ніж називати версію. Лінії для фільтра — з двох чисел (`version_line_depth: 2`).
 - **Сайт — один знімок.** passportjs.org не має версій: його сторінки записано під 0.7.0 (останнє оновлення джерела
   сайту `passport/www.passportjs.org` — 16.08.2024, після 0.7.0). Головну сторінку не взято: це лендинг без статті.
   Блоки коду на сторінках сайту втрачають мову (у HTML вона в класі `<code class="js">`, а не в `lang`) — для пошуку
   це байдуже.
-- **README — з tarball, а де його там немає, — з тегу.** Чотирнадцять версій passport і сім passport-local
-  опубліковано без README. Їхній текст береться з кореня репозиторію на тезі, а правило `slug_rewrite` дає йому той
-  самий ключ, що й README з пакета, тож однакові розділи зливаються. - **У passport-jwt 2.1.1 немає тегу.** Її README
-  і запис реєстру в корпусі є, коду й тестів цієї версії — ні. - **Журнали змін — не в усіх.** passport веде
-  `CHANGELOG.md` лише з 0.5.0, passport-oauth2 — з 1.6.0, passport-google- oauth20 — з 1.0.0; у passport-local,
-  passport-jwt і passport-strategy його немає. - **Код і тести поділено на розділи** за оголошеннями й викликами
-  `describe`/`it`: назва тесту стає назвою розділу, тож перелік тестів читається як перелік поведінок («logout /
-  existing session but not passing a callback argument»). - **Вимога до Node (`engines`)** записана в документах
-  реєстру npm: passport 0.1.0 — Node ≥ 0.4.0. - **Документ — неповторний текст.** Версії, де файл не змінився, ділять
-  один документ; у рядку `# версія:` стоять усі.
+- **README — з tarball, а де його там немає, — з тегу.** Чотирнадцять версій passport, сім passport-local, п'ять
+  passport-facebook і чотири passport-http-bearer опубліковано без README. Їхній текст береться з кореня репозиторію
+  на тезі, а правило `slug_rewrite` дає йому той самий ключ, що й README з пакета, тож однакові розділи зливаються.
+- **Версії без тегу беруться з коміту публікації.** passport-jwt 2.1.1 і чотири з п'яти версій passport-github2
+  мають у реєстрі npm поле `gitHead`: воно стоїть ключем у `tags`. Коміту passport-github2 0.1.12 у репозиторії немає,
+  тож для неї взято останній коміт master перед днем публікації (27.03.2020). Репозиторій cfsghost/passport-github
+  має ще теги v0.1.0–v0.1.5, яким не відповідає жодна версія passport-github2 у npm, — вони не беруться.
+- **Журнали змін — не в усіх.** passport веде `CHANGELOG.md` лише з 0.5.0, passport-oauth2 — з 1.6.0,
+  passport-google-oauth20 — з 1.0.0, passport-http-bearer — з 1.0.0, passport-openidconnect — з 0.0.1; у passport-local,
+  passport-jwt, passport-facebook, passport-github2 і passport-strategy його немає.
+- **Код і тести поділено на розділи** за оголошеннями й викликами `describe`/`it`: назва тесту стає назвою розділу,
+  тож перелік тестів читається як перелік поведінок («logout / existing session but not passing a callback argument»).
+- **Вимога до Node (`engines`)** записана в документах реєстру npm: passport 0.1.0 — Node ≥ 0.4.0.
+- **Документ — неповторний текст.** Версії, де файл не змінився, ділять один документ; у рядку `# версія:` стоять усі.
 
 ## Межі, про які треба пам'ятати
 
-Документації Express, express-session, NestJS і `@nestjs/passport`, інших стратегій (passport-github2,
-passport-facebook, passport-saml, passport-azure-ad, passport-openidconnect, passport-http-bearer і решти каталогу
-сайту), OAuth 2.0, OpenID Connect і JWT як специфікацій, Auth.js, Better Auth, jose та хешування паролів тут немає.
-Типи `@types/passport` не входять. Код — лише на тегах: коміти гілки master після 0.7.0 без тегу в корпус не
-потрапляють.
+Документації Express, express-session, NestJS і `@nestjs/passport`, інших стратегій (passport-saml, passport-azure-ad,
+passport-twitter, passport-discord, passport-apple, passport-auth0 і решти каталогу сайту), OAuth 2.0, OpenID Connect
+і JWT як специфікацій, Auth.js, Better Auth, jose та хешування паролів тут немає. Типи `@types/passport` не входять.
+Код — лише на тегах і на комітах публікації: коміти гілки master після 0.7.0 без тегу в корпус не потрапляють.
 
 ## Архівний режим: сервер без корпусу
 
@@ -146,9 +160,9 @@ passport-facebook, passport-saml, passport-azure-ad, passport-openidconnect, pas
 кешу фрагментів (`index/passages.json`) і колекції Qdrant; відповіді ті самі до символа — кеш тримає повний текст
 кожного фрагмента.
 
-**Де тексти.** В архіві `~/archives/docfactory/passport-corpus-2026-10-19.tar.gz` (2,3 МБ: 479 текстів, паспорт і
-сховище сирого `raw/` — разом 1042 файли; перед видаленням текстів розпакований окремо й звірений із диском — нуль
-розбіжностей). В історії git текстів немає ніде. Архів лежить лише на цій машині. Сховище `raw/` після звірки теж
+**Де тексти.** В архіві `~/archives/docfactory/passport-corpus-2026-10-19-strategies.tar.gz` (3,0 МБ: 670 текстів,
+паспорт і сховище сирого `raw/` — разом 1461 файл; перед видаленням текстів розпакований окремо й звірений із диском —
+нуль розбіжностей). В історії git текстів немає ніде. Архів лежить лише на цій машині. Сховище `raw/` після звірки теж
 видалено з диска.
 
 **Як винести знову** — після оновлення, коли `vectors` і `smoke` пройшли:
@@ -167,7 +181,7 @@ gzip -9 -c instances/passport/index/passages.json > instances/passport/index/pas
 **Як повернути тексти** — перед будь-яким оновленням корпусу; разом із ними повертається й сховище `raw/`:
 
 ```
-tar -xzf ~/archives/docfactory/passport-corpus-2026-10-19.tar.gz -C instances/passport
+tar -xzf ~/archives/docfactory/passport-corpus-2026-10-19-strategies.tar.gz -C instances/passport
 ./df passport smoke
 ```
 
@@ -191,7 +205,7 @@ tar -xzf ~/archives/docfactory/passport-corpus-2026-10-19.tar.gz -C instances/pa
 
 ```
 ./df passport sources --why   # перелік джерел і білий список
-./df passport refresh         # завантажити все задеклароване (близько 12 хвилин)
+./df passport refresh         # завантажити все задеклароване (близько 20 хвилин)
 ./df passport manifest        # оновити паспорт
 ./df passport setup           # Qdrant чи пошук лише по словах
 ./df passport vectors         # залити корпус у docs-passport

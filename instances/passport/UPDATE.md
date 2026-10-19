@@ -1,16 +1,18 @@
 # Оновлення корпусу passport
 
 Перелік версій npm тут не оголошується руками: читачі пакетів беруть його з опису пакета в реєстрі
-(`https://registry.npmjs.org/passport`, `…/passport-strategy`, `…/passport-jwt`, `…/passport-oauth2`,
-`…/passport-local`, `…/passport-google-oauth20`), тож нова версія потрапляє в README і реєстр сама, коли вийде в npm.
-Журнали змін беруться з гілки master репозиторіїв `jaredhanson/passport`, `jaredhanson/passport-oauth2` та
-`jaredhanson/passport-google-oauth2`. Сайт читається з `sitemap.xml`.
+(`https://registry.npmjs.org/<пакет>` для passport, passport-strategy, passport-jwt, passport-oauth2, passport-local,
+passport-google-oauth20, passport-github2, passport-facebook, passport-http-bearer і passport-openidconnect), тож нова
+версія потрапляє в README і реєстр сама, коли вийде в npm. Журнали змін беруться з гілки master репозиторіїв
+`jaredhanson/passport`, `jaredhanson/passport-oauth2`, `jaredhanson/passport-google-oauth2`,
+`jaredhanson/passport-http-bearer` та `jaredhanson/passport-openidconnect`. Сайт читається з `sitemap.xml`.
 
-Руками оголошено лише теги репозиторіїв: поле `tags` джерел `passport-code`, `passport-gh-docs`,
-`passport-strategy-code`, `passport-jwt-code`, `passport-jwt-gh-docs`, `passport-oauth2-code`, `passport-local-code`,
-`passport-google-oauth20-code` і `passport-google-oauth20-gh-docs`. Новий стабільний тег дописують першим рядком у
-код-джерело пакета та в його `gh-docs`, у вигляді `"v0.8.0": "0.8.0"`. Джерела `passport-readme-tags` і
-`passport-local-readme-tags` закриті: це версії, опубліковані без README, нових не буде.
+Руками оголошено лише теги репозиторіїв: поле `tags` джерел `<пакет>-code` (десять) і `<пакет>-gh-docs` (passport,
+passport-jwt, passport-google-oauth20, passport-facebook). Новий стабільний тег дописують першим рядком у код-джерело
+пакета та, якщо воно є, в його `gh-docs`, у вигляді `"v0.8.0": "0.8.0"`. Версію без тегу записують повним SHA коміту
+публікації (поле `gitHead` її запису в реєстрі npm), так зроблено для passport-jwt 2.1.1 і passport-github2
+0.1.8–0.1.12. Джерела `<пакет>-readme-tags` закриті: це версії, опубліковані без README (passport, passport-local,
+passport-facebook, passport-http-bearer), нових не буде.
 
 Правило: **нічого не видаляється.** Ані `refresh`, ані `vectors`, ані `manifest` нічого не стирають самі.
 
@@ -22,7 +24,7 @@
 
 ```
 ./df passport check                 # чи змінилося щось нагорі за джерелом
-./df passport refresh               # повне перезавантаження, близько 12 хвилин
+./df passport refresh               # повне перезавантаження, близько 20 хвилин
 ./df passport manifest
 ./df passport vectors
 ./df passport smoke
@@ -43,7 +45,7 @@
 Якщо `smoke` скаржиться на число фрагментів — корпус підріс; нове число записують у `checks.json` полем
 `expected_passages`, а в `expected_note` — коли й чому його знято.
 
-Токен GitHub (`GITHUB_TOKEN` у `.env`) потрібен для дерев тегів (понад сто звернень) і журналів змін: без нього
+Токен GitHub (`GITHUB_TOKEN` у `.env`) потрібен для дерев тегів (близько двохсот звернень) і журналів змін: без нього
 вистачає годинного вікна в 60 звернень лише впритул.
 
 ## Уточнення відповідей після оновлення
