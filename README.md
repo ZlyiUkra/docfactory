@@ -196,22 +196,36 @@ GitHub. Склади `requirements.txt` у примірників майже о�
 | | Процесор | Відеокарта |
 |-|----------|------------|
 | Де лежить | `.venvs/cpu` | `.venvs/gpu` |
-| З чого збирається | `requirements/cpu.txt` | `requirements/gpu.txt` |
+| З чого збирається | `requirements/cpu.txt` | `requirements/gpu.txt` і `requirements/gpu-ocr.txt` |
 | Вектори | `fastembed` | `fastembed-gpu` і `onnxruntime-gpu[cuda,cudnn]` |
-| Розмір | ~525 МБ | ~2,6 ГБ |
+| Розмір | ~525 МБ | ~2,6 ГБ (~2,8 ГБ з розпізнаванням) |
 
 Склад кожного — об'єднання всіх різних `requirements.txt` примірників: база (`anthropic`, `python-dotenv`,
-`mcp[cli]`), вектори, `PyYAML`, `pypdf` і `pypdfium2`. Єдине розходження: `rapidocr-onnxruntime` (розпізнавання
-сканованих PDF, читач `cncfcurriculum`, потрібен лише примірникові kubernetes) є тільки в `cpu.txt`, бо вимагає
-звичайний `onnxruntime`, а той у одному venv з `onnxruntime-gpu` затирає його файли. Примірник, якому потрібне
-розпізнавання, лишається на процесорному середовищі або на власному `.venv`. Обидва venv збираються з кореня
-`docfactory/` однаково (приклад для `cpu`, для `gpu` — те саме з `gpu`):
+`mcp[cli]`), вектори, `PyYAML`, `pypdf` і `pypdfium2`. Єдине розходження — `rapidocr-onnxruntime` (розпізнавання
+сканованих PDF, читач `cncfcurriculum`, потрібне лише примірникові kubernetes, і то лише для `refresh` і `build`).
+У `cpu.txt` він є, а в `gpu.txt` його немає навмисно: він оголошує залежність від звичайного `onnxruntime`, а той у
+одному venv з `onnxruntime-gpu` затирає його файли. Тому для `gpu` розпізнавання — окремий другий крок збірки, див.
+нижче. Обидва venv збираються з кореня `docfactory/` однаково (приклад для `cpu`, для `gpu` — те саме з `gpu`):
 
 ```
 python3 -m venv .venvs/cpu
 .venvs/cpu/bin/python -m pip install -U pip
 .venvs/cpu/bin/python -m pip install -r requirements/cpu.txt
 ```
+
+**Розпізнавання в `gpu`: другий крок збірки.** Після `requirements/gpu.txt` у `.venvs/gpu` ставиться ще один файл,
+і обов'язково з `--no-deps` (без нього pip потягнув би звичайний `onnxruntime` і затер би збірку для відеокарти):
+
+```
+.venvs/gpu/bin/python -m pip install --no-deps -r requirements/gpu-ocr.txt
+```
+
+У ньому `rapidocr-onnxruntime` і те, чого йому бракує понад `gpu.txt` (`opencv-python`, `shapely`, `pyclipper`,
+`six`, ~145 МБ), усе з закріпленими версіями. `onnxruntime-gpu` — це той самий модуль `onnxruntime`, і процесорний
+провайдер у ньому лишається, а розпізнаванню потрібен саме він, тож воно працює (текст виходить той самий, що на
+`cpu`). Ціна — один формальний рядок у `pip check`: «rapidocr-onnxruntime 1.2.3 requires onnxruntime, which is not
+installed»; інших зауважень бути не повинно. Без цього кроку все, крім читача `cncfcurriculum`, працює, а він
+зупиниться з підказкою, чого бракує.
 
 Відеокарта для роботи не обов'язкова: без неї `onnxruntime-gpu` рахує на процесорі тими самими числами, а
 `common/embed.py` сам бачить, чи відповідає CUDA. Навмисно в одному середовищі не змішуються `fastembed` і

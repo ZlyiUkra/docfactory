@@ -52,10 +52,10 @@ without it.
 A venv is a folder with a Python interpreter and the packages for this project only; `df` calls it itself, so never
 activate it. An instance runs on one of two environments, both Linux (`bin/python`):
 
-- **the shared one** — two venvs in the repository root, `.venvs/cpu` (~525 MB) and `.venvs/gpu` (~2.6 GB, with the
-  CUDA libraries for an NVIDIA card), built from `requirements/cpu.txt` and `requirements/gpu.txt`, plus a single
-  `.env` in the root (outside git) holding `GITHUB_TOKEN` and `DF_VENV=cpu` or `gpu`. This is the default for a new
-  instance;
+- **the shared one** — two venvs in the repository root, `.venvs/cpu` (~525 MB) and `.venvs/gpu` (~2.6 GB, ~2.8 GB
+  with OCR, with the CUDA libraries for an NVIDIA card), built from `requirements/cpu.txt` and `requirements/gpu.txt`
+  (`gpu` plus `requirements/gpu-ocr.txt`, see below), plus a single `.env` in the root (outside git) holding
+  `GITHUB_TOKEN` and `DF_VENV=cpu` or `gpu`. This is the default for a new instance;
 - **the instance's own `.venv`** — optional, needed only when the domain wants a package outside
   `requirements/*.txt`; the older instances still have one and are moving to the shared environment gradually.
 
@@ -67,6 +67,21 @@ python3 -m venv .venvs/cpu
 .venvs/cpu/bin/python -m pip install -U pip
 .venvs/cpu/bin/python -m pip install -r requirements/cpu.txt
 ```
+
+Page recognition (OCR) for scanned PDFs is needed by one reader only, `cncfcurriculum` of the `kubernetes` instance,
+and only for `refresh` and `build`. `cpu.txt` carries `rapidocr-onnxruntime`; `gpu.txt` does not, on purpose: it
+declares a dependency on plain `onnxruntime`, which in one venv with `onnxruntime-gpu` overwrites its files. So the
+`gpu` venv gets a second build step, and it must use `--no-deps`:
+
+```
+.venvs/gpu/bin/python -m pip install --no-deps -r requirements/gpu-ocr.txt
+```
+
+That file pins `rapidocr-onnxruntime` and what it lacks on top of `gpu.txt` (`opencv-python`, `shapely`, `pyclipper`,
+`six`, ~145 MB). `onnxruntime-gpu` is the same `onnxruntime` module and keeps the CPU provider, which is all the OCR
+needs, so it recognises the same text as on `cpu`. The price is one formal line in `pip check` ("rapidocr-onnxruntime
+1.2.3 requires onnxruntime, which is not installed"); there should be no other complaints. Without this step
+everything except that reader works, and the reader stops with a hint about what is missing.
 
 `df` picks the environment by three rules, in order: `DF_USE_SHARED=1` forces the shared one; otherwise the
 instance's own `.venv`, if it has one; otherwise the shared one named by `DF_VENV` (the environment variable, then
