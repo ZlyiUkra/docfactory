@@ -335,7 +335,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 | PostgreSQL | база даних | Ф0 Д13–18, Ф3; є примірник `postgresql` |
 | TypeORM або Prisma | ORM: сутності чи схема, міграції, запити | Ф3 Д1–12; є примірники `typeorm` і `prisma` |
 | `@nestjs/jwt`, Passport | токени й стратегії входу | Ф4 Д2–5; є примірник `passport` (Passport і тринадцять стратегій: local, JWT, OAuth 2.0, Google, GitHub, Facebook, Bearer, OpenID Connect, SAML, Azure AD, Twitter, Discord; `@nestjs/jwt` — поза корпусом) |
-| bcrypt або argon2 | хешування паролів | Ф4 Д1; є примірник `argon2` (argon2 і `@node-rs/argon2`; bcrypt — поза корпусом) |
+| bcrypt або argon2 | хешування паролів | Ф4 Д1; є примірники `argon2` (argon2 і `@node-rs/argon2`) і `bcrypt` |
 | Vitest і supertest | юніт- і наскрізні тести | Ф5; є примірник `vitest` (supertest — поза корпусом) |
 | `@nestjs/terminus` | перевірки стану для Docker і оркестраторів | Ф6 Д3, Д8 |
 | helmet, `@nestjs/throttler` | заголовки безпеки, обмеження частоти | Ф4 Д12; є примірники `helmet` і `express-rate-limit` (`@nestjs/throttler` — глава в `nestjs`) |
@@ -450,6 +450,8 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 - API споту Kraken, запасне джерело цін (REST, WebSocket v2, гайди, журнал змін) — `kraken-spot`;
 - хешування паролів: пакети npm argon2 (node-argon2) і `@node-rs/argon2` усіх стабільних версій, еталонна реалізація
   Argon2 і його специфікація — `argon2`;
+- хешування паролів: пакет npm bcrypt усіх стабільних версій 0.1.2–6.0.0 (README, журнал змін, релізи, вікі, політика
+  безпеки, вимоги до Node) — `bcrypt`;
 - Passport.js (сайт passportjs.org; README, журнали змін, код і тести кожної стабільної версії passport 0.1–0.7 і
   тринадцяти стратегій: passport-local, passport-jwt, passport-oauth2, passport-google-oauth20, passport-github2,
   passport-facebook, passport-http-bearer, passport-openidconnect, passport-saml, passport-azure-ad, passport-twitter,
@@ -470,7 +472,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
 глава про інтеграцію (class-validator), але не документація самої бібліотеки:
 
-- з «треба знати»: bcrypt, class-validator, class-transformer, supertest;
+- з «треба знати»: class-validator, class-transformer, supertest;
 - з «варто знати»: `ws`, nestjs-cls, nestjs-pino, csrf-csrf, CASL, orval, openapi-typescript;
 - з «знати, що існує»: MikroORM, Kafka, RabbitMQ, NATS.
 
@@ -1361,7 +1363,7 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 # Фаза 4. Автентифікація й авторизація — 13 днів
 
 **Сервери MCP фази:** `nestjs-docs`, `webstandards-docs`, `express-docs`, `react-router-docs`, `owasp-docs`,
-`argon2-docs`, `passport-docs`, `helmet-docs`, `express-rate-limit-docs`.
+`argon2-docs`, `bcrypt-docs`, `passport-docs`, `helmet-docs`, `express-rate-limit-docs`.
 
 Точка, де сходяться всі глави фази 1: guard, декоратор, pipe, фільтр. Спершу руками, потім через Passport — так
 видно, що саме Passport робить за вас. Модель токенів одна на всю родину планів, і власник її — ця фаза:
@@ -1393,11 +1395,13 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 - **Читати:** розділ Security, глава `Encryption and Hashing`, розділ Hashing; розділ Techniques, глава
   `Serialization`, розділ Exclude properties; у примірнику `argon2` — `argon2 README 0.45.0 … 0.45.1: node-argon2`
   (розділ Usage: `hash` і `verify`), `node-argon2 wiki: Options` (типові `memoryCost`, `timeCost`, `parallelism`) і
-  README `@node-rs/argon2` 2.2 (розділ API) — котрий із двох пакетів узяти; README bcrypt — поза корпусом; у
+  README `@node-rs/argon2` 2.2 (розділ API) — котрий із двох пакетів узяти; у примірнику `bcrypt` —
+  `bcrypt README 6.0.0: node.bcrypt.js` (розділ Usage: `hash` і `compare`; розділ A Note on Rounds) і
+  `node.bcrypt.js wiki: Security Issues and Concerns` (обрізання довгого пароля, байт NUL, часові атаки); у
   примірнику `webstandards` — `RFC 9106 Argon2 Memory-Hard Function for Password Hashing and Proof-of-Work
   Applications: 4 Parameter Choice`; у примірнику `owasp` — `Password Storage Cheat Sheet` (розділ Password Hashing
   Algorithms: параметри Argon2id і bcrypt).
-- **Сервери MCP:** `nestjs-docs`, `argon2-docs`, `webstandards-docs`, `owasp-docs`.
+- **Сервери MCP:** `nestjs-docs`, `argon2-docs`, `bcrypt-docs`, `webstandards-docs`, `owasp-docs`.
 - **Зробити:** 1) `UNIQUE` на email у міграції; 2) `POST /auth/register` зі схемою zod (email, пароль від 12
   символів); 3) хешування bcrypt або argon2; 4) жодна відповідь API не містить пароля чи хеша.
 - **Перевірити себе:** у базі — лише хеші; `curl` на реєстрацію, `GET /users/me` і список авторів — у жодній
