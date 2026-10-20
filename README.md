@@ -2659,7 +2659,7 @@ bcrypt vs bcrypt.js — і Benchmark `bcryptjs`) і реєстр npm з вимо
 Документація пакета npm `class-validator` (валідація класів декораторами, typestack/class-validator) на кожній стабільній
 версії: README усіх 44 випусків (0.3.0–0.15.1), тека `docs` репозиторію, журнал змін, релізи GitHub і реєстр npm із
 залежностями (`validator`, `libphonenumber-js`). Офіційного сайту в пакета немає (домашня сторінка веде на GitHub).
-85 документів, 278 фрагментів; нових читачів не потрібно (журнал змін читає `changelog-regex` із власним виразом).
+85 документів, 405 фрагментів; нових читачів не потрібно (журнал змін читає `changelog-regex` із власним виразом).
 
 - порт `8874`; запис у Claude Code — `class-validator-docs`, адреса `http://127.0.0.1:8874/mcp`; інструменти
   `search_docs` і `read_section`;
@@ -2668,8 +2668,8 @@ bcrypt vs bcrypt.js — і Benchmark `bcryptjs`) і реєстр npm з вимо
   лінії 0.14 (близько 72 % завантажень npm за тиждень до 20.10.2026; 0.14.4 — 32 %) і згадувати 0.15 (0.15.1 — 25 %), де
   вона відрізняється; версії 0.15.0 у npm немає — лише тег і реліз на GitHub;
 - не входять: class-transformer, `ValidationPipe` з NestJS, validator.js, Zod, Joi і Yup;
-- відома слабкість: розділ README «Validation decorators» — одна таблиця на близько 30 000 символів, тобто один
-  фрагмент, і пошук його погано піднімає; повний текст віддає `read_section`;
+- таблиця всіх декораторів у README (близько 30 000 символів) розрізана по рядках полем `split_long_tables` у
+  `config.json` примірника; в інших примірниках поле не задане, і їхня видача не змінилась;
 - приклад питання агентові: `./df class-validator ask "Since which version is forbidUnknownValues enabled by default,
   and what does it break?"`;
 - корпус — в архіві від самого початку;
