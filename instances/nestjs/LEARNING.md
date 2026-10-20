@@ -329,7 +329,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 |------------|--------|------------|
 | TypeScript | мова Nest; класи, декоратори, дженерики | Ф0 Д1–4; є примірник `typescript` |
 | zod через Standard Schema | одна схема для тіла запиту, конфігу, OpenAPI і форми в SPA | Ф2 Д1, Д3, Д6, Д8; є примірник `zod` |
-| class-validator, class-transformer | DTO-класи з декораторами — у більшості чужих проєктів | Ф2 Д2 |
+| class-validator, class-transformer | DTO-класи з декораторами — у більшості чужих проєктів | Ф2 Д2, Д8; є примірник `class-validator` (class-transformer — поза корпусом) |
 | `@nestjs/config` | змінні оточення з перевіркою схемою на старті | Ф2 Д3 |
 | `@nestjs/swagger` і CLI plugin | документ OpenAPI, сторінка `/docs`, джерело клієнта для SPA | Ф2 Д6–7 |
 | PostgreSQL | база даних | Ф0 Д13–18, Ф3; є примірник `postgresql` |
@@ -452,6 +452,8 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   Argon2 і його специфікація — `argon2`;
 - хешування паролів: пакети npm bcrypt (0.1.2–6.0.0) і bcryptjs (0.1.0–3.0.3, той самий алгоритм на чистому JavaScript)
   усіх стабільних версій (README, типи, журнал змін, релізи, вікі, політика безпеки, вимоги до Node) — `bcrypt`;
+- class-validator (декораторна валідація класів; пакет npm усіх стабільних версій 0.3.0–0.15.1: README, тека `docs`,
+  журнал змін, релізи GitHub, реєстр npm; class-transformer і `ValidationPipe` тут немає) — `class-validator`;
 - Passport.js (сайт passportjs.org; README, журнали змін, код і тести кожної стабільної версії passport 0.1–0.7 і
   тринадцяти стратегій: passport-local, passport-jwt, passport-oauth2, passport-google-oauth20, passport-github2,
   passport-facebook, passport-http-bearer, passport-openidconnect, passport-saml, passport-azure-ad, passport-twitter,
@@ -470,9 +472,9 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   стабільних версій — `express-rate-limit`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
-глава про інтеграцію (class-validator), але не документація самої бібліотеки:
+глава про інтеграцію (class-transformer), але не документація самої бібліотеки:
 
-- з «треба знати»: class-validator, class-transformer, supertest;
+- з «треба знати»: class-transformer, supertest;
 - з «варто знати»: `ws`, nestjs-cls, nestjs-pino, csrf-csrf, CASL, orval, openapi-typescript;
 - з «знати, що існує»: MikroORM, Kafka, RabbitMQ, NATS.
 
@@ -947,8 +949,8 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 
 # Фаза 2. Робочий API — 9 днів
 
-**Сервери MCP фази:** `nestjs-docs`, `zod-docs`, `webstandards-docs`, `tanstack-query-docs`, `react-hook-form-docs`,
-`jsonschema-docs`.
+**Сервери MCP фази:** `nestjs-docs`, `zod-docs`, `class-validator-docs`, `webstandards-docs`, `tanstack-query-docs`,
+`react-hook-form-docs`, `jsonschema-docs`.
 
 Тут API стає таким, яким його можна віддати фронту: вхід перевіряється схемою, конфіг — на старті, помилки мають
 один формат, контракт описано машинно, а SPA отримує згенерований клієнт і підсвічує конкретне поле форми. Основний
@@ -989,8 +991,10 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   імпортують з `@nestjs/swagger`, а не з `@nestjs/mapped-types`, інакше документ OpenAPI втратить поля.
 - **Читати:** розділ Techniques, глава `Validation` — розділи Using the built-in ValidationPipe, Stripping
   properties, Mapped types; розділ OpenAPI, глава `Mapped Types`; у `Migration guide` — розділ class-validator and
-  class-transformer.
-- **Сервери MCP:** `nestjs-docs`.
+  class-transformer; у примірнику `class-validator` — `class-validator README 0.15.1: class-validator` (розділи Usage,
+  Passing options — `whitelist`, `forbidNonWhitelisted`, `forbidUnknownValues`; Whitelisting; Validating nested
+  objects) і `class-validator changelog: 0.14.0 (2022-12-09)` (`forbidUnknownValues` стало типово увімкненим).
+- **Сервери MCP:** `nestjs-docs`, `class-validator-docs`.
 - **Зробити:** в окремій гілці: 1) ті самі два маршрути на DTO-класах; 2) запит із зайвим полем — з `whitelist` і
   з `forbidNonWhitelisted`; 3) таблиця в README «zod-схема → DTO-клас» для трьох полів.
 - **Перевірити себе:** з `whitelist` зайве поле зникає мовчки, з `forbidNonWhitelisted` — 400 з назвою поля; ви
@@ -1108,8 +1112,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   помилка з відповіді лягає на своє поле, та сама схема zod перевіряє форму ще до надсилання.
 - **Читати:** розділ Techniques, глава `Validation` — опції `errorFormat` і `exceptionFactory`; `Pipes`, розділ
   Object schema validation; у примірнику `zod` — `Formatting errors`; у примірнику `react-hook-form` — документ
-  про `setError` (розділ useForm).
-- **Сервери MCP:** `nestjs-docs`, `zod-docs`, `react-hook-form-docs`.
+  про `setError` (розділ useForm); у примірнику `class-validator` — `class-validator README 0.15.1: class-validator`
+  (розділ Validation errors: поля `ValidationError` — `property`, `constraints`, `children`).
+- **Сервери MCP:** `nestjs-docs`, `zod-docs`, `class-validator-docs`, `react-hook-form-docs`.
 - **Зробити:** 1) усі помилки валідації API — один формат `{ statusCode, errorCode: 'VALIDATION', fieldErrors }`;
   2) у SPA функція, що розкладає `fieldErrors` у `setError`; 3) правило, яке знає лише сервер (унікальна назва),
   теж повертається як помилка поля.
