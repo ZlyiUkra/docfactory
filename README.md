@@ -2629,6 +2629,27 @@ passport-jwt; код `lib/`, `src/` і тести `test/` кожного ста�
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/rxjs/README.md](instances/rxjs/README.md).
 
+### bcrypt
+
+Документація хешування паролів bcrypt для Node.js — пакета npm `bcrypt` (kelektiv/node.bcrypt.js, прив'язка до
+реалізації на C++) на кожній стабільній версії: 53 випуски, 0.1.2–6.0.0, сім ліній 0–6. README кожної версії, журнал
+змін, релізи GitHub, п'ять сторінок вікі (Installation Instructions, Frequently Asked Questions, Security Issues and
+Concerns, Windows Support, bcrypt vs bcrypt.js), політика безпеки й реєстр npm з вимогами до Node (`engines`). Офіційного
+сайту в пакета немає (домашня сторінка веде на GitHub). 113 документів, 272 фрагменти; нових читачів не потрібно.
+
+- порт `8873`; запис у Claude Code — `bcrypt-docs`, адреса `http://127.0.0.1:8873/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-bcrypt`, модель векторів — `bge-small`;
+- версія — лінія з одного числа (`version: "6"`) або двох (`"5.1"`); без названої версії — 6 (6.0.0, близько 69 %
+  завантажень npm за тиждень до 20.10.2026; 5.1.1 — близько 27 %), а де 5.x відрізняється (Node старіший за 18,
+  збирання через `node-pre-gyp`), модель згадує й 5.x; усі версії до 5.0.0 реєстр позначає застарілими (байт NUL у
+  паролі); вікі й політика безпеки версій не мають;
+- не входять: bcryptjs (чисто JavaScript-пакет), argon2, scrypt, `node:crypto`, NestJS і Passport;
+- приклад питання агентові: `./df bcrypt ask "Which Node.js versions does bcrypt 6 support, and what happens to
+  passwords longer than 72 bytes?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/bcrypt/README.md](instances/bcrypt/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
