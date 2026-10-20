@@ -100,6 +100,12 @@ _REVISION = re.compile(r"-[0-9a-f]{8}$")
 # видачу займають пари тієї самої сторінки. Без поля ключ той самий, що й до його появи.
 SLUG_REWRITE = [(re.compile(a), b) for a, b in instance.config().get("slug_rewrite") or []]
 
+# Довга таблиця markdown — це один абзац без порожніх рядків, і _split_long лишав її цілим
+# фрагментом: таблиця на 30 000 символів (усі декоратори class-validator) тонула в довжині
+# для пошуку по словах, а пошук за змістом бачив лише її початок. Поле split_long_tables
+# ріже таку таблицю по цілих рядках. Без поля все лишається як було.
+SPLIT_LONG_TABLES = instance.config().get("split_long_tables") is True
+
 # Тека документів — у примірнику, з яким працює цей запуск (див. instance.py):
 # код тепер спільний на всі домени, а corpus/ у кожного домену свій.
 DOCS_DIRS = [instance.root() / "corpus"]
@@ -332,6 +338,23 @@ def _paragraphs(text: str) -> list[str]:
     return blocks
 
 
+def _table_rows(para: str, ceiling: int) -> list[str]:
+    """Абзац, що цілком є таблицею markdown, — шматки з цілих рядків не довші за межу
+    (рядок, довший за межу сам, лишається цілим). Будь-який інший абзац — як є."""
+    lines = para.split("\n")
+    if not all(ln.lstrip().startswith("|") for ln in lines):
+        return [para]
+    pieces, current, size = [], [], 0
+    for ln in lines:
+        if current and size + len(ln) + 1 > ceiling:
+            pieces.append("\n".join(current))
+            current, size = [], 0
+        current.append(ln)
+        size += len(ln) + 1
+    pieces.append("\n".join(current))
+    return pieces
+
+
 def _split_long(doc: Document, section: str, heading: str, text: str,
                 max_chars: int = None) -> list[Passage]:
     """Розрізає задовгий підрозділ по порожніх рядках, зберігаючи заголовок."""
@@ -341,7 +364,11 @@ def _split_long(doc: Document, section: str, heading: str, text: str,
 
     chunks, current = [], []
     size = 0
-    for para in _paragraphs(text):
+    paras = _paragraphs(text)
+    if SPLIT_LONG_TABLES:
+        paras = [piece for para in paras
+                 for piece in (_table_rows(para, ceiling) if len(para) > ceiling else [para])]
+    for para in paras:
         # Абзац, який сам довший за межу (довгий алгоритм списком), лишаємо цілим:
         # різати його посередині кроку гірше, ніж перевищити межу.
         if size and size + len(para) > ceiling:
@@ -519,6 +546,9 @@ def _corpus_stamp() -> str:
     # Так само лише з полем: без нього відбиток не змінюється ні на байт.
     if SLUG_REWRITE:
         parts.append(["slug_rewrite", [[p.pattern, r] for p, r in SLUG_REWRITE]])
+    # І це лише з полем: з розрізаними таблицями ті самі файли дають інші фрагменти.
+    if SPLIT_LONG_TABLES:
+        parts.append("split_long_tables")
     for folder in DOCS_DIRS:
         try:
             with os.scandir(folder) as entries:
