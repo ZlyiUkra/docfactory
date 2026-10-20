@@ -335,7 +335,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 | PostgreSQL | база даних | Ф0 Д13–18, Ф3; є примірник `postgresql` |
 | TypeORM або Prisma | ORM: сутності чи схема, міграції, запити | Ф3 Д1–12; є примірники `typeorm` і `prisma` |
 | `@nestjs/jwt`, Passport | токени й стратегії входу | Ф4 Д2–5; є примірник `passport` (Passport і тринадцять стратегій: local, JWT, OAuth 2.0, Google, GitHub, Facebook, Bearer, OpenID Connect, SAML, Azure AD, Twitter, Discord; `@nestjs/jwt` — поза корпусом) |
-| bcrypt або argon2 | хешування паролів | Ф4 Д1; є примірники `argon2` (argon2 і `@node-rs/argon2`) і `bcrypt` |
+| bcrypt або argon2 | хешування паролів | Ф4 Д1; є примірники `argon2` (argon2 і `@node-rs/argon2`) і `bcrypt` (bcrypt і `bcryptjs`) |
 | Vitest і supertest | юніт- і наскрізні тести | Ф5; є примірник `vitest` (supertest — поза корпусом) |
 | `@nestjs/terminus` | перевірки стану для Docker і оркестраторів | Ф6 Д3, Д8 |
 | helmet, `@nestjs/throttler` | заголовки безпеки, обмеження частоти | Ф4 Д12; є примірники `helmet` і `express-rate-limit` (`@nestjs/throttler` — глава в `nestjs`) |
@@ -450,8 +450,8 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 - API споту Kraken, запасне джерело цін (REST, WebSocket v2, гайди, журнал змін) — `kraken-spot`;
 - хешування паролів: пакети npm argon2 (node-argon2) і `@node-rs/argon2` усіх стабільних версій, еталонна реалізація
   Argon2 і його специфікація — `argon2`;
-- хешування паролів: пакет npm bcrypt усіх стабільних версій 0.1.2–6.0.0 (README, журнал змін, релізи, вікі, політика
-  безпеки, вимоги до Node) — `bcrypt`;
+- хешування паролів: пакети npm bcrypt (0.1.2–6.0.0) і bcryptjs (0.1.0–3.0.3, той самий алгоритм на чистому JavaScript)
+  усіх стабільних версій (README, типи, журнал змін, релізи, вікі, політика безпеки, вимоги до Node) — `bcrypt`;
 - Passport.js (сайт passportjs.org; README, журнали змін, код і тести кожної стабільної версії passport 0.1–0.7 і
   тринадцяти стратегій: passport-local, passport-jwt, passport-oauth2, passport-google-oauth20, passport-github2,
   passport-facebook, passport-http-bearer, passport-openidconnect, passport-saml, passport-azure-ad, passport-twitter,
@@ -1397,7 +1397,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   (розділ Usage: `hash` і `verify`), `node-argon2 wiki: Options` (типові `memoryCost`, `timeCost`, `parallelism`) і
   README `@node-rs/argon2` 2.2 (розділ API) — котрий із двох пакетів узяти; у примірнику `bcrypt` —
   `bcrypt README 6.0.0: node.bcrypt.js` (розділ Usage: `hash` і `compare`; розділ A Note on Rounds) і
-  `node.bcrypt.js wiki: Security Issues and Concerns` (обрізання довгого пароля, байт NUL, часові атаки); у
+  `node.bcrypt.js wiki: Security Issues and Concerns` (обрізання довгого пароля, байт NUL, часові атаки), а для
+  версії без нативного модуля — `bcryptjs README 0.1.0 … 3.0.3: bcrypt.js` (розділи Usage і Security considerations) і
+  `node.bcrypt.js wiki: bcrypt vs bcrypt.js`; у
   примірнику `webstandards` — `RFC 9106 Argon2 Memory-Hard Function for Password Hashing and Proof-of-Work
   Applications: 4 Parameter Choice`; у примірнику `owasp` — `Password Storage Cheat Sheet` (розділ Password Hashing
   Algorithms: параметри Argon2id і bcrypt).
@@ -1767,7 +1769,7 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 # Фаза 6. Продакшн — 9 днів
 
 **Сервери MCP фази:** `nestjs-docs`, `docker-docs`, `kubernetes-docs`, `oracle-cloud-docs`, `express-docs`, `upstash-docs`,
-`postgresql-docs`, `github-actions-docs`, `nginx-docs`, `node-postgres-docs`, `argon2-docs`, `prisma-docs`.
+`postgresql-docs`, `github-actions-docs`, `nginx-docs`, `node-postgres-docs`, `argon2-docs`, `bcrypt-docs`, `prisma-docs`.
 
 Сервер, який треба зібрати, запустити, тримати живим, міряти й вміти оновити. Глави Nest тут — лише те, що Nest
 вимагає від Docker, проксі й CI. Docker і Compose мають примірник `docker`, Kubernetes, k3s і Traefik — примірник
@@ -1950,10 +1952,12 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   `Deployment`, розділи Health checks і Scaling up or out; у примірнику `kubernetes` — `Deployments`, `Service`,
   `ConfigMaps`, `Secrets`, `StatefulSets`, `Persistent Volumes`, `Jobs`,
   `Configure Liveness, Readiness and Startup Probes`; у примірнику `argon2` — `argon2 README 0.45.0 … 0.45.1:
-  node-argon2`, розділ Prebuilt binaries (готові збірки під ARM64 і з якої версії); у примірнику `oracle-cloud` —
+  node-argon2`, розділ Prebuilt binaries (готові збірки під ARM64 і з якої версії); у примірнику `bcrypt` —
+  `bcrypt changelog: 6.0.0` (з 6.0.0 `node-pre-gyp` прибрано, готові збірки лежать у самому пакеті; `bcryptjs` нативного
+  модуля не має зовсім); у примірнику `oracle-cloud` —
   `Compute: Arm-Based Compute` (машина A1 — arm64); у примірнику `prisma` — `Connection URLs` (аргумент `schema`
   адреси PostgreSQL).
-- **Сервери MCP:** `nestjs-docs`, `kubernetes-docs`, `argon2-docs`, `oracle-cloud-docs`, `prisma-docs`.
+- **Сервери MCP:** `nestjs-docs`, `kubernetes-docs`, `argon2-docs`, `bcrypt-docs`, `oracle-cloud-docs`, `prisma-docs`.
 - **Зробити:** усі файли — у теці `k8s/` репозиторію, застосовуються командою `kubectl apply -f <файл>` («зроби в
   кластері так, як написано у файлі»: створює, а при повторі — оновлює); простір імен — той, де живе под SPA (нижче
   він названий `app`, ключ `-n app` у командах).

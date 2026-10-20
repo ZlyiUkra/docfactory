@@ -48,7 +48,7 @@ v8, viem, vite, vitest, wagmi, wasm, webdev, webstandards, zod, zustand.
 | 3. Дані: TypeORM, Prisma | `typeorm` (вступ, 1–6, 11–12), `prisma` (вступ, 3, 7–12), `postgresql` (12), `owasp` (5) |
 | 4. Автентифікація й авторизація | `webstandards` (1–2, 6–8, 12), `express` (8, 12), `react-router` (9), `owasp` (1, 6, 8, 12), `argon2` (1), `bcrypt` (1), `passport` (5), `helmet` (12), `express-rate-limit` (12) |
 | 5. Якість: тести й DI | `vitest` (1), `prisma` (2) |
-| 6. Продакшн | `docker` (вступ, 2, 7), `upstash` (6), `kubernetes` (вступ, 8–9), `oracle-cloud` (вступ, 8), `express` (9), `postgresql` (9), `github-actions` (вступ, 7), `nginx` (вступ, 2, 5), `node-postgres` (5), `argon2` (8), `prisma` (2, 8) |
+| 6. Продакшн | `docker` (вступ, 2, 7), `upstash` (6), `kubernetes` (вступ, 8–9), `oracle-cloud` (вступ, 8), `express` (9), `postgresql` (9), `github-actions` (вступ, 7), `nginx` (вступ, 2, 5), `node-postgres` (5), `argon2` (8), `bcrypt` (8), `prisma` (2, 8) |
 | 7. Живі дані: WebSockets | `socketio` (вступ, 2–4, 6–7), `mdn` (вступ, 1), `webstandards` (вступ, 1, 3, 6), `vite` (2), `kubernetes` (3, 6, 8), `owasp` (3), `nginx` (6), `binance-spot` (вступ, 5), `kraken-spot` (вступ, 1, 5), `rxjs` (6) |
 | Факультатив «крипта» | `binance-spot` (К1), `webstandards` (К3), `node-postgres` (К1), `viem` (К3–К4), `foundry` (К4) |
 
@@ -60,7 +60,7 @@ v8, viem, vite, vitest, wagmi, wasm, webdev, webstandards, zod, zustand.
 | 1. Ядро App Router | `eslint` і `biome` (1), `tailwind` (10), `webdev` (11, 14) |
 | 2. Як Next.js працює зсередини | — |
 | 3. Кешування | `redis` і `upstash` (9) |
-| 4. Фулстек: дані, автентифікація, дії, тести | `webstandards` (2–3, 5, 9–10, 12), `zod` (5), `react-hook-form` і `shadcn` (6), `postgresql` (1), `drizzle` (1, 4), `prisma` (1, 4), `auth`, `clerk` і `supabase` (9), `tanstack-query` і `swr` (11), `vitest` і `testing-library` (13), `playwright` (14), `owasp` (12), `webdev` (6), `argon2` (2), `iron-session` і `jose` (3) |
+| 4. Фулстек: дані, автентифікація, дії, тести | `webstandards` (2–3, 5, 9–10, 12), `zod` (5), `react-hook-form` і `shadcn` (6), `postgresql` (1), `drizzle` (1, 4), `prisma` (1, 4), `auth`, `clerk` і `supabase` (9), `tanstack-query` і `swr` (11), `vitest` і `testing-library` (13), `playwright` (14), `owasp` (12), `webdev` (6), `argon2` (2), `bcrypt` (2), `iron-session` і `jose` (3) |
 | 5. Інтерфейс із характером | `mdn` (4), `motion` (3–4), `zustand` (5), `webstandards` (5, 7), `shadcn`, `next-themes` і `nuqs` (5), `webdev` (4, 7), `i18next` і `next-intl` (8) |
 | 6. Чужий код | — |
 | 7. DevOps: від збірки до продакшну | `docker` (вступ, 2, 4), `upstash` (6), `drizzle` (4), `prisma` (4), `webstandards` (6), `kubernetes` (вступ, 12), `playwright` (7), `github-actions` (вступ, 7), `nginx` (вступ, 6), `webdev` (9–10), `sentry` (9), `opentelemetry` (9) |

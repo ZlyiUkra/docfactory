@@ -430,8 +430,8 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
   Colors), Base UI, React Aria — `shadcn`;
 - хешування паролів: пакети npm argon2 (node-argon2) і `@node-rs/argon2` усіх стабільних версій, еталонна реалізація
   Argon2 і його специфікація — `argon2`;
-- хешування паролів: пакет npm bcrypt усіх стабільних версій 0.1.2–6.0.0 (README, журнал змін, релізи, вікі, політика
-  безпеки, вимоги до Node) — `bcrypt`;
+- хешування паролів: пакети npm bcrypt (0.1.2–6.0.0) і bcryptjs (0.1.0–3.0.3, той самий алгоритм на чистому JavaScript)
+  усіх стабільних версій (README, типи, журнал змін, релізи, вікі, політика безпеки, вимоги до Node) — `bcrypt`;
 - переклади: i18next і всі пакети його організації в npm — react-i18next, next-i18next (з 16.x — App Router),
   next-language-detector, i18next-http-backend, i18next-browser-languagedetector, i18next-cli, інші бекенди, формати й
   інструменти — `i18next`;
@@ -1128,7 +1128,8 @@ Next.js — надбудова над HTTP, Node і серверним React. У
   зберегти лише хеш. Вхід: знайти користувача, порівняти хеш. Обидва — серверні дії.
 - **Читати:** `How to implement authentication in Next.js`, розділ Authentication; у примірнику `argon2` — `argon2
   README 0.45.0 … 0.45.1: node-argon2` (розділ Usage: `hash` і `verify`) і `node-argon2 wiki: Options`; у примірнику `bcrypt` —
-  `bcrypt README 6.0.0: node.bcrypt.js` (розділ Usage: `hash` і `compare`); у примірнику
+  `bcrypt README 6.0.0: node.bcrypt.js` (розділ Usage: `hash` і `compare`) і `bcryptjs README 0.1.0 … 3.0.3: bcrypt.js`
+  (той самий API без нативного модуля); у примірнику
   `webstandards` — `RFC 9106 Argon2 Memory-Hard Function for Password Hashing and Proof-of-Work Applications: 4
   Parameter Choice`.
 - **Сервери MCP:** `nextjs-docs`, `argon2-docs`, `bcrypt-docs`, `webstandards-docs`.
