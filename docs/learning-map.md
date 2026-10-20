@@ -4,15 +4,15 @@
 однієї бібліотеки чи інструмента (тека `instances/<ім'я>`). Файл оновлюється після кожного нового примірника, разом
 із підрозділами «Документація у фабриці» самих планів.
 
-Стан на 19.10.2026. Примірники: alpine, anthropic-api, argon2, aspnetcore, astro, astro-markdown-pipeline, auth,
+Стан на 20.10.2026. Примірники: alpine, anthropic-api, argon2, aspnetcore, astro, astro-markdown-pipeline, auth,
 binance-spot, biome, bullmq, cares, certbot, clerk, doc-tools, docker, dotnet, dotnet-testing, drizzle, ecmascript,
 entityframework, eslint, expo, express, express-rate-limit, fastify, ffmpeg, foundry, frontend-architecture,
 github-actions, gvisor, helmet, i18next, icu, ioredis, iron-session, jose, jsonschema, kraken-spot, kubernetes,
 libreoffice, libuv, lightweight-charts, linux, llhttp, mdn, mongodb, mongoose, motion, msw, nestjs, next-intl,
 next-themes, nextjs, nghttp2, nginx, node-mongodb, node-postgres, node-redis, nodejs, nodemailer, nuget, nuqs,
-nvidia-container-toolkit, ollama, openssl, opentelemetry, oracle-cloud, owasp, partysocket, patterns, playwright,
+nvidia-container-toolkit, ollama, openssl, opentelemetry, oracle-cloud, owasp, partysocket, passport, patterns, playwright,
 postgrator, postgres-image, postgresql, prisma, react, react-hook-form, react-native, react-router, react-window,
-redis, redux, sentry, shadcn, socketio, sqlserver, storybook, stripe, supabase, swr, tailwind, tanstack-query,
+redis, redux, rxjs, sentry, shadcn, socketio, sqlserver, storybook, stripe, supabase, swr, tailwind, tanstack-query,
 tanstack-router, tanstack-virtual, tesseract, testcontainers-dotnet, testing-library, typeorm, typescript, upstash,
 v8, viem, vite, vitest, wagmi, wasm, webdev, webstandards, zod, zustand.
 
@@ -43,13 +43,13 @@ v8, viem, vite, vitest, wagmi, wasm, webdev, webstandards, zod, zustand.
 | Фаза | Примірники (дні) |
 |------|------------------|
 | 0. База, якої Nest не дає | `typescript` (вступ, 1–4), `mdn` (вступ, 6–7, 10–11), `webstandards` (6–7, 10–11), `express` (9–10), `vite` (11), `postgresql` (вступ, 13–18), `owasp` (вступ, 10), `nodejs` (5, 8, 12) |
-| 1. Ядро Nest | — |
+| 1. Ядро Nest | `rxjs` (7) |
 | 2. Робочий API | `zod` (1, 3, 8), `webstandards` (4, 6), `tanstack-query` (7), `react-hook-form` (8), `jsonschema` (6) |
 | 3. Дані: TypeORM, Prisma | `typeorm` (вступ, 1–6, 11–12), `prisma` (вступ, 3, 7–12), `postgresql` (12), `owasp` (5) |
-| 4. Автентифікація й авторизація | `webstandards` (1–2, 6–8, 12), `express` (8, 12), `react-router` (9), `owasp` (1, 6, 8, 12), `argon2` (1), `passport` (5) |
+| 4. Автентифікація й авторизація | `webstandards` (1–2, 6–8, 12), `express` (8, 12), `react-router` (9), `owasp` (1, 6, 8, 12), `argon2` (1), `passport` (5), `helmet` (12), `express-rate-limit` (12) |
 | 5. Якість: тести й DI | `vitest` (1), `prisma` (2) |
 | 6. Продакшн | `docker` (вступ, 2, 7), `upstash` (6), `kubernetes` (вступ, 8–9), `oracle-cloud` (вступ, 8), `express` (9), `postgresql` (9), `github-actions` (вступ, 7), `nginx` (вступ, 2, 5), `node-postgres` (5), `argon2` (8), `prisma` (2, 8) |
-| 7. Живі дані: WebSockets | `socketio` (вступ, 2–4, 6–7), `mdn` (вступ, 1), `webstandards` (вступ, 1, 3, 6), `vite` (2), `kubernetes` (3, 6, 8), `owasp` (3), `nginx` (6), `binance-spot` (вступ, 5), `kraken-spot` (вступ, 1, 5) |
+| 7. Живі дані: WebSockets | `socketio` (вступ, 2–4, 6–7), `mdn` (вступ, 1), `webstandards` (вступ, 1, 3, 6), `vite` (2), `kubernetes` (3, 6, 8), `owasp` (3), `nginx` (6), `binance-spot` (вступ, 5), `kraken-spot` (вступ, 1, 5), `rxjs` (6) |
 | Факультатив «крипта» | `binance-spot` (К1), `webstandards` (К3), `node-postgres` (К1), `viem` (К3–К4), `foundry` (К4) |
 
 ### План Next.js — [instances/nextjs/LEARNING.md](../instances/nextjs/LEARNING.md)
@@ -116,7 +116,7 @@ v8, viem, vite, vitest, wagmi, wasm, webdev, webstandards, zod, zustand.
 
 ### NestJS
 
-1. class-validator і class-transformer (7), RxJS (4).
+1. class-validator і class-transformer (7).
 2. Факультатив: decimal.js.
 
 ### Next.js

@@ -338,8 +338,8 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 | bcrypt або argon2 | хешування паролів | Ф4 Д1; є примірник `argon2` (argon2 і `@node-rs/argon2`; bcrypt — поза корпусом) |
 | Vitest і supertest | юніт- і наскрізні тести | Ф5; є примірник `vitest` (supertest — поза корпусом) |
 | `@nestjs/terminus` | перевірки стану для Docker і оркестраторів | Ф6 Д3, Д8 |
-| helmet, `@nestjs/throttler` | заголовки безпеки, обмеження частоти | Ф4 Д12 |
-| RxJS, мінімум | `map`, `tap`, `catchError` у перехоплювачах; потік для `@Sse` | Ф1 Д7, Ф7 Д6 |
+| helmet, `@nestjs/throttler` | заголовки безпеки, обмеження частоти | Ф4 Д12; є примірники `helmet` і `express-rate-limit` (`@nestjs/throttler` — глава в `nestjs`) |
+| RxJS, мінімум | `map`, `tap`, `catchError` у перехоплювачах; потік для `@Sse` | Ф1 Д7, Ф7 Д6; є примірник `rxjs` |
 | `@nestjs/websockets`, `@nestjs/platform-socket.io` | gateway: вебсокети з DI, кімнатами й підтвердженнями | Ф7 Д2–7 |
 | socket.io-client | клієнт gateway у SPA, тестах і заміра навантаження | Ф7 Д2–3, Д7; є примірник `socketio` |
 | Kubernetes: `kubectl`, k3s | продакшн родини: бекенд, база й Redis подами в кластері з плану React | Ф6 Д8–9, Ф7 Д6; є примірник `kubernetes` |
@@ -458,12 +458,19 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   EIP-7702, OP Stack, Account Abstraction, Tempo; приклади, журнал змін і таблиця версій npm) — `viem`;
 - Foundry (Foundry Book на день виходу кожної стабільної версії 0.3.0–1.8.5: forge, cast, anvil, chisel, читкоди,
   forge-std, `foundry.toml`, довідник CLI; документація репозиторію, нотатки релізів, код forge-std і таблиця
-  версій npm) — `foundry`.
+  версій npm) — `foundry`;
+- RxJS (сайти rxjs.dev і v6.rxjs.dev: посібники, довідник операторів і функцій; README, журнал змін, код і тести
+  кожної стабільної версії 5.0–7.8, таблиця версій npm) — `rxjs`;
+- Helmet (сайт helmetjs.github.io на кожен реліз, README, типи, журнал змін і реєстр npm: що ввімкнено за замовчуванням
+  у кожній мажорній лінії, `Content-Security-Policy`, `Strict-Transport-Security`) — `helmet`;
+- express-rate-limit і шість пакетів його організації (express-slow-down, rate-limit-redis, rate-limit-memcached,
+  `@acpr/rate-limit-postgresql`, cluster-memory-store, ratelimit-header-parser): сайт, README, типи й журнали змін усіх
+  стабільних версій — `express-rate-limit`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
 глава про інтеграцію (class-validator), але не документація самої бібліотеки:
 
-- з «треба знати»: bcrypt, class-validator, class-transformer, supertest, RxJS;
+- з «треба знати»: bcrypt, class-validator, class-transformer, supertest;
 - з «варто знати»: `ws`, nestjs-cls, nestjs-pino, csrf-csrf, CASL, orval, openapi-typescript;
 - з «знати, що існує»: MikroORM, Kafka, RabbitMQ, NATS.
 
@@ -795,7 +802,7 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 
 # Фаза 1. Ядро Nest — 7 днів
 
-**Сервери MCP фази:** `nestjs-docs`.
+**Сервери MCP фази:** `nestjs-docs`, `rxjs-docs`.
 
 Розділ Overview підряд, у порядку самої документації: кожна глава спирається на попередню. Їх десять — від
 `First steps` до `Custom decorators`, — і сім днів цієї фази проходять усі. Дані до фази 3 лежать у масиві в
@@ -907,9 +914,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   руками. Порядок усього разом описує глава про життєвий цикл запиту (схема нижче): на прямому шляху — від
   глобальних до маршруту; на зворотному (перехоплювачі «після» й фільтри) — навпаки, від маршруту до глобальних.
   Виняток ловить перший фільтр, що підійшов, і далі не передається; помилку з middleware бачать лише глобальні.
-- **Читати:** `Interceptors`, `Custom decorators`; у розділі FAQ — `Request lifecycle`, розділ Summary; поза корпусом
-  — документація RxJS: «Operators» (`map`, `tap`, `catchError`).
-- **Сервери MCP:** `nestjs-docs`.
+- **Читати:** `Interceptors`, `Custom decorators`; у розділі FAQ — `Request lifecycle`, розділ Summary; у примірнику
+  `rxjs` — `Observable`, `Operators`, `map`, `tap`, `catchError`.
+- **Сервери MCP:** `nestjs-docs`, `rxjs-docs`.
 - **Зробити:** 1) перехоплювач, що міряє тривалість і загортає відповідь у `{ data, tookMs }`; 2) декоратор
   `@CurrentUser()`, що дістає користувача з запиту (поки — з заголовка); 3) намалювати ланцюг по пам'яті й звірити
   з главою.
@@ -1354,7 +1361,7 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 # Фаза 4. Автентифікація й авторизація — 13 днів
 
 **Сервери MCP фази:** `nestjs-docs`, `webstandards-docs`, `express-docs`, `react-router-docs`, `owasp-docs`,
-`argon2-docs`, `passport-docs`.
+`argon2-docs`, `passport-docs`, `helmet-docs`, `express-rate-limit-docs`.
 
 Точка, де сходяться всі глави фази 1: guard, декоратор, pipe, фільтр. Спершу руками, потім через Passport — так
 видно, що саме Passport робить за вас. Модель токенів одна на всю родину планів, і власник її — ця фаза:
@@ -1595,10 +1602,13 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 - **Читати:** розділ Security, глави `Rate limiting` (розділи Configuration, Customization, Proxies) і `Helmet`; у
   примірнику `webstandards` — `RFC 6585 Additional HTTP Status Codes: 4 429 Too Many Requests`, `RFC 6797 HTTP Strict
   Transport Security (HSTS): 6 Syntax`, `Content Security Policy Level 3: 6 Content Security Policy Directives`; у
-  примірнику `express` — README `helmet` вашої версії (які заголовки ставить типово, як налаштувати CSP) і
-  `Production Best Practices: Security` (розділи «Use Helmet», «Prevent brute-force attacks against authorization»);
-  у примірнику `owasp` — `HTTP Security Response Headers Cheat Sheet` (які заголовки ставити і які вже застаріли).
-- **Сервери MCP:** `nestjs-docs`, `webstandards-docs`, `express-docs`, `owasp-docs`.
+  примірнику `helmet` — README вашої версії (які заголовки ставить типово), `Content Security Policy`, `HSTS`,
+  `You might not need Helmet`; у примірнику `express-rate-limit` — `Troubleshooting Proxy Issues` (чому за проксі
+  лічильник рахує всіх однією адресою), `Configuration`; у примірнику `express` — `Production Best Practices:
+  Security` (розділи «Use Helmet», «Prevent brute-force attacks against authorization»); у примірнику `owasp` —
+  `HTTP Security Response Headers Cheat Sheet` (які заголовки ставити і які вже застаріли).
+- **Сервери MCP:** `nestjs-docs`, `webstandards-docs`, `helmet-docs`, `express-rate-limit-docs`, `express-docs`,
+  `owasp-docs`.
 - **Зробити:** 1) глобальний ліміт і жорсткий — на вхід, реєстрацію й `/api/auth/refresh`; 2) helmet першим рядком
   після `NestFactory.create`; 3) `trust proxy` під змінну оточення (знадобиться у фазі 6).
 - **Перевірити себе:** одинадцятий вхід за хвилину — 429; `curl -I` показує заголовки helmet; без `trust proxy` за
@@ -2247,7 +2257,7 @@ SPA під одним іменем, викочується й відкочуєт
 # Фаза 7. Живі дані: WebSockets — 8 днів
 
 **Сервери MCP фази:** `nestjs-docs`, `webstandards-docs`, `mdn-docs`, `vite-docs`, `kubernetes-docs`, `socketio-docs`,
-`owasp-docs`, `nginx-docs`, `binance-spot-docs`, `kraken-spot-docs`.
+`owasp-docs`, `nginx-docs`, `binance-spot-docs`, `kraken-spot-docs`, `rxjs-docs`.
 
 Досі сервер лише відповідав: клієнт спитав — сервер відповів. Живі ціни так не працюють: сервер сам штовхає дані,
 щойно вони з'явилися, через з'єднання, яке живе годинами. У плані React (фаза 3, дні 6–8) SPA слухала ринковий стрім
@@ -2493,8 +2503,9 @@ SPA під одним іменем, викочується й відкочуєт
   `Using multiple nodes`, `Redis adapter`, `Redis Streams adapter`, `Behind a reverse proxy`; у примірнику
   `kubernetes` — `Traefik: Traefik EntryPoints Documentation`, розділ respondingTimeouts; у примірнику `webstandards` —
   `HTML Standard: 9.2 Server-sent events`; у примірнику `nginx` — `WebSocket proxying`, `Module ngx_http_proxy_module`
-  (директива `proxy_read_timeout`).
-- **Сервери MCP:** `nestjs-docs`, `kubernetes-docs`, `webstandards-docs`, `socketio-docs`, `nginx-docs`.
+  (директива `proxy_read_timeout`); у примірнику `rxjs` — `Observable`, `Subject`, `interval`, `share` (потік, який
+  повертає `@Sse`).
+- **Сервери MCP:** `nestjs-docs`, `kubernetes-docs`, `webstandards-docs`, `socketio-docs`, `nginx-docs`, `rxjs-docs`.
 - **Зробити:** 1) `RedisIoAdapter` з адресою Redis із `ConfigService`, а не `localhost`, як у прикладі глави;
   2) у клієнтах — `transports: ['websocket']`; 3) ціни з біржі — через `server.local`, персональні події — через
   адаптер; на з'єднання сервер шле `hello` з `os.hostname()`, щоб було видно, на якому екземплярі сокет;
