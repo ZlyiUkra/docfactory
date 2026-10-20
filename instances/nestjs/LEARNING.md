@@ -329,7 +329,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 |------------|--------|------------|
 | TypeScript | мова Nest; класи, декоратори, дженерики | Ф0 Д1–4; є примірник `typescript` |
 | zod через Standard Schema | одна схема для тіла запиту, конфігу, OpenAPI і форми в SPA | Ф2 Д1, Д3, Д6, Д8; є примірник `zod` |
-| class-validator, class-transformer | DTO-класи з декораторами — у більшості чужих проєктів | Ф2 Д2, Д8; є примірник `class-validator` (class-transformer — поза корпусом) |
+| class-validator, class-transformer | DTO-класи з декораторами — у більшості чужих проєктів | Ф2 Д2, Д8, Ф4 Д1; є примірники `class-validator` і `class-transformer` |
 | `@nestjs/config` | змінні оточення з перевіркою схемою на старті | Ф2 Д3 |
 | `@nestjs/swagger` і CLI plugin | документ OpenAPI, сторінка `/docs`, джерело клієнта для SPA | Ф2 Д6–7 |
 | PostgreSQL | база даних | Ф0 Д13–18, Ф3; є примірник `postgresql` |
@@ -453,7 +453,10 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 - хешування паролів: пакети npm bcrypt (0.1.2–6.0.0) і bcryptjs (0.1.0–3.0.3, той самий алгоритм на чистому JavaScript)
   усіх стабільних версій (README, типи, журнал змін, релізи, вікі, політика безпеки, вимоги до Node) — `bcrypt`;
 - class-validator (декораторна валідація класів; пакет npm усіх стабільних версій 0.3.0–0.15.1: README, тека `docs`,
-  журнал змін, релізи GitHub, реєстр npm; class-transformer і `ValidationPipe` тут немає) — `class-validator`;
+  журнал змін, релізи GitHub, реєстр npm; `ValidationPipe` і class-transformer тут немає) — `class-validator`;
+- class-transformer (перетворення простих об'єктів у екземпляри класів і назад; пакет npm усіх стабільних версій
+  0.1.0–0.5.1: README, тека `docs`, журнал змін, реєстр npm; `ValidationPipe` і `ClassSerializerInterceptor` тут
+  немає) — `class-transformer`;
 - Passport.js (сайт passportjs.org; README, журнали змін, код і тести кожної стабільної версії passport 0.1–0.7 і
   тринадцяти стратегій: passport-local, passport-jwt, passport-oauth2, passport-google-oauth20, passport-github2,
   passport-facebook, passport-http-bearer, passport-openidconnect, passport-saml, passport-azure-ad, passport-twitter,
@@ -472,9 +475,9 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   стабільних версій — `express-rate-limit`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
-глава про інтеграцію (class-transformer), але не документація самої бібліотеки:
+глава про інтеграцію (CASL, Kafka, RabbitMQ, NATS, MikroORM), але не документація самої бібліотеки:
 
-- з «треба знати»: class-transformer, supertest;
+- з «треба знати»: supertest;
 - з «варто знати»: `ws`, nestjs-cls, nestjs-pino, csrf-csrf, CASL, orval, openapi-typescript;
 - з «знати, що існує»: MikroORM, Kafka, RabbitMQ, NATS.
 
@@ -949,8 +952,8 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 
 # Фаза 2. Робочий API — 9 днів
 
-**Сервери MCP фази:** `nestjs-docs`, `zod-docs`, `class-validator-docs`, `webstandards-docs`, `tanstack-query-docs`,
-`react-hook-form-docs`, `jsonschema-docs`.
+**Сервери MCP фази:** `nestjs-docs`, `zod-docs`, `class-validator-docs`, `class-transformer-docs`, `webstandards-docs`,
+`tanstack-query-docs`, `react-hook-form-docs`, `jsonschema-docs`.
 
 Тут API стає таким, яким його можна віддати фронту: вхід перевіряється схемою, конфіг — на старті, помилки мають
 один формат, контракт описано машинно, а SPA отримує згенерований клієнт і підсвічує конкретне поле форми. Основний
@@ -993,8 +996,10 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   properties, Mapped types; розділ OpenAPI, глава `Mapped Types`; у `Migration guide` — розділ class-validator and
   class-transformer; у примірнику `class-validator` — `class-validator README 0.15.1: class-validator` (розділи Usage,
   Passing options — `whitelist`, `forbidNonWhitelisted`, `forbidUnknownValues`; Whitelisting; Validating nested
-  objects) і `class-validator changelog: 0.14.0 (2022-12-09)` (`forbidUnknownValues` стало типово увімкненим).
-- **Сервери MCP:** `nestjs-docs`, `class-validator-docs`.
+  objects) і `class-validator changelog: 0.14.0 (2022-12-09)` (`forbidUnknownValues` стало типово увімкненим); у
+  примірнику `class-transformer` — `class-transformer README 0.4.1 … 0.5.1: class-transformer` (розділи Working with
+  nested objects — `@Type()`; Implicit type conversion).
+- **Сервери MCP:** `nestjs-docs`, `class-validator-docs`, `class-transformer-docs`.
 - **Зробити:** в окремій гілці: 1) ті самі два маршрути на DTO-класах; 2) запит із зайвим полем — з `whitelist` і
   з `forbidNonWhitelisted`; 3) таблиця в README «zod-схема → DTO-клас» для трьох полів.
 - **Перевірити себе:** з `whitelist` зайве поле зникає мовчки, з `forbidNonWhitelisted` — 400 з назвою поля; ви
@@ -1368,7 +1373,7 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 # Фаза 4. Автентифікація й авторизація — 13 днів
 
 **Сервери MCP фази:** `nestjs-docs`, `webstandards-docs`, `express-docs`, `react-router-docs`, `owasp-docs`,
-`argon2-docs`, `bcrypt-docs`, `passport-docs`, `helmet-docs`, `express-rate-limit-docs`.
+`argon2-docs`, `bcrypt-docs`, `class-transformer-docs`, `passport-docs`, `helmet-docs`, `express-rate-limit-docs`.
 
 Точка, де сходяться всі глави фази 1: guard, декоратор, pipe, фільтр. Спершу руками, потім через Passport — так
 видно, що саме Passport робить за вас. Модель токенів одна на всю родину планів, і власник її — ця фаза:
@@ -1398,7 +1403,8 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   зайнятий email дає 409 — це свідомий компроміс: так можна перевірити, чи зареєстрована адреса, тому обмеження
   частоти на реєстрацію обов'язкове (день 12).
 - **Читати:** розділ Security, глава `Encryption and Hashing`, розділ Hashing; розділ Techniques, глава
-  `Serialization`, розділ Exclude properties; у примірнику `argon2` — `argon2 README 0.45.0 … 0.45.1: node-argon2`
+  `Serialization`, розділ Exclude properties; у примірнику `class-transformer` — `class-transformer README 0.4.1 … 0.5.1:
+  class-transformer` (розділ Skipping specific properties: `@Exclude()`); у примірнику `argon2` — `argon2 README 0.45.0 … 0.45.1: node-argon2`
   (розділ Usage: `hash` і `verify`), `node-argon2 wiki: Options` (типові `memoryCost`, `timeCost`, `parallelism`) і
   README `@node-rs/argon2` 2.2 (розділ API) — котрий із двох пакетів узяти; у примірнику `bcrypt` —
   `bcrypt README 6.0.0: node.bcrypt.js` (розділ Usage: `hash` і `compare`; розділ A Note on Rounds) і
@@ -1408,7 +1414,8 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   примірнику `webstandards` — `RFC 9106 Argon2 Memory-Hard Function for Password Hashing and Proof-of-Work
   Applications: 4 Parameter Choice`; у примірнику `owasp` — `Password Storage Cheat Sheet` (розділ Password Hashing
   Algorithms: параметри Argon2id і bcrypt).
-- **Сервери MCP:** `nestjs-docs`, `argon2-docs`, `bcrypt-docs`, `webstandards-docs`, `owasp-docs`.
+- **Сервери MCP:** `nestjs-docs`, `argon2-docs`, `bcrypt-docs`, `class-transformer-docs`, `webstandards-docs`,
+  `owasp-docs`.
 - **Зробити:** 1) `UNIQUE` на email у міграції; 2) `POST /auth/register` зі схемою zod (email, пароль від 12
   символів); 3) хешування bcrypt або argon2; 4) жодна відповідь API не містить пароля чи хеша.
 - **Перевірити себе:** у базі — лише хеші; `curl` на реєстрацію, `GET /users/me` і список авторів — у жодній
