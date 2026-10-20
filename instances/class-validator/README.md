@@ -71,7 +71,7 @@ npm і репозиторію.
 |----|---------|-------|
 | README | tarball `registry.npmjs.org/class-validator/-/class-validator-X.tgz` | `npm-tarball-files` |
 | тека `docs` | дерево тегу через API GitHub, `typestack/class-validator`, теги v0.9.0–v0.15.1 | `ghdocs-history` |
-| журнал змін | `CHANGELOG.md` гілки develop: заголовки «## [0.15.1](…) (2026-02-26)», «### 0.8.0 \[BREAKING CHANGE\]» | `changelog-regex` |
+| журнал змін | `CHANGELOG.md` гілки develop: заголовки `## [0.15.1](…) (2026-02-26)` і `### 0.8.0 \[BREAKING CHANGE\]` | `changelog-regex` |
 | релізи | API GitHub, `typestack/class-validator`, без передвипусків | `ghreleases` |
 | реєстр npm | registry.npmjs.org, одне звернення на пакет | `npm-versions` |
 
