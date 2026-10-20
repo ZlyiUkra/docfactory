@@ -48,8 +48,8 @@ v8, viem, vite, vitest, wagmi, wasm, webdev, webstandards, ws, zod, zustand.
 | 3. Дані: TypeORM, Prisma | `typeorm` (вступ, 1–6, 11–12), `prisma` (вступ, 3, 7–12), `postgresql` (12), `owasp` (5) |
 | 4. Автентифікація й авторизація | `webstandards` (1–2, 6–8, 12), `express` (8, 12), `react-router` (9), `owasp` (1, 6, 8, 12), `argon2` (1), `bcrypt` (1), `class-transformer` (1), `passport` (5), `helmet` (12), `express-rate-limit` (12) |
 | 5. Якість: тести й DI | `vitest` (1), `supertest` (3–4), `prisma` (2) |
-| 6. Продакшн | `docker` (вступ, 2, 7), `upstash` (6), `kubernetes` (вступ, 8–9), `oracle-cloud` (вступ, 8), `express` (9), `postgresql` (9), `github-actions` (вступ, 7), `nginx` (вступ, 2, 5), `node-postgres` (5), `argon2` (8), `bcrypt` (8), `prisma` (2, 8) |
-| 7. Живі дані: WebSockets | `socketio` (вступ, 2–4, 6–7), `mdn` (вступ, 1), `webstandards` (вступ, 1, 3, 6), `ws` (1–2, 5), `vite` (2), `kubernetes` (3, 6, 8), `owasp` (3), `nginx` (6), `binance-spot` (вступ, 5), `kraken-spot` (вступ, 1, 5), `rxjs` (6) |
+| 6. Продакшн | `docker` (вступ, 2, 7), `upstash` (6), `kubernetes` (вступ, 8–9), `oracle-cloud` (вступ, 8), `express` (9), `postgresql` (9), `github-actions` (вступ, 7), `nginx` (вступ, 2, 5), `node-postgres` (5), `argon2` (8), `bcrypt` (8), `prisma` (2, 8), `redis` (8) |
+| 7. Живі дані: WebSockets | `socketio` (вступ, 2–4, 6–7), `mdn` (вступ, 1), `webstandards` (вступ, 1, 3, 6), `ws` (1–2, 5), `vite` (2), `kubernetes` (3, 6, 8), `owasp` (3), `nginx` (6), `binance-spot` (вступ, 5), `redis` (5), `kraken-spot` (вступ, 1, 5), `rxjs` (6) |
 | Факультатив «крипта» | `binance-spot` (К1), `webstandards` (К3), `node-postgres` (К1), `viem` (К3–К4), `foundry` (К4) |
 
 ### План Next.js — [instances/nextjs/LEARNING.md](../instances/nextjs/LEARNING.md)

@@ -1788,7 +1788,8 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 # Фаза 6. Продакшн — 9 днів
 
 **Сервери MCP фази:** `nestjs-docs`, `docker-docs`, `kubernetes-docs`, `oracle-cloud-docs`, `express-docs`, `upstash-docs`,
-`postgresql-docs`, `github-actions-docs`, `nginx-docs`, `node-postgres-docs`, `argon2-docs`, `bcrypt-docs`, `prisma-docs`.
+`postgresql-docs`, `github-actions-docs`, `nginx-docs`, `node-postgres-docs`, `argon2-docs`, `bcrypt-docs`, `prisma-docs`,
+`redis-docs`.
 
 Сервер, який треба зібрати, запустити, тримати живим, міряти й вміти оновити. Глави Nest тут — лише те, що Nest
 вимагає від Docker, проксі й CI. Docker і Compose мають примірник `docker`, Kubernetes, k3s і Traefik — примірник
@@ -1975,8 +1976,10 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   `bcrypt changelog: 6.0.0` (з 6.0.0 `node-pre-gyp` прибрано, готові збірки лежать у самому пакеті; `bcryptjs` нативного
   модуля не має зовсім); у примірнику `oracle-cloud` —
   `Compute: Arm-Based Compute` (машина A1 — arm64); у примірнику `prisma` — `Connection URLs` (аргумент `schema`
-  адреси PostgreSQL).
-- **Сервери MCP:** `nestjs-docs`, `kubernetes-docs`, `argon2-docs`, `bcrypt-docs`, `oracle-cloud-docs`, `prisma-docs`.
+  адреси PostgreSQL); у примірнику `redis` — `Redis persistence` (чому `--appendonly yes`), `Key eviction`
+  (`maxmemory-policy`, `noeviction`) і `redis: redis.conf`.
+- **Сервери MCP:** `nestjs-docs`, `kubernetes-docs`, `argon2-docs`, `bcrypt-docs`, `oracle-cloud-docs`, `prisma-docs`,
+  `redis-docs`.
 - **Зробити:** усі файли — у теці `k8s/` репозиторію, застосовуються командою `kubectl apply -f <файл>` («зроби в
   кластері так, як написано у файлі»: створює, а при повторі — оновлює); простір імен — той, де живе под SPA (нижче
   він названий `app`, ключ `-n app` у командах).
@@ -2284,7 +2287,7 @@ SPA під одним іменем, викочується й відкочуєт
 # Фаза 7. Живі дані: WebSockets — 8 днів
 
 **Сервери MCP фази:** `nestjs-docs`, `webstandards-docs`, `mdn-docs`, `vite-docs`, `kubernetes-docs`, `socketio-docs`,
-`ws-docs`, `owasp-docs`, `nginx-docs`, `binance-spot-docs`, `kraken-spot-docs`, `rxjs-docs`.
+`ws-docs`, `owasp-docs`, `nginx-docs`, `binance-spot-docs`, `redis-docs`, `kraken-spot-docs`, `rxjs-docs`.
 
 Досі сервер лише відповідав: клієнт спитав — сервер відповів. Живі ціни так не працюють: сервер сам штовхає дані,
 щойно вони з'явилися, через з'єднання, яке живе годинами. У плані React (фаза 3, дні 6–8) SPA слухала ринковий стрім
@@ -2483,9 +2486,9 @@ SPA під одним іменем, викочується й відкочуєт
   `Market Data Only URLs`; розділ Fundamentals, глави `Lifecycle events` і `Custom providers`; у примірнику `ws` —
   `ws` (розділи `Class: WebSocket › websocket.terminate()` і `Class: WebSocket › Event: 'close'`) та
   `ws README 8.17.0 … 8.22.0: ws: a Node.js WebSocket library` (розділ FAQ › How to detect and close broken
-  connections?); поза корпусом — документація Redis; запасне джерело — у примірнику `kraken-spot` —
+  connections?); у примірнику `redis` — `SET`, `GET`, `EXPIRE` і `Redis Strings`; запасне джерело — у примірнику `kraken-spot` —
   `WebSocket v2: Ticker` (розділ «Snapshot / Update»: `bid`, `ask`, `last` — числа), `Reconnection and resilience`.
-- **Сервери MCP:** `nestjs-docs`, `binance-spot-docs`, `ws-docs`, `kraken-spot-docs`.
+- **Сервери MCP:** `nestjs-docs`, `binance-spot-docs`, `ws-docs`, `redis-docs`, `kraken-spot-docs`.
 - **Зробити:** 1) `MarketStreamService` з одним з'єднанням і набором пар, що перераховується на `subscribe` і
   `unsubscribe`; 2) приведення до `PriceTick` і розсилка в кімнати зі склеюванням із дня 4 — фейковий генератор
   іде в тести; 3) перепідключення із затримкою й джитером і сторож живості на 30 секунд; 4) планове
