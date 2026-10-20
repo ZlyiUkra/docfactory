@@ -336,7 +336,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 | TypeORM або Prisma | ORM: сутності чи схема, міграції, запити | Ф3 Д1–12; є примірники `typeorm` і `prisma` |
 | `@nestjs/jwt`, Passport | токени й стратегії входу | Ф4 Д2–5; є примірник `passport` (Passport і тринадцять стратегій: local, JWT, OAuth 2.0, Google, GitHub, Facebook, Bearer, OpenID Connect, SAML, Azure AD, Twitter, Discord; `@nestjs/jwt` — поза корпусом) |
 | bcrypt або argon2 | хешування паролів | Ф4 Д1; є примірники `argon2` (argon2 і `@node-rs/argon2`) і `bcrypt` (bcrypt і `bcryptjs`) |
-| Vitest і supertest | юніт- і наскрізні тести | Ф5; є примірник `vitest` (supertest — поза корпусом) |
+| Vitest і supertest | юніт- і наскрізні тести | Ф5 Д3–4; є примірники `vitest` і `supertest` |
 | `@nestjs/terminus` | перевірки стану для Docker і оркестраторів | Ф6 Д3, Д8 |
 | helmet, `@nestjs/throttler` | заголовки безпеки, обмеження частоти | Ф4 Д12; є примірники `helmet` і `express-rate-limit` (`@nestjs/throttler` — глава в `nestjs`) |
 | RxJS, мінімум | `map`, `tap`, `catchError` у перехоплювачах; потік для `@Sse` | Ф1 Д7, Ф7 Д6; є примірник `rxjs` |
@@ -457,6 +457,8 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 - class-transformer (перетворення простих об'єктів у екземпляри класів і назад; пакет npm усіх стабільних версій
   0.1.0–0.5.1: README, тека `docs`, журнал змін, реєстр npm; `ValidationPipe` і `ClassSerializerInterceptor` тут
   немає) — `class-transformer`;
+- supertest (пакет npm усіх стабільних версій 0.0.1–7.3.1: README, History.md ранніх версій, нотатки релізів GitHub,
+  реєстр npm з вимогами до Node.js; superagent, Jest і `@nestjs/testing` тут немає) — `supertest`;
 - Passport.js (сайт passportjs.org; README, журнали змін, код і тести кожної стабільної версії passport 0.1–0.7 і
   тринадцяти стратегій: passport-local, passport-jwt, passport-oauth2, passport-google-oauth20, passport-github2,
   passport-facebook, passport-http-bearer, passport-openidconnect, passport-saml, passport-azure-ad, passport-twitter,
@@ -477,7 +479,6 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
 глава про інтеграцію (CASL, Kafka, RabbitMQ, NATS, MikroORM), але не документація самої бібліотеки:
 
-- з «треба знати»: supertest;
 - з «варто знати»: `ws`, nestjs-cls, nestjs-pino, csrf-csrf, CASL, orval, openapi-typescript;
 - з «знати, що існує»: MikroORM, Kafka, RabbitMQ, NATS.
 
@@ -1652,7 +1653,7 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 
 # Фаза 5. Якість: тести й тонкощі DI — 7 днів
 
-**Сервери MCP фази:** `nestjs-docs`, `vitest-docs`, `prisma-docs`.
+**Сервери MCP фази:** `nestjs-docs`, `vitest-docs`, `supertest-docs`, `prisma-docs`.
 
 Порядок навмисний: доки не написано тестів, теза «DI потрібен заради тестованості» лишається чужими словами. Тести
 — на Vitest, як у плані React; Jest ви зустрінете в старих проєктах, `@nestjs/testing` працює з обома. Найцінніші
@@ -1699,8 +1700,10 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   (`TRUNCATE … RESTART IDENTITY CASCADE`). Глобальні pipes, фільтри й префікси, що стоять у `main.ts`, треба
   повторити в тесті — краще спільною функцією.
 - **Читати:** розділ Fundamentals, глава `Testing`, розділ End-to-end testing; розділ Recipes, глава
-  `SWC (fast compiler)`, розділ Vitest (конфіг e2e й імпорт supertest).
-- **Сервери MCP:** `nestjs-docs`.
+  `SWC (fast compiler)`, розділ Vitest (конфіг e2e й імпорт supertest); у примірнику `supertest` — `supertest README
+  7.2.0 … 7.3.1: supertest` (розділ Example — `request(app)`, `.expect()`, `request.agent`; розділи API про `.expect(status)`
+  і `.expect(body)`).
+- **Сервери MCP:** `nestjs-docs`, `supertest-docs`.
 - **Зробити:** 1) сервіс `db-test` у compose; 2) `vitest.config.e2e.ts` і скрипт `test:e2e`; 3) функція
   `setupApp(app)`, яку викликають і `main.ts`, і тести; 4) сценарій «реєстрація → вхід → створення → список».
 - **Перевірити себе:** `npm run test:e2e` зелений двічі поспіль (очищення працює); прибрати pipe з `setupApp` —
@@ -1713,8 +1716,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 - **Навіщо.** Перевірка прав, яку хтось прибере під час рефакторингу, має впасти в CI, а не в продакшні.
 - **Що це.** Таблиця негативних сценаріїв із фази 4, дня 13, стає тестами. Кожен тест має впасти, якщо прибрати
   відповідний захист: guard, пошук із власником, сувору схему, ротацію.
-- **Читати:** розділ Fundamentals, глава `Testing`, розділ End-to-end testing.
-- **Сервери MCP:** `nestjs-docs`.
+- **Читати:** розділ Fundamentals, глава `Testing`, розділ End-to-end testing; у примірнику `supertest` — `supertest
+  README 7.2.0 … 7.3.1: supertest` (розділ Cookies: перевірки cookies відповіді, є з 7.2.0).
+- **Сервери MCP:** `nestjs-docs`, `supertest-docs`.
 - **Зробити:** тести: чужий запис для трьох методів; зайве поле `role`; жодна відповідь на шляху «реєстрація →
   вхід → `/users/me` → список» не містить `password`; повторне використання refresh відкликає сім'ю.
 - **Перевірити себе:** прибрати `authorId` з умови пошуку — падає тест чужого запису; прибрати `@Exclude()` чи
