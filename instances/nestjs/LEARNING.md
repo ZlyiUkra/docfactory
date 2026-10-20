@@ -350,7 +350,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 |------------|--------|------------|
 | BullMQ і Redis | черги задач із повторами; Redis — ще й остання ціна й адаптер вебсокетів | Ф6 Д6, Ф7 Д5–6; є примірники `bullmq` і `redis` |
 | `@socket.io/redis-adapter` | розсилка socket.io між кількома екземплярами через Redis | Ф7 Д6; є примірник `socketio` |
-| `ws`, `@nestjs/platform-ws` | голий протокол WebSocket: сервер для навчання й клієнт до біржі; `WsAdapter` | Ф7 Д1, Д2, Д5 |
+| `ws`, `@nestjs/platform-ws` | голий протокол WebSocket: сервер для навчання й клієнт до біржі; `WsAdapter` | Ф7 Д1, Д2, Д5; є примірник `ws` (`@nestjs/platform-ws` — глава в `nestjs`) |
 | `@nestjs/event-emitter` | події всередині застосунку | Ф6 Д6 |
 | `@nestjs/schedule` | задачі за розкладом | Ф6 Д6, згадкою |
 | `@nestjs/cache-manager` | кеш відповідей і даних | Ф6 Д4 |
@@ -459,6 +459,9 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   немає) — `class-transformer`;
 - supertest (пакет npm усіх стабільних версій 0.0.1–7.3.1: README, History.md ранніх версій, нотатки релізів GitHub,
   реєстр npm з вимогами до Node.js; superagent, Jest і `@nestjs/testing` тут немає) — `supertest`;
+- ws (клієнт і сервер WebSocket для Node.js; пакет npm усіх стабільних версій 0.2.6–8.22.0: README, довідник API
+  `doc/ws.md` з тегів репозиторію, History.md ранніх версій, нотатки релізів GitHub, реєстр npm; socket.io, `WsAdapter`
+  з `@nestjs/platform-ws` і типи `@types/ws` тут немає) — `ws`;
 - Passport.js (сайт passportjs.org; README, журнали змін, код і тести кожної стабільної версії passport 0.1–0.7 і
   тринадцяти стратегій: passport-local, passport-jwt, passport-oauth2, passport-google-oauth20, passport-github2,
   passport-facebook, passport-http-bearer, passport-openidconnect, passport-saml, passport-azure-ad, passport-twitter,
@@ -479,7 +482,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
 глава про інтеграцію (CASL, Kafka, RabbitMQ, NATS, MikroORM), але не документація самої бібліотеки:
 
-- з «варто знати»: `ws`, nestjs-cls, nestjs-pino, csrf-csrf, CASL, orval, openapi-typescript;
+- з «варто знати»: nestjs-cls, nestjs-pino, csrf-csrf, CASL, orval, openapi-typescript;
 - з «знати, що існує»: MikroORM, Kafka, RabbitMQ, NATS.
 
 ---
@@ -2281,7 +2284,7 @@ SPA під одним іменем, викочується й відкочуєт
 # Фаза 7. Живі дані: WebSockets — 8 днів
 
 **Сервери MCP фази:** `nestjs-docs`, `webstandards-docs`, `mdn-docs`, `vite-docs`, `kubernetes-docs`, `socketio-docs`,
-`owasp-docs`, `nginx-docs`, `binance-spot-docs`, `kraken-spot-docs`, `rxjs-docs`.
+`ws-docs`, `owasp-docs`, `nginx-docs`, `binance-spot-docs`, `kraken-spot-docs`, `rxjs-docs`.
 
 Досі сервер лише відповідав: клієнт спитав — сервер відповів. Живі ціни так не працюють: сервер сам штовхає дані,
 щойно вони з'явилися, через з'єднання, яке живе годинами. У плані React (фаза 3, дні 6–8) SPA слухала ринковий стрім
@@ -2312,10 +2315,12 @@ SPA під одним іменем, викочується й відкочуєт
 - **Читати:** у примірнику `webstandards` — `RFC 6455 The WebSocket Protocol: 1 Introduction` (розділ 1.3 Opening
   Handshake), `RFC 6455 The WebSocket Protocol: 5 Data Framing`,
   `RFC 6455 The WebSocket Protocol: 7 Closing the Connection` (розділ 7.4 Status Codes); у примірнику `mdn` —
-  `WebSocket API (WebSockets)`, `Writing WebSocket servers`; README бібліотеки `ws`, розділ про перевірку розірваних
-  з'єднань (поза корпусом); запасна біржа — у примірнику `kraken-spot` — `Spot WebSocket Introduction` (розділ
-  «Connection Details»), `WebSocket v2: Trades`.
-- **Сервери MCP:** `webstandards-docs`, `mdn-docs`, `kraken-spot-docs`.
+  `WebSocket API (WebSockets)`, `Writing WebSocket servers`; у примірнику `ws` — `ws README 8.17.0 … 8.22.0: ws: a
+  Node.js WebSocket library` (розділи FAQ › How to detect and close broken connections?, Usage examples › Simple
+  server) і `ws` (розділи `Class: WebSocket › websocket.ping([data[, mask]][, callback])`,
+  `Class: WebSocket › websocket.terminate()`, `Class: WebSocket › Event: 'close'`); запасна біржа — у примірнику
+  `kraken-spot` — `Spot WebSocket Introduction` (розділ «Connection Details»), `WebSocket v2: Trades`.
+- **Сервери MCP:** `webstandards-docs`, `mdn-docs`, `ws-docs`, `kraken-spot-docs`.
 - **Зробити:** в окремій теці, без Nest: 1) `npm i ws`; сервер на тридцять рядків: на з'єднання — привітання, на
   повідомлення — відповідь луною, лог коду й причини закриття; 2) ping кожні 10 секунд і `terminate()` тим, хто не
   відповів pong з минулого разу; 3) рукостискання очима curl:
@@ -2354,8 +2359,9 @@ SPA під одним іменем, викочується й відкочуєт
 - **Читати:** розділ WebSockets — глава `Gateways` (розділи Installation, Overview, Lifecycle hooks, Server and
   Namespace, Request-scoped gateways) і глава `Adapters` (розділ Ws library); у примірнику `vite` — `Server Options`,
   розділ `server.proxy` (приклад із `ws: true`); у примірнику `socketio` (з `version: "4"`) — `Client API`,
-  `Server options` (розділ `path`).
-- **Сервери MCP:** `nestjs-docs`, `vite-docs`, `socketio-docs`.
+  `Server options` (розділ `path`); у примірнику `ws` — `ws` (розділ `Class: WebSocketServer`, щоб порівняти з
+  тим, що дає `WsAdapter`).
+- **Сервери MCP:** `nestjs-docs`, `vite-docs`, `socketio-docs`, `ws-docs`.
 - **Зробити:** 1) `npm i @nestjs/websockets @nestjs/platform-socket.io`; 2) `PricesGateway` з
   `path: '/api/socket.io'` і `@SubscribeMessage('ping')`, що повертає `{ t: Date.now() }`; 3) `handleConnection` і
   `handleDisconnect` пишуть у лог `socket.id` і кількість з'єднань; 4) скрипт на socket.io-client шле `ping` з
@@ -2474,10 +2480,12 @@ SPA під одним іменем, викочується й відкочуєт
   новий підписник отримує її одразу в підтвердженні, а екземпляри з дня 6 читають той самий ключ.
 - **Читати:** у примірнику `binance-spot` — `WebSocket Streams for Binance` (розділи General WSS information,
   WebSocket Limits, Live Subscribing/Unsubscribing to streams, Individual Symbol Mini Ticker Stream),
-  `Market Data Only URLs`; розділ Fundamentals, глави `Lifecycle events` і `Custom providers`; поза корпусом — README
-  `ws`, документація Redis; запасне джерело — у примірнику `kraken-spot` — `WebSocket v2: Ticker` (розділ «Snapshot /
-  Update»: `bid`, `ask`, `last` — числа), `Reconnection and resilience`.
-- **Сервери MCP:** `nestjs-docs`, `binance-spot-docs`, `kraken-spot-docs`.
+  `Market Data Only URLs`; розділ Fundamentals, глави `Lifecycle events` і `Custom providers`; у примірнику `ws` —
+  `ws` (розділи `Class: WebSocket › websocket.terminate()` і `Class: WebSocket › Event: 'close'`) та
+  `ws README 8.17.0 … 8.22.0: ws: a Node.js WebSocket library` (розділ FAQ › How to detect and close broken
+  connections?); поза корпусом — документація Redis; запасне джерело — у примірнику `kraken-spot` —
+  `WebSocket v2: Ticker` (розділ «Snapshot / Update»: `bid`, `ask`, `last` — числа), `Reconnection and resilience`.
+- **Сервери MCP:** `nestjs-docs`, `binance-spot-docs`, `ws-docs`, `kraken-spot-docs`.
 - **Зробити:** 1) `MarketStreamService` з одним з'єднанням і набором пар, що перераховується на `subscribe` і
   `unsubscribe`; 2) приведення до `PriceTick` і розсилка в кімнати зі склеюванням із дня 4 — фейковий генератор
   іде в тести; 3) перепідключення із затримкою й джитером і сторож живості на 30 секунд; 4) планове
