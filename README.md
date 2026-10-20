@@ -2675,6 +2675,27 @@ bcrypt vs bcrypt.js — і Benchmark `bcryptjs`) і реєстр npm з вимо
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/class-validator/README.md](instances/class-validator/README.md).
 
+### class-transformer
+
+Документація пакета npm `class-transformer` (перетворення простих об'єктів у екземпляри класів і назад декораторами,
+typestack/class-transformer) на кожній стабільній версії: README усіх 21 випуску (0.1.0–0.5.1), тека `docs` репозиторію,
+журнал змін і реєстр npm. Офіційного сайту в пакета немає (домашня сторінка веде на GitHub). Релізи GitHub не беруться: усі
+шість порожні. 31 документ, 137 фрагментів; нових читачів не потрібно (журнал змін читає `changelog-regex` із власним
+виразом).
+
+- порт `8875`; запис у Claude Code — `class-transformer-docs`, адреса `http://127.0.0.1:8875/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-class-transformer`, модель векторів — `bge-small`;
+- версія — лінія з двох чисел (`version: "0.5"`) або точна (`"0.4.1"`); без названої версії промпт велить шукати для
+  лінії 0.5 (0.5.1 — близько 97 % завантажень npm за тиждень до 20.10.2026); README усіх версій досі називає функції
+  `plainToClass`, `classToPlain`, `classToClass`, а нові імена (`plainToInstance` та інші) є лише в журналі змін, тож
+  промпт велить шукати обидва;
+- не входять: class-validator, `ValidationPipe` з NestJS та інші бібліотеки валідації чи відображення;
+- приклад питання агентові: `./df class-transformer ask "Since which version does the Transform decorator receive one
+  wrapper object, and what did the old signature look like?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/class-transformer/README.md](instances/class-transformer/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
