@@ -2696,6 +2696,26 @@ typestack/class-transformer) на кожній стабільній версії
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/class-transformer/README.md](instances/class-transformer/README.md).
 
+### supertest
+
+Документація пакета npm `supertest` (перевірка HTTP-серверів Node.js ланцюжком викликів поверх superagent,
+forwardemail/supertest) на кожній стабільній версії: README усіх 77 випусків (0.0.1–7.3.1), History.md ранніх версій
+(0.1.0–3.4.1), нотатки релізів GitHub (v1.2.0–v7.3.1) і реєстр npm із вимогами до Node.js (`engines`) та залежністю
+superagent. Офіційного сайту в пакета немає (домашня сторінка веде на GitHub). 125 документів, 224 фрагменти; нових
+читачів не потрібно (History.md читає `changelog-regex` із власним виразом).
+
+- порт `8876`; запис у Claude Code — `supertest-docs`, адреса `http://127.0.0.1:8876/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-supertest`, модель векторів — `bge-small`;
+- версія — мажор (`version: "7"`), мінор (`"7.2"`) або точна (`"7.2.2"`); без названої версії промпт велить шукати для
+  лінії 7 (близько 77 % завантажень npm за тиждень до 20.10.2026; 7.2.2 — 44 %) і згадувати 6.x (близько 20 %), де вона
+  відрізняється;
+- не входять: superagent, Jest, Mocha, Express, NestJS, типи `@types/supertest`, бібліотеки підміни HTTP;
+- приклад питання агентові: `./df supertest ask "Since which version does supertest have cookie assertions, and which
+  Node.js does it require?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/supertest/README.md](instances/supertest/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
