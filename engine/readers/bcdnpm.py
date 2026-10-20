@@ -14,6 +14,10 @@
 вмикає». Пакет — один JSON (data.json, ~20 МБ), тож ознака не може бути окремою сторінкою
 сайту: читач сам ріже файл на ознаки.
 
+В індекс потрапляють лише ознаки найновішої лінії: ознака, якої в ній уже немає (вилучена чи
+перейменована), лишається тільки у старих лініях, і без фільтра версії такий застарілий документ
+стояв би у видачі вище чинного. Старі лінії тому — історія ознак, що є й сьогодні.
+
 Одиниця — неповторний текст ознаки. Однаковий у кількох лініях текст — один документ, у шапці
 якого всі ці версії; змінений — окремий документ з тим самим іменем без хеша: у `slug_rewrite`
 примірника суфікс «-<8 знаків хеша>» зрізається, і редакції однієї ознаки зливаються за
@@ -186,7 +190,8 @@ def _body(key: str, c: dict, page: str) -> str:
 @register("npm-bcd")
 def npm_bcd(source: dict, ctx) -> list[Item]:
     variants: dict = collections.defaultdict(dict)   # ключ ознаки → хеш тексту → запис
-    for version, url in _releases(source, ctx):
+    releases = _releases(source, ctx)
+    for version, url in releases:
         try:
             data = _data(url, ctx)
         except ValueError as exc:
@@ -204,6 +209,13 @@ def npm_bcd(source: dict, ctx) -> list[Item]:
             rec = variants[key].setdefault(digest, {"body": body, "page": page, "versions": []})
             rec["versions"].append(version)
         print(f"  {source['id']}: випуск {version} — {len(found)} ознак", flush=True)
+
+    current = releases[0][0]
+    gone = [key for key, recs in variants.items()
+            if not any(current in rec["versions"] for rec in recs.values())]
+    for key in gone:
+        del variants[key]
+    print(f"  {source['id']}: ознак, яких немає в {current}, пропущено: {len(gone)}", flush=True)
 
     slugs = {key: _markup.slug(key) for key in variants}
     taken = collections.Counter(slugs.values())
