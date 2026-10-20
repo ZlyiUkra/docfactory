@@ -461,8 +461,8 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   реєстр npm з вимогами до Node.js; superagent, Jest і `@nestjs/testing` тут немає) — `supertest`;
 - ws (клієнт і сервер WebSocket для Node.js; пакет npm усіх стабільних версій 0.2.6–8.22.0: README, довідник API
   `doc/ws.md` з тегів репозиторію, History.md ранніх версій, нотатки релізів GitHub, реєстр npm; а також README й
-  реєстр npm супутніх пакетів bufferutil, utf-8-validate і wscat; socket.io, `WsAdapter` з `@nestjs/platform-ws` і
-  типи `@types/ws` тут немає) — `ws`;
+  реєстр npm супутніх пакетів bufferutil, utf-8-validate і wscat, типи `@types/ws` (index.d.ts усіх стабільних
+  версій); socket.io і `WsAdapter` з `@nestjs/platform-ws` тут немає) — `ws`;
 - Passport.js (сайт passportjs.org; README, журнали змін, код і тести кожної стабільної версії passport 0.1–0.7 і
   тринадцяти стратегій: passport-local, passport-jwt, passport-oauth2, passport-google-oauth20, passport-github2,
   passport-facebook, passport-http-bearer, passport-openidconnect, passport-saml, passport-azure-ad, passport-twitter,
