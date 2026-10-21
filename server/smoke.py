@@ -561,10 +561,22 @@ def main(argv: list[str]) -> int:
     # 3. Обрізка. Довший за межу фрагмент має прийти рівно 600 символів плюс три
     # крапки, і серед розділів мусить бути хоч один такий, інакше перевірка порожня.
     long_hits = search(C["long_query"], 10)
-    texts = [p["text"] for p in long_hits.get("passages", [])]
-    check("жоден текст у відповіді пошуку не довший за 603 символи",
-          texts and max(len(t) for t in texts) <= 603,
-          f"найдовший {max(len(t) for t in texts) if texts else 0}")
+    long_passages = long_hits.get("passages", [])
+    texts = [p["text"] for p in long_passages]
+    rest = max([len(t) for t in texts[1:]] or [0])
+    check("перший збіг не довший за межу найкращого, решта не довші за 603 символи",
+          texts and len(texts[0]) <= spec_mcp.TOP_HIT_CHARS + 3 and rest <= 603,
+          f"перший {len(texts[0]) if texts else 0}, найдовший з решти {rest}")
+    marked = [p for p in long_passages if p.get("truncated")]
+    check("обрізаний фрагмент має truncated і full_chars, більше за показаний текст",
+          marked and all(p["text"].endswith("...") and p["full_chars"] > len(p["text"]) - 3
+                         for p in marked)
+          and all(p.get("truncated") for p in long_passages
+                  if len(p["text"]) == 603 and p["text"].endswith("...")),
+          f"позначено {len(marked)} з {len(long_passages)}")
+    top = long_passages[0] if long_passages else {}
+    check("найкращий збіг позначено обрізаним лише коли він довший за межу найкращого",
+          not top.get("truncated") or top["full_chars"] > spec_mcp.TOP_HIT_CHARS)
     check("обрізаний текст позначено трьома крапками",
           any(t.endswith("...") for t in texts))
 

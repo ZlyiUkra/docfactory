@@ -95,6 +95,12 @@ _INSTANCE = instance.root()
 # контексті клієнта. Хто хоче повний текст, кличе read_section за ідентифікатором.
 PREVIEW_CHARS = 600
 
+# Найкращий збіг (перший у видачі) віддається цілим, до цієї межі. На ньому модель будує
+# відповідь, а обірваний посеред кроків алгоритм вона дописує з пам'яті. У ecmascript 60 %
+# фрагментів довші за 600 символів, найдовший — 3 094. Довший за межу текст усе одно різатиметься,
+# але з позначкою truncated.
+TOP_HIT_CHARS = 4000
+
 # Межі k. Менше одного — безглуздо, більше десяти — це вже добрих кілька тисяч
 # слів в одній відповіді, і клієнт платить за них своїми токенами.
 K_MIN, K_MAX = 1, 10
@@ -310,11 +316,11 @@ def _log(tool: str, request: str, outcome: str) -> None:
 mcp = _Server(profile.SERVER_NAME)
 
 
-def _preview(text: str) -> str:
-    """Текст фрагмента для відповіді пошуку: обрізаний, з видимою позначкою обрізки."""
-    if len(text) <= PREVIEW_CHARS:
+def _preview(text: str, limit: int = PREVIEW_CHARS) -> str:
+    """Текст фрагмента для відповіді пошуку: обрізаний до `limit`, з видимою позначкою обрізки."""
+    if len(text) <= limit:
         return text
-    return text[:PREVIEW_CHARS] + "..."
+    return text[:limit] + "..."
 
 
 # Санітар видачі — серверна оборона для клієнта, якого ми не контролюємо (Claude
@@ -402,13 +408,19 @@ def _format_hits(passages: list[Passage], how: str, want: str = "") -> dict:
         return {"found": 0, "search": how,
                 "note": f"{note} {why}".strip()}
     items = []
-    for p in passages:
+    for place, p in enumerate(passages):
         clean, flagged = _sanitize(p)
         if flagged:
             _log("sanitize", f"id={_UID[p]}",
                  f"фрагмент вилучено з видачі {profile.SEARCH_TOOL}: розтяжка санітара")
+        limit = TOP_HIT_CHARS if place == 0 else PREVIEW_CHARS
         item = {"id": _UID[p], "section": p.label,
-                "document": p.doc_title, "text": _preview(clean)}
+                "document": p.doc_title, "text": _preview(clean, limit)}
+        if len(clean) > limit:
+            # Три крапки в кінці легко прийняти за природне закінчення тексту, тож обрив
+            # ще й названо полем, разом із повною довжиною: за рештою — read_section.
+            item["truncated"] = True
+            item["full_chars"] = len(clean)
         if p.versions:
             _put_versions(item, p.versions, want)
         items.append(item)
