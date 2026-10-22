@@ -61,7 +61,7 @@ activate it. An instance runs on one of two environments, both Linux (`bin/pytho
 
 Build a shared venv once, from the repository root (for `gpu`, the same with `gpu`; the GPU itself is not required —
 without one `onnxruntime-gpu` computes on the CPU with the same numbers, only the `vectors` step is far slower there —
-roughly hours for 60–150 thousand fragments and about a day for the largest corpus, dotnet, 540 thousand, against
+roughly hours for 60–150 thousand fragments and about a day for the largest corpus, dotnet, 500 thousand, against
 minutes on the GPU at ~800 fragments a second):
 
 ```
