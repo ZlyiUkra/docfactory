@@ -5,6 +5,16 @@
 не вигадувати слова. Колонтитули, номери сторінок, зміст із крапками і сторінка з
 ліцензією прибираються; вступ лишається перед першим розділом. Код перенесено з
 колишнього завантажувача практики без змін по суті.
+
+Поле `headings: "markdown"` — для примірника з `sections: "markdown"`: нумерований заголовок
+(«8.6 Statements») стає заголовком markdown («### 8.6 Statements», глибина — за номером), а номер
+глави з крапкою, як у старих виданнях ECMA-334 2002–2006 («1. Scope», «8. Language overview»),
+теж вважається заголовком. Без поля — усе, як було.
+
+Поле `line_numbers: true` — PDF друкує на полі номер кожного рядка (1-ше видання ECMA-334, 2001), і
+pypdf приклеює його до кінця рядка («8.6 Statements7», «is 1 9»). Номери на сторінці йдуть підряд
+від 1, тож знімається лише число, що дорівнює наступному очікуваному; саме число в тексті
+(«is 1») лишається. Без поля — усе, як було.
 """
 
 import io
@@ -13,10 +23,12 @@ import re
 from engine.readers import Item, register
 
 _HEADING = re.compile(r"^\d+(?:\.\d+)*\s+\S")
+# Старі видання ECMA-334 пишуть номер глави з крапкою: «1. Scope», «8. Language overview».
+_HEADING_DOTTED = re.compile(r"^\d+(?:\.\d+)*\.?\s+\S")
 _PAGE_NUMBER = re.compile(r"^\s*(\d+|[ivx]+)\s*$")
 
 
-def _pdf_text(data: bytes) -> list[str]:
+def _pdf_text(data: bytes, line_numbers: bool = False) -> list[str]:
     try:
         import pypdf
     except ImportError:
@@ -25,8 +37,29 @@ def _pdf_text(data: bytes) -> list[str]:
     reader = pypdf.PdfReader(io.BytesIO(data))
     lines = []
     for page in reader.pages:
-        lines.extend((page.extract_text() or "").splitlines())
+        page_lines = (page.extract_text() or "").splitlines()
+        if line_numbers:
+            page_lines = _strip_line_numbers(page_lines)
+        lines.extend(page_lines)
     return lines
+
+
+def _strip_line_numbers(lines: list[str]) -> list[str]:
+    """Номер рядка на полі сторінки, приклеєний до кінця рядка: знімається лише той, що
+    дорівнює наступному очікуваному (вони йдуть підряд від 1)."""
+    out, expected = [], 1
+    for i, ln in enumerate(lines):
+        m = re.search(r"\s*(\d+)$", ln)
+        if m and int(m.group(1)) == expected:
+            # Рядок із самого числа перед першим нумерованим — номер сторінки (на сторінці 1
+            # він збігається з очікуваним); порожній нумерований рядок наступного числа не має.
+            if m.start() == 0 and i + 1 < len(lines) and re.search(rf"\s*{expected}$", lines[i + 1]):
+                out.append(ln)
+                continue
+            ln = ln[:m.start()]
+            expected += 1
+        out.append(ln)
+    return out
 
 
 def _keep(line: str) -> bool:
@@ -38,10 +71,12 @@ def _keep(line: str) -> bool:
     return True
 
 
-def _clean_pdf(lines: list[str]) -> str:
+def _clean_pdf(lines: list[str], markdown: bool = False) -> str:
     """Вступ плюс тіло від останнього «1 Scope»; колонтитули і зміст геть."""
     lines = [re.sub(r"[ \t]+", " ", ln).rstrip() for ln in lines]
-    starts = [i for i, ln in enumerate(lines) if re.match(r"^1 Scope\s*$", ln)]
+    heading = _HEADING_DOTTED if markdown else _HEADING
+    scope = r"^1\.? Scope\s*$" if markdown else r"^1 Scope\s*$"
+    starts = [i for i, ln in enumerate(lines) if re.match(scope, ln)]
     if not starts:
         raise SystemExit("У PDF не знайдено розділу «1 Scope» — текст видобуто не так, як очікувалося.")
     body = lines[starts[-1]:]
@@ -58,7 +93,10 @@ def _clean_pdf(lines: list[str]) -> str:
         if not _keep(ln):
             continue
         s = ln.strip()
-        if _HEADING.match(s):
+        if heading.match(s):
+            if markdown:
+                depth = s.split()[0].rstrip(".").count(".") + 1
+                s = "#" * min(depth + 1, 6) + " " + s
             out.append("")
             out.append(s)
             out.append("")
@@ -71,8 +109,9 @@ def _clean_pdf(lines: list[str]) -> str:
     return re.sub(r"\n{3,}", "\n\n", text).strip("\n")
 
 
-def _document_pdf(data: bytes, title: str, url: str, stamp: str) -> str:
-    body = _clean_pdf(_pdf_text(data))
+def _document_pdf(data: bytes, title: str, url: str, stamp: str, markdown: bool = False,
+                  line_numbers: bool = False) -> str:
+    body = _clean_pdf(_pdf_text(data, line_numbers), markdown)
     return f"# {title}\n# джерело: {url}\n# отримано: {stamp}\n\n{body}\n"
 
 
@@ -80,8 +119,10 @@ def _document_pdf(data: bytes, title: str, url: str, stamp: str) -> str:
 def pdf(source: dict, ctx) -> list[Item]:
     url = source["url"]
     title = source.get("title", source["id"])
+    markdown = source.get("headings") == "markdown"
+    line_numbers = bool(source.get("line_numbers"))
 
     def make():
-        return _document_pdf(ctx.bytes(url), title, url, ctx.stamp)
+        return _document_pdf(ctx.bytes(url), title, url, ctx.stamp, markdown, line_numbers)
 
     return [Item(id=source["id"], file=f"{source['id']}.txt", make=make)]
