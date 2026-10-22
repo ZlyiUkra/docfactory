@@ -4,8 +4,8 @@
 однієї бібліотеки чи інструмента (тека `instances/<ім'я>`). Файл оновлюється після кожного нового примірника, разом
 із підрозділами «Документація у фабриці» самих планів.
 
-Стан на 20.10.2026. Примірники: alpine, anthropic-api, argon2, aspnetcore, astro, astro-markdown-pipeline, auth,
-bcrypt, binance-spot, biome, bullmq, cares, certbot, class-transformer, class-validator, clerk, doc-tools, docker, dotnet, dotnet-testing, drizzle, ecmascript,
+Стан на 22.10.2026. Примірники: alpine, anthropic-api, argon2, aspnetcore, astro, astro-markdown-pipeline, auth,
+bcrypt, binance-spot, biome, bullmq, cares, certbot, class-transformer, class-validator, clerk, csharp, doc-tools, docker, dotnet, dotnet-testing, drizzle, ecmascript,
 entityframework, eslint, expo, express, express-rate-limit, fastify, ffmpeg, foundry, frontend-architecture,
 github-actions, gvisor, helmet, i18next, icu, ioredis, iron-session, jose, jsonschema, kraken-spot, kubernetes,
 libreoffice, libuv, lightweight-charts, linux, llhttp, mdn, mongodb, mongoose, motion, msw, nestjs, next-intl,
