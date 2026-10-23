@@ -113,6 +113,30 @@ C# 7.0 (07.03.2017, Visual Studio 2017), 7.1 (14.08.2017), 7.2 (04.12.2017), 7.3
 всі 7.x, `"12"` чи `"12.0"` — увесь C# 12 в усіх шарах; текст, що не мінявся між версіями, несе їх усі. Без названої
 версії промпт велить відповідати для C# 14 і казати це.
 
+## Родина .NET: піднімати разом
+
+Цей примірник — частина родини .NET: платформа, мова, веб, дані, тестування й менеджер пакетів Microsoft. Питання про
+C# впирається в бібліотеку класів, про EF — у SQL Server, про тест із базою — у Testcontainers, про пакет — у NuGet.
+Тому примірники родини піднімають у Claude Code разом, а `.mcp.json` цієї теки перелічує всі вісім серверів:
+підключивши будь-який із них, Claude Code бачить решту.
+
+| Примірник | Сервер | Порт | Що |
+|-----------|--------|-----:|----|
+| `dotnet` | `dotnet-docs` | 8866 | платформа .NET 1.0–10.0: сайт, CLI `dotnet`, довідник API, F#, Visual Basic, .NET Framework |
+| `csharp` | `csharp-docs` | 8878 | мова C#: сайт на день виходу 7.0–14, ECMA-334 усіх видань, пропозиції, Roslyn |
+| `aspnetcore` | `aspnetcore-docs` | 8862 | ASP.NET Core 1.0–10.0 і класичний ASP.NET |
+| `entityframework` | `entityframework-docs` | 8865 | EF Core 1.0–10.0, EF6, провайдери |
+| `sqlserver` | `sqlserver-docs` | 8864 | SQL Server 2016–2025, Azure SQL, T-SQL |
+| `dotnet-testing` | `dotnet-testing-docs` | 8870 | xUnit, NUnit, bUnit, Moq, NSubstitute, FluentAssertions, Shouldly, AngleSharp, Respawn |
+| `testcontainers-dotnet` | `testcontainers-dotnet-docs` | 8867 | Testcontainers for .NET |
+| `nuget` | `nuget-docs` | 8869 | NuGet: сайт, `nuget.exe` і `dotnet nuget`, пакети, протокол V3 |
+
+Поза родиною, але за потреби підключається так само: `playwright` (`playwright-docs`, порт 8788) — у ньому є Playwright
+для .NET (пакет NuGet `Microsoft.Playwright`) поруч із версіями для Node.js, Python і Java.
+
+`prompts/loaded.txt` каже моделі, що цей набір — частина родини, і які сервери її доповнюють. Повний перелік родин — у
+розділі «Родини примірників» кореневого [README](../../README.md).
+
 ## Архівний режим: сервер без корпусу
 
 Корпус примірника в архіві від самого початку: у `corpus/` лежить лише паспорт `index.json`, а сервер підіймається з
