@@ -2879,6 +2879,27 @@ orval.dev з тегу кожної мінорної версії 3.0–8.44 (111
   version 8?"`;
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/orval/README.md](instances/orval/README.md).
+
+### openapi-typescript
+
+Документація openapi-typescript — генератора типів TypeScript зі схеми OpenAPI 3.0/3.1 — і його родини: openapi-fetch,
+openapi-react-query, swr-openapi, openapi-typescript-helpers, openapi-metadata (openapi-ts/openapi-typescript): сайт
+openapi-ts.dev з тегу кожної мінорної версії 6.2–7.13 (19 тегів), README кожної стабільної версії шести пакетів,
+журнали змін (changesets) чотирьох пакетів, старий сайт і релізи swr-openapi з htunnicliff/swr-openapi, релізи
+swr-openapi й openapi-metadata у монорепо, приклади openapi-fetch і реєстр npm. 538 документів, 1260 фрагментів; нових
+читачів не потрібно (читач VitePress тепер підставляє й поля шапки сторінки).
+
+- порт `8884`; запис у Claude Code — `openapi-typescript-docs`, адреса `http://127.0.0.1:8884/mcp`; інструменти
+  `search_docs` і `read_section`;
+- версія — openapi-typescript без префікса (`version: "7"`, `"6.7"`, `"7.13.0"`), решта пакетів з префіксом `fetch-`,
+  `react-query-`, `swr-`, `helpers-`, `metadata-`; без названої версії промпт велить шукати для лінії 7 (близько 94 %
+  завантажень npm за тиждень до 24.10.2026) і для openapi-fetch 0.17 (46 %);
+- не входять: OpenAPI, TypeScript, TanStack Query, SWR, Redocly (окремі примірники там, де вони є) і згенеровані типи з
+  `packages/openapi-typescript/examples`;
+- приклад питання агентові: `./df openapi-typescript ask "How do I add an auth header to every openapi-fetch request,
+  and since which version is middleware there?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/openapi-typescript/README.md](instances/openapi-typescript/README.md).
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
