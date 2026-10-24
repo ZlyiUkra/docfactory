@@ -2823,6 +2823,24 @@ iamolegga/nestjs-pino) на кожній стабільній версії: READ
   add a field to every log line of one request?"`;
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/nestjs-pino/README.md](instances/nestjs-pino/README.md).
+
+### csrf-csrf
+
+Документація пакета npm `csrf-csrf` (захист Express від CSRF за схемою підписаного Double Submit Cookie,
+Psifi-Solutions/csrf-csrf) на кожній стабільній версії: README усіх 30 випусків (1.0.0–4.0.3; сайту пакет не має, README
+і є документацією) і README гілки main з виправленими прикладами, FAQ, посібник переходу з 3.x на 4.x, журнал змін
+(3.0.0–4.0.3), приклади репозиторію (Express з HTML-формою; бекенд на Express із сесіями й клієнт на React) і реєстр npm.
+48 документів, 235 фрагментів; нових читачів не потрібно, читачі README дістали поле `html_headings` для заголовків-тегів.
+
+- порт `8881`; запис у Claude Code — `csrf-csrf-docs`, адреса `http://127.0.0.1:8881/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версія — мажор (`version: "4"`), мінор (`"3.2"`) або точна (`"3.2.2"`); без названої версії промпт велить шукати для
+  лінії 4 (близько 76 % завантажень npm за тиждень до 24.10.2026) і згадувати 3.x там, де вона відрізняється;
+- не входять: Express, express-session, cookie-parser, NestJS і сусідній пакет `csrf-sync`;
+- приклад питання агентові: `./df csrf-csrf ask "What changed in csrf-csrf 4.0.0, and how do I bind the token to the
+  session?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/csrf-csrf/README.md](instances/csrf-csrf/README.md).
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
