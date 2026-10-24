@@ -8,6 +8,8 @@
                       ім'я документа замість імені пакета (файли одного пакета не зливаються).
                       `version_prefix` — рядок перед кожною версією документа («redis-»):
                       коли пакетів у примірнику багато й кожен має свою нумерацію.
+                      `html_headings: true` — заголовки-теги `<h2>…</h2>` стають «##», як
+                      у `ghdocs-history`.
 `npm-githead-files` — файли дерева репозиторію на коміті `gitHead` кожної версії. `url` — опис
                       пакета, `repo` — «власник/репозиторій», `include` — вираз шляхів, що беруться
                       (напр. `^examples/.*\\.js$`), `label`, `skip_versions` — як вище.
@@ -34,7 +36,7 @@ from urllib.parse import quote
 
 from engine.readers import Item, _markup, register
 from engine.readers.dthistory import _sections
-from engine.readers.ghhistory import _atx, _split_title
+from engine.readers.ghhistory import _atx, _html_headings, _split_title
 
 
 def _packument(source: dict, ctx) -> tuple[dict, list]:
@@ -117,7 +119,10 @@ def npm_tarball_files(source: dict, ctx) -> list[Item]:
             span = found[-1] if len(found) == 1 else f"{found[-1]} … {found[0]}"
             if kind == "markdown":
                 meta, rest = _markup.front_matter(text)
-                title, rest = _split_title(_atx(rest))
+                rest = _atx(rest)
+                if source.get("html_headings") is True:
+                    rest = _html_headings(rest)
+                title, rest = _split_title(rest)
                 body = _markup.markdown_body(rest)
                 full = f"{label} {span}" + (f": {title}" if title else "")
             else:

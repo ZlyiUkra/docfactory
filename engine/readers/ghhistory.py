@@ -22,6 +22,9 @@
                    береться з raw.githubusercontent.com, адреса лише цитується. `{version}`
                    в адресі — мітка найновішого тегу, де файл такий був (сайт Node.js
                    тримає документацію кожного мажору за своєю адресою);
+                   `html_headings: true` — рядок-заголовок HTML (`<h2 id="…">Назва</h2>`)
+                   стає «## Назва»: README, що пише заголовки тегами (csrf-csrf), інакше
+                   лишався одним безіменним розділом;
                    `yaml_history: true` — блоки `<!-- YAML … -->` (так документація API
                    Node.js записує, з якої версії функція є, коли застаріла і що в ній
                    мінялося) стають видимим текстом «Added in / History»; інакше разом з
@@ -202,6 +205,22 @@ def _yaml_history(text: str) -> str:
         return "\n".join(lines) + "\n" if lines else ""
 
     return _YAML_BLOCK.sub(render, text)
+
+
+_HTML_HEADING = re.compile(r"^\s*<h([1-6])(?:\s[^<>]*)?>(.*?)</h\1>\s*$", re.I)
+
+
+def _html_headings(text: str) -> str:
+    """Рядок `<hN …>Назва</hN>` → «#…# Назва» поза кодом. Заголовок на кількох
+    рядках (`<h1>` з логотипом) лишається як є: це шапка, а не розділ."""
+    out: list[str] = []
+    fence = False
+    for ln in text.split("\n"):
+        if _FENCE.match(ln):
+            fence = not fence
+        m = None if fence else _HTML_HEADING.match(ln)
+        out.append(f"{'#' * int(m.group(1))} {m.group(2).strip()}" if m else ln)
+    return "\n".join(out)
 
 
 def _atx(text: str) -> str:
@@ -1045,6 +1064,8 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
             if source.get("yaml_history") is True:
                 rest = _yaml_history(rest)
             rest = _atx(_IMAGE_LINE.sub("", rest))
+            if source.get("html_headings") is True:
+                rest = _html_headings(rest)
             title = (meta.get("title", "") if meta else "") or named
             if not title:
                 title, rest = _split_title(rest)
