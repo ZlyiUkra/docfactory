@@ -2860,6 +2860,25 @@ stalniy/casl): сайт casl.js.org v4–v7 (сторінки з 17 тегів `
   Prisma?"`;
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/casl/README.md](instances/casl/README.md).
+
+### orval
+
+Документація orval — генератора типізованих клієнтів TypeScript зі специфікації OpenAPI (axios, fetch, TanStack Query
+для React, Vue, Svelte, Solid і Angular, SWR, Zod, моки MSW з Faker, сервери Hono і MCP; orval-labs/orval): сайт
+orval.dev з тегу кожної мінорної версії 3.0–8.44 (111 тегів), README 1.0–4.x, нотатки релізів GitHub 2.2.0–8.44.0 і
+старий журнал 1.x–2.1, приклади `samples/` з тегу v8.44.0 і реєстр npm. 751 документ, 4319 фрагментів; нових читачів не
+потрібно.
+
+- порт `8883`; запис у Claude Code — `orval-docs`, адреса `http://127.0.0.1:8883/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версія — мажор (`version: "8"`), мінор (`"7.21"`) або точна (`"8.44.0"`); без названої версії промпт велить шукати
+  для лінії 8 (близько 84 % завантажень npm за тиждень до 24.10.2026) і згадувати 7.x там, де вона відрізняється;
+- не входять: OpenAPI, TanStack Query, SWR, Zod, MSW, Faker, Hono, Angular, axios, Effect (окремі примірники там, де
+  вони є) і README підпакетів `@orval/*` (заглушки);
+- приклад питання агентові: `./df orval ask "How do I use my own axios instance with orval, and what changed for it in
+  version 8?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/orval/README.md](instances/orval/README.md).
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
