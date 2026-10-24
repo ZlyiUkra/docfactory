@@ -326,13 +326,17 @@ def _value(m, values: dict) -> str:
     return m.group(0) if value is None else value
 
 
-def expand(text: str, path: str, files: dict, fetch, root: str) -> str:
-    """Тіло сторінки (без шапки YAML) з розкритими вставками, кодом і змінними."""
+def expand(text: str, path: str, files: dict, fetch, root: str, meta: dict | None = None) -> str:
+    """Тіло сторінки (без шапки YAML) з розкритими вставками, кодом і змінними.
+
+    `meta` — шапка YAML сторінки: заголовок `# {{ $frontmatter.title }}` (сторінки
+    openapi-react-query і swr-openapi) інакше лишався б назвою розділу буквально."""
     page, script = _blocks_out(text)
     # Спільний шматок буває зі своїм `<script setup>`: його змінні — значення за замовчуванням,
     # сторінка, що його вставляє, їх перекриває.
     text, pieces = _blocks_out(_includes(page, path, root, files, fetch))
     values = _variables(script, path, root, files, fetch,
                         _variables(pieces, path, root, files, fetch, {}))
+    values["$frontmatter"] = meta or {}
     text = _snippets(text, path, root, files, fetch)
     return _markup(_TOC.sub("", text), values)

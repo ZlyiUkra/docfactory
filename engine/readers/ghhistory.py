@@ -50,7 +50,8 @@
                    — вивід `--help` з розділом на кожну групу параметрів;
                    `vitepress` — корінь сайту VitePress у репозиторії (`"site"`): вставки
                    `<!--@include: …-->` і `<<< @/snippets/…` розкриваються, змінні `{{…}}` з
-                   `<script setup>` підставляються, контейнери `::: tip` стають підписами (див.
+                   `<script setup>` і поля шапки (`{{ $frontmatter.title }}`) підставляються,
+                   контейнери `::: tip` стають підписами (див.
                    `_vitepress`); редакція сторінки враховує й вставлені нею файли;
                    `vocs` — корінь сайту Vocs у репозиторії (`"site"`): вставки `// [!include ~/…]` у
                    коді й імпортовані шматки MDX (`<WriteParameters />`) розкриваються, службове twoslash
@@ -1029,7 +1030,8 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
             if base_ui:
                 rest = _baseui.expand(rest, path, registry.get(tag, {}), fetch)
             if vitepress:
-                rest = _vitepress.expand(rest, path, registry.get(tag, {}), fetch, vitepress)
+                rest = _vitepress.expand(rest, path, registry.get(tag, {}), fetch, vitepress,
+                                          meta or {})
             if vocs:
                 rest = _vocs.expand(rest, path, registry.get(tag, {}), fetch, vocs)
             if mdbook:
