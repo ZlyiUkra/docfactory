@@ -5,7 +5,7 @@
 із підрозділами «Документація у фабриці» самих планів.
 
 Стан на 24.10.2026. Примірники: alpine, anthropic-api, argon2, aspnetcore, astro, astro-markdown-pipeline, auth,
-bcrypt, binance-spot, biome, bullmq, cares, certbot, class-transformer, class-validator, clerk, csharp, doc-tools,
+bcrypt, binance-spot, biome, bullmq, cares, certbot, class-transformer, class-validator, clerk, csharp, csrf-csrf, doc-tools,
 docker, dotnet, dotnet-testing, drizzle, ecmascript, entityframework, eslint, expo, express, express-rate-limit,
 fastify, ffmpeg, foundry, frontend-architecture, github-actions, gvisor, helmet, i18next, icu, ioredis, iron-session,
 jose, jsonschema, kraken-spot, kubernetes, libreoffice, libuv, lightweight-charts, linux, llhttp, mdn, mongodb,
@@ -43,11 +43,11 @@ webdev, webstandards, ws, zod, zustand.
 
 | Фаза | Примірники (дні) |
 |------|------------------|
-| 0. База, якої Nest не дає | `typescript` (вступ, 1–4), `mdn` (вступ, 6–7, 10–11), `webstandards` (6–7, 10–11), `express` (9–10), `vite` (11), `postgresql` (вступ, 13–18), `owasp` (вступ, 10), `nodejs` (5, 8, 12) |
+| 0. База, якої Nest не дає | `typescript` (вступ, 1–4), `mdn` (вступ, 6–7, 10–11), `webstandards` (6–7, 10–11), `express` (9–10), `vite` (11), `postgresql` (вступ, 13–18), `owasp` (вступ, 10), `nodejs` (5, 8, 12), `csrf-csrf` (10) |
 | 1. Ядро Nest | `rxjs` (7) |
 | 2. Робочий API | `zod` (1, 3, 8), `class-validator` (2, 8), `class-transformer` (2), `webstandards` (4, 6), `tanstack-query` (7), `react-hook-form` (8), `jsonschema` (6), `nestjs-cls` (5) |
 | 3. Дані: TypeORM, Prisma | `typeorm` (вступ, 1–6, 11–12), `prisma` (вступ, 3, 7–12), `postgresql` (12), `owasp` (5) |
-| 4. Автентифікація й авторизація | `webstandards` (1–2, 6–8, 12), `express` (8, 12), `react-router` (9), `owasp` (1, 6, 8, 12), `argon2` (1), `bcrypt` (1), `class-transformer` (1), `passport` (5), `helmet` (12), `express-rate-limit` (12) |
+| 4. Автентифікація й авторизація | `webstandards` (1–2, 6–8, 12), `express` (8, 12), `react-router` (9), `owasp` (1, 6, 8, 12), `argon2` (1), `bcrypt` (1), `class-transformer` (1), `passport` (5), `helmet` (12), `express-rate-limit` (12), `csrf-csrf` (8) |
 | 5. Якість: тести й DI | `vitest` (1), `supertest` (3–4), `prisma` (2), `nestjs-cls` (6) |
 | 6. Продакшн | `docker` (вступ, 2, 7), `upstash` (6), `kubernetes` (вступ, 8–9), `oracle-cloud` (вступ, 8), `express` (9), `postgresql` (9), `github-actions` (вступ, 7), `nginx` (вступ, 2, 5), `node-postgres` (5), `argon2` (8), `bcrypt` (8), `prisma` (2, 8), `redis` (8), `nestjs-pino` (3) |
 | 7. Живі дані: WebSockets | `socketio` (вступ, 2–4, 6–7), `mdn` (вступ, 1), `webstandards` (вступ, 1, 3, 6), `ws` (1–2, 5), `vite` (2), `kubernetes` (3, 6, 8), `owasp` (3), `nginx` (6), `binance-spot` (вступ, 5), `redis` (5), `kraken-spot` (вступ, 1, 5), `rxjs` (6) |

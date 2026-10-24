@@ -356,7 +356,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 | `@nestjs/cache-manager` | кеш відповідей і даних | Ф6 Д4 |
 | `nestjs-cls` | ідентифікатор запиту й користувач без протягування через виклики | Ф2 Д5, Ф5 Д6; є примірник `nestjs-cls` |
 | `nestjs-pino` | швидкий JSON-логер з контекстом запиту в кожному рядку | Ф6 Д3; є примірник `nestjs-pino` |
-| cookie-parser, csrf-csrf | куки й захист від CSRF | Ф0 Д10, Ф4 Д8 |
+| cookie-parser, csrf-csrf | куки й захист від CSRF | Ф0 Д10, Ф4 Д8; є примірник `csrf-csrf` |
 | CASL | права на рівні атрибутів запису | Ф4 Д11, згадкою |
 | генератор клієнта з OpenAPI (orval, openapi-typescript) | типізований клієнт для SPA (поза корпусом) | Ф2 Д7 |
 | Vite (проксі розробки), React Hook Form, TanStack Query | SPA-бік вправ | Ф0 Д11, Ф2 Д7–8, Ф4 Д9; є примірники `vite`, `react-hook-form`, `tanstack-query` |
@@ -485,12 +485,15 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   pg-promise) — `nestjs-cls`;
 - nestjs-pino (логер для NestJS на pino і pino-http з контекстом запиту в кожному рядку: README кожної стабільної
   версії 0.1.0–5.3.1 — сайту пакет не має, нотатки релізів GitHub, реєстр npm; документації pino, pino-http і
-  pino-pretty тут немає) — `nestjs-pino`.
+  pino-pretty тут немає) — `nestjs-pino`;
+- csrf-csrf (захист від CSRF за схемою підписаного Double Submit Cookie: README кожної стабільної версії 1.0.0–4.0.3 —
+  сайту пакет не має, README гілки main, FAQ, посібник переходу з 3.x на 4.x, журнал змін, приклади з Express і React,
+  реєстр npm) — `csrf-csrf`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
 глава про інтеграцію (CASL, Kafka, RabbitMQ, NATS, MikroORM), але не документація самої бібліотеки:
 
-- з «варто знати»: csrf-csrf, CASL, orval, openapi-typescript;
+- з «варто знати»: CASL, orval, openapi-typescript;
 - з «знати, що існує»: MikroORM, Kafka, RabbitMQ, NATS.
 
 ---
@@ -498,7 +501,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 # Фаза 0. База, якої Nest не дає — 18 днів
 
 **Сервери MCP фази:** `nestjs-docs`, `typescript-docs`, `mdn-docs`, `webstandards-docs`, `express-docs`, `vite-docs`,
-`postgresql-docs`, `owasp-docs`, `nodejs-docs`.
+`postgresql-docs`, `owasp-docs`, `nodejs-docs`, `csrf-csrf-docs`.
 
 Виглядає як відступ від теми, але саме вона визначає, чи будете ви фулстеком, чи людиною, яка копіює приклади з
 документації. Nest — обгортка над TypeScript, HTTP і базою даних; обгортку без нутрощів вивчити не можна. Корпусу
@@ -676,11 +679,11 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 - **Читати:** у примірнику `mdn` — `Using HTTP cookies`, `Set-Cookie header`; у примірнику `owasp` — `Session
   Management Cheat Sheet`, `Cross-Site Request Forgery Prevention Cheat Sheet`. Наперед, у корпусі Nest: розділ
   Techniques, глава `Cookies` (підписані куки, `cookie-parser`); розділ Security, глава `CSRF Protection`
-  (`csrf-csrf`); у примірнику `webstandards` — `RFC 6265bis (draft 22) Cookies: HTTP State Management Mechanism: 4
+  (`csrf-csrf`); у примірнику `csrf-csrf` — README, розділ `Background`; у примірнику `webstandards` — `RFC 6265bis (draft 22) Cookies: HTTP State Management Mechanism: 4
   Server Requirements`, `RFC 6265bis (draft 22) Cookies: HTTP State Management Mechanism: 8 Security Considerations`,
   `Fetch Metadata Request Headers: 2 Fetch Metadata Headers`; для вправи на Express у примірнику `express` —
   `Response` (`res.cookie`, `res.clearCookie`) і `cookie-parser middleware`.
-- **Сервери MCP:** `nestjs-docs`, `mdn-docs`, `webstandards-docs`, `express-docs`, `owasp-docs`.
+- **Сервери MCP:** `nestjs-docs`, `mdn-docs`, `webstandards-docs`, `express-docs`, `owasp-docs`, `csrf-csrf-docs`.
 - **Зробити:** на Express з учорашнього дня: 1) `POST /login` ставить куку сесії з
   `HttpOnly; SameSite=Strict`; 2) `GET /me` читає куку й каже, хто ви; 3) `POST /logout` стирає куку;
   4) сторінка на іншому порту з формою, що шле `POST` на ваш сервер.
@@ -1386,7 +1389,8 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 # Фаза 4. Автентифікація й авторизація — 13 днів
 
 **Сервери MCP фази:** `nestjs-docs`, `webstandards-docs`, `express-docs`, `react-router-docs`, `owasp-docs`,
-`argon2-docs`, `bcrypt-docs`, `class-transformer-docs`, `passport-docs`, `helmet-docs`, `express-rate-limit-docs`.
+`argon2-docs`, `bcrypt-docs`, `class-transformer-docs`, `passport-docs`, `helmet-docs`, `express-rate-limit-docs`,
+`csrf-csrf-docs`.
 
 Точка, де сходяться всі глави фази 1: guard, декоратор, pipe, фільтр. Спершу руками, потім через Passport — так
 видно, що саме Passport робить за вас. Модель токенів одна на всю родину планів, і власник її — ця фаза:
@@ -1554,10 +1558,11 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   `app.example.com`) — той самий сайт. Додатковий рубіж — перевірка заголовка `Origin` на `/api/auth/refresh` і
   `/auth/logout` зі списку дозволених або CSRF-токен пакетом `csrf-csrf`.
 - **Читати:** розділ Security, глава `CSRF Protection`; у примірнику `owasp` — `Cross-Site Request Forgery Prevention
-  Cheat Sheet`, розділ Using Standard Headers to Verify Origin; поза корпусом — README csrf-csrf; у примірнику
-  `express` — `cookie-parser middleware`; у примірнику `webstandards` — `Fetch Metadata Request Headers: 2 Fetch
-  Metadata Headers`.
-- **Сервери MCP:** `nestjs-docs`, `webstandards-docs`, `express-docs`, `owasp-docs`.
+  Cheat Sheet`, розділ Using Standard Headers to Verify Origin; у примірнику `csrf-csrf` — README, розділи
+  `Getting Started` і `getSessionIdentifier`, і FAQ, розділ `Do I need to protect unauthorised routes (e.g. login)?`;
+  у примірнику `express` — `cookie-parser middleware`; у примірнику `webstandards` — `Fetch Metadata Request
+  Headers: 2 Fetch Metadata Headers`.
+- **Сервери MCP:** `nestjs-docs`, `webstandards-docs`, `express-docs`, `owasp-docs`, `csrf-csrf-docs`.
 - **Зробити:** 1) вихід і «вийти всюди»; 2) guard або middleware, що на двох маршрутах вимагає `Origin` зі
   списку; 3) `curl` з чужим `Origin` і без нього.
 - **Перевірити себе:** після виходу старий refresh дає 401; запит із `Origin: https://evil.example` — 403; SPA через
