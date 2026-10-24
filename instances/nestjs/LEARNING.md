@@ -365,7 +365,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 
 | Бібліотека | Навіщо | Де в плані |
 |------------|--------|------------|
-| Mongoose, MikroORM, Drizzle | інша база чи інший стиль ORM; у корпусі є `Mongo` і `MikroORM`; є примірник `drizzle` і родина Mongo: `mongodb`, `node-mongodb`, `mongoose` | не вчиться |
+| Mongoose, MikroORM, Drizzle | інша база чи інший стиль ORM; у корпусі є `Mongo` і `MikroORM`; є примірники `drizzle`, `mikro-orm` і родина Mongo: `mongodb`, `node-mongodb`, `mongoose` | не вчиться |
 | GraphQL (`@nestjs/graphql`) | клієнтів багато, і кожен хоче свою форму даних | не вчиться |
 | мікросервіси: Kafka, RabbitMQ, NATS | кілька сервісів обмінюються повідомленнями | не вчиться |
 | CQRS | складний домен, читання й запис розділені | не вчиться |
@@ -496,12 +496,14 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   нотатки релізів GitHub, приклади samples/ з TanStack Query, SWR, Zod, MSW, Angular і Hono, реєстр npm) — `orval`;
 - openapi-typescript (типи TypeScript з OpenAPI і клієнт openapi-fetch, хуки openapi-react-query і swr-openapi: сайт
   openapi-ts.dev з тегу кожної мінорної версії 6.2–7.13, README кожної версії шести пакетів, журнали змін, приклади
-  openapi-fetch, реєстр npm) — `openapi-typescript`.
+  openapi-fetch, реєстр npm) — `openapi-typescript`;
+- MikroORM (ORM на Data Mapper і Unit of Work: сайт mikro-orm.io з тегу кожної мінорної версії 2.0–7.2, README кожної
+  версії, журнали змін 2.0–7.2, модуль @mikro-orm/nestjs з README, журналом і релізами, реєстр npm) — `mikro-orm`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
-глава про інтеграцію (Kafka, RabbitMQ, NATS, MikroORM), але не документація самої бібліотеки:
+глава про інтеграцію (Kafka, RabbitMQ, NATS), але не документація самої бібліотеки:
 
-- з «знати, що існує»: MikroORM, Kafka, RabbitMQ, NATS.
+- з «знати, що існує»: Kafka, RabbitMQ, NATS.
 
 ---
 
