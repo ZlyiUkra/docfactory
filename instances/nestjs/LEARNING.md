@@ -355,7 +355,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 | `@nestjs/schedule` | задачі за розкладом | Ф6 Д6, згадкою |
 | `@nestjs/cache-manager` | кеш відповідей і даних | Ф6 Д4 |
 | `nestjs-cls` | ідентифікатор запиту й користувач без протягування через виклики | Ф2 Д5, Ф5 Д6; є примірник `nestjs-cls` |
-| `nestjs-pino` | швидкий JSON-логер (поза корпусом) | Ф6 Д3, згадкою |
+| `nestjs-pino` | швидкий JSON-логер з контекстом запиту в кожному рядку | Ф6 Д3; є примірник `nestjs-pino` |
 | cookie-parser, csrf-csrf | куки й захист від CSRF | Ф0 Д10, Ф4 Д8 |
 | CASL | права на рівні атрибутів запису | Ф4 Д11, згадкою |
 | генератор клієнта з OpenAPI (orval, openapi-typescript) | типізований клієнт для SPA (поза корпусом) | Ф2 Д7 |
@@ -373,8 +373,8 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 | NestJS Observe | траси й помилки продакшну; глава `Distributed tracing` (12) | не вчиться |
 | Supabase, Clerk | база чи вхід як послуга; є примірники `supabase`, `clerk` | не вчиться |
 
-Про `nestjs-pino`, orval і autocannon: у корпусі Nest їх немає (або вони лише згадані), це порада з практики, а не
-висновок із документації. Kubernetes має власний примірник `kubernetes`.
+Про orval і autocannon: у корпусі Nest їх немає (або вони лише згадані), це порада з практики, а не висновок із
+документації. `nestjs-pino` і Kubernetes мають власні примірники `nestjs-pino` і `kubernetes`.
 
 ### Документація у фабриці
 
@@ -482,12 +482,15 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 - nestjs-cls (контекст запиту на `AsyncLocalStorage`: сторінки сайту papooch.github.io/nestjs-cls з тегів кожної
   версії ядра 3.5.1–7.0.1, README усіх стабільних версій 0.1.0–7.0.1, нотатки релізів GitHub і реєстр npm; плагін
   транзакцій `@nestjs-cls/transactional` і вісім адаптерів — Prisma, TypeORM, Drizzle, Kysely, Knex, Mongoose, MongoDB,
-  pg-promise) — `nestjs-cls`.
+  pg-promise) — `nestjs-cls`;
+- nestjs-pino (логер для NestJS на pino і pino-http з контекстом запиту в кожному рядку: README кожної стабільної
+  версії 0.1.0–5.3.1 — сайту пакет не має, нотатки релізів GitHub, реєстр npm; документації pino, pino-http і
+  pino-pretty тут немає) — `nestjs-pino`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
 глава про інтеграцію (CASL, Kafka, RabbitMQ, NATS, MikroORM), але не документація самої бібліотеки:
 
-- з «варто знати»: nestjs-pino, csrf-csrf, CASL, orval, openapi-typescript;
+- з «варто знати»: csrf-csrf, CASL, orval, openapi-typescript;
 - з «знати, що існує»: MikroORM, Kafka, RabbitMQ, NATS.
 
 ---
@@ -1795,7 +1798,7 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 
 **Сервери MCP фази:** `nestjs-docs`, `docker-docs`, `kubernetes-docs`, `oracle-cloud-docs`, `express-docs`, `upstash-docs`,
 `postgresql-docs`, `github-actions-docs`, `nginx-docs`, `node-postgres-docs`, `argon2-docs`, `bcrypt-docs`, `prisma-docs`,
-`redis-docs`.
+`redis-docs`, `nestjs-pino-docs`.
 
 Сервер, який треба зібрати, запустити, тримати живим, міряти й вміти оновити. Глави Nest тут — лише те, що Nest
 вимагає від Docker, проксі й CI. Docker і Compose мають примірник `docker`, Kubernetes, k3s і Traefik — примірник
@@ -1853,13 +1856,13 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   У 12 власний індикатор повертає `up()`/`down()` через `HealthIndicatorService` або загортає перевірку в
   `attempt()`; кидати `HealthCheckError`, як у старих статтях, уже не можна. `gracefulShutdownTimeoutMs` на
   `SIGTERM` спершу віддає 503 на readiness, щоб трафік перестав іти, і лише потім завершує процес. Логи —
-  JSON (`ConsoleLogger({ json: true })` або `nestjs-pino`, поза корпусом), рівень зі змінної оточення,
+  JSON (`ConsoleLogger({ json: true })` або `nestjs-pino` — є примірник), рівень зі змінної оточення,
   `requestId` з фази 2 у кожному рядку, і **жодного** заголовка `Authorization`, пароля чи токена.
 - **Читати:** розділ Recipes, глава `Health checks` — розділи Setting up a Healthcheck, TypeOrm health indicator,
   Custom health indicator, Graceful shutdown timeout; у `Migration guide` — розділ Terminus module; розділ Techniques,
-  глава `Logging`, розділ JSON logging; `Deployment`, розділи Health checks і Logging; поза корпусом — README
-  `nestjs-pino`.
-- **Сервери MCP:** `nestjs-docs`.
+  глава `Logging`, розділ JSON logging; `Deployment`, розділи Health checks і Logging; у примірнику `nestjs-pino` —
+  розділи README `Example`, `Asynchronous configuration` і `FAQ` (заголовок `X-Request-ID` у `req.id`).
+- **Сервери MCP:** `nestjs-docs`, `nestjs-pino-docs`.
 - **Зробити:** 1) `/health/live` і `/health/ready` з перевіркою бази (для Prisma — власний індикатор);
   2) `healthcheck` у compose на `ready`; 3) JSON-логи з рівнем зі змінної; 4) пошук по логах після
   сценарію входу.
@@ -2959,7 +2962,7 @@ BullMQ і Terminus описують **лише інтеграційний шар
 Protection` — без налаштувань. План щоразу каже, що з прикладу брати, а що ні.
 
 **Поза корпусом.** Усе, що позначено «поза корпусом», — порада з практики: autocannon, orval і openapi-typescript,
-`nestjs-pino`, платформи викоту, підпис вебхука, тест на справжній базі як головний, факультатив «крипта», крім
+платформи викоту, підпис вебхука, тест на справжній базі як головний, факультатив «крипта», крім
 ринкових даних Binance. Маніфести Kubernetes і таймаути Traefik звіряйте з примірником `kubernetes`, ліміти й адреси
 Binance — з примірником `binance-spot`. Звіряйте з документацією самих інструментів: безкоштовні тарифи, ліміти бірж і
 статус тестових мереж змінюються, і все, що в плані позначено «на 02.10.2026», перед днем варто перевірити ще раз.

@@ -9,7 +9,7 @@ bcrypt, binance-spot, biome, bullmq, cares, certbot, class-transformer, class-va
 docker, dotnet, dotnet-testing, drizzle, ecmascript, entityframework, eslint, expo, express, express-rate-limit,
 fastify, ffmpeg, foundry, frontend-architecture, github-actions, gvisor, helmet, i18next, icu, ioredis, iron-session,
 jose, jsonschema, kraken-spot, kubernetes, libreoffice, libuv, lightweight-charts, linux, llhttp, mdn, mongodb,
-mongoose, motion, msw, nestjs, nestjs-cls, next-intl, next-themes, nextjs, nghttp2, nginx, node-mongodb,
+mongoose, motion, msw, nestjs, nestjs-cls, nestjs-pino, next-intl, next-themes, nextjs, nghttp2, nginx, node-mongodb,
 node-postgres, node-redis, nodejs, nodemailer, nuget, nuqs, nvidia-container-toolkit, ollama, openssl, opentelemetry,
 oracle-cloud, owasp, partysocket, passport, patterns, playwright, postgrator, postgres-image, postgresql, prisma,
 react, react-hook-form, react-native, react-router, react-window, redis, redux, rxjs, sentry, shadcn, socketio,
@@ -49,7 +49,7 @@ webdev, webstandards, ws, zod, zustand.
 | 3. Дані: TypeORM, Prisma | `typeorm` (вступ, 1–6, 11–12), `prisma` (вступ, 3, 7–12), `postgresql` (12), `owasp` (5) |
 | 4. Автентифікація й авторизація | `webstandards` (1–2, 6–8, 12), `express` (8, 12), `react-router` (9), `owasp` (1, 6, 8, 12), `argon2` (1), `bcrypt` (1), `class-transformer` (1), `passport` (5), `helmet` (12), `express-rate-limit` (12) |
 | 5. Якість: тести й DI | `vitest` (1), `supertest` (3–4), `prisma` (2), `nestjs-cls` (6) |
-| 6. Продакшн | `docker` (вступ, 2, 7), `upstash` (6), `kubernetes` (вступ, 8–9), `oracle-cloud` (вступ, 8), `express` (9), `postgresql` (9), `github-actions` (вступ, 7), `nginx` (вступ, 2, 5), `node-postgres` (5), `argon2` (8), `bcrypt` (8), `prisma` (2, 8), `redis` (8) |
+| 6. Продакшн | `docker` (вступ, 2, 7), `upstash` (6), `kubernetes` (вступ, 8–9), `oracle-cloud` (вступ, 8), `express` (9), `postgresql` (9), `github-actions` (вступ, 7), `nginx` (вступ, 2, 5), `node-postgres` (5), `argon2` (8), `bcrypt` (8), `prisma` (2, 8), `redis` (8), `nestjs-pino` (3) |
 | 7. Живі дані: WebSockets | `socketio` (вступ, 2–4, 6–7), `mdn` (вступ, 1), `webstandards` (вступ, 1, 3, 6), `ws` (1–2, 5), `vite` (2), `kubernetes` (3, 6, 8), `owasp` (3), `nginx` (6), `binance-spot` (вступ, 5), `redis` (5), `kraken-spot` (вступ, 1, 5), `rxjs` (6) |
 | Факультатив «крипта» | `binance-spot` (К1), `webstandards` (К3), `node-postgres` (К1), `viem` (К3–К4), `foundry` (К4) |
 

@@ -2806,6 +2806,23 @@ TypeORM, Drizzle ORM, Kysely, Knex, Mongoose, MongoDB, pg-promise; до 2.0.1): 
   propagate a Prisma transaction with the Transactional plugin?"`;
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/nestjs-cls/README.md](instances/nestjs-cls/README.md).
+
+### nestjs-pino
+
+Документація пакета npm `nestjs-pino` (логер для NestJS на pino і pino-http з контекстом запиту в кожному рядку логу,
+iamolegga/nestjs-pino) на кожній стабільній версії: README усіх 57 випусків (0.1.0–5.3.1; сайту пакет не має, README і є
+документацією), нотатки релізів GitHub (2.0.1–5.3.1) і реєстр npm із peer-залежностями на pino, pino-http і NestJS та
+вимогами до Node.js. 82 документи, 259 фрагментів; нових читачів не потрібно.
+
+- порт `8880`; запис у Claude Code — `nestjs-pino-docs`, адреса `http://127.0.0.1:8880/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версія — мажор (`version: "4"`), мінор (`"4.6"`) або точна (`"4.6.1"`); без названої версії промпт велить шукати для
+  лінії 4 (близько 75 % завантажень npm за тиждень до 24.10.2026) і згадувати 5.x там, де вона відрізняється;
+- не входять: pino, pino-http, pino-pretty і сам NestJS (README лише каже, які їхні опції йдуть у поле `pinoHttp`);
+- приклад питання агентові: `./df nestjs-pino ask "Since which version does nestjs-pino have runInContext, and how do I
+  add a field to every log line of one request?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/nestjs-pino/README.md](instances/nestjs-pino/README.md).
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
