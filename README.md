@@ -2900,6 +2900,26 @@ swr-openapi й openapi-metadata у монорепо, приклади openapi-fe
   and since which version is middleware there?"`;
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/openapi-typescript/README.md](instances/openapi-typescript/README.md).
+
+### mikro-orm
+
+Документація MikroORM — ORM для TypeScript і Node.js на Data Mapper, Unit of Work та Identity Map (PostgreSQL, MySQL,
+MariaDB, SQLite, libSQL, MS SQL Server, MongoDB; mikro-orm/mikro-orm) — і модуля @mikro-orm/nestjs: сайт mikro-orm.io з
+тегу кожної мінорної версії 3.0–7.2 (33 теги) і старий сайт Jekyll 2.0–2.7, README пакета mikro-orm кожної версії,
+журнали змін 2.0.0–7.2.5, README, журнал і релізи @mikro-orm/nestjs, реєстр npm трьох пакетів. 1109 документів, 4901
+фрагмент; нових читачів не потрібно.
+
+- порт `8885`; запис у Claude Code — `mikro-orm-docs`, адреса `http://127.0.0.1:8885/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версія — мажор (`version: "6"`), мінор (`"5.9"`) або точна (`"7.2.5"`), модуль NestJS — з префіксом `nestjs-`; лінії
+  6 і 7 обидві чинні (близько 56 % і 36 % завантажень `@mikro-orm/core` за тиждень до 24.10.2026), тож промпт велить
+  відповідати для обох;
+- не входять: SQL, бази даних, Knex, Kysely, TypeScript, NestJS (окремі примірники там, де вони є) і README пакетів
+  `@mikro-orm/*` (ті самі, що в mikro-orm);
+- приклад питання агентові: `./df mikro-orm ask "Why must I fork the EntityManager per request, and how does
+  RequestContext do it in versions 6 and 7?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/mikro-orm/README.md](instances/mikro-orm/README.md).
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
