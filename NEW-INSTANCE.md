@@ -626,6 +626,12 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
 - **When an update moves the tag of code and tests in a major line that is already taken** (e.g. 2.11.3 → 2.12.5): the
   revisions of files that exist only on the old tag become orphans. Move them to a scratchpad folder before `manifest`
   (never delete them); they do not go into the new archive and can be restored from the old tag on GitHub.
+- **A README whose headings are HTML tags** (csrf-csrf: `<h2 id="configuration">Configuration</h2>`,
+  `<h3>getSecret</h3>`): the markdown reader sees no headings and keeps the whole README as one unnamed section — 15
+  parts with an empty `section`, so neither `quality` targets nor search can name a section. Spot it in the cache
+  listing (passages of the README with `section` empty) or with `grep -c '<h[2-6]' README.md`. `html_headings: true` in
+  `npm-tarball-files` and `ghdocs-history` turns a one-line `<hN …>Title</hN>` into a markdown heading of the same
+  level; a multi-line header (`<h1>` with a logo) stays as it is. Without the field the readers behave as before.
 
 ## Anatomy of an instance
 
@@ -1547,6 +1553,12 @@ and what a taken port and a failed connection look like. A domain list in the ro
 - **Коли оновлення зсуває тег коду й тестів у вже взятій мажорній лінії** (напр. 2.11.3 → 2.12.5): редакції файлів,
   що лишилися лише на старому тезі, стають сиротами. Їх виносять у теку scratchpad до `manifest` (не видаляють); у
   новий архів вони не йдуть і відновлюються зі старого тегу на GitHub.
+- **README із заголовками-тегами HTML** (csrf-csrf: `<h2 id="configuration">Configuration</h2>`, `<h3>getSecret</h3>`):
+  читач markdown заголовків не бачить і лишає весь README одним безіменним розділом — 15 частин із порожнім `section`,
+  тож ні ціль `quality`, ні пошук не можуть назвати розділ. Видно це з переліку кешу (фрагменти README з порожнім
+  `section`) або з `grep -c '<h[2-6]' README.md`. Поле `html_headings: true` у `npm-tarball-files` і `ghdocs-history`
+  робить з однорядкового `<hN …>Назва</hN>` заголовок markdown того самого рівня; заголовок на кількох рядках (`<h1>` з
+  логотипом) лишається як є. Без поля читачі поводяться як раніше.
 
 ## З чого складається примірник
 
@@ -2505,6 +2517,13 @@ errada.
 - **Quando uma atualização move a tag de código e testes numa linha maior já tomada** (p. ex. 2.11.3 → 2.12.5): as
   revisões de arquivos que existem só na tag antiga viram órfãs. Tire-as para uma pasta de rascunho antes do `manifest`
   (nunca apague); elas não entram no arquivo novo e se recuperam da tag antiga no GitHub.
+- **Um README com títulos em tags HTML** (csrf-csrf: `<h2 id="configuration">Configuration</h2>`,
+  `<h3>getSecret</h3>`): o leitor de markdown não vê títulos e deixa o README inteiro como uma só seção sem nome — 15
+  partes com `section` vazio, então nem os alvos do `quality` nem a busca conseguem nomear uma seção. Isso aparece na
+  listagem do cache (trechos do README com `section` vazio) ou com `grep -c '<h[2-6]' README.md`. `html_headings: true`
+  em `npm-tarball-files` e `ghdocs-history` transforma um `<hN …>Título</hN>` de uma linha em título markdown do mesmo
+  nível; um cabeçalho de várias linhas (`<h1>` com logotipo) fica como está. Sem o campo os leitores se comportam como
+  antes.
 
 ## Anatomia de uma instância
 
