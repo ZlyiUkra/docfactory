@@ -357,7 +357,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 | `nestjs-cls` | ідентифікатор запиту й користувач без протягування через виклики | Ф2 Д5, Ф5 Д6; є примірник `nestjs-cls` |
 | `nestjs-pino` | швидкий JSON-логер з контекстом запиту в кожному рядку | Ф6 Д3; є примірник `nestjs-pino` |
 | cookie-parser, csrf-csrf | куки й захист від CSRF | Ф0 Д10, Ф4 Д8; є примірник `csrf-csrf` |
-| CASL | права на рівні атрибутів запису | Ф4 Д11, згадкою |
+| CASL | права на рівні атрибутів запису | Ф4 Д11, згадкою; є примірник `casl` |
 | генератор клієнта з OpenAPI (orval, openapi-typescript) | типізований клієнт для SPA (поза корпусом) | Ф2 Д7 |
 | Vite (проксі розробки), React Hook Form, TanStack Query | SPA-бік вправ | Ф0 Д11, Ф2 Д7–8, Ф4 Д9; є примірники `vite`, `react-hook-form`, `tanstack-query` |
 
@@ -488,12 +488,15 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   pino-pretty тут немає) — `nestjs-pino`;
 - csrf-csrf (захист від CSRF за схемою підписаного Double Submit Cookie: README кожної стабільної версії 1.0.0–4.0.3 —
   сайту пакет не має, README гілки main, FAQ, посібник переходу з 3.x на 4.x, журнал змін, приклади з Express і React,
-  реєстр npm) — `csrf-csrf`.
+  реєстр npm) — `csrf-csrf`;
+- CASL (права за атрибутами: сайт casl.js.org v4–v7 і старий сайт v1–v3, README кожної стабільної версії
+  `@casl/ability`, `@casl/react`, `@casl/vue`, `@casl/angular`, `@casl/aurelia`, `@casl/mongoose`, `@casl/prisma`,
+  журнали змін, приклади stalniy/casl-examples з Express, Fastify і Prisma, реєстр npm) — `casl`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
-глава про інтеграцію (CASL, Kafka, RabbitMQ, NATS, MikroORM), але не документація самої бібліотеки:
+глава про інтеграцію (Kafka, RabbitMQ, NATS, MikroORM), але не документація самої бібліотеки:
 
-- з «варто знати»: CASL, orval, openapi-typescript;
+- з «варто знати»: orval, openapi-typescript;
 - з «знати, що існує»: MikroORM, Kafka, RabbitMQ, NATS.
 
 ---
@@ -1390,7 +1393,7 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 
 **Сервери MCP фази:** `nestjs-docs`, `webstandards-docs`, `express-docs`, `react-router-docs`, `owasp-docs`,
 `argon2-docs`, `bcrypt-docs`, `class-transformer-docs`, `passport-docs`, `helmet-docs`, `express-rate-limit-docs`,
-`csrf-csrf-docs`.
+`csrf-csrf-docs`, `casl-docs`.
 
 Точка, де сходяться всі глави фази 1: guard, декоратор, pipe, фільтр. Спершу руками, потім через Passport — так
 видно, що саме Passport робить за вас. Модель токенів одна на всю родину планів, і власник її — ця фаза:
@@ -1619,8 +1622,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   Чужий запис дає 404 або 403 — **одне рішення на весь API**, записане в README: 404 не каже, що запис існує,
   403 чесніше для клієнта. Адмін — окрема гілка правила. Коли правил стає багато (автор редагує, але не видаляє
   опубліковане), їх виносять у бібліотеку на кшталт CASL.
-- **Читати:** розділ Security, глава `Authorization` — розділ Integrating CASL («Users can update their articles»).
-- **Сервери MCP:** `nestjs-docs`.
+- **Читати:** розділ Security, глава `Authorization` — розділ Integrating CASL («Users can update their articles»);
+  у примірнику `casl` — сторінки `Introduction` (розділи Conditions і Inverted rules) і `Ability to database query`.
+- **Сервери MCP:** `nestjs-docs`, `casl-docs`.
 - **Зробити:** 1) два користувачі A і B, у кожного записи; 2) кожен `GET`, `PATCH`, `DELETE` одного запису
   шукає з власником; 3) `curl` з токеном A на запис B для трьох методів; 4) правило «404 чи 403» у README.
 - **Перевірити себе:** три запити з кроку 3 дають обраний статус, і запис B не змінився; адмін змінює будь-який.
