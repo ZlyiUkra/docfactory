@@ -358,7 +358,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 | `nestjs-pino` | швидкий JSON-логер з контекстом запиту в кожному рядку | Ф6 Д3; є примірник `nestjs-pino` |
 | cookie-parser, csrf-csrf | куки й захист від CSRF | Ф0 Д10, Ф4 Д8; є примірник `csrf-csrf` |
 | CASL | права на рівні атрибутів запису | Ф4 Д11, згадкою; є примірник `casl` |
-| генератор клієнта з OpenAPI (orval, openapi-typescript) | типізований клієнт для SPA; є примірник `orval` (openapi-typescript — поза корпусом) | Ф2 Д7 |
+| генератор клієнта з OpenAPI (orval, openapi-typescript) | типізований клієнт для SPA; є примірники `orval` і `openapi-typescript` | Ф2 Д7 |
 | Vite (проксі розробки), React Hook Form, TanStack Query | SPA-бік вправ | Ф0 Д11, Ф2 Д7–8, Ф4 Д9; є примірники `vite`, `react-hook-form`, `tanstack-query` |
 
 **Знати, що існує** — беруть під конкретну задачу; план їх не вчить.
@@ -493,12 +493,14 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   `@casl/ability`, `@casl/react`, `@casl/vue`, `@casl/angular`, `@casl/aurelia`, `@casl/mongoose`, `@casl/prisma`,
   журнали змін, приклади stalniy/casl-examples з Express, Fastify і Prisma, реєстр npm) — `casl`;
 - orval (генератор клієнта TypeScript з OpenAPI: сайт orval.dev з тегу кожної мінорної версії 3.0–8.44, README 1.0–4.x,
-  нотатки релізів GitHub, приклади samples/ з TanStack Query, SWR, Zod, MSW, Angular і Hono, реєстр npm) — `orval`.
+  нотатки релізів GitHub, приклади samples/ з TanStack Query, SWR, Zod, MSW, Angular і Hono, реєстр npm) — `orval`;
+- openapi-typescript (типи TypeScript з OpenAPI і клієнт openapi-fetch, хуки openapi-react-query і swr-openapi: сайт
+  openapi-ts.dev з тегу кожної мінорної версії 6.2–7.13, README кожної версії шести пакетів, журнали змін, приклади
+  openapi-fetch, реєстр npm) — `openapi-typescript`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
 глава про інтеграцію (Kafka, RabbitMQ, NATS, MikroORM), але не документація самої бібліотеки:
 
-- з «варто знати»: openapi-typescript;
 - з «знати, що існує»: MikroORM, Kafka, RabbitMQ, NATS.
 
 ---
@@ -973,7 +975,8 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 # Фаза 2. Робочий API — 9 днів
 
 **Сервери MCP фази:** `nestjs-docs`, `zod-docs`, `class-validator-docs`, `class-transformer-docs`, `webstandards-docs`,
-`tanstack-query-docs`, `react-hook-form-docs`, `jsonschema-docs`, `nestjs-cls-docs`, `orval-docs`.
+`tanstack-query-docs`, `react-hook-form-docs`, `jsonschema-docs`, `nestjs-cls-docs`, `orval-docs`,
+`openapi-typescript-docs`.
 
 Тут API стає таким, яким його можна віддати фронту: вхід перевіряється схемою, конфіг — на старті, помилки мають
 один формат, контракт описано машинно, а SPA отримує згенерований клієнт і підсвічує конкретне поле форми. Основний
@@ -1115,10 +1118,10 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   префікса: `/health`, `/health/live`, `/health/ready`; на продакшні ззовні їх не видно, бо все поза `/api` іде у
   фронт (фаза 6, день 9). На цей день спирається план Next.js: там шар даних лише міняє реалізацію на цей самий
   клієнт.
-- **Читати:** для orval — у примірнику `orval` сторінки `Quick Start` і `React Query`, для openapi-typescript — його
-  документація (поза корпусом); у примірнику `tanstack-query` — `Queries`, якщо генеруєте хуки; розділ FAQ, глава
-  `Global path prefix`.
-- **Сервери MCP:** `nestjs-docs`, `tanstack-query-docs`, `orval-docs`.
+- **Читати:** для orval — у примірнику `orval` сторінки `Quick Start` і `React Query`, для openapi-typescript — у
+  примірнику `openapi-typescript` сторінки `openapi-typescript`, `CLI` і `openapi-fetch`; у примірнику
+  `tanstack-query` — `Queries`, якщо генеруєте хуки; розділ FAQ, глава `Global path prefix`.
+- **Сервери MCP:** `nestjs-docs`, `tanstack-query-docs`, `orval-docs`, `openapi-typescript-docs`.
 - **Зробити:** 1) скрипт `npm run api:gen` у SPA, що бере документ із запущеного бекенду; 2) замінити ручні
   `fetch` і типи в SPA згенерованими; 3) перейменувати поле в схемі на бекенді й перегенерувати.
 - **Перевірити себе:** після кроку 3 `tsc` у SPA падає рівно в тих місцях, де використано поле; жодного ручного
@@ -2973,8 +2976,7 @@ BullMQ і Terminus описують **лише інтеграційний шар
 решту: `Dockerfile` у `Deployment` — один етап з `COPY . .`, приклад `Prisma` — на SQLite, приклад `CSRF
 Protection` — без налаштувань. План щоразу каже, що з прикладу брати, а що ні.
 
-**Поза корпусом.** Усе, що позначено «поза корпусом», — порада з практики: autocannon і openapi-typescript,
-платформи викоту, підпис вебхука, тест на справжній базі як головний, факультатив «крипта», крім
-ринкових даних Binance. Маніфести Kubernetes і таймаути Traefik звіряйте з примірником `kubernetes`, ліміти й адреси
+**Поза корпусом.** Усе, що позначено «поза корпусом», — порада з практики: autocannon, платформи викоту, підпис
+вебхука, тест на справжній базі як головний, факультатив «крипта», крім ринкових даних Binance. Маніфести Kubernetes і таймаути Traefik звіряйте з примірником `kubernetes`, ліміти й адреси
 Binance — з примірником `binance-spot`. Звіряйте з документацією самих інструментів: безкоштовні тарифи, ліміти бірж і
 статус тестових мереж змінюються, і все, що в плані позначено «на 02.10.2026», перед днем варто перевірити ще раз.
