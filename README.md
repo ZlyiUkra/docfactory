@@ -2841,6 +2841,25 @@ Psifi-Solutions/csrf-csrf) на кожній стабільній версії: 
   session?"`;
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/csrf-csrf/README.md](instances/csrf-csrf/README.md).
+
+### casl
+
+Документація CASL — ізоморфної бібліотеки авторизації JavaScript (права за атрибутами, умови мовою запитів MongoDB;
+stalniy/casl): сайт casl.js.org v4–v7 (сторінки з 17 тегів `@casl/ability` 4.0.8–7.0.2) і старий сайт v1–v3, README
+кожної стабільної версії пакетів `@casl/ability`, `@casl/react`, `@casl/vue`, `@casl/angular`, `@casl/aurelia`,
+`@casl/mongoose`, `@casl/prisma` і старого `casl` (289 версій), журнали змін, приклади stalniy/casl-examples і реєстр npm.
+575 документів, 1701 фрагмент; нових читачів не потрібно.
+
+- порт `8882`; запис у Claude Code — `casl-docs`, адреса `http://127.0.0.1:8882/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версія — `@casl/ability` без префікса (`version: "6"`, `"6.8"`, `"6.8.1"`; лінії 0–1 — старий `casl`), обгортки з
+  префіксом (`"react-5"`, `"prisma-2"`); без названої версії промпт велить шукати для лінії 6 (близько 70 % завантажень
+  npm за тиждень до 24.10.2026) і згадувати 7.x там, де вона відрізняється;
+- не входять: React, Vue, Angular, Aurelia, Mongoose, Prisma, MongoDB, Express і NestJS (окремі примірники);
+- приклад питання агентові: `./df casl ask "How do I let a user update only their own articles, and fetch them with
+  Prisma?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/casl/README.md](instances/casl/README.md).
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
