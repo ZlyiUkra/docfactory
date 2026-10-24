@@ -2920,6 +2920,27 @@ MariaDB, SQLite, libSQL, MS SQL Server, MongoDB; mikro-orm/mikro-orm) — і м�
   RequestContext do it in versions 6 and 7?"`;
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/mikro-orm/README.md](instances/mikro-orm/README.md).
+
+### kafka
+
+Документація Apache Kafka — розподіленої платформи потоків подій (брокери й контролери KRaft, продюсери й консумери,
+Kafka Connect, Kafka Streams; apache/kafka-site, apache/kafka): сайт kafka.apache.org — тека кожної мінорної версії
+0.7–4.4 (35 версій) з повними таблицями параметрів і схемами протоколу, оголошення релізів 3.5.0–4.3.1, сторінки
+завантажень, CVE і безпеки, README репозиторію на 34 тегах 0.8.0–4.4.0. 1911 документів, 10 816 фрагментів; новий читач
+`kafka-hugo` (`engine/readers/kafkasite.py`) розгортає вставки згенерованих таблиць Hugo.
+
+- порт `8886`; запис у Claude Code — `kafka-docs`, адреса `http://127.0.0.1:8886/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версія — мажор (`version: "3"`), мінор (`"3.9"`, `"0.10"`) або точна (`"0.10.2"`, `"4.3.2"`); статистики завантажень
+  за версіями Kafka не публікує, тож промпт велить відповідати для підтримуваної лінії 4, а коли йдеться про ZooKeeper
+  — ще й для 3.9;
+- не входять: Javadoc, KIP, нотатки релізів JIRA, клієнти поза Apache Kafka (KafkaJS, librdkafka, Spring for Apache
+  Kafka) і продукти Confluent;
+- приклад питання агентові: `./df kafka ask "Since which version are idempotence and acks=all the producer defaults,
+  and what does min.insync.replicas change?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/kafka/README.md](instances/kafka/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
