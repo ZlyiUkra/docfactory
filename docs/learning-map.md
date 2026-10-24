@@ -11,11 +11,11 @@ express-rate-limit, fastify, ffmpeg, foundry, frontend-architecture, github-acti
 ioredis, iron-session, jose, jsonschema, kraken-spot, kubernetes, libreoffice, libuv, lightweight-charts, linux,
 llhttp, mdn, mongodb, mongoose, motion, msw, nestjs, nestjs-cls, nestjs-pino, next-intl, next-themes, nextjs, nghttp2,
 nginx, node-mongodb, node-postgres, node-redis, nodejs, nodemailer, nuget, nuqs, nvidia-container-toolkit, ollama,
-openssl, opentelemetry, oracle-cloud, owasp, partysocket, passport, patterns, playwright, postgrator, postgres-image,
-postgresql, prisma, react, react-hook-form, react-native, react-router, react-window, redis, redux, rxjs, sentry,
-shadcn, socketio, sqlserver, storybook, stripe, supabase, supertest, swr, tailwind, tanstack-query, tanstack-router,
-tanstack-virtual, tesseract, testcontainers-dotnet, testing-library, typeorm, typescript, upstash, v8, viem, vite,
-vitest, wagmi, wasm, webdev, webstandards, ws, zod, zustand.
+openssl, opentelemetry, oracle-cloud, orval, owasp, partysocket, passport, patterns, playwright, postgrator,
+postgres-image, postgresql, prisma, react, react-hook-form, react-native, react-router, react-window, redis, redux,
+rxjs, sentry, shadcn, socketio, sqlserver, storybook, stripe, supabase, supertest, swr, tailwind, tanstack-query,
+tanstack-router, tanstack-virtual, tesseract, testcontainers-dotnet, testing-library, typeorm, typescript, upstash,
+v8, viem, vite, vitest, wagmi, wasm, webdev, webstandards, ws, zod, zustand.
 
 ## Як читати таблиці
 
@@ -45,7 +45,7 @@ vitest, wagmi, wasm, webdev, webstandards, ws, zod, zustand.
 |------|------------------|
 | 0. База, якої Nest не дає | `typescript` (вступ, 1–4), `mdn` (вступ, 6–7, 10–11), `webstandards` (6–7, 10–11), `express` (9–10), `vite` (11), `postgresql` (вступ, 13–18), `owasp` (вступ, 10), `nodejs` (5, 8, 12), `csrf-csrf` (10) |
 | 1. Ядро Nest | `rxjs` (7) |
-| 2. Робочий API | `zod` (1, 3, 8), `class-validator` (2, 8), `class-transformer` (2), `webstandards` (4, 6), `tanstack-query` (7), `react-hook-form` (8), `jsonschema` (6), `nestjs-cls` (5) |
+| 2. Робочий API | `zod` (1, 3, 8), `class-validator` (2, 8), `class-transformer` (2), `webstandards` (4, 6), `tanstack-query` (7), `react-hook-form` (8), `jsonschema` (6), `nestjs-cls` (5), `orval` (7) |
 | 3. Дані: TypeORM, Prisma | `typeorm` (вступ, 1–6, 11–12), `prisma` (вступ, 3, 7–12), `postgresql` (12), `owasp` (5) |
 | 4. Автентифікація й авторизація | `webstandards` (1–2, 6–8, 12), `express` (8, 12), `react-router` (9), `owasp` (1, 6, 8, 12), `argon2` (1), `bcrypt` (1), `class-transformer` (1), `passport` (5), `helmet` (12), `express-rate-limit` (12), `csrf-csrf` (8), `casl` (11) |
 | 5. Якість: тести й DI | `vitest` (1), `supertest` (3–4), `prisma` (2), `nestjs-cls` (6) |
@@ -65,7 +65,7 @@ vitest, wagmi, wasm, webdev, webstandards, ws, zod, zustand.
 | 5. Інтерфейс із характером | `mdn` (4), `motion` (3–4), `zustand` (5), `webstandards` (5, 7), `shadcn`, `next-themes` і `nuqs` (5), `webdev` (4, 7), `i18next` і `next-intl` (8) |
 | 6. Чужий код | — |
 | 7. DevOps: від збірки до продакшну | `docker` (вступ, 2, 4), `upstash` (6), `drizzle` (4), `prisma` (4), `webstandards` (6), `kubernetes` (вступ, 12), `playwright` (7), `github-actions` (вступ, 7), `nginx` (вступ, 6), `webdev` (9–10), `sentry` (9), `opentelemetry` (9) |
-| 8. Next.js поруч з окремим бекендом | `upstash` (1), `webstandards` (2, 6–7), `mdn` (7), `socketio` (6), `nginx` (6), `iron-session` і `jose` (3); за змістом — `nestjs` |
+| 8. Next.js поруч з окремим бекендом | `upstash` (1), `webstandards` (2, 6–7), `mdn` (7), `socketio` (6), `nginx` (6), `iron-session` і `jose` (3), `orval` (2); за змістом — `nestjs` |
 | 9. Kubernetes глибше і демо | `kubernetes` (вступ, 1–8), `oracle-cloud` (вступ, 2, 7), `linux` (5), `mdn` (8), `webstandards` (8), `github-actions` (вступ, 5) |
 | Факультатив «крипта» | `webstandards` (К1–К3), `wagmi` (К3), `viem` (К1, К3), `foundry` (К2) |
 

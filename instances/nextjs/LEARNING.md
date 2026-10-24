@@ -448,7 +448,9 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
   версій npm) — `foundry`;
 - Stripe (сайт docs.stripe.com з варіантами інтеграцій і кодом сервера сімома мовами, довідник API й журнал змін
   кожної версії API, Stripe.js, OpenAPI; README кожного випуску stripe-node, Stripe.js і React Stripe.js, SDK інших
-  мов, нотатки релізів, таблиці версій реєстрів) — `stripe`.
+  мов, нотатки релізів, таблиці версій реєстрів) — `stripe`;
+- orval (генератор клієнта TypeScript з OpenAPI: сайт orval.dev з тегу кожної мінорної версії 3.0–8.44, README 1.0–4.x,
+  нотатки релізів GitHub, приклади samples/, зокрема next-app-with-fetch, реєстр npm) — `orval`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
@@ -1853,7 +1855,7 @@ Cloud з'явився в плані React (фаза 5, дні 7–9), бекен
 # Фаза 8. Next.js поруч з окремим бекендом — 7 днів
 
 **Сервери MCP фази:** `nextjs-docs`, `upstash-docs`, `webstandards-docs`, `mdn-docs`, `socketio-docs`, `nginx-docs`, `jose-docs`,
-`iron-session-docs`.
+`iron-session-docs`, `orval-docs`.
 
 Продовження плану NestJS ([../nestjs/LEARNING.md](../nestjs/LEARNING.md)): там SPA з плану React уже отримала
 бекенд — контракт і помилки полів (фаза 2, дні 7–8), токени (фаза 4, дні 6–9), compose (фаза 6, день 2), живі
@@ -1880,9 +1882,10 @@ Cloud з'явився в плані React (фаза 5, дні 7–9), бекен
   замість ORM — згенерований клієнт; компоненти цього не помічають. Виклик із серверного компонента чи дії —
   це сервер до сервера, CORS там немає; він потрібен, лише коли до NestJS ходить браузер. Альтернатива —
   `rewrites`: бекенд за тим самим доменом.
-- **Читати:** `rewrites`; генератор клієнта з OpenAPI (orval або openapi-typescript); у примірнику `webstandards` —
-  `OpenAPI Specification 3.1.1: 4 Specification`.
-- **Сервери MCP:** `nextjs-docs`, `webstandards-docs`.
+- **Читати:** `rewrites`; генератор клієнта з OpenAPI: у примірнику `orval` — посібник `Fetch` і приклад
+  `next-app-with-fetch` (openapi-typescript — поза корпусом); у примірнику `webstandards` — `OpenAPI Specification
+  3.1.1: 4 Specification`.
+- **Сервери MCP:** `nextjs-docs`, `webstandards-docs`, `orval-docs`.
 - **Зробити:** `lib/dal.ts` на згенерованому клієнті; жоден компонент не змінився.
 - **Перевірити себе:** жодного ручного типу відповіді; зміна поля в NestJS ламає збірку Next.js.
 - **Пастка:** налаштовувати CORS для викликів, які йдуть із сервера Next.js.
