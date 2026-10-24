@@ -354,7 +354,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 | `@nestjs/event-emitter` | події всередині застосунку | Ф6 Д6 |
 | `@nestjs/schedule` | задачі за розкладом | Ф6 Д6, згадкою |
 | `@nestjs/cache-manager` | кеш відповідей і даних | Ф6 Д4 |
-| `nestjs-cls` | ідентифікатор запиту й користувач без протягування через виклики | Ф2 Д5 |
+| `nestjs-cls` | ідентифікатор запиту й користувач без протягування через виклики | Ф2 Д5, Ф5 Д6; є примірник `nestjs-cls` |
 | `nestjs-pino` | швидкий JSON-логер (поза корпусом) | Ф6 Д3, згадкою |
 | cookie-parser, csrf-csrf | куки й захист від CSRF | Ф0 Д10, Ф4 Д8 |
 | CASL | права на рівні атрибутів запису | Ф4 Д11, згадкою |
@@ -478,12 +478,16 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   у кожній мажорній лінії, `Content-Security-Policy`, `Strict-Transport-Security`) — `helmet`;
 - express-rate-limit і шість пакетів його організації (express-slow-down, rate-limit-redis, rate-limit-memcached,
   `@acpr/rate-limit-postgresql`, cluster-memory-store, ratelimit-header-parser): сайт, README, типи й журнали змін усіх
-  стабільних версій — `express-rate-limit`.
+  стабільних версій — `express-rate-limit`;
+- nestjs-cls (контекст запиту на `AsyncLocalStorage`: сторінки сайту papooch.github.io/nestjs-cls з тегів кожної
+  версії ядра 3.5.1–7.0.1, README усіх стабільних версій 0.1.0–7.0.1, нотатки релізів GitHub і реєстр npm; плагін
+  транзакцій `@nestjs-cls/transactional` і вісім адаптерів — Prisma, TypeORM, Drizzle, Kysely, Knex, Mongoose, MongoDB,
+  pg-promise) — `nestjs-cls`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
 глава про інтеграцію (CASL, Kafka, RabbitMQ, NATS, MikroORM), але не документація самої бібліотеки:
 
-- з «варто знати»: nestjs-cls, nestjs-pino, csrf-csrf, CASL, orval, openapi-typescript;
+- з «варто знати»: nestjs-pino, csrf-csrf, CASL, orval, openapi-typescript;
 - з «знати, що існує»: MikroORM, Kafka, RabbitMQ, NATS.
 
 ---
@@ -958,7 +962,7 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 # Фаза 2. Робочий API — 9 днів
 
 **Сервери MCP фази:** `nestjs-docs`, `zod-docs`, `class-validator-docs`, `class-transformer-docs`, `webstandards-docs`,
-`tanstack-query-docs`, `react-hook-form-docs`, `jsonschema-docs`.
+`tanstack-query-docs`, `react-hook-form-docs`, `jsonschema-docs`, `nestjs-cls-docs`.
 
 Тут API стає таким, яким його можна віддати фронту: вхід перевіряється схемою, конфіг — на старті, помилки мають
 один формат, контракт описано машинно, а SPA отримує згенерований клієнт і підсвічує конкретне поле форми. Основний
@@ -1055,8 +1059,9 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   ідентифікатор зі сховища, не протягуючи його параметром через усі виклики і не роблячи сервіс запитним
   (фаза 5, день 6).
 - **Читати:** розділ Techniques, глава `Logging`, розділи Structured logging params і JSON logging; розділ Recipes,
-  глава `Async local storage`, розділ NestJS CLS; поза корпусом — README `nestjs-cls`.
-- **Сервери MCP:** `nestjs-docs`.
+  глава `Async local storage`, розділ NestJS CLS; у примірнику `nestjs-cls` — глави `Quick Start`, `Using a Middleware`
+  і `Request ID`.
+- **Сервери MCP:** `nestjs-docs`, `nestjs-cls-docs`.
 - **Зробити:** 1) `ClsModule` з middleware, що бере `x-request-id` або генерує новий; 2) ідентифікатор у
   відповіді заголовком; 3) сервіс записів пише в лог через `Logger` із полем `requestId` зі сховища;
   4) два паралельні запити.
@@ -1657,7 +1662,7 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
 
 # Фаза 5. Якість: тести й тонкощі DI — 7 днів
 
-**Сервери MCP фази:** `nestjs-docs`, `vitest-docs`, `supertest-docs`, `prisma-docs`.
+**Сервери MCP фази:** `nestjs-docs`, `vitest-docs`, `supertest-docs`, `prisma-docs`, `nestjs-cls-docs`.
 
 Порядок навмисний: доки не написано тестів, теза «DI потрібен заради тестованості» лишається чужими словами. Тести
 — на Vitest, як у плані React; Jest ви зустрінете в старих проєктах, `@nestjs/testing` працює з обома. Найцінніші
@@ -1755,8 +1760,8 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   відповіді за правильної будови. Для ідентифікатора запиту й поточного користувача є `Async local storage` — без
   запитної області.
 - **Читати:** розділ Fundamentals, глава `Injection scopes` — розділи Provider scope, Scope hierarchy, Performance;
-  розділ Recipes, глава `Async local storage`.
-- **Сервери MCP:** `nestjs-docs`.
+  розділ Recipes, глава `Async local storage`; у примірнику `nestjs-cls` — глава `Proxy Providers`.
+- **Сервери MCP:** `nestjs-docs`, `nestjs-cls-docs`.
 - **Зробити:** 1) зробити сервіс записів запитним (`Scope.REQUEST`); 2) autocannon на список — p99 і req/s;
   3) повернути синглтон із `nestjs-cls`; 4) заміряти знову й записати обидва рядки в журнал.
 - **Перевірити себе:** у журналі два рядки з різницею, яку ви пояснюєте; лічильник конструкторів у запитному

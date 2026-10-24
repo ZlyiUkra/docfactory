@@ -51,6 +51,12 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   `refresh <source where it stopped>` and then `refresh --missing`.
 - **Build order:** documents → `vectors` → `smoke` → `quality` → tuning until «as the model» is 10 of 10 →
   `smoke` and `quality` again → README → learning plans and the map `docs/learning-map.md` last.
+- **The learning plans close the build.** An instance is not finished until every plan `instances/*/LEARNING.md`
+  and the map `docs/learning-map.md` know it: in the plan's tool table — «є примірник `<name>`», in the list
+  «Є примірник» — a line, in the day that leans on it — the server in its «Сервери MCP» row; from the list
+  «Примірника ще немає» and from the map's «Чого бракує» the instance and what it stands in for are removed; the
+  map's list of instances and its phase tables take it. While at it, check the instances built earlier against the
+  plans.
 - **`config.json` keys** (step 2): `slug_rewrite` when a site renamed its files between versions, `families` for
   sources that are editions of one site, `max_per_doc` and `fusion_depth` only by measuring `quality`;
   `answer_hosts` lists every host the documents link to, pages outside the documentation site included. The source
@@ -993,6 +999,11 @@ and what a taken port and a failed connection look like. A domain list in the ro
   `refresh <джерело, де зупинився>`, а потім `refresh --missing`.
 - **Порядок збирання:** документи → `vectors` → `smoke` → `quality` → дотюнінг, доки «як модель» не дасть 10 із 10 →
   знову `smoke` і `quality` → README → плани навчання й карта `docs/learning-map.md` останніми.
+- **Плани навчання закривають збирання.** Примірник не готовий, доки про нього не знають усі плани
+  `instances/*/LEARNING.md` і карта `docs/learning-map.md`: у таблиці інструментів плану — «є примірник `<ім'я>`»,
+  у переліку «Є примірник» — рядок, у дня, що на нього спирається, — сервер у рядку «Сервери MCP»; з переліку
+  «Примірника ще немає» і з «Чого бракує» карти примірник і те, що він заміняє, забираються; у перелік примірників
+  карти й у таблиці фаз — додаються. Заразом звірити з планами вже зібрані примірники.
 - **Ключі `config.json`** (крок 2): `slug_rewrite` — коли сайт між версіями переклав файли, `families` — для джерел,
   що є редакціями одного сайту, `max_per_doc` і `fusion_depth` — лише за заміром `quality`; `answer_hosts`
   перелічує всі хости, на які посилаються документи, зокрема сторінки поза сайтом документації. Поле джерела
@@ -1908,6 +1919,12 @@ errada.
   `refresh <fonte onde parou>` e depois `refresh --missing`.
 - **Ordem da montagem:** documentos → `vectors` → `smoke` → `quality` → ajustes até «como o modelo» dar 10 de 10 →
   `smoke` e `quality` de novo → README → planos de estudo e o mapa `docs/learning-map.md` por último.
+- **Os planos de estudo fecham a montagem.** Uma instância não está pronta enquanto todos os planos
+  `instances/*/LEARNING.md` e o mapa `docs/learning-map.md` não a conhecem: na tabela de ferramentas do plano —
+  «є примірник `<nome>`», na lista «Є примірник» — uma linha, no dia que se apoia nela — o servidor na linha
+  «Сервери MCP»; da lista «Примірника ще немає» e do «Чого бракує» do mapa saem a instância e o que ela substitui;
+  a lista de instâncias do mapa e as tabelas de fases a recebem. De passagem, conferir as instâncias já montadas
+  contra os planos.
 - **Chaves do `config.json`** (passo 2): `slug_rewrite` quando o site renomeou arquivos entre versões, `families`
   para fontes que são edições de um mesmo site, `max_per_doc` e `fusion_depth` só medindo com `quality`;
   `answer_hosts` lista todos os domínios para os quais os documentos apontam, inclusive páginas fora do site de
