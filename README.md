@@ -2784,6 +2784,28 @@ GitHub). 444 документи, 1162 фрагменти; нових читач�
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/csharp/README.md](instances/csharp/README.md).
 
+### nestjs-cls
+
+Документація пакета npm `nestjs-cls` (continuation-local storage для NestJS на `AsyncLocalStorage`, Papooch/nestjs-cls)
+на кожній стабільній версії: сторінки сайту papooch.github.io/nestjs-cls з тегів ядра 3.5.1–7.0.1 (тека `docs/docs`,
+35 тегів, 45 сторінок), README усіх 73 випусків (0.1.0–7.0.1; до 3.5.1 README і був документацією), нотатки релізів
+GitHub (v1.0.0–7.0.1) і реєстр npm із peer-залежностями на NestJS та вимогами до Node.js. Разом із ядром — плагін
+транзакцій `@nestjs-cls/transactional` (1.0.1–4.0.1) і вісім адаптерів `@nestjs-cls/transactional-adapter-*` (Prisma,
+TypeORM, Drizzle ORM, Kysely, Knex, Mongoose, MongoDB, pg-promise; до 2.0.1): README кожної версії, релізи й реєстр,
+версії з префіксом пакета (`transactional-3`, `adapter-prisma-2`). 389 документів, 1074 фрагменти; нових читачів не
+потрібно (релізи монорепозиторію читає `ghreleases-stable` за префіксом тегу кожного пакета).
+
+- порт `8879`; запис у Claude Code — `nestjs-cls-docs`, адреса `http://127.0.0.1:8879/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версія — мажор (`version: "6"`), мінор (`"6.2"`) або точна (`"6.2.1"`); без названої версії промпт велить шукати для
+  лінії 6 (близько 63 % завантажень npm за тиждень до 22.10.2026) і згадувати 7.x (близько 12 %, найновіша), де вона
+  відрізняється; плагін — `"transactional-3"` (близько 80 %);
+- не входять: NestJS, `AsyncLocalStorage`, Prisma, TypeORM, Drizzle, Kysely, Knex, Mongoose, драйвер MongoDB, pg-promise
+  (окремі примірники);
+- приклад питання агентові: `./df nestjs-cls ask "Since which version does nestjs-cls have proxy providers, and how do I
+  propagate a Prisma transaction with the Transactional plugin?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/nestjs-cls/README.md](instances/nestjs-cls/README.md).
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
