@@ -173,6 +173,16 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
 - **A product removed from a documentation site** (Upstash Kafka) comes from the commit before the removal:
   `commits?path=<folder>` gives the deleting commit, its parent is the snapshot; the source carries no version.
   Mintlify writes its «Documentation index» block in either case — the reader matches both.
+- **A site that keeps every version as a folder of one commit** (kafka.apache.org on Hugo: `content/en/07` …
+  `content/en/44`) — one source per folder with its `version`, all of them in one `families` group; the tree of one
+  folder is `trees/SHA:content%2Fen%2F41?recursive=1` (the slashes encoded). Pages that only name generated HTML
+  with a shortcode (`include-html` of the configuration tables) get it inserted the way the site template does it,
+  or the page is one sentence long. A version folder appears before the release: take it only once the stable tag
+  exists.
+- **The longest excerpt after the first build** is a cheap check of the reader: sort `index/passages.json` by text
+  length. An excerpt of hundreds of thousands of characters means a code block that never closed — in Kafka 2.5 it
+  was HTML broken on the site itself (`<code><code></code>` without `<pre>`), and the whole protocol page became one
+  excerpt.
 - **Documentation in Snooty rST** (MongoDB: the server manual, mongosh, Database Tools, the drivers) — the
   `snooty-history` reader: `.txt` pages, `include`/`literalinclude`/`sharedinclude` (shared snippets from
   `10gen/docs-shared`), tabs in both notations, YAML steps and extracts of the old branches, `{+x+}` constants from
@@ -1123,6 +1133,14 @@ and what a taken port and a failed connection look like. A domain list in the ro
 - **Продукт, прибраний із сайту документації** (Upstash Kafka), беруть із коміту перед видаленням:
   `commits?path=<тека>` дає коміт видалення, його батько — знімок; версії джерело не несе. Блок «Documentation index»
   Mintlify пише і з великої, і з малої літери — читач упізнає обидва.
+- **Сайт, що тримає кожну версію текою одного коміту** (kafka.apache.org на Hugo: `content/en/07` … `content/en/44`)
+  — по джерелу на теку з її `version`, усі в одній групі `families`; дерево однієї теки —
+  `trees/SHA:content%2Fen%2F41?recursive=1` (риски закодовано). Сторінки, що лише називають згенерований HTML
+  шорткодом (`include-html` таблиць конфігурації), дістають його вставленим так, як це робить шаблон сайту, інакше
+  сторінка — одне речення. Тека версії з'являється до випуску: брати її лише тоді, коли є стабільний тег.
+- **Найдовший уривок після першого збирання** — дешева перевірка читача: відсортувати `index/passages.json` за довжиною
+  тексту. Уривок на сотні тисяч символів — це блок коду, що не закрився: у Kafka 2.5 HTML зіпсовано на самому сайті
+  (`<code><code></code>` без `<pre>`), і вся сторінка протоколу ставала одним уривком.
 - **Документація у форматі Snooty rST** (MongoDB: посібник сервера, mongosh, Database Tools, драйвери) — читач
   `snooty-history`: сторінки `.txt`, `include`/`literalinclude`/`sharedinclude` (спільні вставки з
   `10gen/docs-shared`), вкладки обох записів, YAML-кроки й витяги старих гілок, константи `{+x+}` із `snooty.toml` і
@@ -2052,6 +2070,15 @@ errada.
 - **Um produto removido do site de documentação** (Upstash Kafka) vem do commit anterior à remoção:
   `commits?path=<pasta>` dá o commit que apagou, o pai dele é o snapshot; a fonte não leva versão. O Mintlify
   escreve o bloco «Documentation index» com maiúscula ou minúscula — o leitor reconhece os dois.
+- **Um site que guarda cada versão como pasta de um mesmo commit** (kafka.apache.org em Hugo: `content/en/07` …
+  `content/en/44`) — uma fonte por pasta com a sua `version`, todas num grupo de `families`; a árvore de uma pasta é
+  `trees/SHA:content%2Fen%2F41?recursive=1` (barras codificadas). Páginas que só nomeiam HTML gerado com um
+  shortcode (`include-html` das tabelas de configuração) recebem-no inserido como o template do site faz, senão a
+  página tem uma frase. A pasta de uma versão aparece antes do lançamento: só entra quando existe a tag estável.
+- **O trecho mais longo depois da primeira montagem** é uma verificação barata do leitor: ordenar
+  `index/passages.json` pelo tamanho do texto. Um trecho de centenas de milhares de caracteres é um bloco de código que
+  nunca fechou — no Kafka 2.5 o HTML vinha quebrado do próprio site (`<code><code></code>` sem `<pre>`), e a página
+  inteira do protocolo virava um só trecho.
 - **Documentação em Snooty rST** (MongoDB: manual do servidor, mongosh, Database Tools, drivers) — o leitor
   `snooty-history`: páginas `.txt`, `include`/`literalinclude`/`sharedinclude` (trechos partilhados de
   `10gen/docs-shared`), abas nas duas notações, passos e extratos YAML dos ramos antigos, constantes `{+x+}` de
