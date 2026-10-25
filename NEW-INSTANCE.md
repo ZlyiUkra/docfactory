@@ -180,6 +180,15 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   with the preview server) has tarballs over the 50 MB limit, and the whole source fails on the first of them. If the
   README repeats the site, drop the source — and remove its tarballs from `raw/` before the archive (they are found by
   the `url` in the header of each stored file), or they make up most of it.
+- **README from GitHub when the tarballs of all versions weigh gigabytes** (`sanity` — 10 GB unpacked, `@sanity/cli` —
+  5 GB): `npm-readme` with `files` on raw.githubusercontent.com at `{ref}` (`gitHead`, else `tag`); several templates
+  for a package that moved between repositories, and a template with the tag spelled out
+  (`refs/tags/@sanity/cli@{version}/…`) when tags are named after the package. A packument over 50 MB (thousands of
+  canary builds) passes with `gzip: true`; packages with their own numbering get `version_prefix` (`client-`).
+- **A TypeDoc reference next to the site** (reference.sanity.io: 3612 pages, half of all fragments) — `sitemap-md-suffix`
+  with `md_suffix: "/index.html.md"`, `drop` for the «Defined in: src/…» lines and `heading_floor: 3`, so a fragment
+  holds a whole property and not its «Returns». If the site pages for plain words (`Reference`, `Array`) still drown
+  under the reference, raise `fusion_depth` by measurement (20 gave «as a model» 7 → 10 of 10).
 - **A site that keeps every version as a folder of one commit** (kafka.apache.org on Hugo: `content/en/07` …
   `content/en/44`) — one source per folder with its `version`, all of them in one `families` group; the tree of one
   folder is `trees/SHA:content%2Fen%2F41?recursive=1` (the slashes encoded). Pages that only name generated HTML
@@ -1153,6 +1162,15 @@ and what a taken port and a failed connection look like. A domain list in the ro
   1.x–4.x із сервером перегляду), має тарболи понад межу в 50 МБ, і все джерело падає на першому з них. Якщо README
   повторює сайт — джерело прибрати, а його тарболи прибрати з `raw/` до архіву (їх видно за `url` у шапці кожного
   збереженого файла), інакше вони й будуть більшістю архіву.
+- **README з GitHub, коли тарболи всіх версій важать гігабайти** (`sanity` — 10 ГБ розпакованими, `@sanity/cli` —
+  5 ГБ): `npm-readme` з `files` на raw.githubusercontent.com за `{ref}` (`gitHead`, без нього — `tag`); кілька шаблонів —
+  для пакета, що переїжджав між репозиторіями, і шаблон із тегом, записаним повністю
+  (`refs/tags/@sanity/cli@{version}/…`), коли теги названо за пакетом. Опис пакета понад 50 МБ (тисячі збірок canary)
+  проходить із `gzip: true`; пакети зі своєю нумерацією дістають `version_prefix` (`client-`).
+- **Довідник TypeDoc поруч із сайтом** (reference.sanity.io: 3612 сторінок, половина всіх фрагментів) —
+  `sitemap-md-suffix` з `md_suffix: "/index.html.md"`, `drop` для рядків «Defined in: src/…» і `heading_floor: 3`, щоб
+  фрагмент тримав цілу властивість, а не її «Returns». Якщо сторінки сайту на прості слова (`Reference`, `Array`) усе
+  одно тонуть під довідником — підняти `fusion_depth` за заміром (20 дало «як модель» 7 → 10 із 10).
 - **Сайт, що тримає кожну версію текою одного коміту** (kafka.apache.org на Hugo: `content/en/07` … `content/en/44`)
   — по джерелу на теку з її `version`, усі в одній групі `families`; дерево однієї теки —
   `trees/SHA:content%2Fen%2F41?recursive=1` (риски закодовано). Сторінки, що лише називають згенерований HTML
@@ -2103,6 +2121,16 @@ errada.
   (react-email 1.x–4.x com o servidor de pré-visualização) tem tarballs acima do limite de 50 MB, e a fonte inteira cai
   no primeiro deles. Se o README repete o site, tirar a fonte — e tirar os tarballs dela de `raw/` antes do arquivo
   (acham-se pelo `url` no cabeçalho de cada arquivo guardado), senão eles serão a maior parte do arquivo.
+- **README do GitHub quando os tarballs de todas as versões pesam gigabytes** (`sanity` — 10 GB descompactado,
+  `@sanity/cli` — 5 GB): `npm-readme` com `files` em raw.githubusercontent.com no `{ref}` (`gitHead`, senão `tag`); vários
+  modelos para um pacote que mudou de repositório, e um modelo com a tag escrita por inteiro
+  (`refs/tags/@sanity/cli@{version}/…`) quando as tags levam o nome do pacote. Uma descrição de pacote acima de 50 MB
+  (milhares de builds canary) passa com `gzip: true`; pacotes com numeração própria recebem `version_prefix` (`client-`).
+- **Uma referência TypeDoc ao lado do site** (reference.sanity.io: 3612 páginas, metade de todos os fragmentos) —
+  `sitemap-md-suffix` com `md_suffix: "/index.html.md"`, `drop` para as linhas «Defined in: src/…» e `heading_floor: 3`,
+  para que um fragmento guarde uma propriedade inteira e não o seu «Returns». Se as páginas do site para palavras simples
+  (`Reference`, `Array`) ainda se afogam sob a referência, subir `fusion_depth` por medição (20 deu «como modelo» 7 → 10
+  de 10).
 - **Um site que guarda cada versão como pasta de um mesmo commit** (kafka.apache.org em Hugo: `content/en/07` …
   `content/en/44`) — uma fonte por pasta com a sua `version`, todas num grupo de `families`; a árvore de uma pasta é
   `trees/SHA:content%2Fen%2F41?recursive=1` (barras codificadas). Páginas que só nomeiam HTML gerado com um
