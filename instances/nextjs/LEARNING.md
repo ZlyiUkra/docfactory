@@ -345,7 +345,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 | Resend, React Email | листи; у 8 і 4 шаблонах; є примірники `resend` і `react-email` |
 | Vercel AI SDK | чат і генерація тексту; у 58 шаблонах; є примірник `vercel-ai-sdk` |
 | UploadThing або сховище S3 | завантаження файлів користувачів |
-| Sanity, Payload, Contentful | вміст редагують не розробники |
+| Sanity, Payload, Contentful | вміст редагують не розробники; для Sanity є примірник `sanity` |
 | tRPC, next-safe-action | типізовані виклики сервера поверх дій |
 | Turborepo | кілька застосунків в одному репозиторії |
 | Helm, Argo CD, Flux, Sealed Secrets | чужі чарти в кластері, викот «з репозиторію», секрети контролером; фаза 9 пояснює, чому не тут |
@@ -460,12 +460,15 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
   CLI, інтеграції; README пакетів, журнали змін, реєстр npm) — `react-email`;
 - Vercel AI SDK (текст, структурована відповідь, інструменти й агенти на мовних моделях, `useChat` для чату: сайт
   ai-sdk.dev з тегу кожної мінорної 2.1–7.0 з довідником API й посібниками міграції; README і журнали змін `ai` і 88
-  пакетів `@ai-sdk/*` — провайдерів і хуків для React, Vue, Svelte; реєстр npm) — `vercel-ai-sdk`.
+  пакетів `@ai-sdk/*` — провайдерів і хуків для React, Vue, Svelte; реєстр npm) — `vercel-ai-sdk`;
+- Sanity (Studio і типи схеми, Content Lake, GROQ, довідники HTTP API і CLI, Visual Editing: сайт sanity.io/docs,
+  довідник API reference.sanity.io; README кожної версії дев'яти пакетів, серед них `@sanity/client` і
+  `next-sanity`; реєстр npm, релізи) — `sanity`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «знати, що існує»: UploadThing, Sanity, Payload, Contentful, tRPC, next-safe-action, Turborepo, Argo CD, Flux,
-  Sealed Secrets, Prometheus, Grafana, Loki.
+- з «знати, що існує»: UploadThing, Payload, Contentful, tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed
+  Secrets, Prometheus, Grafana, Loki.
 
 ---
 
