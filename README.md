@@ -2959,6 +2959,25 @@ Kafka Connect, Kafka Streams; apache/kafka-site, apache/kafka): сайт kafka.a
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/kafkajs/README.md](instances/kafkajs/README.md).
 
+### confluent-kafka-javascript
+
+Документація Confluent JavaScript Client for Apache Kafka — пакета `@confluentinc/kafka-javascript`, клієнта Kafka для
+Node.js від Confluent на librdkafka з API, сумісним із KafkaJS, і callback API, сумісним із node-rdkafka
+(confluentinc/confluent-kafka-javascript); третій примірник родини Kafka: посібник і сторінка переходу docs.confluent.io
+1.0–1.11, документи репозиторію з 15 тегів 0.2–1.11, README і властивості конфігурації librdkafka (`CONFIGURATION.md`) з
+кожної стабільної версії npm, журнал змін, реєстр npm. 78 документів, 535 фрагментів; нових читачів не потрібно.
+
+- порт `8888`; запис у Claude Code — `confluent-kafka-javascript-docs`, адреса `http://127.0.0.1:8888/mcp`; інструменти
+  `search_docs` і `read_section`;
+- версія — мажор (`version: "1"`), мінор (`"1.10"`) або точна (`"1.10.1"`); найбільше завантажень npm за тиждень до
+  25.10.2026 — 1.10 (близько 31 %), тож промпт велить відповідати для 1.10, а про нове — ще й для 1.11.0;
+- не входять: сам Apache Kafka (примірник `kafka`), KafkaJS (примірник `kafkajs`), node-rdkafka, Confluent Cloud, C API
+  librdkafka, довідка JSDoc, типи й приклади;
+- приклад питання агентові: `./df confluent-kafka-javascript ask "Which KafkaJS consumer options behave differently
+  after migrating, and how do I commit offsets manually?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/confluent-kafka-javascript/README.md](instances/confluent-kafka-javascript/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
