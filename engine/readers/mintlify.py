@@ -5,6 +5,9 @@
                      береться з її markdown-двійника — тієї ж адреси з «.md». Назва —
                      перший заголовок сторінки; поле `label` ставить перед нею
                      префікс («WebSocket v2: Ticker»).
+                     Необов'язкове `drop_code` — заголовки блоків коду, що не беруться
+                     (`["PHP", "Python", "Go"]`): заголовок — слово після мови в рядку огорожі
+                     (```` ```php PHP theme=… ````). Без поля береться весь код.
 
 Навіщо окремий читач. Двійник Mintlify — це не чистий markdown, а MDX сайту, лише
 з розгорнутими вставками, і `sitemap-md` дав би з нього хибний текст:
@@ -21,6 +24,10 @@
   Блок розбирається (PyYAML) і стає розділами «Request» і «Response»: метод і повна
   адреса, чи потрібен ключ, параметри, поля тіла й відповіді списком з описами,
   переліками значень і короткими прикладами JSON.
+
+Навіщо `drop_code`. Сторінка ендпойнта resend.com повторює той самий виклик одинадцятьма мовами
+(Node.js, PHP, Python, Ruby, Go, Rust, Java, .NET, cURL, CLI і відповідь JSON). Примірникові для
+Node зайві вісім із них: вони роздувають уривок, а модель векторів бачить лише його початок.
 
 Решта компонентів (Tabs, Accordion, Card, Steps, Note…) стає звичайним текстом:
 заголовки вкладок і карток — рядком **жирним**, рамки — нічим. Код між огорожами
@@ -43,6 +50,8 @@ _OPENAPI = re.compile(r"^(?:## OpenAPI\n+)?(`{3,})yaml (\S+) (get|post|put|patch
 # Найдовший приклад JSON, що лишається в тексті.
 _EXAMPLE_MAX = 1500
 _FENCE = re.compile(r"^(\s*)(`{3,}|~{3,})")
+# Заголовок блоку коду в рядку огорожі: «```php PHP theme={…}» → «PHP».
+_FENCE_TITLE = re.compile(r"^\s*(?:`{3,}|~{3,})[\w+#.-]+[ \t]+(.+?)(?:[ \t]+theme=.*)?[ \t]*$")
 _OPEN = re.compile(r"^\s*<([A-Z][A-Za-z]*)\b([^>]*?)(/?)>\s*$")
 _CLOSE = re.compile(r"^\s*</([A-Z][A-Za-z]*)>\s*$")
 _INLINE = re.compile(r"^\s*<([A-Z][A-Za-z]*)\b([^>]*)>(.*)</\1>\s*$")
@@ -239,21 +248,25 @@ def _field(attrs: str) -> str:
     return name + (f" ({', '.join(notes)})" if notes else "")
 
 
-def _mdx(text: str) -> str:
+def _mdx(text: str, drop: frozenset = frozenset()) -> str:
     """MDX двійника → markdown, який далі розбирає `_markup.markdown_body`."""
     text = _BANNER.sub(lambda m: " ".join(_SPAN.findall(m.group(1))), text)
     out: list[str] = []
-    fence, cut, depth = "", 0, 0
+    fence, cut, depth, skip = "", 0, 0, False
     for ln in text.split("\n"):
         if fence:
-            out.append(ln[cut:] if ln[:cut].strip() == "" else ln.lstrip())
+            if not skip:
+                out.append(ln[cut:] if ln[:cut].strip() == "" else ln.lstrip())
             if ln.strip().startswith(fence) and set(ln.strip()) == {fence[0]}:
                 fence = ""
             continue
         m = _FENCE.match(ln)
         if m:
             fence, cut = m.group(2), len(m.group(1))
-            out.append(ln[cut:])
+            title = _FENCE_TITLE.match(ln)
+            skip = bool(drop) and bool(title) and title.group(1) in drop
+            if not skip:
+                out.append(ln[cut:])
             continue
         m = _INLINE.match(ln)
         if m:
@@ -301,7 +314,7 @@ def _document(ctx, source: dict, md_url: str, page: str) -> str:
     title, rest = _split_title(text)
     # Спершу MDX, потім OpenAPI: _mdx знімає відступи, а у списку полів відповіді
     # відступ — це вкладеність поля.
-    rest = _OPENAPI.sub(_openapi, _mdx(rest))
+    rest = _OPENAPI.sub(_openapi, _mdx(rest, frozenset(source.get("drop_code") or ())))
     body = _markup.markdown_body(rest)
     _markup.require(title, body, md_url, min_chars=1)
     if source.get("label"):
