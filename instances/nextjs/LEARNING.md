@@ -344,7 +344,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 | Stripe | платежі; у 15 шаблонах; є примірник `stripe` |
 | Resend, React Email | листи; у 8 і 4 шаблонах; є примірники `resend` і `react-email` |
 | Vercel AI SDK | чат і генерація тексту; у 58 шаблонах; є примірник `vercel-ai-sdk` |
-| UploadThing або сховище S3 | завантаження файлів користувачів |
+| UploadThing або сховище S3 | завантаження файлів користувачів; для UploadThing є примірник `uploadthing` |
 | Sanity, Payload, Contentful | вміст редагують не розробники; для Sanity є примірник `sanity` |
 | tRPC, next-safe-action | типізовані виклики сервера поверх дій |
 | Turborepo | кілька застосунків в одному репозиторії |
@@ -463,12 +463,15 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
   пакетів `@ai-sdk/*` — провайдерів і хуків для React, Vue, Svelte; реєстр npm) — `vercel-ai-sdk`;
 - Sanity (Studio і типи схеми, Content Lake, GROQ, довідники HTTP API і CLI, Visual Editing: сайт sanity.io/docs,
   довідник API reference.sanity.io; README кожної версії дев'яти пакетів, серед них `@sanity/client` і
-  `next-sanity`; реєстр npm, релізи) — `sanity`.
+  `next-sanity`; реєстр npm, релізи) — `sanity`;
+- UploadThing (файлові маршрути, `UploadButton` і `UploadDropzone`, `UTApi`, адаптери, регіони й ACL: сайт
+  docs.uploadthing.com з тегу кожної мінорної 3.0–7.7, журнали змін десяти пакетів, реєстр npm, приклади) —
+  `uploadthing`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «знати, що існує»: UploadThing, Payload, Contentful, tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed
-  Secrets, Prometheus, Grafana, Loki.
+- з «знати, що існує»: Payload, Contentful, tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets,
+  Prometheus, Grafana, Loki.
 
 ---
 
