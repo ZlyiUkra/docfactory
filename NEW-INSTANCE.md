@@ -189,6 +189,12 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   with `md_suffix: "/index.html.md"`, `drop` for the «Defined in: src/…» lines and `heading_floor: 3`, so a fragment
   holds a whole property and not its «Returns». If the site pages for plain words (`Reference`, `Array`) still drown
   under the reference, raise `fusion_depth` by measurement (20 gave «as a model» 7 → 10 of 10).
+- **A Tailwind UI Protocol site kept in the repository** (docs.uploadthing.com: `<Property name type since>` tags,
+  `{{ tag, since }}` after headings, `docsMetadata({ title })`) — `ghdocs-history` with `protocol_mdx: true`: an option
+  comes out with its name, type, default and the version it appeared in, a heading as «createUploadthing (function,
+  since 5.0)» without code quotes, so `title_match` recognises it as an identifier («as a model» 9 → 10 of 10 on
+  `onUploadComplete`). One source per minor from its last tag; when the site moved between frameworks (Nextra
+  `docs/src/pages/x.mdx` → App Router `docs/src/app/(docs)/x/page.mdx`), `slug_rewrite` brings both keys to one name.
 - **A site that keeps every version as a folder of one commit** (kafka.apache.org on Hugo: `content/en/07` …
   `content/en/44`) — one source per folder with its `version`, all of them in one `families` group; the tree of one
   folder is `trees/SHA:content%2Fen%2F41?recursive=1` (the slashes encoded). Pages that only name generated HTML
@@ -1171,6 +1177,12 @@ and what a taken port and a failed connection look like. A domain list in the ro
   `sitemap-md-suffix` з `md_suffix: "/index.html.md"`, `drop` для рядків «Defined in: src/…» і `heading_floor: 3`, щоб
   фрагмент тримав цілу властивість, а не її «Returns». Якщо сторінки сайту на прості слова (`Reference`, `Array`) усе
   одно тонуть під довідником — підняти `fusion_depth` за заміром (20 дало «як модель» 7 → 10 із 10).
+- **Сайт на шаблоні Tailwind UI Protocol у репозиторії** (docs.uploadthing.com: теги `<Property name type since>`,
+  `{{ tag, since }}` після заголовків, `docsMetadata({ title })`) — `ghdocs-history` з `protocol_mdx: true`: опція
+  виходить з іменем, типом, типовим значенням і версією появи, заголовок — «createUploadthing (function, since 5.0)» без
+  лапок коду, тож `title_match` упізнає його як ідентифікатор («як модель» 9 → 10 із 10 на `onUploadComplete`). По
+  джерелу на мінорну з її останнього тегу; коли сайт переїхав між фреймворками (Nextra `docs/src/pages/x.mdx` → App
+  Router `docs/src/app/(docs)/x/page.mdx`), `slug_rewrite` зводить обидва ключі до одного імені.
 - **Сайт, що тримає кожну версію текою одного коміту** (kafka.apache.org на Hugo: `content/en/07` … `content/en/44`)
   — по джерелу на теку з її `version`, усі в одній групі `families`; дерево однієї теки —
   `trees/SHA:content%2Fen%2F41?recursive=1` (риски закодовано). Сторінки, що лише називають згенерований HTML
@@ -2131,6 +2143,12 @@ errada.
   para que um fragmento guarde uma propriedade inteira e não o seu «Returns». Se as páginas do site para palavras simples
   (`Reference`, `Array`) ainda se afogam sob a referência, subir `fusion_depth` por medição (20 deu «como modelo» 7 → 10
   de 10).
+- **Um site no modelo Tailwind UI Protocol guardado no repositório** (docs.uploadthing.com: tags `<Property name type
+  since>`, `{{ tag, since }}` depois dos títulos, `docsMetadata({ title })`) — `ghdocs-history` com `protocol_mdx: true`:
+  uma opção sai com nome, tipo, valor padrão e a versão em que apareceu, um título como «createUploadthing (function,
+  since 5.0)» sem aspas de código, e assim `title_match` o reconhece como identificador («como modelo» 9 → 10 de 10 em
+  `onUploadComplete`). Uma fonte por minor a partir da sua última tag; quando o site mudou de framework (Nextra
+  `docs/src/pages/x.mdx` → App Router `docs/src/app/(docs)/x/page.mdx`), `slug_rewrite` leva as duas chaves a um só nome.
 - **Um site que guarda cada versão como pasta de um mesmo commit** (kafka.apache.org em Hugo: `content/en/07` …
   `content/en/44`) — uma fonte por pasta com a sua `version`, todas num grupo de `families`; a árvore de uma pasta é
   `trees/SHA:content%2Fen%2F41?recursive=1` (barras codificadas). Páginas que só nomeiam HTML gerado com um
