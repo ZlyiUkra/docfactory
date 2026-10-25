@@ -3005,6 +3005,24 @@ Node.js від Confluent на librdkafka з API, сумісним із KafkaJS, 
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/platformatic-kafka/README.md](instances/platformatic-kafka/README.md).
 
+### rabbitmq
+
+Документація RabbitMQ — брокера повідомлень для AMQP 0-9-1, AMQP 1.0, MQTT, STOMP і потоків (rabbitmq-website,
+rabbitmq-server): сайт rabbitmq.com версій 3.13–4.4 і старий сайт 3.11 та 3.12, туторіали JavaScript, блог 2010–2026,
+сторінки клієнтських бібліотек і операторів Kubernetes, нотатки кожного релізу 1.1.1–4.4.0. 1726 документів, 12 640
+фрагментів; новий читач `ghdocs-filever` (`engine/readers/ghversionfiles.py`) бере версію нотатки з імені файла.
+
+- порт `8890`; запис у Claude Code — `rabbitmq-docs`, адреса `http://127.0.0.1:8890/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версія — мажор (`version: "3"`), мінор (`"4.3"`) або точна (`"3.13.7"`); статистики завантажень за версіями RabbitMQ
+  не публікує, тож промпт велить відповідати для ліній, які проєкт латає, — 4.4 і 4.3, а про старий кластер — ще й 3.13;
+- не входять: клієнтські бібліотеки як окремі проєкти (amqplib, amqp-connection-manager, NestJS), туторіали інших мов,
+  специфікації AMQP, Erlang, Kubernetes;
+- приклад питання агентові: `./df rabbitmq ask "When should I use a quorum queue instead of a classic queue, and what
+  changed for mirrored queues in 4.0?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/rabbitmq/README.md](instances/rabbitmq/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
