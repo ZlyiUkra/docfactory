@@ -2978,6 +2978,24 @@ Node.js від Confluent на librdkafka з API, сумісним із KafkaJS, 
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/confluent-kafka-javascript/README.md](instances/confluent-kafka-javascript/README.md).
 
+### platformatic-kafka
+
+Документація @platformatic/kafka — сучасного клієнта Apache Kafka для Node.js на чистому TypeScript від Platformatic
+(platformatic/kafka): продюсер, консумер із потоками повідомлень, адмін-клієнт, транзакції, метрики, канали діагностики;
+четвертий і останній примірник родини Kafka: `docs/` з тегу кожної мінорної версії 0.1–2.14 (55 тегів), README кожної
+стабільної версії з npm, нотатки релізів GitHub, реєстр npm. 181 документ, 597 фрагментів; нових читачів не потрібно.
+
+- порт `8889`; запис у Claude Code — `platformatic-kafka-docs`, адреса `http://127.0.0.1:8889/mcp`; інструменти
+  `search_docs` і `read_section`;
+- версія — мажор (`version: "2"`), мінор (`"2.11"`) або точна (`"2.12.1"`); найбільше завантажень npm за тиждень до
+  25.10.2026 — 2.11.0 (близько 34 %), тож промпт велить відповідати для 2.11, а про нове — ще й для 2.14.0;
+- не входять: сам Apache Kafka (примірник `kafka`), інші клієнти (`kafkajs`, `confluent-kafka-javascript`), сервер
+  застосунків Platformatic, Node.js, внутрішні нотатки `docs/internals/`;
+- приклад питання агентові: `./df platformatic-kafka ask "How do I consume a MessagesStream with autocommit disabled
+  and commit offsets myself?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/platformatic-kafka/README.md](instances/platformatic-kafka/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
