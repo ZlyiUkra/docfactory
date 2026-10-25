@@ -367,7 +367,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 |------------|--------|------------|
 | Mongoose, MikroORM, Drizzle | інша база чи інший стиль ORM; у корпусі є `Mongo` і `MikroORM`; є примірники `drizzle`, `mikro-orm` і родина Mongo: `mongodb`, `node-mongodb`, `mongoose` | не вчиться |
 | GraphQL (`@nestjs/graphql`) | клієнтів багато, і кожен хоче свою форму даних | не вчиться |
-| мікросервіси: Kafka, RabbitMQ, NATS | кілька сервісів обмінюються повідомленнями; є примірники `kafka`, `kafkajs`, `confluent-kafka-javascript` | не вчиться |
+| мікросервіси: Kafka, RabbitMQ, NATS | кілька сервісів обмінюються повідомленнями; є примірники `kafka`, `kafkajs`, `confluent-kafka-javascript`, `platformatic-kafka` | не вчиться |
 | CQRS | складний домен, читання й запис розділені | не вчиться |
 | `@socket.io/redis-streams-adapter` | адаптер, що переживає короткий обрив Redis без втрати повідомлень; є примірник `socketio` | Ф7 Д6, згадкою |
 | NestJS Observe | траси й помилки продакшну; глава `Distributed tracing` (12) | не вчиться |
@@ -506,7 +506,9 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
   кожної мінорної версії 0.1–2.2, README кожної версії, журнал змін, реєстр npm) — `kafkajs`;
 - клієнт Kafka від Confluent `@confluentinc/kafka-javascript` (на librdkafka, з API, сумісним із KafkaJS: посібник і
   сторінка переходу docs.confluent.io 1.0–1.11, документи репозиторію з тегу кожної мінорної, README і властивості
-  конфігурації librdkafka кожної версії, журнал змін, реєстр npm) — `confluent-kafka-javascript`.
+  конфігурації librdkafka кожної версії, журнал змін, реєстр npm) — `confluent-kafka-javascript`;
+- клієнт Kafka від Platformatic `@platformatic/kafka` (на чистому TypeScript, консумер із потоками повідомлень: `docs/` з
+  тегу кожної мінорної версії 0.1–2.14, README кожної версії, нотатки релізів, реєстр npm) — `platformatic-kafka`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
 глава про інтеграцію (RabbitMQ, NATS), але не документація самої бібліотеки:
