@@ -367,7 +367,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 |------------|--------|------------|
 | Mongoose, MikroORM, Drizzle | інша база чи інший стиль ORM; у корпусі є `Mongo` і `MikroORM`; є примірники `drizzle`, `mikro-orm` і родина Mongo: `mongodb`, `node-mongodb`, `mongoose` | не вчиться |
 | GraphQL (`@nestjs/graphql`) | клієнтів багато, і кожен хоче свою форму даних | не вчиться |
-| мікросервіси: Kafka, RabbitMQ, NATS | кілька сервісів обмінюються повідомленнями; є примірники `kafka`, `kafkajs`, `confluent-kafka-javascript`, `platformatic-kafka`, `rabbitmq`, `amqplib`, `amqp-connection-manager`, `golevelup-nestjs-rabbitmq` | не вчиться |
+| мікросервіси: Kafka, RabbitMQ, NATS | кілька сервісів обмінюються повідомленнями; є примірники `kafka`, `kafkajs`, `confluent-kafka-javascript`, `platformatic-kafka`, `rabbitmq`, `amqplib`, `amqp-connection-manager`, `golevelup-nestjs-rabbitmq`, `nats`, `nats-js` | не вчиться |
 | CQRS | складний домен, читання й запис розділені | не вчиться |
 | `@socket.io/redis-streams-adapter` | адаптер, що переживає короткий обрив Redis без втрати повідомлень; є примірник `socketio` | Ф7 Д6, згадкою |
 | NestJS Observe | траси й помилки продакшну; глава `Distributed tracing` (12) | не вчиться |
@@ -516,12 +516,14 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 - amqp-connection-manager (перепідключення поверх amqplib, друга половина транспорту RMQ Nest: README кожної версії
   1.0–5.0, нотатки релізів, реєстр npm) — `amqp-connection-manager`;
 - @golevelup/nestjs-rabbitmq (модуль Nest для RabbitMQ з `@RabbitSubscribe` і `@RabbitRPC` замість транспорту RMQ:
-  сторінка модуля, README кожної версії 1.6–9.1, журнал змін, реєстр npm) — `golevelup-nestjs-rabbitmq`.
+  сторінка модуля, README кожної версії 1.6–9.1, журнал змін, реєстр npm) — `golevelup-nestjs-rabbitmq`;
+- NATS (система обміну повідомленнями з core NATS і JetStream, транспорт NATS мікросервісів Nest: довідник docs.nats.io
+  2.11–2.15, розділи Learn, Concepts і Tutorials, стара документація GitBook, ADR, нотатки кожного релізу nats-server
+  0.5.6–2.15.1) — `nats`;
+- nats.js (клієнт NATS для Node.js: пакет `nats` 2.x, на якому стоїть транспорт NATS Nest, і пакети `@nats-io/*` 3.x —
+  README кожної версії, документи nats-base-client, довідник API, приклади docs.nats.io, реєстр npm) — `nats-js`.
 
-**Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
-глава про інтеграцію (NATS), але не документація самої бібліотеки:
-
-- з «знати, що існує»: NATS.
+**Примірника ще немає** — такого не лишилося: усе, що план називає, має свій примірник.
 
 ---
 
